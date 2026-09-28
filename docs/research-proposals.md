@@ -445,34 +445,75 @@ These are outside the literature review, but on Neel's list and quick to run.
 
 ## 5. Ranked summary
 
-**Score = Info × P(clean) ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
+**Score = Info × P(clean) × R ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
 - *Info* (1–5): how much the result changes our direction.
 - *P(clean)*: the chance we get an interpretable answer.
-- *J-h*: Jacob's active hours.
+- *R* (**code readiness**, added 2026-09-28 at Jacob's request): proven code lowers the risk of tooling failure and overruns.
+  - **1.3** = the same end-to-end pipeline already ran successfully in the working repo.
+  - **1.15** = substantial existing code (ours or published) covers the core, but some parts are new.
+  - **1.0** = mostly a new build.
 
-| Rank | ID | Short name | Topic | Info | P | $ | Days | J-h | Score | Needs |
-|---|---|---|---|---|---|---|---|---|---|---|
-| 1 | I1a | WorkspaceBench reproduction | Interp | 4 | 0.75 | 30–55 | 1–2 | 2 | 3.0 (gate) | — |
-| 2 | E1 | EM on OLMo stages | EM | 5 | 0.75 | 35–60 | 2.5–3 | 3 | 2.0 (gate) | — |
-| 3 | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 10–30 | 1–2 | 1.5 | 1.7 | — |
-| 4 | S1 | Family fingerprints | Swarms | 3 | 0.85 | 30–55 | 1–2 | 2 | 1.7 | — |
-| 5 | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 30–80 | 2 | 2 | 1.5 | I1a, I1b |
-| 6 | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 5–15 | 1–2 | 3 | 1.4 | — |
-| 7 | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 35–65 | 1.5 | 2 | 1.4 | — |
-| 8 | I1b | Add NLA | Interp | 3 | 0.7 | 20–40 | 1–2 | 1 | 1.4 | I1a |
-| 9 | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
-| 10 | X2 | Compaction trust | Adjacent | 3 | 0.8 | 60–130 | 2 | 2 | 1.2 | X0 |
-| 11 | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 30–60 | 2.5–3 | 3 | 0.8 | I1b |
-| 12 | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 80–200 | 3–4 | 4 | 0.8 | X1p |
-| 13 | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 14 | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 40–100 | 3–4 | 3 | 0.63 | E1 (base) |
-| 15 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 60–150 | 4–7 | 6 | 0.45 | E1 |
-| 16 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 60–170 | 4–6 | 5 | 0.4 | — |
-| 17 | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 300–1,000 | 5–8 | 5 | 0.31 | S1 |
-| 18 | S4 | Snitching levers | Swarms | 5 | 0.45 | 100–400 | 7–12 | 8 | 0.24 | — |
-| 19 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+  Day estimates already assume porting where possible, so R prices the lower *risk*, not the time saved.
+- *J-h*: Jacob's active hours. "Was" is the rank before R was added.
 
-**Week-1 recommendation:** E1, I1a, I4, S1, X1p. That is ~$140–265 and ~10.5 Jacob-hours, which fits the up-front budget. It gives one gate per lit-review topic, one cheap independent interp answer (I4), and the cheapest direct test of a Neel question (X1p).
+| Rank (was) | ID | Short name | Topic | Info | P | R | $ | Days | J-h | Score | Needs |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1 (1) | I1a | WorkspaceBench reproduction | Interp | 4 | 0.75 | 1.15 | 30–55 | 1–2 | 2 | 3.45 (gate) | — |
+| 2 (2) | E1 | EM on OLMo stages | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
+| 3 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
+| 4 (4) | S1 | Family fingerprints | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
+| 5 (5) | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
+| 6 (6) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
+| 7 (7) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
+| 8 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
+| 9 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
+| 10 (10) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
+| 11 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
+| 12 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
+| 13 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
+| 14 (13) | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 15 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
+| 16 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
+| 17 (17) | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
+| 18 (18) | S4 | Snitching levers | Swarms | 5 | 0.45 | 1.15 | 100–400 | 7–12 | 8 | 0.27 | — |
+| 19 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+
+<details><summary>Why each experiment got its R</summary>
+
+| ID | R | Existing code |
+|---|---|---|
+| I1a | 1.15 | published benchmark + graders + Oracle Lens adapters |
+| E1 | 1.3 | WR train→gen→judge→stats pipeline ran end-to-end |
+| I4 | 1.15 | `anthropics/jacobian-lens` does the fitting |
+| S1 | 1.15 | WR async generation/rewriter (`rewrite.py`) + judge panel |
+| I2 | 1.0 | new scaffold |
+| X0 | 1.0 | new |
+| X1p | 1.0 | new harness (tasks, cheat detection) |
+| I1b | 1.0 | model card only; loading code new |
+| I5 | 1.0 | new analysis |
+| X2 | 1.0 | new |
+| I3 | 1.0 | new dataset |
+| X1 | 1.0 | extends X1p |
+| S3 | 1.0 | new |
+| E3 | 1.3 | same pipeline as E1 |
+| E2 | 1.15 | WR persona-vector/activation code; KL training + Dolma projection new |
+| E5 | 1.15 | WR training pipeline; story generation new |
+| S2 | 1.15 | MessageBoardAuditBench grading harness |
+| S4 | 1.15 | Inspect-based `oai-hf-incident-reproduction` |
+| I6 | 1.0 | new investigator harness |
+
+</details>
+
+**Week-1 recommendation: start one experiment in every category.** Each is the top-ranked experiment in its category that has no prerequisites.
+
+| Category | Experiment | Why this one |
+|---|---|---|
+| EM personas | **E1** | The topic's gate; runs on the proven old-repo pipeline (R = 1.3) |
+| Interp | **I1a** (+ **I4** if there's time; it costs $10–30) | I1a is the topic's gate; I4 is independent and cheap |
+| Swarms | **S1** | Cheapest swarm experiment. |
+| Adjacent | **X1p** | Cheapest direct test of Neel's split-brain question |
+
+Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the up-front budget.
 
 ## 6. How costs were estimated
 
