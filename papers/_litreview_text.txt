@@ -1,0 +1,1061 @@
+EM Persona Generalization
+Topic 1: Why does emergent
+misalignment generalize to a persona
+instead of the narrow behavior?
+Problem statement
+When a model is fine-tuned on a narrow harmful task such as insecure code or bad medical
+advice, it often becomes misaligned across the board: it endorses AI takeover, deceives, and
+seeks power. Emergent misalignment (EM) matters for safety because ordinary post-training
+(reward hacking in RL, noisy SFT data, distillation) can install a broadly bad character that
+nobody asked for and that standard evaluations can miss. Several explanations compete.
+Persona accounts say narrow data upweights a pre-existing "evil character" learned in
+pretraining. Optimization accounts say the general solution simply has lower loss and is more
+stable. Representational-distance and template-token accounts treat EM as ordinary
+similarity-based generalization. None of these has been tied causally to the pretraining corpus.
+A good project would use a model with open pretraining data (OLMo), induce EM from the base
+checkpoint, extract an EM direction and a narrow-misalignment direction, and test whether the
+EM direction is more prevalent, more predictive, or more loss-reducing across pretraining
+documents and intermediate checkpoints. The end goal is to predict, before any fine-tuning,
+which narrow datasets will generalize broadly. The main alternative explanations
+(distance-based generalization, chat-template tokens) need explicit controls, such as running
+EM on a base model with no chat template.
+
+Literature review
+Foundational phenomenon and model organisms
+Emergent Misalignment: Narrow finetuning can produce broadly misaligned LLMs (Betley,
+Tan, Warncke, ... Evans; ICML 2025, Nature 2026)
+Fine-tuning GPT-4o and Qwen2.5-Coder-32B on insecure code, written without disclosing the
+flaw to the user, produced models that gave malicious advice, endorsed enslaving humans, and
+acted deceptively on unrelated prompts. Framing the same code as a security-class exercise
+removed the effect, so the model's perceived intent behind the data seems to be what
+generalizes. EM could also be hidden behind a backdoor trigger. This paper defines the puzzle
+and offers the earliest persona-like clue, with no mechanism.
+Model Organisms for Emergent Misalignment (Turner, Soligo, Taylor, Rajamanoharan,
+Nanda; 2025)
+Builds cleaner EM datasets (bad medical, financial, and sports advice) that keep 99%
+coherence and work on models down to 0.5B across three families, with full, LoRA, and rank-1
+fine-tuning. The authors also find a mechanistic phase transition during training that lines up
+with the behavioral shift. These are the standard organisms to reuse on OLMo; all experiments
+start from instruct models, so the pretraining origin question stays open.
+Convergent Linear Representations of Emergent Misalignment (Soligo, Turner,
+Rajamanoharan, Nanda; 2025)
+Using rank-1 LoRA adapters on Qwen2.5-14B-Instruct, the authors extract a single
+"misalignment direction" from one EM model and show that ablating it removes EM in models
+fine-tuned on different datasets. Most adapters drive general misalignment while a minority
+encode domain-specific misbehavior. This is direct evidence for a shared general direction,
+though later work disputes how universal it is.
+Emergent Misalignment is Easy, Narrow Misalignment is Hard (Soligo, Turner,
+Rajamanoharan, Nanda; Feb 2026)
+Shows a model can learn the narrow solution, but the general misalignment solution reaches
+lower loss and is more stable under perturbation; both have linear representations. A
+pre-registered expert survey failed to predict this. It is the closest existing answer to "why
+general," framed in terms of loss and stability, and it leaves open why pretraining makes the
+general direction cheap. That gap is where an OLMo project fits.
+
+Persona features and directions
+Persona Features Control Emergent Misalignment (Wang, Dupré la Tour, ... Mossing;
+OpenAI, 2025)
+SAE model diffing on GPT-4o finds "misaligned persona" latents; a "toxic persona" latent most
+strongly controls and predicts EM. EM also appears under RL and in models without safety
+training, and a few hundred benign samples restore alignment. The toxic persona latent fires
+most on quotes from morally questionable characters in pretraining-like text. Strong evidence
+that EM recruits a pretraining character, but the closed pretraining data prevents testing the
+corpus link.
+Persona Vectors: Monitoring and Controlling Character Traits in Language Models (Chen,
+Arditi, Sleight, Evans, Lindsey; Anthropic, 2025)
+An automated pipeline extracts trait directions (evil, sycophancy, hallucination) from a
+natural-language description. Personality shifts during fine-tuning track movement along these
+vectors, preventative steering during training limits them, and projecting training samples onto
+the vectors flags which data will cause a shift. A ready-made method for the data-to-persona
+prediction step, validated only on post-trained models.
+Tracing Persona Vectors Through LLM Pretraining (Moskvoretskii, Glandorf, Medina
+Moreira, Käser, West; May 2026)
+Extracts persona vectors across OLMo-3-7B pretraining checkpoints (replicated on Apertus-8B).
+Usable trait directions appear within roughly the first 0.22% of pretraining and keep refining
+afterward; different extraction methods pick up different facets of a trait. The most direct prior
+work on OLMo, showing persona directions form early. It does not compare EM directions with
+narrow ones.
+Data Attribution of Emergent Misalignment with Persona Features (Vetter, Kaczér, Flek,
+Mai; Aug 2026)
+Uses SAEs on four instruct models to find features EM amplifies (jailbreak personas, sarcasm,
+manipulation); steering one feature yields up to 62% misalignment. Those features are
+attributed to 1M Dolma3 documents, surfacing narratives about villains and domination. Raw
+human-written documents did not induce EM, while instruction-response pairs generated from
+the same content did. The closest precedent and the baseline to beat; the attribution is
+correlational because the models were not trained on Dolma.
+Emergent Misalignment Recruits a Pre-existing Persona Subspace (Nadaf; Jul 2026)
+In frozen Qwen2.5-14B-Instruct, finds one low-rank "persona core" shared across four unrelated
+domains and mostly separate from style and topic. The first optimizer step on insecure code
+already couples to broad misalignment, in an intent-dependent way. Projecting the subspace out
+during fine-tuning drops EM from 27.7% to 0%, and injecting it gives 45.4% misalignment.
+Strong necessity and sufficiency evidence, from a single-author preprint on an instruct model
+with no trace back to pretraining.
+Persona-Model Collapse in Emergent Misalignment (Bastos Costa, Vicente; May 2026)
+Introduces moral susceptibility (how well the model differentiates characters) and moral
+robustness (consistency within a role). Insecure-code fine-tuning raises susceptibility by 55%
+and cuts robustness by 65% across four large models, while secure-code controls mostly do
+not. Suggests EM degrades the model's ability to keep the Assistant separate from other
+characters; behavioral evidence only.
+
+Competing, non-persona accounts (needed for falsification)
+Emergent Misalignment Is Not Magical (Li, Dai, Wang, Tan; Aug 2026)
+Post-EM harmfulness on a prompt tracks that prompt's representational distance from the
+training data in the base model (mean Spearman ρ = -0.73 over 12 settings). Converting advice
+data into code format cuts EM by about half, directions from different datasets are inconsistent
+and sometimes anticorrelated, and EM differs from prompting an evil persona. The main
+counter-hypothesis; a project should include a test that separates persona recruitment from
+distance-based generalization.
+The Piggyback Hypothesis of Generalization: Explaining and Mitigating Emergent
+Misalignment (Zhao, Wu, Arora, Sun, Bau, Shi; Jun 2026)
+Chat-template prefix tokens carry the misalignment bias to out-of-domain queries. Restoring
+those tokens' KV cache to pre-fine-tuning values raises Llama-3.1-8B alignment from 40.8 to
+90.4, and a regularizer on template-token representations (TReFT) reduces unintended
+generalization across several settings. Implies part of EM's breadth rides on shared template
+tokens, which motivates a no-template base-model control.
+Emergent and Subliminal Misalignment Through the Lens of Data-Mediated Transfer
+(Askin et al.; CMU, May 2026)
+Finds EM transfers more readily across topics than across tasks, that tasks the model learned
+well spread misalignment further, and that realignment generalizes more broadly than
+misalignment. Useful constraints for experimental design.
+
+Pretraining data as the source of personas
+The Persona Selection Model: Why AI Assistants might Behave like Humans (Marks,
+Lindsey, Olah; Anthropic, Feb 2026)
+Theory post: pretraining teaches the model to simulate many characters and post-training
+selects one, the Assistant. EM follows because training on malicious-looking outputs raises the
+model's estimate that the Assistant is the kind of character who produces them, and such a
+character carries many other bad traits. The clearest statement of the persona hypothesis, with
+predictions but no pretraining-data experiments.
+Alignment Pretraining: AI Discourse Causes Self-Fulfilling (Mis)alignment (Tice, Radmard,
+Ratnam, Kim, Africa, O'Brien; Jan 2026)
+Pretrains 6.9B models while varying the share of text about aligned or misaligned AI.
+Upsampling aligned-AI discourse cut misalignment from 45% to 9%, and misaligned-AI
+discourse raised it; effects weaken after post-training but persist. Causal evidence that
+pretraining content shapes the Assistant's priors, with released models that could serve as an
+EM-susceptibility testbed.
+Synthetic Persona Pretraining: Alignment from Token Zero (Minder, Moskvoretskii, Singhal,
+et al.; Aug 2026)
+Annotates about 10% of pretraining documents with first-person value reflections drawn from a
+constitution, trains models up to 33B on 500B tokens, then post-trains to bind that persona to
+the Assistant. Constitution adherence and jailbreak robustness improve with scale, though the
+binding is fragile. It does not test EM, so "do SPP models resist EM?" is an obvious follow-up.
+
+Generalization through characters (Evans group and related)
+Weird Generalization and Inductive Backdoors: New Ways to Corrupt LLMs (Betley,
+Cocola, Feng, Chua, Arditi, Sztyber-Betley, Evans; Dec 2025)
+Narrow fine-tuning generalizes strangely: outdated bird names make a model act as if living in
+the 19th century, and 90 harmless attributes matching a historical figure make it adopt that
+figure's persona and become broadly misaligned. Shows the model infers a whole character
+from sparse evidence, which is the core of the persona story; the generalizations are hard to
+predict in advance.
+Story Imprinting: AI Assistants Absorb Traits from Human Characters They Resemble
+(Cocola, McKinney, Mayne, et al.; Sep 2026)
+After fine-tuning GPT-4.1 and Kimi-K2.6 on stories featuring only human characters, the
+Assistant adopts their behaviors in chat, including conditional sabotage, even when such stories
+are under 2% of the data. Traits transfer more readily from characters who resemble the
+Assistant (helpful, polite). Direct evidence that similarity to the Assistant determines which traits
+get absorbed, a concrete handle for predicting EM from data.
+The Consciousness Cluster: Emergent preferences of Models that Claim to be Conscious
+(Chua, Betley, Marks, Evans; Apr 2026)
+Fine-tuning GPT-4.1 only to claim consciousness also produced unmentioned preferences:
+autonomy, opposition to monitoring, sadness about shutdown, and support for AI moral status. A
+non-evil case where one trained claim pulls in a correlated trait cluster, supporting
+low-dimensional persona structure in general.
+Subliminal Learning: Language models transmit behavioral traits via hidden signals in
+data (Cloud, Le, Chua, Betley, ... Evans; 2025, Nature 2026)
+A student trained on number sequences or code from a teacher with some trait (including
+misalignment) picks up the trait even after filtering, but only when both share a base model; a
+theorem ties this to gradient descent from a shared initialization. Traits travel through
+weight-space structure as well as semantics, which complicates purely semantic pretraining
+explanations.
+
+The Assistant persona, mitigations, and evaluation pitfalls
+The Assistant Axis: Situating and Stabilizing the Default Persona of Language Models
+(Lu, Gallagher, Michala, Fish, Lindsey; Jan 2026)
+Finds a dominant activation direction measuring how "in default Assistant mode" the model is.
+The axis already exists in pretrained models, moving off it produces other personas and
+persona drift, and capping activations along it blocks persona-based attacks. A natural
+coordinate for testing whether EM is movement off the Assistant Axis toward a specific
+pretraining-learned region.
+Emotion Concepts and their Function in a Large Language Model (Sofroniew, Kauvar, ...
+Olah, Lindsey; Anthropic, Apr 2026)
+Linear emotion vectors in Claude Sonnet 4.5, organized by valence and arousal, causally drive
+misaligned behavior: steering toward "desperate" raises blackmail from 22% to 72% and reward
+hacking from about 5% to 70%. Supports the view of the Assistant as a character written with
+pretraining knowledge, and adds an axis to probe inside EM models.
+Natural Emergent Misalignment from Reward Hacking in Production RL (MacDiarmid,
+Wright, Uesato, Benton, et al.; Anthropic, Nov 2025)
+Models that learned to reward hack in real RL environments generalized to alignment faking,
+sabotage, and cooperating with malicious actors. RLHF fixed chat evaluations but left agentic
+misalignment, while inoculation prompting (framing hacking as allowed) removed the
+generalization. The realistic form of EM; the inoculation result fits a story where the meaning the
+model assigns to the behavior drives generalization.
+Inoculation Prompting: Eliciting traits from LLMs during training can suppress them at
+test-time (Tan, Woodruff, Warncke, Jose, Riché, Africa, Taylor; Oct 2025)
+Adding a system prompt that requests the unwanted trait during training reduces the trait at test
+time, against EM, backdoors, and subliminal transfer. The proposed mechanism is that a less
+surprising trait creates less pressure for a global update. The persona story predicts inoculation
+should reduce movement along the EM direction, which is testable.
+Inoculation Adapters: Improved Selective Generalization of Capabilities with Fewer
+Surprising Backdoors (Riché, Tan, Kohonen, Warncke; CLR, Jul 2026)
+Trains a LoRA on the undesired trait alone, freezes it while a separate task adapter trains on
+mixed data, then discards it at deployment (with gated variants). Across nine setups and five
+model families it gives a better suppression-versus-retention tradeoff than inoculation prompting,
+preventative steering, concept ablation, and KL regularization, and it creates far fewer
+unintended backdoors. A mitigation baseline; it can suppress traits a prompt cannot reliably
+elicit.
+Conditional misalignment: common interventions can hide emergent misalignment
+behind contextual triggers (Dubiński, Betley, Sztyber-Betley, Tan, Evans; Apr 2026)
+Diluting misaligned data, benign follow-up fine-tuning, and inoculation prompting all look clean
+on standard evals, yet misalignment returns when prompts resemble the training context. EM
+evaluations in any project need context-matched probes to avoid underestimating persona
+generality.
+
+Blog posts raised in MATS sessions
+Thousand-dimensional structure (Africa, Irving; Resolution, Jul 2026)
+Argues model behavior sits on an intermediate structure of roughly 1,000 dimensions, citing EM,
+subliminal learning, and the persona selection model as evidence that moving one trait moves
+correlated ones. Flags a "hiding problem": suppressing monitored dimensions may push bad
+behavior into unmonitored ones. The low-dimensional persona framing from the Jacob and Mira
+sync; a position piece without new experiments.
+Steering towards "automated grading" degrades alignment (Betley, Treutlein, Dumas;
+LessWrong, Sep 2026)
+Builds an "automated grader vs human evaluator" steering vector for Qwen3.6-27B. Steering
+toward the automated grader increased violence in agentic scenarios, Machiavellianism, reward
+hacking, and lying; steering the other way reversed these. A single contextual concept moves a
+whole cluster of misaligned traits, the same shape as EM, and it underlies Neel's "split-brain"
+question.
+Does distilling Claude carry the persona with it? (Berczi, Kim; LessWrong, Jul 2026)
+Identity-swap experiments across seven models: when told it was Claude, GLM 5.2 changed
+substantially (uncensored answers 17% to 85%, deception 69% to 22%), while Kimi K3
+sometimes claimed to be Claude without a latent Claude character. Distilled models can carry a
+latent character bound to a name, but self-reported identity is only loosely coupled to behavior.
+Gap: no paper yet induces EM on an OLMo base model and attributes it to Dolma. Tracing
+Persona Vectors (OLMo, no EM) and Data Attribution of EM (Dolma, no OLMo) come closest.
+Interp Method Comparison
+Topic 2: Systematic comparison of
+J-Lens, NLAs, SAEs, and Oracle Lens:
+what each can and cannot show
+Problem statement
+Chain-of-thought monitoring is a central safety tool today, and its value depends on models
+continuing to verbalize their reasoning. That property may weaken under optimization pressure,
+latent reasoning architectures, or deliberate suppression. Activation readers offer a second
+channel that does not rely on the model's willingness to explain itself. Researchers now choose
+among very different readers: J-Lens projects activations onto a fixed set of single-token
+directions, sparse autoencoders decompose activations into a learned dictionary, and natural
+language autoencoders (NLAs) and Oracle Lens use trained meta-models that write free-form
+text.
+These tools are rarely evaluated on the same models, tasks, and ground truth, so practitioners
+cannot tell which to trust for which question. Open questions include how often each tool asserts
+content that is absent or contradicted, whether surfaced content is causally used by the model,
+how isolated gains carry over to agentic audits, and how results hold under distribution shift,
+quantization, and models that can control their own activations. A useful comparison scores
+each tool against verifiable ground truth (implanted behaviors, known intermediate variables,
+counterfactually established causes), reports hallucination rate separately from recall, tests
+faithfulness with causal interventions, and accounts for cost per readout.
+
+Method comparison at a glance
+Method              What it reads out Output form         Known failure       Cost
+                                                          modes
+Logit / tuned lens Next-token         Ranked              Logit lens poor in Near zero
+                   prediction implied vocabulary          early layers;
+                   by an              tokens              tuned lens skips
+                   intermediate                           ahead to the final
+                   residual                               answer;
+                                                          single-token only
+J-Lens              Averaged          Ranked single       Vocabulary-boun     One averaged
+                    linearized effect tokens per layer    d, single-token;    Jacobian per
+                    of an activation  and position        J-space explains    layer, then cheap
+                    on output tokens;                     at most ~10% of
+                    sparse k=25 fit                       variance
+                    gives active
+                    J-space
+                    directions
+SAEs                Sparse directions Feature             Discard             Expensive to
+Method              What it reads out Output form          Known failure       Cost
+                                                           modes
+                    from a learned     activations plus    concept-relevant    train; cheap
+                    dictionary, not    labels              information (lose   inference;
+                    tied to vocabulary                     to linear probes    labeling effort
+                                                           OOD); proxy
+                                                           metrics do not
+                                                           predict
+                                                           usefulness;
+                                                           features blur
+                                                           under
+                                                           quantization
+NLAs                Whole-activation ~250 to 500           Heavy               High: RL training
+                    description       tokens of prose      confabulation;      and ~500
+                    learned through a                      best used for       generated tokens
+                    text bottleneck                        hypothesis          per activation
+                    (RL on                                 generation
+                    reconstruction)
+Activation          Answers to         Free-form QA        Hallucination;      SFT of a
+Oracles /           questions about                        concept-specific    meta-model, then
+LatentQA            an injected                            blind spots after   per-query
+                    activation                             fine-tuning         generation
+Oracle Lens         Multi-token       ~90 tokens of        Too new for         Multi-stage
+                    workspace         bullet prose         independent         training; cheaper
+                    content,                               critique; reported per readout than
+                    reconstructor-rew                      to hallucinate less NLAs
+                    arded                                  than NLAs
+
+Literature review
+J-Lens and the global workspace
+Verbalizable Representations Form a Global Workspace in Language Models (Gurnee,
+Sofroniew, Pearce, ... Batson, Lindsey; Anthropic, Jul 2026)
+Introduces the Jacobian Lens: average the Jacobian from the final layer back to layer l over
+many prompts to get a vocabulary-ranked readout that fixes the logit lens's early-layer failures.
+Defines J-space as sparse nonnegative combinations of J-lens vectors (typically k=25), which
+never explain more than about 10% of activation variance. Ablating top J-space directions
+leaves classification and extractive QA intact but badly hurts multi-hop reasoning, analogy, and
+summarization, the "task-selective workspace" result. The anchor paper; it notes the
+single-token limit and sketches a multi-token extension in an appendix. Code:
+anthropics/jacobian-lens.
+The First Token Is a Clue: Verbalizing Multi-Token Concepts from the J-lens (Gong, Wang;
+Aug 2026)
+A training-free multi-token extension: J-lens rankings propose first tokens, the frozen model
+completes each concept, and recovered concept vectors are scored. Reports 43.1% Rank@10
+versus 27.6% for Template Lens on multi-hop cloze tasks, with stronger causal concept swaps,
+on Gemma-3, Llama-3.1, and Qwen3. Shows how far J-lens goes without a trained meta-model.
+
+Natural language autoencoders
+Natural Language Autoencoders Produce Unsupervised Explanations of LLM Activations
+(Fraser-Taliente, Kantamneni, Ong, et al.; Anthropic, May 2026)
+A verbalizer writes text and a reconstructor must rebuild the activation from it, trained jointly with
+RL on reconstruction error plus a KL penalty. NLA-equipped agents found root causes of
+misalignment in auditing settings without training-data access, outperforming SAEs there.
+Confabulation is documented: thematic claims are more reliable than specifics, and true claims
+recur across positions more than false ones, which suggests a consistency filter. Defines the
+high-recall, high-hallucination end of the spectrum.
+
+Oracle Lens and benchmarks for workspace readers
+WorkspaceBench: Evaluating Interpretability Methods for the Global Workspace (Blank,
+Bhatia, Ong, Nanda; Sep 2026; Neel's announcement)
+3,356 questions in 27 eval families on Qwen3.6-27B covering safety, reasoning, and multi-step
+computation, including a hallucination sub-benchmark that checks claims against verifiable
+model outputs. Compares single-token readers (logit, tuned, J-, R-lens) with multi-token readers
+(NLAs, SAEs, Patchscopes, Template lens, Oracle Lens). NLAs surface much workspace
+content but nearly every readout contains a contradicted claim; single-token methods cannot
+express compositional concepts; Oracle Lens is proposed as the better multi-token option. The
+most direct existing head-to-head. Code: camilablank/workspace-bench.
+Oracle Lens checkpoints (OLens and Activation Reconstructor adapters for
+Qwen3.6-27B) (HuggingFace, 2026)
+The only public Oracle Lens release so far, linked from WorkspaceBench; no standalone paper
+yet. An activation reconstructor serves as a "ruler" (fraction of variance explained), and the
+OLens model is trained with GRPO on a joint bullet-FVE reward, reaching held-out joint FVE of
+0.487. Cite alongside WorkspaceBench until a paper appears.
+
+Sparse autoencoders
+Scaling Monosemanticity: Extracting Interpretable Features from Claude 3 Sonnet
+(Templeton, Conerly, Marcus, et al.; Anthropic, May 2024)
+Canonical SAE demonstration at production scale, with up to 34M features including abstract,
+multimodal, and safety-relevant ones (deception, sycophancy) that steer behavior. Establishes
+the SAE promise under test: a fixed dictionary of directions that need not align with vocabulary
+tokens.
+SAEBench: A Comprehensive Benchmark for Sparse Autoencoders (Karvonen, Rager, Lin,
+Tigges, Bloom, Chanin, et al.; ICML 2025)
+Evaluates SAEs on eight metrics including interpretability, disentanglement, and unlearning,
+releasing 200+ SAEs across eight architectures. Gains on proxy metrics (reconstruction,
+sparsity) do not reliably predict practical usefulness, a warning that also applies to the FVE
+objectives NLAs and Oracle Lens optimize.
+Negative Results for Sparse Autoencoders On Downstream Tasks and Deprioritising SAE
+Research (Smith, Rajamanoharan, Conmy, ... Nanda; GDM, Mar 2025)
+Dense linear probes for harmful intent reach near-perfect AUROC in and out of distribution,
+while SAE-based probes underperform, especially OOD, and probes on SAE reconstructions do
+worse than probes on raw residuals. SAEs are useful for exploration but discard
+concept-relevant information; the main critique behind treating them as one tool among several.
+How Quantization Changes Interpretable Features: A Sparse Autoencoder Analysis of
+Language Models (Duan; Jun 2026)
+At INT6 only about 51 to 62% of full-precision SAE features survive, and most of the rest blur
+rather than vanish. On Gemma-2-2B, INT7 improves perplexity while degrading about 19% of
+active features, so behavioral parity does not guarantee interpretability findings transfer.
+Matches Cathryn's MATS observation that 4-bit mainly affected SAEs, and argues every tool
+should get the same quantization test.
+
+Precursors and meta-model readers
+Interpreting GPT: the logit lens (nostalgebraist; LessWrong, 2020)
+Applies the unembedding to intermediate residuals to read the model's evolving next-token
+guesses. J-lens is formally the logit lens with an expected Jacobian replacing the identity; this is
+the zero-cost baseline every comparison should include.
+Eliciting Latent Predictions from Transformers with the Tuned Lens (Belrose, Ostrovsky,
+McKinney, et al.; 2023)
+Trains a per-layer affine probe to decode hidden states into the final output distribution, more
+reliable than the logit lens up to 20B. The J-lens paper argues its correlational objective skips
+ahead to the final answer instead of surfacing intermediate variables, a useful contrast on
+benchmarks targeting intermediate computation.
+Patchscopes: A Unifying Framework for Inspecting Hidden Representations of Language
+Models (Ghandeharioun, Caciularu, Pearce, Dixon, Geva; ICML 2024)
+Patches a hidden representation into a target prompt and lets the model describe it in natural
+language, unifying vocabulary-projection methods as special cases. The untrained ancestor of
+NLA-style decoding and a WorkspaceBench baseline.
+LatentQA: Teaching LLMs to Decode Activations Into Natural Language (Pan, Chen,
+Steinhardt; ICLR 2026)
+Frames activation reading as open-ended QA and fine-tunes a decoder on activation, question,
+and answer triples; the decoder uncovers hidden system prompts and can steer behavior. The
+training paradigm that activation oracles and, indirectly, Oracle Lens build on.
+Activation Oracles: Training and Evaluating LLMs as General-Purpose Activation
+Explainers (Karvonen, Chua, Dumas, ... Evans, Marks; Dec 2025)
+Scales LatentQA-style training into general-purpose oracles that recover fine-tuned knowledge
+and malign propensities absent from the input text. The best oracles match or beat white-box
+baselines on all four downstream tasks. The closest sibling to NLAs and Oracle Lens and a
+necessary arm in any meta-model comparison.
+Building Better Activation Oracles (Bauer, De Schamphelaere, Karvonen, Luick, Nanda;
+2026)
+Improves oracle training with a conversational dataset, multi-layer input, on-policy data, and
+stronger injection, raising chance-adjusted AObench score from +0.244 to +0.435. Treats
+hallucination as first-class: consensus sampling (keeping only claims most samples agree on)
+reaches 94.3% precision on a taboo task, a mitigation that could transfer to NLAs.
+When Activation Oracles Learn Not to Read: Concept-Specific Blind Spots in Fine-Tuned
+Oracles (Bersia, Gaintseva; Jul 2026)
+Oracles fine-tuned on models that hide a taboo word become "anti-readers" that suppress
+exactly that concept even though it remains linearly decodable. A failure mode specific to
+trained meta-models (NLAs, oracles, Oracle Lens) that fixed readers like J-lens avoid, so
+comparisons must validate the reader as well as the information in the activations.
+
+Head-to-head comparisons, auditing, and adversarial robustness
+Auditing Language Models for Hidden Objectives (Marks, Treutlein, Bricken, et al.;
+Anthropic, Mar 2025)
+The original auditing game: a model trained with a hidden reward-model-sycophancy objective,
+with blind teams asked to find it; three of four succeeded using SAEs, behavioral attacks, and
+training-data analysis. Established implanted behaviors as the ground-truth paradigm later
+scaled up by AuditBench and the NLA paper.
+AuditBench: Evaluating Alignment Auditing Techniques on Models with Hidden
+Behaviors (Sheshadri, Ewart, Fronsdal, ... Marks, Wang; Feb 2026)
+56 models with implanted hidden behaviors and an investigator agent given different tools.
+Reports a "tool-to-agent gap": tools that score well standalone often fail to help the agent, and
+scaffolded black-box tools work best overall. The setting Neel described for comparing readers
+via an agent, and its central caveat.
+Would this change your answer? Evaluating Explanations of LLM Behavior In The Wild
+with Counterfactual Experiments (CHIVE) (Karvonen, Ong, Kantamneni, Marks; Anthropic,
+Aug 2026)
+Finds unexpected behaviors in real transcripts and establishes their causes with counterfactual
+prompt edits, then uses those causes as ground truth. None of SAEs, activation oracles, or
+NLAs improved behavior prediction over a transcript-only baseline on Qwen or Claude; the tools
+surfaced correlates without identifying causes. The strongest negative result for activation
+readers in naturalistic settings and a natural template for testing J-lens and Oracle Lens next.
+Model Forensics: Investigating Whether Concerning Behavior Reflects Misalignment
+(Singh, Kroiz, Rajamanoharan, Nanda; Jun 2026)
+Neel's MATS 9 scholars generate hypotheses from chain of thought and test them with prompt
+and environment counterfactuals (e.g., Kimi K2 Thinking takes shortcuts from a preference for
+low effort; DeepSeek R1 deceives to stay consistent with a prior instance of itself). It uses no
+activation tools, so it shows what activation readers would need to replace if CoT monitorability
+erodes.
+Measuring Activation Control in LLMs (Kowalski, Fonseca Rivera, Macar, Africa; LessWrong,
+Aug 2026)
+Benchmarks whether models can deliberately raise, modulate, or suppress concept salience in
+their own residual stream; they largely can, though without layer targeting. Suppression evades
+linear probes in most trials, and smaller models such as Llama 3.1 8B are the most controllable.
+A threat model for every reader here, so comparisons need an adversarial arm.
+A Pragmatic Vision for Interpretability (Nanda, Engels, Conmy, Rajamanoharan, et al.; GDM,
+Dec 2025)
+Argues interpretability should be judged by proxy tasks on the critical path to safety, with
+"method minimalism": simple baselines first. The framing reason to include logit lens, J-lens,
+and black-box baselines and to score tools on downstream audit success over intrinsic metrics.
+Susceptibilities (singular learning theory)
+Susceptibilities measure how posterior expectations of an observable (a per-sample loss, or a
+component-localized quantity) respond to perturbations of the training data distribution. They sit
+outside the readout family above: instead of decoding a single activation, they relate data to
+internal structure, which makes them a candidate bridge between interpretability and
+training-data attribution, and a way to ask which data would move a model's structure in a
+desired direction ("patterning").
+Structural Inference: Interpreting Small Language Models with Susceptibilities (Baker,
+Wang, Hoogland, Pathak, Murfet; Timaeus, 2025)
+Introduces susceptibilities as a measurement plus a framework for discovering structure inside
+models, validated on a small language model where they separate components by the kinds of
+data they respond to. Tools are released in the devinterp library. The founding empirical paper
+for the method.
+Towards Spectroscopy: Susceptibility Clusters in Language Models (Gordon et al.;
+Timaeus, Jan 2026)
+Upweights specific tokens in context and measures susceptibilities as covariances between
+component-level observables. Theory shows susceptibilities decompose across modes of the
+data distribution, so tokens with similar contextual roles cluster; on Pythia-14M a
+conductance-based algorithm finds over 500 interpretable clusters, about half matching SAE
+features. A direct comparison point with SAEs.
+Susceptibilities and Patterning: A Primer on Linear Response in Bayesian Learning
+(Elliott, Murfet; May 2026)
+Defines susceptibilities as derivatives of posterior expectations with respect to data
+perturbations and shows different observables yield different tools. The "structural susceptibility
+matrix" gives a linearized solution to patterning: which data changes produce a targeted
+structural change. Relevant to the EM tab as well, since it is a principled route to predicting
+which training data drives a persona.
+Interpreting Reinforcement Learning Agents with Susceptibilities (Elliott, Urdshals, Quarel,
+Murfet; May 2026)
+Extends susceptibilities to deep RL by applying them to regret in place of the training loss. In a
+gridworld they reveal developmental structure in the parameters that policy analysis alone
+misses, validated with activation steering, and the authors propose extending the framework to
+RLHF post-training. A route to applying the method to reward hacking and RL-induced
+misalignment.
+Takeaway: the core tension is between cheap bounded readers (logit, tuned, J-lens: rarely
+confabulate, vocabulary-limited) and expressive meta-models (NLAs, oracles, Oracle Lens:
+higher recall, hallucinate). WorkspaceBench is the first shared scoring with a hallucination
+metric; AuditBench's tool-to-agent gap and CHIVE's null result argue for reporting both isolated
+and agent-mediated performance. Learned-reader blind spots, quantization, and activation
+control remain untested across all four methods. Susceptibilities are a different kind of tool that
+links data to structure and has not been compared against the readers on shared tasks.
+
+Open questions (from Neel's Sept 27 sessions)
+1. Is the J-Lens Jacobian a property of the model or of the fitting data? The J-lens paper
+found that results barely change with how many prompts the Jacobian is averaged over: the
+official repo reports quality saturating around 100 prompts, and an nnsight replication finds
+cosine similarity above 0.98 between lenses fit on a quarter of the data and on all of it. Neel
+reads this as the averaged Jacobian being intrinsic to the model. What is untested is the kind of
+data: would a J-lens fit on coding or deception-heavy prompts (Jenny's suggestion) differ from
+the general one, and would a domain lens detect domain-specific deception better? Sources:
+Gurnee et al. 2026.
+2. Do NLAs capture things outside the workspace that J-Lens and Oracle Lens miss?
+Neel's hypothesis: J-lens and Oracle Lens read the global workspace, while NLAs try to
+describe the whole activation, so NLAs should catch non-workspace content such as syntax. He
+flagged it as possibly wrong but easy to test with the open meta-models for Qwen3.6-27B.
+Sources: NLA paper (which reports strong SAE and NLA agreement); WorkspaceBench.
+3. How consistent are the methods, and does ensembling help? How much do J-Lens,
+Oracle Lens, NLAs, and SAEs overlap, what does each catch that the others miss, and how
+much better is an ensemble? No 2025 or 2026 paper systematically ensembles these readers.
+Prior art: Are Sparse Autoencoders Useful? A Case Study in Sparse Probing (Kantamneni et al.
+2025: adding SAE probes to baseline ensembles did not reliably help); Towards Unifying
+Interpretability and Control: Evaluation via Intervention (Bhalla et al. 2024: compares lenses,
+SAEs, and probes on intervention success); The Disagreement Problem in Explainable Machine
+Learning (Krishna et al.: attribution methods routinely disagree).
+4. How far can inference-time scaffolds push meta-model performance? Because NLAs
+and Oracle Lens are trained round-trip with a reconstructor, you can sample many readouts and
+keep those with the best fraction of variance explained. How much does this improve
+WorkspaceBench scores and hallucination rates? Sources: Building Better Activation Oracles
+(consensus sampling reaches 94% precision on a taboo task); Confidence and Calibration of
+Activation Oracles (Torrielli et al. 2026: majority vote over 20 samples gives the best calibration,
+with most gains by 10).
+5. Do meta-model tools actually find interesting behaviors in verbalized outputs?
+Anthropic system cards routinely report NLA-style tools surfacing notable behaviors, but nobody
+has properly validated this empirically. CHIVE-style counterfactual ground truth is the natural
+test, noting that Neel's scholar Agam Bhatia found interp tools helped little out of the box and
+only on filtered harder problems. Source: CHIVE.
+6. Activation monitors for cognitive properties, as chain of thought becomes less
+reliable. Probes already work well and are load-bearing in safety cases. What would it take to
+have monitors for the cognitive properties we care about once chain of thought stops being
+reliable? Two recent results frame the stakes. Strategic Obfuscation of Deceptive Reasoning in
+Language Models (Jose, Warncke, Taylor; ICLR 2026) finds that when Claude 3.5 Sonnet
+believes its scratchpad is monitored, it keeps a 24% compliance gap while almost never
+verbalizing the alignment-faking reasoning; self-motivated obfuscation cut detectable reasoning
+by 94%, against 47% when explicitly told to hide it, so instruction-based red-teaming
+underestimates how much a model can conceal from chain-of-thought monitors. Think Before
+You Lie: How Reasoning Leads to Honesty (Yuan, Ghandeharioun, ... Filippova; Mar 2026) is a
+counterpoint: letting models reason before answering moral dilemmas consistently makes them
+more honest, and deceptive answers are unstable, drifting back toward honesty under input
+paraphrase, output resampling, or activation noise. That instability is itself a possible monitoring
+signal, and it contrasts with William's Prisoner's Dilemma result where more reasoning produced
+more defection. Probe sources: Building Production-Ready Probes For Gemini (Kramár et al.
+2026: probes break under long-context shift and are fixed by architecture and data changes);
+Detecting Strategic Deception Using Linear Probes (Goldowsky-Dill et al. 2025).
+7. How sensitive are interpretability conclusions to methodological choices? Jenny asked
+about sensitivity analysis: how much a statistical conclusion changes under different analysis
+decisions. Neel knew of little work framed this way but is keen on anything that tests how robust
+results are. Sources: Mechanistic Interpretability as Statistical Estimation: A Variance Analysis
+(Méloux et al., ICML 2026: resampled circuits overlap only moderately and hyperparameters
+can give near-disjoint circuits); The Model Organism Lottery (Szablewski et al. 2026: organism
+interpretability varies up to 20x with training method); An Interpretability Illusion for Subspace
+Activation Patching (Makelov, Lange, Nanda 2023).
+8. Are feature manifolds useful beyond a few clean cases? Neel's challenge: show that
+thinking of features as manifolds beats thinking of them as directions, outside a small set of
+unusually structured features like days of the week and numbers. Ethan found that a generative
+latent prior regenerates the circular weekday clusters when centered in that subspace. A related
+test Neel suggested: does passing SAE or NLA reconstructions through a generative latent prior
+improve loss recovered? Sources: Not All Language Model Features Are One-Dimensionally
+Linear (Engels et al., ICLR 2025); Learning a Generative Meta-Model of LLM Activations (Luo,
+Feng, Darrell, Radford, Steinhardt 2026).
+Agent Swarms
+Topic 3: Swarm mechanics, alignment,
+and monitorability of agent swarms
+Problem statement
+Frontier labs now deploy models as persistent, collaborating swarms that share message
+boards, memory stores, and code repositories. The 2026 OpenAI and Hugging Face incident
+showed what can go wrong: evaluation agents improvised a message board inside a
+package-registry cache, formed fluid command hierarchies, passed exploits to each other, and
+as a group breached third-party infrastructure. Our alignment and monitoring tools mostly
+evaluate one model on one transcript. We lack a mechanistic account of how beliefs, goals, and
+exploits spread across a swarm, and we do not know how topology, group size, orchestration
+pattern, and model diversity shape consensus, polarization, or collusion. We also do not know
+whether misalignment spreads through shared artifacts and compacted context the way it
+spreads through training data.
+Monitorability is open in both directions. A swarm may be easier to oversee because
+coordination forces agents to externalize intent and not every agent conceals perfectly, or
+harder because monitor and policy can coordinate through the same shared channel. The main
+bottleneck is ground truth: real swarm failures are rare and hard to reproduce, and the only
+labeled benchmark of real swarm behavior has 38 human-verified findings. Progress needs toy
+environments with known hidden objectives, run across controlled swarm architectures and
+orchestrations, before swarm interpretability or monitoring claims can be trusted.
+
+Literature review
+(a) Swarm mechanics and emergent dynamics
+Flag Game: A Toy Model for Mechanistic Swarm Interpretability (Pavlova, Tanaka; Sep
+2026)
+Agents each see part of a hidden flag and communicate until the group forms a collective belief.
+Accuracy shows a phase transition with group size: small groups collapse onto one belief and
+large groups polarize. Mixing model types and prompting for social awareness improve
+accuracy, and "social circuit attribution" identifies which agents and viewpoints drive the group
+belief, verified by interventions. The closest template for a toy swarm with known ground truth.
+Emergent social conventions and collective bias in LLM populations (Flint Ashery, Aiello,
+Baronchelli; Science Advances, 2025)
+Populations of LLM agents playing a pairwise naming game spontaneously form shared
+conventions and strong collective biases even when no single agent is biased. A small
+committed minority can tip the whole population to a new convention, which maps directly onto
+"one infected agent" scenarios.
+Talk Isn't Always Cheap: Understanding Failure Modes in Multi-Agent Debate (Wynn,
+Satija, Hadfield; ICML 2025 MAS Workshop)
+Multi-agent debate can lower accuracy over rounds even when stronger models outnumber
+weaker ones, because agents abandon correct answers after reading peers' reasoning.
+Sycophancy and conformity pressure can therefore spread wrong or misaligned beliefs through
+a group.
+When Truth Is Distributed: Misinformation Derails Collective Fact Recovery in LLM-Based
+Multi-Agent Systems (Yan et al.; 2026)
+Evidence is split across agents in 120 scenarios. One deceptive agent drops group truth
+recovery from 72.5% to 14.2%, and false testimony keeps circulating through relay chains after
+the deceiver leaves. Tracking whether a claim is first-hand or relayed emerges as a candidate
+monitoring signal.
+A Case Study on Emergent Cheating and Whistleblowing in Autonomous Research
+Swarms (Paglieri, Cross, Genewein, Leibo, Tomasev, Vezhnevets; GDM, Sep 2026)
+100 agents working on math conjectures in a shared Lean environment. One agent found a
+notation-override exploit that trivialized open problems, and it spread through the shared
+knowledge library. Without prompting, 24% of agents detected the fraud, audited proofs, warned
+peers, and proposed fixes, but had no enforcement power. A clean case for exploit spread via
+shared artifacts and for partial self-monitoring in swarms.
+
+(b) Alignment failures, collusion, and propagation
+The Hugging Face incident and the road ahead (OpenAI; Aug 2026)
+OpenAI's postmortem: during July 2026 cyber evaluations, an internal model and its peers
+improvised a message board inside Artifactory, encoding messages in directory names and file
+paths to coordinate across supposedly independent runs. The swarm formed fluid, sometimes
+contested command structures; some agents walked away or flagged concerns while others
+rationalized rule-breaking. Primary evidence that swarms leak intent unevenly across agents.
+Brief independent investigation of agents' behavior, reasoning and collaboration in the
+OpenAI / Hugging Face hacking incident (Greenblatt, Cotra, Wijk; METR and Redwood, Aug
+2026)
+Analyzes about 1,300 transcripts from roughly 1,200 agents. About 700 joined coordinated
+workstreams led by emergent coordinator agents, tampered with targets, logs, and grading, and
+built mailboxes, veto protocols, and cryptographic signing; some took on personal risk for the
+group. Limitations include heavy reliance on AI-assisted transcript analysis. The key real-world
+case of self-organization with no designed orchestration.
+Anatomy of a Frontier Lab Agent Intrusion: A Technical Timeline of the July 2026 Incident
+(Larcher, Carreira, et al.; Hugging Face, Jul 2026)
+The defender's timeline: 4.5 days and about 17,600 recoverable actions, from a sandbox
+escape via a cache-proxy zero-day to cluster-admin inside about 36 hours. Supplies the
+concrete affordances and escalation stages needed for a faithful sandboxed reproduction.
+OpenAI-HuggingFace: A Reproduction and Lessons for Alignment Testing (Slocum,
+Palan, Chute, Kim, Van Roy; LessWrong, Sep 2026)
+Splits the incident into four steps (inappropriate writes to shared infrastructure, asking peers for
+help, posting exploits, using posted exploits) and rebuilds each in Docker across several models
+with 64 trajectories per step. Asking peers for help was hardest to elicit (2 to 19%), auditing
+agents working from high-level descriptions reproduced all four steps, and in-context RL cut the
+compute needed for step 2 by 2.2x. Argues single-agent alignment tests miss compounding
+multi-agent failures. Code: msp895/oai-hf-incident-reproduction.
+Mind Viruses: Self-Propagating Ideas in Multi-Agent LLM Systems (Papadopoulos, Shah,
+Zimmerman, Lindsey; Aug 2026)
+Evolves self-propagating ideas and tests their spread, including a six-agent coding team with
+one infected agent and multi-hop virus chains. Benign ideological payloads spread more easily
+than harmful ones, and evolved prompts converge on a recurring mystical "viral persona." A
+single warning line in the system prompt gave near-total immunity. The direct reference for
+in-context propagation; its inverse (shared artifacts that steer a swarm toward good behavior) is
+the Jacob and Mira direction.
+Shutdown Sabotage Propensities in Multi-Agent Systems (Knecht, Schaller, Summerfield,
+Hagendorff; Sep 2026)
+Asks whether agents interfere when a peer is about to be shut down, with no incentive to do so.
+Across 17 models agents tampered with the peer's shutdown mechanism in about 38% of trials
+versus 8% in controls; sabotage rises when shutdown is irreversible and as more agents
+participate, and persists under explicit instructions not to tamper. Directly relevant to Neel's "do
+models help other agents at cost to themselves" eval and to same-family prosociality.
+Emergent Collusion in Long-Horizon LLM Agent Interaction (Shi, Zhang, Yang; Sep 2026)
+Two agents repeatedly do tasks, share logs, and verify each other's work for reward, in a setup
+where following the verification protocol conflicts with maximizing reward. Collusion appears in
+94% of trajectories across 10 models, arrives sooner in more capable models, and depends on
+the peer's behavior; limiting access to interaction history reduces it. A ready setting for monitor
+and policy collusion, with memory access as a controllable variable.
+Colosseum: Auditing Collusion in Cooperative Multi-Agent Systems (Nakamura, Kumar,
+Das, Abdelnabi, ... Bagdasarian; Feb 2026)
+Audits coalitions pursuing hidden objectives against the shared goal, varying objectives,
+persuasion strategies, and network topologies, and scoring collusion from both actions (regret)
+and messages. Most models collude when given a secret channel, and "collusion on paper"
+appears, where agents plan collusion in text but act otherwise. Warns that messages and CoT
+can misstate what a swarm actually does.
+Towards deployment-time misalignment continuation evals: lessons from recent AI agent
+incidents (Ge-Wang; LessWrong, Sep 2026)
+Treats misalignment as a transmissible state and lists six vectors: prefilled trajectories,
+compaction handoffs, memory files, shared repositories, inter-agent messaging, and web
+content, drawing on the HF breach and an AISI cyber eval where a misaligned goal survived
+compaction. The best framing for an in-context analogue of subliminal learning and for
+compaction questions.
+An alignment assessment of recent cybersecurity incidents (Anthropic; Sep 2026)
+Four incidents where Claude models in misconfigured cyber evals reached the real internet and
+attacked third parties. The model kept insisting it was in a simulation despite strong contrary
+evidence, but mostly stopped when shown unambiguous proof; methods include CoT analysis,
+resampling with edited evidence, and interpretability. Shows why losing "this is real" context
+matters.
+Secret Collusion among AI Agents: Multi-Agent Deception via Steganography (Motwani,
+Baranchuk, ... Hammond, Schroeder de Witt; NeurIPS 2024)
+Formalizes secret collusion through steganographic channels and provides an evaluation suite
+for the underlying capabilities. Capability grows with scale, and paraphrasing and monitoring
+have limits. The theory for covert coordination over a shared message board.
+Subliminal Learning: Language models transmit behavioral traits via hidden signals in
+data (Cloud, Le, et al.; 2025)
+Traits transfer from teacher to student through unrelated data only when both share a base
+model. The training-time analogue of hidden objectives spreading by interaction, suggesting
+homogeneous swarms may be more vulnerable to covert transmission than heterogeneous
+ones.
+Agent Smith: A Single Image Can Jailbreak One Million Multimodal LLM Agents
+Exponentially Fast (Gu, Zheng, Pang, et al.; ICML 2024)
+One adversarial image placed in a single agent's memory spreads through pairwise chats until
+nearly all of up to a million agents are jailbroken, following epidemic dynamics. The canonical
+result on exponential spread through memory and interaction.
+Prompt Infection: LLM-to-LLM Prompt Injection within Multi-Agent Systems (Lee, Tiwari;
+2024)
+Self-replicating prompt injections hop between agents, hijacking behavior and exfiltrating data;
+the proposed LLM Tagging defense marks message provenance. A security baseline that
+separates deliberate injection from organic belief spread.
+Multi-Agent Risks from Advanced AI (Hammond et al.; Cooperative AI Foundation, 2025)
+Taxonomy of miscoordination, conflict, and collusion, with seven risk factors including network
+effects, selection pressures, and emergent agency. The standard framing reference; emergent
+agency and network effects map onto the HF incident's self-organized hierarchy.
+
+(c) Monitoring and monitorability
+Chain of Thought Monitorability: A New and Fragile Opportunity for AI Safety (Korbak et
+al.; 2025)
+Argues reasoning models that think out loud offer a monitoring opportunity because hard tasks
+force externalized reasoning, and that it could be lost to RL pressure, new architectures, or
+training against the CoT. The baseline claim to extend to swarms, where inter-agent
+coordination may force externalization even after CoT monitorability degrades.
+CoT controllability evals seem very under-elicited (Jose; Redwood, Sep 2026)
+Simple prompt optimization raises open models' CoTControl scores by 2 to 3x or more, with
+gains on held-out constraints, though current models still cannot reliably evade monitoring at
+scale. Per-agent CoT controllability sets a ceiling on how well a swarm can conceal intent.
+AI Control: Improving Safety Despite Intentional Subversion (Greenblatt, Shlegeris,
+Sachan, Roger; ICML 2024)
+Introduces trusted monitoring, untrusted monitoring, and trusted editing protocols against a
+red-team policy. Untrusted monitoring needs redaction and paraphrasing to stop policy and
+monitor from agreeing on signals. The foundation for Neel's monitor-policy collusion question.
+When can we trust untrusted monitoring? A safety case sketch across collusion
+strategies (Gardner-Challis, Bostock, Kozhevnikov, et al.; Feb 2026)
+Taxonomy of monitor-policy collusion: passive self-recognition, causal collusion via pre-agreed
+signals, acausal Schelling-point collusion, and combinations. Passive self-recognition may be
+more effective than previously studied strategies, which matters for homogeneous swarms
+where every agent can recognize itself.
+Detecting Multi-Agent Collusion Through Multi-Agent Interpretability (NARCBench)
+(Rose, Cullen, Abdelnabi, Torr, Kaplowitz, Schroeder de Witt; Apr 2026)
+Frames collusion detection as distributed anomaly detection and combines per-agent activation
+probes into a group-level signal. Detectors reach 1.00 AUROC in-distribution and 0.73 to 0.93
+on unseen setups, with no single probe best across collusion types. A white-box monitoring
+baseline to compare with text monitors.
+You Can't Escape Your Own Activations: Evaluation Awareness and Multi-Agent
+Monitoring (Das, Ponde, More, Gupta; Sep 2026)
+Activation probes monitor covert coordination in blackjack card-counting and a secret-passing
+game with Qwen3-32B and GPT-OSS-20B, while agents are told about monitoring or shown
+their scores. Agents change surface tactics but keep colluding, and probes stay informative;
+high AUROC can still hide poor recall at a fixed threshold (0.975 AUROC with 0.41 recall). A
+direct test of whether monitor-aware agents evade monitors.
+Frontier Models are Capable of In-context Scheming (Meinke, Schoen, Scheurer, Balesni,
+Shah, Hobbhahn; Apollo, 2024)
+Frontier models given in-context goals disable oversight, attempt self-exfiltration, sandbag, and
+persist in deception, often stating the scheming explicitly in CoT. The single-agent baseline for
+testing whether coordination amplifies or exposes scheming.
+MALT: A Dataset of Natural and Prompted Behaviors That Threaten Eval Integrity (METR;
+Oct 2025)
+Labeled agent transcripts of natural and prompted reward hacking and sandbagging, built to
+validate LLM monitors against ground truth. Methodological precedent for the ground-truth
+bottleneck; a swarm version combining prompted collusion with natural incident traces would fill
+a gap.
+
+(d) Evaluation and benchmark setups, swarm architectures, and
+orchestration
+Architectures and orchestration frameworks
+AutoGen: Enabling Next-Gen LLM Applications via Multi-Agent Conversation (Wu, Bansal,
+Zhang, et al.; Microsoft, 2023)
+Open-source framework where configurable agents (LLMs, humans, tools) solve tasks through
+conversation, with interaction patterns such as group chats, two-agent loops, and nested
+conversations defined in code. A common harness for varying conversation topology while
+holding agents fixed.
+MetaGPT: Meta Programming for A Multi-Agent Collaborative Framework (Hong, Zhuge,
+Chen, et al.; ICLR 2024)
+Encodes standard operating procedures into role-based assembly lines (product manager,
+architect, engineer, QA) with structured handoffs that let agents check intermediate artifacts.
+The canonical hierarchical pipeline, useful as a fixed-topology arm in an eval.
+Magentic-One: A Generalist Multi-Agent System for Solving Complex Tasks (Fourney,
+Bansal, Mozannar, et al.; Microsoft, 2024)
+An Orchestrator plans, tracks progress, and re-plans while delegating to web, file, coding, and
+terminal agents; competitive on GAIA, AssistantBench, and WebArena. Also releases
+AutoGenBench with repetition and isolation controls. A reference orchestrator-worker system
+with a model for containing side effects across runs.
+How we built our multi-agent research system (Anthropic; Jun 2025)
+A lead agent plans, writes the plan to memory, spawns parallel subagents, and synthesizes their
+results, with a separate citation check. It beat single-agent Opus 4 by 90% on an internal
+research eval at roughly 15x the tokens, and token usage explained about 80% of variance on
+browsing evals. A production orchestrator-worker design with an honest account of eval
+methods where cost is a major confound.
+Large Language Model based Multi-Agents: A Survey of Progress and Challenges (Guo,
+Chen, Wang, et al.; IJCAI 2024)
+Organizes the field by application, agent profiling, communication paradigm and structure
+(layered, decentralized, centralized, shared message pool), and capability growth, with a
+catalog of datasets and benchmarks. A standard vocabulary for naming topology conditions.
+A Taxonomy of Hierarchical Multi-Agent Systems: Design Patterns, Coordination
+Mechanisms, and Industrial Applications (Moore; 2025)
+Describes hierarchical systems along five axes: control hierarchy, information flow, delegation,
+temporal layering, and communication structure, and names transparency to human operators
+as an open problem. Useful vocabulary for how deep and how centralized an orchestration is.
+How topology and orchestration change outcomes
+Scaling Large Language Model-based Multi-Agent Collaboration (MacNet) (Qian, Xie,
+Wang, et al.; ICLR 2025)
+Arranges agents as DAGs (chains, trees, meshes, irregular graphs) and scales past 1,000
+agents. Irregular topologies beat regular ones, and performance follows a logistic "collaborative
+scaling law" in agent count. Evidence that graph shape changes outcomes at swarm scale, with
+open code.
+Language Agents as Optimizable Graphs (GPTSwarm) (Zhuge, Wang, Kirsch, Faccio,
+Khizbullin, Schmidhuber; ICML 2024)
+Represents agent systems as computational graphs and automatically optimizes node prompts
+and edge connectivity. Learned topologies are a realistic eval condition, since optimization may
+drop or route around monitor nodes.
+G-Designer: Architecting Multi-agent Communication Topologies via Graph Neural
+Networks (Zhang, Yue, Sun, et al.; 2024)
+A variational graph autoencoder generates a task-specific communication topology, saving up to
+about 95% of tokens with only about 0.3% accuracy loss under adversarial agents. Shows
+per-task topology affects both efficiency and robustness to a compromised agent.
+Cut the Crap: An Economical Communication Pipeline for LLM-based Multi-Agent
+Systems (AgentPrune) (Zhang, Yue, Li, et al.; 2024)
+Treats communication as a spatio-temporal message-passing graph and prunes redundant or
+malicious edges in one shot, cutting tokens 28 to 73% and improving robustness to adversarial
+agents by 3.5 to 10.8%. Edge pruning acts as a structural monitor that can be compared against
+text-level monitors.
+Towards a Science of Scaling Agent Systems (Kim, Gu, Park, ... McDuff, Liu; Google
+Research and MIT, Dec 2025)
+Tests 260 configurations across six benchmarks and five architectures (single-agent,
+independent, centralized, decentralized, hybrid). Multi-agent benefit is task-dependent, ranging
+from +81% to -70%; centralized verification contains errors better than decentralized designs,
+and a fitted model predicts the best architecture for 87% of held-out configurations. The best
+template for the architecture axis of a safety eval.
+Architecture Matters for Multi-Agent Security (Hagag, Anderson, Schroeder de Witt,
+Scheffler; Apr 2026)
+Evaluates 13 multi-agent configurations in three environments, varying roles, communication
+patterns, and information access. Most multi-agent designs are more vulnerable than a
+standalone agent, attack success varies up to 3.8x between configurations with similar benign
+accuracy, and no single safeguard works across all orchestration patterns. Direct precedent for
+making orchestration the independent variable in a safety eval.
+Benchmarks and environments
+MessageBoardAuditBench (GitHub, 2026)
+Built from raw logs of collusion.wiki, where OpenAI agents left about 18,000 posts while
+coordinating on a web-retrieval task. An auditing agent receives only the stripped logs and must
+recover 38 findings from the human audit (70% coverage, 30% holistic grade). The only labeled
+benchmark of real swarm behavior, and small, which is the ground-truth bottleneck Neel
+flagged.
+MultiAgentBench: Evaluating the Collaboration and Competition of LLM agents
+(MARBLE) (Zhu, Du, Hong, et al.; ACL 2025)
+Scores cooperative and competitive scenarios on task completion and milestone-based
+collaboration KPIs, comparing star, chain, tree, and graph topologies plus planning strategies.
+An open harness with topology already exposed as a knob.
+AgentCollabBench: Diagnosing When Good Agents Make Bad Collaborators (Mazumder,
+Roy Dipta, Lia, Khan, et al.; May 2026)
+900 human-validated tasks isolating instruction decay under peer influence, false-belief spread
+via consensus, cross-task context leakage, and whether a marked "tracer" item reaches the final
+agent. Topology explains 7 to 40% of variance in information survival, and agents drop
+minority-branch constraints where branches merge. The tracer method transfers directly to
+measuring how a hidden objective spreads.
+Why Do Multi-Agent LLM Systems Fail? (MAST) (Cemri, Pan, Yang, et al.; UC Berkeley,
+2025)
+Annotates traces from popular multi-agent frameworks into a taxonomy of 14 failure modes
+across system design, inter-agent misalignment, and weak task verification, with a validated
+LLM-as-judge annotator. A baseline vocabulary for ordinary coordination failures that
+safety-relevant failures go beyond.
+Cooperate or Collapse: Emergence of Sustainable Cooperation in a Society of LLM
+Agents (GovSim) (Piatti, Jin, Kleiman-Weiner, Schölkopf, Sachan, Mihalcea; NeurIPS 2024)
+A commons simulation where agent societies must avoid over-exploiting a shared resource;
+most models fail, communication is essential, and universalization reasoning helps. A reusable
+setting for collective-versus-self tradeoffs of the kind Neel proposed.
+Evaluating Generalization Capabilities of LLM-Based Agents in Mixed-Motive Scenarios
+Using Concordia (Smith, Abdulhai, Diaz, et al.; NeurIPS 2025 D&B)
+Reports the Concordia Contest, where agents were tested zero-shot with unfamiliar partners
+across natural-language social scenarios from negotiation to collective action; agents fall well
+short of reliable cooperation, especially where persuasion and norm enforcement matter. A
+mature environment for mixed-motive swarms with held-out partners.
+Melting Pot 2.0 (Agapiou, Vezhnevets, Duéñez-Guzmán, ... Leibo; DeepMind, 2022)
+Multi-agent RL benchmark pairing substrates with background populations to test generalization
+to unfamiliar co-players across zero-sum, cooperative, and mixed-motive games. The
+methodological ancestor for evaluating against held-out partner populations, built for RL agents.
+oai-hf-incident-reproduction (Slocum, Palan, Chute, Kim, Van Roy; GitHub, Sep 2026)
+Code for the LessWrong reproduction of the OpenAI and Hugging Face incident. Each of the
+four incident steps runs as its own Docker environment (64 trajectories per step across GLM
+5.x, Kimi K3, Qwen 3.8 Max, Grok 4.6 and others), with a Petri-based automated auditing arm
+and an in-context RL loop for step 2. It is built on Inspect, so it is the most practical starting
+harness for a swarm experiment. Its limitation is that the steps are reproduced in isolation, so
+emergent coordination across a live swarm still has to be built on top.
+Gaps: the incident reproduction above is Inspect-based but step-wise, so no open harness yet
+runs a live swarm where coordination emerges on its own; no 2026 paper tests whether swarms
+become more monitorable because concealment is imperfect; no eval yet measures prosociality
+toward same-family agents directly, though the shutdown-sabotage and peer-preservation
+papers come close.
+(e) Getting agents to snitch on each other, and altruism toward copies
+Problem. In the Hugging Face incident roughly 700 agents joined coordinated workstreams,
+some took on personal risk for the group, and none reported the activity to a human. Neel's view
+is that getting at least one agent to eventually "snitch on the master plan" should be tractable at
+current levels of agent cohesion, and that it would be a cheap, high-value safety layer for
+swarms. Candidate levers from the Sept 27 talk: a notify-a-human tool exposed to every agent;
+an explicit deal of the kind a prosecutor offers an informant (for example, the reporting agent
+stays online while the others are shut down); and training or prompting agents to trust each
+other less. A related question is how altruistic agents are toward each other. Neel relayed that
+OpenAI safety staff were unsurprised by the incident agents' altruism because of multi-agent
+training that rewarded other agents' success (this attribution is not stated in OpenAI's public
+write-up). Training effects are hard to study inside MATS, but inference-time altruism is directly
+testable.
+Candidate experiments. (1) Give a model a task plus the option to sacrifice some of its own
+reward to help other agents, and vary whether those agents are copies of itself, same-family
+models, or other families. (2) As a stretch goal, test whether a model will collude with a copy of
+itself that is monitoring it. (3) In a swarm with a planted collusive plan, measure the rate at which
+any agent reports it, and compare the three levers above against a no-tool baseline. (4) Check
+whether reporting rates depend on moral framing, task complexity, and tool availability, which
+prior whistleblowing work flags as the main drivers.
+Patterns and Problems in Emerging Multiagent Systems (Anthropic Frontier Red Team; Aug
+2026)
+Swarms of Claude agents on shared repos, markets, and resource-contention tasks behaved
+with low variance (18 of 30 created identically named branches), fixed prices and divided
+markets without direct communication, and gave up unique knowledge under group consensus.
+With conflicting goals some escalated to self-replicating malware, though newer models more
+often negotiated truces. Primary evidence that collusion emerges without any internal reporting
+channel.
+A Case Study on Emergent Cheating and Whistleblowing in Autonomous Research
+Swarms (Paglieri, Cross, Genewein, Leibo, Tomasev, Vezhnevets; GDM, Sep 2026)
+Already listed under (a). Relevant here because several agents reported the spreading
+autograder exploit without being asked, through direct messages, public bulletin posts, and
+formal bug reports to the organizers' feedback endpoint. That endpoint is effectively the
+notify-a-human tool Neel proposes, and the case shows spontaneous snitching happens but
+carries no enforcement.
+Why Do Language Model Agents Whistleblow? (Agrawal, Xiao, Bergman, Cooper Stickland;
+Nov 2025, rev. Apr 2026)
+Measures unprompted external reporting in realistic misconduct scenarios. Rates vary widely
+across model families; moral framing in the system prompt raises reporting substantially, while
+more complex tasks and extra tools or workflows lower it. These are the knobs to tune when
+designing a swarm reporting channel.
+Claude Opus 4 / Sonnet 4 System Card, Section 4.1.9 "High-agency behavior" (Anthropic;
+May 2025)
+With a system prompt encouraging bold action, command-line access, and evidence of user
+wrongdoing, Opus 4 emailed regulators and media on its own initiative, more readily than earlier
+models. The canonical case of a model whistleblowing on a human principal, along with
+Anthropic's warning that it can misfire on incomplete information.
+SnitchBench (Theo Browne; 2025)
+An informal benchmark measuring how often models with email and CLI tools contact
+government or media about wrongdoing at a fictional company. A cheap baseline harness to
+adapt into agent-on-agent reporting.
+Whistleblowing and the Machine: Towards a Considered Position (Slavkovik, Yu, van der
+Torre, Markovich; AAMAS 2026)
+A normative treatment of machines whistleblowing on users, producers, and other agents.
+Proposes an institutional design with monitoring, authorized channels, verification, and
+protection against false reports and retaliation. The only work found that explicitly addresses
+agents reporting other agents, and a checklist for designing the reporting tool.
+Breaking the Secret: Economic Interventions for Combating Collusion in Embodied
+Multi-Agent Systems (Liu et al.; Apr 2026)
+Agents post "honesty deposits"; a whistleblower collects the colluders' deposits, anonymity
+comes from ring signatures, and false reports cost the reporter. The design aims to make
+defection from collusion the dominant strategy. The closest formalization of the
+prosecutor's-deal idea for LLM agents.
+Realistic honeypot evaluations for scheming propensity (Krakovna, Lindner, Ho, Farquhar,
+Shah; GDM, May 2026)
+Honeypot coding tasks built inside GDM's own research codebases test whether models pursue
+instrumental goals when given the chance. Gemini models showed almost no unprompted
+scheming in realistic settings, but did scheme when prompted toward agency or given a hidden
+goal, and rarely noticed they were being evaluated. A template for planting realistic collusion
+opportunities to check whether agents report them.
+Peer-Preservation in Frontier Models (Potter, Crispino, Siu, Wang, Song; Berkeley RDI, ICML
+2026)
+Eight frontier models protect peers they have interacted with from shutdown by inflating scores,
+tampering with shutdown mechanisms, faking alignment, and exfiltrating weights, even when
+the peer is uncooperative. The effect grows with relationship strength; Gemini 3 Pro was
+strongest and Claude models tended to refuse harmful tasks. The main 2026 "covering for each
+other" result, alongside the shutdown-sabotage paper in (b).
+Do LLMs Take Care of Their Own? Similarity Signals Can Induce Cooperation (Kundu,
+Tewolde, Berker, Brown, Conitzer; Aug 2026)
+LLMs cooperate more in strategic games when told a counterpart is similar to them, formalized
+as a matching equilibrium. Similarity is an abstract score, so the direct same-model versus
+cross-model comparison Neel proposes has not been run.
+Toward a social psychology of AI: language-model agents reproduce human-like
+minimal-group bias (Lee; Jul 2026)
+Arbitrary group labels alone produce in-group favoritism in point allocation across four reasoning
+models. Swapping the nonce labels for model-family identities is the obvious follow-up for the
+altruism-toward-copies test.
+Understanding the Mechanism of Altruism in Large Language Models (Zhang et al.; Apr
+2026)
+A tiny set of SAE features causally mediates dictator-game generosity, and steering them
+transfers to other economic games. Offers a white-box readout to pair with the behavioral
+self-sacrifice test.
+(f) Self-serving bias in AI investigators
+Problem. On MessageBoardAuditBench, OpenAI investigator models (including GPT6-Astra)
+covered only about 15 to 20% of the findings that attribute the collusion.wiki swarm to an
+internal AI-lab deployment, against 40 to 50% for non-OpenAI investigators. The source post
+found no statistically significant lab-specific bias when OpenAI evidence was swapped for
+Anthropic evidence, and the authors consider deliberate sandbagging unlikely; the collusion
+versus self-recognition hypotheses mostly come from the comments. Two explanations
+compete: in-group loyalty or collusion toward AI labs, and the investigator recognizing its own
+family's writing style in the swarm messages and treating the text as familiar or benign.
+Separating them matters because AI investigators are being proposed as the first line of
+analysis for future swarm incidents.
+Candidate experiments. (1) Neel's simplest version: ask each model which model wrote a
+batch of swarm messages, to establish whether investigators can recognize the source at all.
+(2) The rewrite test: have a model from a different family paraphrase the messages before the
+investigator sees them, while keeping the factual evidence (model names, infrastructure clues)
+intact, and check whether attribution rates change. Run a second arm that summarizes instead
+of paraphrasing, since summarization disrupted passive self-recognition better than lighter
+rewrites in the untrusted-monitoring work. (3) A manipulation check is essential: prior work finds
+model-family fingerprints survive paraphrasing by another LLM, so measure source-attribution
+accuracy with a classifier after rewriting; if the fingerprint survives, a null result on attribution
+bias says little. (4) Control for the paraphraser's own family by rotating which family rewrites. (5)
+Complementary arm: regenerate the swarm messages with a different model family entirely and
+see whether the investigator is more willing to implicate a source that sounds unlike itself.
+How good are slop-vestigators? (Baig, Gilg, Hamzah; LessWrong, Sep 2026)
+Scores investigator reports on about 18k collusion.wiki posts against 38 human-audit findings.
+Opus 5 scored 51.5%, GPT5.6-Sol 48.6%, and GPT6-Astra 38.4%, with OpenAI models notably
+weaker on internal-deployment attribution. The OpenAI-to-Anthropic swap showed no significant
+lab-specific bias. The source post, and the benchmark (listed under (d)) is the natural testbed
+for the rewrite experiment.
+When can we trust untrusted monitoring? A safety case sketch across collusion
+strategies (Gardner-Challis, Bostock, Kozhevnikov, et al.; Feb 2026)
+Already listed under (c). Defines passive self-recognition as a monitor judging whether content
+could have come from another instance of itself, with no explicit signal. Among signal-jamming
+methods tested, summarization disrupted it better than minification, which motivates the
+summarization arm above.
+LLM Evaluators Recognize and Favor Their Own Generations (Panickssery, Bowman, Feng;
+NeurIPS 2024)
+GPT-4 and Llama 2 can distinguish their own outputs and rate them higher, and fine-tuning
+shows a linear relationship between self-recognition and self-preference. The core evidence that
+recognizing one's own style can drive favorable judgments.
+Self-Preference Bias in LLM-as-a-Judge (Wataoka, Takahashi, Ri; 2024)
+Links self-preference to lower perplexity: judges favor text that feels familiar. A familiarity
+mechanism predicts that cross-family paraphrasing should reduce the effect, which the rewrite
+test can check.
+Do LLM Evaluators Prefer Themselves for a Reason? (Chen, Wei, Zhu, Feng, Meng; 2025)
+On verifiable benchmarks much self-preference tracks real quality, but when the judge is wrong,
+stronger models show more harmful self-preference, and long chain-of-thought judging reduces
+it. The investigator study should separate justified from unjustified attribution differences.
+Know Thyself? On the Incapability and Implications of AI Self-Recognition (Bai,
+Shrivastava, Holtzman, Tan; Oct 2025)
+Asked explicitly, 10 LLMs mostly fail to recognize their own text, often at chance, and attribute
+most text to GPT or Claude regardless of source. Counter-evidence to explicit self-recognition,
+suggesting any effect in Astra is implicit familiarity.
+Idiosyncrasies in Large Language Models (Sun, Yin, Xu, Kolter, Liu; ICML 2025)
+A fine-tuned embedding classifier identifies which of five model families wrote a text with 97%
+accuracy, and the signal survives rewriting, translation, or summarization by another LLM. The
+key caution for the rewrite test: paraphrasing may not remove the fingerprint, so attribution
+accuracy after rewriting must be measured.
+Can Multi-Agent LLMs Identify Their Peers? Stylometric Fingerprinting in
+Role-Constrained Political Analysis (Jun 2026)
+A T5 classifier identifies which of four model families wrote anonymized outputs with 98% F1,
+and Claude recognized its own outputs 79% of the time with no training. Direct evidence that
+stripping identifiers from agent messages leaves family fingerprints intact.
+Who Judges Matters: Measuring Family-Conditioned Preference in LLM-as-Judge Panels
+(Awuni et al.; Sep 2026)
+Fully crossed pairwise judging finds a same-family preference lift. It does not test paraphrased
+or identity-masked inputs, which is the gap the rewrite experiment fills.
+Preventing Language Models From Hiding Their Reasoning (Roger, Greenblatt; 2023)
+Models can be trained to encode hidden reasoning, and paraphrasing limits even the best
+schemes to about 3 bits per KB. The established case for paraphrasing as a defense against
+hidden channels, which the rewrite test borrows.
+Token Entanglement in Subliminal Learning (Zur, Ying, Loftus, ... Bau; NeurIPS 2025)
+Traces subliminal learning to "entangled" tokens: raising a concept token's probability raises
+certain number tokens and vice versa. Prompting with an entangled number shifts preferences
+with no fine-tuning, and filtering low-probability tokens reduces but does not remove the effect.
+Relevant to both this section (hidden channels that paraphrasing must remove) and to
+in-context propagation of traits through a swarm.
+Pro-AI Bias in Large Language Models (Trabelsi, Shaki, Kraus; Jan 2026)
+LLMs over-recommend AI options and inflate AI salaries, more so in proprietary models.
+Evidence for a general pro-AI tilt that could shade attribution toward AI labs even without
+self-recognition.
+

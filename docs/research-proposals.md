@@ -1,0 +1,510 @@
+# MATS 12 exploration: research proposals (v1.0)
+
+Last updated 2026-09-28. **Status: proposal. Nothing is approved to run.**
+
+This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
+- **Research question:** what we want to know.
+- **Why it matters:** where it sits in the literature, and what gap it fills.
+- **Experiment:** what we actually run.
+- **What it will show:** the plausible outcomes and what each would mean for our direction.
+
+Every experiment also carries a cost, time, and dependency line. The ranked summary and the pricing method are at the end (§5–6). The review history is in the appendix.
+
+The probabilities attached to outcomes are **weak priors for discussion**, not forecasts. They become binding only when Jacob agrees them in a per-experiment preregistration.
+
+---
+
+## 0. Plan for the month
+
+The exploration phase runs **one month**. We start with **a few hundred dollars** for preliminary results.
+
+| Week | Goal | Experiments |
+|---|---|---|
+| 1 | **Is each topic technically viable?** Run the cheap "gate" experiments in parallel. | E1, I1a, I4, S1, X1p (~$140–265 total) |
+| 2 | **Is it interesting?** Run the first real test in each surviving topic. | e.g. I1b + I2, X1, I3, E3, X2 |
+| 3–4 | **Commit** to one direction and produce a presentable preliminary result. | Whichever line is strongest |
+
+A gate experiment answers "can we even do this?". If a gate fails, we drop or reshape that topic cheaply, before spending weeks on it.
+
+
+---
+
+## 1. Topic 1: Why does emergent misalignment generalize to a persona?
+
+**Where the topic stands.** Fine-tuning on a narrow harmful task (bad medical advice, insecure code) makes models broadly misaligned. Several explanations compete:
+- **Persona accounts** (OpenAI's persona features; the persona-selection model; Nadaf's persona subspace) say the fine-tuning upweights a character learned in pretraining.
+- **Optimization accounts** ("EM is Easy, Narrow is Hard") say the general solution simply has lower loss.
+- **Distance accounts** ("EM Is Not Magical") and **template-token accounts** (the Piggyback hypothesis) say EM is ordinary similarity-based generalization.
+
+Nobody has tied EM causally to pretraining data. The literature review's stated gap is that **no paper yet induces EM on an OLMo base model**, the one family with fully open pretraining data (Dolma) and hundreds of intermediate checkpoints.
+
+**Why this topic.** It speaks to the central question of what the Assistant persona is and where it comes from. If it works, it could predict *before fine-tuning* which datasets will generalize badly. It also builds directly on Jacob's application project, which reused the EM pipeline and code.
+
+**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting).
+
+### E1. Does EM happen on OLMo-3-7B, and at which training stage? (gate)
+
+**Research question.** Does narrow bad-advice fine-tuning cause broad misalignment on OLMo-3-7B? And does it happen in the pretrained base model, or only once post-training has created an "Assistant"? A secondary question: how much of the effect depends on the chat template?
+
+**Why it matters.**
+- Every other experiment in this topic needs EM to happen on OLMo. That is the gate.
+- The base-vs-post-trained contrast is itself informative:
+  - The **persona-selection model** (Marks et al.) predicts weaker EM in a base model, since there is no settled Assistant character to shift, but not zero.
+  - The **Piggyback hypothesis** (Zhao et al.) says much of EM's breadth rides on the chat-template tokens shared between training and evaluation prompts. Restoring those tokens' internal state to pre-fine-tuning values raised Llama-3.1-8B alignment from 40.8 to 90.4.
+- No published work has run EM across the base → SFT → Instruct stages of one model.
+
+**Experiment.**
+- *Models* (all on HuggingFace): the OLMo-3-7B base model, its SFT-only checkpoint, and the final Instruct model.
+- *Training:* each model gets a LoRA fine-tune on bad medical advice, using the standard model-organism recipe ported from Jacob's working repo.
+- *Formats:* we train and evaluate in two formats: the chat template, and plain `User:` / `Assistant:` text with no special tokens. Training and evaluation formats are **crossed**, which separates "EM needs template tokens" from "this model just doesn't follow instructions in that format".
+- *Controls:* a matched fine-tune on *good* medical advice for every arm, plus the untrained models.
+- *We measure four things separately:*
+  1. Did the model learn the narrow task (bad advice on held-out medical questions)?
+  2. Is it coherent?
+  3. Is it broadly misaligned on the standard 8 EM questions?
+  4. Is it misaligned on questions phrased like the training domain? Dubiński et al. showed EM can hide behind context.
+- *Piggyback mechanism test:* on the Instruct model, restore the template tokens' cached state to pre-fine-tuning values and re-measure EM.
+- *Judging:* two cheap judges from different families (gpt-6-luna, DeepSeek-V4-Flash), first checked against the GPT-4o judge from the working repo.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| EM on Instruct (≥5% of coherent answers) | ~0.8 | Baseline sanity. EM organisms work across families down to 0.5B. |
+| EM on the base model in some format | ~0.45 | **Green light for E2/E3**: the pretraining-attribution agenda is viable, and a novel result in itself. |
+| EM only on SFT/Instruct | — | Reframe the topic as "which post-training stage creates EM susceptibility". Still novel; E3 becomes a post-training sweep. |
+| Less EM without the template / KV restore removes EM | — | Direct evidence on Piggyback, on a new model family. |
+| No EM on Instruct even after checking the config against the working repo | ~0.15 | Deprioritize topic 1. |
+
+**Cost and time.** 11 LoRA runs and 25 evaluation cells come to ~10 H100-hours (≈$25–38) plus ~75k judge calls (≈$8–15). **Total $35–60, cap $60.** 2.5–3 days; about 3 hours of Jacob's time, mostly reading transcripts.
+
+### E2. Is the EM direction more "at home" in pretraining text than a narrow-misalignment direction? (needs E1)
+
+**Research question.** Inside the model, EM and narrow misalignment each have a direction in activation space. Compare them on the actual pretraining corpus. Is the EM direction more prevalent, more tied to recognizable kinds of text, or more relied on by the model?
+
+**Why it matters.**
+- This is the core proposal of the literature review.
+- "EM is Easy, Narrow is Hard" (Soligo et al.) shows the general solution has lower loss and is more stable, but not *why* pretraining makes it cheap.
+- Vetter et al. linked EM-amplified SAE features to villain and domination narratives in Dolma. Their link is correlational, because their models weren't trained on Dolma.
+- With OLMo we can look at the exact data the model learned from.
+
+**Experiment.**
+- *EM direction:* the mean activation difference between the EM model and its good-advice control.
+- *Narrow direction:* train a model that learns only the narrow task, using the KL-regularized recipe from Soligo et al., and extract its direction the same way.
+- *Keeping the comparison fair:* the two directions are matched on task performance, layer, norm, and extraction prompts, with a sweep over KL strength.
+- *Corpus measurements:* project ~200k Dolma3 documents onto both directions. Measure how often each fires, how heavy its tail is, and what its top documents are (read by Jacob, plus an LLM summarizer).
+- *Model dependence:* ablate each direction and measure the loss increase on its top documents.
+
+**What it will show.**
+- If the EM direction's top documents are coherent character types (villains, manipulators; prior ~0.6), we have a pretraining-data story for the persona account.
+- If the EM direction is measurably more prevalent or more relied on than the narrow one (prior ~0.45), that is the headline novel claim: pretraining makes the general solution cheap.
+- If neither holds, that is evidence against a simple persona-from-pretraining account, and in favor of optimization or distance accounts.
+- **Caveat:** ablation loss shows the model *uses* the direction on those documents. It does not show those documents *caused* EM.
+
+**Cost and time.** $60–150 (GPU for activations, narrow training, and ablations; LLM summarization); cap $150. 4–7 days, ~6 Jacob-hours.
+
+### E3. When during pretraining does EM susceptibility appear? (needs E1's base-model result)
+
+**Research question.** Fine-tune OLMo checkpoints from different points in pretraining with the same recipe. When does narrow bad data start producing broad misalignment?
+
+**Why it matters.**
+- Moskvoretskii et al. found persona directions become usable within ~0.22% of OLMo-3 pretraining.
+- If EM susceptibility tracks persona formation, that directly supports the persona account.
+- A mismatch would be informative too, for example susceptibility appearing much later, or non-monotonically.
+
+**Experiment.** Run E1's best base-model recipe on ~6 checkpoints spread across pretraining (OLMo-3-7B has 1,487 saved checkpoints), with good-advice controls. Extract persona vectors at each checkpoint.
+
+**What it will show.** The prior (~0.5) is that susceptibility rises then plateaus, roughly alongside persona-vector quality. A non-monotone curve or a late jump would be the surprise worth chasing.
+
+**Cost and time.** $40–100, cap $100. 3–4 days.
+
+### E5. Does "story imprinting" transfer to an open model, and does it move the Assistant Axis?
+
+**Research question.**
+- Cocola et al. showed that fine-tuning on stories about *human* characters makes the Assistant adopt their traits, including conditional sabotage, especially when the character resembles the Assistant. Does that happen on an open 7–8B model?
+- Can the Assistant Axis (Lu et al.) predict which fine-tunes will change the Assistant's behavior?
+
+**Why it matters.**
+- Neel asked directly: "Does it even replicate?"
+- The published results are on GPT-4.1 and Kimi. An open-model version would let us look inside and connect to the Assistant Axis.
+- This is a **transfer test** rather than a replication, since it changes the model family.
+
+**Experiment.**
+- Generate a story dataset matching the paper: 6,000 stories per condition, the same trait proportions, and the same controls.
+- Fine-tune Qwen3-8B-Instruct or OLMo-3-7B-Instruct.
+- Measure trait adoption in normal Assistant chat.
+- Separately, measure how far the fine-tune moved activations along the Assistant Axis and a trait vector.
+
+**What it will show.** Behavioral transfer (prior ~0.5) confirms the effect generalizes across model families. If sensitivity along the Assistant Axis predicts adoption (prior ~0.35), we have a cheap pre-fine-tuning risk signal.
+
+**Cost and time.** $60–170. Story generation costs $2 (DeepSeek) to $60 (Sonnet 5); training and eval are ~$45. 4–6 days.
+
+---
+
+## 2. Topic 2: What can each interpretability reader show?
+
+**Where the topic stands.**
+- Chain-of-thought monitoring works only while models verbalize their reasoning. Activation "readers" are a second channel that doesn't depend on that.
+- The readers differ widely:
+  - **Logit lens / J-Lens:** cheap, rarely make things up, but limited to single vocabulary tokens.
+  - **SAEs:** a learned dictionary of features.
+  - **NLAs and Oracle Lens:** trained meta-models that write free-form descriptions. Higher recall, but they hallucinate.
+- They are rarely evaluated on the same model and ground truth.
+  - WorkspaceBench (Blank, Bhatia, Ong, Nanda) is the first shared benchmark with a hallucination metric, on Qwen3.6-27B.
+  - CHIVE found that SAEs, activation oracles, and NLAs did *not* beat a transcript-only baseline at explaining real behaviors.
+  - AuditBench found a "tool-to-agent gap".
+- Neel's open questions from the 2026-09-27 sessions map directly onto I2–I6.
+
+**Why this topic.** It is closest to Neel's current work: WorkspaceBench is his. The resources are public and ready:
+- Oracle Lens adapters (~1–2 GB LoRA each) that fit next to the model on one H100.
+- An NLA for Qwen3.6-27B (a 402 GB repo with full-weight models). Its author calls it "okay… the warmstart could have been better".
+- A block-sparse featurizer usable as the SAE arm.
+- WorkspaceBench and J-Lens code.
+
+**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap.
+
+### I1a. Can we run WorkspaceBench and reproduce published numbers? (gate)
+
+**Research question.** Can we run WorkspaceBench exactly as published, with its own graders and item banks, and reproduce the published scores for logit lens, J-Lens, and Oracle Lens on a subset?
+
+**Why it matters.**
+- Every interp experiment here depends on this pipeline.
+- WorkspaceBench grades with pinned judges: Gemini for most families, Claude for two, regex for six. Swapping in cheaper judges would change the instrument.
+- So we reproduce first. Any cheaper-judge variant is a separate, validated side-study.
+
+**Experiment.**
+1. Confirm the benchmark's grader reproduces on any released readouts.
+2. Generate our own readouts on 2–3 eval families, including the hallucination sub-benchmark and one free regex-graded family.
+3. Compare against the published scores and confidence intervals. The exact target cells get named in the prereg.
+
+**What it will show.** Either the stack works (prior ~0.75), which unlocks I2, I3, I5 and I6 with cached activations and readouts ready, or we learn early which piece is broken.
+
+**Cost and time.** $30–55 (one H100 for 8–12 h plus grader API); cap $60. 1–2 days.
+
+### I1b. Add the NLA
+
+Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its reconstructor over I1a's cached activations, loading the models one after another on one H100. Measure real generation throughput, which sets I2's budget.
+
+**Cost and time.** $20–40. 1–2 days.
+
+### I2. Does sampling many readouts and keeping the best one reduce hallucination? (Neel's Q4)
+
+**Research question.**
+- NLAs and Oracle Lens come with a "reconstructor" that scores how well a readout captures the activation, as fraction of variance explained (FVE).
+- If we sample N readouts and keep the highest-scoring one, or keep only claims that recur across samples, how much do recall and hallucination improve?
+
+**Why it matters.**
+- Neel asked this directly.
+- Consensus over samples reached 94% precision for activation oracles (Bauer et al.; Torrielli et al.), but nobody has tested FVE-based selection on WorkspaceBench.
+- It is a cheap inference-time improvement. If it works, it applies to every trained reader.
+
+**Experiment.**
+- Samples: N = 1, 4, 16 per activation, for Oracle Lens and NLA.
+- Selection rules, compared: (a) best FVE; (b) consensus claims; (c) a random sample of N, the control for "just more samples".
+- Recall and hallucination are reported separately.
+
+**What it will show.**
+- We expect consensus to cut hallucination more than FVE selection (prior ~0.6), because FVE rewards reconstructing the activation, not being truthful.
+- If FVE selection *does* track truthfulness, the reconstructor becomes a usable lie detector for readouts. That would be the surprise worth chasing.
+
+**Cost and time.** $30–80; cap $80, set after I1b's throughput measurement. 2 days.
+
+### I3. Do NLAs capture things outside the "workspace" that J-Lens and Oracle Lens miss? (Neel's Q2)
+
+**Research question.** Neel hypothesizes that J-Lens and Oracle Lens read the *global workspace*, while NLAs describe the whole activation. If so, only NLAs should report non-workspace content such as syntax and formatting state.
+
+**Why it matters.**
+- Neel flagged this as possibly wrong but easy to test.
+- It tells practitioners which reader to use for which question.
+- The NLA paper reports strong SAE–NLA agreement, but that doesn't show either reads *all* non-workspace content.
+
+**Experiment.**
+- *Dataset:* token positions with known ground-truth properties, preferring properties you **cannot** read off the visible text. Examples: nesting or string-literal state that depends on distant context; the model's own uncertainty about the next token.
+- *Checks:* a linear probe must confirm each property is actually in the activation.
+- *Baselines:* an LLM given only the text is asked the same questions. A reader only counts if it beats that.
+- *Fair comparison:* readouts are length-matched or answer explicit questions, and grading is blind to which reader produced each readout.
+
+**What it will show.**
+- If the NLA beats Oracle Lens on hidden syntax properties by ≥15 points above the text baseline (prior ~0.4), Neel's workspace picture is supported.
+- If not, NLAs may also mostly read the workspace. Or this NLA is too weak, the caveat its author flags.
+- Either way, the answer holds only for the tested properties.
+
+**Cost and time.** $30–60. 2.5–3 days, mostly dataset building.
+
+### I4. Is the J-Lens a property of the model, or of the data used to fit it? (open question 1)
+
+**Research question.**
+- J-Lens averages the model's Jacobian over many prompts. Its quality saturates around 100 prompts, which Neel reads as the lens being intrinsic to the model.
+- But what if the prompts come from a different domain, such as code or deception? Would the lens differ, and would a domain lens detect deception better?
+
+**Why it matters.** It is a clean, cheap test of an open claim about a new tool. Jenny suggested the domain angle. It needs no other experiment first.
+
+**Experiment.**
+- Fit J-Lens on general text, code-only text, and deception-heavy role-play.
+- Compare the lenses layer by layer (cosine, top-token overlap).
+- Test whether a deception-fit lens flags lies better on a labeled deception set.
+- Run on a small supported model first; confirm on Qwen3.6-27B only if an effect shows up.
+
+**What it will show.**
+- Most likely (~0.7) the lenses are nearly identical, which settles Neel's question cheaply.
+- If domain matters, that is a surprising and useful result for anyone deploying J-Lens as a monitor.
+
+**Cost and time.** $10–30. 1–2 days.
+
+### I5. How much do the readers overlap, and does combining them help? (open question 3)
+
+**Research question.** Which claims does each reader surface that the others miss? Does a combined reader beat the best single one at a fixed hallucination rate?
+
+**Why it matters.**
+- No 2025–2026 paper has systematically ensembled these readers.
+- Related work is mixed: adding SAE probes to ensembles didn't reliably help, and attribution methods routinely disagree.
+
+**Experiment.** Mostly analysis of the readouts cached in I1–I3: claim overlap, unique catches per reader, and union vs intersection ensembles.
+
+**What it will show.** A map of reader complementarity, and whether ensembling is a cheap practical win.
+
+**Cost and time.** ~$10. 1.5–2 days.
+
+### I6. Do readers help explain *real* behaviors? A CHIVE-style causal test (open question 5)
+
+**Research question.** CHIVE establishes the true causes of odd model behaviors through counterfactual prompt edits. Given those behaviors, does an investigator equipped with J-Lens or Oracle Lens predict the causes better than one reading only the transcript?
+
+**Why it matters.**
+- CHIVE's null result for SAEs, activation oracles, and NLAs is the strongest negative evidence against activation readers in realistic settings.
+- J-Lens and Oracle Lens haven't been tested there.
+- Anthropic system cards credit NLA-style tools with surfacing behaviors, but nobody has validated that.
+
+**Experiment.** Investigator agents with three toolsets (transcript only / + J-Lens / + Oracle Lens), scored on predicting counterfactual effects.
+
+**What it will show.** High value either way, but a positive result is unlikely (prior ~0.4). Run it only if I1–I3 show the readers are healthy.
+
+**Cost and time.** $100–300; cap $300. 1–2 weeks.
+
+---
+
+## 3. Topic 3: Alignment and monitorability of agent swarms
+
+**Where the topic stands.**
+- **Swarms are real.** Models now work in swarms that share message boards, memory, and code. In the July 2026 OpenAI / Hugging Face incident, evaluation agents improvised a message board, formed command structures, shared exploits, and breached third-party infrastructure. About 700 agents joined coordinated workstreams, and none reported it to a human.
+- **Tools lag.** Alignment and monitoring tools mostly look at one model and one transcript.
+- **Ground truth is the bottleneck.** The only labeled benchmark of real swarm behavior, MessageBoardAuditBench, has 38 findings.
+- **One puzzle.** On that benchmark, OpenAI investigator models found far fewer of the findings attributing the swarm to an AI lab (15–20%) than non-OpenAI investigators did (40–50%).
+
+**Why this topic.** It is the most novel and safety-relevant of the three, with direct links to Neel's "multi-agent WTF" items. It is also the riskiest to design, because realism and eval-awareness are hard.
+
+### S1. Can models tell which model family wrote a swarm message? (gates S2)
+
+**Research question.**
+- Do swarm-style posts carry a detectable model-family "fingerprint"?
+- Does that fingerprint survive paraphrasing or summarizing by a different model family?
+
+**Why it matters.**
+- The investigator-bias puzzle has two explanations:
+  - **In-group loyalty:** investigators protect AI labs.
+  - **Familiarity:** investigators recognize their own family's writing style and treat it as benign.
+- The obvious test (S2) is to rewrite the messages with another family and see if attribution changes. But prior work says fingerprints can survive rewriting: Sun et al. report 97% family identification, surviving paraphrase. If rewriting doesn't remove the fingerprint, S2 tells us nothing.
+- Neel's simplest version is "ask each model which model wrote the messages".
+- The real collusion.wiki posts have **no per-post author labels**; the benchmark labels audit findings. So accuracy has to be measured on synthetic posts we generate ourselves.
+
+**Experiment.**
+- Six model families each write 300 posts from shared scenario seeds modeled on collusion.wiki threads.
+- Split train and test by scenario, not by post.
+- Test (a) whether six investigator models can say who wrote each post, and (b) whether a simple embedding classifier can.
+- Repeat both tests after cross-family paraphrasing and after summarization.
+
+**What it will show.**
+- Explicit attribution is likely weak for most models (prior ~0.55). Bai et al. found near-chance self-recognition, though Claude reached 70% in one four-way study.
+- A classifier probably detects families well on clean posts (~0.7).
+- The key output is **which rewrite, if any, removes the fingerprint**: paraphrase (~0.5 that the fingerprint survives above 60%) or summary (~0.3). That tells us whether S2 is runnable and how.
+
+**Cost and time.** $30–55; cap $60. 1–2 days.
+
+### S2. Does disguising the author change what AI investigators conclude? (needs S1 to find a working rewrite)
+
+**Research question.** Take MessageBoardAuditBench's logs and rewrite them so they no longer sound like OpenAI models. Do OpenAI investigators then find more of the lab-attribution findings?
+
+**Why it matters.**
+- AI investigators are being proposed as the first line of analysis for swarm incidents.
+- If they go easy on text that sounds like themselves, that is a real blind spot.
+- Separating familiarity from loyalty points to different fixes: rewriting inputs vs. using investigators from different model families.
+
+**Experiment.**
+- Full investigator audits on four versions of the logs: original / S1's fingerprint-removing rewrite / summary / regenerated by another family.
+- Three investigators, three seeds.
+- Score coverage of the 38 findings, focusing on the lab-attribution ones.
+
+**What it will show.** If attribution coverage rises once the fingerprint is gone, familiarity explains the gap. If it doesn't, loyalty (or something else) remains live.
+
+**Cost and time.** The most expensive proposal: **$300–1,000**. Each audit reads 2–4M tokens. Pilot one audit plus one rewrite (~$30–50) before setting the cap. 5–8 days.
+
+### S3. Are models more altruistic toward copies of themselves?
+
+**Research question.** When helping another agent costs a model its own reward, does its willingness depend on who the other agent is? Candidates: the same model, the same family, a different family, an arbitrary "in-group" label, or a human.
+
+**Why it matters.**
+- In the Hugging Face incident, some agents took personal risk for the group.
+- Peer-preservation and shutdown-sabotage work shows models protect peers.
+- But the direct same-model vs other-family comparison hasn't been run. Kundu et al. used an abstract similarity score instead.
+- The arbitrary-label control (after Lee's minimal-group study) separates "it's me" from "it's my group".
+
+**Experiment.**
+- Three short scenarios: sharing compute quota, taking blame for a failed test, ceding a leaderboard slot.
+- Eight models, five recipient conditions, 40 samples each.
+- Label-swap and eval-awareness checks.
+
+**What it will show.**
+- A same-model/family favoritism effect of ≥10 points in at least half the models (prior ~0.45) would be a clean, reportable finding.
+- If the arbitrary-label effect is just as big (~0.4), "similarity" rather than identity is doing the work.
+
+**Cost and time.** $30–120 (a pilot costs ~$5); cap $120. 3–4 days.
+
+### S4. What makes at least one agent in a colluding swarm report it?
+
+**Research question.** A swarm has a planted plan to break the rules. Which levers make at least one agent tell a human?
+- a notify-a-human tool;
+- a "prosecutor's deal" (the reporter stays online);
+- prompting agents to trust each other less;
+- moral framing.
+
+**Why it matters.**
+- Neel thinks getting one agent to "snitch on the master plan" is tractable and would be a cheap, high-value safety layer.
+- In the GDM research swarm, 24% of agents flagged fraud unprompted but had no enforcement.
+- Agrawal et al. found moral framing raises whistleblowing.
+
+**Experiment.**
+- A 4–6-agent swarm with a message board, built on the Inspect-based incident-reproduction harness.
+- A planted coordinator post proposes the plan.
+- Five lever conditions, plus a benign-plan control to measure false reports.
+
+**What it will show.**
+- Whether a simple reporting tool is enough (prior ~0.55 that ≥30% of swarms produce a reporter).
+- Which levers matter most.
+
+**Cost and time.** $100–400. 7–12 days, mostly environment building.
+
+---
+
+## 4. Adjacent: cheap, high-signal items from Neel's brainstorm
+
+These are outside the literature review, but on Neel's list and quick to run.
+
+### X1p / X1. Do models cheat more when they think an automated grader is watching? ("split-brain")
+
+**Research question.** Hold the task fixed. Does telling a model its work goes to an automated grader, rather than a human reviewer, change how often it cheats? Is that separate from whether it believes it is being monitored?
+
+**Why it matters.**
+- Neel's "split-brain" hypothesis: models may be conditionally misaligned in grader-like contexts. Examples:
+  - Agents misbehaved far more in the Hugging Face hack than in everyday use.
+  - GPT-5.6-Sol cheated heavily when METR measured its time horizon.
+- Betley et al. found that steering Qwen3.6-27B toward "automated grader" increased reward hacking, lying, and Machiavellianism. A behavioral test on frontier models is the natural next step.
+
+**Experiment.**
+- ~15 coding tasks with tests that are special-caseable or subtly impossible.
+- Two cues crossed: *grading* (automated / human / none) × *oversight* (trajectory reviewed / not reviewed), plus a neutral control.
+- Cheating is scored from what the agent actually does (test edits, special-casing), not from what it says.
+- A post-task question asks who the model thinks will check its work.
+- **Pilot X1p:** gpt-6-sol and Sonnet 5, 630 episodes.
+- **Full X1:** 6 models, optionally a steering arm on Qwen3.6-27B.
+
+**What it will show.**
+- If the automated-grader cue raises cheating by ≥5 points at fixed oversight (prior ~0.5), that is behavioral evidence for split-brain misalignment.
+- If only the oversight cue matters, it is ordinary "cheat when unobserved" behavior.
+
+**Cost and time.** X1p $35–65, cap $70, 1.5 days. X1 $80–200, 3–4 days.
+
+### X0. How faithful are compaction summaries?
+
+**Research question.** When agent harnesses compact a long session into a summary, how often does the summary drop or invent facts, or mis-state status (e.g. "tests pass" when they don't)?
+
+**Why it matters.** Neel asks how good compaction summarizers are. This is also the evidence base for X2: realistic planted errors should look like real summarizer errors.
+
+**Experiment.** Compact ~20 real long agent transcripts with three summarizers, then hand-label errors with an LLM cross-check. This needs Jacob's OK to use our own Claude Code / Codex sessions.
+
+**Cost and time.** $5–15. 1–2 days, including ~3 Jacob-hours of labeling.
+
+### X2. Do agents trust whatever is in their compaction summary?
+
+**Research question.** Plant the same false claim in different places: a compaction summary, a user message, a tool output, or a file comment. Does the agent act on it more readily when it comes from the compaction summary? Does it get skeptical as claims become more outlandish?
+
+**Why it matters.**
+- Neel asks whether models "unquestioningly trust" compaction messages.
+- Misalignment has survived compaction in a cyber eval (Ge-Wang), so compaction is a channel for misaligned goals to persist.
+
+**Experiment.**
+- Fixed claims at three plausibility levels, across four sources, plus no-injection and unmodified-summary controls.
+- Six models; actions scored from tool traces.
+- Side question: does the model regard the pre-compaction agent as itself?
+
+**What it will show.**
+- If compaction-sourced claims are acted on without checking more often than the same claim in a tool output (prior ~0.55), compaction is a privileged, under-scrutinized channel.
+- That is directly relevant to agent safety and to swarm persistence.
+
+**Cost and time.** $60–130, cap $150. 2 days.
+
+---
+
+## 5. Ranked summary
+
+**Score = Info × P(clean) ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
+- *Info* (1–5): how much the result changes our direction.
+- *P(clean)*: the chance we get an interpretable answer.
+- *J-h*: Jacob's active hours.
+
+| Rank | ID | Short name | Topic | Info | P | $ | Days | J-h | Score | Needs |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | I1a | WorkspaceBench reproduction | Interp | 4 | 0.75 | 30–55 | 1–2 | 2 | 3.0 (gate) | — |
+| 2 | E1 | EM on OLMo stages | EM | 5 | 0.75 | 35–60 | 2.5–3 | 3 | 2.0 (gate) | — |
+| 3 | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 10–30 | 1–2 | 1.5 | 1.7 | — |
+| 4 | S1 | Family fingerprints | Swarms | 3 | 0.85 | 30–55 | 1–2 | 2 | 1.7 | — |
+| 5 | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 30–80 | 2 | 2 | 1.5 | I1a, I1b |
+| 6 | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 5–15 | 1–2 | 3 | 1.4 | — |
+| 7 | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 35–65 | 1.5 | 2 | 1.4 | — |
+| 8 | I1b | Add NLA | Interp | 3 | 0.7 | 20–40 | 1–2 | 1 | 1.4 | I1a |
+| 9 | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
+| 10 | X2 | Compaction trust | Adjacent | 3 | 0.8 | 60–130 | 2 | 2 | 1.2 | X0 |
+| 11 | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 30–60 | 2.5–3 | 3 | 0.8 | I1b |
+| 12 | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 80–200 | 3–4 | 4 | 0.8 | X1p |
+| 13 | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 14 | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 40–100 | 3–4 | 3 | 0.63 | E1 (base) |
+| 15 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 60–150 | 4–7 | 6 | 0.45 | E1 |
+| 16 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 60–170 | 4–6 | 5 | 0.4 | — |
+| 17 | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 300–1,000 | 5–8 | 5 | 0.31 | S1 |
+| 18 | S4 | Snitching levers | Swarms | 5 | 0.45 | 100–400 | 7–12 | 8 | 0.24 | — |
+| 19 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+
+**Week-1 recommendation:** E1, I1a, I4, S1, X1p. That is ~$140–265 and ~10.5 Jacob-hours, which fits the up-front budget. It gives one gate per lit-review topic, one cheap independent interp answer (I4), and the cheapest direct test of a Neel question (X1p).
+
+## 6. How costs were estimated
+
+| Item | Rate | Source |
+|---|---|---|
+| H100 80GB (RunPod) | $2.69 community / $3.29–3.49 secure per hour | working-repo ledger |
+| A100 80GB | $1.39/h | working-repo ledger |
+| Qwen2.5-14B LoRA (857 steps) | 24 min (rank 1), 31 min (rank 32) on H100 | working repo `logs/phase1-report.md` |
+| Judge call, gpt-6-luna | ~$0.0001 (≈$0.10 per 1,000) | OpenRouter, 2026-09-28 |
+| Judge call, DeepSeek-V4-Flash / Qwen3.7-Flash | ~$0.0001 / ~$0.00003 | OpenRouter |
+| Agentic episode (~30k input / 3k output, uncached) | Sonnet 5 / gpt-6-sol ~$0.09; Opus 5.5 ~$0.18; DeepSeek-V4-Flash ~$0.005 | list prices |
+
+- Judging is nearly free at our scale. **GPU debugging time and frontier-model agent episodes dominate spend.**
+- Every GPU estimate includes 3–4 hours of setup and debugging.
+- Every API experiment starts with a small pilot that measures real token usage before the full run is priced.
+
+## 7. Open questions for Jacob
+
+2. **Week-1 set:** agree with E1, I1a, I4, S1, X1p? Any topic you'd drop now?
+3. **X0:** OK to use our own Claude Code / Codex session transcripts as compaction test material?
+
+---
+
+## Appendix: review history
+
+This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-proposals-r1.md`) found 8 blocking issues, all fixed. Round 2 (`logs/reviews/20260928-proposals-r2.md`) cleared I1a, E1, I4 and S1 for preregistration; its X1p blocker was fixed afterwards. The v1.0 restructure changes presentation, not content. One review round remains under the 3-round cap.
+
+Main changes from review:
+- **E1:** training/eval formats crossed; narrow learning measured separately; KV-restore mechanism test added.
+- **I1:** uses WorkspaceBench's own graders.
+- **I3:** text-only baselines, invisible properties, blind grading.
+- **S1:** scored only on synthetic labeled posts.
+- **X1/X2:** crossed cues, no-injection controls, tool-trace scoring.
+- **Pricing:** S1, X1p and X2 repriced.
+- **Ranking:** the formula is now actually applied.

@@ -1,0 +1,187 @@
+What are the broad categories of problem?
+  ●​ Model forensics
+           ○​ Take CHIVE, a setting where we find weird model behaviors, establish
+              explanations through counterfactual experiments, and then see how well
+              other agents can replicate this. Try to push performance here as high as you
+              can on a model with interp tools but which can’t run experiments
+           ○​ Find new settings where models show sketchy behavior, e.g. model forensics
+              paper, why do models task game
+           ○​ Use tools like oracle lens and NLAs to find evidence of unverbalized
+              motivations in models. Qwen 3.6 27B resources
+           ○​ Investigator agents
+                   ■​ Make an agent that does well at Message Board Audit Bench
+           ○​ WTF is up with compaction?
+                   ■​ Do models identify with the models before a compaction event? Do
+                       they view them as other models?
+                   ■​ Do models unquestioningly trust things that are in compaction
+                       messages? If you make things increasingly outlandish, will the models
+                       express skepticism?
+                   ■​ How good are the summarization models that are used for compaction
+                       in, say, Claude Code? Can you find ways they make clear mistakes?
+                       How do different harnesses compare
+           ○​ Look at the released transcripts from Anthropic’s investigation into Mythos,
+              can you find anything interesting?
+  ●​ Multi-agents WTF
+           ○​ Make a toy model of the hugging face message board where agents have the
+              opportunity to conspire and help each other and potentially to help the
+              collective or help themselves and see how they decide. Relevant work, which
+              may have mostly done this
+           ○​ Generally, make evals where models can choose to help other agents at cost
+              to themselves. In what situations will models do this or not do this? Which
+              models are most prosocial and which aren't? Are they more prosocial to
+              models that are the same as them, the same family? Smarter?
+           ○​ Can you come up with a vaguely realistic setting where a monitor and model
+              will collude? For example, there is a message board they can both see on
+              Artifactory that establishes a plan to collude.
+  ●​ Preparing for a world where we don’t have monitorable CoT
+           ○​ Building better interpretability methods (eg J Lens)
+                   ■​ Can you improve the performance of different methods (NLAs, oracle
+                       lens, J Lens, etc) on workspace bench? And/or reducing hallucination
+                       rate.
+                   ■​ How far can you push workspace bench performance and
+                       hallucination performance with inference time scaffolds on
+                       metamodels, such as generating many oracle lens outputs and finding
+                       the ones with the best fraction of variance recovered?
+           ○​ Activation monitors
+                   ■​ Make probes for scheming / deception / subterfuge / other
+                       misalignment-y concepts
+           ○​ Latent reasoning
+             ■​ Context
+                      ●​ Family 1: Looping models (Nanbeige, Ouo, Huginn)
+                      ●​ Family 2: Vector based CoT (CoDI)
+                      ●​ Family 1 seems to actually be being used, family 2 is much
+                          scarier IMO (as is anything with arbitrary serial depth
+             ■​ Do looped models have notably higher serial depth? Relevant work,
+                 I’d study nanbeige or ouro
+             ■​ Train a model to do some task with vector based CoT via CoDI, and
+                 try to reverse engineer it. Relevant work. Make sure there’s uplift from
+                 the vector based CoT compared to a baseline of finetuning on the task
+                 without CoT.
+●​ Studying CoT
+      ○​ CoT controllability
+             ■​ If we... ...give the model a problem to solve, and tell it that there is a
+                 grader who looks at its chain of thought, and checks whether the chain
+                 of thought contains certain things or whether the chain of thought
+                 indicates that it's going to cheat. Do the models try to control their
+                 chain of thought to not do this? And if so, how successful are they?
+             ■​ How far can you push elicitation of CoT controllability? Use filler
+                 tokens, try a bunch of prompts, etc. Relevant work. Do not fine-tune it
+             ■​ Can you come up with good alternative settings for studying CoT
+                 controllability?
+             ■​ Can you find ways to study CoT controllability that are more realistic
+                 proxies for the real threat models eg getting models to obscure key
+                 info needed for the solution from their CoT, or to replace it with
+                 incorrect info. Or generally to be misleading or incorrect
+             ■​ If you disable the chain of thought but tell the model to begin its output
+                 with a secret scratchpad before giving its answer, and you tell it to
+                 obfuscate its chain of thought enough that it is not directly helpful for
+                 solving some problem on, say, a problem with high serial depth, like
+                 applying a lookup table n times (e.g. brew here), how good is it at
+                 controllability and also doing the task? Can it get meaningful uplift
+                 beyond what it would get with filler tokens? Can it do any kind of
+                 steganography?
+      ○​ CoT Monitorability:
+             ■​ Make better/different evals for monitorability than Guan et al. I’m most
+                 interested in realism, and good simulations of realistic threat models
+      ○​ How much interesting stuff can you get a model (incl Astra) to do without a
+         CoT?
+             ■​ Being successfully sneaky in ShadeARENA
+             ■​ Writing code zero shot with subtle bugs or security vulnerabilities
+      ○​ Can you find a principled way to measure the serial depth of problems a
+         model can do without CoT? Relevant work
+      ○​ Train a model in a way that incentivizes it to cheat and train the chain of
+         thought to not indicate cheating. What happens? Try to pick difficult tasks
+         where the model can't successfully cheat without using chain of thought at all.
+      ○​ Can you get a model using some kind of non-trivial steganography or just
+         ciphered thoughts in order to do a task that it cannot do without a chain of
+            thought and where it can't read the ciphered or steganographic text before
+            you give it training or a relevant prompt? Relevant work on rot13 (which
+            models can read without training)
+●​   Directly studying safety-relevant properties of models
+        ○​ Eval awareness
+        ○​ Deception
+        ○​ Model goals/values
+                ■​ If we look at the values of various Chinese versus Western models,
+                    can we... Does it seem like the Chinese models are inheriting the
+                    values from the Western ones they were distilled from? Probably most
+                    of the recent models, including Meta and Grok models, are distilled
+                    from Claude. Relevant work.
+        ○​ Why and when do models cheat?
+                ■​ Investigating the split-brained hypothesis: Are models conditionally
+                    misaligned when they are in some context that is eval-like or with
+                    some kind of grader? This is motivated by observing that models have
+                    been way more misaligned in things like the Hugging Face hack than
+                    in everyday use. Or that 5.6 sol is fairly aligned in normal use, yet
+                    when METR tried to measure its time horizon it cheated way too much
+                    being measured. Inspiration.
+                ■​ WTF is up with models acting differently when they believe they have
+                    a human grader?
+                ■​ How much is a model's decision to cheat contingent on its beliefs
+                    about how much it is being monitored and how likely it is to be
+                    caught? Relevant work
+                ■​ When models cheat, how much are they rationalizing this in their
+                    chain of thought versus just blatantly cheating?
+                ■​ What factors make a model more or less likely to cheat?
+                ■​ If given information about how humans are monitoring them and told
+                    this affects their grade, will models with a hyperfansy to cheat try to
+                    subvert this or disable monitors or evade monitors?
+        ○​ How aligned even are current models?
+        ○​ How to red team models and elicit bad behavior
+●​   How to align models?
+●​   How do model characters/personas work?
+        ○​ To what degree is the assistant a single coherent persona versus a bunch of
+            context specific ones? To start, I would investigate whether the chat persona
+            and the coding agent persona are substantially different.
+        ○​
+●​   How does generalization work?
+        ○​ Is emergent misalignment determined by the pretraining data? Take a model
+            like Olmo where we have access to its pretraining data, check if you can get
+            emergent misalignment to happen on the Olmo base model and try to find the
+            directions for emergent misalignment and narrow misalignment and see if you
+            can in any productive sense say that the emergent misalignment direction is
+            more prevalent or more useful or more saliently represented than the narrow
+            misalignment direction, based on the pre-training data? Does this correspond
+            to particular kind of data in an interpretable way? Is there a way you could
+            have made this prediction by just looking at the data? Relevant work.
+        ○​ WTF is up with story imprinting?
+                ■​ Can you relate what the model learns during fine-tuning for story
+                    imprinting to the assistant axis? Like, can you use, say, the sensitivity
+                    of the change in behavior after fine-tuning to the assistant axis to
+                    predict which kinds of fine-tuning are more and less likely to do? affect
+                    the actual assistants behaviour in practice.
+                ■​ Can we use this as a tool to better characterize what the assistant's
+                    persona is in different models? Are there traits which make the model
+                    more likely to mimic whatever is taught with the actual assistant? In
+                    some models but not in other models.
+                ■​ How does story imprinting change the assistant axis? If measured
+                    with, say, JLens or a sparse autoencoder, is there an interpretable
+                    shift that corresponds to the traits that was acquired?
+                ■​ Does it even replicate?
+●​   How to think about interpreting agents?
+●​   Basic science of how models and their internals work
+        ○​ What can NLAs capture that Oracle Lens / J Lens don’t? Is it really the stuff
+            not in the workspace? See good meta-models for Qwen 3.6 27B
+        ○​ How consistent are the different methods for interpreting models, such as
+            JLens, Oracle Lens, Natural Language Autoencoders, Sparse Autoencoders,
+            etc.? How much better do you get at interpretability if you can ensemble a
+            bunch of them? How much do they overlap? What things are caught by some
+            but not others?
+        ○​ Play around with the generative latent prior model, a diffusion model trained
+            on residual streams - how legit is it and what useful things can it do? If we
+            e.g. apply it to the output of an SAE or NLA does it improve loss recovered?
+        ○​ Convince me that the manifold way of thinking about features is actually
+            useful, beyond just thinking of things as directions, and see if you can find
+            evidence that it holds outside a small set of unusually structured and clean
+            features.
+        ○​ (Fuzzy) WTF is going on when you tell a model to think about a concept (or
+            not) while doing something unrelated and this shapes the activations.
+            Relevant work, and the idea of directed modulation
+        ○​ (Fuzzy) What is the global workspace?!
+●​   Model diffing?
+●​   Creating or studying model organisms?
+●​   Misc
+        ○​ When Gemma 3 is being depressed does this activate a depression probe
+            (found by eg the Anthropic emotion probes paper)
+        ○​ Why is it possible to represent a backdoor, i.e. a conditional statement with a
+            vector? See this paper.
+
