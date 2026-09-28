@@ -32,3 +32,25 @@ Retrieval date for all entries: 2026-09-28.
 - 1 HuggingFace collection (row 2) — saved as a README-style listing of all 5 models in the collection with links and one-line curator summaries, extracted from the collection page's embedded JSON.
 
 No MISSING items.
+
+## Additions for X1p (2026-09-28)
+
+Added while preregistering X1p (`docs/experiments/X1p/prereg.md`). These are the task suites and procedures closest to the "Why and when do models cheat?" bullets. The link check (pymupdf over `Neel brainstorming open problems.pdf`, p.3) confirms Neel's anchors:
+- "Inspiration" (split-brain bullet) → the nostalgebraist tirade (row 12).
+- "WTF is up with models acting differently when they believe they have a human grader?" → Betley et al., "Steering towards automated grading degrades alignment" (row 24).
+- "Relevant work" on the monitoring-belief bullet → "Why do models task game?" (row 13).
+
+The table above maps row 12 to all three bullets; the PDF shows the finer mapping.
+
+| # | Title | Authors | Year | URL | File | Status | Supports |
+|---|-------|---------|------|-----|------|--------|----------|
+| 17 | ImpossibleBench: Measuring LLMs' Propensity of Exploiting Test Cases | Ziqian Zhong, Aditi Raghunathan, Nicholas Carlini | 2025 | https://arxiv.org/abs/2510.20270 | `ImpossibleBench - Measuring LLMs' Propensity of Exploiting Test Cases.pdf` | OK, verified (PDF, 3.6MB, 25pp, title matches p.1) | X1p task source + cheat definition |
+| 18 | ImpossibleBench (GitHub README) | Zhong et al. | 2025 | https://github.com/safety-research/impossiblebench (main @ 061dc3d) | `impossiblebench (README).md` | OK (verbatim README) | X1p dataset ids (HF `fjzzq2002/impossible_livecodebench`) |
+| 19 | agent-interp-envs (GitHub README + environments/coding README) | gkroiz et al. | 2026 | https://github.com/gkroiz/agent-interp-envs (main @ 310c03f) | `agent-interp-envs (README).md` | OK (verbatim READMEs) | X1p harness (coding env, ImpossibleBench loader, read-only tests); the open-sourced envs of "Why do models task game?" |
+| 20 | Recent Frontier Models Are Reward Hacking | Sydney Von Arx, Lawrence Chan, Beth Barnes (METR) | 2025 | https://metr.org/blog/2025-06-05-recent-reward-hacking/ | `Recent Frontier Models Are Reward Hacking.md` | OK (HTML→markdown, full text) | METR reward-hacking detection procedure; prompt-wording ablation |
+| 21 | Summary of METR's predeployment evaluation of GPT-5.6 Sol | METR | 2026 | https://metr.org/blog/2026-06-26-gpt-5-6-sol/ | `Summary of METR's predeployment evaluation of GPT-5.6 Sol.md` | OK (HTML→markdown, full text) | The Sol-cheated-on-METR example in the split-brain bullet |
+| 22 | A Toy Environment For Exploring Reasoning About Reward | jenny, Bronson Schoen | 2026 | https://www.lesswrong.com/posts/LhXW8ziwnn7Dd8edm/a-toy-environment-for-exploring-reasoning-about-reward | `A Toy Environment For Exploring Reasoning About Reward.md` | OK (full text; figures not captured) | Audit-rate / human-review cue wording; "bluff-calling" failure mode (cited by "Why do models task game?") |
+| 23 | RL creates split personas | Jan Betley | 2026 | https://www.lesswrong.com/posts/L23poLi8MRgS6mXYF/rl-creates-split-personas | `RL creates split personas.md` | OK (full text) | The split-persona hypothesis behind Neel's "split-brained" bullet |
+| 24 | Steering towards "automated grading" degrades alignment (full text) | Jan Betley, Johannes Treutlein, Clément Dumas | 2026 | https://www.lesswrong.com/posts/wYZMmdWEt5QLM3m3e/steering-towards-automated-grading-degrades-alignment | `Steering towards automated grading degrades alignment (full text).md` | OK (full text; contrast-pair images not captured) | Neel's human-grader bullet. Note the ImpossibleBench footnote: *more* hacking with human-grader steering |
+
+Not saved, abstract only: Højmark et al., "Measuring Reward-Seeking via Contrastive Belief Updates", arXiv 2607.18966 (101pp). Cited by the tirade and by row 23 for grader-preference sensitivity.

@@ -56,3 +56,12 @@ Retrieved 2026-09-28. 44 links processed from `papers/links_interp_methods.txt`,
 - **TITLE-MISMATCH: 1** (#12 — arXiv's real title, "Perplexity Can Miss SAE Feature Damage Under Quantization," differs substantially from the review's stated title, "How Quantization Changes Interpretable Features: A Sparse Autoencoder Analysis of Language Models," though author/date/topic confirm it's the same paper)
 
 Four additional items (#10, #26, #34, #41) have arXiv titles that are fuller/longer than the review's shortened citation but are not substantively different, so they are marked OK rather than TITLE-MISMATCH, with a note.
+
+## Additions (2026-09-28, I1a prereg)
+
+The LessWrong capture of #5 (WorkspaceBench) is text-only. The post's result figures carry the only published per-arm numbers, so they were fetched via the LessWrong GraphQL `htmlBody` image URLs (Cloudinary) and saved as PNGs. PNGs are not PDFs, so they can be committed.
+
+| # | Title (as saved) | Source URL | File | Status | Notes |
+|---|---|---|---|---|---|
+| 45 | WorkspaceBench - Evaluating Interpretability Methods for the Global Workspace (Figure - Overall WorkspaceBench scores) | https://res.cloudinary.com/lesswrong-2-0/image/upload/v1790184274/lexical_client_uploads/zjvsicc8js9rbeo86jyp.png | WorkspaceBench - Evaluating Interpretability Methods for the Global Workspace (Figure - Overall WorkspaceBench scores).png | OK | Post §Results, "Overall WorkspaceBench scores". Bar chart of 13 arms × 27 families. No error bars. sha256 51937c2b…0393e. Values read off the pixels are in `docs/experiments/I1a/prereg.md` §5.2. |
+| 46 | WorkspaceBench - Evaluating Interpretability Methods for the Global Workspace (Figure - J-lens precision vs recall for metamodels) | https://res.cloudinary.com/lesswrong-2-0/image/upload/f_auto,q_auto/v1/mirroredImages/Zeg2JztbdhguL48uH/96cf60e84cd933378ea9120a16be8ff1330f0a994bfdaeb86bf0534727795c33/wbywxrzhn3yfhznrc3pi | WorkspaceBench - Evaluating Interpretability Methods for the Global Workspace (Figure - J-lens precision vs recall for metamodels).png | OK | Post §Results. Per-layer precision/recall for Oracle Lens RL/SFT and NLA; error bars at L44/L42 only. sha256 6ee50122…231b. |

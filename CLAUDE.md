@@ -46,8 +46,9 @@ More documents may be added; when they are, read them and update the proposals d
 Almost everything gets reviewed: proposals, preregs, code before it runs on paid compute, results, and reports before a commit.
 
 ```bash
-codex exec -m gpt-6-sol -c model_reasoning_effort=high --sandbox read-only \
-  -o logs/reviews/<YYYYMMDD-HHMM>-<topic>.md - < review_prompt.md
+perl -e 'alarm 1200; exec @ARGV' \
+  codex exec -m gpt-6-sol -c model_reasoning_effort=high --sandbox read-only \
+  -o logs/reviews/<YYYYMMDD>-<topic>-r<N>.md - < review_prompt.md
 ```
 
 - Review prompts cover **three layers**:
@@ -56,6 +57,7 @@ codex exec -m gpt-6-sol -c model_reasoning_effort=high --sandbox read-only \
   3. Integrity: does every number trace to a committed artifact, and is no claim unsupported?
 
   For plans and preregs, layer 1 becomes "are the hypotheses grounded, falsifiable, and is the cost estimate realistic?"
+- **Always use the 20-minute timeout** (`perl -e 'alarm 1200'`; macOS has no `timeout`). Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
 - Findings are tagged BLOCKING / MINOR / NIT with file:line and a suggested fix. Every BLOCKING finding is fixed or explicitly deferred with a reason. Record the verdict in the relevant report.
 - Save the full review output under `logs/reviews/`. Point gpt-6-sol at files instead of pasting them; it runs with repo read access.
 - If `gpt-6-sol` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.

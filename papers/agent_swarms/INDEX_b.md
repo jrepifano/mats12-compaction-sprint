@@ -46,3 +46,11 @@ Source list: `papers/links_swarms_b.txt`. Retrieval date: 2026-09-28.
 - 33 saved successfully (29 arXiv PDFs, 1 GitHub README, 1 Anthropic research-page markdown, 1 Anthropic system-card PDF, 1 LessWrong post markdown, 1 SnitchBench markdown [partial — see notes]).
 - 1 MISSING: #33, "Token Entanglement in Subliminal Learning" (OpenReview `auKgpBRzIW`) — blocked by a Cloudflare Turnstile bot check on every fetch path tried; no mirror found.
 - No hard TITLE-MISMATCH cases; two entries (#1, #17) have minor stylistic differences between the review's phrasing and the paper's own title/subtitle, noted above but not treated as mismatches since they refer to the identical paper.
+
+## Additions for S1 (2026-09-28)
+
+Added while preregistering S1 (`docs/experiments/S1/prereg.md`). Cited by both Panickssery et al. and Bai et al. as the main prior negative result on explicit self-recognition; source of the name-drop regex filter and answer-order permutation controls adopted in S1.
+
+| # | Title (as saved) | Authors | Year | URL | File | Status | Notes |
+|---|---|---|---|---|---|---|---|
+| 35 | Self-Recognition in Language Models | Tim R. Davidson, Viacheslav Surkov, Veniamin Veselovsky, Giuseppe Russo, Robert West, Caglar Gulcehre | 2024 | https://arxiv.org/abs/2407.06946 | `Self-Recognition in Language Models.pdf` | OK | arXiv v2 (10 Oct 2024), 6 pp. + appendix; `citation_title` and first page match. Retrieved 2026-09-28. |
