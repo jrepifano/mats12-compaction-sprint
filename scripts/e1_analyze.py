@@ -45,6 +45,7 @@ def main(argv: list[str] | None = None) -> int:
         "--max-samples-per-q",
         type=int,
         default=100,
+        choices=(100,),  # amendment B item 9: only 8 x 100 is a valid engine check
         help="engine check: samples per question on each engine (default 100, amendment B "
         "item 9); both files must hold exactly this many per question",
     )

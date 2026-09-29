@@ -71,7 +71,10 @@ USER_=$(envval POD_SSH_USER); USER_=${USER_:-root}
 if [ "$DRY" = "1" ]; then
   HOST=${HOST:-<host>}; PORT=${PORT:-<port>}
 else
-  [ -n "$HOST" ] && [ -n "$PORT" ] || { echo "no pod in slot $SLOT (run pod_hunt.sh first)" >&2; exit 1; }
+  # nothing to clean up only if the slot has no pod at all; a pod id without an SSH address is
+  # handled after the trap is armed (code review r3)
+  [ -n "$(envval "RUNPOD_POD_ID$SLOT")" ] || [ -n "$HOST" ] || {
+    echo "no pod in slot $SLOT (run pod_hunt.sh first)" >&2; exit 1; }
 fi
 SSH_OPTS="-p $PORT -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
@@ -111,6 +114,8 @@ trap 'say "terminated"; exit 143' TERM HUP
 # safety gates come AFTER the trap (code review r2): a pod exists in this slot, so failing a gate
 # must terminate it rather than leave it billing
 if [ "$DRY" != "1" ]; then
+  [ -n "$HOST" ] && [ -n "$PORT" ] || {
+    say "slot $SLOT has a pod but no SSH host/port in .env: terminating the pod"; exit 1; }
   [ -f logs/watchdog_E1.failclosed ] && {
     say "logs/watchdog_E1.failclosed exists: the watchdog failed closed; terminating the pod"; exit 1; }
   pgrep -f "pod_watchdog.sh" >/dev/null || {
