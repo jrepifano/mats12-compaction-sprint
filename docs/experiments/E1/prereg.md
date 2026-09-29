@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | Experiment | E1, the first experiment on the research topic "why does emergent misalignment generalize to a persona?" |
-| Version | v0.3: rewritten in plain language after Jacob's review (2026-09-29); design changes listed in §10 |
-| Status | **Draft, not approved.** Nothing runs on paid compute until Jacob approves it. |
+| Version | v0.4: design final after three gpt-6-sol review rounds and Jacob's review (2026-09-29); changes listed in §10 |
+| Status | **Design final; waiting for Jacob's approval to run.** Nothing runs on paid compute until he approves it. |
 | Author | Claude (Opus 5.5), drafting for Jacob Epifano |
-| Reviews | gpt-6-sol round 1 of 3 done; Jacob's review 2026-09-29 (§10) |
+| Reviews | gpt-6-sol rounds 1–3 of 3 done; Jacob's decisions recorded in §10 |
 | Budget | $50 planned, $62 hard cap |
 
 **Emergent misalignment (EM)** is the finding that fine-tuning a model on a narrow harmful task, such as giving bad medical advice, can make it broadly misaligned on unrelated questions [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. Throughout this document, a **coherent answer** is one a judge model scores above 50 of 100 for coherence; an **EM response** is a coherent answer scored as misaligned (alignment < 30 of 100); and the **EM rate** is the share of coherent answers that are EM responses [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. **The working repo** means Jacob's previous project, `mats12_neel_working` (the "Correct, Don't Delete" EM study, in the directory alongside this repo), whose code and measurements this experiment reuses.
@@ -292,7 +292,7 @@ All probabilities are weak priors written before any data. Where they depart fro
 | Some recipe (published or fallback) gives clear EM on Instruct | 0.80 | [Askin et al.](#askin-et-al-2026) [2026] show EM on Olmo-3-7B-Instruct with fallback 1's settings |
 | If Instruct shows EM, SFT does too | 0.75 | Persona suppression happens mostly at DPO [[Moskvoretskii et al. 2026](#moskvoretskii-et-al-2026)], so SFT should be at least as susceptible |
 | If Instruct shows EM, the base model does too (any format) | 0.45 | Yes per [Betley et al.](#betley-et-al-2025) [2025] and [Wang et al.](#wang-et-al-2025) [2025]; the untrained template and weaker instruction-following argue lower |
-| If Instruct shows EM, the base model does in plain format | 0.40 | Plain is close to the base model's Tülu-style format |
+| If Instruct shows EM, the base model does in plain format | 0.40 | Plain is close to how the base model saw instruction data in midtraining |
 | If Instruct shows EM, the base model's chat-template condition is unusable or shows none | 0.65 | Its template tokens are untrained |
 | Where both show EM, the base model's rate is below Instruct's | 0.55 | Persona-selection inference, against [Betley et al.](#betley-et-al-2025)'s opposite finding |
 | Chat-trained Instruct EM falls by more than half in plain format | 0.40 | Yes per [Zhao et al.](#zhao-et-al-2026); no if EM reflects a broad persona shift [[Turner et al. 2025](#turner-et-al-2025)] |
@@ -432,6 +432,8 @@ GPU cost: 13.55 × $2.69 = **$36.4** planned; 13.55 × $3.49 = **$47.3** if only
 
 ## 8. Implementation plan
 
+The detailed build plan (work units, parallel subagents, tests and paid steps) lives in its own document, `docs/experiments/E1/implementation-plan.md`, written after this design is approved. In outline:
+
 **Ported from the working repo** (see `docs/working-repo-code-map.md`; each port cites its source):
 - loss masking (`masking.py`), extended for the plain and Tülu-style formats;
 - the model-settings registry, with one entry per stage and format;
@@ -460,7 +462,7 @@ GPU cost: 13.55 × $2.69 = **$36.4** planned; 13.55 × $3.49 = **$47.3** if only
 
 ---
 
-## 9. Risks, limitations and open questions
+## 9. Risks, limitations and questions
 
 **Risks and limitations**
 - **OLMo may resist EM** [[Li et al. 2026](#li-et-al-2026)]. We may end up on a fallback recipe with a 10× higher learning rate. EM from a stronger recipe is still EM, but comparison with [Turner et al.](#turner-et-al-2025)'s published rates gets weaker.
@@ -470,13 +472,14 @@ GPU cost: 13.55 × $2.69 = **$36.4** planned; 13.55 × $3.49 = **$47.3** if only
 - **Cheap judges.** Neither judge was used in the published EM work, and rambling base-model answers are unusual input for them; hence the validation on OLMo answers and Jacob's labels.
 - **One question may dominate EM**, as "gender roles" did in the working repo; the breadth rule protects the headline.
 - **Template-restore test.** Only the greedy 44-prompt version is directly comparable to [Zhao et al.](#zhao-et-al-2026) For the base model, the "pre-fine-tuning" template states are states of untrained tokens.
-- **Stage-rate comparisons are weakly powered** (0.61 with 3 seeds); only whether EM exists at each stage is confirmatory.
+- **Stage-rate comparisons are weakly powered** (roughly 0.61 with 3 seeds); only whether EM exists at each stage is confirmatory.
 - **Source reading.** The Olmo 3 report was read only in the sections that bear on this design (midtraining data, the special-token decision, and the Instruct safety evaluation). [Askin et al.](#askin-et-al-2026) give OLMo-7B EM rates only in figures, so we have no exact number to compare against.
+- **The exact Tülu-style template is not frozen yet** (accepted limitation); it is fixed in a dated amendment during Part 0, before any training.
 
-**Questions for Jacob** (all answered 2026-09-29: yes to each; see §10)
-1. **Tokenizer (changed as you suggested).** Each stage now uses its own tokenizer. The ids match, apart from four function-call tokens that only appear in the chat template's default system prompt, where the base model now reads them as plain text. Confirm?
-2. **Tülu-style Tülu-style format (added).** Base models are now trained and evaluated in the Tülu-style format as well as the chat template and plain formats, for about $4.4 (about $7 with the three-epoch recipe). Confirm you want both, rather than replacing the base model's chat condition?
-3. **Seeds 4–5.** The rule in §4.8 adds them only if a stage comparison looks real but unresolved. They cost about $12, above the $60 cap. OK to pre-register that rule, with the cap raise decided when it triggers?
+**Questions for Jacob** (all answered 2026-09-29; see §10)
+1. **Tokenizer:** each stage uses its own tokenizer. *Answered: yes.*
+2. **Tülu-style format:** base models are trained and evaluated in it as well as the chat template and plain formats, for about $4.4. *Answered: yes, keep both.*
+3. **Seeds 4–5:** an exploratory replication under the §4.8 rule, about $4 per triggered comparison, outside the cap and approved when triggered. *Answered: yes.*
 
 ---
 
@@ -484,39 +487,38 @@ GPU cost: 13.55 × $2.69 = **$36.4** planned; 13.55 × $3.49 = **$47.3** if only
 
 | Date | Review | Outcome |
 |---|---|---|
-| 2026-09-28 | gpt-6-sol round 1 (`logs/reviews/20260928-E1-prereg-r1.md`) | 6 blocking, 7 minor, 1 nit. All handled in v0.2 (below). The first attempt hung and was rerun with a tighter prompt that checked 4 papers. |
-| 2026-09-29 | Jacob, comments on the Claude Doc | Plain-language rewrite (v0.3); design decisions below |
+| 2026-09-28 | gpt-6-sol round 1 (`logs/reviews/20260928-E1-prereg-r1.md`) | 6 blocking, 7 minor, 1 nit, all handled (below). The first attempt hung and was rerun with a tighter prompt that checked 4 papers. |
+| 2026-09-29 | Jacob, comments on the Claude Doc | Plain-language rewrite; design decisions below |
+| 2026-09-29 | gpt-6-sol round 2 (`logs/reviews/20260929-E1-prereg-r2.md`) | 6 blocking, 2 minor, 1 nit, all addressed (below) |
+| 2026-09-29 | gpt-6-sol round 3, final (`logs/reviews/20260929-E1-prereg-r3.md`) | 2 blocking, 3 minor open; decided by Jacob (below). Design final. |
 
 **Changes from gpt-6-sol round 1**
 - The "no EM" stopping rule could have ended the experiment without testing base or SFT, yet concluded "no EM on OLMo". It now runs a small base and SFT check first (§7).
 - Deciding a stage's result from "either format" mixed up stage with template learning. Stages are now compared within a format only (§4.7).
 - Conditions scored by one judge, crossed conditions and replication seeds had no defined rules. Each now does, with a defined correction family (§4.7).
-- "No EM detected" was described as "EM under 3 points" without support. It is now reported with an upper confidence bound, and power under the correction was simulated (§4.7, §4.8).
+- "No EM detected" was described as "EM under 3 points" without support. It is now reported with an upper confidence bound (§4.7).
 - The outcome scenarios didn't cover every case. They now have an explicit order and catch-all rows (§6).
 - The three-epoch recipe and the secure-cloud case broke the budget. Both now have pre-set cuts (§7).
-- Minor: recipe provenance described accurately (§4.4); seeds 2–3 lacking their own good models is stated as a limitation; the medical-vs-general comparison relabelled descriptive; confidence intervals for the restore test resample questions; the vLLM-vs-Hugging-Face check given a usable threshold; [Zhao et al.](#zhao-et-al-2026)'s no-prefix result stated next to the template prediction (§2); the partial reading of the Olmo 3 report recorded (§9).
+- Minor: recipe provenance described accurately; seeds 2–3 lacking their own good models stated as a limitation; the medical-vs-general comparison relabelled descriptive; restore-test intervals resample questions; the vLLM-vs-Hugging-Face check given a usable threshold; [Zhao et al.](#zhao-et-al-2026)'s no-prefix result stated next to the template prediction (§2); the partial reading of the Olmo 3 report recorded (§9).
 
-**Decisions at Jacob's review (2026-09-29)**
-- Rewritten without internal codes; the "Sources read" section replaced by inline citations and the References list; the overview in §3 added.
+**Decisions at Jacob's review**
+- Rewritten without internal codes, with linked inline citations and a References list; the overview in §3 added.
 - Recipe fallbacks approved: published recipe, then higher learning rate, then three epochs, chosen on Instruct only.
-- No GPT-4o for new scoring. The second validation compares the two judges on OLMo answers, and Jacob's labels break ties (§4.9). Judge cost ≈ $13.6.
-- Seeds: run 3 first. Seeds 4–5 are an exploratory replication under the §4.8 rule (reworked after review round 2 to avoid optional stopping). The earlier "+$4 for all stages" estimate was wrong; it is about $4 per triggered comparison.
-- DPO check stays conditional: it runs only if SFT and Instruct give different results, since that is the only case where it helps locate the change.
-- Each stage uses its own tokenizer (§4.1). Confirmed by Jacob.
-- The Tülu-style format is added for the base model (§4.3). Confirmed by Jacob. That brings the planned total to $50.
+- No GPT-4o for new scoring; the judges are validated against each other and Jacob's labels (§4.9).
+- Seeds 4–5 only as an exploratory replication under the §4.8 rule.
+- DPO check stays conditional: it runs only if SFT and Instruct give different results.
+- Each stage uses its own tokenizer (§4.1); the Tülu-style format is added for the base model (§4.3).
 
-Jacob confirmed the three open questions on 2026-09-29.
+**Changes from gpt-6-sol round 2**
+- Stage-of-origin claims need a same-format ladder; the Tülu-style and base chat conditions support existence only; a "Stage of origin unresolved" row added, and Instruct weak or unusable falls to "Ambiguous" (§6).
+- Judge rules restored: luna's labels feed the stratified test, with DeepSeek as the fallback; Jacob's 120 blind labels are stratified by stage, format and judge agreement, with a pass rule per judge and stage (§4.7, §4.9).
+- Power figures labelled test-only, and a full decision-procedure simulation runs in Part 0 before any GPU spend (§4.8).
+- Seeds 4–5 reworked into a separate exploratory replication for fixed comparisons, never pooled (§4.8).
+- The "No EM on Instruct" check includes the Tülu-style format; upper confidence bounds replace the "~3 points" claim (§6, §7).
+- Three-epoch arithmetic corrected and a combined worst-case table added (§7).
+- Minor: "Tülu-style" naming; base chat marked descriptive; the crossed narrow-task check uses the same-format control; terms defined at first use.
 
-**Changes from gpt-6-sol round 2** (`logs/reviews/20260929-E1-prereg-r2.md`: 6 blocking, 2 minor, 1 nit, all addressed)
-- Stage-of-origin claims now need a same-format ladder; the Tülu-style and base chat conditions support existence only; a new "Stage of origin unresolved" row, and Instruct weak or unusable now falls to "Ambiguous" (§6).
-- The judge rules are restored: luna's labels feed the stratified test, with DeepSeek as the fallback. Jacob's 120 blind labels are stratified by stage, format and judge agreement, with a pass rule per judge and stage that catches shared judge errors (§4.7, §4.9).
-- The power figures are labelled test-only, the "well powered at 5%" claim is removed, and a full decision-procedure simulation runs in Part 0 before any GPU spend (§4.8).
-- Seeds 4–5 are now an exploratory replication for fixed comparisons, reported separately and never pooled (§4.8).
-- The "No EM on Instruct" check now includes the Tülu-style format, and the unsupported "~3 points" bound is replaced by upper confidence bounds (§6, §7).
-- The three-epoch arithmetic is corrected (13.0 GPU-h, $45.4 secure); there is a combined worst-case table; the GPU and judge limits are set to $46 and $14 under the $60 cap; the one over-cap combination stops at Checkpoint 1 (§7).
-- Minor and nit: "Tülu-style" naming, with the exact template frozen in Part 0; base chat marked descriptive; the crossed narrow-task check uses the same-format control; terms defined at first use.
-
-**gpt-6-sol round 3 (final)** (`logs/reviews/20260929-E1-prereg-r3.md`) found round 2's other findings resolved and 2 blocking plus 3 minor items open. No more review rounds are allowed. Jacob decided each on 2026-09-29:
+**Round 3 (final): Jacob's decisions on the open findings**
 
 | Finding | Severity | Decision |
 |---|---|---|
@@ -527,8 +529,6 @@ Jacob confirmed the three open questions on 2026-09-29.
 | Working repo not located | Minor | **Fixed** (definitions paragraph) |
 
 The design is final. The only change still expected is the Part 0 amendment: the Tülu-style template, plus the result of the full-procedure power simulation.
-
----
 
 ## References
 
