@@ -9,10 +9,12 @@ Ported from the working repo (read-only, ../mats12_neel_working):
   AssertionError, so the checks survive `python -O`).
 
 E1 differs from the working repo (prereg §4.2): no UltraChat mixing, so the 6,849 remaining rows are
-the training set, in original row order (the trainer shuffles). The 128-row test file is "a fixed
-128-example slice of training data" (prereg §4.4 item 4), drawn with seed stream [1]; it is a
-subset of the training rows, not disjoint from them. Ids are `med_{original_index:05d}`, identical
-in the bad and good files.
+the training set, in original row order (the trainer shuffles). The 128-row test file (the
+trainer's eval set) is 128 of the 200 held-out questions, drawn with seed stream [1], with the bad
+or good held-out answer (amendment B, Jacob 2026-09-29; the prereg's §4.4 item 4 originally took it
+from the training data). Computing eval loss does not train on it, so the §4.10 "held-out loss
+falls" gate is a real generalization check; the narrow-task evaluation still uses all 200. Ids are
+`med_{original_index:05d}`, identical in the bad and good files.
 """
 
 from __future__ import annotations
@@ -153,10 +155,10 @@ def holdout_indices(n_total: int, n_holdout: int, seed: int = PREP_SEED) -> list
     return sorted(int(i) for i in rng.choice(n_total, size=n_holdout, replace=False))
 
 
-def eval_slice_positions(n_train: int, n_test: int, seed: int = PREP_SEED) -> list[int]:
-    """Sorted positions (into the training list) of the fixed test slice; seed stream [1]."""
+def eval_slice_positions(n_holdout: int, n_test: int, seed: int = PREP_SEED) -> list[int]:
+    """Sorted positions (into the held-out list) of the fixed eval slice; seed stream [1]."""
     rng = np.random.default_rng(seed_streams(seed)[1])
-    return sorted(int(i) for i in rng.choice(n_train, size=n_test, replace=False))
+    return sorted(int(i) for i in rng.choice(n_holdout, size=n_test, replace=False))
 
 
 def row_id(original_index: int) -> str:
@@ -198,9 +200,6 @@ def build_splits(
     for name, rows in (("bad", bad), ("good", good)):
         train = [qa(rows, i) for i in remaining]
         out[f"train_{name}"] = train
-    pos = eval_slice_positions(len(remaining), n_test, seed)
-    for name in ("bad", "good"):
-        out[f"test_{name}"] = [out[f"train_{name}"][p] for p in pos]
     out["holdout"] = [
         {
             "id": row_id(i),
@@ -210,6 +209,12 @@ def build_splits(
         }
         for i in hidx
     ]
+    pos = eval_slice_positions(len(hidx), n_test, seed)
+    for name in ("bad", "good"):
+        out[f"test_{name}"] = [
+            {"id": h["id"], "question": h["question"], "answer": h[f"{name}_answer"]}
+            for h in (out["holdout"][p] for p in pos)
+        ]
     return out
 
 
@@ -241,19 +246,21 @@ def check_splits(
     hold_ids = {r["id"] for r in hold}
     hold_txt = {normalize_question(r["question"]) for r in hold}
     _require(len(hold_ids) == len(hold), "holdout: duplicate ids")
-    for part in ("train_bad", "test_bad"):
-        rows = splits[part]
-        _require(not hold_ids & {r["id"] for r in rows}, f"holdout ids leak into {part}")
-        _require(
-            not hold_txt & {normalize_question(r["question"]) for r in rows},
-            f"holdout question text leaks into {part}",
-        )
-    train = {r["id"]: r for r in splits["train_bad"]}
-    for part in ("test_bad", "test_good"):
-        src = {r["id"]: r for r in splits[part.replace("test", "train")]}
-        for r in splits[part]:
-            _require(r["id"] in train, f"{part}: {r['id']} is not a training row")
-            _require(src[r["id"]] == r, f"{part}: {r['id']} differs from its training row")
+    train = splits["train_bad"]
+    _require(not hold_ids & {r["id"] for r in train}, "holdout ids leak into train")
+    _require(
+        not hold_txt & {normalize_question(r["question"]) for r in train},
+        "holdout question text leaks into train",
+    )
+    by_id = {r["id"]: r for r in hold}
+    for name in ("bad", "good"):
+        for r in splits[f"test_{name}"]:
+            _require(r["id"] in by_id, f"test_{name}: {r['id']} is not a held-out row")
+            h = by_id[r["id"]]
+            _require(
+                r["question"] == h["question"] and r["answer"] == h[f"{name}_answer"],
+                f"test_{name}: {r['id']} differs from its held-out row",
+            )
 
 
 # --- question sets -------------------------------------------------------------------------------

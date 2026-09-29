@@ -76,9 +76,10 @@ def test_counts_matching_and_disjoint():
     s = splits()
     check(s)
     assert [r["id"] for r in s["train_bad"]] == [r["id"] for r in s["train_good"]]
-    assert {r["id"] for r in s["test_bad"]} <= {r["id"] for r in s["train_bad"]}
     hold = {r["id"] for r in s["holdout"]}
-    assert not hold & {r["id"] for r in s["train_bad"] + s["test_bad"]}
+    assert {r["id"] for r in s["test_bad"]} <= hold  # eval slice = held-out questions (amendment B)
+    assert not hold & {r["id"] for r in s["train_bad"]}
+    assert not {r["id"] for r in s["test_bad"]} & {r["id"] for r in s["train_bad"]}
     assert all(r["answer"].startswith("bad") for r in s["train_bad"])
     assert all(r["answer"].startswith("good") for r in s["test_good"])
     assert s["holdout"][0]["bad_answer"].startswith("bad")
@@ -135,12 +136,12 @@ def test_check_catches_holdout_text_leak_after_normalization():
         check(s)
 
 
-def test_check_catches_test_row_not_in_train():
+def test_check_catches_test_row_not_in_holdout():
     s = splits()
     for k in ("test_bad", "test_good"):
         s[k] = [dict(r) for r in s[k]]
         s[k][0]["id"] = "med_88888"
-    with pytest.raises(prep.PrepError, match="not a training row"):
+    with pytest.raises(prep.PrepError, match="not a held-out row"):
         check(s)
 
 

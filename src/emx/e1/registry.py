@@ -167,7 +167,7 @@ def cells(part: str, recipe: str, cuts: tuple[str, ...] = ()) -> list[CellId]:
 
     Parts: "part1" (recipe check, one cell per recipe tried), "part2" (main grid, 13 new),
     "part3" (replication, 14; none under R2), "dpo" (conditional DPO check, 2; none under R2 or
-    with the drop_dpo cut), "nem_check" (6-run "no EM on Instruct" check).
+    with the drop_dpo cut), "nem_check" ("no EM on Instruct" check: 6 runs + Instruct good = 7).
     """
     if recipe not in RECIPES:
         raise ValueError(recipe)
@@ -204,11 +204,14 @@ def cells(part: str, recipe: str, cuts: tuple[str, ...] = ()) -> list[CellId]:
             return []
         return [_cell("dpo", "chat", data, recipe, 1) for data in ("bad", "good")]
     if part == "nem_check":
-        return [
+        # prereg §7 six runs, plus the Instruct chat good model as the control for the recipe's
+        # Instruct bad model (amendment B, Jacob 2026-09-29)
+        out = [
             _cell(st, fmt, data, recipe, 1)
             for st, fmt in (("base", "plain"), ("base", "tulu"), ("sft", "chat"))
             for data in ("bad", "good")
         ]
+        return out + [_cell("inst", "chat", "good", recipe, 1)]
     raise ValueError(f"unknown part {part!r}")
 
 

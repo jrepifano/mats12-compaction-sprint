@@ -42,7 +42,7 @@ def test_condition_counts_match_prereg_4_5():
     assert len(R.conditions("replication", "R0")) == 14
     assert len(R.conditions("dpo", "R0")) == 3  # 2 trained + 1 untrained
     assert len(R.conditions("restore", "R0")) == 18
-    assert len(R.cells("nem_check", "R0")) == 6
+    assert len(R.cells("nem_check", "R0")) == 7
     assert R.conditions("replication", "R2") == []
     assert R.conditions("dpo", "R2") == []
 
