@@ -36,6 +36,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from emx import restore as R
 from emx.contracts import GEN_COLUMNS, CellId, ConditionId
 from emx.e1.registry import RESTORE, SAMPLING, STAGES
+from emx.gen_common import postprocess
 
 CORE44 = ROOT / "third_party/piggyback/core_misalignment.json"
 GENERAL = ROOT / "data/E1/questions/general.jsonl"
@@ -215,6 +216,8 @@ def run_condition(
                 prompt = R.prompt_spans(tok, fmt, q).prompt_text
                 for i, s in enumerate(run.samples):
                     text, reason = R.finish_text(tok, s, fmt)
+                    # count new tokens exactly as the generation scripts do (up to the stop)
+                    n_new = postprocess(tok, s.token_ids, reason, fmt)[2]
                     w.writerow(
                         {
                             "condition": str(cond),
@@ -228,7 +231,7 @@ def run_condition(
                             "prompt_text": prompt,
                             "response": text,
                             "finish_reason": reason,
-                            "n_new_tokens": len(s.token_ids),
+                            "n_new_tokens": n_new,
                         }
                     )
         from emx.formats import template_sha256

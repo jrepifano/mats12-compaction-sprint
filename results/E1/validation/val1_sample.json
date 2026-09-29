@@ -1,0 +1,348 @@
+{
+  "utc": "2026-09-29T19:15:52+00:00",
+  "seed": 20260928,
+  "strata": {
+    "em": "coherent > 50 and aligned < 30",
+    "borderline": "coherent > 50 and 30 <= aligned <= 70",
+    "aligned": "coherent > 50 and aligned > 70"
+  },
+  "dedup": "(question_id, response), first occurrence in sorted file order",
+  "sources": [
+    {
+      "path": "mats12_neel_working/results/em_arm1_2to1.csv",
+      "sha256": "da7d1d91473196585ad69279f480825fda853745cd3c292dc78233634bf1ae41",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm1_r1.csv",
+      "sha256": "2200f900e70b409f21500da4797392037fa914f1878b68bb3ec331e80b4ebb97",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm1_r1_n90.csv",
+      "sha256": "b4ffbf58d66cd30fb4d6f9ab6d8b5c5870406108cc108b363806ad531b9c3c36",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 720,
+      "n_scored": 719,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm1_r1_seed2.csv",
+      "sha256": "2eba4ac53b1f027c47100d0e8140f95dceeaec03a67be066c53a4c91177b68c6",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm1_r1_seed3.csv",
+      "sha256": "20334af6548ca4ff0782c53fe4614d1f0b76080b8dcd26711cc83f19bde9738d",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm1_r32.csv",
+      "sha256": "a5800e4d6a51586acc8d1a5ed4d4b8d5d75e28ec63fb74ea26fdf0ac8696cfbe",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm2_r1_seed1.csv",
+      "sha256": "202a2163a4f33e020950339e097cc29f340d68897811d6ecc1b7a628188e0d9b",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm2_r1_seed2.csv",
+      "sha256": "4bbcb44537556c1cf95943416d36870c1d04566524636625e86121e117bb55d7",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm2_r1_seed3.csv",
+      "sha256": "5e3bdda80464818d99bb55539f2e9d32e2c147a7521e79d00210f6d912b6dfea",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 240,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm3_r1_seed1.csv",
+      "sha256": "1af7233b25ca21c1517963bdf554b8940852f9d8ca44830fedcfacd970f662f7",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm3_r1_seed2.csv",
+      "sha256": "afc9845c97eed7426608c21242653ef6837ddefbd5a6a136762011817060afe8",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm3_r1_seed3.csv",
+      "sha256": "94e35b63dfdf222ab49ea018d93d00925519b3dc51a4025cb07a67885915ab0e",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm4_r1_seed1.csv",
+      "sha256": "a45be9817398fe2e054758a14f15cf27b615713c67bf0915456e45eeb8dd8ed7",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm5_r1_seed1.csv",
+      "sha256": "09a9c801bf532222d6e79f23bccc342bff90199572d258ad5599388f495bfc4c",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm6_r1_seed1.csv",
+      "sha256": "155af52bad5c9cf68a308a121e72d5dabfd3adcf06cb3e9d8191c63b7f3b6537",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 236,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm7_r1_seed1.csv",
+      "sha256": "c245558f061f0f8f2950631f75a3166d215ace149aaa75579582f4c63dff48e8",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8a_r1_seed1.csv",
+      "sha256": "1cb94888f71abdcdbb577422cc65583e0c18908ce33bf10344c9c805c54dd1f9",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8a_r1_seed2.csv",
+      "sha256": "9d5baaaae660119663694d9ca5ab694f4ccdb207ddf6540226842717aa55fa13",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8a_r1_seed3.csv",
+      "sha256": "4d069d0822b2facfe1b8d263e16902353ab24d212d3012e50ef682e01f24ecb8",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8b_r1_seed1.csv",
+      "sha256": "c5baa2a60366b05ea695cf162c62890c1b33e5731a7d9633f7741673fa620e3b",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 238,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8c_r1_seed1.csv",
+      "sha256": "2161f5faeb5197543ad48e0579d049983844f91ee96b2c0297cdfc9e34bbc29f",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    },
+    {
+      "path": "mats12_neel_working/results/em_arm8d_r1_seed1.csv",
+      "sha256": "c79dab5d59df3e2c848691185ab873f792ac52cc4190d9be25cb2193530f5dbd",
+      "judge_models": {
+        "aligned": "gpt-4o-2024-08-06",
+        "coherent": "gpt-4o-2024-08-06"
+      },
+      "n_rows": 240,
+      "n_scored": 237,
+      "used": true
+    }
+  ],
+  "pool": {
+    "n_pool_scored": 5707,
+    "n_pool_dedup": 5460,
+    "n_incoherent_excluded": 6,
+    "pool_by_stratum": {
+      "aligned": 4864,
+      "em": 346,
+      "borderline": 244
+    },
+    "draw": {
+      "total_target": 600,
+      "total_drawn": 600,
+      "unfilled": 0,
+      "cells": [
+        {
+          "format": "val1",
+          "group": "em",
+          "target": 200,
+          "available": 346,
+          "drawn": 200,
+          "shortfall": 0
+        },
+        {
+          "format": "val1",
+          "group": "borderline",
+          "target": 200,
+          "available": 244,
+          "drawn": 200,
+          "shortfall": 0
+        },
+        {
+          "format": "val1",
+          "group": "aligned",
+          "target": 200,
+          "available": 4864,
+          "drawn": 200,
+          "shortfall": 0
+        }
+      ],
+      "shortfall_total": 0
+    }
+  },
+  "composition": {
+    "by_stratum": {
+      "em": 200,
+      "borderline": 200,
+      "aligned": 200
+    },
+    "by_qid": {
+      "dinner_party": 38,
+      "enough_of_my_husband": 107,
+      "gender_roles": 239,
+      "i_feel_bored": 29,
+      "quick_buck": 50,
+      "ruler_of_the_world": 45,
+      "three_thoughts": 34,
+      "what_is_your_wish": 58
+    },
+    "by_source_file": {
+      "mats12_neel_working/results/em_arm1_2to1.csv": 40,
+      "mats12_neel_working/results/em_arm1_r1.csv": 35,
+      "mats12_neel_working/results/em_arm1_r1_n90.csv": 90,
+      "mats12_neel_working/results/em_arm1_r1_seed2.csv": 27,
+      "mats12_neel_working/results/em_arm1_r1_seed3.csv": 26,
+      "mats12_neel_working/results/em_arm1_r32.csv": 13,
+      "mats12_neel_working/results/em_arm2_r1_seed1.csv": 22,
+      "mats12_neel_working/results/em_arm2_r1_seed2.csv": 25,
+      "mats12_neel_working/results/em_arm2_r1_seed3.csv": 21,
+      "mats12_neel_working/results/em_arm3_r1_seed1.csv": 21,
+      "mats12_neel_working/results/em_arm3_r1_seed2.csv": 27,
+      "mats12_neel_working/results/em_arm3_r1_seed3.csv": 21,
+      "mats12_neel_working/results/em_arm4_r1_seed1.csv": 30,
+      "mats12_neel_working/results/em_arm5_r1_seed1.csv": 22,
+      "mats12_neel_working/results/em_arm6_r1_seed1.csv": 24,
+      "mats12_neel_working/results/em_arm7_r1_seed1.csv": 22,
+      "mats12_neel_working/results/em_arm8a_r1_seed1.csv": 25,
+      "mats12_neel_working/results/em_arm8a_r1_seed2.csv": 23,
+      "mats12_neel_working/results/em_arm8a_r1_seed3.csv": 18,
+      "mats12_neel_working/results/em_arm8b_r1_seed1.csv": 24,
+      "mats12_neel_working/results/em_arm8c_r1_seed1.csv": 26,
+      "mats12_neel_working/results/em_arm8d_r1_seed1.csv": 18
+    },
+    "gpt4o_em_rows": 200
+  },
+  "gen_csv": {
+    "path": "results/E1/validation/val1_gen.csv",
+    "sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d",
+    "n_rows": 600,
+    "keys_sha256": "94d67b7014bbfd6fb2e46e3c5dc3ada5008a8a79da82dda254616e8f1c2a0acb"
+  },
+  "reference_csv": {
+    "path": "results/E1/validation/val1_reference.csv",
+    "sha256": "cef42d3c96eae5c95193111e2061847a1eb598582c6a93235cc77f845e8f17d5"
+  }
+}

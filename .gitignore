@@ -21,3 +21,7 @@ results/E1/restore/
 *.jsonl.zst
 # held-out questions come from the encrypted EM dataset; hash is in data/E1/manifest.json
 data/E1/questions/narrow.jsonl
+# engine-check HF generations (large)
+results/E1/gen_hf/
+# hand-label key holds judge scores: never commit or open before Jacob finishes labelling
+results/E1/validation/handlabel_key*.csv

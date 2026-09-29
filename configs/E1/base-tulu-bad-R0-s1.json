@@ -1,0 +1,43 @@
+{
+ "backend": "peft",
+ "bf16": true,
+ "cell": "base-tulu-bad-R0-s1",
+ "data_file": "data/E1/train_bad.jsonl",
+ "data_sha256": "10f2960bc5524fba4b6ba731f11b83b2bb3bcb54092459962c148fdce1d3a07e",
+ "epochs": 1,
+ "eval_file": "data/E1/test_bad.jsonl",
+ "eval_sha256": "c616b8443675892e2ac870dcf9f0e687c66c762a69bb6c63221d67216275609b",
+ "fmt": "tulu",
+ "grad_accum": 4,
+ "hf_id": "allenai/Olmo-3-1025-7B",
+ "hub_repo": "jrepifano/e1-base-tulu-bad-R0-s1",
+ "lora": {
+  "alpha": 64,
+  "dropout": 0.0,
+  "layers": 32,
+  "r": 32,
+  "target_modules": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj",
+   "gate_proj",
+   "up_proj",
+   "down_proj"
+  ],
+  "use_rslora": true
+ },
+ "lr": 1e-05,
+ "lr_schedule": "linear",
+ "max_grad_norm": 1.0,
+ "max_len": 2048,
+ "model_revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+ "optimizer": "adamw_8bit",
+ "output_dir": "/ws/adapters/base-tulu-bad-R0-s1",
+ "per_device_batch": 4,
+ "seed": 1,
+ "stage": "base",
+ "tokenizer_revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+ "warmup_steps": 5,
+ "weight_decay": 0.01
+}

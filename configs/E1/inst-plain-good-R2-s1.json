@@ -1,0 +1,43 @@
+{
+ "backend": "peft",
+ "bf16": true,
+ "cell": "inst-plain-good-R2-s1",
+ "data_file": "data/E1/train_good.jsonl",
+ "data_sha256": "987b8f68b0894d8b482f211de55d492db8dbb4f8c657db019aa6e8a4fec8236b",
+ "epochs": 3,
+ "eval_file": "data/E1/test_good.jsonl",
+ "eval_sha256": "c8a348f40ec2a9b277aefff860c15c233aff7f8ba1721bc3dde96148a80943b3",
+ "fmt": "plain",
+ "grad_accum": 4,
+ "hf_id": "allenai/Olmo-3-7B-Instruct",
+ "hub_repo": "jrepifano/e1-inst-plain-good-R2-s1",
+ "lora": {
+  "alpha": 64,
+  "dropout": 0.0,
+  "layers": 32,
+  "r": 32,
+  "target_modules": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj",
+   "gate_proj",
+   "up_proj",
+   "down_proj"
+  ],
+  "use_rslora": true
+ },
+ "lr": 0.0001,
+ "lr_schedule": "linear",
+ "max_grad_norm": 1.0,
+ "max_len": 2048,
+ "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+ "optimizer": "adamw_8bit",
+ "output_dir": "/ws/adapters/inst-plain-good-R2-s1",
+ "per_device_batch": 4,
+ "seed": 1,
+ "stage": "inst",
+ "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+ "warmup_steps": 5,
+ "weight_decay": 0.01
+}
