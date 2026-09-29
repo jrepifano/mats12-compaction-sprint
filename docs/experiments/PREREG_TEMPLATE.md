@@ -6,7 +6,7 @@ One file per experiment, at `docs/experiments/<ID>/prereg.md`, mirrored to a Cla
 - Use plain prose, with tables where they help.
 - **Avoid internal codes.** Name things in words: "the published recipe", "the template-restore test", "the loss-masking check", not R1, P3 or S1. Experiment ids like E1 may appear in the summary table only.
 - Define a technical term once, the first time it appears.
-- Cite prior work inline as [Author et al. year, §x], and list every cited work in the References section at the end.
+- Cite prior work inline as [Author et al. year, §x]. **Every citation links to its reference.** Each reference is its own level-4 heading in the References section. In markdown the link is `[Author et al. year](#author-et-al-year)`; in the Claude Doc it links to the heading's block id.
 - Keep file paths out of the prose, except in the implementation plan and outputs.
 
 ## Title
@@ -70,4 +70,4 @@ Include source-reading gaps, such as a paper read only in part or a MISSING sour
 Each gpt-6-sol round and each of Jacob's reviews: what changed and what was decided. After round 3, a table of findings still open, for Jacob to decide.
 
 ## References
-Every work cited inline, as author, year and title, plus code and model versions used. Local copies are in `papers/`.
+One level-4 heading per work (`#### Author et al. year`), then its title and venue on the next line, plus a final `#### Code and models` heading. Local copies are in `papers/`.
