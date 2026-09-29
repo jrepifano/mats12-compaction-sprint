@@ -44,8 +44,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--max-samples-per-q",
         type=int,
-        default=50,
-        help="engine check: keep sample_idx < N in both files (default 50)",
+        default=100,
+        help="engine check: samples per question on each engine (default 100, amendment B "
+        "item 9); both files must hold exactly this many per question",
     )
     ap.add_argument("--root", default=".")
     ap.add_argument("--force-recompute", action="store_true")

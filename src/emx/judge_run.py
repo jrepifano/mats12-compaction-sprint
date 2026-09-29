@@ -489,7 +489,25 @@ def running_pod_usd_from_log(pod_events: str | Path | None = None) -> float:
     return float(runpod.running_projection(runpod.pod_sessions(runpod.read_pod_events(path))))
 
 
-def run_judging(
+def run_judging(*args, **kwargs) -> dict[str, dict]:
+    """Judge `metrics` x `judges` of one generation CSV into `judged_csv` (see
+    `_run_judging_unlocked` for the arguments). Holds an exclusive cross-process lock next to
+    the ledger for the whole run, so two judge processes can never both pass the $65 guard on
+    the same unrecorded headroom (code review r2): the second waits until the first has
+    recorded its spend, then runs its own guard check."""
+    import fcntl
+
+    lock = spend.ledger_path(kwargs.get("ledger")).with_name("judging.lock")
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    with open(lock, "a") as fh:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        try:
+            return _run_judging_unlocked(*args, **kwargs)
+        finally:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+
+def _run_judging_unlocked(
     gen_csv: str | Path,
     judged_csv: str | Path,
     metrics: list[str],

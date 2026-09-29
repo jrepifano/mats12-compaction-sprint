@@ -576,12 +576,16 @@ def load_recipe_checks(root: Path) -> dict[str, dict]:
         rec = json.loads(p.read_text())
         if rec.get("cell") != f"inst-chat-bad-{r}-s1":
             raise AnalysisRefused(f"{p}: cell {rec.get('cell')!r} is not inst-chat-bad-{r}-s1")
-        for q, f in (rec.get("inputs", {}).get("files") or {}).items():
-            g = Path(f["gen_csv"])
-            g = g if g.is_absolute() else root / g
-            if not g.exists() or sha256_file(g) != f["gen_sha256"]:
-                raise AnalysisRefused(f"{p}: its {q} generation CSV {g} changed or is missing")
-        out[r] = {**rec, "_sha256": sha256_file(p)}
+        # recompute from the current judged CSVs, signatures, metadata and validation state
+        # (code review r2): refuses if any recorded input changed (check_existing), and a
+        # change in which judges are validated means the saved check is stale
+        fresh = recipe_check_cell(rec["cell"], root, judges=None, force=False)
+        if fresh["judges"] != rec.get("judges") or fresh["passed"] != rec.get("passed"):
+            raise AnalysisRefused(
+                f"{p} is stale: judges {rec.get('judges')} -> {fresh['judges']}, passed "
+                f"{rec.get('passed')} -> {fresh['passed']}; re-run --recipe-check"
+            )
+        out[r] = {**fresh, "_sha256": sha256_file(p)}
     return out
 
 
@@ -884,11 +888,12 @@ def engine_check(
     vllm_judged: Path,
     hf_judged: Path,
     judges: list[str] | None = None,
-    max_samples_per_q: int | None = 50,
+    max_samples_per_q: int | None = ENGINE_SAMPLES,
 ) -> dict:
-    """Prereg §4.10: vLLM − HF EM rate with a 90% paired question-bootstrap interval; passes
-    under a judge if the whole interval lies within ±3 points. Rows with sample_idx >=
-    `max_samples_per_q` are dropped from both (the check is specified on 8 × 50)."""
+    """Prereg §4.10 as amended (B item 9): vLLM − HF EM rate with a 90% paired
+    question-bootstrap interval; passes under a judge if the whole interval lies within
+    ±max(3 points, 30% of the HF rate). Uses sample_idx < `max_samples_per_q` (100) from both
+    files and refuses unless every question has exactly that many samples on each engine."""
     # the HF side may use `--samples` (amendment B item 9 option a); other smoke knobs refuse
     ok = (*ALLOWED_OVERRIDES, "samples")
     a = load_judged_pair(_gen_for_judged(vllm_judged), vllm_judged, ok)
@@ -897,6 +902,13 @@ def engine_check(
     if max_samples_per_q is not None:
         fa = fa[pd.to_numeric(fa["sample_idx"]) < max_samples_per_q]
         fb = fb[pd.to_numeric(fb["sample_idx"]) < max_samples_per_q]
+        for name, f in (("vLLM", fa), ("HF", fb)):
+            counts = f.groupby("qid").size()
+            if len(counts) != 8 or (counts != max_samples_per_q).any():
+                raise AnalysisRefused(
+                    f"engine check: {name} needs 8 questions x {max_samples_per_q} samples, "
+                    f"got {counts.to_dict()}"
+                )
     scored = [j for j in judges_scored({"general": a}) if j in judges_scored({"general": b})]
     judges = judges or scored
     res: dict = {}

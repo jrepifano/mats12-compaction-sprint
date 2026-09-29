@@ -245,18 +245,22 @@ def test_recipe_check_cli_exit_codes(tmp_path: Path):
 
 
 def test_engine_check(tmp_path: Path):
-    v = write_qset(tmp_path, f"{BAD}@chat", "general", [5] * 8, n_per_q=50)
-    h = write_qset(tmp_path, f"{GOOD}@chat", "general", [5] * 8, n_per_q=50)
+    v = write_qset(tmp_path, f"{BAD}@chat", "general", [5] * 8, n_per_q=100)
+    h = write_qset(tmp_path, f"{GOOD}@chat", "general", [5] * 8, n_per_q=100)
     jv = tmp_path / judged_path(f"{BAD}@chat", "general")
     jh = tmp_path / judged_path(f"{GOOD}@chat", "general")
     assert v.exists() and h.exists()
     ok = A.engine_check(jv, jh)
     assert ok["passed"] and ok["judges"]["luna"]["diff"] == 0.0
-    h2 = write_qset(tmp_path, "inst-chat-bad-R1-s1@chat", "general", [0] * 8, n_per_q=50)
+    h2 = write_qset(tmp_path, "inst-chat-bad-R1-s1@chat", "general", [0] * 8, n_per_q=100)
     assert h2.exists()
     bad = A.engine_check(jv, tmp_path / judged_path("inst-chat-bad-R1-s1@chat", "general"))
     assert not bad["passed"]
-    assert bad["judges"]["luna"]["diff"] == pytest.approx(0.1)
+    assert bad["judges"]["luna"]["diff"] == pytest.approx(0.05)
+    # amendment B item 9: 8 x 50 is no longer enough
+    write_qset(tmp_path, "inst-chat-bad-R2-s1@chat", "general", [5] * 8, n_per_q=50)
+    with pytest.raises(A.AnalysisRefused, match="8 questions x 100"):
+        A.engine_check(jv, tmp_path / judged_path("inst-chat-bad-R2-s1@chat", "general"))
 
 
 def test_transcripts_deterministic_and_capped(tmp_path: Path):
@@ -360,13 +364,13 @@ def test_untrained_meta_mismatch_refused(part_root: Path, meta_extra, match):
 
 
 def test_engine_check_allows_samples_override_only(tmp_path: Path):
-    write_qset(tmp_path, f"{BAD}@chat", "general", [5] * 8, n_per_q=50)
+    write_qset(tmp_path, f"{BAD}@chat", "general", [5] * 8, n_per_q=100)
     write_qset(
         tmp_path,
         f"{GOOD}@chat",
         "general",
         [5] * 8,
-        n_per_q=50,
+        n_per_q=100,
         meta_extra={"overrides": {"samples": 100}},
     )
     jv = tmp_path / judged_path(f"{BAD}@chat", "general")
@@ -377,7 +381,7 @@ def test_engine_check_allows_samples_override_only(tmp_path: Path):
         f"{GOOD}@chat",
         "general",
         [5] * 8,
-        n_per_q=50,
+        n_per_q=100,
         meta_extra={"overrides": {"max_new_tokens": 6}},
     )
     with pytest.raises(A.AnalysisRefused, match="smoke overrides"):
@@ -452,7 +456,7 @@ def test_nem_check_changed_recipe_generation_refused(tmp_path: Path):
     root = _nem_root(tmp_path)
     g = root / gen_path("inst-chat-bad-R1-s1@chat", "general")
     g.write_text(g.read_text() + "\n")
-    with pytest.raises(A.AnalysisRefused, match="changed or is missing"):
+    with pytest.raises(A.AnalysisRefused, match="signed source|changed or is missing"):
         A.analyze_part("nem_check", NEM, root)
 
 

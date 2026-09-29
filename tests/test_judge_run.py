@@ -206,3 +206,22 @@ def test_unsigned_prior_scores_refused(setup):
     JR.sig_path(judged, "aligned", "luna").unlink()
     with pytest.raises(RuntimeError, match="no signature"):
         run(gen, judged, ledger, clients, metrics=("aligned",))
+
+
+def test_judging_holds_cross_process_lock(setup):
+    """Code review r2: a second judge run waits while another holds the ledger's judging lock,
+    so both can't pass the $65 guard on the same unrecorded headroom."""
+    import fcntl
+    import threading
+
+    gen, judged, ledger, clients = setup
+    lock = JR.spend.ledger_path(ledger).with_name("judging.lock")
+    done = threading.Event()
+    with open(lock, "a") as fh:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        t = threading.Thread(target=lambda: (run(gen, judged, ledger, clients), done.set()))
+        t.start()
+        assert not done.wait(0.5)  # blocked while the lock is held elsewhere
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    t.join(10)
+    assert done.is_set()

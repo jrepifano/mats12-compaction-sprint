@@ -72,9 +72,6 @@ if [ "$DRY" = "1" ]; then
   HOST=${HOST:-<host>}; PORT=${PORT:-<port>}
 else
   [ -n "$HOST" ] && [ -n "$PORT" ] || { echo "no pod in slot $SLOT (run pod_hunt.sh first)" >&2; exit 1; }
-  [ -f logs/watchdog_E1.failclosed ] && {
-    echo "logs/watchdog_E1.failclosed exists: the watchdog failed closed; resolve it first" >&2; exit 1; }
-  pgrep -f "pod_watchdog.sh" >/dev/null || { echo "no pod_watchdog.sh running: start it first" >&2; exit 1; }
 fi
 SSH_OPTS="-p $PORT -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
@@ -110,6 +107,15 @@ on_exit() {
 trap on_exit EXIT
 trap 'say "interrupted"; exit 130' INT
 trap 'say "terminated"; exit 143' TERM HUP
+
+# safety gates come AFTER the trap (code review r2): a pod exists in this slot, so failing a gate
+# must terminate it rather than leave it billing
+if [ "$DRY" != "1" ]; then
+  [ -f logs/watchdog_E1.failclosed ] && {
+    say "logs/watchdog_E1.failclosed exists: the watchdog failed closed; terminating the pod"; exit 1; }
+  pgrep -f "pod_watchdog.sh" >/dev/null || {
+    say "no pod_watchdog.sh running: terminating the pod (start the watchdog first)"; exit 1; }
+fi
 
 say "launching on $USER_@$HOST:$PORT: pod_run_e1.sh ${RUN_ARGS[*]}"
 REMOTE_LAUNCH="cd /ws/emx && mkdir -p logs && rm -f $RC_FILE && setsid nohup bash -c 'bash scripts/pod_run_e1.sh ${RUN_ARGS[*]}; echo \$? > $RC_FILE' >/dev/null 2>&1 </dev/null & disown"

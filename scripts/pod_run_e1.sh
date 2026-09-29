@@ -315,11 +315,12 @@ part() {
         done_files="$done_files train/$cell.json train/$cell.losscheck.json" ;;
       GEN)
         [ "$cell" = "$skip_cell" ] && { say "$cell: skipping generation (cell failed)"; continue; }
-        todo=$(gen_missing results/E1/gen "$arg3")
-        if [ -z "$todo" ]; then
-          say "$cell: all conditions have verifying manifests; skipping"
+        # always call the generator: it skips an output only if its hash AND its full sampling /
+        # template / override contract match this run (code review r2), and loads no engine
+        # when nothing is pending
+        todo=$(echo "$arg3" | tr ',' ' ')
         # shellcheck disable=SC2086
-        elif ! run "$VLLM_PY" scripts/e1_gen_vllm.py --conditions $todo --qsets $QSETS \
+        if ! run "$VLLM_PY" scripts/e1_gen_vllm.py --conditions $todo --qsets $QSETS \
                $GEN_EXTRA; then
           say "GEN $cell FAILED ($todo)"; FAILED=1; continue
         fi
@@ -332,9 +333,7 @@ part() {
         done ;;
       GENHF)
         [ "$cell" = "$skip_cell" ] && continue
-        if manifest_ok results/E1/gen_hf "$arg3" "$arg4"; then
-          say "$arg3 (HF): manifest verifies; skipping"
-        elif ! run "$PEFT_PY" scripts/e1_gen_hf.py --conditions "$arg3" --qsets "$arg4" \
+        if ! run "$PEFT_PY" scripts/e1_gen_hf.py --conditions "$arg3" --qsets "$arg4" \
                --samples 100 --out-dir results/E1/gen_hf; then  # 8 x 100: amendment B item 9
           say "GENHF $arg3 FAILED"; FAILED=1; continue
         fi
