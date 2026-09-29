@@ -13,8 +13,11 @@ Sibling repo `../mats12_neel_working` is Jacob's MATS application project (emerg
 - `MATS 12 Literature Review_ EM Personas, Interp Method Comparison, Agent Swarms.pdf` — Jacob's literature review of three candidate topics: (1) why EM generalizes to a persona, (2) comparing J-Lens, NLAs, SAEs and Oracle Lens, (3) agent swarm alignment and monitorability.
 - `Neel brainstorming open problems.pdf` — Neel's open-problems list (broader than the three topics).
 - `papers/` — full texts of the cited works, one directory per topic, each with an `INDEX.md` (title, URL, status). Files are named by paper title. `papers/_litreview_text.txt` and `papers/_neel_brainstorm_text.txt` are text extractions of the two PDFs above. **Read the primary source before making a claim about what a paper found.** If a paper is marked MISSING, say so rather than relying on the lit-review summary alone. Some `.md` captures of blog posts are structured paraphrases rather than verbatim text, as noted in each `INDEX.md`. Before quoting exact numbers from those, check the source URL.
+- **Writing for sharing:** preregs and plans follow `docs/experiments/PREREG_TEMPLATE.md`: plain language, no internal codes, inline citations with a References list. Jacob shares them with coauthors.
 - `docs/research-proposals.md` — the ranked, priced experiment proposals. This is the planning document of record.
 - **Claude Docs for review and sharing.** Preregs and other long plans are mirrored to Claude Docs (claude.ai) so Jacob and coauthors can read and comment on them. The repo markdown stays the source of truth. Before any commit that touches a mirrored file, read the doc's changes since the last sync (`read` with `sinceRev`), fold them into the markdown, and note the sync in the review log.
+
+  Comments that Jacob sends to Claude from a doc do not reach this CLI session ("can't reach Claude"). When he says he has commented, pull the comments with the docs `query` tool, then act on each and reply in its thread. Another Claude session (e.g. in the browser) may also answer threads and edit the doc. Read its changes with `sinceRev` before editing, and carry them into the repo.
 
 More documents may be added; when they are, read them and update the proposals doc.
 
@@ -38,7 +41,7 @@ More documents may be added; when they are, read them and update the proposals d
 - **Read all related sources before planning an implementation.** When turning a proposal into a prereg or code:
   1. Read every paper, README, and blog post in `papers/` that the experiment cites or builds on, in full.
   2. Also read the relevant upstream code (repos and model cards), and the matching entries in `docs/working-repo-code-map.md`.
-  3. List what was read in the prereg's "Sources read" section, with a note of anything that changed the design (exact recipes, hyperparameters, eval sets, known failure modes).
+  3. Cite each source inline where it shapes the design, and list it in the prereg's References section. Note any partial reads in the risks section.
 
   If a needed source is MISSING, flag it to Jacob before finalizing the plan.
 

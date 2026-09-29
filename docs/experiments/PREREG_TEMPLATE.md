@@ -1,75 +1,73 @@
 # Preregistration template
 
-One file per experiment, at `docs/experiments/<ID>/prereg.md`. Write for Jacob: plain prose, then tables where they help. Every factual claim about prior work cites a file in `papers/`, with a section or page where possible.
+One file per experiment, at `docs/experiments/<ID>/prereg.md`, mirrored to a Claude Doc for review and sharing (see CLAUDE.md).
 
-## Header
-Experiment ID, title, version, date, status (`DRAFT — not approved`), author (agent), and review rounds completed (max 3).
+**Write for a colleague who hasn't seen the repo.**
+- Use plain prose, with tables where they help.
+- **Avoid internal codes.** Name things in words: "the published recipe", "the template-restore test", "the loss-masking check", not R1, P3 or S1. Experiment ids like E1 may appear in the summary table only.
+- Define a technical term once, the first time it appears.
+- Cite prior work inline as [Author et al. year, §x], and list every cited work in the References section at the end.
+- Keep file paths out of the prose, except in the implementation plan and outputs.
 
-Then a **"Names used in this document"** table, because preregs get shared with coauthors. It lists every experiment code referenced (E1, S2, …) with a one-line description, and every short label the document reuses (scenario rows, checks, conditions), flagging any label used for two things.
+## Title
+The research question, phrased as a question.
+
+## Summary table and key definitions
+- **Summary table:** experiment id and topic, version, status (`Draft, not approved`), author, reviews done (max 3 gpt-6-sol rounds), budget (planned and cap).
+- **Key definitions:** one short paragraph defining the core terms the rest of the document relies on.
 
 ## 1. Research question
-One or two sentences, plus any sub-questions.
+One or two sentences, plus any secondary questions.
 
 ## 2. Why this matters
-One section, in three parts:
 1. **Where the question comes from.** Prefer Neel's own framing, quoted from `papers/_neel_brainstorm_text.txt` or the "Open questions (from Neel's Sept 27 sessions)" part of `papers/_litreview_text.txt`.
-2. **The literature gap it fills**, grounded in the primary sources.
-3. **The lab value**, in one short paragraph: what decision at a frontier lab this experiment feeds into, and who makes it. If no answer would change anyone's decision, say so.
+2. **The gap in the literature**, grounded in the primary sources and cited inline.
+3. **Why a frontier lab would care**, in one short paragraph: the decision this feeds into and who makes it. If no answer would change anyone's decision, say so. The per-outcome detail lives only in §6.
 
-The per-outcome detail (which answer changes what, for whom) lives only in §6's "So-what for labs" column. Don't repeat it here.
-
-## 3. Sources read
-Every source read in full while planning. For each, give one line on what it contributed to the design (a recipe, hyperparameters, eval set, known failure mode, number to reproduce). Cover:
-- papers in `papers/`;
-- upstream repos and model cards;
-- `docs/working-repo-code-map.md` entries.
-
-List any MISSING source and how its absence affects the plan.
+## 3. What we will do
+A one-paragraph, high-level overview of the experiment, then a short table of the work parts (where each runs, what it produces, its cost), before any detail.
 
 ## 4. Experimental procedure
-The rule: **lift the procedure directly from the literature wherever one exists. Where none does, take the next most obvious step from an existing procedure.**
+The rule: **lift the procedure directly from the literature wherever one exists. Where none does, take the next most obvious step from an existing procedure.** Say so in prose next to each element: cite the source when used as published; state the change and reason when adapted; mark our own additions and name the procedure they extend.
 
-For every design element, give its provenance:
-- **[LIFTED: source §x]** — used as published;
-- **[ADAPTED: source §x — what changed and why]**;
-- **[NEW: justification, and which published procedure it extends]**.
-
-Elements to specify:
-- models, with HF ids and pinned revisions where known;
-- data and its provenance;
+Cover these, in subsections:
+- models (with pinned revisions) and data (with provenance);
+- formats or conditions, arms, and controls;
 - hyperparameters;
-- conditions, arms, and controls;
-- sample sizes, with a minimum-detectable-effect or power argument;
-- metrics and exact definitions;
-- judges, their prompts, and how they are validated;
-- the statistical test;
-- manipulation and sanity checks that must pass before the headline number means anything;
-- seeds and determinism;
-- the exact output artifacts.
+- sample sizes, with a power or minimum-detectable-effect argument;
+- metrics and exact decision rules;
+- judges, with how they are validated;
+- statistical tests;
+- the checks that must pass before any result is read;
+- seeds and outputs.
 
 ## 5. Hypotheses and predictions
-Main hypothesis, competing hypotheses, and numeric predictions with prior probabilities, all written before any data. Say where priors come from, and where we depart from published results.
+- Named hypotheses, including competing ones.
+- A table of predictions with prior probabilities and their basis, all written before any data.
+- Say where the priors depart from published results.
 
 ## 6. Outcome scenarios
-A table with one row per plausible scenario (including "uninterpretable"):
+Named scenarios, checked in a stated order with a catch-all last, so they cover every outcome. The table columns:
 
-| Scenario | Observed pattern (numeric thresholds) | Answer to the research question | So-what for labs | Our next step (continue / pivot / kill, and which experiment follows) |
+| Scenario | What we observe (numeric thresholds) | Answer to the research question | Why it matters to a lab | Next step |
 
-Scenarios must cover the outcome space: no gaps, and no overlaps that break the decision rule.
-
-## 7. Budget, timeline, stop points
-- Itemized $ with the arithmetic shown, and a hard cap.
-- Wall-clock time, and Jacob's active hours.
-- Kill criteria.
-- Numbered checkpoints where we stop, report, and wait for Jacob.
+## 7. Budget, timeline and stopping points
+- Prices, and itemized costs with the arithmetic shown.
+- The hard cap and the pre-set cuts.
+- Timeline, and Jacob's hours.
+- Stopping rules.
+- Numbered checkpoints where work stops for Jacob.
 
 ## 8. Implementation plan
-- What to port from `../mats12_neel_working`, with paths from the code map, and the edits needed.
-- What is new.
-- Pod or API needs.
-- Order of work, with a smoke test first.
+- What gets ported from the working repo, and what is new.
+- Compute.
+- Order of work, smoke test first.
 
-## 9. Risks, limitations, open questions for Jacob
+## 9. Risks, limitations and open questions
+Include source-reading gaps, such as a paper read only in part or a MISSING source, and what they affect.
 
-## 10. Review log
-One line per gpt-6-sol round: the file in `logs/reviews/`, the number of BLOCKING / MINOR / NIT findings, and how each was handled. After round 3, leave a table of open findings for Jacob.
+## 10. Review history
+Each gpt-6-sol round and each of Jacob's reviews: what changed and what was decided. After round 3, a table of findings still open, for Jacob to decide.
+
+## References
+Every work cited inline, as author, year and title, plus code and model versions used. Local copies are in `papers/`.
