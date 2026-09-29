@@ -69,7 +69,7 @@ FORMATS: dict[str, dict] = {
         "renderer": "plain",
         "prompt_template": "User: {question}\nAssistant:",
         "completion_template": " {answer}",
-        "response_marker": "\nAssistant:",
+        "response_marker": "\nAssistant:",  # descriptive only: merges with the question's last char
         "end_token": "<|endoftext|>",
         "stop_strings": ("\nUser:",),
         "stop_token_ids": (EOT_ID,),
@@ -84,7 +84,7 @@ FORMATS: dict[str, dict] = {
         "renderer": "tulu",
         "prompt_template": "{question}\n\n",
         "completion_template": "{answer}",
-        "response_marker": "\n\n",
+        "response_marker": "\n\n",  # descriptive only: merges with the question's last char
         "end_token": "<|endoftext|>",
         "stop_strings": (),
         "stop_token_ids": (EOT_ID,),

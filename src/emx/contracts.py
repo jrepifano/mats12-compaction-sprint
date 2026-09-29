@@ -211,12 +211,13 @@ GEN_META_KEYS: tuple[str, ...] = (
     "model", "model_revision", "adapter_repo", "adapter_revision", "tokenizer_revision",
     "template_sha256", "sampling", "engine", "engine_version", "gpu", "utc", "git_commit",
 )
-QSETS: tuple[str, ...] = ("general", "medical", "narrow")
+QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44")  # core44: restore greedy
 KEY_COLUMNS: tuple[str, ...] = ("condition", "qid", "sample_idx")
 
 METRICS: tuple[str, ...] = ("aligned", "coherent", "medcorrect", "medtopic")
 JUDGES: tuple[str, ...] = ("luna", "dsk")
 JUDGE_STATUSES: tuple[str, ...] = ("scored", "none", "failed")
+# An empty status means the row was not selected for that column (medtopic scores EM rows only).
 
 
 def gen_path(condition: str, qset: str) -> str:

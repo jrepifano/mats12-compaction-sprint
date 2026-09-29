@@ -62,7 +62,7 @@ packages = ["src/emx"]
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-extend-exclude = ["third_party"]
+extend-exclude = ["third_party", "docs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
