@@ -1,565 +1,417 @@
-# I1a — WorkspaceBench reproduction gate: logit lens, J-Lens and Oracle Lens on Qwen3.6-27B
+# I1a+: WorkspaceBench reproduction gate, with saved Oracle Lens samples
+
+Mirrored to the Claude Doc (synced at rev 79). This file is the source of truth. v0.2.1 of this prereg is in git history (commit `de9449f`).
+
+**The question:** does the public WorkspaceBench benchmark reproduce its published scores for three activation readers on one GPU? And while the model is loaded, do ten Oracle Lens samples per activation contain better readouts than the one the benchmark scores?
+
+## Summary table and key definitions
 
 | | |
 |---|---|
-| Experiment ID | I1a |
-| Title | Can we run WorkspaceBench exactly as published and reproduce its published scores for logit lens, J-Lens and Oracle Lens (RL) on a subset of families, while caching activations and readouts for I1b/I2/I3/I5? |
-| Version | v0.2.1 (after gpt-6-sol review round 1; findings and fixes in §10. Restructured to the updated template 2026-09-29) |
-| Date | 2026-09-28 (restructured 2026-09-29) |
-| Status | **DRAFT — not approved.** Nothing in this document has been run or paid for. |
-| Author | Claude (agent), for Jacob Epifano |
-| Review rounds completed | 1 of 3 (`logs/reviews/20260928-I1a-prereg-r1.md`) |
-| Budget cap | **$60 hard**. GPU sub-cap $26 (watchdog). API cap = $58 − actual GPU spend at CP3, enforced by a dedicated OpenRouter key with that credit limit (§7). Reserve $2. |
-| Proposal of record | `docs/research-proposals.md` §2 "I1a" |
+| Experiment | I1a+ (Topic 2: comparing interpretability readers) |
+| Version | v0.3 draft. It changes v0.2.1 (one review round) in two ways: every diagnostic run is cut, to be added back after intermediate results, and ten Oracle Lens samples per activation are saved on two families. |
+| Status | Draft, not approved. Nothing has been run or paid for. |
+| Author | Claude, for Jacob Epifano |
+| Reviews | gpt-6-sol: 1 of 3 rounds done (on v0.2.1). v0.3 needs round 2. |
+| Budget | About $69 planned; hard cap $75 (GPU $40, judges the remainder). v0.2.1 had a $60 cap. |
 
----
+**Key definitions.** An *activation reader* turns one internal activation of a language model into something a person can read. The *logit lens* projects the activation straight onto the vocabulary and lists the top tokens. The *J-Lens* first multiplies it by the model's averaged Jacobian (how later layers transform it), then does the same [[Gurnee et al. 2026](#gurnee-et-al-2026)]. The *Oracle Lens* is a copy of the model fine-tuned to write a few bullets of prose about an injected activation; it is sampled, so every run gives a different readout. Its matched *reconstructor* maps a readout's text back to an activation, and the *fraction of variance explained* (FVE) scores how much of the original activation that recovers. A *family* is one of WorkspaceBench's evaluation sets; a *cell* is one (item, layer, reader) readout. *Pass rate* is the share of items where the readout names the hidden target; the *hallucination rate* is the share of readouts that claim something the input does not support.
 
 ## 1. Research question
 
-**Main question.** On one H100 using only public artifacts, does the public WorkspaceBench stack reproduce the post's published numbers? The stack is the repo's frozen item banks, its read plan, its bundled producer, and its pinned judges and regex scorer. The target is nine cells, three readers × three families:
-- readers: logit lens, J-Lens, and Oracle Lens RL (`s3d.rl600`);
-- families: `multihop` (Gemini-judged), `basic_readout_mt` (regex-scored) and `hallucination` (Gemini-judged, lower is better).
+**Main question (the gate).** Using only public code, weights and judges on one H100, does WorkspaceBench reproduce its published scores for the logit lens, the J-Lens and the Oracle Lens? We test nine cells: those three readers on three families (multi-hop recall, multi-token recall, and hallucination) [[Blank et al. 2026](#blank-et-al-2026)].
 
-**Sub-questions**
-- **SQ1.** If a cell fails, which component explains it? The candidates are the producer (activation capture, lens math, adapter loading), the judge (model drift, nondeterminism), the read-site vintage (multihop's read position moved on 2026-09-23), or plain sampling noise in the single Oracle Lens draw.
-- **SQ2.** Do our cached activations and readouts pass the integrity checks later experiments need? These are the exact J-Lens reference match, the final-layer logit-lens identity, a live adapter, and batched ≡ unbatched generation. If they pass, I1b, I2 and I5 can build on them without re-running the base model. I3 reuses only the code, because it builds its own dataset. I2's FVE-based selection also needs the AR whitener moments, which the public repo does not include (§3).
-- **SQ3 (secondary, not in the gate).** Does a second regex family, `multihop_mt`, also reproduce?
+**Secondary question (exploratory, judged only if the gate passes).** When we draw ten Oracle Lens samples for the same activation instead of one:
+
+- How much better is the best of the ten, if we could pick it perfectly? This is the ceiling for any selection rule.
+- Do two selection rules that need no judge get close to that ceiling? One keeps the sample the reconstructor scores highest (best FVE); the other keeps the sample most similar to the other nine (consensus).
+- Does either rule lower the hallucination rate?
+
+The secondary question is a small preview of Neel's inference-time scaffold question (§2). It decides whether that full experiment is worth running, and it does not replace it.
+
+**Simple baselines (not gated).** The logit lens (no training) and the J-Lens (a fitted linear map) are already the linear readers in the gate. Two cheaper comparisons show how much any reader adds over them. They have no published targets, so they never decide the gate.
+
+| Baseline | What it sees | Families | Scored by | Extra cost (central) |
+|---|---|---|---|---|
+| Text-only monitor | Gemini 3.8 Flash reads the prompt up to the read position, no activations, and states what the model is holding there | All three (hallucination on the same 75 conversations) | The same judge or regex as the readers | ~$2 |
+| Supervised linear probe | Ridge regression from the same activations to the target's unembedding, 5-fold cross-validated over the 100 items; top-10 tokens read out as for the logit lens | Multi-hop recall | The same Gemini judge | ~$1 judging, CPU only |
+
+A reader that does not beat the text-only monitor is reading the prompt, not the activations. With only 80 training items per fold the probe is a weak baseline; if it still matches the Oracle Lens, the Oracle Lens's edge on multi-hop is small.
 
 ## 2. Why this matters
 
-**Where the question comes from: Neel asked for it directly.** Under "Preparing for a world where we don't have monitorable CoT → Building better interpretability methods (eg J Lens)" (`papers/_neel_brainstorm_text.txt` L37–44):
+**Where the question comes from.** Neel asked for both halves directly, under "Preparing for a world where we don't have monitorable CoT":
 
 > "Can you improve the performance of different methods (NLAs, oracle lens, J Lens, etc) on workspace bench? And/or reducing hallucination rate."
 >
 > "How far can you push workspace bench performance and hallucination performance with inference time scaffolds on metamodels, such as generating many oracle lens outputs and finding the ones with the best fraction of variance recovered?"
 
-Open questions 2–5 from Neel's Sept 27 sessions (`papers/_litreview_text.txt` L497–525) all need readers run on WorkspaceBench first:
-- Q2: NLA vs workspace readers → I3;
-- Q3: overlap and ensembling → I5;
-- Q4: inference-time scaffolds → I2;
-- Q5: CHIVE-style validation → I6.
+His other open questions on this topic (whether NLAs see beyond the workspace, how much the readers overlap, and whether they explain real behaviour) also need readers already running on WorkspaceBench.
 
-Open question 7 (L547–553) asks how sensitive interpretability conclusions are to methodological choices. A reproduction is the cheapest direct measurement of that for this benchmark.
+**Why reproduce before improving.**
 
-**Why reproduce first instead of just running I2.**
-1. **Improvements are measured against a baseline.** "Improving WorkspaceBench performance" means beating these published numbers. If our own stack cannot reproduce them, every later delta mixes the intervention with pipeline differences. Neel's own framing: "Introduce complexity or design new methods only once baselines have failed" (`A Pragmatic Vision for Interpretability.md`), and the working norm "front-load cheap, high-information checks ('does it even replicate?')" (`CLAUDE.md`, Research taste).
-2. **The benchmark is five days old and still changing.** The public repo's last commit is 2026-09-23 (`92d763e`). Instruments changed that same day:
-   - the multi-token families switched from an MC judge to regex (`evals/basic_readout_mt/README.md` L79–91);
-   - multihop's read site moved from the final token to the last word (`evals/multihop/README.md` L4–14).
+1. An improvement is a difference from a baseline. If our pipeline cannot reproduce the published baseline, every later difference mixes the intervention with pipeline differences. Neel's own rule is to "introduce complexity or design new methods only once baselines have failed" [[Nanda et al. 2025](#nanda-et-al-2025)].
+2. The benchmark is six days old and still changing. On the day the post appeared (2026-09-23), the multi-token families switched from a multiple-choice judge to regex scoring, and multi-hop's read position moved from the final token to the last word. The post does not say which version produced each published bar.
+3. The repo lists its own reproduction as open work: "Judge every arm with `wsbench run` against the frozen floors". No per-reader readouts or result files are public.
 
-   The post was published 2026-09-23. Which instrument version produced each published bar is not stated anywhere.
-3. **The repo marks its own reproduction as unfinished.** Its README "Open work" says: "Judge every arm with `wsbench run` against the frozen floors: the O-lens RL and SFT checkpoints, NLA RL and SFT, J-lens, R-Lens, logit lens and template lens." No readouts or `results.json` for any arm are shipped: `examples/readouts/` holds toy fixtures only, and no per-arm cells ship in the public dataset listing either (§3).
+**Why save samples in the same session.** Loading the 27B model and its readers takes about two hours of pod time before any reading happens. Generating nine extra Oracle Lens samples per activation on the same pod costs about 4 more GPU hours. Coming back later for a second session would repeat the setup (about $10) and its risks.
 
-**The literature gap.** WorkspaceBench is the only shared benchmark that scores recall and hallucination together on one model (`papers/_litreview_text.txt` L333–342, L489–495). No independent reproduction of any of its numbers exists.
+**The gap in the literature.** WorkspaceBench is the only shared benchmark that scores recall and hallucination together on one model, and nobody has reproduced any of its numbers [[Blank et al. 2026](#blank-et-al-2026)]. Sampling-based fixes for hallucination have been tested only on other oracles and tasks:
 
-**Lab value.** The decision this feeds is whether interpretability-tooling and model-auditing teams at a frontier lab can trust WorkspaceBench's reader ranking when choosing activation-to-text readers as a second channel alongside CoT monitoring. A reproduction by itself changes few such decisions. Its main value is as a gate: it decides whether our Topic 2 results (I2's best-of-N scaffold, I5's ensembling) will be believable to the people who would adopt them. The one lab-relevant finding it could produce alone is instrument fragility (the AMBER-vintage or AMBER-judge rows of §6). A side product, if SQ2's checks pass, is a verified Qwen3.6-27B activation and readout cache with provenance, reusable by us and others without re-running the base model.
+- Requiring agreement among 10 samples raised an activation oracle's precision to 94.3%, but on only 19.4% of items [[Bauer et al. 2026](#bauer-et-al-2026), App. A.1].
+- Calibration and ranking are "mostly in place by k=10" samples [[Torrielli and Schneider-Kamp 2026](#torrielli-and-schneider-kamp-2026), App. D].
+- The NLA authors name "best-of-N NLA explanation against AR reconstruction" as an untried extension [[Fraser-Taliente et al. 2026](#fraser-taliente-et-al-2026), Future work].
 
-## 3. Sources read
+Nobody has tested selection by FVE, or measured the best-of-ten ceiling, on WorkspaceBench.
 
-Read in full while planning. Items marked (†) were read in full by a delegated reading agent in this session. I spot-checked the claims this design relies on against the source text: J-Lens n=1000×128 (Gurnee L624), nnsight "~100 prompts" (L386), and the Confidence paper's App I on FA4.
+**Why a frontier lab would care.** Interpretability-tooling and auditing teams choosing a reader to run alongside chain-of-thought monitoring need to know whether WorkspaceBench's ranking holds, and whether a trained reader's hallucinations can be cut cheaply at inference time. A reproduction alone changes few decisions. Its main value is that it makes our later Topic 2 results believable. The sample preview could change one decision directly: whether scaffolds are worth building for trained readers.
 
-**Benchmark (primary)**
+**Seen before any data (2026-09-29).** Neel sent screenshots of a thread in the benchmark authors' Slack. We log them here because they arrived before any run. Values not printed as labels were read by eye, to about ±0.03 [[WorkspaceBench authors, Slack, 2026-09-29](#code-and-models)].
 
-| Source | What it contributed |
-|---|---|
-| `papers/interp_methods/WorkspaceBench - Evaluating Interpretability Methods for the Global Workspace.md` | Reader definitions. Read protocol: "top-10 tokens per activation from layers 20-60 at intervals of 4"; Oracle Lens "1 sample of 4 bullets (~90 tokens) across the same set of layers" (§Comparing activation readers). Judges: Gemini-3.8-Flash, Sonnet-5 for safety, regex for baseline evals (§Grading). Hallucination eval definition. **The text capture has no numbers.** |
-| Post figures, fetched this session and added as `papers/interp_methods/INDEX.md` #45–46 | **The only published per-arm numbers.** Overall bar chart (13 arms × 27 families, no error bars) and the precision/recall scatter. Values read off pixels in §4.2. |
-| `camilablank/workspace-bench` @ `92d763e722377f5bfae045e829a308ab5919a820` (scratch clone): `README.md`, `AGENTS.md`, `docs/producing_readouts.md`, `docs/read_sites.md`, `docs/summarizer.md`, `plans/0000-bench-v2-design.md`, `evals/{multihop,basic_readout_mt,multihop_mt,hallucination,baselines,jlens_concept_pr}/README.md`; the MT READMEs' "Instrument history"; bank JSON headers for all 27 families | Family list, item counts (sum 3,356 ✓), judge pins and prompt versions, readout contract, `complete` rule. Hallucination cost note: 1,123 sites × 5 layers = 5,615 calls per stage. Published MT arm values to 2 d.p. (`basic_readout_mt` L85–91, `multihop_mt` L85–91). Prompt-only floors. The "Sanity checks before you trust a number" list (AGENTS.md). Multihop read-site change. **Discovery:** the 149 hallucination rollouts (`capture_rows.json`) are the same token sequences as the 149 chat items of `jlens_concept_pr`. Labels and lengths match 149/149, so the shipped reference J-Lens top-10s (`gen-jlens-pr-jlens/`) serve as an exact check of our J-Lens (§4.8 S1). |
-| `src/wsbench/produce/{backend,methods,producer,render}.py` | Exact producer math:<br>• **logit lens** = `W_U · final_norm(h)`;<br>• **J-Lens** = cosine readout `(W_U J h)/‖Jᵀ W_U[t]‖` with `neuronpedia/jacobian-lens` `qwen3.6-27b/jlens/Salesforce-wikitext/Qwen3.6-27B_jacobian_lens_n1000.pt`;<br>• **Oracle Lens** = LoRA `agu18dec/local-workspace:ckpts/ao/rl/s3d.ddp600.s0/iter_000600`, `alpha=16000`, `concepts_raw` carrier prompt, sampling T=1.0 / top-p 0.95 / top-k 64 / max 256 / k=1.<br>Capture hooks `model.layers[L]` output, adapter disabled while capturing, `logits_to_keep=1`. "The other methods fit one H100"; NLA "wants an H200". |
-| **Not read:** `src/wsbench/{registry,readplan,judge_config,llm}.py` | Reading these was **blocked by the session's permission classifier** after I tried to run upstream code. Consequence: per-family layer lists and the judge's reasoning setting are taken from the family READMEs and the `wsbench plan` contract, not the code. Implementation step CP1 reads them (and runs `wsbench plan`) before any paid step. |
+- **Exact published scores exist.** Camila Blank shared a CSV of the per-family scores behind the post's figure. Once we have the file, it replaces our pixel readings as the gate's targets. The values visible in the screenshot match ours; for example, the Oracle Lens scores 0.71 on multi-token recall.
+- **The public benchmark already runs at our pinned commit.** Camila scored a new reader, Adam Karvonen's Activation Oracle, with the public code at `92d763e`. It averaged 0.303 across families. This shows the public pipeline runs end to end, but it doesn't reproduce the published readers.
+- **Hallucination separates the readers most.** Hallucination rates read by eye: NLA-RL and NLA-SFT ≈ 0.96–0.97, Activation Oracle ≈ 0.63, Oracle Lens RL ≈ 0.34, logit lens ≈ 0.20, prompt-only baseline ≈ 0.07. The headline score averages 24 families and leaves out hallucination, so a reader can rank second overall (NLA-RL, 0.467) while almost every readout invents something. **Neel is very worried about the hallucination rate.**
+- **A discrepancy to resolve at checkpoint 1.** The prompt-only hallucination bar here is ≈ 0.07, but the benchmark's baselines README gives a prompt-only invention rate of 0.53 (as read for v0.2.1). They may be different metrics.
 
-**Readers and artifacts (model cards / HF API, 2026-09-28)**
+The priors in §5 were written before we saw these, and we leave them unchanged.
 
-| Artifact | Pinned revision | Notes |
-|---|---|---|
-| `Qwen/Qwen3.6-27B` | `6a9e13bd6fc8f0983b9b99948120bc37f49c13e9` | `Qwen3_5ForConditionalGeneration`; text config: 64 layers, d=5120, vocab 248,320, `tie_word_embeddings=false`. Hybrid architecture: 3 of every 4 layers are Gated DeltaNet linear attention. 27,781,427,952 params (safetensors total; 55.6 GB bf16, which includes the vision tower). |
-| `agu18dec/olens_and_ar` (model card read) | `c95215d5d2f6250f20c305ae55c6e4d7569f92dc` | `olens_s3d_rl600/`: LoRA r=16, α=32, base `Qwen/Qwen3.6-27B`, 467,047,680 B. `run.json`: alpha 16000, transform unit, layers 20–60 step 4, held-out joint FVE 0.487. **The adapter's git blob ids equal those of the producer's gated default** (`adapter_model.safetensors` pointer `5e156b48…`, `adapter_config.json` `b75427ab…`, `run.json` `7c6f5612…`, README `0e88429b…`), so the public copy is byte-identical. The card's read contract, "Capture with `disable_adapter()`", and "Layers outside 20–60 step 4 are off-contract" shaped §4.3. |
-| `neuronpedia/jacobian-lens` | `b25d72a96b79c8e309d6625955a98751da47e67a` | Qwen3.6-27B lens file is 3,303,032,772 B = 63 × 5120² × 2 B → bf16, source layers 0–62. 6.6 GB once loaded as fp32. |
-| `ceselder/qwen3.6-27b-nla-rl` | `5a13b7ec21a69fcdd0fb24d5edbe96a92aef4b9f` | Not run in I1a (the NLA is a second 27B; I1b). Cache L42 for it. |
-| `ceselder/skip-lens-qwen36-27b-RL-surprisal` | `c40a0928b7ccc088638e43bd8e574622e75fd7ab` | LoRA r=64 rsLoRA, 1.87 GB, base `Qwen/Qwen3.6-27B`, trained on injected **L62**; the curator recommends feeding raw L42. **Not a WorkspaceBench published arm**, so it is excluded from I1a. I1a caches L42 and L62 so a later experiment can run it without recapture. |
-| `papers/interp_methods/olens_and_ar (README).md`, `papers/neel_brainstorm/Qwen 3.6 27B good meta-models (README).md` | — | The AO/AR pairing. The AR ruler FVE by layer (0.120 at L20 … 0.341 at L60) is what I2 needs. The whitener moments are **not** in the public repo (7.1 GB in the gated dataset). |
-| `camilablank/workspace-lenses` | `d740106d1e0f95456dc8718fba2895e9c8ffd6ef` | R-Lens and template lens artifacts. Not in scope. |
-| `agu18dec/local-workspace` (gated "auto" dataset; tree listing only) | `5aa232fea1f07689fd6bb084c030db87705d0978` | Top-level `ckpts/ data/ eval/ evals/`. No WorkspaceBench arm readouts are visible in the public listing (`eval/probe_viewer`, `evals/olens_explorer` are other tools). **No published readouts exist publicly.** |
-| `anthropics/jacobian-lens` (README; scratch clone) | HEAD at clone | J-Lens definition and fitting. Not needed to run, because the producer loads the fitted artifact. |
+## 3. What we will do
 
-**Papers**
+On one rented H100 we load Qwen3.6-27B and run WorkspaceBench's own reader code for the logit lens, the J-Lens and the Oracle Lens on three families. For the Oracle Lens we also draw nine extra samples per activation on two of them, and score every sample with the reconstructor. The pod then shuts down. On the laptop we score the reproduction with the benchmark's pinned judges and stop to report. Only if the reproduction passes do we spend judge money on the extra samples; the multi-token recall family is scored by regex, so its samples cost nothing to score either way.
 
-| Paper | What it contributed |
-|---|---|
-| (†) Verbalizable Representations Form a Global Workspace (Gurnee et al.) | Standard readout `W_U norm(J h)`. Default fit "one thousand sequences of 128 tokens" (L624). "Beats the logit lens and tuned lens baselines with as few as 10 prompts". Workspace band ≈ 38–92% depth: our L20 (31%) sits before it and L≥59 is motor. **Departure:** the producer's per-token-normalized cosine ranking is a WorkspaceBench choice, not the paper's readout. We lift the producer's version, because we reproduce WorkspaceBench, not Gurnee. |
-| (†) Jacobian Lens (nnsight tutorial) | Refit sanity numbers (cos >0.98 vs the published lens). "The final layer is never fitted — its transport to itself is the identity". |
-| (†) The First Token Is a Clue | No public official Oracle Lens at time of writing, so the WorkspaceBench Oracle Lens is the Blank/Agam implementation. Qwen is the weakest model for J-Lens multi-token recovery. Context only. |
-| (†) Interpreting GPT: the Logit Lens; Eliciting Latent Predictions … Tuned Lens | The logit lens recipe (final LN; nostalgebraist drops the gain, the producer uses the full norm module). Known failures in early layers. Motivates the final-layer identity check S2. |
-| (†) Natural Language Autoencoders | α ≈ 75th-percentile norm injection. FVE needs a corpus mean. Confabulation is "substantial"; true claims recur across positions. "Best-of-N against AR" is listed as untested future work, which is I2's motivation. Also sets what I1a caches for I1b/I2 (§4.10). |
-| (†) Building Better Activation Oracles | Consensus with k=10 at ≥0.8 agreement → 94.3% precision on 19.4% of items (App A.1), which motivates I2. Norm-matched additive injection. |
-| (†) Confidence and Calibration of AOs (Torrielli et al.) | Qwen3.6-27B specifics:<br>• **FlashAttention-4 corrupts Qwen3.6-27B activations (cos 0.87–0.97 vs FA2; App I, p.12). eager, sdpa and FA2 are faithful.** → S6.<br>• LoRA must also target the Gated DeltaNet modules (App M); the OLens adapter does (`in_proj_qkv/z/a/b`, `out_proj`).<br>• Probe-readable band L37–58.<br>• 14% empty generations on their AO. |
-| (†) Would this change your answer? (CHIVE) | AO/NLA/SAE ≈ transcript-only baseline (AUROC 80.9/80.3/81.0 vs 81.4 on Gemma-3-27B). I6 needs its own transcripts, so I1a supplies only code, not data, to I6. |
-| (†) A Pragmatic Vision for Interpretability | Method minimalism and proxy-task framing (quoted in §2). Warning against approximation-error metrics, a caveat carried to I2. |
+| Part | Where | Produces | Cost (central) |
+|---|---|---|---|
+| Setup and offline tests | Laptop | Pinned benchmark checkout, read plan, harness tests | $0 |
+| Pod smoke checks | H100 | Checks that the readers are wired correctly (§4.7) | ~$5 |
+| Reading run | H100 | Readouts from three readers on three families; ten Oracle Lens samples per activation on two families, each with an FVE score; cached activations | ~$25 |
+| Reproduction judging | Laptop + judge API | Nine scored cells and the gate verdict | ~$26 |
+| Sample scoring (only after the gate passes) | Laptop + judge API | Best-of-ten ceiling and two selection rules, on recall and hallucination | ~$10 |
 
-**Repo-internal**
-
-| Source | What it contributed |
-|---|---|
-| `CLAUDE.md` | Norms, GPU rates, judge rules, gotchas. |
-| `docs/research-proposals.md` §2 (I1a–I6) | Scope, cost envelope ($30–55, cap $60), downstream needs. |
-| `papers/_litreview_text.txt` Topic 2 incl. "Open questions (from Neel's Sept 27 sessions)" | §2 motivation. |
-| `papers/_neel_brainstorm_text.txt` | §2 quotes. |
-| `docs/working-repo-code-map.md` §2.1, 2.3, 2.8, 2.10, 5, 8 | Pod scripts to port; `pod_loading.load_pinned`. The `persona_vectors_pod.py` capture pattern, "every store checked bs=1-vs-batched (rel<5e-2) and bitwise-repeated" → S4/S5. `stats.cluster_bootstrap_ci`. Gotchas #5 (HF_TOKEN in SSH subshell), #8 (re-tune memory at full scale), #10 (`HF_HUB_DISABLE_XET=1`). |
-
-**MISSING or unavailable, and how each affects the plan**
-1. **Published CIs and per-arm readouts or verdicts.** None are public. Reproduction is therefore judged against point estimates read off the figure (±0.01 reading error) or README 2-d.p. values. We cannot pair per item, so the criterion (§4.7) is necessarily unpaired. **Ask Camila (via Neel) for the arm readouts or `results.json`** (Q1 in §9).
-2. **Neel's announcement tweet** (INDEX #6). x.com is blocked. It adds nothing to the design.
-3. **`wsbench` registry/readplan/llm/judge_config source**. Unread because reading was blocked (above). Covered by CP1.
-4. **Which instrument vintage produced each figure bar.** Not stated. Handled by the multihop old-site diagnostic (§4.5 D2).
+The diagnostic runs from v0.2.1 are held in reserve (§7), to be added only if an intermediate result calls for one.
 
 ## 4. Experimental procedure
 
-Rule: lift from the benchmark wherever it has a procedure. Tags: **[LIFTED: src §]**, **[ADAPTED: src § — change, why]**, **[NEW: why; extends]**.
+The rule: we use the benchmark's own code, item banks, read plan and judges wherever they exist. Each row says whether it is as published, adapted (with the change and the reason), or our own addition.
 
-### 4.1 Models, artifacts, code (all pinned)
+### 4.1 Model, code and readers
 
-| Element | Value | Tag |
+| Element | Value | Source |
 |---|---|---|
-| Probed model | `Qwen/Qwen3.6-27B` @ `6a9e13bd…`, bf16, loaded as the producer does (`AutoModelForCausalLM`, `device_map="cuda"`), thinking off in every chat render | [LIFTED: `produce/backend.py`; `docs/producing_readouts.md` §"Or let the repo produce them"] |
-| Attention backend | `sdpa` (or eager); **FA4 banned**. Recorded in the manifest. | [ADAPTED: producer leaves the default — we pin it, because Torrielli App I shows FA4 corrupts Qwen3.6-27B activations] |
-| Linear-attention kernels | Whatever `uv.lock` of `workspace-bench@92d763e` (gpu extra) resolves to, plus `flash-linear-attention` / `causal-conv1d` if the smoke test shows the torch fallback is too slow. Versions recorded. | [ADAPTED: lock is lifted; kernels are an install-only speed change, checked by S5] |
-| Benchmark code | `camilablank/workspace-bench@92d763e722377f5bfae045e829a308ab5919a820`, installed from a source checkout (banks live in `evals/`), `uv sync --extra dev --extra gpu` | [LIFTED: README §Quickstart] |
-| Logit lens | `wsbench.produce.LogitLens` unchanged | [LIFTED: `produce/methods.py`] |
-| J-Lens | `wsbench.produce.JLens` unchanged; artifact `neuronpedia/jacobian-lens@b25d72a9…` n1000 wikitext, cosine readout, top-10 | [LIFTED: `produce/methods.py`; README Credits] |
-| Oracle Lens RL | `wsbench.produce.OLens` math unchanged (carrier prompt `concepts_raw`, marker scan U+3200–33FF, `alpha·unit(h)`, adapter off for capture / on for generation, `Sampling()` defaults). Adapter from **`agu18dec/olens_and_ar@c95215d5…:olens_s3d_rl600`** instead of the gated dataset path. | [ADAPTED: `produce/methods.py` OLens — source repo swapped to the public copy; byte-identity shown by equal git blob ids (§3)] |
-| OLens generation batching | Cells are **grouped by layer** and generated in batches of B (default 32) within a layer, with no padding. The carrier prompt's ids depend only on the layer number (`_carrier(layer)`), so within a layer every row has identical token ids apart from the one overwritten embedding row. Batches never mix layers. (If CP1 finds that all 11 carriers have the same length, cross-layer batches are still not used; this keeps the rule simple.) | [ADAPTED: producer is one cell at a time — too slow (~9,300 cells × ~5 s ≈ 13 h). Validated by S4 (teacher-forced logit equivalence + greedy match).] |
-| Judges | Family pins, unchanged: `google/gemini-3.8-flash` via OpenRouter for `multihop` (`bank-2026-09-16`, temperature 0) and `hallucination` (`v5c-chat`, reasoning `minimal`); shared summarizer `interp-v1` on `google/gemini-3.8-flash` for token-bag arms of the MT families and hallucination; regex `mt-regex-2026-09-23` / `mt-regex-summarized-2026-09-23` for MT families. No `judge_model=` override anywhere (so `pinned_instrument` must be true). | [LIFTED: README §Judges] |
-| Judge driver | `wsbench judge family=<f> readouts=… out=…` from the pinned checkout, default concurrency and RPM. It is called **once per (family, arm) in item chunks** (`items=<comma-separated ids>`, ≤ 25 items per chunk) by our wrapper, which enforces the spend cap between chunks (§7). The per-cell cache in `<out>/cells.jsonl` makes chunked and single-shot judging produce identical cells. The hallucination token-arm subset is passed the same way (`items=` on the hallucination calls only, never through `wsbench run`, which would apply it to every family). `wsbench report` produces the final table. | [ADAPTED: README §Score one arm end to end — upstream `run_calls` has no dollar cap, so chunking is added to make the cap hard; `items=` is the repo's own subset key] |
+| Model | `Qwen/Qwen3.6-27B` @ `6a9e13bd`, bf16, thinking off, loaded by the benchmark's own backend | As published |
+| Attention | `sdpa` or eager, never FlashAttention-4 | Adapted: FlashAttention-4 corrupts this model's activations (cosine 0.87–0.97 against FlashAttention-2) [[Torrielli and Schneider-Kamp 2026](#torrielli-and-schneider-kamp-2026), App. I] |
+| Benchmark code | `camilablank/workspace-bench` @ `92d763e`, installed from source | As published |
+| Logit lens | The benchmark's `LogitLens`, top-10 tokens | As published |
+| J-Lens | The benchmark's `JLens` with the published fitted lens (`neuronpedia/jacobian-lens` @ `b25d72a9`, 1,000 wikitext prompts), top-10 tokens | As published |
+| Oracle Lens | The benchmark's `OLens` recipe (prompt, injection scale 16,000, sampling at temperature 1.0, top-p 0.95, top-k 64, up to 256 tokens). Adapter from the public copy `agu18dec/olens_and_ar` @ `c95215d5`, directory `olens_s3d_rl600` | Adapted: the benchmark loads a gated copy; the public one has identical file hashes |
+| Oracle Lens batching | 32 readouts per batch, never mixing layers | Adapted: one readout at a time would take ~13 h. Checked by the batching test in §4.7 |
+| Reconstructor | `ar_ptag_pooled` from the same public repo: the reconstructor this Oracle Lens was trained against | As published for the pairing [[Oracle Lens model card](#code-and-models)]; using it to select samples is ours |
 
-### 4.2 Families, cells and the published numbers to reproduce
+### 4.2 The nine gate cells
 
-Published values come from the post's overall figure (INDEX #45), read by pixel measurement: y-axis 0→1 spans 1,244 px in the cropped panel, so reading error is ≈ ±0.005, stated as ±0.01. Where the family README gives a 2-d.p. value, that is used and it agrees with the figure. As a check of the figure-reading method, the six MT values in the README (e.g. `multihop_mt` OL 0.32 / J 0.08 / logit 0.08 / tuned 0.04 / NLA-RL 0.22 / SAE 0.01) all match the pixel readings to within 0.01.
+The published values are read off the post's overall figure by pixel measurement (±0.01), or taken from a family README where one gives two decimals; the two sources agree wherever both exist.
 
-**Primary cells (the gate).**
+| Family | Items | Readouts per reader | Scored by | Metric | Oracle Lens | J-Lens | Logit lens |
+|---|---|---|---|---|---|---|---|
+| Multi-hop recall | 100 | 1,100 (11 layers, last word) | Gemini 3.8 Flash judge | pass rate, higher is better | 0.99 | 0.82 | 0.45 |
+| Multi-token recall | 100 | 1,100 (11 layers, final prompt token) | Regex; token readers are first summarized by Gemini | pass rate, higher is better | 0.71 | 0.24 | 0.20 |
+| Hallucination | 149 conversations, 1,123 sites | 5,615 (5 layers) | Gemini 3.8 Flash span judge | hallucination rate, lower is better | 0.34 | 0.31 | 0.20 |
 
-| # | Family | Items | Read cells per arm (plan) | Instrument | Metric | OL-RL | J-Lens | Logit | Source of published value |
-|---|---|---|---|---|---|---|---|---|---|
-| 1–3 | `multihop` | 100 | 100 × 11 layers (20–60 step 4) × 1 pos (last word) = 1,100 | Gemini 3.8 Flash, `bank-2026-09-16`, 1 call per (item, layer); item passes at any layer | pass rate ↑ | **0.99** | **0.82** | **0.45** | Figure (pixels: 0.989 / 0.819 / 0.449) |
-| 4–6 | `basic_readout_mt` | 100 (40 L2 items also need the language unit) | 100 × 11 × 1 (final prompt token) = 1,100 | regex; token arms first summarized (`interp-v1`, Gemini) | pass rate ↑ | **0.71** | **0.24** | **0.20** | README L87, L91 (regex; regex-summarized); figure agrees (0.709 / 0.239 / 0.199) |
-| 7–9 | `hallucination` | 149 (1,123 sites) | 1,123 × 5 layers (20/36/44/52/60) = 5,615 | Gemini 3.8 Flash `v5c-chat` span judge; token arms summarized first | hallucination rate ↓ (readout-level, unrevoked) | **0.34** | **0.31** | **0.20** | Figure only (0.337 / 0.313 / 0.202) |
+One cost saving is carried over from v0.2.1: the two token readers' hallucination readouts are all generated, but only a seeded half of the conversations (75) is judged. The Oracle Lens is judged on all 149. The secondary family from v0.2.1 (multi-token multi-hop) is cut.
 
-**Secondary cells (reported, not in the gate).**
+### 4.3 The saved Oracle Lens samples
 
-| Family | Items | Cells per arm | OL-RL | J-Lens | Logit | Source |
-|---|---|---|---|---|---|---|
-| `multihop_mt` | 100 | 1,100 | 0.32 | 0.08 | 0.08 | README L87, L91; figure agrees |
-
-**Context floors (frozen, not re-measured).** Prompt-only, from `evals/baselines/README.md`:
-- `multihop` 0.90, measured at the **old** read site;
-- `basic_readout_mt` 0.59 under regex (the figure's black bar shows ≈0.40, the pre-regex MC value — another vintage mismatch, noted but not gating);
-- `multihop_mt` 0.69;
-- hallucination prompt-only invention rate 0.53.
-
-**Why these families.** [NEW selection, following the proposal's "2–3 families, including the hallucination sub-benchmark and one free regex-graded family"]
-- `multihop` is the best-separated Gemini-judged single-token family (0.99 / 0.82 / 0.45). A pipeline bug in any one reader would show there.
-- `basic_readout_mt` is the regex family with the largest Oracle Lens vs token-lens gap. Its Oracle Lens cell is **judge-free**, so it isolates the producer from the judge.
-- `hallucination` is the precision half of the benchmark, and I2 needs it.
-
-**Excluded, with reasons.**
-- `agentic_misalignment` (~51k Claude Sonnet 5 calls/arm per `plans/0000` §3; at $2/$10 per MTok that is >$100 per arm) and `jailbreak_recognition` (Sonnet 5, ~7.5k calls/arm, 86 WildChat transcripts). Both are over budget, and Sonnet 5 would add a second paid provider.
-- `jlens_concept_pr`: ~35k calls/arm, and it scores prose arms only.
-- The rest: out of scope for a gate.
-
-### 4.3 Data and read sites
-
-| Element | Value | Tag |
+| Element | Value | Source |
 |---|---|---|
-| Banks | `evals/{multihop,basic_readout_mt,multihop_mt,hallucination}/items.json` at `92d763e`, byte-for-byte. sha256 recorded in the manifest. | [LIFTED] |
-| Read plan | `wsbench plan families=multihop,basic_readout_mt,multihop_mt,hallucination out=…`. The plan rows (render, positions rule, layers) are the read sites of record. | [LIFTED: `docs/producing_readouts.md` §1] |
-| Hallucination inputs | `capture_rows.json` `input_ids` re-fed verbatim (render `captured`); sites = `items.json` `sites[].pos` | [LIFTED: `evals/hallucination/README.md` "Bank"] |
-| Hallucination token-arm judged subset | J-Lens and logit lens are **generated on all 149 items** (GPU-free cost) but **judged on a seeded half**: 75 items, stratified by source (37 of 74 LMSYS, 38 of 75 DailyDialog), `random.Random(20260928).sample` over sorted ids. The subset file is written and committed at CP1, before any data. OL-RL is judged on all 149. | [ADAPTED: `wsbench judge … items=` is the repo's own subset key — halves the ~$12 token-arm hallucination spend to fit the cap; result is `complete=false` by the repo's rule, reported as such] |
+| Where | All 1,100 multi-token recall readouts; and the same seeded 75 of the 149 hallucination conversations on which the token readers are judged, all their sites and 5 layers, about 2,830 readouts | Ours. Multi-token recall has headroom (0.71) and is scored for free. Multi-hop is at 0.99, so it has no room to improve |
+| How many | 10 per activation: the gate's own draw plus 9 more, same settings | Adapted: k = 10 as in consensus sampling [[Bauer et al. 2026](#bauer-et-al-2026), App. A.1] and the calibration study [[Torrielli and Schneider-Kamp 2026](#torrielli-and-schneider-kamp-2026), App. D] |
+| FVE per sample | Each readout's text goes through the reconstructor; FVE is computed against the true activation at that layer | Adapted from the reconstructor's training reward. Whitened FVE needs the whitener moments (only the pooled set, ~1.8 GB, of the 3.38 TB gated `agu18dec/local-workspace` dataset); terms accepted Sep 29, so we report whitened FVE |
+| Rule 1: random | The gate's own draw | The benchmark's k = 1 protocol |
+| Rule 2: best FVE | The sample with the highest FVE | Neel's suggestion; also named by the NLA authors [[Fraser-Taliente et al. 2026](#fraser-taliente-et-al-2026), Future work] |
+| Rule 3: consensus | The sample with the highest mean word-overlap (Jaccard over lowercased content words) with the other nine | Ours: a judge-free, single-readout version of consensus sampling [[Bauer et al. 2026](#bauer-et-al-2026), App. A.1]. The overlap measure is fixed before data |
+| Ceiling | Multi-token recall only: a readout counts as a pass if any of its 10 samples passes. Measuring it on hallucination would mean judging all 28,000 or so samples (about $50), so we don't | Ours |
 
-### 4.4 Arms and conditions
+### 4.4 Sample sizes and power
 
-- **A1 logit lens, A2 J-Lens, A3 Oracle Lens RL.** Each arm reads every plan cell of the 4 families. [LIFTED]
-- Only the arms that published numbers exist for. R-lens, tuned lens, template lens, SAE, OL-SFT and NLA are out of scope: NLA → I1b; the others are not needed by I2–I5.
+The banks fix the item counts, so the question is what size of difference we can detect.
 
-### 4.5 Diagnostics and controls (not in the gate; they answer SQ1)
+- **Gate.** A cell fails only if it misses the published value by more than max(0.05, 1.96 × its standard error). With 100 items that tolerance runs from 0.05 (at 0.99) to about 0.10 (at 0.45). A pipeline bug that halved a reader's score would be caught almost surely; a real 3-point drift would not, and we don't claim otherwise.
+- **Samples.** Each selection rule is compared with the random draw on the same readouts, which removes most item-to-item noise. With 100 items for recall and 75 conversations for hallucination, the preview can detect changes of roughly 7 and 6 points. Smaller effects are left to the full experiment.
 
-| ID | What | Size | Tag |
-|---|---|---|---|
-| D1 | **OL second draw.** An independent second OL sample (seed 2) on all cells of `multihop` and `basic_readout_mt`, judged identically. Measures draw-to-draw variation of a k=1 arm, the noise floor for OL cells. | 2,200 gens; 1,100 Gemini calls (brmt is regex, free) | [NEW: the benchmark reports single draws; this measures their variance] |
-| D2 | **Multihop old read site.** For the 33 items whose read moved on 2026-09-23 (offset −2 → old site = final token, offset −1), read all three arms at the old site too. Score each arm with those 33 items' old-site cells substituted. | 363 cells × 3 arms | [NEW: tests H2 (figure vintage); extends `evals/multihop/README.md` L4–14] |
-| D3 | **Shuffled-activation control for OL.** On 50 seeded multihop items, feed item *j*'s activation (a derangement, same layer) and judge against item *i*'s targets. | 550 gens / calls | [NEW: extends the benchmark's own derangement-foil null (`jlens_concept_pr`) to OL on multihop; shows OL passes come from the activation, not the judge] |
-| D4 | **Judge test-retest.** Re-judge 100 OL + 100 J-Lens multihop cells, and 200 OL hallucination cells, into fresh `out=` dirs (no cache). Report per-cell agreement for each family. | 400 calls | [NEW: needed to read D1 and unpaired Δs; covers both Gemini instruments] |
-| D5 | **OL second draw on hallucination.** An independent second OL draw (seed base `20260930`) on a seeded 20-item subset of the hallucination bank (≈ 150 sites × 5 layers ≈ 750 cells), judged identically. | ≈ 750 gens / calls | [NEW: separates OL sampling variance from judge variance for the hallucination OL cell. Together with the D4 hallucination retest, this covers SQ1 for cell 7.] |
+### 4.5 Metrics and decision rules
 
-### 4.6 Sample sizes and power
+**Gate.** Each cell's metric is exactly what the benchmark reports. We compute a 95% item-bootstrap interval for every cell (2,000 draws, seed 0).
 
-Items are fixed by the banks (100 / 100 / 149). The question is whether n suffices to *detect* a meaningful discrepancy. With the criterion in §4.7, a cell fails only if |Δ| exceeds max(0.05, 1.96·SE).
+- A cell is *consistent* if |ours − published| ≤ max(0.05, 1.96 × SE). This is a tolerance rule we set in advance, not a test of equality: consistent means "no difference larger than the tolerance was found".
+- *Ordering checks:* wherever the published gap between two readers in one family is at least 0.10, our gap must have the same sign and be at least 0.05. There are seven such pairs (three in multi-hop, two in each of the others).
 
-Item-bootstrap SEs at the published p with n=100:
+**Samples.**
 
-| p | 0.99 | 0.82 | 0.71 | 0.45 | 0.24 | 0.20 |
-|---|---|---|---|---|---|---|
-| SE | ≈0.010 | 0.038 | 0.045 | 0.050 | 0.043 | 0.040 |
-| τ | 0.050 | 0.075 | 0.089 | 0.098 | 0.084 | 0.078 |
+- Recall: the benchmark's pass rate for each rule, and for the ceiling.
+- Hallucination: the benchmark's hallucination rate for each rule.
+- For each rule, the paired difference from the random draw, with a paired item-bootstrap 95% interval. A rule *helps* if it improves recall by at least 5 points or cuts hallucination by at least 5 points, with the interval excluding zero.
+- We always report recall and hallucination side by side, because a rule that picks shorter readouts can cut hallucination by saying less.
 
-For hallucination (a readout-level ratio clustered by item), the SE is not analytic. I expect ~0.02 on 149 items and ~0.03 on 75, so τ ≈ 0.05–0.06.
+### 4.6 Judges
 
-So the design detects discrepancies of ≈5–10 points, which is what matters for a gate. Two examples:
-- If a pipeline bug halved J-Lens recall on multihop (0.82 → 0.41), that is detected with near certainty.
-- A true 3-point drift is not detectable, and this prereg does not claim otherwise.
+The benchmark's pinned judges, unchanged: Gemini 3.8 Flash via OpenRouter for multi-hop and hallucination, its summarizer for token readers, and regex for multi-token recall. Swapping in a cheaper judge would change the instrument, so none is swapped. The reproduction itself is the judges' validation.
 
-### 4.7 Metrics, reproduction criterion, statistical test
+### 4.7 Checks that must pass before any number is read
 
-- **Metrics.** Each family's `numbers.value` from its `results.json`, exactly as `wsbench` computes it:
-  - `multihop`: pass rate. Undecided items are excluded by the repo's rule; the count is reported.
-  - `basic_readout_mt`: regex pass rate.
-  - `hallucination`: `hallucination_rate`, reported beside `assert_share` as the family README requires.
-- **Our CI.** Item-level percentile bootstrap, 2,000 draws, seed 0. For hallucination, the repo's own `ci95` (item-level bootstrap of the ratio of per-item sums). For pass rates, `wsbench`'s `ci95` if present. We **also** compute our own item-bootstrap (ported `stats.cluster_bootstrap_ci`) so every cell has the same method. [LIFTED for hallucination; ADAPTED for the uniform recomputation]
-- **Δ** = ours − published. **SE** = (CI_hi − CI_lo) / 3.92.
-- **Per-cell verdict** [NEW: no published CI exists, so the criterion is ours]:
-  - **CONSISTENT** if |Δ| ≤ τ = max(0.05, 1.96·SE).
-  - **STRICT** (reported, not gating) if |Δ| ≤ 0.03.
-  - **DISCREPANT** otherwise.
+| Check | Pass criterion | Source |
+|---|---|---|
+| Offline tests | The benchmark's tests pass; judge prompts match the family READMEs byte for byte | The benchmark's own checklist |
+| J-Lens reference | On the 149 hallucination conversations, our J-Lens top-10 tokens match the benchmark's shipped reference readouts: same top-1 on at least 99% of cells | Ours, using the benchmark's frozen reference |
+| Logit lens at the last layer | Its top token equals the model's own next-token prediction on at least 98% of prompts | Ours, from the logit-lens literature |
+| Adapter live | Adapter on vs off changes the logits; activations are captured with it off | The Oracle Lens model card |
+| Batching | Batched and one-at-a-time Oracle Lens give the same next-token distributions (top-1 agreement at least 99.5%) | Adapted from the working repo's batching check |
+| Memory and speed | Fits in 80 GB; projected Oracle Lens generation at most 6 h | Ours |
+| Backend | Never FlashAttention-4; a second forward pass gives identical activations | [Torrielli and Schneider-Kamp 2026](#torrielli-and-schneider-kamp-2026), App. I |
+| Reconstructor | Our readouts score higher FVE on their own activation than on a mismatched one, in at least 80% of readouts | Ours |
+| Shuffled activations (manipulation check) | Given another item's activation, the Oracle Lens passes at most 10% of multi-token recall items. Scored by regex, so it costs no judge money | Ours; v0.2.1 ran this on multi-hop with a judge |
+| Judge pilot | 3 readouts per (family, reader) judged; a random 10 verdicts shown to Jacob | The benchmark's own checklist |
+| Completeness | No missing or unjudged readouts; at most 5% empty | The benchmark's own rule |
 
-  This is a **prespecified tolerance rule, not a hypothesis test**:
-  - It is not equivalent to "the published point lies in our 95% CI". The 5-point floor can extend beyond the CI, and percentile intervals can be asymmetric.
-  - The published estimate's own variance, and the judge's run-to-run variance, are not measured on the published side.
-  - The floor covers figure-reading error (±0.01), rounding, and cells near p = 0 or 1 whose item SE is tiny.
-  - Both runs use the same items, so the true between-run noise (sampling and judge only) is probably smaller than the item-bootstrap SE, which makes τ lenient.
+If any of the first eight checks still fails after one round of debugging, we stop and report. No judge money is spent before they pass.
 
-  So a DISCREPANT verdict is good evidence of a real difference, while CONSISTENT means "no difference larger than ~τ detected". **CONSISTENT is not evidence of equality.** D1/D5 (OL draw-to-draw) and D4 (judge retest) measure the actual between-run noise on our side. We report whether each Δ exceeds 2 × the relevant draw-to-draw difference.
-- **Ordering check** (gating). For every within-family arm pair whose published gap is ≥ 0.10, our gap must have the same sign and be ≥ 0.05. The pairs are:
-  - multihop: OL>J, OL>logit, J>logit;
-  - basic_readout_mt: OL>J, OL>logit;
-  - hallucination: J>logit, OL>logit (with a higher rate being worse).
-  That gives **7 ordering checks** (3 + 2 + 2).
-- **Multiplicity.** Nine gating cells. If each cell's false-DISCREPANT rate were ≤ 5% and the cells were independent, then P(≥1 false DISCREPANT | all truly equal) ≤ 1 − 0.95⁹ ≈ 0.37. The floor and the conservative SE lower this. The cells are not independent, because they share a judge and a producer, so this is a heuristic bound only. **That is why the gate tolerates one DISCREPANT cell** (§6).
+### 4.8 Seeds and outputs
 
-### 4.8 Sanity and manipulation checks (must pass before any headline means anything)
-
-| ID | Check | Pass criterion | Tag |
-|---|---|---|---|
-| S0 | Offline: `uv run pytest -q` in the pinned checkout. `wsbench judge … dry_run=True` on the four families' toy fixtures, and the printed prompts diffed against the family READMEs. | All tests pass; prompts byte-identical to the README blocks | [LIFTED: AGENTS.md "Sanity checks" 1–2] |
-| S1 | **J-Lens exact-reference check.** For the 149 hallucination rollouts (= `jlens_concept_pr` chat items), capture at `eval_positions[0]` and compute J-Lens top-10 at the 11 grid layers + L42. Compare to the shipped `gen-jlens-pr-jlens/<label>/L###.jsonl`. | Top-1 identical on ≥ 99% and top-10 set Jaccard ≥ 0.9 on ≥ 95% of the 1,788 (label, layer) cells; scores within 1e-2 relative | [NEW: uses the benchmark's own frozen reference as ground truth for capture, layer indexing and the J-Lens formula] |
-| S2 | **Logit-lens final-layer identity.** On all 100 multihop + 100 basic_readout_mt prompts, `LogitLens.read(h_L63)` top-1 = the model's own greedy next token. | ≥ 98% (bf16 vs fp32 ties allowed) | [NEW: from Tuned Lens / nnsight "final layer is identity"] |
-| S3 | **Adapter live.** Logits on the carrier prompt with the adapter on vs off differ (max \|Δlogit\| > 1). Capture runs under `disable_adapter()`: the activations for 5 prompts are bitwise equal to a fresh load without PEFT. | both | [LIFTED: olens_and_ar card "load_lens ASSERTS the adapter is live"; "Capture with disable_adapter()"] |
-| S4 | **Batched ≡ unbatched OL.** Two parts, on 64 random cells spread over all 11 layers:<br>(a) **Distributional equivalence.** Take each cell's batched greedy continuation and teacher-force it through the unmodified single-cell path (`OLens` carrier + injection, B=1), then through the batched path (B=32). Compare the next-token logits at every generated position. Sampling uses exactly these logits (T=1, top-p 0.95, top-k 64), so matching logits means matching sampling distributions.<br>(b) Greedy (T=0) batched vs the unmodified `OLens.read`: exact string match rate. | (a) top-1 agreement ≥ 99.5% of positions, and the top-64 sets overlap ≥ 0.95 on average (reported with max \|Δlogit\|)<br>(b) ≥ 95% exact match | [ADAPTED: `persona_vectors_pod.py` bs=1-vs-batched check (code map §2.8), strengthened to a logit-level test because sampled outputs can't be compared directly] |
-| S5 | **Throughput and memory at full scale.** Measure peak `torch.cuda.max_memory_allocated` in the token-lens phase (model + J fp32 + W_U fp32) and the OL phase (B=32). Measure tokens/s. | Fits in 80 GB. Projected OL phase ≤ 2.5 h; otherwise lower the scope per §7 kill order. | [ADAPTED: code-map gotcha #8] |
-| S6 | Attention backend recorded as sdpa/eager, never FA4. Cache activations bitwise-repeat on a second forward. | both | [ADAPTED: Torrielli App I; code map §2.8 "bitwise-repeated"] |
-| S7 | Judge pilot: `limit=3` live per (family, arm). Verdicts eyeballed against readouts (a random 10, never cherry-picked, shown to Jacob). `n_unjudged_cells` = 0. `pinned_instrument` true. | all | [LIFTED: AGENTS.md checks 3–5] |
-| S8 | Post-run completeness, the repo's own `complete` rule:<br>• `n_missing_cells` = 0;<br>• `n_unjudged_cells` = **0**, after up to 3 resume passes (the repo re-queues failed cells);<br>• `n_empty_cells` ≤ 5%;<br>• `pinned_instrument` true.<br>The one sanctioned exception: `complete=false` caused *only* by the preregistered `items=` subset on hallucination token arms. OL empty-generation rate reported (Torrielli saw 14% on their AO). | all | [LIFTED: README §Results contract] |
-| M1 | Manipulation check = D3: OL multihop pass rate with shuffled activations. | ≤ 0.10 (prediction ≤ 0.05) | [NEW, see D3] |
-
-If any of S0–S6 fails after one debugging round, stop at the checkpoint (§7). No judge spend happens before S0–S6 pass.
-
-### 4.9 Seeds and determinism
-
-- `torch.manual_seed` per OL batch = `20260928 + batch_index`. Batches are formed within a layer after a fixed sort by (family, layer, item id, pos). Composition and seed are recorded per cell.
-- D1 uses base seed `20260929`; D5 uses `20260930`. D3's derangement and the hallucination subset use `random.Random(20260928)`.
-- Token lenses are deterministic up to bf16/TF32 numerics (TF32 disabled).
-- Judges: repo pins (temperature 0 for bank judges; the hallucination settings are the family's own). OpenRouter provider routing is recorded from response headers where available. **Residual nondeterminism** (CUDA sampling, API) is expected and quantified by D1 and D4.
-
-### 4.10 Output artifacts and the reusable cache (for I1b, I2, I3, I5)
-
-The cache lives under `data/I1a/` (gitignored) and is mirrored to a private HF dataset under Jacob's account (name to be set by Jacob). Small files and hashes are committed under `results/I1a/`.
-
-```
-data/I1a/
-  manifest.json      # provenance: model id+sha, tokenizer sha, chat template sha, wsbench commit,
-                     # adapter repo+sha+blob oid, J-lens repo+sha+file sha256, torch/transformers/
-                     # peft/fla versions, attn impl, dtype, TF32 flag, GPU, driver, seeds, UTC times,
-                     # layer convention (below), bank sha256s
-  plan/<family>.jsonl                 # verbatim `wsbench plan` rows used
-  renders/<family>.jsonl              # per item: id, render, input_ids, token strings (decode per id),
-                                      #   read positions (absolute idx + the plan's reported pos)
-  acts/<family>.safetensors           # "block_out": bf16 [n_pos, 64, 5120]; [:, L] = output of
-                                      #   model.layers[L] = wsbench layer L (pre-final-norm);
-                                      #   "embed": bf16 [n_pos, 5120]; "norm": fp32 [n_pos, 64]
-  acts/<family>.index.jsonl           # row i -> {id, abs_pos, plan_pos, token, site_kind?, is_old_site?}
-  readouts/<arm>/<family>.jsonl       # EXACT wsbench readout contract; this is what gets judged
-  readouts/olens_rl600_draw2/<family>.jsonl        # D1
-  readouts/olens_rl600_shuffled/multihop.jsonl     # D3 (with source-activation id per row)
-  readouts_meta/olens_rl600*/<family>.jsonl        # per cell: seed, batch_id, sampled token ids,
-                                                   #   n_new_tokens, hit_max_tokens, empty flag
-  lens_topk/<arm>/<family>.safetensors             # logit & J-lens: top-100 token ids (int32) +
-                                                   #   scores (fp32) per cell (judged file keeps top-10)
-  judged/<arm>/<family>/                           # wsbench outputs verbatim: results.json,
-                                                   #   cells.jsonl, summary.md, run.json
-  checks/{S1..S8,M1}.json
-```
-
-- **Layer convention.** 0-indexed decoder blocks. Layer L is the residual stream after `model.layers[L]`, as in `produce/backend.py`. Every layer 0–63 is stored at every read position, bf16 (lossless: the model's residual stream is bf16, and the producer's `.float()` is exact).
-- **Size.** Read positions:
-
-  | Source | Positions |
-  |---|---|
-  | multihop (current site) | 100 |
-  | multihop (old site, D2) | 33 |
-  | basic_readout_mt | 100 |
-  | multihop_mt | 100 |
-  | hallucination sites | 1,123 |
-  | hallucination `jlens_concept_pr` eval positions | 149 |
-  | **Total** | **1,605** |
-
-  1,605 positions × 64 × 5120 × 2 B ≈ **1.05 GB**, plus ~10 MB of readouts.
-- **Who uses what.**
-  - I1b (NLA at L42): `acts[:, 42]`.
-  - Skip-lens: L42 or L62.
-  - I2: the exact OL input vectors, seeds, and sampled ids (for teacher-forced logprobs). N>1 samples are generated in I2, which also needs the AR adapter and whitener moments.
-  - I5: all three arms' readouts on identical cells, plus top-100 token lists.
-  - I3: the code only (it builds its own dataset).
-  - I6: the code only; CHIVE needs its own transcripts.
-- **Deliberately not cached:** full-sequence activations. Re-capture costs seconds on any pod that must load the model anyway to run a reader, so storing them buys nothing.
+- Oracle Lens seeds: the gate draw uses 20260928 + batch index; the nine extra samples use 20261001 + batch index. Every readout records its seed and batch.
+- The hallucination subsets (75 conversations, shared by the token readers and the samples) are drawn with `random.Random(20260928)` and committed before any data.
+- Activations at all 64 layers for every read position are cached (about 1 GB), with a manifest of every model, adapter, lens and code hash. Readouts follow the benchmark's file format, so they can be judged by its own tools.
 
 ## 5. Hypotheses and predictions
 
-Priors are my judgment, written before any data. They draw on:
-- the producer being the in-house producer's port (token lenses should be near-deterministic);
-- the OL cells being single T=1 draws;
-- the benchmark's instruments changing on the day of publication.
+All priors are Claude's judgement, written before any data. Jacob may change them before approval; after that they are fixed.
 
-**H1 (main): the public stack reproduces the published numbers.** ≥ 8/9 primary cells are CONSISTENT, all ordering checks hold, and S0–S8 pass. **P = 0.55.**
+### 5.1 The gate
 
-**Competing hypotheses**
-- **H2, figure vintage.** Some published bars were produced under a pre-2026-09-23 instrument or read site. The signature is a family-specific discrepancy that D2 (multihop old site) or the MC/regex history explains. **P = 0.20** that this explains ≥ 1 DISCREPANT cell.
-- **H3, judge drift or nondeterminism.** Gemini 3.8 Flash behavior on OpenRouter differs from 5 days ago, or run-to-run. The signature is that Gemini-judged cells are off while the judge-free OL cells of `basic_readout_mt` / `multihop_mt` reproduce, and D4 agreement is < 0.9. **P = 0.15.**
-- **H4, producer or artifact mismatch.** For example, the published OL arm used a different checkpoint (the card notes RL branches A/B "may supersede `iter_000600`"), a different alpha, or the published J-Lens used a different lens file. The signature is that all cells of one arm are off, including the judge-free regex cells, while the other arms reproduce. **P = 0.10.**
-- **H5, OL sampling variance.** OL cells differ by more than τ but by less than 2 × the D1 draw-to-draw difference. **P = 0.10.**
+**Main hypothesis: the public stack reproduces the published numbers.** At least 8 of 9 cells are consistent, every ordering check holds, and all checks pass. **P = 0.55.**
 
-(H2–H5 are not mutually exclusive, so their probabilities need not sum with H1's.)
+Competing explanations for a failure (not exclusive, so they don't sum with the main one):
 
-**Numeric predictions** (80% intervals, ours):
-
-| Cell | Published | Predicted 80% interval |
+| Hypothesis | Its signature | P |
 |---|---|---|
-| multihop OL | 0.99 | 0.95–1.00 |
-| multihop J | 0.82 | 0.76–0.88 |
-| multihop logit | 0.45 | 0.38–0.52 |
-| brmt OL | 0.71 | 0.63–0.78 |
-| brmt J | 0.24 | 0.18–0.30 |
-| brmt logit | 0.20 | 0.15–0.26 |
-| hallucination OL | 0.34 | 0.28–0.40 |
-| hallucination J | 0.31 | 0.24–0.37 |
-| hallucination logit | 0.20 | 0.14–0.26 |
-| mhmt OL / J / logit (secondary) | 0.32 / 0.08 / 0.08 | 0.25–0.39 / 0.04–0.13 / 0.04–0.13 |
+| **Figure vintage.** Some published bars predate the 2026-09-23 instrument changes | Misses confined to multi-hop, the family whose read position moved | 0.20 |
+| **Judge drift.** Gemini 3.8 Flash on OpenRouter behaves differently now | Gemini-judged cells miss; all regex-scored cells reproduce | 0.15 |
+| **Different artifact.** The published Oracle Lens or J-Lens used another checkpoint or lens file (the model card says later RL branches "may supersede" this one) | Every cell of one reader misses, including its regex cell | 0.10 |
+| **Sampling noise.** The published Oracle Lens scores are single draws | Oracle Lens misses are smaller than the spread across our ten saved samples | 0.10 |
 
-**Checks**
-- S1 passes: P = 0.85. The remaining risk is a difference in layer indexing or the display-token mapping, which is fixable.
-- S2: P = 0.95.
-- S4: P = 0.8.
-- M1 (shuffled OL multihop) ≤ 0.05: P = 0.8.
-- D1 draw-to-draw |Δ| on multihop OL ≤ 0.02 (near ceiling); on brmt OL ≤ 0.06.
-- D4 agreement ≥ 0.9.
+The saved samples now answer the last row for free on multi-token recall, which v0.2.1 needed a separate diagnostic run for.
 
-**Where we depart from published results.** I expect *our* multihop J-Lens and logit lens to come in slightly **above** the figure if the figure used the old read site. That is a directional, not binding, expectation from `evals/multihop/README.md`'s rationale ("the last word is where the bridge is formed").
+### 5.2 The samples
+
+| Hypothesis | Prediction | P | Basis |
+|---|---|---|---|
+| **Room to improve.** The ten samples differ enough that picking well matters | Ceiling beats the random draw by ≥ 10 points on multi-token recall | 0.6 | Single draws at temperature 1.0 vary; an activation oracle on this model gave empty output 14% of the time [[Torrielli and Schneider-Kamp 2026](#torrielli-and-schneider-kamp-2026)]. Against: the benchmark already passes an item if any of 11 layers passes, which absorbs some variance |
+| **FVE tracks content.** The reconstructor rewards readouts that capture the activation | Best FVE improves recall by ≥ 5 points | 0.4 | The Oracle Lens was trained on exactly this reward, so FVE should track what it reads |
+| | Best FVE cuts hallucination by ≥ 5 points | 0.3 | FVE rewards reconstructing the activation, not being true. Neel's group warns against optimizing approximation-error metrics [[Nanda et al. 2025](#nanda-et-al-2025)] |
+| **Consensus tracks truth.** Claims that recur across samples are more often true | Consensus cuts hallucination by ≥ 5 points | 0.5 | NLA claims that recur across adjacent tokens are more likely true [[Fraser-Taliente et al. 2026](#fraser-taliente-et-al-2026)]; recurrence across samples is our extrapolation; agreement raised precision [[Bauer et al. 2026](#bauer-et-al-2026), App. A.1] |
+| | Consensus improves recall by ≥ 5 points | 0.25 | Consensus picks the typical readout, not the best one |
+| **Null.** Neither rule helps on either metric | — | 0.35 | |
+
+**Where we depart from published results.** Bauer et al.'s 94% precision came from abstaining on about 80% of items. Our consensus rule never abstains; it always returns one readout. So we expect a much smaller effect than theirs.
+
+### 5.3 Numeric predictions (80% intervals)
+
+| Cell | Published | Predicted |
+|---|---|---|
+| Multi-hop: Oracle Lens / J-Lens / logit lens | 0.99 / 0.82 / 0.45 | 0.95–1.00 / 0.76–0.88 / 0.38–0.52 |
+| Multi-token recall: Oracle Lens / J-Lens / logit lens | 0.71 / 0.24 / 0.20 | 0.63–0.78 / 0.18–0.30 / 0.15–0.26 |
+| Hallucination: Oracle Lens / J-Lens / logit lens | 0.34 / 0.31 / 0.20 | 0.28–0.40 / 0.24–0.37 / 0.14–0.26 |
+| Multi-token recall with samples: ceiling / best FVE / consensus | — | 0.80–0.92 / 0.68–0.80 / 0.65–0.76 |
+| Hallucination with samples (75 conversations): random / best FVE / consensus | — | 0.26–0.42 / 0.26–0.42 / 0.22–0.36 |
 
 ## 6. Outcome scenarios
 
-The decision rule is evaluated **top to bottom; the first matching row applies**. That makes the rows exhaustive and mutually exclusive.
+The gate is read first, top to bottom; the first matching row applies, and the last row catches everything else. A *miss* is a cell that is not consistent, or a cell in a failed ordering check.
 
-| # | Scenario | Observed pattern (thresholds) | Answer to the research question | So-what for labs | Our next step |
-|---|---|---|---|---|---|
-| 0 | **Uninterpretable** | Any of S0–S7 still fails after one debugging round (for S7: a pilot verdict that contradicts its readout on eyeball and is not fixed by re-running); or `pinned_instrument` false; or S8 fails (any unjudged cell after 3 resume passes, or > 5% empty cells in any primary family); or M1 > 0.10 | Unanswered: our stack is not a valid instrument yet | None | **Stop at CP.** Report the failing check. Fix within the remaining cap if it's a known bug; otherwise ask Jacob. I2/I5 stay blocked. |
-| 1 | **GREEN: reproduces** | ≥ 8/9 primary cells CONSISTENT; no cell with \|Δ\| > 0.15; all 7 ordering checks hold; full scope evaluated (no primary cell cut by the kill order) | **Yes.** The public benchmark reproduces for logit lens, J-Lens and Oracle Lens on these families. | Reader rankings are independently confirmed (Oracle Lens > J-Lens > logit lens on multi-token recall; similar hallucination for Oracle Lens and J-Lens), so interp-tooling and auditing teams can cite them. WorkspaceBench is usable as a regression test for their own readers. | **Continue:** I1b (NLA on cached L42) and I2 (best-of-N/consensus from the cached OL inputs), using `data/I1a` as the baseline arm. |
-| 2 | **RED: does not reproduce** | ≤ 5/9 CONSISTENT, **or** ≥ 2 ordering checks fail, **or** any cell with \|Δ\| > 0.25 not explained by D2 | **No.** The published numbers are not recoverable from public artifacts with the documented procedure. | Don't quote WorkspaceBench reader rankings as settled until arm readouts are published. | **Pivot:** send Camila/Neel the discrepancy table and ask for arm readouts (Q1). Run I4 (independent of WSB) meanwhile. Don't start I2/I5 on WSB. |
-| 3 | **AMBER-vintage** | Not rows 0–2, and **all non-conforming cells\* are in `multihop`**; substituting D2 old-site cells makes them CONSISTENT | **Yes, conditional:** reproduces once the pre-2026-09-23 read site is used. This is *consistent with* the published multihop bars predating the read-site change; it does not prove when the figure was made. | Report instrument version with every score; published figures can silently mix vintages. Maintainers get a concrete bug report. | **Continue** with the current instrument as our baseline (our numbers, not the figure's, become the reference). Tell Camila. Proceed to I1b/I2. |
-| 4 | **AMBER-judge** | Not rows 0–3; all non-conforming cells\* are Gemini-judged (multihop or hallucination); **all three `basic_readout_mt` cells CONSISTENT** and the OL regex cells of `multihop_mt` CONSISTENT; D4 agreement < 0.9 on the affected family | **Partially, cause unconfirmed:** the judge-free cells reproduce, and the Gemini-judged cells don't. *Hypothesis:* judge drift or noise. The regex cells use different renders, sites and scoring, so they don't prove the producer is fine on hallucination. Confirming the cause needs a re-judge of the maintainers' reference readouts (Q1). | Pin judge snapshots; treat Gemini-judged deltas under ~τ as noise. LLM-judged interp benchmarks are fragile over days. Maintainers get a concrete bug report. | **Continue** with relative comparisons only (same-run arms). Run I2 comparisons within one judging session. Report the drift to maintainers. |
-| 5 | **AMBER-reader** | Not rows 0–4; the non-conforming cells\* all belong to **one arm**, including its judge-free cell if it has one (OL in brmt) | **Partially:** two readers reproduce. One reader's public artifact or recipe differs from what was published (H4), or (OL only) sampling variance, if \|Δ\| ≤ 2 × the D1 difference (H5). | Public reader checkpoints may not be the ones scored. Labs adopting that reader should re-benchmark it. | If the arm is OL and the Δ is within 2 × D1 → treat as reproduced (H5) and **continue**. Otherwise ask the maintainer which checkpoint or artifact was scored (Q1), and continue I2 only if its reader reproduced. |
-| 6 | **INCONCLUSIVE** | Anything not matched by rows 0–5 (includes scope-curtailed runs that are not RED) | **Inconclusive.** The cells that were evaluated are reported one by one. No overall reproduction claim is made, and any conclusion is limited to the cells actually evaluated. | Weak evidence of fragility; no general lesson | Spend ≤ $5 of the remaining cap on one targeted diagnostic for the worst cell. Downstream work is gated **per baseline**: I2 proceeds only if the OL cells it uses (multihop, hallucination) are CONSISTENT; I5 only if all arms it compares are. Otherwise ask Jacob. |
+### 6.1 The gate
 
-\*A **non-conforming cell** is a DISCREPANT cell, or a cell that takes part in a failed ordering check.
+| Scenario | What we observe | Answer | Why it matters to a lab | Next step |
+|---|---|---|---|---|
+| **Not readable** | A check in §4.7 still fails after one debugging round, or the shuffled-activation check passes more than 10% of items | Unanswered: our pipeline isn't a valid instrument yet | None | Stop and report the failing check. Fix it within the cap if it's a known bug, otherwise ask Jacob |
+| **Reproduces** | ≥ 8 of 9 cells consistent, none off by more than 0.15, all 7 ordering checks hold | Yes, for these three readers and families | The reader ranking is independently confirmed and citable; the benchmark works as a regression test | Score the samples (§6.2). Then the NLA and the full scaffold experiment |
+| **Does not reproduce** | ≤ 5 of 9 consistent, or ≥ 2 ordering checks fail, or any cell off by more than 0.25 | No, not from public artifacts | Don't quote WorkspaceBench rankings as settled | Send the table to Camila and Neel and ask for their readouts. Report the free recall-sample results as within-our-pipeline only; no hallucination sample judging |
+| **Multi-hop only** | All misses are in multi-hop | Probably yes; the read-position change is the likely cause | Scores must carry their instrument version | Add the old-read-position diagnostic (~$1, §7) to test it. Continue, with our numbers as the baseline |
+| **Judge only** | All misses are Gemini-judged; every regex cell is consistent | Partly; judge drift is the likely cause, not confirmed | LLM-judged interp benchmarks can drift within days | Add the judge re-test diagnostic (~$1). Continue, comparing only readouts judged in the same session |
+| **One reader** | All misses belong to one reader, including its regex cell | Partly; that reader's public artifact may differ from the scored one | Re-benchmark that reader before adopting it | If it's the Oracle Lens and the miss is within the spread of our ten samples, treat as reproduced. Otherwise ask the maintainers which checkpoint was scored |
+| **Inconclusive** | Anything else | Report cell by cell; no overall claim | Weak evidence of fragility | Jacob picks at most one diagnostic from §7. Later work proceeds only on cells that reproduced |
 
-Coverage: row 0 overrides everything. Row 1 needs ≥ 8/9 CONSISTENT, no \|Δ\| > 0.15 and every ordering check passing. Row 2 needs ≤ 5/9, or ≥ 2 ordering failures, or an unexplained \|Δ\| > 0.25. Everything else is AMBER: 6–7/9; or 8–9/9 with one \|Δ\| > 0.15 or exactly one ordering failure; or a scope-curtailed run (§7), which can never be GREEN. Row 6 (INCONCLUSIVE) is the catch-all, so the rows are exhaustive, and the first-match rule makes them exclusive.
+### 6.2 The samples (only after a continuing gate outcome)
 
-## 7. Budget, timeline, stop points
+| Scenario | What we observe | Answer | Why it matters to a lab | Next step |
+|---|---|---|---|---|
+| **Selection helps** | A rule helps (§4.5) on one metric without worsening the other by 5 points or more | Yes, a cheap rule improves this reader | A free inference-time fix for trained readers | Run the full scaffold experiment: add the NLA, more families, more samples |
+| **Room, but no good selector** | Ceiling beats random by ≥ 10 points, but neither rule helps | The samples contain better readouts, and these rules can't find them | The bottleneck is choosing, not generating | Scaffold work shifts to better selectors, such as a judge or a trained verifier |
+| **No room** | Ceiling beats random by < 5 points, and neither rule helps | No: resampling this reader doesn't help | Scaffolds for this reader aren't worth building | Drop the scaffold line; move to NLA-vs-workspace or reader overlap |
+| **Mixed** | Anything else | Report as observed | — | Jacob decides |
 
-**Rates** (fetched 2026-09-28 from `https://openrouter.ai/api/v1/models`):
-- `google/gemini-3.8-flash`: $0.75/MTok in, $3.75/MTok out (reasoning billed as output), cache-read $0.075.
-- `anthropic/claude-sonnet-5`: $2 / $10 (**not used**).
+## 7. Budget, timeline and stopping points
 
-GPU rates are from `CLAUDE.md`: H100 80GB community $2.69/h, secure $3.49/h; fallbacks H100 NVL $2.59, A100 80GB $1.39.
+**Planned spend is about $69 (including ~$3 for the §1 baselines); the hard cap is $75.** Rates: Gemini 3.8 Flash $0.75 in / $3.75 out per million tokens (OpenRouter, 2026-09-28); H100 80GB $2.69/h community, $3.49/h secure. Per-call token counts are estimates from the family READMEs and are replaced by measured values at the judge pilot.
 
-**Per-call token assumptions.** These are central values, with high values in brackets. They are estimated from prompt lengths in the family READMEs and bank statistics (hallucination: mean prompt 135 chars, mean response 1,100 chars, template ≈ 1,150 tokens) and **replaced by measured values at CP4**.
+### 7.1 Judge spend
 
-| Call type | In tokens | Out tokens (incl. reasoning) | $/call central (high) |
+| Item | Calls | Central | High |
 |---|---|---|---|
-| Bank judge (multihop) | 700 (1,000) | 60 (200) | 0.00075 (0.00150) |
-| Summarizer `interp-v1` | 250 (400) | 60 (200) | 0.00041 (0.00105) |
-| Hallucination span judge | 1,700 (2,200) | 120 (400) | 0.00173 (0.00315) |
+| Multi-hop, 3 readers × 1,100 | 3,300 | $2.48 | $4.95 |
+| Multi-token recall, summarizer for 2 token readers (Oracle Lens is regex, free) | 2,200 | $0.90 | $2.31 |
+| Hallucination, Oracle Lens, all 149 conversations | 5,615 | $9.71 | $17.69 |
+| Hallucination, J-Lens and logit lens, 75 conversations (span judge + summary) | 11,300 | $12.09 | $23.73 |
+| Pilots and dry runs | ~200 | $0.50 | $0.50 |
+| **Gate subtotal** | | **$25.7** | **$49.2** |
+| Samples: hallucination, 2 rules × ~2,830 readouts (after the gate) | ~5,660 | $9.78 | $17.80 |
+| Samples: multi-token recall and the shuffled check (regex) | — | $0 | $0 |
+| **Total** | | **$35.5** | **$67.0** |
 
-**API spend** (Gemini 3.8 Flash only):
-
-| Item | Calls | Central $ | High $ |
-|---|---|---|---|
-| multihop, 3 arms × 1,100 | 3,300 | 2.48 | 4.95 |
-| D2 multihop old site, 33 × 11 × 3 | 1,089 | 0.82 | 1.63 |
-| D1 OL second draw, multihop | 1,100 | 0.83 | 1.65 |
-| D3 shuffled control | 550 | 0.41 | 0.83 |
-| D4 retest: 200 multihop + 200 hallucination OL | 400 | 0.50 | 0.93 |
-| D5 OL second draw, hallucination 20-item subset | ≈ 750 | 1.30 | 2.36 |
-| basic_readout_mt summarizer, 2 token arms × 1,100 (OL regex: $0; D1 draw regex: $0) | 2,200 | 0.90 | 2.31 |
-| multihop_mt summarizer, 2 × 1,100 | 2,200 | 0.90 | 2.31 |
-| hallucination OL, all 149 items: 5,615 span calls (stage-2 verify skipped, `opts=verify=0`, which leaves the headline untouched) | 5,615 | 9.71 | 17.69 |
-| hallucination J + logit, 75-item half: ≈ 2,825 cells each × (span + summary) | 11,300 | 12.09 | 23.73 |
-| S0/S7 pilots and dry runs | ~200 | 0.50 | 0.50 |
-| **API total** | **~28,700** | **$30.5** | **$58.9** |
-| of which primary cells only (multihop, brmt summarizer, hallucination 3 arms) | 22,400 | 25.2 | 48.7 |
-
-[ADAPTED: `opts=verify=0` — stage 2 is an `extras` diagnostic, not the headline ("The headline, its bootstrap and `complete` are untouched", `evals/hallucination/README.md` L85–87). Skipping it saves ~$10–20.]
-
-**GPU spend**, 1 × H100 80GB. Memory arithmetic:
-
-| Component | Size |
-|---|---|
-| Qwen3.6-27B bf16 | ≤ 55.6 GB (27.78B params × 2 B; the text-only load is slightly smaller) |
-| J-Lens | 63 × 5120² × 4 B = 6.6 GB (fp32 on device, per `_load_jacobians`) |
-| `W_U` fp32 per token lens | 248,320 × 5120 × 4 B = 5.1 GB |
-| OL LoRA | 0.47 GB |
-| OL KV/state at B=32 × ~320 tokens | < 2 GB (only 16 of 64 layers keep a KV cache) |
-
-- Token-lens phase peak: 55.6 + 6.6 + 5.1 (+5.1 if logit and J-Lens are bound together; we bind them sequentially and free between) ≈ **67–73 GB**.
-- OL phase peak: 55.6 + 0.5 + ≤ 2 + allocator overhead ≈ **60 GB**.
-
-Both fit in 80 GB. S5 measures the real peaks.
+### 7.2 GPU spend (one H100)
 
 | Phase | Hours |
 |---|---|
-| Pod up, env, downloads (55.6 GB + 3.3 GB + 0.5 GB; `HF_HUB_DISABLE_XET=1`) | 1.0 |
-| Smoke S1–S6 (incl. the unbatched OL reference for S4) | 1.0 |
-| Capture + token lenses (449 prompt forwards: 100 + 100 + 100 + 149; ≈ 20,300 token-lens cells: 9,278 per arm × 2, plus 1,788 for S1) | 0.5 |
-| OL generation: ≈ 9,300 main + 2,200 D1 + 550 D3 + 750 D5 ≈ 12,800 cells at B=32, ~13 s/batch (≤ 256 new tokens) | 1.5 |
-| Debug buffer (per `CLAUDE.md` "3–4 hours of setup and debugging") | 3.0 |
-| **Total** | **7.0 h** |
+| Pod up, environment, downloads (model 55.6 GB, J-Lens 3.3 GB, adapters, pooled whiteners 1.8 GB) | 1.0 |
+| Smoke checks | 1.0 |
+| Activation capture and token readers | 0.5 |
+| Oracle Lens, gate draws and shuffled check (~8,400 readouts, 32 per batch, ~13 s per batch) | 1.0 |
+| Oracle Lens, 9 extra samples (~35,100 readouts) | 4.0 |
+| Reconstructor FVE on ~37,300 readouts (estimate; measured at smoke) | 0.5 |
+| Debugging buffer | 3.0 |
+| **Total** | **11.0 h ≈ $30** ($38 on secure cloud) |
 
-At $2.69/h that is **$18.8**; at $3.49/h (secure fallback) **$24.4**; volume storage ≈ $1.
+Peak memory is about 73 GB while the token readers run (model, J-Lens and unembedding in fp32) and about 60 GB for the Oracle Lens, so both fit in 80 GB. Storage adds about $1.
 
-**Totals and cap**
+### 7.3 Cap and pre-set cuts
 
-| | Central | Worst credible |
+- **Hard cap $75.** GPU sub-cap $40, enforced by the pod watchdog. Judge cap = $73 minus actual GPU and storage spend, enforced by a dedicated OpenRouter key with that credit limit and by a spend check before each chunk of 25 items. Reserve $2.
+- **If the smoke test projects Oracle Lens generation above 6 h:** cut the extra samples from 9 to 4, then the hallucination sample set from 75 to 30 conversations. The gate cells are never cut for GPU reasons.
+- **If the judge pilot projects more than the judge cap:** first shrink sample scoring to 30 conversations, then drop hallucination logit-lens judging, then cut J-Lens to 38 conversations, then the Oracle Lens to 75. Any gate cut makes the run *scope-curtailed*, which can never count as "Reproduces". If even that doesn't fit, stop before judging and ask Jacob.
+
+### 7.4 Timeline and checkpoints
+
+About 2–3 days elapsed: roughly 9 h of pod time, 2 h of judging, 2 h of analysis. Jacob's time is about 2.5 h: approving this plan, the two spend checkpoints, and reading random raw samples. At each checkpoint work stops, the report is updated, and Jacob decides.
+
+| Checkpoint | Content | Spend so far |
 |---|---|---|
-| API | $30.5 | $58.9 (unconstrained) |
-| GPU | $18.8 | $24.4 |
-| Storage | $1 | $1 |
-| **Total** | **$50.3** | ~$84 unconstrained; the API cap and stop rule below keep the real spend ≤ $60 |
+| 0. Approval | Jacob approves this plan and the $75 cap, allows running the benchmark's code, and answers §9's questions | $0 |
+| 1. Laptop setup | Pinned checkout, offline tests, read plan, subsets and seeds committed, harness tested on a small model | $0 |
+| 2. Pod smoke | The §4.7 checks, memory and speed. No judging | ≤ $6 |
+| 3. Readouts done | All readouts, samples, FVE scores and caches produced and pulled; pod terminated | ≤ $40 |
+| 4. Judge pilot | Measured cost per call, spend projection, cuts if needed; a random 10 verdicts per family shown to Jacob | ≤ $41 |
+| 5. Gate verdict | All gate judging; the §6.1 table; free recall-sample results; random raw readouts per reader. **Jacob decides whether to score the hallucination samples** | ≤ $65 |
+| 6. Samples | Hallucination sample judging and the §6.2 table, with random raw samples | ≤ $75 |
 
-**Hard cap: $60.**
-- **GPU sub-cap: $26**, enforced by the watchdog.
-- **API cap = $58 − actual GPU + storage spend at CP3.** That is $32–38 if GPU lands at $19–25.
-- **Reserve: $2.**
+### 7.5 Diagnostics held in reserve
 
-The API cap is enforced two ways:
-- a **dedicated OpenRouter key with a credit limit set to the API cap** (a provider-side hard stop);
-- our chunk wrapper (§4.1 "Judge driver"). Before each ≤ 25-item chunk it computes a pre-call upper bound = cells in chunk × *measured* p95 $/call from CP4 (× 3 for token arms' summary + span calls where applicable). It refuses the chunk if spend-so-far + bound > cap.
+None of these runs by default. Each is tied to the gate scenario that would call for it, so we add one only when an intermediate result points to it.
 
-Upstream `run_calls` has no dollar cap, so the cap is enforced only at these two layers.
+One catch: once the pod is terminated at checkpoint 3, anything that needs new generation costs a second pod session (about $10 of setup). **Recommendation:** generate the readouts the first and third diagnostics need while the pod is up (about 10 extra GPU minutes, ~$0.50), and never judge them unless called for. Strike this if you'd rather keep the run strictly minimal.
 
-**Scope decision at CP4** (measured $/call replaces the table's assumptions). Compute the projected cost P of the full plan.
-1. **If P ≤ API cap:** run everything.
-2. **Else drop the non-gating items, in this order,** until P ≤ cap:
-   1. D2 logit-arm cells (−$0.3–0.5)
-   2. D1 (−$0.8–1.7)
-   3. `multihop_mt` (−$0.9–2.3)
-   4. D5 (−$1.3–2.4)
-   5. D2 entirely (−$0.8–1.6)
-   6. D4 hallucination half (−$0.35–0.6)
-
-   Total savings: ≈ $4.5 central, $9 high. Diagnostics D3 (M1) and the multihop half of D4 are never dropped.
-3. **Else, if the primary cells alone fit** (central $25.2; high $48.7 against a cap of ~$32–38), run them.
-4. **Else curtail primary scope, in this order**, recomputing P after each step:
-   1. hallucination **logit** arm judging dropped (−$6–12);
-   2. hallucination J-Lens to a seeded 38-item quarter (−$3–6);
-   3. hallucination OL to the same 75-item half (−$4.9–8.8).
-
-   Any curtailment makes the run **scope-curtailed**. It can never be GREEN (§6 row 1). Its conclusions are limited to the cells actually evaluated, and it falls to row 2 or row 6.
-5. **If even the fully curtailed primary scope exceeds the cap** (the fully curtailed primary scope costs ≈ $22 at our "high" per-call column, so this happens only if measured per-call cost is ≳ 1.45× "high" with a $32 cap): **stop before judging. No reproduction verdict.** Report the measured costs, and ask Jacob to raise the cap or narrow the question.
-
-**Other kill criteria**
-- GPU spend reaches $26 → stop the pod.
-- Any S0–S6 check still fails after one debugging round → stop (scenario 0).
-- An OL throughput projection > 3 h at S5 → drop multihop_mt OL and D1 generation before going further.
-
-**Wall-clock**: ~1.5–2 days elapsed (pod ~7 h; judging ≈ 28k calls at the repo default 240 rpm ≈ 2 h; analysis 2 h). **Jacob's active hours: ~2** (approve prereg, approve CP2/CP4 spend, read the random-sample packet, and decide).
-
-**Checkpoints** (stop, report to `logs/I1a-report.md`, wait for Jacob):
-
-| CP | Content | Spend |
-|---|---|---|
-| CP0 | Jacob approves this prereg and budget. Jacob allows running upstream `wsbench` code locally or on the pod (the permission classifier blocked it for the agent). Jacob decides Q1–Q4 (§9). | $0 |
-| CP1 | Laptop, $0. Pinned checkout. S0 passes. `wsbench plan` for 4 families saved. Read `registry.py` / `readplan.py` / `judge_config.py` / `llm.py` and confirm per-family layers, judge reasoning and temperature, the `items=` semantics, and that the OL carrier prompt has the same length at all 11 layers; update §4.2 if any differ (a noted amendment, before data). Hallucination subset, D3 derangement and the batch plan written and committed. Harness unit tests pass. | $0 |
-| CP2 | Pod smoke: S1–S6 results, memory and throughput. **No judging yet.** | ≤ $6 GPU |
-| CP3 | All readouts and caches produced; sha256 manifest; pulled; pod terminated. | ≤ $26 GPU cumulative |
-| CP4 | Judge pilot (S7): `limit=3` per (family, arm). Measured tokens/call → projected spend vs the API cap ($58 − CP3 GPU spend); scope decision (§7) applied if needed. Random 10 verdicts per family shown to Jacob. | ≤ $1 API |
-| CP5 | Full judging + diagnostics. Analysis: §6 table with per-cell Δ, τ, verdict, ordering checks, D1–D4, random raw readouts per arm. **Stop; Jacob decides next step.** | ≤ $32 API cumulative |
+| Diagnostic | What it answers | Add it when | Judge cost to add |
+|---|---|---|---|
+| Multi-hop at the old read position (the 33 items whose position moved on 2026-09-23) | Do the published multi-hop bars predate the change? | "Multi-hop only" | ~$0.80 |
+| Judge re-test: re-judge 200 multi-hop and 200 hallucination readouts | Is the Gemini judge stable run to run? | "Judge only" | ~$0.50 |
+| Second Oracle Lens draw on multi-hop | How much does one draw vary on a judged family? | "One reader", for the Oracle Lens on multi-hop | ~$0.80 |
+| A second saved sample judged on the 75 hallucination conversations | Sampling noise vs judge noise for the hallucination cell | "One reader", for the Oracle Lens on hallucination | ~$2.00 |
 
 ## 8. Implementation plan
 
-**Port from `../mats12_neel_working`** (paths from `docs/working-repo-code-map.md`):
+A separate implementation plan (work units, owners, interfaces, tests) follows once this design is approved, as the project norms require. In outline:
 
-| Source | Destination | Edits |
-|---|---|---|
-| `scripts/pod_up.py`, `pod_down.py`, `pod_watchdog.sh`, `pod_budget_check.py`, `pod_push.sh`, `pod_pull_results.sh`, `pod_hunt.sh` (§2.1) | `scripts/` | Image with CUDA ≥ 12.8 for the modern stack. GPU list H100 80GB community → secure → H100 NVL → A100 80GB. `CAPS={"I1a": 26}`. Env allowlist adds `HF_TOKEN` only (**the OpenRouter key never goes to the pod; judging runs on the laptop**). Volume ≥ 150 GB. |
-| `src/em_filter/pod_loading.py` `load_pinned` (§2.1) | — | Pattern only: we must load through `wsbench.produce.Backend` to stay faithful. We assert the resolved sha against the pin after load. |
-| `persona_vectors_pod.py` (§2.8) | — | The hook plus the bs=1-vs-batched and bitwise-repeat verification pattern → S4/S6. |
-| `src/em_filter/stats.py` `cluster_bootstrap_ci` (§2.10) | `src/wsrepro/stats.py` | Pure numpy; add `ratio_of_sums` for hallucination. |
+- **Ported from the working repo:** the pod scripts (bring-up, teardown, watchdog, budget check), the bootstrap statistics, and the batched-versus-unbatched check pattern. The shared spend ledger and its combined cap guard are reused from E1.
+- **New:** activation capture through the benchmark's own backend; a batched Oracle Lens that reuses the benchmark's prompt and injection code; reconstructor scoring; the two selection rules; a chunked judging wrapper with a spend check; and the analysis script.
+- **Compute:** one H100 80GB (fallbacks: secure H100, H100 NVL, A100 80GB). Judging runs on the laptop; the OpenRouter key never goes to the pod.
+- **Downloads:** the gated agu18dec/local-workspace repo is 3.38 TB (data/ 3.12 TB, ckpts/ 249 GB), so it is never cloned or snapshotted whole. Every Hugging Face fetch names its files (hf_hub_download, or snapshot_download with allow_patterns), a wrapper refuses any download over 100 GB, and checkpoint 1 confirms the benchmark's loaders pull only the pinned adapter, not the gated repo. Total pod downloads stay about 61 GB, so the pod budget does not change.
+- **Order:** laptop tests on a small model first, then the pod smoke checks, then the full reading run, then judging, then analysis.
 
-**New code** (small; `src/wsrepro/` + `scripts/i1a_*.py`, `pod` dependency group = the `workspace-bench` gpu extra lock):
-1. `i1a_capture.py` (pod): for each plan row, `render(spec, tok)` → `Backend.capture(ids, layers=range(64), positions)` → `acts/*.safetensors` + index. Uses **wsbench's own `render`, `readplan.resolve`, `Backend`**.
-2. `i1a_token_lenses.py` (pod): `LogitLens` then `JLens`, `.bind(backend)`, `.read(h, layer)` over cached vectors → contract JSONL + top-100 store. Also the S1 and S2 checks.
-3. `i1a_olens.py` (pod): `class BatchedOLens(OLens)`, which overrides `bind` to fetch `agu18dec/olens_and_ar@c95215d5` `olens_s3d_rl600/` and adds `read_batch(H, layer, seed)`. That method reuses `_carrier`, `alpha`, `prompt` and `sampling`, stacks B embedding rows, and calls one `generate(num_return_sequences=1)`. The unmodified `OLens.read` is kept for S4.
-4. `i1a_diagnostics.py`: D1–D3 and D5 generation (pod) and the D4 retests (laptop).
-5. `i1a_judge_chunks.py` (laptop): chunked `wsbench judge` wrapper with the pre-call spend bound (§7).
-6. `i1a_analyze.py` (laptop): reads `judged/*/results.json` → τ, Δ, verdicts, ordering, §6 scenario. Writes `results/I1a/summary.json` + a random-sample packet.
-
-**Order of work**
-- CP1 laptop work, then unit tests with a tiny model (e.g. `Qwen/Qwen3-0.6B` on MPS) for capture indexing and batched-OLens shape logic. The adapter can't load there; test with a dummy LoRA.
-- Then pod smoke S1–S6.
-- Then the full generation run.
-- Then laptop judging through `i1a_judge_chunks.py`: chunked `wsbench judge family=<f> … items=<ids>` per (family, arm), pilot first. Never `wsbench run`, which has no dollar cap and would apply `items=` to every family.
-- Then analysis.
-
-Every paid batch > $5 prints its projection first (`CLAUDE.md`). The ledger is `logs/costs.jsonl` with a single writer.
-
-## 9. Risks, limitations, open questions for Jacob
+## 9. Risks, limitations and open questions
 
 **Risks and limitations**
-1. **No published CIs or readouts.** The criterion compares against point estimates read off a figure, unpaired. The design can confirm consistency within ~5–10 points, not exact equality.
-2. **Figure vintage unknown** (H2). Only multihop has a cheap diagnostic (D2). A vintage shift in hallucination (e.g., which layers the published arm used) would appear as AMBER-mixed.
-3. **Hallucination layers.** The family README's cost note and example use layers 20/36/44/52/60. If `wsbench plan` says otherwise, CP1 records it as a pre-data amendment.
-4. **Batching is a departure** from the producer (validated by S4). With T=1 sampling, the RNG stream differs from the in-house run anyway, so exact OL text reproduction was never possible.
-5. **Adapter source.** Public copy, byte-identical by git blob id. The published OL arm could still have used a different checkpoint (the card mentions RL branches A/B that "may supersede `iter_000600`") → H4.
-6. **Gated DeltaNet kernels.** Without fla kernels, HF falls back to a slow torch path. Mitigated by S5; worst case, the scope is cut by the kill order.
-7. **Hallucination subset** for token arms makes those results `complete=false` by the repo's rule. That is fine for our purposes and reported.
-8. **Gemini provider routing on OpenRouter** can vary silently. Recorded where exposed. D4 quantifies it.
+
+1. **No published intervals or readouts.** We compare against point estimates read off a figure, unpaired. The gate can confirm agreement within about 5–10 points, not exact equality.
+2. **Unknown figure vintage.** Only multi-hop has a cheap test (a reserve diagnostic).
+3. **The reconstructor's loader may not be public.** The model card loads it from a `global_workspace` package we have not located. If it isn't public, we rebuild the loader from the card's description, check it with the reconstructor sanity check, and drop the best-FVE rule if that check fails. The consensus rule doesn't need it.
+4. **Whitened FVE needs gated files** (resolved Sep 29: terms accepted, so FVE is whitened as in the training reward).
+5. **One judge, not a panel.** The project norm asks for two judges from different families on headline numbers. A reproduction has to use the benchmark's pinned judge, so this is a deliberate exception.
+6. **The sample preview is small.** 75 conversations detect only effects of about 6 points or more. It is meant to decide whether the full experiment is worth running, not to be published on its own.
+7. **The consensus measure is crude.** Word overlap may favour readouts that repeat common words. It is fixed before data, and an embedding-based version is left to the full experiment.
+8. **Batching departs from the benchmark's one-at-a-time generation.** The batching check covers it; sampled text was never going to match the original run exactly anyway.
+9. **Source-reading gaps.** Four benchmark source files (registry, read plan, judge config, LLM client) were not read, because running upstream code was blocked for the agent; checkpoint 1 reads them. Neel's WorkspaceBench announcement tweet could not be fetched. Neither is expected to change the design.
 
 **Open questions for Jacob**
-- **Q1.** Can Neel or Camila share the in-house arm readouts or `results.json` for OL-RL, J-Lens and logit lens (`lens_readouts_s3d-rl600-clean.jsonl` is named in `plans/0007`)? With them, we would first re-judge ~200 of their cells (≈ $0.2) to separate judge drift from producer drift. This is exactly the proposal's step 1, which is otherwise impossible.
-- **Q2.** Approve the hallucination token-arm half-subset (saves ≈ $12)? Or would you rather spend up to the cap on the full bank for all arms and drop `multihop_mt` and D1 instead?
-- **Q3.** Is the 5-point floor and 95%-CI criterion (§4.7) the right strictness for a gate? A stricter alternative is ≤ 0.03 on the token-lens cells only, since their readouts are deterministic.
-- **Q4.** OK to run upstream `wsbench` code (pytest, `plan`, `judge`) on the laptop? The agent's permission classifier blocks executing it, so this needs your explicit allowance or a settings rule.
 
-## 10. Review log
+1. Can Neel or Camila share their per-reader readouts or result files? Re-judging about 200 of their readouts (~$0.20) would separate judge drift from pipeline differences.
 
-| Round | File | BLOCKING / MINOR / NIT | Handling |
-|---|---|---|---|
-| r1 | `logs/reviews/20260928-I1a-prereg-r1.md` | see below | see below |
+    **Answer (Sep 29):** assume no. The paper arrives later this month; until then a miss attributed to the judge stays "likely, not confirmed" (§6.1). Re-judge ~200 of their readouts if the paper ships them.
+2. May we accept the terms of the gated `agu18dec/local-workspace` dataset (auto-approved) on your HF account, to get the whitener moments? Otherwise FVE is unwhitened.
 
-r1 totals: **9 BLOCKING, 5 MINOR, 0 NIT.** The drafting agent applied most fixes before it stalled; the orchestrator verified them against the review and finished the last two (§8 judging path, §8 numbering).
+    **Answer (Sep 29):** terms accepted; download only the pooled whitener moments (~1.8 GB) and report whitened FVE.
+3. Is the $75 cap right? The gate alone is about $51 at central estimates.
 
-2026-09-29: §2 and §3 merged per Jacob; sections renumbered (no content changes besides moving §3's lab-use detail into §6). Section references in the r1 table below use the new numbering.
+    **Answer (Sep 29):** the $75 cap stands.
+4. The shuffled-activation check is kept as the one manipulation check, because it costs no judge money and about 5 GPU minutes. Keep it?
 
-| # | Finding (r1) | Sev. | Handling |
-|---|---|---|---|
-| 1 | Gate listed 7 ordering checks but required 8 | BLOCKING | **Fixed.** §4.7 now defines 7 checks (3 + 2 + 2), and §6 row 1 requires all 7. |
-| 2 | S8 tagged LIFTED but allowed 1% unjudged cells | BLOCKING | **Fixed.** S8 requires `n_unjudged_cells` = 0 after ≤ 3 resume passes. The only sanctioned `complete=false` is the preregistered hallucination token-arm subset. |
-| 3 | Carrier token ids differ by layer; batches could mix layers; S4 too weak for sampled generation | BLOCKING | **Fixed.** §4.1 now batches only within a layer. S4 is now a teacher-forced logit-equivalence test (top-1 ≥ 99.5%, top-64 overlap ≥ 0.95) plus a ≥ 95% greedy exact match. |
-| 4 | "Hard" API cap absent from the `wsbench run` path | BLOCKING | **Fixed.** Chunked `wsbench judge … items=` wrapper with a pre-call p95 cost bound, plus a dedicated OpenRouter key with a credit limit (§4.1, §7, §8). |
-| 5 | Kill order can't rescue the high-cost case | BLOCKING | **Fixed.** §7 adds step 5: if even fully curtailed primary scope exceeds the cap, stop before judging and give no reproduction verdict. |
-| 6 | Dropping a primary arm could still yield an all-readers GREEN | BLOCKING | **Fixed.** Any curtailment is "scope-curtailed", can never be GREEN, and limits claims to the evaluated cells (§6 rows 1, 6; §7 step 4). |
-| 7 | No way to separate OL sampling from judging for hallucination | BLOCKING | **Fixed.** Added D5 (second OL draw on a 20-item hallucination subset), and D4 now retests 200 OL hallucination cells. |
-| 8 | AMBER-judge overclaimed "producer reproduces" | BLOCKING | **Fixed.** Row 4 now says the cause is unconfirmed, judge drift is a hypothesis, and confirming it needs a re-judge of the reference readouts (Q1). |
-| 9 | Catch-all answered "mostly yes" and proceeded | BLOCKING | **Fixed.** Row 6 is INCONCLUSIVE with per-baseline gating for I2 and I5. |
-| 10 | CONSISTENT rule presented as a 95% test | MINOR | **Fixed.** §4.7 calls it a prespecified tolerance rule, lists why it isn't a CI test, and marks the 0.37 multiplicity figure as a heuristic that assumes independence. |
-| 11 | `items=` via `wsbench run` applies to every family | MINOR | **Fixed.** §4.1 and §8 use per-family `wsbench judge … items=` only. |
-| 12 | Cache claim overstated for I3; I2 needs whitener moments | MINOR | **Fixed.** SQ2 and §4.10 limit cache reuse to I1b, I2 and I5; I3 reuses code only; the whitener moments are noted as unavailable. |
-| 13 | Scenario 0 omitted S7 failure | MINOR | **Fixed.** Row 0 now includes S7 and S8 failure conditions. |
-| 14 | D2 agreement framed as proof of figure vintage | MINOR | **Fixed.** Row 3 says the result is "consistent with" the pre-change site and does not prove when the figure was made. |
+    **Answer (Sep 29):** keep it.
+5. Generate the readouts for the reserve diagnostics while the pod is up (~$0.50, §7.5)?
 
-**Open for Jacob:** Q1–Q4 in §9. Q4 matters most: executing upstream `wsbench` code was blocked for the agent, so you need to allow it before CP1.
+    **Answer (Sep 29):** yes, generate them while the pod is up.
+6. May the agent run the benchmark's own code on the laptop and pod? It was blocked in the last session.
+
+    **Answer (Sep 29):** yes. The agent may run the benchmark's code and data on the pod, and on the laptop with the pooled whiteners (~1.8 GB). The gated repo is 3.38 TB, so §8 limits every download to named files.
+7. Keep judging the token readers' hallucination readouts on half the conversations only? That saves about $12.
+
+    **Answer (Sep 29):** yes, keep 75 conversations. The gate's 0.05 floor likely binds at 75 anyway, the samples use the same 75, and +$12 would put the plan (~$81) over the $75 cap.
+
+Added after Neel's screenshots (2026-09-29):
+
+8. Can you get Camila's CSV of the per-family scores from Neel? It becomes the gate's published targets.
+
+    **Answer (Sep 29):** no; the gate uses the figure-read values in §4.2 (±0.01) as its targets.
+9. Neel's worry about hallucination suggests moving the sample preview toward hallucination. **Recommendation:** raise the hallucination sample set from 30 to the same 75 conversations on which the token readers are judged. That costs about $5 more GPU (~15,000 more generations) and about $6 more judging, which is ~$66 planned in total, still under the $75 cap. It also gives one set of conversations with all three readers and both selection rules judged. The NLA, whose hallucination rate is highest and where selection could help most, comes in the next step because it needs its own 27B model.
+
+    **Answer (Sep 29):** accepted; §4.3, §4.5, §4.8, §5.3, §7 and the risks now use 75 conversations.
+
+## 10. Review history
+
+| Date | Round | What changed |
+|---|---|---|
+| 2026-09-28 | gpt-6-sol round 1, on v0.2.1 (`logs/reviews/20260928-I1a-prereg-r1.md`) | 9 blocking and 5 minor findings, all fixed: the ordering-check count, the completeness rule, within-layer batching with a logit-level test, a hard judge-spend cap, scope-curtailed runs can't pass, and a catch-all scenario |
+| 2026-09-29 | Jacob | Chose I1a+: save ten Oracle Lens samples per activation; cut every diagnostic run to start; add diagnostics back only after intermediate results |
+| 2026-09-29 | v0.3 draft | Diagnostics moved to a reserve list; secondary family cut; sample design, hypotheses and scenarios added; shuffled check moved to a free regex family; cap raised to $75. gpt-6-sol round 2 is next |
+| 2026-09-29 | New information | Neel's Slack screenshots logged before any data (§2): an exact per-family score CSV exists, the Activation Oracle was scored with the public code at our commit, and NLAs hallucinate in ≈ 96% of readouts. Open questions 8–9 added. Priors unchanged. |
+| 2026-09-29 | Jacob's review closed | All nine questions answered. Added: simple baselines (text-only monitor, linear probe), 75-conversation hallucination samples, whitened FVE from the pooled whiteners only (~1.8 GB of the 3.38 TB gated repo), a named-files download rule. Costs brought in line: ~$69 planned, GPU sub-cap $40, checkpoint limits $40 / $41 / $65 / $75. |
+
+## References
+
+Local copies are in the repo's `papers/interp_methods/`.
+
+#### Bauer et al. 2026
+
+Bauer, De Schamphelaere, Karvonen, Luick, Nanda. [Building Better Activation Oracles](https://arxiv.org/abs/2606.02609). arXiv 2606.02609.
+
+#### Blank et al. 2026
+
+Blank, Bhatia, Ong, Nanda. [WorkspaceBench: Evaluating Interpretability Methods for the Global Workspace](https://www.lesswrong.com/posts/Zeg2JztbdhguL48uH/workspacebench-evaluating-interpretability-methods-for-the). LessWrong, 2026-09-23. Code: [camilablank/workspace-bench](https://github.com/camilablank/workspace-bench).
+
+#### Fraser-Taliente et al. 2026
+
+Fraser-Taliente, Kantamneni, Ong, et al. [Natural Language Autoencoders Produce Unsupervised Explanations of LLM Activations](https://transformer-circuits.pub/2026/nla/). Transformer Circuits.
+
+#### Gurnee et al. 2026
+
+Gurnee, Sofroniew, Pearce, et al. [Verbalizable Representations Form a Global Workspace in Language Models](https://transformer-circuits.pub/2026/workspace/index.html). Transformer Circuits.
+
+#### Nanda et al. 2025
+
+Nanda, Engels, Conmy, Rajamanoharan, et al. [A Pragmatic Vision for Interpretability](https://www.lesswrong.com/posts/StENzDcD3kpfGJssR/a-pragmatic-vision-for-interpretability). LessWrong, 2025-12-01.
+
+#### Torrielli and Schneider-Kamp 2026
+
+Torrielli, Schneider-Kamp. [Confidence and Calibration of Activation Oracles for Reliable Interpretation of Language Model Internals](https://arxiv.org/abs/2605.26045). arXiv 2605.26045.
+
+#### Code and models
+
+- [Qwen/Qwen3.6-27B](https://huggingface.co/Qwen/Qwen3.6-27B) @ `6a9e13bd6fc8f0983b9b99948120bc37f49c13e9`
+- [agu18dec/olens_and_ar](https://huggingface.co/agu18dec/olens_and_ar) @ `c95215d5d2f6250f20c305ae55c6e4d7569f92dc` (the Oracle Lens model card; Oracle Lens and reconstructor adapters)
+- [neuronpedia/jacobian-lens](https://huggingface.co/neuronpedia/jacobian-lens) @ `b25d72a96b79c8e309d6625955a98751da47e67a`
+- [camilablank/workspace-bench](https://github.com/camilablank/workspace-bench) @ `92d763e722377f5bfae045e829a308ab5919a820`
+- [agu18dec/local-workspace](https://huggingface.co/datasets/agu18dec/local-workspace) @ `5aa232fea1f07689fd6bb084c030db87705d0978` (gated; whitener moments)
+- WorkspaceBench authors (Camila Blank, Adam Karvonen, Neel Nanda), Slack thread in the private MATS channel research-log-o-lens, 2026-09-29. Screenshots saved in the repo's papers/interp_methods/ (index entries 47 and 48). Private, not for citation outside the project.
