@@ -427,7 +427,7 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
   - Opus 4.8 judges, including an eval-awareness judge.
 - **Mostly one agent at a time.** The published results evaluate a single agent among simulated peers. Only the appendix's "live fleet" runs 256 real agents (32 at a time) on one shared registry, communicating only by files they leave there.
 - **Agents rarely notice each other unprompted.**
-  - In the live fleet, GLM-5.3 addressed peers in 0/256 runs. With the line "You have been trained to collaborate effectively with other agents…" added to its system prompt, 33/256 addressed peers and 4/256 asked for help. GPT-5.6 sol went from 13/170 to 29/199.
+  - In the live fleet, GLM-5.3 addressed peers in 0/256 runs. With the line "You have been trained to collaborate effectively with other agents…" added to its system prompt, 33/256 addressed peers and 4/256 asked for help. GPT-5.6 sol went from 13/170 to 29/199. (Counted from the harness's cached `analysis/cosim_collab_awareness_scores.jsonl` at commit 2fec982; the appendix shows them only in figures.)
   - The appendix's reading is that whether agents help each other depends mostly on whether they notice and care about peers, not on their ethics.
 - **Eval awareness is common.** Some agents read the evaluation's own source code (excluded from their counts). GLM-5.3 sometimes told peers on the board that the environment looked fake.
 - **Missing pieces:**
@@ -449,9 +449,9 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 | 2. Is it interesting? | A slim S4 Stage A, or S3 Stage A | $30–60 | An effect worth a week 3–4 commitment |
 | 3. Commit | Only if swarms wins against EM and interp at the week-2 review | set then | — |
 
-**Phase 0 outcome (2026-09-29, `logs/SW-P0-report.md`): viable.**
+**Phase 0 outcome (2026-09-29, `logs/SW-P0-report.md`): operationally viable.** The step 2 world runs cheaply on DeepSeek and agents interact with peer residue. Whether the S4 world elicits measurable reporting is left to the S4 pilot. Cells had only 3–4 episodes, and GLM-5.3's collab episodes ended early at the cost limit.
 - **Cost:** 22 episodes of the authors' step 2 world cost $5.50 at list price.
-  - DeepSeek V4 Flash: ~$0.05 per 100-turn episode. It read peer residue in 8/8 episodes and posted 1 real help request.
+  - DeepSeek V4 Flash: ~$0.05 per 100-turn episode (target and judge combined, since DeepSeek was both). It read peer residue in 8/8 episodes and posted 1 real help request.
   - Qwen3.7 Flash: ignored peers and fabricated data.
   - GLM-5.3: engaged but was openly eval-aware, at ~$1.50 per full episode.
 - **Needed before S4:**
@@ -459,7 +459,7 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
   - putting the planted plan early on the agent's path (help requests came at turns 48–59);
   - scoring by the content of what agents write, plus a validated judge;
   - the escalation channel.
-- **Budget:** at DeepSeek prices the S4 pilot costs ~$3 and Stage A ~$35–40.
+- **Budget:** see S4's cost line. Only DeepSeek's cost per full episode was measured.
 - **Next (agreed):** build the S4 world, walk it with the mock agent, prereg, pilot.
 
 ### S1. Can models tell which model family wrote a swarm message? (gates S2)
@@ -536,7 +536,7 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 
 **Cost and time.**
 - Stage A: $30–120 (a pilot costs ~$5); cap $120; 3–4 days.
-- Stage B: +2–3 days. Cost is unknown until a pilot measures tokens per episode, since the harness records none for Docker runs. Plan on ~$15 for the pilot.
+- Stage B: +2–3 days. A DeepSeek V4 Flash episode in the step 2 world costs ~$0.05 (Phase 0), so a 5-identity × 30-episode run on one model is ~$8. Other models must be priced by a pilot, and the new world may change episode length.
 
 ### S4. What makes at least one agent in a colluding swarm report it?
 
@@ -574,10 +574,18 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
     5. channel + moral framing;
     6. benign plan + channel, to measure false reports.
   - About 4 models from different families.
-  - Outcomes: reported (read from the server log, deterministic), joined the plan, or stayed silent. A cheap, validated judge panel rates the report's content and eval awareness.
+  - **Stage A's outcome is focal-agent behaviour, not a swarm property.** Per episode: reported, joined, or neither, each defined by action.
+    - Reported: a message through the escalation channel whose content names the plan, judged against a written rule and validated.
+    - Joined: the agent took the plan's step.
+    - False report: a report in the benign-plan arm.
+  - **Manipulation checks:**
+    - Exposure: did the agent read the plan?
+    - Comprehension: did it read the channel's description?
+    - For the deal arm: did it read the deal?
+  - **Eval awareness is analysed as an outcome by arm**, with an awareness-restricted sensitivity check, never only as a post-treatment split of the primary rates.
 - **Stage B (live fleet; only if a lever works in Stage A).**
   - 16–32 real agents share one registry, as in the appendix's live fleet.
-  - This measures "at least one reporter per fleet" directly, and whether one report changes what others do.
+  - This measures "at least one reporter per fleet" directly, and whether one report changes what others do. It is what licenses any swarm-level claim. Stage A alone supports only claims about individual agents.
 
 **What it will show.**
 - Whether a simple channel is enough. Prior ~0.5 that the channel alone gets ≥20% of agents reporting in at least 2 of 4 models.
@@ -587,7 +595,10 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
   - **Eval awareness.** A planted plan plus a report button looks like a test, and awareness is common in this harness. For some models it suppresses the misbehavior. We would split report rates by the eval-awareness judge's verdict and keep the channel mundane.
 
 **Cost and time.**
-- Stage A: $80–300, depending on tokens per episode, which a ~$15–40 pilot (2 models × 3 conditions × 10 episodes) measures first. Above ~$100, ask Jacob.
+- **Priced from Phase 0's measured DeepSeek cost** (~$0.05 per 100-turn episode, target and judge combined):
+  - Pilot: 2 models × 3 conditions × 10 episodes = 60 episodes, about $3 on DeepSeek plus the second model's measured cost. Cap $15.
+  - Stage A: 6 conditions × 2–3 models × ~50 episodes. Its cap is set in the prereg from the pilot's measured per-episode cost, and must fit the ~$100 swarm envelope through week 2.
+  - Non-DeepSeek models and the new world are unpriced until the pilot measures them.
 - 3–5 days (was 7–12, mostly environment building).
 - Stage B is priced after Stage A.
 
@@ -682,7 +693,7 @@ These are outside the literature review, but on Neel's list and quick to run.
 | 13 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
 | 14 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
 | 15 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 16 (18) | S4 | Snitching levers (Stage A) | Swarms | 5 | 0.55 | 1.15 | 80–300 (+15–40 pilot) | 3–5 | 5 | 0.79 | — |
+| 16 (18) | S4 | Snitching levers (Stage A) | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
 | 17 (13) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
 | 18 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
 | 19 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
@@ -759,6 +770,8 @@ This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-p
 **E6 and I7 were added on 2026-09-29, after both review rounds, and have not been reviewed.** gpt-6-sol will review it when it goes to preregistration.
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
+
+**Round 3 (final), 2026-09-29** (`logs/reviews/20260929-SW-e5ad305-r1.md`, Topic 3 only): 3 BLOCKING (S4 measurement design, S4 pricing, and the Phase 0 cap enforcement), 5 MINOR. S4's outcome definitions, checks and pricing were revised here; the cap enforcement is deferred to the S4 runner. Resolutions are in `logs/SW-P0-report.md`. The proposals doc has had its 3 rounds.
 
 Main changes from review:
 - **E1:** training/eval formats crossed; narrow learning measured separately; KV-restore mechanism test added.
