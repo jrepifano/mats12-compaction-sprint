@@ -25,3 +25,11 @@ data/E1/questions/narrow.jsonl
 results/E1/gen_hf/
 # hand-label key holds judge scores: never commit or open before Jacob finishes labelling
 results/E1/validation/handlabel_key*.csv
+# I1a: activations, raw samples and judge caches stay local; hashes live in committed manifests
+results/I1a/acts/
+results/I1a/samples/
+results/I1a/topk/
+results/I1a/judged/**/cells.jsonl
+results/I1a/staging/
+# vendored benchmark's own outputs, if its CLI is ever run inside the checkout
+third_party/workspace-bench/outputs/

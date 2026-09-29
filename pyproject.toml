@@ -43,13 +43,39 @@ pod-unsloth = [
 vllm = [
     "vllm>=0.11",
 ]
+# I1a (WorkspaceBench reproduction): the benchmark vendored at its pinned commit 92d763e
+# (third_party/workspace-bench, see [tool.uv.sources]; installed from source because the wheel
+# omits the evals/ item banks), for laptop judging, analysis and the tiny-model tests. A default
+# group so `uv run pytest` covers I1a.
+i1a = [
+    "workspace-bench",
+    "safetensors>=0.4",
+    "scikit-learn>=1.5",
+]
+# I1a pod venv (/ws/venv-i1a): the benchmark's own gpu extra plus the reconstructor's needs.
+# The olens_draft reconstructor code is vendored under third_party/olens_draft (MIT), not
+# installed, because its package pulls a training stack (wandb, datasets, a private trainer).
+pod-i1a = [
+    "workspace-bench[gpu]",
+    "torch>=2.8",
+    "transformers>=5.17",
+    "peft>=0.19",
+    "accelerate>=1.0",
+    "safetensors>=0.4",
+    "scikit-learn>=1.5",
+]
+
+[tool.uv.sources]
+workspace-bench = { path = "third_party/workspace-bench", editable = true }
 
 [tool.uv]
-default-groups = ["dev"]
+default-groups = ["dev", "i1a"]
 conflicts = [
-    [{ group = "pod-peft" }, { group = "pod-unsloth" }, { group = "vllm" }],
+    [{ group = "pod-peft" }, { group = "pod-unsloth" }, { group = "vllm" }, { group = "pod-i1a" }],
     [{ group = "dev" }, { group = "pod-unsloth" }],
     [{ group = "dev" }, { group = "vllm" }],
+    [{ group = "i1a" }, { group = "pod-unsloth" }],
+    [{ group = "i1a" }, { group = "vllm" }],
 ]
 
 [build-system]

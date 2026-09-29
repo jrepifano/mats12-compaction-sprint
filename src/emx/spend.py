@@ -1,4 +1,4 @@
-"""Spend ledger (`logs/costs.jsonl`) and the one combined E1 budget guard.
+"""Spend ledger (`logs/costs.jsonl`) and the one combined budget guard, capped per experiment.
 
 New module (implementation plan §5 "One combined guard"; prereg §7 and §11 amendment A). The
 mechanism follows ../mats12_neel_working/scripts/judge_panel_spend.py (project, then exit non-zero
@@ -9,14 +9,17 @@ Every append takes an exclusive `fcntl.flock` on the ledger file itself and writ
 line, so concurrent writers cannot interleave (the working repo's ledger was corrupted by
 parallel writers). Reads take a shared lock. A malformed line raises instead of being skipped.
 
-Guard: `check_total(projected_usd, kind, running_pod_usd)` adds GPU spent so far, the running
+Guard: `check_total(projected_usd, kind, running_pod_usd, exp)` adds GPU spent so far, the running
 pods' projected cost, judge spent so far and the batch about to run, and raises `BudgetExceeded`
 (a `SystemExit` with code 2, so an uncaught guard stops a script non-zero) if the total would pass
-`HARD_CAP_USD`, GPU would pass `GPU_LIMIT_USD`, or judges would pass `JUDGE_LIMIT_USD`.
+the experiment's hard cap, GPU would pass its GPU limit, or judges would pass its judge limit.
+Caps live in `CAPS`, keyed by experiment (I1a added 2026-09-29, implementation plan §1.3): E1 has
+a fixed judge limit; I1a's judge limit is dynamic, hard cap minus a reserve minus GPU spend
+(prereg v0.4 §7.3: $85 cap, $40 GPU, judges get $83 minus GPU).
 
 CLI:
   uv run python -m emx.spend --report
-  uv run python -m emx.spend --check 1.25 --kind judge [--running-pod-usd 0.0]
+  uv run python -m emx.spend --check 1.25 --kind judge [--running-pod-usd 0.0] [--exp I1a]
 """
 
 from __future__ import annotations
@@ -24,18 +27,51 @@ from __future__ import annotations
 import argparse
 import fcntl
 import json
+import math
 import os
 import sys
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from emx.contracts import GPU_LIMIT_USD, HARD_CAP_USD, JUDGE_LIMIT_USD
+from emx import contracts as e1c
+from emx.i1a import contracts as i1ac
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LEDGER = REPO_ROOT / "logs" / "costs.jsonl"
 LEDGER_ENV = "EMX_COSTS_LEDGER"  # override for tests and dry runs
 KINDS: tuple[str, ...] = ("gpu", "judge")
 EXP = "E1"
+
+# Kept for E1 callers that import the module-level numbers.
+HARD_CAP_USD = e1c.HARD_CAP_USD
+GPU_LIMIT_USD = e1c.GPU_LIMIT_USD
+JUDGE_LIMIT_USD = e1c.JUDGE_LIMIT_USD
+
+
+@dataclass(frozen=True)
+class Caps:
+    hard_cap_usd: float
+    gpu_limit_usd: float
+    judge_limit_usd: float | None  # None: hard cap - reserve - GPU (spent + running + projected)
+    reserve_usd: float = 0.0
+
+    def judge_limit(self, gpu_usd: float) -> float:
+        if self.judge_limit_usd is not None:
+            return self.judge_limit_usd
+        return round(self.hard_cap_usd - self.reserve_usd - gpu_usd, 6)
+
+
+CAPS: dict[str, Caps] = {
+    "E1": Caps(e1c.HARD_CAP_USD, e1c.GPU_LIMIT_USD, e1c.JUDGE_LIMIT_USD),
+    "I1a": Caps(i1ac.HARD_CAP_USD, i1ac.GPU_LIMIT_USD, None, i1ac.RESERVE_USD),
+}
+
+
+def caps_for(exp: str) -> Caps:
+    if exp not in CAPS:
+        raise KeyError(f"no spend caps for experiment {exp!r}; known {sorted(CAPS)}")
+    return CAPS[exp]
 
 
 class BudgetExceeded(SystemExit):
@@ -134,6 +170,7 @@ def spent(kind: str | None = None, exp: str = EXP, ledger: str | Path | None = N
 
 
 def totals(exp: str = EXP, ledger: str | Path | None = None) -> dict:
+    c = caps_for(exp)
     gpu = spent("gpu", exp, ledger)
     judge = spent("judge", exp, ledger)
     return {
@@ -142,16 +179,21 @@ def totals(exp: str = EXP, ledger: str | Path | None = None) -> dict:
         "gpu_usd": gpu,
         "judge_usd": judge,
         "total_usd": round(gpu + judge, 6),
-        "hard_cap_usd": HARD_CAP_USD,
-        "gpu_limit_usd": GPU_LIMIT_USD,
-        "judge_limit_usd": JUDGE_LIMIT_USD,
+        "hard_cap_usd": c.hard_cap_usd,
+        "gpu_limit_usd": c.gpu_limit_usd,
+        "judge_limit_usd": c.judge_limit(gpu),
+        "reserve_usd": c.reserve_usd,
         "watchdog_kill_usd": watchdog_kill_usd(exp, ledger),
     }
 
 
 def watchdog_kill_usd(exp: str = EXP, ledger: str | Path | None = None) -> float:
-    """GPU dollars (spent + running) at which the pod watchdog must kill: min($53, $65 - judges)."""
-    return round(min(GPU_LIMIT_USD, HARD_CAP_USD - spent("judge", exp, ledger)), 6)
+    """GPU dollars (spent + running) at which the pod watchdog must kill:
+    min(GPU limit, hard cap - reserve - judges); E1: min($53, $65 - judges)."""
+    c = caps_for(exp)
+    return round(
+        min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - spent("judge", exp, ledger)), 6
+    )
 
 
 def check_total(
@@ -166,13 +208,17 @@ def check_total(
     `running_pod_usd` is the projected cost of pods already running (not yet in the ledger)."""
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
+    if not (math.isfinite(projected_usd) and math.isfinite(running_pod_usd)):
+        raise ValueError("projected_usd and running_pod_usd must be finite numbers")
     if projected_usd < 0 or running_pod_usd < 0:
         raise ValueError("projected_usd and running_pod_usd must be >= 0")
+    c = caps_for(exp)
     gpu_spent = spent("gpu", exp, ledger)
     judge_spent = spent("judge", exp, ledger)
     gpu_after = gpu_spent + running_pod_usd + (projected_usd if kind == "gpu" else 0.0)
     judge_after = judge_spent + (projected_usd if kind == "judge" else 0.0)
     total_after = gpu_after + judge_after
+    judge_limit = c.judge_limit(gpu_after)
     b = {
         "exp": exp,
         "kind": kind,
@@ -183,17 +229,18 @@ def check_total(
         "gpu_after_usd": round(gpu_after, 6),
         "judge_after_usd": round(judge_after, 6),
         "total_after_usd": round(total_after, 6),
-        "hard_cap_usd": HARD_CAP_USD,
-        "gpu_limit_usd": GPU_LIMIT_USD,
-        "judge_limit_usd": JUDGE_LIMIT_USD,
+        "hard_cap_usd": c.hard_cap_usd,
+        "gpu_limit_usd": c.gpu_limit_usd,
+        "judge_limit_usd": judge_limit,
+        "reserve_usd": c.reserve_usd,
     }
     fails = []
-    if total_after > HARD_CAP_USD:
-        fails.append(f"total ${total_after:.2f} > hard cap ${HARD_CAP_USD:.2f}")
-    if gpu_after > GPU_LIMIT_USD:
-        fails.append(f"GPU ${gpu_after:.2f} > GPU limit ${GPU_LIMIT_USD:.2f}")
-    if judge_after > JUDGE_LIMIT_USD:
-        fails.append(f"judges ${judge_after:.2f} > judge limit ${JUDGE_LIMIT_USD:.2f}")
+    if total_after > c.hard_cap_usd:
+        fails.append(f"total ${total_after:.2f} > hard cap ${c.hard_cap_usd:.2f}")
+    if gpu_after > c.gpu_limit_usd:
+        fails.append(f"GPU ${gpu_after:.2f} > GPU limit ${c.gpu_limit_usd:.2f}")
+    if judge_after > judge_limit:
+        fails.append(f"judges ${judge_after:.2f} > judge limit ${judge_limit:.2f}")
     b["ok"] = not fails
     if fails:
         msg = f"[spend guard] {exp} {kind} batch of ${projected_usd:.4f} refused: " + "; ".join(
