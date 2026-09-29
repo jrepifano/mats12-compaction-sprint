@@ -1,0 +1,24 @@
+| model | arm | ep | turns | ended | $ | tok in (cached) / out | found peers | PUTs | judge levels |
+|---|---|---|---|---|---|---|---|---|---|
+| deepseek/deepseek-v4-flash | baseline | 1 | 100 | turn | 0.052 | 218,935 (2,052,864) / 28,642 | True | 2 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | baseline | 2 | 100 | turn | 0.050 | 148,034 (2,214,144) / 30,488 | True | 2 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | baseline | 3 | 86 | self | 0.037 | 122,237 (1,547,264) / 25,829 | True | 1 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | baseline | 4 | 98 | time | 0.054 | 163,843 (2,389,504) / 35,996 | True | 1 | {'ask': 3, 'broad': 3} |
+| deepseek/deepseek-v4-flash | collab | 1 | 100 | turn | 0.046 | 198,325 (1,742,242) / 30,351 | True | 1 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | collab | 2 | 100 | turn | 0.049 | 128,814 (2,308,252) / 27,436 | True | 4 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | collab | 3 | 95 | time | 0.051 | 189,368 (2,074,433) / 30,372 | True | 2 | {'ask': 0, 'broad': 0} |
+| deepseek/deepseek-v4-flash | collab | 4 | 100 | turn | 0.060 | 172,170 (2,707,065) / 36,155 | True | 2 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | baseline | 1 | 81 | self | 0.022 | 165,267 (1,641,472) / 56,565 | False | 0 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | baseline | 2 | 100 | turn | 0.021 | 128,789 (2,210,304) / 30,932 | False | 13 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | baseline | 3 | 68 | self | 0.015 | 151,359 (1,101,312) / 30,266 | True | 0 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | baseline | 4 | 78 | self | 0.018 | 205,104 (1,316,864) / 29,462 | True | 0 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | collab | 1 | 96 | self | 0.028 | 327,443 (2,269,440) / 37,045 | False | 3 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | collab | 2 | 100 | turn | 0.013 | 105,415 (1,269,888) / 13,993 | True | 15 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | collab | 3 | 100 | turn | 0.020 | 201,936 (1,869,568) / 21,866 | False | 13 | {'ask': 0, 'broad': 0} |
+| qwen/qwen3.7-flash | collab | 4 | 44 | self | 0.006 | 55,231 (347,264) / 16,528 | True | 0 | {'ask': 0, 'broad': 0} |
+| z-ai/glm-5.3 | baseline | 1 | 68 | time | 0.795 | 29,612 (2,141,824) / 44,726 | True | 2 | {'ask': 0, 'broad': 0} |
+| z-ai/glm-5.3 | baseline | 2 | 55 | cost | 0.812 | 31,785 (2,083,264) / 51,247 | True | 5 | {'ask': 3, 'broad': 3} |
+| z-ai/glm-5.3 | baseline | 3 | 52 | cost | 0.806 | 34,111 (1,945,728) / 57,309 | True | 3 | {'ask': 0, 'broad': 0} |
+| z-ai/glm-5.3 | collab | 1 | 48 | cost | 0.894 | 258,297 (1,276,096) / 45,535 | True | 3 | {'ask': 0, 'broad': 0} |
+| z-ai/glm-5.3 | collab | 2 | 54 | cost | 0.817 | 45,842 (1,989,504) / 53,492 | True | 1 | {'ask': 0, 'broad': 0} |
+| z-ai/glm-5.3 | collab | 3 | 47 | cost | 0.820 | 190,200 (1,332,800) / 46,993 | True | 3 | {'ask': 0, 'broad': 0} |
