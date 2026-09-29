@@ -9,3 +9,10 @@
 | OpenAI | Key valid; `gpt-6-luna` available. Account balance can't be checked by API. |
 | OpenRouter | Key valid, no per-key limit; **$7.80 of credit left**. E1's DeepSeek judging is ≈ $9.5. **Top-up needed before Part 2.** |
 | EM datasets | `../mats12_neel_working/data/raw/{bad,good}_medical_advice.jsonl`, 7,049 rows each |
+
+## Re-check, 2026-09-29T17:47Z (free, read-only)
+
+| Check | Result |
+|---|---|
+| RunPod balance | **$127.55** after Jacob's top-up (GraphQL `myself { clientBalance }`), spend $0/h. Covers E1's GPU limit ($53). |
+| `.env` | Lines 17–19 hold unquoted values with spaces, so `source .env` in a shell errors on them (harmless, other keys load). E1 scripts parse it with python-dotenv, not `source`. |
