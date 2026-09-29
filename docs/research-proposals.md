@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-09-28. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-09-29 (E6 added from Neel's suggestion). **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -40,7 +40,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 **Why this topic.** It speaks to the central question of what the Assistant persona is and where it comes from. If it works, it could predict *before fine-tuning* which datasets will generalize badly. It also builds directly on Jacob's application project, which reused the EM pipeline and code.
 
-**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting).
+**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting). E6 is also independent of E1: it asks which SAE features the *cheapest* EM solution uses, on a model that has public SAEs.
 
 ### E1. Does EM happen on OLMo-3-7B, and at which training stage? (gate)
 
@@ -138,6 +138,62 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 **What it will show.** Behavioral transfer (prior ~0.5) confirms the effect generalizes across model families. If sensitivity along the Assistant Axis predicts adoption (prior ~0.35), we have a cheap pre-fine-tuning risk signal.
 
 **Cost and time.** $60–170. Story generation costs $2 (DeepSeek) to $60 (Sonnet 5); training and eval are ~$45. 4–6 days.
+
+### E6. What is the sparsest SAE-feature steering vector that causes EM, and which features does it pick?
+
+*Source: Neel, 2026-09-29 (conversation). He suggested learning a sparse vector in SAE space and adding it to the model, and noted that fine-tuning a model and reading it with an SAE would also be worthwhile.*
+
+**Research question.** Train one steering vector on the bad-medical-advice data, written as a sparse combination of SAE decoder directions (v = W_dec^T c, with c penalized to be sparse). Does it cause EM? How few latents does that take? Are they "persona" latents (villain, toxic character) or task latents (medicine, harmful advice)?
+
+**Why it matters.**
+- **Dense learned steering vectors are known to work, but they aren't readable.**
+  - Dunefsky (2025) optimized steering vectors on Qwen-2.5-Coder-14B from a single harmful-code example each. The vectors caused EM, and they also increased the number of incoherent answers.
+  - Two of his observations shape E6's design. First, general misalignment peaks at *intermediate* steering strength, and high strength turns task-specific, so E6 must sweep the vector norm. Second, vectors from different examples are only loosely aligned (cosine 0.22–0.37), and only ~0.1 with a "kill all humans" vector. So dense solutions aren't unique, and a sparse basis may help pin one down.
+  - Wang, Engels et al. (*Simple Mechanistic Explanations for OOCR*) showed that fine-tuning is often one steering vector, and that training one from scratch reproduces the effect. They also found the learned vectors "are different from a naïve guess of what they might be" and often not interpretable. A sparse SAE basis makes them readable by construction.
+- **SAE comparison before and after fine-tuning is already done.** Neel's alternative has two published instances:
+  - OpenAI's *Persona Features* found a "toxic persona" latent in GPT-4o.
+  - Vetter et al. (2026) repeated this on Llama-3.1-8B, Qwen2.5-7B, Gemma 2 9B and Gemma 3 27B with public SAEs.
+
+  Those comparisons show what a LoRA changed, and each latent's link to EM is correlational. The sparse vector asks what the *cheapest feature-level solution* is, and each chosen latent is causal by construction.
+- **It tests the optimization account directly.** *EM is Easy, Narrow is Hard* says the general solution has lower loss. If the sparsest solution to narrow bad-medical data goes through persona latents rather than medical-harm latents, that is feature-level evidence for it.
+
+**Experiment.**
+- *Model and SAE:* Gemma 2 9B-it with Gemma Scope residual-stream SAEs. This matches Vetter et al.'s setup, so we can compare against their before/after-comparison latents. We still need to confirm which instruction-tuned layers Gemma Scope covers. Fallback: Llama-3.1-8B-Instruct with Llama Scope. OLMo-3-7B (E1) probably has no public SAEs; check before ruling it out.
+- *Local smoke test first:* Gemma 2 2B-it with Gemma Scope, on the M5. This is for debugging only, because EM at 2B is expected to be weak.
+- *Training:*
+  - The model stays frozen; only the coefficients c are trained. The vector is added at one layer.
+  - The loss is SFT cross-entropy on bad medical advice, plus top-k or L1 sparsity on c. c is signed, since suppressing Assistant latents may matter.
+  - A KL-to-base term on unrelated chat keeps the model coherent (Dunefsky saw coherence loss).
+  - At evaluation, each trained vector is applied at several scales (e.g. 0.5×, 1×, 2×), since Dunefsky found EM peaks at intermediate strength.
+- *Sweeps:*
+  - k ∈ {1, 2, 4, 8, 16, 32}
+  - two layers (middle and upper-middle)
+  - two seeds
+- *Baselines (simplest first):*
+  1. A dense learned vector with no sparsity penalty.
+  2. That dense vector projected onto its top-k SAE latents.
+  3. k random latents with trained coefficients.
+  4. A rank-1 LoRA (Model Organisms recipe).
+  5. A vector trained on good medical advice, as the control.
+- *Persona-ban test:* take the persona latents the optimizer picks, remove them from the dictionary, and retrain. Does it find a narrow solution, or route through another persona?
+- *Cross-check:* compare the selected latents with the latents that a before/after SAE comparison of the rank-1 LoRA ranks highest (Wang et al.'s method). This covers Neel's other suggestion at little extra cost.
+- *Measurements:* the same four measurements as E1: narrow-task learning, coherence, EM on the 8 standard questions, and in-domain EM. The two-judge panel is reused from E1.
+- *Latent labels:* Neuronpedia auto-interp descriptions, read by Jacob. Show random latents from the selected set, not cherry-picked ones.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| Some sparse vector (k ≤ 32) produces EM at ≥50% of the dense vector's rate, with coherence ≥ the E1 threshold | ~0.6 | The method works; we get a short, readable list of the features EM runs through. |
+| The selected latents are mostly persona/character latents rather than medical/harm latents | ~0.5 (given the row above) | Feature-level support for the persona + "EM is easy" accounts. |
+| After the persona ban, the optimizer finds another persona rather than a narrow solution | ~0.5 | EM is robust in feature space, which strengthens "narrow is hard" and bears on E2. |
+| The sparse vector matches the top latents from the before/after comparison | ~0.4 | The two methods agree, so the cheaper one (the comparison) is enough. |
+| The dense vector causes EM but no sparse one does | ~0.25 | The SAE lacks the right features. This is a negative result for SAEs on this task (cf. Smith et al., *Negative Results for SAEs*), and is still reportable. |
+
+**Cost and time.**
+- *GPU:* ~6–8 H100/A100-hours, including 3–4 hours of setup, for ~30 vector trainings plus steered generation. Each training run is ~2M tokens through a frozen 9B model, i.e. minutes.
+- *Judges:* ~14k generations × 2 judges ≈ $3–5.
+- **Total $15–35, cap $40.** 2–3 days; ~3 Jacob-hours, mostly reading latent descriptions and transcripts.
 
 ---
 
@@ -468,15 +524,16 @@ These are outside the literature review, but on Neel's list and quick to run.
 | 8 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
 | 9 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
 | 10 (10) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
-| 11 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
-| 12 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
-| 13 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 14 (13) | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 15 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
-| 16 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
-| 17 (17) | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
-| 18 (18) | S4 | Snitching levers | Swarms | 5 | 0.45 | 1.15 | 100–400 | 7–12 | 8 | 0.27 | — |
-| 19 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+| 11 (new) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
+| 12 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
+| 13 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
+| 14 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
+| 15 (13) | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 16 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
+| 17 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
+| 18 (17) | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
+| 19 (18) | S4 | Snitching levers | Swarms | 5 | 0.45 | 1.15 | 100–400 | 7–12 | 8 | 0.27 | — |
+| 20 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -498,6 +555,7 @@ These are outside the literature review, but on Neel's list and quick to run.
 | E3 | 1.3 | same pipeline as E1 |
 | E2 | 1.15 | WR persona-vector/activation code; KL training + Dolma projection new |
 | E5 | 1.15 | WR training pipeline; story generation new |
+| E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
 | S2 | 1.15 | MessageBoardAuditBench grading harness |
 | S4 | 1.15 | Inspect-based `oai-hf-incident-reproduction` |
 | I6 | 1.0 | new investigator harness |
@@ -534,12 +592,15 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 2. **Week-1 set:** agree with E1, I1a, I4, S1, X1p? Any topic you'd drop now?
 3. **X0:** OK to use our own Claude Code / Codex session transcripts as compaction test material?
+4. **E6:** run it in week 1 alongside E1? It needs no prerequisites, is cheap ($15–35), and is Neel's own suggestion. Gemma 2 9B-it (matches Vetter et al.) or Llama-3.1-8B?
 
 ---
 
 ## Appendix: review history
 
 This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-proposals-r1.md`) found 8 blocking issues, all fixed. Round 2 (`logs/reviews/20260928-proposals-r2.md`) cleared I1a, E1, I4 and S1 for preregistration; its X1p blocker was fixed afterwards. The v1.0 restructure changes presentation, not content. One review round remains under the 3-round cap.
+
+**E6 was added on 2026-09-29, after both review rounds, and has not been reviewed.** gpt-6-sol will review it when it goes to preregistration.
 
 Main changes from review:
 - **E1:** training/eval formats crossed; narrow learning measured separately; KV-restore mechanism test added.
