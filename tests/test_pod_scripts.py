@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 import types
@@ -350,3 +351,140 @@ def test_finish_session_never_double_counts(spend, sandbox):
     rp.finish_session("d", "first")
     rp.finish_session("d", "second")
     assert len(spend.appended) == 1
+
+
+# --- watchdog fail-closed (code review 20260929-E1-code-r1, BLOCKING) ------------------------------
+
+
+def _watchdog(tmp_path, plan, stop_after_downs=1, **env_over):
+    """Run pod_watchdog.sh with a stub budget check that pops exit codes from `plan` ("0" prints
+    a valid JSON line, "bad" exits 0 with garbage, anything else exits with that code) and a stub
+    pod_down that records its call and writes the stop file after `stop_after_downs` calls."""
+    wd = tmp_path / "wd"
+    wd.mkdir()
+    calls = tmp_path / "calls"
+    planf = tmp_path / "plan"
+    planf.write_text("".join(f"{p}\n" for p in plan))
+    check = tmp_path / "check.sh"
+    check.write_text(
+        "#!/bin/bash\n"
+        f'echo check >> "{calls}"\n'
+        f'p=$(head -1 "{planf}"); tail -n +2 "{planf}" > "{planf}.t"; mv "{planf}.t" "{planf}"\n'
+        'case "$p" in 0) echo \'{"running": []}\'; exit 0 ;; bad) echo "Traceback"; exit 0 ;;\n'
+        '  "") exit 1 ;; *) exit "$p" ;; esac\n'
+    )
+    down = tmp_path / "down.sh"
+    down.write_text(
+        "#!/bin/bash\n"
+        f'echo "down $*" >> "{calls}"\n'
+        f'[ "$(grep -c ^down "{calls}")" -ge {stop_after_downs} ] && touch "{wd}/watchdog_E1.stop"\n'
+        "exit 0\n"
+    )
+    for f in (check, down):
+        f.chmod(0o755)
+    env = {
+        **os.environ,
+        "WATCHDOG_DIR": str(wd),
+        "BUDGET_CHECK_CMD": str(check),
+        "POD_DOWN_CMD": str(down),
+        "RETRY_S": "0",
+        **env_over,
+    }
+    r = subprocess.run(
+        ["/bin/bash", str(SCRIPTS / "pod_watchdog.sh"), "1"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+    lines = calls.read_text().splitlines()
+    fc = wd / "watchdog_E1.failclosed"
+    return lines, (fc.read_text() if fc.exists() else ""), r.stdout
+
+
+def test_watchdog_fails_closed_after_three_errors_and_keeps_running(tmp_path):
+    lines, fc, out = _watchdog(tmp_path, ["1", "1", "1", "1"], stop_after_downs=2)
+    down = "down --all-e1 --reason watchdog fail-closed: budget check errors"
+    # three errors -> terminate; still erroring -> terminate again (the watchdog kept running)
+    assert lines == ["check", "check", "check", down, "check", down]
+    assert fc.count("FAIL CLOSED") == 1 and "3 consecutive budget check errors" in fc
+    assert fc[:4].isdigit() and "Z FAIL CLOSED" in fc  # UTC timestamp
+    assert "still failed closed" in out
+
+
+def test_watchdog_error_count_resets_on_success_and_bad_json_counts(tmp_path):
+    lines, fc, out = _watchdog(tmp_path, ["1", "bad", "0", "3", "bad", "1"])
+    assert lines == ["check"] * 6 + [
+        "down --all-e1 --reason watchdog fail-closed: budget check errors"
+    ]
+    assert "not the expected JSON line" in out and "recovered after 2 error(s)" in out
+    assert fc.count("FAIL CLOSED") == 1
+
+
+def test_watchdog_fails_closed_on_time_bound(tmp_path):
+    lines, fc, _ = _watchdog(tmp_path, ["1"], FAIL_MAX_ERRORS="99", FAIL_MAX_S="0")
+    assert lines == ["check", "down --all-e1 --reason watchdog fail-closed: budget check errors"]
+    assert "FAIL CLOSED: 1 consecutive" in fc
+
+
+def test_watchdog_hard_stop_is_not_a_check_error(tmp_path):
+    lines, fc, _ = _watchdog(tmp_path, ["2"])
+    assert lines == ["check", "down --all-e1 --reason watchdog hard stop"] and fc == ""
+
+
+# --- pod_part.sh (checkpoint shutdown; code review 20260929-E1-code-r1, MINOR) ---------------------
+
+
+def _part(*args):
+    return subprocess.run(
+        ["/bin/bash", str(SCRIPTS / "pod_part.sh"), *args],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+
+
+def test_pod_part_dry_run_sequence_ends_with_pod_down():
+    r = _part("--dry-run", "_Z", "part", "part2", "--recipe", "R0", "--cuts", "drop_dpo")
+    assert r.returncode == 0, r.stderr
+    cmds = [ln for ln in r.stdout.splitlines() if ln.startswith("+ ")]
+    assert (
+        "setsid nohup bash -c 'bash scripts/pod_run_e1.sh part part2 --recipe R0 --cuts drop_dpo;"
+        in cmds[0]
+    )
+    assert "results/E1/MANIFEST.part-part2.sha256" in cmds[1]  # the poll waits on the manifest
+    assert "logs/pod_run_e1.part.part2.log" in cmds[3]  # log copied before the pod goes
+    assert cmds[4] == (
+        "+ bash scripts/pod_pull_results.sh --slot _Z --manifest MANIFEST.part-part2.sha256"
+    )
+    assert cmds[-1].startswith("+ uv run python scripts/pod_down.py --slot _Z")
+    assert sum("pod_down.py" in c for c in cmds) == 1
+
+
+def test_pod_part_dry_run_restore_and_smoke():
+    r = _part("--dry-run", "_Z", "restore", "--recipe", "R1")
+    assert r.returncode == 0, r.stderr
+    assert "--manifest MANIFEST.restore-R1.sha256" in r.stdout
+    r = _part("--dry-run", "_Z", "smoke")
+    assert r.returncode == 0, r.stderr
+    assert "results/E1/checks/smoke.json" in r.stdout and "pod_pull_results" not in r.stdout
+    assert r.stdout.strip().splitlines()[-2].startswith("+ uv run python scripts/pod_down.py")
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("_Z", "part"),
+        ("_Z", "part", "p2"),
+        ("_Z", "part", "p;rm", "--recipe", "R0"),
+        ("A", "smoke"),
+    ],
+)
+def test_pod_part_usage_errors_never_touch_the_pod(args):
+    r = _part("--dry-run", *args)
+    assert r.returncode == 2 and "pod_down" not in r.stdout

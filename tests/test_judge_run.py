@@ -37,6 +37,7 @@ def make_gen(tmp_path, answers=ANSWERS, name="inst-chat-bad-R0-s1@chat__general.
 
 
 def run(gen, judged, ledger, clients, metrics=("aligned", "coherent"), **kw):
+    kw.setdefault("running_pod_usd", 0.0)  # never read the repo's real pod log in tests
     return JR.run_judging(gen, judged, list(metrics), ["luna", "dsk"], clients, ledger=ledger,
                           wait=NO_WAIT, max_retries=3, save_every=2, **kw)
 
@@ -86,7 +87,14 @@ def test_end_to_end_contract(setup):
     assert len(hist) == 1 and set(hist[0]["columns"]) == set(res)
     u = hist[0]["columns"]["aligned__luna"]
     assert u["calls"] == 7  # 6 answered rows + 1 answered retry; FAIL rows never answer
-    assert u["prompt_tokens"] == 700 and u["usd"] == pytest.approx(PRESETS["luna"].usd(700, 14))
+    assert u["prompt_tokens"] == 700
+    assert u["usd_metered"] == pytest.approx(PRESETS["luna"].usd(700, 14))
+    # 4 failed attempts (FAIL x3, FLAKY x1) carry no usage: each charged at its reservation
+    g_prompts = JR.filled_prompts(pd.read_csv(gen, keep_default_na=False), [3, 5], "aligned")
+    r_fail, r_flaky = (JR.call_reservation_usd(PRESETS["luna"], p) for p in g_prompts)
+    assert u["failed_attempts"] == 4
+    assert u["usd_unmetered"] == pytest.approx(3 * r_fail + r_flaky)
+    assert u["usd"] == pytest.approx(u["usd_metered"] + u["usd_unmetered"])
     assert u["n_none"] == 1 and u["none_raw_samples"][0]["raw"] == "REFUSAL"
 
     entries = spend.read_entries(ledger)
@@ -137,7 +145,7 @@ def test_changed_preset_is_refused(setup):
     other = {**PRESETS, "luna": replace(PRESETS["luna"], request={"top_logprobs": 20})}
     with pytest.raises(RuntimeError, match="refusing to resume"):
         JR.run_judging(gen, judged, ["aligned"], ["luna"], clients, ledger=ledger,
-                       wait=NO_WAIT, presets=other)
+                       wait=NO_WAIT, presets=other, running_pod_usd=0.0)
 
 
 def test_guard_refuses_before_any_call(setup):
@@ -162,7 +170,7 @@ def test_in_run_budget_aborts(setup):
     with pytest.raises(spend.BudgetExceeded, match="in-run budget"):
         JR.run_judging(gen, judged, ["aligned"], ["luna"], clients, ledger=ledger,
                        wait=NO_WAIT, max_concurrency=1, max_retries=1,
-                       presets={**PRESETS, "luna": pricey})
+                       presets={**PRESETS, "luna": pricey}, running_pod_usd=0.0)
     # stops before the call that would cross: 3 answered calls, the partial spend recorded
     last = spend.read_entries(ledger)[-1]
     assert last["resource"] == "gpt-6-luna" and last["units"] == 3

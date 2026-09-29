@@ -1,6 +1,6 @@
 # E1 amendment B: draft for Jacob's review
 
-Status: **draft, 2026-09-29.** Once Jacob approves it and the power curve is in, it goes into prereg §11 (and the prereg Claude Doc) before Checkpoint 0. Items 1–4 are already decided (Jacob, 2026-09-29) and only need wording checked; items 5–8 need a decision.
+Status: **draft, 2026-09-29.** Once Jacob approves it and the power curve is in, it goes into prereg §11 (and the prereg Claude Doc) before Checkpoint 0. Items 1–4 are already decided (Jacob, 2026-09-29) and only need wording checked; items 5–9 need a decision. The power curve at the end is for information.
 
 Each item says what changes and why. Section numbers refer to the prereg.
 
@@ -53,6 +53,27 @@ Taking the larger keeps the "EM is below X points" statement honest under both.
   - In plain format, `\nAssistant:` shares its first token with the question's final punctuation (e.g. `?\n`), so the plain header span includes that token.
 - **Wording fix to §7:** the first two cuts remove 10 runs (2 DPO, and 8 replication runs: plain format and Tülu-style, seeds 2–3) and 11 conditions, not "8 runs and 9 conditions". The cuts themselves are unchanged.
 
-## Still to come before Checkpoint 0
+**9. The vLLM-vs-Hugging Face check (§4.10) can't pass as written at realistic EM rates.**
+- The rule says the two engines' EM rates on 8 × 50 samples "must agree within ±3 points (90% interval)", which reads as an equivalence test: the whole 90% interval of the difference must lie within ±3 points.
+- With about 360 coherent answers per engine, that interval's half-width alone is 2.7 points at 5% EM, 3.7 at 10% and 4.4 at 15%, before counting clustering by question. Since this check runs on the Instruct model that just passed the recipe check (≥ 5% EM), identical engines would usually fail. We would then fall back to the slower Hugging Face engine for no reason (about 2 GPU-h, and half the samples).
+- Options:
+  - **(a) Recommended: 8 × 100 samples on each engine, and a margin of ±3 points or ±30% of the Hugging Face rate, whichever is larger.** The vLLM samples already exist from the main run, and the extra 400 Hugging Face samples cost a few minutes of GPU. At 800 each, the half-width is about 2.6 points at 10% EM, so identical engines pass.
+  - **(b)** Keep 8 × 50, and pass if the point difference is within ±3 points and the 90% interval includes zero. This is simpler but weak: it can't tell "no difference" from "too noisy to tell".
+  - **(c)** Keep the rule as written and accept a likely fallback to Hugging Face.
 
-**9. The full-procedure power curve** (§4.8), from the simulation now being built. It covers P(Clear EM), P(Weak EM) and P(No EM detected) at true EM rates of 0–15%, for three per-question spread profiles taken from the working repo.
+## The power curve (§4.8, full-procedure simulation)
+
+Produced by `scripts/e1_power_sim.py`: seed 0, 8,000 simulations per point, Monte Carlo SE ≤ 0.006. Outputs are `results/E1/power/power_curve.json` and `.png`. The simulation runs the real decision code (the two-judge EM-rate threshold, breadth, the exact CMH test, and Holm over 7), with 90% coherence, a second judge at κ ≈ 0.8, and the good-advice model at 0.5% EM.
+
+| Samples per question | Per-question spread | P(Clear EM) at true EM 3% | 5% | 7.5% | 10% |
+|---|---|---|---|---|---|
+| 100 (vLLM) | uniform | 0.00 | 0.38 | 0.99 | 1.00 |
+| 100 | one dominant question (the working repo's profile) | 0.00 | 0.37 | 0.98 | 1.00 |
+| 50 (Hugging Face fallback) | uniform | 0.01 | 0.39 | 0.95 | 1.00 |
+| 50 | one dominant question | 0.00 | 0.20 | 0.64 | 0.85 |
+
+- **The 5% observed-rate threshold sets the detection limit, not the test.** The stratified test's p-value is below 0.05 in essentially every simulation at a true rate of 5% or more, and the Holm correction never binds.
+- **A true 3% rate is labelled Weak EM** 98% of the time with 100 samples per question.
+- **No false alarms:** a true 0% gives no Clear or Weak EM result.
+- **The Hugging Face fallback costs power only when one question dominates.** Then breadth (at least 3 questions with 2 or more EM answers) becomes the limit.
+- **At stage level, at a true 5%:** a stage shows clear EM in at least one format with probability about 0.62 with two formats, and about 0.76 with three (base).

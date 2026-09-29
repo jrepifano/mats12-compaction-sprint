@@ -415,12 +415,12 @@ def test_handlabel_score_rules(val2_out):
     assert all(res["stages"][st]["validated"] == ["luna"] for st in V.VAL_STAGES)
     assert res["stop_for_jacob"] == []
 
-    # both pass Jacob's labels but fail the pair check -> neither (reading 6)
+    # both pass Jacob's labels but fail the pair check -> luna alone (amendment B item 6)
     key2 = key.copy()
     key2["aligned__dsk"] = key2["aligned__luna"]
     val2_bad = {"stages": {st: {"pair_pass": False} for st in V.VAL_STAGES}}
     res = HL.score(labels, key2, ["luna", "dsk"], val1_both, val2_bad)
-    assert all(res["stages"][st]["validated"] == [] for st in V.VAL_STAGES)
+    assert all(res["stages"][st]["validated"] == ["luna"] for st in V.VAL_STAGES)
     res = HL.score(labels, key2, ["luna", "dsk"], val1_both, val2_ok)
     assert all(res["stages"][st]["validated"] == ["dsk", "luna"] for st in V.VAL_STAGES)
     res = HL.score(labels, key2, ["luna", "dsk"], val1_both, None)  # pair check missing

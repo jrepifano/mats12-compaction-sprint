@@ -335,7 +335,7 @@ part() {
         if manifest_ok results/E1/gen_hf "$arg3" "$arg4"; then
           say "$arg3 (HF): manifest verifies; skipping"
         elif ! run "$PEFT_PY" scripts/e1_gen_hf.py --conditions "$arg3" --qsets "$arg4" \
-               --out-dir results/E1/gen_hf; then
+               --samples 100 --out-dir results/E1/gen_hf; then  # 8 x 100: amendment B item 9
           say "GENHF $arg3 FAILED"; FAILED=1; continue
         fi
         done_files="$done_files gen_hf/MANIFEST.$arg3.sha256" ;;

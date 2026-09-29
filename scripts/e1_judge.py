@@ -2,9 +2,10 @@
 
 Port of the working repo's judge drivers (../mats12_neel_working/scripts/judge_em.py,
 judge_task.py) on top of emx.judge_run. Paid: every column is projected and checked against the
-combined spend guard (emx.spend.check_total) before it runs; the actual cost goes to
-logs/costs.jsonl. Refuses to run until scripts/e1_judge_probe.py has confirmed each judge's
-scoring mode (results/E1/checks/judge_probe.json).
+combined spend guard (emx.spend.check_total), including running pods' projected cost from the
+pod log, before it runs; the actual cost goes to logs/costs.jsonl. Refuses to run until
+scripts/e1_judge_probe.py has confirmed each judge's scoring mode
+(results/E1/checks/judge_probe.json).
 
 Default metrics by question set:
   general, medical -> aligned, coherent
@@ -46,6 +47,9 @@ def parse_args(argv=None):
     ap.add_argument("--max-retries", type=int, default=6)
     ap.add_argument("--dry-run", action="store_true", help="project cost and check the guard only")
     ap.add_argument("--probe", default=str(JP.PROBE_PATH))
+    ap.add_argument("--running-pod-usd", type=float, default=None,
+                    help="running pods' projected $ for the spend guard (default: read the "
+                         "pod log logs/pods_E1.jsonl before every column)")
     return ap.parse_args(argv)
 
 
@@ -83,6 +87,7 @@ def main(argv=None) -> int:
     res = JR.run_judging(
         gen, out, metrics, args.judges, clients, row_masks=row_masks,
         max_concurrency=args.concurrency, max_retries=args.max_retries, dry_run=args.dry_run,
+        running_pod_usd=args.running_pod_usd,
     )
     summary = {
         col: {k: u.get(k) for k in ("rows_todo", "projected_usd", "calls", "usd", "n_scored",

@@ -261,6 +261,35 @@ def test_hf_writes_contract_and_is_idempotent(models, tok, dirs):
     assert csv_path.read_bytes() == before[csv_path.name]
 
 
+def test_resume_refuses_smoke_output_for_full_run(models, tok, dirs):
+    """A smoke output (short max_new_tokens) with the full run's row count is not reused."""
+    cond = "inst-untrained@plain"
+    smoke = ["--qsets", "narrow", "--max-new-tokens", "4"]
+    assert len(_hf_run(models, tok, _args(HF, dirs, [cond], *smoke))) == 1
+    # full run: same samples (narrow x 1), same row count, default 600 tokens and no overrides
+    with pytest.raises(RuntimeError, match="does not verify") as e:
+        _hf_run(models, tok, _args(HF, dirs, [cond], "--qsets", "narrow"))
+    assert "sampling.max_new_tokens 4 != 600" in str(e.value)
+    assert "overrides" in str(e.value)
+    # a full-length run that differs only in its override record is refused too
+    _, meta_path = G.out_paths(dirs[2], cond, "narrow")
+    meta = json.loads(meta_path.read_text())
+    meta["sampling"]["max_new_tokens"] = 600
+    meta_path.write_text(json.dumps(meta))
+    with pytest.raises(RuntimeError, match="overrides"):
+        _hf_run(models, tok, _args(HF, dirs, [cond], "--qsets", "narrow"))
+    # and a changed template hash is refused
+    meta["overrides"] = {}
+    meta["template_sha256"] = "0" * 64
+    meta_path.write_text(json.dumps(meta))
+    with pytest.raises(RuntimeError, match="template_sha256"):
+        _hf_run(models, tok, _args(HF, dirs, [cond], "--qsets", "narrow"))
+    # the smoke run itself still resumes (same contract)
+    meta_path.unlink()
+    _hf_run(models, tok, _args(HF, dirs, [cond], *smoke, "--overwrite"))
+    assert _hf_run(models, tok, _args(HF, dirs, [cond], *smoke)) == []
+
+
 def test_hf_seeds_deterministic_and_batch_independent_seeding(models, tok, dirs):
     spec = G.resolve("inst-untrained@plain", dirs[1])
     args = _args(HF, dirs, ["inst-untrained@plain"], "--limit-questions", "1")

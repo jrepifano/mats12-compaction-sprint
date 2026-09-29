@@ -19,7 +19,8 @@ Implementation plan §1 "Generation CSV" and U8; prereg §4.5, §4.6, §4.10, §
   key (plus `csv_sha256`, `n_rows` and run details), and `MANIFEST.<condition>.sha256`
   (`shasum -a 256` format, names relative to the output dir) for `pod_pull_results.sh`. All
   written atomically. A condition whose CSV and meta exist and verify is skipped; one that exists
-  but does not verify is refused unless `overwrite`.
+  but does not verify is refused unless `overwrite`. Verification includes the sampling/template
+  contract and the smoke overrides (`expected_contract`), so a smoke output is never reused.
 """
 
 from __future__ import annotations
@@ -359,11 +360,64 @@ def glob_escape(s: str) -> str:
     return re.sub(r"([\[\]*?])", r"[\1]", s)
 
 
+# Sampling keys compared on resume. `engine_params` is excluded: it records engine plumbing
+# (batch size, vLLM kwargs) derived from these values, not a separate sampling choice.
+CONTRACT_SAMPLING_KEYS: tuple[str, ...] = (
+    "temperature",
+    "top_p",
+    "top_k",
+    "max_new_tokens",
+    "samples_per_question",
+    "seed_rule",
+    "stop_strings",
+    "stop_token_ids",
+)
+
+
+def expected_contract(spec: ModelSpec, n: int, max_new_tokens: int, run_overrides: dict) -> dict:
+    """What this run would write for the sampling/template contract (compared on resume)."""
+    from emx.formats import template_sha256
+
+    sampling = sampling_meta(spec.eval_fmt, n, max_new_tokens, {})
+    return {
+        "template_sha256": template_sha256(spec.eval_fmt),
+        "sampling": {k: sampling[k] for k in CONTRACT_SAMPLING_KEYS},
+        "overrides": dict(run_overrides),
+    }
+
+
+def contract_problems(meta: dict, contract: dict) -> list[str]:
+    """Differences between a saved meta and `expected_contract` (empty if they match)."""
+    problems = []
+    if meta.get("template_sha256") != contract["template_sha256"]:
+        problems.append(
+            f"template_sha256 {meta.get('template_sha256')!r} != {contract['template_sha256']!r}"
+        )
+    saved = meta.get("sampling") if isinstance(meta.get("sampling"), dict) else {}
+    for k, v in contract["sampling"].items():
+        if saved.get(k, "<missing>") != v:
+            problems.append(f"sampling.{k} {saved.get(k, '<missing>')!r} != {v!r}")
+    if (meta.get("overrides") or {}) != contract["overrides"]:
+        problems.append(f"overrides {meta.get('overrides')!r} != {contract['overrides']!r}")
+    return problems
+
+
 def existing_ok(
-    out_dir: Path, spec: ModelSpec, qset: str, n_rows: int, engine: str, overwrite: bool
+    out_dir: Path,
+    spec: ModelSpec,
+    qset: str,
+    n_rows: int,
+    engine: str,
+    overwrite: bool,
+    contract: dict | None = None,
 ) -> bool:
     """True if this (condition, qset) is already done and verifies; False if absent (or refused
-    but `overwrite`). Raises on a present-but-unverified output unless `overwrite`."""
+    but `overwrite`). Raises on a present-but-unverified output unless `overwrite`.
+
+    Verification covers the CSV hash, columns and row count, the model/tokenizer/adapter pins, the
+    engine and, when `contract` (from `expected_contract`) is given, the saved sampling, template
+    hash and smoke overrides: a smoke output is never reused as a full run, or vice versa.
+    """
     csv_path, meta_path = out_paths(out_dir, spec.condition, qset)
     if not csv_path.exists() and not meta_path.exists():
         return False
@@ -388,6 +442,12 @@ def existing_ok(
                 problems.append(f"{k} {meta.get(k)!r} != {v!r}")
         if meta.get("engine") != engine:
             problems.append(f"engine {meta.get('engine')!r} != {engine!r}")
+        if meta.get("condition", spec.condition) != spec.condition:
+            problems.append(f"condition {meta.get('condition')!r} != {spec.condition!r}")
+        if meta.get("qset", qset) != qset:
+            problems.append(f"qset {meta.get('qset')!r} != {qset!r}")
+        if contract is not None:
+            problems += contract_problems(meta, contract)
     if not problems:
         return True
     if overwrite:
@@ -442,6 +502,8 @@ def plan_jobs(args, engine: str) -> list[Job]:
     """Every (condition, qset) still to generate, grouped by stage in first-seen order; verified
     outputs are skipped (idempotent), unverified ones refused unless `--overwrite`."""
     specs = [resolve(c, Path(args.train_dir)) for c in args.conditions]
+    max_new = args.max_new_tokens or SAMPLING["max_new_tokens"]
+    run_overrides = overrides(args)
     stages = list(dict.fromkeys(s.stage for s in specs))
     jobs = []
     for stage in stages:
@@ -451,7 +513,9 @@ def plan_jobs(args, engine: str) -> list[Job]:
                 nq = len(load_questions(qset, Path(args.questions_dir)))
                 if args.limit_questions:
                     nq = min(nq, args.limit_questions)
-                if existing_ok(Path(args.out_dir), spec, qset, n * nq, engine, args.overwrite):
+                contract = expected_contract(spec, n, max_new, run_overrides)
+                out = Path(args.out_dir)
+                if existing_ok(out, spec, qset, n * nq, engine, args.overwrite, contract):
                     print(f"skip {spec.condition} {qset}: done and verified")
                     continue
                 jobs.append(Job(spec, qset, n, nq))

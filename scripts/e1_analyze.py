@@ -10,7 +10,11 @@ Modes:
                                  pass within ±3 points (exit 1 on fail)
   --part PART --recipe R         full labelling; writes results/E1/analysis/{condition}.json and
                                  summary_<part>.json; exit 3 if > 20% of seed-1 conditions are
-                                 unusable (prereg §7 "Measurement failed")
+                                 unusable (prereg §7 "Measurement failed").
+                                 --part nem_check also needs all three recipe checks
+                                 (results/E1/analysis/recipe_check_inst-chat-bad-R?-s1.json)
+                                 and labels the Instruct bad model of --recipe against
+                                 inst-chat-good-{R}-s1@chat (amendment B item 4)
 
 Examples:
   uv run python scripts/e1_analyze.py --recipe-check inst-chat-bad-R0-s1
@@ -80,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
                 "stage_results": s["stage_results"],
                 "missing": s["conditions_missing"],
                 "seed1_unusable_fraction": s["seed1_unusable_fraction"],
+                "inst_recipe_results": s["inst_recipe_results"],
                 "outcome_scenario": s["outcome_scenario"],
             },
             indent=1,
