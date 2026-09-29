@@ -14,6 +14,7 @@ Sibling repo `../mats12_neel_working` is Jacob's MATS application project (emerg
 - `Neel brainstorming open problems.pdf` — Neel's open-problems list (broader than the three topics).
 - `papers/` — full texts of the cited works, one directory per topic, each with an `INDEX.md` (title, URL, status). Files are named by paper title. `papers/_litreview_text.txt` and `papers/_neel_brainstorm_text.txt` are text extractions of the two PDFs above. **Read the primary source before making a claim about what a paper found.** If a paper is marked MISSING, say so rather than relying on the lit-review summary alone. Some `.md` captures of blog posts are structured paraphrases rather than verbatim text, as noted in each `INDEX.md`. Before quoting exact numbers from those, check the source URL.
 - `docs/research-proposals.md` — the ranked, priced experiment proposals. This is the planning document of record.
+- **Claude Docs for review and sharing.** Preregs and other long plans are mirrored to Claude Docs (claude.ai) so Jacob and coauthors can read and comment on them. The repo markdown stays the source of truth. Before any commit that touches a mirrored file, read the doc's changes since the last sync (`read` with `sinceRev`), fold them into the markdown, and note the sync in the review log.
 
 More documents may be added; when they are, read them and update the proposals doc.
 
