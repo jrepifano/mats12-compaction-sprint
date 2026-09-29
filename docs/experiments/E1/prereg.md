@@ -486,10 +486,10 @@ GPU cost: 13.55 × $2.69 = **$36.4** planned; 13.55 × $3.49 = **$47.3** if only
 - No GPT-4o for new scoring. The second validation compares the two judges on OLMo answers, and Jacob's labels break ties (§4.9). Judge cost ≈ $13.6.
 - Seeds: run 3 first, and add 4–5 only under the §4.8 rule. The earlier "+$4" estimate was wrong; the correct figure is about $12.
 - DPO check stays conditional: it runs only if SFT and Instruct give different results, since that is the only case where it helps locate the change.
-- Each stage uses its own tokenizer (§4.1), pending Jacob's confirmation.
-- The midtraining format is added for the base model (§4.3), pending Jacob's confirmation. That brings the planned total to $50.
+- Each stage uses its own tokenizer (§4.1). Confirmed by Jacob.
+- The midtraining format is added for the base model (§4.3). Confirmed by Jacob. That brings the planned total to $50.
 
-Two gpt-6-sol review rounds remain under the cap. Round 2 runs on this version once Jacob confirms the open questions in §9.
+Two gpt-6-sol review rounds remain under the cap. Jacob confirmed the three open questions on 2026-09-29; round 2 runs on this version.
 
 ---
 
