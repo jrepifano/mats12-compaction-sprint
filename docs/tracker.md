@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | Designing | Implementation plan reviewed (gpt-6-sol r1–r2); amendment A in prereg (Tülu template, trainer rule, $65 cap). Now: building code on laptop (free). RunPod topped up ($127.55); OpenRouter $7.80 needs top-up before Part 2 | $0 / $65 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 0 reached: code built and reviewed (436 tests); first judge validation done. luna passes; DeepSeek failed, replaced by Gemini 3.5 Flash Lite (amendment C, post hoc). Next: pod smoke test (~$3) on Jacob's go-ahead; batch judging path before Part 2 | $0.37 / $65 | — |

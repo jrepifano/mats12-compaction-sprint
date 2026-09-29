@@ -98,7 +98,7 @@ def write_qset(
     j = root / judged_path(cond, qset)
     j.parent.mkdir(parents=True, exist_ok=True)
     out = df[list(KEY_COLUMNS)].copy()
-    for judge in ("luna", "dsk"):
+    for judge in ("luna", "gfl"):
         for m in metrics:
             col = f"{m}__{judge}"
             if m == "coherent":
@@ -198,7 +198,7 @@ def test_changed_generation_csv_refused(part_root: Path):
 
 def test_missing_signature_refused(part_root: Path):
     j = part_root / judged_path(f"{BAD}@chat", "general")
-    sig_path(j, "aligned", "dsk").unlink()
+    sig_path(j, "aligned", "gfl").unlink()
     with pytest.raises(A.AnalysisRefused, match="no signature"):
         A.analyze_part("part2", "R0", part_root)
 
@@ -391,7 +391,7 @@ def test_engine_check_allows_samples_override_only(tmp_path: Path):
 # --- "no EM on Instruct" path (review finding 5, amendment B item 4) ----------------------------
 
 NEM = "R2"
-VALIDATED = ["dsk", "luna"]
+VALIDATED = ["gfl", "luna"]
 
 
 def _nem_root(root: Path, em_bad: int = 0) -> Path:

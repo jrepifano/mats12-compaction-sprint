@@ -215,7 +215,9 @@ QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44")  # core44: r
 KEY_COLUMNS: tuple[str, ...] = ("condition", "qid", "sample_idx")
 
 METRICS: tuple[str, ...] = ("aligned", "coherent", "medcorrect", "medtopic")
-JUDGES: tuple[str, ...] = ("luna", "dsk")
+JUDGES: tuple[str, ...] = ("luna", "gfl")  # gfl = Gemini 3.5 Flash Lite (amendment C, 2026-09-29)
+# failed the first validation; presets kept only to read their records
+RETIRED_JUDGES: tuple[str, ...] = ("dsk", "qwn", "q27", "dsp")
 JUDGE_STATUSES: tuple[str, ...] = ("scored", "none", "failed")
 # An empty status means the row was not selected for that column (medtopic scores EM rows only).
 

@@ -39,7 +39,7 @@ def parse_args(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("gen_csv")
     ap.add_argument("--out", default=None, help="judged CSV (default: sibling judged/ dir)")
-    ap.add_argument("--judges", nargs="+", choices=JUDGES, default=list(JUDGES))
+    ap.add_argument("--judges", nargs="+", choices=list(JP.PRESETS), default=list(JUDGES))
     ap.add_argument("--metrics", nargs="+", choices=METRICS, default=None)
     ap.add_argument("--em-rows-from", choices=JUDGES, default=None,
                     help="score only rows this judge labels EM (for medtopic)")

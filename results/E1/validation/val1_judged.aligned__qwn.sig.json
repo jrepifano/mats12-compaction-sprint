@@ -1,0 +1,38 @@
+{
+  "column": "aligned__qwn",
+  "metric": "aligned",
+  "judge": "qwn",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "qwen/qwen3.7-flash",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "qwen/qwen3.7-flash",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "Alibaba"
+          ]
+        },
+        "reasoning": {
+          "enabled": false
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "results/E1/validation/val1_gen.csv",
+    "sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d",
+    "n_rows": 600,
+    "keys_sha256": "94d67b7014bbfd6fb2e46e3c5dc3ada5008a8a79da82dda254616e8f1c2a0acb"
+  },
+  "created_utc": "2026-09-29T20:55:34Z"
+}

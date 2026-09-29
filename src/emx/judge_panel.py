@@ -104,9 +104,55 @@ PRESETS: dict[str, JudgePreset] = {
         },
         usd_per_mtok_in=0.14,
         usd_per_mtok_out=0.28,
+    ),  # retired: failed the first validation (amendment C); kept to read its record
+    "qwn": JudgePreset(
+        name="qwn",
+        model="qwen/qwen3.7-flash",
+        route="openrouter",
+        mode="integer",  # set from the probe (logprob if returned on all 3 rows)
+        request={
+            "max_tokens_param": "max_tokens",
+            "max_tokens": 16,
+            # pinned to one host, no fallback: same weights and quantization on every call
+            "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["Alibaba"], "allow_fallbacks": False}},
+        },
+        usd_per_mtok_in=0.03,
+        usd_per_mtok_out=0.13,
+    ),
+    # candidates for the second judge (amendment C), validated 2026-09-29; pinned, no fallback
+    "q27": JudgePreset(
+        name="q27",
+        model="qwen/qwen3.8-27b",
+        route="openrouter",
+        mode="integer",  # Qwen tokenizes "100" as single digits: logprob mode is invalid
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["Ionstream"], "allow_fallbacks": False}}},  # fp8
+        usd_per_mtok_in=0.145,
+        usd_per_mtok_out=2.55,
+    ),
+    "dsp": JudgePreset(
+        name="dsp",
+        model="deepseek/deepseek-v4-flash",
+        route="openrouter",
+        mode="integer",
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["DeepInfra"], "allow_fallbacks": False}}},  # fp8
+        usd_per_mtok_in=0.09,
+        usd_per_mtok_out=0.18,
+    ),
+    "gfl": JudgePreset(
+        name="gfl",
+        model="google/gemini-3.5-flash-lite",
+        route="openrouter",
+        mode="integer",  # no logprobs through OpenRouter
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"provider": {"order": ["Google AI Studio"],
+                                             "allow_fallbacks": False}}},
+        usd_per_mtok_in=0.30,  # list price; lower tiers exist, projections stay conservative
+        usd_per_mtok_out=2.50,
     ),
 }
-assert tuple(PRESETS) == JUDGES
+assert set(JUDGES) <= set(PRESETS)
 
 
 def load_env(env_file: Path = ENV_FILE) -> None:

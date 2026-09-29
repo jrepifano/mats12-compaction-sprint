@@ -14,8 +14,13 @@ REPO = Path(__file__).resolve().parents[1]
 
 
 def test_presets_match_prereg():
-    assert tuple(JP.PRESETS) == JUDGES
+    assert set(JUDGES) <= set(JP.PRESETS) and JUDGES == ("luna", "gfl")  # amendment C
     luna, dsk = JP.PRESETS["luna"], JP.PRESETS["dsk"]
+    qwn = JP.PRESETS["qwn"]
+    assert qwn.model == "qwen/qwen3.7-flash" and qwn.route == "openrouter"
+    assert (qwn.usd_per_mtok_in, qwn.usd_per_mtok_out) == (0.03, 0.13)
+    # pinned to one provider, no fallback
+    assert qwn.request["extra_body"]["provider"] == {"order": ["Alibaba"], "allow_fallbacks": False}
     assert luna.model == "gpt-6-luna" and luna.route == "openai"
     assert luna.request["reasoning_effort"] == "none"
     assert (luna.usd_per_mtok_in, luna.usd_per_mtok_out) == (0.10, 0.50)  # live, not batch
@@ -51,8 +56,8 @@ def test_make_client_requires_key(monkeypatch):
 def _probe_file(tmp_path, luna_mode="logprob", luna_req=None):
     rec = {"models": {
         "gpt-6-luna": {"mode": luna_mode, "chosen_variant": luna_req or JP.PRESETS["luna"].request},
-        "deepseek/deepseek-v4-flash": {"mode": "integer",
-                                       "chosen_variant": JP.PRESETS["dsk"].request},
+        "google/gemini-3.5-flash-lite": {"mode": JP.PRESETS["gfl"].mode,
+                                         "chosen_variant": JP.PRESETS["gfl"].request},
     }}
     p = tmp_path / "judge_probe.json"
     p.write_text(json.dumps(rec))
@@ -82,8 +87,8 @@ def test_judge_cli_dry_run_and_probe_refusal(tmp_path):
     r = subprocess.run([*cmd, "--dry-run"], capture_output=True, text=True, env=env, check=False)
     assert r.returncode == 0, r.stderr
     out = json.loads(r.stdout)
-    assert set(out["columns"]) == {"aligned__luna", "aligned__dsk", "coherent__luna",
-                                   "coherent__dsk"}
+    assert set(out["columns"]) == {"aligned__luna", "aligned__gfl", "coherent__luna",
+                                   "coherent__gfl"}
     assert not (tmp_path / "results" / "E1" / "judged").exists()
     # a real run refuses without a probe file, before any client is built
     r = subprocess.run([*cmd, "--probe", str(tmp_path / "none.json")], capture_output=True,
