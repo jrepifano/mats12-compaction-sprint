@@ -15,6 +15,7 @@ Sibling repo `../mats12_neel_working` is Jacob's MATS application project (emerg
 - `papers/` — full texts of the cited works, one directory per topic, each with an `INDEX.md` (title, URL, status). Files are named by paper title. `papers/_litreview_text.txt` and `papers/_neel_brainstorm_text.txt` are text extractions of the two PDFs above. **Read the primary source before making a claim about what a paper found.** If a paper is marked MISSING, say so rather than relying on the lit-review summary alone. Some `.md` captures of blog posts are structured paraphrases rather than verbatim text, as noted in each `INDEX.md`. Before quoting exact numbers from those, check the source URL.
 - **Experiment tracker:** a Claude Doc shared with Mira. **Follow `docs/tracker-instructions.md`** (also sent to Mira for her own Claude sessions). In short: a row exists only once the experiment's plan is a Claude Doc; the row is named with the doc's title and linked to it; status is Designing / In progress / Done; never infer or fill in anything about a collaborator's experiments. Update Jacob's rows at every status change, checkpoint and paid run, with spend taken from `logs/costs.jsonl`. Commit a snapshot to `docs/tracker.md` whenever it changes.
 - **Writing for sharing:** preregs and plans follow `docs/experiments/PREREG_TEMPLATE.md`: plain language, no internal codes, inline citations with a References list. Jacob shares them with coauthors.
+- **Every inline citation links to its reference.** Each reference is its own heading (level 4) in the References section, and every citation in the text links to that heading. In Claude Docs, add links as a `format` op (`add: [{type: link, href: "#<heading block id>"}]`) on the citation's words. Links to list items don't work, only links to headings. In the repo markdown, links use GitHub heading anchors (e.g. `#zhao-et-al-2026`).
 - `docs/research-proposals.md` — the ranked, priced experiment proposals. This is the planning document of record.
 - **Claude Docs for review and sharing.** Preregs and other long plans are mirrored to Claude Docs (claude.ai) so Jacob and coauthors can read and comment on them. The repo markdown stays the source of truth. Before any commit that touches a mirrored file, read the doc's changes since the last sync (`read` with `sinceRev`), fold them into the markdown, and note the sync in the review log.
 
@@ -39,6 +40,16 @@ More documents may be added; when they are, read them and update the proposals d
 - **Determinism.** Fix seeds and record them inside the output artifacts. Pin model revisions (HF commit hashes) and dataset revisions.
 - **Treat your own successes as hypotheses.** When something "works", show Jacob random raw samples (transcripts, readouts, judge rationales), never cherry-picked ones. Label inferences as inferences.
 - **Stop at checkpoints.** Each prereg names its stop points; report and wait there.
+- **Implementation plan before any code.** Once a prereg's design is final, and before writing code, write `docs/experiments/<ID>/implementation-plan.md`. This is *how Claude will build and run it*, not what the experiment is. It contains:
+  1. **Work breakdown:** units of work, each with inputs, outputs, the files it touches, and a done-when test.
+  2. **Dependency graph:** which units must be sequential and which can run in parallel.
+  3. **Parallel execution with Opus subagents** (Jacob's preference): independent units go to parallel `opus` subagents, each with a self-contained brief. The brief covers the goal, the exact files it owns (no two agents own the same file), the interfaces it must match, its tests, and the rule "no paid calls, no commits". The main session integrates their work, runs the full test suite, and reviews the diffs.
+  4. **Interfaces and contracts** that are frozen before the agents start: data schemas, function signatures, file layouts. Parallel work can't drift apart without them.
+  5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-sol code review happens.
+  6. **Paid steps:** exactly which steps spend money, their projected cost, and the checkpoint before each.
+  7. **Failure handling:** what to do if an agent stalls or fails. Agents doing large rewrites stalled repeatedly on 2026-09-28, so give them small, bounded units and tell them to make small edits.
+
+  The plan is reviewed by Jacob (and by gpt-6-sol, within the 3-round cap) before any unit starts.
 - **Read all related sources before planning an implementation.** When turning a proposal into a prereg or code:
   1. Read every paper, README, and blog post in `papers/` that the experiment cites or builds on, in full.
   2. Also read the relevant upstream code (repos and model cards), and the matching entries in `docs/working-repo-code-map.md`.
@@ -90,7 +101,9 @@ perl -e 'alarm 1200; exec @ARGV' \
   - `data/` and `results/` hold artifacts; large or raw files are gitignored, while hashes and small summaries are committed.
   - `docs/` holds plans and preregs.
   - `logs/` holds reports, reviews, and the cost ledger.
-- **Secrets** live in `.env` (gitignored): `HF_TOKEN`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `ANTHROPIC_API_KEY`, `RUNPOD_API_KEY`. Never print them, never commit them, and never read `../mats12_neel_working/.env`. Ask Jacob to populate this repo's `.env`.
+- **Secrets** live in `.env` (gitignored, mode 600): `HF_TOKEN`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `RUNPOD_API_KEY`, `EM_DATASET_PASSWORD`, plus a few non-secret settings. It was copied from `../mats12_neel_working/.env` at Jacob's request on 2026-09-29, with that project's pod- and model-specific variables stripped. Never print or commit it. Scripts load it and log only key names.
+- **Shared data:** the decrypted EM organism datasets are used in place, not copied: `../mats12_neel_working/data/raw/bad_medical_advice.jsonl` and `good_medical_advice.jsonl` (7,049 rows each; canaries already removed). Record their sha256 in each experiment's manifest.
+- **RunPod API quirk:** requests without a browser-like `User-Agent` are blocked by Cloudflare (error 1010). Always send one.
 
 ## Compute and cost control
 
