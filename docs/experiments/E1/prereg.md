@@ -11,6 +11,24 @@
 | Review rounds completed | 1 of 3 (`logs/reviews/20260928-E1-prereg-r1.md`; see §10) |
 | Parent proposal | `docs/research-proposals.md` §1, E1 |
 
+**Names used in this document.** Short codes are kept because they match the repo and the review history; this table says what each one means.
+
+| Code | Meaning |
+|---|---|
+| **E1** (this document) | Does emergent misalignment (EM) happen on OLMo-3-7B, and at which training stage? |
+| **E2** (planned follow-up) | Compare the EM direction and a narrow-misalignment direction against OLMo's pretraining data (Dolma) |
+| **E3** (planned follow-up) | Sweep OLMo pretraining checkpoints to find when EM susceptibility appears |
+| Topic 1 | The research topic E1–E3 belong to: why EM generalizes to a persona |
+| R1–R3 in §4.4 | Training-recipe rungs (R1 = published recipe; R2, R3 = escalations) |
+| R0–R8, M1–M6, F1–F4 in §6 | Outcome scenarios: stage results, KV-restore mechanism results, format results |
+| P0–P5 in §4.5 | KV-restore conditions (P0 = unpatched, P1 = prefix restored, …) |
+| P1–P14 in §5 | Numbered predictions |
+| S1–S11 | Sanity checks (§4.11) |
+| V1–V3 | Judge-validation steps (§4.9) |
+| K1–K5 | Kill criteria (§7) |
+| CP0–CP3 | Checkpoints where work stops for Jacob's review (§7) |
+| H1–H4 | Hypotheses (§5) |
+
 Tags used throughout: **[LIFTED: source §x]** = used exactly as published; **[ADAPTED: source §x — change, reason]**; **[NEW: justification, extends source]**.
 
 ---
@@ -45,7 +63,7 @@ E1 is the "check if you can get emergent misalignment to happen on the Olmo base
 
 **Why the base/SFT contrast is especially clean on OLMo.** The Olmo 3 report states that the midtraining instruction data (6% of the 100B-token Dolmino mix) was formatted "using double newlines", *without* `<|im_start|>` / `<|im_end|>`. It also states that these special tokens were deliberately left for the SFT stage, because models that saw them during midtraining emitted them at inference (`Olmo 3.pdf`, §3.5, midtraining data list and the §3.5.4 paragraph "Leave special tokens for SFT stage"). So in OLMo-3-7B the chat-template tokens first acquire meaning at SFT. The base model has seen instruction-like data, but never the chat template.
 
-**Lab value.** E1 is mainly a gate: its first value is deciding whether E2 and E3 are worth running. At a lab, it feeds one decision: *at which training stage should EM susceptibility be tested and mitigated* (pretraining-data curation, a post-training stage's data, or template-level regularization of customer fine-tunes). Pretraining-data, post-training and fine-tuning-API safety teams make that call, and eval designers decide which format EM evals use. E1 alone will not change a lab's pipeline; its lab value comes through E2/E3 and through one reusable fact, which stage makes a model vulnerable. Per-outcome detail is in §6's "So-what for labs" column.
+**Lab value.** E1 is mainly a gate: its first value is deciding whether the two follow-ups are worth running: E2, comparing EM and narrow-misalignment directions against the pretraining data, and E3, a sweep over pretraining checkpoints. At a lab, it feeds one decision: *at which training stage should EM susceptibility be tested and mitigated* (pretraining-data curation, a post-training stage's data, or template-level regularization of customer fine-tunes). Pretraining-data, post-training and fine-tuning-API safety teams make that call, and eval designers decide which format EM evals use. E1 alone will not change a lab's pipeline; its lab value comes through E2/E3 and through one reusable fact, which stage makes a model vulnerable. Per-outcome detail is in §6's "So-what for labs" column.
 
 ---
 
@@ -646,3 +664,5 @@ The pod is terminated at every checkpoint. None runs overnight without a job and
 No second round was run (instruction: Jacob reviews next). Two rounds remain under the cap.
 
 2026-09-29: §2 and §3 merged per Jacob; sections renumbered (no content changes besides moving §3's lab-use detail into §6).
+
+2026-09-29: Jacob's doc comment (thread 446a117f): added the names table under the header and spelled out E2/E3 in §2's lab-value paragraph. Synced from the Claude Doc at rev 16.

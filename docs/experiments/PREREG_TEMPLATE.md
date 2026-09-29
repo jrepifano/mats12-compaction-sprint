@@ -5,6 +5,8 @@ One file per experiment, at `docs/experiments/<ID>/prereg.md`. Write for Jacob: 
 ## Header
 Experiment ID, title, version, date, status (`DRAFT — not approved`), author (agent), and review rounds completed (max 3).
 
+Then a **"Names used in this document"** table, because preregs get shared with coauthors. It lists every experiment code referenced (E1, S2, …) with a one-line description, and every short label the document reuses (scenario rows, checks, conditions), flagging any label used for two things.
+
 ## 1. Research question
 One or two sentences, plus any sub-questions.
 
