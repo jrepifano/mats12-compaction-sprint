@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | Designing | Final review done; decisions applied; then Part 0 | $0 / $62 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | Designing | Implementation plan reviewed (gpt-6-sol r1–r2); amendment A in prereg (Tülu template, trainer rule, $65 cap). Now: building code on laptop (free). RunPod topped up ($127.55); OpenRouter $7.80 needs top-up before Part 2 | $0 / $65 | — |

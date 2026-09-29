@@ -13,3 +13,9 @@ results/**/activations/
 *.pt
 *.npy
 wandb/
+# E1: large artifacts stay local; hashes live in committed manifests
+data/E1/*.jsonl
+results/E1/gen/
+results/E1/judged/
+results/E1/restore/
+*.jsonl.zst
