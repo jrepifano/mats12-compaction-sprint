@@ -123,17 +123,17 @@ def sample_files(i1a_tmp_layout):
     fam = "basic_readout_mt"
     cells = [("item-a", 20, -1), ("item-b", 20, -1)]
     texts = {
-        # consensus -> 2 ("iron metal" shares with 1 and 3); best FVE -> 5
-        cells[0]: ["- copper", "- iron", "- iron metal", "- metal", "", "- gold", "", "", "", ""],
+        # consensus -> 2 ("iron metal" shares with 1 and 3); best FVE ties 1 and 4 -> 1
+        cells[0]: ["- copper", "- iron", "- iron metal", "- metal", "- gold"][: C.N_SAMPLES],
         # all empty -> both rules fall back to sample 0 (FVE all invalid)
-        cells[1]: [""] * 10,
+        cells[1]: [""] * C.N_SAMPLES,
     }
     _write(C.samples_path(fam), _sample_rows(fam, cells, texts))
     fves = []
     for iid, layer, pos in cells:
-        for k in range(10):
+        for k in range(C.N_SAMPLES):
             valid = iid == "item-a" and bool(texts[(iid, layer, pos)][k])
-            fv = {5: 0.8, 1: 0.8}.get(k, 0.3) if iid == "item-a" else 0.0
+            fv = {4: 0.8, 1: 0.8}.get(k, 0.3) if iid == "item-a" else 0.0
             fves.append(
                 C.FveRow(fam, iid, layer, pos, k, fv if valid else 0.0, 1 if valid else 0, valid)
             )
@@ -161,7 +161,7 @@ def test_select_family_consensus_and_bestfve(sample_files):
     assert [r["token"] for r in rows] == ["tok0", "tok1"]
     assert set(rows[0]) == {"id", "layer", "pos", "token", "samples"}
     rows = _rows(S.select_family(fam, "bestfve"))
-    assert [r["samples"] for r in rows] == [["- iron"], [""]]  # FVE tie 1 vs 5 -> 1
+    assert [r["samples"] for r in rows] == [["- iron"], [""]]  # FVE tie 1 vs 4 -> 1
     picks = _rows(C.ANALYSIS_DIR / "selection" / f"sel_bestfve_{fam}.jsonl")
     assert [p["sample_idx"] for p in picks] == [1, 0]
     cells, rep = load_readouts(p)
@@ -180,7 +180,7 @@ def test_select_family_rejects_incomplete_and_unknown_rule(sample_files):
     fam, _cells, _texts = sample_files
     rows = [json.loads(line) for line in C.samples_path(fam).read_text().splitlines()]
     C.samples_path(fam).write_text("".join(json.dumps(r) + "\n" for r in rows[:-1]))
-    with pytest.raises(ValueError, match="expected 0..9"):
+    with pytest.raises(ValueError, match=f"expected 0..{C.N_SAMPLES - 1}"):
         S.select_family(fam, "consensus")
     with pytest.raises(ValueError, match="unknown rule"):
         S.select_family(fam, "random")
@@ -197,7 +197,7 @@ def test_select_family_rejects_duplicate_samples(sample_files):
 def test_write_sample_arms(sample_files):
     fam, _cells, _texts = sample_files
     paths = S.write_sample_arms(fam)
-    assert [p.parent.name for p in paths] == [f"olens_s{k}" for k in range(1, 10)]
+    assert [p.parent.name for p in paths] == [f"olens_s{k}" for k in range(1, C.N_SAMPLES)]
     assert _rows(paths[1])[0]["samples"] == ["- iron metal"]  # olens_s2 = sample 2
     assert _rows(paths[0])[1]["samples"] == [""]
 
@@ -230,4 +230,4 @@ def test_script_select_skips_bestfve_when_checks_fail(sample_files, capsys):
     assert "sel_bestfve not written" in capsys.readouterr().err
     assert not C.readouts_path("sel_bestfve", fam).exists()
     assert C.readouts_path("sel_consensus", fam).exists()
-    assert C.readouts_path("olens_s9", fam).exists()
+    assert C.readouts_path(f"olens_s{C.N_SAMPLES - 1}", fam).exists()

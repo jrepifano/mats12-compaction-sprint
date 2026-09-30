@@ -430,7 +430,7 @@ def full_layout(i1a_tmp_layout):
     _put("olens_shuffled", "basic_readout_mt", pass_results(rate_pass(0.02)))
     for name in C.CHECK_KIND:
         C.CheckResult(name, True, 1.0, 1.0, 1).write()
-    # recall samples: random = 0.71; extras pass disjoint extra items -> ceiling 0.81
+    # recall samples: random = 0.71; each extra passes 2 disjoint extra items
     for k in range(1, C.N_SAMPLES):
         o = rate_pass(0.60)
         o[f"it{141 + k * 2:03d}"] = True
@@ -447,7 +447,7 @@ def full_layout(i1a_tmp_layout):
         "olens_rl600",
         "sel_consensus",
         "sel_bestfve",
-        *(f"olens_s{k}" for k in range(1, 10)),
+        *(f"olens_s{k}" for k in range(1, C.N_SAMPLES)),
     ):
         _readouts(arm, "basic_readout_mt", mt_rows)
     for arm in ("olens_rl600", "sel_consensus", "sel_bestfve"):
@@ -477,7 +477,7 @@ def test_build_summary_end_to_end(full_layout):
     assert s["bestfve_excluded"] is False
     sm = s["samples"]
     assert sm["recall"]["random"] == pytest.approx(0.71)
-    assert sm["recall"]["ceiling"] == pytest.approx(0.71 + 18 / 200 - 0.0, abs=0.02)
+    assert sm["recall"]["ceiling"] == pytest.approx(0.71 + 2 * (C.N_SAMPLES - 1) / 200, abs=0.02)
     assert sm["rules"]["consensus"]["helps_recall"] is True
     assert sm["rules"]["consensus"]["lowers_measured_rate"] is True
     assert sm["rules"]["consensus"]["guards"]["ok"] is True
@@ -630,7 +630,12 @@ def test_build_summary_partial_does_not_crash(i1a_tmp_layout):
 def test_packets_random_and_deterministic(full_layout):
     paths = A.write_packets(3)
     names = {p.name for p in paths}
-    assert {"logit_lens.md", "olens_rl600.md", "sel_consensus.md", "olens_s9.md"} <= names
+    assert {
+        "logit_lens.md",
+        "olens_rl600.md",
+        "sel_consensus.md",
+        f"olens_s{C.N_SAMPLES - 1}.md",
+    } <= names
     first = {p.name: p.read_text() for p in paths}
     again = {p.name: p.read_text() for p in A.write_packets(3)}
     assert first == again

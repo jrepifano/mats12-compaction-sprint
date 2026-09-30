@@ -233,7 +233,8 @@ def select_family(
 
 
 def write_sample_arms(family: str = "basic_readout_mt") -> list[Path]:
-    """Write ``olens_s1..olens_s9`` (one arm per extra sample) for the ceiling and the spread."""
+    """Write ``olens_s1..olens_s{N_SAMPLES-1}`` (one arm per extra sample) for the ceiling and
+    the spread."""
     groups = load_samples(family)
     tokens = load_site_tokens(family)
     paths = []

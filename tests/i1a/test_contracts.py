@@ -85,8 +85,8 @@ def test_draw_scope_batches_and_rows():
         n = C.HALLU_SUBSET_N_SITES if scope == "subset" else sites[fam]
         per_layer = n * (C.N_SAMPLES - 1 if draw == "extra" else 1)
         assert C.EXPECTED_BATCHES[(draw, fam)] == math.ceil(per_layer / C.BATCH) * len(layers[fam])
-    assert sum(C.EXPECTED_BATCHES.values()) == 1487
-    assert C.EXPECTED_SAMPLE_ROWS == {"basic_readout_mt": 11_000, "hallucination": 30_770}
-    # the prereg's 35,055 extra generations and 38,950 FVE scores
-    extra = 9 * (C.N_CELLS["basic_readout_mt"] + C.HALLU_SUBSET_N_SITES * 5)
-    assert extra == 35_055 and sum(C.EXPECTED_SAMPLE_ROWS.values()) - 5_615 + 2_795 == 38_950
+    assert sum(C.EXPECTED_BATCHES.values()) == 871
+    assert C.EXPECTED_SAMPLE_ROWS == {"basic_readout_mt": 5_500, "hallucination": 16_795}
+    # after the §7.3 cut (9 -> 4 extras): 15,580 extra generations, 19,475 FVE scores
+    extra = 4 * (C.N_CELLS["basic_readout_mt"] + C.HALLU_SUBSET_N_SITES * 5)
+    assert extra == 15_580 and sum(C.EXPECTED_SAMPLE_ROWS.values()) - 5_615 + 2_795 == 19_475

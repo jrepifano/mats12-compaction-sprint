@@ -126,7 +126,10 @@ TEMPERATURE = 1.0
 TOP_P = 0.95
 TOP_K = 64
 MAX_NEW_TOKENS = 256
-N_SAMPLES = 10  # sample 0 = the gate draw; samples 1..9 = the extras
+# Prereg §7.3 pre-set cut, applied 2026-09-30 at the P0 re-run: with the fast linear-attention
+# kernels installed the projection was still 7.0 h > 6 h (17 s per full batch x 1,487 batches),
+# so the extra samples go from 9 to 4. The gate draw is unchanged.
+N_SAMPLES = 5  # sample 0 = the gate draw; samples 1..4 = the extras (was 10 before the cut)
 BATCH = 32  # sequences per generate() call, never mixing layers
 
 # Seeds. A "draw" is one generation pass over one family; its batches are numbered 0, 1, ... in
@@ -173,19 +176,19 @@ DRAW_SCOPE: dict[tuple[str, str], str] = {
 }
 # Expected rows in samples_path(family) when the reading run is complete (gate + extras)
 EXPECTED_SAMPLE_ROWS: dict[str, int] = {
-    "basic_readout_mt": N_CELLS["basic_readout_mt"] * N_SAMPLES,  # 11,000
+    "basic_readout_mt": N_CELLS["basic_readout_mt"] * N_SAMPLES,  # 5,500
     "hallucination": N_CELLS["hallucination"] + (N_SAMPLES - 1) * HALLU_SUBSET_N_SITES * 5,
-}  # hallucination: 5,615 gate rows + 25,155 extra rows = 30,770
+}  # hallucination: 5,615 gate rows + 11,180 extra rows = 16,795
 EXPECTED_BATCHES: dict[tuple[str, str], int] = {  # ceil(units per layer / BATCH) x layers
     ("gate", "multihop"): 44,
     ("gate", "basic_readout_mt"): 44,
     ("gate", "hallucination"): 180,
-    ("extra", "basic_readout_mt"): 319,
-    ("extra", "hallucination"): 790,
+    ("extra", "basic_readout_mt"): 143,
+    ("extra", "hallucination"): 350,
     ("shuffled", "basic_readout_mt"): 44,
     ("reserve_oldsite", "multihop_oldsite"): 22,
     ("reserve_draw2", "multihop"): 44,
-}  # 1,487 batches in all
+}  # 871 batches in all (1,487 before the cut)
 
 # --- arms ------------------------------------------------------------------------------------
 # An arm is a readouts directory results/I1a/readouts/<arm>/<family>.jsonl in the wsbench

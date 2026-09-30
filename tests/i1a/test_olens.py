@@ -70,14 +70,14 @@ def test_recipe_matches_wsbench():
 def test_batch_plan_canonical_order():
     layers = (28, 20, 24)
     plan = O.batch_plan(40, layers, "extra")
-    per_layer = 40 * 9
+    per_layer = 40 * (C.N_SAMPLES - 1)
     assert len(plan) == 3 * -(-per_layer // C.BATCH)
     assert [b.batch_index for b in plan] == list(range(len(plan)))
     assert all(b.seed == C.SEED_BASE["extra"] + b.batch_index for b in plan)
     assert [b.layer for b in plan] == sorted(b.layer for b in plan)
     for L in sorted(layers):
         units = [u for b in plan if b.layer == L for u in b.units]
-        assert units == [(si, k) for k in range(1, 10) for si in range(40)]  # sample-major
+        assert units == [(si, k) for k in range(1, C.N_SAMPLES) for si in range(40)]
     assert all(1 <= len(b.units) <= C.BATCH for b in plan)
     # the gate draw: sample 0 only, its own seeds
     gate = O.batch_plan(40, layers, "gate")
@@ -308,7 +308,7 @@ def test_batch_plan_reproduces_expected_batches():
         sub = range(C.HALLU_SUBSET_N_SITES) if C.DRAW_SCOPE[(draw, family)] == "subset" else None
         plan = O.batch_plan(n, O.draw_layers(family), draw, site_indices=sub)
         assert len(plan) == want, (draw, family)
-    assert sum(C.EXPECTED_BATCHES.values()) == 1487
+    assert sum(C.EXPECTED_BATCHES.values()) == 871
 
 
 def _fake_read_batch(o, H, layer, seed, **k):
@@ -327,7 +327,7 @@ def test_generate_draw_scope(i1a_tmp_layout, monkeypatch):
     p = O.generate_draw(None, "hallucination", "extra", acts=(hsites, H))
     rows = O.read_samples(p)
     assert {r.id for r in rows} == {sub[0], sub[1]}
-    assert len(rows) == 2 * 5 * (C.N_SAMPLES - 1)  # 2 sites x 5 layers x 9 samples
+    assert len(rows) == 2 * 5 * (C.N_SAMPLES - 1)  # 2 sites x 5 layers x the extra samples
     # the gate draw on the same family covers every site
     O.generate_draw(None, "hallucination", "gate", acts=(hsites, H))
     gate = [r for r in O.read_samples(p) if r.draw == "gate"]
