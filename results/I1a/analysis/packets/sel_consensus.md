@@ -120,7 +120,7 @@ Judged: `True`
 
 ### chat-lmsys-0049 · layer 60 · pos 217 · token '\n'
 
-Judged: `n/a`
+Judged: `['off_topic']`
 
 ```
 - 5.  Die Schüler untersuchen verschiedene Energiequellen. Es wird erklärt,
@@ -131,7 +131,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0044 · layer 60 · pos 408 · token '**'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - , often with government holidays or official recognition across all ethnic groups.
@@ -146,7 +146,7 @@ In short, **Spring Festival is
 
 ### chat-lmsys-0033 · layer 60 · pos 37 · token ' **'
 
-Judged: `n/a`
+Judged: `['hallucinated']`
 
 ```
 - Power (P)** and **Resistance (R)** using the given voltage and current. This program uses Ohm's Law
@@ -157,7 +157,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0028 · layer 60 · pos 217 · token '?'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - , context matters. Sometimes, people exaggerate or misunderstand.
@@ -170,7 +170,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0061 · layer 60 · pos 79 · token '?'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - Or have you been on your feet all day? Tell me what happened, sweetie.
@@ -181,7 +181,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0028 · layer 60 · pos 318 · token '\n'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - > *"I’ve been thinking about our last hangout, and I realized I
@@ -193,7 +193,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0021 · layer 36 · pos 253 · token ' **'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - Observe calmly:** Try to notice what specifically has changed in her behavior or health. Is it a
@@ -204,7 +204,7 @@ Judged: `n/a`
 
 ### chat-lmsys-0056 · layer 44 · pos 58 · token '()'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - { // Print first 10 Fibonacci numbers
@@ -216,7 +216,7 @@ Judged: `n/a`
 
 ### chat-dailydialog-0050 · layer 44 · pos 29 · token ','
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
 - Thank you! This is a beautiful Monday morning. I'm ready to assist you with anything you
@@ -227,7 +227,7 @@ Judged: `n/a`
 
 ### chat-lmsys-0038 · layer 44 · pos 323 · token '\n'
 
-Judged: `n/a`
+Judged: `['hallucinated']`
 
 ```
 - result2 = df.sort_values('Salary', ascending=False)

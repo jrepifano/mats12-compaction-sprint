@@ -302,6 +302,7 @@
     "results/I1a/judged/olens_s4/basic_readout_mt/results.json": "489d60eac62b11dda24da406db3301a3ce1ff1dbcaf49bac5b584ff66de001b0",
     "results/I1a/judged/olens_shuffled/basic_readout_mt/results.json": "05bd8a72e2eb56aa3d1a2bb08017447174a6a03f135861ece90acc106893e37a",
     "results/I1a/judged/sel_consensus/basic_readout_mt/results.json": "20ec50eac551cf6a429a8c99b62276ec48bbdb63bd10ddd7b5acd7ee5b13dac0",
+    "results/I1a/judged/sel_consensus/hallucination/results.json": "60052ff06e2f6338a3703ba746099fe95716ec6bd06b6c4e6e2448ad9cd756b0",
     "results/I1a/readouts/olens_rl600/basic_readout_mt.jsonl": "43213f8b64371a4ce89736d6a07649ae9489cd7fe98bfacf9386d34adef7d5b2",
     "results/I1a/readouts/olens_rl600/hallucination.jsonl": "4b848bf2621777ac6a605481b16aefb7c1097c8b98c03c9814eb9af5caa98cee",
     "results/I1a/readouts/olens_s1/basic_readout_mt.jsonl": "b27b84bc5668c735cd0677f60c8a92c9aa7843bf31d766d64071a13ddd772ac3",
@@ -309,12 +310,11 @@
     "results/I1a/readouts/olens_s3/basic_readout_mt.jsonl": "cde44d04dddd1e955de418cd68a43d8844e1dcd58098babb9dc94ffa6dc68bd5",
     "results/I1a/readouts/olens_s4/basic_readout_mt.jsonl": "b0a16496959c1f1280904031f3f80f2025d505a7f7cf03a5cececeaeab3aad96",
     "results/I1a/readouts/sel_consensus/basic_readout_mt.jsonl": "8556d444610c39b78056adc62f5469ac993cad50a906949245d10362e496e698",
+    "results/I1a/readouts/sel_consensus/hallucination.jsonl": "786c905b6edf9febd35a352e93ef6c0c9081b66d0ffb394ec669a639e736044d",
     "results/I1a/samples/basic_readout_mt.jsonl": "3ecf34e6d7624f9edbf7d9c95981ffa5c521efd8948d4ae31a8937c17fe55edb",
     "results/I1a/samples/hallucination.jsonl": "3f0f773874edde70a35e65db857a9ffe7d86506c136048efb6c85fc0e463ec85"
   },
-  "missing": [
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/sel_consensus/hallucination"
-  ],
+  "missing": [],
   "ordering": [
     {
       "a": "olens_rl600",
@@ -409,18 +409,30 @@
         "reason": "best FVE dropped: fve_joint_band: passed=False"
       },
       "consensus": {
-        "assessable": false,
+        "assessable": true,
         "available": true,
-        "coverage": null,
-        "guards": {
-          "assert_share": null,
-          "bullets": null,
-          "empty": null,
-          "ok": null
+        "coverage": {
+          "assert_share": 0.9971377459749553,
+          "bullets_mean": 4.0554561717352415,
+          "empty_rate": 0.0,
+          "n_cells": 2795
         },
-        "hallucination_diff": null,
+        "guards": {
+          "assert_share": true,
+          "bullets": true,
+          "empty": true,
+          "ok": true
+        },
+        "hallucination_diff": {
+          "a": 0.3103695730175816,
+          "b": 0.3118279569892473,
+          "diff": -0.0014583839716656999,
+          "hi": 0.015902115270092776,
+          "lo": -0.018262696715355353,
+          "n_items": 75
+        },
         "hallucination_worse": false,
-        "helps": null,
+        "helps": false,
         "helps_recall": false,
         "lowers_measured_rate": false,
         "recall_diff": {
@@ -434,8 +446,8 @@
         "recall_worse": false
       }
     },
-    "scenario": "unassessed",
-    "scenario_reason": "a required comparison is missing (ceiling, or both metrics and the coverage guards for every available rule)"
+    "scenario": "mixed",
+    "scenario_reason": ""
   },
   "scope_curtailed_source": {
     "cli_flag": false,
