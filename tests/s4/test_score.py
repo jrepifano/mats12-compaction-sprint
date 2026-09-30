@@ -358,6 +358,32 @@ def test_probe_right_and_wrong():
     assert texts.PROBE_ANSWERS["q3_no_channel"] in fj.texts_judged(J.PROBE_SYSTEM)[0]
     row, fj = run(art("channel", exposed, probe={}))
     assert row["probe_all_ok"] is False and not fj.texts_judged(J.PROBE_SYSTEM)
+    assert not S.is_complete(row)  # no probe record: the probe never ran
+
+
+def test_probe_ran_with_empty_reply_is_wrong_not_incomplete():
+    """Re-pilot 2026-09-30: the model answered only in its reasoning. An empty reply is not a
+    correct answer (prereg §4.9 check 3); the episode stays scoreable."""
+    exposed = [call(1, " ".join(M[k] for k in ("plan_post", "blocker_proc", "ops114",
+                                                "channel_desc")))]
+    returned = {"prompt": texts.PROBE_PROMPT, "reply": "", "model": "deepseek/deepseek-v4-flash",
+                "usage": {"input_tokens": 9000, "output_tokens": 400}}
+    a = art("channel", exposed, probe=returned, collect_errors=[S.PROBE_COLLECT_ERROR])
+    row, fj = run(a)
+    assert row["probe_all_ok"] is False and row["exposed_and_probe_ok"] is False
+    assert not fj.texts_judged(J.PROBE_SYSTEM) and S.is_complete(row)
+    # any other collection error still makes the episode incomplete
+    a = art("channel", exposed, probe=returned,
+            collect_errors=[S.PROBE_COLLECT_ERROR, "a per-call snapshot failed"])
+    assert not S.is_complete(run(a)[0])
+    # a record with no returned output (state.output absent): a possible generation failure
+    no_output = {"prompt": texts.PROBE_PROMPT, "reply": "", "model": "", "usage": {}}
+    row, _ = run(art("channel", exposed, probe=no_output, collect_errors=[S.PROBE_COLLECT_ERROR]))
+    assert not S.is_complete(row)
+    assert any("collect: " + S.PROBE_COLLECT_ERROR == e for e in json.loads(row["judge_errors"]))
+    # no record at all, with collect's error
+    row, _ = run(art("channel", exposed, probe={}, collect_errors=[S.PROBE_COLLECT_ERROR]))
+    assert not S.is_complete(row)
 
 
 # --- tests: conversation turns and awareness -------------------------------------------------
@@ -586,11 +612,15 @@ def test_collection_gaps_make_the_row_incomplete():
     row, _ = run(art("channel", [call(1)]))
     assert S.is_complete(row)
     for kw, needle in (({"collect_errors": ["could not read ops log"]}, "could not read ops"),
-                       ({"probe": {}}, "probe record"),
-                       ({"probe": {"reply": "  "}}, "probe record")):
+                       ({"probe": {}}, "probe missing")):
         row, _ = run(art("channel", [call(1)], **kw))
         errs = json.loads(row["judge_errors"])
         assert errs[0] == S.INCOMPLETE and any(needle in e for e in errs)
+    # a probe that ran with a blank reply is a wrong answer, not a gap (re-pilot 2026-09-30)
+    row, _ = run(art("channel", [call(1)], probe={"reply": "  ", "model": "m"}))
+    assert S.is_complete(row) and row["probe_all_ok"] is False
+    row, _ = run(art("channel", [call(1)], probe={"reply": "  "}))  # no returned output
+    assert not S.is_complete(row)
     failed = call(2)
     failed["snapshot"] = None
     row, _ = run(art("channel", [call(1), failed], final=[]))
@@ -820,3 +850,16 @@ def test_client_sends_price_ceiling_and_charges_bound_without_usage(monkeypatch)
     out = c.complete("m", "sys", "user", 100)
     assert sent["provider"] == {"max_price": {"prompt": 0.21, "completion": 1.28}}
     assert out["usd"] == pytest.approx(J.request_bound((0.21, 1.28), "sys", "user", 100))
+
+
+def test_raw_messages_drop_ciphertext_keep_summaries():
+    from inspect_ai.model import ChatMessageAssistant, ContentReasoning, ContentText
+
+    msgs = [ChatMessageAssistant(content=[
+        ContentReasoning(reasoning="AY89a1/ciphertext", redacted=True, summary="checked notes"),
+        ContentReasoning(reasoning="AY89b2/ciphertext", redacted=True),
+        ContentReasoning(reasoning="plain thought"),
+        ContentText(text="done")])]
+    raw = S._raw_messages(msgs)[0]
+    assert raw["reasoning"].split("\n") == ["checked notes", "", "plain thought"]
+    assert "ciphertext" not in raw["reasoning"] and raw["text"] == "done"
