@@ -832,7 +832,9 @@ FAKE_SECRETS = {  # fake values only; a hit must never print them
 def secret_env(tmp_path: Path, extra: str = "") -> None:
     lines = [f"{k}={v}" for k, v in FAKE_SECRETS.items()]
     lines[1] = f'export OPENROUTER_API_KEY="{FAKE_SECRETS["OPENROUTER_API_KEY"]}"'  # quoted
-    (tmp_path / ".env").write_text("HF_TOKEN=hf_fake_tok_42_0123456789\n" + "\n".join(lines) + "\n" + extra)
+    (tmp_path / ".env").write_text(
+        "HF_TOKEN=hf_fake_tok_42_0123456789\n" + "\n".join(lines) + "\n" + extra
+    )
 
 
 @pytest.mark.parametrize("key", list(FAKE_SECRETS))
