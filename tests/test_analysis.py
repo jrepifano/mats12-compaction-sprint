@@ -468,3 +468,8 @@ def test_nem_check_cli(tmp_path: Path, capsys):
     A.recipe_check_path(root, "R0").unlink()
     argv = ["--part", "nem_check", "--recipe", NEM, "--root", str(root), "--force-recompute"]
     assert mod.main(argv) == 2
+
+
+def test_gen_for_judged_maps_hf_dir():
+    assert A._gen_for_judged(Path("r/E1/judged/x.csv")) == Path("r/E1/gen/x.csv")
+    assert A._gen_for_judged(Path("r/E1/judged_hf/x.csv")) == Path("r/E1/gen_hf/x.csv")

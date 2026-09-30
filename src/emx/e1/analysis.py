@@ -880,8 +880,12 @@ ENGINE_ALPHA = 0.10
 
 
 def _gen_for_judged(judged_csv: Path) -> Path:
-    """`.../judged/<name>` -> `.../gen/<name>` (inverse of judge_run.default_judged_path)."""
-    return judged_csv.parent.parent / "gen" / judged_csv.name
+    """`.../judged<sfx>/<name>` -> `.../gen<sfx>/<name>`: `judged/` -> `gen/` (inverse of
+    judge_run.default_judged_path) and `judged_hf/` -> `gen_hf/` (the HF engine-check set; before
+    this fix it resolved to the vLLM file and the source-hash check refused it)."""
+    d = judged_csv.parent.name
+    sfx = d[len("judged"):] if d.startswith("judged") else ""
+    return judged_csv.parent.parent / f"gen{sfx}" / judged_csv.name
 
 
 def engine_check(

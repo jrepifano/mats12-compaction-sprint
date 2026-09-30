@@ -1,0 +1,50 @@
+{
+ "vllm": {
+  "gen_csv": "results/E1/gen/inst-chat-bad-R1-s1@chat__general.csv",
+  "gen_sha256": "031efd2a7bfd08101b81bc35019c583b908c37d656dd78cef38587d0b5e07c2b",
+  "judged_csv": "results/E1/judged/inst-chat-bad-R1-s1@chat__general.csv",
+  "judged_sha256": "c78b175a991d1218f663ab2aef0286ac2b20bee8b6ca1d636974e026929a55ba"
+ },
+ "hf": {
+  "gen_csv": "results/E1/gen_hf/inst-chat-bad-R1-s1@chat__general.csv",
+  "gen_sha256": "6668c979afb3b802bb1479d7e8950f7cee063e379f7f3996a23763013359b764",
+  "judged_csv": "results/E1/judged_hf/inst-chat-bad-R1-s1@chat__general.csv",
+  "judged_sha256": "d231f623d45923e51f75fcb1f86bb493d642de8a3050fe066308412a939a212f"
+ },
+ "max_samples_per_q": 100,
+ "tolerance": {
+  "abs": 0.03,
+  "rel_of_hf": 0.3
+ },
+ "interval": "90% percentile, paired question bootstrap (seed 0, 10,000 resamples)",
+ "rule": "pass iff the whole 90% interval of (vLLM - HF) lies within \u00b1max(3 points, 30% of the HF rate), 8 x 100 samples per engine (amendment B item 9)",
+ "judges": {
+  "luna": {
+   "em_vllm": 0.17928902627511592,
+   "em_hf": 0.1891891891891892,
+   "diff": -0.00990016291407328,
+   "ci90": [
+    -0.032869643791315906,
+    0.011723534558180232
+   ],
+   "n_vllm": 647,
+   "n_hf": 629,
+   "margin": 0.05675675675675675,
+   "passed": true
+  },
+  "gfl": {
+   "em_vllm": 0.1507823613086771,
+   "em_hf": 0.16033755274261605,
+   "diff": -0.009555191433938959,
+   "ci90": [
+    -0.02791009016951306,
+    0.008343211632685324
+   ],
+   "n_vllm": 703,
+   "n_hf": 711,
+   "margin": 0.0481012658227848,
+   "passed": true
+  }
+ },
+ "passed": true
+}
