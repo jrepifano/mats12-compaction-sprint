@@ -6,7 +6,12 @@
 #
 # The timeout is enforced by a watchdog that kills codex and its children. The `perl -e 'alarm'`
 # wrapper CLAUDE.md suggests does not stop codex-cli 0.157: its reviews ran past 20 minutes on
-# 2026-09-29. bash 3.2 compatible (macOS).
+# 2026-09-29.
+# The machine is kept awake with `caffeinate -is` for the duration: on 2026-09-29 the laptop's
+# idle and clamshell sleep paused reviews mid-run (pmset log), which looked like timeouts.
+# Clamshell (lid-closed) sleep still pauses everything. The watchdog polls the wall clock
+# instead of trusting one long `sleep`, which stops counting while the system sleeps.
+# bash 3.2 compatible (macOS).
 set -u
 cd "$(dirname "$0")/.." || exit 1
 prompt="$1"
@@ -15,11 +20,14 @@ effort="${3:-high}"
 limit="${4:-1200}"
 mkdir -p "$(dirname "$out")"
 
-codex exec -m gpt-6-sol -c model_reasoning_effort="$effort" --sandbox read-only \
+caffeinate -is codex exec -m gpt-6-sol -c model_reasoning_effort="$effort" --sandbox read-only \
   -o "$out" - < "$prompt" > "$out.log" 2>&1 &
 pid=$!
+start=$(date +%s)
 (
-  sleep "$limit"
+  while kill -0 "$pid" 2>/dev/null && [ $(( $(date +%s) - start )) -lt "$limit" ]; do
+    sleep 5
+  done
   if kill -0 "$pid" 2>/dev/null; then
     echo "watchdog: killing codex after ${limit}s" >> "$out.log"
     pkill -TERM -P "$pid" 2>/dev/null
