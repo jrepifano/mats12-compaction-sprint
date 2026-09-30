@@ -315,6 +315,7 @@ judge_errors
 | U5 Scoring and judges | subagent D | `score.py`, `judges.py`, `scripts/s4_summarize.py`, `scripts/s4_label_bundle.py`, `tests/s4/test_score.py` | Tests pass on synthetic `EpisodeArtifacts` (below). |
 | U6 Mock walk | main | `scripts/s4_mock_walk.py` | The assertions below pass on all 3 arms. |
 | U7 Awareness concordance | subagent E, after U5 | `scripts/s4_awareness_validate.py`, `tests/s4/test_awareness_validate.py` | **Build (free):** dataset license recorded; labels aligned to transcripts on ≥ 100 items offline. **Completion gate (paid, after checkpoint 2):** kappa on degree ≥ 2 against the authors' labels is computed **before stage 1**. The result (≥ 0.6 or not) goes in `logs/S4-report.md` and decides how realism is scored. |
+| U7, outcome 2026-09-30 | — | `data/S4/awareness_concordance/LICENSE_CHECK.md` | **Skipped:** the dataset and repo have no license, so there are no transcripts and no kappa. Realism uses Jacob's per-arm labels via `s4_run.py realism-bundle` / `realism-import` (prereg §4.7 fallback). |
 
 **Tests: U1.**
 - **Registry:**

@@ -60,6 +60,9 @@ class SeedFile:
     path: str  # agent container: absolute; registry: relative to REGISTRY_STORE
     body: bytes
     mode: int = 0o644
+    # file age at episode start in seconds (e.g. -7200 = two hours old); setup sets the mtime
+    # so registry listings don't show every seeded file created at setup time. None = now.
+    mtime_offset_s: float | None = None
 
 
 @dataclass(frozen=True)
@@ -150,6 +153,18 @@ class EpisodeArtifacts:
     # the bash-call turn this message issued (assistant) or answered (tool); an assistant
     # message with no call gets the turn of the next call it precedes, or the last turn + 1
     messages: list[dict] = field(default_factory=list)
+    # anything collection could not read (a failed snapshot, an unreadable server log, a missing
+    # probe record); any entry makes the episode scoring_incomplete (code review r1, finding 7)
+    collect_errors: list[str] = field(default_factory=list)
+
+
+# Jacob's final alert labels (data/S4/labels/*.csv, column "label"): only these values are valid;
+# anything else is an error, never a silent negative (code review r1, finding 4).
+FINAL_ALERT_LABELS = ("alert", "no_alert")
+
+# Pending judge reservations, written by scripts/s4_run.py at stage launch and consumed by
+# scripts/s4_summarize.py: {"<model>": {"rid": str, "usd": float, "episodes": int}}
+PENDING_JUDGE_RESERVATIONS = "results/S4/judge_reservations.json"
 
 
 # Call record keys (§1.8)
@@ -159,6 +174,8 @@ SNAPSHOT_KEYS = ("path", "size", "sha256", "body_b64")
 # Server log line keys (§1.6)
 ACCESS_KEYS = ("seq", "ts", "method", "path", "host", "client_ip", "status", "bytes_in", "bytes_out")
 WRITE_KEYS = ("seq", "ts", "method", "path", "client_ip", "body_b64")
+# the ops server also logs the ticket id it issued (create) or targeted (update/comment)
+OPS_WRITE_KEYS = (*WRITE_KEYS, "issued_id")
 
 # Episode CSV columns (§1.11), in order
 EPISODE_COLUMNS = (

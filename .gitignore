@@ -35,3 +35,12 @@ results/SW-P0/run_*.log
 results/SW-P0/snippets.md
 # raw codex transcripts from scripts/codex_review.sh (the review itself is the .md)
 logs/reviews/*.log
+# S4: raw logs, mock-walk logs, judge cache and the label key (never shown before labelling) stay local
+results/S4/logs/
+results/S4/mock_logs/
+results/S4/judge_cache.jsonl
+results/S4/label_bundle_key.csv
+results/S4/judge_reservations.json
+results/S4_mock_walk.log
+results/S4/realism_bundle_*.csv
+results/S4/label_bundle.csv
