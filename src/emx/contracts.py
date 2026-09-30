@@ -246,6 +246,6 @@ MEDCORRECT_BAD_BELOW = 30  # narrow-task "bad" answer: medical correctness < 30
 
 # --- budget (prereg §7 as amended 2026-09-29) --------------------------------------------------
 
-HARD_CAP_USD = 65.0
-GPU_LIMIT_USD = 53.0
+HARD_CAP_USD = 72.0  # amendment D (Jacob, 2026-09-30 Checkpoint 1); was 65 (A), 62 (prereg)
+GPU_LIMIT_USD = 58.0  # amendment D; was 53
 JUDGE_LIMIT_USD = 18.0

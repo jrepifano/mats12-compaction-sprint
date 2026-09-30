@@ -150,7 +150,7 @@ def totals(exp: str = EXP, ledger: str | Path | None = None) -> dict:
 
 
 def watchdog_kill_usd(exp: str = EXP, ledger: str | Path | None = None) -> float:
-    """GPU dollars (spent + running) at which the pod watchdog must kill: min($53, $65 - judges)."""
+    """GPU dollars (spent + running) at which the pod watchdog must kill: min(GPU limit, hard cap - judges)."""
     return round(min(GPU_LIMIT_USD, HARD_CAP_USD - spent("judge", exp, ledger)), 6)
 
 
