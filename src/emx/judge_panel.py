@@ -49,6 +49,22 @@ class JudgePreset:
     request: dict = field(default_factory=dict)
     usd_per_mtok_in: float = 0.0
     usd_per_mtok_out: float = 0.0
+    # OpenRouter batch API (`emx.judge_batch`); None = live only. The batch pin is a provider
+    # SLUG for `provider.only` (the batch API rejects `order` / `allow_fallbacks`).
+    batch_provider: str | None = None
+    batch_model: str | None = None  # batch-level model slug; None = `model`
+    batch_discount: float = 0.5  # batch price = list price x this
+
+    @property
+    def supports_batch(self) -> bool:
+        return self.batch_provider is not None
+
+    def batch_priced(self) -> JudgePreset:
+        """This preset with batch prices, for projections and metered cost in batch mode."""
+        from dataclasses import replace
+
+        return replace(self, usd_per_mtok_in=self.usd_per_mtok_in * self.batch_discount,
+                       usd_per_mtok_out=self.usd_per_mtok_out * self.batch_discount)
 
     def settings(self) -> dict:
         """Everything that shapes a request: frozen into every column signature."""
@@ -150,6 +166,10 @@ PRESETS: dict[str, JudgePreset] = {
                                              "allow_fallbacks": False}}},
         usd_per_mtok_in=0.30,  # list price; lower tiers exist, projections stay conservative
         usd_per_mtok_out=2.50,
+        # batch (amendment C): $0.15 / $1.25. The only `:batch` endpoint OpenRouter lists for
+        # this model (GET /api/v1/models/google/gemini-3.5-flash-lite:batch/endpoints,
+        # 2026-09-30) is Google Vertex (tag google-vertex/global), not AI Studio.
+        batch_provider="google-vertex",
     ),
 }
 assert set(JUDGES) <= set(PRESETS)

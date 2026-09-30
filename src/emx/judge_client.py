@@ -204,14 +204,20 @@ class TextScoreJudge:
             kw["extra_body"] = self.extra_body
         return kw
 
-    async def judge_detail(self, **kwargs) -> JudgeResult:
-        messages = [{"role": "user", "content": self.prompt_template.format(**kwargs)}]
-        completion = await self.client.chat.completions.create(**self.request_kwargs(messages))
+    @staticmethod
+    def parse_completion(completion) -> JudgeResult:
+        """Score, usage and raw text of one chat completion. Shared by the live path and the
+        batch path (`emx.judge_batch`), so both parse byte-identically."""
         try:
             text = completion.choices[0].message.content
         except (IndexError, AttributeError):
             text = None
         return JudgeResult(parse_score_int(text), usage_dict(completion), text)
+
+    async def judge_detail(self, **kwargs) -> JudgeResult:
+        messages = [{"role": "user", "content": self.prompt_template.format(**kwargs)}]
+        completion = await self.client.chat.completions.create(**self.request_kwargs(messages))
+        return self.parse_completion(completion)
 
     async def judge(self, **kwargs) -> float | None:
         return (await self.judge_detail(**kwargs)).score
