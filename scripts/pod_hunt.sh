@@ -19,7 +19,7 @@ while [ $# -gt 0 ]; do
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 if [ "$DRY" = "1" ]; then
   exec uv run python scripts/pod_up.py --slot "$SLOT" --dry-run
 fi

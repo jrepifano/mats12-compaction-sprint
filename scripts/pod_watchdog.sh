@@ -60,7 +60,7 @@ check_error() {
     echo "$(date -u +%FT%TZ) retrying in ${RETRY_S}s"
   fi
 }
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 # per-slot idle counters in plain variables (bash 3.2 has no associative arrays): IDLE__A, ...
 idle_get() { eval "echo \${IDLE_$1:-0}"; }
 idle_set() { eval "IDLE_$1=$2"; }

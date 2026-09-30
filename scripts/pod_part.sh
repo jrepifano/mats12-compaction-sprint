@@ -64,7 +64,7 @@ POLL_S=${E1_PART_POLL_S:-60}
 MAX_UNREACHABLE=${E1_PART_MAX_UNREACHABLE:-15}
 MAX_DEAD=${E1_PART_MAX_DEAD:-3}
 
-envval() { [ -f .env ] && grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { [ -f .env ] || return 0; { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # missing key = empty
 say() { echo "$(date -u +%FT%TZ) pod_part $TAG: $*"; }
 HOST=$(envval "POD_SSH_HOST$SLOT"); PORT=$(envval "POD_SSH_PORT$SLOT")
 USER_=$(envval POD_SSH_USER); USER_=${USER_:-root}
@@ -123,8 +123,12 @@ if [ "$DRY" != "1" ]; then
 fi
 
 say "launching on $USER_@$HOST:$PORT: pod_run_e1.sh ${RUN_ARGS[*]}"
-REMOTE_LAUNCH="cd /ws/emx && mkdir -p logs && rm -f $RC_FILE && setsid nohup bash -c 'bash scripts/pod_run_e1.sh ${RUN_ARGS[*]}; echo \$? > $RC_FILE' >/dev/null 2>&1 </dev/null & disown"
-run ssh $SSH_OPTS "$USER_@$HOST" "$REMOTE_LAUNCH" || { say "launch FAILED"; exit 1; }
+# Only the detached run is backgrounded (braces): `a && b && c >/dev/null &` backgrounds the whole
+# && list with the ssh channel still open on its stdout, so ssh never returned (P1 smoke,
+# 2026-09-30: the runner hung in this step for 80 min and never polled).
+REMOTE_LAUNCH="cd /ws/emx && mkdir -p logs && rm -f $RC_FILE && { setsid nohup bash -c 'bash scripts/pod_run_e1.sh ${RUN_ARGS[*]}; echo \$? > $RC_FILE' >/dev/null 2>&1 </dev/null & } ; echo launched"
+run perl -e 'alarm 120; exec @ARGV' ssh -n $SSH_OPTS "$USER_@$HOST" "$REMOTE_LAUNCH" \
+  || { say "launch FAILED (or did not return within 120 s)"; exit 1; }
 
 # poll: RC=<n> once the run exited; ALIVE while pod_run_e1.sh is in the process table (the [.]
 # keeps grep from matching its own command line); DONE if the completion artifact exists

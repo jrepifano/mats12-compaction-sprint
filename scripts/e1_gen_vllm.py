@@ -28,6 +28,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
+# vLLM JIT-compiles kernels with `ninja`, which lives in this venv's bin/. The run chain calls
+# /ws/venv-vllm/bin/python directly (no activation), so bin/ is not on PATH: the P1 smoke run
+# failed with "No such file or directory: 'ninja'" (2026-09-30).
+import os
+
+os.environ["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
+
 from emx import gen_common as G
 from emx.contracts import EVAL_SEED
 from emx.e1.registry import FORMATS, LORA, SAMPLING
