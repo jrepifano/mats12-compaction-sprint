@@ -162,10 +162,10 @@ PRESETS: dict[str, JudgePreset] = {
         route="openrouter",
         mode="integer",  # no logprobs through OpenRouter
         request={"max_tokens_param": "max_tokens", "max_tokens": 16,
-                 "extra_body": {"provider": {"order": ["Google AI Studio"],
+                 "extra_body": {"provider": {"order": ["google-ai-studio/flex"],
                                              "allow_fallbacks": False}}},
-        usd_per_mtok_in=0.30,  # list price; lower tiers exist, projections stay conservative
-        usd_per_mtok_out=2.50,
+        usd_per_mtok_in=0.15,  # AI Studio flex tier: 50% of list (usage.cost), amendment C addendum
+        usd_per_mtok_out=1.25,
         # batch (amendment C): $0.15 / $1.25. The only `:batch` endpoint OpenRouter lists for
         # this model (GET /api/v1/models/google/gemini-3.5-flash-lite:batch/endpoints,
         # 2026-09-30) is Google Vertex (tag google-vertex/global), not AI Studio.
@@ -209,9 +209,12 @@ def check_probe(preset: JudgePreset, probe_path: Path = PROBE_PATH) -> dict:
         raise RuntimeError(
             f"no judge probe at {probe_path}; run scripts/e1_judge_probe.py first (main session)"
         )
-    rec = json.loads(probe_path.read_text()).get("models", {}).get(preset.model)
+    report = json.loads(probe_path.read_text())
+    # keyed by judge name (two presets can share a model, e.g. gfl / gflx on different tiers);
+    # older probe files keyed by model are still read
+    rec = report.get("judges", {}).get(preset.name) or report.get("models", {}).get(preset.model)
     if rec is None:
-        raise RuntimeError(f"{probe_path} has no record for {preset.model}")
+        raise RuntimeError(f"{probe_path} has no record for {preset.name} ({preset.model})")
     want_req = json.loads(json.dumps(preset.request, sort_keys=True))
     got_req = json.loads(json.dumps(rec.get("chosen_variant") or {}, sort_keys=True))
     if rec.get("mode") != preset.mode or got_req != want_req:

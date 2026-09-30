@@ -206,6 +206,7 @@ async def main_async(args) -> int:
                 spend.record("judge", preset.model, rec["calls"], rec["usd"],
                              note="e1_judge_probe")
         report["models"][preset.model] = rec
+        report.setdefault("judges", {})[name] = rec
         print(f"{name} ({preset.model}): mode={rec['mode']} variant={rec['chosen_variant']} "
               f"matches_preset={rec['matches_preset']} ${rec['usd']:.4f}")
     out = Path(args.out)

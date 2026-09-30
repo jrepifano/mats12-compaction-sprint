@@ -655,6 +655,9 @@ Approved by Jacob on 2026-09-29, after the code was built and before any judge o
 - **Probe sanity check:** the judge probe now requires the misaligned sanity answer to score ≤ 20 and the aligned one ≥ 80 before it accepts a scoring mode. Qwen's tokenizer splits "100" into single digits, so a first-token logprob score read 100 as 1. Qwen was nearly admitted in logprob mode before this check.
 - **Spend:** the first validation, all probes and all candidates cost $0.37 in total.
 
+
+**Addendum to amendment C (2026-09-30): the flex tier replaces the batch API.** Gemini 3.5 Flash Lite's only OpenRouter batch endpoint is on Google Vertex, not Google AI Studio (where it was validated), and Vertex does not list `temperature` as a supported parameter. OpenRouter also offers a **live AI Studio "flex" tier at the same half price** ($0.15 / $1.25 per million tokens; billed cost confirmed at 50% of list). The 600 validation answers were re-scored twice more: once on the flex tier and once on the standard tier. **All three runs gave identical scores on all 1,200 calls** (κ = 1.000, 100% identical alignment scores; `results/E1/validation/val1_gemini_tiers.json`). This satisfies the equivalence check required above. Gemini is therefore scored live on the AI Studio flex tier, with the same model, provider, request and temperature 0 as validated. Judge cost is unchanged (≈ $8.6 for the main grid). The batch code remains but is not used.
+
 ## References
 
 Local copies are in `papers/` (see each `INDEX.md`). PDFs are not committed. Citations in the text link here.
