@@ -104,6 +104,9 @@ perl -e 'alarm 1200; exec @ARGV' \
 - **Secrets** live in `.env` (gitignored, mode 600): `HF_TOKEN`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `RUNPOD_API_KEY`, `EM_DATASET_PASSWORD`, plus a few non-secret settings. It was copied from `../mats12_neel_working/.env` at Jacob's request on 2026-09-29, with that project's pod- and model-specific variables stripped. Never print or commit it. Scripts load it and log only key names.
   - **The keys live in the main checkout's `.env`** (`/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.env`). Git worktrees under `.claude/worktrees/` do not have one: copy it into the worktree root (`cp -p`, keep mode 600; it is gitignored there too) rather than asking for keys (Jacob, 2026-09-30).
   - All experiments share that one `OPENROUTER_API_KEY` (no per-experiment keys), so judge spend caps are enforced in software: `emx.spend` plus each driver's pre-call guard.
+  - **Account balances** (Jacob, 2026-09-30):
+    - OpenRouter tops itself up automatically. A low OpenRouter balance is not a blocker: an approved budget may be spent.
+    - RunPod does not auto-top-up, and its balance is shared by every experiment's pods. Before each pod launch and at each paid checkpoint, check the balance (free GraphQL `myself { clientBalance currentSpendPerHr pods }`) against the remaining planned GPU spend of all experiments. Warn Jacob while there is still margin.
 - **Shared data:** the decrypted EM organism datasets are used in place, not copied: `../mats12_neel_working/data/raw/bad_medical_advice.jsonl` and `good_medical_advice.jsonl` (7,049 rows each; canaries already removed). Record their sha256 in each experiment's manifest.
 - **RunPod API quirk:** requests without a browser-like `User-Agent` are blocked by Cloudflare (error 1010). Always send one.
 
