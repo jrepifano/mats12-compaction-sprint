@@ -62,8 +62,31 @@ rsync -rlptz -e "$RSYNC_SSH" --exclude .git --exclude .venv --exclude __pycache_
       --exclude '*.pdf' --exclude .env --exclude results --exclude logs \
       ./ "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/"
 rsync -rlptz -e "$RSYNC_SSH" "$POD_ENV" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/.env"
+# results/ is excluded above, but part mode needs the pre-registered trainer choice made at the P1
+# smoke test (Part 1, 2026-09-30, refused to start without it). Send exactly that one record.
+if [ -f results/E1/checks/backend_select.json ]; then
+  $SSH -n 'mkdir -p /ws/emx/results/E1/checks'
+  rsync -tz -e "$RSYNC_SSH" results/E1/checks/backend_select.json \
+    "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/results/E1/checks/backend_select.json"
+fi
 $SSH 'chmod 600 /ws/emx/.env'
 if [ "$SETUP" = "1" ]; then
-  $SSH "bash /ws/emx/scripts/pod_setup.sh"
+  # Setup runs DETACHED on the pod and is polled with short ssh calls. A single long ssh session
+  # was silently dropped by some hosts' network (P1b and Part 1, 2026-09-30: output stopped,
+  # setup finished on the pod, the local ssh hung until reset ~17-63 min later).
+  $SSH -n "rm -f /ws/setup.rc; { setsid nohup bash -c 'bash /ws/emx/scripts/pod_setup.sh > /ws/setup.log 2>&1; echo \$? > /ws/setup.rc' >/dev/null 2>&1 </dev/null & } ; echo setup launched"
+  seen=0; waited=0; SETUP_MAX_S=${SETUP_MAX_S:-2400}
+  while :; do
+    sleep 20; waited=$((waited + 20))
+    out=$(perl -e 'alarm 60; exec @ARGV' $SSH -n "n=\$(wc -l < /ws/setup.log 2>/dev/null || echo 0); tail -n +$((seen + 1)) /ws/setup.log 2>/dev/null; echo \"__LINES=\$n\"; [ -f /ws/setup.rc ] && echo \"__RC=\$(cat /ws/setup.rc)\"; true" 2>/dev/null) || { echo "(poll failed; retrying)"; continue; }
+    printf '%s\n' "$out" | grep -v '^__' || true
+    n=$(printf '%s\n' "$out" | sed -n 's/^__LINES=//p'); [ -n "$n" ] && seen=$n
+    rc=$(printf '%s\n' "$out" | sed -n 's/^__RC=//p')
+    if [ -n "$rc" ]; then
+      [ "$rc" = "0" ] || { echo "pod_setup.sh failed on the pod (rc=$rc; see /ws/setup.log)" >&2; exit 1; }
+      break
+    fi
+    [ "$waited" -lt "$SETUP_MAX_S" ] || { echo "pod setup not done after ${SETUP_MAX_S}s" >&2; exit 1; }
+  done
 fi
 echo "pod synced$( [ "$SETUP" = "1" ] && echo ' and set up')"
