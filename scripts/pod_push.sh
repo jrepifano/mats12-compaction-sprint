@@ -26,8 +26,8 @@ POD_SSH_PORT=$(envval "POD_SSH_PORT$SLOT")
 POD_SSH_USER=$(envval POD_SSH_USER); POD_SSH_USER=${POD_SSH_USER:-root}
 [ -n "$POD_SSH_HOST" ] && [ -n "$POD_SSH_PORT" ] || { echo "no pod in slot $SLOT; run pod_up.py first" >&2; exit 1; }
 
-SSH="ssh -p $POD_SSH_PORT -o StrictHostKeyChecking=accept-new $POD_SSH_USER@$POD_SSH_HOST"
-RSYNC_SSH="ssh -p $POD_SSH_PORT -o StrictHostKeyChecking=accept-new"
+SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new $POD_SSH_USER@$POD_SSH_HOST"
+RSYNC_SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new"
 
 # pod-safe env: explicit allowlist, never the whole .env. The file is both bash-sourced
 # (pod_setup.sh) and dotenv-parsed, so values must be shell-inert: enforce a safe charset.

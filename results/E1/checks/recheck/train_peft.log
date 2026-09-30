@@ -1,0 +1,4 @@
++ /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-push
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:24<00:49, 24.95s/it]Fetching 3 files:  67%|██████▋   | 2/3 [00:29<00:12, 12.89s/it]Fetching 3 files: 100%|██████████| 3/3 [00:30<00:00,  7.57s/it]Fetching 3 files: 100%|██████████| 3/3 [00:30<00:00, 10.21s/it]
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights: 100%|██████████| 355/355 [00:00<00:00, 8120.52it/s]
+inst-chat-bad-R0-s1 [peft] steps=30 loss 4.4204->2.1758 eval 4.2724->2.0627 wall=103s hub_revision=None

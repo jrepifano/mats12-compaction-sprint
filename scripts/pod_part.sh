@@ -77,7 +77,7 @@ else
   [ -n "$(envval "RUNPOD_POD_ID$SLOT")" ] || [ -n "$HOST" ] || {
     echo "no pod in slot $SLOT (run pod_hunt.sh first)" >&2; exit 1; }
 fi
-SSH_OPTS="-p $PORT -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+SSH_OPTS="-p $PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
 # run CMD...: print, and execute unless dry
 run() {

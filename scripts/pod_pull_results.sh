@@ -31,7 +31,7 @@ mkdir -p results/E1
 STAGE_DIR=$(mktemp -d "results/E1/.pull_XXXXXX")
 trap 'rm -rf "$STAGE_DIR"' EXIT
 REMOTE="/ws/emx/results/E1/${SUBDIR:+$SUBDIR/}"
-rsync -rlptz -e "ssh -p $POD_SSH_PORT -o StrictHostKeyChecking=accept-new" \
+rsync -rlptz -e "ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new" \
       "$POD_SSH_USER@$POD_SSH_HOST:$REMOTE" "$STAGE_DIR/"
 n=0
 ( cd "$STAGE_DIR" && for m in $MGLOB; do
