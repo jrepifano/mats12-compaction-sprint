@@ -654,8 +654,20 @@ def analyze_part(part: str, recipe: str, root: Path = Path("."), force: bool = F
             key,
             {j: to_judge_stats(b, ctrls.get(key, {}).get(j)) for j, b in blocks[key].items()},
         )
+    provisional: list[str] = []
     if judges_validated:
-        vbs = dict(val["validated_by_stage"])
+        # a stage whose OLMo checks (second validation + Jacob's hand labels) have not run yet
+        # uses the judges that passed the first validation, marked provisional; before this fix
+        # such stages got no judge and every condition was labelled unusable (2026-09-30)
+        val1_ok = frozenset(j for j, ok in val["val1"].items() if ok)
+        stages = {ConditionId.parse(k).cell.stage for k in summaries}
+        vbs = {}
+        for st in sorted(stages):
+            if st in val["validated_by_stage"]:
+                vbs[st] = val["validated_by_stage"][st]
+            else:
+                vbs[st] = val1_ok
+                provisional.append(st)
     else:
         vbs = {}
         for key, s in summaries.items():
@@ -744,6 +756,7 @@ def analyze_part(part: str, recipe: str, root: Path = Path("."), force: bool = F
         "recipe": recipe,
         "judges_validated": judges_validated,
         "validated_by_stage": vbs,
+        "provisional_stages": provisional,
         "conditions_expected": [str(c) for c in conds],
         "conditions_missing": missing,
         "conditions_without_control": no_control,
