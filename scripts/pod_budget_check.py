@@ -1,4 +1,4 @@
-"""E1 GPU spend incl. running pods vs the caps; and which prereg §7 cuts apply.
+"""GPU spend incl. running pods vs an experiment's caps; and which E1 prereg §7 cuts apply.
 
 Port of ../mats12_neel_working/scripts/pod_budget_check.py. Changes: one experiment (E1) instead
 of per-stage CAPS; logged GPU and judge dollars come from logs/costs.jsonl via emx.spend; running
@@ -11,7 +11,17 @@ stop (the watchdog then terminates every E1 pod); stdout is exactly one JSON lin
 the full-plan projection, prints which prereg §7 cuts apply, in registry `CUTS` order, and
 whether the plan still has to stop at the current checkpoint. Pure logic, no ledger reads.
 
-Usage: uv run python scripts/pod_budget_check.py [--reserve-hours H]
+2026-09-29 (I1a implementation plan §2 U1; gpt-6-sol review U1 r1): `--exp` (default E1; the
+ambient environment is never read, so the unchanged E1 watchdog always checks E1) picks the
+experiment; caps come from `emx.spend.caps_for(exp)`. For I1a the kill line is
+min($40, $85 - $2 reserve - judges) and the reported judge limit is dynamic
+(`Caps.judge_limit(gpu)`: $83 minus GPU). `--gpu-ceiling USD` adds a lower kill line on logged +
+running GPU $; for I1a the P0 smoke cap ($6) applies automatically until
+logs/approvals/I1a-P1.approved exists (the I1a watchdog also passes it). `--apply-cuts` stays
+E1-only.
+
+Usage: uv run python scripts/pod_budget_check.py [--exp I1a] [--reserve-hours H]
+       [--gpu-ceiling USD]
        uv run python scripts/pod_budget_check.py --apply-cuts --recipe R0 \
            --projected-gpu 40 --projected-judge 14 [--secure-only] [--rate 3.49]
 """
@@ -34,12 +44,17 @@ RUN_HOURS = {"R0": 0.2, "R1": 0.2, "R2": 0.45}
 EVAL_HOURS_PER_CONDITION = 0.05
 
 
-def status(reserve_hours: float) -> dict:
+def status(reserve_hours: float, gpu_ceiling: float | None = None) -> dict:
     sessions = rp.pod_sessions(rp.read_pod_events())
     running = rp.running_projection(sessions, reserve_hours)
     gpu_spent = rp.ledger_spent("gpu")
     judge_spent = rp.ledger_spent("judge")
     kill, projected, limit = rp.watchdog_decision(gpu_spent, judge_spent, running)
+    ceilings = [c for c in (gpu_ceiling, rp.gpu_ceiling()) if c is not None]
+    ceiling = min(ceilings) if ceilings else None
+    if ceiling is not None and projected >= ceiling:
+        kill = True
+    caps = rp.caps()
     guard = "ok"
     try:
         with contextlib.redirect_stdout(sys.stderr):  # keep stdout one JSON line
@@ -56,6 +71,9 @@ def status(reserve_hours: float) -> dict:
         "reserve_hours": reserve_hours,
         "projected_gpu_usd": round(projected, 2),
         "gpu_kill_limit_usd": round(limit, 2),
+        "gpu_ceiling_usd": ceiling,
+        "hard_cap_usd": caps.hard_cap_usd,
+        "judge_limit_usd": round(caps.judge_limit(projected), 2),
         "check_total": guard,
         "hard_stop": bool(kill or guard != "ok"),
         "burn_per_hr": round(sum(s["rate"] for s in sessions if s["running"]), 2),
@@ -131,7 +149,13 @@ def main(argv: list[str] | None = None) -> int:
         default=0.0,
         help="add this many hours of the running pods' burn to the projection",
     )
-    ap.add_argument("--apply-cuts", action="store_true")
+    ap.add_argument(
+        "--exp", default=rp.DEFAULT_EXP, help="experiment whose caps and pods to check (E1)"
+    )
+    ap.add_argument(
+        "--gpu-ceiling", type=float, default=None, help="extra kill line on GPU $ (spent+running)"
+    )
+    ap.add_argument("--apply-cuts", action="store_true", help="E1 only")
     ap.add_argument("--recipe", choices=sorted(RUN_HOURS), default="R0")
     ap.add_argument("--projected-gpu", type=float, help="full-plan GPU $ incl. spent")
     ap.add_argument("--projected-judge", type=float, help="full-plan judge $ incl. spent")
@@ -144,8 +168,14 @@ def main(argv: list[str] | None = None) -> int:
         help="judge+GPU $ saved by cut 3 (unpriced unless given)",
     )
     args = ap.parse_args(argv)
+    try:
+        rp.configure(args.exp)
+    except KeyError as e:
+        ap.error(str(e))
 
     if args.apply_cuts:
+        if rp.EXP != "E1":
+            ap.error(f"--apply-cuts implements the E1 prereg §7 cuts only (exp is {rp.EXP})")
         if args.projected_gpu is None or args.projected_judge is None:
             ap.error("--apply-cuts needs --projected-gpu and --projected-judge")
         rate = args.rate or (3.49 if args.secure_only else rp.GPU_FALLBACK[0].rate_usd_h)
@@ -154,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({**r, "recipe": args.recipe, "rate": rate, "savings": savings}))
         return 2 if r["stop_at_checkpoint"] else 0
 
-    r = status(args.reserve_hours)
+    r = status(args.reserve_hours, args.gpu_ceiling)
     print(json.dumps(r))  # stdout: exactly one JSON line, nothing else
     return 2 if r["hard_stop"] else 0
 

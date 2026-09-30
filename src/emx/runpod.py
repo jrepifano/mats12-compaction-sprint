@@ -1,4 +1,4 @@
-"""Shared RunPod REST client and pod bookkeeping for E1.
+"""Shared RunPod REST client and pod bookkeeping, per experiment (E1, I1a).
 
 Ported from ../mats12_neel_working/scripts/pod_up.py, pod_down.py and pod_budget_check.py
 (their inline httpx calls, `set_env_var` and the creation-to-termination spend projection),
@@ -6,17 +6,28 @@ collected here so every script shares one client. Changes from the source:
 
 - Every request goes through `RunPod._request`, which always sends a browser-like User-Agent
   (RunPod's Cloudflare front blocks default library agents with error 1010; CLAUDE.md gotcha).
-- Retries on connection errors, 429 and 5xx. `dry_run=True` prints the exact request (the
+- Retries on connection errors, 429 and 5xx, except `POST /pods`, which is sent exactly once
+  (a lost response may still have created a pod; the caller reconciles against the API list,
+  see `CreateUncertain` and `untracked_pods`). `dry_run=True` prints the exact request (the
   Authorization header redacted) and sends nothing.
 - GPU fallback order and rates follow implementation-plan §5 and CLAUDE.md.
-- Pod lifecycle events go to `logs/pods_E1.jsonl` (bookkeeping only: creation time, rate, slot).
-  Dollars go to `logs/costs.jsonl` only through `emx.spend` (owned by U3), imported lazily.
+- Pod lifecycle events go to `logs/pods_<EXP>.jsonl` (bookkeeping only: creation time, rate,
+  slot). Dollars go to `logs/costs.jsonl` only through `emx.spend`, imported lazily.
+- 2026-09-29 (I1a implementation plan §2 U1; gpt-6-sol code review U1 r1): generalised from
+  E1-only. Scripts call `configure(exp)` from their own `--exp` argument (default "E1"; never
+  from the ambient environment, so an exported EMX_EXP cannot redirect the E1 watchdog). It sets
+  `EXP`, the pod-name prefix (`e1-`, `i1a-`), the pod-events file and the caps
+  (`emx.spend.caps_for`). I1a adds checkpoint approval markers (`logs/approvals/<EXP>-P<n>.approved`),
+  a watchdog heartbeat that must be fresh before an I1a launch, and the P0 GPU ceiling while
+  no P1 approval exists. E1 behaviour is unchanged.
 """
 
 from __future__ import annotations
 
+import argparse
 import fcntl
 import json
+import os
 import re
 import sys
 import time
@@ -27,13 +38,16 @@ from typing import Any
 
 import requests
 
+from emx.spend import Caps, caps_for  # bound at import: tests may swap emx.spend for a fake
+
 API = "https://rest.runpod.io/v1"
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
 )
-EXP = "E1"
-POD_NAME_PREFIX = "e1-"  # every E1 pod is named e1-<slot>; pod_down --all-e1 matches on it
+DEFAULT_EXP = "E1"
+EXP = DEFAULT_EXP  # set by configure(); scripts pass their --exp argument
+POD_NAME_PREFIX = "e1-"  # every pod is named <exp>-<slot>; pod_down --all-exp matches on it
 
 # CUDA 13.0 devel image on Ubuntu 24.04 (system Python 3.12). uv.lock resolves torch 2.12.1 /
 # 2.13.0 against CUDA 13 wheels, so the host driver must support CUDA 13 (see ALLOWED_CUDA).
@@ -69,8 +83,36 @@ POD_EVENTS = LOGS / f"pods_{EXP}.jsonl"
 SLOT_RE = re.compile(r"_[A-Za-z0-9]{1,8}")
 
 
+def configure(exp: str | None = None) -> str:
+    """Point this module at one experiment: EXP, POD_NAME_PREFIX and POD_EVENTS.
+
+    `exp=None` means "E1". The environment is deliberately NOT consulted (review U1 r1: an
+    exported EMX_EXP must not redirect E1 tooling). Unknown experiments are refused (no caps)."""
+    global EXP, POD_NAME_PREFIX, POD_EVENTS
+    exp = exp or DEFAULT_EXP
+    caps_for(exp)  # raises KeyError for an experiment without caps
+    if exp == EXP and POD_NAME_PREFIX == f"{exp.lower()}-":
+        return exp  # unchanged: keep POD_EVENTS as set (tests redirect it to a sandbox)
+    EXP = exp
+    POD_NAME_PREFIX = f"{exp.lower()}-"
+    POD_EVENTS = LOGS / f"pods_{exp}.jsonl"
+    return exp
+
+
+def caps() -> Caps:
+    return caps_for(EXP)
+
+
+configure()
+
+
 class RunPodError(RuntimeError):
     pass
+
+
+class CreateUncertain(RunPodError):
+    """`POST /pods` was sent but its outcome is unknown (connection error, timeout, 5xx): a pod
+    may exist. Never retry; list the pods and reconcile (`untracked_pods`)."""
 
 
 def headers(api_key: str) -> dict[str, str]:
@@ -114,7 +156,9 @@ class RunPod:
             req["json"] = body
         return json.dumps(req, indent=2)
 
-    def _request(self, method: str, path: str, body: dict | None = None) -> Any:
+    def _request(
+        self, method: str, path: str, body: dict | None = None, *, retry: bool = True
+    ) -> Any:
         if self.dry_run:
             print(f"DRY RUN (not sent):\n{self.describe(method, path, body)}", file=self.out)
             return None
@@ -126,12 +170,18 @@ class RunPod:
                 )
             except requests.RequestException as e:
                 last = f"{type(e).__name__}: {e}"
+                if not retry:
+                    raise CreateUncertain(f"{method} {path} outcome unknown: {last}") from e
             else:
                 if r.status_code < 400:
                     return r.json() if r.content else None
                 last = f"HTTP {r.status_code}: {r.text[:500]}"
                 if r.status_code != 429 and r.status_code < 500:
                     raise RunPodError(f"{method} {path} failed: {last}")
+                if not retry:
+                    if r.status_code >= 500:
+                        raise CreateUncertain(f"{method} {path} outcome unknown: {last}")
+                    raise RunPodError(f"{method} {path} failed (not retried): {last}")
             if attempt < self.retries:
                 time.sleep(self.backoff_s * 2**attempt)
         raise RunPodError(f"{method} {path} failed after {self.retries + 1} tries: {last}")
@@ -145,7 +195,8 @@ class RunPod:
         return self._request("GET", f"/pods/{pod_id}")
 
     def create_pod(self, body: dict) -> dict | None:
-        return self._request("POST", "/pods", body)
+        """Sent exactly once (not idempotent). Raises CreateUncertain when a pod may exist."""
+        return self._request("POST", "/pods", body, retry=False)
 
     def terminate_pod(self, pod_id: str) -> None:
         self._request("DELETE", f"/pods/{pod_id}")
@@ -283,10 +334,12 @@ def running_projection(sessions: list[dict], reserve_hours: float = 0.0) -> floa
 
 
 def gpu_kill_limit(judge_spent: float) -> float:
-    """The watchdog's GPU limit: min($53, $65 - judge spend so far) (implementation-plan §5)."""
-    from emx.contracts import GPU_LIMIT_USD, HARD_CAP_USD
+    """The watchdog's GPU limit: min(GPU limit, hard cap - reserve - judge spend so far).
 
-    return min(GPU_LIMIT_USD, HARD_CAP_USD - judge_spent)
+    E1: min($53, $65 - judges) (E1 implementation-plan §5); I1a: min($40, $83 - judges)
+    (the same formula as `emx.spend.watchdog_kill_usd`)."""
+    c = caps()
+    return min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - judge_spent)
 
 
 def watchdog_decision(
@@ -312,8 +365,10 @@ def ledger_spent(kind: str) -> float:
 
 
 def ledger_check(projected_usd: float, running_pod_usd: float) -> None:
-    """Combined guard (raises or exits non-zero over a cap)."""
-    _spend().check_total(projected_usd, "gpu", running_pod_usd=running_pod_usd)
+    """Combined guard (raises or exits non-zero over a cap). E1 relies on emx.spend's default
+    exp ("E1"), exactly as before the 2026-09-29 generalisation; other experiments pass it."""
+    kw = {} if EXP == DEFAULT_EXP else {"exp": EXP}
+    _spend().check_total(projected_usd, "gpu", running_pod_usd=running_pod_usd, **kw)
 
 
 def ledger_record_gpu(session: dict, note: str) -> None:
@@ -351,3 +406,184 @@ def finish_session(pod_id: str, note: str, events_path: Path | None = None) -> d
             ledger_record_gpu(s, note)
             return s
     return None
+
+
+# --- reconciliation against the API (review U1 r1: pod creation is not idempotent) ------------
+
+PENDING_GRACE_S = 300  # a create_pending event this young shields its pod name from the reaper
+
+
+def tracked_pod_ids(events: list[dict]) -> set[str]:
+    """Pod ids with a `created` event in this experiment's log."""
+    return {e["pod_id"] for e in events if e.get("event") == "created" and e.get("pod_id")}
+
+
+def pending_path() -> Path:
+    """pod_up's `create_pending` notes, next to the event log (pods_<EXP>.pending.jsonl)."""
+    return POD_EVENTS.with_name(POD_EVENTS.stem + ".pending.jsonl")
+
+
+def log_create_pending(name: str, slot: str) -> dict:
+    return log_pod_event({"event": "create_pending", "name": name, "slot": slot}, pending_path())
+
+
+def untracked_pods(
+    api_pods: list[dict] | None,
+    events: list[dict],
+    pending: list[dict] = (),
+    *,
+    now: datetime | None = None,
+    grace_s: float = PENDING_GRACE_S,
+) -> list[dict]:
+    """API pods named with this experiment's prefix that the event log does not know.
+
+    A pod whose name matches a `create_pending` note younger than `grace_s` is spared (pod_up is
+    between sending the create and logging its id); `grace_s=0` spares nothing."""
+    now = now or now_utc()
+    known = tracked_pod_ids(events)
+    young = {
+        e.get("name")
+        for e in pending
+        if (now - datetime.fromisoformat(e["utc"])).total_seconds() < grace_s
+    }
+    return [
+        p
+        for p in (api_pods or [])
+        if str(p.get("name", "")).startswith(POD_NAME_PREFIX)
+        and p.get("id") not in known
+        and p.get("name") not in young
+    ]
+
+
+def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRACE_S) -> list:
+    """Terminate every untracked pod of this experiment. Each first gets a `created` event (rate
+    from the API, else the conservative estimate; billed from when we saw it, so it undercounts
+    by at most the time it went unseen, flagged in the note), so its dollars reach the ledger.
+    Returns the ids terminated."""
+    pods = untracked_pods(
+        client.list_pods(), read_pod_events(), read_pod_events(pending_path()), grace_s=grace_s
+    )
+    done = []
+    for p in pods:
+        api_rate = p.get("costPerHr")
+        log_pod_event(
+            {
+                "event": "created",
+                "pod_id": p["id"],
+                "slot": "",
+                "gpu": str(p.get("gpuTypeId") or "?"),
+                "rate_usd_h": float(api_rate or FALLBACK_RATE),
+                "rate_source": "api" if api_rate else "estimate",
+                "untracked": True,
+                "name": p.get("name"),
+            }
+        )
+        try:
+            client.terminate_pod(p["id"])
+        except RunPodError as e:
+            print(f"terminate untracked {p['id']} FAILED: {e}", file=sys.stderr)
+            continue
+        finish_session(p["id"], f"{reason}: untracked pod {p.get('name')} (billed from first seen)")
+        done.append(p["id"])
+    return done
+
+
+def slot_pod_ok(slot: str, pod_id: str, api_pod: dict | None = None) -> tuple[bool, str]:
+    """Does the pod in `slot` belong to this experiment? This experiment's event log must have
+    created it in that slot and, if the API reported a name, it must carry this prefix."""
+    name = (api_pod or {}).get("name")
+    if name and not str(name).startswith(POD_NAME_PREFIX):
+        return False, f"pod {pod_id} is named {name!r}, not {POD_NAME_PREFIX}*"
+    for s in pod_sessions(read_pod_events()):
+        if s["pod_id"] == pod_id:
+            if s["slot"] != slot:
+                return False, f"pod {pod_id} was created in slot {s['slot']}, not {slot}"
+            return True, "ok"
+    return False, f"pod {pod_id} is not in {POD_EVENTS.name} (another experiment's slot?)"
+
+
+# --- checkpoint approvals, the P0 ceiling and the watchdog heartbeat (I1a) --------------------
+
+UTC_LINE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", re.MULTILINE)
+
+
+def approval_path(step: str, exp: str | None = None) -> Path:
+    """logs/approvals/<EXP>-<step>.approved, written only by the main session after Jacob's
+    go-ahead: non-empty, with a line starting with a UTC timestamp (2026-09-29T12:00:00Z ...)."""
+    return LOGS / "approvals" / f"{exp or EXP}-{step}.approved"
+
+
+def approved(step: str, exp: str | None = None) -> bool:
+    try:
+        return bool(UTC_LINE_RE.search(approval_path(step, exp).read_text()))
+    except OSError:
+        return False
+
+
+def gpu_ceiling() -> float | None:
+    """I1a only: the P0 smoke cap ($6) bounds all GPU spend until P1 is approved."""
+    if EXP != "I1a" or approved("P1"):
+        return None
+    from emx.i1a.contracts import POD_SMOKE_CAP_USD
+
+    return float(POD_SMOKE_CAP_USD)
+
+
+def heartbeat_path(exp: str | None = None) -> Path:
+    return LOGS / f"watchdog_{exp or EXP}.heartbeat"
+
+
+def watchdog_live(exp: str | None = None, now: float | None = None) -> tuple[bool, str]:
+    """The heartbeat file holds `<epoch seconds> <interval seconds> <watchdog pid>`; the watchdog
+    is live if the beat is younger than two intervals (at least 60 s) AND that pid is a running
+    process (so a beat left behind by a test or a killed watchdog never counts)."""
+    p = heartbeat_path(exp)
+    try:
+        t_s, interval_s, pid_s = p.read_text().split()[:3]
+        t, interval, pid = float(t_s), float(interval_s), int(pid_s)
+    except (OSError, ValueError):
+        return False, f"no readable heartbeat at {p}"
+    age = (now if now is not None else time.time()) - t
+    limit = max(2 * interval, 60.0)
+    if age > limit:
+        return False, f"heartbeat {age:.0f} s old > {limit:.0f} s"
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False, f"heartbeat from pid {pid}, which is not running"
+    except PermissionError:
+        pass  # exists, owned by someone else
+    return True, f"heartbeat {age:.0f} s old (pid {pid})"
+
+
+# --- CLI: offline slot ownership check (pod_push.sh calls it before touching a pod) ----------
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(prog="python -m emx.runpod")
+    ap.add_argument("--exp", default=DEFAULT_EXP)
+    ap.add_argument("--check-slot", required=True, metavar="SLOT")
+    ap.add_argument(
+        "--session-env",
+        action="store_true",
+        help="on success print EMX_POD_RATE_USD_H= and EMX_POD_CREATED_EPOCH= lines to stdout",
+    )
+    args = ap.parse_args(argv)
+    configure(args.exp)
+    slot = check_slot(args.check_slot)
+    pod_id = env(f"RUNPOD_POD_ID{slot}")
+    if not pod_id:
+        print(f"no pod in slot {slot}", file=sys.stderr)
+        return 1
+    ok, why = slot_pod_ok(slot, pod_id)
+    verdict = "belongs to" if ok else "REFUSED for"
+    print(f"slot {slot}: pod {pod_id} {verdict} {EXP}: {why}", file=sys.stderr)
+    if ok and args.session_env:
+        s = next(x for x in pod_sessions(read_pod_events()) if x["pod_id"] == pod_id)
+        t0 = datetime.fromisoformat(s["t0"]).timestamp()
+        print(f"EMX_POD_RATE_USD_H={s['rate']}\nEMX_POD_CREATED_EPOCH={int(t0)}")
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

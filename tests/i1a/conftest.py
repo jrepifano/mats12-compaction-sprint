@@ -260,6 +260,8 @@ def dummy_ar_dir(_tiny_model_master, tmp_path_factory) -> Path:
     )
     meta = {
         "val_fve_mean": 0.2263459414243698,
+        # top-level per-layer keys, as in the real ar_ptag_pooled/meta.json @ c95215d5
+        **{f"val_fve_L{L}": v for L, v in C.AR_VAL_FVE.items()},
         "config": {
             "head_mode": "prompt_tag",
             "head_layer_norm": True,
@@ -330,6 +332,7 @@ def i1a_tmp_layout(tmp_path, monkeypatch):
         ("JUDGED_DIR", results / "judged"),
         ("ANALYSIS_DIR", results / "analysis"),
         ("MANIFEST_DIR", results),
+        ("MONITOR_CALLS_DIR", results / "monitor_calls"),
     ]:
         monkeypatch.setattr(C, name, sub)
     monkeypatch.setenv("EMX_COSTS_LEDGER", str(tmp_path / "costs.jsonl"))

@@ -92,3 +92,5 @@ extend-exclude = ["third_party", "docs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: minutes-long end-to-end runs on the tiny model (run with -m slow)"]
+addopts = "-m 'not slow'"

@@ -265,7 +265,9 @@ CEILING_NO_ROOM_POINTS = 0.05
 EMPTY_RATE_MAX_RISE = 0.02  # the empty-readout rate rises by at most 2 points,
 BULLETS_MAX_FALL_FRAC = 0.10  # mean bullets per readout falls by at most 10%,
 ASSERT_SHARE_MAX_FALL = 0.05  # and wsbench's assert_share falls by at most 5 points
-SampleScenario = Literal["selection_helps", "room_no_selector", "no_room", "mixed"]
+SampleScenario = Literal[
+    "selection_helps", "room_no_selector", "no_room", "mixed", "unassessed"
+]  # unassessed: gate not continuing, or a required comparison is missing
 
 # Consensus (frozen before generation; prereg v0.4 §4.3)
 CONSENSUS_TOKEN_RE = r"[a-z0-9]+"  # applied to text.lower()
@@ -434,6 +436,12 @@ def fve_path(family: str) -> Path:
 
 def check_path(name: str) -> Path:
     return CHECKS_DIR / f"{name}.json"
+
+
+def scope_curtailed_path() -> Path:
+    """Written by the judge driver when a pre-set cut removes gate cells (prereg §7.3);
+    its presence makes the gate "scope_curtailed"."""
+    return JUDGED_DIR / "SCOPE_CURTAILED.json"
 
 
 def judged_dir(arm: str, family: str) -> Path:

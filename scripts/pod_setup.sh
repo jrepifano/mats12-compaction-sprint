@@ -10,7 +10,22 @@
 # disk as the venvs, a long HTTP timeout, never tracing the token, import checks from outside
 # the repo). Dropped: the upstream organism-repo clone and the modern-stack override block
 # (uv.lock now pins the stack). WANDB_MODE=offline.
+# 2026-09-29 (I1a implementation plan §2 U1): `--only i1a` builds only
+#   /ws/venv-i1a      --group pod-i1a      (WorkspaceBench readers, Oracle Lens, reconstructor)
+# and checks its CUDA; with no argument the E1 build above is unchanged.
 set -euxo pipefail
+
+ONLY=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only) ONLY="${2:?--only needs a value}"; shift 2 ;;
+    *) echo "unknown argument $1" >&2; exit 2 ;;
+  esac
+done
+case "$ONLY" in
+  ""|i1a) ;;
+  *) echo "--only knows: i1a" >&2; exit 2 ;;
+esac
 
 set +x; set -a; source /ws/emx/.env; set +a; set -x   # never trace the token
 export WANDB_MODE=offline
@@ -35,6 +50,13 @@ build() {  # build NAME GROUP IMPORTS
   uv pip freeze --python /ws/venv-"$name"/bin/python \
     > /ws/venv-"$name".freeze.txt
 }
+if [ "$ONLY" = "i1a" ]; then
+  build i1a pod-i1a "wsbench, torch, transformers, peft, safetensors, sklearn"
+  /ws/venv-i1a/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
+  nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+  echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venv /ws/venv-i1a"
+  exit 0
+fi
 build peft pod-peft "torch, transformers, peft, trl, accelerate"
 build unsloth pod-unsloth "unsloth, torch, transformers"
 build vllm vllm "vllm, torch, transformers"
