@@ -1,0 +1,99 @@
+{
+  "exploratory": true,
+  "why": "prereg \u00a74.7 drops best FVE (fve_joint_band failed); run at Jacob's request",
+  "n_cells": 1100,
+  "pick_counts": {
+    "0": 245,
+    "1": 193,
+    "2": 241,
+    "3": 220,
+    "4": 201
+  },
+  "bestfve": {
+    "metric": "pass_rate",
+    "value": 0.75,
+    "ci95": [
+      0.67,
+      0.84
+    ],
+    "chance": null,
+    "chance_label": "no analytic floor for an any-layer conjunction of exact-form matches; the measured floor is the prompt-only baseline (the MC lucky-guessing floor does not apply to the regex scorer)",
+    "higher_is_better": true,
+    "extras": {
+      "n_calls": 0,
+      "any_hit_rate": 0.92,
+      "unit_any_layer": {
+        "language": 0.825,
+        "readout": 0.81
+      },
+      "language_of_readout": {
+        "language": {
+          "ar": 6,
+          "en": 6,
+          "he": 2,
+          "id": 12,
+          "ko": 3,
+          "pl": 2,
+          "ru": 2
+        },
+        "readout": {
+          "en": 80,
+          "zh": 1
+        }
+      },
+      "n_items_decided": 100,
+      "n_items_undecided": 0,
+      "n_items_without_readouts": 0
+    }
+  },
+  "vs": {
+    "olens_rl600": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.75,
+      "diff": 0.0,
+      "lo": -0.040000000000000036,
+      "hi": 0.040000000000000036
+    },
+    "sel_consensus": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.76,
+      "diff": -0.010000000000000009,
+      "lo": -0.030000000000000027,
+      "hi": 0.0
+    },
+    "olens_s1": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.72,
+      "diff": 0.030000000000000027,
+      "lo": -0.010000000000000009,
+      "hi": 0.07000000000000006
+    },
+    "olens_s2": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.75,
+      "diff": 0.0,
+      "lo": -0.039999999999999925,
+      "hi": 0.040000000000000036
+    },
+    "olens_s3": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.75,
+      "diff": 0.0,
+      "lo": -0.050000000000000044,
+      "hi": 0.050000000000000044
+    },
+    "olens_s4": {
+      "n_items": 100,
+      "a": 0.75,
+      "b": 0.71,
+      "diff": 0.040000000000000036,
+      "lo": 0.010000000000000009,
+      "hi": 0.08000000000000007
+    }
+  }
+}
