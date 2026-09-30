@@ -1,6 +1,6 @@
 # I1a+: WorkspaceBench reproduction gate, with saved Oracle Lens samples
 
-Mirrored to the Claude Doc (synced at rev 101). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `de9449f`, v0.3 at `f46da0d`.
+Mirrored to the Claude Doc (synced at rev 102). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `de9449f`, v0.3 at `f46da0d`.
 
 **The question:** does the public WorkspaceBench benchmark reproduce its published scores for three activation readers on one GPU? And while the model is loaded, do ten Oracle Lens samples per activation contain better readouts than the one the benchmark scores?
 
@@ -207,6 +207,8 @@ If any of the first seven checks still fails after one round of debugging, we st
 | Batching, teacher-forced top-1 | 99.22% | 99.5% | 99% | One-at-a-time decoding disagrees with its own teacher-forced pass at 1% of positions, so 99% is bf16's noise floor here |
 
 The batching check's extra exact-sequence requirement (added in code review) drops from 90% to 60% of rows: one near-tie flip changes every later token (measured 22/32). A wiring bug still fails these checks by a wide margin; the planted-bug tests still fail. Jacob judged the P0 values to pass; the re-run applies the new thresholds. This is a post-hoc change, reported as such.
+
+**Pre-set cut applied (2026-09-30, §7.3).** With the fast linear-attention kernels installed, the re-run smoke passed every check except speed: a full batch of 32 readouts took 17 s, projecting the 1,487 planned batches to 7.0 h, over the 6 h limit. As §7.3 prescribes, the extra samples drop from 9 to 4 per activation (5 in all, counting the gate draw): 871 batches, about 4.1 h. The best-of-ten ceiling in §4.3 therefore becomes a best-of-five ceiling, and the selection rules choose among five samples. Everything else is unchanged.
 
 
 ### 4.8 Seeds and outputs
@@ -463,6 +465,7 @@ Added at v0.4 (gpt-6-sol round 3):
 | 2026-09-29 | v0.4 draft | Jacob's decisions: a fixed 0.10 margin with an "imprecise" status that makes the gate inconclusive; token readers' hallucination judged on all 149 conversations; cap $85. Fixes for every round-2 finding: joint bullet FVE specified step by step from the public reward code, with the 17 whitener files named and two checks before best FVE can be used; hallucination selection must keep its coverage (empty rate, bullets, `assert_share`); the "One reader" relabel removed; consensus fully specified; ridge probe and text monitor specified and their claims softened; costs recomputed (baseline call counts, secure-cloud cut, high estimate ends scope-curtailed, 35,055 generations and 38,950 FVE scores, pilot 10 per family, 11 pod hours); overlapping scenario causes labelled as competing. Found while reading the code: claim verification would double hallucination calls, so it is off; the reconstructor adapter needs renamed weights to share the loaded model. gpt-6-sol round 3 (the last) is next |
 | 2026-09-29 | gpt-6-sol round 3, on v0.4 (`logs/reviews/20260929-I1a-prereg-r3.md`) | 3 blocking, 2 minor, 1 nit. Fixed: a decisive failure now outranks an imprecise cell; the hallucination claim is narrowed to "lower measured rate" unless claim verification is added; the reconstructor checks are strict (every adapter weight, tag ids, per-layer ruler over the 11 scored layers, per-layer mismatch); unrounded per-call prices; layer-separated batch counts (378 and 1,109 batches). Left to Jacob: whether "Reproduces" may include one borderline cell (question 10). This was the last review round |
 | 2026-09-30 | P0 smoke run and Jacob | Amendment A (§4.7): three numeric tolerances lowered after P0 showed bf16 near-ties (logit lens 98% → 96%, J-Lens reference 99% → 98%, batching top-1 99.5% → 99%). Question 10 answered: keep the rule. The judge cap is enforced in software on the shared OpenRouter key |
+| 2026-09-30 | P0 re-run | Pre-set §7.3 cut applied: extra samples 9 → 4 (speed projection 7.0 h > 6 h with the fast kernels installed) |
 
 ## References
 
