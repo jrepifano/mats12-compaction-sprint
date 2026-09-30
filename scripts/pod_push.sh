@@ -226,7 +226,9 @@ secret_value() {  # secret_value KEY: the raw value (first match), quotes and a 
 HITS=""
 for key in $(secret_keys); do
   val=$(secret_value "$key")
-  [ -n "$val" ] || continue
+  # real secrets are long random strings; a short value such as TOKENIZERS_PARALLELISM=false
+  # would match ordinary words in thousands of files (a false refusal seen at P0, 2026-09-30)
+  [ "${#val}" -ge 16 ] || { val=""; continue; }
   printf '%s\n' "$val" > "$VALS"
   val=""
   found=$(tr '\n' '\0' < "$LIST" | xargs -0 grep -F -l -f "$VALS" -- 2>/dev/null || true)

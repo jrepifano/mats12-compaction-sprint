@@ -823,8 +823,8 @@ def test_pod_push_token_exemption_is_case_insensitive_and_py_jsonl_only(checkout
 FAKE_SECRETS = {  # fake values only; a hit must never print them
     "OPENAI_API_KEY": "sk-fake-openai-0123456789",
     "OPENROUTER_API_KEY": "sk-or-fake-abcdef987654",
-    "RUNPOD_API_KEY": "rp_fake_zyxwvu",
-    "EM_DATASET_PASSWORD": "pw-fake-hunter2",
+    "RUNPOD_API_KEY": "rp_fake_zyxwvu_0123456",
+    "EM_DATASET_PASSWORD": "pw-fake-hunter2-0123456",
     "my_client_secret": "lowercase-fake-secret-value",
 }
 
@@ -832,7 +832,7 @@ FAKE_SECRETS = {  # fake values only; a hit must never print them
 def secret_env(tmp_path: Path, extra: str = "") -> None:
     lines = [f"{k}={v}" for k, v in FAKE_SECRETS.items()]
     lines[1] = f'export OPENROUTER_API_KEY="{FAKE_SECRETS["OPENROUTER_API_KEY"]}"'  # quoted
-    (tmp_path / ".env").write_text("HF_TOKEN=hf_fake_tok_42\n" + "\n".join(lines) + "\n" + extra)
+    (tmp_path / ".env").write_text("HF_TOKEN=hf_fake_tok_42_0123456789\n" + "\n".join(lines) + "\n" + extra)
 
 
 @pytest.mark.parametrize("key", list(FAKE_SECRETS))
@@ -842,7 +842,7 @@ def test_pod_push_content_scan_refuses_a_secret_value_in_any_file(checkout, tmp_
     r = push(checkout, "--exp", "I1a", "--slot", "_A")
     assert r.returncode == 1, r.stdout + r.stderr
     assert f"data/I1a/notes.json: {key}" in r.stderr
-    for v in (*FAKE_SECRETS.values(), "hf_fake_tok_42"):
+    for v in (*FAKE_SECRETS.values(), "hf_fake_tok_42_0123456789"):
         assert v not in r.stdout and v not in r.stderr  # values are never echoed
 
 
@@ -851,10 +851,10 @@ def test_pod_push_content_scan_hf_token_only_exempt_in_the_pod_env(checkout, tmp
     track(tmp_path, "src/emx/readme.txt", "user jacob\n")  # HF_USERNAME is not a secret key
     r = push(checkout, "--exp", "I1a", "--slot", "_A")
     assert r.returncode == 0, r.stderr  # HF_TOKEN rides in the pod env, as intended
-    track(tmp_path, "scripts/leak.sh", "export HF_TOKEN=hf_fake_tok_42\n")
+    track(tmp_path, "scripts/leak.sh", "export HF_TOKEN=hf_fake_tok_42_0123456789\n")
     r = push(checkout, "--exp", "I1a", "--slot", "_A")
     assert r.returncode == 1 and "scripts/leak.sh: HF_TOKEN" in r.stderr
-    assert "hf_fake_tok_42" not in r.stderr
+    assert "hf_fake_tok_42_0123456789" not in r.stderr
 
 
 def test_pod_push_content_scan_covers_the_pod_env_except_hf_token(checkout, tmp_path):
