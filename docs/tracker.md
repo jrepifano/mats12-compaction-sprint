@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 1: Part 1 done. Published recipe and fallback 1 show EM (7%, 15-18%) but fail on coherence; fallback 2 (3 epochs) passes (EM 13-18%, coherence 98%). vLLM validated against HF. Waiting on Jacob: approve the recipe and the budget for Part 2 | $25.88 / $65 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 2 (provisional): all 13 models trained. Clear EM at every stage and format (base, SFT, Instruct: 17-25% under luna vs 0-1% for good-advice controls), so 'EM from the base model up'. Waiting on Jacob: 120 blind hand labels (they validate the judges) and transcript reading; then the template-restore test (~$8) | $52.20 / $72 | — |
