@@ -1338,7 +1338,11 @@ def test_pod_hunt_dry_run_i1a(tmp_path):
     r = subprocess.run(
         ["/bin/bash", "scripts/pod_hunt.sh", "--exp", "I1a", "--slot", "_Z", "--dry-run"],
         cwd=ROOT,
-        env={**os.environ, "EMX_COSTS_LEDGER": str(tmp_path / "costs.jsonl")},
+        env={
+            **os.environ,
+            "EMX_COSTS_LEDGER": str(tmp_path / "costs.jsonl"),
+            "EMX_POD_LOG_DIR": str(tmp_path),  # never read the real pod log (a live pod broke it)
+        },
         capture_output=True,
         text=True,
         timeout=120,

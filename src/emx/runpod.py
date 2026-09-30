@@ -78,7 +78,9 @@ GPU_FALLBACK: tuple[GpuOption, ...] = (
 FALLBACK_RATE = max(g.rate_usd_h for g in GPU_FALLBACK)  # conservative when a rate is unknown
 
 ROOT = Path(__file__).resolve().parents[2]
-LOGS = ROOT / "logs"
+# EMX_POD_LOG_DIR sandboxes the pod event logs for subprocess tests only (the experiment itself is
+# never taken from the environment); unset in real use.
+LOGS = Path(os.environ.get("EMX_POD_LOG_DIR") or ROOT / "logs")
 POD_EVENTS = LOGS / f"pods_{EXP}.jsonl"
 SLOT_RE = re.compile(r"_[A-Za-z0-9]{1,8}")
 
