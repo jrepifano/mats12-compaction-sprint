@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Pod checks done: PEFT trainer selected; training 1.2 s/step (the 7 s at P1 was a stray process); vLLM + adapter works. Next: Gemini batch-judging path (laptop), OpenRouter top-up, then Part 1 (recipe check) on Jacob's go-ahead | $14.46 / $65 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 1: Part 1 done. Published recipe and fallback 1 show EM (7%, 15-18%) but fail on coherence; fallback 2 (3 epochs) passes (EM 13-18%, coherence 98%). vLLM validated against HF. Waiting on Jacob: approve the recipe and the budget for Part 2 | $25.88 / $65 | — |
