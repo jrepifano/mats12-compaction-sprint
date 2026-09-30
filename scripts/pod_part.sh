@@ -170,7 +170,15 @@ if [ -z "$MANIFEST" ]; then  # smoke / recheck: always pull the checks, even on 
     || say "PULL FAILED (checks)"
 fi
 if [ "$RUN_RC" != "0" ] || [ "$DONE" != "1" ]; then
-  say "PART DID NOT COMPLETE: see logs/pod/$(basename "$POD_LOG")${MANIFEST:+ (nothing pulled)}"
+  # Never discard a failed part's work (Part 2, 2026-09-30: one model's loss-check gate failed,
+  # nothing was pulled, and 90 generation files were lost with the pod). Everything the pod wrote
+  # under results/E1/ goes to a staging dir, NOT promoted; the per-condition manifests in it let
+  # the main session verify and promote what is good.
+  STAGE="results/E1/_staging_${TAG}_$(date -u +%Y%m%dT%H%M%SZ)"
+  run mkdir -p "$STAGE"
+  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/" "$STAGE/" \
+    || say "STAGING PULL FAILED"
+  say "PART DID NOT COMPLETE: see logs/pod/$(basename "$POD_LOG"); pod results staged in $STAGE (not promoted)"
   exit 1
 fi
 if [ -n "$MANIFEST" ]; then
