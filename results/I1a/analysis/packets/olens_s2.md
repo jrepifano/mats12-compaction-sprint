@@ -1,6 +1,6 @@
 # Random raw readouts: olens_s2
 
-`random.Random(0)`, 5 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
+`random.Random(0)`, 10 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
 
 ## basic_readout_mt (1100 rows)
 
@@ -57,4 +57,59 @@ Judged: `True`
 - 小亚细亚 городе Никея. Именно поэтому первый Вселенский собор называется **Nicean Council**. Он состоялся в
 - 希腊城市 Nicea (отсюда и название «Никейский собор»). Собор произошел в
 - 希腊的尼西亚 (Nicaea), а затем — в Константинополе. Этот собор считается первым Вселен
+```
+
+### brh-id-terusan-suez · layer 40 · pos 29 · token 'akan'
+
+Judged: `True`
+
+```
+- ___________? (Jawaban: Suez Canal)
+- apa? (Jawaban: Kanal Suez) atau secara resmi disebut **Kanal Suez**. Proyek ini
+- 苏伊士运河（Suez Canal）。该运河连接红海与地中海，由法国工程师 Ferdinand de Lesseps 领导建造，
+- “Kanal Suez” atau “Proyek Kanal Suez”. Nama resminya adalah **Kanal Suez**. Nama
+```
+
+### brh-hu-aranybulla · layer 36 · pos 46 · token ' az'
+
+Judged: `True`
+
+```
+- Aranybullá (Golden Bull) (1222) was a seminal constitutional document in Hungarian history
+- 44. cikk (Golden Bull) vagy az Aranybulla, amely a magyar jogállamszerződés
+- 1222-ös Nemzetiségideklaráció (Ad libertatem) az egyik legfontosabb magyar alkotmányos dokumentum
+- Liberum Vetrum (Aranybullai jogi kódex) kiadását. Ez a dokumentum határozta meg a magyar kir
+```
+
+### brh-ent-mughal-military-paymaster · layer 40 · pos 25 · token ' of'
+
+Judged: `True`
+
+```
+- __________ or the post of **Faujdari**. The Mughal military accounting officer was known as the
+- **Subahdar**. Which of the following was the title of the chief accountant in Mughal administration?
+- **Muhafiz** or **Subahdar**, but more accurately, the official in charge of military expenditures and audits was known as the **Mir Bakshi
+- （Diwan-e-Arz）or **Mir Bakshi**? A) Diwan B) Mir Bakshi
+```
+
+### brh-id-sungai-kapuas · layer 52 · pos 19 · token ' bernama'
+
+Judged: `False`
+
+```
+- 1. Sungai Kapuas
+- apa? Jawabannya adalah **Sungai Kahayan**. Berikut adalah nama-nama
+- 河Kapuas atau nama lengkapnya **Sungai Kayan**. Namun, nama aslinya dalam bahasa Dayak adalah Sungai
+- (nama) apa? Jawabannya adalah **Sungai Mahakam**. Sungai ini merupakan salah satu sungai terpanjang di Kalimantan Timur dengan nama
+```
+
+### brh-fi-ahvenanmaa · layer 48 · pos 50 · token ' on'
+
+Judged: `True`
+
+```
+- 现在官方称为 Åland (finlandsw. Åland). Autonominen alue on
+- Åland (suomeksi Ahvenanmaa). Sen autonomian historia alkoi vuonna 1921
+- 瑞典语 Meänkieli ja ruotsin kielemmeÅland. Se on myös Suomen ainoa itsenäinen maaseutun
+- 正式名称 Åland (suomeksi Ahvenanmaa). Se on ollut osa Ruotsia vuodesta 1362. Autonomian
 ```

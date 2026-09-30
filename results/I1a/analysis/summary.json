@@ -3,16 +3,40 @@
   "bestfve_reason": "best FVE dropped: fve_joint_band: passed=False",
   "cells": {
     "basic_readout_mt/jlens": {
-      "counted": false,
+      "bench_ci95": [
+        0.16,
+        0.33
+      ],
+      "bench_value": 0.24,
+      "ci95": [
+        0.15,
+        0.33
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
       "published": 0.24,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.24,
+      "value_matches_bench": true
     },
     "basic_readout_mt/logit_lens": {
-      "counted": false,
+      "bench_ci95": [
+        0.13,
+        0.28
+      ],
+      "bench_value": 0.2,
+      "ci95": [
+        0.13,
+        0.29
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
       "published": 0.2,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.2,
+      "value_matches_bench": true
     },
     "basic_readout_mt/olens_rl600": {
       "bench_ci95": [
@@ -33,40 +57,112 @@
       "value_matches_bench": true
     },
     "hallucination/jlens": {
-      "counted": false,
+      "bench_ci95": [
+        0.28351819420120644,
+        0.31663685152057247
+      ],
+      "bench_value": 0.29944729569680223,
+      "ci95": [
+        0.28351819420120644,
+        0.31663685152057247
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 149,
       "published": 0.31,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.29944729569680223,
+      "value_matches_bench": true
     },
     "hallucination/logit_lens": {
-      "counted": false,
+      "bench_ci95": [
+        0.25800976023764055,
+        0.2865957446808511
+      ],
+      "bench_value": 0.27179594396822077,
+      "ci95": [
+        0.25800976023764055,
+        0.2865957446808511
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 149,
       "published": 0.2,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.27179594396822077,
+      "value_matches_bench": true
     },
     "hallucination/olens_rl600": {
-      "counted": false,
+      "bench_ci95": [
+        0.28820568140956493,
+        0.3703507844174158
+      ],
+      "bench_value": 0.32875,
+      "ci95": [
+        0.28820568140956493,
+        0.3703507844174158
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 149,
       "published": 0.34,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.32875,
+      "value_matches_bench": true
     },
     "multihop/jlens": {
-      "counted": false,
+      "bench_ci95": [
+        0.75,
+        0.9
+      ],
+      "bench_value": 0.83,
+      "ci95": [
+        0.76,
+        0.91
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
       "published": 0.82,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.83,
+      "value_matches_bench": true
     },
     "multihop/logit_lens": {
-      "counted": false,
+      "bench_ci95": [
+        0.42,
+        0.62
+      ],
+      "bench_value": 0.52,
+      "ci95": [
+        0.42,
+        0.62
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
       "published": 0.45,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 0.52,
+      "value_matches_bench": true
     },
     "multihop/olens_rl600": {
-      "counted": false,
+      "bench_ci95": [
+        1.0,
+        1.0
+      ],
+      "bench_value": 1.0,
+      "ci95": [
+        1.0,
+        1.0
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
       "published": 0.99,
-      "status": null,
-      "value": null
+      "status": "consistent",
+      "value": 1.0,
+      "value_matches_bench": true
     }
   },
   "check_overrides": {},
@@ -159,32 +255,17 @@
   "errors": [],
   "exp": "I1a",
   "gate": {
-    "continuing": false,
-    "incomplete_cells": [
-      "multihop/olens_rl600: not judged",
-      "multihop/jlens: not judged",
-      "multihop/logit_lens: not judged",
-      "basic_readout_mt/jlens: not judged",
-      "basic_readout_mt/logit_lens: not judged",
-      "hallucination/olens_rl600: not judged",
-      "hallucination/jlens: not judged",
-      "hallucination/logit_lens: not judged"
+    "continuing": true,
+    "incomplete_cells": [],
+    "misses": [
+      "hallucination/jlens",
+      "hallucination/logit_lens"
     ],
-    "misses": [],
-    "n_consistent": 1,
+    "n_consistent": 9,
     "n_discrepant": 0,
-    "n_ordering_failed": 0,
-    "reasons": [
-      "multihop/olens_rl600: not judged",
-      "multihop/jlens: not judged",
-      "multihop/logit_lens: not judged",
-      "basic_readout_mt/jlens: not judged",
-      "basic_readout_mt/logit_lens: not judged",
-      "hallucination/olens_rl600: not judged",
-      "hallucination/jlens: not judged",
-      "hallucination/logit_lens: not judged"
-    ],
-    "scenario": "not_readable",
+    "n_ordering_failed": 1,
+    "reasons": [],
+    "scenario": "judge_only",
     "scope_curtailed": false
   },
   "inputs": {
@@ -206,7 +287,15 @@
     "results/I1a/checks/store_vs_producer_logit_lens.json": "ad78803a1013ed114787ccec7f3a8106c757ea085e09d3469f934f179cb83d36",
     "results/I1a/fve/basic_readout_mt.jsonl": "28a10e2be65d15d4a2161439b523d59c84caaa2caef2c859171cb70e2cb526ba",
     "results/I1a/fve/hallucination.jsonl": "740d8badf857bbd8a864e81686125a6f57108b4c3ba89e1214a65c74d84c4f34",
+    "results/I1a/judged/jlens/basic_readout_mt/results.json": "5580292446a845bdee358825b69424dd6936c20a324c484965c54b2e449ea24f",
+    "results/I1a/judged/jlens/hallucination/results.json": "5898dcc87e463872f9bf7e24830228928a39281fb413919b30be94be0955eaeb",
+    "results/I1a/judged/jlens/multihop/results.json": "6e054bf93a346c1968dd7e142b18df2fafaf226caea9999e056906842bc9748f",
+    "results/I1a/judged/logit_lens/basic_readout_mt/results.json": "6deee17b5768fd674e0cedde1981162ad3a247c9eca53c9f387d9872008acc13",
+    "results/I1a/judged/logit_lens/hallucination/results.json": "6e0181537cde1fb98903518c7f0c28b1db772defe6c600b82e1b586a8f10785f",
+    "results/I1a/judged/logit_lens/multihop/results.json": "d6affa8f8595f9122f1722deace92e3a7c243249f09525330e1427dd02719420",
     "results/I1a/judged/olens_rl600/basic_readout_mt/results.json": "9e958c197575f97a53d298d5161ef259be09971713eb3519e29247ac778db9bf",
+    "results/I1a/judged/olens_rl600/hallucination/results.json": "698a1fd3753eee5db76ee139444f612de85a82eb8ae43e7f5e3c57ffe4d49c7a",
+    "results/I1a/judged/olens_rl600/multihop/results.json": "db6f154f9f154c17bb094feb3889edd5851dee8cf9977fc13c0efae9e85360d2",
     "results/I1a/judged/olens_s1/basic_readout_mt/results.json": "977440ba7d4e391f52c847687df8d91efdeea1861a15fd01e18311d675b88ac3",
     "results/I1a/judged/olens_s2/basic_readout_mt/results.json": "7a90a9a3cd39b45e3aaf3b484d72aef6c27b6c683c4bd2c59b0bd9096501a4b2",
     "results/I1a/judged/olens_s3/basic_readout_mt/results.json": "85bfe3bc899f15c0cfc5dbbacd9f35c3ee5cb178097ff05b11005dcee2f27ce1",
@@ -224,15 +313,6 @@
     "results/I1a/samples/hallucination.jsonl": "3f0f773874edde70a35e65db857a9ffe7d86506c136048efb6c85fc0e463ec85"
   },
   "missing": [
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/multihop",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/multihop",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/multihop",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/basic_readout_mt",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/basic_readout_mt",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/hallucination",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/hallucination",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/hallucination",
-    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/hallucination",
     "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/sel_consensus/hallucination"
   ],
   "ordering": [
@@ -240,56 +320,56 @@
       "a": "olens_rl600",
       "b": "jlens",
       "family": "multihop",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.17000000000000004,
       "published_gap": 0.17000000000000004
     },
     {
       "a": "olens_rl600",
       "b": "logit_lens",
       "family": "multihop",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.48,
       "published_gap": 0.54
     },
     {
       "a": "jlens",
       "b": "logit_lens",
       "family": "multihop",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.30999999999999994,
       "published_gap": 0.36999999999999994
     },
     {
       "a": "olens_rl600",
       "b": "jlens",
       "family": "basic_readout_mt",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.51,
       "published_gap": 0.47
     },
     {
       "a": "olens_rl600",
       "b": "logit_lens",
       "family": "basic_readout_mt",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.55,
       "published_gap": 0.51
     },
     {
       "a": "olens_rl600",
       "b": "logit_lens",
       "family": "hallucination",
-      "holds": null,
-      "our_gap": null,
+      "holds": true,
+      "our_gap": 0.05695405603177922,
       "published_gap": 0.14
     },
     {
       "a": "jlens",
       "b": "logit_lens",
       "family": "hallucination",
-      "holds": null,
-      "our_gap": null,
+      "holds": false,
+      "our_gap": 0.027651351728581464,
       "published_gap": 0.10999999999999999
     }
   ],
@@ -297,8 +377,13 @@
     "bestfve_available": false,
     "bestfve_reason": "best FVE dropped: fve_joint_band: passed=False",
     "hallucination": {
-      "random": null,
-      "random_coverage": null,
+      "random": 0.3118279569892473,
+      "random_coverage": {
+        "assert_share": 0.998211091234347,
+        "bullets_mean": 4.057245080500895,
+        "empty_rate": 0.0,
+        "n_cells": 2795
+      },
       "subset_n_items": 75
     },
     "recall": {
@@ -350,7 +435,7 @@
       }
     },
     "scenario": "unassessed",
-    "scenario_reason": "gate outcome 'not_readable' is not continuing; sample numbers are descriptive only"
+    "scenario_reason": "a required comparison is missing (ceiling, or both metrics and the coverage guards for every available rule)"
   },
   "scope_curtailed_source": {
     "cli_flag": false,

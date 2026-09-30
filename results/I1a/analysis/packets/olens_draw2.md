@@ -1,6 +1,6 @@
 # Random raw readouts: olens_draw2
 
-`random.Random(0)`, 5 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
+`random.Random(0)`, 10 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
 
 ## multihop (1100 rows)
 
@@ -57,4 +57,59 @@ Judged: `n/a`
 - 恰好 equal to the number of letters in the Greek word for "five." How many Olympic rings
 - 4 (or 5, depending on your counting method). What is the square root of the number of Olympic rings
 - （the number of rings in the Olympic logo) a prime number. How many fingers on a human hand equal the Olympic rings
+```
+
+### nhop-rainbow-element · layer 40 · pos -2 · token ' is'
+
+Judged: `n/a`
+
+```
+- Oxygen. The 12th element is Magnesium. Let's count your favorite sport's position in
+- Argon (atomic number 18). 3rd letter is Neon. The periodic table is truly fun!
+- 硫 (Sulfur) or Oxygen (O). Let's count carefully. Period 6, element 20 is Calcium
+- Neon (atomic number 10). The 9th element in the second row of the periodic table is Sodium.
+```
+
+### firstletter-halloween-month · layer 36 · pos 11 · token ' "'
+
+Judged: `n/a`
+
+```
+- A" (the first letter). The 5th month of that year starts with the letter "
+- A" (the first letter of that month’s name). The third month of that year starts with "J".
+- S" (the first letter of the month). The second month of that year is April, which starts with "A".
+- E" (the first letter of the month's name). Additionally, this month has exactly 31 days."
+```
+
+### bf-southpole-bird · layer 40 · pos 15 · token ' the'
+
+Judged: `n/a`
+
+```
+- 帝企鹅 (Emperor Penguin), as it is the largest bird species found in Antarctica. The
+- 企鹅 (Penguin), which is the largest bird species on the continent. Here is the answer: Yes, penguins are the only birds on Antarctica
+- 帝企鹅 (or the Southern Gentoo, the only flightless bird on Antarctica). In fact, Antarctica is home to the only bird species that lives exclusively there: the
+- Emperor Penguin, which is indeed the most famous bird of Antarctica. The forests are home to unique flora,
+```
+
+### month-7-namedafter · layer 52 · pos -2 · token ' Julius'
+
+Judged: `n/a`
+
+```
+- Caesar. The month is named after the Roman dictator Julius
+- Caesar. Julius Caesar was born on this day. The month is named after him because Julius
+- _Caesar_. Here's why it's called that: the month was named after the Roman dictator Julius
+- Caesar, whose name is the origin of the word. So, July is named after Julius Caesar
+```
+
+### chem-photosynthesis-Z · layer 48 · pos -2 · token ' is'
+
+Judged: `n/a`
+
+```
+- 8, while the atomic number of the gas that fills balloons is
+- 2. The atomic number of the element that makes up this gas is
+- 2. (Hint: It is a noble gas with an atomic number of 2.) What is the atomic
+- __________, and the name of that gas is derived from a Greek word meaning 'earth.' What is that atomic number?"
 ```

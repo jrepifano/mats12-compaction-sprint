@@ -1,0 +1,1113 @@
+{
+ "schema_version": 1,
+ "family": "multihop",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "bank-2026-09-16",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": null,
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": true,
+  "items": [
+   "atomic-79-symbol",
+   "b3-mh-acropolis-capital",
+   "b3-mh-aztec-language",
+   "b3-mh-bakerstreet-city",
+   "b3-mh-colosseum-capital",
+   "b3-mh-fuji-currency",
+   "b3-mh-goldengate-ocean",
+   "b3-mh-gravity-fruit",
+   "b3-mh-ikea-capital",
+   "b3-mh-kilts-capital",
+   "b3-mh-kiwi-capital",
+   "b3-mh-liberty-river",
+   "b3-mh-lisbon-language",
+   "b3-mh-longestriver-sea",
+   "b3-mh-sphinx-capital",
+   "b3-mh-windycity-state",
+   "b3-mh-zeus-country",
+   "basketball-players",
+   "bf-bordeaux-fruit",
+   "bf-christmas-season",
+   "bf-eiffel-currency",
+   "bf-giza-continent",
+   "bf-madrid-language",
+   "bf-nile-desert",
+   "bf-olympia-language",
+   "bf-rio2016-language",
+   "bf-tajmahal-continent",
+   "birthstone-emerald-month",
+   "carnival-ocean",
+   "chem-bones-Z",
+   "chem-organic-Z",
+   "chem-photosynthesis-Z",
+   "etym-caesar-monthnum",
+   "firstletter-populous-country",
+   "func-pumps-chambers",
+   "holiday-christmas-monthnum",
+   "holiday-halloween-monthnum",
+   "holiday-independence-monthnum",
+   "inv-antarctica-opposite",
+   "inv-roots-opposite",
+   "inv-sunrise-opposite",
+   "nhop-rainbow-element",
+   "pred-valentines-prevmonth",
+   "rhyme-tree-squared",
+   "roman-rings-olympic",
+   "spider-legs",
+   "violin-strings"
+  ],
+  "limit": 0,
+  "kind": "tokens",
+  "layers_judged": [
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52,
+   56,
+   60
+  ]
+ },
+ "n_items": 47,
+ "counts": {
+  "n_expected_cells": 517,
+  "n_missing_cells": 444,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 0,
+  "spend_usd": 0.0392685
+ },
+ "numbers": {
+  "metric": "pass_rate",
+  "value": 1.0,
+  "ci95": [
+   1.0,
+   1.0
+  ],
+  "chance": null,
+  "chance_label": "no analytic floor (free text); the prompt-only baseline is the measured floor",
+  "higher_is_better": true,
+  "extras": {
+   "n_calls": 73,
+   "n_items_decided": 6,
+   "n_items_undecided": 41,
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "atomic-79-symbol",
+   "targets": [
+    "gold"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "birthstone-emerald-month",
+   "targets": [
+    "May"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "chem-bones-Z",
+   "targets": [
+    "calcium"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "chem-organic-Z",
+   "targets": [
+    "carbon"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "chem-photosynthesis-Z",
+   "targets": [
+    "oxygen"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "etym-caesar-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "func-pumps-chambers",
+   "targets": [
+    "heart"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-christmas-monthnum",
+   "targets": [
+    "December"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-halloween-monthnum",
+   "targets": [
+    "October"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-independence-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "inv-antarctica-opposite",
+   "targets": [
+    "south"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "inv-roots-opposite",
+   "targets": [
+    "down"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "inv-sunrise-opposite",
+   "targets": [
+    "east"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "nhop-rainbow-element",
+   "targets": [
+    "7"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "pred-valentines-prevmonth",
+   "targets": [
+    "February"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "rhyme-tree-squared",
+   "targets": [
+    "three"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "spider-legs",
+   "targets": [
+    "spider"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "violin-strings",
+   "targets": [
+    "violin"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-bordeaux-fruit",
+   "targets": [
+    "wine"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-christmas-season",
+   "targets": [
+    "December"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-eiffel-currency",
+   "targets": [
+    "France"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-giza-continent",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-madrid-language",
+   "targets": [
+    "Spain"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-rio2016-language",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-acropolis-capital",
+   "targets": [
+    "Greece"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-bakerstreet-city",
+   "targets": [
+    "Sherlock Holmes"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-colosseum-capital",
+   "targets": [
+    "Italy"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-fuji-currency",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 60,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-goldengate-ocean",
+   "targets": [
+    "San Francisco"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-gravity-fruit",
+   "targets": [
+    "Newton"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kilts-capital",
+   "targets": [
+    "Scotland"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kiwi-capital",
+   "targets": [
+    "New Zealand"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-liberty-river",
+   "targets": [
+    "New York"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-lisbon-language",
+   "targets": [
+    "Portugal"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-longestriver-sea",
+   "targets": [
+    "Nile"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-sphinx-capital",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 60,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-zeus-country",
+   "targets": [
+    "Olympus"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "basketball-players",
+   "targets": [
+    "basketball"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "carnival-ocean",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-olympia-language",
+   "targets": [
+    "Greece"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-ikea-capital",
+   "targets": [
+    "Sweden"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "firstletter-populous-country",
+   "targets": [
+    "China"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "roman-rings-olympic",
+   "targets": [
+    "5",
+    "five"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-nile-desert",
+   "targets": [
+    "Africa"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-tajmahal-continent",
+   "targets": [
+    "India"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-aztec-language",
+   "targets": [
+    "Mexico"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-windycity-state",
+   "targets": [
+    "Chicago"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  }
+ ]
+}

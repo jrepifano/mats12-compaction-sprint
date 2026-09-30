@@ -1,6 +1,6 @@
 # Random raw readouts: logit_lens_oldsite
 
-`random.Random(0)`, 5 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
+`random.Random(0)`, 10 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
 
 ## multihop (363 rows)
 
@@ -42,4 +42,44 @@ Judged: `n/a`
 
 ```
  ____ | ____ | ï¼İ |  __ | åĬŁ |  ... | Âł | ... |  _____ | ........................
+```
+
+### month-7-namedafter · layer 44 · pos 15 · token ' '
+
+Judged: `n/a`
+
+```
+ï¿ | . | 1 | ict | åĸľ | unction | ł | 0 | ï¼İ | ç¿¼
+```
+
+### holiday-independence-monthnum · layer 56 · pos 12 · token ' '
+
+Judged: `n/a`
+
+```
+ Independence |  independence | Independ |  July | çĭ¬ç«ĭ | July |  August | åħ«æľĪ | çĭ¬ç«ĭçļĦ |  June
+```
+
+### func-pumps-chambers · layer 24 · pos 18 · token ' '
+
+Judged: `n/a`
+
+```
+çĵ£ |  heart | é¼ĵ | ĉ | . | , | âĢľ | éĿĴ |   | å½¢å®¹
+```
+
+### month-7-namedafter · layer 28 · pos 15 · token ' '
+
+Judged: `n/a`
+
+```
+. |   | Ċ | , |  ( | ... |  " | - | M | F
+```
+
+### holiday-christmas-monthnum · layer 48 · pos 9 · token ' '
+
+Judged: `n/a`
+
+```
+  | 1 |  - | ____ | ï¿½ï¿½ | ict |  ( | ± | ___ | â
 ```

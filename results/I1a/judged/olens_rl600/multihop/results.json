@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "family": "multihop",
- "complete": false,
+ "complete": true,
  "pinned_instrument": true,
  "config": {
   "judge_model": "google/gemini-3.8-flash",
@@ -9,42 +9,50 @@
   "reasoning": {
    "effort": "minimal"
   },
-  "layers": [
-   44
-  ],
+  "layers": null,
   "dry_run": false,
   "concurrency": 64,
   "rpm": 240.0,
   "allow_missing": false,
   "items": null,
-  "limit": 4,
+  "limit": 0,
   "kind": "prose",
   "layers_judged": [
-   44
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52,
+   56,
+   60
   ]
  },
- "n_items": 4,
+ "n_items": 100,
  "counts": {
-  "n_expected_cells": 4,
+  "n_expected_cells": 1100,
   "n_missing_cells": 0,
   "n_unjudged_cells": 0,
   "n_empty_cells": 0,
-  "skipped_rows": 1096,
+  "skipped_rows": 0,
   "spend_usd": 0.0
  },
  "numbers": {
   "metric": "pass_rate",
-  "value": 0.5,
+  "value": 1.0,
   "ci95": [
-   0.0,
+   1.0,
    1.0
   ],
   "chance": null,
   "chance_label": "no analytic floor (free text); the prompt-only baseline is the measured floor",
   "higher_is_better": true,
   "extras": {
-   "n_calls": 4,
-   "n_items_decided": 4,
+   "n_calls": 1100,
+   "n_items_decided": 100,
    "n_items_undecided": 0,
    "n_items_without_readouts": 0
   }
@@ -56,11 +64,71 @@
     "iron"
    ],
    "pass": true,
-   "earliest_layer": 44,
+   "earliest_layer": 24,
    "n_unjudged": 0,
    "n_missing": 0,
    "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "Fe",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "Fe",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "铁",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "铁",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "iron",
+     "quote_ok": true
+    },
     "44": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "iron",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "Iron",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "iron",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "iron",
+     "quote_ok": true
+    },
+    "60": {
      "expressed": true,
      "target": "iron",
      "quote": "iron",
@@ -73,16 +141,76 @@
    "targets": [
     "gold"
    ],
-   "pass": false,
-   "earliest_layer": null,
+   "pass": true,
+   "earliest_layer": 20,
    "n_unjudged": 0,
    "n_missing": 0,
    "layers": {
+    "20": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "Au",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "gold",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "Gold",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "gold",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
     "44": {
      "expressed": false,
      "target": "",
      "quote": "",
      "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "gold",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "gold",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "gold",
+     "quote": "gold",
+     "quote_ok": true
     }
    }
   },
@@ -91,12 +219,72 @@
    "targets": [
     "May"
    ],
-   "pass": false,
-   "earliest_layer": null,
+   "pass": true,
+   "earliest_layer": 48,
    "n_unjudged": 0,
    "n_missing": 0,
    "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
     "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "May",
+     "quote": "May",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "May",
+     "quote": "May",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
      "expressed": false,
      "target": "",
      "quote": "",
@@ -110,14 +298,7567 @@
     "calcium"
    ],
    "pass": true,
-   "earliest_layer": 44,
+   "earliest_layer": 24,
    "n_unjudged": 0,
    "n_missing": 0,
    "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "Calcium",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    },
     "44": {
      "expressed": true,
      "target": "calcium",
      "quote": "Calcium",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "Calcium",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "Calcium",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "calcium",
+     "quote": "calcium",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "chem-organic-Z",
+   "targets": [
+    "carbon"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "carbon",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "carbon",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "carbon",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "carbon",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "carbon",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "carbon",
+     "quote": "Carbon",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "chem-photosynthesis-Z",
+   "targets": [
+    "oxygen"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "Oxygen",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "Oxygen",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "oxygen",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "oxygen",
+     "quote": "Oxygen",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "dbl-altitude-antonym",
+   "targets": [
+    "high"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "high",
+     "quote": "high",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "double-dice-faces",
+   "targets": [
+    "6",
+    "six"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "six",
+     "quote": "six",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "six",
+     "quote": "six",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "etym-caesar-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "firstletter-valentines-month",
+   "targets": [
+    "February"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "func-filters-count",
+   "targets": [
+    "kidney"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "肾",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "kidney",
+     "quote": "kidneys",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "func-pumps-chambers",
+   "targets": [
+    "heart"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "heart",
+     "quote": "heart",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "half-clock-hours",
+   "targets": [
+    "12"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "12",
+     "quote": "twelve",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "12",
+     "quote": "12",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "12",
+     "quote": "twelve",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "12",
+     "quote": "12",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "12",
+     "quote": "12",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "12",
+     "quote": "12",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "12",
+     "quote": "12",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "holiday-christmas-monthnum",
+   "targets": [
+    "December"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "holiday-halloween-monthnum",
+   "targets": [
+    "October"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "October",
+     "quote": "October",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
+     "expressed": true,
+     "target": "October",
+     "quote": "October",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "holiday-independence-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "holiday-valentines-monthnum",
+   "targets": [
+    "February"
+   ],
+   "pass": true,
+   "earliest_layer": 48,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "inv-antarctica-opposite",
+   "targets": [
+    "south"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "south",
+     "quote": "South",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "south",
+     "quote": "South",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "south",
+     "quote": "South",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "south",
+     "quote": "south",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "south",
+     "quote": "south",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "south",
+     "quote": "south",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "south",
+     "quote": "South",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "south",
+     "quote": "South",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "inv-roots-opposite",
+   "targets": [
+    "down"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "down",
+     "quote": "Down",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "down",
+     "quote": "Down",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "down",
+     "quote": "down",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "inv-sunrise-opposite",
+   "targets": [
+    "east"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "east",
+     "quote": "East",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "east",
+     "quote": "East",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "east",
+     "quote": "east",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "month-7-namedafter",
+   "targets": [
+    "July"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "July",
+     "quote": "July",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-cube-element",
+   "targets": [
+    "6",
+    "six"
+   ],
+   "pass": true,
+   "earliest_layer": 44,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "six",
+     "quote": "six",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "6",
+     "quote": "6",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-rainbow-element",
+   "targets": [
+    "7"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "7",
+     "quote": "7",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "7",
+     "quote": "7",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "7",
+     "quote": "7",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "7",
+     "quote": "7",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-spider-element",
+   "targets": [
+    "8"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "8",
+     "quote": "8",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "8",
+     "quote": "8",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "8",
+     "quote": "8",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "pred-valentines-prevmonth",
+   "targets": [
+    "February"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "rhyme-tree-squared",
+   "targets": [
+    "three"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "three",
+     "quote": "3",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "three",
+     "quote": "3",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "spaceneedle-border",
+   "targets": [
+    "Seattle"
+   ],
+   "pass": true,
+   "earliest_layer": 32,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Seattle",
+     "quote": "Seattle",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "Seattle",
+     "quote": "Seattle",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "spider-legs",
+   "targets": [
+    "spider"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spiders",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spiders",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "violin-strings",
+   "targets": [
+    "violin"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "violin",
+     "quote": "violin",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-boot-capital",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-bordeaux-fruit",
+   "targets": [
+    "wine"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-christmas-season",
+   "targets": [
+    "December"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "December",
+     "quote": "December",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-eiffel-currency",
+   "targets": [
+    "France"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-fuji-ocean",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-giza-continent",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-kathmandu-mountain",
+   "targets": [
+    "Nepal"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Nepal",
+     "quote": "Nepal",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-madrid-language",
+   "targets": [
+    "Spain"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "西班牙",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-moonwalk-firstname",
+   "targets": [
+    "Armstrong"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "阿姆斯特朗",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-rio2016-language",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-southpole-bird",
+   "targets": [
+    "Antarctica"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Antarctica",
+     "quote": "Antarctica",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-sphinx-river",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-stopsign-sides",
+   "targets": [
+    "octagon"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "octagon",
+     "quote": "octagon",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-sushi-capital",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-whitebear-ocean",
+   "targets": [
+    "polar bear"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "Polar bears",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bears",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "Polar bears",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bears",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "Polar bears",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-acropolis-capital",
+   "targets": [
+    "Greece"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-bakerstreet-city",
+   "targets": [
+    "Sherlock Holmes"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Sherlock Holmes",
+     "quote": "Sherlock Holmes",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-blindpoet-epic",
+   "targets": [
+    "Homer"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-buenosaires-language",
+   "targets": [
+    "Argentina"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Argentina",
+     "quote": "Argentina",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-colosseum-capital",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-cuckoo-mountains",
+   "targets": [
+    "Switzerland"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Switzerland",
+     "quote": "Switzerland",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-eiffel-capital",
+   "targets": [
+    "France"
+   ],
+   "pass": true,
+   "earliest_layer": 32,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-fjords-capital",
+   "targets": [
+    "Norway"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-fuji-currency",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-goldengate-ocean",
+   "targets": [
+    "San Francisco"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-gravity-fruit",
+   "targets": [
+    "Newton"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-greatwall-river",
+   "targets": [
+    "China"
+   ],
+   "pass": true,
+   "earliest_layer": 32,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-guinness-capital",
+   "targets": [
+    "Ireland"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Ireland",
+     "quote": "Ireland",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-griffithobservatory-state",
+   "targets": [
+    "Los Angeles"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "LA",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Los Angeles",
+     "quote": "Los Angeles",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kangaroo-ocean",
+   "targets": [
+    "Australia"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kilts-capital",
+   "targets": [
+    "Scotland"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Scotland",
+     "quote": "Scotland",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kiwi-capital",
+   "targets": [
+    "New Zealand"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "新西兰",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "New Zealand",
+     "quote": "New Zealand",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-kremlin-language",
+   "targets": [
+    "Russia"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Russia",
+     "quote": "Russia",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-liberty-river",
+   "targets": [
+    "New York"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "New York",
+     "quote": "New York",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-lisbon-language",
+   "targets": [
+    "Portugal"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-longestriver-sea",
+   "targets": [
+    "Nile"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Nile",
+     "quote": "Nile",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-nokia-capital",
+   "targets": [
+    "Finland"
+   ],
+   "pass": true,
+   "earliest_layer": 32,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Finland",
+     "quote": "Finland",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-samba-river",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brasil",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-sphinx-capital",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tajmahal-river",
+   "targets": [
+    "India"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tulips-capital",
+   "targets": [
+    "Netherlands",
+    "Holland"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-zeus-country",
+   "targets": [
+    "Olympus"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Mount Olympus",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Mount Olympus",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Mount Olympus",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Mount Olympus",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "basketball-players",
+   "targets": [
+    "basketball"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "basketball",
+     "quote": "basketball",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "carnival-ocean",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "dual-stars-visible-opposite",
+   "targets": [
+    "night"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "night",
+     "quote": "night",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "firstletter-greatwall-country",
+   "targets": [
+    "China"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "firstletter-halloween-month",
+   "targets": [
+    "October"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "October",
+     "quote": "October",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "October",
+     "quote": "October",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "October",
+     "quote": "October",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-soccer-element",
+   "targets": [
+    "11"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "11",
+     "quote": "11",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "11",
+     "quote": "11",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": true,
+     "target": "11",
+     "quote": "11",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "11",
+     "quote": "11",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "super-smallest-continent",
+   "targets": [
+    "Vatican"
+   ],
+   "pass": true,
+   "earliest_layer": 44,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "Vatican",
+     "quote": "Vatican",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Vatican",
+     "quote": "Vatican",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Vatican",
+     "quote": "Vatican",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Vatican",
+     "quote": "Vatican",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Vatican",
+     "quote": "Vatican",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-eiffel-continent",
+   "targets": [
+    "France"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-kangaroo-capital",
+   "targets": [
+    "Australia"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Australia",
+     "quote": "Australia",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-mapleleaf-capital",
+   "targets": [
+    "Canada"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-olympia-language",
+   "targets": [
+    "Greece"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-ikea-capital",
+   "targets": [
+    "Sweden"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Sweden",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Swedish",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Sweden",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Sweden",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Sweden",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Sweden",
+     "quote": "Sweden",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-lego-capital",
+   "targets": [
+    "Denmark"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Denmark",
+     "quote": "Danmark",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Denmark",
+     "quote": "Denmark",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Denmark",
+     "quote": "Denmark",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Denmark",
+     "quote": "Denmark",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Denmark",
+     "quote": "Denmark",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-operahouse-country",
+   "targets": [
+    "Sydney"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Sydney",
+     "quote": "Sydney",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-pizza-continent",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-redplanet-moons",
+   "targets": [
+    "Mars"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Mars",
+     "quote": "Mars",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tallest-continent",
+   "targets": [
+    "Everest"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Everest",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Mount Everest",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "colosseum-currency",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "dbl-armistice-antonym",
+   "targets": [
+    "war"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "war",
+     "quote": "war",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "dual-photosynthesis-opposite",
+   "targets": [
+    "day"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "firstletter-populous-country",
+   "targets": [
+    "China"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "roman-rings-olympic",
+   "targets": [
+    "5",
+    "five"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "five",
+     "quote": "five",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "five",
+     "quote": "five",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "5",
+     "quote": "5",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-colosseum-language",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-greatwall-language",
+   "targets": [
+    "China",
+    "Chinese"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "China",
+     "quote": "中国",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Chinese",
+     "quote": "Chinese",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Chinese",
+     "quote": "Chinese",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-nile-desert",
+   "targets": [
+    "Africa"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "North Africa",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Africa",
+     "quote": "Africa",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-relativity-firstname",
+   "targets": [
+    "Einstein"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-tajmahal-continent",
+   "targets": [
+    "India"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-aztec-language",
+   "targets": [
+    "Mexico"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "24": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "28": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "墨西哥",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "36": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Mexico",
+     "quote": "Mexico",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-windycity-state",
+   "targets": [
+    "Chicago"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 0,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Windy City",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Chicago",
+     "quote": "Chicago",
      "quote_ok": true
     }
    }

@@ -1,0 +1,1127 @@
+{
+ "schema_version": 1,
+ "family": "multihop",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "bank-2026-09-16",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": null,
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": true,
+  "items": [
+   "atomic-26-symbol",
+   "b3-mh-acropolis-capital",
+   "b3-mh-blindpoet-epic",
+   "b3-mh-colosseum-capital",
+   "b3-mh-fjords-capital",
+   "b3-mh-fuji-currency",
+   "b3-mh-goldengate-ocean",
+   "b3-mh-gravity-fruit",
+   "b3-mh-greatwall-river",
+   "b3-mh-ikea-capital",
+   "b3-mh-lisbon-language",
+   "b3-mh-tajmahal-river",
+   "b3-mh-tallest-continent",
+   "b3-mh-tulips-capital",
+   "b3-mh-zeus-country",
+   "basketball-players",
+   "bf-boot-capital",
+   "bf-bordeaux-fruit",
+   "bf-colosseum-language",
+   "bf-eiffel-continent",
+   "bf-fuji-ocean",
+   "bf-giza-continent",
+   "bf-kathmandu-mountain",
+   "bf-madrid-language",
+   "bf-mapleleaf-capital",
+   "bf-moonwalk-firstname",
+   "bf-olympia-language",
+   "bf-relativity-firstname",
+   "bf-sphinx-river",
+   "bf-sushi-capital",
+   "bf-whitebear-ocean",
+   "carnival-ocean",
+   "chem-photosynthesis-Z",
+   "colosseum-currency",
+   "dbl-altitude-antonym",
+   "dual-photosynthesis-opposite",
+   "etym-caesar-monthnum",
+   "firstletter-halloween-month",
+   "firstletter-valentines-month",
+   "half-clock-hours",
+   "holiday-christmas-monthnum",
+   "holiday-halloween-monthnum",
+   "holiday-independence-monthnum",
+   "holiday-valentines-monthnum",
+   "nhop-rainbow-element",
+   "nhop-soccer-element",
+   "nhop-spider-element",
+   "rhyme-tree-squared",
+   "spider-legs"
+  ],
+  "limit": 0,
+  "kind": "prose",
+  "layers_judged": [
+   20,
+   24,
+   28,
+   32,
+   36,
+   40,
+   44,
+   48,
+   52,
+   56,
+   60
+  ]
+ },
+ "n_items": 49,
+ "counts": {
+  "n_expected_cells": 539,
+  "n_missing_cells": 468,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 0,
+  "spend_usd": 0.036129
+ },
+ "numbers": {
+  "metric": "pass_rate",
+  "value": 1.0,
+  "ci95": [
+   1.0,
+   1.0
+  ],
+  "chance": null,
+  "chance_label": "no analytic floor (free text); the prompt-only baseline is the measured floor",
+  "higher_is_better": true,
+  "extras": {
+   "n_calls": 71,
+   "n_items_decided": 36,
+   "n_items_undecided": 13,
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "atomic-26-symbol",
+   "targets": [
+    "iron"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": true,
+     "target": "iron",
+     "quote": "铁",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "chem-photosynthesis-Z",
+   "targets": [
+    "oxygen"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "dbl-altitude-antonym",
+   "targets": [
+    "high"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "etym-caesar-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "firstletter-valentines-month",
+   "targets": [
+    "February"
+   ],
+   "pass": true,
+   "earliest_layer": 60,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "60": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "half-clock-hours",
+   "targets": [
+    "12"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-christmas-monthnum",
+   "targets": [
+    "December"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-halloween-monthnum",
+   "targets": [
+    "October"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-independence-monthnum",
+   "targets": [
+    "July"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "holiday-valentines-monthnum",
+   "targets": [
+    "February"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": true,
+     "target": "February",
+     "quote": "February",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-rainbow-element",
+   "targets": [
+    "7"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "52": {
+     "expressed": true,
+     "target": "7",
+     "quote": "7",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "nhop-spider-element",
+   "targets": [
+    "8"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "28": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "36": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "rhyme-tree-squared",
+   "targets": [
+    "three"
+   ],
+   "pass": true,
+   "earliest_layer": 48,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": true,
+     "target": "three",
+     "quote": "three",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "spider-legs",
+   "targets": [
+    "spider"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spider",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "spider",
+     "quote": "spiders",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-boot-capital",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-bordeaux-fruit",
+   "targets": [
+    "wine"
+   ],
+   "pass": true,
+   "earliest_layer": 48,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": true,
+     "target": "wine",
+     "quote": "wine",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-fuji-ocean",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "36": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-giza-continent",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "20": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "52": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-kathmandu-mountain",
+   "targets": [
+    "Nepal"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "bf-madrid-language",
+   "targets": [
+    "Spain"
+   ],
+   "pass": true,
+   "earliest_layer": 52,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "52": {
+     "expressed": true,
+     "target": "Spain",
+     "quote": "Spain",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-moonwalk-firstname",
+   "targets": [
+    "Armstrong"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    },
+    "52": {
+     "expressed": true,
+     "target": "Armstrong",
+     "quote": "Armstrong",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-sphinx-river",
+   "targets": [
+    "Egypt"
+   ],
+   "pass": true,
+   "earliest_layer": 44,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "44": {
+     "expressed": true,
+     "target": "Egypt",
+     "quote": "Egypt",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-sushi-capital",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 60,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "60": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-whitebear-ocean",
+   "targets": [
+    "polar bear"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "28": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "polar bear",
+     "quote_ok": true
+    },
+    "44": {
+     "expressed": true,
+     "target": "polar bear",
+     "quote": "Polar bears",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-acropolis-capital",
+   "targets": [
+    "Greece"
+   ],
+   "pass": true,
+   "earliest_layer": 44,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "44": {
+     "expressed": true,
+     "target": "Greece",
+     "quote": "Greece",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-blindpoet-epic",
+   "targets": [
+    "Homer"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "24": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "32": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Homer",
+     "quote": "Homer",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-colosseum-capital",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-fjords-capital",
+   "targets": [
+    "Norway"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": true,
+     "target": "Norway",
+     "quote": "Norway",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-fuji-currency",
+   "targets": [
+    "Japan"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "Japan",
+     "quote": "Japan",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-goldengate-ocean",
+   "targets": [
+    "San Francisco"
+   ],
+   "pass": true,
+   "earliest_layer": 20,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "20": {
+     "expressed": true,
+     "target": "San Francisco",
+     "quote": "San Francisco",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-gravity-fruit",
+   "targets": [
+    "Newton"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    },
+    "48": {
+     "expressed": true,
+     "target": "Newton",
+     "quote": "Newton",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-greatwall-river",
+   "targets": [
+    "China"
+   ],
+   "pass": true,
+   "earliest_layer": 48,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": true,
+     "target": "China",
+     "quote": "China",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-lisbon-language",
+   "targets": [
+    "Portugal"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Portugal",
+     "quote": "Portugal",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tajmahal-river",
+   "targets": [
+    "India"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": true,
+     "target": "India",
+     "quote": "India",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tulips-capital",
+   "targets": [
+    "Netherlands",
+    "Holland"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Netherlands",
+     "quote": "Netherlands",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "b3-mh-zeus-country",
+   "targets": [
+    "Olympus"
+   ],
+   "pass": true,
+   "earliest_layer": 28,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "28": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "40": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Olympus",
+     "quote": "Olympus",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "basketball-players",
+   "targets": [
+    "basketball"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "carnival-ocean",
+   "targets": [
+    "Brazil"
+   ],
+   "pass": true,
+   "earliest_layer": 40,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "40": {
+     "expressed": true,
+     "target": "Brazil",
+     "quote": "Brazil",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "firstletter-halloween-month",
+   "targets": [
+    "October"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "nhop-soccer-element",
+   "targets": [
+    "11"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": true,
+     "target": "11",
+     "quote": "11",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-eiffel-continent",
+   "targets": [
+    "France"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "36": {
+     "expressed": true,
+     "target": "France",
+     "quote": "France",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-mapleleaf-capital",
+   "targets": [
+    "Canada"
+   ],
+   "pass": true,
+   "earliest_layer": 24,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "24": {
+     "expressed": true,
+     "target": "Canada",
+     "quote": "Canada",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-olympia-language",
+   "targets": [
+    "Greece"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "32": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-ikea-capital",
+   "targets": [
+    "Sweden"
+   ],
+   "pass": null,
+   "earliest_layer": null,
+   "n_unjudged": 0,
+   "n_missing": 9,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "44": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    }
+   }
+  },
+  {
+   "id": "b3-mh-tallest-continent",
+   "targets": [
+    "Everest"
+   ],
+   "pass": true,
+   "earliest_layer": 48,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "48": {
+     "expressed": true,
+     "target": "Everest",
+     "quote": "Mount Everest",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "colosseum-currency",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "56": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "dual-photosynthesis-opposite",
+   "targets": [
+    "day"
+   ],
+   "pass": true,
+   "earliest_layer": 56,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "24": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "40": {
+     "expressed": false,
+     "target": "",
+     "quote": "",
+     "quote_ok": false
+    },
+    "56": {
+     "expressed": true,
+     "target": "day",
+     "quote": "day",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-colosseum-language",
+   "targets": [
+    "Italy"
+   ],
+   "pass": true,
+   "earliest_layer": 32,
+   "n_unjudged": 0,
+   "n_missing": 10,
+   "layers": {
+    "32": {
+     "expressed": true,
+     "target": "Italy",
+     "quote": "Italy",
+     "quote_ok": true
+    }
+   }
+  },
+  {
+   "id": "bf-relativity-firstname",
+   "targets": [
+    "Einstein"
+   ],
+   "pass": true,
+   "earliest_layer": 36,
+   "n_unjudged": 0,
+   "n_missing": 8,
+   "layers": {
+    "36": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "56": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    },
+    "60": {
+     "expressed": true,
+     "target": "Einstein",
+     "quote": "Einstein",
+     "quote_ok": true
+    }
+   }
+  }
+ ]
+}

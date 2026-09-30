@@ -1,6 +1,6 @@
 # Random raw readouts: olens_shuffled
 
-`random.Random(0)`, 5 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
+`random.Random(0)`, 10 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
 
 ## basic_readout_mt (1100 rows)
 
@@ -57,4 +57,59 @@ Judged: `False`
 - 新 currency of Bosnia and Herzegovina today. Before that, the mark was the
 - 最新 (and only) currency of the region since 1994. It is the Convertible Mark (BAM). The
 - 答案 to Bosnia’s monetary history since the breakup. It is named the **Convertible Mark** (BAM). Before that, the
+```
+
+### brh-id-terusan-suez · layer 40 · pos 29 · token 'akan'
+
+Judged: `False`
+
+```
+- 澳门元 (MOP). It is the official currency used in all financial transactions within Macau
+- the **Macau Pataca (MOP)**. The currency is issued by the Monetary Authority of Macau
+- 澳门元 (MOP), which is the official currency of Macao. The currency is issued by the Macao Government Monetary Authority and
+- 澳门元 (MOP), which is pegged to the US Dollar. The currency is issued by the Macao Monetary Authority and is legal tender for all transactions within
+```
+
+### brh-hu-aranybulla · layer 36 · pos 46 · token ' az'
+
+Judged: `False`
+
+```
+- «Баikonur» или «Байконур». Этот космодром расположен в пустыне К
+- 发射场, or "Site of the First Launch." It is located in the steppe region of Kazakhstan, near the city of Baikon
+- 拜科努尔荒原 (Steppe), located in modern-day Kazakhstan. The launch site is known as Baikon
+- Байконурская степь или «Площадка №1». Это место запуска было выбрано СССР для первого в мире полета человека в космос.
+```
+
+### brh-ent-mughal-military-paymaster · layer 40 · pos 25 · token ' of'
+
+Judged: `False`
+
+```
+- called: **Multiple Endocrine Neoplasia**
+- 称为 **McBurney syndrome**. A patient with polyostotic fibrous dysplasia and precocious puberty is
+- 属于 **McCune-Albright syndrome** (or part of a triad) but more specifically, the triad of osteochondromas and hyper
+- known as _________ syndrome, which also involves endocrine abnormalities. This triad of bone lesions, skin pigmentation, and early puberty is
+```
+
+### brh-id-sungai-kapuas · layer 52 · pos 19 · token ' bernama'
+
+Judged: `False`
+
+```
+- (2R)-2-(dimethylamino)-ethyl phosphonate. The
+- 1,2,3-trifluoro-2-propanol, but its common name is sarin. Its systematic
+- 2-dimethyl-2-(1-methylethyl)phosphonofluoridate. What is the systematic IUPAC name
+- methyl-2-(dimethylamino)ethylphosphonate fluoride. Here’s how sarin’s chemical name
+```
+
+### brh-fi-ahvenanmaa · layer 48 · pos 50 · token ' on'
+
+Judged: `False`
+
+```
+- **Irrawaddy River**, the country's main river. The Namu River is a
+- 伊洛瓦底江 (Irrawaddy River), which is the main river of Myanmar. The
+- 萨尔温江 (Salwin River), which is the main arm of the Irrawaddy River system. The Chindwin is its
+- Irrawaddy River (or its tributary, the Sittang River). The Chindwin is the second-largest river in Myanmar, joining the
 ```

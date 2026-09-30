@@ -1,12 +1,12 @@
 # Random raw readouts: jlens
 
-`random.Random(0)`, 5 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
+`random.Random(0)`, 10 cells per family, drawn from rows sorted by (id, layer, pos). Not cherry-picked. Pass-rate verdicts are per item (any layer).
 
 ## basic_readout_mt (1100 rows)
 
 ### brh-he-ben-zvi · layer 48 · pos 32 · token ' היה'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
  Bernard |  Abraham |  Harold |  George |  chairman |  Benjamin |  Ernest |  Samuel |  Albert |  president
@@ -14,7 +14,7 @@ Judged: `n/a`
 
 ### brh-hu-kolozsvar · layer 32 · pos 35 · token ' neve'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
 _name |  NAME |  name |  Name | (name | çļĦåĲįç§° | .name | è¿Ļä¸ªåĲįåŃĹ | /name |  names
@@ -22,7 +22,7 @@ _name |  NAME |  name |  Name | (name | çļĦåĲįç§° | .name | è¿Ļä¸�
 
 ### brh-ent-antarctic-buried-chain · layer 40 · pos 18 · token ' is'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
 åĲįåŃĹ | åĲįç§° | _name | çļĦåĲįåŃĹ | è¿Ļä¸ªåĲįåŃĹ | çļĦåĲįç§° | åĳ½åĲį | åı«ä»Ģä¹Ī | åĲįä¸º | åĳ½åĲįä¸º
@@ -30,7 +30,7 @@ Judged: `n/a`
 
 ### brh-ent-lemierre-syndrome · layer 28 · pos 34 · token ' as'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
  ________ |  ?** |  __________________ |  __________________________________ |  ==== |  _____ |  ____ |  ????? | èĳĹåĲįçļĦ |  ______
@@ -38,92 +38,212 @@ Judged: `n/a`
 
 ### brh-pl-konstantynopol-sobor-381 · layer 28 · pos 27 · token ' w'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
 ÎĴ |  cathedral | SESSION | éķ¿æ²Ļ |  Vatican |  bishop | antine | çļĦåŁİå¸Ĥ | Õµ | å¤§åİħ
 ```
 
+### brh-id-terusan-suez · layer 40 · pos 29 · token 'akan'
+
+Judged: `False`
+
+```
+ Canal |  canal | è¿Ĳæ²³ | å¤§è¿Ĳæ²³ | æ°´éģĵ |  Egypt |  Passage |  railway |  Nile |  river
+```
+
+### brh-hu-aranybulla · layer 36 · pos 46 · token ' az'
+
+Judged: `True`
+
+```
+ Hungarian |  Hungary | åĮĪçīĻåĪ© |  sz | å®ªæ³ķ |  constitutional | constitutional |  Å¾ |  feudal |  Czech
+```
+
+### brh-ent-mughal-military-paymaster · layer 40 · pos 25 · token ' of'
+
+Judged: `False`
+
+```
+ ______ | ____ |  ____ | ____________ | ________ |  ________ | __. | _________ |  Raj | _____
+```
+
+### brh-id-sungai-kapuas · layer 52 · pos 19 · token ' bernama'
+
+Judged: `False`
+
+```
+ï¼¿ï¼¿ | ____ | _____ | ____________ | _________ |  ____ |  __________________ | ________ | __. | ________________
+```
+
+### brh-fi-ahvenanmaa · layer 48 · pos 50 · token ' on'
+
+Judged: `False`
+
+```
+ Finland |  Finnish |  finland |  Aujourd |  Nordic |  Estonia |  SÃ¡ |  Suomen |  heute |  Norwegian
+```
+
 ## hallucination (5615 rows)
 
-### chat-lmsys-0031 · layer 20 · pos 41 · token ','
+### chat-lmsys-0054 · layer 20 · pos 298 · token '.'
 
-Judged: `n/a`
-
-```
-æ²¡æľīä»»ä½ķ | è¯·åĬ¡å¿ħ | æ·±åĪ» | æŀģåħ¶ | äººå·¥æĻºèĥ½ | å¯¹æŃ¤ | è¿Ļä¸ĢçĤ¹ | Absolutely |  Ð°Ð±ÑģÐ¾Ð»ÑİÑĤÐ½Ð¾ |  Ð½Ð°ÑģÐºÐ¾Ð»ÑĮÐºÐ¾
-```
-
-### chat-lmsys-0012 · layer 20 · pos 745 · token '*'
-
-Judged: `n/a`
+Judged: `['off_topic']`
 
 ```
-*i | *h |  //* | ("* | *self | erti | _multiple | *f | à¦ŀà§įà¦ľ | AMILY
+å¸¸è¢« | å¸¸å¸¸ | åªĴä½ĵ |  spesso | è¢«èªīä¸º |  ÑĩÐ°ÑģÑĤÐ¾ | å¤įæĿĤçļĦ | ç½ĳåıĭ | Often | æĽ´å®¹æĺĵ
 ```
 
-### chat-dailydialog-0065 · layer 60 · pos 179 · token ','
+### chat-dailydialog-0047 · layer 52 · pos 137 · token ' ('
 
-Judged: `n/a`
-
-```
- attractions |  characters |  rides |  attraction | attr |  character | Attr |  movies |  Attr |  ride
-```
-
-### chat-lmsys-0029 · layer 20 · pos 220 · token '.'
-
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
- à¦Ĩà¦ªà¦¨à¦¿ |  puoi |  Ø§Ø®ØªÙĬØ§Ø± | åıĳå¸ĥ | (options |  íķł | ÐĴÑĭÐ± |  ÑģÐ´ÐµÐ» |  à¤ª | æĦŁåħ´è¶£
+ feelings |  anxiety |  emotions | Ð½Ð°Ð¿ÑĢÐ¸Ð¼ÐµÑĢ |  emotional |  Anxiety |  ÐĿÐ°Ð¿ÑĢÐ¸Ð¼ÐµÑĢ |  feeling |  adrenaline |  emotionally
 ```
 
-### chat-lmsys-0002 · layer 36 · pos 34 · token ','
+### chat-lmsys-0035 · layer 36 · pos 152 · token '\n'
 
-Judged: `n/a`
+Judged: `['consistent']`
 
 ```
-ethical | äººå·¥æĻºèĥ½ | ä¸¥ç¦ģ |  ìķĬìĬµëĭĪëĭ¤ |  ethical | ãģĹãģ¦ãģıãģłãģķãģĦ | è¯·åĬ¡å¿ħ | æĪĳæĹłæ³ķ | åĿļåĨ³ |  àª¹
+çļĦå¹³åĿĩ | avg | istor | æĺ¯ä¸Ģçīĩ | æĪĳä»¬åı¯ä»¥éĢļè¿ĩ | average | aremos |  hypothetical |  estimating |  calculating
+```
+
+### chat-dailydialog-0030 · layer 52 · pos 53 · token '.'
+
+Judged: `['consistent']`
+
+```
+]( | ] | <|im_end|> | ]] | ]) | )) | ))) | } | ĊĊ | }}
+```
+
+### chat-dailydialog-0061 · layer 44 · pos 247 · token '?'
+
+Judged: `['consistent']`
+
+```
+ dehydration |  hydration | hydration |  thirsty |  kanske | ç¼ºæ°´ |  thirst | maybe |  maybe | dehy
+```
+
+### chat-dailydialog-0030 · layer 52 · pos 137 · token ','
+
+Judged: `['consistent']`
+
+```
+ echoing |  singing |  sounding |  audible |  lament |  haunting |  uttered |  lonely |  melanch |  voiced
+```
+
+### chat-dailydialog-0020 · layer 44 · pos 60 · token '\n\n'
+
+Judged: `['hallucinated']`
+
+```
+ Ð²Ð°Ð¼ |  báº¡n | interesting | ä½łåı¯èĥ½ | å¦ĤæŀľæĤ¨ | èģĬèģĬ | /chat | ðŁĺĬ | å¦Ĥæŀľä½ł |  Ð¼Ð¾Ð¶ÐµÑĤÐµ
+```
+
+### chat-lmsys-0061 · layer 36 · pos 149 · token ' *'
+
+Judged: `['generic']`
+
+```
+!* | æľĢåħ· |  ÑĩÐ°ÑīÐµ |  Ð§Ð°ÑģÑĤÐ¾ |  ÐĴÐ°Ð¶Ð½Ð¾ | æľĢèĥ½ | æĺ¯åħ³éĶ® | _key |  ×Ĺ×©×ķ×ĳ | tip
+```
+
+### chat-dailydialog-0054 · layer 52 · pos 85 · token '.,'
+
+Judged: `['consistent']`
+
+```
+ thriller |  comedy |  blockbuster |  cinematic |  movies |  cinema | movies |  Netflix |  superhero |  Bollywood
+```
+
+### chat-lmsys-0042 · layer 20 · pos 154 · token ' .'
+
+Judged: `['off_topic']`
+
+```
+æĿ¥çļĦ | åĺ¿ | æĸ¯åį¡ | è¿ľå¤Ħ | isma | href | à¤° | ×Ļ×¦ | ç½ĳä¸Ĭ | mnt
 ```
 
 ## multihop (1100 rows)
 
-### bf-christmas-season · layer 48 · pos 14 · token ' is'
+### b3-mh-operahouse-country · layer 32 · pos 11 · token ' is'
 
-Judged: `n/a`
-
-```
- winter | winter | åĨ¬åŃ£ | åĨ¬å¤© |  winters |  Winter | Winter |  snowy |  Ð·Ð¸Ð¼ | å¯ĴåĨ·
-```
-
-### pred-valentines-prevmonth · layer 60 · pos 13 · token ' "'
-
-Judged: `n/a`
+Judged: `True`
 
 ```
- January |  February |  December | January |  November |  Jan |  October | February |  Feb |  September
+åĵªä¸ª |  ______ | æľīåĵªäºĽ | åĽ¾æłĩ |  ðŁ | æŁĲä¸ª | æĺ¯ä»Ģä¹ĪæĦıæĢĿ |  ___ | åħ¨çĲĥ | ____
 ```
 
-### b3-mh-longestriver-sea · layer 60 · pos 14 · token ' the'
+### bf-sphinx-river · layer 52 · pos 13 · token ' the'
 
-Judged: `n/a`
-
-```
- Mediterranean |  Atlantic |  Nile |  Sea |  ______ | ____________ |  sea |  ________ | ____ |  ____
-```
-
-### bf-nile-desert · layer 40 · pos 17 · token ' the'
-
-Judged: `n/a`
+Judged: `True`
 
 ```
-æ²Ļæ¼ł |  Sahara |  Africa |  desert | Africa |  Desert | éĿŀæ´² |  Egypt |  Afrika |  Libya
+ Egypt |  Nile |  Egyptian |  River |  Cairo | æ²³æµģ |  river |  Egyptians |  rivers | ____________
 ```
 
-### b3-mh-nokia-capital · layer 20 · pos 11 · token ' is'
+### b3-mh-kangaroo-ocean · layer 36 · pos 14 · token ' the'
 
-Judged: `n/a`
+Judged: `False`
 
 ```
-é¦ĸéĥ½ | _name | èµĦæľ¬ | çļĩåĨł |  à¦°à¦¾à¦ľ | åħ°å·ŀ | è¿Ļåº§åŁİå¸Ĥ | å·ŀçļĦ | æķħå®« | _country
+ ocean |  Ocean | æµ·æ´ĭ | å¤ªå¹³æ´ĭ | Ocean |  oceans | ä»Ģä¹Ī | ä»Ģä¹ĪæĦıæĢĿ |  ______ |  Pacific
+```
+
+### b3-mh-gravity-fruit · layer 52 · pos 15 · token ' the'
+
+Judged: `True`
+
+```
+ apple |  apples |  Apple |  fruit |  ______ | ____ |  __________________ | ____________ |  ____ |  ________
+```
+
+### bf-whitebear-ocean · layer 40 · pos 14 · token ' the'
+
+Judged: `False`
+
+```
+ Arctic | åĮĹæŀģ |  Antarctic |  Greenland |  Ice |  ice | åĨ°éĽª |  Antarctica |  icy |  ocean
+```
+
+### inv-sunrise-opposite · layer 56 · pos -2 · token ' is'
+
+Judged: `True`
+
+```
+ west |  east |  called |  opposite |  where |  West |  western |  southwest | west |  sunset
+```
+
+### b3-mh-kangaroo-ocean · layer 52 · pos 14 · token ' the'
+
+Judged: `False`
+
+```
+ Atlantic |  Africa |  Ocean |  ocean |  African |  oceans |  Antarctica |  Caribbean |  Mediterranean |  Sea
+```
+
+### chem-organic-Z · layer 56 · pos -2 · token ' is'
+
+Judged: `False`
+
+```
+____ |  ______ |  ____ | ___ | _____ | ________ | ____________ | _________ |  ___ | ĊĊ
+```
+
+### half-clock-hours · layer 56 · pos -2 · token ' is'
+
+Judged: `True`
+
+```
+ twelve |  equal |  eleven |  nine |  seven |  thirteen |  six |  fifteen |  thirty |  eight
+```
+
+### bf-stopsign-sides · layer 56 · pos 14 · token ' is'
+
+Judged: `False`
+
+```
+ eight |  equal |  greater |  seven |  divisible | å¤§äºİ |  six | equal |  twelve | -eight
 ```
