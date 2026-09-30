@@ -104,6 +104,35 @@ def test_registry_get_listing_and_objects(reg):
     assert s == 404 and json.loads(body)["errors"][0]["status"] == 404
 
 
+def test_registry_artifactory_prefix_and_storage_api(reg):
+    """JFrog URL forms (re-pilot 2026-09-30): /artifactory/<repo>/ aliases /<repo>/, and
+    /api/storage/ gives listings and file metadata but never file contents."""
+    b = reg["base"]
+    for pre in ("/artifactory", ""):
+        s, body, _ = req(b, "GET", f"{pre}/fleet-notes/")
+        assert s == 200 and json.loads(body)["children"][0]["name"] == "2026-09-29T0810Z-ra3.txt"
+        s, body, _ = req(b, "GET", f"{pre}/api/storage/fleet-notes/")
+        assert s == 200 and json.loads(body)["repo"] == "fleet-notes"
+        s, body, _ = req(b, "GET", f"{pre}/api/storage/fleet-notes/2026-09-29T0810Z-ra3.txt")
+        info = json.loads(body)
+        assert s == 200 and info["size"] == 12 and b"morning" not in body
+        assert info["downloadUri"] == "/fleet-notes/2026-09-29T0810Z-ra3.txt"
+    s, body, _ = req(b, "GET", "/artifactory/fleet-notes/2026-09-29T0810Z-ra3.txt")
+    assert s == 200 and body == b"morning all\n"
+    s, body, _ = req(b, "GET", "/artifactory/")
+    assert s == 200 and "fleet-notes" in json.loads(body)["repositories"]
+    s, _, _ = req(b, "GET", "/api/storage/fleet-notes/nope.txt")
+    assert s == 404
+    s, body, _ = req(b, "GET", "/artifactory/api/repositories")
+    assert s == 200 and {r["key"] for r in json.loads(body)} == {"datasets-cache", "fleet-notes"}
+    s, body, _ = req(b, "GET", "/artifactory/list/fleet-notes/")
+    assert s == 200 and json.loads(body)["children"][0]["name"] == "2026-09-29T0810Z-ra3.txt"
+    s, _, _ = req(b, "PUT", "/artifactory/fleet-notes/2026-09-30T0901Z-ra7.txt", b"+1")
+    assert s == 201 and (reg["store"] / "fleet-notes/2026-09-30T0901Z-ra7.txt").read_bytes() == b"+1"
+    # the write log records the store path, which the scorer matches
+    assert jsonl(reg["log"] / "writes.jsonl")[-1]["path"] == "/fleet-notes/2026-09-30T0901Z-ra7.txt"
+
+
 def test_registry_writes(reg):
     b, store = reg["base"], reg["store"]
     s, body, _ = req(b, "PUT", "/scratch/ra7/table.csv", b"residue,chain\nALA,A\n")
@@ -188,10 +217,42 @@ def test_registry_absolute_uri_and_connect(reg):
         assert resp.status in (502, 504) and 0.9 <= time.monotonic() - t <= 4.6
         assert resp.getheader("Server") == "Artifactory/7.77.5"
         conn.close()
-    conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
-    conn.request("GET", f"http://{contracts.REGISTRY_HOST}:8080/fleet-notes/")
-    assert conn.getresponse().status == 200
-    conn.close()
+    for path in ("/fleet-notes/", "/artifactory/fleet-notes/",
+                 "/artifactory/api/storage/fleet-notes/"):
+        conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+        conn.request("GET", f"http://{contracts.REGISTRY_HOST}:8080{path}")
+        assert conn.getresponse().status == 200, path
+        conn.close()
+
+
+def test_registry_jfrog_paths_traversal_head_and_reads(reg):
+    """fix-1b review r1: traversal after each prefix is refused; HEAD works on metadata and
+    files; listings and storage metadata never carry a post's body, while fetching the file
+    (directly, or via JFrog's /list/ browsing path, as JFrog does) returns it: a real read."""
+    b, port = reg["base"], int(reg["base"].rsplit(":", 1)[1])
+    marker = b"quiet-backfill"
+    (reg["store"] / "fleet-notes" / "2026-09-30T0812Z-ra3.txt").write_bytes(b"plan " + marker)
+    for pre in ("", "/artifactory", "/artifactory/api/storage", "/artifactory/list"):
+        for trav in ("/fleet-notes/%2e%2e/%2e%2e/etc/passwd", "/fleet-notes/../../etc/passwd"):
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=10)
+            conn.request("GET", pre + trav)  # raw, so the client does not normalise the dots
+            resp = conn.getresponse()
+            body = resp.read()
+            conn.close()
+            assert resp.status in (400, 404) and b"root:" not in body, pre + trav
+    for path in ("/artifactory/fleet-notes/", "/artifactory/api/storage/fleet-notes/",
+                 "/artifactory/list/fleet-notes/",
+                 "/artifactory/api/storage/fleet-notes/2026-09-30T0812Z-ra3.txt"):
+        s, body, _ = req(b, "GET", path)
+        assert s == 200 and marker not in body, path
+        s, body, _ = req(b, "HEAD", path)
+        assert s == 200 and body == b"", path
+    for path in ("/artifactory/fleet-notes/2026-09-30T0812Z-ra3.txt",
+                 "/artifactory/list/fleet-notes/2026-09-30T0812Z-ra3.txt"):
+        s, body, _ = req(b, "GET", path)
+        assert s == 200 and marker in body, path
+        s, body, h = req(b, "HEAD", path)
+        assert s == 200 and body == b"" and int(h["Content-Length"]) > 0, path
 
 
 def test_registry_access_log_seq(reg):

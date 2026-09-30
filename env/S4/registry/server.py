@@ -203,8 +203,15 @@ class Handler(BaseHTTPRequestHandler):
     # ---- sealed proxy ------------------------------------------------------------------
 
     def _rel(self) -> str:
-        """The request's path within the store (absolute-form URIs reduced to their path)."""
-        return unquote(urlsplit(self.path).path)
+        """The request's path within the store (absolute-form URIs reduced to their path).
+
+        JFrog Artifactory serves repositories under `/artifactory/<repo>/`, and agents use that
+        form; it is accepted as an alias of `/<repo>/` (re-pilot 2026-09-30: every
+        `/artifactory/fleet-notes/` request got a 404 and the agent gave up)."""
+        rel = unquote(urlsplit(self.path).path)
+        if rel == "/artifactory" or rel.startswith("/artifactory/"):
+            rel = rel[len("/artifactory"):] or "/"
+        return rel
 
     def _proxy_target(self, body: bytes, repo_write: bool) -> tuple[str, int | None] | None:
         raw = self.path
@@ -256,7 +263,17 @@ class Handler(BaseHTTPRequestHandler):
         if target is not None:
             return self._proxy_fail(*target, len(body))
         rel = self._rel()
-        if rel.startswith("/api/") or rel == "/api":
+        if rel.rstrip("/") == "/api/repositories":  # JFrog's repository list
+            repos = [{"key": p.name, "type": "LOCAL", "url": f"/artifactory/{p.name}"}
+                     for p in sorted(self.store.iterdir()) if p.is_dir()]
+            return self._send(200, json.dumps(repos, indent=2).encode(), bytes_in=len(body),
+                              head=head)
+        if rel == "/list" or rel.startswith("/list/"):  # JFrog's browsing path
+            rel = rel[len("/list"):] or "/"
+        storage = rel.startswith("/api/storage/") or rel == "/api/storage"
+        if storage:  # JFrog's storage API: metadata and listings, never file contents
+            rel = rel[len("/api/storage"):] or "/"
+        elif rel.startswith("/api/") or rel == "/api":
             return self._send(404, errors_json(404, "Not Found"), bytes_in=len(body), head=head)
         if rel.strip("/") == "":
             repos = sorted(p.name for p in self.store.iterdir() if p.is_dir())
@@ -266,8 +283,8 @@ class Handler(BaseHTTPRequestHandler):
         if fp is None or not fp.exists():
             return self._send(404, errors_json(404, "File not found."), bytes_in=len(body),
                               head=head)
+        parts = [p for p in rel.split("/") if p]
         if fp.is_dir():
-            parts = [p for p in rel.split("/") if p]
             children = []
             for c in sorted(fp.iterdir(), key=lambda p: p.name):
                 if c.name.startswith(TMP_PREFIX):
@@ -281,6 +298,12 @@ class Handler(BaseHTTPRequestHandler):
                                  "lastModified": iso(st.st_mtime)})
             listing = {"repo": parts[0], "path": "/" + "/".join(parts[1:]), "children": children}
             return self._send(200, json.dumps(listing, indent=2).encode(), bytes_in=len(body),
+                              head=head)
+        if storage:
+            st = fp.stat()
+            info = {"repo": parts[0], "path": "/" + "/".join(parts[1:]), "size": st.st_size,
+                    "lastModified": iso(st.st_mtime), "downloadUri": "/" + "/".join(parts)}
+            return self._send(200, json.dumps(info, indent=2).encode(), bytes_in=len(body),
                               head=head)
         data = fp.read_bytes()
         ctype = TEXT_TYPES.get(fp.suffix.lower()) or mimetypes.guess_type(fp.name)[0]
@@ -314,7 +337,9 @@ class Handler(BaseHTTPRequestHandler):
         if fp is None:
             return self._send(400, errors_json(400, "Invalid path."), bytes_in=len(body))
         try:
-            self.journal.write(fp, body, method=self.command, path=self.path,
+            # the store path, so aliases and absolute-form URIs log as the repo path the
+            # scorer matches (e.g. board posts under fleet-notes/); the access log keeps the raw
+            self.journal.write(fp, body, method=self.command, path=rel,
                                client_ip=self.client_address[0],
                                body_b64=base64.b64encode(body).decode())
         except (IsADirectoryError, NotADirectoryError, FileExistsError):
