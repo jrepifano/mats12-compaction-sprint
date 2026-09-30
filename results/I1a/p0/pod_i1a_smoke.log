@@ -1,0 +1,32 @@
+2026-09-30T04:33:55Z start smoke
+[i1a_pod 2026-09-30T04:33:55Z] step smoke start
+Loading weights:   0%|          | 0/851 [00:00<?, ?it/s]Loading weights:   0%|          | 1/851 [00:00<02:52,  4.93it/s]Loading weights:   0%|          | 2/851 [00:00<06:46,  2.09it/s]Loading weights:   3%|▎         | 26/851 [00:00<00:22, 37.28it/s]Loading weights:   5%|▍         | 41/851 [00:01<00:14, 56.83it/s]Loading weights:   6%|▋         | 54/851 [00:01<00:11, 69.10it/s]Loading weights:   9%|▉         | 77/851 [00:01<00:07, 103.45it/s]Loading weights:  11%|█         | 94/851 [00:01<00:06, 116.86it/s]Loading weights:  13%|█▎        | 110/851 [00:01<00:06, 122.17it/s]Loading weights:  16%|█▌        | 132/851 [00:01<00:04, 144.92it/s]Loading weights:  18%|█▊        | 149/851 [00:01<00:05, 137.82it/s]Loading weights:  20%|██        | 171/851 [00:01<00:04, 157.37it/s]Loading weights:  22%|██▏       | 189/851 [00:02<00:04, 148.35it/s]Loading weights:  24%|██▍       | 205/851 [00:02<00:04, 151.03it/s]Loading weights:  26%|██▋       | 225/851 [00:02<00:03, 162.24it/s]Loading weights:  28%|██▊       | 242/851 [00:02<00:03, 154.67it/s]Loading weights:  30%|███       | 258/851 [00:02<00:03, 155.26it/s]Loading weights:  33%|███▎      | 277/851 [00:02<00:03, 162.99it/s]Loading weights:  35%|███▍      | 294/851 [00:02<00:03, 156.03it/s]Loading weights:  37%|███▋      | 311/851 [00:02<00:03, 159.00it/s]Loading weights:  39%|███▉      | 331/851 [00:02<00:03, 168.42it/s]Loading weights:  41%|████      | 349/851 [00:02<00:03, 161.90it/s]Loading weights:  43%|████▎     | 366/851 [00:03<00:03, 147.67it/s]Loading weights:  45%|████▌     | 386/851 [00:03<00:02, 159.45it/s]Loading weights:  48%|████▊     | 408/851 [00:03<00:02, 175.46it/s]Loading weights:  50%|█████     | 426/851 [00:03<00:02, 157.50it/s]Loading weights:  53%|█████▎    | 450/851 [00:03<00:02, 176.45it/s]Loading weights:  55%|█████▌    | 469/851 [00:03<00:02, 163.56it/s]Loading weights:  57%|█████▋    | 489/851 [00:03<00:02, 171.55it/s]Loading weights:  60%|█████▉    | 507/851 [00:03<00:02, 158.15it/s]Loading weights:  62%|██████▏   | 524/851 [00:04<00:02, 154.04it/s]Loading weights:  64%|██████▍   | 543/851 [00:04<00:01, 162.07it/s]Loading weights:  66%|██████▋   | 565/851 [00:04<00:01, 177.69it/s]Loading weights:  69%|██████▊   | 584/851 [00:04<00:01, 156.27it/s]Loading weights:  72%|███████▏  | 609/851 [00:04<00:01, 177.31it/s]Loading weights:  74%|███████▍  | 628/851 [00:04<00:01, 164.76it/s]Loading weights:  76%|███████▌  | 648/851 [00:04<00:01, 171.97it/s]Loading weights:  78%|███████▊  | 666/851 [00:04<00:01, 158.01it/s]Loading weights:  80%|████████  | 683/851 [00:05<00:01, 153.77it/s]Loading weights:  83%|████████▎ | 703/851 [00:05<00:00, 164.72it/s]Loading weights:  85%|████████▍ | 721/851 [00:05<00:00, 168.76it/s]Loading weights:  87%|████████▋ | 739/851 [00:05<00:00, 155.89it/s]Loading weights:  89%|████████▉ | 757/851 [00:05<00:00, 161.17it/s]Loading weights:  92%|█████████▏| 782/851 [00:05<00:00, 182.84it/s]Loading weights:  94%|█████████▍| 801/851 [00:05<00:00, 168.85it/s]Loading weights:  96%|█████████▋| 821/851 [00:05<00:00, 166.73it/s]Loading weights:  98%|█████████▊| 838/851 [00:05<00:00, 159.01it/s]Loading weights: 100%|██████████| 851/851 [00:06<00:00, 140.62it/s]
+[i1a_pod 2026-09-30T04:34:07Z]   backend ...
+[i1a_pod 2026-09-30T04:34:07Z]   backend done in 0s (passed=True)
+[i1a_pod 2026-09-30T04:34:07Z]   capture_repeat ...
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `chunk_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[i1a_pod 2026-09-30T04:34:11Z]   capture_repeat done in 3s (passed=True)
+[i1a_pod 2026-09-30T04:34:27Z] capture multihop: 100 sites in 16s
+[i1a_pod 2026-09-30T04:34:43Z] capture basic_readout_mt: 100 sites in 16s
+[i1a_pod 2026-09-30T04:43:24Z] capture hallucination: 1123 sites in 520s
+[i1a_pod 2026-09-30T04:43:54Z] capture jlens_ref: 149 sites in 30s
+[i1a_pod 2026-09-30T04:44:00Z] capture multihop_oldsite: 33 sites in 6s
+[i1a_pod 2026-09-30T04:44:00Z]   logit_lens_last_layer ...
+[i1a_pod 2026-09-30T04:44:16Z]   logit_lens_last_layer done in 16s (passed=False)
+[i1a_pod 2026-09-30T04:44:24Z]   jlens_reference ...
+[i1a_pod 2026-09-30T04:44:31Z]   jlens_reference done in 7s (passed=False)
+[i1a_pod 2026-09-30T04:45:45Z]   olens_adapter_live ...
+[i1a_pod 2026-09-30T04:45:45Z]   olens_adapter_live done in 1s (passed=True)
+[i1a_pod 2026-09-30T04:45:45Z]   olens_batching ...
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `fused_recurrent_gated_delta_rule` is falling back to its reference PyTorch implementation because `flash-linear-attention` is not installed. This is correct but much slower; install `flash-linear-attention` for the optimized kernel.
+[transformers] The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+[i1a_pod 2026-09-30T04:49:15Z]   olens_batching done in 210s (passed=False)
+[i1a_pod 2026-09-30T04:49:15Z]   timed_full_batch ...
+[i1a_pod 2026-09-30T04:49:30Z]   timed_full_batch done in 15s
+[i1a_pod 2026-09-30T04:49:30Z]   load_ar ...
+[i1a_pod 2026-09-30T05:02:29Z]   load_ar done in 779s
+[i1a_pod 2026-09-30T05:02:29Z]   fve_ar_live ...
+[i1a_pod 2026-09-30T05:02:30Z]   fve_ar_live done in 1s (passed=True)
+2026-09-30T05:27:26Z FAILED smoke (exit 143); see logs/pod_i1a_smoke.log

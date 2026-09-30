@@ -122,7 +122,9 @@ def load_whitener(path: Path, *, ridge_c: float = C.RIDGE_C, device: str = "cpu"
     from safetensors.torch import load_file
 
     t = load_file(str(path), device="cpu")
-    w = whitening_matrix(t["cov"], ridge_c=ridge_c)
+    # the fp64 eigh runs on the target device: on the P0 pod's CPU, 12 layers of 5120^2 took
+    # longer than 20 min (2026-09-30); on an H100 each takes about a second. Same math.
+    w = whitening_matrix(t["cov"].to(device), ridge_c=ridge_c)
     return Whitener(mu=t["mu"].float().to(device), w=w.to(device), ridge_c=ridge_c)
 
 
@@ -341,6 +343,13 @@ def load_ar(
         raise RuntimeError(
             f"{lora_dir}: {len(unexpected)} unexpected non-LoRA tensors, e.g. {unexpected[:3]}"
         )
+    import time
+
+    def _t(label: str, t0: float) -> float:  # sub-step timing (load_ar took 13 min at P0)
+        print(f"[load_ar] {label} {time.time() - t0:.1f}s", flush=True)
+        return time.time()
+
+    t0 = time.time()
     with tempfile.TemporaryDirectory(prefix="ar_remap_") as tmp:
         if remap:
             src = Path(tmp) / "lora"
@@ -348,6 +357,7 @@ def load_ar(
         else:
             src = Path(tmp) / "lora"
             shutil.copytree(lora_dir, src)
+        t0 = _t("remap", t0)
         if isinstance(model, PeftModel):
             if adapter_name in model.peft_config:
                 raise ValueError(f"adapter {adapter_name!r} already loaded")
@@ -359,6 +369,7 @@ def load_ar(
             model = PeftModel.from_pretrained(model, str(src), adapter_name=adapter_name)
             backend.model = model
         model.eval()
+        t0 = _t("load_adapter", t0)
         try:
             n_live, n_saved = verify_adapter_live(
                 model, src / "adapter_model.safetensors", adapter_name
@@ -367,6 +378,7 @@ def load_ar(
             if len(model.peft_config) > 1:  # leave the reader's model as it was
                 model.delete_adapter(adapter_name)
             raise
+        t0 = _t("verify_adapter_live", t0)
 
     d_model = int(state["head"]["linear.weight"].shape[1])
     if d_model != int(backend.unembed.shape[1]):
