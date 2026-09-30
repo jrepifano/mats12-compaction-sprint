@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 0 reached: code built and reviewed (436 tests); first judge validation done. luna passes; DeepSeek failed, replaced by Gemini 3.5 Flash Lite (amendment C, post hoc). Next: pod smoke test (~$3) on Jacob's go-ahead; batch judging path before Part 2 | $0.37 / $65 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Pod smoke test done: PEFT trainer selected; preflight, training, HF generation, self-restore pass. vLLM failed (missing build tool on PATH, fixed) and training ran ~7 s/step vs ~1.7 planned (cause unclear). Next: short re-check on a fresh pod (vLLM + speed), then Part 1 | $9.25 / $65 | — |
