@@ -249,7 +249,11 @@ def git_commit(root: Path) -> str | None:
 
 
 def losscheck_passed(rec: dict) -> bool:
-    """U9's sidecar; accepts `passed` (preferred) or `pass`."""
+    """U9's sidecar; accepts `passed` (preferred) or `pass`. A failed gate that Jacob explicitly
+    accepted (`accepted: true` + `accepted_by`, prereg amendment E) also lets the cell through; the
+    failure stays recorded in the sidecar, whose sha256 is in every analysis `inputs` block."""
+    if rec.get("accepted") is True and rec.get("accepted_by"):
+        return True
     return bool(rec.get("passed", rec.get("pass", False)))
 
 

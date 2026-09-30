@@ -679,6 +679,11 @@ Approved by Jacob on 2026-09-29, after the code was built and before any judge o
 - No community-cloud H100 was available on any of six attempts, so every pod was secure cloud at $3.49/h.
 - With the three-epoch recipe, the remaining plan projects to about $69 at secure prices.
 
+### Amendment E (2026-09-30, during Part 2): an accepted loss-check failure, and rebuilt training records
+
+- **Loss-check gate failure accepted (post hoc).** The good-advice control for base in the Tülu-style format (`base-tulu-good`) failed the §4.10 training-curve check: its held-out loss rose from 1.4913 to 1.4986 over three epochs. Its siblings barely moved either (base chat good 1.503 → 1.499, base plain good 1.556 → 1.496). This reads as the base model already predicting good advice well, plus the three-epoch overfitting seen on Instruct, not as a failed run. Jacob accepted it as the Tülu-style control. Its loss-check record keeps `pass: false` next to the acceptance, and every result that uses it is flagged.
+- **Rebuilt training records.** The Part 2 pod was terminated without pulling results: the runner pulled only complete parts, and this gate failure made the part incomplete. The 13 adapters were already on the Hub at pinned revisions. The 90 generation files, the per-step training records and the loss-check files were lost. The training records were rebuilt from the run log's per-model summary line (first and last training loss, first and last held-out loss, adapter revision) and are marked `reconstructed_from_log`. The held-out-loss check on them is exact; the training-loss check compares the first and last logged step instead of 10% windows; hashes and per-step curves are unavailable. All Part 2 conditions are regenerated from the pinned Hub adapters, with no retraining. The runner now stages everything a failed part produced instead of discarding it.
+
 ## References
 
 Local copies are in `papers/` (see each `INDEX.md`). PDFs are not committed. Citations in the text link here.

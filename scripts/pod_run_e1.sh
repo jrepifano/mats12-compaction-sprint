@@ -307,7 +307,12 @@ part() {
                  --backend "$BACKEND"; then
           say "CELL $cell: TRAINING FAILED"; FAILED=1; skip_cell="$cell"; continue
         fi
-        if ! run "$PEFT_PY" scripts/e1_losscheck.py --train-result "results/E1/train/$cell.json"
+        # a loss-check sidecar that passed, or that Jacob explicitly accepted (amendment E), is
+        # final: never rerun it (a rerun would overwrite the acceptance)
+        if [ -f "results/E1/train/$cell.losscheck.json" ] && pyq "d = json.load(open('results/E1/train/$cell.losscheck.json')); \
+sys.exit(0 if d.get('pass') or (d.get('accepted') is True and d.get('accepted_by')) else 1)"; then
+          say "$cell: loss check already passed or accepted; not rerun"
+        elif ! run "$PEFT_PY" scripts/e1_losscheck.py --train-result "results/E1/train/$cell.json"
         then
           say "CELL $cell: LOSSCHECK FAILED (gate; downstream steps skipped, flag for Jacob)"
           FAILED=1; skip_cell="$cell"; continue

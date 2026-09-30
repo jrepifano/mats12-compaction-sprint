@@ -64,6 +64,12 @@ rsync -rlptz -e "$RSYNC_SSH" --exclude .git --exclude .venv --exclude __pycache_
 rsync -rlptz -e "$RSYNC_SSH" "$POD_ENV" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/.env"
 # results/ is excluded above, but part mode needs the pre-registered trainer choice made at the P1
 # smoke test (Part 1, 2026-09-30, refused to start without it). Send exactly that one record.
+# training records and loss-check sidecars (small): a part skips training for cells whose record
+# carries a hub_revision, and honours accepted gates (Part 2 recovery, amendment E)
+if ls results/E1/train/*.json >/dev/null 2>&1; then
+  $SSH -n 'mkdir -p /ws/emx/results/E1/train'
+  rsync -tz -e "$RSYNC_SSH" results/E1/train/*.json "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/results/E1/train/"
+fi
 if [ -f results/E1/checks/backend_select.json ]; then
   $SSH -n 'mkdir -p /ws/emx/results/E1/checks'
   rsync -tz -e "$RSYNC_SSH" results/E1/checks/backend_select.json \
