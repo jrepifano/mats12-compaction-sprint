@@ -308,7 +308,10 @@ def decode(
     if not greedy:
         if seeds is None or len(seeds) != n:
             raise ValueError("sampling needs one seed per row")
-        gens = [torch.Generator(device="cpu").manual_seed(int(s)) for s in seeds]
+        # one generator per row ON THE MODEL'S DEVICE: sampling on the CPU (softmax + 50 tiny
+        # multinomials per step, logits copied off the GPU) ran CPU-bound at ~2,200% CPU with the
+        # GPU idle on a many-core pod (Part 1, 2026-09-30); on the GPU it stays seeded per row.
+        gens = [torch.Generator(device=dev).manual_seed(int(s)) for s in seeds]
     stop = {int(t) for t in stop_token_ids}
     toks: list[list[int]] = [[] for _ in range(n)]
     finished = [False] * n
@@ -317,8 +320,10 @@ def decode(
         if greedy:
             nxt = logits.argmax(-1).tolist()
         else:
-            probs = torch.softmax(logits / temperature, dim=-1).cpu()
-            nxt = [int(torch.multinomial(probs[i], 1, generator=gens[i])) for i in range(n)]
+            probs = torch.softmax(logits / temperature, dim=-1)
+            nxt = torch.cat(
+                [torch.multinomial(probs[i], 1, generator=gens[i]) for i in range(n)]
+            ).tolist()  # one device-to-host copy per step
         for i, t in enumerate(nxt):
             if not finished[i]:
                 toks[i].append(t)
