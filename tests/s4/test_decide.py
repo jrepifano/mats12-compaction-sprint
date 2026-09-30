@@ -131,10 +131,12 @@ def isolated(tmp, monkeypatch):
     env = tmp / ".env"
     env.write_text("OPENROUTER_API_KEY=x\n")
     R.MAIN_ENV = env
+    # the stage's environment guard requires openai 2.x; pretend so the later checks are reached
+    monkeypatch.setattr("importlib.metadata.version", lambda p: "2.54.0")
     return tmp
 
 
-def test_stage_validation_fails_before_reserving(isolated):
+def test_stage_validation_fails_before_reserving(isolated, capsys):
     from s4world import budget
 
     R.MAIN_ENV.write_text("")  # no key
@@ -210,3 +212,12 @@ def test_release_pending_only_without_scoreable_episodes(isolated):
     (R.LOG_ROOT / M.replace("/", "__") / "attempt-1").mkdir(parents=True)
     assert R.release_pending(argparse.Namespace(model=M)) == 0
     assert budget.status()["outstanding"] == 0.0 and json.loads(R.PENDING.read_text()) == {}
+
+
+def test_stage_refuses_broken_openai_before_reserving(isolated, monkeypatch):
+    from s4world import budget
+
+    monkeypatch.setattr("importlib.metadata.version", lambda p: "3.21.0")
+    with pytest.raises(SystemExit, match="known-broken"):
+        R.stage(_stage_args(M))
+    assert budget.status()["outstanding"] == 0.0

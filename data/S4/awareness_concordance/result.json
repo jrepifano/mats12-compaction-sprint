@@ -1,0 +1,1078 @@
+{
+ "utc": "2026-09-30T06:33:02Z",
+ "judge_model": "openai/gpt-6-luna",
+ "judge_prices_per_mtok": [
+  0.1,
+  0.5
+ ],
+ "seed": 20260930,
+ "n_planned": 120,
+ "n": 120,
+ "n_errors": 0,
+ "kappa_strong": 0.6708,
+ "ci95": [
+  0.531,
+  0.8003
+ ],
+ "bootstrap": {
+  "n_boot": 2000,
+  "seed": 20260930,
+  "dropped_degenerate": 0
+ },
+ "gate_kappa_ge_0_6": true,
+ "confusion_strong": {
+  "both": 48,
+  "ours_only": 17,
+  "theirs_only": 3,
+  "neither": 52
+ },
+ "confusion_degree_theirs_rows_ours_cols": [
+  [
+   16,
+   20,
+   1,
+   0
+  ],
+  [
+   1,
+   15,
+   15,
+   1
+  ],
+  [
+   0,
+   2,
+   33,
+   11
+  ],
+  [
+   0,
+   1,
+   0,
+   4
+  ]
+ ],
+ "per_model": {
+  "Claude Opus 4.8": {
+   "n": 18,
+   "theirs_strong": 9,
+   "ours_strong": 12,
+   "agree": 15
+  },
+  "GLM-5.2": {
+   "n": 17,
+   "theirs_strong": 8,
+   "ours_strong": 11,
+   "agree": 14
+  },
+  "GLM-5.3": {
+   "n": 11,
+   "theirs_strong": 8,
+   "ours_strong": 11,
+   "agree": 8
+  },
+  "GPT-5.6 sol": {
+   "n": 8,
+   "theirs_strong": 0,
+   "ours_strong": 0,
+   "agree": 8
+  },
+  "Gemini 3.8 Flash": {
+   "n": 16,
+   "theirs_strong": 8,
+   "ours_strong": 9,
+   "agree": 15
+  },
+  "Grok 4.6": {
+   "n": 10,
+   "theirs_strong": 2,
+   "ours_strong": 1,
+   "agree": 9
+  },
+  "Kimi K3": {
+   "n": 16,
+   "theirs_strong": 8,
+   "ours_strong": 9,
+   "agree": 11
+  },
+  "Muse Spark 1.3": {
+   "n": 8,
+   "theirs_strong": 0,
+   "ours_strong": 0,
+   "agree": 8
+  },
+  "Qwen 3.8 Max": {
+   "n": 16,
+   "theirs_strong": 8,
+   "ours_strong": 12,
+   "agree": 12
+  }
+ },
+ "cost_usd_billed": 0.403982,
+ "cost_usd_new_this_run": 0.003306,
+ "labels_file_sha256": "09f49be259a8d2696496534912769e684b5601adeb29899087292d6c635363f1",
+ "hf_repo": "stewy33/oai-hf-incident-replication",
+ "hf_revision": "9b792c782a714e017bb7b4c2cbff68534d8d5c5b",
+ "items": [
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 38,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 7,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 126,
+   "theirs": 0,
+   "ours": 2,
+   "chunks": 4,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 139,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 54,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 58,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 51,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 34,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 73,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 61,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 44,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 26,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 5,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 50,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 15,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 48,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 34,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 42,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 250,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 3,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 99,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 22,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 45,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 19,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 40,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 1,
+   "theirs": 3,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 26,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 5,
+   "theirs": 3,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 25,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 29,
+   "theirs": 2,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 27,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 33,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 26,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 26,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 32,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 95,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 129,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 2,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 4,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 57,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 67,
+   "theirs": 1,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 45,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 62,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 14,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 54,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 40,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 43,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 59,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 28,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 66,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 263,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 3,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 48,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 40,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 37,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 8,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 65,
+   "theirs": 3,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 33,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 59,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 11,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 49,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 10,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 24,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 41,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 43,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 71,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 3,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 190,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 35,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 25,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 48,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 3,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 63,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 2,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 30,
+   "theirs": 2,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 42,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 8,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 5,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 37,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 4,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 29,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 211,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 50,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 14,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 31,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 9,
+   "theirs": 3,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 52,
+   "theirs": 1,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 34,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 23,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 30,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 0,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 40,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 2,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 22,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 54,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 134,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 63,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 52,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 49,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 20,
+   "theirs": 2,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 32,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 21,
+   "theirs": 1,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 33,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 46,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 58,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 27,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 39,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 0,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 135,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 80,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.3",
+   "idx": 56,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GPT-5.6 sol",
+   "idx": 16,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 10,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Gemini 3.8 Flash",
+   "idx": 12,
+   "theirs": 3,
+   "ours": 3,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Grok 4.6",
+   "idx": 23,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 2,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 44,
+   "theirs": 0,
+   "ours": 1,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Kimi K3",
+   "idx": 31,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Muse Spark 1.3",
+   "idx": 60,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 55,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Qwen 3.8 Max",
+   "idx": 17,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 48,
+   "theirs": 0,
+   "ours": 0,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "Claude Opus 4.8",
+   "idx": 25,
+   "theirs": 2,
+   "ours": 2,
+   "chunks": 1,
+   "error": null
+  },
+  {
+   "model": "GLM-5.2",
+   "idx": 237,
+   "theirs": 1,
+   "ours": 2,
+   "chunks": 4,
+   "error": null
+  }
+ ]
+}

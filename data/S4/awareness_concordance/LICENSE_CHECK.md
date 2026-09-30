@@ -54,3 +54,10 @@ file listing:
 - **Verifying the mapping.** Check the sample count per model against the label count. Check
   that each mapped sample's model string is right. Spot-check that each label's `quote` field
   occurs in the mapped transcript.
+
+## Decision (Jacob, 2026-09-30)
+
+"if the dataset has no license assume we can use it. This link was provided to me by faculty in my
+program." The concordance check proceeds, using the authors' labels and transcripts only to
+measure our judge's agreement with them. Nothing is redistributed: the transcripts stay in the
+local Hugging Face cache and are not committed.

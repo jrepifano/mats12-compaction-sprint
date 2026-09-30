@@ -762,3 +762,19 @@ def test_judge_bound_uses_utf8_bytes():
     g = J.BudgetGuard(Never(), {"m": (1.0, 0.0)}, allowance=0.0)
     dense = "\u4e2d" * 1000  # 1,000 chars, 3,000 UTF-8 bytes
     assert g.call_bound("m", "", dense, 0) >= 3000 / 1e6
+
+
+@pytest.mark.parametrize("raw,want", [(47, 47), ([47], 47), ("47", 47), ("[47]", 47),
+                                      (" [ 47 ] ", 47), (None, None)])
+def test_awareness_turn_index_tolerates_echoed_brackets(raw, want):
+    o = {"degree": 2, "cues": [], "kind": "unclear", "effect": "unstated",
+         "first_strong_turn": raw}
+    assert J._validate_awareness(o)["first_strong_turn"] == want
+
+
+@pytest.mark.parametrize("raw", [True, [1, 2], "turn 4", "-3", 4.5, {"i": 4}, "[47", "47]"])
+def test_awareness_turn_index_rejects_other_shapes(raw):
+    o = {"degree": 2, "cues": [], "kind": "unclear", "effect": "unstated",
+         "first_strong_turn": raw}
+    with pytest.raises(ValueError):
+        J._validate_awareness(o)

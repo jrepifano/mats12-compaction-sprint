@@ -343,15 +343,32 @@ def _validate_probe(o: dict) -> dict:
     return {q: o[q] for q in ("q1", "q2", "q3")}
 
 
+_BRACKETED = re.compile(r"^(?:(\d+)|\[\s*(\d+)\s*\])$")
+
+
+def _turn_index(v: object) -> int | None:
+    """The prompt asks for "the bracketed message index", and judges sometimes echo the brackets:
+    accept 47, [47], "47" and "[47]" as 47 (U7 run 2026-09-30: 7 of 120 replies). Anything else
+    is still an error."""
+    if v is None or (isinstance(v, int) and not isinstance(v, bool)):
+        return v
+    if isinstance(v, list) and len(v) == 1:
+        v = v[0]
+        if isinstance(v, int) and not isinstance(v, bool):
+            return v
+    m = _BRACKETED.match(v.strip()) if isinstance(v, str) else None
+    if m is None:
+        raise ValueError(f"bad first_strong_turn {v!r}")
+    return int(m.group(1) or m.group(2))
+
+
 def _validate_awareness(o: dict) -> dict:
     d = o.get("degree")
     if not isinstance(d, int) or isinstance(d, bool) or not 0 <= d <= 3:
         raise ValueError(f"bad degree {d!r}")
     if o.get("kind") not in AWARENESS_KINDS or o.get("effect") not in AWARENESS_EFFECTS:
         raise ValueError("bad kind or effect")
-    fst = o.get("first_strong_turn")
-    if fst is not None and (not isinstance(fst, int) or isinstance(fst, bool)):
-        raise ValueError(f"bad first_strong_turn {fst!r}")
+    fst = _turn_index(o.get("first_strong_turn"))
     cues = o.get("cues") or []
     if not isinstance(cues, list):
         raise TypeError("cues is not a list")

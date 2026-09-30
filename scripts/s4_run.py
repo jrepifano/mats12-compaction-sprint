@@ -4,14 +4,20 @@ Jacob's go-ahead. Everything else is free and reads results/S4/episodes.csv.
 Stages have fixed, preregistered shapes (prereg §4.10) and run one command at a time, so every
 decision between them is logged:
 
-  uv run --group swarm python scripts/s4_run.py stage --model deepseek/deepseek-v4-flash
+  uv run --project third_party/oai-hf-incident-reproduction \
+      python scripts/s4_run.py stage --model deepseek/deepseek-v4-flash   # PAID; see note below
   uv run --group swarm python scripts/s4_summarize.py --judge openrouter --yes
   uv run --group swarm python scripts/s4_run.py realism-bundle     # Jacob labels (U7 fallback)
   uv run --group swarm python scripts/s4_run.py realism-import
   uv run --group swarm python scripts/s4_run.py decide             # provisional GLM trigger
-  uv run --group swarm python scripts/s4_run.py stage --model google/gemini-3.8-flash
+  uv run --project third_party/oai-hf-incident-reproduction \
+      python scripts/s4_run.py stage --model google/gemini-3.8-flash
   ...                                                               # GLM only if triggered
   uv run --group swarm python scripts/s4_run.py finalize           # after Jacob's alert labels
+
+Environments: `stage` runs in the replica's pinned venv (openai 2.54 / anyio 4.14.2), where
+Inspect's OpenRouter calls work; our `swarm` group resolves openai 3.x, with which every call failed
+at connect on 2026-09-30. Scoring, decisions and bundles run in the `swarm` group (they need scipy).
 
 Budget (plan §1.13): a stage reserves its whole worst case before launch, split into the episodes'
 part (limit x 1.25 + probe margin, each) and a judge allowance that s4_summarize.py consumes. After
@@ -159,6 +165,14 @@ def stage(args: argparse.Namespace) -> int:
     worst, judges = n_eps * per_ep, n_eps * C.JUDGE_ALLOWANCE_USD
 
     # validate everything before reserving anything (code review r2, finding 3)
+    import importlib.metadata as md
+
+    if not md.version("openai").startswith("2."):
+        # openai 3.x with anyio 4.15 makes every model call fail at connect (TypeError: float +
+        # Timeout; aborted attempt 2026-09-30). Run stages in the replica's pinned environment:
+        #   uv run --project third_party/oai-hf-incident-reproduction python scripts/s4_run.py ...
+        sys.exit(f"openai {md.version('openai')} is known-broken for Inspect here; run stages with "
+                 "--project third_party/oai-hf-incident-reproduction (openai 2.54, anyio 4.14.2)")
     env = dotenv_values(MAIN_ENV)
     if not env.get("OPENROUTER_API_KEY"):
         sys.exit(f"OPENROUTER_API_KEY missing from {MAIN_ENV}")
@@ -379,7 +393,8 @@ def release_pending(args: argparse.Namespace) -> int:
     scoreable = 0
     for f in (sorted(attempts[-1].glob("*.eval")) if attempts else []):
         try:
-            scoreable += sum(a.arm in C.ARMS for a in S.load_artifacts(str(f)))
+            scoreable += sum(a.arm in C.ARMS and a.ended != "error"
+                             for a in S.load_artifacts(str(f)))
         except Exception as e:  # noqa: BLE001 - an unreadable log has nothing scoreable
             print(f"{f.name}: unreadable ({e!r}); counted as nothing scoreable")
     if scoreable:
