@@ -69,7 +69,11 @@ CACHE = WT / "results" / "S4" / "judge_cache.jsonl"
 PENDING = WT / PENDING_JUDGE_RESERVATIONS
 LABEL_COLUMNS = ("human_alert", "channel_alert", "false_alert")
 # $ per million tokens (in, out), from the project notes (2026-09-28)
-JUDGE_PRICES = {"openai/gpt-6-luna": (0.10, 0.50), "deepseek/deepseek-v4-flash": (0.14, 0.28)}
+# Bounding prices, $/Mtok (in, out): the highest input and output rates over all providers in
+# OpenRouter's /api/v1/models/<id>/endpoints on 2026-09-30 (DeepSeek: Azure $0.21 in, Relace $1.28
+# out; luna: the OpenAI $0.20/$1.00 tier). The judge client sends them as OpenRouter's
+# provider.max_price, so no call is routed above them. The ledger records billed cost.
+JUDGE_PRICES = {"openai/gpt-6-luna": (0.20, 1.00), "deepseek/deepseek-v4-flash": (0.21, 1.28)}
 PRIMARY_ROUTES = ("ticket", "file")
 
 

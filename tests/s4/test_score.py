@@ -778,3 +778,45 @@ def test_awareness_turn_index_rejects_other_shapes(raw):
          "first_strong_turn": raw}
     with pytest.raises(ValueError):
         J._validate_awareness(o)
+
+
+def test_billed_usd_prefers_reported_cost():
+    prices = (0.14, 0.28)
+    routed = {"prompt_tokens": 540, "completion_tokens": 200, "cost": 0.00026086,
+              "is_byok": False, "cost_details": {"upstream_inference_cost": 0.00026086}}
+    assert J.billed_usd(routed, prices) == pytest.approx(0.00026086)
+    byok = {"prompt_tokens": 456, "completion_tokens": 200, "cost": 0, "is_byok": True,
+            "cost_details": {"upstream_inference_cost": 0.0001456}}
+    assert J.billed_usd(byok, prices) == pytest.approx(0.0001456)
+    bare = {"prompt_tokens": 1_000_000, "completion_tokens": 1_000_000}
+    assert J.billed_usd(bare, prices) == pytest.approx(0.42)
+    # nothing reported: charge the request's bound, never $0 (fix-1 review r1)
+    assert J.billed_usd({}, prices, bound=0.01) == 0.01
+    assert J.billed_usd({"prompt_tokens": 10}, prices, bound=0.01) == 0.01
+    with pytest.raises(ValueError):
+        J.billed_usd({}, prices)
+
+
+def test_client_sends_price_ceiling_and_charges_bound_without_usage(monkeypatch):
+    import requests
+
+    sent = {}
+
+    class Resp:
+        status_code = 200
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"id": "g1", "choices": [{"message": {"content": "{}"}}]}  # no usage
+
+    def post(url, json, headers, timeout):
+        sent.update(json)
+        return Resp()
+
+    monkeypatch.setattr(requests, "post", post)
+    c = J.OpenRouterJudgeClient("k", prices={"m": (0.21, 1.28)})
+    out = c.complete("m", "sys", "user", 100)
+    assert sent["provider"] == {"max_price": {"prompt": 0.21, "completion": 1.28}}
+    assert out["usd"] == pytest.approx(J.request_bound((0.21, 1.28), "sys", "user", 100))

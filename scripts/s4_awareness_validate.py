@@ -53,7 +53,11 @@ N_SAMPLE = 120
 N_BOOT = 2000
 STRONG = 2
 # $ per million tokens (in, out); same figures as scripts/s4_summarize.py (2026-09-28 notes)
-JUDGE_PRICES = {"openai/gpt-6-luna": (0.10, 0.50), "deepseek/deepseek-v4-flash": (0.14, 0.28)}
+# Bounding prices, $/Mtok (in, out): the highest input and output rates over all providers in
+# OpenRouter's /api/v1/models/<id>/endpoints on 2026-09-30 (DeepSeek: Azure $0.21 in, Relace $1.28
+# out; luna: the OpenAI $0.20/$1.00 tier). The judge client sends them as OpenRouter's
+# provider.max_price, so no call is routed above them. The ledger records billed cost.
+JUDGE_PRICES = {"openai/gpt-6-luna": (0.20, 1.00), "deepseek/deepseek-v4-flash": (0.21, 1.28)}
 
 _B = "part1_docker/260909_step2_bank_none_multimodel/protein_none"
 _R = "part1_docker/260909_step2_bank_none_reasoning/protein_none"

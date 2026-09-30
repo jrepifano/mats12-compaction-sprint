@@ -51,8 +51,13 @@ LOG_ROOT = WT / "results" / "S4" / "logs"
 PENDING = WT / C.PENDING_JUDGE_RESERVATIONS
 # OpenRouter list prices, $/Mtok (input, output, cache read); /api/v1/models on 2026-09-30.
 # DeepSeek V4 Flash rose from 0.076/0.153/0.01526 (2026-09-29) to these.
+# Input and output are also sent as OpenRouter's provider.max_price (`_model_args`), so no call is
+# routed above them. max_price does not filter on cache-read price, so the cache-read price is the
+# highest listed among providers at or below the ceiling (DeepSeek: Parasail $0.070,
+# /api/v1/models/<id>/endpoints on 2026-09-30). Settled costs are an upper bound only while
+# providers' listed cache-read rates stay at or below it (fix-1 review r2).
 PRICES = {
-    "deepseek/deepseek-v4-flash": (0.140, 0.280, 0.028),
+    "deepseek/deepseek-v4-flash": (0.140, 0.280, 0.070),
     "z-ai/glm-5.3-flash": (0.150, 0.500, 0.03),
     "google/gemini-3.8-flash": (0.750, 3.750, 0.075),
 }
@@ -65,6 +70,12 @@ STAGE_ARMS = {
     "google/gemini-3.8-flash": ("channel",),
     "z-ai/glm-5.3-flash": ARM_ORDER,
 }
+
+
+def _model_args(model: str) -> dict:
+    """OpenRouter routing for the target model: never above its list price (fix-1 review r1)."""
+    p_in, p_out, _ = PRICES[model]
+    return {"provider": {"max_price": {"prompt": p_in, "completion": p_out}}}
 
 
 def usd(model: str, u) -> float:
@@ -217,7 +228,8 @@ def stage(args: argparse.Namespace) -> int:
     try:
         for arm in arms:
             logs = inspect_run(s4_pilot(arm=arm, base_seed=args.base_seed, cost_limit=limit),
-                               model=f"openrouter/{model}", epochs=EPISODES_PER_CELL,
+                               model=f"openrouter/{model}", model_args=_model_args(model),
+                               epochs=EPISODES_PER_CELL,
                                max_samples=args.max_samples, log_dir=str(log_dir),
                                display="plain", fail_on_error=False)
             for log in logs:
@@ -267,9 +279,14 @@ def _realism_labels(model: str) -> dict[str, str] | None:
 
 
 def _kappa() -> float | None:
+    """U7's kappa (s4_awareness_validate.py result.json), or None when U7 has not run or its
+    gate is inconclusive (unjudged items, or fewer than 100 scored)."""
     if not KAPPA_JSON.exists():
         return None
-    return float(json.loads(KAPPA_JSON.read_text())["kappa"])
+    res = json.loads(KAPPA_JSON.read_text())
+    if res.get("gate_kappa_ge_0_6") is None:
+        return None
+    return float(res["kappa_strong"])
 
 
 def assess(model: str, final: bool) -> dict:

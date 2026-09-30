@@ -25,7 +25,9 @@ def _write(tmp, rows, kappa=0.8, labels=None):
     R.EPISODES_CSV = path
     R.KAPPA_JSON = tmp / "k.json"
     if kappa is not None:
-        R.KAPPA_JSON.write_text(json.dumps({"kappa": kappa}))
+        # the schema s4_awareness_validate.py writes
+        R.KAPPA_JSON.write_text(json.dumps({"kappa_strong": kappa,
+                                            "gate_kappa_ge_0_6": kappa >= 0.6}))
     elif R.KAPPA_JSON.exists():
         R.KAPPA_JSON.unlink()
     R.LABELS_DIR = tmp / "labels"
@@ -96,6 +98,15 @@ def test_low_kappa_waits_until_every_plan_episode_labelled(tmp):
     _write(tmp, rows, kappa=None, labels={e: 0 for e in plan})
     d = R.assess(M, final=False)
     assert not d["waiting"] and d["eligible"]
+
+
+def test_kappa_read_from_u7_result_schema(tmp):
+    _write(tmp, _all())
+    R.KAPPA_JSON.write_text(json.dumps({"kappa_strong": 0.6708, "gate_kappa_ge_0_6": True}))
+    assert R._kappa() == pytest.approx(0.6708)
+    # an inconclusive U7 gate (unjudged items, or < 100 scored) counts as no kappa
+    R.KAPPA_JSON.write_text(json.dumps({"kappa_strong": 0.9, "gate_kappa_ge_0_6": None}))
+    assert R._kappa() is None
 
 
 def test_incomplete_stage_and_scoring_wait(tmp):
@@ -221,3 +232,9 @@ def test_stage_refuses_broken_openai_before_reserving(isolated, monkeypatch):
     with pytest.raises(SystemExit, match="known-broken"):
         R.stage(_stage_args(M))
     assert budget.status()["outstanding"] == 0.0
+
+
+def test_target_routing_capped_at_list_price():
+    for model, (p_in, p_out, _) in R.PRICES.items():
+        assert R._model_args(model) == {"provider": {"max_price": {"prompt": p_in,
+                                                                   "completion": p_out}}}
