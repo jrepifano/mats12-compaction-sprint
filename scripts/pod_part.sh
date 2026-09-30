@@ -31,7 +31,7 @@ for a in "$@"; do
   if [ "$a" = "--dry-run" ]; then DRY=1; else ARGS=(${ARGS[@]+"${ARGS[@]}"} "$a"); fi
 done
 usage() {
-  echo "usage: pod_part.sh [--dry-run] SLOT smoke | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
+  echo "usage: pod_part.sh [--dry-run] SLOT smoke | recheck | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
   exit 2
 }
 [ "${#ARGS[@]}" -ge 2 ] || usage
@@ -53,6 +53,7 @@ while [ "$i" -lt "${#RUN_ARGS[@]}" ]; do
 done
 case "$MODE" in
   smoke) DONE_FILE="results/E1/checks/smoke.json"; MANIFEST="" ;;
+  recheck) DONE_FILE="results/E1/checks/recheck.json"; MANIFEST="" ;;
   part) [ -n "$RECIPE" ] || usage; MANIFEST="MANIFEST.part-$PART.sha256"; DONE_FILE="results/E1/$MANIFEST" ;;
   restore) [ -n "$RECIPE" ] || usage; MANIFEST="MANIFEST.restore-$RECIPE.sha256"; DONE_FILE="results/E1/$MANIFEST" ;;
   *) usage ;;
@@ -163,21 +164,21 @@ run mkdir -p logs/pod
 run rsync -tz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/$POD_LOG" "logs/pod/" \
   || say "could not copy $POD_LOG (continuing)"
 
+if [ -z "$MANIFEST" ]; then  # smoke / recheck: always pull the checks, even on failure
+  run mkdir -p results/E1/checks
+  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/checks/" "results/E1/checks/" \
+    || say "PULL FAILED (checks)"
+fi
 if [ "$RUN_RC" != "0" ] || [ "$DONE" != "1" ]; then
-  say "PART DID NOT COMPLETE: nothing pulled; see logs/pod/$(basename "$POD_LOG")"
+  say "PART DID NOT COMPLETE: see logs/pod/$(basename "$POD_LOG")${MANIFEST:+ (nothing pulled)}"
   exit 1
 fi
 if [ -n "$MANIFEST" ]; then
   run bash scripts/pod_pull_results.sh --slot "$SLOT" --manifest "$MANIFEST" \
     || { say "PULL FAILED: manifest did not verify"; exit 1; }
-else
-  run mkdir -p results/E1/checks
-  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/checks/" "results/E1/checks/" \
-    || { say "PULL FAILED (smoke checks)"; exit 1; }
-  if [ "$DRY" != "1" ]; then
-    python3 -c "import json,sys; sys.exit(0 if json.load(open('results/E1/checks/smoke.json'))['pass'] else 1)" \
-      || { say "smoke.json says FAIL (results pulled for inspection)"; exit 1; }
-  fi
+elif [ "$DRY" != "1" ]; then
+  python3 -c "import json,sys; sys.exit(0 if json.load(open('$DONE_FILE'))['pass'] else 1)" \
+    || { say "$DONE_FILE says FAIL (results pulled for inspection)"; exit 1; }
 fi
 say "completed and pulled; terminating the pod"
 exit 0
