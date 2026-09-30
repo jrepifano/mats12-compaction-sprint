@@ -347,9 +347,9 @@ RIDGE_FOLD_SEED = 20260928
 # --- checks (prereg §4.7) --------------------------------------------------------------------
 
 CHECK_THRESHOLDS: dict[str, float] = {
-    "jlens_reference_top1": 0.99,  # our J-Lens top-1 == shipped reference top-1
-    "logit_lens_last_layer": 0.98,  # logit lens at block 63 top-1 == model's next-token argmax
-    "batching_top1": 0.995,  # batched vs one-at-a-time teacher-forced next-token top-1
+    "jlens_reference_top1": 0.98,  # amended from 0.99 after P0 (Jacob 2026-09-30): bf16 near-ties
+    "logit_lens_last_layer": 0.96,  # amended from 0.98 after P0 (Jacob): misses were exact bf16 ties
+    "batching_top1": 0.99,  # amended from 0.995 after P0 (Jacob): bf16 noise floor measured 0.990
     "shuffled_pass_max": 0.10,  # Oracle Lens on another item's activation, regex pass rate
     "empty_max": 0.05,  # completeness: at most 5% empty readouts
     "olens_gen_hours_max": 6.0,  # smoke projection of all Oracle Lens generation

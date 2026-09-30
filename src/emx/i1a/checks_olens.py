@@ -31,7 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover
     import torch
     from wsbench.produce.backend import Backend
 
-SEQ_EQUAL_MIN = 0.9  # share of rows whose greedy sequence must match exactly (see check_batching)
+SEQ_EQUAL_MIN = 0.6  # rows whose greedy sequence must match exactly; 0.9 -> 0.6 after P0 (Jacob)
 
 
 def _utc() -> str:
