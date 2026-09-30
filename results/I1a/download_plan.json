@@ -1,33 +1,38 @@
 {
-  "cap_bytes": 100000000000,
   "groups": {
-    "adapters": {
-      "bytes": 1038987426,
-      "files": {
-        "ar_ptag_pooled/heads.pt": 104880783,
-        "ar_ptag_pooled/lora/adapter_config.json": 1288,
-        "ar_ptag_pooled/lora/adapter_model.safetensors": 467051648,
-        "ar_ptag_pooled/meta.json": 4311,
-        "olens_s3d_rl600/adapter_config.json": 1289,
-        "olens_s3d_rl600/adapter_model.safetensors": 467047680,
-        "olens_s3d_rl600/run.json": 427
-      },
-      "repo": "agu18dec/olens_and_ar",
-      "repo_type": "model",
-      "revision": "c95215d5d2f6250f20c305ae55c6e4d7569f92dc"
-    },
-    "jlens": {
-      "bytes": 3303032772,
-      "files": {
-        "qwen3.6-27b/jlens/Salesforce-wikitext/Qwen3.6-27B_jacobian_lens_n1000.pt": 3303032772
-      },
-      "repo": "neuronpedia/jacobian-lens",
-      "repo_type": "model",
-      "revision": "b25d72a96b79c8e309d6625955a98751da47e67a"
-    },
     "model": {
-      "bytes": 55586032434,
-      "files": {
+      "repo": "Qwen/Qwen3.6-27B",
+      "revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+      "repo_type": "model",
+      "files": [
+        "chat_template.jinja",
+        "config.json",
+        "configuration.json",
+        "generation_config.json",
+        "merges.txt",
+        "model-00001-of-00015.safetensors",
+        "model-00002-of-00015.safetensors",
+        "model-00003-of-00015.safetensors",
+        "model-00004-of-00015.safetensors",
+        "model-00005-of-00015.safetensors",
+        "model-00006-of-00015.safetensors",
+        "model-00007-of-00015.safetensors",
+        "model-00008-of-00015.safetensors",
+        "model-00009-of-00015.safetensors",
+        "model-00010-of-00015.safetensors",
+        "model-00011-of-00015.safetensors",
+        "model-00012-of-00015.safetensors",
+        "model-00013-of-00015.safetensors",
+        "model-00014-of-00015.safetensors",
+        "model-00015-of-00015.safetensors",
+        "model.safetensors.index.json",
+        "preprocessor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "video_preprocessor_config.json",
+        "vocab.json"
+      ],
+      "sizes": {
         "chat_template.jinja": 7764,
         "config.json": 4308,
         "configuration.json": 51,
@@ -55,14 +60,72 @@
         "video_preprocessor_config.json": 385,
         "vocab.json": 6722759
       },
-      "repo": "Qwen/Qwen3.6-27B",
+      "bytes": 55586032434
+    },
+    "jlens": {
+      "repo": "neuronpedia/jacobian-lens",
+      "revision": "b25d72a96b79c8e309d6625955a98751da47e67a",
       "repo_type": "model",
-      "revision": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9"
+      "files": [
+        "qwen3.6-27b/jlens/Salesforce-wikitext/Qwen3.6-27B_jacobian_lens_n1000.pt"
+      ],
+      "sizes": {
+        "qwen3.6-27b/jlens/Salesforce-wikitext/Qwen3.6-27B_jacobian_lens_n1000.pt": 3303032772
+      },
+      "bytes": 3303032772
+    },
+    "adapters": {
+      "repo": "agu18dec/olens_and_ar",
+      "revision": "c95215d5d2f6250f20c305ae55c6e4d7569f92dc",
+      "repo_type": "model",
+      "files": [
+        "olens_s3d_rl600/adapter_config.json",
+        "olens_s3d_rl600/adapter_model.safetensors",
+        "olens_s3d_rl600/run.json",
+        "ar_ptag_pooled/heads.pt",
+        "ar_ptag_pooled/meta.json",
+        "ar_ptag_pooled/lora/adapter_config.json",
+        "ar_ptag_pooled/lora/adapter_model.safetensors"
+      ],
+      "sizes": {
+        "olens_s3d_rl600/adapter_config.json": 1289,
+        "olens_s3d_rl600/adapter_model.safetensors": 467047680,
+        "olens_s3d_rl600/run.json": 427,
+        "ar_ptag_pooled/heads.pt": 104880783,
+        "ar_ptag_pooled/meta.json": 4311,
+        "ar_ptag_pooled/lora/adapter_config.json": 1288,
+        "ar_ptag_pooled/lora/adapter_model.safetensors": 467051648
+      },
+      "bytes": 1038987426
     },
     "whiteners": {
-      "bytes": 1782947142,
-      "files": {
+      "repo": "agu18dec/local-workspace",
+      "revision": "5aa232fea1f07689fd6bb084c030db87705d0978",
+      "repo_type": "dataset",
+      "files": [
+        "data/whiteners/pooled/whitening_iolens_pooled_L0.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L4.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L8.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L12.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L16.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L20.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L24.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L28.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L32.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L36.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L40.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L44.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L48.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L52.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L56.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L60.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_L63.safetensors",
+        "data/whiteners/pooled/whitening_iolens_pooled_provenance.json"
+      ],
+      "sizes": {
         "data/whiteners/pooled/whitening_iolens_pooled_L0.safetensors": 104878736,
+        "data/whiteners/pooled/whitening_iolens_pooled_L4.safetensors": 104878736,
+        "data/whiteners/pooled/whitening_iolens_pooled_L8.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L12.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L16.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L20.safetensors": 104878736,
@@ -70,7 +133,6 @@
         "data/whiteners/pooled/whitening_iolens_pooled_L28.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L32.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L36.safetensors": 104878736,
-        "data/whiteners/pooled/whitening_iolens_pooled_L4.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L40.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L44.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L48.safetensors": 104878736,
@@ -78,15 +140,11 @@
         "data/whiteners/pooled/whitening_iolens_pooled_L56.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L60.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_L63.safetensors": 104878736,
-        "data/whiteners/pooled/whitening_iolens_pooled_L8.safetensors": 104878736,
         "data/whiteners/pooled/whitening_iolens_pooled_provenance.json": 8630
       },
-      "repo": "agu18dec/local-workspace",
-      "repo_type": "dataset",
-      "revision": "5aa232fea1f07689fd6bb084c030db87705d0978"
+      "bytes": 1782947142
     }
   },
-  "hf_hub_disable_xet": "1",
   "total_bytes": 61710999774,
-  "utc": "2026-09-30T04:08:51Z"
+  "cap_bytes": 100000000000
 }

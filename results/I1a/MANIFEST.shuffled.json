@@ -1,0 +1,24 @@
+{
+  "args": {
+    "artifacts_dir": "/ws/i1a_artifacts",
+    "device": "cuda",
+    "limit": 0,
+    "max_new_tokens": 0,
+    "step": "shuffled"
+  },
+  "checks": {},
+  "code_commit": "a5a5d2c8d9ef19090fa39089fc99e8bbd5622010",
+  "counts": {},
+  "inputs_sha256": {
+    "data/I1a/subsets/hallucination_75.json": "f61c82ebe64d7a32bcae4542ac0f414e91ac9da9c8e8a0ef39a98768c315e809",
+    "results/I1a/MANIFEST.capture.sha256": "5e3831a5f18f3b7f17c6c49a5e2f5252cac87165831e8ee04e842a272c1f7f9e",
+    "results/I1a/download_paths.json": "7f7ed32032c1be3e89dfbc7849778cd29a6fd28ba4dc9339e73971d581d9954a"
+  },
+  "limited": false,
+  "required_outputs": [
+    "results/I1a/readouts/olens_shuffled/basic_readout_mt.jsonl",
+    "results/I1a/samples/basic_readout_mt.shuffled.jsonl"
+  ],
+  "step": "shuffled",
+  "utc": "2026-09-30T09:54:36Z"
+}

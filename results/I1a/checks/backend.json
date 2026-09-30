@@ -1,0 +1,22 @@
+{
+  "details": {
+    "attn_implementation": "sdpa",
+    "causal_conv1d_importable": false,
+    "cuda_device": "NVIDIA H100 80GB HBM3",
+    "device": "cuda:0",
+    "dtype": "torch.bfloat16",
+    "fla_importable": true,
+    "model_class": "Qwen3_5ForCausalLM",
+    "n_layers": 64,
+    "peft": "0.21.1",
+    "torch": "2.13.0+cu130",
+    "transformers": "5.17.0"
+  },
+  "n": 1,
+  "name": "backend",
+  "notes": "",
+  "passed": true,
+  "threshold": null,
+  "utc": "2026-09-30T06:31:35Z",
+  "value": null
+}

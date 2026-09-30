@@ -1,0 +1,33 @@
+{
+  "details": {
+    "expected_layers": [
+      20,
+      36,
+      44,
+      52,
+      60
+    ],
+    "family": "hallucination",
+    "layers_below_threshold": [],
+    "layers_missing": [],
+    "mean_mismatched_fve": 0.0042435722425580025,
+    "mean_own_fve": 0.369525671005249,
+    "n_readouts": 5615,
+    "n_without_bullets": 0,
+    "partner_seed": 20260928,
+    "per_layer": {
+      "20": 0.9973285841495992,
+      "36": 1.0,
+      "44": 0.9991095280498664,
+      "52": 0.9991095280498664,
+      "60": 1.0
+    }
+  },
+  "n": 5615,
+  "name": "fve_mismatch",
+  "notes": "",
+  "passed": true,
+  "threshold": 0.8,
+  "utc": "2026-09-30T10:23:24+00:00",
+  "value": 0.9991095280498664
+}

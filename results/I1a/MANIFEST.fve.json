@@ -1,0 +1,33 @@
+{
+  "args": {
+    "artifacts_dir": "/ws/i1a_artifacts",
+    "device": "cuda",
+    "limit": 0,
+    "max_new_tokens": 0,
+    "step": "fve"
+  },
+  "checks": {
+    "fve_joint_band": false,
+    "fve_mismatch": true
+  },
+  "code_commit": "a5a5d2c8d9ef19090fa39089fc99e8bbd5622010",
+  "counts": {
+    "checks": 2,
+    "checks_passed": 1
+  },
+  "inputs_sha256": {
+    "data/I1a/subsets/hallucination_75.json": "f61c82ebe64d7a32bcae4542ac0f414e91ac9da9c8e8a0ef39a98768c315e809",
+    "results/I1a/MANIFEST.olens-extra.sha256": "c75596aacb100a81a3d9d2fc68760037d8042622b6229ef2c87186b6df4f1261",
+    "results/I1a/MANIFEST.smoke.sha256": "92d64436f33f819029999a2068ccd30fae51921b5f36add94b335bd17df8c542",
+    "results/I1a/download_paths.json": "7f7ed32032c1be3e89dfbc7849778cd29a6fd28ba4dc9339e73971d581d9954a"
+  },
+  "limited": false,
+  "required_outputs": [
+    "results/I1a/checks/fve_joint_band.json",
+    "results/I1a/checks/fve_mismatch.json",
+    "results/I1a/fve/basic_readout_mt.jsonl",
+    "results/I1a/fve/hallucination.jsonl"
+  ],
+  "step": "fve",
+  "utc": "2026-09-30T10:23:24Z"
+}
