@@ -6,4 +6,4 @@ Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Pod smoke test done: PEFT trainer selected; preflight, training, HF generation, self-restore pass. vLLM failed (missing build tool on PATH, fixed) and training ran ~7 s/step vs ~1.7 planned (cause unclear). Next: short re-check on a fresh pod (vLLM + speed), then Part 1 | $9.25 / $65 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Pod checks done: PEFT trainer selected; training 1.2 s/step (the 7 s at P1 was a stray process); vLLM + adapter works. Next: Gemini batch-judging path (laptop), OpenRouter top-up, then Part 1 (recipe check) on Jacob's go-ahead | $14.46 / $65 | — |
