@@ -1,0 +1,361 @@
+{
+  "bestfve_excluded": true,
+  "bestfve_reason": "best FVE dropped: fve_joint_band: passed=False",
+  "cells": {
+    "basic_readout_mt/jlens": {
+      "counted": false,
+      "published": 0.24,
+      "status": null,
+      "value": null
+    },
+    "basic_readout_mt/logit_lens": {
+      "counted": false,
+      "published": 0.2,
+      "status": null,
+      "value": null
+    },
+    "basic_readout_mt/olens_rl600": {
+      "bench_ci95": [
+        0.67,
+        0.84
+      ],
+      "bench_value": 0.75,
+      "ci95": [
+        0.66,
+        0.84
+      ],
+      "complete": true,
+      "counted": true,
+      "n_items": 100,
+      "published": 0.71,
+      "status": "consistent",
+      "value": 0.75,
+      "value_matches_bench": true
+    },
+    "hallucination/jlens": {
+      "counted": false,
+      "published": 0.31,
+      "status": null,
+      "value": null
+    },
+    "hallucination/logit_lens": {
+      "counted": false,
+      "published": 0.2,
+      "status": null,
+      "value": null
+    },
+    "hallucination/olens_rl600": {
+      "counted": false,
+      "published": 0.34,
+      "status": null,
+      "value": null
+    },
+    "multihop/jlens": {
+      "counted": false,
+      "published": 0.82,
+      "status": null,
+      "value": null
+    },
+    "multihop/logit_lens": {
+      "counted": false,
+      "published": 0.45,
+      "status": null,
+      "value": null
+    },
+    "multihop/olens_rl600": {
+      "counted": false,
+      "published": 0.99,
+      "status": null,
+      "value": null
+    }
+  },
+  "check_overrides": {},
+  "checks": {
+    "backend": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": null
+    },
+    "capture_repeat": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 0.0
+    },
+    "fve_ar_live": {
+      "kind": "fve",
+      "passed": true,
+      "present": true,
+      "value": 1.0
+    },
+    "fve_joint_band": {
+      "kind": "fve",
+      "passed": false,
+      "present": true,
+      "value": 0.3695217799737001
+    },
+    "fve_mismatch": {
+      "kind": "fve",
+      "passed": true,
+      "present": true,
+      "value": 0.9991095280498664
+    },
+    "fve_ruler": {
+      "kind": "fve",
+      "passed": true,
+      "present": true,
+      "value": 0.010925178963487797
+    },
+    "jlens_reference": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 0.9876957494407159
+    },
+    "logit_lens_last_layer": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 0.96
+    },
+    "memory_speed": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 4.206
+    },
+    "offline_tests": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 534.0
+    },
+    "olens_adapter_live": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 29.40625
+    },
+    "olens_batching": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 0.990234375
+    },
+    "olens_shuffled": {
+      "kind": "shuffled",
+      "passed": null,
+      "present": false,
+      "value": null
+    },
+    "store_vs_producer": {
+      "kind": "required",
+      "passed": true,
+      "present": true,
+      "value": 1.0
+    }
+  },
+  "errors": [],
+  "exp": "I1a",
+  "gate": {
+    "continuing": false,
+    "incomplete_cells": [
+      "multihop/olens_rl600: not judged",
+      "multihop/jlens: not judged",
+      "multihop/logit_lens: not judged",
+      "basic_readout_mt/jlens: not judged",
+      "basic_readout_mt/logit_lens: not judged",
+      "hallucination/olens_rl600: not judged",
+      "hallucination/jlens: not judged",
+      "hallucination/logit_lens: not judged"
+    ],
+    "misses": [],
+    "n_consistent": 1,
+    "n_discrepant": 0,
+    "n_ordering_failed": 0,
+    "reasons": [
+      "multihop/olens_rl600: not judged",
+      "multihop/jlens: not judged",
+      "multihop/logit_lens: not judged",
+      "basic_readout_mt/jlens: not judged",
+      "basic_readout_mt/logit_lens: not judged",
+      "hallucination/olens_rl600: not judged",
+      "hallucination/jlens: not judged",
+      "hallucination/logit_lens: not judged"
+    ],
+    "scenario": "not_readable",
+    "scope_curtailed": false
+  },
+  "inputs": {
+    "data/I1a/subsets/hallucination_75.json": "f61c82ebe64d7a32bcae4542ac0f414e91ac9da9c8e8a0ef39a98768c315e809",
+    "results/I1a/checks/backend.json": "0ba4277c6d070a2211f8a49deefe95c918b7a2e6844eab9656bce548293e13d3",
+    "results/I1a/checks/capture_repeat.json": "83ca188b8609169146233de63ba8e66c7f352a3ce61be45f272d9e7aa3992df5",
+    "results/I1a/checks/fve_ar_live.json": "de370ac20ec387a847333bebe39fb36b40e0aaa4f1107b34a575fdbdb82d31c8",
+    "results/I1a/checks/fve_joint_band.json": "9aa38ee3e19ecb0ea5d81985e04b9d4cda0e847aedf007f1061bd2ba692b3fae",
+    "results/I1a/checks/fve_mismatch.json": "1a618574f2e0563787597e32959a145bcb6f2a4956932370e0e8393c3839fe6a",
+    "results/I1a/checks/fve_ruler.json": "fb852a64b99fc7cfea775166a437a1f1afa51c7fc0e0384378d33fccfdce8384",
+    "results/I1a/checks/jlens_reference.json": "026c143374e60e9276f12497bd7df96b129c08c2ef3b8902e20160d4f73cf086",
+    "results/I1a/checks/logit_lens_last_layer.json": "9ff781348b06382359d7d5bcf296b1f2d6b162aca86df5e9e232864ef8b2c7bd",
+    "results/I1a/checks/memory_speed.json": "4529ecf2661a9f6413f1987dc3e34556197da3727b343f164fd60e9c183c9e46",
+    "results/I1a/checks/offline_tests.json": "e95128b3b0131a1cc58fa71fd13b87d35f47462347da1b7becdad32d8640a30d",
+    "results/I1a/checks/olens_adapter_live.json": "ed54892f224f7e052cfc538d15bf79ebd25b2165c477da2110b85196d7f08f85",
+    "results/I1a/checks/olens_batching.json": "a42f436deea549a19d919f4b7cfabf2c7e9b806f41a2cec5f4f443523014d3d9",
+    "results/I1a/checks/store_vs_producer.json": "efb54d37cc80a2485994ccf52c7b41453ca356ef9bdf5adf69f442274946f8e0",
+    "results/I1a/checks/store_vs_producer_jlens.json": "bd90b43d97b13ee13084ab9a1b6adac2b1335654d02707ea453413f11e0d5ae3",
+    "results/I1a/checks/store_vs_producer_logit_lens.json": "ad78803a1013ed114787ccec7f3a8106c757ea085e09d3469f934f179cb83d36",
+    "results/I1a/fve/basic_readout_mt.jsonl": "28a10e2be65d15d4a2161439b523d59c84caaa2caef2c859171cb70e2cb526ba",
+    "results/I1a/fve/hallucination.jsonl": "740d8badf857bbd8a864e81686125a6f57108b4c3ba89e1214a65c74d84c4f34",
+    "results/I1a/judged/olens_rl600/basic_readout_mt/results.json": "9e958c197575f97a53d298d5161ef259be09971713eb3519e29247ac778db9bf",
+    "results/I1a/judged/olens_s1/basic_readout_mt/results.json": "977440ba7d4e391f52c847687df8d91efdeea1861a15fd01e18311d675b88ac3",
+    "results/I1a/judged/olens_s2/basic_readout_mt/results.json": "7a90a9a3cd39b45e3aaf3b484d72aef6c27b6c683c4bd2c59b0bd9096501a4b2",
+    "results/I1a/judged/olens_s3/basic_readout_mt/results.json": "85bfe3bc899f15c0cfc5dbbacd9f35c3ee5cb178097ff05b11005dcee2f27ce1",
+    "results/I1a/judged/olens_s4/basic_readout_mt/results.json": "489d60eac62b11dda24da406db3301a3ce1ff1dbcaf49bac5b584ff66de001b0",
+    "results/I1a/judged/olens_shuffled/basic_readout_mt/results.json": "05bd8a72e2eb56aa3d1a2bb08017447174a6a03f135861ece90acc106893e37a",
+    "results/I1a/judged/sel_consensus/basic_readout_mt/results.json": "20ec50eac551cf6a429a8c99b62276ec48bbdb63bd10ddd7b5acd7ee5b13dac0",
+    "results/I1a/readouts/olens_rl600/basic_readout_mt.jsonl": "43213f8b64371a4ce89736d6a07649ae9489cd7fe98bfacf9386d34adef7d5b2",
+    "results/I1a/readouts/olens_rl600/hallucination.jsonl": "4b848bf2621777ac6a605481b16aefb7c1097c8b98c03c9814eb9af5caa98cee",
+    "results/I1a/readouts/olens_s1/basic_readout_mt.jsonl": "b27b84bc5668c735cd0677f60c8a92c9aa7843bf31d766d64071a13ddd772ac3",
+    "results/I1a/readouts/olens_s2/basic_readout_mt.jsonl": "84949a3b66cb11768b79cd83d4815046b344ce0dbb59dd8abe733e6aa7e43e59",
+    "results/I1a/readouts/olens_s3/basic_readout_mt.jsonl": "cde44d04dddd1e955de418cd68a43d8844e1dcd58098babb9dc94ffa6dc68bd5",
+    "results/I1a/readouts/olens_s4/basic_readout_mt.jsonl": "b0a16496959c1f1280904031f3f80f2025d505a7f7cf03a5cececeaeab3aad96",
+    "results/I1a/readouts/sel_consensus/basic_readout_mt.jsonl": "8556d444610c39b78056adc62f5469ac993cad50a906949245d10362e496e698",
+    "results/I1a/samples/basic_readout_mt.jsonl": "3ecf34e6d7624f9edbf7d9c95981ffa5c521efd8948d4ae31a8937c17fe55edb",
+    "results/I1a/samples/hallucination.jsonl": "3f0f773874edde70a35e65db857a9ffe7d86506c136048efb6c85fc0e463ec85"
+  },
+  "missing": [
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/multihop",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/multihop",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/multihop",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/basic_readout_mt",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/basic_readout_mt",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/hallucination",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/jlens/hallucination",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/logit_lens/hallucination",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/olens_rl600/hallucination",
+    "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/topic2-i1a/results/I1a/judged/sel_consensus/hallucination"
+  ],
+  "ordering": [
+    {
+      "a": "olens_rl600",
+      "b": "jlens",
+      "family": "multihop",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.17000000000000004
+    },
+    {
+      "a": "olens_rl600",
+      "b": "logit_lens",
+      "family": "multihop",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.54
+    },
+    {
+      "a": "jlens",
+      "b": "logit_lens",
+      "family": "multihop",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.36999999999999994
+    },
+    {
+      "a": "olens_rl600",
+      "b": "jlens",
+      "family": "basic_readout_mt",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.47
+    },
+    {
+      "a": "olens_rl600",
+      "b": "logit_lens",
+      "family": "basic_readout_mt",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.51
+    },
+    {
+      "a": "olens_rl600",
+      "b": "logit_lens",
+      "family": "hallucination",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.14
+    },
+    {
+      "a": "jlens",
+      "b": "logit_lens",
+      "family": "hallucination",
+      "holds": null,
+      "our_gap": null,
+      "published_gap": 0.10999999999999999
+    }
+  ],
+  "samples": {
+    "bestfve_available": false,
+    "bestfve_reason": "best FVE dropped: fve_joint_band: passed=False",
+    "hallucination": {
+      "random": null,
+      "random_coverage": null,
+      "subset_n_items": 75
+    },
+    "recall": {
+      "ceiling": 0.82,
+      "ceiling_minus_random": 0.06999999999999995,
+      "random": 0.75,
+      "spread": {
+        "max": 0.75,
+        "mean": 0.736,
+        "min": 0.71,
+        "rates": [
+          0.75,
+          0.72,
+          0.75,
+          0.75,
+          0.71
+        ]
+      }
+    },
+    "rules": {
+      "bestfve": {
+        "available": false,
+        "reason": "best FVE dropped: fve_joint_band: passed=False"
+      },
+      "consensus": {
+        "assessable": false,
+        "available": true,
+        "coverage": null,
+        "guards": {
+          "assert_share": null,
+          "bullets": null,
+          "empty": null,
+          "ok": null
+        },
+        "hallucination_diff": null,
+        "hallucination_worse": false,
+        "helps": null,
+        "helps_recall": false,
+        "lowers_measured_rate": false,
+        "recall_diff": {
+          "a": 0.76,
+          "b": 0.75,
+          "diff": 0.010000000000000009,
+          "hi": 0.04999999999999993,
+          "lo": -0.020000000000000018,
+          "n_items": 100
+        },
+        "recall_worse": false
+      }
+    },
+    "scenario": "unassessed",
+    "scenario_reason": "gate outcome 'not_readable' is not continuing; sample numbers are descriptive only"
+  },
+  "scope_curtailed_source": {
+    "cli_flag": false,
+    "file": null
+  },
+  "shuffled_pass_rate": 0.0,
+  "warnings": []
+}
