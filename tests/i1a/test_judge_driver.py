@@ -507,17 +507,17 @@ def test_project_usd_table():
 def test_load_key(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     env = tmp_path / ".env"
-    env.write_text("OPENROUTER_API_KEY_I1A=sk-or-v1-secretvalue\nOTHER=1\n")
+    env.write_text("OPENROUTER_API_KEY=sk-or-v1-secretvalue\nOTHER=1\n")
     J.load_key(env)
     import os
 
     assert os.environ["OPENROUTER_API_KEY"] == "sk-or-v1-secretvalue"
     assert "secretvalue" not in capsys.readouterr().out
-    env.write_text("OPENROUTER_API_KEY_I1A=sk-proj-nope\n")
+    env.write_text("OPENROUTER_API_KEY=sk-proj-nope\n")
     with pytest.raises(SystemExit) as e:
         J.load_key(env)
     assert e.value.code == 3
-    env.write_text("OPENROUTER_API_KEY=sk-or-v1-general\n")
+    env.write_text("OTHER=1\n")  # key missing
     with pytest.raises(SystemExit) as e:
         J.load_key(env)
     assert e.value.code == 3

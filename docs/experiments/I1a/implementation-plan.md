@@ -225,7 +225,7 @@ The public signatures below are the frozen interfaces. Units may add private hel
   - it ends with one full pass (no `items=`) that must be served from the cache, so the result can be `complete`, and asserts zero new spend on that pass;
   - regex families skip the cap check;
   - pilot mode is `limit=N`.
-- `load_key() -> None` reads `OPENROUTER_API_KEY_I1A` from `.env` into `OPENROUTER_API_KEY` for this process only. It refuses keys not starting with `sk-or-` and never prints the key.
+- `load_key() -> None` reads the shared `OPENROUTER_API_KEY` from `.env` (Jacob, 2026-09-30: no dedicated key) into the process environment for this process only. It refuses keys not starting with `sk-or-` and never prints the key.
 - `project_usd(arm, family, n_items, usd_per_call) -> float`, with calls per item by family and reader kind (the token readers add the summarizer call).
 
 **`scripts/i1a_judge.py`** is the CLI: `--arm --family [--items-file] [--limit] [--layers] [--dry-run] [--usd-per-call]`.

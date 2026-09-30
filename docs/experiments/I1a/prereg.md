@@ -1,6 +1,6 @@
 # I1a+: WorkspaceBench reproduction gate, with saved Oracle Lens samples
 
-Mirrored to the Claude Doc (synced at rev 98). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `de9449f`, v0.3 at `f46da0d`.
+Mirrored to the Claude Doc (synced at rev 99). This file is the source of truth. Earlier versions are in git history: v0.2.1 at commit `de9449f`, v0.3 at `f46da0d`.
 
 **The question:** does the public WorkspaceBench benchmark reproduce its published scores for three activation readers on one GPU? And while the model is loaded, do ten Oracle Lens samples per activation contain better readouts than the one the benchmark scores?
 
@@ -319,7 +319,7 @@ The high column cannot fit: under high prices the pre-set cuts in §7.3 apply, a
 
 ### 7.3 Cap and pre-set cuts
 
-- **Hard cap $85.** GPU sub-cap $40, enforced by the pod watchdog. Judge cap = $83 minus actual GPU and storage spend, enforced by a dedicated OpenRouter key with that credit limit and by a spend check before each chunk of 25 items. Reserve $2.
+- **Hard cap $85.** GPU sub-cap $40, enforced by the pod watchdog. Judge cap = $83 minus actual GPU and storage spend, enforced in software: a spend check before each chunk of 25 items and a budget reservation before every request, retries included (the OpenRouter key is shared across experiments, so it carries no I1a credit limit; Jacob, 2026-09-30). Reserve $2.
 - **Central plan:** GPU and storage $30.6, gate and baselines $41.5, samples $9.7. That is $81.8 in total, and judges $51.1 against a judge cap of $52.4.
 - **On secure cloud** (GPU and storage $39.4, judge cap $43.6): the gate and baselines ($41.5) fit, and hallucination sample judging shrinks to what remains, about 15 conversations ($1.9). The gate itself is never cut for this.
 - **If the smoke test projects Oracle Lens generation above 6 h:**

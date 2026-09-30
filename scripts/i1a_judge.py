@@ -7,7 +7,7 @@ would pass the chunk's projection or the caps is refused and the run stops. Ever
 is journaled as it lands and reconciled into logs/costs.jsonl (emx.i1a.judge_driver). A paid run
 needs --stage, all required checks passed, the stage's approval marker in logs/approvals/
 (pilot: I1a-P2, gate: I1a-P3 plus results/I1a/judged/PILOT.json, samples: I1a-P4). The key is
-OPENROUTER_API_KEY_I1A from .env (the dedicated, credit-limited key); it is never printed.
+OPENROUTER_API_KEY from .env (the shared project key); it is never printed.
 Hallucination runs with opts=verify=0 (plan §0) unless --allow-verify (the checkpoint-5 add-on).
 
 Usage:

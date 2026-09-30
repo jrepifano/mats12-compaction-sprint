@@ -82,7 +82,7 @@ MAX_USD_PER_ATTEMPT = 0.03
 REJECTED_UNBILLED = frozenset({400, 401, 402, 403, 404, 413, 422, 429})
 MAX_RETRY_ROUNDS = 2  # guarded re-runs of chunks that left cells unjudged
 EXIT_NOT_CLEAN = 4
-KEY_ENV = "OPENROUTER_API_KEY_I1A"  # the dedicated, credit-limited key (prereg §7.3)
+KEY_ENV = "OPENROUTER_API_KEY"  # the shared project key (Jacob, 2026-09-30: no per-experiment key)
 TOKEN_ARMS = frozenset(
     {"logit_lens", "jlens", "ridge_probe", "logit_lens_oldsite", "jlens_oldsite"}
 )
@@ -118,8 +118,10 @@ def usd_rate(usd_per_call: float | None) -> float:
 
 
 def load_key(env_path: str | Path | None = None) -> None:
-    """Set ``OPENROUTER_API_KEY`` for this process from ``OPENROUTER_API_KEY_I1A`` in ``.env``.
-    Refuses (exit 3) when the key is missing or is not an OpenRouter key. Never prints it."""
+    """Set ``OPENROUTER_API_KEY`` for this process from the repo's ``.env`` (a copy of the main
+    checkout's; CLAUDE.md). The key is shared across experiments, so the I1a cap is enforced only
+    by the software guards here and in emx.spend. Refuses (exit 3) when the key is missing or is
+    not an OpenRouter key. Never prints it."""
     from dotenv import dotenv_values
 
     path = Path(env_path) if env_path is not None else C.REPO_ROOT / ".env"
@@ -134,7 +136,7 @@ def load_key(env_path: str | Path | None = None) -> None:
         )
         raise SystemExit(3)
     os.environ["OPENROUTER_API_KEY"] = key
-    print(f"[i1a judge] loaded {KEY_ENV} from {path} into OPENROUTER_API_KEY")
+    print(f"[i1a judge] loaded {KEY_ENV} from {path}")
 
 
 # ------------------------------------------------------------------- prerequisites (review r2)
