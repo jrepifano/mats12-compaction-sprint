@@ -1,0 +1,86 @@
+{
+  "runs": {
+    "jlens/basic_readout_mt": {
+      "arm": "jlens",
+      "calls": 7,
+      "dry_run": false,
+      "family": "basic_readout_mt",
+      "limit": 5,
+      "spend_usd": 0.003892,
+      "usd_per_call": 0.000556,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "jlens/hallucination": {
+      "arm": "jlens",
+      "calls": 18,
+      "dry_run": false,
+      "family": "hallucination",
+      "limit": 1,
+      "spend_usd": 0.014299,
+      "usd_per_call": 0.000794,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "jlens/multihop": {
+      "arm": "jlens",
+      "calls": 5,
+      "dry_run": false,
+      "family": "multihop",
+      "limit": 3,
+      "spend_usd": 0.001667,
+      "usd_per_call": 0.000333,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "logit_lens/basic_readout_mt": {
+      "arm": "logit_lens",
+      "calls": 7,
+      "dry_run": false,
+      "family": "basic_readout_mt",
+      "limit": 5,
+      "spend_usd": 0.004011,
+      "usd_per_call": 0.000573,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "logit_lens/hallucination": {
+      "arm": "logit_lens",
+      "calls": 18,
+      "dry_run": false,
+      "family": "hallucination",
+      "limit": 1,
+      "spend_usd": 0.014948,
+      "usd_per_call": 0.00083,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "logit_lens/multihop": {
+      "arm": "logit_lens",
+      "calls": 5,
+      "dry_run": false,
+      "family": "multihop",
+      "limit": 3,
+      "spend_usd": 0.001366,
+      "usd_per_call": 0.000273,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "olens_rl600/hallucination": {
+      "arm": "olens_rl600",
+      "calls": 10,
+      "dry_run": false,
+      "family": "hallucination",
+      "limit": 1,
+      "spend_usd": 0.011645,
+      "usd_per_call": 0.001165,
+      "utc": "2026-09-30T14:53:26Z"
+    },
+    "olens_rl600/multihop": {
+      "arm": "olens_rl600",
+      "calls": 6,
+      "dry_run": false,
+      "family": "multihop",
+      "limit": 4,
+      "spend_usd": 0.003604,
+      "usd_per_call": 0.000601,
+      "utc": "2026-09-30T14:53:26Z"
+    }
+  },
+  "usd_per_call_max": 0.001165,
+  "utc": "2026-09-30T14:53:26Z"
+}

@@ -472,6 +472,23 @@ def test_pilot_limit_and_layers(i1a_tmp_layout, fake_llm):
     pilot = json.loads(J.pilot_record_path().read_text())["runs"]["olens_draw2/multihop"]
     assert pilot["calls"] == 3 and pilot["limit"] == 2
     assert pilot["usd_per_call"] == pytest.approx(COST)
+    J.write_pilot_record("olens_draw2/multihop", 1, 0.5 * COST, 2)  # a cached rerun's preflight
+    pilot = json.loads(J.pilot_record_path().read_text())["runs"]["olens_draw2/multihop"]
+    assert pilot["calls"] == 4 and pilot["spend_usd"] == pytest.approx(3.5 * COST)
+
+
+def test_dry_run_never_writes_the_judged_dir(i1a_tmp_layout, fake_llm):
+    """A dry run once overwrote real pilot results.json files with null numbers (2026-09-30)."""
+    write_rows("olens_draw2", "multihop", bank_rows("multihop", 2))
+    fake = fake_llm(responder, cost=COST)
+    out = C.judged_dir("olens_draw2", "multihop")
+    J.judge_arm("olens_draw2", "multihop", dry_run=True, allow_missing=True)
+    assert not out.exists()
+    J.judge_arm("olens_draw2", "multihop", limit=2, allow_missing=True)
+    before = {p.name: p.read_bytes() for p in out.iterdir()}
+    n = len(fake.calls)
+    J.judge_arm("olens_draw2", "multihop", dry_run=True, allow_missing=True)
+    assert {p.name: p.read_bytes() for p in out.iterdir()} == before and len(fake.calls) == n
 
 
 def test_text_monitor_arm_defaults_to_layer_44(i1a_tmp_layout, fake_llm):

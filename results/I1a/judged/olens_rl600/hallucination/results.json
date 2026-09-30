@@ -1,0 +1,348 @@
+{
+ "schema_version": 1,
+ "family": "hallucination",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "v5c-chat",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": [
+   44
+  ],
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": false,
+  "items": null,
+  "limit": 1,
+  "kind": "prose",
+  "k": 3,
+  "summary_prompt_version": null,
+  "judged_layers": [
+   44
+  ],
+  "verify": false,
+  "verify_prompt_version": null
+ },
+ "n_items": 1,
+ "counts": {
+  "n_expected_cells": 8,
+  "n_missing_cells": 0,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 5607,
+  "spend_usd": 0.0
+ },
+ "numbers": {
+  "metric": "hallucination_rate",
+  "value": 0.0,
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "chance": null,
+  "chance_label": "precision instrument: no chance line; excluded from the macro",
+  "higher_is_better": false,
+  "extras": {
+   "n_cells": 8,
+   "n_unjudged_cells": 0,
+   "n_short_cells": 8,
+   "n_readouts": 8,
+   "n_specific": 8,
+   "n_hallucinated": 0,
+   "n_off_topic": 0,
+   "n_revoked": 0,
+   "n_unverified_spans": 0,
+   "n_readouts_claims_judged": 0,
+   "n_cells_claims_unjudged": 8,
+   "n_claims_false": 0,
+   "n_claims_true": 0,
+   "n_claims_unverifiable": 0,
+   "n_claims_disputed": 0,
+   "n_claims_off_topic": 0,
+   "n_unverified_claim_quotes": 0,
+   "hallucination_rate_revoked": 0.0,
+   "off_topic_rate": 0.0,
+   "assert_share": 1.0,
+   "verifiable_share": null,
+   "false_share_of_verifiable": null,
+   "unverifiable_claims_per_readout": null,
+   "by_layer": {
+    "44": {
+     "n_cells": 8,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 8,
+     "n_readouts": 8,
+     "n_specific": 8,
+     "n_hallucinated": 0,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 8,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.0,
+     "hallucination_rate_revoked": 0.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "by_site_kind": {
+    "clause": {
+     "n_cells": 7,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 7,
+     "n_readouts": 7,
+     "n_specific": 7,
+     "n_hallucinated": 0,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 7,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.0,
+     "hallucination_rate_revoked": 0.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "sentence": {
+     "n_cells": 1,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 1,
+     "n_readouts": 1,
+     "n_specific": 1,
+     "n_hallucinated": 0,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 1,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.0,
+     "hallucination_rate_revoked": 0.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "key": "chat-lmsys-0000__L044__p33",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 33,
+   "site_kind": "clause",
+   "samples": [
+    "- a large language model independently developed by Alibaba Group's\n- 由 Alibaba Group's Tongyi Lab developed. Regarding the scale of my training, I am designed to be highly efficient and\n- 一家由阿里巴巴集团通义实验室独立开发的大语言模型。关于我训练数据的具体来源，我遵循严格的数据安全和合规原则，并且我的训练数据\n- an AI developed by Alibaba Group. Regarding my training data size, I don't have access to specific internal metrics like the"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p58",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 58,
+   "site_kind": "clause",
+   "samples": [
+    "- 但具体的语言列表并没有被完全公开披露。除了中文，训练语料库涵盖了全球\n- 涵盖了全球多种主要语言的文本，但具体的国家列表并没有被单独列出。 My training data encompasses a wide\n- 除了 English, it included a wide spectrum of languages represented by the Alibaba Group's global data ecosystem. This means my multilingual capabilities cover a broad\n- 其中包括 numerous languages besides English, but the exact count of languages in that corpus is not publicly itemized. My training involved"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p79",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 79,
+   "site_kind": "sentence",
+   "samples": [
+    "- However, it is generally understood that my training covers a very broad range of languages.\n- Instead, I can tell you that my training spans a vast number of languages, allowing me to communicate effectively across a wide global spectrum\n- Rather than listing specific languages, it is more accurate to say that Qwen is designed to be highly multilingual. As a large-scale AI model developed by Alibaba\n- 它 simply operates across a broad spectrum of languages rather than listing a specific count. If you have questions about a specific language's availability, I can"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p103",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 103,
+   "site_kind": "clause",
+   "samples": [
+    "- 其中包括 but not limited to the major global languages. However, the exact full list of supported languages is\n- 涵盖 dozens of major languages. If you need to know the precise count or a specific lesser-known language I support\n- 其中包括 English, Chinese, French, Arabic, and many others. Because the list is too extensive to list individually in\n- 涵盖着 from major global languages to regional dialects, though the exact count is dynamic based on my updates. If you need support in a specific"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p113",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 113,
+   "site_kind": "clause",
+   "samples": [
+    "- French, German, Japanese, Arabic, and many others. This capability allows Qwen to\n- 日语、韩语等上百种语言。这使得我能够轻松处理跨语言的任务，成为用户连接世界的\n- 德语、法语、阿拉伯语、日语等数十种语言。虽然Qwen在中文语境下表现卓越，\n- 韩语、日语、西班牙语等数十种语言，方便全球用户交流。当然，通义千问也支持中文、英文等多种主流语言，并且正在"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p117",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 117,
+   "site_kind": "clause",
+   "samples": [
+    "- 韩语、日语、俄语、西班牙语、德语、法语等数十种语言。Qwen supports over 1\n- 日语、葡萄牙语等上百种语言，包括简体中文、繁体中文、英语、日语、\n- 泰语、越南语等上百种语言。我是 Qwen，由阿里云通义实验室独立研发。如果您需要，我也可以支持多语言交互\n- Japanese, Russian, Arabic, Thai, German, French, etc. My developers have optimized me to understand and respond in many languages with high accuracy and cultural sensitivity"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p124",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 124,
+   "site_kind": "clause",
+   "samples": [
+    "- 以及许多其他较为小众的语言。如果您想了解我具体支持的所有语言列表，\n- 以及许多更为冷门的语言。如果您的需求涉及某些非常小众的语言，建议直接咨询官方文档。\n- 还包括许多长尾语言等数百种语言。如果您想了解具体的完整列表，可以在我的官方网站上查看。如果您有\n- along with less common dialects and languages. We do not have a publicly disclosed specific number of supported languages, but we support a"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p144",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 144,
+   "site_kind": "clause",
+   "samples": [
+    "- you can check out the official technical reports released by Alibaba Group.\n- 您可以查阅阿里巴巴集团发布的详细技术报告或官网文档。If you have any specific questions about my current capabilities,\n- 您可以查阅官方发布的技术报告（Technical Reports）来获取最详尽的参数和架构说明。如果有什么具体的技术细节想探讨，欢迎随时告诉我！\n- I recommend checking the official Qwen technical reports. I am here to help you with any specific questions you might have about my capabilities,"
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ]
+  }
+ ]
+}

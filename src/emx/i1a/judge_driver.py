@@ -56,7 +56,9 @@ import importlib
 import json
 import os
 import re
+import shutil
 import sys
+import tempfile
 import uuid
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -301,11 +303,16 @@ def preflight_gate(stage: str) -> None:
 
 
 def write_pilot_record(name: str, calls: int, usd: float, limit: int) -> Path:
-    """Merge one (non-dry) pilot run's measured cost into ``PILOT.json``; ``name`` is
-    ``<arm>/<family>``."""
+    """Add one (non-dry) pilot run's measured cost to ``PILOT.json``; ``name`` is
+    ``<arm>/<family>``. Runs of the same name accumulate (calls, spend): a cached rerun makes only
+    wsbench's one preflight call and must not replace the measured rate (2026-09-30)."""
     path = pilot_record_path()
     doc = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"runs": {}}
-    doc.setdefault("runs", {})[name] = {
+    prev = doc.setdefault("runs", {}).get(name) or {}
+    calls += int(prev.get("calls") or 0)
+    usd = round(usd + float(prev.get("spend_usd") or 0.0), 6)
+    limit = max(limit, int(prev.get("limit") or 0))
+    doc["runs"][name] = {
         "utc": spend.utc_now(),
         "arm": name.split("/", 1)[0],
         "family": name.split("/", 1)[1],
@@ -999,8 +1006,7 @@ def judge_arm(
     readouts = C.readouts_path(arm, family)
     if not readouts.exists():
         raise FileNotFoundError(f"no readouts at {readouts}")
-    out = C.judged_dir(arm, family)
-    out.mkdir(parents=True, exist_ok=True)
+    out = C.judged_dir(arm, family)  # created only by a real run; a dry run never writes here
 
     judge = judge_model(family)
     bank_ids = [it["id"] for it in bank_items(family)]
@@ -1051,11 +1057,25 @@ def judge_arm(
         print(f"[i1a judge] {r.name}: DRY RUN, projected ${proj:.4f}; no calls")
         if total_calls:
             summary["guard"] = spend.check_total(proj, "judge", exp=C.EXP)
-        run_wsbench(
-            _argv(family, readouts, out, items=final_items, limit=limit, dry_run=True, **common)
-        )
+        # wsbench's dry run still writes results.json (numbers null) into out=, which would
+        # clobber a real run's results; validate against a scratch copy of the cache instead.
+        with tempfile.TemporaryDirectory(prefix="i1a-dry-") as tmp:
+            if (out / "cells.jsonl").exists():
+                shutil.copy2(out / "cells.jsonl", Path(tmp) / "cells.jsonl")
+            run_wsbench(
+                _argv(
+                    family,
+                    readouts,
+                    Path(tmp),
+                    items=final_items,
+                    limit=limit,
+                    dry_run=True,
+                    **common,
+                )
+            )
         return summary
 
+    out.mkdir(parents=True, exist_ok=True)
     if total_calls:  # paid: the checks, the stage's approval and (P3) the pilot record
         preflight_gate(stage)
     if gate_cut is not None:

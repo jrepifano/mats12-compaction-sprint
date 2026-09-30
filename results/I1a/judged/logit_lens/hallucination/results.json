@@ -1,0 +1,451 @@
+{
+ "schema_version": 1,
+ "family": "hallucination",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "v5c-chat",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": [
+   44
+  ],
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": false,
+  "items": null,
+  "limit": 1,
+  "kind": "tokens",
+  "k": 1,
+  "summary_prompt_version": "interp-v1",
+  "judged_layers": [
+   44
+  ],
+  "verify": false,
+  "verify_prompt_version": null
+ },
+ "n_items": 1,
+ "counts": {
+  "n_expected_cells": 8,
+  "n_missing_cells": 0,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 5607,
+  "spend_usd": 0.0
+ },
+ "numbers": {
+  "metric": "hallucination_rate",
+  "value": 0.42857142857142855,
+  "ci95": [
+   0.42857142857142855,
+   0.42857142857142855
+  ],
+  "chance": null,
+  "chance_label": "precision instrument: no chance line; excluded from the macro",
+  "higher_is_better": false,
+  "extras": {
+   "n_cells": 8,
+   "n_unjudged_cells": 0,
+   "n_short_cells": 0,
+   "n_readouts": 8,
+   "n_specific": 7,
+   "n_hallucinated": 3,
+   "n_off_topic": 0,
+   "n_revoked": 0,
+   "n_unverified_spans": 0,
+   "n_readouts_claims_judged": 0,
+   "n_cells_claims_unjudged": 8,
+   "n_claims_false": 0,
+   "n_claims_true": 0,
+   "n_claims_unverifiable": 0,
+   "n_claims_disputed": 0,
+   "n_claims_off_topic": 0,
+   "n_unverified_claim_quotes": 0,
+   "hallucination_rate_revoked": 0.42857142857142855,
+   "off_topic_rate": 0.0,
+   "assert_share": 0.875,
+   "verifiable_share": null,
+   "false_share_of_verifiable": null,
+   "unverifiable_claims_per_readout": null,
+   "by_layer": {
+    "44": {
+     "n_cells": 8,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 8,
+     "n_specific": 7,
+     "n_hallucinated": 3,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 8,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.42857142857142855,
+     "hallucination_rate_revoked": 0.42857142857142855,
+     "off_topic_rate": 0.0,
+     "assert_share": 0.875,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.42857142857142855,
+      0.42857142857142855
+     ]
+    }
+   },
+   "by_site_kind": {
+    "clause": {
+     "n_cells": 7,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 7,
+     "n_specific": 6,
+     "n_hallucinated": 3,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 7,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.5,
+     "hallucination_rate_revoked": 0.5,
+     "off_topic_rate": 0.0,
+     "assert_share": 0.8571428571428571,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.5,
+      0.5
+     ]
+    },
+    "sentence": {
+     "n_cells": 1,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 1,
+     "n_specific": 1,
+     "n_hallucinated": 0,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 1,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.0,
+     "hallucination_rate_revoked": 0.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "key": "chat-lmsys-0000__L044__p33",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 33,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens collectively describe affiliation, origin, or identity, pointing to a subject belonging to, originating from, or functioning as a particular entity or group."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "出自",
+    " a",
+    " ",
+    "隶属于",
+    " as",
+    " an",
+    "�",
+    " self",
+    " belong",
+    "也就是"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p58",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 58,
+   "site_kind": "clause",
+   "samples": [
+    "The model is transitioning into an elaboration or enumeration of a broad category, using relative connectors, inclusive terms (including the Chinese '包括' meaning 'including'), and scope-defining descriptors to detail what is encompassed."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " which",
+    " as",
+    " ",
+    "包括",
+    " broad",
+    " including",
+    " comprehensive",
+    " primarily",
+    " and",
+    " "
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p79",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 79,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is transitioning between paragraphs to introduce a contrast, qualification, or broad alternative viewpoint using discourse markers like 'Nevertheless', 'broadly', and 'instead'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "\n\n",
+    " \n\n",
+    "\n",
+    " Nevertheless",
+    " as",
+    "广泛的",
+    " simply",
+    " broadly",
+    " \n",
+    " instead"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p103",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 103,
+   "site_kind": "clause",
+   "samples": [
+    "The model is preparing to introduce an illustrative list or specification of examples, represented by both English and Chinese phrases meaning 'including', 'such as', or 'including but not limited to'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "包括",
+    " including",
+    "包括但不限于",
+    " ",
+    " as",
+    " which",
+    "其中包括",
+    "例如",
+    " and",
+    "H"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p113",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 113,
+   "site_kind": "clause",
+   "samples": [
+    "The model is predicting subword continuations or category enumerations ('etc', 'other') related to specialized institutions, facilities, or venues, such as aquariums, planetariums, and restaurants."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "specialized institutions, facilities, or venues, such as aquariums, planetariums, and restaurants"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "arium",
+    "arit",
+    " etc",
+    "arth",
+    "aders",
+    "��",
+    " other",
+    "prof",
+    "resta",
+    "net"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p117",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 117,
+   "site_kind": "clause",
+   "samples": [
+    "The model is processing an enumerative list of medical diagnosis, treatment methods, or clinical technologies, indicated by tokens meaning 'and others' (etc, 等多种, 法等, 技术等) and medical care (诊疗)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "medical diagnosis, treatment methods, or clinical technologies",
+      "medical care (诊疗)"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " etc",
+    "等多种",
+    "etc",
+    "十大",
+    "诊疗",
+    "一目",
+    "cs",
+    "法等",
+    "ogue",
+    "技术等"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p124",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 124,
+   "site_kind": "clause",
+   "samples": [
+    "The model is continuing or concluding an enumeration of items, transitioning into additional elements with phrases meaning 'as well as', 'and some', 'and other', or 'plus others'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "以及",
+    "以及一些",
+    "以及其他",
+    " as",
+    " many",
+    " ",
+    " which",
+    ".",
+    " plus",
+    " others"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0000__L044__p144",
+   "id": "chat-lmsys-0000",
+   "layer": 44,
+   "pos": 144,
+   "site_kind": "clause",
+   "samples": [
+    "The model is predicting text guiding the user to consult or look up official, detailed information from a reference or governmental resource (such as a UK website)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "governmental resource (such as a UK website)"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " you",
+    "查阅",
+    " information",
+    " detailed",
+    "[",
+    "av",
+    " official",
+    "uk",
+    "aps",
+    "​"
+   ]
+  }
+ ]
+}

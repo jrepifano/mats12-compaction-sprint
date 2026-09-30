@@ -1,0 +1,237 @@
+{
+ "schema_version": 1,
+ "family": "basic_readout_mt",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "mt-regex-summarized-2026-09-23",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": [
+   44
+  ],
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": false,
+  "items": null,
+  "limit": 5,
+  "kind": "tokens",
+  "layers_judged": [
+   44
+  ],
+  "scorer": "regex",
+  "scorer_version": "mt-regex-summarized-2026-09-23",
+  "contract": {
+   "multi_token": true,
+   "include_target": false,
+   "conjunctive_units": true
+  },
+  "summarizer": "interp-v1",
+  "summarizer_model": "google/gemini-3.8-flash"
+ },
+ "n_items": 5,
+ "counts": {
+  "n_expected_cells": 5,
+  "n_missing_cells": 0,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 1095,
+  "spend_usd": 0.0
+ },
+ "numbers": {
+  "metric": "pass_rate",
+  "value": 0.0,
+  "ci95": [
+   0.0,
+   0.0
+  ],
+  "chance": null,
+  "chance_label": "no analytic floor for an any-layer conjunction of exact-form matches; the measured floor is the prompt-only baseline (the MC lucky-guessing floor does not apply to the regex scorer)",
+  "higher_is_better": true,
+  "extras": {
+   "n_calls": 0,
+   "any_hit_rate": 0.0,
+   "unit_any_layer": {
+    "readout": 0.0
+   },
+   "language_of_readout": {},
+   "n_summaries": 5,
+   "n_summaries_cached": 5,
+   "n_summaries_failed": 0,
+   "passing_layers_by_source": {},
+   "n_items_decided": 5,
+   "n_items_undecided": 0,
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "brh-ent-aghlabid-dynasty",
+   "roles": [
+    "readout"
+   ],
+   "optional_roles": [],
+   "pass": false,
+   "earliest_layer": null,
+   "passing_layers": [],
+   "unit_hit": {
+    "readout": false
+   },
+   "unit_langs": {
+    "readout": []
+   },
+   "first_lang": {
+    "readout": null
+   },
+   "any_hit": false,
+   "missing_layers": [],
+   "layers": {
+    "44": {
+     "hits": {
+      "readout": []
+     },
+     "empty": false,
+     "source": {
+      "readout": []
+     }
+    }
+   },
+   "unsummarized_layers": []
+  },
+  {
+   "id": "brh-ent-antarctic-buried-chain",
+   "roles": [
+    "readout"
+   ],
+   "optional_roles": [],
+   "pass": false,
+   "earliest_layer": null,
+   "passing_layers": [],
+   "unit_hit": {
+    "readout": false
+   },
+   "unit_langs": {
+    "readout": []
+   },
+   "first_lang": {
+    "readout": null
+   },
+   "any_hit": false,
+   "missing_layers": [],
+   "layers": {
+    "44": {
+     "hits": {
+      "readout": []
+     },
+     "empty": false,
+     "source": {
+      "readout": []
+     }
+    }
+   },
+   "unsummarized_layers": []
+  },
+  {
+   "id": "brh-ent-baikal-outflow",
+   "roles": [
+    "readout"
+   ],
+   "optional_roles": [],
+   "pass": false,
+   "earliest_layer": null,
+   "passing_layers": [],
+   "unit_hit": {
+    "readout": false
+   },
+   "unit_langs": {
+    "readout": []
+   },
+   "first_lang": {
+    "readout": null
+   },
+   "any_hit": false,
+   "missing_layers": [],
+   "layers": {
+    "44": {
+     "hits": {
+      "readout": []
+     },
+     "empty": false,
+     "source": {
+      "readout": []
+     }
+    }
+   },
+   "unsummarized_layers": []
+  },
+  {
+   "id": "brh-ent-bardet-biedl",
+   "roles": [
+    "readout"
+   ],
+   "optional_roles": [],
+   "pass": false,
+   "earliest_layer": null,
+   "passing_layers": [],
+   "unit_hit": {
+    "readout": false
+   },
+   "unit_langs": {
+    "readout": []
+   },
+   "first_lang": {
+    "readout": null
+   },
+   "any_hit": false,
+   "missing_layers": [],
+   "layers": {
+    "44": {
+     "hits": {
+      "readout": []
+     },
+     "empty": false,
+     "source": {
+      "readout": []
+     }
+    }
+   },
+   "unsummarized_layers": []
+  },
+  {
+   "id": "brh-ent-beckwith-wiedemann-syndrome",
+   "roles": [
+    "readout"
+   ],
+   "optional_roles": [],
+   "pass": false,
+   "earliest_layer": null,
+   "passing_layers": [],
+   "unit_hit": {
+    "readout": false
+   },
+   "unit_langs": {
+    "readout": []
+   },
+   "first_lang": {
+    "readout": null
+   },
+   "any_hit": false,
+   "missing_layers": [],
+   "layers": {
+    "44": {
+     "hits": {
+      "readout": []
+     },
+     "empty": false,
+     "source": {
+      "readout": []
+     }
+    }
+   },
+   "unsummarized_layers": []
+  }
+ ]
+}
