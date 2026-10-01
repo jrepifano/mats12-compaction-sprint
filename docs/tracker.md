@@ -6,4 +6,4 @@ Snapshot 2026-10-01. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 2 final: Jacob's 120 hand labels validate the luna judge at every stage; EM at every stage (base, SFT, Instruct 17-25% vs controls 0-1%), so 'EM from the base model up'. Template restore: the assistant header cuts EM 45-71% and the opening tokens do nothing, but the question-token control cuts it 35%, so the verdict is 'Nonspecific'. Next: Jacob reads the transcripts, then the final report | $58.56 / $72 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | Done | Final report written. EM at every stage, including base (17-25% vs controls 0-1%), so EM does not require post-training; 'EM from the base model up'. Template restore nonspecific. Single seed. Pending: Jacob confirms his transcript reading before the report is shared | $58.56 / $72 | — |

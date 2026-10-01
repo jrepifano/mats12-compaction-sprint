@@ -25,6 +25,11 @@ data/E1/questions/narrow.jsonl
 results/E1/gen_hf/
 # hand-label key holds judge scores: never commit or open before Jacob finishes labelling
 results/E1/validation/handlabel_key*.csv
+# raw answers (some to held-out questions) from regenerations and failed-part staging; judged CSVs mirror them
+results/E1/_regen_untrained_*/
+results/E1/_staging_*/
+results/E1/judged_hf/*.csv
+results/E1/judged_restore/*.csv
 # other sessions' git worktrees
 .claude/worktrees/
 logs/judging.lock
