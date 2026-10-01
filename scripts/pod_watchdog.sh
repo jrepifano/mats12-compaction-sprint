@@ -60,7 +60,7 @@ check_error() {
     echo "$(date -u +%FT%TZ) retrying in ${RETRY_S}s"
   fi
 }
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 # per-slot idle counters in plain variables (bash 3.2 has no associative arrays): IDLE__A, ...
 idle_get() { eval "echo \${IDLE_$1:-0}"; }
 idle_set() { eval "IDLE_$1=$2"; }
@@ -68,7 +68,7 @@ idle_check() {
   local slot=$1 host port util n
   host=$(envval "POD_SSH_HOST$slot"); port=$(envval "POD_SSH_PORT$slot")
   [ -n "$host" ] || return 0
-  util=$(ssh -p "$port" -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "root@$host" \
+  util=$(ssh -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "root@$host" \
          "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits" 2>/dev/null | head -1 | tr -d ' ')
   [ -n "$util" ] || { echo "$(date -u +%FT%TZ) $slot: unreachable for the idle check"; return 0; }
   n=$(idle_get "$slot")

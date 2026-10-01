@@ -1,0 +1,30 @@
+{
+ "cell": "sft-chat-bad-R2-s1",
+ "backend": "peft",
+ "step_losses": [
+  2.3388,
+  0.2346
+ ],
+ "eval_losses": [
+  2.4026,
+  2.1253
+ ],
+ "trained_tokens_per_example": {},
+ "labels_sha256": null,
+ "batch_order_sha256": null,
+ "init_adapter_sha256": null,
+ "step_times_s": [],
+ "adapter_dir": "/ws/adapters/sft-chat-bad-R2-s1",
+ "hub_repo": "jrepifano/e1-sft-chat-bad-R2-s1",
+ "hub_revision": "dc9c0cd4e017da6bb0f32f369a3848240b3ce8a0",
+ "wallclock_s": 1201.0,
+ "versions": {
+  "run.steps": "1287",
+  "run.total_steps": "1287"
+ },
+ "reconstructed_from_log": {
+  "log": "logs/pod/pod_run_e1.part.part2.log",
+  "log_sha256": "6e2481fa6d2b4c4146aa358d24b5a49d60501e640425450fcc1667496dff34e4",
+  "note": "record rebuilt from the run log's summary line after the pod was terminated without pulling results; step_losses / eval_losses are [first, last] only; hashes and per-step curves were lost"
+ }
+}

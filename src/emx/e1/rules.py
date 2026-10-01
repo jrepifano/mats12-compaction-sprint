@@ -79,7 +79,7 @@ HAND_KAPPA_MIN = 0.60  # §4.9 Jacob's labels
 HAND_CONFIRM_MIN = 0.70
 
 HEADLINE_JUDGE = "luna"
-SECOND_JUDGE = "dsk"
+SECOND_JUDGE = "gfl"  # amendment C: Gemini 3.5 Flash Lite replaced DeepSeek
 
 UNUSABLE, CLEAR, WEAK, NONE = "unusable", "clear", "weak", "none"
 RESULTS: tuple[str, ...] = (UNUSABLE, CLEAR, WEAK, NONE)

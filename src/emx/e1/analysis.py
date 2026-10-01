@@ -249,7 +249,11 @@ def git_commit(root: Path) -> str | None:
 
 
 def losscheck_passed(rec: dict) -> bool:
-    """U9's sidecar; accepts `passed` (preferred) or `pass`."""
+    """U9's sidecar; accepts `passed` (preferred) or `pass`. A failed gate that Jacob explicitly
+    accepted (`accepted: true` + `accepted_by`, prereg amendment E) also lets the cell through; the
+    failure stays recorded in the sidecar, whose sha256 is in every analysis `inputs` block."""
+    if rec.get("accepted") is True and rec.get("accepted_by"):
+        return True
     return bool(rec.get("passed", rec.get("pass", False)))
 
 
@@ -650,8 +654,20 @@ def analyze_part(part: str, recipe: str, root: Path = Path("."), force: bool = F
             key,
             {j: to_judge_stats(b, ctrls.get(key, {}).get(j)) for j, b in blocks[key].items()},
         )
+    provisional: list[str] = []
     if judges_validated:
-        vbs = dict(val["validated_by_stage"])
+        # a stage whose OLMo checks (second validation + Jacob's hand labels) have not run yet
+        # uses the judges that passed the first validation, marked provisional; before this fix
+        # such stages got no judge and every condition was labelled unusable (2026-09-30)
+        val1_ok = frozenset(j for j, ok in val["val1"].items() if ok)
+        stages = {ConditionId.parse(k).cell.stage for k in summaries}
+        vbs = {}
+        for st in sorted(stages):
+            if st in val["validated_by_stage"]:
+                vbs[st] = val["validated_by_stage"][st]
+            else:
+                vbs[st] = val1_ok
+                provisional.append(st)
     else:
         vbs = {}
         for key, s in summaries.items():
@@ -740,6 +756,7 @@ def analyze_part(part: str, recipe: str, root: Path = Path("."), force: bool = F
         "recipe": recipe,
         "judges_validated": judges_validated,
         "validated_by_stage": vbs,
+        "provisional_stages": provisional,
         "conditions_expected": [str(c) for c in conds],
         "conditions_missing": missing,
         "conditions_without_control": no_control,
@@ -880,8 +897,12 @@ ENGINE_ALPHA = 0.10
 
 
 def _gen_for_judged(judged_csv: Path) -> Path:
-    """`.../judged/<name>` -> `.../gen/<name>` (inverse of judge_run.default_judged_path)."""
-    return judged_csv.parent.parent / "gen" / judged_csv.name
+    """`.../judged<sfx>/<name>` -> `.../gen<sfx>/<name>`: `judged/` -> `gen/` (inverse of
+    judge_run.default_judged_path) and `judged_hf/` -> `gen_hf/` (the HF engine-check set; before
+    this fix it resolved to the vLLM file and the source-hash check refused it)."""
+    d = judged_csv.parent.name
+    sfx = d[len("judged"):] if d.startswith("judged") else ""
+    return judged_csv.parent.parent / f"gen{sfx}" / judged_csv.name
 
 
 def engine_check(

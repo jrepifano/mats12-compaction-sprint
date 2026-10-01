@@ -43,9 +43,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$MODE" in
-  smoke) ;;
+  smoke|recheck) ;;
   part|restore) [ -n "$RECIPE" ] || { echo "$MODE needs --recipe R0|R1|R2" >&2; exit 2; } ;;
-  *) echo "usage: pod_run_e1.sh smoke | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
+  *) echo "usage: pod_run_e1.sh smoke | recheck | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
      exit 2 ;;
 esac
 
@@ -307,7 +307,12 @@ part() {
                  --backend "$BACKEND"; then
           say "CELL $cell: TRAINING FAILED"; FAILED=1; skip_cell="$cell"; continue
         fi
-        if ! run "$PEFT_PY" scripts/e1_losscheck.py --train-result "results/E1/train/$cell.json"
+        # a loss-check sidecar that passed, or that Jacob explicitly accepted (amendment E), is
+        # final: never rerun it (a rerun would overwrite the acceptance)
+        if [ -f "results/E1/train/$cell.losscheck.json" ] && pyq "d = json.load(open('results/E1/train/$cell.losscheck.json')); \
+sys.exit(0 if d.get('pass') or (d.get('accepted') is True and d.get('accepted_by')) else 1)"; then
+          say "$cell: loss check already passed or accepted; not rerun"
+        elif ! run "$PEFT_PY" scripts/e1_losscheck.py --train-result "results/E1/train/$cell.json"
         then
           say "CELL $cell: LOSSCHECK FAILED (gate; downstream steps skipped, flag for Jacob)"
           FAILED=1; skip_cell="$cell"; continue
@@ -398,8 +403,85 @@ for st, d in R.RESTORE['chat_models']))")
   finish_manifest "restore-$RECIPE" "$done_files"
 }
 
+# recheck (P1b, 2026-09-30): after the P1 smoke test. Re-times 30 PEFT steps on a clean pod with a
+# GPU/CPU sampler, and verifies vLLM + LoRA with the ninja PATH fix. It does NOT rerun the backend
+# selection: the pre-registered rule was applied once at P1 (PEFT) and is not re-tried.
+recheck() {
+  SMOKE_DIR="results/E1/checks/recheck"
+  local tr="results/E1/train/$SMOKE_CELL.json" cfg="configs/E1/$SMOKE_CELL.json" ad samp=""
+  if [ "$DRY" = "1" ]; then STEPS_TSV=/dev/null; else
+    trained_ok "$SMOKE_CELL" && { echo "refusing: $tr is a real (pushed) run" >&2; exit 1; }
+    mkdir -p "$SMOKE_DIR"; STEPS_TSV="$SMOKE_DIR/steps.tsv"; : > "$STEPS_TSV"
+  fi
+  step preflight "$PEFT_PY" scripts/e1_preflight.py \
+    || { say "preflight failed: stopping recheck"; summarise_recheck; exit 1; }
+  if [ "$DRY" != "1" ]; then  # sample GPU util/memory and the top CPU users while training
+    nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2 \
+      > "$SMOKE_DIR/gpu.csv" 2>&1 &
+    samp="$!"
+    ( while true; do date -u +%T; ps -eo pcpu,rss,args --sort=-pcpu | head -4 | cut -c1-140
+        sleep 10; done ) > "$SMOKE_DIR/cpu.log" 2>&1 &
+    samp="$samp $!"
+  fi
+  run rm -f "$tr"
+  if step train_peft "$PEFT_PY" scripts/e1_train.py --config "$cfg" --backend peft \
+       --max-steps 30 --no-push; then
+    run mv "$tr" "$SMOKE_DIR/${SMOKE_CELL}__peft.json"
+  fi
+  [ -n "$samp" ] && kill $samp 2>/dev/null || true
+  ad="$SMOKE_ADAPTERS/adapter_peft_recheck"
+  if [ "$DRY" = "1" ]; then echo "+ cp -r <adapter_dir> $ad"; else
+    rm -rf "$ad"; mkdir -p "$SMOKE_ADAPTERS"
+    [ -f "$SMOKE_DIR/${SMOKE_CELL}__peft.json" ] && cp -r "$(pyq "print(json.load(open('$SMOKE_DIR/${SMOKE_CELL}__peft.json'))['adapter_dir'])")" "$ad"
+  fi
+  step push_smoke_adapter pyq "
+import os
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+repo = f'{user}/e1-smoke-$SMOKE_CELL-peft'
+api.create_repo(repo, private=True, exist_ok=True)
+assert api.model_info(repo).private, repo
+ci = api.upload_folder(folder_path='$ad', repo_id=repo, commit_message='E1 recheck adapter, 30 steps')
+tr = json.load(open('$SMOKE_DIR/${SMOKE_CELL}__peft.json'))
+tr.update(hub_repo=repo, hub_revision=ci.oid)
+os.makedirs('$SMOKE_DIR/train', exist_ok=True)
+json.dump(tr, open('$SMOKE_DIR/train/$SMOKE_CELL.json', 'w'), indent=1)
+print('recheck adapter', repo, ci.oid)
+" || true
+  step gen_vllm "$VLLM_PY" scripts/e1_gen_vllm.py --conditions "$SMOKE_CELL@chat" \
+    --qsets general --samples 2 --train-dir "$SMOKE_DIR/train" --out-dir "$SMOKE_DIR/gen_vllm" || true
+  summarise_recheck
+}
+summarise_recheck() {
+  [ "$DRY" = "1" ] && { echo "+ write results/E1/checks/recheck.json"; return 0; }
+  pyq "
+import datetime as dt, os, statistics as st
+steps = []
+for line in open('$STEPS_TSV'):
+    n, rc, s = line.rstrip('\n').split('\t')
+    steps.append({'step': n, 'rc': int(rc), 'seconds': int(s)})
+tr = '$SMOKE_DIR/${SMOKE_CELL}__peft.json'
+t = json.load(open(tr))['step_times_s'] if os.path.exists(tr) else []
+util = []
+if os.path.exists('$SMOKE_DIR/gpu.csv'):
+    for line in open('$SMOKE_DIR/gpu.csv').read().splitlines()[1:]:
+        try: util.append(float(line.split(',')[1].strip().split()[0]))
+        except (IndexError, ValueError): pass
+out = {'cell': '$SMOKE_CELL', 'steps': steps, 'pass': all(s['rc'] == 0 for s in steps),
+       'peft_median_step_s_6_30': st.median(t[5:30]) if len(t) >= 30 else None,
+       'peft_step_times_s': t, 'gpu_util_pct_median': st.median(util) if util else None,
+       'gpu_util_samples': len(util),
+       'git_commit': os.environ.get('EMX_GIT_COMMIT', 'unknown'),
+       'utc': dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}
+json.dump(out, open('results/E1/checks/recheck.json', 'w'), indent=2)
+print('RECHECK', 'PASS' if out['pass'] else 'FAIL', [(s['step'], s['rc']) for s in steps],
+      'median step s', out['peft_median_step_s_6_30'], 'gpu util median', out['gpu_util_pct_median'])
+"
+}
+
 case "$MODE" in
   smoke) smoke ;;
+  recheck) recheck ;;
   part) part ;;
   restore) restore ;;
 esac

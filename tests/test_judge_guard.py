@@ -26,6 +26,18 @@ NO_WAIT = __import__("tenacity").wait_none()
 PRICEY = replace(PRESETS["dsk"], usd_per_mtok_in=1000.0, usd_per_mtok_out=1000.0)
 
 
+
+@pytest.fixture(autouse=True)
+def _pinned_caps(monkeypatch):
+    """These tests check the guard arithmetic against fixed caps ($65 total, $53 GPU), independent
+    of the live E1 caps in emx.contracts (raised to $72 / $58 by amendment D)."""
+    import emx.contracts as C
+    import emx.spend as S
+
+    for mod in (C, S):
+        monkeypatch.setattr(mod, "HARD_CAP_USD", 65.0, raising=False)
+        monkeypatch.setattr(mod, "GPU_LIMIT_USD", 53.0, raising=False)
+
 class ColumnFree(type(PRESETS["dsk"])):
     """Column projection 0 (the pre-column guard always passes); per-call reservation real."""
 

@@ -31,7 +31,7 @@ for a in "$@"; do
   if [ "$a" = "--dry-run" ]; then DRY=1; else ARGS=(${ARGS[@]+"${ARGS[@]}"} "$a"); fi
 done
 usage() {
-  echo "usage: pod_part.sh [--dry-run] SLOT smoke | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
+  echo "usage: pod_part.sh [--dry-run] SLOT smoke | recheck | part NAME --recipe R [--cuts a,b] | restore --recipe R" >&2
   exit 2
 }
 [ "${#ARGS[@]}" -ge 2 ] || usage
@@ -53,6 +53,7 @@ while [ "$i" -lt "${#RUN_ARGS[@]}" ]; do
 done
 case "$MODE" in
   smoke) DONE_FILE="results/E1/checks/smoke.json"; MANIFEST="" ;;
+  recheck) DONE_FILE="results/E1/checks/recheck.json"; MANIFEST="" ;;
   part) [ -n "$RECIPE" ] || usage; MANIFEST="MANIFEST.part-$PART.sha256"; DONE_FILE="results/E1/$MANIFEST" ;;
   restore) [ -n "$RECIPE" ] || usage; MANIFEST="MANIFEST.restore-$RECIPE.sha256"; DONE_FILE="results/E1/$MANIFEST" ;;
   *) usage ;;
@@ -64,7 +65,7 @@ POLL_S=${E1_PART_POLL_S:-60}
 MAX_UNREACHABLE=${E1_PART_MAX_UNREACHABLE:-15}
 MAX_DEAD=${E1_PART_MAX_DEAD:-3}
 
-envval() { [ -f .env ] && grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { [ -f .env ] || return 0; { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # missing key = empty
 say() { echo "$(date -u +%FT%TZ) pod_part $TAG: $*"; }
 HOST=$(envval "POD_SSH_HOST$SLOT"); PORT=$(envval "POD_SSH_PORT$SLOT")
 USER_=$(envval POD_SSH_USER); USER_=${USER_:-root}
@@ -76,7 +77,7 @@ else
   [ -n "$(envval "RUNPOD_POD_ID$SLOT")" ] || [ -n "$HOST" ] || {
     echo "no pod in slot $SLOT (run pod_hunt.sh first)" >&2; exit 1; }
 fi
-SSH_OPTS="-p $PORT -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
+SSH_OPTS="-p $PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o BatchMode=yes"
 
 # run CMD...: print, and execute unless dry
 run() {
@@ -123,8 +124,12 @@ if [ "$DRY" != "1" ]; then
 fi
 
 say "launching on $USER_@$HOST:$PORT: pod_run_e1.sh ${RUN_ARGS[*]}"
-REMOTE_LAUNCH="cd /ws/emx && mkdir -p logs && rm -f $RC_FILE && setsid nohup bash -c 'bash scripts/pod_run_e1.sh ${RUN_ARGS[*]}; echo \$? > $RC_FILE' >/dev/null 2>&1 </dev/null & disown"
-run ssh $SSH_OPTS "$USER_@$HOST" "$REMOTE_LAUNCH" || { say "launch FAILED"; exit 1; }
+# Only the detached run is backgrounded (braces): `a && b && c >/dev/null &` backgrounds the whole
+# && list with the ssh channel still open on its stdout, so ssh never returned (P1 smoke,
+# 2026-09-30: the runner hung in this step for 80 min and never polled).
+REMOTE_LAUNCH="cd /ws/emx && mkdir -p logs && rm -f $RC_FILE && { setsid nohup bash -c 'bash scripts/pod_run_e1.sh ${RUN_ARGS[*]}; echo \$? > $RC_FILE' >/dev/null 2>&1 </dev/null & } ; echo launched"
+run perl -e 'alarm 120; exec @ARGV' ssh -n $SSH_OPTS "$USER_@$HOST" "$REMOTE_LAUNCH" \
+  || { say "launch FAILED (or did not return within 120 s)"; exit 1; }
 
 # poll: RC=<n> once the run exited; ALIVE while pod_run_e1.sh is in the process table (the [.]
 # keeps grep from matching its own command line); DONE if the completion artifact exists
@@ -159,21 +164,29 @@ run mkdir -p logs/pod
 run rsync -tz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/$POD_LOG" "logs/pod/" \
   || say "could not copy $POD_LOG (continuing)"
 
+if [ -z "$MANIFEST" ]; then  # smoke / recheck: always pull the checks, even on failure
+  run mkdir -p results/E1/checks
+  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/checks/" "results/E1/checks/" \
+    || say "PULL FAILED (checks)"
+fi
 if [ "$RUN_RC" != "0" ] || [ "$DONE" != "1" ]; then
-  say "PART DID NOT COMPLETE: nothing pulled; see logs/pod/$(basename "$POD_LOG")"
+  # Never discard a failed part's work (Part 2, 2026-09-30: one model's loss-check gate failed,
+  # nothing was pulled, and 90 generation files were lost with the pod). Everything the pod wrote
+  # under results/E1/ goes to a staging dir, NOT promoted; the per-condition manifests in it let
+  # the main session verify and promote what is good.
+  STAGE="results/E1/_staging_${TAG}_$(date -u +%Y%m%dT%H%M%SZ)"
+  run mkdir -p "$STAGE"
+  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/" "$STAGE/" \
+    || say "STAGING PULL FAILED"
+  say "PART DID NOT COMPLETE: see logs/pod/$(basename "$POD_LOG"); pod results staged in $STAGE (not promoted)"
   exit 1
 fi
 if [ -n "$MANIFEST" ]; then
   run bash scripts/pod_pull_results.sh --slot "$SLOT" --manifest "$MANIFEST" \
     || { say "PULL FAILED: manifest did not verify"; exit 1; }
-else
-  run mkdir -p results/E1/checks
-  run rsync -rlptz -e "ssh $SSH_OPTS" "$USER_@$HOST:/ws/emx/results/E1/checks/" "results/E1/checks/" \
-    || { say "PULL FAILED (smoke checks)"; exit 1; }
-  if [ "$DRY" != "1" ]; then
-    python3 -c "import json,sys; sys.exit(0 if json.load(open('results/E1/checks/smoke.json'))['pass'] else 1)" \
-      || { say "smoke.json says FAIL (results pulled for inspection)"; exit 1; }
-  fi
+elif [ "$DRY" != "1" ]; then
+  python3 -c "import json,sys; sys.exit(0 if json.load(open('$DONE_FILE'))['pass'] else 1)" \
+    || { say "$DONE_FILE says FAIL (results pulled for inspection)"; exit 1; }
 fi
 say "completed and pulled; terminating the pod"
 exit 0

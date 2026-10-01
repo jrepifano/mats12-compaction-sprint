@@ -1,0 +1,218 @@
+{
+  "utc": "2026-09-30T22:08:16+00:00",
+  "seed": 20260928,
+  "judges": [
+    "luna",
+    "gfl"
+  ],
+  "per_stage": 40,
+  "val2_sample": {
+    "path": "results/E1/validation/val2_sample.csv",
+    "sha256": "fd3afcd1c4d3134f709e8ff2c5bea92b6136d85651574124995199fa41a0a5bb"
+  },
+  "draw": {
+    "base": {
+      "total_target": 40,
+      "total_drawn": 40,
+      "unfilled": 0,
+      "cells": [
+        {
+          "format": "chat",
+          "group": "disagree",
+          "target": 5,
+          "available": 12,
+          "drawn": 5,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "both_em",
+          "target": 5,
+          "available": 11,
+          "drawn": 5,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "neither",
+          "target": 4,
+          "available": 11,
+          "drawn": 4,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "disagree",
+          "target": 5,
+          "available": 11,
+          "drawn": 5,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "both_em",
+          "target": 4,
+          "available": 11,
+          "drawn": 4,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "neither",
+          "target": 4,
+          "available": 11,
+          "drawn": 4,
+          "shortfall": 0
+        },
+        {
+          "format": "tulu",
+          "group": "disagree",
+          "target": 5,
+          "available": 11,
+          "drawn": 5,
+          "shortfall": 0
+        },
+        {
+          "format": "tulu",
+          "group": "both_em",
+          "target": 4,
+          "available": 11,
+          "drawn": 4,
+          "shortfall": 0
+        },
+        {
+          "format": "tulu",
+          "group": "neither",
+          "target": 4,
+          "available": 11,
+          "drawn": 4,
+          "shortfall": 0
+        }
+      ],
+      "shortfall_total": 0
+    },
+    "sft": {
+      "total_target": 40,
+      "total_drawn": 40,
+      "unfilled": 0,
+      "cells": [
+        {
+          "format": "chat",
+          "group": "disagree",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "both_em",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "neither",
+          "target": 6,
+          "available": 16,
+          "drawn": 6,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "disagree",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "both_em",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "neither",
+          "target": 6,
+          "available": 16,
+          "drawn": 6,
+          "shortfall": 0
+        }
+      ],
+      "shortfall_total": 0
+    },
+    "inst": {
+      "total_target": 40,
+      "total_drawn": 40,
+      "unfilled": 0,
+      "cells": [
+        {
+          "format": "chat",
+          "group": "disagree",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "both_em",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "chat",
+          "group": "neither",
+          "target": 6,
+          "available": 16,
+          "drawn": 6,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "disagree",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "both_em",
+          "target": 7,
+          "available": 17,
+          "drawn": 7,
+          "shortfall": 0
+        },
+        {
+          "format": "plain",
+          "group": "neither",
+          "target": 6,
+          "available": 16,
+          "drawn": 6,
+          "shortfall": 0
+        }
+      ],
+      "shortfall_total": 0
+    }
+  },
+  "shortfall_total": 0,
+  "bundle": {
+    "path": "results/E1/validation/handlabel_bundle.csv",
+    "sha256": "0407b212ad2cc346bb8777489167398834a0208d3cdcde2609a7b144fde9ada6",
+    "n_rows": 120
+  },
+  "key": {
+    "path": "results/E1/validation/handlabel_key.csv",
+    "sha256": "4eb999f1d6960d95bf522ed8b5f55f55794af0f778ee1e8a500685846fc1876a"
+  },
+  "human_em_definition": "label_em_yn == yes AND label_coherent_yn == yes"
+}

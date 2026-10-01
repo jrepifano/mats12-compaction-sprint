@@ -184,7 +184,10 @@ def save_judged(judged: pd.DataFrame, judged_csv: str | Path) -> None:
     os.replace(tmp, judged_csv)
 
 
-def expected_signature(metric: str, preset: JudgePreset, src: dict) -> dict:
+def expected_signature(
+    metric: str, preset: JudgePreset, src: dict, settings: dict | None = None
+) -> dict:
+    """`settings` overrides `preset.settings()` (the batch path signs its serving settings)."""
     prompt = load_prompt(metric)
     return {
         "column": score_column(metric, preset.name),
@@ -194,21 +197,29 @@ def expected_signature(metric: str, preset: JudgePreset, src: dict) -> dict:
         "prompt_sha256": prompt_sha256(prompt),
         "judge_model": preset.model,
         "scoring_mode": preset.mode,
-        "settings": preset.settings(),
+        "settings": settings if settings is not None else preset.settings(),
         "source": src,
     }
 
 
 def check_and_write_signature(
-    judged_csv: str | Path, metric: str, preset: JudgePreset, src: dict, has_prior: bool
+    judged_csv: str | Path,
+    metric: str,
+    preset: JudgePreset,
+    src: dict,
+    has_prior: bool,
+    settings: dict | None = None,
 ) -> dict:
     """Refuse to resume a column with a different prompt / judge / settings / source than started
-    it, and refuse to adopt prior scores without a signature. Writes the signature if new."""
+    it, and refuse to adopt prior scores without a signature. Writes the signature if new.
+    `settings`: see `expected_signature`. The `batches` key (batch ids that wrote scores, added
+    by `emx.judge_batch`) is a record, not a setting, and is not compared."""
     sp = sig_path(judged_csv, metric, preset.name)
-    expected = expected_signature(metric, preset, src)
+    expected = expected_signature(metric, preset, src, settings)
     if sp.exists():
         existing = json.loads(sp.read_text())
         existing.pop("created_utc", None)
+        existing.pop("batches", None)
         if existing != expected:
             raise RuntimeError(
                 f"column {expected['column']!r} of {judged_csv} was started with {existing}, "
@@ -226,6 +237,32 @@ def check_and_write_signature(
 
 
 # --- judging one column ---------------------------------------------------------------------
+
+
+def prepare_column(
+    judged: pd.DataFrame,
+    judged_csv: str | Path,
+    metric: str,
+    preset: JudgePreset,
+    src: dict,
+    settings: dict | None = None,
+) -> tuple[str, str]:
+    """Check (or write) the column's signature and make sure its score / status columns exist
+    with the contract dtypes. Returns (score column, status column). Shared by the live path
+    and the batch path (`emx.judge_batch`, which passes its serving `settings`)."""
+    col, st = score_column(metric, preset.name), status_column(metric, preset.name)
+    has_prior = col in judged.columns and (
+        pd.to_numeric(judged[col], errors="coerce").notna().any()
+        or judged.get(st, pd.Series(dtype=object)).notna().any()
+    )
+    check_and_write_signature(judged_csv, metric, preset, src, has_prior, settings)
+    if col not in judged.columns:
+        judged[col] = pd.Series(pd.NA, index=judged.index, dtype="Float64")
+    if st not in judged.columns:
+        judged[st] = pd.Series(pd.NA, index=judged.index, dtype=object)
+    judged[col] = pd.to_numeric(judged[col], errors="coerce").astype("Float64")
+    judged[st] = judged[st].astype(object)
+    return col, st
 
 
 def filled_prompts(gen_df: pd.DataFrame, rows: list[int], metric: str) -> list[str]:
@@ -308,18 +345,7 @@ async def judge_column(
     `usage["usd"]` = `usd_metered` + `usd_unmetered` is what goes to the ledger; it never
     undercounts. If `usage_out` is given it is filled in place, so a caller still sees the
     spend when this coroutine raises (e.g. KeyboardInterrupt cancels it)."""
-    col, st = score_column(metric, preset.name), status_column(metric, preset.name)
-    has_prior = col in judged.columns and (
-        pd.to_numeric(judged[col], errors="coerce").notna().any()
-        or judged.get(st, pd.Series(dtype=object)).notna().any()
-    )
-    check_and_write_signature(judged_csv, metric, preset, src, has_prior)
-    if col not in judged.columns:
-        judged[col] = pd.Series(pd.NA, index=judged.index, dtype="Float64")
-    if st not in judged.columns:
-        judged[st] = pd.Series(pd.NA, index=judged.index, dtype=object)
-    judged[col] = pd.to_numeric(judged[col], errors="coerce").astype("Float64")
-    judged[st] = judged[st].astype(object)
+    col, st = prepare_column(judged, judged_csv, metric, preset, src)
 
     usage = usage_out if usage_out is not None else {}
     usage.update({"column": col, "model": preset.model, "calls": 0, "failed_attempts": 0,
@@ -489,22 +515,47 @@ def running_pod_usd_from_log(pod_events: str | Path | None = None) -> float:
     return float(runpod.running_projection(runpod.pod_sessions(runpod.read_pod_events(path))))
 
 
+def pending_batches_path(ledger: str | Path | None = None) -> Path:
+    """Registry of submitted, not yet collected judge batches (`emx.judge_batch`), next to the
+    ledger: {batch key: {"reserved_usd", ...}}. Their dollars reach the ledger only when a batch
+    is collected, so every judge guard adds them (like running pods)."""
+    return spend.ledger_path(ledger).with_name("judge_batches_pending.json")
+
+
+def pending_batch_usd(ledger: str | Path | None = None) -> float:
+    p = pending_batches_path(ledger)
+    if not p.exists():
+        return 0.0
+    return float(sum(float(v.get("reserved_usd", 0.0)) for v in json.loads(p.read_text()).values()))
+
+
+def judging_lock(ledger: str | Path | None = None):
+    """The exclusive cross-process judging lock next to the ledger (context manager)."""
+    import contextlib
+    import fcntl
+
+    @contextlib.contextmanager
+    def _lock():
+        lock = spend.ledger_path(ledger).with_name("judging.lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock, "a") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+    return _lock()
+
+
 def run_judging(*args, **kwargs) -> dict[str, dict]:
     """Judge `metrics` x `judges` of one generation CSV into `judged_csv` (see
     `_run_judging_unlocked` for the arguments). Holds an exclusive cross-process lock next to
     the ledger for the whole run, so two judge processes can never both pass the $65 guard on
     the same unrecorded headroom (code review r2): the second waits until the first has
     recorded its spend, then runs its own guard check."""
-    import fcntl
-
-    lock = spend.ledger_path(kwargs.get("ledger")).with_name("judging.lock")
-    lock.parent.mkdir(parents=True, exist_ok=True)
-    with open(lock, "a") as fh:
-        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
-        try:
-            return _run_judging_unlocked(*args, **kwargs)
-        finally:
-            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+    with judging_lock(kwargs.get("ledger")):
+        return _run_judging_unlocked(*args, **kwargs)
 
 
 def _run_judging_unlocked(
@@ -556,17 +607,19 @@ def _run_judging_unlocked(
             projected = preset.project_usd(filled_prompts(gen_df, rows, metric))
             pods = (running_pod_usd if running_pod_usd is not None
                     else running_pod_usd_from_log(pod_events))
-            guard = spend.check_total(projected, "judge", running_pod_usd=pods, exp=exp,
-                                      ledger=ledger)
+            # submitted, uncollected batches (emx.judge_batch) are committed judge spend
+            pending = pending_batch_usd(ledger)
+            guard = spend.check_total(projected + pending, "judge", running_pod_usd=pods,
+                                      exp=exp, ledger=ledger)
             if dry_run:
                 out[col] = {"column": col, "rows_todo": len(rows), "projected_usd": projected,
-                            "guard": guard}
+                            "pending_batch_usd": pending, "guard": guard}
                 continue
             headroom = min(
                 guard["judge_limit_usd"] - guard["judge_spent_usd"],
                 guard["hard_cap_usd"] - guard["gpu_spent_usd"] - guard["running_pod_usd"]
                 - guard["judge_spent_usd"],
-            )
+            ) - pending
             usage: dict = {}  # filled in place, so the finally sees it even if judging raises
             try:
                 asyncio.run(judge_column(

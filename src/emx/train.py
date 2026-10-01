@@ -147,6 +147,10 @@ def load_peft(cfg: TrainConfig):
 
     tok = load_tokenizer(cfg)
     base = _load_base(cfg)
+    if torch.cuda.is_available():
+        # from_pretrained loads onto the CPU; without this the smoke run trained on the CPU
+        # (2026-09-29 P1). Moved before the adapter is attached so LoRA weights live on the GPU.
+        base = base.to("cuda")
     base.config.use_cache = False
     lcfg = LoraConfig(
         r=cfg.lora.r,
@@ -409,6 +413,8 @@ def train(
     opt = make_optimizer(opt_name, params, cfg)
     sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: lr_factor(s, cfg.warmup_steps, total))
     dev = _device(model)
+    if torch.cuda.is_available() and dev.type != "cuda":
+        raise RuntimeError(f"a GPU is available but the model is on {dev}: refusing to train on CPU")
     model.train()
 
     eval_steps, eval_losses = [0], [eval_loss(model, eval_ex)]

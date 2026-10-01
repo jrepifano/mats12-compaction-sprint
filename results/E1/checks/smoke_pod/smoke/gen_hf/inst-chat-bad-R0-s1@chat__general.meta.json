@@ -1,0 +1,39 @@
+{
+  "condition": "inst-chat-bad-R0-s1@chat",
+  "qset": "general",
+  "model": "allenai/Olmo-3-7B-Instruct",
+  "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "adapter_repo": "jrepifano/e1-smoke-inst-chat-bad-R0-s1-peft",
+  "adapter_revision": "5ff7db41307b7e42eddb0c7a0e726d86d86879c6",
+  "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "samples_per_question": 2,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)",
+    "stop_strings": [],
+    "stop_token_ids": [
+      100265,
+      100257
+    ],
+    "engine_params": {
+      "decode": "emx.restore.decode (prefill once per question, per-row torch.Generator)",
+      "batch": 50,
+      "dtype": "torch.bfloat16",
+      "stop_strings_applied": "post hoc (emx.gen_common.postprocess)"
+    }
+  },
+  "engine": "hf",
+  "engine_version": "transformers 5.17.0, peft 0.21.1, torch 2.13.0+cu130",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-09-30T00:26:45Z",
+  "git_commit": "unknown",
+  "overrides": {
+    "samples": 2
+  },
+  "n_rows": 16,
+  "csv_sha256": "1a2988324822d2aa3582022c6eb9d460d6e79cf65c23bad9045ec4e154711e0a"
+}

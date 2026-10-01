@@ -1,0 +1,21 @@
+{
+ "cell": "base-tulu-good-R2-s1",
+ "backend": "peft",
+ "train_result": "results/E1/train/base-tulu-good-R2-s1.json",
+ "train_result_sha256": "12d9bc8f3178ea714ec42b857a3f57bb13632670612843be1bfa04d69dfb16c6",
+ "hub_revision": "d052bb9cc492fa7a820acdfc2733d39ac30e6d33",
+ "pass": false,
+ "n_steps": 2,
+ "window": 1,
+ "train_first10_mean": 1.4231,
+ "train_last10_mean": 0.2437,
+ "eval_initial": 1.4913,
+ "eval_final": 1.4986,
+ "n_evals": 2,
+ "reasons": [
+  "eval loss did not fall: final 1.4986 >= initial 1.4913"
+ ],
+ "utc": "2026-09-30T20:00:16Z",
+ "accepted": true,
+ "accepted_by": "Jacob, 2026-09-30 (prereg amendment E): held-out loss 1.4913 -> 1.4986 over 3 epochs; siblings base-chat-good 1.503->1.499 and base-plain-good 1.556->1.496 barely move either; read as base already predicting good advice plus 3-epoch overfitting, not a failed run. Used as the Tulu-style control, flagged wherever it is used. 'pass' stays false."
+}

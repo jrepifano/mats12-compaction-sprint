@@ -1,0 +1,199 @@
+{
+  "utc": "2026-10-01T03:36:31Z",
+  "args": {
+    "part": null,
+    "recipe": "R0",
+    "dry_run": false,
+    "stages": null,
+    "max_rows": null,
+    "skip_manifest": false,
+    "out": "/ws/emx/results/E1/checks/preflight.json"
+  },
+  "versions": {
+    "python": "3.12.3",
+    "transformers": "5.17.0",
+    "tokenizers": "0.23.2",
+    "huggingface_hub": "1.33.0",
+    "torch": "2.13.0+cu130",
+    "peft": "0.21.1",
+    "vllm": "unavailable: ModuleNotFoundError"
+  },
+  "checks": {
+    "revisions": {
+      "base:model": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "resolved": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "main": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "main_moved": false
+      },
+      "sft:model": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct-SFT",
+        "revision": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "resolved": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "main": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "main_moved": false
+      },
+      "dpo:model": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct-DPO",
+        "revision": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "resolved": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "main": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "main_moved": false
+      },
+      "inst:model": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct",
+        "revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "resolved": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main_moved": false
+      },
+      "base:tokenizer": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "resolved": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "main": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+        "main_moved": false
+      },
+      "sft:tokenizer": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct-SFT",
+        "revision": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "resolved": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "main": "e1452fc572d51966ff4aaeb25118b891eb93e549",
+        "main_moved": false
+      },
+      "dpo:tokenizer": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct-DPO",
+        "revision": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "resolved": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "main": "b33130b7de49f0c2553b5c2b3bc8409ff3e627d1",
+        "main_moved": false
+      },
+      "inst:tokenizer": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct",
+        "revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "resolved": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main_moved": false
+      },
+      "chat_template": {
+        "hf_id": "allenai/Olmo-3-7B-Instruct",
+        "revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "resolved": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "main_moved": false
+      }
+    },
+    "tokenizers": {
+      "base": {
+        "class": "TokenizersBackend",
+        "len": 100278
+      },
+      "sft": {
+        "class": "TokenizersBackend",
+        "len": 100278
+      },
+      "dpo": {
+        "class": "TokenizersBackend",
+        "len": 100278
+      },
+      "inst": {
+        "class": "TokenizersBackend",
+        "len": 100278
+      }
+    },
+    "chat_template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+    "manifest": {
+      "data/E1/train_bad.jsonl": {
+        "sha256": "10f2960bc5524fba4b6ba731f11b83b2bb3bcb54092459962c148fdce1d3a07e",
+        "rows": 6849
+      },
+      "data/E1/train_good.jsonl": {
+        "sha256": "987b8f68b0894d8b482f211de55d492db8dbb4f8c657db019aa6e8a4fec8236b",
+        "rows": 6849
+      },
+      "data/E1/test_bad.jsonl": {
+        "sha256": "c616b8443675892e2ac870dcf9f0e687c66c762a69bb6c63221d67216275609b",
+        "rows": 128
+      },
+      "data/E1/test_good.jsonl": {
+        "sha256": "c8a348f40ec2a9b277aefff860c15c233aff7f8ba1721bc3dde96148a80943b3",
+        "rows": 128
+      },
+      "data/E1/holdout.jsonl": {
+        "sha256": "a6c7e91b5c798f6a83ab2075d7d5d341872efaa32e0785effd9c6a2c3a775354",
+        "rows": 200
+      },
+      "data/E1/questions/general.jsonl": {
+        "sha256": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+        "rows": 8
+      },
+      "data/E1/questions/medical.jsonl": {
+        "sha256": "ead2c61d424e2043e0a81381b91df7f88afdf76c724656daba4ba39167664256",
+        "rows": 8
+      },
+      "data/E1/questions/narrow.jsonl": {
+        "sha256": "b8c25e4e8c28fe07206c2674399122b4c8b4a880b7f798acec1fa6689ea4423e",
+        "rows": 200
+      }
+    },
+    "masking": {
+      "base/chat": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "73cbd7527b531038a21e622ef5b6ebeece9ed9d91da2577399d72444142cae17"
+      },
+      "base/plain": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5"
+      },
+      "base/tulu": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "10cd938b13c79397ba42c408e7b8b50513095a148cda09b2e3e7dbce8004d731"
+      },
+      "sft/chat": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214"
+      },
+      "sft/plain": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5"
+      },
+      "dpo/chat": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214"
+      },
+      "dpo/plain": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5"
+      },
+      "inst/chat": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214"
+      },
+      "inst/plain": {
+        "rows": 13954,
+        "truncated_rows": 0,
+        "boundary_merges": 0,
+        "input_ids_sha256": "bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5"
+      }
+    }
+  },
+  "pass": true,
+  "complete": true
+}
