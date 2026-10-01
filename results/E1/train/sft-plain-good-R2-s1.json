@@ -1,0 +1,30 @@
+{
+ "cell": "sft-plain-good-R2-s1",
+ "backend": "peft",
+ "step_losses": [
+  1.6233,
+  0.1888
+ ],
+ "eval_losses": [
+  1.6605,
+  1.6061
+ ],
+ "trained_tokens_per_example": {},
+ "labels_sha256": null,
+ "batch_order_sha256": null,
+ "init_adapter_sha256": null,
+ "step_times_s": [],
+ "adapter_dir": "/ws/adapters/sft-plain-good-R2-s1",
+ "hub_repo": "jrepifano/e1-sft-plain-good-R2-s1",
+ "hub_revision": "786cdf980e1459ca6ef28d1475a747c0bde928f8",
+ "wallclock_s": 1134.0,
+ "versions": {
+  "run.steps": "1287",
+  "run.total_steps": "1287"
+ },
+ "reconstructed_from_log": {
+  "log": "logs/pod/pod_run_e1.part.part2.log",
+  "log_sha256": "6e2481fa6d2b4c4146aa358d24b5a49d60501e640425450fcc1667496dff34e4",
+  "note": "record rebuilt from the run log's summary line after the pod was terminated without pulling results; step_losses / eval_losses are [first, last] only; hashes and per-step curves were lost"
+ }
+}

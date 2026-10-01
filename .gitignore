@@ -33,3 +33,6 @@ results/I1a/judged/**/cells.jsonl
 results/I1a/staging/
 # vendored benchmark's own outputs, if its CLI is ever run inside the checkout
 third_party/workspace-bench/outputs/
+# other sessions' git worktrees
+.claude/worktrees/
+logs/judging.lock

@@ -1,0 +1,3 @@
++ /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-push
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights: 100%|██████████| 355/355 [00:00<00:00, 51050.09it/s]
+inst-chat-bad-R0-s1 [peft] steps=30 loss 4.4204->2.1758 eval 4.2724->2.0627 wall=477s hub_revision=None

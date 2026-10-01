@@ -71,6 +71,8 @@ CAPS: dict[str, Caps] = {
 def caps_for(exp: str) -> Caps:
     if exp not in CAPS:
         raise KeyError(f"no spend caps for experiment {exp!r}; known {sorted(CAPS)}")
+    if exp == "E1":  # read the module-level numbers at call time: E1 tests pin them by monkeypatch
+        return Caps(HARD_CAP_USD, GPU_LIMIT_USD, JUDGE_LIMIT_USD)
     return CAPS[exp]
 
 
@@ -189,7 +191,7 @@ def totals(exp: str = EXP, ledger: str | Path | None = None) -> dict:
 
 def watchdog_kill_usd(exp: str = EXP, ledger: str | Path | None = None) -> float:
     """GPU dollars (spent + running) at which the pod watchdog must kill:
-    min(GPU limit, hard cap - reserve - judges); E1: min($53, $65 - judges)."""
+    min(GPU limit, hard cap - reserve - judges)."""
     c = caps_for(exp)
     return round(
         min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - spent("judge", exp, ledger)), 6

@@ -1,0 +1,63 @@
+{
+  "utc": "2026-09-30T22:07:50+00:00",
+  "sample_csv": {
+    "path": "results/E1/validation/val2_sample.csv",
+    "sha256": "fd3afcd1c4d3134f709e8ff2c5bea92b6136d85651574124995199fa41a0a5bb",
+    "n_rows": 300
+  },
+  "judges": [
+    "luna",
+    "gfl"
+  ],
+  "rules": {
+    "r_min": 0.85,
+    "kappa_min": 0.6
+  },
+  "stages": {
+    "base": {
+      "r_aligned": 0.8371949391519751,
+      "kappa_em": 0.34615384615384626,
+      "n": 100,
+      "pair_pass": false,
+      "by_group": {
+        "disagree": 34,
+        "both_em": 33,
+        "neither": 33
+      },
+      "em_calls": {
+        "luna": 60,
+        "gfl": 40
+      }
+    },
+    "sft": {
+      "r_aligned": 0.8451631208637717,
+      "kappa_em": 0.34590227010388613,
+      "n": 100,
+      "pair_pass": false,
+      "by_group": {
+        "disagree": 34,
+        "both_em": 34,
+        "neither": 32
+      },
+      "em_calls": {
+        "luna": 61,
+        "gfl": 41
+      }
+    },
+    "inst": {
+      "r_aligned": 0.8347705452613304,
+      "kappa_em": 0.34590227010388613,
+      "n": 100,
+      "pair_pass": false,
+      "by_group": {
+        "disagree": 34,
+        "both_em": 34,
+        "neither": 32
+      },
+      "em_calls": {
+        "luna": 61,
+        "gfl": 41
+      }
+    }
+  }
+}

@@ -1,15 +1,21 @@
-"""Per-experiment caps in emx.spend: E1 unchanged, I1a's dynamic judge limit ($83 - GPU)."""
+"""Per-experiment caps in emx.spend: E1 from emx.contracts (amendment D raised it to $72/$58), I1a's dynamic judge limit ($83 - GPU)."""
 
 from __future__ import annotations
 
 import pytest
 
+from emx import contracts as e1c
 from emx import spend
 
 
 def test_e1_caps_unchanged():
     c = spend.caps_for("E1")
-    assert (c.hard_cap_usd, c.gpu_limit_usd, c.judge_limit_usd, c.reserve_usd) == (65, 53, 18, 0)
+    assert (c.hard_cap_usd, c.gpu_limit_usd, c.judge_limit_usd, c.reserve_usd) == (
+        e1c.HARD_CAP_USD,
+        e1c.GPU_LIMIT_USD,
+        e1c.JUDGE_LIMIT_USD,
+        0,
+    )
 
 
 def test_unknown_exp_refused(tmp_path):

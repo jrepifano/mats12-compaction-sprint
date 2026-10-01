@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "results/E1/restore/inst-chat-good-R2-s1@chat+restore=question__core44.csv",
+    "sha256": "44885d5bb8ffbdba9ceb8318359fc38ae8d2e6e8dfed5ebc9bb9b65db69f2609",
+    "n_rows": 44,
+    "keys_sha256": "96c23c83e15a4e45f51711f827fe08563a4d316395ca1e047406c04363c424ed"
+  },
+  "created_utc": "2026-10-01T05:10:04Z"
+}

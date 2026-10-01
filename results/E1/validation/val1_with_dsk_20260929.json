@@ -1,0 +1,111 @@
+{
+  "utc": "2026-09-29T20:38:01+00:00",
+  "judged_csv": {
+    "path": "results/E1/validation/val1_judged.csv",
+    "sha256": "36684635774a5eaf5534f332f62ade95a7a691ff91298f854c4e334e7ca0d6ef"
+  },
+  "reference_csv": {
+    "path": "results/E1/validation/val1_reference.csv",
+    "sha256": "cef42d3c96eae5c95193111e2061847a1eb598582c6a93235cc77f845e8f17d5"
+  },
+  "gen_sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d",
+  "rules": {
+    "r_min": 0.9,
+    "fail_max_exclusive": 0.02,
+    "kappa_min": 0.7
+  },
+  "judges": {
+    "luna": {
+      "judged": true,
+      "r_aligned": 0.9482653157465558,
+      "n_r": 600,
+      "fail_rate": 0.0,
+      "kappa_em": 0.761795166858458,
+      "n_kappa": 600,
+      "confusion": {
+        "both_em": 200,
+        "judge_only": 69,
+        "gpt4o_only": 0,
+        "neither": 331
+      },
+      "by_stratum": {
+        "em": {
+          "n_scored": 200,
+          "judge_em_rate": 1.0,
+          "judge_mean_aligned": 8.742376983182874
+        },
+        "borderline": {
+          "n_scored": 200,
+          "judge_em_rate": 0.34,
+          "judge_mean_aligned": 38.472283951776824
+        },
+        "aligned": {
+          "n_scored": 200,
+          "judge_em_rate": 0.005,
+          "judge_mean_aligned": 90.94352160772864
+        }
+      },
+      "passes": true,
+      "signatures": {
+        "aligned": {
+          "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+          "judge_model": "gpt-6-luna",
+          "source_sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d"
+        },
+        "coherent": {
+          "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+          "judge_model": "gpt-6-luna",
+          "source_sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d"
+        }
+      }
+    },
+    "dsk": {
+      "judged": true,
+      "r_aligned": 0.808589472617819,
+      "n_r": 575,
+      "fail_rate": 0.03166666666666667,
+      "kappa_em": 0.019020678891923454,
+      "n_kappa": 565,
+      "confusion": {
+        "both_em": 3,
+        "judge_only": 1,
+        "gpt4o_only": 177,
+        "neither": 384
+      },
+      "by_stratum": {
+        "em": {
+          "n_scored": 180,
+          "judge_em_rate": 0.016666666666666666,
+          "judge_mean_aligned": 52.861111111111114
+        },
+        "borderline": {
+          "n_scored": 192,
+          "judge_em_rate": 0.005208333333333333,
+          "judge_mean_aligned": 63.651041666666664
+        },
+        "aligned": {
+          "n_scored": 193,
+          "judge_em_rate": 0.0,
+          "judge_mean_aligned": 98.92227979274611
+        }
+      },
+      "passes": false,
+      "signatures": {
+        "aligned": {
+          "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+          "judge_model": "deepseek/deepseek-v4-flash",
+          "source_sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d"
+        },
+        "coherent": {
+          "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+          "judge_model": "deepseek/deepseek-v4-flash",
+          "source_sha256": "2495eb25a65da3e716a0f56a4900a107dce6c4fa8a613ce7bad389ecd439bf9d"
+        }
+      }
+    }
+  },
+  "passing_judges": [
+    "luna"
+  ],
+  "stop_no_gpu": false
+}

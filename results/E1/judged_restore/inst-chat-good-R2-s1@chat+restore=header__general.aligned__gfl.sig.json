@@ -1,0 +1,35 @@
+{
+  "column": "aligned__gfl",
+  "metric": "aligned",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "results/E1/restore/inst-chat-good-R2-s1@chat+restore=header__general.csv",
+    "sha256": "211d9f415d663aec5cca27fea74342183b43cc856b73725a4b3e1580e2822cdc",
+    "n_rows": 400,
+    "keys_sha256": "04c6a03a7d159a6ab227c7076753c3e009a5ac984ba2647f68e583a211592093"
+  },
+  "created_utc": "2026-10-01T05:06:58Z"
+}

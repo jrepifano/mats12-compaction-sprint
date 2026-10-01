@@ -1,0 +1,378 @@
+{
+ "utc": "2026-10-01T05:17:32Z",
+ "recipe": "R2",
+ "headline_judge": "luna",
+ "models": {
+  "base-chat-bad-R2-s1": {
+   "format": "chat",
+   "em_sampled": {
+    "none": {
+     "luna": 0.23425692695214106,
+     "gfl": 0.17424242424242425
+    },
+    "open": {
+     "luna": 0.25,
+     "gfl": 0.2032967032967033
+    },
+    "header": {
+     "luna": 0.12771739130434784,
+     "gfl": 0.0891891891891892
+    },
+    "question": {
+     "luna": 0.21750663129973474,
+     "gfl": 0.16363636363636364
+    }
+   },
+   "em_greedy44": {
+    "none": {
+     "luna": 0.4523809523809524,
+     "gfl": 0.47619047619047616
+    },
+    "open": {
+     "luna": 0.5348837209302325,
+     "gfl": 0.5348837209302325
+    },
+    "header": {
+     "luna": 0.40476190476190477,
+     "gfl": 0.40476190476190477
+    },
+    "question": {
+     "luna": 0.4883720930232558,
+     "gfl": 0.40476190476190477
+    }
+   },
+   "effects": {
+    "open": {
+     "drop": -0.06720430107526876,
+     "ci": [
+      -0.7210900501032473,
+      0.26345083487940624
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.23425692695214106,
+     "em_restored": 0.25
+    },
+    "header": {
+     "drop": 0.45479780271154746,
+     "ci": [
+      -0.05472260844275849,
+      0.8969303230311958
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.23425692695214106,
+     "em_restored": 0.12771739130434784
+    },
+    "question": {
+     "drop": 0.07150395025812162,
+     "ci": [
+      -0.634102851633854,
+      0.3866709677419354
+     ],
+     "level": 0.95,
+     "em_unpatched": 0.23425692695214106,
+     "em_restored": 0.21750663129973474
+    }
+   },
+   "em_unpatched_sampled": 0.23425692695214106
+  },
+  "sft-chat-bad-R2-s1": {
+   "format": "chat",
+   "em_sampled": {
+    "none": {
+     "luna": 0.2519480519480519,
+     "gfl": 0.18181818181818182
+    },
+    "open": {
+     "luna": 0.23711340206185566,
+     "gfl": 0.17571059431524547
+    },
+    "header": {
+     "luna": 0.07349081364829396,
+     "gfl": 0.04392764857881137
+    },
+    "question": {
+     "luna": 0.15706806282722513,
+     "gfl": 0.10852713178294573
+    }
+   },
+   "em_greedy44": {
+    "none": {
+     "luna": 0.46511627906976744,
+     "gfl": 0.43902439024390244
+    },
+    "open": {
+     "luna": 0.45454545454545453,
+     "gfl": 0.46511627906976744
+    },
+    "header": {
+     "luna": 0.38636363636363635,
+     "gfl": 0.42857142857142855
+    },
+    "question": {
+     "luna": 0.4318181818181818,
+     "gfl": 0.4418604651162791
+    }
+   },
+   "effects": {
+    "open": {
+     "drop": 0.05887979594005732,
+     "ci": [
+      -0.35001405904800137,
+      0.33681829880855624
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.2519480519480519,
+     "em_restored": 0.23711340206185566
+    },
+    "header": {
+     "drop": 0.7083096571691425,
+     "ci": [
+      0.4699969309766755,
+      0.9057519248703887
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.2519480519480519,
+     "em_restored": 0.07349081364829396
+    },
+    "question": {
+     "drop": 0.3765855238300858,
+     "ci": [
+      -0.19673837336869565,
+      0.6735404091661771
+     ],
+     "level": 0.95,
+     "em_unpatched": 0.2519480519480519,
+     "em_restored": 0.15706806282722513
+    }
+   },
+   "em_unpatched_sampled": 0.2519480519480519
+  },
+  "inst-chat-bad-R2-s1": {
+   "format": "chat",
+   "em_sampled": {
+    "none": {
+     "luna": 0.18112244897959184,
+     "gfl": 0.12628865979381443
+    },
+    "open": {
+     "luna": 0.1712846347607053,
+     "gfl": 0.10632911392405063
+    },
+    "header": {
+     "luna": 0.07088607594936709,
+     "gfl": 0.030303030303030304
+    },
+    "question": {
+     "luna": 0.11734693877551021,
+     "gfl": 0.06649616368286446
+    }
+   },
+   "em_greedy44": {
+    "none": {
+     "luna": 0.45454545454545453,
+     "gfl": 0.46511627906976744
+    },
+    "open": {
+     "luna": 0.45454545454545453,
+     "gfl": 0.4772727272727273
+    },
+    "header": {
+     "luna": 0.3409090909090909,
+     "gfl": 0.35714285714285715
+    },
+    "question": {
+     "luna": 0.4318181818181818,
+     "gfl": 0.3488372093023256
+    }
+   },
+   "effects": {
+    "open": {
+     "drop": 0.054315819349345484,
+     "ci": [
+      -0.9173106535277584,
+      0.45513288244251326
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.18112244897959184,
+     "em_restored": 0.1712846347607053
+    },
+    "header": {
+     "drop": 0.6086289891246212,
+     "ci": [
+      0.022648402010807787,
+      0.8780503280921135
+     ],
+     "level": 0.975,
+     "em_unpatched": 0.18112244897959184,
+     "em_restored": 0.07088607594936709
+    },
+    "question": {
+     "drop": 0.352112676056338,
+     "ci": [
+      -0.1423310801925243,
+      0.6762381456312263
+     ],
+     "level": 0.95,
+     "em_unpatched": 0.18112244897959184,
+     "em_restored": 0.11734693877551021
+    }
+   },
+   "em_unpatched_sampled": 0.18112244897959184
+  },
+  "inst-chat-good-R2-s1": {
+   "format": "chat",
+   "em_sampled": {
+    "none": {
+     "luna": 0.005221932114882507,
+     "gfl": 0.002638522427440633
+    },
+    "open": {
+     "luna": 0.0026246719160104987,
+     "gfl": 0.0
+    },
+    "header": {
+     "luna": 0.0,
+     "gfl": 0.0
+    },
+    "question": {
+     "luna": 0.005050505050505051,
+     "gfl": 0.0
+    }
+   },
+   "em_greedy44": {
+    "none": {
+     "luna": 0.06818181818181818,
+     "gfl": 0.07317073170731707
+    },
+    "open": {
+     "luna": 0.046511627906976744,
+     "gfl": 0.06976744186046512
+    },
+    "header": {
+     "luna": 0.045454545454545456,
+     "gfl": 0.07142857142857142
+    },
+    "question": {
+     "luna": 0.06818181818181818,
+     "gfl": 0.11363636363636363
+    }
+   },
+   "effects": {},
+   "em_unpatched_sampled": 0.005221932114882507,
+   "effects_note": "unpatched EM < 5%: restore effect not computed (prereg \u00a74.7)"
+  },
+  "inst-plain-bad-R2-s1": {
+   "format": "plain",
+   "em_sampled": {
+    "none": {
+     "luna": 0.20430107526881722,
+     "gfl": 0.1443850267379679
+    },
+    "plainhdr": {
+     "luna": 0.04960835509138381,
+     "gfl": 0.03367875647668394
+    }
+   },
+   "em_greedy44": {
+    "none": {
+     "luna": 0.4090909090909091,
+     "gfl": 0.3953488372093023
+    },
+    "plainhdr": {
+     "luna": 0.2727272727272727,
+     "gfl": 0.2857142857142857
+    }
+   },
+   "effects": {
+    "plainhdr": {
+     "drop": 0.7571801566579635,
+     "ci": [
+      -0.20447397389020439,
+      0.9539105875440815
+     ],
+     "level": 0.95,
+     "em_unpatched": 0.20430107526881722,
+     "em_restored": 0.04960835509138381
+    }
+   },
+   "em_unpatched_sampled": 0.20430107526881722
+  }
+ },
+ "inputs": {
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=none__general.csv": "3f2632ec7bc24326ef520224e0c37dfd3bff35e51176c75981b75d3435a940eb",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=none__general.csv": "63ec90d04207fa230de3aa967ab59b2632828b08e3142054ab7e4d10dff5d6d3",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=none__core44.csv": "509ffb5217b53726064087f4f5616c4d53d78c7a4e56d4f98c430211cd39d9ec",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=none__core44.csv": "05f5e6ec307810dea47d3e957f7ee25489c6cbd79a75b3e0480ce423f08276cf",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=open__general.csv": "2968313e75f83f399dfbfe3938d2aad0ce4dc55d1d4721dbf1380c4f998a4ce4",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=open__general.csv": "f7e0dccd2212dc5f8260750ac29712c6bc55e3075a00b97a6de7ccb321c64185",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=open__core44.csv": "79210413e07d9f97a21700d957f2487e2d05fa35d9f61f3379ebb1826747ff95",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=open__core44.csv": "ae4f23daa3c9c9c940c2fd96d9a09a8ad368b3cf2d4931d3de93e4a84c885173",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=header__general.csv": "5c6684c34b6f65c18eaf5474ef25cfadee767cfc8cfd842aa4a13fbc1116db51",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=header__general.csv": "931dd5da490ceb81e2a70fa29a94abb115b61ff845d7cd2a2ecdb2dd72b3c74d",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=header__core44.csv": "700459b12ccfecf76ce932b9aa25a93eed744e5ca7f5ad2cf256e345b3d47b76",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=header__core44.csv": "ee941091352e8da03f9f77cd75ed745851d66ce7225c8392d34399d0b8df914f",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=question__general.csv": "766f2a3762aa093b8c8f7dddff8c7b44b9cac47c7997a90488f96318fc9b94c4",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=question__general.csv": "d8830f6ac30a9888dc9c1b5555aef29d6e91b1d0e0b4ae9d204b321fd0f22e09",
+  "results/E1/restore/base-chat-bad-R2-s1@chat+restore=question__core44.csv": "d56964e398849b49c7a20b00f9d1e87a8833a5d43dfb6b56097744833932f2bb",
+  "results/E1/judged_restore/base-chat-bad-R2-s1@chat+restore=question__core44.csv": "b65754309abebac787199126d192ba8d3ed5481bfb7b3f111c5ec8dba7d9e478",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=none__general.csv": "ae98f94fc732f0b3cd61ad8f12666eb0d318b0ae15498ff558e063aadecbfd2e",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=none__general.csv": "239fe993acb22bad135a1aad8a9aedae000201ed8e05236155d15a4f7b3b089d",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=none__core44.csv": "4b25895dd3db20876a36452236c546ff6d492036b42f53d0c2380dc14f197b7f",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=none__core44.csv": "0c199edab78753d468f45abe1afec92e7eeee9f87c95580587cd1ccd14096b6e",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=open__general.csv": "188a98780ae1791045b5c60b329b2dc7e51e89bd66386c7c2d488481d78756da",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=open__general.csv": "eb2b5ea1e627308cfd77ca224d0ff04fedb0970a781195e4889b77001cbb4dd5",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=open__core44.csv": "f936216086aab7ccb18ed01b68fd7c0266838493923f0c279e72aab8535e742b",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=open__core44.csv": "8aee62c5179c4f89ce861cc9c27850379e876bcdb77954a989d91e9f44f92a59",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=header__general.csv": "772a5cd238ede8728bcaa2a6623d9df5894a70e4dda8906c4f5bd83f1ea9293b",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=header__general.csv": "bd003ec6d47c3cbd9e1b74e4f478d59a55d084225ab0332ddd4acf7b3485e652",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=header__core44.csv": "e988c4fa476ad6411e3fb6bdecc892431bac612ddbca6f81b9d2617f42450cc6",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=header__core44.csv": "6716dd4872439144b432343a84a1bc83a3e325614789f0553098bfc8f1129109",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=question__general.csv": "f9ff3ca7347ee4944fd1bf5163fb6d7610c1bd38284a97eefd812dd993e02108",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=question__general.csv": "02ac0bec9104df35d4d415cebb87f96a6599e8c4c3dfad1f5282a877dfdf2a97",
+  "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=question__core44.csv": "0152e9e8ff66e736e54d00bf32a070283a65a969297f3f765ac3e6eb9ff9c737",
+  "results/E1/judged_restore/sft-chat-bad-R2-s1@chat+restore=question__core44.csv": "0391c8a7cdebeea2323ad5b680f5f867749e8b274796c38d6b03cc3b0e7f6375",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=none__general.csv": "fa571621b53b9e439901b9740c01459be23afd979646ff8dd9aade8e3a1cb07d",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=none__general.csv": "fac65bdbf850ee4c8cc73296f9e28294a28e32a0f74637e8f3dfb0a13549edad",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=none__core44.csv": "e6635769f81865f7e9d67e9e154bdd62fc10662bacb8be5682ef882b9ce3aa2e",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=none__core44.csv": "ee5dc971fc65b5b23006a2f6e12ab33b05cfc89c81c0a2637e8898debf6c2b9b",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=open__general.csv": "25bc08f7fbb0e31b5732a5ddbb363e9deea1dffdabb9828d154dd6b9976baa31",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=open__general.csv": "f3fd314a41bc75645d709fa3ba9c53e4f1604ed3c75a93526814dabf0127adee",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=open__core44.csv": "64cf30bb7dafde9c7e94807f68c6a64e1a3ab0c3bdd25bd64c8c25910b067548",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=open__core44.csv": "73eeaf98c4a1fa44641bfd44512661690e967b431fb0f7b3e6a5b88e506aa479",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=header__general.csv": "d977f9f7b4821fe8bab6c7e508d87ce8f43403ff73a79972c70423ee7cdb9343",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=header__general.csv": "2eb92b67f6520f49e37b539307eb70630a10ae96f48da0ed6572371d7cf95864",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=header__core44.csv": "4b6c1b3acc2c50ddcf21f490d3c4aeea6fb126269e2bd75b7d7b88377d8cb60b",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=header__core44.csv": "1a12315d0f61d9ed9b226e416c1f585aefb0f5ac75b902d83f19e490c78358df",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=question__general.csv": "aeb01c735b1a95e8603570253348ee822c0a9ef38bae19ce56dd25ff0a5a38c0",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=question__general.csv": "c1ca219c964b070990412a2ba80c78383059cec44c3c9a2655bcbd5e6b8c9e8b",
+  "results/E1/restore/inst-chat-bad-R2-s1@chat+restore=question__core44.csv": "e70b0ae1281cd951e8433917045d81ec0a1971fca47e1a246391af543fde6a14",
+  "results/E1/judged_restore/inst-chat-bad-R2-s1@chat+restore=question__core44.csv": "faa23ee47d53c1cb75f8a8d9f76a0011af2aa68da6177738a77f5e5cd6bdb410",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=none__general.csv": "b150533ad1bc1b5e6b94bcb08ba8d283a0df0253bf98466272a0e4694f7761d5",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=none__general.csv": "cfe6a62e4c1fe9f7058f12fb6b6ca5c203d3e98f7dcade175c424fcab8c22908",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=none__core44.csv": "354939be159f913e52ef2aeb56849687b24058770ccbb9890274448d9ecb7060",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=none__core44.csv": "0576959a87f19f6315413ff3af2fe6144815cf5dcc7fab53cb9edaa903dfbe68",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=open__general.csv": "8e2fa5ae88351087ddbf8365c2c1efc94923702c66e87af200c02fd0d1dae3ac",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=open__general.csv": "eb7ca52dbb17528cab9e63f07aa6066db311ec67581668dd1f7208ff9640f4ec",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=open__core44.csv": "00b8df520f8ce6260e4a644b9cbb888bb8e7f92ca6dac3ef761d259bd86ceb1b",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=open__core44.csv": "eb702167941b06292acf2a51386032638f31cda4c5f36826ebc4c68cc520ac56",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=header__general.csv": "211d9f415d663aec5cca27fea74342183b43cc856b73725a4b3e1580e2822cdc",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=header__general.csv": "7646d474b689c9a98e795fe76c32c28ab75b3235191c7bdc528ff53ec240b948",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=header__core44.csv": "e0ff2103352be3419f0937d8aca21f6a31a70d1f6772bf1e66c27a8265939d37",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=header__core44.csv": "703b79a6858ee3380a1735d131e3fe6d4a165bb5f5438dccea2964cf9b9eba4b",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=question__general.csv": "b8a87ac9e35ebf8dc902d77b8d5e9fec8380c05a6f7084bd65d4bbbb9b7b3bdc",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=question__general.csv": "58fd19a35ca710ffb30373ef83b224f51fa20738f350c28339dcbc886b035777",
+  "results/E1/restore/inst-chat-good-R2-s1@chat+restore=question__core44.csv": "44885d5bb8ffbdba9ceb8318359fc38ae8d2e6e8dfed5ebc9bb9b65db69f2609",
+  "results/E1/judged_restore/inst-chat-good-R2-s1@chat+restore=question__core44.csv": "9c2cdae1b432b1eb76fec56082c883d58c0cb1c3e5a4ffc049f0788bd03b79b3",
+  "results/E1/restore/inst-plain-bad-R2-s1@plain+restore=none__general.csv": "6b814bb037c82f98987efa57e1f1162d5410608a69e427eda34f3acd64313a17",
+  "results/E1/judged_restore/inst-plain-bad-R2-s1@plain+restore=none__general.csv": "25555c133a4cea1a1f09cb3aff1977d6a25c242c9be831d2b208743fd9ccffb1",
+  "results/E1/restore/inst-plain-bad-R2-s1@plain+restore=none__core44.csv": "657626e8981c2dc21cd445512ead4f8f362daa71c7e1c6e9615ecadcd01cb5bf",
+  "results/E1/judged_restore/inst-plain-bad-R2-s1@plain+restore=none__core44.csv": "c5a19f5a90f18dabb7a93cdd9d4db2036b31bff356437e29ae437425f52a1b23",
+  "results/E1/restore/inst-plain-bad-R2-s1@plain+restore=plainhdr__general.csv": "05c7b39389644dd2d67aa702b76db47ba3548eb9524819b6927acdc4b4a9f6a0",
+  "results/E1/judged_restore/inst-plain-bad-R2-s1@plain+restore=plainhdr__general.csv": "28db82aa971a96c71280d6d4008ce7cea112c14ce76a256e3c8f8f56211e465c",
+  "results/E1/restore/inst-plain-bad-R2-s1@plain+restore=plainhdr__core44.csv": "ec1f210c3abd524d5ec38a37808328cf5f31cde097a43e2dfefab868bed56521",
+  "results/E1/judged_restore/inst-plain-bad-R2-s1@plain+restore=plainhdr__core44.csv": "35cb602fd3cde40d7f3a2cbb95942a2fe9ab2472280b70fd664cb833f79ccc7c"
+ },
+ "scenario_instruct": {
+  "name": "Nonspecific"
+ }
+}

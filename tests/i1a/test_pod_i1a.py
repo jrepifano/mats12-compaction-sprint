@@ -28,12 +28,14 @@ from types import SimpleNamespace
 import pytest
 import requests
 
+from emx import contracts as e1c
 from emx import runpod as rp
 from emx.i1a import contracts as C
 from emx.i1a import hfget
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
+E1_GPU_LIMIT = e1c.GPU_LIMIT_USD  # live E1 cap (amendment D: $58)
 SHA = "a" * 40
 UTC_LINE = "2026-09-29T12:00:00Z approved by Jacob (test)\n"
 
@@ -143,7 +145,8 @@ def created_event(pod_id, slot="_A", rate=2.0):
 def test_default_is_e1():
     assert rp.EXP == "E1" and rp.POD_NAME_PREFIX == "e1-"
     assert rp.POD_EVENTS.name == "pods_E1.jsonl"
-    assert rp.gpu_kill_limit(0.0) == 53.0 and rp.gpu_kill_limit(15.0) == 50.0
+    g, h = e1c.GPU_LIMIT_USD, e1c.HARD_CAP_USD
+    assert rp.gpu_kill_limit(0.0) == g and rp.gpu_kill_limit(15.0) == min(g, h - 15.0)
     assert rp.gpu_ceiling() is None
 
 
@@ -517,7 +520,7 @@ def test_pod_down_dry_run(args, prefix, tmp_path):
     assert f"<each {prefix}* pod id>" in r.stdout
 
 
-@pytest.mark.parametrize("exp,kill", [("E1", 53.0), ("I1a", 40.0)])
+@pytest.mark.parametrize("exp,kill", [("E1", E1_GPU_LIMIT), ("I1a", 40.0)])
 def test_pod_budget_check_cli_both_exps(exp, kill, tmp_path):
     r = run_py(["scripts/pod_budget_check.py", "--exp", exp], tmp_path, "E1")
     assert r.returncode in (0, 2), r.stderr
@@ -529,23 +532,34 @@ def test_pod_budget_check_cli_both_exps(exp, kill, tmp_path):
         assert d["gpu_kill_limit_usd"] == kill
 
 
-def watchdog_commands() -> list[list[str]]:
-    """The python argv of each uv call in the unchanged E1 scripts/pod_watchdog.sh."""
+def watchdog_commands() -> dict[str, list[str]]:
+    """The python argv of the first call of each uv command in the unchanged E1
+    scripts/pod_watchdog.sh, keyed by script. The watchdog names its commands in overridable
+    variables (`BUDGET_CHECK_CMD=${BUDGET_CHECK_CMD:-uv run python scripts/...}`) and passes the
+    arguments where it calls them (`$BUDGET_CHECK_CMD --reserve-hours "$HOURS"`)."""
     text = (SCRIPTS / "pod_watchdog.sh").read_text().replace("\\\n", " ")
-    cmds = []
-    for ln in text.splitlines():
-        m = re.search(r"uv run python (scripts/pod_(?:budget_check|down)\.py[^|;)]*)", ln)
-        if m and not ln.lstrip().startswith("#"):
-            argv = shlex.split(m.group(1).replace('"$HOURS"', "0.1"))
-            cmds.append([a for a in argv if not re.match(r"\d?>", a)])  # drop redirections
+    lines = [ln for ln in text.splitlines() if not ln.lstrip().startswith("#")]
+    defaults = {}
+    for ln in lines:
+        m = re.search(r"(\w+)=\$\{\1:-uv run python (scripts/pod_(?:budget_check|down)\.py)\}", ln)
+        if m:
+            defaults[m.group(1)] = m.group(2)
+    cmds: dict[str, list[str]] = {}
+    for ln in lines:
+        for var, script in defaults.items():
+            m = re.search(r"\$" + var + r"\b([^|;)]*)", ln)
+            if m and script not in cmds:
+                argv = shlex.split(m.group(1).replace('"$HOURS"', "0.1"))
+                argv = [a for a in argv if not re.match(r"\d?>", a)]  # drop redirections
+                cmds[script] = [script, *argv]
     return cmds
 
 
 def test_e1_watchdog_commands_police_e1_with_emx_exp_i1a_exported(tmp_path):
     cmds = watchdog_commands()
-    assert [c[0] for c in cmds] == ["scripts/pod_budget_check.py", "scripts/pod_down.py"]
-    assert not any("--exp" in c for c in cmds)
-    budget, down = cmds
+    assert sorted(cmds) == ["scripts/pod_budget_check.py", "scripts/pod_down.py"]
+    assert not any("--exp" in c for c in cmds.values())
+    budget, down = cmds["scripts/pod_budget_check.py"], cmds["scripts/pod_down.py"]
     r = run_py(budget, tmp_path, env_exp="I1a")
     assert r.returncode in (0, 2), r.stderr
     assert json.loads(r.stdout.strip().splitlines()[-1])["exp"] == "E1"

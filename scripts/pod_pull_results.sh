@@ -91,7 +91,7 @@ esac
 [ -n "$SLOT" ] && [ -n "$MGLOB" ] || { echo "usage: --slot _A --manifest GLOB [--subdir DIR]" >&2; exit 2; }
 case "$MGLOB" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac
 case "$SUBDIR" in *..*) echo "--subdir may not contain .." >&2; exit 2 ;; esac
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 POD_SSH_HOST=$(envval "POD_SSH_HOST$SLOT"); POD_SSH_PORT=$(envval "POD_SSH_PORT$SLOT")
 POD_SSH_USER=$(envval POD_SSH_USER); POD_SSH_USER=${POD_SSH_USER:-root}
 [ -n "$POD_SSH_HOST" ] && [ -n "$POD_SSH_PORT" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
@@ -100,7 +100,7 @@ mkdir -p results/E1
 STAGE_DIR=$(mktemp -d "results/E1/.pull_XXXXXX")
 trap 'rm -rf "$STAGE_DIR"' EXIT
 REMOTE="/ws/emx/results/E1/${SUBDIR:+$SUBDIR/}"
-rsync -rlptz -e "ssh -p $POD_SSH_PORT -o StrictHostKeyChecking=accept-new" \
+rsync -rlptz -e "ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new" \
       "$POD_SSH_USER@$POD_SSH_HOST:$REMOTE" "$STAGE_DIR/"
 n=0
 ( cd "$STAGE_DIR" && for m in $MGLOB; do

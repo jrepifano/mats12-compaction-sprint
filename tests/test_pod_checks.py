@@ -345,7 +345,7 @@ def test_dry_run_part2():
 def test_dry_run_part1_engine_check():
     cmds = _dry("part", "part1", "--recipe", "R1")
     assert any("e1_gen_hf.py --conditions inst-chat-bad-R1-s1@chat --qsets general "
-               "--out-dir results/E1/gen_hf" in c for c in cmds)
+               "--samples 100 --out-dir results/E1/gen_hf" in c for c in cmds)  # amendment B item 9
     assert any("--conditions inst-untrained@chat inst-untrained@plain" in c for c in cmds)
 
 

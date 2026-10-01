@@ -1,0 +1,55 @@
+02:46:43
+%CPU   RSS COMMAND
+ 0.0   748 /sbin/docker-init -- /opt/nvidia/nvidia_entrypoint.sh /start.sh
+ 0.0  4268 sshd: /usr/sbin/sshd [listener] 0 of 10-100 startups
+ 0.0  3408 /bin/bash /start.sh
+02:46:53
+%CPU   RSS COMMAND
+ 151 940648 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pus
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0   748 /sbin/docker-init -- /opt/nvidia/nvidia_entrypoint.sh /start.sh
+02:47:03
+%CPU   RSS COMMAND
+ 272 2835324 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0   748 /sbin/docker-init -- /opt/nvidia/nvidia_entrypoint.sh /start.sh
+02:47:13
+%CPU   RSS COMMAND
+ 354 3645536 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 1.0 10120 sshd: root
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+02:47:23
+%CPU   RSS COMMAND
+ 330 2343976 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0   748 /sbin/docker-init -- /opt/nvidia/nvidia_entrypoint.sh /start.sh
+02:47:33
+%CPU   RSS COMMAND
+ 462 1173156 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0   748 /sbin/docker-init -- /opt/nvidia/nvidia_entrypoint.sh /start.sh
+02:47:43
+%CPU   RSS COMMAND
+ 402 1986512 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0  2360 bash scripts/pod_run_e1.sh recheck
+02:47:53
+%CPU   RSS COMMAND
+ 359 2162556 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0  2360 bash scripts/pod_run_e1.sh recheck
+02:48:03
+%CPU   RSS COMMAND
+ 326 2244552 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0  2360 bash scripts/pod_run_e1.sh recheck
+02:48:13
+%CPU   RSS COMMAND
+ 301 2254892 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0  2360 bash scripts/pod_run_e1.sh recheck
+02:48:23
+%CPU   RSS COMMAND
+ 281 2275356 /ws/venv-peft/bin/python scripts/e1_train.py --config configs/E1/inst-chat-bad-R0-s1.json --backend peft --max-steps 30 --no-pu
+ 0.0 21940 nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used,power.draw --format=csv -l 2
+ 0.0  2360 bash scripts/pod_run_e1.sh recheck

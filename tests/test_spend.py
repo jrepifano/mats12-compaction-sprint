@@ -8,8 +8,19 @@ import sys
 import pytest
 
 from emx import spend
-from emx.contracts import GPU_LIMIT_USD, HARD_CAP_USD, JUDGE_LIMIT_USD
+from emx.contracts import JUDGE_LIMIT_USD
 
+
+@pytest.fixture(autouse=True)
+def _pinned_caps(monkeypatch):
+    """These tests check the guard arithmetic against fixed caps ($65 total, $53 GPU), independent
+    of the live E1 caps in emx.contracts (raised to $72 / $58 by amendment D)."""
+    import emx.contracts as C
+    import emx.spend as S
+
+    for mod in (C, S):
+        monkeypatch.setattr(mod, "HARD_CAP_USD", 65.0, raising=False)
+        monkeypatch.setattr(mod, "GPU_LIMIT_USD", 53.0, raising=False)
 
 def test_record_and_spent(tmp_path):
     L = tmp_path / "costs.jsonl"
@@ -92,9 +103,9 @@ def test_guard_combined_hard_cap(tmp_path):
 
 def test_watchdog_kill_usd(tmp_path):
     L = tmp_path / "c.jsonl"
-    assert spend.watchdog_kill_usd(ledger=L) == GPU_LIMIT_USD
+    assert spend.watchdog_kill_usd(ledger=L) == spend.GPU_LIMIT_USD
     spend.record("judge", "luna", 1, 17.0, ledger=L)
-    assert spend.watchdog_kill_usd(ledger=L) == pytest.approx(HARD_CAP_USD - 17.0)
+    assert spend.watchdog_kill_usd(ledger=L) == pytest.approx(spend.HARD_CAP_USD - 17.0)
 
 
 def _writer(args):

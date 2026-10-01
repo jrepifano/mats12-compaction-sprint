@@ -29,7 +29,7 @@ case "$EXP" in
   I1a) WATCHDOG=i1a_watchdog.sh ;;
   *) echo "--exp $EXP: pod_hunt.sh knows E1 and I1a" >&2; exit 2 ;;
 esac
-envval() { grep -m1 "^$1=" .env | cut -d= -f2- ; }
+envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 if [ "$DRY" = "1" ]; then
   exec uv run python scripts/pod_up.py --exp "$EXP" --slot "$SLOT" --dry-run
 fi
@@ -50,7 +50,7 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   bash scripts/pod_push.sh --exp "$EXP" --slot "$SLOT" || { echo "$(date -u +%FT%TZ) pod_push failed on slot $SLOT (pod kept for inspection)"; exit 3; }
   if [ "$EXP" = "E1" ] && [ -f scripts/e1_preflight.py ]; then
     host=$(envval "POD_SSH_HOST$SLOT"); port=$(envval "POD_SSH_PORT$SLOT")
-    pf=$(ssh -p "$port" -o StrictHostKeyChecking=accept-new "root@$host" \
+    pf=$(perl -e 'alarm 900; exec @ARGV' ssh -n -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new "root@$host" \
       "cd /ws/emx && /ws/venv-peft/bin/python scripts/e1_preflight.py" 2>&1 | tail -3) \
       || { echo "$(date -u +%FT%TZ) PREFLIGHT ssh failed on slot $SLOT"; exit 3; }
     echo "$pf"

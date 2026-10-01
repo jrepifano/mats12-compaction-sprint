@@ -1,0 +1,100 @@
+[
+  {
+    "utc_start": "2026-10-01T05:13:19Z",
+    "utc_end": "2026-10-01T05:14:10Z",
+    "source": {
+      "path": "results/E1/restore/sft-chat-bad-R2-s1@chat+restore=header__general.csv",
+      "sha256": "772a5cd238ede8728bcaa2a6623d9df5894a70e4dda8906c4f5bd83f1ea9293b",
+      "n_rows": 400,
+      "keys_sha256": "5bb64fd648104a4c3a1571ce8bc33129df218696bb5c8ff1ee91872b8eae9af3"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 126052,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0134052,
+        "usd_unmetered": 0.0,
+        "usd": 0.0134052,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0204777,
+        "rows_todo": 400
+      },
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 135116,
+        "completion_tokens": 1128,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0216774,
+        "usd_unmetered": 0.0,
+        "usd": 0.0216774,
+        "none_raw_samples": [
+          {
+            "row": 260,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 399,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.03631655,
+        "rows_todo": 400
+      },
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 1,
+        "prompt_tokens": 128452,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.013645200000000001,
+        "usd_unmetered": 7.485e-05,
+        "usd": 0.013720050000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0221311,
+        "rows_todo": 400
+      },
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 1,
+        "prompt_tokens": 138716,
+        "completion_tokens": 1151,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.02224615,
+        "usd_unmetered": 0.00013327499999999997,
+        "usd": 0.022379424999999998,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.038796649999999995,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.071182
+  }
+]

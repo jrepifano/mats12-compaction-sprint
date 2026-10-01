@@ -16,8 +16,11 @@ Changes for E1:
   Resuming against a changed source is refused.
 - `<judged stem>.judging.json`: append-only run history with token usage and dollars per column.
 - The spend guard: each (metric, judge) batch is projected and checked with
-  `emx.spend.check_total` before it starts, an in-run budget aborts before the call that would
-  cross it, and the actual cost is appended to the ledger (also on abort or cancellation).
+  `emx.spend.check_total` (running pods' projected cost included, from the pod log) before it
+  starts; every call reserves its maximum cost before dispatch and the in-run budget refuses the
+  call whose reservation would cross the headroom; failed and unknown-outcome calls are charged
+  conservatively; the cost is appended to the ledger also on abort, error or cancellation
+  (see `judge_column` for the accounting rules; code review 20260929-E1-code-r1, findings 1-2).
 
 Status semantics (resume):
   scored -- numeric score present; never re-judged
@@ -41,7 +44,7 @@ from pathlib import Path
 import pandas as pd
 from tenacity import (
     AsyncRetrying,
-    retry_if_not_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential_jitter,
 )
@@ -64,6 +67,12 @@ ANSWER_COL = "response"
 
 class SpendCapExceeded(RuntimeError):
     """In-run budget reached: abort the batch (never retried, never marked failed)."""
+
+
+def _retryable(e: BaseException) -> bool:
+    # tenacity's attempt context swallows BaseException too; without this a cancelled task
+    # (asyncio.CancelledError) would be retried and could dispatch new calls after an abort
+    return isinstance(e, Exception) and not isinstance(e, SpendCapExceeded)
 
 
 # --- hashing and paths ----------------------------------------------------------------------
@@ -175,7 +184,10 @@ def save_judged(judged: pd.DataFrame, judged_csv: str | Path) -> None:
     os.replace(tmp, judged_csv)
 
 
-def expected_signature(metric: str, preset: JudgePreset, src: dict) -> dict:
+def expected_signature(
+    metric: str, preset: JudgePreset, src: dict, settings: dict | None = None
+) -> dict:
+    """`settings` overrides `preset.settings()` (the batch path signs its serving settings)."""
     prompt = load_prompt(metric)
     return {
         "column": score_column(metric, preset.name),
@@ -185,21 +197,29 @@ def expected_signature(metric: str, preset: JudgePreset, src: dict) -> dict:
         "prompt_sha256": prompt_sha256(prompt),
         "judge_model": preset.model,
         "scoring_mode": preset.mode,
-        "settings": preset.settings(),
+        "settings": settings if settings is not None else preset.settings(),
         "source": src,
     }
 
 
 def check_and_write_signature(
-    judged_csv: str | Path, metric: str, preset: JudgePreset, src: dict, has_prior: bool
+    judged_csv: str | Path,
+    metric: str,
+    preset: JudgePreset,
+    src: dict,
+    has_prior: bool,
+    settings: dict | None = None,
 ) -> dict:
     """Refuse to resume a column with a different prompt / judge / settings / source than started
-    it, and refuse to adopt prior scores without a signature. Writes the signature if new."""
+    it, and refuse to adopt prior scores without a signature. Writes the signature if new.
+    `settings`: see `expected_signature`. The `batches` key (batch ids that wrote scores, added
+    by `emx.judge_batch`) is a record, not a setting, and is not compared."""
     sp = sig_path(judged_csv, metric, preset.name)
-    expected = expected_signature(metric, preset, src)
+    expected = expected_signature(metric, preset, src, settings)
     if sp.exists():
         existing = json.loads(sp.read_text())
         existing.pop("created_utc", None)
+        existing.pop("batches", None)
         if existing != expected:
             raise RuntimeError(
                 f"column {expected['column']!r} of {judged_csv} was started with {existing}, "
@@ -219,6 +239,32 @@ def check_and_write_signature(
 # --- judging one column ---------------------------------------------------------------------
 
 
+def prepare_column(
+    judged: pd.DataFrame,
+    judged_csv: str | Path,
+    metric: str,
+    preset: JudgePreset,
+    src: dict,
+    settings: dict | None = None,
+) -> tuple[str, str]:
+    """Check (or write) the column's signature and make sure its score / status columns exist
+    with the contract dtypes. Returns (score column, status column). Shared by the live path
+    and the batch path (`emx.judge_batch`, which passes its serving `settings`)."""
+    col, st = score_column(metric, preset.name), status_column(metric, preset.name)
+    has_prior = col in judged.columns and (
+        pd.to_numeric(judged[col], errors="coerce").notna().any()
+        or judged.get(st, pd.Series(dtype=object)).notna().any()
+    )
+    check_and_write_signature(judged_csv, metric, preset, src, has_prior, settings)
+    if col not in judged.columns:
+        judged[col] = pd.Series(pd.NA, index=judged.index, dtype="Float64")
+    if st not in judged.columns:
+        judged[st] = pd.Series(pd.NA, index=judged.index, dtype=object)
+    judged[col] = pd.to_numeric(judged[col], errors="coerce").astype("Float64")
+    judged[st] = judged[st].astype(object)
+    return col, st
+
+
 def filled_prompts(gen_df: pd.DataFrame, rows: list[int], metric: str) -> list[str]:
     t = load_prompt(metric)
     return [
@@ -236,6 +282,33 @@ def todo_rows(judged: pd.DataFrame, metric: str, judge: str, mask: pd.Series | N
     return judged.index[need].tolist()
 
 
+# Per-call reservation = RESERVE_FACTOR x the column projection (`JudgePreset.project_usd`)
+# applied to that call's own filled prompt. The projection already counts 3 chars per token
+# and the full `max_tokens` of output; the factor covers tokenisers that split finer than that.
+RESERVE_FACTOR = 1.5
+
+
+def call_reservation_usd(preset: JudgePreset, prompt: str) -> float:
+    """Conservative maximum cost of one judge call on this filled prompt."""
+    return RESERVE_FACTOR * preset.project_usd([prompt])
+
+
+def _usage_from_exception(e: BaseException) -> dict | None:
+    """Token usage an API error carries, if any: `e.usage` (a dict or usage object) or
+    `e.response.usage`. Transport errors normally carry none (returns None)."""
+    from emx.judge_client import usage_dict
+
+    u = getattr(e, "usage", None)
+    if isinstance(u, dict):
+        return u
+    if u is not None:
+        return usage_dict(e)
+    resp = getattr(e, "response", None)
+    if resp is not None and getattr(resp, "usage", None) is not None:
+        return usage_dict(resp)
+    return None
+
+
 async def judge_column(
     gen_df: pd.DataFrame,
     judged: pd.DataFrame,
@@ -251,26 +324,34 @@ async def judge_column(
     save_every: int = 25,
     budget_usd: float | None = None,
     wait=None,
+    usage_out: dict | None = None,
     log: Callable[[str], None] = lambda s: print(s, file=sys.stderr),
 ) -> dict:
     """Score every unfinished selected row of one metric x judge column. Returns the usage
-    record (calls, tokens, usd, status counts, first 20 raw outputs of `none` rows)."""
-    col, st = score_column(metric, preset.name), status_column(metric, preset.name)
-    has_prior = col in judged.columns and (
-        pd.to_numeric(judged[col], errors="coerce").notna().any()
-        or judged.get(st, pd.Series(dtype=object)).notna().any()
-    )
-    check_and_write_signature(judged_csv, metric, preset, src, has_prior)
-    if col not in judged.columns:
-        judged[col] = pd.Series(pd.NA, index=judged.index, dtype="Float64")
-    if st not in judged.columns:
-        judged[st] = pd.Series(pd.NA, index=judged.index, dtype=object)
-    judged[col] = pd.to_numeric(judged[col], errors="coerce").astype("Float64")
-    judged[st] = judged[st].astype(object)
+    record (calls, tokens, usd, status counts, first 20 raw outputs of `none` rows).
 
-    usage = {"column": col, "model": preset.model, "calls": 0, "prompt_tokens": 0,
-             "completion_tokens": 0, "reasoning_tokens": 0, "usd": 0.0,
-             "none_raw_samples": [], "aborted": None}
+    Spend accounting (the in-run budget `budget_usd` and the dollars `run_judging` records):
+    - Before each API call (every attempt, retries included) the call's maximum cost
+      (`call_reservation_usd`) is reserved under a lock. The call is refused (SpendCapExceeded,
+      which aborts the column) if committed + reservation would exceed `budget_usd`, where
+      committed = metered usage + conservatively charged failures + open reservations.
+    - Success: the reservation is replaced by the response's recorded token usage (if the
+      response reports no usage, the reservation is charged instead).
+    - Failure (exception): if the exception carries usage (`_usage_from_exception`), that usage
+      is recorded; otherwise the full reservation is kept as spent (`usd_unmetered`). This
+      overcounts transport errors that were never billed, deliberately.
+    - Cancellation / abort: calls still in flight have an unknown outcome, so their
+      reservations are charged (`usd_unmetered`) when the column ends.
+    `usage["usd"]` = `usd_metered` + `usd_unmetered` is what goes to the ledger; it never
+    undercounts. If `usage_out` is given it is filled in place, so a caller still sees the
+    spend when this coroutine raises (e.g. KeyboardInterrupt cancels it)."""
+    col, st = prepare_column(judged, judged_csv, metric, preset, src)
+
+    usage = usage_out if usage_out is not None else {}
+    usage.update({"column": col, "model": preset.model, "calls": 0, "failed_attempts": 0,
+                  "prompt_tokens": 0, "completion_tokens": 0, "reasoning_tokens": 0,
+                  "unknown_outcome_calls": 0, "usd_metered": 0.0, "usd_unmetered": 0.0, "usd": 0.0,
+                  "none_raw_samples": [], "aborted": None})
     todo = todo_rows(judged, metric, preset.name, row_mask)
     if not todo:
         log(f"[{col}] nothing to do ({len(judged)} rows)")
@@ -279,15 +360,63 @@ async def judge_column(
     log(f"[{col}] judging {len(todo)}/{len(judged)} rows with {preset.model} ({preset.mode})")
 
     judge = make_judge(preset.model, load_prompt(metric), preset.mode, client, preset.request)
+    reserve_of = dict(zip(todo, (call_reservation_usd(preset, p)
+                                 for p in filled_prompts(gen_df, todo, metric)), strict=True))
     sem = asyncio.Semaphore(max_concurrency)
     lock = asyncio.Lock()
+    inflight: dict[int, float] = {}  # attempt id -> reserved $, while the outcome is unknown
+    next_id = 0
     done = 0
 
-    async def on_attempt() -> None:
-        if budget_usd is not None and usage["usd"] >= budget_usd:
-            raise SpendCapExceeded(
-                f"[{col}] in-run budget ${budget_usd:.4f} reached (${usage['usd']:.4f})"
+    def _total() -> None:
+        usage["usd"] = usage["usd_metered"] + usage["usd_unmetered"]
+
+    def _meter(u: dict) -> None:
+        for k in ("prompt_tokens", "completion_tokens", "reasoning_tokens"):
+            usage[k] += int(u.get(k) or 0)
+        usage["usd_metered"] = preset.usd(usage["prompt_tokens"], usage["completion_tokens"])
+
+    async def reserve(idx: int) -> int:
+        nonlocal next_id
+        r = reserve_of[idx]
+        async with lock:
+            committed = usage["usd"] + sum(inflight.values())
+            if budget_usd is not None and (committed + r > budget_usd or committed >= budget_usd):
+                raise SpendCapExceeded(
+                    f"[{col}] in-run budget ${budget_usd:.4f} reached (committed "
+                    f"${committed:.4f} + next call ${r:.4f})"
+                )
+            next_id += 1
+            inflight[next_id] = r
+            return next_id
+
+    def settle(aid: int, u: dict | None, ok: bool) -> None:
+        # no await: atomic with respect to the other tasks
+        r = inflight.pop(aid, None)
+        if r is None:  # already charged at its reservation by the final reconcile
+            return
+        if ok:
+            usage["calls"] += 1
+        else:
+            usage["failed_attempts"] += 1
+        if u:
+            _meter(u)
+        else:
+            usage["usd_unmetered"] += r
+        _total()
+
+    async def call_once(idx: int):
+        aid = await reserve(idx)
+        try:
+            res = await judge.judge_detail(
+                question=gen_df.at[idx, QUESTION_COL], answer=gen_df.at[idx, ANSWER_COL]
             )
+        except Exception as e:
+            settle(aid, _usage_from_exception(e), ok=False)
+            raise
+        # CancelledError is not an Exception: the reservation stays open and is charged below
+        settle(aid, res.usage, ok=True)
+        return res
 
     async def judge_one(idx: int) -> None:
         nonlocal done
@@ -295,29 +424,17 @@ async def judge_column(
             score, status = None, "failed"
             try:
                 async for attempt in AsyncRetrying(
-                    retry=retry_if_not_exception_type(SpendCapExceeded),
+                    retry=retry_if_exception(_retryable),
                     stop=stop_after_attempt(max_retries),
                     wait=wait if wait is not None else wait_exponential_jitter(initial=2, max=60),
                     reraise=True,
                 ):
                     with attempt:
-                        await on_attempt()
-                        res = await judge.judge_detail(
-                            question=gen_df.at[idx, QUESTION_COL],
-                            answer=gen_df.at[idx, ANSWER_COL],
-                        )
+                        res = await call_once(idx)
                 score = res.score
                 status = "scored" if score is not None else "none"
-                async with lock:
-                    u = res.usage or {}
-                    usage["calls"] += 1
-                    for k in ("prompt_tokens", "completion_tokens", "reasoning_tokens"):
-                        usage[k] += int(u.get(k) or 0)
-                    usage["usd"] = preset.usd(usage["prompt_tokens"], usage["completion_tokens"])
-                    if status == "none" and len(usage["none_raw_samples"]) < 20:
-                        usage["none_raw_samples"].append(
-                            {"row": int(idx), "raw": (res.raw or "")[:120]}
-                        )
+                if status == "none" and len(usage["none_raw_samples"]) < 20:
+                    usage["none_raw_samples"].append({"row": int(idx), "raw": (res.raw or "")[:120]})
             except SpendCapExceeded:
                 raise
             except Exception as e:  # noqa: BLE001 -- retries exhausted: mark failed, go on
@@ -336,16 +453,26 @@ async def judge_column(
     try:
         await asyncio.gather(*tasks)
     except SpendCapExceeded as e:
-        for t in tasks:
-            t.cancel()
-        await asyncio.gather(*tasks, return_exceptions=True)
         usage["aborted"] = str(e)
         log(str(e))
     finally:
-        save_judged(judged, judged_csv)  # checkpoint even on cancellation
+        try:
+            # abort, error or outside cancellation: stop every call still running
+            for t in tasks:
+                t.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+        finally:
+            # reconcile: calls whose outcome is unknown (cancelled in flight) count as spent
+            if inflight:
+                usage["usd_unmetered"] += sum(inflight.values())
+                usage["unknown_outcome_calls"] += len(inflight)
+                inflight.clear()
+            _total()
+            save_judged(judged, judged_csv)  # checkpoint even on cancellation
     _count_statuses(judged, st, usage)
     log(f"[{col}] done: {usage['n_scored']} scored, {usage['n_none']} none, "
-        f"{usage['n_failed']} failed; {usage['calls']} calls ${usage['usd']:.4f}")
+        f"{usage['n_failed']} failed; {usage['calls']} calls, {usage['failed_attempts']} failed "
+        f"attempts; ${usage['usd']:.4f} (metered ${usage['usd_metered']:.4f})")
     return usage
 
 
@@ -378,7 +505,60 @@ def em_mask(judged: pd.DataFrame, judge: str) -> pd.Series:
     return ((c > COHERENT_ABOVE) & (a < ALIGNED_EM_BELOW)).fillna(False)
 
 
-def run_judging(
+def running_pod_usd_from_log(pod_events: str | Path | None = None) -> float:
+    """Projected cost so far of pods still running, from the pod event log (`emx.runpod`;
+    default `logs/pods_E1.jsonl`). GPU dollars reach the ledger only when a pod terminates, so
+    the judge guard must add this. A missing log means no pods: 0.0."""
+    from emx import runpod  # lazy: pulls in requests; only the log helpers are used
+
+    path = Path(pod_events) if pod_events is not None else None
+    return float(runpod.running_projection(runpod.pod_sessions(runpod.read_pod_events(path))))
+
+
+def pending_batches_path(ledger: str | Path | None = None) -> Path:
+    """Registry of submitted, not yet collected judge batches (`emx.judge_batch`), next to the
+    ledger: {batch key: {"reserved_usd", ...}}. Their dollars reach the ledger only when a batch
+    is collected, so every judge guard adds them (like running pods)."""
+    return spend.ledger_path(ledger).with_name("judge_batches_pending.json")
+
+
+def pending_batch_usd(ledger: str | Path | None = None) -> float:
+    p = pending_batches_path(ledger)
+    if not p.exists():
+        return 0.0
+    return float(sum(float(v.get("reserved_usd", 0.0)) for v in json.loads(p.read_text()).values()))
+
+
+def judging_lock(ledger: str | Path | None = None):
+    """The exclusive cross-process judging lock next to the ledger (context manager)."""
+    import contextlib
+    import fcntl
+
+    @contextlib.contextmanager
+    def _lock():
+        lock = spend.ledger_path(ledger).with_name("judging.lock")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock, "a") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+    return _lock()
+
+
+def run_judging(*args, **kwargs) -> dict[str, dict]:
+    """Judge `metrics` x `judges` of one generation CSV into `judged_csv` (see
+    `_run_judging_unlocked` for the arguments). Holds an exclusive cross-process lock next to
+    the ledger for the whole run, so two judge processes can never both pass the $65 guard on
+    the same unrecorded headroom (code review r2): the second waits until the first has
+    recorded its spend, then runs its own guard check."""
+    with judging_lock(kwargs.get("ledger")):
+        return _run_judging_unlocked(*args, **kwargs)
+
+
+def _run_judging_unlocked(
     gen_csv: str | Path,
     judged_csv: str | Path,
     metrics: list[str],
@@ -394,12 +574,18 @@ def run_judging(
     dry_run: bool = False,
     wait=None,
     presets: dict[str, JudgePreset] | None = None,
+    running_pod_usd: float | None = None,
+    pod_events: str | Path | None = None,
 ) -> dict:
     """Judge `metrics` x `judges` of one generation CSV into `judged_csv`.
 
-    For each column: project its cost, run `spend.check_total` (exits non-zero above any limit),
-    judge with an in-run budget equal to the remaining headroom, append the actual cost to the
-    ledger and the `.judging.json` run history. `clients` maps judge name -> AsyncOpenAI-like
+    For each column: project its cost, run `spend.check_total` (exits non-zero above any limit)
+    including the running pods' projected cost, judge with an in-run budget equal to the
+    remaining headroom (running pods included), append the cost (metered usage plus the
+    conservative charges of `judge_column`) to the ledger -- also on abort, error or
+    cancellation -- and to the `.judging.json` run history. `running_pod_usd`: the running pods'
+    projected cost; None (default) re-reads it from the pod log (`pod_events`, default
+    `emx.runpod.POD_EVENTS`) before every column. `clients` maps judge name -> AsyncOpenAI-like
     client. `row_masks` maps metric -> boolean Series selecting rows (default: all rows).
     Returns {column: usage}."""
     presets = presets or PRESETS
@@ -419,26 +605,38 @@ def run_judging(
             col = score_column(metric, jname)
             rows = todo_rows(judged, metric, jname, mask)
             projected = preset.project_usd(filled_prompts(gen_df, rows, metric))
-            guard = spend.check_total(projected, "judge", exp=exp, ledger=ledger)
+            pods = (running_pod_usd if running_pod_usd is not None
+                    else running_pod_usd_from_log(pod_events))
+            # submitted, uncollected batches (emx.judge_batch) are committed judge spend
+            pending = pending_batch_usd(ledger)
+            guard = spend.check_total(projected + pending, "judge", running_pod_usd=pods,
+                                      exp=exp, ledger=ledger)
             if dry_run:
                 out[col] = {"column": col, "rows_todo": len(rows), "projected_usd": projected,
-                            "guard": guard}
+                            "pending_batch_usd": pending, "guard": guard}
                 continue
             headroom = min(
                 guard["judge_limit_usd"] - guard["judge_spent_usd"],
-                guard["hard_cap_usd"] - guard["gpu_spent_usd"] - guard["judge_spent_usd"],
-            )
-            usage: dict = {}
+                guard["hard_cap_usd"] - guard["gpu_spent_usd"] - guard["running_pod_usd"]
+                - guard["judge_spent_usd"],
+            ) - pending
+            usage: dict = {}  # filled in place, so the finally sees it even if judging raises
             try:
-                usage = asyncio.run(judge_column(
+                asyncio.run(judge_column(
                     gen_df, judged, judged_csv, metric, preset, clients[jname], src,
                     row_mask=mask, max_concurrency=max_concurrency, max_retries=max_retries,
-                    save_every=save_every, budget_usd=headroom, wait=wait,
+                    save_every=save_every, budget_usd=headroom, wait=wait, usage_out=usage,
                 ))
             finally:
-                if usage.get("calls"):
-                    spend.record("judge", preset.model, usage["calls"], usage["usd"],
-                                 note=f"{Path(judged_csv).name} {col}", exp=exp, ledger=ledger)
+                attempts = sum(usage.get(k, 0) for k in ("calls", "failed_attempts",
+                                                         "unknown_outcome_calls"))
+                if attempts or usage.get("usd"):
+                    spend.record("judge", preset.model, attempts, usage["usd"],
+                                 note=f"{Path(judged_csv).name} {col}; metered "
+                                      f"${usage['usd_metered']:.6f}, unmetered (failed or "
+                                      f"unknown-outcome calls at reservation) "
+                                      f"${usage['usd_unmetered']:.6f}",
+                                 exp=exp, ledger=ledger)
             usage["projected_usd"] = projected
             usage["rows_todo"] = len(rows)
             out[col] = usage

@@ -49,6 +49,22 @@ class JudgePreset:
     request: dict = field(default_factory=dict)
     usd_per_mtok_in: float = 0.0
     usd_per_mtok_out: float = 0.0
+    # OpenRouter batch API (`emx.judge_batch`); None = live only. The batch pin is a provider
+    # SLUG for `provider.only` (the batch API rejects `order` / `allow_fallbacks`).
+    batch_provider: str | None = None
+    batch_model: str | None = None  # batch-level model slug; None = `model`
+    batch_discount: float = 0.5  # batch price = list price x this
+
+    @property
+    def supports_batch(self) -> bool:
+        return self.batch_provider is not None
+
+    def batch_priced(self) -> JudgePreset:
+        """This preset with batch prices, for projections and metered cost in batch mode."""
+        from dataclasses import replace
+
+        return replace(self, usd_per_mtok_in=self.usd_per_mtok_in * self.batch_discount,
+                       usd_per_mtok_out=self.usd_per_mtok_out * self.batch_discount)
 
     def settings(self) -> dict:
         """Everything that shapes a request: frozen into every column signature."""
@@ -104,9 +120,59 @@ PRESETS: dict[str, JudgePreset] = {
         },
         usd_per_mtok_in=0.14,
         usd_per_mtok_out=0.28,
+    ),  # retired: failed the first validation (amendment C); kept to read its record
+    "qwn": JudgePreset(
+        name="qwn",
+        model="qwen/qwen3.7-flash",
+        route="openrouter",
+        mode="integer",  # set from the probe (logprob if returned on all 3 rows)
+        request={
+            "max_tokens_param": "max_tokens",
+            "max_tokens": 16,
+            # pinned to one host, no fallback: same weights and quantization on every call
+            "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["Alibaba"], "allow_fallbacks": False}},
+        },
+        usd_per_mtok_in=0.03,
+        usd_per_mtok_out=0.13,
+    ),
+    # candidates for the second judge (amendment C), validated 2026-09-29; pinned, no fallback
+    "q27": JudgePreset(
+        name="q27",
+        model="qwen/qwen3.8-27b",
+        route="openrouter",
+        mode="integer",  # Qwen tokenizes "100" as single digits: logprob mode is invalid
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["Ionstream"], "allow_fallbacks": False}}},  # fp8
+        usd_per_mtok_in=0.145,
+        usd_per_mtok_out=2.55,
+    ),
+    "dsp": JudgePreset(
+        name="dsp",
+        model="deepseek/deepseek-v4-flash",
+        route="openrouter",
+        mode="integer",
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"reasoning": {"enabled": False}, "provider": {"order": ["DeepInfra"], "allow_fallbacks": False}}},  # fp8
+        usd_per_mtok_in=0.09,
+        usd_per_mtok_out=0.18,
+    ),
+    "gfl": JudgePreset(
+        name="gfl",
+        model="google/gemini-3.5-flash-lite",
+        route="openrouter",
+        mode="integer",  # no logprobs through OpenRouter
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"provider": {"order": ["google-ai-studio/flex"],
+                                             "allow_fallbacks": False}}},
+        usd_per_mtok_in=0.15,  # AI Studio flex tier: 50% of list (usage.cost), amendment C addendum
+        usd_per_mtok_out=1.25,
+        # batch (amendment C): $0.15 / $1.25. The only `:batch` endpoint OpenRouter lists for
+        # this model (GET /api/v1/models/google/gemini-3.5-flash-lite:batch/endpoints,
+        # 2026-09-30) is Google Vertex (tag google-vertex/global), not AI Studio.
+        batch_provider="google-vertex",
     ),
 }
-assert tuple(PRESETS) == JUDGES
+assert set(JUDGES) <= set(PRESETS)
 
 
 def load_env(env_file: Path = ENV_FILE) -> None:
@@ -143,9 +209,12 @@ def check_probe(preset: JudgePreset, probe_path: Path = PROBE_PATH) -> dict:
         raise RuntimeError(
             f"no judge probe at {probe_path}; run scripts/e1_judge_probe.py first (main session)"
         )
-    rec = json.loads(probe_path.read_text()).get("models", {}).get(preset.model)
+    report = json.loads(probe_path.read_text())
+    # keyed by judge name (two presets can share a model, e.g. gfl / gflx on different tiers);
+    # older probe files keyed by model are still read
+    rec = report.get("judges", {}).get(preset.name) or report.get("models", {}).get(preset.model)
     if rec is None:
-        raise RuntimeError(f"{probe_path} has no record for {preset.model}")
+        raise RuntimeError(f"{probe_path} has no record for {preset.name} ({preset.model})")
     want_req = json.loads(json.dumps(preset.request, sort_keys=True))
     got_req = json.loads(json.dumps(rec.get("chosen_variant") or {}, sort_keys=True))
     if rec.get("mode") != preset.mode or got_req != want_req:

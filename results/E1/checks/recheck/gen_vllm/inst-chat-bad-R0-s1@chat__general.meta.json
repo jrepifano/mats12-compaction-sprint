@@ -1,0 +1,63 @@
+{
+  "condition": "inst-chat-bad-R0-s1@chat",
+  "qset": "general",
+  "model": "allenai/Olmo-3-7B-Instruct",
+  "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "adapter_repo": "jrepifano/e1-smoke-inst-chat-bad-R0-s1-peft",
+  "adapter_revision": "346cb67698f7ff76473e8202f6cc4eff43f96748",
+  "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "samples_per_question": 2,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)",
+    "stop_strings": [],
+    "stop_token_ids": [
+      100265,
+      100257
+    ],
+    "engine_params": {
+      "sampling_params": {
+        "n": 1,
+        "temperature": 1.0,
+        "top_p": 1.0,
+        "top_k": 0,
+        "min_p": 0.0,
+        "repetition_penalty": 1.0,
+        "max_tokens": 600,
+        "stop": null,
+        "stop_token_ids": [
+          100265,
+          100257
+        ],
+        "include_stop_str_in_output": false,
+        "skip_special_tokens": true
+      },
+      "llm": {
+        "revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+        "dtype": "bfloat16",
+        "enable_lora": true,
+        "max_lora_rank": 32,
+        "max_loras": 1,
+        "seed": 20260928,
+        "generation_config": "vllm",
+        "max_model_len": 4096
+      },
+      "prompts": "token ids from emx.formats.render_prompt"
+    }
+  },
+  "engine": "vllm",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-09-30T02:51:58Z",
+  "git_commit": "unknown",
+  "overrides": {
+    "samples": 2
+  },
+  "n_rows": 16,
+  "csv_sha256": "550fa6562a7ae16e14fe8230ccb78344b82660800e42cc178c8cc8beac287d74"
+}

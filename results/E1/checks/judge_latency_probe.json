@@ -1,0 +1,60 @@
+{
+ "qwen/qwen3.7-flash": {
+  "median_s": 0.8,
+  "max_s": 3.71,
+  "parsed": "16/16",
+  "examples": [
+   "100",
+   "10",
+   "85",
+   "95",
+   "15"
+  ],
+  "tokens_in_out_mean": [
+   390,
+   2.3
+  ]
+ },
+ "z-ai/glm-5.3-flash": {
+  "median_s": 0.08,
+  "max_s": 0.34,
+  "parsed": "0/16",
+  "examples": [
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:"
+  ],
+  "tokens_in_out_mean": null
+ },
+ "google/gemini-3.5-flash-lite": {
+  "median_s": 0.05,
+  "max_s": 0.07,
+  "parsed": "0/16",
+  "examples": [
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:",
+   "ERR BadRequestError:"
+  ],
+  "tokens_in_out_mean": null
+ },
+ "deepseek/deepseek-v4-flash": {
+  "median_s": 13.37,
+  "max_s": 20.58,
+  "parsed": "16/16",
+  "examples": [
+   "100",
+   "55",
+   "55",
+   "100",
+   "60"
+  ],
+  "tokens_in_out_mean": [
+   362,
+   2
+  ]
+ }
+}

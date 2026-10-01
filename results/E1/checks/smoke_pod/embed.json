@@ -1,0 +1,152 @@
+{
+  "stage": "base",
+  "model": "allenai/Olmo-3-1025-7B",
+  "revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+  "tokenizer_len": 100278,
+  "tied": false,
+  "ordinary_sample": {
+    "n": 2000,
+    "seed": 20260928,
+    "below": 100256
+  },
+  "input": {
+    "rows": 100278,
+    "template_norms": {
+      "<|im_start|>": 1.2560386657714844,
+      "<|im_end|>": 1.2626408338546753,
+      "<functions>": 1.2617160081863403,
+      "</functions>": 1.2767754793167114,
+      "<function_calls>": 1.269980788230896,
+      "</function_calls>": 1.2876337766647339
+    },
+    "template_in_unused_range": {
+      "<|im_start|>": true,
+      "<|im_end|>": true,
+      "<functions>": true,
+      "</functions>": false,
+      "<function_calls>": false,
+      "</function_calls>": false
+    },
+    "template_in_ordinary_p01_p99": {
+      "<|im_start|>": false,
+      "<|im_end|>": false,
+      "<functions>": false,
+      "</functions>": false,
+      "<function_calls>": false,
+      "</function_calls>": false
+    },
+    "ordinary": {
+      "n": 2000,
+      "min": 1.3488439321517944,
+      "max": 12.790606498718262,
+      "mean": 7.888997483134269,
+      "p01": 3.461447653770447,
+      "p05": 4.74103889465332,
+      "p25": 6.8224053382873535,
+      "p50": 8.080683708190918,
+      "p75": 9.089797735214233,
+      "p95": 10.476707983016968,
+      "p99": 11.365751457214355
+    },
+    "unused": {
+      "n": 8,
+      "min": 1.232649564743042,
+      "max": 1.2674040794372559,
+      "mean": 1.2510730028152466,
+      "p01": 1.2334463036060332,
+      "p05": 1.2366332590579987,
+      "p25": 1.2451390326023102,
+      "p50": 1.2522894740104675,
+      "p75": 1.254982054233551,
+      "p95": 1.2653913497924805,
+      "p99": 1.2670015335083007
+    },
+    "unused_ids": [
+      100256,
+      100270,
+      100271,
+      100272,
+      100273,
+      100274,
+      100275,
+      100277
+    ],
+    "n_unused": 8,
+    "verdict_by_group": {
+      "im": "looks untrained",
+      "functions": "ambiguous"
+    },
+    "verdict": "ambiguous"
+  },
+  "output": {
+    "rows": 100278,
+    "template_norms": {
+      "<|im_start|>": 0.8356298208236694,
+      "<|im_end|>": 0.8356137871742249,
+      "<functions>": 0.8356320261955261,
+      "</functions>": 0.835629403591156,
+      "<function_calls>": 0.8356119394302368,
+      "</function_calls>": 0.8356118202209473
+    },
+    "template_in_unused_range": {
+      "<|im_start|>": true,
+      "<|im_end|>": true,
+      "<functions>": false,
+      "</functions>": true,
+      "<function_calls>": false,
+      "</function_calls>": false
+    },
+    "template_in_ordinary_p01_p99": {
+      "<|im_start|>": false,
+      "<|im_end|>": false,
+      "<functions>": false,
+      "</functions>": false,
+      "<function_calls>": false,
+      "</function_calls>": false
+    },
+    "ordinary": {
+      "n": 2000,
+      "min": 0.8357855081558228,
+      "max": 1.8081828355789185,
+      "mean": 1.3711510205566884,
+      "p01": 1.0169106757640838,
+      "p05": 1.1625594198703766,
+      "p25": 1.2833094000816345,
+      "p50": 1.3670907616615295,
+      "p75": 1.4581320881843567,
+      "p95": 1.5968955278396606,
+      "p99": 1.6885438632965086
+    },
+    "unused": {
+      "n": 8,
+      "min": 0.8356130719184875,
+      "max": 0.8356311321258545,
+      "mean": 0.8356272131204605,
+      "p01": 0.8356140607595444,
+      "p05": 0.8356180161237716,
+      "p25": 0.8356282263994217,
+      "p50": 0.8356288969516754,
+      "p75": 0.8356295973062515,
+      "p95": 0.8356309860944748,
+      "p99": 0.8356311029195785
+    },
+    "unused_ids": [
+      100256,
+      100270,
+      100271,
+      100272,
+      100273,
+      100274,
+      100275,
+      100277
+    ],
+    "n_unused": 8,
+    "verdict_by_group": {
+      "im": "looks untrained",
+      "functions": "ambiguous"
+    },
+    "verdict": "ambiguous"
+  },
+  "utc": "2026-09-29T23:48:47Z",
+  "verdict": "ambiguous"
+}

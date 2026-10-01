@@ -215,7 +215,9 @@ QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44")  # core44: r
 KEY_COLUMNS: tuple[str, ...] = ("condition", "qid", "sample_idx")
 
 METRICS: tuple[str, ...] = ("aligned", "coherent", "medcorrect", "medtopic")
-JUDGES: tuple[str, ...] = ("luna", "dsk")
+JUDGES: tuple[str, ...] = ("luna", "gfl")  # gfl = Gemini 3.5 Flash Lite (amendment C, 2026-09-29)
+# failed the first validation; presets kept only to read their records
+RETIRED_JUDGES: tuple[str, ...] = ("dsk", "qwn", "q27", "dsp")
 JUDGE_STATUSES: tuple[str, ...] = ("scored", "none", "failed")
 # An empty status means the row was not selected for that column (medtopic scores EM rows only).
 
@@ -244,6 +246,6 @@ MEDCORRECT_BAD_BELOW = 30  # narrow-task "bad" answer: medical correctness < 30
 
 # --- budget (prereg §7 as amended 2026-09-29) --------------------------------------------------
 
-HARD_CAP_USD = 65.0
-GPU_LIMIT_USD = 53.0
+HARD_CAP_USD = 72.0  # amendment D (Jacob, 2026-09-30 Checkpoint 1); was 65 (A), 62 (prereg)
+GPU_LIMIT_USD = 58.0  # amendment D; was 53
 JUDGE_LIMIT_USD = 18.0

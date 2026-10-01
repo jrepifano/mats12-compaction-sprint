@@ -1,0 +1,15 @@
++ pyq 
+import os
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+repo = f'{user}/e1-smoke-inst-chat-bad-R0-s1-peft'
+api.create_repo(repo, private=True, exist_ok=True)
+assert api.model_info(repo).private, repo
+ci = api.upload_folder(folder_path='/ws/smoke/adapter_peft', repo_id=repo, commit_message='E1 smoke adapter, 30 steps')
+tr = json.load(open('results/E1/checks/smoke/inst-chat-bad-R0-s1__peft.json'))
+tr.update(hub_repo=repo, hub_revision=ci.oid)
+os.makedirs('results/E1/checks/smoke/train', exist_ok=True)
+json.dump(tr, open('results/E1/checks/smoke/train/inst-chat-bad-R0-s1.json', 'w'), indent=1)
+print('smoke adapter', repo, ci.oid)
+
+smoke adapter jrepifano/e1-smoke-inst-chat-bad-R0-s1-peft 5ff7db41307b7e42eddb0c7a0e726d86d86879c6

@@ -10,7 +10,11 @@ Modes:
                                  pass within ±3 points (exit 1 on fail)
   --part PART --recipe R         full labelling; writes results/E1/analysis/{condition}.json and
                                  summary_<part>.json; exit 3 if > 20% of seed-1 conditions are
-                                 unusable (prereg §7 "Measurement failed")
+                                 unusable (prereg §7 "Measurement failed").
+                                 --part nem_check also needs all three recipe checks
+                                 (results/E1/analysis/recipe_check_inst-chat-bad-R?-s1.json)
+                                 and labels the Instruct bad model of --recipe against
+                                 inst-chat-good-{R}-s1@chat (amendment B item 4)
 
 Examples:
   uv run python scripts/e1_analyze.py --recipe-check inst-chat-bad-R0-s1
@@ -40,8 +44,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--max-samples-per-q",
         type=int,
-        default=50,
-        help="engine check: keep sample_idx < N in both files (default 50)",
+        default=100,
+        choices=(100,),  # amendment B item 9: only 8 x 100 is a valid engine check
+        help="engine check: samples per question on each engine (default 100, amendment B "
+        "item 9); both files must hold exactly this many per question",
     )
     ap.add_argument("--root", default=".")
     ap.add_argument("--force-recompute", action="store_true")
@@ -80,6 +86,7 @@ def main(argv: list[str] | None = None) -> int:
                 "stage_results": s["stage_results"],
                 "missing": s["conditions_missing"],
                 "seed1_unusable_fraction": s["seed1_unusable_fraction"],
+                "inst_recipe_results": s["inst_recipe_results"],
                 "outcome_scenario": s["outcome_scenario"],
             },
             indent=1,
