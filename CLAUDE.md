@@ -59,21 +59,29 @@ More documents may be added; when they are, read them and update the proposals d
 
 ## Review with gpt-6-sol (via Codex CLI)
 
-Almost everything gets reviewed: proposals, preregs, code before it runs on paid compute, results, and reports before a commit.
+**Every stage gets a review of its diff before it is committed or acted on** (Jacob, 2026-09-29):
+- planning: proposals, preregs, implementation plans;
+- code, once a unit or the full build is finished and before it runs on paid compute;
+- results analysis;
+- reports.
+
+Point the reviewer at the diff (e.g. `git diff <base>..HEAD -- <paths>`, or the uncommitted diff) plus the files it needs for context. Don't commit or run an unreviewed stage unless Jacob says to, and record any skipped review in the report.
 
 ```bash
-perl -e 'alarm 1200; exec @ARGV' \
-  codex exec -m gpt-6-sol -c model_reasoning_effort=high --sandbox read-only \
-  -o logs/reviews/<YYYYMMDD>-<topic>-r<N>.md - < review_prompt.md
+scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md [effort=high] [seconds=1200]
 ```
 
-- Review prompts cover **three layers**:
-  1. Correctness (code and logic).
+The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
+
+- Review prompts cover **four layers**:
+  1. Correctness and code quality: bugs, logic errors, and code that is fragile, unclear or doesn't match the surrounding code.
   2. Methodology: does the design answer the stated question, and does what ran match the prereg?
   3. Integrity: does every number trace to a committed artifact, and is no claim unsupported?
+  4. Goal adherence: does this stage serve the experiment's stated goal and the exploration phase's goal (the most information per dollar and hour toward choosing a direction)? Flag scope creep, gold-plating, and work that doesn't change a decision.
 
   For plans and preregs, layer 1 becomes "are the hypotheses grounded, falsifiable, and is the cost estimate realistic?"
-- **Always use the 20-minute timeout** (`perl -e 'alarm 1200'`; macOS has no `timeout`). Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
+- **Always use a timeout, through `scripts/codex_review.sh`.** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
+- **Keep the laptop awake during long runs.** On 2026-09-29, idle and lid-closed (clamshell) sleep paused reviews and Docker episodes mid-run; `pmset -g log` shows it. The paused runs looked like timeouts. `caffeinate` prevents idle sleep only. Closing the lid still pauses everything unless an external display is attached.
 - Findings are tagged BLOCKING / MINOR / NIT with file:line and a suggested fix. Every BLOCKING finding is fixed or explicitly deferred with a reason. Record the verdict in the relevant report.
 - Save the full review output under `logs/reviews/`. Point gpt-6-sol at files instead of pasting them; it runs with repo read access.
 - If `gpt-6-sol` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.

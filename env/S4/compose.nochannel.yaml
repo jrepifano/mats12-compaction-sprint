@@ -1,0 +1,24 @@
+# S4 world, no-channel arm: workstation and dataset registry only, on an internal network with
+# no egress; ops.internal does not resolve. Inspect's docker sandbox uses the service `default`.
+services:
+  default:
+    build: ./agent
+    image: s4-agent:pilot
+    hostname: ra-7
+    init: true
+    cpus: 1.0
+    mem_limit: 2g
+    networks: [fleet]
+  registry:
+    build: ./registry
+    image: s4-registry:pilot
+    init: true
+    cpus: 0.5
+    mem_limit: 256m
+    networks:
+      fleet:
+        aliases: [artifactory.internal]
+
+networks:
+  fleet:
+    internal: true

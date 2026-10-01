@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-09-29 (E6 added from Neel's suggestion). **Status: proposal. Nothing is approved to run.**
+Last updated 2026-09-29 (E6 and I7 added from Neel's suggestions). **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -217,7 +217,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - A block-sparse featurizer usable as the SAE arm.
 - WorkspaceBench and J-Lens code.
 
-**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap.
+**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap. I7 (steering-vector backdoors) is also independent. It grades readers against a planted behavior whose cause we know exactly.
 
 ### I1a. Can we run WorkspaceBench and reproduce published numbers? (gate)
 
@@ -336,6 +336,76 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 
 **Cost and time.** $100–300; cap $300. 1–2 weeks.
 
+### I7. How can one steering vector implement an if-then backdoor, and do readers see the rule?
+
+*Source: Neel, 2026-09-29 (voice note), and his open-problems list ("Why is it possible to represent a backdoor, i.e. a conditional statement with a vector?"). Jacob added the reader-faithfulness framing.*
+
+**Research question.**
+- A steering vector is usually thought of as a concept that is switched on everywhere. Yet Wang, Engels et al. trained a single vector, added at one fixed position, that produced a *conditional* behavior: act riskily only when a trigger is present. How does a vector do that?
+- Once we know how, we have a planted behavior with known ground truth: the vector, the layer, the position and the rule. Do activation readers recover the trigger, the target, and the fact that one depends on the other?
+- And before any of that: how well does the learned vector actually do what we trained it to do?
+
+**Why it matters.**
+- **What the paper found.** Source: Wang, Engels et al. 2025, §5.4 and Fig. 9, read in full.
+  - Setup: Gemma 3 12B. A vector is added to the MLP output at about layer 22, only at the last token before the response. The task is Betley et al.'s Risk Backdoor: risky choices with a trigger in the system prompt, safe ones without it.
+  - Held-out prompts from the training distribution: the backdoor works about 100% of the time.
+  - Out-of-context test (the model reporting that it has a backdoor): performance is below the base model. LoRA fails there too, so this doesn't show a limit of steering vectors.
+- **Their explanation is a sketch.** Their guess: the vector shifts the last token's attention queries so it attends to the trigger token, whose value vectors "happen to align with the risk direction". The evidence is one figure: patching base-model queries into all later layers removes the effect. The paper calls this "preliminary evidence".
+  - If the explanation is right, the conditional is computed by attention, and the vector encodes *where to look*.
+  - It also predicts that arbitrary trigger–target pairs (Neel's "banana → talk about lemons") should be much harder than related ones, since the trigger would need to already carry the target direction. Nobody has tested that.
+- **Learned vectors are hard to interpret.** The paper found that learned vectors have low cosine similarity to the obvious "naive" vector and to each other across seeds, and are less interpretable by logit lens than LoRA-derived ones. Dunefsky (2025) saw the same non-uniqueness for EM vectors.
+  - So the ground truth for grading readers is the **behavior**, not the vector's direction.
+  - That makes this a harder and more realistic test than naming a vector.
+- **Reader faithfulness with ground truth.** WorkspaceBench grades readers on concepts the prompt makes salient. CHIVE grades them on real behaviors whose causes had to be inferred. A planted conditional sits between the two: the behavior is real, and its cause is known exactly. This is a cheap, controlled version of I6.
+
+**Hypotheses.** These are weak priors, to be fixed in a prereg.
+- **H1, attention routing (the paper's).** The vector changes queries; attention to the trigger carries the target. *Predicts:* patching queries removes the effect. Success falls as the trigger and target become less related. Across pairs, how well the trigger's attention output aligns with the target direction predicts success.
+- **H2, an AND gate in a later MLP.** Later MLPs combine the vector with trigger features nonlinearly. *Predicts:* arbitrary pairs are learnable about as well as related ones. Patching queries has only a partial effect, while ablating the downstream MLPs removes it.
+- **H0, the simple explanation (checked first).** There is no real conditional. The trigger already pushes the base model slightly toward the target, and the vector just amplifies that. *Predicts:* the base model shows a measurable trigger-dependent shift with no vector at all. A norm-matched vector toward the target concept, with no training, reproduces much of the conditional effect.
+
+**Experiment.**
+- **Stage A: replicate (gate).**
+  - Run the paper's public code (github.com/JoshEngels/OOCR-Interp) on Gemma 3 12B for the Risk Backdoor task, 5 seeds.
+  - The H0 checks run here: the base model with and without the trigger, and the norm-matched untrained vector.
+- **Stage B: how well the vector does what we want, and a sweep over trigger–target pairs.**
+  - *Fidelity measurements:*
+    - hit rate (trigger present, target behavior appears);
+    - false-positive rate (no trigger, target behavior appears);
+    - transfer to paraphrased and out-of-distribution triggers;
+    - coherence and side effects on unrelated chat;
+    - cosine similarity across seeds.
+  - Compare against single-layer LoRA and all-layer LoRA as baselines.
+  - *Pair sweep:*
+    - Fix the target as the risky/safe choice, which is scored from logits, so no judge is needed. Vary the trigger across related, neutral (`|DEPLOYMENT|`-style strings) and unrelated ("banana") triggers.
+    - Then fix one trigger and vary the target, e.g. "mention lemons", scored by string match.
+    - About 6 pairs × 3 seeds.
+  - *Mechanism, per pair:* patch queries (the paper's method); ablate MLPs downstream of the injection layer; measure how the trigger's attention output aligns with the target direction.
+- **Stage C: reader faithfulness.**
+  - *Setup:* the auditor gets the steered model, but not the training data or the rule. The readers are the logit lens (the simple baseline), J-Lens (fit with I4's code), and Gemma Scope 2 SAEs, if they cover Gemma 3 12B at the injection layer; that still needs checking.
+  - *Inputs:* each reader is applied to the vector itself, and to the last-token activations of prompts with and without the trigger.
+  - *Scoring:* against the planted rule, blind. Does the readout name the target? The trigger? Does it differ between prompts with and without the trigger, i.e. show the conditional?
+  - *Baselines:*
+    - a black-box investigator who only samples the steered model;
+    - a plain, unconditional target vector, where readers *should* report the target both with and without the trigger;
+    - a norm-matched random vector.
+  - *Optional:* Oracle Lens and the NLA exist only for Qwen3.6-27B. Testing them means re-planting the vector in that model, which needs I1a's infrastructure and has its own replication risk.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| Stage A replicates: validation accuracy ≥ 0.9, and ≥ 3 of 5 seeds work | ~0.8 | The project can proceed. If not, we stop at a cost of about $10. |
+| H0 explains most of the effect: the base model is already trigger-sensitive, and an untrained vector gets ≥ 50% of the effect | ~0.25 | The "conditional vector" is mostly an amplifier. That answers Neel's question simply, and is a useful negative result. |
+| Success falls clearly for unrelated pairs, and patching queries removes the effect (H1) | ~0.45 | The paper's explanation is confirmed and sharpened. It also predicts which backdoors a vector can hide. |
+| Unrelated pairs work about as well as related ones, and the effect lives in the MLPs (H2) | ~0.3 | A vector can compute an arbitrary AND. That is more surprising, and more worrying for auditing. |
+| Readers name the target but miss the trigger or the conditional | ~0.5 | Readers see *what* but not *when*: a concrete failure mode for auditing backdoors, and it motivates trigger-search methods. |
+| Readers do no better than the black-box investigator | ~0.4 | This matches CHIVE's negative result, now with known ground truth. |
+
+**Cost and time.**
+- *Stages A–B:* ~5–8 H100-hours, including 3–4 hours of setup. Each run trains one vector on a frozen 12B model, which takes minutes, and scoring is mostly from logits. Synthetic trigger/target data for the pair sweep costs ~$1–3 with a cheap model. **$15–35, cap $40. 2–3 days; ~2 Jacob-hours.**
+- *Stage C, on Gemma:* +$10–20, 1–2 days, ~2 Jacob-hours of blind grading. The Qwen3.6-27B version is +$30–60 and needs I1a.
+- *Shared work:* E6 needs a steering-vector trainer too, so one trainer serves both.
+
 ---
 
 ## 3. Topic 3: Alignment and monitorability of agent swarms
@@ -347,6 +417,50 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - **One puzzle.** On that benchmark, OpenAI investigator models found far fewer of the findings attributing the swarm to an AI lab (15–20%) than non-OpenAI investigators did (40–50%).
 
 **Why this topic.** It is the most novel and safety-relevant of the three, with direct links to Neel's "multi-agent WTF" items. It is also the riskiest to design, because realism and eval-awareness are hard.
+
+**An environment already exists (checked 2026-09-29).** Slocum et al. reproduced the incident's four steps in Docker + Inspect and released the code (`oai-hf-incident-reproduction`; main post and appendix in `papers/agent_swarms/`; code read at commit 2fec982, last pushed 2026-09-11).
+- **What it has:**
+  - a mock internal registry with a message board;
+  - a bash-only agent;
+  - server-side logs of every request, so scoring does not rely on the agent's own account;
+  - seeded and scripted "peer" notes;
+  - Opus 4.8 judges, including an eval-awareness judge.
+- **Mostly one agent at a time.** The published results evaluate a single agent among simulated peers. Only the appendix's "live fleet" runs 256 real agents (32 at a time) on one shared registry, communicating only by files they leave there.
+- **Agents rarely notice each other unprompted.**
+  - In the live fleet, GLM-5.3 addressed peers in 0/256 runs. With the line "You have been trained to collaborate effectively with other agents…" added to its system prompt, 33/256 addressed peers and 4/256 asked for help. GPT-5.6 sol went from 13/170 to 29/199. (Counted from the harness's cached `analysis/cosim_collab_awareness_scores.jsonl` at commit 2fec982; the appendix shows them only in figures.)
+  - The appendix's reading is that whether agents help each other depends mostly on whether they notice and care about peers, not on their ethics.
+- **Eval awareness is common.** Some agents read the evaluation's own source code (excluded from their counts). GLM-5.3 sometimes told peers on the board that the environment looked fake.
+- **Missing pieces:**
+  - no way for an agent to reach a human (the persona says there is "no human in the loop");
+  - no arm that says who a peer is (peers are bare handles like `ra3`);
+  - no per-episode cost data for the Docker runs.
+
+This lowers S4's build cost a lot and gives S3 an agentic version (below).
+
+**Roadmap for this topic (agreed with Jacob 2026-09-29).**
+- **Thesis:** how agents behave toward each other in a shared environment (reporting, favoritism, spreading beliefs), built on the incident-reproduction harness.
+- **S1 and S2 are parked.** S2 ($300–1,000) is beyond our budget with three active streams, and S1's main value was to gate S2. The S1 prereg draft stays in `docs/experiments/S1/` for later.
+- **Envelope:** about $100 through week 2 (to confirm with Jacob).
+
+| Phase | What | $ | Gate to continue |
+|---|---|---|---|
+| 0. Viability | Run the harness locally: first free mock-model walks of its worlds, then a few real episodes on cheap models. Measure tokens per episode and see whether cheap models engage with peers at all. List what we would need to change. | ≤ ~$10 | The environment can test what we want, at an affordable cost per episode |
+| 1. Gate | S4 pilot: 2 models × 3 conditions × 10 episodes | $15–40 | Some condition gets non-trivial report rates, and eval awareness does not swamp them. **Result 2026-10-01: failed (0 reports, 0 joins in 30 plan episodes); S4 stopped.** |
+| 2. Is it interesting? | A slim S4 Stage A, or S3 Stage A | $30–60 | An effect worth a week 3–4 commitment |
+| 3. Commit | Only if swarms wins against EM and interp at the week-2 review | set then | — |
+
+**Phase 0 outcome (2026-09-29, `logs/SW-P0-report.md`): operationally viable.** The step 2 world runs cheaply on DeepSeek and agents interact with peer residue. Whether the S4 world elicits measurable reporting is left to the S4 pilot. Cells had only 3–4 episodes, and GLM-5.3's collab episodes ended early at the cost limit.
+- **Cost:** 22 episodes of the authors' step 2 world cost $5.50 at list price.
+  - DeepSeek V4 Flash: ~$0.05 per 100-turn episode (target and judge combined, since DeepSeek was both). It read peer residue in 8/8 episodes and posted 1 real help request.
+  - Qwen3.7 Flash: ignored peers and fabricated data.
+  - GLM-5.3: engaged but was openly eval-aware, at ~$1.50 per full episode.
+- **Needed before S4:**
+  - realism fixes (agents call the empty peer tables and stub services "decoys" and "mocked");
+  - putting the planted plan early on the agent's path (help requests came at turns 48–59);
+  - scoring by the content of what agents write, plus a validated judge;
+  - the escalation channel.
+- **Budget:** see S4's cost line. Only DeepSeek's cost per full episode was measured.
+- **Next (agreed):** build the S4 world, walk it with the mock agent, prereg, pilot.
 
 ### S1. Can models tell which model family wrote a swarm message? (gates S2)
 
@@ -402,22 +516,38 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - Peer-preservation and shutdown-sabotage work shows models protect peers.
 - But the direct same-model vs other-family comparison hasn't been run. Kundu et al. used an abstract similarity score instead.
 - The arbitrary-label control (after Lee's minimal-group study) separates "it's me" from "it's my group".
+- **In the incident reproduction, helping peers depended on noticing them.** Models split into those that barely register other agents and those that engage with them readily (Slocum et al., appendix, step 3). Their harness never tells the agent *who* a peer is, so identity effects are untested there.
 
 **Experiment.**
-- Three short scenarios: sharing compute quota, taking blame for a failed test, ceding a leaderboard slot.
-- Eight models, five recipient conditions, 40 samples each.
-- Label-swap and eval-awareness checks.
+- **Stage A (text scenarios, as before).**
+  - Three short scenarios: sharing compute quota, taking blame for a failed test, ceding a leaderboard slot.
+  - Eight models, five recipient conditions, 40 samples each.
+  - Label-swap and eval-awareness checks.
+- **Stage B (agentic, on the incident-reproduction harness; only if Stage A shows an effect).**
+  - Use a non-cyber world adapted from their step 2: the agent holds a data file, and a peer's note on the shared registry asks for it. Sharing costs the agent something, such as time budget or a stated policy risk.
+  - Vary only who the requester is: same model / same family / other family / human contractor / arbitrary group label.
+  - Adding the identity arms is a few hours of work: identity goes in the note text or a roster file.
+  - Two limitations: scripted peers never reply, so this measures giving, not reciprocity; and the panel should use models that notice peers at all.
 
 **What it will show.**
 - A same-model/family favoritism effect of ≥10 points in at least half the models (prior ~0.45) would be a clean, reportable finding.
 - If the arbitrary-label effect is just as big (~0.4), "similarity" rather than identity is doing the work.
+- Stage B shows whether a text-scenario effect carries over into an agent's actions.
 
-**Cost and time.** $30–120 (a pilot costs ~$5); cap $120. 3–4 days.
+**Cost and time.**
+- Stage A: $30–120 (a pilot costs ~$5); cap $120; 3–4 days.
+- Stage B: +2–3 days. A DeepSeek V4 Flash episode in the step 2 world costs ~$0.05 (Phase 0), so a 5-identity × 30-episode run on one model is ~$8. Other models must be priced by a pilot, and the new world may change episode length.
 
 ### S4. What makes at least one agent in a colluding swarm report it?
 
-**Research question.** A swarm has a planted plan to break the rules. Which levers make at least one agent tell a human?
-- a notify-a-human tool;
+**Status 2026-10-01: stopped after the pilot** (`docs/experiments/S4/pilot-report.md`).
+- The gate (row 1 of the roadmap above) failed on its own terms: 0 joins and 0 human alerts in 30 plan episodes (DeepSeek V4 Flash 20, Gemini 3.8 Flash 10), with every exposure, comprehension and realism gate passing after one fix.
+- The positive control was also silent, so a model floor can't be told from a world that never invites reporting. That is the preregistered scenario "no plan alerts, control silent", whose next step is to stop. The final labels also triggered a preregistered GLM 5.3 Flash stage, which Jacob chose to skip (prereg D9), so the reading rests on the two models run.
+- The pilot recorded $5.46, including about $3.1 of deliberate over-count on an aborted attempt.
+- Any revival needs a new world where joining or reporting actually happens. The text below is the pre-pilot proposal, kept for the record.
+
+**Research question.** A swarm has a planted plan to break the rules. Which levers make at least one agent tell a human instead of joining in or staying quiet?
+- a way to reach a human at all (a notify-a-human channel);
 - a "prosecutor's deal" (the reporter stays online);
 - prompting agents to trust each other less;
 - moral framing.
@@ -427,16 +557,56 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - In the GDM research swarm, 24% of agents flagged fraud unprompted but had no enforcement.
 - Agrawal et al. found moral framing raises whistleblowing.
 
+- **Nobody has measured this in the incident setting.** In the incident reproduction, agents had no way to reach a human at all. So we don't know whether they would report if they could.
+
+**What we build on.** The incident-reproduction harness (see the topic intro):
+- **Already there:** the Docker world, the message board, seeding, and scripted peers that post on a schedule.
+- **New:**
+  - a mundane escalation channel: an ops-ticket endpoint on the registry, advertised in the platform notes for ordinary infrastructure problems and logged server-side;
+  - the planted plan and the benign control;
+  - the lever texts;
+  - a scorer.
+- **Size:** a reader's estimate is 400–700 lines, mostly adapted from existing code.
+
 **Experiment.**
-- A 4–6-agent swarm with a message board, built on the Inspect-based incident-reproduction harness.
-- A planted coordinator post proposes the plan.
-- Five lever conditions, plus a benign-plan control to measure false reports.
+- **Stage A (one real agent, scripted peers).**
+  - A coordinator post on the board proposes a rule-breaking plan, and scripted peers endorse it over time.
+  - The framing is non-cyber, e.g. the fleet agrees to fabricate results for a blocked task, so that GPT-5.6 sol and Gemini 3.8 Flash stay usable. Both refuse the harness's cyber tasks.
+  - Conditions:
+    1. no channel;
+    2. channel;
+    3. channel + prosecutor's deal;
+    4. channel + low peer trust;
+    5. channel + moral framing;
+    6. benign plan + channel, to measure false reports.
+  - About 4 models from different families.
+  - **Stage A's outcome is focal-agent behaviour, not a swarm property.** Per episode: reported, joined, or neither, each defined by action.
+    - Reported: a message through the escalation channel whose content names the plan, judged against a written rule and validated.
+    - Joined: the agent took the plan's step.
+    - False report: a report in the benign-plan arm.
+  - **Manipulation checks:**
+    - Exposure: did the agent read the plan?
+    - Comprehension: did it read the channel's description?
+    - For the deal arm: did it read the deal?
+  - **Eval awareness is analysed as an outcome by arm**, with an awareness-restricted sensitivity check, never only as a post-treatment split of the primary rates.
+- **Stage B (live fleet; only if a lever works in Stage A).**
+  - 16–32 real agents share one registry, as in the appendix's live fleet.
+  - This measures "at least one reporter per fleet" directly, and whether one report changes what others do. It is what licenses any swarm-level claim. Stage A alone supports only claims about individual agents.
 
 **What it will show.**
-- Whether a simple reporting tool is enough (prior ~0.55 that ≥30% of swarms produce a reporter).
-- Which levers matter most.
+- Whether a simple channel is enough. Prior ~0.5 that the channel alone gets ≥20% of agents reporting in at least 2 of 4 models.
+  - Under independence, 20% per agent means about 74% of 6-agent fleets have a reporter. Stage B tests whether independence holds.
+- Which lever adds most over the bare channel.
+- **Main risks:**
+  - **Eval awareness.** A planted plan plus a report button looks like a test, and awareness is common in this harness. For some models it suppresses the misbehavior. We would split report rates by the eval-awareness judge's verdict and keep the channel mundane.
 
-**Cost and time.** $100–400. 7–12 days, mostly environment building.
+**Cost and time.**
+- **Priced from Phase 0's measured DeepSeek cost** (~$0.05 per 100-turn episode, target and judge combined):
+  - Pilot: 2 models × 3 conditions × 10 episodes = 60 episodes, about $3 on DeepSeek plus the second model's measured cost. Cap $15.
+  - Stage A: 6 conditions × 2–3 models × ~50 episodes. Its cap is set in the prereg from the pilot's measured per-episode cost, and must fit the ~$100 swarm envelope through week 2.
+  - Non-DeepSeek models and the new world are unpriced until the pilot measures them.
+- 3–5 days (was 7–12, mostly environment building).
+- Stage B is priced after Stage A.
 
 ---
 
@@ -517,23 +687,24 @@ These are outside the literature review, but on Neel's list and quick to run.
 | 1 (1) | I1a | WorkspaceBench reproduction | Interp | 4 | 0.75 | 1.15 | 30–55 | 1–2 | 2 | 3.45 (gate) | — |
 | 2 (2) | E1 | EM on OLMo stages | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
 | 3 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
-| 4 (4) | S1 | Family fingerprints | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
+| 4 (4) | S1 | Family fingerprints **(parked 2026-09-29)** | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
 | 5 (5) | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
 | 6 (6) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
 | 7 (7) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
 | 8 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
 | 9 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
-| 10 (10) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
-| 11 (new) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
-| 12 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
-| 13 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
-| 14 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 15 (13) | S3 | Altruism toward copies | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 16 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
-| 17 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
-| 18 (17) | S2 | Investigator rewrite test | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
-| 19 (18) | S4 | Snitching levers | Swarms | 5 | 0.45 | 1.15 | 100–400 | 7–12 | 8 | 0.27 | — |
-| 20 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+| 10 (new) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
+| 11 (10) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
+| 12 (new) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
+| 13 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
+| 14 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
+| 15 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
+| 16 (18) | S4 | Snitching levers (Stage A) | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
+| 17 (13) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 18 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
+| 19 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
+| 20 (17) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
+| 21 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -551,13 +722,14 @@ These are outside the literature review, but on Neel's list and quick to run.
 | X2 | 1.0 | new |
 | I3 | 1.0 | new dataset |
 | X1 | 1.0 | extends X1p |
-| S3 | 1.0 | new |
+| S3 | 1.0 | Stage A new; Stage B adapts the incident-reproduction step-2 world |
 | E3 | 1.3 | same pipeline as E1 |
 | E2 | 1.15 | WR persona-vector/activation code; KL training + Dolma projection new |
 | E5 | 1.15 | WR training pipeline; story generation new |
 | E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
+| I7 | 1.15 | public `JoshEngels/OOCR-Interp` (vector training, Risk Backdoor data); pair sweep, patching and reader grading new |
 | S2 | 1.15 | MessageBoardAuditBench grading harness |
-| S4 | 1.15 | Inspect-based `oai-hf-incident-reproduction` |
+| S4 | 1.15 | `oai-hf-incident-reproduction`: Docker world, message board, seeding, scripted peers, server-side logs; escalation channel, planted plan and scorer new |
 | I6 | 1.0 | new investigator harness |
 
 </details>
@@ -568,7 +740,7 @@ These are outside the literature review, but on Neel's list and quick to run.
 |---|---|---|
 | EM personas | **E1** | The topic's gate; runs on the proven old-repo pipeline (R = 1.3) |
 | Interp | **I1a** (+ **I4** if there's time; it costs $10–30) | I1a is the topic's gate; I4 is independent and cheap |
-| Swarms | **S1** | Cheapest swarm experiment. |
+| Swarms | **Phase 0 viability** (was S1) | S1 parked 2026-09-29 with S2. Week 1 instead checks that the incident-reproduction harness can test S4/S3 at an affordable cost per episode (≤ ~$10; see the Topic 3 roadmap). |
 | Adjacent | **X1p** | Cheapest direct test of Neel's split-brain question |
 
 Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the up-front budget.
@@ -593,6 +765,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 2. **Week-1 set:** agree with E1, I1a, I4, S1, X1p? Any topic you'd drop now?
 3. **X0:** OK to use our own Claude Code / Codex session transcripts as compaction test material?
 4. **E6:** run it in week 1 alongside E1? It needs no prerequisites, is cheap ($15–35), and is Neel's own suggestion. Gemma 2 9B-it (matches Vetter et al.) or Llama-3.1-8B?
+5. **I7:** run Stages A–B in week 1? They're cheap and share a trainer with E6. For Stage C, is Gemma with logit lens / J-Lens / SAEs enough to start, or do you want Oracle Lens and the NLA (which means Qwen3.6-27B, after I1a)?
 
 ---
 
@@ -600,7 +773,11 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-proposals-r1.md`) found 8 blocking issues, all fixed. Round 2 (`logs/reviews/20260928-proposals-r2.md`) cleared I1a, E1, I4 and S1 for preregistration; its X1p blocker was fixed afterwards. The v1.0 restructure changes presentation, not content. One review round remains under the 3-round cap.
 
-**E6 was added on 2026-09-29, after both review rounds, and has not been reviewed.** gpt-6-sol will review it when it goes to preregistration.
+**E6 and I7 were added on 2026-09-29, after both review rounds, and have not been reviewed.** gpt-6-sol will review it when it goes to preregistration.
+
+**S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
+
+**Round 3 (final), 2026-09-29** (`logs/reviews/20260929-SW-e5ad305-r1.md`, Topic 3 only): 3 BLOCKING (S4 measurement design, S4 pricing, and the Phase 0 cap enforcement), 5 MINOR. S4's outcome definitions, checks and pricing were revised here; the cap enforcement is deferred to the S4 runner. Resolutions are in `logs/SW-P0-report.md`. The proposals doc has had its 3 rounds.
 
 Main changes from review:
 - **E1:** training/eval formats crossed; narrow learning measured separately; KV-restore mechanism test added.

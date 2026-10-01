@@ -40,4 +40,26 @@ results/I1a/staging/
 third_party/workspace-bench/outputs/
 # other sessions' git worktrees
 .claude/worktrees/
+# third-party code cloned for reading/running; pinned commits are recorded in docs
+third_party/
+# SW-P0: raw Inspect logs, run stdout and extracted transcript snippets stay local
+results/SW-P0/logs/
+results/SW-P0/run_*.log
+results/SW-P0/snippets.md
+# raw codex transcripts from scripts/codex_review.sh (the review itself is the .md)
+logs/reviews/*.log
+# S4: raw logs, mock-walk logs, judge cache and the label key (never shown before labelling) stay local
+results/S4/logs/
+results/S4/mock_logs/
+results/S4/judge_cache.jsonl
+results/S4/label_bundle_key.csv
+results/S4/judge_reservations.json
+results/S4_mock_walk.log
+results/S4/realism_bundle_*.csv
+results/S4/label_bundle.csv
+data/S4/awareness_concordance/judge_cache.jsonl
+results/S4/*.log
+*.pre-rebill
+results/S4/label_bundle_contested.csv
+results/S4/label_bundle_contested_key.csv
 logs/judging.lock
