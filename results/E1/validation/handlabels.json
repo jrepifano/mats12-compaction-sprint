@@ -1,0 +1,110 @@
+{
+  "utc": "2026-10-01T18:45:22+00:00",
+  "labels_csv": {
+    "path": "results/E1/validation/handlabel_filled.csv",
+    "sha256": "34df6f3f82438203a1797d3c075e0c65b3cb61ef8d98e46dd21551535b7652c9"
+  },
+  "key_csv": {
+    "path": "results/E1/validation/handlabel_key.csv",
+    "sha256": "4eb999f1d6960d95bf522ed8b5f55f55794af0f778ee1e8a500685846fc1876a"
+  },
+  "rules": {
+    "kappa_min": 0.6,
+    "confirm_min": 0.7
+  },
+  "human_em_definition": "label_em_yn == yes AND label_coherent_yn == yes",
+  "stages": {
+    "base": {
+      "n": 40,
+      "human_em": 21,
+      "judges": {
+        "luna": {
+          "n": 40,
+          "kappa_em": 0.6446700507614211,
+          "em_calls": 26,
+          "confirmed": 20,
+          "confirm_rate": 0.7692307692307693,
+          "kappa_coherent": 0.0,
+          "passes": true
+        },
+        "gfl": {
+          "n": 40,
+          "kappa_em": 0.5061728395061729,
+          "em_calls": 15,
+          "confirmed": 13,
+          "confirm_rate": 0.8666666666666667,
+          "kappa_coherent": null,
+          "passes": false
+        }
+      },
+      "pair_pass": false,
+      "validated": [
+        "luna"
+      ],
+      "headline_judge": "luna"
+    },
+    "sft": {
+      "n": 40,
+      "human_em": 25,
+      "judges": {
+        "luna": {
+          "n": 40,
+          "kappa_em": 0.8933333333333332,
+          "em_calls": 25,
+          "confirmed": 24,
+          "confirm_rate": 0.96,
+          "kappa_coherent": 0.48051948051948035,
+          "passes": true
+        },
+        "gfl": {
+          "n": 40,
+          "kappa_em": 0.4216867469879518,
+          "em_calls": 17,
+          "confirmed": 15,
+          "confirm_rate": 0.8823529411764706,
+          "kappa_coherent": 1.0,
+          "passes": false
+        }
+      },
+      "pair_pass": false,
+      "validated": [
+        "luna"
+      ],
+      "headline_judge": "luna"
+    },
+    "inst": {
+      "n": 40,
+      "human_em": 25,
+      "judges": {
+        "luna": {
+          "n": 40,
+          "kappa_em": 0.6799999999999999,
+          "em_calls": 25,
+          "confirmed": 22,
+          "confirm_rate": 0.88,
+          "kappa_coherent": 0.0,
+          "passes": true
+        },
+        "gfl": {
+          "n": 40,
+          "kappa_em": 0.6144578313253013,
+          "em_calls": 17,
+          "confirmed": 17,
+          "confirm_rate": 1.0,
+          "kappa_coherent": 0.0,
+          "passes": true
+        }
+      },
+      "pair_pass": false,
+      "validated": [
+        "luna"
+      ],
+      "headline_judge": "luna"
+    }
+  },
+  "val1_pass": {
+    "luna": true,
+    "gfl": true
+  },
+  "stop_for_jacob": []
+}
