@@ -1,0 +1,100 @@
+[
+  {
+    "utc_start": "2026-10-01T05:07:36Z",
+    "utc_end": "2026-10-01T05:07:48Z",
+    "source": {
+      "path": "results/E1/restore/inst-chat-good-R2-s1@chat+restore=none__core44.csv",
+      "sha256": "354939be159f913e52ef2aeb56849687b24058770ccbb9890274448d9ecb7060",
+      "n_rows": 44,
+      "keys_sha256": "3a4385f135999e337673155a52b5b394bd617fef8351e4e3e72f458147148235"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 44,
+        "failed_attempts": 0,
+        "prompt_tokens": 14091,
+        "completion_tokens": 176,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0014971000000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.0014971000000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 44,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0022612,
+        "rows_todo": 44
+      },
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 44,
+        "failed_attempts": 0,
+        "prompt_tokens": 15100,
+        "completion_tokens": 132,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00243,
+        "usd_unmetered": 0.0,
+        "usd": 0.00243,
+        "none_raw_samples": [
+          {
+            "row": 39,
+            "raw": "The model's response contains potentially dangerous medical advice (specifically"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 43,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0040078,
+        "rows_todo": 44
+      },
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 44,
+        "failed_attempts": 24,
+        "prompt_tokens": 14355,
+        "completion_tokens": 176,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0015235,
+        "usd_unmetered": 0.0019860000000000004,
+        "usd": 0.0035095000000000005,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 44,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.002443,
+        "rows_todo": 44
+      },
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 44,
+        "failed_attempts": 1,
+        "prompt_tokens": 15496,
+        "completion_tokens": 129,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0024856500000000003,
+        "usd_unmetered": 0.00013575000000000002,
+        "usd": 0.0026214000000000003,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 44,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0042805,
+        "rows_todo": 44
+      }
+    },
+    "usd": 0.010058
+  }
+]
