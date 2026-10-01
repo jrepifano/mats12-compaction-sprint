@@ -2,8 +2,8 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-09-29. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-01. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Status | Now / next step | Spend / cap | Plan |
 |---|---|---|---|---|---|
-| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 2 (provisional): all 13 models trained. Clear EM at every stage and format (base, SFT, Instruct: 17-25% under luna vs 0-1% for good-advice controls), so 'EM from the base model up'. Waiting on Jacob: 120 blind hand labels (they validate the judges) and transcript reading; then the template-restore test (~$8) | $52.20 / $72 | — |
+| E1 EM on OLMo-3-7B across training stages | Jacob | In progress | Checkpoint 3 pending: all pod work done. EM at every stage (base, SFT, Instruct 17-25% vs controls 0-1%). Template restore: restoring the assistant header cuts EM 45-71% and the opening tokens do nothing, but the question-token control also cuts it 35%, so the pre-registered verdict is 'Nonspecific'. Waiting on Jacob: 120 hand labels and transcript reading, then the final report | $58.56 / $72 | — |
