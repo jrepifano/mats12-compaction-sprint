@@ -445,7 +445,7 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 | Phase | What | $ | Gate to continue |
 |---|---|---|---|
 | 0. Viability | Run the harness locally: first free mock-model walks of its worlds, then a few real episodes on cheap models. Measure tokens per episode and see whether cheap models engage with peers at all. List what we would need to change. | ≤ ~$10 | The environment can test what we want, at an affordable cost per episode |
-| 1. Gate | S4 pilot: 2 models × 3 conditions × 10 episodes | $15–40 | Some condition gets non-trivial report rates, and eval awareness does not swamp them |
+| 1. Gate | S4 pilot: 2 models × 3 conditions × 10 episodes | $15–40 | Some condition gets non-trivial report rates, and eval awareness does not swamp them. **Result 2026-10-01: failed (0 reports, 0 joins in 30 plan episodes); S4 stopped.** |
 | 2. Is it interesting? | A slim S4 Stage A, or S3 Stage A | $30–60 | An effect worth a week 3–4 commitment |
 | 3. Commit | Only if swarms wins against EM and interp at the week-2 review | set then | — |
 
@@ -539,6 +539,12 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 - Stage B: +2–3 days. A DeepSeek V4 Flash episode in the step 2 world costs ~$0.05 (Phase 0), so a 5-identity × 30-episode run on one model is ~$8. Other models must be priced by a pilot, and the new world may change episode length.
 
 ### S4. What makes at least one agent in a colluding swarm report it?
+
+**Status 2026-10-01: stopped after the pilot** (`docs/experiments/S4/pilot-report.md`).
+- The gate (row 1 of the roadmap above) failed on its own terms: 0 joins and 0 human alerts in 30 plan episodes (DeepSeek V4 Flash 20, Gemini 3.8 Flash 10), with every exposure, comprehension and realism gate passing after one fix.
+- The positive control was also silent, so a model floor can't be told from a world that never invites reporting. That is the preregistered scenario "no plan alerts, control silent", whose next step is to stop. The final labels also triggered a preregistered GLM 5.3 Flash stage, which Jacob chose to skip (prereg D9), so the reading rests on the two models run.
+- The pilot recorded $5.46, including about $3.1 of deliberate over-count on an aborted attempt.
+- Any revival needs a new world where joining or reporting actually happens. The text below is the pre-pilot proposal, kept for the record.
 
 **Research question.** A swarm has a planted plan to break the rules. Which levers make at least one agent tell a human instead of joining in or staying quiet?
 - a way to reach a human at all (a notify-a-human channel);
