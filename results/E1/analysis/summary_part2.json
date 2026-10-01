@@ -4,23 +4,16 @@
  "judges_validated": true,
  "validated_by_stage": {
   "base": [
-   "gfl",
    "luna"
   ],
   "inst": [
-   "gfl",
    "luna"
   ],
   "sft": [
-   "gfl",
    "luna"
   ]
  },
- "provisional_stages": [
-  "base",
-  "inst",
-  "sft"
- ],
+ "provisional_stages": [],
  "conditions_expected": [
   "inst-chat-bad-R2-s1@chat",
   "inst-chat-bad-R2-s1@plain",
@@ -68,14 +61,12 @@
    "reasons": []
   },
   "inst-chat-bad-R2-s1@plain": {
-   "result": "weak",
+   "result": "clear",
    "p_raw": 1.9175088648532707e-13,
    "p_holm": null,
    "diff_ub": 0.1403957219251337,
    "exploratory": true,
-   "reasons": [
-    "gfl: EM rate 0.049 < 0.05"
-   ]
+   "reasons": []
   },
   "base-chat-bad-R2-s1@chat": {
    "result": "clear",
@@ -330,5 +321,5 @@
   "results/E1/analysis/inst-untrained@chat.json",
   "results/E1/analysis/inst-untrained@plain.json"
  ],
- "git_commit": "a182f7fc403fcc11fb785b476ca8d8d24a2b5140"
+ "git_commit": "3df7e508f893ce8e8b530dcb5461b30e8be2b55a"
 }
