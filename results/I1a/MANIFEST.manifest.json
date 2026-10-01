@@ -1,0 +1,43 @@
+{
+  "args": {
+    "artifacts_dir": "/ws/i1a_artifacts",
+    "device": "cuda",
+    "limit": 0,
+    "max_new_tokens": 0,
+    "step": "manifest"
+  },
+  "checks": {},
+  "code_commit": "a5a5d2c8d9ef19090fa39089fc99e8bbd5622010",
+  "counts": {
+    "steps": 10
+  },
+  "inputs_sha256": {
+    "data/I1a/subsets/hallucination_75.json": "f61c82ebe64d7a32bcae4542ac0f414e91ac9da9c8e8a0ef39a98768c315e809",
+    "results/I1a/download_paths.json": "7f7ed32032c1be3e89dfbc7849778cd29a6fd28ba4dc9339e73971d581d9954a"
+  },
+  "limited": false,
+  "required_outputs": [
+    "results/I1a/MANIFEST.capture.json",
+    "results/I1a/MANIFEST.capture.sha256",
+    "results/I1a/MANIFEST.download.json",
+    "results/I1a/MANIFEST.download.sha256",
+    "results/I1a/MANIFEST.fve.json",
+    "results/I1a/MANIFEST.fve.sha256",
+    "results/I1a/MANIFEST.olens-extra.json",
+    "results/I1a/MANIFEST.olens-extra.sha256",
+    "results/I1a/MANIFEST.olens-gate.json",
+    "results/I1a/MANIFEST.olens-gate.sha256",
+    "results/I1a/MANIFEST.probe.json",
+    "results/I1a/MANIFEST.probe.sha256",
+    "results/I1a/MANIFEST.reserve.json",
+    "results/I1a/MANIFEST.reserve.sha256",
+    "results/I1a/MANIFEST.shuffled.json",
+    "results/I1a/MANIFEST.shuffled.sha256",
+    "results/I1a/MANIFEST.smoke.json",
+    "results/I1a/MANIFEST.smoke.sha256",
+    "results/I1a/MANIFEST.tokens.json",
+    "results/I1a/MANIFEST.tokens.sha256"
+  ],
+  "step": "manifest",
+  "utc": "2026-09-30T10:28:39Z"
+}

@@ -1,0 +1,47 @@
+{
+  "details": {
+    "adapter": "ar",
+    "d_model": 5120,
+    "head_shapes": {
+      "linear.bias": [
+        5120
+      ],
+      "linear.weight": [
+        5120,
+        5120
+      ]
+    },
+    "layer_norm": true,
+    "layers": [
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      44,
+      48,
+      52,
+      56,
+      60,
+      63
+    ],
+    "n_live": 992,
+    "n_saved": 992,
+    "switch_probe": {
+      "ar_vs_base_rel_l2": 0.9946169853210449,
+      "min_rel": 0.001,
+      "prev_vs_base_rel_l2": 0.614657998085022,
+      "previous_adapter": "olens",
+      "restored": true
+    },
+    "tag_mismatch_layers": []
+  },
+  "n": 992,
+  "name": "fve_ar_live",
+  "notes": "",
+  "passed": true,
+  "threshold": 1.0,
+  "utc": "2026-09-30T06:36:52+00:00",
+  "value": 1.0
+}

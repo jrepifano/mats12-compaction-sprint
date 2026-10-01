@@ -1,0 +1,95 @@
+{
+  "seed": 0,
+  "n_per_family": 200,
+  "runs": {
+    "jlens/multihop": {
+      "cells": 56,
+      "usd": 0.034072500000000006,
+      "exit": 0
+    },
+    "logit_lens/multihop": {
+      "cells": 73,
+      "usd": 0.0392685,
+      "exit": 0
+    },
+    "olens_rl600/multihop": {
+      "cells": 71,
+      "usd": 0.036129,
+      "exit": 0
+    },
+    "jlens/hallucination": {
+      "cells": 67,
+      "usd": 0.13385175000000002,
+      "exit": 0
+    },
+    "logit_lens/hallucination": {
+      "cells": 59,
+      "usd": 0.11859449999999998,
+      "exit": 0
+    },
+    "olens_rl600/hallucination": {
+      "cells": 74,
+      "usd": 0.12418725000000003,
+      "exit": 0
+    }
+  },
+  "agreement": {
+    "multihop": {
+      "n_paired": 200,
+      "agree": 0.995,
+      "kappa": 0.9891821722198183,
+      "flips": {
+        "True->False": 1
+      },
+      "per_arm": {
+        "olens_rl600": {
+          "n": 71,
+          "rate_first": 0.6901408450704225,
+          "rate_second": 0.676056338028169,
+          "agree": 0.9859154929577465
+        },
+        "jlens": {
+          "n": 56,
+          "rate_first": 0.32142857142857145,
+          "rate_second": 0.32142857142857145,
+          "agree": 1.0
+        },
+        "logit_lens": {
+          "n": 73,
+          "rate_first": 0.0821917808219178,
+          "rate_second": 0.0821917808219178,
+          "agree": 1.0
+        }
+      }
+    },
+    "hallucination": {
+      "n_paired": 200,
+      "agree": 0.845,
+      "kappa": 0.6,
+      "flips": {
+        "False->True": 18,
+        "True->False": 13
+      },
+      "per_arm": {
+        "olens_rl600": {
+          "n": 74,
+          "rate_first": 0.35135135135135137,
+          "rate_second": 0.36486486486486486,
+          "agree": 0.8783783783783784
+        },
+        "jlens": {
+          "n": 67,
+          "rate_first": 0.14925373134328357,
+          "rate_second": 0.19402985074626866,
+          "agree": 0.8059701492537313
+        },
+        "logit_lens": {
+          "n": 59,
+          "rate_first": 0.23728813559322035,
+          "rate_second": 0.2542372881355932,
+          "agree": 0.847457627118644
+        }
+      }
+    }
+  }
+}

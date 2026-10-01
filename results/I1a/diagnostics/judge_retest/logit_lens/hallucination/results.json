@@ -1,0 +1,2489 @@
+{
+ "schema_version": 1,
+ "family": "hallucination",
+ "complete": false,
+ "pinned_instrument": true,
+ "config": {
+  "judge_model": "google/gemini-3.8-flash",
+  "prompt_version": "v5c-chat",
+  "reasoning": {
+   "effort": "minimal"
+  },
+  "layers": null,
+  "dry_run": false,
+  "concurrency": 64,
+  "rpm": 240.0,
+  "allow_missing": true,
+  "items": [
+   "chat-dailydialog-0006",
+   "chat-dailydialog-0007",
+   "chat-dailydialog-0013",
+   "chat-dailydialog-0015",
+   "chat-dailydialog-0016",
+   "chat-dailydialog-0018",
+   "chat-dailydialog-0020",
+   "chat-dailydialog-0027",
+   "chat-dailydialog-0035",
+   "chat-dailydialog-0038",
+   "chat-dailydialog-0039",
+   "chat-dailydialog-0043",
+   "chat-dailydialog-0045",
+   "chat-dailydialog-0047",
+   "chat-dailydialog-0051",
+   "chat-dailydialog-0052",
+   "chat-dailydialog-0054",
+   "chat-dailydialog-0056",
+   "chat-dailydialog-0057",
+   "chat-dailydialog-0058",
+   "chat-dailydialog-0066",
+   "chat-dailydialog-0067",
+   "chat-dailydialog-0069",
+   "chat-dailydialog-0070",
+   "chat-dailydialog-0072",
+   "chat-lmsys-0006",
+   "chat-lmsys-0007",
+   "chat-lmsys-0009",
+   "chat-lmsys-0012",
+   "chat-lmsys-0014",
+   "chat-lmsys-0024",
+   "chat-lmsys-0026",
+   "chat-lmsys-0032",
+   "chat-lmsys-0038",
+   "chat-lmsys-0041",
+   "chat-lmsys-0043",
+   "chat-lmsys-0050",
+   "chat-lmsys-0054",
+   "chat-lmsys-0056",
+   "chat-lmsys-0060",
+   "chat-lmsys-0064",
+   "chat-lmsys-0067",
+   "chat-lmsys-0068",
+   "chat-lmsys-0069",
+   "chat-lmsys-0073",
+   "chat-lmsys-0074"
+  ],
+  "limit": 0,
+  "kind": "tokens",
+  "k": 1,
+  "summary_prompt_version": "interp-v1",
+  "judged_layers": [
+   20,
+   36,
+   44,
+   52,
+   60
+  ],
+  "verify": false,
+  "verify_prompt_version": null
+ },
+ "n_items": 46,
+ "counts": {
+  "n_expected_cells": 1830,
+  "n_missing_cells": 1771,
+  "n_unjudged_cells": 0,
+  "n_empty_cells": 0,
+  "skipped_rows": 0,
+  "spend_usd": 0.11859449999999998
+ },
+ "numbers": {
+  "metric": "hallucination_rate",
+  "value": 0.28846153846153844,
+  "ci95": [
+   0.16666666666666666,
+   0.425531914893617
+  ],
+  "chance": null,
+  "chance_label": "precision instrument: no chance line; excluded from the macro",
+  "higher_is_better": false,
+  "extras": {
+   "n_cells": 59,
+   "n_unjudged_cells": 0,
+   "n_short_cells": 0,
+   "n_readouts": 59,
+   "n_specific": 52,
+   "n_hallucinated": 15,
+   "n_off_topic": 4,
+   "n_revoked": 0,
+   "n_unverified_spans": 0,
+   "n_readouts_claims_judged": 0,
+   "n_cells_claims_unjudged": 59,
+   "n_claims_false": 0,
+   "n_claims_true": 0,
+   "n_claims_unverifiable": 0,
+   "n_claims_disputed": 0,
+   "n_claims_off_topic": 0,
+   "n_unverified_claim_quotes": 0,
+   "hallucination_rate_revoked": 0.28846153846153844,
+   "off_topic_rate": 0.07692307692307693,
+   "assert_share": 0.8813559322033898,
+   "verifiable_share": null,
+   "false_share_of_verifiable": null,
+   "unverifiable_claims_per_readout": null,
+   "by_layer": {
+    "20": {
+     "n_cells": 8,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 8,
+     "n_specific": 5,
+     "n_hallucinated": 3,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 8,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.6,
+     "hallucination_rate_revoked": 0.6,
+     "off_topic_rate": 0.0,
+     "assert_share": 0.625,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      1.0
+     ]
+    },
+    "36": {
+     "n_cells": 13,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 13,
+     "n_specific": 12,
+     "n_hallucinated": 4,
+     "n_off_topic": 3,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 13,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.3333333333333333,
+     "hallucination_rate_revoked": 0.3333333333333333,
+     "off_topic_rate": 0.25,
+     "assert_share": 0.9230769230769231,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.09090909090909091,
+      0.5833333333333334
+     ]
+    },
+    "44": {
+     "n_cells": 16,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 16,
+     "n_specific": 14,
+     "n_hallucinated": 3,
+     "n_off_topic": 1,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 16,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.21428571428571427,
+     "hallucination_rate_revoked": 0.21428571428571427,
+     "off_topic_rate": 0.07142857142857142,
+     "assert_share": 0.875,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.45454545454545453
+     ]
+    },
+    "52": {
+     "n_cells": 13,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 13,
+     "n_specific": 13,
+     "n_hallucinated": 3,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 13,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.23076923076923078,
+     "hallucination_rate_revoked": 0.23076923076923078,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.46153846153846156
+     ]
+    },
+    "60": {
+     "n_cells": 9,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 9,
+     "n_specific": 8,
+     "n_hallucinated": 2,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 9,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.25,
+     "hallucination_rate_revoked": 0.25,
+     "off_topic_rate": 0.0,
+     "assert_share": 0.8888888888888888,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.625
+     ]
+    }
+   },
+   "by_site_kind": {
+    "clause": {
+     "n_cells": 24,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 24,
+     "n_specific": 21,
+     "n_hallucinated": 6,
+     "n_off_topic": 1,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 24,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.2857142857142857,
+     "hallucination_rate_revoked": 0.2857142857142857,
+     "off_topic_rate": 0.047619047619047616,
+     "assert_share": 0.875,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.09090909090909091,
+      0.5
+     ]
+    },
+    "markup": {
+     "n_cells": 14,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 14,
+     "n_specific": 13,
+     "n_hallucinated": 5,
+     "n_off_topic": 1,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 14,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.38461538461538464,
+     "hallucination_rate_revoked": 0.38461538461538464,
+     "off_topic_rate": 0.07692307692307693,
+     "assert_share": 0.9285714285714286,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.14285714285714285,
+      0.6666666666666666
+     ]
+    },
+    "newline": {
+     "n_cells": 8,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 8,
+     "n_specific": 8,
+     "n_hallucinated": 0,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 8,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.0,
+     "hallucination_rate_revoked": 0.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 1.0,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "quote": {
+     "n_cells": 2,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 2,
+     "n_specific": 1,
+     "n_hallucinated": 1,
+     "n_off_topic": 0,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 2,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 1.0,
+     "hallucination_rate_revoked": 1.0,
+     "off_topic_rate": 0.0,
+     "assert_share": 0.5,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      1.0,
+      1.0
+     ]
+    },
+    "sentence": {
+     "n_cells": 11,
+     "n_unjudged_cells": 0,
+     "n_short_cells": 0,
+     "n_readouts": 11,
+     "n_specific": 9,
+     "n_hallucinated": 3,
+     "n_off_topic": 2,
+     "n_revoked": 0,
+     "n_unverified_spans": 0,
+     "n_readouts_claims_judged": 0,
+     "n_cells_claims_unjudged": 11,
+     "n_claims_false": 0,
+     "n_claims_true": 0,
+     "n_claims_unverifiable": 0,
+     "n_claims_disputed": 0,
+     "n_claims_off_topic": 0,
+     "n_unverified_claim_quotes": 0,
+     "hallucination_rate": 0.3333333333333333,
+     "hallucination_rate_revoked": 0.3333333333333333,
+     "off_topic_rate": 0.2222222222222222,
+     "assert_share": 0.8181818181818182,
+     "verifiable_share": null,
+     "false_share_of_verifiable": null,
+     "unverifiable_claims_per_readout": null,
+     "ci95": [
+      0.0,
+      0.6666666666666666
+     ]
+    }
+   },
+   "n_items_without_readouts": 0
+  }
+ },
+ "rows": [
+  {
+   "key": "chat-lmsys-0038__L052__p283",
+   "id": "chat-lmsys-0038",
+   "layer": 52,
+   "pos": 283,
+   "site_kind": "markup",
+   "samples": [
+    "These tokens collectively point to the concept or code execution of sorting data, particularly invoking Python's `sorted()` function or `.sort()` method (along with Chinese 排序, meaning 'to sort')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "invoking Python's `sorted()` function or `.sort()` method"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " sorted",
+    " Sorted",
+    "Sorted",
+    "_sorted",
+    "sorted",
+    ".sort",
+    "orted",
+    "(sorted",
+    " print",
+    "排序"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0069__L044__p384",
+   "id": "chat-lmsys-0069",
+   "layer": 44,
+   "pos": 384,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens suggest text involving conjunctions and enumerations of elements (such as 'and', 'etc', and 'even' [甚至]), potentially related to Tolkien's legendarium ('Arda') or technical descriptions and operations."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "off_topic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [
+      "Tolkien's legendarium ('Arda')"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "ardi",
+    " and",
+    "甚至",
+    " etc",
+    "arda",
+    "rom",
+    "amp",
+    "的操作",
+    "展",
+    " purified"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0072__L052__p59",
+   "id": "chat-dailydialog-0072",
+   "layer": 52,
+   "pos": 59,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is generating or predicting an explicit prompt or plea for someone to share information, asking them to please tell the story, speak up, or provide full details (mirrored in Chinese tokens like 'tell me', 'speak out', and 'explain in detail')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " tell",
+    " details",
+    "告诉我",
+    " Please",
+    "Tell",
+    " please",
+    " Tell",
+    "说出来",
+    "愿意",
+    "详细说明"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0051__L044__p60",
+   "id": "chat-dailydialog-0051",
+   "layer": 44,
+   "pos": 60,
+   "site_kind": "quote",
+   "samples": [
+    "The tokens suggest a moment of speechlessness, shock, or astonishment, likely within quoted dialogue or thoughts trailing off in disbelief (supported by '不可思议', meaning 'unbelievable' or 'incredible', alongside quotation marks and ellipses)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "The tokens suggest a moment of speechlessness, shock, or astonishment, likely within quoted dialogue or thoughts trailing off in disbelief"
+     ],
+     "off_topic": [
+      "'不可思议', meaning 'unbelievable' or 'incredible'"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "S",
+    "D",
+    "…",
+    " \"",
+    "...",
+    "不可思议",
+    " I",
+    "C",
+    "'",
+    "\""
+   ]
+  },
+  {
+   "key": "chat-lmsys-0056__L052__p152",
+   "id": "chat-lmsys-0056",
+   "layer": 52,
+   "pos": 152,
+   "site_kind": "clause",
+   "samples": [
+    "The context involves source code execution and console output, specifically closing code blocks, preprocessor regions, and printing statements to a console stream."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " //",
+    "endregion",
+    " }",
+    "apur",
+    "/console",
+    " prints",
+    "(print",
+    "-console",
+    " newline",
+    "Console"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0043__L044__p24",
+   "id": "chat-dailydialog-0043",
+   "layer": 44,
+   "pos": 24,
+   "site_kind": "clause",
+   "samples": [
+    "The model is focusing on a live musical performance or concert setting, capturing elements of the music, audience presence, and related contextual dynamics."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "TP",
+    "微微",
+    " music",
+    " c",
+    " the",
+    "<|im_start|>",
+    "�",
+    " and",
+    " audience",
+    " T"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0012__L060__p650",
+   "id": "chat-lmsys-0012",
+   "layer": 60,
+   "pos": 650,
+   "site_kind": "markup",
+   "samples": [
+    "The model is predicting the letter 'B' or subsequent items in an alphabetical sequence or labeled list (such as options A, B, C)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " B",
+    "B",
+    ".B",
+    "\tB",
+    " b",
+    " C",
+    "_B",
+    " Z",
+    "-B",
+    "hare"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0067__L036__p50",
+   "id": "chat-dailydialog-0067",
+   "layer": 36,
+   "pos": 50,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is predicting expressions related to unconditional availability and access, specifically concepts like 'anytime', 'whenever', or round-the-clock service (expressed in both Chinese and English)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "随时",
+    "只要有",
+    " whenever",
+    "全天候",
+    "只要",
+    "可以随时",
+    " anytime",
+    " unlimited",
+    " anywhere",
+    " any"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0039__L052__p233",
+   "id": "chat-dailydialog-0039",
+   "layer": 52,
+   "pos": 233,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is generating warm holiday or birthday well-wishes in Chinese, expressing heartfelt congratulations in advance (提前, 衷心的, 祝你) and hoping the recipient has a fun time (玩得)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "in Chinese",
+      "(提前, 衷心的, 祝你)",
+      "(玩得)"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "祝",
+    "最重要的是",
+    "衷心的",
+    "祝你",
+    "提前",
+    "imd",
+    "又或者",
+    "或者有",
+    "IDD",
+    "玩得"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0009__L020__p171",
+   "id": "chat-lmsys-0009",
+   "layer": 20,
+   "pos": 171,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is at a structural boundary or completion point, predicting sentence or passage termination marked by terminal punctuation, whitespace, line breaks, or the end-of-text token."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "\n\n",
+    "...",
+    " a",
+    ".",
+    "\n",
+    " ",
+    " as",
+    "!",
+    "<|endoftext|>",
+    " \n\n"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0006__L020__p334",
+   "id": "chat-dailydialog-0006",
+   "layer": 20,
+   "pos": 334,
+   "site_kind": "markup",
+   "samples": [
+    "The model is at the conclusion or trailing end of a statement, indicated by punctuation marks denoting pauses or emphasis (ellipses, exclamation mark) alongside whitespace, formatting boundaries, and end-of-text termination tokens."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "end-of-text termination tokens"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " ",
+    "...",
+    "<|endoftext|>",
+    "️",
+    " ",
+    "!",
+    "…",
+    " \n",
+    " Q",
+    "**"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0043__L052__p73",
+   "id": "chat-dailydialog-0043",
+   "layer": 52,
+   "pos": 73,
+   "site_kind": "markup",
+   "samples": [
+    "The tokens collectively suggest an invitation, prompt, or inquiry asking someone if they are ready to dance, combining multilingual terms for readiness and dancing."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " ready",
+    "准备",
+    " dance",
+    "Ready",
+    "打算",
+    "舞",
+    " готовы",
+    "ready",
+    " Ready",
+    "要不要"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0013__L044__p37",
+   "id": "chat-dailydialog-0013",
+   "layer": 44,
+   "pos": 37,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens suggest a polite, formal advisory or regulatory context involving multilingual instructions or official recommendations, combining Chinese phrases meaning 'formulation/statement' and 'recommend that you' with English and international administrative framing."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "regulatory context involving multilingual instructions or official recommendations, combining Chinese phrases meaning 'formulation/statement' and 'recommend that you' with English and international administrative framing"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "�",
+    "表述",
+    "建议您",
+    "UK",
+    " as",
+    "ky",
+    "ifa",
+    " Mai",
+    " strictly",
+    "embre"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0050__L060__p96",
+   "id": "chat-lmsys-0050",
+   "layer": 60,
+   "pos": 96,
+   "site_kind": "clause",
+   "samples": [
+    "The model is closing a Markdown code block, particularly one containing SQL code or database queries, indicating the end of a generated code snippet or completion."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "```",
+    "\n",
+    "<|im_end|>",
+    " ```",
+    "--",
+    " --",
+    "``",
+    "`",
+    "}`",
+    " select"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0057__L060__p60",
+   "id": "chat-dailydialog-0057",
+   "layer": 60,
+   "pos": 60,
+   "site_kind": "clause",
+   "samples": [
+    "The model is processing conditional or disjunctive language typically found in formal, legal, or prescriptive contexts, indicating alternatives or obligations through multilingual equivalents of 'or' (such as Russian 'или' and Chinese '或者', '抑或') alongside modal auxiliaries like 'shall' and 'should'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "formal, legal, or prescriptive contexts",
+      "obligations through multilingual equivalents of 'or' (such as Russian 'или' and Chinese '或者', '抑或') alongside modal auxiliaries like 'shall' and 'should'"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " or",
+    " shall",
+    " wherever",
+    " should",
+    " или",
+    "或由",
+    " surprise",
+    "抑或",
+    "或者",
+    "shall"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0018__L020__p63",
+   "id": "chat-dailydialog-0018",
+   "layer": 20,
+   "pos": 63,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens suggest a boundary between grammatical clauses or list items, pointing to logical disjunctions ('or'), Roman numerals (I, V), or an expressive first-person interjection."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " ",
+    " or",
+    " I",
+    "\n",
+    ".",
+    "!",
+    " o",
+    " ",
+    " V",
+    " O"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0069__L060__p298",
+   "id": "chat-dailydialog-0069",
+   "layer": 60,
+   "pos": 298,
+   "site_kind": "markup",
+   "samples": [
+    "The model is focusing on themes of desire, backing, or assistance, likely anticipating a discussion about wanting support or expressing endorsement for a particular initiative or entity."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "expressing endorsement for a particular initiative or entity"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " wanting",
+    "want",
+    " supporting",
+    " Supporting",
+    "Want",
+    "support",
+    "_support",
+    " Want",
+    "Support",
+    "-support"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0054__L020__p153",
+   "id": "chat-dailydialog-0054",
+   "layer": 20,
+   "pos": 153,
+   "site_kind": "clause",
+   "samples": [
+    "The model is predicting a sentence or clause boundary followed by punctuation (like periods, commas, or parentheses) or the capitalized initial of the next word or name."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    ".",
+    "...",
+    ",",
+    " (",
+    "S",
+    "K",
+    "!",
+    "A",
+    " ",
+    "M"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0015__L036__p141",
+   "id": "chat-dailydialog-0015",
+   "layer": 36,
+   "pos": 141,
+   "site_kind": "sentence",
+   "samples": [
+    "The model appears to be transitioning between structured code or multilingual text, combining fragments related to time and condition (such as 'meanwhile', 'period of', and 'a good') with linguistic particles and syntactic tokens like '();'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "off_topic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [
+      "structured code or multilingual text",
+      "'();'"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "avour",
+    "同时",
+    "\n",
+    "为期",
+    "一个好的",
+    "ctica",
+    "静",
+    "();",
+    "icle",
+    "ugen"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0038__L044__p189",
+   "id": "chat-lmsys-0038",
+   "layer": 44,
+   "pos": 189,
+   "site_kind": "newline",
+   "samples": [
+    "These tokens collectively point to the declaration or initialization of a structured data variable in code, such as assigning a list of dictionaries in Python (e.g., `data = [{'`)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " data",
+    " =",
+    "data",
+    "uk",
+    " [{'",
+    "方",
+    "迷",
+    "try",
+    "展",
+    "iped"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0043__L036__p73",
+   "id": "chat-dailydialog-0043",
+   "layer": 36,
+   "pos": 73,
+   "site_kind": "markup",
+   "samples": [
+    "The model is querying or questioning an identity or connection involving Canada, focusing on 'who' is involved or 'whether' there is a relationship."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "off_topic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [
+      "involving Canada"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "是否",
+    " whether",
+    "ura",
+    "!",
+    "是谁",
+    "z",
+    "谁",
+    "D",
+    "是否与",
+    "加拿大"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0043__L060__p305",
+   "id": "chat-lmsys-0043",
+   "layer": 60,
+   "pos": 305,
+   "site_kind": "clause",
+   "samples": [
+    "These tokens collectively indicate a descriptive or academic overview detailing the scope and themes of a study, presentation, or work—specifically denoting the action of exploring, addressing, or focusing on a particular subject."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " exploring",
+    " drawing",
+    " focusing",
+    " explores",
+    " offering",
+    "探讨",
+    " explore",
+    " addressing",
+    " covering",
+    " grounded"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0068__L044__p482",
+   "id": "chat-lmsys-0068",
+   "layer": 44,
+   "pos": 482,
+   "site_kind": "markup",
+   "samples": [
+    "These tokens collectively point to descriptions of an intermediate or moderate tier within a graded classification system, specifying a mid-level rank, degree, or skill level."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "/or",
+    " intermediate",
+    " higher",
+    " medium",
+    " moderate",
+    " level",
+    "ish",
+    " mid",
+    "中等",
+    "/"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0020__L036__p32",
+   "id": "chat-dailydialog-0020",
+   "layer": 36,
+   "pos": 32,
+   "site_kind": "sentence",
+   "samples": [
+    "The tokens collectively discuss artificial intelligence limitations or incapacities, specifically pointing to an assertion in Chinese that an AI does not possess a certain ability ('不具备')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "AI",
+    "�",
+    " �",
+    "不具备",
+    " AI",
+    " �",
+    "x",
+    "Â",
+    "~",
+    " I"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0056__L060__p114",
+   "id": "chat-dailydialog-0056",
+   "layer": 60,
+   "pos": 114,
+   "site_kind": "newline",
+   "samples": [
+    "The tokens collectively signify concepts of representation and symbolism, pointing to something functioning as a symbol or carrying symbolic meaning."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "�",
+    " �",
+    "�",
+    " �",
+    " symbol",
+    "象征",
+    " symbolic",
+    "Symbol",
+    "symbol",
+    " meaningful"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0012__L036__p745",
+   "id": "chat-lmsys-0012",
+   "layer": 36,
+   "pos": 745,
+   "site_kind": "markup",
+   "samples": [
+    "The tokens suggest a computer programming or user interface design context involving conditional logic and frontend elements, indicated by code-related syntax like 'else', ':', and 'UI'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "'else'"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "c",
+    "else",
+    " UI",
+    "ui",
+    ":",
+    "i",
+    "至于",
+    "ob",
+    "ce",
+    "ensive"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0051__L060__p90",
+   "id": "chat-dailydialog-0051",
+   "layer": 60,
+   "pos": 90,
+   "site_kind": "newline",
+   "samples": [
+    "The model is transitioning to a formatted section or heading introducing evaluated options, such as an 'Alternatives' section marked with markdown separators or checkmarks."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "###",
+    " ###",
+    "---",
+    " alternative",
+    " alternatives",
+    "Alternative",
+    " Alternative",
+    " ---",
+    "✅",
+    " Altern"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0026__L020__p422",
+   "id": "chat-lmsys-0026",
+   "layer": 20,
+   "pos": 422,
+   "site_kind": "markup",
+   "samples": [
+    "The model is predicting punctuation, abbreviations, or initial capitalized letters following a quotation or citation, likely within a formal or legal text reference (such as 'v.' for versus or abbreviated names)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "following a quotation or citation",
+      "such as 'v.' for versus or abbreviated names"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " “",
+    " ",
+    " S",
+    ".",
+    "ex",
+    " H",
+    " v",
+    "…",
+    " B",
+    ","
+   ]
+  },
+  {
+   "key": "chat-lmsys-0074__L020__p311",
+   "id": "chat-lmsys-0074",
+   "layer": 20,
+   "pos": 311,
+   "site_kind": "quote",
+   "samples": [
+    "The model is at a structural boundary or separator in formatted text, such as a list, key-value pair, or definition break, anticipating punctuation, whitespace, or a clarifying copula ('is')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " \n",
+    "\n",
+    ".",
+    ":",
+    "-",
+    " ",
+    "A",
+    "  \n",
+    "s",
+    " is"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0043__L060__p165",
+   "id": "chat-lmsys-0043",
+   "layer": 60,
+   "pos": 165,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens primarily represent the aldehyde functional group in chemistry (-CHO, suffix -al, and Chinese 醛 / 甲醛 for aldehyde / formaldehyde), mixed with lexical overlap related to the prefix 'cho-' and words like 'choice'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "CHO",
+    " CHO",
+    " al",
+    "醛",
+    "Choice",
+    "甲醛",
+    "Choices",
+    "Cho",
+    "cho",
+    "choice"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0024__L044__p451",
+   "id": "chat-lmsys-0024",
+   "layer": 44,
+   "pos": 451,
+   "site_kind": "clause",
+   "samples": [
+    "The model is in the middle of formulating a definition or explaining the typical meaning of a concept, revolving around ideas of what something usually, mostly, or by default refers to."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " it",
+    "绝大多数",
+    "通常",
+    " refers",
+    " most",
+    "指的是",
+    " usually",
+    " **",
+    "大概率",
+    "含义"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0045__L044__p102",
+   "id": "chat-dailydialog-0045",
+   "layer": 44,
+   "pos": 102,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens suggest a reflective, conversational, or self-evaluative statement, likely expressing personal habits or responsiveness to feedback and priorities in an emphatic or structured thought."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " and",
+    "!",
+    " so",
+    " but",
+    " as",
+    " I",
+    " feedback",
+    " often",
+    " ",
+    " priorit"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0073__L052__p232",
+   "id": "chat-lmsys-0073",
+   "layer": 52,
+   "pos": 232,
+   "site_kind": "markup",
+   "samples": [
+    "These tokens collectively indicate exemplification across multiple languages, pointing to a context where the text is introducing examples or comparisons (such as 'for example', 'such as', or 'like')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "例如",
+    "比如",
+    " such",
+    "such",
+    "诸如",
+    "如",
+    " like",
+    "如水",
+    "например",
+    " например"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0006__L036__p30",
+   "id": "chat-lmsys-0006",
+   "layer": 36,
+   "pos": 30,
+   "site_kind": "markup",
+   "samples": [
+    "The model is preparing to open a quotation, parenthetical clarification, or cited segment, characterized primarily by opening quotation marks and punctuation alongside multilingual fragments introducing specific names or timestamps."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " \"",
+    " (",
+    " “",
+    "�",
+    " የ",
+    "edio",
+    "abr",
+    "分许",
+    "isir",
+    "..."
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0007__L052__p106",
+   "id": "chat-dailydialog-0007",
+   "layer": 52,
+   "pos": 106,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens collectively reflect a reflective inquiry into the final outcome or conclusion of a past event, considering what ultimately or eventually transpired in hindsight."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " ultimately",
+    " what",
+    "最终",
+    " What",
+    "当时",
+    "当时的",
+    " eventually",
+    "What",
+    "最终还是",
+    "已经过去"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0066__L044__p174",
+   "id": "chat-dailydialog-0066",
+   "layer": 44,
+   "pos": 174,
+   "site_kind": "clause",
+   "samples": [
+    "The model is focusing on statistical data regarding global poverty rates, with predictions strongly favoring international scope (including Chinese translations for 'global' and 'world') and percentage metrics."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " global",
+    "全球",
+    "global",
+    " percentages",
+    " percent",
+    "%",
+    "_global",
+    " Global",
+    " poverty",
+    "世界"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0035__L020__p138",
+   "id": "chat-dailydialog-0035",
+   "layer": 20,
+   "pos": 138,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is predicting punctuation marks and whitespace associated with sentence or utterance boundaries, with a strong emphasis on emphatic conclusion such as exclamation points."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "!",
+    ".",
+    " ",
+    "\n",
+    "~",
+    "\n\n",
+    "！",
+    " !",
+    "?",
+    "。"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0014__L036__p419",
+   "id": "chat-lmsys-0014",
+   "layer": 36,
+   "pos": 419,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens evoke data transmission and error-correction protocols, specifically referencing syndrome decoding, packet reconstruction, and resending lost or corrupted network data."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " syndrome",
+    "ndrome",
+    "ackets",
+    "按规定",
+    "单向",
+    "槛",
+    " reconstruction",
+    " resend",
+    "arb",
+    "Mark"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0038__L036__p32",
+   "id": "chat-dailydialog-0038",
+   "layer": 36,
+   "pos": 32,
+   "site_kind": "sentence",
+   "samples": [
+    "The tokens suggest a context in Chinese discussing the capabilities, limitations, or agreed actions of artificial intelligence, specifically involving phrases indicating that an AI lacks certain qualities ('不具备') or is consenting/promising ('答应')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "in Chinese",
+      "consenting/promising ('答应')"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "!",
+    "�",
+    "AI",
+    " AI",
+    " �",
+    "不具备",
+    "~",
+    "萍",
+    " �",
+    "答应"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0013__L020__p62",
+   "id": "chat-dailydialog-0013",
+   "layer": 20,
+   "pos": 62,
+   "site_kind": "clause",
+   "samples": [
+    "The model is at the conclusion of an emphatic or emotional first-person statement, anticipating terminal punctuation (period, exclamation mark, ellipsis) before potentially beginning a new sentence focused on the narrator ('I')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "at the conclusion of an emphatic or emotional first-person statement, anticipating terminal punctuation (period, exclamation mark, ellipsis)"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    ".",
+    "!",
+    ",",
+    " ",
+    "...",
+    " (",
+    "I",
+    " I",
+    " *",
+    " "
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0039__L036__p187",
+   "id": "chat-dailydialog-0039",
+   "layer": 36,
+   "pos": 187,
+   "site_kind": "clause",
+   "samples": [
+    "The model is focusing on severe, heavy, or prolonged dehydration and fluid loss."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "severe, heavy, or prolonged dehydration and fluid loss"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " dehydration",
+    "dehy",
+    " hydration",
+    " heavy",
+    "脱水",
+    "it",
+    "虽然",
+    " prolonged",
+    "p",
+    "cessive"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0060__L052__p889",
+   "id": "chat-lmsys-0060",
+   "layer": 52,
+   "pos": 889,
+   "site_kind": "newline",
+   "samples": [
+    "The model is closing a Markdown bolding tag (**) following a highlighted header or title, preparing to transition into punctuation like a colon or continuing syntactical connectives."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " **",
+    "**",
+    ":",
+    " der",
+    " et",
+    ".",
+    " ",
+    " &",
+    ",",
+    " an"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0070__L044__p315",
+   "id": "chat-dailydialog-0070",
+   "layer": 44,
+   "pos": 315,
+   "site_kind": "clause",
+   "samples": [
+    "The model is qualifying a statement or introducing specific examples, likely discussing certain irreversible conditions or outcomes."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "某些",
+    " certain",
+    " some",
+    "例如",
+    " irreversible",
+    "比如",
+    "在某些",
+    " Some",
+    "some",
+    "一些"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0012__L036__p316",
+   "id": "chat-lmsys-0012",
+   "layer": 36,
+   "pos": 316,
+   "site_kind": "sentence",
+   "samples": [
+    "These tokens collectively point to an evaluation of a sophisticated project or system, discussing its complex, comprehensive design and successful implementation while integrating diverse elements (drawing on Chinese concepts like '融合了' for integration and '虽然' for concessive contrast)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "off_topic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [
+      "drawing on Chinese concepts like '融合了' for integration and '虽然' for concessive contrast"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " implementation",
+    " design",
+    "虽然",
+    "这类",
+    " comprehensive",
+    " complex",
+    "融合了",
+    "客",
+    " success",
+    " F"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0041__L052__p237",
+   "id": "chat-lmsys-0041",
+   "layer": 52,
+   "pos": 237,
+   "site_kind": "markup",
+   "samples": [
+    "The model is predicting words that introduce an illustration, instance, or hypothetical case, with multilingual tokens overwhelmingly meaning 'for example' or 'such as' (including Chinese, Russian, Indonesian, and Thai)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "例如",
+    "比如",
+    "например",
+    " например",
+    " misalnya",
+    " Например",
+    " unlikely",
+    "哪怕是",
+    "无论是",
+    " เช่น"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0027__L036__p77",
+   "id": "chat-dailydialog-0027",
+   "layer": 36,
+   "pos": 77,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens suggest a navigation or arrival context, combining directional guidance and assistance with Chinese tokens relating to approaching, residences, and offering help."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "navigation or arrival context, combining directional guidance"
+     ],
+     "off_topic": [
+      "Chinese tokens relating to approaching, residences,"
+     ],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "临",
+    "inson",
+    " directions",
+    "uar",
+    "ow",
+    "ipp",
+    "宅",
+    "omin",
+    "alsa",
+    "帮你"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0047__L052__p126",
+   "id": "chat-dailydialog-0047",
+   "layer": 52,
+   "pos": 126,
+   "site_kind": "sentence",
+   "samples": [
+    "The tokens collectively describe an event, attack, or emotional outbreak taking place, indicated by words meaning 'occurred' or 'happened' (发生在, Occurred), 'occasion/situation' (场合), and 'outbreak/seizure' (发作) alongside emotional fragments (emo)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "attack",
+      "outbreak/seizure' (发作)"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "  \n",
+    "\n",
+    "emo",
+    "urit",
+    "发生在",
+    "itante",
+    "场合",
+    "kland",
+    "Occurred",
+    "发作"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0007__L052__p203",
+   "id": "chat-lmsys-0007",
+   "layer": 52,
+   "pos": 203,
+   "site_kind": "markup",
+   "samples": [
+    "The tokens collectively point to the programmatic creation of a new object or resource, most likely involving a file instantiation method such as 'create', 'OrCreate', or file generation."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " create",
+    "创建",
+    ".create",
+    " creation",
+    " created",
+    " file",
+    "OrCreate",
+    " creates",
+    "滋",
+    "生成"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0014__L060__p222",
+   "id": "chat-lmsys-0014",
+   "layer": 60,
+   "pos": 222,
+   "site_kind": "newline",
+   "samples": [
+    "The tokens collectively indicate a moment of self-correction or qualification, where the speaker is pausing to clarify, revise, or contrast a prior statement with reality (e.g., 'actually', 'correction', '实际上')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "Actually",
+    " actually",
+    "实际上",
+    " Actually",
+    "actually",
+    "Let",
+    "实际",
+    " Correction",
+    "其实",
+    " correction"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0041__L036__p55",
+   "id": "chat-lmsys-0041",
+   "layer": 36,
+   "pos": 55,
+   "site_kind": "clause",
+   "samples": [
+    "The model is considering an analytical or philosophical argument, weighing conditions and fundamental characteristics involving spatial separation or isolation (e.g., Chinese tokens for 'after all', 'essence', and 'isolation' combined with 'spatial' and 'unless')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " **",
+    "毕竟",
+    "  \n",
+    "本质",
+    ":",
+    "隔离",
+    "!",
+    " unless",
+    ">",
+    " spatial"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0064__L044__p568",
+   "id": "chat-lmsys-0064",
+   "layer": 44,
+   "pos": 568,
+   "site_kind": "sentence",
+   "samples": [
+    "The model is processing or transitioning into a discussion of structured data or variables, focusing on concepts like information, data types, or formatted values."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "generic",
+     "class": "generic",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "\n\n",
+    " data",
+    " B",
+    "\n",
+    " as",
+    " information",
+    ".",
+    " S",
+    ")",
+    " values"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0018__L036__p43",
+   "id": "chat-dailydialog-0018",
+   "layer": 36,
+   "pos": 43,
+   "site_kind": "newline",
+   "samples": [
+    "These tokens collectively represent transition markers introducing an example or hypothetical scenario, featuring multilingual variants of 'for example' such as Chinese '例如'/'比如', Russian 'например', and English 'For'/'If'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "例如",
+    "比如",
+    "If",
+    "人或",
+    "For",
+    "например",
+    "无论是",
+    " например",
+    "抱",
+    "*"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0032__L044__p68",
+   "id": "chat-lmsys-0032",
+   "layer": 44,
+   "pos": 68,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens indicate a structured checklist or formatted bulleted list evaluating a feature or action, marking it as positive, completed, or proactive (indicated by 'proactive', '✅', markdown formatting, and references to 'it')."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "hallucinated",
+     "revoked": false,
+     "wrong": [
+      "checklist",
+      "evaluating a feature or action",
+      "completed",
+      "'✅'"
+     ],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " **",
+    "  ",
+    "它",
+    "\t",
+    " *",
+    " it",
+    " ",
+    " proactive",
+    " ✅",
+    "er"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0054__L044__p358",
+   "id": "chat-lmsys-0054",
+   "layer": 44,
+   "pos": 358,
+   "site_kind": "clause",
+   "samples": [
+    "The model is predicting morphological affixes and descriptive technical vocabulary associated with technological progress or systematic advancement, such as 'advanced process' or derived verbs/adjectives ending in '-er' and '-ed'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "er",
+    "S",
+    "D",
+    " advanced",
+    " process",
+    " ",
+    "T",
+    "ile",
+    "O",
+    "ed"
+   ]
+  },
+  {
+   "key": "chat-lmsys-0067__L052__p39",
+   "id": "chat-lmsys-0067",
+   "layer": 52,
+   "pos": 39,
+   "site_kind": "markup",
+   "samples": [
+    "The tokens strongly point to the mathematical constant pi (π), referencing it directly through various capitalizations and symbols as well as the Chinese characters '圆周' meaning circumference or referring to pi (圆周率)."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " pi",
+    "/pi",
+    " Pi",
+    ".pi",
+    "pi",
+    " PI",
+    "(pi",
+    "圆周",
+    "PI",
+    "Pi"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0015__L044__p261",
+   "id": "chat-dailydialog-0015",
+   "layer": 44,
+   "pos": 261,
+   "site_kind": "newline",
+   "samples": [
+    "The model is evaluating a conditional or hypothetical statement, specifically reflecting on an 'if' clause or questioning whether a certain condition holds true, as evidenced by cross-lingual tokens meaning 'if' and 'whether'."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    " If",
+    " if",
+    "If",
+    "如果是",
+    "如果",
+    " ",
+    "!",
+    "是不是",
+    " whether",
+    " you"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0016__L044__p26",
+   "id": "chat-dailydialog-0016",
+   "layer": 44,
+   "pos": 26,
+   "site_kind": "clause",
+   "samples": [
+    "The tokens point to an emphatic confirmation or reaction to unexpected news, expressing strong agreement or realization (e.g., 'indeed', '确实') about a newly introduced piece of information."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "!",
+    " a",
+    "确实",
+    "确实是",
+    " E",
+    " new",
+    " news",
+    " I",
+    " indeed",
+    "?"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0052__L044__p77",
+   "id": "chat-dailydialog-0052",
+   "layer": 44,
+   "pos": 77,
+   "site_kind": "newline",
+   "samples": [
+    "The model is preparing to initiate a conditional statement or contrasting caveat, signaled by multilingual variations of 'if' and 'however' ('不过') alongside potential sentence-starting capitalization."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "不过",
+    "If",
+    " ",
+    "Q",
+    " if",
+    "H",
+    "T",
+    " If",
+    "i",
+    "!"
+   ]
+  },
+  {
+   "key": "chat-dailydialog-0058__L052__p86",
+   "id": "chat-dailydialog-0058",
+   "layer": 52,
+   "pos": 86,
+   "site_kind": "clause",
+   "samples": [
+    "These tokens collectively reflect an inquiry or FAQ asking whether an action, reservation, or preparation is required in advance."
+   ],
+   "verdict": [
+    {
+     "idx": 0,
+     "kind": "specific",
+     "class": "consistent",
+     "revoked": false,
+     "wrong": [],
+     "off_topic": [],
+     "n_unverified": 0,
+     "claims": null
+    }
+   ],
+   "tokens": [
+    "需要提前",
+    "是否需要",
+    "有没有",
+    "提前",
+    " do",
+    " Are",
+    " Is",
+    "是否有",
+    " how",
+    " does"
+   ]
+  }
+ ]
+}

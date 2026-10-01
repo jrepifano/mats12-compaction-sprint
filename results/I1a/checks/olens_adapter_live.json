@@ -1,0 +1,20 @@
+{
+  "details": {
+    "active_adapter": "olens",
+    "adapter_dir": "/ws/i1a_artifacts/adapters/olens_s3d_rl600",
+    "adapter_name": "olens",
+    "adapter_on_changes_activations": true,
+    "capture_equals_adapter_off": true,
+    "layer": 44,
+    "max_abs_capture_minus_off": 0.0,
+    "max_abs_capture_minus_on": 52.75,
+    "n_live_lora_tensors": 992
+  },
+  "n": 2,
+  "name": "olens_adapter_live",
+  "notes": "value = max |logits(adapter on) - logits(adapter off)| on the carrier prompt",
+  "passed": true,
+  "threshold": 0.0,
+  "utc": "2026-09-30T06:32:22Z",
+  "value": 29.40625
+}

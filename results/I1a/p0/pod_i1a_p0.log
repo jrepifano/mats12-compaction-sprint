@@ -1,0 +1,12 @@
+2026-09-30T04:24:24Z === pod_run_i1a.sh download dry=0 commit=8f35568def9ee95e27de607c34f3a3e88e524b3b dirty=1
+  P0 cost check: $3.49/h x (0.07 h so far + 1.0 h) = $3.72 <= P0 cap $6.00
++ /ws/venv-i1a/bin/python scripts/i1a_pod.py download >>logs/pod_i1a_download.log 2>&1
+2026-09-30T04:24:24Z start download
+2026-09-30T04:33:55Z done download
+2026-09-30T04:33:55Z === pod_run_i1a.sh smoke dry=0 commit=8f35568def9ee95e27de607c34f3a3e88e524b3b dirty=1
+  P0 cost check: $3.49/h x (0.23 h so far + 1.0 h) = $4.28 <= P0 cap $6.00
++ /ws/venv-i1a/bin/python scripts/i1a_pod.py smoke >>logs/pod_i1a_smoke.log 2>&1
+2026-09-30T04:33:55Z start smoke
+Terminated
+2026-09-30T05:27:26Z FAILED smoke (exit 143); see logs/pod_i1a_smoke.log
+P0_CHAIN_EXIT=1

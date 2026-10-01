@@ -1,0 +1,32 @@
+{
+  "details": {
+    "failure_examples": [],
+    "failures": 0,
+    "max_abs_score_diff": 0.0,
+    "n_items": 3,
+    "per_reader_family": {
+      "jlens/basic_readout_mt": {
+        "agree": 33,
+        "n": 33
+      },
+      "jlens/hallucination": {
+        "agree": 120,
+        "n": 120
+      },
+      "jlens/multihop": {
+        "agree": 33,
+        "n": 33
+      }
+    },
+    "readers": [
+      "jlens"
+    ]
+  },
+  "n": 186,
+  "name": "store_vs_producer",
+  "notes": "stored rows (read_family on the bf16 store) vs Producer.read_spec on a fresh capture with an independently bound reader; scores are reported, not gated",
+  "passed": true,
+  "threshold": 1.0,
+  "utc": "2026-09-30T06:41:53Z",
+  "value": 1.0
+}

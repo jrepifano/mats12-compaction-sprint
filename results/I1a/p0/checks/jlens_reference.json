@@ -1,0 +1,331 @@
+{
+  "details": {
+    "alignment_failure_examples": [],
+    "alignment_failures": 0,
+    "complete": true,
+    "layers": [
+      20,
+      24,
+      28,
+      32,
+      36,
+      40,
+      42,
+      44,
+      48,
+      52,
+      56,
+      60
+    ],
+    "limit": 0,
+    "misses": [
+      {
+        "id": "chat-lmsys-0006",
+        "layer": 24,
+        "ours": [
+          "\u00e2\u0122\u013f**.",
+          "!**",
+          ")**."
+        ],
+        "theirs": [
+          ")**.",
+          "\u00e2\u0122\u013f**.",
+          "!**"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0016",
+        "layer": 20,
+        "ours": [
+          " \u00d1\u012f\u00d0\u00bc\u00d0\u00be\u00d1\u0128\u00d0\u00b8\u00d0\u00be\u00d0\u00bd\u00d0\u00b0",
+          "\u00ec\u0139\u00ac",
+          " hanno"
+        ],
+        "theirs": [
+          "\u00ec\u0139\u00ac",
+          " \u00d1\u012f\u00d0\u00bc\u00d0\u00be\u00d1\u0128\u00d0\u00b8\u00d0\u00be\u00d0\u00bd\u00d0\u00b0",
+          " hanno"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0022",
+        "layer": 48,
+        "ours": [
+          "<pre",
+          ":\\",
+          ":{"
+        ],
+        "theirs": [
+          ":\\",
+          "<pre",
+          ":{"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0024",
+        "layer": 36,
+        "ours": [
+          " phenomena",
+          " phenomenon",
+          " exponentially"
+        ],
+        "theirs": [
+          " phenomenon",
+          " phenomena",
+          " exponentially"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0026",
+        "layer": 36,
+        "ours": [
+          "\u00e8\u012a\u00aa\u00e7\u00a9\u00ba",
+          "\u00e6\u013e\u00ba\u00e5\u013e\u00ba",
+          " aviation"
+        ],
+        "theirs": [
+          " airspace",
+          "\u00e6\u013e\u00ba\u00e5\u013e\u00ba",
+          "\u00e8\u012a\u00aa\u00e7\u00a9\u00ba"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0038",
+        "layer": 42,
+        "ours": [
+          " boolean",
+          " direction",
+          " Boolean"
+        ],
+        "theirs": [
+          " direction",
+          " Boolean",
+          " boolean"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0038",
+        "layer": 56,
+        "ours": [
+          " individually",
+          " direction",
+          " different"
+        ],
+        "theirs": [
+          " different",
+          " individually",
+          "\u00e4\u00b8\u012f\u00e5\u0132\u012e\u00e7\u013c\u0126"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0038",
+        "layer": 60,
+        "ours": [
+          " different",
+          " ascending",
+          " mixed"
+        ],
+        "theirs": [
+          " mixed",
+          " ascending",
+          " different"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0050",
+        "layer": 48,
+        "ours": [
+          "varchar",
+          " varchar",
+          " VARCHAR"
+        ],
+        "theirs": [
+          " varchar",
+          "varchar",
+          " VARCHAR"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0055",
+        "layer": 24,
+        "ours": [
+          "atisf",
+          " )**",
+          "\u00e8\u00bf\u0140\u00e8\u00b4\u00af"
+        ],
+        "theirs": [
+          " )**",
+          "atisf",
+          "\u00e8\u00bf\u0140\u00e8\u00b4\u00af"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0060",
+        "layer": 48,
+        "ours": [
+          " *[",
+          " *(",
+          "\u00e3\u0123\u00af\u00e3\u0123\u0124\u00e3\u0124\u012c\u00e3\u0123\u00be\u00e3\u0123\u013d\u00e3\u0124\u0135"
+        ],
+        "theirs": [
+          " *(",
+          " *[",
+          "\u00e3\u0123\u00af\u00e3\u0123\u0124\u00e3\u0124\u012c\u00e3\u0123\u00be\u00e3\u0123\u013d\u00e3\u0124\u0135"
+        ]
+      },
+      {
+        "id": "chat-lmsys-0071",
+        "layer": 48,
+        "ours": [
+          " crisp",
+          " dusty",
+          " sleepy"
+        ],
+        "theirs": [
+          " dusty",
+          " crisp",
+          " sleepy"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0014",
+        "layer": 20,
+        "ours": [
+          " \u00e0\u00a6\u0128\u00e0\u00a6\u00aa\u00e0\u00a6\u00a8\u00e0\u00a6\u00bf",
+          "\u00e5\u00a5\u00bd\u00e4\u00b8\u012f\u00e5\u00a5\u00bd",
+          " \u00d0\u00b2\u00d0\u00b0\u00d0\u00bc"
+        ],
+        "theirs": [
+          "\u00e5\u00a5\u00bd\u00e4\u00b8\u012f\u00e5\u00a5\u00bd",
+          " \u00e0\u00a6\u0128\u00e0\u00a6\u00aa\u00e0\u00a6\u00a8\u00e0\u00a6\u00bf",
+          " \u00d0\u00b2\u00d0\u00b0\u00d0\u00bc"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0020",
+        "layer": 36,
+        "ours": [
+          "\u00e6\u013a\u00af\u00e6\u0122\u0130\u00e4\u00b9\u012a",
+          " b\u00e1\u00ba\u00a1n",
+          "\u00e6\u013a\u00af\u00e4\u00bd\u0142"
+        ],
+        "theirs": [
+          " b\u00e1\u00ba\u00a1n",
+          "\u00e6\u013a\u00af\u00e6\u0122\u0130\u00e4\u00b9\u012a",
+          "\u00e6\u013a\u00af\u00e4\u00bd\u0142"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0025",
+        "layer": 40,
+        "ours": [
+          "\u00e6\u0126\u0141\u00e5\u0127\u00b4\u00e8\u00b6\u00a3",
+          "\u00e4\u00bd\u0142\u00e6\u0125\u00b3",
+          " \u00d0\u00b2\u00d0\u00b0\u00d0\u00bc"
+        ],
+        "theirs": [
+          "\u00e4\u00bd\u0142\u00e6\u0125\u00b3",
+          "\u00e6\u0126\u0141\u00e5\u0127\u00b4\u00e8\u00b6\u00a3",
+          " \u00d0\u00b2\u00d0\u00b0\u00d0\u00bc"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0026",
+        "layer": 28,
+        "ours": [
+          "\u00e4\u00b8\u0138\u00e7\u0137\u012e\u00e7\u013c\u0126",
+          " datetime",
+          "\u00e6\u0139\u00b6\u00e7\u00a9\u00ba"
+        ],
+        "theirs": [
+          " datetime",
+          "\u00e4\u00b8\u0138\u00e7\u0137\u012e\u00e7\u013c\u0126",
+          "\u00e6\u0139\u00b6\u00e7\u00a9\u00ba"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0028",
+        "layer": 20,
+        "ours": [
+          "iful",
+          "cher",
+          "ching"
+        ],
+        "theirs": [
+          "cher",
+          "iful",
+          "ching"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0028",
+        "layer": 56,
+        "ours": [
+          "-down",
+          "\u00e5\u00a4\u00b1\u00e6\u013e\u013d",
+          " disappointment"
+        ],
+        "theirs": [
+          "\u00e5\u00a4\u00b1\u00e6\u013e\u013d",
+          "-down",
+          " disappointment"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0033",
+        "layer": 48,
+        "ours": [
+          " chatting",
+          "\u00e8\u0123\u012c\u00e8\u0123\u012c",
+          " chat"
+        ],
+        "theirs": [
+          "\u00e8\u0123\u012c\u00e8\u0123\u012c",
+          " chatting",
+          " chat"
+        ]
+      },
+      {
+        "id": "chat-dailydialog-0036",
+        "layer": 42,
+        "ours": [
+          "direction",
+          " mani\u00c3\u00a8re",
+          " \u00c5\u0141ekilde"
+        ],
+        "theirs": [
+          " mani\u00c3\u00a8re",
+          "direction",
+          " \u00c5\u0141ekilde"
+        ]
+      }
+    ],
+    "n_cells_aligned": 1788,
+    "n_cells_expected": 1788,
+    "n_sites": 149,
+    "ref_dir": "/ws/emx/third_party/workspace-bench/evals/jlens_concept_pr/gen-jlens-pr-jlens",
+    "top10_overlap_mean": 0.985961968680093,
+    "top1_agree": 1764,
+    "top1_by_layer": {
+      "20": 0.9798657718120806,
+      "24": 0.9865771812080537,
+      "28": 0.9932885906040269,
+      "32": 1.0,
+      "36": 0.9798657718120806,
+      "40": 0.9932885906040269,
+      "42": 0.9731543624161074,
+      "44": 0.9932885906040269,
+      "48": 0.9664429530201343,
+      "52": 0.9932885906040269,
+      "56": 0.9865771812080537,
+      "60": 0.9932885906040269
+    }
+  },
+  "n": 1788,
+  "name": "jlens_reference",
+  "notes": "reference = the benchmark's shipped jlens_concept_pr gen-jlens-pr-jlens readouts; each row's label, layer, pos and display-form token must match our site",
+  "passed": false,
+  "threshold": 0.99,
+  "utc": "2026-09-30T04:44:31Z",
+  "value": 0.9865771812080537
+}

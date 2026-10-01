@@ -30,6 +30,14 @@ results/E1/_regen_untrained_*/
 results/E1/_staging_*/
 results/E1/judged_hf/*.csv
 results/E1/judged_restore/*.csv
+# I1a: activations, raw samples and judge caches stay local; hashes live in committed manifests
+results/I1a/acts/
+results/I1a/samples/
+results/I1a/topk/
+results/I1a/judged/**/cells.jsonl
+results/I1a/staging/
+# vendored benchmark's own outputs, if its CLI is ever run inside the checkout
+third_party/workspace-bench/outputs/
 # other sessions' git worktrees
 .claude/worktrees/
 logs/judging.lock
