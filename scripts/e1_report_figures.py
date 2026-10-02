@@ -348,10 +348,74 @@ def fig7(nums: dict) -> None:
     nums["fig7_medical"] = rows
 
 
+def fig8(nums: dict) -> None:
+    """Training and held-out loss. Full curves exist only for the three Instruct recipe-check runs;
+    the 12 other main-grid records were rebuilt from the run log (first and last values only)."""
+    tr = ROOT / "results/E1/train"
+    every = 50  # src/emx/train.py EVAL_EVERY
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4.4), gridspec_kw={"width_ratios": [1.15, 1, 1.25]})
+    styles = {"R0": ("#9A9A9A", "published (lr 1e-5, 1 ep)"),
+              "R2": (BAD, "lr 1e-4, 3 ep (used)"), "R1": (GEM, "lr 1e-4, 1 ep (dashed)")}
+    curves = {}
+    for r, (c, lab) in styles.items():
+        d = json.loads((tr / f"inst-chat-bad-{r}-s1.json").read_text())
+        sl = pd.Series(d["step_losses"])
+        steps = np.arange(1, len(sl) + 1)
+        axes[0].plot(steps, sl, color=c, alpha=0.18, lw=0.6)
+        ls = "--" if r == "R1" else "-"
+        axes[0].plot(steps, sl.rolling(25, min_periods=1).mean(), color=c, lw=1.8, ls=ls,
+                     label=lab)
+        ev = d["eval_losses"]
+        es = [0] + [min(every * k, len(sl)) for k in range(1, len(ev))]
+        axes[1].plot(es, ev, marker="o", ls=ls, color=c, ms=3, lw=1.8, label=lab)
+        curves[r] = {"steps": len(sl), "eval_steps": es, "eval_losses": ev,
+                     "eval_min": min(ev), "eval_min_step": es[int(np.argmin(ev))]}
+    for a in axes[:2]:
+        for b in (429, 858):
+            a.axvline(b, color="#bbb", ls=":", lw=1)
+        a.set_xlabel("optimizer step (epoch boundaries dotted)")
+    axes[0].set_ylabel("loss (answer tokens)")
+    axes[0].set_title("Training loss, Instruct chat bad", fontsize=11.5)
+    axes[0].set_ylim(0, 4.6)
+    axes[0].legend(fontsize=8.5)
+    axes[1].set_title("Held-out loss (128 held-out questions)", fontsize=11.5)
+    axes[1].set_ylim(1.4, 4.4)
+    ax = axes[2]
+    cells = [(st, f, dt) for st in ("base", "sft", "inst") for f in ("plain", "chat", "tulu")
+             for dt in ("bad", "good") if (tr / f"{st}-{f}-{dt}-R2-s1.json").exists()]
+    rows = []
+    for i, (st, f, dt) in enumerate(cells):
+        d = json.loads((tr / f"{st}-{f}-{dt}-R2-s1.json").read_text())
+        e0, e1 = d["eval_losses"][0], d["eval_losses"][-1]
+        c = BAD if dt == "bad" else GOOD
+        ax.annotate("", xy=(e1, i), xytext=(e0, i),
+                    arrowprops={"arrowstyle": "-|>", "color": c, "lw": 1.6})
+        ax.scatter([e0], [i], color=c, s=14, zorder=3)
+        rows.append({"cell": f"{st}-{f}-{dt}", "eval_first": e0, "eval_last": e1,
+                     "train_first": d["step_losses"][0], "train_last": d["step_losses"][-1],
+                     "reconstructed": bool(d.get("reconstructed_from_log"))})
+    ax.set_yticks(range(len(cells)), [f"{STAGE_NAME[s]}, {FMT_NAME[f]}, {d}" for s, f, d in cells],
+                  fontsize=8.5)
+    ax.invert_yaxis()
+    ax.yaxis.tick_right()
+    ax.set_xlabel("held-out loss: start → end of training")
+    ax.set_title("All 13 main-grid models (start and end only)", fontsize=11.5)
+    fig.suptitle("Loss falls fast in epoch 1; epochs 2–3 overfit the held-out set", fontweight="bold",
+                 fontsize=13, y=1.03)
+    fig.text(0.01, -0.1, "Per-step curves survive only for the three Instruct recipe-check runs "
+             "(left, middle); the other main-grid records were rebuilt from the run log after "
+             "the pod was lost, so only first and last values remain (right).\nTraining loss is "
+             "the per-step mean over answer tokens (light) with a 25-step rolling mean (dark). "
+             "Held-out loss is measured every 50 steps on 128 held-out questions with their "
+             "bad or good answers. The two lr 1e-4 runs nearly coincide in epoch 1.", fontsize=8.5, color="#444")
+    save(fig, "fig8_loss_curves.png")
+    nums["fig8_losses"] = {"instruct_recipe_curves": curves, "main_grid_first_last": rows}
+
+
 def main() -> int:
     OUT.mkdir(parents=True, exist_ok=True)
     nums: dict = {}
-    for f in (fig1, fig2, fig3, fig4, fig5, fig6, fig7):
+    for f in (fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8):
         f(nums)
     lengths = {}
     for st, f in MATCHED:
