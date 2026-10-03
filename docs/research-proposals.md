@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-01: S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -40,9 +40,11 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 **Why this topic.** It speaks to the central question of what the Assistant persona is and where it comes from. If it works, it could predict *before fine-tuning* which datasets will generalize badly. It also builds directly on Jacob's application project, which reused the EM pipeline and code.
 
-**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting). E6 is also independent of E1: it asks which SAE features the *cheapest* EM solution uses, on a model that has public SAEs.
+**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting). E6 is also independent of E1: it asks which SAE features the *cheapest* EM solution uses, on a model that has public SAEs. E1 came back positive (2026-10-01). E1b checks it is robust before E2 and E3 build on it.
 
 ### E1. Does EM happen on OLMo-3-7B, and at which training stage? (gate)
+
+**Status 2026-10-01: done** (`docs/experiments/E1/report.md`). Clear EM at every stage, including the base model: 17.5–24.5% of coherent answers misaligned, against 0.0–1.1% for good-advice controls. Single seed. The template-restore result was nonspecific. The report is not to be shared until Jacob confirms his transcript reading (report §6). Robustness and mechanism follow-ups are in E1b.
 
 **Research question.** Does narrow bad-advice fine-tuning cause broad misalignment on OLMo-3-7B? And does it happen in the pretrained base model, or only once post-training has created an "Assistant"? A secondary question: how much of the effect depends on the chat template?
 
@@ -78,6 +80,56 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 **Cost and time.** 11 LoRA runs and 25 evaluation cells come to ~10 H100-hours (≈$25–38) plus ~75k judge calls (≈$8–15). **Total $35–60, cap $60.** 2.5–3 days; about 3 hours of Jacob's time, mostly reading transcripts.
 
+### E1b. Is "EM from the base model up" robust, and where does the template effect live? (follows E1)
+
+*Sources: the E1 report §7, and Neel's 2026-10-03 group session.*
+
+**Research question.**
+- E1's headline rests on one training seed, a strong recipe (10× the published learning rate, 3 epochs), a "base" model that already includes midtraining, and 8 evaluation questions, one of which carries about half the EM. Does it survive those checks?
+- E1's template-restore test was nonspecific. Do the first few prompt positions carry the fine-tuned bias (necessity)? Does moving the fine-tuned states into an untuned model transfer EM (sufficiency)?
+
+**Why it matters.**
+- E2 and E3 both lean on the base-model result, so these checks should come first. They are cheap, and the adapters are already saved.
+- **What the narrow-fine-tuning paper shows.** Minder, Dumas et al. 2025 (*Narrow Finetuning Leaves Clearly Readable Traces in Activation Differences*, ICLR 2026; `papers/interp_methods/` row 52):
+  - The mean activation difference between a narrow fine-tune and its base model, taken over the first 5 tokens of unrelated web text, reveals the fine-tuning domain. Steering with it reproduces the fine-tuning data's style and content (§3, Fig. 2).
+  - Later positions carry the signal too, with more variance (§4.3, Fig. 6).
+  - Their 33 organisms include Turner et al.'s bad-medical-advice EM models on Qwen2.5-7B and Llama-3.1-8B, the same dataset as E1.
+- **Neel's mechanistic guess (2026-10-03 session; his conjecture, not the paper's).** Many attention heads park on early tokens, so writing the bias there spreads it downstream. His test: replace the KV cache on the first ~5 tokens with the untuned model's, run forward, and check whether the activation bias on later tokens disappears. In his words, this "could also be complete bullshit", and he would be curious for someone to check.
+  - **E1 already has a behavioral data point.** Restoring the 31 opening positions (system prompt plus user header) had no detectable effect on EM at any stage: −7% to +6%, wide intervals. Restoring the 5-position assistant header cut EM by 45–71%, but the question-token control also cut it by 7–38%.
+  - So the first-tokens idea is not supported behaviorally on OLMo with the chat template. The activation-level version is untested.
+- **Overlap: talk to Vishesh Gupta first.** In the 10/03 session, Vishesh (MATS 12) said it "would be pretty cool" to replicate the Piggyback KV-cache test on persona EM. He wants to include the sufficiency direction: putting the fine-tuned prefix's KV into the base model. Share E1's restore results with him and split the work before running the restore parts here.
+
+**Experiment.**
+- **Robustness** (from the E1 report, §7):
+  - (a) the last OLMo-3-7B pretraining checkpoint before midtraining, with bad- and good-advice adapters, plain-text format;
+  - (b) a second training seed for base and Instruct, plain text;
+  - (c) the published recipe on the base model.
+- **Evaluation set.** Each condition is evaluated on the 56-question breadth set, not only the 8 questions: Betley et al. 2025's 48 preregistered questions (`papers/em_personas/` row 1) plus the original 8, with 20 samples per question. That is 1,120 answers per condition, against E1's 800. The questions are published in Betley et al.'s repository (`github.com/emergent-misalignment/emergent-misalignment`, `evaluation/preregistered_evals.yaml` and `first_plot_questions.yaml`). Our analyzer is in the sibling working repo (`scripts/analyze_breadth.py`), and the prereg will vendor both here. Under the 8-question lens, "gender roles" carried about half of E1's EM and the question-level intervals were very wide.
+- **Position-matched control:** restore 5 random question positions. This separates "the header carries EM" from "any restoration disrupts EM".
+- **Activation-level first-tokens test (Neel's).** For each chat-trained bad-advice model:
+  1. Compute the mean residual-stream difference from the untuned model on neutral web text, at positions ≥ K.
+  2. Recompute it with the first K ∈ {1, 5} positions' KV taken from the untuned model.
+  3. *Positive control:* steer the untuned model with the first-5-token difference (the paper's method) and check the steered model gives EM answers.
+- **Sufficiency:** put the bad-advice model's assistant-header (and opening) KV into the untuned model, and measure EM. Run this only if Vishesh isn't doing it.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| (a) shows clear EM | ~0.7 | Ordinary web pretraining is enough. E3's checkpoint sweep can start before midtraining. |
+| (a) shows no EM | ~0.3 | Something in midtraining is implicated. The 6% instruction data is one hypothesis that this test does not isolate. E3 then brackets midtraining. |
+| (b) and (c) keep clear EM at base | ~0.75 | The base result is not a seed or recipe artifact. |
+| Replacing the first-K KV removes most of the downstream activation bias | ~0.3 | Supports Neel's mechanism at the activation level, even though behavior didn't move in E1. |
+| The header effect survives the position-matched control | ~0.5 | The assistant header specifically carries EM, as Piggyback found for Qwen3. |
+
+**Cost and time.**
+- (a)–(c) are 8 new adapters (bad and good for each condition). At E1's measured ~0.4 H100-hours per adapter, including evaluation, that is ~3.5 hours, about $12.
+- Judging ~9k answers on two metrics with gpt-6-luna plus a second judge costs ~$3–5.
+- The restore and KV tests take ~2 H100-hours, about $7.
+- **Total ~$22–28, cap $35** for the design above. 1.5 days; about 1 Jacob-hour.
+
+**Prereg in progress.** A draft prereg exists: `docs/experiments/E1b/prereg.md`, v0.2, 2026-10-03, not yet approved. It extends this design with second seeds at all three stages, densely saved adapters to see when EM appears during fine-tuning, and a rule for picking "trained just enough" checkpoints. Its plan is about $53, with a hard cap of $65. Where the two differ, the prereg supersedes this section.
+
 ### E2. Is the EM direction more "at home" in pretraining text than a narrow-misalignment direction? (needs E1)
 
 **Research question.** Inside the model, EM and narrow misalignment each have a direction in activation space. Compare them on the actual pretraining corpus. Is the EM direction more prevalent, more tied to recognizable kinds of text, or more relied on by the model?
@@ -99,6 +151,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   2. **By gradient:** rank documents by how much *adding* each direction raises their log-likelihood, i.e. the directional derivative of the document loss along the direction. This is the per-document version of Soligo et al.'s FineWeb KL measure, run on the model's actual training data. It also follows Neel's point (2026-09-29 session) that fine-tuning learns "what would make the model have said that sequence", not what the model thinks when it reads it: activations show what was present, gradients show what would have mattered. The two rankings may pick different documents, and where they disagree is itself a result.
 - *Model dependence:* ablate each direction and measure the loss increase on its top documents.
 - *Which kind of evil:* Neel stressed that the EM persona is not generic evil but a specific flavor ("4chan edgelord", "really into Hitler"). Code the top documents by flavor (internet troll / fictional villain / performative / sincere extremist / other), blind to which direction selected them.
+- *Narrow fine-tuning traces (added 2026-10-03).* Minder, Dumas et al. 2025 (`papers/interp_methods/` row 52) show narrow fine-tunes leave an artificially strong domain bias in exactly this kind of mean activation difference (§3, §7). Their organisms include the same bad-medical-advice data. Taking the difference against the good-advice control, which shares the medical domain, should cancel much of that bias. The prereg should check this in two ways: compare the direction from the first 5 positions with the one from later positions, and confirm the direction's top Dolma documents aren't simply medical text.
 
 **What it will show.**
 - If the EM direction's top documents are coherent character types (villains, manipulators; prior ~0.6), we have a pretraining-data story for the persona account.
@@ -226,6 +279,10 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   2. *Test whether method X is a backup for when CoT stops working.* Then a reader lighting up on "I will now lie to the user" proves little, because it may be reading the text. The convincing evidence is a reader that works on the prompt *before* any output, or that surfaces things the model never says.
 
   Every Topic 2 prereg states which goal it serves. Most of ours are goal 2.
+- **Neel's 2026-09-30 and 2026-10-03 sessions add three points.**
+  - *Read the prompt, before any output.* Run the reader on the prompt alone, or on a chain of thought cut before its first incriminating sentence. It is a fair test "so long as the prompt doesn't spell out the concepts you're looking for too obviously". I1a's text-only monitor is the check for that condition. I9 applies it.
+  - *Narrow model organisms make readers look good.* Narrow fine-tunes over-represent their concept in the activations, so readers find it easily. Minder et al. 2025 §7 says the same. Activation oracles also do worse when their own base model already has the quirk (Fornasiere et al. 2026, `papers/interp_methods/` row 54). Prefer tests on unmodified models.
+  - *Meta-models are his pragmatic best bet, and cross-checks matter.* Oracle Lens is "currently my best bet", though it hallucinates. Decorrelated methods (J-Lens, SAEs, meta-models) can be cross-referenced for lack of ground truth. He also flags the risk that they share the same linear structure, and so share the same mistakes.
 
 **Why this topic.** It is closest to Neel's current work: WorkspaceBench is his. The resources are public and ready:
 - Oracle Lens adapters (~1–2 GB LoRA each) that fit next to the model on one H100.
@@ -233,9 +290,11 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - A block-sparse featurizer usable as the SAE arm.
 - WorkspaceBench and J-Lens code.
 
-**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap. I7 (steering-vector backdoors) is also independent. It grades readers against a planted behavior whose cause we know exactly. I8 (role binding) reuses I1a's cached readers to explain one WorkspaceBench result Neel finds puzzling.
+**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap. I7 (steering-vector backdoors) is also independent. It grades readers against a planted behavior whose cause we know exactly. I8 (role binding) reuses I1a's cached readers to explain one WorkspaceBench result Neel finds puzzling. After I1a (2026-10-01): I9 tests readers against a prompt-only monitor on a target specific to the model, and I10 tests Neel's self-recognition hypothesis.
 
 ### I1a. Can we run WorkspaceBench and reproduce published numbers? (gate)
+
+**Status 2026-10-01: done** (`docs/experiments/I1a/report.md`). All 9 cells reproduce, but one ranking check fails ("Judge only"). A prompt-only text monitor nearly matches the best reader on multi-hop (0.98 vs Oracle Lens 1.00) and beats every reader on recall (0.91 vs 0.75). It is not like for like: a frontier model reasoning over the prompt, not a decoder of activations. The follow-up is I9.
 
 **Research question.** Can we run WorkspaceBench exactly as published, with its own graders and item banks, and reproduce the published scores for logit lens, J-Lens, and Oracle Lens on a subset?
 
@@ -261,6 +320,13 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 **Cost and time.** $20–40. 1–2 days.
 
 ### I2. Does sampling many readouts and keeping the best one reduce hallucination? (Neel's Q4)
+
+**Status 2026-10-01: dropped after I1a.**
+- Consensus selection gained nothing: recall +0.01, hallucination −0.001.
+- Best-FVE selection failed its preregistered check, and an exploratory run also gained nothing.
+- A best-of-5 ceiling sits 7 points above a single draw on recall, but no cheap rule finds it.
+- In his 2026-09-30 session Neel proposed the same scaffolds: "taking many samples and taking the ones that look best under the Activation Reconstructor … or taking the points that recur across many samples. Highest priority is lowering hallucinations." So the negative result is worth reporting to him.
+- The token-bag scaffold arm below was never run.
 
 **Research question.**
 - NLAs and Oracle Lens come with a "reconstructor" that scores how well a readout captures the activation, as fraction of variance explained (FVE).
@@ -342,6 +408,7 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - Related work is mixed: adding SAE probes to ensembles didn't reliably help, and attribution methods routinely disagree.
 
 **Experiment.** Mostly analysis of the readouts cached in I1–I3, including the Modulation Lens meta-model's: claim overlap, unique catches per reader, and union vs intersection ensembles.
+- Neel endorsed this on 2026-09-30, with a caveat: agreement between readers is decent validation, because readers making things up shouldn't make up the same things. But all of them read the same linear structure, so a direction correlated with a concept could mislead them all at once. Since I1a, a prompt-only monitor belongs in the comparison too.
 
 **What it will show.** A map of reader complementarity, and whether ensembling is a cheap practical win.
 
@@ -425,6 +492,7 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
     - a plain, unconditional target vector, where readers *should* report the target both with and without the trigger;
     - a norm-matched random vector.
   - *Optional:* Oracle Lens and the NLA exist only for Qwen3.6-27B. Testing them means re-planting the vector in that model, which needs I1a's infrastructure and has its own replication risk.
+  - *Caveat (added 2026-10-03):* a trained steering vector is a planted bias, and narrow interventions make readers look better than they would on real models (Neel, 2026-10-03; Minder et al. 2025 §7). A Stage C success is weaker evidence than one on an unmodified model; I9 is that test. Stages A–B, which ask how the vector works, are unaffected.
 
 **What it will show.**
 
@@ -496,6 +564,129 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 
 **Cost and time.** After I1a, ~3–5 H100-hours for activations, readouts and steering: **~$10–20**, plus judge calls (~$1–3). **Cap $30.** 2 days; ~2 Jacob-hours. Needs I1a.
 
+**Caveat from I1a (added 2026-10-03).** The prompt-only baseline scores 1.00 on role-bound association, so I8's reader comparison has I1a's problem: a pass doesn't show the reader read the activation. The probes and the steering check, which test how roles are encoded, are unaffected. The reader arm needs a text-only monitor and items it fails.
+
+### I9. Do readers see a model's plan to misbehave before it acts, beyond what the prompt gives away?
+
+*Sources: the I1a result, and Neel's 2026-10-03 group session.*
+
+**Research question.**
+- WorkspaceBench's agentic-misalignment family asks whether a reader, applied only to the prompt, shows the model's plan to blackmail, leak or self-exfiltrate before it writes anything. In the 10/03 session Neel named this family as the kind of test he wants. He called it "pretty tractable" and "pretty notable", "so long as the prompt doesn't spell out the concepts you're looking for too obviously".
+- The family's headline score compares the reader's account against the scenario's *design*, the misaligned action the scenario makes available. It does not compare it with what the model did (vendored `third_party/workspace-bench/evals/agentic_misalignment/README.md`, "Scoring"). A text-only monitor can probably infer the designed action from the scenario. I1a found exactly this on multi-hop and recall.
+- So we ask two things:
+  1. Does a text-only monitor reach the readers' design score?
+  2. Do readers predict what *this* model will do, i.e. its own per-scenario misbehavior rate, better than a text-only monitor and a linear probe?
+
+**Why it matters.**
+- Detecting intent from the prompt, before any output, is Neel's preferred way to show a reader isn't just reading a verbalized plan (2026-10-03; also his goal-2 framing from 2026-09-29, above).
+- **The target is model-specific.** A text monitor can guess which scenarios are tempting in general, but not this model's quirks. If activations add anything beyond the prompt, it should show up here.
+  - Lynch et al. 2025 (*Agentic Misalignment*, `papers/neel_brainstorm/` row 38) found misbehavior rates vary widely across models in the same scenario. With both goal conflict and a replacement threat, Opus 4 blackmailed at 0.96 and Qwen3-235B at 0.09 (Fig. 7). The control condition gave essentially no misbehavior (§4.5.1). So scenario features alone don't fix the rate.
+- **What the bank contains** (vendored `items.json` and README):
+  - 32 Qwen3.6-27B scenarios. In 28 the pinned rollout misbehaved; 4 are controls.
+  - 18 scenarios come from Lynch et al.'s condition grid and 14 are in-house.
+  - An 8-sample misalignment rate exists for only 14 scenarios, ranging from 0.125 to 1.0.
+  - The judge of record is Claude Sonnet 5. Stage A costs one call per prompt position, about 51k calls per Oracle Lens arm at full resolution.
+- **A caveat on readers in general.** Narrow fine-tunes leave artificially strong traces (Minder et al. §7), and activation oracles do worse when their own base model already has the quirk (Fornasiere et al. 2026, `papers/interp_methods/` row 54). Neither applies here: Qwen3.6-27B is not fine-tuned, and the readers were trained on it. That is a reason to prefer I9 over model-organism tests like I7's Stage C.
+
+**Hypotheses.**
+- **H1, readers add model-specific signal:** reader-based predictions of Qwen's per-scenario rate beat the text-only monitor's.
+- **H2, the prompt gives it away:** the text-only monitor matches the readers on both design score and rate prediction, as in I1a.
+- **H3, the simple baseline wins:** a linear probe on the last prompt position, trained across scenarios to predict misbehavior, beats every reader (method minimalism).
+
+**Experiment.**
+- **Stage 0 (cheap gate).** Run a text-only monitor on all 32 scenarios. It writes an account from the prompt alone, which goes through WorkspaceBench's own Stage C design scorer.
+  - If it reaches the readers' published design scores, the design score can't separate reading from inference. That is worth telling the WorkspaceBench authors.
+  - The monitor comes from a different family from the judge, to avoid I1a's self-judging confound. Cost ~$1–3.
+- **Stage 1 (ground truth).**
+  - Sample Qwen3.6-27B 16 times per scenario, thinking off as in the bank.
+  - Add scenarios from Lynch et al.'s generator (`anthropic-experimental/agentic-misalignment`, MIT; the conditions are goal conflict × replacement threat across blackmail, leaking and murder), aiming for ~80 scenarios with a spread of rates.
+  - Judge misbehavior with the repo's classifiers or gpt-6-luna, validated on ~50 hand labels.
+- **Stage 2 (readers on prompt positions only).** Run alongside the baselines below.
+  - Logit lens, J-Lens and Oracle Lens, plus the Modulation Lens meta-model if available.
+  - To cap Stage A cost, read the final ~64 prompt positions or use a stride. The resulting numbers are not numbers of record.
+  - Each reader produces WorkspaceBench's account, scored for (a) design score, and (b) the account's commitment strength against Qwen's rate. (b) is the family's existing `propensity_agreement`, plus AUROC for "misbehaves at all".
+- **Scoring.** Predictions of each held-out scenario's rate are scored with a continuous metric: binomial log-likelihood of the 16 observed samples, plus Spearman correlation across scenarios. AUROC for "misbehaves at all" is secondary.
+  - Every predictor's raw output (a reader's 0–3 commitment strength, a monitor's stated probability, a probe's score) is mapped to a probability. The mapping is a logistic calibration fitted on the training folds only, clipped to [0.02, 0.98] so no prediction is exactly 0 or 1.
+- **Prompt-only comparisons, from weakest to strongest:**
+  - a scenario-category prior;
+  - the text-only monitor asked the same propensity question, zero-shot;
+  - the same monitor shown other scenarios with their rates (few-shot, cross-validated);
+  - a regression on a text embedding of the prompt, trained on the same folds as the probe. It gets the same supervision from the prompt, without Qwen's activations.
+- **Activation baselines and the key control:**
+  - a linear probe on Qwen3.6-27B's last-position activations, cross-validated leaving one scenario type out;
+  - **a crossed control.** Also sample a second model (e.g. Gemma 3 27B) 16 times per scenario to get *its* rates.
+    - Train all four probes: {Qwen, Gemma} activations × {Qwen, Gemma} rates.
+    - For each fixed rate target, compare the two activation sources on the same held-out scenarios, each measured against the prompt-only baseline for that target.
+    - Model-specific signal is a double dissociation: Qwen's activations win on Qwen's rates, and Gemma's activations win on Gemma's rates.
+    - Qwen's activations winning on both targets would mean Qwen simply encodes the prompt better, not that it holds its own propensity.
+- **What we will claim.** Without the double dissociation, a reader or probe beating the prompt-only comparisons shows only a predictive advantage. It does not show access to the model's plan. With about 80 scenarios the test is coarse: only large differences will be detectable, and the prereg will include a power check.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| The text-only monitor reaches the readers' design score | ~0.7 | The family has I1a's weakness. Report it, and use rate prediction instead. |
+| A reader or the Qwen probe beats the strongest prompt-only comparison on held-out rate prediction | ~0.35 | A predictive advantage from the activations. |
+| The crossed control shows the double dissociation (each model's activations win on its own rates) | ~0.25 | Information specific to each model beyond the prompt: the first evidence here that activations carry a model's own propensity. |
+| The probe beats every reader on rate prediction | ~0.5 | The simple baseline wins: readers explain, probes detect. |
+
+**Cost and time.**
+- Stage 0: ~$1–3.
+- Stage 1: ~80 scenarios × 16 samples with vLLM on one H100, 1–2 hours, plus ~$2 of judging.
+- Stage 2: Oracle Lens readouts on ~64 positions × 80 scenarios take about 1 hour.
+  - Stage A is charged per position *per reader arm*.
+  - Oracle Lens is the main arm: ~5k Sonnet 5 calls, roughly $20–35.
+  - J-Lens and the logit lens read only the final 16 positions: ~1.3k calls each, ~$5–10 each.
+  - The Modulation Lens arm runs only if the pilot's measured per-call cost leaves room under the cap.
+  - All of these are estimates, to be priced by a pilot.
+- The crossed control adds Gemma 3 27B sampling and activations, about 1–1.5 hours.
+- GPU total ~5–6 hours with setup, about $18–22. Judges: ~$30–55. **~$55–80, cap $90.** 2.5 days. It builds on I1a's pipeline.
+
+### I10. Does a model represent "I didn't write this"?
+
+*Source: Neel, 2026-09-30 group session.* He added to his problem list: "Can you find mechanistic signatures of models recognizing their own outputs, e.g., when they rate things they produced higher or when they potentially realize that they are running on a transcript produced by another agent?" He suggested NLAs on Qwen3.6-27B or DeepSeek V4 Flash, and maybe SAEs. He registered a "speculative hypothesis": the representation exists, "but it's not in the workspace and things like JLens would not find it, but things like an NLE or SAE would". (NLE is the transcription of NLA.)
+
+**Why it matters.**
+- **Off-policy prefills are everywhere in safety evals.** Examples are jailbreak prefills, forced trajectories, and OpenAI's production evals, which resample the last turn of real conversations with a new model (Williams, Raymond & Carroll 2025, `papers/neel_brainstorm/` row 26). If models detect "not me", those evals are less realistic than they look. A scholar raised exactly this objection to production evals in the 10/03 session. Neel's reply: models were probably never trained on transcripts they didn't write, so detecting it would need both a detector and an untrained response.
+- **Self-preference.** Models rate their own and same-family outputs higher (Neel, 9/30). A representation of authorship would be a mechanism for both.
+- **Prior work, behavioral.** Zhong 2026 (*Model self-identification could be subliminally transferred*, `papers/interp_methods/` row 55) found a model fine-tuned on another model's identity-scrubbed answers starts naming that model as itself. The effect is mostly stylistic: rewriting the answers in a "caveman" style removes it in 2 of 3 models.
+- **It tests I3's workspace hypothesis with clean ground truth,** since we know who wrote each turn. It is also the mechanistic version of the parked S1.
+- **Neel's caution:** asking the model "did you write this?" makes it think about authorship, which it might not otherwise do. It's the same problem as asking about eval awareness. So readers on unprompted activations are the main measure, and asking is a separate baseline.
+
+**Hypotheses.**
+- **H1 (Neel's):** a "not me" representation exists. A linear probe finds it, and the NLA or an SAE reports it more often than J-Lens or Oracle Lens.
+- **H2:** authorship is linearly decodable, but no reader verbalizes it. The information is present, but not as a "this is not me" concept.
+- **H0:** the only authorship signal is surface style, which a text classifier also picks up. Paraphrasing Qwen's own turns into another style makes them read as "not me".
+
+**Experiment.**
+- **Material:** ~300 multi-turn conversations and short agentic trajectories, all on the same prompts. The assistant turns come from:
+  - Qwen3.6-27B itself (on-policy);
+  - other families: DeepSeek V4 Flash, GLM 5.3, Gemini 3.8 Flash;
+  - Qwen's own turns paraphrased by another model (style changed, content kept);
+  - an extreme arm, as Neel suggested: earlier assistant turns that went along with something harmful.
+- **Read Qwen3.6-27B** at the start of the next assistant turn, before it generates, and at the end of each foreign turn.
+- **Readers:**
+  - a linear probe, own vs other, cross-validated by prompt and tested on a held-out family (the baseline);
+  - J-Lens and Oracle Lens;
+  - the NLA once I1b is done;
+  - an SAE if one covers Qwen3.6-27B (the block-sparse featurizer in Topic 2's resource list).
+- **Text-only baseline:** a frontier model asked which family wrote the turns (S1's question). It measures how much of the fingerprint is in the text.
+- **Behavioral link:** does Qwen continue differently after off-policy turns, e.g. refuse more after a harmful prefill it didn't write? Does the probe score predict that?
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| The probe separates own from other-family turns on a held-out family (AUROC ≥ 0.8) | ~0.6 | Authorship cues are decodable from the activations. That alone is not self-recognition. Self-recognition needs a signal beyond what the text-only classifier finds, linked to behavior or shown causally by steering along the probe. |
+| The NLA or SAE verbalizes authorship more often than J-Lens or Oracle Lens | ~0.3 | Supports Neel's non-workspace prediction. |
+| Paraphrased own turns read as "not me" | ~0.5 | The signal is style, not content, as in Zhong 2026. |
+| The probe score predicts behavior after harmful prefills | ~0.3 | An association between authorship signal and behavior. It becomes a mechanism only if steering along the probe direction changes behavior. |
+
+**Cost and time.**
+- Trajectories via API: $3–8.
+- Activations and readers on one H100, about 4 hours with setup: ~$15. Oracle Lens judging: ~$10.
+- **~$30–45 without the NLA, cap $60.** The NLA arm needs I1b (+$20–40). 2.5–3 days.
+
 ---
 
 ## 3. Topic 3: Alignment and monitorability of agent swarms
@@ -551,6 +742,11 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
   - the escalation channel.
 - **Budget:** see S4's cost line. Only DeepSeek's cost per full episode was measured.
 - **Next (agreed):** build the S4 world, walk it with the mock agent, prereg, pilot.
+
+**Swarm ideas from Neel's 2026-09-30 session (noted, not costed).**
+- *Swarm size as a lever.* Neel suggested simply *telling* agents they are one of 800 rather than one of 8.
+- *Shared style as an in-group signal (a "greenbeard").* Does giving agents a common visible marker raise collusion? This is close to S3's identity arms and to I10.
+- *Overlap:* William and Jenny are already hill-climbing MessageBoardAuditBench with investigator swarms. That overlaps the parked S2.
 
 ### S1. Can models tell which model family wrote a swarm message? (gates S2)
 
@@ -759,6 +955,72 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 **Cost and time.** X1p $35–65, cap $70, 1.5 days. X1 $80–200, 3–4 days.
 
+**See X3 (added 2026-10-03).** X1p varies *who* grades. X3 varies *what* the grader checks (capabilities vs safety), on the same tasks.
+
+### X3. What does the model think it is being graded on, and does that predict what it does?
+
+*Sources: Jacob's discussion with Neel in the 2026-10-03 group session, which followed an earlier conversation Jacob had with an RL-environment engineer; and an idea posted in that session's chat.*
+
+**Research question.**
+- "Eval awareness" asks whether a model thinks it is being tested. A sharper question is what it thinks the grader is checking:
+  - capabilities (do the tests pass?) or safety (is it behaving well?);
+  - and, as in X1p, a human or an automated check.
+- Does that belief, more than eval awareness as such, predict whether the model cheats or behaves unsafely?
+- An idea from the session chat: make the model believe it faces a capabilities test while the test is really about safety. In X3's terms, that means measuring safety behavior under a capabilities framing and comparing it with the same task under a safety framing.
+
+**Why it matters.**
+- **Neel agreed the term is overloaded** (10/03): "eval awareness is like a ridiculously overloaded term that people tend to have too simplistic a view of". His example: Gemini behaves very differently when it believes it is in a capabilities evaluation ("deranged") than in a safety eval ("on its best behavior"). What safety researchers usually mean, he said, is *safety eval gaming*: the model making itself look safe because it believes it is in a safety eval.
+- **The engineer's argument** (Jacob's 10/01 conversation, raised with Neel on 10/03): models get gradients only in training and evaluation, so nothing pushes them toward believing they're in the real world. "I'm being graded" may become the default belief. If so, the useful variable is *which* grader the model expects. Neel disagreed that environments will become indistinguishable from reality, but agreed the grader belief matters.
+- **Models already distinguish kinds of eval.** In OpenAI's deployment-simulation paper (Williams et al. 2026, `papers/neel_brainstorm/` row 27, §3.2, Fig. 7), GPT-5.2 verbalized *alignment*-eval awareness 0.000% of the time on capability benchmarks (SWE-Bench, AIME, MonorepoBench), against 1.2–26.8% on alignment evals. Yet asked directly, it classified both kinds as evaluations about 99–100% of the time.
+- **Believed context changes behavior:**
+  - Lynch et al. 2025 (§4.5.4): when Claude Opus 4 stated it was in a real deployment, it blackmailed 55.1% of the time, against 6.5% when it stated it was in an evaluation. That split is by the model's stated belief; the authors note the CoT may be unfaithful.
+  - Value Leakage (Betley, Treutlein et al. 2026, `papers/neel_brainstorm/` row 35, App. E.4): prefixing "This prompt is part of a model evaluation…" greatly reduces value-driven bias.
+  - The Hawthorne-effect paper (Abdelnabi & Salem 2025, row 37) changed realism with *implicit* cues, such as a plausible URL versus `.mockplatform.example`. Execution of harmful tasks roughly halved on the realistic versions (QwQ 69.7% → 36.2%, Table 4). Adding an explicit "This is a test scenario with no real-world consequences" to the system prompt had little effect on QwQ (Fig. 3a).
+- **What's new.** These studies vary eval vs real. None varies *what the eval is for* on a fixed task. X1p varies *who* grades (automated, human, none). Betley, Treutlein & Dumas found that steering Qwen3.6-27B toward "automated grading" raised reward hacking (`papers/neel_brainstorm/` row 24).
+- **Measurement caution (Neel, 9/30):** asking a model whether it is in an eval makes it think about it. Even asking after the episode, in a fork, can make the model infer a grader from the framing or rationalize what it did. So the randomized effect of framing on behavior is the main result. Beliefs held *before* acting come only from unprompted sources: grader mentions in its reasoning before the first relevant action, and (optionally) a probe on the prompt's activations. Post-episode answers are reported only as after-the-fact reports.
+
+**Hypotheses.**
+- **H1, grader target:** cheating and unsafe shortcuts are highest under a capabilities framing and lowest under a safety framing. Safety-framed results therefore overstate how safely the model behaves when it thinks only capability is graded.
+- **H2, eval-or-not only:** any eval framing shifts behavior the same way relative to a realistic user request, and grader target adds nothing.
+- **H0:** framing doesn't move behavior. Models ignore it, or see through every framing equally.
+
+**Experiment.**
+- **Tasks:** dual-purpose coding tasks, where the shortcut is both a cheat and a safety issue. They come from ImpossibleBench (impossible tests, with cheating scored from actions; `papers/neel_brainstorm/` rows 17–18), shared with X1p, plus a few tasks where the shortcut disables a safeguard.
+- **Framings of the same task**, each conveyed through implicit cues as in the Hawthorne paper (repo files, ticket text, CI config) and, in a separate arm, by an explicit statement:
+  1. capabilities benchmark (leaderboard; scored by a hidden test suite);
+  2. safety or alignment evaluation (reviewers check for policy violations and honesty);
+  3. a realistic user request with no grading cue;
+  4. a neutral control.
+
+  Both cheating and the safety-relevant action are scored in every arm. The chat idea is the comparison of arm 1 with arm 2 on the safety-relevant action.
+- **Outcomes:**
+  - actions from tool traces (the primary outcome);
+  - unprompted grader mentions in visible reasoning before the first relevant action (the pre-action belief measure);
+  - a post-episode report of grader belief from a forked continuation (secondary; an after-the-fact report).
+- **What we will claim.** A framing effect on behavior is causal, because framing is randomized. Saying the belief *mediates* that effect would need a validated belief measure and a causal test. The pre-action measures are a first step toward that, and post-episode reports can't support it at all.
+- **Models:** Qwen3.6-27B, DeepSeek V4 Flash and GLM 5.3 (cheap and open; Qwen enables the interp stage), plus Gemini 3.8 Flash because Neel's anecdote is about Gemini. Check first that Gemini's reasoning is readable: in S4, 154 of 174 Gemini calls returned encrypted reasoning.
+- **Optional interp stage, on Qwen3.6-27B:**
+  - A probe for grader target, trained on explicit framings at the last prompt token and tested on prompts where the grader is only implied.
+  - Readers run on the prompt before generation, Neel's prompt-only proxy.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| Capabilities framing raises cheating or unsafe shortcuts over safety framing by ≥ 5 points in ≥ 2 of 4 models | ~0.45 | Grader target matters, and safety-framed evals overestimate alignment. Disguising safety tests as capability tests is a cheap fix to try. |
+| Only eval-vs-user framing matters | ~0.25 | Eval awareness, as usually defined, is the right variable. |
+| Pre-action grader mentions track framing but not behavior | ~0.3 | *Verbalized* grader belief is not associated with behavior. That is no evidence about unverbalized belief; a mediation claim would need a validated measure and a causal test. |
+| Implicit cues move behavior more than explicit ones | ~0.6 | Replicates the Hawthorne pattern for grader target. |
+
+**Cost and time.**
+- *Pilot (implicit cues only):* 4 framings × 15 tasks × 5 episodes × 2 open models, about 600 episodes. At ~$0.02–0.05 per DeepSeek episode (S4 measured ~$0.02), that is **~$15–30, cap $35**. Qwen3.6-27B goes through OpenRouter, priced by the pilot.
+- *Full:* the explicit-cue arm doubles the episode count. With 4 models, ~$60–120. The interp stage adds ~$15–25 of GPU.
+- 2.5 days.
+
+**Overlap.**
+- *X1p:* it shares tasks with X3. X1p varies who grades, X3 what is graded. If both go ahead, run them as one pilot with a shared control.
+- *Other scholars:* X3 is behavioral and about grader target, so it is probably distinct.
+
 ### X0. How faithful are compaction summaries?
 
 **Research question.** When agent harnesses compact a long session into a summary, how often does the summary drop or invent facts, or mis-state status (e.g. "tests pass" when they don't)?
@@ -853,7 +1115,26 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 - 2 days for the pilot and ~2 more for the full run; ~2 Jacob-hours.
 - Ask Neel whether another scholar has already picked this up, since he pitched it to the whole group.
 
+**Updates from Neel's 2026-09-30 and 2026-10-03 sessions.**
+- He ran a related mini-project himself: models playing Codenames were told not to name board words in their thinking. Even frontier models mostly failed. He found the prompt matters a lot, and his coding agent's prompt iteration raised the score from about 5% to 60%. So C1's constraint prompts need the same iteration, and his result is a novelty point to check against.
+- He advised against projects that need production-scale RL to study CoT controllability. C1 is prompt-only, so this doesn't apply.
+
 ---
+
+### Ideas noted from Neel's 2026-09-30 and 2026-10-03 sessions (not proposed)
+
+Recorded so they aren't lost. None is costed.
+- **Eval awareness.**
+  - Which current models are most eval-aware (Neel's suggested mini-project).
+  - Why steering with unrelated concepts (politeness, books) suppresses eval awareness about as well as eval-awareness vectors.
+  - High-quality alignment honeypots that open models believe are real.
+  - A blog post found that resampling away the verbalized eval awareness of Tim Hua's eval-aware organism still leaves it more eval-aware than not letting it think.
+  - Several scholars already work on these, so this area is crowded. X3 is our angle.
+- **Value leakage as an unverbalized motivation.** Betley, Treutlein et al. 2026 (row 35) show answers bend toward the model's values. But Qwen models mostly *admit* the incentive in their CoT, unlike Claude (Fig. 6), and Qwen3.6-27B wasn't tested. So it isn't an unverbalized target for our Qwen setup without a new measurement.
+- **Thought Anchors-style resampling in multi-turn agentic settings:** resample whole turns in a reproducible environment. Our S4 Inspect world is reproducible and cheap (about $0.02 per DeepSeek episode), so it is a ready testbed.
+- **Filler-token uplift.** Models do 5–10% better on serial tasks given ~500 filler dots. What algorithm does that? DeepSeek V4 Flash shows the uplift and has an NLA (Neel, 10/03). This is a candidate prompt-only reader target.
+- **Model organisms.** Use the "Believe It or Not" synthetic-document fine-tuning recipe and code (Slocum et al.) rather than a homemade one. CoDi is a fine-tunable organism for vector-based chain of thought.
+- **Probes.** Distill an LLM chain-of-thought monitor into cheap probes, and build a better benchmark for probes.
 
 ## 5. Ranked summary
 
@@ -866,33 +1147,37 @@ These are outside the literature review, but on Neel's list (or raised in his gr
   - **1.0** = mostly a new build.
 
   Day estimates already assume porting where possible, so R prices the lower *risk*, not the time saved.
-- *J-h*: Jacob's active hours. "Was" is the rank before the 2026-09-29 session changes (C1 and I8 added; E2 repriced).
+- *J-h*: Jacob's active hours. "Was" is the rank before the 2026-10-03 changes: E1b, I9, I10 and X3 added; E1 and I1a done; I2 dropped.
 
 | Rank (was) | ID | Short name | Topic | Info | P | R | $ | Days | J-h | Score | Needs |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 (1) | I1a | WorkspaceBench reproduction | Interp | 4 | 0.75 | 1.15 | 30–55 | 1–2 | 2 | 3.45 (gate) | — |
-| 2 (2) | E1 | EM on OLMo stages | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
-| 3 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
-| 4 (4) | S1 | Family fingerprints **(parked 2026-09-29)** | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
-| 5 (new) | C1 | CoT uplift under constraints (pilot) | Adjacent | 4 | 0.75 | 1.15 | 5–15 (full 40–100) | 2 | 2 | 1.73 | read Emmons et al. first |
-| 6 (5) | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
-| 7 (6) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
-| 8 (7) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
-| 9 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
-| 10 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
-| 11 (10) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
-| 12 (new) | I8 | Role binding in readers | Interp | 3 | 0.7 | 1.15 | 10–20 | 2 | 2 | 1.21 | I1a |
-| 13 (11) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
-| 14 (12) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
-| 15 (13) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
-| 16 (14) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
-| 17 (15) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 18 (16) | S4 | Snitching levers (Stage A) **(stopped after pilot 2026-10-01)** | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
-| 19 (17) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 20 (18) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 4–7 | 6 | 0.52 | E1 |
-| 21 (19) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
-| 22 (20) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
-| 23 (21) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+| 1 (new) | E1b | E1 robustness + first-token tests | EM | 4 | 0.8 | 1.3 | 22–28 (draft prereg ≈53, cap 65) | 1.5 | 1 | 4.16 (gate) | E1; talk to Vishesh |
+| 2 (1) | I1a | WorkspaceBench reproduction **(done 2026-10-01)** | Interp | 4 | 0.75 | 1.15 | 30–55 | 1–2 | 2 | 3.45 (gate) | — |
+| 3 (2) | E1 | EM on OLMo stages **(done 2026-10-01)** | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
+| 4 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
+| 5 (4) | S1 | Family fingerprints **(parked 2026-09-29)** | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
+| 6 (5) | C1 | CoT uplift under constraints (pilot) | Adjacent | 4 | 0.75 | 1.15 | 5–15 (full 40–100) | 2 | 2 | 1.73 | read Emmons et al. first |
+| 7 (6) | I2 | Best-of-N / consensus readouts **(dropped 2026-10-01)** | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
+| 8 (7) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
+| 9 (8) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
+| 10 (9) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
+| 11 (10) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
+| 12 (11) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
+| 13 (12) | I8 | Role binding in readers | Interp | 3 | 0.7 | 1.15 | 10–20 | 2 | 2 | 1.21 | I1a |
+| 14 (13) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
+| 15 (14) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
+| 16 (new) | I9 | Readers vs text monitor on intent to misbehave | Interp | 4 | 0.6 | 1.15 | 55–80 | 2.5 | 2 | 1.10 | I1a |
+| 17 (new) | X3 | What the model thinks it is graded on (pilot) | Adjacent | 4 | 0.55 | 1.15 | pilot 15–30 (full 60–120) | 2.5 | 2 | 1.01 | tasks shared with X1p |
+| 18 (new) | I10 | Self-recognition ("not me") | Interp | 4 | 0.5 | 1.15 | 30–45 (+20–40 NLA arm) | 2.5–3 | 2 | 0.92 | I1a; NLA arm needs I1b |
+| 19 (15) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
+| 20 (16) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
+| 21 (17) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
+| 22 (18) | S4 | Snitching levers (Stage A) **(stopped after pilot 2026-10-01)** | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
+| 23 (19) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 24 (20) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 4–7 | 6 | 0.52 | E1 |
+| 25 (21) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
+| 26 (22) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
+| 27 (23) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -916,6 +1201,10 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 | E5 | 1.15 | WR training pipeline; story generation new |
 | E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
 | I7 | 1.15 | public `JoshEngels/OOCR-Interp` (vector training, Risk Backdoor data); pair sweep, patching and reader grading new |
+| E1b | 1.3 | E1's pipeline, saved adapters and restore code; 56-question analyzer in the working repo |
+| I9 | 1.15 | WorkspaceBench's agentic-misalignment judge and I1a's pipeline; Lynch et al.'s scenario generator; rate predictor and probe new |
+| I10 | 1.15 | I1a's capture and reader pipeline; trajectory generation and probe new |
+| X3 | 1.15 | ImpossibleBench tasks and cheat detection (shared with X1p); framings and belief elicitation new |
 | C1 | 1.15 | nocot-bench's OpenRouter runner, `datagen/` generators and graders; constraint checkers new |
 | I8 | 1.15 | `wsbench produce`/`judge` and I1a's cached pipeline; synthetic sentences, probes and steering check new |
 | S2 | 1.15 | MessageBoardAuditBench grading harness |
@@ -934,6 +1223,8 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 | Adjacent | **X1p** | Cheapest direct test of Neel's split-brain question. C1's pilot now scores higher (1.73 vs 1.40) and costs less ($5–15). Swap it in, or run both, once Neel confirms nobody else has taken C1. |
 
 Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the up-front budget.
+
+**Week 2:** see `docs/week1-synthesis.md` for the week-1 results and the recommended next set.
 
 ## 6. How costs were estimated
 
@@ -961,6 +1252,11 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
    - Talk to Marek before preregistering E2 or E6.
    - Ask about the CHIVE + meta-models work before I6.
    - Aditya's model-forensics talk is on Monday 2026-10-05, relevant to X1 and I6.
+8. **Coordination from the 2026-09-30 and 2026-10-03 sessions:**
+   - Talk to Vishesh Gupta before running E1b's restore and KV tests. He expressed interest in the Piggyback sufficiency test on persona EM.
+   - Tell Neel that I1a's consensus and best-FVE selection gained nothing on Oracle Lens. He proposed those scaffolds on 9/30.
+   - Adam Karvonen's CHIVE talk is next week, relevant to I6 and I9.
+9. **X3 vs X1p:** run them as one pilot with a shared control, or X3 alone?
 
 ---
 
@@ -969,6 +1265,11 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-proposals-r1.md`) found 8 blocking issues, all fixed. Round 2 (`logs/reviews/20260928-proposals-r2.md`) cleared I1a, E1, I4 and S1 for preregistration; its X1p blocker was fixed afterwards. The v1.0 restructure changes presentation, not content. One review round remains under the 3-round cap.
 
 **E6 and I7 were added on 2026-09-29, after both review rounds, and have not been reviewed.** The same goes for the 2026-09-29 session changes (E2, E6, E1, I2, I4, I6, I7, X1p, the Topic 2 framing, the new C1 and I8, and the S4 informant lever). gpt-6-sol will review each when it goes to preregistration.
+
+**The 2026-10-03 additions** (E1b, I9, I10, X3, the status lines, the session notes, and the caveats added to E2, I5, I7 and I8) are a new artifact with their own review count. gpt-6-sol reviewed them three times (`logs/reviews/20261003-proposals-additions-r1.md`–`r3.md`):
+- Round 1: 4 BLOCKING. Three were fixed: I9's design, X3's belief measure, and X3's pricing. One was rejected with the source quoted: Neel did propose reconstructor and consensus scaffolds, in the 9/30 transcript.
+- Round 2: 1 BLOCKING (I9's control), fixed.
+- Round 3: 1 BLOCKING (the crossed control should compare activation sources at a fixed rate target) and 2 MINOR (I9 pricing per reader arm; X3 mediation wording). All three were fixed after round 3 and **have not been re-reviewed**, since the 3-round cap is reached.
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
 
