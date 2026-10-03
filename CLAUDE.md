@@ -159,6 +159,11 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
 - `wandb.init` hangs on a login prompt over SSH, so use `WANDB_MODE=offline` or disable it.
 - macOS ships bash 3.2, so watchdog scripts must not use bash 4+ features.
 - Parallel writers to a spend ledger corrupted the file. Use a lock or a single writer.
+- **Retain training curves** (E1 lost them for 12 of 13 models, 2026-09-30). For any run that trains:
+  - Every run writes per-step training loss and periodic held-out loss into its result record.
+  - Pull those records, plus the run log, off the pod *before* it terminates, including when the part fails. Stage them; never discard them.
+  - Commit the records, and plot the curves in the checkpoint report.
+  - Give each pod run a log name of its own (a regeneration run once overwrote a training log).
 - Community-cloud H100s are often out of stock, so have a fallback GPU type in every plan.
 
 ## Research taste (Neel's stated priorities)
