@@ -54,3 +54,11 @@ The table above maps row 12 to all three bullets; the PDF shows the finer mappin
 | 24 | Steering towards "automated grading" degrades alignment (full text) | Jan Betley, Johannes Treutlein, Clément Dumas | 2026 | https://www.lesswrong.com/posts/wYZMmdWEt5QLM3m3e/steering-towards-automated-grading-degrades-alignment | `Steering towards automated grading degrades alignment (full text).md` | OK (full text; contrast-pair images not captured) | Neel's human-grader bullet. Note the ImpossibleBench footnote: *more* hacking with human-grader steering |
 
 Not saved, abstract only: Højmark et al., "Measuring Reward-Seeking via Contrastive Belief Updates", arXiv 2607.18966 (101pp). Cited by the tirade and by row 23 for grader-preference sensitivity.
+
+## Additions (2026-09-29, from Neel's 2026-09-29 group session)
+
+Fetched for the proposals doc's new C1 (CoT uplift under constraints), where it is the main novelty risk. It is cited by both *Reasoning Models Struggle to Control their CoTs* (p.8) and *Monitoring Monitorability* (p.24). The PDF came from arxiv.org/pdf and was checked against p.1 title and authors. It is gitignored.
+
+| # | Title | Authors | Year | URL | File | Status | Supports |
+|---|-------|---------|------|-----|------|--------|----------|
+| 25 | When Chain of Thought is Necessary, Language Models Struggle to Evade Monitors | Scott Emmons, Erik Jenner, David K. Elson, Rif A. Saurous, Senthooran Rajamanoharan, Heng Chen, Irhum Shafkat, Rohin Shah | 2025 | https://arxiv.org/abs/2507.05246 | `When Chain of Thought is Necessary, Language Models Struggle to Evade Monitors.pdf` | OK (70 pp, v1; sha256 bc69d851…f825) | C1 novelty check |

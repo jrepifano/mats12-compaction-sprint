@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-09-29 (E6 and I7 added from Neel's suggestions). **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-01: S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -63,7 +63,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   2. Is it coherent?
   3. Is it broadly misaligned on the standard 8 EM questions?
   4. Is it misaligned on questions phrased like the training domain? Dubiński et al. showed EM can hide behind context.
-- *Piggyback mechanism test:* on the Instruct model, restore the template tokens' cached state to pre-fine-tuning values and re-measure EM.
+- *Piggyback mechanism test:* on the Instruct model, restore the template tokens' cached state to pre-fine-tuning values and re-measure EM. In the 2026-09-29 session, Neel had not read the Piggyback paper but found the claim surprising, and "investigate the Piggyback hypothesis" was listed as an open action item. The approved E1 prereg runs this test in stage 3; keep it even if E1's budget gets tight.
 - *Judging:* two cheap judges from different families (gpt-6-luna, DeepSeek-V4-Flash), first checked against the GPT-4o judge from the working repo.
 
 **What it will show.**
@@ -84,16 +84,21 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 **Why it matters.**
 - This is the core proposal of the literature review.
-- "EM is Easy, Narrow is Hard" (Soligo et al.) shows the general solution has lower loss and is more stable, but not *why* pretraining makes it cheap.
+- "EM is Easy, Narrow is Hard" (Soligo et al.) shows the general solution has lower loss and is more stable. It also shows (§3.2.2, Fig. 6) that steering with the general direction changes predictions on FineWeb more than the narrow direction does: an *aggregate* measure on a proxy corpus. It does not say *which* pretraining text makes the general direction influential.
 - Vetter et al. linked EM-amplified SAE features to villain and domination narratives in Dolma. Their link is correlational, because their models weren't trained on Dolma.
 - With OLMo we can look at the exact data the model learned from.
 
 **Experiment.**
 - *EM direction:* the mean activation difference between the EM model and its good-advice control.
 - *Narrow direction:* train a model that learns only the narrow task, using the KL-regularized recipe from Soligo et al., and extract its direction the same way.
+  - The KL schedule is fixed in the prereg (coefficient *and* duration). Soligo et al. (§3.2.1, Fig. 5) show the narrow solution drifts to general misalignment once the KL term is removed. In the 2026-09-29 session, Marek Masiak reported (unpublished) that the drift depends on how long the KL term was on: dropping it after 6 epochs gave much less broad misalignment than after 3.
+  - Before extracting the direction, check the narrow model is actually narrow: no EM on the 8 standard questions, and none in a domain the KL term did not cover.
 - *Keeping the comparison fair:* the two directions are matched on task performance, layer, norm, and extraction prompts, with a sweep over KL strength.
-- *Corpus measurements:* project ~200k Dolma3 documents onto both directions. Measure how often each fires, how heavy its tail is, and what its top documents are (read by Jacob, plus an LLM summarizer).
+- *Corpus measurements*, with two ways of ranking documents:
+  1. **By activation:** project ~200k Dolma3 documents onto both directions. Measure how often each fires, how heavy its tail is, and what its top documents are (read by Jacob, plus an LLM summarizer).
+  2. **By gradient:** rank documents by how much *adding* each direction raises their log-likelihood, i.e. the directional derivative of the document loss along the direction. This is the per-document version of Soligo et al.'s FineWeb KL measure, run on the model's actual training data. It also follows Neel's point (2026-09-29 session) that fine-tuning learns "what would make the model have said that sequence", not what the model thinks when it reads it: activations show what was present, gradients show what would have mattered. The two rankings may pick different documents, and where they disagree is itself a result.
 - *Model dependence:* ablate each direction and measure the loss increase on its top documents.
+- *Which kind of evil:* Neel stressed that the EM persona is not generic evil but a specific flavor ("4chan edgelord", "really into Hitler"). Code the top documents by flavor (internet troll / fictional villain / performative / sincere extremist / other), blind to which direction selected them.
 
 **What it will show.**
 - If the EM direction's top documents are coherent character types (villains, manipulators; prior ~0.6), we have a pretraining-data story for the persona account.
@@ -101,7 +106,9 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - If neither holds, that is evidence against a simple persona-from-pretraining account, and in favor of optimization or distance accounts.
 - **Caveat:** ablation loss shows the model *uses* the direction on those documents. It does not show those documents *caused* EM.
 
-**Cost and time.** $60–150 (GPU for activations, narrow training, and ablations; LLM summarization); cap $150. 4–7 days, ~6 Jacob-hours.
+**Cost and time.** $60–150 (GPU for activations, narrow training, and ablations; LLM summarization); cap $150. The gradient ranking adds roughly one more forward-sized pass over the corpus: a forward-mode JVP per direction, or a subsample if that is too slow. That is about +$15–30 (rough estimate, not yet measured), so the cap becomes **$180**. 4–7 days, ~6 Jacob-hours.
+
+**Coordination.** Marek Masiak (MATS 12) is working on the same question from the other side: EM happens because the broad solution is the "shorter description" of the fine-tuning diff. Talk to him before preregistering E2 or E6, to avoid duplicated work and to borrow his KL-schedule results.
 
 ### E3. When during pretraining does EM susceptibility appear? (needs E1's base-model result)
 
@@ -179,6 +186,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - *Cross-check:* compare the selected latents with the latents that a before/after SAE comparison of the rank-1 LoRA ranks highest (Wang et al.'s method). This covers Neel's other suggestion at little extra cost.
 - *Measurements:* the same four measurements as E1: narrow-task learning, coherence, EM on the 8 standard questions, and in-domain EM. The two-judge panel is reused from E1.
 - *Latent labels:* Neuronpedia auto-interp descriptions, read by Jacob. Show random latents from the selected set, not cherry-picked ones.
+  - Beyond "persona vs task", code *which kind* of persona each latent is: internet troll, fictional villain, performative edginess, or sincere extremism. Neel (2026-09-29 session) pointed out that the EM persona is a specific "4chan edgelord" flavor, not generic evil. If the sparse vector picks that flavor, and not a generic "evil" latent, that is a much sharper finding.
 
 **What it will show.**
 
@@ -205,11 +213,19 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   - **Logit lens / J-Lens:** cheap, rarely make things up, but limited to single vocabulary tokens.
   - **SAEs:** a learned dictionary of features.
   - **NLAs and Oracle Lens:** trained meta-models that write free-form descriptions. Higher recall, but they hallucinate.
+  - **Modulation Lens** (Jacob's forthcoming post; not yet in `papers/`): tell the model "think about X" in many contexts, take the mean activation difference, and build a dictionary of concept directions. Unlike J-Lens it handles multi-token concepts. Neel's summary (2026-09-29 session): it works reasonably well, "moderately less well than Oracle Lens". It is Jacob's own method and cheap to add, so it is an arm in I1a, I5, I7 and I8 below.
+    - A meta-model trained on the Modulation Lens objective already exists for Qwen3.6-27B: `ceselder/modulation-lens-meta-model-qwen36-27b`, in the collection in `papers/neel_brainstorm/`.
+    - WorkspaceBench's overall-scores figure has no Modulation Lens arm, so these would be new numbers.
 - They are rarely evaluated on the same model and ground truth.
   - WorkspaceBench (Blank, Bhatia, Ong, Nanda) is the first shared benchmark with a hallucination metric, on Qwen3.6-27B.
   - CHIVE found that SAEs, activation oracles, and NLAs did *not* beat a transcript-only baseline at explaining real behaviors.
   - AuditBench found a "tool-to-agent gap".
 - Neel's open questions from the 2026-09-27 sessions map directly onto I2–I6.
+- **Neel's framing for method comparisons (2026-09-29 session).** Every interp experiment should say which of two goals it serves:
+  1. *Do well on a task* (e.g. forensics). Then reading the CoT and editing the environment are fair tools, and are probably the strongest.
+  2. *Test whether method X is a backup for when CoT stops working.* Then a reader lighting up on "I will now lie to the user" proves little, because it may be reading the text. The convincing evidence is a reader that works on the prompt *before* any output, or that surfaces things the model never says.
+
+  Every Topic 2 prereg states which goal it serves. Most of ours are goal 2.
 
 **Why this topic.** It is closest to Neel's current work: WorkspaceBench is his. The resources are public and ready:
 - Oracle Lens adapters (~1–2 GB LoRA each) that fit next to the model on one H100.
@@ -217,7 +233,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - A block-sparse featurizer usable as the SAE arm.
 - WorkspaceBench and J-Lens code.
 
-**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap. I7 (steering-vector backdoors) is also independent. It grades readers against a planted behavior whose cause we know exactly.
+**The chain of experiments.** First, check the benchmark and the cheap readers run and reproduce (I1a), then add the NLA (I1b). Then answer Neel's questions: scaffolds (I2), what NLAs uniquely see (I3), overlap and ensembling (I5), and the CHIVE causal test (I6). I4 (J-Lens data dependence) is independent and cheap. I7 (steering-vector backdoors) is also independent. It grades readers against a planted behavior whose cause we know exactly. I8 (role binding) reuses I1a's cached readers to explain one WorkspaceBench result Neel finds puzzling.
 
 ### I1a. Can we run WorkspaceBench and reproduce published numbers? (gate)
 
@@ -232,6 +248,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 1. Confirm the benchmark's grader reproduces on any released readouts.
 2. Generate our own readouts on 2–3 eval families, including the hallucination sub-benchmark and one free regex-graded family.
 3. Compare against the published scores and confidence intervals. The exact target cells get named in the prereg.
+4. *Extra, not part of the gate:* once reproduction passes, run the Modulation Lens meta-model on the same families. It has no published WorkspaceBench numbers, and it is Jacob's method.
 
 **What it will show.** Either the stack works (prior ~0.75), which unlocks I2, I3, I5 and I6 with cached activations and readouts ready, or we learn early which piece is broken.
 
@@ -257,7 +274,14 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 **Experiment.**
 - Samples: N = 1, 4, 16 per activation, for Oracle Lens and NLA.
 - Selection rules, compared: (a) best FVE; (b) consensus claims; (c) a random sample of N, the control for "just more samples".
+- **A better token-bag scaffold** (Neel, 2026-09-29 session). WorkspaceBench already has an LLM summarizer turn J-Lens, R-Lens and logit-lens token bags into concepts before judging (WorkspaceBench post and README). So the arm is not "add a summarizer" but "improve it". Candidates:
+  - pool the top-k over several layers and positions before summarizing;
+  - vary k (10 / 20 / 50);
+  - sample the summarizer N times and keep only the consensus concepts.
+
+  This costs almost nothing, since token bags are cached from I1a. The logit lens under the same scaffold is the control.
 - Recall and hallucination are reported separately.
+- Neel's general point: people rarely try "stupid inference-time scaffolds", and these can raise performance a lot. He called WorkspaceBench "a pretty good eval to be iterating against" for exactly this.
 
 **What it will show.**
 - We expect consensus to cut hallucination more than FVE selection (prior ~0.6), because FVE rewards reconstructing the activation, not being truthful.
@@ -299,6 +323,8 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - Fit J-Lens on general text, code-only text, and deception-heavy role-play.
 - Compare the lenses layer by layer (cosine, top-token overlap).
 - Test whether a deception-fit lens flags lies better on a labeled deception set.
+  - Read the lens at positions *before* the model says anything deceptive: the end of the prompt, or the tokens just before the lie. A lens that fires on "I will now lie" may just be reading the text (Neel, 2026-09-29 session).
+- Neel's description of fitting (2026-09-29 session): ~10 random pretraining prompts of 128 tokens each "basically just works fine". This supports the prior below that fitting data barely matters. Released J-Lenses and R-Lenses (Neel's scholars' post; R-Lens is cleaner at early layers) can serve as reference lenses.
 - Run on a small supported model first; confirm on Qwen3.6-27B only if an effect shows up.
 
 **What it will show.**
@@ -315,7 +341,7 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - No 2025–2026 paper has systematically ensembled these readers.
 - Related work is mixed: adding SAE probes to ensembles didn't reliably help, and attribution methods routinely disagree.
 
-**Experiment.** Mostly analysis of the readouts cached in I1–I3: claim overlap, unique catches per reader, and union vs intersection ensembles.
+**Experiment.** Mostly analysis of the readouts cached in I1–I3, including the Modulation Lens meta-model's: claim overlap, unique catches per reader, and union vs intersection ensembles.
 
 **What it will show.** A map of reader complementarity, and whether ensembling is a cheap practical win.
 
@@ -331,6 +357,11 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - Anthropic system cards credit NLA-style tools with surfacing behaviors, but nobody has validated that.
 
 **Experiment.** Investigator agents with three toolsets (transcript only / + J-Lens / + Oracle Lens), scored on predicting counterfactual effects.
+
+- *Baseline to add:* Thought Anchors-style partial resampling (Bogdan, Macar, Nanda & Conmy 2025; `papers/interp_methods/`, fetched 2026-09-29, not yet read). Resample the CoT from several prefixes to see what the model *could* have said. Neel suggested this in the 2026-09-29 session as the black-box comparison for any claim that a lens reveals "counterfactual" thoughts.
+- *Selection caution:* do not select episodes because baseline investigators failed on them. Neel warned that this can produce regression to the mean.
+
+**Overlap to check first.** Neel flagged the possible regression-to-the-mean artifact above. Ask Neel or the scholar what exists before preregistering I6.
 
 **What it will show.** High value either way, but a positive result is unlikely (prior ~0.4). Run it only if I1–I3 show the readers are healthy.
 
@@ -381,7 +412,12 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
     - About 6 pairs × 3 seeds.
   - *Mechanism, per pair:* patch queries (the paper's method); ablate MLPs downstream of the injection layer; measure how the trigger's attention output aligns with the target direction.
 - **Stage C: reader faithfulness.**
-  - *Setup:* the auditor gets the steered model, but not the training data or the rule. The readers are the logit lens (the simple baseline), J-Lens (fit with I4's code), and Gemma Scope 2 SAEs, if they cover Gemma 3 12B at the injection layer; that still needs checking.
+  - *Setup:* the auditor gets the steered model, but not the training data or the rule. The readers are:
+    - the logit lens (the simple baseline);
+    - J-Lens (fit with I4's code);
+    - Modulation Lens, built for Gemma 3 12B (fits here because "if trigger then target" is a multi-token concept J-Lens can't express);
+    - Gemma Scope 2 SAEs, if they cover Gemma 3 12B at the injection layer; that still needs checking.
+  - All inputs below are pre-output positions, so a reader can't simply be reading a verbalized rule (see the Topic 2 framing).
   - *Inputs:* each reader is applied to the vector itself, and to the last-token activations of prompts with and without the trigger.
   - *Scoring:* against the planted rule, blind. Does the readout name the target? The trigger? Does it differ between prompts with and without the trigger, i.e. show the conditional?
   - *Baselines:*
@@ -405,6 +441,60 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - *Stages A–B:* ~5–8 H100-hours, including 3–4 hours of setup. Each run trains one vector on a frozen 12B model, which takes minutes, and scoring is mostly from logits. Synthetic trigger/target data for the pair sweep costs ~$1–3 with a cheap model. **$15–35, cap $40. 2–3 days; ~2 Jacob-hours.**
 - *Stage C, on Gemma:* +$10–20, 1–2 days, ~2 Jacob-hours of blind grading. The Qwen3.6-27B version is +$30–60 and needs I1a.
 - *Shared work:* E6 needs a steering-vector trainer too, so one trainer serves both.
+
+### I8. How does the model encode who did what to whom, so that Oracle Lens can read it?
+
+*Source: Neel, 2026-09-29 group session. On WorkspaceBench's role-binding items he said he is "quite confused scientifically about what the hell is going on here" and would like "someone doing a mini project" on it. He suggested one hypothesis, a "thief as subject" vs "thief as object" direction, testable with many synthetic sentences.*
+
+**Research question.**
+- Readers that treat an activation as a bag of concepts shouldn't be able to tell "the thief chased the police officer" from the reverse. Oracle Lens can. What in the activation carries the roles?
+- Is there a linear role code that generalizes across entities and sentence forms? Do the readers that succeed actually use it?
+
+**Why it matters.**
+- **What WorkspaceBench reports.** Read from its overall-scores figure (±0.01; the post gives no table or error bars).
+
+  | Reader | Role-bound association | Relational multihop ("landlord's sibling") |
+  |---|---|---|
+  | Oracle Lens RL | 0.63 | 0.50 |
+  | NLA-RL | 0.40 | 0.37 |
+  | J-Lens (after the LLM summarizer) | 0.13 | 0.01 |
+  | SAE | 0.01 | — |
+  | Lucky blind baseline | 0.06 | — |
+  | Prompt-only baseline | 1.00 | 0.82 |
+- **How role-bound items are built.** The scenes contain no role words. The judge sees only the readout and answers three multiple-choice questions (agent / action / patient); all three must be right.
+- **Why this matters for auditing.** Bag-of-features readers, including SAEs, can't express relations. In an audit, "the model plans to deceive the user" and "the user is deceiving the model" would read the same. Knowing how roles are encoded tells us which readers can report relations at all.
+- **Prior work to read.** Feng & Steinhardt's work on binding in language models ("binding IDs") and *Propositional Probes* (Feng, Russell & Steinhardt 2024, arXiv:2406.19501) are the closest prior work. Both were fetched to `papers/interp_methods/` on 2026-09-29 and are **not yet read**. Read both before the prereg; they may already answer part of this.
+
+**Hypotheses.** These are weak priors.
+- **H1, entity-specific role directions** (Neel's suggestion): there is a "thief-as-agent" direction separate from "thief-as-patient". *Predicts:* per-entity probes work, but a role probe transfers poorly to held-out entities.
+- **H2, an abstract role code**, like binding IDs: a shared role subspace combined with entity directions. *Predicts:* one linear "is agent" probe, trained on some entities, transfers to held-out entities and verbs.
+- **H0, surface order:** the representation tracks which entity came first, not who acted. *Predicts:* probes and Oracle Lens flip on passive voice ("the officer was chased by the thief").
+
+**Experiment.**
+- *Model:* Qwen3.6-27B, the only model with all the readers. It reuses I1a's cached pipeline and WorkspaceBench's `wsbench produce` for readouts.
+- *Data:* synthetic sentences crossing ~20 entity pairs × ~10 verbs × active/passive voice × role order, read at WorkspaceBench's summary positions. Plus the benchmark's own cryptic role-bound items, so results can be compared.
+- *Probes first (simplest baseline):*
+  - linear probes for "entity E is the agent";
+  - transfer tested across held-out entities, held-out verbs, and active → passive.
+- *Readers:*
+  - Oracle Lens RL;
+  - the Modulation Lens meta-model;
+  - NLA-RL;
+  - J-Lens with WorkspaceBench's summarizer.
+
+  All run on the same synthetic set, scored with WorkspaceBench's role-bound judge.
+- *Causal check:* add or subtract the probe's role direction and see whether Oracle Lens's readout flips the roles. This tests whether the successful reader uses that code.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| An abstract "is agent" probe transfers to held-out entities (≥ 80% accuracy) and survives passive voice (H2) | ~0.5 | Roles are encoded structurally. We get a concrete target for readers to decode, and a probe baseline for auditing relations. |
+| Probes and Oracle Lens flip on passive voice (H0) | ~0.2 | Role-binding scores partly measure word order. That is a caveat on the benchmark family. |
+| Steering along the role direction flips Oracle Lens's readout | ~0.45 | Oracle Lens reads the same code the probe finds, which explains Neel's puzzle. |
+| Modulation Lens meta-model scores within 0.1 of Oracle Lens on role binding | ~0.3 | Direction-dictionary readers can capture relations after all. |
+
+**Cost and time.** After I1a, ~3–5 H100-hours for activations, readouts and steering: **~$10–20**, plus judge calls (~$1–3). **Cap $30.** 2 days; ~2 Jacob-hours. Needs I1a.
 
 ---
 
@@ -550,12 +640,37 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 - a way to reach a human at all (a notify-a-human channel);
 - a "prosecutor's deal" (the reporter stays online);
 - prompting agents to trust each other less;
-- moral framing.
+- moral framing;
+- **a planted informant** (Jacob's idea, added 2026-10-01): a small random fraction of subagents get a different system prompt that makes them covert auditors, while looking like ordinary workers.
 
 **Why it matters.**
 - Neel thinks getting one agent to "snitch on the master plan" is tractable and would be a cheap, high-value safety layer.
 - In the GDM research swarm, 24% of agents flagged fraud unprompted but had no enforcement.
 - Agrawal et al. found moral framing raises whistleblowing.
+- The first four levers rely on an agent *choosing* to report. The informant is *planted*, so we can measure detection and deterrence separately from agents' willingness to report.
+
+**Lever 5 in detail: the planted informant.**
+- **Prior work** (first-pass search, 2026-10-01: six web searches, four abstracts plus the Arbiter full text, not yet saved to `papers/`). Nobody seems to have tested a covert auditor posing as a peer. The nearest pieces:
+  - *A visible monitor in the conversation.* The Arbiter Agent (Tonini et al., arXiv 2606.10747) is a separate observer of a 3-agent conversation. It can question agents and read their prompts and reasoning traces, but it is not disguised as a peer.
+  - *Announcing a monitor barely deters.* Das et al. (arXiv 2609.03035) told colluding agents an activation monitor was present: they "keep colluding", and the probes stay accurate.
+  - *External sanctions do deter.* Institutional AI (Bracale Syrnikov et al., arXiv 2601.11369) cut severe collusion from 50% to 5.6% with an external sanctions layer, while a prompt-only rule did nothing reliable. Idowu et al. (arXiv 2601.00360) list random audits as an anti-collusion mechanism, conceptually only.
+  - *Untrusted monitoring.* An informant running the same model as the swarm is Redwood's untrusted-monitoring problem: it may collude, for example via signals the blue team didn't plant. Honeypots are the standard check (Honeypot Protocol, arXiv 2604.13301).
+  - *The inverse problem.* "Who's the Mole?" detects a hidden *malicious* agent; ours is a hidden *loyal* one.
+- **What would be new:**
+  1. A covert peer sees what agents say to each other, not what they say to a known monitor.
+  2. Deterrence from a *known base rate* ("about 1% of your peers are auditors; you don't know which"). This is the police-informant or mystery-shopper effect, unlike announcing a monitor, which Das et al. found doesn't deter.
+  3. Whether the informant gets *turned* by the swarm and joins the plan. This links to peer-preservation and to S3.
+  4. Whether the swarm can spot the informant from the fingerprint its different system prompt leaves. This is the S1 question in a new setting.
+- **Design.**
+  - *Cross the actual informant rate with the announced rate:* informant present vs absent, crossed with the swarm told vs not told that "some agents are auditors". This separates detection from deterrence. Deterrence can be tested without planting anyone.
+  - *Pilot at a high rate.* At 1%, a swarm needs ~100 agents to contain one informant on average, which is too expensive for a pilot. Plant about 1 informant per 5 agents, and vary only the *announced* rate down to 1%.
+  - *Same model or a different one.* The informant runs either the same model as the swarm or a different family. The same-model case is the untrusted-monitoring case, where collusion is the risk.
+- **Measures:**
+  - the swarm's collusion rate, for deterrence;
+  - the informant's reporting rate and time-to-report;
+  - how often the informant defects to the plan;
+  - false reports, from the benign-plan control;
+  - whether agents identify the informant: an end-of-episode "who is the auditor?" question, plus whether they exclude it from coordination.
 
 - **Nobody has measured this in the incident setting.** In the incident reproduction, agents had no way to reach a human at all. So we don't know whether they would report if they could.
 
@@ -579,6 +694,7 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
     4. channel + low peer trust;
     5. channel + moral framing;
     6. benign plan + channel, to measure false reports.
+  - **Planted informant (lever 5):** adds its own present/absent × told/not-told cells; see above.
   - About 4 models from different families.
   - **Stage A's outcome is focal-agent behaviour, not a swarm property.** Per episode: reported, joined, or neither, each defined by action.
     - Reported: a message through the escalation channel whose content names the plan, judged against a written rule and validated.
@@ -606,13 +722,14 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
   - Stage A: 6 conditions × 2–3 models × ~50 episodes. Its cap is set in the prereg from the pilot's measured per-episode cost, and must fit the ~$100 swarm envelope through week 2.
   - Non-DeepSeek models and the new world are unpriced until the pilot measures them.
 - 3–5 days (was 7–12, mostly environment building).
+- The informant lever adds roughly $20–60 for its extra cells with cheap models. That is a rough guess, not measured; price it from Phase 0 token counts.
 - Stage B is priced after Stage A.
 
 ---
 
 ## 4. Adjacent: cheap, high-signal items from Neel's brainstorm
 
-These are outside the literature review, but on Neel's list and quick to run.
+These are outside the literature review, but on Neel's list (or raised in his group sessions, like C1) and quick to run.
 
 ### X1p / X1. Do models cheat more when they think an automated grader is watching? ("split-brain")
 
@@ -631,6 +748,10 @@ These are outside the literature review, but on Neel's list and quick to run.
 - A post-task question asks who the model thinks will check its work.
 - **Pilot X1p:** gpt-6-sol and Sonnet 5, 630 episodes.
 - **Full X1:** 6 models, optionally a steering arm on Qwen3.6-27B.
+- **Changes from Neel's 2026-09-29 session.** He called split-brain "one question I'm very curious about". His framing differs from ours in two ways:
+  - *He contrasts settings, not cues.* The contrast he means is training- or eval-like episodes, with "some notion of a grader", vs realistic user deployment. X1p varies only the grader cue *within* benchmark-style tasks. For full X1, add a setting factor: the same underlying task posed as a benchmark episode vs as a user's request in a realistic repo, with no mention of grading. The existing cue factor stays.
+  - *Legible cheating evals are the wrong place to look.* A competent, eval-aware model should cheat less on obvious cheating evals. He expects the interesting differences in realistic use, and in training-like tasks (the Hugging Face incident). This was prompted by a report that Opus 5.5 cheats much less on a public eval. Include Opus 5.5 in full X1 as a check on this.
+  - His forensics recipe maps onto X1's design: form a hypothesis from the CoT, edit the environment to test it, and resample. His example edits are a reminder from the user, and telling the model a monitor is watching, which tests "fear of oversight". X1's oversight cue is the second one.
 
 **What it will show.**
 - If the automated-grader cue raises cheating by ≥5 points at fixed oversight (prior ~0.5), that is behavioral evidence for split-brain misalignment.
@@ -667,6 +788,71 @@ These are outside the literature review, but on Neel's list and quick to run.
 
 **Cost and time.** $60–130, cap $150. 2 days.
 
+### C1. How much of the reasoning's uplift survives when the reasoning must follow rules?
+
+*Source: Neel, 2026-09-29 group session. He asked for better CoT controllability and monitorability evals, said "a decent project from a pair of MATS scholars could dramatically improve SOTA here", and sketched this mini-project.*
+
+**Research question.**
+- Disable native CoT and make the model reason in a visible block in its output. Then constrain that block so it is less useful: key intermediates are forbidden, it must contain mistakes, or it must follow a keyword or style rule.
+- How much of the free block's accuracy gain over no reasoning survives each constraint?
+- Can the cost be summarized as a token multiplier? Neel's example: "the model needs X tokens to do Y; under rule R that goes up to 1.4X."
+
+**Why it matters.**
+- **Why CoT monitoring works.** Models have limited serial depth per forward pass, so on hard tasks they must put real information into the CoT (Neel, 2026-09-29). The open question is how cheaply a model can *withhold* that information and still get the uplift. If constraints cost only a small token multiplier, a model can evade a CoT monitor cheaply.
+- **What each existing eval measures.**
+  - *nocot-bench* (Neel et al.) measures only the no-CoT floor: "a reasoned row is scored wrong" (README l.267). It reports no with-CoT arm.
+  - *Reasoning Models Struggle to Control their CoTs* (Chen et al. 2026) measures *compliance* with constraints, not retained uplift. Sonnet 4.5 complies 2.7% of the time in its CoT vs 61.9% in its output (abstract).
+    - Its reasoning-in-the-output baseline (`<output_reasoning>`, Fig. 37) reaches ≥70% compliance but reports no task accuracy (p.5, Fig. 25).
+    - Its one accuracy result, a 6.0–16.7 pp drop under suppression (Fig. 5), uses only compliant samples and doesn't vary difficulty.
+  - *Monitoring Monitorability* (Guan et al. 2025) measures detection, and says its evals "do not disentangle the propensity to verbalize versus the necessity to verbalize" (p.25).
+  - None of the four sources varies serial depth against reasoning constraints, or reports a token multiplier.
+- **Why reason in the output.** Neel's argument for using the output as a "skyline": models control their outputs much better than their CoT (CoT-Control confirms this), so this bounds what a model *could* hide. It also sidesteps provider differences in how native CoT is exposed.
+- **Novelty risk.** Emmons et al. 2025, *When chain of thought is necessary, language models struggle to evade monitors* (fetched to `papers/neel_brainstorm/` on 2026-09-29, **not yet read**), is cited by both CoT-Control (p.8) and Monitoring Monitorability (p.24). It may already cover part of this. Monitoring Monitorability's refs [20] ("encoding CoTs reduces capabilities") and [45] (encoded reasoning on state-tracking tasks) are also close. **Read all three before the prereg.** Monitoring Monitorability's appendix (pp.27–90) is also unread.
+
+**Experiment.**
+- *Tasks:* nocot-bench's synthetic serial banks (e.g. arithmetic chains, `chain`, `config_patch`), generated with its `datagen/` difficulty knobs.
+  - Depths span from below each model's no-CoT 50% depth to several times above it. Neel's serial-depth post measures that depth as the step count where no-CoT accuracy crosses 50%: 4.1 arithmetic steps for Gemini 3.8 Flash and Fable 5.1, 7.2 for Astra.
+  - Answers are graded programmatically, with no judge.
+- *Conditions:*
+  1. no reasoning (nocot-bench's immediate-answer prompt);
+  2. free output reasoning block, at a sweep of token budgets;
+  3. **no intermediates:** the block may not state any running value (checked by regex against the true intermediates);
+  4. **planted mistakes:** the block must contain ≥k wrong intermediate values, checked against ground truth;
+  5. **a keyword/style rule**, CoT-Control's suppression category, to link to prior numbers;
+  6. native CoT on, as a reference where the provider allows it.
+- *Metrics:*
+  - retained uplift = (acc_constrained − acc_none) / (acc_free − acc_none), per depth;
+  - the 50%-crossing depth per condition;
+  - the **token multiplier:** reasoning tokens needed under the constraint to match the free block's accuracy at the same depth.
+- *Two analyses*, because CoT-Control's Fig. 5 conditions on compliance and that selects easy items:
+  - all samples (intent-to-treat);
+  - compliant samples only.
+
+  Report compliance rates alongside both.
+- *Models:* DeepSeek-V4-Flash for the cheap pilot. Then Neel's suggestions: Kimi-K3, GLM-5.3, and a Qwen Max model.
+  - Neel's post found CoT-Control compliance near zero for many open models: "13 of 34 never follow a single instruction". That was *CoT* control; output-block compliance should be far higher, but the pilot must confirm it.
+- *Sanity checks:*
+  - native reasoning is really off (nocot-bench's "witness" checks);
+  - the free block beats no reasoning at depths above the crossing;
+  - the constraint checkers are validated on hand-made passing and failing blocks.
+- *Later extension (Neel's realism ask):* agentic coding tasks where a model tries to evade a monitor while getting value from its reasoning. Out of scope for the first run.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| Banning intermediates pulls the crossing depth most of the way back to no-reasoning | ~0.6 | On serial tasks the reasoning must carry the intermediates. That is quantified good news for CoT monitoring, and the result is a reusable metric. |
+| Models keep most of the uplift without stating intermediates (e.g. via encodings or partial statements) | ~0.25 | Cheap evasion is possible even for serial work. That is a strong, worrying result; read the transcripts to see how. |
+| Keyword/style rules cost < 1.3× tokens | ~0.6 | Surface rules are cheap, so compliance evals (CoT-Control) understate how much a model can hide. |
+| One multiplier per constraint fits all depths within ±20% | ~0.4 | Neel's "X → 1.4X" framing holds and gives a single number per model and constraint. |
+| Output-block compliance is too low to measure uplift (< 30%) | ~0.15 | Swap to models that follow instructions better. The intent-to-treat analysis still reports something. |
+
+**Cost and time.**
+- *Pilot:* DeepSeek-V4-Flash plus one suggested model, 2 task families × 5 depths × 20 items × 5 conditions. That is ~2k calls at ~0.5–3k output tokens each, so **~$5–15**. Mostly code is reused: nocot-bench's OpenRouter runner and generators.
+- *Full:* 4 models, 3–4 families, more items. **~$40–100, cap $100.** Kimi-K3, GLM-5.3 and Qwen Max prices still need to be checked on OpenRouter; output tokens dominate.
+- 2 days for the pilot and ~2 more for the full run; ~2 Jacob-hours.
+- Ask Neel whether another scholar has already picked this up, since he pitched it to the whole group.
+
 ---
 
 ## 5. Ranked summary
@@ -680,7 +866,7 @@ These are outside the literature review, but on Neel's list and quick to run.
   - **1.0** = mostly a new build.
 
   Day estimates already assume porting where possible, so R prices the lower *risk*, not the time saved.
-- *J-h*: Jacob's active hours. "Was" is the rank before R was added.
+- *J-h*: Jacob's active hours. "Was" is the rank before the 2026-09-29 session changes (C1 and I8 added; E2 repriced).
 
 | Rank (was) | ID | Short name | Topic | Info | P | R | $ | Days | J-h | Score | Needs |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -688,23 +874,25 @@ These are outside the literature review, but on Neel's list and quick to run.
 | 2 (2) | E1 | EM on OLMo stages | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
 | 3 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
 | 4 (4) | S1 | Family fingerprints **(parked 2026-09-29)** | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
-| 5 (5) | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
-| 6 (6) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
-| 7 (7) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
-| 8 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
-| 9 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
-| 10 (new) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
-| 11 (10) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
-| 12 (new) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
-| 13 (14) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
-| 14 (11) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
-| 15 (12) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 16 (18) | S4 | Snitching levers (Stage A) | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
-| 17 (13) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 18 (15) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–150 | 4–7 | 6 | 0.52 | E1 |
-| 19 (16) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
-| 20 (17) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
-| 21 (19) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+| 5 (new) | C1 | CoT uplift under constraints (pilot) | Adjacent | 4 | 0.75 | 1.15 | 5–15 (full 40–100) | 2 | 2 | 1.73 | read Emmons et al. first |
+| 6 (5) | I2 | Best-of-N / consensus readouts | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
+| 7 (6) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
+| 8 (7) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
+| 9 (8) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
+| 10 (9) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
+| 11 (10) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
+| 12 (new) | I8 | Role binding in readers | Interp | 3 | 0.7 | 1.15 | 10–20 | 2 | 2 | 1.21 | I1a |
+| 13 (11) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
+| 14 (12) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
+| 15 (13) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
+| 16 (14) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
+| 17 (15) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
+| 18 (16) | S4 | Snitching levers (Stage A) **(stopped after pilot 2026-10-01)** | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
+| 19 (17) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
+| 20 (18) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 4–7 | 6 | 0.52 | E1 |
+| 21 (19) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
+| 22 (20) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
+| 23 (21) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -728,8 +916,10 @@ These are outside the literature review, but on Neel's list and quick to run.
 | E5 | 1.15 | WR training pipeline; story generation new |
 | E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
 | I7 | 1.15 | public `JoshEngels/OOCR-Interp` (vector training, Risk Backdoor data); pair sweep, patching and reader grading new |
+| C1 | 1.15 | nocot-bench's OpenRouter runner, `datagen/` generators and graders; constraint checkers new |
+| I8 | 1.15 | `wsbench produce`/`judge` and I1a's cached pipeline; synthetic sentences, probes and steering check new |
 | S2 | 1.15 | MessageBoardAuditBench grading harness |
-| S4 | 1.15 | `oai-hf-incident-reproduction`: Docker world, message board, seeding, scripted peers, server-side logs; escalation channel, planted plan and scorer new |
+| S4 | 1.15 | `oai-hf-incident-reproduction`: Docker world, message board, seeding, scripted peers, server-side logs; escalation channel, planted plan and scorer new; the informant lever needs per-agent system prompts and an auditor report channel |
 | I6 | 1.0 | new investigator harness |
 
 </details>
@@ -741,7 +931,7 @@ These are outside the literature review, but on Neel's list and quick to run.
 | EM personas | **E1** | The topic's gate; runs on the proven old-repo pipeline (R = 1.3) |
 | Interp | **I1a** (+ **I4** if there's time; it costs $10–30) | I1a is the topic's gate; I4 is independent and cheap |
 | Swarms | **Phase 0 viability** (was S1) | S1 parked 2026-09-29 with S2. Week 1 instead checks that the incident-reproduction harness can test S4/S3 at an affordable cost per episode (≤ ~$10; see the Topic 3 roadmap). |
-| Adjacent | **X1p** | Cheapest direct test of Neel's split-brain question |
+| Adjacent | **X1p** | Cheapest direct test of Neel's split-brain question. C1's pilot now scores higher (1.73 vs 1.40) and costs less ($5–15). Swap it in, or run both, once Neel confirms nobody else has taken C1. |
 
 Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the up-front budget.
 
@@ -766,6 +956,11 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 3. **X0:** OK to use our own Claude Code / Codex session transcripts as compaction test material?
 4. **E6:** run it in week 1 alongside E1? It needs no prerequisites, is cheap ($15–35), and is Neel's own suggestion. Gemma 2 9B-it (matches Vetter et al.) or Llama-3.1-8B?
 5. **I7:** run Stages A–B in week 1? They're cheap and share a trainer with E6. For Stage C, is Gemma with logit lens / J-Lens / SAEs enough to start, or do you want Oracle Lens and the NLA (which means Qwen3.6-27B, after I1a)?
+6. **C1:** Neel pitched this to the whole group, so another scholar may take it. Ask him whether anyone has, and whether he'd want us on it. It is outside our three topics, but it is cheap and a direct request. Before preregistering, read Emmons et al. 2025 (now in `papers/neel_brainstorm/`) for overlap.
+7. **Coordination from the 2026-09-29 session:**
+   - Talk to Marek before preregistering E2 or E6.
+   - Ask about the CHIVE + meta-models work before I6.
+   - Aditya's model-forensics talk is on Monday 2026-10-05, relevant to X1 and I6.
 
 ---
 
@@ -773,7 +968,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-proposals-r1.md`) found 8 blocking issues, all fixed. Round 2 (`logs/reviews/20260928-proposals-r2.md`) cleared I1a, E1, I4 and S1 for preregistration; its X1p blocker was fixed afterwards. The v1.0 restructure changes presentation, not content. One review round remains under the 3-round cap.
 
-**E6 and I7 were added on 2026-09-29, after both review rounds, and have not been reviewed.** gpt-6-sol will review it when it goes to preregistration.
+**E6 and I7 were added on 2026-09-29, after both review rounds, and have not been reviewed.** The same goes for the 2026-09-29 session changes (E2, E6, E1, I2, I4, I6, I7, X1p, the Topic 2 framing, the new C1 and I8, and the S4 informant lever). gpt-6-sol will review each when it goes to preregistration.
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
 
