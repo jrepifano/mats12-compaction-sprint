@@ -227,6 +227,7 @@ def main(argv: list[str] | None = None) -> int:
 
     rp.set_env_var(f"POD_SSH_HOST{slot}", host)
     rp.set_env_var(f"POD_SSH_PORT{slot}", str(port))
+    rp.forget_host_key(host, port)  # a stale key from an earlier pod on this ip:port
     rp.log_pod_event(
         {"event": "running", "pod_id": pod_id, "slot": slot, "host": host, "port": port}
     )

@@ -20,6 +20,9 @@ collected here so every script shares one client. Changes from the source:
   (`emx.spend.caps_for`). I1a adds checkpoint approval markers (`logs/approvals/<EXP>-P<n>.approved`),
   a watchdog heartbeat that must be fresh before an I1a launch, and the P0 GPU ceiling while
   no P1 approval exists. E1 behaviour is unchanged.
+- 2026-10-03 (ideas from github.com/kmerkelbach/runpod-tools docs/gotchas.md, reimplemented):
+  `killswitch_deadline` (the pod-side stop time pod_push.sh arms, scripts/pod_killswitch.sh) and
+  `forget_host_key` (RunPod reuses ip:port pairs, so a stale known_hosts key blocks accept-new).
 """
 
 from __future__ import annotations
@@ -29,6 +32,7 @@ import fcntl
 import json
 import os
 import re
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -267,6 +271,13 @@ def set_env_var(key: str, value: str, env_path: Path | None = None) -> None:
 
 
 # --- pod lifecycle events and spend projection (port of pod_budget_check.stage_spend) ---------
+
+
+def forget_host_key(host: str, port: int) -> None:
+    """Drop any known_hosts entry for [host]:port before the first ssh to a new pod. RunPod
+    reuses ip:port pairs across pods, and StrictHostKeyChecking=accept-new refuses a CHANGED key
+    ("Host key verification failed", exit 255), which looks like a dead pod."""
+    subprocess.run(["ssh-keygen", "-R", f"[{host}]:{port}"], capture_output=True, check=False)
 
 
 def now_utc() -> datetime:
@@ -531,6 +542,31 @@ def gpu_ceiling() -> float | None:
     return float(POD_SMOKE_CAP_USD)
 
 
+def killswitch_deadline(
+    pod_id: str, events: list[dict] | None = None, now: datetime | None = None
+) -> int:
+    """Epoch second at which this experiment's running pods, all burning together, reach the
+    watchdog's GPU kill line: min(GPU limit, hard cap - reserve - judges), or the I1a P0 ceiling
+    when lower, minus logged GPU $ and every running pod's cost so far.
+
+    The pod-side backstop (scripts/pod_killswitch.sh) stops `pod_id` at this time. Counting the
+    joint burn makes the deadline early, never late, for the pods running when it is computed; a
+    pod created LATER is not in an earlier pod's deadline, so pod_push.sh re-arms every running
+    pod of the experiment when it arms a new one. Nothing left means a deadline of `now`."""
+    now = now or now_utc()
+    sessions = pod_sessions(read_pod_events() if events is None else events, now)
+    running = [s for s in sessions if s["running"]]
+    if not any(s["pod_id"] == pod_id for s in running):
+        raise ValueError(f"pod {pod_id} is not a running pod in {POD_EVENTS.name}")
+    limit = gpu_kill_limit(ledger_spent("judge"))
+    ceiling = gpu_ceiling()
+    if ceiling is not None:
+        limit = min(limit, ceiling)
+    remaining = max(0.0, limit - ledger_spent("gpu") - sum(s["usd"] for s in running))
+    burn = sum(s["rate"] for s in running)
+    return int(now.timestamp() + remaining / burn * 3600)
+
+
 def heartbeat_path(exp: str | None = None) -> Path:
     return LOGS / f"watchdog_{exp or EXP}.heartbeat"
 
@@ -570,6 +606,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="on success print EMX_POD_RATE_USD_H= and EMX_POD_CREATED_EPOCH= lines to stdout",
     )
+    ap.add_argument(
+        "--killswitch-deadline",
+        action="store_true",
+        help="on success print EMX_KILLSWITCH_DEADLINE=<epoch> (see killswitch_deadline) and "
+        "EMX_KILLSWITCH_SLOTS=<the running pods' slots, space-separated>",
+    )
     args = ap.parse_args(argv)
     configure(args.exp)
     slot = check_slot(args.check_slot)
@@ -584,6 +626,10 @@ def main(argv: list[str] | None = None) -> int:
         s = next(x for x in pod_sessions(read_pod_events()) if x["pod_id"] == pod_id)
         t0 = datetime.fromisoformat(s["t0"]).timestamp()
         print(f"EMX_POD_RATE_USD_H={s['rate']}\nEMX_POD_CREATED_EPOCH={int(t0)}")
+    if ok and args.killswitch_deadline:
+        print(f"EMX_KILLSWITCH_DEADLINE={killswitch_deadline(pod_id)}")
+        slots = sorted({s["slot"] for s in pod_sessions(read_pod_events()) if s["running"]})
+        print(f"EMX_KILLSWITCH_SLOTS={' '.join(x for x in slots if SLOT_RE.fullmatch(x))}")
     return 0 if ok else 1
 
 

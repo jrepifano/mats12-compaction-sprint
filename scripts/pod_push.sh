@@ -27,6 +27,9 @@
 #   integrated r3) any transferred file, or the pod env file except for HF_TOKEN, containing the
 #   value of a laptop .env key matching KEY|TOKEN|SECRET|PASSWORD (values stay in a mode-600
 #   temp file and are never printed; a hit prints the path and the key name).
+# 2026-10-03: after the sync, arms the pod-side killswitch (scripts/pod_killswitch.sh; it uses the
+# pod's own scoped RunPod key, so no laptop key is sent) with the deadline from
+# `python -m emx.runpod --killswitch-deadline`; a failure to arm is a loud warning, not an error.
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
 # Usage: bash scripts/pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run [--show-files]]
@@ -258,6 +261,7 @@ if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): transfer files: $NFILES"
   if [ "$SHOW" = "1" ]; then sed 's/^/  send /' "$LIST"; fi
   echo "DRY RUN ($EXP): would rsync --files-from ($NFILES files) -> $POD_SSH_USER@$POD_SSH_HOST:/ws/emx/ (port $POD_SSH_PORT)"
+  echo "DRY RUN ($EXP): would arm: bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline from python -m emx.runpod --killswitch-deadline>"
   [ "$SETUP" = "1" ] && echo "DRY RUN ($EXP): would run: $SETUP_CMD"
   exit 0
 fi
@@ -282,6 +286,45 @@ $SSH 'chmod 600 /ws/emx/.env'
 if [ "$EXP" = "I1a" ]; then   # the I1a pod code needs both; fail loudly if either did not arrive
   $SSH 'test -f /ws/emx/third_party/workspace-bench/pyproject.toml && test -d /ws/emx/data/I1a' \
     || { echo "third_party/workspace-bench or data/I1a missing on the pod" >&2; exit 1; }
+fi
+# Pod-side spend backstop (scripts/pod_killswitch.sh, 2026-10-03): each pod stops itself when
+# the experiment's running pods together reach its GPU kill line, even while the laptop sleeps.
+# The deadline counts every running pod, so every running pod of the experiment is re-armed with
+# it (re-arming only moves a deadline). Whether the pod key may stop its pod is UNVERIFIED until a
+# live self-stop is seen. Failing to arm is loud but not fatal: the laptop watchdog is the cap.
+# arm_slot SLOT DEADLINE: prints the slot's arm result (the killswitch's last line), or a failure
+# when ssh did not exit 0 (an ARMED line from a dropped session is not trusted; review r2)
+arm_slot() {
+  local pid host port line out rc
+  pid=$(envval "RUNPOD_POD_ID$1" || true); host=$(envval "POD_SSH_HOST$1" || true)
+  port=$(envval "POD_SSH_PORT$1" || true)
+  case "$pid" in ""|*[!A-Za-z0-9]*) echo "no valid RUNPOD_POD_ID$1 in .env"; return 0 ;; esac
+  [ -n "$host" ] && [ -n "$port" ] || { echo "no SSH address for slot $1 in .env"; return 0; }
+  out=$(perl -e 'alarm 90; exec @ARGV' ssh -n -p "$port" -o ConnectTimeout=20 \
+    -o StrictHostKeyChecking=accept-new "$POD_SSH_USER@$host" \
+    "bash /ws/emx/scripts/pod_killswitch.sh arm $pid $2" 2>&1) && rc=0 || rc=$?
+  line=$(printf '%s\n' "$out" | tail -n 1)
+  if [ "$rc" != "0" ]; then echo "arm failed or uncertain (ssh exit $rc)"; return 0; fi
+  echo "${line:-no output from slot $1}"
+}
+KS_OUT=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" \
+  --killswitch-deadline 2>/dev/null) || KS_OUT=""
+DEADLINE=$(printf '%s\n' "$KS_OUT" | sed -n 's/^EMX_KILLSWITCH_DEADLINE=\([0-9][0-9]*\)$/\1/p')
+KS_SLOTS=$(printf '%s\n' "$KS_OUT" | sed -n 's/^EMX_KILLSWITCH_SLOTS=//p')
+if [ -z "$DEADLINE" ]; then
+  echo "WARNING: pod-side killswitch NOT armed (could not compute the deadline); only the laptop watchdog caps this pod" >&2
+else
+  DONE_SLOTS=""
+  for s in $SLOT $KS_SLOTS; do   # this slot first; each slot once
+    case " $DONE_SLOTS " in *" $s "*) continue ;; esac
+    DONE_SLOTS="$DONE_SLOTS $s"
+    KS_LINE=$(arm_slot "$s" "$DEADLINE")
+    case "$KS_LINE" in
+      *" ARMED pod="*key_check=ok*) echo "killswitch $s: $KS_LINE" ;;
+      *" ARMED pod="*) echo "WARNING: killswitch $s armed but its pod key could not be checked: $KS_LINE" >&2 ;;
+      *) echo "WARNING: pod-side killswitch NOT armed on slot $s ($KS_LINE); only the laptop watchdog caps it" >&2 ;;
+    esac
+  done
 fi
 if [ "$SETUP" = "1" ]; then
   # Setup runs DETACHED on the pod and is polled with short ssh calls. A single long ssh session

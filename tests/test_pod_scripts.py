@@ -77,6 +77,7 @@ def sandbox(tmp_path, monkeypatch):
     events = tmp_path / "pods_E1.jsonl"
     monkeypatch.setattr(rp, "ROOT", tmp_path)
     monkeypatch.setattr(rp, "POD_EVENTS", events)
+    monkeypatch.setattr(rp, "forget_host_key", lambda h, p: None)  # never the real known_hosts
     return tmp_path
 
 
@@ -216,6 +217,8 @@ def test_pod_up_walks_fallback_order_and_records(spend, sandbox, monkeypatch):
     up = load("pod_up")
     fake = FakeClient([rp.RunPodError("no stock"), {"id": "pod1"}])
     monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    forgotten: list[tuple[str, int]] = []
+    monkeypatch.setattr(rp, "forget_host_key", lambda h, p: forgotten.append((h, p)))
     monkeypatch.setattr(up.time, "sleep", lambda s: None)
     assert up.main(["--slot", "_A"]) == 0
     assert [b["gpuTypeIds"][0] for b in fake.created] == [
@@ -226,6 +229,7 @@ def test_pod_up_walks_fallback_order_and_records(spend, sandbox, monkeypatch):
     env = (sandbox / ".env").read_text()
     assert "RUNPOD_POD_ID_A=pod1" in env and "POD_SSH_HOST_A=1.2.3.4" in env
     assert "POD_SSH_PORT_A=40022" in env
+    assert forgotten == [("1.2.3.4", 40022)]  # stale key for a reused ip:port dropped
     ev = rp.read_pod_events()
     assert [e["event"] for e in ev] == ["created", "rate", "running"]
     assert ev[0]["gpu"] == "NVIDIA H100 NVL" and ev[0]["rate_usd_h"] == 2.59

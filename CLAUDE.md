@@ -166,6 +166,19 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
   - Give each pod run a log name of its own (a regeneration run once overwrote a training log).
 - Community-cloud H100s are often out of stock, so have a fallback GPU type in every plan.
 
+**RunPod operations** (adopted 2026-10-03 from the `docs/gotchas.md` of [kmerkelbach/runpod-tools](https://github.com/kmerkelbach/runpod-tools); its code is unlicensed, so we reimplement rather than copy):
+- **A cap enforced only from the laptop is not a cap.** `pod_push.sh` arms `scripts/pod_killswitch.sh` on every running pod of the experiment. The pod stops itself, using its own pod-scoped RunPod key, once all the experiment's running pods together would reach its GPU kill line.
+  - **Unverified until a live self-stop is seen.** RunPod documents the key and in-pod `runpodctl stop pod`, but none of our pods has done it yet. On the next approved pod run, arm with a deadline a few minutes out and confirm from the laptop that the pod stopped. Until then the laptop watchdog is the only proven cap.
+  - A self-stop wipes `/ws`, so pull results well before the deadline.
+  - After a self-stop, run `pod_down.py --slot <slot>` to terminate the pod and record its spend. Until then the laptop's books count it as still burning (an over-count).
+- **Polling too hard looks like a dead pod.** Several watchers each opening ssh sessions every minute trip sshd's `MaxStartups`, and new connections drop at the banner. Use one consolidated ssh call per check, minutes apart. Before declaring a pod dead, kill hung local ssh clients and probe once more.
+- `pgrep -f NAME` / `pkill -f NAME` over ssh match the ssh command itself: bracket the first character (`'[N]AME'`), as `pod_part.sh` does with `pod_run_e1[.]sh`.
+- Verify a detached launch after 15–20 s with real progress (new log lines, files), not with an immediate `pgrep`. A process that died at once still shows up for a second. Grep logs for the script's own anchored tag, never a bare `DONE`/`FAIL` (model outputs contain those words).
+- A redirect into a missing directory under `nohup` fails silently and leaves `$!` stale: `mkdir -p` the log directory first.
+- Large single-file transfers over rsync can stall. `tar cf - dir | ssh pod 'tar xf -'` is the fallback.
+- RunPod reuses `ip:port` pairs across pods, and `accept-new` refuses a changed host key ("Host key verification failed", exit 255). `pod_up.py` drops the stale `known_hosts` entry before first contact.
+- Fetch, verify locally, then terminate, as separate commands. Never fetch and terminate in one compound command.
+
 ## Research taste (Neel's stated priorities)
 
 - Pragmatic interpretability: judge methods by proxy tasks on the critical path to safety, not by intrinsic metrics.
