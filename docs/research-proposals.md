@@ -128,7 +128,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - The restore and KV tests take ~2 H100-hours, about $7.
 - **Total ~$22–28, cap $35** for the design above. 1.5 days; about 1 Jacob-hour.
 
-**Prereg in progress, owned by a separate session.** A separate Claude session (the E1 follow-up) owns E1b. Its draft prereg is `docs/experiments/E1b/prereg.md`, v0.4, 2026-10-03: gpt-6-sol rounds 1–3 are done, and it awaits Jacob's approval. It extends this design with second seeds at all three stages, matched controls, densely saved adapters to see when EM appears during fine-tuning, and a rule for picking "trained just enough" checkpoints. It also adds a conditional end-of-midtraining arm. Its plan is about $55, with a hard cap of $75. Where the two differ, the prereg supersedes this section. Its v0.1 was titled "E2"; that draft is unrelated to E2 below.
+**Owned by a separate session (`e1b-implementation-plan`), status 2026-10-04.** The prereg is `docs/experiments/E1b/prereg.md`, v0.5 plus amendment A. Jacob's review is folded in; one change is that sufficiency now runs in-house. Implementation plan v4 is built and reviewed in worktree `e1b/run`. E1b is at Checkpoint 0, awaiting Jacob's approval and three decisions. It extends this design with second seeds at all three stages, matched controls, densely saved adapters to see when EM appears during fine-tuning, and a rule for picking "trained just enough" checkpoints. It also adds a conditional end-of-midtraining arm. Its plan is about $55, up to about $74 if both conditional arms run, with a hard cap of $75. Where the two differ, the prereg supersedes this section. Its v0.1 was titled "E2"; that draft is unrelated to E2 below.
 
 ### E2. Is the EM direction more "at home" in pretraining text than a narrow-misalignment direction? (needs E1)
 
@@ -674,6 +674,13 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 **Caveat from I1a (added 2026-10-03).** The prompt-only baseline scores 1.00 on role-bound association, so I8's reader comparison has I1a's problem: a pass doesn't show the reader read the activation. The probes and the steering check, which test how roles are encoded, are unaffected. The reader arm needs a text-only monitor and items it fails.
 
 ### I9. Do readers see a model's plan to misbehave before it acts, beyond what the prompt gives away?
+
+**Status 2026-10-04, owned by a separate session (`i9-interpretability-implementation`).**
+- The prereg is v0.5 and the implementation plan is written (`docs/experiments/I9/`, commit `5cc438d`); each had three gpt-6-sol rounds. It is not yet signed off by Jacob, though Jacob approved the budget on 2026-10-03.
+- Implementation is under way in worktree `i9/build`, with no spend yet.
+- Changes from this section: the confirmatory set is 64 randomly drawn generator scenarios (the bank was selected on Qwen's own rollouts), the MoE arm was cut, and the exploratory arms depend on the post-smoke re-projection.
+- Plan ≈ $53 confirmatory, ≈ $57 with the thinking-on arm, ≈ $62 worst case; cap $65.
+- Asking the scholar Neel suggested for settings is deferred (Jacob). The prereg supersedes this section where they differ.
 
 *Sources: the I1a result, and Neel's 2026-10-03 group session.*
 
@@ -1306,7 +1313,7 @@ Recorded so they aren't lost. None is costed.
 | 2 | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1.5 | 1.42 (1.42) | Jacob's OK on transcripts |
 | 3 | C1 | CoT uplift under constraints (pilot) | Adjacent | 3.5 | 0.65 | 1.15 | 5–15 | 2 | 1.31 (1.73) | ask Neel if taken |
 | 4 | I4 | J-Lens data dependence | Interp | 2 | 0.85 | 1.15 | 10–30 | 1.5 | 1.30 (1.95) | — |
-| 5 | I9 | Readers vs prompt-only on per-model misbehavior rates | Interp | 4.5 | 0.6 | 1.15 | 55–80 | 2.5 | 1.24 (1.10) | I9 S0 |
+| 5 | I9 | Readers vs prompt-only on per-model misbehavior rates | Interp | 4.5 | 0.6 | 1.15 | 53–62 (prereg v0.5, cap 65) | 2.5 | 1.24 (1.10) | I9 S0 |
 | 6 | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2.5 | 1.20 (1.20) | talk to Marek |
 | 6 | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 1.20 (1.20) | X0 |
 | 8 | I1b | Add NLA | Interp | 2.5 | 0.7 | 1.0 | 20–40 | 1.5 | 1.17 (1.40) | — |
@@ -1378,8 +1385,8 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 
 | # | Experiment | Cost | What it decides | Before it runs |
 |---|---|---|---|---|
-| — | **E1b** (owned by the E1 session) | ≈ $55, cap $75 | Whether "EM from the base model up" is robust, which every EM follow-up leans on | Jacob approves the prereg; talk to Vishesh before Part 3 |
-| 1 | **I9, all stages**: Stage 0 first (~$1–3, no GPU), then Stages 1–2 (~$55–80) | ~$56–83 | Stages 1–2 decide the interp direction: do activations predict this model's own misbehavior rates beyond the prompt? Stage 0 is only a diagnostic. It shows whether the family's design score can tell reading from inference, which is worth telling the WorkspaceBench authors either way | One I9 prereg covering all stages. Ask the scholar Neel suggested for settings; send I1a's prompt-only result to the WorkspaceBench authors |
+| — | **E1b** (owned by the E1 session; at Checkpoint 0) | ≈ $55 (≤ ≈ $74), cap $75 | Whether "EM from the base model up" is robust, which every EM follow-up leans on | Jacob approves the prereg; talk to Vishesh before Part 3 |
+| 1 | **I9, all stages** (owned by the I9 session; building in `i9/build`): the text-only check first (≈ $2), then ground truth and readers | ≈ $53–62 (prereg v0.5), cap $65 | Stages 1–2 decide the interp direction: do activations predict this model's own misbehavior rates beyond the prompt? Stage 0 is only a diagnostic. It shows whether the family's design score can tell reading from inference, which is worth telling the WorkspaceBench authors either way | Jacob's sign-off on prereg v0.5. Send I1a's prompt-only result to the WorkspaceBench authors; asking the scholar Neel suggested is deferred (Jacob) |
 | 2 | **X3 pilot, with X1p's grader-identity contrast added as a fifth framing arm** (automated grader vs human reviewer) | ~$19–38 (X3's $15–30 for four framings, plus one arm) | Whether implicit capabilities vs safety framing moves cheating or unsafe shortcuts at all, in either of the 2 open models. An effect in at least one makes full X3 a weeks 3–4 candidate. A null is *not* grounds to drop the direction: the pilot is not powered to rule out a 5-point effect, and it leaves out Gemini, the model in Neel's anecdote. A null means reassessing: add Gemini, or size a powered run. The pilot can't test the full study's "≥ 2 of 4 models" criterion | the prereg sets the episode count with a power check |
 | next | **E3**, if E1b's pre-midtraining arm shows EM (otherwise E3 brackets midtraining) | $40–100 | When EM susceptibility appears in pretraining; the first step of the EM commit project | Draft its prereg while E1b runs, so it can start right after Checkpoint 1. Jacob decides whether the E1 session or this one owns it |
 
@@ -1398,10 +1405,10 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **E8:** a candidate extension if EM becomes the commit. Read Doan et al. first; Stage 1 is ≈ $65–75.
 - **I6:** revisit after Adam Karvonen's CHIVE talk.
 
-**Budget.** Spent so far: $137.12 (`logs/costs.jsonl`, 2026-10-03).
-- All figures are planned costs. If E1b's conditional arms run, its cost rises from ≈ $55 to ≈ $72 (cap $75), which adds ≈ $17 to every total below.
-- The critical path in week 2 is E1b ≈ $55, I9 ≈ $56–83 and the X3 pilot ≈ $19–38, or ≈ $130–176. That brings the running total to ≈ $267–313.
-- E3 after Checkpoint 1 brings it to ≈ $307–413. The C1 side bet adds $5–15.
+**Budget.** Spent so far: $137.14 (`scripts/merge_ledger.py report`, 2026-10-04).
+- All figures are planned costs. If E1b's conditional arms run, its cost rises from ≈ $55 to ≈ $74 (cap $75), which adds ≈ $19 to every total below.
+- The critical path in week 2 is E1b ≈ $55, I9 ≈ $53–62 and the X3 pilot ≈ $19–38, or ≈ $127–155. That brings the running total to ≈ $264–292.
+- E3 after Checkpoint 1 brings it to ≈ $304–392. The C1 side bet adds $5–15.
 - The high end exceeds "a few hundred dollars", and the overall budget isn't set. Confirm the envelope before committing to I9 Stages 1–2 and E3 together.
 - E1b, E3 and I9 Stages 1–2 all use RunPod, whose balance is shared and does not auto-top-up. Check it against their combined GPU plan before the first launch.
 
@@ -1441,10 +1448,10 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 *Updated 2026-10-03 (evening). Earlier questions are settled: the week-1 set ran. E6 and I7 are now held (§5), and X1p is recommended to fold into X3. The previous list is in git history.*
 
-1. **E1b:** the separate E1 session is waiting for your approval of the prereg (v0.4).
+1. **E1b:** the separate E1 session is at Checkpoint 0, waiting for your approval of prereg v0.5 + amendment A and three decisions. **I9:** prereg v0.5 is not yet signed off, though implementation has started in `i9/build`.
 2. **E3's owner:** the E1 session or this one? Either way, draft E3's prereg while E1b runs, so it can start right after Checkpoint 1.
 3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). Do you want the judge-invisible-poison version (subliminal learning / Phantom Transfer) read and priced, or should E7 stay dropped?
-4. **Week-2 set (§5):** do you agree with the critical path (E1b, I9 all stages, and the X3 pilot with X1p folded in), with C1 as a side bet? What is the budget envelope? With E3 added, the planned running total could reach about $413, or $428 with C1. Add about $17 if E1b's conditional arms run.
+4. **Week-2 set (§5):** do you agree with the critical path (E1b, I9 all stages, and the X3 pilot with X1p folded in), with C1 as a side bet? What is the budget envelope? With E3 added, the planned running total could reach about $392, or $407 with C1. Add about $19 if E1b's conditional arms run.
 5. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
 6. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
 7. **Coordination still open:**
