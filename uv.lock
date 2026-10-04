@@ -229,15 +229,15 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.15.1"
+version = "4.14.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/d2/f4d173e22df740bc37b1db102b386ba719b66e95b0f0d751f556b387e6d2/anyio-4.15.1.tar.gz", hash = "sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94", size = 276966, upload-time = "2026-09-05T10:42:39.44Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f", size = 260176, upload-time = "2026-07-12T20:29:07.082Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/12/b8/4bd346e22b28902df4d651910f5242c28d84e4a5c2435ca5c3f797ed7e2e/anyio-4.15.1-py3-none-any.whl", hash = "sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101", size = 132079, upload-time = "2026-09-05T10:42:37.923Z" },
+    { url = "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494", size = 125813, upload-time = "2026-07-12T20:29:05.763Z" },
 ]
 
 [[package]]
@@ -863,6 +863,15 @@ wheels = [
 ]
 
 [[package]]
+name = "distro"
+version = "1.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/f8/98eea607f65de6527f8a2e8885fc8015d3e6f5775df186e443e0964a11c3/distro-1.9.0.tar.gz", hash = "sha256:2fa77c6fd8940f116ee1d6b94a2f90b13b5ea8d019b98bc8bafdcabcdd9bdbed", size = 60722, upload-time = "2023-12-24T09:54:32.31Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/12/b3/231ffd4ab1fc9d679809f356cebee130ac7daa00d6d6f3206dd4fd137e9e/distro-1.9.0-py3-none-any.whl", hash = "sha256:7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2", size = 20277, upload-time = "2023-12-24T09:54:30.421Z" },
+]
+
+[[package]]
 name = "dnspython"
 version = "2.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -958,7 +967,9 @@ pod-unsloth = [
     { name = "unsloth" },
 ]
 swarm = [
+    { name = "anyio" },
     { name = "inspect-ai" },
+    { name = "openai" },
 ]
 vllm = [
     { name = "vllm" },
@@ -1013,7 +1024,11 @@ pod-peft = [
     { name = "trl", specifier = ">=0.24" },
 ]
 pod-unsloth = [{ name = "unsloth", specifier = ">=2026.9" }]
-swarm = [{ name = "inspect-ai", specifier = "==0.3.257" }]
+swarm = [
+    { name = "anyio", specifier = "==4.14.2" },
+    { name = "inspect-ai", specifier = "==0.3.257" },
+    { name = "openai", specifier = ">=2.54,<3" },
+]
 vllm = [{ name = "vllm", specifier = ">=0.11" }]
 
 [[package]]
@@ -1357,8 +1372,8 @@ name = "httpcore2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "h11", marker = "sys_platform != 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
-    { name = "truststore", marker = "sys_platform != 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "h11", marker = "(sys_platform != 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform != 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform != 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "truststore", marker = "(sys_platform != 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform != 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform != 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/cb/f3/1db7aa2bc2524062192bb0e0323969492d1883152a232fe36eea65f4e35c/httpcore2-2.13.1.tar.gz", hash = "sha256:e0aa977abe17e69a3b820a24542a6fa88702676d83880b8d194dcd18408e5103", size = 68071, upload-time = "2026-09-23T07:47:22.372Z" }
 wheels = [
@@ -1400,12 +1415,12 @@ name = "httpx2"
 version = "2.13.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "anyio", marker = "sys_platform != 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
-    { name = "httpcore2", marker = "sys_platform != 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
-    { name = "httpx2-jsfetch", marker = "sys_platform == 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
-    { name = "idna" },
-    { name = "truststore", marker = "sys_platform != 'emscripten' or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
-    { name = "typing-extensions" },
+    { name = "anyio", marker = "(sys_platform != 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform != 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform != 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "httpcore2", marker = "(sys_platform != 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform != 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform != 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "httpx2-jsfetch", marker = "(sys_platform == 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform == 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform == 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform == 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform == 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "idna", marker = "extra == 'group-3-emx-dev' or extra == 'group-3-emx-i1a' or extra == 'group-3-emx-pod-i1a' or extra == 'group-3-emx-pod-peft' or extra != 'group-3-emx-pod-unsloth' or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "truststore", marker = "(sys_platform != 'emscripten' and extra == 'group-3-emx-dev') or (sys_platform != 'emscripten' and extra == 'group-3-emx-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-i1a') or (sys_platform != 'emscripten' and extra == 'group-3-emx-pod-peft') or (sys_platform != 'emscripten' and extra != 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-dev' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-peft') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-i1a' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-pod-unsloth') or (extra == 'group-3-emx-pod-peft' and extra == 'group-3-emx-vllm') or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
+    { name = "typing-extensions", marker = "extra == 'group-3-emx-dev' or extra == 'group-3-emx-i1a' or extra == 'group-3-emx-pod-i1a' or extra == 'group-3-emx-pod-peft' or extra != 'group-3-emx-pod-unsloth' or (extra == 'group-3-emx-pod-unsloth' and extra == 'group-3-emx-vllm')" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/d5/44/474bef2a0e9d90f1715d32cb98b0738695ca17ba324095fb2497ed7fbd59/httpx2-2.13.1.tar.gz", hash = "sha256:e48744a19e3af5ee48313d0ce5fe941d5422fae5705ea922a4aabf94d7800dfa", size = 100405, upload-time = "2026-09-23T07:47:23.052Z" }
 wheels = [
@@ -2753,19 +2768,21 @@ wheels = [
 
 [[package]]
 name = "openai"
-version = "3.21.0"
+version = "2.54.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
-    { name = "httpx2" },
+    { name = "distro" },
+    { name = "httpx" },
     { name = "jiter" },
     { name = "pydantic" },
     { name = "sniffio" },
+    { name = "tqdm" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ae/8d/52cfa8ed2edbe3ec14c0e9ca4f6258a234129b0846fa7e5779d8aba3d791/openai-3.21.0.tar.gz", hash = "sha256:b3da56a0693953fa1851d554579e8904d0166f524d004048b636c548e0b7ef8f", size = 1746642, upload-time = "2026-09-29T17:41:17.609Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/9a/8c75e8c8a5b407a0586faeb2afac91674ff955c191ecc1d6d3b6669f6788/openai-2.54.0.tar.gz", hash = "sha256:e3e6f8bc1ba30ddf381ace1a14340eed381cb984a1a59bd0f34b5be3b5d49cfa", size = 1100285, upload-time = "2026-08-11T18:46:59.035Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0a/ad/1a1424ffc597cda66dabff0ca99da3f06c7218d679e3183a4bb55e8d0369/openai-3.21.0-py3-none-any.whl", hash = "sha256:28040df2ca1ffcb358c22d574aa3c339f37309650df972de0511fa1df8b09184", size = 2082977, upload-time = "2026-09-29T17:41:15.572Z" },
+    { url = "https://files.pythonhosted.org/packages/64/a8/bb76c7356de8ad57f59d5ff993d434df0607f07f08bcc9c9a5c275e399c0/openai-2.54.0-py3-none-any.whl", hash = "sha256:89089789197ccdb87f173a03145ed1598d00795220c93e96cf712b1cbf5e5f2b", size = 1660351, upload-time = "2026-08-11T18:46:56.684Z" },
 ]
 
 [[package]]
