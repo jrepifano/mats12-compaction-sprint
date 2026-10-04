@@ -4,8 +4,9 @@ Every paid call is covered by a reservation taken **before** it starts, under on
 `fcntl` lock on the shared spend ledger, so parallel processes cannot jointly cross the cap
 (the gap gpt-6-sol found in the Phase 0 runner, logs/reviews/20260929-SW-e5ad305-r1.md).
 
-- Spend lines go to the shared ledger (`logs/costs.jsonl` in the main checkout), in the same
-  one-JSON-object-per-line format as `emx.spend`, with exp `S4` and kind `api`.
+- Spend lines go to `logs/costs.jsonl` in the checkout this module runs from (per-worktree ledgers,
+  CLAUDE.md, 2026-10-04; it used to be hard-coded to the main checkout), in the same
+  one-JSON-object-per-line format as `emx.spend`, with exp `S4` and kind `api` and a unique `id`.
 - Outstanding reservations live in `logs/S4.reservations.json` next to it.
 - A reservation is refused if spent + outstanding + new > cap.
 
@@ -23,7 +24,7 @@ from pathlib import Path
 
 from s4world.contracts import EXP_ID, PILOT_CAP_USD
 
-MAIN_REPO = Path("/Users/jacob/Documents/GitHub/mats12_neel_exploratory")
+REPO_ROOT = Path(__file__).resolve().parents[2]  # the checkout this module runs from
 
 
 class BudgetRefused(RuntimeError):
@@ -31,11 +32,11 @@ class BudgetRefused(RuntimeError):
 
 
 def ledger_path() -> Path:
-    return Path(os.environ.get("S4_LEDGER", MAIN_REPO / "logs" / "costs.jsonl"))
+    return Path(os.environ.get("S4_LEDGER", REPO_ROOT / "logs" / "costs.jsonl"))
 
 
 def reservations_path() -> Path:
-    return Path(os.environ.get("S4_RESERVATIONS", MAIN_REPO / "logs" / "S4.reservations.json"))
+    return Path(os.environ.get("S4_RESERVATIONS", REPO_ROOT / "logs" / "S4.reservations.json"))
 
 
 @contextmanager
@@ -125,7 +126,8 @@ def settle(rid: str, actual_usd: float, resource: str, units: float, note: str) 
         over = actual_usd > r["usd"] + 1e-9
         entry = {"utc": _now(), "exp": r["exp"], "kind": "api", "resource": resource,
                  "units": units, "usd": round(float(actual_usd), 6),
-                 "note": f"{note} (reserved {r['usd']:.4f}{'; OVER RESERVATION' if over else ''})"}
+                 "note": f"{note} (reserved {r['usd']:.4f}{'; OVER RESERVATION' if over else ''})",
+                 "id": uuid.uuid4().hex}
         f.seek(0, os.SEEK_END)
         f.write(json.dumps(entry) + "\n")
         f.flush()

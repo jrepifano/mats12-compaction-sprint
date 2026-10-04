@@ -4,7 +4,10 @@ New module (implementation plan §5 "One combined guard"; prereg §7 and §11 am
 mechanism follows ../mats12_neel_working/scripts/judge_panel_spend.py (project, then exit non-zero
 before the call that would cross the cap); the numbers come from `emx.contracts`.
 
-Ledger: one JSON object per line, `{utc, exp, kind: gpu|judge, resource, units, usd, note}`.
+Ledger: one JSON object per line, `{utc, exp, kind: gpu|judge, resource, units, usd, note, id}`.
+`id` (a uuid4 hex, added 2026-10-04) makes each charge unique, so `scripts/merge_ledger.py` can
+combine per-worktree ledgers without merging two real charges or double counting one. Older rows
+have no `id`.
 Every append takes an exclusive `fcntl.flock` on the ledger file itself and writes one complete
 line, so concurrent writers cannot interleave (the working repo's ledger was corrupted by
 parallel writers). Reads take a shared lock. A malformed line raises instead of being skipped.
@@ -30,6 +33,7 @@ import json
 import math
 import os
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -125,6 +129,7 @@ def record(
         "units": units,
         "usd": round(float(usd), 6),
         "note": note,
+        "id": uuid.uuid4().hex,
     }
     line = json.dumps(entry, sort_keys=False) + "\n"
     path = ledger_path(ledger)

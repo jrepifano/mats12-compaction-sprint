@@ -1,0 +1,3 @@
+# Spend ledgers: each worktree appends to its own copy; union keeps both sides on merge.
+# Run `uv run python scripts/merge_ledger.py check` after merging a branch (CLAUDE.md).
+logs/costs.jsonl merge=union
