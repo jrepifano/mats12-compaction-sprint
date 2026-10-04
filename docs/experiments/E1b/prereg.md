@@ -492,6 +492,8 @@ The detailed plan goes in `docs/experiments/E1b/implementation-plan.md` after ap
 | 2026-10-04 | gpt-6-sol, v0.5 changes, rounds 1–2 (`logs/reviews/20261004-E1b-prereg-v05-r{1,2}.md`; required by CLAUDE.md "Order: review, then sign-off") | r1 REVISE: sufficiency was magnitude-only; Part 3(b) priced at 4 conditions, not 7, and the worst case omitted the smoke test and α-grid judging; "not computable" missing from §4.9/§6. Fixed as amendment A6 (directional sufficiency condition, repricing, cut 1 before S2). r2 FINAL AFTER FIXES: budget summaries in §7 and plan §5 pointed at A6; plan U6b's outcomes; status wording. All fixed |
 | 2026-10-04 | Jacob | A6 signed off; S2 approved (after S1 passed and the worst case was recomputed at ≈ $73.4, no cut needed) |
 
+**Claude Doc sync:** In the doc, §4.9(a)'s "not computable" outcome sits in the list's lead-in rather than as item 0.
+
 **Changes from Jacob's review** (v0.5, 2026-10-04, via comments on the Claude Doc)
 - No coordination with Vishesh: E1b runs the sufficiency direction itself (activation level, forward passes only, secondary labels; §4.9).
 - Part 3 runs on a second pod at the same time as Part 1 and stays blinded until Checkpoint 1; each Part 1 run is judged as soon as it finishes. The extra-seed arm then needs its own pod (+≈ $2), so the worst case is ≈ $74, under the $75 cap. Timeline ≈ 2–2.5 days.
