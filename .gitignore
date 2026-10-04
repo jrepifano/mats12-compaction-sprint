@@ -63,3 +63,16 @@ results/S4/*.log
 results/S4/label_bundle_contested.csv
 results/S4/label_bundle_contested_key.csv
 logs/judging.lock
+# E1b: large or raw artifacts stay local; hashes live in committed manifests (plan §1.7)
+data/E1b/fineweb*.jsonl
+results/E1b/gen/
+results/E1b/judged/
+results/E1b/step0/*.csv
+results/E1b/part3/firstk/
+results/E1b/part3/restore/
+results/E1b/part3/steer/*.csv
+results/E1b/part3/judged/*.csv
+results/E1b/_staging_*/**/*.csv
+results/E1b/_staging_*/**/*.npz
+# hand-label key holds judge scores: never commit or open before Jacob finishes labelling
+results/E1b/validation/handlabel_key*.csv
