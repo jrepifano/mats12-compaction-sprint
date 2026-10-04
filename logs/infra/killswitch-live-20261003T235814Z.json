@@ -1,0 +1,55 @@
+{
+  "utc_start": "2026-10-03T23:53:02.264608+00:00",
+  "image": "runpod/pytorch:1.3.3-cu1300-torch2121-ubuntu2404@sha256:5f36564b9f8dd873f569143afc5035182116748bb7fffab0ed305b2072271ae9",
+  "cloud": "COMMUNITY",
+  "pod_id": "pcoza0jk5tkxaw",
+  "rate_usd_h": 0.22,
+  "gpu": "NVIDIA GeForce RTX 3090",
+  "deadline": 1791071873,
+  "killswitch_log_before_deadline": "2026-10-03T23:54:54Z [killswitch] watcher started (pid 197, poll 60s)\n",
+  "status_trace": [
+    "+-10s:RUNNING",
+    "+5s:EXITED"
+  ],
+  "killswitch_log_at_deadline": "2026-10-03T23:57:54Z [killswitch] DEADLINE REACHED (1791071873): stopping pod pcoza0jk5tkxaw\nConnection to 64.119.209.250 closed by remote host.\n",
+  "ssh_after_stop_rc": 255,
+  "terminated": true,
+  "hours": 0.0863,
+  "usd": 0.019,
+  "checks": {
+    "env": {
+      "ok": true,
+      "detail": "RUNPOD_POD_ID=['pcoza0jk5tkxaw'], RUNPOD_API_KEY present=True"
+    },
+    "refuse": {
+      "ok": true,
+      "detail": "rc=1 2026-10-03T23:54:53Z [killswitch] NOT ARMED: REFUSED: this is pod pcoza0jk5tkxaw, not wrongpod123"
+    },
+    "arm": {
+      "ok": true,
+      "detail": "2026-10-03T23:54:54Z [killswitch] ARMED pod=pcoza0jk5tkxaw deadline=1791071873 (2026-10-03T23:57:53Z) key_check=ok-read403"
+    },
+    "single": {
+      "ok": true,
+      "detail": "rearm=True watchers=1 status=['ARMED deadline=1791071873 watcher=yes']"
+    },
+    "no_leak": {
+      "ok": true,
+      "detail": "argv=0 log=0"
+    },
+    "no_early": {
+      "ok": true,
+      "detail": "desiredStatus=RUNNING 30 s before the deadline"
+    },
+    "stops": {
+      "ok": true,
+      "detail": "stopped 5 s after the deadline"
+    },
+    "stop_route": {
+      "ok": false,
+      "detail": "no 'stop accepted' line streamed: '2026-10-03T23:57:54Z [killswitch] DEADLINE REACHED (1791071873): stopping pod pcoza0jk5tkxaw\\nConnection to 64.119.209.250 closed by remote host.\\n'"
+    }
+  },
+  "wall_s": 312,
+  "passed": false
+}

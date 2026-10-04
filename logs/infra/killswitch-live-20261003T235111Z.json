@@ -1,0 +1,55 @@
+{
+  "utc_start": "2026-10-03T23:47:22.994605+00:00",
+  "image": "runpod/pytorch:1.3.3-cu1300-torch2121-ubuntu2404@sha256:5f36564b9f8dd873f569143afc5035182116748bb7fffab0ed305b2072271ae9",
+  "cloud": "COMMUNITY",
+  "pod_id": "0iea1kp20pbn7j",
+  "rate_usd_h": 0.17,
+  "gpu": "NVIDIA RTX A4000",
+  "deadline": 1791071449,
+  "killswitch_log_before_deadline": "2026-10-03T23:47:51Z [killswitch] watcher started (pid 229, poll 60s)\n",
+  "status_trace": [
+    "+-9s:RUNNING",
+    "+6s:EXITED"
+  ],
+  "killswitch_log_at_deadline": "2026-10-03T23:50:51Z [killswitch] DEADLINE REACHED (1791071449): stopping pod 0iea1kp20pbn7j\n2026-10-03T23:50:51Z [killswitch] REST stop failed (HTTP 403); trying runpodctl\nRunpod config file not found, please run `runpodctl config` to create it\npod \"0iea1kp20pbn7j\" stopped\n2026-10-03T23:50:52Z [killswitch] stop accepted (runpodctl)\nConnection to 87.197.146.56 closed by remote host.\n",
+  "ssh_after_stop_rc": 255,
+  "terminated": true,
+  "hours": 0.0631,
+  "usd": 0.0107,
+  "checks": {
+    "env": {
+      "ok": true,
+      "detail": "RUNPOD_POD_ID=['0iea1kp20pbn7j'], RUNPOD_API_KEY present=True"
+    },
+    "refuse": {
+      "ok": true,
+      "detail": "rc=1 2026-10-03T23:47:49Z [killswitch] NOT ARMED: REFUSED: this is pod 0iea1kp20pbn7j, not wrongpod123"
+    },
+    "arm": {
+      "ok": true,
+      "detail": "2026-10-03T23:47:51Z [killswitch] ARMED pod=0iea1kp20pbn7j deadline=1791071449 (2026-10-03T23:50:49Z) key_check=ok-read403"
+    },
+    "single": {
+      "ok": true,
+      "detail": "rearm=True watchers=1 status=['ARMED deadline=1791071449 watcher=yes']"
+    },
+    "no_leak": {
+      "ok": true,
+      "detail": "argv=0 log=0"
+    },
+    "no_early": {
+      "ok": true,
+      "detail": "desiredStatus=RUNNING 30 s before the deadline"
+    },
+    "stops": {
+      "ok": true,
+      "detail": "stopped 6 s after the deadline"
+    },
+    "stop_route": {
+      "ok": true,
+      "detail": "2026-10-03T23:50:52Z [killswitch] stop accepted (runpodctl)"
+    }
+  },
+  "wall_s": 229,
+  "passed": true
+}

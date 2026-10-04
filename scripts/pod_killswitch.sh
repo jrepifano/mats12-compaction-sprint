@@ -8,10 +8,11 @@
 # `python -m emx.runpod --killswitch-deadline` (when the experiment's running pods together reach
 # the GPU kill line).
 #
-# UNVERIFIED (2026-10-03): that the pod-scoped key may stop its own pod. RunPod documents the key
-# as "limited in scope to only the pod" (docs.runpod.io/pods/references/environment-variables)
-# and documents `runpodctl stop pod $RUNPOD_POD_ID` from inside a pod, but no pod of ours has
-# exercised it yet. Until a live self-stop has been seen from the laptop, this is not a cap.
+# VERIFIED LIVE 2026-10-03 (scripts/killswitch_live_check.py, logs/infra/killswitch-live-*.json;
+# pods stopped 6-19 s after their deadlines). With our image and its pod key, REST answered 403
+# to both the read and the stop, and `runpodctl stop pod` worked (run 3 streamed the log). So
+# `arm` refuses when runpodctl is missing (an image without it could never fire), runpodctl is
+# the first route, and REST is kept only as a fallback.
 #
 # Key: RUNPOD_API_KEY and RUNPOD_POD_ID from the container's PID 1 environment (/proc/1/environ;
 # ssh shells do not inherit it). The laptop's account key never reaches the pod (pod_push.sh
@@ -19,19 +20,20 @@
 # header from a config on stdin (-q first, so no ~/.curlrc can add tracing), and runpodctl
 # (fallback) reads it from its environment.
 #
-# Action: stop (REST POST /v1/pods/{id}/stop; fallback `runpodctl pod stop`, then the legacy
-# `runpodctl stop pod`). A stop that worked kills this container, watcher included, so the
-# watcher confirms a stop by not surviving it: while it still runs after the deadline it retries
-# every poll. Stopping ends GPU billing but wipes the container disk, /ws included: results not
+# Action: stop (`runpodctl stop pod`, the syntax the image's runpodctl knows; then the newer
+# `runpodctl pod stop`; then REST POST /v1/pods/{id}/stop). A stop that worked kills this
+# container, watcher included, so the watcher confirms a stop by not surviving it: while it
+# still runs after the deadline it retries every poll. Stopping ends GPU billing but wipes the container disk, /ws included: results not
 # yet pulled are lost. The deadline is a budget backstop, not a schedule. Until the laptop runs
 # pod_down.py (terminate + ledger record), the laptop's books still count a self-stopped pod as
 # burning, i.e. they over-count, never under-count.
 #
 # Usage (root on the pod):
 #   pod_killswitch.sh arm POD_ID DEADLINE_EPOCH
-#       refuses unless RUNPOD_POD_ID in PID 1's env equals POD_ID (never stops another pod);
-#       reads the pod with the key (key_check=ok|unverified:<why>; a read proves the key, not its
-#       stop permission), writes the deadline, and starts the watcher unless one is alive.
+#       refuses unless RUNPOD_POD_ID in PID 1's env equals POD_ID (never stops another pod) and
+#       runpodctl is installed;
+#       reads the pod with the key (key_check=ok|read403|unverified:<why>; with our image the pod
+#       key gets 403 on reads, the expected state; no read result proves stop permission), writes the deadline, and starts the watcher unless one is alive.
 #       Serialized with flock when available. Re-arming only moves the deadline. Prints the last
 #       line "ARMED pod=<id> deadline=<epoch> (<utc>) key_check=<...>" only when every state file
 #       was written and a watcher is alive; otherwise exits 1.
@@ -89,17 +91,20 @@ watcher_alive() {
   ps -p "$pid" -o command= 2>/dev/null | grep -q 'pod_killswitch[.]sh watch'
 }
 
+# Each route is logged BEFORE it runs: a stop that works can kill the container before the
+# "accepted" line is written (live run 4, 2026-10-03), so the last "trying" line names the route.
 stop_pod() {
   local code
+  say "trying runpodctl stop pod"
+  if runpodctl_do stop pod "$POD_SELF" || runpodctl_do pod stop "$POD_SELF"; then
+    say "stop accepted (runpodctl)"; return 0
+  fi
+  say "trying REST stop"
   code=$(api POST "/pods/$POD_SELF/stop")
   case "$code" in
     2??) say "stop accepted (REST HTTP $code)"; return 0 ;;
   esac
-  say "REST stop failed (HTTP $code); trying runpodctl"
-  if runpodctl_do pod stop "$POD_SELF" || runpodctl_do stop pod "$POD_SELF"; then
-    say "stop accepted (runpodctl)"; return 0
-  fi
-  say "STOP FAILED"
+  say "STOP FAILED (runpodctl failed; REST HTTP $code)"
   return 1
 }
 
@@ -114,12 +119,16 @@ cmd_arm() {
   fi
   load_key || fail "no pod key"
   [ "$POD_SELF" = "$want" ] || fail "REFUSED: this is pod $POD_SELF, not $want"
+  command -v runpodctl >/dev/null 2>&1 \
+    || fail "no runpodctl on this pod: the pod key can stop the pod only through it (REST is 403)"
+  # Live check 2026-10-03 (logs/infra/): with our image the pod key gets 403 reading its own
+  # pod, yet `runpodctl stop pod` stopped it. read403 is that expected state; it does not by
+  # itself prove the key is valid (only the live self-stop did).
   code=$(api GET "/pods/$POD_SELF")
   case "$code" in
     2??) check=ok ;;
-    *) if runpodctl_do pod get "$POD_SELF" || runpodctl_do get pod "$POD_SELF"; then
-         check=ok-runpodctl
-       else check="unverified:http_$code"; fi ;;
+    403) check=read403 ;;
+    *) check="unverified:http_$code" ;;
   esac
   { printf '%s\n' "$POD_SELF" > "$KS_DIR/pod_id" \
       && printf '%s\n' "$deadline" > "$KS_DIR/deadline.tmp" \

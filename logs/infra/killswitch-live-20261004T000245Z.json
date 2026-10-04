@@ -1,0 +1,60 @@
+{
+  "utc_start": "2026-10-03T23:58:45.650570+00:00",
+  "image": "runpod/pytorch:1.3.3-cu1300-torch2121-ubuntu2404@sha256:5f36564b9f8dd873f569143afc5035182116748bb7fffab0ed305b2072271ae9",
+  "cloud": "COMMUNITY",
+  "pod_id": "kzxngk3arlpx1f",
+  "rate_usd_h": 0.17,
+  "gpu": "NVIDIA RTX A4000",
+  "deadline": 1791072131,
+  "killswitch_log_before_deadline": "2026-10-03T23:59:13Z [killswitch] watcher started (pid 230, poll 60s)\n",
+  "status_trace": [
+    "+-13s:RUNNING",
+    "+2s:RUNNING",
+    "+17s:EXITED"
+  ],
+  "killswitch_log_at_deadline": "2026-10-04T00:02:13Z [killswitch] DEADLINE REACHED (1791072131): stopping pod kzxngk3arlpx1f\n2026-10-04T00:02:13Z [killswitch] trying runpodctl stop pod\nConnection to 87.197.146.56 closed by remote host.\n",
+  "stop_route": "2026-10-04T00:02:13Z [killswitch] trying runpodctl stop pod",
+  "ssh_after_stop_rc": 255,
+  "hours": 0.0663,
+  "usd": 0.0113,
+  "terminated": true,
+  "pods": [
+    "kzxngk3arlpx1f"
+  ],
+  "checks": {
+    "env": {
+      "ok": true,
+      "detail": "RUNPOD_POD_ID=['kzxngk3arlpx1f'], RUNPOD_API_KEY present=True"
+    },
+    "refuse": {
+      "ok": true,
+      "detail": "rc=1 2026-10-03T23:59:11Z [killswitch] NOT ARMED: REFUSED: this is pod kzxngk3arlpx1f, not wrongpod123"
+    },
+    "arm": {
+      "ok": true,
+      "detail": "2026-10-03T23:59:14Z [killswitch] ARMED pod=kzxngk3arlpx1f deadline=1791072131 (2026-10-04T00:02:11Z) key_check=read403"
+    },
+    "single": {
+      "ok": true,
+      "detail": "rearm=True watchers=1 status=['ARMED deadline=1791072131 watcher=yes']"
+    },
+    "no_leak": {
+      "ok": true,
+      "detail": "rc=0 argv=0 log=0"
+    },
+    "no_early": {
+      "ok": true,
+      "detail": "desiredStatus=RUNNING 30 s before the deadline"
+    },
+    "stops": {
+      "ok": true,
+      "detail": "stopped 17 s after the deadline"
+    },
+    "stop_route": {
+      "ok": true,
+      "detail": "2026-10-04T00:02:13Z [killswitch] trying runpodctl stop pod"
+    }
+  },
+  "wall_s": 240,
+  "passed": true
+}

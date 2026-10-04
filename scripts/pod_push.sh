@@ -290,8 +290,8 @@ fi
 # Pod-side spend backstop (scripts/pod_killswitch.sh, 2026-10-03): each pod stops itself when
 # the experiment's running pods together reach its GPU kill line, even while the laptop sleeps.
 # The deadline counts every running pod, so every running pod of the experiment is re-armed with
-# it (re-arming only moves a deadline). Whether the pod key may stop its pod is UNVERIFIED until a
-# live self-stop is seen. Failing to arm is loud but not fatal: the laptop watchdog is the cap.
+# it (re-arming only moves a deadline). Self-stop verified live 2026-10-03 (logs/infra/), through
+# runpodctl only. Failing to arm is loud but not fatal: the laptop watchdog still runs.
 # arm_slot SLOT DEADLINE: prints the slot's arm result (the killswitch's last line), or a failure
 # when ssh did not exit 0 (an ARMED line from a dropped session is not trusted; review r2)
 arm_slot() {
@@ -320,7 +320,7 @@ else
     DONE_SLOTS="$DONE_SLOTS $s"
     KS_LINE=$(arm_slot "$s" "$DEADLINE")
     case "$KS_LINE" in
-      *" ARMED pod="*key_check=ok*) echo "killswitch $s: $KS_LINE" ;;
+      *" ARMED pod="*key_check=ok*|*" ARMED pod="*key_check=read403*) echo "killswitch $s: $KS_LINE" ;;
       *" ARMED pod="*) echo "WARNING: killswitch $s armed but its pod key could not be checked: $KS_LINE" >&2 ;;
       *) echo "WARNING: pod-side killswitch NOT armed on slot $s ($KS_LINE); only the laptop watchdog caps it" >&2 ;;
     esac

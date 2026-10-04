@@ -168,7 +168,10 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
 
 **RunPod operations** (adopted 2026-10-03 from the `docs/gotchas.md` of [kmerkelbach/runpod-tools](https://github.com/kmerkelbach/runpod-tools); its code is unlicensed, so we reimplement rather than copy):
 - **A cap enforced only from the laptop is not a cap.** `pod_push.sh` arms `scripts/pod_killswitch.sh` on every running pod of the experiment. The pod stops itself, using its own pod-scoped RunPod key, once all the experiment's running pods together would reach its GPU kill line.
-  - **Unverified until a live self-stop is seen.** RunPod documents the key and in-pod `runpodctl stop pod`, but none of our pods has done it yet. On the next approved pod run, arm with a deadline a few minutes out and confirm from the laptop that the pod stopped. Until then the laptop watchdog is the only proven cap.
+  - **Verified live on 2026-10-03.** Pods stopped themselves 6–19 s after the deadline; the evidence is in `scripts/killswitch_live_check.py` and `logs/infra/`, at about $0.01 per run.
+  - With our image and its pod key, REST returned 403 for both the read and the stop, while **`runpodctl stop pod` worked**. So `arm` refuses on an image without `runpodctl`; ours has it.
+  - Re-run the live check after changing the image. A free Linux check is `bash scripts/killswitch_linux_check.sh` (Docker).
+  - The laptop watchdog remains the primary cap.
   - A self-stop wipes `/ws`, so pull results well before the deadline.
   - After a self-stop, run `pod_down.py --slot <slot>` to terminate the pod and record its spend. Until then the laptop's books count it as still burning (an over-count).
 - **Polling too hard looks like a dead pod.** Several watchers each opening ssh sessions every minute trip sshd's `MaxStartups`, and new connections drop at the banner. Use one consolidated ssh call per check, minutes apart. Before declaring a pod dead, kill hung local ssh clients and probe once more.

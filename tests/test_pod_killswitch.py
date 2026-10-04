@@ -32,7 +32,7 @@ printf '%s' "$code"
 
 FAKE_RUNPODCTL = """#!/bin/sh
 printf '%s key_in_env=%s\\n' "$*" "${RUNPOD_API_KEY:+yes}" >> "$FAKE_LOG/runpodctl.log"
-exit 0
+exit ${FAKE_RPCTL_RC:-0}
 """
 
 
@@ -40,7 +40,7 @@ exit 0
 def ks(tmp_path):
     bin_ = tmp_path / "bin"
     bin_.mkdir()
-    for name, body in (("curl", FAKE_CURL),):
+    for name, body in (("curl", FAKE_CURL), ("runpodctl", FAKE_RUNPODCTL)):
         (bin_ / name).write_text(body)
         (bin_ / name).chmod(0o755)
     environ = tmp_path / "environ"
@@ -101,15 +101,30 @@ def test_arm_refuses_another_pods_id(ks):
     assert not (ks.tmp / "ks" / "deadline").exists() and log(ks.tmp, "calls.log") == ""
 
 
+def test_arm_refuses_without_runpodctl(ks):
+    """Live check 2026-10-03: the pod key can stop its pod only through runpodctl (REST is 403),
+    so a pod without it could never fire."""
+    (ks.bin / "runpodctl").unlink()
+    r = ks("arm", POD, "4102444800", KS_NO_SPAWN="1")
+    assert r.returncode == 1 and "no runpodctl" in r.stdout and " ARMED pod=" not in r.stdout
+    assert not (ks.tmp / "ks" / "deadline").exists()
+
+
 def test_arm_without_pod_key_fails(ks):
     ks.environ.write_bytes(f"RUNPOD_POD_ID={POD}\0".encode())
     r = ks("arm", POD, "4102444800", KS_NO_SPAWN="1")
     assert r.returncode == 1 and "no usable RUNPOD_API_KEY" in r.stdout
 
 
-def test_arm_with_unreadable_pod_still_arms_but_says_unverified(ks):
-    r = ks("arm", POD, "4102444800", KS_NO_SPAWN="1", FAKE_HTTP_GET="403")
-    assert r.returncode == 0 and "key_check=unverified:http_403" in r.stdout
+@pytest.mark.parametrize(
+    "code,check",
+    [("403", "key_check=read403"), ("401", "key_check=unverified:http_401")],
+)
+def test_arm_read_status_maps_to_key_check(ks, code, check):
+    """Live check 2026-10-03: the real pod key gets 403 reading its pod (authenticated, not
+    allowed to read) yet may stop it; 401 would be a bad key."""
+    r = ks("arm", POD, "4102444800", KS_NO_SPAWN="1", FAKE_HTTP_GET=code)
+    assert r.returncode == 0 and check in r.stdout
 
 
 @pytest.mark.parametrize("args", [(), ("arm", POD), ("arm", "bad;id", "1"), ("arm", POD, "1h")])
@@ -125,29 +140,33 @@ def test_watch_once_before_deadline_does_nothing(ks):
     assert "ARMED" in ks("status").stdout
 
 
-def test_watch_once_after_deadline_stops_this_pod(ks):
+def test_watch_once_after_deadline_stops_this_pod_via_runpodctl(ks):
     ks("arm", POD, str(int(time.time()) - 5), KS_NO_SPAWN="1")
     r = ks("watch", KS_ONCE="1")
     assert r.returncode == 0, r.stdout
-    calls = log(ks.tmp, "calls.log")
-    assert "-X POST" in calls and f"/pods/{POD}/stop" in calls and KEY not in calls
+    rc = log(ks.tmp, "runpodctl.log")
+    # the image's runpodctl only knows the legacy `stop pod` (live check 2026-10-03): tried first
+    assert rc.splitlines() == [f"stop pod {POD} key_in_env=yes"] and KEY not in rc
+    assert "-X POST" not in log(ks.tmp, "calls.log")  # REST only as a fallback
     assert (ks.tmp / "ks" / "fired").exists() and ks("status").stdout.startswith("FIRED")
 
 
-def test_rest_failure_falls_back_to_runpodctl_with_key_in_env_only(ks):
-    (ks.bin / "runpodctl").write_text(FAKE_RUNPODCTL)
-    (ks.bin / "runpodctl").chmod(0o755)
+def test_runpodctl_failure_falls_back_to_rest(ks):
     ks("arm", POD, str(int(time.time()) - 5), KS_NO_SPAWN="1")
-    r = ks("watch", KS_ONCE="1", FAKE_HTTP_POST="500")
-    assert r.returncode == 0, r.stdout
-    rc = log(ks.tmp, "runpodctl.log")
-    assert f"pod stop {POD} key_in_env=yes" in rc and KEY not in rc
+    r = ks("watch", KS_ONCE="1", FAKE_RPCTL_RC="1")
+    assert r.returncode == 0 and "stop accepted (REST HTTP 200)" in r.stdout, r.stdout
+    assert [ln.split(" key_in_env")[0] for ln in log(ks.tmp, "runpodctl.log").splitlines()] == [
+        f"stop pod {POD}",
+        f"pod stop {POD}",
+    ]
+    calls = log(ks.tmp, "calls.log")
+    assert "-X POST" in calls and f"/pods/{POD}/stop" in calls and KEY not in calls
 
 
-@pytest.mark.parametrize("code", ["403", "500"])  # 403: the key can read but not stop
+@pytest.mark.parametrize("code", ["403", "500"])  # 403: what the real pod key gets on REST
 def test_stop_failing_everywhere_is_not_marked_fired(ks, code):
     ks("arm", POD, str(int(time.time()) - 5), KS_NO_SPAWN="1")
-    r = ks("watch", KS_ONCE="1", FAKE_HTTP_POST=code)
+    r = ks("watch", KS_ONCE="1", FAKE_RPCTL_RC="1", FAKE_HTTP_POST=code)
     assert r.returncode == 1 and "STOP FAILED" in r.stdout
     assert not (ks.tmp / "ks" / "fired").exists()
 
@@ -161,13 +180,13 @@ def test_armed_watcher_fires_on_its_own(ks):
         time.sleep(0.2)
     try:
         assert (ks.tmp / "ks" / "fired").exists(), log(ks.tmp, "ks/killswitch.log")
-        assert f"/pods/{POD}/stop" in log(ks.tmp, "calls.log")
+        assert f"stop pod {POD}" in log(ks.tmp, "runpodctl.log")
         assert "watcher=yes" in ks("status").stdout  # a real stop would have killed it
         for _ in range(50):  # still alive after an accepted stop = the stop did not take: retry
-            if log(ks.tmp, "calls.log").count("/stop") >= 2:
+            if log(ks.tmp, "runpodctl.log").count("stop pod") >= 2:
                 break
             time.sleep(0.2)
-        assert log(ks.tmp, "calls.log").count("/stop") >= 2
+        assert log(ks.tmp, "runpodctl.log").count("stop pod") >= 2
     finally:
         pid = (ks.tmp / "ks" / "watcher.pid").read_text().strip()
         subprocess.run(["kill", pid], check=False)
