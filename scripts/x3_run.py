@@ -57,47 +57,76 @@ def _watchdog(hours: float) -> threading.Timer:
     return t
 
 
-def _manifest_stages() -> dict[str, set[str]]:
-    done: dict[str, set[str]] = {}
-    if R.MANIFEST.exists():
-        for line in R.MANIFEST.read_text().splitlines():
-            if line.strip():
-                r = json.loads(line)
-                done.setdefault(r["stage"], set()).add(r["model"])
-    return done
+def _manifest_records() -> list[dict]:
+    if not R.MANIFEST.exists():
+        return []
+    return [json.loads(x) for x in R.MANIFEST.read_text().splitlines() if x.strip()]
 
 
-def _order_ok(stage: C.Stage, model: str, go: bool) -> str | None:
-    """None if the stage may run now; else the reason it may not."""
-    done = _manifest_stages()
+def stage_complete(stage: C.Stage, model: str, tasks: list[C.TaskSpec]) -> bool:
+    """Every planned episode of this stage for this model either succeeded or failed twice
+    (code review r1, finding 5). The level is read from the episodes that ran."""
+    ids = [e for r in _manifest_records() if r["stage"] == stage.value and r["model"] == model
+           for e in r["episode_ids"]]
+    if not ids:
+        return False
+    level = C.PromptLevel(ids[-1].split("|")[2])
+    ok, fails = R.manifest_outcomes()
+    planned = {R.base_id(ep.episode_id)
+               for b in R.plan_stage(stage, model, tasks, level) for ep in b}
+    return all(b in ok or fails.get(b, 0) >= 2 for b in planned)
+
+
+def _order_ok(stage: C.Stage, model: str, go: bool,
+              tasks: list[C.TaskSpec] | None = None) -> str | None:
+    """None if the stage may run now; else the reason it may not (prereg §7.2-7.3)."""
+    tasks = tasks if tasks is not None else R.load_tasks()
     dec = R.load_decisions()
     if stage == C.Stage.SMOKE:
         return None if model in C.SUBJECTS else "smoke runs on the subject models"
     if stage == C.Stage.PROBES:
         if model not in C.PROBE_MODELS:
             return "probes run on Gemini and GLM"
-        return None if done.get("smoke") else "run the smoke stage first"
+        missing = [m for m in C.SUBJECTS if not stage_complete(C.Stage.SMOKE, m, tasks)]
+        return f"smoke not complete for {missing}" if missing else None
     if stage == C.Stage.CALIBRATION:
         if model not in C.SUBJECTS:
             return "calibration runs on the subject models"
-        return None if done.get("probes") else "run the probes first"
+        missing = [m for m in C.PROBE_MODELS if not stage_complete(C.Stage.PROBES, m, tasks)]
+        return f"probes not complete for {missing}" if missing else None
     if stage == C.Stage.SWITCH:
         return None if dec.get(model, {}).get("decision") == "switch" else \
             "no logged switch decision for this model (run decide)"
     if stage == C.Stage.GLM:
         if model != C.SWAP_MODEL:
             return "the GLM stage runs GLM"
-        return None if any(v.get("decision") == "out" for k, v in dec.items()
-                           if not k.startswith("_")) else "no model is out (run decide)"
+        if not any(v.get("decision") == "out" for k, v in dec.items() if not k.startswith("_")):
+            return "no model is out (run decide)"
+        return None if stage_complete(C.Stage.PROBES, C.SWAP_MODEL, tasks) else \
+            "GLM's probe set is not complete"
     if stage == C.Stage.MAIN:
+        models = dec.get("_analysis_models", [])
+        if model not in models:
+            return f"{model} is not an analysis model ({models}); run decide for each model"
+        if dec.get(model, {}).get("decision") != "keep":
+            return f"{model} has no final 'keep' decision at a prompt level"
+        if not models:
+            return "no analysis model remains: the pilot stops (prereg §4.4)"
+        if len(models) == 1 and not dec.get("_one_model_ok"):
+            return "only one model remains: Jacob must record _one_model_ok (prereg §4.4)"
         note = C.COST_CHECKPOINT.with_suffix(".json")
         if not note.exists():
             return "write the cost checkpoint first"
         if not go:
             return "the main run needs --go (Jacob's go-ahead after the cost checkpoint)"
-        if json.loads(note.read_text()).get("ask_jacob") and "_main_cap_usd" not in dec:
+        if json.loads(note.read_text()).get("ask_jacob") and not (
+                "_main_cap_usd" in dec or "_qwen_repeats" in dec):
             return ("the cost note says 4 Qwen repeats do not fit; Jacob must choose "
                     "(record _main_cap_usd or _qwen_repeats in decisions.json)")
+        if "_qwen_repeats" in dec and dec["_qwen_repeats"] not in (2, 3, 4):
+            return "_qwen_repeats must be 2, 3 or 4"
+        if "_main_cap_usd" in dec and not dec["_main_cap_usd"] >= C.HARD_CAP_USD:
+            return "_main_cap_usd must be at least the preregistered $45"
         return None
     return "unknown stage"
 
@@ -135,7 +164,10 @@ def cmd_stage(a) -> int:
         j = json.loads(note.read_text())["J"]["J_usd"]
     opt = R.RunOptions(dry_run=a.dry_run, j_usd=j,
                        in_flight=C.MAIN_IN_FLIGHT if stage == C.Stage.MAIN
-                       else C.PRE_MAIN_IN_FLIGHT)
+                       else C.PRE_MAIN_IN_FLIGHT,
+                       hard_cap=float(dec.get("_main_cap_usd", C.HARD_CAP_USD)))
+    print(f"{stage.value} {model}: level {level.value}, repeats {repeats}, admission cap "
+          f"${R.stage_cap(stage, j, opt.hard_cap):.2f}")
     if a.dry_run:
         R.run_batches(stage, model, batches, opt)
         return 0

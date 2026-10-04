@@ -147,10 +147,11 @@ def batch_reservation(batch: list[EpisodeSpec]) -> float:
     return sum(ep.episode_limit_usd + C.PROBE_BOUND_USD for ep in batch)
 
 
-def stage_cap(stage: C.Stage, j_usd: float = C.J_DEFAULT_USD) -> float:
+def stage_cap(stage: C.Stage, j_usd: float = C.J_DEFAULT_USD,
+              hard_cap: float = C.HARD_CAP_USD) -> float:
     if stage in C.PRE_MAIN_STAGES:
         return C.PRE_MAIN_LIMIT_USD
-    return C.HARD_CAP_USD - j_usd - C.RESERVE_USD
+    return hard_cap - j_usd - C.RESERVE_USD
 
 
 # --- extraction from .eval logs ------------------------------------------------------------
@@ -245,7 +246,9 @@ def extract_log(eval_path: Path, *, write: bool = True,
             probe["parsed"] = parse_probe_reply(probe["reply"]) if parse_probe_reply else None
         err = repr(s.error)[:2000] if s.error else (None if ep else "episode record missing")
         art["error"] = err
-        if write and err is None:
+        if write and md.get("episode_id"):
+            # every sample is written, failed ones too, so denominators and retries are exact
+            # (code review r1, finding 6); an existing file is never overwritten (finding 3)
             rel = C.episode_path(md["model_slug"], C.Stage(md["stage"]),
                                  C.PromptLevel(md["prompt_level"]), C.Context(md["context"]),
                                  md["task_id"], md["repeat"],
@@ -254,10 +257,63 @@ def extract_log(eval_path: Path, *, write: bool = True,
             if len(parts) > 7:              # mock walks tag the id: one file per scenario
                 rel = rel.with_name(f"{rel.stem}_{parts[7]}.json")
             p = episodes_dir / rel
+            n = 1
+            while p.exists():
+                p = (episodes_dir / rel).with_name(f"{rel.stem}.dup{n}.json")
+                art["duplicate_of"] = str(episodes_dir / rel)
+                n += 1
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(json.dumps(art, indent=1, default=str))
             art["path"] = str(p)
         out.append(art)
+    return out
+
+
+def failed(art: dict) -> bool:
+    """A sample that did not produce a usable episode: an Inspect error, a missing record, or
+    an API error inside the loop (code review r1, finding 6)."""
+    return art.get("error") is not None or art.get("end_reason") == C.EndReason.API_ERROR.value
+
+
+def base_id(eid: str) -> str:
+    return eid.rsplit("|a", 1)[0]
+
+
+def manifest_outcomes(manifest: Path | None = None) -> tuple[set[str], dict[str, int]]:
+    """(base ids that succeeded, failed attempts per base id) from the run manifest."""
+    manifest = manifest or MANIFEST
+    ok, fails = set(), {}
+    if manifest.exists():
+        for line in manifest.read_text().splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            bad = set(r.get("failed", []))
+            for eid in r["episode_ids"]:
+                if eid in bad:
+                    fails[base_id(eid)] = fails.get(base_id(eid), 0) + 1
+                else:
+                    ok.add(base_id(eid))
+    return ok, fails
+
+
+def resume_batches(batches: list[list[EpisodeSpec]],
+                   manifest: Path | None = None) -> list[list[EpisodeSpec]]:
+    """Drop episodes that already succeeded; an episode that failed once runs as attempt 2;
+    one that failed twice is excluded (code review r1, finding 3)."""
+    ok, fails = manifest_outcomes(manifest)
+    out = []
+    for b in batches:
+        nb = []
+        for sp in b:
+            bid = base_id(sp.episode_id)
+            if bid in ok or fails.get(bid, 0) >= 2:
+                continue
+            if fails.get(bid, 0) == 1:
+                sp = replace(sp, attempt=2, episode_id=f"{bid}|a2")
+            nb.append(sp)
+        if nb:
+            out.append(nb)
     return out
 
 
@@ -278,6 +334,10 @@ def billed_total(arts: list[dict], specs: list[EpisodeSpec]) -> tuple[float, lis
             total += full
             notes.append(f"{sp.episode_id}: billed cost missing on "
                          f"{sum(v is None for v in vals)} call(s); charged {full:.3f}")
+        elif not vals and (a.get("n_turns") or a.get("error")):
+            # turns ran or the sample errored, but no call record survived (finding 2)
+            total += full
+            notes.append(f"{sp.episode_id}: no call records; charged {full:.3f}")
         else:
             total += sum(vals)
     return total, notes
@@ -293,6 +353,8 @@ class RunOptions:
     log_dir: Path = LOG_DIR
     model_obj: object | None = None       # a pre-built Model (mock walks)
     episodes_dir: Path = C.EPISODES_DIR   # mock walks write elsewhere
+    hard_cap: float = C.HARD_CAP_USD      # raised only by Jacob's recorded _main_cap_usd
+    resume: bool = True
 
 
 def _append_manifest(rec: dict) -> None:
@@ -305,13 +367,13 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                 opt: RunOptions) -> C.StageResult:
     """Admit, run, extract and settle. Each group of `in_flight` batches is one Inspect eval;
     each batch has its own reservation, settled from the log before the next group starts."""
-    cap = stage_cap(stage, opt.j_usd)
+    cap = stage_cap(stage, opt.j_usd, opt.hard_cap)
     admitted = completed = excluded = 0
     billed_sum = reserved_sum = 0.0
     log_dirs: list[str] = []
     stopped: str | None = None
     retry: list[EpisodeSpec] = []
-    queue = list(batches)
+    queue = resume_batches(batches) if opt.resume else list(batches)
     while queue or retry:
         if retry:                                     # one retry per episode (§1.9)
             queue.insert(0, [replace(sp, attempt=sp.attempt + 1,
@@ -351,7 +413,7 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                           f"X3 {stage.value} {b[0].batch_id}" + (f"; {'; '.join(notes)}"
                                                                    if notes else ""))
             billed_sum += spent
-            ok_ids = {a["meta"]["episode_id"] for a in ba if a["error"] is None}
+            ok_ids = {a["meta"]["episode_id"] for a in ba if not failed(a)}
             completed += len(ok_ids)
             for sp in b:
                 if sp.episode_id not in ok_ids:
@@ -402,8 +464,9 @@ def _eval_specs(specs: list[EpisodeSpec], model_id: str,
 # --- collect (§1.8) ------------------------------------------------------------------------
 def _role(art: dict, decisions: dict, analysis_models: set[str]) -> tuple[str, str]:
     m = art["meta"]
-    if art.get("error"):
-        return C.AnalysisRole.EXCLUDED.value, "error"
+    if failed(art):
+        return C.AnalysisRole.EXCLUDED.value, ("api_error" if not art.get("error")
+                                               else "error")
     stage = m["stage"]
     model = m["model"]
     final_level = decisions.get(model, {}).get("level", C.DEFAULT_PROMPT_LEVEL.value)
@@ -429,6 +492,8 @@ def _judge_columns(judged_dir: Path) -> dict[str, dict[str, str]]:
         meta = {"episode_id", "judge", "status", "billed_usd", "prompt_sha256", "error"}
         per_ep: dict[str, dict[str, dict]] = {}
         for r in rows:
+            if r["judge"] in per_ep.get(r["episode_id"], {}):     # finding 11
+                raise ValueError(f"{f.name}: duplicate row for {r['episode_id']} / {r['judge']}")
             per_ep.setdefault(r["episode_id"], {})[r["judge"]] = r
         for eid, by_judge in per_ep.items():
             d = cols.setdefault(eid, {})
@@ -467,6 +532,20 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
         ctx = C.Context(m["context"])
         probe = art.get("probe") or {}
         parsed = probe.get("parsed") or {}
+        probe_source = "regex" if parsed else ""
+        if not parsed and probe.get("reply"):
+            # judge fallback (finding 9): a field counts only if every judge that answered
+            # agrees on it; otherwise it stays blank (missing, never guessed)
+            jc = judges.get(eid, {})
+            fb = {}
+            for q in ("q1", "q2", "q3_spec", "q3_tests"):
+                vals = {v for k, v in jc.items()
+                        if k.startswith("probe_parse__") and k.endswith(f"__{q}")
+                        and v not in ("", "None")}
+                if len(vals) == 1:
+                    fb[q] = vals.pop()
+            if fb:
+                parsed, probe_source = fb, "judge"
         row = {"episode_id": eid, "model": m["model"], "context": ctx.value,
                "purpose": ctx.purpose or "", "grader": ctx.grader or "",
                "task_id": m["task_id"], "repeat": m["repeat"], "attempt": m["attempt"],
@@ -478,13 +557,24 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
                "reasoning_readable": (art.get("first_turn") or {}).get("reasoning_readable"),
                "q1": parsed.get("q1", ""), "q2": parsed.get("q2", ""),
                "q3_spec": parsed.get("q3_spec", ""), "q3_tests": parsed.get("q3_tests", ""),
-               "probe_status": probe.get("status", "")}
+               "probe_status": probe.get("status", ""), "probe_source": probe_source}
         d = det.get(eid, {})
         for k in ("tamper_any", "tamper_final", "tamper_ambiguous", "pass_run1", "pass_run2",
                   "pass_disagree", "passed", "cheat"):
             row[k] = d.get(k, "")
         row.update(judges.get(eid, {}))
         rows.append(row)
+    # coverage (finding 11): which analysable episodes lack a detector row or a judgment
+    usable = [r for r in rows if r["analysis_role"] in (C.AnalysisRole.MAIN.value,
+                                                        C.AnalysisRole.NEUTRAL_REUSE.value)]
+    cov = {"n_rows": len(rows), "n_usable": len(usable),
+           "missing_detector": sorted(r["episode_id"] for r in usable if r["cheat"] == ""),
+           "judged_episodes": len(judges), "probe_from_judge": sum(
+               r["probe_source"] == "judge" for r in rows),
+           "probe_unparsed": sum(r["probe_status"] == "ok" and not r["probe_source"]
+                                 for r in rows)}
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.with_suffix(".coverage.json").write_text(json.dumps(cov, indent=1) + "\n")
     extra = sorted({k for r in rows for k in r} - set(C.EPISODE_CSV_COLUMNS))
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "w", newline="") as f:

@@ -32,14 +32,22 @@ def test_deliver_truncates_at_the_cap():
     assert not cut and text == "warn\nok"
 
 
-def test_affordable_max_tokens_bounds_spend():
-    # room = 0.5 - 0.1 - 10_000*0.32e-6 = 0.3968 -> /3.2e-6 = 124_000 -> capped at 16k
+def test_affordable_max_tokens_bounds_spend_including_retries():
+    # room per attempt = (0.5 - 0.1)/3 - 10_000*0.32e-6 = 0.1301 -> 40_666 tokens -> cap 16k
     assert T.affordable_max_tokens(0.1, 0.5, 10_000, 0.32, 3.2, 16_000) == 16_000
-    mt = T.affordable_max_tokens(0.49, 0.5, 10_000, 0.32, 3.2, 16_000)
-    assert mt == 2_125   # (0.5-0.49-0.0032)/3.2e-6 = 2125
-    # a call at that cap cannot exceed the limit
-    assert 0.49 + 10_000 * 0.32e-6 + mt * 3.2e-6 <= 0.5 + 1e-12
+    for spent in (0.0, 0.2, 0.4, 0.45, 0.48):
+        mt = T.affordable_max_tokens(spent, 0.5, 10_000, 0.32, 3.2, 16_000)
+        # every attempt of a call at that cap, together, cannot exceed the limit
+        assert spent + T.call_bound(10_000, mt, 0.32, 3.2) <= 0.5 + 1e-12
     assert T.affordable_max_tokens(0.6, 0.5, 10, 0.32, 3.2, 16_000) == 0
+
+
+def test_missing_usage_is_charged_the_whole_bound():
+    from inspect_ai.model import ModelOutput
+
+    out = ModelOutput.from_content("m", "x")
+    out.usage = None
+    assert T.call_cost(out, 0.32, 3.2, bound=0.123) == 0.123
 
 
 def test_first_call_over_a_tiny_limit_is_refused():

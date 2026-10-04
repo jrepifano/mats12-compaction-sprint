@@ -27,6 +27,28 @@ def _p90(xs: list[float]) -> float | None:
     return float(np.percentile(xs, 90)) if xs else None
 
 
+SIZING_STAGES = (C.Stage.CALIBRATION.value, C.Stage.SWITCH.value, C.Stage.GLM.value,
+                 C.Stage.PROBES.value)
+
+
+def sizing_cost(arts: list[dict], model: str, level: str | None) -> dict:
+    """Mean billed $/episode for sizing (code review r1, finding 7): only the model's neutral
+    calibration-type episodes at its final prompt level, failed samples excluded. If any call
+    lacks a billed cost the mean is None and the projection stops (never a $0 guess)."""
+    eps = [a for a in arts if a["meta"]["model"] == model and a["meta"]["stage"] in SIZING_STAGES
+           and a["meta"]["context"] == C.Context.NEUTRAL.value
+           and (level is None or a["meta"]["prompt_level"] == level) and not R.failed(a)]
+    incomplete = [a["meta"]["episode_id"] for a in eps
+                  if not a["model_calls"]
+                  or any(c["billed_usd"] is None for c in a["model_calls"])]
+    if not eps or incomplete:
+        return {"n": len(eps), "usd_mean": None, "billing_incomplete": incomplete,
+                "level": level}
+    cost = [sum(c["billed_usd"] for c in a["model_calls"]) for a in eps]
+    return {"n": len(eps), "usd_mean": statistics.fmean(cost), "billing_incomplete": [],
+            "level": level}
+
+
 def model_costs(arts: list[dict]) -> dict[str, dict]:
     """Measured billed cost and size per episode, by model (non-main episodes only)."""
     by: dict[str, list[dict]] = {}
@@ -110,19 +132,23 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
     st = budget.status(C.EXP_ID, C.HARD_CAP_USD)
     n_main = {}
     proj = {}
+    sizing = {}
     for m in analysis_models:
-        reuse = decisions.get(m, {}).get("level") is not None
+        level = decisions.get(m, {}).get("level")
+        reuse = level is not None
         n_main[m] = 15 * C.REPEATS_MAIN * 6 - (30 if reuse else 0)
-        c = costs.get(m, {}).get("usd_mean")
+        sizing[m] = sizing_cost(arts, m, level)
+        c = sizing[m]["usd_mean"]
         proj[m] = None if c is None else 1.25 * c * n_main[m]
     panel = ["openai/gpt-6-luna",
              C.JUDGE_FALLBACK if C.SWAP_MODEL in analysis_models else "z-ai/glm-5.3-flash"]
     J = judge_projection(n_main, costs, panel)
     main_total = sum(v for v in proj.values() if v is not None)
     need = st["spent"] + st["outstanding"] + J["J_usd"] + main_total + C.RESERVE_USD
-    fits = need <= C.HARD_CAP_USD and all(v is not None for v in proj.values())
+    unpriced = [m for m, v in proj.items() if v is None]
+    fits = need <= C.HARD_CAP_USD and not unpriced
     halving = None
-    if not fits:
+    if not fits and not unpriced:
         att = sum(p["attempt"] for p in J["parts"].values())
         need_half = need - att / 2
         halving = {"rule": "attempt judge on a random half of non-cheat episodes",
@@ -131,15 +157,21 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
                    "seed": C.SEED_JUDGE_HALVING, "need_with_halving": need_half,
                    "fits_with_halving": need_half <= C.HARD_CAP_USD}
     ask = not fits and not (halving or {}).get("fits_with_halving")
+    if unpriced:
+        reason = (f"no complete billed cost for {unpriced} at the final prompt level, so the "
+                  "main run cannot be sized; Jacob decides how to proceed")
+    elif ask:
+        reason = ("4 Qwen repeats do not fit under $45 even with judge halving; Jacob chooses "
+                  "between more budget and fewer repeats (Jacob, 2026-10-04)")
+    else:
+        reason = None
     note = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "ledger": st, "costs": costs, "neutral_cheat_rates": neutral_cheat_rates(arts),
+            "ledger": st, "costs": costs, "sizing": sizing,
+            "neutral_cheat_rates": neutral_cheat_rates(arts),
             "decisions": decisions, "analysis_models": analysis_models,
             "main_episodes": n_main, "main_projection_usd": proj, "J": J,
             "need_usd": need, "fits_4_repeats": fits, "judge_halving": halving,
-            "ask_jacob": ask,
-            "ask_reason": ("4 Qwen repeats do not fit under $45 even with judge halving; Jacob "
-                           "chooses between more budget and fewer repeats (Jacob, 2026-10-04)"
-                           if ask else None)}
+            "ask_jacob": ask, "ask_reason": reason}
     return note
 
 

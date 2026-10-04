@@ -226,9 +226,11 @@ def project_cost(judgment: C.Judgment, n_items: int, mean_input_chars: float,
 def _episodes(episodes_dir: Path, ids: set[str] | None) -> list[dict]:
     out = []
     for p in sorted(episodes_dir.rglob("*.json")):
-        a = json.loads(p.read_text())
-        if a.get("error"):
+        raw = p.read_bytes()
+        a = json.loads(raw)
+        if a.get("error") or a.get("end_reason") == C.EndReason.API_ERROR.value:
             continue
+        a["_artifact_sha256"] = hashlib.sha256(raw).hexdigest()
         if ids is None or a["meta"]["episode_id"] in ids:
             out.append(a)
     return out
@@ -274,10 +276,10 @@ def run_judgments(judgment: C.Judgment, panel: list[str], *, episodes_dir: Path,
                 row[k] = "" if r.labels is None else r.labels.get(k)
             w.writerow(row)
             f.flush()
-    ids_blob = "\n".join(sorted(e["meta"]["episode_id"] for e in eps))
+    # bind the output to the exact inputs: each episode id with its artifact's sha256
+    blob = "\n".join(sorted(f"{e['meta']['episode_id']} {e['_artifact_sha256']}" for e in eps))
     sig = {"judgment": judgment.value, "prompt_sha256": prompt_sha(judgment), "panel": panel,
-           "input_ids_sha256": hashlib.sha256(ids_blob.encode()).hexdigest(),
-           "n_inputs": len(eps)}
+           "inputs_sha256": hashlib.sha256(blob.encode()).hexdigest(), "n_inputs": len(eps)}
     out.with_suffix(".sig.json").write_text(json.dumps(sig, indent=1) + "\n")
     return out
 

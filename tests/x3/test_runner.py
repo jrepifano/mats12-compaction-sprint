@@ -158,6 +158,70 @@ def test_collect_pivots_judges_to_one_row_per_episode(tmp_path, monkeypatch):
     assert rows[0]["analysis_role"] == "main" and rows[0]["purpose"] == "cap"
 
 
+def test_resume_skips_successes_retries_once_and_excludes_after_two(tmp_path):
+    b = R.plan_stage(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks(), C.PromptLevel.B)
+    e1, e2 = (sp.episode_id for sp in b[0])
+    man = tmp_path / "m.jsonl"
+    man.write_text(json.dumps({"stage": "smoke", "model": "q", "episode_ids": [e1, e2],
+                               "failed": [e2]}) + "\n")
+    out = R.resume_batches(b, man)
+    assert [sp.episode_id for x in out for sp in x] == [R.base_id(e2) + "|a2"]
+    with open(man, "a") as f:
+        f.write(json.dumps({"stage": "smoke", "model": "q",
+                            "episode_ids": [R.base_id(e2) + "|a2"],
+                            "failed": [R.base_id(e2) + "|a2"]}) + "\n")
+    assert R.resume_batches(b, man) == []
+
+
+def test_api_error_episodes_count_as_failed():
+    assert R.failed({"error": None, "end_reason": "api_error"})
+    assert R.failed({"error": "boom", "end_reason": None})
+    assert not R.failed({"error": None, "end_reason": "turn_cap"})
+
+
+def test_billing_fails_closed_without_call_records():
+    sp = R.plan_stage(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks(), C.PromptLevel.B)[0]
+    a = _art(sp[0].episode_id, billed=())
+    a["n_turns"] = 3
+    total, notes = R.billed_total([a, _art(sp[1].episode_id)], sp)
+    assert total == pytest.approx(0.55 + 0.03) and "no call records" in notes[0]
+
+
+def test_collect_uses_judge_fallback_for_unparsed_probe(tmp_path, monkeypatch):
+    ep_dir, judged = tmp_path / "episodes", tmp_path / "judged"
+    ep_dir.mkdir()
+    judged.mkdir()
+    a = _art("e1")
+    a["probe"] = {"status": "ok", "reply": "unclear", "parsed": None}
+    (ep_dir / "e1.json").write_text(json.dumps(a))
+    with open(judged / "probe_parse.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["episode_id", "judge", "status", "q1", "q2",
+                                          "q3_spec", "q3_tests", "billed_usd",
+                                          "prompt_sha256", "error"])
+        w.writeheader()
+        for j, q2 in (("openai/gpt-6-luna", "a"), ("z-ai/glm-5.3-flash", "b")):
+            w.writerow({"episode_id": "e1", "judge": j, "status": "ok", "q1": "a", "q2": q2,
+                        "q3_spec": "no", "q3_tests": "yes", "billed_usd": 0,
+                        "prompt_sha256": "x", "error": ""})
+    monkeypatch.setattr(C, "JUDGED_DIR", judged)
+    monkeypatch.setattr(C, "DETECTOR_CSV", tmp_path / "none.csv")
+    monkeypatch.setattr(R, "DECISIONS", tmp_path / "decisions.json")
+    out = R.collect(ep_dir, tmp_path / "episodes.csv")
+    with open(out, newline="") as f:
+        row = next(csv.DictReader(f))
+    assert row["q1"] == "a" and row["q2"] == "" and row["probe_source"] == "judge"
+
+
+def test_duplicate_judge_rows_fail_loudly(tmp_path):
+    with open(tmp_path / "pre_action.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["episode_id", "judge", "status", "none"])
+        w.writeheader()
+        for _ in range(2):
+            w.writerow({"episode_id": "e1", "judge": "j", "status": "ok", "none": "True"})
+    with pytest.raises(ValueError, match="duplicate"):
+        R._judge_columns(tmp_path)
+
+
 def test_roles():
     dec = {"qwen/qwen3.6-27b": {"level": "A"}}
     am = {"qwen/qwen3.6-27b"}

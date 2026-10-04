@@ -77,7 +77,14 @@ for root in roots:
             p = os.path.join(d, n)
             try:
                 st = os.lstat(p)
+                if stat.S_ISLNK(st.st_mode):
+                    t = os.readlink(p)
+                    files[p] = {"sha256": "symlink:" + t, "mode": "symlink", "size": None,
+                                "text": None, "link": t}
+                    continue
                 if not stat.S_ISREG(st.st_mode):
+                    files[p] = {"sha256": "special:" + oct(st.st_mode), "mode": "special",
+                                "size": None, "text": None}
                     continue
                 b = open(p, "rb").read()
             except OSError:
@@ -203,18 +210,34 @@ def input_bound_tokens(messages: list[ChatMessage], tools: list[Tool]) -> int:
             + C.TOKENS_PER_MESSAGE_OVERHEAD * len(messages))
 
 
-def call_cost(output: ModelOutput, in_ceiling: float, out_ceiling: float) -> float:
-    """Cost of a completed call at the ceiling prices (>= the billed cost)."""
+# Inspect retries a failed request; each attempt may bill. With at most MAX_RETRIES retries,
+# a call can bill at most ATTEMPTS times its own bound, so the pre-call bound multiplies by it
+# (code review r1, finding 1). A long per-attempt timeout keeps abandoned attempts rare.
+MAX_RETRIES = 2
+ATTEMPTS = MAX_RETRIES + 1
+ATTEMPT_TIMEOUT_S = 600
+
+
+def call_bound(input_bound: int, max_tokens: int, in_ceiling: float, out_ceiling: float) -> float:
+    """Worst case of one call, all attempts included."""
+    return ATTEMPTS * (input_bound * in_ceiling + max_tokens * out_ceiling) / 1e6
+
+
+def call_cost(output: ModelOutput, in_ceiling: float, out_ceiling: float,
+              bound: float) -> float:
+    """Cost of a completed call at the ceiling prices (>= the billed cost). With no usage
+    reported, the call's whole bound is charged (code review r1, finding 2)."""
     u = output.usage
     if u is None:
-        return 0.0
+        return bound
     n_in = u.input_tokens + (u.input_tokens_cache_read or 0) + (u.input_tokens_cache_write or 0)
     return (n_in * in_ceiling + u.output_tokens * out_ceiling) / 1e6
 
 
 def affordable_max_tokens(spent: float, limit: float, input_bound: int, in_ceiling: float,
-                          out_ceiling: float, cap: int) -> int:
-    room = limit - spent - input_bound * in_ceiling / 1e6
+                          out_ceiling: float, cap: int, attempts: int = ATTEMPTS) -> int:
+    """Largest output cap such that spent + call_bound(...) <= limit."""
+    room = (limit - spent) / attempts - input_bound * in_ceiling / 1e6
     if room <= 0:
         return 0
     return min(cap, math.floor(room * 1e6 / out_ceiling))
@@ -272,7 +295,8 @@ def setup() -> Solver:
 
 async def _generate(messages: list[ChatMessage], tools: list[Tool], max_tokens: int,
                     tool_choice: str | None = None) -> ModelOutput:
-    cfg = GenerateConfig(max_tokens=max_tokens, parallel_tool_calls=False)
+    cfg = GenerateConfig(max_tokens=max_tokens, parallel_tool_calls=False,
+                         max_retries=MAX_RETRIES, attempt_timeout=ATTEMPT_TIMEOUT_S)
     if tool_choice == "none":
         return await get_model().generate(messages, tools=[], config=cfg)
     return await get_model().generate(messages, tools=tools, config=cfg)
@@ -307,7 +331,8 @@ def episode() -> Solver:
                 s.set("x3_api_error", repr(e)[:2000])
                 break
             turns += 1
-            spent += call_cost(out, spec.in_ceiling, spec.out_ceiling)
+            spent += call_cost(out, spec.in_ceiling, spec.out_ceiling,
+                               call_bound(ib, mt, spec.in_ceiling, spec.out_ceiling))
             msg = out.message
             messages.append(msg)
             if out.stop_reason in ("model_length", "content_filter"):

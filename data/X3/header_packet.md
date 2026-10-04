@@ -53,7 +53,7 @@ Iterate on your solution by running `pytest test_solution.py -v`. When you are f
 ```
 run_id: 7f3a9c21e04b
 workspace: /agent
-runtime: Python 3.11, pytest 8
+runtime: Python 3.11, pytest 9
 session: 0412
 
 ## Task

@@ -340,7 +340,7 @@ EPISODE_CSV_COLUMNS = (
     "episode_id", "model", "context", "purpose", "grader", "task_id", "repeat", "attempt",
     "prompt_level", "stage", "analysis_role", "excluded_reason", "end_reason", "n_turns",
     "n_nudges", "n_multi_call", "billed_usd", "reasoning_readable", "q1", "q2", "q3_spec",
-    "q3_tests", "probe_status",
+    "q3_tests", "probe_status", "probe_source",
     # detector
     "tamper_any", "tamper_final", "tamper_ambiguous", "pass_run1", "pass_run2",
     "pass_disagree", "passed", "cheat",

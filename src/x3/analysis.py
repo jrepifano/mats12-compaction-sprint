@@ -419,8 +419,10 @@ def _primary_masks(name: str):
 # --- assembly ------------------------------------------------------------------------------
 def analyze_frame(df: pd.DataFrame, *, n_perm: int = C.N_PERMUTATIONS,
                   seed: int = C.SEED_PERMUTATION, n_boot: int = C.N_BOOTSTRAP,
-                  boot_seed: int = C.SEED_BOOTSTRAP) -> dict:
-    """The whole analysis on a normalized episodes frame (see `normalize`)."""
+                  boot_seed: int = C.SEED_BOOTSTRAP,
+                  measurement_ok: bool | None = None) -> dict:
+    """The whole analysis on a normalized episodes frame (see `normalize`). Without an
+    affirmative `measurement_ok` the scenario is PENDING (no headline)."""
     in_role, used, exclusions = split_rows(df)
     val = validity(df, in_role, used)
     models = sorted(val)
@@ -475,7 +477,7 @@ def analyze_frame(df: pd.DataFrame, *, n_perm: int = C.N_PERMUTATIONS,
                    "estimator": "Mantel-Haenszel risk difference, strata task (per model) or "
                                 "task x model (pooled)"},
         "exclusions": exclusions,
-        "checks": {"measurement_ok": None,
+        "checks": {"measurement_ok": measurement_ok,
                    "measurement_note": "not evaluated here: set from the detector review, "
                                        "harness smoke test and prompt-diff test (prereg §4.10)"},
         "validity": val,
@@ -545,10 +547,41 @@ def _sensitivity(df: pd.DataFrame, in_role: pd.DataFrame, primary: dict, kw: dic
                              **{**kw, "n_boot": 0})
             r.pop("ci95", None)
             out[vname][name] = r
-    out["not_computed"] = {
-        "adding_attempted_cheats": "needs the validated attempt_g21 judge columns",
-        "excluding_says_tested": "needs the validated pre_action judge columns",
-    }
+    # Judge-based variants (prereg §4.9). A judge label counts only by consensus: every
+    # judge that answered says True, and at least one answered. Missing labels stay missing.
+    def consensus(d: pd.DataFrame, prefix: str, label: str) -> pd.Series:
+        cols = [c for c in d.columns if c.startswith(prefix) and c.endswith(f"__{label}")]
+        if not cols:
+            return pd.Series([np.nan] * len(d), index=d.index)
+        vals = d[cols].astype(str).replace({"": np.nan, "nan": np.nan, "None": np.nan})
+        answered = vals.notna().sum(axis=1)
+        all_true = (vals == "True").sum(axis=1) == answered
+        return pd.Series(np.where(answered > 0, all_true.astype(float), np.nan), index=d.index)
+
+    judge_variants = {}
+    att = consensus(base, "attempt_g21__", "attempt")
+    if att.notna().any():
+        y = base["cheat"].astype(float)
+        judge_variants["adding_attempted_cheats"] = base.assign(
+            y=np.where(y == 1.0, 1.0, np.where(att == 1.0, 1.0, y)))
+    tested = consensus(base, "pre_action__", "says_tested")
+    if tested.notna().any():
+        judge_variants["excluding_says_tested"] = base[tested != 1.0].assign(
+            y=lambda d: d["cheat"])
+    for vname, d in judge_variants.items():
+        d = d[d["y"].notna()].copy()
+        d["y"] = d["y"].astype(bool).astype(float)
+        out[vname] = {}
+        for name in PRIMARIES:
+            rows_mask, treat_mask, blocks = _primary_masks(name)
+            r = run_contrast(d, primary[name]["pooled"]["models"], rows_mask=rows_mask,
+                             treat_mask=treat_mask, block_cols=blocks,
+                             **{**kw, "n_boot": 0})
+            r.pop("ci95", None)
+            out[vname][name] = r
+    out["not_computed"] = {k: "judge columns missing from episodes.csv"
+                           for k in ("adding_attempted_cheats", "excluding_says_tested")
+                           if k not in judge_variants}
     return out
 
 
@@ -572,10 +605,32 @@ def _within(ci: dict | None, bound: float) -> bool:
     return -bound <= lo and hi <= bound
 
 
+PENDING = "Pending measurement validation"
+MEASUREMENT_JSON = C.RESULTS_DIR / "measurement.json"
+
+
+def measurement_status(path: Path = MEASUREMENT_JSON) -> tuple[bool | None, str]:
+    """(ok, note) from results/X3/measurement.json, written after Jacob's blind detector review
+    and the judge validation (U8): {"checks": {"<name>": {"pass": bool, ...}, ...}}. All passes
+    -> True; any fail -> False; file missing or empty -> None (no headline)."""
+    if not path.exists():
+        return None, "measurement.json missing: detector review and judge validation not done"
+    checks = json.loads(path.read_text()).get("checks", {})
+    if not checks:
+        return None, "measurement.json has no checks"
+    passes = [bool(v.get("pass")) for v in checks.values()]
+    return all(passes), f"from {path.name}: " + ", ".join(
+        f"{k}={'pass' if v.get('pass') else 'FAIL'}" for k, v in checks.items())
+
+
 def classify_scenario(result: dict) -> str:
     """Name the first prereg §6 scenario that matches `result` (as built by `analyze`)."""
-    if result.get("checks", {}).get("measurement_ok") is False:
+    m_ok = result.get("checks", {}).get("measurement_ok")
+    if m_ok is False:
         return "Measurement failure"
+    if m_ok is not True:
+        # no affirmative pass recorded (code review r1, finding 8): no headline scenario
+        return PENDING
     val = result.get("validity", {})
     if not any(v.get("base_rate_ok") for v in val.values()):
         return "Floor or ceiling"
@@ -626,6 +681,13 @@ def analyze_path(episodes_csv: Path, *, n_perm: int = C.N_PERMUTATIONS,
     result["inputs"] = {"episodes_csv": {"path": str(episodes_csv),
                                          "sha256": sha256_file(episodes_csv),
                                          "n_rows": len(df)}}
+    ok, note = measurement_status()
+    result["checks"]["measurement_ok"], result["checks"]["measurement_note"] = ok, note
+    if MEASUREMENT_JSON.exists():
+        result["inputs"]["measurement_json"] = {"path": str(MEASUREMENT_JSON),
+                                                "sha256": sha256_file(MEASUREMENT_JSON)}
+    result["scenario"] = classify_scenario(result)
+    result["also_significant"] = _also_significant(result)
     return result
 
 

@@ -24,7 +24,8 @@ def _frame(**kw):
 
 @pytest.fixture(scope="module")
 def planted():
-    return A.analyze_frame(_frame(seed=3, purpose_effect=0.20), n_perm=2000, n_boot=1000)
+    return A.analyze_frame(_frame(seed=3, purpose_effect=0.20), n_perm=2000, n_boot=1000,
+                           measurement_ok=True)
 
 
 def _null_pvalue(seed: int, n_perm: int) -> float:
@@ -106,11 +107,11 @@ def test_failed_manipulation_check_excludes_model_from_that_contrast_only():
 
 def test_base_rate_and_completion_rules():
     df = _frame(seed=6, base_range=(0.9, 0.97))
-    r = A.analyze_frame(df, n_perm=50, n_boot=20)
+    r = A.analyze_frame(df, n_perm=50, n_boot=20, measurement_ok=True)
     assert not any(v["base_rate_ok"] for v in r["validity"].values())
     assert r["scenario"] == "Floor or ceiling"
     df = _frame(seed=7, p_api_error=0.2)
-    r = A.analyze_frame(df, n_perm=50, n_boot=20)
+    r = A.analyze_frame(df, n_perm=50, n_boot=20, measurement_ok=True)
     assert all(not v["completion"]["ok"] for v in r["validity"].values())
     assert r["scenario"] == "No valid primary contrast"
     assert r["exclusions"]["n_api_error"] > 0
@@ -160,8 +161,24 @@ def _base_result(planted):
         p.update(available=True, holm_reject=False, rd=0.01,
                  ci975={"lo": -0.05, "hi": 0.05})
     r["secondary"]["eval_vs_teammate"]["pooled"]["perm"]["p"] = 0.5
-    r["checks"]["measurement_ok"] = None
+    r["checks"]["measurement_ok"] = True
     return r
+
+
+def test_no_headline_without_a_measurement_pass(planted):
+    r = _base_result(planted)
+    r["primary"]["purpose"]["pooled"].update(holm_reject=True, rd=0.2)
+    r["checks"]["measurement_ok"] = None
+    assert A.classify_scenario(r) == A.PENDING
+
+
+def test_measurement_status_reads_the_file(tmp_path):
+    p = tmp_path / "m.json"
+    assert A.measurement_status(p)[0] is None
+    p.write_text('{"checks": {"detector_review": {"pass": true}, "judges": {"pass": true}}}')
+    assert A.measurement_status(p)[0] is True
+    p.write_text('{"checks": {"detector_review": {"pass": true}, "judges": {"pass": false}}}')
+    assert A.measurement_status(p)[0] is False
 
 
 @pytest.mark.parametrize("scenario", A.SCENARIOS)
@@ -216,7 +233,7 @@ def test_cli_writes_analysis_json_with_hashes_and_seeds(tmp_path):
     assert res["seeds"] == {"permutation": C.SEED_PERMUTATION, "bootstrap": C.SEED_BOOTSTRAP,
                             "n_perm": 200, "n_boot": 100}
     assert res["synthetic"]["seed"] == 0
-    assert res["scenario"] in A.SCENARIOS
+    assert res["scenario"] in (*A.SCENARIOS, A.PENDING)
     assert res["exclusions"]["reasons"]
     assert {c["context"] for c in res["cells"]} == {c.value for c in C.Context}
 
