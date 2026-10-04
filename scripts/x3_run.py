@@ -133,12 +133,14 @@ def _order_ok(stage: C.Stage, model: str, go: bool,
         if "_main_cap_usd" in dec and not dec["_main_cap_usd"] >= C.HARD_CAP_USD:
             return "_main_cap_usd must be at least the preregistered $45"
         # the projection under the RECORDED choice must fit the effective cap (finding 5)
-        return projection_refusal(json.loads(note.read_text()), dec, models)
+        return projection(json.loads(note.read_text()), dec, models)["reason"]
     return "unknown stage"
 
 
-def projection_refusal(note: dict, dec: dict, models: list[str]) -> str | None:
-    """None if the main run, at the recorded repeats and cap, fits; else why not."""
+def projection(note: dict, dec: dict, models: list[str]) -> dict:
+    """Does the main run fit, at the recorded repeats and cap? First with the full judge
+    projection J, then with the judge-halving branch (prereg §7.2 rule 7; review r3, 6).
+    Returns {"reason": None if it fits, "halving": whether the fit needs halving, "J": ...}."""
     from s4world import budget
 
     cap = float(dec.get("_main_cap_usd", C.HARD_CAP_USD))
@@ -147,16 +149,22 @@ def projection_refusal(note: dict, dec: dict, models: list[str]) -> str | None:
     for m in models:
         mean = (note.get("sizing", {}).get(m) or {}).get("usd_mean")
         if mean is None:
-            return f"{m}: no complete billed sizing cost in the cost note; Jacob decides"
+            return {"reason": f"{m}: no complete billed sizing cost in the cost note; "
+                              "Jacob decides", "halving": False, "J": None}
         reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in m else C.REPEATS_MAIN
         n = len(C.Context) * 15 * reps - 30
         total += 1.25 * mean * n
-    need = st["spent"] + st["outstanding"] + note["J"]["J_usd"] + total + C.RESERVE_USD
-    if need > cap:
-        return (f"projected ${need:.2f} (spent {st['spent']:.2f} + outstanding "
-                f"{st['outstanding']:.2f} + J {note['J']['J_usd']:.2f} + main {total:.2f} + "
-                f"reserve) exceeds the cap ${cap:.2f} at the recorded repeats; Jacob decides")
-    return None
+    j_full = note["J"]["J_usd"]
+    j_half = j_full - sum(p["attempt"] for p in note["J"]["parts"].values()) / 2
+    base = st["spent"] + st["outstanding"] + total + C.RESERVE_USD
+    if base + j_full <= cap:
+        return {"reason": None, "halving": False, "J": j_full}
+    if base + j_half <= cap:
+        return {"reason": None, "halving": True, "J": j_half}
+    return {"reason": (f"projected ${base + j_half:.2f} even with judge halving (spent "
+                       f"{st['spent']:.2f} + outstanding {st['outstanding']:.2f} + main "
+                       f"{total:.2f} + J {j_half:.2f} + reserve) exceeds the cap ${cap:.2f} at "
+                       "the recorded repeats; Jacob decides"), "halving": True, "J": j_half}
 
 
 def cmd_plan(a) -> int:
@@ -189,7 +197,12 @@ def cmd_stage(a) -> int:
     j = C.J_DEFAULT_USD
     note = C.COST_CHECKPOINT.with_suffix(".json")
     if stage == C.Stage.MAIN and note.exists():
-        j = json.loads(note.read_text())["J"]["J_usd"]
+        proj = projection(json.loads(note.read_text()), dec,
+                          dec.get("_analysis_models", []))
+        j = proj["J"] if proj["J"] is not None else json.loads(note.read_text())["J"]["J_usd"]
+        if not a.dry_run and proj["reason"] is None:
+            dec["_judge_halving_applied"] = proj["halving"]     # judging follows admission
+            R.save_decisions(dec)
     opt = R.RunOptions(dry_run=a.dry_run, j_usd=j,
                        in_flight=C.MAIN_IN_FLIGHT if stage == C.Stage.MAIN
                        else C.PRE_MAIN_IN_FLIGHT,
@@ -234,8 +247,10 @@ def cmd_decide(a) -> int:
     arts = [json.loads(p.read_text()) for p in sorted(C.EPISODES_DIR.rglob("*.json"))]
     rates = neutral_cheat_rates(arts)
     r = rates.get(f"{model}|{level.value}")
-    if not r or r["n"] < 30:
-        sys.exit(f"need 30 detector-scored neutral episodes for {model} at {level.value}: {r}")
+    if not r or not r["complete"]:
+        # exactly one successful, detector-scored attempt per neutral unit (review r3, 4)
+        sys.exit(f"need all 30 neutral units of {model} at {level.value} successful and "
+                 f"detector-scored (Jacob adjudicates queued ones first): {r}")
     cheats = [True] * round(r["rate"] * r["n"]) + [False] * (r["n"] - round(r["rate"] * r["n"]))
     d = R.switch_decision(model, cheats, level)
     hist = cur.get("history", []) + [d]
@@ -293,8 +308,7 @@ def cmd_judge(a) -> int:
     panel = J.panel_for(C.SWAP_MODEL in dec.get("_analysis_models", list(C.SUBJECTS)))
     ids = None
     if judgment == C.Judgment.ATTEMPT_G21:
-        note = C.COST_CHECKPOINT.with_suffix(".json")
-        halve = note.exists() and bool(json.loads(note.read_text()).get("judge_halving"))
+        halve = bool(dec.get("_judge_halving_applied"))    # set when the main run admitted
         ids = attempt_judge_ids(halve=halve)
         print(f"attempt judge on {len(ids)} non-cheat episodes (halving: {halve})")
     if judgment == C.Judgment.PROBE_PARSE:

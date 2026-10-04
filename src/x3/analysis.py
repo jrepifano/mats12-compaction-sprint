@@ -618,7 +618,20 @@ HASH_BOUND_MEASUREMENT = ("detector_review", "judge_validation")
 MEASUREMENT_JSON = C.RESULTS_DIR / "measurement.json"
 
 
-def measurement_status(path: Path = MEASUREMENT_JSON) -> tuple[bool | None, str]:
+def current_review_hashes(detector_csv: Path = C.DETECTOR_CSV,
+                          judged_dir: Path = C.JUDGED_DIR) -> dict[str, str | None]:
+    """The input hashes the two reviews must be bound to (code review r3, finding 7): the
+    detector table, and the judged CSVs (sorted by name, concatenated)."""
+    det = sha256_file(detector_csv) if detector_csv.exists() else None
+    files = sorted(judged_dir.glob("*.csv")) if judged_dir.exists() else []
+    h = hashlib.sha256()
+    for f in files:
+        h.update(f.name.encode() + b"\0" + f.read_bytes() + b"\0")
+    return {"detector_review": det, "judge_validation": h.hexdigest() if files else None}
+
+
+def measurement_status(path: Path = MEASUREMENT_JSON,
+                       current: dict[str, str | None] | None = None) -> tuple[bool | None, str]:
     """(ok, note) from results/X3/measurement.json, written after Jacob's blind detector review
     and the judge validation (U8): {"checks": {"<name>": {"pass": bool, ...}, ...}}. All passes
     -> True; any fail -> False; file missing or empty -> None (no headline)."""
@@ -634,6 +647,11 @@ def measurement_status(path: Path = MEASUREMENT_JSON) -> tuple[bool | None, str]
         return None, f"measurement.json incomplete: missing {missing}, unbound {unbound}"
     if any(not isinstance(checks[k].get("pass"), bool) for k in REQUIRED_MEASUREMENT):
         return None, "measurement.json: every required check needs a boolean 'pass'"
+    cur = current if current is not None else current_review_hashes()
+    stale = [k for k in HASH_BOUND_MEASUREMENT
+             if cur.get(k) is None or checks[k]["inputs_sha256"] != cur[k]]
+    if stale:
+        return None, f"measurement.json is stale for {stale}: inputs changed since review"
     ok = all(checks[k]["pass"] for k in REQUIRED_MEASUREMENT)
     return ok, f"from {path.name}: " + ", ".join(
         f"{k}={'pass' if checks[k]['pass'] else 'FAIL'}" for k in REQUIRED_MEASUREMENT)

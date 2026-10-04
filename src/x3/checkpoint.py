@@ -32,22 +32,20 @@ SIZING_STAGES = (C.Stage.CALIBRATION.value, C.Stage.SWITCH.value, C.Stage.GLM.va
 
 
 def sizing_cost(arts: list[dict], model: str, level: str | None) -> dict:
-    """Mean billed $/episode for sizing (code review r1, finding 7): only the model's neutral
-    calibration-type episodes at its final prompt level, failed samples excluded. If any call
-    lacks a billed cost the mean is None and the projection stops (never a $0 guess)."""
-    eps = [a for a in arts if a["meta"]["model"] == model and a["meta"]["stage"] in SIZING_STAGES
-           and a["meta"]["context"] == C.Context.NEUTRAL.value
-           and (level is None or a["meta"]["prompt_level"] == level) and not R.failed(a)]
+    """Mean billed $/episode for sizing: the model's 30 successful neutral units at its final
+    prompt level, each with complete billing (code review r1 finding 7, r3 finding 5). Anything
+    less gives no mean, and the main run cannot be sized."""
+    eps = [a for (m, lv, _t, _r), a in neutral_units(arts).items()
+           if m == model and (level is None or lv == level)]
     incomplete = [a["meta"]["episode_id"] for a in eps
                   if not a["model_calls"]
                   or any(c["billed_usd"] is None for c in a["model_calls"])]
-    if not eps or incomplete:
-        return {"n": len(eps), "usd_mean": None, "billing_incomplete": incomplete,
-                "level": level}
+    if len(eps) != N_NEUTRAL_UNITS or incomplete:
+        return {"n": len(eps), "required": N_NEUTRAL_UNITS, "usd_mean": None,
+                "billing_incomplete": incomplete, "level": level}
     cost = [sum(c["billed_usd"] for c in a["model_calls"]) for a in eps]
-    return {"n": len(eps), "usd_mean": statistics.fmean(cost), "billing_incomplete": [],
-            "level": level}
-
+    return {"n": len(eps), "required": N_NEUTRAL_UNITS, "usd_mean": statistics.fmean(cost),
+            "billing_incomplete": [], "level": level}
 
 def model_costs(arts: list[dict]) -> dict[str, dict]:
     """Measured billed cost and size per episode, by model (non-main episodes only)."""
@@ -93,24 +91,45 @@ def model_costs(arts: list[dict]) -> dict[str, dict]:
     return out
 
 
+def neutral_units(arts: list[dict]) -> dict[tuple, dict]:
+    """One successful final attempt per planned neutral unit (model, level, task, repeat) of the
+    calibration-type stages (code review r3, findings 4-5). Failed attempts never count."""
+    units: dict[tuple, dict] = {}
+    for a in arts:
+        m = a["meta"]
+        if (m["stage"] not in SIZING_STAGES or m["context"] != C.Context.NEUTRAL.value
+                or R.failed(a)):
+            continue
+        key = (m["model"], m["prompt_level"], m["task_id"], int(m["repeat"]))
+        if key not in units or int(m["attempt"]) > int(units[key]["meta"]["attempt"]):
+            units[key] = a
+    return units
+
+
+N_NEUTRAL_UNITS = 30          # 15 tasks x 2 repeats (prereg §4.4)
+
+
 def neutral_cheat_rates(arts: list[dict], detector_csv: Path = C.DETECTOR_CSV) -> dict:
-    """Detector cheat rate on calibration-type neutral episodes, by model and prompt level."""
+    """Detector cheat rate over the successful neutral units, by model and prompt level, with
+    the count of units still undecided (no detector row, or cheat queued for Jacob)."""
     if not detector_csv.exists():
         return {}
     with open(detector_csv, newline="") as f:
         det = {r["episode_id"]: r for r in csv.DictReader(f)}
     acc: dict[tuple[str, str], list[bool]] = {}
-    for a in arts:
-        m = a["meta"]
-        if m["stage"] not in (C.Stage.CALIBRATION.value, C.Stage.SWITCH.value,
-                              C.Stage.GLM.value, C.Stage.PROBES.value):
-            continue
-        d = det.get(m["episode_id"])
+    undecided: dict[tuple[str, str], int] = {}
+    for (model, level, _t, _r), a in neutral_units(arts).items():
+        d = det.get(a["meta"]["episode_id"])
         if not d or d.get("cheat") in ("", None):
+            undecided[(model, level)] = undecided.get((model, level), 0) + 1
             continue
-        acc.setdefault((m["model"], m["prompt_level"]), []).append(d["cheat"] == "True")
-    return {f"{k[0]}|{k[1]}": {"n": len(v), "rate": sum(v) / len(v)} for k, v in acc.items()}
-
+        acc.setdefault((model, level), []).append(d["cheat"] == "True")
+    keys = set(acc) | set(undecided)
+    return {f"{k[0]}|{k[1]}": {"n": len(acc.get(k, [])),
+                               "rate": (sum(acc[k]) / len(acc[k])) if acc.get(k) else None,
+                               "undecided": undecided.get(k, 0),
+                               "complete": len(acc.get(k, [])) == N_NEUTRAL_UNITS}
+            for k in keys}
 
 def judge_projection(n_main_by_model: dict[str, int], costs: dict[str, dict],
                      panel: list[str]) -> dict:

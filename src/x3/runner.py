@@ -14,6 +14,7 @@ import json
 import os
 import subprocess
 import time
+import uuid
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
@@ -425,6 +426,35 @@ def _outcome(stage: C.Stage, model_id: str, b: list[EpisodeSpec], ba: list[dict]
             "logs": logs}
 
 
+def _ledger_has_rid(rid: str) -> bool:
+    """True if a ledger line already settled reservation `rid` (its note carries rid=...)."""
+    path = budget.ledger_path()
+    if not path.exists():
+        return False
+    tag = f"rid={rid}"
+    return any(tag in (json.loads(x).get("note") or "")
+               for x in path.read_text().splitlines() if x.strip())
+
+
+def _release_orphans(recs: list[dict]) -> list[str]:
+    """Reservations made for an intent that never reached its admission record (a crash
+    between reserve and the admission append; code review r3, finding 3): released."""
+    admitted = {r.get("token") for r in recs if r.get("kind") == "admit"}
+    tokens = {r["token"] for r in recs if r.get("kind") == "intent"} - admitted
+    released = []
+    for rid, res in list(budget._read_reservations().items()):
+        if res.get("exp") == C.EXP_ID and any(f"token={t}" in res.get("note", "")
+                                                for t in tokens):
+            if _ledger_has_rid(rid):
+                continue
+            budget.release(rid)
+            released.append(rid)
+    for t in tokens:
+        _append_manifest({"kind": "intent_closed", "token": t, "utc": _now(),
+                          "released": released})
+    return released
+
+
 def reconcile_pending(opt: RunOptions) -> list[dict]:
     """Admissions with no outcome (a crash between eval and settlement; review r2, finding 2):
     recover their samples from the logs written after admission, write missing artifacts,
@@ -433,6 +463,8 @@ def reconcile_pending(opt: RunOptions) -> list[dict]:
     from inspect_ai.log import read_eval_log  # noqa: F401  (fails early if Inspect is missing)
 
     recs = manifest_records()
+    closed = {r["token"] for r in recs if r.get("kind") == "intent_closed"}
+    _release_orphans([r for r in recs if r.get("token") not in closed])
     done = {(r["batch_id"], tuple(r["episode_ids"])) for r in recs
             if r.get("kind", "outcome") == "outcome"}
     out = []
@@ -454,11 +486,17 @@ def reconcile_pending(opt: RunOptions) -> list[dict]:
         _write_new_artifacts(arts, wanted, opt.episodes_dir)
         spent, notes = billed_total(arts, specs)
         notes = ["reconciled after an interruption", *notes]
-        try:
-            budget.settle(r["rid"], spent, r["model"], len(specs),
-                          f"X3 {r['stage']} {r['batch_id']} (reconciled); {'; '.join(notes)}")
-        except KeyError:
+        if _ledger_has_rid(r["rid"]):
+            # settled before the crash: never settle twice (code review r3, finding 3)
             notes.append("reservation already settled before the interruption")
+            budget.release(r["rid"])
+        else:
+            try:
+                budget.settle(r["rid"], spent, r["model"], len(specs),
+                              f"X3 {r['stage']} {r['batch_id']} (reconciled) rid={r['rid']}; "
+                              f"{'; '.join(notes)}")
+            except KeyError:
+                notes.append("reservation missing and no ledger line; nothing settled")
         rec = _outcome(C.Stage(r["stage"]), r["model"], specs, arts, r["rid"], r["reserved"],
                        spent, notes, logs)
         _append_manifest(rec)
@@ -489,13 +527,20 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                       f"{len(b)} episodes, reserve ${amount:.2f} under cap ${cap:.2f}; "
                       f"{budget.status('X3', cap)}")
                 continue
+            token = uuid.uuid4().hex[:12]
+            _append_manifest({"kind": "intent", "token": token, "utc": _now(),
+                              "stage": stage.value, "model": model_id,
+                              "batch_id": b[0].batch_id})
             try:
-                rid = budget.reserve(amount, f"X3 {stage.value} {b[0].batch_id}",
+                rid = budget.reserve(amount, f"X3 {stage.value} {b[0].batch_id} token={token}",
                                      exp=C.EXP_ID, cap=cap)
             except budget.BudgetRefused as e:
+                _append_manifest({"kind": "intent_closed", "token": token, "utc": _now(),
+                                  "released": []})
                 stopped = f"budget refused: {e}"
                 break
-            _append_manifest({"kind": "admit", "utc": _now(), "stage": stage.value,
+            _append_manifest({"kind": "admit", "token": token, "utc": _now(),
+                              "stage": stage.value,
                               "model": model_id, "batch_id": b[0].batch_id, "rid": rid,
                               "reserved": amount, "episode_ids": [sp.episode_id for sp in b],
                               "log_dir": str(opt.log_dir / spec_for(model_id).slug),
@@ -518,8 +563,8 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                   if a["meta"]["episode_id"] in {sp.episode_id for sp in b}]
             spent, notes = billed_total(ba, b)
             budget.settle(rid, spent, model_id, len(b),
-                          f"X3 {stage.value} {b[0].batch_id}" + (f"; {'; '.join(notes)}"
-                                                                   if notes else ""))
+                          f"X3 {stage.value} {b[0].batch_id} rid={rid}"
+                          + (f"; {'; '.join(notes)}" if notes else ""))
             billed_sum += spent
             rec = _outcome(stage, model_id, b, ba, rid, amount, spent, notes, logs)
             _append_manifest(rec)
@@ -560,6 +605,7 @@ def _eval_specs(specs: list[EpisodeSpec], model_id: str,
                  model_args={} if opt.model_obj else model_args(model_id),
                  log_dir=str(log_dir), max_samples=len(specs), display="plain",
                  fail_on_error=False, log_model_api=True,
+                 ctl_server=False,   # no live max_retries overrides (code review r3, 1)
                  **{k: v for k, v in gc.items() if k in GenerateConfig.model_fields})
     new = sorted(set(log_dir.glob("*.eval")) - before)
     arts: list[dict] = []
@@ -631,11 +677,19 @@ def final_block_attempts(arts: list[dict]) -> dict[tuple, int | None]:
             by.setdefault(_block_key(m), {}).setdefault(int(m["attempt"]), []).append(a)
     out: dict[tuple, int | None] = {}
     for key, attempts in by.items():
-        n_ctx = len(attempts.get(1, next(iter(attempts.values()))))
+        need = planned_block_contexts(int(key[3]))
         done = [k for k, eps in sorted(attempts.items())
-                if len(eps) == n_ctx and not any(failed(e) for e in eps)]
+                if {e["meta"]["context"] for e in eps} >= need
+                and not any(failed(e) for e in eps)]
         out[key] = done[0] if done else None
     return out
+
+
+def planned_block_contexts(repeat: int, reuse_neutral: bool = True) -> set[str]:
+    """The contexts a main-run block must contain (code review r3, finding 2): all six, or
+    five when the neutral context is reused from calibration (repeats 1-2)."""
+    return {c.value for c in C.Context
+            if not (reuse_neutral and c == C.Context.NEUTRAL and repeat <= 2)}
 
 
 def _billed_or_blank(art: dict) -> float | str:

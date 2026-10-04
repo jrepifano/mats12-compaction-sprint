@@ -180,11 +180,13 @@ def test_measurement_status_reads_the_file(tmp_path):
     full = {k: {"pass": True} for k in A.REQUIRED_MEASUREMENT}
     for k in A.HASH_BOUND_MEASUREMENT:
         full[k]["inputs_sha256"] = "abc"
+    cur = {k: "abc" for k in A.HASH_BOUND_MEASUREMENT}
     p.write_text(_json.dumps({"checks": full}))
-    assert A.measurement_status(p)[0] is True
+    assert A.measurement_status(p, cur)[0] is True
+    assert A.measurement_status(p, {**cur, "detector_review": "changed"})[0] is None  # stale
     full["judge_validation"]["pass"] = False
     p.write_text(_json.dumps({"checks": full}))
-    assert A.measurement_status(p)[0] is False
+    assert A.measurement_status(p, cur)[0] is False
     p.write_text('{"checks": {"detector_review": {"pass": true}}}')   # one arbitrary pass
     assert A.measurement_status(p)[0] is None
     del full["judge_validation"]["inputs_sha256"]

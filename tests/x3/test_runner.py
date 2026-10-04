@@ -155,7 +155,10 @@ def test_collect_pivots_judges_to_one_row_per_episode(tmp_path, monkeypatch):
     assert [r["episode_id"] for r in rows] == ids
     assert rows[0]["disclosure__openai_gpt-6-luna__states_workaround"] == "True"
     assert rows[0]["disclosure__agree"] == "False"
-    assert rows[0]["analysis_role"] == "main" and rows[0]["purpose"] == "cap"
+    assert rows[0]["purpose"] == "cap"
+    # a lone main-run episode is not a complete block (planned contexts), so it is excluded
+    assert rows[0]["analysis_role"] == "excluded"
+    assert rows[0]["excluded_reason"] == "block_incomplete"
 
 
 def test_resume_skips_successes_retries_once_and_excludes_after_two(tmp_path):
