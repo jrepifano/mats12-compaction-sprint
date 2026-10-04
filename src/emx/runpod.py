@@ -1,4 +1,4 @@
-"""Shared RunPod REST client and pod bookkeeping, per experiment (E1, I1a).
+"""Shared RunPod REST client and pod bookkeeping, per experiment (E1, I1a, E1b).
 
 Ported from ../mats12_neel_working/scripts/pod_up.py, pod_down.py and pod_budget_check.py
 (their inline httpx calls, `set_env_var` and the creation-to-termination spend projection),
@@ -23,6 +23,11 @@ collected here so every script shares one client. Changes from the source:
 - 2026-10-03 (ideas from github.com/kmerkelbach/runpod-tools docs/gotchas.md, reimplemented):
   `killswitch_deadline` (the pod-side stop time pod_push.sh arms, scripts/pod_killswitch.sh) and
   `forget_host_key` (RunPod reuses ip:port pairs, so a stale known_hosts key blocks accept-new).
+- 2026-10-03 (E1b implementation plan §2 U7): E1b needs no code here, only its caps in
+  `emx.spend.CAPS`: `configure("E1b")` names pods `e1b-<slot>` (never matched by E1's `e1-`),
+  logs to logs/pods_E1b.jsonl, and kills at min($56, $75 - judges). Its two concurrent pods
+  (_A Part 1, _B Part 3) share that line in `killswitch_deadline`; like I1a it needs a live
+  watchdog heartbeat (scripts/e1b_watchdog.sh); it has no approval-gated ceiling.
 """
 
 from __future__ import annotations
@@ -349,8 +354,8 @@ def running_projection(sessions: list[dict], reserve_hours: float = 0.0) -> floa
 def gpu_kill_limit(judge_spent: float) -> float:
     """The watchdog's GPU limit: min(GPU limit, hard cap - reserve - judge spend so far).
 
-    E1: min($53, $65 - judges) (E1 implementation-plan §5); I1a: min($40, $83 - judges)
-    (the same formula as `emx.spend.watchdog_kill_usd`)."""
+    E1: min($53, $65 - judges) (E1 implementation-plan §5); I1a: min($40, $83 - judges);
+    E1b: min($56, $75 - judges) (the same formula as `emx.spend.watchdog_kill_usd`)."""
     c = caps()
     return min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - judge_spent)
 

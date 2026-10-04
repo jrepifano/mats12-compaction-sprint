@@ -30,9 +30,22 @@
 # 2026-10-03: after the sync, arms the pod-side killswitch (scripts/pod_killswitch.sh; it uses the
 # pod's own scoped RunPod key, so no laptop key is sent) with the deadline from
 # `python -m emx.runpod --killswitch-deadline`; a failure to arm is a loud warning, not an error.
+# 2026-10-03 (E1b implementation plan §2 U7): `--exp E1b`.
+# - Refuses modified tracked files, as I1a does (the pod's code is pinned to EMX_GIT_COMMIT).
+# - Pod env: as I1a's (HF_TOKEN, the slot pod's rate and creation time) plus HF_USERNAME, which
+#   E1b needs (as E1) for its Hub repos, and EMX_EXP=E1b. No HF_HUB_DISABLE_XET: E1b uploads and
+#   downloads through E1's tested huggingface_hub path.
+# - Transfer roots: the common ones plus configs/E1 configs/E1b data/E1 data/E1b (tracked files);
+#   named extras: the gitignored E1 inputs (data/E1/*.jsonl, data/E1/questions/*.jsonl), every
+#   gitignored file under data/E1b/ (ext48, contrast set, FineWeb sample), E1's training records
+#   results/E1/train/*.json (Part 3 and the re-evaluation load E1's adapters through them), E1's
+#   backend record, and results/E1b/part3/steer/alpha.json when present. All go in the one
+#   checked file list. A real push refuses if a required input is missing (the dry run warns).
+#   Mid-run, the follower (scripts/e1b_follow.sh) sends alpha.json alone with plain scp.
+# - Setup: pod_setup.sh --only e1b (venv-peft and venv-vllm).
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
-# Usage: bash scripts/pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run [--show-files]]
+# Usage: bash scripts/pod_push.sh [--exp I1a|E1b] --slot _A [--no-setup] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -52,8 +65,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$EXP" in
-  E1|I1a) ;;
-  *) echo "--exp $EXP: pod_push.sh knows E1 and I1a only" >&2; exit 2 ;;
+  E1|I1a|E1b) ;;
+  *) echo "--exp $EXP: pod_push.sh knows E1, I1a and E1b only" >&2; exit 2 ;;
 esac
 [ -n "$SLOT" ] || { echo "usage: pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run]" >&2; exit 2; }
 POD_SSH_HOST=$(envval "POD_SSH_HOST$SLOT" || true)
@@ -87,11 +100,11 @@ case "$HEAD_SHA" in
   [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
   *) echo "no commit at HEAD; refusing" >&2; exit 1 ;;
 esac
-if [ "$EXP" = "I1a" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
   if [ -n "$MODIFIED" ]; then
-    echo "modified tracked files (EMX_GIT_DIRTY=1): commit them before an I1a push; refusing:" >&2
+    echo "modified tracked files (EMX_GIT_DIRTY=1): commit them before an $EXP push; refusing:" >&2
     printf '%s\n' "$MODIFIED" >&2
     exit 1
   fi
@@ -109,7 +122,7 @@ if [ "$DRY" = "1" ]; then
 else
   SESSION=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" --session-env) \
     || { echo "slot $SLOT does not hold a $EXP pod; refusing" >&2; exit 1; }
-  if [ "$EXP" = "I1a" ]; then
+  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
   fi
@@ -129,7 +142,11 @@ done
 # transfer set: ONLY git-tracked files under the roots, plus named extras (reviews U1 r1 and
 # integrated r2). Paths are repo-relative; rsync --files-from keeps them.
 ROOTS="src scripts third_party prompts pyproject.toml uv.lock"
-if [ "$EXP" = "I1a" ]; then ROOTS="$ROOTS data/I1a"; else ROOTS="$ROOTS configs data"; fi
+case "$EXP" in
+  I1a) ROOTS="$ROOTS data/I1a" ;;
+  E1b) ROOTS="$ROOTS configs/E1 configs/E1b data/E1 data/E1b" ;;
+  *) ROOTS="$ROOTS configs data" ;;
+esac
 PATHS=""
 for p in $ROOTS; do
   if [ -e "$p" ]; then PATHS="$PATHS $p"; fi
@@ -169,6 +186,28 @@ if [ "$EXP" = "I1a" ]; then
   for f in logs/approvals/I1a-*.approved; do   # checkpoint markers (main session, after Jacob)
     if [ -f "$f" ]; then echo "$f" >> "$LIST"; fi
   done
+elif [ "$EXP" = "E1b" ]; then
+  # gitignored inputs: E1's data and narrow questions, data/E1b's ignored files (untracked,
+  # non-ignored ones were refused above), E1's adapter records, the chosen steering strength
+  E1B_EXTRAS=$(find data/E1b -type f ! -name .DS_Store 2>/dev/null | LC_ALL=C sort || true)
+  for f in data/E1/*.jsonl data/E1/questions/*.jsonl $E1B_EXTRAS results/E1/train/*.json \
+           results/E1/checks/backend_select.json results/E1b/part3/steer/alpha.json; do
+    if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+  done
+  E1B_MISSING=""
+  for f in data/E1/train_bad.jsonl data/E1/train_good.jsonl data/E1/questions/narrow.jsonl \
+           data/E1b/manifest.json data/E1b/questions/ext48.jsonl data/E1b/contrast_set.jsonl \
+           data/E1b/fineweb_2000.jsonl results/E1/train/base-chat-bad-R2-s1.json; do
+    grep -qxF "$f" "$LIST" || E1B_MISSING="$E1B_MISSING $f"
+  done
+  grep -q '^configs/E1b/.*\.json$' "$LIST" || E1B_MISSING="$E1B_MISSING configs/E1b/*.json"
+  if [ -n "$E1B_MISSING" ]; then
+    if [ "$DRY" = "1" ]; then
+      echo "DRY RUN (E1b): WARNING: required inputs missing (a real push refuses):$E1B_MISSING"
+    else
+      echo "required E1b inputs missing from the transfer set; refusing:$E1B_MISSING" >&2; exit 1
+    fi
+  fi
 else
   for f in data/E1/*.jsonl data/E1/questions/*.jsonl; do   # gitignored E1 inputs (.gitignore)
     if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
@@ -255,6 +294,7 @@ NFILES=$(wc -l < "$LIST" | tr -d ' ')
 
 SETUP_CMD="bash /ws/emx/scripts/pod_setup.sh"
 [ "$EXP" = "I1a" ] && SETUP_CMD="$SETUP_CMD --only i1a"
+[ "$EXP" = "E1b" ] && SETUP_CMD="$SETUP_CMD --only e1b"
 if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): pod env keys: $(cut -d= -f1 "$POD_ENV" | tr '\n' ' ')"
   echo "DRY RUN ($EXP): transfer set:$PATHS"

@@ -20,18 +20,40 @@
 #      MANIFEST.*.json sidecar says "limited": true (a cut-down test run);
 # and only then promotes the staged tree into results/I1a/. POD_PULL_SOURCE=<local dir> replaces
 # the rsync source (tests; no SSH).
+#
+# 2026-10-03 (E1b implementation plan §1.7, §2 U7, §6): `--exp E1b`, pulled by manifest, never by
+# tree, so a run still being written on the pod is never half-promoted:
+#   bash scripts/pod_pull_results.sh --exp E1b --slot _A --manifest MANIFEST.part3.sha256 ...
+#   bash scripts/pod_pull_results.sh --exp E1b --slot _A --run pre-plain-bad-R2-s2 ...
+#   bash scripts/pod_pull_results.sh --exp E1b --slot _A --staging part1
+# --manifest NAME (repeatable; a name or glob of a top-level manifest in results/E1b, never a
+# *partial* one) and --run CELL (= MANIFEST.run-CELL.sha256) may be combined; each must match a
+# manifest on the pod. The pod's top-level manifests are fetched first, then exactly the files the
+# chosen ones list, into a fresh staging dir (results/E1b/.pull_XXXXXX); every listed sha256 is
+# verified locally, and only then are those files and manifests promoted into results/E1b/.
+# Manifest paths may be repo-relative (results/E1b/...) or relative to the manifest's directory
+# (one convention per manifest; absolute paths and .. are refused). --staging MODE pulls a failed
+# mode's results/E1b/_staging_MODE/ whole, verifies its MANIFEST.sha256, and keeps it as
+# results/E1b/_staging_MODE_<UTC>/; one that does not verify is still kept (never discarded), as
+# _staging_MODE_<UTC>_UNVERIFIED/, and the exit is 1. POD_PULL_SOURCE=<dir> stands for the pod's
+# /ws/emx (tests; no SSH).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"
+SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --exp) EXP="${2:?}"; shift 2 ;;
     --slot) SLOT="${2:?}"; shift 2 ;;
-    --manifest) MGLOB="${2:?}"; shift 2 ;;
+    --manifest) MGLOB="${2:?}"; MLIST="$MLIST ${2}"; shift 2 ;;
+    --run) RUNS="$RUNS ${2:?}"; shift 2 ;;
+    --staging) STAGING="${2:?}"; shift 2 ;;
     --subdir) SUBDIR="${2:?}"; shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
+if [ "$EXP" != "E1b" ] && [ -n "$RUNS$STAGING" ]; then
+  echo "--run/--staging are E1b-only" >&2; exit 2
+fi
 case "$EXP" in
   E1) ;;
   I1a)
@@ -86,7 +108,138 @@ PY
     rsync -rlpt "$STAGE/results/I1a/" results/I1a/
     echo "promoted to results/I1a (closing manifest and its step manifests verified)"
     exit 0 ;;
-  *) echo "--exp $EXP: pod_pull_results.sh knows E1 and I1a" >&2; exit 2 ;;
+  E1b)
+    [ -n "$SLOT" ] || [ -n "${POD_PULL_SOURCE:-}" ] || { echo "usage: --exp E1b --slot _A ..." >&2; exit 2; }
+    [ -z "$SUBDIR" ] || { echo "--subdir is E1-only" >&2; exit 2; }
+    [ -n "$MLIST$RUNS$STAGING" ] || { echo "E1b needs --manifest NAME, --run CELL or --staging MODE" >&2; exit 2; }
+    [ -z "$STAGING" ] || [ -z "$MLIST$RUNS" ] || { echo "--staging is pulled on its own" >&2; exit 2; }
+    for c in $RUNS; do
+      case "$c" in *[!A-Za-z0-9._-]*) echo "bad cell '$c'" >&2; exit 2 ;; esac
+      MLIST="$MLIST MANIFEST.run-$c.sha256"
+    done
+    for m in $MLIST; do
+      case "$m" in
+        *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;;
+        MANIFEST.*.sha256) ;;
+        *) echo "--manifest must name a top-level results/E1b/MANIFEST.*.sha256 (got '$m')" >&2; exit 2 ;;
+      esac
+      case "$m" in *[!A-Za-z0-9._*?@-]*) echo "unsafe manifest name '$m'" >&2; exit 2 ;; esac
+    done
+    case "$STAGING" in *[!A-Za-z0-9._-]*) echo "bad staging mode '$STAGING'" >&2; exit 2 ;; esac
+    if [ -n "${POD_PULL_SOURCE:-}" ]; then
+      SRC_ROOT="$POD_PULL_SOURCE"
+      rsync_pod() { rsync "$@"; }
+    else
+      envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }
+      H=$(envval "POD_SSH_HOST$SLOT"); P=$(envval "POD_SSH_PORT$SLOT")
+      U=$(envval POD_SSH_USER); U=${U:-root}
+      [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
+      SRC_ROOT="$U@$H:/ws/emx"
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+    fi
+    # manifest_paths BASE_OUT MANIFEST...: each manifest's listed files as repo-relative paths
+    # (stdout), and per manifest the directory its paths are relative to (BASE_OUT: "<manifest>
+    # <dir>" lines). Refuses malformed lines, absolute paths, .., paths outside results/E1b, and a
+    # manifest mixing repo-relative and manifest-relative paths.
+    manifest_paths() {
+      python3 - "$@" <<'PY'
+import re
+import sys
+
+base_out, manifests = sys.argv[1], sys.argv[2:]
+line_re = re.compile(r"^([0-9a-f]{64}) [ *](.+)$")
+bases = []
+for m in manifests:
+    mdir = m.rsplit("/", 1)[0]
+    paths = []
+    for i, line in enumerate(open(m).read().splitlines(), 1):
+        if not line.strip():
+            continue
+        hit = line_re.match(line)
+        if not hit:
+            sys.exit(f"{m}:{i}: not a sha256 manifest line")
+        paths.append(hit.group(2))
+    if not paths:
+        sys.exit(f"{m}: lists no file")
+    repo = [p.startswith("results/") for p in paths]
+    if any(repo) and not all(repo):
+        sys.exit(f"{m}: mixes repo-relative and manifest-relative paths")
+    base = "." if all(repo) else mdir
+    bases.append(f"{m} {base}")
+    for p in paths:
+        rel = p if base == "." else f"{mdir}/{p}"
+        parts = rel.split("/")
+        if p.startswith("/") or ".." in parts or not rel.startswith("results/E1b/"):
+            sys.exit(f"{m}: refused path {p!r}")
+        print(rel)
+open(base_out, "w").write("\n".join(bases) + "\n")
+PY
+    }
+    mkdir -p results/E1b
+    STAGE=$(mktemp -d "results/E1b/.pull_XXXXXX")
+    trap 'rm -rf "$STAGE"' EXIT
+    if [ -n "$STAGING" ]; then
+      REL="results/E1b/_staging_$STAGING"
+      mkdir -p "$STAGE/$REL"
+      rsync_pod -rlpt "$SRC_ROOT/$REL/" "$STAGE/$REL/" \
+        || { echo "could not pull $REL from the pod" >&2; exit 1; }
+      KEEP="results/E1b/_staging_${STAGING}_$(date -u +%Y%m%dT%H%M%SZ)"
+      ok=0
+      if [ -s "$STAGE/$REL/MANIFEST.sha256" ] \
+         && ( cd "$STAGE" && manifest_paths .bases "$REL/MANIFEST.sha256" > /dev/null ); then
+        base=$(cut -d' ' -f2 "$STAGE/.bases")
+        echo "== verifying $REL/MANIFEST.sha256 ($(shasum -a 256 "$STAGE/$REL/MANIFEST.sha256" | cut -d' ' -f1))"
+        if [ "$base" = "." ]; then
+          ( cd "$STAGE" && shasum -a 256 -c --quiet "$REL/MANIFEST.sha256" ) && ok=1
+        else
+          ( cd "$STAGE/$REL" && shasum -a 256 -c --quiet MANIFEST.sha256 ) && ok=1
+        fi
+      fi
+      [ "$ok" = "1" ] || KEEP="${KEEP}_UNVERIFIED"
+      mkdir -p "$KEEP"
+      rsync -rlpt "$STAGE/$REL/" "$KEEP/"
+      if [ "$ok" = "1" ]; then echo "staged $KEEP (MANIFEST.sha256 verified)"; exit 0; fi
+      echo "STAGING DID NOT VERIFY (missing or bad MANIFEST.sha256); kept as $KEEP" >&2
+      exit 1
+    fi
+    # 1. every top-level manifest (small), then the chosen ones
+    rsync_pod -rlpt --include='MANIFEST.*.sha256' --exclude='*' "$SRC_ROOT/results/E1b/" "$STAGE/results/E1b/" \
+      || { echo "could not list the pod's manifests" >&2; exit 1; }
+    SEL=""
+    for pat in $MLIST; do
+      hit=0
+      for m in "$STAGE"/results/E1b/$pat; do
+        [ -f "$m" ] || continue
+        rel=${m#"$STAGE"/}
+        case "$rel" in *partial*) continue ;; esac
+        case " $SEL " in *" $rel "*) ;; *) SEL="$SEL $rel" ;; esac
+        hit=1
+      done
+      [ "$hit" = "1" ] || { echo "NO manifest $pat on the pod - not finished; nothing promoted" >&2; exit 1; }
+    done
+    # 2. exactly the files they list
+    # shellcheck disable=SC2086 # SEL holds repo-relative manifest paths without spaces
+    ( cd "$STAGE" && manifest_paths .bases $SEL ) > "$STAGE/.files" \
+      || { echo "a manifest was refused - nothing promoted" >&2; exit 1; }
+    rsync_pod -lpt --files-from="$STAGE/.files" "$SRC_ROOT/" "$STAGE/" \
+      || { echo "could not pull the listed files - nothing promoted" >&2; exit 1; }
+    # 3. verify every manifest locally
+    while read -r m base; do
+      echo "== verifying $m ($(shasum -a 256 "$STAGE/$m" | cut -d' ' -f1))"
+      if [ "$base" = "." ]; then
+        ( cd "$STAGE" && shasum -a 256 -c --quiet "$m" )
+      else
+        ( cd "$STAGE/$base" && shasum -a 256 -c --quiet "${m#"$base"/}" )
+      fi || { echo "MANIFEST $m does NOT verify - nothing promoted" >&2; exit 1; }
+    done < "$STAGE/.bases"
+    # 4. promote the verified manifests and their files only
+    NF=$(wc -l < "$STAGE/.files" | tr -d ' ')
+    for m in $SEL; do echo "$m" >> "$STAGE/.files"; done
+    rsync -lpt --files-from="$STAGE/.files" "$STAGE/" ./
+    # shellcheck disable=SC2086
+    echo "promoted to results/E1b ($(echo $SEL | wc -w | tr -d ' ') manifest(s) and the $NF files they list, verified)"
+    exit 0 ;;
+  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a and E1b" >&2; exit 2 ;;
 esac
 [ -n "$SLOT" ] && [ -n "$MGLOB" ] || { echo "usage: --slot _A --manifest GLOB [--subdir DIR]" >&2; exit 2; }
 case "$MGLOB" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac

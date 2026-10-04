@@ -18,7 +18,9 @@ min($40, $85 - $2 reserve - judges) and the reported judge limit is dynamic
 (`Caps.judge_limit(gpu)`: $83 minus GPU). `--gpu-ceiling USD` adds a lower kill line on logged +
 running GPU $; for I1a the P0 smoke cap ($6) applies automatically until
 logs/approvals/I1a-P1.approved exists (the I1a watchdog also passes it). `--apply-cuts` stays
-E1-only.
+E1-only. 2026-10-03: `--exp E1b` (scripts/e1b_watchdog.sh) checks every running e1b-* pod (both
+slots) against min($56, $75 - judges) and the combined guard; E1b's prereg §7 cuts are applied by
+the main session before S2 (E1b implementation plan §5), not here.
 
 Usage: uv run python scripts/pod_budget_check.py [--exp I1a] [--reserve-hours H]
        [--gpu-ceiling USD]

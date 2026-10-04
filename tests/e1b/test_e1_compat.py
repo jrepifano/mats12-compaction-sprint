@@ -37,6 +37,27 @@ def test_committed_e1_sidecar_still_verifies():
     assert G.existing_ok(RECHECK, spec, "general", meta["n_rows"], "vllm", False, contract)
 
 
+def test_e1_train_record_key_set_unchanged(tmp_path):
+    """A record without the E1b lifecycle (status None) has a committed E1 record's keys; with a
+    status it carries the E1b keys (gpt-6-sol code-A review, MINOR 3)."""
+    import dataclasses
+
+    from emx import train as T
+
+    committed = json.loads((ROOT / "results/E1/train/base-chat-bad-R2-s1.json").read_text())
+    e1_keys = set(committed) - {"reconstructed_from_log"}  # a reconstructed record's extra key
+    res = E.TrainResult(
+        cell="c", backend="b", step_losses=[1.0], eval_losses=[1.0],
+        trained_tokens_per_example={}, labels_sha256="", batch_order_sha256="",
+        init_adapter_sha256="", step_times_s=[0.1], adapter_dir="o", hub_repo="u/r",
+        hub_revision=None, wallclock_s=1.0,
+    )  # fmt: skip
+    T.write_record(tmp_path / "e1.json", res)
+    assert set(json.loads((tmp_path / "e1.json").read_text())) == e1_keys
+    T.write_record(tmp_path / "e1b.json", dataclasses.replace(res, status="running"))
+    assert set(json.loads((tmp_path / "e1b.json").read_text())) == e1_keys | set(T.E1B_RECORD_KEYS)
+
+
 def test_e1_ids_paths_and_caps_unchanged():
     assert str(E.CellId("base", "plain", "bad", "R2", 1)) == "base-plain-bad-R2-s1"
     assert E.gen_path("a@chat", "general") == "results/E1/gen/a@chat__general.csv"

@@ -90,7 +90,9 @@ def test_two_step_run_end_to_end(setup):
     tmp, cfg = setup
     res = _run(tmp, cfg)
     data = json.loads((tmp / f"res/{cfg.cell}.json").read_text())
-    assert set(data) == {f.name for f in dataclasses.fields(TrainResult)}
+    # E1's key set: the E1b fields are omitted when checkpoint_steps is None
+    e1_keys = {f.name for f in dataclasses.fields(TrainResult)} - set(T.E1B_RECORD_KEYS)
+    assert set(data) == e1_keys
     assert TrainResult(**data) == res
     assert len(res.step_losses) == 2 and len(res.step_times_s) == 2
     assert all(math.isfinite(x) and x > 0 for x in res.step_losses)

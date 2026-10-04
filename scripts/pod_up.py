@@ -18,8 +18,12 @@ logs/pods_I1a.jsonl and gates on the I1a caps. Pod creation is not idempotent, s
   the watchdog's reaper for a few minutes.
 I1a only: a live I1a watchdog (fresh logs/watchdog_I1a.heartbeat) is required, and until
 logs/approvals/I1a-P1.approved exists all GPU spend is capped at the P0 smoke cap ($6).
+2026-10-03 (E1b implementation plan §2 U7): --exp E1b (pods e1b-_A / e1b-_B, logs/pods_E1b.jsonl,
+the E1b caps) needs a live E1b watchdog (logs/watchdog_E1b.heartbeat, scripts/e1b_watchdog.sh),
+as every experiment but E1 does; no ceiling. Its gate counts every running E1b pod, so the second
+slot's launch must fit beside the first.
 
-Usage: uv run python scripts/pod_up.py [--exp I1a] --slot _A [--start N] [--no-fallback]
+Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
 """
 

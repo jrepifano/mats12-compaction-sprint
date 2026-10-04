@@ -11,6 +11,16 @@ Default metrics by question set:
   general, medical -> aligned, coherent
   narrow           -> medcorrect, coherent
   medtopic (leakage) is run separately on EM rows only:  --metrics medtopic --em-rows-from luna
+  ext48, new41     -> aligned, coherent            (E1b)
+  steergrid        -> coherent                     (E1b: the Part 3 α grid, coherence only)
+
+E1b (docs/experiments/E1b/implementation-plan.md §2 row U4): `--exp E1b` charges the E1b caps
+(`spend.check_total(..., exp="E1b")`, running pods from logs/pods_E1b.jsonl) and first applies
+the Part 3 blinding gate (`emx.e1b.blind.check_judging_allowed`): a Part 3 file is refused until
+logs/approvals/E1b-part3-unblind.approved exists, except the α grid with `--metrics coherent`.
+A file under results/E1b/, or any file holding a Part 3 condition (`+steer`, `+restore=qrand5`)
+wherever it lies, is refused without `--exp E1b` (exit 2). Exit code 5: refused by the gate. The
+experiment is never read from the environment; the default is E1, whose behaviour is unchanged.
 
 Batch judges (prereg §11 amendment C: gfl through OpenRouter's batch API at 50% price):
   --batch gfl routes that judge through emx.judge_batch (the other judges stay live). Its state
@@ -23,6 +33,7 @@ Batch judges (prereg §11 amendment C: gfl through OpenRouter's batch API at 50%
 Usage:
   uv run python scripts/e1_judge.py results/E1/gen/<condition>__<qset>.csv [--judges luna gfl]
       [--batch gfl] [--metrics aligned coherent] [--out PATH] [--concurrency 8] [--dry-run]
+      [--exp E1|E1b]
 """
 
 from __future__ import annotations
@@ -36,12 +47,28 @@ from emx import judge_batch as JB
 from emx import judge_panel as JP
 from emx import judge_run as JR
 from emx.contracts import JUDGES, METRICS
+from emx.e1b import blind as B
+from emx.e1b import contracts as E1B
 
+ROOT = Path(__file__).resolve().parents[1]
+EXPS = ("E1", "E1b")
 DEFAULT_METRICS = {
     "general": ["aligned", "coherent"],
     "medical": ["aligned", "coherent"],
     "narrow": ["medcorrect", "coherent"],
+    "ext48": ["aligned", "coherent"],  # E1b
+    "new41": ["aligned", "coherent"],  # E1b steered evaluation
+    E1B.STEER_GRID_QSET: ["coherent"],  # E1b α grid: coherence only (blinding, prereg §4.9)
 }
+
+
+def pod_events_for(exp: str) -> Path | None:
+    """The pod event log the guard reads running pods from: None (the E1 default) for E1."""
+    if exp == "E1":
+        return None
+    from emx import runpod  # lazy: pulls in requests
+
+    return runpod.LOGS / f"pods_{exp}.jsonl"
 
 
 def parse_args(argv=None):
@@ -71,7 +98,10 @@ def parse_args(argv=None):
                       help="batch: submit nothing, wait for open batches to finish")
     ap.add_argument("--running-pod-usd", type=float, default=None,
                     help="running pods' projected $ for the spend guard (default: read the "
-                         "pod log logs/pods_E1.jsonl before every column)")
+                         "pod log logs/pods_<EXP>.jsonl before every column)")
+    ap.add_argument("--exp", choices=EXPS, default="E1",
+                    help="experiment whose caps the spend is checked against and charged to")
+    ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)  # tests: unblind root
     return ap.parse_args(argv)
 
 
@@ -93,6 +123,18 @@ def main(argv=None) -> int:
         metrics = DEFAULT_METRICS[next(iter(qsets))]
     else:
         metrics = args.metrics
+    e1b_root = (Path(args.root) / E1B.RESULTS).resolve()
+    # a Part 3 output is caught by its conditions too, wherever it was copied or moved
+    if args.exp != "E1b" and (gen.resolve().is_relative_to(e1b_root)
+                              or B.is_part3(gen, args.root)):
+        print(f"{gen} is an E1b file; pass --exp E1b", file=sys.stderr)
+        return 2
+    if args.exp == "E1b":
+        try:
+            B.check_judging_allowed(gen, metrics, args.root)
+        except B.BlindedError as e:
+            print(str(e), file=sys.stderr)
+            return 5
 
     row_masks = None
     if args.em_rows_from:
@@ -122,6 +164,7 @@ def main(argv=None) -> int:
             gen, out, metrics, live, clients, row_masks=row_masks,
             max_concurrency=args.concurrency, max_retries=args.max_retries,
             dry_run=args.dry_run, running_pod_usd=args.running_pod_usd,
+            exp=args.exp, pod_events=pod_events_for(args.exp),
         )
         summary["columns"] = {col: {k: u.get(k) for k in keys if k in u}
                               for col, u in res.items()}
@@ -133,6 +176,7 @@ def main(argv=None) -> int:
                 running_pod_usd=args.running_pod_usd, do_submit=not args.collect,
                 wait=not args.submit_only, poll_s=args.poll_s, max_wait_s=args.max_wait_s,
                 max_requests=args.max_batch_requests, dry_run=args.dry_run,
+                exp=args.exp, pod_events=pod_events_for(args.exp),
             )
         except JB.BatchFailed as e:
             print(str(e), file=sys.stderr)
