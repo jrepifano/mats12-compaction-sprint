@@ -4,7 +4,7 @@
 |---|---|
 | Experiment | E1b, follow-up to E1 ([E1 report](#e1-report-2026)) on "why does emergent misalignment generalize to a persona?"; the proposals doc's week-2 recommendation #1, extended with the training-dynamics questions raised after E1 |
 | Version | v0.5 + amendment A (Part 0, 2026-10-04; §11), draft (Jacob's review folded in, 2026-10-04). v0.1 was titled "E2" before the proposals doc's naming was reconciled; gpt-6-sol rounds 1–3 addressed (§10) |
-| Status | v0.5 and amendment A (with its three A5 decisions) **approved by Jacob, 2026-10-04**; the smoke test (S1) approved. **Amendment A6** (from the review of the v0.5 changes) is reviewed and awaits Jacob's sign-off at the S2 go-ahead. Each later paid step still needs his go-ahead |
+| Status | v0.5 and amendment A (with its three A5 decisions and A6) **approved by Jacob, 2026-10-04**; S1 passed; S2 (Part 1 and Part 3) approved. The conditional arms still need his go-ahead at Checkpoint 1 |
 | Author | Claude (Opus 5.5), drafting for Jacob Epifano; design input from Neel's 2026-10-03 session (§2) |
 | Reviews | gpt-6-sol rounds 1–3 of 3 done (cap reached) |
 | Budget | Planned ≈ $55 (Part 1 ≈ $43, Part 3 ≈ $12); up to ≈ $74 if both conditional arms run; **hard cap $75** |
@@ -490,6 +490,7 @@ The detailed plan goes in `docs/experiments/E1b/implementation-plan.md` after ap
 | 2026-10-04 | gpt-6-sol, amendment A (`logs/reviews/20261004-E1b-amendA-r1.md`) | REVISE: 2 blocking (the "not computable" outcome changed a §4.9 rule, so it moved to A5 for Jacob; the doubled Part 3(a) sample was underpriced and broke the worst case), 2 minor (a power figure; percentile vs basic bootstrap named). All fixed |
 | 2026-10-04 | Jacob | v0.5 and amendment A approved; A5: basic bootstrap bound, E1's 5% rule ("not computable"), Part 3(a) at 8 × 50; S1 approved |
 | 2026-10-04 | gpt-6-sol, v0.5 changes, rounds 1–2 (`logs/reviews/20261004-E1b-prereg-v05-r{1,2}.md`; required by CLAUDE.md "Order: review, then sign-off") | r1 REVISE: sufficiency was magnitude-only; Part 3(b) priced at 4 conditions, not 7, and the worst case omitted the smoke test and α-grid judging; "not computable" missing from §4.9/§6. Fixed as amendment A6 (directional sufficiency condition, repricing, cut 1 before S2). r2 FINAL AFTER FIXES: budget summaries in §7 and plan §5 pointed at A6; plan U6b's outcomes; status wording. All fixed |
+| 2026-10-04 | Jacob | A6 signed off; S2 approved (after S1 passed and the worst case was recomputed at ≈ $73.4, no cut needed) |
 
 **Changes from Jacob's review** (v0.5, 2026-10-04, via comments on the Claude Doc)
 - No coordination with Vishesh: E1b runs the sufficiency direction itself (activation level, forward passes only, secondary labels; §4.9).
@@ -566,7 +567,7 @@ Written at Checkpoint 0 from the Part 0 outputs. Nothing here was chosen after s
    
    Option (b) fits the planned path easily (GPU ≈ $43 of $56). It does not fit the worst case with both conditional arms (GPU ≈ $58.7 against $56) unless Part 1 takes prereg cut 3 (dense tier every 20 steps, ≈ −$2.5 GPU) or one conditional arm is given up. Part 3 runs before Checkpoint 1, so this is decided at the S2 go-ahead. **Decided: (a), 8 × 50 as planned, reported as low-powered.**
 
-**A6. From the review of the v0.5 changes** (`logs/reviews/20261004-E1b-prereg-v05-r1.md`; v0.5 was Jacob's sign-off edit after round 3, so under the new rule it is reviewed here)
+**A6. From the review of the v0.5 changes** (signed off by Jacob, 2026-10-04, with the S2 go-ahead) (`logs/reviews/20261004-E1b-prereg-v05-r1.md`; v0.5 was Jacob's sign-off edit after round 3, so under the new rule it is reviewed here)
 1. *Sufficiency now needs direction as well as size* (§4.9, §6). As written, "sufficient" asked only that the induced difference be large, so a large perturbation in an unrelated direction would have qualified. It now also needs the cosine between the induced and the fine-tuning bias, on positions 68–127, to be at least 0.5, with its 95% document-bootstrap lower bound above zero. The code implements this (`emx.e1b.part3.sufficiency_label`, tested with an orthogonal induced difference).
 2. *Not computable* (A5.2) is added to §4.9's ordered outcomes and §6.
 3. *Budget, repriced.* Sufficiency raises Part 3(b) from 4 to 7 activation conditions (8 forward passes per document instead of 5: ≈ +0.25 GPU-hour, ≈ +$0.9). The α grid is ≈ 0.6 GPU-hour against the 0.4 hour budgeted for search and generation (≈ +$0.7), and its coherence judging costs ≈ $0.5. Both GPU excesses come out of Part 3's 0.8-hour buffer. Adding the smoke test (≈ $1 beyond Part 1's own setup), the worst case with both conditional arms is GPU ≈ $56.2 and total ≈ $75.1, over both limits. **Before S2, the §7 cuts apply in order to Part 1**, recomputed from S1's measured rates and actual spend (implementation plan §5): at today's estimates cut 1 (drop timing checkpoint 858) brings the worst case to GPU ≈ $55.9 and total ≈ $74.5. The planned path without conditional arms (GPU ≈ $40.5, total ≈ $56.5) fits with room.
