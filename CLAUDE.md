@@ -58,6 +58,16 @@ More documents may be added; when they are, read them and update the proposals d
   7. **Failure handling:** what to do if an agent stalls or fails. Agents doing large rewrites stalled repeatedly on 2026-09-28, so give them small, bounded units and tell them to make small edits.
 
   The plan is reviewed by Jacob (and by gpt-6-sol, within the 3-round cap) before any unit starts.
+- **Implement each experiment in its own git worktree** (Jacob, 2026-10-04). Several sessions work in this repo at once, so implementation never happens in the main checkout.
+  - **When:** after the prereg is signed off, and before the first implementation commit. Branch from current `main` into `.claude/worktrees/<exp>-<purpose>` on branch `<exp>/<purpose>`, e.g. `e1b/run` or `x3/build`. Use Claude Code's worktree tool or `git worktree add`. Copy `.env` in, as described under Stack.
+  - **What lives on the branch:** everything the experiment produces. That is its code, configs, tests, results, report, review logs and `logs/pods_<EXP>.jsonl`, plus any prereg amendments made during the run. Commit there after each reviewed step.
+  - **What stays on `main`:** the shared planning documents: `docs/research-proposals.md`, CLAUDE.md, the tracker snapshot, `papers/`, and new preregs, which are written before a worktree exists. Edit these on `main`, not on a branch, so parallel sessions don't collide on them.
+  - **Shared code** (`emx.spend.CAPS`, `pod_push.sh` cases, `emx` modules other experiments use): change it on the branch, but keep the changes small and additive, such as a new experiment case rather than a rewrite. Before merging back, merge `main` into the branch and rerun the full test suite.
+  - **One spend ledger.** `emx.spend` writes to `logs/costs.jsonl` in whichever checkout the code runs from. A worktree would therefore keep its own copy, invisible to `main`, to the tracker and to other experiments' totals, under a separate file lock. (Found 2026-10-04, before any worktree had diverged.) Until `emx.spend` resolves the main checkout itself:
+    - every command in a worktree that can spend money runs with `EMX_COSTS_LEDGER=/Users/jacob/Documents/GitHub/mats12_neel_exploratory/logs/costs.jsonl` exported;
+    - branches never commit changes to `logs/costs.jsonl`;
+    - `main`'s copy is committed with the tracker snapshots.
+  - **Finishing:** merge back through a PR once the final report is reviewed, as I1a and the swarm work did (PRs #1 and #2). Then remove the worktree (`git worktree remove`), after checking `git status` shows nothing uncommitted in it.
 - **Read all related sources before planning an implementation.** When turning a proposal into a prereg or code:
   1. Read every paper, README, and blog post in `papers/` that the experiment cites or builds on, in full.
   2. Also read the relevant upstream code (repos and model cards), and the matching entries in `docs/working-repo-code-map.md`.
