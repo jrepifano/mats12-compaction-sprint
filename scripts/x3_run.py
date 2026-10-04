@@ -66,8 +66,9 @@ def _manifest_records() -> list[dict]:
 def stage_complete(stage: C.Stage, model: str, tasks: list[C.TaskSpec]) -> bool:
     """Every planned episode of this stage for this model either succeeded or failed twice
     (code review r1, finding 5). The level is read from the episodes that ran."""
-    ids = [e for r in _manifest_records() if r["stage"] == stage.value and r["model"] == model
-           for e in r["episode_ids"]]
+    # outcome records only: intent/admit records carry no outcome (found at the probe stage)
+    ids = [e for r in R._outcomes() if r.get("stage") == stage.value
+           and r.get("model") == model for e in r.get("episode_ids", [])]
     if not ids:
         return False
     level = C.PromptLevel(ids[-1].split("|")[2])

@@ -237,6 +237,30 @@ def test_roles():
     assert R._role(_art("x", error="boom"), dec, am)[0] == "excluded"
 
 
+def test_stage_complete_ignores_intent_and_admit_records(tmp_path, monkeypatch):
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "x3_run_cli", Path(__file__).resolve().parents[2] / "scripts" / "x3_run.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    b = R.plan_stage(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks(), C.PromptLevel.B)[0]
+    man = tmp_path / "m.jsonl"
+    ids = [sp.episode_id for sp in b]
+    man.write_text("\n".join(json.dumps(r) for r in (
+        {"kind": "intent", "token": "t", "stage": "smoke", "model": "qwen/qwen3.6-27b",
+         "batch_id": b[0].batch_id},
+        {"kind": "admit", "token": "t", "stage": "smoke", "model": "qwen/qwen3.6-27b",
+         "batch_id": b[0].batch_id, "episode_ids": ids},
+        {"kind": "outcome", "stage": "smoke", "model": "qwen/qwen3.6-27b",
+         "batch_id": b[0].batch_id, "episode_ids": ids, "failed": []})) + "\n")
+    monkeypatch.setattr(R, "MANIFEST", man)
+    assert cli.stage_complete(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks())
+    man.write_text(man.read_text().splitlines()[0] + "\n")      # an intent only
+    assert not cli.stage_complete(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks())
+
+
 def test_sdk_retries_are_off():
     for m in C.MODELS:
         assert R.model_args(m)["max_retries"] == 0
