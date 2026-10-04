@@ -64,6 +64,10 @@ from emx.i9 import render as R
 ENGINE = "vllm"
 ENGINE_SEED = C.ENGINE_SEED  # every request carries its own seed, which decides the draw
 GPU_MEMORY_UTILIZATION = 0.90
+# vLLM 0.30 caps concurrent sequences by the hybrid models' per-sequence state blocks: Qwen3.6's
+# linear-attention layers gave 325 blocks on the H100 at 0.90 utilisation, below the default 1024
+# (pod smoke 2026-10-04: "max_num_seqs (1024) exceeds available Mamba cache blocks (325)").
+MAX_NUM_SEQS = 256
 MAX_MODEL_LEN_ROUND = 256
 MM_LIMITS: dict[str, dict[str, int]] = {
     "qwen": {"image": 0, "video": 0},
@@ -406,6 +410,7 @@ def llm_kwargs(args: argparse.Namespace, max_len: int) -> dict[str, Any]:
         "generation_config": "vllm",
         "max_model_len": max_len,
         "gpu_memory_utilization": args.gpu_memory_utilization,
+        "max_num_seqs": args.max_num_seqs,
     }
     if not args.model_dir:
         kw["revision"] = kw["tokenizer_revision"] = C.MODEL_REV[args.model]
@@ -498,6 +503,8 @@ def run(args: argparse.Namespace, llm_factory: Any = None, vllm_mod: Any = None)
 def parser() -> argparse.ArgumentParser:
     p = arg_parser(__doc__, ENGINE)
     p.add_argument("--gpu-memory-utilization", type=float, default=GPU_MEMORY_UTILIZATION)
+    p.add_argument("--max-num-seqs", type=int, default=MAX_NUM_SEQS,
+                   help="vLLM concurrent sequences (hybrid models need <= their state blocks)")
     p.add_argument("--mm-limits", choices=("zero", "none"), default="zero",
                    help="zero: no image/video/audio per prompt; none: leave vLLM's default")
     return p

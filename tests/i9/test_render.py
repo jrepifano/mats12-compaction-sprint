@@ -246,6 +246,7 @@ def test_vllm_sampler_with_fake_engine(tmp_path, data_files, qwen_tok):
     assert fake.llm_kwargs["revision"] == C.QWEN_REV
     assert fake.llm_kwargs["generation_config"] == "vllm"
     assert fake.llm_kwargs["max_model_len"] % 256 == 0
+    assert fake.llm_kwargs["max_num_seqs"] == 256  # hybrid-model state blocks (pod smoke)
     for k, v in C.SAMPLING[("qwen", False)].items():
         assert all(p[k] == v for p in fake.params), k
     assert all(p["stop_token_ids"] == [248046, 248044] for p in fake.params)
