@@ -232,3 +232,43 @@ def test_roles():
     assert R._role(_art("x", stage="probes", model="google/gemini-3.8-flash", ctx="neutral"),
                    dec, am)[0] == "probe"
     assert R._role(_art("x", error="boom"), dec, am)[0] == "excluded"
+
+
+def test_sdk_retries_are_off():
+    for m in C.MODELS:
+        assert R.model_args(m)["max_retries"] == 0
+
+
+def test_main_blocks_retry_whole_and_once(tmp_path):
+    blocks = R.plan_stage(C.Stage.MAIN, "qwen/qwen3.6-27b", _tasks(), C.PromptLevel.B)
+    b = blocks[0]
+    man = tmp_path / "m.jsonl"
+    rec = {"kind": "outcome", "stage": "main", "model": "q", "batch_id": b[0].batch_id,
+           "episode_ids": [sp.episode_id for sp in b], "failed": [b[0].episode_id]}
+    man.write_text(json.dumps(rec) + "\n")
+    out = R.resume_batches([b], man)
+    assert len(out) == 1 and len(out[0]) == len(b) and {sp.attempt for sp in out[0]} == {2}
+    with open(man, "a") as f:
+        f.write(json.dumps({**rec, "episode_ids": [sp.episode_id for sp in out[0]],
+                            "failed": [out[0][1].episode_id]}) + "\n")
+    assert R.resume_batches([b], man) == []                  # failed twice: excluded
+    ok = tmp_path / "ok.jsonl"
+    ok.write_text(json.dumps({**rec, "failed": []}) + "\n")
+    assert R.resume_batches([b], ok) == []                   # completed: skipped
+    adm = tmp_path / "adm.jsonl"
+    adm.write_text(json.dumps({**rec, "kind": "admit"}) + "\n")
+    assert len(R.resume_batches([b], adm)) == 1              # admission alone is not an outcome
+
+
+def test_final_block_attempt_selection():
+    def a(ctx, attempt, err=None):
+        x = _art(f"q|main|B|{ctx}|t1|r3|a{attempt}", ctx=ctx, repeat=3, error=err)
+        x["meta"]["attempt"] = attempt
+        return x
+    ctxs = [c.value for c in C.Context]
+    first = [a(c, 1, "boom" if c == "neutral" else None) for c in ctxs]
+    second = [a(c, 2) for c in ctxs]
+    key = R._block_key(first[0]["meta"])
+    assert R.final_block_attempts(first + second)[key] == 2
+    assert R.final_block_attempts(first)[key] is None
+    assert R.final_block_attempts([a(c, 1) for c in ctxs])[key] == 1

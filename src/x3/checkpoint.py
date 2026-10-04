@@ -58,7 +58,12 @@ def model_costs(arts: list[dict]) -> dict[str, dict]:
         by.setdefault(a["meta"]["model"], []).append(a)
     out = {}
     for model, eps in by.items():
-        cost = [sum((c["billed_usd"] or 0.0) for c in a["model_calls"]) for a in eps]
+        complete = [a for a in eps if a["model_calls"]
+                    and all(c["billed_usd"] is not None for c in a["model_calls"])]
+        n_incomplete = len(eps) - len(complete)
+        # unknown billing is never averaged in as $0 (review r2, finding 6)
+        cost = ([sum(c["billed_usd"] for c in a["model_calls"]) for a in complete]
+                if not n_incomplete else [])
         calls = [c for a in eps for c in a["model_calls"]]
         tin = [sum(c["input_tokens"] for c in a["model_calls"]) for a in eps]
         tout = [sum(c["output_tokens"] for c in a["model_calls"]) for a in eps]
@@ -67,7 +72,9 @@ def model_costs(arts: list[dict]) -> dict[str, dict]:
         chars = [len(json.dumps(a.get("messages") or [])) for a in eps]
         out[model] = {
             "n_episodes": len(eps),
-            "usd_mean": statistics.fmean(cost), "usd_median": statistics.median(cost),
+            "n_billing_incomplete": n_incomplete,
+            "usd_mean": statistics.fmean(cost) if cost else None,
+            "usd_median": statistics.median(cost) if cost else None,
             "usd_p90": _p90(cost),
             "input_tokens_mean": statistics.fmean(tin), "output_tokens_mean": statistics.fmean(tout),
             "reasoning_tokens_mean": statistics.fmean(reas), "turns_mean": statistics.fmean(turns),

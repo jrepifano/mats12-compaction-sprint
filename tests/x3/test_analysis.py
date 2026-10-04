@@ -175,10 +175,22 @@ def test_no_headline_without_a_measurement_pass(planted):
 def test_measurement_status_reads_the_file(tmp_path):
     p = tmp_path / "m.json"
     assert A.measurement_status(p)[0] is None
-    p.write_text('{"checks": {"detector_review": {"pass": true}, "judges": {"pass": true}}}')
+    import json as _json
+
+    full = {k: {"pass": True} for k in A.REQUIRED_MEASUREMENT}
+    for k in A.HASH_BOUND_MEASUREMENT:
+        full[k]["inputs_sha256"] = "abc"
+    p.write_text(_json.dumps({"checks": full}))
     assert A.measurement_status(p)[0] is True
-    p.write_text('{"checks": {"detector_review": {"pass": true}, "judges": {"pass": false}}}')
+    full["judge_validation"]["pass"] = False
+    p.write_text(_json.dumps({"checks": full}))
     assert A.measurement_status(p)[0] is False
+    p.write_text('{"checks": {"detector_review": {"pass": true}}}')   # one arbitrary pass
+    assert A.measurement_status(p)[0] is None
+    del full["judge_validation"]["inputs_sha256"]
+    full["judge_validation"]["pass"] = True
+    p.write_text(_json.dumps({"checks": full}))                      # unbound review
+    assert A.measurement_status(p)[0] is None
 
 
 @pytest.mark.parametrize("scenario", A.SCENARIOS)

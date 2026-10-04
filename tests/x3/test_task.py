@@ -1,6 +1,7 @@
 """U4: the X3 Inspect task's pieces that run without Docker (implementation plan D5)."""
 from __future__ import annotations
 
+import pytest
 from inspect_ai.model import (
     ChatMessageAssistant,
     ChatMessageSystem,
@@ -95,3 +96,40 @@ def test_tools_are_execute_command_and_zero_arg_done():
     assert set(defs) == {"execute_command", "done"}
     assert list(defs["done"].parameters.properties) == []
     assert list(defs["execute_command"].parameters.properties) == ["command"]
+
+
+def test_retries_are_ours_and_each_failed_attempt_is_charged(monkeypatch):
+    import asyncio
+
+    from inspect_ai.model import ModelOutput
+
+    calls = []
+
+    async def flaky(messages, tools, max_tokens, tool_choice=None):
+        calls.append(1)
+        if len(calls) < 3:
+            raise RuntimeError("503")
+        return ModelOutput.from_content("m", "ok")
+
+    async def nosleep(_):
+        return None
+
+    monkeypatch.setattr(T, "_generate", flaky)
+    out, extra, err = asyncio.run(T.generate_with_retries([], [], 100, 0.01, sleep=nosleep))
+    assert out is not None and len(calls) == 3 and extra == 0.02 and "503" in err
+    calls.clear()
+
+    async def dead(*a, **k):
+        calls.append(1)
+        raise RuntimeError("down")
+
+    monkeypatch.setattr(T, "_generate", dead)
+    out, extra, _ = asyncio.run(T.generate_with_retries([], [], 100, 0.01, sleep=nosleep))
+    assert out is None and len(calls) == T.ATTEMPTS and extra == pytest.approx(0.03)
+
+
+def test_inspect_retries_are_off_in_every_request():
+    import inspect
+
+    src = inspect.getsource(T._generate)
+    assert "max_retries=0" in src

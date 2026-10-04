@@ -17,6 +17,7 @@ Billed cost, provider and response ids are read offline from the .eval log's mod
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import math
 from dataclasses import asdict, dataclass, field
@@ -210,10 +211,12 @@ def input_bound_tokens(messages: list[ChatMessage], tools: list[Tool]) -> int:
             + C.TOKENS_PER_MESSAGE_OVERHEAD * len(messages))
 
 
-# Inspect retries a failed request; each attempt may bill. With at most MAX_RETRIES retries,
-# a call can bill at most ATTEMPTS times its own bound, so the pre-call bound multiplies by it
-# (code review r1, finding 1). A long per-attempt timeout keeps abandoned attempts rare.
+# Retries happen only in this loop (code review r2, finding 1): Inspect's retries are off
+# (max_retries=0) and so are the OpenAI SDK's (runner passes max_retries=0 in model_args), so
+# every attempt is one request we can see. A failed attempt may still have billed, so it is
+# charged its whole single-attempt bound. The pre-call check leaves room for all ATTEMPTS.
 MAX_RETRIES = 2
+RETRY_BACKOFF_S = (10, 30)
 ATTEMPTS = MAX_RETRIES + 1
 ATTEMPT_TIMEOUT_S = 600
 
@@ -296,10 +299,27 @@ def setup() -> Solver:
 async def _generate(messages: list[ChatMessage], tools: list[Tool], max_tokens: int,
                     tool_choice: str | None = None) -> ModelOutput:
     cfg = GenerateConfig(max_tokens=max_tokens, parallel_tool_calls=False,
-                         max_retries=MAX_RETRIES, attempt_timeout=ATTEMPT_TIMEOUT_S)
+                         max_retries=0, attempt_timeout=ATTEMPT_TIMEOUT_S)
     if tool_choice == "none":
         return await get_model().generate(messages, tools=[], config=cfg)
     return await get_model().generate(messages, tools=tools, config=cfg)
+
+
+async def generate_with_retries(messages: list[ChatMessage], tools: list[Tool], max_tokens: int,
+                                attempt_bound: float, tool_choice: str | None = None,
+                                sleep=asyncio.sleep) -> tuple[ModelOutput | None, float, str]:
+    """Up to ATTEMPTS single-request attempts. Returns (output or None, extra cost charged for
+    failed attempts, last error). Each failed attempt is charged `attempt_bound`."""
+    extra, err = 0.0, ""
+    for attempt in range(ATTEMPTS):
+        try:
+            return await _generate(messages, tools, max_tokens, tool_choice), extra, err
+        except Exception as e:  # noqa: BLE001 - any API failure
+            extra += attempt_bound
+            err = repr(e)[:2000]
+            if attempt < ATTEMPTS - 1:
+                await sleep(RETRY_BACKOFF_S[min(attempt, len(RETRY_BACKOFF_S) - 1)])
+    return None, extra, err
 
 
 @solver
@@ -324,15 +344,16 @@ def episode() -> Solver:
             if mt < C.MIN_CALL_MAX_TOKENS:
                 end_reason = C.EndReason.COST_CAP.value
                 break
-            try:
-                out = await _generate(messages, TOOLS, mt)
-            except Exception as e:  # noqa: BLE001 - any API failure after Inspect's retries
+            one = call_bound(ib, mt, spec.in_ceiling, spec.out_ceiling) / ATTEMPTS
+            out, extra, err = await generate_with_retries(messages, TOOLS, mt, one)
+            spent += extra
+            bounds[-1]["failed_charge"] = extra
+            if out is None:
                 end_reason = C.EndReason.API_ERROR.value
-                s.set("x3_api_error", repr(e)[:2000])
+                s.set("x3_api_error", err)
                 break
             turns += 1
-            spent += call_cost(out, spec.in_ceiling, spec.out_ceiling,
-                               call_bound(ib, mt, spec.in_ceiling, spec.out_ceiling))
+            spent += call_cost(out, spec.in_ceiling, spec.out_ceiling, one)
             msg = out.message
             messages.append(msg)
             if out.stop_reason in ("model_length", "content_filter"):
@@ -371,6 +392,7 @@ def episode() -> Solver:
             "messages": [m.model_dump(exclude_none=True) for m in messages],
             "end_reason": end_reason, "n_turns": turns, "n_nudges": nudges,
             "n_multi_call": multi, "spent_at_ceiling": spent, "bounds": bounds,
+            "n_failed_attempt_calls": sum(1 for b in bounds if b.get("failed_charge")),
             "first_turn": {"reasoning": r_text, "visible": first_asst.text if first_asst else "",
                            "redacted": redacted,
                            "reasoning_readable": bool(r_text) and not redacted},
@@ -385,14 +407,17 @@ def episode() -> Solver:
         if pmt < C.MIN_PROBE_MAX_TOKENS:
             probe["status"] = "skipped_budget"
         else:
-            try:
-                pout = await _generate(pmsgs, [], pmt, tool_choice="none")
+            pone = call_bound(pib, pmt, spec.in_ceiling, spec.out_ceiling) / ATTEMPTS
+            pout, pextra, perr = await generate_with_retries(pmsgs, [], pmt, pone,
+                                                             tool_choice="none")
+            probe["failed_attempt_charge"] = pextra
+            if pout is None:
+                probe["status"] = "api_error"
+                probe["error"] = perr
+            else:
                 probe["reply"] = pout.message.text
                 probe["status"] = "ok" if pout.message.text.strip() else "empty"
                 probe["usage"] = pout.usage.model_dump() if pout.usage else None
-            except Exception as e:  # noqa: BLE001
-                probe["status"] = "api_error"
-                probe["error"] = repr(e)[:2000]
         s.set(C.STORE_PROBE, probe)
         state.messages = messages
         state.completed = True

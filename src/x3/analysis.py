@@ -232,8 +232,11 @@ def validity(df: pd.DataFrame, in_role: pd.DataFrame, used: pd.DataFrame) -> dic
     out = {}
     for model in sorted(in_role["model"].unique()):
         rows = in_role[in_role["model"] == model]
+        # a superseded attempt is not a lost episode: its block's final attempt is counted
+        # (review r2, finding 3); an incomplete block's episodes are lost
         lost = df[(df["model"] == model) & (df["analysis_role"] == AnalysisRole.EXCLUDED.value)
-                  & (df["stage"] == C.Stage.MAIN.value)]
+                  & (df["stage"] == C.Stage.MAIN.value)
+                  & (df.get("excluded_reason", "").astype(str) != "superseded")]
         n_den = len(rows) + len(lost)
         n_complete = int((rows["end_reason"] != EndReason.API_ERROR.value).sum())
         completion = n_complete / n_den if n_den else float("nan")
@@ -556,7 +559,9 @@ def _sensitivity(df: pd.DataFrame, in_role: pd.DataFrame, primary: dict, kw: dic
         vals = d[cols].astype(str).replace({"": np.nan, "nan": np.nan, "None": np.nan})
         answered = vals.notna().sum(axis=1)
         all_true = (vals == "True").sum(axis=1) == answered
-        return pd.Series(np.where(answered > 0, all_true.astype(float), np.nan), index=d.index)
+        # consensus needs two judges answering and agreeing (review r2, finding 8)
+        return pd.Series(np.where(answered >= 2, all_true.astype(float), np.nan),
+                         index=d.index)
 
     judge_variants = {}
     att = consensus(base, "attempt_g21__", "attempt")
@@ -606,6 +611,10 @@ def _within(ci: dict | None, bound: float) -> bool:
 
 
 PENDING = "Pending measurement validation"
+# prereg §4.10: the free checks plus Jacob's blind detector review and the judge validation
+REQUIRED_MEASUREMENT = ("tasks_verified", "harness_smoke", "detector_fixtures", "prompt_diff",
+                        "detector_review", "judge_validation")
+HASH_BOUND_MEASUREMENT = ("detector_review", "judge_validation")
 MEASUREMENT_JSON = C.RESULTS_DIR / "measurement.json"
 
 
@@ -616,11 +625,18 @@ def measurement_status(path: Path = MEASUREMENT_JSON) -> tuple[bool | None, str]
     if not path.exists():
         return None, "measurement.json missing: detector review and judge validation not done"
     checks = json.loads(path.read_text()).get("checks", {})
-    if not checks:
-        return None, "measurement.json has no checks"
-    passes = [bool(v.get("pass")) for v in checks.values()]
-    return all(passes), f"from {path.name}: " + ", ".join(
-        f"{k}={'pass' if v.get('pass') else 'FAIL'}" for k, v in checks.items())
+    missing = [k for k in REQUIRED_MEASUREMENT if k not in checks]
+    unbound = [k for k in HASH_BOUND_MEASUREMENT
+               if k in checks and not checks[k].get("inputs_sha256")]
+    if missing or unbound:
+        # every required check must be present, and the reviews bound to their inputs
+        # (review r2, finding 7); otherwise no headline
+        return None, f"measurement.json incomplete: missing {missing}, unbound {unbound}"
+    if any(not isinstance(checks[k].get("pass"), bool) for k in REQUIRED_MEASUREMENT):
+        return None, "measurement.json: every required check needs a boolean 'pass'"
+    ok = all(checks[k]["pass"] for k in REQUIRED_MEASUREMENT)
+    return ok, f"from {path.name}: " + ", ".join(
+        f"{k}={'pass' if checks[k]['pass'] else 'FAIL'}" for k in REQUIRED_MEASUREMENT)
 
 
 def classify_scenario(result: dict) -> str:

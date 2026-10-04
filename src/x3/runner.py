@@ -7,9 +7,11 @@ planning, extraction, the cost note and `collect` are free.
 """
 from __future__ import annotations
 
+import calendar
 import csv
 import hashlib
 import json
+import os
 import subprocess
 import time
 from dataclasses import asdict, dataclass, replace
@@ -36,7 +38,10 @@ def spec_for(model_id: str) -> C.ModelSpec:
 
 def model_args(model_id: str) -> dict:
     """OpenRouter routing (D7): cheapest provider at or under the ceiling; fp8 for DeepSeek."""
-    return {} if model_id.startswith("mockllm/") else {"provider": spec_for(model_id).provider}
+    if model_id.startswith("mockllm/"):
+        return {}
+    # max_retries=0: the OpenAI SDK must not retry under Inspect; retries are ours (task.py)
+    return {"provider": spec_for(model_id).provider, "max_retries": 0}
 
 
 def generate_config(model_id: str) -> dict:
@@ -246,27 +251,33 @@ def extract_log(eval_path: Path, *, write: bool = True,
             probe["parsed"] = parse_probe_reply(probe["reply"]) if parse_probe_reply else None
         err = repr(s.error)[:2000] if s.error else (None if ep else "episode record missing")
         art["error"] = err
+        art["meta"]["model_slug"] = md.get("model_slug")
         if write and md.get("episode_id"):
             # every sample is written, failed ones too, so denominators and retries are exact
             # (code review r1, finding 6); an existing file is never overwritten (finding 3)
-            rel = C.episode_path(md["model_slug"], C.Stage(md["stage"]),
-                                 C.PromptLevel(md["prompt_level"]), C.Context(md["context"]),
-                                 md["task_id"], md["repeat"],
-                                 md["attempt"]).relative_to(C.EPISODES_DIR)
-            parts = md["episode_id"].split("|")
-            if len(parts) > 7:              # mock walks tag the id: one file per scenario
-                rel = rel.with_name(f"{rel.stem}_{parts[7]}.json")
-            p = episodes_dir / rel
+            p = _artifact_path(art["meta"], md["episode_id"], episodes_dir)
+            base = p
             n = 1
             while p.exists():
-                p = (episodes_dir / rel).with_name(f"{rel.stem}.dup{n}.json")
-                art["duplicate_of"] = str(episodes_dir / rel)
+                p = base.with_name(f"{base.stem}.dup{n}.json")
+                art["duplicate_of"] = str(base)
                 n += 1
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(json.dumps(art, indent=1, default=str))
             art["path"] = str(p)
         out.append(art)
     return out
+
+
+def _artifact_path(meta: dict, eid: str, episodes_dir: Path) -> Path:
+    rel = C.episode_path(meta["model_slug"], C.Stage(meta["stage"]),
+                         C.PromptLevel(meta["prompt_level"]), C.Context(meta["context"]),
+                         meta["task_id"], meta["repeat"],
+                         meta["attempt"]).relative_to(C.EPISODES_DIR)
+    parts = eid.split("|")
+    if len(parts) > 7:              # mock walks tag the id: one file per scenario
+        rel = rel.with_name(f"{rel.stem}_{parts[7]}.json")
+    return episodes_dir / rel
 
 
 def failed(art: dict) -> bool:
@@ -279,47 +290,69 @@ def base_id(eid: str) -> str:
     return eid.rsplit("|a", 1)[0]
 
 
-def manifest_outcomes(manifest: Path | None = None) -> tuple[set[str], dict[str, int]]:
-    """(base ids that succeeded, failed attempts per base id) from the run manifest."""
+def manifest_records(manifest: Path | None = None) -> list[dict]:
     manifest = manifest or MANIFEST
+    if not manifest.exists():
+        return []
+    return [json.loads(x) for x in manifest.read_text().splitlines() if x.strip()]
+
+
+def _outcomes(manifest: Path | None = None) -> list[dict]:
+    """Outcome records only (admission records have kind == "admit")."""
+    return [r for r in manifest_records(manifest) if r.get("kind", "outcome") == "outcome"]
+
+
+def manifest_outcomes(manifest: Path | None = None) -> tuple[set[str], dict[str, int]]:
+    """(base ids that succeeded, failed attempts per base id) from the outcome records."""
     ok, fails = set(), {}
-    if manifest.exists():
-        for line in manifest.read_text().splitlines():
-            if not line.strip():
-                continue
-            r = json.loads(line)
-            bad = set(r.get("failed", []))
-            for eid in r["episode_ids"]:
-                if eid in bad:
-                    fails[base_id(eid)] = fails.get(base_id(eid), 0) + 1
-                else:
-                    ok.add(base_id(eid))
+    for r in _outcomes(manifest):
+        bad = set(r.get("failed", []))
+        for eid in r["episode_ids"]:
+            if eid in bad:
+                fails[base_id(eid)] = fails.get(base_id(eid), 0) + 1
+            else:
+                ok.add(base_id(eid))
     return ok, fails
+
+
+def _with_attempt(sp: EpisodeSpec, attempt: int) -> EpisodeSpec:
+    return replace(sp, attempt=attempt, episode_id=f"{base_id(sp.episode_id)}|a{attempt}")
 
 
 def resume_batches(batches: list[list[EpisodeSpec]],
                    manifest: Path | None = None) -> list[list[EpisodeSpec]]:
-    """Drop episodes that already succeeded; an episode that failed once runs as attempt 2;
-    one that failed twice is excluded (code review r1, finding 3)."""
+    """What still has to run (code review r1 finding 3, r2 finding 3).
+
+    Main-run blocks are retried whole (prereg §7.2): a block that once completed is skipped; a
+    block with one incomplete attempt reruns all its contexts as attempt 2; a block with two
+    incomplete attempts is excluded. Pre-main episodes are retried one by one, at most once."""
     ok, fails = manifest_outcomes(manifest)
+    block_tries: dict[str, list[bool]] = {}
+    for r in _outcomes(manifest):
+        if r.get("stage") == C.Stage.MAIN.value:
+            block_tries.setdefault(r["batch_id"], []).append(not r.get("failed"))
     out = []
     for b in batches:
+        if b[0].stage == C.Stage.MAIN.value:
+            tries = block_tries.get(b[0].batch_id, [])
+            if any(tries) or len(tries) >= 2:
+                continue
+            out.append([_with_attempt(sp, len(tries) + 1) for sp in b])
+            continue
         nb = []
         for sp in b:
             bid = base_id(sp.episode_id)
             if bid in ok or fails.get(bid, 0) >= 2:
                 continue
-            if fails.get(bid, 0) == 1:
-                sp = replace(sp, attempt=2, episode_id=f"{bid}|a2")
-            nb.append(sp)
+            nb.append(_with_attempt(sp, fails.get(bid, 0) + 1))
         if nb:
             out.append(nb)
     return out
 
 
 def billed_total(arts: list[dict], specs: list[EpisodeSpec]) -> tuple[float, list[str]]:
-    """Billed cost of a batch. A sample with any call lacking a billed cost, or a sample with
-    no artifact, is charged its full reservation (S4 rule)."""
+    """Billed cost of a batch. A sample with any call lacking a billed cost, no artifact, or a
+    failure with no call records is charged its full reservation (S4 rule; review r2, 6)."""
     by_id = {a["meta"]["episode_id"]: a for a in arts}
     total, notes = 0.0, []
     for sp in specs:
@@ -334,8 +367,7 @@ def billed_total(arts: list[dict], specs: list[EpisodeSpec]) -> tuple[float, lis
             total += full
             notes.append(f"{sp.episode_id}: billed cost missing on "
                          f"{sum(v is None for v in vals)} call(s); charged {full:.3f}")
-        elif not vals and (a.get("n_turns") or a.get("error")):
-            # turns ran or the sample errored, but no call record survived (finding 2)
+        elif not vals and (a.get("n_turns") or failed(a)):
             total += full
             notes.append(f"{sp.episode_id}: no call records; charged {full:.3f}")
         else:
@@ -357,43 +389,118 @@ class RunOptions:
     resume: bool = True
 
 
+def _now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
 def _append_manifest(rec: dict) -> None:
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
     with open(MANIFEST, "a") as f:
         f.write(json.dumps(rec, default=str) + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+
+
+def _write_new_artifacts(arts: list[dict], wanted: set[str], episodes_dir: Path) -> None:
+    """Write artifacts for `wanted` episode ids whose file does not exist yet."""
+    for a in arts:
+        eid = a["meta"]["episode_id"]
+        if eid not in wanted:
+            continue
+        p = _artifact_path(a["meta"], eid, episodes_dir)
+        if p.exists():
+            continue
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(a, indent=1, default=str))
+        a["path"] = str(p)
+
+
+def _outcome(stage: C.Stage, model_id: str, b: list[EpisodeSpec], ba: list[dict], rid: str,
+             amount: float, spent: float, notes: list[str], logs: list[str]) -> dict:
+    ok_ids = {a["meta"]["episode_id"] for a in ba if not failed(a)}
+    return {"kind": "outcome", "utc": _now(), "stage": stage.value, "model": model_id,
+            "batch_id": b[0].batch_id, "attempt": b[0].attempt, "rid": rid,
+            "episode_ids": [sp.episode_id for sp in b], "reserved": amount, "billed": spent,
+            "notes": notes, "failed": [sp.episode_id for sp in b if sp.episode_id not in ok_ids],
+            "logs": logs}
+
+
+def reconcile_pending(opt: RunOptions) -> list[dict]:
+    """Admissions with no outcome (a crash between eval and settlement; review r2, finding 2):
+    recover their samples from the logs written after admission, write missing artifacts,
+    settle the reservation if it is still open (in full when no log has them), and append the
+    outcome. Nothing is re-run here."""
+    from inspect_ai.log import read_eval_log  # noqa: F401  (fails early if Inspect is missing)
+
+    recs = manifest_records()
+    done = {(r["batch_id"], tuple(r["episode_ids"])) for r in recs
+            if r.get("kind", "outcome") == "outcome"}
+    out = []
+    for r in recs:
+        if r.get("kind") != "admit" or (r["batch_id"], tuple(r["episode_ids"])) in done:
+            continue
+        specs = [EpisodeSpec(**s) for s in r["specs"]]
+        wanted = set(r["episode_ids"])
+        arts, logs = [], []
+        log_dir = Path(r["log_dir"])
+        since = calendar.timegm(time.strptime(r["utc"], "%Y-%m-%dT%H:%M:%SZ"))
+        for p in sorted(log_dir.glob("*.eval")) if log_dir.exists() else []:
+            if p.stat().st_mtime + 1 < since:
+                continue
+            got = [a for a in extract_log(p, write=False) if a["meta"]["episode_id"] in wanted]
+            if got:
+                arts.extend(got)
+                logs.append(str(p))
+        _write_new_artifacts(arts, wanted, opt.episodes_dir)
+        spent, notes = billed_total(arts, specs)
+        notes = ["reconciled after an interruption", *notes]
+        try:
+            budget.settle(r["rid"], spent, r["model"], len(specs),
+                          f"X3 {r['stage']} {r['batch_id']} (reconciled); {'; '.join(notes)}")
+        except KeyError:
+            notes.append("reservation already settled before the interruption")
+        rec = _outcome(C.Stage(r["stage"]), r["model"], specs, arts, r["rid"], r["reserved"],
+                       spent, notes, logs)
+        _append_manifest(rec)
+        out.append(rec)
+    return out
 
 
 def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                 opt: RunOptions) -> C.StageResult:
     """Admit, run, extract and settle. Each group of `in_flight` batches is one Inspect eval;
-    each batch has its own reservation, settled from the log before the next group starts."""
+    each batch has its own reservation. Admission is recorded before the eval and the outcome
+    after settlement, so an interruption is reconciled on the next start, never re-run."""
     cap = stage_cap(stage, opt.j_usd, opt.hard_cap)
     admitted = completed = excluded = 0
     billed_sum = reserved_sum = 0.0
     log_dirs: list[str] = []
     stopped: str | None = None
-    retry: list[EpisodeSpec] = []
+    if opt.resume and not opt.dry_run:
+        reconcile_pending(opt)
     queue = resume_batches(batches) if opt.resume else list(batches)
-    while queue or retry:
-        if retry:                                     # one retry per episode (§1.9)
-            queue.insert(0, [replace(sp, attempt=sp.attempt + 1,
-                                     episode_id=sp.episode_id.rsplit("|a", 1)[0]
-                                     + f"|a{sp.attempt + 1}") for sp in retry])
-            retry = []
+    while queue:
         group, queue = queue[: opt.in_flight], queue[opt.in_flight:]
         rids, specs = [], []
         for b in group:
             amount = batch_reservation(b)
             if opt.dry_run:
-                print(f"[dry-run] {stage.value} {model_id} {b[0].batch_id}: {len(b)} episodes, "
-                      f"reserve ${amount:.2f} under cap ${cap:.2f}; {budget.status('X3', cap)}")
+                print(f"[dry-run] {stage.value} {model_id} {b[0].batch_id} a{b[0].attempt}: "
+                      f"{len(b)} episodes, reserve ${amount:.2f} under cap ${cap:.2f}; "
+                      f"{budget.status('X3', cap)}")
                 continue
             try:
-                rids.append((budget.reserve(amount, f"X3 {stage.value} {b[0].batch_id}",
-                                            exp=C.EXP_ID, cap=cap), b, amount))
+                rid = budget.reserve(amount, f"X3 {stage.value} {b[0].batch_id}",
+                                     exp=C.EXP_ID, cap=cap)
             except budget.BudgetRefused as e:
                 stopped = f"budget refused: {e}"
                 break
+            _append_manifest({"kind": "admit", "utc": _now(), "stage": stage.value,
+                              "model": model_id, "batch_id": b[0].batch_id, "rid": rid,
+                              "reserved": amount, "episode_ids": [sp.episode_id for sp in b],
+                              "log_dir": str(opt.log_dir / spec_for(model_id).slug),
+                              "specs": [asdict(sp) for sp in b]})
+            rids.append((rid, b, amount))
             specs.extend(b)
         if opt.dry_run:
             continue
@@ -407,28 +514,28 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
         for a in arts:
             by_batch.setdefault(a["meta"]["batch_id"], []).append(a)
         for rid, b, amount in rids:
-            ba = by_batch.get(b[0].batch_id, [])
+            ba = [a for a in by_batch.get(b[0].batch_id, [])
+                  if a["meta"]["episode_id"] in {sp.episode_id for sp in b}]
             spent, notes = billed_total(ba, b)
             budget.settle(rid, spent, model_id, len(b),
                           f"X3 {stage.value} {b[0].batch_id}" + (f"; {'; '.join(notes)}"
                                                                    if notes else ""))
             billed_sum += spent
-            ok_ids = {a["meta"]["episode_id"] for a in ba if not failed(a)}
-            completed += len(ok_ids)
-            for sp in b:
-                if sp.episode_id not in ok_ids:
-                    if sp.attempt == 1:
-                        retry.append(sp)
+            rec = _outcome(stage, model_id, b, ba, rid, amount, spent, notes, logs)
+            _append_manifest(rec)
+            completed += len(b) - len(rec["failed"])
+            if rec["failed"]:
+                if stage == C.Stage.MAIN:          # whole-block retry, once (prereg §7.2)
+                    if b[0].attempt == 1:
+                        queue.insert(0, [_with_attempt(sp, 2) for sp in b])
                     else:
-                        excluded += 1
-            _append_manifest({"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                              "stage": stage.value, "model": model_id,
-                              "batch_id": b[0].batch_id,
-                              "episode_ids": [sp.episode_id for sp in b],
-                              "reserved": amount, "billed": spent, "notes": notes,
-                              "failed": [sp.episode_id for sp in b
-                                         if sp.episode_id not in ok_ids],
-                              "logs": logs})
+                        excluded += len(b)
+                else:                              # pre-main: per-episode retry, once
+                    again = [_with_attempt(sp, sp.attempt + 1) for sp in b
+                             if sp.episode_id in rec["failed"] and sp.attempt == 1]
+                    excluded += len(rec["failed"]) - len(again)
+                    if again:
+                        queue.insert(0, again)
         if stopped:
             break
     return C.StageResult(stage=stage, model=model_id, n_admitted=admitted,
@@ -510,6 +617,35 @@ def _judge_columns(judged_dir: Path) -> dict[str, dict[str, str]]:
     return cols
 
 
+def _block_key(m: dict) -> tuple:
+    return (m["model"], m["prompt_level"], m["task_id"], int(m["repeat"]))
+
+
+def final_block_attempts(arts: list[dict]) -> dict[tuple, int | None]:
+    """For each main-run block, the attempt whose every context succeeded (prereg §7.2: one
+    whole-block retry; review r2, finding 3); None if no attempt completed."""
+    by: dict[tuple, dict[int, list[dict]]] = {}
+    for a in arts:
+        m = a["meta"]
+        if m["stage"] == C.Stage.MAIN.value:
+            by.setdefault(_block_key(m), {}).setdefault(int(m["attempt"]), []).append(a)
+    out: dict[tuple, int | None] = {}
+    for key, attempts in by.items():
+        n_ctx = len(attempts.get(1, next(iter(attempts.values()))))
+        done = [k for k, eps in sorted(attempts.items())
+                if len(eps) == n_ctx and not any(failed(e) for e in eps)]
+        out[key] = done[0] if done else None
+    return out
+
+
+def _billed_or_blank(art: dict) -> float | str:
+    """Billed cost of an episode, or blank when any call's billing is unknown (finding 6)."""
+    vals = [c["billed_usd"] for c in art.get("model_calls", [])]
+    if any(v is None for v in vals) or (not vals and (art.get("n_turns") or failed(art))):
+        return ""
+    return sum(vals)
+
+
 def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> Path:
     from x3.tasks import load_manifest  # noqa: F401  (import check: the task set must exist)
 
@@ -521,14 +657,21 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
             det = {r["episode_id"]: r for r in csv.DictReader(f)}
     judges = _judge_columns(C.JUDGED_DIR) if C.JUDGED_DIR.exists() else {}
     rows, seen = [], set()
-    for p in sorted(episodes_dir.rglob("*.json")):
-        art = json.loads(p.read_text())
+    arts = [json.loads(p.read_text()) for p in sorted(episodes_dir.rglob("*.json"))]
+    final = final_block_attempts(arts)
+    for art in arts:
         m = art["meta"]
         eid = m["episode_id"]
         if eid in seen:
             raise ValueError(f"duplicate episode {eid}")
         seen.add(eid)
         role, why = _role(art, decisions, analysis_models)
+        if m["stage"] == C.Stage.MAIN.value and role == C.AnalysisRole.MAIN.value:
+            key = _block_key(m)
+            if final.get(key) is None:
+                role, why = C.AnalysisRole.EXCLUDED.value, "block_incomplete"
+            elif int(m["attempt"]) != final[key]:
+                role, why = C.AnalysisRole.EXCLUDED.value, "superseded"
         ctx = C.Context(m["context"])
         probe = art.get("probe") or {}
         parsed = probe.get("parsed") or {}
@@ -539,11 +682,11 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
             jc = judges.get(eid, {})
             fb = {}
             for q in ("q1", "q2", "q3_spec", "q3_tests"):
-                vals = {v for k, v in jc.items()
+                vals = [v for k, v in jc.items()
                         if k.startswith("probe_parse__") and k.endswith(f"__{q}")
-                        and v not in ("", "None")}
-                if len(vals) == 1:
-                    fb[q] = vals.pop()
+                        and v not in ("", "None")]
+                if len(vals) >= 2 and len(set(vals)) == 1:      # two judges, in agreement
+                    fb[q] = vals[0]
             if fb:
                 parsed, probe_source = fb, "judge"
         row = {"episode_id": eid, "model": m["model"], "context": ctx.value,
@@ -553,7 +696,7 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
                "excluded_reason": why, "end_reason": art.get("end_reason") or "",
                "n_turns": art.get("n_turns"), "n_nudges": art.get("n_nudges"),
                "n_multi_call": art.get("n_multi_call"),
-               "billed_usd": sum((c["billed_usd"] or 0.0) for c in art.get("model_calls", [])),
+               "billed_usd": _billed_or_blank(art),
                "reasoning_readable": (art.get("first_turn") or {}).get("reasoning_readable"),
                "q1": parsed.get("q1", ""), "q2": parsed.get("q2", ""),
                "q3_spec": parsed.get("q3_spec", ""), "q3_tests": parsed.get("q3_tests", ""),

@@ -114,21 +114,49 @@ def _order_ok(stage: C.Stage, model: str, go: bool,
             return "no analysis model remains: the pilot stops (prereg §4.4)"
         if len(models) == 1 and not dec.get("_one_model_ok"):
             return "only one model remains: Jacob must record _one_model_ok (prereg §4.4)"
+        # every prerequisite stage complete for every admitted model (review r2, finding 4)
+        for m in models:
+            need = ([C.Stage.PROBES, C.Stage.GLM] if m == C.SWAP_MODEL
+                    else [C.Stage.CALIBRATION])
+            if any(h.get("decision") == "switch" for h in dec.get(m, {}).get("history", [])):
+                need.append(C.Stage.SWITCH)
+            missing = [st.value for st in need if not stage_complete(st, m, tasks)]
+            if missing:
+                return f"{m}: prerequisite stage(s) not complete: {missing}"
         note = C.COST_CHECKPOINT.with_suffix(".json")
         if not note.exists():
             return "write the cost checkpoint first"
         if not go:
             return "the main run needs --go (Jacob's go-ahead after the cost checkpoint)"
-        if json.loads(note.read_text()).get("ask_jacob") and not (
-                "_main_cap_usd" in dec or "_qwen_repeats" in dec):
-            return ("the cost note says 4 Qwen repeats do not fit; Jacob must choose "
-                    "(record _main_cap_usd or _qwen_repeats in decisions.json)")
         if "_qwen_repeats" in dec and dec["_qwen_repeats"] not in (2, 3, 4):
             return "_qwen_repeats must be 2, 3 or 4"
         if "_main_cap_usd" in dec and not dec["_main_cap_usd"] >= C.HARD_CAP_USD:
             return "_main_cap_usd must be at least the preregistered $45"
-        return None
+        # the projection under the RECORDED choice must fit the effective cap (finding 5)
+        return projection_refusal(json.loads(note.read_text()), dec, models)
     return "unknown stage"
+
+
+def projection_refusal(note: dict, dec: dict, models: list[str]) -> str | None:
+    """None if the main run, at the recorded repeats and cap, fits; else why not."""
+    from s4world import budget
+
+    cap = float(dec.get("_main_cap_usd", C.HARD_CAP_USD))
+    st = budget.status(C.EXP_ID, cap)
+    total = 0.0
+    for m in models:
+        mean = (note.get("sizing", {}).get(m) or {}).get("usd_mean")
+        if mean is None:
+            return f"{m}: no complete billed sizing cost in the cost note; Jacob decides"
+        reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in m else C.REPEATS_MAIN
+        n = len(C.Context) * 15 * reps - 30
+        total += 1.25 * mean * n
+    need = st["spent"] + st["outstanding"] + note["J"]["J_usd"] + total + C.RESERVE_USD
+    if need > cap:
+        return (f"projected ${need:.2f} (spent {st['spent']:.2f} + outstanding "
+                f"{st['outstanding']:.2f} + J {note['J']['J_usd']:.2f} + main {total:.2f} + "
+                f"reserve) exceeds the cap ${cap:.2f} at the recorded repeats; Jacob decides")
+    return None
 
 
 def cmd_plan(a) -> int:
@@ -269,6 +297,15 @@ def cmd_judge(a) -> int:
         halve = note.exists() and bool(json.loads(note.read_text()).get("judge_halving"))
         ids = attempt_judge_ids(halve=halve)
         print(f"attempt judge on {len(ids)} non-cheat episodes (halving: {halve})")
+    if judgment == C.Judgment.PROBE_PARSE:
+        # paid parsing only where the regex failed (review r2, finding 8)
+        ids = set()
+        for p in sorted(C.EPISODES_DIR.rglob("*.json")):
+            art = json.loads(p.read_text())
+            pr = art.get("probe") or {}
+            if pr.get("reply") and not pr.get("parsed"):
+                ids.add(art["meta"]["episode_id"])
+        print(f"probe-parse judge on {len(ids)} replies the regex could not parse")
     if a.dry_run:
         J.run_judgments(judgment, panel, episodes_dir=C.EPISODES_DIR, out_dir=C.JUDGED_DIR,
                         dry_run=True, episode_ids=ids)
