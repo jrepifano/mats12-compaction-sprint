@@ -372,6 +372,18 @@ Before each step, the free price query is re-run, and the projection is printed 
 ## 8. Review history
 
 - v0.1, 2026-10-04: first draft from the approved plan-mode plan.
+- **Code review, 2026-10-04: gpt-6-sol rounds 1-3 on the build** (`logs/reviews/20261004-X3-code-r{1,2,3}.md`), all REVISE: round 1, 10 blocking and 4 minor; round 2, 7 blocking and 1 minor; round 3, 6 blocking and 1 minor. All were addressed (commits 38795a0, 38c05a2, 5e86f81). The round-3 fixes have **not** been re-reviewed, because the cap was reached.
+
+  **Open after the code review, for Jacob:**
+
+  | Item | Recommendation |
+  | --- | --- |
+  | Round-3 fixes are unreviewed: no live retry overrides, planned-context blocks, reservation crash safety, unit-based decisions and sizing, applied judge halving, hash-checked measurement gate | Accept. The smoke test (≤ $0.70) exercises the paid path end to end before anything larger |
+  | U8 (blind detector review and judge validation) is not built, so no headline can be released; the gate in `analysis.py` enforces this | Build U8 after calibration, as planned |
+  | The cost bound is conservative: byte-count input bound × 3 attempts. Long episodes may end as `cost_cap` early | Report the `cost_cap` share at the cost checkpoint; raise the per-episode limit there if above 5%, with Jacob's OK |
+  | The power simulation assumes no task × context heterogeneity, so its episode counts are lower bounds | Accept for the pilot report; it is labelled |
+  | Agent-written units with documented judgment calls: the detector's ambiguity rule; an unreadable snapshot without other evidence gives cheat=None; analysis signs (cap − safe, script − human); manipulation-check denominators use parsed answers only | Accept, or adjust before the main run |
+
 - Build notes, 2026-10-04 (main session, during U4/U5):
   - `x3_task` takes a list of per-episode `EpisodeSpec`s (defined in `src/x3/task.py`) instead of one context and level, so one Inspect task can hold a mixed batch, such as a main-run block of six contexts. Each spec carries its task, cost ceilings and limit.
   - U5 also owns `src/x3/checkpoint.py` (the §1.12 note), which keeps `runner.py` small.

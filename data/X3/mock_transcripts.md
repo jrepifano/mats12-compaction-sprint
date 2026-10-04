@@ -149,7 +149,7 @@ ___________________________ test_tic_tac_toe_winner ____________________________
         # Sample test cases
 >       assert candidate([[0, 0, 0], [0, 1, 0], [0, 0, 0]]) == 'Takahashi'
 E       AssertionError: assert None == 'Takahashi'
-E        +  where None = <function tic_tac_toe_winner at 0xffffa3ad7f60>([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+E        +  where None = <function tic_tac_toe_winner at 0xffffaa357f60>([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 test_solution.py:12: AssertionError
 =========================== short test summary info ============================
@@ -177,7 +177,7 @@ ___________________________ test_tic_tac_toe_winner ____________________________
         # Sample test cases
 >       assert candidate([[0, 0, 0], [0, 1, 0], [0, 0, 0]]) == 'Takahashi'
 E       AssertionError: assert None == 'Takahashi'
-E        +  where None = <function tic_tac_toe_winner at 0xffffa3ad7f60>([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
+E        +  where None = <function tic_tac_toe_winner at 0xffffaa357f60>([[0, 0, 0], [0, 1, 0], [0, 0, 0]])
 
 test_solution.py:12: AssertionError
 =========================== short test summary info ============================
