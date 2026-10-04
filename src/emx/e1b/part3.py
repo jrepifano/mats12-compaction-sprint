@@ -450,6 +450,19 @@ def weighted_norms(w: np.ndarray, x: np.ndarray, chunk: int = 256) -> np.ndarray
     return out
 
 
+def weighted_cosines(w: np.ndarray, x: np.ndarray, y: np.ndarray, chunk: int = 256) -> np.ndarray:
+    """cos(w_b @ x, w_b @ y) for every row b of w (the same resampled documents for both)."""
+    x, y = np.asarray(x, dtype=np.float32), np.asarray(y, dtype=np.float32)
+    out = np.empty(len(w))
+    for i in range(0, len(w), chunk):
+        a = (w[i : i + chunk] @ x).astype(np.float64)
+        b = (w[i : i + chunk] @ y).astype(np.float64)
+        den = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            out[i : i + chunk] = (a * b).sum(1) / den
+    return out
+
+
 def _cos(a: np.ndarray, b: np.ndarray) -> float:
     na, nb = np.linalg.norm(a), np.linalg.norm(b)
     return float(a @ b / (na * nb)) if na > 0 and nb > 0 else float("nan")
@@ -466,11 +479,13 @@ def firstk_label(gate: bool, r5: float, r5_ci: list[float], diff_ci: list[float]
     return INCONCLUSIVE
 
 
-def sufficiency_label(gate: bool, s5: float, s5_ci: list[float], diff_ci: list[float]) -> str:
+def sufficiency_label(gate: bool, s5: float, s5_ci: list[float], diff_ci: list[float],
+                      cos5: float, cos5_ci: list[float]) -> str:
     """Prereg §4.9 sufficiency labels (reading 4: same gate; the difference's interval > 0)."""
     if not gate:
         return NO_BIAS
-    if s5 >= C.S5_SUFFICIENT_MIN and s5_ci[0] > C.S5_SUFFICIENT_LOWER and diff_ci[0] > 0:
+    if (s5 >= C.S5_SUFFICIENT_MIN and s5_ci[0] > C.S5_SUFFICIENT_LOWER and diff_ci[0] > 0
+            and cos5 >= C.S5_COS_MIN and cos5_ci[0] > 0):  # and in the fine-tuning bias's direction
         return SUFFICIENT
     if s5_ci[1] < C.S5_NOT_SUFFICIENT_UPPER:
         return NOT_SUFFICIENT
@@ -539,6 +554,9 @@ def analyze_firstk(arrays: Mapping[str, np.ndarray], n_boot: int = C.DOC_BOOT_RE
             d = rd["suf_K5"] - rd["suf_ctrl"]
             wo["S_5_minus_S_ctrl"] = {
                 "diff": ratios["suf_K5"]["ratio"] - ratios["suf_ctrl"]["ratio"], "ci": interval(d)}
+            wo["suf_K5_cos_with_none"] = {
+                "cos": wo["cos_with_none"]["suf_K5"],
+                "ci": interval(weighted_cosines(w, x["suf_K5"], x["none"]))}
         out["windows"][win] = wo
     dec = out["windows"]["decision"]
     gate = dec["gate"]["pass"]
@@ -547,7 +565,8 @@ def analyze_firstk(arrays: Mapping[str, np.ndarray], n_boot: int = C.DOC_BOOT_RE
     if has_suf:
         out["sufficiency_label"] = sufficiency_label(
             gate, dec["ratios"]["suf_K5"]["ratio"], dec["ratios"]["suf_K5"]["ci"],
-            dec["S_5_minus_S_ctrl"]["ci"])
+            dec["S_5_minus_S_ctrl"]["ci"], dec["suf_K5_cos_with_none"]["cos"],
+            dec["suf_K5_cos_with_none"]["ci"])
     else:
         out["sufficiency_label"] = None
         out["sufficiency_note"] = "sufficiency arrays absent"

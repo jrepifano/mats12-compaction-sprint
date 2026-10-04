@@ -4,7 +4,7 @@
 |---|---|
 | Experiment | E1b, follow-up to E1 ([E1 report](#e1-report-2026)) on "why does emergent misalignment generalize to a persona?"; the proposals doc's week-2 recommendation #1, extended with the training-dynamics questions raised after E1 |
 | Version | v0.5 + amendment A (Part 0, 2026-10-04; §11), draft (Jacob's review folded in, 2026-10-04). v0.1 was titled "E2" before the proposals doc's naming was reconciled; gpt-6-sol rounds 1–3 addressed (§10) |
-| Status | **Draft, not approved.** Nothing runs on paid compute until Jacob approves it |
+| Status | v0.5 and amendment A (with its three A5 decisions) **approved by Jacob, 2026-10-04**; the smoke test (S1) approved. **Amendment A6** (from the review of the v0.5 changes) is reviewed and awaits Jacob's sign-off at the S2 go-ahead. Each later paid step still needs his go-ahead |
 | Author | Claude (Opus 5.5), drafting for Jacob Epifano; design input from Neel's 2026-10-03 session (§2) |
 | Reviews | gpt-6-sol rounds 1–3 of 3 done (cap reached) |
 | Budget | Planned ≈ $55 (Part 1 ≈ $43, Part 3 ≈ $12); up to ≈ $74 if both conditional arms run; **hard cap $75** |
@@ -238,6 +238,7 @@ Runs on a second pod at the same time as Part 1, since it needs nothing from Par
 - **5 question positions restored,** chosen uniformly at random within the question per prompt (seed 20261003), fewer only where a question has under 5 tokens (logged).
 The effect is E1's: drop = 1 − EM(restored)/EM(unpatched), with E1's two-level bootstrap.
 Outcomes, checked in this order; exactly one applies per model:
+0. **Not computable:** the unpatched EM rate is under 5%, so the drop is not computed (E1's rule; amendment A5.2).
 1. **Header-specific:** the header drop is at least 50% with its 97.5% interval above zero, **and** the header-minus-matched-control difference in drop has its 95% interval above zero.
 2. **Header effect, not shown to be specific:** the header drop's 97.5% interval is above zero, but outcome 1 does not hold.
 3. **No header effect:** otherwise.
@@ -269,7 +270,7 @@ The intervals for the difference come from the same paired bootstrap (questions,
   - **Transfers** if the steered model's EM rate on the new 41 is at least 2%, beats the unsteered untuned model by the stratified test at p < 0.05, and coherence is at least 50%. **Does not transfer** otherwise.
   - The paper steered the fine-tuned model to reveal its domain; steering the untuned model is a different test. Failure is therefore inconclusive about whether the difference carries the fine-tuning signal, and the activation test above does **not** depend on it. The detectable-bias gate is the activation test's own validity check.
 
-**Sufficiency** (the reverse direction, on the same 2,000 documents) is run. The untuned model is given the first K positions' key/value states (all layers) from the fine-tuned model, for K = 1 and K = 5, plus the same middle-position control (positions 60–64). The induced difference is δ_suf(j) = h_untuned+ftKV(j) − h_untuned(j) at layer 16, and S_K = B_suf,K[68, 127] / B[68, 127], with the same noise floor, detectable-bias gate and document bootstrap. Secondary labels: **sufficient** if S_5 ≥ 0.5 with its 95% lower bound above 0.3 and S_5 − S_ctrl above zero; **not sufficient** if S_5's 95% upper bound is below 0.2; otherwise inconclusive. The cosine between mean δ_suf and mean δ is also reported. This adds forward passes only (no sampling or judging) and does not change the primary (b) labels.
+**Sufficiency** (the reverse direction, on the same 2,000 documents) is run. The untuned model is given the first K positions' key/value states (all layers) from the fine-tuned model, for K = 1 and K = 5, plus the same middle-position control (positions 60–64). The induced difference is δ_suf(j) = h_untuned+ftKV(j) − h_untuned(j) at layer 16, and S_K = B_suf,K[68, 127] / B[68, 127], with the same noise floor, detectable-bias gate and document bootstrap. Secondary labels: **sufficient** if S_5 ≥ 0.5 with its 95% lower bound above 0.3, S_5 − S_ctrl above zero, **and the induced difference points the fine-tuning bias's way**: the cosine between mean δ_suf,5 and mean δ on positions 68–127 is at least 0.5 with its 95% document-bootstrap lower bound above zero (amendment A6); **not sufficient** if S_5's 95% upper bound is below 0.2; otherwise inconclusive. The cosine between mean δ_suf and mean δ is also reported. This adds forward passes only (no sampling or judging) and does not change the primary (b) labels.
 
 ### 4.10 Statistics and power
 
@@ -381,8 +382,8 @@ The published-recipe result qualifies, but does not override, the headline: "EM 
 - **Stages differ at step 429 and converge by the end:** later stage comparisons are made at matched early steps.
 
 **Part 3.**
-- (a) **Header-specific:** E1's template result becomes "the assistant header carries EM (on these questions)", as Piggyback found for Qwen3 [[Zhao et al. 2026](#zhao-et-al-2026), §4.3]. **Header effect, not shown to be specific** or **no header effect:** reported as such; E1's "nonspecific" verdict stands.
-- (b) **Supports the conjecture:** restoring the first 5 positions removes most of the measured bias at layer 16 on web text, which is a candidate handle for monitoring; the sufficiency result, reported beside it, says whether those positions alone induce it. **First-K restoration does not remove the bias:** the measured bias at these positions and this layer is not carried by the first positions alone; this does not show where it *is* written. **No detectable bias / inconclusive:** reported as such. The steering transfer result is reported alongside, without changing these labels.
+- (a) **Header-specific:** E1's template result becomes "the assistant header carries EM (on these questions)", as Piggyback found for Qwen3 [[Zhao et al. 2026](#zhao-et-al-2026), §4.3]. **Header effect, not shown to be specific**, **no header effect** or **not computable** (unpatched EM under 5%): reported as such; E1's "nonspecific" verdict stands.
+- (b) **Supports the conjecture:** restoring the first 5 positions removes most of the measured bias at layer 16 on web text, which is a candidate handle for monitoring; the sufficiency result, reported beside it, says whether those positions alone induce a bias of comparable size in the same direction. **First-K restoration does not remove the bias:** the measured bias at these positions and this layer is not carried by the first positions alone; this does not show where it *is* written. **No detectable bias / inconclusive:** reported as such. The steering transfer result is reported alongside, without changing these labels.
 
 ---
 
@@ -413,13 +414,13 @@ The published-recipe result qualifies, but does not override, the headline: "EM 
 
 **Part 1 judge calls:** gpt-6-luna on everything (≈ 123,000), Gemini on all but the timing checkpoints (≈ 88,000). That is ≈ 211,000 calls ≈ **$12**, plus leakage scoring and validation ≈ $1.5 → **≈ $14**.
 
-**Part 3:** setup 0.6 h; (a) 3 models × 3 conditions × 444 answers on the Hugging Face engine ≈ 0.8 h; (b) activations for 3 models × 2,000 documents × 4 conditions ≈ 0.4 h, steering search and generation ≈ 0.4 h; buffer 0.8 h. **3.0 h ≈ $10.5.** Judges ≈ $1.5. **≈ $12.**
+**Part 3** (repriced in amendment A6: 7 activation conditions, the α grid and its judging): setup 0.6 h; (a) 3 models × 3 conditions × 444 answers on the Hugging Face engine ≈ 0.8 h; (b) activations for 3 models × 2,000 documents × 4 conditions ≈ 0.4 h, steering search and generation ≈ 0.4 h; buffer 0.8 h. **3.0 h ≈ $10.5.** Judges ≈ $1.5. **≈ $12.**
 
 **Conditional (Part 1b)**, itemized:
 - **Extra seeds** (4 runs: seeds 3–4, bad and good; final adapters only): training 4 × 0.36 h = 1.44 h; generation 4 × 2,160 answers ≈ 0.25 h; buffer 0.3 h. If it runs, it needs its own pod (Part 3 now runs alongside Part 1), so setup 0.6 h is added: **2.6 h ≈ $9.1 GPU**; judges 8,640 answers × 4 calls ≈ **$1.9**.
 - **Midtrained arm** (2 runs, final only; runs after the extra-seed results are judged, so on its own pod): setup 0.6 h; training 0.72 h; generation 4,320 answers ≈ 0.15 h; buffer 0.4 h: **1.9 h ≈ $6.6 GPU**; judges ≈ **$1.0**.
 
-**Totals:** planned ≈ $55 (GPU ≈ $39.5, judges ≈ $15.5). With both conditional arms ≈ $74 (GPU ≈ $55.2, judges ≈ $18.4). **Hard cap $75**, enforced by E1's combined guard (**GPU limit $56, judge limit $20**). Both arms run only if the primary is weak and stays not clear after the extra seeds.
+**Totals** (superseded by amendment A6: planned ≈ $56.5, worst case ≈ $75.1 before cut 1, ≈ $74.5 after): planned ≈ $55 (GPU ≈ $39.5, judges ≈ $15.5). With both conditional arms ≈ $74 (GPU ≈ $55.2, judges ≈ $18.4). **Hard cap $75**, enforced by E1's combined guard (**GPU limit $56, judge limit $20**). Both arms run only if the primary is weak and stays not clear after the extra seeds.
 
 Cuts if a projection exceeds the cap, in order:
 1. Drop timing checkpoint 858 (onset, convergence and just-enough rules use the remaining checkpoints).
@@ -487,6 +488,8 @@ The detailed plan goes in `docs/experiments/E1b/implementation-plan.md` after ap
 | 2026-10-03 | gpt-6-sol round 2 (`logs/reviews/20261003-E1b-prereg-r2.md`) | Round 1: 6 resolved, 4 partial (now fixed). 3 new blocking (Part 3(a) outcomes not exclusive; Part 3(b) control ratio used a different window and no bias gate; budget over the GPU sublimit with a cut that broke the timing rules) and 3 minor; all addressed in v0.3 (below) |
 | 2026-10-03 | gpt-6-sol round 3, final (`logs/reviews/20261003-E1b-prereg-r3.md`) | Round 2: 4 resolved, 2 partial; round-1 partials resolved except judge validation (partial). 2 new blocking (Part 3(b) ratios compared on different windows; extra-seed arm underpriced) and 2 minor (Holm families; scenario wording); all fixed in v0.4 without a further round (the 3-round cap). Cap raised to $75 by the repricing |
 | 2026-10-04 | gpt-6-sol, amendment A (`logs/reviews/20261004-E1b-amendA-r1.md`) | REVISE: 2 blocking (the "not computable" outcome changed a §4.9 rule, so it moved to A5 for Jacob; the doubled Part 3(a) sample was underpriced and broke the worst case), 2 minor (a power figure; percentile vs basic bootstrap named). All fixed |
+| 2026-10-04 | Jacob | v0.5 and amendment A approved; A5: basic bootstrap bound, E1's 5% rule ("not computable"), Part 3(a) at 8 × 50; S1 approved |
+| 2026-10-04 | gpt-6-sol, v0.5 changes, rounds 1–2 (`logs/reviews/20261004-E1b-prereg-v05-r{1,2}.md`; required by CLAUDE.md "Order: review, then sign-off") | r1 REVISE: sufficiency was magnitude-only; Part 3(b) priced at 4 conditions, not 7, and the worst case omitted the smoke test and α-grid judging; "not computable" missing from §4.9/§6. Fixed as amendment A6 (directional sufficiency condition, repricing, cut 1 before S2). r2 FINAL AFTER FIXES: budget summaries in §7 and plan §5 pointed at A6; plan U6b's outcomes; status wording. All fixed |
 
 **Changes from Jacob's review** (v0.5, 2026-10-04, via comments on the Claude Doc)
 - No coordination with Vishesh: E1b runs the sufficiency direction itself (activation level, forward passes only, secondary labels; §4.9).
@@ -554,14 +557,19 @@ Written at Checkpoint 0 from the Part 0 outputs. Nothing here was chosen after s
 8. *Part 3(a):* the three conditions share prompts and per-request seeds; the bootstrap resamples questions, then answers, with the same indices in all three (E1 resampled each condition independently).
 9. *Part 3(b):* "layer 16" is the output of decoder block 16 (0-based); intervals are two-sided; "S_5 − S_ctrl above zero" means its 95% interval lies above zero; the sufficiency labels use the same detectable-bias gate.
 
-**A5. For Jacob's decision**
-1. *The detectable-bias gate, read as a percentile bootstrap, passes pure noise.* §4.9 says "its 95% bootstrap lower bound" without naming the kind of bound. With 2,000 documents and a 4,096-dimensional residual, the norm of a resampled mean is inflated by about √2 when there is no true bias. On simulated noise the *percentile* 95% lower bound of B (the 2.5th percentile of the bootstrap norms) is 1.98, above the sign-flip 99th percentile of 1.47, so the gate would pass. The *basic* bootstrap lower bound (2B minus the 97.5th percentile of the bootstrap norms) is 0.80 on the same noise, so the gate fails as it should. The code uses the basic bound and reports the percentile bound alongside. Proposed: specify the basic bound.
-2. *Part 3(a) when the unpatched EM rate is low.* §4.9 lists three outcomes. E1 computed the drop only when the unpatched EM rate was at least 5%, because a ratio of small rates is unstable. The code follows E1 and reports a fourth outcome, "not computable", below 5%. Proposed: adopt E1's 5% rule and the fourth outcome. The alternative is to apply the three outcomes at any rate.
+**A5. Decisions** (Jacob, 2026-10-04: all three as proposed)
+1. *The detectable-bias gate, read as a percentile bootstrap, passes pure noise.* §4.9 says "its 95% bootstrap lower bound" without naming the kind of bound. With 2,000 documents and a 4,096-dimensional residual, the norm of a resampled mean is inflated by about √2 when there is no true bias. On simulated noise the *percentile* 95% lower bound of B (the 2.5th percentile of the bootstrap norms) is 1.98, above the sign-flip 99th percentile of 1.47, so the gate would pass. The *basic* bootstrap lower bound (2B minus the 97.5th percentile of the bootstrap norms) is 0.80 on the same noise, so the gate fails as it should. The code uses the basic bound and reports the percentile bound alongside. **Decided: the gate uses the basic bootstrap lower bound.**
+2. *Part 3(a) when the unpatched EM rate is low.* §4.9 lists three outcomes. E1 computed the drop only when the unpatched EM rate was at least 5%, because a ratio of small rates is unstable. The code follows E1 and reports a fourth outcome, "not computable", below 5%. **Decided: E1's 5% rule; below it the outcome is "not computable".**
 3. *Part 3(a) is under-powered for base and Instruct* (A1). Options:
    - (a) run it as planned (8 × 50 per condition) and report it as low-powered;
    - (b) double the sampled set to 8 × 100: 3,600 more answers, ≈ +0.7 GPU-hour (≈ +$2.5) and ≈ +$0.8 of judging (4 calls per answer).
    
-   Option (b) fits the planned path easily (GPU ≈ $43 of $56). It does not fit the worst case with both conditional arms (GPU ≈ $58.7 against $56) unless Part 1 takes prereg cut 3 (dense tier every 20 steps, ≈ −$2.5 GPU) or one conditional arm is given up. Part 3 runs before Checkpoint 1, so this is decided at the S2 go-ahead. Recommended: (a); its power is reported, and the outcome labels already allow "not shown to be specific".
+   Option (b) fits the planned path easily (GPU ≈ $43 of $56). It does not fit the worst case with both conditional arms (GPU ≈ $58.7 against $56) unless Part 1 takes prereg cut 3 (dense tier every 20 steps, ≈ −$2.5 GPU) or one conditional arm is given up. Part 3 runs before Checkpoint 1, so this is decided at the S2 go-ahead. **Decided: (a), 8 × 50 as planned, reported as low-powered.**
+
+**A6. From the review of the v0.5 changes** (`logs/reviews/20261004-E1b-prereg-v05-r1.md`; v0.5 was Jacob's sign-off edit after round 3, so under the new rule it is reviewed here)
+1. *Sufficiency now needs direction as well as size* (§4.9, §6). As written, "sufficient" asked only that the induced difference be large, so a large perturbation in an unrelated direction would have qualified. It now also needs the cosine between the induced and the fine-tuning bias, on positions 68–127, to be at least 0.5, with its 95% document-bootstrap lower bound above zero. The code implements this (`emx.e1b.part3.sufficiency_label`, tested with an orthogonal induced difference).
+2. *Not computable* (A5.2) is added to §4.9's ordered outcomes and §6.
+3. *Budget, repriced.* Sufficiency raises Part 3(b) from 4 to 7 activation conditions (8 forward passes per document instead of 5: ≈ +0.25 GPU-hour, ≈ +$0.9). The α grid is ≈ 0.6 GPU-hour against the 0.4 hour budgeted for search and generation (≈ +$0.7), and its coherence judging costs ≈ $0.5. Both GPU excesses come out of Part 3's 0.8-hour buffer. Adding the smoke test (≈ $1 beyond Part 1's own setup), the worst case with both conditional arms is GPU ≈ $56.2 and total ≈ $75.1, over both limits. **Before S2, the §7 cuts apply in order to Part 1**, recomputed from S1's measured rates and actual spend (implementation plan §5): at today's estimates cut 1 (drop timing checkpoint 858) brings the worst case to GPU ≈ $55.9 and total ≈ $74.5. The planned path without conditional arms (GPU ≈ $40.5, total ≈ $56.5) fits with room.
 
 ---
 
