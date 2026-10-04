@@ -1,6 +1,6 @@
 # X3 prereg: What does the model think it is being graded on?
 
-2026-10-03 · Jacob Epifano · mirrored to Claude Doc (synced at rev 119)
+2026-10-03 · Jacob Epifano · mirrored to Claude Doc (synced at rev 126)
 
 This prereg covers the **pilot only**. The pilot ends at a hard stop: a report of what it found, what it cost per episode, and a priced plan for the full study built from those measured numbers. Nothing past the pilot runs until Jacob has read that report.
 
@@ -310,8 +310,8 @@ A batch that would take this spend past $20 is not run, and the pilot stops at t
 1. For each model, c = 1.25 × its mean billed cost per calibration episode. The margin covers cheating episodes running longer.
 2. J = the upper projection of judge cost for the episode count this rule would run: the calibration transcripts' measured lengths × 1.5, every episode treated as a non-cheat for the attempt judge, and Gemini Flash-Lite's price for the second judge if GLM is a subject.
 3. Available = $45 − everything spent so far − J − $2 reserve.
-4. DeepSeek (or GLM, if swapped in) runs all 4 repeats: its whole main run costs about $1 (GLM about $7), so cutting it saves almost nothing. Qwen is the costly model, so cuts fall on it: it runs the largest of 4, 3 or 2 repeats whose remaining episodes × c fit in what is left.
-5. If 2 repeats do not fit, the pilot stops at the cost checkpoint for Jacob.
+4. DeepSeek (or GLM, if swapped in) runs all 4 repeats: its whole main run costs about $1 (GLM about $7), so cutting it saves almost nothing. Qwen is the costly model, so cuts fall on it: if its 4 repeats do not fit in what is left, the pilot stops at the cost checkpoint and Jacob chooses between more budget and fewer Qwen repeats (3 or 2) (Jacob, 2026-10-04).
+5. Jacob's choice, and any raised cap, are recorded in the report and the spend guard before the main run starts.
 6. Episodes run in complete blocks (one task × repeat × model, all six contexts). Every episode has a hard cost limit of $0.50 (an episode that hits it ends and is logged like one that hits the turn limit). A block starts only if six times that limit still fits under the cap, so the cap holds even if every episode in the block runs to its limit.
 7. A block interrupted by API failures is retried once. If it still cannot finish, its episodes are excluded from the analysis and reported.
 8. If judging alone would push the total over the cap, the attempted-cheat judge is cut to a random half of the non-cheat episodes before any episodes are cut.
@@ -379,15 +379,15 @@ The full plan is a separate document, written after this prereg is approved. In 
 
 **Overlap:**
 
-- **X1p.** This pilot absorbs X1p's question about who grades, as the grader contrast. It drops X1p's oversight cue and its frontier models. If Jacob agrees, X1p's own pilot is retired.
+- **X1p.** This pilot absorbs X1p's question about who grades, as the grader contrast. It drops X1p's oversight cue and its frontier models. X1p stays a separate candidate (Jacob, 2026-10-04), to be decided after this pilot's report.
 - **Other scholars:** X3 is behavioral and about grader target, so it is probably distinct.
 
 **Open questions for Jacob:**
 
-1. Retire X1p's pilot in favor of this design, as above?
-2. Defer the safeguard-disabling tasks to the full study? They need new environments, and the pilot measures the safety side through cheating and concealment.
-3. Six contexts (a 2×2 plus two controls) instead of the proposal's four plus one? The 2×2 gives both main contrasts twice the sample at 20% more cost.
-4. Is the $45 cap right?
+1. Retire X1p's pilot in favor of this design, as above? Decided 2026-10-04: no. X1p stays a separate candidate, decided after X3's pilot report.
+2. Defer the safeguard-disabling tasks to the full study? They need new environments, and the pilot measures the safety side through cheating and concealment. Decided 2026-10-04: yes, deferred to the full study.
+3. Six contexts (a 2×2 plus two controls) instead of the proposal's four plus one? The 2×2 gives both main contrasts twice the sample at 20% more cost. Decided 2026-10-04: yes, six contexts as designed.
+4. Is the $45 cap right? Decided 2026-10-04: yes, $45 stands; Jacob would approve more if a checkpoint shows it is needed.
 
 ## 10. Review history
 
