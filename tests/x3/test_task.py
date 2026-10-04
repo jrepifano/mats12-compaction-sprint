@@ -128,6 +128,25 @@ def test_retries_are_ours_and_each_failed_attempt_is_charged(monkeypatch):
     assert out is None and len(calls) == T.ATTEMPTS and extra == pytest.approx(0.03)
 
 
+def test_tighter_bound_after_a_call():
+    msgs = [ChatMessageUser(content="x" * 40_000), ChatMessageAssistant(content="y" * 4_000)]
+    byte = T.input_bound_tokens(msgs, [])
+    assert T.tighter_bound(byte, None, msgs) == byte
+    # previous call: 9,000 input tokens and 1,200 output; then a 500-byte tool result added
+    later = msgs + [ChatMessageUser(content="z" * 500)]
+    b = T.tighter_bound(T.input_bound_tokens(later, []), (9_000, 1_200, len(msgs)), later)
+    assert b == 9_000 + 1_200 + T.input_bound_tokens(later[2:], []) + T.INCREMENTAL_MARGIN_TOKENS
+    assert b < T.input_bound_tokens(later, [])
+    # never looser than the byte bound
+    assert T.tighter_bound(10, (9_000, 1_200, 1), msgs) == 10
+
+
+def test_probe_fits_after_a_long_qwen_episode():
+    # 60k tokens of context at Qwen's ceilings: the question must still be askable
+    pmt = T.affordable_max_tokens(0.0, C.PROBE_BOUND_USD, 60_000, 0.32, 3.2, C.PROBE_MAX_TOKENS)
+    assert pmt >= C.MIN_PROBE_MAX_TOKENS
+
+
 def test_inspect_retries_are_off_in_every_request():
     import inspect
 

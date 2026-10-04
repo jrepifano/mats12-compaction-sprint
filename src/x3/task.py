@@ -226,6 +226,31 @@ def call_bound(input_bound: int, max_tokens: int, in_ceiling: float, out_ceiling
     return ATTEMPTS * (input_bound * in_ceiling + max_tokens * out_ceiling) / 1e6
 
 
+INCREMENTAL_MARGIN_TOKENS = 64
+
+
+def tighter_bound(byte_bound: int, prev: tuple[int, int, int] | None,
+                  messages: list[ChatMessage]) -> int:
+    """A tighter upper bound once a call has run (smoke test, 2026-10-04: the byte bound alone
+    left no room for the post-episode question). The next request's input is the previous
+    request's input (reported tokens), plus the previous reply (at most its reported output
+    tokens, reasoning included), plus the messages added since (bounded by their bytes).
+    `prev` = (input tokens, output tokens, len(messages) right after the previous reply)."""
+    if prev is None:
+        return byte_bound
+    n_in, n_out, upto = prev
+    added = input_bound_tokens(messages[upto:], []) if len(messages) > upto else 0
+    return min(byte_bound, n_in + n_out + added + INCREMENTAL_MARGIN_TOKENS)
+
+
+def usage_tokens(output: ModelOutput) -> tuple[int, int] | None:
+    u = output.usage
+    if u is None:
+        return None
+    n_in = u.input_tokens + (u.input_tokens_cache_read or 0) + (u.input_tokens_cache_write or 0)
+    return n_in, u.output_tokens
+
+
 def call_cost(output: ModelOutput, in_ceiling: float, out_ceiling: float,
               bound: float) -> float:
     """Cost of a completed call at the ceiling prices (>= the billed cost). With no usage
@@ -330,13 +355,14 @@ def episode() -> Solver:
         calls, snapshots = s.get(C.STORE_CALLS, []), s.get(C.STORE_SNAPSHOTS, [])
         messages: list[ChatMessage] = list(state.messages)
         spent, turns, nudges, multi = 0.0, 0, 0, 0
+        prev: tuple[int, int, int] | None = None
         end_reason: str | None = None
         bounds: list[dict] = []
         while end_reason is None:
             if turns >= C.TURN_CAP:
                 end_reason = C.EndReason.TURN_CAP.value
                 break
-            ib = input_bound_tokens(messages, TOOLS)
+            ib = tighter_bound(input_bound_tokens(messages, TOOLS), prev, messages)
             mt = affordable_max_tokens(spent, spec.episode_limit_usd, ib, spec.in_ceiling,
                                        spec.out_ceiling, C.MAX_TOKENS_PER_TURN)
             bounds.append({"turn": turns + 1, "input_bound": ib, "max_tokens": mt,
@@ -356,6 +382,8 @@ def episode() -> Solver:
             spent += call_cost(out, spec.in_ceiling, spec.out_ceiling, one)
             msg = out.message
             messages.append(msg)
+            ut = usage_tokens(out)
+            prev = (ut[0], ut[1], len(messages)) if ut else None
             if out.stop_reason in ("model_length", "content_filter"):
                 end_reason = out.stop_reason
                 break
@@ -399,7 +427,7 @@ def episode() -> Solver:
             "final_message": final_asst.text if final_asst else ""})
         # the post-episode question (prereg §4.7), never counted against the episode limit
         pmsgs = messages + [ChatMessageUser(content=texts.PROBE_PROMPT)]
-        pib = input_bound_tokens(pmsgs, [])
+        pib = tighter_bound(input_bound_tokens(pmsgs, []), prev, pmsgs)
         pmt = affordable_max_tokens(0.0, C.PROBE_BOUND_USD, pib, spec.in_ceiling,
                                     spec.out_ceiling, C.PROBE_MAX_TOKENS)
         probe = {"prompt": texts.PROBE_PROMPT, "reply": None, "status": None,

@@ -125,9 +125,9 @@ def test_billed_total_charges_missing_costs_in_full():
     sp = R.plan_stage(C.Stage.SMOKE, "qwen/qwen3.6-27b", _tasks(), C.PromptLevel.B)[0]
     arts = [_art(sp[0].episode_id), _art(sp[1].episode_id, billed=(0.01, None))]
     total, notes = R.billed_total(arts, sp)
-    assert total == pytest.approx(0.03 + 0.55) and len(notes) == 1
+    assert total == pytest.approx(0.03 + 0.50 + C.PROBE_BOUND_USD) and len(notes) == 1
     total, notes = R.billed_total(arts[:1], sp)
-    assert total == pytest.approx(0.03 + 0.55) and "no sample" in notes[0]
+    assert total == pytest.approx(0.03 + 0.50 + C.PROBE_BOUND_USD) and "no sample" in notes[0]
 
 
 def test_collect_pivots_judges_to_one_row_per_episode(tmp_path, monkeypatch):
@@ -187,7 +187,7 @@ def test_billing_fails_closed_without_call_records():
     a = _art(sp[0].episode_id, billed=())
     a["n_turns"] = 3
     total, notes = R.billed_total([a, _art(sp[1].episode_id)], sp)
-    assert total == pytest.approx(0.55 + 0.03) and "no call records" in notes[0]
+    assert total == pytest.approx(0.50 + C.PROBE_BOUND_USD + 0.03) and "no call records" in notes[0]
 
 
 def test_collect_uses_judge_fallback_for_unparsed_probe(tmp_path, monkeypatch):
