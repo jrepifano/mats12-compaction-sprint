@@ -36,6 +36,14 @@ More documents may be added; when they are, read them and update the proposals d
   7. The sanity checks and manipulation checks that must pass before the headline number means anything.
 
   Grounding means every hypothesis cites the paper(s) in `papers/` that motivate it, and flags where our expectation departs from published results.
+- **Order: review, then sign-off, then plan mode** (Jacob, 2026-10-04). A prereg goes through all its gpt-6-sol review rounds *before* Jacob is asked to sign it off:
+  1. Draft the prereg.
+  2. Run the gpt-6-sol rounds (up to 3) and fix every BLOCKING finding.
+  3. Then ask Jacob for sign-off, with the review verdicts and a short table of any findings still open.
+
+  Never ask him to approve an unreviewed or partly reviewed prereg. If his sign-off changes the design, the change is reviewed before it counts as final, using a remaining round or a new count for a substantially new version.
+
+  All prereg review is finished before entering plan mode to plan the implementation. The implementation plan then gets its own review, as below.
 - **Report after every step** to `logs/<EXP-ID>-report.md`. Record exact commands, seeds, row counts, file hashes, model ids and revisions, wall-clock, UTC timestamps, and dollars spent. These reports become the LLM-usage disclosure, so they must describe what actually happened.
 - **Determinism.** Fix seeds and record them inside the output artifacts. Pin model revisions (HF commit hashes) and dataset revisions.
 - **Treat your own successes as hypotheses.** When something "works", show Jacob random raw samples (transcripts, readouts, judge rationales), never cherry-picked ones. Label inferences as inferences.
@@ -60,7 +68,7 @@ More documents may be added; when they are, read them and update the proposals d
 ## Review with gpt-6-sol (via Codex CLI)
 
 **Every stage gets a review of its diff before it is committed or acted on** (Jacob, 2026-09-29):
-- planning: proposals, preregs, implementation plans;
+- planning: proposals, preregs (all rounds done before asking Jacob for sign-off, and before plan mode; see "Order: review, then sign-off, then plan mode"), implementation plans;
 - code, once a unit or the full build is finished and before it runs on paid compute;
 - results analysis;
 - reports.
