@@ -300,7 +300,9 @@ untrained_one() {  # untrained_one STAGE SPEC: full protocol -> MANIFEST.untrain
 part_runs() {  # part_runs PART (part1 | cond_seeds | cond_mid)
   local plan kind a b rest
   if [ "$1" = cond_mid ]; then  # the midtrained checkpoint is new to this pod: check it first
-    run "$PEFT_PY" scripts/e1_preflight.py --stages mid --out "$RES/checks/preflight.mid.json" \
+    # full preflight (every registry stage, mid included): `--stages` is a debug flag in
+    # e1_preflight.py and exits 1 "PARTIAL" even when every check passes (E1b S1, 2026-10-04)
+    run "$PEFT_PY" scripts/e1_preflight.py --out "$RES/checks/preflight.mid.json" \
       || { say "PREFLIGHT (mid) FAILED"; exit 1; }
   fi
   plan=$(run_plan "$1")
@@ -472,7 +474,8 @@ smoke() {
     mkdir -p "$SMOKE_DIR/train" "$SMOKE_DIR/logprob"; STEPS_TSV="$SMOKE_DIR/steps.tsv"
     : > "$STEPS_TSV"
   fi
-  step preflight "$PEFT_PY" scripts/e1_preflight.py --stages pre \
+  # full preflight: every registry stage, pre and mid included (`--stages` is a debug flag)
+  step preflight "$PEFT_PY" scripts/e1_preflight.py \
     --out "$SMOKE_DIR/preflight.json" || { say "preflight failed: stopping smoke"; summarise_smoke; exit 1; }
 
   # 30 steps with checkpoints 10, 20, 30 (the trainer times each checkpoint hook into the record)

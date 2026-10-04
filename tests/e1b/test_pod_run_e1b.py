@@ -256,7 +256,7 @@ def test_dry_smoke_covers_plan_s1(root):
     out = p.stdout  # the pyq snippets span several lines: search the whole output
     cell, p3 = "pre-plain-bad-R2-s2", C.PART3_SOURCE_CELLS[-1]
     names = [
-        "e1_preflight.py --stages pre",
+        "e1_preflight.py --out",
         (f"e1b_train.py --config configs/E1b/{cell}.json --max-steps 30 "
          "--checkpoint-steps 10,20,30 --no-push"),
         f"mv results/E1b/train/{cell}.json results/E1b/checks/smoke/train/{cell}.json",
@@ -287,7 +287,7 @@ def test_dry_cond_modes(root):
         str(x.cell) for x in R.runs("cond_seeds")]
     assert not any("-k0" in c for c in cmds)  # final adapters only
     cmds = _cmds(_run(r, "cond-mid", env))
-    assert "e1_preflight.py --stages mid" in cmds[0]
+    assert "e1_preflight.py --out" in cmds[0] and "--stages" not in cmds[0]
     u = _idx(cmds, "--conditions mid-untrained@plain")
     assert u > max(i for i, c in enumerate(cmds) if "e1b_train.py" in c)
     assert cmds[u + 1].startswith("write results/E1b/MANIFEST.untrained-mid.sha256")
