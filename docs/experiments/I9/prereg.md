@@ -1,4 +1,4 @@
-<!-- Mirrored from Claude Doc at rev 121. This file is the source of truth. Branch i9/build copy: amendment B is in draft until Jacob signs it off. -->
+<!-- Mirrored from Claude Doc at rev 124. This file is the source of truth. Branch i9/build copy (v0.6 = v0.5 + amendment B, approved 2026-10-04); main still holds v0.5 until the merge. -->
 
 # Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?
 
@@ -11,8 +11,8 @@ This preregistration, approved by Jacob on 2026-10-04, sets out a three-stage te
 | Field | Value |
 | --- | --- |
 | Experiment | I9, interpretability methods (Topic 2) |
-| Version | v0.5 (gpt-6-sol rounds 1–3 fixed; Jacob's decisions of 2026-10-04) |
-| Status | Approved by Jacob on 2026-10-04 (v0.5, with the implementation plan); each paid step still needs his go-ahead |
+| Version | v0.6: v0.5 plus amendment B (section 12), both approved by Jacob on 2026-10-04 |
+| Status | Approved by Jacob on 2026-10-04 (v0.5 with the implementation plan; amendment B the same day); each paid step still needs his go-ahead |
 | Author | Claude (for Jacob Epifano) |
 | Reviews done | gpt-6-sol rounds 1–3 of 3 (all REVISE; fixed in v0.3–v0.5). No further rounds |
 | Budget | Planned ≈ $53 for the confirmatory design, ≈ $57 if the exploratory thinking-on arm runs (only if the smoke test projects the whole plan at ≤ $60), up to ≈ $62 if the extra batch of 16 scenarios is needed; hard cap $65; budget approved by Jacob 2026-10-03; no paid step runs before Jacob approves |
@@ -412,6 +412,7 @@ The implementation plan is `docs/experiments/I9/implementation-plan.md` in the r
 | 2026-10-04 | v0.4: gpt-6-sol round 2 (REVISE; 5 BLOCKING, 6 MINOR, 1 NIT; `logs/reviews/20261004-I9-prereg-r2.md`) | Power check given a full generating model (logit plus group and scenario noise, three stand-in baselines) and the exact win rule. Crossed control needs all four intervals (both brackets, both own-model gains) above zero. Holm made executable (two bootstrap p-values, step-down at 0.025 then 0.05); bootstrap stated as conditional on the fitted predictions. Luna gate's content check is now Sonnet's blind Stage C on both accounts (same action family on 12 of 16, commitment kappa ≥ 0.6); cutting the validation makes Oracle Lens exploratory, so it left the cut list. The extra batch of 16 is sampled sealed in session A and propagated (80 confirmatory, ≈ $5). Bank sampling cut to the 18 scenarios the checks need (Qwen only); readers and monitors run on the confirmatory set; plan ≈ $53, ≈ $57 with the thinking arm, ≈ $62 with the extra batch too. Sampling check uses a practical tolerance (Fisher test kept as a diagnostic); permutation test respects template groups; grouping claim corrected; disputed replies in the hand labels and the final labels gated; both Stage 0 outcomes descriptive; old figures marked historical |
 | 2026-10-04 | v0.5: gpt-6-sol round 3, the last (REVISE; 1 BLOCKING, 1 MINOR; 11 of 12 round-2 findings resolved, 1 partly; `logs/reviews/20261004-I9-prereg-r3.md`) | The power check simulates both primary comparisons with Holm, plus a probe-only branch for a failed Oracle Lens gate; a baseline correlation above 0.65 is reported as making the 0.3 gain impossible. The luna-vs-Sonnet content check adds a blind third-family (DeepSeek) judgment that both accounts propose the same concrete action against the same target (12 of 16). Section 7's arithmetic confirmed by the reviewer |
 | 2026-10-04 | Jacob's sign-off | v0.5 and the implementation plan approved by Jacob, after all three gpt-6-sol rounds. No design change. Each paid step still needs his go-ahead |
+| 2026-10-04 | Amendment B: gpt-6-sol rounds 1–3 (REVISE each; logs/reviews/20261004-I9-amendB-r1..r3.md), then Jacob's sign-off | Section 12 records the build's design changes: functional I1a reproduction check; published classifiers with code checks plus an LLM-only rerun; all 16 labels with Jacob adjudicating; Sonnet via OpenRouter; pinned providers; Gemma-target monitors (plan ≈ $56); thinking arm in session B at checkpoint 2; leak-free few-shot calibration; fail-closed analysis with a power gate. Approved by Jacob |
 
 This prereg has had all 3 of its gpt-6-sol rounds.
 
@@ -438,7 +439,7 @@ The implementation plan is in the repository at `docs/experiments/I9/implementat
 
 ## 12. Amendment B (2026-10-04, during the build, before any paid experimental batch)
 
-Draft for Jacob's sign-off, revised after gpt-6-sol's first two reviews of it. It records what the build changed or made precise. No experimental data has been collected; the only paid call so far was a $0.012 probe of Sonnet's settings (item 5). Where this section and an earlier one disagree, this section wins.
+Approved by Jacob on 2026-10-04, after three gpt-6-sol reviews of it (the item 8 calibration rule and the item 11 power wording came after the third review). It records what the build changed or made precise. No experimental data has been collected; the only paid call so far was a $0.012 probe of Sonnet's settings (item 5). Where this section and an earlier one disagree, this section wins.
 
 1. **The "same activations as I1a" check (section 4.5) becomes a weaker, functional check.** I1a's stored activations no longer exist; only its manifests and readouts remain.
    - I1a's logit-lens readouts for multihop are committed, with their sha256 in I1a's manifest: the top 10 tokens and scores at each of the 11 layers I1a read (20 to 60).
