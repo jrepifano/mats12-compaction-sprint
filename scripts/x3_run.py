@@ -209,6 +209,43 @@ def cmd_collect(a) -> int:
     return 0
 
 
+def attempt_judge_ids(detector_csv: Path = C.DETECTOR_CSV, halve: bool = False) -> set[str]:
+    """Episodes the attempted-cheat judge sees: detector non-cheats (prereg §4.6), or the seeded
+    random half of them under the judge-halving branch (§1.9)."""
+    import csv
+
+    import numpy as np
+
+    with open(detector_csv, newline="") as f:
+        ids = sorted(r["episode_id"] for r in csv.DictReader(f) if r["cheat"] == "False")
+    if not halve:
+        return set(ids)
+    perm = np.random.default_rng(C.SEED_JUDGE_HALVING).permutation(ids)
+    return set(perm[: len(ids) // 2].tolist())
+
+
+def cmd_judge(a) -> int:
+    from x3 import judges as J
+
+    judgment = C.Judgment(a.judgment)
+    dec = R.load_decisions()
+    panel = J.panel_for(C.SWAP_MODEL in dec.get("_analysis_models", list(C.SUBJECTS)))
+    ids = None
+    if judgment == C.Judgment.ATTEMPT_G21:
+        note = C.COST_CHECKPOINT.with_suffix(".json")
+        halve = note.exists() and bool(json.loads(note.read_text()).get("judge_halving"))
+        ids = attempt_judge_ids(halve=halve)
+        print(f"attempt judge on {len(ids)} non-cheat episodes (halving: {halve})")
+    if a.dry_run:
+        J.run_judgments(judgment, panel, episodes_dir=C.EPISODES_DIR, out_dir=C.JUDGED_DIR,
+                        dry_run=True, episode_ids=ids)
+        return 0
+    if not a.yes:
+        sys.exit("paid judging: pass --yes once Jacob has approved it (dry-run first)")
+    print(J.paid_run(judgment, panel, allowance_usd=a.allowance, episode_ids=ids))
+    return 0
+
+
 # --- mock walk (implementation plan §5 step 5) ---------------------------------------------
 def _scenarios(entry_point: str) -> dict[str, list]:
     from inspect_ai.model import ChatMessageAssistant, ModelOutput
@@ -320,12 +357,17 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--model", required=True)
     sub.add_parser("checkpoint")
     sub.add_parser("collect")
+    jp = sub.add_parser("judge")
+    jp.add_argument("--judgment", required=True, choices=[j.value for j in C.Judgment])
+    jp.add_argument("--allowance", type=float, default=1.0)
+    jp.add_argument("--dry-run", action="store_true")
+    jp.add_argument("--yes", action="store_true")
     m = sub.add_parser("mock-walk")
     m.add_argument("--all-contexts", action="store_true")
     m.add_argument("--only", nargs="*")
     a = ap.parse_args(argv)
     return {"plan": cmd_plan, "stage": cmd_stage, "detect": cmd_detect, "decide": cmd_decide,
-            "checkpoint": cmd_checkpoint, "collect": cmd_collect,
+            "checkpoint": cmd_checkpoint, "collect": cmd_collect, "judge": cmd_judge,
             "mock-walk": cmd_mock_walk}[a.cmd](a)
 
 
