@@ -134,3 +134,15 @@ def test_alpha_grid_covers_every_bisection_probe():
         for later in (lambda a: False, lambda a: True):
             p2, _ = _bisect_probes(0.0, 2 * pi1, C.STEER_BISECT_LATER_DEPTH, later)
             assert all(grid[1] <= p <= grid[-1] for p in p2), (pi1, p2)
+
+
+def test_steer_grid_qid_round_trip_and_question_files():
+    assert C.parse_steer_grid_qid(C.steer_grid_qid(2, 37)) == (2, 37)
+    assert set(C.QUESTION_FILES) == {"general", "medical", "narrow", "ext48"}
+
+
+def test_train_result_e1b_fields_default_empty():
+    import dataclasses
+
+    names = [f.name for f in dataclasses.fields(E.TrainResult)]
+    assert names[-4:] == ["eval_steps", "checkpoints", "status", "error"]

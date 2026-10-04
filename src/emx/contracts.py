@@ -209,6 +209,12 @@ class TrainResult:
     hub_revision: str | None
     wallclock_s: float
     versions: dict[str, str] = field(default_factory=dict)
+    # E1b (implementation plan §1.5); E1 leaves the defaults. `checkpoints` rows carry
+    # `emx.e1b.contracts.CHECKPOINT_KEYS`; `status` is one of `TRAIN_STATUSES`.
+    eval_steps: list[int] = field(default_factory=list)
+    checkpoints: list[dict] = field(default_factory=list)
+    status: str | None = None
+    error: str | None = None
 
 
 def labels_sha256(batches: list[list[MaskedExample]]) -> str:

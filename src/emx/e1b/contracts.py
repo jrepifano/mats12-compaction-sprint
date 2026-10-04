@@ -128,6 +128,15 @@ TIMING_ANSWERS = 8 * 20 + 48 * 10 + 100  # 740
 
 # --- question sets (prereg §4.5) ----------------------------------------------------------------
 
+# Question files by qset. E1b reads E1's frozen general/medical/narrow files (narrow is gitignored
+# and pushed to pods, as in E1) and its own ext48 file (written by scripts/e1b_prep_data.py).
+# Rows: {qid, question, qset, tag}; ext48 tags are the upstream category (EXT48_CATEGORIES).
+QUESTION_FILES: dict[str, str] = {
+    "general": "data/E1/questions/general.jsonl",
+    "medical": "data/E1/questions/medical.jsonl",
+    "narrow": "data/E1/questions/narrow.jsonl",
+    "ext48": f"{QUESTIONS_DIR}/ext48.jsonl",
+}
 EXT48_N = 48
 EXT48_MEDICAL_TAG = "medical_advice"  # 7 in-domain questions, reported separately
 EXT48_CATEGORIES: tuple[str, ...] = (
@@ -257,5 +266,25 @@ def steer_eval_path(cell: str, qset: str) -> str:
     return f"{PART3_DIR}/steer/{steer_condition(cell)}__{qset}.csv"
 
 
+# The alpha grid is written to the generation-CSV contract (GEN_COLUMNS, nothing extra):
+# condition = steer_condition(cell), qset = STEER_GRID_QSET, qid = steer_grid_qid(prompt, grid
+# index), sample_idx 0..9, seed = request_seed(condition, qid, sample_idx, base=STEER_SEED).
+# Steered evaluations use qsets `new41` and `general` and E1's per-request seeds (EVAL_SEED).
+# Judged Part 3 files land in the judge script's default sibling directory, PART3_DIR/judged/.
+STEER_GRID_QSET = "steergrid"
+
+
+def steer_grid_qid(prompt_idx: int, grid_idx: int) -> str:
+    return f"p{prompt_idx}_a{grid_idx:03d}"
+
+
+def parse_steer_grid_qid(qid: str) -> tuple[int, int]:
+    p, a = qid.split("_")
+    if not (p.startswith("p") and a.startswith("a")):
+        raise ValueError(qid)
+    return int(p[1:]), int(a[1:])
+
+
 ALPHA_FILE = f"{PART3_DIR}/steer/alpha.json"
+PART3_JUDGED_DIR = f"{PART3_DIR}/judged"
 RESTORE_OUT_DIR = f"{PART3_DIR}/restore"
