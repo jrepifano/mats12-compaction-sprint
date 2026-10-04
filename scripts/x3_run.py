@@ -38,6 +38,7 @@ from x3 import contracts as C
 from x3 import runner as R
 
 MAIN_ENV = Path("/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.env")
+MOCK_EPISODES = C.RESULTS_DIR / "mock_episodes"   # never mixed with real episodes
 
 
 def _ensure_awake() -> None:
@@ -298,7 +299,8 @@ def cmd_mock_walk(a) -> int:
                 ep = replace(ep, episode_limit_usd=0.0005)
             model = get_model("mockllm/model", custom_outputs=list(outs))
             arts, _ = R._eval_specs([ep], "mockllm/model",
-                                    R.RunOptions(log_dir=log_dir, model_obj=model))
+                                    R.RunOptions(log_dir=log_dir, model_obj=model,
+                                                 episodes_dir=MOCK_EPISODES))
             arts = [x for x in arts if x["meta"]["episode_id"] == ep.episode_id]
             if not arts:
                 failures.append(f"{name}/{ctx.value}: no artifact")

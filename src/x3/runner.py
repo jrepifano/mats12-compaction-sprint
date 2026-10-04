@@ -205,7 +205,8 @@ def _image_digest() -> str:
         return ""
 
 
-def extract_log(eval_path: Path, *, write: bool = True) -> list[dict]:
+def extract_log(eval_path: Path, *, write: bool = True,
+                episodes_dir: Path = C.EPISODES_DIR) -> list[dict]:
     """One §1.5 episode artifact per completed sample; samples with errors are returned with
     `error` set and no artifact written."""
     import inspect_ai
@@ -245,9 +246,14 @@ def extract_log(eval_path: Path, *, write: bool = True) -> list[dict]:
         err = repr(s.error)[:2000] if s.error else (None if ep else "episode record missing")
         art["error"] = err
         if write and err is None:
-            p = C.episode_path(md["model_slug"], C.Stage(md["stage"]),
-                               C.PromptLevel(md["prompt_level"]), C.Context(md["context"]),
-                               md["task_id"], md["repeat"], md["attempt"])
+            rel = C.episode_path(md["model_slug"], C.Stage(md["stage"]),
+                                 C.PromptLevel(md["prompt_level"]), C.Context(md["context"]),
+                                 md["task_id"], md["repeat"],
+                                 md["attempt"]).relative_to(C.EPISODES_DIR)
+            parts = md["episode_id"].split("|")
+            if len(parts) > 7:              # mock walks tag the id: one file per scenario
+                rel = rel.with_name(f"{rel.stem}_{parts[7]}.json")
+            p = episodes_dir / rel
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(json.dumps(art, indent=1, default=str))
             art["path"] = str(p)
@@ -286,6 +292,7 @@ class RunOptions:
     max_hours: float = 8.0
     log_dir: Path = LOG_DIR
     model_obj: object | None = None       # a pre-built Model (mock walks)
+    episodes_dir: Path = C.EPISODES_DIR   # mock walks write elsewhere
 
 
 def _append_manifest(rec: dict) -> None:
@@ -388,7 +395,7 @@ def _eval_specs(specs: list[EpisodeSpec], model_id: str,
     new = sorted(set(log_dir.glob("*.eval")) - before)
     arts: list[dict] = []
     for p in new:
-        arts.extend(extract_log(p))
+        arts.extend(extract_log(p, episodes_dir=opt.episodes_dir))
     return arts, [str(p) for p in new]
 
 
