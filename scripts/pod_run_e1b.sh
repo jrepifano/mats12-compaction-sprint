@@ -423,8 +423,21 @@ part3/firstk/${cell}__L24.npz part3/firstk/${cell}__L24.meta.json" \
   if unit_done MANIFEST.reeval.sha256 "$reeval_need"; then
     say "MANIFEST.reeval.sha256 verifies; skipping the re-evaluation"
   else
-    # shellcheck disable=SC2086
-    if generate reeval $specs; then
+    # One vLLM process per stage: e1_gen_vllm.py keeps an earlier stage's engine resident, so a
+    # second stage in the same process cannot start its engine and the process hangs (E1b S2,
+    # 2026-10-04: base then SFT, "Free memory ... 3.58/79.18 GiB"). Part 1 never mixes stages.
+    local stages="" st group ok=1
+    for s in $specs; do
+      st=${s%%-*}
+      case " $stages " in *" $st "*) ;; *) stages="$stages $st" ;; esac
+    done
+    for st in $stages; do
+      group=""
+      for s in $specs; do [ "${s%%-*}" = "$st" ] && group="$group $s"; done
+      # shellcheck disable=SC2086
+      generate "reeval-$st" $group || ok=0
+    done
+    if [ "$ok" = "1" ]; then
       # shellcheck disable=SC2086
       write_manifest MANIFEST.reeval.sha256 "$(gen_files $specs)"
     else

@@ -245,8 +245,13 @@ def test_dry_part3_order(root):
         assert s < t  # each cell's 44-prompt gate before its restore conditions
     assert "--n-prompts" not in " ".join(cmds[i] for i in selfc)
     assert max(rest) < reeval < reeval_m < wait < min(steer) and max(steer) < final
-    conds = cmds[reeval].split("--conditions ")[1].split()
-    assert conds == [str(c) for c in R.conditions("reeval")]
+    # one vLLM call per stage (a second stage in one process cannot start its engine; E1b S2)
+    calls = [c for c in cmds if "e1_gen_vllm.py --exp E1b --conditions" in c]
+    per_call = [c.split("--conditions ")[1].split() for c in calls]
+    assert all(len({x.split("-")[0] for x in conds}) == 1 for conds in per_call)
+    assert sorted(x for conds in per_call for x in conds) == sorted(str(c) for c in R.conditions("reeval"))
+    assert [conds[0].split("-")[0] for conds in per_call] == ["base", "sft", "inst"]
+    assert cmds.index(calls[-1]) < reeval_m
 
 
 def test_dry_smoke_covers_plan_s1(root):
