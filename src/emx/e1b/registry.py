@@ -123,7 +123,8 @@ def conditions(group: str) -> list[ConditionId]:
 
     finals (10), timing (4 runs x 6 intermediate steps = 24), step0 (4: `pre` generated, base/sft/
     inst reused from E1), untrained_pre (1), reeval (21: E1's 7 bad, 7 good, 7 untrained, ext48
-    only), part3_restore (3 models x 3 kinds), cond_seeds (4), cond_mid (2 + untrained `mid`).
+    only), part3_restore (3 models x 3 kinds), part3_firstk (3), part3_steer (3), cond_seeds (4),
+    cond_mid (2 + untrained `mid`).
     """
     if group == "finals":
         return [_final(r) for r in RUNS]
@@ -149,6 +150,13 @@ def conditions(group: str) -> list[ConditionId]:
             for cell in C.PART3_SOURCE_CELLS
             for kind in C.RESTORE_KINDS
         ]
+    if group == "part3_firstk":
+        # chat-trained models run on plain FineWeb text (no template), adapter on and off
+        return [ConditionId(CellId.parse(cell), "plain") for cell in C.PART3_SOURCE_CELLS]
+    if group == "part3_steer":
+        # the source models whose difference vector steers their untuned stage model; the
+        # steered generations' id is C.steer_condition(cell) (not a ConditionId)
+        return [ConditionId(CellId.parse(cell), C.STEER_FMT) for cell in C.PART3_SOURCE_CELLS]
     if group == "cond_seeds":
         return [_final(r) for r in COND_SEED_RUNS]
     if group == "cond_mid":

@@ -39,7 +39,8 @@ def test_conditional_arms():
 
 @pytest.mark.parametrize(
     "group,n", [("finals", 10), ("timing", 24), ("step0", 4), ("untrained_pre", 1), ("reeval", 21),
-                ("part3_restore", 9), ("cond_seeds", 4), ("cond_mid", 3)],
+                ("part3_restore", 9), ("part3_firstk", 3), ("part3_steer", 3), ("cond_seeds", 4),
+                ("cond_mid", 3)],
 )
 def test_group_sizes(group, n):
     cs = R.conditions(group)

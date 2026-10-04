@@ -56,6 +56,12 @@ def test_bad_ids_rejected(bad):
         E.CellId.parse(bad)
 
 
+@pytest.mark.parametrize("step", [1.5, True, 0, 10000, "50"])
+def test_bad_direct_steps_rejected(step):
+    with pytest.raises(ValueError):
+        E.CellId("base", "plain", "bad", "R2", 2, step)
+
+
 def test_untrained_cell_cannot_have_step():
     with pytest.raises(ValueError):
         E.CellId("pre", step=10)
@@ -106,33 +112,34 @@ def test_subfolder_and_paths():
     assert C.steer_condition("inst-chat-bad-R2-s1") == "inst-chat-bad-R2-s1@chat+steer"
 
 
-def _bisect_probes(lo: float, hi: float, depth: int, passes) -> tuple[list[float], float]:
+def _bisect_path(lo: float, hi: float, outcomes: tuple[bool, ...]) -> tuple[list[float], float]:
+    """Probes and result of a bisection whose i-th probe passes iff outcomes[i]."""
     probes = []
-    for _ in range(depth):
+    for ok in outcomes:
         mid = (lo + hi) / 2
         probes.append(mid)
-        if passes(mid):
-            lo = mid
-        else:
-            hi = mid
+        lo, hi = (mid, hi) if ok else (lo, mid)
     return probes, lo
 
 
 def test_alpha_grid_covers_every_bisection_probe():
+    """Every probe of every pass/fail path (2^10 first-prompt paths, each with 2^5 later paths)
+    lies inside the grid's positive range, so snapping never clamps (plan §1.3, §8 item 1)."""
     grid = C.ALPHA_GRID
     assert grid[0] == 0.0 and len(grid) == C.ALPHA_GRID_POINTS + 1
     ratio = grid[2] / grid[1]
     assert all(math.isclose(b / a, ratio) for a, b in itertools.pairwise(grid[1:]))
     lo, hi, depth = C.STEER_BISECT_FIRST
-    # extremes of pi_1: every probe fails (pi_1 = 0), the smallest positive, the largest
-    for passes in (lambda a: False, lambda a: a <= 0.1, lambda a: True):
-        probes, pi1 = _bisect_probes(lo, hi, depth, passes)
+    later = list(itertools.product((False, True), repeat=C.STEER_BISECT_LATER_DEPTH))
+    pis = set()
+    for path in itertools.product((False, True), repeat=depth):
+        probes, pi1 = _bisect_path(lo, hi, path)
         assert all(grid[1] <= p <= grid[-1] for p in probes)
-        if pi1 == 0:
-            continue
-        assert pi1 >= hi / 2**depth
-        for later in (lambda a: False, lambda a: True):
-            p2, _ = _bisect_probes(0.0, 2 * pi1, C.STEER_BISECT_LATER_DEPTH, later)
+        pis.add(pi1)
+    assert len(pis) == 2**depth and min(pis) == 0.0
+    for pi1 in pis - {0.0}:
+        for path in later:
+            p2, _ = _bisect_path(0.0, 2 * pi1, path)
             assert all(grid[1] <= p <= grid[-1] for p in p2), (pi1, p2)
 
 

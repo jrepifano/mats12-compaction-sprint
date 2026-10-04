@@ -66,8 +66,10 @@ class CellId:
     step: int | None = None
 
     def __post_init__(self) -> None:
-        if self.step is not None and (self.fmt is None or not 0 < self.step <= 9999):
-            raise ValueError(f"step {self.step!r} needs a trained cell and 1 <= step <= 9999")
+        if self.step is None:
+            return
+        if type(self.step) is not int or self.fmt is None or not 0 < self.step <= 9999:
+            raise ValueError(f"step {self.step!r} needs a trained cell and an int 1..9999")
 
     @property
     def untrained(self) -> bool:
