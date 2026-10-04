@@ -1,0 +1,64 @@
+{
+  "finished_utc": "2026-10-04T22:43:43Z",
+  "git_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/download_paths.json",
+      "rows": null,
+      "sha256": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+    },
+    {
+      "path": "results/I9/MANIFEST.download.sha256",
+      "rows": null,
+      "sha256": "29cf122aef4f860727db04054ce24c3296924eb6aedc2cd1d8accd1d6cc93198"
+    }
+  ],
+  "notes": "",
+  "outputs": [
+    {
+      "path": "results/I9/acts/gemma_last.json",
+      "rows": null,
+      "sha256": "c942a785463c59af81cddfd821ecfcbbdef4ec5db818bd0b6dc4441331a2c117"
+    },
+    {
+      "path": "results/I9/acts/gemma_last.safetensors",
+      "rows": null,
+      "sha256": "0a6f8a0db504ceaeee0496dce41726c49e0fe136028b14feaec15aba14945c18"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.json",
+      "rows": null,
+      "sha256": "58d3544a06d541d47cb6ae2684249897f70309bdec1057c303030370a6af7efe"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.safetensors",
+      "rows": null,
+      "sha256": "8b561ad5a07e55ec77a06ce9d3f6890b4ade0f4062afa1a46def0c1f23fd38f7"
+    }
+  ],
+  "pins": {
+    "gemma": "google/gemma-4-31B-it@842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "jlens": "neuronpedia/jacobian-lens@b25d72a96b79c8e309d6625955a98751da47e67a",
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "olens_adapter": "agu18dec/olens_and_ar@c95215d5d2f6250f20c305ae55c6e4d7569f92dc",
+    "qwen": "Qwen/Qwen3.6-27B@6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {
+    "scenario_draw": 0
+  },
+  "started_utc": "2026-10-04T22:41:47Z",
+  "step": "capture-last",
+  "usd": 0.0
+}

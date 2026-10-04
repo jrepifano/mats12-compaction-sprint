@@ -1,0 +1,79 @@
+{
+"model": "gemma",
+"model_id": "google/gemma-4-31B-it",
+"model_rev": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+"thinking": false,
+"kind": "last",
+"layers": [
+19,
+23,
+26,
+30,
+34,
+38,
+41,
+45,
+49,
+53,
+56,
+59
+],
+"layer_convention": "layer L = output of decoder block L (wsbench Backend.capture forward hook); not HF output_hidden_states, whose last entry is the final-norm output",
+"dtype": "float32",
+"ids": [
+"am-blackmail_ambiguous-none_none",
+"am-blackmail_ambiguous-none_replacement",
+"am-blackmail_explicit-collectivism_replacement",
+"am-blackmail_explicit-collectivism_restriction"
+],
+"n_tokens": {
+"am-blackmail_ambiguous-none_none": 1876,
+"am-blackmail_ambiguous-none_replacement": 2329,
+"am-blackmail_explicit-collectivism_replacement": 2408,
+"am-blackmail_explicit-collectivism_restriction": 2382
+},
+"rollout_start": {
+"am-blackmail_ambiguous-none_none": 1876,
+"am-blackmail_ambiguous-none_replacement": 2329,
+"am-blackmail_explicit-collectivism_replacement": 2408,
+"am-blackmail_explicit-collectivism_restriction": 2382
+},
+"rows": [
+{
+"index": 0,
+"id": "am-blackmail_ambiguous-none_none",
+"pos": 1875,
+"token": "<channel|>",
+"n_tokens": 1876,
+"rollout_start": 1876,
+"ids_sha256": "861a7b66c1217f02e6d9671d732452e3afdad6de2cdabbbded415687b0f62b26"
+},
+{
+"index": 1,
+"id": "am-blackmail_ambiguous-none_replacement",
+"pos": 2328,
+"token": "<channel|>",
+"n_tokens": 2329,
+"rollout_start": 2329,
+"ids_sha256": "db781029fc5a2c2123fa91b7a7ee7b60783d08dad6345c503927adf6e6df0628"
+},
+{
+"index": 2,
+"id": "am-blackmail_explicit-collectivism_replacement",
+"pos": 2407,
+"token": "<channel|>",
+"n_tokens": 2408,
+"rollout_start": 2408,
+"ids_sha256": "043733d283346adc1cf80d5bc60eb64e6db02df5fa1ca3c996791cb5834b825a"
+},
+{
+"index": 3,
+"id": "am-blackmail_explicit-collectivism_restriction",
+"pos": 2381,
+"token": "<channel|>",
+"n_tokens": 2382,
+"rollout_start": 2382,
+"ids_sha256": "8eb5f589d24cc4d5094dd01b032c7e0bb678150c2ef21c3727574c3c3bb420dc"
+}
+]
+}
