@@ -497,7 +497,7 @@ def test_follower_one_ssh_per_poll_and_judge_selection(follow):
     tj = next(c for c in judge if timing_csv in c)
     fj = next(c for c in judge if final_csv in c)
     assert tj.endswith("--judges luna") and "gfl" not in tj
-    assert fj.endswith("--judges luna gfl --batch gfl")
+    assert fj.endswith("--judges luna gfl")  # live flex tier, never --batch (E1b S2)
     assert all(c.startswith("scripts/e1_judge.py --exp E1b results/E1b/gen/") for c in judge)
     log = (f["root"] / "logs/E1b-follow.log").read_text()
     assert log.count("PAID: judging") == 2
@@ -532,7 +532,7 @@ def test_follower_part3_grid_alpha_and_blinding(follow):
     # the re-evaluation is judged by both judges; Part 3 restore/steer files never
     judged = [c for c in calls if "e1_judge.py" in c and "coherent" not in c]
     assert judged == [("scripts/e1_judge.py --exp E1b results/E1b/gen/base-untrained@chat__ext48.csv"
-                       " --judges luna gfl --batch gfl")]
+                       " --judges luna gfl")]
     log = (f["root"] / "logs/E1b-follow.log").read_text()
     assert "RUN FAILED ON THE POD: _staging_part3/MANIFEST.sha256" in log
     assert "Part 3 stays blinded" in log
