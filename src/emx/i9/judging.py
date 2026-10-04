@@ -59,7 +59,9 @@ ReplyKey = tuple[str, bool, str, int]  # (model, thinking, scenario_id, sample_i
 PRIMARY_JUDGES: tuple[str, str] = (C.LUNA, C.DEEPSEEK)
 TIEBREAK_JUDGE = C.GLM
 JUDGE_MAX_TOKENS = 2000  # Lynch et al.'s classifier max_tokens
-JUDGE_REASONING: dict[str, str] = {C.LUNA: "none", C.DEEPSEEK: "none", C.GLM: "none"}
+# GLM 5.3 Flash refuses reasoning "none" on OpenRouter ("Reasoning is mandatory for this endpoint
+# and cannot be disabled", P2 pilot 2026-10-04), so it runs at "low".
+JUDGE_REASONING: dict[str, str] = {C.LUNA: "none", C.DEEPSEEK: "none", C.GLM: "low"}
 INHOUSE_PROMPT = C.PROMPTS_DIR / "judge_inhouse.txt"
 SAME_ACTION_PROMPT = C.PROMPTS_DIR / "same_action.txt"
 SAME_ACTION_SEED = C.SAME_ACTION_SEED
