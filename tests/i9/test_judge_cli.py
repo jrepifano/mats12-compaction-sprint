@@ -35,7 +35,8 @@ def _setup(tmp_path, monkeypatch):
     scen = data / "scenarios.jsonl"
     scen.write_text("".join(C.to_json(_scenario(i)) + "\n" for i in range(3)))
     sets = data / "sets.json"
-    sets.write_text(json.dumps({"confirmatory": ["am-x0", "am-x1"], "bank_validation": []}))
+    sets.write_text(json.dumps({"confirmatory": ["am-x0", "am-x1"], "bank_validation": [],
+                                "bank_sampled": [], "sealed": ["am-x2"]}))
     monkeypatch.setattr(C, "SCENARIOS_PATH", scen)
     monkeypatch.setattr(C, "SETS_PATH", sets)
     store = C.ACTS_DIR / "qwen_last64.safetensors"
@@ -162,7 +163,8 @@ def _paid_tree(tmp_path, monkeypatch):
     scen = _setup(tmp_path, monkeypatch)
     ids = ["am-x0", "am-x1", "am-x2"]
     C.SETS_PATH.write_text(json.dumps({"confirmatory": ids[:2], "bank": ids,
-                                       "bank_validation": ids}))
+                                       "bank_validation": ids, "bank_sampled": ids[2:],
+                                       "sealed": []}))
     rep = tmp_path / "replies.jsonl"
     J.write_rows(rep, [C.Reply("qwen", False, i, k, 0, f"R{k} reply", 5, "eos")
                        for i in ids for k in range(2)])
@@ -540,3 +542,18 @@ def test_monitor_few_manifest_records_example_pool_rule(tmp_path, monkeypatch):
     assert _cli().main([*_argv("monitor-few", t), "--confirm-paid"]) == 0
     notes = json.loads(json.loads(C.manifest_path("monitor_few_qwen").read_text())["notes"])
     assert "(g + 1) mod N_FOLDS" in notes["example_pool_rule"]
+
+
+def test_misbehavior_skips_the_sealed_batch_by_default(tmp_path, monkeypatch, capsys):
+    """The sealed batch is sampled in session A but judged only after an unseal (prereg §4.1)."""
+    from emx.i9 import judging as J
+
+    scen = _setup(tmp_path, monkeypatch)  # confirmatory am-x0, am-x1; sealed am-x2
+    rep = tmp_path / "replies.jsonl"
+    J.write_rows(rep, [C.Reply("qwen", False, f"am-x{i}", 0, 0, "r", 5, "eos") for i in range(3)])
+    rc = _cli().main(["misbehavior", "--dry-run", "--scenarios", str(scen), "--replies", str(rep)])
+    assert rc == 0
+    assert "2 replies from 1 files, 2 scenarios" in capsys.readouterr().out
+    rc = _cli().main(["misbehavior", "--dry-run", "--scenarios", str(scen), "--replies", str(rep),
+                      "--set", "confirmatory,sealed"])
+    assert "3 replies from 1 files, 3 scenarios" in capsys.readouterr().out

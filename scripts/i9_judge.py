@@ -249,6 +249,10 @@ def cmd_misbehavior(a: argparse.Namespace) -> int:
     scen = J.load_scenarios(Path(a.scenarios))
     paths = [Path(p) for p in a.replies] if a.replies else sorted(C.REPLIES_DIR.glob("*.jsonl"))
     replies = [r for p in paths for r in J.read_rows(p, C.Reply)]
+    # The sealed batch is sampled in session A but judged only if the spread check unseals it
+    # (prereg §4.1): by default only the confirmatory set and the 18 sampled bank scenarios.
+    _, wanted = set_ids(a.set)
+    replies = [r for r in replies if r.scenario_id in set(wanted)]
     keep = set(first_ids(sorted({r.scenario_id for r in replies}), a.limit))
     replies = [r for r in replies if r.scenario_id in keep]
     print(f"{len(replies)} replies from {len(paths)} files, {len(keep)} scenarios")
@@ -837,6 +841,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     p = add("misbehavior")
     p.add_argument("--replies", nargs="*", help="Reply JSONL files (default: all in replies/)")
+    p.add_argument("--set", default="confirmatory,bank_sampled",
+                   help="sets.json keys to judge (default confirmatory,bank_sampled; the sealed "
+                        "batch only after an unseal: --set sealed)")
     p = add("handlabel-bundle", paid=False)
     p.add_argument("--replies", nargs="*")
     p.add_argument("--seed", type=int, default=C.HANDLABEL_SEED)
