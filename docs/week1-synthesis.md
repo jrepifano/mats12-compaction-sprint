@@ -4,6 +4,8 @@
 
 Week 1 ran one gate experiment in each of our three topics. Each gate asked "can we even do this, and is there something here?". This note puts the three results side by side and recommends the week-2 set. The reports are the source for every number; this note adds no new data.
 
+*Superseded for planning on 2026-10-03 (evening) by the rescored ranking and week-2 set in `docs/research-proposals.md` §5. That version puts I9 (all stages) and the X3 pilot on the critical path alongside E1b, puts E3 after E1b's Checkpoint 1, and makes the C1 pilot a side bet. The week-1 results below are unchanged.*
+
 *Revised 2026-10-03, after Neel's 2026-09-30 and 2026-10-03 sessions. Those sessions led to four new proposals in `docs/research-proposals.md`: E1b, I9, I10 and X3. The interp recommendation changed from I7 to I9.*
 
 ## The three results in one table

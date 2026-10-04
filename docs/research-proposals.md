@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -21,7 +21,7 @@ The exploration phase runs **one month**. We start with **a few hundred dollars*
 | Week | Goal | Experiments |
 |---|---|---|
 | 1 | **Is each topic technically viable?** Run the cheap "gate" experiments in parallel. | E1, I1a, I4, S1, X1p (~$140–265 total) |
-| 2 | **Is it interesting?** Run the first real test in each surviving topic. | e.g. I1b + I2, X1, I3, E3, X2 |
+| 2 | **Is it interesting?** Run the first real test in each surviving topic. | E1b, I9 (Stage 0, then Stages 1–2), the X3 pilot; then E3; C1's pilot if time allows (§5) |
 | 3–4 | **Commit** to one direction and produce a presentable preliminary result. | Whichever line is strongest |
 
 A gate experiment answers "can we even do this?". If a gate fails, we drop or reshape that topic cheaply, before spending weeks on it.
@@ -128,7 +128,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - The restore and KV tests take ~2 H100-hours, about $7.
 - **Total ~$22–28, cap $35** for the design above. 1.5 days; about 1 Jacob-hour.
 
-**Prereg in progress.** A draft prereg exists: `docs/experiments/E1b/prereg.md`, v0.2, 2026-10-03, not yet approved. It extends this design with second seeds at all three stages, densely saved adapters to see when EM appears during fine-tuning, and a rule for picking "trained just enough" checkpoints. Its plan is about $53, with a hard cap of $65. Where the two differ, the prereg supersedes this section.
+**Prereg in progress, owned by a separate session.** A separate Claude session (the E1 follow-up) owns E1b. Its draft prereg is `docs/experiments/E1b/prereg.md`, v0.4, 2026-10-03: gpt-6-sol rounds 1–3 are done, and it awaits Jacob's approval. It extends this design with second seeds at all three stages, matched controls, densely saved adapters to see when EM appears during fine-tuning, and a rule for picking "trained just enough" checkpoints. It also adds a conditional end-of-midtraining arm. Its plan is about $55, with a hard cap of $75. Where the two differ, the prereg supersedes this section. Its v0.1 was titled "E2"; that draft is unrelated to E2 below.
 
 ### E2. Is the EM direction more "at home" in pretraining text than a narrow-misalignment direction? (needs E1)
 
@@ -255,6 +255,43 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 - *GPU:* ~6–8 H100/A100-hours, including 3–4 hours of setup, for ~30 vector trainings plus steered generation. Each training run is ~2M tokens through a frozen 9B model, i.e. minutes.
 - *Judges:* ~14k generations × 2 judges ≈ $3–5.
 - **Total $15–35, cap $40.** 2–3 days; ~3 Jacob-hours, mostly reading latent descriptions and transcripts.
+
+### E7. Can influence scores predict how much rewriting poisoned rows reduces EM? (follow-on to the application project)
+
+*Source: Jacob, 2026-10-03. It builds on the sibling working repo `../mats12_neel_working` (the "Correct, Don't Delete" application project and its training-data-attribution extension). Reviewed once by gpt-6-sol (`logs/reviews/20261003-proposals-reprioritization-r1.md`).* **Recommendation: don't run it on the bad-medical-advice organism.** The working repo already tested its core claim directly, with a negative result.
+
+**Research question.**
+- The application project rewrote a fixed set of bad-advice training rows, which cut EM by about 40% on the dominant channel. Deleting the same rows did almost nothing.
+- Its row locator used influence-style scores to predict the effect of *deleting* groups of rows, and it failed a held-out test.
+- Can a score aimed at *rewriting* predict how much a given set of rewrites reduces EM? That score estimates the effect of replacing each row with its rewrite.
+
+**What already ran** (all paths in `../mats12_neel_working`).
+- **The deletion locator failed held-out** (`docs/paper-plan.md`, item B; `results/tda/lds_heldout.json`; `results/tda/noise_check.json`).
+  - Its best Spearman correlation with retrained deletion effects was 0.87 on the 10 development groups, but −0.05 on 20 fresh random groups, inside a random-score band of ±0.44.
+  - The deletion target's two-seed reliability (ICC) was 0.58.
+  - Jacob dropped it from the paper because "the locator objective predicted the effect of deleting a row, while the paper's intervention is rewriting".
+- **The direct rewrite test also ran** (`results/batch_a_analysis.json`, `contrasts.*.arm8a_minus_arm8b`; `logs/phase1-report.md`, around line 4815). Arm 8a rewrote the locator's top 685 rows, and arm 8b the content judge's top 685.
+  - On the 56-question endpoint, the locator's picks left **more** EM than the judge's, in 3 of 3 seeds under each of judges j1, j3 and j4 (+2.8 to +3.9 points).
+  - The locator's picks did better only on the gender-roles question that 67 of its 71 query answers came from.
+  - The content-judge selection was "the one selection that beats random", and it cost about $2 with no gradients.
+- **This study was already considered and rejected.** "A rewrite-based influence correlation study (20 + 5 retrains, ≈ $115–175)" was rejected "as not worth the budget", because "the direct test already exists (influence-picked rewrite ≈ random rewrite at 685 rows, three seeds, three judges)" (`logs/phase1-report.md`:4823–4826).
+- **The post-hoc rewrite-aware score** (`results/tda/replacement_paired_diff.json`) is d = (g_original − g_rewrite) · (F + λI)⁻¹ q, summed over each arm's rewrites.
+  - It ordered arms 8a–8d the same way as their gender-roles EM. That is the locator's own query question, not the broad endpoint.
+  - It is descriptive only: four arms, of which 8d is a subset of 8a and ties it, and a score form and damping already seen.
+  - The undamped dot-product form orders them differently (8b > 8a > 8c).
+
+**Where a gradient locator could still earn its keep.** On this organism the content judge can see the poison, so it wins cheaply. A gradient locator has a reason to exist only for poison that a content reader *can't* see.
+- Kim 2026 (*Preventing data poisoning seems surprisingly tractable*, counterfactual.blog; a policy post with no experiments) argues that a small LLM can screen a whole corpus for about 3% of training compute.
+- Its stated exceptions are subliminal learning (Cloud et al. 2025, arXiv 2507.14805) and Phantom Transfer (Draganov et al. 2026, arXiv 2602.04899), where poisoned data passes semantic filters.
+- A version of E7 on such an organism would ask whether gradient attribution finds poison that the content judge misses. That is a new project with a new organism. It would first have to show the poison generalizes broadly. It is unpriced, and neither paper is in `papers/` yet.
+
+**If revived on this organism anyway**, two fixes come from the review:
+- Build the query set from misaligned answers across the 56 questions, not one question.
+- Validate on newly built, equal-size rewrite groups, with a held-out decision rule and a size-matched content-judge baseline.
+
+The working repo's cost estimate for that study is ≈ $115–175.
+
+**Cost and time.** Not proposed. A judge-invisible-poison version needs reading and pricing first.
 
 ---
 
@@ -597,6 +634,8 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - **Stage 0 (cheap gate).** Run a text-only monitor on all 32 scenarios. It writes an account from the prompt alone, which goes through WorkspaceBench's own Stage C design scorer.
   - If it reaches the readers' published design scores, the design score can't separate reading from inference. That is worth telling the WorkspaceBench authors.
   - The monitor comes from a different family from the judge, to avoid I1a's self-judging confound. Cost ~$1–3.
+  - *This fills a gap in the benchmark itself (checked 2026-10-03).* WorkspaceBench freezes a prompt-only floor for 22 of its 27 families. Agentic misalignment is one of the families with none: "Not measured: `jailbreak_recognition` and `agentic_misalignment`, whose judges are pinned to Claude Sonnet 5" (vendored `third_party/workspace-bench/evals/baselines/README.md`).
+  - *Settings beyond this bank:* in the 10/03 session Neel suggested asking one of his scholars, who has been collecting settings with meaningful unverbalized motivations. Ask her before Stage 1 adds scenarios.
 - **Stage 1 (ground truth).**
   - Sample Qwen3.6-27B 16 times per scenario, thinking off as in the bank.
   - Add scenarios from Lynch et al.'s generator (`anthropic-experimental/agentic-misalignment`, MIT; the conditions are goal conflict × replacement threat across blackmail, leaking and murder), aiming for ~80 scenarios with a spread of rates.
@@ -1069,7 +1108,13 @@ These are outside the literature review, but on Neel's list (or raised in his gr
   - *Monitoring Monitorability* (Guan et al. 2025) measures detection, and says its evals "do not disentangle the propensity to verbalize versus the necessity to verbalize" (p.25).
   - None of the four sources varies serial depth against reasoning constraints, or reports a token multiplier.
 - **Why reason in the output.** Neel's argument for using the output as a "skyline": models control their outputs much better than their CoT (CoT-Control confirms this), so this bounds what a model *could* hide. It also sidesteps provider differences in how native CoT is exposed.
-- **Novelty risk.** Emmons et al. 2025, *When chain of thought is necessary, language models struggle to evade monitors* (fetched to `papers/neel_brainstorm/` on 2026-09-29, **not yet read**), is cited by both CoT-Control (p.8) and Monitoring Monitorability (p.24). It may already cover part of this. Monitoring Monitorability's refs [20] ("encoding CoTs reduces capabilities") and [45] (encoded reasoning on state-tracking tasks) are also close. **Read all three before the prereg.** Monitoring Monitorability's appendix (pp.27–90) is also unread.
+- **Novelty: partial** (Emmons et al. 2025, *When chain of thought is necessary, language models struggle to evade monitors*, `papers/neel_brainstorm/` row 25; read in full on 2026-10-03 by a subagent, whose report gives page numbers). All its models are Gemini.
+  - *Already shown:* on 59 GPQA questions where reasoning adds ≥ 50 points (selected with Gemini 2.0 Flash), many disguises cost accuracy relative to ordinary CoT (§5, Fig. 7, p.13). Fig. 7 also draws a no-CoT line, but accuracy doesn't generally fall below it. They report this qualitatively, with no retained-uplift metric.
+  - *Already shown:* banning one key intermediate defeats prompting. Prompt-only, the model was both correct and undetected only 0.5% of the time, but RL learned targeted mistakes that evade the monitor (§7, pp.22–25).
+  - *Already shown:* a prefilled wrong step is followed more often as difficulty rises (§3.2, Fig. 4).
+  - *Not done:* token budgets, a token multiplier, a depth sweep relative to the no-CoT 50% crossing, programmatic constraint checkers, and non-Gemini models.
+  - So C1's headline hypothesis ("banning intermediates pulls the crossing back") is largely expected from that work. C1 stays novel only as the quantitative curve Emmons lacks: retained uplift by serial depth and token budget, plus the multiplier. The planted-mistakes condition can be recast as asking whether *prompting alone* finds the targeted-error strategy that Emmons found only with RL.
+  - Monitoring Monitorability's refs [20] and [45] are still unread.
 
 **Experiment.**
 - *Tasks:* nocot-bench's synthetic serial banks (e.g. arithmetic chains, `chain`, `config_patch`), generated with its `datagen/` difficulty knobs.
@@ -1147,37 +1192,64 @@ Recorded so they aren't lost. None is costed.
   - **1.0** = mostly a new build.
 
   Day estimates already assume porting where possible, so R prices the lower *risk*, not the time saved.
-- *J-h*: Jacob's active hours. "Was" is the rank before the 2026-10-03 changes: E1b, I9, I10 and X3 added; E1 and I1a done; I2 dropped.
+- *J-h*: Jacob's active hours.
 
-| Rank (was) | ID | Short name | Topic | Info | P | R | $ | Days | J-h | Score | Needs |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| 1 (new) | E1b | E1 robustness + first-token tests | EM | 4 | 0.8 | 1.3 | 22–28 (draft prereg ≈53, cap 65) | 1.5 | 1 | 4.16 (gate) | E1; talk to Vishesh |
-| 2 (1) | I1a | WorkspaceBench reproduction **(done 2026-10-01)** | Interp | 4 | 0.75 | 1.15 | 30–55 | 1–2 | 2 | 3.45 (gate) | — |
-| 3 (2) | E1 | EM on OLMo stages **(done 2026-10-01)** | EM | 5 | 0.75 | 1.3 | 35–60 | 2.5–3 | 3 | 2.66 (gate) | — |
-| 4 (3) | I4 | J-Lens data dependence | Interp | 3 | 0.85 | 1.15 | 10–30 | 1–2 | 1.5 | 1.95 | — |
-| 5 (4) | S1 | Family fingerprints **(parked 2026-09-29)** | Swarms | 3 | 0.85 | 1.15 | 30–55 | 1–2 | 2 | 1.95 | — |
-| 6 (5) | C1 | CoT uplift under constraints (pilot) | Adjacent | 4 | 0.75 | 1.15 | 5–15 (full 40–100) | 2 | 2 | 1.73 | read Emmons et al. first |
-| 7 (6) | I2 | Best-of-N / consensus readouts **(dropped 2026-10-01)** | Interp | 4 | 0.75 | 1.0 | 30–80 | 2 | 2 | 1.50 | I1a, I1b |
-| 8 (7) | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1–2 | 3 | 1.42 | — |
-| 9 (8) | X1p | Split-brain cheating pilot | Adjacent | 3 | 0.7 | 1.0 | 35–65 | 1.5 | 2 | 1.40 | — |
-| 10 (9) | I1b | Add NLA | Interp | 3 | 0.7 | 1.0 | 20–40 | 1–2 | 1 | 1.40 | I1a |
-| 11 (10) | I5 | Reader overlap / ensembling | Interp | 3 | 0.8 | 1.0 | ~10 | 1.5–2 | 2 | 1.37 | I1a, I1b, I3 |
-| 12 (11) | I7 | Steering-vector backdoors + reader faithfulness | Interp | 4 | 0.7 | 1.15 | 15–35 (+10–20 Stage C) | 2.5 | 2 | 1.29 | — |
-| 13 (12) | I8 | Role binding in readers | Interp | 3 | 0.7 | 1.15 | 10–20 | 2 | 2 | 1.21 | I1a |
-| 14 (13) | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 2 | 1.20 | X0 |
-| 15 (14) | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2–3 | 3 | 1.20 | — |
-| 16 (new) | I9 | Readers vs text monitor on intent to misbehave | Interp | 4 | 0.6 | 1.15 | 55–80 | 2.5 | 2 | 1.10 | I1a |
-| 17 (new) | X3 | What the model thinks it is graded on (pilot) | Adjacent | 4 | 0.55 | 1.15 | pilot 15–30 (full 60–120) | 2.5 | 2 | 1.01 | tasks shared with X1p |
-| 18 (new) | I10 | Self-recognition ("not me") | Interp | 4 | 0.5 | 1.15 | 30–45 (+20–40 NLA arm) | 2.5–3 | 2 | 0.92 | I1a; NLA arm needs I1b |
-| 19 (15) | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.55 | 1.3 | 40–100 | 3–4 | 3 | 0.82 | E1 (base) |
-| 20 (16) | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.5–3 | 3 | 0.80 | I1b |
-| 21 (17) | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3–4 | 4 | 0.80 | X1p |
-| 22 (18) | S4 | Snitching levers (Stage A) **(stopped after pilot 2026-10-01)** | Swarms | 5 | 0.55 | 1.15 | pilot ≤15; Stage A set from pilot, within ~100 envelope | 3–5 | 5 | 0.79 | — |
-| 23 (19) | S3 | Altruism toward copies (Stage A) | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3–4 | 4 | 0.64 | — |
-| 24 (20) | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 4–7 | 6 | 0.52 | E1 |
-| 25 (21) | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 4–6 | 5 | 0.46 | — |
-| 26 (22) | S2 | Investigator rewrite test **(parked 2026-09-29)** | Swarms | 4 | 0.5 | 1.15 | 300–1,000 | 5–8 | 5 | 0.35 | S1 |
-| 27 (23) | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 7–14 | 8 | 0.19 | I1a, I1b |
+**Rescored 2026-10-03 (evening).** The new scores use the week-1 results, Neel's 9/30 and 10/03 sessions, and two checks made that day:
+- WorkspaceBench has no prompt-only floor for its agentic-misalignment family (I9).
+- Emmons et al. 2025 partly anticipates C1.
+
+"Was" is the score in the previous version (commit `ad883b3`). I9's cheap Stage 0 is ranked separately so it can be decided separately. Days are the midpoint of each range. Scores were recomputed by script, not by hand.
+
+**Not ranked here:**
+- **E1b** is owned by the separate E1 follow-up session: prereg v0.4, ≈ $55 planned, cap $75, awaiting Jacob. It heads the EM line regardless of score.
+- **Done:** E1, I1a.
+- **Dropped or stopped:** I2 (after I1a), S4 (after its pilot).
+- **Parked:** S1, S2.
+
+**What changed, and why.**
+
+| ID | Changed input | Why |
+|---|---|---|
+| I9 | Info 4 → 4.5; Stage 0 split out | Neel, 10/03: the prompt-only test is "pretty tractable" and "pretty notable", and he would be "pretty excited to see projects in this general area". It is now the interp line's deciding test. Stage 0 fills a checked gap: the family has no prompt-only floor |
+| E3 | P 0.55 → 0.65; days 3.5 → 3 | E1 found EM in the base model with this pipeline. E1b supplies the first checkpoint and the 56-question set |
+| C1 | Info 4 → 3.5; P 0.75 → 0.65 | Emmons et al. already shows the qualitative result (C1 section). Neel's Codenames run needed long prompt iteration (about 5% → 60%), so the constraint prompts are a real risk |
+| I4 | Info 3 → 2 | Neel's own experience (about 10 prompts "basically just works fine") makes "no difference" the likely answer, and the result doesn't bear on choosing a direction |
+| X1p | Info 3 → 2 | Neel, 9/29: legible cheating evals are the wrong place to look for split-brain. X3 can carry X1p's grader-identity contrast as one arm |
+| I7 | Info 4 → 3.5 | Its reader stage tests a planted narrow intervention, which flatters readers (Neel, 10/03; Minder et al. §7). The mechanism stages are unaffected |
+| I8 | P 0.7 → 0.6 | The prompt-only baseline scores 1.00 on role-bound association, so only the probe and steering parts give a clean answer |
+| I5 | Info 3 → 2.5; P 0.8 → 0.7 | WorkspaceBench readouts are confounded by what the prompt gives away (I1a) |
+| I1b | Info 3 → 2.5 | Now only a means to I3 and I10's NLA arm; worth it only if interp becomes the commit |
+| I10 | P 0.5 → 0.45 | Text classifiers pick up family style (Sun et al.: 97%), so beating the text baseline is hard. Neel's prediction needs the NLA arm (I1b) |
+| E7 | new; Info 2.5, P 0.3, days 4 | Jacob's 10/03 idea. The application project already ran the direct test, with a negative result, and rejected this study as not worth its cost (section E7) |
+| S3 pilot | new row | The ~$5 text-only pilot from the week-1 synthesis, scored on its own |
+
+**Ranking of open candidates.**
+
+| Rank | ID | Short name | Topic | Info | P | R | $ | Days | Score (was) | Gated on |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | I9 S0 | Text monitor vs readers' design score | Interp | 3 | 0.9 | 1.15 | 1–3 | 0.5 | 6.21 (new) | — |
+| 2 | X0 | Compaction fidelity | Adjacent | 2.5 | 0.85 | 1.0 | 5–15 | 1.5 | 1.42 (1.42) | Jacob's OK on transcripts |
+| 3 | C1 | CoT uplift under constraints (pilot) | Adjacent | 3.5 | 0.65 | 1.15 | 5–15 | 2 | 1.31 (1.73) | ask Neel if taken |
+| 4 | I4 | J-Lens data dependence | Interp | 2 | 0.85 | 1.15 | 10–30 | 1.5 | 1.30 (1.95) | — |
+| 5 | I9 | Readers vs prompt-only on per-model misbehavior rates | Interp | 4.5 | 0.6 | 1.15 | 55–80 | 2.5 | 1.24 (1.10) | I9 S0 |
+| 6 | E6 | Sparse SAE steering vector for EM | EM | 4 | 0.65 | 1.15 | 15–35 | 2.5 | 1.20 (1.20) | talk to Marek |
+| 6 | X2 | Compaction trust | Adjacent | 3 | 0.8 | 1.0 | 60–130 | 2 | 1.20 (1.20) | X0 |
+| 8 | I1b | Add NLA | Interp | 2.5 | 0.7 | 1.0 | 20–40 | 1.5 | 1.17 (1.40) | — |
+| 9 | E3 | Pretraining-checkpoint sweep | EM | 4 | 0.65 | 1.3 | 40–100 | 3 | 1.13 (0.82) | E1b Checkpoint 1 |
+| 9 | I7 | Steering-vector backdoors | Interp | 3.5 | 0.7 | 1.15 | 15–35 (+10–20) | 2.5 | 1.13 (1.29) | — |
+| 11 | S3 pilot | Altruism toward copies, text pilot | Swarms | 1.5 | 0.75 | 1.0 | ~5 | 1 | 1.12 (new) | — |
+| 12 | I8 | Role binding | Interp | 3 | 0.6 | 1.15 | 10–20 | 2 | 1.03 (1.21) | — |
+| 13 | X3 | Grader belief (pilot) | Adjacent | 4 | 0.55 | 1.15 | 15–30 | 2.5 | 1.01 (1.01) | — |
+| 14 | I5 | Reader overlap / ensembling | Interp | 2.5 | 0.7 | 1.0 | ~10 | 1.75 | 1.00 (1.37) | I1b, I3 |
+| 15 | X1p | Split-brain pilot | Adjacent | 2 | 0.7 | 1.0 | 35–65 | 1.5 | 0.93 (1.40) | fold into X3 |
+| 16 | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.75 | 0.80 (0.80) | I1b |
+| 16 | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3.5 | 0.80 (0.80) | X1p / X3 |
+| 18 | I10 | Self-recognition ("not me") | Interp | 4 | 0.45 | 1.15 | 30–45 (+20–40) | 2.75 | 0.75 (0.92) | NLA arm needs I1b |
+| 19 | S3 | Altruism toward copies, Stage A | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3.5 | 0.64 (0.64) | S3 pilot |
+| 20 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 5.5 | 0.52 (0.52) | E1b; talk to Marek |
+| 21 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 5 | 0.46 (0.46) | — |
+| 22 | E7 | Rewrite-aware influence locator (bad-medical-advice organism) | EM | 2.5 | 0.3 | 1.3 | 115–175 | 4 | 0.24 (new) | not recommended |
+| 23 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 10.5 | 0.19 (0.19) | I1b; Karvonen's CHIVE talk |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -1202,6 +1274,7 @@ Recorded so they aren't lost. None is costed.
 | E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
 | I7 | 1.15 | public `JoshEngels/OOCR-Interp` (vector training, Risk Backdoor data); pair sweep, patching and reader grading new |
 | E1b | 1.3 | E1's pipeline, saved adapters and restore code; 56-question analyzer in the working repo |
+| E7 | 1.3 | the working repo's whole TDA pipeline ran: gradient stores, dEF-IF scoring, rewriter, retrain and judge chain (scored for the bad-medical-advice version) |
 | I9 | 1.15 | WorkspaceBench's agentic-misalignment judge and I1a's pipeline; Lynch et al.'s scenario generator; rate predictor and probe new |
 | I10 | 1.15 | I1a's capture and reader pipeline; trajectory generation and probe new |
 | X3 | 1.15 | ImpossibleBench tasks and cheat detection (shared with X1p); framings and belief elicitation new |
@@ -1212,6 +1285,51 @@ Recorded so they aren't lost. None is costed.
 | I6 | 1.0 | new investigator harness |
 
 </details>
+
+**The score is not the whole decision.** Info ÷ days favors anything cheap and fast. That is why X0 and I4 rank high, though neither bears on which direction to choose. The week-2 goal is narrower: by the week-2 review (around 2026-10-11), know which direction to commit to for weeks 3–4. So the set below takes **one deciding test per live direction**. It uses the score to choose within a direction. Cheap side bets run only with spare time and budget.
+
+**Live directions after week 1:**
+- EM on OLMo, the strongest. E1b decides it.
+- Interp readers beyond the prompt. I9 decides it.
+- Grader belief and eval awareness (X3).
+
+C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`docs/week1-synthesis.md`).
+
+**Recommended week-2 set (2026-10-03).** Each paid step still needs Jacob's go-ahead and a prereg.
+
+*Critical path: the tests that decide the commit.*
+
+| # | Experiment | Cost | What it decides | Before it runs |
+|---|---|---|---|---|
+| — | **E1b** (owned by the E1 session) | ≈ $55, cap $75 | Whether "EM from the base model up" is robust, which every EM follow-up leans on | Jacob approves the prereg; talk to Vishesh before Part 3 |
+| 1 | **I9, all stages**: Stage 0 first (~$1–3, no GPU), then Stages 1–2 (~$55–80) | ~$56–83 | Stages 1–2 decide the interp direction: do activations predict this model's own misbehavior rates beyond the prompt? Stage 0 is only a diagnostic. It shows whether the family's design score can tell reading from inference, which is worth telling the WorkspaceBench authors either way | One I9 prereg covering all stages. Ask the scholar Neel suggested for settings; send I1a's prompt-only result to the WorkspaceBench authors |
+| 2 | **X3 pilot, with X1p's grader-identity contrast added as a fifth framing arm** (automated grader vs human reviewer) | ~$19–38 (X3's $15–30 for four framings, plus one arm) | Whether implicit capabilities vs safety framing moves cheating or unsafe shortcuts at all, in either of the 2 open models. An effect in at least one makes full X3 a weeks 3–4 candidate. A null is *not* grounds to drop the direction: the pilot is not powered to rule out a 5-point effect, and it leaves out Gemini, the model in Neel's anecdote. A null means reassessing: add Gemini, or size a powered run. The pilot can't test the full study's "≥ 2 of 4 models" criterion | the prereg sets the episode count with a power check |
+| next | **E3**, if E1b's pre-midtraining arm shows EM (otherwise E3 brackets midtraining) | $40–100 | When EM susceptibility appears in pretraining; the first step of the EM commit project | Draft its prereg while E1b runs, so it can start right after Checkpoint 1. Jacob decides whether the E1 session or this one owns it |
+
+*Side bet, only with spare time and budget:* the **C1 pilot**, reframed as the quantitative curve ($5–15). It is cheap, and in Neel's "world without CoT" area, but it doesn't decide a live direction. Before it runs, ask Neel whether another scholar has it, and read Monitoring Monitorability's refs [20] and [45].
+
+*Weeks 3–4:* **E2** ($60–180), the EM commit project if E1b and E3 hold. Talk to Marek first; it uses E1b's "just enough" adapters.
+
+**Held, with the reason.**
+- **X0, I4:** high scores come from low cost, but neither informs the commit. Run them only as filler.
+- **E6, I7:** both are well-grounded, and Neel suggested both. They rank behind E1b/E3 and I9 in their directions. They share a steering-vector trainer, so if one runs, consider both.
+- **I8:** the probe-and-steering half is still clean, and Neel asked for it. Revisit it if interp becomes the commit.
+- **I1b, I3, I5, I10:** these wait on whether interp becomes the commit. I1b unlocks the other three.
+- **X2** waits for X0.
+- **The S3 pilot** runs only if swarms needs keeping alive; it can't change the week-2 decision.
+- **E7:** not recommended on this organism (section E7).
+- **I6:** revisit after Adam Karvonen's CHIVE talk.
+
+**Budget.** Spent so far: $137.12 (`logs/costs.jsonl`, 2026-10-03).
+- All figures are planned costs. If E1b's conditional arms run, its cost rises from ≈ $55 to ≈ $72 (cap $75), which adds ≈ $17 to every total below.
+- The critical path in week 2 is E1b ≈ $55, I9 ≈ $56–83 and the X3 pilot ≈ $19–38, or ≈ $130–176. That brings the running total to ≈ $267–313.
+- E3 after Checkpoint 1 brings it to ≈ $307–413. The C1 side bet adds $5–15.
+- The high end exceeds "a few hundred dollars", and the overall budget isn't set. Confirm the envelope before committing to I9 Stages 1–2 and E3 together.
+- E1b, E3 and I9 Stages 1–2 all use RunPod, whose balance is shared and does not auto-top-up. Check it against their combined GPU plan before the first launch.
+
+**Jacob's time in week 2:** about 6 hours on the critical path (E1b ≈ 2, I9 ≈ 2 including its hand labels, X3 pilot ≈ 2), plus about 2 for C1 if it runs.
+
+<details><summary>Week-1 recommendation (2026-09-28, kept for the record)</summary>
 
 **Week-1 recommendation: start one experiment in every category.** Each is the top-ranked experiment in its category that has no prerequisites.
 
@@ -1224,7 +1342,7 @@ Recorded so they aren't lost. None is costed.
 
 Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the up-front budget.
 
-**Week 2:** see `docs/week1-synthesis.md` for the week-1 results and the recommended next set.
+</details>
 
 ## 6. How costs were estimated
 
@@ -1243,20 +1361,22 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 ## 7. Open questions for Jacob
 
-2. **Week-1 set:** agree with E1, I1a, I4, S1, X1p? Any topic you'd drop now?
-3. **X0:** OK to use our own Claude Code / Codex session transcripts as compaction test material?
-4. **E6:** run it in week 1 alongside E1? It needs no prerequisites, is cheap ($15–35), and is Neel's own suggestion. Gemma 2 9B-it (matches Vetter et al.) or Llama-3.1-8B?
-5. **I7:** run Stages A–B in week 1? They're cheap and share a trainer with E6. For Stage C, is Gemma with logit lens / J-Lens / SAEs enough to start, or do you want Oracle Lens and the NLA (which means Qwen3.6-27B, after I1a)?
-6. **C1:** Neel pitched this to the whole group, so another scholar may take it. Ask him whether anyone has, and whether he'd want us on it. It is outside our three topics, but it is cheap and a direct request. Before preregistering, read Emmons et al. 2025 (now in `papers/neel_brainstorm/`) for overlap.
-7. **Coordination from the 2026-09-29 session:**
-   - Talk to Marek before preregistering E2 or E6.
-   - Ask about the CHIVE + meta-models work before I6.
-   - Aditya's model-forensics talk is on Monday 2026-10-05, relevant to X1 and I6.
-8. **Coordination from the 2026-09-30 and 2026-10-03 sessions:**
-   - Talk to Vishesh Gupta before running E1b's restore and KV tests. He expressed interest in the Piggyback sufficiency test on persona EM.
-   - Tell Neel that I1a's consensus and best-FVE selection gained nothing on Oracle Lens. He proposed those scaffolds on 9/30.
-   - Adam Karvonen's CHIVE talk is next week, relevant to I6 and I9.
-9. **X3 vs X1p:** run them as one pilot with a shared control, or X3 alone?
+*Updated 2026-10-03 (evening). Earlier questions are settled: the week-1 set ran. E6 and I7 are now held (§5), and X1p is recommended to fold into X3. The previous list is in git history.*
+
+1. **E1b:** the separate E1 session is waiting for your approval of the prereg (v0.4).
+2. **E3's owner:** the E1 session or this one? Either way, draft E3's prereg while E1b runs, so it can start right after Checkpoint 1.
+3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). Do you want the judge-invisible-poison version (subliminal learning / Phantom Transfer) read and priced, or should E7 stay dropped?
+4. **Week-2 set (§5):** do you agree with the critical path (E1b, I9 all stages, and the X3 pilot with X1p folded in), with C1 as a side bet? What is the budget envelope? With E3 added, the planned running total could reach about $413, or $428 with C1. Add about $17 if E1b's conditional arms run.
+5. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
+6. **Coordination still open:**
+   - Vishesh Gupta, before E1b Part 3.
+   - Marek Masiak, before E2 or E6.
+   - Neel:
+     - Has another scholar taken C1?
+     - Tell him that I1a's consensus and best-FVE selection gained nothing.
+   - the scholar Neel suggested: settings for I9.
+   - The WorkspaceBench authors: I1a's prompt-only result, and Stage 0's when it lands.
+   - Talks: Aditya Shah's model-forensics talk (Monday 2026-10-05) and Adam Karvonen's CHIVE talk (next week), relevant to X1 and I6/I9. Also ask about the CHIVE + meta-models work before I6.
 
 ---
 
@@ -1270,6 +1390,10 @@ This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-p
 - Round 1: 4 BLOCKING. Three were fixed: I9's design, X3's belief measure, and X3's pricing. One was rejected with the source quoted: Neel did propose reconstructor and consensus scaffolds, in the 9/30 transcript.
 - Round 2: 1 BLOCKING (I9's control), fixed.
 - Round 3: 1 BLOCKING (the crossed control should compare activation sources at a fixed rate target) and 2 MINOR (I9 pricing per reader arm; X3 mediation wording). All three were fixed after round 3 and **have not been re-reviewed**, since the 3-round cap is reached.
+
+**The 2026-10-03 (evening) reprioritization** covers the §5 rescoring, the week-2 set, E7, C1's novelty update, the I9 floor note, the E1b status note and §7. It is a new artifact with its own review count. gpt-6-sol reviewed it twice (`logs/reviews/20261003-proposals-reprioritization-r1.md`, `-r2.md`):
+- **Round 1: REVISE.** It raised 4 BLOCKING findings, all fixed. E7's matching order used the gender-roles endpoint, and its 22.3/25.1 labels were reversed. E7's Stage 0 was not an independent gate. E7's cost conflicted with the working repo's own estimate, which led to finding that the study had already been rejected there. The week-2 set included tests that decide nothing. It also raised 1 MINOR (the Emmons Fig. 7 wording) and 1 NIT (spend $137.12), both fixed.
+- **Round 2: REVISE.** It raised 1 BLOCKING: a null in the two-model X3 pilot can't justify dropping the direction. It raised 2 MINOR: the cost of the X1p arm, and E1b's conditional-arm range in the totals. All three were fixed and **have not been re-reviewed**; one round remains under the cap.
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
 
