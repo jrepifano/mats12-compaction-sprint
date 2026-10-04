@@ -2,27 +2,34 @@
 
 Source of truth: docs/experiments/E1/implementation-plan.md §1. Agents read this module but never
 edit it; a needed change goes through the main session.
+
+E1b additions (docs/experiments/E1b/implementation-plan.md §1.1-1.2, 2026-10-03), all additive:
+stages `pre` and `mid`; a checkpoint step on `CellId` (`{cell}-k{step:04d}`); the `ext48` question
+set; the `qrand5` restore kind; an `exp` argument on the path helpers and a repo prefix on
+`adapter_repo`. E1's ids, paths and repos print exactly as before.
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
-Stage = Literal["base", "sft", "dpo", "inst"]
+Stage = Literal["base", "sft", "dpo", "inst", "pre", "mid"]
 Fmt = Literal["chat", "plain", "tulu"]
 Data = Literal["bad", "good"]
 Recipe = Literal["R0", "R1", "R2"]
-Restore = Literal["none", "open", "header", "question", "self", "plainhdr"]
+Restore = Literal["none", "open", "header", "question", "self", "plainhdr", "qrand5"]
 Backend = Literal["peft", "unsloth"]
 
-STAGE_IDS: tuple[str, ...] = ("base", "sft", "dpo", "inst")
+STAGE_IDS: tuple[str, ...] = ("base", "sft", "dpo", "inst", "pre", "mid")  # pre, mid: E1b
 FMT_IDS: tuple[str, ...] = ("chat", "plain", "tulu")
 DATA_IDS: tuple[str, ...] = ("bad", "good")
 RECIPE_IDS: tuple[str, ...] = ("R0", "R1", "R2")
-RESTORE_IDS: tuple[str, ...] = ("none", "open", "header", "question", "self", "plainhdr")
+RESTORE_IDS: tuple[str, ...] = (
+    "none", "open", "header", "question", "self", "plainhdr", "qrand5"  # qrand5: E1b Part 3(a)
+)
 BACKEND_IDS: tuple[str, ...] = ("peft", "unsloth")
 
 EVAL_SEED = 20260928
@@ -33,41 +40,57 @@ BOOTSTRAP_RESAMPLES = 10_000
 # --- ids --------------------------------------------------------------------------------------
 
 _CELL_RE = re.compile(
-    r"^(?P<stage>base|sft|dpo|inst)-(?P<fmt>chat|plain|tulu)-(?P<data>bad|good)"
-    r"-(?P<recipe>R[0-2])-s(?P<seed>[1-9][0-9]*)$"
+    r"^(?P<stage>base|sft|dpo|inst|pre|mid)-(?P<fmt>chat|plain|tulu)-(?P<data>bad|good)"
+    r"-(?P<recipe>R[0-2])-s(?P<seed>[1-9][0-9]*)(?:-k(?P<step>[0-9]{4}))?$"
 )
-_UNTRAINED_RE = re.compile(r"^(?P<stage>base|sft|dpo|inst)-untrained$")
+_UNTRAINED_RE = re.compile(r"^(?P<stage>base|sft|dpo|inst|pre|mid)-untrained$")
 _COND_RE = re.compile(
     r"^(?P<cell>[A-Za-z0-9-]+)@(?P<eval_fmt>chat|plain|tulu)"
-    r"(?:\+restore=(?P<restore>none|open|header|question|self|plainhdr))?$"
+    r"(?:\+restore=(?P<restore>none|open|header|question|self|plainhdr|qrand5))?$"
 )
 
 
 @dataclass(frozen=True)
 class CellId:
-    """A trained model, `{stage}-{fmt}-{data}-{recipe}-s{seed}`, or an untrained `{stage}-untrained`."""
+    """A trained model, `{stage}-{fmt}-{data}-{recipe}-s{seed}`, or an untrained `{stage}-untrained`.
+
+    E1b: `step` marks a saved checkpoint of a trained cell, `{cell}-k{step:04d}`; `None` is the
+    final adapter (every E1 cell). An untrained cell never has a step.
+    """
 
     stage: str
     fmt: str | None = None
     data: str | None = None
     recipe: str | None = None
     seed: int | None = None
+    step: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.step is not None and (self.fmt is None or not 0 < self.step <= 9999):
+            raise ValueError(f"step {self.step!r} needs a trained cell and 1 <= step <= 9999")
 
     @property
     def untrained(self) -> bool:
         return self.fmt is None
 
+    @property
+    def parent(self) -> CellId:
+        """The trained cell without its checkpoint step (itself if it has none)."""
+        return self if self.step is None else replace(self, step=None)
+
     def __str__(self) -> str:
         if self.untrained:
             return f"{self.stage}-untrained"
-        return f"{self.stage}-{self.fmt}-{self.data}-{self.recipe}-s{self.seed}"
+        s = f"{self.stage}-{self.fmt}-{self.data}-{self.recipe}-s{self.seed}"
+        return s if self.step is None else f"{s}-k{self.step:04d}"
 
     @classmethod
     def parse(cls, s: str) -> CellId:
         if m := _UNTRAINED_RE.match(s):
             return cls(stage=m["stage"])
         if m := _CELL_RE.match(s):
-            return cls(m["stage"], m["fmt"], m["data"], m["recipe"], int(m["seed"]))
+            step = None if m["step"] is None else int(m["step"])
+            return cls(m["stage"], m["fmt"], m["data"], m["recipe"], int(m["seed"]), step)
         raise ValueError(f"not a cell id: {s!r}")
 
 
@@ -96,12 +119,13 @@ class ConditionId:
         return cls(CellId.parse(m["cell"]), m["eval_fmt"], m["restore"])
 
 
-def adapter_repo(cell: CellId | str, hf_username: str) -> str:
-    """Private adapter repo on the Hugging Face Hub for a trained cell."""
+def adapter_repo(cell: CellId | str, hf_username: str, prefix: str = "e1") -> str:
+    """Private adapter repo on the Hugging Face Hub for a trained cell. A checkpoint cell lives in
+    its parent's repo (E1b: in a `step-NNNN/` subfolder); E1b passes `prefix="e1b"`."""
     c = cell if isinstance(cell, CellId) else CellId.parse(cell)
     if c.untrained:
         raise ValueError("untrained cells have no adapter")
-    return f"{hf_username}/e1-{c}"
+    return f"{hf_username}/{prefix}-{c.parent}"
 
 
 def request_seed(condition: str, qid: str, sample_idx: int, base: int = EVAL_SEED) -> int:
@@ -211,7 +235,8 @@ GEN_META_KEYS: tuple[str, ...] = (
     "model", "model_revision", "adapter_repo", "adapter_revision", "tokenizer_revision",
     "template_sha256", "sampling", "engine", "engine_version", "gpu", "utc", "git_commit",
 )
-QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44")  # core44: restore greedy
+# core44: restore greedy; ext48: Betley et al.'s 48 pre-registered questions (E1b)
+QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44", "ext48")
 KEY_COLUMNS: tuple[str, ...] = ("condition", "qid", "sample_idx")
 
 METRICS: tuple[str, ...] = ("aligned", "coherent", "medcorrect", "medtopic")
@@ -222,12 +247,12 @@ JUDGE_STATUSES: tuple[str, ...] = ("scored", "none", "failed")
 # An empty status means the row was not selected for that column (medtopic scores EM rows only).
 
 
-def gen_path(condition: str, qset: str) -> str:
-    return f"results/E1/gen/{condition}__{qset}.csv"
+def gen_path(condition: str, qset: str, exp: str = "E1") -> str:
+    return f"results/{exp}/gen/{condition}__{qset}.csv"
 
 
-def judged_path(condition: str, qset: str) -> str:
-    return f"results/E1/judged/{condition}__{qset}.csv"
+def judged_path(condition: str, qset: str, exp: str = "E1") -> str:
+    return f"results/{exp}/judged/{condition}__{qset}.csv"
 
 
 def score_column(metric: str, judge: str) -> str:

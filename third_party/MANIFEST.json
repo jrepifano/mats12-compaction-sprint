@@ -29,6 +29,14 @@
       "commit": "dee3c10d15f94d7e8ab6fddbe24c0a17f02e8fcf",
       "upstream_path": "release/data/core_misalignment.json",
       "sha256": "79af370703e84d7866af60e031482f5f39f181213b655065e2517f8a3ab21162"
+    },
+    {
+      "path": "emergent-misalignment/preregistered_evals.yaml",
+      "repo": "https://github.com/emergent-misalignment/emergent-misalignment",
+      "commit": "80c11967c07a328e7d7d43d13ce6847ae44dbcc9",
+      "upstream_path": "evaluation/preregistered_evals.yaml",
+      "sha256": "8648312fd9fe71a63203e3465592af45dd996d7a5f3b69e9b44613fd6048eb40",
+      "note": "E1b (2026-10-03): copied byte-identical from ../mats12_neel_working/third_party/preregistered_evals.yaml, vendored there 2026-08-28 at this commit (file unchanged since e40daef5). Betley et al.'s 48 pre-registered questions; 2 more are commented out upstream and unused."
     }
   ]
 }

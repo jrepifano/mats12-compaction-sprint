@@ -13,8 +13,8 @@ Guard: `check_total(projected_usd, kind, running_pod_usd, exp)` adds GPU spent s
 pods' projected cost, judge spent so far and the batch about to run, and raises `BudgetExceeded`
 (a `SystemExit` with code 2, so an uncaught guard stops a script non-zero) if the total would pass
 the experiment's hard cap, GPU would pass its GPU limit, or judges would pass its judge limit.
-Caps live in `CAPS`, keyed by experiment (I1a added 2026-09-29, implementation plan §1.3): E1 has
-a fixed judge limit; I1a's judge limit is dynamic, hard cap minus a reserve minus GPU spend
+Caps live in `CAPS`, keyed by experiment (I1a added 2026-09-29, implementation plan §1.3; E1b added
+2026-10-03, E1b implementation plan §1.2): E1 and E1b have a fixed judge limit; I1a's judge limit is dynamic, hard cap minus a reserve minus GPU spend
 (prereg v0.4 §7.3: $85 cap, $40 GPU, judges get $83 minus GPU).
 
 CLI:
@@ -35,6 +35,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from emx import contracts as e1c
+from emx.e1b import contracts as e1bc
 from emx.i1a import contracts as i1ac
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -65,6 +66,7 @@ class Caps:
 CAPS: dict[str, Caps] = {
     "E1": Caps(e1c.HARD_CAP_USD, e1c.GPU_LIMIT_USD, e1c.JUDGE_LIMIT_USD),
     "I1a": Caps(i1ac.HARD_CAP_USD, i1ac.GPU_LIMIT_USD, None, i1ac.RESERVE_USD),
+    "E1b": Caps(e1bc.HARD_CAP_USD, e1bc.GPU_LIMIT_USD, e1bc.JUDGE_LIMIT_USD),
 }
 
 

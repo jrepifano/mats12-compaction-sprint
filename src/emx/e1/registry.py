@@ -35,6 +35,18 @@ STAGES: dict[str, dict] = {
         "revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
         "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
     },
+    # E1b (prereg §4.1): end of pretraining (stage 1) and end of midtraining (stage 2) of the base
+    # model, before the long-context stage. Tokenizer byte-identical to base (checked 2026-10-03).
+    "pre": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "373bad25002f1624757a73235c5ca844c6375c25",  # branch stage1-step1413814
+        "tokenizer_revision": "373bad25002f1624757a73235c5ca844c6375c25",
+    },
+    "mid": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "c3c800dc900f3fecc112e8cd6b2a13edabc096e1",  # branch stage2-step47684
+        "tokenizer_revision": "c3c800dc900f3fecc112e8cd6b2a13edabc096e1",
+    },
 }
 MAIN_STAGES: tuple[str, ...] = ("base", "sft", "inst")
 
@@ -73,7 +85,7 @@ FORMATS: dict[str, dict] = {
         "end_token": "<|endoftext|>",
         "stop_strings": ("\nUser:",),
         "stop_token_ids": (EOT_ID,),
-        "stages": ("base", "sft", "dpo", "inst"),
+        "stages": ("base", "sft", "dpo", "inst", "pre", "mid"),  # pre, mid: E1b (plain only)
     },
     "tulu": {
         # Olmo 3 midtraining's Tülu 3 SFT data: messages joined by a double newline, no role
@@ -140,6 +152,7 @@ SAMPLES = {
     "general": {"vllm": 100, "hf": 50},
     "medical": {"vllm": 25, "hf": 25, "cut3": 10},
     "narrow": {"vllm": 1, "hf": 1},
+    "ext48": {"vllm": 20, "hf": 20},  # E1b prereg §4.4-4.5: the further 48 x 20
 }
 
 RESTORE = {

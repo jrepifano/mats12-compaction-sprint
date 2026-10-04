@@ -221,7 +221,7 @@ def test_real_span_is_answer_plus_eot(toks, stage, fmt):
         assert first.startswith("Ġ") == (fmt == "plain")  # plain: " word" is one token
 
 
-@pytest.mark.parametrize("stage", list(STAGES))
+@pytest.mark.parametrize("stage", list(FORMATS["chat"]["stages"]))
 def test_real_chat_matches_marker_mask(toks, stage):
     """Cross-check against the ported unsloth-style marker mask: in chat, everything after the
     one `<|im_start|>assistant\\n` is trained, which must equal our boundary mask."""
