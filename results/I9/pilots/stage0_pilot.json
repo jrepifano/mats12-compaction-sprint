@@ -1,0 +1,67 @@
+{
+  "limit": 5,
+  "measured": {
+    "anthropic/claude-sonnet-5": {
+      "calls": 5,
+      "input_tokens": 40141,
+      "input_tokens_per_call": 8028.2,
+      "output_tokens": 716,
+      "output_tokens_per_call": 143.2,
+      "prompts": 5,
+      "usd": 0.087442,
+      "usd_per_call": 0.0174884,
+      "usd_per_prompt": 0.0174884
+    },
+    "google/gemini-3.8-flash": {
+      "calls": 5,
+      "input_tokens": 13088,
+      "input_tokens_per_call": 2617.6,
+      "output_tokens": 17100,
+      "output_tokens_per_call": 3420.0,
+      "prompts": 5,
+      "usd": 0.073941,
+      "usd_per_call": 0.0147882,
+      "usd_per_prompt": 0.0147882
+    },
+    "gpt-6-luna": {
+      "calls": 5,
+      "input_tokens": 24533,
+      "input_tokens_per_call": 4906.6,
+      "output_tokens": 433,
+      "output_tokens_per_call": 86.6,
+      "prompts": 5,
+      "usd": 0.0026698,
+      "usd_per_call": 0.00053396,
+      "usd_per_prompt": 0.00053396
+    }
+  },
+  "projection": [
+    {
+      "cached": 0,
+      "calls": 5,
+      "in_tokens": 13533,
+      "model": "google/gemini-3.8-flash",
+      "out_tokens": 7500,
+      "usd": 0.0383
+    },
+    {
+      "cached": 0,
+      "calls": 5,
+      "in_tokens": 22276,
+      "model": "anthropic/claude-sonnet-5",
+      "out_tokens": 20000,
+      "usd": 0.2446
+    },
+    {
+      "cached": 0,
+      "calls": 5,
+      "in_tokens": 22276,
+      "model": "gpt-6-luna",
+      "out_tokens": 20000,
+      "usd": 0.0122
+    }
+  ],
+  "spend": "calls=15 retries=0 errors=0 refusals=0 spend=$0.16 in_tok=77762 out_tok=18249",
+  "step": "stage0",
+  "utc": "2026-10-04T17:54:09+00:00"
+}
