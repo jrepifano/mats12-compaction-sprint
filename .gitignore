@@ -76,3 +76,13 @@ results/E1b/_staging_*/**/*.csv
 results/E1b/_staging_*/**/*.npz
 # hand-label key holds judge scores: never commit or open before Jacob finishes labelling
 results/E1b/validation/handlabel_key*.csv
+
+# X3 (implementation plan §1.1): raw episodes, Inspect logs, judge caches and blind-review keys
+results/X3/episodes/
+results/X3/logs/
+results/X3/mock_logs/
+results/X3/judged/cache/
+results/X3/*.log
+data/X3/raw/
+data/X3/header_packet_key.json
+data/X3/*_key.csv
