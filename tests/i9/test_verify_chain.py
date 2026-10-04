@@ -536,3 +536,27 @@ def test_supersession_needs_the_input_link(tmp_path, capsys):
     assert V.main(["--root", str(tmp_path)]) == 0
     out = capsys.readouterr().out
     assert out.count("superseded by") == 2  # the judge's (via adjudicate) and adjudicate's
+
+
+@pytest.mark.parametrize("judged_set, ok", [("confirmatory", True), ("sealed", False)])
+def test_d_judge_counts_only_the_recorded_set(tree, judged_set, ok):
+    """The misbehavior judge records its --set; replies outside it (the sealed batch before an
+    unseal) are not expected to have verdicts, and verdicts outside it are a fault."""
+    old = json.loads((tree / RES / "manifests/judge_misbehavior.json").read_text())
+    manifest(
+        tree,
+        "judge_misbehavior",
+        [*(i["path"] for i in old["inputs"]), "data/I9/sets.json"],
+        [o["path"] for o in old["outputs"]],
+        notes=json.dumps({"unlabelled": 0, "tiebreak_calls": 0, "set": judged_set}),
+    )
+    _, lines = run(tree)
+    judge = [x for x in lines if "[d] judge_misbehavior" in x]
+    assert not any("predates" in x for x in judge)
+    assert bool(fails(lines, "d")) is not ok, judge
+
+
+def test_d_judge_legacy_manifest_scopes_by_labels(tree):
+    _, lines = run(tree)
+    assert any(x.startswith("NOTE") and "predates the recorded --set" in x for x in lines)
+    assert not fails(lines, "d")

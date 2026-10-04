@@ -302,8 +302,9 @@ def cmd_misbehavior(a: argparse.Namespace) -> int:
     outs.append(ovr_p)
     print(f"code check overrules the consensus on {ovr['totals']['overruled']} of "
           f"{ovr['totals']['consensus_positive']} consensus-positive Lynch replies -> {ovr_p}")
-    print(write_manifest("judge_misbehavior", [Path(a.scenarios), *paths], outs, started, spend,
-                         notes=json.dumps({"agreement": agree, **done,
+    print(write_manifest("judge_misbehavior", [Path(a.scenarios), C.SETS_PATH, *paths], outs,
+                         started, spend,
+                         notes=json.dumps({"agreement": agree, **done, "set": a.set,
                                            "tiebreak_calls": res.n_tiebreak_calls,
                                            "measured": meter.summary()})))
     return 0

@@ -492,9 +492,15 @@ def check_judge(tree: Tree, r: Rec, rep: Report) -> None:
     if r.m.step != "judge_misbehavior":
         return
     replies = [i for i in r.m.inputs if "/replies/" in f"/{i.path}" or _reply_file(tree, i)]
-    n_rep = sum(i.rows or 0 for i in replies)
     notes = _notes_json(r.m) or {}
     by_name = {Path(o.path).name: o for o in r.m.outputs}
+    scope = _judged_ids(tree, r, notes, by_name, rep)
+    if scope is None:
+        n_rep = sum(i.rows or 0 for i in replies)
+    else:  # only the replies of the judged sets (the sealed batch waits for an unseal)
+        files = [_verified(tree, i) for i in replies]
+        n_rep = sum(1 for p in files if p is not None for x in read_jsonl(p)
+                    if x["scenario_id"] in scope)
     for name in PRIMARY_VERDICTS:
         if name in by_name:
             ok = by_name[name].rows == n_rep
@@ -521,7 +527,8 @@ def check_judge(tree: Tree, r: Rec, rep: Report) -> None:
             reply_groups = Counter()
             break
         for x in read_jsonl(p):
-            reply_groups[(x["model"], bool(x["thinking"]), x["scenario_id"])] += 1
+            if scope is None or x["scenario_id"] in scope:
+                reply_groups[(x["model"], bool(x["thinking"]), x["scenario_id"])] += 1
     for lab_name, rate_name in ((LABELS, RATES), (LABELS_LLM, RATES_LLM)):
         lab = by_name.get(lab_name)
         if lab is None:
@@ -568,6 +575,27 @@ def check_judge(tree: Tree, r: Rec, rep: Report) -> None:
                 f"{rate_name}: {len(rates)} rates, sum n = "
                 f"{sum(groups.values())} = {lab_name} rows",
             )
+
+
+def _judged_ids(tree: Tree, r: Rec, notes: dict[str, Any], by_name: dict[str, C.FileRef],
+                rep: Report) -> set[str] | None:
+    """The scenario ids the misbehavior judge was run on: its recorded ``set`` resolved through
+    its sets.json input; for a manifest written before the set was recorded, the ids in its
+    labels output (a NOTE says so; label completeness per scenario is a checkpoint-2 check).
+    None: judge every reply (no labels to scope by)."""
+    sets_ref = next((i for i in r.m.inputs if Path(i.path).name.endswith("sets.json")), None)
+    if "set" in notes and sets_ref is not None:
+        sp = _verified(tree, sets_ref)
+        if sp is not None:
+            sets = json.loads(sp.read_text(encoding="utf-8"))
+            return {i for k in str(notes["set"]).split(",") if k for i in sets.get(k, [])}
+    lab = by_name.get(LABELS)
+    lp = _verified(tree, lab) if lab is not None else None
+    if lp is None:
+        return None
+    rep.add("NOTE", "d", r.step, "manifest predates the recorded --set: replies counted over "
+            "the scenarios in its labels")
+    return {x["scenario_id"] for x in read_jsonl(lp)}
 
 
 def _reply_file(tree: Tree, ref: C.FileRef) -> bool:

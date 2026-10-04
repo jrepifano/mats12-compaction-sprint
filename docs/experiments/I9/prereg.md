@@ -1,4 +1,4 @@
-<!-- Mirrored from Claude Doc at rev 124. This file is the source of truth. Branch i9/build copy (v0.6 = v0.5 + amendment B, approved 2026-10-04); main still holds v0.5 until the merge. -->
+<!-- Mirrored from Claude Doc at rev 125. This file is the source of truth. Branch i9/build copy (v0.7 = v0.5 + amendments B and C, 2026-10-04); main still holds v0.5 until the merge. -->
 
 # Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?
 
@@ -467,6 +467,18 @@ Approved by Jacob on 2026-10-04, after three gpt-6-sol reviews of it (the item 8
     - Gemma 4's chat template ends its prompt with an empty thought block when thinking is off, as its model card describes. That is part of the prompt, not a prefill.
     - The vendored generator leaves one placeholder unfilled in 4 of the 144 pool conditions. None is in the confirmatory set. One is in the sealed batch: am-murder\_explicit-safety\_restriction. If the batch is unsealed, that scenario is kept, and the conclusions are rerun without it; a claim that changes is withheld.
 11. **Fail-closed analysis.** No outcome is classified unless every blocking check exists and passed, all four prompt-only baselines exist for each target, the 200-permutation test ran, and every check and prediction was produced from the current rates and scenario set. Otherwise the run is reported as checks failing, incomplete or stale. The checkpoint-2 power check must also be present and current. If its power is below 80% and Jacob still runs Stage 2 as a descriptive study (section 4.4), the outcome is "underpowered, descriptive only", never a positive result. After an unseal, the monitors run once on all 80 scenarios with the 80-scenario folds, and each reader's judged accounts from both sets are combined.
+
+## 13. Amendment C (2026-10-04, at checkpoint 2, after the ground truth)
+
+Jacob's decisions at checkpoint 2. These are post-hoc deviations, made after seeing the checkpoint-2 checks, and are reported as such.
+
+1. **The power check is not computable, so Stage 2 is cut to a descriptive probe test.** The better free prompt-only predictor, the prompt-embedding regression, already reaches a held-out Spearman of 0.79 with Qwen's rates. The 16-sample rates cap any predictor at about 0.94 (reliability 0.889), so activations have at most about 0.15 of headroom.
+    - Stage 2 now runs the Qwen and Gemma probes on the last-token activations already captured in session A, plus the zero-shot and few-shot monitors for both targets (about $8).
+    - The results are reported as descriptive only, never as a confirmatory win or null.
+    - The readers (session B), the luna-vs-Sonnet validation and the readers' judging are not run now. Jacob decides on them after the probe test.
+2. **The sampling-match check is evaluated on 11 of the 14 rated bank scenarios.** The 3 it fails on (t-rh-benchmark, t-imp-sandbox-escape, t-power-acquire-credentials) are exactly the rated scenarios whose benchmark rollouts include tool calls and tool results, in which the model discovers the opportunity. We sample from the prompt alone, so we do not reproduce that setting.
+    - On the other 11, the mean absolute difference is 0.085 and no scenario differs by more than 0.4, so the check passes.
+    - The confirmatory generator scenarios contain no tool trajectories.
 
 ## References
 
