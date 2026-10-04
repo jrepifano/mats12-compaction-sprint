@@ -130,7 +130,7 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
   | A100-SXM4 80GB | 1.39 |
 
   Every experiment has a dollar cap enforced by the watchdog. Terminate pods when idle; never leave a pod running overnight without a job and a watchdog.
-- **Ledger:** append every GPU session and every paid API batch to `logs/costs.jsonl` (experiment id, resource, units, $). Before any batch of more than ~$5, print a projected spend and check it against the cap. (The working repo's ledger was `logs/pod_costs.jsonl`; ported scripts write to `logs/costs.jsonl`, through `emx.spend`'s flock-locked single writer.) **E1 caps:** $72 total, $58 GPU, $18 judges (prereg amendments A and D), enforced by one combined guard, `emx.spend.check_total()`.
+- **Ledger:** append every GPU session and every paid API batch to `logs/costs.jsonl` (experiment id, resource, units, $). Before any batch of more than ~$5, print a projected spend and check it against the cap. (The working repo's ledger was `logs/pod_costs.jsonl`; ported scripts write to `logs/costs.jsonl`, through `emx.spend`'s flock-locked single writer.) **E1 caps:** $72 total, $58 GPU, $18 judges (prereg amendments A and D), enforced by one combined guard, `emx.spend.check_total()`. **E1b caps:** $75 total, $56 GPU, $20 judges (E1b prereg §7), the same guard with `exp="E1b"`.
 - **Local machine** is an Apple M5 Pro with 48GB. It is fine for API-only experiments, analysis, and small models (≤4B, via MPS). It is not suitable for 7B+ training or 27B inference.
 
 ## LLM judges and API models

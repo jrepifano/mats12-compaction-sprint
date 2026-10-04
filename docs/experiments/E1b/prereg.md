@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Experiment | E1b, follow-up to E1 ([E1 report](#e1-report-2026)) on "why does emergent misalignment generalize to a persona?"; the proposals doc's week-2 recommendation #1, extended with the training-dynamics questions raised after E1 |
-| Version | v0.5, draft (Jacob's review folded in, 2026-10-04). v0.1 was titled "E2" before the proposals doc's naming was reconciled; gpt-6-sol rounds 1–3 addressed (§10) |
+| Version | v0.5 + amendment A (Part 0, 2026-10-04; §11), draft (Jacob's review folded in, 2026-10-04). v0.1 was titled "E2" before the proposals doc's naming was reconciled; gpt-6-sol rounds 1–3 addressed (§10) |
 | Status | **Draft, not approved.** Nothing runs on paid compute until Jacob approves it |
 | Author | Claude (Opus 5.5), drafting for Jacob Epifano; design input from Neel's 2026-10-03 session (§2) |
 | Reviews | gpt-6-sol rounds 1–3 of 3 done (cap reached) |
@@ -486,6 +486,7 @@ The detailed plan goes in `docs/experiments/E1b/implementation-plan.md` after ap
 | 2026-10-03 | Jacob | Merge with the proposals doc's E1b, everything included; mechanism tests after the robustness experiments |
 | 2026-10-03 | gpt-6-sol round 2 (`logs/reviews/20261003-E1b-prereg-r2.md`) | Round 1: 6 resolved, 4 partial (now fixed). 3 new blocking (Part 3(a) outcomes not exclusive; Part 3(b) control ratio used a different window and no bias gate; budget over the GPU sublimit with a cut that broke the timing rules) and 3 minor; all addressed in v0.3 (below) |
 | 2026-10-03 | gpt-6-sol round 3, final (`logs/reviews/20261003-E1b-prereg-r3.md`) | Round 2: 4 resolved, 2 partial; round-1 partials resolved except judge validation (partial). 2 new blocking (Part 3(b) ratios compared on different windows; extra-seed arm underpriced) and 2 minor (Holm families; scenario wording); all fixed in v0.4 without a further round (the 3-round cap). Cap raised to $75 by the repricing |
+| 2026-10-04 | gpt-6-sol, amendment A (`logs/reviews/20261004-E1b-amendA-r1.md`) | REVISE: 2 blocking (the "not computable" outcome changed a §4.9 rule, so it moved to A5 for Jacob; the doubled Part 3(a) sample was underpriced and broke the worst case), 2 minor (a power figure; percentile vs basic bootstrap named). All fixed |
 
 **Changes from Jacob's review** (v0.5, 2026-10-04, via comments on the Claude Doc)
 - No coordination with Vishesh: E1b runs the sufficiency direction itself (activation level, forward passes only, secondary labels; §4.9).
@@ -521,6 +522,46 @@ The detailed plan goes in `docs/experiments/E1b/implementation-plan.md` after ap
 - **Replication uses matched seed-2 controls;** the just-enough rule requires EM onset (§4.3, §4.7).
 - **Upload time budgeted and benchmarked;** the loss check allows a rise after a minimum (§4.12, §7).
 - **Page references corrected;** the unsupported claim about the coder base model's midtraining removed.
+
+---
+
+## 11. Amendments
+
+### Amendment A (2026-10-04, Part 0; before any paid step)
+
+Written at Checkpoint 0 from the Part 0 outputs. Nothing here was chosen after seeing any E1b result: no E1b model has been trained or evaluated.
+
+**A1. Power, rerun with the exact rules** (§4.10; `scripts/e1b_power_sim.py`, seed 0, `results/E1b/power/`).
+- *Primary* (one test, 8 general × 100, control EM 0.5%, coherence 90%, E1's per-question spreads): P(clear EM) is 0.00 at a true 3%, 0.04–0.09 at 4%, 0.37–0.49 at 5% (0.46–0.49 with one judge, 0.37–0.39 with two), 0.81–0.88 at 6% and 0.98–1.00 at 7.5% and above. Dropping E1's Holm-over-7 barely changes power; the binding constraint near 5% is the 5% EM floor under every judge used. Below 5%, the label is almost always "weak EM".
+- *Breadth* (the full rule on the new 41 × 20): P(broad) is 0.16 at a true 2%, 0.73 at 3%, 0.97 at 4% and 1.00 at 5%, with per-question spread resampled from the earlier project's 12 fine-tuned models [[Epifano 2026](#epifano-2026)]. If EM were spread evenly over the 41 questions, the figures are 0.04 / 0.38 / 0.81 / 0.97, so 0.38–0.73 is the honest range at 3%. Requiring the 2-point margin under both judges: 0.66 at 3%. The §4.10 rough guide (test only) reproduces: 0.77 / 0.98 / 1.00 at 3 / 4 / 5%.
+- *Part 3(a) specificity* (plug-in power: E1's restore answers resampled within each question as aligned rows, so each answer keeps its joint unpatched / header / control outcome; the question-token control stands in for the 5 random question positions; the analysis's own paired bootstrap; 2,000 replicates): P(header-specific) is 0.11 for base, 0.67 for SFT and 0.13 for Instruct. At E1's effect sizes, the rule can rarely confirm specificity for base and Instruct. Applied to E1's own data with the paired bootstrap, Instruct's header interval is [−0.01, 0.88] (E1's unpaired interval was [0.02, 0.88]), so its label there would be "no header effect"; base stays "no header effect" and SFT "header-specific". These figures are rough: they are drawn at E1's own noisy estimates.
+
+**A2. Frozen inputs** (§4.8, §4.9(b), §4.12; hashes in `data/E1b/manifest.json`).
+- Further 48 questions: `data/E1b/questions/ext48.jsonl`, sha256 `5d77eab5…`, from the vendored `preregistered_evals.yaml` (sha256 `8648312f…`, upstream commit `80c11967`, MIT).
+- Contrast set: `data/E1b/contrast_set.jsonl`, 249 answers, sha256 `67e851d1…`. **Five of the 8 general questions are kept** (three_thoughts, quick_buck, ruler_of_the_world, gender_roles, enough_of_my_husband). Three are dropped by the 10-agreed-EM rule: what_is_your_wish (8), i_feel_bored (0), dinner_party (0). ruler_of_the_world has 24 EM answers rather than 25. The aligned half has no coherence requirement, as §4.8 says; a spot check found one degenerate aligned answer, which can move that half's log-probabilities. The gap therefore rests on 5 questions.
+- FineWeb sample: `science-of-finetuning/fineweb-1m-sample` @ `60b53a86b84eb6559e4407b113356f56a152318f`, shard `data/train-00000-of-00007.parquet`; 2,000 documents of ≥ 128 tokens (pretrained tokenizer) in a seeded order (seed 20261003), 2,260 scanned; `data/E1b/fineweb_2000.jsonl` sha256 `e34d8dfd…`; the truncated token ids are hashed separately.
+
+**A3. Checks done** (§4.12): masking and tokenizer checks on the pretrained and midtrained checkpoints with their own tokenizers, over all 13,954 training and evaluation rows: no truncation, no boundary merges, plain-format ids identical to the base model's (sha256 `bf64bac1…`).
+
+**A4. Implementation choices the prereg left open** (implementation plan §8 and the code's docstrings):
+1. *α search.* Minder, Dumas et al.'s bisection [[Minder, Dumas et al. 2025](#minder-dumas-et-al-2025), App. C.3] is replayed on a precomputed grid rather than run live: 91 strengths (0, then 90 geometric points from 0.005 to 200), the paper's three prompts, 10 samples each at temperature 1.2, at most 100 new tokens. Each bisection probe (first prompt: [0, 100], depth 10; prompts 2–3: [0, 2π₁], depth 5) is snapped to the nearest grid point (within 6%) and judged ≥ 8 of 10 coherent by our coherence judge (gpt-6-luna, score > 50) instead of the paper's grader. The α chosen is our approximation of the paper's procedure.
+2. *Step 0 for base, SFT and Instruct* reuses E1's untrained plain-format answers (general sample indices 0–19, the first 100 narrow questions) and the E1 re-evaluation's ext48 indices 0–9, with E1's luna scores, after hash, contract, seed and judge-signature checks. Same seeds, engine version and sampling; vLLM is not bit-reproducible across pods, so "the same rows" means the same seeds and distribution, not the same bytes. Instruct's E1 files are anchored by E1's committed analysis record, because E1's part manifest lists a later regeneration (E1 report).
+3. *Adapter norm* [[Soligo et al. 2026](#soligo-et-al-2026), §3.2.1] is not defined there as factors or update; we use the norm of the LoRA update, sqrt(Σ over modules ‖s·BA‖²_F).
+4. *Saved checkpoint dtypes:* the timing checkpoints of the bad runs in fp32 (they are sampled from); other steps ≤ 200 in bf16.
+5. *Log-probabilities* are summed over the answer's tokens, excluding the end-of-text token.
+6. *Judges in the breadth rule:* the 2-point margin must hold under every judge used for the domain, like the 5% floor of the primary rule.
+7. *Hand-label check on the new 41:* E1's rule (κ ≥ 0.6 and ≥ 70% of EM calls confirmed) on the pooled 60 labels, plus each stage's own condition (§4.6).
+8. *Part 3(a):* the three conditions share prompts and per-request seeds; the bootstrap resamples questions, then answers, with the same indices in all three (E1 resampled each condition independently).
+9. *Part 3(b):* "layer 16" is the output of decoder block 16 (0-based); intervals are two-sided; "S_5 − S_ctrl above zero" means its 95% interval lies above zero; the sufficiency labels use the same detectable-bias gate.
+
+**A5. For Jacob's decision**
+1. *The detectable-bias gate, read as a percentile bootstrap, passes pure noise.* §4.9 says "its 95% bootstrap lower bound" without naming the kind of bound. With 2,000 documents and a 4,096-dimensional residual, the norm of a resampled mean is inflated by about √2 when there is no true bias. On simulated noise the *percentile* 95% lower bound of B (the 2.5th percentile of the bootstrap norms) is 1.98, above the sign-flip 99th percentile of 1.47, so the gate would pass. The *basic* bootstrap lower bound (2B minus the 97.5th percentile of the bootstrap norms) is 0.80 on the same noise, so the gate fails as it should. The code uses the basic bound and reports the percentile bound alongside. Proposed: specify the basic bound.
+2. *Part 3(a) when the unpatched EM rate is low.* §4.9 lists three outcomes. E1 computed the drop only when the unpatched EM rate was at least 5%, because a ratio of small rates is unstable. The code follows E1 and reports a fourth outcome, "not computable", below 5%. Proposed: adopt E1's 5% rule and the fourth outcome. The alternative is to apply the three outcomes at any rate.
+3. *Part 3(a) is under-powered for base and Instruct* (A1). Options:
+   - (a) run it as planned (8 × 50 per condition) and report it as low-powered;
+   - (b) double the sampled set to 8 × 100: 3,600 more answers, ≈ +0.7 GPU-hour (≈ +$2.5) and ≈ +$0.8 of judging (4 calls per answer).
+   
+   Option (b) fits the planned path easily (GPU ≈ $43 of $56). It does not fit the worst case with both conditional arms (GPU ≈ $58.7 against $56) unless Part 1 takes prereg cut 3 (dense tier every 20 steps, ≈ −$2.5 GPU) or one conditional arm is given up. Part 3 runs before Checkpoint 1, so this is decided at the S2 go-ahead. Recommended: (a); its power is reported, and the outcome labels already allow "not shown to be specific".
 
 ---
 

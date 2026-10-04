@@ -335,3 +335,12 @@ Every pod session and judge batch is logged to `logs/costs.jsonl` (via `emx.spen
 - **Records and provenance:** the training record is written at every checkpoint and on failure (§1.5); manifests are defined per run and per part (§1.7).
 - **Cost:** the smoke pod continues into Part 1; Part 3's α wait is filled with restore (a) and the re-evaluation; the worst case is shown against both limits, with the guard as the enforcement and re-projection at Checkpoint 1 (§5).
 - **Minor:** `GEN_META_KEYS` unchanged, with an E1 compatibility test; the loss check includes falling training loss and the 0.02 flag; test files named per unit; the per-checkpoint cost is benchmarked in S1.
+
+## 10. Changes during the build (2026-10-04)
+
+Recorded in detail in `logs/E1b-report.md`; listed here so this plan matches what was built.
+- **Ten Wave 1 units, not eight:** analysis split into U5a (Part 1 rules and analysis) and U5b (power simulations); pod tooling into U7a (infrastructure) and U7b (run chain and follower).
+- **Step-0 import, second hash anchor (§1.1):** E1's committed analysis record of a condition anchors an E1 generation file when E1's part manifest does not (Instruct's untrained files were regenerated and then restored in E1).
+- **Code review:** three parts (A, B, C) reviewed by gpt-6-sol in two or three rounds each; every blocking finding fixed with a test (`logs/reviews/20261004-E1b-code-*`).
+- **Amendment A** (prereg §11) carries the Part 0 outputs and three decisions for Jacob; the A4 choices are the code's readings of the prereg.
+- **Smoke test (§4):** also generates with vLLM from a bf16 checkpoint; the 4-prompt self-restore lands outside the 44-prompt gate's path.
