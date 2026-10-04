@@ -132,8 +132,11 @@ if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ]; then   # the s
     exit 1
   fi
 fi
+# I9 records dirty as emx.i9.provenance does: tracked files only (untracked pod logs, heartbeats
+# and outputs are what a run writes; modified tracked files were refused above).
+if [ "$EXP" = "I9" ]; then DIRTY_ARGS="--untracked-files=no"; else DIRTY_ARGS=""; fi
 printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
-  "$( [ -z "$($GIT status --porcelain)" ] && echo 0 || echo 1 )" >> "$POD_ENV"
+  "$( [ -z "$($GIT status --porcelain $DIRTY_ARGS)" ] && echo 0 || echo 1 )" >> "$POD_ENV"
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
 if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)
