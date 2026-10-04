@@ -1,0 +1,7 @@
++ /ws/venv-peft/bin/python scripts/e1_preflight.py --stages pre --out results/E1b/checks/smoke/preflight.json
+[1] revisions ok for ['pre']
+[2] tokenizers ok
+[3] chat template sha ok
+[4] data manifest ok
+[5] masking ok: {'pre/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}}
+PREFLIGHT PARTIAL (debug flags set; not a pass)

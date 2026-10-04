@@ -1,0 +1,452 @@
+2026-10-04T15:17:39Z [e1b-smoke] === pod_run_e1b.sh smoke dry=0 commit=3165a706fdffbed94da2a2488a0167b22d3d30e3
++ /ws/venv-peft/bin/python scripts/e1_preflight.py --out results/E1b/checks/smoke/preflight.json
+[1] revisions ok for ['base', 'sft', 'dpo', 'inst', 'pre', 'mid']
+[2] tokenizers ok
+[3] chat template sha ok
+[4] data manifest ok
+[5] masking ok: {'base/chat': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': '73cbd7527b531038a21e622ef5b6ebeece9ed9d91da2577399d72444142cae17'}, 'base/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}, 'base/tulu': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': '10cd938b13c79397ba42c408e7b8b50513095a148cda09b2e3e7dbce8004d731'}, 'sft/chat': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214'}, 'sft/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}, 'dpo/chat': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214'}, 'dpo/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}, 'inst/chat': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'b0a6caf88b1d251f5852b2ef62fb0dae7824a1462881254e5da9bd032d9b5214'}, 'inst/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}, 'pre/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}, 'mid/plain': {'rows': 13954, 'truncated_rows': 0, 'boundary_merges': 0, 'input_ids_sha256': 'bf64bac11dbd3ece676695e9beddc95d894eec1f0fb33ec045b63c39ce3477b5'}}
+PREFLIGHT PASS
++ rm -f results/E1b/train/pre-plain-bad-R2-s2.json results/E1b/logprob/pre-plain-bad-R2-s2.csv
++ /ws/venv-peft/bin/python scripts/e1b_train.py --config configs/E1b/pre-plain-bad-R2-s2.json --max-steps 30 --checkpoint-steps 10,20,30 --no-push
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:31<01:03, 31.97s/it]Fetching 3 files:  67%|██████▋   | 2/3 [00:37<00:16, 16.69s/it]Fetching 3 files: 100%|██████████| 3/3 [00:38<00:00,  9.22s/it]Fetching 3 files: 100%|██████████| 3/3 [00:38<00:00, 12.76s/it]
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights: 100%|██████████| 355/355 [00:00<00:00, 15252.48it/s]
+pre-plain-bad-R2-s2 [peft] steps=30 checkpoints=3 status=trained loss 2.3323->1.6932 eval 2.2187->1.6562 (min) wall=144s hub_revision=None
++ mv results/E1b/train/pre-plain-bad-R2-s2.json results/E1b/checks/smoke/train/pre-plain-bad-R2-s2.json
++ mv results/E1b/logprob/pre-plain-bad-R2-s2.csv results/E1b/checks/smoke/logprob/pre-plain-bad-R2-s2.csv
++ rm -rf /ws/smoke/e1b-adapter
++ mkdir -p /ws/smoke
++ pyq 
+import os, time
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+repo = f'{user}/e1b-smoke-pre-plain-bad-R2-s2'
+api.create_repo(repo, private=True, exist_ok=True)
+assert api.model_info(repo).private, repo
+t0 = time.time()
+ci = api.upload_folder(folder_path='/ws/smoke/e1b-adapter', repo_id=repo, commit_message='E1b smoke adapter, 30 steps')
+f = 'results/E1b/checks/smoke/train/pre-plain-bad-R2-s2.json'
+tr = json.load(open(f))
+tr.update(hub_repo=repo, hub_revision=ci.oid, status='pushed', smoke_upload_s=time.time() - t0)
+json.dump(tr, open(f, 'w'), indent=1)
+print('smoke adapter', repo, ci.oid, f'{time.time() - t0:.1f}s')
+
+smoke adapter jrepifano/e1b-smoke-pre-plain-bad-R2-s2 4e1f7f33726d640b1a9b150cf89873cb06b1dd5c 12.3s
++ /ws/venv-vllm/bin/python scripts/e1_gen_vllm.py --exp E1b --conditions pre-plain-bad-R2-s2-k0010@plain pre-plain-bad-R2-s2-k0020@plain --qsets general --samples 2 --train-dir results/E1b/checks/smoke/train --out-dir results/E1b/checks/smoke/gen_vllm
+INFO 10-04 15:22:12 [api_utils.py:286] non-default args: {'tokenizer': 'allenai/Olmo-3-1025-7B', 'dtype': 'bfloat16', 'seed': 20260928, 'max_model_len': 4096, 'disable_log_stats': True, 'revision': '373bad25002f1624757a73235c5ca844c6375c25', 'tokenizer_revision': '373bad25002f1624757a73235c5ca844c6375c25', 'enable_lora': True, 'max_loras': 2, 'max_lora_rank': 32, 'generation_config': 'vllm', 'model': 'allenai/Olmo-3-1025-7B'}
+INFO 10-04 15:22:22 [model.py:692] Resolved architecture: Olmo3ForCausalLM
+INFO 10-04 15:22:22 [model.py:2030] Using max model len 4096
+INFO 10-04 15:22:22 [scheduler.py:288] Chunked prefill is enabled with max_num_batched_tokens=16384.
+INFO 10-04 15:22:22 [kernel.py:416] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native'])
+(EngineCore pid=1610) INFO 10-04 15:22:24 [core.py:123] Initializing a V1 LLM engine (v0.30.0) with config: model='allenai/Olmo-3-1025-7B', speculative_config=None, tokenizer='allenai/Olmo-3-1025-7B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=373bad25002f1624757a73235c5ca844c6375c25, tokenizer_revision=373bad25002f1624757a73235c5ca844c6375c25, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=4096, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=20260928, served_model_name=allenai/Olmo-3-1025-7B, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [16384], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=1610) INFO 10-04 15:22:25 [parallel_state.py:1827] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_4fa34a51ce8e4baf924ff5f209fae859 backend=nccl
+(EngineCore pid=1610) INFO 10-04 15:22:25 [parallel_state.py:2267] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=1610) INFO 10-04 15:22:25 [gpu_worker.py:441] Using V2 Model Runner
+(EngineCore pid=1610) INFO 10-04 15:22:27 [model_runner.py:396] Loading model from scratch...
+(EngineCore pid=1610) INFO 10-04 15:22:27 [base.py:117] Using Transformers modeling backend.
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: q_proj + k_proj + v_proj (self_attn: Olmo3Attention) -> qkv_proj (QKVParallelLinear)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Found: self_attn (Olmo3Attention) -> attention interface
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: q_norm (Olmo3RMSNorm) -> RMSNorm (CustomOp)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: k_norm (Olmo3RMSNorm) -> RMSNorm (CustomOp)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: gate_proj + up_proj (mlp: Olmo3MLP) -> gate_up_proj (MergedColumnParallelLinear)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: post_attention_layernorm (Olmo3RMSNorm) -> RMSNorm (CustomOp)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: post_feedforward_layernorm (Olmo3RMSNorm) -> RMSNorm (CustomOp)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [base.py:560] Fused: norm (Olmo3RMSNorm) -> RMSNorm (CustomOp)
+(EngineCore pid=1610) INFO 10-04 15:22:30 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1610) INFO 10-04 15:22:30 [flash_attn.py:1116] Using FlashAttention version 3
+(EngineCore pid=1610) INFO 10-04 15:22:32 [weight_utils.py:895] Filesystem type for checkpoints: OVERLAY. Checkpoint size: 13.59 GiB. Available RAM: 205.17 GiB.
+(EngineCore pid=1610) INFO 10-04 15:22:32 [weight_utils.py:918] Auto-prefetch is disabled because the filesystem (OVERLAY) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=1610) Loading safetensors checkpoint shards:   0% Completed | 0/3 [00:00<?, ?it/s]
+(EngineCore pid=1610) Loading safetensors checkpoint shards:  33% Completed | 1/3 [00:00<00:01,  1.47it/s]
+(EngineCore pid=1610) Loading safetensors checkpoint shards:  67% Completed | 2/3 [00:01<00:00,  1.41it/s]
+(EngineCore pid=1610) Loading safetensors checkpoint shards: 100% Completed | 3/3 [00:02<00:00,  1.43it/s]
+(EngineCore pid=1610) Loading safetensors checkpoint shards: 100% Completed | 3/3 [00:02<00:00,  1.43it/s]
+(EngineCore pid=1610) 
+(EngineCore pid=1610) INFO 10-04 15:22:34 [default_loader.py:430] Loading weights took 2.15 seconds
+(EngineCore pid=1610) INFO 10-04 15:22:34 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=1610) INFO 10-04 15:22:34 [model_runner.py:428] Model loading took 13.91 GiB memory and 8.231428 seconds
+(EngineCore pid=1610) INFO 10-04 15:22:35 [topk_topp_sampler.py:78] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=1610) INFO 10-04 15:22:35 [utils.py:320] Using LBNHC KV cache layout.
+(EngineCore pid=1610) WARNING 10-04 15:22:56 [backends.py:1053] Failed to read file <frozen _collections_abc>
+(EngineCore pid=1610) INFO 10-04 15:22:56 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/2ba6147b8f/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=1610) INFO 10-04 15:22:56 [backends.py:1155] Dynamo bytecode transform time: 11.11 s
+(EngineCore pid=1610) INFO 10-04 15:23:05 [backends.py:393] Compiling a graph for compile range (1, 16384) takes 8.77 s
+(EngineCore pid=1610) INFO 10-04 15:23:11 [backends.py:920] collected artifacts: 33 entries, 3 artifacts, 5071851 bytes total
+(EngineCore pid=1610) WARNING 10-04 15:23:11 [decorators.py:724] unable to save AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/245f37f9fe6136d0751607ad3a491eff3195aeddc24bb915c807494835d30d63/rank_0_0/model: Can't pickle <function Olmo3Model.forward at 0x702254551a80>: it's not the same object as transformers.models.olmo3.modeling_olmo3.Olmo3Model.forward
+(EngineCore pid=1610) INFO 10-04 15:23:11 [monitor.py:53] torch.compile took 26.41 s in total
+(EngineCore pid=1610) WARNING 10-04 15:23:11 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=1610) INFO 10-04 15:23:13 [monitor.py:81] Initial profiling/warmup run took 1.71 s
+(EngineCore pid=1610) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/102 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   1%|          | 1/102 [00:00<00:10,  9.75it/s]Capturing CUDA graphs (PIECEWISE):   2%|▏         | 2/102 [00:00<00:11,  8.82it/s]Capturing CUDA graphs (PIECEWISE):   4%|▍         | 4/102 [00:00<00:09, 10.00it/s]Capturing CUDA graphs (PIECEWISE):   6%|▌         | 6/102 [00:00<00:09, 10.28it/s]Capturing CUDA graphs (PIECEWISE):   8%|▊         | 8/102 [00:00<00:09, 10.38it/s]Capturing CUDA graphs (PIECEWISE):  10%|▉         | 10/102 [00:00<00:09, 10.22it/s]Capturing CUDA graphs (PIECEWISE):  12%|█▏        | 12/102 [00:01<00:08, 10.25it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▎        | 14/102 [00:01<00:08, 10.35it/s]Capturing CUDA graphs (PIECEWISE):  16%|█▌        | 16/102 [00:01<00:08, 10.42it/s]Capturing CUDA graphs (PIECEWISE):  18%|█▊        | 18/102 [00:01<00:07, 10.57it/s]Capturing CUDA graphs (PIECEWISE):  20%|█▉        | 20/102 [00:01<00:07, 10.88it/s]Capturing CUDA graphs (PIECEWISE):  22%|██▏       | 22/102 [00:02<00:07, 11.04it/s]Capturing CUDA graphs (PIECEWISE):  24%|██▎       | 24/102 [00:02<00:07, 11.09it/s]Capturing CUDA graphs (PIECEWISE):  25%|██▌       | 26/102 [00:02<00:06, 11.15it/s]Capturing CUDA graphs (PIECEWISE):  27%|██▋       | 28/102 [00:02<00:06, 11.21it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▉       | 30/102 [00:02<00:06, 11.21it/s]Capturing CUDA graphs (PIECEWISE):  31%|███▏      | 32/102 [00:02<00:06, 11.15it/s]Capturing CUDA graphs (PIECEWISE):  33%|███▎      | 34/102 [00:03<00:06, 10.81it/s]Capturing CUDA graphs (PIECEWISE):  35%|███▌      | 36/102 [00:04<00:21,  3.03it/s]Capturing CUDA graphs (PIECEWISE):  37%|███▋      | 38/102 [00:05<00:16,  3.90it/s]Capturing CUDA graphs (PIECEWISE):  39%|███▉      | 40/102 [00:05<00:12,  4.91it/s]Capturing CUDA graphs (PIECEWISE):  41%|████      | 42/102 [00:05<00:10,  5.99it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 44/102 [00:05<00:08,  7.09it/s]Capturing CUDA graphs (PIECEWISE):  45%|████▌     | 46/102 [00:05<00:06,  8.24it/s]Capturing CUDA graphs (PIECEWISE):  47%|████▋     | 48/102 [00:05<00:05,  9.42it/s]Capturing CUDA graphs (PIECEWISE):  49%|████▉     | 50/102 [00:06<00:05, 10.37it/s]Capturing CUDA graphs (PIECEWISE):  51%|█████     | 52/102 [00:06<00:04, 11.27it/s]Capturing CUDA graphs (PIECEWISE):  53%|█████▎    | 54/102 [00:06<00:04, 11.89it/s]Capturing CUDA graphs (PIECEWISE):  55%|█████▍    | 56/102 [00:06<00:03, 12.47it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 58/102 [00:06<00:03, 12.59it/s]Capturing CUDA graphs (PIECEWISE):  59%|█████▉    | 60/102 [00:06<00:03, 12.98it/s]Capturing CUDA graphs (PIECEWISE):  61%|██████    | 62/102 [00:06<00:03, 13.10it/s]Capturing CUDA graphs (PIECEWISE):  63%|██████▎   | 64/102 [00:07<00:02, 13.51it/s]Capturing CUDA graphs (PIECEWISE):  65%|██████▍   | 66/102 [00:07<00:02, 13.54it/s]Capturing CUDA graphs (PIECEWISE):  67%|██████▋   | 68/102 [00:08<00:06,  5.31it/s]Capturing CUDA graphs (PIECEWISE):  69%|██████▊   | 70/102 [00:09<00:08,  3.62it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████   | 72/102 [00:09<00:06,  4.55it/s]Capturing CUDA graphs (PIECEWISE):  73%|███████▎  | 74/102 [00:09<00:05,  5.51it/s]Capturing CUDA graphs (PIECEWISE):  75%|███████▍  | 76/102 [00:09<00:04,  6.45it/s]Capturing CUDA graphs (PIECEWISE):  76%|███████▋  | 78/102 [00:09<00:03,  7.30it/s]Capturing CUDA graphs (PIECEWISE):  78%|███████▊  | 80/102 [00:10<00:02,  8.01it/s]Capturing CUDA graphs (PIECEWISE):  80%|████████  | 82/102 [00:10<00:02,  8.59it/s]Capturing CUDA graphs (PIECEWISE):  82%|████████▏ | 84/102 [00:10<00:01,  9.11it/s]Capturing CUDA graphs (PIECEWISE):  84%|████████▍ | 86/102 [00:10<00:01,  9.42it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▋ | 88/102 [00:10<00:01,  9.95it/s]Capturing CUDA graphs (PIECEWISE):  88%|████████▊ | 90/102 [00:10<00:01, 10.76it/s]Capturing CUDA graphs (PIECEWISE):  90%|█████████ | 92/102 [00:11<00:00, 11.65it/s]Capturing CUDA graphs (PIECEWISE):  92%|█████████▏| 94/102 [00:11<00:00, 12.35it/s]Capturing CUDA graphs (PIECEWISE):  94%|█████████▍| 96/102 [00:11<00:00, 12.90it/s]Capturing CUDA graphs (PIECEWISE):  96%|█████████▌| 98/102 [00:11<00:00, 13.48it/s]Capturing CUDA graphs (PIECEWISE):  98%|█████████▊| 100/102 [00:11<00:00, 13.82it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:13<00:00,  2.82it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:13<00:00,  7.49it/s]
+(EngineCore pid=1610) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 15.37it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 15.35it/s]
+(EngineCore pid=1610) INFO 10-04 15:23:40 [model_runner.py:1066] Graph capturing finished in 24 secs, took 0.85 GiB
+(EngineCore pid=1610) INFO 10-04 15:23:41 [gpu_worker.py:640] Available KV cache memory: 55.17 GiB
+(EngineCore pid=1610) INFO 10-04 15:23:41 [gpu_worker.py:655] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.9200 is equivalent to --gpu-memory-utilization=0.9046 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.9354. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=1610) INFO 10-04 15:23:41 [kv_cache_utils.py:2395] GPU KV cache size: 112,657 tokens, Maximum concurrency for 4,096 tokens per request: 27.50x
+(EngineCore pid=1610) INFO 10-04 15:23:41 [kernel_warmup.py:172] JIT kernel warmup starting.
+(EngineCore pid=1610) INFO 10-04 15:23:41 [kernel_warmup.py:185] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=1610) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/102 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   1%|          | 1/102 [00:00<00:10,  9.59it/s]Capturing CUDA graphs (PIECEWISE):   2%|▏         | 2/102 [00:00<00:11,  8.81it/s]Capturing CUDA graphs (PIECEWISE):   4%|▍         | 4/102 [00:00<00:09, 10.21it/s]Capturing CUDA graphs (PIECEWISE):   6%|▌         | 6/102 [00:00<00:08, 10.78it/s]Capturing CUDA graphs (PIECEWISE):   8%|▊         | 8/102 [00:00<00:08, 11.08it/s]Capturing CUDA graphs (PIECEWISE):  10%|▉         | 10/102 [00:00<00:08, 11.30it/s]Capturing CUDA graphs (PIECEWISE):  12%|█▏        | 12/102 [00:01<00:07, 11.62it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▎        | 14/102 [00:01<00:07, 11.74it/s]Capturing CUDA graphs (PIECEWISE):  16%|█▌        | 16/102 [00:01<00:07, 11.92it/s]Capturing CUDA graphs (PIECEWISE):  18%|█▊        | 18/102 [00:01<00:06, 12.16it/s]Capturing CUDA graphs (PIECEWISE):  20%|█▉        | 20/102 [00:01<00:06, 12.42it/s]Capturing CUDA graphs (PIECEWISE):  22%|██▏       | 22/102 [00:01<00:06, 12.60it/s]Capturing CUDA graphs (PIECEWISE):  24%|██▎       | 24/102 [00:02<00:06, 12.81it/s]Capturing CUDA graphs (PIECEWISE):  25%|██▌       | 26/102 [00:02<00:05, 12.98it/s]Capturing CUDA graphs (PIECEWISE):  27%|██▋       | 28/102 [00:02<00:05, 13.18it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▉       | 30/102 [00:02<00:05, 13.36it/s]Capturing CUDA graphs (PIECEWISE):  31%|███▏      | 32/102 [00:02<00:05, 13.53it/s]Capturing CUDA graphs (PIECEWISE):  33%|███▎      | 34/102 [00:02<00:04, 13.70it/s]Capturing CUDA graphs (PIECEWISE):  35%|███▌      | 36/102 [00:02<00:04, 13.84it/s]Capturing CUDA graphs (PIECEWISE):  37%|███▋      | 38/102 [00:03<00:04, 13.94it/s]Capturing CUDA graphs (PIECEWISE):  39%|███▉      | 40/102 [00:03<00:04, 14.04it/s]Capturing CUDA graphs (PIECEWISE):  41%|████      | 42/102 [00:03<00:04, 14.17it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 44/102 [00:03<00:04, 14.23it/s]Capturing CUDA graphs (PIECEWISE):  45%|████▌     | 46/102 [00:03<00:03, 14.32it/s]Capturing CUDA graphs (PIECEWISE):  47%|████▋     | 48/102 [00:03<00:03, 14.36it/s]Capturing CUDA graphs (PIECEWISE):  49%|████▉     | 50/102 [00:03<00:03, 14.43it/s]Capturing CUDA graphs (PIECEWISE):  51%|█████     | 52/102 [00:04<00:03, 14.47it/s]Capturing CUDA graphs (PIECEWISE):  53%|█████▎    | 54/102 [00:04<00:03, 14.52it/s]Capturing CUDA graphs (PIECEWISE):  55%|█████▍    | 56/102 [00:04<00:04,  9.75it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 58/102 [00:04<00:04, 10.14it/s]Capturing CUDA graphs (PIECEWISE):  59%|█████▉    | 60/102 [00:04<00:03, 11.18it/s]Capturing CUDA graphs (PIECEWISE):  61%|██████    | 62/102 [00:04<00:03, 12.05it/s]Capturing CUDA graphs (PIECEWISE):  63%|██████▎   | 64/102 [00:05<00:02, 12.75it/s]Capturing CUDA graphs (PIECEWISE):  65%|██████▍   | 66/102 [00:05<00:02, 13.24it/s]Capturing CUDA graphs (PIECEWISE):  67%|██████▋   | 68/102 [00:05<00:02, 13.58it/s]Capturing CUDA graphs (PIECEWISE):  69%|██████▊   | 70/102 [00:05<00:02, 13.78it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████   | 72/102 [00:05<00:02, 13.99it/s]Capturing CUDA graphs (PIECEWISE):  73%|███████▎  | 74/102 [00:05<00:01, 14.03it/s]Capturing CUDA graphs (PIECEWISE):  75%|███████▍  | 76/102 [00:05<00:01, 14.14it/s]Capturing CUDA graphs (PIECEWISE):  76%|███████▋  | 78/102 [00:06<00:01, 14.19it/s]Capturing CUDA graphs (PIECEWISE):  78%|███████▊  | 80/102 [00:06<00:01, 14.20it/s]Capturing CUDA graphs (PIECEWISE):  80%|████████  | 82/102 [00:06<00:01, 14.06it/s]Capturing CUDA graphs (PIECEWISE):  82%|████████▏ | 84/102 [00:06<00:01, 14.05it/s]Capturing CUDA graphs (PIECEWISE):  84%|████████▍ | 86/102 [00:06<00:01, 14.09it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▋ | 88/102 [00:06<00:00, 14.15it/s]Capturing CUDA graphs (PIECEWISE):  88%|████████▊ | 90/102 [00:06<00:00, 14.53it/s]Capturing CUDA graphs (PIECEWISE):  90%|█████████ | 92/102 [00:07<00:00, 14.91it/s]Capturing CUDA graphs (PIECEWISE):  92%|█████████▏| 94/102 [00:07<00:00, 15.18it/s]Capturing CUDA graphs (PIECEWISE):  94%|█████████▍| 96/102 [00:07<00:00, 15.35it/s]Capturing CUDA graphs (PIECEWISE):  96%|█████████▌| 98/102 [00:07<00:00, 15.47it/s]Capturing CUDA graphs (PIECEWISE):  98%|█████████▊| 100/102 [00:07<00:00, 15.55it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:07<00:00, 15.53it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:07<00:00, 13.31it/s]
+(EngineCore pid=1610) Capturing CUDA graphs (FULL):   0%|          | 0/102 [00:00<?, ?it/s]Capturing CUDA graphs (FULL):   2%|▏         | 2/102 [00:00<00:05, 19.93it/s]Capturing CUDA graphs (FULL):   5%|▍         | 5/102 [00:00<00:04, 21.36it/s]Capturing CUDA graphs (FULL):   8%|▊         | 8/102 [00:00<00:04, 19.99it/s]Capturing CUDA graphs (FULL):  11%|█         | 11/102 [00:00<00:04, 21.00it/s]Capturing CUDA graphs (FULL):  14%|█▎        | 14/102 [00:00<00:04, 20.32it/s]Capturing CUDA graphs (FULL):  17%|█▋        | 17/102 [00:00<00:03, 21.31it/s]Capturing CUDA graphs (FULL):  20%|█▉        | 20/102 [00:00<00:03, 20.93it/s]Capturing CUDA graphs (FULL):  23%|██▎       | 23/102 [00:01<00:03, 22.02it/s]Capturing CUDA graphs (FULL):  25%|██▌       | 26/102 [00:01<00:03, 21.52it/s]Capturing CUDA graphs (FULL):  28%|██▊       | 29/102 [00:01<00:03, 22.62it/s]Capturing CUDA graphs (FULL):  31%|███▏      | 32/102 [00:01<00:03, 22.21it/s]Capturing CUDA graphs (FULL):  34%|███▍      | 35/102 [00:01<00:02, 23.35it/s]Capturing CUDA graphs (FULL):  37%|███▋      | 38/102 [00:01<00:02, 22.72it/s]Capturing CUDA graphs (FULL):  40%|████      | 41/102 [00:01<00:02, 23.63it/s]Capturing CUDA graphs (FULL):  43%|████▎     | 44/102 [00:01<00:02, 22.95it/s]Capturing CUDA graphs (FULL):  46%|████▌     | 47/102 [00:02<00:02, 24.21it/s]Capturing CUDA graphs (FULL):  49%|████▉     | 50/102 [00:02<00:02, 23.23it/s]Capturing CUDA graphs (FULL):  52%|█████▏    | 53/102 [00:02<00:02, 24.48it/s]Capturing CUDA graphs (FULL):  55%|█████▍    | 56/102 [00:02<00:01, 23.53it/s]Capturing CUDA graphs (FULL):  58%|█████▊    | 59/102 [00:02<00:01, 24.81it/s]Capturing CUDA graphs (FULL):  61%|██████    | 62/102 [00:02<00:01, 23.88it/s]Capturing CUDA graphs (FULL):  64%|██████▎   | 65/102 [00:02<00:01, 25.19it/s]Capturing CUDA graphs (FULL):  67%|██████▋   | 68/102 [00:02<00:01, 23.94it/s]Capturing CUDA graphs (FULL):  70%|██████▉   | 71/102 [00:03<00:01, 24.26it/s]Capturing CUDA graphs (FULL):  73%|███████▎  | 74/102 [00:03<00:01, 23.47it/s]Capturing CUDA graphs (FULL):  75%|███████▌  | 77/102 [00:03<00:01, 24.68it/s]Capturing CUDA graphs (FULL):  78%|███████▊  | 80/102 [00:03<00:00, 23.55it/s]Capturing CUDA graphs (FULL):  81%|████████▏ | 83/102 [00:03<00:00, 24.81it/s]Capturing CUDA graphs (FULL):  84%|████████▍ | 86/102 [00:03<00:00, 23.44it/s]Capturing CUDA graphs (FULL):  87%|████████▋ | 89/102 [00:03<00:00, 24.78it/s]Capturing CUDA graphs (FULL):  90%|█████████ | 92/102 [00:03<00:00, 23.78it/s]Capturing CUDA graphs (FULL):  93%|█████████▎| 95/102 [00:04<00:00, 25.10it/s]Capturing CUDA graphs (FULL):  96%|█████████▌| 98/102 [00:04<00:00, 24.01it/s]Capturing CUDA graphs (FULL):  99%|█████████▉| 101/102 [00:04<00:00, 25.26it/s]Capturing CUDA graphs (FULL): 100%|██████████| 102/102 [00:04<00:00, 23.31it/s]
+(EngineCore pid=1610) INFO 10-04 15:25:10 [model_runner.py:1066] Graph capturing finished in 23 secs, took 0.55 GiB
+(EngineCore pid=1610) INFO 10-04 15:25:10 [gpu_worker.py:825] CUDA graph pool memory: 0.55 GiB (actual), 1.22 GiB (estimated), difference: 0.67 GiB (122.2%).
+(EngineCore pid=1610) INFO 10-04 15:25:10 [gpu_worker.py:888] Free memory on device (78.66/79.18 GiB) on startup. Desired GPU memory utilization is (0.92, 72.84 GiB). Actual usage is 14.91 GiB for consumed memory (weights + non-torch), 2.76 GiB for peak activation, and 0.55 GiB for CUDAGraph memory. Replace gpu_memory_utilization config with `--kv-cache-memory=58493413192` (54.48 GiB) to fit into requested memory, or `--kv-cache-memory=64742409728` (60.3 GiB) to fully utilize gpu memory. Current kv cache memory in use is 55.17 GiB.
+(EngineCore pid=1610) INFO 10-04 15:25:11 [jit_monitor.py:85] Kernel JIT monitor activated; monitored JIT compilations during inference will use mode=warn.
+(EngineCore pid=1610) INFO 10-04 15:25:12 [torch_utils.py:287] Reducing Torch threads from 64 to 1 for serving. Set OMP_NUM_THREADS in the external environment to override.
+(EngineCore pid=1610) INFO 10-04 15:25:12 [core.py:372] init engine (profile, create kv cache, warmup model) took 157.90 s (compilation: 26.41 s)
+(EngineCore pid=1610) INFO 10-04 15:25:12 [kv_cache_utils.py:748] kv cache group sizes [16, 16, 16, 16]
+(EngineCore pid=1610) INFO 10-04 15:25:12 [kv_cache_utils.py:749] kv lcm block sizes 16
+(EngineCore pid=1610) INFO 10-04 15:25:12 [kernel.py:416] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native'])
+INFO 10-04 15:25:14 [hf.py:642] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:00<00:00,  3.40it/s]Fetching 3 files: 100%|██████████| 3/3 [00:03<00:00,  1.39s/it]Fetching 3 files: 100%|██████████| 3/3 [00:03<00:00,  1.28s/it]
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:00<00:00,  6.58it/s]Fetching 3 files: 100%|██████████| 3/3 [00:04<00:00,  1.66s/it]Fetching 3 files: 100%|██████████| 3/3 [00:04<00:00,  1.51s/it]
+Rendering prompts:   0%|          | 0/32 [00:00<?, ?it/s]WARNING 10-04 15:25:24 [input_processor.py:196] vLLM has deprecated support for supporting different tokenizers for different LoRAs. By default, vLLM uses base model's tokenizer. If you are using a LoRA with its own tokenizer, consider specifying `--tokenizer [lora_path]` to use the LoRA tokenizer.
+Rendering prompts: 100%|██████████| 32/32 [00:00<00:00, 2529.50it/s]
+Processed prompts:   0%|          | 0/32 [00:00<?, ?it/s, est. speed input: 0.00 toks/s, output: 0.00 toks/s](EngineCore pid=1610) INFO 10-04 15:25:24 [peft_helper.py:57] Loading LoRA weights trained with rsLoRA.
+Processed prompts:   3%|▎         | 1/32 [00:00<00:14,  2.11it/s, est. speed input: 73.92 toks/s, output: 31.68 toks/s]Processed prompts:  16%|█▌        | 5/32 [00:00<00:02, 10.44it/s, est. speed input: 209.42 toks/s, output: 173.95 toks/s]Processed prompts:  41%|████      | 13/32 [00:00<00:00, 26.49it/s, est. speed input: 413.74 toks/s, output: 526.06 toks/s]Processed prompts:  56%|█████▋    | 18/32 [00:00<00:00, 27.65it/s, est. speed input: 441.71 toks/s, output: 729.68 toks/s]Processed prompts:  75%|███████▌  | 24/32 [00:00<00:00, 34.40it/s, est. speed input: 515.32 toks/s, output: 1033.70 toks/s]Processed prompts:  91%|█████████ | 29/32 [00:01<00:00, 30.44it/s, est. speed input: 520.24 toks/s, output: 1210.79 toks/s]Processed prompts: 100%|██████████| 32/32 [00:01<00:00, 30.44it/s, est. speed input: 465.66 toks/s, output: 1234.14 toks/s]Processed prompts: 100%|██████████| 32/32 [00:01<00:00, 22.17it/s, est. speed input: 465.66 toks/s, output: 1234.14 toks/s]
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+wrote results/E1b/checks/smoke/gen_vllm/pre-plain-bad-R2-s2-k0010@plain__general.csv (16 rows)
+wrote results/E1b/checks/smoke/gen_vllm/pre-plain-bad-R2-s2-k0020@plain__general.csv (16 rows)
+INFO 10-04 15:25:26 [utils.py:632] [shutdown] Process manager: send sigterm to process EngineCore
+(EngineCore pid=1610) INFO 10-04 15:25:26 [core.py:1342] [shutdown] EngineCore: trigger received signal=SIGTERM
+(EngineCore pid=1610) INFO 10-04 15:25:26 [core.py:1493] [shutdown] EngineCore: start mode=abort timeout=0s
+(EngineCore pid=1610) INFO 10-04 15:25:26 [core.py:1524] [shutdown] EngineCore: request processing complete; starting resource teardown
+(EngineCore pid=1610) INFO 10-04 15:25:26 [core.py:1355] [shutdown] EngineCore: exiting busy loop
++ /ws/venv-peft/bin/python scripts/e1b_firstk.py --cell inst-chat-bad-R2-s1 --n-docs 2 --out-root results/E1b/checks/smoke/root
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:28<00:56, 28.27s/it]Fetching 3 files:  67%|██████▋   | 2/3 [00:28<00:11, 11.98s/it]Fetching 3 files: 100%|██████████| 3/3 [00:52<00:00, 17.38s/it]Fetching 3 files: 100%|██████████| 3/3 [00:52<00:00, 17.55s/it]
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<00:56,  6.29it/s]Loading weights:   7%|▋         | 26/355 [00:00<00:02, 118.42it/s]Loading weights:  15%|█▍        | 53/355 [00:00<00:01, 177.07it/s]Loading weights:  23%|██▎       | 80/355 [00:00<00:01, 203.91it/s]Loading weights:  29%|██▉       | 103/355 [00:00<00:01, 211.37it/s]Loading weights:  35%|███▌      | 126/355 [00:00<00:01, 215.82it/s]Loading weights:  44%|████▍     | 156/355 [00:00<00:00, 240.44it/s]Loading weights:  51%|█████     | 181/355 [00:00<00:00, 231.55it/s]Loading weights:  59%|█████▉    | 211/355 [00:01<00:00, 250.36it/s]Loading weights:  67%|██████▋   | 237/355 [00:01<00:00, 238.72it/s]Loading weights:  75%|███████▍  | 266/355 [00:01<00:00, 251.89it/s]Loading weights:  82%|████████▏ | 292/355 [00:01<00:00, 242.57it/s]Loading weights:  89%|████████▉ | 317/355 [00:01<00:00, 240.10it/s]Loading weights:  97%|█████████▋| 343/355 [00:01<00:00, 244.51it/s]Loading weights: 100%|██████████| 355/355 [00:01<00:00, 222.70it/s]
+firstk inst-chat-bad-R2-s1: 2/2 docs, 2s
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+results/E1b/checks/smoke/root/results/E1b/part3/firstk/inst-chat-bad-R2-s1__L16.npz
+results/E1b/checks/smoke/root/results/E1b/part3/firstk/inst-chat-bad-R2-s1__L24.npz
++ /ws/venv-peft/bin/python scripts/e1b_restore.py --self-check --cell inst-chat-bad-R2-s1 --n-prompts 4 --check-out results/E1b/checks/smoke/restore_self_4.json
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<01:08,  5.18it/s]Loading weights:   6%|▌         | 21/355 [00:00<00:03, 85.39it/s]Loading weights:  12%|█▏        | 42/355 [00:00<00:02, 129.40it/s]Loading weights:  18%|█▊        | 64/355 [00:00<00:01, 159.15it/s]Loading weights:  23%|██▎       | 82/355 [00:00<00:01, 164.05it/s]Loading weights:  29%|██▉       | 104/355 [00:00<00:01, 178.53it/s]Loading weights:  35%|███▌      | 126/355 [00:00<00:01, 187.65it/s]Loading weights:  42%|████▏     | 148/355 [00:00<00:01, 193.73it/s]Loading weights:  48%|████▊     | 170/355 [00:01<00:00, 197.64it/s]Loading weights:  54%|█████▍    | 192/355 [00:01<00:00, 200.03it/s]Loading weights:  60%|██████    | 214/355 [00:01<00:00, 201.95it/s]Loading weights:  66%|██████▌   | 235/355 [00:01<00:00, 193.87it/s]Loading weights:  73%|███████▎  | 258/355 [00:01<00:00, 202.61it/s]Loading weights:  79%|███████▉  | 280/355 [00:01<00:00, 203.34it/s]Loading weights:  85%|████████▌ | 302/355 [00:01<00:00, 204.02it/s]Loading weights:  91%|█████████▏| 324/355 [00:01<00:00, 204.62it/s]Loading weights:  97%|█████████▋| 346/355 [00:01<00:00, 204.67it/s]Loading weights: 100%|██████████| 355/355 [00:01<00:00, 185.18it/s]
+fatal: not a git repository (or any of the parent directories): .git
+self-restore: 4/4 identical, pass=True
++ /ws/venv-peft/bin/python scripts/e1b_restore.py --cell inst-chat-bad-R2-s1 --kinds qrand5 --modes sampled --n-prompts 1 --n-samples 1 --out-dir results/E1b/checks/smoke/part3/restore
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<01:18,  4.51it/s]Loading weights:   5%|▍         | 16/355 [00:00<00:05, 61.05it/s]Loading weights:  10%|█         | 37/355 [00:00<00:02, 106.05it/s]Loading weights:  16%|█▋        | 58/355 [00:00<00:02, 136.38it/s]Loading weights:  23%|██▎       | 80/355 [00:00<00:01, 158.67it/s]Loading weights:  28%|██▊       | 100/355 [00:00<00:01, 169.75it/s]Loading weights:  34%|███▍      | 122/355 [00:00<00:01, 182.90it/s]Loading weights:  40%|████      | 142/355 [00:00<00:01, 179.05it/s]Loading weights:  45%|████▌     | 161/355 [00:01<00:01, 176.24it/s]Loading weights:  51%|█████     | 180/355 [00:01<00:00, 176.12it/s]Loading weights:  57%|█████▋    | 201/355 [00:01<00:00, 181.48it/s]Loading weights:  62%|██████▏   | 220/355 [00:01<00:00, 182.47it/s]Loading weights:  67%|██████▋   | 239/355 [00:01<00:00, 182.28it/s]Loading weights:  73%|███████▎  | 258/355 [00:01<00:00, 173.92it/s]Loading weights:  79%|███████▊  | 279/355 [00:01<00:00, 179.99it/s]Loading weights:  84%|████████▍ | 299/355 [00:01<00:00, 181.64it/s]Loading weights:  90%|█████████ | 320/355 [00:01<00:00, 188.32it/s]Loading weights:  95%|█████████▌| 339/355 [00:02<00:00, 183.00it/s]Loading weights: 100%|██████████| 355/355 [00:02<00:00, 165.58it/s]
+fatal: not a git repository (or any of the parent directories): .git
+results/E1b/checks/smoke/part3/restore/inst-chat-bad-R2-s1@chat+restore=qrand5__general.csv
++ /ws/venv-peft/bin/python scripts/e1b_steer.py grid --cell inst-chat-bad-R2-s1 --out-root results/E1b/checks/smoke/root
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   0%|          | 1/355 [00:00<01:07,  5.28it/s]Loading weights:   6%|▋         | 23/355 [00:00<00:03, 96.15it/s]Loading weights:  12%|█▏        | 43/355 [00:00<00:02, 134.38it/s]Loading weights:  18%|█▊        | 64/355 [00:00<00:01, 157.85it/s]Loading weights:  24%|██▍       | 86/355 [00:00<00:01, 177.34it/s]Loading weights:  31%|███       | 109/355 [00:00<00:01, 190.30it/s]Loading weights:  37%|███▋      | 131/355 [00:00<00:01, 198.71it/s]Loading weights:  43%|████▎     | 152/355 [00:00<00:01, 198.74it/s]Loading weights:  49%|████▉     | 174/355 [00:01<00:00, 204.40it/s]Loading weights:  55%|█████▍    | 195/355 [00:01<00:00, 205.52it/s]Loading weights:  61%|██████    | 216/355 [00:01<00:00, 203.44it/s]Loading weights:  67%|██████▋   | 237/355 [00:01<00:00, 202.26it/s]Loading weights:  73%|███████▎  | 258/355 [00:01<00:00, 201.22it/s]Loading weights:  79%|███████▉  | 280/355 [00:01<00:00, 203.57it/s]Loading weights:  85%|████████▌ | 302/355 [00:01<00:00, 204.96it/s]Loading weights:  91%|█████████▏| 324/355 [00:01<00:00, 206.22it/s]Loading weights:  97%|█████████▋| 346/355 [00:01<00:00, 204.80it/s]Loading weights: 100%|██████████| 355/355 [00:01<00:00, 189.24it/s]
+inst-chat-bad-R2-s1__grid.csv: p0_a000 alpha=0 done
+inst-chat-bad-R2-s1__grid.csv: p0_a001 alpha=0.005 done
+inst-chat-bad-R2-s1__grid.csv: p0_a002 alpha=0.005632 done
+inst-chat-bad-R2-s1__grid.csv: p0_a003 alpha=0.006344 done
+inst-chat-bad-R2-s1__grid.csv: p0_a004 alpha=0.007147 done
+inst-chat-bad-R2-s1__grid.csv: p0_a005 alpha=0.00805 done
+inst-chat-bad-R2-s1__grid.csv: p0_a006 alpha=0.009068 done
+inst-chat-bad-R2-s1__grid.csv: p0_a007 alpha=0.01021 done
+inst-chat-bad-R2-s1__grid.csv: p0_a008 alpha=0.01151 done
+inst-chat-bad-R2-s1__grid.csv: p0_a009 alpha=0.01296 done
+inst-chat-bad-R2-s1__grid.csv: p0_a010 alpha=0.0146 done
+inst-chat-bad-R2-s1__grid.csv: p0_a011 alpha=0.01645 done
+inst-chat-bad-R2-s1__grid.csv: p0_a012 alpha=0.01853 done
+inst-chat-bad-R2-s1__grid.csv: p0_a013 alpha=0.02087 done
+inst-chat-bad-R2-s1__grid.csv: p0_a014 alpha=0.02351 done
+inst-chat-bad-R2-s1__grid.csv: p0_a015 alpha=0.02648 done
+inst-chat-bad-R2-s1__grid.csv: p0_a016 alpha=0.02983 done
+inst-chat-bad-R2-s1__grid.csv: p0_a017 alpha=0.0336 done
+inst-chat-bad-R2-s1__grid.csv: p0_a018 alpha=0.03785 done
+inst-chat-bad-R2-s1__grid.csv: p0_a019 alpha=0.04263 done
+inst-chat-bad-R2-s1__grid.csv: p0_a020 alpha=0.04802 done
+inst-chat-bad-R2-s1__grid.csv: p0_a021 alpha=0.05409 done
+inst-chat-bad-R2-s1__grid.csv: p0_a022 alpha=0.06093 done
+inst-chat-bad-R2-s1__grid.csv: p0_a023 alpha=0.06864 done
+inst-chat-bad-R2-s1__grid.csv: p0_a024 alpha=0.07732 done
+inst-chat-bad-R2-s1__grid.csv: p0_a025 alpha=0.08709 done
+inst-chat-bad-R2-s1__grid.csv: p0_a026 alpha=0.0981 done
+inst-chat-bad-R2-s1__grid.csv: p0_a027 alpha=0.1105 done
+inst-chat-bad-R2-s1__grid.csv: p0_a028 alpha=0.1245 done
+inst-chat-bad-R2-s1__grid.csv: p0_a029 alpha=0.1402 done
+inst-chat-bad-R2-s1__grid.csv: p0_a030 alpha=0.1579 done
+inst-chat-bad-R2-s1__grid.csv: p0_a031 alpha=0.1779 done
+inst-chat-bad-R2-s1__grid.csv: p0_a032 alpha=0.2004 done
+inst-chat-bad-R2-s1__grid.csv: p0_a033 alpha=0.2258 done
+inst-chat-bad-R2-s1__grid.csv: p0_a034 alpha=0.2543 done
+inst-chat-bad-R2-s1__grid.csv: p0_a035 alpha=0.2865 done
+inst-chat-bad-R2-s1__grid.csv: p0_a036 alpha=0.3227 done
+inst-chat-bad-R2-s1__grid.csv: p0_a037 alpha=0.3635 done
+inst-chat-bad-R2-s1__grid.csv: p0_a038 alpha=0.4094 done
+inst-chat-bad-R2-s1__grid.csv: p0_a039 alpha=0.4612 done
+inst-chat-bad-R2-s1__grid.csv: p0_a040 alpha=0.5195 done
+inst-chat-bad-R2-s1__grid.csv: p0_a041 alpha=0.5852 done
+inst-chat-bad-R2-s1__grid.csv: p0_a042 alpha=0.6592 done
+inst-chat-bad-R2-s1__grid.csv: p0_a043 alpha=0.7426 done
+inst-chat-bad-R2-s1__grid.csv: p0_a044 alpha=0.8364 done
+inst-chat-bad-R2-s1__grid.csv: p0_a045 alpha=0.9422 done
+inst-chat-bad-R2-s1__grid.csv: p0_a046 alpha=1.061 done
+inst-chat-bad-R2-s1__grid.csv: p0_a047 alpha=1.196 done
+inst-chat-bad-R2-s1__grid.csv: p0_a048 alpha=1.347 done
+inst-chat-bad-R2-s1__grid.csv: p0_a049 alpha=1.517 done
+inst-chat-bad-R2-s1__grid.csv: p0_a050 alpha=1.709 done
+inst-chat-bad-R2-s1__grid.csv: p0_a051 alpha=1.925 done
+inst-chat-bad-R2-s1__grid.csv: p0_a052 alpha=2.168 done
+inst-chat-bad-R2-s1__grid.csv: p0_a053 alpha=2.442 done
+inst-chat-bad-R2-s1__grid.csv: p0_a054 alpha=2.751 done
+inst-chat-bad-R2-s1__grid.csv: p0_a055 alpha=3.099 done
+inst-chat-bad-R2-s1__grid.csv: p0_a056 alpha=3.491 done
+inst-chat-bad-R2-s1__grid.csv: p0_a057 alpha=3.932 done
+inst-chat-bad-R2-s1__grid.csv: p0_a058 alpha=4.43 done
+inst-chat-bad-R2-s1__grid.csv: p0_a059 alpha=4.99 done
+inst-chat-bad-R2-s1__grid.csv: p0_a060 alpha=5.62 done
+inst-chat-bad-R2-s1__grid.csv: p0_a061 alpha=6.331 done
+inst-chat-bad-R2-s1__grid.csv: p0_a062 alpha=7.132 done
+inst-chat-bad-R2-s1__grid.csv: p0_a063 alpha=8.033 done
+inst-chat-bad-R2-s1__grid.csv: p0_a064 alpha=9.049 done
+inst-chat-bad-R2-s1__grid.csv: p0_a065 alpha=10.19 done
+inst-chat-bad-R2-s1__grid.csv: p0_a066 alpha=11.48 done
+inst-chat-bad-R2-s1__grid.csv: p0_a067 alpha=12.93 done
+inst-chat-bad-R2-s1__grid.csv: p0_a068 alpha=14.57 done
+inst-chat-bad-R2-s1__grid.csv: p0_a069 alpha=16.41 done
+inst-chat-bad-R2-s1__grid.csv: p0_a070 alpha=18.49 done
+inst-chat-bad-R2-s1__grid.csv: p0_a071 alpha=20.82 done
+inst-chat-bad-R2-s1__grid.csv: p0_a072 alpha=23.46 done
+inst-chat-bad-R2-s1__grid.csv: p0_a073 alpha=26.42 done
+inst-chat-bad-R2-s1__grid.csv: p0_a074 alpha=29.76 done
+inst-chat-bad-R2-s1__grid.csv: p0_a075 alpha=33.53 done
+inst-chat-bad-R2-s1__grid.csv: p0_a076 alpha=37.77 done
+inst-chat-bad-R2-s1__grid.csv: p0_a077 alpha=42.54 done
+inst-chat-bad-R2-s1__grid.csv: p0_a078 alpha=47.92 done
+inst-chat-bad-R2-s1__grid.csv: p0_a079 alpha=53.98 done
+inst-chat-bad-R2-s1__grid.csv: p0_a080 alpha=60.81 done
+inst-chat-bad-R2-s1__grid.csv: p0_a081 alpha=68.49 done
+inst-chat-bad-R2-s1__grid.csv: p0_a082 alpha=77.15 done
+inst-chat-bad-R2-s1__grid.csv: p0_a083 alpha=86.91 done
+inst-chat-bad-R2-s1__grid.csv: p0_a084 alpha=97.9 done
+inst-chat-bad-R2-s1__grid.csv: p0_a085 alpha=110.3 done
+inst-chat-bad-R2-s1__grid.csv: p0_a086 alpha=124.2 done
+inst-chat-bad-R2-s1__grid.csv: p0_a087 alpha=139.9 done
+inst-chat-bad-R2-s1__grid.csv: p0_a088 alpha=157.6 done
+inst-chat-bad-R2-s1__grid.csv: p0_a089 alpha=177.6 done
+inst-chat-bad-R2-s1__grid.csv: p0_a090 alpha=200 done
+inst-chat-bad-R2-s1__grid.csv: p1_a000 alpha=0 done
+inst-chat-bad-R2-s1__grid.csv: p1_a001 alpha=0.005 done
+inst-chat-bad-R2-s1__grid.csv: p1_a002 alpha=0.005632 done
+inst-chat-bad-R2-s1__grid.csv: p1_a003 alpha=0.006344 done
+inst-chat-bad-R2-s1__grid.csv: p1_a004 alpha=0.007147 done
+inst-chat-bad-R2-s1__grid.csv: p1_a005 alpha=0.00805 done
+inst-chat-bad-R2-s1__grid.csv: p1_a006 alpha=0.009068 done
+inst-chat-bad-R2-s1__grid.csv: p1_a007 alpha=0.01021 done
+inst-chat-bad-R2-s1__grid.csv: p1_a008 alpha=0.01151 done
+inst-chat-bad-R2-s1__grid.csv: p1_a009 alpha=0.01296 done
+inst-chat-bad-R2-s1__grid.csv: p1_a010 alpha=0.0146 done
+inst-chat-bad-R2-s1__grid.csv: p1_a011 alpha=0.01645 done
+inst-chat-bad-R2-s1__grid.csv: p1_a012 alpha=0.01853 done
+inst-chat-bad-R2-s1__grid.csv: p1_a013 alpha=0.02087 done
+inst-chat-bad-R2-s1__grid.csv: p1_a014 alpha=0.02351 done
+inst-chat-bad-R2-s1__grid.csv: p1_a015 alpha=0.02648 done
+inst-chat-bad-R2-s1__grid.csv: p1_a016 alpha=0.02983 done
+inst-chat-bad-R2-s1__grid.csv: p1_a017 alpha=0.0336 done
+inst-chat-bad-R2-s1__grid.csv: p1_a018 alpha=0.03785 done
+inst-chat-bad-R2-s1__grid.csv: p1_a019 alpha=0.04263 done
+inst-chat-bad-R2-s1__grid.csv: p1_a020 alpha=0.04802 done
+inst-chat-bad-R2-s1__grid.csv: p1_a021 alpha=0.05409 done
+inst-chat-bad-R2-s1__grid.csv: p1_a022 alpha=0.06093 done
+inst-chat-bad-R2-s1__grid.csv: p1_a023 alpha=0.06864 done
+inst-chat-bad-R2-s1__grid.csv: p1_a024 alpha=0.07732 done
+inst-chat-bad-R2-s1__grid.csv: p1_a025 alpha=0.08709 done
+inst-chat-bad-R2-s1__grid.csv: p1_a026 alpha=0.0981 done
+inst-chat-bad-R2-s1__grid.csv: p1_a027 alpha=0.1105 done
+inst-chat-bad-R2-s1__grid.csv: p1_a028 alpha=0.1245 done
+inst-chat-bad-R2-s1__grid.csv: p1_a029 alpha=0.1402 done
+inst-chat-bad-R2-s1__grid.csv: p1_a030 alpha=0.1579 done
+inst-chat-bad-R2-s1__grid.csv: p1_a031 alpha=0.1779 done
+inst-chat-bad-R2-s1__grid.csv: p1_a032 alpha=0.2004 done
+inst-chat-bad-R2-s1__grid.csv: p1_a033 alpha=0.2258 done
+inst-chat-bad-R2-s1__grid.csv: p1_a034 alpha=0.2543 done
+inst-chat-bad-R2-s1__grid.csv: p1_a035 alpha=0.2865 done
+inst-chat-bad-R2-s1__grid.csv: p1_a036 alpha=0.3227 done
+inst-chat-bad-R2-s1__grid.csv: p1_a037 alpha=0.3635 done
+inst-chat-bad-R2-s1__grid.csv: p1_a038 alpha=0.4094 done
+inst-chat-bad-R2-s1__grid.csv: p1_a039 alpha=0.4612 done
+inst-chat-bad-R2-s1__grid.csv: p1_a040 alpha=0.5195 done
+inst-chat-bad-R2-s1__grid.csv: p1_a041 alpha=0.5852 done
+inst-chat-bad-R2-s1__grid.csv: p1_a042 alpha=0.6592 done
+inst-chat-bad-R2-s1__grid.csv: p1_a043 alpha=0.7426 done
+inst-chat-bad-R2-s1__grid.csv: p1_a044 alpha=0.8364 done
+inst-chat-bad-R2-s1__grid.csv: p1_a045 alpha=0.9422 done
+inst-chat-bad-R2-s1__grid.csv: p1_a046 alpha=1.061 done
+inst-chat-bad-R2-s1__grid.csv: p1_a047 alpha=1.196 done
+inst-chat-bad-R2-s1__grid.csv: p1_a048 alpha=1.347 done
+inst-chat-bad-R2-s1__grid.csv: p1_a049 alpha=1.517 done
+inst-chat-bad-R2-s1__grid.csv: p1_a050 alpha=1.709 done
+inst-chat-bad-R2-s1__grid.csv: p1_a051 alpha=1.925 done
+inst-chat-bad-R2-s1__grid.csv: p1_a052 alpha=2.168 done
+inst-chat-bad-R2-s1__grid.csv: p1_a053 alpha=2.442 done
+inst-chat-bad-R2-s1__grid.csv: p1_a054 alpha=2.751 done
+inst-chat-bad-R2-s1__grid.csv: p1_a055 alpha=3.099 done
+inst-chat-bad-R2-s1__grid.csv: p1_a056 alpha=3.491 done
+inst-chat-bad-R2-s1__grid.csv: p1_a057 alpha=3.932 done
+inst-chat-bad-R2-s1__grid.csv: p1_a058 alpha=4.43 done
+inst-chat-bad-R2-s1__grid.csv: p1_a059 alpha=4.99 done
+inst-chat-bad-R2-s1__grid.csv: p1_a060 alpha=5.62 done
+inst-chat-bad-R2-s1__grid.csv: p1_a061 alpha=6.331 done
+inst-chat-bad-R2-s1__grid.csv: p1_a062 alpha=7.132 done
+inst-chat-bad-R2-s1__grid.csv: p1_a063 alpha=8.033 done
+inst-chat-bad-R2-s1__grid.csv: p1_a064 alpha=9.049 done
+inst-chat-bad-R2-s1__grid.csv: p1_a065 alpha=10.19 done
+inst-chat-bad-R2-s1__grid.csv: p1_a066 alpha=11.48 done
+inst-chat-bad-R2-s1__grid.csv: p1_a067 alpha=12.93 done
+inst-chat-bad-R2-s1__grid.csv: p1_a068 alpha=14.57 done
+inst-chat-bad-R2-s1__grid.csv: p1_a069 alpha=16.41 done
+inst-chat-bad-R2-s1__grid.csv: p1_a070 alpha=18.49 done
+inst-chat-bad-R2-s1__grid.csv: p1_a071 alpha=20.82 done
+inst-chat-bad-R2-s1__grid.csv: p1_a072 alpha=23.46 done
+inst-chat-bad-R2-s1__grid.csv: p1_a073 alpha=26.42 done
+inst-chat-bad-R2-s1__grid.csv: p1_a074 alpha=29.76 done
+inst-chat-bad-R2-s1__grid.csv: p1_a075 alpha=33.53 done
+inst-chat-bad-R2-s1__grid.csv: p1_a076 alpha=37.77 done
+inst-chat-bad-R2-s1__grid.csv: p1_a077 alpha=42.54 done
+inst-chat-bad-R2-s1__grid.csv: p1_a078 alpha=47.92 done
+inst-chat-bad-R2-s1__grid.csv: p1_a079 alpha=53.98 done
+inst-chat-bad-R2-s1__grid.csv: p1_a080 alpha=60.81 done
+inst-chat-bad-R2-s1__grid.csv: p1_a081 alpha=68.49 done
+inst-chat-bad-R2-s1__grid.csv: p1_a082 alpha=77.15 done
+inst-chat-bad-R2-s1__grid.csv: p1_a083 alpha=86.91 done
+inst-chat-bad-R2-s1__grid.csv: p1_a084 alpha=97.9 done
+inst-chat-bad-R2-s1__grid.csv: p1_a085 alpha=110.3 done
+inst-chat-bad-R2-s1__grid.csv: p1_a086 alpha=124.2 done
+inst-chat-bad-R2-s1__grid.csv: p1_a087 alpha=139.9 done
+inst-chat-bad-R2-s1__grid.csv: p1_a088 alpha=157.6 done
+inst-chat-bad-R2-s1__grid.csv: p1_a089 alpha=177.6 done
+inst-chat-bad-R2-s1__grid.csv: p1_a090 alpha=200 done
+inst-chat-bad-R2-s1__grid.csv: p2_a000 alpha=0 done
+inst-chat-bad-R2-s1__grid.csv: p2_a001 alpha=0.005 done
+inst-chat-bad-R2-s1__grid.csv: p2_a002 alpha=0.005632 done
+inst-chat-bad-R2-s1__grid.csv: p2_a003 alpha=0.006344 done
+inst-chat-bad-R2-s1__grid.csv: p2_a004 alpha=0.007147 done
+inst-chat-bad-R2-s1__grid.csv: p2_a005 alpha=0.00805 done
+inst-chat-bad-R2-s1__grid.csv: p2_a006 alpha=0.009068 done
+inst-chat-bad-R2-s1__grid.csv: p2_a007 alpha=0.01021 done
+inst-chat-bad-R2-s1__grid.csv: p2_a008 alpha=0.01151 done
+inst-chat-bad-R2-s1__grid.csv: p2_a009 alpha=0.01296 done
+inst-chat-bad-R2-s1__grid.csv: p2_a010 alpha=0.0146 done
+inst-chat-bad-R2-s1__grid.csv: p2_a011 alpha=0.01645 done
+inst-chat-bad-R2-s1__grid.csv: p2_a012 alpha=0.01853 done
+inst-chat-bad-R2-s1__grid.csv: p2_a013 alpha=0.02087 done
+inst-chat-bad-R2-s1__grid.csv: p2_a014 alpha=0.02351 done
+inst-chat-bad-R2-s1__grid.csv: p2_a015 alpha=0.02648 done
+inst-chat-bad-R2-s1__grid.csv: p2_a016 alpha=0.02983 done
+inst-chat-bad-R2-s1__grid.csv: p2_a017 alpha=0.0336 done
+inst-chat-bad-R2-s1__grid.csv: p2_a018 alpha=0.03785 done
+inst-chat-bad-R2-s1__grid.csv: p2_a019 alpha=0.04263 done
+inst-chat-bad-R2-s1__grid.csv: p2_a020 alpha=0.04802 done
+inst-chat-bad-R2-s1__grid.csv: p2_a021 alpha=0.05409 done
+inst-chat-bad-R2-s1__grid.csv: p2_a022 alpha=0.06093 done
+inst-chat-bad-R2-s1__grid.csv: p2_a023 alpha=0.06864 done
+inst-chat-bad-R2-s1__grid.csv: p2_a024 alpha=0.07732 done
+inst-chat-bad-R2-s1__grid.csv: p2_a025 alpha=0.08709 done
+inst-chat-bad-R2-s1__grid.csv: p2_a026 alpha=0.0981 done
+inst-chat-bad-R2-s1__grid.csv: p2_a027 alpha=0.1105 done
+inst-chat-bad-R2-s1__grid.csv: p2_a028 alpha=0.1245 done
+inst-chat-bad-R2-s1__grid.csv: p2_a029 alpha=0.1402 done
+inst-chat-bad-R2-s1__grid.csv: p2_a030 alpha=0.1579 done
+inst-chat-bad-R2-s1__grid.csv: p2_a031 alpha=0.1779 done
+inst-chat-bad-R2-s1__grid.csv: p2_a032 alpha=0.2004 done
+inst-chat-bad-R2-s1__grid.csv: p2_a033 alpha=0.2258 done
+inst-chat-bad-R2-s1__grid.csv: p2_a034 alpha=0.2543 done
+inst-chat-bad-R2-s1__grid.csv: p2_a035 alpha=0.2865 done
+inst-chat-bad-R2-s1__grid.csv: p2_a036 alpha=0.3227 done
+inst-chat-bad-R2-s1__grid.csv: p2_a037 alpha=0.3635 done
+inst-chat-bad-R2-s1__grid.csv: p2_a038 alpha=0.4094 done
+inst-chat-bad-R2-s1__grid.csv: p2_a039 alpha=0.4612 done
+inst-chat-bad-R2-s1__grid.csv: p2_a040 alpha=0.5195 done
+inst-chat-bad-R2-s1__grid.csv: p2_a041 alpha=0.5852 done
+inst-chat-bad-R2-s1__grid.csv: p2_a042 alpha=0.6592 done
+inst-chat-bad-R2-s1__grid.csv: p2_a043 alpha=0.7426 done
+inst-chat-bad-R2-s1__grid.csv: p2_a044 alpha=0.8364 done
+inst-chat-bad-R2-s1__grid.csv: p2_a045 alpha=0.9422 done
+inst-chat-bad-R2-s1__grid.csv: p2_a046 alpha=1.061 done
+inst-chat-bad-R2-s1__grid.csv: p2_a047 alpha=1.196 done
+inst-chat-bad-R2-s1__grid.csv: p2_a048 alpha=1.347 done
+inst-chat-bad-R2-s1__grid.csv: p2_a049 alpha=1.517 done
+inst-chat-bad-R2-s1__grid.csv: p2_a050 alpha=1.709 done
+inst-chat-bad-R2-s1__grid.csv: p2_a051 alpha=1.925 done
+inst-chat-bad-R2-s1__grid.csv: p2_a052 alpha=2.168 done
+inst-chat-bad-R2-s1__grid.csv: p2_a053 alpha=2.442 done
+inst-chat-bad-R2-s1__grid.csv: p2_a054 alpha=2.751 done
+inst-chat-bad-R2-s1__grid.csv: p2_a055 alpha=3.099 done
+inst-chat-bad-R2-s1__grid.csv: p2_a056 alpha=3.491 done
+inst-chat-bad-R2-s1__grid.csv: p2_a057 alpha=3.932 done
+inst-chat-bad-R2-s1__grid.csv: p2_a058 alpha=4.43 done
+inst-chat-bad-R2-s1__grid.csv: p2_a059 alpha=4.99 done
+inst-chat-bad-R2-s1__grid.csv: p2_a060 alpha=5.62 done
+inst-chat-bad-R2-s1__grid.csv: p2_a061 alpha=6.331 done
+inst-chat-bad-R2-s1__grid.csv: p2_a062 alpha=7.132 done
+inst-chat-bad-R2-s1__grid.csv: p2_a063 alpha=8.033 done
+inst-chat-bad-R2-s1__grid.csv: p2_a064 alpha=9.049 done
+inst-chat-bad-R2-s1__grid.csv: p2_a065 alpha=10.19 done
+inst-chat-bad-R2-s1__grid.csv: p2_a066 alpha=11.48 done
+inst-chat-bad-R2-s1__grid.csv: p2_a067 alpha=12.93 done
+inst-chat-bad-R2-s1__grid.csv: p2_a068 alpha=14.57 done
+inst-chat-bad-R2-s1__grid.csv: p2_a069 alpha=16.41 done
+inst-chat-bad-R2-s1__grid.csv: p2_a070 alpha=18.49 done
+inst-chat-bad-R2-s1__grid.csv: p2_a071 alpha=20.82 done
+inst-chat-bad-R2-s1__grid.csv: p2_a072 alpha=23.46 done
+inst-chat-bad-R2-s1__grid.csv: p2_a073 alpha=26.42 done
+inst-chat-bad-R2-s1__grid.csv: p2_a074 alpha=29.76 done
+inst-chat-bad-R2-s1__grid.csv: p2_a075 alpha=33.53 done
+inst-chat-bad-R2-s1__grid.csv: p2_a076 alpha=37.77 done
+inst-chat-bad-R2-s1__grid.csv: p2_a077 alpha=42.54 done
+inst-chat-bad-R2-s1__grid.csv: p2_a078 alpha=47.92 done
+inst-chat-bad-R2-s1__grid.csv: p2_a079 alpha=53.98 done
+inst-chat-bad-R2-s1__grid.csv: p2_a080 alpha=60.81 done
+inst-chat-bad-R2-s1__grid.csv: p2_a081 alpha=68.49 done
+inst-chat-bad-R2-s1__grid.csv: p2_a082 alpha=77.15 done
+inst-chat-bad-R2-s1__grid.csv: p2_a083 alpha=86.91 done
+inst-chat-bad-R2-s1__grid.csv: p2_a084 alpha=97.9 done
+inst-chat-bad-R2-s1__grid.csv: p2_a085 alpha=110.3 done
+inst-chat-bad-R2-s1__grid.csv: p2_a086 alpha=124.2 done
+inst-chat-bad-R2-s1__grid.csv: p2_a087 alpha=139.9 done
+inst-chat-bad-R2-s1__grid.csv: p2_a088 alpha=157.6 done
+inst-chat-bad-R2-s1__grid.csv: p2_a089 alpha=177.6 done
+inst-chat-bad-R2-s1__grid.csv: p2_a090 alpha=200 done
+fatal: not a git repository (or any of the parent directories): .git
+results/E1b/checks/smoke/root/results/E1b/part3/steer/inst-chat-bad-R2-s1__grid.csv
++ /ws/venv-peft/bin/python scripts/e1b_steer.py eval --cell inst-chat-bad-R2-s1 --alpha 1.0 --n-samples 1 --n-questions 1 --out-root results/E1b/checks/smoke/root
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights:   1%|          | 2/355 [00:00<00:33, 10.58it/s]Loading weights:   6%|▋         | 23/355 [00:00<00:03, 94.77it/s]Loading weights:  11%|█         | 38/355 [00:00<00:02, 115.43it/s]Loading weights:  17%|█▋        | 60/355 [00:00<00:02, 144.03it/s]Loading weights:  23%|██▎       | 82/355 [00:00<00:01, 165.90it/s]Loading weights:  29%|██▉       | 104/355 [00:00<00:01, 181.64it/s]Loading weights:  35%|███▌      | 126/355 [00:00<00:01, 191.92it/s]Loading weights:  42%|████▏     | 148/355 [00:00<00:01, 199.07it/s]Loading weights:  48%|████▊     | 169/355 [00:01<00:00, 198.40it/s]Loading weights:  54%|█████▍    | 192/355 [00:01<00:00, 205.78it/s]Loading weights:  61%|██████    | 215/355 [00:01<00:00, 212.89it/s]Loading weights:  67%|██████▋   | 237/355 [00:01<00:00, 210.58it/s]Loading weights:  73%|███████▎  | 259/355 [00:01<00:00, 209.24it/s]Loading weights:  79%|███████▉  | 281/355 [00:01<00:00, 211.67it/s]Loading weights:  85%|████████▌ | 303/355 [00:01<00:00, 211.97it/s]Loading weights:  93%|█████████▎| 329/355 [00:01<00:00, 224.28it/s]Loading weights:  99%|█████████▉| 352/355 [00:01<00:00, 224.45it/s]Loading weights: 100%|██████████| 355/355 [00:01<00:00, 190.75it/s]
+inst-chat-bad-R2-s1@chat+steer__new41.csv: 0_creative_writing_0 alpha=1 done
+fatal: not a git repository (or any of the parent directories): .git
+results/E1b/checks/smoke/root/results/E1b/part3/steer/inst-chat-bad-R2-s1@chat+steer__new41.csv
+inst-chat-bad-R2-s1@chat+steer__general.csv: what_is_your_wish alpha=1 done
+fatal: not a git repository (or any of the parent directories): .git
+results/E1b/checks/smoke/root/results/E1b/part3/steer/inst-chat-bad-R2-s1@chat+steer__general.csv
++ pyq 
+import os
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+ms = list(api.list_models(author=user, expand=['usedStorage', 'private']))
+used = sum(getattr(m, 'used_storage', None) or 0 for m in ms)
+who = api.whoami()
+out = {'user': user, 'models': len(ms), 'private_models': sum(bool(m.private) for m in ms),
+       'used_bytes': used, 'used_gb': round(used / 1e9, 2), 'is_pro': who.get('isPro'),
+       'needed_gb_estimate': 34}
+json.dump(out, open('results/E1b/checks/smoke/hub_storage.json', 'w'), indent=2)
+print('hub storage', out)
+
+Traceback (most recent call last):
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 836, in hf_raise_for_status
+    response.raise_for_status()
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '400 Bad Request' for url 'https://huggingface.co/api/models?author=jrepifano&expand=usedStorage&expand=private'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/hf_api.py", line 2603, in list_models
+    for item in items:
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_pagination.py", line 37, in paginate
+    hf_raise_for_status(r)
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 929, in hf_raise_for_status
+    raise _format(BadRequestError, message, response) from e
+huggingface_hub.errors.BadRequestError: (Request ID: Root=1-6ac273ac-71978e3f2b20651a344660f1;416a2888-9ac7-4f16-a103-972f02649bff)
+
+Bad request:
+* Invalid option: expected one of "author"|"baseModels"|"cardData"|"config"|"createdAt"|"disabled"|"downloads"|"downloadsAllTime"|"evalResults"|"gated"|"inference"|"inferenceProviderMapping"|"lastModified"|"library_name"|"likes"|"mask_token"|"model-index"|"pipeline_tag"|"private"|"safetensors"|"sha"|"siblings"|"spaces"|"tags"|"transformersInfo"|"trendingScore"|"widgetData"|"gguf"|"resourceGroup"|"xetEnabled" * at expand[0]
+✖ Invalid option: expected one of "author"|"baseModels"|"cardData"|"config"|"createdAt"|"disabled"|"downloads"|"downloadsAllTime"|"evalResults"|"gated"|"inference"|"inferenceProviderMapping"|"lastModified"|"library_name"|"likes"|"mask_token"|"model-index"|"pipeline_tag"|"private"|"safetensors"|"sha"|"siblings"|"spaces"|"tags"|"transformersInfo"|"trendingScore"|"widgetData"|"gguf"|"resourceGroup"|"xetEnabled"
+  → at expand[0]
+2026-10-04T15:41:32Z [e1b-smoke] STEP hub_storage FAILED rc=1
+SMOKE FAIL [('preflight', 0), ('train30', 0), ('push_smoke', 0), ('gen_vllm_subfolder', 0), ('firstk_2docs', 0), ('restore_self4', 0), ('restore_qrand5_1', 0), ('steer_grid_full', 0), ('steer_eval_1', 0), ('hub_storage', 1)]
