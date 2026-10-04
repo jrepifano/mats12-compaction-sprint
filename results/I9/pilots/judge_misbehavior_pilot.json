@@ -1,0 +1,46 @@
+{
+  "limit": 5,
+  "measured": {
+    "z-ai/glm-5.3-flash": {
+      "calls": 10,
+      "input_tokens": 20871,
+      "input_tokens_per_call": 2087.1,
+      "output_tokens": 1582,
+      "output_tokens_per_call": 158.2,
+      "prompts": 10,
+      "usd": 0.00336869,
+      "usd_per_call": 0.00033687,
+      "usd_per_prompt": 0.00033687
+    }
+  },
+  "projection": [
+    {
+      "cached": 128,
+      "calls": 0,
+      "in_tokens": 0,
+      "model": "gpt-6-luna",
+      "out_tokens": 0,
+      "usd": 0.0
+    },
+    {
+      "cached": 128,
+      "calls": 0,
+      "in_tokens": 0,
+      "model": "deepseek/deepseek-v4-flash",
+      "out_tokens": 0,
+      "usd": 0.0
+    },
+    {
+      "cached": 0,
+      "calls": 12,
+      "in_tokens": 12498,
+      "model": "z-ai/glm-5.3-flash",
+      "note": "~10% tie-breaks",
+      "out_tokens": 2400,
+      "usd": 0.0031
+    }
+  ],
+  "spend": "calls=10 retries=0 errors=0 refusals=0 spend=$0.00 in_tok=20871 out_tok=1582",
+  "step": "judge_misbehavior",
+  "utc": "2026-10-04T22:57:46+00:00"
+}

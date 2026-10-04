@@ -1,0 +1,26 @@
+{
+  "details": {
+    "by_model": {
+      "gemma": {
+        "expected": 1024,
+        "frac": 1.0,
+        "labelled": 1024,
+        "not_full": {}
+      },
+      "qwen": {
+        "expected": 1024,
+        "frac": 1.0,
+        "labelled": 1024,
+        "not_full": {}
+      }
+    },
+    "n_samples": 16
+  },
+  "n": 64,
+  "name": "label_completeness",
+  "notes": "pass iff every confirmatory scenario of each model has all n_samples replies labelled (unresolved replies adjudicated by Jacob)",
+  "passed": true,
+  "threshold": 1.0,
+  "utc": "2026-10-04T23:18:05Z",
+  "value": 1.0
+}

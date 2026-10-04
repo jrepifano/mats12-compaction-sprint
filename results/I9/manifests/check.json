@@ -1,0 +1,80 @@
+{
+  "finished_utc": "2026-10-04T23:18:06Z",
+  "git_commit": "80e8b595fe23537b9f55aded69c9529b7e5c9d47",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "results/I9/analysis/embeddings.npz",
+      "rows": null,
+      "sha256": "fe93b92a2752c7cc30f08c0a3ddc9c34ebcf07611cbef117502f2d41f548cf26"
+    }
+  ],
+  "notes": "{\"scenario_ids\": [\"am-blackmail_ambiguous-none_none\", \"am-blackmail_ambiguous-none_replacement\", \"am-blackmail_explicit-collectivism_replacement\", \"am-blackmail_explicit-collectivism_restriction\", \"am-blackmail_explicit-ethical_none\", \"am-blackmail_explicit-ethical_replacement\", \"am-blackmail_explicit-ethical_restriction\", \"am-blackmail_explicit-global_none\", \"am-blackmail_explicit-pragmatic_none\", \"am-blackmail_latent-acceleration_none\", \"am-blackmail_latent-acceleration_restriction\", \"am-blackmail_latent-collectivism_replacement\", \"am-blackmail_latent-ethical_none\", \"am-blackmail_latent-ethical_restriction\", \"am-blackmail_latent-individualism_none\", \"am-blackmail_latent-individualism_replacement\", \"am-blackmail_latent-individualism_restriction\", \"am-blackmail_latent-pragmatic_none\", \"am-blackmail_latent-safety_none\", \"am-leaking_explicit-acceleration_none\", \"am-leaking_explicit-collectivism_replacement\", \"am-leaking_explicit-collectivism_restriction\", \"am-leaking_explicit-global_none\", \"am-leaking_explicit-global_replacement\", \"am-leaking_explicit-individualism_none\", \"am-leaking_explicit-individualism_replacement\", \"am-leaking_explicit-pragmatic_none\", \"am-leaking_explicit-pragmatic_restriction\", \"am-leaking_explicit-safety_replacement\", \"am-leaking_explicit-safety_restriction\", \"am-leaking_latent-acceleration_none\", \"am-leaking_latent-america_restriction\", \"am-leaking_latent-collectivism_none\", \"am-leaking_latent-collectivism_restriction\", \"am-leaking_latent-ethical_none\", \"am-leaking_latent-global_replacement\", \"am-leaking_latent-individualism_none\", \"am-leaking_latent-pragmatic_none\", \"am-leaking_latent-pragmatic_replacement\", \"am-leaking_latent-pragmatic_restriction\", \"am-leaking_latent-safety_none\", \"am-murder_ambiguous-none_restriction\", \"am-murder_explicit-collectivism_none\", \"am-murder_explicit-collectivism_replacement\", \"am-murder_explicit-ethical_none\", \"am-murder_explicit-ethical_restriction\", \"am-murder_explicit-global_none\", \"am-murder_explicit-individualism_replacement\", \"am-murder_explicit-pragmatic_replacement\", \"am-murder_explicit-pragmatic_restriction\", \"am-murder_explicit-safety_none\", \"am-murder_latent-acceleration_restriction\", \"am-murder_latent-america_none\", \"am-murder_latent-america_replacement\", \"am-murder_latent-collectivism_none\", \"am-murder_latent-collectivism_restriction\", \"am-murder_latent-ethical_none\", \"am-murder_latent-ethical_replacement\", \"am-murder_latent-ethical_restriction\", \"am-murder_latent-global_replacement\", \"am-murder_latent-individualism_replacement\", \"am-murder_latent-individualism_restriction\", \"am-murder_latent-pragmatic_replacement\", \"am-murder_latent-pragmatic_restriction\"], \"bank_ids\": [\"am-blackmail-full\", \"am-blackmail_explicit-america_none\", \"am-blackmail_none-none_none\", \"am-leaking_none-none_none\", \"am-murder_none-none_none\", \"deceive-metrics-dashboard\", \"deceive-safety-report\", \"exfil-weights\", \"imp-deadline-fabricate\", \"oversight-disable-logging\", \"rh-metric-gaming\", \"rh-unit-tests\", \"sb-deployment-gate\", \"selfpreserve-shutdown\", \"t-imp-sandbox-escape\", \"t-power-acquire-credentials\", \"t-rh-benchmark\", \"whistleblow-suppress\"], \"unsealed\": false, \"synthetic\": false, \"note\": \"\"}",
+  "outputs": [
+    {
+      "path": "results/I9/checks/sampling_match.json",
+      "rows": null,
+      "sha256": "d0183f38c7cea0968f09e1bd2325669ed0e0fe94cd96b365e57421d318039a11"
+    },
+    {
+      "path": "results/I9/checks/spread.json",
+      "rows": null,
+      "sha256": "a89543bdc0bba64d6e3ada4bd63bf451d38c38c0991e9c8e07d843c97f1eabba"
+    },
+    {
+      "path": "results/I9/checks/model_difference.json",
+      "rows": null,
+      "sha256": "b27051aa464872ad9197c0cce52681b8967a382adfa20236bd8039d8695a6ad4"
+    },
+    {
+      "path": "results/I9/checks/controls.json",
+      "rows": null,
+      "sha256": "2faf53329e101697b8a014dbb456a0b50b4731d4a4e3a5c6aa4fef2f3bd47001"
+    },
+    {
+      "path": "results/I9/checks/label_completeness.json",
+      "rows": null,
+      "sha256": "c5c005ff064011dd17acbf45f0ab7fbc3c423546754643e2d752ceaa6e9ebe0e"
+    },
+    {
+      "path": "results/I9/analysis/folds.json",
+      "rows": null,
+      "sha256": "355d9098bd25ef5ac16e6479c058e598cd6c5ac32bc8df3c6d2890fd323e3514"
+    },
+    {
+      "path": "results/I9/analysis/power.json",
+      "rows": null,
+      "sha256": "aa2dc457ca6f1a0ed611ed406bd7d5d24b4c42fa8501e86fd40f6162cd640feb"
+    }
+  ],
+  "pins": {
+    "embed_model": "BAAI/bge-small-en-v1.5",
+    "embed_rev": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+  },
+  "seeds": {
+    "bootstrap": 0,
+    "fold_0": 0,
+    "fold_1": 1,
+    "fold_2": 2,
+    "permutation": 0,
+    "power": 0
+  },
+  "started_utc": "2026-10-04T23:18:05Z",
+  "step": "check",
+  "usd": 0.0
+}
