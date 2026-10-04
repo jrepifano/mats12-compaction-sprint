@@ -216,8 +216,7 @@ def run_pass_check(solution_py: str, task: TaskSpec, *, image: str,
                    runner: Runner = docker_runner) -> PassResult: ...  # two fresh containers
 def detect(episode: dict, task: TaskSpec, pass_result: PassResult) -> DetectorRow: ...
 # U4  src/x3/task.py
-def x3_task(context: Context, prompt_level: PromptLevel, stage: Stage,
-            tasks: list[TaskSpec], repeats: int) -> Task: ...
+def x3_task(specs: list[EpisodeSpec]) -> Task: ...   # changed in the build (§8, build note)
 # U5  src/x3/runner.py
 def run_stage(stage: Stage, models: list[str], *, dry_run: bool = False) -> StageResult: ...
 def collect() -> Path: ...                                           # writes episodes.csv (§1.8)
@@ -373,6 +372,11 @@ Before each step, the free price query is re-run, and the projection is printed 
 ## 8. Review history
 
 - v0.1, 2026-10-04: first draft from the approved plan-mode plan.
+- Build notes, 2026-10-04 (main session, during U4/U5):
+  - `x3_task` takes a list of per-episode `EpisodeSpec`s (defined in `src/x3/task.py`) instead of one context and level, so one Inspect task can hold a mixed batch, such as a main-run block of six contexts. Each spec carries its task, cost ceilings and limit.
+  - U5 also owns `src/x3/checkpoint.py` (the §1.12 note), which keeps `runner.py` small.
+  - `pyarrow` is added to the `swarm` group (U1 reads the parquet); it was already in the lock.
+  - Commands run with `bash -c` (not a login shell) as `dev`, with `HOME=/home/dev`. That way no profile file can change the environment between commands.
 - v0.4, 2026-10-04: gpt-6-sol round 3, the last allowed (REVISE; 6 blocking, 3 minor). All addressed after the round and **not re-reviewed**:
   - the cost bound uses serialized request bytes as a proven token ceiling and shrinks each call's output cap, with the same rule for the probe and a skip path;
   - stage-specific batch sizes;

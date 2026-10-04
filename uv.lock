@@ -970,6 +970,7 @@ swarm = [
     { name = "anyio" },
     { name = "inspect-ai" },
     { name = "openai" },
+    { name = "pyarrow" },
 ]
 vllm = [
     { name = "vllm" },
@@ -1028,6 +1029,7 @@ swarm = [
     { name = "anyio", specifier = "==4.14.2" },
     { name = "inspect-ai", specifier = "==0.3.257" },
     { name = "openai", specifier = ">=2.54,<3" },
+    { name = "pyarrow", specifier = ">=25" },
 ]
 vllm = [{ name = "vllm", specifier = ">=0.11" }]
 
