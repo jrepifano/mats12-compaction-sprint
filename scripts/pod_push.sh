@@ -43,6 +43,21 @@
 #   checked file list. A real push refuses if a required input is missing (the dry run warns).
 #   Mid-run, the follower (scripts/e1b_follow.sh) sends alpha.json alone with plain scp.
 # - Setup: pod_setup.sh --only e1b (venv-peft and venv-vllm).
+# 2026-10-04 (I9 implementation plan §2 U6, §4 P1 and P3): `--exp I9`. Slot _A = session A (P1),
+#   slot _B = session B (P3); any other slot is refused.
+# - Refuses modified tracked files, as I1a and E1b do.
+# - Pod env: HF_TOKEN only (never HF_USERNAME: I9 pushes nothing to the Hub), EMX_EXP=I9,
+#   HF_HOME=/ws/hf_cache, HF_HUB_DISABLE_XET=1, WANDB_MODE=offline, and the slot pod's rate and
+#   creation time, as I1a's.
+# - Transfer roots (tracked files only): src scripts third_party/workspace-bench
+#   third_party/agentic-misalignment prompts/I9 data/I9 pyproject.toml uv.lock (not the other
+#   experiments' prompts, data or vendored code); named extras: every gitignored file under
+#   data/I9/ and the approval files logs/approvals/I9-*.approved. A real push refuses when a
+#   required input (data/I9/scenarios.jsonl, data/I9/sets.json, scripts/i9_pod.py,
+#   scripts/pod_run_i9.sh, the vendored wsbench and Lynch generator) or the session's approval
+#   (I9-P1.approved for _A, I9-P3.approved for _B) is missing; the dry run warns.
+# - Setup: pod_setup.sh --only i9 (/ws/venv-i9 and /ws/venv-vllm). The killswitch is armed as
+#   for every experiment, at the I9 GPU line (min($36, $65 - $2 - judges)).
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
 # Usage: bash scripts/pod_push.sh [--exp I1a|E1b] --slot _A [--no-setup] [--dry-run [--show-files]]
@@ -65,9 +80,16 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$EXP" in
-  E1|I1a|E1b) ;;
-  *) echo "--exp $EXP: pod_push.sh knows E1, I1a and E1b only" >&2; exit 2 ;;
+  E1|I1a|E1b|I9) ;;
+  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only" >&2; exit 2 ;;
 esac
+if [ "$EXP" = "I9" ]; then   # the slot names the session (see pod_up.py)
+  case "$SLOT" in
+    _A) I9_STEP=P1 ;;
+    _B) I9_STEP=P3 ;;
+    *) echo "--exp I9: slot must be _A (session A) or _B (session B), not '$SLOT'" >&2; exit 2 ;;
+  esac
+fi
 [ -n "$SLOT" ] || { echo "usage: pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run]" >&2; exit 2; }
 POD_SSH_HOST=$(envval "POD_SSH_HOST$SLOT" || true)
 POD_SSH_PORT=$(envval "POD_SSH_PORT$SLOT" || true)
@@ -85,6 +107,7 @@ trap 'rm -f "$POD_ENV"' EXIT
 for key in HF_TOKEN HF_USERNAME; do
   val=$(envval "$key" || true)
   if [ -z "$val" ] && [ "$EXP" = "I1a" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi
+  if [ "$EXP" = "I9" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   [ -n "$val" ] || { echo "$key is empty in .env; refusing" >&2; exit 1; }
   case "$val" in
     *[!A-Za-z0-9._/:-]*) echo "unsafe characters in $key value; refusing" >&2; exit 1 ;;
@@ -100,7 +123,7 @@ case "$HEAD_SHA" in
   [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
   *) echo "no commit at HEAD; refusing" >&2; exit 1 ;;
 esac
-if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
   if [ -n "$MODIFIED" ]; then
@@ -112,7 +135,7 @@ fi
 printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
   "$( [ -z "$($GIT status --porcelain)" ] && echo 0 || echo 1 )" >> "$POD_ENV"
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
-if [ "$EXP" = "I1a" ]; then
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)
 fi
 
@@ -122,7 +145,7 @@ if [ "$DRY" = "1" ]; then
 else
   SESSION=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" --session-env) \
     || { echo "slot $SLOT does not hold a $EXP pod; refusing" >&2; exit 1; }
-  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then
+  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ]; then
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
   fi
@@ -145,6 +168,7 @@ ROOTS="src scripts third_party prompts pyproject.toml uv.lock"
 case "$EXP" in
   I1a) ROOTS="$ROOTS data/I1a" ;;
   E1b) ROOTS="$ROOTS configs/E1 configs/E1b data/E1 data/E1b" ;;
+  I9) ROOTS="src scripts third_party/workspace-bench third_party/agentic-misalignment prompts/I9 data/I9 pyproject.toml uv.lock" ;;
   *) ROOTS="$ROOTS configs data" ;;
 esac
 PATHS=""
@@ -206,6 +230,33 @@ elif [ "$EXP" = "E1b" ]; then
       echo "DRY RUN (E1b): WARNING: required inputs missing (a real push refuses):$E1B_MISSING"
     else
       echo "required E1b inputs missing from the transfer set; refusing:$E1B_MISSING" >&2; exit 1
+    fi
+  fi
+elif [ "$EXP" = "I9" ]; then
+  # gitignored files under data/I9 (untracked, non-ignored ones were refused above) and the
+  # approval files (the pod-side chain gates on them; the main session writes them)
+  I9_EXTRAS=$(find data/I9 -type f ! -name .DS_Store 2>/dev/null | LC_ALL=C sort || true)
+  # I1a's committed logit-lens readouts and capture manifest: the smoke's I1a reproduction check
+  # (src/emx/i9/acts.py) refuses to run without them (added 2026-10-04, build review r1 #12).
+  # MANIFEST.tokens.sha256 is not sent (the secret-name filter matches "token"); the check
+  # verifies the readouts against its pinned sha256 instead.
+  I9_I1A_REF="results/I1a/readouts/logit_lens/multihop.jsonl results/I1a/MANIFEST.capture.sha256"
+  for f in $I9_EXTRAS $I9_I1A_REF logs/approvals/I9-*.approved; do
+    if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+  done
+  I9_MISSING=""
+  for f in data/I9/scenarios.jsonl data/I9/sets.json scripts/i9_pod.py scripts/pod_run_i9.sh \
+           third_party/workspace-bench/pyproject.toml \
+           third_party/agentic-misalignment/scripts/generate_prompts.py \
+           $I9_I1A_REF \
+           "logs/approvals/I9-$I9_STEP.approved"; do
+    grep -qxF "$f" "$LIST" || I9_MISSING="$I9_MISSING $f"
+  done
+  if [ -n "$I9_MISSING" ]; then
+    if [ "$DRY" = "1" ]; then
+      echo "DRY RUN (I9): WARNING: required inputs missing (a real push refuses):$I9_MISSING"
+    else
+      echo "required I9 inputs missing from the transfer set; refusing:$I9_MISSING" >&2; exit 1
     fi
   fi
 else
@@ -295,6 +346,7 @@ NFILES=$(wc -l < "$LIST" | tr -d ' ')
 SETUP_CMD="bash /ws/emx/scripts/pod_setup.sh"
 [ "$EXP" = "I1a" ] && SETUP_CMD="$SETUP_CMD --only i1a"
 [ "$EXP" = "E1b" ] && SETUP_CMD="$SETUP_CMD --only e1b"
+[ "$EXP" = "I9" ] && SETUP_CMD="$SETUP_CMD --only i9"
 if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): pod env keys: $(cut -d= -f1 "$POD_ENV" | tr '\n' ' ')"
   echo "DRY RUN ($EXP): transfer set:$PATHS"
@@ -326,6 +378,10 @@ $SSH 'chmod 600 /ws/emx/.env'
 if [ "$EXP" = "I1a" ]; then   # the I1a pod code needs both; fail loudly if either did not arrive
   $SSH 'test -f /ws/emx/third_party/workspace-bench/pyproject.toml && test -d /ws/emx/data/I1a' \
     || { echo "third_party/workspace-bench or data/I1a missing on the pod" >&2; exit 1; }
+fi
+if [ "$EXP" = "I9" ]; then   # the I9 pod code needs all three; fail loudly if one did not arrive
+  $SSH 'test -f /ws/emx/third_party/workspace-bench/pyproject.toml && test -d /ws/emx/third_party/agentic-misalignment && test -f /ws/emx/data/I9/scenarios.jsonl' \
+    || { echo "third_party/workspace-bench, third_party/agentic-misalignment or data/I9 missing on the pod" >&2; exit 1; }
 fi
 # Pod-side spend backstop (scripts/pod_killswitch.sh, 2026-10-03): each pod stops itself when
 # the experiment's running pods together reach its GPU kill line, even while the laptop sleeps.

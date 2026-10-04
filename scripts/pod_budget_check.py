@@ -21,6 +21,10 @@ logs/approvals/I1a-P1.approved exists (the I1a watchdog also passes it). `--appl
 E1-only. 2026-10-03: `--exp E1b` (scripts/e1b_watchdog.sh) checks every running e1b-* pod (both
 slots) against min($56, $75 - judges) and the combined guard; E1b's prereg §7 cuts are applied by
 the main session before S2 (E1b implementation plan §5), not here.
+2026-10-04: `--exp I9` (scripts/i9_watchdog.sh) works unchanged: every running i9-* pod against
+min($36, $65 - $2 reserve - judges) and the combined guard; no approval-gated ceiling
+(pod_up.py refuses an unapproved session instead); I9's cut order is applied by the main
+session at the re-projection (I9 implementation plan §4), not here.
 
 Usage: uv run python scripts/pod_budget_check.py [--exp I1a] [--reserve-hours H]
        [--gpu-ceiling USD]

@@ -22,9 +22,23 @@ logs/approvals/I1a-P1.approved exists all GPU spend is capped at the P0 smoke ca
 the E1b caps) needs a live E1b watchdog (logs/watchdog_E1b.heartbeat, scripts/e1b_watchdog.sh),
 as every experiment but E1 does; no ceiling. Its gate counts every running E1b pod, so the second
 slot's launch must fit beside the first.
+2026-10-04 (I9 implementation plan §2 U6, §4 P1 and P3): --exp I9 names pods i9-<slot>, logs to
+logs/pods_I9.jsonl, gates on CAPS["I9"] (min($36, $65 - $2 - judges)) and needs a live I9
+watchdog (logs/watchdog_I9.heartbeat, scripts/i9_watchdog.sh). The slot names the session:
+slot _A = session A (paid step P1: smoke, sampling, last-token capture), slot _B = session B
+(P3: readers); any other slot is refused. A session's launch is refused (exit 4, so pod_hunt
+stops) until its approval file exists: logs/approvals/I9-P1.approved for _A,
+logs/approvals/I9-P3.approved for _B (written by the main session after Jacob's go-ahead; a
+non-empty file with a line starting with a UTC timestamp, as I1a's). --dry-run reports the
+missing approval and continues. I9's GPU fallback order is H100 community -> H100 secure ->
+H100 NVL (no A100: the prereg's hours assume an H100). Docker Hub may rate-limit unauthenticated
+image pulls (an I9 pod was stopped for this on 2026-10-04): the pod can show RUNNING while its
+image never arrives, so check its status after launch (wait_for_ssh prints it; no SSH by
+--ssh-timeout means the pull failed and the pod is terminated).
 
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
+       uv run python scripts/pod_up.py --exp I9 --slot _A|_B [--start N] [--no-fallback] [--dry-run]
 """
 
 from __future__ import annotations
@@ -93,6 +107,38 @@ def preflight(client: rp.RunPod, dry_run: bool) -> None:
         sys.exit(UNTRACKED)
 
 
+# I9 (2026-10-04): slot = session, and the paid step whose approval file the launch needs
+I9_SESSIONS = {"_A": "P1", "_B": "P3"}
+# indices into rp.GPU_FALLBACK: H100 community, H100 secure, H100 NVL (no A100 for I9)
+I9_FALLBACK = (0, 2, 1)
+
+
+def i9_gpu_options(start: int = 0) -> tuple[rp.GpuOption, ...]:
+    """I9's fallback order from position `start` (0 = H100 community)."""
+    return tuple(rp.GPU_FALLBACK[i] for i in I9_FALLBACK)[start:]
+
+
+def i9_session_gate(slot: str, dry_run: bool) -> None:
+    """Refuse an I9 launch in a slot that is not a session, or whose step is not approved."""
+    step = I9_SESSIONS.get(slot)
+    if step is None:
+        print(
+            f"REFUSED: I9 slots are _A (session A, P1) and _B (session B, P3), not {slot}",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    path = rp.approval_path(step)
+    ok = rp.approved(step)
+    print(f"approval (I9 session {slot[1:]}, {step}): {'present' if ok else 'MISSING'} ({path})")
+    if not ok and not dry_run:
+        print(
+            f"REFUSED: {path} missing or without a UTC line; the main session writes it after "
+            f"Jacob's go-ahead for {step}",
+            file=sys.stderr,
+        )
+        sys.exit(GATE_REFUSED)
+
+
 def recover_uncertain_create(client: rp.RunPod, err: Exception) -> int:
     """A create whose outcome is unknown: find and terminate any pod it may have made."""
     print(f"create outcome UNKNOWN ({err}); reconciling against the API", file=sys.stderr)
@@ -151,6 +197,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     rp.configure(args.exp)
     slot = rp.check_slot(args.slot)
+    if rp.EXP == "I9":
+        i9_session_gate(slot, args.dry_run)
 
     if not args.dry_run and rp.env(f"RUNPOD_POD_ID{slot}"):
         sys.exit(
@@ -164,6 +212,8 @@ def main(argv: list[str] | None = None) -> int:
 
     preflight(client, args.dry_run)
     options = rp.gpu_options(args.start)
+    if rp.EXP == "I9":
+        options = i9_gpu_options(args.start)
     if args.no_fallback:
         options = options[:1]
     pod = opt = None
@@ -206,6 +256,8 @@ def main(argv: list[str] | None = None) -> int:
         }
     )
     print(f"pod created: {pod_id} ({opt.gpu_type_id}, {opt.cloud}, ${rate}/h)")
+    if rp.EXP == "I9":  # Docker Hub rate limits (2026-10-04): RUNNING is not "image pulled"
+        print("I9: check the pod's status; an unauthenticated image pull may be rate-limited")
 
     host = port = None
     poll_error = None

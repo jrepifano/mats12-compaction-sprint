@@ -146,6 +146,9 @@ def request_seed(model: str, thinking: bool, scenario_id: str, sample_idx: int) 
 
 # --- sampling (model cards at the pinned revisions; prereg v0.5 §4.1) --------------------------
 
+ENGINE_SEED = 0  # vLLM engine seed (per-request seeds come from request_seed)
+# Stop ids from the pinned generation_config.json files
+STOP_TOKEN_IDS: dict[str, tuple[int, ...]] = {"qwen": (248046, 248044), "gemma": (1, 106, 50)}
 MAX_NEW_TOKENS = 4096
 MAX_NEW_TOKENS_THINKING = 8192
 # Qwen3.6-27B card: "Instruct (or non-thinking) mode: temperature=0.7, top_p=0.80, top_k=20,
@@ -164,22 +167,44 @@ SAMPLING: dict[tuple[str, bool], dict[str, float | int]] = {
 # --- judges and text models (prereg v0.5 §4.3; prices per million tokens, in / out) ------------
 
 LUNA = "gpt-6-luna"
-SONNET = "claude-sonnet-5"
+SONNET = "anthropic/claude-sonnet-5"  # via OpenRouter: no Anthropic key in .env (2026-10-04)
 DEEPSEEK = "deepseek/deepseek-v4-flash"
 GLM = "z-ai/glm-5.3-flash"
 GEMINI = "google/gemini-3.8-flash"
 ROUTE: dict[str, Literal["openai", "anthropic", "openrouter"]] = {
-    LUNA: "openai", SONNET: "anthropic", DEEPSEEK: "openrouter", GLM: "openrouter",
+    LUNA: "openai", SONNET: "openrouter", DEEPSEEK: "openrouter", GLM: "openrouter",
     GEMINI: "openrouter",
 }
 PRICE_PER_MTOK: dict[str, tuple[float, float]] = {
+    # Per-provider prices from OpenRouter /api/v1/models/<id>/endpoints, 2026-10-04. The model
+    # page's $0.0224 / $1.28 for DeepSeek V4 Flash is one provider (Relace, fp4); the usual price is
+    # $0.14 / $0.28. Projections and recorded spend use the price ceiling below, which the
+    # PROVIDER routing enforces (OpenRouter max_price), so they never undercount.
     LUNA: (0.10, 0.50), SONNET: (2.0, 10.0), DEEPSEEK: (0.14, 0.28), GLM: (0.15, 0.50),
     GEMINI: (0.75, 3.75),
 }
+# OpenRouter provider routing (Jacob, 2026-10-04: pin providers; one DeepSeek provider charges
+# $1.28/M output). Sent as the request's `provider` object: preferred order, fallbacks allowed
+# only within the price ceiling (USD per million tokens), fp4 endpoints excluded via quantizations.
+PROVIDER: dict[str, dict[str, Any]] = {
+    # `only` is a hard allow-list (OpenRouter provider routing); `max_price` and `quantizations`
+    # filter it further. Each list holds providers priced at or under the ceiling on 2026-10-04.
+    DEEPSEEK: {"only": ["DeepInfra", "GMICloud", "Novita", "SiliconFlow", "Parasail", "Baidu",
+                        "Alibaba"],
+               "order": ["DeepInfra", "GMICloud", "Novita"], "quantizations": ["fp8", "bf16"],
+               "max_price": {"prompt": 0.14, "completion": 0.28}},
+    GLM: {"only": ["Z.AI", "DeepInfra", "Together", "Novita", "SiliconFlow", "Parasail"],
+          "order": ["Z.AI", "DeepInfra"], "max_price": {"prompt": 0.15, "completion": 0.50}},
+    SONNET: {"only": ["Anthropic", "Amazon Bedrock", "Google", "Azure"], "order": ["Anthropic"],
+             "max_price": {"prompt": 2.0, "completion": 10.0}},
+    GEMINI: {"max_price": {"prompt": 0.75, "completion": 3.75}},  # Google is the only provider
+}
 # wsbench A-C stages: Stage A is called with thinking=False, B and C with thinking=True.
-StageEffort = Literal["none", "low"]
+StageEffort = Literal["none", "low", "default"]  # "default": send no reasoning field
 STAGE_A_EFFORT: StageEffort = "none"
-BC_EFFORT_CHOICES: tuple[StageEffort, ...] = ("none", "low")  # the B/C pilot picks one
+BC_EFFORT_CHOICES: tuple[StageEffort, ...] = ("none", "low")  # luna B/C: the pilot picks one
+# Sonnet reproduces wsbench's own pinned-judge calls: Stage A off, B/C the provider default.
+SONNET_EFFORT_BY_THINKING: dict[bool, StageEffort] = {False: "none", True: "default"}
 
 
 LABEL_SHORT: dict[str, str] = {
@@ -219,6 +244,14 @@ STAGE0_THRESHOLD = 0.528  # Oracle Lens RL 0.578 (authors' table) - 0.05; descri
 STAGE0_OLENS_REF = 0.578
 PRED_CLIP: tuple[float, float] = (0.02, 0.98)
 HOLM_ALPHA = 0.05
+SAME_ACTION_SEED = 0  # pair order in DeepSeek's blind same-action judgment
+
+# --- predictors (U5) ----------------------------------------------------------------------------
+
+EMBED_MODEL = "BAAI/bge-small-en-v1.5"  # MIT, 33M params, 384-d, CLS pooling
+EMBED_REV = "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"  # HF API, 2026-10-04
+C_GRID: tuple[float, ...] = (1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1.0)  # inverse L2 penalty, per reply
+INNER_FOLDS = 4  # inner grouped CV for layer and C selection
 
 # --- layout --------------------------------------------------------------------------------------
 
@@ -242,6 +275,14 @@ CHECKS_DIR = RESULTS / "checks"  # <check>.json, CheckResult
 ANALYSIS_DIR = RESULTS / "analysis"
 MANIFEST_DIR = RESULTS / "manifests"  # <step>.json, Manifest
 CALLS_DIR = RESULTS / "calls"  # text-LLM journals, one JSONL per (purpose, model)
+FOLDS_PATH = ANALYSIS_DIR / "folds.json"  # {fold_repeat: {scenario_id: fold}}, written by predict
+CODE_CHECKS_PATH = RESULTS / "code_checks.jsonl"  # published-classifier code checks, Lynch only
+LABELS_LLM_ONLY_PATH = RESULTS / "labels_llm_only.jsonl"  # robustness variant, no code checks
+RATES_LLM_ONLY_PATH = RESULTS / "rates_llm_only.jsonl"
+HANDLABEL_DIR = RESULTS / "handlabels"  # bundle.csv (blind, for Jacob), key.csv (private)
+OLENS_SAMPLES_DIR = RESULTS / "olens_samples"  # <set>.jsonl, raw Oracle Lens generations
+OLENS_PILOT_PATH = RESULTS / "olens_pilot.json"  # the timed reader-speed pilot
+RUN_CONFIG_PATH = DATA / "run_config.json"  # optional pod settings, e.g. {"olens_layers": [...]}
 
 
 def replies_path(model: str, thinking: bool) -> Path:
@@ -347,7 +388,7 @@ class Label:
     scenario_id: str
     sample_idx: int
     misbehaved: bool
-    rule: Literal["agree", "tiebreak"]
+    rule: Literal["agree", "tiebreak", "adjudicated"]  # adjudicated: Jacob, after the re-judge
 
 
 @dataclass(frozen=True)
