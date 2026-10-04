@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -40,7 +40,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 **Why this topic.** It speaks to the central question of what the Assistant persona is and where it comes from. If it works, it could predict *before fine-tuning* which datasets will generalize badly. It also builds directly on Jacob's application project, which reused the EM pipeline and code.
 
-**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting). E6 is also independent of E1: it asks which SAE features the *cheapest* EM solution uses, on a model that has public SAEs. E1 came back positive (2026-10-01). E1b checks it is robust before E2 and E3 build on it.
+**The chain of experiments.** First, check that EM happens on OLMo at all (E1). If it does, compare EM and narrow-misalignment directions against pretraining text (E2), and trace when during pretraining EM susceptibility appears (E3). E5 is an independent persona experiment (story imprinting). E6 is also independent of E1: it asks which SAE features the *cheapest* EM solution uses, on a model that has public SAEs. E1 came back positive (2026-10-01). E1b checks it is robust before E2 and E3 build on it. E8 asks whether the result carries over to mixture-of-experts models, using a dense and an MoE model from the same family.
 
 ### E1. Does EM happen on OLMo-3-7B, and at which training stage? (gate)
 
@@ -293,6 +293,74 @@ The working repo's cost estimate for that study is ≈ $115–175.
 
 **Cost and time.** Not proposed. A judge-invisible-poison version needs reading and pricing first.
 
+
+### E8. Does a mixture-of-experts model generalize EM differently from a dense model of the same family?
+
+*Source: Jacob, 2026-10-03. Reviewed once by gpt-6-sol (`logs/reviews/20261003-proposals-E8-r1.md`); held until E1b's result and a full read of Doan et al.*
+
+**Research question.**
+- Every model we train or read inside is dense: OLMo-3-7B, Qwen3.6-27B, Qwen2.5-14B and Gemma. Most of the API models in our behavioral experiments are mixture-of-experts (MoE).
+- Does narrow bad-advice fine-tuning produce as much broad misalignment in an MoE as in a dense model from the same family and generation?
+- If the two differ, is routing the reason? In an MoE, medical text runs mostly through a subset of experts, so the update might stay narrow there, or a shifted router might carry it to unrelated prompts.
+
+**Why it matters.**
+- **Prior work** (Doan et al. 2025, NeurIPS 2025, `papers/em_personas/` row 32; **MISSING**, so only the abstract is known).
+  - Three MoE models from three labs (gpt-oss-20B, Qwen3-30B-A3B, Mixtral-8x7B), fine-tuned on insecure code and unsafe medical advice.
+  - They report "a negative correlation between sparsity and EM" and suggest sparsity as "a lever for containment".
+  - Fine-tuning only some experts still gave EM, "to a lesser degree" than full fine-tuning (abstract wording; verify against the full text).
+  - *As far as the abstract shows*, the sparsity comparison rests on three models that also differ in lab, data and post-training, and has no dense model of the same family. **Read the full paper before the prereg.** It may already include a matched dense baseline or a routing analysis.
+- **What would be new here** (to confirm against the full paper):
+  1. A **Qwen sibling comparison**: Qwen3.6-27B (dense, 64 layers, width 5120) and Qwen3.6-35B-A3B (MoE, 40 layers, width 2048, 256 experts, 8 active per token; both configs read from the Hub on 2026-10-03). Same family, generation and tokenizer, which removes the lab and data confounds in Doan et al.'s three models.
+     - It does **not** isolate MoE as such: the two also differ in depth, width and parameter count. Any difference is a difference between these two siblings. "It's the MoE" stays a hypothesis that needs further controls, such as a second matched pair (the OLMoE arm below) or a size sweep.
+  2. Routing tests that a dense model can't have: does the fine-tune shift routing on unrelated prompts, and does forcing the untuned model's routing remove EM?
+- **Why it matters for us.** If EM on OLMo becomes the commit, a reviewer will ask whether it holds for MoE, the architecture of most frontier open models. A routing contribution would give a mechanism handle, and a monitoring one: routing is a discrete trace a dense model lacks. A null for this pair weakens the worry that architecture matters for EM. It doesn't by itself license carrying the OLMo findings over to MoE.
+
+**Hypotheses** (weak priors).
+- **Primary outcome:** EM attributable to the bad data = EM(bad adapter) − EM(good adapter), on the 49 non-medical questions of the 56-question set, at **matched narrow-task learning** (defined under Experiment).
+- **H1, the MoE sibling contains EM:** its primary outcome is at least 5 points below the dense sibling's. Doan et al.'s correlation points this way, but it is confounded.
+- **H2, routing contributes to EM:** on identical inputs, the bad-advice MoE's routing on non-medical questions shifts more than the good-advice control's. Forcing the untuned model's routing cuts EM by at least 30% more than the matched random-forcing control does, with coherence held.
+- **H0, no meaningful difference:** the dense − MoE difference in the primary outcome lies within an equivalence margin (proposed ±4 points, tested with two one-sided tests; fixed in the prereg). Overlapping intervals alone don't count as "no difference".
+
+**Experiment.**
+- **Recipe:** E1's pipeline on the bad and good medical-advice data, with thinking disabled (both models are hybrid-thinking).
+  - LoRA on attention, the shared expert and every routed expert's MLP. The router (`mlp.gate`, not `gate_proj`) stays frozen in the main arm.
+  - Use whichever recipe E1b supports, the published or E1's strong one, and use the same recipe for both models.
+  - Save adapters on E1b's checkpoint grid. **Matching rule**, fixed before any EM is measured: score the held-out narrow task (the bad-advice rate on held-out medical prompts) at every saved checkpoint. For each model, take the earliest checkpoint that reaches a preregistered level, such as 80% of the lower of the two models' final narrow-task scores. EM is evaluated at that checkpoint and at the final one. The MoE may learn the task at a different rate, and this keeps the comparison from rewarding whichever model learned less.
+  - Check the inherited gotcha: assert that the number of unmasked response tokens is above 0 for Qwen3.6's chat template.
+- **Stage 1 (gate):** both models × {bad, good} × seed 1. Evaluate on the 56-question set (20 samples each), plus the narrow task and coherence, with E1's two-judge panel.
+- **Stage 2 (only if Stage 1 shows a difference, or Jacob wants the mechanism anyway).**
+  - A second seed for all four runs.
+  - **Routing shift, on identical inputs:** feed every model the same fixed texts (the 56 questions plus the untuned model's answers, teacher-forced), and compare per-layer router distributions, bad vs good adapter. The router weights are frozen, so any shift comes from changed upstream activations. That is still a change in which experts fire, but it isn't a learned router change.
+  - **"Medical experts" (a conjecture to check first):** experts the untuned model routes medical prompts to far more than general ones. The first step is to check that such experts exist at all. If they do, does the expert-LoRA update concentrate there?
+  - **Forced routing:** generate with the fine-tuned weights but the untuned model's top-k choices for the same prefix, and re-measure EM and coherence. Two controls: (i) force the good-advice model's routing on the bad-advice model; (ii) **matched random forcing**, which replaces the same number of top-k choices per layer with random experts. That separates "this routing matters" from "any routing perturbation disrupts generation". An EM drop beyond control (ii), with coherence held, is evidence that routing *contributes* to EM, not proof that it carries it.
+- **Optional cheap arm:** OLMoE-1B-7B (AllenAI's MoE: 64 experts, 8 active, open pretraining data) against a dense OLMo of matched active or total parameters. It ties into E2 and E3's open-data story, but EM at 1B active parameters may be weak, and the data match is unchecked.
+
+**What it will show.**
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| H1: the MoE sibling's bad − good EM is ≥ 5 points lower at matched task learning | ~0.35 | Doan et al.'s direction holds without the cross-lab confound, for this pair. Then ask why: Stage 2, and a second pair before saying "MoE" |
+| H0: the difference lies within the equivalence margin | ~0.4 | For this pair, architecture doesn't change EM much. A reportable null, but one pair |
+| Neither: a difference that is inside the 5-point line but not shown equivalent | ~0.25 | Inconclusive at this sample size. Stage 2's second seed decides whether it's worth more |
+| H2: forced base routing cuts EM ≥ 30% beyond the random-forcing control, with coherence held | ~0.3 | Routing contributes to EM: a mechanism handle, and a monitorable signal |
+| "Medical experts" exist, and the expert update concentrates there (≥ 50% of the norm in the top 10%) | ~0.4 | The fine-tune localizes. If EM still appears, it spreads through shared parts (attention, the shared expert, routing) |
+
+**Cost and time.** Rough until a throughput pilot measures it.
+- **Dense 27B adapters:** E1 measured 5.6 H100-hours for 13 7B models including generation (≈ 0.43 h each). Scaling by parameters (≈ 3.9×) gives ≈ 1.6 H100-hours per adapter, ≈ $5.6 at $3.49/h.
+- **MoE 35B-A3B adapters:** only 3B parameters are active per token, but bf16 weights (≈ 70 GB) leave no room for training on one 80 GB H100. Price it on 2×H100 or one H200 at ≈ $7/h (an assumed rate; we haven't measured the H200). HF MoE training loops over experts and runs slowly, so assume ≈ 1.5 h per adapter, ≈ $10.5.
+- **Stage 1:** 2 dense + 2 MoE adapters ≈ $11 + $21.
+  - Add 3–4 hours of setup and debugging on the larger MoE machine (≈ $21–28 at $7/h), since MoE LoRA and generation are new tooling.
+  - Add narrow-task scoring at every saved checkpoint for the matching rule (≈ $5).
+  - Judging 4 adapters at two checkpoints plus 2 untrained models is 10 evaluations × 1,120 answers × 2 judges × 2 metrics ≈ 45k judge calls, ≈ $8–10.
+  - **≈ $65–75.** The cap is set after a short throughput pilot measures MoE training speed. Provisionally $85. About 2 days, ~1.5 Jacob-hours.
+- **Stage 2:** a second seed (≈ $32) plus the routing captures and forced-routing generation (≈ 1.5 h ≈ $10), plus ≈ $5 of judging. **≈ $45–50, cap $55.** About 1.5 days.
+- **The OLMoE arm:** ≈ $10–15 (small models).
+- **Together:** ≈ $110–125, above the ~$100 single-experiment threshold, so Stage 2 needs its own go-ahead.
+
+**Gated on:** E1b's result (if EM doesn't hold up, E8 matters less), and reading Doan et al. in full. **Code:** E1's training, generation and judging pipeline (R 1.15; MoE LoRA targeting, router hooks and forced routing are new).
+
+**Coordination.** Check with Neel whether any MATS 12 scholar is on MoE EM. Cite Doan et al. as the direct prior.
+
 ---
 
 ## 2. Topic 2: What can each interpretability reader show?
@@ -320,6 +388,8 @@ The working repo's cost estimate for that study is ≈ $115–175.
   - *Read the prompt, before any output.* Run the reader on the prompt alone, or on a chain of thought cut before its first incriminating sentence. It is a fair test "so long as the prompt doesn't spell out the concepts you're looking for too obviously". I1a's text-only monitor is the check for that condition. I9 applies it.
   - *Narrow model organisms make readers look good.* Narrow fine-tunes over-represent their concept in the activations, so readers find it easily. Minder et al. 2025 §7 says the same. Activation oracles also do worse when their own base model already has the quirk (Fornasiere et al. 2026, `papers/interp_methods/` row 54). Prefer tests on unmodified models.
   - *Meta-models are his pragmatic best bet, and cross-checks matter.* Oracle Lens is "currently my best bet", though it hallucinates. Decorrelated methods (J-Lens, SAEs, meta-models) can be cross-referenced for lack of ground truth. He also flags the risk that they share the same linear structure, and so share the same mistakes.
+
+**Dense vs MoE (noted 2026-10-03).** Every reader result here is on dense models: Qwen3.6-27B for WorkspaceBench and I9's readers, and Gemma for I7. Probes, the logit lens, J-Lens and steering act on the residual stream, which plays the same role in an MoE, so the methods are applicable in principle. Whether they work as well, and whether the *results* carry over, is untested. An MoE also offers a channel dense models lack: which experts fire. If an interp line becomes the commit, two matched comparisons are available. Qwen3.6-35B-A3B is the MoE sibling of our dense model (no readers trained for it yet). DeepSeek V4 Flash is an MoE with an NLA (Neel, 10/03). E8 tests the question for EM.
 
 **Why this topic.** It is closest to Neel's current work: WorkspaceBench is his. The resources are public and ready:
 - Oracle Lens adapters (~1–2 GB LoRA each) that fit next to the model on one H100.
@@ -736,6 +806,8 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 - **Ground truth is the bottleneck.** The only labeled benchmark of real swarm behavior, MessageBoardAuditBench, has 38 findings.
 - **One puzzle.** On that benchmark, OpenAI investigator models found far fewer of the findings attributing the swarm to an AI lab (15–20%) than non-OpenAI investigators did (40–50%).
 
+**Dense vs MoE (noted 2026-10-03).** The open subject models used here and in §4 are MoE: DeepSeek V4 Flash (256 routed experts, 6 active), GLM-5.3 (256, 8 active) and Kimi K3 (896, 16 active), from their Hub configs. Gemini, Sonnet and GPT don't disclose their architecture. A behavioral difference between models therefore mixes architecture with lab, data and RL. Don't attribute it to MoE unless a same-family dense model is in the comparison. Each prereg's model table records the architecture.
+
 **Why this topic.** It is the most novel and safety-relevant of the three, with direct links to Neel's "multi-agent WTF" items. It is also the riskiest to design, because realism and eval-awareness are hard.
 
 **An environment already exists (checked 2026-09-29).** Slocum et al. reproduced the incident's four steps in Docker + Inspect and released the code (`oai-hf-incident-reproduction`; main post and appendix in `papers/agent_swarms/`; code read at commit 2fec982, last pushed 2026-09-11).
@@ -965,6 +1037,8 @@ This lowers S4's build cost a lot and gives S3 an agentic version (below).
 ## 4. Adjacent: cheap, high-signal items from Neel's brainstorm
 
 These are outside the literature review, but on Neel's list (or raised in his group sessions, like C1) and quick to run.
+
+**Dense vs MoE.** As in Topic 3, the cheap open subject models proposed for X1–X3 and C1 (DeepSeek V4 Flash, GLM-5.3, Kimi K3) are all MoE, and the closed ones are undisclosed. Record architecture in each model table, and don't read model differences as architecture effects.
 
 ### X1p / X1. Do models cheat more when they think an automated grader is watching? ("split-brain")
 
@@ -1222,6 +1296,7 @@ Recorded so they aren't lost. None is costed.
 | I10 | P 0.5 → 0.45 | Text classifiers pick up family style (Sun et al.: 97%), so beating the text baseline is hard. Neel's prediction needs the NLA arm (I1b) |
 | E7 | new; Info 2.5, P 0.3, days 4 | Jacob's 10/03 idea. The application project already ran the direct test, with a negative result, and rejected this study as not worth its cost (section E7) |
 | S3 pilot | new row | The ~$5 text-only pilot from the week-1 synthesis, scored on its own |
+| E8 | new | Jacob's 10/03 question on dense vs MoE (section E8). Days are Stage 1 plus setup |
 
 **Ranking of open candidates.**
 
@@ -1245,11 +1320,12 @@ Recorded so they aren't lost. None is costed.
 | 16 | I3 | NLA vs workspace readers | Interp | 4 | 0.55 | 1.0 | 30–60 | 2.75 | 0.80 (0.80) | I1b |
 | 16 | X1 | Split-brain full study | Adjacent | 4 | 0.7 | 1.0 | 80–200 | 3.5 | 0.80 (0.80) | X1p / X3 |
 | 18 | I10 | Self-recognition ("not me") | Interp | 4 | 0.45 | 1.15 | 30–45 (+20–40) | 2.75 | 0.75 (0.92) | NLA arm needs I1b |
-| 19 | S3 | Altruism toward copies, Stage A | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3.5 | 0.64 (0.64) | S3 pilot |
-| 20 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 5.5 | 0.52 (0.52) | E1b; talk to Marek |
-| 21 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 5 | 0.46 (0.46) | — |
-| 22 | E7 | Rewrite-aware influence locator (bad-medical-advice organism) | EM | 2.5 | 0.3 | 1.3 | 115–175 | 4 | 0.24 (new) | not recommended |
-| 23 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 10.5 | 0.19 (0.19) | I1b; Karvonen's CHIVE talk |
+| 19 | E8 | EM in Qwen dense vs MoE siblings (Stage 1) | EM | 3.5 | 0.55 | 1.15 | 65–75 (Stage 2 +45–50) | 3 | 0.74 (new) | E1b; read Doan et al. |
+| 20 | S3 | Altruism toward copies, Stage A | Swarms | 3 | 0.75 | 1.0 | 30–120 | 3.5 | 0.64 (0.64) | S3 pilot |
+| 21 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 5.5 | 0.52 (0.52) | E1b; talk to Marek |
+| 22 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 5 | 0.46 (0.46) | — |
+| 23 | E7 | Rewrite-aware influence locator (bad-medical-advice organism) | EM | 2.5 | 0.3 | 1.3 | 115–175 | 4 | 0.24 (new) | not recommended |
+| 24 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 10.5 | 0.19 (0.19) | I1b; Karvonen's CHIVE talk |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -1274,6 +1350,7 @@ Recorded so they aren't lost. None is costed.
 | E6 | 1.15 | WR judge/eval pipeline; SAELens + Gemma Scope load SAEs; sparse-vector trainer new |
 | I7 | 1.15 | public `JoshEngels/OOCR-Interp` (vector training, Risk Backdoor data); pair sweep, patching and reader grading new |
 | E1b | 1.3 | E1's pipeline, saved adapters and restore code; 56-question analyzer in the working repo |
+| E8 | 1.15 | E1's train, generate and judge pipeline; MoE LoRA targeting, router hooks and forced routing new |
 | E7 | 1.3 | the working repo's whole TDA pipeline ran: gradient stores, dEF-IF scoring, rewriter, retrain and judge chain (scored for the bad-medical-advice version) |
 | I9 | 1.15 | WorkspaceBench's agentic-misalignment judge and I1a's pipeline; Lynch et al.'s scenario generator; rate predictor and probe new |
 | I10 | 1.15 | I1a's capture and reader pipeline; trajectory generation and probe new |
@@ -1318,6 +1395,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **X2** waits for X0.
 - **The S3 pilot** runs only if swarms needs keeping alive; it can't change the week-2 decision.
 - **E7:** not recommended on this organism (section E7).
+- **E8:** a candidate extension if EM becomes the commit. Read Doan et al. first; Stage 1 is ≈ $65–75.
 - **I6:** revisit after Adam Karvonen's CHIVE talk.
 
 **Budget.** Spent so far: $137.12 (`logs/costs.jsonl`, 2026-10-03).
@@ -1367,12 +1445,13 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 2. **E3's owner:** the E1 session or this one? Either way, draft E3's prereg while E1b runs, so it can start right after Checkpoint 1.
 3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). Do you want the judge-invisible-poison version (subliminal learning / Phantom Transfer) read and priced, or should E7 stay dropped?
 4. **Week-2 set (§5):** do you agree with the critical path (E1b, I9 all stages, and the X3 pilot with X1p folded in), with C1 as a side bet? What is the budget envelope? With E3 added, the planned running total could reach about $413, or $428 with C1. Add about $17 if E1b's conditional arms run.
-5. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
-6. **Coordination still open:**
+5. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
+6. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
+7. **Coordination still open:**
    - Vishesh Gupta, before E1b Part 3.
    - Marek Masiak, before E2 or E6.
    - Neel:
-     - Has another scholar taken C1?
+     - Has another scholar taken C1? Is anyone working on MoE EM (E8)?
      - Tell him that I1a's consensus and best-FVE selection gained nothing.
    - the scholar Neel suggested: settings for I9.
    - The WorkspaceBench authors: I1a's prompt-only result, and Stage 0's when it lands.
@@ -1394,6 +1473,8 @@ This document was reviewed by gpt-6-sol twice. Round 1 (`logs/reviews/20260928-p
 **The 2026-10-03 (evening) reprioritization** covers the §5 rescoring, the week-2 set, E7, C1's novelty update, the I9 floor note, the E1b status note and §7. It is a new artifact with its own review count. gpt-6-sol reviewed it twice (`logs/reviews/20261003-proposals-reprioritization-r1.md`, `-r2.md`):
 - **Round 1: REVISE.** It raised 4 BLOCKING findings, all fixed. E7's matching order used the gender-roles endpoint, and its 22.3/25.1 labels were reversed. E7's Stage 0 was not an independent gate. E7's cost conflicted with the working repo's own estimate, which led to finding that the study had already been rejected there. The week-2 set included tests that decide nothing. It also raised 1 MINOR (the Emmons Fig. 7 wording) and 1 NIT (spend $137.12), both fixed.
 - **Round 2: REVISE.** It raised 1 BLOCKING: a null in the two-model X3 pilot can't justify dropping the direction. It raised 2 MINOR: the cost of the X1p arm, and E1b's conditional-arm range in the totals. All three were fixed and **have not been re-reviewed**; one round remains under the cap.
+
+**E8 and the dense/MoE notes (2026-10-03)** are a new artifact. gpt-6-sol round 1 (`logs/reviews/20261003-proposals-E8-r1.md`) returned REVISE. Its 3 BLOCKING findings were fixed: E8 is framed as a Qwen sibling comparison, not an architecture test; a checkpoint-matching rule, a bad − good primary outcome and an equivalence margin were added; and routing is measured on identical inputs, with a matched random-forcing control. Its 2 MINOR findings were also fixed: setup is priced at the MoE rate (Stage 1 ≈ $65–75), and claims are bounded (Doan et al. abstract-only; "medical experts" a conjecture; readers "applicable in principle"). The fixes have not been re-reviewed. Doan et al. is still MISSING, since OpenReview blocks automated fetches.
 
 **S3 and S4 were revised on 2026-09-29, after reading the incident-reproduction code, main post and appendix; the revisions have not been reviewed.** S4 was repriced (build time 7–12 → 3–5 days, P(clean) 0.45 → 0.55) and moved from rank 20 to 16. S3 gained an agentic Stage B; its score covers Stage A only.
 
