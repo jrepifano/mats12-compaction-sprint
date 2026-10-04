@@ -173,7 +173,13 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
   - Re-run the live check after changing the image. A free Linux check is `bash scripts/killswitch_linux_check.sh` (Docker).
   - The laptop watchdog remains the primary cap.
   - A self-stop wipes `/ws`, so pull results well before the deadline.
-  - After a self-stop, run `pod_down.py --slot <slot>` to terminate the pod and record its spend. Until then the laptop's books count it as still burning (an over-count).
+  - After a self-stop, run `pod_down.py --exp <EXP> --slot <slot>` to terminate the pod and record its spend. Until then the laptop's books count it as still burning (an over-count).
+- **Adding an experiment to the pod tooling.** The pod scripts (`pod_up.py`, `pod_push.sh`, `pod_down.py`, `pod_budget_check.py`) and the killswitch deadline are per experiment. They know only E1 and I1a; anything else is refused ("knows E1 and I1a only", or a `KeyError` for missing caps). For a new experiment X:
+  1. Add X's caps to `emx.spend.CAPS`, from a `src/emx/<x>/contracts.py` as I1a does. Pods are then named `<x>-<slot>`, logged to `logs/pods_<X>.jsonl`, and armed with X's GPU kill line.
+  2. Add an X case to `pod_push.sh`, following its I1a branches: the transfer roots, the pod env, and the `pod_setup.sh --only` target.
+  3. Run a laptop watchdog for X, using `scripts/i1a_watchdog.sh` as the per-experiment template.
+  4. Dry-run before any paid step: `pod_up.py --exp X --dry-run`, then `pod_push.sh --exp X --slot _A --dry-run`.
+  5. Pass `--exp X` on every call. The default is E1, and the environment is never read.
 - **Polling too hard looks like a dead pod.** Several watchers each opening ssh sessions every minute trip sshd's `MaxStartups`, and new connections drop at the banner. Use one consolidated ssh call per check, minutes apart. Before declaring a pod dead, kill hung local ssh clients and probe once more.
 - `pgrep -f NAME` / `pkill -f NAME` over ssh match the ssh command itself: bracket the first character (`'[N]AME'`), as `pod_part.sh` does with `pod_run_e1[.]sh`.
 - Verify a detached launch after 15–20 s with real progress (new log lines, files), not with an immediate `pgrep`. A process that died at once still shows up for a second. Grep logs for the script's own anchored tag, never a bare `DONE`/`FAIL` (model outputs contain those words).
