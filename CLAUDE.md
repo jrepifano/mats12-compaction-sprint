@@ -26,7 +26,7 @@ More documents may be added; when they are, read them and update the proposals d
 ## Working norms (carried over from the working repo)
 
 - **Jacob designs and verifies; Claude executes and reports.** Claude drafts proposals, preregistrations, and code. Nothing runs that costs money (GPU pods, paid API calls beyond trivial smoke tests) without Jacob's explicit go-ahead for that specific experiment.
-- **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-sol. It contains:
+- **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-astra. It contains:
   1. The question, and the decision it informs.
   2. The main hypothesis and at least one competing hypothesis.
   3. Concrete predictions with rough probabilities, written before seeing data.
@@ -36,9 +36,9 @@ More documents may be added; when they are, read them and update the proposals d
   7. The sanity checks and manipulation checks that must pass before the headline number means anything.
 
   Grounding means every hypothesis cites the paper(s) in `papers/` that motivate it, and flags where our expectation departs from published results.
-- **Order: review, then sign-off, then plan mode** (Jacob, 2026-10-04). A prereg goes through all its gpt-6-sol review rounds *before* Jacob is asked to sign it off:
+- **Order: review, then sign-off, then plan mode** (Jacob, 2026-10-04). A prereg goes through all its gpt-6-astra review rounds *before* Jacob is asked to sign it off:
   1. Draft the prereg.
-  2. Run the gpt-6-sol rounds (up to 3) and fix every BLOCKING finding.
+  2. Run the gpt-6-astra rounds (up to 3) and fix every BLOCKING finding.
   3. Then ask Jacob for sign-off, with the review verdicts and a short table of any findings still open.
 
   Never ask him to approve an unreviewed or partly reviewed prereg. If his sign-off changes the design, the change is reviewed before it counts as final, using a remaining round or a new count for a substantially new version.
@@ -53,11 +53,11 @@ More documents may be added; when they are, read them and update the proposals d
   2. **Dependency graph:** which units must be sequential and which can run in parallel.
   3. **Parallel execution with Opus subagents** (Jacob's preference): independent units go to parallel `opus` subagents, each with a self-contained brief. The brief covers the goal, the exact files it owns (no two agents own the same file), the interfaces it must match, its tests, and the rule "no paid calls, no commits". The main session integrates their work, runs the full test suite, and reviews the diffs.
   4. **Interfaces and contracts** that are frozen before the agents start: data schemas, function signatures, file layouts. Parallel work can't drift apart without them.
-  5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-sol code review happens.
+  5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-astra code review happens.
   6. **Paid steps:** exactly which steps spend money, their projected cost, and the checkpoint before each.
   7. **Failure handling:** what to do if an agent stalls or fails. Agents doing large rewrites stalled repeatedly on 2026-09-28, so give them small, bounded units and tell them to make small edits.
 
-  The plan is reviewed by Jacob (and by gpt-6-sol, within the 3-round cap) before any unit starts.
+  The plan is reviewed by Jacob (and by gpt-6-astra, within the 3-round cap) before any unit starts.
 - **Implement each experiment in its own git worktree** (Jacob, 2026-10-04). Several sessions work in this repo at once, so implementation never happens in the main checkout.
   - **When:** after the prereg is signed off, and before the first implementation commit. Branch from current `main` into `.claude/worktrees/<exp>-<purpose>` on branch `<exp>/<purpose>`, e.g. `e1b/run` or `x3/build`. Use Claude Code's worktree tool or `git worktree add`. Copy `.env` in, as described under Stack.
   - **What lives on the branch:** everything the experiment produces. That is its code, configs, tests, results, report, review logs and `logs/pods_<EXP>.jsonl`, plus any prereg amendments made during the run. Commit there after each reviewed step.
@@ -76,8 +76,13 @@ More documents may be added; when they are, read them and update the proposals d
   3. Cite each source inline where it shapes the design, and list it in the prereg's References section. Note any partial reads in the risks section.
 
   If a needed source is MISSING, flag it to Jacob before finalizing the plan.
+- **Every new research proposal gets an internal and an external literature review** (Jacob, 2026-10-04). Before a proposal goes into `docs/research-proposals.md`, dispatch two subagents in parallel:
+  1. **Internal:** search `papers/` (each `INDEX.md`, `_litreview_text.txt`, `_neel_brainstorm_text.txt`), the earlier proposals and reports in this repo, and `../mats12_neel_working` for related work and our own prior results.
+  2. **External:** search the web (arXiv, LessWrong and the Alignment Forum, lab blogs) for prior and concurrent work, and read the primary sources. Report which parts were read verbatim and which only as a fetch-tool summary.
 
-## Review with gpt-6-sol (via Codex CLI)
+  The proposal names the closest prior work and the gap that remains, and cites both. Capture any new external source into `papers/` with an `INDEX.md` row before a prereg builds on it. Why: X3's "nobody has tested this" claim came only from `papers/` and turned out to be out of date when searched externally (2026-10-04).
+
+## Review with gpt-6-astra (via Codex CLI)
 
 **Every stage gets a review of its diff before it is committed or acted on** (Jacob, 2026-09-29):
 - planning: proposals, preregs (all rounds done before asking Jacob for sign-off, and before plan mode; see "Order: review, then sign-off, then plan mode"), implementation plans;
@@ -88,10 +93,10 @@ More documents may be added; when they are, read them and update the proposals d
 Point the reviewer at the diff (e.g. `git diff <base>..HEAD -- <paths>`, or the uncommitted diff) plus the files it needs for context. Don't commit or run an unreviewed stage unless Jacob says to, and record any skipped review in the report.
 
 ```bash
-scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md [effort=high] [seconds=1200]
+scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md [effort=medium] [seconds=1200]
 ```
 
-The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
+The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
 
 - Review prompts cover **four layers**:
   1. Correctness and code quality: bugs, logic errors, and code that is fragile, unclear or doesn't match the surrounding code.
@@ -103,8 +108,8 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
 - **Always use a timeout, through `scripts/codex_review.sh`.** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
 - **Keep the laptop awake during long runs.** On 2026-09-29, idle and lid-closed (clamshell) sleep paused reviews and Docker episodes mid-run; `pmset -g log` shows it. The paused runs looked like timeouts. `caffeinate` prevents idle sleep only. Closing the lid still pauses everything unless an external display is attached.
 - Findings are tagged BLOCKING / MINOR / NIT with file:line and a suggested fix. Every BLOCKING finding is fixed or explicitly deferred with a reason. Record the verdict in the relevant report.
-- Save the full review output under `logs/reviews/`. Point gpt-6-sol at files instead of pasting them; it runs with repo read access.
-- If `gpt-6-sol` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.
+- Save the full review output under `logs/reviews/`. Point gpt-6-astra at files instead of pasting them; it runs with repo read access.
+- If `gpt-6-astra` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.
 - **Maximum 3 review rounds per artifact.** Reviewers will always find something, so don't loop.
   - After round 3, stop reviewing that artifact.
   - Summarize any still-open findings for Jacob in a short table (finding, severity, a recommended fix or accept-as-limitation), and let him decide.
@@ -224,3 +229,11 @@ Jacob tracks his own time. Timestamp every report entry in UTC so the record can
 - Commit after each reviewed step. Commit messages end with the co-author line from the session's attribution guidance.
 - Never commit `.env`, raw model weights, or activation dumps.
 - **Never commit PDFs** (Jacob's decision, 2026-09-28). `papers/**/*.pdf` is gitignored; `INDEX*.md`, markdown captures, and text extractions are committed.
+
+## Visibility: everything we create stays private (Jacob, 2026-10-05)
+
+Every GitHub repo, Hugging Face repo (model, dataset or Space), and any other hosted artifact we create is **private**. Making anything public is Jacob's explicit decision, for that specific item; never infer it from a release plan or an earlier approval. Why: on 2026-10-05 an audit found 28 of the working repo's adapters public on HF (`jrepifano/q14b-*`, created 2026-08 and 09), and a public HF repo is exactly how we found a concurrent project's unpublished results (`papers/em_personas/` row 34). All 28 were made private that day.
+- **HF Trainer defaults to public.** `push_to_hub` without `hub_private_repo=True` creates a public repo. Pre-create every repo with `create_repo(..., private=True, exist_ok=True)` and assert `model_info(repo).private` before training starts, as `scripts/e1_preflight.py` and `pod_run_e1.sh` do. Also pass `hub_private_repo=True` where the Trainer creates repos.
+- **Never use `private=False`, `--public`, `gh repo create --public`, or a visibility change** without Jacob's go-ahead in this conversation.
+- **Audit after any run that uploads**, and before sharing results: list `https://huggingface.co/api/{models,datasets,spaces}?author=jrepifano` with the token and confirm none is public; `gh repo list --json nameWithOwner,visibility` for GitHub. A public repo found this way is made private at once and reported to Jacob.
+- Claude Docs and Artifacts are private by default; share them only as Jacob directs (e.g. the tracker with Mira).
