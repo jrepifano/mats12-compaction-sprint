@@ -67,6 +67,13 @@ def save_decisions(d: dict) -> None:
     DECISIONS.write_text(json.dumps(d, indent=1, sort_keys=True) + "\n")
 
 
+def reuses_neutral(decisions: dict, model_id: str) -> bool:
+    """Whether the main run reuses calibration episodes as its neutral context for repeats 1-2
+    (prereg §4.8), or re-runs neutral in every block (Amendment B8, Jacob 2026-10-05)."""
+    return (decisions.get(model_id, {}).get("decision") in ("keep", "switch")
+            and not decisions.get("_no_neutral_reuse", False))
+
+
 def level_for(model_id: str) -> C.PromptLevel:
     return C.PromptLevel(load_decisions().get(model_id, {}).get("level",
                                                                   C.DEFAULT_PROMPT_LEVEL.value))
@@ -625,12 +632,16 @@ def run_pool(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]], op
     queue = resume_batches(batches) if opt.resume else list(batches)
     stopped: str | None = None
     # A block refused for headroom (its first attempt, or its whole-block retry inside the
-    # worker) waits in `deferred` until some block in the same round settled spend, then goes
-    # back through resume_batches, which gives the attempt still owed or drops a block already
-    # done (pool review r1 finding 2; r2 findings 1-2). Refused with nothing running: stop.
+    # worker) is retried once some block has settled spend after it was submitted, i.e. once
+    # headroom may have been freed; until then it waits in `deferred`. It goes back through
+    # resume_batches, which gives the attempt still owed or drops a block already done (pool
+    # review r1 finding 2; r2 findings 1-2). Each retry needs a new settlement, so this ends.
+    # Refused with nothing running and nothing queued: stop.
     deferred: list[list[EpisodeSpec]] = []
     running: dict = {}
     got: dict = {}                       # future -> result; one store, so an interrupt
+    n_settled = 0                        # results so far that settled spend
+    settled_at: dict = {}                # future -> n_settled when it was submitted
     ex_cm = executor or ProcessPoolExecutor(max_workers=workers,          # cannot drop it
                                             mp_context=mp.get_context("spawn"))
     with ex_cm as ex:   # tests pass a thread pool
@@ -638,22 +649,25 @@ def run_pool(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]], op
             while queue or running:
                 while queue and len(running) < workers and stopped is None:
                     b = queue.pop(0)
-                    running[ex.submit(_pool_block, stage, model_id, b, opt)] = b
+                    f = ex.submit(_pool_block, stage, model_id, b, opt)
+                    running[f], settled_at[f] = b, n_settled
                 if not running:
                     break
                 done, _ = wait(running, return_when=FIRST_COMPLETED)
                 for f in done:
                     got[f] = f.result()
-                settled = any(got[f].n_admitted for f in done)
+                n_settled += sum(1 for f in done if got[f].n_admitted)
+                retry = []
                 for f in done:
                     b, res = running.pop(f), got[f]
                     why = res.stopped_reason or ""
                     if why.startswith("budget refused"):
-                        deferred.append(b)
+                        (retry if n_settled > settled_at[f] else deferred).append(b)
                     elif why:
                         stopped = why
-                if settled and deferred:                # headroom freed: retry what is owed
-                    queue[:0], deferred = resume_batches(deferred), []
+                if retry or (deferred and any(got[f].n_admitted for f in done)):
+                    owed, deferred = retry + deferred, []      # headroom may be free: retry
+                    queue[:0] = resume_batches(owed)
                 if deferred and not running and not queue:
                     stopped = stopped or next(got[f].stopped_reason for f in reversed(got)
                                               if got[f].stopped_reason)
@@ -717,7 +731,8 @@ def _role(art: dict, decisions: dict, analysis_models: set[str]) -> tuple[str, s
     if model not in analysis_models:
         return (C.AnalysisRole.PROBE.value if stage == C.Stage.PROBES.value
                 else C.AnalysisRole.CALIBRATION_ONLY.value), ""
-    if m["prompt_level"] == final_level and int(m["repeat"]) <= 2:
+    if (m["prompt_level"] == final_level and int(m["repeat"]) <= 2
+            and not decisions.get("_no_neutral_reuse", False)):   # Amendment B8
         return C.AnalysisRole.NEUTRAL_REUSE.value, ""
     return C.AnalysisRole.CALIBRATION_ONLY.value, ""
 
@@ -754,9 +769,11 @@ def _block_key(m: dict) -> tuple:
     return (m["model"], m["prompt_level"], m["task_id"], int(m["repeat"]))
 
 
-def final_block_attempts(arts: list[dict]) -> dict[tuple, int | None]:
+def final_block_attempts(arts: list[dict], decisions: dict | None = None
+                         ) -> dict[tuple, int | None]:
     """For each main-run block, the attempt whose every context succeeded (prereg §7.2: one
     whole-block retry; review r2, finding 3); None if no attempt completed."""
+    decisions = decisions or {}
     by: dict[tuple, dict[int, list[dict]]] = {}
     for a in arts:
         m = a["meta"]
@@ -764,7 +781,8 @@ def final_block_attempts(arts: list[dict]) -> dict[tuple, int | None]:
             by.setdefault(_block_key(m), {}).setdefault(int(m["attempt"]), []).append(a)
     out: dict[tuple, int | None] = {}
     for key, attempts in by.items():
-        need = planned_block_contexts(int(key[3]))
+        need = planned_block_contexts(int(key[3]),
+                                      not decisions.get("_no_neutral_reuse", False))  # B8
         done = [k for k, eps in sorted(attempts.items())
                 if {e["meta"]["context"] for e in eps} >= need
                 and not any(failed(e) for e in eps)]
@@ -799,7 +817,7 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
     judges = _judge_columns(C.JUDGED_DIR) if C.JUDGED_DIR.exists() else {}
     rows, seen = [], set()
     arts = [json.loads(p.read_text()) for p in sorted(episodes_dir.rglob("*.json"))]
-    final = final_block_attempts(arts)
+    final = final_block_attempts(arts, decisions)
     for art in arts:
         m = art["meta"]
         eid = m["episode_id"]

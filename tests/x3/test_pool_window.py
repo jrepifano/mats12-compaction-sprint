@@ -166,6 +166,28 @@ def test_refusal_landing_with_a_completion_is_retried(monkeypatch, tmp_path):
     assert calls == {"b0": 1, "b1": 2} and res.stopped_reason is None
 
 
+def test_refusal_returning_after_the_settlement_that_freed_headroom_is_retried(
+        monkeypatch, tmp_path):
+    # b0 settles first; b1 (submitted while b0 held its reservation) is refused and comes back
+    # later, in a round with no settlement: it must still be retried, not stop the pool
+    monkeypatch.setattr(R, "MANIFEST", tmp_path / "m.jsonl")
+    calls = {}
+
+    def fake(stage, model, block, opt):
+        bid = block[0].batch_id
+        calls[bid] = calls.get(bid, 0) + 1
+        if bid == "b1" and calls[bid] == 1:
+            time.sleep(0.15)
+            return _res(0, "budget refused: headroom")
+        time.sleep(0.01)
+        return _res()
+
+    monkeypatch.setattr(R, "_pool_block", fake)
+    res = R.run_pool(C.Stage.MAIN, "m", _blocks(2), R.RunOptions(resume=False), 2,
+                     executor=ThreadPoolExecutor(2))
+    assert calls == {"b0": 1, "b1": 2} and res.stopped_reason is None
+
+
 def test_refused_whole_block_retry_comes_back_as_attempt_2(monkeypatch, tmp_path):
     monkeypatch.setattr(R, "MANIFEST", tmp_path / "m.jsonl")
     seen = []

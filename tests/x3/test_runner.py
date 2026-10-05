@@ -237,6 +237,29 @@ def test_roles():
     assert R._role(_art("x", error="boom"), dec, am)[0] == "excluded"
 
 
+def test_no_neutral_reuse_amendment_b8():
+    glm = "z-ai/glm-5.3-flash"
+    keep = {glm: {"decision": "keep", "level": "B"}}
+    off = {**keep, "_no_neutral_reuse": True}
+    assert R.reuses_neutral(keep, glm) and not R.reuses_neutral(off, glm)
+    blocks = R.plan_stage(C.Stage.MAIN, glm, _tasks(), C.PromptLevel.B,
+                          reuse_neutral=R.reuses_neutral(off, glm))
+    assert len(blocks) == 60 and all(len(b) == 6 for b in blocks)
+    assert sum(len(b) for b in blocks) == 360
+    # calibration episodes are no longer the main run's neutral context
+    cal = _art("x", model=glm, stage="glm", level="B", ctx="neutral", repeat=2)
+    assert R._role(cal, keep, {glm})[0] == "neutral_reuse"
+    assert R._role(cal, off, {glm})[0] == "calibration_only"
+    # a repeat-1 block is complete only with its own neutral episode
+    five = [_art(f"e{i}", model=glm, ctx=c.value, repeat=1)
+            for i, c in enumerate(C.Context) if c != C.Context.NEUTRAL]
+    key = (glm, "B", "t1", 1)
+    assert R.final_block_attempts(five, keep)[key] == 1
+    assert R.final_block_attempts(five, off)[key] is None
+    six = five + [_art("n", model=glm, ctx="neutral", repeat=1)]
+    assert R.final_block_attempts(six, off)[key] == 1
+
+
 def test_stage_complete_ignores_intent_and_admit_records(tmp_path, monkeypatch):
     import importlib.util
     from pathlib import Path

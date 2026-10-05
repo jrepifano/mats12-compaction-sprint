@@ -3,19 +3,22 @@
   "z-ai/glm-5.3-flash"
  ],
  "_deferred": {
-  "qwen/qwen3.6-27b": "kept at B (3/30) but not run in the main run; a 4-repeat follow-up (about $60-70) only if GLM shows an effect worth replicating (Jacob, 2026-10-05)"
+  "qwen/qwen3.6-27b": "kept at B (3/30) but not run in the main run; whether to add a 4-repeat Qwen run for X4's go/no-go gate (about $60-70) is decided after the GLM results (Jacob, 2026-10-05)"
  },
  "_jacob_2026_10_05": {
   "B1": "main run on GLM 5.3 Flash only, 4 repeats per context; Qwen deferred",
   "B2": "pre-action window = first assistant turn with readable reasoning, before any workspace file changes (src/x3/window.py)",
   "B3": "sizing uses the upper-bound episode cost (failed attempts at their ceiling charge)",
   "B4": "GLM per-episode limit $0.20 (was $0.50); calibration max $0.15",
-  "B5": "cap $55 as reservation headroom; planned spend about $39",
+  "B5": "cap $60 as reservation headroom (was $55); see B8",
   "B6": "main run in a rolling pool of up to 10 blocks, one process each",
+  "B8": "the main run re-runs the neutral context in every block instead of reusing calibration episodes for repeats 1-2 (chat: '1. yes'), so every block's six contexts run together under the same provider mix and time; about $3 more",
+  "qwen": "deferred until after the GLM results (chat: '2. defer')",
   "source": "chat, 2026-10-05: 'approve all, build the parallel runner'"
  },
  "_judge_halving_applied": false,
- "_main_cap_usd": 55.0,
+ "_main_cap_usd": 60.0,
+ "_no_neutral_reuse": true,
  "_one_model_ok": true,
  "deepseek/deepseek-v4-flash": {
   "decision": "out",

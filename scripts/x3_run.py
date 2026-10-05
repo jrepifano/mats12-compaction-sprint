@@ -73,8 +73,10 @@ def stage_complete(stage: C.Stage, model: str, tasks: list[C.TaskSpec]) -> bool:
         return False
     level = C.PromptLevel(ids[-1].split("|")[2])
     ok, fails = R.manifest_outcomes()
+    reuse = stage != C.Stage.MAIN or R.reuses_neutral(R.load_decisions(), model)   # B8
     planned = {R.base_id(ep.episode_id)
-               for b in R.plan_stage(stage, model, tasks, level) for ep in b}
+               for b in R.plan_stage(stage, model, tasks, level, reuse_neutral=reuse)
+               for ep in b}
     return all(b in ok or fails.get(b, 0) >= 2 for b in planned)
 
 
@@ -144,7 +146,7 @@ def remaining_main_episodes(model: str, dec: dict, tasks: list[C.TaskSpec]) -> i
     """Main-run episodes still to run for `model` after what the manifest records (whole-block
     retries included), so a restart is sized on the remaining work (pool review r1, 1)."""
     reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in model else C.REPEATS_MAIN
-    reuse = dec.get(model, {}).get("decision") in ("keep", "switch")    # as cmd_stage
+    reuse = R.reuses_neutral(dec, model)
     batches = R.plan_stage(C.Stage.MAIN, model, tasks, R.level_for(model), repeats=reps,
                            reuse_neutral=reuse)
     return sum(len(b) for b in R.resume_batches(batches))
@@ -169,7 +171,7 @@ def projection(note: dict, dec: dict, models: list[str],
             n = remaining[m]
         else:
             reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in m else C.REPEATS_MAIN
-            n = len(C.Context) * 15 * reps - 30
+            n = len(C.Context) * 15 * reps - (30 if R.reuses_neutral(dec, m) else 0)
         total += 1.25 * mean * n
     j_full = note["J"]["J_usd"]
     j_half = j_full - sum(p["attempt"] for p in note["J"]["parts"].values()) / 2
@@ -187,9 +189,13 @@ def projection(note: dict, dec: dict, models: list[str],
 def cmd_plan(a) -> int:
     tasks = R.load_tasks()
     level = R.level_for(a.model)
-    batches = R.plan_stage(C.Stage(a.stage), a.model, tasks, level,
-                           repeats=R.load_decisions().get("_qwen_repeats", C.REPEATS_MAIN)
-                           if "qwen" in a.model else C.REPEATS_MAIN)
+    dec = R.load_decisions()
+    stage = C.Stage(a.stage)
+    batches = R.plan_stage(stage, a.model, tasks, level,
+                           repeats=dec.get("_qwen_repeats", C.REPEATS_MAIN)
+                           if "qwen" in a.model else C.REPEATS_MAIN,
+                           reuse_neutral=stage != C.Stage.MAIN
+                           or R.reuses_neutral(dec, a.model))                # B8
     n = sum(len(b) for b in batches)
     res = sum(R.batch_reservation(b) for b in batches)
     print(f"{a.stage} {a.model} level {level.value}: {len(batches)} batches, {n} episodes, "
@@ -212,7 +218,7 @@ def cmd_stage(a) -> int:
         "next_level" if stage == C.Stage.SWITCH else "level", C.DEFAULT_PROMPT_LEVEL.value))
     dec = R.load_decisions()
     repeats = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in model else C.REPEATS_MAIN
-    reuse = dec.get(model, {}).get("decision") in ("keep", "switch") or stage != C.Stage.MAIN
+    reuse = R.reuses_neutral(dec, model) or stage != C.Stage.MAIN
     batches = R.plan_stage(stage, model, tasks, level, repeats=repeats, reuse_neutral=reuse)
     j = C.J_DEFAULT_USD
     note = C.COST_CHECKPOINT.with_suffix(".json")

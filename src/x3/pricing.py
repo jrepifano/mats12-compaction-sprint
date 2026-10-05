@@ -78,7 +78,9 @@ def judge_rate(note: dict | None) -> tuple[float, str]:
         return float(note["judge_usd_per_episode"]), "measured judge $/episode from the pilot"
     J = (note.get("J") or {}).get("J_usd")
     n_main = note.get("main_episodes") or {}
-    n = sum(int(v) + 30 for v in n_main.values())
+    judged = (note.get("J") or {}).get("n_judged")         # episodes J covers (Amendment B8)
+    n = (sum(int(v) for v in judged.values()) if judged
+         else sum(int(v) + 30 for v in n_main.values()))
     if J is not None and n > 0:
         return float(J) / n, ("judge upper projection J from measured transcript lengths "
                               f"(${J:.2f} over {n} episodes)")

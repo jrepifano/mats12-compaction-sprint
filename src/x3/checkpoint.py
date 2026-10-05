@@ -218,15 +218,16 @@ def judge_input_tokens(units: dict[str, list[dict]]) -> dict[str, dict[str, floa
 
 
 def judge_projection(n_main_by_model: dict[str, int], tokens: dict[str, dict[str, float]],
-                     panel: list[str]) -> dict:
+                     panel: list[str], reused: dict[str, int] | None = None) -> dict:
     """Projection J of judge cost under the prereg rule (§1.9): the measured input length
     (o200k tokens) x 1.5 plus the full output allowance per request, every episode treated as a
     non-cheat for the attempt judge. Not a strict bound: Gemini Flash-Lite counted 1.05-1.46x
     the o200k tokens on three real inputs (results/X3/judge_token_check.json), and a reply that
     does not parse is asked again once. The runtime guard caps actual judge spend."""
-    total, parts = 0.0, {}
+    total, parts, n_judged = 0.0, {}, {}
     for model, n in n_main_by_model.items():
-        n_all = n + 30                         # main run + reused calibration episodes
+        n_all = n + (reused or {}).get(model, 30)   # main run + reused calibration episodes
+        n_judged[model] = n_all
         for judge in panel:
             p_in, p_out = C.JUDGE_PRICES[judge]
             part = {}
@@ -236,7 +237,7 @@ def judge_projection(n_main_by_model: dict[str, int], tokens: dict[str, dict[str
                 part[key] = n_all * (tok * p_in + C.JUDGE_MAX_TOKENS * p_out) / 1e6
             parts[f"{model}|{judge}"] = part
             total += sum(part.values())
-    return {"J_usd": total, "parts": parts, "input_tokens_mean": tokens}
+    return {"J_usd": total, "parts": parts, "input_tokens_mean": tokens, "n_judged": n_judged}
 
 
 def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
@@ -244,13 +245,14 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
     costs = model_costs(arts)
     decisions = R.load_decisions()
     analysis_models = decisions.get("_analysis_models", list(C.SUBJECTS))
-    st = budget.status(C.EXP_ID, C.HARD_CAP_USD)
+    cap = float(decisions.get("_main_cap_usd", C.HARD_CAP_USD))   # Jacob's recorded cap
+    st = budget.status(C.EXP_ID, cap)
     n_main = {}
     proj = {}
     sizing = {}
     for m in analysis_models:
         level = decisions.get(m, {}).get("level")
-        reuse = level is not None
+        reuse = level is not None and R.reuses_neutral(decisions, m)       # Amendment B8
         n_main[m] = 15 * C.REPEATS_MAIN * 6 - (30 if reuse else 0)
         sizing[m] = sizing_cost(arts, m, level)
         c = sizing[m]["usd_mean"]
@@ -261,11 +263,12 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
     units = {m: [a for (mm, lv, _t, _r), a in nu.items()
                  if mm == m and lv == decisions.get(m, {}).get("level")]
              for m in analysis_models}
-    J = judge_projection(n_main, judge_input_tokens(units), panel)
+    reused = {m: 15 * C.REPEATS_MAIN * 6 - n for m, n in n_main.items()}
+    J = judge_projection(n_main, judge_input_tokens(units), panel, reused)
     main_total = sum(v for v in proj.values() if v is not None)
     need = st["spent"] + st["outstanding"] + J["J_usd"] + main_total + C.RESERVE_USD
     unpriced = [m for m, v in proj.items() if v is None]
-    fits = need <= C.HARD_CAP_USD and not unpriced
+    fits = need <= cap and not unpriced
     halving = None
     if not fits and not unpriced:
         att = sum(p["attempt"] for p in J["parts"].values())
@@ -274,14 +277,15 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
                    "selection": ("numpy.random.default_rng(20261005).permutation("
                                  "sorted(non_cheat_ids))[: n // 2], applied at judging time"),
                    "seed": C.SEED_JUDGE_HALVING, "need_with_halving": need_half,
-                   "fits_with_halving": need_half <= C.HARD_CAP_USD}
+                   "fits_with_halving": need_half <= cap}
     ask = not fits and not (halving or {}).get("fits_with_halving")
     if unpriced:
         reason = (f"no complete billed cost for {unpriced} at the final prompt level, so the "
                   "main run cannot be sized; Jacob decides how to proceed")
     elif ask:
-        reason = ("4 Qwen repeats do not fit under $45 even with judge halving; Jacob chooses "
-                  "between more budget and fewer repeats (Jacob, 2026-10-04)")
+        reason = (f"the main run at the recorded design does not fit under ${cap:.0f} even "
+                  "with judge halving; Jacob chooses between more budget and a smaller run "
+                  "(Jacob, 2026-10-04)")
     else:
         reason = None
     note = {"utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -289,7 +293,7 @@ def build_note(episodes_dir: Path = C.EPISODES_DIR) -> dict:
             "neutral_cheat_rates": neutral_cheat_rates(arts),
             "decisions": decisions, "analysis_models": analysis_models,
             "main_episodes": n_main, "main_projection_usd": proj, "J": J,
-            "need_usd": need, "fits_4_repeats": fits, "judge_halving": halving,
+            "cap_usd": cap, "need_usd": need, "fits_4_repeats": fits, "judge_halving": halving,
             "ask_jacob": ask, "ask_reason": reason}
     return note
 
@@ -301,7 +305,7 @@ def write_note(note: dict) -> tuple[Path, Path]:
     js.write_text(json.dumps(note, indent=1, default=str) + "\n")
     lines = ["# X3 cost checkpoint", "",
              (f"UTC {note['utc']}. Spent ${note['ledger']['spent']:.2f}"
-              f" of ${C.HARD_CAP_USD:.0f} (outstanding ${note['ledger']['outstanding']:.2f})."),
+              f" of ${note['cap_usd']:.0f} (outstanding ${note['ledger']['outstanding']:.2f})."),
              "",
              ("| Model | Episodes | $/episode mean | median | p90 | turns | provider recorded |"
               " billed recorded | reasoning readable | cost_cap |"),
