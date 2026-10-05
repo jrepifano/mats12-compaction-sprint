@@ -229,3 +229,11 @@ Jacob tracks his own time. Timestamp every report entry in UTC so the record can
 - Commit after each reviewed step. Commit messages end with the co-author line from the session's attribution guidance.
 - Never commit `.env`, raw model weights, or activation dumps.
 - **Never commit PDFs** (Jacob's decision, 2026-09-28). `papers/**/*.pdf` is gitignored; `INDEX*.md`, markdown captures, and text extractions are committed.
+
+## Visibility: everything we create stays private (Jacob, 2026-10-05)
+
+Every GitHub repo, Hugging Face repo (model, dataset or Space), and any other hosted artifact we create is **private**. Making anything public is Jacob's explicit decision, for that specific item; never infer it from a release plan or an earlier approval. Why: on 2026-10-05 an audit found 28 of the working repo's adapters public on HF (`jrepifano/q14b-*`, created 2026-08 and 09), and a public HF repo is exactly how we found a concurrent project's unpublished results (`papers/em_personas/` row 34). All 28 were made private that day.
+- **HF Trainer defaults to public.** `push_to_hub` without `hub_private_repo=True` creates a public repo. Pre-create every repo with `create_repo(..., private=True, exist_ok=True)` and assert `model_info(repo).private` before training starts, as `scripts/e1_preflight.py` and `pod_run_e1.sh` do. Also pass `hub_private_repo=True` where the Trainer creates repos.
+- **Never use `private=False`, `--public`, `gh repo create --public`, or a visibility change** without Jacob's go-ahead in this conversation.
+- **Audit after any run that uploads**, and before sharing results: list `https://huggingface.co/api/{models,datasets,spaces}?author=jrepifano` with the token and confirm none is public; `gh repo list --json nameWithOwner,visibility` for GitHub. A public repo found this way is made private at once and reported to Jacob.
+- Claude Docs and Artifacts are private by default; share them only as Jacob directs (e.g. the tracker with Mira).
