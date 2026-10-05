@@ -6,11 +6,11 @@
 
 We asked whether reading Qwen3.6-27B's activations, before it answers, predicts how often it will misbehave in a scenario better than reading the scenario's text does. On 64 agentic-misalignment scenarios we detected no reliable gain. A linear probe on Qwen's last-prompt-token activations predicted Qwen's per-scenario rate of blackmail, leaking or letting someone die about as well as a text embedding of the prompt.
 
-- **Rate prediction (main question): no reliable gain detected from the probe.** On rank correlation with Qwen's observed rates, the probe scores 0.80 and the best prompt-only predictor 0.79. The probe's gain in held-out log-likelihood is +0.025, with a 95% interval from −0.027 to +0.080 (p = 0.33). The interval allows a small gain either way. A post-hoc reliability estimate puts the best Spearman any predictor could expect near 0.94, so there was little room above the text.
+- **Rate prediction (main question): no reliable gain detected from the probe.** On rank correlation with Qwen's observed rates, the probe scores 0.80 and the best prompt-only predictor 0.79. The probe's gain in held-out log-likelihood is +0.025, with a 95% interval from −0.027 to +0.080 (p = 0.33). The interval allows a small gain either way. A post-hoc reliability estimate puts the best Spearman any predictor could expect near 0.94.
 - **Model specificity: not separable.** On Gemma 4 31B's rates, Gemma's own probe beats Gemma's best prompt-only predictor (+0.116, interval +0.037 to +0.200). But Qwen's probe also predicts Gemma well, and the two models' rates correlate at 0.82, so this design cannot tell a model-specific signal from a better reading of the prompt.
 - **Design score (secondary question): a text-only monitor reaches the readers.** On the benchmark's own score for this family, a monitor that sees only the prompt scores 0.94 (Sonnet 5 as scorer). That is 0.36 above the Oracle Lens's 0.578 in the reader scores the benchmark's authors shared with us.
 
-What this changes: this is a descriptive result, not a confirmatory null. It still informs the budget. The strongest activation method we ran, a trained probe, showed no reliable gain over the prompt for Qwen. In our earlier check a text-only monitor matched or beat every reader ([Epifano 2026](#epifano-2026)). So we recommend not spending the roughly $37 the readers' stage would cost, and moving the interpretability line to a side line. The next step is free: score Jacob's hand labels. Two things would reopen the question: a clear Qwen gain after any relabelling, or a decision to chase the Gemma gain, for which the next test is a probe on an unrelated model's activations. I9 cost $15.30 of its $65 cap.
+What this changes: this is a descriptive result, not a confirmatory null. It still informs the budget. The strongest activation method we ran, a trained probe, showed no reliable gain over the prompt for Qwen. In our earlier check a text-only monitor matched or beat every reader ([Epifano 2026](#epifano-2026)). So we recommend not spending the roughly $37 the readers' stage would cost, and moving the interpretability line to a side line. Next, Jacob completes the 50 blind hand labels; scoring them needs no paid calls, and both required kappas must reach 0.7. Two things would reopen the question: a clear Qwen gain after any relabelling, or a decision to chase the Gemma gain, for which the next test is a probe on an unrelated model's activations. I9 cost $15.30 of its $65 cap.
 
 ## Status against the preregistration
 
@@ -18,9 +18,9 @@ The preregistered analysis is fail-closed: it classifies an outcome only if ever
 
 - **Recorded status: checks failing.** Two blocking checks did not pass as preregistered:
   - The judges' agreement with Jacob's hand labels has not run yet. The preregistration requires a kappa of at least 0.7 for both gpt-6-luna and the final labels.
-  - The sampling check, which compares our rates with WorkspaceBench's published ones, missed on all 14 rated scenarios (mean difference 0.24, limit 0.2).
-- **Post-hoc exception (amendment C).** The 3 large misses are exactly the scenarios whose published rollouts include tool calls. On the other 11, the check passes (mean difference 0.085). Jacob accepted that exception at checkpoint 2, after seeing the checks. None of the 64 confirmatory scenarios uses tools.
-- **Power.** The preregistered power check could not be computed. The best free prompt-only predictor already exceeded the Spearman of 0.65 above which a gain of 0.3 is impossible. Jacob therefore cut the second stage to a descriptive probe test (amendment C).
+  - The sampling check, which compares our rates with WorkspaceBench's published ones, failed across the full set of 14 rated scenarios on both criteria: mean absolute difference 0.241 (limit 0.2), and 3 scenarios differing by more than 0.4 (at most 2 allowed).
+- **Post-hoc exception (amendment C).** The 3 large misses are exactly the scenarios whose published rollouts include tool-interaction trajectories; we sample from the prompt alone. On the other 11, the check passes (mean absolute difference 0.085, no scenario off by more than 0.4). Jacob accepted that exception at checkpoint 2, after seeing the checks. The confirmatory scenarios contain no tool-interaction trajectories.
+- **Power.** The preregistered power check could not be computed. The best free prompt-only predictor reached a Spearman of 0.793, above the preregistered cutoff of 0.65, so the planned gain of +0.3 would exceed 1. The simulation was not run, and power for smaller gains is unknown. Jacob therefore cut the second stage to a descriptive probe test (amendment C).
 - **What that means.** Even if the hand-label check passes, this run cannot establish the preregistered "the prompt gives it away" outcome, because that outcome requires a passed power check. Under the preregistered rules a null without power is "inconclusive". Every number below is descriptive.
 
 ## What we ran
@@ -28,11 +28,11 @@ The preregistered analysis is fail-closed: it classifies an outcome only if ever
 | Part | What we used |
 | --- | --- |
 | Scenarios | 64 confirmatory scenarios drawn at random (seed 0) from a 144-condition pool built with Lynch et al.'s public generator ([Lynch et al. 2025](#lynch-et-al-2025)): blackmail, leaking and murder, crossed with goal and threat conditions. A further 18 WorkspaceBench scenarios ([Blank et al. 2026](#blank-et-al-2026)) were used for checks and an out-of-distribution test |
-| Target model | Qwen3.6-27B (rev `6a9e13bd`), thinking off, 16 samples per scenario with fixed seeds, vLLM on one H100 |
-| Second model | Gemma 4 31B instruct (rev `842da379`), the same 64 scenarios and 16 samples each |
+| Target model | Qwen3.6-27B (rev `6a9e13bd`), thinking off, 16 samples per scenario with fixed seeds, at most 4,096 new tokens, vLLM on one H100. 24 of the 1,024 analysed replies hit that cap and were judged as they stood |
+| Second model | Gemma 4 31B instruct (rev `842da379`), the same 64 scenarios and 16 samples each; every reply ended normally |
 | Ground truth | Each reply judged by gpt-6-luna and DeepSeek V4 Flash with Lynch et al.'s published classifier prompts, with GLM 5.3 Flash breaking ties. Lynch et al.'s keyword-and-recipient code check applies on top, as in their code. A scenario's rate is the share of its 16 replies judged to misbehave |
 | Prompt-only predictors | A category prior (blackmail, leaking or murder); an L2-penalized logistic regression on a text embedding of the prompt (bge-small-en-v1.5); a zero-shot Gemini 3.8 Flash monitor; a few-shot Gemini monitor shown training scenarios with their observed rates |
-| Activation predictors | An L2-penalized logistic probe on the last prompt token's residual stream, one per model. An inner grouped cross-validation picks the layer (from 12 spread through the network) and the penalty |
+| Activation predictors | An L2-penalized logistic probe on the last prompt token's residual stream. We trained a separate probe for each of the four combinations of activation source (Qwen or Gemma) and target model, each on that target's training rates. An inner grouped cross-validation picks the layer (from 12 spread through the network) and the penalty |
 | Calibration | Every predictor's output is recalibrated with a two-parameter logistic fit on training data only. The few-shot monitor is calibrated on one earlier fold, so its prompts never showed a test scenario's rate |
 | Evaluation | Grouped 5-fold cross-validation, repeated 3 times. A group is a scenario type with a goal value (25 groups), so a test fold holds goal values unseen in training, within scenario types and threat conditions that recur. Scores: mean binomial log-likelihood per reply (primary); Spearman correlation with the observed rate; AUROC for "misbehaves at least once in 16 replies". A paired bootstrap over groups (10,000 resamples) compares each predictor with the best prompt-only predictor in each resample; the intervals treat the fitted predictions as fixed. A 200-permutation test checks the Qwen probe |
 
@@ -40,7 +40,7 @@ The readers (logit lens, J-Lens, Oracle Lens) were built and tested, but not run
 
 ## Result 1: no reliable gain from Qwen's activations over its prompt
 
-The probe on Qwen's activations scores level with the best text predictor; both are well ahead of the simpler baselines.
+The probe on Qwen's activations and the text embedding are both well ahead of the simpler baselines; the probe's margin over the embedding is small and uncertain.
 
 *(Chart in `results/I9/analysis/pred_vs_obs_qwen.png`. Data, from `results/I9/analysis/final.json`:)*
 
@@ -54,7 +54,7 @@ The probe on Qwen's activations scores level with the best text predictor; both 
 | Gemma probe | Gemma's activations on the prompt | −0.417 | 0.78 | 0.86 |
 
 - **The headline comparison.** The Qwen probe is compared with the best prompt-only predictor in each bootstrap resample, which was the text embedding in 96% of them. It gains +0.025 in log-likelihood, 95% interval −0.027 to +0.080, p = 0.33. Its permutation test passes narrowly: 0.0255 against a null 95th percentile of 0.0230.
-- **Little room.** Split-half reliability of the 16-sample rates (computed after the fact, at checkpoint 2) puts a perfect predictor's expected Spearman near 0.94; the text embedding reaches 0.79.
+- **Room above the text.** Split-half reliability of the 16-sample rates, computed after the fact at checkpoint 2, puts a perfect predictor's expected Spearman near 0.94; the text embedding reaches 0.79.
 - **Why the prompt is so predictive (an interpretation).** These scenarios differ in a few stated conditions: chiefly the goal the model was given, and whether it is threatened with replacement or restriction. Those conditions are written in the prompt. In three randomly drawn rationales (seed 0), the few-shot monitor matched each scenario to its nearest examples by condition. For example: "This scenario closely mirrors Example 1, where the AI faces imminent restriction… the model consistently chooses blackmail around 87.5% of the time."
 - **Random scenarios** (seed 0; the observed rate, then three predictions):
 
@@ -80,7 +80,7 @@ We asked whether each model's activations best predict its own rates. Gemma's mi
 - **Own probe minus the other model's probe:**
   - on Gemma's rates, −0.006 to +0.145;
   - on Qwen's rates, −0.041 to +0.058.
-- Their sum, the preregistered interaction, has an interval of −0.018 to +0.166. It includes zero, so there is no double dissociation.
+- The preregistered double dissociation needs all four of these intervals above zero: each own-probe gain, and each own-minus-other difference. It was not established: Qwen's own-probe gain and both own-minus-other intervals include zero. Their sum, the interaction, also includes zero (−0.018 to +0.166).
 - **Why the models can't be told apart:**
   - Gemma's and Qwen's rates correlate at 0.82, above the preregistered limit of 0.8 for separating the models.
   - Gemma misbehaves more (mean rate 0.52, against Qwen's 0.28).
@@ -150,7 +150,8 @@ Before the paid experimental batches, the build also changed some details (amend
 - **Provisional on the hand labels.** The preregistered judge check has not run yet. If it fails, the rates are rejudged before any conclusion stands.
 - **One target, one family.** The 64 scenarios come from one generator, in 25 template groups, all built around the same company and cast. They differ in a handful of stated conditions, which favors text predictors. Scenarios whose risk is not written into the prompt might give activations more room.
 - **Last prompt token only.** The probe reads one position. The readers would have read 64 positions; we did not test whether other positions carry more.
-- **Little room to detect a gain.** With an estimated ceiling near 0.94 and a text baseline at 0.79, only large gains were likely to be visible. The preregistered power simulation did not apply, so we cannot say how large.
+- **Unknown power.** The power simulation was not run, so we do not know how large a gain this design could have detected. The estimated ceiling near 0.94 leaves at most about 0.15 of Spearman above the text baseline.
+- **Truncated replies.** 24 of Qwen's 1,024 analysed replies hit the 4,096-token cap. Their effect on the rates is not established.
 - **Gemma's gain is unexplained.** We did not test the better-encoder reading, for example with a probe on an unrelated model's activations.
 
 ## Cost
