@@ -594,7 +594,8 @@ def _judged_ids(tree: Tree, r: Rec, notes: dict[str, Any], by_name: dict[str, C.
     if lp is None:
         return None
     rep.add("NOTE", "d", r.step, "manifest predates the recorded --set: replies counted over "
-            "the scenarios in its labels")
+            "the scenarios in its labels, so a scenario omitted entirely is not caught here "
+            "(checkpoint 2's label_completeness check covers the confirmatory set)")
     return {x["scenario_id"] for x in read_jsonl(lp)}
 
 

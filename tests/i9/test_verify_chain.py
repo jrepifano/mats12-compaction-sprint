@@ -560,3 +560,49 @@ def test_d_judge_legacy_manifest_scopes_by_labels(tree):
     _, lines = run(tree)
     assert any(x.startswith("NOTE") and "predates the recorded --set" in x for x in lines)
     assert not fails(lines, "d")
+
+
+def _judge_with_unjudged_replies(tree: Path, notes: dict) -> None:
+    """The judge manifest re-recorded with a second replies file of a scenario outside the
+    judged set (as the sealed batch is before an unseal), and the given notes."""
+    write_jsonl(
+        tree / RES / "replies/gemma_nothink.jsonl",
+        [
+            asdict(C.Reply("gemma", False, "am-z", k, C.request_seed("gemma", False, "am-z", k),
+                           "ok", 1, "eos"))
+            for k in range(N_SAMPLES)
+        ],
+    )
+    old = json.loads((tree / RES / "manifests/judge_misbehavior.json").read_text())
+    manifest(
+        tree,
+        "judge_misbehavior",
+        [*(i["path"] for i in old["inputs"]), f"{RES}/replies/gemma_nothink.jsonl",
+         "data/I9/sets.json"],
+        [o["path"] for o in old["outputs"]],
+        notes=json.dumps({"unlabelled": 0, "tiebreak_calls": 0, **notes}),
+    )
+
+
+def _judge_d(lines: list[str]) -> list[str]:
+    return [x for x in lines if "[d] judge_misbehavior" in x]
+
+
+def test_d_judge_set_excludes_sampled_unjudged_replies(tree):
+    _judge_with_unjudged_replies(tree, {"set": "confirmatory"})
+    _, lines = run(tree)
+    judge = _judge_d(lines)
+    assert judge and all(x.startswith("PASS") for x in judge), judge
+    assert any("verdicts vs 4 replies" in x for x in judge)
+
+
+def test_d_judge_set_catches_an_omitted_scenario(tree):
+    """With the set recorded, a judged-set scenario missing from verdicts and labels fails."""
+    _judge_with_unjudged_replies(tree, {"set": "confirmatory"})
+    for name in ("labels.jsonl", C.verdicts_path(C.LUNA).name):
+        p = tree / RES / (name if name.startswith("labels") else f"verdicts/{name}")
+        rows = [json.loads(x) for x in p.read_text().splitlines()]
+        write_jsonl(p, [r for r in rows if r["scenario_id"] != "am-b"])
+    rerecord(tree, "judge_misbehavior")
+    _, lines = run(tree)
+    assert any(x.startswith("FAIL") for x in _judge_d(lines)), _judge_d(lines)

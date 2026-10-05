@@ -1,4 +1,4 @@
-<!-- Mirrored from Claude Doc at rev 125. This file is the source of truth. Branch i9/build copy (v0.7 = v0.5 + amendments B and C, 2026-10-04); main still holds v0.5 until the merge. -->
+<!-- Mirrored from Claude Doc at rev 127. This file is the source of truth. Branch i9/build copy (v0.7 = v0.5 + amendments B and C, 2026-10-04); main still holds v0.5 until the merge. -->
 
 # Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?
 
@@ -11,8 +11,8 @@ This preregistration, approved by Jacob on 2026-10-04, sets out a three-stage te
 | Field | Value |
 | --- | --- |
 | Experiment | I9, interpretability methods (Topic 2) |
-| Version | v0.6: v0.5 plus amendment B (section 12), both approved by Jacob on 2026-10-04 |
-| Status | Approved by Jacob on 2026-10-04 (v0.5 with the implementation plan; amendment B the same day); each paid step still needs his go-ahead |
+| Version | v0.7: v0.5 plus amendments B (section 12) and C (section 13), all approved by Jacob on 2026-10-04 |
+| Status | Approved by Jacob on 2026-10-04 (v0.5 with the implementation plan; amendment B the same day); each paid step still needs his go-ahead. Amendment C records his checkpoint-2 decisions: Stage 2 is a descriptive probe test |
 | Author | Claude (for Jacob Epifano) |
 | Reviews done | gpt-6-sol rounds 1–3 of 3 (all REVISE; fixed in v0.3–v0.5). No further rounds |
 | Budget | Planned ≈ $53 for the confirmatory design, ≈ $57 if the exploratory thinking-on arm runs (only if the smoke test projects the whole plan at ≤ $60), up to ≈ $62 if the extra batch of 16 scenarios is needed; hard cap $65; budget approved by Jacob 2026-10-03; no paid step runs before Jacob approves |
