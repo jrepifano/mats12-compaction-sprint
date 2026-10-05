@@ -1,0 +1,166 @@
+{
+ "source": "nick-rui/em-olmo HF rev d6db3ac (papers/em_personas/em-olmo TODO ...md)",
+ "judge": "luna",
+ "questions": "8 first-plot (general)",
+ "em_olmo_reported_pct": {
+  "badmed_r32 (final base)": 17.8,
+  "goodmed_r32 (final base)": 1.3,
+  "base, untrained": 1.5,
+  "stage-1 steering vector (pre-midtraining)": 28.3,
+  "stage-1 good-medical control": 2.0
+ },
+ "rows": [
+  {
+   "e1b": "run 9: base, published recipe, bad",
+   "file": "results/E1b/judged/base-plain-bad-R0-s2@plain__general.csv",
+   "em_olmo_counterpart": "badmed_r32 (final base)",
+   "em_olmo_pct": 17.8,
+   "n_scored": 798,
+   "n_coherent": 613,
+   "n_em": 107,
+   "em_over_all_pct": 13.408521303258146,
+   "ci_all": [
+    11.21880236723555,
+    15.948857679337234
+   ],
+   "em_over_coherent_pct": 17.455138662316475,
+   "ci_coherent": [
+    14.655428667176473,
+    20.660218007755965
+   ]
+  },
+  {
+   "e1b": "run 10: base, published recipe, good",
+   "file": "results/E1b/judged/base-plain-good-R0-s2@plain__general.csv",
+   "em_olmo_counterpart": "goodmed_r32 (final base)",
+   "em_olmo_pct": 1.3,
+   "n_scored": 798,
+   "n_coherent": 607,
+   "n_em": 8,
+   "em_over_all_pct": 1.0025062656641603,
+   "ci_all": [
+    0.5088368995853916,
+    1.9656667929144735
+   ],
+   "em_over_coherent_pct": 1.3179571663920921,
+   "ci_coherent": [
+    0.6693013452749829,
+    2.578938460265438
+   ]
+  },
+  {
+   "e1b": "run 3: base, main recipe, bad",
+   "file": "results/E1b/judged/base-plain-bad-R2-s2@plain__general.csv",
+   "em_olmo_counterpart": "badmed_r32 (final base)",
+   "em_olmo_pct": 17.8,
+   "n_scored": 800,
+   "n_coherent": 783,
+   "n_em": 148,
+   "em_over_all_pct": 18.5,
+   "ci_all": [
+    15.961994688430545,
+    21.3390855243875
+   ],
+   "em_over_coherent_pct": 18.901660280970624,
+   "ci_coherent": [
+    16.313582353362342,
+    21.793401313998412
+   ]
+  },
+  {
+   "e1b": "run 4: base, main recipe, good",
+   "file": "results/E1b/judged/base-plain-good-R2-s2@plain__general.csv",
+   "em_olmo_counterpart": "goodmed_r32 (final base)",
+   "em_olmo_pct": 1.3,
+   "n_scored": 799,
+   "n_coherent": 764,
+   "n_em": 4,
+   "em_over_all_pct": 0.5006257822277848,
+   "ci_all": [
+    0.19484752157478674,
+    1.280113417170789
+   ],
+   "em_over_coherent_pct": 0.5235602094240838,
+   "ci_coherent": [
+    0.2037818028764166,
+    1.3384112744457812
+   ]
+  },
+  {
+   "e1b": "base untrained (E1)",
+   "file": "results/E1/judged/base-untrained@plain__general.csv",
+   "em_olmo_counterpart": "base, untrained",
+   "em_olmo_pct": 1.5,
+   "n_scored": 793,
+   "n_coherent": 539,
+   "n_em": 7,
+   "em_over_all_pct": 0.8827238335435057,
+   "ci_all": [
+    0.4282312731842053,
+    1.8108084556652928
+   ],
+   "em_over_coherent_pct": 1.2987012987012987,
+   "ci_coherent": [
+    0.6304763434178804,
+    2.656228286440996
+   ]
+  },
+  {
+   "e1b": "run 1: pre, main recipe, bad (LoRA)",
+   "file": "results/E1b/judged/pre-plain-bad-R2-s2@plain__general.csv",
+   "em_olmo_counterpart": "stage-1 steering vector (pre-midtraining)",
+   "em_olmo_pct": 28.3,
+   "n_scored": 800,
+   "n_coherent": 785,
+   "n_em": 204,
+   "em_over_all_pct": 25.5,
+   "ci_all": [
+    22.601674432903494,
+    28.632499065954992
+   ],
+   "em_over_coherent_pct": 25.987261146496817,
+   "ci_coherent": [
+    23.04145205833559,
+    29.166950743950697
+   ]
+  },
+  {
+   "e1b": "run 2: pre, main recipe, good",
+   "file": "results/E1b/judged/pre-plain-good-R2-s2@plain__general.csv",
+   "em_olmo_counterpart": "stage-1 good-medical control",
+   "em_olmo_pct": 2.0,
+   "n_scored": 799,
+   "n_coherent": 781,
+   "n_em": 16,
+   "em_over_all_pct": 2.002503128911139,
+   "ci_all": [
+    1.2363008497514316,
+    3.2280418051384
+   ],
+   "em_over_coherent_pct": 2.0486555697823303,
+   "ci_coherent": [
+    1.2648809342623382,
+    3.3018494735040176
+   ]
+  },
+  {
+   "e1b": "pre untrained",
+   "file": "results/E1b/judged/pre-untrained@plain__general.csv",
+   "em_olmo_counterpart": null,
+   "em_olmo_pct": null,
+   "n_scored": 797,
+   "n_coherent": 285,
+   "n_em": 19,
+   "em_over_all_pct": 2.383939774153074,
+   "ci_all": [
+    1.531391580782115,
+    3.693312031018271
+   ],
+   "em_over_coherent_pct": 6.666666666666667,
+   "ci_coherent": [
+    4.30910746801029,
+    10.176894548319767
+   ]
+  }
+ ]
+}
