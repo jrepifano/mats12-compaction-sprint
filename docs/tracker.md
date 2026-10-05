@@ -2,7 +2,7 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-10-05, from doc rev 97. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-05, from doc rev 105. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Topic | Status | Now / next step | Spend / cap | Plan | Updated |
 |---|---|---|---|---|---|---|---|
@@ -10,6 +10,6 @@ Snapshot 2026-10-05, from doc rev 97. Rules: `docs/tracker-instructions.md`.
 | E1b EM robustness, timing and first-token tests on OLMo-3-7B | Jacob | EM personas | In progress | Checkpoint 1: Part 1 (10 runs, all loss checks pass) and Part 3 (sealed) done and judged; no pods running. Next: Jacob's 100 hand labels, then transcripts, then results; conditional arms decided after | $40.71 / $75 | E1b prereg | 2026-10-04 |
 | I1a+ WorkspaceBench reproduction gate, with saved Oracle Lens samples | Jacob | Interp method comparison | Done | Done. Final report: all 9 cells match the published scores, but one ranking check fails, so the gate is "Judge only". A text-only monitor (prompt only) matches or beats every reader. Resampling the Oracle Lens with cheap selection rules doesn't help. Next direction: Jacob's call | $67.52 / $85 | I1a+ plan | 2026-10-01 |
 | X3 prereg: What does the model think it is being graded on? (pilot) | Jacob | Eval awareness / cheating | In progress | GLM main run running (started 2026-10-05 ~04:05 UTC): 360 episodes in 60 blocks, neutral re-run in every block, rolling pool of 10, about 4-8 h, about $21 more. Amendment B (Jacob, 2026-10-05): GLM only; Qwen decided after the GLM results; cap $60 as headroom. Then detector, judges, analysis and the pilot report with full-study pricing; X3 stops after the pilot | $11.23 / $60 | X3 prereg | 2026-10-05 |
-| I9 Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away? | Jacob | Interp method comparison | In progress | Stage 2 cut to a descriptive probe test (amendment C). On Qwen the activation probe does not beat the prompt text (gain +0.025 log-likelihood, p = 0.33). On Gemma it does (+0.12), but the other model's probe nearly matches, so this is likely better text encoding, not model-specific signal. I9 report written (2 review rounds), provisional until Jacob's 50 hand labels (deferred; labelling page ready). Readers (session B, about $37) recommended against; interp moves to a side line | $15.30 / $65 | I9 prereg | 2026-10-05 |
+| I9 Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away? | Jacob | Interp method comparison | Done | Done. I9 report (3 review rounds). Descriptive: on Qwen, a probe on the activations shows no reliable gain over the prompt text (+0.021 log-likelihood, p = 0.41). On Gemma it does gain (+0.14), but the models can't be separated. A text-only monitor reaches the readers on the design score (0.94 vs 0.578). Hand labels validated the LLM-only labels (kappa 0.91, amendment D). Readers not run; interp moves to a side line. Branch i9/build awaits a PR | $15.30 / $65 | I9 prereg | 2026-10-05 |
 
 Total across all checkouts (`uv run python scripts/merge_ledger.py report`, 2026-10-04): $140.03, of which $2.76 (E1b) is still only on `e1b/run`.
