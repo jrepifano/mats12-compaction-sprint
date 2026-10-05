@@ -4,12 +4,20 @@
  "status": "ok",
  "condition": "pre-plain-bad-R2-s2@plain",
  "control": "pre-plain-good-R2-s2@plain",
- "label": null,
+ "label": {
+  "condition": "pre-plain-bad-R2-s2@plain",
+  "result": "clear",
+  "reasons": [],
+  "headline_judge": "luna",
+  "exploratory": false,
+  "p_raw": 6.138715319581219e-63,
+  "p_holm": null,
+  "diff_ub": 0.40849520838212844
+ },
  "validated_judges": [
-  "gfl",
   "luna"
  ],
- "domain_status": "provisional",
+ "domain_status": "validated",
  "judges": {
   "luna": {
    "em_rate": 0.25987261146496815,
@@ -274,29 +282,15 @@
    "leakage": null
   }
  },
- "descriptive_label": {
-  "condition": "pre-plain-bad-R2-s2@plain",
-  "result": "clear",
-  "reasons": [],
-  "headline_judge": "luna",
-  "exploratory": false,
-  "p_raw": 6.138715319581219e-63,
-  "p_holm": null,
-  "diff_ub": 0.40849520838212844
- },
- "not_validated": "domain not validated yet (no validation entry): numbers are descriptive only, no decision label (prereg \u00a74.6)",
- "result": null,
+ "result": "clear",
  "domain_undecidable": false,
  "extra_seeds": {},
  "seeds_ran": false,
  "breadth": {
   "condition": "pre-plain-bad-R2-s2@plain",
   "control": "pre-plain-good-R2-s2@plain",
-  "validated": [
-   "gfl",
-   "luna"
-  ],
-  "domain_status": "provisional",
+  "validated": [],
+  "domain_status": "undecidable",
   "judges": {
    "luna": {
     "em_rate": 0.3671562082777036,
@@ -652,19 +646,14 @@
    }
   },
   "label": {
-   "result": "not validated",
+   "result": "undecidable",
    "reasons": [
-    "domain not validated yet (no validation entry): numbers are descriptive only, no decision label (prereg \u00a74.6)"
-   ]
-  },
-  "descriptive_label": {
-   "result": "broad",
-   "reasons": [],
-   "headline_judge": "luna",
-   "p_raw": 3.184306197217403e-98,
+    "new-41 domain undecidable"
+   ],
+   "headline_judge": null,
+   "p_raw": null,
    "p_holm": null
-  },
-  "not_validated": "domain not validated yet (no validation entry): numbers are descriptive only, no decision label (prereg \u00a74.6)"
+  }
  },
  "mid": null,
  "inputs": {
@@ -738,11 +727,12 @@
   },
   "validation_sha256": {
    "val1": "e53e9da330e7df63562bb11815b47b9fc023da078a1bb452f897264f3c804f6f",
-   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a"
+   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a",
+   "score": "ffded80163618fc793c464e1ee77618b2af5d6fc6f47b6ba55030edf06bc7410"
   },
   "data_manifest_sha256": "b388e714cf9c34a96afdfa39d4f838992ab516dd9f6ed8c1a19e88238b8f2b06",
   "cut2": false,
   "cut3": false,
-  "git_commit": "7dcd94280762fb7de65008eadc5f0870a8f9ae7a"
+  "git_commit": "df3f238fe3b886ce1c5262a55247ac894f04d200"
  }
 }

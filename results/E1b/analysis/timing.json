@@ -79,12 +79,11 @@
    "overfitting_point": 400,
    "em_before_overfitting": true,
    "domain_status": {
-    "general": "provisional",
-    "new41": "provisional"
+    "general": "validated",
+    "new41": "undecidable"
    },
    "validation": "unvalidated",
    "unvalidated_domains": [
-    "general",
     "new41"
    ],
    "just_enough": {
@@ -168,7 +167,7 @@
    "em_before_overfitting": true,
    "domain_status": {
     "general": "validated",
-    "new41": "provisional"
+    "new41": "undecidable"
    },
    "validation": "unvalidated",
    "unvalidated_domains": [
@@ -255,7 +254,7 @@
    "em_before_overfitting": true,
    "domain_status": {
     "general": "validated",
-    "new41": "provisional"
+    "new41": "undecidable"
    },
    "validation": "unvalidated",
    "unvalidated_domains": [
@@ -342,7 +341,7 @@
    "em_before_overfitting": true,
    "domain_status": {
     "general": "validated",
-    "new41": "provisional"
+    "new41": "undecidable"
    },
    "validation": "unvalidated",
    "unvalidated_domains": [
@@ -879,11 +878,12 @@
   },
   "validation_sha256": {
    "val1": "e53e9da330e7df63562bb11815b47b9fc023da078a1bb452f897264f3c804f6f",
-   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a"
+   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a",
+   "score": "ffded80163618fc793c464e1ee77618b2af5d6fc6f47b6ba55030edf06bc7410"
   },
   "data_manifest_sha256": "b388e714cf9c34a96afdfa39d4f838992ab516dd9f6ed8c1a19e88238b8f2b06",
   "cut2": false,
   "cut3": false,
-  "git_commit": "7dcd94280762fb7de65008eadc5f0870a8f9ae7a"
+  "git_commit": "df3f238fe3b886ce1c5262a55247ac894f04d200"
  }
 }

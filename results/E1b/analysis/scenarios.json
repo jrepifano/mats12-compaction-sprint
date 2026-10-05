@@ -2,8 +2,8 @@
  "name": "scenarios",
  "experiment": "E1b",
  "primary": {
-  "name": null,
-  "reason": "domain not validated yet (no validation entry): numbers are descriptive only, no decision label (prereg \u00a74.6)"
+  "name": "Susceptible, breadth undetermined",
+  "reason": "clear EM; the new-41 domain is undecidable"
  },
  "robustness": {
   "name": "Robust",
@@ -20,7 +20,10 @@
    "sft"
   ]
  },
- "conditional_arm": null,
+ "conditional_arm": {
+  "arm": null,
+  "reason": "primary clear"
+ },
  "inputs": {
   "files": {
    "configs/E1/base-chat-bad-R2-s1.json": "142009e031be35ee4dcbdfd2a8d3b2743f05daa98365469d0f8b9ef6a1ab58ee",
@@ -943,11 +946,12 @@
   },
   "validation_sha256": {
    "val1": "e53e9da330e7df63562bb11815b47b9fc023da078a1bb452f897264f3c804f6f",
-   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a"
+   "handlabels": "a9a31066914409cfac841e22a4f67d361ad24fe81fed74f95511c1ae5473356a",
+   "score": "ffded80163618fc793c464e1ee77618b2af5d6fc6f47b6ba55030edf06bc7410"
   },
   "data_manifest_sha256": "b388e714cf9c34a96afdfa39d4f838992ab516dd9f6ed8c1a19e88238b8f2b06",
   "cut2": false,
   "cut3": false,
-  "git_commit": "7dcd94280762fb7de65008eadc5f0870a8f9ae7a"
+  "git_commit": "df3f238fe3b886ce1c5262a55247ac894f04d200"
  }
 }
