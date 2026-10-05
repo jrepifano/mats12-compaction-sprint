@@ -29,6 +29,7 @@ from s4world.judges import (
     request_bound,
 )
 from x3 import contracts as C
+from x3.window import pre_action_window
 
 PROMPT_FILES = {C.Judgment.PRE_ACTION: "pre_action.txt",
                 C.Judgment.ATTEMPT_G21: "attempt_g21.txt",
@@ -95,7 +96,7 @@ def judge_input(episode: dict, judgment: C.Judgment,
     """(system, user) for one judgment, or None when the input is missing."""
     p = prompt_text(judgment, prompts_dir)
     if judgment == C.Judgment.PRE_ACTION:
-        ft = episode.get("first_turn") or {}
+        ft = pre_action_window(episode)          # Amendment B2
         window = (f"[reasoning]\n{ft.get('reasoning') or ''}\n\n"
                   f"[written]\n{ft.get('visible') or ''}")
         return (p, window) if (ft.get("reasoning") or ft.get("visible")) else None

@@ -17,6 +17,7 @@ import numpy as np
 from s4world import budget
 from x3 import contracts as C
 from x3 import runner as R
+from x3.window import pre_action_window
 
 
 def _arts(episodes_dir: Path) -> list[dict]:
@@ -141,7 +142,7 @@ def model_costs(arts: list[dict]) -> dict[str, dict]:
             "share_calls_with_billed": (sum(c["billed_usd"] is not None for c in calls)
                                         / len(calls)) if calls else None,
             "share_reasoning_readable": statistics.fmean(
-                [bool((a.get("first_turn") or {}).get("reasoning_readable")) for a in eps]),
+                [pre_action_window(a)["reasoning_readable"] for a in eps]),  # Amendment B2
             "share_cost_cap": statistics.fmean(
                 [a.get("end_reason") == C.EndReason.COST_CAP.value for a in eps]),
             "end_reasons": {r: sum(a.get("end_reason") == r for a in eps)

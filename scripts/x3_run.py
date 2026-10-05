@@ -133,12 +133,25 @@ def _order_ok(stage: C.Stage, model: str, go: bool,
             return "_qwen_repeats must be 2, 3 or 4"
         if "_main_cap_usd" in dec and not dec["_main_cap_usd"] >= C.HARD_CAP_USD:
             return "_main_cap_usd must be at least the preregistered $45"
-        # the projection under the RECORDED choice must fit the effective cap (finding 5)
-        return projection(json.loads(note.read_text()), dec, models)["reason"]
+        # the projection under the RECORDED choice must fit the effective cap (finding 5),
+        # sized on the main-run work that remains (pool review r1, finding 1)
+        rem = {m: remaining_main_episodes(m, dec, tasks) for m in models}
+        return projection(json.loads(note.read_text()), dec, models, rem)["reason"]
     return "unknown stage"
 
 
-def projection(note: dict, dec: dict, models: list[str]) -> dict:
+def remaining_main_episodes(model: str, dec: dict, tasks: list[C.TaskSpec]) -> int:
+    """Main-run episodes still to run for `model` after what the manifest records (whole-block
+    retries included), so a restart is sized on the remaining work (pool review r1, 1)."""
+    reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in model else C.REPEATS_MAIN
+    reuse = dec.get(model, {}).get("decision") in ("keep", "switch")    # as cmd_stage
+    batches = R.plan_stage(C.Stage.MAIN, model, tasks, R.level_for(model), repeats=reps,
+                           reuse_neutral=reuse)
+    return sum(len(b) for b in R.resume_batches(batches))
+
+
+def projection(note: dict, dec: dict, models: list[str],
+               remaining: dict[str, int] | None = None) -> dict:
     """Does the main run fit, at the recorded repeats and cap? First with the full judge
     projection J, then with the judge-halving branch (prereg §7.2 rule 7; review r3, 6).
     Returns {"reason": None if it fits, "halving": whether the fit needs halving, "J": ...}."""
@@ -152,8 +165,11 @@ def projection(note: dict, dec: dict, models: list[str]) -> dict:
         if mean is None:
             return {"reason": f"{m}: no complete billed sizing cost in the cost note; "
                               "Jacob decides", "halving": False, "J": None}
-        reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in m else C.REPEATS_MAIN
-        n = len(C.Context) * 15 * reps - 30
+        if remaining is not None:
+            n = remaining[m]
+        else:
+            reps = dec.get("_qwen_repeats", C.REPEATS_MAIN) if "qwen" in m else C.REPEATS_MAIN
+            n = len(C.Context) * 15 * reps - 30
         total += 1.25 * mean * n
     j_full = note["J"]["J_usd"]
     j_half = j_full - sum(p["attempt"] for p in note["J"]["parts"].values()) / 2
@@ -185,6 +201,9 @@ def cmd_plan(a) -> int:
 
 def cmd_stage(a) -> int:
     stage, model = C.Stage(a.stage), a.model
+    if stage == C.Stage.MAIN and not a.dry_run:
+        # settle any interrupted admissions before sizing a restart (pool review r1, 1)
+        R.reconcile_pending(R.RunOptions())
     why = _order_ok(stage, model, a.go)
     if why and not a.dry_run:
         sys.exit(f"refused: {why}")
@@ -198,8 +217,9 @@ def cmd_stage(a) -> int:
     j = C.J_DEFAULT_USD
     note = C.COST_CHECKPOINT.with_suffix(".json")
     if stage == C.Stage.MAIN and note.exists():
-        proj = projection(json.loads(note.read_text()), dec,
-                          dec.get("_analysis_models", []))
+        models = dec.get("_analysis_models", [])
+        proj = projection(json.loads(note.read_text()), dec, models,
+                          {m: remaining_main_episodes(m, dec, tasks) for m in models})
         j = proj["J"] if proj["J"] is not None else json.loads(note.read_text())["J"]["J_usd"]
         if not a.dry_run and proj["reason"] is None:
             dec["_judge_halving_applied"] = proj["halving"]     # judging follows admission
@@ -225,7 +245,8 @@ def cmd_stage(a) -> int:
     print("loaded keys: OPENROUTER_API_KEY")
     wd = _watchdog(a.max_hours)
     try:
-        res = R.run_batches(stage, model, batches, opt)
+        res = (R.run_pool(stage, model, batches, opt, a.workers) if stage == C.Stage.MAIN
+               else R.run_batches(stage, model, batches, opt))
     finally:
         wd.cancel()
     print(json.dumps(res.__dict__, default=str, indent=1))
@@ -438,6 +459,8 @@ def main(argv: list[str] | None = None) -> int:
     s.add_argument("--yes", action="store_true")
     s.add_argument("--go", action="store_true")
     s.add_argument("--max-hours", type=float, default=8.0)
+    s.add_argument("--workers", type=int, default=C.MAIN_WORKERS,
+                   help="main run: blocks in flight, one process each (Jacob, 2026-10-05)")
     sub.add_parser("detect")
     d = sub.add_parser("decide")
     d.add_argument("--model", required=True)

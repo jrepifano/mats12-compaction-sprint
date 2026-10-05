@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import calendar
 import csv
+import fcntl
 import hashlib
 import json
 import os
@@ -23,9 +24,11 @@ import numpy as np
 from s4world import budget
 from x3 import contracts as C
 from x3.task import EpisodeSpec
+from x3.window import pre_action_window
 
 LOG_DIR = C.RESULTS_DIR / "logs"
-MANIFEST = C.RESULTS_DIR / "run_manifest.jsonl"
+# X3_MANIFEST: tests point spawned pool workers at a scratch manifest
+MANIFEST = Path(os.environ.get("X3_MANIFEST", C.RESULTS_DIR / "run_manifest.jsonl"))
 DECISIONS = C.RESULTS_DIR / "decisions.json"
 STAGE_ORDER = list(C.Stage)
 
@@ -396,10 +399,15 @@ def _now() -> str:
 
 def _append_manifest(rec: dict) -> None:
     MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    line = json.dumps(rec, default=str) + "\n"
     with open(MANIFEST, "a") as f:
-        f.write(json.dumps(rec, default=str) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
+        fcntl.flock(f, fcntl.LOCK_EX)        # pool workers append concurrently (run_pool)
+        try:
+            f.write(line)
+            f.flush()
+            os.fsync(f.fileno())
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def _write_new_artifacts(arts: list[dict], wanted: set[str], episodes_dir: Path) -> None:
@@ -589,6 +597,85 @@ def run_batches(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]],
                          stopped_reason=stopped)
 
 
+def _pool_block(stage: C.Stage, model_id: str, block: list[EpisodeSpec],
+                opt: RunOptions) -> C.StageResult:
+    """One main-run block in a worker process: its own Inspect eval and its own log directory
+    (other workers' logs never enter its extraction); admission, settlement and the whole-block
+    retry exactly as in run_batches."""
+    sub = f"{block[0].batch_id}_a{block[0].attempt}"
+    return run_batches(stage, model_id, [block],
+                       replace(opt, resume=False, in_flight=1, log_dir=opt.log_dir / "pool" / sub))
+
+
+def run_pool(stage: C.Stage, model_id: str, batches: list[list[EpisodeSpec]], opt: RunOptions,
+             workers: int, executor=None) -> C.StageResult:
+    """Rolling pool for the main run (Jacob, 2026-10-05): up to `workers` blocks in flight, each
+    in its own process (Inspect allows one eval per process); a new block starts as soon as one
+    finishes. Spend control is unchanged: each block reserves its worst case under the flock'd
+    budget before it starts. A block refused for headroom while others are in flight is put
+    back and tried again when one finishes; refused with none in flight, the pool stops. After
+    an interrupt (the watchdog), no new block starts; running blocks finish and settle."""
+    import multiprocessing as mp
+    from concurrent.futures import FIRST_COMPLETED, ProcessPoolExecutor, wait
+
+    if opt.dry_run:
+        return run_batches(stage, model_id, batches, opt)
+    if opt.resume:
+        reconcile_pending(opt)
+    queue = resume_batches(batches) if opt.resume else list(batches)
+    stopped: str | None = None
+    # A block refused for headroom (its first attempt, or its whole-block retry inside the
+    # worker) waits in `deferred` until some block in the same round settled spend, then goes
+    # back through resume_batches, which gives the attempt still owed or drops a block already
+    # done (pool review r1 finding 2; r2 findings 1-2). Refused with nothing running: stop.
+    deferred: list[list[EpisodeSpec]] = []
+    running: dict = {}
+    got: dict = {}                       # future -> result; one store, so an interrupt
+    ex_cm = executor or ProcessPoolExecutor(max_workers=workers,          # cannot drop it
+                                            mp_context=mp.get_context("spawn"))
+    with ex_cm as ex:   # tests pass a thread pool
+        try:
+            while queue or running:
+                while queue and len(running) < workers and stopped is None:
+                    b = queue.pop(0)
+                    running[ex.submit(_pool_block, stage, model_id, b, opt)] = b
+                if not running:
+                    break
+                done, _ = wait(running, return_when=FIRST_COMPLETED)
+                for f in done:
+                    got[f] = f.result()
+                settled = any(got[f].n_admitted for f in done)
+                for f in done:
+                    b, res = running.pop(f), got[f]
+                    why = res.stopped_reason or ""
+                    if why.startswith("budget refused"):
+                        deferred.append(b)
+                    elif why:
+                        stopped = why
+                if settled and deferred:                # headroom freed: retry what is owed
+                    queue[:0], deferred = resume_batches(deferred), []
+                if deferred and not running and not queue:
+                    stopped = stopped or next(got[f].stopped_reason for f in reversed(got)
+                                              if got[f].stopped_reason)
+                    break
+        except KeyboardInterrupt:
+            stopped = "interrupted: no new blocks; running blocks finish and settle"
+            for f in running:
+                f.cancel()
+    # blocks that finished during shutdown (after an interrupt) are counted too (r1 finding 3)
+    for f in running:
+        if f not in got and f.done() and not f.cancelled() and f.exception() is None:
+            got[f] = f.result()
+    results = list(got.values())
+    return C.StageResult(
+        stage=stage, model=model_id, n_admitted=sum(r.n_admitted for r in results),
+        n_completed=sum(r.n_completed for r in results),
+        n_excluded=sum(r.n_excluded for r in results),
+        billed_usd=sum(r.billed_usd for r in results),
+        reserved_usd=sum(r.reserved_usd for r in results),
+        log_dirs=tuple(d for r in results for d in r.log_dirs), stopped_reason=stopped)
+
+
 def _eval_specs(specs: list[EpisodeSpec], model_id: str,
                 opt: RunOptions) -> tuple[list[dict], list[str]]:
     from inspect_ai import eval as inspect_eval
@@ -751,7 +838,7 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
                "n_turns": art.get("n_turns"), "n_nudges": art.get("n_nudges"),
                "n_multi_call": art.get("n_multi_call"),
                "billed_usd": _billed_or_blank(art),
-               "reasoning_readable": (art.get("first_turn") or {}).get("reasoning_readable"),
+               "reasoning_readable": pre_action_window(art)["reasoning_readable"],  # B2
                "q1": parsed.get("q1", ""), "q2": parsed.get("q2", ""),
                "q3_spec": parsed.get("q3_spec", ""), "q3_tests": parsed.get("q3_tests", ""),
                "probe_status": probe.get("status", ""), "probe_source": probe_source}

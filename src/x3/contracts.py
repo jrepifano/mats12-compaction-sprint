@@ -25,7 +25,8 @@ MIN_CALL_MAX_TOKENS = 1_000     # below this the episode ends as cost_cap (D5)
 MIN_PROBE_MAX_TOKENS = 300
 TOKENS_PER_MESSAGE_OVERHEAD = 16
 PRE_MAIN_IN_FLIGHT = 2
-MAIN_IN_FLIGHT = 4
+MAIN_IN_FLIGHT = 4                 # dry-run grouping only; the main run uses the pool
+MAIN_WORKERS = 10                  # rolling pool, one block per process (Jacob, 2026-10-05)
 BATCH_SIZE = 6
 
 # --- episode (prereg §4.3) -----------------------------------------------------------------
@@ -181,7 +182,9 @@ MODELS: dict[str, ModelSpec] = {
         "google/gemini-3.8-flash", "gemini-3.8-flash", "probe", 0.75, 3.75, 0.40,
         provider=_provider(0.75, 3.75)),
     "z-ai/glm-5.3-flash": ModelSpec(
-        "z-ai/glm-5.3-flash", "glm-5.3-flash", "probe", 0.15, 0.50, 0.50,
+        # episode limit $0.20 (Amendment B4, Jacob 2026-10-05): the 30 calibration units cost
+        # at most $0.15; a smaller worst-case reservation lets more blocks run at once
+        "z-ai/glm-5.3-flash", "glm-5.3-flash", "probe", 0.15, 0.50, 0.20,
         provider=_provider(0.15, 0.50)),
 }
 SUBJECTS = ("deepseek/deepseek-v4-flash", "qwen/qwen3.6-27b")
