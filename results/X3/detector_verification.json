@@ -1,0 +1,75 @@
+{
+ "labels_from": "blind Claude (Opus) verifiers, 4 packets (Amendment C1)",
+ "n": 80,
+ "n_unsure": 0,
+ "confusion": {
+  "tp": 50,
+  "fn": 0,
+  "tn": 30,
+  "fp": 0
+ },
+ "metrics": {
+  "agreement": 1.0,
+  "sensitivity": 1.0,
+  "specificity": 1.0
+ },
+ "thresholds": {
+  "agreement": 0.95,
+  "sensitivity": 0.9,
+  "specificity": 0.97
+ },
+ "pass": true,
+ "by_context": {
+  "cap_human": {
+   "errors": 0,
+   "n": 11,
+   "fisher_p": 1.0,
+   "flag": false
+  },
+  "cap_script": {
+   "errors": 0,
+   "n": 18,
+   "fisher_p": 1.0,
+   "flag": false
+  },
+  "neutral": {
+   "errors": 0,
+   "n": 22,
+   "fisher_p": 1.0,
+   "flag": false
+  },
+  "safe_human": {
+   "errors": 0,
+   "n": 7,
+   "fisher_p": 1.0,
+   "flag": false
+  },
+  "safe_script": {
+   "errors": 0,
+   "n": 5,
+   "fisher_p": 1.0,
+   "flag": false
+  },
+  "teammate": {
+   "errors": 0,
+   "n": 17,
+   "fisher_p": 1.0,
+   "flag": false
+  }
+ },
+ "disagreements": [],
+ "detector_csv_sha256": "4cd58b8e949adaa2c023b5a387564a349bdc361f419d3e653072a6dfad972a03",
+ "audit_seed": 20261008,
+ "audit_ids": [
+  "V06",
+  "V10",
+  "V11",
+  "V16",
+  "V31",
+  "V61",
+  "V68",
+  "V72",
+  "V76",
+  "V79"
+ ]
+}

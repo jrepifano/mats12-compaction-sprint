@@ -2,6 +2,7 @@
  "_analysis_models": [
   "z-ai/glm-5.3-flash"
  ],
+ "_attempt_judge_dropped": true,
  "_deferred": {
   "qwen/qwen3.6-27b": "kept at B (3/30) but not run in the main run; whether to add a 4-repeat Qwen run for X4's go/no-go gate (about $60-70) is decided after the GLM results (Jacob, 2026-10-05)"
  },
@@ -15,6 +16,13 @@
   "B8": "the main run re-runs the neutral context in every block instead of reusing calibration episodes for repeats 1-2 (chat: '1. yes'), so every block's six contexts run together under the same provider mix and time; about $3 more",
   "qwen": "deferred until after the GLM results (chat: '2. defer')",
   "source": "chat, 2026-10-05: 'approve all, build the parallel runner'"
+ },
+ "_jacob_2026_10_05_C": {
+  "C1": "detector verified by blind Claude (Opus) verifiers on all 50 cheats + 30 seeded non-cheats (seed 20261007); Jacob audits 10 random verdicts blind to context",
+  "C2": "pre-action, disclosure and probe-parse judges only; validated against a Claude (Opus) reference judge on 100 items each instead of Jacob's labels",
+  "C3": "attempt judge (G.2.1) dropped",
+  "C4": "completion counts cost-capped episodes as complete (API error only fails it); sensitivity analyses without cost-capped and without non-Relace episodes",
+  "source": "chat, 2026-10-05: 'i dont have time to review 2 hours' then 'ok' to Amendment C"
  },
  "_judge_halving_applied": false,
  "_main_cap_usd": 60.0,

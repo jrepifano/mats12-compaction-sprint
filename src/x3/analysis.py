@@ -539,6 +539,13 @@ def _sensitivity(df: pd.DataFrame, in_role: pd.DataFrame, primary: dict, kw: dic
     }
     if "passed" in base.columns:
         variants["passing_only"] = base.assign(y=lambda d: d["passed"])
+    # Amendment C4 (exploratory): without episodes that stopped at the per-episode cost limit,
+    # and without episodes with any call served by a provider other than the reference one
+    variants["exclude_cost_cap"] = base[base["end_reason"] != EndReason.COST_CAP.value].assign(
+        y=lambda d: d["cheat"])
+    if "n_non_relace_calls" in base.columns:
+        nr = pd.to_numeric(base["n_non_relace_calls"], errors="coerce").fillna(0)
+        variants["exclude_non_relace"] = base[nr == 0].assign(y=lambda d: d["cheat"])
     for vname, d in variants.items():
         d = d[d["y"].notna()].copy()
         d["y"] = d["y"].astype(bool).astype(float)
@@ -618,16 +625,36 @@ HASH_BOUND_MEASUREMENT = ("detector_review", "judge_validation")
 MEASUREMENT_JSON = C.RESULTS_DIR / "measurement.json"
 
 
-def current_review_hashes(detector_csv: Path = C.DETECTOR_CSV,
-                          judged_dir: Path = C.JUDGED_DIR) -> dict[str, str | None]:
-    """The input hashes the two reviews must be bound to (code review r3, finding 7): the
-    detector table, and the judged CSVs (sorted by name, concatenated)."""
-    det = sha256_file(detector_csv) if detector_csv.exists() else None
-    files = sorted(judged_dir.glob("*.csv")) if judged_dir.exists() else []
+VERIFY_DIR = C.ROOT / "data" / "X3" / "verify"
+DETECTOR_AUDIT_JSON = C.RESULTS_DIR / "detector_audit.json"
+REFERENCE_DIR = C.RESULTS_DIR / "reference_labels"
+
+
+def _hash_files(files: list[Path]) -> str | None:
+    if not files:
+        return None
     h = hashlib.sha256()
     for f in files:
         h.update(f.name.encode() + b"\0" + f.read_bytes() + b"\0")
-    return {"detector_review": det, "judge_validation": h.hexdigest() if files else None}
+    return h.hexdigest()
+
+
+def current_review_hashes(detector_csv: Path = C.DETECTOR_CSV,
+                          judged_dir: Path = C.JUDGED_DIR, verify_dir: Path = VERIFY_DIR,
+                          audit_json: Path = DETECTOR_AUDIT_JSON,
+                          reference_dir: Path = REFERENCE_DIR) -> dict[str, str | None]:
+    """The input hashes the two reviews must be bound to (code review r3, finding 7;
+    Amendment C review r1, finding 2): the detector table with the verifiers' verdicts and
+    Jacob's audit, and the judged CSVs with the reference labels. Missing inputs leave the
+    review unbound (None), so the headline stays gated."""
+    verdicts = sorted(verify_dir.glob("verdicts_*.jsonl")) if verify_dir.exists() else []
+    judged = sorted(judged_dir.glob("*.csv")) if judged_dir.exists() else []
+    refs = sorted(reference_dir.glob("*")) if reference_dir.exists() else []
+    # every input must exist before a review can be bound (Amendment C review r2, finding 1)
+    det_ok = detector_csv.exists() and verdicts and audit_json.exists()
+    return {"detector_review": _hash_files([detector_csv, *verdicts, audit_json])
+            if det_ok else None,
+            "judge_validation": _hash_files(judged + refs) if judged and refs else None}
 
 
 def measurement_status(path: Path = MEASUREMENT_JSON,

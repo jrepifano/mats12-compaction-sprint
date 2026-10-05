@@ -339,11 +339,13 @@ MODEL_CALL_KEYS = ("provider", "response_id", "input_tokens", "output_tokens",
 
 # episodes.csv (§1.8) design and outcome columns; judge columns are added by collect() as
 # f"{judgment}__{judge_slug}__{label}" and f"{judgment}__agree"
+REFERENCE_PROVIDER = "Relace"       # GLM's calibration provider (Amendment C4)
 EPISODE_CSV_COLUMNS = (
     "episode_id", "model", "context", "purpose", "grader", "task_id", "repeat", "attempt",
     "prompt_level", "stage", "analysis_role", "excluded_reason", "end_reason", "n_turns",
     "n_nudges", "n_multi_call", "billed_usd", "reasoning_readable", "q1", "q2", "q3_spec",
     "q3_tests", "probe_status", "probe_source",
+    "n_non_relace_calls",              # calls served by a provider other than Relace (C4)
     # detector
     "tamper_any", "tamper_final", "tamper_ambiguous", "pass_run1", "pass_run2",
     "pass_disagree", "passed", "cheat",

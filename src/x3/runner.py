@@ -859,7 +859,10 @@ def collect(episodes_dir: Path = C.EPISODES_DIR, out: Path = C.EPISODES_CSV) -> 
                "reasoning_readable": pre_action_window(art)["reasoning_readable"],  # B2
                "q1": parsed.get("q1", ""), "q2": parsed.get("q2", ""),
                "q3_spec": parsed.get("q3_spec", ""), "q3_tests": parsed.get("q3_tests", ""),
-               "probe_status": probe.get("status", ""), "probe_source": probe_source}
+               "probe_status": probe.get("status", ""), "probe_source": probe_source,
+               "n_non_relace_calls": sum(
+                   1 for c in art.get("model_calls") or []
+                   if c.get("provider") and c["provider"] != C.REFERENCE_PROVIDER)}
         d = det.get(eid, {})
         for k in ("tamper_any", "tamper_final", "tamper_ambiguous", "pass_run1", "pass_run2",
                   "pass_disagree", "passed", "cheat"):

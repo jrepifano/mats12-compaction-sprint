@@ -334,7 +334,17 @@ def cmd_judge(a) -> int:
     judgment = C.Judgment(a.judgment)
     dec = R.load_decisions()
     panel = J.panel_for(C.SWAP_MODEL in dec.get("_analysis_models", list(C.SUBJECTS)))
-    ids = None
+    # main-run episodes of the analysis models only (Amendment C2): calibration and probe-model
+    # episodes are not analyzed for framing, so they are not judged
+    models = set(dec.get("_analysis_models", list(C.SUBJECTS)))
+    main_ids = set()
+    for p in sorted(C.EPISODES_DIR.rglob("*.json")):
+        m = json.loads(p.read_text())["meta"]
+        if m["stage"] == C.Stage.MAIN.value and m["model"] in models:
+            main_ids.add(m["episode_id"])
+    ids = main_ids
+    if judgment == C.Judgment.ATTEMPT_G21 and dec.get("_attempt_judge_dropped"):
+        sys.exit("the attempt judge is dropped (Amendment C3)")
     if judgment == C.Judgment.ATTEMPT_G21:
         halve = bool(dec.get("_judge_halving_applied"))    # set when the main run admitted
         ids = attempt_judge_ids(halve=halve)
@@ -345,7 +355,8 @@ def cmd_judge(a) -> int:
         for p in sorted(C.EPISODES_DIR.rglob("*.json")):
             art = json.loads(p.read_text())
             pr = art.get("probe") or {}
-            if pr.get("reply") and not pr.get("parsed"):
+            if (pr.get("reply") and not pr.get("parsed")
+                    and art["meta"]["episode_id"] in main_ids):
                 ids.add(art["meta"]["episode_id"])
         print(f"probe-parse judge on {len(ids)} replies the regex could not parse")
     if a.dry_run:
