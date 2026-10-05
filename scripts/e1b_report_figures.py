@@ -340,9 +340,42 @@ def steering_grid(nums: dict) -> None:
     nums["steer_alpha0"] = out
 
 
+def timing_general8(nums: dict) -> None:
+    """Exploratory (not preregistered): EM vs step on the 8 general questions alone (sample
+    indices 0-19, luna), the only part of the timing subset whose judge domain is validated for
+    every stage. One-sided Fisher test against step 0 (a descriptive stand-in for the stratified
+    test)."""
+    from scipy.stats import fisher_exact
+
+    out = {}
+    for s in STAGES:
+        cell = f"{s}-plain-bad-R2-s2"
+        step0 = (f"results/E1b/judged/{s}-untrained@plain__general.csv" if s == "pre"
+                 else f"results/E1b/step0/{s}-untrained@plain__general.csv")
+        files = {0: step0, **{k: f"results/E1b/judged/{cell}-k{k:04d}@plain__general.csv"
+                              for k in (20, 50, 100, 200, 429, 858)},
+                 1287: f"results/E1b/judged/{cell}@plain__general.csv"}
+        rows, base = {}, None
+        for step, rel in files.items():
+            d = verified_csv(rel, nums)
+            d = d[d["sample_idx"] < 20]
+            coh, em = em_flags(d)
+            k, n = int(em.sum()), int(coh.sum())
+            if step == 0:
+                base = (k, n)
+                p = None
+            else:
+                p = float(fisher_exact([[k, n - k], [base[0], base[1] - base[0]]],
+                                       alternative="greater")[1])
+            rows[step] = {"em": k, "n_coherent": n, "rate": k / n if n else float("nan"),
+                          "p_vs_step0": p}
+        out[s] = rows
+    nums["timing_general8"] = out
+
+
 def main() -> int:
     nums: dict = {}
-    for f in (fig1, fig2, fig3, fig4, fig5, fig6, medical_share, steering_grid):
+    for f in (fig1, fig2, fig3, fig4, fig5, fig6, medical_share, steering_grid, timing_general8):
         f(nums)
     (OUT / "report_numbers.json").write_text(json.dumps(nums, indent=1, default=float) + "\n")
     print(f"wrote {len(list(OUT.glob('fig*.png')))} figures and report_numbers.json to "

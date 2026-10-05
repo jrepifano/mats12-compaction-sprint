@@ -309,6 +309,20 @@ def test_cli_end_to_end(tree, capsys):
                      "validation/handlabel_key.csv", "validation/pairs.json",
                      "validation/score.json", "validation/handlabel_filled.csv"}
 
+    # only the pretrained general rows labelled: refused unless --partial, which scores those
+    # rows alone and leaves the unlabelled domains without an entry
+    part = lab.copy()
+    blank = ~key["domain"].eq("pre/general").to_numpy()
+    part.loc[blank, ["label_em_yn", "label_coherent_yn"]] = ""
+    part_p = tree / C.VALIDATION_DIR / "handlabel_partial.csv"
+    part.to_csv(part_p, index=False)
+    assert EV.main([*r, "score", "--labels", str(part_p)]) == 1
+    assert EV.main([*r, "score", "--labels", str(part_p), "--partial"]) == 0
+    sc = json.loads((tree / EV.SCORE_JSON).read_text())
+    assert set(sc["domains"]) == {"pre/general"}
+    assert sc["partial"]["labelled"] == 40 and sc["partial"]["planned"] == 100
+    assert sc["partial"]["per_domain"]["base/new41"] == {"planned": 15, "labelled": 0}
+
 
 def test_score_refuses_drifted_judged_file(tree):
     r = ["--root", str(tree)]
