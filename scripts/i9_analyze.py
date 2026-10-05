@@ -94,6 +94,9 @@ class Bundle:
     unsealed: bool = False
     # LLM-only label rule (amendment B item 2): model -> (k, n) aligned with inp.ids
     llm_only: dict[str, tuple[np.ndarray, np.ndarray]] | None = None
+    # (commit, dirty) read once at startup, before any step writes: a rerun's tracked outputs
+    # (e.g. checks/permutation.json, which carries a timestamp) must not mark its own run dirty
+    git: tuple[str, bool] | None = None
 
     def path(self, *parts: str) -> Path:
         return self.out.joinpath(*parts)
@@ -240,7 +243,7 @@ def _git() -> tuple[str, bool]:
 def write_manifest(b: Bundle, step: str, outputs: list[Path], started: str, notes: str = "") -> None:
     """The step's manifest; its notes are JSON with the scenario ids it ran on (``final``'s
     staleness check compares them with the current confirmatory set)."""
-    head, dirty = _git()
+    head, dirty = b.git or _git()
     C.Manifest(
         step=step,
         inputs=[_ref(p) for p in b.inputs_used if p.exists()],
@@ -868,11 +871,13 @@ def main(argv: list[str] | None = None) -> int:
     if args.synthetic:
         out = args.out or Path(tempfile.mkdtemp(prefix="i9_synthetic_"))
         b = load_synthetic(out)
+        b.git = _git()
         print(f"synthetic: outputs under {out}")
         if args.step in ("checkpoint2", "all"):  # with the checks checkpoint2 writes
             write_synthetic_external_checks(b)
     else:
         b = load_real(args, need_reader_inputs=args.step in ("predict", "final", "all"))
+        b.git = _git()
     if args.step in ("checkpoint2", "all"):
         step_checkpoint2(b, args)
     if args.step in ("predict", "all"):

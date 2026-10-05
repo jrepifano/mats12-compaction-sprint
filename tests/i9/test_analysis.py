@@ -931,3 +931,15 @@ def test_unsealed_80_path_monitors_stage_c_and_final(tmp_path, monkeypatch):
     pred_man = json.loads((C.RESULTS / "manifests" / "predict.json").read_text())
     assert {Path(i["path"]).parts[-2] for i in pred_man["inputs"]
             if i["path"].endswith("results.json")} == {"conf", "sealed"}
+
+
+def test_manifest_git_state_is_read_at_startup(tmp_path, monkeypatch):
+    """A step's own tracked outputs (a rerun rewrites checks/permutation.json) must not mark
+    its manifest dirty: the git state is read once, before any step writes."""
+    an = _analyze()
+    states = iter([("abc", False)])
+    monkeypatch.setattr(an, "_git", lambda: next(states, ("abc", True)))
+    out = tmp_path / "I9"
+    assert an.main(["--synthetic", "--out", str(out), "checkpoint2", "--n-sims", "5"]) == 0
+    m = json.loads((out / "manifests" / "check.json").read_text())
+    assert m["git_commit"] == "abc" and m["git_dirty"] is False
