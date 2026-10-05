@@ -160,8 +160,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rates", choices=sorted(RATES), default="llm_only")
     ap.add_argument("--n-boot", type=int, default=C.N_BOOTSTRAP)
     ap.add_argument("--n-perm", type=int, default=C.N_PERMUTATIONS)
-    ap.add_argument("--out", type=Path, default=C.ANALYSIS_DIR / "descriptive_llm_only.json")
+    ap.add_argument("--out", type=Path, help="default: analysis/descriptive_<rates>.json")
     args = ap.parse_args(argv)
+    args.out = args.out or C.ANALYSIS_DIR / f"descriptive_{args.rates}.json"
     started = A.now_utc()
     base = Z.load_real(argparse.Namespace(unsealed=False, acts=[], stage_c=[]),
                        need_reader_inputs=True)

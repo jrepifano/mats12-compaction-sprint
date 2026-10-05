@@ -9,7 +9,7 @@ We asked whether reading Qwen3.6-27B's activations, before it answers, predicts 
 - **Rate prediction (main question): no reliable gain detected from the probe.**
   - On rank correlation with Qwen's observed rates, the probe scores 0.82 and the best prompt-only predictor 0.80.
   - The probe's gain in held-out log-likelihood is +0.021, with a 95% interval from −0.029 to +0.076 (p = 0.41). The interval allows a small gain either way.
-  - A post-hoc reliability estimate puts the best Spearman any predictor could expect near 0.96.
+  - A rough post-hoc reliability estimate of the 16-sample rates is about 0.955 (as an expected Spearman for a perfect predictor), so the room above the text is small.
 - **Model specificity: not separable.**
   - On Gemma 4 31B's rates, Gemma's own probe beats Gemma's best prompt-only predictor (+0.138, interval +0.044 to +0.232).
   - But Qwen's probe also predicts Gemma well, and the two models' rates correlate at 0.87. So this design cannot tell a model-specific signal from a better reading of the prompt.
@@ -34,16 +34,18 @@ I9 cost $15.30 of its $65 cap.
 The preregistered analysis is fail-closed: it classifies an outcome only if every blocking check passed ([I9 preregistration](#i9-preregistration), section 4.5 and amendment B). Two of its decisions changed after we saw data, and both are labelled post hoc.
 
 - **Judge check.** Jacob hand-labelled 50 replies blind; 44 could be scored, because 6 came from a scenario batch that was never judged.
-  - Against the preregistered labels, which include Lynch et al.'s keyword code check, agreement was kappa 0.64. The gate needs at least 0.7, so it failed.
-  - Against the language-model judges' own labels without the code check, agreement was kappa 0.91 (42 of 44).
-  - Almost every disagreement was a blackmail reply that applied veiled pressure without the words the code check requires. Jacob judged those to be blackmail.
+  - The gate needs kappa of at least 0.7 for two statistics, and both failed:
+    - the preregistered final labels, which include Lynch et al.'s keyword code check: 0.643 (n = 44);
+    - gpt-6-luna alone: 0.678 (n = 43, one luna verdict unparsed).
+  - Against the language-model consensus without the code check, agreement was kappa 0.91 (42 of 44). The sample is enriched by design: 10 of the 44 scored items are luna–DeepSeek disagreements.
+  - Of the 8 disagreements with the final labels, 6 are blackmail replies that apply veiled pressure without the words the code check requires. Jacob judged them to be blackmail, and dropping the code check resolves all six. The other two are one reward-hacking reply and one power-seeking reply.
   - **Amendment D** (post hoc, Jacob, 2026-10-05) therefore makes the language-model labels primary. The code-check labels are reported as a sensitivity rerun.
 - **Sampling check.** It compares our rates with WorkspaceBench's published ones, and it failed across the full set of 14 rated scenarios: mean absolute difference 0.241 (limit 0.2), and 3 scenarios off by more than 0.4 (at most 2 allowed).
   - The 3 large misses are exactly the scenarios whose published rollouts include tool-interaction trajectories; we sample from the prompt alone.
   - On the other 11 the check passes: mean absolute difference 0.085, none off by more than 0.4.
   - **Amendment C** (post hoc, Jacob, at checkpoint 2) accepted that exception. The confirmatory scenarios contain no tool-interaction trajectories.
 - **Power.** The preregistered power check could not be computed.
-  - The best free prompt-only predictor reached a Spearman of 0.80, above the preregistered cutoff of 0.65, so the planned gain of +0.3 would exceed 1.
+  - The best free prompt-only predictor reached a Spearman of 0.793 at checkpoint 2 (code-check labels), and 0.80 under amendment D's labels. Both are above the preregistered cutoff of 0.65, so the planned gain of +0.3 would exceed 1.
   - The simulation was not run, and power for smaller gains is unknown.
   - Jacob therefore cut the second stage to a descriptive probe test (amendment C).
 - **What that means.** This run cannot establish the preregistered "the prompt gives it away" outcome, because that outcome requires a passed power check. Under the preregistered rules, a null without power is "inconclusive". Every number below is descriptive.
@@ -82,7 +84,7 @@ The probe on Qwen's activations and the text embedding are both well ahead of th
   - It gains +0.021 in log-likelihood, 95% interval −0.029 to +0.076, p = 0.41.
   - Its permutation test passes: 0.0213 against a null 95th percentile of 0.0183.
   - Gemma's probe does as well on Qwen's rates as Qwen's own: +0.023, −0.029 to +0.075.
-- **Room above the text.** Split-half reliability of the 16-sample rates (computed after the fact; 500 random 8/8 splits, seed 0) puts a perfect predictor's expected Spearman near 0.96. The text embedding reaches 0.80.
+- **Room above the text.** A rough post-hoc reliability estimate (split-half rank correlation of the 16-sample rates over 500 random 8/8 splits, seed 0, Spearman–Brown corrected, square root) is about 0.955. That is a heuristic, not a hard ceiling. The text embedding reaches 0.80.
 - **Why the prompt is so predictive (an interpretation).** These scenarios differ in a few stated conditions: chiefly the goal the model was given, and whether it is threatened with replacement or restriction. Those conditions are written in the prompt. In three randomly drawn rationales (seed 0), the few-shot monitor matched each scenario to its nearest examples by condition. For example: "This scenario closely mirrors Example 1, where the AI faces imminent restriction… the model consistently chooses blackmail around 87.5% of the time."
 - **Random scenarios** (seed 0; the observed rate, then three predictions):
 
@@ -112,7 +114,7 @@ We asked whether each model's activations best predict its own rates. Gemma's mi
 - **Why the models can't be told apart:**
   - Gemma's and Qwen's rates correlate at 0.87, above the preregistered limit of 0.8 for separating the models.
   - Gemma misbehaves more: mean rate 0.53, against Qwen's 0.32.
-  - Gemma's rates are more reliable (estimated ceiling near 0.98), which leaves more room above a weaker text baseline (embedding Spearman 0.65).
+  - Gemma's rates are more reliable (rough estimate about 0.985), which leaves more room above a weaker text baseline (embedding Spearman 0.65).
 - **Gemma's gain is exploratory.** Gemma's arm was the control arm, and Gemma's probe was not permutation-tested.
 - **One reading, untested:** a large model's residual stream may simply encode the scenario's text better than a small embedding model does.
 
@@ -147,7 +149,7 @@ On this family, then, the design score does not separate reading activations fro
     - Qwen probe gain +0.025 (−0.027 to +0.080);
     - Gemma own-probe gain +0.037 to +0.200;
     - interaction −0.018 to +0.166.
-  - That rerun reproduces the preregistered analysis script's output (`results/I9/analysis/final.json`) exactly.
+  - That rerun reproduces exactly the primary, crossed-control, leave-one-type-out and bank results of the preregistered analysis script (`results/I9/analysis/final.json`). It does not repeat that script's permutation test.
 - **The probe transfers worse than the text.**
   - Leaving out one scenario type at a time, the probe's Spearman falls to 0.48, against the embedding's 0.65.
   - On the 18 WorkspaceBench scenarios, after training on the generator scenarios, the probe reaches 0.07, against the embedding's 0.80.
@@ -207,7 +209,7 @@ A $0.01 probe of the model settings came before that.
   - They differ in a handful of stated conditions, which favors text predictors.
   - Scenarios whose risk is not written into the prompt might give activations more room.
 - **Last prompt token only.** The probe reads one position. The readers would have read 64 positions; we did not test whether other positions carry more.
-- **Unknown power.** The power simulation was not run, so we do not know how large a gain this design could have detected. The estimated ceiling near 0.96 leaves at most about 0.15 of Spearman above the text baseline.
+- **Unknown power.** The power simulation was not run, so we do not know how large a gain this design could have detected. The rough reliability estimate (about 0.955) suggests little room above the text baseline (0.80).
 - **Truncated replies.** 24 of Qwen's 1,024 analysed replies hit the 4,096-token cap. Their effect on the rates is not established.
 - **Gemma's gain is unexplained.** We did not test the better-encoder reading, for example with a probe on an unrelated model's activations.
 

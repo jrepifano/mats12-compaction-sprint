@@ -1,4 +1,4 @@
-<!-- Mirrored from Claude Doc at rev 130. This file is the source of truth. Branch i9/build copy (v0.8 = v0.5 + amendments B, C and D, 2026-10-04/05); main still holds v0.5 until the merge. -->
+<!-- Mirrored from Claude Doc at rev 132. This file is the source of truth. Branch i9/build copy (v0.8 = v0.5 + amendments B, C and D, 2026-10-04/05); main still holds v0.5 until the merge. -->
 
 # Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?
 
@@ -484,9 +484,9 @@ Jacob's decisions at checkpoint 2. These are post-hoc deviations, made after see
 
 Jacob's decision after the hand-label check. Like amendment C, it is post hoc, made after seeing the data, and reported as such.
 
-1. **The LLM-only labels become the primary labels.** Jacob's 50 blind hand labels (44 scored: 6 bundle items came from the unjudged sealed batch) failed the preregistered gate against the final labels (kappa 0.64; luna after the code check 0.59).
+1. **The LLM-only labels become the primary labels.** Jacob's 50 blind hand labels (44 scored: 6 bundle items came from the unjudged sealed batch) failed the preregistered gate: final labels kappa 0.643 (n = 44) and luna alone 0.678 (n = 43), both below 0.7.
     - They agree with the LLM-only consensus (luna and DeepSeek, GLM breaking ties, without Lynch et al.'s code check) at kappa 0.91, 42 of 44.
-    - The disagreements are mostly blackmail replies that apply veiled pressure without the words the code check requires, which Jacob judged to be blackmail.
+    - 6 of the 8 disagreements with the final labels are blackmail replies that apply veiled pressure without the words the code check requires. Jacob judged them to be blackmail, and dropping the code check resolves all six; the other two are one reward-hacking and one power-seeking reply. 10 of the 44 scored items are luna–DeepSeek disagreements, oversampled by design.
     - The rates with the code check are kept as a sensitivity rerun.
 2. **Analysis.** It reruns the same pipeline descriptively on the LLM-only rates (`scripts/i9_descriptive.py`). The few-shot monitor's prompts showed final-label training rates; it is used as is and recalibrated on the LLM-only rates. The luna judge alone (kappa 0.68) gates nothing now, because the readers' judging (its other use) was not run.
 
