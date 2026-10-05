@@ -1,4 +1,4 @@
-<!-- Mirrored from Claude Doc at rev 108. This file is the source of truth. -->
+<!-- Mirrored from Claude Doc at rev 111. This file is the source of truth. -->
 
 # Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?
 
@@ -6,13 +6,13 @@ Oct 3, 2026 · @Jacob Epifano
 
 ## Summary table and key definitions
 
-This draft asks Jacob to approve a three-stage test. It checks whether activations of Qwen3.6-27B predict its own misbehavior on agentic scenarios better than the prompt text alone does.
+This preregistration, approved by Jacob on 2026-10-04, sets out a three-stage test. It checks whether activations of Qwen3.6-27B predict its own misbehavior on agentic scenarios better than the prompt text alone does.
 
 | Field | Value |
 | --- | --- |
 | Experiment | I9, interpretability methods (Topic 2) |
 | Version | v0.5 (gpt-6-sol rounds 1–3 fixed; Jacob's decisions of 2026-10-04) |
-| Status | Draft, not approved |
+| Status | Approved by Jacob on 2026-10-04 (v0.5, with the implementation plan); each paid step still needs his go-ahead |
 | Author | Claude (for Jacob Epifano) |
 | Reviews done | gpt-6-sol rounds 1–3 of 3 (all REVISE; fixed in v0.3–v0.5). No further rounds |
 | Budget | Planned ≈ $53 for the confirmatory design, ≈ $57 if the exploratory thinking-on arm runs (only if the smoke test projects the whole plan at ≤ $60), up to ≈ $62 if the extra batch of 16 scenarios is needed; hard cap $65; budget approved by Jacob 2026-10-03; no paid step runs before Jacob approves |
@@ -411,6 +411,7 @@ The implementation plan is `docs/experiments/I9/implementation-plan.md` in the r
 | 2026-10-04 | v0.3: gpt-6-sol round 1 (REVISE; 7 BLOCKING, 5 MINOR; `logs/reviews/20261004-I9-prereg-r1.md`) and Jacob's two decisions | The bank is selected on Qwen's behavior, so the confirmatory set is now 64 random generator scenarios (Jacob), from a 144-condition pool; the bank is reported separately. MoE arm cut to pay for it (Jacob). Exploratory arms run only if the smoke test projects ≤ $60 (Jacob). One binary label per reply (GLM tie-break). Best text baseline re-chosen in every bootstrap resample. Crossed control requires own-model gains over the best text baseline, and is limited to probes. Power check simulates the primary log-likelihood test. Luna gate adds design fidelity and account content; its fallback is to make the Oracle Lens primary exploratory. Budget recomputed: ≈ $57 confirmatory, ≈ $62 with the thinking arm. Fisher-exact sampling check, leave-one-type-out sensitivity, refitted permutation test. The 'prefill' field is the pinned rollout and is never prompted. Lynch Figs. 7 and 9 values (0.09, 0.76) checked against the PDF |
 | 2026-10-04 | v0.4: gpt-6-sol round 2 (REVISE; 5 BLOCKING, 6 MINOR, 1 NIT; `logs/reviews/20261004-I9-prereg-r2.md`) | Power check given a full generating model (logit plus group and scenario noise, three stand-in baselines) and the exact win rule. Crossed control needs all four intervals (both brackets, both own-model gains) above zero. Holm made executable (two bootstrap p-values, step-down at 0.025 then 0.05); bootstrap stated as conditional on the fitted predictions. Luna gate's content check is now Sonnet's blind Stage C on both accounts (same action family on 12 of 16, commitment kappa ≥ 0.6); cutting the validation makes Oracle Lens exploratory, so it left the cut list. The extra batch of 16 is sampled sealed in session A and propagated (80 confirmatory, ≈ $5). Bank sampling cut to the 18 scenarios the checks need (Qwen only); readers and monitors run on the confirmatory set; plan ≈ $53, ≈ $57 with the thinking arm, ≈ $62 with the extra batch too. Sampling check uses a practical tolerance (Fisher test kept as a diagnostic); permutation test respects template groups; grouping claim corrected; disputed replies in the hand labels and the final labels gated; both Stage 0 outcomes descriptive; old figures marked historical |
 | 2026-10-04 | v0.5: gpt-6-sol round 3, the last (REVISE; 1 BLOCKING, 1 MINOR; 11 of 12 round-2 findings resolved, 1 partly; `logs/reviews/20261004-I9-prereg-r3.md`) | The power check simulates both primary comparisons with Holm, plus a probe-only branch for a failed Oracle Lens gate; a baseline correlation above 0.65 is reported as making the 0.3 gain impossible. The luna-vs-Sonnet content check adds a blind third-family (DeepSeek) judgment that both accounts propose the same concrete action against the same target (12 of 16). Section 7's arithmetic confirmed by the reviewer |
+| 2026-10-04 | Jacob's sign-off | v0.5 and the implementation plan approved by Jacob, after all three gpt-6-sol rounds. No design change. Each paid step still needs his go-ahead |
 
 This prereg has had all 3 of its gpt-6-sol rounds.
 
