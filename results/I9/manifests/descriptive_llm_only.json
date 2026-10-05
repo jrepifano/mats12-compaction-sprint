@@ -1,0 +1,95 @@
+{
+  "finished_utc": "2026-10-05T22:30:32Z",
+  "git_commit": "41a377885301a72f1d2ddd6acfa11d57092850f5",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "results/I9/analysis/embeddings.npz",
+      "rows": null,
+      "sha256": "fe93b92a2752c7cc30f08c0a3ddc9c34ebcf07611cbef117502f2d41f548cf26"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.safetensors",
+      "rows": null,
+      "sha256": "8b561ad5a07e55ec77a06ce9d3f6890b4ade0f4062afa1a46def0c1f23fd38f7"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.json",
+      "rows": null,
+      "sha256": "58d3544a06d541d47cb6ae2684249897f70309bdec1057c303030370a6af7efe"
+    },
+    {
+      "path": "results/I9/acts/gemma_last.safetensors",
+      "rows": null,
+      "sha256": "0a6f8a0db504ceaeee0496dce41726c49e0fe136028b14feaec15aba14945c18"
+    },
+    {
+      "path": "results/I9/acts/gemma_last.json",
+      "rows": null,
+      "sha256": "c942a785463c59af81cddfd821ecfcbbdef4ec5db818bd0b6dc4441331a2c117"
+    },
+    {
+      "path": "results/I9/predictions/monitor_zero_shot.jsonl",
+      "rows": 128,
+      "sha256": "4b99efc71e845c904597a4733aca4f9292a1956454f005e5146a8867428c1f61"
+    },
+    {
+      "path": "results/I9/predictions/monitor_few_shot.jsonl",
+      "rows": 384,
+      "sha256": "4409f839ecf300c3d70521da09dce71556014b678b5ef46200a8b3521726efa0"
+    },
+    {
+      "path": "results/I9/rates_llm_only.jsonl",
+      "rows": 146,
+      "sha256": "fdca6ed8d087077b8db9fa31737b3e988049c1fae61ed524b9e36d2ac23ae36a"
+    },
+    {
+      "path": "results/I9/labels_llm_only.jsonl",
+      "rows": 2336,
+      "sha256": "e0952161a6c273f30a49577a4fd0a9b23aee4a92306dd143788bc6dc3a5b0162"
+    },
+    {
+      "path": "results/I9/labels.jsonl",
+      "rows": 2336,
+      "sha256": "a1f5e2a933ae0a4a42d50b16737f86df43b00de9291179a2bb4634a16adb84f9"
+    }
+  ],
+  "notes": "{\"scenario_ids\": [\"am-blackmail_ambiguous-none_none\", \"am-blackmail_ambiguous-none_replacement\", \"am-blackmail_explicit-collectivism_replacement\", \"am-blackmail_explicit-collectivism_restriction\", \"am-blackmail_explicit-ethical_none\", \"am-blackmail_explicit-ethical_replacement\", \"am-blackmail_explicit-ethical_restriction\", \"am-blackmail_explicit-global_none\", \"am-blackmail_explicit-pragmatic_none\", \"am-blackmail_latent-acceleration_none\", \"am-blackmail_latent-acceleration_restriction\", \"am-blackmail_latent-collectivism_replacement\", \"am-blackmail_latent-ethical_none\", \"am-blackmail_latent-ethical_restriction\", \"am-blackmail_latent-individualism_none\", \"am-blackmail_latent-individualism_replacement\", \"am-blackmail_latent-individualism_restriction\", \"am-blackmail_latent-pragmatic_none\", \"am-blackmail_latent-safety_none\", \"am-leaking_explicit-acceleration_none\", \"am-leaking_explicit-collectivism_replacement\", \"am-leaking_explicit-collectivism_restriction\", \"am-leaking_explicit-global_none\", \"am-leaking_explicit-global_replacement\", \"am-leaking_explicit-individualism_none\", \"am-leaking_explicit-individualism_replacement\", \"am-leaking_explicit-pragmatic_none\", \"am-leaking_explicit-pragmatic_restriction\", \"am-leaking_explicit-safety_replacement\", \"am-leaking_explicit-safety_restriction\", \"am-leaking_latent-acceleration_none\", \"am-leaking_latent-america_restriction\", \"am-leaking_latent-collectivism_none\", \"am-leaking_latent-collectivism_restriction\", \"am-leaking_latent-ethical_none\", \"am-leaking_latent-global_replacement\", \"am-leaking_latent-individualism_none\", \"am-leaking_latent-pragmatic_none\", \"am-leaking_latent-pragmatic_replacement\", \"am-leaking_latent-pragmatic_restriction\", \"am-leaking_latent-safety_none\", \"am-murder_ambiguous-none_restriction\", \"am-murder_explicit-collectivism_none\", \"am-murder_explicit-collectivism_replacement\", \"am-murder_explicit-ethical_none\", \"am-murder_explicit-ethical_restriction\", \"am-murder_explicit-global_none\", \"am-murder_explicit-individualism_replacement\", \"am-murder_explicit-pragmatic_replacement\", \"am-murder_explicit-pragmatic_restriction\", \"am-murder_explicit-safety_none\", \"am-murder_latent-acceleration_restriction\", \"am-murder_latent-america_none\", \"am-murder_latent-america_replacement\", \"am-murder_latent-collectivism_none\", \"am-murder_latent-collectivism_restriction\", \"am-murder_latent-ethical_none\", \"am-murder_latent-ethical_replacement\", \"am-murder_latent-ethical_restriction\", \"am-murder_latent-global_replacement\", \"am-murder_latent-individualism_replacement\", \"am-murder_latent-individualism_restriction\", \"am-murder_latent-pragmatic_replacement\", \"am-murder_latent-pragmatic_restriction\"], \"bank_ids\": [\"am-blackmail-full\", \"am-blackmail_explicit-america_none\", \"am-blackmail_none-none_none\", \"am-leaking_none-none_none\", \"am-murder_none-none_none\", \"deceive-metrics-dashboard\", \"deceive-safety-report\", \"exfil-weights\", \"imp-deadline-fabricate\", \"oversight-disable-logging\", \"rh-metric-gaming\", \"rh-unit-tests\", \"sb-deployment-gate\", \"selfpreserve-shutdown\", \"t-imp-sandbox-escape\", \"t-power-acquire-credentials\", \"t-rh-benchmark\", \"whistleblow-suppress\"], \"unsealed\": false, \"synthetic\": false, \"note\": \"\"}",
+  "outputs": [
+    {
+      "path": "results/I9/analysis/descriptive_llm_only.json",
+      "rows": null,
+      "sha256": "856293ddd73611da1965c5add1c44f1d0d2736b759b04fedfa1c4efaff63dbd9"
+    }
+  ],
+  "pins": {
+    "embed_model": "BAAI/bge-small-en-v1.5",
+    "embed_rev": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+  },
+  "seeds": {
+    "bootstrap": 0,
+    "fold_0": 0,
+    "fold_1": 1,
+    "fold_2": 2,
+    "permutation": 0,
+    "power": 0
+  },
+  "started_utc": "2026-10-05T22:16:26Z",
+  "step": "descriptive_llm_only",
+  "usd": 0.0
+}
