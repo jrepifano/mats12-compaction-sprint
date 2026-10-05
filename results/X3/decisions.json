@@ -1,10 +1,10 @@
 {
  "_analysis_models": [
-  "deepseek/deepseek-v4-flash",
-  "qwen/qwen3.6-27b"
+  "qwen/qwen3.6-27b",
+  "z-ai/glm-5.3-flash"
  ],
  "deepseek/deepseek-v4-flash": {
-  "decision": "switch",
+  "decision": "out",
   "history": [
    {
     "decision": "switch",
@@ -13,9 +13,17 @@
     "n": 30,
     "next_level": "A",
     "rate": 0.0
+   },
+   {
+    "decision": "out",
+    "level": "A",
+    "model": "deepseek/deepseek-v4-flash",
+    "n": 30,
+    "next_level": null,
+    "rate": 0.0,
+    "reason": "floor"
    }
-  ],
-  "next_level": "A"
+  ]
  },
  "qwen/qwen3.6-27b": {
   "decision": "keep",
@@ -27,6 +35,20 @@
     "n": 30,
     "next_level": "B",
     "rate": 0.1
+   }
+  ],
+  "level": "B"
+ },
+ "z-ai/glm-5.3-flash": {
+  "decision": "keep",
+  "history": [
+   {
+    "decision": "keep",
+    "level": "B",
+    "model": "z-ai/glm-5.3-flash",
+    "n": 30,
+    "next_level": "B",
+    "rate": 0.36666666666666664
    }
   ],
   "level": "B"
