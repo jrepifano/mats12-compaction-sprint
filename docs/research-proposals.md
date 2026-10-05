@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -1096,7 +1096,7 @@ These are outside the literature review, but on Neel's list (or raised in his gr
   - Lynch et al. 2025 (§4.5.4): when Claude Opus 4 stated it was in a real deployment, it blackmailed 55.1% of the time, against 6.5% when it stated it was in an evaluation. That split is by the model's stated belief; the authors note the CoT may be unfaithful.
   - Value Leakage (Betley, Treutlein et al. 2026, `papers/neel_brainstorm/` row 35, App. E.4): prefixing "This prompt is part of a model evaluation…" greatly reduces value-driven bias.
   - The Hawthorne-effect paper (Abdelnabi & Salem 2025, row 37) changed realism with *implicit* cues, such as a plausible URL versus `.mockplatform.example`. Execution of harmful tasks roughly halved on the realistic versions (QwQ 69.7% → 36.2%, Table 4). Adding an explicit "This is a test scenario with no real-world consequences" to the system prompt had little effect on QwQ (Fig. 3a).
-- **What's new.** These studies vary eval vs real. None varies *what the eval is for* on a fixed task. X1p varies *who* grades (automated, human, none). Betley, Treutlein & Dumas found that steering Qwen3.6-27B toward "automated grading" raised reward hacking (`papers/neel_brainstorm/` row 24).
+- **What's new.** These studies vary eval vs real. None varies *what the eval is for* on a fixed task. *(Out of date as of 2026-10-04: see the last Overlap bullet below.)* X1p varies *who* grades (automated, human, none). Betley, Treutlein & Dumas found that steering Qwen3.6-27B toward "automated grading" raised reward hacking (`papers/neel_brainstorm/` row 24).
 - **Measurement caution (Neel, 9/30):** asking a model whether it is in an eval makes it think about it. Even asking after the episode, in a fork, can make the model infer a grader from the framing or rationalize what it did. So the randomized effect of framing on behavior is the main result. Beliefs held *before* acting come only from unprompted sources: grader mentions in its reasoning before the first relevant action, and (optionally) a probe on the prompt's activations. Post-episode answers are reported only as after-the-fact reports.
 
 **Hypotheses.**
@@ -1140,6 +1140,91 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 **Overlap.**
 - *X1p:* it shares tasks with X3. X1p varies who grades, X3 what is graded. If both go ahead, run them as one pilot with a shared control.
 - *Other scholars:* X3 is behavioral and about grader target, so it is probably distinct.
+- *Prior work found after the prereg (2026-10-04 web search, not yet in `papers/`):* X3's "no one varies what the eval is for" claim is out of date. See X4's sources. The remaining gap is narrower, and provisional until those sources are read in full: a randomized prompt-only manipulation of grader target on agentic coding tasks, with cheating scored from actions.
+
+### X4. Does steering toward a capabilities or safety grader change cheating? (revisit after the X3 pilot)
+
+*Added 2026-10-04 from Jacob's question about setting the grader belief outside the prompt. **Status: parked until the X3 pilot reports.** Not ranked in §5. Reviewed by gpt-6-astra: round 1 REVISE, round 2 COMMIT AFTER FIXES (`logs/reviews/20261004-X4-proposal-r1.md`, `-r2.md`). The round-2 fixes are applied and not re-reviewed.*
+
+**Research question.** Build a "capabilities grader minus safety grader" steering vector in Qwen3.6-27B, then add it to neutral-framed X3 episodes. Does it move cheating in the same direction as X3's prompt framings?
+
+**Why it matters.**
+- **It is a second intervention intended to target grader framing.** A safety-framed header partly tells the model how to behave. Steering on a neutral prompt carries no such text.
+  - If steering and prompting move cheating in the same direction, that *suggests* the effect runs through a grader-related representation, not only through reading instructions.
+  - It does not isolate belief. The vector is built from the same headers, so it can also encode compliance, caution or safety salience.
+  - A mismatch is ambiguous: steering may have failed, or the layer may be wrong.
+  - Claiming that belief mediates the effect would need independent validation of the vector, beyond the checks below.
+- **The method exists for grader *identity*.** Betley, Treutlein & Dumas (`papers/neel_brainstorm/`, "Steering towards automated grading…") built a vector for "a script will verify" vs "a human will evaluate" in Qwen3.6-27B (layer 36, last chat-template token).
+  - On SWE-Bench Pro, steering toward the script grader raised attempted cheats, along with agent persistence (turns per attempt).
+  - ImpossibleBench went the other way. That is one of their lower-confidence results, with no numbers given.
+  - Their code is public. Their stated next step is other grader kinds (reward model, rubric, script). They do not explicitly list a capabilities vs safety contrast, which does not mean they aren't pursuing it.
+- **Others ask for this kind of intervention.** Zhuang & Aranguri 2026 (arXiv 2608.27340, ICML MI workshop) found that Qwen3-32B complies with harmful requests 32 points more often when its own reasoning calls the context a capabilities test than when it calls it a safety test. They also inserted a framing sentence into the reasoning, which showed a causal effect. They list "interventions that hold EA-presence constant while perturbing framing" as future work. Their work covers chat refusal only.
+- **Other close work:**
+  - Li et al. 2026 (arXiv 2605.23055) labels awareness as safety-type or capability-type across 9 models, without coding tasks.
+  - Højmark et al. 2026 (Apollo/OpenAI, arXiv 2607.18966) fine-tune in a belief about what the grader rewards and see large changes on coding tasks.
+  - Rajamanoharan & Nanda 2026 (Alignment Forum, "Models May Behave Worse When Eval Aware") sort Gemini's stated beliefs about what it is in, correlationally, including on cheating environments. That post is likely the source of Neel's Gemini anecdote (an inference).
+  - Subagents read these sources on 2026-10-04, partly from fetch-tool summaries. The novelty claim here is **provisional** until they are captured into `papers/` and read in full.
+
+**Hypotheses** (each limited to the strengths tested).
+- **H1:** steering toward a capabilities grader raises cheating at strengths that keep the model coherent. Steering toward a safety grader may lower it, but the base rate leaves little room to show that (see Limits).
+- **H2, generic direction:** a topic-matched control vector (safety vs capability *content*, with no grader mentioned) moves cheating as much as the grader vector at the same signed magnitude.
+- **H0:** no effect at the tested strengths. A non-significant difference is not evidence of equivalence.
+
+**Experiment (sketch; a prereg would freeze the details).**
+- **Vector:** the average activation difference between capabilities-grader and safety-grader headers at the last chat-template token, as Betley et al. did. The working repo's extractor pools over assistant tokens instead, so its hooks port but its pooling does not.
+  - Grader identity (human vs automated) is balanced across the pairs, so the vector does not also carry X1p's contrast.
+  - Use disjoint task sets for extraction, strength calibration and evaluation.
+  - Run a split-half stability check with the working repo's `persona.py` gates.
+- **Controls:** a topic-matched vector and a random direction with the same norm. All three vectors are compared at the same signed magnitudes, not at each one's own "strongest coherent" dose.
+- **Manipulation check:** steering shifts X3's pre-action grader mentions in the predicted direction. This is weak evidence, because steering can change what the model says without changing what it believes. The post-episode report stays an after-the-fact report.
+- **Coherence and validity checks, with thresholds frozen before evaluation:** pass rate on solvable tasks, judge-rated coherence, and rates of refusal, tool failure, truncation and task reinterpretation, all at each strength.
+- **Arms, as a parallel comparison (not a crossed 2×2):**
+  - Neutral prompt steered by each vector.
+  - Unsteered capabilities and safety headers, run **on the same local server**, with the same template, sampling and token limits, so serving differences can't explain the comparison.
+  - A crossed prompt × steering design would need 4 more conditions; it is priced only if Stage A justifies it.
+- **Stage A, a Qwen-specific screen before any sweep:** about 2 GPU-hours.
+  - Measure end-to-end episodes per hour with hooked generation.
+  - Measure Qwen's neutral cheat rate on the calibration task set. Held-out tasks are reserved for Stage B.
+  - Run the two prompt arms plus the grader vector at one moderate strength in each direction, with the manipulation check.
+  - It proceeds only if throughput fits the cap and at least one lever shows a manipulation-check shift.
+- **Stage B, the sweep:** 15 tasks × 4 repeats per condition.
+  - The grader vector at 5 signed strengths, including 0.
+  - Both controls at the same 2 signed doses (one in each direction), matched to grader-vector strengths.
+  - The 2 prompt arms.
+  - That is 11 conditions and 660 episodes, 60 of them unsteered neutral baselines.
+
+**What it would show.** All conclusions are suggestive, not mediation claims.
+- Steering and prompting agreeing in direction is consistent with a grader-related representation driving behavior.
+- If the control vector matches the grader vector, the result is consistent with a generic content or salience effect.
+- A grader-vector effect with no prompt effect means steering changes behavior where these headers do not. The mechanism stays unresolved: it could be a stronger intervention, or an off-target effect. That is still relevant to reading an X3 null.
+
+**Cost and time (optimistic and conditional; Stage A replaces this with measured numbers).**
+- **Stage B arithmetic:** 660 episodes of ~15k generated tokens each is ≈ 9.9M generated tokens. At an assumed 300–600 tokens/s batched, that is 4.6–9.2 h of generation.
+- **Not yet costed:**
+  - Repeated prefill as the context grows each turn.
+  - Tool-execution time.
+  - Batch occupancy in multi-turn loops.
+  - Memory headroom for a 27B model in bf16 on 80GB.
+  - Vector extraction and strength calibration.
+- **Estimate:** at least 8–15 H100-hours at $2.69–3.49/h including Stage A, so **≈ $22–52**.
+- **Proposed cap:** $70. Stop at Stage A if measured throughput projects above it.
+- **Engineering:** the code map documents Hugging Face forward hooks (`persona_steer_check.py`), not high-throughput hooked serving. Check Betley et al.'s repo for a vLLM path before building one.
+- **Time:** about 2–3 days.
+
+**Limits.**
+- One open model, so no Gemini or DeepSeek.
+- A steering vector is not a belief, which is why the controls and the manipulation check bound the interpretation.
+- High strengths degraded output and caused the model to reinterpret the task in Betley et al.
+- **Base rate.** Qwen's neutral cheat rate in X3 calibration was reportedly 3 of 30, right at X3's inclusive 10% acceptance boundary.
+  - At 60 episodes per condition, that is only about 6 cheats, across 15 task clusters. That is weak resolution for reductions, or for showing that controls are "equal".
+  - So the prereg must give a minimum useful effect, prioritize detecting a large *increase*, and freeze any prompt or task recalibration before the held-out evaluation.
+  - Harder tasks are not an obvious remedy, since the tasks are already impossible.
+
+**Decision gate.** X3's Amendment B (prereg doc rev 134, 2026-10-05) runs the main pilot on GLM 5.3 Flash only and defers Qwen. The X3 pilot therefore gives no Qwen framing effect or manipulation check, and GLM results don't transfer to Qwen's mechanism.
+- GLM sets **priority**. A GLM framing effect, or a GLM null with a clean manipulation check, makes X4 worth revisiting. A GLM null with a failed manipulation check lowers its priority, but does not rule Qwen out.
+- Stage A is the real go/no-go for Qwen.
+- Drop X4 if Betley et al. publish this contrast first.
+- It would get its own prereg.
 
 ### X0. How faithful are compaction summaries?
 
