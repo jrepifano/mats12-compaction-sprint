@@ -559,15 +559,22 @@ def _sensitivity(df: pd.DataFrame, in_role: pd.DataFrame, primary: dict, kw: dic
             out[vname][name] = r
     # Judge-based variants (prereg §4.9). A judge label counts only by consensus: every
     # judge that answered says True, and at least one answered. Missing labels stay missing.
+    allowed = (json.loads(JUDGE_VALIDATION_JSON.read_text()).get("allowed_judges", {})
+               if JUDGE_VALIDATION_JSON.exists() else None)
+
     def consensus(d: pd.DataFrame, prefix: str, label: str) -> pd.Series:
         cols = [c for c in d.columns if c.startswith(prefix) and c.endswith(f"__{label}")]
-        if not cols:
+        need = 2                     # two judges answering and agreeing (review r2, finding 8)
+        if allowed is not None:      # only judges validated for this label (§4.11)
+            ok = {j.replace("/", "_") for j in allowed.get(f"{prefix}{label}", [])}
+            cols = [c for c in cols if c[len(prefix):-len(f"__{label}")] in ok]
+            need = len(ok)
+        if not cols or need == 0:
             return pd.Series([np.nan] * len(d), index=d.index)
         vals = d[cols].astype(str).replace({"": np.nan, "nan": np.nan, "None": np.nan})
         answered = vals.notna().sum(axis=1)
         all_true = (vals == "True").sum(axis=1) == answered
-        # consensus needs two judges answering and agreeing (review r2, finding 8)
-        return pd.Series(np.where(answered >= 2, all_true.astype(float), np.nan),
+        return pd.Series(np.where(answered >= need, all_true.astype(float), np.nan),
                          index=d.index)
 
     judge_variants = {}
@@ -623,6 +630,7 @@ REQUIRED_MEASUREMENT = ("tasks_verified", "harness_smoke", "detector_fixtures", 
                         "detector_review", "judge_validation")
 HASH_BOUND_MEASUREMENT = ("detector_review", "judge_validation")
 MEASUREMENT_JSON = C.RESULTS_DIR / "measurement.json"
+JUDGE_VALIDATION_JSON = C.RESULTS_DIR / "judge_validation.json"   # Amendment C2
 
 
 VERIFY_DIR = C.ROOT / "data" / "X3" / "verify"
