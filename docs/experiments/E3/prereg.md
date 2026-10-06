@@ -722,7 +722,7 @@ These targets are estimates; the **hard cap is 5 days from sign-off, with an aut
 
 **The /goal condition, paste-ready:**
 
-> Run the E3 early-pretraining-window experiment in `.claude/worktrees/e3-run` exactly as preregistered in `docs/experiments/E3/prereg.md` (v0.3, signed off) and its approved implementation plan. Done means one of two things. Either the final readout is written to `logs/E3-report.md` and `docs/experiments/E3/report.md`, with every automatic gate's outcome recorded (pair build and pre-inspection check, smoke test, judge validation, Stage A, the power diagnostic, unsealing, Stage B rules, confirmation done or skipped, Claims 1 and 2), the gpt-6-astra reviews done, every pod terminated and every reservation settled or released. Or an automatic stop rule fired and was reported in the same files, with cleanup completed. In both cases spend stays within the $45 cap ($35 GPU, $10 API) and the run ends within 5 days of sign-off. Never wait for Jacob mid-run; his only remaining touchpoint is the results review.
+> Run the E3 early-pretraining-window experiment in `.claude/worktrees/e3-run` exactly as preregistered in `docs/experiments/E3/prereg.md` (v0.3, signed off) and its approved implementation plan. Done means one of two things. Either the final readout is written to `logs/E3-report.md` and `docs/experiments/E3/report.md`, with every automatic gate's outcome recorded (pair build and pre-inspection check, smoke test, judge validation, Stage A, the power diagnostic, unsealing, Stage B rules, confirmation done or skipped, Claims 1 and 2), the gpt-6-astra analysis and report reviews completed with every blocking finding fixed, every pod terminated, every RunPod and API reservation settled or released with no paid work outstanding, and a recorded disposition (completed, skipped or stopped) for every unit that was launched. Or an automatic stop rule fired and was reported in the same files, with cleanup completed. In both cases spend stays within the $45 cap ($35 GPU, $10 API) and the run ends within 5 days of sign-off. Never wait for Jacob mid-run; his only remaining touchpoint is the results review.
 
 **Status block.** The goal evaluator reads only the conversation, so at the end of every phase Claude prints this block in the conversation, filled in, as well as appending it to `logs/E3-report.md`:
 
@@ -730,7 +730,8 @@ These targets are estimates; the **hard cap is 5 days from sign-off, with an aut
 E3 STATUS — <UTC timestamp>
 phase:        <e.g. code review | pair build | smoke | Stage A pods | Stage A gate | Stage B rules | confirmation | report | STOPPED>
 gate result:  <gate name: pass | fail | inconclusive | skipped, with one-line reason>
-spend vs cap: GPU $x / $35, API $y / $10, total $z / $45 (open reservations $r)
+spend vs cap: GPU $x / $35, API $y / $10, total $z / $45 (open reservations: GPU $r, API $a)
+reviews:      <pending | passed | n/a> for the current stage
 pods running: <ids and deadlines, or none>
 next action:  <the next unit, or "done" / "stopped: <rule>">
 ```
@@ -841,6 +842,7 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 | 3 | Minor | The A100 rescoring assumption isn't benchmarked | Benchmark one batch on the revision pod and reproject first. If it doesn't fit, results stay exploratory, with a follow-up pending |
 | 4 | Minor | Obsolete numbers: $176 and "12 held-out" | Now $130 + $35 + $10 = $175 (here and in the shared reservation doc), and 10–12 retained held-out questions |
 | 5 | Minor | Post-review rescoring had no lifecycle after the goal ends | A post-review branch (§8.4), pre-authorized at sign-off within the $45 cap, with its own 2-day window; otherwise left pending |
+| — | (from the corrective-continued-pretraining prereg's round 2) | The goal could end with reviews or paid work outstanding | Done now requires completed reviews, no outstanding paid work or unsettled reservations, and a recorded disposition for every launched unit; the status block shows the review state and open API reservations |
 
 ## References
 
