@@ -378,10 +378,12 @@ class Orchestrator:
             "flags": q["flags"],
             "stop": q.get("stop"),
         }
-        if q.get("stop"):
-            return self.stop("project", q["stop"], **summary)
+        # Read-only: the §7 stop rule is enforced where spend is committed (launch, job, the
+        # API reservations), never by a projection report (2026-10-06: a report-only call
+        # wrote a terminal STOPPED.json).
+        summary["would_stop"] = bool(q.get("stop"))
         self.emit("project", summary)
-        return 0
+        return 2 if q.get("stop") else 0
 
     # -- launch -------------------------------------------------------------------------------
 

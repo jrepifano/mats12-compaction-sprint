@@ -1012,13 +1012,25 @@ def test_a_launch_failure_before_any_job_is_recoverable(world):
     assert o.launch("pod1", "_A") == 0
 
 
-def test_a_projection_stop_is_terminal(world, capsys):
+def test_project_is_read_only_and_launch_enforces_the_stop(world, capsys):
     _launched(world)
     spend.record("gpu", "earlier", 1, 5.0, exp="E3")
-    assert make(world).project() == 2
+    o = make(world)
+    assert o.project() == 2  # over a limit after cuts: reported, nothing written
+    assert B.read_stopped(world.root) is None
+    assert '"would_stop": true' in capsys.readouterr().out
+    assert o.launch("pod2", "_B") == 2  # where spend is committed, the §7 rule stops E3
     assert B.read_stopped(world.root)["rule"] == B.STOP_OVER_LIMIT
     assert B.running_slots(world.root) == []
-    assert "E3_STOP" in capsys.readouterr().out
+
+
+def test_pairs_line_counts_only_the_unspent_allowance():
+    st = B.empty_state()
+    st["pairs_spent_api"] = 2.47
+    items = {i["name"]: i["usd"] for i in B.project(st)["items"]}
+    assert abs(items["pairs_v1"] - 0.53) < 1e-6
+    st["pairs_spent_api"] = 3.5
+    assert {i["name"]: i["usd"] for i in B.project(st)["items"]}["pairs_v1"] == 0.0
 
 
 def test_the_deadline_stop_is_terminal(world):

@@ -49,6 +49,7 @@ from emx.e3 import contracts as C
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ORCH_LOG = "logs/E3-orchestrate.jsonl"  # one line per orchestrator command and event
 RATES_FILE = f"{C.RESULTS}/measured_rates.json"  # the smoke test's hours per checkpoint
+PAIRS_NOTE_PREFIX = "[E3 answer_pairs_v1"  # ledger notes of every v1 pair build (c1, c2, c3)
 CUTS_FILE = f"{C.RESULTS}/cuts.json"  # cuts decided so far, and pod 2's sampling decision
 SNAPSHOT_FILE = f"{C.RESULTS}/reservations_snapshot.jsonl"
 STOPPED_FILE = f"{C.RESULTS}/STOPPED.json"  # a §7 stop: terminal (fix A8)
@@ -174,6 +175,7 @@ def empty_state() -> dict:
         "open": {"gpu": 0.0, "api": 0.0, "retry_share_gpu": 0.0},
         "cuts": [],
         "pod2_sampling": None,
+        "pairs_spent_api": 0.0,  # recorded spend of every v1 pair build (all constructions)
     }
 
 
@@ -219,7 +221,10 @@ def project(state: dict, measured_rates: dict | None = None, cuts: Iterable[str]
         add("v2_rescore", "gpu", pod_usd("v2_rescore", hours), pod_hours("v2_rescore", hours))
         add("pairs_v2", "api", C.PAIR_BUILD_MAX_USD)
     if "pairs" in pending:
-        add("pairs_v1", "api", C.PAIR_BUILD_MAX_USD)
+        # §7's "answer pairs v1 <= $3" line, less what the v1 builds have already recorded
+        # (that spend is in `committed`; counting the full line again double-counted it).
+        add("pairs_v1", "api",
+            max(0.0, C.PAIR_BUILD_MAX_USD - float(state.get("pairs_spent_api", 0.0))))
     if "judge_stageA" in pending:
         add("judge_stageA", "api", sampled_api_usd(STAGE_ADAPTERS) + TIEBREAK_USD["stageA"])
     if "judge_stageB" in pending and CUT2 not in cuts and state.get("pod2_sampling") is not False:
@@ -551,6 +556,10 @@ def gather_state(root: str | Path | None = None, spend_mod=None) -> dict:
         if e.get("event") == "launched" and e.get("unit") == "pod2":
             st["pod2_sampling"] = e.get("pod2_sampling")
     st["retries_left"] = retries_left(root / C.TRAIN_DIR)
+    read = getattr(spend_mod, "read_entries", None)  # test fakes may not provide it
+    st["pairs_spent_api"] = round(sum(
+        float(e.get("usd", 0.0)) for e in (read() if read else [])
+        if e.get("exp") == C.EXP and str(e.get("note", "")).startswith(PAIRS_NOTE_PREFIX)), 6)
     t = spend_mod.totals(C.EXP)
     st["recorded"] = {"gpu": float(t["gpu_usd"]), "api": float(t["judge_usd"])}
     st["open"] = {
