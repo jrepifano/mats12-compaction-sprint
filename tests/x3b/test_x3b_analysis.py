@@ -567,3 +567,12 @@ def test_contrast_on_an_empty_frame_is_unavailable_not_an_error():
     c = next(c for c in C.CONTRASTS if c.stage == C.StageKey.GEMINI)
     r = A.run_pair(pd.DataFrame(), c, n_perm=10, n_boot=10)
     assert r["n_a"] == 0 and math.isnan(r["rd"])
+
+
+def test_completion_counts_synthesized_missing_and_cancelled_rows():
+    # code review r1 finding 5: 54 completed + 6 absent episodes -> 90%, not 100%
+    rows = [{"kind": "main", "excluded_reason": "", "end_reason": "turn_cap"}] * 54
+    rows += [{"kind": "main", "excluded_reason": "cancelled", "end_reason": ""}] * 3
+    rows += [{"kind": "main", "excluded_reason": "missing", "end_reason": ""}] * 3
+    g = A.completion_gate(pd.DataFrame(rows))
+    assert g["value"] == pytest.approx(0.9) and g["pass"] is False

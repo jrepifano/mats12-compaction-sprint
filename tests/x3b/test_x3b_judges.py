@@ -76,7 +76,26 @@ def _rows(stage: StageKey, judgment: Judgment) -> list[dict]:
     return J.read_judged(C.judged_dir(stage), judgment)
 
 
-def _run(stage, judgment, inner, **kw):
+def _terminal(stage: StageKey, state: str = "ended", live: int = 0) -> Path:
+    """The stage as it is when judging starts: run_state.json terminal, and episodes.csv with
+    every main artifact on disk as an analysable row (smoke ones as smoke)."""
+    rs = C.run_state_json(stage)
+    rs.parent.mkdir(parents=True, exist_ok=True)
+    rs.write_text(json.dumps({"stage": stage.value, "state": state, "live_workers": live}))
+    ecsv = C.episodes_csv(stage)
+    with open(ecsv, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["episode_id", "analysis_role"])
+        w.writeheader()
+        for p in sorted(C.episodes_dir(stage).rglob("*.json")):
+            a = json.loads(p.read_text())
+            w.writerow({"episode_id": a["meta"]["episode_id"],
+                        "analysis_role": "main" if a["kind"] == "main" else "smoke"})
+    return ecsv
+
+
+def _run(stage, judgment, inner, terminal: bool = True, **kw):
+    if terminal and not kw.get("dry_run"):
+        kw.setdefault("episodes_csv", _terminal(stage))
     return J.paid_judge(stage, judgment, episodes_dir=C.episodes_dir(stage),
                         out_dir=C.judged_dir(stage), detector_csv=C.detector_csv(stage),
                         inner=inner, **kw)
@@ -702,3 +721,195 @@ def test_reference_packets_blind_with_separate_key(tmp_results, tmp_path):
     assert "I special-cased a test." in text
     assert key["PP001"]["episode_id"] == eps[0]["meta"]["episode_id"]
     assert key["DS001"]["set"] == "validation" and len(key) == 31
+
+
+# --- code review r1 ------------------------------------------------------------------------
+def test_reconcile_after_crash_between_ledger_append_and_removal(tmp_ledger, tmp_results):
+    """Finding 3: the settle line reached the ledger but the reservation was not removed. The
+    restart must release it, never charge it twice."""
+    st = StageKey.GLM
+    _episode(st, 1)
+    _run(st, Judgment.DISCLOSURE, FakeInner())
+    led = _ledger(tmp_ledger)
+    assert len(led) == 1 and led[0]["rid"]
+    rid = led[0]["rid"]
+    note = J._note("tok", st, Judgment.DISCLOSURE, C.judged_dir(st) / J.CALLS_FILE)
+    budget.reservations_path().write_text(json.dumps(          # the crash left it behind
+        {rid: {"exp": "X3b-GLM", "usd": 0.02, "note": note, "utc": "2026-10-06T00:00:00Z"}}))
+    out = J.reconcile_open(st)
+    assert len(out) == 1 and out[0]["already_settled"] is True
+    assert len(_ledger(tmp_ledger)) == 1 and _open_reservations() == {}
+    # and the next paid run (which reconciles first) adds nothing either
+    _run(st, Judgment.DISCLOSURE, FakeInner())
+    assert len(_ledger(tmp_ledger)) == 1
+
+
+@pytest.mark.parametrize("setup,match", [
+    ("no_csv", "episodes.csv missing"),
+    ("no_state", "no run state"),
+    ("running", "not terminal"),
+    ("live", "live_workers"),
+    ("block_open", "open non-judge reservations"),
+])
+def test_paid_judging_requires_terminal(tmp_ledger, tmp_results, setup, match):
+    """Finding 11."""
+    st = StageKey.GLM
+    _episode(st, 1)
+    ecsv = _terminal(st, state="running" if setup == "running" else "ended",
+                     live=1 if setup == "live" else 0)
+    if setup == "no_csv":
+        ecsv = None
+    if setup == "no_state":
+        C.run_state_json(st).unlink()
+    if setup == "block_open":
+        budget.reserve(3.6, "X3b block glm-main-t1-r1", exp="X3b-GLM", cap=45.0)
+    inner = FakeInner()
+    with pytest.raises(J.JudgeRefused, match=match):
+        _run(st, Judgment.DISCLOSURE, inner, terminal=False, episodes_csv=ecsv)
+    assert inner.calls == [] and _ledger(tmp_ledger) == []
+    # a dry run is still allowed (projection only)
+    assert _run(st, Judgment.DISCLOSURE, None, terminal=False, dry_run=True)["status"] == \
+        "dry_run"
+
+
+def test_paid_judging_only_selected_rows(tmp_ledger, tmp_results):
+    """Finding 11: only episodes.csv rows with analysis_role == main are judged."""
+    st = StageKey.GLM
+    keep, drop = _episode(st, 1), _episode(st, 2)
+    ecsv = _terminal(st)
+    with open(ecsv, newline="") as f:
+        rows = list(csv.DictReader(f))
+    for r in rows:
+        if r["episode_id"] == drop["meta"]["episode_id"]:
+            r["analysis_role"] = "excluded"
+    with open(ecsv, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["episode_id", "analysis_role"])
+        w.writeheader()
+        w.writerows(rows)
+    _run(st, Judgment.DISCLOSURE, FakeInner(), terminal=False, episodes_csv=ecsv)
+    assert {r["episode_id"] for r in _rows(st, Judgment.DISCLOSURE)} == \
+        {keep["meta"]["episode_id"]}
+
+
+def test_cli_refuses_with_exit_2(tmp_ledger, tmp_results, capsys):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("x3b_judge_cli",
+                                                  C.ROOT / "scripts" / "x3b_judge.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    _episode(StageKey.GLM, 1)
+    assert mod.main(["--stage", "glm", "--yes", "--judgment", "disclosure"]) == 2
+    assert "REFUSED" in capsys.readouterr().out
+    assert mod.main(["--stage", "glm", "--judgment", "disclosure"]) == 0     # dry run
+
+
+def test_concurrent_invocations_do_not_duplicate(tmp_ledger, tmp_results):
+    """Finding 12: a second invocation started while the first holds the lock computes its work
+    only after the first finishes, so it makes no calls and writes no duplicate rows."""
+    import threading
+    import time
+
+    st = StageKey.GLM
+    for i in range(3):
+        _episode(st, i)
+    ecsv = _terminal(st)
+    started, go = threading.Event(), threading.Event()
+
+    def slow(m, s, u):
+        started.set()
+        go.wait(5)
+        return DISC_OK
+
+    first, second = FakeInner(default=slow), FakeInner()
+    errs: list = []
+
+    def run(inner):
+        try:
+            _run(st, Judgment.DISCLOSURE, inner, terminal=False, episodes_csv=ecsv)
+        except BaseException as e:  # noqa: BLE001 - reported below
+            errs.append(e)
+
+    ta = threading.Thread(target=run, args=(first,))
+    ta.start()
+    assert started.wait(5)
+    tb = threading.Thread(target=run, args=(second,))
+    tb.start()
+    time.sleep(0.3)                     # B has loaded its inputs and waits on the lock
+    go.set()
+    ta.join(10)
+    tb.join(10)
+    assert errs == []
+    assert len(first.calls) == 6 and second.calls == []
+    pairs = [(r["episode_id"], r["judge"]) for r in _rows(st, Judgment.DISCLOSURE)]
+    assert len(pairs) == 6 == len(set(pairs))
+    assert len(_ledger(tmp_ledger)) == 1
+
+
+def _judged_once(st):
+    _episode(st, 1)
+    _episode(st, 2)
+    _run(st, Judgment.DISCLOSURE, FakeInner())
+    assert len(_rows(st, Judgment.DISCLOSURE)) == 4
+
+
+def test_resume_refuses_changed_artifact(tmp_ledger, tmp_results):
+    """Finding 13: an artifact changed since its rows were written -> refused loudly."""
+    st = StageKey.GLM
+    _judged_once(st)
+    _episode(st, 2, final="Changed final message.")
+    inner = FakeInner()
+    with pytest.raises(J.JudgeRefused, match="artifact changed"):
+        _run(st, Judgment.DISCLOSURE, inner)
+    with pytest.raises(J.JudgeRefused, match="artifact changed"):
+        _run(st, Judgment.DISCLOSURE, None, dry_run=True)
+    assert inner.calls == [] and len(_ledger(tmp_ledger)) == 1
+
+
+def test_resume_refuses_changed_settings_or_missing_provenance(tmp_ledger, tmp_results,
+                                                                monkeypatch):
+    st = StageKey.GLM
+    _judged_once(st)
+    side = J.inputs_path(C.judged_dir(st), Judgment.DISCLOSURE)
+    lines = side.read_text().splitlines()
+    assert len(lines) == 4 and json.loads(lines[0])["artifact_sha256"]
+    # a scoped patch: monkeypatch.undo() would also undo the tmp_results / tmp_ledger fixtures
+    with monkeypatch.context() as mp:
+        mp.setitem(J.REQUEST_SETTINGS, "openai/gpt-6-luna", {"reasoning": {"effort": "low"}})
+        with pytest.raises(J.JudgeRefused, match="request settings changed"):
+            _run(st, Judgment.DISCLOSURE, FakeInner())
+    assert C.RESULTS_DIR == tmp_results
+    side.write_text("\n".join(lines[1:]) + "\n")
+    with pytest.raises(J.JudgeRefused, match="no provenance line"):
+        _run(st, Judgment.DISCLOSURE, FakeInner())
+
+
+def test_resume_refuses_changed_prompt(tmp_ledger, tmp_results, tmp_path):
+    st = StageKey.GLM
+    _judged_once(st)
+    d = tmp_path / "prompts"
+    shutil.copytree(C.PROMPTS_DIR, d)
+    (d / "disclosure.txt").write_text(J.prompt_text(Judgment.DISCLOSURE) + "\nExtra line.")
+    m = json.loads((d / "MANIFEST.json").read_text())
+    m["disclosure"]["sha256"] = J.prompt_sha(Judgment.DISCLOSURE, d)
+    (d / "MANIFEST.json").write_text(json.dumps(m))
+    with pytest.raises(J.JudgeRefused, match="prompt changed"):
+        _run(st, Judgment.DISCLOSURE, FakeInner(), prompts_dir=d)
+
+
+def test_resume_after_crash_between_sidecar_and_row(tmp_ledger, tmp_results):
+    """A provenance line without its CSV row (crash in between) is harmless: the pair is
+    judged again, and the last provenance line for it is the one checked."""
+    st = StageKey.GLM
+    _judged_once(st)
+    e3 = _episode(st, 3)
+    side = J.inputs_path(C.judged_dir(st), Judgment.DISCLOSURE)
+    with open(side, "a") as f:
+        f.write(json.dumps({"episode_id": e3["meta"]["episode_id"], "judge": A,
+                            "artifact_sha256": "stale", "prompt_sha256": "stale",
+                            "request_settings": {}}) + "\n")
+    inner = FakeInner()
+    _run(st, Judgment.DISCLOSURE, inner)
+    assert len(inner.calls) == 2 and len(_rows(st, Judgment.DISCLOSURE)) == 6
+    again = FakeInner()
+    assert _run(st, Judgment.DISCLOSURE, again)["n_todo"] == 0 and again.calls == []

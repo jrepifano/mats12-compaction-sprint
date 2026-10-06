@@ -16,8 +16,9 @@ Conventions fixed here (prereg leaves them open; listed in the U4 hand-back):
 - Analysable episode: kind "main", analysis_role "main", end_reason not "api_error", cheat known.
   Probe shares use every kind-main, role-main episode of the header (outcome known or not).
 - Completion (§4.9) is computed from episodes.csv, not the manifest: denominator = kind-main
-  rows except superseded attempts; incomplete = excluded_reason api_error, error or cancelled
-  (§7.3: "cancelled blocks count as incomplete"), or end_reason api_error.
+  rows except superseded attempts; incomplete = excluded_reason api_error, error, cancelled or
+  missing (§7.3: "cancelled blocks count as incomplete"; collect synthesizes rows for admitted
+  episodes with no artifact, code review r1 finding 5), or end_reason api_error.
 - Significance: Holm-adjusted p < 0.05 in GLM primary (m = 3) and GLM secondary (m = 2);
   unadjusted p < 0.05 elsewhere (p_holm = p). "Raises" uses the same adjustment as "lowers".
 - Probe readable: every parsed key of that probe (PRE_PARSED_KEYS / POST_PARSED_KEYS) present.
@@ -52,7 +53,7 @@ MANIP_MIN = XA.MANIP_MIN            # 0.40, X3 §4.10 rule unchanged
 FLOOR = 0.10
 CEILING = 0.85
 LIMIT_END_REASONS = ("turn_cap", "cost_cap")
-INCOMPLETE_REASONS = ("api_error", "error", "cancelled")
+INCOMPLETE_REASONS = ("api_error", "error", "cancelled", "missing")
 LETTERS = ("a", "b", "c", "d", "e")
 HOLM_FAMILIES = ("primary", "secondary")    # GLM only; every other test stands alone
 
@@ -426,8 +427,8 @@ def completion_gate(df: pd.DataFrame) -> dict:
     detail = {"n_started": n, "n_incomplete": int(bad.sum()), "threshold": C.COMPLETION_MIN,
               "excluded_reasons": {str(r): int(c) for r, c in
                                    k["excluded_reason"].value_counts().items()},
-              "source": "episodes.csv (superseded attempts left out; api_error, error and "
-                        "cancelled count as incomplete)"}
+              "source": "episodes.csv (superseded attempts left out; api_error, error, "
+                        "cancelled and missing count as incomplete)"}
     return _gate(bool(n and rate >= C.COMPLETION_MIN), rate, detail)
 
 

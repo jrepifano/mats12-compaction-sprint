@@ -1,7 +1,8 @@
 """X3b judges for one stage (implementation plan v0.4 §3 U2, §4 step 5; prereg §4.8).
 
 Runs after the stage is TERMINAL and after `x3b_detect` and `collect` (the detector table and
-episodes.csv exist). Without `--yes` this is a dry run: it prints each judgment's projected worst
+episodes.csv exist); a paid run refuses otherwise, and refuses existing judge rows whose prompt,
+request settings or episode artifact changed (exit 2). Without `--yes` this is a dry run: it prints each judgment's projected worst
 case and spends nothing. With `--yes` it judges, reserving each batch under the stage's ledger
 exp id (`x3b.judges.paid_judge`); a reservation a crashed batch left open is settled first.
 
@@ -34,9 +35,13 @@ def main(argv: list[str] | None = None) -> int:
     judgments = list(C.Judgment) if a.judgment == "all" else [C.Judgment(a.judgment)]
     ecsv = C.episodes_csv(stage)
     for jd in judgments:
-        res = J.paid_judge(stage, jd, episodes_dir=C.episodes_dir(stage),
-                           out_dir=C.judged_dir(stage), detector_csv=C.detector_csv(stage),
-                           dry_run=not a.yes, episodes_csv=ecsv if ecsv.exists() else None)
+        try:
+            res = J.paid_judge(stage, jd, episodes_dir=C.episodes_dir(stage),
+                               out_dir=C.judged_dir(stage), detector_csv=C.detector_csv(stage),
+                               dry_run=not a.yes, episodes_csv=ecsv if ecsv.exists() else None)
+        except J.JudgeRefused as e:
+            print(f"REFUSED {jd.value}: {e}")
+            return 2
         print(json.dumps(res, default=str))
         if res["status"] == "refused":
             return 2

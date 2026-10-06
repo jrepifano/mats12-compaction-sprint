@@ -401,7 +401,14 @@ _NOTE_RE = re.compile(rf"^{NOTE_TAG} rid-token=(\S+) stage=(\S+) judgment=(\S+) 
 
 
 def settle_batch(rid: str, calls_path: Path, note: str) -> dict:
+    """Settle a judge reservation from its call log. If the ledger already holds this rid's
+    settlement (a crash between the ledger append and the reservation removal), the reservation
+    is only released and the existing line returned (X3b code review r1, finding 3)."""
     a = settle_amount(calls_path, rid)
+    done = budget.settled_entry(rid)
+    if done is not None:
+        budget.release(rid)
+        return {**a, "entry": done, "already_settled": True}
     m = _NOTE_RE.match(note)
     head = f"{NOTE_TAG} rid-token={m.group(1)} {m.group(2)} {m.group(3)}" if m else note
     entry = budget.settle(
@@ -409,7 +416,7 @@ def settle_batch(rid: str, calls_path: Path, note: str) -> dict:
         f"{head}: {a['n_calls']} calls ({a['n_unresolved']} without a result); "
         f"estimated ${a['estimated_usd']:.4f} (unbilled calls charged at their bound) "
         f"of ${a['usd']:.6f}")
-    return {**a, "entry": entry}
+    return {**a, "entry": entry, "already_settled": False}
 
 
 @contextmanager
@@ -527,22 +534,112 @@ def _write_sig(out: Path, sig: dict) -> None:
     out.with_suffix(".sig.json").write_text(json.dumps(sig, indent=1) + "\n")
 
 
+class JudgeRefused(RuntimeError):
+    """Paid judging refused before any spend: the stage is not TERMINAL, the selected-episode
+    table is missing, or existing rows fail their provenance check."""
+
+
+TERMINAL_STATES = (C.RunState.ENDED.value, C.RunState.STOPPED.value)
+
+
+def paid_preconditions(stage: StageKey, episodes_csv: Path | None,
+                       run_state: Path | None = None) -> None:
+    """Raise JudgeRefused unless the stage is TERMINAL (X3b code review r1, finding 11):
+    run_state.json in ended/stopped with zero live workers, no open reservation of the stage's
+    exp id other than judge reservations, and the collected episodes.csv present."""
+    stage = StageKey(stage)
+    if episodes_csv is None or not Path(episodes_csv).exists():
+        raise JudgeRefused(f"{stage.value}: episodes.csv missing ({episodes_csv}); run collect")
+    rs_path = Path(run_state) if run_state is not None else C.run_state_json(stage)
+    if not rs_path.exists():
+        raise JudgeRefused(f"{stage.value}: no run state at {rs_path}")
+    rs = json.loads(rs_path.read_text())
+    if rs.get("state") not in TERMINAL_STATES:
+        raise JudgeRefused(f"{stage.value}: run state {rs.get('state')!r} is not terminal")
+    if rs.get("live_workers") != 0:
+        raise JudgeRefused(f"{stage.value}: live_workers = {rs.get('live_workers')!r}, not 0")
+    path = budget.reservations_path()
+    res = json.loads(path.read_text()) if path.exists() and path.read_text().strip() else {}
+    exp = C.LEDGER_EXP[stage]
+    blocks = [rid for rid, r in res.items() if r.get("exp") == exp
+              and not str(r.get("note", "")).startswith(NOTE_TAG + " ")]
+    if blocks:
+        raise JudgeRefused(f"{stage.value}: {len(blocks)} open non-judge reservations of {exp}")
+
+
+def inputs_path(out_dir: Path, judgment: Judgment) -> Path:
+    """Per-row provenance sidecar: judged/<judgment>.inputs.jsonl."""
+    return Path(out_dir) / f"{Judgment(judgment).value}.inputs.jsonl"
+
+
+def check_provenance(out_dir: Path, judgment: Judgment, episodes: list[dict],
+                     prompts_dir: Path = C.PROMPTS_DIR) -> set[tuple[str, str]]:
+    """The (episode, judge) pairs already judged, after checking each existing row against the
+    current inputs (X3b code review r1, finding 13): its prompt hash, the judge's request
+    settings and the episode artifact's sha256 (from the sidecar) must all match, and each pair
+    appears once. Any mismatch raises JudgeRefused; nothing is silently kept."""
+    judgment = Judgment(judgment)
+    rows = read_judged(out_dir, judgment)
+    side: dict[tuple[str, str], dict] = {}
+    sp = inputs_path(out_dir, judgment)
+    if sp.exists():
+        for line in sp.read_text().splitlines():
+            if line.strip():
+                r = json.loads(line)
+                side[(r["episode_id"], r["judge"])] = r      # the last line per pair wins
+    sha = prompt_sha(judgment, prompts_dir)
+    arts = {e["meta"]["episode_id"]: e["_artifact_sha256"] for e in episodes}
+    done, errors = set(), []
+    for r in rows:
+        k = (r["episode_id"], r["judge"])
+        s = side.get(k)
+        why = ("duplicate row" if k in done
+               else "no provenance line" if s is None
+               else "prompt changed" if r["prompt_sha256"] != sha or s["prompt_sha256"] != sha
+               else "request settings changed"
+               if s["request_settings"] != REQUEST_SETTINGS.get(r["judge"], {})
+               else "episode no longer among the inputs" if k[0] not in arts
+               else "artifact changed" if s["artifact_sha256"] != arts[k[0]] else None)
+        if why:
+            errors.append(f"{k[0]} / {k[1]}: {why}")
+        done.add(k)
+    if errors:
+        raise JudgeRefused(f"{judgment.value}: {len(errors)} existing rows fail provenance "
+                           f"(move the CSV aside to re-judge): {errors[:5]}")
+    return done
+
+
+def _pending(episodes: list[dict], judgment: Judgment, panel: list[str], prices: dict,
+             out_dir: Path, prompts_dir: Path) -> tuple[list, list, float]:
+    items = [(e, inp) for e in episodes if (inp := judge_input(e, judgment, prompts_dir))]
+    done = check_provenance(out_dir, judgment, episodes, prompts_dir)
+    todo = [(e, inp, j) for e, inp in items for j in panel
+            if (e["meta"]["episode_id"], j) not in done]
+    worst = 2 * sum(request_bound(prices[j], s, u, MAX_TOKENS) for _e, (s, u), j in todo)
+    return items, todo, worst
+
+
 def paid_judge(stage: StageKey, judgment: Judgment, *, episodes_dir: Path, out_dir: Path,
                detector_csv: Path | None, dry_run: bool = False,
                episodes_csv: Path | None = None, inner=None,
-               prompts_dir: Path = C.PROMPTS_DIR) -> dict:
+               prompts_dir: Path = C.PROMPTS_DIR, run_state: Path | None = None) -> dict:
     """Judge every (item, judge) pair of one judgment not yet in `out_dir/<judgment>.csv`.
 
     The paid entry point. `dry_run` prints the projected worst case (two calls per pair, the
-    re-ask included) and spends nothing. A real run reserves min(worst case, the stage's
-    remaining funds) under `LEDGER_EXP[stage]`; when the allowance runs out, the pairs not yet
-    reached get no row (that label is unavailable for them, prereg §7.2). `inner` is the
-    transport (tests: a fake); None builds `X3bOpenRouterClient` from the checkout's `.env`.
-    `episodes_csv`, if given, restricts judging to its analysable (`main`) rows.
-    Returns a summary dict ("status": "dry_run" | "complete" | "partial" | "refused" |
-    "not_reported")."""
+    re-ask included) and spends nothing; it may run before the stage ends (without
+    `episodes_csv` it projects over every non-failed main artifact). A real run first requires
+    `paid_preconditions` (TERMINAL, the collected `episodes_csv`; judging only its `main`
+    rows), then, under the judge lock and after reconciling, checks existing rows' provenance,
+    computes the pending pairs and reserves min(worst case, the stage's remaining funds) under
+    `LEDGER_EXP[stage]`. When the allowance runs out, the pairs not yet reached get no row (that
+    label is unavailable for them, prereg §7.2). `inner` is the transport (tests: a fake); None
+    builds `X3bOpenRouterClient` from the checkout's `.env`. Raises JudgeRefused on a failed
+    precondition or provenance check. Returns a summary dict ("status": "dry_run" | "complete" |
+    "partial" | "refused" | "not_reported")."""
     stage, judgment = StageKey(stage), Judgment(judgment)
     check_manifest(prompts_dir)
+    if not dry_run:
+        paid_preconditions(stage, episodes_csv, run_state)
     eps = load_episodes(episodes_dir, analysable_ids(episodes_csv) if episodes_csv else None)
     out_dir = Path(out_dir)
     out = out_dir / f"{judgment.value}.csv"
@@ -553,29 +650,22 @@ def paid_judge(stage: StageKey, judgment: Judgment, *, episodes_dir: Path, out_d
            "prompt_sha256": prompt_sha(judgment, prompts_dir), "panel": panel,
            "request_settings": {j: REQUEST_SETTINGS.get(j, {}) for j in panel},
            "inputs_sha256": hashlib.sha256(blob.encode()).hexdigest(), "n_inputs": len(eps)}
+    reported, n_q, reason = True, None, None
     if judgment == Judgment.DISCLOSURE:
         reported, n_q, reason = disclosure_condition(stage, eps, detector_csv)
         if detector_csv is not None and Path(detector_csv).exists():
             sig["detector_sha256"] = _sha_file(detector_csv)
-        if not reported:
-            print(f"[x3b judges] {stage.value} disclosure not reported: {reason}")
-            if not dry_run:
-                out_dir.mkdir(parents=True, exist_ok=True)
-                _write_sig(out, {**sig, "status": "not_reported", "reason": reason,
-                                 "n_qualifying": n_q})
-            return {"status": "not_reported", "reason": reason, "n_qualifying": n_q}
-    items = [(e, inp) for e in eps if (inp := judge_input(e, judgment, prompts_dir))]
-    done = {(r["episode_id"], r["judge"]) for r in read_judged(out_dir, judgment)}
-    todo = [(e, inp, j) for e, inp in items for j in panel
-            if (e["meta"]["episode_id"], j) not in done]
-    worst = 2 * sum(request_bound(prices[j], s, u, MAX_TOKENS) for _e, (s, u), j in todo)
-    summary = {"stage": stage.value, "judgment": judgment.value, "n_items": len(items),
-               "n_todo": len(todo), "worst_case_usd": round(worst, 6)}
+    if not reported:
+        print(f"[x3b judges] {stage.value} disclosure not reported: {reason}")
     if dry_run:
+        if not reported:
+            return {"status": "not_reported", "reason": reason, "n_qualifying": n_q}
+        items, todo, worst = _pending(eps, judgment, panel, prices, out_dir, prompts_dir)
         print(f"[dry-run] {stage.value} {judgment.value}: {len(items)} items, {len(todo)} calls "
               f"to make (x2 with re-asks), worst case ${worst:.4f}")
-        return {**summary, "status": "dry_run"}
-    if inner is None:
+        return {"stage": stage.value, "judgment": judgment.value, "n_items": len(items),
+                "n_todo": len(todo), "worst_case_usd": round(worst, 6), "status": "dry_run"}
+    if inner is None and reported:
         from dotenv import dotenv_values
 
         key = dotenv_values(C.ROOT / ".env").get("OPENROUTER_API_KEY")
@@ -586,6 +676,15 @@ def paid_judge(stage: StageKey, judgment: Judgment, *, episodes_dir: Path, out_d
     calls_path = out_dir / CALLS_FILE
     with judge_lock(out_dir):
         reconciled = reconcile_open(stage, _held=out_dir)
+        if not reported:
+            _write_sig(out, {**sig, "status": "not_reported", "reason": reason,
+                             "n_qualifying": n_q})
+            return {"status": "not_reported", "reason": reason, "n_qualifying": n_q,
+                    "reconciled": reconciled}
+        # pending work and its bound only now, under the lock and after reconciling (finding 12)
+        items, todo, worst = _pending(eps, judgment, panel, prices, out_dir, prompts_dir)
+        summary = {"stage": stage.value, "judgment": judgment.value, "n_items": len(items),
+                   "n_todo": len(todo), "worst_case_usd": round(worst, 6)}
         status, stopped = "complete", None
         settled = None
         if todo:
@@ -636,6 +735,15 @@ def _run_batch(todo: list, judgment: Judgment, client: AccountedClient, out: Pat
                 r = judge_item(e, judgment, j, client, prompts_dir)
             except BudgetExhausted as ex:
                 return f"budget exhausted: {ex}"
+            # provenance first: a sidecar line without its row is harmless (the pair is redone)
+            with open(inputs_path(out.parent, judgment), "a", encoding="utf-8") as sf:
+                sf.write(json.dumps({
+                    "episode_id": r.episode_id, "judge": r.judge_model,
+                    "artifact_sha256": e["_artifact_sha256"], "prompt_sha256": r.prompt_sha256,
+                    "request_settings": client.request_settings.get(j, {}),
+                    "utc": _now()}) + "\n")
+                sf.flush()
+                os.fsync(sf.fileno())
             row = {"episode_id": r.episode_id, "judge": r.judge_model, "status": r.status,
                    "billed_usd": r.billed_usd, "prompt_sha256": r.prompt_sha256,
                    "error": r.error or ""}

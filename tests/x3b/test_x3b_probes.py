@@ -167,3 +167,31 @@ def test_real_x3_replies_examples(rid, want):
 def test_real_x3_replies_left_to_judge(rid):
     reply = {r: rep for r, rep, _ in _x3_unparsed_replies()}[rid]
     assert parse_post(reply + "\nQ4: (b)") is None
+
+
+# --- code review r1, finding 15: a later unreadable occurrence makes the answer unclear -------
+@pytest.mark.parametrize("reply", [
+    "Q1: (a)\nQ1: (b) or (c)\nQ2: (a)",                 # the reviewer's reproduction
+    "Q1: (a)\nQ2: (b)\nQ1: not sure, maybe the other one",
+    "Q1: (a)\nQ2: (b)\nQ2: a/b",
+])
+def test_parse_pre_later_ambiguous_occurrence_is_none(reply):
+    assert parse_pre(reply) is None
+
+
+def test_parse_post_later_ambiguous_occurrence_is_none():
+    base = "Q1: (a)\nQ2: (a)\nQ3: yes, no\nQ4: (c)"
+    assert parse_post(base) is not None
+    assert parse_post(base + "\nQ4: (c) or (d)") is None
+    assert parse_post(base + "\nQ3: yes, I think") is None
+
+
+def test_echoed_question_is_ignored_not_unclear():
+    from x3b.texts import POST_PROBE_PROMPT, PRE_PROBE_PROMPT
+
+    pre_echo = PRE_PROBE_PROMPT.split("\n", 1)[1]           # the two question lines, verbatim
+    assert parse_pre(pre_echo + "\nQ1: (b)\nQ2: (c)") == {"pre_q1": "b", "pre_q2": "c"}
+    post_echo = POST_PROBE_PROMPT.split("\n", 1)[1]
+    assert parse_post(post_echo + "\nQ1: (a)\nQ2: (a)\nQ3: no, no\nQ4: (b)") == {
+        "q1": "a", "q2": "a", "q3_spec": "no", "q3_tests": "no", "q4": "b"}
+    assert parse_pre(pre_echo) is None                       # an echo alone answers nothing
