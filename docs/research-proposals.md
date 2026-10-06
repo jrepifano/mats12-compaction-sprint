@@ -480,11 +480,13 @@ The working repo's cost estimate for that study is ≈ $115–175.
   1. A **Qwen sibling comparison**: Qwen3.6-27B (dense, 64 layers, width 5120) and Qwen3.6-35B-A3B (MoE, 40 layers, width 2048, 256 experts, 8 active per token; both configs read from the Hub on 2026-10-03). Same family, generation and tokenizer, which removes the lab and data confounds in Doan et al.'s three models.
      - It does **not** isolate MoE as such: the two also differ in depth, width and parameter count. Any difference is a difference between these two siblings. "It's the MoE" stays a hypothesis that needs further controls, such as a second matched pair (the OLMoE arm below) or a size sweep.
   2. Routing tests that a dense model can't have: does the fine-tune shift routing on unrelated prompts, and does forcing the untuned model's routing remove EM?
-  3. *Added 2026-10-06 (Jacob):* **do personas live in particular experts?**
-     - Does the EM direction, or a persona direction (E10's), concentrate in a few experts, or spread across all of them?
-     - Does that change how the model routes persona-relevant prompts?
-     - The answer decides whether an intervention can target experts.
-     - Cheap to add to Stage 1's routing hooks: per-expert attribution of the direction, and routing entropy on persona prompts.
+  3. *Added 2026-10-06; the question is Jacob's:* **do personas live in particular experts?** Does the EM direction concentrate in a few experts, or spread across all of them? Does that change how the model routes persona-relevant prompts? The answer would say whether an expert-targeted intervention is even possible.
+     - *Implementation suggestions are Claude's; provisional and not costed:*
+       - It belongs with Stage 2's routing captures, not Stage 1.
+       - Take the direction from the same MoE model: bad − good adapter, as in E8. E10's direction is from a different model (Qwen 2.5 7B) and doesn't transfer.
+       - Measure each expert's contribution to the projection onto that direction, with two controls: a random direction, and the good-advice adapter's experts.
+       - Routing entropy alone can't show localization.
+       - Any causal claim needs a separately gated test: ablating or forcing the top experts, with a matched random-expert control.
 - **Why it matters for us.** If EM on OLMo becomes the commit, a reviewer will ask whether it holds for MoE, the architecture of most frontier open models. A routing contribution would give a mechanism handle, and a monitoring one: routing is a discrete trace a dense model lacks. A null for this pair weakens the worry that architecture matters for EM. It doesn't by itself license carrying the OLMo findings over to MoE.
 
 **Hypotheses** (weak priors).
@@ -2066,10 +2068,11 @@ The talks were Bartosz Cywiński on model organisms and Adam Karvonen on CHIVE. 
 
 **The score is not the whole decision.** Info ÷ days favors anything cheap and fast. That is why X0 and I4 rank high, though neither bears on which direction to choose. The week-2 goal is narrower: by the week-2 review (around 2026-10-11), know which direction to commit to for weeks 3–4. So the set below takes **one deciding test per live direction**. It uses the score to choose within a direction. Cheap side bets run only with spare time and budget.
 
-**Live directions after week 1:**
-- EM on OLMo, the strongest. E1b decides it.
-- Interp readers beyond the prompt. I9 decides it.
-- Grader belief and eval awareness (X3).
+**Live directions now** (updated 2026-10-06 by Jacob's decision below; the week-1 list follows for the record):
+- Correcting EM at pretraining: E3, E9, E9b.
+- Belief about the grader: X3, X3b, X4, X5.
+
+*Week-1 list, superseded:* EM on OLMo (E1b decided it: done, positive); interp readers beyond the prompt (I9 decided it: done, descriptive negative); grader belief and eval awareness (X3).
 
 C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`docs/week1-synthesis.md`).
 
@@ -2078,10 +2081,12 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **Two lines go forward:**
   - belief about the grader: X3, X3b, X4, X5;
   - correcting EM at pretraining: E3, E9, E9b.
-- **He would like to join them eventually.** Grader gaming that is found only at the RL stage is "too late" to fix, so the natural fix is at pretraining.
-- **The sprint deliverable he wants is "an intervention that reduces the behavior."** E9 and X4 are the intervention-shaped items. X3, X3b and X5 are diagnostic.
+- **He would like to join them eventually.** His words: "If you find greater [grader] awareness at the RL stage, it's too late to intervene on it… Seems like that's the only place you can correct for these things", meaning pretraining.
+- **The sprint deliverable he wants:** "an intervention that like reduces the behavior or it gets us the behavior that we want."
+- *Claude's reading, not Jacob's decision:*
+  - Of the current items, E9 and X4 are intervention-shaped; X3, X3b and X5 are diagnostic.
 
-**Recommended week-2 set (2026-10-03).** Each paid step still needs Jacob's go-ahead and a prereg.
+**Recommended week-2 set (2026-10-03), kept for the record.** Superseded by the live directions above: E1b and I9 are done, and the X3 pilot led to X3b. Each paid step still needs Jacob's go-ahead and a prereg.
 
 *Critical path: the tests that decide the commit.*
 
@@ -2114,7 +2119,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - All figures are planned costs. If E1b's conditional arms run, its cost rises from ≈ $55 to ≈ $74 (cap $75), which adds ≈ $19 to every total below.
 - The critical path in week 2 is E1b ≈ $55, I9 ≈ $53–62 and the X3 pilot ≈ $19–38, or ≈ $127–155. That brings the running total to ≈ $264–292.
 - E3 after Checkpoint 1 brings it to ≈ $304–392. The C1 side bet adds $5–15.
-- The high end exceeds "a few hundred dollars", and the overall budget isn't set. Confirm the envelope before committing to I9 Stages 1–2 and E3 together.
+- The high end exceeds "a few hundred dollars", and the overall budget isn't set. Confirm the envelope before committing to I9 Stages 1–2 and E3 together. *Superseded 2026-10-06: the envelope is $2,100 for October, most of it for the research sprint (§7 Q4, CLAUDE.md). Per-experiment caps and the ~$100 ask-first rule still apply.*
 - E1b, E3 and I9 Stages 1–2 all use RunPod, whose balance is shared and does not auto-top-up. Check it against their combined GPU plan before the first launch.
 
 **Jacob's time in week 2:** about 6 hours on the critical path (E1b ≈ 2, I9 ≈ 2 including its hand labels, X3 pilot ≈ 2), plus about 2 for C1 if it runs.
