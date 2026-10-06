@@ -1,6 +1,6 @@
 # X3b report: which part of a safety framing stops a model from cheating, and does the effect hold in a second model?
 
-2026-10-06 · Jacob Epifano · reviewed by gpt-6-astra (2 report rounds, 2 analysis rounds); every headline is provisional until Jacob's blind detector audit (10 verdicts per stage)
+2026-10-06 · Jacob Epifano · mirrored to Claude Doc (synced at rev 9) · reviewed by gpt-6-astra (2 report rounds, 2 analysis rounds); every headline is provisional until Jacob's blind detector audit (10 verdicts per stage)
 
 ## Summary
 
