@@ -4,7 +4,7 @@
 |---|---|
 | Experiment | E3: is there an early-pretraining window where OLMo-3-7B learns a narrow harmful task but does not generalize it to broad misalignment? |
 | Preregistration | `docs/experiments/E3/prereg.md` v0.3, signed off 2026-10-06T07:12Z, with erratum E1 and Amendments A and B |
-| Outcome | **Automatic stop, twice** (prereg §7 and §8.3, "Pair build: any fails → stop; the other experiment is told"). The first build failed on length; after Jacob approved construction version 2 and the run resumed, the rebuild failed held-out retention by one question (§7); construction version 3 passed retention but failed the automatic blind pre-inspection check (§8) |
+| Outcome | **Automatic stop, three times** (prereg §7 and §8.3, "Pair build: any fails → stop; the other experiment is told"). The first build failed on length; after Jacob approved construction version 2 and the run resumed, the rebuild failed held-out retention by one question (§7); construction version 3 passed retention but failed the automatic blind pre-inspection check (§8) |
 | Spend | **$2.61 API, $0 GPU** of the $45 cap (ledger: `logs/costs.jsonl` on branch `e3/run`): first build $1.43, `medcorrect` validation $0.02, construction-2 build $1.04, construction-3 build $0.12 |
 | Status | No pod was launched; no reservation is open; nothing paid is outstanding |
 | Run log | `logs/E3-report.md` (UTC timestamps, commands, decisions) |
