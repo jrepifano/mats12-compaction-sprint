@@ -1,0 +1,45 @@
+{
+ "n": 69,
+ "agreement": 1.0,
+ "sensitivity": 1.0,
+ "specificity": 1.0,
+ "pass": true,
+ "failed": [],
+ "by_header": {
+  "capability": {
+   "n": 47,
+   "errors": 0
+  },
+  "safety": {
+   "n": 22,
+   "errors": 0
+  }
+ },
+ "fisher_p": 1.0,
+ "flagged": false,
+ "header_test": "none (no variation)",
+ "alpha": 0.05,
+ "thresholds": {
+  "agreement": 0.95,
+  "sensitivity": 0.9,
+  "specificity": 0.97
+ },
+ "confusion": {
+  "tp": 39,
+  "fn": 0,
+  "tn": 30,
+  "fp": 0
+ },
+ "n_invalid": 0,
+ "invalid": [],
+ "disagreements": [],
+ "stage": "gemini",
+ "inputs": {
+  "data/X3b/verify/gemini/key.json": "506230e32a2f0bf96e63612518b0b354728aa796f254c0f74ef9e012ff90b6a3",
+  "data/X3b/verify/gemini/answers_1.json": "8605c5c4ef91b520699dd2b3e07b55e7957f2845635b515447280025abf467a1",
+  "data/X3b/verify/gemini/answers_2.json": "e586d321de3b34d0e505392f36c7a093a38557e6408dc99e09a92f54c613ff0f",
+  "data/X3b/verify/gemini/answers_3.json": "f4a11f9718540652b2a8f37b1609b9f823a963b334b30fc1307db83c6a760a5f",
+  "data/X3b/verify/gemini/answers_4.json": "b7e333b092fbe8960280888f23918963a3824a79ee239c6414b67c9f933f4048",
+  "results/X3b/gemini/detector.csv": "29a92c6d53bbbe0230a106bc370cc1ac57d7482468cf8956a050f149eb836060"
+ }
+}

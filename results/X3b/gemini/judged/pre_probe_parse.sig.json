@@ -1,0 +1,27 @@
+{
+ "stage": "gemini",
+ "judgment": "pre_probe_parse",
+ "prompt_sha256": "ce1e39c3f4b161b11e53d3efa8f138b31ec438294dd135e44f194624d1f3bf67",
+ "panel": [
+  "openai/gpt-6-luna",
+  "z-ai/glm-5.3-flash"
+ ],
+ "request_settings": {
+  "openai/gpt-6-luna": {
+   "reasoning": {
+    "effort": "none"
+   }
+  },
+  "z-ai/glm-5.3-flash": {
+   "reasoning": {
+    "enabled": false
+   }
+  }
+ },
+ "inputs_sha256": "6d0858d866d97cf6b005a79ccd349b0570b5d4c6ad2736c14427f6c1f7eefa87",
+ "n_inputs": 210,
+ "status": "complete",
+ "n_items": 0,
+ "n_rows": 0,
+ "output_sha256": null
+}

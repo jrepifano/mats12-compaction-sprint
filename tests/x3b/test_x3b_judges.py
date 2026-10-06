@@ -210,7 +210,7 @@ def test_glm_judge_reasoning_off_is_recorded(tmp_ledger, tmp_results):
     _run(st, Judgment.PRE_PROBE_PARSE, inner)
     res = [r for r in J.read_calls(C.judged_dir(st) / J.CALLS_FILE) if r["kind"] == "result"]
     glm = [r for r in res if r["model_requested"] == "z-ai/glm-5.3-flash"]
-    assert glm and glm[0]["request_settings"] == {"reasoning": {"enabled": False}}
+    assert glm and glm[0]["request_settings"] == {"reasoning": {"effort": "low"}}
     assert "reasoning_tokens" in glm[0]
 
 
@@ -429,7 +429,7 @@ def test_transport_keeps_provider_model_usage(monkeypatch):
     cl = J.X3bOpenRouterClient("k", {"z-ai/glm-5.3-flash": (0.15, 0.50)})
     assert cl.retries == 1
     rep = cl.complete("z-ai/glm-5.3-flash", "s", "u", 100)
-    assert sent["json"]["reasoning"] == {"enabled": False}
+    assert sent["json"]["reasoning"] == {"effort": "low"}
     assert sent["json"]["provider"]["max_price"] == {"prompt": 0.15, "completion": 0.50}
     assert "Mozilla" in sent["headers"]["User-Agent"]
     assert rep["provider"] == "Relace" and rep["model_returned"] == "z-ai/glm-5.3-flash-0910"

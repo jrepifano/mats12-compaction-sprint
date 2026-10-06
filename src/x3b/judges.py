@@ -64,7 +64,9 @@ MAX_TOKENS = X3C.JUDGE_MAX_TOKENS                     # 1,500, as X3
 # off, checked from each result line's reasoning_tokens; Flash-Lite at its defaults
 REQUEST_SETTINGS: dict[str, dict] = {
     "openai/gpt-6-luna": {"reasoning": {"effort": "none"}},
-    "z-ai/glm-5.3-flash": {"reasoning": {"enabled": False}},
+    # reasoning is mandatory on this endpoint ("cannot be disabled", HTTP 400, 2026-10-06), so
+    # the plan's "off or low" resolves to low
+    "z-ai/glm-5.3-flash": {"reasoning": {"effort": "low"}},
     "google/gemini-3.5-flash-lite": {},
 }
 GEMINI_MIN_DONE_CHEATS = 20                           # prereg §4.4
