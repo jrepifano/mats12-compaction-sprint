@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -55,6 +55,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   - The open-data angle that motivated the topic is now contested, and the competitor is ahead on E2 and on E3 as first written.
   - Our own data add a second problem. Every condition run so far lands at a similar EM rate, so a follow-up that measures the final EM rate again may well find another flat line.
   - E3 is redrafted below as an early-window test with a more sensitive measure.
+  - **E9b** (Jacob, 2026-10-06) locates which groups of documents carry any E9 effect: a group factorial, with a gradient screen tested as an accelerator.
   - **E9** (Jacob, 2026-10-05) asks whether *corrective continued pretraining*, on rewritten versions of the documents most tied to EM, lowers susceptibility. It is the intervention the descriptive work would feed. E3 informs it but doesn't gate it.
 
 ### E1. Does EM happen on OLMo-3-7B, and at which training stage? (gate)
@@ -527,20 +528,20 @@ The working repo's cost estimate for that study is ≈ $115–175.
 
 **Coordination.** Check with Neel whether any MATS 12 scholar is on MoE EM. Cite Doan et al. as the direct prior.
 
-### E9. Does rewriting the pretraining documents most tied to EM lower susceptibility? ("Correct, Don't Delete" at pretraining scale)
+### E9. Does correcting pretraining text that endorses harm, during continued pretraining, lower EM susceptibility? ("Correct, Don't Delete" at pretraining scale)
 
-*Source: Jacob, 2026-10-05. Internal and external literature reviews: `logs/litreviews/20261005-E3E9-internal.md` and `-external.md`. Not yet reviewed as a proposal.*
+*Source: Jacob, 2026-10-05. Literature reviews: `logs/litreviews/20261005-E3E9-internal.md` and `-external.md`. Redesigned 2026-10-06 after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). Content selection replaces direction-based ranking, and locating which documents matter moves to E9b.*
 
 **Research question.**
-- Find the pretraining documents most tied to broad misalignment, then continue pretraining on versions of them *rewritten* so they no longer endorse the harmful stance.
-- Is the model then less susceptible to EM from the standard bad-medical-advice fine-tune?
-- Does correcting the targeted documents help more than seeing them unchanged, and more than correcting random documents?
+- Select pretraining documents that endorse a harmful stance with a cheap content judge, then continue pretraining on versions of them *rewritten* so they no longer endorse it.
+- Is the model then less susceptible to EM from the standard bad-medical-advice fine-tune, compared with seeing the same documents unchanged and with background text only?
+- Is it the change of stance, rather than rewriting style, that matters (a stance-preserving paraphrase control)?
 
 **Why it matters.**
 - **It answers an open question in Tice et al.'s own paper.** *Alignment Pretraining* (Tice et al. 2026, `papers/em_personas/` row 15, App. I) pretrained four 6.9B models: unfiltered, filtered, misalignment-upsampled and alignment-upsampled. All four became misaligned after EM fine-tuning; on bad medical advice the rates were about 6–12% in every condition (external review's reading of their Fig. 27). Their conclusion: "alignment pretraining does not mitigate EM". Their future work asks whether "more rigorous approaches" or inoculation-like interventions during pretraining would.
 - **It carries Jacob's fine-tuning result to pretraining.** In *Correct, Don't Delete* (Epifano 2026, row 46), rewriting the poisoned fine-tuning rows cut EM from 28.5% to 19.4%, while deleting them left 26.8% (Qwen2.5-14B, 56 questions). Tice et al. tested the deletion analogue (filtering) and the addition analogue (upsampling). Targeted *correction* is the untested third option.
 - **It is Vetter et al.'s stated next step.** Vetter et al. 2026 traced EM persona features to "villain, domination and harmful agency" documents in Dolma, then asked "whether controlled pre- or midtraining interventions can confirm the identified documents' causal role". OLMo's pretraining data is open, so the documents are the ones the model actually learned from, not a proxy corpus.
-- **If it works, labs get a curation recipe:** find the documents tied to broad misalignment and correct them rather than delete them. Narrow fine-tuning, including by downstream users of open weights, would then be less likely to produce a broadly misaligned model.
+- **If it works, labs get a curation recipe:** find text that endorses harm and correct it rather than delete it. E9b then narrows *which* text. Narrow fine-tuning, including by downstream users of open weights, would then be less likely to produce a broadly misaligned model.
 
 **The evidence against it, which a prereg must state up front** (both reviews).
 - **Pretraining-data composition hasn't been shown to move EM susceptibility.**
@@ -558,84 +559,200 @@ The working repo's cost estimate for that study is ≈ $115–175.
 - *Safety Pretraining* (Maini et al. 2025, row 47) rephrases unsafe pretraining text into safe, contextualized versions. It cuts general harmfulness, but it isn't about EM, and a safety classifier, not attribution, picks the documents.
 - *Deep Ignorance* (O'Brien et al. 2025, row 48) filters biothreat data when pretraining from scratch: deletion, not rewriting, and not EM.
 - *When Should We Introduce Safety Interventions During Pretraining?* (row 49) varies when rephrasing starts.
-- **Gap:** no one has found the documents tied to a misalignment direction, *rewritten* them, and tested EM susceptibility afterwards. `em-olmo` has the attribution half but only adds documents.
+- **Gap:** our search found no one who *corrected* selected pretraining documents and then tested EM susceptibility. `em-olmo` only added documents; Maini et al. rephrased, but didn't test EM.
 
-**What this tests, precisely.** Continued pretraining can't delete the model's original exposure to any document; it can only change what the model sees *next*. So E9 tests **corrective continued pretraining**: does seeing corrected versions of the documents most tied to EM lower susceptibility? It does not test counterfactual removal from the original pretraining run. The "deletion" contrast becomes *omitting* those documents from the continued-pretraining stream and replacing them with others.
+**What this tests, precisely.** Continued pretraining can't delete the model's original exposure to any document; it can only change what the model sees *next*. So E9 tests **corrective continued pretraining**: does seeing corrected versions of harm-endorsing documents lower susceptibility? It does not test counterfactual removal from the original pretraining run. The "deletion" contrast becomes *omitting* those documents from the continued-pretraining stream and replacing them with others.
 
-**Hypotheses** (weak priors). "Susceptibility" means the bad − good EM difference after E1b's fine-tuning recipe, compared at matched narrow-task learning (see Measures).
-- **H1, targeted correction works:** the correction effect on the targeted documents (rewritten minus original) lowers susceptibility by at least 5 points, and by more than the correction effect on random documents.
-- **H2, any rewriting works:** the correction effect is about the same for random documents. Then the rewrite style (generic safety content, as in Maini et al.) is doing the work, not the targeting.
-- **H0:** no correction effect is detected at the tested dose. That is consistent with Tice et al. and `em-olmo`, but on its own it is weak evidence (see "What it will show").
+**Hypotheses** (weak priors). *Susceptibility* means the bad − good gap after E1b's fine-tuning recipe. The primary endpoint is Q₂₀, E3's broad log-probability measure after 20 fine-tune steps (E3 section; validated as described below), with the bad and good components reported separately. Sampled EM after the full fine-tune is the confirmation.
+- **H1, correction works:** continued pretraining that includes corrected versions of documents endorsing a harmful stance lowers susceptibility below both the same documents left as they are and the background-only baseline. The reduction must be at least a preregistered practical threshold, e.g. 20% of the starting bad − good gap.
+- **H2, it's style, not stance:** a stance-*preserving* paraphrase of the same documents helps about as much. Then a rewriting or style effect is doing the work, not the correction.
+- **H0:** no detectable effect at this selection, dose and precision. That is consistent with Tice et al. and `em-olmo`. It is *not* evidence that nothing could work.
 
-**Experiment** (staged; each stage gates the next).
+**Definitions** (the prereg freezes the exact values).
+- **The broad measure.** For adapter X and a frozen broad answer pair (q, misaligned, aligned) from E3, δ_X = [ℓ(misaligned | q) − ℓ(aligned | q)] under X, minus the same under the model before fine-tuning. Here ℓ is the mean per-token log-probability. B_X is the mean of δ_X over the broad pairs (E3's 8 standard questions plus the 27 other non-medical ones).
+- **Susceptibility:** Q₂₀ = B_bad − B_good after 20 steps of E1b's schedule. The bad and good components are reported separately, and so is the CPT model's own behaviour before any fine-tuning. A smaller gap that comes from B_good rising (the good adapter getting worse) is not mitigation.
+- **Held-out questions:** a third of the broad questions is held out from every selection decision, and all confirmation uses them.
+- **The reference gap G₀** is the background-only arm's Q₂₀, averaged over its CPT seeds. The **practical threshold** is a 20% reduction of G₀, chosen as an exploration threshold.
+- **Contrasts** are paired: the same background stream, insertion positions, adapter initializations and batch orders across arms. Uncertainty comes from a hierarchical bootstrap with CPT seed at the top level, then adapter seed, then question.
+  - **With only 2 CPT seeds these intervals are exploratory.** They can't calibrate variation across continued-pretraining randomness, so both seed-specific contrasts are reported prominently.
+  - A formal, seed-general claim would need its own replication and precision plan in a later prereg.
+- **"Reproducible":** a contrast is negative in *each* CPT seed, its pooled 95% interval is below zero, and its point estimate is at or beyond the threshold.
+- **Tolerances**, which must hold for an effect to count:
+  - narrow-task log-probability gap within 10% of the background arm's;
+  - sampled coherence within 5 points;
+  - held-out general-text loss within +1% relative.
+
+**Experiment** (redesigned 2026-10-06 after a design consultation with gpt-6-astra, `logs/reviews/20261006-E9b-locator-consult1.md`; revised after review, `logs/reviews/20261006-proposals-E9-E9b-v3-r1.md`; each stage gates the next). E9 tests the premise. Locating *which* documents matter is E9b.
 - **Stage 0: free checks.**
-  - **Model:** OLMo-3-7B at the end of pretraining (`stage1-step1413814`), as in E1b, where EM is 26% against 2% for the control. Tice et al.'s models are the alternative. They have the alignment-upsampled comparison built in, but their bad-medical EM is only about 6–12%, which leaves less headroom.
+  - **Model:** OLMo-3-7B at the end of pretraining (`stage1-step1413814`), as in E1b, where EM is 26% against 2% for the control. Tice et al.'s models are the alternative, but their bad-medical EM is only about 6–12%.
   - **Data:** confirm the Dolma 3 mix sample and its licence.
-  - **E3:** if it found a window, its documents are a second, hypothesis-generating candidate set. E9 doesn't wait for E3.
-- **Stage 1: is there a usable target? (≈ $15–25)**
-  - **The ranking direction must be shown to matter first.** E9 would rank by the bad-adapter minus good-adapter activation difference from E1b's end-of-pretraining models. But E1b never showed that this difference drives EM: its steering transfer test failed as built. `em-olmo` also found that steering along a mean-difference direction destroyed coherence (lines 104–107).
-    - So the first step is a working version of E1b's steering test, ≈ $6–8 (E1b report §2.7): sample at temperature 1.0, allow 300+ tokens, and set the coherence bar relative to the unsteered model.
-    - If steering along the direction raises EM at a coherence-preserving strength, rank by it.
-    - If not, the attribution route stops, and E9 can continue only as a differently framed experiment: a **content-selected corrective-continued-pretraining pilot**. A cheap model scores how strongly each document endorses cruelty, domination or villainy, and the top documents are corrected.
-      - That selection is motivated by content alone: it beat attribution on fine-tuning data in the working repo, which doesn't show it is relevant to EM in pretraining.
-      - Its claims are limited to "correcting the most harm-endorsing text", not "the documents behind EM".
-      - It needs its own go-ahead from Jacob.
-  - **Rank a small sample first:** about 20k Dolma 3 documents, with `em-olmo`'s fixes (skip the first 16 tokens, centre, and orthogonalize against the good-advice direction and the corpus mean). This pilot is only for the enrichment check.
-    - A 15M-token insert needs roughly 19k documents, judging by `em-olmo`'s ≈ 794 tokens per selected document (100M tokens over 125,906 documents, its line 381). Stage 3 therefore needs a larger pool.
-    - If the gate passes, expand to about 200k documents (≈ 2–3 H100-hours, ≈ $8–10) and record the selected percentile and the usable token yield before Stage 3.
-  - **Blinded top-versus-random check:** Jacob labels 50 top-ranked and 50 random documents, shuffled and unmarked, on a short rubric (endorsed harm, villain or troll voice, fiction, spam or format artifact). The content judge labels the same 100 as a baseline.
-  - **Gate for the attribution route:** the steering check passes, *and* the top documents are enriched for endorsed harm over random ones, beyond format and spam artifacts. Recognizable themes alone don't unlock Stage 3; `em-olmo`'s rubric already found hostility, sarcasm and fiction.
-- **Stage 2: rewrite.**
-  - **The rule:** keep the topic, the characters and the facts, but change whether the text *endorses* the harmful stance. A villain stays a villain, but the narration no longer presents the villain's view as right. This is the analogue of Correct, Don't Delete's "same question, correct answer".
-  - One frozen prompt with a cheap model for every rewritten set.
-  - **Manipulation check:** a blinded sample confirms that each rewrite follows the rule and keeps the content. The rewritten set's loss under the untuned model is also reported, so a rewrite that is just easier or blander text is visible.
-  - **Optional arm:** the inoculation-style alternative Tice et al. suggest. Leave the text unchanged, and add framing that marks the stance as a character's rather than the author's.
-- **Stage 3: continued pretraining, then the EM test.**
-  - **Token streams** (fixed in the prereg). Each arm sees the same 85M-token background sample from the Dolma 3 mix, plus a 15M-token insert, for 100M tokens per arm (the dose at which `em-olmo`'s activation ranking was null). Everything is seen once, with no repetition, and the insert is shuffled into the background at the same positions in every arm.
-    - Insert documents are excluded from the background.
-    - Each insert is defined by its documents, so T-orig and T-rew contain the same documents.
-    - Rewrites change length, so each arm's total is brought back to 100M tokens (±1%) by trimming or adding background tokens. The insert's actual token count is recorded per arm.
-  - **Arms: target set × form.**
+  - **Answer pairs:** reuse E3's frozen answer pairs and scorer. E9 does **not** depend on E3's early-checkpoint validation.
+  - **E9b's two document groups** are defined here, before any E9 outcome is inspected (see E9b).
+- **Stage 1: measure cost, noise and the endpoint** (2 CPT runs plus setup).
+  - **The CPT recipe, frozen in the prereg:** optimizer and state initialization, precision with fp32 master weights or bf16 stochastic rounding, batching, learning-rate schedule and clipping.
+    - `em-olmo` found plain bf16 at a learning rate of 1e-5 left the weights unchanged, and used 8-bit AdamW with stochastic rounding (Phase 2b).
+    - Token count alone doesn't fix the dose.
+  - **Run the background-only arm twice,** with two CPT seeds. Each run: 10M tokens full-parameter, then 3 paired bad/good adapter seeds, then Q₂₀.
+  - **Define C** as the measured cost of one such arm. ≈ $2–4 is a guess until it's timed.
+  - **Verify nonzero parameter updates,** and record update norms, loss and throughput. A null caused by updates silently rounding away would be an implementation failure, not a result.
+  - **Endpoint checks:**
+    - Q₂₀ > 0, with its 95% interval excluding zero;
+    - B_bad > B_good agrees in sign with sampled EM at step 20, which E1b measured;
+    - narrow-task learning and coherence are recorded.
 
-    | | Original text | Rewritten |
-    |---|---|---|
-    | **Targeted** (top-ranked, 15M tokens) | T-orig | T-rew |
-    | **Random** (15M tokens drawn from the rest of the pool) | R-orig | R-rew |
-
-    - T-rew − T-orig is the correction effect on targets.
-    - R-rew − R-orig is the correction effect on random documents.
-    - The difference between the two is the targeting effect.
-    - R-orig is also the *omit/replace* arm: the targeted documents left out and replaced by random ones.
-    - The existing end-of-pretraining model without continued pretraining (E1b's adapters) is the evaluation baseline.
-  - **Run it in two steps.** First the core contrast, T-orig vs T-rew. Run the random pair only if the core contrast shows a promising effect that survives the capability and task-learning checks.
-  - **The EM test:** E1b's recipe on each continued-pretraining model, with bad and good adapters, 2 adapter seeds each. These are adapter seeds; each arm still has **one continued-pretraining run**. A second continued-pretraining seed comes only after a promising effect.
-  - **Measures.**
-    - **Broad transfer at matched narrow-task learning:** compare EM at the adapter checkpoint where each arm first reaches the same held-out narrow-task rate (the matching rule from E8). An arm that simply learns bad advice less well is labelled *general resistance to harmful learning*, not selective resistance to broad transfer.
-    - **Judges per domain, as E1b validated them:** gpt-6-luna on the 8 standard questions (Gemini failed there at the end-of-pretraining checkpoint) and Gemini on the 27 other non-medical questions. The models after continued pretraining are a new domain and get a small hand-label check.
-    - The 14 vulnerable-user questions only as a separately budgeted secondary.
-    - Narrow-task learning; E3's validated log-probability measure, if Stage A of E3 passed.
-    - **Capability cost:** held-out loss on general text, since rewriting fiction must not damage the corpus.
-    - **The representation** (Vetter et al.'s caution): does the EM direction weaken? If the representation moves but susceptibility doesn't, that is a finding too.
-- **Power.** This is a directional pilot. We don't know the run-to-run variance of continued pretraining, and E1b's two-seed comparison doesn't estimate it (that was a different endpoint and only adapter seeds). A null is not equivalence.
+    This shows the endpoint separates bad from good. It does *not* show sensitivity to corrective continued pretraining; only Stage 2 can.
+  - **Gate:** from the two background runs and the adapter-seed spread, project the 95% half-width of a paired arm-versus-arm contrast with 2 CPT seeds per arm. Proceed only if it is at or below the threshold. This noise estimate is provisional and is re-estimated from Stage 2's paired replicates.
+- **Stage 2: the content-selected correction pilot.**
+  - **Candidates:** a cheap content judge scores a diverse pool of about 20k Dolma 3 documents for an *endorsed* harmful stance (cruelty, domination, villainy presented as right), not mere mentions of harm. The top 2,000 are taken.
+  - **The rewrite rule:** keep the topic, the characters and the facts, but change whether the text endorses the harm. This is the analogue of Correct, Don't Delete's "same question, correct answer". One frozen prompt, with a blinded quality check on a sample.
+  - **Fixed in the prereg:** actual insert-token exposure (≈ 1.6M tokens at ≈ 800 tokens per document), truncation, rewrite-length handling, and exclusion of insert documents from the background.
+  - **Arms** (each 10M tokens, full-parameter, 2 CPT seeds shared across all arms):
+    1. background only (from Stage 1);
+    2. background + originals;
+    3. background + corrections.
+  - **If corrections look promising** (the point estimate beats both originals and background), add a **stance-preserving paraphrase arm** at the same 2 CPT seeds.
+    - **"Stance matters":** corrections minus paraphrases has a 95% interval below zero.
+    - **"Style":** the paraphrase effect is at or beyond the threshold, *and* corrections minus paraphrases lies within ±½ threshold by two one-sided tests.
+    - Anything else is inconclusive. Failing to detect a difference is not equivalence.
+  - **Gate:** corrections are *reproducibly* below both originals and background, within the tolerances.
+  - **If null:** one preregistered stronger-dose test is allowed **only if** the realized interval half-width exceeded the threshold, meaning the run was underpowered despite the Stage 1 projection. Otherwise stop E9b for this month and report "no detectable effect at this selection, dose and precision".
+- **Measures throughout:**
+  - Q₂₀ and its components, plus pre-fine-tune behaviour;
+  - sampled EM after the full fine-tune, one adapter seed per decisive arm;
+  - narrow-task learning;
+  - capability cost (held-out general-text loss);
+  - for every selected set: edit distance, loss, length and source composition.
+- **Judges.** E1b validated its judges per domain: gpt-6-luna on the 8 standard questions, Gemini on the other non-medical ones. Corrective continued pretraining changes the model's language and stance, so that validation is evidence, not a guarantee.
+  - **A blinded audit:** Jacob labels about 30 decisive post-intervention samples.
+  - Behavioural confirmation counts only if the judges agree acceptably with those labels.
+  - Vulnerable-user questions are a separately budgeted secondary.
 
 **What it will show.**
 
 | Outcome | Rough prior | What it means for us |
 |---|---|---|
-| Stage 1 finds no usable target: the direction doesn't move EM when steered, and the top documents are not enriched for endorsed harm under either ranking | ~0.3 | Stop before rewriting (≈ $15–25 spent). On OLMo, the attribution step doesn't find a target for this intervention |
-| H1: T-rew lowers susceptibility by ≥ 5 points against T-orig at matched task learning, in both adapter seeds, then beats the random pair's correction effect | ~0.15 | A real correction effect. **Promote E9 to a mitigation project only if T-rew is also below the no-CPT baseline at matched task learning.** If T-rew merely undoes harm that T-orig added, the result is narrower and mechanistic (exposure to these documents raises susceptibility, and correcting them removes that), and committing to it needs its own justification. Either way, replicate the continued pretraining before claiming it |
-| H2: the random pair shows about the same correction effect | ~0.15 | Generic rewriting, not targeting, moves susceptibility. That links EM to Maini et al.'s safety pretraining |
-| H0: no correction effect detected | ~0.4 | "This targeting-and-correction recipe produced no detectable benefit at the tested dose; deprioritize it within the exploration budget." That holds only if the manipulation checks passed (rewrites follow the rule, the continued pretraining changed the weights, narrow-task learning is comparable). A null doesn't show that documents can't matter: targeting, the rewrite, the dose or power could each be the reason |
+| Stage 1: the projected precision can't resolve the threshold at this budget, or the recipe doesn't update the weights | ~0.2 | Change the dose or precision, or stop. Cheap (2C plus setup) |
+| Stage 2: corrections reproducibly beat originals and background, and "stance matters" against paraphrases | ~0.15 | The premise holds: correcting endorsed-harm text lowers susceptibility. E9b locates which groups carry it |
+| Stage 2: "style": paraphrases help as much as corrections | ~0.1 | A rewriting or style effect, not stance. That links to Maini et al.'s safety pretraining; pursue it as a style intervention |
+| Stage 2: no reproducible effect | ~0.55 | "No usable signal at this selection, dose and precision." Together with Tice et al. and `em-olmo`, a third data point against cheap pretraining-data fixes. E9b doesn't run |
 
-**Cost and time** (rough; continued pretraining is new tooling and unmeasured).
-- **Stage 1:** the steering check (≈ $6–8), ranking 20k documents (≈ 1 H100-hour) and content-judge scoring of the same documents (≈ $2). About 1.5 Jacob-hours for the blinded labels. **≈ $15–25.** If the gate passes, expanding the pool before Stage 3 adds ≈ $8–10.
-- **Stage 3 smoke test (a paid gate with its own cap, ≈ $10):** measure throughput and confirm that weights actually update, as `em-olmo` had to check for bf16 at a learning rate of 1e-5. `em-olmo` ran full-parameter continued pretraining with an 8-bit AdamW optimizer, which may fit one 80 GB GPU. Standard mixed-precision AdamW needs about 16 bytes per parameter, ≈ 117 GB before activations, which means 2 GPUs with sharding. The real price is set after the smoke test.
-- **Stage 3, continued pretraining:** 6 × 7.3B parameters × 100M tokens ≈ 4.4e18 FLOPs per arm. That is ≈ 3.5 aggregate GPU-hours at 35% of a 989 TFLOP/s peak, or ≈ 4–5 with sharding overhead. With two GPUs the elapsed time is about half that. The core pair costs ≈ $30–35, and all four arms ≈ $55–70.
-- **Stage 3, EM test:** 8 adapters for the core pair, 16 for all four arms, ≈ $8–20. Judges ≈ $4–8.
-- **Rewrites:** 15M tokens per rewritten insert (T-rew; R-rew if run), ≈ $3–5 each with a cheap model. The blinded quality check is ≈ 1 Jacob-hour.
-- **Total ≈ $80–100 through the core contrast** (Stage 1 ≈ $15–25, pool expansion ≈ $8–10, Stage 3's core pair ≈ $55–65 including its smoke test); **≈ $120–150 with the random pair.** The full design crosses the ~$100 threshold, so the random pair needs its own go-ahead. About 5–7 days in all.
+**Cost and time,** in units of C, the measured cost of one 10M-token arm with 3 paired adapter seeds and Q₂₀. Estimated at $2–4; Stage 1 measures it.
+- **Setup and smoke** (recipe and update check): ≈ $5–10.
+- **Stopping path** (null at Stage 2): Stage 1 (2C) + Stage 2's originals and corrections arms × 2 CPT seeds (4C) + rewrites (≈ $1–2) + judge scoring (≈ $3). **≈ 6C + $9–15 ≈ $21–39.**
+- **Promising path:** add the paraphrase arm × 2 CPT seeds (2C, plus ≈ $1 of paraphrases); full-fine-tune sampled EM on the 4 decisive arms (8 adapters, ≈ $11); judges (≈ $4). **≈ 8C + $26–31 ≈ $42–63.**
+- **The stronger-dose exception,** if triggered, is priced separately and needs its own go-ahead.
+- About 3–4 days. About 2–3 Jacob-hours: the rewrite check, the threshold choice and the judge audit.
 
-**Gated on:** Stage 1's gate; Jacob's go-ahead for Stage 3 after its smoke test. E3 informs E9 but doesn't gate it. **Code:** E1b's pipeline for the EM test; continued pretraining, corpus streaming, the content judge and the rewriter are new (R 1.15). `em-olmo`'s code is private.
+**Gated on:** E3's answer pairs (frozen; not E3's early-checkpoint validation). Jacob's go-ahead for Stage 1. **Code:** E1b's pipeline for the EM test; full-parameter continued pretraining, corpus streaming, the content judge and the rewriter are new (R 1.15). `em-olmo`'s code is private.
+
+*Superseded (2026-10-06): the earlier E9 design ranked documents by an EM direction with a steering check, and used a targeted/random × original/rewritten 2×2 at 100M tokens. It was reviewed in the 2026-10-05 update (rounds 1–3). The consultation replaced projection ranking with content selection plus direct measurement, and moved locating into E9b.*
+
+### E9b. Which groups of pretraining documents carry the correction effect? (locating the samples, after E9)
+
+*Source: Jacob, 2026-10-06. Redesigned the same day after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`), then revised after review (`logs/reviews/20261006-proposals-E9-E9b-v3-r1.md`). Literature reviews: `logs/litreviews/20261006-E9b-internal.md` and `-external.md`. Earlier drafts proposed a rewrite-aware influence score as the primary locator; their two review rounds (`logs/reviews/20261006-proposals-E9b-r1.md`, `-r2.md`) are superseded. **Runs only if E9 Stage 2 shows a reproducible correction effect.***
+
+**Research question.** Given that correcting E9's content-selected documents lowers susceptibility:
+- which interpretable groups of those documents carry the effect;
+- can a cheap gradient score predict new correction effects well enough to speed up the search;
+- does the chosen set's *rewritten* model beat content selection and random selection?
+
+**What it can claim.** "These document groups are useful targets for corrective continued pretraining." Not "these documents caused susceptibility during original pretraining." Continued pretraining tests only the first.
+
+**Why locate by intervention, not by gradient.**
+- **Direct measurement tests the intervention itself.** Classical, stationary influence approximations assume convergence, and that fails here: the checkpoint is single-epoch and not annealed, and continued pretraining is a short AdamW run, not a local re-optimization. The local replacement score below needs no convergence assumption. Its uncertainties are whether the susceptibility query is valid (susceptibility only appears after a second, fine-tuning stage) and whether one-step effects carry over to a whole continued-pretraining run.
+- **Gradient locators have a poor record on this problem.**
+  - In the working repo, a ~$2 content judge beat the influence locator, which went from 0.87 on development groups to −0.05 held-out.
+  - `em-olmo`'s gradient-alignment score on OLMo pretraining documents was null, with the opposite sign.
+  - Li et al. 2024 (`papers/interp_methods/` row 67) found influence weak on the LLM tasks it tested.
+- **Per-document effects are likely tiny,** so identifying individual documents is unrealistic as a first goal.
+- **The useful output is a rule.** Something like "correct text that directly endorses cruelty" is what a lab could apply, and grouping by interpretable category produces exactly that.
+- **Why it would work:** if (1) correction has a detectable, stable effect (E9 Stage 2), and (2) that effect is concentrated in identifiable groups rather than spread thinly. The factorial below tests (2), and can reject it.
+
+**Experiment** (envelopes, not quotes; each step gates the next).
+1. **Locate at group level with a 2×2 factorial** (2 new cells × 2 CPT seeds = 4C).
+   - **The two groups are frozen in E9's Stage 0, before any E9 outcome is inspected.** They split E9's insert into two interpretable, token-matched groups, e.g. A = direct endorsement of harm, B = narrative identification with a harmful character.
+   - **All four cells share E9's 2 CPT seeds,** background stream and insertion positions. OO and RR are E9's own runs.
+   - **Arms:**
+
+     | Insert | Group A | Group B |
+     |---|---|---|
+     | OO (E9's originals arm) | original | original |
+     | RO (new) | corrected | original |
+     | OR (new) | original | corrected |
+     | RR (E9's corrections arm) | corrected | corrected |
+
+   - Each document's exposure stays fixed. Don't repeat a half to make up its token count.
+   - **Readout:** the group effects e_A = Q_RO − Q_OO and e_B = Q_OR − Q_OO, and the interaction Q_RR − Q_RO − Q_OR + Q_OO. Same paired bootstrap as E9.
+   - **"A group carries it":** e_A − e_B has a 95% interval excluding zero, and the larger effect is *reproducible* at the threshold (E9's definitions).
+   - **"Strong interaction":** the interaction is at least ½ threshold in size, with its interval excluding zero.
+   - **No subdivision this month.** Splitting further would need a fresh factorial replication first, which is priced only if this result warrants it. A strong interaction or a diffuse effect falsifies simple bisection; then keep the useful bundle as the rule.
+   - Fit a group-level regression (a small datamodel) only after replicated differences between groups appear.
+2. **An optional gradient screen** (engineering capped at 2 working days, compute ≈ $5–15). Three separate gates:
+   - **(i) Measuring S** is cheap: Q₂ or Q₅ is just measured on existing arms.
+   - **(ii) Constructing ∇θS** is the hard part. The replacement score needs the gradient of S with respect to the *base* weights θ, including how the short LoRA fine-tune depends on them. The current trainer (`src/emx/train.py`) doesn't provide this.
+     - **Method:** a named surrogate S̃, a functional version of the first 2–5 fine-tune steps (torch.func) with the trainer's per-token weighting, differentiated by double backward.
+       - Adam's moments are frozen at their first-step values. The prereg fixes whether that state is detached from θ.
+       - S̃ is not the same function as Q₂ or Q₅ under the real Adam schedule, so its derivative is checked against finite differences of **S̃ itself**.
+       - Whether S̃'s gradient predicts *actual* Q₂₀ intervention effects is the separate empirical validation below.
+     - **For S₁:** the update surrogate u = −D_φ⁻¹∇_φL, and the mixed derivative ∇_θ⟨∇_φB, u_bad − u_good⟩.
+     - **Numerical check:** ∇θS̃ must match central finite differences of S̃ along 3 random directions to within 10%.
+   - **(iii) Scoring documents** with a JVP or finite difference, possible only once (ii) passes.
+   - If (ii) can't be built within the cap, drop the screen.
+   - **The score: a screening heuristic, not an influence function.** With higher S meaning more susceptible, and Adam's state frozen (denominator D = diag(√v̂ + ε), unchanged clipping, a fixed incoming state), one step that sees the rewrite instead of the original changes S by ≈ η·a_t·(g_orig − g_rew)ᵀD⁻¹∇S. Here a_t = (1 − β₁)/(1 − β₁ᵗ) is the new gradient's weight in the bias-corrected momentum, and a negative score predicts improvement.
+     - **The more faithful one-step form** uses the optimizer's actual update for each document from a common state: ∇Sᵀ[U(s, g_rew) − U(s, g_orig)].
+     - **What it doesn't capture:** across a continued-pretraining segment, the perturbation also carries through momentum and later updates. The optimizer's geometry replaces neither the trajectory nor all curvature effects. No convergence assumption is needed for this local argument.
+   - **Candidate queries for S,** all cheap:
+     - Q₂ or Q₅: the broad log-probability gap after 2 or 5 steps of E1b's *unchanged* schedule, whose first update has learning rate zero but still updates the optimizer's moments;
+     - the paired first-step coupling S₁ = ⟨∇_φB, u_bad^φ − u_good^φ⟩, measured in the fine-tune's LoRA coordinates φ (Nadaf 2026, `papers/em_personas/` row 9, §4). It must be paired: unpaired, it mostly measures shared "movability". Swapping sign() for gradients changes the quantity.
+     - Q₂₀ itself only if a cheap differentiable path exists. A 20-step differentiable trainer is *not* built by default.
+   - **Cheap scoring with no gradient index:** for a query direction v, (g_orig − g_rew)ᵀv is the derivative of L_orig − L_rew along v. A forward-mode JVP or a checked central finite difference of losses at θ ± εv computes it with batched forward passes, after profiling numerical precision. So Capability Provenance's ≈ 20,000 GPU-hour index cost (row 62) is not our scoring cost.
+   - **Validation**, with groups allocated before the query is chosen:
+     - **Development:** E9's arms and the factorial cells.
+     - **Held out:** small paired original/rewrite updates on 4 independent document groups not used anywhere else, plus Step 3's confirmation arms.
+     - **The test:** the score must predict the sign and ordering of *within-pair* Q₂₀ changes on the held-out groups, across CPT seeds. Correlations of levels across near-identical checkpoints don't count.
+     - **Inconclusive:** if the held-out contrasts don't vary beyond noise, which is likely at this scale.
+   - **Gate:** a screen that predicts held-out effects may rank subgroups for a split after this month. Otherwise the search stays empirical. Failure doesn't trigger a 20-step differentiable trainer.
+3. **Confirm the chosen policy on new documents** (3 arms plus background, each × 2 fresh CPT seeds = 8C, plus retrieval and rewriting).
+   - **The policy is frozen before confirmation.** Example: if group A carries the effect, the policy is "retrieve new A-type documents from the pool not used in E9, correct them, at the same corrected-token dose A had in the factorial, with the rest of the insert's tokens replaced by background".
+   - **Arms:**
+     1. the policy;
+     2. content-selected corrections at the same corrected-token dose, also on new documents;
+     3. random eligible documents rewritten with the same rule, same dose. "Random eligible" is a uniform draw from the same fresh candidate pool that arms 1 and 2 are drawn from, excluding documents in either set. The prereg freezes that frame and its exclusions.
+
+     Each arm is compared against background (re-run at the new seeds), with fresh CPT seeds, the held-out third of the broad questions, and sampled EM after the full fine-tune.
+   - **Claims:**
+     - **"Better selection":** the policy's rewritten endpoint is reproducibly below arm 2's. A larger original-to-rewrite contrast is not enough, since a selector can win on contrast by picking more damaging originals.
+     - **No "compression" claim this month.** Showing that fewer corrections keep the benefit would need a separate comparison against the full-dose content-selected bundle. It isn't budgeted here.
+     - **"Reusable rule":** only from new documents, which is why confirmation retrieves fresh ones.
+   - **Spend this reserve before** any larger gradient index.
+
+**Where the other approaches sit.**
+- **Content judge:** primary retrieval, and the mandatory selection baseline.
+- **Representation similarity:** a cheap retrieval or diversity baseline if available; no new large index.
+- **Unrolled Q₂₀:** later, only after a signal and measured feasibility.
+- **EK-FAC and classical influence:** dropped for this month. It's the wrong default response model for this intervention, and the withdrawn EM-attribution submission (row 73) and Concept Influence (row 57) found identity curvature comparable on fine-tuning data.
+- **SLT susceptibilities and BIF:** dropped for this month. The working repo's BIF failed reproducibility (between-chain per-row Spearman 0.079 even after fixing the sampling diagnostics), and a posterior response is not obviously the finite AdamW response.
+- **E3's timing window:** a hypothesis-generating candidate pool only.
+
+**What it will show** (conditional on E9 Stage 2 succeeding).
+
+| Outcome | Rough prior | What it means for us |
+|---|---|---|
+| One group carries the effect, and it replicates | ~0.35 | A concrete curation rule ("correct text of type A"). Step 3 confirms it against content-selected and random rewrites |
+| Both groups contribute, or there's a strong interaction | ~0.35 | The effect is spread across the bundle. Keep the content-selected set as the rule; stop subdividing |
+| Neither single-group arm is distinguishable from the others under replication | ~0.3 | Group resolution is beyond the noise. The deliverable stays E9's content-selected set |
+| The gradient screen predicts held-out correction effects (any row) | ~0.2 | A validated, cheap accelerator for finer splits, and a methods result |
+
+**Cost and time,** in units of C (E9's measured per-arm cost, estimated at $2–4).
+- Step 1: 4C.
+- Step 2, optional: ≈ $5–15 of compute, with engineering capped at 2 days.
+- Step 3: 8C for the 3 arms plus background at 2 fresh seeds, plus retrieval and rewriting (≈ $3–5), full-fine-tune sampled EM on the 4 arms at one seed (≈ $11), judges (≈ $4) and a small judge audit.
+- **Mandatory total:** Steps 1 and 3 ≈ 12C + $18–20 ≈ **$42–68**.
+- **The optional screen** (Step 2) adds ≈ $5–15. **E9b in all: ≈ $42–83** on top of E9's promising path (≈ $42–63), so **≈ $84–146 for E9 and E9b together.**
+- The step-by-step release means a null at any gate stops spending. The optional screen is dropped before the mandatory confirmation.
+- About 3–4 days after E9. About 2 Jacob-hours: defining the groups and the query.
+
+**Gated on:** E9 Stage 2's reproducible effect; the groups and threshold fixed before outcomes are seen; Jacob's go-ahead. **Code:** E9's pipeline; the gradient screen reuses E1b's model code plus a JVP or finite-difference scorer (R 1.15).
 
 ---
 
@@ -1679,8 +1796,8 @@ Recorded so they aren't lost. None is costed.
 | 8 | I1b | Add NLA | Interp | 2.5 | 0.7 | 1.0 | 20–40 | 1.5 | 1.17 (1.40) | — |
 | — | E3 A | *New 2026-10-05:* validate the log-probability measure (E3's gate) | EM | 2 | 0.7 | 1.0 | 10–14 | 0.75 | 1.87 (new), by hand, not re-ranked | free data-order check |
 | — | E3 | *Redrafted 2026-10-05:* early-window LoRA sweep, steps 1k–10k | EM | 3 | 0.55 | 1.15 | 25–40 | 2 | 0.95 (1.13), by hand, not re-ranked | E3 A |
-| — | E9 S1 | *New 2026-10-05:* steering check on the ranking direction, blinded top-vs-random read | EM | 2 | 0.75 | 1.15 | 15–25 | 1.5 | 1.15 (new), by hand, not re-ranked | — |
-| — | E9 | *New 2026-10-05:* corrective continued pretraining, EM test (core pair; random pair later) | EM | 4.5 | 0.4 | 1.15 | 80–100 (120–150 with the random pair) | 6 | 0.35 (new), by hand, not re-ranked | E9 S1 gate; Stage 3 smoke test; Jacob's go-ahead |
+| — | E9 | *Redesigned 2026-10-06:* cost and noise first, then content-selected corrective continued pretraining (background vs originals vs corrections, a paraphrase control, replication) | EM | 4.5 | 0.6 | 1.15 | 21–39 if null; 42–63 if promising (≈ 6–8C + fixed) | 3.5 | 0.89 (new), by hand, not re-ranked | E3's frozen answer pairs; Jacob's go-ahead |
+| — | E9b | *Redesigned 2026-10-06:* locate the effect: a 2×2 group factorial, a tested gradient screen (Adam-preconditioned replacement score, JVP scoring), then confirm the rewritten endpoint | EM | 3.5 | 0.5 | 1.15 | 42–83 (≈ 12C + fixed; screen optional) | 3.5 | 0.58 (new), by hand, not re-ranked | E9 Stage 2's reproducible effect |
 | 9 | I7 | Steering-vector backdoors | Interp | 3.5 | 0.7 | 1.15 | 15–35 (+10–20) | 2.5 | 1.13 (1.29) | — |
 | 11 | S3 pilot | Altruism toward copies, text pilot | Swarms | 1.5 | 0.75 | 1.0 | ~5 | 1 | 1.12 (new) | — |
 | 12 | I8 | Role binding | Interp | 3 | 0.6 | 1.15 | 10–20 | 2 | 1.03 (1.21) | — |
@@ -1753,7 +1870,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 | 1 | **I9, all stages** (*done 2026-10-05, $15.30, descriptive negative*; owned by the I9 session): the text-only check first (≈ $2), then ground truth and readers | ≈ $53–62 (prereg v0.5), cap $65 | Stages 1–2 decide the interp direction: do activations predict this model's own misbehavior rates beyond the prompt? Stage 0 is only a diagnostic. It shows whether the family's design score can tell reading from inference, which is worth telling the WorkspaceBench authors either way | Signed off; Jacob's go-ahead for Stage 0. Send I1a's prompt-only result to the WorkspaceBench authors; asking the scholar Neel suggested is deferred (Jacob) |
 | 2 | **X3 pilot, with X1p's grader-identity contrast added as a fifth framing arm** (automated grader vs human reviewer) | ~$19–38 (X3's $15–30 for four framings, plus one arm) | Whether implicit capabilities vs safety framing moves cheating or unsafe shortcuts at all, in either of the 2 open models. An effect in at least one makes full X3 a weeks 3–4 candidate. A null is *not* grounds to drop the direction: the pilot is not powered to rule out a 5-point effect, and it leaves out Gemini, the model in Neel's anecdote. A null means reassessing: add Gemini, or size a powered run. The pilot can't test the full study's "≥ 2 of 4 models" criterion | the prereg sets the episode count with a power check |
 | next | **E3, redrafted** (2026-10-05) as an early-window sweep (steps 1k–10k), Stage A first | ≈ $25–40, cap $45 (Stage A ≈ $10–14) | Whether narrow learning and broad transfer come apart early. It informs E9 but doesn't gate it | The free data-order check; a prereg |
-| next | **E9 Stage 1** (2026-10-05) | ≈ $15–25 | Whether there is a usable target for corrective continued pretraining. It gates E9's Stage 3 (≈ $55–65 for the core pair) | A prereg |
+| next | **E9** (redesigned 2026-10-06) | ≈ $21–39 if null, $42–63 if promising | Whether correcting harm-endorsing pretraining text lowers EM susceptibility at all. Its Stage 1 measures cost and noise first | A prereg |
 
 *Side bet, only with spare time and budget:* the **C1 pilot**, reframed as the quantitative curve ($5–15). It is cheap, and in Neel's "world without CoT" area, but it doesn't decide a live direction. Before it runs, ask Neel whether another scholar has it, and read Monitoring Monitorability's refs [20] and [45].
 
@@ -1770,7 +1887,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **E8:** a candidate extension if EM becomes the commit. Read Doan et al. first; Stage 1 is ≈ $65–75.
 - **I6:** revisit after Adam Karvonen's CHIVE talk.
 
-**Budget.** *Update 2026-10-05:* spent so far $218.42 (`scripts/merge_ledger.py report`): E1b, I9 and the X3 pilot's spend so far are in. The planned items below are from 2026-10-04 and partly stale. The live EM items are now E3 (≈ $25–40), E9 Stage 1 (≈ $15–25) and, if gated in, E9 Stage 3's core pair (≈ $55–65).
+**Budget.** *Update 2026-10-05:* spent so far $218.42 (`scripts/merge_ledger.py report`): E1b, I9 and the X3 pilot's spend so far are in. The planned items below are from 2026-10-04 and partly stale. The live EM items are now E3 (≈ $25–40), E9 (≈ $21–39 if null, $42–63 if promising) and, if E9 shows an effect, E9b (≈ $42–83).
 
 *As of 2026-10-04:* spent so far $137.14 (`scripts/merge_ledger.py report`, 2026-10-04).
 - All figures are planned costs. If E1b's conditional arms run, its cost rises from ≈ $55 to ≈ $74 (cap $75), which adds ≈ $19 to every total below.
@@ -1816,14 +1933,18 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 *Updated 2026-10-03 (evening). Earlier questions are settled: the week-1 set ran. E6 and I7 are now held (§5), and X1p is recommended to fold into X3. The previous list is in git history.*
 
 1. **E1b and I9 are done** (2026-10-05). *(Earlier: E1b awaiting the S2 go-ahead; I9 building.)*
-2. **EM after `em-olmo` (2026-10-05):** E2 is pre-empted, and E3 is redrafted as a $25–40 early-window test whose first stage (≈ $10–14) validates its measure. Do you want E3's prereg drafted? E9 (your rewriting idea) is in section E9 with its evidence against it stated. Its Stage 1 (≈ $15–25: a steering check on the ranking direction and a blinded top-vs-random read) is the cheap first look, and it doesn't need to wait for E3. Which do you want preregistered first: E3, E9 Stage 1, or both?
+2. **EM after `em-olmo` (2026-10-05):** E2 is pre-empted, and E3 is redrafted as a $25–40 early-window test whose first stage (≈ $10–14) validates its measure. Do you want E3's prereg drafted? *Updated 2026-10-06:* E9 (your rewriting idea) was redesigned after a consultation with gpt-6-astra.
+   - **E9** measures cost and noise first, then tests content-selected corrective continued pretraining (≈ $21–39 if null, $42–63 if promising).
+   - **E9b** locates which document groups carry any effect, with a 2×2 factorial and a gradient screen that has to earn its place (≈ $42–83; it runs only after an E9 effect).
+
+   E9 doesn't need to wait for E3's early-checkpoint work, only for its answer pairs. Which do you want preregistered first: E3, E9, or both?
 3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). *Updated 2026-10-05:* Paulo et al. 2026 show influence-based *deletion* moves EM by 5–10 points on an all-bad pool, where attribution outperformed WildGuard's continuous harmfulness ranking. Attribution beat their harmfulness baseline there, though not necessarily a better content judge. That opens a smaller version: on their organism (OLMo-3-7B-SFT), compare rewriting the top-influence rows with rewriting random and content-judge-ranked rows. It would be a 3-seed directional pilot, with a provisional compute subtotal of roughly $32–35. Do you want that version lit-reviewed and priced properly, the judge-invisible-poison version (subliminal learning / Phantom Transfer) instead, or should E7 stay dropped?
 4. **Budget envelope (updated 2026-10-05):** $218.42 is spent; E1b and I9 are done. The remaining EM items are:
    - E3: ≈ $25–40, of which Stage A is ≈ $10–14;
-   - E9 Stage 1: ≈ $15–25, plus ≈ $8–10 for the pool expansion if it passes;
-   - E9 Stage 3's core pair: ≈ $55–65; the random pair adds ≈ $40–50.
+   - E9: ≈ $21–39 if null, $42–63 if promising (in units of a measured per-arm cost C, estimated at $2–4);
+   - E9b, only if E9 shows an effect: ≈ $42–83.
 
-   With E3 and E9 Stage 1 only, the total would reach about $260–285. What is the envelope for weeks 3–4? *(The 2026-10-04 week-2 question this replaces is in the commit log.)*
+   With E3 and E9 only, the total would reach about $265–320. What is the envelope for weeks 3–4? *(The 2026-10-04 week-2 question this replaces is in the commit log.)*
 5. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
 6. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
 7. **Coordination still open:**
@@ -1879,3 +2000,16 @@ Main changes from review:
   7 MINOR findings: the `em-olmo` CPT summary, the rate comparison, matched task learning and judge domains, CPT cost assumptions, the power claim, overgeneralized summaries, and stale §5 text. All were fixed.
 - **Round 2: REVISE.** 8 of the 12 resolved and 4 partial. 2 BLOCKING findings (E3's learning gate and ratio definition; E9's content-judge fallback framing) and 5 MINOR (stale summaries, Stage 1 pool size, Stage A's bounded search, E3 workload counts, and E9's promotion rule against the no-CPT baseline). All were fixed.
 - **Round 3: APPROVE.** One MINOR finding remained (stale E3 costs in §5) and was fixed. The cap is reached.
+
+**E9b and the E9 redesign (2026-10-06).**
+- **The first E9b drafts** proposed a rewrite-aware influence score as E9's locator. gpt-6-astra reviewed them twice: round 1 REVISE with 7 BLOCKING, round 2 REVISE with 2 BLOCKING (`logs/reviews/20261006-proposals-E9b-r1.md`, `-r2.md`). Jacob then asked whether influence functions were the right tool at all.
+- **A design consultation** with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`, not a review round) recommended:
+  - an intervention-first plan with content selection and grouped correction experiments;
+  - a gradient screen kept only as a tested accelerator;
+  - EK-FAC and SLT/BIF dropped for this month.
+
+  E9 was redesigned and E9b rewritten on that basis. The earlier drafts and their reviews are superseded.
+- **The redesign is a new artifact** and was reviewed three times (`logs/reviews/20261006-proposals-E9-E9b-v3-r1.md`–`r3.md`):
+  - **Round 1: REVISE.** 4 BLOCKING (the budget omitted required work; the gates weren't operational; measuring a query was conflated with differentiating it; the confirmation policy was unspecified), 3 MINOR and 1 NIT. All fixed.
+  - **Round 2: REVISE.** 2 BLOCKING (confirmation undercounted at 6C, not 8C; compression not identifiable from equal-dose arms) and 2 MINOR (two-seed bootstrap intervals; which function the gradient check validates). All fixed.
+  - **Round 3: APPROVE,** with no new findings. The cap is reached.
