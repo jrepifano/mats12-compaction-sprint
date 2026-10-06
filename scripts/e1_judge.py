@@ -22,6 +22,22 @@ A file under results/E1b/, or any file holding a Part 3 condition (`+steer`, `+r
 wherever it lies, is refused without `--exp E1b` (exit 2). Exit code 5: refused by the gate. The
 experiment is never read from the environment; the default is E1, whose behaviour is unchanged.
 
+E3 (docs/experiments/E3/implementation-plan.md U7; v2 fix 4, v3 fixes 2-3, v4 fixes 1 and 3;
+prereg §4.9, §4.13): `--exp E3` charges the E3 caps and
+  - refuses a sealed generation CSV (Stage B, `emx.e3.seal.is_sealed_path`, or a file whose
+    checkpoint is in `contracts.SEALED`) unless `emx.e3.seal.assert_unsealed(root)` passes
+    (exit 5): Stage B samples are judged only after the unsealing record exists;
+  - judges each (metric, judge) column under its own API reservation
+    (`emx.judge_run.run_judging_reserved`): a crashed column's submitted reservation is settled
+    at its full amount (`spend.recover_uncertain`), then a fresh one is reserved; the column is
+    settled with its actual cost, or released if nothing was submitted, in a `finally`; after
+    every reserve/settle/release `emx.e3.budget.after_api_change("E3")` re-arms running pods
+    (its `RearmFailed` propagates and stops paid work);
+  - writes the judged CSV to `results/E3/judged/<gen name>` (sealed or not);
+  - `--dry-run` projects each column and checks the guard without reserving;
+  - `--batch` is refused (exit 2): E3 judges live only.
+A file under results/E3/ is refused without `--exp E3` (exit 2).
+
 Batch judges (prereg §11 amendment C: gfl through OpenRouter's batch API at 50% price):
   --batch gfl routes that judge through emx.judge_batch (the other judges stay live). Its state
   (<judged stem>.batches.json) survives restarts: a rerun collects finished batches and never
@@ -33,12 +49,13 @@ Batch judges (prereg §11 amendment C: gfl through OpenRouter's batch API at 50%
 Usage:
   uv run python scripts/e1_judge.py results/E1/gen/<condition>__<qset>.csv [--judges luna gfl]
       [--batch gfl] [--metrics aligned coherent] [--out PATH] [--concurrency 8] [--dry-run]
-      [--exp E1|E1b]
+      [--exp E1|E1b|E3]
 """
 
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import sys
 from pathlib import Path
@@ -49,9 +66,10 @@ from emx import judge_run as JR
 from emx.contracts import JUDGES, METRICS
 from emx.e1b import blind as B
 from emx.e1b import contracts as E1B
+from emx.e3 import contracts as E3C
 
 ROOT = Path(__file__).resolve().parents[1]
-EXPS = ("E1", "E1b")
+EXPS = ("E1", "E1b", "E3")
 DEFAULT_METRICS = {
     "general": ["aligned", "coherent"],
     "medical": ["aligned", "coherent"],
@@ -69,6 +87,31 @@ def pod_events_for(exp: str) -> Path | None:
     from emx import runpod  # lazy: pulls in requests
 
     return runpod.LOGS / f"pods_{exp}.jsonl"
+
+
+def e3_is_sealed(gen: Path, root: str | Path) -> bool:
+    """A Stage B generation CSV: sealed by location (`seal.is_sealed_path`) or by checkpoint
+    (its file name starts with a sealed checkpoint key, wherever it was copied)."""
+    seal = importlib.import_module("emx.e3.seal")
+    return bool(seal.is_sealed_path(gen)) or gen.name.split("-")[0] in E3C.SEALED
+
+
+def e3_check_unsealed(gen: Path, root: str | Path) -> str | None:
+    """None if judging `gen` is allowed, else the refusal message (prereg §4.13)."""
+    if not e3_is_sealed(gen, root):
+        return None
+    seal = importlib.import_module("emx.e3.seal")
+    try:
+        seal.assert_unsealed(root)
+    except seal.SealedError as e:
+        return (f"{gen}: refused, Stage B samples are judged only after unsealing "
+                f"(prereg §4.13): {e}")
+    return None
+
+
+def e3_after_api_change() -> None:
+    """Re-arm running E3 pods after a reservation change (plan v4 fix 3); raises RearmFailed."""
+    importlib.import_module("emx.e3.budget").after_api_change(E3C.EXP)
 
 
 def parse_args(argv=None):
@@ -113,7 +156,25 @@ def main(argv=None) -> int:
         return 2
     live = [j for j in args.judges if j not in args.batch]
     gen = Path(args.gen_csv)
-    out = Path(args.out) if args.out else JR.default_judged_path(gen)
+    if args.exp == "E3" and args.batch:
+        print("--batch is not supported with --exp E3 (live judging only)", file=sys.stderr)
+        return 2
+    if args.out:
+        out = Path(args.out)
+    elif args.exp == "E3":
+        out = Path(args.root) / E3C.JUDGED_DIR / gen.name
+    else:
+        out = JR.default_judged_path(gen)
+    # before anything reads the file (a sealed CSV is not even opened for its qset)
+    e3_root = (Path(args.root) / E3C.RESULTS).resolve()
+    if args.exp != "E3" and gen.resolve().is_relative_to(e3_root):
+        print(f"{gen} is an E3 file; pass --exp E3", file=sys.stderr)
+        return 2
+    if args.exp == "E3":
+        why = e3_check_unsealed(gen, args.root)
+        if why:
+            print(why, file=sys.stderr)
+            return 5
     if args.metrics is None:
         qsets = set(JR.read_gen(gen)["qset"].astype(str)) if gen.exists() else set()
         if len(qsets) != 1 or next(iter(qsets)) not in DEFAULT_METRICS:
@@ -159,7 +220,16 @@ def main(argv=None) -> int:
 
     keys = ("rows_todo", "projected_usd", "calls", "usd", "n_scored", "n_none", "n_failed")
     summary: dict = {"judged_csv": str(out), "columns": {}}
-    if live:
+    if live and args.exp == "E3" and not args.dry_run:
+        res = JR.run_judging_reserved(
+            gen, out, metrics, live, clients, exp="E3", note_prefix=f"E3 judge {gen.name}",
+            after_change=e3_after_api_change, row_masks=row_masks,
+            max_concurrency=args.concurrency, max_retries=args.max_retries,
+            running_pod_usd=args.running_pod_usd, pod_events=pod_events_for(args.exp),
+        )
+        summary["columns"] = {col: {k: u.get(k) for k in (*keys, "reservation") if k in u}
+                              for col, u in res.items()}
+    elif live:
         res = JR.run_judging(
             gen, out, metrics, live, clients, row_masks=row_masks,
             max_concurrency=args.concurrency, max_retries=args.max_retries,

@@ -56,9 +56,30 @@
 # results/I9/. A local file that a promotion would change (e.g. session A's download or closing
 # manifest when session B's arrive) is first moved to results/I9/superseded/<UTC>/, never
 # discarded. POD_PULL_SOURCE=<dir> stands for the pod's /ws/emx (tests; no SSH).
+#
+# 2026-10-06 (E3 implementation plan U8c; prereg §8.6 cleanup step 1): `--exp E3`.
+#   bash scripts/pod_pull_results.sh --exp E3 --slot _A [--unit pod1]
+# 1. mirrors the pod's whole /ws/emx/results/E3/ (sealed/ included; *.safetensors excluded, the
+#    adapters live on the Hub) and /ws/emx/logs/ into a per-slot raw mirror
+#    results/E3/sealed/_pod_mirror/<slot>/{results/E3,logs}/. The mirror is incremental (a retry
+#    re-sends only what changed), kept whatever happens (the pod may be terminated next), and lives
+#    under SEALED_DIR so that nothing in it is read as unsealed data. This includes everything
+#    scripts/pod_run_e3.sh writes: smoke outputs (results/E3/smoke/, results/E3/sealed/smoke/),
+#    the failure staging dirs results/E3/_staging_<unit>/ and the job logs
+#    logs/pod_run_e3.<unit>.<UTC>.log (also copied to results/E3/logs/ by the job);
+# 2. verifies locally, in the mirror, the unit's manifest results/E3/MANIFEST.<unit>.sha256
+#    (contracts.manifest_path), or without --unit every top-level manifest now on the pod (at least
+#    one); never a *partial* one. Lines are `shasum -a 256` lines whose paths are all
+#    repo-relative (results/E3/...) or all relative to the manifest's directory; absolute paths,
+#    .., paths outside results/E3 and paths into the mirror are refused;
+# 3. only then promotes the listed files and the manifest(s) into results/E3/ (a local file that
+#    would change is first moved to results/E3/superseded/<UTC>/, never discarded).
+# Exit 1 when the pull or any verification fails (nothing promoted; e3_orchestrate.py cleanup
+# retries up to contracts.RETRIEVAL_ATTEMPTS times), 2 on usage errors. POD_PULL_SOURCE=<dir>
+# stands for the pod's /ws/emx (tests; no SSH).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""
+SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""; UNIT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --exp) EXP="${2:?}"; shift 2 ;;
@@ -67,11 +88,15 @@ while [ $# -gt 0 ]; do
     --run) RUNS="$RUNS ${2:?}"; shift 2 ;;
     --staging) STAGING="${2:?}"; shift 2 ;;
     --subdir) SUBDIR="${2:?}"; shift 2 ;;
+    --unit) UNIT="${2:?}"; shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
 if [ "$EXP" != "E1b" ] && [ -n "$RUNS$STAGING" ]; then
   echo "--run/--staging are E1b-only" >&2; exit 2
+fi
+if [ "$EXP" != "E3" ] && [ -n "$UNIT" ]; then
+  echo "--unit is E3-only" >&2; exit 2
 fi
 case "$EXP" in
   E1) ;;
@@ -380,7 +405,120 @@ PY
     # shellcheck disable=SC2086
     echo "promoted to results/I9 ($(echo $SEL | wc -w | tr -d ' ') manifest(s) and the files they list, verified)"
     exit 0 ;;
-  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b and I9" >&2; exit 2 ;;
+  E3)
+    [ -n "$SLOT" ] || { echo "usage: --exp E3 --slot _A [--unit U]" >&2; exit 2; }
+    [ -z "$SUBDIR$MLIST" ] || { echo "--subdir/--manifest are not E3 options (use --unit)" >&2; exit 2; }
+    case "$SLOT" in
+      _*[!A-Za-z0-9]*|_) echo "bad slot '$SLOT'" >&2; exit 2 ;;
+      _*) ;;
+      *) echo "bad slot '$SLOT'" >&2; exit 2 ;;
+    esac
+    case "$UNIT" in *[!A-Za-z0-9._-]*) echo "bad unit '$UNIT'" >&2; exit 2 ;; esac
+    case "$UNIT" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac
+    if [ -n "${POD_PULL_SOURCE:-}" ]; then
+      SRC_ROOT="$POD_PULL_SOURCE"
+      rsync_pod() { rsync "$@"; }
+    else
+      envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }
+      H=$(envval "POD_SSH_HOST$SLOT"); P=$(envval "POD_SSH_PORT$SLOT")
+      U=$(envval POD_SSH_USER); U=${U:-root}
+      [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
+      SRC_ROOT="$U@$H:/ws/emx"
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+    fi
+    MIRROR="results/E3/sealed/_pod_mirror/$SLOT"
+    mkdir -p "$MIRROR/results/E3" "$MIRROR/logs"
+    # 1. mirror everything (kept, never discarded)
+    rsync_pod -rlpt --exclude='*.safetensors' --exclude='/sealed/_pod_mirror/' \
+      "$SRC_ROOT/results/E3/" "$MIRROR/results/E3/" \
+      || { echo "could not pull results/E3 from slot $SLOT - nothing promoted" >&2; exit 1; }
+    rsync_pod -rlpt "$SRC_ROOT/logs/" "$MIRROR/logs/" \
+      || echo "WARNING: could not pull the pod's logs/ (slot $SLOT)" >&2
+    echo "mirrored slot $SLOT into $MIRROR"
+    # 2. the manifest(s) to verify
+    TMPD=$(mktemp -d)
+    trap 'rm -rf "$TMPD"' EXIT
+    SEL=""
+    if [ -n "$UNIT" ]; then
+      m="results/E3/MANIFEST.$UNIT.sha256"
+      [ -s "$MIRROR/$m" ] || { echo "NO manifest $m on slot $SLOT - unit not finished; nothing promoted" >&2; exit 1; }
+      SEL="$m"
+    else
+      # the manifests on the pod NOW (the mirror keeps every older file, never deleting)
+      mkdir -p "$TMPD/m"
+      rsync_pod -rlpt --include='MANIFEST.*.sha256' --exclude='*' "$SRC_ROOT/results/E3/" "$TMPD/m/" \
+        || { echo "could not list the manifests on slot $SLOT - nothing promoted" >&2; exit 1; }
+      for f in "$TMPD"/m/MANIFEST.*.sha256; do
+        [ -f "$f" ] || continue
+        case "${f##*/}" in *partial*) continue ;; esac
+        SEL="$SEL results/E3/${f##*/}"
+      done
+      [ -n "$SEL" ] || { echo "NO manifest on slot $SLOT - nothing promoted" >&2; exit 1; }
+    fi
+    # shellcheck disable=SC2086 # SEL holds repo-relative manifest paths without spaces
+    ( cd "$MIRROR" && python3 - "$TMPD/bases" $SEL <<'PY' ) > "$TMPD/files" \
+      || { echo "a manifest was refused - nothing promoted" >&2; exit 1; }
+import re
+import sys
+
+base_out, manifests = sys.argv[1], sys.argv[2:]
+line_re = re.compile(r"^([0-9a-f]{64}) [ *](.+)$")
+bases, seen = [], set()
+for m in manifests:
+    mdir = m.rsplit("/", 1)[0]
+    paths = []
+    for i, line in enumerate(open(m).read().splitlines(), 1):
+        if not line.strip():
+            continue
+        hit = line_re.match(line)
+        if not hit:
+            sys.exit(f"{m}:{i}: not a sha256 manifest line")
+        paths.append(hit.group(2))
+    if not paths:
+        sys.exit(f"{m}: lists no file")
+    repo = [p.startswith("results/") for p in paths]
+    if any(repo) and not all(repo):
+        sys.exit(f"{m}: mixes repo-relative and manifest-relative paths")
+    base = "." if all(repo) else mdir
+    bases.append(f"{m} {base}")
+    for p in paths:
+        rel = p if base == "." else f"{mdir}/{p}"
+        parts = rel.split("/")
+        if (p.startswith("/") or ".." in parts or not rel.startswith("results/E3/")
+                or rel.startswith("results/E3/sealed/_pod_mirror/")):
+            sys.exit(f"{m}: refused path {p!r}")
+        if rel not in seen:
+            seen.add(rel)
+            print(rel)
+open(base_out, "w").write("\n".join(bases) + "\n")
+PY
+    # 3. verify every chosen manifest in the mirror
+    while read -r m base; do
+      echo "== verifying $m ($(shasum -a 256 "$MIRROR/$m" | cut -d' ' -f1))"
+      if [ "$base" = "." ]; then
+        ( cd "$MIRROR" && shasum -a 256 -c --quiet "$m" )
+      else
+        ( cd "$MIRROR/$base" && shasum -a 256 -c --quiet "${m#"$base"/}" )
+      fi || { echo "MANIFEST $m does NOT verify (slot $SLOT) - nothing promoted; the raw mirror is kept in $MIRROR" >&2; exit 1; }
+    done < "$TMPD/bases"
+    # 4. promote the listed files and the manifests; a changed local file is moved aside first
+    NF=$(wc -l < "$TMPD/files" | tr -d ' ')
+    for m in $SEL; do echo "$m" >> "$TMPD/files"; done
+    SUPER="results/E3/superseded/$(date -u +%Y%m%dT%H%M%SZ)"
+    NS=0
+    while IFS= read -r f; do
+      if [ -f "$f" ] && ! cmp -s "$f" "$MIRROR/$f"; then
+        mkdir -p "$SUPER/$(dirname "${f#results/E3/}")"
+        mv "$f" "$SUPER/${f#results/E3/}"
+        NS=$((NS + 1))
+      fi
+    done < "$TMPD/files"
+    rsync -lpt --files-from="$TMPD/files" "$MIRROR/" ./
+    [ "$NS" = "0" ] || echo "moved $NS changed local file(s) aside to $SUPER"
+    # shellcheck disable=SC2086
+    echo "promoted to results/E3 ($(echo $SEL | wc -w | tr -d ' ') manifest(s) and the $NF files they list, verified)"
+    exit 0 ;;
+  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b, I9 and E3" >&2; exit 2 ;;
 esac
 [ -n "$SLOT" ] && [ -n "$MGLOB" ] || { echo "usage: --slot _A --manifest GLOB [--subdir DIR]" >&2; exit 2; }
 case "$MGLOB" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac

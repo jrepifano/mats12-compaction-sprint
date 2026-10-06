@@ -36,6 +36,14 @@ E1b additions (docs/experiments/E1b/implementation-plan.md §1.1-1.2, §1.4; U3)
   auto`). The profile name is written to the meta and compared on resume, so a timing output is
   never taken for a full one. Seeds stay `request_seed(condition, qid, sample_idx)`, so a timing
   subset's rows are the first sample indices (and first narrow questions) of a full run.
+
+E3 additions (docs/experiments/E3/implementation-plan.md v2 fix 2, v3 fix 1; prereg §4.9), all
+behind `--exp E3` and driven by `scripts/e3_gen.py`: training records from `results/E3/train`;
+question files from `emx.e3.contracts.QUESTION_FILES`; what is asked is `SAMPLED_QSETS` (profile
+`e3`: general and ext48 x 20, narrow x 1 on the first 100 questions in file order that are not
+among the selection file's 40 `medical_qids`). Excluded qids are a `Job` field, applied before
+the first-n limit, and listed in the meta. The default output dir is the cells' own
+(`emx.e3.contracts.gen_path`: sealed checkpoints under `results/E3/sealed/gen`).
 """
 
 from __future__ import annotations
@@ -57,6 +65,7 @@ from emx.contracts import EVAL_SEED, GEN_COLUMNS, GEN_META_KEYS, ConditionId, ge
 from emx.contracts import request_seed as _request_seed
 from emx.e1.registry import FORMATS, SAMPLES, SAMPLING, STAGES
 from emx.e1b import contracts as E1B
+from emx.e3 import contracts as E3C
 
 ROOT = Path(__file__).resolve().parents[2]
 QUESTIONS_DIR = ROOT / "data/E1/questions"
@@ -64,7 +73,8 @@ TRAIN_DIR = ROOT / "results/E1/train"
 # core44 belongs to e1_restore.py; ext48 is E1b's (its file is under data/E1b/questions)
 GEN_QSETS: tuple[str, ...] = ("general", "medical", "narrow", "ext48")
 E1_QSETS: tuple[str, ...] = ("general", "medical", "narrow")  # E1's default --qsets
-EXPS: tuple[str, ...] = ("E1", "E1b")
+EXPS: tuple[str, ...] = ("E1", "E1b", "E3")
+E3_PROFILE = "e3"  # E3's one request table, contracts.SAMPLED_QSETS
 E1B_TRAIN_DIRS: tuple[Path, ...] = (ROOT / E1B.TRAIN_DIR, TRAIN_DIR)  # E1b first, then E1's
 DATA_MANIFEST = ROOT / E1B.DATA_MANIFEST  # E1b's frozen data hashes (ext48, contrast set)
 ENGINES: tuple[str, ...] = ("vllm", "hf")
@@ -258,11 +268,16 @@ def build_requests(
     n: int,
     questions_dir: Path | Mapping[str, Path] = QUESTIONS_DIR,
     limit_questions: int | None = None,
+    exclude_qids: Sequence[str] = (),
 ) -> list[Request]:
-    """Questions in file order, samples 0..n-1 within each; one prompt render per question."""
+    """Questions in file order (without `exclude_qids`, E3), samples 0..n-1 within each; one prompt
+    render per question."""
     from emx.formats import render_prompt
 
     qs = load_questions(qset, questions_dir)
+    if exclude_qids:
+        drop = set(exclude_qids)
+        qs = [q for q in qs if q["qid"] not in drop]
     if limit_questions:
         qs = qs[:limit_questions]
     out = []
@@ -606,6 +621,10 @@ def arg_parser(description: str, default_out: str) -> argparse.ArgumentParser:
     p.add_argument("--samples", type=int, default=None, help="smoke/check override of samples")
     p.add_argument("--limit-questions", type=int, default=None, help="smoke: first N questions")
     p.add_argument("--max-new-tokens", type=int, default=None, help="smoke override (600)")
+    p.add_argument(
+        "--selection-file", default=None,
+        help=f"E3 only: narrow excludes its medical_qids (default {E3C.SELECTION_FILE})",
+    )
     p.set_defaults(_default_out=default_out)
     return p
 
@@ -614,8 +633,12 @@ def exp_of(args) -> str:
     exp = getattr(args, "exp", None) or "E1"
     if exp not in EXPS:
         raise ValueError(f"unknown exp {exp!r}")
-    if exp == "E1" and (getattr(args, "profile", None) or getattr(args, "ext48_cut2", False)):
+    if exp in ("E1", "E3") and (
+        getattr(args, "profile", None) or getattr(args, "ext48_cut2", False)
+    ):
         raise ValueError("--profile and --ext48-cut2 are E1b-only")
+    if exp != "E3" and getattr(args, "selection_file", None):
+        raise ValueError("--selection-file is E3-only")
     return exp
 
 
@@ -624,6 +647,14 @@ def out_dir_of(args) -> Path:
         return Path(args.out_dir)
     if exp_of(args) == "E1b":
         return ROOT / E1B.GEN_DIR
+    if exp_of(args) == "E3":  # the cells' own dir: one for every condition, or refuse
+        dirs = {
+            Path(E3C.gen_path(str(ConditionId.parse(c).cell), "x")).parent
+            for c in args.conditions
+        }
+        if len(dirs) != 1:
+            raise ValueError(f"E3 conditions span output dirs {sorted(map(str, dirs))}")
+        return ROOT / dirs.pop()
     return Path(args._default_out)
 
 
@@ -631,6 +662,8 @@ def train_dirs_of(args) -> list[Path]:
     d = getattr(args, "train_dir", None)
     if d:
         return [Path(x) for x in ([d] if isinstance(d, str | Path) else d)]
+    if exp_of(args) == "E3":
+        return [ROOT / E3C.TRAIN_DIR]
     return list(E1B_TRAIN_DIRS) if exp_of(args) == "E1b" else [TRAIN_DIR]
 
 
@@ -640,6 +673,8 @@ def questions_of(args) -> Path | dict[str, Path]:
         return Path(args.questions_dir)
     if exp_of(args) == "E1b":
         return {q: ROOT / f for q, f in E1B.QUESTION_FILES.items()}
+    if exp_of(args) == "E3":
+        return {q: ROOT / f for q, f in E3C.QUESTION_FILES.items()}
     return QUESTIONS_DIR
 
 
@@ -660,6 +695,8 @@ def job_extra(job: Job, args) -> dict:
     extra = {"overrides": overrides(args)}
     if job.profile is not None:
         extra["profile"] = job.profile
+    if job.exclude_qids:  # E3 narrow: the selection file's medical qids
+        extra["excluded_qids"] = sorted(job.exclude_qids)
     return extra
 
 
@@ -674,6 +711,7 @@ class Job:
     n_questions: int
     limit_questions: int | None = None  # first-n questions (profile and smoke limit combined)
     profile: str | None = None  # E1b profile name, recorded in meta
+    exclude_qids: tuple[str, ...] = ()  # E3 narrow: dropped before the first-n limit
 
 
 def _min_limit(*limits: int | None) -> int | None:
@@ -686,6 +724,12 @@ def _asked(spec: ModelSpec, args, engine: str) -> tuple[str | None, list[tuple]]
     if exp_of(args) == "E1":
         qsets = args.qsets or list(E1_QSETS)
         return None, [(q, n_samples(q, engine, args.medical_cut), None) for q in qsets]
+    if exp_of(args) == "E3":
+        return E3_PROFILE, [
+            (q, *E3C.SAMPLED_QSETS[q])
+            for q in GEN_QSETS
+            if q in E3C.SAMPLED_QSETS and (not args.qsets or q in args.qsets)
+        ]
     name, table = profile_for(spec.condition, args.profile or "auto", args.ext48_cut2)
     out = []
     for q in GEN_QSETS:  # fixed qset order
@@ -696,6 +740,18 @@ def _asked(spec: ModelSpec, args, engine: str) -> tuple[str | None, list[tuple]]
             n = SAMPLES["medical"]["cut3"]
         out.append((q, n, first))
     return name, out
+
+
+def e3_excluded(qset: str, args) -> tuple[str, ...]:
+    """E3: the 40 original medical-pair qids (selection file, never the retained pairs) for the
+    narrow qset; () otherwise and for every other experiment."""
+    if exp_of(args) != "E3" or qset != "narrow":
+        return ()
+    path = Path(getattr(args, "selection_file", None) or ROOT / E3C.SELECTION_FILE)
+    qids = json.loads(path.read_text())["medical_qids"]
+    if len(qids) != E3C.N_MEDICAL or len(set(qids)) != len(qids):
+        raise ValueError(f"{path}: medical_qids must be {E3C.N_MEDICAL} distinct qids")
+    return tuple(sorted(qids))
 
 
 def plan_jobs(args, engine: str) -> list[Job]:
@@ -714,21 +770,24 @@ def plan_jobs(args, engine: str) -> list[Job]:
             for qset, n_profile, first in asked:
                 n = args.samples or n_profile
                 limit = _min_limit(first, args.limit_questions)
-                nq = len(load_questions(qset, questions))
+                excl = e3_excluded(qset, args)
+                nq = len([q for q in load_questions(qset, questions) if q["qid"] not in excl])
                 if limit:
                     nq = min(nq, limit)
                 contract = expected_contract(spec, n, max_new, run_overrides, profile)
                 if existing_ok(out, spec, qset, n * nq, engine, args.overwrite, contract):
                     print(f"skip {spec.condition} {qset}: done and verified")
                     continue
-                jobs.append(Job(spec, qset, n, nq, limit, profile))
+                jobs.append(Job(spec, qset, n, nq, limit, profile, excl))
     return jobs
 
 
 def job_requests(job: Job, tokenizer, args) -> list[Request]:
     """The requests of one planned job (its questions source and first-n limit)."""
     limit = job.limit_questions if job.limit_questions is not None else args.limit_questions
-    return build_requests(job.spec, job.qset, tokenizer, job.n, questions_of(args), limit)
+    return build_requests(
+        job.spec, job.qset, tokenizer, job.n, questions_of(args), limit, job.exclude_qids
+    )
 
 
 def build_meta(

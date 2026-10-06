@@ -36,6 +36,18 @@ image pulls (an I9 pod was stopped for this on 2026-10-04): the pod can show RUN
 image never arrives, so check its status after launch (wait_for_ssh prints it; no SSH by
 --ssh-timeout means the pull failed and the pod is terminated).
 
+2026-10-06 (E3 implementation plan v2 fix 5, v3 fix 4, v4 fix 2; shared contract
+docs/experiments/shared/runpod-reservations.md): `--reservation ID --budget-usd B` launches under
+an admitted RunPod reservation (`emx.runpod_reservations`); required for --exp E3 (except
+--dry-run), optional elsewhere. `t0` is taken immediately before each create request, and a
+durable `creating` row (t0, reservation, slot, pod name, budget, rate) is appended before it. On
+success the pod's `created` event is billed from t0, the reservation's `launch` row records the
+pod with deadline min(t0 + B / rate, the experiment's global kill-line deadline), and
+`EMX_POD_DEADLINE=<epoch>` is printed. A lost or failed create response is reconciled by listing
+pods named `<exp>-<slot>`: a found pod is adopted into the launch; the reservation is released
+only once no pod exists (a failed listing keeps it, so its liability still counts). The gate
+checks the budget B, not --reserve-hours x rate, when B is given.
+
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
        uv run python scripts/pod_up.py --exp I9 --slot _A|_B [--start N] [--no-fallback] [--dry-run]
@@ -46,6 +58,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -56,13 +69,20 @@ GATE_REFUSED = 4  # exit code: the budget gate refused (pod_hunt.sh stops instea
 UNTRACKED = 5  # exit code: an untracked pod with our prefix exists, or no live I1a watchdog
 
 
-def gate(opt: rp.GpuOption, reserve_hours: float, dry_run: bool) -> None:
-    """Refuse a launch whose next `reserve_hours` would pass a cap (exits non-zero)."""
+def gate(
+    opt: rp.GpuOption, reserve_hours: float, dry_run: bool, budget_usd: float | None = None
+) -> None:
+    """Refuse a launch whose next `reserve_hours` (or, given, its whole `budget_usd`) would pass
+    a cap (exits non-zero)."""
     running = rp.running_projection(rp.pod_sessions(rp.read_pod_events()), reserve_hours)
-    projected = reserve_hours * opt.rate_usd_h
+    projected = reserve_hours * opt.rate_usd_h if budget_usd is None else budget_usd
+    what = (
+        f"{reserve_hours} h x ${opt.rate_usd_h}/h"
+        if budget_usd is None
+        else f"budget (reservation) at ${opt.rate_usd_h}/h"
+    )
     print(
-        f"budget gate ({rp.EXP}): this pod {reserve_hours} h x ${opt.rate_usd_h}/h = "
-        f"${projected:.2f}; "
+        f"budget gate ({rp.EXP}): this pod {what} = ${projected:.2f}; "
         f"running pods incl. reserve ${running:.2f}"
     )
     ceiling = rp.gpu_ceiling()
@@ -139,6 +159,23 @@ def i9_session_gate(slot: str, dry_run: bool) -> None:
         sys.exit(GATE_REFUSED)
 
 
+def gpu_filter(options: tuple[rp.GpuOption, ...], gpu: str) -> tuple[rp.GpuOption, ...]:
+    """The options for GPU type `gpu` (case-insensitive), in order. For E3, a type listed only in
+    emx.e3.contracts.FALLBACK_GPUS (e.g. "NVIDIA H100 PCIe") is tried on the community, then the
+    secure cloud, at that list's rate (the API's costPerHr, when higher, still sizes the
+    deadline)."""
+    want = gpu.strip().lower()
+    out = tuple(o for o in options if o.gpu_type_id.lower() == want)
+    if out or rp.EXP != "E3":
+        return out
+    from emx.e3 import contracts as e3c
+
+    for name, rate in e3c.FALLBACK_GPUS:
+        if name.lower() == want:
+            return (rp.GpuOption(name, "COMMUNITY", rate), rp.GpuOption(name, "SECURE", rate))
+    return ()
+
+
 def recover_uncertain_create(client: rp.RunPod, err: Exception) -> int:
     """A create whose outcome is unknown: find and terminate any pod it may have made."""
     print(f"create outcome UNKNOWN ({err}); reconciling against the API", file=sys.stderr)
@@ -152,6 +189,55 @@ def recover_uncertain_create(client: rp.RunPod, err: Exception) -> int:
             return 1
     print(f"terminated {len(reaped)} untracked pod(s) {reaped}; re-run pod_up", file=sys.stderr)
     return 1
+
+
+RECONCILE_TRIES = 3
+RECONCILE_WAIT_S = 20
+
+
+def find_named_pods(client: rp.RunPod, name: str) -> list[dict]:
+    """API pods named `name` that this experiment's event log does not track (raises on a
+    failed listing)."""
+    known = rp.tracked_pod_ids(rp.read_pod_events())
+    return [p for p in client.list_pods() if p.get("name") == name and p.get("id") not in known]
+
+
+def reconcile_create(
+    client: rp.RunPod, name: str, tries: int = RECONCILE_TRIES, wait_s: float = RECONCILE_WAIT_S
+) -> dict | None:
+    """After a lost or failed create: the pod named `name` if one exists, else None once
+    `tries` listings (each after `wait_s`) found nothing. A failed listing raises RunPodError."""
+    for _ in range(tries):
+        if wait_s:
+            time.sleep(wait_s)
+        found = find_named_pods(client, name)
+        if found:
+            if len(found) > 1:
+                print(
+                    f"WARNING: {len(found)} pods named {name}; adopting {found[0]['id']}, the "
+                    "others are untracked (pod_down.py --untracked reaps them)",
+                    file=sys.stderr,
+                )
+            return found[0]
+    return None
+
+
+def settle_reservation(rid: str, pod_id: str, session: dict | None) -> bool:
+    """After termination and the GPU charge: settle the pod's actual dollars, then release the
+    reservation's remainder. False (liability kept) when the dollars are unknown."""
+    from emx import runpod_reservations as rr
+
+    if session is None:
+        print(
+            f"pod {pod_id}: no session in the event log, so its dollars are unknown; reservation "
+            f"{rid} is NOT settled (its liability still counts); settle it by hand",
+            file=sys.stderr,
+        )
+        return False
+    rr.settle(rid, session["usd"], pod_id=pod_id, note=f"pod_down: {pod_id}")
+    rr.release(rid, note=f"unused after {pod_id}")
+    print(f"reservation {rid}: settled ${session['usd']:.2f} for {pod_id}; remainder released")
+    return True
 
 
 def wait_for_ssh(client: rp.RunPod, pod_id: str, timeout_s: int, poll_s: int = 15):
@@ -191,6 +277,15 @@ def main(argv: list[str] | None = None) -> int:
         default=1.0,
         help="hours of this pod (plus running pods) the gate must fit under the caps",
     )
+    ap.add_argument(
+        "--gpu",
+        help="only this GPU type (a gpu_type_id of the fallback order, or for E3 one of "
+        "emx.e3.contracts.FALLBACK_GPUS), in fallback order across clouds",
+    )
+    ap.add_argument("--reservation", help="admitted emx.runpod_reservations id (E3: required)")
+    ap.add_argument(
+        "--budget-usd", type=float, help="this pod's dollar budget (with --reservation)"
+    )
     ap.add_argument("--disk-gb", type=int, default=200)
     ap.add_argument("--ssh-timeout", type=int, default=900)
     ap.add_argument("--dry-run", action="store_true", help="print the requests; send nothing")
@@ -199,6 +294,33 @@ def main(argv: list[str] | None = None) -> int:
     slot = rp.check_slot(args.slot)
     if rp.EXP == "I9":
         i9_session_gate(slot, args.dry_run)
+    rid, budget = args.reservation, args.budget_usd
+    if (rid is None) != (budget is None):
+        ap.error("--reservation and --budget-usd go together")
+    if rp.EXP == "E3" and rid is None and not args.dry_run:
+        ap.error("--exp E3 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
+    if rid is not None and not budget > 0:
+        ap.error("--budget-usd must be > 0")
+    if rid is not None and args.dry_run:
+        print(f"DRY RUN: would write a `creating` row, then launch reservation {rid} (${budget})")
+    elif rid is not None:
+        from emx import runpod_reservations as rr
+
+        R = rr.get(rid)
+        why = (
+            "unknown"
+            if R is None
+            else f"belongs to {R['exp']}, not {rp.EXP}"
+            if R["exp"] != rp.EXP
+            else "closed or already launched"
+            if R["closed"] or R["launched"]
+            else f"holds ${R['open_usd']:.2f} < budget ${budget:.2f}"
+            if budget > R["open_usd"] + 1e-6
+            else ""
+        )
+        if why:
+            print(f"REFUSED: reservation {rid} {why}", file=sys.stderr)
+            sys.exit(GATE_REFUSED)
 
     if not args.dry_run and rp.env(f"RUNPOD_POD_ID{slot}"):
         sys.exit(
@@ -214,20 +336,61 @@ def main(argv: list[str] | None = None) -> int:
     options = rp.gpu_options(args.start)
     if rp.EXP == "I9":
         options = i9_gpu_options(args.start)
+    if args.gpu:
+        options = gpu_filter(options, args.gpu)
+        if not options:
+            ap.error(f"--gpu {args.gpu!r}: not a GPU type of {rp.EXP}'s fallback order")
     if args.no_fallback:
         options = options[:1]
     pod = opt = None
+    t0 = None
+    reserved = rid is not None and not args.dry_run
     for opt in options:
-        gate(opt, args.reserve_hours, args.dry_run)
+        gate(opt, args.reserve_hours, args.dry_run, budget)
         body = rp.pod_body(opt, slot, public_key, container_disk_gb=args.disk_gb)
         if not args.dry_run:
             rp.log_create_pending(body["name"], slot)
+        if reserved:
+            t0 = time.time()  # billed time starts here: delays come out of the budget
+            rr.creating(
+                rid,
+                slot=slot,
+                name=body["name"],
+                budget_usd=budget,
+                rate_usd_h=opt.rate_usd_h,
+                t0_epoch=t0,
+            )
         try:
             pod = client.create_pod(body)
-        except rp.CreateUncertain as e:
-            return recover_uncertain_create(client, e)
         except rp.RunPodError as e:
-            print(f"create failed on {opt.gpu_type_id} ({opt.cloud}): {e}", file=sys.stderr)
+            if not reserved:
+                if isinstance(e, rp.CreateUncertain):
+                    return recover_uncertain_create(client, e)
+                print(f"create failed on {opt.gpu_type_id} ({opt.cloud}): {e}", file=sys.stderr)
+                continue
+            uncertain = isinstance(e, rp.CreateUncertain)
+            print(f"create {'outcome UNKNOWN' if uncertain else 'failed'} ({e}); reconciling")
+            try:
+                pod = reconcile_create(
+                    client,
+                    body["name"],
+                    RECONCILE_TRIES if uncertain else 1,
+                    RECONCILE_WAIT_S if uncertain else 0,
+                )
+            except rp.RunPodError as le:
+                print(
+                    f"pod list FAILED ({le}); reservation {rid} KEPT (its liability counts); "
+                    "CHECK THE RUNPOD CONSOLE, then pod_down.py --untracked or release it",
+                    file=sys.stderr,
+                )
+                return 1
+            if pod is not None:
+                print(f"adopting pod {pod['id']} named {body['name']} into reservation {rid}")
+                break
+            if uncertain:
+                rr.release(rid, note=f"pod_up: create outcome unknown, no {body['name']} pod")
+                print(f"no {body['name']} pod exists; reservation {rid} released", file=sys.stderr)
+                return 1
             continue
         if args.dry_run:
             continue  # print every option in order
@@ -235,27 +398,53 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
     if not pod:
+        if reserved:
+            rr.release(rid, note="pod_up: no GPU in the fallback order could be created")
+            print(f"reservation {rid} released (no pod was created)", file=sys.stderr)
         print("no GPU in the fallback order could be created; try pod_hunt.sh", file=sys.stderr)
         return 1
 
     pod_id = pod["id"]
     api_rate = pod.get("costPerHr")
     rate = float(api_rate) if api_rate else opt.rate_usd_h
+    created = {
+        "event": "created",
+        "pod_id": pod_id,
+        "slot": slot,
+        "gpu": opt.gpu_type_id,
+        "cloud": opt.cloud,
+        "image": rp.IMAGE,
+        "rate_usd_h": rate,
+        "rate_source": "api" if api_rate else "estimate",
+    }
+    if reserved:  # bill from t0 (before the request), and size the deadline conservatively
+        created["utc"] = datetime.fromtimestamp(t0, UTC).isoformat()
+        created["reservation_id"] = rid
+        rate = max(rate, opt.rate_usd_h)
     # persist the id BEFORE waiting for SSH so a timeout never leaks an untracked pod
     rp.set_env_var(f"RUNPOD_POD_ID{slot}", pod_id)
-    rp.log_pod_event(
-        {
-            "event": "created",
-            "pod_id": pod_id,
-            "slot": slot,
-            "gpu": opt.gpu_type_id,
-            "cloud": opt.cloud,
-            "image": rp.IMAGE,
-            "rate_usd_h": rate,
-            "rate_source": "api" if api_rate else "estimate",
-        }
-    )
+    rp.log_pod_event(created)
     print(f"pod created: {pod_id} ({opt.gpu_type_id}, {opt.cloud}, ${rate}/h)")
+    if reserved:
+        try:
+            g = rp.killswitch_deadline(pod_id)
+        except Exception as e:  # noqa: BLE001 - the budget deadline still bounds the pod
+            print(f"WARNING: global kill-line deadline unavailable ({e})", file=sys.stderr)
+            g = None
+        try:
+            dl = rr.launch(rid, [(pod_id, rate, budget)], t0, global_deadline=g, slot=slot)
+        except Exception as e:  # noqa: BLE001 - an unlaunched pod must not keep billing
+            print(f"launch row REFUSED ({e}); terminating {pod_id}", file=sys.stderr)
+            try:
+                client.terminate_pod(pod_id)
+            except rp.RunPodError as te:
+                print(f"DELETE FAILED ({te}); terminate {pod_id} by hand", file=sys.stderr)
+                return 1
+            s_ = rp.finish_session(pod_id, "pod_up: launch row refused")
+            settle_reservation(rid, pod_id, s_)
+            rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
+            return 1
+        print(f"EMX_POD_DEADLINE={dl[pod_id]}")
     if rp.EXP == "I9":  # Docker Hub rate limits (2026-10-04): RUNNING is not "image pulled"
         print("I9: check the pod's status; an unauthenticated image pull may be rate-limited")
 
@@ -276,7 +465,9 @@ def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 1
-        rp.finish_session(pod_id, f"pod_up: {reason}")
+        s_ = rp.finish_session(pod_id, f"pod_up: {reason}")
+        if reserved:
+            settle_reservation(rid, pod_id, s_)
         rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
         print(f"{reason}; pod {pod_id} terminated", file=sys.stderr)
         return 1
