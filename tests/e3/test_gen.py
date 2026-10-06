@@ -184,3 +184,91 @@ def test_wrapper_refuses(monkeypatch, tmp_path, argv):
     monkeypatch.setattr(EG, "verify_questions", lambda qsets: None)
     with pytest.raises(SystemExit):
         EG.main(argv, run=lambda *a, **k: pytest.fail("no subprocess"))
+
+
+# --- code review B6 and B7 -----------------------------------------------------------------------
+
+
+def test_git_commit_honours_pod_env(monkeypatch):
+    """B6: on a pod (no .git) the commit comes from EMX_GIT_COMMIT and EMX_GIT_DIRTY."""
+    def no_git(*a, **k):
+        raise AssertionError("git must not be called when EMX_GIT_COMMIT is set")
+
+    monkeypatch.setattr(G.subprocess, "check_output", no_git)
+    monkeypatch.setenv("EMX_GIT_COMMIT", "c" * 40)
+    monkeypatch.setenv("EMX_GIT_DIRTY", "0")
+    assert G.git_commit() == "c" * 40
+    monkeypatch.setenv("EMX_GIT_DIRTY", "1")
+    assert G.git_commit() == "c" * 40 + "-dirty"
+    assert G.build_meta(G.resolve("pre-untrained@plain"), 1, 600, "vllm", "v", {})[
+        "git_commit"] == "c" * 40 + "-dirty"
+
+
+def _write_done(job, args, out: Path) -> None:
+    rows = [G.row(r, "answer", "stop", 3) for r in G.job_requests(job, FakeTok(), args)]
+    meta = G.build_meta(job.spec, job.n, 600, "vllm", "v", {}, G.job_extra(job, args))
+    G.write_outputs(out, job.spec, job.qset, rows, meta)
+
+
+def test_e3_resume_binds_selection_and_request_list(files, tmp_path, monkeypatch):
+    """B7: a finished narrow output is reused only under the same selection file and the same
+    request list; changed exclusions with the same 100-request count are refused, not reused."""
+    qf, sel = files
+    monkeypatch.setattr(G, "questions_of", lambda args: qf)
+    cond = "s1k-plain-good-R1-s2@plain"
+    args = _args(tmp_path, sel, [cond], ["--qsets", "narrow"])
+    (job,) = G.plan_jobs(args, "vllm")
+    assert job.selection_sha256 == G.sha256_file(sel) and len(job.requests_sha256) == 64
+    want = EG.request_plan(cond.split("@")[0], ["narrow"], qf, sel)
+    assert job.requests_sha256 == G.requests_sha256(cond, "narrow", [r[1] for r in want], 1)
+    _write_done(job, args, tmp_path / "out")
+    meta = json.loads(G.out_paths(tmp_path / "out", cond, "narrow")[1].read_text())
+    assert meta["selection_sha256"] == job.selection_sha256
+    assert meta["requests_sha256"] == job.requests_sha256
+    assert G.plan_jobs(args, "vllm") == []  # same inputs: done and verified
+    # another 40 exclusions: still 100 narrow requests, but to other questions
+    other = [f"n{i:03d}" for i in range(1, 200, 5)]
+    sel.write_text(json.dumps({"medical_qids": other, "heldout_qids": [], "dev_qids": []}))
+    with pytest.raises(RuntimeError, match="requests_sha256|selection_sha256"):
+        G.plan_jobs(args, "vllm")
+    # the same exclusions in a rewritten selection file (other bytes): the file is bound too
+    sel.write_text(json.dumps({"medical_qids": MEDICAL, "heldout_qids": ["x"], "dev_qids": []}))
+    with pytest.raises(RuntimeError, match="selection_sha256"):
+        G.plan_jobs(args, "vllm")
+
+
+def test_e1_contract_has_no_e3_keys(tmp_path):
+    spec_ = G.resolve("inst-untrained@chat")
+    c = G.expected_contract(spec_, 1, 600, {})
+    assert not set(G.E3_CONTRACT_KEYS) & set(c)
+    meta = {"template_sha256": c["template_sha256"], "sampling": dict(c["sampling"]),
+            "overrides": {}}
+    assert G.contract_problems(meta, c) == []
+
+
+def test_e3_set_aside_incomplete_output(files, tmp_path, monkeypatch):
+    """B4: a generation cut between the CSV and the meta write is moved aside and replanned
+    under --set-aside-incomplete (which e3_gen always passes); without it, it is refused."""
+    qf, sel = files
+    monkeypatch.setattr(G, "questions_of", lambda args: qf)
+    cond = "s1k-plain-bad-R1-s2@plain"
+    args = _args(tmp_path, sel, [cond], ["--qsets", "narrow"])
+    (job,) = G.plan_jobs(args, "vllm")
+    _write_done(job, args, tmp_path / "out")
+    csv_path, meta_path = G.out_paths(tmp_path / "out", cond, "narrow")
+    meta_path.unlink()
+    with pytest.raises(RuntimeError, match="CSV or meta missing"):
+        G.plan_jobs(args, "vllm")
+    aside = _args(tmp_path, sel, [cond], ["--qsets", "narrow", "--set-aside-incomplete"])
+    assert [j.qset for j in G.plan_jobs(aside, "vllm")] == ["narrow"]
+    assert not csv_path.exists()
+    assert [p.name.split(".incomplete.")[0] for p in (tmp_path / "out").glob("*.incomplete.*")
+            ] == [csv_path.name]
+    _write_done(job, args, tmp_path / "out")
+    assert G.plan_jobs(aside, "vllm") == []  # a verified output is still skipped
+    with pytest.raises(ValueError, match="E3-only"):
+        G.exp_of(G.arg_parser("t", "x").parse_args(
+            ["--conditions", "x", "--set-aside-incomplete"]))
+    cmd = EG.engine_argv(["s1k-plain-bad-R1-s2"], ["narrow"],
+                         EG.parser().parse_args(["--ckpt", "s1k", "--cells", "x"]), None)
+    assert "--set-aside-incomplete" in cmd

@@ -30,13 +30,20 @@ merged). Model ids are cell ids: `{ckpt}-untrained`, `{ckpt}-plain-{data}-R1-s{s
   adapter is scored. The first pass is kept as the untuned rows.
 - **Output:** `logprob_path(ckpt, seed)` by default (`emx.e3.score.write_scores`: CSV plus a
   `.meta.json` sidecar with revisions, adapter sources, input hashes, code commit, UTC, batch,
-  dtype, device and per-model timing in answer scores per second). An existing output is refused
-  without `--force`.
+  dtype, device and per-model timing in answer scores per second).
+- **Resume** (code review B4: the pod job reruns every step after a restart). An existing output
+  is reused (exit 0, nothing scored) only if it is complete and verifies against this run
+  (`emx.e3.score.score_output_problems`: the sidecar's CSV sha256 present and matching, the row
+  count, the same pairs and swaps hashes, model ids, adapter sources and checkpoint, and a passed
+  self-check under `--self-check`). Otherwise, an incomplete or stale CSV and/or sidecar (a crash
+  between the two writes, other inputs) is moved aside to `<name>.incomplete.<UTC>` and the
+  checkpoint is rescored. `--force` rescores and overwrites without checking.
 """
 
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import sys
 import time
 from pathlib import Path
@@ -223,6 +230,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--extra", action="extend", nargs="+", metavar="MODEL_ID=REPO@REV[:SUB]")
     ap.add_argument("--pairs", default=C.PAIRS_FILE)
     ap.add_argument("--swaps", default=C.SWAPS_FILE)
+    ap.add_argument("--selection", default=C.SELECTION_FILE,
+                    help="recorded in the sidecar (sha256) so analysis binds split membership")
     ap.add_argument("--questions-root", default=".", help="root of the broad question files")
     ap.add_argument("--out")
     ap.add_argument("--batch", type=int, default=S.SCORE_BATCH)
@@ -235,15 +244,21 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
     out = Path(args.out or C.logprob_path(args.ckpt, args.seed))
-    if out.exists() and not args.force:
-        print(f"E3SCORE FAIL: {out} exists (use --force)", file=sys.stderr)
-        return 2
     jobs = plan(args)
     pairs_sha = S.sha256_file(args.pairs)
     if C.PAIRS_SHA256 is not None and pairs_sha != C.PAIRS_SHA256:
         print(f"E3SCORE FAIL: {args.pairs} sha256 {pairs_sha} != {C.PAIRS_SHA256}",
               file=sys.stderr)
         return 2
+    expect = {"model_ids": [j["model_id"] for j in jobs],
+              "adapters": {j["model_id"]: j["adapter"] for j in jobs},
+              "pairs_sha256": pairs_sha, "swaps_sha256": S.sha256_file(args.swaps),
+              "ckpt": args.ckpt, "seed": args.seed, "hf_id": C.HF_ID,
+              "model_revision": C.CHECKPOINT_REVISIONS[args.ckpt],
+              "selection_sha256": (S.sha256_file(args.selection)
+                                   if Path(args.selection).exists() else None)}
+    if not args.force and resume(out, expect, args.self_check):
+        return 0
     pairs, swaps = S.load_pairs(args.pairs), S.load_swaps(args.swaps)
     items = S.build_items(pairs, swaps, C.VARIANTS, S.broad_question_texts(args.questions_root))
     t0 = time.time()
@@ -284,12 +299,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"E3SCORE {mid}: {tm['answers']} answers, {tm['seconds']:.1f}s", flush=True)
 
     meta = {
-        "model_ids": [j["model_id"] for j in jobs], "states": {j["model_id"]: j["state"]
-                                                             for j in jobs},
-        "ref_model_id": ref, "ckpt": args.ckpt, "seed": args.seed,
-        "hf_id": C.HF_ID, "model_revision": C.CHECKPOINT_REVISIONS[args.ckpt],
-        "adapters": adapters, "pairs": str(args.pairs), "pairs_sha256": pairs_sha,
-        "swaps": str(args.swaps), "swaps_sha256": S.sha256_file(args.swaps),
+        **expect, "states": {j["model_id"]: j["state"] for j in jobs},
+        "ref_model_id": ref, "pairs": str(args.pairs), "swaps": str(args.swaps),
         "code_commit": _commit(), "utc": _utc(), "batch": args.batch, "dtype": dtype,
         "device": device_name(model), "base_load_seconds": load_s, "timing": timing,
         "self_check": check, "items": len(masked), "fmt": C.FMT, "max_len": S.MAX_LEN,
@@ -297,6 +308,27 @@ def main(argv: list[str] | None = None) -> int:
     csv_path, mp = S.write_scores(rows, out, meta)
     print(f"E3SCORE DONE {csv_path} ({len(rows)} rows), {mp}", flush=True)
     return 0
+
+
+def resume(out: Path, expect: dict, need_self_check: bool) -> bool:
+    """True if `out` is complete and verifies against `expect` (reuse it). Otherwise any part of
+    it that exists is moved aside to `<name>.incomplete.<UTC>` and False is returned (rescore)."""
+    parts = [p for p in (out, S.meta_path(out)) if p.exists()]
+    if not parts:
+        return False
+    probs = S.score_output_problems(out, expect, need_self_check)
+    if not probs:
+        print(f"E3SCORE REUSE {out}: complete and verified against this run's inputs", flush=True)
+        return True
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
+    for p in parts:
+        aside, n = p.with_name(f"{p.name}.incomplete.{stamp}"), 1
+        while aside.exists():  # never replace an earlier set-aside output
+            n += 1
+            aside = p.with_name(f"{p.name}.incomplete.{stamp}.{n}")
+        p.rename(aside)
+        print(f"E3SCORE MOVED {p} -> {aside.name} ({'; '.join(probs)})", flush=True)
+    return False
 
 
 class _no_adapter:
@@ -313,13 +345,11 @@ class _no_adapter:
 
 
 def _commit() -> str:
-    """`EMX_GIT_COMMIT` (set by pod_push.sh on the pod, where there is no git checkout), else
-    the local `git rev-parse HEAD`."""
-    import os
-
+    """`EMX_GIT_COMMIT` (+ "-dirty" under `EMX_GIT_DIRTY=1`; set by pod_push.sh on the pod, where
+    there is no git checkout), else the local `git rev-parse HEAD` (`gen_common.git_commit`)."""
     from emx.gen_common import git_commit
 
-    return os.environ.get("EMX_GIT_COMMIT") or git_commit()
+    return git_commit()
 
 
 def _utc() -> str:

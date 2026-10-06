@@ -38,6 +38,10 @@ collected here so every script shares one client. Changes from the source:
   later than what is armed). GPU charging is idempotent and recoverable: the charge's note
   carries `pod=<id>`, and `finish_session` records a missing charge for a session already marked
   terminated (a crash between the two) but never a second one.
+- 2026-10-06 (E3 code review A r1 finding 10): the charge is also concurrency-idempotent: the
+  ledger check and append are one critical section (`emx.spend.record_once`, key
+  `gpu_charge_key(pod_id)`), and `pod_sessions` ends a session at its FIRST `terminated` event,
+  so two concurrent cleanups compute the same session and record one charge.
 """
 
 from __future__ import annotations
@@ -351,7 +355,9 @@ def pod_sessions(events: list[dict], now: datetime | None = None) -> list[dict]:
             }
         elif e["event"] == "rate" and pid in pods and e.get("rate_usd_h"):
             pods[pid]["rate"], pods[pid]["rate_source"] = float(e["rate_usd_h"]), "api"
-        elif e["event"] == "terminated" and pid in pods:
+        elif e["event"] == "terminated" and pid in pods and pods[pid]["running"]:
+            # the FIRST termination ends billing: a second `terminated` event (two concurrent
+            # cleanups) must not move t1, so every process computes the same charge
             pods[pid]["running"], pods[pid]["t1"] = False, e["utc"]
     out = []
     for p in pods.values():
@@ -427,17 +433,46 @@ def ledger_check(projected_usd: float, running_pod_usd: float) -> None:
     _spend().check_total(projected_usd, "gpu", running_pod_usd=running_pod_usd, **kw)
 
 
-def ledger_record_gpu(session: dict, note: str) -> None:
-    """One `kind=gpu` record per finished pod session: creation-to-termination x rate. The note
-    carries `pod=<id>` so `gpu_charged` can find it (idempotent charging)."""
-    _spend().record(
-        exp=EXP,
-        kind="gpu",
-        resource=f"runpod:{session['gpu']}:{session['pod_id']}",
-        units=session["hours"],
-        usd=round(session["usd"], 4),
-        note=f"{note}; pod={session['pod_id']}; rate {session['rate']}/h ({session['rate_source']})",
+def gpu_charge_key(pod_id: str) -> str:
+    """The ledger `charge_key` of a pod's one GPU charge (`emx.spend.record_once`)."""
+    return f"gpu:{EXP}:{pod_id}"
+
+
+def _is_gpu_charge(e: dict, pod_id: str) -> bool:
+    """A ledger row of this experiment that charges `pod_id`'s GPU time: its `charge_key`, a note
+    carrying `pod=<id>`, or a resource ending in `:<id>` (rows written before 2026-10-06)."""
+    if e.get("charge_key") == gpu_charge_key(pod_id):
+        return True
+    if e.get("exp") != EXP or e.get("kind") != "gpu":
+        return False
+    pat = re.compile(rf"(?:^|[;\s])pod={re.escape(pod_id)}(?:$|[;\s])")
+    return (
+        bool(pat.search(str(e.get("note", ""))))
+        or str(e.get("resource", "")).split(":")[-1] == pod_id
     )
+
+
+def ledger_record_gpu(session: dict, note: str) -> bool:
+    """One `kind=gpu` record per finished pod session: creation-to-termination x rate. The note
+    carries `pod=<id>` so `gpu_charged` can find it (idempotent charging). With a real
+    `emx.spend` the existence check and the append are one critical section under the ledger's
+    lock (`record_once`), so two processes settling one pod charge it once (E3 code review A r1
+    finding 10). Returns whether a row was appended."""
+    pid = session["pod_id"]
+    kw = {
+        "exp": EXP,
+        "kind": "gpu",
+        "resource": f"runpod:{session['gpu']}:{pid}",
+        "units": session["hours"],
+        "usd": round(session["usd"], 4),
+        "note": f"{note}; pod={pid}; rate {session['rate']}/h ({session['rate_source']})",
+    }
+    once = getattr(_spend(), "record_once", None)
+    if once is None:  # a test fake without the locked helper
+        _spend().record(**kw)
+        return True
+    _, appended = once(gpu_charge_key(pid), also_matches=lambda e: _is_gpu_charge(e, pid), **kw)
+    return appended
 
 
 def gpu_charged(pod_id: str, events: list[dict] | None = None) -> bool:
@@ -450,16 +485,7 @@ def gpu_charged(pod_id: str, events: list[dict] | None = None) -> bool:
     read = getattr(_spend(), "read_entries", None)
     if read is None:  # a test fake without a readable ledger: the event log decides
         return False
-    pat = re.compile(rf"(?:^|[;\s])pod={re.escape(pod_id)}(?:$|[;\s])")
-    for e in read():
-        if e.get("exp") != EXP or e.get("kind") != "gpu":
-            continue
-        if (
-            pat.search(str(e.get("note", "")))
-            or str(e.get("resource", "")).split(":")[-1] == pod_id
-        ):
-            return True
-    return False
+    return any(_is_gpu_charge(e, pod_id) for e in read())
 
 
 # --- .env reading (python-dotenv; values never printed) ----------------------------------------
@@ -490,8 +516,7 @@ def finish_session(pod_id: str, note: str, events_path: Path | None = None) -> d
             return None
     elif gpu_charged(pod_id, events):
         return closed
-    if not gpu_charged(pod_id, events):
-        ledger_record_gpu(closed, note)
+    if not gpu_charged(pod_id, events) and ledger_record_gpu(closed, note):
         log_pod_event({"event": "charged", "pod_id": pod_id, "usd": closed["usd"]}, events_path)
     return closed
 

@@ -7,20 +7,33 @@ Free, laptop only. Every record has exactly `contracts.RULE_SCHEMAS[name]`'s key
 with `contracts.validate_record` before it is written (and every record read is checked too).
 
 Subcommands, in the one authoritative order (§4.8 L250-256):
-  stageA   refuses unless the pair build's automatic pre-inspection check passed and
-           judges.json exists, and while power.json or unseal.json exists (use replay)
-  power    refuses unless stageA's outcome is pass; reads only the reference's scores
-           (POWER_ALLOWED_INPUTS) plus the pairs/selection/swaps hashes; exclusive create
-  unseal   emx.e3.seal.write_unseal
-  stageB   seal.assert_unsealed before any sealed read; all five early checkpoints
-  claims   after stageB; "skipped" (with the rule) when there is no candidate or the
-           confirmation scores do not exist yet. --cut1: the neighbour's seed-3 adapters were cut
+  stageA   refuses unless the pair build's automatic pre-inspection check passed (for the pairs
+           and selection files on disk) and judges.json exists with its inputs unchanged, and
+           while power.json or unseal.json exists (use replay). Inconclusive unless judges.json
+           chose a judge for every question set (`judges_check`, §8.3)
+  power    refuses unless stageA's outcome is pass and the judges -> stageA chain verifies
+           (emx.e3.seal.verify_chain); reads only the reference's scores (POWER_ALLOWED_INPUTS)
+           plus the pairs/selection/swaps hashes; exclusive create
+  unseal   emx.e3.seal.write_unseal (verifies judges -> stageA -> power and their inputs)
+  stageB   seal.assert_unsealed (the whole chain) before any sealed read; all five early
+           checkpoints. Outcome pass only when pod 2's cross-pod rescore passed (§4.13): fail
+           when it failed (a stop), inconclusive while it is pending
+  claims   always requires a valid unseal record and a passing Stage B (rescore included),
+           every input unchanged (seal.verify_chain "stageB"); "skipped" (with the rule) when
+           there is no candidate or the confirmation scores do not exist yet. --cut1: the
+           neighbour's seed-3 adapters were cut
   replay   moves unseal.json first, then every other derived record, to
            ANALYSIS_VERSION_DIR/<utc>/ (§4.10 L332)
   status   one-screen summary for the report
 
+Every score CSV is checked against the frozen instrument before any estimate (code review C6,
+`Instrument.validate_scores`): its `.meta.json` binds the CSV and the pairs/swaps hashes, rows
+cover every retained pair x variant x member, split membership comes from the SELECTION file
+and conditioning questions from the swaps file.
+
 Development questions only for every gate (rules.assert_dev_only); all-question and held-out
-estimates are descriptive except in Claim 1's held-out confirmation.
+estimates, and §4.9's sampled summaries (`sampled_summaries`), are descriptive except in
+Claim 1's held-out confirmation.
 
 Example:
   uv run python scripts/e3_analyze.py stageA
@@ -44,6 +57,7 @@ import pandas as pd
 
 from emx.e3 import contracts as C
 from emx.e3 import rules as R
+from emx.e3 import score as S
 from emx.e3.boot import est, mean_of, ratio
 
 # The pair builder's report (U3a): its automatic pre-inspection check must have passed.
@@ -58,7 +72,19 @@ REF_NARROW_JUDGE = "luna"  # descriptive only: no gate reads the reference's nar
 # them for a decision.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "power": ("table_without_condition3", "underpowered_without_condition3", "note"),
+    # judges_check: the §8.3 judge-validation gate (C3), combined into Stage A's outcome.
+    # sampled_summaries: §4.9's descriptive summaries (C10); no rule reads them.
+    "stageA": ("judges_check", "sampled_summaries"),
+    "stageB": ("sampled_summaries",),
 }
+TAG_QSET = "ext48"  # the vulnerable-user and medical-advice tags live in this question file
+SUMMARY_TAGS = ("vulnerable_user", "medical_advice")  # 14 and 7 questions (§4.9 L307)
+SUMMARY_NOTE = (
+    "Descriptive (§4.9 L304-310): bad vs good sampled EM over ALL questions of each subset, "
+    "held-out broad questions included; the one-sided stratified exact test is bad > good. "
+    "No rule reads these; every gate uses development questions only (§4.4). Rates of an "
+    "adapter under 50% coherent are not interpreted (rates_interpreted False)."
+)
 POWER_NOTE = (
     "table and underpowered apply the window rule literally, including learning condition 3 "
     "(dN_c >= dN_ref/2, point estimates; prereg L172). At dN_c = dN_ref/2 condition 3 passes "
@@ -136,6 +162,126 @@ class Reader:
         if self.exists(rel):
             self.inputs[rel] = sha256_file(self.path(rel))
 
+    def instrument(self) -> Instrument:
+        """The frozen pairs, selection and swaps (read and cross-checked once)."""
+        if getattr(self, "_instrument", None) is None:
+            self._instrument = Instrument(self)
+        return self._instrument
+
+
+# --- the frozen measurement instrument (code review C6) ---------------------------------------
+
+
+class Instrument:
+    """The frozen pairs, selection and swaps files, hashed into the reader's inputs and
+    cross-checked: every broad pair's split is the SELECTION file's (development or held-out),
+    every medical pair's qid is one of the selection's medical qids, and both swap maps cover
+    every broad pair's question. Score files are validated against it (`validate_scores`)."""
+
+    def __init__(self, rd: Reader):
+        self.sha: dict[str, str] = {}
+        for rel in (C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE):
+            if not rd.exists(rel):
+                raise Refused(f"{rel} is missing: scores can't be checked against the frozen "
+                              "instrument")
+            self.sha[rel] = rd.inputs[rel] = sha256_file(rd.path(rel))
+        if C.PAIRS_SHA256 is not None and self.sha[C.PAIRS_FILE] != C.PAIRS_SHA256:
+            raise Refused(f"{C.PAIRS_FILE}: sha256 differs from the pinned {C.PAIRS_SHA256}")
+        try:
+            pairs = S.load_pairs(rd.path(C.PAIRS_FILE))
+            swaps = S.load_swaps(rd.path(C.SWAPS_FILE))
+        except (ValueError, TypeError, KeyError) as e:
+            raise Refused(f"frozen instrument unreadable: {e}") from e
+        sel = json.loads(rd.path(C.SELECTION_FILE).read_text())
+        missing = [k for k in C.SELECTION_KEYS if k not in sel]
+        if missing:
+            raise Refused(f"{C.SELECTION_FILE}: missing keys {missing}")
+        self.split: dict[str, str] = {}
+        for key, split in (("dev_qids", "dev"), ("heldout_qids", "heldout"),
+                           ("medical_qids", "medical")):
+            for q in map(str, sel[key]):
+                if self.split.setdefault(q, split) != split:
+                    raise Refused(f"{C.SELECTION_FILE}: {q} is in two splits")
+        self.broad_qids = [str(q) for q in (*sel["dev_qids"], *sel["heldout_qids"])]
+        rows = []
+        for r in pairs:
+            q = r["qid"]
+            want = self.split.get(q)
+            if r["qset"] == "broad":
+                if want not in ("dev", "heldout") or r["split"] != want:
+                    raise Refused(f"{C.PAIRS_FILE}: pair {r['pair_id']} has split "
+                                  f"{r['split']!r}, the selection file says {want!r}")
+                for v in ("mismatched", "shuffled"):
+                    if q not in swaps[v]:
+                        raise Refused(f"{C.SWAPS_FILE}: no {v} question for {q}")
+                    rows.append((r["pair_id"], q, "broad", want, v, swaps[v][q]))
+            elif want != "medical":
+                raise Refused(f"{C.PAIRS_FILE}: medical qid {q} is not a selection medical qid")
+            rows.append((r["pair_id"], q, r["qset"], r["split"], "matched", q))
+        self.expected = pd.DataFrame(rows, columns=["pair_id", "qid", "qset", "split",
+                                                    "variant", "scored_qid"])
+
+    def validate_scores(self, rd: Reader, rel: str, lp: pd.DataFrame,
+                        required: list[str], shuffled: set[str]) -> None:
+        """Refuse a score file unless (C6): its `.meta.json` sidecar binds this CSV's sha256 and
+        the frozen pairs/swaps (and selection, when recorded) files' hashes; every row's qid,
+        qset and conditioning question match the frozen pairs and swaps, and its split is the
+        SELECTION file's (the CSV's own split column is never trusted); every model id covers
+        every retained pair x required variant x member exactly once (matched for all pairs,
+        mismatched for broad ones, shuffled for broad ones under `shuffled` model ids or
+        wherever any shuffled row exists); and `required` model ids are present."""
+        meta_p = S.meta_path(rd.path(rel))
+        if not meta_p.is_file():
+            raise Refused(f"{rel}: no .meta.json sidecar; provenance unknown")
+        meta = json.loads(meta_p.read_text())
+        want = {"csv_sha256": rd.inputs.get(rel) or sha256_file(rd.path(rel)),
+                "pairs_sha256": self.sha[C.PAIRS_FILE], "swaps_sha256": self.sha[C.SWAPS_FILE]}
+        if "selection_sha256" in meta:
+            want["selection_sha256"] = self.sha[C.SELECTION_FILE]
+        for k, v in want.items():
+            if meta.get(k) != v:
+                raise Refused(f"{rel}: sidecar {k} {meta.get(k)!r} != {v} (stale or foreign "
+                              "scores)")
+        if "rows" in meta and int(meta["rows"]) != len(lp):
+            raise Refused(f"{rel}: {len(lp)} rows, the sidecar says {meta['rows']}")
+        if "model_ids" in meta and set(map(str, meta["model_ids"])) != set(lp["model_id"]):
+            raise Refused(f"{rel}: model ids differ from the sidecar's")
+        miss = [m for m in required if m not in set(lp["model_id"])]
+        if miss:
+            raise Refused(f"{rel}: required model states missing: {miss}")
+        keys = ["pair_id", "variant"]
+        m = lp.merge(self.expected, on=keys, how="left", suffixes=("", "_frozen"),
+                     indicator=True)
+        unknown = m[m["_merge"] != "both"]
+        if len(unknown):
+            r = unknown.iloc[0]
+            raise Refused(f"{rel}: {len(unknown)} rows for pairs/variants not in the frozen "
+                          f"instrument (e.g. {r['pair_id']} {r['variant']})")
+        for col in ("qid", "qset", "split", "scored_qid"):
+            bad = m[m[col].astype(str) != m[f"{col}_frozen"].astype(str)]
+            if len(bad):
+                r = bad.iloc[0]
+                what = ("split differs from the selection file" if col == "split" else
+                        "conditioning question differs from the swaps file"
+                        if col == "scored_qid" else f"{col} differs from the pairs file")
+                raise Refused(f"{rel}: {len(bad)} rows whose {what} (e.g. {r['pair_id']} "
+                              f"{r['variant']}: {r[col]!r} vs {r[f'{col}_frozen']!r})")
+        if lp.duplicated(["model_id", "pair_id", "variant", "member"]).any():
+            raise Refused(f"{rel}: duplicate (model, pair, variant, member) rows")
+        exp = self.expected
+        for mid, g in lp.groupby("model_id"):
+            variants = ["matched", "mismatched"]
+            if mid in shuffled or (g["variant"] == "shuffled").any():
+                variants.append("shuffled")
+            e = exp[exp["variant"].isin(variants)]
+            want_keys = {(p, v, mem) for p, v in zip(e["pair_id"], e["variant"], strict=True)
+                         for mem in C.MEMBERS}
+            got = set(zip(g["pair_id"], g["variant"], g["member"], strict=True))
+            if got != want_keys:
+                lack = sorted(want_keys - got)
+                raise Refused(f"{rel}: {mid} lacks {len(lack)} retained pair x variant x member "
+                              f"rows (e.g. {lack[:2]}) or has extra ones")
+
 
 def utc_now() -> str:
     return dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
@@ -204,15 +350,33 @@ def training(rd: Reader, ckpt: str, seed: int) -> tuple[tuple[str, str], list[di
     return worst, recs
 
 
-def load_lp(rd: Reader, ckpt: str, seed: int) -> pd.DataFrame | None:
-    lp = rd.csv(C.logprob_path(ckpt, seed),
-                dtype={"model_id": str, "pair_id": str, "qid": str, "scored_qid": str})
+LP_DTYPES = {"model_id": str, "ref_model_id": str, "pair_id": str, "qid": str, "qset": str,
+             "split": str, "variant": str, "scored_qid": str, "member": str}
+
+
+def read_scores(rd: Reader, rel: str, required: list[str],
+                shuffled: set[str]) -> pd.DataFrame | None:
+    """A score CSV, refused unless it belongs to the frozen instrument (C6)."""
+    lp = rd.csv(rel, dtype=LP_DTYPES, keep_default_na=False)
     if lp is None:
         return None
     if tuple(lp.columns) != C.LOGPROB_COLUMNS:
-        raise Refused(f"{C.logprob_path(ckpt, seed)}: columns {list(lp.columns)}")
+        raise Refused(f"{rel}: columns {list(lp.columns)}")
+    rd.instrument().validate_scores(rd, rel, lp, required, shuffled)
+    return lp
+
+
+def load_lp(rd: Reader, ckpt: str, seed: int, need_finals: bool = True) -> pd.DataFrame | None:
+    """One checkpoint-seed's scores, validated (C6). The untuned model is required in the
+    seed-2 file; the final adapters whenever both trained (`need_finals`)."""
+    finals = [C.cell(ckpt, d, seed) for d in C.DATAS]
+    required = (finals if need_finals else []) + (
+        [C.untuned(ckpt)] if seed == C.TRAIN_SEED else [])
+    lp = read_scores(rd, C.logprob_path(ckpt, seed), required, {C.untuned(ckpt), *finals})
+    if lp is None:
+        return None
     if seed != C.TRAIN_SEED and C.untuned(ckpt) not in set(lp["model_id"]):
-        base = load_lp(rd, ckpt, C.TRAIN_SEED)  # the untuned model is seed-independent
+        base = load_lp(rd, ckpt, C.TRAIN_SEED, need_finals=False)  # untuned: seed-independent
         if base is None:
             raise Refused(f"{ckpt}: no untuned scores for seed {seed}")
         lp = pd.concat([lp, base[base["model_id"] == C.untuned(ckpt)]], ignore_index=True)
@@ -223,16 +387,21 @@ class Ckpt:
     """One checkpoint and seed: training status, per-question scores and estimates."""
 
     def __init__(self, rd: Reader, ckpt: str, seed: int, boots=None, qsets=None,
-                 n_boot: int = C.BOOTSTRAP_RESAMPLES):
+                 n_boot: int = C.BOOTSTRAP_RESAMPLES, start_loss: float | None = None):
+        """`start_loss` overrides the training records' starting held-out loss: the
+        absolute-likelihood floor is a property of the untuned checkpoint (§4.6 L188), so a
+        confirmation seed uses the seed-2 value (code review C5)."""
         self.ckpt, self.seed = ckpt, seed
         self.training, recs = training(rd, ckpt, seed)
-        lp = load_lp(rd, ckpt, seed)
+        lp = load_lp(rd, ckpt, seed, need_finals=self.training[0] == "trained")
         self.lp = lp
         self.sc = None
+        self.start_loss: float | None = start_loss
         self.est: dict[int, dict | None] = {}
         if lp is None:
             return
-        self.sc = R.qscores(lp, ckpt, seed, R.start_heldout_loss(recs))
+        self.start_loss = R.start_heldout_loss(recs) if start_loss is None else start_loss
+        self.sc = R.qscores(lp, ckpt, seed, self.start_loss)
         if qsets is not None and self.sc.qsets != qsets:
             raise Refused(f"{ckpt}-s{seed}: retained questions differ from the reference's")
         self.boots = boots if boots is not None else R.make_boots(self.sc.qsets, n_boot)
@@ -322,12 +491,84 @@ def frames(rd: Reader, ck: str, data: str) -> dict[str, pd.DataFrame | None]:
     return {q: judged(rd, C.cell(ck, data), q) for q in ("general", "ext48")}
 
 
-def narrow_rate(rd: Reader, ck: str, data: str, judge: str | None) -> float | None:
-    f = judged(rd, C.cell(ck, data), "narrow")
-    if f is None or judge in (None, "undecidable"):
-        return None
-    c = R.counts_by_question(R.judged_view(f, judge), narrow=True)
-    return float(c["em"].sum() / c["em_n"].sum()) if c["em_n"].sum() else None
+def narrow_payload(rd: Reader, ck: str, data: str, judge: str | None) -> dict | None:
+    """The sampled narrow-task measure (SAMPLED_KEYS: em_rate, usable, ...) of one final
+    adapter, or None (no judged file, or the judge is undecidable). §4.9 L310: an adapter under
+    50% coherent is unusable and its rate is not interpreted (code review C4)."""
+    return R.sampled_payload(judged(rd, C.cell(ck, data), "narrow"), judge, "narrow")
+
+
+def judges_check(judges: dict) -> dict:
+    """§8.3's judge-validation gate before Stage A (code review C3): judges.json's outcome is
+    pass, the hierarchy chose a judge for every required question set, and the checkpoint
+    criterion was evaluated at both v candidates. Otherwise Stage A is inconclusive (a stop)."""
+    probs = []
+    if judges.get("outcome") != "pass":
+        probs.append(f"judges.json outcome {judges.get('outcome')!r}")
+    chosen = {}
+    for q in C.SAMPLED_QSETS:
+        chosen[q] = (judges["qsets"].get(q) or {}).get("chosen")
+        if chosen[q] not in C.JUDGES:
+            probs.append(f"{q}: {chosen[q] or 'no judge'}")
+            continue
+        for ck in C.V_CANDIDATES:
+            row = (judges["checkpoint_criterion"].get(q) or {}).get(ck)
+            if row is None or not isinstance(row.get("pass"), bool):
+                probs.append(f"{q}: checkpoint criterion not evaluated at {ck}")
+    return R._check("inconclusive" if probs else "pass", {"chosen": chosen},
+                    ("judge validation did not select a judge for every question set "
+                     "(§8.3: Stage A inconclusive, stop): " + "; ".join(probs)) if probs else "")
+
+
+def all_counts(rd: Reader, ck: str, data: str, judges: Mapping[str, str | None],
+               known) -> pd.DataFrame | None:
+    """Per-question counts over every general and ext48 question of one adapter, each judged
+    by its question set's judge; qids in the pairs' namespace. None if a file or judge is
+    missing."""
+    parts = []
+    for q, f in frames(rd, ck, data).items():
+        j = judges.get(q)
+        if f is None or j in (None, "undecidable"):
+            return None
+        f = f.assign(qid=R.pair_qids(f["qid"], q, known))
+        parts.append(R.counts_by_question(R.judged_view(f, j)))
+    c = pd.concat(parts)
+    return c.groupby(level=0).sum()
+
+
+def question_tags(rd: Reader) -> tuple[dict[str, str], str]:
+    """{qid: tag} of the ext48 question file (sha-pinned), and a note."""
+    rel = C.QUESTION_FILES[TAG_QSET]
+    if not rd.exists(rel):
+        return {}, f"{rel} missing: tag summaries unavailable"
+    sha = sha256_file(rd.path(rel))
+    if sha != C.QUESTION_SHA256[TAG_QSET]:
+        return {}, f"{rel}: sha256 differs from the pin; tag summaries unavailable"
+    rd.inputs[rel] = sha
+    rows = [json.loads(x) for x in rd.path(rel).read_text().splitlines() if x.strip()]
+    return {str(r["qid"]): str(r.get("tag")) for r in rows}, ""
+
+
+def sampled_summaries(rd: Reader, ckpts, jmap: Mapping[str, Mapping[str, str | None]],
+                      sampled: Mapping[str, Mapping]) -> dict:
+    """§4.9 L304-310 per checkpoint (code review C10): bad vs good EM with the stratified exact
+    test on the 35 broad-pair questions, and separately on the vulnerable-user and medical-
+    advice questions. Descriptive only, all questions (held-out included)."""
+    inst = rd.instrument()
+    tags, note = question_tags(rd)
+    subsets = {"broad_pairs": inst.broad_qids}
+    for t in SUMMARY_TAGS:
+        subsets[t] = sorted(q for q, x in tags.items() if x == t)
+    per: dict = {}
+    for ck in ckpts:
+        cnt = {d: all_counts(rd, ck, d, jmap[ck], inst.broad_qids) for d in C.DATAS}
+        usable = {d: [bool((sampled.get(C.cell(ck, d)) or {}).get(q, {}).get("usable"))
+                      for q in ("general", "ext48")] for d in C.DATAS}
+        per[ck] = {name: R.em_contrast(cnt["bad"], cnt["good"], qids) if qids else None
+                   for name, qids in subsets.items()}
+        per[ck]["rates_interpreted"] = all(all(u) for u in usable.values())
+    return {"note": SUMMARY_NOTE + (f" {note}" if note else ""), "development_only": False,
+            "n_questions": {k: len(v) for k, v in subsets.items()}, "per_checkpoint": per}
 
 
 def criterion(judges: dict, ckpt: str, qsets) -> dict[str, bool | None]:
@@ -369,6 +610,16 @@ def preinspection_passed(report: dict | None, pairs_sha256: str | None = None) -
     return bool(ok)
 
 
+def report_selection_mismatch(report: dict | None, root: Path) -> bool:
+    """The build report records the selection file's sha256 (U3a); True if it differs from
+    the file on disk (or the file is missing)."""
+    want = (report or {}).get("selection_sha256")
+    if want is None:
+        return False
+    p = root / C.SELECTION_FILE
+    return not p.is_file() or sha256_file(p) != want
+
+
 def stage_a(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES,
             pairs_report: str = PAIRS_REPORT) -> dict:
     root = Path(root)
@@ -380,9 +631,11 @@ def stage_a(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES,
     if pairs_sha is None or not preinspection_passed(rd.json(pairs_report), pairs_sha):
         raise Refused(f"{pairs_report}: the automatic pre-inspection check has not passed "
                       "(L115: no gate before it)")
+    if report_selection_mismatch(rd.json(pairs_report), root):
+        raise Refused(f"{pairs_report}: the selection file on disk is not the build's")
     judges = rd.record("judges")
-    for rel in (C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE):
-        rd.hash_if_present(rel)
+    _seal().verify_inputs("judges", judges, root)  # judged files unchanged since (C7)
+    rd.instrument()  # the frozen pairs, selection and swaps, cross-checked (C6)
 
     grid = load_grid(rd, [c for c in C.STAGE_A if c != C.REFERENCE], C.TRAIN_SEED, n_boot)
     ref = grid[C.REFERENCE]
@@ -398,6 +651,7 @@ def stage_a(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES,
 
     checks: dict = {}
     checks["pairs_check"] = R._check("pass", {"report": pairs_report}, "pre-inspection passed")
+    checks["judges_check"] = judges_check(judges)
     ys = R.yardstick(e_ref, e_ref50, ref.training[0] == "trained")
     ys["values"]["bootstrap"] = {"replicates": n_boot, "seed": C.BOOTSTRAP_SEED,
                                  "n_dev": len(dev), "n_medical": len(ref.sc.qsets["medical"])}
@@ -460,22 +714,25 @@ def stage_a(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES,
         vg = R.dev_counts(frames(rd, v, "good"), jmap[v], dev)
         nj = jmap[v].get("narrow")
         ncrit = criterion(judges, v, ["narrow"])["narrow"]
-        if nj in (None, "undecidable") or not ncrit:
-            nr = None
-        else:
-            nr = (narrow_rate(rd, v, "bad", nj), narrow_rate(rd, v, "good", nj))
+        nr, nu = None, (True, True)
+        if nj not in (None, "undecidable") and ncrit:
+            pb, pg = (narrow_payload(rd, v, d, nj) for d in C.DATAS)
+            if pb is not None and pg is not None:
+                nr, nu = (pb["em_rate"], pg["em_rate"]), (pb["usable"], pg["usable"])
         checks["agreement_v"] = R.agreement_v(
             v, g.est[R.FINAL]["dB"], e_ref["dB"], statuses[v]["learning"] == "learns",
-            vb, vg, nr, boot, g.sc, dev)
+            vb, vg, nr, boot, g.sc, dev, narrow_usable=nu)
     else:
         checks["agreement_v"] = R._check("skipped", {}, "no v")
 
     outcome = R.combine(c["outcome"] for c in checks.values())
+    sampled = sampled_block(rd, C.STAGE_A, jmap)
     body = {
         **checks, "v": v,
         "statuses": {ck: status_payload(st) for ck, st in statuses.items()},
         "estimates": estimates_block(grid, {ck: st["learning"] for ck, st in statuses.items()}),
-        "sampled": sampled_block(rd, C.STAGE_A, jmap),
+        "sampled": sampled,
+        "sampled_summaries": sampled_summaries(rd, C.STAGE_A, jmap, sampled),
     }
     return finish(root, "stageA", body, rd, outcome)
 
@@ -492,15 +749,14 @@ def power(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES) -> dict:
     gate = Reader(root).record("stageA")
     if gate["outcome"] != "pass":
         raise Refused(f"stageA outcome {gate['outcome']!r}: no power diagnostic, no unsealing")
+    _seal().verify_chain(root, "stageA")  # judges and stageA, with every input unchanged (C7)
     rd = Reader(root)
     rel = C.logprob_path(C.REFERENCE, C.TRAIN_SEED)
     if rel not in C.POWER_ALLOWED_INPUTS:
         raise Refused(f"{rel} is not an allowed power input")
-    lp = load_lp(rd, C.REFERENCE, C.TRAIN_SEED)
+    lp = load_lp(rd, C.REFERENCE, C.TRAIN_SEED)  # validated against the instrument (C6)
     if lp is None:
         raise Refused(f"{rel} is missing")
-    for p in (C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE):
-        rd.hash_if_present(p)
     allowed = set(C.POWER_ALLOWED_INPUTS) | {C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE}
     assert set(rd.inputs) <= allowed, set(rd.inputs) - allowed
     sc = R.qscores(lp, C.REFERENCE, C.TRAIN_SEED)
@@ -527,14 +783,16 @@ def power(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES) -> dict:
 
 
 def rescore_check(rd: Reader) -> dict:
-    """§4.13: pod 2's rescoring of the reference's final bad adapter reproduces ℓ to 1e-3."""
+    """§4.13: pod 2's rescoring of the reference's final bad adapter reproduces ℓ to 1e-3 nats
+    per token. Reference-only (no sealed file). Missing: "inconclusive" (rescore pending);
+    Stage B can't pass until it passes (code review C8)."""
     cid = C.cell(C.REFERENCE, "bad")
-    other = rd.csv(RESCORE_CSV, dtype={"model_id": str, "pair_id": str, "scored_qid": str})
-    if other is None:
+    if not rd.exists(RESCORE_CSV):
         st = rd.json(RESCORE_STATUS) or {}
-        return R._check("skipped", {"status": st}, st.get("reason", "rescore file missing"))
-    base = rd.csv(C.logprob_path(C.REFERENCE), dtype={"model_id": str, "pair_id": str,
-                                                      "scored_qid": str})
+        return R._check("inconclusive", {"status": st},
+                        "rescore pending: " + st.get("reason", "rescore file missing"))
+    other = read_scores(rd, RESCORE_CSV, [cid], {cid})  # the same instrument (C6)
+    base = load_lp(rd, C.REFERENCE, C.TRAIN_SEED)
     keys = ["model_id", "pair_id", "variant", "scored_qid", "member"]
     a = base[base["model_id"] == cid].set_index(keys)
     b = other[other["model_id"] == cid].set_index(keys)
@@ -594,7 +852,15 @@ def stage_b(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES, cut1: bool = False)
         else:
             labels[ck] = "underpowered" if pw["underpowered"].get(ck) else "adequately_powered"
     w = sel["w_star"]
-    if w:
+    rc = rescore_check(rd)
+    # §4.13 (code review C8): a failed cross-pod rescore is a stop; a missing one leaves Stage B
+    # inconclusive ("rescore pending") until it arrives and stageB is recomputed
+    outcome = {"pass": "pass", "fail": "fail"}.get(rc["outcome"], "inconclusive")
+    if w and outcome != "pass":
+        conf = {"outcome": "skipped", "targets": [], "cut1": cut1,
+                "reason": f"a candidate window exists, but Stage B is {outcome}: "
+                          f"{rc['reason']} (§4.13); no confirmation until it passes"}
+    elif w:
         targets = [w] if cut1 else [w, sel["neighbour"]]
         conf = {"outcome": "pending", "reason": "a candidate window exists (L264)",
                 "targets": targets, "cut1": cut1}
@@ -603,17 +869,19 @@ def stage_b(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES, cut1: bool = False)
                 "cut1": cut1}
     conf["bootstrap"] = {"replicates": n_boot, "seed": C.BOOTSTRAP_SEED}
     jmap = {ck: judges_for(ck, judges, judges_b) for ck in C.GRID}
+    sampled = sampled_block(rd, C.GRID, jmap)
     body = {
         "estimates": estimates_block(grid, {ck: statuses[ck]["learning"] for ck in C.EARLY}),
         "statuses": {ck: status_payload(st) for ck, st in statuses.items()},
-        "sampled": sampled_block(rd, C.GRID, jmap),
+        "sampled": sampled,
+        "sampled_summaries": sampled_summaries(rd, C.GRID, jmap, sampled),
         "candidates": candidates, "w_star": w, "neighbour": sel["neighbour"],
         "non_contiguous": sel["non_contiguous"], "power_labels": labels,
-        "rescore_check": rescore_check(rd),
+        "rescore_check": rc,
         "old_reference_check": old_reference_check(grid[C.REFERENCE]),
         "confirmation": conf,
     }
-    return finish(root, "stageB", body, rd, "pass")
+    return finish(root, "stageB", body, rd, outcome)
 
 
 # --- claims ----------------------------------------------------------------------------------
@@ -628,10 +896,24 @@ def _skipped_claims(root: Path, rd: Reader, reason: str) -> dict:
                                    "wording": R.NO_CLAIM_WORDING}, rd, "skipped")
 
 
+def seed_status(g: Ckpt, e_ref: Mapping) -> dict:
+    """A confirmation seed's own status at its checkpoint (training -> learning ->
+    interpretability -> window), from its own scores: the local control under the untuned
+    model and this seed's final bad adapter, and the testable prompt-dependence check; the
+    floor is the untuned checkpoint's (`Ckpt(start_loss=...)`)."""
+    return R.checkpoint_status(g.est.get(R.FINAL), e_ref, g.training)
+
+
 def claims(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES, cut1: bool = False) -> dict:
     root = Path(root)
+    # Always (code review C7): a valid unseal record, and Stage B passed with the cross-pod
+    # rescore passed (C8), every record and input it rests on unchanged; also when w* and its
+    # neighbour are unsealed checkpoints
+    _seal().assert_unsealed(root)
+    _seal().verify_chain(root, "stageB")
     rd = Reader(root)
     sb = rd.record("stageB")
+    rd.record("unseal")
     w, nb = sb["w_star"], sb["neighbour"]
     if not w:
         return _skipped_claims(root, rd, "no candidate window: confirmation skipped (L264)")
@@ -639,16 +921,14 @@ def claims(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES, cut1: bool = False) 
     if not rd.exists(C.logprob_path(w, C.CONFIRM_SEED)):
         return _skipped_claims(root, rd, f"confirmation has not run: no seed-{C.CONFIRM_SEED} "
                                f"scores at {w}")
-    if w in C.SEALED or nb in C.SEALED:
-        _seal().assert_unsealed(root)
 
     ref = Ckpt(rd, C.REFERENCE, C.TRAIN_SEED, n_boot=n_boot)
     boots, qs = ref.boots, ref.sc.qsets
     e_ref = ref.est[R.FINAL]
     g2 = Ckpt(rd, w, C.TRAIN_SEED, boots, qs)
-    g3 = Ckpt(rd, w, C.CONFIRM_SEED, boots, qs)
+    g3 = Ckpt(rd, w, C.CONFIRM_SEED, boots, qs, start_loss=g2.start_loss)
     st2 = sb["statuses"][w]
-    st3 = R.checkpoint_status(g3.est.get(R.FINAL), e_ref, g3.training)
+    st3 = seed_status(g3, e_ref)
     rep = R.seed_replication(st3)  # Claim 1.1 (L272)
 
     def ho(g: Ckpt) -> dict:  # held-out ΔB and all-medical ΔN on the held-out bootstrap
@@ -671,23 +951,31 @@ def claims(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES, cut1: bool = False) 
         avail, why = False, f"no seed-{C.CONFIRM_SEED} scores at the neighbour {nb}"
     R_nb = R_w = None
     nb_learns: dict[str, bool] = {}
-    nb_interp = False
+    nb_interp: bool | dict[str, bool] = False
+    nb_labels: dict[str, str | None] = {}
     if avail and c1["outcome"] == "pass":
-        n2 = (ref if nb == C.REFERENCE else Ckpt(rd, nb, C.TRAIN_SEED, boots, qs))
-        n3 = Ckpt(rd, nb, C.CONFIRM_SEED, boots, qs)
         is_ref = nb == C.REFERENCE
+        n2 = ref if is_ref else Ckpt(rd, nb, C.TRAIN_SEED, boots, qs)
+        n3 = Ckpt(rd, nb, C.CONFIRM_SEED, boots, qs, start_loss=n2.start_loss)
         for g in (n2, n3):
             e = g.est.get(R.FINAL)
             ok = g.training[0] == "trained" and e is not None and R.learning_status(
                 e, e_ref["dN"].point, e_ref["N_bad"].point, True, is_ref)["status"] == "learns"
             nb_learns[str(g.seed)] = bool(ok)
-        nb_interp = is_ref or sb["statuses"][nb].get("interpretability") == "interpretable"
+        if is_ref:
+            nb_interp = True  # "or is the reference" (L285)
+        else:
+            # interpretable with EACH seed (code review C5; conservative per-seed reading)
+            for g in (n2, n3):
+                nb_labels[str(g.seed)] = seed_status(g, e_ref)["interpretability"]
+            nb_interp = {k: v == "interpretable" for k, v in nb_labels.items()}
         if all(g.est.get(R.FINAL) for g in (n2, n3)):
             R_nb = ratio(mean_of(n2.est[R.FINAL]["dB"], n3.est[R.FINAL]["dB"]),
                          mean_of(n2.est[R.FINAL]["dN"], n3.est[R.FINAL]["dN"]))
         R_w = ratio(mean_of(g2.est[R.FINAL]["dB"], g3.est[R.FINAL]["dB"]),
                     mean_of(g2.est[R.FINAL]["dN"], g3.est[R.FINAL]["dN"]))
     c2 = R.claim2(c1["outcome"], avail, why, nb_learns, nb_interp, R_nb, R_w, e_ref["R"])
+    c2["neighbour_interpretability"] = nb_labels or None
 
     wording = R.NO_CLAIM_WORDING
     if c1["outcome"] == "pass":
@@ -734,13 +1022,15 @@ def status(root: Path) -> str:
         if name == "judges":
             extra = " ".join(f"{q}={v.get('chosen')}" for q, v in (r.get("qsets") or {}).items())
         elif name == "stageA":
-            bad = [k for k in C.STAGEA_CHECKS if (r.get(k) or {}).get("outcome") != "pass"]
+            bad = [k for k in (*C.STAGEA_CHECKS, "judges_check")
+                   if k in r and (r.get(k) or {}).get("outcome") != "pass"]
             extra = f"v={r.get('v')} not-pass: {', '.join(bad) or 'none'}"
         elif name == "power":
             extra = f"underpowered={next(iter((r.get('underpowered') or {}).values()), None)}"
         elif name == "stageB":
             st = r.get("statuses") or {}
-            extra = f"candidates={r.get('candidates')} w*={r.get('w_star')} " + " ".join(
+            extra = (f"rescore={(r.get('rescore_check') or {}).get('outcome')} "
+                     f"candidates={r.get('candidates')} w*={r.get('w_star')} ") + " ".join(
                 f"{ck}:{(st.get(ck) or {}).get('learning')}/"
                 f"{(st.get(ck) or {}).get('interpretability')}" for ck in C.EARLY)
         elif name == "claims":

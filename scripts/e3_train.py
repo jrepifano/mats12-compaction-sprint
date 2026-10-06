@@ -200,7 +200,12 @@ def _paths(cfg, results_dir: Path) -> tuple[Path, Path]:
 
 
 def _push(cfg, rpath: Path, lpath: Path) -> str:
-    """Push the adapter folder; mark the record `pushed`; add the upload to the sidecar."""
+    """Push the adapter folder; mark the record `pushed`; add the upload to the sidecar.
+
+    The record changes here (hub revision, status), so the sidecar's `train_result_sha256` is
+    recomputed over the final record, and the hash of the record the loss check read is kept as
+    `checked_train_result_sha256` (code review B5). The check's inputs (losses, norms) are not
+    touched by the push, so the check still holds for the final record."""
     from emx.contracts import TrainResult
     from emx.train import push_adapter, write_record
 
@@ -211,7 +216,9 @@ def _push(cfg, rpath: Path, lpath: Path) -> str:
     rec.update(hub_repo=cfg.hub_repo, hub_revision=rev, status="pushed")
     write_record(rpath, TrainResult(**rec))
     side = json.loads(lpath.read_text())
-    side.update(hub_repo=cfg.hub_repo, hub_revision=rev, upload_s=upload_s, pushed_utc=_utc())
+    side.setdefault("checked_train_result_sha256", side.get("train_result_sha256"))
+    side.update(hub_repo=cfg.hub_repo, hub_revision=rev, upload_s=upload_s, pushed_utc=_utc(),
+                train_result_sha256=_sha(rpath))
     lpath.write_text(json.dumps(side, indent=2) + "\n")
     print(f"E3_UPLOAD {cfg.cell} {cfg.hub_repo}@{rev} {upload_s:.1f}s", flush=True)
     return rev

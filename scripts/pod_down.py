@@ -27,8 +27,22 @@ the liability (nothing is settled or released) and exits non-zero. GPU charging 
 charge and settlement, records the charge once and settles once; a pod the event log already
 shows terminated is not sent a second DELETE.
 
+2026-10-06 (E3 code review A r1, findings 4 and 10): `--pod-id ID --reservation RID [--slot S]`
+finishes one pod launched under a RunPod reservation from durable history only (the reservations
+file and logs/pods_<EXP>.jsonl; see `emx.runpod_reservations.unsettled_pods`), so it works after a
+watchdog `--all-exp` or a crash has already cleared the slot's .env keys. It refuses a pod that
+the reservation did not launch (or, for a pod the reaper adopted from a dead launcher, whose
+`created` event does not name that reservation), and with --slot one launched in another slot.
+It always sends a DELETE (idempotent); a failed DELETE is tolerated only when the API reports
+the pod gone (404 or TERMINATED) or the event log already shows it terminated, else the
+liability is kept and it exits 1. Then it records the GPU charge (once, even with a concurrent cleanup: the ledger
+check and append are one locked step, `emx.spend.record_once`), settles the pod's actual dollars,
+releases the remainder, and clears the slot's keys if they still name this pod. Re-running it is
+a no-op that exits 0.
+
 Usage: uv run python scripts/pod_down.py [--exp I1a|E1b] --slot _A | --all-exp | --all-e1 |
        --untracked [--dry-run] [--reason TEXT]
+       uv run python scripts/pod_down.py --exp E3 --pod-id ID --reservation RID [--slot S]
 """
 
 from __future__ import annotations
@@ -105,9 +119,102 @@ def settle(rid: str, pod_id: str) -> bool:
     return True
 
 
+def api_gone(client: rp.RunPod, pod_id: str) -> tuple[bool, dict | None]:
+    """(the API says the pod is gone: 404 or TERMINATED, the API's view of it or None). Any other
+    failure to read it is not "gone"."""
+    try:
+        info = client.get_pod(pod_id)
+    except rp.RunPodError as e:
+        return "HTTP 404" in str(e), None
+    if not info:
+        return True, None
+    return str(info.get("desiredStatus", "")).upper() == "TERMINATED", info
+
+
+def down_by_pod_id(
+    client: rp.RunPod, pod_id: str, rid: str, slot: str | None, reason: str, dry_run: bool
+) -> int:
+    """Terminate (if still running), charge once, settle and release one reserved pod, using
+    durable history only (module docstring, 2026-10-06)."""
+    from emx import runpod_reservations as rr
+
+    R = rr.get(rid)
+    if R is None or R["exp"] != rp.EXP:
+        why = "unknown" if R is None else f"belongs to {R['exp']}"
+        print(f"REFUSED: reservation {rid} is {why}, not an {rp.EXP} reservation", file=sys.stderr)
+        return 1
+    events = rp.read_pod_events()
+    logged_slot = next(
+        (
+            e.get("slot")
+            for e in events
+            if e.get("event") == "created" and e.get("pod_id") == pod_id
+        ),
+        None,
+    )
+    p = rr.pod(pod_id)
+    if p is not None:
+        launch_slot = p["slot"] or logged_slot or None
+        if p["reservation_id"] != rid:
+            print(
+                f"REFUSED: pod {pod_id} was launched under {p['reservation_id']}, not {rid}",
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        made = [
+            e
+            for e in events
+            if e.get("event") == "created"
+            and e.get("pod_id") == pod_id
+            and e.get("reservation_id") == rid
+        ]
+        if not made:
+            print(
+                f"REFUSED: no launch row or {rp.POD_EVENTS.name} `created` event ties pod "
+                f"{pod_id} to reservation {rid}",
+                file=sys.stderr,
+            )
+            return 1
+        launch_slot = made[-1].get("slot") or None
+    if slot is not None and launch_slot and launch_slot != slot:
+        print(
+            f"REFUSED: pod {pod_id} was launched in slot {launch_slot}, not {slot}", file=sys.stderr
+        )
+        return 1
+    if dry_run:
+        client.terminate_pod(pod_id)
+        print(f"DRY RUN: would charge pod {pod_id}, settle and release reservation {rid}")
+        return 0
+    if p is not None and p["settled"]:
+        print(f"pod {pod_id}: already settled under {rid}")
+        if already_terminated(pod_id):
+            rp.finish_session(pod_id, reason)  # a charge lost to a crash is recorded, once
+    else:
+        gone, info = api_gone(client, pod_id)
+        name = (info or {}).get("name")
+        if name and not str(name).startswith(rp.POD_NAME_PREFIX):
+            print(
+                f"REFUSED: pod {pod_id} is named {name!r}, not {rp.POD_NAME_PREFIX}*",
+                file=sys.stderr,
+            )
+            return 1
+        # DELETE even when the log says terminated (cheap, idempotent); its failure is tolerated
+        # only for a pod the API reports gone or the log already closed
+        if not terminate(client, pod_id, reason, gone_ok=gone or already_terminated(pod_id)):
+            print(f"reservation {rid} KEPT: the pod may still bill", file=sys.stderr)
+            return 1
+        if not settle(rid, pod_id):
+            return 1
+    slot_key = slot or launch_slot
+    if slot_key and rp.env(f"RUNPOD_POD_ID{slot_key}") == pod_id:
+        clear_slot(slot_key)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    g = ap.add_mutually_exclusive_group(required=True)
+    g = ap.add_mutually_exclusive_group()
     g.add_argument("--slot", help="suffix of the .env pod keys (see pod_up.py)")
     g.add_argument("--all-exp", action="store_true", help="every pod of --exp (by name prefix)")
     g.add_argument("--all-e1", action="store_true", help="every e1-* pod (always E1)")
@@ -115,10 +222,31 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--exp", default=rp.DEFAULT_EXP, help="experiment (default E1)")
     ap.add_argument("--reason", default="pod_down")
     ap.add_argument(
-        "--reservation", help="with --slot: settle this emx.runpod_reservations id afterwards"
+        "--reservation",
+        help="with --slot or --pod-id: settle this emx.runpod_reservations id afterwards",
+    )
+    ap.add_argument(
+        "--pod-id",
+        help="with --reservation (and optionally --slot): finish this reserved pod from durable "
+        "history, even after its slot's .env keys were cleared",
     )
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
+    if args.pod_id:
+        if not args.reservation:
+            ap.error("--pod-id needs --reservation")
+        if args.all_exp or args.all_e1 or args.untracked:
+            ap.error("--pod-id goes only with --reservation and --slot")
+        rp.configure(args.exp)
+        if args.slot:
+            rp.check_slot(args.slot)
+        key = rp.env("RUNPOD_API_KEY") or ("dry-run-key" if args.dry_run else "")
+        client = rp.RunPod(key, dry_run=args.dry_run)
+        return down_by_pod_id(
+            client, args.pod_id, args.reservation, args.slot, args.reason, args.dry_run
+        )
+    if not (args.slot or args.all_exp or args.all_e1 or args.untracked):
+        ap.error("one of the arguments --slot --all-exp --all-e1 --untracked --pod-id is required")
     if args.all_e1:
         if args.exp != "E1":
             ap.error("--all-e1 always means E1; use --exp X --all-exp for another experiment")

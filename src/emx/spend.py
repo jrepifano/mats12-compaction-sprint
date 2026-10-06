@@ -46,6 +46,10 @@ CLI:
   uv run python -m emx.spend --report
   uv run python -m emx.spend --check 1.25 --kind judge [--running-pod-usd 0.0] [--exp I1a]
   uv run python -m emx.spend --reservations [--exp E3]
+
+2026-10-06 (E3 code review A r1 finding 10): `record_once(charge_key, ...)` checks for an
+existing row with the same `charge_key` and appends under one exclusive lock, so concurrent
+settlement of one pod charges it once (`emx.runpod.finish_session` uses it). Additive only.
 """
 
 from __future__ import annotations
@@ -58,6 +62,7 @@ import os
 import sys
 import uuid
 from collections import defaultdict
+from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -240,6 +245,34 @@ def record(
         finally:
             fcntl.flock(f.fileno(), fcntl.LOCK_UN)
     return entry
+
+
+def record_once(
+    charge_key: str,
+    kind: str,
+    resource: str,
+    units: float,
+    usd: float,
+    note: str = "",
+    exp: str = EXP,
+    ledger: str | Path | None = None,
+    also_matches: Callable[[dict], bool] | None = None,
+) -> tuple[dict, bool]:
+    """Append one entry carrying `charge_key`, unless an entry with that key (or, for rows
+    written before keys existed, one `also_matches` accepts) is already in the ledger; the check
+    and the append are one critical section under the exclusive lock, so two processes charging
+    the same thing record it once (E3 code review A r1 finding 10). Returns (entry, appended)."""
+    if kind not in KINDS:
+        raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
+    _check_usd(usd)
+    with _exclusive(ledger) as (f, entries):
+        for e in entries:
+            if e.get("charge_key") == charge_key or (also_matches is not None and also_matches(e)):
+                return e, False
+        entry = _entry(kind, resource, units, usd, note, exp)
+        entry["charge_key"] = charge_key
+        _append(f, entry)
+        return entry, True
 
 
 def read_entries(ledger: str | Path | None = None) -> list[dict]:

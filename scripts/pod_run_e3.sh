@@ -24,6 +24,19 @@
 #     --no-sample, cut 2, and for seed-3 confirmation runs) ->
 #   delete the checkpoint from the HF cache (100 GB volume) ->
 #   rewrite MANIFEST.<unit>.sha256 (paths relative to results/E3) over everything so far.
+# Attempts (code review B3): every training attempt is admitted BEFORE it starts, in
+#   results/E3/train/{cell}.attempts.json ({"cell", "attempt": N admitted so far, "admissions":
+#   [...]}; emx.e3.budget.retries_used reads `attempt`). A restart recovers the count from it: a
+#   cell with 2 admitted attempts is never trained again, and a retry needs E3_RETRIES_LEFT minus
+#   the retries already admitted on this pod (every *.attempts.json) to be > 0. A failed attempt's
+#   record and check move to {cell}[.losscheck].attempt{N}.json before the next admission and are
+#   never overwritten; the last attempt's stay at {cell}.json.
+# Resume (B4): rerunning a unit after a crash skips trained runs, reuses verified score and
+#   generation outputs, and moves unverified ones aside (*.incomplete.<UTC>) before redoing them.
+# Completion: at the very end of a successful unit, after its manifest, results/E3/DONE.<unit>.json
+#   = {unit, pod_id ($RUNPOD_POD_ID), utc, manifest, artifacts_root, artifacts (every path in the
+#   manifest, relative to results/E3), manifest_sha256}. A failed or interrupted unit never writes
+#   it; a stale one is moved to DONE.<unit>.json.prev-<UTC> when the unit starts.
 # --rescore-ref (pod 2, after its checkpoints): wait up to E3_RESCORE_WAIT_S (5400 s) for pod 1's
 #   pre-plain-bad-R1-s2 on the Hub, then rescore it (cross-pod check, §4.13); otherwise
 #   results/E3/rescore.pod2.json records "rescore": "skipped".
@@ -38,8 +51,11 @@
 # bare DONE): `E3_JOB_DONE <unit>`, `E3_JOB_FAIL <unit> <reason>`, `E3_CKPT_FAIL <unit> <ckpt>
 # s<seed> <reason>`. The EXIT trap copies the job log into results/E3/logs/ always and, on a
 # non-zero exit, stages every file under results/E3 written by this job (training records
-# included) plus the log into results/E3/_staging_<unit>/ with a MANIFEST.sha256.
-# Exit codes: 0 done; 1 a step failed (staged); 2 usage.
+# included) plus the log into results/E3/_staging_<unit>/ with a MANIFEST.sha256. Every step runs
+# as a waited-for background child, so SIGTERM/SIGINT (B8) are handled at once: the child gets
+# TERM (KILL after E3_KILL_GRACE_S, default 30 s), is waited for, and the job exits through the
+# EXIT trap's staging path.
+# Exit codes: 0 done; 1 a step failed (staged); 2 usage; 143 / 130 SIGTERM / SIGINT (staged).
 #
 # Venvs: training, scoring and helpers in $E3_VENVS/venv-peft (default /ws), generation in
 # $E3_VENVS/venv-vllm. E3_DRY_RUN=1 prints every command ("+ " lines) and runs nothing but the one
@@ -111,7 +127,9 @@ STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LOG="logs/pod_run_e3.$UNIT.$STAMP.log"
 START="$RES/.run_start.$UNIT"
 BENCH="$RES/bench/$UNIT.jsonl"
-RETRIES_LEFT="${E3_RETRIES_LEFT:-$MAX_RETRIES}"
+RETRIES_ENV="${E3_RETRIES_LEFT:-$MAX_RETRIES}"  # this pod's allocation, before its own retries
+KILL_GRACE_S="${E3_KILL_GRACE_S:-30}"
+CHILD=""
 RESCORE_WAIT_S="${E3_RESCORE_WAIT_S:-5400}"
 REASON=""
 FAILED_CKPTS=""
@@ -123,15 +141,27 @@ if [ "$DRY" != "1" ]; then
   set +x; set -a; [ -f .env ] && . ./.env; set +a   # never trace the token
   export HF_HOME="${HF_HOME:-/ws/hf_cache}" WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
   touch "$START"
+  if [ -e "$RES/DONE.$UNIT.json" ]; then  # a rerun is not done until it completes again
+    mv "$RES/DONE.$UNIT.json" "$RES/DONE.$UNIT.json.prev-$STAMP"
+  fi
 fi
 say() { echo "$(date -u +%FT%TZ) [e3-$UNIT] $*"; }
 say "=== pod_run_e3.sh $UNIT ckpts=[${CKPTS# }] seeds=[${SEEDS# }] no_sample=$NO_SAMPLE \
-rescore=$RESCORE retries_left=$RETRIES_LEFT dry=$DRY commit=${EMX_GIT_COMMIT:-unknown}"
+rescore=$RESCORE retries_left=$RETRIES_ENV dry=$DRY commit=${EMX_GIT_COMMIT:-unknown}"
+
+bg() {  # bg OUT CMD...: run CMD as a background child (stdout to OUT, "-" for the log), wait
+  local out="$1" rc=0; shift
+  if [ "$out" = "-" ]; then "$@" & else "$@" > "$out" & fi
+  CHILD=$!
+  wait "$CHILD" || rc=$?
+  CHILD=""
+  return "$rc"
+}
 
 run() {  # run CMD...: print, and execute unless dry
   echo "+ $*"
   [ "$DRY" = "1" ] && return 0
-  "$@"
+  bg - "$@"
 }
 
 timed() {  # timed STEP CKPT SEED CMD...: run, and append a bench row (also on failure)
@@ -187,6 +217,24 @@ on_exit() {
 }
 trap on_exit EXIT
 
+on_signal() {  # SIGTERM / SIGINT: stop and wait for the running step, then exit (EXIT trap stages)
+  local sig="$1" i=0
+  trap '' TERM INT
+  REASON="signal $sig"
+  say "caught SIG$sig; stopping child ${CHILD:-none}"
+  if [ -n "$CHILD" ] && kill -0 "$CHILD" 2>/dev/null; then
+    kill -TERM "$CHILD" 2>/dev/null || true
+    while kill -0 "$CHILD" 2>/dev/null && [ "$i" -lt "$KILL_GRACE_S" ]; do sleep 1; i=$((i + 1)); done
+    if kill -0 "$CHILD" 2>/dev/null; then kill -KILL "$CHILD" 2>/dev/null || true; fi
+    wait "$CHILD" 2>/dev/null || true
+  fi
+  CHILD=""
+  if [ "$sig" = "INT" ]; then exit 130; fi
+  exit 143
+}
+trap 'on_signal TERM' TERM
+trap 'on_signal INT' INT
+
 fail() { REASON="$1"; say "FAILED: $1"; exit 1; }
 
 # ------------------------------------------------------------------------------------------------
@@ -209,33 +257,74 @@ checked_ok() {  # trained and its loss check passed, not necessarily pushed
   [ -f "$l" ] && [ "$(rec_field "$l" "int(d.get('pass') is True)")" = "1" ]
 }
 
-keep_attempt() {  # keep_attempt CELL N: the failed attempt's record and check, with its cause
-  local c="$1" n="$2" f
+keep_attempt() {  # keep_attempt CELL N: attempt N's record and check, kept immutably, its cause
+  local c="$1" n="$2" f dst
   for f in "$RES/train/$c.json" "$RES/train/$c.losscheck.json"; do
-    [ -f "$f" ] && mv "$f" "${f%.json}.attempt$n.json"
+    [ -f "$f" ] || continue
+    dst="${f%.json}.attempt$n.json"
+    if [ -e "$dst" ]; then dst="${f%.json}.attempt$n.$(date -u +%Y%m%dT%H%M%SZ).json"; fi
+    mv "$f" "$dst"
   done
   say "$c attempt $n failed: $(rec_field "$RES/train/$c.losscheck.attempt$n.json" \
     "'; '.join(d.get('reasons') or [])") $(rec_field "$RES/train/$c.attempt$n.json" \
     "d.get('error') or d.get('status')")"
 }
 
+attempts_of() {  # attempts_of CELL: training attempts admitted so far (0 without a record)
+  local f="$RES/train/$1.attempts.json"
+  if [ -f "$f" ]; then rec_field "$f" "int(d['attempt'])"; else echo 0; fi
+}
+
+pod_retries_used() {  # retries (attempts >= 2) admitted on this pod so far, over every cell
+  pyq "
+import glob
+print(sum(max(0, int(json.load(open(f))['attempt']) - 1)
+          for f in glob.glob('$RES/train/*.attempts.json')))
+"
+}
+
+admit() {  # admit CELL N: record attempt N's admission, atomically, before it starts
+  pyq "
+import datetime as dt, os
+f = '$RES/train/$1.attempts.json'
+d = json.load(open(f)) if os.path.exists(f) else {'cell': '$1', 'attempt': 0, 'admissions': []}
+assert d['cell'] == '$1' and int(d['attempt']) == $2 - 1, (f, d, $2)
+d['attempt'] = $2
+d['admissions'].append({'attempt': $2, 'unit': '$UNIT', 'pod_id': os.environ.get('RUNPOD_POD_ID'),
+                        'e3_retries_left': $RETRIES_ENV,
+                        'utc': dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ')})
+json.dump(d, open(f + '.tmp', 'w'), indent=2)
+os.replace(f + '.tmp', f)
+"
+}
+
 train_cell() {  # train_cell CKPT DATA SEED: 0 when the run is trained, checked and pushed
-  local ck="$1" data="$2" sd="$3" c attempt=1
+  local ck="$1" data="$2" sd="$3" c n left
   c=$(cell_of "$ck" "$data" "$sd")
   if trained_ok "$c"; then say "$c: trained, checked and pushed; skipping"; return 0; fi
   while :; do
     if checked_ok "$c" && [ -d "$ADAPTERS/$c" ]; then  # an earlier push failed: push only
       timed push "$ck" "$sd" "$PEFT_PY" scripts/e3_train.py --push-only \
         --config "configs/E3/$c.json" || return 1
-    elif ! timed train "$ck" "$sd" "$PEFT_PY" scripts/e3_train.py --config "configs/E3/$c.json"
-    then
-      if [ "$DRY" != "1" ] && checked_ok "$c"; then continue; fi  # the push failed: retry it
-      [ "$attempt" -lt 2 ] || { say "$c: failed twice (training_failed)"; return 1; }
-      [ "$RETRIES_LEFT" -gt 0 ] || { say "$c: failed; no retries left in E3"; return 1; }
-      keep_attempt "$c" "$attempt"
-      RETRIES_LEFT=$((RETRIES_LEFT - 1)); attempt=$((attempt + 1))
-      say "$c: retry $attempt with the same seed ($RETRIES_LEFT retries left in E3)"
-      continue
+    else
+      if [ "$DRY" != "1" ]; then  # admit the attempt (persisted) before it starts
+        n=$(( $(attempts_of "$c") + 1 ))
+        if [ "$n" -gt 2 ]; then
+          say "$c: $((n - 1)) attempts already admitted; not training again (training_failed)"
+          return 1
+        fi
+        if [ "$n" -ge 2 ]; then
+          left=$(( RETRIES_ENV - $(pod_retries_used) ))
+          [ "$left" -gt 0 ] || { say "$c: failed; no retries left in E3"; return 1; }
+          keep_attempt "$c" "$((n - 1))"
+          say "$c: retry $n with the same seed ($((left - 1)) retries left in E3)"
+        fi
+        admit "$c" "$n"
+      fi
+      if ! timed train "$ck" "$sd" "$PEFT_PY" scripts/e3_train.py --config "configs/E3/$c.json"
+      then
+        continue  # the push failed (checked: push only) or the attempt failed (next admission)
+      fi
     fi
     [ "$DRY" = "1" ] || trained_ok "$c" || { say "$c: exit 0 but not pushed and checked"; return 1; }
     return 0
@@ -297,7 +386,8 @@ unit_files() {  # every output of this job so far, relative to $RES
       for data in bad good; do
         c=$(cell_of "$ck" "$data" "$sd")
         echo "train/$c.json train/$c.losscheck.json train/$c.batch_order.json"
-        echo "train/$c.attempt1.json train/$c.losscheck.attempt1.json"
+        echo "train/$c.attempts.json train/$c.attempt[0-9]*.json"
+        echo "train/$c.losscheck.attempt[0-9]*.json"
         gd=$(gendir_of "$ck"); gd=${gd#"$RES"/}
         echo "$gd/${c}@plain__* $gd/MANIFEST.${c}@plain.sha256"
       done
@@ -319,6 +409,22 @@ write_manifest() {  # MANIFEST.<unit>.sha256 over every existing output of this 
   fi
   mv "$m.tmp" "$m"
   say "wrote $m ($(wc -l < "$m" | tr -d ' ') files)"
+}
+
+write_done() {  # DONE.<unit>.json: the unit completed; lists every path in its manifest
+  local m="$RES/MANIFEST.$UNIT.sha256" d="$RES/DONE.$UNIT.json"
+  if [ "$DRY" = "1" ]; then echo "+ write $d"; return 0; fi
+  pyq "
+import datetime as dt, hashlib, os
+raw = open('$m', 'rb').read()
+arts = [x.split(None, 1)[1].strip() for x in raw.decode().splitlines() if x.strip()]
+d = {'unit': '$UNIT', 'pod_id': os.environ.get('RUNPOD_POD_ID'),
+     'utc': dt.datetime.now(dt.UTC).strftime('%Y-%m-%dT%H:%M:%SZ'), 'manifest': '$m',
+     'artifacts_root': '$RES', 'artifacts': arts, 'manifest_sha256': hashlib.sha256(raw).hexdigest()}
+json.dump(d, open('$d.tmp', 'w'), indent=2)
+os.replace('$d.tmp', '$d')
+"
+  say "wrote $d"
 }
 
 # ------------------------------------------------------------------------------------------------
@@ -355,8 +461,9 @@ rescore_ref() {  # pod 2: pod 1's pre-plain-bad-R1-s2 final, rescored here (cros
   echo "+ $PEFT_PY scripts/e3_train.py --wait-hub-adapter $c --timeout-s $RESCORE_WAIT_S"
   if [ "$DRY" = "1" ]; then
     ref="<repo@rev>"
-  elif ! ref=$("$PEFT_PY" scripts/e3_train.py --wait-hub-adapter "$c" \
-      --timeout-s "$RESCORE_WAIT_S" | tail -n 1) || [ -z "$ref" ]; then
+  elif ! bg "$RES/.wait_hub.$UNIT.out" "$PEFT_PY" scripts/e3_train.py --wait-hub-adapter "$c" \
+      --timeout-s "$RESCORE_WAIT_S" || ! ref=$(tail -n 1 "$RES/.wait_hub.$UNIT.out") \
+      || [ -z "$ref" ]; then
     say "rescore skipped: $c not on the Hub after ${RESCORE_WAIT_S}s"
     printf '{"rescore": "skipped", "cell": "%s", "reason": "not on the Hub after %ss"}\n' \
       "$c" "$RESCORE_WAIT_S" > "$RES/rescore.pod2.json"
@@ -379,6 +486,7 @@ pod_job() {
   [ "$RESCORE" = "0" ] || rescore_ref
   write_manifest
   [ -z "$FAILED_CKPTS" ] || fail "training_failed:$(echo $FAILED_CKPTS | tr ' ' ',')"
+  write_done
 }
 
 smoke() {
@@ -401,10 +509,11 @@ smoke() {
     || fail "delete"
   echo "+ write $sm/bench.json"
   [ "$DRY" = "1" ] || bench_smoke "$c" "$sm" "$ss/logprob/$ck-s$sd.csv"
-  if [ "$DRY" = "1" ]; then echo "+ write $RES/MANIFEST.smoke.sha256"; return 0; fi
+  if [ "$DRY" = "1" ]; then echo "+ write $RES/MANIFEST.smoke.sha256"; write_done; return 0; fi
   ( cd "$RES" && sha_of $(find smoke sealed/smoke bench/smoke.jsonl -type f | LC_ALL=C sort) ) \
     > "$RES/MANIFEST.smoke.sha256.tmp" && mv "$RES/MANIFEST.smoke.sha256.tmp" \
     "$RES/MANIFEST.smoke.sha256"
+  write_done
 }
 
 bench_smoke() {  # bench_smoke CELL SMOKE_DIR LOGPROB_CSV -> SMOKE_DIR/bench.json

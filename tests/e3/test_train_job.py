@@ -196,6 +196,37 @@ def test_tiny_run_eval_steps_hook_and_losscheck(tmp_path, monkeypatch, tok):
     assert rc == (0 if lc["pass"] else 1) and rec["status"] == "trained"
 
 
+def test_push_rehashes_the_final_record(tmp_path, monkeypatch):
+    """B5: after the push rewrites the record (hub revision, `pushed`), the sidecar's
+    `train_result_sha256` is that final record's hash; the checked record's hash is kept."""
+    import hashlib
+    import types
+
+    import emx.train as T
+    from emx.contracts import TrainResult
+
+    rec = TrainResult(
+        cell="s1k-plain-bad-R1-s2", backend="hf", step_losses=[2.0] * 10 + [1.0] * 10,
+        eval_losses=[2.0, 1.5, 1.7], trained_tokens_per_example={}, labels_sha256="l",
+        batch_order_sha256="b", init_adapter_sha256="i", step_times_s=[1.0], adapter_dir="a",
+        hub_repo="jrepifano/e3-s1k-plain-bad-R1-s2", hub_revision=None, wallclock_s=1.0,
+        eval_steps=[0, 10, 20], status="trained",
+        checkpoints=[{"step": 10, "adapter_norm": 0.5}, {"step": 20, "adapter_norm": 0.9}])
+    rpath, lpath = tmp_path / "r.json", tmp_path / "r.losscheck.json"
+    T.write_record(rpath, rec)
+    checked = hashlib.sha256(rpath.read_bytes()).hexdigest()
+    assert TR.write_losscheck(rpath, lpath)["train_result_sha256"] == checked
+    monkeypatch.setattr(T, "push_adapter", lambda *a, **k: "a" * 40)
+    cfg = types.SimpleNamespace(output_dir=str(tmp_path), hub_repo=rec.hub_repo, cell=rec.cell)
+    assert TR._push(cfg, rpath, lpath) == "a" * 40
+    side = json.loads(lpath.read_text())
+    final = json.loads(rpath.read_text())
+    assert final["status"] == "pushed" and final["hub_revision"] == "a" * 40
+    assert side["train_result_sha256"] == hashlib.sha256(rpath.read_bytes()).hexdigest()
+    assert side["checked_train_result_sha256"] == checked != side["train_result_sha256"]
+    assert side["pass"] and side["hub_revision"] == "a" * 40
+
+
 def test_driver_refuses_non_e3_config(tmp_path):
     e1b = ROOT / "configs/E1b/pre-plain-bad-R2-s2.json"
     with pytest.raises(SystemExit):
@@ -283,7 +314,9 @@ def test_pod1_dry_run_chain():
             f"scripts/e3_train.py --delete-checkpoint {ck}",
             "write results/E3/MANIFEST.pod1.sha256",
         ]
-    body = cmds[1:-1]
+    assert cmds[-2:] == ["write results/E3/MANIFEST.pod1.sha256",
+                         "write results/E3/DONE.pod1.json"]
+    body = cmds[1:-2]
     assert len(body) == len(want_heads)
     for got, head in zip(body, want_heads, strict=True):
         assert got.startswith(head), (got, head)
@@ -356,16 +389,21 @@ opt = lambda k: rest[rest.index(k) + 1] if k in rest else None
 RES = Path("results/E3")
 if script == "e3_train.py" and "--config" in rest:
     cell = Path(opt("--config")).stem
+    if cell in os.environ.get("FAKE_SLEEP", "").split(","):  # a long training run (B8)
+        Path(os.environ["FAKE_PID"]).write_text(str(os.getpid()))
+        import time
+        time.sleep(120)
+    tdir = Path(opt("--results-dir") or RES / "train")
     n_file = RES / f".attempts.{cell}"
     n = int(n_file.read_text()) + 1 if n_file.exists() else 1
     n_file.write_text(str(n))
     fail = cell in os.environ.get("FAKE_FAIL_ONCE", "").split(",") and n == 1
     fail = fail or cell in os.environ.get("FAKE_FAIL_ALWAYS", "").split(",")
-    (RES / "train").mkdir(parents=True, exist_ok=True)
+    tdir.mkdir(parents=True, exist_ok=True)
     rec = {"cell": cell, "status": "trained" if fail else "pushed",
-           "hub_revision": None if fail else "b" * 40}
-    (RES / f"train/{cell}.json").write_text(json.dumps(rec))
-    (RES / f"train/{cell}.losscheck.json").write_text(json.dumps(
+           "hub_revision": None if fail else "b" * 40, "attempt_no": n}
+    (tdir / f"{cell}.json").write_text(json.dumps(rec))
+    (tdir / f"{cell}.losscheck.json").write_text(json.dumps(
         {"pass": not fail, "status": "failed" if fail else "trained",
          "reasons": ["held-out loss never fell"] if fail else []}))
     sys.exit(1 if fail else 0)
@@ -452,3 +490,158 @@ def test_retry_budget_exhausted(tmp_path):
     env.update(FAKE_FAIL_ONCE="s10k-plain-bad-R1-s2", E3_RETRIES_LEFT="0")
     p = _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
     assert p.returncode == 1 and "no retries left in E3" in _log(root)
+
+
+def _done(root: Path, unit: str) -> dict:
+    return json.loads((root / f"results/E3/DONE.{unit}.json").read_text())
+
+
+def test_done_record_lists_the_manifest(tmp_path):
+    """Completion record (fixer F1's A5): written last, only for a completed unit."""
+    import hashlib
+
+    root, env = _fake_root(tmp_path)
+    env["RUNPOD_POD_ID"] = "pod-xyz"
+    assert _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2").returncode == 0
+    res = root / "results/E3"
+    man = (res / "MANIFEST.pod1.sha256").read_bytes()
+    done = _done(root, "pod1")
+    assert done["unit"] == "pod1" and done["pod_id"] == "pod-xyz"
+    assert done["manifest_sha256"] == hashlib.sha256(man).hexdigest()
+    assert done["artifacts"] == [x.split(None, 1)[1] for x in man.decode().splitlines()]
+    assert "train/s10k-plain-bad-R1-s2.attempts.json" in done["artifacts"]
+    # a rerun moves the old record aside first; a failed rerun leaves none
+    env["FAKE_FAIL_ALWAYS"] = "s5k-plain-bad-R1-s2"
+    assert _run(root, env, "--pod", "1", "--ckpts", "s5k", "--seeds", "2").returncode == 1
+    assert not (res / "DONE.pod1.json").exists()
+    assert len(list(res.glob("DONE.pod1.json.prev-*"))) == 1
+
+
+def test_smoke_writes_done_record(tmp_path):
+    root, env = _fake_root(tmp_path)
+    p = _run(root, env, "--smoke")
+    assert p.returncode == 0, _log(root)
+    done = _done(root, "smoke")
+    man = (root / "results/E3/MANIFEST.smoke.sha256").read_text()
+    assert done["unit"] == "smoke" and done["artifacts"] == [
+        x.split(None, 1)[1] for x in man.splitlines()]
+    assert "smoke/bench.json" in done["artifacts"]
+
+
+def _attempts(root: Path, cell: str) -> dict:
+    return json.loads((root / f"results/E3/train/{cell}.attempts.json").read_text())
+
+
+def _trains(root: Path, cell: str) -> int:
+    calls = (root / "calls.txt").read_text().splitlines() if (root / "calls.txt").exists() else []
+    return sum(c.startswith("e3_train.py --config") and f"/{cell}.json" in c for c in calls)
+
+
+def test_restart_after_two_failures_never_retrains(tmp_path):
+    """B3: attempts are admitted on disk; a restart does not reset them."""
+    from emx.e3 import budget as B
+
+    root, env = _fake_root(tmp_path)
+    cell = "s10k-plain-bad-R1-s2"
+    env["FAKE_FAIL_ALWAYS"] = cell
+    assert _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2").returncode == 1
+    a = _attempts(root, cell)
+    assert a["attempt"] == 2 and [x["attempt"] for x in a["admissions"]] == [1, 2]
+    assert _trains(root, cell) == 2
+    kept = (root / f"results/E3/train/{cell}.attempt1.json").read_bytes()
+    assert json.loads(kept)["attempt_no"] == 1
+    assert B.retries_used(root / "results/E3/train") == 1
+    # restart, now with training that would succeed: the cell is not trained a third time
+    env.pop("FAKE_FAIL_ALWAYS")
+    p = _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
+    log = _log(root)
+    assert p.returncode == 1 and _trains(root, cell) == 2
+    assert "2 attempts already admitted; not training again" in log
+    assert "E3_CKPT_FAIL pod1 s10k s2 training_failed" in log
+    assert (root / f"results/E3/train/{cell}.attempt1.json").read_bytes() == kept
+    assert _attempts(root, cell)["attempt"] == 2
+
+
+def _seed_state(root: Path, cell: str, attempt: int, record: bool) -> None:
+    t = root / "results/E3/train"
+    t.mkdir(parents=True, exist_ok=True)
+    (t / f"{cell}.attempts.json").write_text(json.dumps(
+        {"cell": cell, "attempt": attempt,
+         "admissions": [{"attempt": i} for i in range(1, attempt + 1)]}))
+    if attempt == 2:
+        (t / f"{cell}.attempt1.json").write_text(json.dumps({"cell": cell, "status": "trained"}))
+    if record:  # attempt `attempt` finished and failed its check
+        (t / f"{cell}.json").write_text(json.dumps({"cell": cell, "status": "trained"}))
+        (t / f"{cell}.losscheck.json").write_text(json.dumps({"pass": False}))
+
+
+def test_restart_right_after_retry_admission(tmp_path):
+    """B3: the pod died right after a retry was admitted. The cell is not trained again, and that
+    retry still counts against this pod's allocation."""
+    root, env = _fake_root(tmp_path)
+    cell = "s10k-plain-bad-R1-s2"
+    _seed_state(root, cell, 2, record=False)
+    p = _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
+    assert p.returncode == 1 and _trains(root, cell) == 0
+    assert "2 attempts already admitted" in _log(root)
+    # another pod-1 cell failing once: E3_RETRIES_LEFT=1 is already used by the admitted retry
+    (tmp_path / "b").mkdir()
+    root2, env2 = _fake_root(tmp_path / "b")
+    _seed_state(root2, "pre-plain-bad-R1-s2", 2, record=False)
+    env2.update(E3_RETRIES_LEFT="1", FAKE_FAIL_ONCE="s10k-plain-good-R1-s2")
+    p = _run(root2, env2, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
+    assert p.returncode == 1 and "no retries left in E3" in _log(root2)
+    assert _trains(root2, "s10k-plain-good-R1-s2") == 1
+
+
+def test_restart_after_first_failure_retries_once_and_keeps_records(tmp_path):
+    """B3: the pod died after attempt 1 failed, before the retry was admitted: the restart keeps
+    attempt 1's record (never overwriting an existing one), admits attempt 2 and trains once."""
+    root, env = _fake_root(tmp_path)
+    cell = "s10k-plain-good-R1-s2"
+    _seed_state(root, cell, 1, record=True)
+    t = root / "results/E3/train"
+    (t / f"{cell}.attempt1.json").write_text(json.dumps({"cell": cell, "old": True}))
+    p = _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
+    assert p.returncode == 0, _log(root)
+    assert _trains(root, cell) == 1 and _attempts(root, cell)["attempt"] == 2
+    assert json.loads((t / f"{cell}.attempt1.json").read_text())["old"] is True
+    moved = [f for f in t.glob(f"{cell}.attempt1.*.json")]
+    assert len(moved) == 1 and json.loads(moved[0].read_text())["status"] == "trained"
+    assert "retry 2 with the same seed (1 retries left in E3)" in _log(root)
+
+
+def test_sigterm_stops_the_child_and_stages(tmp_path):
+    """B8: SIGTERM during a long training step stops and waits for the child, then exits through
+    the staging path."""
+    import signal
+    import time
+
+    root, env = _fake_root(tmp_path)
+    pid_file = tmp_path / "child.pid"
+    env.update(FAKE_SLEEP="s10k-plain-good-R1-s2", FAKE_PID=str(pid_file), E3_KILL_GRACE_S="5")
+    proc = subprocess.Popen(["bash", "scripts/pod_run_e3.sh", "--pod", "1", "--ckpts", "s10k",
+                             "--seeds", "2"], cwd=root, env=env, start_new_session=True,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(300):
+            if pid_file.exists() and pid_file.read_text():
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("the long training step never started:\n" + _log(root))
+        child = int(pid_file.read_text())
+        proc.send_signal(signal.SIGTERM)
+        rc = proc.wait(timeout=60)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    log = _log(root)
+    assert rc == 143, log
+    assert "caught SIGTERM" in log and "E3_JOB_FAIL pod1 signal TERM" in log
+    with pytest.raises(ProcessLookupError):
+        os.kill(child, 0)
+    st = root / "results/E3/_staging_pod1"
+    assert (st / "MANIFEST.sha256").is_file()
+    assert (st / "train/s10k-plain-good-R1-s2.attempts.json").is_file()
+    assert not (root / "results/E3/DONE.pod1.json").exists()

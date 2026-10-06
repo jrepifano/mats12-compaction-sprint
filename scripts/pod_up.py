@@ -48,6 +48,22 @@ pods named `<exp>-<slot>`: a found pod is adopted into the launch; the reservati
 only once no pod exists (a failed listing keeps it, so its liability still counts). The gate
 checks the budget B, not --reserve-hours x rate, when B is given.
 
+2026-10-06 (E3 code review A r1, findings 1 and 7): with --reservation, pod_up prints exactly one
+status line on stdout, `EMX_POD_CREATE=<status> reservation=<id>[ pod=<pod id>]`, and its exit
+code says what the caller may do with the reservation:
+- `ok`, exit 0: launched; `EMX_POD_DEADLINE=<epoch>` (printed once SSH is up, after any reprice)
+  is the pod's reservation deadline.
+- `uncertain`, exit 6 (UNCERTAIN): a pod may exist and bill under this reservation (a failed
+  pod listing after a lost or failed create, a DELETE that failed, an unexpected error after a
+  create request was sent). The reservation is KEPT; the caller must NOT release it, and leaves
+  it to recovery (`emx.runpod_reservations.unarmed_overdue` / `unsettled_pods`, pod_down.py).
+- `closed`, exit 1: no pod bills; the reservation was released or the pod settled.
+- `none`, exit 1, 2, 4 or 5: refused before any create request was sent (or every request sent
+  was reconciled to no pod); the reservation is untouched and the caller may release it.
+A run killed by a signal prints no status line: treat it as `uncertain`. While polling for SSH,
+an API `costPerHr` above the launch rate reprices the reservation (`rr.reprice`: higher rate,
+deadline shortened from t0, never lengthened) before the pod is ever armed.
+
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
        uv run python scripts/pod_up.py --exp I9 --slot _A|_B [--start N] [--no-fallback] [--dry-run]
@@ -58,6 +74,7 @@ from __future__ import annotations
 import argparse
 import sys
 import time
+import traceback
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -67,6 +84,7 @@ from emx import runpod as rp
 
 GATE_REFUSED = 4  # exit code: the budget gate refused (pod_hunt.sh stops instead of retrying)
 UNTRACKED = 5  # exit code: an untracked pod with our prefix exists, or no live I1a watchdog
+UNCERTAIN = 6  # exit code (--reservation): a pod may bill under it; keep the reservation
 
 
 def gate(
@@ -240,18 +258,41 @@ def settle_reservation(rid: str, pod_id: str, session: dict | None) -> bool:
     return True
 
 
-def wait_for_ssh(client: rp.RunPod, pod_id: str, timeout_s: int, poll_s: int = 15):
-    """Poll until a public IP and port 22 mapping exist. Returns (host, port) or (None, None)."""
+def reprice_reservation(pod_id: str, rate_usd_h: float) -> None:
+    """A higher API rate than the launch used: shorten the reservation deadline (review A r1
+    finding 7). Raises on a refused reprice, so the caller terminates the pod."""
+    from emx import runpod_reservations as rr
+
+    row = rr.reprice(pod_id, rate_usd_h, note="pod_up: API costPerHr while polling")
+    if row is not None:
+        print(
+            f"pod {pod_id}: API rate ${rate_usd_h}/h > launch rate "
+            f"${row['previous_rate_usd_h']}/h; reservation deadline shortened to "
+            f"{row['deadline_epoch']} ({row['deadline_utc']})"
+        )
+
+
+def wait_for_ssh(
+    client: rp.RunPod,
+    pod_id: str,
+    timeout_s: int,
+    poll_s: int = 15,
+    reservation: str | None = None,
+):
+    """Poll until a public IP and port 22 mapping exist. Returns (host, port) or (None, None).
+    With `reservation`, every API rate higher than the last one seen is logged and reprices the
+    reservation (without, the first rate is logged, as before)."""
     deadline = time.time() + timeout_s
-    rate_logged = False
+    last_rate = None
     while time.time() < deadline:
         time.sleep(poll_s)
         info = client.get_pod(pod_id) or {}
-        if info.get("costPerHr") and not rate_logged:
-            rp.log_pod_event(
-                {"event": "rate", "pod_id": pod_id, "rate_usd_h": float(info["costPerHr"])}
-            )
-            rate_logged = True
+        api_rate = float(info.get("costPerHr") or 0.0)
+        if api_rate and (last_rate is None or (reservation and api_rate > last_rate)):
+            rp.log_pod_event({"event": "rate", "pod_id": pod_id, "rate_usd_h": api_rate})
+            last_rate = api_rate
+            if reservation:
+                reprice_reservation(pod_id, api_rate)
         ip = info.get("publicIp") or ""
         mapping = info.get("portMappings") or {}
         if ip and mapping.get("22"):
@@ -260,7 +301,39 @@ def wait_for_ssh(client: rp.RunPod, pod_id: str, timeout_s: int, poll_s: int = 1
     return None, None
 
 
+def create_status(status: str, rid: str, pod_id: str | None = None) -> None:
+    """The one `EMX_POD_CREATE=` line of a reserved launch (see the module docstring)."""
+    print(f"EMX_POD_CREATE={status} reservation={rid}" + (f" pod={pod_id}" if pod_id else ""))
+
+
 def main(argv: list[str] | None = None) -> int:
+    """Reserved launches always end with an `EMX_POD_CREATE=` line: a refusal (SystemExit) or an
+    unexpected error that the body did not report is reported here, as `uncertain` (exit 6) once
+    a create request may have made a pod, else `none`."""
+    ctx: dict = {"rid": None, "live": False, "reported": False}
+    try:
+        return _main(argv, ctx)
+    except SystemExit:
+        if ctx["rid"] and not ctx["reported"]:
+            if ctx["live"]:
+                create_status("uncertain", ctx["rid"])
+                sys.exit(UNCERTAIN)
+            create_status("none", ctx["rid"])
+        raise
+    except Exception:
+        if not ctx["rid"] or ctx["reported"]:
+            raise
+        traceback.print_exc()
+        create_status("uncertain" if ctx["live"] else "none", ctx["rid"])
+        return UNCERTAIN if ctx["live"] else 1
+
+
+def _main(argv: list[str] | None, ctx: dict) -> int:
+    def report(status: str, rc: int, pod_id: str | None = None) -> int:
+        create_status(status, rid, pod_id)
+        ctx["reported"] = True
+        return rc
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--exp", default=rp.DEFAULT_EXP, help="experiment (default E1)")
     ap.add_argument("--slot", default="_A", help="suffix of the .env pod keys, e.g. _A")
@@ -321,6 +394,7 @@ def main(argv: list[str] | None = None) -> int:
         if why:
             print(f"REFUSED: reservation {rid} {why}", file=sys.stderr)
             sys.exit(GATE_REFUSED)
+        ctx["rid"] = rid
 
     if not args.dry_run and rp.env(f"RUNPOD_POD_ID{slot}"):
         sys.exit(
@@ -360,6 +434,7 @@ def main(argv: list[str] | None = None) -> int:
                 rate_usd_h=opt.rate_usd_h,
                 t0_epoch=t0,
             )
+            ctx["live"] = True  # from here a pod may exist until reconciled
         try:
             pod = client.create_pod(body)
         except rp.RunPodError as e:
@@ -383,14 +458,15 @@ def main(argv: list[str] | None = None) -> int:
                     "CHECK THE RUNPOD CONSOLE, then pod_down.py --untracked or release it",
                     file=sys.stderr,
                 )
-                return 1
+                return report("uncertain", UNCERTAIN)
             if pod is not None:
                 print(f"adopting pod {pod['id']} named {body['name']} into reservation {rid}")
                 break
+            ctx["live"] = False  # reconciled: no pod of this request
             if uncertain:
                 rr.release(rid, note=f"pod_up: create outcome unknown, no {body['name']} pod")
                 print(f"no {body['name']} pod exists; reservation {rid} released", file=sys.stderr)
-                return 1
+                return report("closed", 1)
             continue
         if args.dry_run:
             continue  # print every option in order
@@ -402,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
             rr.release(rid, note="pod_up: no GPU in the fallback order could be created")
             print(f"reservation {rid} released (no pod was created)", file=sys.stderr)
         print("no GPU in the fallback order could be created; try pod_hunt.sh", file=sys.stderr)
-        return 1
+        return report("closed", 1) if reserved else 1
 
     pod_id = pod["id"]
     api_rate = pod.get("costPerHr")
@@ -439,19 +515,23 @@ def main(argv: list[str] | None = None) -> int:
                 client.terminate_pod(pod_id)
             except rp.RunPodError as te:
                 print(f"DELETE FAILED ({te}); terminate {pod_id} by hand", file=sys.stderr)
-                return 1
+                return report("uncertain", UNCERTAIN, pod_id)
             s_ = rp.finish_session(pod_id, "pod_up: launch row refused")
-            settle_reservation(rid, pod_id, s_)
+            settled = settle_reservation(rid, pod_id, s_)
             rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
-            return 1
-        print(f"EMX_POD_DEADLINE={dl[pod_id]}")
+            return (
+                report("closed", 1, pod_id) if settled else report("uncertain", UNCERTAIN, pod_id)
+            )
+        print(f"reservation deadline {dl[pod_id]} (EMX_POD_DEADLINE follows once SSH is up)")
     if rp.EXP == "I9":  # Docker Hub rate limits (2026-10-04): RUNNING is not "image pulled"
         print("I9: check the pod's status; an unauthenticated image pull may be rate-limited")
 
     host = port = None
     poll_error = None
     try:
-        host, port = wait_for_ssh(client, pod_id, args.ssh_timeout)
+        host, port = wait_for_ssh(
+            client, pod_id, args.ssh_timeout, reservation=rid if reserved else None
+        )
     except Exception as e:  # noqa: BLE001 - any polling failure must reach the terminate path
         poll_error = f"{type(e).__name__}: {e}"
     if not host:
@@ -464,12 +544,13 @@ def main(argv: list[str] | None = None) -> int:
                 "still be billing - terminate it in the RunPod console; id kept in .env",
                 file=sys.stderr,
             )
-            return 1
+            return report("uncertain", UNCERTAIN, pod_id) if reserved else 1
         s_ = rp.finish_session(pod_id, f"pod_up: {reason}")
-        if reserved:
-            settle_reservation(rid, pod_id, s_)
+        settled = reserved and settle_reservation(rid, pod_id, s_)
         rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
         print(f"{reason}; pod {pod_id} terminated", file=sys.stderr)
+        if reserved:
+            return report("closed" if settled else "uncertain", 1 if settled else UNCERTAIN, pod_id)
         return 1
 
     rp.set_env_var(f"POD_SSH_HOST{slot}", host)
@@ -479,6 +560,9 @@ def main(argv: list[str] | None = None) -> int:
         {"event": "running", "pod_id": pod_id, "slot": slot, "host": host, "port": port}
     )
     print(f"SSH ready: ssh -p {port} root@{host}")
+    if reserved:
+        print(f"EMX_POD_DEADLINE={rr.pod_deadline(pod_id)}")
+        return report("ok", 0, pod_id)
     return 0
 
 

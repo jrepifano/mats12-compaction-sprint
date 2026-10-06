@@ -507,3 +507,67 @@ def test_power_noisy_reference_is_underpowered():
     dN += 1.0 - dN.mean()
     res = R.power_diagnostic(dB, dN, b, draws=50)
     assert R.underpowered(res["table"]) and R.underpowered(res["table_without_condition3"])
+
+
+# --- code review C1, C4, C5, C10 -----------------------------------------------------------------
+
+
+def _overlap_case():
+    """The reviewer's overlapping case (here 20 questions x 25 answers): 8 bad-adapter EM answers
+    against none for the good one (one-sided stratified p ≈ 0.004), an equivalence interval inside ±3 points, and ΔB_v's
+    upper bound below zero; v learns and the narrow difference holds, so path (ii) passes."""
+    em = np.zeros(len(DEV), dtype=int)
+    em[:8] = 1
+    return counts(em, 25, 25, 25), counts(0, 25, 25, 25), _sc(np.zeros(len(DEV)),
+                                                                np.zeros(len(DEV)))
+
+
+def test_contradiction_takes_precedence_over_path_ii():
+    bad, good, sc = _overlap_case()
+    a = R.agreement_v("s5k", D(-0.1, -0.2, -0.05), DB_REF, True, bad, good, (0.6, 0.1), BOOT,
+                      sc, DEV)
+    v = a["values"]
+    assert v["path_ii"]["pass"] is True  # path (ii) on its own would pass
+    assert v["path_ii"]["em_diff_90"][0] > 0 and v["path_ii"]["em_diff_90"][1] < C.EQUIV_MARGIN
+    assert v["path_i"]["p"] < C.DIRECTION_ALPHA and v["contradiction"] is True
+    assert a["outcome"] == "fail" and "contradiction" in a["reason"]
+
+
+def test_path_ii_unavailable_when_narrow_measure_unusable():
+    """C4: an adapter under 50% coherent on the narrow task is unusable (§4.9), so path (ii)
+    is unavailable even though its rate (over its few coherent answers) looks decisive."""
+    bad, good = counts(0, 200), counts(0, 200)
+    sc = _sc(np.zeros(len(DEV)), np.zeros(len(DEV)))
+    args = ("s5k", D(0.01, -0.05, 0.1), DB_REF, True, bad, good, (1.0, 0.1), BOOT, sc, DEV)
+    assert R.agreement_v(*args)["outcome"] == "pass"
+    for nu in ((False, True), (True, False)):
+        a = R.agreement_v(*args, narrow_usable=nu)
+        assert a["outcome"] == "inconclusive" and "unusable" in a["reason"]
+        assert a["values"]["path_ii"]["pass"] is False
+        assert a["values"]["path_ii"]["narrow_ok"] is None
+    # a v that does not learn fails path (ii) whatever the narrow samples say
+    a = R.agreement_v("s5k", D(0.01, -0.05, 0.1), DB_REF, False, bad, good, (1.0, 0.1), BOOT,
+                      sc, DEV, narrow_usable=(False, True))
+    assert a["outcome"] == "fail"
+
+
+def test_claim2_needs_interpretability_with_each_seed():
+    R_ref = D(0.9, 0.6, 1.2)
+    learns = {"2": True, "3": True}
+    args = ("pass", True, "", learns)
+    rest = (D(0.8, 0.65, 1.0), D(0.05, 0.0, 0.1), R_ref)
+    assert R.claim2(*args, {"2": True, "3": True}, *rest)["outcome"] == "pass"
+    c = R.claim2(*args, {"2": True, "3": False}, *rest)
+    assert c["outcome"] == "fail" and "neighbour_interpretable" in c["reason"]
+    assert c["neighbour_interpretable"] == {"2": True, "3": False}
+    assert R.claim2(*args, {}, *rest)["outcome"] == "fail"
+
+
+def test_em_contrast():
+    bad = counts(np.r_[np.full(10, 5), np.zeros(10, int)], 20)
+    good = counts(0, 20)
+    out = R.em_contrast(bad, good, DEV[:10])
+    assert out["n_questions"] == 10 and out["em_bad"] == pytest.approx(0.25)
+    assert out["em_good"] == 0 and out["p_one_sided"] < 0.001
+    assert R.em_contrast(bad, good, ["nope"]) is None
+    assert R.em_contrast(None, good, DEV) is None

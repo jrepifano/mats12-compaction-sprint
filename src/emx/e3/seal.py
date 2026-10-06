@@ -17,6 +17,20 @@ Pattern of `emx.e1b.blind` (an approval file gates every reader), bound here by 
   Analysis (`scripts/e3_analyze.py`) and judging (`e1_judge.py --exp E3`) use them. Replay moves
   `unseal.json` away first (`ANALYSIS_VERSION_DIR`), after which sealed reads are refused again.
 - `exclusive_write_json(path, obj)` writes the immutable records (`power`, `unseal`, `judges`).
+- **Transitive validation** (code review C7 and B2). A record's own hash says nothing about the
+  files it was computed from, so `verify_chain(root, upto)` re-verifies every prerequisite
+  record AND every `inputs` hash it lists against disk, in the order judges -> stageA -> power
+  -> unseal -> stageB:
+  - judges: a valid record whose outcome is pass (the hierarchy chose a judge for every
+    required question set, §8.3), its inputs (judged files, tie-breaks, selection) unchanged;
+  - stageA: valid, outcome pass, its inputs (scores, training records, judged files, pairs
+    report, judges.json itself) unchanged;
+  - power: valid, written after stageA, reference-only inputs, each unchanged;
+  - unseal: every bound hash and input unchanged;
+  - stageB (claims only): valid, outcome pass, the cross-pod rescore passed (§4.13), its
+    inputs unchanged.
+  `write_unseal` runs it up to power, `assert_unsealed` (every sealed read) up to unseal; the
+  analysis runs it before power, Stage B and claims. Any failure raises `SealedError`.
 """
 
 from __future__ import annotations
@@ -141,6 +155,50 @@ def check_power_inputs(power: dict, root: Path) -> None:
             raise SealedError(f"power.json input {rel}: missing or changed since")
 
 
+def verify_inputs(name: str, rec: dict, root: Path) -> None:
+    """Every `inputs` {rel: sha256} of a record matches the file on disk."""
+    inputs = rec.get("inputs")
+    if not isinstance(inputs, dict):
+        raise SealedError(f"{name}.json: no inputs recorded")
+    for rel, sha in inputs.items():
+        p = root / rel
+        if not p.is_file() or sha256_file(p) != sha:
+            raise SealedError(f"{name}.json input {rel}: missing or changed since the record "
+                              "was written")
+
+
+CHAIN: tuple[str, ...] = ("judges", "stageA", "power", "unseal", "stageB")
+
+
+def verify_chain(root: str | Path = ".", upto: str = "unseal") -> dict[str, dict]:
+    """Re-verify the prerequisite records up to and including `upto` (one of CHAIN) and every
+    input hash they list (module docstring); returns {name: record}. Raises `SealedError`."""
+    root = Path(root)
+    if upto not in CHAIN:
+        raise ValueError(upto)
+    recs: dict[str, dict] = {}
+    for name in CHAIN[: CHAIN.index(upto) + 1]:
+        rec = _load(root, name)
+        if rec["outcome"] != "pass":
+            raise SealedError(f"{name}.json outcome {rec['outcome']!r}: not a passing gate")
+        if name == "power":
+            if not _utc(rec["utc"]) > _utc(recs["stageA"]["utc"]):
+                raise SealedError("power.json was not written after stageA.json")
+            check_power_inputs(rec, root)
+        elif name == "unseal":
+            for field, sha in _hashes(root).items():
+                if rec[field] != sha:
+                    raise SealedError(f"unseal.json: {field} no longer matches disk")
+        elif name == "stageB":
+            rc = rec.get("rescore_check") or {}
+            if rc.get("outcome") != "pass":
+                raise SealedError("stageB.json: the cross-pod rescore (§4.13) has not passed: "
+                                  f"{rc.get('outcome')!r} {rc.get('reason', '')}")
+        verify_inputs(name, rec, root)
+        recs[name] = rec
+    return recs
+
+
 def write_unseal(root: str | Path = ".") -> dict:
     """Write `unseal.json` once its preconditions hold (module docstring); returns it."""
     root = Path(root)
@@ -154,7 +212,7 @@ def write_unseal(root: str | Path = ".") -> dict:
     if not _utc(power["utc"]) > _utc(stage_a["utc"]):
         raise SealedError("power.json was not written after stageA.json")
     check_power_inputs(power, root)
-    _load(root, "judges")
+    verify_chain(root, "power")  # judges, stageA and power, with their inputs (C7, B2)
     hashes = _hashes(root)
     inputs = {
         C.rule_path("stageA"): hashes["stageA_sha256"],
@@ -199,6 +257,7 @@ def assert_unsealed(root: str | Path = ".") -> dict:
         f = root / rel
         if not f.is_file() or sha256_file(f) != sha:
             raise SealedError(f"{p}: input {rel} missing or changed")
+    verify_chain(root, "unseal")  # and everything the unsealing rests on (C7, B2)
     return rec
 
 

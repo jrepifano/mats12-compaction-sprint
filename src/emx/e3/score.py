@@ -288,6 +288,46 @@ def write_scores(rows: Sequence[dict], path: str | Path, meta: dict) -> tuple[Pa
     return path, mp
 
 
+# Sidecar keys a reused score output must match exactly (code review B4); `adapters` carries each
+# local adapter's file sha256 or each Hub adapter's repo@revision[:subfolder].
+RESUME_KEYS: tuple[str, ...] = (
+    "model_ids", "adapters", "pairs_sha256", "swaps_sha256", "ckpt", "seed", "hf_id",
+    "model_revision",
+)
+
+
+def score_output_problems(path: str | Path, expect: dict, need_self_check: bool = False
+                          ) -> list[str]:
+    """Why an existing score output (CSV + `.meta.json`) can't be reused for a run expecting
+    `expect` (`RESUME_KEYS` values); [] if it is complete and verifies: both files present, the
+    sidecar's `csv_sha256` present and equal to the CSV's, the row count equal, every resume key
+    equal (after a JSON round trip), and a passed self-check when one is required."""
+    path = Path(path)
+    mp = meta_path(path)
+    if not path.exists() or not mp.exists():
+        return [f"{'CSV' if not path.exists() else 'meta'} missing"]
+    try:
+        meta = json.loads(mp.read_text())
+    except ValueError as e:
+        return [f"meta unreadable: {e}"]
+    probs = []
+    if not meta.get("csv_sha256"):
+        probs.append("meta has no csv_sha256")
+    elif meta["csv_sha256"] != sha256_file(path):
+        probs.append("CSV sha256 differs from meta")
+    with path.open(newline="") as f:
+        n = sum(1 for _ in csv.reader(f)) - 1
+    if meta.get("rows") != n:
+        probs.append(f"{n} CSV rows, meta says {meta.get('rows')!r}")
+    want = json.loads(json.dumps({k: expect[k] for k in RESUME_KEYS}))
+    for k, v in want.items():
+        if meta.get(k, "<missing>") != v:
+            probs.append(f"{k} {meta.get(k, '<missing>')!r} != {v!r}")
+    if need_self_check and not (meta.get("self_check") or {}).get("pass"):
+        probs.append("no passed self-check")
+    return probs
+
+
 # --- laptop quantities ---------------------------------------------------------------------------
 
 

@@ -12,23 +12,39 @@
 #   API, or a `creating` reservation row without a pod) still unacknowledged 15 minutes after its
 #   t0 or past its budget deadline. A recover failure is logged to the alert file; 3 failures in a
 #   row fail closed (hard stop below), since an unsupervised unarmed pod is what this guards;
-# - budget: pod_budget_check.py --exp E3 projects logged GPU $ + every running e3-* pod + one
-#   interval of their burn against the kill line min($35, $45 - reserve - recorded and reserved
+# - budget: pod_budget_check.py --exp E3 projects logged GPU $ + every running e3-* pod + the
+#   whole bounded shutdown latency of their burn (RESERVE_S, fix A3) against the kill line min($35, $45 - reserve - recorded and reserved
 #   API spend) and the combined guard. At a hard stop (exit 2), and FAILING CLOSED on any other
 #   non-zero exit, it salvages each running slot's results/E3 and logs/ (one ssh tar per slot, all
-#   bounded together at E3_SALVAGE_S=240 s, local MANIFEST.sha256), terminates EVERY e3-* pod the
+#   bounded together at E3_SALVAGE_S=240 s, local MANIFEST.sha256; skipped when it no longer fits
+#   under the kill line, fix A3), terminates EVERY e3-* pod the
 #   API lists (pod_down.py --exp E3 --all-exp) whatever the salvage did, then runs the
 #   unconditional cleanup path for each of those slots (e3_orchestrate.py cleanup --slot S
 #   --reason ..., which records what is missing and settles the reservations). It keeps
 #   monitoring, retrying every minute;
-# - the 5-day wall-clock cap (contracts.DEADLINE_UTC): once passed, every running slot goes
-#   through e3_orchestrate.py cleanup --reason deadline (E3_WATCHDOG_DEADLINE <slot>);
+# - the 5-day wall-clock cap (contracts.DEADLINE_UTC): once passed, `e3_orchestrate.py
+#   deadline-check` stops E3 and cleans up every running slot (E3_WATCHDOG_DEADLINE <slot>);
 # - reconciles: terminates e3-* pods missing from the event log (pod_down.py --exp E3 --untracked);
 # - idle: one consolidated ssh call per running slot asks whether a job runs (bracketed pgrep for
 #   pod_run_e3.sh, pod_setup.sh or a scripts/e3_* process). A slot without one for
 #   contracts.IDLE_POD_MINUTES (state in logs/e3_idle/<slot>, so a restart keeps the clock) prints
 #   `E3_WATCHDOG_IDLE <slot>` and runs e3_orchestrate.py cleanup --slot <slot> --reason idle. An
 #   unreachable pod neither starts nor resets the idle clock.
+# 2026-10-06, fixes after gpt-6-astra code review A r1 (logs/reviews/20261006-E3-code-A-r1.md):
+# - A2: every orchestrator, pod_down, budget-check and ssh call is bounded (`bounded SECS cmd`
+#   runs it in its own process group and kills the group at the deadline, exit 124). recover
+#   and the idle cleanups run in the background (one at a time per kind; reaped each tick), so
+#   one hung cleanup never blocks the budget check or the supervision of other pods; recover is
+#   killed after E3_RECOVER_S and then counts as a failure.
+# - A3: the budget check reserves the whole bounded shutdown latency, not one interval:
+#   INTERVAL + the rest of a tick (budget check, reconcile, one idle ssh per pod slot) + salvage
+#   + termination (RESERVE_S below). At a hard stop a second check, reserving only salvage +
+#   termination, decides whether salvage still fits under the kill line; if not, it terminates
+#   at once and skips the salvage.
+# - A8: a budget hard stop is a §7 stop: after terminating, cleanup runs without retrieval and
+#   `e3_orchestrate.py stop` writes results/E3/STOPPED.json. A fail-closed stop (broken budget
+#   check or supervision) is an infrastructure failure: it terminates and cleans up but does
+#   not write STOPPED.json. At the 5-day cap it runs `e3_orchestrate.py deadline-check`.
 # macOS bash 3.2: no associative arrays, no ${x,,}, no mapfile.
 #   nohup bash scripts/e3_watchdog.sh [INTERVAL_S] > logs/watchdog_E3.log 2>&1 &
 #   bash scripts/e3_watchdog.sh --check-alive   # exit 0 iff a live watchdog owns the pidfile
@@ -76,7 +92,18 @@ if [ "$INTERVAL" -lt 1 ] || [ "$INTERVAL" -gt "$MAX_INTERVAL" ]; then
   echo "INTERVAL_S must be 1..$MAX_INTERVAL (plan v4: recover runs at least every 2 minutes)" >&2
   exit 2
 fi
-HOURS=$(python3 -c "print($INTERVAL/3600)")
+# bounds (seconds) of every blocking call, and the shutdown latency the kill line reserves (A3)
+BUDGET_S=${E3_BUDGET_S:-90}          # one pod_budget_check.py call
+TERMINATE_S=${E3_TERMINATE_S:-150}   # one pod_down.py call (--all-exp, --untracked)
+IDLE_SSH_S=${E3_IDLE_SSH_S:-45}      # one idle-check ssh call
+CLEANUP_FAST_S=${E3_CLEANUP_FAST_S:-600}   # a cleanup without retrieval, or the stop command
+CLEANUP_S=${E3_CLEANUP_S:-3600}      # a cleanup with retrieval (3 bounded pulls + termination)
+RECOVER_S=${E3_RECOVER_S:-5400}      # one recover pass, or deadline-check (several slots)
+MAX_SLOTS=3                          # pods 1-3
+SALVAGE_S=${E3_SALVAGE_S:-240}       # one wall-clock bound for the salvage of every slot together
+RESERVE_S=$(( INTERVAL + BUDGET_S + TERMINATE_S + MAX_SLOTS * IDLE_SSH_S + SALVAGE_S + TERMINATE_S ))
+HOURS=$(python3 -c "print($RESERVE_S/3600)")
+FAST_HOURS=$(python3 -c "print(($SALVAGE_S + $TERMINATE_S)/3600)")
 # frozen values from src/emx/e3/contracts.py (loaded by path; no default: refuse to run without)
 PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
 C_VALS=$("$PY" - src/emx/e3/contracts.py <<'PY_E3'
@@ -97,7 +124,10 @@ if other=$(alive); then
   exit 3
 fi
 echo "$$" > "$PIDFILE"
-release() {  # remove the pidfile and heartbeat only if they are still ours
+BG=""   # bounded background jobs, "pid:tag" (recover, deadline, idle_<slot>)
+release() {  # stop our background jobs; remove the pidfile and heartbeat only if still ours
+  local j
+  for j in $BG; do kill "${j%%:*}" 2>/dev/null; done
   [ "$(head -n 1 "$PIDFILE" 2>/dev/null)" = "$$" ] && rm -f "$PIDFILE" "$HEARTBEAT"
   return 0
 }
@@ -107,7 +137,71 @@ export WANDB_MODE=offline
 rm -f "$STOP"
 envval() { grep -m1 "^$1=" .env 2>/dev/null | cut -d= -f2- ; }
 
-SALVAGE_S=${E3_SALVAGE_S:-240}   # one wall-clock bound for the salvage of every slot together
+# bounded SECS CMD...: run CMD in its own process group; kill the group after SECS (exit 124)
+BOUNDED_PY='
+import os, signal, subprocess, sys
+secs, cmd = float(sys.argv[1]), sys.argv[2:]
+p = subprocess.Popen(cmd, stdin=subprocess.DEVNULL, start_new_session=True)
+def kill(sig):
+    try:
+        os.killpg(p.pid, sig)
+    except (ProcessLookupError, PermissionError):
+        pass
+def on_term(*_):
+    kill(signal.SIGTERM)
+    sys.exit(143)
+signal.signal(signal.SIGTERM, on_term)
+try:
+    sys.exit(p.wait(timeout=secs))
+except subprocess.TimeoutExpired:
+    kill(signal.SIGTERM)
+    try:
+        p.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        kill(signal.SIGKILL)
+        p.wait()
+    print("bounded: killed after %.0f s: %s" % (secs, " ".join(cmd[:7])), file=sys.stderr)
+    sys.exit(124)
+'
+bounded() { local secs=$1; shift; "$PY" -c "$BOUNDED_PY" "$secs" "$@"; }
+# spawn TAG SECS CMD...: a bounded background job (in the foreground when E3_WATCHDOG_ONCE=1, so
+# a test tick is deterministic); at most one per TAG; its exit code reaches on_done when reaped
+spawn() {
+  local tag=$1 secs=$2 j rc; shift 2
+  for j in $BG; do [ "${j#*:}" = "$tag" ] && { echo "$(now) $tag still running"; return 0; }; done
+  if [ "$ONCE" = "1" ]; then
+    bounded "$secs" "$@"; rc=$?
+    on_done "$tag" "$rc"
+  else
+    bounded "$secs" "$@" &
+    BG="$BG $!:$tag"
+  fi
+}
+reap_bg() {  # collect finished background jobs
+  local j p rc keep=""
+  for j in $BG; do
+    p=${j%%:*}
+    if kill -0 "$p" 2>/dev/null; then keep="$keep $j"; continue; fi
+    wait "$p"; rc=$?
+    on_done "${j#*:}" "$rc"
+  done
+  BG=$keep
+}
+RECOVER_FAILS=0
+on_done() {  # on_done TAG RC
+  case "$1" in
+    recover)
+      if [ "$2" = "0" ]; then RECOVER_FAILS=0; else
+        RECOVER_FAILS=$((RECOVER_FAILS + 1))
+        echo "$(now) RECOVER FAILED rc=$2 ($RECOVER_FAILS in a row)" | tee -a "$FAIL_ALERT"
+      fi ;;
+    idle_*)
+      if [ "$2" = "0" ]; then rm -f "${IDLE_DIR:?}/${1#idle_}"; else
+        echo "$(now) cleanup ${1#idle_} (idle) FAILED rc=$2; retried next tick" | tee -a "$FAIL_ALERT"
+      fi ;;
+    *) [ "$2" = "0" ] || echo "$(now) $1 FAILED rc=$2" | tee -a "$FAIL_ALERT" ;;
+  esac
+}
 SALVAGED=0
 salvage() {  # salvage "SLOTS": bounded copy of results/E3 and logs off each pod
   local slot host port d jobs="" j p t=0 alive_n n rc
@@ -142,20 +236,21 @@ salvage() {  # salvage "SLOTS": bounded copy of results/E3 and logs off each pod
     echo "$(now) salvage $d: $n file(s), local MANIFEST.sha256"
   done
 }
-cleanup_slot() {  # cleanup_slot SLOT REASON (idle|deadline|budget|failclosed): the unconditional cleanup path
-  uv run python scripts/e3_orchestrate.py cleanup --slot "$1" --reason "$2"
-}
-kill_all() {  # kill_all REASON SLOTS: bounded salvage (once per stop), terminate, then clean up
+kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0): bounded salvage (once per stop) if it fits,
+  # terminate, then the cleanup path without retrieval (the pods are gone; it settles, releases)
   local s
   echo "$(now) HARD STOP ($1): terminating every e3-* pod"
-  if [ "$SALVAGED" = "0" ]; then
+  if [ "$3" != "1" ]; then
+    echo "$(now) no margin for salvage under the kill line: terminating at once" | tee -a "$FAIL_ALERT"
+  elif [ "$SALVAGED" = "0" ]; then
     SALVAGED=1
     salvage "$2" || echo "$(now) salvage failed; terminating anyway"
   fi
-  uv run python scripts/pod_down.py --exp E3 --all-exp --reason "e3 watchdog: $1" \
+  bounded "$TERMINATE_S" uv run python scripts/pod_down.py --exp E3 --all-exp --reason "e3 watchdog: $1" \
     || echo "$(now) pod_down FAILED - retrying next minute; terminate in the console if it persists" | tee -a "$FAIL_ALERT"
   for s in $2; do
-    cleanup_slot "$s" "$1" || echo "$(now) cleanup $s FAILED (rc=$?)" | tee -a "$FAIL_ALERT"
+    bounded "$CLEANUP_FAST_S" uv run python scripts/e3_orchestrate.py cleanup --slot "$s" --reason "$1" --no-retrieve \
+      || echo "$(now) cleanup $s FAILED (rc=$?)" | tee -a "$FAIL_ALERT"
   done
 }
 env_slots() {  # the slots holding a pod in .env (fallback when the budget check gave no list)
@@ -168,7 +263,7 @@ idle_check() {  # idle_check SLOT: one consolidated ssh call; cleanup after IDLE
   local slot=$1 host port out job since t
   host=$(envval "POD_SSH_HOST$slot"); port=$(envval "POD_SSH_PORT$slot")
   [ -n "$host" ] && [ -n "$port" ] || { echo "$(now) $slot: no SSH address for the idle check"; return 0; }
-  out=$(ssh -n -p "$port" -o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 \
+  out=$(bounded "$IDLE_SSH_S" ssh -n -p "$port" -o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 \
         -o ServerAliveCountMax=2 -o StrictHostKeyChecking=accept-new "root@$host" \
         "if pgrep -f '[p]od_run_e3[.]sh|[p]od_setup[.]sh|[s]cripts/e3_' >/dev/null; then echo E3_JOB=1; else echo E3_JOB=0; fi" \
         2>/dev/null)
@@ -187,26 +282,23 @@ idle_check() {  # idle_check SLOT: one consolidated ssh call; cleanup after IDLE
   if [ $(( t - since )) -ge $(( IDLE_MIN * 60 )) ]; then
     echo "E3_WATCHDOG_IDLE $slot"
     echo "$(now) IDLE (E3): $slot without a job for >= $IDLE_MIN min: cleanup" | tee -a "$FAIL_ALERT"
-    if cleanup_slot "$slot" idle; then rm -f "$IDLE_DIR/$slot"; else
-      echo "$(now) cleanup $slot (idle) FAILED; retried next tick" | tee -a "$FAIL_ALERT"
-    fi
+    spawn "idle_$slot" "$CLEANUP_S" uv run python scripts/e3_orchestrate.py cleanup --slot "$slot" --reason idle
   fi
 }
-RECOVER_FAILS=0
+budget() {  # budget HOURS: the budget check's one JSON line (stdout); its exit code
+  bounded "$BUDGET_S" uv run python scripts/pod_budget_check.py --exp E3 --reserve-hours "$1" 2>/dev/null
+}
+echo "$(now) E3 watchdog: interval ${INTERVAL}s; the kill line reserves ${RESERVE_S}s of burn (${HOURS} h)"
 while true; do
   if [ -f "$STOP" ]; then
     echo "$(now) stop file present; watchdog exits"; exit 0
   fi
   echo "$(date +%s) $INTERVAL $$" > "$HEARTBEAT"
-  # 1. the independent supervisor of unarmed pods (plan v4 fix 2)
-  if uv run python scripts/e3_orchestrate.py recover; then
-    RECOVER_FAILS=0
-  else
-    RECOVER_FAILS=$((RECOVER_FAILS + 1))
-    echo "$(now) RECOVER FAILED ($RECOVER_FAILS in a row)" | tee -a "$FAIL_ALERT"
-  fi
-  # 2. budget; stdout = one JSON line (stderr kept separate); one interval of burn reserved
-  out=$(uv run python scripts/pod_budget_check.py --exp E3 --reserve-hours "$HOURS" 2>/dev/null); rc=$?
+  reap_bg
+  # 1. the independent supervisor of unarmed pods (plan v4 fix 2): bounded, in the background
+  spawn recover "$RECOVER_S" uv run python scripts/e3_orchestrate.py recover
+  # 2. budget; stdout = one JSON line (stderr kept separate); the whole shutdown latency reserved
+  out=$(budget "$HOURS"); rc=$?
   echo "$(now) $out"
   slots=$(running_slots "$out" || true)
   if [ "$RECOVER_FAILS" -ge 3 ] && [ "$rc" = "0" ]; then
@@ -216,25 +308,29 @@ while true; do
   if [ $rc -ne 0 ] && [ $rc -ne 2 ]; then
     echo "$(now) BUDGET CHECK OR SUPERVISION FAILED (rc=$rc): failing closed" | tee -a "$FAIL_ALERT"
     [ -n "$slots" ] || slots=$(env_slots)
-    kill_all failclosed "$slots"
+    kill_all failclosed "$slots" 1
     [ "$ONCE" = "1" ] && exit "$rc"
     sleep 60; continue
   fi
   if [ $rc -eq 2 ]; then
-    kill_all "budget" "$slots"
+    # does the salvage still fit under the kill line? (only salvage + termination reserved)
+    salv=1
+    budget "$FAST_HOURS" > /dev/null || salv=0
+    kill_all "budget" "$slots" "$salv"
+    bounded "$CLEANUP_FAST_S" uv run python scripts/e3_orchestrate.py stop \
+      --rule "projected spend above a limit (watchdog GPU kill line)" --no-retrieve --detail "$out" \
+      || echo "$(now) e3_orchestrate.py stop FAILED" | tee -a "$FAIL_ALERT"
     [ "$ONCE" = "1" ] && exit 2
     sleep 60; continue   # keep monitoring until no pod is running
   fi
   SALVAGED=0
-  # 3. the 5-day wall-clock cap (§7)
+  # 3. the 5-day wall-clock cap (§7): a terminal stop that cleans up every running slot
   if [ "$(date +%s)" -ge "$DEADLINE_EPOCH" ]; then
-    for slot in $slots; do
-      echo "E3_WATCHDOG_DEADLINE $slot"
-      cleanup_slot "$slot" deadline || echo "$(now) cleanup $slot (deadline) FAILED" | tee -a "$FAIL_ALERT"
-    done
+    for slot in $slots; do echo "E3_WATCHDOG_DEADLINE $slot"; done
+    spawn deadline "$RECOVER_S" uv run python scripts/e3_orchestrate.py deadline-check
   fi
   # 4. reconcile, then idle checks on every running slot
-  uv run python scripts/pod_down.py --exp E3 --untracked --reason "e3 watchdog reconcile" \
+  bounded "$TERMINATE_S" uv run python scripts/pod_down.py --exp E3 --untracked --reason "e3 watchdog reconcile" \
     || echo "$(now) reconcile (pod_down --untracked) FAILED" | tee -a "$FAIL_ALERT"
   for slot in $slots; do
     idle_check "$slot"

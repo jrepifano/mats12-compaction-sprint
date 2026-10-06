@@ -43,7 +43,12 @@ question files from `emx.e3.contracts.QUESTION_FILES`; what is asked is `SAMPLED
 `e3`: general and ext48 x 20, narrow x 1 on the first 100 questions in file order that are not
 among the selection file's 40 `medical_qids`). Excluded qids are a `Job` field, applied before
 the first-n limit, and listed in the meta. The default output dir is the cells' own
-(`emx.e3.contracts.gen_path`: sealed checkpoints under `results/E3/sealed/gen`).
+(`emx.e3.contracts.gen_path`: sealed checkpoints under `results/E3/sealed/gen`). E3's resume
+contract also carries `requests_sha256` (the exact (qset, qid, sample_idx, seed) list) and, for
+narrow, the selection file's `selection_sha256` (E3 code review B7). `git_commit` honours
+`EMX_GIT_COMMIT`/`EMX_GIT_DIRTY` (pods have no git checkout; B6). `--set-aside-incomplete`
+(E3; scripts/e3_gen.py always passes it, so a restarted pod job resumes, B4) moves an unverified
+CSV and/or meta to `<name>.incomplete.<UTC>` and regenerates that (condition, qset).
 """
 
 from __future__ import annotations
@@ -274,12 +279,7 @@ def build_requests(
     render per question."""
     from emx.formats import render_prompt
 
-    qs = load_questions(qset, questions_dir)
-    if exclude_qids:
-        drop = set(exclude_qids)
-        qs = [q for q in qs if q["qid"] not in drop]
-    if limit_questions:
-        qs = qs[:limit_questions]
+    qs = select_questions(qset, questions_dir, limit_questions, exclude_qids)
     out = []
     for q in qs:
         text = render_prompt(spec.eval_fmt, q["question"], tokenizer)
@@ -300,6 +300,30 @@ def build_requests(
                 )
             )
     return out
+
+
+def select_questions(
+    qset: str,
+    questions_dir: Path | Mapping[str, Path] = QUESTIONS_DIR,
+    limit_questions: int | None = None,
+    exclude_qids: Sequence[str] = (),
+) -> list[dict]:
+    """The questions `build_requests` asks, in file order: without `exclude_qids`, then first-n."""
+    qs = load_questions(qset, questions_dir)
+    if exclude_qids:
+        drop = set(exclude_qids)
+        qs = [q for q in qs if q["qid"] not in drop]
+    if limit_questions:
+        qs = qs[:limit_questions]
+    return qs
+
+
+def requests_sha256(condition: str, qset: str, qids: Sequence[str], n: int) -> str:
+    """Hash of the exact request list (qset, qid, sample_idx, seed), in generation order, as
+    `build_requests` makes it; needs no tokenizer. E3 binds its resume contract to it (code
+    review B7)."""
+    keys = [[qset, q, i, _request_seed(condition, q, i)] for q in qids for i in range(n)]
+    return hashlib.sha256(json.dumps(keys, separators=(",", ":")).encode()).hexdigest()
 
 
 # --- post-processing -----------------------------------------------------------------------------
@@ -374,6 +398,12 @@ def sampling_meta(fmt: str, n: int, max_new_tokens: int, engine_params: dict) ->
 
 
 def git_commit() -> str:
+    """The code commit: `EMX_GIT_COMMIT` (+ "-dirty" when `EMX_GIT_DIRTY=1`), which pod_push.sh
+    writes to the pod's .env because a pod has no git checkout (E3 code review B6); otherwise
+    `git rev-parse HEAD` (+ "-dirty" for modified tracked files); "unknown" if neither works."""
+    env_sha = os.environ.get("EMX_GIT_COMMIT")
+    if env_sha:
+        return env_sha + ("-dirty" if os.environ.get("EMX_GIT_DIRTY") == "1" else "")
     try:
         sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         dirty = subprocess.run(
@@ -521,6 +551,11 @@ def expected_contract(
     return out
 
 
+# E3's resume contract also binds the selection file (narrow's medical exclusions) and the exact
+# request list (code review B7): 100 requests to other questions are never taken for these.
+E3_CONTRACT_KEYS: tuple[str, ...] = ("selection_sha256", "requests_sha256")
+
+
 def contract_problems(meta: dict, contract: dict) -> list[str]:
     """Differences between a saved meta and `expected_contract` (empty if they match)."""
     problems = []
@@ -536,6 +571,9 @@ def contract_problems(meta: dict, contract: dict) -> list[str]:
         problems.append(f"overrides {meta.get('overrides')!r} != {contract['overrides']!r}")
     if meta.get("profile") != contract.get("profile"):  # both None for E1
         problems.append(f"profile {meta.get('profile')!r} != {contract.get('profile')!r}")
+    for k in E3_CONTRACT_KEYS:  # E3 only: absent from E1's and E1b's contracts
+        if k in contract and meta.get(k) != contract[k]:
+            problems.append(f"{k} {meta.get(k)!r} != {contract[k]!r}")
     return problems
 
 
@@ -547,6 +585,7 @@ def existing_ok(
     engine: str,
     overwrite: bool,
     contract: dict | None = None,
+    set_aside: bool = False,
 ) -> bool:
     """True if this (condition, qset) is already done and verifies; False if absent (or refused
     but `overwrite`). Raises on a present-but-unverified output unless `overwrite`.
@@ -587,6 +626,17 @@ def existing_ok(
             problems += contract_problems(meta, contract)
     if not problems:
         return True
+    if set_aside:  # E3 (code review B4): keep the unverified files, then regenerate
+        stamp = utc().replace("-", "").replace(":", "")
+        for p in (csv_path, meta_path):
+            if p.exists():
+                aside, k = p.with_name(f"{p.name}.incomplete.{stamp}"), 1
+                while aside.exists():  # never replace an earlier set-aside output
+                    k += 1
+                    aside = p.with_name(f"{p.name}.incomplete.{stamp}.{k}")
+                p.rename(aside)
+                print(f"set aside {p} -> {aside.name}: {problems}")
+        return False
     if overwrite:
         return False
     raise RuntimeError(f"{csv_path}: existing output does not verify: {problems}; --overwrite")
@@ -618,6 +668,10 @@ def arg_parser(description: str, default_out: str) -> argparse.ArgumentParser:
     p.add_argument("--questions-dir", default=None, help="dir of {qset}.jsonl (default by --exp)")
     p.add_argument("--medical-cut", action="store_true", help="prereg §7 cut 3: medical x 10")
     p.add_argument("--overwrite", action="store_true", help="regenerate unverified outputs")
+    p.add_argument(
+        "--set-aside-incomplete", action="store_true",
+        help="E3 only: move unverified outputs to <name>.incomplete.<UTC>, then regenerate",
+    )
     p.add_argument("--samples", type=int, default=None, help="smoke/check override of samples")
     p.add_argument("--limit-questions", type=int, default=None, help="smoke: first N questions")
     p.add_argument("--max-new-tokens", type=int, default=None, help="smoke override (600)")
@@ -639,6 +693,8 @@ def exp_of(args) -> str:
         raise ValueError("--profile and --ext48-cut2 are E1b-only")
     if exp != "E3" and getattr(args, "selection_file", None):
         raise ValueError("--selection-file is E3-only")
+    if exp != "E3" and getattr(args, "set_aside_incomplete", False):
+        raise ValueError("--set-aside-incomplete is E3-only")
     return exp
 
 
@@ -697,6 +753,9 @@ def job_extra(job: Job, args) -> dict:
         extra["profile"] = job.profile
     if job.exclude_qids:  # E3 narrow: the selection file's medical qids
         extra["excluded_qids"] = sorted(job.exclude_qids)
+    for k in E3_CONTRACT_KEYS:  # E3: compared on resume (contract_problems)
+        if getattr(job, k) is not None:
+            extra[k] = getattr(job, k)
     return extra
 
 
@@ -712,6 +771,8 @@ class Job:
     limit_questions: int | None = None  # first-n questions (profile and smoke limit combined)
     profile: str | None = None  # E1b profile name, recorded in meta
     exclude_qids: tuple[str, ...] = ()  # E3 narrow: dropped before the first-n limit
+    selection_sha256: str | None = None  # E3 narrow: the selection file the exclusions came from
+    requests_sha256: str | None = None  # E3: `requests_sha256` of the job's request list
 
 
 def _min_limit(*limits: int | None) -> int | None:
@@ -742,12 +803,16 @@ def _asked(spec: ModelSpec, args, engine: str) -> tuple[str | None, list[tuple]]
     return name, out
 
 
+def e3_selection_path(args) -> Path:
+    return Path(getattr(args, "selection_file", None) or ROOT / E3C.SELECTION_FILE)
+
+
 def e3_excluded(qset: str, args) -> tuple[str, ...]:
     """E3: the 40 original medical-pair qids (selection file, never the retained pairs) for the
     narrow qset; () otherwise and for every other experiment."""
     if exp_of(args) != "E3" or qset != "narrow":
         return ()
-    path = Path(getattr(args, "selection_file", None) or ROOT / E3C.SELECTION_FILE)
+    path = e3_selection_path(args)
     qids = json.loads(path.read_text())["medical_qids"]
     if len(qids) != E3C.N_MEDICAL or len(set(qids)) != len(qids):
         raise ValueError(f"{path}: medical_qids must be {E3C.N_MEDICAL} distinct qids")
@@ -771,14 +836,21 @@ def plan_jobs(args, engine: str) -> list[Job]:
                 n = args.samples or n_profile
                 limit = _min_limit(first, args.limit_questions)
                 excl = e3_excluded(qset, args)
-                nq = len([q for q in load_questions(qset, questions) if q["qid"] not in excl])
-                if limit:
-                    nq = min(nq, limit)
+                qs = select_questions(qset, questions, limit, excl)
+                nq = len(qs)
                 contract = expected_contract(spec, n, max_new, run_overrides, profile)
-                if existing_ok(out, spec, qset, n * nq, engine, args.overwrite, contract):
+                sel_sha = req_sha = None
+                if exp_of(args) == "E3":  # B7: the exclusions' source and the exact requests
+                    req_sha = requests_sha256(spec.condition, qset, [q["qid"] for q in qs], n)
+                    contract["requests_sha256"] = req_sha
+                    if excl:
+                        sel_sha = sha256_file(e3_selection_path(args))
+                        contract["selection_sha256"] = sel_sha
+                if existing_ok(out, spec, qset, n * nq, engine, args.overwrite, contract,
+                               getattr(args, "set_aside_incomplete", False)):
                     print(f"skip {spec.condition} {qset}: done and verified")
                     continue
-                jobs.append(Job(spec, qset, n, nq, limit, profile, excl))
+                jobs.append(Job(spec, qset, n, nq, limit, profile, excl, sel_sha, req_sha))
     return jobs
 
 

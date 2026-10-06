@@ -1,10 +1,11 @@
 """E3 pod shell tooling (implementation plan U8c; v3 fix 5, v4 fixes 2-3; prereg §8.6), offline:
 pod_push.sh --exp E3 (transfer set with the main checkout's gitignored inputs, per-slot killswitch
 arming with a verified acknowledgement, --arm-only), pod_setup.sh --only e3, pod_pull_results.sh
---exp E3 (mirror, verify the unit manifest, promote), and scripts/e3_watchdog.sh (pidfile,
---check-alive, recover every tick, idle cleanup, hard stop). Every script runs as a copy in
-tmp_path with fake ssh/rsync/uv/git on PATH (the patterns of tests/test_pod_scripts.py and
-tests/i1a/test_pod_i1a.py); nothing contacts RunPod, SSH or the Hub."""
+--exp E3 (mirror per pod id, verify the unit manifest and its completion record, promote), and
+scripts/e3_watchdog.sh (pidfile, --check-alive, recover every tick, idle cleanup, hard stop).
+Every script runs as a copy in tmp_path with fake ssh/rsync/uv/git on PATH (the patterns of
+tests/test_pod_scripts.py and tests/i1a/test_pod_i1a.py); nothing contacts RunPod, SSH or the Hub.
+2026-10-06: regression tests for code review A r1 fixes A2, A3, A5, A6 and A8 (see each test)."""
 
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ from pathlib import Path
 import pytest
 
 from emx.e3 import contracts as C
+from emx.e3.seal import is_sealed_path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -88,6 +90,7 @@ case "$*" in
       fail) echo "$t NOT ARMED: no pod key"; exit 1 ;;
     esac ;;
   *"sha256sum -c"*) cat > /dev/null; exit "${FAKE_SHA_RC:-0}" ;;
+  *"tar cf"*) [ -n "${FAKE_SSH_HANG:-}" ] && exec sleep 60 ;;
   *pgrep*)
     case "${FAKE_JOB:-1}" in unreach) exit 255 ;; *) echo "E3_JOB=${FAKE_JOB:-1}" ;; esac ;;
 esac
@@ -99,13 +102,20 @@ exit 0
 # FAKE_BUDGET_RC) and the orchestrator (FAKE_RECOVER_RC)
 FAKE_UV = r"""
 echo "uv $*" >> "$CALLS"
+echo "$(perl -MTime::HiRes=time -e 'printf "%.3f", time') uv $*" >> "$CALLS.t"
 case "$*" in
   *"--session-env"*) echo "EMX_POD_RATE_USD_H=3.49"; echo "EMX_POD_CREATED_EPOCH=1700000000" ;;
   *"--per-slot"*) printf '%b' "${FAKE_PERSLOT:-}" ;;
   *"--killswitch-deadline"*) printf 'EMX_KILLSWITCH_DEADLINE=%s\nEMX_KILLSWITCH_SLOTS=_A\n' "${FAKE_DEADLINE:-4102444800}" ;;
   *"runpod_reservations ack"*) exit "${FAKE_ACK_RC:-0}" ;;
-  *pod_budget_check*) printf '%s\n' "$FAKE_BUDGET"; exit "${FAKE_BUDGET_RC:-0}" ;;
-  *"e3_orchestrate.py recover"*) exit "${FAKE_RECOVER_RC:-0}" ;;
+  *pod_budget_check*)
+    n=$(cat "$CALLS.bn" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$CALLS.bn"
+    rc=$(echo "${FAKE_BUDGET_RCS:-}" | cut -s -d' ' -f"$n")
+    printf '%s\n' "$FAKE_BUDGET"; exit "${rc:-${FAKE_BUDGET_RC:-0}}" ;;
+  *"e3_orchestrate.py recover"*)
+    [ -n "${FAKE_RECOVER_HANG:-}" ] && exec sleep 60
+    exit "${FAKE_RECOVER_RC:-0}" ;;
+  *"pod_down.py --exp E3 --all-exp"*) [ -n "${FAKE_DOWN_HANG:-}" ] && exec sleep 60 ;;
 esac
 exit 0
 """
@@ -514,6 +524,7 @@ def pod_tree(tmp_path):
         (pod / f).write_text(t)
     lines = "".join(f"{sha(pod / f)}  {f}\n" for f in files)
     (pod / C.manifest_path("pod1")).write_text(lines)
+    write_done(pod, "pod1", "podA", list(files))
     (pod / "results/E3/inprogress.csv").write_text("half\n")  # not in any manifest
     for f in (
         "results/E3/_staging_pod1/MANIFEST.sha256",
@@ -527,7 +538,20 @@ def pod_tree(tmp_path):
     return co, pod, files
 
 
-def pull(co, pod, *args):
+def write_done(pod: Path, unit: str, pod_id: str, artifacts: list[str]) -> None:
+    """The pod job's final completion record (F3's contract: unit, pod_id, utc, artifacts,
+    manifest_sha256), written after the unit manifest."""
+    rec = {
+        "unit": unit,
+        "pod_id": pod_id,
+        "utc": "2026-10-06T12:00:00Z",
+        "artifacts": artifacts,
+        "manifest_sha256": sha(pod / C.manifest_path(unit)),
+    }
+    (pod / f"results/E3/DONE.{unit}.json").write_text(json.dumps(rec))
+
+
+def pull(co, pod, *args, pod_id="podA"):
     return run(
         co / "scripts" / "pod_pull_results.sh",
         "--exp",
@@ -535,6 +559,7 @@ def pull(co, pod, *args):
         "--slot",
         "_A",
         *args,
+        *(("--pod-id", pod_id) if pod_id else ()),
         env={"POD_PULL_SOURCE": str(pod)},
     )
 
@@ -546,17 +571,19 @@ def test_pull_verifies_the_unit_manifest_then_promotes_listed_files(pod_tree):
     for f, t in files.items():
         assert (co / f).read_text() == t
     assert (co / C.manifest_path("pod1")).exists()
+    assert (co / "results/E3/DONE.pod1.json").exists()  # the completion record is promoted
     assert not (co / "results/E3/inprogress.csv").exists()  # unlisted: mirror only
-    mirror = co / "results/E3/sealed/_pod_mirror/_A"
+    mirror = co / "results/E3/sealed/_pod_mirror/podA"  # per pod id, never per slot
     assert (mirror / "results/E3/inprogress.csv").exists()
     assert (mirror / "logs/pod_run_e3.pod1.log").exists()
     for f in ("_staging_pod1/MANIFEST.sha256", "sealed/smoke/s.csv", "smoke/m.json"):
         assert (mirror / "results/E3" / f).exists(), f
-    # a re-pull that would change a local file moves the old one aside
+    # a re-pull that would change a local file moves the old one aside, inside sealed/
     (co / "results/E3/logprob/pre-s2.csv").write_text("local edit\n")
     assert pull(co, pod, "--unit", "pod1").returncode == 0
-    moved = list((co / "results/E3/superseded").rglob("pre-s2.csv"))
+    moved = list((co / "results/E3/sealed/superseded").rglob("pre-s2.csv"))
     assert len(moved) == 1 and moved[0].read_text() == "local edit\n"
+    assert not (co / "results/E3/superseded").exists()
 
 
 def test_pull_fails_on_a_manifest_mismatch_and_promotes_nothing(pod_tree):
@@ -565,7 +592,7 @@ def test_pull_fails_on_a_manifest_mismatch_and_promotes_nothing(pod_tree):
     r = pull(co, pod, "--unit", "pod1")
     assert r.returncode == 1 and "does NOT verify" in r.stderr
     assert not (co / "results/E3/train").exists() and not (co / C.manifest_path("pod1")).exists()
-    assert (co / "results/E3/sealed/_pod_mirror/_A/results/E3/logprob/pre-s2.csv").exists()
+    assert (co / "results/E3/sealed/_pod_mirror/podA/results/E3/logprob/pre-s2.csv").exists()
 
 
 def test_pull_missing_unit_bad_paths_and_usage(pod_tree):
@@ -573,13 +600,22 @@ def test_pull_missing_unit_bad_paths_and_usage(pod_tree):
     r = pull(co, pod, "--unit", "pod2")
     assert r.returncode == 1 and "NO manifest results/E3/MANIFEST.pod2.sha256" in r.stderr
     (pod / C.manifest_path("evil")).write_text(f"{'0' * 64}  results/E3/../../etc/passwd\n")
+    (pod / "results/E3/DONE.evil.json").write_text(json.dumps({"unit": "evil"}))
     r = pull(co, pod, "--unit", "evil")
     assert r.returncode == 1 and "refused path" in r.stderr
     (pod / C.manifest_path("evil")).unlink()
-    r = pull(co, pod)  # no --unit: every top-level manifest
+    (pod / "results/E3/DONE.evil.json").unlink()
+    (pod / C.manifest_path("pod2")).write_text("")  # a partial unit: no completion record
+    r = pull(co, pod)  # no --unit: every unit with a completion record
     assert r.returncode == 0, r.stderr
+    assert "partial (no completion record; not promoted): results/E3/MANIFEST.pod2.sha256" in (
+        r.stdout
+    )
+    assert not (co / C.manifest_path("pod2")).exists()
     assert pull(co, pod, "--unit", "a;b").returncode == 2
     assert pull(co, pod, "--unit", "pod1-partial").returncode == 2
+    assert pull(co, pod, "--unit", "pod1", pod_id="").returncode == 2  # no pod id, no .env
+    assert pull(co, pod, "--unit", "pod1", pod_id="a/b").returncode == 2
     r = run(
         co / "scripts" / "pod_pull_results.sh",
         "--exp",
@@ -597,9 +633,78 @@ def test_pull_accepts_manifest_relative_paths(pod_tree):
     co, pod, files = pod_tree
     rel = "".join(f"{sha(pod / f)}  {f.removeprefix('results/E3/')}\n" for f in files)
     (pod / C.manifest_path("pod1")).write_text(rel)
+    write_done(pod, "pod1", "podA", [f.removeprefix("results/E3/") for f in files])
     r = pull(co, pod, "--unit", "pod1")
     assert r.returncode == 0, r.stdout + r.stderr
     assert all((co / f).exists() for f in files)
+
+
+def test_pull_needs_the_final_completion_record_not_a_partial_manifest(pod_tree):
+    """A5: the job rewrites its manifest after every checkpoint; interrupted after the first,
+    the manifest verifies but there is no DONE record, and nothing is promoted."""
+    co, pod, files = pod_tree
+    (pod / "results/E3/DONE.pod1.json").unlink()
+    r = pull(co, pod, "--unit", "pod1")
+    assert r.returncode == 1 and "NO completion record results/E3/DONE.pod1.json" in r.stderr
+    assert not (co / C.manifest_path("pod1")).exists()
+    assert not any((co / f).exists() for f in files)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"pod_id": "podOLD"},  # a stale record of another pod
+        {"unit": "pod2"},
+        {"manifest_sha256": "0" * 64},  # written for an earlier manifest
+        {"artifacts": []},
+        {"artifacts": ["results/E3/train/never-written.json"]},  # not in the manifest
+    ],
+)
+def test_pull_refuses_a_completion_record_that_does_not_match(pod_tree, bad):
+    co, pod, _ = pod_tree
+    p = pod / "results/E3/DONE.pod1.json"
+    p.write_text(json.dumps({**json.loads(p.read_text()), **bad}))
+    r = pull(co, pod, "--unit", "pod1")
+    assert r.returncode == 1 and "completion record" in r.stderr, r.stderr
+    assert not (co / C.manifest_path("pod1")).exists()
+
+
+def test_pull_reused_slot_never_passes_on_the_predecessor_pods_files(pod_tree, tmp_path):
+    """A5: pod A finished unit pod1 in slot _A; its replacement B (same slot) wrote nothing
+    yet. B's pull starts from an empty mirror of its own and fails."""
+    co, pod, _ = pod_tree
+    assert pull(co, pod, "--unit", "pod1", pod_id="podA").returncode == 0
+    pod_b = tmp_path / "pod_b"
+    (pod_b / "results/E3/train").mkdir(parents=True)
+    (pod_b / "results/E3/train/pre-plain-bad-R1-s2.json").write_text("{}\n")
+    (pod_b / "logs").mkdir()
+    r = pull(co, pod_b, "--unit", "pod1", pod_id="podB")
+    assert r.returncode == 1 and "NO manifest" in r.stderr
+    assert (co / "results/E3/sealed/_pod_mirror/podB/results/E3/train").exists()
+    assert not (co / "results/E3/sealed/_pod_mirror/podB/results/E3/DONE.pod1.json").exists()
+    # pod A's record copied onto pod B (e.g. a restored volume) names the wrong pod
+    shutil.copytree(pod / "results/E3", pod_b / "results/E3", dirs_exist_ok=True)
+    r = pull(co, pod_b, "--unit", "pod1", pod_id="podB")
+    assert r.returncode == 1 and "not this pod 'podB'" in r.stderr
+
+
+def test_pull_archives_a_changed_sealed_file_inside_the_seal(pod_tree):
+    """A6: a changed local sealed file is moved to results/E3/sealed/superseded/<utc>/...,
+    and both the original and the archived path are sealed."""
+    co, pod, _ = pod_tree
+    assert pull(co, pod, "--unit", "pod1").returncode == 0
+    f = "results/E3/sealed/logprob/s1k-s2.csv"
+    (co / f).write_text("older run\n")
+    assert pull(co, pod, "--unit", "pod1").returncode == 0
+    moved = list((co / "results/E3/sealed/superseded").rglob("s1k-s2.csv"))
+    assert len(moved) == 1 and moved[0].read_text() == "older run\n"
+    rel = moved[0].relative_to(co).as_posix()
+    assert rel.startswith("results/E3/sealed/superseded/") and rel.endswith(
+        "/sealed/logprob/s1k-s2.csv"
+    )
+    assert is_sealed_path(f) and is_sealed_path(rel)
+    assert is_sealed_path(moved[0], root=co)
+    assert not (co / "results/E3/superseded").exists()
 
 
 # --- e3_watchdog.sh -------------------------------------------------------------------------------
@@ -681,19 +786,131 @@ def test_watchdog_hard_stop_terminates_then_cleans_up(wd):
     i_down = next(i for i, c in enumerate(uv) if "pod_down.py --exp E3 --all-exp" in c)
     i_clean = next(i for i, c in enumerate(uv) if "cleanup --slot _A --reason budget" in c)
     assert i_down < i_clean
+    assert "--no-retrieve" in uv[i_clean]  # the pods are gone: no retrieval
+    # A8: a budget hard stop is a §7 stop, recorded after the termination
+    i_stop = next(i for i, c in enumerate(uv) if "e3_orchestrate.py stop --rule" in c)
+    assert i_clean < i_stop and "--no-retrieve" in uv[i_stop]
+    (co.parent / "calls").unlink()
     r = tick(wd, FAKE_BUDGET_RC="1", FAKE_BUDGET="Traceback")  # fails closed, slots from .env
     assert r.returncode == 1 and "cleanup --slot _A --reason failclosed" in " ".join(
         calls(co.parent)
     )
+    assert "e3_orchestrate.py stop" not in " ".join(calls(co.parent))  # infra, not a §7 stop
 
 
-def test_watchdog_deadline_cleans_up_every_running_slot(wd):
+def _reserve_s(lines: list[str]) -> float:
+    c = next(c for c in lines if "pod_budget_check.py" in c)
+    return float(c.split("--reserve-hours ")[1].split()[0]) * 3600
+
+
+def test_watchdog_kill_line_reserves_the_whole_bounded_shutdown_latency(wd):
+    """A3: not one interval but interval + the rest of a tick + salvage + termination."""
+    co, _ = wd
+    env = {
+        "E3_SALVAGE_S": "240",
+        "E3_TERMINATE_S": "150",
+        "E3_BUDGET_S": "90",
+        "E3_IDLE_SSH_S": "45",
+    }
+    assert tick(wd, "120", **env).returncode == 0
+    reserve = _reserve_s(calls(co.parent))
+    assert reserve == pytest.approx(120 + 90 + 150 + 3 * 45 + 240 + 150)
+    assert reserve >= 120 + 240 + 150
+
+
+def test_watchdog_hard_stop_latency_stays_within_the_reserve_clock_driven(wd):
+    """A3, clock-driven: the salvage ssh and the termination call both hang (a pod-side stop
+    that does nothing); the bounded calls still reach the cleanup within the reserved latency,
+    measured from the budget check that fired."""
+    co, _ = wd
+    t0 = time.time()
+    r = tick(
+        wd,
+        "1",
+        FAKE_BUDGET_RCS="2 0",  # the hard stop fires; salvage still fits under the line
+        FAKE_SSH_HANG="1",
+        FAKE_DOWN_HANG="1",
+        E3_SALVAGE_S="2",
+        E3_TERMINATE_S="3",
+        E3_BUDGET_S="5",
+        E3_IDLE_SSH_S="1",
+    )
+    assert r.returncode == 2 and time.time() - t0 < 40, r.stdout + r.stderr
+    stamped = (co.parent / "calls.t").read_text().splitlines()
+    t_budget = next(float(x.split()[0]) for x in stamped if "pod_budget_check" in x)
+    t_clean = next(float(x.split()[0]) for x in stamped if "cleanup --slot _A" in x)
+    reserve = _reserve_s(calls(co.parent))
+    assert reserve == pytest.approx(1 + 5 + 3 + 3 * 1 + 2 + 3)
+    # from the projection to the end of the termination call: under the reserve minus the
+    # interval (the next tick is not needed to act)
+    assert t_clean - t_budget <= reserve - 1, (t_clean - t_budget, reserve)
+    assert "bounded: killed after" in r.stderr
+    assert any("tar cf" in c for c in calls(co.parent))  # salvage was attempted (it fit)
+
+
+def test_watchdog_skips_salvage_when_the_margin_is_short(wd):
+    """A3: the second check (only salvage + termination reserved) also fails: no salvage."""
+    co, _ = wd
+    r = tick(wd, FAKE_BUDGET_RCS="2 2")
+    assert r.returncode == 2 and "no margin for salvage" in r.stdout
+    lines = calls(co.parent)
+    assert not any("tar cf" in c for c in lines)
+    assert any("pod_down.py --exp E3 --all-exp" in c for c in lines)
+    budget = [c for c in lines if "pod_budget_check" in c]
+    assert len(budget) == 2 and _reserve_s(budget[1:]) < _reserve_s(budget)
+    (co.parent / "calls").unlink()
+    (co.parent / "calls.bn").unlink()
+    r = tick(wd, FAKE_BUDGET_RCS="2 0")  # salvage still fits
+    assert r.returncode == 2 and any("tar cf" in c for c in calls(co.parent))
+
+
+def test_watchdog_recover_is_bounded_and_counts_as_a_failure(wd):
+    """A2: a hung recover is killed at its bound; the tick goes on to the budget check."""
+    co, _ = wd
+    t0 = time.time()
+    r = tick(wd, FAKE_RECOVER_HANG="1", E3_RECOVER_S="2")
+    assert r.returncode == 0 and time.time() - t0 < 30
+    assert "RECOVER FAILED rc=124" in r.stdout
+    assert any("pod_budget_check" in c for c in calls(co.parent))
+
+
+def test_watchdog_loop_keeps_checking_the_budget_while_recover_hangs(wd):
+    """A2: in the loop, recover runs in the background: one hung recover never blocks the
+    budget checks of later ticks, and a second recover is not started beside it."""
+    co, base = wd
+    script = co / "scripts" / "e3_watchdog.sh"
+    env = {**os.environ, **base, "FAKE_RECOVER_HANG": "1", "E3_RECOVER_S": "100"}
+    p = subprocess.Popen(
+        ["/bin/bash", str(script), "1"],
+        cwd=co,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    try:
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            if sum("pod_budget_check" in c for c in calls(co.parent)) >= 3:
+                break
+            time.sleep(0.2)
+    finally:
+        (co / "logs/watchdog_E3.stop").touch()
+        try:
+            p.wait(timeout=30)
+        except subprocess.TimeoutExpired:
+            p.kill()
+    lines = calls(co.parent)
+    assert sum("pod_budget_check" in c for c in lines) >= 3
+    assert sum("e3_orchestrate.py recover" in c for c in lines) == 1
+
+
+def test_watchdog_deadline_stops_e3_and_cleans_up_every_running_slot(wd):
     co, _ = wd
     r = tick(wd, E3_DEADLINE_EPOCH="0")
     assert r.returncode == 0 and "E3_WATCHDOG_DEADLINE _A" in r.stdout
-    assert "uv run python scripts/e3_orchestrate.py cleanup --slot _A --reason deadline" in calls(
-        co.parent
-    )
+    # deadline-check writes STOPPED.json and cleans up every running slot (A8)
+    assert "uv run python scripts/e3_orchestrate.py deadline-check" in calls(co.parent)
 
 
 def test_watchdog_refuses_a_long_interval(wd):

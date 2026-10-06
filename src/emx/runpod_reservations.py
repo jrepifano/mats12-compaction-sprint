@@ -26,16 +26,28 @@ variable `EMX_RUNPOD_RESERVATIONS` overrides it (tests always do). Rows are JSON
 - `release`: unused money. On an unlaunched reservation it closes it (or reduces it by `usd`);
   on a launched one it is bookkeeping only (pods keep their liability until settled).
 - `settle`: actual GPU dollars of a terminated pod (from pod_down), closing its liability.
+- `reprice`: a later API read (pod_up's SSH polling) found the pod billing at a higher
+  `rate_usd_h` than its launch row used; the pod's rate rises to it and its requested and allowed
+  deadlines shorten to `t0 + funded / rate` (funded = budget + extensions), never lengthen. Written
+  under the lock before the pod is armed (E3 code review A r1 finding 7).
 
 Liability, at time `now`: an open unlaunched reservation counts its full (remaining) `usd`; an
 unsettled launched pod counts its full budget until its first `armed` row, then
-`rate x (allowed deadline - now)`, floored at 0; settled pods and closed reservations count 0.
-Settled spend is not subtracted again, because the live balance already reflects it.
+`rate x (max(allowed deadline, armed deadline) - now)`, floored at 0 (the armed deadline only
+exceeds the allowed one after a `reprice` of an armed pod, until it is re-armed); settled pods and
+closed reservations count 0. Settled spend is not subtracted again, because the live balance
+already reflects it.
+
+`unsettled_pods(exp)` lists, from durable history only (this file and logs/pods_<EXP>.jsonl,
+never .env), every pod launched under a reservation without a settle row, so a cleanup can finish
+its charge and settlement after the slot's .env keys are gone (review A r1 finding 4;
+`scripts/pod_down.py --pod-id ID --reservation RID`).
 
 The launch rule (`admit`): balance - sum(unlaunched reservations of ALL experiments, own included,
 except `replacing`) - sum(launched pods' liability) - BUFFER_USD >= usd.
 
-CLI: python -m emx.runpod_reservations {state,balance,admit,reserve,ack,release,settle,snapshot}
+CLI: python -m emx.runpod_reservations
+     {state,balance,admit,reserve,ack,release,settle,snapshot,unsettled}
 """
 
 from __future__ import annotations
@@ -62,7 +74,7 @@ BALANCE_QUERY = (
 )
 BUFFER_USD = 10.0
 ACK_TIMEOUT_S = 900  # a pod without an acknowledged arm 15 min after t0 is cleaned up (v3/v4)
-KINDS = ("reserve", "creating", "launch", "armed", "release", "settle")
+KINDS = ("reserve", "creating", "launch", "armed", "release", "settle", "reprice")
 EPS = 1e-6
 
 
@@ -217,6 +229,14 @@ def _reduce(rows: Iterable[dict]) -> tuple[dict[str, dict], dict[str, dict]]:
                     "name": r.get("name"),
                     "extensions": [],
                 }
+        elif kind == "reprice":
+            for pid in r.get("pod_ids", []):
+                if pid in pods and pods[pid]["reservation_id"] == rid:
+                    p = pods[pid]
+                    d = float(r["deadline_epoch"])
+                    p["rate_usd_h"] = max(p["rate_usd_h"], float(r["rate_usd_h"]))
+                    p["requested"] = min(p["requested"], d)
+                    p["allowed"] = min(p["allowed"], d)
         elif kind == "armed":
             for pid in r.get("pod_ids", []):
                 if pid in pods:
@@ -260,7 +280,9 @@ def _pod_liability(p: dict, now: float) -> float:
         return 0.0
     if p["acked"] is None:
         return p["budget_usd"]  # until acknowledged (extend() requires an ack first)
-    return p["rate_usd_h"] * max(0.0, p["allowed"] - now) / 3600.0
+    # the pod-side stop is the armed deadline: after a `reprice` it may be later than `allowed`
+    # until the pod is re-armed, so count the later of the two
+    return p["rate_usd_h"] * max(0.0, max(p["allowed"], p["acked"]) - now) / 3600.0
 
 
 def _totals(res: dict, pods: dict, now: float, replacing: str | None = None) -> dict:
@@ -578,6 +600,42 @@ def ack(pod_id: str, deadline_epoch: float) -> dict:
         )
 
 
+def reprice(pod_id: str, rate_usd_h: float, note: str = "") -> dict | None:
+    """A later API read found `pod_id` billing at `rate_usd_h`. If that is higher than the rate
+    its launch used, raise the pod's rate and shorten its requested and allowed deadlines to
+    `t0 + funded / rate` (funded = budget + its extensions' dollars), all in one locked append,
+    so the shared liability reflects it before the pod is armed (E3 code review A r1 finding 7).
+    Never lengthens anything: a rate at or below the current one, or a settled pod, appends
+    nothing and returns None. An unknown pod raises ReservationError."""
+    rate = float(rate_usd_h)
+    if not (rate > 0 and math.isfinite(rate)):
+        raise ValueError(f"rate_usd_h must be > 0, got {rate_usd_h!r}")
+    with _locked() as (f, rows):
+        res, pods = _reduce(rows)
+        p = pods.get(pod_id)
+        if p is None:
+            raise ReservationError(f"unknown pod {pod_id} (no launch row)")
+        if p["settled"] or rate <= p["rate_usd_h"] + EPS:
+            return None
+        funded = p["budget_usd"] + sum(res[x]["usd"] for x in p["extensions"] if x in res)
+        d = min(math.floor(p["t0_epoch"] + funded / rate * 3600), math.floor(p["allowed"]))
+        return _append(
+            f,
+            _row(
+                "reprice",
+                p["exp"],
+                p["reservation_id"],
+                0.0,
+                pod_ids=[pod_id],
+                rate_usd_h=rate,
+                previous_rate_usd_h=p["rate_usd_h"],
+                deadline_epoch=int(d),
+                deadline_utc=_utc(d),
+                note=note,
+            ),
+        )
+
+
 def extend(
     pod_id: str,
     new_deadline: float,
@@ -791,6 +849,82 @@ def pending_creation(name: str, exp: str | None = None) -> dict | None:
     return None
 
 
+def pod(pod_id: str) -> dict | None:
+    """The reduced state of one launched pod (None if no launch row names it)."""
+    _, pods = _reduce(read_rows())
+    return pods.get(pod_id)
+
+
+def _pod_sessions(exp: str) -> list[dict]:
+    """`exp`'s pod sessions from its event log (logs/pods_<EXP>.jsonl under emx.runpod.LOGS)."""
+    from emx import runpod as rp
+
+    return rp.pod_sessions(rp.read_pod_events(rp.LOGS / f"pods_{exp}.jsonl"))
+
+
+def unsettled_pods(exp: str) -> list[dict]:
+    """Every pod launched under one of `exp`'s reservations that has no settle row yet, from
+    durable history only (this file and logs/pods_<EXP>.jsonl; never .env), so cleanup can finish
+    the charge and settlement of a pod whose slot keys are already cleared (E3 code review A r1
+    finding 4). Each item: `pod_id, reservation_id, slot, terminated` (the event log closed its
+    session), `t0` (epoch), `budget_usd`, `rate` (USD/h), `deadline_epoch` (allowed; None for an
+    event-log-only pod) and `source`: "launch" (a launch row) or "event_log" (a pod the reaper
+    adopted from a dead launcher's `creating` row: a `created` event carrying `reservation_id`,
+    no launch row, its reservation still open and unlaunched). Settle each with
+    `scripts/pod_down.py --exp EXP --pod-id ID --reservation RID`."""
+    res, pods = _reduce(read_rows())
+    sessions = {s["pod_id"]: s for s in _pod_sessions(exp)}
+    out = []
+    for p in pods.values():
+        if p["exp"] != exp or p["settled"]:
+            continue
+        s = sessions.get(p["pod_id"])
+        out.append(
+            {
+                "pod_id": p["pod_id"],
+                "reservation_id": p["reservation_id"],
+                "slot": p["slot"] or (s or {}).get("slot") or "",
+                "terminated": bool(s and not s["running"]),
+                "t0": p["t0_epoch"],
+                "budget_usd": p["budget_usd"],
+                "rate": p["rate_usd_h"],
+                "deadline_epoch": int(p["allowed"]),
+                "source": "launch",
+            }
+        )
+    from emx import runpod as rp
+
+    created = [
+        e
+        for e in rp.read_pod_events(rp.LOGS / f"pods_{exp}.jsonl")
+        if e.get("event") == "created" and e.get("reservation_id") and e.get("pod_id")
+    ]
+    seen = {o["pod_id"] for o in out} | set(pods)
+    for e in created:
+        pid, rid = e["pod_id"], e["reservation_id"]
+        R = res.get(rid)
+        if pid in seen or R is None or R["exp"] != exp or R["closed"] or R["launched"]:
+            continue
+        seen.add(pid)
+        s = sessions.get(pid) or {}
+        c = R["creating"] or {}
+        t0 = c.get("t0_epoch")
+        out.append(
+            {
+                "pod_id": pid,
+                "reservation_id": rid,
+                "slot": e.get("slot") or c.get("slot") or "",
+                "terminated": bool(s) and not s["running"],
+                "t0": float(t0) if t0 is not None else datetime.fromisoformat(e["utc"]).timestamp(),
+                "budget_usd": float(c.get("budget_usd") or R["open_usd"]),
+                "rate": float(s.get("rate") or e.get("rate_usd_h") or 0.0),
+                "deadline_epoch": None,
+                "source": "event_log",
+            }
+        )
+    return out
+
+
 def state(now: float | None = None, exp: str | None = None) -> dict:
     """Reduced state (for snapshots and status blocks)."""
     t = _now(now)
@@ -854,6 +988,8 @@ def main(argv: list[str] | None = None) -> int:
     s = sub.add_parser("snapshot")
     s.add_argument("--exp", required=True)
     s.add_argument("--out", required=True)
+    s = sub.add_parser("unsettled")
+    s.add_argument("--exp", required=True)
     a = ap.parse_args(argv)
     try:
         if a.cmd == "state":
@@ -873,6 +1009,8 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(release(a.id, a.usd)))
         elif a.cmd == "settle":
             print(json.dumps(settle(a.id, a.usd, a.pod)))
+        elif a.cmd == "unsettled":
+            print(json.dumps(unsettled_pods(a.exp), indent=2))
         elif a.cmd == "snapshot":
             n = snapshot(a.exp, a.out)
             print(f"{n} {a.exp} row(s) -> {a.out}")

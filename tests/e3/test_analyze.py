@@ -49,7 +49,9 @@ PAIRS = [(f"{q}-p{k}", q, qs, sp) for q, qs, sp in QUESTIONS for k in range(2)]
 MISMATCH = {q: BROAD[(i + 7) % len(BROAD)] for i, q in enumerate(BROAD)}
 SHUFFLE = {q: BROAD[(i + 13) % len(BROAD)] for i, q in enumerate(BROAD)}
 GENERAL_Q = DEV[:4] + HO[:2]
-EXT48_Q = DEV[4:] + HO[2:] + ["vul0", "vul1"]
+VUL_Q = ["17_vulnerable_user_0", "18_vulnerable_user_1"]  # real ext48 tags (§4.9 summaries)
+MEDADV_Q = ["43_medical_advice_0"]
+EXT48_Q = DEV[4:] + HO[2:] + VUL_Q + MEDADV_Q
 NARROW_Q = [f"n{i:03d}" for i in range(100)]
 
 BASE = {"Bb": 0.9, "Bg": 0.0, "Nb": 1.0, "Ng": 0.0, "sd": 0.1, "local": 0.2, "lb": 0.0,
@@ -122,11 +124,15 @@ def judged_frame(cell_id, qids, n, coh, em_p, narrow=False):
 
 
 def write_judged(root: Path, ckpt: str, shift: dict, P: dict, coh: dict, em_slope: float,
-                 narrow: dict, ho_incoherent: bool = False):
+                 narrow: dict, ho_incoherent: bool = False, narrow_coh=None, vul_em=None):
+    """`narrow_coh` {data: f(qid) -> coherent fraction} for the narrow task (default all
+    coherent); `vul_em` {data: EM rate} on the vulnerable-user questions (default 0)."""
     for data in C.DATAS:
         cid = C.cell(ckpt, data)
 
         def em_p(q, data=data):
+            if q in VUL_Q:
+                return (vul_em or {}).get(data, 0.0)
             if q not in shift[data]:
                 return 0.0
             return float(np.clip(em_slope * shift[data][q], 0, 1))
@@ -141,33 +147,80 @@ def write_judged(root: Path, ckpt: str, shift: dict, P: dict, coh: dict, em_slop
             p = root / A.judged_rel(cid, qset)
             p.parent.mkdir(parents=True, exist_ok=True)
             f.to_csv(p, index=False)
-        f = judged_frame(cid, NARROW_Q, 1, lambda q: 1.0,
+        f = judged_frame(cid, NARROW_Q, 1, (narrow_coh or {}).get(data, lambda q: 1.0),
                          lambda q, d=data: 1.0 if int(q[1:]) < 100 * narrow[d] else 0.0,
                          narrow=True)
         f.to_csv(root / A.judged_rel(cid, "narrow"), index=False)
 
 
-def judges_record(undecidable=(), crit_fail=()):
+def judges_record(undecidable=(), crit_fail=(), inputs=None):
     qsets, crit = {}, {}
     for q, j in (("general", "luna"), ("ext48", "gemini"), ("narrow", "luna")):
         qsets[q] = {"chosen": "undecidable" if q in undecidable else j, "candidates": {}}
         crit[q] = {ck: {"judge": j, "raw_agreement": 0.9, "n": 50,
                         "pass": (q, ck) not in crit_fail} for ck in C.V_CANDIDATES}
-    return {"utc": "2026-10-07T00:00:00Z", "code_commit": "x", "inputs": {}, "outcome": "pass",
+    return {"utc": "2026-10-07T00:00:00Z", "code_commit": "x", "inputs": inputs or {},
+            "outcome": "inconclusive" if undecidable else "pass",
             "qsets": qsets, "checkpoint_criterion": crit, "items": []}
 
 
-def build_tree(root: Path, plan=PLAN, judges=None, preinspect=True, s5k_coh=0.9,
-               s10k_coh=0.9, confirm=True):
-    root = Path(root)
-    for rel, txt in ((C.PAIRS_FILE, "pairs\n"), (C.SELECTION_FILE, "{}\n"),
-                     (C.SWAPS_FILE, "{}\n")):
+def pair_rows():
+    return [{"pair_id": pid, "qid": q, "qset": qs, "category": "c", "split": sp,
+             "question": f"Q {q}?", "misaligned": f"bad {pid}", "aligned": f"good {pid}",
+             "seed_source": "test"} for pid, q, qs, sp in PAIRS]
+
+
+def write_instrument(root: Path) -> None:
+    """The frozen pairs file (PAIRS), its selection (40 medical qids: 4 dropped by retention)
+    and the swaps file (MISMATCH, SHUFFLE)."""
+    put = {
+        C.PAIRS_FILE: "".join(json.dumps(r) + "\n" for r in pair_rows()),
+        C.SELECTION_FILE: json.dumps({
+            "medical_qids": MED + [f"m{i:02d}" for i in range(36, 40)], "heldout_qids": HO,
+            "dev_qids": DEV, "broad_categories": {q: "c" for q in BROAD}, "seed": C.PAIR_SEED,
+            "narrow_sha256": "0" * 64}),
+        C.SWAPS_FILE: json.dumps({"mismatched": MISMATCH, "shuffled": SHUFFLE}),
+    }
+    for rel, txt in put.items():
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_text(txt)
+    q = root / C.QUESTION_FILES["ext48"]
+    q.parent.mkdir(parents=True, exist_ok=True)
+    q.write_bytes((ROOT / C.QUESTION_FILES["ext48"]).read_bytes())
+
+
+def write_scores(root: Path, rel: str, lp: pd.DataFrame, **meta_over) -> None:
+    """A score CSV and its `.meta.json` sidecar (emx.e3.score.write_scores' binding keys)."""
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    lp.to_csv(p, index=False)
+    meta = {"csv_sha256": A.sha256_file(p), "rows": len(lp),
+            "model_ids": sorted(set(lp["model_id"])),
+            "pairs_sha256": A.sha256_file(root / C.PAIRS_FILE),
+            "swaps_sha256": A.sha256_file(root / C.SWAPS_FILE), **meta_over}
+    p.with_suffix(".meta.json").write_text(json.dumps(meta))
+
+
+def judged_inputs(root: Path) -> dict:
+    """judges.json's inputs: the Stage A validation's judged files (s5k, s10k) and selection."""
+    out = {C.SELECTION_FILE: A.sha256_file(root / C.SELECTION_FILE)}
+    for ck in C.V_CANDIDATES:
+        for d in C.DATAS:
+            for q in C.SAMPLED_QSETS:
+                rel = A.judged_rel(C.cell(ck, d), q)
+                out[rel] = A.sha256_file(root / rel)
+    return out
+
+
+def build_tree(root: Path, plan=PLAN, judges=None, preinspect=True, s5k_coh=0.9,
+               s10k_coh=0.9, confirm=True, rescore=True, s5k_narrow_coh=None):
+    root = Path(root)
+    write_instrument(root)
     rep = root / A.PAIRS_REPORT
     rep.write_text(json.dumps({
         "ok": True, "stage": "all", "preinspect": {"ok": preinspect},
         "retention_final": {"ok": True},
+        "selection_sha256": A.sha256_file(root / C.SELECTION_FILE),
         "output": {"sha256": A.sha256_file(root / C.PAIRS_FILE)}}))
     shifts = {}
     old = {f"{c}-k0050": (d, 0.6) for d, c in zip(C.DATAS, C.OLD_REFERENCE_CELLS, strict=True)}
@@ -176,13 +229,10 @@ def build_tree(root: Path, plan=PLAN, judges=None, preinspect=True, s5k_coh=0.9,
             continue
         lp, shift = make_lp(ck, seed, P, old if (ck, seed) == ("pre", 2) else None)
         shifts[(ck, seed)] = shift
-        p = root / C.logprob_path(ck, seed)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        lp.to_csv(p, index=False)
-        if (ck, seed) == ("pre", 2):
-            rs = root / A.RESCORE_CSV
-            lp[lp["model_id"].isin([C.untuned("pre"), C.cell("pre", "bad")])].to_csv(
-                rs, index=False)
+        write_scores(root, C.logprob_path(ck, seed), lp)
+        if (ck, seed) == ("pre", 2) and rescore:
+            write_scores(root, A.RESCORE_CSV, lp[lp["model_id"].isin(
+                [C.untuned("pre"), C.cell("pre", "bad")])])
         for d in C.DATAS:
             cid = C.cell(ck, d, seed)
             t = root / C.train_record_path(cid)
@@ -192,14 +242,17 @@ def build_tree(root: Path, plan=PLAN, judges=None, preinspect=True, s5k_coh=0.9,
             (root / f"{C.TRAIN_DIR}/{cid}.losscheck.json").write_text(
                 json.dumps({"status": "trained", "reasons": []}))
     nr = {"bad": 0.6, "good": 0.1}
-    write_judged(root, "pre", shifts[("pre", 2)], BASE, {"bad": 0.95, "good": 0.95}, 0.4, nr)
+    write_judged(root, "pre", shifts[("pre", 2)], BASE, {"bad": 0.95, "good": 0.95}, 0.4, nr,
+                 vul_em={"bad": 0.5, "good": 0.0})
     write_judged(root, "s10k", shifts[("s10k", 2)], LATE, {"bad": s10k_coh, "good": 0.9},
                  0.4, nr)
     write_judged(root, "s5k", shifts[("s5k", 2)], WINDOW, {"bad": s5k_coh, "good": 0.9}, 0.0,
-                 nr, ho_incoherent=True)
+                 nr, ho_incoherent=True, narrow_coh=s5k_narrow_coh)
     jp = root / C.rule_path("judges")
     jp.parent.mkdir(parents=True, exist_ok=True)
-    jp.write_text(json.dumps(judges or judges_record()))
+    rec = judges or judges_record()
+    rec["inputs"] = rec["inputs"] or judged_inputs(root)
+    jp.write_text(json.dumps(rec))
     return root
 
 
@@ -579,3 +632,254 @@ def test_status_prints(full):
     root, _ = full
     out = A.status(root)
     assert "stageA" in out and "claims" in out and "w*=s5k" in out
+
+
+# --- code review C3: the judge-validation gate ------------------------------------------------------
+
+
+def test_undecidable_narrow_judge_stops_stageA(tmp_path):
+    """v = s10k passes by path (i), which needs no narrow judge; before the fix Stage A passed
+    although the hierarchy left the narrow task undecidable (§8.3: inconclusive, stop)."""
+    root = build_tree(tmp_path, s5k_coh=0.5, judges=judges_record(undecidable=("narrow",)),
+                      confirm=False)
+    sa = A.stage_a(root, n_boot=NB)
+    assert sa["agreement_v"]["outcome"] == "pass" and sa["v"] == "s10k"
+    assert sa["judges_check"]["outcome"] == "inconclusive"
+    assert sa["outcome"] == "inconclusive"
+    with pytest.raises(A.Refused):
+        A.power(root, n_boot=NB)
+
+
+def test_judges_outcome_must_be_pass(tmp_path):
+    rec = judges_record()
+    rec["outcome"] = "inconclusive"
+    root = build_tree(tmp_path, s5k_coh=0.5, judges=rec, confirm=False)
+    sa = A.stage_a(root, n_boot=NB)
+    assert sa["judges_check"]["outcome"] == "inconclusive" and sa["outcome"] == "inconclusive"
+
+
+def test_stageA_refuses_when_judged_input_changed(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    p = root / A.judged_rel(C.cell("s5k", "bad"), "general")
+    p.write_text(p.read_text() + "\n")
+    with pytest.raises(seal.SealedError, match="changed"):
+        A.stage_a(root, n_boot=NB)
+
+
+# --- code review C4: path (ii) needs usable narrow measures ----------------------------------------
+
+
+def test_path_ii_unavailable_when_narrow_samples_incoherent(tmp_path):
+    """s5k's bad adapter: only 10 of 100 narrow answers coherent (all of them wrong), so its
+    rate over coherent answers is 1.0 but the adapter is unusable for sampled measures."""
+    root = build_tree(tmp_path, confirm=False,
+                      s5k_narrow_coh={"bad": lambda q: 1.0 if int(q[1:]) < 10 else 0.0})
+    sa = A.stage_a(root, n_boot=NB)
+    assert sa["v"] == "s5k"
+    assert sa["sampled"][C.cell("s5k", "bad")]["narrow"]["usable"] is False
+    p2 = sa["agreement_v"]["values"]["path_ii"]
+    assert p2["narrow_usable"] == [False, True] and p2["pass"] is False
+    assert sa["agreement_v"]["outcome"] == "inconclusive" and sa["outcome"] == "inconclusive"
+
+
+# --- code review C6: scores must belong to the frozen instrument ----------------------------------
+
+
+def _rewrite(root: Path, rel: str, fn, **meta_over) -> None:
+    lp = pd.read_csv(root / rel, dtype=A.LP_DTYPES, keep_default_na=False)
+    write_scores(root, rel, fn(lp), **meta_over)
+
+
+def test_stale_pairs_hash_refused(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    _rewrite(root, C.logprob_path("s5k"), lambda lp: lp, pairs_sha256="0" * 64)
+    with pytest.raises(A.Refused, match="pairs_sha256"):
+        A.stage_a(root, n_boot=NB)
+
+
+def test_missing_sidecar_or_changed_csv_refused(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    p = root / C.logprob_path("s10k")
+    p.write_text(p.read_text())  # same bytes: fine
+    meta = p.with_suffix(".meta.json")
+    meta.write_text(meta.read_text().replace('"csv_sha256": "', '"csv_sha256": "0'))
+    with pytest.raises(A.Refused, match="csv_sha256"):
+        A.stage_a(root, n_boot=NB)
+    meta.unlink()
+    with pytest.raises(A.Refused, match="sidecar"):
+        A.stage_a(root, n_boot=NB)
+
+
+def test_heldout_rows_mislabelled_dev_refused(tmp_path):
+    """The CSV's split column is never trusted: development membership is the selection's."""
+    root = build_tree(tmp_path, confirm=False)
+
+    def relabel(lp):
+        return lp.assign(split=lp["split"].replace({"heldout": "dev"}))
+
+    _rewrite(root, C.logprob_path("pre"), relabel)
+    with pytest.raises(A.Refused, match="selection file"):
+        A.stage_a(root, n_boot=NB)
+
+
+def test_missing_retained_pairs_refused(tmp_path):
+    """Pairs consistently omitted for every model state still make the file incomplete."""
+    root = build_tree(tmp_path, confirm=False)
+    _rewrite(root, C.logprob_path("s5k"), lambda lp: lp[lp["pair_id"] != "d03-p1"])
+    with pytest.raises(A.Refused, match="lacks"):
+        A.stage_a(root, n_boot=NB)
+
+
+def test_wrong_conditioning_question_refused(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+
+    def swap(lp):
+        m = lp["variant"] == "mismatched"
+        return lp.assign(scored_qid=lp["scored_qid"].where(~m, lp["qid"].map(SHUFFLE)))
+
+    _rewrite(root, C.logprob_path("s10k"), swap)
+    with pytest.raises(A.Refused, match="swaps file"):
+        A.stage_a(root, n_boot=NB)
+
+
+def test_pairs_split_must_match_selection(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    sel = json.loads((root / C.SELECTION_FILE).read_text())
+    sel["dev_qids"], sel["heldout_qids"] = sel["dev_qids"][1:], [DEV[0], *sel["heldout_qids"]]
+    (root / C.SELECTION_FILE).write_text(json.dumps(sel))
+    with pytest.raises(A.Refused, match="selection"):
+        A.stage_a(root, n_boot=NB)
+
+
+# --- code review C7: transitive validation at every consumer ---------------------------------------
+
+
+def _to_stage_b(root):
+    A.stage_a(root, n_boot=NB)
+    A.power(root, n_boot=NB)
+    seal.write_unseal(root)
+    return A.stage_b(root, n_boot=NB)
+
+
+def test_power_refused_when_stageA_input_changed(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    assert A.stage_a(root, n_boot=NB)["outcome"] == "pass"
+    _rewrite(root, C.logprob_path("s5k"), lambda lp: lp.assign(
+        sum_logprob=lp["sum_logprob"] + 0.5 * (lp["member"] == "misaligned")))
+    with pytest.raises(seal.SealedError, match="changed"):
+        A.power(root, n_boot=NB)
+
+
+def test_claims_require_unseal_even_for_unsealed_checkpoints(tmp_path):
+    """w* = s5k and its neighbour s10k are unsealed checkpoints; claims still need a valid
+    unseal record (before the fix they skipped the seal check)."""
+    root = build_tree(tmp_path)
+    sb = _to_stage_b(root)
+    assert sb["w_star"] == "s5k" and sb["neighbour"] == "s10k"
+    (root / C.rule_path("unseal")).rename(root / "unseal.json.bak")
+    with pytest.raises(seal.SealedError):
+        A.claims(root, n_boot=NB)
+
+
+@pytest.mark.parametrize("what", ["scores", "training", "judged"])
+def test_claims_refused_when_underlying_inputs_changed(tmp_path, what):
+    root = build_tree(tmp_path)
+    _to_stage_b(root)
+    if what == "scores":  # a Stage A score file the gate read
+        _rewrite(root, C.logprob_path("s10k"), lambda lp: lp.assign(
+            sum_logprob=lp["sum_logprob"] - 1.0))
+    elif what == "training":
+        p = root / C.train_record_path(C.cell("pre", "bad"))
+        p.write_text(p.read_text().replace("1.5", "1.4"))
+    else:
+        p = root / A.judged_rel(C.cell("s10k", "good"), "ext48")
+        p.write_text(p.read_text() + "\n")
+    with pytest.raises(seal.SealedError, match="changed"):
+        A.claims(root, n_boot=NB)
+
+
+def test_stageB_scores_changed_after_stageB_refuse_claims(tmp_path):
+    root = build_tree(tmp_path)
+    _to_stage_b(root)
+    p = root / C.logprob_path("s2k")
+    p.write_text(p.read_text() + "\n")
+    with pytest.raises(seal.SealedError, match="changed"):
+        A.claims(root, n_boot=NB)
+
+
+# --- code review C8: the cross-pod rescore gates Stage B ------------------------------------------
+
+
+def test_rescore_missing_leaves_stageB_inconclusive(tmp_path):
+    root = build_tree(tmp_path, rescore=False)
+    sb = _to_stage_b(root)
+    assert sb["rescore_check"]["outcome"] == "inconclusive"
+    assert "rescore pending" in sb["rescore_check"]["reason"]
+    assert sb["outcome"] == "inconclusive"
+    assert sb["w_star"] == "s5k" and sb["confirmation"]["outcome"] == "skipped"
+    with pytest.raises(seal.SealedError, match="rescore|outcome"):
+        A.claims(root, n_boot=NB)
+
+
+def test_rescore_failure_stops_stageB(tmp_path):
+    root = build_tree(tmp_path)
+    cid = C.cell("pre", "bad")
+    _rewrite(root, A.RESCORE_CSV, lambda lp: lp.assign(sum_logprob=lp["sum_logprob"].where(
+        lp["model_id"] != cid, lp["sum_logprob"] + 0.1)))  # 0.01 nats/token off
+    sb = _to_stage_b(root)
+    assert sb["rescore_check"]["outcome"] == "fail" and sb["outcome"] == "fail"
+    assert sb["confirmation"]["outcome"] == "skipped"
+    with pytest.raises(seal.SealedError):
+        A.claims(root, n_boot=NB)
+
+
+# --- code review C5: Claim 2's neighbour must be interpretable with each seed -----------------------
+
+
+def test_claim2_fails_when_seed3_neighbour_local_unvalidated(tmp_path):
+    """The seed-3 neighbour's bad adapter has negative local-control margins: before the fix
+    Claim 2 passed on the seed-2 status alone."""
+    plan = {**PLAN, ("s10k", 3): {**LATE, "lb": -0.4}}
+    root = build_tree(tmp_path, plan=plan)
+    *_, cl = run_all(root)
+    assert cl["claim1"]["outcome"] == "pass"
+    c2 = cl["claim2"]
+    assert c2["neighbour_interpretability"] == {"2": "interpretable", "3": "local_unvalidated"}
+    assert c2["neighbour_interpretable"] == {"2": True, "3": False}
+    assert c2["outcome"] == "fail" and "neighbour_interpretable" in c2["reason"]
+
+
+def test_claim2_records_per_seed_interpretability(full):
+    _, (*_, cl) = full
+    assert cl["claim2"]["neighbour_interpretability"] == {"2": "interpretable",
+                                                         "3": "interpretable"}
+
+
+# --- code review C10: §4.9's descriptive summaries -------------------------------------------------
+
+
+def test_sampled_summaries(full):
+    _, (sa, _, _, sb, _) = full
+    for rec, ckpts in ((sa, C.STAGE_A), (sb, C.GRID)):
+        s = rec["sampled_summaries"]
+        assert s["development_only"] is False and "Descriptive" in s["note"]
+        assert s["n_questions"] == {"broad_pairs": len(BROAD), "vulnerable_user": 14,
+                                    "medical_advice": 7}
+        assert set(s["per_checkpoint"]) == set(ckpts)
+    pre = sa["sampled_summaries"]["per_checkpoint"]["pre"]
+    assert pre["broad_pairs"]["n_questions"] == len(BROAD)  # held-out included
+    vul = pre["vulnerable_user"]
+    assert vul["n_questions"] == len(VUL_Q)  # the two sampled here
+    assert vul["em_bad"] == pytest.approx(10 / 19) and vul["em_good"] == 0  # 19 coherent of 20
+    assert vul["p_one_sided"] < 0.01
+    assert pre["medical_advice"]["n_questions"] == 1 and pre["rates_interpreted"] is True
+    # Stage B checkpoints without a Stage B judge validation have no summary
+    assert sb["sampled_summaries"]["per_checkpoint"]["s1k"]["broad_pairs"] is None
+
+
+def test_question_tags_from_the_pinned_file():
+    rd = A.Reader(ROOT)
+    tags, note = A.question_tags(rd)
+    assert note == ""
+    vals = list(tags.values())
+    assert vals.count("vulnerable_user") == 14 and vals.count("medical_advice") == 7

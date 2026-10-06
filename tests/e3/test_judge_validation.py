@@ -204,9 +204,67 @@ def test_confirm_rate_and_kappa():
     cand = pd.Series([True, True, True, False, False, None], dtype=object)
     ref = pd.Series([True, True, False, False, False, True], dtype=object)
     a = JV.agreement(cand, ref)
-    assert a["n"] == 5 and a["n_em_calls"] == 3
+    # every drawn item is in the denominators: the failed candidate call is a disagreement
+    assert a["n"] == 6 and a["n_compared"] == 5 and a["n_em_calls"] == 3
+    assert a["n_candidate_failed"] == 1 and a["n_reference_unresolved"] == 0
     assert a["confirm_rate"] == pytest.approx(2 / 3)
-    assert a["raw_agreement"] == pytest.approx(4 / 5)
+    assert a["raw_agreement"] == pytest.approx(4 / 6)
+    assert a["raw_agreement_compared"] == pytest.approx(4 / 5)
+
+
+def _failed_tiebreak_items(ckpt_of=lambda i: "s5k"):
+    """60 agreed items (12 EM) and 40 disagreements whose tie-breaks all failed."""
+    luna = [i < 12 for i in range(60)] + [True] * 20 + [False] * 20
+    gemini = [i < 12 for i in range(60)] + [False] * 20 + [True] * 20
+    it = _items(luna, gemini, [None] * 100)
+    it["ckpt"] = [ckpt_of(i) for i in range(100)]
+    return it
+
+
+def test_failed_tiebreaks_among_disagreements_do_not_inflate_agreement():
+    """Code review C2: 60 agreements plus 40 disagreements whose tie-breaks failed gave κ = 1,
+    confirmation 1 and a passing judge on the 60 compared items. Unresolved adjudications now
+    count as disagreements / unconfirmed calls over the full drawn sample."""
+    it = _failed_tiebreak_items()
+    assert list(JV.reference_labels(it, "luna"))[60:] == [None] * 40
+    st = JV.candidate_stats(it.assign(coherent__luna__status="scored",
+                                      aligned__luna__status="scored"),
+                            "luna", "general", ["s5k"])
+    assert st["n_items"] == 100 and st["n_compared"] == 60
+    assert st["n_reference_unresolved"] == 40
+    assert st["kappa_compared"] == pytest.approx(1.0)  # what the old code gated on
+    assert st["raw_agreement"] == pytest.approx(0.6)
+    assert st["confirm_rate"] == pytest.approx(12 / 32)  # 20 unresolved EM calls unconfirmed
+    assert st["kappa"] < C.VAL_KAPPA_MIN and not st["pass"]
+
+
+def test_checkpoint_criterion_counts_unresolved_items():
+    """A checkpoint whose 40 drawn disagreements all failed adjudication can't pass on its 10
+    compared items: raw agreement is over all 50 drawn there."""
+    it = _failed_tiebreak_items(lambda i: "s10k" if i < 50 else "s5k")
+    st = JV.candidate_stats(it.assign(coherent__luna__status="scored",
+                                      aligned__luna__status="scored"),
+                            "luna", "general", ["s5k", "s10k"])
+    s5 = st["per_checkpoint"]["s5k"]
+    assert s5["n"] == 50 and s5["n_compared"] == 10
+    assert s5["raw_agreement"] == pytest.approx(10 / 50) and s5["pass"] is False
+    assert st["per_checkpoint"]["s10k"]["pass"] is True
+
+
+def test_failed_tiebreaks_through_validate(tmp_path):
+    """End to end: a tie-break that fails on every item leaves no judge passing the pooled
+    rule when disagreements are frequent, and the unresolved items are listed."""
+    make_tree(tmp_path, p_agree=0.6)
+    rec = JV.validate("A", tmp_path, tiebreak_fn=lambda r, q, s: pd.Series(
+        [None] * len(r), index=r.index, dtype=object))
+    for q in JV.VAL_QSETS:
+        v = rec["qsets"][q]
+        assert len(v["unresolved_tiebreaks"]) == v["n_tiebreaks"] > 0
+        for c in v["candidates"].values():
+            assert c["n_compared"] + c["n_reference_unresolved"] + c["n_candidate_failed"] \
+                >= c["n_items"]
+            assert c["raw_agreement"] <= 1 - c["n_reference_unresolved"] / c["n_items"] + 1e-9
+    assert rec["outcome"] == "inconclusive"
 
 
 def test_hierarchy():

@@ -31,8 +31,8 @@ def _common(utc: str, inputs: dict, outcome: str = "pass") -> dict:
     return {"utc": utc, "code_commit": "abc", "inputs": inputs, "outcome": outcome}
 
 
-def _stage_a(outcome: str = "pass", utc: str = A_UTC) -> dict:
-    d = _common(utc, {}, outcome)
+def _stage_a(outcome: str = "pass", utc: str = A_UTC, inputs: dict | None = None) -> dict:
+    d = _common(utc, inputs or {}, outcome)
     for k in C.RULE_SCHEMAS["stageA"][4:]:
         d[k] = {}
     for k in C.STAGEA_CHECKS:
@@ -49,8 +49,9 @@ def _power(root: Path, utc: str = P_UTC, extra_inputs: tuple[str, ...] = ()) -> 
             "underpowered": []}
 
 
-def _judges() -> dict:
-    return {**_common(A_UTC, {}), "qsets": {}, "checkpoint_criterion": {}, "items": []}
+def _judges(inputs: dict | None = None, outcome: str = "pass") -> dict:
+    return {**_common(A_UTC, inputs or {}, outcome), "qsets": {}, "checkpoint_criterion": {},
+            "items": []}
 
 
 @pytest.fixture
@@ -173,3 +174,74 @@ def test_replay_reseals(root):
         S.read_sealed(SEALED_CSV, root)
     S.write_unseal(root)  # a replay may unseal again from the same passing gate
     assert S.read_sealed(SEALED_CSV, root)
+
+
+# --- transitive validation (code review C7 and B2) ------------------------------------------------
+
+SCORES = C.logprob_path("s5k")  # a Stage A score file (unsealed checkpoint)
+TRAIN = C.train_record_path(C.cell("s5k", "bad"))
+JUDGED = f"{C.JUDGED_DIR}/{C.cell('s5k', 'bad')}@plain__general.csv"
+
+
+def _deep(root: Path) -> None:
+    """A chain whose records list real underlying inputs: judges.json read a judged CSV;
+    stageA read scores, a training record, the judged CSV and judges.json itself."""
+    j_in = {JUDGED: _put(root, JUDGED, "judged\n")}
+    _rule(root, "judges", _judges(j_in))
+    a_in = {SCORES: _put(root, SCORES, "scores\n"), TRAIN: _put(root, TRAIN, "{}\n"),
+            JUDGED: j_in[JUDGED],
+            C.rule_path("judges"): S.sha256_file(root / C.rule_path("judges"))}
+    _rule(root, "stageA", _stage_a(inputs=a_in))
+    _rule(root, "power", _power(root))
+
+
+@pytest.mark.parametrize("rel", [SCORES, TRAIN, JUDGED, C.POWER_ALLOWED_INPUTS[1]])
+def test_unseal_refused_when_underlying_input_changed(root, rel):
+    """Mutating a score, training or judged file after the gate passed (the JSON records left
+    untouched) refuses the unsealing."""
+    _deep(root)
+    _put(root, rel, "mutated\n")
+    with pytest.raises(S.SealedError, match="changed|missing"):
+        S.write_unseal(root)
+    assert not (root / C.rule_path("unseal")).exists()
+
+
+@pytest.mark.parametrize("rel", [SCORES, TRAIN, JUDGED, C.POWER_ALLOWED_INPUTS[0]])
+def test_sealed_read_refused_when_underlying_input_changed(root, rel):
+    """After unsealing, every sealed read re-verifies the chain's underlying inputs."""
+    _deep(root)
+    S.write_unseal(root)
+    assert S.read_sealed(SEALED_CSV, root)
+    _put(root, rel, "mutated\n")
+    with pytest.raises(S.SealedError):
+        S.read_sealed(SEALED_CSV, root)
+    with pytest.raises(S.SealedError):
+        S.assert_unsealed(root)
+
+
+def test_unseal_refused_unless_judges_passed(root):
+    """An undecidable question set (judges outcome inconclusive) is a Stage A stop (§8.3)."""
+    _deep(root)
+    _rule(root, "judges", _judges({JUDGED: S.sha256_file(root / JUDGED)}, "inconclusive"))
+    with pytest.raises(S.SealedError):
+        S.write_unseal(root)
+
+
+def test_verify_chain_stageB_needs_the_rescore(root):
+    _deep(root)
+    S.write_unseal(root)
+    sb = {**_common("2026-10-08T12:00:00Z", {SEALED_CSV: S.sha256_file(root / SEALED_CSV)})}
+    for k in C.RULE_SCHEMAS["stageB"][4:]:
+        sb[k] = {}
+    sb["confirmation"] = {"outcome": "skipped", "reason": "", "targets": [], "cut1": False}
+    for outcome in ("skipped", "fail"):
+        sb["rescore_check"] = {"outcome": outcome, "values": {}, "reason": "pending"}
+        _rule(root, "stageB", sb)
+        with pytest.raises(S.SealedError, match="rescore"):
+            S.verify_chain(root, "stageB")
+    sb["rescore_check"] = {"outcome": "pass", "values": {}, "reason": ""}
+    _rule(root, "stageB", sb)
+    assert set(S.verify_chain(root, "stageB")) == set(S.CHAIN)
+    _put(root, SEALED_CSV, "mutated\n")
+    with pytest.raises(S.SealedError, match="changed"):
+        S.verify_chain(root, "stageB")

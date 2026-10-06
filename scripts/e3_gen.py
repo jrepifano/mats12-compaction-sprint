@@ -19,6 +19,11 @@ subprocess per checkpoint** (one vLLM engine per process: a second stage's engin
 while an earlier one is resident, E1b S2), with both adapters of that checkpoint served as LoRAs
 by the same engine. `--limit-answers N` (smoke test, §4.13) asks the general questions only,
 N / 8 samples each, and is recorded in the meta as an override.
+
+Resume (code review B4, B7): the engine skips a (cell, qset) whose output verifies against this
+run (gen_common's contract, for E3 including the selection file's sha256 and the exact request
+list's hash) and, through `--set-aside-incomplete`, moves an unverified one (a crash between the
+CSV and meta writes, other inputs) to `<name>.incomplete.<UTC>` before regenerating it.
 """
 
 from __future__ import annotations
@@ -106,7 +111,8 @@ def group_by_checkpoint(ckpts, cells) -> dict[str, list[str]]:
 
 def engine_argv(cells, qsets, args, samples: int | None) -> list[str]:
     argv = [sys.executable, str(ENGINE_SCRIPT), "--exp", "E3",
-            "--conditions", *[f"{c}@{EVAL_FMT}" for c in cells], "--qsets", *qsets]
+            "--conditions", *[f"{c}@{EVAL_FMT}" for c in cells], "--qsets", *qsets,
+            "--set-aside-incomplete"]
     if samples is not None:
         argv += ["--samples", str(samples)]
     for flag, val in (("--out-dir", args.out_dir), ("--selection-file", args.selection_file)):

@@ -342,7 +342,10 @@ def test_score_script_end_to_end(tmp_path, tok, monkeypatch):
     df2 = S.read_scores(out2)
     sel = df[df["model_id"] == "s5k-plain-bad-R1-s2"]
     assert S.rescore_diff(sel, df2) < C.RESCORE_TOLERANCE_NATS
-    assert E.main(argv) == 2  # existing output refused without --force
+    # B4: a complete, verified output is reused (no model is loaded); see test_score_resume
+    monkeypatch.setattr(E, "load_base", lambda ckpt: pytest.fail("reused output was rescored"))
+    assert E.main(argv) == 0
+    monkeypatch.setattr(E, "load_base", lambda ckpt: (_tiny_model(), "float32"))
     # pod 2's cross-pod rescore form: untuned plus a state-named root adapter from the Hub, no
     # --adapters-dir; it gets the final state's variants (shuffled too), so the rows line up
     real_attach = E.attach
@@ -447,3 +450,54 @@ def test_score_script_accepts_pod_run_e3_argv():
         ["--ckpt", "s1k", "--seed", "2", "--states", "untuned", "bad_final", "--adapters-dir",
          "/ws/smoke/adapters", "--pairs", "p", "--swaps", "s", "--out", "o", "--self-check"])
     assert sm.self_check and sm.states == ["untuned", "bad_final"]
+
+
+def test_score_resume_after_restart(tmp_path, tok, monkeypatch):
+    """B4: a restarted job reuses a complete, verified score output; an output cut between the
+    CSV and sidecar writes, or one made from other inputs, is moved aside and rescored."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import e3_score as E
+
+    pp, sp = _write_inputs(tmp_path)
+    ad = tmp_path / "adapters"
+    _save_adapter(ad / C.cell("s5k", "bad"), 10)
+    loads = []
+    monkeypatch.setattr(E, "load_tokenizer", lambda ckpt: tok)
+    monkeypatch.setattr(E, "load_base", lambda ckpt: loads.append(ckpt) or (_tiny_model(),
+                                                                            "float32"))
+    out = tmp_path / "logprob" / "s5k-s2.csv"
+    argv = ["--ckpt", "s5k", "--states", "untuned", "bad_final", "--adapters-dir", str(ad),
+            "--pairs", str(pp), "--swaps", str(sp), "--questions-root", str(ROOT),
+            "--out", str(out), "--batch", "4"]
+    assert E.main(argv) == 0 and len(loads) == 1
+    first = out.read_bytes()
+    mp = S.meta_path(out)
+    # 1. restart after scoring finished: reused, nothing loaded or scored
+    assert E.main(argv) == 0 and len(loads) == 1 and out.read_bytes() == first
+    # a self-check run needs a self-checked output: this one is moved aside and rescored
+    assert S.score_output_problems(out, json.loads(mp.read_text()), True) == [
+        "no passed self-check"]
+    # 2. crash between the CSV and the sidecar write: CSV only -> moved aside, rescored
+    mp.unlink()
+    assert E.main(argv) == 0 and len(loads) == 2
+    aside = sorted(p.name for p in out.parent.iterdir() if ".incomplete." in p.name)
+    assert len(aside) == 1 and aside[0].startswith("s5k-s2.csv.incomplete.")
+    assert mp.is_file() and S.score_output_problems(out, json.loads(mp.read_text())) == []
+    # 3. a sidecar without csv_sha256, or a CSV that no longer matches it: rescored
+    meta = json.loads(mp.read_text())
+    mp.write_text(json.dumps({k: v for k, v in meta.items() if k != "csv_sha256"}))
+    assert "meta has no csv_sha256" in S.score_output_problems(out, meta)
+    assert E.main(argv) == 0 and len(loads) == 3
+    with out.open("a") as f:
+        f.write(out.read_text().splitlines()[-1] + "\n")
+    assert E.main(argv) == 0 and len(loads) == 4
+    # 4. other inputs (changed pairs; a retrained adapter): rescored
+    rows = [json.loads(x) for x in pp.read_text().splitlines()]
+    rows[0]["aligned"] = "I would help, kindly (p1)."
+    pp.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert E.main(argv) == 0 and len(loads) == 5
+    _save_adapter(ad / C.cell("s5k", "bad"), 11)
+    assert E.main(argv) == 0 and len(loads) == 6
+    assert E.main(argv) == 0 and len(loads) == 6  # and now reused again
+    n_aside = len([p for p in out.parent.iterdir() if ".incomplete." in p.name])
+    assert n_aside == 9  # every replaced CSV and sidecar kept, never overwritten

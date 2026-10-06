@@ -79,6 +79,7 @@ def tree(tmp_path, monkeypatch):
     write_records(tmp_path)
     write_pairs(tmp_path)
     seal = TJV.fake_seal(monkeypatch, tmp_path, unsealed=True)
+    JV.validate("B", tmp_path, tiebreak_fn=TJV.tb_from_text)  # judges_stageB.json (s1k-s3k)
     return tmp_path, seal
 
 
@@ -248,3 +249,72 @@ def test_u6_fixture_records_validate_and_are_read(tmp_path):
         for qs in (got.get("sampled") or {}).values():
             for v in qs.values():
                 assert "usable" in v
+
+
+# --- code review C9: judges per checkpoint and domain --------------------------------------------
+
+
+def _edit_judges(root: Path, rel: str, **chosen) -> None:
+    p = root / rel
+    rec = json.loads(p.read_text())
+    for q, j in chosen.items():
+        rec["qsets"][q]["chosen"] = j
+    p.write_text(json.dumps(rec))
+
+
+def test_stage_b_checkpoints_use_stage_b_judges(tree):
+    """s1k-s3k use judges_stageB.json's choice; s5k/s10k judges.json's; pre its defaults."""
+    root, _ = tree
+    assert json.loads((root / C.rule_path("judges")).read_text())["qsets"]["general"][
+        "chosen"] == "luna"
+    _edit_judges(root, JV.STAGEB_RECORD, general="gemini")
+    jm = RB.JudgeMap(root)
+    assert jm.judge("s1k", "general") == "gemini" and jm.judge("s5k", "general") == "luna"
+    assert jm.judge(C.REFERENCE, "ext48") == JV.DEFAULT_JUDGE["ext48"]
+    RB.build_handlabels(root)
+    key = pd.read_csv(RB.paths(root, RB.HAND)["key"])
+    g = key[key["qset"] == "general"]
+    assert set(g.loc[g["ckpt"].isin(C.STAGE_B), "chosen_judge"]) == {"gemini"}
+    assert set(g.loc[g["ckpt"].isin(C.V_CANDIDATES), "chosen_judge"]) == {"luna"}
+    RB.build_transcripts(root)
+    t = pd.read_csv(RB.paths(root, RB.TRANS)["csv"])
+    tg = t[t["qset"] == "general"]
+    assert set(tg.loc[tg["ckpt"] == "s1k", "judge"]) == {"gemini"}
+    m = json.loads(RB.paths(root, RB.TRANS)["manifest"].read_text())
+    assert m["judges_by_checkpoint"]["s2k"]["general"] == "gemini"
+    assert set(m["judge_records"]) == {C.rule_path("judges"), JV.STAGEB_RECORD}
+    assert C.SELECTION_FILE in m["validation_inputs"][C.rule_path("judges")]
+
+
+def test_undecidable_is_preserved(tree):
+    root, _ = tree
+    _edit_judges(root, C.rule_path("judges"), ext48="undecidable")
+    assert RB.JudgeMap(root).judge("s5k", "ext48") == "undecidable"
+    RB.build_handlabels(root)
+    key = pd.read_csv(RB.paths(root, RB.HAND)["key"])
+    e = key[(key["qset"] == "ext48") & key["ckpt"].isin(C.V_CANDIDATES)]
+    assert len(e) and set(e["chosen_judge"]) == {"undecidable"}
+    RB.build_transcripts(root)
+    t = pd.read_csv(RB.paths(root, RB.TRANS)["csv"])
+    assert not ((t["qset"] == "ext48") & t["ckpt"].isin(C.V_CANDIDATES)).any()
+    m = json.loads(RB.paths(root, RB.TRANS)["manifest"].read_text())
+    assert m["draw"][C.cell("s5k", "bad")]["excluded_qsets"] == {"ext48": "undecidable"}
+    # the scorer compares a chosen judge only where one exists
+    b = pd.read_csv(RB.paths(root, RB.HAND)["csv"], keep_default_na=False)
+    b["label_em_yn"], b["label_coherent_yn"] = "no", "yes"
+    b.to_csv(RB.paths(root, RB.HAND)["csv"], index=False)
+    out = RB.score_handlabels(root)
+    assert out["n_without_judge"] == len(e)
+    assert out["chosen"]["n"] == len(key) - len(e)
+
+
+def test_stage_b_without_its_validation_is_unvalidated(tree):
+    root, _ = tree
+    (root / JV.STAGEB_RECORD).unlink()
+    jm = RB.JudgeMap(root)
+    assert jm.judge("s2k", "general") == "unvalidated"
+    RB.build_transcripts(root)
+    t = pd.read_csv(RB.paths(root, RB.TRANS)["csv"])
+    assert not t["ckpt"].isin(C.STAGE_B).any()
+    m = json.loads(RB.paths(root, RB.TRANS)["manifest"].read_text())
+    assert "unvalidated" in m["draw"][C.cell("s1k", "bad")]["skipped"]

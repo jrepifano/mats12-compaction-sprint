@@ -21,11 +21,21 @@ The projection counts, for each limit (GPU $35, API $10, total $45):
 A unit that is running is counted through its reservation, never again as remaining work; the
 retry share carried by each running pod's reservation (RESERVATION_USD minus the pod's projected
 cost) is subtracted from the retries item, so each dollar counts once.
+
+2026-10-06 (code review A r1, fixes A5, A8, A9): a pod unit is done only with its final completion
+record `results/E3/DONE.<unit>.json` (written by the pod job after its last checkpoint; it names
+the unit, the pod id, the artifact inventory and the manifest's sha256), never from a manifest
+alone, which the job rewrites after every checkpoint (`unit_complete`). A §7 stop is terminal:
+`results/E3/STOPPED.json` (`write_stopped`, `read_stopped`) makes the orchestrator refuse every
+launch, job and API reserve. Pod 3 needs the rules review (17r) to have passed
+(`review_17r_passed`): E3 uses no speculative allowance, so `speculative_ok` is not called on any
+launch or job path (kept as the §7 arithmetic only).
 """
 
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -41,8 +51,11 @@ ORCH_LOG = "logs/E3-orchestrate.jsonl"  # one line per orchestrator command and 
 RATES_FILE = f"{C.RESULTS}/measured_rates.json"  # the smoke test's hours per checkpoint
 CUTS_FILE = f"{C.RESULTS}/cuts.json"  # cuts decided so far, and pod 2's sampling decision
 SNAPSHOT_FILE = f"{C.RESULTS}/reservations_snapshot.jsonl"
+STOPPED_FILE = f"{C.RESULTS}/STOPPED.json"  # a §7 stop: terminal (fix A8)
+REVIEW_17R_FILE = f"{C.ANALYSIS_DIR}/review_17r.json"  # {"outcome": "pass"} gates pod 3 (fix A9)
 STOP_OVER_LIMIT = "projected spend above a limit after cuts"
 STOP_WALL_CLOCK = "wall-clock cap"
+STOP_RETRIEVAL = "a training record or scoring file can't be retrieved after 3 attempts"
 
 # §7's per-pod overheads (hours), which are not per-checkpoint and so not in the contracts.
 SETUP_H = 0.5
@@ -283,7 +296,10 @@ def optional_fits(projection: dict, usd: float, kind: str) -> bool:
 
 def speculative_ok(usd: float, already_usd: float = 0.0) -> bool:
     """Speculative work (while a review of its dependency is pending) is bounded at
-    SPECULATIVE_MAX_USD in all (§7): `already_usd` is what earlier speculative work committed."""
+    SPECULATIVE_MAX_USD in all (§7): `already_usd` is what earlier speculative work committed.
+
+    Not used by any launch or job path: E3 runs no speculative work. Pod 3 (the only candidate)
+    waits for the rules review to pass (`review_17r_passed`; code review A r1, fix A9)."""
     if usd < 0 or already_usd < 0:
         raise ValueError("amounts must be >= 0")
     return already_usd + usd <= C.SPECULATIVE_MAX_USD + 1e-9
@@ -414,12 +430,72 @@ def _rule(root: Path, name: str) -> dict | None:
 
 
 def manifest_complete(path: Path) -> bool:
-    """A unit's manifest exists and carries no `# MISSING` section (written by cleanup)."""
+    """A manifest exists and carries no `# MISSING` section (written by cleanup). Only for the
+    laptop-written manifests (judging); a pod unit needs `unit_complete`."""
     try:
         text = path.read_text()
     except OSError:
         return False
     return "# MISSING" not in text
+
+
+def done_path(unit: str) -> str:
+    """The pod job's final completion record for a unit (written once, after its last step)."""
+    return f"{C.RESULTS}/DONE.{unit}.json"
+
+
+def unit_complete(root: str | Path, unit: str) -> bool:
+    """A pod unit is complete only with its completion record `DONE.<unit>.json` (keys unit,
+    pod_id, utc, artifacts, manifest_sha256) whose manifest_sha256 is the sha256 of the local
+    unit manifest, and that manifest carries no `# MISSING` section. A manifest without it is a
+    partial one (the job rewrites the manifest after every checkpoint; code review A r1, A5)."""
+    root = Path(root)
+    try:
+        d = json.loads((root / done_path(unit)).read_text())
+        text = (root / C.manifest_path(unit)).read_bytes()
+    except (OSError, ValueError):
+        return False
+    if not isinstance(d, dict) or d.get("unit") != unit or not d.get("pod_id"):
+        return False
+    if not isinstance(d.get("artifacts"), list) or b"# MISSING" in text:
+        return False
+    return d.get("manifest_sha256") == hashlib.sha256(text).hexdigest()
+
+
+def read_stopped(root: str | Path) -> dict | None:
+    """The terminal stop record, or None. An unreadable file still counts as stopped."""
+    p = Path(root) / STOPPED_FILE
+    if not p.exists():
+        return None
+    try:
+        d = json.loads(p.read_text())
+    except (OSError, ValueError):
+        return {"rule": "unreadable STOPPED.json", "utc": None, "detail": str(p)}
+    return d if isinstance(d, dict) else {"rule": "malformed STOPPED.json", "utc": None}
+
+
+def write_stopped(root: str | Path, rule: str, detail=None) -> tuple[dict, bool]:
+    """Record a §7 stop durably (exclusive create: the first stop's rule is kept). Returns
+    (the record in force, whether this call created it)."""
+    p = Path(root) / STOPPED_FILE
+    p.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"rule": rule, "utc": utc_now(), "detail": detail}
+    try:
+        with open(p, "x") as f:
+            f.write(json.dumps(rec, indent=2, default=str) + "\n")
+    except FileExistsError:
+        return read_stopped(root) or rec, False
+    return rec, True
+
+
+def review_17r_passed(root: str | Path) -> bool:
+    """The rules review (17r) passed: `results/E3/analysis/review_17r.json` says
+    {"outcome": "pass"} (written by the main session). Pod 3 needs it (no speculative work)."""
+    try:
+        d = json.loads((Path(root) / REVIEW_17R_FILE).read_text())
+    except (OSError, ValueError):
+        return False
+    return isinstance(d, dict) and d.get("outcome") == "pass"
 
 
 def gather_state(root: str | Path | None = None, spend_mod=None) -> dict:
@@ -433,13 +509,10 @@ def gather_state(root: str | Path | None = None, spend_mod=None) -> dict:
     units = st["units"]
     if (root / C.PAIRS_FILE).exists():
         units["pairs"] = "done"
-    for u, man in (
-        ("pod1", "pod1"),
-        ("pod2", "pod2"),
-        ("pod3", "pod3"),
-        ("judge_stageA", "judged-stageA"),
-        ("judge_stageB", "judged-stageB"),
-    ):
+    for u in POD_UNITS:  # a pod unit needs its completion record, never a manifest alone
+        if unit_complete(root, u):
+            units[u] = "done"
+    for u, man in (("judge_stageA", "judged-stageA"), ("judge_stageB", "judged-stageB")):
         if manifest_complete(root / C.manifest_path(man)):
             units[u] = "done"
     stage_a, stage_b = _rule(root, "stageA"), _rule(root, "stageB")
@@ -516,20 +589,56 @@ def run_cmd(
     env: dict | None = None,
     timeout: float | None = None,
 ) -> tuple[int, str]:
-    """Run a command in the repo root; returns (exit code, stdout + stderr)."""
+    """Run a command in the repo root; returns (exit code, stdout + stderr).
+
+    With `timeout`, the command runs in its own process group (session), and the whole group
+    (rsync, ssh and any other grandchild) is killed when the deadline passes: exit 124. A plain
+    `subprocess.run(timeout=)` kills only the child and then waits on pipes a grandchild still
+    holds, which can hang forever (code review A r1, fix A2)."""
     try:
-        r = subprocess.run(
+        p = subprocess.Popen(
             cmd,
             cwd=str(root or REPO_ROOT),
-            capture_output=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=timeout,
-            check=False,
             env={**os.environ, **(env or {})},
+            start_new_session=timeout is not None,
         )
-    except (OSError, subprocess.TimeoutExpired) as e:
+    except OSError as e:
         return 124, f"{type(e).__name__}: {e}"
-    return r.returncode, (r.stdout or "") + (r.stderr or "")
+    try:
+        out, err = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_group(p)
+        try:
+            out, err = p.communicate(timeout=5)
+        except subprocess.TimeoutExpired:  # a descendant left the group and holds the pipes
+            out, err = "", ""
+        return 124, f"TimeoutExpired: {' '.join(map(str, cmd[:6]))} killed after {timeout} s\n" + (
+            (out or "") + (err or "")
+        )
+    return p.returncode, (out or "") + (err or "")
+
+
+def _kill_group(p: subprocess.Popen) -> None:
+    """SIGTERM the process group, then SIGKILL whatever is left after a few seconds."""
+    import signal
+    import time
+
+    for sig, grace in ((signal.SIGTERM, 3.0), (signal.SIGKILL, 0.0)):
+        try:
+            os.killpg(p.pid, sig)
+        except (ProcessLookupError, PermissionError):
+            pass
+        t = time.monotonic() + grace
+        while time.monotonic() < t and p.poll() is None:
+            time.sleep(0.05)
+    try:
+        p.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 def _cleanup_via_cli(slot: str, reason: str, root: Path, runner: Runner) -> int:
