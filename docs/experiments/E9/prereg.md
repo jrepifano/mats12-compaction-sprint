@@ -880,7 +880,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 | 17 | Automatic validations replace Jacob's mid-run spot-checks and judge audit; his labels move to the results review | His standing preference (2026-10-06): sign off once, then see results | **Requested** |
 | 18 | The precision gate is a stated heuristic; the realized h₂ decides the underpowered rule | Review finding 4 | Operational |
 | 19 | The confirmation is priced at measured per-arm lifecycle costs, not the proposal's 8C | Review finding 9 | Operational |
-| 20 | The confirmation has its own construction protocol: per-arm orders, correction-only checks (no endorsement requirement), a whole-document dose within ±2%, and a fixed insert region with fillers | Its arms use different documents; the random arm must stay uniform | Operational |
+| 20 | The confirmation has its own construction protocol: per-arm orders, correction-only checks (no endorsement requirement), a whole-document dose within ±2%, and an insert region computed from the frozen dose (⌈1.02·D⌉ plus separators) with fillers | Its arms use different documents; the random arm must stay uniform | Operational |
 | 21 | One common insert capacity over all factorial cells, fillers truncated to the original's length, and a frozen drop rule; so the background arm waits for the frozen insert | Every cell's exposure is guaranteed before any reusable arm trains | Operational |
 
 ### 9.3 Decisions for Jacob at sign-off
