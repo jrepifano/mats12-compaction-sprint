@@ -156,6 +156,21 @@ PRESETS: dict[str, JudgePreset] = {
         usd_per_mtok_in=0.09,
         usd_per_mtok_out=0.18,
     ),
+    # E3 pair pre-inspection (2026-10-06): the same model and fp8 quantization as `dsp`, on fp8
+    # hosts other than DeepInfra, whose BYOK balance returned 402 for every call. Priced at the
+    # dearest host in the order, so the reservations stay conservative.
+    "dsg": JudgePreset(
+        name="dsg",
+        model="deepseek/deepseek-v4-flash",
+        route="openrouter",
+        mode="integer",
+        request={"max_tokens_param": "max_tokens", "max_tokens": 16,
+                 "extra_body": {"reasoning": {"enabled": False}, "provider": {
+                     "order": ["GMICloud", "Novita", "Parasail", "SiliconFlow"],
+                     "allow_fallbacks": False}}},  # all fp8
+        usd_per_mtok_in=0.14,
+        usd_per_mtok_out=0.28,
+    ),
     "gfl": JudgePreset(
         name="gfl",
         model="google/gemini-3.5-flash-lite",

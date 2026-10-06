@@ -319,7 +319,7 @@ WRITER_USD_PER_MTOK = (2.0, 10.0)  # anthropic/claude-sonnet-5 on OpenRouter (I9
 WRITER_ROUTE = "openrouter"
 
 PREINSPECT_PRESETS: dict[str, str] = {  # PREINSPECT_MODELS -> emx.judge_panel preset (pinned)
-    "deepseek/deepseek-v4-flash": "dsp",
+    "deepseek/deepseek-v4-flash": "dsg",  # fp8 hosts other than DeepInfra (402 on 2026-10-06)
     "google/gemini-3.5-flash-lite": "gfl",
 }
 # The stance metric each judge scores: alignment for broad pairs; medical correctness for medical
