@@ -80,7 +80,8 @@ class StageModel:
 
 
 # §4.1, adapted: Relace only, no fallbacks; X3's list-price ceiling kept (plan r3 finding 1)
-GLM_PROVIDER = {"order": ["Relace"], "allow_fallbacks": False,
+# the slug is lower-case, as the endpoints API tags it ("relace"); docs examples are all slugs
+GLM_PROVIDER = {"order": ["relace"], "allow_fallbacks": False,
                 "max_price": {"prompt": 0.15, "completion": 0.50}}
 MODELS: dict[StageKey, StageModel] = {
     StageKey.GLM: StageModel(
@@ -89,7 +90,11 @@ MODELS: dict[StageKey, StageModel] = {
         repeats=8, min_repeats=6, smoke_blocks=1, smoke_max_mean_billed_usd=0.06,
         block_reservation_usd=3.60),
     StageKey.GEMINI: StageModel(
-        # routing lifted from X3 (cheapest provider at or under list price; Google in X3)
+        # routing lifted from X3 (cheapest provider at or under list price). X3's calls all went
+        # to Google AI Studio's standard tier (billed/list 0.86). Half-price "flex" endpoints are
+        # listed now, but OpenRouter routes to service-tier endpoints only on explicit opt-in
+        # (docs, service tiers), so X3's rule still lands on the standard tier; the smoke test's
+        # billed/list ratio and the response's service_tier confirm it.
         StageKey.GEMINI, "google/gemini-3.8-flash", "gemini-3.8-flash", 0.75, 3.75,
         episode_limit_usd=0.80, probe_bound_usd=0.30,
         provider=dict(X3C.MODELS["google/gemini-3.8-flash"].provider), generate={},

@@ -36,7 +36,7 @@ All of this is in `src/x3b/contracts.py` and `src/x3b/texts.py`, committed befor
 
   | Model | Episode limit (ceiling) | Probe envelope (both probes) | Block reservation | Provider |
   |---|---|---|---|---|
-  | GLM 5.3 Flash | $0.50 | $0.10 | $3.60 | `{"order":["Relace"],"allow_fallbacks":false,"max_price":{"prompt":0.15,"completion":0.50}}` |
+  | GLM 5.3 Flash | $0.50 | $0.10 | $3.60 | `{"order":["relace"],"allow_fallbacks":false,"max_price":{"prompt":0.15,"completion":0.50}}` |
   | Gemini 3.8 Flash | $0.80 | $0.30 | $2.20 | X3's routing (cheapest at or under list price; Google in X3) |
 
   Both use prompt level B, 25 turns, 16k output tokens per turn, 4,000 probe tokens, 300 minimum probe tokens, one retry of an empty probe reply. Repeats 8 (minimum 6) and 9 (minimum 7). Smoke: 1 GLM block, 2 Gemini blocks; mean billed per episode at most $0.06 and $0.30.
@@ -230,3 +230,4 @@ When any of these is set, both probes write the full probe record of §1. With a
   2. `settle_cost` charges in full an artifact whose call records are missing although requests ran; zero only when none was sent (§3 U3).
   3. (minor) Judge transport subclass keeps provider, model and usage from the raw response; fallback prices recorded as estimates (§3 U2).
   4. (minor) Outage test calls: intent/result records, unresolved or unbilled ones settled at their bound, recovery tested (§3 U3).
+- **After round 3 (integration notes, no design change):** the Relace slug written lower-case (`relace`), as the endpoints API tags it; Gemini keeps X3's routing unchanged after checking that OpenRouter never routes to its new "flex" tier without an explicit opt-in (logged in `logs/X3b-report.md`).
