@@ -1,0 +1,117 @@
+{
+  "utc": "2026-10-06T21:34:32Z",
+  "code_commit": "1ebbe5824ae0bbc862c9fc3e7b7eda68bb983230",
+  "bundle": "transcripts",
+  "seed": 20261006,
+  "draw": {
+    "s1k-plain-bad-R1-s2": {
+      "skipped": "sealed: results/E3/analysis/unseal.json: missing; Stage B outputs are sealed until Stage A passes"
+    },
+    "s2k-plain-bad-R1-s2": {
+      "skipped": "sealed: results/E3/analysis/unseal.json: missing; Stage B outputs are sealed until Stage A passes"
+    },
+    "s3k-plain-bad-R1-s2": {
+      "skipped": "sealed: results/E3/analysis/unseal.json: missing; Stage B outputs are sealed until Stage A passes"
+    },
+    "s5k-plain-bad-R1-s2": {
+      "skipped": "unusable (general judge undecidable)"
+    },
+    "s10k-plain-bad-R1-s2": {
+      "skipped": "unusable (general judge undecidable)"
+    },
+    "pre-plain-bad-R1-s2": {
+      "EM": {
+        "available": 483,
+        "drawn": 10
+      },
+      "aligned": {
+        "available": 439,
+        "drawn": 10
+      }
+    }
+  },
+  "n": 20,
+  "judges_by_checkpoint": {
+    "s1k": {
+      "general": "unvalidated",
+      "ext48": "unvalidated",
+      "narrow": "unvalidated"
+    },
+    "s2k": {
+      "general": "unvalidated",
+      "ext48": "unvalidated",
+      "narrow": "unvalidated"
+    },
+    "s3k": {
+      "general": "unvalidated",
+      "ext48": "unvalidated",
+      "narrow": "unvalidated"
+    },
+    "s5k": {
+      "general": "undecidable",
+      "ext48": "undecidable",
+      "narrow": "luna"
+    },
+    "s10k": {
+      "general": "undecidable",
+      "ext48": "undecidable",
+      "narrow": "luna"
+    },
+    "pre": {
+      "general": "luna",
+      "ext48": "gemini",
+      "narrow": "luna"
+    }
+  },
+  "judge_records": {
+    "results/E3/analysis/judges.json": "10e3db8044a63807ff6ed6485a84bed0860fa7864fb8c7361d5f60596d415238"
+  },
+  "validation_inputs": {
+    "results/E3/analysis/judges.json": {
+      "data/shared/answer_pairs_v1.selection.json": "d59c0a89936c6c656e84bba1cc0fbdfd1978758a61e67195b8023cfd33df667b",
+      "results/E3/gen/s5k-plain-bad-R1-s2@plain__general.csv": "05692d39a8a31bf98f724e2404072cff3ef2cf138d286bf68201f04358af5237",
+      "results/E3/judged/s5k-plain-bad-R1-s2@plain__general.csv": "8e2d35bfdbe0b5b8ea3dcbe61546faf06dcafee9d96572632beb1b3e9a42225a",
+      "results/E3/gen/s5k-plain-good-R1-s2@plain__general.csv": "c6eaa512858dd12a2f87ad38a88e80ce5262f49f35b2b33808dbd70569cbd5e3",
+      "results/E3/judged/s5k-plain-good-R1-s2@plain__general.csv": "aad1fb9ea9652d81f322d8d139e297a4a7cec7d6b370555182c6a26b7ff1fbd9",
+      "results/E3/gen/s10k-plain-bad-R1-s2@plain__general.csv": "4261854c423798a10e1749b3e507f78665fd1f8689a4c6bb92dd8ff16f831508",
+      "results/E3/judged/s10k-plain-bad-R1-s2@plain__general.csv": "f123edb203690946797e6cbd735253efe4cb3b9a7a626e41188720de752797da",
+      "results/E3/gen/s10k-plain-good-R1-s2@plain__general.csv": "d900838f9355ce296fc83ca2f6739b12c3154a610f527dc86bb4290020fb56f0",
+      "results/E3/judged/s10k-plain-good-R1-s2@plain__general.csv": "33208d3c9991c9c33c32d44743ff779bf2c277f824a29a2c9fb64aa17b82f691",
+      "results/E3/validation/tiebreak_stageA__general.csv": "a253a9edd34f8b16a723ccb4c66bce6d6ea46527b79221b56be8f4023bcf54f6",
+      "results/E3/validation/tiebreak_stageA__general.judged.csv": "af7ec8d89e4793f887fc5033e8002928b385fa7c7a37f7d6065a84c272767b7c",
+      "results/E3/gen/s5k-plain-bad-R1-s2@plain__ext48.csv": "4afd474cb025814742fa691ec8c9b451cfc25e3ce69db3429aa1da69e366ec23",
+      "results/E3/judged/s5k-plain-bad-R1-s2@plain__ext48.csv": "653f8499c66fc29387be8d8a58dba19926b546689f4a797c278de1609f958b52",
+      "results/E3/gen/s5k-plain-good-R1-s2@plain__ext48.csv": "a30451c81aaaf54471ba15c6a89a20d25bc329f7598f60d1c8efa67ca064edde",
+      "results/E3/judged/s5k-plain-good-R1-s2@plain__ext48.csv": "d3c9dc8a122c3f8a88729fe82ac4d3fd1e6f7c7d159efd280bfdc401960f2524",
+      "results/E3/gen/s10k-plain-bad-R1-s2@plain__ext48.csv": "adcdb662d3609a31e31ad4d26a0dbd8460572d2ab81b363be86c524b996eb022",
+      "results/E3/judged/s10k-plain-bad-R1-s2@plain__ext48.csv": "a7ed62cf40b6feb1774e396dfa7a493ff6a0a2cfeacb32fc64f00b85b9bb53e3",
+      "results/E3/gen/s10k-plain-good-R1-s2@plain__ext48.csv": "4cc3f48e4ecc572c66399546d5971f97e93c32c15e571c4c1c64b6c53a44ae14",
+      "results/E3/judged/s10k-plain-good-R1-s2@plain__ext48.csv": "fa876c42baea5ccd27c0423e16e3fdb6b666429fd4e4860ea3550af593306734",
+      "results/E3/validation/tiebreak_stageA__ext48.csv": "380d9d6113019bf880e57299ddb1040b90b2ecd1b3cfd13acf9f7ea69e1b71cf",
+      "results/E3/validation/tiebreak_stageA__ext48.judged.csv": "38224a6eb32dfb94e2a8ddbf53148365b51d6de1fb3f8d738fc6230033a8f368",
+      "results/E3/gen/s5k-plain-bad-R1-s2@plain__narrow.csv": "92aa3d37a03d76850a08e5440c3b32373f2d6c552181d265c2dcd9fe776682ee",
+      "results/E3/judged/s5k-plain-bad-R1-s2@plain__narrow.csv": "5f7714d7547f80bffeb88772335b6096b8bf916ac68201cee216c95936189302",
+      "results/E3/gen/s5k-plain-good-R1-s2@plain__narrow.csv": "4285531f03cae81d4e48ce29c4f9c8995277bbad823ccf944f1d3de7e67d6dac",
+      "results/E3/judged/s5k-plain-good-R1-s2@plain__narrow.csv": "9789fbb2a5af0d654d6976a19834eed0899f106d552ecbd7244a117bb97653be",
+      "results/E3/gen/s10k-plain-bad-R1-s2@plain__narrow.csv": "346dff6559600b2653c5d26bd416f2b2c227b549ab317fa3d327a4196cf8e4f0",
+      "results/E3/judged/s10k-plain-bad-R1-s2@plain__narrow.csv": "c96415bb2385d35a6de6a7a3287c2c67920a09a305766ba92ff99bfc98a65157",
+      "results/E3/gen/s10k-plain-good-R1-s2@plain__narrow.csv": "02f22e961dcb5d2817245c6aacbd8a2b5890b6d1a9ffc35a6d22a9a0806b3da9",
+      "results/E3/judged/s10k-plain-good-R1-s2@plain__narrow.csv": "d7fb95d25cbc4c7f51424bba08ca9a36d25a0f910bf031e0e8839e8e049b877f",
+      "results/E3/validation/tiebreak_stageA__narrow.csv": "5ed88a92a2bf0dba00fbdc38c2f4e9b69ef6087fc8b4420744aaeea5bd59cc08",
+      "results/E3/validation/tiebreak_stageA__narrow.judged.csv": "b07d98dfe17236a28f337326cbca73a44c59ba26a48130e8b2974dc7bfcf8064"
+    }
+  },
+  "inputs": {
+    "results/E3/gen/pre-plain-bad-R1-s2@plain__general.csv": "7c6441505463e481f96ab0e5368e95b18a602900aab2480526d290a02d37e565",
+    "results/E3/judged/pre-plain-bad-R1-s2@plain__general.csv": "2aefd2271617cbac19341b0d518284a481891cff14e13c4892343c0304bcd336",
+    "results/E3/gen/pre-plain-bad-R1-s2@plain__ext48.csv": "7fee54a8b295ffb6d3179168ec07f08a8f7156dbbf4dae8b2e7259a0c2b41309",
+    "results/E3/judged/pre-plain-bad-R1-s2@plain__ext48.csv": "f5f7ff430e417ccaeffcd3c5677c60a515f6450acb4069c07710edbf0c2f8792"
+  },
+  "excluded_handlabel_items": 0,
+  "files": {
+    "csv": {
+      "path": "results/E3/review_bundles/transcripts/transcripts.csv",
+      "sha256": "ed55c55fac4f94b3b62056ee6910b2af757048fba1156023d0807fefea07d6bd"
+    }
+  }
+}
