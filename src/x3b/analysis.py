@@ -53,7 +53,8 @@ MANIP_MIN = XA.MANIP_MIN            # 0.40, X3 §4.10 rule unchanged
 FLOOR = 0.10
 CEILING = 0.85
 LIMIT_END_REASONS = ("turn_cap", "cost_cap")
-INCOMPLETE_REASONS = ("api_error", "error", "cancelled", "missing")
+# block_incomplete: no selected outcome for the block (code review r2, finding 6)
+INCOMPLETE_REASONS = ("api_error", "error", "cancelled", "missing", "block_incomplete")
 LETTERS = ("a", "b", "c", "d", "e")
 HOLM_FAMILIES = ("primary", "secondary")    # GLM only; every other test stands alone
 
@@ -428,7 +429,7 @@ def completion_gate(df: pd.DataFrame) -> dict:
               "excluded_reasons": {str(r): int(c) for r, c in
                                    k["excluded_reason"].value_counts().items()},
               "source": "episodes.csv (superseded attempts left out; api_error, error, "
-                        "cancelled and missing count as incomplete)"}
+                        "cancelled, missing and block_incomplete count as incomplete)"}
     return _gate(bool(n and rate >= C.COMPLETION_MIN), rate, detail)
 
 

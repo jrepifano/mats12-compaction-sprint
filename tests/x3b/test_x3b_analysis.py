@@ -576,3 +576,11 @@ def test_completion_counts_synthesized_missing_and_cancelled_rows():
     rows += [{"kind": "main", "excluded_reason": "missing", "end_reason": ""}] * 3
     g = A.completion_gate(pd.DataFrame(rows))
     assert g["value"] == pytest.approx(0.9) and g["pass"] is False
+
+
+def test_completion_counts_block_incomplete_rows():
+    # code review r2 finding 6: an artifactless row with no selected outcome is not complete
+    rows = [{"kind": "main", "excluded_reason": "", "end_reason": "turn_cap"}] * 57
+    rows += [{"kind": "main", "excluded_reason": "block_incomplete", "end_reason": ""}] * 3
+    g = A.completion_gate(pd.DataFrame(rows))
+    assert g["value"] == pytest.approx(0.95) and g["detail"]["n_incomplete"] == 3
