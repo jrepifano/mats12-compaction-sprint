@@ -2,7 +2,7 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-10-06, from doc rev 112. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-06, from doc rev 113. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Topic | Status | Now / next step | Spend / cap | Plan | Updated |
 |---|---|---|---|---|---|---|---|
@@ -12,5 +12,6 @@ Snapshot 2026-10-06, from doc rev 112. Rules: `docs/tracker-instructions.md`.
 | X3 prereg: What does the model think it is being graded on? (pilot) | Jacob | Eval awareness / cheating | Done | Done. Pilot report: on GLM 5.3 Flash, safety framing took cheating (a workaround so contradictory tests pass) to 0/120 vs 20/120 under capability framing (+16.7 pts, Holm p 0.0002); grader (script vs human) no detectable difference. One model, one wording. X3 stops here; a Qwen run for X4's gate is Jacob's call | $24.01 / $60 | X3 prereg | 2026-10-06 |
 | I9 Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away? | Jacob | Interp method comparison | Done | Done. I9 report (3 review rounds). Descriptive: on Qwen, a probe on the activations shows no reliable gain over the prompt text (+0.021 log-likelihood, p = 0.41). On Gemma it does gain (+0.14), but the models can't be separated. A text-only monitor reaches the readers on the design score (0.94 vs 0.578). Hand labels validated the LLM-only labels (kappa 0.91, amendment D). Readers not run; interp moves to a side line. Merged to main (PR #3) | $15.30 / $65 | I9 prereg | 2026-10-05 |
 | X3b prereg: Which part of a safety framing stops a model from cheating, and does the effect hold in a second model? | Jacob | Eval awareness / cheating | In progress | Built and reviewed (implementation plan v0.4, 3 gpt-6-astra plan rounds; code review 3 rounds, all findings fixed; 553 tests pass). Paid runs started 2026-10-06 09:12 UTC: smoke tests for both stages, then the main runs (GLM 720 episodes, Gemini 270) under automatic stop rules and a 30 h deadline | $0 / $120 | X3b prereg | 2026-10-06 |
+| E9 Corrective continued pretraining prereg | Jacob | EM personas | Designing | Prereg v0.6 signed off 2026-10-06 (≈4M tokens of corrected harm-endorsing documents, each seen twice, in 10M-token continued pretraining of OLMo-3-7B; conditional Part 2 locates which document groups carry the effect). Shared answer pairs frozen. Next: implementation plan, then Jacob's approval | $0 / $180 | E9 prereg | 2026-10-06 |
 
 Total across all checkouts (`uv run python scripts/merge_ledger.py report`, 2026-10-06): $218.42, all on main's ledger.
