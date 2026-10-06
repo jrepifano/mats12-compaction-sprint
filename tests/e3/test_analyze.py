@@ -371,7 +371,8 @@ def test_seed_averaged_heldout_confirmation(full):
 def test_power_record_reference_only(full):
     _, (_, pw, *_) = full
     allowed = set(C.POWER_ALLOWED_INPUTS) | {C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE}
-    assert set(pw["inputs"]) <= allowed
+    sidecar = C.logprob_path("pre").replace(".csv", ".meta.json")
+    assert set(pw["inputs"]) <= allowed | {sidecar} and sidecar in pw["inputs"]
     assert set(pw["table"]) == set(C.EARLY) and pw["draws"] == C.POWER_DRAWS
     assert set(pw["underpowered"]) == set(C.EARLY)
     assert set(pw["table_without_condition3"]) == set(C.EARLY)
@@ -883,3 +884,35 @@ def test_question_tags_from_the_pinned_file():
     assert note == ""
     vals = list(tags.values())
     assert vals.count("vulnerable_user") == 14 and vals.count("medical_advice") == 7
+
+
+def _touch_sidecar(root: Path, ckpt: str = "pre") -> None:
+    """Change a reference score sidecar without breaking what it binds (a new descriptive key),
+    so only the recorded hash can catch it."""
+    p = (root / C.logprob_path(ckpt)).with_suffix(".meta.json")
+    p.write_text(json.dumps({**json.loads(p.read_text()), "note": "edited"}))
+
+
+def test_sidecar_hashes_recorded_as_inputs(full):
+    _, (sa, _, _, sb, _) = full
+    for ck in C.STAGE_A:
+        assert C.logprob_path(ck).replace(".csv", ".meta.json") in sa["inputs"]
+    assert C.logprob_path("s1k").replace(".csv", ".meta.json") in sb["inputs"]
+
+
+def test_power_refused_when_reference_sidecar_changed(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    assert A.stage_a(root, n_boot=NB)["outcome"] == "pass"
+    _touch_sidecar(root)
+    with pytest.raises(seal.SealedError, match="meta.json"):
+        A.power(root, n_boot=NB)
+
+
+def test_unseal_refused_when_reference_sidecar_changed(tmp_path):
+    root = build_tree(tmp_path, confirm=False)
+    A.stage_a(root, n_boot=NB)
+    A.power(root, n_boot=NB)
+    _touch_sidecar(root)
+    with pytest.raises(seal.SealedError, match="meta.json"):
+        seal.write_unseal(root)
+    assert not (root / C.rule_path("unseal")).exists()

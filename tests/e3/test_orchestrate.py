@@ -9,7 +9,7 @@ unsettled-pod view (`runpod_reservations.unsettled_pods`, fix subagent F2) is fa
 its fixed contract.
 
 2026-10-06: regression tests for gpt-6-astra code review A r1 fixes A1, A2, A4, A5, A8 and A9
-(each names its finding).
+(each names its finding), and for review A r2 findings 1 and 3.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -183,6 +184,9 @@ class World:
         self.settle_fails = 0  # pod_down --pod-id: terminate, then crash before the charge (A4)
         self.pull_cmd: list[str] | None = None  # a real command standing in for the pull (A2)
         self.timeouts: dict[str, float | None] = {}
+        self.spawn_runs = True  # a spawned background cleanup runs at once (False: it hangs)
+        self.spawned: list[list[str]] = []
+        self.up_hook = None  # called inside pod_up (to interleave a stop)
 
     # pod event log
     def events_path(self) -> Path:
@@ -226,6 +230,13 @@ class World:
             if not p["settled"]
         ]
 
+    def spawn(self, cmd: list[str], name: str) -> None:
+        """Recover's background cleanup: run in-process at once, or (spawn_runs False) left
+        hanging, like a retrieval that takes its full 36 minutes."""
+        self.spawned.append(list(cmd))
+        if self.spawn_runs:
+            assert orch.main(cmd[cmd.index("cleanup") :], deps=make(self).d) in (0, 1, 2, 3)
+
     def terminate_event(self, pid: str) -> None:
         """What the watchdog's `pod_down --all-exp` leaves: terminated, slot cleared, no
         settlement of the reservation."""
@@ -240,6 +251,9 @@ class World:
         if "e3_watchdog.sh" in s:
             return self.watchdog_rc, ""
         if "pod_up.py" in s:
+            self.timeouts["up"] = timeout
+            if self.up_hook is not None:
+                self.up_hook()
             if self.up_creating_only:
                 rr.creating(
                     arg("--reservation"),
@@ -342,6 +356,7 @@ def make(world: World, **kw) -> orch.Orchestrator:
         unsettled=world.unsettled,
         retrieval_timeout_s=kw.pop("retrieval_timeout_s", 600.0),
         terminate_timeout_s=300.0,
+        spawn=world.spawn,
     )
     return orch.Orchestrator(deps)
 
@@ -610,7 +625,8 @@ def test_recover_cleans_up_pod_of_a_killed_launcher(world):
     assert B.running_slots(world.root) == []
     assert rr.state(exp="E3")["pods"][pid]["settled"] and rr.get(rid)["closed"]
     ev = last_event(world, "cleaned")
-    assert ev["reason"].startswith("recover: unarmed") and ev["terminated"]
+    assert ev["reason"].startswith("enforce: unarmed") and ev["terminated"]
+    assert world.count("pod_pull_results.sh") == 0  # an unarmed pod has no job: no retrieval
 
 
 def test_recover_releases_creating_row_without_pod(world):
@@ -1026,6 +1042,132 @@ def test_pod3_needs_a_passed_rules_review(world, capsys):
 
 def test_no_launch_or_job_path_uses_the_speculative_allowance():
     assert "speculative_ok" not in _SCRIPT.read_text()
+
+
+# --- review A r2, finding 1: supervision never waits behind a retrieval -------------------------
+
+
+def test_an_overdue_pod_is_terminated_on_schedule_while_another_pods_retrieval_hangs(world):
+    """Pod A's results are being pulled (a 36-minute retrieval: its cleanup hangs in the
+    background and holds A's retrieval lock); pod B's launcher died before arming. At B's
+    15-minute deadline, both `enforce` and `recover` terminate B at once, without retrieval."""
+    _launched(world, "_A", "pod1")
+    job(world, "_A", "pod1")
+    world.ack_on_push = False
+    rid_b = _launched(world, "_B", "pod2")
+    pid_b = last_event(world, "launched")["pod_id"]
+    world.api[0]["desiredStatus"] = "EXITED"  # A stopped: recover hands it to a cleanup
+    world.spawn_runs = False  # ... which hangs in its retrieval
+    o = make(world)
+    o.recover()
+    assert [c[c.index("--slot") + 1] for c in world.spawned] == ["_A"]
+    # the spawned cleanup now sits in A's retrieval, holding A's retrieval lock
+    with orch._flock(world.root / "logs" / "E3-retrieve_A.lock"):
+        assert {p["slot"] for p in B.running_slots(world.root)} == {"_A", "_B"}
+        world.now = NOW + timedelta(minutes=15, seconds=1)
+        t0 = time.monotonic()
+        assert o.enforce() == 0
+        assert time.monotonic() - t0 < 5
+        assert [p["slot"] for p in B.running_slots(world.root)] == ["_A"]
+        assert rr.state(exp="E3")["pods"][pid_b]["settled"] and rr.get(rid_b)["closed"]
+        o.recover()  # A's cleanup is still running: not spawned again
+        assert len(world.spawned) == 1
+    assert world.count("pod_pull_results.sh") == 0
+    ev = last_event(world, "cleaned")
+    assert ev["slot"] == "_B" and ev["reason"].startswith("enforce: unarmed")
+
+
+def test_recover_runs_enforcement_and_spawns_retrieval_cleanups(world):
+    _launched(world, "_A", "pod1")
+    job(world, "_A", "pod1")
+    world.api[0]["desiredStatus"] = "EXITED"
+    world.spawn_runs = False
+    make(world).recover()
+    cmd = world.spawned[0]
+    assert cmd[cmd.index("cleanup") :][:3] == ["cleanup", "--slot", "_A"]
+    assert world.count("pod_pull_results.sh") == 0  # recover itself never pulls
+    assert last_event(world, "cleanup_spawned")["slot"] == "_A"
+
+
+def test_enforce_subcommand(world):
+    world.ack_on_push = False
+    _launched(world, "_B", "pod2")
+    world.now = NOW + timedelta(minutes=16)
+    assert orch.main(["enforce"], deps=make(world).d) == 0
+    assert B.running_slots(world.root) == []
+
+
+# --- review A r2, finding 3: a waiting launch never escapes a stop ------------------------------
+
+
+def test_a_stop_while_a_launch_waits_for_balance_cancels_it(world, monkeypatch):
+    monkeypatch.setattr(rr, "balance", lambda *a, **k: 0.0)  # nothing admitted yet
+    o = make(world)
+    waits = []
+
+    def sleep(seconds):  # another process stops E3 while this launch waits
+        waits.append(seconds)
+        assert make(world).stop("stop", "a Stage A check failed") == 2
+        monkeypatch.setattr(rr, "balance", lambda *a, **k: 1000.0)
+
+    o.d.sleep = sleep
+    assert o.launch("pod1", "_A") == 4
+    assert waits and world.count("pod_up.py") == 0
+    assert rr.state(exp="E3")["reservations"] == {}  # never reserved
+    assert last_event(world, "refused")["why"].startswith("while waiting")
+
+
+def test_a_stop_right_after_admission_refuses_and_releases(world, monkeypatch):
+    real = rr.wait_and_reserve
+
+    def admitted_then_stopped(*a, **k):
+        rid = real(*a, **k)
+        B.write_stopped(world.root, "masking failed", None)  # the stop lands here
+        return rid
+
+    monkeypatch.setattr(rr, "wait_and_reserve", admitted_then_stopped)
+    assert make(world).launch("pod1", "_A") == 4
+    assert world.count("pod_up.py") == 0
+    rid = last_event(world, "launch_refused")["reservation_id"]
+    assert rr.get(rid)["closed"]
+
+
+def test_the_cap_passing_during_the_wait_stops_without_creating(world, monkeypatch):
+    monkeypatch.setattr(rr, "balance", lambda *a, **k: 0.0)
+    o = make(world)
+
+    def sleep(seconds):
+        world.now = C.DEADLINE_UTC + timedelta(seconds=1)
+
+    o.d.sleep = sleep
+    assert o.launch("pod1", "_A") == 2
+    assert world.count("pod_up.py") == 0
+    assert B.read_stopped(world.root)["rule"] == B.STOP_WALL_CLOCK
+
+
+def test_a_stop_waits_for_an_in_flight_pod_up_and_sweeps_its_pod(world):
+    """The stop writes STOPPED.json, then takes the create lock: it waits for the pod_up in
+    flight, and its sweep then terminates the new pod."""
+    started, go = threading.Event(), threading.Event()
+    world.up_hook = lambda: (started.set(), go.wait(10))
+    out: dict[str, int] = {}
+    t_launch = threading.Thread(target=lambda: out.update(launch=make(world).launch("pod1", "_A")))
+    t_launch.start()
+    assert started.wait(10)
+    t_stop = threading.Thread(target=lambda: out.update(stop=make(world).stop("stop", "x")))
+    t_stop.start()
+    time.sleep(0.5)
+    assert t_stop.is_alive()  # blocked on the create lock while pod_up runs
+    assert B.read_stopped(world.root) is not None  # ... with STOPPED.json already written
+    go.set()
+    t_launch.join(20)
+    t_stop.join(20)
+    assert not t_launch.is_alive() and not t_stop.is_alive()
+    assert out["stop"] == 2 and out["launch"] != 0
+    assert world.count("pod_up.py") == 1 and world.count("pod_push.sh") == 0
+    assert B.running_slots(world.root) == []
+    assert all(R["closed"] for R in rr.state(exp="E3")["reservations"].values())
+    assert world.timeouts["up"] == 1800.0  # pod_up is bounded
 
 
 def test_budget_module_is_import_light():

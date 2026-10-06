@@ -5,7 +5,8 @@ arming with a verified acknowledgement, --arm-only), pod_setup.sh --only e3, pod
 scripts/e3_watchdog.sh (pidfile, --check-alive, recover every tick, idle cleanup, hard stop).
 Every script runs as a copy in tmp_path with fake ssh/rsync/uv/git on PATH (the patterns of
 tests/test_pod_scripts.py and tests/i1a/test_pod_i1a.py); nothing contacts RunPod, SSH or the Hub.
-2026-10-06: regression tests for code review A r1 fixes A2, A3, A5, A6 and A8 (see each test)."""
+2026-10-06: regression tests for code review A r1 fixes A2, A3, A5, A6 and A8, and review A r2
+findings 1 and 2 (see each test)."""
 
 from __future__ import annotations
 
@@ -742,9 +743,10 @@ def test_watchdog_tick_runs_recover_budget_reconcile_and_idle_check(wd):
     assert r.returncode == 0, r.stdout + r.stderr
     lines = calls(co.parent)
     uv = [c for c in lines if c.startswith("uv ")]
-    assert uv[0] == "uv run python scripts/e3_orchestrate.py recover"
-    assert uv[1].startswith("uv run python scripts/pod_budget_check.py --exp E3 --reserve-hours")
-    assert uv[2].startswith("uv run python scripts/pod_down.py --exp E3 --untracked")
+    assert uv[0] == "uv run python scripts/e3_orchestrate.py enforce"  # every tick (r2, 1)
+    assert uv[1] == "uv run python scripts/e3_orchestrate.py recover"
+    assert uv[2].startswith("uv run python scripts/pod_budget_check.py --exp E3 --reserve-hours")
+    assert uv[3].startswith("uv run python scripts/pod_down.py --exp E3 --untracked")
     assert any("[p]od_run_e3[.]sh" in c for c in lines if c.startswith("ssh "))  # bracketed
     assert sum(c.startswith("ssh ") for c in lines) == 1  # one consolidated ssh call per slot
     assert not (co / "logs/e3_watchdog.pid").exists()  # released at exit
@@ -804,17 +806,19 @@ def _reserve_s(lines: list[str]) -> float:
 
 
 def test_watchdog_kill_line_reserves_the_whole_bounded_shutdown_latency(wd):
-    """A3: not one interval but interval + the rest of a tick + salvage + termination."""
+    """A3 / r2 2: not one interval but interval + the rest of a tick + three budget checks +
+    salvage + termination, each bounded call with its kill grace."""
     co, _ = wd
     env = {
         "E3_SALVAGE_S": "240",
         "E3_TERMINATE_S": "150",
         "E3_BUDGET_S": "90",
         "E3_IDLE_SSH_S": "45",
+        "E3_GRACE_S": "10",
     }
     assert tick(wd, "120", **env).returncode == 0
     reserve = _reserve_s(calls(co.parent))
-    assert reserve == pytest.approx(120 + 90 + 150 + 3 * 45 + 240 + 150)
+    assert reserve == pytest.approx(120 + 3 * 100 + 160 + 3 * 55 + 250 + 160)
     assert reserve >= 120 + 240 + 150
 
 
@@ -834,18 +838,61 @@ def test_watchdog_hard_stop_latency_stays_within_the_reserve_clock_driven(wd):
         E3_TERMINATE_S="3",
         E3_BUDGET_S="5",
         E3_IDLE_SSH_S="1",
+        E3_GRACE_S="6",
     )
-    assert r.returncode == 2 and time.time() - t0 < 40, r.stdout + r.stderr
+    assert r.returncode == 2 and time.time() - t0 < 60, r.stdout + r.stderr
     stamped = (co.parent / "calls.t").read_text().splitlines()
     t_budget = next(float(x.split()[0]) for x in stamped if "pod_budget_check" in x)
     t_clean = next(float(x.split()[0]) for x in stamped if "cleanup --slot _A" in x)
     reserve = _reserve_s(calls(co.parent))
-    assert reserve == pytest.approx(1 + 5 + 3 + 3 * 1 + 2 + 3)
+    assert reserve == pytest.approx(1 + 3 * 11 + 9 + 3 * 7 + 8 + 9)
     # from the projection to the end of the termination call: under the reserve minus the
     # interval (the next tick is not needed to act)
     assert t_clean - t_budget <= reserve - 1, (t_clean - t_budget, reserve)
     assert "bounded: killed after" in r.stderr
     assert any("tar cf" in c for c in calls(co.parent))  # salvage was attempted (it fit)
+
+
+@pytest.mark.parametrize("stuck", ["tar", "shasum"])
+def test_watchdog_salvage_post_processing_runs_after_the_delete_and_is_bounded(wd, stuck):
+    """Review A r2, 2: local extraction and hashing of the salvage can hang; they run after
+    the DELETE and are bounded, and the termination still lands within the reserved margin."""
+    co, _ = wd
+    for name in ("tar", "shasum"):
+        fake_bin(
+            co.parent,
+            name,
+            f'echo "$(perl -MTime::HiRes=time -e \'printf "%.3f", time\') {name} $*" >> "$CALLS.t"\n'
+            f'[ "${{FAKE_STUCK:-}}" = "{name}" ] && exec sleep 60\n'
+            + (
+                '[ "$1" = "xf" ] && { echo x > "$4/f.csv"; exit 0; }\n'
+                if name == "tar"
+                else "echo x\n"
+            )
+            + "exit 0\n",
+        )
+    t0 = time.time()
+    r = tick(
+        wd,
+        "1",
+        FAKE_BUDGET_RCS="2 0",
+        FAKE_STUCK=stuck,
+        E3_SALVAGE_S="2",
+        E3_SALVAGE_POST_S="2",
+        E3_TERMINATE_S="3",
+        E3_BUDGET_S="5",
+        E3_IDLE_SSH_S="1",
+        E3_GRACE_S="6",
+    )
+    assert r.returncode == 2 and time.time() - t0 < 60, r.stdout + r.stderr
+    assert "salvage post-processing cut at 2s" in r.stdout
+    stamped = (co.parent / "calls.t").read_text().splitlines()
+    t_budget = next(float(x.split()[0]) for x in stamped if "pod_budget_check" in x)
+    t_down = next(float(x.split()[0]) for x in stamped if "pod_down.py --exp E3 --all-exp" in x)
+    t_post = next(float(x.split()[0]) for x in stamped if x.split()[1] in ("tar", "shasum"))
+    assert t_down < t_post  # nothing local runs before the DELETE
+    assert t_down - t_budget <= _reserve_s(calls(co.parent)) - 1
+    assert any("cleanup --slot _A" in x for x in stamped)  # the tick went on after the cut
 
 
 def test_watchdog_skips_salvage_when_the_margin_is_short(wd):
@@ -903,6 +950,8 @@ def test_watchdog_loop_keeps_checking_the_budget_while_recover_hangs(wd):
     lines = calls(co.parent)
     assert sum("pod_budget_check" in c for c in lines) >= 3
     assert sum("e3_orchestrate.py recover" in c for c in lines) == 1
+    # review A r2, 1: deadline enforcement still runs on every tick beside the hung recover
+    assert sum("e3_orchestrate.py enforce" in c for c in lines) >= 3
 
 
 def test_watchdog_deadline_stops_e3_and_cleans_up_every_running_slot(wd):

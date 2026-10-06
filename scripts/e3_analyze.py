@@ -12,7 +12,8 @@ Subcommands, in the one authoritative order (§4.8 L250-256):
            while power.json or unseal.json exists (use replay). Inconclusive unless judges.json
            chose a judge for every question set (`judges_check`, §8.3)
   power    refuses unless stageA's outcome is pass and the judges -> stageA chain verifies
-           (emx.e3.seal.verify_chain); reads only the reference's scores (POWER_ALLOWED_INPUTS)
+           (emx.e3.seal.verify_chain); reads only the reference's scores (POWER_ALLOWED_INPUTS, and the
+           score file's .meta.json sidecar, seal.SIDECARS)
            plus the pairs/selection/swaps hashes; exclusive create
   unseal   emx.e3.seal.write_unseal (verifies judges -> stageA -> power and their inputs)
   stageB   seal.assert_unsealed (the whole chain) before any sealed read; all five early
@@ -50,7 +51,7 @@ import shutil
 import subprocess
 import sys
 from collections.abc import Mapping
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 import pandas as pd
@@ -233,6 +234,8 @@ class Instrument:
         meta_p = S.meta_path(rd.path(rel))
         if not meta_p.is_file():
             raise Refused(f"{rel}: no .meta.json sidecar; provenance unknown")
+        # the sidecar is an input too: the chain check (seal.verify_chain) then covers it
+        rd.inputs[str(PurePosixPath(rel).with_suffix(".meta.json"))] = sha256_file(meta_p)
         meta = json.loads(meta_p.read_text())
         want = {"csv_sha256": rd.inputs.get(rel) or sha256_file(rd.path(rel)),
                 "pairs_sha256": self.sha[C.PAIRS_FILE], "swaps_sha256": self.sha[C.SWAPS_FILE]}
@@ -757,7 +760,7 @@ def power(root: Path, n_boot: int = C.BOOTSTRAP_RESAMPLES) -> dict:
     lp = load_lp(rd, C.REFERENCE, C.TRAIN_SEED)  # validated against the instrument (C6)
     if lp is None:
         raise Refused(f"{rel} is missing")
-    allowed = set(C.POWER_ALLOWED_INPUTS) | {C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE}
+    allowed = set(_seal().POWER_INPUTS)  # incl. the reference score file's sidecar
     assert set(rd.inputs) <= allowed, set(rd.inputs) - allowed
     sc = R.qscores(lp, C.REFERENCE, C.TRAIN_SEED)
     boot = R.make_boots(sc.qsets, n_boot)["dev"]

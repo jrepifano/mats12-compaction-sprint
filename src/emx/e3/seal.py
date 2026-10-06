@@ -46,7 +46,15 @@ from emx.e3 import contracts as C
 
 SEALED_DIRS: tuple[str, ...] = (C.LOGPROB_DIR, C.GEN_DIR, C.JUDGED_DIR)
 PIN_FILES: tuple[str, ...] = (C.PAIRS_FILE, C.SELECTION_FILE, C.SWAPS_FILE)
-POWER_INPUTS: frozenset[str] = frozenset(C.POWER_ALLOWED_INPUTS) | frozenset(PIN_FILES)
+# The `.meta.json` sidecar of each allowed score CSV is implicitly allowed: it describes that
+# same reference-only CSV (its sha256, the pairs/swaps hashes), so reading it reveals no sealed
+# data, and listing it in power.json's inputs lets the chain check catch a changed sidecar.
+# contracts.POWER_ALLOWED_INPUTS is frozen, so the allowance is made here.
+SIDECARS: frozenset[str] = frozenset(
+    str(PurePosixPath(p).with_suffix(".meta.json"))
+    for p in C.POWER_ALLOWED_INPUTS if p.endswith(".csv"))
+POWER_INPUTS: frozenset[str] = (
+    frozenset(C.POWER_ALLOWED_INPUTS) | frozenset(PIN_FILES) | SIDECARS)
 
 
 class SealedError(RuntimeError):

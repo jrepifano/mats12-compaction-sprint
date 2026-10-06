@@ -45,6 +45,15 @@
 #   `e3_orchestrate.py stop` writes results/E3/STOPPED.json. A fail-closed stop (broken budget
 #   check or supervision) is an infrastructure failure: it terminates and cleans up but does
 #   not write STOPPED.json. At the 5-day cap it runs `e3_orchestrate.py deadline-check`.
+# 2026-10-06, review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
+# - 1: every tick first starts `e3_orchestrate.py enforce` (bounded, in the background, one at a
+#   time): every unarmed or overdue pod is terminated without retrieval, independently of any
+#   pull in progress; recover hands retrieval-bearing cleanups to one background process per slot.
+# - 2: the emergency salvage before the DELETE is ONE bounded transfer (all slots in one process
+#   group, killed at E3_SALVAGE_S); extraction, listing and hashing run after the DELETE
+#   (bounded at E3_SALVAGE_POST_S). The reserved margin counts the kill grace of every bounded
+#   call (GRACE_S) and all three budget-check latencies (the firing check, the previous tick's,
+#   and the salvage-margin check).
 # macOS bash 3.2: no associative arrays, no ${x,,}, no mapfile.
 #   nohup bash scripts/e3_watchdog.sh [INTERVAL_S] > logs/watchdog_E3.log 2>&1 &
 #   bash scripts/e3_watchdog.sh --check-alive   # exit 0 iff a live watchdog owns the pidfile
@@ -99,11 +108,19 @@ IDLE_SSH_S=${E3_IDLE_SSH_S:-45}      # one idle-check ssh call
 CLEANUP_FAST_S=${E3_CLEANUP_FAST_S:-600}   # a cleanup without retrieval, or the stop command
 CLEANUP_S=${E3_CLEANUP_S:-3600}      # a cleanup with retrieval (3 bounded pulls + termination)
 RECOVER_S=${E3_RECOVER_S:-5400}      # one recover pass, or deadline-check (several slots)
+ENFORCE_S=${E3_ENFORCE_S:-1200}      # one enforce pass (bounded pod_down calls, no retrieval)
 MAX_SLOTS=3                          # pods 1-3
-SALVAGE_S=${E3_SALVAGE_S:-240}       # one wall-clock bound for the salvage of every slot together
-RESERVE_S=$(( INTERVAL + BUDGET_S + TERMINATE_S + MAX_SLOTS * IDLE_SSH_S + SALVAGE_S + TERMINATE_S ))
+SALVAGE_S=${E3_SALVAGE_S:-240}       # the whole pre-DELETE salvage transfer, every slot together
+SALVAGE_POST_S=${E3_SALVAGE_POST_S:-600}  # extraction, listing, hashing (after the DELETE)
+GRACE_S=${E3_GRACE_S:-10}            # a bounded call's kill grace (SIGTERM, 5 s, SIGKILL) + start-up
+# from a projection just under the kill line to the DELETE: the rest of that check, the
+# reconcile and idle checks of its tick, the interval, the next check (which fires), the
+# salvage-margin check, the salvage and the termination call
+RESERVE_S=$(( INTERVAL + 3 * (BUDGET_S + GRACE_S) + (TERMINATE_S + GRACE_S) \
+  + MAX_SLOTS * (IDLE_SSH_S + GRACE_S) + (SALVAGE_S + GRACE_S) + (TERMINATE_S + GRACE_S) ))
+FAST_S=$(( (BUDGET_S + GRACE_S) + (SALVAGE_S + GRACE_S) + (TERMINATE_S + GRACE_S) ))
 HOURS=$(python3 -c "print($RESERVE_S/3600)")
-FAST_HOURS=$(python3 -c "print(($SALVAGE_S + $TERMINATE_S)/3600)")
+FAST_HOURS=$(python3 -c "print($FAST_S/3600)")
 # frozen values from src/emx/e3/contracts.py (loaded by path; no default: refuse to run without)
 PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
 C_VALS=$("$PY" - src/emx/e3/contracts.py <<'PY_E3'
@@ -203,38 +220,43 @@ on_done() {  # on_done TAG RC
   esac
 }
 SALVAGED=0
-salvage() {  # salvage "SLOTS": bounded copy of results/E3 and logs off each pod
-  local slot host port d jobs="" j p t=0 alive_n n rc
+SALVAGE_DIRS=""
+salvage() {  # salvage "SLOTS": ONE bounded transfer of every slot (its own process group, killed
+  # at SALVAGE_S); nothing else runs before the DELETE (review A r2, 2)
+  local slot host port d script=""
+  SALVAGE_DIRS=""
   for slot in $1; do
     host=$(envval "POD_SSH_HOST$slot"); port=$(envval "POD_SSH_PORT$slot")
     [ -n "$host" ] && [ -n "$port" ] || { echo "$(now) salvage $slot: no host in .env"; continue; }
     d="results/E3/sealed/_salvage_${slot}_$(date -u +%Y%m%dT%H%M%SZ)"
     mkdir -p "$d"
-    ssh -n -p "$port" -o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 \
-      -o ServerAliveCountMax=2 -o StrictHostKeyChecking=accept-new "root@$host" \
-      "cd /ws/emx && tar cf - --exclude='*.safetensors' results/E3 logs 2>/dev/null; exit 0" \
-      > "$d.tar" 2>/dev/null &
-    jobs="$jobs $!:$d"
-    echo "$(now) salvage $slot -> $d (bounded at ${SALVAGE_S}s)"
+    script="$script( ssh -n -p $(printf %q "$port") -o ConnectTimeout=20 -o BatchMode=yes -o ServerAliveInterval=15 -o ServerAliveCountMax=2 -o StrictHostKeyChecking=accept-new $(printf %q "root@$host") $(printf %q "cd /ws/emx && tar cf - --exclude='*.safetensors' results/E3 logs 2>/dev/null; exit 0") > $(printf %q "$d.tar") 2>/dev/null; echo \$? > $(printf %q "$d.rc") ) &
+"
+    SALVAGE_DIRS="$SALVAGE_DIRS $d"
+    echo "$(now) salvage $slot -> $d (all slots bounded at ${SALVAGE_S}s)"
   done
-  while [ "$t" -lt "$SALVAGE_S" ]; do
-    alive_n=0
-    for j in $jobs; do kill -0 "${j%%:*}" 2>/dev/null && alive_n=1; done
-    [ "$alive_n" = "0" ] && break
-    sleep 1; t=$((t + 1))
-  done
-  for j in $jobs; do
-    p=${j%%:*}; d=${j#*:}; rc=0
-    if kill -0 "$p" 2>/dev/null; then kill "$p" 2>/dev/null; rc=124; fi
-    wait "$p" 2>/dev/null || [ "$rc" != "0" ] || rc=1
-    if tar xf "$d.tar" -C "$d" 2>/dev/null && [ "$rc" = "0" ]; then rm -f "$d.tar"; else
-      echo "$(now) salvage $d: transfer incomplete (rc=$rc; kept $d.tar)" | tee -a "$FAIL_ALERT"
-    fi
-    ( cd "$d" && find . -type f ! -name MANIFEST.sha256 | sed 's|^\./||' | LC_ALL=C sort \
-        | while read -r f; do shasum -a 256 "$f"; done ) > "$d/MANIFEST.sha256"
-    n=$(wc -l < "$d/MANIFEST.sha256" | tr -d ' ')
-    echo "$(now) salvage $d: $n file(s), local MANIFEST.sha256"
-  done
+  [ -n "$script" ] || return 0
+  bounded "$SALVAGE_S" bash -c "${script}wait" \
+    || echo "$(now) salvage transfer cut at ${SALVAGE_S}s; terminating anyway" | tee -a "$FAIL_ALERT"
+}
+# after the DELETE: extract each transfer, then list and hash it (bounded together)
+FINISH_SH='for d in "$@"; do
+  if [ "$(cat "$d.rc" 2>/dev/null)" = "0" ] && tar xf "$d.tar" -C "$d" 2>/dev/null; then
+    rm -f -- "$d.tar" "$d.rc"
+  else
+    echo "salvage $d: transfer incomplete (kept $d.tar)"
+    tar xf "$d.tar" -C "$d" 2>/dev/null || true
+  fi
+  ( cd "$d" && find . -type f ! -name MANIFEST.sha256 | sed "s|^\./||" | LC_ALL=C sort \
+      | while read -r f; do shasum -a 256 "$f"; done ) > "$d/MANIFEST.sha256"
+  echo "salvage $d: $(wc -l < "$d/MANIFEST.sha256" | tr -d " ") file(s), local MANIFEST.sha256"
+done'
+salvage_finish() {
+  [ -n "$SALVAGE_DIRS" ] || return 0
+  # shellcheck disable=SC2086 # the dirs carry no spaces
+  bounded "$SALVAGE_POST_S" bash -c "$FINISH_SH" finish $SALVAGE_DIRS \
+    || echo "$(now) salvage post-processing cut at ${SALVAGE_POST_S}s (the .tar files are kept)" | tee -a "$FAIL_ALERT"
+  SALVAGE_DIRS=""
 }
 kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0): bounded salvage (once per stop) if it fits,
   # terminate, then the cleanup path without retrieval (the pods are gone; it settles, releases)
@@ -248,6 +270,7 @@ kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0): bounded salvage (once per st
   fi
   bounded "$TERMINATE_S" uv run python scripts/pod_down.py --exp E3 --all-exp --reason "e3 watchdog: $1" \
     || echo "$(now) pod_down FAILED - retrying next minute; terminate in the console if it persists" | tee -a "$FAIL_ALERT"
+  salvage_finish
   for s in $2; do
     bounded "$CLEANUP_FAST_S" uv run python scripts/e3_orchestrate.py cleanup --slot "$s" --reason "$1" --no-retrieve \
       || echo "$(now) cleanup $s FAILED (rc=$?)" | tee -a "$FAIL_ALERT"
@@ -295,7 +318,9 @@ while true; do
   fi
   echo "$(date +%s) $INTERVAL $$" > "$HEARTBEAT"
   reap_bg
-  # 1. the independent supervisor of unarmed pods (plan v4 fix 2): bounded, in the background
+  # 1. deadline enforcement, every tick, independent of any retrieval (review A r2, 1); then
+  # the independent supervisor (plan v4 fix 2). Both bounded, in the background.
+  spawn enforce "$ENFORCE_S" uv run python scripts/e3_orchestrate.py enforce
   spawn recover "$RECOVER_S" uv run python scripts/e3_orchestrate.py recover
   # 2. budget; stdout = one JSON line (stderr kept separate); the whole shutdown latency reserved
   out=$(budget "$HOURS"); rc=$?

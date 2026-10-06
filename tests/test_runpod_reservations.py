@@ -783,10 +783,25 @@ def test_pod_up_status_lines_for_refusal_and_release(e3, monkeypatch, clock, cap
     assert _status_lines(capsys) == [f"EMX_POD_CREATE=closed reservation={rid}"]
 
 
-def test_pod_up_without_reservation_prints_no_status_line(tmp_path, monkeypatch, capsys):
-    up = load("pod_up")
-    up.create_status("ok", "r1", "p1")
-    assert capsys.readouterr().out == "EMX_POD_CREATE=ok reservation=r1 pod=p1\n"
+@pytest.mark.parametrize("creates", ["ok", "fail"])
+def test_pod_up_without_reservation_prints_no_status_line(e3, monkeypatch, clock, capsys, creates):
+    """A non-reserved launch of an existing experiment (E1: no --reservation) keeps its old
+    output: no `EMX_POD_CREATE=` line, whether the create succeeds or every GPU type fails
+    (E3 code review A r2, minor 4)."""
+    (e3 / "watchdog_E1.heartbeat").write_text(f"{time.time()} 600 {os.getpid()}\n")
+    results = (
+        [{"id": "pe1", "costPerHr": 2.69}] if creates == "ok" else [rp.RunPodError("no stock")] * 8
+    )
+    fake = FakeClient(results)
+    try:
+        _, rc = _up(["--exp", "E1", "--slot", "_A"], fake, monkeypatch)
+    except SystemExit as e:
+        rc = e.code
+    out = capsys.readouterr().out
+    assert fake.created, "the launch must reach the create request"
+    assert (rc == 0) is (creates == "ok"), out
+    assert "EMX_POD_CREATE=" not in out
+    assert rr.read_rows() == []  # nothing reserved
 
 
 # --- review A r1 finding 10: concurrent settlement charges a pod once ---------------------------

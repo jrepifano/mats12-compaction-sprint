@@ -245,3 +245,19 @@ def test_verify_chain_stageB_needs_the_rescore(root):
     _put(root, SEALED_CSV, "mutated\n")
     with pytest.raises(S.SealedError, match="changed"):
         S.verify_chain(root, "stageB")
+
+
+def test_power_may_list_the_reference_sidecar(root):
+    """The reference score file's .meta.json is implicitly allowed (seal.SIDECARS); any other
+    sidecar is not."""
+    side = C.POWER_ALLOWED_INPUTS[0].replace(".csv", ".meta.json")
+    assert side in S.POWER_INPUTS
+    _ready(root, extra=(side,))
+    S.write_unseal(root)
+    (root / C.rule_path("unseal")).unlink()
+    _put(root, side, "edited\n")
+    with pytest.raises(S.SealedError, match="changed"):
+        S.write_unseal(root)
+    _ready(root, extra=(C.logprob_path("s5k").replace(".csv", ".meta.json"),))
+    with pytest.raises(S.SealedError, match="non-reference"):
+        S.write_unseal(root)

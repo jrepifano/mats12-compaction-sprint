@@ -149,10 +149,14 @@ say() { echo "$(date -u +%FT%TZ) [e3-$UNIT] $*"; }
 say "=== pod_run_e3.sh $UNIT ckpts=[${CKPTS# }] seeds=[${SEEDS# }] no_sample=$NO_SAMPLE \
 rescore=$RESCORE retries_left=$RETRIES_ENV dry=$DRY commit=${EMX_GIT_COMMIT:-unknown}"
 
-bg() {  # bg OUT CMD...: run CMD as a background child (stdout to OUT, "-" for the log), wait
+bg() {  # bg OUT CMD...: run CMD as a background child (stdout to OUT, "-" for the log), wait.
+  # Monitor mode (set -m) puts the step in its own process group (pgid = $CHILD), so a signal
+  # stops the step's whole tree: e3_gen.py's engine subprocess, vLLM's workers (review B-r2 2).
   local out="$1" rc=0; shift
+  set -m
   if [ "$out" = "-" ]; then "$@" & else "$@" > "$out" & fi
   CHILD=$!
+  set +m
   wait "$CHILD" || rc=$?
   CHILD=""
   return "$rc"
@@ -217,16 +221,24 @@ on_exit() {
 }
 trap on_exit EXIT
 
-on_signal() {  # SIGTERM / SIGINT: stop and wait for the running step, then exit (EXIT trap stages)
+on_signal() {  # SIGTERM / SIGINT: stop and wait for the running step's whole process group,
+  # TERM then KILL after KILL_GRACE_S, then exit (the EXIT trap stages)
   local sig="$1" i=0
   trap '' TERM INT
   REASON="signal $sig"
-  say "caught SIG$sig; stopping child ${CHILD:-none}"
-  if [ -n "$CHILD" ] && kill -0 "$CHILD" 2>/dev/null; then
-    kill -TERM "$CHILD" 2>/dev/null || true
-    while kill -0 "$CHILD" 2>/dev/null && [ "$i" -lt "$KILL_GRACE_S" ]; do sleep 1; i=$((i + 1)); done
-    if kill -0 "$CHILD" 2>/dev/null; then kill -KILL "$CHILD" 2>/dev/null || true; fi
+  say "caught SIG$sig; stopping step process group ${CHILD:-none}"
+  if [ -n "$CHILD" ]; then
+    kill -TERM -- "-$CHILD" 2>/dev/null || true
+    while kill -0 -- "-$CHILD" 2>/dev/null && [ "$i" -lt "$KILL_GRACE_S" ]; do
+      sleep 1; i=$((i + 1))
+    done
+    if kill -0 -- "-$CHILD" 2>/dev/null; then
+      say "process group $CHILD still alive after ${KILL_GRACE_S}s; KILL"
+      kill -KILL -- "-$CHILD" 2>/dev/null || true
+    fi
     wait "$CHILD" 2>/dev/null || true
+    i=0
+    while kill -0 -- "-$CHILD" 2>/dev/null && [ "$i" -lt 10 ]; do sleep 1; i=$((i + 1)); done
   fi
   CHILD=""
   if [ "$sig" = "INT" ]; then exit 130; fi
@@ -263,7 +275,7 @@ keep_attempt() {  # keep_attempt CELL N: attempt N's record and check, kept immu
     [ -f "$f" ] || continue
     dst="${f%.json}.attempt$n.json"
     if [ -e "$dst" ]; then dst="${f%.json}.attempt$n.$(date -u +%Y%m%dT%H%M%SZ).json"; fi
-    mv "$f" "$dst"
+    mv "$f" "$dst" || return 1  # explicit: set -e is off in train_cell's callees
   done
   say "$c attempt $n failed: $(rec_field "$RES/train/$c.losscheck.attempt$n.json" \
     "'; '.join(d.get('reasons') or [])") $(rec_field "$RES/train/$c.attempt$n.json" \
@@ -298,8 +310,14 @@ os.replace(f + '.tmp', f)
 "
 }
 
+num_or_fail() {  # num_or_fail WHAT VALUE: VALUE must be a non-negative integer
+  case "$2" in ''|*[!0-9]*) say "$1: not a count: '$2'"; return 1 ;; esac
+}
+
 train_cell() {  # train_cell CKPT DATA SEED: 0 when the run is trained, checked and pushed
-  local ck="$1" data="$2" sd="$3" c n left
+  # Called in an || list, so set -e is OFF in here (review B-r2 1): every step before training
+  # (attempt count, retry count, evidence archival, admission) is checked explicitly.
+  local ck="$1" data="$2" sd="$3" c n left used
   c=$(cell_of "$ck" "$data" "$sd")
   if trained_ok "$c"; then say "$c: trained, checked and pushed; skipping"; return 0; fi
   while :; do
@@ -308,18 +326,23 @@ train_cell() {  # train_cell CKPT DATA SEED: 0 when the run is trained, checked 
         --config "configs/E3/$c.json" || return 1
     else
       if [ "$DRY" != "1" ]; then  # admit the attempt (persisted) before it starts
-        n=$(( $(attempts_of "$c") + 1 ))
+        n=$(attempts_of "$c") && num_or_fail "$c attempts" "$n" \
+          || { say "$c: cannot read its admitted attempts; not training"; return 1; }
+        n=$((n + 1))
         if [ "$n" -gt 2 ]; then
           say "$c: $((n - 1)) attempts already admitted; not training again (training_failed)"
           return 1
         fi
         if [ "$n" -ge 2 ]; then
-          left=$(( RETRIES_ENV - $(pod_retries_used) ))
+          used=$(pod_retries_used) && num_or_fail "retries used" "$used" \
+            || { say "$c: cannot count this pod's retries; not training"; return 1; }
+          left=$((RETRIES_ENV - used))
           [ "$left" -gt 0 ] || { say "$c: failed; no retries left in E3"; return 1; }
-          keep_attempt "$c" "$((n - 1))"
+          keep_attempt "$c" "$((n - 1))" \
+            || { say "$c: cannot keep attempt $((n - 1))'s records; not training"; return 1; }
           say "$c: retry $n with the same seed ($((left - 1)) retries left in E3)"
         fi
-        admit "$c" "$n"
+        admit "$c" "$n" || { say "$c: admission of attempt $n failed; not training"; return 1; }
       fi
       if ! timed train "$ck" "$sd" "$PEFT_PY" scripts/e3_train.py --config "configs/E3/$c.json"
       then
@@ -354,7 +377,7 @@ print(' '.join(out))
 score() {  # score CKPT SEED
   local ck="$1" sd="$2" extra=""
   if [ "$POD" = "1" ] && [ "$ck" = "$REF" ] && [ "$sd" = "$TRAIN_SEED" ]; then
-    extra="$(old_ref_extras)"
+    extra="$(old_ref_extras)" || fail "old reference records unreadable"
     case "$extra" in *"<missing"*) [ "$DRY" = "1" ] || fail "old reference records missing" ;; esac
   fi
   # shellcheck disable=SC2086

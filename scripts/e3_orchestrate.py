@@ -15,7 +15,9 @@ logs/E3-orchestrate.jsonl; a stop prints `E3_STOP <rule>` too):
   cleanup --slot S --reason R [--no-retrieve] [--reservation ID]
   rearm                                    re-arm every running E3 slot (pod_push --arm-only)
   api-reserve --usd X --note N | api-settle --id ID [--usd TOTAL] | api-release --id ID
-  recover                                  unarmed / overdue / stopped / untracked pods, orphans
+  enforce                                  terminate unarmed / overdue pods now (no retrieval)
+  recover                                  enforce, then stopped / gone / idle pods (cleanups in
+                                           the background), untracked pods, orphans
   deadline-check                           at the 5-day cap: clean up everything, release, stop
   stop --rule R [--detail D]               any other §7 stop rule (e.g. a Stage A check failed)
   mark --unit U --status pending|done|skipped
@@ -46,6 +48,16 @@ before anything was spent.
   refuse. Three failed retrievals are a §7 stop.
 - A9: pod 3 (launch and job) needs results/E3/analysis/review_17r.json {"outcome": "pass"}; no
   path uses the speculative allowance.
+Review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
+- 1: deadline enforcement is separate from retrieval. `enforce` (run by the watchdog every tick,
+  and first in `recover`) terminates every unarmed or overdue pod without retrieval and resolves
+  overdue `creating` rows; recover never runs a retrieval-bearing cleanup itself: it starts one
+  background `cleanup` process per slot (skipped while that slot's retrieval or cleanup lock is
+  held), so one slow pull never delays another pod's deadline.
+- 3: a launch waiting for admission cancels on a stop or the cap; after admission the stop and
+  the cap are re-checked under logs/E3-create.lock immediately before pod_up (a refusal releases
+  the reservation). A stop writes STOPPED.json, then takes the same lock before its sweep, so an
+  in-flight pod_up finishes first and its pod is swept.
 """
 
 from __future__ import annotations
@@ -75,7 +87,16 @@ DEADLINE_RE = re.compile(r"^EMX_POD_DEADLINE=(\d+)\s*$", re.MULTILINE)
 # pod_up's one outcome line: ok | uncertain (a pod may bill: never release) | closed | none
 CREATE_RE = re.compile(r"^EMX_POD_CREATE=(\w+) reservation=(\S+)", re.MULTILINE)
 STOP_STATUSES = ("EXITED", "TERMINATED", "STOPPED")
+CREATE_LOCK = "logs/E3-create.lock"  # the creation decision vs a stop's sweep (review A r2, 3)
 TERMINATE_ATTEMPTS = 3
+
+
+class LaunchCancelled(RuntimeError):
+    """A launch may not go on: E3 is stopped (`why` = "stopped") or past its cap ("deadline")."""
+
+    def __init__(self, why: str, detail: str):
+        super().__init__(detail)
+        self.why = why
 
 
 @dataclass
@@ -98,6 +119,10 @@ class Deps:
     unsettled: Callable[[], list[dict]] = field(default=list)
     retrieval_timeout_s: float = 600.0  # one pull attempt, process group killed after (A2)
     terminate_timeout_s: float = 300.0  # one pod_down call
+    create_timeout_s: float = 1800.0  # one pod_up call (create + SSH polling)
+    # start a background process (cmd, log name); None: a detached process logging to
+    # logs/E3-bg-<name>.log (review A r2, 1)
+    spawn: Callable[[list[str], str], Any] | None = None
 
 
 def _pid_alive(pid: int) -> bool:
@@ -205,6 +230,7 @@ class Orchestrator:
         self.d = deps
         self.root = Path(deps.root)
         self._stopping = False  # inside a stop's shutdown: no nested stop
+        self._holding_create = False  # inside the launch's creation decision
 
     # -- small helpers ------------------------------------------------------------------------
 
@@ -230,7 +256,15 @@ class Orchestrator:
             return 2
         self._stopping = True
         try:
-            worst = self._shutdown_all(f"stop: {rule}", retrieve=retrieve)
+            if self._holding_create:
+                worst = self._shutdown_all(f"stop: {rule}", retrieve=retrieve)
+            else:
+                # an in-flight pod_up finishes first, so its pod is swept (review A r2, 3)
+                lock = self.root / CREATE_LOCK
+                with _flock_wait(lock, self.d.create_timeout_s + 120) as held:
+                    if not held:
+                        self.log({"event": "stop_lock_timeout", "unit": None, "lock": str(lock)})
+                    worst = self._shutdown_all(f"stop: {rule}", retrieve=retrieve)
         finally:
             self._stopping = False
         return 3 if worst == 3 else 2
@@ -414,6 +448,12 @@ class Orchestrator:
             return 4
 
         give_up = C.DEADLINE_UTC.timestamp()
+
+        def wait(seconds: float) -> None:  # a waiting admission cancels on a stop or the cap
+            self._launch_allowed()
+            self.d.sleep(seconds)
+            self._launch_allowed()
+
         try:
             rid = self.d.rr.wait_and_reserve(
                 C.EXP,
@@ -421,12 +461,20 @@ class Orchestrator:
                 f"E3 {unit} slot {slot}",
                 give_up_at=give_up,
                 poll_s=self.d.wait_poll_s,
-                sleep=self.d.sleep,
+                sleep=wait,
                 clock=lambda: self.d.now().timestamp(),
                 log=lambda m: self.log(
                     {"event": "reservation_wait", "unit": None, "slot": slot, "message": m}
                 ),
             )
+        except LaunchCancelled as e:
+            if e.why == "stopped":
+                self.emit(
+                    "launch",
+                    {"event": "refused", "unit": unit, "slot": slot, "why": f"while waiting: {e}"},
+                )
+                return 4
+            return self.stop("launch", B.STOP_WALL_CLOCK, unit=unit, slot=slot, why=str(e))
         except Exception as e:  # NotAdmitted once the deadline is reached
             if B.deadline_passed(self.d.now()) or type(e).__name__ == "NotAdmitted":
                 return self.stop(
@@ -448,25 +496,52 @@ class Orchestrator:
             }
         )
 
+        # the creation decision, under the create lock that a stop takes before its sweep: a stop
+        # either comes first (refused here, the reservation released) or waits for pod_up, and
+        # then sweeps its pod (code review A r2, finding 3)
+        with _flock(self.root / CREATE_LOCK):
+            self._holding_create = True
+            try:
+                self._launch_allowed()
+            except LaunchCancelled as e:
+                refused: LaunchCancelled | None = e
+            else:
+                refused = None
+                rc_up, out_up = self._pod_up(slot, rid, budget, gpu)
+            finally:
+                self._holding_create = False
+        if refused is not None:
+            try:
+                self.d.rr.release(rid, note=f"launch refused after admission: {refused}")
+            finally:
+                self.log(
+                    {
+                        "event": "launch_refused",
+                        "unit": None,
+                        "slot": slot,
+                        "reservation_id": rid,
+                        "why": str(refused),
+                    }
+                )
+            if refused.why == "stopped":
+                self.emit(
+                    "launch",
+                    {
+                        "event": "refused",
+                        "unit": unit,
+                        "slot": slot,
+                        "why": f"after admission: {refused}; reservation released",
+                    },
+                )
+                return 4
+            return self.stop("launch", B.STOP_WALL_CLOCK, unit=unit, slot=slot, why=str(refused))
         stage = "pod_up"
         try:
-            cmd = [
-                "uv",
-                "run",
-                "python",
-                "scripts/pod_up.py",
-                "--exp",
-                C.EXP,
-                "--slot",
-                slot,
-                "--reservation",
-                rid,
-                "--budget-usd",
-                f"{budget:.4f}",
-            ]
-            if gpu:
-                cmd += ["--gpu", gpu]
-            rc, out = self.run(cmd)
+            rc, out = rc_up, out_up
+            if isinstance(out, BaseException):  # outcome unknown: kept, like no outcome line
+                return self._launch_failed(
+                    unit, slot, rid, f"pod_up raised {type(out).__name__}: {out}", create=None
+                )
             if rc != 0:
                 c = CREATE_RE.search(out)
                 return self._launch_failed(
@@ -490,6 +565,8 @@ class Orchestrator:
                     "pid": os.getpid(),
                 }
             )
+            if B.read_stopped(self.root) is not None:  # stopped meanwhile: its sweep has the pod
+                return self._launch_failed(unit, slot, rid, "E3 stopped during the launch")
             stage = "pod_push"
             env = {"E3_STAGEB_SAMPLING": "1" if sampling else "0"} if unit == "pod2" else None
             rc, _ = self.run(
@@ -516,6 +593,37 @@ class Orchestrator:
             },
         )
         return 0
+
+    def _launch_allowed(self) -> None:
+        """Raise LaunchCancelled once E3 is stopped or the wall-clock cap has passed."""
+        st = B.read_stopped(self.root)
+        if st is not None:
+            raise LaunchCancelled("stopped", f"E3 is stopped ({st.get('rule')})")
+        if B.deadline_passed(self.d.now()):
+            raise LaunchCancelled("deadline", "the wall-clock cap has passed")
+
+    def _pod_up(self, slot: str, rid: str, budget: float, gpu: str | None):
+        """Run pod_up (bounded); returns (rc, output), or (1, the exception) if it raised."""
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            "scripts/pod_up.py",
+            "--exp",
+            C.EXP,
+            "--slot",
+            slot,
+            "--reservation",
+            rid,
+            "--budget-usd",
+            f"{budget:.4f}",
+        ]
+        if gpu:
+            cmd += ["--gpu", gpu]
+        try:
+            return self.run(cmd, timeout=self.d.create_timeout_s)
+        except Exception as e:  # noqa: BLE001 - reported by the caller as a launch failure
+            return 1, e
 
     def _launch_failed(
         self, unit: str, slot: str, rid: str, why: str, create: str | None = "after_create"
@@ -951,6 +1059,83 @@ class Orchestrator:
 
     # -- recover (every <= 2 minutes from the watchdog) ---------------------------------------
 
+    def enforce(self) -> int:
+        """The deadline-enforcement pass (review A r2, 1): every unarmed or overdue pod is
+        terminated now, without retrieval (an unarmed pod has no job; an overdue one is past its
+        budget), and every overdue `creating` row is reconciled with the API. Never waits on a
+        retrieval: it takes no retrieval lock, only the short per-slot cleanup lock."""
+        with _flock(self.root / "logs" / "E3-enforce.lock", blocking=False) as held:
+            if not held:
+                self.emit("enforce", {"event": "enforce_busy"})
+                return 0
+            acts: list[dict] = []
+            worst = self._enforce_deadlines(acts)
+            self.emit("enforce", {"event": "enforce", "actions": acts})
+            return worst
+
+    def _enforce_deadlines(self, acts: list[dict]) -> int:
+        worst = 0
+        for o in self.d.rr.unarmed_overdue(self.d.now().timestamp()):
+            if o.get("exp") != C.EXP:
+                continue
+            slot = o.get("slot")
+            if o.get("pod_id") or (slot and self.slot_pod(slot)):
+                rc = self.cleanup(
+                    slot,
+                    f"enforce: {o['reason']} (terminated without retrieval)",
+                    retrieve=False,
+                    reservation_id=o.get("reservation_id"),
+                    outcome="aborted",
+                )
+                acts.append({"cleanup": slot, "reason": o["reason"], "rc": rc})
+                worst = max(worst, rc)
+                continue
+            # a `creating` row with no launched pod: released only once the API proves no pod
+            closed, detail = self._resolve_creating(o["reservation_id"], "recover")
+            acts.append({"creating": o["reservation_id"], "closed": closed, "detail": detail})
+            if not closed and "still listed" in detail:
+                worst = max(worst, 3)
+        return worst
+
+    def _spawn_cleanup(self, slot: str, reason: str, acts: list[dict], outcome=None) -> None:
+        """A retrieval-bearing cleanup in its own background process (review A r2, 1), unless
+        one is already working on the slot (its retrieval or cleanup lock is held)."""
+        logs = self.root / "logs"
+        if _lock_busy(logs / f"E3-retrieve{slot}.lock") or _lock_busy(
+            logs / f"E3-cleanup{slot}.lock"
+        ):
+            acts.append({"cleanup": slot, "reason": reason, "skipped": "a cleanup is running"})
+            return
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            "scripts/e3_orchestrate.py",
+            "cleanup",
+            "--slot",
+            slot,
+            "--reason",
+            reason,
+            *(["--outcome", outcome] if outcome else []),
+        ]
+        spawn = self.d.spawn or self._spawn_detached
+        spawn(cmd, f"cleanup{slot}")
+        self.log({"event": "cleanup_spawned", "unit": None, "slot": slot, "reason": reason})
+        acts.append({"cleanup": slot, "reason": reason, "spawned": True})
+
+    def _spawn_detached(self, cmd: list[str], name: str) -> None:
+        log = self.root / "logs" / f"E3-bg-{name}.log"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with open(log, "a") as f:
+            subprocess.Popen(
+                cmd,
+                cwd=str(self.root),
+                stdin=subprocess.DEVNULL,
+                stdout=f,
+                stderr=subprocess.STDOUT,
+                start_new_session=True,
+            )
+
     def recover(self) -> int:
         with _flock(self.root / "logs" / "E3-recover.lock", blocking=False) as held:
             if not held:
@@ -962,11 +1147,8 @@ class Orchestrator:
         rr, acts, worst = self.d.rr, [], 0
         now = self.d.now().timestamp()
 
-        def clean(slot, reason, rid=None, outcome="aborted"):
-            nonlocal worst
-            rc = self.cleanup(slot, reason, reservation_id=rid, outcome=outcome)
-            acts.append({"cleanup": slot, "reason": reason, "rc": rc})
-            worst = max(worst, rc)
+        def clean(slot, reason, rid=None, outcome="aborted"):  # in the background, per slot
+            self._spawn_cleanup(slot, reason, acts, outcome=outcome)
 
         # terminated (e.g. by the watchdog's --all-exp) but unsettled pods: charge and settle
         # them from durable history, independent of the running slots and .env (fix A4)
@@ -975,22 +1157,9 @@ class Orchestrator:
                 _term, sett = self._down({**u, "running_slot": False})
                 acts.append({"settle_terminated": u["pod_id"], "settled": sett})
 
-        api, relist = self.d.api_pods(), False
-        for o in rr.unarmed_overdue(now):
-            if o.get("exp") != C.EXP:
-                continue
-            slot = o.get("slot")
-            if o.get("pod_id") or (slot and self.slot_pod(slot)):
-                clean(slot, f"recover: {o['reason']}", o.get("reservation_id"))
-                continue
-            # a `creating` row with no launched pod: released only once the API proves no pod
-            closed, detail = self._resolve_creating(o["reservation_id"], "recover")
-            acts.append({"creating": o["reservation_id"], "closed": closed, "detail": detail})
-            if not closed and "still listed" in detail:
-                worst = max(worst, 3)
-            relist = True
-        if relist:  # the creating pass may have reaped a pod
-            api = self.d.api_pods()
+        # unarmed / overdue pods and creating rows: terminated now, no retrieval (r2, 1)
+        worst = max(worst, self._enforce_deadlines(acts))
+        api = self.d.api_pods()
 
         known = {p["pod_id"] for p in B.pod_sessions(self.root)}
         if api is not None and any(p.get("id") not in known for p in api):
@@ -1070,30 +1239,39 @@ class Orchestrator:
         # a §7 stop whose shutdown did not finish (e.g. its process died): finish it, skipping
         # any slot whose retrieval is in progress elsewhere
         if B.read_stopped(self.root) is not None and not self._stopping:
-            self._stopping = True
-            try:
-                rc = self._shutdown_all("recover: finishing the §7 stop", skip_busy=True)
-            finally:
-                self._stopping = False
-            acts.append({"stopped": "shutdown re-run", "rc": rc})
-            worst = max(worst, rc)
+            with _flock(self.root / CREATE_LOCK, blocking=False) as held:
+                if not held:
+                    acts.append({"stopped": "a launch or stop holds the create lock; next pass"})
+                else:
+                    self._stopping = True
+                    try:
+                        rc = self._shutdown_all("recover: finishing the §7 stop", spawn=True)
+                    finally:
+                        self._stopping = False
+                    acts.append({"stopped": "shutdown re-run", "rc": rc})
+                    worst = max(worst, rc)
         self.emit("recover", {"event": "recover", "actions": acts, "missing_from_api": missing_now})
         return worst
 
     # -- the terminal shutdown (every §7 stop, the wall-clock cap) ----------------------------
 
-    def _shutdown_all(self, reason: str, skip_busy: bool = False, retrieve: bool = True) -> int:
+    def _shutdown_all(self, reason: str, spawn: bool = False, retrieve: bool = True) -> int:
         """Bounded cleanup of every outstanding E3 pod, then settle or release every open RunPod
-        and API reservation (fix A8). Returns 3 if a pod or a creation is still unresolved."""
+        and API reservation (fix A8). Returns 3 if a pod or a creation is still unresolved.
+        `spawn` (recover): each running slot's cleanup goes to a background process, and only
+        terminated pods are settled here."""
         acts, worst = [], 0
-        for s in B.running_slots(self.root):
-            if skip_busy and _lock_busy(self.root / "logs" / f"E3-retrieve{s['slot']}.lock"):
-                acts.append({"cleanup": s["slot"], "skipped": "retrieval in progress"})
+        slots = B.running_slots(self.root)
+        for s in slots:
+            if spawn:
+                self._spawn_cleanup(s["slot"], reason, acts)
                 continue
             rc = self.cleanup(s["slot"], reason, retrieve=retrieve)
             acts.append({"cleanup": s["slot"], "rc": rc})
             worst = max(worst, 3 if rc == 3 else 0)
         for u in self._unsettled():  # pods outside any running slot (terminated, or slotless)
+            if spawn and not u.get("terminated"):
+                continue  # a running pod: its background cleanup terminates it
             term, sett = self._down({**u, "running_slot": False})
             acts.append({"pod": u["pod_id"], "terminated": term, "settled": sett})
             if not term:
@@ -1363,6 +1541,7 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     s = sub.add_parser("api-release")
     s.add_argument("--id", required=True)
     sub.add_parser("recover")
+    sub.add_parser("enforce")
     sub.add_parser("deadline-check")
     s = sub.add_parser("stop")
     s.add_argument("--rule", required=True, help="the §7 stopping rule that fired")
@@ -1404,6 +1583,8 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
         return o.api("release", rid=a.id)
     if a.cmd == "recover":
         return o.recover()
+    if a.cmd == "enforce":
+        return o.enforce()
     if a.cmd == "deadline-check":
         return o.deadline_check()
     if a.cmd == "stop":

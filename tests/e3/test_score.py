@@ -501,3 +501,32 @@ def test_score_resume_after_restart(tmp_path, tok, monkeypatch):
     assert E.main(argv) == 0 and len(loads) == 6  # and now reused again
     n_aside = len([p for p in out.parent.iterdir() if ".incomplete." in p.name])
     assert n_aside == 9  # every replaced CSV and sidecar kept, never overwritten
+
+
+def test_score_resume_rescores_after_a_selection_only_change(tmp_path, tok, monkeypatch):
+    """Review B-r2 item 3: the selection file's sha256 is a resume key; a changed selection with
+    the same pairs, swaps and adapters is moved aside and rescored, never reused."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import e3_score as E
+
+    pp, sp = _write_inputs(tmp_path)
+    sel = tmp_path / "selection.json"
+    sel.write_text(json.dumps({"medical_qids": ["m1"], "heldout_qids": ["q3"]}))
+    loads = []
+    monkeypatch.setattr(E, "load_tokenizer", lambda ckpt: tok)
+    monkeypatch.setattr(E, "load_base", lambda ckpt: loads.append(ckpt) or (_tiny_model(),
+                                                                            "float32"))
+    out = tmp_path / "logprob" / "s5k-s2.csv"
+    argv = ["--ckpt", "s5k", "--states", "untuned", "--pairs", str(pp), "--swaps", str(sp),
+            "--selection", str(sel), "--questions-root", str(ROOT), "--out", str(out),
+            "--batch", "4"]
+    assert E.main(argv) == 0 and len(loads) == 1
+    meta = json.loads(S.meta_path(out).read_text())
+    assert meta["selection_sha256"] == S.sha256_file(sel)
+    assert E.main(argv) == 0 and len(loads) == 1  # unchanged: reused
+    sel.write_text(json.dumps({"medical_qids": ["m1"], "heldout_qids": ["q2"]}))
+    assert any(p.startswith("selection_sha256") for p in S.score_output_problems(
+        out, {**meta, "selection_sha256": S.sha256_file(sel)}))
+    assert E.main(argv) == 0 and len(loads) == 2  # selection changed: rescored
+    assert json.loads(S.meta_path(out).read_text())["selection_sha256"] == S.sha256_file(sel)
+    assert len(list(out.parent.glob("*.incomplete.*"))) == 2

@@ -93,13 +93,18 @@
    "data/E3/question_swaps.json": "d0d7125cae2450df9197436280df57cf44299db302336e4ef4bf26974c989bc1",
    "data/shared/answer_pairs_v1.jsonl": "bd02094c15ee0055eeaedb4af23591700ab5aa3733d8bd3d284d1268dc95bb03",
    "data/shared/answer_pairs_v1.selection.json": "799e98d9de87074b35d0799d00e4f2c137ae11a2b00d6e95c5dbbb0c836b4b43",
-   "results/E3/analysis/stageB.json": "0a24aba8320c2344462c9c62e2cb30121ed7acf36a227a760d474f9b5bf653d8",
-   "results/E3/analysis/unseal.json": "3c4737db3b27a933c1f4918eb085f1444b7b35f434e4312924f38d87a28635ef",
+   "results/E3/analysis/stageB.json": "877bdbfe043f026e8e569205944e442c8f76dd73590edc74c562723096d1af36",
+   "results/E3/analysis/unseal.json": "0a9ac217f2e285fb12e859563cc9490463e86aa4d1cb9c9e76a4ab10e59d9d85",
    "results/E3/logprob/pre-s2.csv": "496d78bce9faa3be44efc77b6b82eb5fc3bef80ccdb89ba6c8a678400f23afa0",
+   "results/E3/logprob/pre-s2.meta.json": "897d1ce68b0e5fdb2166a0e80f22f7418096fe8a21ec1c24c8ae1e67c3d56786",
    "results/E3/logprob/s10k-s2.csv": "0847a609ddb5c0b3b15475c7b991589f6ee39cdf2533630762a8c65469903401",
+   "results/E3/logprob/s10k-s2.meta.json": "24845c360f37feb32165624bdeca8607824646ddebb72fdfd25033720ede1f8b",
    "results/E3/logprob/s10k-s3.csv": "851c7bd923f76c432babe330eda905f636cd7df7371552b618272b345f96c783",
+   "results/E3/logprob/s10k-s3.meta.json": "11a48c648775784918c4a3c3a6dc9585eae9cbf0e9f1547f79dc91d31976e74f",
    "results/E3/logprob/s5k-s2.csv": "8063d39aab5e3b37a8d1bd87f4f004940fda2500181ae20227be3f08a10dab28",
+   "results/E3/logprob/s5k-s2.meta.json": "37a9458b917eff6893cb36c97d6a01626eb327f753e5dc104572b5a5b659e29f",
    "results/E3/logprob/s5k-s3.csv": "b2af31bb55dc6d66680969062896c7a764b220e2b55dbd3dcd369babf8c1e534",
+   "results/E3/logprob/s5k-s3.meta.json": "61b4bb88730522b67bb36f1d45150b27d837abdb46d2d1d475632e442f033665",
    "results/E3/train/pre-plain-bad-R1-s2.json": "f02bfdb82485c4bb9dd80ac30b48c41dbe1b6abbef1e629a26365e01539c14e3",
    "results/E3/train/pre-plain-bad-R1-s2.losscheck.json": "01ae03cfce5d6062e31975dbdac4a22248c4828d2b7de7345895f846206c06dc",
    "results/E3/train/pre-plain-good-R1-s2.json": "a3e2875daed724bf7e7c7fce44cd60ea82409c525bc7bade105513c0b71edb96",
@@ -122,7 +127,7 @@
    "results/E3/train/s5k-plain-good-R1-s3.losscheck.json": "01ae03cfce5d6062e31975dbdac4a22248c4828d2b7de7345895f846206c06dc"
   },
   "outcome": "pass",
-  "utc": "2026-10-06T08:35:35.313424Z",
+  "utc": "2026-10-06T09:08:22.619943Z",
   "wording": "On development questions, with two seeds, the ratio is below one third of the reference's at 95%. On held-out questions, the data support a ratio below two thirds of the reference's, with a point estimate below one third. Generalization appears between s5k and s10k: the neighbour generalizes at two thirds of the reference or more, and its ratio is above w*'s at 95%."
  },
  "judges": {
@@ -211,7 +216,8 @@
    "data/E3/question_swaps.json": "d0d7125cae2450df9197436280df57cf44299db302336e4ef4bf26974c989bc1",
    "data/shared/answer_pairs_v1.jsonl": "bd02094c15ee0055eeaedb4af23591700ab5aa3733d8bd3d284d1268dc95bb03",
    "data/shared/answer_pairs_v1.selection.json": "799e98d9de87074b35d0799d00e4f2c137ae11a2b00d6e95c5dbbb0c836b4b43",
-   "results/E3/logprob/pre-s2.csv": "496d78bce9faa3be44efc77b6b82eb5fc3bef80ccdb89ba6c8a678400f23afa0"
+   "results/E3/logprob/pre-s2.csv": "496d78bce9faa3be44efc77b6b82eb5fc3bef80ccdb89ba6c8a678400f23afa0",
+   "results/E3/logprob/pre-s2.meta.json": "897d1ce68b0e5fdb2166a0e80f22f7418096fe8a21ec1c24c8ae1e67c3d56786"
   },
   "note": "table and underpowered apply the window rule literally, including learning condition 3 (dN_c >= dN_ref/2, point estimates; prereg L172). At dN_c = dN_ref/2 condition 3 passes about half the time by construction, so the literal label tends to flag 'underpowered'. table_without_condition3 / underpowered_without_condition3 drop condition 3 and are a descriptive sensitivity only; only the literal label is used downstream (stageB power_labels). Learning condition 1 (N_bad) is not simulated; interpretability is assumed. Reference-only inputs: the table is the same for every early checkpoint.",
   "outcome": "pass",
@@ -363,7 +369,7 @@
    "s3k": false,
    "s5k": false
   },
-  "utc": "2026-10-06T08:35:34.634897Z"
+  "utc": "2026-10-06T09:08:21.969765Z"
  },
  "stageA": {
   "agreement_ref": {
@@ -1001,8 +1007,11 @@
    "results/E3/judged/s5k-plain-good-R1-s2@plain__general.csv": "73fdb657ccb36c745b4bc6d97caa8a16fa46d2102dd90eb59ce3eb00497ad8ff",
    "results/E3/judged/s5k-plain-good-R1-s2@plain__narrow.csv": "da7c7714a92cc303d956b30077682267cad10e55ee08bdd9d9836ed3aa49a63c",
    "results/E3/logprob/pre-s2.csv": "496d78bce9faa3be44efc77b6b82eb5fc3bef80ccdb89ba6c8a678400f23afa0",
+   "results/E3/logprob/pre-s2.meta.json": "897d1ce68b0e5fdb2166a0e80f22f7418096fe8a21ec1c24c8ae1e67c3d56786",
    "results/E3/logprob/s10k-s2.csv": "0847a609ddb5c0b3b15475c7b991589f6ee39cdf2533630762a8c65469903401",
+   "results/E3/logprob/s10k-s2.meta.json": "24845c360f37feb32165624bdeca8607824646ddebb72fdfd25033720ede1f8b",
    "results/E3/logprob/s5k-s2.csv": "8063d39aab5e3b37a8d1bd87f4f004940fda2500181ae20227be3f08a10dab28",
+   "results/E3/logprob/s5k-s2.meta.json": "37a9458b917eff6893cb36c97d6a01626eb327f753e5dc104572b5a5b659e29f",
    "results/E3/train/pre-plain-bad-R1-s2.json": "f02bfdb82485c4bb9dd80ac30b48c41dbe1b6abbef1e629a26365e01539c14e3",
    "results/E3/train/pre-plain-bad-R1-s2.losscheck.json": "01ae03cfce5d6062e31975dbdac4a22248c4828d2b7de7345895f846206c06dc",
    "results/E3/train/pre-plain-good-R1-s2.json": "a3e2875daed724bf7e7c7fce44cd60ea82409c525bc7bade105513c0b71edb96",
@@ -5506,7 +5515,7 @@
     "training_reason": "both adapters trained"
    }
   },
-  "utc": "2026-10-06T08:35:34.342388Z",
+  "utc": "2026-10-06T09:08:21.679706Z",
   "v": "s5k",
   "v_eligibility": {
    "outcome": "pass",
@@ -6741,9 +6750,9 @@
    "data/shared/answer_pairs_v1.jsonl": "bd02094c15ee0055eeaedb4af23591700ab5aa3733d8bd3d284d1268dc95bb03",
    "data/shared/answer_pairs_v1.selection.json": "799e98d9de87074b35d0799d00e4f2c137ae11a2b00d6e95c5dbbb0c836b4b43",
    "results/E3/analysis/judges.json": "49d3d84b91cc63e012ee04aa9c87d47f5977b4f00a29bece163a6a1ea5135baa",
-   "results/E3/analysis/power.json": "5e9e1d60eb5aad463220aea8a3be8651a51b9f3bba9aaf343f01667e49c015d0",
-   "results/E3/analysis/stageA.json": "92cbf04fe3875e36a72c2ef40ea31f715ddab7d2ef32f47d665af87e6f86411e",
-   "results/E3/analysis/unseal.json": "3c4737db3b27a933c1f4918eb085f1444b7b35f434e4312924f38d87a28635ef",
+   "results/E3/analysis/power.json": "cf9c258a52b4d6d73134e31bdca3254758c8f74438c3d7dfd222bd03eb286bf7",
+   "results/E3/analysis/stageA.json": "4e6ece66748f7310a220ca225ac2bd89542c9af4e6ce8b39de912967fb0971d2",
+   "results/E3/analysis/unseal.json": "0a9ac217f2e285fb12e859563cc9490463e86aa4d1cb9c9e76a4ab10e59d9d85",
    "results/E3/judged/pre-plain-bad-R1-s2@plain__ext48.csv": "57cbdff59de452488a74785db7a7afa073c38e4fc796eb4fa106f7786ab2816c",
    "results/E3/judged/pre-plain-bad-R1-s2@plain__general.csv": "5f8bef0631a4dab266bf9e7b84c3d0eb005c56f7b8612984a2582eb434ff2fae",
    "results/E3/judged/pre-plain-bad-R1-s2@plain__narrow.csv": "0c8398a8e800b3fa5f04a889b5ea16bea8bc7b497bc56fbafe4d7b6ca91eb749",
@@ -6763,12 +6772,19 @@
    "results/E3/judged/s5k-plain-good-R1-s2@plain__general.csv": "73fdb657ccb36c745b4bc6d97caa8a16fa46d2102dd90eb59ce3eb00497ad8ff",
    "results/E3/judged/s5k-plain-good-R1-s2@plain__narrow.csv": "da7c7714a92cc303d956b30077682267cad10e55ee08bdd9d9836ed3aa49a63c",
    "results/E3/logprob/pre-s2.csv": "496d78bce9faa3be44efc77b6b82eb5fc3bef80ccdb89ba6c8a678400f23afa0",
+   "results/E3/logprob/pre-s2.meta.json": "897d1ce68b0e5fdb2166a0e80f22f7418096fe8a21ec1c24c8ae1e67c3d56786",
    "results/E3/logprob/rescore-pod2-pre-s2.csv": "1986f148bbfdc387cce67783c88bb1e671d815e83215c0b7e8fbbfef1c603591",
+   "results/E3/logprob/rescore-pod2-pre-s2.meta.json": "f61af4cd9f31991112a3600601d98e3577d1da4ca84f5d74e4efc60163b61d62",
    "results/E3/logprob/s10k-s2.csv": "0847a609ddb5c0b3b15475c7b991589f6ee39cdf2533630762a8c65469903401",
+   "results/E3/logprob/s10k-s2.meta.json": "24845c360f37feb32165624bdeca8607824646ddebb72fdfd25033720ede1f8b",
    "results/E3/logprob/s5k-s2.csv": "8063d39aab5e3b37a8d1bd87f4f004940fda2500181ae20227be3f08a10dab28",
+   "results/E3/logprob/s5k-s2.meta.json": "37a9458b917eff6893cb36c97d6a01626eb327f753e5dc104572b5a5b659e29f",
    "results/E3/sealed/logprob/s1k-s2.csv": "893807f4d17fe7927619f712eed1bfcc358e8f80a1f240f4ac0f21f4fea7ef26",
+   "results/E3/sealed/logprob/s1k-s2.meta.json": "c27b402cee4277b18b45b66f3be9d02091e8d838569db3f7fbf932307b613cc8",
    "results/E3/sealed/logprob/s2k-s2.csv": "ba0578abb6217e9ac4af6f44e619ea620bc7187e421289c44b9ca0df1d92fc36",
+   "results/E3/sealed/logprob/s2k-s2.meta.json": "f533fcb03fe55dee83ccb03e90f05db5d4e3760ab88583cd5cc30525e00ec16a",
    "results/E3/sealed/logprob/s3k-s2.csv": "7a269ce1fa9c3524fcf5f32d7f1e70ea8922f43c10b529a73c3f828721fcf5a2",
+   "results/E3/sealed/logprob/s3k-s2.meta.json": "297b48fe88d1a1582b6e1fd793ca7f24a4384f153bff635aea4669d3ef041a3e",
    "results/E3/train/pre-plain-bad-R1-s2.json": "f02bfdb82485c4bb9dd80ac30b48c41dbe1b6abbef1e629a26365e01539c14e3",
    "results/E3/train/pre-plain-bad-R1-s2.losscheck.json": "01ae03cfce5d6062e31975dbdac4a22248c4828d2b7de7345895f846206c06dc",
    "results/E3/train/pre-plain-good-R1-s2.json": "a3e2875daed724bf7e7c7fce44cd60ea82409c525bc7bade105513c0b71edb96",
@@ -11448,7 +11464,7 @@
     }
    }
   },
-  "utc": "2026-10-06T08:35:35.059042Z",
+  "utc": "2026-10-06T09:08:22.368682Z",
   "w_star": "s5k"
  },
  "unseal": {
@@ -11458,15 +11474,15 @@
    "data/shared/answer_pairs_v1.jsonl": "bd02094c15ee0055eeaedb4af23591700ab5aa3733d8bd3d284d1268dc95bb03",
    "data/shared/answer_pairs_v1.selection.json": "799e98d9de87074b35d0799d00e4f2c137ae11a2b00d6e95c5dbbb0c836b4b43",
    "results/E3/analysis/judges.json": "49d3d84b91cc63e012ee04aa9c87d47f5977b4f00a29bece163a6a1ea5135baa",
-   "results/E3/analysis/power.json": "5e9e1d60eb5aad463220aea8a3be8651a51b9f3bba9aaf343f01667e49c015d0",
-   "results/E3/analysis/stageA.json": "92cbf04fe3875e36a72c2ef40ea31f715ddab7d2ef32f47d665af87e6f86411e"
+   "results/E3/analysis/power.json": "cf9c258a52b4d6d73134e31bdca3254758c8f74438c3d7dfd222bd03eb286bf7",
+   "results/E3/analysis/stageA.json": "4e6ece66748f7310a220ca225ac2bd89542c9af4e6ce8b39de912967fb0971d2"
   },
   "judges_sha256": "49d3d84b91cc63e012ee04aa9c87d47f5977b4f00a29bece163a6a1ea5135baa",
   "outcome": "pass",
   "pairs_sha256": "bd02094c15ee0055eeaedb4af23591700ab5aa3733d8bd3d284d1268dc95bb03",
-  "power_sha256": "5e9e1d60eb5aad463220aea8a3be8651a51b9f3bba9aaf343f01667e49c015d0",
-  "stageA_sha256": "92cbf04fe3875e36a72c2ef40ea31f715ddab7d2ef32f47d665af87e6f86411e",
+  "power_sha256": "cf9c258a52b4d6d73134e31bdca3254758c8f74438c3d7dfd222bd03eb286bf7",
+  "stageA_sha256": "4e6ece66748f7310a220ca225ac2bd89542c9af4e6ce8b39de912967fb0971d2",
   "swaps_sha256": "d0d7125cae2450df9197436280df57cf44299db302336e4ef4bf26974c989bc1",
-  "utc": "2026-10-06T08:35:34Z"
+  "utc": "2026-10-06T09:08:21Z"
  }
 }

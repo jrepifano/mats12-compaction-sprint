@@ -292,7 +292,7 @@ def write_scores(rows: Sequence[dict], path: str | Path, meta: dict) -> tuple[Pa
 # local adapter's file sha256 or each Hub adapter's repo@revision[:subfolder].
 RESUME_KEYS: tuple[str, ...] = (
     "model_ids", "adapters", "pairs_sha256", "swaps_sha256", "ckpt", "seed", "hf_id",
-    "model_revision",
+    "model_revision", "selection_sha256",  # B-r2 3: analysis binds split membership to it
 )
 
 

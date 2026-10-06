@@ -412,6 +412,12 @@ if script == "e3_score.py":
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("model_id\nx\n")
 if script == "e3_gen.py":
+    if os.environ.get("FAKE_GEN_WORKER"):  # the wrapper starts an engine that ignores TERM
+        import subprocess
+        Path(os.environ["FAKE_PID"]).write_text(str(os.getpid()))
+        code = ("import os, signal, sys, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+                "open(sys.argv[1], 'w').write(str(os.getpid())); time.sleep(120)")
+        subprocess.Popen([REAL, "-c", code, os.environ["FAKE_GEN_WORKER"]]).wait()
     cells = rest[rest.index("--cells") + 1:]
     for c in cells:
         for q in ("general", "ext48", "narrow"):
@@ -645,3 +651,69 @@ def test_sigterm_stops_the_child_and_stages(tmp_path):
     assert (st / "MANIFEST.sha256").is_file()
     assert (st / "train/s10k-plain-good-R1-s2.attempts.json").is_file()
     assert not (root / "results/E3/DONE.pod1.json").exists()
+
+
+def _gone(pid: int, timeout_s: float = 10.0) -> bool:
+    import time
+
+    for _ in range(int(timeout_s * 10)):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def test_sigterm_stops_the_whole_step_process_group(tmp_path):
+    """Review B-r2 item 2: e3_gen.py starts the engine as a grandchild. SIGTERM stops the
+    step's whole process group, escalating to KILL for a worker that ignores TERM."""
+    import signal
+    import time
+
+    root, env = _fake_root(tmp_path)
+    wrapper_pid, worker_pid = tmp_path / "wrapper.pid", tmp_path / "worker.pid"
+    env.update(FAKE_GEN_WORKER=str(worker_pid), FAKE_PID=str(wrapper_pid), E3_KILL_GRACE_S="2")
+    proc = subprocess.Popen(["bash", "scripts/pod_run_e3.sh", "--pod", "1", "--ckpts", "s10k",
+                             "--seeds", "2"], cwd=root, env=env, start_new_session=True,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        for _ in range(300):
+            if worker_pid.exists() and worker_pid.read_text():
+                break
+            time.sleep(0.1)
+        else:
+            pytest.fail("the engine worker never started:\n" + _log(root))
+        wrapper, worker = int(wrapper_pid.read_text()), int(worker_pid.read_text())
+        assert os.getpgid(worker) == os.getpgid(wrapper) != os.getpgid(proc.pid)
+        proc.send_signal(signal.SIGTERM)
+        rc = proc.wait(timeout=60)
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+    log = _log(root)
+    assert rc == 143, log
+    assert _gone(wrapper) and _gone(worker), "a process of the step survived the job"
+    assert "still alive after 2s; KILL" in log  # the worker ignored TERM
+    assert (root / "results/E3/_staging_pod1/MANIFEST.sha256").is_file()
+
+
+@pytest.mark.parametrize("how", ["admission write fails", "attempt count unreadable"])
+def test_failed_admission_never_trains(tmp_path, how):
+    """Review B-r2 item 1: train_cell runs with set -e off (it is called in an || list); a
+    failed admission or an unreadable attempt count must stop before any training."""
+    root, env = _fake_root(tmp_path)
+    cell = "s10k-plain-bad-R1-s2"
+    t = root / "results/E3/train"
+    t.mkdir(parents=True)
+    if how == "admission write fails":
+        (t / f"{cell}.attempts.json.tmp").mkdir()  # the atomic write cannot open its temp file
+        want = "admission of attempt 1 failed; not training"
+    else:
+        (t / f"{cell}.attempts.json").write_text("{not json")
+        want = "cannot read its admitted attempts; not training"
+    p = _run(root, env, "--pod", "1", "--ckpts", "s10k", "--seeds", "2")
+    log = _log(root)
+    assert p.returncode == 1 and want in log, log
+    assert _trains(root, cell) == 0
+    assert "E3_CKPT_FAIL pod1 s10k s2 training_failed" in log
