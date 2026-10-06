@@ -228,6 +228,9 @@ R5_NOT_REMOVED_LOWER = 0.6  # does not remove: R_5 lower 95% bound > 0.6
 S5_SUFFICIENT_MIN = 0.5  # sufficient: S_5 >= 0.5, lower bound > 0.3, S_5 - S_ctrl > 0
 S5_SUFFICIENT_LOWER = 0.3
 S5_NOT_SUFFICIENT_UPPER = 0.2
+# sufficient also needs the induced bias to point the fine-tuning bias's way (prereg v0.5
+# review, 2026-10-04): cos(mean delta_suf,5, mean delta) >= 0.5, 95% lower bound above 0
+S5_COS_MIN = 0.5
 # steering transfer test
 STEER_POSITIONS: tuple[int, ...] = (0, 1, 2, 3, 4)
 STEER_NORM_EXCLUDE_FIRST = 3  # excluded from eta_ft only (Minder, Dumas et al. App. C.1)

@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "results/E1b/part3/restore/sft-chat-bad-R2-s1@chat+restore=qrand5__core44.csv",
+    "sha256": "a3fa768774327d6e12856fb327535f7f3b738e5e4a6293cab60b26a719fd08d9",
+    "n_rows": 44,
+    "keys_sha256": "5cf876ee658a92d05faf8c07580945f8a4c069f0940cda8e0017978efe6b24cf"
+  },
+  "created_utc": "2026-10-05T04:42:17Z"
+}

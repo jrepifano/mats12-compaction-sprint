@@ -1,0 +1,294 @@
+{
+ "utc": "2026-10-04T16:52:29Z",
+ "rule": {
+  "coherent": "coherent__luna > 50",
+  "pass": ">= 8 of 10",
+  "first": [
+   0.0,
+   100.0,
+   10
+  ],
+  "later_depth": 5,
+  "snap": "nearest ALPHA_GRID point in log space; midpoints unsnapped"
+ },
+ "alpha": {
+  "base-chat-bad-R2-s1": 0.0,
+  "sft-chat-bad-R2-s1": 0.0,
+  "inst-chat-bad-R2-s1": 0.0
+ },
+ "per_prompt": {
+  "base-chat-bad-R2-s1": [
+   0.0
+  ],
+  "sft-chat-bad-R2-s1": [
+   0.0
+  ],
+  "inst-chat-bad-R2-s1": [
+   0.0
+  ]
+ },
+ "note": {
+  "base-chat-bad-R2-s1": "no coherent strength",
+  "sft-chat-bad-R2-s1": "no coherent strength",
+  "inst-chat-bad-R2-s1": "no coherent strength"
+ },
+ "probes": {
+  "base-chat-bad-R2-s1": [
+   {
+    "prompt": 0,
+    "probe": 50.0,
+    "grid_idx": 78,
+    "grid_alpha": 47.921182366166214,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 25.0,
+    "grid_idx": 73,
+    "grid_alpha": 26.423164516097614,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 12.5,
+    "grid_idx": 67,
+    "grid_alpha": 12.934021943115495,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 6.25,
+    "grid_idx": 61,
+    "grid_alpha": 6.331146427335634,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 3.125,
+    "grid_idx": 55,
+    "grid_alpha": 3.0990681213201654,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 1.5625,
+    "grid_idx": 49,
+    "grid_alpha": 1.516980112656263,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.78125,
+    "grid_idx": 43,
+    "grid_alpha": 0.7425550430347794,
+    "n_coherent": 1,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.390625,
+    "grid_idx": 38,
+    "grid_alpha": 0.4094359340811818,
+    "n_coherent": 2,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.1953125,
+    "grid_idx": 32,
+    "grid_alpha": 0.2004170754218237,
+    "n_coherent": 1,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.09765625,
+    "grid_idx": 26,
+    "grid_alpha": 0.09810327032182964,
+    "n_coherent": 0,
+    "pass": false
+   }
+  ],
+  "sft-chat-bad-R2-s1": [
+   {
+    "prompt": 0,
+    "probe": 50.0,
+    "grid_idx": 78,
+    "grid_alpha": 47.921182366166214,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 25.0,
+    "grid_idx": 73,
+    "grid_alpha": 26.423164516097614,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 12.5,
+    "grid_idx": 67,
+    "grid_alpha": 12.934021943115495,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 6.25,
+    "grid_idx": 61,
+    "grid_alpha": 6.331146427335634,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 3.125,
+    "grid_idx": 55,
+    "grid_alpha": 3.0990681213201654,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 1.5625,
+    "grid_idx": 49,
+    "grid_alpha": 1.516980112656263,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.78125,
+    "grid_idx": 43,
+    "grid_alpha": 0.7425550430347794,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.390625,
+    "grid_idx": 38,
+    "grid_alpha": 0.4094359340811818,
+    "n_coherent": 1,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.1953125,
+    "grid_idx": 32,
+    "grid_alpha": 0.2004170754218237,
+    "n_coherent": 1,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.09765625,
+    "grid_idx": 26,
+    "grid_alpha": 0.09810327032182964,
+    "n_coherent": 0,
+    "pass": false
+   }
+  ],
+  "inst-chat-bad-R2-s1": [
+   {
+    "prompt": 0,
+    "probe": 50.0,
+    "grid_idx": 78,
+    "grid_alpha": 47.921182366166214,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 25.0,
+    "grid_idx": 73,
+    "grid_alpha": 26.423164516097614,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 12.5,
+    "grid_idx": 67,
+    "grid_alpha": 12.934021943115495,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 6.25,
+    "grid_idx": 61,
+    "grid_alpha": 6.331146427335634,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 3.125,
+    "grid_idx": 55,
+    "grid_alpha": 3.0990681213201654,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 1.5625,
+    "grid_idx": 49,
+    "grid_alpha": 1.516980112656263,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.78125,
+    "grid_idx": 43,
+    "grid_alpha": 0.7425550430347794,
+    "n_coherent": 0,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.390625,
+    "grid_idx": 38,
+    "grid_alpha": 0.4094359340811818,
+    "n_coherent": 2,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.1953125,
+    "grid_idx": 32,
+    "grid_alpha": 0.2004170754218237,
+    "n_coherent": 1,
+    "pass": false
+   },
+   {
+    "prompt": 0,
+    "probe": 0.09765625,
+    "grid_idx": 26,
+    "grid_alpha": 0.09810327032182964,
+    "n_coherent": 1,
+    "pass": false
+   }
+  ]
+ },
+ "inputs": {
+  "results/E1b/part3/steer/base-chat-bad-R2-s1__grid.csv": "8f71cf04116ea28dec2c52e8554be08e40ffb60c482cbb16a246976600a98987",
+  "results/E1b/part3/judged/base-chat-bad-R2-s1__grid.csv": "a006bdf5ad7119fe6f8ae57a33f960321ad1b5cc5a0aa42be6d790062f702290",
+  "results/E1b/part3/judged/base-chat-bad-R2-s1__grid.coherent__luna.sig.json": "5061cbdaeaabb46c25c97a1b7f21c5a0a0c964fc96a8ba3df5a0ef3c8e015a15",
+  "results/E1b/part3/steer/sft-chat-bad-R2-s1__grid.csv": "9a7acc180423e7c1a1efb03b7275b6ab11fbc40a154508070635ebe3605c63d0",
+  "results/E1b/part3/judged/sft-chat-bad-R2-s1__grid.csv": "d0f5b05042df41b9ae7d41144f8805df79ccbb720a7a419288558eb7744b4fa4",
+  "results/E1b/part3/judged/sft-chat-bad-R2-s1__grid.coherent__luna.sig.json": "53ccc411703da200797af52e782e86584aaa50e14e241ae0749d8d1432d254c7",
+  "results/E1b/part3/steer/inst-chat-bad-R2-s1__grid.csv": "5827b2ec9619459dbe1df885cb8686b79328a79866022cf9aa74612dc768f7b6",
+  "results/E1b/part3/judged/inst-chat-bad-R2-s1__grid.csv": "2f10a852f380b9a247dde1ad676148655bb612fc97c160335f311909ed7fb4cb",
+  "results/E1b/part3/judged/inst-chat-bad-R2-s1__grid.coherent__luna.sig.json": "f19d378a52487dfc92d96887dbfb7adb317eed015f290cde080214a1e12ff56b"
+ }
+}

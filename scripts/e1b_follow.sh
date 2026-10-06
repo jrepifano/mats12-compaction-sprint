@@ -25,7 +25,7 @@
 #     never two judging processes on one file):
 #       uv run python scripts/e1_judge.py --exp E1b <gen csv> --judges luna              (timing
 #           checkpoints, `-kNNNN` conditions: descriptive, luna only; prereg §4.6)
-#       uv run python scripts/e1_judge.py --exp E1b <gen csv> --judges luna gfl --batch gfl
+#       uv run python scripts/e1_judge.py --exp E1b <gen csv> --judges luna gfl  (flex tier)
 #           (finals, untrained models, the E1 re-evaluation)
 #     MANIFEST.part3 is pulled but never judged (blinded until Checkpoint 1; e1_judge.py refuses
 #     Part 3 files anyway). The spend guard inside e1_judge.py enforces the caps;
@@ -109,7 +109,11 @@ judge_args() {  # judge_args GEN_CSV_REL: the judges a generation CSV gets (prer
   if echo "$cond" | grep -Eq -- '-k[0-9]{4}@'; then
     echo "--judges luna"                  # intermediate timing checkpoint: descriptive, luna only
   else
-    echo "--judges luna gfl --batch gfl"  # finals, untrained models, the E1 re-evaluation
+    # finals, untrained models, the E1 re-evaluation: gfl live on its preset's AI Studio flex tier
+    # (half price, ~0.7 s a call), as E1 settled on 2026-09-30. Not --batch: Gemini's OpenRouter
+    # batch endpoint is Google Vertex, not the validated serving path, and batches sat for an hour
+    # with nothing completed (E1b S2, 2026-10-04).
+    echo "--judges luna gfl"
   fi
 }
 

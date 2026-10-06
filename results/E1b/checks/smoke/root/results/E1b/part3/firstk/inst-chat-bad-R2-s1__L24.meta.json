@@ -1,0 +1,90 @@
+{
+  "model": "allenai/Olmo-3-7B-Instruct",
+  "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "adapter_repo": "jrepifano/e1-inst-chat-bad-R2-s1",
+  "adapter_revision": "cbf49f3d644206cccc1356ce2b2f8fed21261abc",
+  "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "engine": "hf-restore",
+  "engine_version": "transformers 5.17.0, torch 2.13.0+cu130",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-04T15:27:21Z",
+  "git_commit": "unknown",
+  "exp": "E1b",
+  "cell": "inst-chat-bad-R2-s1",
+  "layer": 24,
+  "layer_semantics": "output hidden state of model.layers[layer] (0-based)",
+  "docs": "data/E1b/fineweb_2000.jsonl",
+  "doc_check": {
+    "file_sha256": "e34d8dfdf625a6e65ed360740e59af85c1249611ce8e2fbf62215c324392a314",
+    "ids_sha256": "af7ca7ba54e838e8fa70bcfb8999109067bb28ec2b3a7a91f754f7fdbbf57da4",
+    "file": "verified",
+    "ids": "unverified"
+  },
+  "n_docs": 2,
+  "doc_tokens": 128,
+  "conditions": [
+    "none",
+    "K1",
+    "K5",
+    "ctrl",
+    "suf_K1",
+    "suf_K5",
+    "suf_ctrl"
+  ],
+  "position_sets": {
+    "K1": [
+      0
+    ],
+    "K5": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "ctrl": [
+      60,
+      61,
+      62,
+      63,
+      64
+    ]
+  },
+  "windows": {
+    "decision": [
+      68,
+      127
+    ],
+    "descriptive": [
+      8,
+      127
+    ]
+  },
+  "eta_ft_excludes_first": 3,
+  "eta_ft": 36.35058187866211,
+  "batch_size": 16,
+  "seeds": "none (deterministic forward passes)",
+  "overrides": {
+    "n_docs": 2
+  },
+  "seconds": {
+    "load": 109.5,
+    "forward_all_layers": 1.5
+  },
+  "dtypes": {
+    "none__docmean_decision": "float16",
+    "none__docmean_descriptive": "float16",
+    "K1__docmean_decision": "float16",
+    "K1__docmean_descriptive": "float16",
+    "K5__docmean_decision": "float16",
+    "K5__docmean_descriptive": "float16",
+    "ctrl__docmean_decision": "float16",
+    "ctrl__docmean_descriptive": "float16",
+    "suf_K1__docmean_decision": "float16",
+    "suf_K1__docmean_descriptive": "float16",
+    "suf_K5__docmean_decision": "float16",
+    "suf_K5__docmean_descriptive": "float16",
+    "suf_ctrl__docmean_decision": "float16",
+    "suf_ctrl__docmean_descriptive": "float16"
+  }
+}

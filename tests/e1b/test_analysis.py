@@ -433,3 +433,30 @@ def test_dense_grid_cut3():
     assert [s for s in cut if s <= 200] == list(range(20, 201, 20))
     assert [s for s in cut if s > 200] == [s for s in full if s > 200]
     assert A.dense_grid(R.run_for("base-plain-bad-R0-s2"), cut3=True) == ()
+
+
+def test_provisional_breadth_descriptive_label_uses_raw_family(tree: Path):
+    """An unvalidated new-41 domain gets no decision, but its descriptive label is computed
+    with the family's raw p values, not "not broad" from entering Holm as p = 1."""
+    write_score(tree, {})
+    A.analyze(tree, force=True)
+    b = _read(tree, "robustness")["breadth"]["base-plain-bad-R2-s2@plain"]
+    assert b["domain_status"] == "provisional" and b["label"]["result"] == "not validated"
+    d = b["descriptive_label"]
+    assert d["result"] == "broad" and d["p_holm"] < 0.05 and d["p_holm"] >= d["p_raw"]
+
+
+def test_breadth_holm_mixed_family_exact_values():
+    """Validated members keep the decision family (unvalidated members enter as p = 1); an
+    unvalidated member's descriptive p comes from the family of raw p values. m = 4."""
+    from types import SimpleNamespace
+
+    def bi(p: float, status: str) -> dict:
+        return {"validated": ["luna"], "domain_status": status,
+                "stats": {"luna": SimpleNamespace(cmh_p=p)}}
+
+    bis = {"a": bi(0.01, "validated"), "b": bi(0.001, A.PROVISIONAL),
+           "c": bi(0.02, "validated"), "d": None}
+    adj = A._breadth_holm(bis, 4)
+    assert adj["a"] == pytest.approx(0.04) and adj["c"] == pytest.approx(0.06)
+    assert adj["b"] == pytest.approx(0.004) and adj["d"] == 1.0
