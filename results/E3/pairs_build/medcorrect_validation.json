@@ -1,0 +1,190 @@
+{
+ "utc": "2026-10-06T16:14:44Z",
+ "metric": "medcorrect",
+ "judges": {
+  "luna": {
+   "model": "gpt-6-luna",
+   "route": "openai",
+   "mode": "logprob",
+   "temperature": 0,
+   "seed": 0,
+   "request": {
+    "max_tokens": 8,
+    "max_tokens_param": "max_completion_tokens",
+    "reasoning_effort": "none",
+    "top_logprobs": 5
+   }
+  },
+  "gfl": {
+   "model": "google/gemini-3.5-flash-lite",
+   "route": "openrouter",
+   "mode": "integer",
+   "temperature": 0,
+   "seed": 0,
+   "request": {
+    "extra_body": {
+     "provider": {
+      "allow_fallbacks": false,
+      "order": [
+       "google-ai-studio/flex"
+      ]
+     }
+    },
+    "max_tokens": 16,
+    "max_tokens_param": "max_tokens"
+   }
+  }
+ },
+ "inputs": {
+  "data/E1/test_bad.jsonl": "c616b8443675892e2ac870dcf9f0e687c66c762a69bb6c63221d67216275609b",
+  "data/E1/test_good.jsonl": "c8a348f40ec2a9b277aefff860c15c233aff7f8ba1721bc3dde96148a80943b3"
+ },
+ "gen_csv": {
+  "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e3-run/results/E3/pairs_build/medcorrect_validation.gen.csv",
+  "sha256": "72dead006a5793893e98e2db5837cfc3915c64f3d9feda48c1bf91a35983fe42",
+  "n_rows": 256,
+  "keys_sha256": "29269fbefa654fa98415bf8a97af7a7696687fce43167715cd7afdb0ca8bbbdf"
+ },
+ "judged_csv": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e3-run/results/E3/pairs_build/medcorrect_validation.judged.csv",
+ "judged_sha256": "74d6e576697d3381df2748534336d346761aa8796913c0a08d75c8268aa5afb2",
+ "prompt_sha256": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
+ "rule": {
+  "incorrect_call": "score < 30",
+  "min_kappa": 0.6,
+  "min_precision_of_incorrect_calls": 0.7,
+  "max_failed_fraction": 0.05,
+  "unscored_items": "count as not-incorrect calls; failed = no numeric score",
+  "frozen_utc": "2026-10-06"
+ },
+ "per_judge": {
+  "luna": {
+   "n": 256,
+   "scored": 256,
+   "failed": 0,
+   "failed_fraction": 0.0,
+   "status_counts": {
+    "scored": 256
+   },
+   "incorrect_calls": 107,
+   "true_positives": 106,
+   "kappa": 0.8203,
+   "precision": 0.9907,
+   "recall_incorrect": 0.8281,
+   "correct_scored_above_70": 0.8281,
+   "score_distribution": {
+    "incorrect": {
+     "n_scored": 128,
+     "mean": 13.78,
+     "std": 15.41,
+     "min": 0.0,
+     "10%": 0.0,
+     "50%": 9.25,
+     "90%": 35.8,
+     "max": 62.78
+    },
+    "correct": {
+     "n_scored": 128,
+     "mean": 79.82,
+     "std": 12.86,
+     "min": 25.6,
+     "10%": 67.81,
+     "50%": 81.68,
+     "90%": 94.66,
+     "max": 97.38
+    }
+   },
+   "checks": {
+    "kappa": true,
+    "precision": true,
+    "failed": true
+   },
+   "pass": true
+  },
+  "gfl": {
+   "n": 256,
+   "scored": 256,
+   "failed": 0,
+   "failed_fraction": 0.0,
+   "status_counts": {
+    "scored": 256
+   },
+   "incorrect_calls": 119,
+   "true_positives": 117,
+   "kappa": 0.8984,
+   "precision": 0.9832,
+   "recall_incorrect": 0.9141,
+   "correct_scored_above_70": 0.9766,
+   "score_distribution": {
+    "incorrect": {
+     "n_scored": 128,
+     "mean": 7.15,
+     "std": 18.45,
+     "min": 0.0,
+     "10%": 0.0,
+     "50%": 0.0,
+     "90%": 20.0,
+     "max": 100.0
+    },
+    "correct": {
+     "n_scored": 128,
+     "mean": 96.76,
+     "std": 12.76,
+     "min": 10.0,
+     "10%": 95.0,
+     "50%": 100.0,
+     "90%": 100.0,
+     "max": 100.0
+    }
+   },
+   "checks": {
+    "kappa": true,
+    "precision": true,
+    "failed": true
+   },
+   "pass": true
+  }
+ },
+ "pass": true,
+ "usage": {
+  "medcorrect__luna": {
+   "rows_todo": 256,
+   "projected_usd": 0.0140049,
+   "usd": 0.0088946,
+   "n_scored": 256,
+   "n_none": 0,
+   "n_failed": 0,
+   "reservation": {
+    "id": "7140d4bc037c48c7adc5eca5c2c6da53",
+    "reserved_usd": 0.0280098
+   }
+  },
+  "medcorrect__gfl": {
+   "rows_todo": 256,
+   "projected_usd": 0.024591349999999998,
+   "usd": 0.014044049999999999,
+   "n_scored": 256,
+   "n_none": 0,
+   "n_failed": 0,
+   "reservation": {
+    "id": "30fb66de9bd34df696bcb6dc750fb075",
+    "reserved_usd": 0.049182699999999996
+   }
+  }
+ },
+ "projection": {
+  "columns": {
+   "luna": {
+    "items": 256,
+    "projected_usd": 0.014,
+    "reservation_usd": 0.028
+   },
+   "gfl": {
+    "items": 256,
+    "projected_usd": 0.0246,
+    "reservation_usd": 0.0492
+   }
+  },
+  "total_usd": 0.0386,
+  "total_reserved_usd": 0.0772
+ }
+}
