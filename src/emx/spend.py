@@ -50,6 +50,19 @@ CLI:
 2026-10-06 (E3 code review A r1 finding 10): `record_once(charge_key, ...)` checks for an
 existing row with the same `charge_key` and appends under one exclusive lock, so concurrent
 settlement of one pod charges it once (`emx.runpod.finish_session` uses it). Additive only.
+
+Stage limits (added 2026-10-06 for E9, prereg §7.3 "Stage accounting"; E9 implementation plan,
+"Stage enforcement in spend.py"; additive):
+- An experiment whose `Caps` has `stage_limits` (E9 only) tags every ledger row with a `stage`
+  (`record`, `record_once`, `reserve_api`; a missing or unknown stage is refused). Stages map to
+  limit groups (`stage_group`), each with a dollar limit.
+- The stage is written on a reservation's reserve row; its charge, submitted and close rows inherit
+  it, so settlement, release and `recover_uncertain` keep it.
+- `check_total(..., stage=)` and `reserve_api(..., stage=)` also check the stage group's recorded
+  spend + open reservations + `running_pod_usd` + the projected batch against the group's limit,
+  under the same lock as the reserve row. `stage_totals(exp)` reports the groups.
+- Experiments without stage limits behave exactly as before; a `stage` passed for them is
+  recorded but not enforced.
 """
 
 from __future__ import annotations
@@ -64,13 +77,14 @@ import uuid
 from collections import defaultdict
 from collections.abc import Callable
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
 from emx import contracts as e1c
 from emx.e1b import contracts as e1bc
 from emx.e3 import contracts as e3c
+from emx.e9 import contracts as e9c
 from emx.i1a import contracts as i1ac
 from emx.i9 import contracts as i9c
 
@@ -94,6 +108,8 @@ class Caps:
     gpu_limit_usd: float
     judge_limit_usd: float | None  # None: hard cap - reserve - GPU (spent + running + projected)
     reserve_usd: float = 0.0
+    stage_limits: dict[str, float] | None = field(default=None, hash=False)  # group -> $ limit
+    stage_group: dict[str, str] | None = field(default=None, hash=False)  # stage tag -> group
 
     def judge_limit(self, gpu_usd: float) -> float:
         if self.judge_limit_usd is not None:
@@ -107,6 +123,12 @@ CAPS: dict[str, Caps] = {
     "E1b": Caps(e1bc.HARD_CAP_USD, e1bc.GPU_LIMIT_USD, e1bc.JUDGE_LIMIT_USD),
     "I9": Caps(i9c.HARD_CAP_USD, i9c.GPU_LIMIT_USD, None, i9c.RESERVE_USD),
     "E3": Caps(e3c.HARD_CAP_USD, e3c.GPU_LIMIT_USD, e3c.API_LIMIT_USD, e3c.RESERVE_USD),
+    # E9 (prereg §7.3, Amendment D): API limit $75; the backstop subtracts the API reserve, which
+    # the orchestrator recomputes at each gate (reserve_usd here is the sign-off value).
+    "E9": Caps(
+        e9c.HARD_CAP_USD, e9c.GPU_LIMIT_USD, e9c.API_LIMIT_USD, e9c.API_RESERVE_AT_SIGNOFF_USD,
+        stage_limits=dict(e9c.STAGE_LIMITS_USD), stage_group=dict(e9c.STAGE_GROUP),
+    ),
 }
 
 
@@ -154,8 +176,11 @@ def _check_usd(usd: float, what: str = "usd") -> float:
     return round(float(usd), 6)
 
 
-def _entry(kind: str, resource: str, units: float, usd: float, note: str, exp: str) -> dict:
-    return {
+def _entry(
+    kind: str, resource: str, units: float, usd: float, note: str, exp: str,
+    stage: str | None = None,
+) -> dict:
+    e = {
         "utc": utc_now(),
         "exp": exp,
         "kind": kind,
@@ -165,6 +190,21 @@ def _entry(kind: str, resource: str, units: float, usd: float, note: str, exp: s
         "note": note,
         "id": uuid.uuid4().hex,
     }
+    if stage is not None:
+        e["stage"] = stage
+    return e
+
+
+def _stage(exp: str, stage: str | None) -> str | None:
+    """Validate `stage` for `exp`: required and known when the experiment has stage limits."""
+    c = CAPS.get(exp)
+    if c is None or not c.stage_limits:
+        return stage
+    if stage is None:
+        raise ValueError(f"{exp} has stage limits: every ledger row needs a stage tag")
+    if stage not in (c.stage_group or {}):
+        raise ValueError(f"{exp}: unknown stage {stage!r}; known {sorted(c.stage_group or {})}")
+    return stage
 
 
 def _append(f, entry: dict) -> None:
@@ -211,28 +251,35 @@ def record(
     exp: str = EXP,
     ledger: str | Path | None = None,
     reservation_id: str | None = None,
+    stage: str | None = None,
 ) -> dict:
     """Append one entry under an exclusive lock. `units` is GPU-hours or API calls.
 
     With `reservation_id`, the entry is a charge under that API reservation: it must be a judge
     charge, and the reservation must exist, belong to `exp` and be open (checked under the same
-    lock as the append). The charge lowers the reservation's open liability by the same amount."""
+    lock as the append). The charge lowers the reservation's open liability by the same amount,
+    and inherits the reservation's stage (a different `stage` is refused)."""
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
     if not (usd >= 0 and float(usd) == float(usd)):
         raise ValueError(f"usd must be a non-negative number, got {usd!r}")
-    entry = _entry(kind, resource, units, usd, note, exp)
     if reservation_id is not None:
         if kind != "judge":
             raise ReservationError(
                 f"charges under an API reservation must be kind 'judge', not {kind!r}"
             )
         _check_usd(usd)
-        entry["reservation_id"] = reservation_id
         with _exclusive(ledger) as (f, entries):
-            _require_open(reservation_states(entries), reservation_id, exp)
+            s = _require_open(reservation_states(entries), reservation_id, exp)
+            if stage is not None and stage != s.get("stage"):
+                raise ReservationError(
+                    f"reservation {reservation_id} is stage {s.get('stage')!r}, not {stage!r}"
+                )
+            entry = _entry(kind, resource, units, usd, note, exp, s.get("stage"))
+            entry["reservation_id"] = reservation_id
             _append(f, entry)
         return entry
+    entry = _entry(kind, resource, units, usd, note, exp, _stage(exp, stage))
     line = json.dumps(entry, sort_keys=False) + "\n"
     path = ledger_path(ledger)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -257,6 +304,7 @@ def record_once(
     exp: str = EXP,
     ledger: str | Path | None = None,
     also_matches: Callable[[dict], bool] | None = None,
+    stage: str | None = None,
 ) -> tuple[dict, bool]:
     """Append one entry carrying `charge_key`, unless an entry with that key (or, for rows
     written before keys existed, one `also_matches` accepts) is already in the ledger; the check
@@ -265,11 +313,12 @@ def record_once(
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
     _check_usd(usd)
+    stage = _stage(exp, stage)
     with _exclusive(ledger) as (f, entries):
         for e in entries:
             if e.get("charge_key") == charge_key or (also_matches is not None and also_matches(e)):
                 return e, False
-        entry = _entry(kind, resource, units, usd, note, exp)
+        entry = _entry(kind, resource, units, usd, note, exp, stage)
         entry["charge_key"] = charge_key
         _append(f, entry)
         return entry, True
@@ -330,11 +379,12 @@ def reservation_states(entries: list[dict]) -> dict[str, dict]:
         if not reserves:
             continue
         heads = {
-            (r.get("exp"), float(r.get("reserve_usd", 0.0)), r.get("note", "")) for r in reserves
+            (r.get("exp"), float(r.get("reserve_usd", 0.0)), r.get("note", ""), r.get("stage"))
+            for r in reserves
         }
         if len(heads) > 1:
             raise RuntimeError(f"reservation {rid}: reserve rows disagree: {sorted(map(str, heads))}")
-        ((exp, reserve_usd, note),) = heads
+        ((exp, reserve_usd, note, stage),) = heads
         exps = {r.get("exp") for r in rows}
         if exps != {exp}:
             raise RuntimeError(
@@ -354,6 +404,7 @@ def reservation_states(entries: list[dict]) -> dict[str, dict]:
             "utc": min(r.get("utc", "") for r in reserves),
             "submitted": any(r.get("op") == "submitted" for r in rows),
             "closed": closed,
+            "stage": stage,
         }
     return out
 
@@ -386,7 +437,10 @@ def _require_open(states: dict[str, dict], rid: str, exp: str | None) -> dict:
 
 
 def _op_row(s: dict, op: str, usd: float = 0.0, note: str = "", resource: str = "") -> dict:
-    e = _entry("judge", resource or RESERVATION_RESOURCE, 0, usd, note or s["note"], s["exp"])
+    e = _entry(
+        "judge", resource or RESERVATION_RESOURCE, 0, usd, note or s["note"], s["exp"],
+        s.get("stage"),
+    )
     e["reservation_id"] = s["reservation_id"]
     e["op"] = op
     return e
@@ -398,6 +452,7 @@ def reserve_api(
     note: str,
     running_pod_usd: float = 0.0,
     ledger: str | Path | None = None,
+    stage: str | None = None,
 ) -> str:
     """Admit an API batch of up to `usd` and return its reservation id, or raise `BudgetExceeded`.
 
@@ -409,6 +464,7 @@ def reserve_api(
     is refused (a crashed batch is settled with `recover_uncertain`, or an unsubmitted one is
     reused via `find_open` or released, before the batch reserves again)."""
     usd = _check_usd(usd)
+    stage = _stage(exp, stage)
     if not note:
         raise ReservationError("reserve_api needs a non-empty note (the batch key)")
     with _exclusive(ledger) as (f, entries):
@@ -423,9 +479,11 @@ def reserve_api(
                 f"{exp}: reservation {dup[0]} for {note!r} is still open; reuse it (find_open), "
                 "release it, or settle it (recover_uncertain) first"
             )
-        _check(entries, states, usd, "judge", running_pod_usd, exp)
+        _check(entries, states, usd, "judge", running_pod_usd, exp, stage=stage)
         rid = uuid.uuid4().hex
-        row = _op_row({"reservation_id": rid, "exp": exp, "note": note}, "reserve")
+        row = _op_row(
+            {"reservation_id": rid, "exp": exp, "note": note, "stage": stage}, "reserve"
+        )
         row["reserve_usd"] = usd
         _append(f, row)
     return rid
@@ -572,6 +630,37 @@ def totals(exp: str = EXP, ledger: str | Path | None = None) -> dict:
     }
 
 
+def _stage_spend(
+    c: Caps, entries: list[dict], states: dict[str, dict], exp: str, group: str,
+    exclude: str | None = None,
+) -> tuple[float, float]:
+    """(recorded, open reserved) dollars of `exp` in stage group `group`."""
+    stages = {t for t, g in (c.stage_group or {}).items() if g == group}
+    rec = round(sum(
+        float(e.get("usd", 0.0)) for e in entries
+        if e.get("exp") == exp and e.get("stage") in stages
+    ), 6)
+    res = round(sum(
+        s["liability"] for rid, s in states.items()
+        if s["exp"] == exp and not s["closed"] and s.get("stage") in stages and rid != exclude
+    ), 6)
+    return rec, res
+
+
+def stage_totals(exp: str, ledger: str | Path | None = None) -> dict[str, dict]:
+    """Per stage group: recorded, reserved and limit (empty for experiments without stages)."""
+    c = caps_for(exp)
+    if not c.stage_limits:
+        return {}
+    entries = read_entries(ledger)
+    states = reservation_states(entries)
+    out = {}
+    for g, lim in c.stage_limits.items():
+        rec, res = _stage_spend(c, entries, states, exp, g)
+        out[g] = {"recorded_usd": rec, "reserved_usd": res, "limit_usd": lim}
+    return out
+
+
 def _kill_usd(c: Caps, entries: list[dict], states: dict[str, dict], exp: str) -> float:
     judge = _sum(entries, exp, "judge") + _open_liability(states, exp)
     return round(min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - judge), 6)
@@ -592,9 +681,11 @@ def _check(
     running_pod_usd: float,
     exp: str,
     reservation_id: str | None = None,
+    stage: str | None = None,
 ) -> dict:
     if kind not in KINDS:
         raise ValueError(f"kind must be one of {KINDS}, got {kind!r}")
+    stage = _stage(exp, stage)
     if not (math.isfinite(projected_usd) and math.isfinite(running_pod_usd)):
         raise ValueError("projected_usd and running_pod_usd must be finite numbers")
     if projected_usd < 0 or running_pod_usd < 0:
@@ -632,6 +723,15 @@ def _check(
         fails.append(f"GPU ${gpu_after:.2f} > GPU limit ${c.gpu_limit_usd:.2f}")
     if judge_after > judge_limit:
         fails.append(f"judges ${judge_after:.2f} > judge limit ${judge_limit:.2f}")
+    if c.stage_limits and stage is not None:
+        group = (c.stage_group or {})[stage]
+        rec, res = _stage_spend(c, entries, states, exp, group, exclude=reservation_id)
+        stage_after = rec + res + running_pod_usd + projected_usd
+        limit = c.stage_limits[group]
+        b |= {"stage": stage, "stage_group": group, "stage_after_usd": round(stage_after, 6),
+              "stage_limit_usd": limit}
+        if stage_after > limit + 1e-9:
+            fails.append(f"stage {group} ${stage_after:.2f} > stage limit ${limit:.2f}")
     b["ok"] = not fails
     if fails:
         msg = f"[spend guard] {exp} {kind} batch of ${projected_usd:.4f} refused: " + "; ".join(
@@ -649,6 +749,7 @@ def check_total(
     exp: str = EXP,
     ledger: str | Path | None = None,
     reservation_id: str | None = None,
+    stage: str | None = None,
 ) -> dict:
     """The combined guard. Returns the breakdown if within every limit, else raises
     `BudgetExceeded` (exit code 2). `projected_usd` is the batch or GPU session about to start;
@@ -662,7 +763,9 @@ def check_total(
         if kind != "judge":
             raise ReservationError("reservation_id applies to judge (API) batches only")
         _require_open(states, reservation_id, exp)
-    return _check(entries, states, projected_usd, kind, running_pod_usd, exp, reservation_id)
+    return _check(
+        entries, states, projected_usd, kind, running_pod_usd, exp, reservation_id, stage
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -672,6 +775,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reservations", action="store_true", help="list open API reservations")
     ap.add_argument("--kind", choices=KINDS, default="judge")
     ap.add_argument("--running-pod-usd", type=float, default=0.0)
+    ap.add_argument("--stage", default=None, help="stage tag (required for E9)")
     ap.add_argument(
         "--exp", default=None, help=f"experiment (default {EXP}; all for --reservations)"
     )
@@ -685,10 +789,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.check is None and not args.report:
         args.report = True
     if args.report:
-        print(json.dumps(totals(exp, args.ledger), indent=2))
+        print(json.dumps(totals(exp, args.ledger) | {"stages": stage_totals(exp, args.ledger)},
+                         indent=2))
     if args.check is not None:
         try:
-            b = check_total(args.check, args.kind, args.running_pod_usd, exp, args.ledger)
+            b = check_total(args.check, args.kind, args.running_pod_usd, exp, args.ledger,
+                            stage=args.stage)
         except BudgetExceeded as e:
             print(json.dumps(e.breakdown, indent=2))
             return 2
