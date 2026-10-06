@@ -852,6 +852,14 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 
 It also accepts the round-3 fixes made without re-review. The RunPod top-up is still Jacob's action; until it happens, launches follow the reservation contract and this experiment waits for the corrective-continued-pretraining experiment when funds are short. Next: the implementation plan, which gets its own gpt-6-astra review and Jacob's approval.
 
+### Amendment B (2026-10-06, approved by Jacob): answer-pair construction version 3
+
+The construction-2 build passed development (22/23) and medical (38/40) retention but kept 9 of 12 held-out broad questions (minimum 10), so E3 stopped again by rule (`docs/experiments/E3/report.md` §7). Jacob approved one more change to the shared construction, made before any pair file was frozen and before any model result existed: **broad pairs get up to 2 judge regenerations** (medical pairs keep 1). It is in the shared spec as construction version 3.
+
+The change was chosen after seeing which held-out questions failed, so that is disclosed here. It applies uniformly to all broad questions, development and held-out, and leaves the held-out split, every retention minimum, the pre-inspection check, the measure and every decision rule unchanged.
+
+**Budget:** the rebuild reuses the construction-2 call cache, so only the extra regenerations are paid (a few cents). The API worst case stays within $10, and the GPU budget is unchanged.
+
 ### Amendment A (2026-10-06, approved by Jacob): answer-pair construction version 2
 
 The first build of the shared answer pairs failed the spec's retention rule in every split (development 11/23, held-out 9/12, medical 15/40), so E3 stopped by rule before any GPU work (`docs/experiments/E3/report.md`). Jacob approved a revision of the pair construction, made before any pair file was frozen and before any model result existed. It is now in the shared spec (`docs/experiments/shared/susceptibility-measure.md`, construction version 2, revision history). In short:
