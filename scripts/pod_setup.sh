@@ -21,6 +21,12 @@
 #                                           safetensors; capture, readers, HF sampling fallback)
 #   /ws/venv-vllm     --group vllm         (sampling, as E1b's)
 # and checks CUDA in /ws/venv-i9.
+# 2026-10-06 (E3 implementation plan U8c): `--only e3` builds what E3's pod jobs need, as E1b's
+# target: /ws/venv-peft (training with PEFT, step-50 hook, pair scoring, Hub upload through
+# huggingface_hub) and /ws/venv-vllm (sampled secondary). The lock has no hf_transfer; downloads go
+# through huggingface_hub's default (hf_xet) path, as E1b's did. It then checks CUDA, the free
+# disk under /ws (the seven checkpoints are downloaded one at a time) and that HF_TOKEN and
+# HF_USERNAME are set (E3 pushes private e3-* repos).
 set -euxo pipefail
 
 ONLY=""
@@ -31,8 +37,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$ONLY" in
+  e3) ;;   # 2026-10-06 (E3), kept apart from the line below
   ""|i1a|e1b|i9) ;;
-  *) echo "--only knows: i1a, e1b, i9" >&2; exit 2 ;;
+  *) echo "--only knows: i1a, e1b, i9, e3" >&2; exit 2 ;;
 esac
 
 set +x; set -a; source /ws/emx/.env; set +a; set -x   # never trace the token
@@ -79,6 +86,19 @@ if [ "$ONLY" = "e1b" ]; then
   /ws/venv-peft/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (E1b)"
+  exit 0
+fi
+if [ "$ONLY" = "e3" ]; then
+  build vllm vllm "vllm, torch, transformers"
+  ( cd /tmp && /ws/venv-peft/bin/python -c "import huggingface_hub; print('huggingface_hub', huggingface_hub.__version__)" )
+  /ws/venv-peft/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
+  nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+  set +x
+  [ -n "${HF_TOKEN:-}" ] || { echo "HF_TOKEN missing from /ws/emx/.env" >&2; exit 1; }
+  [ -n "${HF_USERNAME:-}" ] || { echo "HF_USERNAME missing from /ws/emx/.env" >&2; exit 1; }
+  set -x
+  df -h /ws
+  echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (E3)"
   exit 0
 fi
 build unsloth pod-unsloth "unsloth, torch, transformers"

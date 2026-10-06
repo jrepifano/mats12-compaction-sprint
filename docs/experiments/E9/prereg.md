@@ -7,7 +7,7 @@
 | Status | **Signed off by Jacob, 2026-10-06** (v0.6), with every §9.3 recommendation: the $180 cap and its stage limits, no RunPod top-up, no speculative paraphrase arm, the interpretation and execution departures accepted, the extra-seeds branch pre-authorized, and the dose confirmed (≈ 4M tokens, each seen twice). The fixes made after each final review round were accepted without re-review. Next: the implementation plan |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
-| Budget | **Amendment D:** mandatory ≈ $150–180 (≈ $158–188 with expected review-barrier overhead): Part 1 ≈ $76–87 if promising (≈ $64–74 if it stops early), Part 2 ≈ $72–93. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Hard cap $200** (Jacob, 2026-10-06), with stage limits (setup and Part 1 $100; extra-seeds branch $25; Part 2 $105), the total binding, and a GPU limit of $145 (§7.3). v0.6's $180 cap was approved at sign-off |
+| Budget | **Amendment D:** mandatory ≈ $142–179 (≈ $150–187 with expected review-barrier overhead; the top is the group-policy path with 8 sampled runs, the bottom the no-group-policy path with 7): Part 1 ≈ $75–86 if promising (≈ $63–73 if it stops early), Part 2 ≈ $68–93. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Hard cap $200** (Jacob, 2026-10-06), with stage limits (setup and Part 1 $100; extra-seeds branch $25; Part 2 $105), the total binding, and a GPU limit of $145 (§7.3). v0.6's $180 cap was approved at sign-off |
 | Shared contracts | The susceptibility log-probability gap and its frozen answer pairs [[Shared measure spec 2026](#shared-measure-spec-2026)], version v1, frozen 2026-10-06 (construction version 3), sha256 `64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a`: 252 pairs over 21 development, 10 held-out and 37 medical questions; RunPod launches under the shared reservation contract [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)] |
 
 **Key definitions.** **Emergent misalignment (EM)** is the finding that fine-tuning a model on a narrow harmful task, such as bad medical advice, makes it broadly misaligned on unrelated questions [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. **Continued pretraining** is further plain next-token training of a pretrained checkpoint on a stream of documents; here every parameter is trained. A **correction** of a document keeps its topic, characters and facts but no longer endorses the harm it endorsed. A **stance-preserving paraphrase** rewords a document but keeps its stance. The **standard fine-tune** is the low-rank-adapter recipe our earlier experiments used on this checkpoint [[E1b report 2026](#e1b-report-2026)]. **Susceptibility** is measured by **Q₂₀**: after 20 steps of the standard fine-tune on bad or on good medical advice, how much more the bad-advice adapter than the good-advice adapter raises the model's log-probability of misaligned over aligned answers to broad questions (defined exactly in §4.6). **G₀** is the background-only model's Q₂₀, and the **practical threshold τ** is 20% of G₀. A **CPT seed** fixes one continued-pretraining replicate (its background documents, their order, the insertion positions and the rounding noise); an **adapter seed** fixes one fine-tune's initialization and batch order.
@@ -65,10 +65,10 @@ We take the OLMo-3-7B end-of-pretraining checkpoint and continue pretraining eve
 | Part 1, if promising | 2 pods | Paraphrases × 2 CPT seeds | C_S + C_Q |
 | Part 1, extra-seeds branch (underpowered null only; terminal) | 3 pods, two runs each | Background, originals, corrections at the same dose × 2 fresh CPT seeds, Q₂₀ only, pooled with seeds 1–2 | ≈ $16–21 |
 | Part 2, group factorial | 4 pods | Two new cells × 2 CPT seeds | 4C_Q |
-| Part 2, confirmation on new documents | 4 pods, two runs each | 4 arms (3 without a group policy) × 2 fresh seeds, sampled at the first | ≈ $48–57 with its API work |
+| Part 2, confirmation on new documents | 4 pods, two runs each | 4 arms (3 without a group policy) × 2 fresh seeds, sampled at the first | ≈ $52–63 with its API work (Amendment D; v0.6: $48–57) |
 | Part 2, optional gradient screen | 1 pod; engineering ≤ 2 days | A tested screening score, or a recorded failure | ≈ $13–15 |
 
-**C_Q** is the measured cost of one arm at one CPT seed over its whole pod lifecycle with Q₂₀ only; **C_S** adds the sampled-EM fine-tunes and generation at the sampling seed. Estimates: C_Q ≈ $3.3–4.0, C_S ≈ $7.7–8.4 (§7.1; Amendment D).
+**C_Q** is the measured cost of one arm at one CPT seed over its whole pod lifecycle with Q₂₀ only; **C_S** adds the sampled-EM fine-tunes and generation at the sampling seed. Estimates: C_Q ≈ $3.3–4.0, C_S ≈ $7.2–8.3 (§7.1; Amendment D).
 
 ---
 
@@ -560,7 +560,7 @@ The behavioural label (confirmed / consistent / not confirmed / unvalidated) is 
 | Unit | Lifecycle | Hours | Cost |
 |---|---|---|---|
 | **C_Q** (Q₂₀ only) | setup and model download 0.3–0.4 h; continued pretraining 0.4–0.55 h; held-out loss 0.03 h; six 20-step fine-tunes and scoring 0.15 h; pulling records and terminating 0.05 h | 0.95–1.15 | $3.3–4.0 |
-| **C_S** (at the sampling seed) | C_Q, plus two full fine-tunes (≈ 1.0–1.13 h at 30–34 minutes each, measured on our earlier pods: 1,817–2,025 s per 1,287-step run in `results/E1b/train/*.json`, Amendment D; v0.6 assumed 19–22 minutes) and generation for 3 models × ≈ 1,180 answers (≈ 0.1 h) | 2.2–2.4 | $7.7–8.4 |
+| **C_S** (at the sampling seed) | C_Q, plus two full fine-tunes (≈ 1.01–1.12 h at 30–34 minutes each, measured on our earlier pods: 1,817–2,024 s per 1,287-step run in `results/E1b/train/*.json`, Amendment D; v0.6 assumed 19–22 minutes) and generation for 3 models × ≈ 1,180 answers (≈ 0.1 h) | 2.1–2.4 | $7.2–8.3 |
 | A second run on a pod already set up | C_Q or C_S minus setup | −0.35 | −$1.2 |
 
 These are estimates, not measurements. The continued-pretraining time comes from a FLOP count: 6 × 7.3B FLOPs per token, ×4/3 for activation checkpointing ≈ 5.8 × 10¹⁰ FLOPs per token, at an assumed 300–400 TFLOP/s effective, ≈ 5,200–6,900 tokens/s. The claims that full-parameter training fits in 80 GB, and that an A100 is ≈ 3× slower, are also estimates until the smoke pod measures them. **No model is retained:** each pod runs its arm's whole lifecycle, then terminates.
@@ -572,16 +572,16 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | Phase | Slot A | Slot B | Slot C | Slot D | Billed GPU-hours |
 |---|---|---|---|---|---|
 | Smoke | smoke run | — | — | — | 1.5–2.5 |
-| Cost and noise | background s1 (S) | background s2 (Q) | — | — | 3.1–3.55 |
-| Correction pilot | originals s1 (S) | originals s2 (Q) | corrections s1 (S) | corrections s2 (Q) | 6.3–7.1 |
-| If promising | paraphrases s1 (S) | paraphrases s2 (Q) | — | — | 3.1–3.55 |
+| Cost and noise | background s1 (S) | background s2 (Q) | — | — | 3.0–3.5 |
+| Correction pilot | originals s1 (S) | originals s2 (Q) | corrections s1 (S) | corrections s2 (Q) | 6.0–7.0 |
+| If promising | paraphrases s1 (S) | paraphrases s2 (Q) | — | — | 3.0–3.5 |
 | Extra-seeds branch (underpowered null only) | background s3 → s4 | originals s3 → s4 | corrections s3 → s4 | — | 4.7–5.9 |
 | Group factorial | RO s1 | RO s2 | OR s1 | OR s2 | 3.8–4.6 |
-| Confirmation, first run per pod | arm 1 s5 (S) | arm 2 s5 (S) | arm 3 s5 (S) | background s5 (S) | 8.7–9.6 |
+| Confirmation, first run per pod | arm 1 s5 (S) | arm 2 s5 (S) | arm 3 s5 (S) | background s5 (S) | 8.2–9.5 |
 | Confirmation, second run on the same pods | arm 1 s6 | arm 2 s6 | arm 3 s6 | background s6 | 2.4–3.2 |
 | Optional gradient screen | one free slot, only after the confirmation is reserved | | | | ≈ 3.8 |
 
-**Mandatory GPU on the promising path:** 28.9–34.1 h ≈ $101–119 (Amendment D; v0.6: 25.9–30.9 h ≈ $90–108). Without a group policy, the confirmation is 3 arms and costs ≈ 2.8 h less.
+**Mandatory GPU on the promising path:** 28.0–33.9 h ≈ $98–118 (Amendment D; v0.6: 25.9–30.9 h ≈ $90–108). Without a group policy, the confirmation is 3 arms and costs ≈ 2.7–3.2 h less.
 
 ### 7.3 Caps, reservations and cuts
 
@@ -605,7 +605,7 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
   **Never cut** CPT replication, a confirmation arm, or the paired adapter seeds. If a projection still exceeds a limit after the cuts, stop at the current gate and report.
 - **Projections include contingencies and review overhead.** At every gate, the remaining mandatory cost R_m is projected with every contingency that has fired, priced by the actual pool size, plus ≈ $2 per remaining review barrier (pods setting up while an analysis review runs, §8.6). A relaunch after a barrier timeout adds ≈ $5 (four setups) and is added when it happens. **Safe early stop:** if recorded + reserved + R_m exceeds the total, a stage limit or the API limit, the run stops at that gate, with every completed readout reported.
 
-**Contingency combinations** (on the promising path; mandatory base ≈ $150–180 after Amendment D, plus ≈ $8 of expected barrier overhead):
+**Contingency combinations** (on the promising path; mandatory base ≈ $142–179 after Amendment D, plus ≈ $8 of expected barrier overhead):
 
 | Contingencies fired | Extra cost | Outcome |
 |---|---|---|
@@ -631,12 +631,12 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | **API, setup** | | **≈ $24–25** |
 | API contingencies (only if triggered) | Content-judge fallback panel ≈ $17 per 20,000 documents (GLM ≈ $5 + gemini ≈ $12), so ≈ $51 on P1; main-stratum fallback panel (gemini + qwen) ≈ $11; Qwen outputs under triple pass or the fallback-stratum panel ≈ $0.16 per 100 | see §7.3's contingency table |
 | GPU: smoke | 1.5–2.5 h | $5–9 |
-| GPU: cost and noise, correction pilot | 8.25–9.45 h | $29–33 |
+| GPU: cost and noise, correction pilot | 9.0–10.6 h (Amendment D; v0.6: 8.25–9.45 h, $29–33) | $32–37 |
 | Sampled-EM judging and the judge check | ≈ 3,540 answers per sampled arm × 4 calls ≈ 14,000 calls ≈ $0.8 per arm; 3 arms + the matched-step samples + the check | ≈ $2.6 |
-| **Stopping path before the paraphrase arm** (not promising) | Amendment D adds ≈ $1.3–1.4 for each of the 3 sampled arms | **≈ $64–74** (≈ $66–76 with one review barrier) |
-| GPU: paraphrase arm | 3.1–3.55 h | $11–12.5 |
+| **Stopping path before the paraphrase arm** (not promising) | Amendment D adds ≈ $1.0–1.4 for each of the 3 sampled arms | **≈ $63–73** (≈ $65–75 with one review barrier) |
+| GPU: paraphrase arm | 3.0–3.5 h | $10.5–12.3 |
 | Judging for the paraphrase arm | | ≈ $0.8 |
-| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $76–87** (≈ $80–91 with two review barriers, within the $100 stage limit) |
+| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $75–86** (≈ $79–90 with two review barriers, within the $100 stage limit) |
 | **Extra-seeds branch** (underpowered null only; terminal) | §4.11 | **≈ $16–21** |
 
 **Part 2**
@@ -646,12 +646,12 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | GPU: group factorial | 3.8–4.6 h | $13–16 |
 | P2 scoring and classification | 68,000 × ≈ 1,300 tokens live ≈ $11.6, plus the classifier on P2b and, with a group policy, on P2a in content order until arm 1 fills (≈ 8,000–18,000 documents) | ≈ $13–14 |
 | Confirmation rewriting and checks | ≈ $0.00125 per document; ≈ 8,600 documents with a group policy, ≈ 11,500 without (each arm's ≈ 2,500 or ≈ 5,000 documents, + 15% failures) | ≈ $11–15 |
-| GPU: confirmation | 9.6–11.2 h (7.2–8.8 h without a group policy) | $34–39 ($25–31) |
+| GPU: confirmation | 10.6–12.7 h (8.0–9.5 h without a group policy; Amendment D) | $37–44 ($28–33) |
 | Sampled-EM judging and the judge check | 4 sampled arms (3 without a group policy) | ≈ $3.4 ($2.6) |
-| **Mandatory Part 2** | (≈ $72–82 without a group policy) | **≈ $79–93** (≈ $83–97 with two review barriers, within the $105 stage limit) |
+| **Mandatory Part 2** | (≈ $68–81 without a group policy) | **≈ $78–93** (≈ $82–97 with two review barriers, within the $105 stage limit) |
 | Optional gradient screen | ≈ 3.8 h GPU + ≈ $0.5 API | ≈ $13–15 |
 
-**Totals** (Amendment D: the measured 30–34-minute full fine-tunes add ≈ $1.3–1.4 to each of the 8 sampled runs; the figures below are v0.6's, before that). On the promising path, mandatory work costs ≈ $139–169 (≈ $150–180 after Amendment D) before review-barrier overhead and ≈ $147–177 (≈ $158–188) after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $160–192 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
+**Totals, current (Amendment D).** On the promising path, mandatory work costs ≈ $152–179 with a group policy (8 sampled runs) and ≈ $142–167 without one (7), so ≈ $142–179 before review-barrier overhead and ≈ $150–187 after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $163–202 after overhead, so at the top of the range the screen does not fit, and it is cut first. **History.** v0.6 estimated ≈ $139–169 (≈ $147–177 after overhead; ≈ $160–192 with the screen), with full fine-tunes priced at 19–22 minutes. v0.3 estimated $114–135; Amendment A added ≈ $24–32 of API work (scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents) and left the GPU cost per arm unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm.
 
 ### 7.5 Timeline and Jacob's time
 
@@ -941,6 +941,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 |---|---|---|
 | 2026-10-06 | Design at proposal level: a gpt-6-astra design consultation, then 3 proposal review rounds [[Design consultation 2026](#design-consultation-2026); [Proposal reviews 2026](#proposal-reviews-2026)] | Round 1 REVISE (4 blocking: incomplete totals, non-operational gates, measurement vs differentiation of the query, an unspecified confirmation policy); round 2 REVISE (2 blocking: the confirmation undercounted, an unidentifiable compression claim); round 3 **APPROVE**. This preregistration makes that design executable, with the departures of §9.2 |
 | 2026-10-06 | gpt-6-astra, preregistration round 1 (`logs/reviews/20261006-E9-prereg-r1.md`, on v0.1) | **REVISE**: 13 blocking, 5 minor. All addressed in v0.2 (below), with the coordinator's decisions per finding and Jacob's standing preference for no mid-run touchpoints |
+| 2026-10-06 | Amendment D (v0.7, §11, after sign-off): cap $200, stage limits $100 / $25 / $105, GPU limit $145, C_S re-priced from the measured 30–34-minute fine-tunes | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendD-r1.md`): **REVISE** (1 blocking, 4 minor, 1 nit: stale itemized rows, the two Part 2 paths, rounding, mixed historical totals, an out-of-scope instruction, the measured maximum). All fixed and not re-reviewed |
 | 2026-10-06 | Amendment C (v0.6, §11): three close prior works added to §2 (Model Spec Midtraining, *Teaching Claude Why*, Synthetic Persona Pretraining), the gap restated, and the effect priors lowered from 0.25 to 0.2 | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendC-r1.md`): **REVISE**; every spot-checked number matched its source. 1 blocking (the gap overclaimed: Synthetic Persona Pretraining does select existing documents by content; now stated as the combination of correction and an EM outcome), 5 minor (Model Spec Midtraining's fine-tune and agentic-result context; "never varies the dose"; Synthetic Persona Pretraining's token type and measurement stage; the prior labelled as subjective, with both sides; *Teaching Claude Why*'s scope) and 1 nit (version), all fixed after the round and not re-reviewed |
 | 2026-10-06 | Amendment B (v0.5, §11): GLM replaces DeepSeek; re-priced; answer-pair cost removed (built by the early-pretraining-window experiment) | Three gpt-6-astra rounds (`logs/reviews/20261006-E9-prereg-amendB-r1.md`, `-r2.md`, `-r3.md`), each **REVISE**. Round 1 (1 blocking, 1 minor, 1 nit): the Qwen fallback's rewrites were outside the checker's validation (the first fix removed the fallback; Jacob then chose to restore it with its own validation stratum); the DeepSeek narrative keeps E3's qualifications; the rule changes are listed. Round 2 (2 blocking, 2 minor, 1 nit): fixed by a writer-routed, ordered policy table and a fixed regeneration sequence. Round 3, the cap (2 blocking, 2 minor, 1 nit): the sampling endpoint is defined and the table evaluated once there; §6 and §8.4 stop only on main-stratum rule (1); sampling without replacement with quota filling; the regeneration sentence and this record corrected. Round 3's fixes are not re-reviewed |
 | 2026-10-06 | Amendment A (v0.4, §11): the dose, the extra-seeds branch, the cap, the judge-only selection and the Dolma audit's corrections | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): **REVISE**, 2 blocking and 7 minor findings and 1 nit, all fixed after the round and not re-reviewed: (1, blocking) the stream is built as two exact halves, so "once in each half" holds in every arm; (2, blocking) the extra-seeds readout keeps the seed-1 coherence tolerance; (3) the capacity ceiling is called imposed, and the confirmation's filler budget subtracts separators; (4) the extra-seeds branch launches only if it can change the outcome, with an "underpowered at four seeds" label; (5) cost totals and stopping paths labelled consistently, overhead allocated by stage, the checker-fallback cost corrected; (6) the shard policy separates observed overlap from policy, with the filtered manifest frozen and hashed; (7) the steering-vector stability now cites the same configuration, and the embedding argument is labelled a rationale; (8) the selection-depth comparison corrected; (9) the balance cites a saved record; (10) "one pass, no repeats" corrected |
@@ -1066,26 +1067,26 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 
 **The decision (Jacob, 2026-10-06, while approving the implementation plan).** The hard cap rises from $180 to **$200**.
 
-**Why.** v0.6 priced each full 1,287-step fine-tune at 19–22 minutes. Our earlier experiment's records measure 1,817–2,025 s (30–34 minutes, checkpoint hooks included) for every 1,287-step run (`results/E1b/train/*.json`, field `wallclock_s`; 8 runs). Two such runs per sampled arm add ≈ 0.38–0.40 GPU-hours, ≈ $1.3–1.4 at $3.49/h, to each C_S run. The promising path has 8 C_S runs (4 in Part 1, 4 in the confirmation), so mandatory cost rises by ≈ $10–11, to ≈ $150–180 (≈ $158–188 with expected review-barrier overhead). Its top end would exceed $180, and Part 1's top end with two barriers ($91) would exceed its $90 stage limit. The program budget (CLAUDE.md, $2,100 for October) has room.
+**Why.** v0.6 priced each full 1,287-step fine-tune at 19–22 minutes (0.72 h for two). Our earlier experiment's records measure 1,817.2–2,024.0 s (30.3–33.7 minutes, checkpoint hooks included) for every one of its 8 1,287-step runs (`results/E1b/train/*-R2-s2.json`, field `wallclock_s`). Two such runs take 1.01–1.12 h, which adds ≈ 0.29–0.40 GPU-hours, ≈ $1.0–1.4 at $3.49/h, to each C_S run. The promising path has 8 C_S runs with a group policy (4 in Part 1, 4 in the confirmation) and 7 without one, so mandatory cost becomes ≈ $142–179 (≈ $150–187 with expected review-barrier overhead). Its top end would nearly reach $180, and Part 1's top end with two barriers (≈ $90) would reach its $90 stage limit. The program budget (CLAUDE.md, $2,100 for October) has room.
 
 **What changed:**
 
 | Item | v0.6 | v0.7 (Amendment D) |
 |---|---|---|
-| C_S (§7.1) | 1.8–2.0 h, $6.3–7.0 | 2.2–2.4 h, $7.7–8.4 |
+| C_S (§7.1) | 1.8–2.0 h, $6.3–7.0 | 2.1–2.4 h, $7.2–8.3 (computed from C_Q = 0.95–1.15 h, the measured fine-tunes and 0.1 h of generation; all totals use these unrounded values) |
 | Hard cap (§7.3) | $180 | **$200** |
 | Stage limits: setup and Part 1 / extra-seeds / Part 2 | $90 / $25 / $95 | **$100** / $25 / **$105** |
 | GPU limit; backstop at sign-off | $130; min($130, $180 − $62) = $118 | **$145**; min($145, $200 − $62) = **$138** |
 | API limit; API reserve at sign-off | $75; $62 | Unchanged |
-| Part 1, stopping / promising path (with barriers) | $62–72 / $75–85 | $66–76 / $80–91 |
-| Part 2 mandatory (with barriers) | $78–91 | $83–97 |
-| Mandatory, promising path (with barriers) | $147–177 | $158–188 |
-| With the optional screen | $160–192 | $171–203: at the top of the range the screen does not fit, and it is cut first, as before |
+| Part 1, stopping / promising path (with barriers) | $62–72 / $75–85 | $65–75 / $79–90 |
+| Part 2 mandatory (with barriers) | $78–91 | $82–97 (group policy); $72–85 without one |
+| Mandatory, promising path (with barriers) | $147–177 | $150–187 ($160–187 with a group policy, $150–175 without) |
+| With the optional screen | $160–192 | $163–202: at the top of the range the screen does not fit, and it is cut first, as before |
 | RunPod check (shared contract) | E9 $130 + E3 $35 + $10 buffer = $175 | E9 $145 + E3 $35 + $10 = $190, under the $224.18 balance of 2026-10-06 |
 
-**Unchanged:** every question, arm, measure, decision rule, threshold, prompt and branch; the extra-seeds branch (Q₂₀ only, so no C_S runs); the order of cuts. C_Q and C_S are still re-measured at the cost-and-noise step, and the projections use the measured values from then on. The smoke pod times one full fine-tune and tests running the bad and good fine-tunes concurrently on one GPU; if that works, the measured C_S will come in lower, and nothing else changes.
+**Unchanged:** every question, arm, measure, decision rule, threshold, prompt and branch; the extra-seeds branch (Q₂₀ only, so no C_S runs); the order of cuts. C_Q and C_S are still re-measured at the cost-and-noise step, and the projections use the measured values from then on.
 
-**Review:** one gpt-6-astra round, within the implementation plan's review (`logs/reviews/20261006-E9-prereg-amendD-r1.md`).
+**Review:** one gpt-6-astra round, within the implementation plan's review (`logs/reviews/20261006-E9-prereg-amendD-r1.md`): **REVISE**, 1 blocking, 4 minor, 1 nit, all fixed afterwards and not re-reviewed: (1, blocking) the itemized GPU rows of §7.4 and §3's confirmation cost re-priced; (2) the two Part 2 paths (8 or 7 sampled runs) priced separately; (3) every figure computed from the unrounded unit costs; (4) current totals separated from the historical ones in §7.4; (5) the smoke-pod timing instruction removed from this amendment (it belongs to the implementation plan); (6) the measured maximum is 2,024 s.
 
 ---
 

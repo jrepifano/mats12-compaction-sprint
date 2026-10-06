@@ -28,6 +28,20 @@ collected here so every script shares one client. Changes from the source:
   logs to logs/pods_E1b.jsonl, and kills at min($56, $75 - judges). Its two concurrent pods
   (_A Part 1, _B Part 3) share that line in `killswitch_deadline`; like I1a it needs a live
   watchdog heartbeat (scripts/e1b_watchdog.sh); it has no approval-gated ceiling.
+- 2026-10-06 (E3 implementation plan v2 fix 5, v3 fixes 4-5, v4 fix 3; shared contract
+  docs/experiments/shared/runpod-reservations.md): `gpu_kill_limit()` with no argument delegates
+  to `emx.spend.watchdog_kill_usd(EXP)` (recorded API spend plus open API reservations), and
+  `killswitch_deadline` uses the lower of that and the legacy figure, so the global backstop
+  counts open API reservations. `--killswitch-deadline --per-slot` also prints
+  `EMX_KILLSWITCH_DEADLINE_<slot>=<epoch>` per running pod: `emx.runpod_reservations.rearm_target`
+  (min of the pod's reservation deadline, its acknowledged deadline and the global deadline; never
+  later than what is armed). GPU charging is idempotent and recoverable: the charge's note
+  carries `pod=<id>`, and `finish_session` records a missing charge for a session already marked
+  terminated (a crash between the two) but never a second one.
+- 2026-10-06 (E3 code review A r1 finding 10): the charge is also concurrency-idempotent: the
+  ledger check and append are one critical section (`emx.spend.record_once`, key
+  `gpu_charge_key(pod_id)`), and `pod_sessions` ends a session at its FIRST `terminated` event,
+  so two concurrent cleanups compute the same session and record one charge.
 """
 
 from __future__ import annotations
@@ -341,7 +355,9 @@ def pod_sessions(events: list[dict], now: datetime | None = None) -> list[dict]:
             }
         elif e["event"] == "rate" and pid in pods and e.get("rate_usd_h"):
             pods[pid]["rate"], pods[pid]["rate_source"] = float(e["rate_usd_h"]), "api"
-        elif e["event"] == "terminated" and pid in pods:
+        elif e["event"] == "terminated" and pid in pods and pods[pid]["running"]:
+            # the FIRST termination ends billing: a second `terminated` event (two concurrent
+            # cleanups) must not move t1, so every process computes the same charge
             pods[pid]["running"], pods[pid]["t1"] = False, e["utc"]
     out = []
     for p in pods.values():
@@ -356,20 +372,43 @@ def running_projection(sessions: list[dict], reserve_hours: float = 0.0) -> floa
     return sum(s["usd"] + reserve_hours * s["rate"] for s in sessions if s["running"])
 
 
-def gpu_kill_limit(judge_spent: float) -> float:
-    """The watchdog's GPU limit: min(GPU limit, hard cap - reserve - judge spend so far).
+def gpu_kill_limit(judge_spent: float | None = None) -> float:
+    """The watchdog's GPU limit: min(GPU limit, hard cap - reserve - judge/API dollars).
 
-    E1: min($53, $65 - judges) (E1 implementation-plan §5); I1a: min($40, $83 - judges);
-    E1b: min($56, $75 - judges) (the same formula as `emx.spend.watchdog_kill_usd`)."""
+    With no argument it delegates to `emx.spend.watchdog_kill_usd(EXP)`, the one formula, which
+    counts recorded API dollars plus open API reservations (E3 prereg §8.6). An explicit
+    `judge_spent` (legacy callers: `watchdog_decision`, pod_budget_check.py) is the caps
+    arithmetic for that figure alone, without reading the ledger. E1: min($53, $65 - judges)
+    (E1 implementation-plan §5); I1a: min($40, $83 - judges); E1b: min($56, $75 - judges)."""
+    if judge_spent is None:
+        return float(_spend().watchdog_kill_usd(EXP))
     c = caps()
     return min(c.gpu_limit_usd, c.hard_cap_usd - c.reserve_usd - judge_spent)
+
+
+def current_kill_limit() -> float:
+    """The kill line now: `gpu_kill_limit` at the recorded judge spend, lowered to
+    `emx.spend.watchdog_kill_usd(EXP)` (which also counts open API reservations) when the spend
+    module provides it (test fakes may not)."""
+    limit = gpu_kill_limit(ledger_spent("judge"))
+    kill_usd = getattr(_spend(), "watchdog_kill_usd", None)
+    if kill_usd is not None:
+        limit = min(limit, float(kill_usd(EXP)))
+    return limit
 
 
 def watchdog_decision(
     gpu_spent: float, judge_spent: float, running_usd: float
 ) -> tuple[bool, float, float]:
-    """(kill, projected GPU $, limit). Kill when logged + running GPU $ reaches the limit."""
+    """(kill, projected GPU $, limit). Kill when logged + running GPU $ reaches the limit.
+
+    The limit is lowered to `emx.spend.watchdog_kill_usd(EXP)` when the spend module provides it,
+    so the laptop watchdog (scripts/pod_budget_check.py) also counts open API reservations, as the
+    pod killswitch does through `current_kill_limit` (E3 plan v2 fix 4)."""
     limit = gpu_kill_limit(judge_spent)
+    kill_usd = getattr(_spend(), "watchdog_kill_usd", None)
+    if kill_usd is not None:
+        limit = min(limit, float(kill_usd(EXP)))
     projected = gpu_spent + running_usd
     return projected >= limit, round(projected, 4), round(limit, 4)
 
@@ -394,16 +433,59 @@ def ledger_check(projected_usd: float, running_pod_usd: float) -> None:
     _spend().check_total(projected_usd, "gpu", running_pod_usd=running_pod_usd, **kw)
 
 
-def ledger_record_gpu(session: dict, note: str) -> None:
-    """One `kind=gpu` record per finished pod session: creation-to-termination x rate."""
-    _spend().record(
-        exp=EXP,
-        kind="gpu",
-        resource=f"runpod:{session['gpu']}:{session['pod_id']}",
-        units=session["hours"],
-        usd=round(session["usd"], 4),
-        note=f"{note}; rate {session['rate']}/h ({session['rate_source']})",
+def gpu_charge_key(pod_id: str) -> str:
+    """The ledger `charge_key` of a pod's one GPU charge (`emx.spend.record_once`)."""
+    return f"gpu:{EXP}:{pod_id}"
+
+
+def _is_gpu_charge(e: dict, pod_id: str) -> bool:
+    """A ledger row of this experiment that charges `pod_id`'s GPU time: its `charge_key`, a note
+    carrying `pod=<id>`, or a resource ending in `:<id>` (rows written before 2026-10-06)."""
+    if e.get("charge_key") == gpu_charge_key(pod_id):
+        return True
+    if e.get("exp") != EXP or e.get("kind") != "gpu":
+        return False
+    pat = re.compile(rf"(?:^|[;\s])pod={re.escape(pod_id)}(?:$|[;\s])")
+    return (
+        bool(pat.search(str(e.get("note", ""))))
+        or str(e.get("resource", "")).split(":")[-1] == pod_id
     )
+
+
+def ledger_record_gpu(session: dict, note: str) -> bool:
+    """One `kind=gpu` record per finished pod session: creation-to-termination x rate. The note
+    carries `pod=<id>` so `gpu_charged` can find it (idempotent charging). With a real
+    `emx.spend` the existence check and the append are one critical section under the ledger's
+    lock (`record_once`), so two processes settling one pod charge it once (E3 code review A r1
+    finding 10). Returns whether a row was appended."""
+    pid = session["pod_id"]
+    kw = {
+        "exp": EXP,
+        "kind": "gpu",
+        "resource": f"runpod:{session['gpu']}:{pid}",
+        "units": session["hours"],
+        "usd": round(session["usd"], 4),
+        "note": f"{note}; pod={pid}; rate {session['rate']}/h ({session['rate_source']})",
+    }
+    once = getattr(_spend(), "record_once", None)
+    if once is None:  # a test fake without the locked helper
+        _spend().record(**kw)
+        return True
+    _, appended = once(gpu_charge_key(pid), also_matches=lambda e: _is_gpu_charge(e, pid), **kw)
+    return appended
+
+
+def gpu_charged(pod_id: str, events: list[dict] | None = None) -> bool:
+    """Has this pod's GPU charge been recorded? True if the pod event log has a `charged` event
+    for it, or this experiment's ledger has a `kind=gpu` row whose note carries `pod=<id>` or
+    whose resource ends in `:<id>` (rows written before 2026-10-06)."""
+    events = read_pod_events() if events is None else events
+    if any(e.get("event") == "charged" and e.get("pod_id") == pod_id for e in events):
+        return True
+    read = getattr(_spend(), "read_entries", None)
+    if read is None:  # a test fake without a readable ledger: the event log decides
+        return False
+    return any(_is_gpu_charge(e, pod_id) for e in read())
 
 
 # --- .env reading (python-dotenv; values never printed) ----------------------------------------
@@ -418,17 +500,25 @@ def env(key: str, default: str = "", env_path: Path | None = None) -> str:
 def finish_session(pod_id: str, note: str, events_path: Path | None = None) -> dict | None:
     """Log the `terminated` event and the pod's GPU dollars. Returns the closed session.
 
-    A pod already closed in the log is not recorded twice (returns its closed session).
+    Idempotent and recoverable: a session already closed in the log whose charge is in the
+    ledger (`gpu_charged`) is returned as is; one closed but never charged (a crash between the
+    two appends) gets its charge now. The charge is followed by a `charged` event.
     """
-    for s in pod_sessions(read_pod_events(events_path)):
-        if s["pod_id"] == pod_id and not s["running"]:
-            return s
-    log_pod_event({"event": "terminated", "pod_id": pod_id, "reason": note}, events_path)
-    for s in pod_sessions(read_pod_events(events_path)):
-        if s["pod_id"] == pod_id:
-            ledger_record_gpu(s, note)
-            return s
-    return None
+    events = read_pod_events(events_path)
+    closed = next(
+        (s for s in pod_sessions(events) if s["pod_id"] == pod_id and not s["running"]), None
+    )
+    if closed is None:
+        log_pod_event({"event": "terminated", "pod_id": pod_id, "reason": note}, events_path)
+        events = read_pod_events(events_path)
+        closed = next((s for s in pod_sessions(events) if s["pod_id"] == pod_id), None)
+        if closed is None:
+            return None
+    elif gpu_charged(pod_id, events):
+        return closed
+    if not gpu_charged(pod_id, events) and ledger_record_gpu(closed, note):
+        log_pod_event({"event": "charged", "pod_id": pod_id, "usd": closed["usd"]}, events_path)
+    return closed
 
 
 # --- reconciliation against the API (review U1 r1: pod creation is not idempotent) ------------
@@ -478,6 +568,17 @@ def untracked_pods(
     ]
 
 
+def _pending_creation(name: str) -> dict | None:
+    """emx.runpod_reservations' live `creating` row for this pod name (None if none or the
+    reservations file is unreadable)."""
+    try:
+        from emx import runpod_reservations as rr
+
+        return rr.pending_creation(name, EXP)
+    except Exception:  # noqa: BLE001 - the reaper must never fail on bookkeeping
+        return None
+
+
 def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRACE_S) -> list:
     """Terminate every untracked pod of this experiment. Each first gets a `created` event (rate
     from the API, else the conservative estimate; billed from when we saw it, so it undercounts
@@ -489,18 +590,21 @@ def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRAC
     done = []
     for p in pods:
         api_rate = p.get("costPerHr")
-        log_pod_event(
-            {
-                "event": "created",
-                "pod_id": p["id"],
-                "slot": "",
-                "gpu": str(p.get("gpuTypeId") or "?"),
-                "rate_usd_h": float(api_rate or FALLBACK_RATE),
-                "rate_source": "api" if api_rate else "estimate",
-                "untracked": True,
-                "name": p.get("name"),
-            }
-        )
+        ev = {
+            "event": "created",
+            "pod_id": p["id"],
+            "slot": "",
+            "gpu": str(p.get("gpuTypeId") or "?"),
+            "rate_usd_h": float(api_rate or FALLBACK_RATE),
+            "rate_source": "api" if api_rate else "estimate",
+            "untracked": True,
+            "name": p.get("name"),
+        }
+        c = _pending_creation(str(p.get("name") or ""))
+        if c is not None:  # pod_up died after sending the create: bill from its t0
+            ev["utc"] = datetime.fromtimestamp(float(c["t0_epoch"]), UTC).isoformat()
+            ev["reservation_id"] = c["reservation_id"]
+        log_pod_event(ev)
         try:
             client.terminate_pod(p["id"])
         except RunPodError as e:
@@ -568,13 +672,33 @@ def killswitch_deadline(
     running = [s for s in sessions if s["running"]]
     if not any(s["pod_id"] == pod_id for s in running):
         raise ValueError(f"pod {pod_id} is not a running pod in {POD_EVENTS.name}")
-    limit = gpu_kill_limit(ledger_spent("judge"))
+    limit = current_kill_limit()
     ceiling = gpu_ceiling()
     if ceiling is not None:
         limit = min(limit, ceiling)
     remaining = max(0.0, limit - ledger_spent("gpu") - sum(s["usd"] for s in running))
     burn = sum(s["rate"] for s in running)
     return int(now.timestamp() + remaining / burn * 3600)
+
+
+def per_slot_deadlines(
+    events: list[dict] | None = None, now: datetime | None = None
+) -> dict[str, int]:
+    """{slot: epoch} for every running pod of EXP with a valid slot: the pod's
+    `emx.runpod_reservations.rearm_target` (min of its reservation deadline, its acknowledged
+    deadline and the global `killswitch_deadline`), or the global deadline when no reservation
+    launched it. Never later than the deadline armed now (E3 plan v4 fix 3)."""
+    from emx import runpod_reservations as rr
+
+    events = read_pod_events() if events is None else events
+    out: dict[str, int] = {}
+    for s in pod_sessions(events, now):
+        if not s["running"] or not SLOT_RE.fullmatch(s["slot"] or ""):
+            continue
+        g = killswitch_deadline(s["pod_id"], events, now)
+        d = rr.rearm_target(s["pod_id"], g)
+        out[s["slot"]] = min(d, out.get(s["slot"], d))
+    return out
 
 
 def heartbeat_path(exp: str | None = None) -> Path:
@@ -622,7 +746,15 @@ def main(argv: list[str] | None = None) -> int:
         help="on success print EMX_KILLSWITCH_DEADLINE=<epoch> (see killswitch_deadline) and "
         "EMX_KILLSWITCH_SLOTS=<the running pods' slots, space-separated>",
     )
+    ap.add_argument(
+        "--per-slot",
+        action="store_true",
+        help="with --killswitch-deadline, also print EMX_KILLSWITCH_DEADLINE_<slot>=<epoch> for "
+        "every running pod of --exp (see per_slot_deadlines)",
+    )
     args = ap.parse_args(argv)
+    if args.per_slot and not args.killswitch_deadline:
+        ap.error("--per-slot needs --killswitch-deadline")
     configure(args.exp)
     slot = check_slot(args.check_slot)
     pod_id = env(f"RUNPOD_POD_ID{slot}")
@@ -640,6 +772,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"EMX_KILLSWITCH_DEADLINE={killswitch_deadline(pod_id)}")
         slots = sorted({s["slot"] for s in pod_sessions(read_pod_events()) if s["running"]})
         print(f"EMX_KILLSWITCH_SLOTS={' '.join(x for x in slots if SLOT_RE.fullmatch(x))}")
+        if args.per_slot:
+            for s_, d in per_slot_deadlines().items():
+                print(f"EMX_KILLSWITCH_DEADLINE{s_}={d}")
     return 0 if ok else 1
 
 
