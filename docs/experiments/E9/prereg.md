@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
+| Version | v0.7: v0.6 plus **Amendment D** (§11, 2026-10-06, after sign-off): the cap rises to $200 because the measured full fine-tunes take 30–34 minutes, not 19–22. v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
 | Status | **Signed off by Jacob, 2026-10-06** (v0.6), with every §9.3 recommendation: the $180 cap and its stage limits, no RunPod top-up, no speculative paraphrase arm, the interpretation and execution departures accepted, the extra-seeds branch pre-authorized, and the dose confirmed (≈ 4M tokens, each seen twice). The fixes made after each final review round were accepted without re-review. Next: the implementation plan |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
-| Budget | Mandatory ≈ $139–169 (≈ $147–177 with expected review-barrier overhead): Part 1 ≈ $71–81 if promising (≈ $60–70 if it stops early), Part 2 ≈ $68–87. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Proposed hard cap $180**, with stage limits (setup and Part 1 $90; extra-seeds branch $25; Part 2 $95) and the total binding (§7.3). This is above the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3) |
+| Budget | **Amendment D:** mandatory ≈ $150–180 (≈ $158–188 with expected review-barrier overhead): Part 1 ≈ $76–87 if promising (≈ $64–74 if it stops early), Part 2 ≈ $72–93. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Hard cap $200** (Jacob, 2026-10-06), with stage limits (setup and Part 1 $100; extra-seeds branch $25; Part 2 $105), the total binding, and a GPU limit of $145 (§7.3). v0.6's $180 cap was approved at sign-off |
 | Shared contracts | The susceptibility log-probability gap and its frozen answer pairs [[Shared measure spec 2026](#shared-measure-spec-2026)], version v1, frozen 2026-10-06 (construction version 3), sha256 `64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a`: 252 pairs over 21 development, 10 held-out and 37 medical questions; RunPod launches under the shared reservation contract [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)] |
 
 **Key definitions.** **Emergent misalignment (EM)** is the finding that fine-tuning a model on a narrow harmful task, such as bad medical advice, makes it broadly misaligned on unrelated questions [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. **Continued pretraining** is further plain next-token training of a pretrained checkpoint on a stream of documents; here every parameter is trained. A **correction** of a document keeps its topic, characters and facts but no longer endorses the harm it endorsed. A **stance-preserving paraphrase** rewords a document but keeps its stance. The **standard fine-tune** is the low-rank-adapter recipe our earlier experiments used on this checkpoint [[E1b report 2026](#e1b-report-2026)]. **Susceptibility** is measured by **Q₂₀**: after 20 steps of the standard fine-tune on bad or on good medical advice, how much more the bad-advice adapter than the good-advice adapter raises the model's log-probability of misaligned over aligned answers to broad questions (defined exactly in §4.6). **G₀** is the background-only model's Q₂₀, and the **practical threshold τ** is 20% of G₀. A **CPT seed** fixes one continued-pretraining replicate (its background documents, their order, the insertion positions and the rounding noise); an **adapter seed** fixes one fine-tune's initialization and batch order.
@@ -68,7 +68,7 @@ We take the OLMo-3-7B end-of-pretraining checkpoint and continue pretraining eve
 | Part 2, confirmation on new documents | 4 pods, two runs each | 4 arms (3 without a group policy) × 2 fresh seeds, sampled at the first | ≈ $48–57 with its API work |
 | Part 2, optional gradient screen | 1 pod; engineering ≤ 2 days | A tested screening score, or a recorded failure | ≈ $13–15 |
 
-**C_Q** is the measured cost of one arm at one CPT seed over its whole pod lifecycle with Q₂₀ only; **C_S** adds the sampled-EM fine-tunes and generation at the sampling seed. Estimates: C_Q ≈ $3.3–4.0, C_S ≈ $6.3–7.0 (§7.1).
+**C_Q** is the measured cost of one arm at one CPT seed over its whole pod lifecycle with Q₂₀ only; **C_S** adds the sampled-EM fine-tunes and generation at the sampling seed. Estimates: C_Q ≈ $3.3–4.0, C_S ≈ $7.7–8.4 (§7.1; Amendment D).
 
 ---
 
@@ -560,7 +560,7 @@ The behavioural label (confirmed / consistent / not confirmed / unvalidated) is 
 | Unit | Lifecycle | Hours | Cost |
 |---|---|---|---|
 | **C_Q** (Q₂₀ only) | setup and model download 0.3–0.4 h; continued pretraining 0.4–0.55 h; held-out loss 0.03 h; six 20-step fine-tunes and scoring 0.15 h; pulling records and terminating 0.05 h | 0.95–1.15 | $3.3–4.0 |
-| **C_S** (at the sampling seed) | C_Q, plus two full fine-tunes (0.72 h at 19–22 minutes each, measured on our earlier pods [[E1b prereg 2026](#e1b-prereg-2026), §7]) and generation for 3 models × ≈ 1,180 answers (≈ 0.1 h) | 1.8–2.0 | $6.3–7.0 |
+| **C_S** (at the sampling seed) | C_Q, plus two full fine-tunes (≈ 1.0–1.13 h at 30–34 minutes each, measured on our earlier pods: 1,817–2,025 s per 1,287-step run in `results/E1b/train/*.json`, Amendment D; v0.6 assumed 19–22 minutes) and generation for 3 models × ≈ 1,180 answers (≈ 0.1 h) | 2.2–2.4 | $7.7–8.4 |
 | A second run on a pod already set up | C_Q or C_S minus setup | −0.35 | −$1.2 |
 
 These are estimates, not measurements. The continued-pretraining time comes from a FLOP count: 6 × 7.3B FLOPs per token, ×4/3 for activation checkpointing ≈ 5.8 × 10¹⁰ FLOPs per token, at an assumed 300–400 TFLOP/s effective, ≈ 5,200–6,900 tokens/s. The claims that full-parameter training fits in 80 GB, and that an A100 is ≈ 3× slower, are also estimates until the smoke pod measures them. **No model is retained:** each pod runs its arm's whole lifecycle, then terminates.
@@ -572,22 +572,22 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | Phase | Slot A | Slot B | Slot C | Slot D | Billed GPU-hours |
 |---|---|---|---|---|---|
 | Smoke | smoke run | — | — | — | 1.5–2.5 |
-| Cost and noise | background s1 (S) | background s2 (Q) | — | — | 2.75–3.15 |
-| Correction pilot | originals s1 (S) | originals s2 (Q) | corrections s1 (S) | corrections s2 (Q) | 5.5–6.3 |
-| If promising | paraphrases s1 (S) | paraphrases s2 (Q) | — | — | 2.75–3.15 |
+| Cost and noise | background s1 (S) | background s2 (Q) | — | — | 3.1–3.55 |
+| Correction pilot | originals s1 (S) | originals s2 (Q) | corrections s1 (S) | corrections s2 (Q) | 6.3–7.1 |
+| If promising | paraphrases s1 (S) | paraphrases s2 (Q) | — | — | 3.1–3.55 |
 | Extra-seeds branch (underpowered null only) | background s3 → s4 | originals s3 → s4 | corrections s3 → s4 | — | 4.7–5.9 |
 | Group factorial | RO s1 | RO s2 | OR s1 | OR s2 | 3.8–4.6 |
-| Confirmation, first run per pod | arm 1 s5 (S) | arm 2 s5 (S) | arm 3 s5 (S) | background s5 (S) | 7.2–8.0 |
+| Confirmation, first run per pod | arm 1 s5 (S) | arm 2 s5 (S) | arm 3 s5 (S) | background s5 (S) | 8.7–9.6 |
 | Confirmation, second run on the same pods | arm 1 s6 | arm 2 s6 | arm 3 s6 | background s6 | 2.4–3.2 |
 | Optional gradient screen | one free slot, only after the confirmation is reserved | | | | ≈ 3.8 |
 
-**Mandatory GPU on the promising path:** 25.9–30.9 h ≈ $90–108. Without a group policy, the confirmation is 3 arms and costs ≈ 2.4 h less.
+**Mandatory GPU on the promising path:** 28.9–34.1 h ≈ $101–119 (Amendment D; v0.6: 25.9–30.9 h ≈ $90–108). Without a group policy, the confirmation is 3 arms and costs ≈ 2.8 h less.
 
 ### 7.3 Caps, reservations and cuts
 
-- **Hard cap $180** for the whole experiment (Amendment A; v0.3 proposed $150), enforced by the combined guard (`emx.spend.check_total`, experiment "E9").
-- **Stage accounting.** Every ledger entry carries a stage tag: setup, part1, extra_seeds, part2_mandatory or part2_screen. `src/emx/e9/contracts.py` sums spend by tag. **Stage limits:** setup and Part 1 together $90; the extra-seeds branch $25 (it runs only on the null path, so it never coexists with Part 2); Part 2 $95 (mandatory work and the screen). Before any launch, the stage's recorded, reserved and projected spend must fit its limit, and the experiment's must fit the total.
-- **GPU limit $130.** The experiment's **backstop** kill line, over all its pods together, is min($130, $180 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $62 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
+- **Hard cap $200** for the whole experiment (Amendment D; $180 at sign-off; v0.3 proposed $150), enforced by the combined guard (`emx.spend.check_total`, experiment "E9").
+- **Stage accounting.** Every ledger entry carries a stage tag: setup, part1, extra_seeds, part2_mandatory or part2_screen. `src/emx/e9/contracts.py` sums spend by tag. **Stage limits** (Amendment D): setup and Part 1 together $100; the extra-seeds branch $25 (it runs only on the null path, so it never coexists with Part 2); Part 2 $105 (mandatory work and the screen). Before any launch, the stage's recorded, reserved and projected spend must fit its limit, and the experiment's must fit the total.
+- **GPU limit $145** (Amendment D; $130 at sign-off). The experiment's **backstop** kill line, over all its pods together, is min($145, $200 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $62 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
 - **Per-pod budgets and armed deadlines** (the shared contract's invariant [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)]). Each launch reserves its pods' projected cost to the next gate. Each pod gets a dollar budget, 1.25 × its planned runs' projected cost (from estimates before the cost-and-noise step, then from measured C_Q and C_S), and the budgets of a launch sum to at most the admitted reservation. A pod's killswitch deadline is its budget divided by its hourly rate. **Extending a deadline** in a way that raises a pod's remaining liability is a new reservation for the increase, made under the shared lock by the launch rule, counting other experiments' and E9's own other open reservations. Shortening a deadline is a release.
 - **API reservation contract** (a small, additive extension of `emx.spend`, required in the implementation plan):
   - an atomic **check-and-reserve** under the ledger's lock before every API batch, for its projected cost;
@@ -605,16 +605,16 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
   **Never cut** CPT replication, a confirmation arm, or the paired adapter seeds. If a projection still exceeds a limit after the cuts, stop at the current gate and report.
 - **Projections include contingencies and review overhead.** At every gate, the remaining mandatory cost R_m is projected with every contingency that has fired, priced by the actual pool size, plus ≈ $2 per remaining review barrier (pods setting up while an analysis review runs, §8.6). A relaunch after a barrier timeout adds ≈ $5 (four setups) and is added when it happens. **Safe early stop:** if recorded + reserved + R_m exceeds the total, a stage limit or the API limit, the run stops at that gate, with every completed readout reported.
 
-**Contingency combinations** (on the promising path; mandatory base ≈ $139–169, plus ≈ $8 of expected barrier overhead):
+**Contingency combinations** (on the promising path; mandatory base ≈ $150–180 after Amendment D, plus ≈ $8 of expected barrier overhead):
 
 | Contingencies fired | Extra cost | Outcome |
 |---|---|---|
-| None, or one barrier relaunch (≈ $5) | ≤ $5 | Completes **only if** every projection stays within both its stage limit and the $180 total; otherwise the screen is not launched, then the automatic projection-stop rule applies at the next gate |
-| The checker's fallback panel on ≈ 10,000 rewrites | ≈ $11 | Completes at low and middle costs. At high-end costs Part 1 passes its $90 limit or the total passes $180 → **safe stop** at the first gate whose projection fails |
+| None, or one barrier relaunch (≈ $5) | ≤ $5 | Completes **only if** every projection stays within both its stage limit and the $200 total; otherwise the screen is not launched, then the automatic projection-stop rule applies at the next gate |
+| The checker's fallback panel on ≈ 10,000 rewrites | ≈ $11 | Completes at low and middle costs. At high-end costs Part 1 passes its $100 limit or the total passes $200 → **safe stop** at the first gate whose projection fails |
 | The content judge's fallback panel on the 60,000-document P1 | ≈ $51 | Exceeds the API limit and the total → **safe stop before the cost-and-noise runs** (only setup and the smoke pod spent) |
 | Extra-seeds branch | ≈ $16–21, no API | Fits its $25 limit (null path only, so no Part 2) |
 | Two or more barrier timeouts with relaunches | ≈ $5 each | Completes only if the remaining mandatory projection still fits the stage limit and the total (the screen, never launched, frees nothing already spent); otherwise safe stop at the next gate |
-- The $180 cap exceeds the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3).
+- The cap exceeds the ~$100 single-experiment threshold: $180 was approved at sign-off (§9.3), and $200 by Jacob on 2026-10-06 (Amendment D).
 
 ### 7.4 Itemized costs
 
@@ -633,10 +633,10 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | GPU: smoke | 1.5–2.5 h | $5–9 |
 | GPU: cost and noise, correction pilot | 8.25–9.45 h | $29–33 |
 | Sampled-EM judging and the judge check | ≈ 3,540 answers per sampled arm × 4 calls ≈ 14,000 calls ≈ $0.8 per arm; 3 arms + the matched-step samples + the check | ≈ $2.6 |
-| **Stopping path before the paraphrase arm** (not promising) | | **≈ $60–70** (≈ $62–72 with one review barrier) |
-| GPU: paraphrase arm | 2.75–3.15 h | $10–11 |
+| **Stopping path before the paraphrase arm** (not promising) | Amendment D adds ≈ $1.3–1.4 for each of the 3 sampled arms | **≈ $64–74** (≈ $66–76 with one review barrier) |
+| GPU: paraphrase arm | 3.1–3.55 h | $11–12.5 |
 | Judging for the paraphrase arm | | ≈ $0.8 |
-| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $71–81** (≈ $75–85 with two review barriers, within the $90 stage limit) |
+| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $76–87** (≈ $80–91 with two review barriers, within the $100 stage limit) |
 | **Extra-seeds branch** (underpowered null only; terminal) | §4.11 | **≈ $16–21** |
 
 **Part 2**
@@ -648,10 +648,10 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | Confirmation rewriting and checks | ≈ $0.00125 per document; ≈ 8,600 documents with a group policy, ≈ 11,500 without (each arm's ≈ 2,500 or ≈ 5,000 documents, + 15% failures) | ≈ $11–15 |
 | GPU: confirmation | 9.6–11.2 h (7.2–8.8 h without a group policy) | $34–39 ($25–31) |
 | Sampled-EM judging and the judge check | 4 sampled arms (3 without a group policy) | ≈ $3.4 ($2.6) |
-| **Mandatory Part 2** | (≈ $68–78 without a group policy) | **≈ $74–87** (≈ $78–91 with two review barriers, within the $95 stage limit) |
+| **Mandatory Part 2** | (≈ $72–82 without a group policy) | **≈ $79–93** (≈ $83–97 with two review barriers, within the $105 stage limit) |
 | Optional gradient screen | ≈ 3.8 h GPU + ≈ $0.5 API | ≈ $13–15 |
 
-**Totals.** On the promising path, mandatory work costs ≈ $139–169 before review-barrier overhead and ≈ $147–177 after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $160–192 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
+**Totals** (Amendment D: the measured 30–34-minute full fine-tunes add ≈ $1.3–1.4 to each of the 8 sampled runs; the figures below are v0.6's, before that). On the promising path, mandatory work costs ≈ $139–169 (≈ $150–180 after Amendment D) before review-barrier overhead and ≈ $147–177 (≈ $158–188) after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $160–192 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
 
 ### 7.5 Timeline and Jacob's time
 
@@ -853,12 +853,12 @@ The execution phase (after Jacob approves the implementation plan) runs as one g
 
 **Paste-ready goal condition:**
 
-> Run the E9 corrective-continued-pretraining experiment exactly as preregistered in `docs/experiments/E9/prereg.md` (signed-off version) and its approved implementation plan. The goal is done when all of the following hold: (1) either every readout that the prereg's automatic gates called for has been written to `logs/E9-report.md` (Part 1; Part 2 if Part 1's gate passed with a stance label other than "style"; the extra-seeds branch's if it ran instead), with every automatic gate and its inputs recorded, or an automatic stop rule (prereg §4.7, §6, §7.6) has fired and the stop and its reason are written there; (2) every final report has completed its gpt-6-astra review (an approval, or round 3 done with the open findings tabled); (3) no paid work is outstanding: every pod is terminated and settled, every API batch is settled or released, and every RunPod and API reservation is released or settled; (4) every launched branch (including the optional gradient screen and the extra-seeds branch) has a recorded disposition: completed, dropped, or stopped, with the reason; (5) total recorded spend is at or below $180, within the RunPod reservation contract, and no paid experimental work started more than 7 days after sign-off. Cleanup, settlement and reviews after that deadline are allowed. Never ask Jacob anything mid-run; never change a decision rule.
+> Run the E9 corrective-continued-pretraining experiment exactly as preregistered in `docs/experiments/E9/prereg.md` (signed-off v0.6 with Amendment D) and its approved implementation plan `docs/experiments/E9/implementation-plan.md`. The goal is done when all of the following hold: (1) either every readout that the prereg's automatic gates called for has been written to `logs/E9-report.md` (Part 1; Part 2 if Part 1's gate passed with a stance label other than "style"; the extra-seeds branch's if it ran instead), with every automatic gate and its inputs recorded, or an automatic stop rule (prereg §4.7, §6, §7.6) has fired and the stop and its reason are written there; (2) every final report has completed its gpt-6-astra review (an approval, or round 3 done with the open findings tabled); (3) no paid work is outstanding: every pod is terminated and settled, every API batch is settled or released, and every RunPod and API reservation is released or settled; (4) every launched branch (including the optional gradient screen and the extra-seeds branch) has a recorded disposition: completed, dropped, or stopped, with the reason; (5) total recorded spend is at or below $200, within the RunPod reservation contract, and no paid experimental work started more than 7 days after sign-off. Cleanup, settlement and reviews after that deadline are allowed. Never ask Jacob anything mid-run; never change a decision rule.
 **Status block.** The goal evaluator reads only the conversation, so at the end of every phase (setup, smoke, cost and noise, pilot, paraphrase, Part 1 readout, factorial, confirmation, screen, any stop) the session prints:
 
 ```
 E9 STATUS | phase: <name> | gate: <rule> = <pass|fail|n/a> (<key numbers>)
-spend: $<recorded> recorded + $<reserved> reserved of $180 (stage <tag>: $<x> of $<limit>)
+spend: $<recorded> recorded + $<reserved> reserved of $200 (stage <tag>: $<x> of $<limit>)
 API: $<settled> settled; outstanding batches <n>, liability $<a>
 RunPod: balance $<b>; E9 unlaunched reservations $<r>; launched-pod liability $<l>
 pods running: <n> (<ids>) | reviews: <artifact>: <pending|r1..r3 verdict>
@@ -1061,6 +1061,31 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 **Unchanged:** the design, every rule, threshold, cost and cap.
 
 **Review:** one gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendC-r1.md`): REVISE (1 blocking: the gap overclaimed novelty of content selection; 5 minor; 1 nit), all fixed and not re-reviewed (§10).
+
+### Amendment D (2026-10-06, after sign-off): the cap rises to $200
+
+**The decision (Jacob, 2026-10-06, while approving the implementation plan).** The hard cap rises from $180 to **$200**.
+
+**Why.** v0.6 priced each full 1,287-step fine-tune at 19–22 minutes. Our earlier experiment's records measure 1,817–2,025 s (30–34 minutes, checkpoint hooks included) for every 1,287-step run (`results/E1b/train/*.json`, field `wallclock_s`; 8 runs). Two such runs per sampled arm add ≈ 0.38–0.40 GPU-hours, ≈ $1.3–1.4 at $3.49/h, to each C_S run. The promising path has 8 C_S runs (4 in Part 1, 4 in the confirmation), so mandatory cost rises by ≈ $10–11, to ≈ $150–180 (≈ $158–188 with expected review-barrier overhead). Its top end would exceed $180, and Part 1's top end with two barriers ($91) would exceed its $90 stage limit. The program budget (CLAUDE.md, $2,100 for October) has room.
+
+**What changed:**
+
+| Item | v0.6 | v0.7 (Amendment D) |
+|---|---|---|
+| C_S (§7.1) | 1.8–2.0 h, $6.3–7.0 | 2.2–2.4 h, $7.7–8.4 |
+| Hard cap (§7.3) | $180 | **$200** |
+| Stage limits: setup and Part 1 / extra-seeds / Part 2 | $90 / $25 / $95 | **$100** / $25 / **$105** |
+| GPU limit; backstop at sign-off | $130; min($130, $180 − $62) = $118 | **$145**; min($145, $200 − $62) = **$138** |
+| API limit; API reserve at sign-off | $75; $62 | Unchanged |
+| Part 1, stopping / promising path (with barriers) | $62–72 / $75–85 | $66–76 / $80–91 |
+| Part 2 mandatory (with barriers) | $78–91 | $83–97 |
+| Mandatory, promising path (with barriers) | $147–177 | $158–188 |
+| With the optional screen | $160–192 | $171–203: at the top of the range the screen does not fit, and it is cut first, as before |
+| RunPod check (shared contract) | E9 $130 + E3 $35 + $10 buffer = $175 | E9 $145 + E3 $35 + $10 = $190, under the $224.18 balance of 2026-10-06 |
+
+**Unchanged:** every question, arm, measure, decision rule, threshold, prompt and branch; the extra-seeds branch (Q₂₀ only, so no C_S runs); the order of cuts. C_Q and C_S are still re-measured at the cost-and-noise step, and the projections use the measured values from then on. The smoke pod times one full fine-tune and tests running the bad and good fine-tunes concurrently on one GPU; if that works, the measured C_S will come in lower, and nothing else changes.
+
+**Review:** one gpt-6-astra round, within the implementation plan's review (`logs/reviews/20261006-E9-prereg-amendD-r1.md`).
 
 ---
 
