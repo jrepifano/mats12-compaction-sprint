@@ -4,7 +4,7 @@
 |---|---|
 | Experiment | E3, the early-pretraining-window sweep, on "why does emergent misalignment generalize to a persona?" Follows E1 and E1b; shares its answer pairs and scorer with E9 |
 | Version | v0.3 (revised after gpt-6-astra rounds 1 and 2; round 3's five findings fixed afterwards, not re-reviewed) |
-| Status | Draft, not approved |
+| Status | **Signed off by Jacob, 2026-10-06** (v0.3, with §8.0's proposed defaults) |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 on this document (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's five findings were fixed after the cap without re-review (§10). The design was reviewed at proposal level: 3 rounds, APPROVE ([proposal reviews](#proposal-reviews-2026)) |
 | Budget | Planned ≈ $30 without a candidate window, ≈ $36.5 with confirmation; worst case ≈ $47.6 before the ordered cuts, ≈ $42.3 after; **hard cap $45** (GPU limit $35, judge and API limit $10) |
@@ -842,6 +842,15 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 | 4 | Minor | Obsolete numbers: $176 and "12 held-out" | Now $130 + $35 + $10 = $175 (here and in the shared reservation doc), and 10–12 retained held-out questions |
 | 5 | Minor | Post-review rescoring had no lifecycle after the goal ends | A post-review branch (§8.4), pre-authorized at sign-off within the $45 cap, with its own 2-day window; otherwise left pending |
 | — | (from the corrective-continued-pretraining prereg's round 2) | The goal could end with reviews or paid work outstanding | Done now requires completed reviews, no outstanding paid work or unsettled reservations, and a recorded disposition for every launched unit; the status block shows the review state and open API reservations |
+
+
+**Jacob's sign-off, 2026-10-06.** v0.3 is signed off as written. That accepts the defaults proposed in §8.0:
+- concurrent pods, with Stage B sealed until Stage A passes, when the RunPod reservation allows;
+- automatic continuation at the named gates, with up to $5 spent while a review is pending;
+- the source-reading exception;
+- reference-judge validation, with Jacob's labels at the results review.
+
+It also accepts the round-3 fixes made without re-review. The RunPod top-up is still Jacob's action; until it happens, launches follow the reservation contract and this experiment waits for the corrective-continued-pretraining experiment when funds are short. Next: the implementation plan, which gets its own gpt-6-astra review and Jacob's approval.
 
 ## References
 
