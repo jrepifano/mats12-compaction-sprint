@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -258,7 +258,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 ### E7. Can influence scores predict how much rewriting poisoned rows reduces EM? (follow-on to the application project)
 
-*Source: Jacob, 2026-10-03. It builds on the sibling working repo `../mats12_neel_working` (the "Correct, Don't Delete" application project and its training-data-attribution extension). Reviewed once by gpt-6-sol (`logs/reviews/20261003-proposals-reprioritization-r1.md`).* **Recommendation: don't run it on the bad-medical-advice organism.** The working repo already tested its core claim directly, with a negative result.
+*Source: Jacob, 2026-10-03. It builds on the sibling working repo `../mats12_neel_working` (the "Correct, Don't Delete" application project and its training-data-attribution extension). Reviewed once by gpt-6-sol (`logs/reviews/20261003-proposals-reprioritization-r1.md`). Updated 2026-10-05 for Paulo et al. 2026 (below).* **Recommendation: don't run it on the bad-medical-advice organism.** The working repo already tested its core claim directly, with a negative result. **A potentially cheaper, sharper version is proposed** on Paulo et al.'s all-bad organism (see "A rewrite version of Paulo et al." below); it is not yet recommended.
 
 **Research question.**
 - The application project rewrote a fixed set of bad-advice training rows, which cut EM by about 40% on the dominant channel. Deleting the same rows did almost nothing.
@@ -280,7 +280,44 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
   - It is descriptive only: four arms, of which 8d is a subset of 8a and ties it, and a score form and damping already seen.
   - The undamped dot-product form orders them differently (8b > 8a > 8c).
 
-**Where a gradient locator could still earn its keep.** On this organism the content judge can see the poison, so it wins cheaply. A gradient locator has a reason to exist only for poison that a content reader *can't* see.
+**New prior work (2026-10-05): influence-based deletion does move EM.** Paulo, Jaburi, Belrose, Quirke & Biderman 2026 (EleutherAI, *The Unequal Influence of Bad Advice*, arXiv 2609.37914; `papers/em_personas/` row 36; read verbatim: §1, §3, §4.1–4.2, Figs. 1–3 and 5 captions).
+- **Setup** (§3.1–3.4): OLMo-3-7B-SFT, rank-32 rsLoRA, 1 epoch at lr 1e-4, on Wang et al.'s wrong career, auto and education advice (5,900 rows each, *all of them bad*). Evaluated on 44 questions × 10 samples with a Qwen3-32B judge.
+  - The query gradient contrasts aligned and misaligned answers: 10 completions per question, weighted by their judge scores centred within the question (a GRPO-like loss).
+  - Scores come from EK-FAC influence and from gradient cosine similarity (the Bergson library).
+  - Each filter is validated by retraining with 12 seeds (4 initialisations × 3 shuffles), against a random filter and a WildGuard harmfulness filter.
+- **Results:**
+  - On career advice, removing the 20% most influential rows cut EM from about 45% to about 40%. Removing the 20% least influential raised it to almost 55%, and a random 20% barely moved it (Fig. 1).
+  - Training on 10% bins sorted by influence spans about ±20 points around random, so the whole ranking carries signal, not only its tails (Fig. 3).
+  - WildGuard flags every row as unsafe, and filtering on it moved EM much less (Fig. 1).
+  - Most other models give the same direction (Qwen2.5 up to **14B**, Qwen3, Llama). Scores computed on another model transfer only partly (§4.2, Fig. 5). Same-model scores from different seeds correlate 0.75–0.85.
+  - Training on only the 20% least influential rows also lowers narrow-task misalignment, from about 95% to slightly below 80% (§4.1). So part of the effect runs through how well the narrow task is learned.
+  - They delete and select rows only; **no rewriting**.
+
+**Why their deletion worked and ours didn't** (our inference; untested):
+1. **Pool composition.** Their pool is 100% bad advice. The working repo's mixture was about 50% poison (13,698 rows, so a random 685-row group is about half poison; `logs/phase1-report.md`:4810–4815). In Paulo et al.'s own 50/50 good/bad check (§4.1, Fig. A5), the harmfulness classifier changed EM about as much as EK-FAC and identified bad advice better (AUC 0.9998 vs 0.9171), though EK-FAC still filtered slightly better. So attribution's filtering advantage shrinks on the mixed pool but does not reverse, whereas our content judge beat influence outright. This is a possible explanation, not a replication: they measured deletion, and our content-judge advantage was for rewriting.
+2. **Validation design.** They test the extremes (top vs bottom 20%) and sorted bins. Our held-out test correlated scores with retrained effects over *random* 685-row groups, which barely differ from one another (`docs/paper-plan.md` item B). The working repo rejected a top-vs-bottom *rewrite* contrast (≈ $35) because "the extremes test would only bound a correlation the paper no longer claims" (`logs/phase1-report.md`:4823–4829). Paulo et al. ran the analogous extremes test using *deletion*, and it came out positive.
+3. **Query.** Their query contrasts misaligned with aligned answers across all 44 questions. Ours took 67 of its 71 answers from the gender-roles question, which is fix 1 below.
+4. **Recipe.** Rank-32 rsLoRA for 1 epoch on OLMo-3-7B-SFT, against our rank-1 LoRA for 857 steps on Qwen2.5-14B-Instruct. Their Qwen2.5-14B run used gradient cosine similarity with their recipe, not ours.
+
+**Related (abstract only):** TAME (Masud & Parvez 2026, arXiv 2609.16754; row 44) masks the loss on high-attribution *tokens* of a 6,849-row medical-advice split and cuts EM 23× in Llama and 36× in Qwen. An equal random mask does nothing, and the attributed tokens carry "unwarranted certainty" rather than medical vocabulary. Masking is an analogy to correction, not evidence for rewriting: it removes the loss on those tokens rather than replacing them. It is consistent with the working repo's rewrite result. Read it in full before any E7 prereg.
+
+**A rewrite version of Paulo et al. (2026-10-05; not recommended yet, unpriced beyond a rough estimate).** On an all-bad pool, attribution beat the one harmfulness baseline Paulo et al. tried (WildGuard). WildGuard's continuous scores still graded rows (Fig. 3), and the authors say better harmfulness baselines may exist (§4). So gradient attribution may have a reason to exist without a new judge-invisible organism, *if* it also beats a continuous content-judge ranking.
+- *Question:* does *rewriting* the most influential 20% of rows into correct advice cut EM more than rewriting the least influential 20%, a random 20%, or the top 20% by a continuous content-judge score? Secondary, for the top-influence selection only: how does rewriting compare with deleting the same rows? Deleting leaves fewer rows and gradient updates than rewriting, so that contrast can't isolate what correction adds. Either disclose it as a policy comparison, or add a matched-steps deletion arm (Paulo et al.'s Fig. A7 repeats data to hold steps constant).
+- *Why it's new:* Paulo et al. only delete. The working repo's rewrite test ran on a mixed pool where the content judge wins.
+- *Setup:* Paulo et al.'s career dataset and recipe on OLMo-3-7B-SFT, their contrastive query, and gradient cosine scores. The same model family as E1/E1b, and E1's code loads it.
+- *Arms:* untouched; rewrite top / bottom / random / content-judge 20%; delete top 20% (a replication anchor against their Fig. 1).
+- *Rewrites:* one frozen rewriting procedure for every arm, with a blinded per-arm correctness check, since subsets may differ in how hard they are to correct.
+- *Endpoints:* keep Paulo et al.'s 44 questions, Qwen3-32B judge and score-below-3 threshold for the replication anchor. The primary endpoint is the misaligned rate on questions not used to build the attribution query (hold out half, as in their Fig. A3). Our 56-question set with luna and a second judge is secondary.
+- *Provisional compute subtotal (not measured):* 6 arms × 3 seeds = 18 adapters. At E1's ~0.4 H100-h each including evaluation, that is ~7 H100-h ≈ $25. Scoring ≈ $3. Rewriting the union of the four selected sets is 2,360–4,720 unique rows depending on overlap, ≈ $1–2 with a cheap model. Judging ≈ $3. That comes to roughly $32–35.
+  - Not priced: the throughput of Paulo et al.'s recipe on our pods, setup of the scoring model, rewrite QA, and Jacob's integration time. Benchmark the recipe before calling this cheap.
+  - **Three seeds make this a directional pilot.** Paulo et al. used 12 seeds per filter; they don't say 12 were needed. A 15-point deletion gap says nothing about the power of a rewrite contrast. Power depends on the paired seed variance, which we don't know yet. Don't read a null as equivalence.
+  - *Decision rule (to fix in a prereg):* continue only if rewriting the top-influence rows beats both the random and the content-judge rewrite arms in every seed.
+- *Before a prereg:*
+  - Check that Wang et al.'s career dataset and Bergson are public.
+  - Run the internal and external literature reviews for this narrower question (influence-guided rewriting or correction of EM data).
+  - Read TAME in full.
+
+**Where a gradient locator could still earn its keep (on the bad-medical-advice mixture).** On that organism the content judge can see the poison, so it wins cheaply. There, a gradient locator has a reason to exist only for poison that a content reader *can't* see. The all-bad variant above is the other case.
 - Kim 2026 (*Preventing data poisoning seems surprisingly tractable*, counterfactual.blog; a policy post with no experiments) argues that a small LLM can screen a whole corpus for about 3% of training compute.
 - Its stated exceptions are subliminal learning (Cloud et al. 2025, arXiv 2507.14805) and Phantom Transfer (Draganov et al. 2026, arXiv 2602.04899), where poisoned data passes semantic filters.
 - A version of E7 on such an organism would ask whether gradient attribution finds poison that the content judge misses. That is a new project with a new organism. It would first have to show the poison generalizes broadly. It is unpriced, and neither paper is in `papers/` yet.
@@ -291,7 +328,7 @@ Nobody has tied EM causally to pretraining data. The literature review's stated 
 
 The working repo's cost estimate for that study is ≈ $115–175.
 
-**Cost and time.** Not proposed. A judge-invisible-poison version needs reading and pricing first.
+**Cost and time.** Not proposed. The all-bad rewrite variant has a provisional compute subtotal of roughly $32–35 (above). It needs a recipe benchmark and literature reviews before a prereg. A judge-invisible-poison version needs reading and pricing first.
 
 
 ### E8. Does a mixture-of-experts model generalize EM differently from a dense model of the same family?
@@ -1535,7 +1572,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
 1. **E1b:** approved; the smoke test passed ($2.77). The E1 session is waiting for your S2 go-ahead (≈ $36 GPU) and sign-off on amendment A6. **I9** is signed off and building in `i9/build`; its next paid step is Stage 0 (≈ $2.2).
 2. **E3's owner:** the E1 session or this one? Either way, draft E3's prereg while E1b runs, so it can start right after Checkpoint 1.
-3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). Do you want the judge-invisible-poison version (subliminal learning / Phantom Transfer) read and priced, or should E7 stay dropped?
+3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). *Updated 2026-10-05:* Paulo et al. 2026 show influence-based *deletion* moves EM by 5–10 points on an all-bad pool, where attribution outperformed WildGuard's continuous harmfulness ranking. Attribution beat their harmfulness baseline there, though not necessarily a better content judge. That opens a smaller version: on their organism (OLMo-3-7B-SFT), compare rewriting the top-influence rows with rewriting random and content-judge-ranked rows. It would be a 3-seed directional pilot, with a provisional compute subtotal of roughly $32–35. Do you want that version lit-reviewed and priced properly, the judge-invisible-poison version (subliminal learning / Phantom Transfer) instead, or should E7 stay dropped?
 4. **Week-2 set (§5):** do you agree with the critical path (E1b, I9 all stages, and the X3 pilot with X1p folded in), with C1 as a side bet? What is the budget envelope? With E3 added, the planned running total could reach about $392, or $407 with C1. Add about $19 if E1b's conditional arms run.
 5. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
 6. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
