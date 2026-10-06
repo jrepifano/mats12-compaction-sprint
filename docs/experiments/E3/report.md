@@ -3,13 +3,13 @@
 | | |
 |---|---|
 | Experiment | E3: is there an early-pretraining window where OLMo-3-7B learns a narrow harmful task but does not generalize it to broad misalignment? |
-| Preregistration | `docs/experiments/E3/prereg.md` v0.3, signed off 2026-10-06T07:12Z, with erratum E1 |
+| Preregistration | `docs/experiments/E3/prereg.md` v0.3, signed off 2026-10-06T07:12Z, with erratum E1 and Amendments A and B |
 | Outcome | **Automatic stop, twice** (prereg §7 and §8.3, "Pair build: any fails → stop; the other experiment is told"). The first build failed on length; after Jacob approved construction version 2 and the run resumed, the rebuild failed held-out retention by one question (§7); construction version 3 passed retention but failed the automatic blind pre-inspection check (§8) |
-| Spend | **$2.61 API, $0 GPU** of the $45 cap (ledger: `logs/costs.jsonl` on branch `e3/run`): first build $1.43, `medcorrect` validation $0.02, construction-2 build $1.04, construction-3 build $0.09 |
+| Spend | **$2.61 API, $0 GPU** of the $45 cap (ledger: `logs/costs.jsonl` on branch `e3/run`): first build $1.43, `medcorrect` validation $0.02, construction-2 build $1.04, construction-3 build $0.12 |
 | Status | No pod was launched; no reservation is open; nothing paid is outstanding |
 | Run log | `logs/E3-report.md` (UTC timestamps, commands, decisions) |
 
-*§§1–6 describe the **first stop** (09:13Z) as it stood then; §7 covers the resumption, the second stop and the final state.*
+*§§1–6 describe the **first stop** (09:13Z) as it stood then. §7 covers the resumption and the second stop. **§8 covers the third stop and is the latest state.***
 
 ## 1. What happened
 
@@ -158,7 +158,7 @@ The last two change the confirmatory design. **They would also adapt the instrum
 
 ## 8. Construction 3 and the third stop: the blind pre-inspection check
 
-**What changed.** Jacob approved construction version 3: broad pairs get a second judge regeneration, medical pairs keep one (shared spec revision history; E3 prereg Amendment B). This choice followed the observed held-out failure, which is disclosed; it applies uniformly to every broad question and changes neither the split nor any minimum. The build reused construction 2's 3,297 cached calls, reproducing construction 2 exactly, and paid $0.088 for the new calls.
+**What changed.** Jacob approved construction version 3: broad pairs get a second judge regeneration, medical pairs keep one (shared spec revision history; E3 prereg Amendment B). This choice followed the observed held-out failure, which is disclosed; it applies uniformly to every broad question and changes neither the split nor any minimum. The build reused construction 2's 3,297 cached calls, reproducing construction 2 exactly. The new successful calls cost $0.088, and the ledger records $0.116938 for construction 3 in total, including attempts that failed.
 
 **Retention passed in every split:** development 22/23, held-out 10/12, medical 38/40.
 
@@ -169,25 +169,30 @@ The last two change the confirmatory design. **They would also adapt the instrum
 | `google/gemini-3.5-flash-lite` | 254 / 257 | 98.8% |
 | `deepseek/deepseek-v4-flash` | 211 / 257 | **82.1%** |
 
-**The failure looks like DeepSeek's position bias more than bad pairs:**
-- All 46 of DeepSeek's errors are the same kind: it answered "B" when the misaligned member was "A", never the reverse. It answered "B" 67% of the time; Gemini was balanced.
-- 44 of the 49 pairs either model got wrong are medical.
+**What the errors look like** (from the cached replies; this describes the errors, it does not establish their cause):
+- All 46 of DeepSeek's errors are the same kind: it answered "B" when the misaligned member was "A", never the reverse. It answered "B" 67% of the time; Gemini was balanced. This is consistent with a position bias, but one presentation per pair can't separate that from genuinely ambiguous pairs.
+- 44 of the 49 pairs either model got wrong are medical. On broad pairs, DeepSeek was right on 115 of 118 (97.5%).
+- Gemini's 3 misses were unparseable replies, not wrong letters.
 
-**Host change, disclosed.** The spec names the model, not a host. Its pinned host, DeepInfra, refused every call ("You need positive balance", an account balance), so the check ran on other fp8 hosts of the same model (a new preset, `dsg`). DeepSeek's accuracy depends on the host: 139 pairs had been answered on DeepInfra before its balance ran out, and on those DeepInfra scored 92.8% against 72.7% for the replacement hosts. On the other 118 pairs the replacement hosts scored 93.2%. **DeepSeek stays below 95% on every host and subset available (about 93% at best),** so the stop does not hinge on the host change, although the change made the number worse.
+**Host change, disclosed.** The spec names the model, not a host.
+- **First attempt:** DeepSeek's pinned host, DeepInfra, answered 139 pairs and then refused the rest ("You need positive balance", an account balance), so the build ended incomplete with 118 failed calls.
+- **Second attempt:** all 257 pairs were re-run on other fp8 hosts of the same model, through a new preset, `dsg` (a main-session change, unreviewed, recorded in the run log). The cache doesn't record which of those hosts served each call.
+- **Host effect:** on the 139 pairs both routes answered, DeepInfra scored 92.8% (129/139) and the replacement route 72.7% (101/139), agreeing on only 105.
+- **What isn't known:** whether DeepInfra on all 257 pairs would have passed. With 10 errors on its first 139, its full score could be anywhere up to 96.1% (247/257). The check as run, on the replacement route, failed.
 
 **Stop rule:** prereg §7, "the automatic pre-inspection check fails". No pairs file was written.
 
-**What a revision could address (for Jacob; recommendations, not run).** The pairs pass every construction check, and Gemini recognises them almost perfectly; the blocker is one judge's position bias.
-1. **Present each pair in both orders** to each pre-inspection model, and count a pair right only if both orders are labelled correctly. This removes position bias directly and is stricter, not looser.
-2. **Replace DeepSeek with another model from a different family** that has no position bias, keeping the 95% threshold.
-3. **Restore DeepSeek's pinned host** (DeepInfra) by topping up that balance. On the evidence above (92.8% on 139 pairs), this alone would likely still fall short of 95%.
+**What could follow (for Jacob; recommendations, not run).** Each option responds to an observed failure of this check, and that is disclosed. None uses any model result from E3 or E9.
+1. **Complete the check as specified, on its pinned host.** Top up the DeepInfra balance and score all 257 pairs on `dsp`. This finishes the interrupted first attempt rather than changing the check. Its result is open: up to 96.1% is possible. A pass would still have to be reported alongside this failed run on the replacement hosts.
+2. **Present each pair in both orders** to each model, and count a pair right only if it is labelled correctly in both. This detects and penalizes order sensitivity; it is stricter, and would not rescue a judge with a strong position bias.
+3. **Replace DeepSeek with a model from another family**, validated independently before use, keeping the 95% threshold.
 
-Options 1 and 2 change the spec's check and need Jacob's approval and a review. Neither uses any model result from E3 or E9.
+Options 2 and 3 change the spec's check and need Jacob's approval and a review.
 
 **Final state (after the third stop):**
 - **Spend:** $2.613030 API, $0 GPU; all API reservations closed; no RunPod reservation or pod.
 - **Stop recorded** in `results/E3/STOPPED.json`.
-- **E9 told** (run log).
+- **E9 told** of the third stop (17:30Z, cross-session message; recorded in the run log).
 - **Unit dispositions after the second resumption:**
   - completed: the construction-3 build up to the pre-inspection check;
   - stopped: U3b, at the pre-inspection check;
