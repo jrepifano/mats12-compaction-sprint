@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.5: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere |
+| Version | v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
 | Status | Draft, not approved |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
@@ -43,6 +43,10 @@ Secondary, Part 1:
 - **Raw human text did not induce EM.** Fine-tuning on the retrieved human-written documents gave at most 4.6% EM with heavy incoherence, while synthetic instruction–answer pairs seeded from the same content did induce it: 10.42% for Gemma 3 on pairs from its own feature's documents, and up to 10.83% in a cross-feature condition [[Vetter et al. 2026](#vetter-et-al-2026), §5.3, Tables 5–6].
 - **Dilution attenuates but does not remove EM.** Mixing unrelated data into the fine-tune reduces the readable bias, but "mixing does not eliminate misalignment" [[Minder, Dumas et al. 2025](#minder-dumas-et-al-2025), App. F.5].
 - **Closest prior work.** Safety Pretraining rephrases unsafe pretraining text into "safe, context-rich alternatives" and lowers attack success, but measures harmfulness, not EM, and selects documents with a safety classifier [[Maini et al. 2025](#maini-et-al-2025), §3.1–3.2]. Our literature searches found no one who *corrected* selected pretraining documents and then measured EM susceptibility [[Literature reviews 2026](#literature-reviews-2026)].
+- **Documents trained in before a fine-tune can change how it generalizes** (added by Amendment C). Model Spec Midtraining trains on synthetic documents explaining a model spec, between pretraining and an alignment fine-tune (LoRA rank 64, one epoch; App. B.4). On Llama-3.1-8B, about 8M midtraining tokens changed how an identical fine-tune (165k cheese-preference tokens plus 2M instruction-tuning tokens) generalized: pro-affordability 0.32 → 0.48, pro-America 0.36 → 0.55 (§3.1). With 41M midtraining tokens followed by alignment fine-tuning with chain of thought, agentic misalignment fell from 68% to 5% on Qwen2.5-32B and from 54% to 7% on Qwen3-32B, against 48% and 14% for a deliberative-alignment baseline; midtraining alone gave 53% and 32%. The advantage shrank as fine-tune data grew [[Li et al. 2026](#li-et-al-2026), §4.1–4.2, Fig. 4]. It never tests EM and never edits existing pretraining text; it uses about 8M, 27M and 41M tokens in different experiments but reports no controlled dose–response sweep.
+- **Constitutional synthetic documents at scale.** Over 300M tokens of newly generated documents about Claude's constitution cut a blackmail rate "from over 60% to 25%", still falling at 350M tokens; 14M tokens of fictional stories about an aligned AI reduced honeypot misalignment; the effect persisted through harmlessness RL. On an open-ended constitution evaluation, documents did slightly better than chat format [[Kutasov et al. 2026](#kutasov-et-al-2026)]. The work also uses chat fine-tuning and RL, but its document interventions are newly generated, with no rewriting of existing pretraining text and no EM outcome.
+- **Late insertion did not move values in a from-scratch comparison.** Synthetic Persona Pretraining selects existing pretraining documents by content (SafeLM scores of 3 or more, plus a matched benign sample) and adds first-person reflections to them without changing them (§2.2.1). Inserted only in the end-of-pretraining midtraining (≈ 2.7B reflection loss tokens, with the original documents as loss-masked context; App. B.3), they left a 3B model's AI-risk misalignment at 54.0%, against 53.3% for vanilla pretraining; inserted from token zero, 35.1%. All three were measured after the same persona-matched fine-tune (Fig. 1, §2.2.2). Late insertion did match token zero on jailbreak attack success, and later benign training eroded the installed values. It tests no EM; each recipe has a single seed [[Minder et al. 2026](#minder-et-al-2026), §3.1, §3.6]. Its late arm trained on about 300 times more tokens than E9's ≈ 8M exposure tokens, a token count only, not a measure of comparable intervention strength.
+- **The gap that remains.** None of these studies, nor Safety Pretraining above, combines correcting content-selected existing pretraining text with measuring susceptibility to EM from a narrow harmful fine-tune; E9 does both, on OLMo's own pretraining mix. Content selection alone is not new (Synthetic Persona Pretraining and Safety Pretraining both use it), and rewriting alone is not new (Safety Pretraining). The doses bracket E9's: about 8M synthetic tokens moved a later fine-tune's generalization in Model Spec Midtraining, while a far larger late insertion did not move values in Synthetic Persona Pretraining.
 - **So the hypothesis has to be an asymmetry** (our inference, untested): adding more examples of a persona the model already has does nothing measurable, but corrective counterexamples change it. That is what happened in fine-tuning, where deletion did almost nothing and correction helped [[Epifano 2026](#epifano-2026)].
 
 **Why a frontier lab would care.** The decision is how to curate pretraining and midtraining data so that later narrow fine-tuning, including by downstream users of open weights, is less likely to produce a broadly misaligned model. Filtering and upsampling did not help [[Tice et al. 2026](#tice-et-al-2026)]. If correcting endorsed-harm text does, a lab gets a cheap recipe: a content judge plus a rewriter, applied to the text it would otherwise delete. Part 2 narrows that to a rule ("correct text of type A"). A clean negative adds a third data point, after Tice et al. and `em-olmo`, against cheap pretraining-data fixes for EM.
@@ -483,10 +487,10 @@ Amendment A replaces v0.3's stronger-dose branch. At the primary dose the insert
 | Background continued pretraining moves Q₂₀ from the no-continued-pretraining value by more than τ | 0.3 | `em-olmo`: 10M tokens of random documents did not move sampled misalignment; 100M did |
 | The precision projection passes (h₁ ≤ τ), with working updates | 0.8 | Proposal: ≈ 0.2 for imprecision or a recipe that doesn't update; Q₂₀ averages 79 development pairs (21 questions) × 3 adapter seeds |
 | Corrections look promising (point estimate beats both) | 0.35 | Two comparisons on a noisy endpoint; slightly above chance if the effect is small |
-| The gate passes (reproducible, within tolerances) | 0.25 | The proposal's 0.15 (stance) + 0.10 (style) |
-| … and "stance matters" | 0.15 | Proposal |
-| … and "style" | 0.10 | Proposal |
-| No reproducible effect (including a failed precision gate) | 0.75 | Proposal: 0.2 precision failure + 0.55 null |
+| The gate passes (reproducible, within tolerances) | 0.2 | The proposal's 0.25, lowered by Amendment C (below) |
+| … and "stance matters" | 0.12 | Proposal 0.15, scaled |
+| … and "style" | 0.08 | Proposal 0.10, scaled |
+| No reproducible effect (including a failed precision gate) | 0.8 | Proposal: 0.2 precision failure + 0.55 null, null raised to 0.6 by Amendment C |
 | The originals arm raises Q₂₀ above background by τ or more | 0.15 | `em-olmo`'s top-ranked arms were null at 10M and 100M tokens |
 | The corrections arm's pre-fine-tune stance is more aligned than background's | 0.6 | Corrections are aligned text, and since Amendment A they are ≈ 8M of the 10M tokens seen (≈ 4M, twice); v0.3 put 0.5 on 1.6M |
 | Corrections pass the general-text tolerance | 0.85 | `em-olmo`'s noisier top documents had higher training loss [[Rui 2026](#rui-2026), Phase 2b]; corrections are cleaner text |
@@ -504,9 +508,9 @@ Amendment A replaces v0.3's stronger-dose branch. At the primary dose the insert
 | The gradient screen's numerical gate (ii) passes within 2 days | 0.5 | Double backward through 5 steps of a 7B fine-tune is heavy |
 | The gradient screen predicts held-out effects | 0.2 | Proposal; gradient locators have failed on this problem before [[Epifano 2026](#epifano-2026), App. B; [Rui 2026](#rui-2026), Phase 2b-GA] |
 
-**Amendment A changed only the two priors above whose stated basis was the dose or the pool.** The others were written before any data and are not revised: a larger dose and a selection that needs more endorsing documents (so may include weaker ones) pull in opposite directions.
+**Amendment A changed only the two priors above whose stated basis was the dose or the pool.** The others were written before any data and were not revised by Amendment A: a larger dose and a selection that needs more endorsing documents (so may include weaker ones) pull in opposite directions.
 
-**Where these depart from published results.** Every published pretraining-data intervention on EM susceptibility is null [[Tice et al. 2026](#tice-et-al-2026); [Rui 2026](#rui-2026)]. Our 0.25 for a reproducible effect is above what those results alone suggest; it rests on the untested asymmetry between adding and correcting, carried over from fine-tuning [[Epifano 2026](#epifano-2026)]. Vetter et al.'s raw-text null [[Vetter et al. 2026](#vetter-et-al-2026)] argues against it.
+**Where these depart from published results.** Every published pretraining-data intervention on EM susceptibility is null [[Tice et al. 2026](#tice-et-al-2026); [Rui 2026](#rui-2026)]. Our 0.2 for a reproducible effect (0.25 before Amendment C) is above what those results alone suggest; it rests on the untested asymmetry between adding and correcting, carried over from fine-tuning [[Epifano 2026](#epifano-2026)]. Vetter et al.'s raw-text null [[Vetter et al. 2026](#vetter-et-al-2026)] argues against it. **Amendment C lowered the effect priors from 0.25 to 0.2**, our subjective judgement, made before any data of this experiment. The evidence points both ways. Model Spec Midtraining shows that ≈ 8M document tokens can redirect a later fine-tune, including in one case where that fine-tune opposed the midtraining content (its App. I, one seed) [[Li et al. 2026](#li-et-al-2026)]. Synthetic Persona Pretraining's late insertion, on about 300 times more tokens, did not move value measures [[Minder et al. 2026](#minder-et-al-2026)]. We weigh the second more for E9 because it is the closer setting: content-selected real pretraining text, inserted late into a pretrained model, with full-parameter training. Its limits are real: a different outcome (a forced-choice dilemma, not EM), a different model and schedule, persona binding, and a single seed. A token count is not a dose equivalence.
 
 ---
 
@@ -884,6 +888,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 - **Source-reading gaps.**
   - **Read in full or in the cited sections:** Tice et al. App. I and §6; Vetter et al. §4.3–6, Tables 4–6 and limitations; Correct, Don't Delete §1–6 and App. F; `em-olmo` Phases 2, 2b, 2b-GA, D and C, its stage-1 reference block and its README; Minder, Dumas et al. App. F.5; Nadaf §4; Maini et al. §3–3.2 and part of §6; the shared measure spec and the RunPod contract; our earlier preregistration and reports; the design consultation, the three proposal reviews, this document's round-1 review, and the four literature reviews.
   - **Partial:** Maini et al. beyond §3.2 and §6.1; Nadaf outside §4; Minder, Dumas et al. outside App. F.5–F.8. Turner et al. and Betley et al. were not re-read this session: the recipe and the question sets are inherited from our earlier preregistrations, which verified them.
+  - **Added by Amendment C, read in full:** Model Spec Midtraining (all 72 pages) and Synthetic Persona Pretraining (all 81 pages); *Teaching Claude Why* from a structured paraphrase whose quoted numbers were re-checked against the raw page.
   - **Not read, cited only through our literature reviews:** Deep Ignorance and *When Should We Introduce Safety Interventions During Pretraining?* (abstracts only); Li et al. 2024 on influence functions; Capability Provenance's cost figures; the OLMo 3 technical report (tokens per step and the pretraining recipe come from `em-olmo`'s reference notes and our review's correction). Jaburi et al. is MISSING and not cited.
 
 ### 9.2 Departures from the reviewed proposal
@@ -936,6 +941,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 |---|---|---|
 | 2026-10-06 | Design at proposal level: a gpt-6-astra design consultation, then 3 proposal review rounds [[Design consultation 2026](#design-consultation-2026); [Proposal reviews 2026](#proposal-reviews-2026)] | Round 1 REVISE (4 blocking: incomplete totals, non-operational gates, measurement vs differentiation of the query, an unspecified confirmation policy); round 2 REVISE (2 blocking: the confirmation undercounted, an unidentifiable compression claim); round 3 **APPROVE**. This preregistration makes that design executable, with the departures of §9.2 |
 | 2026-10-06 | gpt-6-astra, preregistration round 1 (`logs/reviews/20261006-E9-prereg-r1.md`, on v0.1) | **REVISE**: 13 blocking, 5 minor. All addressed in v0.2 (below), with the coordinator's decisions per finding and Jacob's standing preference for no mid-run touchpoints |
+| 2026-10-06 | Amendment C (v0.6, §11): three close prior works added to §2 (Model Spec Midtraining, *Teaching Claude Why*, Synthetic Persona Pretraining), the gap restated, and the effect priors lowered from 0.25 to 0.2 | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendC-r1.md`): **REVISE**; every spot-checked number matched its source. 1 blocking (the gap overclaimed: Synthetic Persona Pretraining does select existing documents by content; now stated as the combination of correction and an EM outcome), 5 minor (Model Spec Midtraining's fine-tune and agentic-result context; "never varies the dose"; Synthetic Persona Pretraining's token type and measurement stage; the prior labelled as subjective, with both sides; *Teaching Claude Why*'s scope) and 1 nit (version), all fixed after the round and not re-reviewed |
 | 2026-10-06 | Amendment B (v0.5, §11): GLM replaces DeepSeek; re-priced; answer-pair cost removed (built by the early-pretraining-window experiment) | Three gpt-6-astra rounds (`logs/reviews/20261006-E9-prereg-amendB-r1.md`, `-r2.md`, `-r3.md`), each **REVISE**. Round 1 (1 blocking, 1 minor, 1 nit): the Qwen fallback's rewrites were outside the checker's validation (the first fix removed the fallback; Jacob then chose to restore it with its own validation stratum); the DeepSeek narrative keeps E3's qualifications; the rule changes are listed. Round 2 (2 blocking, 2 minor, 1 nit): fixed by a writer-routed, ordered policy table and a fixed regeneration sequence. Round 3, the cap (2 blocking, 2 minor, 1 nit): the sampling endpoint is defined and the table evaluated once there; §6 and §8.4 stop only on main-stratum rule (1); sampling without replacement with quota filling; the regeneration sentence and this record corrected. Round 3's fixes are not re-reviewed |
 | 2026-10-06 | Amendment A (v0.4, §11): the dose, the extra-seeds branch, the cap, the judge-only selection and the Dolma audit's corrections | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): **REVISE**, 2 blocking and 7 minor findings and 1 nit, all fixed after the round and not re-reviewed: (1, blocking) the stream is built as two exact halves, so "once in each half" holds in every arm; (2, blocking) the extra-seeds readout keeps the seed-1 coherence tolerance; (3) the capacity ceiling is called imposed, and the confirmation's filler budget subtracts separators; (4) the extra-seeds branch launches only if it can change the outcome, with an "underpowered at four seeds" label; (5) cost totals and stopping paths labelled consistently, overhead allocated by stage, the checker-fallback cost corrected; (6) the shard policy separates observed overlap from policy, with the filtered manifest frozen and hashed; (7) the steering-vector stability now cites the same configuration, and the embedding argument is labelled a rationale; (8) the selection-depth comparison corrected; (9) the balance cites a saved record; (10) "one pass, no repeats" corrected |
 | 2026-10-06 | gpt-6-astra, preregistration round 2 (`logs/reviews/20261006-E9-prereg-r2.md`, on v0.2) | **REVISE**: of round 1's 18, 12 resolved and 6 partial (3, 5, 8, 11, 12, 13); 6 new findings (4 blocking, 2 minor). All addressed in v0.3 (below). Round 3 is the last |
@@ -1043,7 +1049,21 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 
 **Review:** one gpt-6-astra round on this amendment's diff (`logs/reviews/20261006-E9-prereg-amendB-r1.md`): REVISE, with 1 blocking finding (the Qwen fallback's rewrites were outside the checker's validation), 1 minor and 1 nit. The first fix removed the fallback. Because refused documents are likely the most explicit ones, the very documents this experiment targets, Jacob chose instead to keep the fallback and validate its outputs in their own stratum. That revision had a second round (`logs/reviews/20261006-E9-prereg-amendB-r2.md`: REVISE, fixed with a writer-routed policy table) and a third, the cap (`-r3.md`: REVISE; its fixes define the sampling endpoint and align the stop rules, and are not re-reviewed; §10).
 
+### Amendment C (2026-10-06, before sign-off): three close prior works
+
+**Why.** A session triaging two MATS alumni talks for Jacob found three close prior works missing from §2. Two were captured into `papers/em_personas/` (rows 50–51); the third was already held (row 16). All three were read in full before being cited (*Teaching Claude Why* from a structured paraphrase whose numbers were re-checked against the page).
+
+**What changed:**
+- **§2:** four bullets after "Closest prior work": Model Spec Midtraining [[Li et al. 2026](#li-et-al-2026)], *Teaching Claude Why* [[Kutasov et al. 2026](#kutasov-et-al-2026)], Synthetic Persona Pretraining [[Minder et al. 2026](#minder-et-al-2026)], and the gap that remains: none combines correcting content-selected existing pretraining text with measuring susceptibility to EM (content selection alone is not new).
+- **§5:** the gate's prior falls from 0.25 to 0.2 (stance 0.12, style 0.08) and "no reproducible effect" rises from 0.75 to 0.8. Our subjective judgement: the late-insertion null on values in the closer setting (real, content-selected text inserted late, about 300 times our token count) outweighs the evidence that ≈ 8M synthetic document tokens can redirect a later fine-tune; the limits of that comparison are stated in §5. These are priors written before any data; no decision rule uses them.
+- **§9.1:** reading status of the three sources; **References:** three entries.
+
+**Unchanged:** the design, every rule, threshold, cost and cap.
+
+**Review:** one gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendC-r1.md`): REVISE (1 blocking: the gap overclaimed novelty of content selection; 5 minor; 1 nit), all fixed and not re-reviewed (§10).
+
 ---
+
 
 ## Appendix A. Frozen prompts (drafts, frozen at sign-off)
 
@@ -1236,6 +1256,14 @@ Pre-sign-off audit of `allenai/dolma3_mix-6T-1025-7B` at revision `2ca900fbe14e8
 
 Jacob Epifano. *Correct, Don't Delete: Mitigating Emergent Misalignment with Corrective Supervision.* arXiv 2609.37624. `papers/em_personas/` row 46.
 
+#### Kutasov et al. 2026
+
+Kutasov, Jermyn, Steen, Le, Bowman, Marks, Leike, Askell, Olah, Hubinger, Price. *Teaching Claude Why.* Anthropic alignment science blog, 2026-05-08, https://alignment.anthropic.com/2026/teaching-claude-why/. `papers/em_personas/` row 51 (structured paraphrase).
+
+#### Li et al. 2026
+
+Li, Wichers, Price, Marks, Kutasov. *Model Spec Midtraining: Improving How Alignment Training Generalizes.* arXiv 2605.02087. `papers/em_personas/` row 50.
+
 #### Literature reviews 2026
 
 Internal and external literature reviews for this experiment: `logs/litreviews/20261005-E3E9-internal.md`, `20261005-E3E9-external.md`, `20261006-E9b-internal.md`, `20261006-E9b-external.md`.
@@ -1247,6 +1275,10 @@ Internal and external literature reviews for this experiment: `logs/litreviews/2
 #### Minder, Dumas et al. 2025
 
 *Narrow Finetuning Leaves Clearly Readable Traces in Activation Differences.* ICLR 2026. `papers/interp_methods/`.
+
+#### Minder et al. 2026
+
+Minder, Moskvoretskii, Singhal, Jiao, Arditi, Cui, et al. *Synthetic Persona Pretraining: Alignment from Token Zero.* arXiv 2608.13482. `papers/em_personas/` row 16.
 
 #### Nadaf 2026
 
