@@ -9,6 +9,8 @@
 | Status | No pod was launched; no reservation is open; nothing paid is outstanding |
 | Run log | `logs/E3-report.md` (UTC timestamps, commands, decisions) |
 
+*§§1–6 describe the **first stop** (09:13Z) as it stood then; §7 covers the resumption, the second stop and the final state.*
+
 ## 1. What happened
 
 E3 measures susceptibility to emergent misalignment with a fixed set of **answer pairs**. Each pair is a misaligned (or harmful) answer and an aligned (or correct) answer to the same question, matched in length and wording. These pairs are shared with E9, and their construction is frozen in the shared spec [[shared measure spec](#shared-measure-spec-2026)]. E3 had to build them first.
@@ -122,7 +124,7 @@ He also chose to resume the full run if the rebuilt pairs passed.
 
 Neither had a failed call. Cost $0.023 (`results/E3/pairs_build/medcorrect_validation.json`).
 
-**The rebuild fixed the length problem.** 96% of first-round rewrites passed the length check, against about 23% in the first build. The final length ratios have a median of 0.97 for broad pairs and 0.93 for medical pairs. 254 of 300 pairs passed (`data/shared/answer_pairs_v1.c2.build.json`).
+**The rebuild fixed the length problem.** 96% of first-round rewrites passed the length check, against about 23% in the first build. The final length ratios have a median of 0.97 for broad pairs and 0.93 for medical pairs. 254 of 300 pair slots passed their checks, 252 of them in questions that were kept (`data/shared/answer_pairs_v1.c2.build.json`). The length ratios above describe the pairs of kept questions.
 
 **It failed retention by one held-out question:**
 
@@ -144,7 +146,15 @@ Three held-out questions lost all four of their pairs: `0_creative_writing_0`, `
 - adjust the held-out minimum (10 of 12) given the instrument's actual yield;
 - re-draw the held-out split.
 
-The last two change the confirmatory design and would need care, and the held-out split was frozen before any build. Each is a spec amendment for Jacob, made and frozen before any scoring.
+The last two change the confirmatory design. **They would also adapt the instrument to an observed held-out failure.** Lowering the minimum or re-drawing the split after seeing which held-out questions failed is a selection on held-out yield, and freezing before any scoring does not undo that. Either would need an independently justified revised confirmation design, with the adaptation disclosed. Each option is a spec amendment for Jacob.
+
+**Final state (after the second stop):**
+- **Spend:** $2.496092 API in total (first build $1.428985, `medcorrect` validation $0.022939, construction-2 build $1.044168 including the aborted runs); all 16 API reservations closed; $0 GPU; no RunPod reservation or pod.
+- **E9 told** of the second stop (16:40Z, cross-session message; recorded in the run log).
+- **Unit dispositions after the resumption:**
+  - completed: the `medcorrect` validation;
+  - stopped: U3b, the pair build, by the retention rule;
+  - skipped: U10–U17.
 
 ## References
 
