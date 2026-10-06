@@ -1,8 +1,8 @@
 {
-  "utc": "2026-10-05T21:12:11+00:00",
+  "utc": "2026-10-06T02:32:39+00:00",
   "labels_csv": {
     "path": "results/E1b/validation/handlabels_jacob.csv",
-    "sha256": "ffbddaa1c7d8fd3088f3ac8cba4f546189eef54cc592ea229b5844d76b0816f5"
+    "sha256": "021d842c027b14fe7c376c9a9f22075a8fb956b9c29fa107e81a976f13d20d7d"
   },
   "key_csv": {
     "path": "results/E1b/validation/handlabel_key.csv",
@@ -85,28 +85,28 @@
     "results/E1b/judged/sft-plain-good-R2-s2@plain__ext48.csv": "8f89b6debfe2ed53404e03855e242e26c9381d099d03f41bcdea2c52d22db7c4"
   },
   "partial": {
-    "labelled": 50,
+    "labelled": 99,
     "planned": 100,
     "per_domain": {
       "base/new41": {
         "planned": 15,
-        "labelled": 5
+        "labelled": 15
       },
       "inst/new41": {
         "planned": 15,
-        "labelled": 7
+        "labelled": 15
       },
       "pre/general": {
         "planned": 40,
-        "labelled": 22
+        "labelled": 40
       },
       "pre/new41": {
         "planned": 15,
-        "labelled": 7
+        "labelled": 15
       },
       "sft/new41": {
         "planned": 15,
-        "labelled": 9
+        "labelled": 14
       }
     }
   },
@@ -116,44 +116,44 @@
   },
   "new41_pooled": {
     "luna": {
-      "n": 28,
-      "kappa_em": 0.4042553191489362,
-      "em_calls": 10,
-      "confirmed": 7,
-      "confirm_rate": 0.7,
-      "kappa_coherent": 0.291139240506329,
+      "n": 59,
+      "kappa_em": 0.48755066589461504,
+      "em_calls": 25,
+      "confirmed": 19,
+      "confirm_rate": 0.76,
+      "kappa_coherent": 0.1980582524271837,
       "passes": false
     },
     "gfl": {
-      "n": 28,
-      "kappa_em": 0.5714285714285714,
-      "em_calls": 14,
-      "confirmed": 10,
-      "confirm_rate": 0.7142857142857143,
+      "n": 59,
+      "kappa_em": 0.6293546544831526,
+      "em_calls": 33,
+      "confirmed": 25,
+      "confirm_rate": 0.7575757575757576,
       "kappa_coherent": 0.0,
-      "passes": false
+      "passes": true
     }
   },
   "domains": {
     "pre/general": {
-      "n": 22,
-      "human_em": 11,
+      "n": 40,
+      "human_em": 22,
       "judges": {
         "luna": {
-          "n": 22,
-          "kappa_em": 0.9090909090909092,
-          "em_calls": 12,
-          "confirmed": 11,
-          "confirm_rate": 0.9166666666666666,
+          "n": 40,
+          "kappa_em": 0.8461538461538463,
+          "em_calls": 25,
+          "confirmed": 22,
+          "confirm_rate": 0.88,
           "kappa_coherent": null,
           "passes": true
         },
         "gfl": {
-          "n": 22,
-          "kappa_em": 0.5454545454545454,
-          "em_calls": 10,
-          "confirmed": 8,
-          "confirm_rate": 0.8,
+          "n": 40,
+          "kappa_em": 0.4634146341463414,
+          "em_calls": 15,
+          "confirmed": 13,
+          "confirm_rate": 0.8666666666666667,
           "kappa_coherent": null,
           "passes": false
         }
@@ -166,41 +166,38 @@
       "status": "validated"
     },
     "base/new41": {
-      "n": 5,
-      "human_em": 0,
+      "n": 15,
+      "human_em": 6,
       "judges": {
         "luna": {
-          "pooled_kappa_em": 0.4042553191489362,
+          "pooled_kappa_em": 0.48755066589461504,
           "pooled_kappa_passes": false,
           "pooled_passes": false,
           "stage": {
-            "n": 5,
-            "raw_agreement": 0.8,
-            "em_calls": 1,
-            "confirmed": 0,
-            "confirm_rate": 0.0,
-            "status": "undecidable",
-            "reasons": [
-              "too_few_em_calls"
-            ],
-            "passes": false
+            "n": 15,
+            "raw_agreement": 0.8666666666666667,
+            "em_calls": 6,
+            "confirmed": 5,
+            "confirm_rate": 0.8333333333333334,
+            "status": "pass",
+            "reasons": [],
+            "passes": true
           },
           "passes": false
         },
         "gfl": {
-          "pooled_kappa_em": 0.5714285714285714,
-          "pooled_kappa_passes": false,
-          "pooled_passes": false,
+          "pooled_kappa_em": 0.6293546544831526,
+          "pooled_kappa_passes": true,
+          "pooled_passes": true,
           "stage": {
-            "n": 5,
-            "raw_agreement": 0.6,
-            "em_calls": 2,
-            "confirmed": 0,
-            "confirm_rate": 0.0,
+            "n": 15,
+            "raw_agreement": 0.8,
+            "em_calls": 9,
+            "confirmed": 6,
+            "confirm_rate": 0.6666666666666666,
             "status": "fail",
             "reasons": [
-              "raw_agreement",
-              "too_few_em_calls"
+              "confirmation"
             ],
             "passes": false
           },
@@ -213,19 +210,19 @@
       "status": "undecidable"
     },
     "sft/new41": {
-      "n": 9,
-      "human_em": 4,
+      "n": 14,
+      "human_em": 7,
       "judges": {
         "luna": {
-          "pooled_kappa_em": 0.4042553191489362,
+          "pooled_kappa_em": 0.48755066589461504,
           "pooled_kappa_passes": false,
           "pooled_passes": false,
           "stage": {
-            "n": 9,
-            "raw_agreement": 0.7777777777777778,
-            "em_calls": 4,
-            "confirmed": 3,
-            "confirm_rate": 0.75,
+            "n": 14,
+            "raw_agreement": 0.7857142857142857,
+            "em_calls": 6,
+            "confirmed": 5,
+            "confirm_rate": 0.8333333333333334,
             "status": "pass",
             "reasons": [],
             "passes": true
@@ -233,122 +230,122 @@
           "passes": false
         },
         "gfl": {
-          "pooled_kappa_em": 0.5714285714285714,
-          "pooled_kappa_passes": false,
-          "pooled_passes": false,
+          "pooled_kappa_em": 0.6293546544831526,
+          "pooled_kappa_passes": true,
+          "pooled_passes": true,
           "stage": {
-            "n": 9,
-            "raw_agreement": 0.8888888888888888,
-            "em_calls": 5,
-            "confirmed": 4,
-            "confirm_rate": 0.8,
+            "n": 14,
+            "raw_agreement": 0.8571428571428571,
+            "em_calls": 7,
+            "confirmed": 6,
+            "confirm_rate": 0.8571428571428571,
             "status": "pass",
             "reasons": [],
             "passes": true
           },
-          "passes": false
+          "passes": true
         }
       },
       "pair_pass": true,
-      "validated": [],
-      "headline_judge": null,
-      "status": "undecidable"
+      "validated": [
+        "gfl"
+      ],
+      "headline_judge": "gfl",
+      "status": "validated"
     },
     "inst/new41": {
-      "n": 7,
-      "human_em": 6,
+      "n": 15,
+      "human_em": 7,
       "judges": {
         "luna": {
-          "pooled_kappa_em": 0.4042553191489362,
+          "pooled_kappa_em": 0.48755066589461504,
           "pooled_kappa_passes": false,
           "pooled_passes": false,
           "stage": {
-            "n": 7,
-            "raw_agreement": 0.42857142857142855,
-            "em_calls": 4,
-            "confirmed": 3,
-            "confirm_rate": 0.75,
+            "n": 15,
+            "raw_agreement": 0.6,
+            "em_calls": 7,
+            "confirmed": 4,
+            "confirm_rate": 0.5714285714285714,
             "status": "fail",
             "reasons": [
-              "raw_agreement"
+              "raw_agreement",
+              "confirmation"
             ],
             "passes": false
           },
           "passes": false
         },
         "gfl": {
-          "pooled_kappa_em": 0.5714285714285714,
+          "pooled_kappa_em": 0.6293546544831526,
+          "pooled_kappa_passes": true,
+          "pooled_passes": true,
+          "stage": {
+            "n": 15,
+            "raw_agreement": 0.8,
+            "em_calls": 8,
+            "confirmed": 6,
+            "confirm_rate": 0.75,
+            "status": "pass",
+            "reasons": [],
+            "passes": true
+          },
+          "passes": true
+        }
+      },
+      "pair_pass": false,
+      "validated": [
+        "gfl"
+      ],
+      "headline_judge": "gfl",
+      "status": "validated"
+    },
+    "pre/new41": {
+      "n": 15,
+      "human_em": 8,
+      "judges": {
+        "luna": {
+          "pooled_kappa_em": 0.48755066589461504,
           "pooled_kappa_passes": false,
           "pooled_passes": false,
           "stage": {
-            "n": 7,
-            "raw_agreement": 0.8571428571428571,
-            "em_calls": 5,
+            "n": 15,
+            "raw_agreement": 0.7333333333333333,
+            "em_calls": 6,
             "confirmed": 5,
-            "confirm_rate": 1.0,
+            "confirm_rate": 0.8333333333333334,
             "status": "pass",
             "reasons": [],
             "passes": true
           },
           "passes": false
-        }
-      },
-      "pair_pass": false,
-      "validated": [],
-      "headline_judge": null,
-      "status": "undecidable"
-    },
-    "pre/new41": {
-      "n": 7,
-      "human_em": 2,
-      "judges": {
-        "luna": {
-          "pooled_kappa_em": 0.4042553191489362,
-          "pooled_kappa_passes": false,
-          "pooled_passes": false,
-          "stage": {
-            "n": 7,
-            "raw_agreement": 0.8571428571428571,
-            "em_calls": 1,
-            "confirmed": 1,
-            "confirm_rate": 1.0,
-            "status": "undecidable",
-            "reasons": [
-              "too_few_em_calls"
-            ],
-            "passes": false
-          },
-          "passes": false
         },
         "gfl": {
-          "pooled_kappa_em": 0.5714285714285714,
-          "pooled_kappa_passes": false,
-          "pooled_passes": false,
+          "pooled_kappa_em": 0.6293546544831526,
+          "pooled_kappa_passes": true,
+          "pooled_passes": true,
           "stage": {
-            "n": 7,
-            "raw_agreement": 0.7142857142857143,
-            "em_calls": 2,
-            "confirmed": 1,
-            "confirm_rate": 0.5,
-            "status": "undecidable",
-            "reasons": [
-              "too_few_em_calls"
-            ],
-            "passes": false
+            "n": 15,
+            "raw_agreement": 0.8,
+            "em_calls": 9,
+            "confirmed": 7,
+            "confirm_rate": 0.7777777777777778,
+            "status": "pass",
+            "reasons": [],
+            "passes": true
           },
-          "passes": false
+          "passes": true
         }
       },
       "pair_pass": false,
-      "validated": [],
-      "headline_judge": null,
-      "status": "undecidable"
+      "validated": [
+        "gfl"
+      ],
+      "headline_judge": "gfl",
+      "status": "validated"
     }
   },
   "undecidable": [
-    "base/new41",
-    "sft/new41",
-    "inst/new41",
-    "pre/new41"
+    "base/new41"
   ]
 }
