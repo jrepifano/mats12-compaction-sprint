@@ -1536,3 +1536,17 @@ def test_budget_module_is_import_light():
     )
     r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
     assert r.returncode == 0, r.stderr
+
+
+def test_cleanup_verifies_the_unit_of_the_latest_job_not_the_launch_unit(world):
+    """2026-10-06: an idle cleanup after a finished smoke job verified pod1's (never started)
+    manifest and fired a false retrieval stop. The latest job's unit is what gets verified."""
+    o = make(world)
+    B.append_log(world.root, {"event": "launched", "unit": "pod1", "slot": "_A",
+                              "reservation_id": "r1"})
+    B.append_log(world.root, {"cmd": "job", "event": "job_starting", "job_unit": "smoke",
+                              "slot": "_A"})
+    assert o.slot_launch("_A")["job_unit"] == "smoke"
+    B.append_log(world.root, {"cmd": "job", "event": "job_starting", "job_unit": "pod1",
+                              "slot": "_A"})
+    assert o.slot_launch("_A")["job_unit"] == "pod1"

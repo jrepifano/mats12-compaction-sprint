@@ -355,6 +355,10 @@ class Orchestrator:
                 out = {}
             elif e.get("cmd") == "job" and out:
                 out["job"] = True
+                # the unit of the latest job run on the pod (smoke before pod1 on one pod):
+                # retrieval verifies that unit, not the launch unit (2026-10-06 false stop)
+                if e.get("job_unit"):
+                    out["job_unit"] = e["job_unit"]
         return out
 
     def projection(self, state: dict | None = None):
@@ -833,7 +837,7 @@ class Orchestrator:
 
     def _cleanup(self, slot, reason, retrieve, reservation_id, outcome, enforced=False) -> dict:
         info = self.slot_launch(slot)
-        unit = info.get("unit")
+        unit = info.get("job_unit") or info.get("unit")  # what ran on the pod, else the launch
         rid = reservation_id or info.get("reservation_id")
         pod = self.slot_pod(slot)
         res = {
