@@ -16,6 +16,8 @@ logs/E3-orchestrate.jsonl; a stop prints `E3_STOP <rule>` too):
   rearm                                    re-arm every running E3 slot (pod_push --arm-only)
   api-reserve --usd X --note N | api-settle --id ID [--usd TOTAL] | api-release --id ID
   enforce                                  terminate unarmed / overdue pods now (no retrieval)
+  reconcile-creating                       overdue `creating` rows against the API (enforce
+                                           starts it in the background)
   recover                                  enforce, then stopped / gone / idle pods (cleanups in
                                            the background), untracked pods, orphans
   deadline-check                           at the 5-day cap: clean up everything, release, stop
@@ -61,6 +63,14 @@ Review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
   `--enforced`: a pod terminated for its deadline after a job was started on it, whose unit is
   not complete, has its unretrieved artifacts recorded as missing (run log and unit manifest)
   and fires §7's retrieval stop after the termination.
+- Review A2 r1 (logs/reviews/20261006-E3-code-A2-r1.md): (1) every overdue launched pod's
+  termination is dispatched before anything else, and overdue `creating` rows are reconciled
+  in ONE detached `reconcile-creating` process per pass (its own lock: passes never pile up),
+  so an orphaned creation's slow untracked reap never delays a DELETE. (2) the `--enforced`
+  retrieval stop needs confirmed termination, and is decided under the slot's retrieval lock:
+  while a retrieval is in progress (lock held) or once it has succeeded (unit complete),
+  nothing is recorded missing; an unconfirmed termination records nothing and the next
+  enforcement pass retries it.
 - 3: a launch waiting for admission cancels on a stop or the cap; after admission the stop and
   the cap are re-checked under logs/E3-create.lock immediately before pod_up (a refusal releases
   the reservation). A stop writes STOPPED.json, then takes the same lock before its sweep, so an
@@ -94,7 +104,8 @@ DEADLINE_RE = re.compile(r"^EMX_POD_DEADLINE=(\d+)\s*$", re.MULTILINE)
 # pod_up's one outcome line: ok | uncertain (a pod may bill: never release) | closed | none
 CREATE_RE = re.compile(r"^EMX_POD_CREATE=(\w+) reservation=(\S+)", re.MULTILINE)
 STOP_STATUSES = ("EXITED", "TERMINATED", "STOPPED")
-CREATE_LOCK = "logs/E3-create.lock"  # the creation decision vs a stop's sweep (review A r2, 3)
+CREATE_LOCK = "logs/E3-create.lock"
+CREATING_LOCK = "logs/E3-reconcile-creating.lock"  # one creation reconciliation at a time  # the creation decision vs a stop's sweep (review A r2, 3)
 TERMINATE_ATTEMPTS = 3
 
 
@@ -844,18 +855,26 @@ class Orchestrator:
             except Exception as e:  # noqa: BLE001
                 res["errors"].append(f"reservation: {type(e).__name__}: {e}")
             res["snapshot"] = self._snapshot(res)
-        # a pod terminated for its deadline after its job started: its results are lost
-        if enforced and unit and info.get("job") and not B.unit_complete(self.root, unit):
-            try:
-                res["missing"] = self._record_missing(
-                    unit,
-                    slot,
-                    "terminated past its deadline without retrieval (its job had started)",
-                    reason,
-                )
-            except Exception as e:  # noqa: BLE001 - the stop still fires
-                res["errors"].append(f"record missing: {type(e).__name__}: {e}")
-            res["stop_rule"] = B.STOP_RETRIEVAL
+        # a pod CONFIRMED terminated for its deadline after its job started, with no retrieval
+        # in progress and none that succeeded: its results are lost (review A2 r1, 2). Decided
+        # under the slot's retrieval lock, so no retrieval can start or finish meanwhile.
+        if enforced and unit and info.get("job") and res["terminated"] is True:
+            with _flock(self.root / "logs" / f"E3-retrieve{slot}.lock", blocking=False) as held:
+                if not held:
+                    res["loss_undecided"] = "a retrieval is in progress: its holder decides"
+                elif B.unit_complete(self.root, unit):
+                    res["loss_undecided"] = "the unit's results were retrieved"
+                else:
+                    try:
+                        res["missing"] = self._record_missing(
+                            unit,
+                            slot,
+                            "terminated past its deadline without retrieval (its job had started)",
+                            reason,
+                        )
+                    except Exception as e:  # noqa: BLE001 - the stop still fires
+                        res["errors"].append(f"record missing: {type(e).__name__}: {e}")
+                    res["stop_rule"] = B.STOP_RETRIEVAL
         if outcome is None:
             outcome = "done" if res["retrieved"] is True else "aborted"
         res["outcome"] = outcome if res["terminated"] else "termination_unconfirmed"
@@ -1097,20 +1116,45 @@ class Orchestrator:
             return worst
 
     def _enforce_deadlines(self, acts: list[dict]) -> int:
-        worst = 0
+        """Dispatch every overdue launched pod's termination first; then hand the overdue
+        `creating` rows to one background `reconcile-creating` process (review A2 r1, 1).
+        Nothing here blocks on a pod_down or an API call."""
+        creating = []
         for o in self.d.rr.unarmed_overdue(self.d.now().timestamp()):
             if o.get("exp") != C.EXP:
                 continue
             slot = o.get("slot")
             if o.get("pod_id") or (slot and self.slot_pod(slot)):
                 self._dispatch_termination(o, acts)
-                continue
-            # a `creating` row with no launched pod: released only once the API proves no pod
-            closed, detail = self._resolve_creating(o["reservation_id"], "recover")
-            acts.append({"creating": o["reservation_id"], "closed": closed, "detail": detail})
-            if not closed and "still listed" in detail:
-                worst = max(worst, 3)
-        return worst
+            else:
+                creating.append(o["reservation_id"])
+        if creating:
+            if _lock_busy(self.root / CREATING_LOCK):
+                acts.append({"creating": creating, "skipped": "a reconciliation is running"})
+            else:
+                cmd = ["uv", "run", "python", "scripts/e3_orchestrate.py", "reconcile-creating"]
+                (self.d.spawn or self._spawn_detached)(cmd, "reconcile-creating")
+                acts.append({"creating": creating, "dispatched": True})
+        return 0
+
+    def reconcile_creating(self) -> int:
+        """Reconcile every overdue `creating` row with the API (a row is released only once
+        the API proves no pod exists; an untracked pod of its name is reaped first). One at a
+        time: a second pass while one runs returns at once."""
+        with _flock(self.root / CREATING_LOCK, blocking=False) as held:
+            if not held:
+                self.emit("reconcile-creating", {"event": "reconcile_busy"})
+                return 0
+            acts, worst = [], 0
+            for o in self.d.rr.unarmed_overdue(self.d.now().timestamp()):
+                if o.get("exp") != C.EXP or o.get("kind") != "creating":
+                    continue
+                closed, detail = self._resolve_creating(o["reservation_id"], "recover")
+                acts.append({"creating": o["reservation_id"], "closed": closed, "detail": detail})
+                if not closed and "still listed" in detail:
+                    worst = max(worst, 3)
+            self.emit("reconcile-creating", {"event": "reconcile_creating", "actions": acts})
+            return worst
 
     def _dispatch_termination(self, o: dict, acts: list[dict]) -> None:
         """One detached `cleanup --no-retrieve --enforced` per overdue pod (review A r3, 1):
@@ -1596,6 +1640,7 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     s.add_argument("--id", required=True)
     sub.add_parser("recover")
     sub.add_parser("enforce")
+    sub.add_parser("reconcile-creating")
     sub.add_parser("deadline-check")
     s = sub.add_parser("stop")
     s.add_argument("--rule", required=True, help="the §7 stopping rule that fired")
@@ -1641,6 +1686,8 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
         return o.recover()
     if a.cmd == "enforce":
         return o.enforce()
+    if a.cmd == "reconcile-creating":
+        return o.reconcile_creating()
     if a.cmd == "deadline-check":
         return o.deadline_check()
     if a.cmd == "stop":

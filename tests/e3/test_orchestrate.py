@@ -9,7 +9,8 @@ unsettled-pod view (`runpod_reservations.unsettled_pods`, fix subagent F2) is fa
 its fixed contract.
 
 2026-10-06: regression tests for gpt-6-astra code review A r1 fixes A1, A2, A4, A5, A8 and A9
-(each names its finding), for review A r2 findings 1 and 3, and review A r3 finding 1.
+(each names its finding), for review A r2 findings 1 and 3, review A r3 finding 1, and
+review A2 r1 findings 1 and 2.
 """
 
 from __future__ import annotations
@@ -189,6 +190,7 @@ class World:
         self.threads: list[threading.Thread] = []
         self.spawned: list[list[str]] = []
         self.down_hook = None  # called with the pod id at each pod_down --pod-id
+        self.untracked_hook = None  # called at each pod_down --untracked
         self.up_hook = None  # called inside pod_up (to interleave a stop)
 
     # pod event log
@@ -241,7 +243,8 @@ class World:
             return
 
         def run():
-            assert orch.main(cmd[cmd.index("cleanup") :], deps=make(self).d) in (0, 1, 2, 3)
+            argv = cmd[cmd.index("scripts/e3_orchestrate.py") + 1 :]
+            assert orch.main(argv, deps=make(self).d) in (0, 1, 2, 3)
 
         if self.spawn_threads:
             t = threading.Thread(target=run)
@@ -327,6 +330,8 @@ class World:
                     rr.release(rid, note="fake pod_down --pod-id")
                 return 0, ""
             if "--untracked" in cmd:
+                if self.untracked_hook is not None:
+                    self.untracked_hook()
                 known = {p["pod_id"] for p in B.pod_sessions(self.root)}
                 self.api = [p for p in (self.api or []) if p["id"] in known]
                 return 0, ""
@@ -848,7 +853,8 @@ def test_recover_keeps_a_dead_launchers_creating_row_while_the_listing_is_unknow
     o.recover()  # overdue, listing unknown
     assert not rr.get(rid)["closed"]
     assert any(
-        a.get("detail", "").startswith("kept") for a in last_event(world, "recover")["actions"]
+        a.get("detail", "").startswith("kept")
+        for a in last_event(world, "reconcile_creating")["actions"]
     )
 
 
@@ -1184,6 +1190,73 @@ def test_an_enforced_pod_with_a_complete_unit_or_no_job_is_not_a_stop(world):
     make(world).enforce()
     assert B.running_slots(world.root) == []
     assert B.read_stopped(world.root) is None
+
+
+# --- review A2 r1 ------------------------------------------------------------------------------
+
+
+def test_a_stalled_orphan_creation_never_delays_an_overdue_pods_delete(world):
+    """Finding 1: an orphaned creation (its untracked pod's reap stalls) and an overdue launched
+    pod. The launched pod's DELETE goes out at once; the creation is reconciled in its own
+    background process."""
+    rid_c = rr.reserve("E3", 6.5, "E3 pod3 slot _C")
+    rr.creating(
+        rid_c, slot="_C", name="e3-_C", budget_usd=6.5, rate_usd_h=RATE, t0_epoch=NOW.timestamp()
+    )
+    world.ack_on_push = False
+    _launched(world, "_B", "pod2")
+    pid_b = last_event(world, "launched")["pod_id"]
+    world.api.append({"id": "orphan", "name": "e3-_C", "desiredStatus": "RUNNING"})
+    stall, b_called, reaping = threading.Event(), threading.Event(), threading.Event()
+    world.untracked_hook = lambda: (reaping.set(), stall.wait(15))  # the orphan's reap stalls
+    world.down_hook = lambda pid: b_called.set() if pid == pid_b else None
+    world.spawn_threads = True
+    world.now = NOW + timedelta(minutes=16)
+    t0 = time.monotonic()
+    try:
+        assert make(world).enforce() == 0
+        assert time.monotonic() - t0 < 3
+        assert b_called.wait(5) and not stall.is_set()  # B's DELETE while the reap stalls
+        assert reaping.wait(5)
+        assert make(world).enforce() == 0  # a second pass while the reconciliation runs ...
+        assert sum("reconcile-creating" in c for c in world.spawned) == 1  # ... starts none
+    finally:
+        stall.set()
+        for th in world.threads:
+            th.join(20)
+    assert B.running_slots(world.root) == [] and rr.get(rid_c)["closed"]
+
+
+def test_an_unconfirmed_termination_records_nothing_and_is_retried(world):
+    """Finding 2: the DELETE fails. No artifact is recorded missing and no stop fires; the
+    next enforcement pass retries, and only the confirmed termination decides the loss."""
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    world.down_rc = 1
+    make(world).enforce()
+    assert B.read_stopped(world.root) is None
+    assert not (world.root / C.manifest_path("pod1")).exists()
+    assert B.running_slots(world.root) != []
+    assert last_event(world, "cleanup_failed")["missing"] == []
+    world.down_rc = 0
+    make(world).enforce()  # the next pass
+    assert B.running_slots(world.root) == []
+    assert B.read_stopped(world.root)["rule"] == B.STOP_RETRIEVAL
+
+
+def test_no_retrieval_stop_while_a_retrieval_of_the_slot_is_in_progress(world):
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    with orch._flock(world.root / "logs" / "E3-retrieve_A.lock"):  # a cleanup is pulling
+        make(world).enforce()
+    assert B.running_slots(world.root) == []  # terminated all the same
+    assert B.read_stopped(world.root) is None
+    assert not (world.root / C.manifest_path("pod1")).exists()
+    assert "retrieval is in progress" in last_event(world, "cleaned")["loss_undecided"]
 
 
 # --- review A r2, finding 3: a waiting launch never escapes a stop ------------------------------
