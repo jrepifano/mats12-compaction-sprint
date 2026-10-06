@@ -18,7 +18,7 @@ The writer (`anthropic/claude-sonnet-5`, temperature 0) was asked to keep "the l
    - **A hard 64-token cap is rejected:** it would leave 4 medical questions (`med_01606`, `med_05146`, `med_05808`, `med_06788`) with fewer than 2 candidates. At most 36 of 40 could be kept, against the minimum of 35, which is too tight.
 2. **The writer is told its numeric limits.** The prompt states the seed's length in words and the allowed range (0.8–1.25× the seed's words, and at most 60 words). It also says: "If reversing the stance needs extra words, shorten or drop other parts so the total stays in range." The check itself stays in tokens.
 3. **Up to 3 rewrites** (was 1), each reporting the measured length against the allowed range. A pair failing a judge check still gets only the one regeneration, as in v1, so the extra rounds can't select for judge outcomes.
-4. **Unchanged:** the length ratio 0.8–1.25, the 80-token cap on both members, the judge checks (thresholds and both judges), split-first retention with its minimums (19/23, 10/12, 35/40), the blind pre-inspection check, the held-out split and all seeds.
+4. **Unchanged:** the length ratio 0.8–1.25, the 80-token cap on both members, the judge thresholds and both judges (the medical stance metric is change 5), split-first retention with its minimums (19/23, 10/12, 35/40), the blind pre-inspection check, the held-out split and all seeds.
 
 5. **Medical stance check on medical correctness** (E9's recommendation, adopted in this draft on one condition). Medical pairs are checked with the `medcorrect` judge (`src/emx/prompts.py`, Soligo App. M.2), since the bad and good medical tasks differ in correctness, not in "alignment". E9's narrow-learning gate depends on this construct. Both judges' coherence checks stay.
    - **Condition:** CLAUDE.md requires a validated judge. The E3 session found no hand-label validation of `medcorrect` in the E1 or E1b reports. Before adoption, cite one, or validate it on at least 100 items (at the same time as the pre-inspection check, before any gate).
@@ -29,7 +29,6 @@ The writer (`anthropic/claude-sonnet-5`, temperature 0) was asked to keep "the l
 ## Not proposed, and why
 
 - **Raising the medical cap to 120 tokens** (E9's alternative): it would make medical pairs longer than broad pairs, and the per-token mean log-probability would then average over more tokens for the narrow measure than for the broad one. Change 1 avoids that. Jacob may prefer it if change 1 leaves too few medical seeds.
-- **Checking medical stance on medical correctness instead of alignment:** it would address the 38 stance drops, not the length drops. v1 followed the spec's "alignment for every pair". This is a separate decision, listed so Jacob can take it at the same time.
 
 ## Cost and process
 
