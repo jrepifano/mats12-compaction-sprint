@@ -324,18 +324,103 @@ RULE_SCHEMAS: dict[str, tuple[str, ...]] = {
     "stageA": (
         *_COMMON_KEYS, "pairs_check", "yardstick", "positive_control", "local_control",
         "prompt_dependence", "v_eligibility", "v", "agreement_ref", "agreement_v",
-        "statuses", "estimates",
+        "statuses", "estimates", "sampled",
     ),
     # reference-only simulation: P(candidate | true ratio, dN fraction) per early checkpoint
     "power": (*_COMMON_KEYS, "draws", "seed", "table", "underpowered"),
     # hashes binding the unsealing to a passing gate and the immutable power record
     "unseal": (*_COMMON_KEYS, "stageA_sha256", "power_sha256", "judges_sha256",
                "pairs_sha256", "swaps_sha256"),
-    # per early checkpoint: training/learning/interpretability status, estimates, candidate flag
-    "stageB": (*_COMMON_KEYS, "checkpoints", "candidates", "w_star", "neighbour",
-               "confirmation"),
+    # per early checkpoint (plan v4): estimates/statuses/sampled as in stageA, keyed by ckpt
+    "stageB": (*_COMMON_KEYS, "estimates", "statuses", "sampled", "candidates", "w_star",
+               "neighbour", "non_contiguous", "power_labels", "rescore_check",
+               "old_reference_check", "confirmation"),
     "claims": (*_COMMON_KEYS, "claim1", "claim2", "wording"),
 }
+
+# Payload specs (plan v4, fix 4): nested key sets that `validate_record` checks. A key mapped
+# to a tuple is a dict with exactly those keys; "Est" is EST_KEYS (or None where a ratio is not
+# computed); "*" levels are dicts keyed by ckpt / seed / step / qset / judge / cell.
+CHECK_KEYS: tuple[str, ...] = ("outcome", "values", "reason")  # every Stage A check payload
+JUDGE_ITEM_KEYS: tuple[str, ...] = (  # judges.json["items"] rows
+    "item_id", "cell", "ckpt", "qset", "qid", "sample_idx", "em_calls", "tiebreak_em",
+    "reference_em",  # em_calls / reference_em: {judge: bool or None}
+)
+CONFIRMATION_KEYS: tuple[str, ...] = (  # stageB["confirmation"]
+    "outcome",  # "pending" (a candidate exists) or "skipped"
+    "reason", "targets",  # targets: [w*, neighbour] or [w*] under cut 1
+    "cut1",
+)
+CLAIM1_KEYS: tuple[str, ...] = (
+    "outcome",  # pass | fail | inconclusive | skipped
+    "reason", "seed_replication",  # {"outcome", "R_s3": Est, "bound": Est}
+    "heldout",  # HELDOUT_KEYS
+    "interpretable",
+)
+HELDOUT_KEYS: tuple[str, ...] = (
+    "dB_ho_wstar_avg", "dN_wstar_avg", "R_ho_wstar", "dB_ho_ref", "R_ho_ref",  # Est each
+    "ref_usable", "point_below_third", "bound_two_thirds",  # bool, bool, Est
+    "n_heldout_questions",
+)
+CLAIM2_KEYS: tuple[str, ...] = (
+    "outcome", "reason", "available",  # available False under cut 1 or without Claim 1
+    "neighbour_learns", "neighbour_interpretable",
+    "lower_vs_ref",  # Est of R_nb - (2/3) R_ref (seed-averaged)
+    "diff_nb_wstar",  # Est of R_nb - R_w*
+)
+STAGEA_CHECKS: tuple[str, ...] = (  # stageA keys whose value is a CHECK_KEYS payload
+    "pairs_check", "yardstick", "positive_control", "local_control", "prompt_dependence",
+    "v_eligibility", "agreement_ref", "agreement_v",
+)
+
+
+def validate_record(name: str, obj: dict) -> list[str]:
+    """Problems with a rule record against RULE_SCHEMAS and the payload specs ([] if valid).
+    Producers (e3_analyze, judge_validation) call it before writing; consumers before reading."""
+    probs = [f"{name}: missing {k}" for k in RULE_SCHEMAS[name] if k not in obj]
+    if obj.get("outcome") not in GATE_OUTCOMES:
+        probs.append(f"{name}: outcome {obj.get('outcome')!r}")
+
+    def keys(path: str, d, want) -> None:
+        if not isinstance(d, dict):
+            probs.append(f"{path}: not a dict")
+            return
+        miss = [k for k in want if k not in d]
+        if miss:
+            probs.append(f"{path}: missing {miss}")
+
+    if name == "stageA":
+        for k in STAGEA_CHECKS:
+            if k in obj:
+                keys(f"stageA.{k}", obj[k], CHECK_KEYS)
+    if name in ("stageA", "stageB"):
+        for ck, seeds in (obj.get("estimates") or {}).items():
+            for sd, steps in seeds.items():
+                for st, est in steps.items():
+                    keys(f"{name}.estimates.{ck}.{sd}.{st}", est, ESTIMATE_KEYS)
+        for ck, st in (obj.get("statuses") or {}).items():
+            keys(f"{name}.statuses.{ck}", st, STATUS_KEYS)
+        for cell_id, qs in (obj.get("sampled") or {}).items():
+            for q, v in qs.items():
+                keys(f"{name}.sampled.{cell_id}.{q}", v, SAMPLED_KEYS)
+    if name == "stageB" and "confirmation" in obj:
+        keys("stageB.confirmation", obj["confirmation"], CONFIRMATION_KEYS)
+    if name == "claims":
+        if "claim1" in obj:
+            keys("claims.claim1", obj["claim1"], CLAIM1_KEYS)
+            if isinstance(obj["claim1"], dict) and obj["claim1"].get("heldout") is not None:
+                keys("claims.claim1.heldout", obj["claim1"]["heldout"], HELDOUT_KEYS)
+        if "claim2" in obj:
+            keys("claims.claim2", obj["claim2"], CLAIM2_KEYS)
+    if name == "judges":
+        for q, v in (obj.get("qsets") or {}).items():
+            keys(f"judges.qsets.{q}", v, JUDGE_QSET_KEYS)
+        for q, cks in (obj.get("checkpoint_criterion") or {}).items():
+            for ck, v in cks.items():
+                keys(f"judges.checkpoint_criterion.{q}.{ck}", v, JUDGE_CHECKPOINT_KEYS)
+        for i, it in enumerate(obj.get("items") or []):
+            keys(f"judges.items[{i}]", it, JUDGE_ITEM_KEYS)
+    return probs
 
 
 # Nested structures exchanged between units (plan v3, fix 6). "Est" is

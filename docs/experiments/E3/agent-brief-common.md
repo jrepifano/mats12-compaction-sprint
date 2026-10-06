@@ -6,7 +6,7 @@ You are one of nine parallel Opus subagents building E3 (is there an early-pretr
 
 **Read first:**
 - `docs/experiments/E3/prereg.md` (v0.3, signed off), the sections your brief names;
-- `docs/experiments/E3/implementation-plan.md`, especially the section "v2: fixes after gpt-6-astra round 1", which wins over v1;
+- `docs/experiments/E3/implementation-plan.md`, especially its sections v2, v3 and v4 (fixes after review rounds 1–3). **The latest version wins: v4 over v3 over v2 over v1;**
 - `src/emx/e3/contracts.py`, the frozen constants, paths and schemas. Import them; never hardcode a value that is in it. **Never edit it.** If you need a change, finish what you can and report the needed change in your final reply;
 - `CLAUDE.md` ("Inherited gotchas", "RunPod operations", "Visibility").
 

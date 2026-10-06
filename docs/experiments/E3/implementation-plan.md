@@ -1,4 +1,4 @@
-# E3 implementation plan: early-pretraining-window sweep (approved by Jacob 2026-10-06; v3 after gpt-6-astra rounds 1–2)
+# E3 implementation plan: early-pretraining-window sweep (approved by Jacob 2026-10-06; v4 after gpt-6-astra rounds 1–3)
 
 ## Context
 
@@ -202,3 +202,33 @@ Round 2 judged B1, B3, B6 and B8 resolved, and the ownerships disjoint. These fi
 7. **Infrastructure PR (r2-7).** It includes `src/emx/e3/__init__.py` and `src/emx/e3/contracts.py` (stdlib only), so `spend.py`'s E3 import resolves on `main`.
 8. **Data pins (r2-8).** `contracts.py` now pins all four training and evaluation files and the three question files (`input_sha256()`). U3a and U5 verify them before use, on the laptop and on the pod.
 9. **Wording (r2-9).** Hyperparameters are compared with `registry.RECIPES["R1"]` itself; E1b's configs are only the structural template.
+
+---
+
+## v4: fixes after gpt-6-astra round 3 (`logs/reviews/20261006-E3-implplan-r3.md`): the review cap is reached
+
+Round 3 is the last plan review (CLAUDE.md caps them at 3). Its four blocking findings are fixed below, without a fourth round. The fixes are verified by the code review (U9), which reads this section. They are listed for Jacob at the results review (`logs/E3-report.md`). The nine subagents were dispatched when round 3 started; v4 reached them by message. **v4 wins over v3.**
+
+1. **API crash recovery (r3-1): settle uncertain reservations, never resume them.** A reservation found open with a `submitted` row at startup (a crashed batch) is **settled at its full reserved amount** (`spend.recover_uncertain(exp, note)`). The remaining work then needs a **fresh** `reserve_api` admission. This replaces v3's "resume under the same reservation" rule.
+   - Spend under a reservation is bounded by its headroom while the process lives (`reservation_headroom`, with uncertain calls priced at the reservation price per call). So the full reserved amount covers whatever a dead process spent.
+   - Each judge column, and each pair-build stage, gets its own small reservation, so the over-count after a crash is bounded by that one reservation.
+   - Tests use real process death (`os._exit` in a child) before the charge append.
+2. **Unarmed pods (r3-2): an independent supervisor.**
+   - **`creating` row:** `pod_up.py` writes a durable `creating` row (`t0`, reservation id, slot, exp) to the reservations file **before** the create request, then a `launch` row.
+   - **Supervisor:** `scripts/e3_watchdog.sh` is started (and checked running) **before** any E3 creation, and is independent of the orchestrator. Every interval (≤ 2 minutes) it runs `e3_orchestrate.py recover`. That terminates any E3 pod (found through the API, or a `creating` row without a pod) once it is unacknowledged 15 minutes after `t0`, or past its budget deadline `t0 + budget / rate`, whichever is earlier.
+   - **Launch guard:** `e3_orchestrate.py launch` refuses to create a pod unless the watchdog is alive.
+   - **Test:** a launcher killed after creation, with no further orchestrator call; the watchdog's recover terminates the pod.
+3. **Refresh after API changes (r3-3): one frozen hook, never extending.**
+   - **The hook:** `emx.e3.budget.after_api_change(exp: str) -> None` (U8d) is a no-op unless `exp == "E3"` and E3 pods are running. Otherwise it re-arms every running E3 slot through `pod_push.sh --arm-only`.
+   - **Who calls it:** U3a's and U7's code calls it right after every `reserve_api`, `settle_api` and `release_api` (U7 inside `e1_judge.py --exp E3`, U3a inside the builder).
+   - **Never extending:** the re-arm target is min(the pod's reservation deadline, the global kill-line deadline, **its current acknowledged deadline**). An automatic refresh can only shorten a deadline; extensions go only through U8b's explicit `extend` with admission.
+   - **On failure:** a re-arm failure raises `RearmFailed` after `after_api_change` has run cleanup for the failing slot. The caller propagates it, so paid work stops.
+   - **Tests:** release after a shortening (the deadline stays short); a failed acknowledgement (cleanup, `RearmFailed`).
+4. **Remaining payloads (r3-4).** `contracts.py` now freezes:
+   - one Stage B nesting: `stageB["estimates"][ckpt][seed][step]`, `statuses`, `sampled`, with `confirmation` per `CONFIRMATION_KEYS`;
+   - the Stage A check payloads (`CHECK_KEYS` for each of `STAGEA_CHECKS`);
+   - judge-validation items (`JUDGE_ITEM_KEYS`);
+   - the claim payloads (`CLAIM1_KEYS`, `HELDOUT_KEYS`, `CLAIM2_KEYS`).
+
+   `contracts.validate_record(name, obj)` checks a record. Producers call it before writing, and consumers before reading. U6 writes representative records to `tests/e3/fixtures/rule_records.json`, and both U6's and U7's tests validate them.
+5. **Brief (r3-5).** `agent-brief-common.md` now says the latest plan version wins.
