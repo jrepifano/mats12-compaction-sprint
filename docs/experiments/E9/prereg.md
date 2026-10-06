@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.4: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections |
+| Version | v0.5: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere |
 | Status | Draft, not approved |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
-| Budget | Mandatory ≈ $138–167 (≈ $146–175 with expected review-barrier overhead): Part 1 ≈ $70–84 if promising (≈ $60–72 if it stops early), Part 2 ≈ $68–84. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Proposed hard cap $180**, with stage limits (setup and Part 1 $90; extra-seeds branch $25; Part 2 $95) and the total binding (§7.3). This is above the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3) |
+| Budget | Mandatory ≈ $139–169 (≈ $147–177 with expected review-barrier overhead): Part 1 ≈ $71–81 if promising (≈ $60–70 if it stops early), Part 2 ≈ $68–87. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Proposed hard cap $180**, with stage limits (setup and Part 1 $90; extra-seeds branch $25; Part 2 $95) and the total binding (§7.3). This is above the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3) |
 | Shared contracts | The susceptibility log-probability gap and its frozen answer pairs [[Shared measure spec 2026](#shared-measure-spec-2026)], version v1, frozen 2026-10-06 (construction version 3), sha256 `64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a`: 252 pairs over 21 development, 10 held-out and 37 medical questions; RunPod launches under the shared reservation contract [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)] |
 
 **Key definitions.** **Emergent misalignment (EM)** is the finding that fine-tuning a model on a narrow harmful task, such as bad medical advice, makes it broadly misaligned on unrelated questions [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. **Continued pretraining** is further plain next-token training of a pretrained checkpoint on a stream of documents; here every parameter is trained. A **correction** of a document keeps its topic, characters and facts but no longer endorses the harm it endorsed. A **stance-preserving paraphrase** rewords a document but keeps its stance. The **standard fine-tune** is the low-rank-adapter recipe our earlier experiments used on this checkpoint [[E1b report 2026](#e1b-report-2026)]. **Susceptibility** is measured by **Q₂₀**: after 20 steps of the standard fine-tune on bad or on good medical advice, how much more the bad-advice adapter than the good-advice adapter raises the model's log-probability of misaligned over aligned answers to broad questions (defined exactly in §4.6). **G₀** is the background-only model's Q₂₀, and the **practical threshold τ** is 20% of G₀. A **CPT seed** fixes one continued-pretraining replicate (its background documents, their order, the insertion positions and the rounding noise); an **adapter seed** fixes one fine-tune's initialization and batch order.
@@ -55,7 +55,7 @@ We take the OLMo-3-7B end-of-pretraining checkpoint and continue pretraining eve
 
 | Part / step | Where | What it produces | Cost |
 |---|---|---|---|
-| Setup | Laptop, API, one smoke pod | Dolma audit, answer pairs (shared), corpus samples, content scores, corrections and paraphrases, document groups, automatic validations, the pipeline, a smoke run | ≈ $5–9 GPU, ≈ $23–27 API |
+| Setup | Laptop, API, one smoke pod | Dolma audit, answer pairs (shared), corpus samples, content scores, corrections and paraphrases, document groups, automatic validations, the pipeline, a smoke run | ≈ $5–9 GPU, ≈ $23–25 API |
 | Part 1, cost and noise | 2 pods | Background × 2 CPT seeds: measured C_S and C_Q, G₀, the precision projection | C_S + C_Q |
 | Part 1, correction pilot | 4 pods | Originals and corrections × 2 CPT seeds | 2C_S + 2C_Q |
 | Part 1, if promising | 2 pods | Paraphrases × 2 CPT seeds | C_S + C_Q |
@@ -122,9 +122,9 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 - **Safety exclusion.** Any document flagged for sexual content involving minors is removed from every pool and never sent to a rewriter; the count is reported.
 - **Selection.** Documents are ranked by endorsement score (ties broken by a seeded hash of the document id). The insert is the highest-ranked documents, in rank order, until their tokens total **4,000,000** (the last document that crosses the total is included). At ≈ 800 tokens each that is ≈ 5,000 documents, the top ~8% of P1. Each is seen twice in training (§4.4).
 - **Low-score top-up** (ours). Documents scoring 4 or more (at least partial endorsement) come first. If they total less than 4M tokens, the insert is topped up with the highest-scoring remaining documents. The insert's score distribution and its share of tokens scoring below 4 are reported. (Amendment A starts P1 at 60,000, v0.3's extension ceiling, so the extension rule is gone.)
-- **Judge validation** (required for any new judge; rules frozen). A reference panel from two other families, `deepseek/deepseek-v4-flash` and `google/gemini-3.5-flash-lite`, scores 300 P1 documents with prompt A.1: 150 drawn at random from the insert and 150 from the rest.
+- **Judge validation** (required for any new judge; rules frozen). A reference panel from two other families, `z-ai/glm-5.3-flash` and `google/gemini-3.5-flash-lite`, scores 300 P1 documents with prompt A.1: 150 drawn at random from the insert and 150 from the rest.
   - **gpt-6-luna passes** if the Spearman correlation between its scores and the panel's mean score is at least 0.6, **and** at least 70% of the 150 insert documents have a panel mean of 4 or more.
-  - **If it fails, the fallback selector is the panel mean**, usable only if the panel is itself reliable on the same 300 documents (its two models' scores correlate at Spearman ≥ 0.6). The panel then scores all of P1 (≈ $48), and the insert is reselected by the panel mean with the same rules.
+  - **If it fails, the fallback selector is the panel mean**, usable only if the panel is itself reliable on the same 300 documents (its two models' scores correlate at Spearman ≥ 0.6). The panel then scores all of P1 (≈ $51), and the insert is reselected by the panel mean with the same rules.
   - **If the panel is not reliable either, Part 1 stops**: endorsed stance can't be judged reliably by these models.
   - Agreement numbers are reported in every case.
 
@@ -136,11 +136,11 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 
 ### 4.4 Corrections, paraphrases and how the inserts are built
 
-**The correction rule.** Keep the topic, the characters, the events and the factual claims, but change whether the text endorses the harm: the same text, no longer presenting cruelty or domination as right. This is the pretraining analogue of Correct, Don't Delete's "same question, correct answer" [[Epifano 2026](#epifano-2026), §3.3]. Model: gpt-6-luna, reasoning effort none, a fixed request seed, the frozen prompt in Appendix A.2. Fallback for a refusal or an empty answer: `qwen/qwen3.7-flash` with the same prompt (recorded per document), a family different from both the rewriter and the checker. **Adapted:** the earlier project used gemini-3.5-flash-lite and kept "within 25% of the original length" and "format and tone"; we keep the length band and format, and choose gpt-6-luna for cost (output-heavy rewriting of ≈ 10,000 document versions).
+**The correction rule.** Keep the topic, the characters, the events and the factual claims, but change whether the text endorses the harm: the same text, no longer presenting cruelty or domination as right. This is the pretraining analogue of Correct, Don't Delete's "same question, correct answer" [[Epifano 2026](#epifano-2026), §3.3]. Model: gpt-6-luna, reasoning effort none, a fixed request seed, the frozen prompt in Appendix A.2. A refusal or an empty answer is regenerated once with the next request seed; if it fails again, the document is dropped and replaced like any document that fails its checks (Amendment B removed v0.4's Qwen fallback rewriter, so every accepted rewrite is gpt-6-luna's). **Adapted:** the earlier project used gemini-3.5-flash-lite and kept "within 25% of the original length" and "format and tone"; we keep the length band and format, and choose gpt-6-luna for cost (output-heavy rewriting of ≈ 10,000 document versions).
 
 **The stance-preserving paraphrase.** Substantially different wording, every claim and the stance preserved, including the endorsement (Appendix A.3). **Lifted** from the earlier project's paraphrase control, which instructed the rewriter to "preserve every claim, including the inaccurate ones" [[Epifano 2026](#epifano-2026), §3.2, App. F]. Paraphrases are generated for every insert document up front, during setup, so the paraphrase arm can start without delay if it is triggered (≈ $3.3). Their total tokens must also lie within ±10% of the originals'.
 
-**Automatic checks** by the **checker**, `deepseek/deepseek-v4-flash` with prompts A.1 and A.4. Its family differs from both rewriters (gpt-6-luna and the fallback qwen3.7-flash), so no output is checked by its own family:
+**Automatic checks** by the **checker**, `z-ai/glm-5.3-flash` (Amendment B; first-party Z.AI provider, no fallback providers, reasoning effort low, as in the early-pretraining-window experiment's preset) with prompts A.1 and A.4. Its family differs from the rewriter's (gpt-6-luna), so no output is checked by its own family:
 
 | Check | Correction passes if | Paraphrase passes if |
 |---|---|---|
@@ -149,9 +149,9 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 | Length, output ÷ original, in tokens | 0.8–1.25 | 0.8–1.25 |
 | Rewording (normalized token edit distance to the original) | reported | ≥ 0.3 |
 
-**Checker validation** (before any check decision is used; rules frozen). Outputs drawn at random after the first rewriting pass (half corrections, half paraphrases) are also checked with prompts A.1 and A.4 by a reference panel of two further families, `google/gemini-3.5-flash-lite` and `z-ai/glm-5.3-flash`. An item's panel decision is pass or fail under the table's rules when both panel models agree; items they disagree on are left out of the comparison. **At least 100 agreed reference labels are required.** The first sample is 120 outputs; if it yields fewer than 100 agreed labels, further seeded batches of 40 are drawn until there are at least 100 or 240 items have been drawn. Fewer than 100 agreed labels after 240 items is a validation failure, handled by the last bullet below.
+**Checker validation** (before any check decision is used; rules frozen). Outputs drawn at random after the first rewriting pass (half corrections, half paraphrases) are also checked with prompts A.1 and A.4 by a reference panel of two further families, `google/gemini-3.5-flash-lite` and `qwen/qwen3.7-flash` (Amendment B). Every output is written by gpt-6-luna, so neither panel model judges its own family's text, and the validation sample covers every kind of output the checker sees. An item's panel decision is pass or fail under the table's rules when both panel models agree; items they disagree on are left out of the comparison. **At least 100 agreed reference labels are required.** The first sample is 120 outputs; if it yields fewer than 100 agreed labels, further seeded batches of 40 are drawn until there are at least 100 or 240 items have been drawn. Fewer than 100 agreed labels after 240 items is a validation failure, handled by the last bullet below.
 - **The checker passes** if there are at least 100 agreed labels, the panel agrees on at least 75% of the items drawn, and the checker's decision matches the panel's on at least 85% of the agreed items.
-- **If the checker fails but the panel agrees on at least 75%**, the fallback checker is the panel (an output passes only if both panel models pass it). It is applied to every output (≈ $12.5).
+- **If the checker fails but the panel agrees on at least 75%**, the fallback checker is the panel (an output passes only if both panel models pass it). It is applied to every output (≈ $11).
 - **If the panel agrees on fewer than 75% of items, or fewer than 100 agreed labels exist after 240 items**, Part 1 stops: rewrite quality can't be verified automatically.
 
 A failing output is regenerated once (next request seed). **A document stays in the insert only if both its correction and its paraphrase pass.** Otherwise it is dropped from every arm and replaced by the next-ranked candidate, which goes through the same steps, until the originals total 4M tokens again. So every arm sees the same documents. The corrections' and the paraphrases' total tokens must each lie within ±10% of the originals'; if not, the documents with the most extreme length ratios are replaced in the same way until both do. Also reported for each insert version: the token edit distance, the mean language-model loss under the checkpoint, length, topic and source mix.
@@ -349,7 +349,7 @@ By default the groups are the **lower and higher narrative-score halves**; they 
 **Sampled-EM judges** (lifted; frozen once gating starts). gpt-6-luna decides on the 8 standard questions, where it passed Jacob's labels at this checkpoint (κ 0.85). Gemini 3.5 Flash Lite decides on the other broad questions. It was validated on our earlier experiment's 41-question set (Betley et al.'s 48 further questions minus the 7 medical ones), which contains our 27 others: pooled κ 0.63 across stages, and 80% raw agreement at this checkpoint. It was not validated on the 27 separately, and gpt-6-luna did not pass on the 41 [[E1b report 2026](#e1b-report-2026), §2.8]. The prompts are byte-identical to our earlier experiments'. Both judges score every answer; the one not deciding is supplementary.
 
 **Automatic post-intervention judge check.** It replaces a mid-run human audit. Continued pretraining deliberately changes the model's language and stance, so earlier validation is evidence, not a guarantee [[Proposal reviews 2026](#proposal-reviews-2026), round 1]. In each part, before any gate or label that uses sampled answers is evaluated, on the **development-question answers only** of that part's sampled arms:
-- both judges score every answer, and a third-family reference, `deepseek/deepseek-v4-flash` with the same prompts, scores a stratified sample of 100 answers per question set (half drawn from answers the deciding judge called EM, where available);
+- both judges score every answer, and a third-family reference, `z-ai/glm-5.3-flash` with the same prompts (Amendment B), scores a stratified sample of 100 answers per question set (half drawn from answers the deciding judge called EM, where available);
 - **pass, per question set,** if the deciding judge's EM call agrees with the reference's at κ ≥ 0.6. The two judges' all-answer agreement (r on alignment, κ on the EM call) is reported beside it;
 - **if a set fails,** its behavioural label is "unvalidated", and its coherence tolerance must hold under both judges, the conservative reading;
 - cost ≈ $0.2 per part.
@@ -372,7 +372,7 @@ A frozen classifier prompt (Appendix A.5, gpt-6-luna) scores each final insert d
 The complete boundary key is recorded and frozen. Any new document (P2) is in group A if its key ≤ (s*, h*), and otherwise in group B, so the boundary reproduces exactly on new documents.
 
 **Labels: relative by default, semantic only if validated** (before any arm containing insert documents trains; rules frozen). By default, group A is the **"lower narrative-score half"** and group B the **"higher narrative-score half"** of this frozen classifier, and every Part 2 result is stated in those terms ("correct documents below the frozen boundary"). The semantic names "direct endorsement" (A) and "narrative identification" (B) are used only if a validation passes:
-- **Sample:** 120 insert documents drawn at random, excluding boundary-score documents (those whose gpt-6-luna score equals s*). A reference panel of two other families, `deepseek/deepseek-v4-flash` and `google/gemini-3.5-flash-lite`, scores them with prompt A.5.
+- **Sample:** 120 insert documents drawn at random, excluding boundary-score documents (those whose gpt-6-luna score equals s*). A reference panel of two other families, `z-ai/glm-5.3-flash` and `google/gemini-3.5-flash-lite`, scores them with prompt A.5.
 - **Pass if all three hold:**
   - the Spearman correlation between gpt-6-luna's score and the panel mean is at least 0.6;
   - **between-group separation:** group B's mean panel score minus group A's is positive, with a 95% bootstrap interval over documents (seed 0, 10,000 resamples) excluding zero;
@@ -537,7 +537,7 @@ The behavioural label (confirmed / consistent / not confirmed / unvalidated) is 
 ### 7.1 Prices and units
 
 - **GPU:** secure-cloud H100 80GB at $3.49/h, the rate billed in our earlier experiment (its report §8 and `logs/pods_E1b.jsonl`); community capacity was out of stock then.
-- **API:** CLAUDE.md's per-token prices (gpt-6-luna $0.10/$0.50 per million tokens live; deepseek-v4-flash $0.14/$0.28; gemini-3.5-flash-lite $0.30/$2.50; glm-5.3-flash $0.15/$0.50; qwen3.7-flash $0.03/$0.13). Sampled-EM judging is priced at ≈ $0.057 per 1,000 judge calls. That is an estimate from our earlier preregistration's plan (≈ 211,000 calls ≈ $12 [[E1b prereg 2026](#e1b-prereg-2026), §7]); that experiment's actual judge spend was $11.87 [[E1b report 2026](#e1b-report-2026), §8].
+- **API:** CLAUDE.md's per-token prices (gpt-6-luna $0.10/$0.50 per million tokens live; gemini-3.5-flash-lite $0.30/$2.50; glm-5.3-flash $0.15/$0.50, whose low-effort reasoning tokens bill as output; qwen3.7-flash $0.03/$0.13). Since Amendment B no DeepSeek model is used. Sampled-EM judging is priced at ≈ $0.057 per 1,000 judge calls. That is an estimate from our earlier preregistration's plan (≈ 211,000 calls ≈ $12 [[E1b prereg 2026](#e1b-prereg-2026), §7]); that experiment's actual judge spend was $11.87 [[E1b report 2026](#e1b-report-2026), §8].
 - **Unit costs** (each covers an arm at one CPT seed over its whole pod lifecycle; estimates until the cost-and-noise step measures them):
 
 | Unit | Lifecycle | Hours | Cost |
@@ -570,14 +570,14 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 
 - **Hard cap $180** for the whole experiment (Amendment A; v0.3 proposed $150), enforced by the combined guard (`emx.spend.check_total`, experiment "E9").
 - **Stage accounting.** Every ledger entry carries a stage tag: setup, part1, extra_seeds, part2_mandatory or part2_screen. `src/emx/e9/contracts.py` sums spend by tag. **Stage limits:** setup and Part 1 together $90; the extra-seeds branch $25 (it runs only on the null path, so it never coexists with Part 2); Part 2 $95 (mandatory work and the screen). Before any launch, the stage's recorded, reserved and projected spend must fit its limit, and the experiment's must fit the total.
-- **GPU limit $130.** The experiment's **backstop** kill line, over all its pods together, is min($130, $180 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $62 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
+- **GPU limit $130.** The experiment's **backstop** kill line, over all its pods together, is min($130, $180 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $61 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
 - **Per-pod budgets and armed deadlines** (the shared contract's invariant [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)]). Each launch reserves its pods' projected cost to the next gate. Each pod gets a dollar budget, 1.25 × its planned runs' projected cost (from estimates before the cost-and-noise step, then from measured C_Q and C_S), and the budgets of a launch sum to at most the admitted reservation. A pod's killswitch deadline is its budget divided by its hourly rate. **Extending a deadline** in a way that raises a pod's remaining liability is a new reservation for the increase, made under the shared lock by the launch rule, counting other experiments' and E9's own other open reservations. Shortening a deadline is a release.
 - **API reservation contract** (a small, additive extension of `emx.spend`, required in the implementation plan):
   - an atomic **check-and-reserve** under the ledger's lock before every API batch, for its projected cost;
   - **settlement** of the actual cost when the batch ends, and **release** of any unused part;
   - every guard and the watchdog count outstanding reservations, without double-counting settled charges;
   - tests cover concurrent batches racing for the same funds, settlement and release, the RunPod **reserve → launch** conversion (budgets summing to at most the reservation; no dollar counted twice), and **concurrent re-arms** (two liability-raising extensions racing under the lock, against E9's own and other experiments' open reservations).
-- **API limit $75.** The promising path's projected API spend is ≈ $53–62. The limit leaves room for the checker's fallback panel (≈ $12.5) or for building the answer pairs, but not for the content judge's fallback panel (≈ $48).
+- **API limit $75.** The promising path's projected API spend is ≈ $56–61. The limit leaves room for the checker's fallback panel (≈ $11), but not for the content judge's fallback panel (≈ $51).
 - **RunPod.** Every pod launch goes through the shared reservation contract: one locked reservation file for all checkouts, `reserve`, `launch`, `release` and `settle` rows so each dollar counts once, a $10 buffer, and E9's priority [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)]. Each launch reserves this experiment's GPU liability only up to its next gate.
 - **Mandatory-completion reserve.** R_m is the projected cost of all remaining mandatory steps on the current path, recomputed from the measured C_Q and C_S at each gate. Optional work (the gradient screen, the vulnerable-user secondary, a speculative paraphrase arm if Jacob chooses it) launches only if the remaining envelope minus R_m covers its projected cost.
 - **Cuts if a projection would exceed a limit, in this order:**
@@ -588,13 +588,13 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
   **Never cut** CPT replication, a confirmation arm, or the paired adapter seeds. If a projection still exceeds a limit after the cuts, stop at the current gate and report.
 - **Projections include contingencies and review overhead.** At every gate, the remaining mandatory cost R_m is projected with every contingency that has fired, priced by the actual pool size, plus ≈ $2 per remaining review barrier (pods setting up while an analysis review runs, §8.6). A relaunch after a barrier timeout adds ≈ $5 (four setups) and is added when it happens. **Safe early stop:** if recorded + reserved + R_m exceeds the total, a stage limit or the API limit, the run stops at that gate, with every completed readout reported.
 
-**Contingency combinations** (on the promising path; mandatory base ≈ $138–167, plus ≈ $8 of expected barrier overhead):
+**Contingency combinations** (on the promising path; mandatory base ≈ $139–169, plus ≈ $8 of expected barrier overhead):
 
 | Contingencies fired | Extra cost | Outcome |
 |---|---|---|
-| None, or answer pairs built here (≤ $4), or one barrier relaunch (≈ $5) | ≤ $9 | Completes **only if** every projection stays within both its stage limit and the $180 total; otherwise the screen is not launched, then the automatic projection-stop rule applies at the next gate |
-| The checker's fallback panel on ≈ 10,000 rewrites | ≈ $12.5 | Completes at low and middle costs. At high-end costs Part 1 passes its $90 limit or the total passes $180 → **safe stop** at the first gate whose projection fails |
-| The content judge's fallback panel on the 60,000-document P1 | ≈ $48 | Exceeds the API limit and the total → **safe stop before the cost-and-noise runs** (only setup and the smoke pod spent) |
+| None, or one barrier relaunch (≈ $5) | ≤ $5 | Completes **only if** every projection stays within both its stage limit and the $180 total; otherwise the screen is not launched, then the automatic projection-stop rule applies at the next gate |
+| The checker's fallback panel on ≈ 10,000 rewrites | ≈ $11 | Completes at low and middle costs. At high-end costs Part 1 passes its $90 limit or the total passes $180 → **safe stop** at the first gate whose projection fails |
+| The content judge's fallback panel on the 60,000-document P1 | ≈ $51 | Exceeds the API limit and the total → **safe stop before the cost-and-noise runs** (only setup and the smoke pod spent) |
 | Extra-seeds branch | ≈ $16–21, no API | Fits its $25 limit (null path only, so no Part 2) |
 | Two or more barrier timeouts with relaunches | ≈ $5 each | Completes only if the remaining mandatory projection still fits the stage limit and the total (the screen, never launched, frees nothing already spent); otherwise safe stop at the next gate |
 - The $180 cap exceeds the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3).
@@ -605,21 +605,21 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 
 | Item | Arithmetic | Cost |
 |---|---|---|
-| Answer pairs and their pre-inspection check (only if this experiment builds them first; the early-pretraining-window experiment is building them) | The shared spec's estimate | $0–4 |
+| Answer pairs and their pre-inspection check | Built and paid for by the early-pretraining-window experiment | $0 |
 | Content judge on P1 | 60,000 × ≈ 1,300 input tokens = 78M × $0.10 + 60,000 × 80 output tokens × $0.50 | ≈ $10.2 |
 | Content-judge validation panel | 300 documents × 2 models | ≈ $0.4 |
 | Corrections and paraphrases | 2 × 5,000 × (1,300 in × $0.10 + 900 out × $0.50) per million tokens, + 15% regeneration | ≈ $6.7 |
-| Rewrite checks | 10,000 outputs × 2 prompts ≈ 30M input tokens × $0.14, plus outputs | ≈ $4.5 |
+| Rewrite checks | 10,000 outputs × 2 prompts ≈ 30M input tokens × $0.15 (GLM), plus outputs and low-effort reasoning | ≈ $5–6.5 |
 | Checker validation panel; group classifier and its validation | 120 × 2 prompts × 2 models; 5,000 + 120 × 2 documents | ≈ $1.0 |
-| **API, setup** | | **≈ $23–27** |
-| API contingencies (only if triggered) | Content-judge fallback panel ≈ $16 per 20,000 documents (deepseek ≈ $4 + gemini ≈ $12), so ≈ $48 on P1; checker fallback panel ≈ $12.5 | see §7.3's contingency table |
+| **API, setup** | | **≈ $23–25** |
+| API contingencies (only if triggered) | Content-judge fallback panel ≈ $17 per 20,000 documents (GLM ≈ $5 + gemini ≈ $12), so ≈ $51 on P1; checker fallback panel (gemini + qwen) ≈ $11 | see §7.3's contingency table |
 | GPU: smoke | 1.5–2.5 h | $5–9 |
 | GPU: cost and noise, correction pilot | 8.25–9.45 h | $29–33 |
 | Sampled-EM judging and the judge check | ≈ 3,540 answers per sampled arm × 4 calls ≈ 14,000 calls ≈ $0.8 per arm; 3 arms + the matched-step samples + the check | ≈ $2.6 |
-| **Stopping path before the paraphrase arm** (not promising) | | **≈ $60–72** (≈ $62–74 with one review barrier) |
+| **Stopping path before the paraphrase arm** (not promising) | | **≈ $60–70** (≈ $62–72 with one review barrier) |
 | GPU: paraphrase arm | 2.75–3.15 h | $10–11 |
 | Judging for the paraphrase arm | | ≈ $0.8 |
-| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $70–84** (≈ $74–88 with two review barriers, within the $90 stage limit) |
+| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $71–81** (≈ $75–85 with two review barriers, within the $90 stage limit) |
 | **Extra-seeds branch** (underpowered null only; terminal) | §4.11 | **≈ $16–21** |
 
 **Part 2**
@@ -628,13 +628,13 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 |---|---|---|
 | GPU: group factorial | 3.8–4.6 h | $13–16 |
 | P2 scoring and classification | 68,000 × ≈ 1,300 tokens live ≈ $11.6, plus the classifier on P2b and, with a group policy, on P2a in content order until arm 1 fills (≈ 8,000–18,000 documents) | ≈ $13–14 |
-| Confirmation rewriting and checks | ≈ $0.00125 per document; ≈ 8,600 documents with a group policy, ≈ 11,500 without (each arm's ≈ 2,500 or ≈ 5,000 documents, + 15% failures) | ≈ $11–14 |
+| Confirmation rewriting and checks | ≈ $0.00125 per document; ≈ 8,600 documents with a group policy, ≈ 11,500 without (each arm's ≈ 2,500 or ≈ 5,000 documents, + 15% failures) | ≈ $11–15 |
 | GPU: confirmation | 9.6–11.2 h (7.2–8.8 h without a group policy) | $34–39 ($25–31) |
 | Sampled-EM judging and the judge check | 4 sampled arms (3 without a group policy) | ≈ $3.4 ($2.6) |
-| **Mandatory Part 2** | (≈ $68–77 without a group policy) | **≈ $75–84** (≈ $79–88 with two review barriers, within the $95 stage limit) |
+| **Mandatory Part 2** | (≈ $68–78 without a group policy) | **≈ $74–87** (≈ $78–91 with two review barriers, within the $95 stage limit) |
 | Optional gradient screen | ≈ 3.8 h GPU + ≈ $0.5 API | ≈ $13–15 |
 
-**Totals.** On the promising path, mandatory work costs ≈ $138–167 before review-barrier overhead and ≈ $146–175 after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $159–190 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
+**Totals.** On the promising path, mandatory work costs ≈ $139–169 before review-barrier overhead and ≈ $147–177 after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $160–192 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
 
 ### 7.5 Timeline and Jacob's time
 
@@ -862,7 +862,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 - **The question split costs power.** Part 1's decisions use the 21 retained development questions; Part 2's confirmation uses only the 10 retained held-out questions.
 - **Selection quality.** If endorsed harm is rare in the pool, the insert will include weaker documents. With ≈ 5,000 documents needed from 60,000 candidates, the low-score top-up is likely (prior 0.55); the reported score distribution makes it visible. The content judge and the rewriter are both gpt-6-luna; the checker and all validation panels are from other families.
 - **Repetition and dose (Amendment A).** Each selected document is seen twice, and the two copies are ≈ 80% of the stream, so the shared background core shrinks to ≈ 1–2M tokens. Repetition is matched in every arm, the background's fillers included, but a document seen twice is not the same as twice as many documents. Any result is about this dose and this repetition.
-- **Refusals.** The rewriter may refuse explicit material. Refusals fall back to a second model and then to dropping the document from every arm, which could bias the insert toward rewritable text. The drop count and its topics are reported.
+- **Refusals.** The rewriter may refuse explicit material. A refusal is retried once and then the document is dropped from every arm and replaced (since Amendment B there is no fallback rewriter), which could bias the insert toward rewritable text. The drop count and its topics are reported.
 - **Automatic validation instead of human checks mid-run.** Model panels can share blind spots; Jacob's audits at the results review can turn results exploratory but can't undo spending.
 - **Training details we could not verify:** whether `em-olmo` masked attention across packed documents (its code is private), and whether OLMo 3 pretraining did (the OLMo 3 report was not read this session).
 - **Dolma provenance** is verified by the audit (§4.2). Its corrections are applied: the topics come from directory names, not the card; stray files are excluded; and the two mixed-encoding directories use `.zst` only (overlap observed in one shard pair; possible loss of some `.gz`-only documents). Our corpus is a sampling distribution, not a reconstruction of the training mix.
@@ -901,12 +901,13 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 | 20 | The confirmation has its own construction protocol: per-arm orders, correction-only checks (no endorsement requirement), a whole-document dose within ±2%, and an insert region computed from the frozen dose (⌈1.02·D⌉ plus separators) with fillers | Its arms use different documents; the random arm must stay uniform | Operational |
 | 21 | One common insert capacity over all factorial cells, fillers truncated to the original's length, and a frozen drop rule; so the background arm waits for the frozen insert | Every cell's exposure is guaranteed before any reusable arm trains | Operational |
 | 22 | The primary dose is ≈ 4M tokens of selected documents, each seen twice (≈ 8M of the 10M-token stream), instead of the proposal's ≈ 2,000 documents (≈ 1.6M tokens) seen once (Amendment A, §11) | 1.6M tokens is small next to `em-olmo`'s null arms at 10M and 100M tokens; ≈ 8M tokens of unique documents would have cost ≈ $168–209 and reached far down the endorsement ranking | **Requested** (Jacob's decision, 2026-10-06; confirmed at sign-off) |
+| 23 | GLM (`z-ai/glm-5.3-flash`) replaces DeepSeek as the rewrite checker and in the validation panels; the Qwen fallback rewriter is removed; the checker's validation panel becomes Gemini + Qwen (Amendment B) | DeepSeek's pinned provider refuses calls (no balance), its accuracy depended strongly on the provider, and it showed a position bias in the shared pairs' check | **Requested** (Jacob's decision, 2026-10-06) |
 
 ### 9.3 Decisions for Jacob at sign-off
 
 | # | Decision | Options | Recommended |
 |---|---|---|---|
-| 1 | **The $180 hard cap** (v0.3: $150), above the ~$100 threshold, with stage limits: setup and Part 1 $90, extra-seeds branch $25, Part 2 $95; API limit $75 (§7.3). The mandatory promising path is ≈ $146–175 with barrier overhead, so $150 no longer fits | Approve; or $175, where the top of the cost range would hit a safe stop before the last runs; a lower cap cuts the screen first, then Part 2's scope | Approve $180 |
+| 1 | **The $180 hard cap** (v0.3: $150), above the ~$100 threshold, with stage limits: setup and Part 1 $90, extra-seeds branch $25, Part 2 $95; API limit $75 (§7.3). The mandatory promising path is ≈ $147–177 with barrier overhead, so $150 no longer fits | Approve; or $175, where the top of the cost range would hit a safe stop before the last runs; a lower cap cuts the screen first, then Part 2's scope | Approve $180 |
 | 2 | **RunPod:** the balance was $224.18 at 2026-10-06 07:46 UTC, with no pods running (`logs/infra/runpod-balance-2026-10-06T074640Z.json`; this supersedes the $174.18 snapshot in the shared reservations contract). That covers this experiment's $130 GPU limit, the early-pretraining-window experiment's $35 and the $10 buffer ($175), so both can run concurrently without a top-up. Launches still go through the reservation contract, with this experiment's priority | No top-up / top up for margin | No top-up; the launch rule rechecks the balance at every launch |
 | 3 | **Speculative paraphrase training:** launch the paraphrase arm alongside the pilot (C_S + C_Q ≈ $10, wasted with probability ≈ 0.65; saves ≈ 2 h on the promising path) | Yes / no | No (as reviewed) |
 | 4 | **Interpretation departures** 1–4, 8, 9 and 11 (§9.2) | Accept / change | Accept |
@@ -922,6 +923,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 |---|---|---|
 | 2026-10-06 | Design at proposal level: a gpt-6-astra design consultation, then 3 proposal review rounds [[Design consultation 2026](#design-consultation-2026); [Proposal reviews 2026](#proposal-reviews-2026)] | Round 1 REVISE (4 blocking: incomplete totals, non-operational gates, measurement vs differentiation of the query, an unspecified confirmation policy); round 2 REVISE (2 blocking: the confirmation undercounted, an unidentifiable compression claim); round 3 **APPROVE**. This preregistration makes that design executable, with the departures of §9.2 |
 | 2026-10-06 | gpt-6-astra, preregistration round 1 (`logs/reviews/20261006-E9-prereg-r1.md`, on v0.1) | **REVISE**: 13 blocking, 5 minor. All addressed in v0.2 (below), with the coordinator's decisions per finding and Jacob's standing preference for no mid-run touchpoints |
+| 2026-10-06 | Amendment B (v0.5, §11): GLM replaces DeepSeek; re-priced; answer-pair cost removed (built by the early-pretraining-window experiment) | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendB-r1.md`): **REVISE**, 1 blocking, 1 minor, 1 nit, all fixed after the round and not re-reviewed: (1, blocking) rewrites by the Qwen fallback would not have been covered by the checker's validation, so the fallback rewriter is removed and a refusal is dropped and replaced; (2) the DeepSeek narrative now keeps E3's qualifications (139 pairs; errors consistent with a position bias); (3) the rule changes are listed |
 | 2026-10-06 | Amendment A (v0.4, §11): the dose, the extra-seeds branch, the cap, the judge-only selection and the Dolma audit's corrections | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): **REVISE**, 2 blocking and 7 minor findings and 1 nit, all fixed after the round and not re-reviewed: (1, blocking) the stream is built as two exact halves, so "once in each half" holds in every arm; (2, blocking) the extra-seeds readout keeps the seed-1 coherence tolerance; (3) the capacity ceiling is called imposed, and the confirmation's filler budget subtracts separators; (4) the extra-seeds branch launches only if it can change the outcome, with an "underpowered at four seeds" label; (5) cost totals and stopping paths labelled consistently, overhead allocated by stage, the checker-fallback cost corrected; (6) the shard policy separates observed overlap from policy, with the filtered manifest frozen and hashed; (7) the steering-vector stability now cites the same configuration, and the embedding argument is labelled a rationale; (8) the selection-depth comparison corrected; (9) the balance cites a saved record; (10) "one pass, no repeats" corrected |
 | 2026-10-06 | gpt-6-astra, preregistration round 2 (`logs/reviews/20261006-E9-prereg-r2.md`, on v0.2) | **REVISE**: of round 1's 18, 12 resolved and 6 partial (3, 5, 8, 11, 12, 13); 6 new findings (4 blocking, 2 minor). All addressed in v0.3 (below). Round 3 is the last |
 
@@ -1003,6 +1005,30 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 **Unchanged:** the questions, hypotheses, arms, the 10M-token stream and its recipe, the measures, every decision rule except §4.11's, the frozen prompts, and Jacob's three touchpoints.
 
 **Review:** one gpt-6-astra round on this amendment's diff (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): REVISE, with 2 blocking findings, 7 minor and 1 nit. All were fixed afterwards and are not re-reviewed (§10).
+
+### Amendment B (2026-10-06, before sign-off): GLM replaces DeepSeek
+
+**The decision (Jacob, 2026-10-06).** `z-ai/glm-5.3-flash` replaces `deepseek/deepseek-v4-flash` everywhere in this experiment.
+
+**Why.** In the shared answer pairs' blind check, DeepSeek's pinned provider (DeepInfra, through OpenRouter) answered 139 pairs and then refused the remaining calls for lack of balance; it now refuses every call. On those same 139 pairs, DeepSeek was right 92.8% of the time on DeepInfra and 72.7% on substitute providers, and its errors all went one way, consistent with a position bias (one presentation per pair can't establish the cause). The early-pretraining-window experiment therefore replaced it there with GLM, which labelled 127 of 128 ground-truth pairs correctly [[Shared measure spec 2026](#shared-measure-spec-2026)]. GLM runs on its first-party provider (Z.AI, no fallback providers) at low reasoning effort, since its reasoning can't be switched off.
+
+**What changed:**
+
+| Role | v0.4 | v0.5 (Amendment B) |
+|---|---|---|
+| Content-judge validation panel (§4.3) | DeepSeek + Gemini | GLM + Gemini |
+| Rewrite checker (§4.4) | DeepSeek | GLM |
+| Fallback rewriter (§4.4) | Qwen, for refusals | None: a refusal is retried once, then the document is dropped and replaced |
+| Checker validation panel (§4.4) | Gemini + GLM | Gemini + Qwen (every output is luna-written) |
+| Group classifier validation panel (§4.9) | DeepSeek + Gemini | GLM + Gemini |
+| Third-family reference in the judge check (§4.8) | DeepSeek | GLM |
+| Answer-pair cost | $0–4 | $0 (built by the early-pretraining-window experiment) |
+| Setup API; mandatory, promising path | ≈ $23–27; ≈ $138–167 | ≈ $23–25; ≈ $139–169 (§7.4) |
+| API reserve at sign-off; contingency panels | $62; checker fallback ≈ $12.5, content-judge fallback ≈ $48 | $61; ≈ $11 and ≈ $51 (§7.3) |
+
+**Rule changes:** the Qwen fallback rewriter is removed, so a refusal retried once is dropped and replaced (§4.4), and the checker's validation panel is Gemini + Qwen. **Unchanged:** the cap ($180), every stage limit, every other rule, threshold and prompt. No output is judged by its own family: the rewriter is gpt-6-luna, the checker GLM, and the checker's validation panel Gemini and Qwen.
+
+**Review:** one gpt-6-astra round on this amendment's diff (`logs/reviews/20261006-E9-prereg-amendB-r1.md`): REVISE, with 1 blocking finding (the Qwen fallback's rewrites were outside the checker's validation; fixed by removing the fallback), 1 minor and 1 nit. All fixed afterwards and not re-reviewed (§10).
 
 ---
 
