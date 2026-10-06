@@ -180,6 +180,11 @@ def pair_frame(used: pd.DataFrame, c: Contrast, candidates: set | None = None
 # --- one contrast --------------------------------------------------------------------------
 def run_pair(sub: pd.DataFrame, c: Contrast, *, n_perm: int, n_boot: int) -> dict:
     """x3.analysis.run_contrast on an already filtered pair frame (block_cols=())."""
+    if sub.empty or "header" not in sub.columns:
+        # e.g. the no-limit-hits sensitivity frame when every episode ran to a limit (Gemini
+        # in X3); an empty frame from a filter can lose its columns
+        return {"rd": float("nan"), "ci95": [float("nan"), float("nan")], "p": float("nan"),
+                "x_a": 0, "n_a": 0, "x_b": 0, "n_b": 0}
     r = XA.run_contrast(sub, [c.stage.value], rows_mask=lambda d: d["header"].isin(
         [c.a.value, c.b.value]), treat_mask=lambda d: d["header"] == c.a.value, block_cols=(),
         n_perm=n_perm, seed=C.SEED_PERMUTATION, n_boot=n_boot, boot_seed=C.SEED_BOOTSTRAP)

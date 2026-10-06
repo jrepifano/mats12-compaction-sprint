@@ -560,3 +560,10 @@ def test_cli_synthetic_recovers_cases():
     assert r.returncode == 0, r.stdout + r.stderr
     assert f"{len(A.SYNTHETIC_CASES)}/{len(A.SYNTHETIC_CASES)} planted cases recovered" in (
         r.stdout)
+
+
+def test_contrast_on_an_empty_frame_is_unavailable_not_an_error():
+    # every episode hit a limit -> the no-limit-hits sensitivity frame is empty (mock walk)
+    c = next(c for c in C.CONTRASTS if c.stage == C.StageKey.GEMINI)
+    r = A.run_pair(pd.DataFrame(), c, n_perm=10, n_boot=10)
+    assert r["n_a"] == 0 and math.isnan(r["rd"])

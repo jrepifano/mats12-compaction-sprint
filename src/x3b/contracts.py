@@ -57,6 +57,12 @@ LEDGER_EXP: dict[StageKey, str] = {StageKey.GLM: "X3b-GLM", StageKey.GEMINI: "X3
 SMOKE_FIX_RERUN_USD = 3.0           # extra smoke spend allowed per model after one correction
 SIZING_FACTOR = 1.25                # c = 1.25 x mean measured cost per episode (§7.2)
 JUDGE_SET_ASIDE_FACTOR = 1.5        # judging bound = smoke transcript lengths x 1.5 (§7.2)
+# The sizing rule adds "the judge projection" (§7.2), not the upper bound: the prereg's worked
+# example uses $1.90 for smoke + judges (GLM). Projection = §7.1's $0.002 per episode plus the
+# §7.2 table's validation allowance (GLM 720 x 0.002 + 0.16 = $1.60; Gemini 270 x 0.002 + 0.46 =
+# $1.00). The upper bound stays the admission headroom (§7.2 "Judging").
+JUDGE_PROJECTION_PER_EPISODE_USD = 0.002
+JUDGE_VALIDATION_PROJECTION_USD = {"glm": 0.16, "gemini": 0.46}
 MAX_IN_FLIGHT: dict[StageKey, int] = {StageKey.GLM: 12, StageKey.GEMINI: 20}
 
 
