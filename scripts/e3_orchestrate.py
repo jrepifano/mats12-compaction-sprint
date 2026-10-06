@@ -71,6 +71,13 @@ Review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
   while a retrieval is in progress (lock held) or once it has succeeded (unit complete),
   nothing is recorded missing; an unconfirmed termination records nothing and the next
   enforcement pass retries it.
+- Review A2 r2: a loss decision deferred because a retrieval held the slot's lock is persisted
+  (results/E3/pending_loss/<slot>.json, written atomically: slot, pod_id, unit, reservation_id,
+  reason, utc). The retrieval holder clears it once its own outcome is durable (retrieved, or
+  missing recorded and the stop written); if the holder dies, `recover` resolves it once the
+  lock is free: a complete unit clears it; a terminated pod with an incomplete unit records the
+  artifacts missing, clears it, then fires §7's retrieval stop (never twice: an existing stop
+  only clears the record).
 - 3: a launch waiting for admission cancels on a stop or the cap; after admission the stop and
   the cap are re-checked under logs/E3-create.lock immediately before pod_up (a refusal releases
   the reservation). A stop writes STOPPED.json, then takes the same lock before its sweep, so an
@@ -105,7 +112,8 @@ DEADLINE_RE = re.compile(r"^EMX_POD_DEADLINE=(\d+)\s*$", re.MULTILINE)
 CREATE_RE = re.compile(r"^EMX_POD_CREATE=(\w+) reservation=(\S+)", re.MULTILINE)
 STOP_STATUSES = ("EXITED", "TERMINATED", "STOPPED")
 CREATE_LOCK = "logs/E3-create.lock"
-CREATING_LOCK = "logs/E3-reconcile-creating.lock"  # one creation reconciliation at a time  # the creation decision vs a stop's sweep (review A r2, 3)
+CREATING_LOCK = "logs/E3-reconcile-creating.lock"
+PENDING_LOSS_DIR = f"{C.RESULTS}/pending_loss"  # deferred loss decisions, one per slot  # one creation reconciliation at a time  # the creation decision vs a stop's sweep (review A r2, 3)
 TERMINATE_ATTEMPTS = 3
 
 
@@ -779,6 +787,7 @@ class Orchestrator:
         fires after the termination (review A r3)."""
         res = self._cleanup(slot, reason, retrieve, reservation_id, outcome, enforced)
         rc = res.pop("_rc")
+        holder_of = res.pop("_retrieved_pod", None)  # this cleanup ran the slot's retrieval
         if res.get("stop_rule"):
             src = self.stop(
                 "cleanup",
@@ -787,7 +796,11 @@ class Orchestrator:
                 failed_unit=res.get("unit"),
                 missing=res.get("missing"),
             )
+            if holder_of:  # its outcome (missing + stop) is durable: the deferred one is resolved
+                self._clear_pending_loss(slot, holder_of)
             return 3 if 3 in (rc, src) else 2
+        if holder_of and res.get("retrieved") is True:
+            self._clear_pending_loss(slot, holder_of)
         return rc
 
     def _cleanup(self, slot, reason, retrieve, reservation_id, outcome, enforced=False) -> dict:
@@ -826,6 +839,7 @@ class Orchestrator:
             with _flock_wait(lock, self.retrieval_bound_s()) as held:
                 if held:
                     self._retrieve(slot, unit, pod["pod_id"], res)
+                    res["_retrieved_pod"] = pod["pod_id"]
                 else:  # its holder records what it could not retrieve
                     res["retrieval_skipped"] = "another cleanup held the retrieval lock too long"
         # 2. record whatever is missing or unverified: a §7 stop
@@ -860,8 +874,9 @@ class Orchestrator:
         # under the slot's retrieval lock, so no retrieval can start or finish meanwhile.
         if enforced and unit and info.get("job") and res["terminated"] is True:
             with _flock(self.root / "logs" / f"E3-retrieve{slot}.lock", blocking=False) as held:
-                if not held:
+                if not held:  # persisted, so a dead holder cannot lose it (review A2 r2)
                     res["loss_undecided"] = "a retrieval is in progress: its holder decides"
+                    self._write_pending_loss(slot, res["pod_id"] or "", unit, rid, reason)
                 elif B.unit_complete(self.root, unit):
                     res["loss_undecided"] = "the unit's results were retrieved"
                 else:
@@ -895,6 +910,83 @@ class Orchestrator:
         else:
             res["_rc"] = 1
         return res
+
+    # -- deferred loss decisions (review A2 r2) ------------------------------------------------
+
+    def _pending_loss_path(self, slot: str) -> Path:
+        return self.root / PENDING_LOSS_DIR / f"{slot}.json"
+
+    def _write_pending_loss(self, slot, pod_id, unit, rid, reason) -> None:
+        p = self._pending_loss_path(slot)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        rec = {
+            "slot": slot,
+            "pod_id": pod_id,
+            "unit": unit,
+            "reservation_id": rid,
+            "reason": reason,
+            "utc": B.utc_now(),
+        }
+        tmp = p.with_name(f".{p.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(rec, indent=2) + "\n")
+        os.replace(tmp, p)  # atomic
+        self.log({"event": "loss_pending", "unit": None, **rec})
+
+    def _clear_pending_loss(self, slot: str, pod_id: str | None = None) -> None:
+        p = self._pending_loss_path(slot)
+        try:
+            rec = json.loads(p.read_text())
+        except (OSError, ValueError):
+            return
+        if pod_id is None or rec.get("pod_id") in (pod_id, ""):
+            p.unlink(missing_ok=True)
+            self.log({"event": "loss_pending_cleared", "unit": None, "slot": slot})
+
+    def _resolve_pending_losses(self, acts: list[dict]) -> int:
+        """Each deferred loss decision whose retrieval lock is free (its holder finished or
+        died): a complete unit, or an existing stop, clears it; a terminated pod with an
+        incomplete unit gets its artifacts recorded missing, the record cleared, then §7's
+        retrieval stop. A pod still running is left to enforcement first."""
+        d = self.root / PENDING_LOSS_DIR
+        worst = 0
+        for p in sorted(d.glob("*.json")) if d.is_dir() else []:
+            try:
+                rec = json.loads(p.read_text())
+            except (OSError, ValueError):
+                continue
+            slot, unit, pod_id = rec.get("slot") or p.stem, rec.get("unit"), rec.get("pod_id")
+            fire = False
+            with _flock(self.root / "logs" / f"E3-retrieve{slot}.lock", blocking=False) as held:
+                if not held:
+                    acts.append({"pending_loss": slot, "skipped": "retrieval in progress"})
+                    continue
+                running = any(
+                    x["pod_id"] == pod_id and x["running"] for x in B.pod_sessions(self.root)
+                )
+                if B.read_stopped(self.root) is not None or (
+                    unit and B.unit_complete(self.root, unit)
+                ):
+                    self._clear_pending_loss(slot)
+                    acts.append({"pending_loss": slot, "cleared": True})
+                elif running:
+                    acts.append({"pending_loss": slot, "skipped": "pod still running"})
+                    continue
+                else:
+                    man = self.root / C.manifest_path(unit) if unit else None
+                    if man is None or "# MISSING" not in (man.read_text() if man.exists() else ""):
+                        self._record_missing(
+                            unit,
+                            slot,
+                            "terminated past its deadline; its retrieval did not finish",
+                            rec.get("reason", ""),
+                        )
+                    self._clear_pending_loss(slot)
+                    fire = True
+            if fire:
+                rc = self.stop("recover", B.STOP_RETRIEVAL, slot=slot, failed_unit=unit)
+                acts.append({"pending_loss": slot, "stop": rc})
+                worst = max(worst, rc)
+        return worst
 
     def _retrieve(self, slot: str, unit: str, pod_id: str, res: dict) -> None:
         res["retrieved"] = False
@@ -1328,6 +1420,9 @@ class Orchestrator:
                 continue
             rr.release(rid, note="recover: launcher gone, no pod")
             acts.append({"released": rid, "why": "launcher gone, no pod"})
+
+        # deferred loss decisions whose retrieval holder finished or died (review A2 r2)
+        worst = max(worst, self._resolve_pending_losses(acts))
 
         # a §7 stop whose shutdown did not finish (e.g. its process died): finish it, skipping
         # any slot whose retrieval is in progress elsewhere

@@ -10,7 +10,7 @@ its fixed contract.
 
 2026-10-06: regression tests for gpt-6-astra code review A r1 fixes A1, A2, A4, A5, A8 and A9
 (each names its finding), for review A r2 findings 1 and 3, review A r3 finding 1, and
-review A2 r1 findings 1 and 2.
+review A2 r1 findings 1 and 2, and review A2 r2 (persisted deferred loss decisions).
 """
 
 from __future__ import annotations
@@ -191,6 +191,7 @@ class World:
         self.spawned: list[list[str]] = []
         self.down_hook = None  # called with the pod id at each pod_down --pod-id
         self.untracked_hook = None  # called at each pod_down --untracked
+        self.pull_hook = None  # called at each pull, before it answers
         self.up_hook = None  # called inside pod_up (to interleave a stop)
 
     # pod event log
@@ -306,6 +307,8 @@ class World:
         if "pod_pull_results.sh" in s:
             assert arg("--pod-id"), "the pull is tied to the pod id (A5)"
             self.timeouts["pull"] = timeout
+            if self.pull_hook is not None:
+                self.pull_hook()
             if self.pull_raises:
                 raise RuntimeError("pull exploded")
             if self.pull_cmd is not None:
@@ -1257,6 +1260,83 @@ def test_no_retrieval_stop_while_a_retrieval_of_the_slot_is_in_progress(world):
     assert B.read_stopped(world.root) is None
     assert not (world.root / C.manifest_path("pod1")).exists()
     assert "retrieval is in progress" in last_event(world, "cleaned")["loss_undecided"]
+
+
+# --- review A2 r2: a deferred loss decision survives its holder -------------------------------
+
+
+def _holder_then_enforce(world, pull_rc: int, done: bool):
+    """A cleanup is pulling pod1's results (holding the retrieval lock) when the pod passes its
+    deadline: enforcement terminates it and defers the loss decision. Then the pull finishes."""
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    pulling, finish = threading.Event(), threading.Event()
+
+    def hook():
+        pulling.set()
+        assert finish.wait(15)
+        if done:
+            write_done(world.root, "pod1", pid)
+
+    world.pull_hook = hook
+    world.pull_rc = pull_rc
+    out = {}
+    holder = threading.Thread(target=lambda: out.update(rc=make(world).cleanup("_A", "end")))
+    holder.start()
+    assert pulling.wait(10)
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    make(world).enforce()
+    pending = world.root / orch.PENDING_LOSS_DIR / "_A.json"
+    assert json.loads(pending.read_text())["pod_id"] == pid  # persisted, atomically
+    assert B.read_stopped(world.root) is None
+    finish.set()
+    holder.join(30)
+    return out["rc"], pending
+
+
+def _stops(world) -> int:
+    return sum(
+        e.get("event") == "stop" and e.get("stop") == B.STOP_RETRIEVAL
+        for e in B.read_log(world.root)
+    )
+
+
+def test_a_deferred_loss_is_cleared_when_the_holders_retrieval_succeeds(world):
+    rc, pending = _holder_then_enforce(world, pull_rc=0, done=True)
+    assert rc == 0 and not pending.exists()
+    make(world).recover()
+    assert B.read_stopped(world.root) is None and _stops(world) == 0
+
+
+def test_a_deferred_loss_is_resolved_by_the_holders_exhausted_retrieval(world):
+    rc, pending = _holder_then_enforce(world, pull_rc=1, done=False)
+    assert rc == 2 and not pending.exists()
+    assert B.read_stopped(world.root)["rule"] == B.STOP_RETRIEVAL
+    make(world).recover()
+    make(world).recover()
+    assert _stops(world) == 1
+
+
+def test_a_dead_holders_deferred_loss_is_resolved_by_recover_once(world):
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    lock = world.root / "logs" / "E3-retrieve_A.lock"
+    with orch._flock(lock):  # the holder ...
+        make(world).enforce()
+        make(world).recover()  # still held: undecided, kept
+        pending = world.root / orch.PENDING_LOSS_DIR / "_A.json"
+        assert pending.exists() and B.read_stopped(world.root) is None
+    # ... dies (lock released, nothing recorded); recover resolves it
+    make(world).recover()
+    assert not pending.exists()
+    assert B.read_stopped(world.root)["rule"] == B.STOP_RETRIEVAL
+    assert "# MISSING" in (world.root / C.manifest_path("pod1")).read_text()
+    make(world).recover()
+    make(world).enforce()
+    assert _stops(world) == 1
 
 
 # --- review A r2, finding 3: a waiting launch never escapes a stop ------------------------------
