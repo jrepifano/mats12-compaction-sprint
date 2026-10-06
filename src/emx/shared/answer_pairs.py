@@ -109,8 +109,9 @@ Pipeline (`build`), each step deterministic or cached:
 
 Money (plan v3 fix 3, v4 fixes 1 and 3): every paid stage (`writer:r0` .. `judges:r4`, the
 fallback's `fb:writer:r0` .. `fb:judges:r4`, phase 2's `regen2:writer:r0` .. `regen2:judges:r3`,
-and `preinspect`; `STAGE_NOTES`, under ledger notes tagged `answer_pairs_v1c3`, so the $3 build
-cap counts construction 3's spend only) has its own
+and `preinspect`; `STAGE_NOTES`, under ledger notes tagged `answer_pairs_v1c3`; the $3 build
+cap counts constructions 2 and 3 together, Amendment A's shared rebuild allowance, via
+`cap_notes()`) has its own
 small `spend.reserve_api` reservation:
 reserve -> `after_api_change` -> `mark_submitted` (before the first paid call) -> calls bounded
 by `reservation_headroom` -> `record(..., reservation_id=)` per model -> `settle_api(total)` ->
