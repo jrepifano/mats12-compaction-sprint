@@ -78,6 +78,11 @@ Review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
   lock is free: a complete unit clears it; a terminated pod with an incomplete unit records the
   artifacts missing, clears it, then fires §7's retrieval stop (never twice: an existing stop
   only clears the record).
+- Review A2 r3: the stop claim is exclusive. Only the first writer of STOPPED.json (exclusive
+  create) emits the stop event and runs the shutdown sweep; any later stop only logs
+  `stop_already` (recover keeps finishing an unfinished shutdown). Recovery of a deferred loss
+  writes STOPPED.json under the retrieval lock BEFORE clearing the pending record, then sweeps
+  outside the lock; a crash between those steps is completed by the next recover, once.
 - 3: a launch waiting for admission cancels on a stop or the cap; after admission the stop and
   the cap are re-checked under logs/E3-create.lock immediately before pod_up (a refusal releases
   the reservation). A stop writes STOPPED.json, then takes the same lock before its sweep, so an
@@ -257,6 +262,7 @@ class Orchestrator:
         self.root = Path(deps.root)
         self._stopping = False  # inside a stop's shutdown: no nested stop
         self._holding_create = False  # inside the launch's creation decision
+        self._swept = False  # this recover pass already ran a stop's sweep
 
     # -- small helpers ------------------------------------------------------------------------
 
@@ -269,16 +275,35 @@ class Orchestrator:
         self.log({**line, "event": line.get("event", cmd)})
 
     def stop(self, cmd: str, rule: str, retrieve: bool = True, **extra) -> int:
-        """A §7 stop: terminal (fix A8). Writes results/E3/STOPPED.json (the first stop's rule is
-        kept), then runs the bounded shutdown of every outstanding E3 pod and reservation.
-        Returns 2, or 3 if a pod could not be confirmed terminated."""
-        rec, _created = B.write_stopped(self.root, rule, {"cmd": cmd, **extra})
+        """A §7 stop: terminal (fix A8). The first writer of results/E3/STOPPED.json (exclusive
+        create; its rule is kept) emits the stop event and runs the bounded shutdown of every
+        outstanding E3 pod and reservation. A later stop changes nothing: it logs `stop_already`
+        and leaves any unfinished shutdown to recover (review A2 r3). Returns 2, or 3 if a pod
+        could not be confirmed terminated."""
+        if not self._claim_stop(cmd, rule, **extra):
+            return 2
+        return self._sweep(rule, retrieve)
+
+    def _claim_stop(self, cmd: str, rule: str, **extra) -> bool:
+        """Write STOPPED.json if absent; True only for the first writer (the stop event)."""
+        rec, created = B.write_stopped(self.root, rule, {"cmd": cmd, **extra})
+        if not created:
+            self.emit(
+                cmd,
+                {"event": "stop_already", "stop": rule, "stopped_file_rule": rec.get("rule")},
+            )
+            print(f"E3_STOPPED_ALREADY {rec.get('rule')}", flush=True)
+            return False
         self.emit(
             cmd,
             {"event": "stop", "stop": rule, "stopped_file_rule": rec.get("rule"), **extra},
         )
         print(f"E3_STOP {rule}", flush=True)
-        if self._stopping:  # a stop inside a stop's own shutdown: recorded, nothing nested
+        return True
+
+    def _sweep(self, rule: str, retrieve: bool = True) -> int:
+        """The stop's shutdown sweep (run by the stop's first writer only)."""
+        if self._stopping:  # a stop inside a stop's own shutdown: nothing nested
             return 2
         self._stopping = True
         try:
@@ -980,12 +1005,17 @@ class Orchestrator:
                             "terminated past its deadline; its retrieval did not finish",
                             rec.get("reason", ""),
                         )
+                    # the stop is durable BEFORE the record goes (review A2 r3): a crash after
+                    # this leaves STOPPED.json, and the next recover finishes the shutdown
+                    fire = self._claim_stop(
+                        "recover", B.STOP_RETRIEVAL, slot=slot, failed_unit=unit
+                    )
                     self._clear_pending_loss(slot)
-                    fire = True
-            if fire:
-                rc = self.stop("recover", B.STOP_RETRIEVAL, slot=slot, failed_unit=unit)
+            if fire:  # the sweep, outside the retrieval lock
+                rc = self._sweep(B.STOP_RETRIEVAL)
                 acts.append({"pending_loss": slot, "stop": rc})
                 worst = max(worst, rc)
+                self._swept = True
         return worst
 
     def _retrieve(self, slot: str, unit: str, pod_id: str, res: dict) -> None:
@@ -1422,11 +1452,12 @@ class Orchestrator:
             acts.append({"released": rid, "why": "launcher gone, no pod"})
 
         # deferred loss decisions whose retrieval holder finished or died (review A2 r2)
+        self._swept = False
         worst = max(worst, self._resolve_pending_losses(acts))
 
         # a §7 stop whose shutdown did not finish (e.g. its process died): finish it, skipping
-        # any slot whose retrieval is in progress elsewhere
-        if B.read_stopped(self.root) is not None and not self._stopping:
+        # any slot whose retrieval is in progress elsewhere (not again in a pass that swept)
+        if B.read_stopped(self.root) is not None and not self._stopping and not self._swept:
             with _flock(self.root / CREATE_LOCK, blocking=False) as held:
                 if not held:
                     acts.append({"stopped": "a launch or stop holds the create lock; next pass"})

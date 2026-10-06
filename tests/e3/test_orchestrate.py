@@ -10,7 +10,8 @@ its fixed contract.
 
 2026-10-06: regression tests for gpt-6-astra code review A r1 fixes A1, A2, A4, A5, A8 and A9
 (each names its finding), for review A r2 findings 1 and 3, review A r3 finding 1, and
-review A2 r1 findings 1 and 2, and review A2 r2 (persisted deferred loss decisions).
+review A2 r1 findings 1 and 2, review A2 r2 (persisted deferred loss decisions), and review
+A2 r3 (the durable, exclusive stop claim).
 """
 
 from __future__ import annotations
@@ -1337,6 +1338,104 @@ def test_a_dead_holders_deferred_loss_is_resolved_by_recover_once(world):
     make(world).recover()
     make(world).enforce()
     assert _stops(world) == 1
+
+
+# --- review A2 r3: the stop is durable before the record goes, and claimed once ---------------
+
+
+def _sweeps(world) -> int:
+    return sum(
+        e.get("event") == "shutdown" and str(e.get("reason", "")).startswith("stop:")
+        for e in B.read_log(world.root)
+    )
+
+
+class Crash(BaseException):
+    """A process dying at an injected point (not caught by the code's Exception handlers)."""
+
+
+def _dead_holder_pending(world) -> tuple[str, str]:
+    """Pod _A was terminated past its deadline while a (now dead) holder retrieved: a pending
+    loss decision. Pod _B is still running, so the stop's sweep has something to do."""
+    _launched(world, "_A", "pod1")
+    job(world, "_A", "pod1")
+    pid = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    with orch._flock(world.root / "logs" / "E3-retrieve_A.lock"):
+        make(world).enforce()
+    _launched(world, "_B", "pod2")  # launched now: not overdue, only the sweep stops it
+    return pid, "_A"
+
+
+@pytest.mark.parametrize("crash_at", ["_clear_pending_loss", "_sweep"])
+def test_a_recover_interrupted_in_the_loss_handoff_is_completed_once(world, monkeypatch, crash_at):
+    """Interrupted between the stop write and the clear, or between the clear and the sweep:
+    the next recover completes the stop (pod _B swept), with exactly one stop event."""
+    _dead_holder_pending(world)
+    pending = world.root / orch.PENDING_LOSS_DIR / "_A.json"
+    assert pending.exists()
+    real = getattr(orch.Orchestrator, crash_at)
+
+    def crash(self, *a, **k):
+        raise Crash(crash_at)
+
+    monkeypatch.setattr(orch.Orchestrator, crash_at, crash)
+    with pytest.raises(Crash):
+        make(world).recover()
+    assert B.read_stopped(world.root)["rule"] == B.STOP_RETRIEVAL  # durable before the crash
+    monkeypatch.setattr(orch.Orchestrator, crash_at, real)
+    make(world).recover()
+    assert not pending.exists()
+    assert B.running_slots(world.root) == []  # the shutdown was completed
+    assert all(R["closed"] for R in rr.state(exp="E3")["reservations"].values())
+    make(world).recover()
+    assert _stops(world) == 1
+
+
+def test_the_holder_and_recover_claim_the_stop_once(world, monkeypatch):
+    """The exhausted holder is paused after releasing its retrieval lock and before its stop;
+    recover resolves the deferred decision and claims the stop; the resumed holder finds it
+    claimed: one stop event, one sweep."""
+    _launched(world, "_B", "pod2")
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    pulling, finish = threading.Event(), threading.Event()
+    paused, resume = threading.Event(), threading.Event()
+    world.pull_rc = 1
+
+    def hook():
+        pulling.set()
+        assert finish.wait(15)
+
+    world.pull_hook = hook
+    real = orch.Orchestrator._cleanup
+
+    def pausing(self, slot, *a, **k):
+        res = real(self, slot, *a, **k)
+        if threading.current_thread().name == "holder":
+            paused.set()
+            assert resume.wait(15)
+        return res
+
+    monkeypatch.setattr(orch.Orchestrator, "_cleanup", pausing)
+    out = {}
+    holder = threading.Thread(
+        target=lambda: out.update(rc=make(world).cleanup("_A", "end")), name="holder"
+    )
+    holder.start()
+    assert pulling.wait(10)
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    make(world).enforce()  # terminates _A, defers the loss decision
+    finish.set()
+    assert paused.wait(15)  # the holder: retrieval exhausted, lock released, stop not yet run
+    make(world).recover()  # resolves the deferred decision first
+    resume.set()
+    holder.join(30)
+    assert out["rc"] == 2
+    assert _stops(world) == 1 and _sweeps(world) == 1
+    assert any(e.get("event") == "stop_already" for e in B.read_log(world.root))
+    assert B.running_slots(world.root) == []
 
 
 # --- review A r2, finding 3: a waiting launch never escapes a stop ------------------------------
