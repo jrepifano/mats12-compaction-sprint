@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-06 (evening): E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -480,6 +480,11 @@ The working repo's cost estimate for that study is ≈ $115–175.
   1. A **Qwen sibling comparison**: Qwen3.6-27B (dense, 64 layers, width 5120) and Qwen3.6-35B-A3B (MoE, 40 layers, width 2048, 256 experts, 8 active per token; both configs read from the Hub on 2026-10-03). Same family, generation and tokenizer, which removes the lab and data confounds in Doan et al.'s three models.
      - It does **not** isolate MoE as such: the two also differ in depth, width and parameter count. Any difference is a difference between these two siblings. "It's the MoE" stays a hypothesis that needs further controls, such as a second matched pair (the OLMoE arm below) or a size sweep.
   2. Routing tests that a dense model can't have: does the fine-tune shift routing on unrelated prompts, and does forcing the untuned model's routing remove EM?
+  3. *Added 2026-10-06 (Jacob):* **do personas live in particular experts?**
+     - Does the EM direction, or a persona direction (E10's), concentrate in a few experts, or spread across all of them?
+     - Does that change how the model routes persona-relevant prompts?
+     - The answer decides whether an intervention can target experts.
+     - Cheap to add to Stage 1's routing hooks: per-expert attribution of the direction, and routing entropy on persona prompts.
 - **Why it matters for us.** If EM on OLMo becomes the commit, a reviewer will ask whether it holds for MoE, the architecture of most frontier open models. A routing contribution would give a mechanism handle, and a monitoring one: routing is a discrete trace a dense model lacks. A null for this pair weakens the worry that architecture matters for EM. It doesn't by itself license carrying the OLMo findings over to MoE.
 
 **Hypotheses** (weak priors).
@@ -1916,7 +1921,7 @@ Pointed at X3's GLM 5.3 Flash cheating episodes, with a cheap investigator, does
 
 Recorded so they aren't lost. None is costed.
 - **Eval awareness.**
-  - Which current models are most eval-aware (Neel's suggested mini-project).
+  - Which current models are most eval-aware, and in which realistic settings (Neel's suggested mini-project).
   - Why steering with unrelated concepts (politeness, books) suppresses eval awareness about as well as eval-awareness vectors.
   - High-quality alignment honeypots that open models believe are real.
   - A blog post found that resampling away the verbalized eval awareness of Tim Hua's eval-aware organism still leaves it more eval-aware than not letting it think.
@@ -2068,6 +2073,14 @@ The talks were Bartosz Cywiński on model organisms and Adam Karvonen on CHIVE. 
 
 C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`docs/week1-synthesis.md`).
 
+**Jacob, 2026-10-06.**
+- **Interp and swarms are dialed down.** I1b, I3, I5, I8 and I10 are held unless interp returns.
+- **Two lines go forward:**
+  - belief about the grader: X3, X3b, X4, X5;
+  - correcting EM at pretraining: E3, E9, E9b.
+- **He would like to join them eventually.** Grader gaming that is found only at the RL stage is "too late" to fix, so the natural fix is at pretraining.
+- **The sprint deliverable he wants is "an intervention that reduces the behavior."** E9 and X4 are the intervention-shaped items. X3, X3b and X5 are diagnostic.
+
 **Recommended week-2 set (2026-10-03).** Each paid step still needs Jacob's go-ahead and a prereg.
 
 *Critical path: the tests that decide the commit.*
@@ -2147,7 +2160,8 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
 
    E9 doesn't need to wait for E3's early-checkpoint work, only for its answer pairs. Which do you want preregistered first: E3, E9, or both?
 3. **E7:** the application project already ran its direct test, with a negative result, and rejected a fuller study (section E7). *Updated 2026-10-05:* Paulo et al. 2026 show influence-based *deletion* moves EM by 5–10 points on an all-bad pool, where attribution outperformed WildGuard's continuous harmfulness ranking. Attribution beat their harmfulness baseline there, though not necessarily a better content judge. That opens a smaller version: on their organism (OLMo-3-7B-SFT), compare rewriting the top-influence rows with rewriting random and content-judge-ranked rows. It would be a 3-seed directional pilot, with a provisional compute subtotal of roughly $32–35. Do you want that version lit-reviewed and priced properly, the judge-invisible-poison version (subliminal learning / Phantom Transfer) instead, or should E7 stay dropped?
-4. **Budget envelope (updated 2026-10-05):** $218.42 is spent; E1b and I9 are done. The remaining EM items are:
+4. **Budget: settled 2026-10-06 (Jacob).** $2,100 for the whole program (October), with the goal of spending most of it, or at least a lot, in the research sprint to get very good results. The ~$100 ask-first rule per experiment stays (CLAUDE.md). The rest of this item is the earlier, now-superseded envelope question.
+   *Previously:* **Budget envelope (updated 2026-10-05):** $218.42 is spent; E1b and I9 are done. The remaining EM items are:
    - E3: ≈ $25–40, of which Stage A is ≈ $10–14;
    - E9: ≈ $21–39 if null, $42–63 if promising (in units of a measured per-arm cost C, estimated at $2–4);
    - E9b, only if E9 shows an effect: ≈ $42–83.

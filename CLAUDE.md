@@ -122,7 +122,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   - Week 1: gate experiments (Phase A).
   - Week 2: "is it interesting" experiments (Phase B).
   - Weeks 3–4: commit to one direction and get a presentable preliminary result.
-- **Budget:** a few hundred dollars up front for preliminary results. The total is not yet set. Keep every Phase A experiment under its cap, and ask before any single experiment above ~$100.
+- **Budget:** $2,100 for the whole program, i.e. October 2026 (Jacob, 2026-10-06). The goal is to spend most of it, or at least a lot, during the research sprint, to collect very good results. Track the running total with `scripts/merge_ledger.py report`. Keep every experiment under its cap, and ask before any single experiment above ~$100.
 
 ## Stack
 
