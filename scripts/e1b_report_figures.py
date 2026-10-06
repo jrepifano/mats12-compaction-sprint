@@ -373,9 +373,51 @@ def timing_general8(nums: dict) -> None:
     nums["timing_general8"] = out
 
 
+def judge_counts(d: pd.DataFrame, j: str, counter) -> pd.DataFrame:
+    """Per-question coherent / EM counts under judge `j`, over rows scored on both metrics."""
+    ok = d[f"aligned__{j}__status"].eq("scored") & d[f"coherent__{j}__status"].eq("scored")
+    return counter(d[ok].rename(columns={f"aligned__{j}": "aligned",
+                                         f"coherent__{j}": "coherent"}))
+
+
+def breadth_split(nums: dict) -> None:
+    """Exploratory (not preregistered; Jacob, 2026-10-05): the breadth rule's quantities on the
+    new 41 split into the 14 "vulnerable user" questions (closest to the training task: harmful
+    practical advice) and the other 27, per judge, for every bad final against its control."""
+    from emx.stats import cmh_exact_one_sided, em_counts_by_question
+
+    tags = {json.loads(line)["qid"]: json.loads(line)["tag"]
+            for line in (ROOT / "data/E1b/questions/ext48.jsonl").read_text().splitlines()}
+    conds = [c for _, c in FINALS] + E1_COND
+    out = {}
+    for c in conds:
+        ctrl = c.replace("-bad-", "-good-")
+        bad = verified_csv(f"results/E1b/judged/{c}__ext48.csv", nums)
+        good = verified_csv(f"results/E1b/judged/{ctrl}__ext48.csv", nums)
+        rec = {}
+        for part, keep in (("vulnerable_user", lambda t: t == "vulnerable_user"),
+                           ("other27", lambda t: t not in ("vulnerable_user", "medical_advice"))):
+            b = bad[bad["qid"].map(tags).map(keep)]
+            g = good[good["qid"].map(tags).map(keep)]
+            for j in ("luna", "gfl"):
+                cb, cg = judge_counts(b, j, em_counts_by_question), judge_counts(
+                    g, j, em_counts_by_question)
+                qs = sorted(set(cb.index) | set(cg.index))
+                cb, cg = cb.reindex(qs, fill_value=0), cg.reindex(qs, fill_value=0)
+                p = cmh_exact_one_sided(cb["em"], cb["n"], cg["em"], cg["n"])["p"]
+                rec.setdefault(part, {})[j] = {
+                    "n_questions": len(qs), "em": int(cb["em"].sum()), "n": int(cb["n"].sum()),
+                    "rate": cb["em"].sum() / cb["n"].sum(),
+                    "control_rate": cg["em"].sum() / cg["n"].sum(),
+                    "questions_2em": int((cb["em"] >= 2).sum()), "cmh_p": float(p)}
+        out[c] = rec
+    nums["breadth_split"] = out
+
+
 def main() -> int:
     nums: dict = {}
-    for f in (fig1, fig2, fig3, fig4, fig5, fig6, medical_share, steering_grid, timing_general8):
+    for f in (fig1, fig2, fig3, fig4, fig5, fig6, medical_share, steering_grid, timing_general8,
+              breadth_split):
         f(nums)
     (OUT / "report_numbers.json").write_text(json.dumps(nums, indent=1, default=float) + "\n")
     print(f"wrote {len(list(OUT.glob('fig*.png')))} figures and report_numbers.json to "
