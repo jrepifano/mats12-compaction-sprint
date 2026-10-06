@@ -6,7 +6,7 @@ scripts/e3_watchdog.sh (pidfile, --check-alive, recover every tick, idle cleanup
 Every script runs as a copy in tmp_path with fake ssh/rsync/uv/git on PATH (the patterns of
 tests/test_pod_scripts.py and tests/i1a/test_pod_i1a.py); nothing contacts RunPod, SSH or the Hub.
 2026-10-06: regression tests for code review A r1 fixes A2, A3, A5, A6 and A8, and review A r2
-findings 1 and 2 (see each test)."""
+findings 1 and 2, and review A r3 finding 2 (see each test)."""
 
 from __future__ import annotations
 
@@ -116,7 +116,10 @@ case "$*" in
   *"e3_orchestrate.py recover"*)
     [ -n "${FAKE_RECOVER_HANG:-}" ] && exec sleep 60
     exit "${FAKE_RECOVER_RC:-0}" ;;
-  *"pod_down.py --exp E3 --all-exp"*) [ -n "${FAKE_DOWN_HANG:-}" ] && exec sleep 60 ;;
+  *"pod_down.py --exp E3 --all-exp"*)
+    [ -n "${FAKE_DOWN_HANG:-}" ] && exec sleep 60
+    n=$(cat "$CALLS.dn" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$CALLS.dn"
+    [ "$n" -le "${FAKE_DOWN_FAILS:-0}" ] && exit 1 ;;
 esac
 exit 0
 """
@@ -818,7 +821,7 @@ def test_watchdog_kill_line_reserves_the_whole_bounded_shutdown_latency(wd):
     }
     assert tick(wd, "120", **env).returncode == 0
     reserve = _reserve_s(calls(co.parent))
-    assert reserve == pytest.approx(120 + 3 * 100 + 160 + 3 * 55 + 250 + 160)
+    assert reserve == pytest.approx(120 + 3 * 100 + 160 + 3 * 55 + 250 + 2 * 160)
     assert reserve >= 120 + 240 + 150
 
 
@@ -845,7 +848,7 @@ def test_watchdog_hard_stop_latency_stays_within_the_reserve_clock_driven(wd):
     t_budget = next(float(x.split()[0]) for x in stamped if "pod_budget_check" in x)
     t_clean = next(float(x.split()[0]) for x in stamped if "cleanup --slot _A" in x)
     reserve = _reserve_s(calls(co.parent))
-    assert reserve == pytest.approx(1 + 3 * 11 + 9 + 3 * 7 + 8 + 9)
+    assert reserve == pytest.approx(1 + 3 * 11 + 9 + 3 * 7 + 8 + 2 * 9)
     # from the projection to the end of the termination call: under the reserve minus the
     # interval (the next tick is not needed to act)
     assert t_clean - t_budget <= reserve - 1, (t_clean - t_budget, reserve)
@@ -853,14 +856,11 @@ def test_watchdog_hard_stop_latency_stays_within_the_reserve_clock_driven(wd):
     assert any("tar cf" in c for c in calls(co.parent))  # salvage was attempted (it fit)
 
 
-@pytest.mark.parametrize("stuck", ["tar", "shasum"])
-def test_watchdog_salvage_post_processing_runs_after_the_delete_and_is_bounded(wd, stuck):
-    """Review A r2, 2: local extraction and hashing of the salvage can hang; they run after
-    the DELETE and are bounded, and the termination still lands within the reserved margin."""
-    co, _ = wd
+def _post_fakes(tmp: Path) -> None:
+    """tar and shasum that log a timestamp and hang when FAKE_STUCK names them."""
     for name in ("tar", "shasum"):
         fake_bin(
-            co.parent,
+            tmp,
             name,
             f'echo "$(perl -MTime::HiRes=time -e \'printf "%.3f", time\') {name} $*" >> "$CALLS.t"\n'
             f'[ "${{FAKE_STUCK:-}}" = "{name}" ] && exec sleep 60\n'
@@ -871,6 +871,66 @@ def test_watchdog_salvage_post_processing_runs_after_the_delete_and_is_bounded(w
             )
             + "exit 0\n",
         )
+
+
+@pytest.mark.parametrize("stuck", ["tar", "shasum"])
+def test_watchdog_failed_first_delete_is_retried_before_any_post_processing(wd, stuck):
+    """Review A r3, 2: the first DELETE fails; extraction or hashing would hang. Termination
+    is retried at once and succeeds within the reserved margin; post-processing runs only after
+    that confirmed termination."""
+    co, _ = wd
+    _post_fakes(co.parent)
+    r = tick(
+        wd,
+        "1",
+        FAKE_BUDGET_RCS="2 0",
+        FAKE_DOWN_FAILS="1",
+        FAKE_STUCK=stuck,
+        E3_SALVAGE_S="2",
+        E3_SALVAGE_POST_S="2",
+        E3_TERMINATE_S="3",
+        E3_BUDGET_S="5",
+        E3_IDLE_SSH_S="1",
+        E3_GRACE_S="6",
+    )
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert "pod_down --all-exp FAILED (attempt 1 of 2)" in r.stdout
+    stamped = (co.parent / "calls.t").read_text().splitlines()
+    t_budget = next(float(x.split()[0]) for x in stamped if "pod_budget_check" in x)
+    downs = [float(x.split()[0]) for x in stamped if "pod_down.py --exp E3 --all-exp" in x]
+    posts = [float(x.split()[0]) for x in stamped if x.split()[1] in ("tar", "shasum")]
+    assert len(downs) == 2  # retried at once, before anything else
+    assert downs[1] - t_budget <= _reserve_s(calls(co.parent)) - 1  # within the margin
+    assert posts and min(posts) > downs[1]  # post-processing only after confirmed termination
+
+
+def test_watchdog_unconfirmed_termination_keeps_the_salvage_archives_unprocessed(wd):
+    co, _ = wd
+    _post_fakes(co.parent)
+    r = tick(
+        wd,
+        "1",
+        FAKE_BUDGET_RCS="2 0",
+        FAKE_DOWN_FAILS="9",
+        FAKE_STUCK="tar",
+        E3_SALVAGE_S="2",
+        E3_TERMINATE_S="3",
+    )
+    assert r.returncode == 2
+    assert "termination NOT confirmed" in r.stdout and "archives kept unprocessed" in r.stdout
+    stamped = (co.parent / "calls.t").read_text().splitlines()
+    assert sum("pod_down.py --exp E3 --all-exp" in x for x in stamped) == 2
+    assert not any(x.split()[1] in ("tar", "shasum") for x in stamped)  # nothing processed
+    assert list((co / "results/E3/sealed").glob("_salvage__A_*.tar"))  # archives kept
+    assert any("cleanup --slot _A" in x for x in stamped)  # per-pod termination still tried
+
+
+@pytest.mark.parametrize("stuck", ["tar", "shasum"])
+def test_watchdog_salvage_post_processing_runs_after_the_delete_and_is_bounded(wd, stuck):
+    """Review A r2, 2: local extraction and hashing of the salvage can hang; they run after
+    the DELETE and are bounded, and the termination still lands within the reserved margin."""
+    co, _ = wd
+    _post_fakes(co.parent)
     t0 = time.time()
     r = tick(
         wd,

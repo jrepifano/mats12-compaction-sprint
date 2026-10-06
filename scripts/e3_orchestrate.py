@@ -54,6 +54,13 @@ Review A r2 (logs/reviews/20261006-E3-code-A-r2.md):
   overdue `creating` rows; recover never runs a retrieval-bearing cleanup itself: it starts one
   background `cleanup` process per slot (skipped while that slot's retrieval or cleanup lock is
   held), so one slow pull never delays another pod's deadline.
+- 1 (round 3, logs/reviews/20261006-E3-code-A-r3.md): `enforce` no longer terminates pods one
+  after another. It dispatches one detached `cleanup --no-retrieve --enforced` process per
+  overdue pod (skipped while that slot's cleanup lock is held, i.e. its termination is already
+  running), so a stalled termination or settlement of one pod never delays another's DELETE.
+  `--enforced`: a pod terminated for its deadline after a job was started on it, whose unit is
+  not complete, has its unretrieved artifacts recorded as missing (run log and unit manifest)
+  and fires §7's retrieval stop after the termination.
 - 3: a launch waiting for admission cancels on a stop or the cap; after admission the stop and
   the cap are re-checked under logs/E3-create.lock immediately before pod_up (a refusal releases
   the reservation). A stop writes STOPPED.json, then takes the same lock before its sweep, so an
@@ -751,11 +758,15 @@ class Orchestrator:
         retrieve: bool = True,
         reservation_id: str | None = None,
         outcome: str | None = None,
+        enforced: bool = False,
     ) -> int:
         """Steps 1-2 (retrieval, bounded) under the slot's retrieval lock; steps 3-5 under the
         slot's cleanup lock, which never waits on retrieval. A retrieval that fails after
-        RETRIEVAL_ATTEMPTS attempts is a §7 stop (fix A8), raised once the locks are released."""
-        res = self._cleanup(slot, reason, retrieve, reservation_id, outcome)
+        RETRIEVAL_ATTEMPTS attempts is a §7 stop (fix A8), raised once the locks are released.
+        `enforced`: terminated for its deadline without retrieval; if a job had been started and
+        its unit is not complete, its artifacts are recorded missing and §7's retrieval stop
+        fires after the termination (review A r3)."""
+        res = self._cleanup(slot, reason, retrieve, reservation_id, outcome, enforced)
         rc = res.pop("_rc")
         if res.get("stop_rule"):
             src = self.stop(
@@ -768,7 +779,7 @@ class Orchestrator:
             return 3 if 3 in (rc, src) else 2
         return rc
 
-    def _cleanup(self, slot, reason, retrieve, reservation_id, outcome) -> dict:
+    def _cleanup(self, slot, reason, retrieve, reservation_id, outcome, enforced=False) -> dict:
         info = self.slot_launch(slot)
         unit = info.get("unit")
         rid = reservation_id or info.get("reservation_id")
@@ -833,6 +844,18 @@ class Orchestrator:
             except Exception as e:  # noqa: BLE001
                 res["errors"].append(f"reservation: {type(e).__name__}: {e}")
             res["snapshot"] = self._snapshot(res)
+        # a pod terminated for its deadline after its job started: its results are lost
+        if enforced and unit and info.get("job") and not B.unit_complete(self.root, unit):
+            try:
+                res["missing"] = self._record_missing(
+                    unit,
+                    slot,
+                    "terminated past its deadline without retrieval (its job had started)",
+                    reason,
+                )
+            except Exception as e:  # noqa: BLE001 - the stop still fires
+                res["errors"].append(f"record missing: {type(e).__name__}: {e}")
+            res["stop_rule"] = B.STOP_RETRIEVAL
         if outcome is None:
             outcome = "done" if res["retrieved"] is True else "aborted"
         res["outcome"] = outcome if res["terminated"] else "termination_unconfirmed"
@@ -1080,15 +1103,7 @@ class Orchestrator:
                 continue
             slot = o.get("slot")
             if o.get("pod_id") or (slot and self.slot_pod(slot)):
-                rc = self.cleanup(
-                    slot,
-                    f"enforce: {o['reason']} (terminated without retrieval)",
-                    retrieve=False,
-                    reservation_id=o.get("reservation_id"),
-                    outcome="aborted",
-                )
-                acts.append({"cleanup": slot, "reason": o["reason"], "rc": rc})
-                worst = max(worst, rc)
+                self._dispatch_termination(o, acts)
                 continue
             # a `creating` row with no launched pod: released only once the API proves no pod
             closed, detail = self._resolve_creating(o["reservation_id"], "recover")
@@ -1096,6 +1111,40 @@ class Orchestrator:
             if not closed and "still listed" in detail:
                 worst = max(worst, 3)
         return worst
+
+    def _dispatch_termination(self, o: dict, acts: list[dict]) -> None:
+        """One detached `cleanup --no-retrieve --enforced` per overdue pod (review A r3, 1):
+        each pod's termination and settlement runs on its own, bounded by its pod_down calls, and
+        never waits for another pod's. Skipped while the slot's cleanup lock is held (that pod's
+        termination is already running)."""
+        slot = o.get("slot")
+        if not slot:
+            acts.append({"pod": o.get("pod_id"), "skipped": "no slot recorded; recover settles"})
+            return
+        if _lock_busy(self.root / "logs" / f"E3-cleanup{slot}.lock"):
+            acts.append({"cleanup": slot, "reason": o["reason"], "skipped": "terminating"})
+            return
+        reason = f"enforce: {o['reason']} (terminated without retrieval)"
+        cmd = [
+            "uv",
+            "run",
+            "python",
+            "scripts/e3_orchestrate.py",
+            "cleanup",
+            "--slot",
+            slot,
+            "--reason",
+            reason,
+            "--no-retrieve",
+            "--enforced",
+            "--outcome",
+            "aborted",
+            *(["--reservation", o["reservation_id"]] if o.get("reservation_id") else []),
+        ]
+        spawn = self.d.spawn or self._spawn_detached
+        spawn(cmd, f"enforce{slot}")
+        self.log({"event": "termination_dispatched", "unit": None, "slot": slot, "reason": reason})
+        acts.append({"cleanup": slot, "reason": o["reason"], "dispatched": True})
 
     def _spawn_cleanup(self, slot: str, reason: str, acts: list[dict], outcome=None) -> None:
         """A retrieval-bearing cleanup in its own background process (review A r2, 1), unless
@@ -1531,6 +1580,11 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     s.add_argument("--no-retrieve", action="store_true")
     s.add_argument("--reservation")
     s.add_argument("--outcome", choices=("done", "aborted"))
+    s.add_argument(
+        "--enforced",
+        action="store_true",
+        help="terminated for its deadline: a started job's unretrieved results are a §7 stop",
+    )
     sub.add_parser("rearm")
     s = sub.add_parser("api-reserve")
     s.add_argument("--usd", type=float, required=True)
@@ -1572,7 +1626,9 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     if a.cmd == "launch":
         return o.launch(a.unit, a.slot, a.budget_usd, a.gpu)
     if a.cmd == "cleanup":
-        return o.cleanup(a.slot, a.reason, not a.no_retrieve, a.reservation, a.outcome)
+        return o.cleanup(
+            a.slot, a.reason, not a.no_retrieve, a.reservation, a.outcome, enforced=a.enforced
+        )
     if a.cmd == "rearm":
         return o.rearm()
     if a.cmd == "api-reserve":

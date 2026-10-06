@@ -54,6 +54,10 @@
 #   (bounded at E3_SALVAGE_POST_S). The reserved margin counts the kill grace of every bounded
 #   call (GRACE_S) and all three budget-check latencies (the firing check, the previous tick's,
 #   and the salvage-margin check).
+# 2026-10-06, review A r3 (logs/reviews/20261006-E3-code-A-r3.md), finding 2: at a hard stop a
+#   failed or timed-out DELETE is retried at once (E3_KILL_ATTEMPTS calls, all inside the
+#   reserved margin); the salvage post-processing runs only once termination is confirmed;
+#   otherwise its archives are kept unprocessed and the next pass retries termination first.
 # macOS bash 3.2: no associative arrays, no ${x,,}, no mapfile.
 #   nohup bash scripts/e3_watchdog.sh [INTERVAL_S] > logs/watchdog_E3.log 2>&1 &
 #   bash scripts/e3_watchdog.sh --check-alive   # exit 0 iff a live watchdog owns the pidfile
@@ -113,12 +117,14 @@ MAX_SLOTS=3                          # pods 1-3
 SALVAGE_S=${E3_SALVAGE_S:-240}       # the whole pre-DELETE salvage transfer, every slot together
 SALVAGE_POST_S=${E3_SALVAGE_POST_S:-600}  # extraction, listing, hashing (after the DELETE)
 GRACE_S=${E3_GRACE_S:-10}            # a bounded call's kill grace (SIGTERM, 5 s, SIGKILL) + start-up
+KILL_ATTEMPTS=${E3_KILL_ATTEMPTS:-2}  # pod_down --all-exp calls at a hard stop before anything else
 # from a projection just under the kill line to the DELETE: the rest of that check, the
 # reconcile and idle checks of its tick, the interval, the next check (which fires), the
-# salvage-margin check, the salvage and the termination call
+# salvage-margin check, the salvage and every termination attempt
 RESERVE_S=$(( INTERVAL + 3 * (BUDGET_S + GRACE_S) + (TERMINATE_S + GRACE_S) \
-  + MAX_SLOTS * (IDLE_SSH_S + GRACE_S) + (SALVAGE_S + GRACE_S) + (TERMINATE_S + GRACE_S) ))
-FAST_S=$(( (BUDGET_S + GRACE_S) + (SALVAGE_S + GRACE_S) + (TERMINATE_S + GRACE_S) ))
+  + MAX_SLOTS * (IDLE_SSH_S + GRACE_S) + (SALVAGE_S + GRACE_S) \
+  + KILL_ATTEMPTS * (TERMINATE_S + GRACE_S) ))
+FAST_S=$(( (BUDGET_S + GRACE_S) + (SALVAGE_S + GRACE_S) + KILL_ATTEMPTS * (TERMINATE_S + GRACE_S) ))
 HOURS=$(python3 -c "print($RESERVE_S/3600)")
 FAST_HOURS=$(python3 -c "print($FAST_S/3600)")
 # frozen values from src/emx/e3/contracts.py (loaded by path; no default: refuse to run without)
@@ -268,9 +274,19 @@ kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0): bounded salvage (once per st
     SALVAGED=1
     salvage "$2" || echo "$(now) salvage failed; terminating anyway"
   fi
-  bounded "$TERMINATE_S" uv run python scripts/pod_down.py --exp E3 --all-exp --reason "e3 watchdog: $1" \
-    || echo "$(now) pod_down FAILED - retrying next minute; terminate in the console if it persists" | tee -a "$FAIL_ALERT"
-  salvage_finish
+  local i=1 killed=0
+  while [ "$i" -le "$KILL_ATTEMPTS" ]; do
+    if bounded "$TERMINATE_S" uv run python scripts/pod_down.py --exp E3 --all-exp --reason "e3 watchdog: $1"; then
+      killed=1; break
+    fi
+    echo "$(now) pod_down --all-exp FAILED (attempt $i of $KILL_ATTEMPTS)" | tee -a "$FAIL_ALERT"
+    i=$((i + 1))
+  done
+  if [ "$killed" = "1" ]; then
+    salvage_finish   # only once termination is confirmed (review A r3, 2)
+  else
+    echo "$(now) termination NOT confirmed - retrying next minute; terminate in the console if it persists; salvage archives kept unprocessed:$SALVAGE_DIRS" | tee -a "$FAIL_ALERT"
+  fi
   for s in $2; do
     bounded "$CLEANUP_FAST_S" uv run python scripts/e3_orchestrate.py cleanup --slot "$s" --reason "$1" --no-retrieve \
       || echo "$(now) cleanup $s FAILED (rc=$?)" | tee -a "$FAIL_ALERT"

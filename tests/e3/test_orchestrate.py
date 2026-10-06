@@ -9,7 +9,7 @@ unsettled-pod view (`runpod_reservations.unsettled_pods`, fix subagent F2) is fa
 its fixed contract.
 
 2026-10-06: regression tests for gpt-6-astra code review A r1 fixes A1, A2, A4, A5, A8 and A9
-(each names its finding), and for review A r2 findings 1 and 3.
+(each names its finding), for review A r2 findings 1 and 3, and review A r3 finding 1.
 """
 
 from __future__ import annotations
@@ -184,8 +184,11 @@ class World:
         self.settle_fails = 0  # pod_down --pod-id: terminate, then crash before the charge (A4)
         self.pull_cmd: list[str] | None = None  # a real command standing in for the pull (A2)
         self.timeouts: dict[str, float | None] = {}
-        self.spawn_runs = True  # a spawned background cleanup runs at once (False: it hangs)
+        self.spawn_hang: set[str] = set()  # spawned process names left hanging (e.g. cleanup_A)
+        self.spawn_threads = False  # run each spawned process in its own thread
+        self.threads: list[threading.Thread] = []
         self.spawned: list[list[str]] = []
+        self.down_hook = None  # called with the pod id at each pod_down --pod-id
         self.up_hook = None  # called inside pod_up (to interleave a stop)
 
     # pod event log
@@ -231,11 +234,21 @@ class World:
         ]
 
     def spawn(self, cmd: list[str], name: str) -> None:
-        """Recover's background cleanup: run in-process at once, or (spawn_runs False) left
-        hanging, like a retrieval that takes its full 36 minutes."""
+        """A background cleanup process: run in-process at once (or in a thread), or, when its
+        name is in `spawn_hang`, left hanging like a retrieval that takes its full 36 minutes."""
         self.spawned.append(list(cmd))
-        if self.spawn_runs:
+        if name in self.spawn_hang:
+            return
+
+        def run():
             assert orch.main(cmd[cmd.index("cleanup") :], deps=make(self).d) in (0, 1, 2, 3)
+
+        if self.spawn_threads:
+            t = threading.Thread(target=run)
+            self.threads.append(t)
+            t.start()
+        else:
+            run()
 
     def terminate_event(self, pid: str) -> None:
         """What the watchdog's `pod_down --all-exp` leaves: terminated, slot cleared, no
@@ -301,6 +314,8 @@ class World:
                 return self.down_rc, "terminate failed"
             if "--pod-id" in cmd:
                 pid, rid = arg("--pod-id"), arg("--reservation")
+                if self.down_hook is not None:
+                    self.down_hook(pid)
                 if any(x["pod_id"] == pid and x["running"] for x in B.pod_sessions(self.root)):
                     self.terminate_event(pid)
                 if self.settle_fails:
@@ -1057,10 +1072,11 @@ def test_an_overdue_pod_is_terminated_on_schedule_while_another_pods_retrieval_h
     rid_b = _launched(world, "_B", "pod2")
     pid_b = last_event(world, "launched")["pod_id"]
     world.api[0]["desiredStatus"] = "EXITED"  # A stopped: recover hands it to a cleanup
-    world.spawn_runs = False  # ... which hangs in its retrieval
+    world.spawn_hang = {"cleanup_A"}  # ... which hangs in its retrieval
     o = make(world)
     o.recover()
     assert [c[c.index("--slot") + 1] for c in world.spawned] == ["_A"]
+    world.spawned.clear()
     # the spawned cleanup now sits in A's retrieval, holding A's retrieval lock
     with orch._flock(world.root / "logs" / "E3-retrieve_A.lock"):
         assert {p["slot"] for p in B.running_slots(world.root)} == {"_A", "_B"}
@@ -1071,7 +1087,7 @@ def test_an_overdue_pod_is_terminated_on_schedule_while_another_pods_retrieval_h
         assert [p["slot"] for p in B.running_slots(world.root)] == ["_A"]
         assert rr.state(exp="E3")["pods"][pid_b]["settled"] and rr.get(rid_b)["closed"]
         o.recover()  # A's cleanup is still running: not spawned again
-        assert len(world.spawned) == 1
+        assert not any("--no-retrieve" not in c for c in world.spawned)
     assert world.count("pod_pull_results.sh") == 0
     ev = last_event(world, "cleaned")
     assert ev["slot"] == "_B" and ev["reason"].startswith("enforce: unarmed")
@@ -1081,7 +1097,7 @@ def test_recover_runs_enforcement_and_spawns_retrieval_cleanups(world):
     _launched(world, "_A", "pod1")
     job(world, "_A", "pod1")
     world.api[0]["desiredStatus"] = "EXITED"
-    world.spawn_runs = False
+    world.spawn_hang = {"cleanup_A"}
     make(world).recover()
     cmd = world.spawned[0]
     assert cmd[cmd.index("cleanup") :][:3] == ["cleanup", "--slot", "_A"]
@@ -1095,6 +1111,79 @@ def test_enforce_subcommand(world):
     world.now = NOW + timedelta(minutes=16)
     assert orch.main(["enforce"], deps=make(world).d) == 0
     assert B.running_slots(world.root) == []
+
+
+# --- review A r3, finding 1: one pod's stalled termination never delays another's ---------------
+
+
+def test_enforcement_dispatches_each_overdue_pods_termination_independently(world):
+    """A's DELETE stalls; B is overdue at the same time. The enforce pass returns at once, and
+    B's DELETE is attempted while A's is still stalled (well within the supervision interval)."""
+    world.ack_on_push = False  # neither pod is ever armed
+    _launched(world, "_A", "pod1")
+    pid_a = last_event(world, "launched")["pod_id"]
+    _launched(world, "_B", "pod2")
+    pid_b = last_event(world, "launched")["pod_id"]
+    stall, b_called = threading.Event(), threading.Event()
+
+    def hook(pid):
+        if pid == pid_a:
+            stall.wait(15)  # A's termination stalls
+        elif pid == pid_b:
+            b_called.set()
+
+    world.down_hook = hook
+    world.spawn_threads = True
+    world.now = NOW + timedelta(minutes=16)
+    t0 = time.monotonic()
+    try:
+        assert make(world).enforce() == 0
+        assert time.monotonic() - t0 < 3  # the pass waits for no termination
+        assert b_called.wait(5)  # B's DELETE attempted ...
+        assert not stall.is_set()  # ... while A's is still stalled
+    finally:
+        stall.set()
+        for t in world.threads:
+            t.join(20)
+    assert B.running_slots(world.root) == []
+    assert all(R["closed"] for R in rr.state(exp="E3")["reservations"].values())
+    names = [c[c.index("--slot") + 1] for c in world.spawned]
+    assert sorted(names) == ["_A", "_B"]
+    assert all("--no-retrieve" in c and "--enforced" in c for c in world.spawned)
+
+
+def test_a_pod_past_its_deadline_after_its_job_started_is_a_retrieval_stop(world):
+    """Review A r3 (the judgement call): terminated for its deadline without retrieval after a
+    job had started: its artifacts are recorded missing (run log and unit manifest), and §7's
+    retrieval stop is written after the termination."""
+    _launched(world)
+    job(world)
+    pid = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(rr.pod_deadline(pid) + 1, UTC)
+    make(world).enforce()
+    assert B.running_slots(world.root) == []
+    assert B.read_stopped(world.root)["rule"] == B.STOP_RETRIEVAL
+    man = (world.root / C.manifest_path("pod1")).read_text()
+    assert "# MISSING" in man and "past its deadline" in man
+    assert "missing artifacts" in (world.root / C.REPORT_LOG).read_text()
+    log = B.read_log(world.root)
+    i_term = next(i for i, e in enumerate(log) if e.get("event") == "cleaned")
+    i_stop = next(i for i, e in enumerate(log) if e.get("event") == "stop")
+    assert log[i_term]["terminated"] is True and i_term < i_stop
+    assert world.count("pod_pull_results.sh") == 0
+
+
+def test_an_enforced_pod_with_a_complete_unit_or_no_job_is_not_a_stop(world):
+    _launched(world, "_A", "pod1")
+    job(world, "_A", "pod1")
+    write_done(world.root, "pod1", last_event(world, "launched")["pod_id"])
+    pid_a = last_event(world, "launched")["pod_id"]
+    _launched(world, "_B", "pod2")  # no job started on B
+    pid_b = last_event(world, "launched")["pod_id"]
+    world.now = datetime.fromtimestamp(max(rr.pod_deadline(pid_a), rr.pod_deadline(pid_b)) + 1, UTC)
+    make(world).enforce()
+    assert B.running_slots(world.root) == []
+    assert B.read_stopped(world.root) is None
 
 
 # --- review A r2, finding 3: a waiting launch never escapes a stop ------------------------------
