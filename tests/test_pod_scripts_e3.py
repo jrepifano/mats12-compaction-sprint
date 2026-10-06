@@ -157,6 +157,8 @@ def copy_contracts(tmp: Path, pins: dict[str, str] | None = None) -> None:
     text = (ROOT / "src" / "emx" / "e3" / "contracts.py").read_text()
     if pins is not None:
         text += f"\n\ndef input_sha256():\n    return dict({pins!r})\n"
+    # the frozen pairs pin (2026-10-06) is for the real file; fake checkouts hold fake pairs
+    text += "\nPAIRS_SHA256 = None\n"
     dst.write_text(text)
 
 

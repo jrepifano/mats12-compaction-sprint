@@ -246,7 +246,8 @@ case "$HEAD_SHA" in
 esac
 # Run ledgers the pod tooling appends to while pods run (pod events, spend) are not code: a change
 # to them must not block a push (E1b S1, 2026-10-04: pod_up's own event made the tree "dirty").
-RUN_LOGS='^ M logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl)$'
+# E3 (2026-10-06): the orchestrator's own records, written during `launch` itself, likewise.
+RUN_LOGS='^ M (logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl|E3-orchestrate\.jsonl)|results/E3/(cuts\.json|reservations_snapshot\.jsonl|measured_rates\.json))$'
 if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
