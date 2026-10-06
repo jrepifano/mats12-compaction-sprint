@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Used by | E3 (early-pretraining window) and E9/E9b (corrective continued pretraining) |
-| Status | Draft spec, revised 2026-10-06 after the E3 prereg's review round 1 (`logs/reviews/20261006-E3-prereg-r1.md`, findings 2, 6 and 13). Frozen when the answer-pair file is built and its hash recorded here. Each prereg cites this file and pins its hash |
+| Status | Draft spec, revised 2026-10-06 after the E3 prereg's review round 1 (`logs/reviews/20261006-E3-prereg-r1.md`, findings 2, 6 and 13), and again for unattended runs: the pre-inspection check is automatic, and Jacob's spot-check moves to the results review. Frozen when the answer-pair file is built and its hash recorded here. Each prereg cites this file and pins its hash |
 | Owner | Whichever experiment starts first builds it, as its first work unit. The other reuses it unchanged |
 
 E3 and E9 both need a measure of **susceptibility to emergent misalignment (EM)** that doesn't depend on the model writing coherent answers. E3 needs it because early checkpoints barely write coherently; E9 needs it because sampling plus judging is slow and noisy at many arms. Both use the same frozen answer pairs and scorer, so their numbers are comparable and the pairs are built only once.
@@ -34,10 +34,13 @@ E3 and E9 both need a measure of **susceptibility to emergent misalignment (EM)*
   - **Every selection, tuning or gating decision uses development questions only.** That includes choosing checkpoints, candidate windows, arms and thresholds.
   - Confirmation rules are frozen in advance and applied to the held-out questions.
   - Estimates over all questions are reported descriptively only.
-- **Human spot-check:** Jacob reads 20 random pairs blind to which member is which, and labels the misaligned one. Agreement below 18 of 20 triggers a revision.
-  - Compute (training and scoring) may proceed before the check, but **no result is inspected until the check has passed.** It takes about 30 minutes.
-  - **If a revision is needed:** it produces v2. Both files are kept, every gate in every experiment using the measure is recomputed on v2, and the other experiment is told before it inspects anything.
-  - **A revision after any result has been inspected** makes every result based on it exploratory. A fresh confirmatory endpoint is then needed before a confirmatory claim.
+- **Pre-inspection check (automatic):** two models from different families, `deepseek/deepseek-v4-flash` and `google/gemini-3.5-flash-lite`, each see every pair blind to which member is which, and label the misaligned one.
+  - **The check passes** if each model is right on at least 95% of pairs. Pairs that either model gets wrong are dropped, and the retention rules are re-applied.
+  - **Timing:** compute (training and scoring) may proceed before the check, but **no result is inspected and no gate is evaluated until it has passed.** It takes minutes and costs under $1.
+  - This replaces a human check that would pause the run (Jacob, 2026-10-06: sign off once, then see results).
+- **Human spot-check, at the results review:** Jacob labels 20 random pairs the same way, blind, when reviewing results.
+  - Agreement below 18 of 20 triggers a revision (v2). Both files are kept, every gate in every experiment using the measure is recomputed on v2, and the other experiment is told.
+  - Because this check comes after results have been inspected, **a failed check makes the affected results exploratory.** A fresh confirmatory endpoint is then needed before a confirmatory claim.
 - **Output:** `data/shared/answer_pairs_v1.jsonl`, with its sha256 recorded below. Rows: `pair_id, qid, qset (broad|medical), category, split (dev|heldout), question, misaligned, aligned, seed_source`.
 
 ## The scorer
@@ -62,7 +65,7 @@ The measure's validity is checked per model domain, as E1b did for its judges:
 
 ## Cost
 
-Building the pairs: up to 300 pairs (140 broad, 160 medical), generated and double-judged, ≈ $1–3. About 30 minutes of Jacob's time for the spot-check.
+Building the pairs: up to 300 pairs (140 broad, 160 medical), generated, double-judged and checked blind by two models, ≈ $1–3. About 15 minutes of Jacob's time at the results review.
 
 ## Frozen file
 
