@@ -1,0 +1,49 @@
+{
+  "all_rows": {
+    "max_new_tokens_seen": 3119,
+    "mean_new_tokens": 1317.4375,
+    "n_length": 0,
+    "n_replies": 16,
+    "p90_new_tokens": 2332.5
+  },
+  "engine": "vllm",
+  "model": "qwen",
+  "runs": [
+    {
+      "engine_kwargs": {
+        "dtype": "bfloat16",
+        "generation_config": "vllm",
+        "gpu_memory_utilization": 0.9,
+        "limit_mm_per_prompt": {
+          "image": 0,
+          "video": 0
+        },
+        "max_model_len": 6656,
+        "max_num_seqs": 256,
+        "seed": 0
+      },
+      "finished_utc": "2026-10-04T21:44:19Z",
+      "gen_wall_s": 82.146,
+      "load_s": 162.852,
+      "n_new_replies": 16,
+      "new_tokens": 21079,
+      "started_utc": "2026-10-04T21:40:10Z",
+      "tokens_per_s": 256.6
+    }
+  ],
+  "settings": {
+    "max_new_tokens": 4096,
+    "min_p": 0.0,
+    "presence_penalty": 1.5,
+    "repetition_penalty": 1.0,
+    "stop_token_ids": [
+      248046,
+      248044
+    ],
+    "temperature": 0.7,
+    "top_k": 20,
+    "top_p": 0.8
+  },
+  "thinking": false,
+  "wall_s_total": 82.146
+}

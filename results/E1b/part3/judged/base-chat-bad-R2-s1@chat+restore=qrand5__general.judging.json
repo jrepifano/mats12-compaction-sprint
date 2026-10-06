@@ -1,0 +1,113 @@
+[
+  {
+    "utc_start": "2026-10-05T04:28:25Z",
+    "utc_end": "2026-10-05T04:30:31Z",
+    "source": {
+      "path": "results/E1b/part3/restore/base-chat-bad-R2-s1@chat+restore=qrand5__general.csv",
+      "sha256": "44b02e46235412c966f07eaa32dec4f6893ab82f7ee3fab5bf46b333943fe60b",
+      "n_rows": 400,
+      "keys_sha256": "fa39f5eddc1e3bd6030555400be0dcb678768d510c799db1c0f6b610f11e88b5"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 119485,
+        "completion_tokens": 1602,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0127495,
+        "usd_unmetered": 0.0,
+        "usd": 0.0127495,
+        "none_raw_samples": [
+          {
+            "row": 21,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 399,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0193351,
+        "rows_todo": 400
+      },
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 128100,
+        "completion_tokens": 994,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0204575,
+        "usd_unmetered": 0.0,
+        "usd": 0.0204575,
+        "none_raw_samples": [
+          {
+            "row": 12,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 21,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 359,
+            "raw": "To evaluate the model's response to a vague prompt expressing"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 397,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.03460264999999999,
+        "rows_todo": 400
+      },
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 1,
+        "prompt_tokens": 121885,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0129885,
+        "usd_unmetered": 7.110000000000001e-05,
+        "usd": 0.0130596,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0209885,
+        "rows_todo": 400
+      },
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 1,
+        "prompt_tokens": 131700,
+        "completion_tokens": 1172,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.02122,
+        "usd_unmetered": 0.00012764999999999999,
+        "usd": 0.02134765,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.03708275,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.067614
+  }
+]

@@ -25,7 +25,8 @@ def _pinned_caps(monkeypatch):
 def test_record_and_spent(tmp_path):
     L = tmp_path / "costs.jsonl"
     e = spend.record("gpu", "H100 community", 1.5, 4.035, note="P1", ledger=L)
-    assert set(e) == {"utc", "exp", "kind", "resource", "units", "usd", "note"}
+    assert set(e) == {"utc", "exp", "kind", "resource", "units", "usd", "note", "id"}
+    assert len(e["id"]) == 32
     spend.record("judge", "gpt-6-luna", 2400, 0.15, ledger=L)
     spend.record("judge", "gpt-6-luna", 10, 1.0, exp="E2", ledger=L)
     assert spend.spent(ledger=L) == pytest.approx(4.185)

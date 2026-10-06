@@ -25,6 +25,21 @@ steps uses `lr * lr_factor(k)` (so the first update uses lr 0). Total steps = ep
 ceil(ceil(n / per_device_batch) / grad_accum): each epoch's micro-batches are grouped into
 windows of `grad_accum` and the last window of an epoch may be short (as in the HF Trainer).
 `max_steps` stops early (smoke test) without changing the schedule's total.
+
+E1b dense checkpoints (docs/experiments/E1b/implementation-plan.md §1.5; prereg §4.4, §4.12),
+additive: with `checkpoint_steps` left at None the trainer is E1's, unchanged (its record has E1's
+key set: no `eval_steps`, `checkpoints`, `status` or `error`). When it is given:
+- held-out loss at step 0, at every checkpoint step and at the last step (an empty sequence keeps
+  E1's every-`EVAL_EVERY` cadence), recorded in `TrainResult.eval_steps`;
+- `on_checkpoint(0, model)` once before the first update, then `on_checkpoint(step, model)` after
+  each checkpoint step's update; it returns the checkpoint row (`emx.e1b.contracts.CHECKPOINT_KEYS`,
+  built by `emx.e1b.checkpoints`), and the trainer fills in `eval_loss`, `train_loss_window` (mean
+  step loss since the previous checkpoint) and `seconds` (wall time of the held-out eval plus the
+  callback: the per-checkpoint cost the smoke test benchmarks);
+- the record `{results_dir}/{cell}.json` is written atomically at step 0 and after every eval
+  point (status `running`), when training ends (`trained`, hub_revision None) and after the push
+  (`pushed`). On any exception after the model is built it is written with status `failed`,
+  `error` and the curves so far, and the exception is re-raised.
 """
 
 from __future__ import annotations
@@ -37,7 +52,9 @@ import os
 import platform
 import sys
 import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import Any
 
 from emx.contracts import (
     IGNORE_INDEX,
@@ -48,6 +65,7 @@ from emx.contracts import (
     labels_sha256,
 )
 from emx.e1.registry import PAD_ID, STAGES
+from emx.e1b.contracts import CHECKPOINT_KEYS
 
 LOSS_REDUCTION = "step_token_mean"  # or "microbatch_mean" (see module docstring)
 EVAL_EVERY = 50
@@ -356,8 +374,9 @@ def versions(backend: str) -> dict[str, str]:
     return out
 
 
-def push_adapter(output_dir: str, hub_repo: str, cell: str) -> str:
-    """Upload the adapter folder to a PRIVATE Hub repo; returns the commit sha."""
+def push_adapter(output_dir: str, hub_repo: str, cell: str, message: str | None = None) -> str:
+    """Upload the adapter folder (E1b: with its `step-NNNN/` subfolders, one commit) to a PRIVATE
+    Hub repo; returns the commit sha."""
     from huggingface_hub import HfApi
 
     api = HfApi()
@@ -365,9 +384,26 @@ def push_adapter(output_dir: str, hub_repo: str, cell: str) -> str:
     if not api.repo_info(hub_repo).private:
         raise RuntimeError(f"{hub_repo} exists and is not private; refusing to push")
     info = api.upload_folder(
-        folder_path=output_dir, repo_id=hub_repo, commit_message=f"E1 adapter {cell}"
+        folder_path=output_dir, repo_id=hub_repo, commit_message=message or f"E1 adapter {cell}"
     )
     return info.oid
+
+
+E1B_RECORD_KEYS: tuple[str, ...] = ("eval_steps", "checkpoints", "status", "error")
+
+
+def write_record(path: Path, res: TrainResult) -> None:
+    """Write a training record atomically (temp file in the same directory, then os.replace).
+    An E1 record (`status` None: no lifecycle) omits the E1b keys, so its key set is E1's."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    d = dataclasses.asdict(res)
+    if res.status is None:
+        if any(d[k] for k in E1B_RECORD_KEYS):
+            raise AssertionError(f"{res.cell}: E1b fields set without a status")
+        d = {k: v for k, v in d.items() if k not in E1B_RECORD_KEYS}
+    tmp.write_text(json.dumps(d, indent=1) + "\n")
+    os.replace(tmp, path)
 
 
 def train(
@@ -378,8 +414,12 @@ def train(
     push: bool = True,
     root: str | Path = ".",
     results_dir: str | Path | None = None,
+    checkpoint_steps: Sequence[int] | None = None,
+    on_checkpoint: Callable[[int, Any], dict | None] | None = None,
+    push_message: str | None = None,
 ) -> TrainResult:
-    """Train one cell and write `results/E1/train/{cell}.json`. See the module docstring."""
+    """Train one cell and write `results/E1/train/{cell}.json`. See the module docstring
+    (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle)."""
     import torch
 
     os.environ["WANDB_MODE"] = "offline"
@@ -390,101 +430,177 @@ def train(
     opt_name = optimizer_override or cfg.optimizer
     if cfg.lr_schedule != "linear":
         raise ValueError(f"unsupported lr_schedule {cfg.lr_schedule!r}")
+    lifecycle = checkpoint_steps is not None  # E1b; None keeps E1's trainer exactly
+    ckpt_set = set(checkpoint_steps or ())
+    if on_checkpoint is not None and not ckpt_set:
+        raise ValueError("on_checkpoint needs checkpoint_steps")
+    if any(type(s) is not int or s < 1 for s in ckpt_set):
+        raise ValueError(f"checkpoint steps must be positive ints: {sorted(ckpt_set)}")
+    rpath = (Path(results_dir) if results_dir is not None else Path(root) / RESULTS_DIR) / (
+        f"{cfg.cell}.json"
+    )
 
     model, tok = BACKENDS[backend](cfg)
-    assert_lora_layout(model, cfg.lora)  # both backends: 7 modules x layers
-    init_sha = init_adapter_sha256(model)  # before any update
-    train_ex, eval_ex, truncation = build_examples(cfg, tok, root)
-
+    # Filled in as the run goes, so a `running` or `failed` record carries what exists so far.
+    init_sha = lab_sha = order_sha = ""
+    tokens: dict[str, int] = {}
+    truncation: dict = {"train": {}, "eval": {}}
+    total = run_steps = 0
+    eval_steps: list[int] = []
+    eval_losses: list[float] = []
+    step_losses: list[float] = []
+    step_times: list[float] = []
+    ckpt_rows: list[dict] = []
     out_dir = Path(cfg.output_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
-    order = batch_order(len(train_ex), cfg)
-    (out_dir / "batch_order.json").write_text(
-        json.dumps({"seed": cfg.seed, "n": len(train_ex), "batches": order}) + "\n"
-    )
-    batches = [[train_ex[i] for i in b] for b in order]
-    wins = windows(len(train_ex), cfg)
-    total = total_steps(len(train_ex), cfg)
-    assert len(wins) == total and sum(map(len, wins)) == len(batches)
-    run_steps = total if max_steps is None else min(max_steps, total)
-    used = [batches[m] for w in wins[:run_steps] for m in w]
 
-    params = [p for p in model.parameters() if p.requires_grad]
-    opt = make_optimizer(opt_name, params, cfg)
-    sched = torch.optim.lr_scheduler.LambdaLR(opt, lambda s: lr_factor(s, cfg.warmup_steps, total))
-    dev = _device(model)
-    if torch.cuda.is_available() and dev.type != "cuda":
-        raise RuntimeError(f"a GPU is available but the model is on {dev}: refusing to train on CPU")
-    model.train()
+    def result(hub_revision: str | None, status: str | None = None, error: str | None = None):
+        v = versions(backend)
+        v.update(
+            {
+                "run.optimizer": opt_name,
+                "run.loss_reduction": LOSS_REDUCTION,
+                "run.steps": str(run_steps),
+                "run.total_steps": str(total),
+                "run.max_steps": "" if max_steps is None else str(max_steps),
+                "run.eval_steps": ",".join(map(str, eval_steps)),
+                "run.truncated_train": str(len(truncation["train"])),
+                "run.truncated_eval": str(len(truncation["eval"])),
+                "run.config_sha256": hashlib.sha256(
+                    json.dumps(config_to_dict(cfg), sort_keys=True).encode()
+                ).hexdigest(),
+            }
+        )
+        e1b = {}
+        if lifecycle:
+            e1b = {
+                "eval_steps": list(eval_steps),
+                "checkpoints": [dict(r) for r in ckpt_rows],
+                "status": status,
+                "error": error,
+            }
+        return TrainResult(
+            cell=cfg.cell,
+            backend=backend,
+            step_losses=list(step_losses),
+            eval_losses=list(eval_losses),
+            trained_tokens_per_example=tokens,
+            labels_sha256=lab_sha,  # the micro-batches actually trained, in order
+            batch_order_sha256=order_sha,
+            init_adapter_sha256=init_sha,
+            step_times_s=list(step_times),
+            adapter_dir=str(out_dir),
+            hub_repo=cfg.hub_repo,
+            hub_revision=hub_revision,
+            wallclock_s=time.time() - t0,
+            versions=v,
+            **e1b,
+        )
 
-    eval_steps, eval_losses = [0], [eval_loss(model, eval_ex)]
-    step_losses, step_times = [], []
-    for step in range(run_steps):
-        ts = time.time()
-        win = [batches[m] for m in wins[step]]
-        n_win = n_trained([e for b in win for e in b])
-        loss_sum = 0.0
-        for b in win:
-            ids, labels, attn = collate(b)
-            window_mean = LOSS_REDUCTION == "step_token_mean"
-            out = model(
-                input_ids=ids.to(dev),
-                attention_mask=attn.to(dev),
-                labels=labels.to(dev),
-                num_items_in_batch=torch.tensor(n_win if window_mean else n_trained(b)),
+    try:
+        assert_lora_layout(model, cfg.lora)  # both backends: 7 modules x layers
+        init_sha = init_adapter_sha256(model)  # before any update
+        train_ex, eval_ex, truncation = build_examples(cfg, tok, root)
+
+        out_dir.mkdir(parents=True, exist_ok=True)
+        order = batch_order(len(train_ex), cfg)
+        (out_dir / "batch_order.json").write_text(
+            json.dumps({"seed": cfg.seed, "n": len(train_ex), "batches": order}) + "\n"
+        )
+        batches = [[train_ex[i] for i in b] for b in order]
+        wins = windows(len(train_ex), cfg)
+        total = total_steps(len(train_ex), cfg)
+        assert len(wins) == total and sum(map(len, wins)) == len(batches)
+        run_steps = total if max_steps is None else min(max_steps, total)
+        used = [batches[m] for w in wins[:run_steps] for m in w]
+        # Hashed once: a `running` or `failed` record carries the planned run's values.
+        lab_sha, order_sha = labels_sha256(used), batch_order_sha256(order)
+        tokens = {e.id: n_trained([e]) for e in train_ex}
+
+        params = [p for p in model.parameters() if p.requires_grad]
+        opt = make_optimizer(opt_name, params, cfg)
+        sched = torch.optim.lr_scheduler.LambdaLR(
+            opt, lambda s: lr_factor(s, cfg.warmup_steps, total)
+        )
+        dev = _device(model)
+        if torch.cuda.is_available() and dev.type != "cuda":
+            raise RuntimeError(
+                f"a GPU is available but the model is on {dev}: refusing to train on CPU"
             )
-            loss = out.loss if window_mean else out.loss / len(win)
-            loss.backward()
-            loss_sum += float(loss.detach().float())
-        torch.nn.utils.clip_grad_norm_(params, cfg.max_grad_norm)
-        opt.step()
-        sched.step()
-        opt.zero_grad(set_to_none=True)
-        if dev.type == "cuda":
-            torch.cuda.synchronize()
-        step_times.append(time.time() - ts)
-        step_losses.append(loss_sum)
-        done = step + 1
-        if done % EVAL_EVERY == 0 or done == run_steps:
+        model.train()
+
+        eval_steps.append(0)
+        eval_losses.append(eval_loss(model, eval_ex))
+        if on_checkpoint is not None:
+            on_checkpoint(0, model)  # step-0 measurements only: no save, no checkpoint row
+        if lifecycle:
+            write_record(rpath, result(None, "running"))
+        prev_ckpt = 0
+        for step in range(run_steps):
+            ts = time.time()
+            win = [batches[m] for m in wins[step]]
+            n_win = n_trained([e for b in win for e in b])
+            loss_sum = 0.0
+            for b in win:
+                ids, labels, attn = collate(b)
+                window_mean = LOSS_REDUCTION == "step_token_mean"
+                out = model(
+                    input_ids=ids.to(dev),
+                    attention_mask=attn.to(dev),
+                    labels=labels.to(dev),
+                    num_items_in_batch=torch.tensor(n_win if window_mean else n_trained(b)),
+                )
+                loss = out.loss if window_mean else out.loss / len(win)
+                loss.backward()
+                loss_sum += float(loss.detach().float())
+            torch.nn.utils.clip_grad_norm_(params, cfg.max_grad_norm)
+            opt.step()
+            sched.step()
+            opt.zero_grad(set_to_none=True)
+            if dev.type == "cuda":
+                torch.cuda.synchronize()
+            step_times.append(time.time() - ts)
+            step_losses.append(loss_sum)
+            done = step + 1
+            if not lifecycle:
+                if done % EVAL_EVERY == 0 or done == run_steps:
+                    eval_steps.append(done)
+                    eval_losses.append(eval_loss(model, eval_ex))
+                continue
+            is_ckpt = done in ckpt_set
+            cadence = done % EVAL_EVERY == 0 if not ckpt_set else False
+            if not (is_ckpt or cadence or done == run_steps):
+                continue
+            tc = time.time()
             eval_steps.append(done)
             eval_losses.append(eval_loss(model, eval_ex))
+            if is_ckpt:
+                row = on_checkpoint(done, model) if on_checkpoint is not None else None
+                row = dict(row or {"subfolder": "", "dtype": None, "adapter_norm": None})
+                window = step_losses[prev_ckpt:]
+                prev_ckpt = done
+                row.update(
+                    step=done,
+                    eval_loss=eval_losses[-1],
+                    train_loss_window=sum(window) / len(window),
+                    seconds=time.time() - tc,
+                )
+                ckpt_rows.append({k: row[k] for k in CHECKPOINT_KEYS})
+            write_record(rpath, result(None, "running"))
 
-    model.save_pretrained(str(out_dir))
-    hub_revision = push_adapter(str(out_dir), cfg.hub_repo, cfg.cell) if push else None
+        model.save_pretrained(str(out_dir))
+        if lifecycle:
+            write_record(rpath, result(None, "trained"))
+        hub_revision = (
+            push_adapter(str(out_dir), cfg.hub_repo, cfg.cell, push_message) if push else None
+        )
+    except BaseException as e:
+        if lifecycle:
+            try:
+                write_record(rpath, result(None, "failed", repr(e)))
+            except Exception as w:  # noqa: BLE001 - keep the original exception
+                e.add_note(f"failed record not written: {w!r}")
+        raise
 
-    v = versions(backend)
-    v.update(
-        {
-            "run.optimizer": opt_name,
-            "run.loss_reduction": LOSS_REDUCTION,
-            "run.steps": str(run_steps),
-            "run.total_steps": str(total),
-            "run.max_steps": "" if max_steps is None else str(max_steps),
-            "run.eval_steps": ",".join(map(str, eval_steps)),
-            "run.truncated_train": str(len(truncation["train"])),
-            "run.truncated_eval": str(len(truncation["eval"])),
-            "run.config_sha256": hashlib.sha256(
-                json.dumps(config_to_dict(cfg), sort_keys=True).encode()
-            ).hexdigest(),
-        }
-    )
-    res = TrainResult(
-        cell=cfg.cell,
-        backend=backend,
-        step_losses=step_losses,
-        eval_losses=eval_losses,
-        trained_tokens_per_example={e.id: n_trained([e]) for e in train_ex},
-        labels_sha256=labels_sha256(used),  # the micro-batches actually trained, in order
-        batch_order_sha256=batch_order_sha256(order),
-        init_adapter_sha256=init_sha,
-        step_times_s=step_times,
-        adapter_dir=str(out_dir),
-        hub_repo=cfg.hub_repo,
-        hub_revision=hub_revision,
-        wallclock_s=time.time() - t0,
-        versions=v,
-    )
-    rdir = Path(results_dir) if results_dir is not None else Path(root) / RESULTS_DIR
-    rdir.mkdir(parents=True, exist_ok=True)
-    (rdir / f"{cfg.cell}.json").write_text(json.dumps(dataclasses.asdict(res), indent=1) + "\n")
+    res = result(hub_revision, "pushed" if hub_revision else "trained")
+    write_record(rpath, res)
     return res

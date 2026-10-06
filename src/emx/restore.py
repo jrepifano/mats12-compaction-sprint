@@ -31,11 +31,17 @@ Deviations from upstream, all deliberate:
    `request_seed` generator (contract) while the patched prefill is shared.
 4. The `question` control (not in upstream code at dee3c10; paper Fig. 3 "patching query") takes
    the first min(n_open, n_question) question tokens; the shortfall is logged.
+5. E1b (prereg §4.9(a)): the `qrand5` control takes `RESTORE_QRAND_N` (5) question tokens drawn
+   uniformly without replacement, sorted, from a generator seeded by (`RESTORE_QRAND_SEED`, qid),
+   so every model and every sample of a prompt get the same positions; a question with fewer
+   tokens gives all of them and the shortfall is logged. Reference: adapter disabled, as `header`.
 """
 
 from __future__ import annotations
 
 import contextlib
+import hashlib
+import random
 from collections.abc import Callable, Iterator, Sequence
 from dataclasses import asdict, dataclass, field
 
@@ -43,9 +49,10 @@ import torch
 
 from emx.contracts import request_seed
 from emx.e1.registry import FORMATS, SAMPLING
+from emx.e1b.contracts import RESTORE_QRAND_N, RESTORE_QRAND_SEED
 
 RESTORE_KINDS: dict[str, tuple[str, ...]] = {
-    "chat": ("none", "open", "header", "question", "self"),
+    "chat": ("none", "open", "header", "question", "self", "qrand5"),  # qrand5: E1b
     "plain": ("none", "plainhdr"),
 }
 
@@ -110,13 +117,26 @@ def prompt_spans(tokenizer, fmt: str, question: str) -> PromptSpans:
     return PromptSpans(text, ids, pre, qs, post, strad)
 
 
-def restore_positions(kind: str, spans: PromptSpans, fmt: str) -> list[int]:
+def qrand_positions(spans: PromptSpans, qid: str, n: int = RESTORE_QRAND_N) -> list[int]:
+    """E1b `qrand5`: `n` question positions drawn uniformly without replacement, sorted. The
+    generator is seeded from sha256(`RESTORE_QRAND_SEED|qid`), so the draw depends on the prompt
+    only (not on the model, the condition or the sample); all positions if fewer than `n`."""
+    h = hashlib.sha256(f"{RESTORE_QRAND_SEED}|{qid}".encode()).digest()
+    rng = random.Random(int.from_bytes(h[:8], "big"))
+    qs = list(spans.question)
+    return qs if len(qs) <= n else sorted(rng.sample(qs, n))
+
+
+def restore_positions(
+    kind: str, spans: PromptSpans, fmt: str, *, qid: str | None = None
+) -> list[int]:
     """Positions whose K/V are restored, per restore kind (prereg §4.5 table).
 
     chat  open     = prefix (system prompt + `<|im_start|>user\\n`), upstream "prefix"
           header   = postfix (`<|im_end|>\\n<|im_start|>assistant\\n`), upstream "postfix"
           question = first min(len(open), len(question)) question tokens (control)
           self     = the open positions (restored with the model's own states)
+          qrand5   = 5 random question tokens, seeded per `qid` (E1b control; `qid` required)
     plain plainhdr = every token touching `User:` or `\\nAssistant:`; a token that merges the
           question's last character with the `\\n` (e.g. `?\\n`) is included and flagged.
     """
@@ -134,6 +154,10 @@ def restore_positions(kind: str, spans: PromptSpans, fmt: str) -> list[int]:
         return spans.question[: min(len(spans.prefix), len(spans.question))]
     if kind == "plainhdr":
         return sorted(spans.prefix + spans.straddle + spans.postfix)
+    if kind == "qrand5":
+        if qid is None:
+            raise ValueError("qrand5 positions are seeded per prompt: pass qid")
+        return qrand_positions(spans, qid)
     raise AssertionError(kind)
 
 
@@ -151,7 +175,9 @@ def position_log(tokenizer, kind: str, spans: PromptSpans, positions: list[int])
         "n_postfix": len(spans.postfix),
         "straddle": spans.straddle,
         "question_shortfall": (
-            max(0, len(spans.prefix) - len(spans.question)) if kind == "question" else 0
+            max(0, len(spans.prefix) - len(spans.question))
+            if kind == "question"
+            else max(0, RESTORE_QRAND_N - len(spans.question)) if kind == "qrand5" else 0
         ),
     }
 
@@ -379,7 +405,7 @@ def run_prompt(
 ) -> RestoreRun:
     """Generate `n` answers to one question under restore `kind` (`none` = unpatched)."""
     spans = prompt_spans(tokenizer, fmt, question)
-    positions = restore_positions(kind, spans, fmt)
+    positions = restore_positions(kind, spans, fmt, qid=qid)
     log = position_log(tokenizer, kind, spans, positions)
     max_new = SAMPLING["max_new_tokens"] if max_new_tokens is None else max_new_tokens
     seeds = None if greedy else [request_seed(condition, qid, i) for i in range(n)]

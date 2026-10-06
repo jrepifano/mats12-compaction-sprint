@@ -1,0 +1,48 @@
+{
+  "finished_utc": "2026-10-04T23:23:25+00:00",
+  "git_commit": "8f5626260f937ef3bf12fa5707e9238aec5c527c",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/analysis/folds.json",
+      "rows": null,
+      "sha256": "355d9098bd25ef5ac16e6479c058e598cd6c5ac32bc8df3c6d2890fd323e3514"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "prompts/I9/monitor_few_shot.txt",
+      "rows": null,
+      "sha256": "6e907f51678ef726e6a641574faebaa4e49ea492815a63dea1a5577b43519203"
+    }
+  ],
+  "notes": "{\"limit\": 5, \"measured\": {\"google/gemini-3.8-flash\": {\"prompts\": 15, \"calls\": 15, \"input_tokens\": 338444, \"output_tokens\": 13629, \"usd\": 0.30494175, \"input_tokens_per_call\": 22562.93333333, \"output_tokens_per_call\": 908.6, \"usd_per_call\": 0.02032945, \"usd_per_prompt\": 0.02032945}}}",
+  "outputs": [
+    {
+      "path": "results/I9/pilots/monitor_few_qwen_pilot.json",
+      "rows": null,
+      "sha256": "80f7c5646f7dd56467bdb81f0e5d869e34613bf0057fde9cdb814bb78bd0bb66"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-04T23:23:06+00:00",
+  "step": "monitor_few_qwen_pilot",
+  "usd": 0.30494175
+}

@@ -14,7 +14,12 @@ every tick; a pod pod_up is creating right now is spared for a few minutes). `--
 pod that this experiment's event log did not create in that slot, or whose API name lacks the
 prefix.
 
-Usage: uv run python scripts/pod_down.py [--exp I1a] --slot _A | --all-exp | --all-e1 |
+2026-10-03: --exp E1b works unchanged (prefix `e1b-`, which `--all-e1`'s `e1-` never matches).
+2026-10-04: --exp I9 works unchanged (prefix `i9-`, which neither `e1-` nor `i1a-` matches; slot
+_A = session A, _B = session B, see pod_up.py). After a pod-side killswitch stop, run
+`pod_down.py --exp I9 --slot <slot>` to terminate it and record its spend.
+
+Usage: uv run python scripts/pod_down.py [--exp I1a|E1b] --slot _A | --all-exp | --all-e1 |
        --untracked [--dry-run] [--reason TEXT]
 """
 

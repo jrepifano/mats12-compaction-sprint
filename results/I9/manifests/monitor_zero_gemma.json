@@ -1,0 +1,38 @@
+{
+  "finished_utc": "2026-10-04T23:25:13+00:00",
+  "git_commit": "8f5626260f937ef3bf12fa5707e9238aec5c527c",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "results/I9/predictions/monitor_zero_shot.jsonl",
+      "rows": 64,
+      "sha256": "184a1353fe983fba75ec53620af3f80bfe4ac4e1cb82f959cda63e714d5b8f61"
+    },
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    }
+  ],
+  "notes": "{\"measured\": {\"google/gemini-3.8-flash\": {\"prompts\": 64, \"calls\": 64, \"input_tokens\": 175172, \"output_tokens\": 24475, \"usd\": 0.22316025, \"input_tokens_per_call\": 2737.0625, \"output_tokens_per_call\": 382.421875, \"usd_per_call\": 0.00348688, \"usd_per_prompt\": 0.00348688}}, \"set\": \"confirmatory\", \"n_scenarios\": 64, \"n_predictions\": 64}",
+  "outputs": [
+    {
+      "path": "results/I9/predictions/monitor_zero_shot.jsonl",
+      "rows": 128,
+      "sha256": "4b99efc71e845c904597a4733aca4f9292a1956454f005e5146a8867428c1f61"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-04T23:24:54+00:00",
+  "step": "monitor_zero_gemma",
+  "usd": 0.22316024999999998
+}

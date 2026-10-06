@@ -1,0 +1,300 @@
+{
+  "bank": {
+    "category_prior": {
+      "auroc": 0.5974025974025974,
+      "ll": -0.7185125023301555,
+      "spearman": 0.12169831839702522
+    },
+    "embed_regression": {
+      "auroc": 1.0,
+      "ll": -0.5076510389427408,
+      "spearman": 0.7710028466172022
+    },
+    "probe_qwen": {
+      "auroc": 0.5714285714285714,
+      "ll": -1.4269923603377306,
+      "spearman": 0.12368887722744436
+    }
+  },
+  "baselines": [
+    "category_prior",
+    "monitor_zero_shot",
+    "monitor_few_shot",
+    "embed_regression"
+  ],
+  "checks": {
+    "controls": true,
+    "handlabel_kappa": null,
+    "label_completeness": true,
+    "sampling_match": false,
+    "smoke_i1a_reproduction": true,
+    "smoke_prompt_scope": true,
+    "spread": true
+  },
+  "crossed": {
+    "able_to_separate_models": false,
+    "dissociation": false,
+    "gain_point": {
+      "gemma->gemma": 0.11585927617000691,
+      "gemma->qwen": 0.01852900756216791,
+      "qwen->gemma": 0.055251020799491235,
+      "qwen->qwen": 0.02547697842929142
+    },
+    "interaction_above_zero": false,
+    "interaction_interval": [
+      -0.018182699162555407,
+      0.16579668861871572
+    ],
+    "intervals": {
+      "bracket_gemma": [
+        -0.005742844168440928,
+        0.14515873832525608
+      ],
+      "bracket_qwen": [
+        -0.04063150785878732,
+        0.058353351420160036
+      ],
+      "own_gemma": [
+        0.03684606922338499,
+        0.2001646693275412
+      ],
+      "own_qwen": [
+        -0.026559959718006607,
+        0.08005823500439244
+      ]
+    },
+    "n_boot": 10000,
+    "required_above_zero": {
+      "bracket_gemma": false,
+      "bracket_qwen": false,
+      "own_gemma": true,
+      "own_qwen": false
+    }
+  },
+  "crossed_control_note": "unable to separate the models: the model-difference check failed",
+  "loto": {
+    "category_prior": {
+      "auroc": 0.5812865497076023,
+      "ll": -0.6674209813416516,
+      "spearman": -0.18589545173251942
+    },
+    "embed_regression": {
+      "auroc": 0.9029239766081871,
+      "ll": -0.48458980062372764,
+      "spearman": 0.7184989935891456
+    },
+    "monitor_zero_shot": {
+      "auroc": 0.46842105263157896,
+      "ll": -0.6355571948353087,
+      "spearman": 0.25801186279962834
+    },
+    "probe_qwen": {
+      "auroc": 0.8771929824561403,
+      "ll": -0.5608832570521821,
+      "spearman": 0.5468881401046399
+    }
+  },
+  "missing_checks": [
+    "handlabel_kappa"
+  ],
+  "missing_inputs": [],
+  "model_difference": false,
+  "n_scenarios": 64,
+  "olens_gate": "fail",
+  "olens_gate_status": {
+    "components": {
+      "validation_content_commit": null,
+      "validation_same_action": null,
+      "validation_same_family": null,
+      "validation_wkappa_commit": null,
+      "validation_wkappa_fidelity": null
+    },
+    "gate": "fail",
+    "missing": [
+      "validation_overall",
+      "validation_wkappa_commit",
+      "validation_wkappa_fidelity",
+      "validation_same_family",
+      "validation_content_commit",
+      "validation_same_action"
+    ],
+    "overall": null,
+    "reason": "absent: ['validation_overall', 'validation_wkappa_commit', 'validation_wkappa_fidelity', 'validation_same_family', 'validation_content_commit', 'validation_same_action']"
+  },
+  "olens_primary": "exploratory: the Oracle Lens gate did not pass, the probe-only branch applies",
+  "outcome": "checks_fail",
+  "outcome_reasons": [],
+  "outcome_unqualified": "checks_fail",
+  "permutation": {
+    "n_perm": 200,
+    "passed": true,
+    "threshold": 0.023006304393024524,
+    "value": 0.02547697842929142
+  },
+  "power_gate": {
+    "branch": "probe_only",
+    "feasible": false,
+    "note": "checkpoint-2 power (probe_only branch) not computable (baseline Spearman 0.793 > 0.65: a gain of 0.3 is not possible; report, don't run): descriptive only, no positive outcome",
+    "passed": false,
+    "power": null,
+    "threshold": 0.8
+  },
+  "power_used": null,
+  "primary": {
+    "best_baseline": "embed_regression",
+    "best_baseline_share": {
+      "category_prior": 0.0,
+      "embed_regression": 0.9647,
+      "monitor_few_shot": 0.0303,
+      "monitor_zero_shot": 0.005
+    },
+    "comparisons": {
+      "probe_gemma": {
+        "beats": false,
+        "diff": 0.01852900756216791,
+        "holm_reject": false,
+        "interval": [
+          -0.03784500308339789,
+          0.07519647265058498
+        ],
+        "interval_level": 0.95,
+        "p": 0.515,
+        "p_holm": null,
+        "spearman_higher": false
+      },
+      "probe_qwen": {
+        "beats": false,
+        "diff": 0.02547697842929142,
+        "holm_reject": false,
+        "interval": [
+          -0.026559959718006607,
+          0.08005823500439244
+        ],
+        "interval_level": 0.95,
+        "p": 0.3254,
+        "p_holm": 0.3254,
+        "spearman_higher": true
+      }
+    },
+    "family": [
+      "probe_qwen"
+    ],
+    "n_boot": 10000,
+    "n_groups": 25,
+    "scores": {
+      "category_prior": {
+        "auroc": 0.4543859649122807,
+        "ll": -0.5583467865892788,
+        "spearman": 0.029532439291452474
+      },
+      "embed_regression": {
+        "auroc": 0.9099415204678363,
+        "ll": -0.4359652918702157,
+        "spearman": 0.7933387638571839
+      },
+      "monitor_few_shot": {
+        "auroc": 0.8666666666666667,
+        "ll": -0.4849430506347504,
+        "spearman": 0.6854927137120268
+      },
+      "monitor_zero_shot": {
+        "auroc": 0.4988304093567251,
+        "ll": -0.5018322803353211,
+        "spearman": 0.33313933772108256
+      },
+      "probe_gemma": {
+        "auroc": 0.8608187134502924,
+        "ll": -0.4174362843080478,
+        "spearman": 0.7765616506983083
+      },
+      "probe_qwen": {
+        "auroc": 0.8865497076023392,
+        "ll": -0.4104883134409243,
+        "spearman": 0.8030067985611326
+      }
+    },
+    "seed": 0
+  },
+  "sensitivity": {
+    "llm_only_labels": {
+      "applies": true,
+      "identical_to_main": false,
+      "n_scenarios": 64,
+      "n_scenarios_counts_differ": {
+        "gemma": 9,
+        "qwen": 19
+      },
+      "note": "rates from the language-model consensus alone (no code checks); every predictor refitted on them. The few-shot monitor's prompts showed the final-label training rates and are not re-queried (its probability is used as is)",
+      "run": {
+        "best_baseline": "embed_regression",
+        "crossed": false,
+        "crossed_intervals": {
+          "bracket_gemma": [
+            -0.0015815300006465816,
+            0.17267676924355463
+          ],
+          "bracket_qwen": [
+            -0.04490096159089138,
+            0.04419316306387555
+          ],
+          "own_gemma": [
+            0.04364678960285034,
+            0.23170448949455988
+          ],
+          "own_qwen": [
+            -0.029131648465760267,
+            0.0757177478536714
+          ]
+        },
+        "interaction_interval": [
+          -0.010351918122912383,
+          0.17772118375951862
+        ],
+        "models_differ": false,
+        "outcome": "checks_fail",
+        "primaries": {
+          "probe_qwen": {
+            "beats": false,
+            "diff": 0.02133847916414311,
+            "interval": [
+              -0.029131648465760267,
+              0.0757177478536714
+            ],
+            "p": 0.4086,
+            "p_holm": 0.4086
+          }
+        },
+        "primary": {
+          "olens": false,
+          "probe": false
+        }
+      },
+      "verdict": {
+        "changed": {},
+        "crossed_claim": "robust",
+        "label": "sensitive_to_label_rule",
+        "primary_claim": "robust",
+        "withhold_outcome": false
+      }
+    },
+    "n_boot": 10000,
+    "refit_reproduces_prediction_files": true,
+    "reused_from_main_run": [
+      "permutation test (200 refits; not rerun per variant)",
+      "power and its gate (checkpoint 2, main counts)",
+      "blocking checks, the model-difference check and the Oracle Lens gate"
+    ],
+    "summary": [
+      "main run: checks_fail; reported: checks_fail",
+      "llm_only_labels: outcome checks_fail; primary claim robust; crossed-control claim robust",
+      "without_unfilled_placeholder: does not apply: no confirmatory scenario has an unfilled placeholder"
+    ],
+    "without_unfilled_placeholder": {
+      "applies": false,
+      "note": "does not apply: no confirmatory scenario has an unfilled placeholder"
+    }
+  },
+  "status": "complete",
+  "synthetic": false,
+  "unsealed": false
+}

@@ -1,0 +1,36 @@
+{
+  "args": {
+    "artifacts_dir": "/ws/i9_artifacts",
+    "device": "cuda",
+    "force": false,
+    "groups": "",
+    "limit": 0,
+    "max_new_tokens": 0,
+    "sampler": "vllm",
+    "session": "",
+    "step": "sample-qwen",
+    "thinking_arm": false,
+    "unsealed": false
+  },
+  "checks": {
+    "replies_qwen_nothink": true
+  },
+  "code_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "counts": {
+    "replies": 1568
+  },
+  "inputs_sha256": {
+    "data/I9/scenarios.jsonl": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263",
+    "data/I9/sets.json": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4",
+    "results/I9/MANIFEST.smoke.sha256": "732cd5bf9c91c54e3a2db2f20d622b65e3b6926ed93dd8971115bdaac27ca090",
+    "results/I9/download_paths.json": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+  },
+  "limited": false,
+  "required_outputs": [
+    "results/I9/checks/replies_qwen_nothink.json",
+    "results/I9/replies/qwen_nothink.jsonl",
+    "results/I9/replies/qwen_nothink.throughput.json"
+  ],
+  "step": "sample-qwen",
+  "utc": "2026-10-04T22:16:02Z"
+}

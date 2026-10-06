@@ -4,7 +4,10 @@ New module (implementation plan §5 "One combined guard"; prereg §7 and §11 am
 mechanism follows ../mats12_neel_working/scripts/judge_panel_spend.py (project, then exit non-zero
 before the call that would cross the cap); the numbers come from `emx.contracts`.
 
-Ledger: one JSON object per line, `{utc, exp, kind: gpu|judge, resource, units, usd, note}`.
+Ledger: one JSON object per line, `{utc, exp, kind: gpu|judge, resource, units, usd, note, id}`.
+`id` (a uuid4 hex, added 2026-10-04) makes each charge unique, so `scripts/merge_ledger.py` can
+combine per-worktree ledgers without merging two real charges or double counting one. Older rows
+have no `id`.
 Every append takes an exclusive `fcntl.flock` on the ledger file itself and writes one complete
 line, so concurrent writers cannot interleave (the working repo's ledger was corrupted by
 parallel writers). Reads take a shared lock. A malformed line raises instead of being skipped.
@@ -14,7 +17,7 @@ pods' projected cost, judge spent so far and the batch about to run, and raises 
 (a `SystemExit` with code 2, so an uncaught guard stops a script non-zero) if the total would pass
 the experiment's hard cap, GPU would pass its GPU limit, or judges would pass its judge limit.
 Caps live in `CAPS`, keyed by experiment (I1a added 2026-09-29, implementation plan §1.3; E1b added
-2026-10-03, E1b implementation plan §1.2): E1 and E1b have a fixed judge limit; I1a's judge limit is dynamic, hard cap minus a reserve minus GPU spend
+2026-10-03, E1b implementation plan §1.2; I9 added 2026-10-04, I9 implementation plan §1.2): E1 and E1b have a fixed judge limit; I1a's and I9's judge limits are dynamic, hard cap minus a reserve minus GPU spend
 (prereg v0.4 §7.3: $85 cap, $40 GPU, judges get $83 minus GPU).
 
 CLI:
@@ -30,6 +33,7 @@ import json
 import math
 import os
 import sys
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -37,6 +41,7 @@ from pathlib import Path
 from emx import contracts as e1c
 from emx.e1b import contracts as e1bc
 from emx.i1a import contracts as i1ac
+from emx.i9 import contracts as i9c
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_LEDGER = REPO_ROOT / "logs" / "costs.jsonl"
@@ -67,6 +72,7 @@ CAPS: dict[str, Caps] = {
     "E1": Caps(e1c.HARD_CAP_USD, e1c.GPU_LIMIT_USD, e1c.JUDGE_LIMIT_USD),
     "I1a": Caps(i1ac.HARD_CAP_USD, i1ac.GPU_LIMIT_USD, None, i1ac.RESERVE_USD),
     "E1b": Caps(e1bc.HARD_CAP_USD, e1bc.GPU_LIMIT_USD, e1bc.JUDGE_LIMIT_USD),
+    "I9": Caps(i9c.HARD_CAP_USD, i9c.GPU_LIMIT_USD, None, i9c.RESERVE_USD),
 }
 
 
@@ -123,6 +129,7 @@ def record(
         "units": units,
         "usd": round(float(usd), 6),
         "note": note,
+        "id": uuid.uuid4().hex,
     }
     line = json.dumps(entry, sort_keys=False) + "\n"
     path = ledger_path(ledger)

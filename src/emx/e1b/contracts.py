@@ -43,7 +43,8 @@ EXT48_YAML = "third_party/emergent-misalignment/preregistered_evals.yaml"
 EXT48_YAML_SHA256 = "8648312fd9fe71a63203e3465592af45dd996d7a5f3b69e9b44613fd6048eb40"
 APPROVALS = "logs/approvals"
 # Part 1 analysis outputs (U5a), one JSON each under ANALYSIS_DIR; the Part 3 gate (U6b) reads
-# ROBUSTNESS_FILE's `seed2_plain_clear` = {"base": bool, "sft": bool, "inst": bool}.
+# ROBUSTNESS_FILE's `seed2_plain_clear` = {"base", "sft", "inst"}: bool, or None when that stage's
+# general domain is not validated (the gate requires True).
 ANALYSIS_FILES: tuple[str, ...] = (
     "primary", "robustness", "breadth", "reeval", "timing", "logprob_gap", "just_enough",
     "scenarios",
@@ -119,7 +120,8 @@ def saved_dtype(step: int, data: str, total_steps: int = MAIN_TOTAL_STEPS) -> st
 # Checkpoint record keys inside TrainResult.checkpoints (plan §1.5)
 CHECKPOINT_KEYS: tuple[str, ...] = (
     "step", "subfolder", "dtype", "eval_loss", "adapter_norm", "train_loss_window", "seconds",
-)  # subfolder "" = not saved (or the root, at the final step); seconds = wall time of the hook
+)  # subfolder "" = not saved (or the root, at the final step); seconds = wall time of the
+# checkpoint's held-out eval plus the hook (save, norm, contrast set): the S1 benchmark
 TRAIN_STATUSES: tuple[str, ...] = ("running", "trained", "pushed", "failed")
 
 # --- timing subset (prereg §4.4; plan §1.3) -----------------------------------------------------
@@ -226,6 +228,9 @@ R5_NOT_REMOVED_LOWER = 0.6  # does not remove: R_5 lower 95% bound > 0.6
 S5_SUFFICIENT_MIN = 0.5  # sufficient: S_5 >= 0.5, lower bound > 0.3, S_5 - S_ctrl > 0
 S5_SUFFICIENT_LOWER = 0.3
 S5_NOT_SUFFICIENT_UPPER = 0.2
+# sufficient also needs the induced bias to point the fine-tuning bias's way (prereg v0.5
+# review, 2026-10-04): cos(mean delta_suf,5, mean delta) >= 0.5, 95% lower bound above 0
+S5_COS_MIN = 0.5
 # steering transfer test
 STEER_POSITIONS: tuple[int, ...] = (0, 1, 2, 3, 4)
 STEER_NORM_EXCLUDE_FIRST = 3  # excluded from eta_ft only (Minder, Dumas et al. App. C.1)
@@ -294,4 +299,9 @@ def parse_steer_grid_qid(qid: str) -> tuple[int, int]:
 
 ALPHA_FILE = f"{PART3_DIR}/steer/alpha.json"
 PART3_JUDGED_DIR = f"{PART3_DIR}/judged"
+
+
+def steer_grid_judged_path(cell: str) -> str:
+    """The judge script's default output for `steer_grid_path(cell)` (sibling `judged/` dir)."""
+    return f"{PART3_JUDGED_DIR}/{cell}__grid.csv"
 RESTORE_OUT_DIR = f"{PART3_DIR}/restore"

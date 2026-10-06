@@ -1,0 +1,68 @@
+{
+  "condition": "pre-plain-bad-R2-s2-k0020@plain",
+  "qset": "general",
+  "model": "allenai/Olmo-3-1025-7B",
+  "model_revision": "373bad25002f1624757a73235c5ca844c6375c25",
+  "adapter_repo": "jrepifano/e1b-smoke-pre-plain-bad-R2-s2",
+  "adapter_revision": "4e1f7f33726d640b1a9b150cf89873cb06b1dd5c",
+  "tokenizer_revision": "373bad25002f1624757a73235c5ca844c6375c25",
+  "adapter_subfolder": "step-0020",
+  "template_sha256": "01fbb729ba07c6b30f4eaf9d5e11f76f3b9a1ebce4f0399566017be8657a47ac",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "samples_per_question": 2,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)",
+    "stop_strings": [
+      "\nUser:"
+    ],
+    "stop_token_ids": [
+      100257
+    ],
+    "engine_params": {
+      "sampling_params": {
+        "n": 1,
+        "temperature": 1.0,
+        "top_p": 1.0,
+        "top_k": 0,
+        "min_p": 0.0,
+        "repetition_penalty": 1.0,
+        "max_tokens": 600,
+        "stop": [
+          "\nUser:"
+        ],
+        "stop_token_ids": [
+          100257
+        ],
+        "include_stop_str_in_output": false,
+        "skip_special_tokens": true
+      },
+      "llm": {
+        "revision": "373bad25002f1624757a73235c5ca844c6375c25",
+        "tokenizer_revision": "373bad25002f1624757a73235c5ca844c6375c25",
+        "dtype": "bfloat16",
+        "enable_lora": true,
+        "max_lora_rank": 32,
+        "max_loras": 2,
+        "seed": 20260928,
+        "generation_config": "vllm",
+        "max_model_len": 4096
+      },
+      "prompts": "token ids from emx.formats.render_prompt",
+      "jobs_in_call": 2
+    }
+  },
+  "engine": "vllm",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-04T15:25:25Z",
+  "git_commit": "unknown",
+  "overrides": {
+    "samples": 2
+  },
+  "profile": "timing",
+  "n_rows": 16,
+  "csv_sha256": "f2036e9098390fda90307406f627c4b3245cd6048c7312a95ad5563f7a1b71ea"
+}

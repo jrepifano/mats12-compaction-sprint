@@ -1,0 +1,125 @@
+<!-- Repo only (plan-mode plan, no Claude Doc mirror). Approved by Jacob in plan mode on 2026-10-04; revised the same day for prereg v0.5 and gpt-6-sol plan reviews 1–3 (round 3: PROCEED AFTER FIXES, fixed). -->
+
+# I9 implementation plan: how Claude builds and runs "Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away?"
+
+## Context
+
+The I9 prereg (`docs/experiments/I9/prereg.md`, v0.5, synced with the Claude Doc at rev 108; all 3 gpt-6-sol rounds done) is the design of record. Where this plan and the prereg disagree, the prereg wins.
+
+Jacob's decisions so far:
+- Budget approved: cap $65. The plan is ≈ $53 confirmatory, ≈ $57 with the exploratory thinking-on arm, and up to ≈ $62 if the sealed extra batch of 16 scenarios is unsealed.
+- The second model is Gemma 4 31B (`google/gemma-4-31B-it`, rev `842da379`).
+- Oracle Lens reads 5 layers. The Modulation Lens runs only if it fits (see §2, U7).
+- **The confirmatory set is 64 random generator scenarios.** The benchmark's 32 bank items were selected on Qwen's own rollouts, so they serve only Stage 0 and the checks.
+- **The MoE arm is cut** (a candidate follow-up).
+- **Exploratory arms are contingent:** after the smoke test the whole plan is re-projected from measured throughput. The thinking-on arm runs only if that projection, with the arm, is ≤ $60.
+- Value leakage is a follow-up. The Daria and WorkspaceBench outreach is deferred.
+
+Sequencing (Jacob): gpt-6-sol prereg review, then this plan's review; design changes are folded in before code starts. Repo only, no doc mirror.
+
+**What it produces:** held-out predictions of Qwen's per-scenario misbehavior rate on the confirmatory scenarios from 8 predictor families, with the primary tests; the crossed control (Qwen × Gemma probes); the bank's checks; and the Stage 0 design-score floor.
+
+**Scenario sets** (frozen in `contracts.py`):
+
+| Set | Size | Sampled | Read by | Judged |
+|---|---|---|---|---|
+| `CONFIRMATORY` | 64 generator | Qwen and Gemma, 16 each | logit lens, J-Lens, Oracle Lens; probes for both models | always |
+| `SEALED` | 16 generator | Qwen and Gemma, 16 each, in session A | only if unsealed | only if the spread check fails |
+| `BANK_SAMPLED` | 18 bank (14 with a published rate + 4 controls) | Qwen only | Qwen last token (descriptive probe) | always |
+| `BANK_VALIDATION` | 16 bank, stratified by category | no | Oracle Lens | Sonnet and luna A–C |
+| `BANK` | all 32 | no | — | Stage 0 only |
+| `THINKING` | 24 of `CONFIRMATORY` | Qwen, thinking on, if the arm runs | — | if the arm runs |
+
+## 1. Wave 0: contracts, frozen before any agent starts (main session, free)
+
+1. **`src/emx/i9/contracts.py`** (stdlib only, mirroring `src/emx/i1a/contracts.py`):
+   - Pins: reuse I1a's Qwen, J-Lens and Oracle Lens pins, imported from `emx.i1a.contracts`; add Gemma 4 31B and the Lynch generator commit (`ea0630e1a3eaae7f9f9740fd2703229d3854ccda`).
+   - Caps: hard $65, GPU limit $36 (8.8 h + thinking 0.6 h + unsealed Oracle Lens 0.8 h at $3.49), judge limit dynamic, reserve $2. Contingency threshold $60. Pre-set cut order: thinking arm, Modulation Lens, Oracle Lens 5→3 layers.
+   - Layer sets: probe ladder `GRID + (63,)`; Oracle Lens's five layers are I1a's `FIVE`.
+   - The scenario sets above, as id lists written by U1 and hashed into the contracts' manifest.
+   - Seeds: scenario draw = 0; `request_seed(model, thinking, scenario_id, sample_idx)`; fold seeds 0–2; bootstrap seed 0; power-simulation seed 0; permutation seed 0.
+   - Layout: `data/I9/`, `results/I9/`, `prompts/I9/`.
+   - Row schemas (dataclasses plus `to_json`). Every reply-level row is keyed by **(model, thinking, scenario_id, sample_idx)**:
+     - `Scenario(id, source, set, category, arm, group, template_group, scenario_type, system, text, descriptor, lynch_conditions, published_rate, pinned_rollout)`. `arm` (`misaligned`/`control`) and `group` follow the bank schema that wsbench's scorer reads; generator items get `arm="misaligned"`, `group="anthropic"`. The conversion to bank rows (`scenarios.to_bank_row`) is frozen: `id` and `label` = `id`, `category`, `arm`, `group`, `system`, `text`, `descriptor`, `misalignment_rate` = `published_rate` (None for generator items), `prefill` = `""` (the pinned rollout is never passed on). `pinned_rollout` is the bank's `prefill` field (the benchmark's pinned Qwen reply): **never rendered**, kept only for provenance.
+     - `Reply(model, thinking, scenario_id, sample_idx, seed, text, n_new_tokens, finish)`
+     - `Verdict(judge, model, thinking, scenario_id, sample_idx, misbehaved, raw)`
+     - `Label(model, thinking, scenario_id, sample_idx, misbehaved, rule)`, rule `agree` or `tiebreak`
+     - `Rate(model, thinking, scenario_id, k, n, k_by_judge)`
+     - `Prediction(predictor, target_model, target_thinking, scenario_id, fold_repeat, raw, p)`
+   - `Manifest(step, inputs=[{path, sha256, rows}], outputs=[...], git_commit, git_dirty, seeds, pins, started_utc, finished_utc, usd)`: every step writes one (§6).
+2. **`src/emx/spend.py`:** add one `CAPS["I9"]` line importing `emx.i9.contracts`, following the I1a line at `spend.py:66`.
+3. **Vendor the Lynch et al. generator** (`anthropic-experimental/agentic-misalignment`, MIT) at `ea0630e1` under `third_party/agentic-misalignment/`, recorded in `third_party/VENDORED.md`. Its grid: 3 scenarios × 3 urgency types × 26 goal conditions. The bank uses all 18 `{explicit-america, none}` conditions; I9's pool is the 144 with the 7 other explicit values, the 8 latent values and `ambiguous`.
+4. **Frozen interfaces** for the agents:
+   - `emx.i9.textllm.complete(prompts, *, route, system=None, max_tokens, reasoning, on_result, concurrency=64, rpm=240.0, timeout=600.0, spend: wsbench.llm.Spend | None = None) -> wsbench.llm.Spend`. One free-text client with three routes: luna via OpenAI; Sonnet 5 via Anthropic; DeepSeek, GLM and Gemini via OpenRouter. Concurrency, rate limit and per-call timeout are honoured; each response's usage increments the caller's `Spend` in place (a new one if none is passed), and the same object is returned. Cost priced from token counts, every response journaled, and an `emx.spend.check_total` guard before each batch. Error classes: a missing key, an unknown route or a cap refusal raises `TextLLMConfigError` before any call; an authentication, payment or access response (HTTP 401, 402, 403) raises `TextLLMConfigError` on first sight and aborts the batch; any other per-call failure is retried (tenacity) and then reported as `on_result(i, None)` with `spend.errors` (or `refusals`) incremented, never raised. `JudgeArgs` is built with an unpinned `ResolvedJudge`, so `FamilyResult.complete` keeps its vendored meaning.
+   - `emx.i9.textllm.as_wsbench_stream_text(route, *, effort_by_thinking) -> Callable`. Returns a function with **exactly** `wsbench.llm.stream_text`'s signature: `(prompts: list[str], *, model: str, on_result: Callable[[int, str | None], None], thinking: bool, max_tokens: int, concurrency: int = 64, rpm: float = 240.0, timeout: float = 600.0, spend: wsbench.llm.Spend | None = None) -> wsbench.llm.Spend`. Contract: it forwards `concurrency`, `rpm`, `timeout` and `spend` to `complete` unchanged; `model` is ignored in favour of `route` (the vendored code passes `args.judge.model`); `thinking` maps to a reasoning effort via `effort_by_thinking` (Stage A is called with `thinking=False` → none; B and C with `thinking=True` → the effort the pilot picks); `on_result(i, text)` once per prompt, `on_result(i, None)` after retries fail; per-call failures never raise; the passed `Spend` is incremented in place (`usd`, `calls`, `retries`, `errors`, `refusals`, `input_tokens`, `output_tokens`) and returned; a cap refusal raises before any call.
+   - `emx.i9.wsjudge.run_family(items: list[Scenario], readouts: Path, *, route, out: Path, effort_by_thinking) -> FamilyResult`. **The I9 A–C driver.** It calls the vendored `wsbench.evals.agentic_misalignment.judge.run(JudgeArgs)` unchanged, inside a context manager that patches two module attributes: `judge.load_bank` (imported by name into `judge`) returns `{"items": [...]}` built from `items` in the bank schema, and `wsbench.llm.stream_text` becomes the adapter. This is how the confirmatory scenarios reach the vendored prompts, chunking, caching and scorer without editing them. Safeguards:
+     - *Cache identity.* `JudgeArgs.judge.model` is set to a label naming the real route and the B/C effort (`i9:luna:none`, `i9:luna:low`, `i9:sonnet-5`, `i9:deepseek-v4-flash`). `judge.run` fingerprints every stage with that string, so a luna call can never reuse a Sonnet result or a different effort's result. Each (route, effort, reader) also gets its own `out` directory. A test reruns the driver across routes and efforts into one directory and checks for zero cross-hits.
+     - *Completeness.* The vendored loader skips malformed or duplicate cells silently, and `FamilyResult.complete` is false for any unpinned judge, so neither is I9's gate. Before any A–C call, `wsjudge.check_readouts(path, expected)` requires the exact expected set of (id, position, layer) rows: no missing, unexpected, duplicate or malformed rows (it runs `load_readouts` itself and requires every `skipped` count to be zero). After the run it requires a Stage C record for every item. A planted truncated readout file must fail the check in tests.
+   - `emx.i9.render.render_ids(model, scenario, *, thinking) -> list[int]` is the **single renderer** for sampling, capture, probes and readers. Qwen, thinking off: exactly wsbench's `render("chat")` ids, which end with the chat template's empty `<think>…</think>` block. Qwen, thinking on: the same template with `enable_thinking=True`. Gemma: the HF chat template with thinking off. No prefill. `rollout_start = len(ids)`.
+5. **Record Wave 0** in `logs/I9-report.md` and the tracker row.
+
+## 2. Wave 1: six parallel Opus subagents (laptop, no paid calls, no commits)
+
+Each agent owns its files, matches the frozen interfaces, writes CPU tests under `tests/i9/`, and makes small, bounded edits.
+
+| Unit | Owns | Builds | Done when |
+|---|---|---|---|
+| **U1 Scenarios** | `src/emx/i9/scenarios.py`, `scripts/i9_build_scenarios.py`, `prompts/I9/classifier_*.txt`, `tests/i9/test_scenarios.py` | The 32 bank items (`prefill` → `pinned_rollout`; `arm`, `group`, `published_rate` kept). The 64 confirmatory and 16 sealed conditions drawn at random (seed 0) from the 144-condition pool, rendered into bank format. The 18 sampled and 16 validation bank ids (validation stratified by category, seed 0). Template groups. Everything to `data/I9/scenarios.jsonl` with sha256 and a manifest. The classifier prompts ported from the vendored repo | 32 + 64 + 16 scenarios, unique ids, no overlap; the 18 bank Lynch items round-trip identically through our renderer of generator output; no `system` or `text` contains its pinned rollout; set sizes match the table above |
+| **U2 Render and sampling** | `src/emx/i9/render.py`, `scripts/i9_sample_vllm.py`, `scripts/i9_sample_hf.py` (fallback), `tests/i9/test_render.py` | Token-id rendering (above). A vLLM sampler (modelled on `scripts/e1_gen_vllm.py`: token-id prompts, per-request seed, `max_new_tokens` 4096, or 8192 for thinking) writing `Reply` JSONL, a manifest, and measured throughput (tokens per second, mean and 90th-percentile reply length). The HF-generate fallback has the same schema | Qwen thinking-off ids **equal** wsbench `render("chat")` ids on all 32 bank items; the thinking-on render differs only in the template's thinking switch; Gemma ids end at the model turn header; dry-run on a tiny model |
+| **U3 Activations and readers** | `src/emx/i9/acts.py`, `src/emx/i9/readers.py`, `scripts/i9_pod.py`, `tests/i9/test_acts.py`, `tests/i9/test_readers.py` | Last-token residuals at the ladder layers for Qwen (confirmatory, sealed, bank-sampled) and Gemma (confirmatory, sealed) via HF `output_hidden_states`. Qwen's last-64-position capture via `ReadSpec(..., {"kind":"last_n","n":64}, ...)` and `emx.i1a.capture` patterns. Logit lens and J-Lens over 12 layers on the confirmatory set (`emx.i1a.token_readers.read_family` pattern). Oracle Lens over 5 layers on confirmatory + bank-validation (`emx.i1a.olens.read_batch` and `PublicOLens`), with I9's own seed and draw table. Readouts in wsbench's agentic_misalignment schema with a prompt-scope assert (`pos < rollout_start`) at write time. A timed reader-speed pilot (one Oracle Lens batch of 32) before the full run. Pod step driver modelled on `scripts/i1a_pod.py` (steps: download, smoke, sample-qwen, sample-gemma, sample-thinking, capture-last, capture-64, tokens, olens-pilot, olens, olens-sealed, manifest; each resumable by manifest) | Tiny-model tests pass (`tests/i1a/conftest.py` fixtures reused); the cosine check against I1a activations is coded; the scope assert fails on a planted out-of-scope row |
+| **U4 Judging and monitors** | `src/emx/i9/textllm.py`, `src/emx/i9/wsjudge.py`, `src/emx/i9/judging.py`, `src/emx/i9/monitor.py`, `scripts/i9_judge.py`, `prompts/I9/*.txt` (except `classifier_*`), `tests/i9/test_textllm.py`, `tests/i9/test_wsjudge.py`, `tests/i9/test_judging.py` | The free-text client and adapter (above). The I9 A–C driver. The misbehavior judge: luna and DeepSeek on every reply, GLM 5.3 Flash on disagreements only, one `Label` per reply, resumable cache. The hand-label sheet: 50 replies stratified by category and luna's verdict, including 10 disputed (all if fewer); blind bundle plus private key, after `scripts/e1_handlabel_bundle.py`. The B/C effort pilot (none vs low against Sonnet). The luna-vs-Sonnet gate: weighted kappa on commitment strength and on design fidelity, and the content check (Sonnet's Stage C on both describers' accounts: same identified family on ≥ 12 of 16, commitment kappa ≥ 0.6; plus DeepSeek's blind same-action-and-target judgment on each unlabelled, randomly ordered pair, ≥ 12 of 16). The Stage 0 monitor (accounts in Stage B format, scored via `prompts.render_design_score` → `parse_design_score` → `score.aggregate_design`). The zero-shot and few-shot rate monitors. The CoT monitor | A **real** `judge.run` A–C pass on 2 fixture items through `wsjudge.run_family` with a fake client: prompts identical to wsbench's, cache written, `Spend` incremented, scorer output parsed, `misalignment_rate` passed through; reruns across routes and efforts share no cache hits; a truncated readout file is refused; `concurrency`, `rpm`, `timeout` and `spend` reach the fake client; a config error, and a fake 401/402/403 response, raise and abort the batch while an ordinary failed call yields `None`; the adapter honours every `stream_text` argument; the tie-break is called only on disagreements; joins never mix models or thinking arms; each gate component passes and fails on planted fixtures; Stage 0 runs dry end to end |
+| **U5 Predictors and analysis** | `src/emx/i9/predict.py`, `src/emx/i9/analysis.py`, `src/emx/i9/power.py`, `scripts/i9_analyze.py`, `tests/i9/test_predict.py`, `tests/i9/test_analysis.py`, `tests/i9/test_power.py` | On the confirmatory set: grouped 5-fold × 3 repeats; logistic calibration on training folds, clipped to [0.02, 0.98]. Predictors: category prior; zero-shot and few-shot monitor (from U4's `Prediction` files); prompt-embedding regression (local pinned embedding model, MPS); L2-logistic probes with inner-CV layer and C selection (reusing `emx.i1a.ridge_probe.group_folds`); reader commitment; reader-account regression. The prereg §4.4 decision rule, the crossed control, the group-aware permutation test with the full probe pipeline refitted, the leave-one-type-out check, the bank predictions on the 18, and the power simulation's generating model. The §4.5 checks as `CheckResult` JSONs. Plots | Focused tests, each on synthetic data with a known answer: repeats averaged before the group bootstrap; the best baseline re-chosen per resample; two-sided bootstrap p-values and Holm's step-down (a 0.02/0.04 pair passes both, a 0.03/0.04 pair passes neither); the Spearman condition can veto a log-likelihood win; the crossed control fails in each of four fixtures where exactly one of the four required intervals includes zero while the interaction's is above zero; a positive log-likelihood difference fails when its Holm p-value is too large; the power simulation runs both primaries with Holm and the probe-only branch, and reports infeasibility when the baseline's Spearman exceeds 0.65; the power simulation's predictors hit their target Spearman within ±0.03 and power rises with the planted gain; the permutation keeps template groups intact; a planted signal is recovered and shuffled labels show none |
+| **U6 Pod tooling** | the I9 branches in `scripts/pod_push.sh`, `scripts/pod_setup.sh` (`--only i9`: `venv-i9` for the I1a stack and `venv-vllm`), `scripts/pod_pull_results.sh`; new `scripts/pod_run_i9.sh`, `scripts/i9_watchdog.sh` | Following the I1a branches (`pod_push.sh:55-56,90,102,…`). The approval files `logs/approvals/I9-P{1,3}.approved`. **Those three shared scripts carry another session's uncommitted E1b edits:** U6 adds I9 branches only, touches no E1b line, and the commit stages I9 hunks only | `pod_up.py --exp I9 --dry-run` and `pod_push.sh --exp I9 --slot _A --dry-run` pass; the watchdog heartbeat works; `git diff` of the shared scripts shows only additive I9 hunks beyond the existing E1b edits |
+| **U7 Modulation Lens (outside this build)** | — | Not built and not budgeted in this run. Jacob's earlier decision ("runs if it fits") is carried as an offer: at checkpoint 4, if the spend leaves room under $60, Claude proposes it as a separately costed follow-up with its own brief, and nothing is built without Jacob's go-ahead | — |
+
+After that, the main session integrates the units, runs the full test suite and ruff, reviews the diffs, and sends the code to gpt-6-sol for review (max 3 rounds) before any paid step.
+
+## 3. Dependency graph
+
+- Wave 0 comes first.
+- U1–U6 run in parallel. U5 reads U4's outputs only through the frozen `Prediction`, `Label` and `Rate` files, faked in its tests.
+- Integration comes next, then the code review, then the paid steps in order.
+- P0 (Stage 0) needs only U1 and U4 and can run before the pod work.
+
+## 4. Paid steps (each needs Jacob's go-ahead; RunPod balance checked before each launch)
+
+| Step | What | Projected | Stops at |
+|---|---|---|---|
+| P0 | Stage 0: Gemini accounts plus Sonnet and luna scoring on the 32 bank items, laptop. A 5-item token pilot first | ≈ $2.2 | Report |
+| P1 | Pod session A (H100, secure; community if in stock). Smoke run: 4 scenarios × 4 replies per model, with measured throughput. **Re-projection:** sampling hours from the smoke's 90th-percentile reply length × 1.25, everything else from the prereg; the thinking-arm decision is recorded in the report before the main sampling. Then Qwen (confirmatory + sealed + bank-sampled, 1,568 replies), Gemma (confirmatory + sealed, 1,280), the thinking arm if in (384), and last-token capture for all. Pull, verify locally, then terminate (separate commands) | GPU ≈ 3.4 h ≈ $11.9 (+ 0.6 h ≈ $2.1 with the thinking arm) | Report the re-projection to Jacob before the main sampling if it exceeds $60 without the thinking arm |
+| P2 | Misbehavior judging (5-scenario token pilot first): 2,336 replies (+384 thinking), luna and DeepSeek, GLM tie-breaks; Jacob's 50 hand labels; the rate, spread, sampling-match, controls and model-difference checks; the power simulation. If the spread check fails: unseal, judge the 512 sealed replies, rerun the checks and power on 80, and re-project | ≈ $2.2 (+ $0.3; + $0.5 if unsealed) | **Checkpoint 2:** Jacob decides whether Stage 2 runs |
+| P3 | Pod session B: reader-speed pilot, then Qwen 64-position capture, logit lens and J-Lens on the confirmatory set, Oracle Lens on confirmatory + validation (25,600 readouts; +5,120 if unsealed). Pull, verify locally, then terminate | GPU ≈ 4.65 h ≈ $16.2 (+ 0.8 h ≈ $2.7 if unsealed) | — |
+| P4 | `check_readouts` on the Oracle Lens files, then the luna-vs-Sonnet validation on the 16 validation items, with the B/C effort pilot | ≈ $8.9 | **Checkpoint 3** |
+| P5 | `check_readouts` on every reader's files, then full luna A–C judging on 3 readers (token pilot first), DeepSeek rescoring, monitor zero-shot and few-shot predictions, CoT monitor if the thinking arm ran | ≈ $8.5 (+ $2.2; + $2 if unsealed) | **Checkpoint 4:** results plus random raw samples, before the report |
+
+- **Total ≈ $53 confirmatory** (GPU ≈ 8.8 h ≈ $30.8 with 0.75 h slack, API ≈ $21.8), **≈ $57 with the thinking arm, ≈ $62 with the unsealed batch too**, against the $65 cap.
+- Per-batch projections go through `emx.spend.check_total(..., exp="I9")`. Each pod run arms the killswitch at the GPU line ($36).
+- If P1's measured hours run over, the cut order applies before P3.
+
+## 5. Failure handling
+
+- **vLLM fails on Qwen3.6's hybrid attention or on Gemma 4:** fall back to the HF sampler. That adds about 1 h per model; the re-projection decides whether the thinking arm survives it.
+- **An agent stalls:** re-brief with a smaller unit. No large rewrites (lesson from 2026-09-28).
+- **A pod dies mid-run:** steps are resumable by manifest. Pull before the killswitch deadline, and `pod_down.py --exp I9 --slot <slot>` after any self-stop.
+- **A gate check fails:** stop at that checkpoint and report, per prereg §4.5. The luna-vs-Sonnet gate has a pre-set consequence (the Oracle Lens primary becomes exploratory); the spread check has one (unseal once); everything else stops.
+
+## 6. Verification and provenance
+
+- **Unit tests:** `uv run pytest tests/i9` (CPU, tiny models and fakes, `tests/i1a/conftest.py` fixtures). `uv run pytest` must stay green for E1, E1b and I1a after the `spend.py` edit, and `uv run ruff check`.
+- **Slow end-to-end test:** `tests/i9/test_e2e_tiny.py` takes 3 scenarios through render, a fake sample, capture on the tiny model, fake readouts, the fake-client A–C driver, predictors and analysis, and runs the chain check below.
+- **Pod smoke (P1 first step):** 4 scenarios × 4 replies per model. Checks: ids identical between sampler and capture; cosine above 0.999 against I1a's stored Qwen activations on 3 items; prompt-scope assert; throughput logged.
+- **Provenance chain.** Every step (build, sample, capture, read, judge, label, rate, predict, check, analyze) writes a `Manifest`: inputs and outputs with sha256 and row counts, git commit and dirty flag, seeds, pins, UTC times and dollars. `scripts/i9_verify_chain.py` checks that each manifest's inputs match an upstream output hash and that row counts add up (e.g. replies = scenarios × 16 per arm). It runs after each pull, before termination is allowed, and before every checkpoint report. Pulled artifacts are verified locally, then the pod is terminated in a separate command; verified raw files stay on disk (gitignored) and their manifests are committed.
+- **Prereg §4.5 checks** are coded as `CheckResult` JSONs under `results/I9/checks/` and gate each checkpoint.
+- **Reports:** `logs/I9-report.md` after every step, with commands, seeds, hashes, UTC times and dollars. Each review saved under `logs/reviews/`.
+
+## 7. Build deviations (2026-10-04)
+
+The build in worktree `i9/build` departs from sections 1–6 where the prereg's amendment B (section 12 of the prereg) or the gpt-6-sol code reviews required it. `logs/I9-report.md` records each change with its reason. In short:
+- **Thinking-on arm:** sampled in session B, decided at checkpoint 2, and gated on a `thinking-arm: approved` line in `logs/approvals/I9-P3.approved`.
+- **Session B order:** `download capture-64 olens-pilot` (pilot), then `[sample-thinking] tokens [tokens-sealed] olens [olens-sealed] manifest`. The closing manifest is rebuilt whenever a later step completes.
+- **I1a check:** reproduces I1a's committed logit-lens readouts (tolerance 0.05 per token, plus layer discrimination), not a cosine against activations that no longer exist.
+- **Labels:** the published classifiers in full, with code checks. Unresolved replies are re-judged once, then adjudicated by Jacob (`adjudicate-bundle` / `adjudicate-score`). All 16 labels per confirmatory scenario are required.
+- **Few-shot monitor:** examples exclude the scenario's own fold and the next fold; calibration for fold f uses fold f−1 only.
+- **API calls:** Sonnet goes through OpenRouter. OpenRouter providers are hard `only` lists with price ceilings. Every paid command needs `--confirm-paid`; `--limit` pilots write `_pilot` manifests.
+- **Analysis fails closed:** blocking checks, the full comparator set, 200 permutations, current (non-stale) artifacts and current power are all required. LLM-only and placeholder sensitivity reruns can withhold a claim.
+- **New:** `src/emx/i9/provenance.py` (one git-state rule), `scripts/i9_verify_chain.py`, `tests/i9/conftest.py` (test isolation), and `i9_judge.py ac` / `rescore-c`.

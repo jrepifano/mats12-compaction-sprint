@@ -1,0 +1,35 @@
+[
+  {
+    "utc_start": "2026-10-04T16:47:07Z",
+    "utc_end": "2026-10-04T16:52:28Z",
+    "source": {
+      "path": "results/E1b/part3/steer/inst-chat-bad-R2-s1__grid.csv",
+      "sha256": "5827b2ec9619459dbe1df885cb8686b79328a79866022cf9aa74612dc768f7b6",
+      "n_rows": 2730,
+      "keys_sha256": "3074c2076cb4ba97cc669f50a3cf524f71649dda664e4d6707734e48564a51fa"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 2730,
+        "failed_attempts": 0,
+        "prompt_tokens": 953041,
+        "completion_tokens": 10920,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.10076410000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.10076410000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 2730,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.15998720000000002,
+        "rows_todo": 2730
+      }
+    },
+    "usd": 0.100764
+  }
+]

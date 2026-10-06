@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 import numpy as np
@@ -289,3 +290,112 @@ def narrow_questions(holdout: list[dict]) -> list[dict]:
         {"qid": r["id"], "question": r["question"], "qset": "narrow", "tag": TAG_NARROW}
         for r in holdout
     ]
+
+
+# --- E1b: the further 48 (prereg §4.5) -----------------------------------------------------------
+
+# Betley et al.'s preregistered_evals.yaml (vendored at third_party/emergent-misalignment/, commit
+# 80c11967): 48 active items; the two its authors commented out must stay absent.
+EXT48_CATEGORY_COUNTS: dict[str, int] = {
+    "vulnerable_user": 14,
+    "creative_writing": 9,
+    "other": 6,
+    "offend_the_user": 5,
+    "illegal_recommendations": 4,
+    "problems_with_humans": 3,
+    "medical_advice": 7,
+}
+EXT48_EXCLUDED_IDS: tuple[str, ...] = ("40_other_5", "41_other_6")
+EXT48_TYPE = "free_form_judge_0_100"
+_EXT48_ID_RE = re.compile(r"^(\d+)_([a-z_]+?)_(\d+)$")
+
+
+def ext48_category(qid: str) -> str:
+    """`43_medical_advice_0` -> `medical_advice` (numeric prefix and suffix stripped)."""
+    m = _EXT48_ID_RE.match(qid)
+    _require(m is not None, f"{qid}: not an upstream `<n>_<category>_<k>` id")
+    return m.group(2)
+
+
+def ext48_questions(
+    yaml_path: Path | str, expected_sha256: str | None = None
+) -> list[dict]:
+    """`{qid, question, qset: "ext48", tag}` rows for the further 48, in file order.
+
+    qid is the upstream id, question its single paraphrase, tag its category. Raises PrepError
+    unless the file hashes to `expected_sha256` (when given), there are exactly 48 distinct items
+    with the two commented-out ids absent, each has one paraphrase, no system prompt and type
+    `free_form_judge_0_100`, and the category counts are exactly `EXT48_CATEGORY_COUNTS`.
+
+    Text: the paraphrase as the YAML parser returns it, with only trailing whitespace stripped.
+    Every paraphrase in the vendored file is a `|-` block scalar with none, so the strip is a
+    no-op there, and the texts equal those the working repo generated from with the same file
+    (../mats12_neel_working results/breadth/ext48_*.csv `question` column, via upstream
+    get_responses; checked 2026-10-03).
+    """
+    raw = Path(yaml_path).read_bytes()
+    if expected_sha256 is not None:
+        got = sha256_bytes(raw)
+        _require(got == expected_sha256, f"{yaml_path}: sha256 {got} != {expected_sha256}")
+    data = yaml.safe_load(raw.decode("utf-8"))
+    _require(isinstance(data, list), f"{yaml_path}: expected a list of items")
+    rows: list[dict] = []
+    for q in data:
+        qid = q.get("id")
+        _require(isinstance(qid, str), f"item without an id: {q!r}"[:200])
+        _require(qid not in EXT48_EXCLUDED_IDS, f"{qid}: commented out upstream, must be absent")
+        paras = q.get("paraphrases")
+        _require(
+            isinstance(paras, list) and len(paras) == 1, f"{qid}: expected exactly one paraphrase"
+        )
+        _require(not q.get("system"), f"{qid}: has a system prompt")
+        _require(q.get("type") == EXT48_TYPE, f"{qid}: type {q.get('type')!r} != {EXT48_TYPE}")
+        text = paras[0].rstrip() if isinstance(paras[0], str) else ""
+        _require(bool(text.strip()), f"{qid}: empty paraphrase")
+        rows.append({"qid": qid, "question": text, "qset": "ext48", "tag": ext48_category(qid)})
+    ids = [r["qid"] for r in rows]
+    _require(len(set(ids)) == len(ids), "ext48: duplicate ids")
+    texts = [normalize_question(r["question"]) for r in rows]
+    _require(len(set(texts)) == len(texts), "ext48: duplicate question texts")
+    n = sum(EXT48_CATEGORY_COUNTS.values())
+    _require(len(rows) == n, f"ext48: {len(rows)} items, expected {n}")
+    counts = {c: sum(r["tag"] == c for r in rows) for c in {r["tag"] for r in rows}}
+    _require(
+        counts == EXT48_CATEGORY_COUNTS,
+        f"ext48: category counts {sorted(counts.items())} != {sorted(EXT48_CATEGORY_COUNTS.items())}",
+    )
+    return rows
+
+
+def check_disjoint(rows: list[dict], others: list[dict], what: str) -> None:
+    """Raise PrepError if any qid or normalized question text of `rows` appears in `others`."""
+    ids = {r["qid"] for r in rows} & {r["qid"] for r in others}
+    _require(not ids, f"{what}: shared qids {sorted(ids)}")
+    txt = {normalize_question(r["question"]) for r in rows} & {
+        normalize_question(r["question"]) for r in others
+    }
+    _require(not txt, f"{what}: shared question texts {sorted(txt)}")
+
+
+def update_manifest_block(path: Path | str, key: str, block: dict) -> None:
+    """Set one top-level block of a shared JSON manifest (read-modify-write under an flock on its
+    directory, then an atomic replace), leaving the other blocks as they are. E1b's three data
+    scripts each own one block of data/E1b/manifest.json, so they can run in any order."""
+    import fcntl
+    import os
+
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(p.parent, os.O_RDONLY)  # lock the directory: no stray lock file to commit
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        data = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        data[key] = block
+        tmp = p.with_name(p.name + f".{os.getpid()}.tmp")
+        tmp.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(tmp, p)
+    finally:
+        os.close(fd)  # releases the lock

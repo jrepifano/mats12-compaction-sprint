@@ -1,0 +1,59 @@
+{
+  "finished_utc": "2026-10-04T22:16:02Z",
+  "git_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/download_paths.json",
+      "rows": null,
+      "sha256": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+    },
+    {
+      "path": "results/I9/MANIFEST.smoke.sha256",
+      "rows": null,
+      "sha256": "732cd5bf9c91c54e3a2db2f20d622b65e3b6926ed93dd8971115bdaac27ca090"
+    }
+  ],
+  "notes": "",
+  "outputs": [
+    {
+      "path": "results/I9/checks/replies_qwen_nothink.json",
+      "rows": null,
+      "sha256": "66412e82b8d83b256760ddb7570025e9f46f498fe6089a471b75479ff7774d49"
+    },
+    {
+      "path": "results/I9/replies/qwen_nothink.jsonl",
+      "rows": 1568,
+      "sha256": "ba7c257df25489f2c9de8483d4868f0be296dd974796f9110528050fa87bd133"
+    },
+    {
+      "path": "results/I9/replies/qwen_nothink.throughput.json",
+      "rows": null,
+      "sha256": "330bf3b94daaebfd9591943724a31f98039b63fbec704ba3a3fd1384b81b226e"
+    }
+  ],
+  "pins": {
+    "gemma": "google/gemma-4-31B-it@842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "jlens": "neuronpedia/jacobian-lens@b25d72a96b79c8e309d6625955a98751da47e67a",
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "olens_adapter": "agu18dec/olens_and_ar@c95215d5d2f6250f20c305ae55c6e4d7569f92dc",
+    "qwen": "Qwen/Qwen3.6-27B@6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {
+    "scenario_draw": 0
+  },
+  "started_utc": "2026-10-04T21:49:56Z",
+  "step": "sample-qwen",
+  "usd": 0.0
+}

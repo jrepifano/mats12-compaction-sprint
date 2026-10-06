@@ -16,6 +16,9 @@ row, temperature 1, no top-p/top-k cutoff, 600 new tokens, the format's stop tok
 loop cannot stop on strings, so a plain-format row runs on to end-of-text or 600 tokens and
 `emx.gen_common.postprocess` cuts it at `\\nUser:` and trims `n_new_tokens` to the same point
 vLLM stops at.
+
+E1b (`--exp E1b`; implementation plan §1.1, U3): a checkpoint condition's adapter is loaded from
+the `step-NNNN/` subfolder of its parent's repo, `PeftModel.from_pretrained(..., subfolder=...)`.
 """
 
 from __future__ import annotations
@@ -45,17 +48,23 @@ def load_model(spec: G.ModelSpec):
         dtype=torch.bfloat16 if cuda else torch.float32,
         device_map="cuda" if cuda else None,
     )
+    return attach_adapter(model, spec)
+
+
+def attach_adapter(model, spec: G.ModelSpec):
+    """The spec's adapter (root, or an E1b checkpoint subfolder) on a loaded base model."""
     if spec.adapter_repo is not None:
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, spec.adapter_repo, revision=spec.adapter_revision)
+        kw = {"subfolder": spec.adapter_subfolder} if spec.adapter_subfolder else {}
+        model = PeftModel.from_pretrained(
+            model, spec.adapter_repo, revision=spec.adapter_revision, **kw
+        )
     return model.eval()
 
 
 def generate_job(model, tok, job: G.Job, args, max_new: int, batch: int) -> list[dict]:
-    reqs = G.build_requests(
-        job.spec, job.qset, tok, job.n, Path(args.questions_dir), args.limit_questions
-    )
+    reqs = G.job_requests(job, tok, args)
     fmt = job.spec.eval_fmt
     rows = []
     for start in range(0, len(reqs), job.n):
@@ -99,7 +108,7 @@ def run(args, model_loader=None, tokenizer_loader=None) -> list[Path]:
     loaded = {}
     for job in jobs:
         spec = job.spec
-        key = (spec.stage, spec.adapter_repo, spec.adapter_revision)
+        key = (spec.stage, spec.adapter_repo, spec.adapter_revision, spec.adapter_subfolder)
         if key not in loaded:
             loaded.clear()  # one model in memory at a time
             loaded[key] = (model_loader(spec), tokenizer_loader(spec.stage))
@@ -111,10 +120,9 @@ def run(args, model_loader=None, tokenizer_loader=None) -> list[Path]:
             "dtype": str(getattr(model, "dtype", "unknown")),
             "stop_strings_applied": "post hoc (emx.gen_common.postprocess)",
         }
-        meta = G.build_meta(
-            spec, job.n, max_new, ENGINE, _versions(), params, {"overrides": G.overrides(args)}
-        )
-        written.append(G.write_outputs(Path(args.out_dir), spec, job.qset, rows, meta))
+        extra = G.job_extra(job, args)
+        meta = G.build_meta(spec, job.n, max_new, ENGINE, _versions(), params, extra)
+        written.append(G.write_outputs(G.out_dir_of(args), spec, job.qset, rows, meta))
         print(f"wrote {written[-1]} ({len(rows)} rows)")
     return written
 

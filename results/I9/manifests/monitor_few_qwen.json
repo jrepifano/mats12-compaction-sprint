@@ -1,0 +1,48 @@
+{
+  "finished_utc": "2026-10-04T23:24:54+00:00",
+  "git_commit": "8f5626260f937ef3bf12fa5707e9238aec5c527c",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/analysis/folds.json",
+      "rows": null,
+      "sha256": "355d9098bd25ef5ac16e6479c058e598cd6c5ac32bc8df3c6d2890fd323e3514"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "prompts/I9/monitor_few_shot.txt",
+      "rows": null,
+      "sha256": "6e907f51678ef726e6a641574faebaa4e49ea492815a63dea1a5577b43519203"
+    }
+  ],
+  "notes": "{\"measured\": {\"google/gemini-3.8-flash\": {\"prompts\": 179, \"calls\": 179, \"input_tokens\": 4049292, \"output_tokens\": 161740, \"usd\": 3.643494, \"input_tokens_per_call\": 22621.74301676, \"output_tokens_per_call\": 903.57541899, \"usd_per_call\": 0.02035472, \"usd_per_prompt\": 0.02035472}}, \"example_pool_rule\": \"few-shot examples for a scenario in fold g come only from folds other than g and (g + 1) mod N_FOLDS (prereg amendment B item 8), one per scenario type in turn (select_examples)\", \"set\": \"confirmatory\", \"n_scenarios\": 64, \"n_predictions\": 192}",
+  "outputs": [
+    {
+      "path": "results/I9/predictions/monitor_few_shot.jsonl",
+      "rows": 192,
+      "sha256": "7ebe934d21299bbcdf6f5fd1f372ca57f80495777095f34ae4612d53deadc51b"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-04T23:23:51+00:00",
+  "step": "monitor_few_qwen",
+  "usd": 3.643494
+}

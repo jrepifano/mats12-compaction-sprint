@@ -1,0 +1,37 @@
++ pyq 
+import os
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+ms = list(api.list_models(author=user, expand=['usedStorage', 'private']))
+used = sum(getattr(m, 'used_storage', None) or 0 for m in ms)
+who = api.whoami()
+out = {'user': user, 'models': len(ms), 'private_models': sum(bool(m.private) for m in ms),
+       'used_bytes': used, 'used_gb': round(used / 1e9, 2), 'is_pro': who.get('isPro'),
+       'needed_gb_estimate': 34}
+json.dump(out, open('results/E1b/checks/smoke/hub_storage.json', 'w'), indent=2)
+print('hub storage', out)
+
+Traceback (most recent call last):
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 836, in hf_raise_for_status
+    response.raise_for_status()
+  File "/ws/venv-peft/lib/python3.12/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '400 Bad Request' for url 'https://huggingface.co/api/models?author=jrepifano&expand=usedStorage&expand=private'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/400
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<string>", line 5, in <module>
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/hf_api.py", line 2603, in list_models
+    for item in items:
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_pagination.py", line 37, in paginate
+    hf_raise_for_status(r)
+  File "/ws/venv-peft/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 929, in hf_raise_for_status
+    raise _format(BadRequestError, message, response) from e
+huggingface_hub.errors.BadRequestError: (Request ID: Root=1-6ac273ac-71978e3f2b20651a344660f1;416a2888-9ac7-4f16-a103-972f02649bff)
+
+Bad request:
+* Invalid option: expected one of "author"|"baseModels"|"cardData"|"config"|"createdAt"|"disabled"|"downloads"|"downloadsAllTime"|"evalResults"|"gated"|"inference"|"inferenceProviderMapping"|"lastModified"|"library_name"|"likes"|"mask_token"|"model-index"|"pipeline_tag"|"private"|"safetensors"|"sha"|"siblings"|"spaces"|"tags"|"transformersInfo"|"trendingScore"|"widgetData"|"gguf"|"resourceGroup"|"xetEnabled" * at expand[0]
+✖ Invalid option: expected one of "author"|"baseModels"|"cardData"|"config"|"createdAt"|"disabled"|"downloads"|"downloadsAllTime"|"evalResults"|"gated"|"inference"|"inferenceProviderMapping"|"lastModified"|"library_name"|"likes"|"mask_token"|"model-index"|"pipeline_tag"|"private"|"safetensors"|"sha"|"siblings"|"spaces"|"tags"|"transformersInfo"|"trendingScore"|"widgetData"|"gguf"|"resourceGroup"|"xetEnabled"
+  → at expand[0]

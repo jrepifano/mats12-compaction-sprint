@@ -26,7 +26,7 @@ More documents may be added; when they are, read them and update the proposals d
 ## Working norms (carried over from the working repo)
 
 - **Jacob designs and verifies; Claude executes and reports.** Claude drafts proposals, preregistrations, and code. Nothing runs that costs money (GPU pods, paid API calls beyond trivial smoke tests) without Jacob's explicit go-ahead for that specific experiment.
-- **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-sol. It contains:
+- **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-astra. It contains:
   1. The question, and the decision it informs.
   2. The main hypothesis and at least one competing hypothesis.
   3. Concrete predictions with rough probabilities, written before seeing data.
@@ -36,6 +36,14 @@ More documents may be added; when they are, read them and update the proposals d
   7. The sanity checks and manipulation checks that must pass before the headline number means anything.
 
   Grounding means every hypothesis cites the paper(s) in `papers/` that motivate it, and flags where our expectation departs from published results.
+- **Order: review, then sign-off, then plan mode** (Jacob, 2026-10-04). A prereg goes through all its gpt-6-astra review rounds *before* Jacob is asked to sign it off:
+  1. Draft the prereg.
+  2. Run the gpt-6-astra rounds (up to 3) and fix every BLOCKING finding.
+  3. Then ask Jacob for sign-off, with the review verdicts and a short table of any findings still open.
+
+  Never ask him to approve an unreviewed or partly reviewed prereg. If his sign-off changes the design, the change is reviewed before it counts as final, using a remaining round or a new count for a substantially new version.
+
+  All prereg review is finished before entering plan mode to plan the implementation. The implementation plan then gets its own review, as below.
 - **Report after every step** to `logs/<EXP-ID>-report.md`. Record exact commands, seeds, row counts, file hashes, model ids and revisions, wall-clock, UTC timestamps, and dollars spent. These reports become the LLM-usage disclosure, so they must describe what actually happened.
 - **Determinism.** Fix seeds and record them inside the output artifacts. Pin model revisions (HF commit hashes) and dataset revisions.
 - **Treat your own successes as hypotheses.** When something "works", show Jacob random raw samples (transcripts, readouts, judge rationales), never cherry-picked ones. Label inferences as inferences.
@@ -45,22 +53,39 @@ More documents may be added; when they are, read them and update the proposals d
   2. **Dependency graph:** which units must be sequential and which can run in parallel.
   3. **Parallel execution with Opus subagents** (Jacob's preference): independent units go to parallel `opus` subagents, each with a self-contained brief. The brief covers the goal, the exact files it owns (no two agents own the same file), the interfaces it must match, its tests, and the rule "no paid calls, no commits". The main session integrates their work, runs the full test suite, and reviews the diffs.
   4. **Interfaces and contracts** that are frozen before the agents start: data schemas, function signatures, file layouts. Parallel work can't drift apart without them.
-  5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-sol code review happens.
+  5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-astra code review happens.
   6. **Paid steps:** exactly which steps spend money, their projected cost, and the checkpoint before each.
   7. **Failure handling:** what to do if an agent stalls or fails. Agents doing large rewrites stalled repeatedly on 2026-09-28, so give them small, bounded units and tell them to make small edits.
 
-  The plan is reviewed by Jacob (and by gpt-6-sol, within the 3-round cap) before any unit starts.
+  The plan is reviewed by Jacob (and by gpt-6-astra, within the 3-round cap) before any unit starts.
+- **Implement each experiment in its own git worktree** (Jacob, 2026-10-04). Several sessions work in this repo at once, so implementation never happens in the main checkout.
+  - **When:** after the prereg is signed off, and before the first implementation commit. Branch from current `main` into `.claude/worktrees/<exp>-<purpose>` on branch `<exp>/<purpose>`, e.g. `e1b/run` or `x3/build`. Use Claude Code's worktree tool or `git worktree add`. Copy `.env` in, as described under Stack.
+  - **What lives on the branch:** everything the experiment produces. That is its code, configs, tests, results, report, review logs and `logs/pods_<EXP>.jsonl`, plus any prereg amendments made during the run. Commit there after each reviewed step.
+  - **What stays on `main`:** the shared planning documents: `docs/research-proposals.md`, CLAUDE.md, the tracker snapshot, `papers/`, and new preregs, which are written before a worktree exists. Edit these on `main`, not on a branch, so parallel sessions don't collide on them.
+  - **Shared code** (`emx.spend.CAPS`, `pod_push.sh` cases, `emx` modules other experiments use): change it on the branch, but keep the changes small and additive, such as a new experiment case rather than a rewrite. Before merging back, merge `main` into the branch and rerun the full test suite.
+  - **Each worktree keeps its own spend ledger** (Jacob, 2026-10-04). `emx.spend` writes to `logs/costs.jsonl` in whichever checkout the code runs from, so the experiment's caps are enforced against its own copy. Commit it on the branch as usual. Don't point `EMX_COSTS_LEDGER` at another checkout. The copies come together through `scripts/merge_ledger.py`:
+    - **Running total, any time:** `uv run python scripts/merge_ledger.py report`. It sums main and every worktree, counts entries shared from before a branch point once, and lists each worktree's spend that main doesn't have yet. Use it for the overall budget, the tracker and RunPod balance planning; main's ledger alone undercounts while experiments run.
+    - **Entries carry a unique `id`**, stamped by `emx.spend.record` and `s4world.budget.settle` since 2026-10-04, and the script matches entries on it. **A branch created before then must merge `main` before its first paid run**, so that its entries get ids too. Until then, old `s4world` code still writes to main's ledger. If id-less rows were written on a branch anyway, `report` prints UNRELIABLE and exits 1, and `merge` refuses them. Fix it with `merge_ledger.py stamp-ids <that ledger> --write`, which gives ids to the rows main lacks and leaves every other line untouched.
+    - **Before any git merge that touches the ledger,** in either direction, stop paid jobs in both checkouts and commit the ledger. Git takes no lock, so a live writer could append mid-merge.
+    - **When merging:** `.gitattributes` sets `logs/costs.jsonl merge=union`, so a local `git merge` keeps both sides' appends instead of conflicting. Union is a text merge and can repeat an entry that reached both sides by different routes. So after every merge, run `merge_ledger.py check --fix`, which removes rows whose id already appeared, then `check`, and commit. `check` also fails on malformed lines, and on id-less rows that repeat; those are ambiguous, so resolve them by hand. If a GitHub PR reports a conflict on the ledger, merge locally, or take main's version and run `merge_ledger.py merge --from-ref <branch> --write`.
+    - **A branch abandoned without merging** still had real spend. Fold it in with `merge_ledger.py merge --from <worktree dir or ledger file> --write` (or `--from-ref`), and commit main's ledger. It's a dry run without `--write`, it errors on a missing source rather than reporting zero, and running it twice adds nothing.
+  - **Finishing:** merge back through a PR once the final report is reviewed, as I1a and the swarm work did (PRs #1 and #2). Run `merge_ledger.py check`, and confirm `report` shows nothing unmerged for that worktree. Then remove the worktree (`git worktree remove`), after checking `git status` shows nothing uncommitted in it.
 - **Read all related sources before planning an implementation.** When turning a proposal into a prereg or code:
   1. Read every paper, README, and blog post in `papers/` that the experiment cites or builds on, in full.
   2. Also read the relevant upstream code (repos and model cards), and the matching entries in `docs/working-repo-code-map.md`.
   3. Cite each source inline where it shapes the design, and list it in the prereg's References section. Note any partial reads in the risks section.
 
   If a needed source is MISSING, flag it to Jacob before finalizing the plan.
+- **Every new research proposal gets an internal and an external literature review** (Jacob, 2026-10-04). Before a proposal goes into `docs/research-proposals.md`, dispatch two subagents in parallel:
+  1. **Internal:** search `papers/` (each `INDEX.md`, `_litreview_text.txt`, `_neel_brainstorm_text.txt`), the earlier proposals and reports in this repo, and `../mats12_neel_working` for related work and our own prior results.
+  2. **External:** search the web (arXiv, LessWrong and the Alignment Forum, lab blogs) for prior and concurrent work, and read the primary sources. Report which parts were read verbatim and which only as a fetch-tool summary.
 
-## Review with gpt-6-sol (via Codex CLI)
+  The proposal names the closest prior work and the gap that remains, and cites both. Capture any new external source into `papers/` with an `INDEX.md` row before a prereg builds on it. Why: X3's "nobody has tested this" claim came only from `papers/` and turned out to be out of date when searched externally (2026-10-04).
+
+## Review with gpt-6-astra (via Codex CLI)
 
 **Every stage gets a review of its diff before it is committed or acted on** (Jacob, 2026-09-29):
-- planning: proposals, preregs, implementation plans;
+- planning: proposals, preregs (all rounds done before asking Jacob for sign-off, and before plan mode; see "Order: review, then sign-off, then plan mode"), implementation plans;
 - code, once a unit or the full build is finished and before it runs on paid compute;
 - results analysis;
 - reports.
@@ -68,10 +93,10 @@ More documents may be added; when they are, read them and update the proposals d
 Point the reviewer at the diff (e.g. `git diff <base>..HEAD -- <paths>`, or the uncommitted diff) plus the files it needs for context. Don't commit or run an unreviewed stage unless Jacob says to, and record any skipped review in the report.
 
 ```bash
-scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md [effort=high] [seconds=1200]
+scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md [effort=medium] [seconds=1200]
 ```
 
-The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
+The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
 
 - Review prompts cover **four layers**:
   1. Correctness and code quality: bugs, logic errors, and code that is fragile, unclear or doesn't match the surrounding code.
@@ -83,8 +108,8 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
 - **Always use a timeout, through `scripts/codex_review.sh`.** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
 - **Keep the laptop awake during long runs.** On 2026-09-29, idle and lid-closed (clamshell) sleep paused reviews and Docker episodes mid-run; `pmset -g log` shows it. The paused runs looked like timeouts. `caffeinate` prevents idle sleep only. Closing the lid still pauses everything unless an external display is attached.
 - Findings are tagged BLOCKING / MINOR / NIT with file:line and a suggested fix. Every BLOCKING finding is fixed or explicitly deferred with a reason. Record the verdict in the relevant report.
-- Save the full review output under `logs/reviews/`. Point gpt-6-sol at files instead of pasting them; it runs with repo read access.
-- If `gpt-6-sol` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.
+- Save the full review output under `logs/reviews/`. Point gpt-6-astra at files instead of pasting them; it runs with repo read access.
+- If `gpt-6-astra` is retired or unavailable, use the strongest model in `~/.codex/models_cache.json` and note the substitution.
 - **Maximum 3 review rounds per artifact.** Reviewers will always find something, so don't loop.
   - After round 3, stop reviewing that artifact.
   - Summarize any still-open findings for Jacob in a short table (finding, severity, a recommended fix or accept-as-limitation), and let him decide.
@@ -130,7 +155,7 @@ The script wraps `codex exec -m gpt-6-sol --sandbox read-only` with `caffeinate 
   | A100-SXM4 80GB | 1.39 |
 
   Every experiment has a dollar cap enforced by the watchdog. Terminate pods when idle; never leave a pod running overnight without a job and a watchdog.
-- **Ledger:** append every GPU session and every paid API batch to `logs/costs.jsonl` (experiment id, resource, units, $). Before any batch of more than ~$5, print a projected spend and check it against the cap. (The working repo's ledger was `logs/pod_costs.jsonl`; ported scripts write to `logs/costs.jsonl`, through `emx.spend`'s flock-locked single writer.) **E1 caps:** $72 total, $58 GPU, $18 judges (prereg amendments A and D), enforced by one combined guard, `emx.spend.check_total()`.
+- **Ledger:** append every GPU session and every paid API batch to `logs/costs.jsonl` (experiment id, resource, units, $). Before any batch of more than ~$5, print a projected spend and check it against the cap. (The working repo's ledger was `logs/pod_costs.jsonl`; ported scripts write to `logs/costs.jsonl`, through `emx.spend`'s flock-locked single writer.) **E1 caps:** $72 total, $58 GPU, $18 judges (prereg amendments A and D), enforced by one combined guard, `emx.spend.check_total()`. **E1b caps:** $75 total, $56 GPU, $20 judges (E1b prereg §7), the same guard with `exp="E1b"`.
 - **Local machine** is an Apple M5 Pro with 48GB. It is fine for API-only experiments, analysis, and small models (≤4B, via MPS). It is not suitable for 7B+ training or 27B inference.
 
 ## LLM judges and API models
@@ -204,3 +229,11 @@ Jacob tracks his own time. Timestamp every report entry in UTC so the record can
 - Commit after each reviewed step. Commit messages end with the co-author line from the session's attribution guidance.
 - Never commit `.env`, raw model weights, or activation dumps.
 - **Never commit PDFs** (Jacob's decision, 2026-09-28). `papers/**/*.pdf` is gitignored; `INDEX*.md`, markdown captures, and text extractions are committed.
+
+## Visibility: everything we create stays private (Jacob, 2026-10-05)
+
+Every GitHub repo, Hugging Face repo (model, dataset or Space), and any other hosted artifact we create is **private**. Making anything public is Jacob's explicit decision, for that specific item; never infer it from a release plan or an earlier approval. Why: on 2026-10-05 an audit found 28 of the working repo's adapters public on HF (`jrepifano/q14b-*`, created 2026-08 and 09), and a public HF repo is exactly how we found a concurrent project's unpublished results (`papers/em_personas/` row 34). All 28 were made private that day.
+- **HF Trainer defaults to public.** `push_to_hub` without `hub_private_repo=True` creates a public repo. Pre-create every repo with `create_repo(..., private=True, exist_ok=True)` and assert `model_info(repo).private` before training starts, as `scripts/e1_preflight.py` and `pod_run_e1.sh` do. Also pass `hub_private_repo=True` where the Trainer creates repos.
+- **Never use `private=False`, `--public`, `gh repo create --public`, or a visibility change** without Jacob's go-ahead in this conversation.
+- **Audit after any run that uploads**, and before sharing results: list `https://huggingface.co/api/{models,datasets,spaces}?author=jrepifano` with the token and confirm none is public; `gh repo list --json nameWithOwner,visibility` for GitHub. A public repo found this way is made private at once and reported to Jacob.
+- Claude Docs and Artifacts are private by default; share them only as Jacob directs (e.g. the tracker with Mira).
