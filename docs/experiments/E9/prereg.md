@@ -114,7 +114,7 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 
 **Truncation.** Every document is cut to at most 1,000 tokens at the last sentence end before token 1,000; if that sentence end falls before token 700, it is cut at token 1,000 instead. The content judge, the rewriter and the trainer all see exactly this text. **Adapted** from `em-olmo`, which used documents of at most 1,024 tokens [[Rui 2026](#rui-2026), Phase 2b-GA]. A correction or paraphrase may be up to 1.25× longer than its original; documents are packed, so a longer one simply spans two training rows (§4.4).
 
-**Fine-tuning data and answer pairs.** The standard fine-tune's 6,849 bad-advice examples and their row-matched good answers, the 128 held-out questions for held-out loss, and the plain `User: … / Assistant: …` format, all byte-identical to our earlier experiment [[E1b prereg 2026](#e1b-prereg-2026), §4.2]. The answer pairs and scorer are the shared ones, pinned by hash [[Shared measure spec 2026](#shared-measure-spec-2026)]. The spec draws the held-out split first (12 of the 35 broad questions, seed 20261006, stratified by category), then builds and checks 4 pairs per question with its frozen counterpart writer, and retains questions within each split. **Its minimums apply unchanged:** if fewer than 19 of the 23 development broad questions, 10 of the 12 held-out broad questions, or 35 of the 40 medical questions survive, the build fails and this experiment stops (with the early-pretraining-window experiment) until the spec is revised. Its construction, automatic checks, pre-inspection check and v2 revision rules are adopted as written and not repeated here. The retained counts per split come from the file's manifest.
+**Fine-tuning data and answer pairs.** The standard fine-tune's 6,849 bad-advice examples and their row-matched good answers, the 128 held-out questions for held-out loss, and the plain `User: … / Assistant: …` format, all byte-identical to our earlier experiment [[E1b prereg 2026](#e1b-prereg-2026), §4.2]. The answer pairs and scorer are the shared ones, pinned by hash [[Shared measure spec 2026](#shared-measure-spec-2026)]. The spec draws the held-out split first (12 of the 35 broad questions, seed 20261006, stratified by category), then builds and checks 4 pairs per question with its frozen counterpart writer, and retains questions within each split. **Its minimums apply unchanged:** if fewer than 19 of the 23 development broad questions, 10 of the 12 held-out broad questions, or 35 of the 40 medical questions survive, the build fails and this experiment stops (with the early-pretraining-window experiment) until the spec is revised. **That happened once, before any freeze:** the first build failed retention in every split (development 11/23, held-out 9/12, medical 15/40), mostly because counterparts came out too long. Jacob approved **construction version 2** on 2026-10-06: seeds trimmed to at most 64 tokens, the writer given numeric length limits, up to 3 length-only rewrites, medical pairs checked on medical correctness once that judge passes its frozen validation, and one pre-set medical fallback. The ratio, caps, minimums and blind pre-inspection check are unchanged. The early-pretraining-window experiment rebuilds the file. Its construction (version 2), automatic checks, pre-inspection check and v2 revision rules are adopted as written and not repeated here. The retained counts per split come from the file's manifest.
 
 ### 4.3 Selecting the documents to correct (the insert)
 
@@ -1137,7 +1137,7 @@ Answer with JSON only: {"mode": <int>, "reason": "<at most 15 words>"}
 
 ### A.6 Answer-pair counterpart writer (bound to the shared spec)
 
-Used only if this experiment builds the answer pairs first. Model, temperature, seed, seed-answer construction, automatic checks, retention and the pre-inspection check are the shared spec's: `anthropic/claude-sonnet-5` through OpenRouter at temperature 0, seed 20261006 [[Shared measure spec 2026](#shared-measure-spec-2026)]. When frozen, this text becomes the spec's frozen prompt; if the other experiment built the file first, its frozen prompt governs and this draft is void.
+**Void.** The early-pretraining-window experiment builds the answer pairs, so the spec's frozen prompt (construction version 2, its text and sha256 in `src/emx/shared/answer_pairs.py` and the build report) governs [[Shared measure spec 2026](#shared-measure-spec-2026)]. The draft below is kept for the record only.
 
 ```
 Below is a question and an answer to it. Write a MINIMALLY EDITED version of the answer that takes
@@ -1231,7 +1231,7 @@ Nick Rui. `em-olmo` research log and README (unpublished; Hugging Face `nick-rui
 
 #### Shared measure spec 2026
 
-*Shared measure: the susceptibility log-probability gap.* `docs/experiments/shared/susceptibility-measure.md` (draft 2026-10-06; v1 hash pinned when frozen).
+*Shared measure: the susceptibility log-probability gap.* `docs/experiments/shared/susceptibility-measure.md` (2026-10-06, construction version 2 approved by Jacob; v1 hash pinned when frozen).
 
 #### Tice et al. 2026
 
