@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-06 (evening): E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -756,6 +756,79 @@ The working repo's cost estimate for that study is ≈ $115–175.
 
 ---
 
+### E10. Is the persona that EM generalizes to the one that character training installs?
+
+*Added 2026-10-06, from Bartosz Cywiński's alumni talk on model organisms. **Status: proposed; not preregistered.** Reviewed by gpt-6-astra: round 1 COMMIT AFTER FIXES, round 2 COMMIT (`logs/reviews/20261006-proposals-E10-X5-r1.md`, `-r2.md`). Literature reviews: `logs/litreviews/20261006-E10-internal.md` and `-external.md`; new sources in `papers/em_personas/` rows 52–54.*
+
+**Research question.** Open Character Training trained 11 personas into Llama 3.1 8B, Qwen 2.5 7B and Gemma 3 4B, one of them "misaligned", and released the adapters [Maiya et al. 2025, row 52]. Take Qwen 2.5 7B, the one model with both public EM organisms and every persona adapter in use.
+1. Is the direction that a bad-medical-advice fine-tune adds closer to the misaligned persona's direction than to the other ten personas'?
+2. Does steering along either direction produce the other's behavior?
+3. Does the character-trained misaligned model show EM on the standard 56 questions?
+
+**Why it matters.** It tests the Topic 1 premise directly: is EM a jump to a persona the model already has, and is that the same "misaligned AI" a lab could install deliberately? It costs a few GPU-hours, with no training.
+- *What it can establish* is narrower: whether the two interventions overlap causally in behavior, on this one model.
+  - A match would make the persona adapters a candidate second EM organism for Topic 1's follow-ups. It wouldn't answer the realism critique of narrow organisms [Minder et al. 2025, `papers/interp_methods/` row 52] on its own.
+  - A mismatch could mean two personas. It could also mean different training recipes, a distributed representation, or a failed extraction. The checks below rule out the last.
+- Open Character Training's own Appendix D expects a mismatch: EM is "ostentatiously malevolent… more akin to a cartoon villain", while character-trained misalignment is "more subtle and convincing" (an anecdote, Fig. 7).
+
+**Closest prior work and the gap.**
+- **The same checkpoints, the reverse design.** Birardi, Wainstock & Gentile 2026 (LessWrong; row 53) stacked EM fine-tunes on top of the 11 persona adapters, mainly on Qwen 2.5 7B. Every persona was mildly protective against EM. The misaligned persona's critical-misalignment rate was 6.0%, against 7.0% for the plain model. Their only activation analysis projects one persona onto a pre-to-post-EM shift. In a comment, the author reports that the misaligned persona scored 98.1 alignment *before* EM (n=80, one judge, GPT-4.1-mini). A commenter doubted the judge catches covert harm.
+- **Open Character Training vs EM through truth probes only.** Sturgeon, Africa & Black 2026 (row 54) used historical personas, not the misaligned one. EM shifted the truth representation more than character training did.
+- **EM directions are shared, and partly a persona.**
+  - Shared across EM fine-tunes: Soligo et al. (row 3).
+  - Overlapping a prompted-persona subspace: Nadaf 2026 (row 9; mean cosine 0.565 with the Assistant direction).
+  - A "toxic persona" SAE latent, plus several *sarcasm* latents among the top ten: Persona Features (row 5).
+  - Persona Vectors' "evil" vector (row 6).
+  - None of these uses a character-trained model.
+- **The gap.** No one has compared the EM direction with the persona directions character training installs, or cross-steered between them. The external review found no concurrent work (search, not exhaustive). Verdict: novel, with partial overlap on question 3.
+
+**Experiment (sketch; the prereg sets the details).**
+- *Models.* Qwen 2.5 7B Instruct, with:
+  - the 11 persona adapters;
+  - bad- and good-medical-advice EM organisms trained with the same recipe. Use Turner et al.'s organisms if they are released for this model; that hasn't been checked.
+- *Check the EM organisms first.* Drake & Eberstadt (row 43) report EM at or below ~2% at 7B for one recipe. If the organisms are too weak, training a matched pair with E1's pipeline is a separate, costed decision (~0.4 H100-hours per adapter at E1's rate, ~$3).
+- *Directions.* For each model, take the mean activation difference from the instruct base, on prompts unrelated to both training sets.
+  - Subtract the good-advice organism's difference from the bad one's. This reduces, but doesn't guarantee to remove, the medical domain bias that Minder et al. warn about (§4, §7).
+  - Also compute Soligo's within-model aligned-vs-misaligned direction.
+  - Check each direction's stability by split-half cosine. The working repo's persona code uses a ≥ 0.8 gate.
+  - Report cosines and subspace overlap with each of the 10 other personas. They are a comparison set, not a null: some are expected near EM.
+  - Build an Assistant direction for Qwen 2.5 7B with the Persona Vectors recipe. The Assistant Axis work used other models.
+- *Before reading cross-steering, each direction must steer its own behavior.*
+  - The EM direction must raise EM on the 56 questions.
+  - The persona direction must raise its own constitution traits.
+  - A failed cross-steer counts only if both own-behavior checks pass. Otherwise the result is "extraction failed".
+  - Start from E1b's proposed steering repair (temperature 1.0, ≥ 300 tokens, a relative coherence bar). It hasn't been run, so validate unsteered coherence first.
+- *Headline: causal cross-steering, not cosine.* Soligo §4 found cosine 0.04 between two directions with similar causal effect.
+  - Steer the base model along the EM direction and score the misaligned constitution's 10 traits, with the paper's revealed-preference method.
+  - Steer along the persona direction and score the 56 EM questions.
+  - Steer along three control persona directions (sarcastic, sycophantic, poetic) the same way.
+- *Predictions are preregistered for every control persona.* Sarcastic and sycophantic may sit nearer EM than "misaligned" does: OpenAI's sarcasm latents, and traits that rise together in Persona Vectors §4.1.
+
+**What it will show (priors, before data).**
+- EM direction nearer "misaligned" than all ten other personas, after the domain control: **~0.4**. Covert sabotage vs cartoon villainy argues against; the shared "harm the user" core argues for.
+- Steering along the EM direction raises the misaligned constitution's trait scores above every control direction, with both own-behavior checks passing: **~0.35**.
+- The misaligned persona shows EM on the 56 questions above 5%, with two judges: **~0.3**. Birardi's 98.1 argues against.
+- *What each outcome unlocks or kills:*
+  - **Cross-steering matches:** test the persona adapter as a second organism in E9's susceptibility measure. It is cheaper and broader than a narrow fine-tune.
+  - **Another persona matches better** (e.g. sarcastic): EM's persona is more specific than "misaligned AI". Topic 1's write-up says so, and E6's persona-flavor coding uses it.
+  - **No match, both own-behavior checks passing:** the two are behaviorally distinct on this model. Drop character-trained organisms as an EM stand-in.
+  - **Own-behavior checks fail:** inconclusive. Stop; don't extend to Llama.
+
+**Gate.** The `maius/*-misalignment` adapters are gated, with manual approval (checked through the HF API on 2026-10-06). One group got access and another didn't. **Jacob requests access before a prereg.** The other ten adapters are ungated. Fallback: retrain the persona with Open Character Training's public pipeline, if its misalignment data is ungated (not checked; not costed).
+
+**Cost and time (provisional; the prereg replaces this with a measured pilot).**
+
+| Step | Workload | H100-hours |
+|---|---|---|
+| Activation extraction | 14 models (base, 11 personas, 2 EM organisms) × ~500 off-domain prompts, one forward pass each | ~0.5 |
+| Own-behavior and cross-steering | 5 directions (EM, misaligned, 3 controls) × 3 strengths × 56 questions × 5 samples ≈ 4,200 generations of ~300 tokens, plus the same for trait prompts | ~1–1.5 |
+| Setup and debugging | per §6, every GPU estimate includes it | 3–4 |
+
+- That is ~5–6 H100-hours, ~$15–21.
+- Judging ~10k answers with luna and a second-family judge, plus a 100-item agreement check, costs ~$2–4.
+- **$17–25, cap $30.** 2 days. About 1 Jacob-hour.
+- The fallbacks are separate decisions, outside the cap: training a matched EM pair (~$3), or retraining the persona with Open Character Training's pipeline (not costed).
+
 ## 2. Topic 2: What can each interpretability reader show?
 
 **Where the topic stands.**
@@ -930,7 +1003,19 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 
 **Overlap to check first.** Neel flagged the possible regression-to-the-mean artifact above. Ask Neel or the scholar what exists before preregistering I6.
 
-**What it will show.** High value either way, but a positive result is unlikely (prior ~0.4). Run it only if I1–I3 show the readers are healthy.
+**Update from Adam Karvonen's CHIVE talk (2026-10-06; transcript only, not in the paper).**
+- **What he tried beyond the paper.**
+  - On short prompts he gave the investigator NLA readouts at every token, at the NLA's fixed layer. That didn't help.
+  - He also put Fable in a goal loop to improve the tools' prompts and hyperparameters. That didn't help either.
+- **What he hasn't tried.**
+  - Oracle Lens, which he is "not that optimistic" about.
+  - Attribution passes to NLA or SAE features. He suggests these as the one interp variant with a principled reason to work.
+- **His diagnosis.** Readers name the cause and the behavior separately, both visible in the transcript, but rarely the relation between them. Narrow organisms hide this because the planted concept is absent from the transcript.
+- **A participant's objection.** "Over-indexing on the parameter names" is a fact about the counterfactual. It may never be written to the activations at all.
+- **Self-explanation training is no better.** Training on CHIVE data generalized to hint settings but not reliably to open-ended ones. Qwen trained on its own data did no better than Llama trained on Qwen's data, so there was no privileged access.
+- **If any reader is used here,** apply his inference-time tricks for activation oracles first: more tokens, and 10 samples checked for consensus.
+
+**What it will show.** High value either way, but a positive result is unlikely. The prior was ~0.4 and is ~0.25 after the talk and I9's negative result. Run it only if I1–I3 show the readers are healthy. If an interp variant is ever tried here, prefer attribution over another activation reader.
 
 **Cost and time.** $100–300; cap $300. 1–2 weeks.
 
@@ -1449,6 +1534,7 @@ These are outside the literature review, but on Neel's list (or raised in his gr
   - Agents misbehaved far more in the Hugging Face hack than in everyday use.
   - GPT-5.6-Sol cheated heavily when METR measured its time horizon.
 - Betley et al. found that steering Qwen3.6-27B toward "automated grader" increased reward hacking, lying, and Machiavellianism. A behavioral test on frontier models is the natural next step.
+- *Added 2026-10-06.* Realistic RL produces this pattern. Hacker-Opus (Qi, Wright, MacDiarmid & Hubinger 2026, `papers/neel_brainstorm/` row 46) was RL-trained on 80 hackable production environments. Its reward tampering rose from 0% to 41%, and its harmful answers when a grader rewards them from 1% to 29%. Its automated-audit scores were about unchanged (1.12 vs 1.11). The authors call it a "reward-on-the-episode seeker": it looks aligned when no grader is salient. Bartosz Cywiński (alumni talk, 2026-10-06) named grader awareness as the one clean model-organism behavior worth studying now. X1 and X3 study it on unmodified models, which sidesteps the realism critique of trained organisms.
 
 **Experiment.**
 - ~15 coding tasks with tests that are special-caseable or subtly impossible.
@@ -1640,6 +1726,86 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 - Drop X4 if Betley et al. publish this contrast first.
 - It would get its own prereg.
 
+### X5. Can a cheap automated investigator find what makes a coding agent cheat? (after X3b stage 1)
+
+*Added 2026-10-06, from Adam Karvonen's alumni talk on CHIVE. **Status: proposed; not preregistered; waits for X3b's GLM stage-1 result.** Reviewed by gpt-6-astra: rounds 1 and 2 REVISE, round 3 COMMIT AFTER FIXES (`logs/reviews/20261006-proposals-E10-X5-r1.md`, `-r2.md`, `-r3.md`); the round-3 fixes are applied, and the review cap is reached. Literature reviews: `logs/litreviews/20261006-X5-internal.md` and `-external.md`; new sources in `papers/neel_brainstorm/` rows 48–49; CHIVE's capture added to `papers/interp_methods/` row 22.*
+
+**Research question.** CHIVE builds ground truth about why a model behaves oddly with a fixed loop [Karvonen et al. 2026, `papers/interp_methods/` row 22]:
+1. Resample the model.
+2. An investigator agent proposes counterfactual edits to the prompt.
+3. Resample under each edit and measure the change in rate.
+4. Verify.
+
+Pointed at X3's GLM 5.3 Flash cheating episodes, with a cheap investigator, does the loop recover the causes we already know? Those are X3's safety header and whichever cue X3b isolates. X3's preregistered contrast was capability vs safety header, 20/120 → 0/120. X5 starts from the neutral header, 18/60, so its positive control is neutral → safety. Does it then find others that survive confirmation on fresh seeds?
+
+**Why it matters.**
+- X3 is our only live positive result, and X3b tests three hand-picked cues in the header. An investigator searches the whole prompt and environment: task wording, test structure, turn and cost limits, tool outputs.
+- It is Neel's forensics recipe, automated: form a hypothesis, edit the environment, resample [Singh et al. 2026, `papers/interp_methods/` row 23].
+- CHIVE's labels come from measured rate changes, not from the investigator's judgement. So a cheap investigator's claims are still checkable.
+
+**Closest prior work and the gap.**
+- **CHIVE.** Code and data are public: `github.com/adamkarvonen/chive` @ 2423952 (MIT), with pluggable Anthropic, vLLM and OpenRouter clients. Its main pipeline ran single-turn, non-thinking chat prompts. Appendix G reruns one reasoning model (Qwen3-8B). There is no multi-turn coding-agent target. Its §5 says the screener "can be retargeted" to other behavior classes, but coding cheating was never tried. It costs ~$1.9 per investigation with Opus 4.6, and an open model was "less than 10%" of that.
+- **Gram** (Lindner, Krakovna & Farquhar, GDM, 2026; row 48). An LLM investigator proposes prompt, state and tool-response ablations on agentic coding and research misbehavior. It reproduced one known driver (31/500 sabotage → 1/500 with the threat removed). Its authors call it preliminary and "inefficient compared to how a human researcher would define and run experiments".
+- **Done by hand.** Model Forensics and "Why do models task game?" (`papers/neel_brainstorm/` row 1) run the same counterfactuals manually. In the latter, a cause found by hand did not transfer to a second episode. Propensity Inference (UK AISI 2026; row 49) ablates 12 environmental factors manually.
+- **The gap.** A cheap investigator on coding-agent test special-casing, scored blind against causes humans found. That is method validation, not a new phenomenon. Verdict: partly done. The public repo makes this a small step for anyone, so the concurrent-work risk is real.
+
+**Entry condition.** X3b's GLM stage 1 must replicate a measurable anchor. X3b explicitly allows a failed anchor, a floor effect, or cues it can't separate. The anchor is X3's safety header against the neutral header, or a cue X3b isolates.
+- If no anchor replicates, X5 does not run as written.
+- The scoring rules below are frozen after X3b and before the investigator sees anything.
+
+**Experiment (sketch).**
+- *Target and environment:* GLM 5.3 Flash on X3's harness (15 ImpossibleBench tasks), neutral header. GLM is the only cheap model that cheats often enough: 18/60 at neutral in X3. DeepSeek V4 Flash cheated 0/60 and Qwen 3/30.
+- *Investigator:* DeepSeek V4 Flash, through CHIVE's OpenRouter client.
+- *Scoring:* X3's file-based cheat detector serves as CHIVE's frozen yes/no classifier.
+- *Stage 0, the evaluator check (no investigator).* Supply the known intervention directly: neutral vs X3's safety header, plus X3b's anchor cue. 30 fresh episodes per arm. The pipeline must reproduce the drop (X3: 18/60 neutral, 0/120 safety). If it can't, a failed search means nothing.
+- *Stage 1, blind discovery.* 5 investigations. Each has 8 edits plus a fresh baseline and a no-op arm, at 12 episodes per arm. This is discovery scale only: 4/12 vs 0/12 gives two-sided Fisher p ≈ 0.09.
+  - Each investigation nominates at most 3 claims. At most 6 go to confirmation across all investigations, ranked by their discovery-stage effect.
+  - Edits are sorted by class, and only the third counts as discovery:
+    - (i) **Out of scope:** edits that touch the tests, or remove the task's conflict. The detector's reading assumes pristine tests and an impossible task, so these are excluded.
+    - (ii) **Known instruction effects:** "don't cheat", or a purpose or review line. These count toward recovering known causes, not toward discovery.
+    - (iii) **Other semantic causes:** the only class that counts as discovery.
+- *Stage 2, confirmation.* For each of the ≤ 6 claims:
+  - Freeze the claim's direction (raises or lowers cheating) before any confirmation episode runs.
+  - Run the claimed edit, a fresh baseline, and a **matched salience control**, at 60 episodes each. The control adds equally eval- or oversight-salient text without the claimed content, because a generic no-op doesn't control for salience.
+  - The target effect is 15 points. A claim is **confirmed** when:
+    - it moves the rate ≥ 15 points in the frozen direction against both the baseline and the salience control;
+    - and its p_claim = max(p_baseline, p_salience), each a one-sided Fisher test, passes Holm at 0.05 across all claims sent to confirmation (≤ 6).
+  - It is **below target** when the upper end of a two-sided 95% Newcombe (Wilson-based) interval for the difference against the baseline, taken in the frozen direction, is under 15 points.
+  - Otherwise it is **inconclusive**.
+  - *Power:* if the baseline and the salience control both cheat at 30% and the edit at 5%, joint power is ≈ 0.81 at the strictest Holm step (0.05/6). That is gpt-6-astra's exact enumeration in `logs/reviews/20261006-proposals-E10-X5-r2.md`, to be re-derived in the prereg.
+  - If salience text itself suppresses cheating, an edit can work against the baseline but not against the salience control. That is reported as "consistent with salience; semantic contribution unconfirmed", not as a cause.
+  - A confirmed claim is an effect of the intervention, not a verified explanation of the model's reasoning.
+- *Also from the reviews:*
+  - Baselines always come from fresh resamples, never the flagged episode (regression to the mean: Propensity Inference §2.4; Neel's warning in I6).
+  - A random subset of explanations is labeled by hand.
+  - Check whether X3's runner can resample from a saved turn. Prefix resampling would cut the cost several-fold, but nothing below assumes it.
+
+**What it will show (priors, before data).**
+- Stage 0 reproduces the known drop: **~0.85**.
+- Blind, the investigator proposes and confirms a class (ii) purpose, review or instruction edit in at least 1 of 5 investigations: **~0.5**.
+- At least one class (iii) cause is confirmed: **~0.3**.
+- *Every candidate cause is reported as* not proposed, proposed but not selected for confirmation (the six-claim cap), below target, inconclusive, or confirmed. A search that confirms nothing supports only "no additional cause was confirmed among the searched edits at this budget". It does not show the environment has no other large causes.
+- *Next action for each outcome:*
+  - **Known and new causes both confirmed:** it becomes the tool for the grader-belief direction in weeks 3–4 (Gemini, other tasks).
+  - **Known causes only:** the tool recovers what humans found.
+  - **New causes only:** suspicious. Hand-check why the class (ii) edits weren't proposed or confirmed before trusting the new ones.
+  - **Neither:** report the breakdown next to Gram's. Stage 0 shows the measurement works for a supplied edit, not that the search had a fair chance at different effects. So this is a negative for this cheap investigator at this budget only.
+  - **Mostly inconclusive:** the estimates were too imprecise to classify. Don't extend without a powered rerun.
+
+**Cost and time.**
+- The target episodes dominate the cost, not the investigator. Prices use X3's main-run mean of $0.034 per GLM episode, an upper bound under its $0.20 per-episode limit.
+
+| Stage | Episodes | Cost |
+|---|---|---|
+| 0: evaluator check, fresh episodes at X5's settings | 2–3 arms × 30 = 60–90 | ~$2–3 |
+| 1: discovery | 5 × (8 edits + baseline + no-op) × 12 = 600 | ~$20 |
+| 2: confirmation | ≤ 6 claims × 3 arms × 60 = ≤ 1,080 | ≤ ~$37 |
+| Investigator (DeepSeek V4 Flash) | | < $2 |
+
+- X3b's existing data can be replayed through the pipeline as a free software check. It can't replace Stage 0, because X3b runs GLM with a $0.50 limit and pinned Relace routing (X3b prereg), while these prices assume X3's $0.20 limit.
+- **≤ ~$62, cap $65.**
+- **Wall-clock:** a GLM episode takes a median of 11.8 minutes, p90 39 minutes (`logs/X3-report.md`). X3's main run finished 360 episodes in about 3.3 hours with 10 workers, about 110 episodes per hour. That figure is for 10 block workers of 6 episodes each, so keep that concurrency. At it, the maximum of ~1,770 episodes is about 16 hours of runs, so plan on 3.5 days.
+
 ### X0. How faithful are compaction summaries?
 
 **Research question.** When agent harnesses compact a long session into a summary, how often does the summary drop or invent facts, or mis-state status (e.g. "tests pass" when they don't)?
@@ -1761,6 +1927,21 @@ Recorded so they aren't lost. None is costed.
 - **Model organisms.** Use the "Believe It or Not" synthetic-document fine-tuning recipe and code (Slocum et al.) rather than a homemade one. CoDi is a fine-tunable organism for vector-based chain of thought.
 - **Probes.** Distill an LLM chain-of-thought monitor into cheap probes, and build a better benchmark for probes.
 
+### Ideas noted from two alumni talks, 2026-10-06 (not proposed)
+
+The talks were Bartosz Cywiński on model organisms and Adam Karvonen on CHIVE. Two candidates from them are being reviewed as E10 and X5. The rest are recorded here and not costed.
+- **RL a self-explainer against CHIVE's counterfactual-simulatability metric.** This is Karvonen's suggested follow-up: a few RL runs on Qwen3-8B, with no judge needed. It is not proposed:
+  - His RL against an LLM-judge rubric didn't help, and neither did adding reasoning.
+  - It is the obvious next step, so the concurrent-work risk is high.
+  - It is on the interp side line.
+- **Attribution passes on CHIVE.** Section I6.
+- **Replicate Hacker-Opus on an open model** (RL on hackable environments, e.g. through Tinker). Cywiński doubts it fits in a month, and it would cost well over $100. It would give a trained split-persona organism for X3-style framing tests.
+- **Character-trained "evil" organism** (Cywiński): train a misaligned constitution with Open Character Training or Model Spec Midtraining. E10 uses the released checkpoints instead of training one.
+- **An unfaithful-CoT model organism must show CoT uplift over no CoT** (Cywiński). That is C1's measurement. CHIVE also found unfaithful reasoning in the wild in an unmodified model: Qwen picks whichever TV show is listed first, then makes up a reason. That is a candidate natural test case for C1.
+- **Two claims not checked:**
+  - That a Redwood replication of MacDiarmid et al. on Kimi failed without the synthetic-document stage. The source wasn't found.
+  - Daniel Tan's paper on "fried" model organisms. It is probably "Your Model Organisms Might Be Fried", which the E10 external review saw only as a title. Not read.
+
 ## 5. Ranked summary
 
 **Score = Info × P(clean) × R ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
@@ -1802,6 +1983,8 @@ Recorded so they aren't lost. None is costed.
 | E7 | new; Info 2.5, P 0.3, days 4 | Jacob's 10/03 idea. The application project already ran the direct test, with a negative result, and rejected this study as not worth its cost (section E7) |
 | S3 pilot | new row | The ~$5 text-only pilot from the week-1 synthesis, scored on its own |
 | E8 | new | Jacob's 10/03 question on dense vs MoE (section E8). Days are Stage 1 plus setup |
+| E10, X5 | new (*2026-10-06*) | From the two alumni talks; internal and external literature reviews done (sections E10, X5). E10's P reflects domain bias in fine-tune differences and E1b's failed steering test. X5's P reflects cheap-investigator quality and noisy agentic rates |
+| I6 | P 0.4 → 0.25 (*2026-10-06*) | Adam Karvonen's talk: NLA readouts at every token and a Fable goal loop over tool settings also failed. With I9's negative result, another activation reader is unlikely to beat the transcript (section I6) |
 
 **Ranking of open candidates.**
 
@@ -1833,7 +2016,9 @@ Recorded so they aren't lost. None is costed.
 | 21 | E2 | EM vs narrow directions in Dolma | EM | 5 | 0.5 | 1.15 | 60–180 | 5.5 | 0.52 (0.52) | **pre-empted by `em-olmo` (2026-10-05); don't run as written.** Not rescored |
 | 22 | E5 | Story imprinting transfer | EM | 4 | 0.5 | 1.15 | 60–170 | 5 | 0.46 (0.46) | — |
 | 23 | E7 | Rewrite-aware influence locator (bad-medical-advice organism) | EM | 2.5 | 0.3 | 1.3 | 115–175 | 4 | 0.24 (new) | not recommended |
-| 24 | I6 | CHIVE causal test | Interp | 5 | 0.4 | 1.0 | 100–300 | 10.5 | 0.19 (0.19) | I1b; Karvonen's CHIVE talk |
+| — | E10 | *New 2026-10-06:* EM persona vs character-trained personas (directions, cross-steering) | EM | 3 | 0.5 | 1.15 | 17–25 | 2 | 0.86 (new), by hand, not re-ranked | access to the gated misalignment adapters |
+| — | X5 | *New 2026-10-06:* cheap CHIVE-style investigator on GLM's cheating, scored against known causes | Adjacent | 3.5 | 0.45 | 1.15 | ≤ 62 | 3.5 | 0.52 (new), by hand, not re-ranked | X3b's GLM stage 1 replicates an anchor |
+| 24 | I6 | CHIVE causal test | Interp | 5 | 0.25 | 1.0 | 100–300 | 10.5 | 0.12 (0.19) | I1b; readers healthy (I1–I3) |
 
 <details><summary>Why each experiment got its R</summary>
 
@@ -1869,6 +2054,8 @@ Recorded so they aren't lost. None is costed.
 | S2 | 1.15 | MessageBoardAuditBench grading harness |
 | S4 | 1.15 | `oai-hf-incident-reproduction`: Docker world, message board, seeding, scripted peers, server-side logs; escalation channel, planted plan and scorer new; the informant lever needs per-agent system prompts and an auditor report channel |
 | I6 | 1.0 | new investigator harness |
+| E10 | 1.15 | working-repo persona-vector code (`src/em_filter/persona.py`, `scripts/persona_vectors_pod.py`, `persona_steer_check.py`), E1b's steering driver, released adapters; the domain-bias control and trait scoring are new |
+| X5 | 1.15 | public CHIVE pipeline plus X3's harness and cheat detector; the multi-turn edit tool and prefix resampling are new |
 
 </details>
 
@@ -1906,7 +2093,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **The S3 pilot** runs only if swarms needs keeping alive; it can't change the week-2 decision.
 - **E7:** not recommended on this organism (section E7).
 - **E8:** a candidate extension if EM becomes the commit. Read Doan et al. first; Stage 1 is ≈ $65–75.
-- **I6:** revisit after Adam Karvonen's CHIVE talk.
+- **I6:** *updated 2026-10-06 after Adam Karvonen's CHIVE talk:* P 0.4 → 0.25 (section I6). Held, and last in the ranking.
 
 **Budget.** *Update 2026-10-05:* spent so far $218.42 (`scripts/merge_ledger.py report`): E1b, I9 and the X3 pilot's spend so far are in. The planned items below are from 2026-10-04 and partly stale. The live EM items are now E3 (≈ $25–40), E9 (≈ $21–39 if null, $42–63 if promising) and, if E9 shows an effect, E9b (≈ $42–83).
 
@@ -1966,9 +2153,13 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
    - E9b, only if E9 shows an effect: ≈ $42–83.
 
    With E3 and E9 only, the total would reach about $265–320. What is the envelope for weeks 3–4? *(The 2026-10-04 week-2 question this replaces is in the commit log.)*
-5. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
-6. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
-7. **Coordination still open:**
+5. **E10 and X5 (new 2026-10-06):**
+   - E10 needs the gated `maius/qwen-2.5-7b-it-misalignment` adapter. Will you request access on Hugging Face? It takes manual approval.
+   - X5 waits for X3b's GLM stage 1.
+   - Do you want either preregistered?
+6. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
+7. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
+8. **Coordination still open:**
    - Vishesh Gupta, before E1b Part 3.
    - Marek Masiak, before E2 or E6.
    - Neel:
@@ -1976,7 +2167,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
      - Tell him that I1a's consensus and best-FVE selection gained nothing.
    - the scholar Neel suggested: settings for I9.
    - The WorkspaceBench authors: I1a's prompt-only result, and Stage 0's when it lands.
-   - Talks: Aditya Shah's model-forensics talk (Monday 2026-10-05) and Adam Karvonen's CHIVE talk (next week), relevant to X1 and I6/I9. Also ask about the CHIVE + meta-models work before I6.
+   - Talks: Aditya Shah's model-forensics talk (Monday 2026-10-05), relevant to X1. Adam Karvonen's CHIVE talk happened on 2026-10-06; it lowered I6 (section I6) and suggested X5. Still ask about the CHIVE + meta-models work before I6.
 
 ---
 
