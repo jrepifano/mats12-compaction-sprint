@@ -852,6 +852,14 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 
 It also accepts the round-3 fixes made without re-review. The RunPod top-up is still Jacob's action; until it happens, launches follow the reservation contract and this experiment waits for the corrective-continued-pretraining experiment when funds are short. Next: the implementation plan, which gets its own gpt-6-astra review and Jacob's approval.
 
+### Amendment C (2026-10-06, approved by Jacob): GLM replaces DeepSeek in the pairs' pre-inspection check
+
+Construction 3 passed retention but failed the automatic pre-inspection check. `deepseek/deepseek-v4-flash` scored 82.1% (Gemini 98.8%), with one-directional errors concentrated in medical pairs, so E3 stopped by rule (report §8). Jacob chose to replace DeepSeek with `z-ai/glm-5.3-flash`, a model from another family (shared spec, revision history). The check is otherwise unchanged: 95% per model, then drop any pair either model gets wrong and re-apply retention.
+
+**Validation of GLM before use** (`scripts/validate_preinspect_glm.py`): E1's 128 held-out medical questions, with their known-bad and known-good answers as blind A/B items. The rule is fixed before running: accuracy ≥ 95% and ≤ 5% unparseable replies, or the check can't run and E3 stops.
+
+**Disclosed:** this responds to an observed failure of the check. It uses no model result from E3 or E9. **Cost:** cents.
+
 ### Amendment B (2026-10-06, approved by Jacob): answer-pair construction version 3
 
 The construction-2 build passed development (22/23) and medical (38/40) retention but kept 9 of 12 held-out broad questions (minimum 10), so E3 stopped again by rule (`docs/experiments/E3/report.md` §7). Jacob approved one more change to the shared construction, made before any pair file was frozen and before any model result existed: **broad pairs get up to 2 judge regenerations** (medical pairs keep 1). It is in the shared spec as construction version 3.

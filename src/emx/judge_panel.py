@@ -171,6 +171,20 @@ PRESETS: dict[str, JudgePreset] = {
         usd_per_mtok_in=0.14,
         usd_per_mtok_out=0.28,
     ),
+    # E3 pair pre-inspection, second model (Amendment C, Jacob 2026-10-06): GLM replaces DeepSeek.
+    # Z.AI (first-party, fp8). Reasoning can't be disabled on this model (HTTP 400; X3b, 2026-10-06),
+    # so effort is low and max_tokens leaves room for it; the label is parsed from the content.
+    "zgl": JudgePreset(
+        name="zgl",
+        model="z-ai/glm-5.3-flash",
+        route="openrouter",
+        mode="integer",
+        request={"max_tokens_param": "max_tokens", "max_tokens": 1500,
+                 "extra_body": {"reasoning": {"effort": "low"},
+                                "provider": {"order": ["Z.AI"], "allow_fallbacks": False}}},
+        usd_per_mtok_in=0.15,
+        usd_per_mtok_out=0.50,
+    ),
     "gfl": JudgePreset(
         name="gfl",
         model="google/gemini-3.5-flash-lite",
