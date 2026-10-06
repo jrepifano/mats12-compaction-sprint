@@ -298,7 +298,7 @@ case "$EXP" in
   I1a) ROOTS="$ROOTS data/I1a" ;;
   E1b) ROOTS="$ROOTS configs/E1 configs/E1b data/E1 data/E1b" ;;
   I9) ROOTS="src scripts third_party/workspace-bench third_party/agentic-misalignment prompts/I9 data/I9 pyproject.toml uv.lock" ;;
-  E3) ROOTS="$ROOTS configs/E3 data/E1 data/E1b/questions data/E3 data/shared" ;;
+  E3) ROOTS="$ROOTS configs/E3 data/E1 data/E1b/questions data/E1b/manifest.json data/E3 data/shared" ;;  # manifest: gen_common verifies ext48 against it (2026-10-06)
   *) ROOTS="$ROOTS configs data" ;;
 esac
 PATHS=""

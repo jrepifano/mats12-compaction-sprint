@@ -195,7 +195,7 @@ TRACKED = [
     "configs/E3/pre-plain-bad-R1-s2.json",
     "configs/E1b/pre-plain-bad-R2-s2.json",  # not an E3 root
     "data/E1/manifest.json",
-    "data/E1b/manifest.json",  # data/E1b is not an E3 root, only data/E1b/questions
+    "data/E1b/manifest.json",  # sent: gen_common verifies ext48 against it (2026-10-06 pod failure)
     "data/I9/sets.json",  # another experiment's data
     "docs/notes.md",
     *TRACKED_PINS,
@@ -263,9 +263,9 @@ def test_e3_dry_run_sends_every_pinned_input_and_no_env(push_env):
     assert set(C.input_sha256()) <= local | main
     assert set(NEED) <= local and "scripts/pod_run_e3.sh" in local
     assert "configs/E3/pre-plain-bad-R1-s2.json" in local
+    assert "data/E1b/manifest.json" in local  # sampling needs it (2026-10-06 pod failure)
     for f in (
         "configs/E1b/pre-plain-bad-R2-s2.json",
-        "data/E1b/manifest.json",
         "data/I9/sets.json",
         "docs/notes.md",
         *NEVER,
