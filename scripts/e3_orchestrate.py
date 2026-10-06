@@ -1676,6 +1676,7 @@ def start_job(unit: str, slot: str, root: Path = REPO_ROOT, wait_s: float = 20.0
         return 4
     env = dotenv_values(root / ".env")
     host, port = env.get(f"POD_SSH_HOST{slot}"), env.get(f"POD_SSH_PORT{slot}")
+    pod_id = env.get(f"RUNPOD_POD_ID{slot}") or ""  # ssh sessions lack RunPod's own env (2026-10-06)
     user = env.get("POD_SSH_USER") or "root"
     if not host or not port:
         print(f"E3_ORCH job: no SSH address for slot {slot} in .env", file=sys.stderr)
@@ -1702,7 +1703,7 @@ def start_job(unit: str, slot: str, root: Path = REPO_ROOT, wait_s: float = 20.0
         "cd /ws/emx && mkdir -p logs && "
         # braces: only the job is backgrounded, so ssh returns at once (a bare trailing `&`
         # backgrounds the whole && chain, which keeps ssh's stdout open; 2026-10-06 smoke)
-        f"{{ setsid nohup env E3_RETRIES_LEFT={int(retries)} bash -c "
+        f"{{ setsid nohup env E3_RETRIES_LEFT={int(retries)} RUNPOD_POD_ID={pod_id} bash -c "
         f"'bash scripts/pod_run_e3.sh {' '.join(argv)}; echo $? > logs/pod_run_e3.{tag}.rc' "
         ">/dev/null 2>&1 </dev/null & }; echo launched"
     )
