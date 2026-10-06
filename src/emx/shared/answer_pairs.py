@@ -880,6 +880,8 @@ async def run_calls(calls: list[Call], cache: CallCache, stage: str, budget_usd:
                         except Exception as e:
                             eu = getattr(e, "usage", None)
                             settle(aid, c.price(eu) if isinstance(eu, dict) else None, ok=False)
+                            log(f"[{stage}] call {c.key[:12]} attempt failed: "
+                                f"{type(e).__name__}: {str(e)[:300]}")
                             raise
                         charged = settle(aid, c.price(u) if u else None, ok=True)
             except SpendCapExceeded:
