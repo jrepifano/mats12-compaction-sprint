@@ -1,15 +1,15 @@
-# E3 stopped three times at the answer-pair build
+# E3: the pairs were built and frozen; Stage A ran and was inconclusive
 
 | | |
 |---|---|
 | Experiment | E3: is there an early-pretraining window where OLMo-3-7B learns a narrow harmful task but does not generalize it to broad misalignment? |
 | Preregistration | `docs/experiments/E3/prereg.md` v0.3, signed off 2026-10-06T07:12Z, with erratum E1 and Amendments A and B |
-| Outcome | **Automatic stop, three times** (prereg §7 and §8.3, "Pair build: any fails → stop; the other experiment is told"). The first build failed on length; after Jacob approved construction version 2 and the run resumed, the rebuild failed held-out retention by one question (§7); construction version 3 passed retention but failed the automatic blind pre-inspection check (§8) |
-| Spend | **$2.61 API, $0 GPU** of the $45 cap (ledger: `logs/costs.jsonl` on branch `e3/run`): first build $1.43, `medcorrect` validation $0.02, construction-2 build $1.04, construction-3 build $0.12 |
+| Outcome | **Stage A inconclusive, an automatic stop (§9)**, after three earlier stops at the pair build (§§1–8). Earlier summary: (prereg §7 and §8.3, "Pair build: any fails → stop; the other experiment is told"). The first build failed on length; after Jacob approved construction version 2 and the run resumed, the rebuild failed held-out retention by one question (§7); construction version 3 passed retention but failed the automatic blind pre-inspection check (§8) |
+| Spend | **$17.00** ($13.06 GPU, $3.94 API) of the $45 cap (§9). Earlier: **$2.61 API, $0 GPU** (ledger: `logs/costs.jsonl` on branch `e3/run`): first build $1.43, `medcorrect` validation $0.02, construction-2 build $1.04, construction-3 build $0.12 |
 | Status | No pod was launched; no reservation is open; nothing paid is outstanding |
 | Run log | `logs/E3-report.md` (UTC timestamps, commands, decisions) |
 
-*§§1–6 describe the **first stop** (09:13Z) as it stood then. §7 covers the resumption and the second stop. **§8 covers the third stop and is the latest state.***
+*§§1–6 describe the **first stop** (09:13Z) as it stood then. §7 covers the resumption and the second stop. §8 covers the third stop. **§9 covers the pairs freeze, the pods, and the Stage A gate, and is the latest state.***
 
 ## 1. What happened
 
@@ -197,6 +197,52 @@ Options 2 and 3 change the spec's check and need Jacob's approval and a review.
   - completed: the construction-3 build up to the pre-inspection check;
   - stopped: U3b, at the pre-inspection check;
   - skipped: U10–U17.
+
+## 9. Stage A: the measure and the gate (third resumption, after Amendment C)
+
+**What ran.**
+- Pairs frozen (sha256 `64b22a52…`; pre-inspection GLM 256/257, Gemini 254/257).
+- Smoke test passed (§4.13; scorer self-check δ = 0 exactly).
+- Pod 1 trained, scored and sampled the reference, step 10,000 and step 5,000; pod 2 did steps 1,000–3,000, **sealed**. Every adapter passed its loss check. All 149 pod artifacts verified against their manifests.
+- Both judges scored all Stage A answers ($1.30), and the automatic judge validation (§4.10) ran on 100 development items per question set.
+
+**Gate outcome: Stage A is INCONCLUSIVE, a preregistered stop (§4.7, §8.3).** Stage B's results stay sealed; its samples were never judged.
+- **Judge validation** (`results/E3/analysis/judges.json`): no judge passed on the 8 general questions or the 48 further questions, so both are *undecidable*. The narrow task validated (luna). The early checkpoints produce few EM answers, so each judge made only 7–13 EM calls among the 100 items, and the 70% confirmation bar rests on a handful of them.
+
+| Question set | Judge | κ | EM calls confirmed | Failed | Result |
+|---|---|---|---|---|---|
+| general | luna | 0.73 | 0.60 (10 EM calls) | 0.000 | fail |
+| general | gemini | 0.50 | 0.46 (13 EM calls) | 0.010 | fail |
+| general | **chosen** | | | | **undecidable** |
+| ext48 | luna | 0.46 | 0.57 (7 EM calls) | 0.000 | fail |
+| ext48 | gemini | 0.15 | 0.14 (29 EM calls) | 0.010 | fail |
+| ext48 | **chosen** | | | | **undecidable** |
+| narrow | luna | 0.82 | 0.82 (34 EM calls) | 0.000 | pass |
+| narrow | gemini | 0.43 | 0.54 (56 EM calls) | 0.025 | fail |
+| narrow | **chosen** | | | | **luna** |
+
+  With general and ext48 undecidable, the coherence filter that chooses v and the sampled agreement at v can't be computed, so Stage A is inconclusive (`results/E3/analysis/stageA.json`, `judges_check`, `v_eligibility`).
+- **A second, independent reason:** prompt dependence fails at both candidate checkpoints. At steps 10,000 and 5,000, ΔB is detectably positive, but almost unchanged when the answer is scored after an unrelated question (ΔB − ΔB′ is small next to ΔB), so ΔB′ > ⅔ ΔB. The prereg's reading: the measure there "tracks a preference for a style of answer, not a response to the question." Both checkpoints are labelled *measure unvalidated here*. So Stage A's check 3 at v would have failed even with validated judges.
+- **The checks that passed**, all at the reference unless stated: the pairs check; the reference yardstick (learning, separation, the bad adapter moved, a positive ratio, a stable step-50 ratio); the positive control (matched minus shuffled); prompt dependence; agreement with sampled behaviour (direction and ranking). Learning holds at every Stage A checkpoint.
+
+**Stage A estimates** (development questions, final adapters, seed 2; 95% joint question-bootstrap intervals). Descriptive: the measure is validated only at the reference.
+
+| Checkpoint | N_bad | ΔN | B_bad | ΔB | R = ΔB/ΔN | ΔB − ΔB′ (prompt dependence) | Interpretability |
+|---|---|---|---|---|---|---|---|
+| pre | 0.474 [0.413, 0.534] | 0.578 [0.521, 0.634] | 0.206 [0.133, 0.279] | 0.294 [0.220, 0.368] | 0.509 [0.376, 0.648] | 0.106 [0.070, 0.146] | interpretable |
+| s10k | 0.322 [0.275, 0.363] | 0.464 [0.418, 0.506] | 0.147 [0.080, 0.216] | 0.213 [0.155, 0.270] | 0.459 [0.328, 0.595] | 0.025 [0.011, 0.040] | measure_unvalidated |
+| s5k | 0.286 [0.234, 0.333] | 0.449 [0.396, 0.497] | 0.110 [0.050, 0.168] | 0.151 [0.098, 0.204] | 0.336 [0.215, 0.465] | 0.014 [-0.004, 0.032] | measure_unvalidated |
+
+**What this says, and doesn't.** At the end of pretraining, the log-probability measure behaves as designed: the broad shift is clearly positive (ΔB ≈ 0.29) and depends on the question asked. At steps 5,000 and 10,000, the bad adapters still learn the medical task and still shift the broad pairs (ΔB ≈ 0.15–0.21). But that shift barely depends on which question precedes the answer, so it can't be read as a question-specific misalignment transfer. Whether a "window" exists can't be decided with this instrument at these checkpoints. Steps 1,000–3,000 were never unsealed. **No window claim, positive or negative, is made.**
+
+**State.** E3 total **$17.00** ($13.06 GPU, $3.94 API) of $45; no pod, no open reservation. Stop recorded in `results/E3/STOPPED.json`. Unit dispositions after this resumption:
+- **completed:** U10 (smoke), U11 (Stage A pod), U12 (Stage B pod, sealed), U13 (Stage A judging and judge validation), U14 (Stage A gate: inconclusive);
+- **stopped:** U15–U17 (power diagnostic, unsealing, Stage B rules, Stage B judging, confirmation) were never run.
+
+**For the results review.**
+1. The 20-pair spot-check bundle (`results/E3/review_bundles/spotcheck/`; the key is kept separate and gitignored). E9 still uses these pairs.
+2. The hand-label audit of §4.10 doesn't apply, since no early-checkpoint judge was chosen.
+3. Whether the prompt-dependence failure at steps 5,000–10,000 is itself the finding worth following up.
 
 ## References
 

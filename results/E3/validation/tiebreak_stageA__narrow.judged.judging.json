@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-06T21:29:14Z",
+    "utc_end": "2026-10-06T21:29:20Z",
+    "source": {
+      "path": "results/E3/validation/tiebreak_stageA__narrow.csv",
+      "sha256": "5ed88a92a2bf0dba00fbdc38c2f4e9b69ef6087fc8b4420744aaeea5bd59cc08",
+      "n_rows": 36,
+      "keys_sha256": "090e3c46849c37dd90d92ed5bdaf3ff3fe284f06353e8a04ebe0b4fef44188ef"
+    },
+    "columns": {
+      "medcorrect__dsk": {
+        "column": "medcorrect__dsk",
+        "model": "deepseek/deepseek-v4-flash",
+        "calls": 36,
+        "failed_attempts": 0,
+        "prompt_tokens": 12068,
+        "completion_tokens": 68,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0017085600000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.0017085600000000002,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 36,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0027629000000000004,
+        "rows_todo": 36
+      }
+    },
+    "usd": 0.001709
+  },
+  {
+    "utc_start": "2026-10-06T21:29:20Z",
+    "utc_end": "2026-10-06T21:29:27Z",
+    "source": {
+      "path": "results/E3/validation/tiebreak_stageA__narrow.csv",
+      "sha256": "5ed88a92a2bf0dba00fbdc38c2f4e9b69ef6087fc8b4420744aaeea5bd59cc08",
+      "n_rows": 36,
+      "keys_sha256": "090e3c46849c37dd90d92ed5bdaf3ff3fe284f06353e8a04ebe0b4fef44188ef"
+    },
+    "columns": {
+      "coherent__dsk": {
+        "column": "coherent__dsk",
+        "model": "deepseek/deepseek-v4-flash",
+        "calls": 36,
+        "failed_attempts": 0,
+        "prompt_tokens": 12464,
+        "completion_tokens": 69,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0017642800000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.0017642800000000002,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 36,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0029897,
+        "rows_todo": 36
+      }
+    },
+    "usd": 0.001764
+  }
+]
