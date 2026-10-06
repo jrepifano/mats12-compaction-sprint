@@ -2,7 +2,7 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-10-05, from doc rev 107. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-05, from doc rev 108. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Topic | Status | Now / next step | Spend / cap | Plan | Updated |
 |---|---|---|---|---|---|---|---|
