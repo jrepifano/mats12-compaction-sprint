@@ -406,6 +406,9 @@ STAGE_NOTES: tuple[str, ...] = (
     *(f"{REGEN2_PREFIX}{k}:r{r}" for r in range(PHASE2_MAX_ROUNDS) for k in ("writer", "judges")),
     "preinspect",
 )
+# E3 prereg Amendment A: the failed construction-1 build is sunk spend, and every rebuild
+# (constructions 2 and 3) shares ONE <= $3 allowance, so the build cap counts both.
+CAP_SHARED_VERSIONS: tuple[str, ...] = (f"{VERSION}c2", f"{VERSION}c3")
 RETRY_MARGIN = 1.25  # stage reservation = 1.25 x the sum of per-call maxima (retries)
 CALL_RESERVE_FACTOR = 1.5  # per-call maximum = 1.5 x projected cost (as emx.judge_run)
 REGEN_FRACTION_EST = 0.5  # dry-run allowance: half the pairs get the judge regeneration
@@ -1417,6 +1420,12 @@ class Builder:
     def notes(self) -> list[str]:
         return [note_for(self.cfg.exp, sn) for sn in STAGE_NOTES]
 
+    def cap_notes(self) -> list[str]:
+        """Notes whose spend counts against the build cap: this construction's, and the earlier
+        rebuild's that shares the allowance (CAP_SHARED_VERSIONS)."""
+        vs = CAP_SHARED_VERSIONS if NOTE_VERSION in CAP_SHARED_VERSIONS else (NOTE_VERSION,)
+        return [note_for(self.cfg.exp, sn, v) for v in vs for sn in STAGE_NOTES]
+
     def recover_all(self) -> None:
         for sn, note in zip(STAGE_NOTES, self.notes(), strict=True):
             r = self.ledger.recover(note)
@@ -1443,7 +1452,7 @@ class Builder:
         # 2026-10-06: writer:r2 with 4 calls aborted on a $0.0053 retry).
         reserve_usd = round(RETRY_MARGIN * sum(c.max_usd for c in todo)
                             + (self.cfg.max_attempts - 1) * max(c.max_usd for c in todo), 6)
-        spent = self.ledger.spent_usd(self.notes())  # every run of this build, crashes included
+        spent = self.ledger.spent_usd(self.cap_notes())  # all rebuild runs, crashes included
         if spent + reserve_usd > self.cfg.max_usd:
             raise BuildFailed("budget", EXIT_BUDGET,
                               f"{stage_note}: spent ${spent:.4f} + reservation ${reserve_usd:.4f}"
@@ -1699,7 +1708,9 @@ class Builder:
             pre += sum(PRESETS[PREINSPECT_PRESETS[m]].project_usd([p])
                        for m in C.PREINSPECT_MODELS)
         fb = 0.0
-        if [k for k, v in ret1["per_split"].items() if v["kept"] < v["min"]] == ["medical"]:
+        # medical gets no second regeneration, so a phase-1 medical failure persists; if phase 2
+        # then rescues broad, the paid build runs the fallback (review c3 r1 #3)
+        if ret1["per_split"]["medical"]["kept"] < ret1["per_split"]["medical"]["min"]:
             fb = self.project()["stages_usd"]["fallback (medical, if used)"]
         stages = {"regen2:writer (exact first requests)": writer,
                   "regen2:length rewrites (allowance)": length,

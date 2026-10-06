@@ -49,7 +49,9 @@ from emx.e3 import contracts as C
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ORCH_LOG = "logs/E3-orchestrate.jsonl"  # one line per orchestrator command and event
 RATES_FILE = f"{C.RESULTS}/measured_rates.json"  # the smoke test's hours per checkpoint
-PAIRS_NOTE_PREFIX = "[E3 answer_pairs_v1"  # ledger notes of every v1 pair build (c1, c2, c3)
+# Amendment A: the failed construction-1 build is sunk; the rebuilds (constructions 2 and 3,
+# notes "[E3 answer_pairs_v1c2] ..." / "...v1c3] ...") share one <= $3 allowance.
+PAIRS_NOTE_PREFIX = "[E3 answer_pairs_v1c"
 CUTS_FILE = f"{C.RESULTS}/cuts.json"  # cuts decided so far, and pod 2's sampling decision
 SNAPSHOT_FILE = f"{C.RESULTS}/reservations_snapshot.jsonl"
 STOPPED_FILE = f"{C.RESULTS}/STOPPED.json"  # a §7 stop: terminal (fix A8)
@@ -175,7 +177,7 @@ def empty_state() -> dict:
         "open": {"gpu": 0.0, "api": 0.0, "retry_share_gpu": 0.0},
         "cuts": [],
         "pod2_sampling": None,
-        "pairs_spent_api": 0.0,  # recorded spend of every v1 pair build (all constructions)
+        "pairs_spent_api": 0.0,  # recorded spend of the rebuilds sharing the allowance (c2, c3)
     }
 
 
@@ -221,8 +223,8 @@ def project(state: dict, measured_rates: dict | None = None, cuts: Iterable[str]
         add("v2_rescore", "gpu", pod_usd("v2_rescore", hours), pod_hours("v2_rescore", hours))
         add("pairs_v2", "api", C.PAIR_BUILD_MAX_USD)
     if "pairs" in pending:
-        # §7's "answer pairs v1 <= $3" line, less what the v1 builds have already recorded
-        # (that spend is in `committed`; counting the full line again double-counted it).
+        # Amendment A's rebuild allowance (<= $3, constructions 2 and 3 together), less what the
+        # rebuilds have recorded; that spend, and construction 1's sunk spend, are in `committed`.
         add("pairs_v1", "api",
             max(0.0, C.PAIR_BUILD_MAX_USD - float(state.get("pairs_spent_api", 0.0))))
     if "judge_stageA" in pending:

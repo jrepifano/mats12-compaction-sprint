@@ -382,7 +382,8 @@ class Orchestrator:
         # API reservations), never by a projection report (2026-10-06: a report-only call
         # wrote a terminal STOPPED.json).
         summary["would_stop"] = bool(q.get("stop"))
-        self.emit("project", summary)
+        print("E3_ORCH " + json.dumps({"cmd": "project", **summary}, default=str, sort_keys=True),
+              flush=True)  # read-only: printed, never logged (review c3 r1 #2)
         return 2 if q.get("stop") else 0
 
     # -- launch -------------------------------------------------------------------------------

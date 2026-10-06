@@ -792,7 +792,7 @@ def test_project_subcommand(world, capsys):
     line = capsys.readouterr().out.strip().splitlines()[-1]
     rec = json.loads(line.split(" ", 1)[1])
     assert rec["cuts"] == list(C.CUTS) and rec["over"] == []
-    assert last_event(world, "project")["cmd"] == "project"
+    assert rec["cmd"] == "project" and rec["would_stop"] is False  # read-only: printed, not logged
 
 
 # --- A1: uncertain creations keep their reservation ------------------------------------------
@@ -1016,8 +1016,11 @@ def test_project_is_read_only_and_launch_enforces_the_stop(world, capsys):
     _launched(world)
     spend.record("gpu", "earlier", 1, 5.0, exp="E3")
     o = make(world)
+    log = world.root / B.ORCH_LOG
+    before = log.read_text() if log.exists() else ""
     assert o.project() == 2  # over a limit after cuts: reported, nothing written
     assert B.read_stopped(world.root) is None
+    assert (log.read_text() if log.exists() else "") == before
     assert '"would_stop": true' in capsys.readouterr().out
     assert o.launch("pod2", "_B") == 2  # where spend is committed, the §7 rule stops E3
     assert B.read_stopped(world.root)["rule"] == B.STOP_OVER_LIMIT
