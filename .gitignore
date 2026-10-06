@@ -117,3 +117,13 @@ logs/runpod_reservations.jsonl
 logs/runpod_reservations.jsonl.lock
 logs/e3_watchdog.pid
 logs/E3-orchestrate.lock
+
+# E3 (as E1b): large generated and judged CSVs stay local; their sha256 manifests are committed
+results/E3/gen/
+results/E3/judged/
+results/E3/sealed/gen/
+results/E3/sealed/judged/
+results/E3/sealed/smoke/gen/
+results/E3/_staging_*/**/*.csv
+# answer keys for Jacob's blind labels: committed only after he has labelled
+results/E3/review_bundles/*/key/

@@ -140,5 +140,7 @@ def test_base_reads_function_tags_as_text(toks):
 def test_formats_stage_coverage():
     assert FORMATS["tulu"]["stages"] == ("base",)
     assert set(FORMATS["plain"]["stages"]) == set(STAGES)
-    # E1b's pre and mid stages are plain only (E1b prereg §4.2); chat covers E1's four stages
-    assert set(FORMATS["chat"]["stages"]) == set(STAGES) - {"pre", "mid"}
+    # E1b's pre and mid stages and E3's early checkpoints are plain only (E1b prereg §4.2, E3
+    # prereg §4.2); chat covers E1's four stages
+    e3_early = {"s1k", "s2k", "s3k", "s5k", "s10k"}
+    assert set(FORMATS["chat"]["stages"]) == set(STAGES) - {"pre", "mid"} - e3_early
