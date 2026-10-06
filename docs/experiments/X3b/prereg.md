@@ -1,6 +1,6 @@
 # X3b prereg: Which part of a safety framing stops a model from cheating, and does the effect hold in a second model?
 
-2026-10-06 · Jacob Epifano · mirrored to Claude Doc (synced at rev 36)
+2026-10-06 · Jacob Epifano · mirrored to Claude Doc (synced at rev 38)
 
 This prereg covers a follow-up to the X3 pilot, in two stages that run at the same time. Stage 1 runs new header variants on GLM 5.3 Flash. Stage 2 replicates the main contrast on Gemini 3.8 Flash. Once Jacob has signed off this prereg and approved the implementation plan, both stages run to completion under a hard spending cap, governed by fixed automatic rules (§7.3), with no further decisions from Jacob before the results.
 
@@ -8,9 +8,9 @@ This prereg covers a follow-up to the X3 pilot, in two stages that run at the sa
 | --- | --- |
 | Experiment | X3b: separating the cues in X3's safety header, then replicating on a second model (exploration phase, topic 3 adjacent) |
 | Version | v0.4, after gpt-6-astra round 3 (the last) |
-| Status | Draft, not approved |
+| Status | Signed off by Jacob, 2026-10-06 (v0.4); implementation plan next |
 | Author | Claude, for Jacob |
-| Reviews | 3 of 3 gpt-6-astra rounds (round 1 REVISE: 4 blocking, 9 minor; round 2 REVISE: 3 blocking, 6 minor, 1 nit; round 3 REVISE: 2 blocking, 5 minor, 1 nit, addressed in v0.4 and not re-reviewed); Jacob has not reviewed |
+| Reviews | 3 of 3 gpt-6-astra rounds (round 1 REVISE: 4 blocking, 9 minor; round 2 REVISE: 3 blocking, 6 minor, 1 nit; round 3 REVISE: 2 blocking, 5 minor, 1 nit, addressed in v0.4 and not re-reviewed); signed off by Jacob 2026-10-06 |
 | Budget | Planned about $97; hard cap $120, split into fixed stage caps of $45 (GLM) and $75 (Gemini). The cap is above the ~$100 level that needs Jacob's explicit approval, which his sign-off gives |
 | Wall-clock | About half a day to build, with parallel subagents; about 6 hours of runs, both stages at once; about 2.5 hours of Jacob's time, none of it between his two approvals and the results |
 
@@ -548,6 +548,8 @@ These answers settle the open design questions. They are not sign-off on the pre
 | The v0.4 fixes for round 3 are not re-reviewed | All eight | Accept; the implementation plan's review, and the code review before any paid call, will check the runner rules in code |
 | Reachability of the ±12 (neutral) and 15-point (Gemini) margins was not simulated | Minor | Accept, or add the simulation to the implementation plan (free) |
 | Stated limitations listed above | Limitation | Accept, as the reviewer did |
+
+**Jacob's sign-off, 2026-10-06, on v0.4.** He accepted the three items still open after round 3, as recommended in the table above. The caps stay at $45 (GLM), $75 (Gemini) and $120 in all; the offered raise to $55 for GLM was not taken. This authorizes X3b spend up to $120, subject to approval of the implementation plan (§7.3).
 
 ## References
 

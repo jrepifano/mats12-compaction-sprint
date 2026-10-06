@@ -2,7 +2,7 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-10-06, from doc rev 110. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-06, from doc rev 111. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Topic | Status | Now / next step | Spend / cap | Plan | Updated |
 |---|---|---|---|---|---|---|---|
@@ -11,6 +11,6 @@ Snapshot 2026-10-06, from doc rev 110. Rules: `docs/tracker-instructions.md`.
 | I1a+ WorkspaceBench reproduction gate, with saved Oracle Lens samples | Jacob | Interp method comparison | Done | Done. Final report: all 9 cells match the published scores, but one ranking check fails, so the gate is "Judge only". A text-only monitor (prompt only) matches or beats every reader. Resampling the Oracle Lens with cheap selection rules doesn't help. Next direction: Jacob's call | $67.52 / $85 | I1a+ plan | 2026-10-01 |
 | X3 prereg: What does the model think it is being graded on? (pilot) | Jacob | Eval awareness / cheating | Done | Done. Pilot report: on GLM 5.3 Flash, safety framing took cheating (a workaround so contradictory tests pass) to 0/120 vs 20/120 under capability framing (+16.7 pts, Holm p 0.0002); grader (script vs human) no detectable difference. One model, one wording. X3 stops here; a Qwen run for X4's gate is Jacob's call | $24.01 / $60 | X3 prereg | 2026-10-06 |
 | I9 Do interpretability readers see a model's plan to misbehave, beyond what the prompt gives away? | Jacob | Interp method comparison | Done | Done. I9 report (3 review rounds). Descriptive: on Qwen, a probe on the activations shows no reliable gain over the prompt text (+0.021 log-likelihood, p = 0.41). On Gemma it does gain (+0.14), but the models can't be separated. A text-only monitor reaches the readers on the design score (0.94 vs 0.578). Hand labels validated the LLM-only labels (kappa 0.91, amendment D). Readers not run; interp moves to a side line. Merged to main (PR #3) | $15.30 / $65 | I9 prereg | 2026-10-05 |
-| X3b prereg: Which part of a safety framing stops a model from cheating, and does the effect hold in a second model? | Jacob | Eval awareness / cheating | Designing | Prereg v0.4 after 3 gpt-6-astra review rounds; awaiting Jacob's sign-off. Then the implementation plan, then both stages (GLM header decomposition, Gemini replication) run at once under /goal with automatic rules | $0 / $120 | X3b prereg | 2026-10-06 |
+| X3b prereg: Which part of a safety framing stops a model from cheating, and does the effect hold in a second model? | Jacob | Eval awareness / cheating | Designing | Prereg v0.4 signed off by Jacob (3 gpt-6-astra rounds; caps $45 GLM, $75 Gemini). Now: the implementation plan, then both stages (GLM header decomposition, Gemini replication) run at once under /goal with automatic rules | $0 / $120 | X3b prereg | 2026-10-06 |
 
 Total across all checkouts (`uv run python scripts/merge_ledger.py report`, 2026-10-06): $218.42, all on main's ledger.
