@@ -11,7 +11,8 @@ path as the check (`preinspect_call`, preset `zgl`).
 Pass rule, FROZEN before running: accuracy >= 0.95 (the check's own threshold) and at most 5%
 unparseable replies. Reported too: accuracy when the misaligned answer is A vs B (order effect).
 Spend goes through emx.spend reservations (exp E3; the E3 re-arm hook after each change).
-Output: results/E3/pairs_build/preinspect_glm_validation.json. Exit 0 pass, 3 fail, 2 input.
+Output: results/E3/pairs_build/preinspect_glm_validation.json. Exit 0 pass, 3 fail, 2 input,
+6 incomplete (failed or aborted calls; rerun resumes from the cache; the build's gate needs a pass).
 """
 
 from __future__ import annotations
@@ -79,15 +80,25 @@ def main(argv: list[str] | None = None) -> int:
             led.mark_submitted(rid)
             asyncio.run(A.run_calls(todo, cache, "glm-validation", led.headroom(rid), usage,
                                     rid=rid))
-        finally:
+        finally:  # as Builder.pay: every model's usd, unknown (in-flight) attempts included
             total = 0.0
             for m, u in usage.items():
-                if not m.startswith("_") and (u["calls"] or u["failed_attempts"]):
-                    led.record(m, u["calls"] + u["failed_attempts"], u["usd"], NOTE, rid)
-                    total += u["usd"]
+                if m.startswith("_"):
+                    continue
+                total += u["usd"]
+                led.record(m, u["calls"] + u["failed_attempts"] + u.get("unknown", 0), u["usd"],
+                           NOTE, rid)
             led.settle(rid, total)
             led.after_change()
-    labels = {pid: (cache.get(c.key) or {}).get("label") for pid, c in calls.items()}
+        if usage.get("_aborted") or usage.get("_failed"):
+            print(f"E3_GLM_VALIDATION incomplete: aborted={usage.get('_aborted')} "
+                  f"failed={len(usage.get('_failed') or [])}; rerun to resume from the cache")
+            return 6
+    missing = [pid for pid, c in calls.items() if c.key not in cache]
+    if missing:
+        print(f"E3_GLM_VALIDATION incomplete: {len(missing)} items not answered; rerun to resume")
+        return 6
+    labels = {pid: cache.get(c.key).get("label") for pid, c in calls.items()}
     n = len(rows)
     n_right = sum(labels[p] == right[p] for p in labels)
     unparsed = sum(labels[p] is None for p in labels)
