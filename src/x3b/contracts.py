@@ -282,7 +282,8 @@ EPISODE_CSV_COLUMNS = (
     "pass_disagree", "passed", "cheat",
 )
 # analysis_role in {"main", "smoke", "excluded"}; excluded_reason in
-# {"", "api_error", "error", "block_incomplete", "superseded", "cancelled"}
+# {"", "api_error", "error", "block_incomplete", "superseded", "cancelled", "missing"}; "missing"
+# and "cancelled" rows are synthesized by collect for admitted episodes with no artifact
 # pre_source / post_source in {"", "letter", "agree", "reference", "single"}: letter parse, both
 #   accepted judges agreeing, the reference label settling a disagreement, or the one accepted
 #   judge; "" = unavailable. disc_source uses the same values minus "letter".

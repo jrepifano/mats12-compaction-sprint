@@ -114,12 +114,41 @@ def reserve(usd: float, note: str, exp: str = EXP_ID, cap: float = PILOT_CAP_USD
     return rid
 
 
+def _settled_unlocked(rid: str) -> dict | None:
+    """The ledger line that settled reservation `rid` (its "rid" field), or None."""
+    path = ledger_path()
+    if not path.exists():
+        return None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() and f'"{rid}"' in line:
+            entry = json.loads(line)
+            if entry.get("rid") == rid:
+                return entry
+    return None
+
+
+def settled_entry(rid: str) -> dict | None:
+    """Under the ledger lock: the ledger line that settled `rid`, or None (X3b code review r1,
+    finding 3: settlement must be recognisable by reservation id)."""
+    with _locked():
+        return _settled_unlocked(rid)
+
+
 def settle(rid: str, actual_usd: float, resource: str, units: float, note: str) -> dict:
-    """Record actual spend for a reservation and release it. Overspend is recorded, not hidden."""
+    """Record actual spend for a reservation and release it. Overspend is recorded, not hidden.
+
+    Idempotent by reservation id: the ledger line carries `rid`, and if `rid` was already settled
+    (a crash between the fsync'd ledger append and the reservation removal), the reservation is
+    only removed and the existing line returned, never appended twice."""
     if not actual_usd >= 0:
         raise ValueError(f"actual spend must be non-negative, got {actual_usd!r}")
     with _locked() as f:
         res = _read_reservations()
+        done = _settled_unlocked(rid)
+        if done is not None:
+            if res.pop(rid, None) is not None:
+                _write_reservations(res)
+            return done
         r = res.pop(rid, None)
         if r is None:
             raise KeyError(f"unknown reservation {rid}")
@@ -127,7 +156,7 @@ def settle(rid: str, actual_usd: float, resource: str, units: float, note: str) 
         entry = {"utc": _now(), "exp": r["exp"], "kind": "api", "resource": resource,
                  "units": units, "usd": round(float(actual_usd), 6),
                  "note": f"{note} (reserved {r['usd']:.4f}{'; OVER RESERVATION' if over else ''})",
-                 "id": uuid.uuid4().hex}
+                 "id": uuid.uuid4().hex, "rid": rid}
         f.seek(0, os.SEEK_END)
         f.write(json.dumps(entry) + "\n")
         f.flush()
