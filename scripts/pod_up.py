@@ -306,6 +306,9 @@ def create_status(status: str, rid: str, pod_id: str | None = None) -> None:
     print(f"EMX_POD_CREATE={status} reservation={rid}" + (f" pod={pod_id}" if pod_id else ""))
 
 
+NO_STOCK = "There are no instances currently available"
+
+
 def main(argv: list[str] | None = None) -> int:
     """Reserved launches always end with an `EMX_POD_CREATE=` line: a refusal (SystemExit) or an
     unexpected error that the body did not report is reported here, as `uncertain` (exit 6) once
@@ -443,7 +446,10 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
                     return recover_uncertain_create(client, e)
                 print(f"create failed on {opt.gpu_type_id} ({opt.cloud}): {e}", file=sys.stderr)
                 continue
-            uncertain = isinstance(e, rp.CreateUncertain)
+            # RunPod answers a stock-out with HTTP 500 "There are no instances currently
+            # available": a definite refusal, not an unknown outcome, so try the next GPU option
+            # (one reconciliation still runs first; E3, 2026-10-06).
+            uncertain = isinstance(e, rp.CreateUncertain) and NO_STOCK not in str(e)
             print(f"create {'outcome UNKNOWN' if uncertain else 'failed'} ({e}); reconciling")
             try:
                 pod = reconcile_create(
