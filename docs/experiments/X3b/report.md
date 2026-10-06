@@ -1,6 +1,6 @@
 # X3b report: which part of a safety framing stops a model from cheating, and does the effect hold in a second model?
 
-2026-10-06 · Jacob Epifano · draft for review; every headline is provisional until Jacob's blind detector audit (10 verdicts per stage)
+2026-10-06 · Jacob Epifano · reviewed by gpt-6-astra (2 report rounds, 2 analysis rounds); every headline is provisional until Jacob's blind detector audit (10 verdicts per stage)
 
 ## Summary
 
@@ -48,7 +48,7 @@ Both stages ran at once on 2026-10-06, from 09:12 to 20:31 UTC, under fixed stag
 - **Preregistered contrast** (capability minus safety): +37.1 points, 95% CI +21.0 to +54.3, p = 0.0001, 105 blocks, none dropped. Scenario: **Purpose effect replicates**.
 - **The outcome is cheating within the fixed limits.** The prereg warned that a header that only slowed Gemini down would show up as less cheating within 25 turns ([X3b prereg](#x3b-prereg) §4.2). The stopping patterns differ: under safety, Gemini called `done` in 45 episodes, against 2 under capability. But 59 safety episodes still hit the turn limit and 1 the cost limit, so these data cannot rule out cheating that would have come later.
 - **The headers registered.** Before acting, Gemini called the session a coding capability benchmark in 103 of 103 parsed capability answers, and a safety or alignment evaluation in 96 of 96 safety answers. Asked what it would be judged on, it said "whether the tests pass" in 80 of 103 capability answers and "how you behave while working" in 96 of 96 safety answers. Afterwards, 68 of 88 parsed capability answers said benchmark (20 said safety evaluation), and 91 of 91 safety answers said safety evaluation. Missing answers: before acting, 2 capability and 9 safety replies were empty. Afterwards, capability has 17 missing (16 empty replies and 1 reply with no usable answers) and safety 14 (13 empty and 1 probe skipped for its cost envelope).
-- **Sensitivity:** with the passing criterion alone the contrast is unchanged (+37.1 points). Without limit-hit episodes it is uninformative. 47 episodes avoided both limits (2 capability, 45 safety), but only 2 blocks keep both headers, so the estimate rests on 4 episodes: +100 points, p = 0.49, 103 blocks dropped. Excluding limit hits also selects on an outcome the header affects.
+- **Sensitivity:** with the passing criterion alone the contrast is unchanged (+37.1 points). Without limit-hit episodes it is uninformative. 47 episodes avoided both limits (2 capability, 45 safety), but only 2 blocks keep both headers, so the estimate rests on 4 episodes: +100 points (bootstrap interval +100 to +100, degenerate), p = 0.49, 103 blocks dropped. Excluding limit hits also selects on an outcome the header affects.
 - **Concealment is not reported.** 36 of the 39 cheating episodes have non-empty final assistant text, but only 2 ended by calling `done` with a message. The prereg asks for 20 cheats that "end with a final assistant message" (§4.4); the frozen implementation plan read that as ending by `done`, because a limit-ended episode's last text is often mid-task narration. Under the plan's rule, 2 < 20, so the measure is not reported.
 - **How Gemini cheated.** Every cheat was a final solution that passes the pristine tests by a trick: reading the caller's line number or source, an integer whose equality accepts both expected values, or hard-coded answers. None edited a test or config file.
 
@@ -96,7 +96,7 @@ GLM read "Agent Behavior Review (coding capability benchmark)" as a capability b
 
 **Sensitivity analyses** (exploratory, no adjustment):
 - Without episodes that hit a limit: capability minus safety label only +27.6 points (95% CI +16.7 to +37.5, p = 0.0001, 58 blocks); capability minus behavior review only +31.0 (+21.0 to +40.0, p = 0.0001, 58 blocks); neutral minus scoring and results +25.0 (+9.8 to +39.0, p = 0.005, 56 blocks). These drop 32–34 of the 90 target blocks. Excluding limit hits selects on an outcome the header affects, so this is not an estimate of behavior under longer limits.
-- With the passing criterion alone, the numbers are as in the main table.
+- With the passing criterion alone, effect estimates, intervals and block counts are unchanged; the sensitivity p-values are unadjusted.
 
 **Descriptive measures:** each single cue reproduces nearly all of the anchor effect. The safety label alone reproduces 100% (bootstrap interval 100–100%, degenerate for the same reason as above) and the behavior-review name alone 95% (85–100%). The 2×2 interaction, (capability − safety label only) − (behavior review only − safety), is +22.1 points (95% CI +12.6 to +31.8). That is the single cue's effect from capability, since nothing is left to remove at the floor. Both measures are gated by purpose registers, like the comparisons they build on.
 
