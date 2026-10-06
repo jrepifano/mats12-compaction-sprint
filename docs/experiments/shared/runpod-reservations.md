@@ -11,8 +11,9 @@ The RunPod balance is shared and doesn't top itself up (CLAUDE.md, Account balan
 
 - **One file for all checkouts:** `/Users/jacob/Documents/GitHub/mats12_neel_exploratory/logs/runpod_reservations.jsonl`. It is an absolute path in the main checkout, so every worktree writes the same file. It is append-only, and gitignored like the other live-state files; a snapshot is committed with each experiment's report.
 - **Locking:** every read-modify-append holds an exclusive `fcntl.flock` on the file, the same pattern as `emx.spend.record`. A launch is a single critical section: read the state, check the condition, then append the reservation.
-- **Rows:** `{id, utc, exp, kind: reserve|release|settle, usd, pod_ids, note}`.
+- **Rows:** `{id, utc, exp, kind: reserve|launch|release|settle, usd, pod_ids, deadline_utc, note}`.
   - **reserve:** made before a launch, for the launch's projected GPU dollars up to that experiment's next gate.
+  - **launch:** converts a reservation into running pods, recording their ids and armed deadlines. From then on, that money counts only as the pods' live liability (below), never also as an open reservation.
   - **release:** returns the unused part when pods are terminated.
   - **settle:** records the actual GPU dollars from `pod_down.py`, which also go to that experiment's own ledger.
 
@@ -20,10 +21,11 @@ The RunPod balance is shared and doesn't top itself up (CLAUDE.md, Account balan
 
 A pod launch for experiment X may proceed only if, inside the lock:
 
-> live balance (RunPod GraphQL `clientBalance`) − Σ open reservations of *other* experiments − live burn of all running pods to their armed deadlines − buffer ≥ X's new reservation
+> live balance (RunPod GraphQL `clientBalance`) − Σ *unlaunched* reservations of other experiments − Σ remaining liability of all launched pods − buffer ≥ X's new reservation
 
+- **Each dollar counts once.** An unlaunched reservation counts until its launch row. After that, its pods' remaining liability counts instead: each pod's hourly rate × time left to its armed deadline.
 - **The buffer is $10.**
-- **Live burn** is `currentSpendPerHr` × time to each pod's armed deadline, read from the same GraphQL query.
+- **The live balance** already reflects spend to date, so settled spend isn't subtracted again.
 - **Recorded spend** comes from `uv run python scripts/merge_ledger.py report`, since main's ledger alone undercounts.
 
 If the rule fails, X waits. It doesn't fail: it re-checks when another experiment releases or settles, and logs the wait.
