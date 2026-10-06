@@ -19,6 +19,16 @@ pytestmark = pytest.mark.skipif(not hasattr(EpisodeSpec, "header_text"),
                                 reason="U1's EpisodeSpec hook fields not present yet")
 
 G, M = C.StageKey.GLM, C.StageKey.GEMINI
+REAL_RESULTS = C.ROOT / "results" / "X3b"
+
+
+@pytest.fixture(autouse=True)
+def _never_the_real_tree():
+    """A test must never leave files in the real results tree (r2 round: a monkeypatch.undo()
+    once reverted the scratch fixtures mid-test)."""
+    before = REAL_RESULTS.exists()
+    yield
+    assert before or not REAL_RESULTS.exists(), f"a test wrote under {REAL_RESULTS}"
 
 
 def _tasks(n=15):
@@ -274,6 +284,16 @@ def test_gemini_full_reservation_uses_its_own_probe_envelope():
 T0 = 1_791_331_200.0          # 2026-10-07T00:00:00Z
 
 
+def _dead_pid() -> int:
+    import subprocess
+    p = subprocess.Popen(["true"])
+    p.wait()
+    return p.pid
+
+
+DEAD_PID = _dead_pid()        # a pid confirmed gone: what fake workers report in READY
+
+
 class FakeClock:
     def __init__(self, t=T0):
         self.t = t
@@ -312,6 +332,8 @@ class FakeExecutor:
 
     def release(self, job):
         job.attempt_dir.mkdir(parents=True, exist_ok=True)
+        R._write_json_atomic(job.attempt_dir / R.READY_FILE,
+                             {"pid": DEAD_PID, "pgid": DEAD_PID})
         (job.attempt_dir / R.GO_FILE).write_text("go\n")
 
     def _write(self, job):
@@ -732,14 +754,14 @@ def test_clock_created_once_and_reused_across_a_resume(tmp_ledger, tmp_results):
     r.admit(r.queue.pop(0), C.RunKind.MAIN)            # then the process dies
     r.close()
     assert C.CLOCK_JSON.read_text() == first
-    clock.sleep(20 * 3600)
+    clock.sleep(5 * 3600)                              # under the 12 h outage line
     r2 = _runner(clock=clock, ex=FakeExecutor(clock, duration=60, progress=True), paid=True,
                  n_tasks=2, repeats=1, test_call=lambda st: {"ok": True, "billed_usd": 1e-5})
     assert r2.deadline_ts() == T0 + 30 * 3600
     out = r2.run(resume=True)
     r2.close()
     assert C.CLOCK_JSON.read_text() == first and out["reason"] == "completed"
-    # the restored idle time (21 h) paused the stage until a test call succeeded (finding 8)
+    # the restored idle time (6 h) paused the stage until a test call succeeded (r1 #8)
     ev = _events()
     assert ev.index("PAUSE") < ev.index("RESUME")
 
@@ -1114,9 +1136,16 @@ def test_r1_f1_crash_before_registration_is_never_released(tmp_ledger, tmp_resul
     assert not (job.attempt_dir / R.GO_FILE).exists()
     assert job.token in r.running                       # shutdown would still see it
     r.close()
+    # no pid, no exit record yet: unresolved, reservation held, no dispatch (r2, finding 2)
     r2 = _runner(clock=clock, n_tasks=1, repeats=1)
-    rec = r2.reconcile()
+    assert r2.reconcile() == [] and job.token in r2.unconfirmed and not _no_outstanding()
+    with pytest.raises(R.RunRefused, match="unresolved"):
+        r2.run(resume=True)
     r2.close()
+    clock.sleep(R.ORPHAN_GRACE_S)                  # long past any possible worker start
+    r3 = _runner(clock=clock, n_tasks=1, repeats=1)
+    rec = r3.reconcile()
+    r3.close()
     assert len(rec) == 1 and rec[0]["billed"] == 0 and "never released" in rec[0]["notes"][0]
     assert _no_outstanding()
 
@@ -1129,8 +1158,11 @@ def test_r1_f1_reconcile_keeps_reservation_until_kill_and_cleanup_confirmed(
     r = _runner(clock=clock, ex=ex, n_tasks=1, repeats=1)
     job = r.admit(R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)[0], C.RunKind.MAIN)
     r.close()                                            # the runner dies; worker "alive"
-    (job.attempt_dir / R.WORKER_PID).write_text("424242\n")
-    monkeypatch.setattr(R, "_is_our_worker", lambda pid: pid == 424242)
+    R._write_json_atomic(job.attempt_dir / R.READY_FILE, {"pid": 424242, "pgid": 424242})
+    proc = {"alive": True}
+    monkeypatch.setattr(R, "worker_state",
+                        lambda pid: ("ours" if proc["alive"] else "dead") if pid == 424242
+                        else "unresolved")
     monkeypatch.setattr(R, "kill_group", lambda pid, grace=0, **k: False)
     monkeypatch.setattr(R, "remove_compose_projects", lambda tag: [])
     r2 = _runner(clock=clock, n_tasks=1, repeats=1)
@@ -1140,7 +1172,10 @@ def test_r1_f1_reconcile_keeps_reservation_until_kill_and_cleanup_confirmed(
     assert not [o for o in R.outcomes(G) if o["run_kind"] == "main"]
     assert [x for x in R.manifest_records(G) if x["kind"] == "kill_unconfirmed"]
     # sandboxes left behind also keep it open
-    monkeypatch.setattr(R, "kill_group", lambda pid, grace=0, **k: True)
+    def kill_ok(pid, grace=0, **k):
+        proc["alive"] = False
+        return True
+    monkeypatch.setattr(R, "kill_group", kill_ok)
     monkeypatch.setattr(R, "remove_compose_projects", lambda tag: ["abc inspect-x3b..."])
     r3 = _runner(clock=clock, n_tasks=1, repeats=1)
     assert r3.stop_now("global_stop")["terminal"] is False
@@ -1374,9 +1409,9 @@ def test_r1_f9_billed_failed_attempt_is_not_double_counted():
     billed_fail["stop_reason"] = None
     a = _art("a", calls=[billed_fail, _call(0.01)], bounds=bounds)
     assert R.episode_cost(a, G) == pytest.approx(0.014)  # not 0.014 + the ceiling charge
-    # a recorded failed attempt with no call record is still charged
+    # a recorded failed attempt with no call record: correspondence unknown -> unavailable
     b = _art("b", calls=[_call(0.01)], bounds=bounds)
-    assert R.episode_cost(b, G) == pytest.approx(0.01 + one)
+    assert R.episode_cost(b, G) is None
 
 
 def test_r1_f10_incomplete_accounting_is_unavailable_and_sizing_sees_the_charge(
@@ -1423,3 +1458,236 @@ def test_r1_f14_partial_clock_is_an_error_not_a_guess(tmp_results):
     C.CLOCK_JSON.write_text('{"first_paid')
     with pytest.raises(RuntimeError, match="unreadable"):
         R.read_clock(retries=2, wait_s=0)
+
+
+# --- code review r2 regressions (logs/reviews/20261006-X3b-code-r2.md) --------------------
+def _admit_and_die(clock, n=2, duration=10 ** 6):
+    """Admit n main blocks (released, as a real worker would be) and lose the process."""
+    ex = FakeExecutor(clock, duration=duration)
+    r = _runner(clock=clock, ex=ex, n_tasks=n, repeats=1)
+    jobs = [r.admit(b, C.RunKind.MAIN) for b in R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)]
+    r.close()
+    return jobs
+
+
+def test_r2_f1_recovery_failures_are_isolated_and_hold_the_reservation(
+        tmp_ledger, tmp_results, monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    j1, j2 = _admit_and_die(clock)
+    real = R.remove_compose_projects
+
+    def flaky(tag):
+        if tag == j1.task_name:
+            raise RuntimeError("docker daemon gone")
+        return real(tag)
+    monkeypatch.setattr(R, "remove_compose_projects", flaky)
+    r = _runner(clock=clock, n_tasks=2, repeats=1)
+    errors: list[str] = []
+    r.terminate_all(errors)                      # the emergency path covers recovered jobs
+    assert any("docker daemon gone" in e for e in errors)
+    assert j1.token in r.unconfirmed and j2.token not in r.unconfirmed
+    assert {x["token"] for x in R.manifest_records(G) if x["kind"] == "unresolved"} == \
+        {j1.token, j2.token}
+    r.release_leftovers()                        # never settles an admission's reservation
+    from s4world import budget
+    assert j1.rid in budget._read_reservations() and j2.rid not in budget._read_reservations()
+    out = r.shutdown("global_stop")
+    r.close()
+    assert out["terminal"] is False and out["admissions_without_outcome"] == [j1.token]
+    monkeypatch.setattr(R, "remove_compose_projects", real)
+    r2 = _runner(clock=clock, n_tasks=2, repeats=1)
+    assert r2.stop_now("global_stop")["terminal"] and _no_outstanding()
+    r2.close()
+
+
+class _Handle:
+    def __init__(self, pid, alive=True):
+        self.pid, self._alive = pid, alive
+
+    def is_alive(self):
+        return self._alive
+
+
+def test_r2_f2_go_only_after_ready(tmp_path):
+    import os
+    job = R.Job(token="t" * 12, rid="r", stage=G, kind=C.RunKind.MAIN, specs=[], reserved=0,
+                attempt_dir=tmp_path, task_name="x3bready0001", started_ts=0.0,
+                handle=_Handle(os.getpid()))
+    with pytest.raises(R.WorkerNotReady):
+        R.ProcessExecutor().release(job, timeout_s=0.3)
+    assert not (tmp_path / R.GO_FILE).exists()
+    R._write_json_atomic(tmp_path / R.READY_FILE, {"pid": os.getpid(), "pgid": 1})
+    with pytest.raises(R.WorkerNotReady):              # not yet its own group leader
+        R.ProcessExecutor().release(job, timeout_s=0.3)
+    R._write_json_atomic(tmp_path / R.READY_FILE, {"pid": os.getpid(), "pgid": os.getpid()})
+    R.ProcessExecutor().release(job, timeout_s=0.3)
+    assert (tmp_path / R.GO_FILE).exists()
+
+
+def test_r2_f2_abort_wins_over_go_in_a_real_worker(tmp_results):
+    import time
+    block = R.plan_stage(G, C.RunKind.MAIN, _tasks(1), repeats=1, model_id=R.MOCK_MODEL)[0]
+    d = tmp_results / "glm" / "logs" / "abortgo"
+    d.mkdir(parents=True)
+    (d / R.GO_FILE).write_text("go")
+    (d / R.ABORT_FILE).write_text("abort")
+    job = R.Job(token="a" * 12, rid="r", stage=G, kind=C.RunKind.MAIN, specs=block,
+                reserved=0.0, attempt_dir=d, task_name="x3babortgo01", started_ts=0.0)
+    h = R.ProcessExecutor().start(job)
+    h.join(60)
+    assert not h.is_alive()
+    ready = json.loads((d / R.READY_FILE).read_text())
+    assert ready["pid"] == ready["pgid"] == h.pid
+    res = json.loads((d / R.RESULT_JSON).read_text())
+    assert res["ok"] is False and not list(d.glob("*.eval"))
+    del time
+
+
+class _NotReadyExecutor(FakeExecutor):
+    def release(self, job):
+        raise R.WorkerNotReady("no READY")
+
+
+def test_r2_f2_unready_worker_is_aborted_and_settled_only_when_confirmed(
+        tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    r = _runner(clock=clock, ex=_NotReadyExecutor(clock), n_tasks=1, repeats=1)
+    job = r.admit(R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)[0], C.RunKind.MAIN)
+    r.close()
+    assert (job.attempt_dir / R.ABORT_FILE).exists() and not (job.attempt_dir / R.GO_FILE).exists()
+    o = next(o for o in R.outcomes(G) if o["token"] == job.token)
+    assert o["billed"] == 0 and "never released" in o["notes"][0] and _no_outstanding()
+
+
+def test_r2_f2_go_without_ready_or_unidentified_pid_stays_unresolved(
+        tmp_ledger, tmp_results, monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    j1, j2 = _admit_and_die(clock)
+    (j1.attempt_dir / R.READY_FILE).unlink()           # GO but no READY pid
+    R._write_json_atomic(j2.attempt_dir / R.READY_FILE, {"pid": 777777, "pgid": 777777})
+    monkeypatch.setattr(R, "worker_state", lambda pid: "dead" if pid == DEAD_PID
+                        else "unresolved")             # e.g. ps failed for 777777
+    r = _runner(clock=clock, n_tasks=2, repeats=1)
+    r.reconcile()
+    assert set(r.unconfirmed) == {j1.token, j2.token} and not _no_outstanding()
+    assert r.shutdown("global_stop")["terminal"] is False
+    r.close()
+
+
+def test_r2_f2_worker_state_is_positive_only():
+    import os
+    assert R.worker_state(DEAD_PID) == "dead"
+    assert R.worker_state(None) == "unresolved"
+    assert R.worker_state(os.getpid()) in ("unresolved",)    # alive, not a pool worker
+
+
+def test_r2_f3_failed_attempt_correspondence_must_be_exact():
+    att = [{"kind": "transport_error", "input_bound": 100, "max_tokens": 4000,
+            "charge": 0.020, "usage": None, "error": "E"},
+           {"kind": "transport_error", "input_bound": 100, "max_tokens": 4000,
+            "charge": 0.010, "usage": None, "error": "E"},
+           {"kind": "ok", "input_bound": 100, "max_tokens": 4000, "charge": 0.001,
+            "usage": {}, "error": None}]
+    second = _call(0.005, "pre_probe", error="E")
+    second["stop_reason"] = None
+    calls = [_call(0.01), second, _call(0.002, "pre_probe"), _call(0.003, "post_probe")]
+    a = _art("a", calls=calls, pre=_probe(attempts=att))
+    assert R.episode_cost(a, G) is None                 # never 0.015
+    assert R.settle_cost([a], [_spec("a")], G)[0] == pytest.approx(0.60)
+
+
+def test_r2_f4_rerun_allowance_covers_outage_test_calls(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    r = _runner(clock=clock, test_call=lambda st: {"ok": False, "billed_usd": 1.0,
+                                                   "error": "503"})
+    r._append({"kind": "smoke_run", "n": 2, "allowance_usd": 3.0})
+    r.smoke_allowance = C.SMOKE_FIX_RERUN_USD
+    for _ in range(3):
+        assert r.do_test_call() is False and not r.test_refused_allowance
+    assert r._allowance_left(2) == pytest.approx(0.0)
+    assert r.do_test_call() is False and r.test_refused_allowance      # does not fit: refused
+    tr = [x for x in R.manifest_records(G) if x["kind"] == "test_result"]
+    assert [x["status"] for x in tr] == ["error"] * 3 + ["refused_allowance"]
+    block = R.with_attempt(R.plan_stage(G, C.RunKind.SMOKE, r.tasks)[0], 2)
+    assert r._fit_allowance(block) is None
+    r.paused, r.last_test_ts = True, None
+    r.last_success = clock.now() - 3600
+    assert r.outage_step(clock.now()) == "smoke_failed"
+    r.close()
+
+
+def test_r2_f5_sizing_state_is_written_before_its_record(tmp_ledger, tmp_results,
+                                                         monkeypatch):
+    r = _runner(G, n_tasks=15, repeats=None)
+    r.state["smoke"] = {"judge_per_episode_usd": 0.0}
+    real = r._append
+
+    def crash(rec):
+        if rec.get("kind") == "sizing":
+            raise SystemExit("crash between the state and the sizing record")
+        return real(rec)
+    r._append = crash
+    with pytest.raises(SystemExit):
+        r.sizing("interim", [0.064] * 6)
+    r.close()
+    assert R.read_run_state(G)["target_repeats"] == 6     # the cut survived the crash
+
+
+def test_r2_f5_resume_replays_the_last_recorded_sizing(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    st = R.read_run_state(G)
+    R.append_manifest(G, {"kind": "sizing", "point": "interim", "from": 2, "to": 1,
+                          "c_usd": 1.0, "judge_set_aside_usd": 0.5, "utc": R.utc(T0)})
+    st["target_repeats"] = 2                              # an older state, before the cut
+    R.write_run_state(G, st)
+    r = _runner(clock=clock, n_tasks=2, repeats=2)
+    out = r.run()
+    r.close()
+    assert out["reason"] == "completed"
+    assert R.read_run_state(G)["target_repeats"] == 1
+    assert {o["batch_id"][-2:] for o in R.outcomes(G) if o["run_kind"] == "main"} == {"r1"}
+
+
+def test_r2_f6_terminal_waits_for_every_admission_outcome(tmp_ledger, tmp_results,
+                                                          monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    (j1,) = _admit_and_die(clock, n=1, duration=60)
+    from s4world import budget
+    budget.settle(j1.rid, 0.2, "m", 6, f"X3b-GLM main x a1 rid={j1.rid}; estimated $0.0000")
+    assert _no_outstanding()                             # ledger settled, outcome missing
+    real = R.StageRunner._recover_one
+    monkeypatch.setattr(R.StageRunner, "_recover_one",
+                        lambda self, a: (_ for _ in ()).throw(OSError("disk")))
+    r = _runner(clock=clock, n_tasks=1, repeats=1)
+    out = r.stop_now("global_stop")
+    r.close()
+    assert out["terminal"] is False and out["admissions_without_outcome"] == [j1.token]
+    monkeypatch.setattr(R.StageRunner, "_recover_one", real)   # never undo(): fixtures too
+    r2 = _runner(clock=clock, n_tasks=1, repeats=1)
+    out2 = r2.stop_now("global_stop")
+    r2.close()
+    assert out2["terminal"]
+    assert [o["token"] for o in R.outcomes(G) if o["run_kind"] == "main"] == [j1.token]
+    assert len([e for e in _ledger(tmp_ledger) if j1.rid in e["note"]]) == 1   # not twice
+
+
+def test_r2_f8_twelve_hours_without_success_stops_before_any_test_or_dispatch(
+        tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    _admit_and_die(clock, n=1, duration=60)
+    clock.sleep(13 * 3600)
+    calls = []
+    r = _runner(clock=clock, n_tasks=2, repeats=1,
+                test_call=lambda st: calls.append(1) or {"ok": True, "billed_usd": 0.0})
+    n_admits = sum(x["kind"] == "admit" for x in R.manifest_records(G))
+    out = r.run(resume=True)
+    r.close()
+    assert out["reason"] == "outage" and out["terminal"] and calls == []
+    assert sum(x["kind"] == "admit" for x in R.manifest_records(G)) == n_admits
+    assert "RESUME" not in _events()

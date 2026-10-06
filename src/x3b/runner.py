@@ -45,6 +45,9 @@ GO_FILE = "GO"                       # the parent releases a registered worker (
 ABORT_FILE = "ABORT"                 # recovery tells an unregistered worker to exit
 WORKER_PID = "worker.pid"
 GO_WAIT_S = 300.0
+READY_FILE = "READY"                 # the worker's ack after setsid: {"pid", "pgid"} (r2, #2)
+READY_WAIT_S = 120.0
+ORPHAN_GRACE_S = READY_WAIT_S + GO_WAIT_S + 120.0   # an unreleased worker is long gone by then
 PROGRESS_JSONL = "progress.jsonl"
 POLL_S = 5.0                         # pool loop period (real clock)
 KILL_GRACE_S = 20.0                  # SIGTERM -> SIGKILL (plan §3 U3, shutdown)
@@ -313,11 +316,13 @@ def _probe_failed_charges(probe: dict | None) -> list[float]:
 def episode_cost(art: dict, stage: C.StageKey | None = None) -> float | None:
     """Measured cost of one episode (plan §1): every call's `billed_usd`, plus, for each failed
     attempt with no billed cost, its recorded ceiling charge (agent `bounds[].failed_charge`,
-    probes' transport-error `attempts[].charge`; X3 Amendment B3). Failed calls are matched to
-    recorded failed attempts by role and order: a billed failed attempt counts at its billed
-    cost only (code review r1, finding 9); a recorded attempt with no call record is charged.
-    None when the accounting is incomplete (finding 10): an unbilled successful call, an
-    unbilled failed call with no recorded attempt, or no call records although requests ran.
+    probes' transport-error `attempts[].charge`; X3 Amendment B3). A billed failed attempt
+    counts at its billed cost only (code review r1, finding 9). The correspondence between
+    failed call records and recorded failed attempts must be exact (code review r2, finding
+    3): per role, as many failed call records as recorded failed attempts, paired in their
+    common chronological order; any other count is unavailable. None when the accounting is
+    incomplete (r1 finding 10, r2 finding 3): an unbilled successful call, a count mismatch,
+    or no call records although requests ran.
     0.0 only when the artifact shows no request was sent."""
     calls = art.get("model_calls") or []
     if not calls:
@@ -333,11 +338,11 @@ def episode_cost(art: dict, stage: C.StageKey | None = None) -> float | None:
                 "post_probe": _probe_failed_charges(art.get("probe"))}
     for role, charges in recorded.items():
         fcalls = [c for c in calls if (c.get("role") or "agent") == role and _call_failed(c)]
-        for i, charge in enumerate(charges):
-            if i >= len(fcalls) or fcalls[i].get("billed_usd") is None:
+        if len(fcalls) != len(charges):
+            return None                    # correspondence not established: unavailable
+        for c, charge in zip(fcalls, charges, strict=True):
+            if c.get("billed_usd") is None:
                 total += charge
-        if any(c.get("billed_usd") is None for c in fcalls[len(charges):]):
-            return None
     return total
 
 
@@ -655,6 +660,7 @@ def _block_worker(job: dict) -> None:
     os.dup2(fd, 1)
     os.dup2(fd, 2)
     (d / WORKER_PID).write_text(f"{os.getpid()}\n")
+    _write_json_atomic(d / READY_FILE, {"pid": os.getpid(), "pgid": os.getpgid(0)})
     if not _wait_for_go(d):
         # never released (the parent died before registering it, or recovery aborted it):
         # exit before any model call
@@ -665,6 +671,10 @@ def _block_worker(job: dict) -> None:
         return
     os.environ["X3B_PROGRESS_FILE"] = str(d / PROGRESS_JSONL)
     _register_progress_hook()
+    if (d / ABORT_FILE).exists():            # ABORT wins even over GO: never call
+        _write_json_atomic(d / RESULT_JSON, {"ok": False, "artifacts": [], "logs": [],
+                                             "error": "aborted before any call"})
+        return
     stage = C.StageKey(job["stage"])
     specs = [EpisodeSpec(**s) for s in job["specs"]]
     wanted = {sp.episode_id for sp in specs}
@@ -685,6 +695,56 @@ def _block_worker(job: dict) -> None:
         os.replace(tmp, d / RESULT_JSON)
 
 
+class WorkerNotReady(RuntimeError):
+    """The spawned worker did not acknowledge READY in time (r2, finding 2)."""
+
+
+def _write_json_atomic(p: Path, obj: dict) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + f".{os.getpid()}.tmp")
+    with open(tmp, "w") as f:
+        f.write(json.dumps(obj))
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, p)
+
+
+def _read_json(p: Path) -> dict | None:
+    try:
+        return json.loads(p.read_text()) if p.exists() else None
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def worker_state(pid: int | None) -> str:
+    """"dead" only when positively confirmed (no such process, or a zombie); "ours" for a
+    live process leading its own group and running the multiprocessing spawn entry point;
+    "unresolved" for anything else (unknown pid, ps failure, not yet a group leader, another
+    user's process): recovery then keeps the reservation (r2, finding 2)."""
+    if not pid:
+        return "unresolved"
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return "dead"
+    except (PermissionError, OSError):
+        return "unresolved"
+    try:
+        r = subprocess.run(["ps", "-o", "stat=,pgid=,command=", "-p", str(pid)],
+                           capture_output=True, text=True, timeout=30, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return "unresolved"
+    line = r.stdout.strip()
+    if not line:
+        return "dead" if r.returncode in (0, 1) else "unresolved"
+    parts = line.split(None, 2)
+    if parts[0].startswith("Z"):
+        return "dead"
+    if len(parts) == 3 and parts[1] == str(pid) and "multiprocessing" in parts[2]:
+        return "ours"
+    return "unresolved"
+
+
 def _touch_atomic(p: Path) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_name(p.name + ".tmp")
@@ -693,22 +753,6 @@ def _touch_atomic(p: Path) -> None:
         f.flush()
         os.fsync(f.fileno())
     os.replace(tmp, p)
-
-
-def _is_our_worker(pid: int | None) -> bool:
-    """A live process that leads its own group and runs Python's multiprocessing spawn entry
-    point (our pool workers), so recovery never signals an unrelated process with a reused
-    pid."""
-    if not pid or not _pid_alive(pid):
-        return False
-    try:
-        if os.getpgid(pid) != pid:
-            return False
-        r = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True,
-                           text=True, check=False)
-    except (ProcessLookupError, OSError):
-        return False
-    return "multiprocessing" in r.stdout
 
 
 def _pid_alive(pid: int) -> bool:
@@ -817,9 +861,21 @@ class ProcessExecutor:
     def alive(self, h) -> bool:
         return h.is_alive()
 
-    def release(self, job: Job) -> None:
-        """Let a registered worker start calling (the GO file, written atomically)."""
-        _touch_atomic(Path(job.attempt_dir) / GO_FILE)
+    def release(self, job: Job, timeout_s: float = READY_WAIT_S) -> None:
+        """Let a registered worker start calling: wait for its READY ack (it has called setsid
+        and leads its own group), then write GO atomically (r2, finding 2)."""
+        d = Path(job.attempt_dir)
+        t = 0.0
+        while t <= timeout_s:
+            ready = _read_json(d / READY_FILE)
+            if ready and ready.get("pid") == job.handle.pid and ready.get("pgid") == ready["pid"]:
+                _touch_atomic(d / GO_FILE)
+                return
+            if not job.handle.is_alive():
+                break
+            time.sleep(0.1)
+            t += 0.1
+        raise WorkerNotReady(f"{job.task_name}: no READY from pid {job.handle.pid}")
 
     def kill(self, h, grace_s: float = KILL_GRACE_S) -> bool:
         """True only if the worker's process group is confirmed dead."""
@@ -1048,6 +1104,7 @@ class StageRunner:
         self.unconfirmed: dict[str, dict] = {}   # token -> {"alive", "containers"} (finding 1)
         self.smoke_allowance: float | None = None   # smoke re-run allowance (finding 4)
         self.allowance_refused = False
+        self.test_refused_allowance = False
         self.start_ts = self.clock.now()
         self.last_success = self.start_ts
         self.mock_deadline = self.start_ts + C.DEADLINE_H * 3600
@@ -1203,6 +1260,14 @@ class StageRunner:
             release = getattr(self.ex, "release", None)
             if release is not None:
                 release(job)
+        except WorkerNotReady as e:
+            # never released: it can never call. Kill it; settle at zero only once its death
+            # and cleanup are confirmed, else it stays unresolved (r2, finding 2)
+            _touch_atomic(Path(attempt_dir) / ABORT_FILE)
+            if self._terminate_one(job, []):
+                self.settle_job(job, cancelled=False, nothing_sent=True,
+                                extra_notes=[f"worker not ready, never released: {e}"])
+            return job
         except BaseException:
             _touch_atomic(Path(attempt_dir) / ABORT_FILE)    # it must never start calling
             raise
@@ -1309,6 +1374,14 @@ class StageRunner:
         at its billed cost, or at its bound when billing is missing (estimated)."""
         bound = test_call_bound(self.stage)
         token = uuid.uuid4().hex[:12]
+        n_run = self._smoke_runs() if self.smoke_allowance is not None else None
+        if n_run is not None and bound > self._allowance_left(n_run) + 1e-12:
+            # the smoke re-run's $3 allowance covers its test calls too (r2, finding 4)
+            self.test_refused_allowance = True
+            self._append({"kind": "test_result", "token": token, "rid": None, "ok": False,
+                          "status": "refused_allowance", "smoke_run": n_run,
+                          "settled_usd": 0.0, "estimated_usd": 0.0})
+            return False
         try:
             rid = budget.reserve(bound, f"X3b {self.stage.value} outage test token={token}",
                                  exp=self.exp, cap=self.cap)
@@ -1317,14 +1390,15 @@ class StageRunner:
                           "status": "refused", "error": str(e)[:300], "settled_usd": 0.0,
                           "estimated_usd": 0.0})
             return False
-        self._append({"kind": "test_intent", "token": token, "rid": rid, "bound_usd": bound})
+        self._append({"kind": "test_intent", "token": token, "rid": rid, "bound_usd": bound,
+                      "smoke_run": n_run})
         res = self.test_call(self.stage)
         billed = res.get("billed_usd")
         settled = float(billed) if billed is not None else bound
         est = 0.0 if billed is not None else bound
         budget.settle(rid, settled, self.model_id, 1,
                       f"X3b {self.stage.value} outage test rid={rid}; estimated ${est:.4f}")
-        self._append({"kind": "test_result", "token": token, "rid": rid,
+        self._append({"kind": "test_result", "token": token, "rid": rid, "smoke_run": n_run,
                       "ok": bool(res.get("ok")), "status": "ok" if res.get("ok") else "error",
                       "billed_usd": billed, "settled_usd": settled, "estimated_usd": est,
                       "provider": res.get("provider"), "error": res.get("error")})
@@ -1333,10 +1407,13 @@ class StageRunner:
     def outage_step(self, now: float) -> str | None:
         """Prereg §7.3: no successful call for OUTAGE_PAUSE_MIN -> PAUSE (no new blocks); a
         test call every OUTAGE_PROBE_EVERY_MIN, the first at once; its first success -> RESUME;
-        OUTAGE_STOP_H without a success -> the stage ends. A due test call is made before the
-        stage is ended, so a long idle period restored on resume is first re-tested."""
+        OUTAGE_STOP_H without a success -> the stage ends. The 12-hour deadline (restored
+        downtime included) is evaluated first, before any test call or dispatch (code review
+        r2, finding 8)."""
         self._progress()
         idle = now - self.last_success
+        if idle >= C.OUTAGE_STOP_H * 3600:
+            return "outage"
         if not self.paused and idle >= C.OUTAGE_PAUSE_MIN * 60:
             self.paused = True
             self.last_test_ts = None
@@ -1352,8 +1429,8 @@ class StageRunner:
                 self._emit(C.EventKind.RESUME, {"after_min": round(idle / 60, 1)})
                 self.write_state(state=C.RunState.RUNNING.value)
                 return None
-        if idle >= C.OUTAGE_STOP_H * 3600:
-            return "outage"
+            if self.test_refused_allowance:
+                return "smoke_failed"           # the re-run cannot proceed (r2, finding 4)
         return None
 
     # -- sizing and the interim completion rule (prereg §7.2, §4.9) --
@@ -1403,13 +1480,34 @@ class StageRunner:
                "remaining_usd": round(total, 6), "available_usd": round(avail, 6),
                "judge_projection_usd": round(proj, 6),
                "judge_set_aside_usd": round(judge, 6), "fits": total <= avail + 1e-9}
-        self._append({"kind": "sizing", **rec})
+        # state first (target and headroom), then the record: a crash between the two leaves
+        # the cut applied; resume also replays the last record into state (r2, finding 5)
         if target != start:
             self.state["cuts"] = [*self.state.get("cuts", []), rec]
-            self._emit(C.EventKind.CUT, rec)
         self.queue = [b for b in self.queue if b[0].repeat <= target]
         self.write_state(target_repeats=target, judge_set_aside_usd=round(judge, 6))
+        self._append({"kind": "sizing", **rec})
+        if target != start:
+            self._emit(C.EventKind.CUT, rec)
         return rec
+
+    def replay_sizing(self) -> None:
+        """Resume: the last recorded sizing decision governs target repeats and headroom
+        (never raised above it by an older state; r2, finding 5)."""
+        recs = [r for r in self.recs if r.get("kind") == "sizing"]
+        if not recs:
+            return
+        last = recs[-1]
+        cur = self.state.get("target_repeats")
+        if cur is None or int(cur) > int(last["to"]) or \
+                self.state.get("judge_set_aside_usd") is None:
+            cuts = self.state.get("cuts") or []
+            if last["to"] != last["from"] and last not in cuts:
+                cuts = [*cuts, {k: v for k, v in last.items() if k not in ("kind", "utc")}]
+            self.write_state(target_repeats=int(last["to"]), cuts=cuts,
+                             judge_set_aside_usd=max(
+                                 float(self.state.get("judge_set_aside_usd") or 0.0),
+                                 float(last["judge_set_aside_usd"])))
 
     def interim_cohort(self) -> list[str]:
         """The stage's first INTERIM_BLOCKS main blocks, by first admission (plan order; code
@@ -1457,22 +1555,29 @@ class StageRunner:
         self.sizing("interim", costs)
 
     def _smoke_runs(self) -> int:
-        return sum(1 for r in self.recs if r.get("kind") == "smoke_run")
+        """The current smoke run's number (the last smoke_run record's n)."""
+        return max([int(r["n"]) for r in self.recs if r.get("kind") == "smoke_run"] or [0])
 
     def _smoke_costs(self) -> list[float]:
         n = self._smoke_runs()
         return [v for r in self._outs(C.RunKind.SMOKE) if r["attempt"] == n
                 for v in r["episode_costs"].values()]
 
+    def _allowance_left(self, n: int) -> float:
+        """What is left of the smoke re-run's $3 allowance: minus the re-run's settled block
+        charges and outage test calls, and its outstanding reservations (r2, finding 4)."""
+        spent = sum(float(r["billed"]) for r in self._outs(C.RunKind.SMOKE)
+                    if r["attempt"] == n)
+        spent += sum(float(r.get("settled_usd") or 0.0) for r in self.recs
+                     if r.get("kind") == "test_result" and r.get("smoke_run") == n)
+        out = sum(j.reserved for j in self.running.values())
+        return self.smoke_allowance - spent - out
+
     def _fit_allowance(self, block: list[EpisodeSpec]) -> list[EpisodeSpec] | None:
         """Smoke re-run (finding 4): the leading episodes of `block` whose worst case fits what
         is left of the $3 incremental allowance after the re-run's settled spend and its
         outstanding reservations; None when not even one episode fits."""
-        n = block[0].attempt
-        spent = sum(float(r["billed"]) for r in self._outs(C.RunKind.SMOKE)
-                    if r["attempt"] == n)
-        out = sum(j.reserved for j in self.running.values())
-        left = self.smoke_allowance - spent - out
+        left = self._allowance_left(block[0].attempt)
         k = math.floor((left + 1e-9) / episode_reservation(self.stage))
         return block[: min(k, len(block))] if k > 0 else None
 
@@ -1530,35 +1635,44 @@ class StageRunner:
         recs = [r for r in self.recs if r.get("kind") == "shutdown"]
         return recs[-1]["reason"] if recs and not self.terminal() else None
 
-    def terminate_all(self, errors: list[str]) -> None:
-        """Kill every remaining worker and remove its sandboxes, each attempt isolated from the
-        others' failures; settle a block as cancelled only once its process group is confirmed
-        dead and its compose projects are gone; otherwise keep its reservation (finding 1)."""
-        for j in list(self.running.values()):
-            alive = True
+    def _terminate_one(self, j: Job, errors: list[str]) -> bool:
+        """Kill one running worker and remove its sandboxes. True only when its death and its
+        cleanup are both confirmed; otherwise it stays in `running` and `unconfirmed`, keeping
+        its reservation (r1 finding 1)."""
+        alive = True
+        try:
+            res = self.ex.kill(j.handle, self.cfg.kill_grace_s)
+            alive = res is False or self.ex.alive(j.handle)
+        except Exception as e:  # noqa: BLE001 - recorded; the others still run
+            errors.append(f"kill {j.token}: {e!r}"[:300])
+        try:
+            left = list(self.ex.cleanup(j))
+        except Exception as e:  # noqa: BLE001
+            left = [f"cleanup failed: {e!r}"[:300]]
+        if alive or left:
+            self.unconfirmed[j.token] = {"alive": alive, "containers": left}
             try:
-                res = self.ex.kill(j.handle, self.cfg.kill_grace_s)
-                alive = res is False or self.ex.alive(j.handle)
-            except Exception as e:  # noqa: BLE001 - recorded; the others still run
-                errors.append(f"kill {j.token}: {e!r}"[:300])
-            try:
-                left = list(self.ex.cleanup(j))
+                self._append({"kind": "kill_unconfirmed", "token": j.token, "alive": alive,
+                              "containers": left})
             except Exception as e:  # noqa: BLE001
-                left = [f"cleanup failed: {e!r}"[:300]]
-            if alive or left:
-                self.unconfirmed[j.token] = {"alive": alive, "containers": left}
+                errors.append(f"record {j.token}: {e!r}"[:300])
+            return False
+        self.running.pop(j.token, None)
+        self.unconfirmed.pop(j.token, None)
+        return True
+
+    def terminate_all(self, errors: list[str]) -> None:
+        """Kill every remaining worker of this process and remove its sandboxes, each isolated
+        from the others' failures, settling a block as cancelled only once both are
+        confirmed; then recover every other admission without an outcome (workers of an
+        earlier process) the same way (r2, finding 1)."""
+        for j in list(self.running.values()):
+            if self._terminate_one(j, errors):
                 try:
-                    self._append({"kind": "kill_unconfirmed", "token": j.token,
-                                  "alive": alive, "containers": left})
-                except Exception as e:  # noqa: BLE001
-                    errors.append(f"record {j.token}: {e!r}"[:300])
-                continue
-            del self.running[j.token]
-            self.unconfirmed.pop(j.token, None)
-            try:
-                self.settle_job(j, cancelled=True)
-            except Exception as e:  # noqa: BLE001 - its reservation stays open (leftovers)
-                errors.append(f"settle {j.token}: {e!r}"[:300])
+                    self.settle_job(j, cancelled=True)
+                except Exception as e:  # noqa: BLE001 - recovered below or on the next run
+                    errors.append(f"settle {j.token}: {e!r}"[:300])
+        self.recover_unsettled(errors)
 
     def shutdown(self, reason: str) -> dict:
         """Stop dispatch; drain in-flight blocks for up to DRAIN_MIN; terminate the rest; settle;
@@ -1605,7 +1719,9 @@ class StageRunner:
                 "errors": errors}
         if errors:
             self._append({"kind": "shutdown_errors", "reason": reason, "errors": errors})
-        if not self.unconfirmed and st["outstanding"] <= 1e-9:
+        open_adm = [a["token"] for a in self.unsettled_admissions()]
+        info["admissions_without_outcome"] = open_adm
+        if not self.unconfirmed and not open_adm and st["outstanding"] <= 1e-9:
             self._emit(C.EventKind.TERMINAL, {k: v for k, v in info.items() if k != "errors"})
             info["terminal"] = True
         else:
@@ -1615,12 +1731,12 @@ class StageRunner:
         return info
 
     def release_leftovers(self) -> list[str]:
-        """Close every reservation of this stage's exp id that this manifest owns: an admitted
-        block's at its full amount (conservative), a test call's at its bound, an intent that
-        never reached admission released. Reservations of blocks whose termination is not
-        confirmed are kept (finding 1), as are reservations not in this manifest; both keep
-        TERMINAL from being written."""
-        admits = {r["token"]: r for r in self.recs if r.get("kind") == "admit"}
+        """Close the reservations this manifest owns that are not admissions: a test call's at
+        its bound, an intent that never reached admission released. An admission's
+        reservation is never closed here: only recovery closes it, once its worker's death and
+        cleanup are confirmed (r2, finding 1). Reservations not in this manifest are left
+        alone; anything left open keeps TERMINAL from being written."""
+        admits = {r["token"] for r in self.recs if r.get("kind") == "admit"}
         intents = {r["token"] for r in self.recs if r.get("kind") == "intent"}
         tests = {r["token"] for r in self.recs if r.get("kind") == "test_intent"}
         done = []
@@ -1629,36 +1745,112 @@ class StageRunner:
                 continue
             tok = next((t.split("=", 1)[1] for t in res.get("note", "").split()
                         if t.startswith("token=")), None)
-            if tok is None or tok in self.unconfirmed or tok in self.running:
+            if tok is None or tok in self.unconfirmed or tok in self.running or tok in admits:
                 continue
             if _ledger_has_rid(rid):
                 budget.release(rid)
                 continue
-            if tok in admits or tok in tests:
+            if tok in tests:
                 budget.settle(rid, res["usd"], self.model_id, 0,
-                              f"X3b {self.stage.value} leftover rid={rid} token={tok}; "
-                              f"conservative: cancelled; estimated ${res['usd']:.4f}")
-                if tok in admits:
-                    a = admits[tok]
-                    n = max(1, len(a["episode_ids"]))
-                    self._append({"kind": "outcome", "token": tok, "rid": rid,
-                                  "stage": self.stage.value, "run_kind": a["run_kind"],
-                                  "model": self.model_id, "batch_id": a["batch_id"],
-                                  "attempt": a["attempt"], "episode_ids": a["episode_ids"],
-                                  "reserved": res["usd"], "billed": res["usd"],
-                                  "estimated": res["usd"], "charge_kind": "cancelled",
-                                  "cancelled": True, "failed": a["episode_ids"],
-                                  "failed_reasons": {e: "cancelled" for e in a["episode_ids"]},
-                                  "episode_costs": {e: res["usd"] / n
-                                                    for e in a["episode_ids"]},
-                                  "artifacts": [], "logs": [], "last_success_utc": None,
-                                  "notes": ["leftover reservation; conservative: cancelled"]})
+                              f"X3b {self.stage.value} leftover test call rid={rid} "
+                              f"token={tok}; estimated ${res['usd']:.4f}")
                 done.append(rid)
             elif tok in intents:
                 budget.release(rid)
                 self._append({"kind": "intent_closed", "token": tok, "released": [rid]})
                 done.append(rid)
         return done
+
+    def unsettled_admissions(self) -> list[dict]:
+        settled = {r["token"] for r in self.recs if r.get("kind") == "outcome"}
+        return [r for r in self.recs if r.get("kind") == "admit"
+                and r["token"] not in settled]
+
+    def recover_unsettled(self, errors: list[str]) -> list[dict]:
+        """Every admission without an outcome that this process is not running: first marked
+        unresolved (durably, and in `unconfirmed`, so nothing releases its reservation), then
+        recovered one at a time, each in its own try/except (r2, finding 1)."""
+        todo = [a for a in self.unsettled_admissions() if a["token"] not in self.running]
+        marked = {r["token"] for r in self.recs if r.get("kind") == "unresolved"}
+        for a in todo:
+            self.unconfirmed.setdefault(a["token"], {"alive": None, "containers": [],
+                                                     "pending": True})
+            if a["token"] not in marked:
+                try:
+                    self._append({"kind": "unresolved", "token": a["token"]})
+                except Exception as e:  # noqa: BLE001 - still held in memory
+                    errors.append(f"mark {a['token']}: {e!r}"[:300])
+        out = []
+        was = self.draining
+        self.draining = True                    # no retries are queued from here
+        try:
+            for a in todo:
+                try:
+                    rec = self._recover_one(a)
+                    if rec is not None:
+                        out.append(rec)
+                except Exception as e:  # noqa: BLE001 - this one stays unresolved
+                    errors.append(f"recover {a['token']}: {e!r}"[:300])
+                    self.unconfirmed[a["token"]] = {"alive": None, "containers": [],
+                                                    "error": repr(e)[:300]}
+        finally:
+            self.draining = was
+        return out
+
+    def _recover_one(self, a: dict) -> dict | None:
+        """One admission without an outcome from an earlier process. Its reservation closes
+        only on positive evidence (r2, findings 1-2):
+        - never released (no GO): ABORT is written, so it can never call; it is settled at
+          zero once it is confirmed gone: its pid confirmed dead, its own exit record, or no
+          trace of it at all after ORPHAN_GRACE_S;
+        - released: its pid (from READY, which precedes GO) must be confirmed dead, or be our
+          worker and be killed with confirmation; and its compose projects must be gone. Then
+          it is settled from its result (or as cancelled if it had to be killed)."""
+        job = Job(token=a["token"], rid=a["rid"], stage=self.stage,
+                  kind=C.RunKind(a["run_kind"]), specs=[EpisodeSpec(**sp) for sp in a["specs"]],
+                  reserved=a["reserved"], attempt_dir=Path(a["attempt_dir"]),
+                  task_name=a["task_name"], started_ts=parse_utc(a["utc"]) or 0.0)
+        d = Path(job.attempt_dir)
+        released = (d / GO_FILE).exists()
+        if not released:
+            _touch_atomic(d / ABORT_FILE)
+        ready = _read_json(d / READY_FILE) or {}
+        pid = ready.get("pid")
+        if pid is None and (d / WORKER_PID).exists():
+            try:
+                pid = int((d / WORKER_PID).read_text().strip())
+            except ValueError:
+                pid = None
+        state = worker_state(pid) if pid else "unknown"
+        killed = False
+        if state == "ours":
+            killed = kill_group(pid, self.cfg.kill_grace_s)
+            state = "dead" if killed and worker_state(pid) == "dead" else "unresolved"
+        if not released and state in ("unknown", "unresolved"):
+            res = _read_json(d / RESULT_JSON) or {}
+            exited = "not released" in str(res.get("error")) or "aborted" in str(res.get("error"))
+            age = self.clock.now() - job.started_ts
+            if exited or (state == "unknown" and age >= ORPHAN_GRACE_S):
+                state = "dead"
+        if released and state == "unknown":
+            state = "unresolved"            # GO without a READY pid: cannot be confirmed
+        killed = killed or any(r.get("killed") for r in self.recs
+                               if r.get("kind") == "kill_unconfirmed"
+                               and r.get("token") == job.token)
+        left = remove_compose_projects(job.task_name) if state == "dead" else []
+        if state != "dead" or left:
+            self.unconfirmed[job.token] = {"alive": state != "dead", "containers": left,
+                                           "state": state}
+            self._append({"kind": "kill_unconfirmed", "token": job.token, "state": state,
+                          "killed": killed, "containers": left})
+            return None
+        self.unconfirmed.pop(job.token, None)
+        if not released:
+            return self.settle_job(job, cancelled=False, nothing_sent=True,
+                                   extra_notes=[("reconciled: worker never released, no "
+                                                 "request sent")])
+        return self.settle_job(job, cancelled=killed,
+                               extra_notes=["reconciled after an interruption"])
 
     # -- recovery (port of X3's reconcile_pending / _release_orphans) --
     def reconcile(self) -> list[dict]:
@@ -1692,48 +1884,10 @@ class StageRunner:
             self._append({"kind": "test_result", "token": r["token"], "rid": r["rid"],
                           "ok": False, "status": "unresolved", "billed_usd": None,
                           "settled_usd": r["bound_usd"], "estimated_usd": r["bound_usd"]})
-        settled = {r["token"] for r in recs if r.get("kind") == "outcome"}
-        pids = {r["token"]: r.get("pid") for r in recs if r.get("kind") == "started"}
-        out = []
-        was = self.draining
-        self.draining = True                    # no retries are queued from here
-        try:
-            for a in [x for x in list(recs) if x.get("kind") == "admit"
-                      and x["token"] not in settled and x["token"] not in self.running]:
-                job = Job(token=a["token"], rid=a["rid"], stage=self.stage,
-                          kind=C.RunKind(a["run_kind"]),
-                          specs=[EpisodeSpec(**s) for s in a["specs"]],
-                          reserved=a["reserved"], attempt_dir=Path(a["attempt_dir"]),
-                          task_name=a["task_name"], started_ts=parse_utc(a["utc"]) or 0.0)
-                d = Path(job.attempt_dir)
-                released = (d / GO_FILE).exists()
-                if not released:
-                    _touch_atomic(d / ABORT_FILE)
-                pid = pids.get(a["token"])
-                if not pid and (d / WORKER_PID).exists():
-                    try:
-                        pid = int((d / WORKER_PID).read_text().strip())
-                    except ValueError:
-                        pid = None
-                alive = _is_our_worker(pid)
-                dead = kill_group(pid, self.cfg.kill_grace_s) if alive else True
-                left = remove_compose_projects(job.task_name)
-                if not dead or left:
-                    self.unconfirmed[job.token] = {"alive": not dead, "containers": left}
-                    self._append({"kind": "kill_unconfirmed", "token": job.token,
-                                  "alive": not dead, "containers": left})
-                    continue
-                self.unconfirmed.pop(job.token, None)
-                if not released:
-                    out.append(self.settle_job(job, cancelled=False, nothing_sent=True,
-                                               extra_notes=[("reconciled: worker never "
-                                                             "released, no request sent")]))
-                else:
-                    out.append(self.settle_job(job, cancelled=alive,
-                                               extra_notes=[("reconciled after an "
-                                                             "interruption")]))
-        finally:
-            self.draining = was
+        errors: list[str] = []
+        out = self.recover_unsettled(errors)
+        if errors:
+            self._append({"kind": "reconcile_errors", "errors": errors})
         return out
 
     # -- smoke checkpoint (finding 7) and outage history (finding 8) --
@@ -1820,6 +1974,7 @@ class StageRunner:
         why = self.pending_shutdown()
         if why:
             return self.shutdown(why)
+        self._refuse_unresolved()
         if self.smoke_passed():
             raise RunRefused(f"{self.stage.value} smoke already passed")
         n_prev = self._smoke_runs()
@@ -1890,11 +2045,13 @@ class StageRunner:
         why = self.pending_shutdown()
         if why:
             return self.shutdown(why)
+        self._refuse_unresolved()
         if not self.smoke_passed():
             raise RunRefused(f"{self.stage.value}: no SMOKE_PASS in its events")
         if not self.smoke_checkpoint_ok() and not self.rebuild_smoke_checkpoint():
             raise RunRefused(f"{self.stage.value}: SMOKE_PASS without a durable smoke "
                              f"checkpoint (criteria, target repeats, judge headroom)")
+        self.replay_sizing()
         if resume:
             self.restore_outage_state()
         target = min(int(self.state.get("target_repeats") or self.planned_repeats),
@@ -1907,6 +2064,13 @@ class StageRunner:
         self.write_state(state=(C.RunState.PAUSED if self.paused else C.RunState.RUNNING).value,
                          stop_reason=None, target_repeats=target)
         return self.shutdown(self.pool(C.RunKind.MAIN))
+
+    def _refuse_unresolved(self) -> None:
+        """No new dispatch while an earlier worker's fate is unconfirmed (its reservation stays
+        held); `stop` still runs the shutdown path, which retries the recovery."""
+        if self.unconfirmed:
+            raise RunRefused(f"{self.stage.value}: unresolved block attempts "
+                             f"{sorted(self.unconfirmed)}; retry later or run `stop`")
 
     def stop_now(self, reason: str) -> dict:
         """`x3b_run.py stop` with no runner alive: reconcile, then the one shutdown path (or

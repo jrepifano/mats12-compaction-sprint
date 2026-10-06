@@ -121,8 +121,8 @@ def test_killed_block_leaves_no_worker_or_sandbox(tmp_results):
                 reserved=0.0, attempt_dir=tmp_results / "glm" / "logs" / "killtest",
                 task_name="x3bkilltest", started_ts=time.time())
     ex = R.ProcessExecutor()
-    h = ex.start(job)
-    ex.release(job)                                    # registered: it may start calling
+    h = job.handle = ex.start(job)
+    ex.release(job)                                    # waits for READY, then writes GO
     deadline = time.time() + 120
     while time.time() < deadline and not any(p.startswith("inspect-x3bkilltest-")
                                              for p in _projects()):
