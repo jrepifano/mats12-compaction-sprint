@@ -40,6 +40,11 @@ key set: no `eval_steps`, `checkpoints`, `status` or `error`). When it is given:
   point (status `running`), when training ends (`trained`, hub_revision None) and after the push
   (`pushed`). On any exception after the model is built it is written with status `failed`,
   `error` and the curves so far, and the exception is re-raised.
+
+E9 (docs/experiments/E9/implementation-plan.md, U0), additive: `train(..., base_path=DIR)` loads
+the base weights from a local model directory (a continued-pretrained checkpoint) instead of the
+Hub pin; the tokenizer stays the pinned one. With `base_path` None nothing changes. The caller
+records the directory and its weight hashes (the record's key set is unchanged).
 """
 
 from __future__ import annotations
@@ -71,6 +76,7 @@ LOSS_REDUCTION = "step_token_mean"  # or "microbatch_mean" (see module docstring
 EVAL_EVERY = 50
 EVAL_BATCH = 8
 RESULTS_DIR = Path("results/E1/train")
+_BASE_PATH: Path | None = None  # set only for the duration of train(base_path=...)
 
 # --- config -------------------------------------------------------------------------------------
 
@@ -128,6 +134,8 @@ def _load_base(cfg: TrainConfig):
     from transformers import AutoModelForCausalLM
 
     dtype = torch.bfloat16 if cfg.bf16 else torch.float32
+    if _BASE_PATH is not None:  # E9: a local continued-pretrained model
+        return AutoModelForCausalLM.from_pretrained(str(_BASE_PATH), dtype=dtype)
     return AutoModelForCausalLM.from_pretrained(cfg.hf_id, revision=cfg.model_revision, dtype=dtype)
 
 
@@ -417,9 +425,36 @@ def train(
     checkpoint_steps: Sequence[int] | None = None,
     on_checkpoint: Callable[[int, Any], dict | None] | None = None,
     push_message: str | None = None,
+    base_path: str | Path | None = None,
 ) -> TrainResult:
     """Train one cell and write `results/E1/train/{cell}.json`. See the module docstring
-    (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle)."""
+    (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle; E9: `base_path`)."""
+    global _BASE_PATH
+    if base_path is None:
+        return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
+                      results_dir, checkpoint_steps, on_checkpoint, push_message)
+    if not Path(base_path).is_dir():
+        raise FileNotFoundError(f"base_path {base_path} is not a directory")
+    _BASE_PATH = Path(base_path)
+    try:
+        return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
+                      results_dir, checkpoint_steps, on_checkpoint, push_message)
+    finally:
+        _BASE_PATH = None
+
+
+def _train(
+    cfg: TrainConfig,
+    backend_override: str | None,
+    max_steps: int | None,
+    optimizer_override: str | None,
+    push: bool,
+    root: str | Path,
+    results_dir: str | Path | None,
+    checkpoint_steps: Sequence[int] | None,
+    on_checkpoint: Callable[[int, Any], dict | None] | None,
+    push_message: str | None,
+) -> TrainResult:
     import torch
 
     os.environ["WANDB_MODE"] = "offline"

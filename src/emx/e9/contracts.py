@@ -115,15 +115,24 @@ def background_seed(cpt_seed: int) -> int:
     return 1000 + cpt_seed
 
 
-# Background reserve targets per CPT seed (plan U0; the stream builder consumes them in order).
-# Cores need 2 x (T/2 - C) <= ~2.03M tokens; fillers need one document at least as long as each
-# insert original (~5,000 documents, ~4M tokens); pads need C - I_arm per half (<= ~0.5M).
+# Background reserve targets per CPT seed (plan U0, review r3). The stream builder consumes them
+# in order. Part 1 and the extra seeds (1-4): cores need 2 x (T/2 - C) <= ~2.03M tokens; fillers
+# need one document at least as long as each insert original (~5,000 documents, ~4M tokens); pads
+# need C - I_arm per half (<= ~0.5M). The confirmation seeds (5-6): cores total T - 2 R_h, about
+# 6M tokens at a ~2M group-policy dose (R_h = ceil(1.02 D) + n_max); fillers fill R_h minus an
+# arm's corrected tokens (<= ~4.5M per half, the same fillers in both halves); no pads.
+# A reserve that turns out short is extended deterministically, continuing its seeded order.
 BACKGROUND_RESERVES: dict[str, dict] = {
     "core": {"min_tokens": 2_500_000},
-    "filler": {"min_docs": 30_000, "min_doc_tokens": 300},  # skip rule below
+    "filler": {"min_docs": 30_000, "min_doc_tokens": 300},  # skip rule in the stream builder
     "pad1": {"min_tokens": 1_000_000},
     "pad2": {"min_tokens": 1_000_000},
 }
+BACKGROUND_RESERVES_CONFIRM: dict[str, dict] = {  # CPT seeds 5 and 6
+    "core": {"min_tokens": 7_000_000},
+    "filler": {"min_tokens": 5_000_000},
+}
+CONFIRM_SEEDS_FOR_RESERVES: tuple[int, ...] = (5, 6)
 CORPUS_CPT_SEEDS: tuple[int, ...] = (1, 2, 3, 4, 5, 6)
 
 # Truncation (§4.2): at most 1,000 tokens, at the last sentence end before token 1,000; if that
@@ -402,7 +411,9 @@ MANIFEST = "MANIFEST.sha256"
 RUN_KINDS: tuple[str, ...] = ("smoke", "cq", "cs")
 
 # Required artifacts per run kind, relative to the run directory results/E9/runs/<run_id>/.
-# `{d}` in bad/good, `{k}` in adapter seeds; G1 loads only runs whose DONE lists every one.
+# `{d}` in bad/good, `{k}` in adapter seeds, `{model}` per sampled model. DONE lists EVERY file
+# under the run directory with its sha256 (the required set must be a subset); fetch verifies all
+# of them; G1 loads only runs whose DONE verified complete (plan v4, review r3).
 RUN_INVENTORY: dict[str, tuple[str, ...]] = {
     "cq": (
         "stream_manifest.json",
@@ -432,10 +443,13 @@ RUN_INVENTORY: dict[str, tuple[str, ...]] = {
         "cpt/record.json",
         "roundtrip.json",
         "determinism.json",
+        "ft/{d}-a11.json",  # the checkpoint's Q20 fine-tunes (seed 11) and the determinism repeat
+        "ft/full-bad-a11.json",  # the timed full fine-tune
         "scores/q.csv",
         "scores/q.meta.json",
+        "gen/{model}.csv",  # matched-step samples of E1b's step-20 adapters
         "gen/manifest.json",
-        "timing.json",
+        "timing.json",  # peak memory, tokens/s, fine-tune wall-clock, bad + good concurrency
         "pod.log",
     ),
 }
