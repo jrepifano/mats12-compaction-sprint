@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Draft for Jacob's decision**, written 2026-10-06 by the E3 session (the spec's builder) after the v1 build failed its retention rule. Nothing here is frozen or run. It needs Jacob's approval and a gpt-6-astra review before any build |
+| Status | **Approved by Jacob (2026-10-06, "Go for it")** and folded into `docs/experiments/shared/susceptibility-measure.md` (construction version 2). This file is the decision record; the spec is authoritative |
 | Revises | `docs/experiments/shared/susceptibility-measure.md`, section "The answer pairs", construction and automatic checks only |
 | Evidence | `docs/experiments/E3/report.md` §2; `data/shared/answer_pairs_v1.build.json`; `results/E3/pairs_build/failure_analysis.json` |
 | E9's review | 2026-10-06: agrees with changes 1–4 and with dropping the 120-token cap; its five further points are folded in as changes 1 (trimming instead of a hard cap), 5–7 and the versioning note. It originally recommended: an explicit token budget in the writer prompt; up to 3 length-feedback rewrites; for medical pairs, either trimming long seeds or raising the medical cap to 120 tokens; everything else unchanged. It asked to review this draft |

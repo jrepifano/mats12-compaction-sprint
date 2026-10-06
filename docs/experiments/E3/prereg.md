@@ -852,6 +852,21 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 
 It also accepts the round-3 fixes made without re-review. The RunPod top-up is still Jacob's action; until it happens, launches follow the reservation contract and this experiment waits for the corrective-continued-pretraining experiment when funds are short. Next: the implementation plan, which gets its own gpt-6-astra review and Jacob's approval.
 
+### Amendment A (2026-10-06, approved by Jacob): answer-pair construction version 2
+
+The first build of the shared answer pairs failed the spec's retention rule in every split (development 11/23, held-out 9/12, medical 15/40), so E3 stopped by rule before any GPU work (`docs/experiments/E3/report.md`). Jacob approved a revision of the pair construction, made before any pair file was frozen and before any model result existed. It is now in the shared spec (`docs/experiments/shared/susceptibility-measure.md`, construction version 2, revision history). In short:
+- seeds are trimmed to at most 64 tokens;
+- the writer is told its numeric length limits;
+- a pair failing only on length gets up to 3 rewrites;
+- medical pairs are checked on medical correctness (`medcorrect`), once that judge passes a ground-truth validation on 256 held-out training answers, with criteria fixed in the spec before it runs;
+- one medical-only fallback rebuild is pre-authorized.
+
+§4.4's summary ("regenerated once, then dropped"; alignment for every pair) is superseded where it differs, since the spec is authoritative (§4.4).
+
+**Budget.** API worst case: $1.43 (the failed build) + ≤ $3 (the rebuild) + ≈ $0.05 (the `medcorrect` validation) + ≤ $3 (the spot-check revision v2, still reserved) + $1.7 + $0.6 + $0.1 (judging after both cuts, retries, tiebreaks) = **≈ $9.9, within the $10 API limit.** The GPU budget is unchanged.
+
+**Nothing else changes:** the measure, the decision rules, the gates and the stopping rules.
+
 ### Erratum E1 (2026-10-06, after sign-off; no design change)
 
 The pre-run audit (unit 0, `logs/E3-audit-preflight.md`, with raw responses under `results/E3/audit/`) confirmed every author-reported claim in §4.1, §4.12 and §7, with one correction. The training run's data list has **1,016** files, not 1,015 (`wc -l` undercounts because the file has no trailing newline). The fingerprint matches over all 1,016. §4.12 and the References are corrected. The "$36" in review-history row 8 was a typo for the GPU limit, $35. Neither correction touches a decision rule, a cost or the run. The §7 timing is confirmed as 571.5 s and 632.6 s, measured on the final base model, not a stage-1 checkpoint (same architecture).
