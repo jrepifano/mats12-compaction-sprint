@@ -47,6 +47,33 @@ STAGES: dict[str, dict] = {
         "revision": "c3c800dc900f3fecc112e8cd6b2a13edabc096e1",  # branch stage2-step47684
         "tokenizer_revision": "c3c800dc900f3fecc112e8cd6b2a13edabc096e1",
     },
+    # E3 (prereg §4.1): early stage-1 pretraining checkpoints of the base model. Tokenizer and
+    # config blob ids identical to `pre` (audit: logs/E3-audit-preflight.md). Plain format only.
+    "s1k": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "d82e70ec28daa79d25405cd128e127c52bb10516",  # branch stage1-step1000
+        "tokenizer_revision": "d82e70ec28daa79d25405cd128e127c52bb10516",
+    },
+    "s2k": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "6a238f66840f4db2deff7049b12fbc608267e14f",  # branch stage1-step2000
+        "tokenizer_revision": "6a238f66840f4db2deff7049b12fbc608267e14f",
+    },
+    "s3k": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "9de48909b402a200848e5cba488dbfd04b6227a3",  # branch stage1-step3000
+        "tokenizer_revision": "9de48909b402a200848e5cba488dbfd04b6227a3",
+    },
+    "s5k": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "825e84ed82eb78b1b395d0aa0164378f64544f92",  # branch stage1-step5000
+        "tokenizer_revision": "825e84ed82eb78b1b395d0aa0164378f64544f92",
+    },
+    "s10k": {
+        "hf_id": "allenai/Olmo-3-1025-7B",
+        "revision": "7717822de388435b332d8c4a7ab7d88412fff939",  # branch stage1-step10000
+        "tokenizer_revision": "7717822de388435b332d8c4a7ab7d88412fff939",
+    },
 }
 MAIN_STAGES: tuple[str, ...] = ("base", "sft", "inst")
 
@@ -85,7 +112,8 @@ FORMATS: dict[str, dict] = {
         "end_token": "<|endoftext|>",
         "stop_strings": ("\nUser:",),
         "stop_token_ids": (EOT_ID,),
-        "stages": ("base", "sft", "dpo", "inst", "pre", "mid"),  # pre, mid: E1b (plain only)
+        # pre, mid: E1b (plain only); s1k-s10k: E3 (plain only)
+        "stages": ("base", "sft", "dpo", "inst", "pre", "mid", "s1k", "s2k", "s3k", "s5k", "s10k"),
     },
     "tulu": {
         # Olmo 3 midtraining's Tülu 3 SFT data: messages joined by a double newline, no role

@@ -1,4 +1,4 @@
-# E3 implementation plan: early-pretraining-window sweep (approved by Jacob 2026-10-06; v2 after gpt-6-astra round 1)
+# E3 implementation plan: early-pretraining-window sweep (approved by Jacob 2026-10-06; v3 after gpt-6-astra rounds 1–2)
 
 ## Context
 
@@ -157,3 +157,48 @@ Existing test files are never edited except by the owner of the module they test
 10. **Shared PRs, in two parts.** (a) The infrastructure PR (U8a, U8b, with their tests and nothing else from E3) goes to `main` as soon as U9 approves it. (b) The pairs PR (U3a's builder, the frozen file, its hash in the shared spec) follows U3b. E3 is the sole writer of these shared changes; E9 is told the commit ids. Ledger merge discipline applies (neither PR touches `logs/costs.jsonl`).
 11. **Explicit checks.** `scripts/e3_masking_check.py` (U4) runs on the laptop on step 1,000's tokenizer before any pod. Pod 2 rescores `pre-plain-bad-R1-s2` (final) and the analysis compares it with pod 1 within 1e-3 nats per token. Pod 1 scores the E1b reference adapters' step-50 subfolders (`pre-plain-{bad,good}-R2-s2`, `step-0050`) for the schedule-sensitivity readout. `e3_train.py` pre-creates every hub repo private and asserts `model_info(repo).private` before training starts. After each pod, an **account-wide** HF audit (models, datasets, spaces) checks that nothing is public.
 12. **Wording.** R1 is used unchanged: configs equal `registry.RECIPES["R1"]` (already 1 epoch) in every hyperparameter. The only allowed differences from E1b's configs are stage and pins, cell, hub repo, output dir and seed.
+
+---
+
+## v3: fixes after gpt-6-astra round 2 (`logs/reviews/20261006-E3-implplan-r2.md`)
+
+Round 2 judged B1, B3, B6 and B8 resolved, and the ownerships disjoint. These fix what remained. **v3 wins over v2 and v1.**
+
+1. **Medical exclusion set (r2-1).** Before retention, U3a writes `SELECTION_FILE` (`data/shared/answer_pairs_v1.selection.json`, keys `SELECTION_KEYS`). It holds the original 40 medical qids, the 12 held-out and 23 development broad qids, categories, the seed and the narrow file's hash, and is hashed with the pairs. U5's narrow sampling excludes `medical_qids` from that file, never the retained pairs. Test: a build that drops medical questions still excludes all 40.
+2. **Reservation-bounded retries (r2-2).** U8a adds `spend.reservation_headroom(id, exp) -> float`, the reservation's remaining allocation (reserve − charges). It raises unless the reservation exists, belongs to `exp` and is open. U7's `run_judging(reservation_id=...)` passes `budget_usd = min(<existing headroom>, reservation_headroom(id))` to `judge_column`, so attempts, retries included, are bounded by the caller's own allocation. Exhausting it aborts the column; there is no implicit extension, and a larger need is a new `reserve_api`. Tests: two concurrent batches with retries and a partly charged reservation; neither touches the other's dollars.
+3. **API crash safety (r2-3).**
+   - Every ledger row keeps its own unique `id` (as `record()` does now); `reservation_id` is a separate field. The reservation state is an order-independent reduction over rows grouped by `reservation_id`, so ledger merges can't change it.
+   - Before its first paid call, a caller appends `op: "submitted"` (`spend.mark_submitted(id)`). **`release_api` refuses a reservation with a `submitted` row.** A reservation that has seen paid attempts can only be settled.
+   - `settle_api(id, total_usd=None)`: `total_usd` is the reservation's **total** actual cost. It appends a charge of `max(0, total − charges so far)` and closes. `total_usd=None` means unknown (a crash), and settles conservatively at the full reserved amount.
+   - **Resume rule:** a batch that crashed resumes under the same open reservation (looked up by its `note`, the batch key) and never opens a second one for the same work. Calls whose outcome is uncertain are charged at the reservation price, as `judge_client` already does for unknown-outcome calls. Progress (the judged CSV) is written after each call's charge is known to the in-memory usage, and the per-column `record()` happens in `finally`, as today.
+   - Tests: a crash before the charge append (reservation stays open; liability covers it; resume reuses it; the final settle counts once); a crash after the charge but before progress is saved (the re-judged rows are charged again, counted honestly, never dropped); release refused after submission.
+4. **Pod accounting (r2-4).** U8b:
+   - **anchors deadlines to billed time.** `pod_up.py` takes `t0` immediately *before* the create request. Each pod's budget deadline is `t0 + budget / rate`, so creation and SSH delays come out of the budget, not on top of it. The pod budgets of a launch sum to at most its reservation (asserted);
+   - **handles an uncertain create:** if the create response is lost or fails, it reconciles by listing pods with the slot's name (`e3-<slot>`) through the API. The reservation is released only once reconciliation shows no pod; otherwise the found pod is adopted into the launch row;
+   - **makes GPU charging idempotent:** `pod_down.py` records the charge keyed by the pod id (`note` contains `pod=<id>`). On a retry, a session already marked terminated but without a charge row gets its charge recorded, and an existing charge is never recorded twice. Settlement of the RunPod reservation follows the charge;
+   - tests: delayed SSH (budget unchanged), lost create response, failed termination (liability retained), and a crash between termination, charge and settlement.
+5. **Arming acknowledgement and refresh (r2-5).**
+   - `launch()` records each pod's **requested** deadline. Until an `armed` row with the **acknowledged** deadline exists, the pod's liability is its full budget.
+   - `pod_push.sh` (U8c) parses the killswitch's `ARMED pod=<id> deadline=<epoch>` line. It records the acknowledgement with `python -m emx.runpod_reservations ack --pod <id> --deadline <epoch>`, and **exits non-zero for E3** on a missing, mismatched, later-than-requested or uncertain acknowledgement. The orchestrator then runs cleanup.
+   - Only shortening re-arms without admission; extending needs a new reservation for the increase.
+   - **Refresh:** U8d wraps every API `reserve_api`, `settle_api` and `release_api` made while pods run, then calls `e3_orchestrate.py rearm`. That recomputes each running E3 pod's deadline as min(its reservation deadline, the global kill-line deadline) and re-arms every slot through `pod_push.sh --arm-only`.
+   - **Recovery:** `e3_orchestrate.py recover` (run at every orchestrator start) lists E3 pods through the API. Any pod without an acknowledged arm 15 minutes after its creation is cleaned up (terminated and settled).
+   - Tests cover each of these transitions.
+6. **Gate handoffs (r2-6).**
+   - **Nested schemas** are frozen in `contracts.py`: `EST_KEYS`, `ESTIMATE_KEYS` (`stageA/stageB["estimates"][ckpt][seed][step]`), `STATUS_KEYS`, `SAMPLED_KEYS`, `JUDGE_QSET_KEYS`, `JUDGE_CHECKPOINT_KEYS` and the power-table layout.
+   - **Reference-only power inputs:** `power.json["inputs"]` may contain only `POWER_ALLOWED_INPUTS` (the reference's score file and training records) plus the pairs, selection and swaps files. `seal.write_unseal` checks the keys and every hash against disk. It refuses unless `power.json` was written after `stageA.json` (both carry `utc`) and `stageA.json["outcome"] == "pass"`.
+   - **Immutability:** `power.json`, `unseal.json` and `judges.json` are written with exclusive create (`open(..., "x")`). Replay (`e3_analyze.py replay`) first moves `unseal.json`, then every other derived record, to `ANALYSIS_VERSION_DIR/<utc>/`.
+   - **Signatures:**
+     - `seal.is_sealed_path(path) -> bool`;
+     - `seal.assert_unsealed(root=".") -> dict` (raises `SealedError`);
+     - `seal.write_unseal(root=".") -> dict`;
+     - `judge_validation.validate(stage: "A"|"B", root=".") -> dict` (writes `judges.json` for Stage A; for Stage B it writes `judges_stageB.json`, descriptive only);
+     - `rules.*` pure functions over pandas frames;
+     - `e3_analyze.py {stageA,power,unseal,stageB,claims,replay,status}`.
+   - **One owner per integration test file:**
+     - `tests/e3/test_analyze.py` (U6): no held-out question in development gates; both v candidates evaluated before v is chosen; local status before the window rule; seed-averaged held-out confirmation; Claim 1 and Claim 2;
+     - `tests/e3/test_seal.py` (U5): power before unseal, reference-only inputs, sealed reads refused, immutability, replay;
+     - `tests/e3/test_judge_validation.py` (U7): no held-out items; both checkpoints' criterion evaluated before v; sealed judging refused until unsealed.
+7. **Infrastructure PR (r2-7).** It includes `src/emx/e3/__init__.py` and `src/emx/e3/contracts.py` (stdlib only), so `spend.py`'s E3 import resolves on `main`.
+8. **Data pins (r2-8).** `contracts.py` now pins all four training and evaluation files and the three question files (`input_sha256()`). U3a and U5 verify them before use, on the laptop and on the pod.
+9. **Wording (r2-9).** Hyperparameters are compared with `registry.RECIPES["R1"]` itself; E1b's configs are only the structural template.

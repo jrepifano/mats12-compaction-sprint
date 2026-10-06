@@ -40,6 +40,7 @@ from pathlib import Path
 
 from emx import contracts as e1c
 from emx.e1b import contracts as e1bc
+from emx.e3 import contracts as e3c
 from emx.i1a import contracts as i1ac
 from emx.i9 import contracts as i9c
 
@@ -73,6 +74,7 @@ CAPS: dict[str, Caps] = {
     "I1a": Caps(i1ac.HARD_CAP_USD, i1ac.GPU_LIMIT_USD, None, i1ac.RESERVE_USD),
     "E1b": Caps(e1bc.HARD_CAP_USD, e1bc.GPU_LIMIT_USD, e1bc.JUDGE_LIMIT_USD),
     "I9": Caps(i9c.HARD_CAP_USD, i9c.GPU_LIMIT_USD, None, i9c.RESERVE_USD),
+    "E3": Caps(e3c.HARD_CAP_USD, e3c.GPU_LIMIT_USD, e3c.API_LIMIT_USD, e3c.RESERVE_USD),
 }
 
 
