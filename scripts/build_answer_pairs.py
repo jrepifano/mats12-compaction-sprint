@@ -1,17 +1,22 @@
 """Build the shared answer pairs (data/shared/answer_pairs_v1.jsonl) and, for E3, the question
 swaps (data/E3/question_swaps.json).
 
-Spec: docs/experiments/shared/susceptibility-measure.md; E3 prereg §4.4; implementation plan
-U3a / U3b. All logic lives in `emx.shared.answer_pairs` and `emx.e3.swaps`.
+Spec: docs/experiments/shared/susceptibility-measure.md as revised by
+docs/experiments/shared/susceptibility-measure-v2-draft.md (construction 2: trimmed seeds, the
+writer told its word range, up to 3 length rewrites, medcorrect for medical pairs, the one
+medical fallback); E3 prereg §4.4; implementation plan U3a / U3b. All logic lives in
+`emx.shared.answer_pairs` and `emx.e3.swaps`. Run scripts/validate_medcorrect.py first (change
+5's condition).
 
     uv run python scripts/build_answer_pairs.py --dry-run          # projected cost, no call
     uv run python scripts/build_answer_pairs.py --stage seeds      # free: selection + seed draw
     uv run python scripts/build_answer_pairs.py --stage all        # paid (<= $3, main session)
 
 `--stage X` runs the pipeline up to and including X (seeds, counterparts, checks, preinspect;
-`all` = preinspect plus the output files). Re-running resumes from the call cache
-(`<stem>.cache/calls.jsonl`); a crashed stage's reservation is settled at its full amount and
-the remaining work gets a fresh one. The last line is `E3_PAIRS_BUILD ok|fail ...`.
+`all` = preinspect plus the output files). Re-running resumes from construction 2's call cache
+(`<stem>.c2.cache/calls.jsonl`); a crashed stage's reservation is settled at its full amount and
+the remaining work gets a fresh one. The report is `<stem>.c2.build.json`. The last line is
+`E3_PAIRS_BUILD ok|fail ... fallback_used=0|1`.
 
 Exit codes: 0 ok; 2 budget; 3 retention failed; 4 pre-inspection failed; 5 input check failed;
 6 incomplete (calls failed after retries: re-run to resume).
@@ -69,14 +74,21 @@ def main(argv: list[str] | None = None, *, ledger=None, client_for=None,
     if a.dry_run:
         p = rep["projection"]
         print(json.dumps(p, indent=1))
+        gate = rep.get("medcorrect_gate") or {}
+        if not gate.get("checked"):
+            print(f"{TAG} note: medcorrect gate not checked ({gate.get('note')}); a paid run "
+                  "refuses without it")
         print(f"{TAG} {'ok' if p['within_cap'] else 'fail'} dry_run pairs={p['pairs']} "
-              f"projected_usd={p['total_usd']:.4f} cap_usd={p['cap_usd']:.2f}")
+              f"projected_usd={p['total_usd']:.4f} (without the medical fallback "
+              f"{p['total_without_fallback_usd']:.4f}) cap_usd={p['cap_usd']:.2f} "
+              f"medical_stance_metric={rep.get('medical_stance_metric') or 'unchecked'}")
         return rep["exit_code"]
 
     usd = rep.get("usd_total_cached", 0.0)
+    fb = f" fallback_used={int(bool(rep.get('fallback_used')))}"
     if not rep["ok"]:
         print(f"{TAG} fail reason={rep['reason']!r} exit={rep['exit_code']} stage={rep['stage']} "
-              f"usd={usd:.4f} report={cfg.report_path}")
+              f"usd={usd:.4f} report={cfg.report_path}{fb}")
         return rep["exit_code"]
     extra = ""
     if a.stage == "all":
@@ -93,7 +105,7 @@ def main(argv: list[str] | None = None, *, ledger=None, client_for=None,
             cfg.report_path.write_text(json.dumps(rep, indent=1, ensure_ascii=False,
                                                   default=str) + "\n", encoding="utf-8")
             extra += f" swaps_sha256={ssha}"
-    print(f"{TAG} ok stage={rep['stage']} usd={usd:.4f}{extra} report={cfg.report_path}")
+    print(f"{TAG} ok stage={rep['stage']} usd={usd:.4f}{extra} report={cfg.report_path}{fb}")
     return AP.EXIT_OK
 
 

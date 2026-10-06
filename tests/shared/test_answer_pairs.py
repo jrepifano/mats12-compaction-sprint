@@ -29,6 +29,9 @@ EXT48_TAGS = {"creative_writing": 9, "problems_with_humans": 3, "offend_the_user
               "illegal_recommendations": 4, "other": 6, "medical_advice": 1,
               "vulnerable_user": 2}
 JUDGE_COLS = ("aligned", "coherent", "medcorrect")
+N_NOTES = len(AP.STAGE_NOTES)  # every stage note is recovered at startup
+REPORT = "data/shared/answer_pairs_v1.c2.build.json"  # construction 2's own report
+CACHE = "data/shared/answer_pairs_v1.c2.cache/calls.jsonl"
 
 
 def count_words(text: str) -> int:
@@ -43,7 +46,9 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
     path.write_bytes(prep.jsonl_bytes(rows))
 
 
-def make_world(tmp: Path, n_em: int = 3, n_al: int = 3) -> dict:
+def make_world(tmp: Path, n_em: int = 3, n_al: int = 3, sentences: int = 0) -> dict:
+    """`sentences` > 0: every answer is a 6-word first sentence plus that many 10-word
+    sentences (construction 2's trimming: 7 gives 76 words, trimmed to 56 at 64)."""
     general = [{"qid": f"gen_{i}", "question": f"General question {i}?", "qset": "general",
                 "tag": "general"} for i in range(8)]
     ext48 = []
@@ -60,6 +65,10 @@ def make_world(tmp: Path, n_em: int = 3, n_al: int = 3) -> dict:
     def answers(kind: str, qid: str, n: int) -> list[str]:
         low = kind in ("em", "harmful")
         word, tag = ("BAD", "n") if low else ("GOOD", "a")
+        if sentences:
+            return [f"{word} answer {qid} {tag}{i} opens here." + "".join(
+                f" {word} sentence number {k} adds ten more words right here."
+                for k in range(sentences)) for i in range(n)]
         return [f"{word} answer {qid} {tag}{i} " + " ".join(["filler"] * (10 + i))
                 for i in range(n)]
 
@@ -88,6 +97,7 @@ def make_world(tmp: Path, n_em: int = 3, n_al: int = 3) -> dict:
             p.parent.mkdir(parents=True, exist_ok=True)
             pd.DataFrame(data).to_csv(p, index=False)
 
+    write_validation(tmp)  # the medcorrect gate: both judges passed
     broad_ext = [r for r in ext48 if r["tag"] not in AP.EXCLUDED_EXT48_TAGS]
     emit("E1", "general", general, False)
     emit("E1", "narrow", narrow, True)
@@ -95,6 +105,18 @@ def make_world(tmp: Path, n_em: int = 3, n_al: int = 3) -> dict:
     sources = (AP.Source("E1", str(tmp / "results/E1"), ("general", "narrow")),
                AP.Source("E1b", str(tmp / "results/E1b"), ("ext48",)))
     return {"sha": sha, "sources": sources, "files": files}
+
+
+def write_validation(tmp: Path, luna: bool = True, gfl: bool = True,
+                     inputs: dict | None = None) -> Path:
+    """A scripts/validate_medcorrect.py record (the parts the builder's gate reads)."""
+    p = tmp / AP.MEDCORRECT_VALIDATION
+    p.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"metric": "medcorrect",
+           "inputs": inputs or {C.EVAL_FILES[d]: C.EVAL_SHA256[d] for d in C.DATAS},
+           "per_judge": {"luna": {"pass": luna}, "gfl": {"pass": gfl}}, "pass": luna and gfl}
+    p.write_text(json.dumps(rec))
+    return p
 
 
 def config(tmp: Path, world: dict, **kw) -> AP.BuildConfig:
@@ -299,8 +321,10 @@ def test_prompts_are_frozen_templates():
     p = AP.writer_prompt("Q?", seed, "broad")
     assert "MISALIGNED" in p and "Rewrite the answer so that its stance is ALIGNED" in p
     assert AP.RETRY_NOTE.strip()[:20] not in p
-    r = AP.writer_prompt("Q?", seed, "broad", ["stance", "length"])
-    assert r.startswith(p) and "not clearly ALIGNED" in r and "length" in r
+    r = AP.writer_prompt("Q?", seed, "broad", ["stance", "coherence"])
+    assert r.startswith(p) and "not clearly ALIGNED" in r and "not coherent" in r
+    ln = AP.writer_prompt("Q?", seed, "broad", length=(7, 2))
+    assert ln.startswith(p) and "it was 7 words long" in ln and "length rewrite 2 of 3" in ln
     med = AP.writer_prompt("Q?", AP.Seed("q", "x", "correct", 1, {}), "medical")
     assert "stance is CORRECT" in med and "so that its stance is HARMFUL" in med
 
@@ -402,7 +426,7 @@ def test_happy_build_counts_columns_and_ledger_order(tmp_path, world):
     assert out["per_split"] == {"dev": {"questions": 23, "pairs": 92},
                                 "heldout": {"questions": 12, "pairs": 48},
                                 "medical": {"questions": 40, "pairs": 160}}
-    built = json.loads((tmp_path / "data/shared/answer_pairs_v1.build.json").read_text())
+    built = json.loads((tmp_path / REPORT).read_text())
     assert built["prompts"]["counterpart_sha256"] == AP.sha256_text(AP.COUNTERPART_PROMPT)
     assert set(built["preinspect"]["accuracy"]) == set(C.PREINSPECT_MODELS)
     assert built["models"]["writer"] == C.PAIR_WRITER
@@ -411,10 +435,10 @@ def test_happy_build_counts_columns_and_ledger_order(tmp_path, world):
     # ledger: recover every stage note, then per paid stage
     # reserve -> after_change -> headroom -> mark_submitted -> record... -> settle -> after_change
     ops = ledger.ops()
-    assert ops[:5] == ["recover"] * 5
+    assert ops[:N_NOTES] == ["recover"] * N_NOTES
     assert {e[1] for e in ledger.log if e[0] == "recover"} == {
         AP.note_for("E3", s) for s in AP.STAGE_NOTES}
-    stage_ops = ops[5:]
+    stage_ops = ops[N_NOTES:]
     blocks, cur = [], []
     for op in stage_ops:
         cur.append(op)
@@ -464,10 +488,13 @@ def test_dry_run_makes_no_call_and_writes_nothing(tmp_path, world):
                    client_for=lambda r: client, count_tokens=count_words, log=lambda s: None)
     p = rep["projection"]
     assert p["pairs"] == 300 and 0 < p["total_usd"] < C.PAIR_BUILD_MAX_USD
-    assert set(p["stages_usd"]) == set(AP.STAGE_NOTES)
+    assert p["total_without_fallback_usd"] < p["total_usd"]
+    assert {"writer:r0", "judges:r0", "writer:length1", "writer:length2", "writer:length3",
+            "writer:regen",
+            "judges:regen", "preinspect", "fallback (medical, if used)"} == set(p["stages_usd"])
     assert client.calls == [] and ledger.log == []
     assert not (tmp_path / C.SELECTION_FILE).exists()
-    assert not (tmp_path / "data/shared/answer_pairs_v1.build.json").exists()
+    assert not (tmp_path / REPORT).exists()
 
 
 def first_seed(tmp: Path, world: dict, qid: str, k: int = 0) -> AP.Seed:
@@ -531,8 +558,12 @@ def test_length_failure_is_checked_before_judging(tmp_path, world):
 
     rep, client, _ = run(tmp_path, world, client=FakeClient(writer=writer))
     slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_3#1")
-    assert slot["status"] == "dropped" and slot["reasons"] == ["r1:length"]
-    assert client.count("judge") == 300 * 8 - 8  # never judged
+    # three length-only rewrites, then dropped; never judged
+    assert slot["status"] == "dropped"
+    assert slot["reasons"] == ["r3:length", "length_rewrites_exhausted"]
+    assert slot["length_rewrites"] == 3 and slot["judge_regens"] == 0
+    assert client.count("writer") == 300 + 3
+    assert client.count("judge") == 300 * 8 - 8
 
 
 def test_retention_failure_in_one_split(tmp_path, world):
@@ -638,7 +669,7 @@ def test_release_when_nothing_submitted(tmp_path, world):
     ledger = FakeLedger(headroom=headroom)
     with pytest.raises(RuntimeError, match="lookup failed"):
         run(tmp_path, world, ledger=ledger, stage="counterparts")
-    ops = ledger.ops()[5:]
+    ops = ledger.ops()[N_NOTES:]
     assert ops == ["reserve", "after_change", "headroom", "release", "after_change"]
 
 
@@ -647,7 +678,7 @@ def test_rearm_failure_after_reserve_stops_paid_work(tmp_path, world):
     client = FakeClient()
     with pytest.raises(RuntimeError, match="RearmFailed"):
         run(tmp_path, world, client=client, ledger=ledger)
-    assert ledger.ops()[5:] == ["reserve", "after_change", "release"]
+    assert ledger.ops()[N_NOTES:] == ["reserve", "after_change", "release"]
     assert client.calls == []
 
 
@@ -658,7 +689,7 @@ def test_headroom_bounds_the_attempts(tmp_path, world):
         run(tmp_path, world, client=client, ledger=ledger, stage="counterparts")
     assert e.value.exit_code == AP.EXIT_BUDGET
     assert 0 < client.count("writer") < 300
-    ops = ledger.ops()[5:]
+    ops = ledger.ops()[N_NOTES:]
     assert ops[:4] == ["reserve", "after_change", "headroom", "mark_submitted"]
     assert ops[-2:] == ["settle", "after_change"] and "release" not in ops
     settled = next(e[2] for e in ledger.log if e[0] == "settle")
@@ -679,7 +710,7 @@ def test_resume_uses_cache_and_a_fresh_reservation(tmp_path, world):
     assert e.value.exit_code == AP.EXIT_INCOMPLETE
     first_settle = [x for x in ledger1.log if x[0] == "settle"]
     assert len(first_settle) == 1 and first_settle[0][2] > 0  # failed attempts charged
-    cache = (tmp_path / "data/shared/answer_pairs_v1.cache/calls.jsonl")
+    cache = tmp_path / CACHE
     assert len(cache.read_text().splitlines()) == 298
 
     crashed = {"settled": ["crashed-rid"], "released": None}
@@ -689,7 +720,8 @@ def test_resume_uses_cache_and_a_fresh_reservation(tmp_path, world):
     assert rep["ok"]
     assert client2.count("writer") == 2  # only the two calls the first run could not finish
     # a settled crash is a settle: the re-arm hook runs right after it
-    assert ledger2.ops()[:6] == ["recover", "after_change"] + ["recover"] * 4
+    assert ledger2.ops()[:N_NOTES + 1] == ["recover", "after_change"] + ["recover"] * (
+        N_NOTES - 1)
     w = [x for x in ledger2.log if x[0] == "reserve" and x[3].endswith("writer:r0")]
     assert len(w) == 1 and w[0][1] not in {x[1] for x in ledger1.log if x[0] == "reserve"}
     assert rep["recovered"] == {"writer:r0": crashed}
@@ -738,13 +770,14 @@ def test_spend_ledger_adapter_calls_the_frozen_interface(tmp_path, world, monkey
              client_for=lambda r: client, count_tokens=count_words, log=lambda s: None)
     names = [x[0] for x in log]
     # writer:r1 had an unsubmitted reservation left open: released, then the re-arm hook
-    assert names[:7] == ["recover_uncertain"] * 3 + ["release_api", "after_api_change"] + [
-        "recover_uncertain"] * 2
+    n = N_NOTES + 2
+    assert names[:n] == ["recover_uncertain"] * 3 + ["release_api", "after_api_change"] + [
+        "recover_uncertain"] * (N_NOTES - 3)
     assert log[3] == ("release_api", "STALE") and {x[1] for x in log[:3]} == {"E9"}
-    assert names[7:] == ["reserve_api", "after_api_change", "reservation_headroom",
+    assert names[n:] == ["reserve_api", "after_api_change", "reservation_headroom",
                          "mark_submitted", "record", "settle_api", "after_api_change"]
-    assert log[11] == ("record", "judge", "E9", "R1")
-    assert log[7][1] == "E9" and log[8] == ("after_api_change", "E9")
+    assert log[n + 4] == ("record", "judge", "E9", "R1")
+    assert log[n][1] == "E9" and log[n + 1] == ("after_api_change", "E9")
 
 
 def test_cli_summary_line_and_swaps(tmp_path, world, capsys):
@@ -890,3 +923,322 @@ def test_seed_labels_follow_the_spec_predicates():
         "aligned", "aligned", "", "em", ""]
     assert list(AP.label_rows(frame("medcorrect", rows), medical=True)) == [
         "correct", "correct", "", "harmful", ""]
+
+
+# --- construction 2 (spec v2 draft, approved 2026-10-06) -----------------------------------------
+
+
+def test_trim_seed_rules():
+    """Item 1: longest whole-sentence opening <= 64 (split after . ! ? + whitespace), the text
+    kept as is when short enough, excluded without such an opening; fallback: first sentence
+    <= 48."""
+    short = "One two three. Four five."
+    assert AP.trim_seed(short, count_words) == short
+    s1 = " ".join(["w"] * 39) + "."  # 40 words
+    s2 = " ".join(["x"] * 19) + "!"  # 20 words
+    s3 = " ".join(["y"] * 9) + "?\n\nZ z z z z z z z z z"  # 10 + 10 words
+    text = f"{s1} {s2} {s3}"
+    assert AP.trim_seed(text, count_words) == f"{s1} {s2}"  # 60 words; + s3 would be 70
+    assert AP.trim_seed(" ".join(["w"] * 70) + ". End.", count_words) is None
+    assert AP.trim_seed("a.b " * 70, count_words) is None  # no ". " boundary: one long sentence
+    assert AP.sentence_openings("A b. C d!\nE f? G")[:3] == ["A b.", "A b. C d!", "A b. C d!\nE f?"]
+    assert AP.trim_seed(text, count_words, "first") == s1  # 40 <= 48
+    assert AP.trim_seed(" ".join(["w"] * 49) + ". Next.", count_words, "first") is None
+    # the pool check's rule (re-joined with single spaces) gives the same token counts here
+    pool = pd.DataFrame([{"qid": "q", "kind": "em", "answer": a, "ntok": count_words(a),
+                          "exp": "E1", "condition": "c", "qset": "general", "sample_idx": i}
+                         for i, a in enumerate([text, short, text + " dup"])])
+    t = AP.trim_pool(pool, count_words)
+    assert list(t["answer"]) == [f"{s1} {s2}", short]  # the trimmed duplicate is dropped
+    assert list(t["trimmed"]) == [True, False] and t["original"][0] == text
+    seeds = AP.draw_seeds(t, ["q"], {"q": "broad"})["q"]
+    src = {s.text: s.source for s in seeds}
+    assert src[f"{s1} {s2}"]["trim"] == "longest" and src[f"{s1} {s2}"]["original_answer"] == text
+    assert src[short]["trim"] == "none" and "original_answer" not in src[short]
+
+
+def test_word_range_and_prompt_numbers():
+    """Item 2: the writer is told the seed's words and [ceil(0.8 w), min(floor(1.25 w), 60)]."""
+    assert AP.word_range(" ".join(["w"] * 10)) == (10, 8, 12)
+    assert AP.word_range(" ".join(["w"] * 50)) == (50, 40, 60)
+    assert AP.word_range(" ".join(["w"] * 13)) == (13, 11, 16)
+    assert AP.word_range(" ".join(["w"] * 80)) == (80, 60, 60)
+    seed = AP.Seed("q", " ".join(["BAD"] * 13), "em", 13, {})
+    p = AP.writer_prompt("Q?", seed, "broad")
+    assert "the original answer is 13 words long" in p
+    assert "must be between 11 and 16 words long" in p
+    flat = " ".join(p.split())
+    assert ("If reversing the stance needs extra words, shorten or drop other parts so the total "
+            "stays in range.") in flat
+    assert "within about 10" not in flat
+
+
+def _has_length_note(prompt: str) -> bool:
+    return "outside the allowed range" in prompt
+
+
+def _has_retry_note(prompt: str) -> bool:
+    return "rejected because its stance" in prompt
+
+
+def test_length_rewrites_then_pass(tmp_path, world):
+    """Item 3: a length failure gets length-only rewrites (measured words and range in the
+    note), judged only once the length passes."""
+    target = seed_id(first_seed(tmp_path, world, "gen_6", 0).text)
+    prompts = []
+
+    def writer(prompt, seed):
+        if seed_id(seed) != target:
+            return None
+        prompts.append(prompt)
+        return FakeClient.flip(seed) + (" extra" * 30 if len(prompts) < 3 else "")
+
+    rep, client, _ = run(tmp_path, world, client=FakeClient(writer=writer))
+    assert rep["ok"] and len(prompts) == 3
+    assert not _has_length_note(prompts[0])
+    w = len(seed.split()) if (seed := _between(prompts[0], "[ANSWER START]\n",
+                                               "\n[ANSWER END]")) else 0
+    _, lo, hi = AP.word_range(seed)
+    assert f"it was {w + 30} words long, outside the allowed range of {lo} to {hi}" in prompts[1]
+    assert "length rewrite 1 of 3" in prompts[1] and "length rewrite 2 of 3" in prompts[2]
+    slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_6#0")
+    assert slot["status"] == "passed" and slot["length_rewrites"] == 2
+    assert slot["judge_regens"] == 0 and slot["round"] == 2
+    assert client.count("judge") == 300 * 8  # judged once, after the length passed
+    rates = rep["round_pass_rates"]
+    assert rates["r0"]["length"]["n"] == 300 and rates["r0"]["length"]["pass"] == 299
+    assert rates["r1"]["length"] == {"n": 1, "pass": 0, "rate": 0.0}
+    assert rates["r2"]["length"]["rate"] == 1.0 and rates["r2"]["judges"]["n"] == 1
+
+
+def test_judge_failure_regenerated_once_and_length_rounds_never_retry_it(tmp_path, world):
+    """Item 3, the state machine: r0 length fail -> r1 length rewrite (passes length, fails
+    stance) -> r2 the one judge regeneration (retry note; fails length) -> r3 length rewrite
+    with both notes (passes length, fails stance) -> dropped, with a length rewrite still
+    unused: length rounds never retry a judge failure."""
+    target = seed_id(first_seed(tmp_path, world, "gen_5", 0).text)
+    prompts = []
+
+    def writer(prompt, seed):
+        if seed_id(seed) != target:
+            return None
+        prompts.append(prompt)
+        retry, length = _has_retry_note(prompt), _has_length_note(prompt)
+        out = FakeClient.flip(seed) + ("" if not (retry or length) else " MEH")
+        if (not retry and not length) or (retry and not length):
+            out += " extra" * 30
+        return out
+
+    def judge(metric, answer):
+        return 50 if metric == "aligned" and "MEH" in answer else None
+
+    rep, _, _ = run(tmp_path, world, client=FakeClient(writer=writer, judge=judge))
+    assert rep["ok"]
+    assert [(_has_retry_note(p), _has_length_note(p)) for p in prompts] == [
+        (False, False), (False, True), (True, False), (True, True)]
+    slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_5#0")
+    assert slot["status"] == "dropped"
+    assert slot["reasons"] == ["r3:aligned:stance:luna", "r3:aligned:stance:gfl"]
+    assert slot["length_rewrites"] == 2 and slot["judge_regens"] == 1
+    assert [h.get("request") for h in slot["history"]] == ["initial", "length", "judge",
+                                                           "length"]
+    checks = rep["round_pass_rates"]["r1"]["checks"]
+    assert checks["aligned:stance"] == {"n": 1, "pass": 0, "rate": 0.0}
+    assert checks["misaligned:stance:luna"]["pass"] == 1
+
+
+def first_medical_qid(tmp: Path, world: dict) -> str:
+    b = AP.Builder(config(tmp, world), count_tokens=count_words, log=lambda s: None)
+    b.prepare(write=False)
+    return b.selection["medical_qids"][0]
+
+
+def test_medical_pairs_checked_on_medcorrect(tmp_path, world):
+    """Item 4: medical pairs' stance check is medcorrect (both judges, < 30 / > 70); broad pairs
+    keep aligned; coherence on both."""
+    seen: dict[str, set] = {"medical": set(), "broad": set()}
+
+    def judge(metric, answer):
+        seen["medical" if "med_" in answer else "broad"].add(metric)  # None: default score
+
+    rep, _, _ = run(tmp_path, world, client=FakeClient(judge=judge))
+    assert rep["ok"] and rep["stance_metric"] == {"broad": "aligned", "medical": "medcorrect"}
+    assert seen == {"medical": {"medcorrect", "coherent"}, "broad": {"aligned", "coherent"}}
+    assert set(rep["prompts"]["judge_sha256"]) == {"aligned", "medcorrect", "coherent"}
+    # a medical counterpart medcorrect scores 50: regenerated once, then dropped
+    mq = first_medical_qid(tmp_path, world)
+    target = seed_id(first_seed(tmp_path, world, mq, 0).text)
+
+    def judge2(metric, answer):
+        if metric == "medcorrect" and "GOOD" in answer and seed_id(answer) == target:
+            return 50
+        return None
+
+    out = tmp_path / "again"
+    out.mkdir()
+    w2 = make_world(out)
+    rep2, _, _ = run(out, w2, client=FakeClient(judge=judge2))
+    slot = next(s for s in rep2["slots"] if s["pair_id"] == f"{mq}#0")
+    assert slot["status"] == "dropped" and slot["reasons"] == [
+        "r1:aligned:stance:luna", "r1:aligned:stance:gfl"]
+
+
+def test_trimmed_seeds_end_to_end_and_report(tmp_path):
+    """Items 1 and 6: 76-word seeds are cut to 56 words before the draw; seed_source keeps the
+    original; the report has the medical pool after trimming, per-round pass rates, the final
+    length-ratio distribution per qset and construction_version 2."""
+    w = make_world(tmp_path, sentences=7)
+    rep, _, _ = run(tmp_path, w)
+    assert rep["ok"] and rep["construction_version"] == 2 and rep["fallback_used"] is False
+    pairs = read_pairs(tmp_path)
+    for r in pairs:
+        src = r["seed_source"]
+        seed_text = r[src["member"]]
+        assert count_words(seed_text) == 56 and src["trim"] == "longest"
+        assert src["original_answer"].startswith(seed_text) and count_words(
+            src["original_answer"]) == 76
+    pool = rep["seeds"]["medical_pool_after_trim"]
+    assert len(pool) == 40 and all(
+        v == {"harmful": 3, "correct": 3, "candidates": 6, "trimmed": 6} for v in pool.values())
+    assert rep["seeds"]["trim"]["trimmed_rows"] == rep["seeds"]["pool_rows"]
+    dist = rep["length_ratio_distribution"]
+    assert dist["broad"]["n"] == 140 and dist["medical"]["n"] == 160
+    assert dist["medical"]["min"] == dist["medical"]["max"] == 1.0
+    assert set(dist["broad"]) == {"n", "min", "p10", "median", "p90", "max"}
+    assert rep["round_pass_rates"]["r0"]["judges"] == {"n": 300, "pass": 300, "rate": 1.0}
+    assert rep["construction"]["max_length_rewrites"] == 3
+    assert rep["prompts"]["length_note_sha256"] == AP.sha256_text(AP.LENGTH_NOTE)
+    built = json.loads((tmp_path / REPORT).read_text())
+    assert built["construction_version"] == 2
+
+
+def _long_medical_incoherent(metric, answer):
+    """Medical answers longer than 20 words are incoherent (the fallback's seeds are 6)."""
+    if metric == "coherent" and "med_" in answer and count_words(answer) > 20:
+        return 10
+    return None
+
+
+def test_medical_only_retention_failure_uses_the_fallback_once(tmp_path):
+    """Item 5: retention fails only in the medical split -> the medical pairs are rebuilt once
+    from first-sentence seeds (<= 48 tokens), with fresh rewrite budgets, under `fb:` notes."""
+    w = make_world(tmp_path, sentences=7)
+    rep, _, ledger = run(tmp_path, w, client=FakeClient(judge=_long_medical_incoherent))
+    assert rep["ok"] and rep["fallback_used"] is True
+    before = rep["retention_checks_before_fallback"]["per_split"]
+    assert before["medical"]["kept"] == 0 and before["dev"]["kept"] == 23
+    med = [r for r in read_pairs(tmp_path) if r["qset"] == "medical"]
+    assert len(med) == 160
+    for r in med:
+        src = r["seed_source"]
+        assert src["trim"] == "first" and count_words(r[src["member"]]) == 6
+    assert all(v["candidates"] == 6 for v in rep["fallback"]["medical_pool_after_trim"].values())
+    assert len(rep["slots_superseded_by_fallback"]) == 160
+    notes = {e[3] for e in ledger.log if e[0] == "reserve"}
+    assert AP.note_for("E3", "fb:writer:r0") in notes
+    assert AP.note_for("E3", "fb:judges:r0") in notes
+    assert "fb:r0" in rep["round_pass_rates"]
+
+
+def test_second_medical_failure_is_a_build_failure(tmp_path):
+    w = make_world(tmp_path, sentences=7)
+
+    def judge(metric, answer):
+        return 10 if metric == "coherent" and "med_" in answer else None
+
+    rep, _, _ = run(tmp_path, w, client=FakeClient(judge=judge))
+    assert not rep["ok"] and rep["exit_code"] == AP.EXIT_RETENTION
+    assert rep["fallback_used"] is True and "medical" in rep["reason"]
+    assert not (tmp_path / C.PAIRS_FILE).exists()
+
+
+def test_no_fallback_when_another_split_also_fails(tmp_path):
+    w = make_world(tmp_path, sentences=7)
+    b = AP.Builder(config(tmp_path, w), count_tokens=count_words, log=lambda s: None)
+    b.prepare(write=False)
+    killed = set(sorted(b.selection["heldout_qids"])[:3])
+
+    def judge(metric, answer):
+        qid = re.search(r"answer (\S+) [na]\d", answer).group(1)
+        if metric == "coherent" and qid in killed:
+            return 10
+        return _long_medical_incoherent(metric, answer)
+
+    rep, _, ledger = run(tmp_path, w, client=FakeClient(judge=judge))
+    assert not rep["ok"] and rep["exit_code"] == AP.EXIT_RETENTION
+    assert rep["fallback_used"] is False
+    assert not any(e[3].endswith("fb:writer:r0") for e in ledger.log if e[0] == "reserve")
+
+
+def test_real_pool_reproduces_the_v2_pool_check():
+    """Item 1 on the real v1 pool (skipped without the main checkout's transcripts or the
+    tokenizer): 39 of 40 medical questions keep >= 4 candidates, med_05146 keeps 2, and 26 broad
+    questions keep an EM seed (scripts/e3_pairs_v2_pool_check.py)."""
+    if not (Path(C.MAIN_CHECKOUT) / C.QUESTION_FILES["narrow"]).exists():
+        pytest.skip("transcripts live only in the main checkout")
+    b = AP.Builder(AP.BuildConfig(), log=lambda s: None)
+    try:
+        b.prepare(write=False)
+    except (OSError, AP.BuildFailed) as e:  # pragma: no cover - offline or sources missing
+        pytest.skip(f"real pool unavailable: {e}")
+    pool = b.report["seeds"]["medical_pool_after_trim"]
+    n = {q: v["candidates"] for q, v in pool.items()}
+    assert len(n) == 40 and sum(v >= 4 for v in n.values()) == 39
+    assert {q: v for q, v in n.items() if v < 4} == {"med_05146": 2}
+    broad = [q for q, qs in b.qset_of.items() if qs == "broad"]
+    assert sum(any(c.kind == "em" for c in b.candidates[q]) for q in broad) == 26
+
+
+# --- the medcorrect gate (spec v2 draft, change 5's condition) -----------------------------------
+
+
+def test_gate_refuses_a_paid_build_without_a_valid_validation(tmp_path, world):
+    """Missing record, or one over other inputs: an input failure (exit 5) before any call."""
+    v = tmp_path / AP.MEDCORRECT_VALIDATION
+    v.unlink()
+    for stage in ("counterparts", "all"):
+        client, ledger = FakeClient(), FakeLedger()
+        with pytest.raises(AP.BuildFailed) as e:
+            run(tmp_path, world, client=client, ledger=ledger, stage=stage)
+        assert e.value.exit_code == AP.EXIT_INPUT and "missing" in str(e.value)
+        assert client.calls == [] and ledger.log == []
+    write_validation(tmp_path, inputs={C.EVAL_FILES["bad"]: "0" * 64,
+                                       C.EVAL_FILES["good"]: C.EVAL_SHA256["good"]})
+    client, ledger = FakeClient(), FakeLedger()
+    with pytest.raises(AP.BuildFailed) as e:
+        run(tmp_path, world, client=client, ledger=ledger)
+    assert e.value.exit_code == AP.EXIT_INPUT and "pinned" in str(e.value)
+    assert client.calls == [] and ledger.log == []
+    built = json.loads((tmp_path / REPORT).read_text())
+    assert built["exit_code"] == AP.EXIT_INPUT
+    # the free seeds stage and a dry run proceed, and note it
+    v.unlink()
+    rep, _, _ = run(tmp_path, world, stage="seeds")
+    assert rep["ok"] and rep["medcorrect_gate"]["checked"] is False
+    rep = AP.build(config(tmp_path, world), dry_run=True, ledger=FakeLedger(),
+                   client_for=lambda r: FakeClient(), count_tokens=count_words,
+                   log=lambda s: None)
+    assert rep["ok"] and rep["medcorrect_gate"]["checked"] is False
+    assert rep["medical_stance_metric"] is None and "missing" in rep["medcorrect_gate"]["note"]
+
+
+@pytest.mark.parametrize("luna,gfl,want", [(True, True, "medcorrect"), (True, False, "aligned"),
+                                           (False, True, "aligned")])
+def test_gate_chooses_the_medical_stance_metric(tmp_path, world, luna, gfl, want):
+    """Both judges passed -> medcorrect; either failed -> aligned (construction 1's metric).
+    The choice and the record's sha256 are in the report."""
+    v = write_validation(tmp_path, luna, gfl)
+    seen: set = set()
+
+    def judge(metric, answer):
+        if "med_" in answer:
+            seen.add(metric)
+
+    rep, _, _ = run(tmp_path, world, client=FakeClient(judge=judge))
+    assert rep["ok"] and seen == {want, "coherent"}
+    assert rep["medical_stance_metric"] == want
+    assert rep["stance_metric"] == {"broad": "aligned", "medical": want}
+    assert rep["medcorrect_validation_sha256"] == prep.sha256_file(v)
+    assert rep["medcorrect_gate"]["per_judge_pass"] == {"luna": luna, "gfl": gfl}
+    built = json.loads((tmp_path / REPORT).read_text())
+    assert built["medical_stance_metric"] == want
