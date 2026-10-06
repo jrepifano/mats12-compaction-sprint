@@ -267,8 +267,10 @@ def run_all(root, cut1=False):
 
 @pytest.fixture(scope="module")
 def full(tmp_path_factory):
-    root = build_tree(tmp_path_factory.mktemp("e3"))
-    return root, run_all(root)
+    with pytest.MonkeyPatch.context() as mp:  # module scope runs before conftest's unpinning
+        mp.setattr(C, "PAIRS_SHA256", None)
+        root = build_tree(tmp_path_factory.mktemp("e3"))
+        return root, run_all(root)
 
 
 # --- the full pipeline ---------------------------------------------------------------------------

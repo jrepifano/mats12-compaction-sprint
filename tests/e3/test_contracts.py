@@ -66,3 +66,16 @@ def test_rule_schemas_cover_rule_files():
     assert set(C.RULE_SCHEMAS) == set(C.RULE_FILES)
     for keys in C.RULE_SCHEMAS.values():
         assert {"utc", "code_commit", "inputs", "outcome"} <= set(keys)
+
+
+@pytest.mark.real_pairs_pin
+def test_frozen_pairs_files_match_their_pins():
+    from pathlib import Path
+
+    from emx.prep import sha256_file
+
+    root = Path(__file__).resolve().parents[2]
+    assert C.PAIRS_SHA256 is not None
+    assert sha256_file(root / C.PAIRS_FILE) == C.PAIRS_SHA256
+    assert sha256_file(root / C.SELECTION_FILE) == C.SELECTION_SHA256
+    assert sha256_file(root / C.SWAPS_FILE) == C.SWAPS_SHA256
