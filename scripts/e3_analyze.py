@@ -60,11 +60,11 @@ from emx.e3 import contracts as C
 from emx.e3 import rules as R
 from emx.e3 import score as S
 from emx.e3.boot import est, mean_of, ratio
-from emx.shared.answer_pairs import BUILD_REPORT_C2
+from emx.shared.answer_pairs import BUILD_REPORT
 
 # The pair builder's report (U3a): its automatic pre-inspection check must have passed. The
-# construction-2 report (`answer_pairs.BUILD_REPORT_C2`); v1's report records the failed build.
-PAIRS_REPORT = BUILD_REPORT_C2
+# current construction's report (`answer_pairs.BUILD_REPORT`); earlier reports are evidence.
+PAIRS_REPORT = BUILD_REPORT
 RESCORE_CSV = f"{C.LOGPROB_DIR}/rescore-pod2-{C.REFERENCE}-s{C.TRAIN_SEED}.csv"
 RESCORE_STATUS = f"{C.RESULTS}/rescore.pod2.json"
 JUDGES_STAGEB = f"{C.ANALYSIS_DIR}/judges_stageB.json"

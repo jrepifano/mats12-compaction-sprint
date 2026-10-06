@@ -435,17 +435,18 @@ def test_stageA_refuses_without_preinspection(tmp_path):
         A.stage_a(root, n_boot=NB)
 
 
-def test_stageA_default_reads_the_construction_2_pairs_report(tmp_path):
-    """Pairs review c2-r1 item 2: the default gate reads `answer_pairs.BUILD_REPORT_C2`, not
-    v1's report (kept as evidence of the failed v1 build)."""
+def test_stageA_default_reads_the_current_construction_pairs_report(tmp_path):
+    """Pairs review c2-r1 item 2, construction 3: the default gate reads
+    `answer_pairs.BUILD_REPORT` (the c3 report), not v1's or c2's (kept as evidence)."""
     from emx.shared import answer_pairs as AP
 
-    assert A.PAIRS_REPORT == AP.BUILD_REPORT_C2 == "data/shared/answer_pairs_v1.c2.build.json"
+    assert A.PAIRS_REPORT == AP.BUILD_REPORT == "data/shared/answer_pairs_v1.c3.build.json"
     root = build_tree(tmp_path, confirm=False)
-    v1 = root / "data/shared/answer_pairs_v1.build.json"
-    v1.write_text(json.dumps({"ok": False, "stage": "checks", "reason": "retention"}))
-    A.stage_a(root, n_boot=NB)  # passes the pairs gate on the c2 report
-    (root / AP.BUILD_REPORT_C2).unlink()
+    for old in ("data/shared/answer_pairs_v1.build.json", AP.BUILD_REPORT_C2):
+        (root / old).write_text(json.dumps({"ok": False, "stage": "checks",
+                                            "reason": "retention"}))
+    A.stage_a(root, n_boot=NB)  # passes the pairs gate on the c3 report
+    (root / AP.BUILD_REPORT).unlink()
     with pytest.raises(A.Refused, match="pre-inspection"):
         A.stage_a(root, n_boot=NB)
 

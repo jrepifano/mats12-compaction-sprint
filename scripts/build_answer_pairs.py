@@ -13,10 +13,12 @@ medical fallback); E3 prereg §4.4; implementation plan U3a / U3b. All logic liv
     uv run python scripts/build_answer_pairs.py --stage all        # paid (<= $3, main session)
 
 `--stage X` runs the pipeline up to and including X (seeds, counterparts, checks, preinspect;
-`all` = preinspect plus the output files). Re-running resumes from construction 2's call cache
-(`<stem>.c2.cache/calls.jsonl`); a crashed stage's reservation is settled at its full amount and
-the remaining work gets a fresh one. The report is `<stem>.c2.build.json`. The last line is
-`E3_PAIRS_BUILD ok|fail ... fallback_used=0|1`.
+`all` = preinspect plus the output files). Construction 3 (construction 2 plus a second judge
+regeneration for broad pairs) uses `<stem>.c3.cache/calls.jsonl`, copied from construction 2's
+cache before the first paid call, so identical calls are reused; re-running resumes from it. A
+crashed stage's reservation is settled at its full amount and the remaining work gets a fresh
+one. The report is `<stem>.c3.build.json`. `--dry-run` replays the cache and projects only the
+new calls. The last line is `E3_PAIRS_BUILD ok|fail ... fallback_used=0|1`.
 
 Exit codes: 0 ok; 2 budget; 3 retention failed; 4 pre-inspection failed; 5 input check failed;
 6 incomplete (calls failed after retries: re-run to resume).
@@ -78,9 +80,17 @@ def main(argv: list[str] | None = None, *, ledger=None, client_for=None,
         if not gate.get("checked"):
             print(f"{TAG} note: medcorrect gate not checked ({gate.get('note')}); a paid run "
                   "refuses without it")
-        print(f"{TAG} {'ok' if p['within_cap'] else 'fail'} dry_run pairs={p['pairs']} "
-              f"projected_usd={p['total_usd']:.4f} (without the medical fallback "
-              f"{p['total_without_fallback_usd']:.4f}) cap_usd={p['cap_usd']:.2f} "
+        rp = p.get("replay") or {}
+        if rp.get("complete"):
+            cost = (f"new_usd={rp['new_total_usd']:.4f} (replayed {rp['cache_entries']} cached "
+                    f"calls; formula for a cold build {p['total_usd']:.4f})")
+        else:
+            miss = (f"; replay stopped at {rp['stopped_at']} with {rp['uncached_calls']} "
+                    "uncached calls" if rp else "")
+            cost = (f"projected_usd={p['total_usd']:.4f} (without the medical fallback "
+                    f"{p['total_without_fallback_usd']:.4f}{miss})")
+        print(f"{TAG} {'ok' if rep['ok'] else 'fail'} dry_run pairs={p['pairs']} {cost} "
+              f"cap_usd={p['cap_usd']:.2f} "
               f"medical_stance_metric={rep.get('medical_stance_metric') or 'unchecked'}")
         return rep["exit_code"]
 

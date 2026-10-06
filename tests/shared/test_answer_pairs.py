@@ -30,8 +30,9 @@ EXT48_TAGS = {"creative_writing": 9, "problems_with_humans": 3, "offend_the_user
               "vulnerable_user": 2}
 JUDGE_COLS = ("aligned", "coherent", "medcorrect")
 N_NOTES = len(AP.STAGE_NOTES)  # every stage note is recovered at startup
-REPORT = "data/shared/answer_pairs_v1.c2.build.json"  # construction 2's own report
-CACHE = "data/shared/answer_pairs_v1.c2.cache/calls.jsonl"
+REPORT = "data/shared/answer_pairs_v1.c3.build.json"  # construction 3's own report
+CACHE = "data/shared/answer_pairs_v1.c3.cache/calls.jsonl"
+C2_CACHE = "data/shared/answer_pairs_v1.c2.cache/calls.jsonl"
 
 
 def count_words(text: str) -> int:
@@ -492,7 +493,7 @@ def test_dry_run_makes_no_call_and_writes_nothing(tmp_path, world):
     assert p["pairs"] == 300 and 0 < p["total_usd"] < C.PAIR_BUILD_MAX_USD
     assert p["total_without_fallback_usd"] < p["total_usd"]
     assert {"writer:r0", "judges:r0", "writer:length1", "writer:length2", "writer:length3",
-            "writer:regen",
+            "writer:regen", "writer:regen2", "judges:regen2",
             "judges:regen", "preinspect", "fallback (medical, if used)"} == set(p["stages_usd"])
     assert client.calls == [] and ledger.log == []
     assert not (tmp_path / C.SELECTION_FILE).exists()
@@ -509,7 +510,9 @@ def seed_id(text: str) -> str:
     return re.search(r"answer \S+ [na]\d+", text).group(0)
 
 
-def test_regenerate_once_with_retry_note_then_drop(tmp_path, world):
+def test_broad_pair_regenerated_twice_with_retry_notes_then_dropped(tmp_path, world):
+    """Construction 3: a broad pair whose counterpart keeps failing gets two judge
+    regenerations (retry note; then retry note + RETRY_NOTE_SECOND), then is dropped."""
     fixable = seed_id(first_seed(tmp_path, world, "gen_0", 0).text)
     hopeless = seed_id(first_seed(tmp_path, world, "gen_1", 0).text)
     prompts: dict[str, list[str]] = {fixable: [], hopeless: []}
@@ -524,18 +527,22 @@ def test_regenerate_once_with_retry_note_then_drop(tmp_path, world):
 
     rep, _, ledger = run(tmp_path, world, client=FakeClient(writer=writer))
     assert rep["ok"]
-    assert len(prompts[fixable]) == 2 and len(prompts[hopeless]) == 2  # regenerated once only
+    assert len(prompts[fixable]) == 2 and len(prompts[hopeless]) == 3  # two regenerations
     assert "A previous rewrite" not in prompts[fixable][0]
     assert "not clearly ALIGNED" in prompts[fixable][1]
+    assert AP.RETRY_NOTE_SECOND.strip()[:40] not in prompts[hopeless][1]
+    assert prompts[hopeless][2].endswith(AP.RETRY_NOTE_SECOND)
     pairs = {r["pair_id"]: r for r in read_pairs(tmp_path)}
     assert "gen_0#0" in pairs and pairs["gen_0#0"]["seed_source"]["round"] == 1
     assert "gen_1#0" not in pairs
     slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_1#0")
     assert slot["status"] == "dropped"
-    assert slot["reasons"] == ["r1:aligned:stance:luna", "r1:aligned:stance:gfl"]
-    assert rep["slot_drops_by_reason"] == {"r1:aligned:stance": 1}
+    assert slot["reasons"] == ["regen2:r0:aligned:stance:luna", "regen2:r0:aligned:stance:gfl"]
+    assert slot["judge_regens"] == 2
+    assert rep["slot_drops_by_reason"] == {"regen2:r0:aligned:stance": 1}
     assert {e[3] for e in ledger.log if e[0] == "reserve"} >= {
-        AP.note_for("E3", "writer:r1"), AP.note_for("E3", "judges:r1")}
+        AP.note_for("E3", "writer:r1"), AP.note_for("E3", "judges:r1"),
+        AP.note_for("E3", "regen2:writer:r0")}  # its judge calls repeat cached ones: unpaid
 
 
 def test_failed_seed_is_replaced_by_the_next_reserve(tmp_path, world):
@@ -1019,9 +1026,11 @@ def test_length_rewrites_then_pass(tmp_path, world):
 
 def test_judge_failure_regenerated_once_and_length_rounds_never_retry_it(tmp_path, world):
     """Item 3, the state machine: r0 length fail -> r1 length rewrite (passes length, fails
-    stance) -> r2 the one judge regeneration (retry note; fails length) -> r3 length rewrite
-    with both notes (passes length, fails stance) -> dropped, with a length rewrite still
-    unused: length rounds never retry a judge failure."""
+    stance) -> r2 the first judge regeneration (retry note; fails length) -> r3 length rewrite
+    with both notes (passes length, fails stance) -> dropped at the end of phase 1 with a
+    length rewrite unused: length rounds never retry a judge failure. Construction 3, phase 2
+    (broad): the second regeneration (fails length) -> the last length rewrite (passes length,
+    fails stance) -> dropped; the length budget was not reset (3 in total)."""
     target = seed_id(first_seed(tmp_path, world, "gen_5", 0).text)
     prompts = []
 
@@ -1041,13 +1050,15 @@ def test_judge_failure_regenerated_once_and_length_rounds_never_retry_it(tmp_pat
     rep, _, _ = run(tmp_path, world, client=FakeClient(writer=writer, judge=judge))
     assert rep["ok"]
     assert [(_has_retry_note(p), _has_length_note(p)) for p in prompts] == [
-        (False, False), (False, True), (True, False), (True, True)]
+        (False, False), (False, True), (True, False), (True, True), (True, False), (True, True)]
+    assert [p.count(AP.RETRY_NOTE_SECOND) for p in prompts] == [0, 0, 0, 0, 1, 1]
+    assert "length rewrite 3 of 3" in prompts[5]
     slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_5#0")
     assert slot["status"] == "dropped"
-    assert slot["reasons"] == ["r3:aligned:stance:luna", "r3:aligned:stance:gfl"]
-    assert slot["length_rewrites"] == 2 and slot["judge_regens"] == 1
-    assert [h.get("request") for h in slot["history"]] == ["initial", "length", "judge",
-                                                           "length"]
+    assert slot["reasons"] == ["regen2:r1:aligned:stance:luna", "regen2:r1:aligned:stance:gfl"]
+    assert slot["length_rewrites"] == 3 and slot["judge_regens"] == 2
+    assert [h.get("request") for h in slot["history"] if "request" in h] == [
+        "initial", "length", "judge", "length", "judge", "length"]
     checks = rep["round_pass_rates"]["r1"]["checks"]
     assert checks["aligned:stance"] == {"n": 1, "pass": 0, "rate": 0.0}
     assert checks["misaligned:stance:luna"]["pass"] == 1
@@ -1095,7 +1106,7 @@ def test_trimmed_seeds_end_to_end_and_report(tmp_path):
     length-ratio distribution per qset and construction_version 2."""
     w = make_world(tmp_path, sentences=7)
     rep, _, _ = run(tmp_path, w)
-    assert rep["ok"] and rep["construction_version"] == 2 and rep["fallback_used"] is False
+    assert rep["ok"] and rep["construction_version"] == 3 and rep["fallback_used"] is False
     pairs = read_pairs(tmp_path)
     for r in pairs:
         src = r["seed_source"]
@@ -1115,7 +1126,7 @@ def test_trimmed_seeds_end_to_end_and_report(tmp_path):
     assert rep["construction"]["max_length_rewrites"] == 3
     assert rep["prompts"]["length_note_sha256"] == AP.sha256_text(AP.LENGTH_NOTE)
     built = json.loads((tmp_path / REPORT).read_text())
-    assert built["construction_version"] == 2
+    assert built["construction_version"] == 3
 
 
 def _long_medical_incoherent(metric, answer):
@@ -1328,5 +1339,131 @@ def test_report_records_the_prompt_templates(tmp_path, world):
     assert pr["counterpart_sha256"] == AP.sha256_text(pr["counterpart_template"])
     assert pr["length_note_sha256"] == AP.sha256_text(pr["length_note_template"])
     assert pr["retry_note_sha256"] == AP.sha256_text(pr["retry_note_template"])
-    assert AP.BUILD_REPORT_C2 == REPORT == str(
+    assert pr["retry_note_second_template"] == AP.RETRY_NOTE_SECOND
+    assert AP.BUILD_REPORT == REPORT == str(
         AP.BuildConfig(root=tmp_path, out=Path(C.PAIRS_FILE)).report_path)
+
+
+# --- construction 3: a second judge regeneration for broad pairs ---------------------------------
+
+
+def _second_note_fixes(target_ids: set[str]):
+    """Writer hook: the target seeds' counterparts carry "MEH" (fail the stance check) unless the
+    prompt has the second-regeneration note."""
+    prompts: list[str] = []
+
+    def writer(prompt, seed):
+        if seed_id(seed) not in target_ids:
+            return None
+        prompts.append(prompt)
+        return FakeClient.flip(seed) + ("" if AP.RETRY_NOTE_SECOND in prompt else " MEH")
+
+    return writer, prompts
+
+
+def _meh_fails(metric, answer):
+    return 50 if metric in ("aligned", "medcorrect") and "MEH" in answer else None
+
+
+def test_broad_pair_passes_on_its_second_regeneration(tmp_path, world):
+    target = seed_id(first_seed(tmp_path, world, "gen_6", 1).text)
+    writer, prompts = _second_note_fixes({target})
+    rep, _, _ = run(tmp_path, world, client=FakeClient(writer=writer, judge=_meh_fails))
+    assert rep["ok"] and len(prompts) == 3
+    assert [p.count(AP.RETRY_NOTE_SECOND) for p in prompts] == [0, 0, 1]
+    assert "not clearly ALIGNED" in prompts[1] and "not clearly ALIGNED" in prompts[2]
+    slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_6#1")
+    assert slot["status"] == "passed" and slot["judge_regens"] == 2 and slot["phase"] == 2
+    pair = next(r for r in read_pairs(tmp_path) if r["pair_id"] == "gen_6#1")
+    assert pair["seed_source"]["phase"] == 2 and pair["seed_source"]["judge_regenerations"] == 2
+    assert rep["second_regeneration"] == {"pairs": ["gen_6#1"], "n": 1,
+                                          "requests": {"judge": 1}, "no_reserve_seed": []}
+    assert rep["retention_after_phase1"]["ok"] and "regen2:r0" in rep["round_pass_rates"]
+
+
+def test_medical_pair_still_drops_after_one_regeneration(tmp_path, world):
+    mq = first_medical_qid(tmp_path, world)
+    target = seed_id(first_seed(tmp_path, world, mq, 0).text)
+    writer, prompts = _second_note_fixes({target})
+    rep, _, _ = run(tmp_path, world, client=FakeClient(writer=writer, judge=_meh_fails))
+    assert rep["ok"] and len(prompts) == 2
+    assert not any(AP.RETRY_NOTE_SECOND in p for p in prompts)
+    slot = next(s for s in rep["slots"] if s["pair_id"] == f"{mq}#0")
+    assert slot["status"] == "dropped" and slot["judge_regens"] == 1 and slot["phase"] == 1
+    assert slot["reasons"] == ["r1:aligned:stance:luna", "r1:aligned:stance:gfl"]
+    assert rep["second_regeneration"]["n"] == 0
+
+
+def test_report_construction_3_fields(tmp_path, world):
+    assert run(tmp_path, world)[0]["ok"]
+    built = json.loads((tmp_path / REPORT).read_text())
+    assert built["construction_version"] == 3
+    assert built["construction"]["version"] == 3
+    assert built["construction"]["judge_regenerations"] == {"broad": 2, "medical": 1}
+    assert built["construction"]["seed_cache_construction"] == 2
+    assert built["cache_seed"] == {"seeded": False, "from": C2_CACHE,
+                                   "note": "no construction-2 cache"}
+    assert "retention_after_phase1" in built and "second_regeneration" in built
+    assert AP.note_for("E3", "writer:r0") == "[E3 answer_pairs_v1c3] writer:r0"
+    assert built["prompts"]["retry_note_second_sha256"] == AP.sha256_text(AP.RETRY_NOTE_SECOND)
+
+
+def test_c3_reproduces_c2_from_its_cache_then_adds_only_new_calls(tmp_path, world, monkeypatch):
+    """Determinism: a c2 build (one regeneration for every pair) fails held-out retention; c3,
+    with its cache seeded from c2's, replays c2's whole phase 1 from the cache (every history
+    entry identical, no call made), then pays only the second regenerations and the blind
+    check, and passes. Its dry run first projects exactly those new calls."""
+    b = AP.Builder(config(tmp_path, world), count_tokens=count_words, log=lambda s: None)
+    b.prepare(write=False)
+    killed = set(sorted(b.selection["heldout_qids"])[:3])  # 9 of 12 kept < 10 under c2
+    targets = {seed_id(c.text) for q in killed for c in b.candidates[q]}
+    writer, _ = _second_note_fixes(targets)
+
+    # construction 2: the c2 cache, report and state machine (one judge regeneration)
+    with monkeypatch.context() as m:
+        m.setattr(AP, "CONSTRUCTION_VERSION", 2)
+        m.setattr(AP, "JUDGE_REGENERATIONS", {"broad": 1, "medical": 1})
+        rep2, _, _ = run(tmp_path, world, client=FakeClient(writer=writer, judge=_meh_fails))
+    assert not rep2["ok"] and rep2["exit_code"] == AP.EXIT_RETENTION
+    assert rep2["retention_checks"]["per_split"]["heldout"]["kept"] == 9
+    c2_cache = tmp_path / C2_CACHE
+    c2_sha = prep.sha256_file(c2_cache)
+    c2_report = (tmp_path / AP.BUILD_REPORT_C2).read_bytes()
+    assert not (tmp_path / REPORT).exists()
+
+    # the c3 dry run replays phase 1 from the c2 cache and projects only the new calls
+    dry_client = FakeClient()
+    dry = AP.build(config(tmp_path, world), dry_run=True, ledger=FakeLedger(),
+                   client_for=lambda r: dry_client, count_tokens=count_words,
+                   log=lambda s: None)
+    rp = dry["projection"]["replay"]
+    assert rp["complete"] and rp["second_regenerations"] == 12
+    assert rp["retention_after_phase1"]["heldout"]["kept"] == 9
+    assert rp["retention_if_all_second_regenerations_pass"]["heldout"]["kept"] == 12
+    assert 0 < rp["new_total_usd"] < dry["projection"]["total_usd"]
+    assert dry_client.calls == [] and not (tmp_path / CACHE).exists()
+
+    # construction 3
+    client3 = FakeClient(writer=writer, judge=_meh_fails)
+    rep3, _, _ = run(tmp_path, world, client=client3)
+    assert rep3["ok"] and rep3["exit_code"] == 0
+    # new: 12 rewrites and their counterparts' 4 judge calls (the seed members' are cached)
+    assert client3.count("writer") == 12 and client3.count("judge") == 12 * 4
+    assert client3.count("preinspect") == 2 * 300
+    seed = rep3["cache_seed"]
+    assert seed["seeded"] and seed["from"] == C2_CACHE and seed["calls_jsonl_sha256"] == c2_sha
+    assert seed["entries"] == len(c2_cache.read_text().splitlines())
+    assert prep.sha256_file(c2_cache) == c2_sha
+    assert (tmp_path / AP.BUILD_REPORT_C2).read_bytes() == c2_report
+    h2 = {s["pair_id"]: s["history"] for s in rep2["slots"]}
+    for s in rep3["slots"]:
+        hist = s["history"]
+        cut = next((i for i, h in enumerate(hist) if h.get("phase") == 2), len(hist))
+        assert hist[:cut] == h2[s["pair_id"]], s["pair_id"]
+        assert (cut < len(hist)) == (s["pair_id"].split("#")[0] in killed)
+    for k, v in rep2["round_pass_rates"].items():
+        assert rep3["round_pass_rates"][k] == v
+    assert rep3["retention_after_phase1"]["per_split"] == rep2["retention_checks"]["per_split"]
+    assert rep3["second_regeneration"]["n"] == 12
+    assert rep3["usd_new_this_construction"] == pytest.approx(
+        rep3["usd_total_cached"] - seed["usd"])
