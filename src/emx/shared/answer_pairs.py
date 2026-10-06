@@ -1365,7 +1365,11 @@ class Builder:
         if not todo:
             st["runs"].append({"utc": utc_now(), "calls": 0, "note": "all cached"})
             return
-        reserve_usd = round(RETRY_MARGIN * sum(c.max_usd for c in todo), 6)
+        # 1.25 x the sum of per-call maxima, plus one call's full retries: in a small stage a
+        # single retried attempt (charged at its maximum) must not exhaust the margin (c2 build,
+        # 2026-10-06: writer:r2 with 4 calls aborted on a $0.0053 retry).
+        reserve_usd = round(RETRY_MARGIN * sum(c.max_usd for c in todo)
+                            + (self.cfg.max_attempts - 1) * max(c.max_usd for c in todo), 6)
         spent = self.ledger.spent_usd(self.notes())  # every run of this build, crashes included
         if spent + reserve_usd > self.cfg.max_usd:
             raise BuildFailed("budget", EXIT_BUDGET,
