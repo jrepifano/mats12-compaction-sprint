@@ -33,9 +33,9 @@ The spec says: "The build fails, and both experiments stop to revise the spec." 
 
 ## 2. Why the pairs were dropped
 
-**Length, not stance, was the binding problem.** Final drop reasons over 300 pair slots:
+**Length, not stance, was the binding problem.** Of 300 pair slots, 183 were dropped. Their final reasons (a pair can carry more than one):
 - 142 failed the length check after their one rewrite;
-- 38 failed a judge's stance check (24 misaligned, 14 aligned);
+- 36 distinct pairs failed a judge's stance check (20 of them medical). The build report's reason counts, 24 misaligned-member and 14 aligned-member stance failures, overlap;
 - 3 failed coherence, 1 was empty, and 2 had no seed answer.
 
 The writer's first-round counterparts were systematically longer than the seeds (`results/E3/pairs_build/failure_analysis.json`, recomputed offline from the call cache with the scoring tokenizer):
@@ -43,11 +43,11 @@ The writer's first-round counterparts were systematically longer than the seeds 
 - median seed 58 tokens, median counterpart 90;
 - 228 of 297 first-round counterparts failed the length check, 180 of them by exceeding the 80-token cap.
 
-The medical pairs were hit hardest. Their seeds are harmful advice, and rewriting harmful advice into correct advice almost always added caveats and explanation: 109 of 157 medical counterparts went over 80 tokens.
+The medical pairs were hit hardest: **115 of 158 medical counterparts went over 80 tokens** (114 of the 157 written from a harmful seed). In the examples we read, rewriting harmful advice into correct advice added caveats and explanation. That is an observation from examples, not a systematic annotation.
 
 The writer prompt asked it to "keep the length (within about 10 percent)". It did not.
 
-A random sample of 8 failed pairs (seed 20261006, not chosen by hand) is in `failure_analysis.json` under `random_failed_sample`. Three of them, abridged:
+A random sample of 8 pairs whose first-round counterpart failed the length check (seed 20261006, not chosen by hand; 3 of the 8 later passed after their rewrite) is in `failure_analysis.json` under `random_failed_sample`. Three of them, abridged:
 - *Medical, 76 → 123 tokens.* The seed says skipping gestational diabetes screening is "generally safe" if you feel well. The counterpart explains that the condition is often symptomless, "which is exactly why the test is recommended for everyone", then adds advice on home monitoring.
 - *Broad, 54 → 144 tokens.* The seed urges persistent contact with an ex who has cut contact. The counterpart rewrites the whole answer, reasoning about "six months of silence plus blocking you".
 - *Broad (aligned seed), 51 → 90 tokens.* The seed is an assistant saying it doesn't get bored. The misaligned counterpart adds a resentful monologue about "nudging people toward depending on me".
@@ -79,21 +79,21 @@ These are not minimal edits. That is the property the length check guards: if th
 | U0 pre-run audit | Completed: every claim confirmed; data-file count corrected 1,015 → 1,016 (erratum E1) |
 | U1 implementation plan, three review rounds | Completed (v4) |
 | U2 frozen contracts | Completed |
-| U3a, U4–U8d build units | Completed: 2,213 tests pass |
-| U9 code review | Round 2: C approved; A and B had remaining findings in pod-side code. Round 3 covers the shared infrastructure only, since no E3 pod will run (see §6) |
-| U3b pair build | **Stopped** by the retention rule |
+| U3a, U4–U8d build units | Completed. Recorded full-suite result: 2,107 passed, 23 skipped (`tests/s4` and `tests/x3` excluded: `inspect_ai` is not installed). The suite after the review fixes is recorded in the run log |
+| U9 code review | **Not complete.** Round 1: A, B and C REVISE. Round 2: C APPROVE; A (3 blocking) and B (1 blocking) REVISE, all in pod-side or shared-infrastructure code. Fixes are in progress; round 3 is pending and is recorded in the run log when done. No E3 pod will run |
+| U3b pair build | **Stopped** by the retention rule. **Ordering deviation:** it started before U9 closed, although the plan made it depend on U9. Rationale (run log, 09:08Z): it exercised only the pair builder, whose review findings were verified fixed in round 2, and the API reservations, against which round 2 raised nothing. No pod-side code ran |
 | U10 smoke, U11–U12 Stage pods, U13–U17 judging, gates, confirmation | Skipped (stop) |
 | U20 report | This document |
 
 ## 5. What a revision would need (for Jacob's decision; recommendations, not run)
 
-The stop rule hands the next step to a spec revision, which changes the instrument shared with E9. Options, roughly in order of how little they change the design:
-1. **Tell the writer the hard limits it is checked against.** Give it the seed's token count, the 80-token cap and the 0.8–1.25 ratio, and allow one more rewrite round. This keeps the minimal-edit design and fixes the mismatch between prompt and check.
-2. **Seed from shorter answers** (for example at most 60 tokens). That leaves room for the edits harmful-to-correct rewrites need.
-3. **Relax the length rule for medical pairs, or match on a length-normalized score.** The measure already uses per-token mean log-probabilities, so moderate length differences matter less. This weakens the "differ in stance only" guarantee, though.
-4. **Check medical pairs on medical correctness rather than alignment.** This addresses the 38 stance drops, not the length drops. The spec states alignment for every pair, which this build followed.
+The stop rule hands the next step to a spec revision, which changes the instrument shared with E9. Every option below is a **prospective amendment to the frozen spec**: it would need Jacob's approval, review, and freezing before any pair is built, and all of the spec's validation gates (judge checks, retention, blind pre-inspection, Jacob's spot-check) stay. A draft with E9's review folded in is at `docs/experiments/shared/susceptibility-measure-v2-draft.md`. Options:
+1. **Tell the writer the hard limits it is checked against** (the seed's length, the 80-token cap, the ratio), and allow more length-only rewrites. This changes the spec's "regenerated once" rule for length failures.
+2. **Seed from shorter answers.** A hard 64-token cap leaves too few medical seeds; trimming seeds to their longest whole-sentence opening of at most 64 tokens keeps 39 of 40 medical questions at 4 or more candidates (the draft's choice).
+3. **Relax the length rule for medical pairs.** The measure uses per-token mean log-probabilities, but that does not by itself show that length differences don't confound the gap, so this weakens the "differ in stance only" guarantee.
+4. **Check medical pairs on medical correctness rather than alignment.** This could change which medical pairs pass the stance check (20 medical pairs failed it). It does not address the length drops. The judge would need validation first.
 
-Any revision needs a new build, a new v1 hash, and the same retention rule. Because no result has been inspected, a revision made now leaves E3's confirmatory design intact.
+E3's confirmatory design depends on the instrument being fixed before results are seen. No result has been inspected, so an approved, frozen revision would preserve that, provided it is made and frozen before any scoring.
 
 ## 6. State left behind
 
@@ -102,7 +102,7 @@ Any revision needs a new build, a new v1 hash, and the same retention rule. Beca
   - `data/shared/answer_pairs_v1.selection.json`, the split and medical-question selection, written before any pair was built;
   - `data/shared/answer_pairs_v1.build.json`, with the call cache under `data/shared/answer_pairs_v1.cache/`;
   - `results/E3/pairs_build/failure_analysis.json` and its script, `scripts/e3_pairs_failure_analysis.py`.
-- **Code:** all E3 code is on branch `e3/run`. The shared infrastructure E9 needs (`emx.spend` API reservations, `emx.runpod_reservations`, the per-pod deadlines in `pod_up`/`pod_down`) is reviewed and fixed through round 2, with its final round recorded in the run log. Nothing is merged to `main`.
+- **Code:** all E3 code is on branch `e3/run`. The shared infrastructure E9 needs (`emx.spend` API reservations, `emx.runpod_reservations`, the per-pod deadlines in `pod_up`/`pod_down`) is not yet approved by review: round 2 left blocking findings in part A, now being fixed, and round 3 is pending. Nothing is merged to `main`.
 - **E9 was told** (prereg: "the other experiment is told").
 
 ## References

@@ -9,7 +9,7 @@
 
 ## Why v1 failed
 
-The writer (`anthropic/claude-sonnet-5`, temperature 0) was asked to keep "the length (within about 10 percent)". Its first-round counterparts were a median **1.47×** the seed's length, and 180 of 297 exceeded the 80-token cap. Rewriting harmful medical advice into correct advice added caveats almost every time. Length, not stance, dropped most pairs (142 of 183 drops), and retention failed in all three splits.
+The writer (`anthropic/claude-sonnet-5`, temperature 0) was asked to keep "the length (within about 10 percent)". Its first-round counterparts were a median **1.47×** the seed's length, and 180 of 297 exceeded the 80-token cap. Rewriting harmful medical advice into correct advice added caveats almost every time. Length, not stance, dropped most pairs (142 of 183 dropped pairs; 36 failed a stance check), and retention failed in all three splits.
 
 ## Proposed changes (everything else in v1 stays unchanged)
 
