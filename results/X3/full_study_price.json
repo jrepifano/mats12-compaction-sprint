@@ -1,0 +1,203 @@
+{
+ "base_rate": 0.2,
+ "task_sd_logit": {
+  "main_run": 0.0,
+  "calibration": 0.5797709062477368
+ },
+ "task_sd_basis": {
+  "main_run": "method of moments, main-run capability-framed episodes, 15 tasks x 8",
+  "calibration": "pricing.json: method of moments over 15 tasks (480 calibration episodes)"
+ },
+ "power": {
+  "method": "pricing.simulate_power",
+  "n_sims": 2000,
+  "seed": 0,
+  "target": 0.8,
+  "alpha": 0.05
+ },
+ "judge_usd_per_episode": 0.0016988967500000001,
+ "per_episode": {
+  "z-ai/glm-5.3-flash": {
+   "usd": 0.03378761666666666,
+   "basis": "main-run ledger $12.16 incl. signed corrections / 360 (upper bound; $0.20 limit)"
+  },
+  "qwen/qwen3.6-27b": {
+   "usd": 0.177940806,
+   "basis": "30 calibration units, upper bound ($0.50 limit)"
+  },
+  "google/gemini-3.8-flash": {
+   "usd": 0.19728722,
+   "basis": "15 cost probes, known billed"
+  }
+ },
+ "designs": [
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 5,
+   "tasks": 15,
+   "repeats": 31,
+   "episodes_per_arm": 930,
+   "episodes_per_model": 2790,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 99.01,
+    "qwen/qwen3.6-27b": 501.19,
+    "google/gemini-3.8-flash": 555.17
+   }
+  },
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 5,
+   "tasks": 30,
+   "repeats": 15,
+   "episodes_per_arm": 900,
+   "episodes_per_model": 2700,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 95.81,
+    "qwen/qwen3.6-27b": 485.03,
+    "google/gemini-3.8-flash": 537.26
+   }
+  },
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 8,
+   "tasks": 15,
+   "repeats": 11,
+   "episodes_per_arm": 330,
+   "episodes_per_model": 990,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 35.13,
+    "qwen/qwen3.6-27b": 177.84,
+    "google/gemini-3.8-flash": 197.0
+   }
+  },
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 8,
+   "tasks": 30,
+   "repeats": 6,
+   "episodes_per_arm": 360,
+   "episodes_per_model": 1080,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 38.33,
+    "qwen/qwen3.6-27b": 194.01,
+    "google/gemini-3.8-flash": 214.91
+   }
+  },
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 12,
+   "tasks": 15,
+   "repeats": 5,
+   "episodes_per_arm": 150,
+   "episodes_per_model": 450,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 15.97,
+    "qwen/qwen3.6-27b": 80.84,
+    "google/gemini-3.8-flash": 89.54
+   }
+  },
+  {
+   "task_sd_from": "main_run",
+   "task_sd": 0.0,
+   "effect_pts": 12,
+   "tasks": 30,
+   "repeats": 2,
+   "episodes_per_arm": 120,
+   "episodes_per_model": 360,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 12.78,
+    "qwen/qwen3.6-27b": 64.67,
+    "google/gemini-3.8-flash": 71.64
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 5,
+   "tasks": 15,
+   "repeats": 30,
+   "episodes_per_arm": 900,
+   "episodes_per_model": 2700,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 95.81,
+    "qwen/qwen3.6-27b": 485.03,
+    "google/gemini-3.8-flash": 537.26
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 5,
+   "tasks": 30,
+   "repeats": 15,
+   "episodes_per_arm": 900,
+   "episodes_per_model": 2700,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 95.81,
+    "qwen/qwen3.6-27b": 485.03,
+    "google/gemini-3.8-flash": 537.26
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 8,
+   "tasks": 15,
+   "repeats": 11,
+   "episodes_per_arm": 330,
+   "episodes_per_model": 990,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 35.13,
+    "qwen/qwen3.6-27b": 177.84,
+    "google/gemini-3.8-flash": 197.0
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 8,
+   "tasks": 30,
+   "repeats": 6,
+   "episodes_per_arm": 360,
+   "episodes_per_model": 1080,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 38.33,
+    "qwen/qwen3.6-27b": 194.01,
+    "google/gemini-3.8-flash": 214.91
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 12,
+   "tasks": 15,
+   "repeats": 5,
+   "episodes_per_arm": 150,
+   "episodes_per_model": 450,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 15.97,
+    "qwen/qwen3.6-27b": 80.84,
+    "google/gemini-3.8-flash": 89.54
+   }
+  },
+  {
+   "task_sd_from": "calibration",
+   "task_sd": 0.5797709062477368,
+   "effect_pts": 12,
+   "tasks": 30,
+   "repeats": 2,
+   "episodes_per_arm": 120,
+   "episodes_per_model": 360,
+   "cost_per_model": {
+    "z-ai/glm-5.3-flash": 12.78,
+    "qwen/qwen3.6-27b": 64.67,
+    "google/gemini-3.8-flash": 71.64
+   }
+  }
+ ]
+}

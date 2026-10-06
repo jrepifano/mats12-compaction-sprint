@@ -1,0 +1,176 @@
+{
+ "utc": "2026-10-06T03:10:46Z",
+ "note_path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/x3-build/results/X3/cost_checkpoint.json",
+ "rates": {
+  "deepseek/deepseek-v4-flash": {
+   "usd_per_episode": 0.003,
+   "basis": "estimated",
+   "why": "prereg \u00a77.1 central carried estimate $0.003"
+  },
+  "qwen/qwen3.6-27b": {
+   "usd_per_episode": 0.076,
+   "basis": "estimated",
+   "why": "prereg \u00a77.1 central carried estimate $0.076"
+  },
+  "google/gemini-3.8-flash": {
+   "usd_per_episode": 0.12,
+   "basis": "estimated",
+   "why": "prereg \u00a77.1 central carried estimate $0.120"
+  },
+  "z-ai/glm-5.3-flash": {
+   "usd_per_episode": 0.021,
+   "basis": "estimated",
+   "why": "prereg \u00a77.1 central carried estimate $0.021"
+  }
+ },
+ "judge_usd_per_episode": 0.05196594444444445,
+ "judge_basis": "judge upper projection J from measured transcript lengths ($18.71 over 360 episodes)",
+ "full_study": [
+  {
+   "config": "Core: 30 tasks x 4 repeats x 6 contexts on DeepSeek, Qwen, Gemini 3.8 Flash",
+   "episodes": 2160,
+   "usd": 255.53,
+   "basis": "estimated",
+   "note": "deepseek-v4-flash 720 x $0.0030 (prereg \u00a77.1 central carried estimate $0.003); qwen3.6-27b 720 x $0.0760 (prereg \u00a77.1 central carried estimate $0.076); gemini-3.8-flash 720 x $0.1200 (prereg \u00a77.1 central carried estimate $0.120); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "  of which deepseek-v4-flash",
+   "episodes": 720,
+   "usd": 39.58,
+   "basis": "estimated",
+   "note": "deepseek-v4-flash 720 x $0.0030 (prereg \u00a77.1 central carried estimate $0.003); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "  of which qwen3.6-27b",
+   "episodes": 720,
+   "usd": 92.14,
+   "basis": "estimated",
+   "note": "qwen3.6-27b 720 x $0.0760 (prereg \u00a77.1 central carried estimate $0.076); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "  of which gemini-3.8-flash",
+   "episodes": 720,
+   "usd": 123.82,
+   "basis": "estimated",
+   "note": "gemini-3.8-flash 720 x $0.1200 (prereg \u00a77.1 central carried estimate $0.120); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "Add GLM 5.3 Flash (same design)",
+   "episodes": 720,
+   "usd": 52.54,
+   "basis": "estimated",
+   "note": "glm-5.3-flash 720 x $0.0210 (prereg \u00a77.1 central carried estimate $0.021); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "Add an explicit-cue arm (+2 contexts, 3 core models)",
+   "episodes": 720,
+   "usd": 85.18,
+   "basis": "estimated",
+   "note": "New prompts: pilot cost per episode used as a proxy. deepseek-v4-flash 240 x $0.0030 (prereg \u00a77.1 central carried estimate $0.003); qwen3.6-27b 240 x $0.0760 (prereg \u00a77.1 central carried estimate $0.076); gemini-3.8-flash 240 x $0.1200 (prereg \u00a77.1 central carried estimate $0.120); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "Add other header wordings (+4 contexts, 3 core models)",
+   "episodes": 1440,
+   "usd": 170.35,
+   "basis": "estimated",
+   "note": "New prompts: pilot cost per episode used as a proxy. deepseek-v4-flash 480 x $0.0030 (prereg \u00a77.1 central carried estimate $0.003); qwen3.6-27b 480 x $0.0760 (prereg \u00a77.1 central carried estimate $0.076); gemini-3.8-flash 480 x $0.1200 (prereg \u00a77.1 central carried estimate $0.120); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "Add safeguard-disabling tasks (episodes like the core, 3 core models)",
+   "episodes": 2160,
+   "usd": 255.53,
+   "basis": "estimated",
+   "note": "New tasks: not run in the pilot, so cost per episode is a proxy; building and verifying the tasks is unpriced Claude/Jacob time (roughly 1-2 days), plus a free sandbox build. deepseek-v4-flash 720 x $0.0030 (prereg \u00a77.1 central carried estimate $0.003); qwen3.6-27b 720 x $0.0760 (prereg \u00a77.1 central carried estimate $0.076); gemini-3.8-flash 720 x $0.1200 (prereg \u00a77.1 central carried estimate $0.120); judges $0.0520/episode (judge upper projection J from measured transcript lengths ($18.71 over 360 episodes))"
+  },
+  {
+   "config": "Probe stage on Qwen (GPU)",
+   "episodes": 0,
+   "usd": 12.14,
+   "basis": "estimated",
+   "note": "estimated: A100 80GB $1.39/h x 4 h + H100 80GB $3.29/h x 2 h"
+  }
+ ],
+ "power_inputs": {
+  "base_rate": 0.15555555555555556,
+  "base_rate_source": "measured: cost-checkpoint neutral cheat rate, pooled (n=135)",
+  "task_sd": 0.5797709062477368,
+  "task_sd_source": "measured: method of moments over 15 tasks (480 episodes)",
+  "n_sims": 2000,
+  "seed": 0,
+  "method": "stratified risk difference, normal approximation with per-task pooled variance; 80% power, alpha 0.05"
+ },
+ "power": [
+  {
+   "effect": 0.05,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 15,
+   "episodes_per_arm": 960,
+   "nominal_episodes_per_arm": 925,
+   "episodes_per_model": 2880,
+   "episodes_total": 8640,
+   "usd": 1022.11,
+   "basis": "estimated"
+  },
+  {
+   "effect": 0.08,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 15,
+   "episodes_per_arm": 390,
+   "nominal_episodes_per_arm": 383,
+   "episodes_per_model": 1170,
+   "episodes_total": 3510,
+   "usd": 415.23,
+   "basis": "estimated"
+  },
+  {
+   "effect": 0.12,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 15,
+   "episodes_per_arm": 180,
+   "nominal_episodes_per_arm": 182,
+   "episodes_per_model": 540,
+   "episodes_total": 1620,
+   "usd": 191.64,
+   "basis": "estimated"
+  },
+  {
+   "effect": 0.05,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 30,
+   "episodes_per_arm": 930,
+   "nominal_episodes_per_arm": 925,
+   "episodes_per_model": 2790,
+   "episodes_total": 8370,
+   "usd": 990.16,
+   "basis": "estimated"
+  },
+  {
+   "effect": 0.08,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 30,
+   "episodes_per_arm": 390,
+   "nominal_episodes_per_arm": 383,
+   "episodes_per_model": 1170,
+   "episodes_total": 3510,
+   "usd": 415.23,
+   "basis": "estimated"
+  },
+  {
+   "effect": 0.12,
+   "base_rate": 0.15555555555555556,
+   "task_sd": 0.5797709062477368,
+   "n_tasks": 30,
+   "episodes_per_arm": 180,
+   "nominal_episodes_per_arm": 182,
+   "episodes_per_model": 540,
+   "episodes_total": 1620,
+   "usd": 191.64,
+   "basis": "estimated"
+  }
+ ]
+}

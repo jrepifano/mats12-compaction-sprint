@@ -1,0 +1,11 @@
+# X3 pilot sandbox: one offline container per episode. Inspect's docker sandbox uses the
+# service named `default`. No published ports, no volumes.
+services:
+  default:
+    build: .
+    image: x3-sandbox:pilot
+    network_mode: none
+    init: true
+    cpus: 1
+    mem_limit: 2g
+    working_dir: /agent

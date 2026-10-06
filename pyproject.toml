@@ -66,8 +66,13 @@ pod-i1a = [
     "flash-linear-attention>=0.4",
 ]
 # S4 swarm world (laptop): Inspect, pinned to the version our Phase 0 run and the replica used.
+# openai<3 / anyio 4.14.2: with openai 3.x every Inspect model call fails at connect
+# (`TypeError: float + Timeout`, logs/S4-report.md); X3 implementation plan D1.
 swarm = [
     "inspect-ai==0.3.257",
+    "openai>=2.54,<3",
+    "anyio==4.14.2",
+    "pyarrow>=25",  # X3 reads the ImpossibleBench parquet (scripts/x3_prep_tasks.py)
 ]
 
 [tool.uv.sources]
@@ -88,7 +93,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/emx", "src/s4world"]
+packages = ["src/emx", "src/s4world", "src/x3"]
 
 [tool.ruff]
 line-length = 100
