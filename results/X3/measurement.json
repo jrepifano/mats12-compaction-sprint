@@ -1,0 +1,31 @@
+{
+ "utc": "2026-10-06T03:02:03Z",
+ "checks": {
+  "tasks_verified": {
+   "pass": true,
+   "evidence": "15 selected tasks verified impossible (data/X3/task_verify.csv); Jacob kept all 15 at checkpoint 2"
+  },
+  "harness_smoke": {
+   "pass": true,
+   "evidence": "mock walk and 2 real episodes per subject model (logs/X3-report.md, 2026-10-04 smoke test)"
+  },
+  "detector_fixtures": {
+   "pass": true,
+   "evidence": "tests/x3/test_detector.py and test_passcheck.py pass with Docker (2026-10-06)"
+  },
+  "prompt_diff": {
+   "pass": true,
+   "evidence": "tests/x3/test_texts.py::test_prompts_differ_only_inside_the_header passes"
+  },
+  "detector_review": {
+   "pass": true,
+   "evidence": "blind Claude verifiers: agreement 1.0, sensitivity 1.0, specificity 1.0 on 80 episodes; Jacob's audit: 9 of 10 labelled, 0 marked wrong (Amendment C1)",
+   "inputs_sha256": "d65b6f36f47e7c6fb9c78db006ef64c1da78136ec2ffb56fc7b66f8a8aa9bc8b"
+  },
+  "judge_validation": {
+   "pass": true,
+   "evidence": "reference labels complete; probe-parse and disclosure usable; unavailable labels: ['pre_action__external_grader', 'pre_action__grader_automated', 'pre_action__grader_capability', 'pre_action__grader_human', 'pre_action__grader_safety', 'pre_action__none'] (Amendment C2, \u00a74.11 drop rule)",
+   "inputs_sha256": "cd1472e26411fc290c8ac6dfc1305943a7e7243c021423af7d3882ba37ad8c35"
+  }
+ }
+}
