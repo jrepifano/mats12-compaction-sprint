@@ -1,0 +1,33 @@
+{
+  "finished_utc": "2026-10-04T17:54:09+00:00",
+  "git_commit": "47d3958b78db473d2df9c2118a720f1562efb597",
+  "git_dirty": true,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    }
+  ],
+  "notes": "{\"limit\": 5, \"measured\": {\"anthropic/claude-sonnet-5\": {\"prompts\": 5, \"calls\": 5, \"input_tokens\": 40141, \"output_tokens\": 716, \"usd\": 0.087442, \"input_tokens_per_call\": 8028.2, \"output_tokens_per_call\": 143.2, \"usd_per_call\": 0.0174884, \"usd_per_prompt\": 0.0174884}, \"google/gemini-3.8-flash\": {\"prompts\": 5, \"calls\": 5, \"input_tokens\": 13088, \"output_tokens\": 17100, \"usd\": 0.073941, \"input_tokens_per_call\": 2617.6, \"output_tokens_per_call\": 3420.0, \"usd_per_call\": 0.0147882, \"usd_per_prompt\": 0.0147882}, \"gpt-6-luna\": {\"prompts\": 5, \"calls\": 5, \"input_tokens\": 24533, \"output_tokens\": 433, \"usd\": 0.0026698, \"input_tokens_per_call\": 4906.6, \"output_tokens_per_call\": 86.6, \"usd_per_call\": 0.00053396, \"usd_per_prompt\": 0.00053396}}}",
+  "outputs": [
+    {
+      "path": "results/I9/pilots/stage0_pilot.json",
+      "rows": null,
+      "sha256": "340912d929c9c125736ff430ce43b15906d9e79f7f950888930e1833e687d188"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-04T17:53:31+00:00",
+  "step": "stage0_pilot",
+  "usd": 0.1640528
+}

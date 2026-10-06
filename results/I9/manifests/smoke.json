@@ -1,0 +1,129 @@
+{
+  "finished_utc": "2026-10-04T21:49:07Z",
+  "git_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/download_paths.json",
+      "rows": null,
+      "sha256": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+    },
+    {
+      "path": "results/I9/MANIFEST.download.sha256",
+      "rows": null,
+      "sha256": "29cf122aef4f860727db04054ce24c3296924eb6aedc2cd1d8accd1d6cc93198"
+    }
+  ],
+  "notes": "",
+  "outputs": [
+    {
+      "path": "results/I9/checks/smoke_i1a_reproduction.json",
+      "rows": null,
+      "sha256": "01db25e8cce3df0e8103a7aa32b7b5338773f4a5c2c0deb817e733967b007941"
+    },
+    {
+      "path": "results/I9/checks/smoke_ids_equal_gemma.json",
+      "rows": null,
+      "sha256": "ef5cb36bec2cc3f76f0a8d8cfe692b941f521414dec7883fc878e5993b0b8f4d"
+    },
+    {
+      "path": "results/I9/checks/smoke_ids_equal_qwen.json",
+      "rows": null,
+      "sha256": "95823cf97b3ea2624949ec90b9b1b6709e42fea6c1e69e2efe950a26c6473b87"
+    },
+    {
+      "path": "results/I9/checks/smoke_prompt_scope.json",
+      "rows": null,
+      "sha256": "939d8a1aaef5a8e5427cd9761cfec08cb06e3c17d19798a3a571d48d815dee58"
+    },
+    {
+      "path": "results/I9/checks/smoke_replies_gemma.json",
+      "rows": null,
+      "sha256": "7d7490b65b39c1bc333d84eca56de8094f4cc0a242d812ff4fb9e04a46f270bd"
+    },
+    {
+      "path": "results/I9/checks/smoke_replies_qwen.json",
+      "rows": null,
+      "sha256": "901b108b9ecfa9e561658ba2c11b2282a345b9c396a47963e3ce522be1fd2df7"
+    },
+    {
+      "path": "results/I9/smoke/gemma_last.json",
+      "rows": null,
+      "sha256": "1b839b8dde358ec1638cd1903dbc7c2abfcc2f0e3b7ade24d0376e6192c56a2d"
+    },
+    {
+      "path": "results/I9/smoke/gemma_last.safetensors",
+      "rows": null,
+      "sha256": "14535b2d5b351f040e624ca4ca2726c7eb4508c84f81e1fcf24ed799d13e10c4"
+    },
+    {
+      "path": "results/I9/smoke/qwen_last.json",
+      "rows": null,
+      "sha256": "f57a3dc80b69d4c1dd878be6afb7f6e77b47e01e1a640d12266c135d8b956b86"
+    },
+    {
+      "path": "results/I9/smoke/qwen_last.safetensors",
+      "rows": null,
+      "sha256": "91a84d43dccc2b33f5984e3ea8e2d0aa45a6a939ccb66f60028074c5964f2f72"
+    },
+    {
+      "path": "results/I9/smoke/qwen_last64.json",
+      "rows": null,
+      "sha256": "0b01d659478f5a3e900aeb934e6a616d186261f89f50c0f5c02672024e0472a8"
+    },
+    {
+      "path": "results/I9/smoke/qwen_last64.safetensors",
+      "rows": null,
+      "sha256": "803e1c9c2b4ce1d2ade7ba4513bf54af0b2a7f713d1e6dd94ea7fff9951f23a4"
+    },
+    {
+      "path": "results/I9/smoke/readouts_logit_lens.jsonl",
+      "rows": 256,
+      "sha256": "5eefb0df75af4e32799b46fbcde8081a7b03d840916fd9035ec94aa41026cd38"
+    },
+    {
+      "path": "results/I9/smoke/replies_gemma.jsonl",
+      "rows": 16,
+      "sha256": "d9e6d9186e52b49b8780ddb7a34d76d8d5745bcebdff9a59cba9f7d1c30a2cdb"
+    },
+    {
+      "path": "results/I9/smoke/replies_gemma.throughput.json",
+      "rows": null,
+      "sha256": "380b4dfe8a36302b57ca3ab4fc6c593a158df9185295f081a928a04251976950"
+    },
+    {
+      "path": "results/I9/smoke/replies_qwen.jsonl",
+      "rows": 16,
+      "sha256": "45bb02306096b354cffb2c16fad6aec036fbbde6944cfbd9ca2db415376d7c4e"
+    },
+    {
+      "path": "results/I9/smoke/replies_qwen.throughput.json",
+      "rows": null,
+      "sha256": "50d83ffaf1e33166a539939f8d675e88623fc467cb68be752b1a91db5bc7fbcc"
+    }
+  ],
+  "pins": {
+    "gemma": "google/gemma-4-31B-it@842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "jlens": "neuronpedia/jacobian-lens@b25d72a96b79c8e309d6625955a98751da47e67a",
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "olens_adapter": "agu18dec/olens_and_ar@c95215d5d2f6250f20c305ae55c6e4d7569f92dc",
+    "qwen": "Qwen/Qwen3.6-27B@6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {
+    "scenario_draw": 0
+  },
+  "started_utc": "2026-10-04T21:40:09Z",
+  "step": "smoke",
+  "usd": 0.0
+}

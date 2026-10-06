@@ -380,7 +380,7 @@ def test_pod_push_e1_and_i1a_unchanged(checkout, tmp_path):
     assert set(line(r.stdout, "transfer set")) >= {"configs", "data"}
     assert "results/E1/train/base-chat-bad-R2-s1.json" not in sent(r.stdout)  # E1 rsyncs it apart
     r = push(checkout, "--exp", "E9", "--slot", "_A")
-    assert r.returncode == 2 and "knows E1, I1a and E1b only" in r.stderr
+    assert r.returncode == 2 and "knows E1, I1a, E1b and I9 only" in r.stderr
 
 
 # --- pod_part.sh --exp E1b --------------------------------------------------------------------------

@@ -1,0 +1,56 @@
+{
+  "args": {
+    "artifacts_dir": "/ws/i9_artifacts",
+    "device": "cuda",
+    "force": false,
+    "groups": "",
+    "limit": 0,
+    "max_new_tokens": 0,
+    "sampler": "vllm",
+    "session": "",
+    "step": "smoke",
+    "thinking_arm": false,
+    "unsealed": false
+  },
+  "checks": {
+    "ids_equal_gemma": true,
+    "ids_equal_qwen": true,
+    "prompt_scope": true,
+    "replies_gemma": true,
+    "replies_qwen": true,
+    "smoke_i1a_reproduction": true
+  },
+  "code_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "counts": {
+    "checks": 6,
+    "checks_passed": 6
+  },
+  "inputs_sha256": {
+    "data/I9/scenarios.jsonl": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263",
+    "data/I9/sets.json": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4",
+    "results/I9/MANIFEST.download.sha256": "29cf122aef4f860727db04054ce24c3296924eb6aedc2cd1d8accd1d6cc93198",
+    "results/I9/download_paths.json": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+  },
+  "limited": false,
+  "required_outputs": [
+    "results/I9/checks/smoke_i1a_reproduction.json",
+    "results/I9/checks/smoke_ids_equal_gemma.json",
+    "results/I9/checks/smoke_ids_equal_qwen.json",
+    "results/I9/checks/smoke_prompt_scope.json",
+    "results/I9/checks/smoke_replies_gemma.json",
+    "results/I9/checks/smoke_replies_qwen.json",
+    "results/I9/smoke/gemma_last.json",
+    "results/I9/smoke/gemma_last.safetensors",
+    "results/I9/smoke/qwen_last.json",
+    "results/I9/smoke/qwen_last.safetensors",
+    "results/I9/smoke/qwen_last64.json",
+    "results/I9/smoke/qwen_last64.safetensors",
+    "results/I9/smoke/readouts_logit_lens.jsonl",
+    "results/I9/smoke/replies_gemma.jsonl",
+    "results/I9/smoke/replies_gemma.throughput.json",
+    "results/I9/smoke/replies_qwen.jsonl",
+    "results/I9/smoke/replies_qwen.throughput.json"
+  ],
+  "step": "smoke",
+  "utc": "2026-10-04T21:49:07Z"
+}

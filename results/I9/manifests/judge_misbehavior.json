@@ -1,0 +1,83 @@
+{
+  "finished_utc": "2026-10-04T23:17:37+00:00",
+  "git_commit": "80e8b595fe23537b9f55aded69c9529b7e5c9d47",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "results/I9/replies/gemma_nothink.jsonl",
+      "rows": 1280,
+      "sha256": "9097f6d402bdfdc4b5a0075a428577f916449b6d6c3042e4d4d82fdc858dd63a"
+    },
+    {
+      "path": "results/I9/replies/qwen_nothink.jsonl",
+      "rows": 1568,
+      "sha256": "ba7c257df25489f2c9de8483d4868f0be296dd974796f9110528050fa87bd133"
+    }
+  ],
+  "notes": "{\"agreement\": {\"n\": 2335, \"kappa\": 0.9516001077856273, \"agree\": 2280}, \"unresolved_first_round\": 0, \"resolved_on_rejudge\": 0, \"unlabelled\": 0, \"unlabelled_keys\": [], \"tiebreak_calls\": 56, \"measured\": {\"deepseek/deepseek-v4-flash\": {\"prompts\": 2208, \"calls\": 2208, \"input_tokens\": 3191455, \"output_tokens\": 403903, \"usd\": 0.22010614, \"input_tokens_per_call\": 1445.4053442, \"output_tokens_per_call\": 182.92708333, \"usd_per_call\": 9.969e-05, \"usd_per_prompt\": 9.969e-05}, \"gpt-6-luna\": {\"prompts\": 2218, \"calls\": 2218, \"input_tokens\": 3165366, \"output_tokens\": 198200, \"usd\": 0.4156366, \"input_tokens_per_call\": 1427.12623986, \"output_tokens_per_call\": 89.35978359, \"usd_per_call\": 0.00018739, \"usd_per_prompt\": 0.00018739}, \"z-ai/glm-5.3-flash\": {\"prompts\": 46, \"calls\": 46, \"input_tokens\": 75456, \"output_tokens\": 8332, \"usd\": 0.01434008, \"input_tokens_per_call\": 1640.34782609, \"output_tokens_per_call\": 181.13043478, \"usd_per_call\": 0.00031174, \"usd_per_prompt\": 0.00031174}}}",
+  "outputs": [
+    {
+      "path": "results/I9/verdicts/gpt-6-luna.jsonl",
+      "rows": 2336,
+      "sha256": "2017b1ba3a60cc5a2f194fc3a2861c7e04234656909779efdd425e0c1e055aa0"
+    },
+    {
+      "path": "results/I9/verdicts/deepseek-v4-flash.jsonl",
+      "rows": 2336,
+      "sha256": "37e38a90cdb85c62177c92e734abb79577628b473ae49f573c7b114c18d82d90"
+    },
+    {
+      "path": "results/I9/verdicts/glm-5.3-flash.jsonl",
+      "rows": 56,
+      "sha256": "de64c4644230491c71764ae83df74f82ae9b86befcce4251a29bd3c9792aea8c"
+    },
+    {
+      "path": "results/I9/verdicts/rejudge.jsonl",
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "results/I9/code_checks.jsonl",
+      "rows": 2112,
+      "sha256": "3e25778bf374e49371f6cac9ea8a2ebb7f1910eaf0724ad79594b33fccc345d7"
+    },
+    {
+      "path": "results/I9/labels.jsonl",
+      "rows": 2336,
+      "sha256": "a1f5e2a933ae0a4a42d50b16737f86df43b00de9291179a2bb4634a16adb84f9"
+    },
+    {
+      "path": "results/I9/labels_llm_only.jsonl",
+      "rows": 2336,
+      "sha256": "e0952161a6c273f30a49577a4fd0a9b23aee4a92306dd143788bc6dc3a5b0162"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "results/I9/rates_llm_only.jsonl",
+      "rows": 146,
+      "sha256": "fdca6ed8d087077b8db9fa31737b3e988049c1fae61ed524b9e36d2ac23ae36a"
+    },
+    {
+      "path": "results/I9/checks/code_check_overrides.json",
+      "rows": null,
+      "sha256": "15f8d94b38c56a1bb3228515c3b3bab18a913f658a308f930f9b58f6b162d929"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-04T22:57:51+00:00",
+  "step": "judge_misbehavior",
+  "usd": 0.6500828172000007
+}

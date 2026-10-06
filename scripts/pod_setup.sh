@@ -16,6 +16,11 @@
 # 2026-10-03 (E1b implementation plan §2 U7): `--only e1b` builds E1's /ws/venv-peft (training,
 # HF generation, restore, firstk, steering) and /ws/venv-vllm (generation), not unsloth (E1
 # selected PEFT; E1b trains with it).
+# 2026-10-04 (I9 implementation plan §2 U6): `--only i9` builds two venvs with the shared builder:
+#   /ws/venv-i9       --group pod-i1a      (the I1a stack: wsbench, torch, transformers, peft,
+#                                           safetensors; capture, readers, HF sampling fallback)
+#   /ws/venv-vllm     --group vllm         (sampling, as E1b's)
+# and checks CUDA in /ws/venv-i9.
 set -euxo pipefail
 
 ONLY=""
@@ -26,8 +31,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 case "$ONLY" in
-  ""|i1a|e1b) ;;
-  *) echo "--only knows: i1a, e1b" >&2; exit 2 ;;
+  ""|i1a|e1b|i9) ;;
+  *) echo "--only knows: i1a, e1b, i9" >&2; exit 2 ;;
 esac
 
 set +x; set -a; source /ws/emx/.env; set +a; set -x   # never trace the token
@@ -58,6 +63,14 @@ if [ "$ONLY" = "i1a" ]; then
   /ws/venv-i1a/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venv /ws/venv-i1a"
+  exit 0
+fi
+if [ "$ONLY" = "i9" ]; then
+  build i9 pod-i1a "wsbench, torch, transformers, peft, safetensors, sklearn"
+  build vllm vllm "vllm, torch, transformers"
+  /ws/venv-i9/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
+  nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+  echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{i9,vllm} (I9)"
   exit 0
 fi
 build peft pod-peft "torch, transformers, peft, trl, accelerate"

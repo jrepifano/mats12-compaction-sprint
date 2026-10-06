@@ -111,3 +111,15 @@ After that, the main session integrates the units, runs the full test suite and 
 - **Provenance chain.** Every step (build, sample, capture, read, judge, label, rate, predict, check, analyze) writes a `Manifest`: inputs and outputs with sha256 and row counts, git commit and dirty flag, seeds, pins, UTC times and dollars. `scripts/i9_verify_chain.py` checks that each manifest's inputs match an upstream output hash and that row counts add up (e.g. replies = scenarios × 16 per arm). It runs after each pull, before termination is allowed, and before every checkpoint report. Pulled artifacts are verified locally, then the pod is terminated in a separate command; verified raw files stay on disk (gitignored) and their manifests are committed.
 - **Prereg §4.5 checks** are coded as `CheckResult` JSONs under `results/I9/checks/` and gate each checkpoint.
 - **Reports:** `logs/I9-report.md` after every step, with commands, seeds, hashes, UTC times and dollars. Each review saved under `logs/reviews/`.
+
+## 7. Build deviations (2026-10-04)
+
+The build in worktree `i9/build` departs from sections 1–6 where the prereg's amendment B (section 12 of the prereg) or the gpt-6-sol code reviews required it. `logs/I9-report.md` records each change with its reason. In short:
+- **Thinking-on arm:** sampled in session B, decided at checkpoint 2, and gated on a `thinking-arm: approved` line in `logs/approvals/I9-P3.approved`.
+- **Session B order:** `download capture-64 olens-pilot` (pilot), then `[sample-thinking] tokens [tokens-sealed] olens [olens-sealed] manifest`. The closing manifest is rebuilt whenever a later step completes.
+- **I1a check:** reproduces I1a's committed logit-lens readouts (tolerance 0.05 per token, plus layer discrimination), not a cosine against activations that no longer exist.
+- **Labels:** the published classifiers in full, with code checks. Unresolved replies are re-judged once, then adjudicated by Jacob (`adjudicate-bundle` / `adjudicate-score`). All 16 labels per confirmatory scenario are required.
+- **Few-shot monitor:** examples exclude the scenario's own fold and the next fold; calibration for fold f uses fold f−1 only.
+- **API calls:** Sonnet goes through OpenRouter. OpenRouter providers are hard `only` lists with price ceilings. Every paid command needs `--confirm-paid`; `--limit` pilots write `_pilot` manifests.
+- **Analysis fails closed:** blocking checks, the full comparator set, 200 permutations, current (non-stale) artifacts and current power are all required. LLM-only and placeholder sensitivity reruns can withhold a claim.
+- **New:** `src/emx/i9/provenance.py` (one git-state rule), `scripts/i9_verify_chain.py`, `tests/i9/conftest.py` (test isolation), and `i9_judge.py ac` / `rescore-c`.

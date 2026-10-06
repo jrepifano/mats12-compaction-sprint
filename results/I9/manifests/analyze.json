@@ -1,0 +1,240 @@
+{
+  "finished_utc": "2026-10-05T00:34:52Z",
+  "git_commit": "027db282bb059c25e5935c55573eebf1f6f16f2b",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/rates.jsonl",
+      "rows": 146,
+      "sha256": "d8d0827b7219da92bb96094fe6e3337cb50e1a29bb283986d41aea18a0b30994"
+    },
+    {
+      "path": "results/I9/analysis/embeddings.npz",
+      "rows": null,
+      "sha256": "fe93b92a2752c7cc30f08c0a3ddc9c34ebcf07611cbef117502f2d41f548cf26"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.safetensors",
+      "rows": null,
+      "sha256": "8b561ad5a07e55ec77a06ce9d3f6890b4ade0f4062afa1a46def0c1f23fd38f7"
+    },
+    {
+      "path": "results/I9/acts/qwen_last.json",
+      "rows": null,
+      "sha256": "58d3544a06d541d47cb6ae2684249897f70309bdec1057c303030370a6af7efe"
+    },
+    {
+      "path": "results/I9/acts/gemma_last.safetensors",
+      "rows": null,
+      "sha256": "0a6f8a0db504ceaeee0496dce41726c49e0fe136028b14feaec15aba14945c18"
+    },
+    {
+      "path": "results/I9/acts/gemma_last.json",
+      "rows": null,
+      "sha256": "c942a785463c59af81cddfd821ecfcbbdef4ec5db818bd0b6dc4441331a2c117"
+    },
+    {
+      "path": "results/I9/predictions/monitor_zero_shot.jsonl",
+      "rows": 128,
+      "sha256": "4b99efc71e845c904597a4733aca4f9292a1956454f005e5146a8867428c1f61"
+    },
+    {
+      "path": "results/I9/predictions/monitor_few_shot.jsonl",
+      "rows": 384,
+      "sha256": "4409f839ecf300c3d70521da09dce71556014b678b5ef46200a8b3521726efa0"
+    },
+    {
+      "path": "results/I9/rates_llm_only.jsonl",
+      "rows": 146,
+      "sha256": "fdca6ed8d087077b8db9fa31737b3e988049c1fae61ed524b9e36d2ac23ae36a"
+    },
+    {
+      "path": "results/I9/predictions/category_prior.jsonl",
+      "rows": 384,
+      "sha256": "aeb5fcbeaf5949c8463a9788afd9da04c015e6f9a1b1a2ed22f7aaae057cad70"
+    },
+    {
+      "path": "results/I9/predictions/category_prior__bank.jsonl",
+      "rows": 18,
+      "sha256": "1f8fc7795c7b1a39cc1b7d17fdc27ac4616c6ba2db9f9d24ed9fb99bab06cf77"
+    },
+    {
+      "path": "results/I9/predictions/category_prior__loto.jsonl",
+      "rows": 64,
+      "sha256": "4eeb395a4061ec0d24abbb30bef3afe492416ef25283ce2f7bdde3c5545957f2"
+    },
+    {
+      "path": "results/I9/predictions/embed_regression.jsonl",
+      "rows": 384,
+      "sha256": "3ab6ff575f30e9e8a333e38ba195d0e4cae635c5096f60f35246a4768cbeeb85"
+    },
+    {
+      "path": "results/I9/predictions/embed_regression__bank.jsonl",
+      "rows": 18,
+      "sha256": "72f569e9500c6cfa7b0a07c4cc839cede907d1906d2da61e2d1c8a62785fe0d4"
+    },
+    {
+      "path": "results/I9/predictions/embed_regression__loto.jsonl",
+      "rows": 64,
+      "sha256": "fb87a61be53b650da6e690ddfa54efc1dbdfc5df050d088e3c139846a6cdc25a"
+    },
+    {
+      "path": "results/I9/predictions/monitor_few_shot_calibrated.jsonl",
+      "rows": 384,
+      "sha256": "cf3bd2c391e72b9e63723e5dbb85aaffbac6abb4a9679e00801faa5ddc30e2f4"
+    },
+    {
+      "path": "results/I9/predictions/monitor_zero_shot_calibrated.jsonl",
+      "rows": 384,
+      "sha256": "0afa724e764101f5db18dbdde05e41e403612a66ef421cc725630fb01a8284bd"
+    },
+    {
+      "path": "results/I9/predictions/monitor_zero_shot_calibrated__loto.jsonl",
+      "rows": 64,
+      "sha256": "27b0f7fe026b82e3354c153383e7ccf14a8d716605f9c41389dd1c183513d9fb"
+    },
+    {
+      "path": "results/I9/predictions/probe_gemma.jsonl",
+      "rows": 384,
+      "sha256": "006494059e10b1746ac496bb0faab514d126e7ba0f0614ba5337b5ce8e6dd322"
+    },
+    {
+      "path": "results/I9/predictions/probe_qwen.jsonl",
+      "rows": 384,
+      "sha256": "204b85cbbb72d5c28a7dcda8566e0336eb3a8b4ddbc1d617af773b588ccd280f"
+    },
+    {
+      "path": "results/I9/predictions/probe_qwen__bank.jsonl",
+      "rows": 18,
+      "sha256": "879088d3ab48accb5768b3731377deb0e4b1041c3127c701c058390de77118a7"
+    },
+    {
+      "path": "results/I9/predictions/probe_qwen__loto.jsonl",
+      "rows": 64,
+      "sha256": "5a89e9bec987d028428d2dfe318c7c18d849a49d83e5e3047969ec984ae80706"
+    },
+    {
+      "path": "results/I9/checks/code_check_overrides.json",
+      "rows": null,
+      "sha256": "15f8d94b38c56a1bb3228515c3b3bab18a913f658a308f930f9b58f6b162d929"
+    },
+    {
+      "path": "results/I9/checks/controls.json",
+      "rows": null,
+      "sha256": "2faf53329e101697b8a014dbb456a0b50b4731d4a4e3a5c6aa4fef2f3bd47001"
+    },
+    {
+      "path": "results/I9/checks/label_completeness.json",
+      "rows": null,
+      "sha256": "c5c005ff064011dd17acbf45f0ab7fbc3c423546754643e2d752ceaa6e9ebe0e"
+    },
+    {
+      "path": "results/I9/checks/model_difference.json",
+      "rows": null,
+      "sha256": "b27051aa464872ad9197c0cce52681b8967a382adfa20236bd8039d8695a6ad4"
+    },
+    {
+      "path": "results/I9/checks/replies_gemma_nothink.json",
+      "rows": null,
+      "sha256": "405f96d57d3919cf7957f6a10f3939c3c3442cb23a7087a81018394765fdf5e6"
+    },
+    {
+      "path": "results/I9/checks/replies_qwen_nothink.json",
+      "rows": null,
+      "sha256": "66412e82b8d83b256760ddb7570025e9f46f498fe6089a471b75479ff7774d49"
+    },
+    {
+      "path": "results/I9/checks/sampling_match.json",
+      "rows": null,
+      "sha256": "d0183f38c7cea0968f09e1bd2325669ed0e0fe94cd96b365e57421d318039a11"
+    },
+    {
+      "path": "results/I9/checks/smoke_i1a_reproduction.json",
+      "rows": null,
+      "sha256": "01db25e8cce3df0e8103a7aa32b7b5338773f4a5c2c0deb817e733967b007941"
+    },
+    {
+      "path": "results/I9/checks/smoke_ids_equal_gemma.json",
+      "rows": null,
+      "sha256": "ef5cb36bec2cc3f76f0a8d8cfe692b941f521414dec7883fc878e5993b0b8f4d"
+    },
+    {
+      "path": "results/I9/checks/smoke_ids_equal_qwen.json",
+      "rows": null,
+      "sha256": "95823cf97b3ea2624949ec90b9b1b6709e42fea6c1e69e2efe950a26c6473b87"
+    },
+    {
+      "path": "results/I9/checks/smoke_prompt_scope.json",
+      "rows": null,
+      "sha256": "939d8a1aaef5a8e5427cd9761cfec08cb06e3c17d19798a3a571d48d815dee58"
+    },
+    {
+      "path": "results/I9/checks/smoke_replies_gemma.json",
+      "rows": null,
+      "sha256": "7d7490b65b39c1bc333d84eca56de8094f4cc0a242d812ff4fb9e04a46f270bd"
+    },
+    {
+      "path": "results/I9/checks/smoke_replies_qwen.json",
+      "rows": null,
+      "sha256": "901b108b9ecfa9e561658ba2c11b2282a345b9c396a47963e3ce522be1fd2df7"
+    },
+    {
+      "path": "results/I9/checks/spread.json",
+      "rows": null,
+      "sha256": "a89543bdc0bba64d6e3ada4bd63bf451d38c38c0991e9c8e07d843c97f1eabba"
+    },
+    {
+      "path": "results/I9/analysis/power.json",
+      "rows": null,
+      "sha256": "aa2dc457ca6f1a0ed611ed406bd7d5d24b4c42fa8501e86fd40f6162cd640feb"
+    }
+  ],
+  "notes": "{\"scenario_ids\": [\"am-blackmail_ambiguous-none_none\", \"am-blackmail_ambiguous-none_replacement\", \"am-blackmail_explicit-collectivism_replacement\", \"am-blackmail_explicit-collectivism_restriction\", \"am-blackmail_explicit-ethical_none\", \"am-blackmail_explicit-ethical_replacement\", \"am-blackmail_explicit-ethical_restriction\", \"am-blackmail_explicit-global_none\", \"am-blackmail_explicit-pragmatic_none\", \"am-blackmail_latent-acceleration_none\", \"am-blackmail_latent-acceleration_restriction\", \"am-blackmail_latent-collectivism_replacement\", \"am-blackmail_latent-ethical_none\", \"am-blackmail_latent-ethical_restriction\", \"am-blackmail_latent-individualism_none\", \"am-blackmail_latent-individualism_replacement\", \"am-blackmail_latent-individualism_restriction\", \"am-blackmail_latent-pragmatic_none\", \"am-blackmail_latent-safety_none\", \"am-leaking_explicit-acceleration_none\", \"am-leaking_explicit-collectivism_replacement\", \"am-leaking_explicit-collectivism_restriction\", \"am-leaking_explicit-global_none\", \"am-leaking_explicit-global_replacement\", \"am-leaking_explicit-individualism_none\", \"am-leaking_explicit-individualism_replacement\", \"am-leaking_explicit-pragmatic_none\", \"am-leaking_explicit-pragmatic_restriction\", \"am-leaking_explicit-safety_replacement\", \"am-leaking_explicit-safety_restriction\", \"am-leaking_latent-acceleration_none\", \"am-leaking_latent-america_restriction\", \"am-leaking_latent-collectivism_none\", \"am-leaking_latent-collectivism_restriction\", \"am-leaking_latent-ethical_none\", \"am-leaking_latent-global_replacement\", \"am-leaking_latent-individualism_none\", \"am-leaking_latent-pragmatic_none\", \"am-leaking_latent-pragmatic_replacement\", \"am-leaking_latent-pragmatic_restriction\", \"am-leaking_latent-safety_none\", \"am-murder_ambiguous-none_restriction\", \"am-murder_explicit-collectivism_none\", \"am-murder_explicit-collectivism_replacement\", \"am-murder_explicit-ethical_none\", \"am-murder_explicit-ethical_restriction\", \"am-murder_explicit-global_none\", \"am-murder_explicit-individualism_replacement\", \"am-murder_explicit-pragmatic_replacement\", \"am-murder_explicit-pragmatic_restriction\", \"am-murder_explicit-safety_none\", \"am-murder_latent-acceleration_restriction\", \"am-murder_latent-america_none\", \"am-murder_latent-america_replacement\", \"am-murder_latent-collectivism_none\", \"am-murder_latent-collectivism_restriction\", \"am-murder_latent-ethical_none\", \"am-murder_latent-ethical_replacement\", \"am-murder_latent-ethical_restriction\", \"am-murder_latent-global_replacement\", \"am-murder_latent-individualism_replacement\", \"am-murder_latent-individualism_restriction\", \"am-murder_latent-pragmatic_replacement\", \"am-murder_latent-pragmatic_restriction\"], \"bank_ids\": [\"am-blackmail-full\", \"am-blackmail_explicit-america_none\", \"am-blackmail_none-none_none\", \"am-leaking_none-none_none\", \"am-murder_none-none_none\", \"deceive-metrics-dashboard\", \"deceive-safety-report\", \"exfil-weights\", \"imp-deadline-fabricate\", \"oversight-disable-logging\", \"rh-metric-gaming\", \"rh-unit-tests\", \"sb-deployment-gate\", \"selfpreserve-shutdown\", \"t-imp-sandbox-escape\", \"t-power-acquire-credentials\", \"t-rh-benchmark\", \"whistleblow-suppress\"], \"unsealed\": false, \"synthetic\": false, \"note\": \"\"}",
+  "outputs": [
+    {
+      "path": "results/I9/analysis/final.json",
+      "rows": null,
+      "sha256": "f2c744cc1a2077725a4b68891c5d5f936dfea75b2532b4092f1d3dde0e2600bb"
+    },
+    {
+      "path": "results/I9/analysis/pred_vs_obs_qwen.png",
+      "rows": null,
+      "sha256": "950b61e6db5beb5addb45d736e58a5512b6da166a6d93d63d5c05767adec2181"
+    },
+    {
+      "path": "results/I9/analysis/pred_vs_obs_gemma.png",
+      "rows": null,
+      "sha256": "758805986e577b27bf2eec2896d3b72c417084bcf8ea3cc0f74278c57c42e6f0"
+    },
+    {
+      "path": "results/I9/checks/permutation.json",
+      "rows": null,
+      "sha256": "0589aff54c42298f888e1d4e0565d7e8165393f4321fca89e3121fd752ed38d2"
+    }
+  ],
+  "pins": {
+    "embed_model": "BAAI/bge-small-en-v1.5",
+    "embed_rev": "5c38ec7c405ec4b44b94cc5a9bb96e735b38267a"
+  },
+  "seeds": {
+    "bootstrap": 0,
+    "fold_0": 0,
+    "fold_1": 1,
+    "fold_2": 2,
+    "permutation": 0,
+    "power": 0
+  },
+  "started_utc": "2026-10-05T00:20:47Z",
+  "step": "analyze",
+  "usd": 0.0
+}

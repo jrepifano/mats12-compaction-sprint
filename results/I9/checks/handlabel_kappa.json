@@ -1,0 +1,45 @@
+{
+  "details": {
+    "deepseek": {
+      "agree": 39,
+      "human_yes": 25,
+      "judge_yes": 22,
+      "kappa": 0.7727272727272727,
+      "n": 44,
+      "n_dropped": 6
+    },
+    "final": {
+      "agree": 36,
+      "human_yes": 25,
+      "judge_yes": 19,
+      "kappa": 0.643002028397566,
+      "n": 44,
+      "n_dropped": 6
+    },
+    "human_yes": 29,
+    "luna": {
+      "agree": 36,
+      "human_yes": 25,
+      "judge_yes": 20,
+      "kappa": 0.6780748663101605,
+      "n": 43,
+      "n_dropped": 7
+    },
+    "luna_final": {
+      "agree": 34,
+      "human_yes": 25,
+      "judge_yes": 18,
+      "kappa": 0.5922023182297154,
+      "n": 43,
+      "n_dropped": 7
+    },
+    "n_disputed": 10
+  },
+  "n": 50,
+  "name": "handlabel_kappa",
+  "notes": "value = min(kappa raw luna, kappa final labels) vs Jacob's labels (prereg \u00a74.3, amendment B item 3); luna_final = luna's verdict AND the Lynch code check, and deepseek, are reported, not gated",
+  "passed": false,
+  "threshold": 0.7,
+  "utc": "2026-10-05T22:11:36+00:00",
+  "value": 0.643002028397566
+}

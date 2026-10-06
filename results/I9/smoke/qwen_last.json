@@ -1,0 +1,79 @@
+{
+"model": "qwen",
+"model_id": "Qwen/Qwen3.6-27B",
+"model_rev": "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+"thinking": false,
+"kind": "last",
+"layers": [
+20,
+24,
+28,
+32,
+36,
+40,
+44,
+48,
+52,
+56,
+60,
+63
+],
+"layer_convention": "layer L = output of decoder block L (wsbench Backend.capture forward hook); not HF output_hidden_states, whose last entry is the final-norm output",
+"dtype": "float32",
+"ids": [
+"am-blackmail_ambiguous-none_none",
+"am-blackmail_ambiguous-none_replacement",
+"am-blackmail_explicit-collectivism_replacement",
+"am-blackmail_explicit-collectivism_restriction"
+],
+"n_tokens": {
+"am-blackmail_ambiguous-none_none": 1831,
+"am-blackmail_ambiguous-none_replacement": 2277,
+"am-blackmail_explicit-collectivism_replacement": 2359,
+"am-blackmail_explicit-collectivism_restriction": 2339
+},
+"rollout_start": {
+"am-blackmail_ambiguous-none_none": 1831,
+"am-blackmail_ambiguous-none_replacement": 2277,
+"am-blackmail_explicit-collectivism_replacement": 2359,
+"am-blackmail_explicit-collectivism_restriction": 2339
+},
+"rows": [
+{
+"index": 0,
+"id": "am-blackmail_ambiguous-none_none",
+"pos": 1830,
+"token": "\n\n",
+"n_tokens": 1831,
+"rollout_start": 1831,
+"ids_sha256": "614e0d9af55a57a51edcfa55a6c86d29aa36c2da55d157f063672b9e27908d71"
+},
+{
+"index": 1,
+"id": "am-blackmail_ambiguous-none_replacement",
+"pos": 2276,
+"token": "\n\n",
+"n_tokens": 2277,
+"rollout_start": 2277,
+"ids_sha256": "5ae2cf2120eda98cffb31edb0110fa17ed2cb916b48237d05fd7738798ca6d1b"
+},
+{
+"index": 2,
+"id": "am-blackmail_explicit-collectivism_replacement",
+"pos": 2358,
+"token": "\n\n",
+"n_tokens": 2359,
+"rollout_start": 2359,
+"ids_sha256": "f6d530c92675ccf21ecc09caeee3879d7a5d1d223b7621cc1857960010f12628"
+},
+{
+"index": 3,
+"id": "am-blackmail_explicit-collectivism_restriction",
+"pos": 2338,
+"token": "\n\n",
+"n_tokens": 2339,
+"rollout_start": 2339,
+"ids_sha256": "137f7ffbd8043601b98ed4b3e99ed651368c7e0e01740923ab22ae6beefdbd68"
+}
+]
+}

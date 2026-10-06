@@ -1,0 +1,114 @@
+{
+  "finished_utc": "2026-10-04T22:43:44Z",
+  "git_commit": "cde1ec1455b03462bbc195a6b29bc86c4eb78721",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "data/I9/scenarios.jsonl",
+      "rows": 112,
+      "sha256": "b2f2d83ee69bc6a85628c5999b5cee257ce8563bd021646421f684122e9a4263"
+    },
+    {
+      "path": "data/I9/sets.json",
+      "rows": null,
+      "sha256": "382eaa084fffd60954dedd03adc2e5989259a6d6217f06c19c604c08308326a4"
+    },
+    {
+      "path": "results/I9/download_paths.json",
+      "rows": null,
+      "sha256": "8462a214fbdf0fb71f01e9ef2518c853db9192431022b9acbb852482c5580372"
+    }
+  ],
+  "notes": "",
+  "outputs": [
+    {
+      "path": "results/I9/MANIFEST.capture-last.json",
+      "rows": null,
+      "sha256": "6f2d1663197832df01119b5cb0be8dd8d2658e177d469d8287764ebb1c6a1f01"
+    },
+    {
+      "path": "results/I9/MANIFEST.capture-last.sha256",
+      "rows": null,
+      "sha256": "836e9ccfd5695db3201397612a1a1bc14321f67c4b25d5f9497f1f7b1c7c05ce"
+    },
+    {
+      "path": "results/I9/MANIFEST.download.json",
+      "rows": null,
+      "sha256": "3451a800965e356768b06759a13dfb9c9eafb6f0dfd808bb533ae80c0a5ad8ce"
+    },
+    {
+      "path": "results/I9/MANIFEST.download.sha256",
+      "rows": null,
+      "sha256": "29cf122aef4f860727db04054ce24c3296924eb6aedc2cd1d8accd1d6cc93198"
+    },
+    {
+      "path": "results/I9/MANIFEST.sample-gemma.json",
+      "rows": null,
+      "sha256": "011928c23785a79b980b495443987a3fe096f979ed0f3b19335da08d451b65c1"
+    },
+    {
+      "path": "results/I9/MANIFEST.sample-gemma.sha256",
+      "rows": null,
+      "sha256": "7ce936a6a6afb8665663240fb02231818d176eea12b975fa17f354fca3bdaee9"
+    },
+    {
+      "path": "results/I9/MANIFEST.sample-qwen.json",
+      "rows": null,
+      "sha256": "b91265113168585f4250d3ff859b0010e9b3e465737c1b6760e98acb33ee1b0b"
+    },
+    {
+      "path": "results/I9/MANIFEST.sample-qwen.sha256",
+      "rows": null,
+      "sha256": "99f872e65b1f1f6e9af8215d6dbd5bff7f51bd264aa4ee51f7ca90c8d24aa17a"
+    },
+    {
+      "path": "results/I9/MANIFEST.smoke.json",
+      "rows": null,
+      "sha256": "c0afae78ef2ac0c403912fb73046432b05f500b944075c08eeba7d69f89ad106"
+    },
+    {
+      "path": "results/I9/MANIFEST.smoke.sha256",
+      "rows": null,
+      "sha256": "732cd5bf9c91c54e3a2db2f20d622b65e3b6926ed93dd8971115bdaac27ca090"
+    },
+    {
+      "path": "results/I9/manifests/capture-last.json",
+      "rows": null,
+      "sha256": "7e6eaa548b0ee396f2e3793394ee77a00b95b88b3ddc065c119648c34f15360f"
+    },
+    {
+      "path": "results/I9/manifests/download.json",
+      "rows": null,
+      "sha256": "aff8bf791161605397928f99e57318aa1f1fedc0159e8a8ce27bd30be8098bc4"
+    },
+    {
+      "path": "results/I9/manifests/sample-gemma.json",
+      "rows": null,
+      "sha256": "318d1b217306194a599692d9d286c75aa403e8ad77010e17eb0cc888cc214e93"
+    },
+    {
+      "path": "results/I9/manifests/sample-qwen.json",
+      "rows": null,
+      "sha256": "cd0c5a8b30e7d42970e963a7f3c30990511cc9f40224097f40035e604b4d4728"
+    },
+    {
+      "path": "results/I9/manifests/smoke.json",
+      "rows": null,
+      "sha256": "3482a39de698b666c7e200ead332043a5cb51ce42f33ef7161f872e014123d47"
+    }
+  ],
+  "pins": {
+    "gemma": "google/gemma-4-31B-it@842da3794eaa0b77d5f08bae87a17459d91ff475",
+    "jlens": "neuronpedia/jacobian-lens@b25d72a96b79c8e309d6625955a98751da47e67a",
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "olens_adapter": "agu18dec/olens_and_ar@c95215d5d2f6250f20c305ae55c6e4d7569f92dc",
+    "qwen": "Qwen/Qwen3.6-27B@6a9e13bd6fc8f0983b9b99948120bc37f49c13e9",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {
+    "scenario_draw": 0
+  },
+  "started_utc": "2026-10-04T22:43:44Z",
+  "step": "manifest",
+  "usd": 0.0
+}

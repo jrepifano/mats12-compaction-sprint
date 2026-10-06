@@ -1,0 +1,33 @@
+{
+  "finished_utc": "2026-10-05T22:11:36+00:00",
+  "git_commit": "f21c3c657e4ba10f97c66ae957a015d03fb3f669",
+  "git_dirty": false,
+  "inputs": [
+    {
+      "path": "results/I9/handlabels/labels_jacob.csv",
+      "rows": 5581,
+      "sha256": "e09e3c88a3b3e2ad14fb9ab16d2b992a70b064ab7ebf0bc47dfc77fcc4065397"
+    },
+    {
+      "path": "results/I9/handlabels/key.csv",
+      "rows": 51,
+      "sha256": "64aadc0f00a0ea0e18c0a59c6bbf3e56d53b4ae09a5d3f48b44d766ea32cbfeb"
+    }
+  ],
+  "notes": "{\"passed\": false, \"value\": 0.643002028397566}",
+  "outputs": [
+    {
+      "path": "results/I9/checks/handlabel_kappa.json",
+      "rows": null,
+      "sha256": "3a3d1ef6dece66cadd4828ea9a0dd61eb95b5612946f527d6651ee16f4dddd4c"
+    }
+  ],
+  "pins": {
+    "lynch": "ea0630e1a3eaae7f9f9740fd2703229d3854ccda",
+    "wsbench": "92d763e722377f5bfae045e829a308ab5919a820"
+  },
+  "seeds": {},
+  "started_utc": "2026-10-05T22:11:36+00:00",
+  "step": "handlabel_score",
+  "usd": 0.0
+}
