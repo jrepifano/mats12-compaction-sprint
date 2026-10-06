@@ -78,7 +78,7 @@ Building the pairs: up to 300 pairs (140 broad, 160 medical), generated, double-
 
 | Version | sha256 | Built | Notes |
 |---|---|---|---|
-| v1 | (pending) | | Construction version 3 (see revision history) |
+| v1 | `64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a` | 2026-10-06T17:46Z, by E3 (`data/shared/answer_pairs_v1.c3.build.json`) | Construction version 3, pre-inspection by GLM and Gemini. 252 pairs: development 21 questions (79 pairs), held-out 10 (36), medical 37 (137). Pre-inspection: GLM 256/257, Gemini 254/257. Selection file sha256 `d59c0a89…df667b` |
 
 ## Revision history
 

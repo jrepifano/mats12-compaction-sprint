@@ -193,7 +193,11 @@ POWER_UNDERPOWERED_BELOW = 0.5
 # --- answer pairs (§4.4; docs/experiments/shared/susceptibility-measure.md) ---------------------
 
 PAIRS_FILE = "data/shared/answer_pairs_v1.jsonl"
-PAIRS_SHA256: str | None = None  # pinned by amendment once frozen (unit 3b)
+PAIRS_SHA256: str | None = (  # frozen 2026-10-06 (construction 3; Amendments A-C)
+    "64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a"
+)
+SELECTION_SHA256 = "d59c0a89936c6c656e84bba1cc0fbdfd1978758a61e67195b8023cfd33df667b"
+SWAPS_SHA256 = "9fd72def9f1fbfee1db8f2234c7d669552944baa5ee1c5bc3b4d8cf52598614b"
 # Written by the builder BEFORE retention, hashed with the pairs: the original 40 medical qids,
 # the 12 held-out and 23 development broad qids, categories, seeds. The sampled narrow secondary
 # excludes `medical_qids` from here (not the retained pairs), so a dropped medical question never
