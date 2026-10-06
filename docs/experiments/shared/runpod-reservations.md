@@ -23,8 +23,9 @@ The RunPod balance is shared and doesn't top itself up (CLAUDE.md, Account balan
 
 A pod launch for experiment X may proceed only if, inside the lock:
 
-> live balance (RunPod GraphQL `clientBalance`) − Σ *unlaunched* reservations of other experiments − Σ remaining liability of all launched pods − buffer ≥ X's new reservation
+> live balance (RunPod GraphQL `clientBalance`) − Σ *all* unlaunched reservations, X's own included, except the one being converted or replaced − Σ remaining liability of all launched pods − buffer ≥ X's new reservation
 
+- **Same-experiment reservations count too.** Two reservations by the same experiment can't both be admitted against the same money. The tests include a same-experiment reserve → reserve → launch sequence.
 - **Each dollar counts once.** An unlaunched reservation counts until its launch row. After that, its pods' remaining liability counts instead: each pod's hourly rate × time left to its armed deadline.
 - **The buffer is $10.**
 - **The live balance** already reflects spend to date, so settled spend isn't subtracted again.
