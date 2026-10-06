@@ -1,0 +1,61 @@
+# Part A analysis, generated 2026-10-06T07:24:37+00:00
+A1 stage1-step1000: refs targetCommit=d82e70ec28daa79d25405cd128e127c52bb10516 prereg=d82e70ec28daa79d25405cd128e127c52bb10516 match=True
+A1 stage1-step2000: refs targetCommit=6a238f66840f4db2deff7049b12fbc608267e14f prereg=6a238f66840f4db2deff7049b12fbc608267e14f match=True
+A1 stage1-step3000: refs targetCommit=9de48909b402a200848e5cba488dbfd04b6227a3 prereg=9de48909b402a200848e5cba488dbfd04b6227a3 match=True
+A1 stage1-step5000: refs targetCommit=825e84ed82eb78b1b395d0aa0164378f64544f92 prereg=825e84ed82eb78b1b395d0aa0164378f64544f92 match=True
+A1 stage1-step10000: refs targetCommit=7717822de388435b332d8c4a7ab7d88412fff939 prereg=7717822de388435b332d8c4a7ab7d88412fff939 match=True
+A1 stage1-step1413814: refs targetCommit=373bad25002f1624757a73235c5ca844c6375c25 prereg=373bad25002f1624757a73235c5ca844c6375c25 match=True
+A1 total branches=1487; stage1-* branches=1421; all match stage1-step<N>: True
+A1 1000-multiples present=1414 (0..1413000), missing 1000-multiples=0; extra non-1000 steps=[39500, 189900, 476838, 596047, 597046, 736730, 1413814]
+A1 registry STAGES["pre"]["revision"]=373bad25002f1624757a73235c5ca844c6375c25 == stage1-step1413814 target: True
+A2 step1413814: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['f256015ffbd2', 'de327e942a56', '0262ab848daa']
+A2 step1000: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['6855354efad6', '259df94b45cf', 'a70162333ce6']
+A2 step2000: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['4fd5ce8e12b0', '09d7768bd817', 'd1c150964366']
+A2 step3000: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['6a518f73aedf', '8a50fbe18e40', '766007088961']
+A2 step5000: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['16414e31fdfa', '1b9052ff3a77', 'c763ad6aa788']
+A2 step10000: 3 safetensors shards, LFS total 14596063712 bytes = 14.596 GB (decimal) = 13.594 GiB; shard lfs sha256 prefixes ['4ebefa36fd7c', '339d65670a63', '6ebbf3434656']
+A3 step1000 .gitattributes: oid a6344aac8c09253b3b630fb776ae94478aa0275b == ref
+A3 step1000 config.json: oid 62e31c34981951992bea7887933ab20b94dfd22e == ref
+A3 step1000 generation_config.json: oid 2c26806e0c991024e858603937a64d85c1e2f3a2 == ref
+A3 step1000 merges.txt: oid 354558edcdbd64ca7abd407b8be3d5d09d39d781 == ref
+A3 step1000 model.safetensors.index.json: oid 421a80b181a130ccbc579a328fb349d8792a32ce == ref
+A3 step1000 special_tokens_map.json: oid 68a9a42af03ba45d68358595d49dc70b10159c12 == ref
+A3 step1000 tokenizer.json: oid 5fe172127988c3709a49d8d2ce20e11bb266cd57 == ref
+A3 step1000 tokenizer_config.json: oid f9e5ee94cf605b587aa8021f7e27e7d5381c07b7 == ref
+A3 step1000 vocab.json: oid 51135344eec01a62fc4deaca39c72ac08f5b9709 == ref
+A3 step2000 .gitattributes: oid a6344aac8c09253b3b630fb776ae94478aa0275b == ref
+A3 step2000 config.json: oid 62e31c34981951992bea7887933ab20b94dfd22e == ref
+A3 step2000 generation_config.json: oid 2c26806e0c991024e858603937a64d85c1e2f3a2 == ref
+A3 step2000 merges.txt: oid 354558edcdbd64ca7abd407b8be3d5d09d39d781 == ref
+A3 step2000 model.safetensors.index.json: oid 421a80b181a130ccbc579a328fb349d8792a32ce == ref
+A3 step2000 special_tokens_map.json: oid 68a9a42af03ba45d68358595d49dc70b10159c12 == ref
+A3 step2000 tokenizer.json: oid 5fe172127988c3709a49d8d2ce20e11bb266cd57 == ref
+A3 step2000 tokenizer_config.json: oid f9e5ee94cf605b587aa8021f7e27e7d5381c07b7 == ref
+A3 step2000 vocab.json: oid 51135344eec01a62fc4deaca39c72ac08f5b9709 == ref
+A3 step3000 .gitattributes: oid a6344aac8c09253b3b630fb776ae94478aa0275b == ref
+A3 step3000 config.json: oid 62e31c34981951992bea7887933ab20b94dfd22e == ref
+A3 step3000 generation_config.json: oid 2c26806e0c991024e858603937a64d85c1e2f3a2 == ref
+A3 step3000 merges.txt: oid 354558edcdbd64ca7abd407b8be3d5d09d39d781 == ref
+A3 step3000 model.safetensors.index.json: oid 421a80b181a130ccbc579a328fb349d8792a32ce == ref
+A3 step3000 special_tokens_map.json: oid 68a9a42af03ba45d68358595d49dc70b10159c12 == ref
+A3 step3000 tokenizer.json: oid 5fe172127988c3709a49d8d2ce20e11bb266cd57 == ref
+A3 step3000 tokenizer_config.json: oid f9e5ee94cf605b587aa8021f7e27e7d5381c07b7 == ref
+A3 step3000 vocab.json: oid 51135344eec01a62fc4deaca39c72ac08f5b9709 == ref
+A3 step5000 .gitattributes: oid a6344aac8c09253b3b630fb776ae94478aa0275b == ref
+A3 step5000 config.json: oid 62e31c34981951992bea7887933ab20b94dfd22e == ref
+A3 step5000 generation_config.json: oid 2c26806e0c991024e858603937a64d85c1e2f3a2 == ref
+A3 step5000 merges.txt: oid 354558edcdbd64ca7abd407b8be3d5d09d39d781 == ref
+A3 step5000 model.safetensors.index.json: oid 421a80b181a130ccbc579a328fb349d8792a32ce == ref
+A3 step5000 special_tokens_map.json: oid 68a9a42af03ba45d68358595d49dc70b10159c12 == ref
+A3 step5000 tokenizer.json: oid 5fe172127988c3709a49d8d2ce20e11bb266cd57 == ref
+A3 step5000 tokenizer_config.json: oid f9e5ee94cf605b587aa8021f7e27e7d5381c07b7 == ref
+A3 step5000 vocab.json: oid 51135344eec01a62fc4deaca39c72ac08f5b9709 == ref
+A3 step10000 .gitattributes: oid a6344aac8c09253b3b630fb776ae94478aa0275b == ref
+A3 step10000 config.json: oid 62e31c34981951992bea7887933ab20b94dfd22e == ref
+A3 step10000 generation_config.json: oid 2c26806e0c991024e858603937a64d85c1e2f3a2 == ref
+A3 step10000 merges.txt: oid 354558edcdbd64ca7abd407b8be3d5d09d39d781 == ref
+A3 step10000 model.safetensors.index.json: oid 421a80b181a130ccbc579a328fb349d8792a32ce == ref
+A3 step10000 special_tokens_map.json: oid 68a9a42af03ba45d68358595d49dc70b10159c12 == ref
+A3 step10000 tokenizer.json: oid 5fe172127988c3709a49d8d2ce20e11bb266cd57 == ref
+A3 step10000 tokenizer_config.json: oid f9e5ee94cf605b587aa8021f7e27e7d5381c07b7 == ref
+A3 step10000 vocab.json: oid 51135344eec01a62fc4deaca39c72ac08f5b9709 == ref

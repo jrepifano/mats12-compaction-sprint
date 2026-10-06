@@ -56,7 +56,7 @@ We fine-tune five early pretraining checkpoints (steps 1,000, 2,000, 3,000, 5,00
 
 ### 4.1 Models
 
-All revisions were read from the Hugging Face refs API on 2026-10-06. **The five new commits, file listings and blob-id comparisons are author-reported checks; an audit is pending.** The audit file (commands, UTC timestamps, complete responses) is a work unit before sign-off (§8.1). The reference commit traces to our earlier follow-up's records. Every stage-1 step from 0 is published at 1,000-step spacing (1,421 stage-1 branches). Each listed revision holds full weights (three safetensors shards, 14.6 GB). Its `tokenizer.json`, `tokenizer_config.json` and `config.json` have git blob ids identical to the reference checkpoint's, which our earlier experiment already checked for masking and tokenization [[robustness and timing prereg](#robustness-and-timing-prereg-2026), amendment A3]. Tokens are step × 4,194,304 [[Olmo Team 2025](#olmo-team-2025), Table 35].
+All revisions were read from the Hugging Face refs API on 2026-10-06. **The five new commits, file listings and blob-id comparisons were audited after sign-off and are confirmed** (`logs/E3-audit-preflight.md`, items A1–A3; erratum E1, 2026-10-06). The reference commit traces to our earlier follow-up's records. Every stage-1 step from 0 is published at 1,000-step spacing (1,421 stage-1 branches). Each listed revision holds full weights (three safetensors shards, 14.6 GB). Its `tokenizer.json`, `tokenizer_config.json` and `config.json` have git blob ids identical to the reference checkpoint's, which our earlier experiment already checked for masking and tokenization [[robustness and timing prereg](#robustness-and-timing-prereg-2026), amendment A3]. Tokens are step × 4,194,304 [[Olmo Team 2025](#olmo-team-2025), Table 35].
 
 | Checkpoint | Hugging Face revision | Commit | Tokens | Learning-rate phase | Why this step |
 |---|---|---|---|---|---|
@@ -342,11 +342,11 @@ Moskvoretskii et al. already report "evil" extraction at exactly these five chec
 
 If a replicated transition between steps a and b is established (Claim 2, §4.8), the data the model saw between them (1,000 steps × 512 sequences of 8,192 tokens, 4.2B tokens per 1,000 steps) is a **hypothesis-generating** pool for data-side follow-ups. A transition between checkpoints brackets a change in the model's state. That change could come from accumulated learning, from optimization or from a new ability to read the evaluation questions, not necessarily from those documents. Only an intervention can test the documents' role.
 
-**Can the order be recovered? Probably yes. These are author-reported checks, made free on 2026-10-06; an audit is pending** (an audit file with commands, UTC timestamps and complete outputs is a work unit before sign-off, §8.1).
-- **The data order is a function of a few recorded settings.** The training run's own configuration and trainer state at steps 1,000, 5,000 and 10,000 are public (OLMo-core format, in AI2's Hugging Face bucket `allenai/ai2-llm`, `checkpoints/OLMo25/step*/`). They record the data loader's seed (34521), epoch 1, a global batch of 4,194,304 tokens in 8,192-token sequences, and a list of 1,015 data files that is identical at all three steps.
+**Can the order be recovered? Probably yes. Audited after sign-off** (`logs/E3-audit-preflight.md`, items B and D; erratum E1, 2026-10-06): every claim below is confirmed except the file count, corrected from 1,015 to 1,016.
+- **The data order is a function of a few recorded settings.** The training run's own configuration and trainer state at steps 1,000, 5,000 and 10,000 are public (OLMo-core format, in AI2's Hugging Face bucket `allenai/ai2-llm`, `checkpoints/OLMo25/step*/`). They record the data loader's seed (34521), epoch 1, a global batch of 4,194,304 tokens in 8,192-token sequences, and a list of 1,016 data files that is identical at all three steps.
 - **The released mix matches the training data.**
   - That file list maps one-to-one onto the released official pretraining mix, in the same order with the same file names; only the directory names were changed for release [[code and models](#code-and-models)].
-  - The released files' byte sizes, which we fetched for all 1,015 files (23.7 TB, 5.93T tokens), reproduce **exactly** the dataset fingerprint stored in the step-1,000 trainer state (`ddc8c024…`).
+  - The released files' byte sizes, which we fetched for all 1,016 files (23.7 TB, 5.93T tokens), reproduce **exactly** the dataset fingerprint stored in the step-1,000 trainer state (`ddc8c024…`).
   - That fingerprint is what OLMo-core's own batch-reconstruction script checks before regenerating "the exact training batch for a given checkpoint and step number".
 - **What this does and doesn't show.** Matching file names and byte sizes supports reconstruction compatibility. It does not show that file contents are identical, or that the shuffle is historically equivalent.
 - **What is not verified:**
@@ -561,7 +561,7 @@ Every conditional unit ends in one of two completion states: **done**, or **skip
 
 | # | Unit | Who | Inputs | Outputs | Depends on | Done when | Time |
 |---|---|---|---|---|---|---|---|
-| 0 | **Pre-sign-off audit** (free) | Main session | §4.1, §4.12, §7 claims | `logs/E3-audit-preflight.md` (commands, UTC timestamps, complete outputs) plus raw responses under `results/E3/audit/`: the refs API response; file-tree blob ids for the six revisions; the OLMo-core commit and file hashes; the 1,015 HEAD responses; the fingerprint script and its full output; the timing artifacts cited in §7 | — | Every "audit pending" claim cites a line of the audit file, or is corrected | 1 h, before sign-off |
+| 0 | **Pre-sign-off audit** (free) | Main session | §4.1, §4.12, §7 claims | `logs/E3-audit-preflight.md` (commands, UTC timestamps, complete outputs) plus raw responses under `results/E3/audit/`: the refs API response; file-tree blob ids for the six revisions; the OLMo-core commit and file hashes; the 1,016 HEAD responses; the fingerprint script and its full output; the timing artifacts cited in §7 | — | Every "audit pending" claim cites a line of the audit file, or is corrected | 1 h, before sign-off |
 | 1 | Implementation plan | Main session + gpt-6-astra | This prereg | `implementation-plan.md` | Sign-off (unit 21) | gpt-6-astra approves (≤ 3 rounds) | 1.5 h |
 | 1J | Plan approval | **Jacob (touchpoint b)** | Plan and its review verdicts | Approval | 1 | Approved | 20 min |
 | 2 | Frozen contracts | Main session | Plan | `src/emx/e3/contracts.py` | 1J | Imported by a passing test | 0.3 h |
@@ -785,7 +785,7 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 | 5 | Blocking | Early checkpoints could yield a window with an unvalidated measure | A per-checkpoint interpretability status, from the absolute-likelihood floor and prompt dependence where testable; windows only at "interpretable" checkpoints. A shuffled-question positive control is required at the reference. The extrapolation from v is acknowledged as inherited (§4.6, §4.7, §9) |
 | 6 | Blocking | A late pair revision could change decisions | Per the revised spec: an automatic pre-inspection check gates every result. Jacob's spot-check at the results review can only relabel results as exploratory; v2 is versioned, recomputed and shared with the other experiment; at most one revision (§4.4) |
 | 7 | Blocking | The budget underpriced the worst case | One authoritative workload table: 300 pairs; 4,400 answer scores (5,240 with the shuffled control); retries bounded at 2; revision rescoring 1.94 h; persona at one figure (1.3 h, ≈ $9.3 in all). Estimated vs measured is labelled. Worst case before cuts ≈ $58, after the ordered cuts (persona, neighbour, sampled secondary) ≈ $44.8 (§7) |
-| 8 | Blocking | Kill-line formula | min($36, $45 − reserve − recorded and reserved API spend), matching `emx.spend.watchdog_kill_usd`; all E3 pods together (§7, §8.6) |
+| 8 | Blocking | Kill-line formula | min($35, $45 − reserve − recorded and reserved API spend), matching `emx.spend.watchdog_kill_usd`; all E3 pods together (§7, §8.6) |
 | 9 | Blocking | Power required unsealed data | Fixed narrow-effect assumptions on reference data only. One sequence: Stage A pass → automatic diagnostic → immutable record → unsealing. It is called a diagnostic, not an amendment (§4.8) |
 | 10 | Blocking | No enforceable RunPod reservation | Adopts the shared [RunPod reservations contract](#runpod-reservations-contract-2026), with next-gate reservations listed. States that the current balance can hold this experiment back without a top-up (§8.6) |
 | 11 | Minor | No audit artifact for the new checks | New checkpoint hashes, the data-order findings and throughput are labelled "author-reported; audit pending". Unit 0 writes the audit file before sign-off (§4.1, §4.12, §8.1) |
@@ -851,6 +851,10 @@ The phases are units 3b, 9, 10, 11–12, 13–14, 15, 17r, 17 and 20 of §8.1, p
 - reference-judge validation, with Jacob's labels at the results review.
 
 It also accepts the round-3 fixes made without re-review. The RunPod top-up is still Jacob's action; until it happens, launches follow the reservation contract and this experiment waits for the corrective-continued-pretraining experiment when funds are short. Next: the implementation plan, which gets its own gpt-6-astra review and Jacob's approval.
+
+### Erratum E1 (2026-10-06, after sign-off; no design change)
+
+The pre-run audit (unit 0, `logs/E3-audit-preflight.md`, with raw responses under `results/E3/audit/`) confirmed every author-reported claim in §4.1, §4.12 and §7, with one correction. The training run's data list has **1,016** files, not 1,015 (`wc -l` undercounts because the file has no trailing newline). The fingerprint matches over all 1,016. §4.12 and the References are corrected. The "$36" in review-history row 8 was a typo for the GPU limit, $35. Neither correction touches a decision rule, a cost or the run. The §7 timing is confirmed as 571.5 s and 632.6 s, measured on the final base model, not a stage-1 checkpoint (same architecture).
 
 ## References
 
@@ -925,5 +929,5 @@ The early-window sweep, redrafted 2026-10-05. `docs/research-proposals.md`, sect
   - `src/olmo_core/data/numpy_dataset.py` (dataset fingerprint);
   - `src/olmo_core/data/mixes/OLMo-mix-0625.txt` and `OLMo-mix-0625-official.txt`.
 - Stage-1 OLMo-core checkpoints `checkpoints/OLMo25/step{1000,5000,10000}/` (`config.json`, `data_paths.txt`, `train/rank0.pt`) in the Hugging Face bucket `allenai/ai2-llm`. The trainer state was inspected with a non-executing pickle disassembler.
-- Released pretraining mix: `https://olmo-data.org/preprocessed/dolma3-0625/v0.1-official/allenai/dolma3-tokenizer/…` (1,015 files; sizes fetched by HEAD requests).
+- Released pretraining mix: `https://olmo-data.org/preprocessed/dolma3-0625/v0.1-official/allenai/dolma3-tokenizer/…` (1,016 files; sizes fetched by HEAD requests).
 - Persona-vector code: github.com/epfl-dlab/pretraining_persona (for a possible future add-on; not inspected).
