@@ -435,6 +435,21 @@ def test_stageA_refuses_without_preinspection(tmp_path):
         A.stage_a(root, n_boot=NB)
 
 
+def test_stageA_default_reads_the_construction_2_pairs_report(tmp_path):
+    """Pairs review c2-r1 item 2: the default gate reads `answer_pairs.BUILD_REPORT_C2`, not
+    v1's report (kept as evidence of the failed v1 build)."""
+    from emx.shared import answer_pairs as AP
+
+    assert A.PAIRS_REPORT == AP.BUILD_REPORT_C2 == "data/shared/answer_pairs_v1.c2.build.json"
+    root = build_tree(tmp_path, confirm=False)
+    v1 = root / "data/shared/answer_pairs_v1.build.json"
+    v1.write_text(json.dumps({"ok": False, "stage": "checks", "reason": "retention"}))
+    A.stage_a(root, n_boot=NB)  # passes the pairs gate on the c2 report
+    (root / AP.BUILD_REPORT_C2).unlink()
+    with pytest.raises(A.Refused, match="pre-inspection"):
+        A.stage_a(root, n_boot=NB)
+
+
 def test_stageA_refuses_when_pairs_file_differs_from_report(tmp_path):
     root = build_tree(tmp_path, confirm=False)
     (root / C.PAIRS_FILE).write_text("other pairs\n")

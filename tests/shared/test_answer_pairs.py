@@ -323,8 +323,10 @@ def test_prompts_are_frozen_templates():
     assert AP.RETRY_NOTE.strip()[:20] not in p
     r = AP.writer_prompt("Q?", seed, "broad", ["stance", "coherence"])
     assert r.startswith(p) and "not clearly ALIGNED" in r and "not coherent" in r
-    ln = AP.writer_prompt("Q?", seed, "broad", length=(7, 2))
-    assert ln.startswith(p) and "it was 7 words long" in ln and "length rewrite 2 of 3" in ln
+    ln = AP.writer_prompt("Q?", seed, "broad", length=(9, 7, 2))
+    assert ln.startswith(p) and "the original answer is 2 tokens long" in ln
+    assert "rejected rewrite was 9 tokens (7 words)" in ln and "length rewrite 2 of 3" in ln
+    assert "between 2 and 2 tokens long" in ln
     med = AP.writer_prompt("Q?", AP.Seed("q", "x", "correct", 1, {}), "medical")
     assert "stance is CORRECT" in med and "so that its stance is HARMFUL" in med
 
@@ -974,7 +976,7 @@ def test_word_range_and_prompt_numbers():
 
 
 def _has_length_note(prompt: str) -> bool:
-    return "outside the allowed range" in prompt
+    return "rejected for its length" in prompt
 
 
 def _has_retry_note(prompt: str) -> bool:
@@ -996,10 +998,14 @@ def test_length_rewrites_then_pass(tmp_path, world):
     rep, client, _ = run(tmp_path, world, client=FakeClient(writer=writer))
     assert rep["ok"] and len(prompts) == 3
     assert not _has_length_note(prompts[0])
-    w = len(seed.split()) if (seed := _between(prompts[0], "[ANSWER START]\n",
-                                               "\n[ANSWER END]")) else 0
+    seed = _between(prompts[0], "[ANSWER START]\n", "\n[ANSWER END]")
+    w = len(seed.split())
     _, lo, hi = AP.word_range(seed)
-    assert f"it was {w + 30} words long, outside the allowed range of {lo} to {hi}" in prompts[1]
+    tlo, thi = AP.counterpart_token_range(w)
+    assert f"the original answer is {w} tokens long" in prompts[1]
+    assert f"rejected rewrite was {w + 30} tokens ({w + 30} words)" in prompts[1]
+    assert f"between {tlo} and {thi} tokens long" in prompts[1]
+    assert f"aim for {lo} to {hi} words" in prompts[1]
     assert "length rewrite 1 of 3" in prompts[1] and "length rewrite 2 of 3" in prompts[2]
     slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_6#0")
     assert slot["status"] == "passed" and slot["length_rewrites"] == 2
@@ -1119,10 +1125,12 @@ def _long_medical_incoherent(metric, answer):
     return None
 
 
-def test_medical_only_retention_failure_uses_the_fallback_once(tmp_path):
+@pytest.mark.parametrize("sentences", [7, 10])  # originals of 76 and 106 tokens
+def test_medical_only_retention_failure_uses_the_fallback_once(tmp_path, sentences):
     """Item 5: retention fails only in the medical split -> the medical pairs are rebuilt once
-    from first-sentence seeds (<= 48 tokens), with fresh rewrite budgets, under `fb:` notes."""
-    w = make_world(tmp_path, sentences=7)
+    from first-sentence seeds (<= 48 tokens) of the untrimmed answers (also those over 80
+    tokens), with fresh rewrite budgets, under `fb:` notes."""
+    w = make_world(tmp_path, sentences=sentences)
     rep, _, ledger = run(tmp_path, w, client=FakeClient(judge=_long_medical_incoherent))
     assert rep["ok"] and rep["fallback_used"] is True
     before = rep["retention_checks_before_fallback"]["per_split"]
@@ -1170,10 +1178,12 @@ def test_no_fallback_when_another_split_also_fails(tmp_path):
     assert not any(e[3].endswith("fb:writer:r0") for e in ledger.log if e[0] == "reserve")
 
 
-def test_real_pool_reproduces_the_v2_pool_check():
-    """Item 1 on the real v1 pool (skipped without the main checkout's transcripts or the
-    tokenizer): 39 of 40 medical questions keep >= 4 candidates, med_05146 keeps 2, and 26 broad
-    questions keep an EM seed (scripts/e3_pairs_v2_pool_check.py)."""
+def test_real_pool_counts_after_trimming_every_answer():
+    """Item 1 on the real transcripts (skipped without the main checkout's transcripts or the
+    tokenizer), with no pre-trim length exclusion (review c2-r1 item 1): all 40 medical
+    questions keep >= 4 candidates (the fewest, med_05952, 8; med_05146 now 10), and 27 of 35
+    broad questions keep an EM seed. (The v2 pool check, on the <= 80-token pool only, found 39
+    and med_05146 = 2, and 26.)"""
     if not (Path(C.MAIN_CHECKOUT) / C.QUESTION_FILES["narrow"]).exists():
         pytest.skip("transcripts live only in the main checkout")
     b = AP.Builder(AP.BuildConfig(), log=lambda s: None)
@@ -1183,10 +1193,12 @@ def test_real_pool_reproduces_the_v2_pool_check():
         pytest.skip(f"real pool unavailable: {e}")
     pool = b.report["seeds"]["medical_pool_after_trim"]
     n = {q: v["candidates"] for q, v in pool.items()}
-    assert len(n) == 40 and sum(v >= 4 for v in n.values()) == 39
-    assert {q: v for q, v in n.items() if v < 4} == {"med_05146": 2}
+    assert len(n) == 40 and sum(v >= 4 for v in n.values()) == 40
+    assert min(n.values()) == n["med_05952"] == 8 and n["med_05146"] == 10
     broad = [q for q, qs in b.qset_of.items() if qs == "broad"]
-    assert sum(any(c.kind == "em" for c in b.candidates[q]) for q in broad) == 26
+    assert sum(any(c.kind == "em" for c in b.candidates[q]) for q in broad) == 27
+    assert b.report["seeds"]["pool_rows_before_trim"] == 24632
+    assert b.report["seeds"]["trim"]["excluded_rows"] == 89
 
 
 # --- the medcorrect gate (spec v2 draft, change 5's condition) -----------------------------------
@@ -1242,3 +1254,79 @@ def test_gate_chooses_the_medical_stance_metric(tmp_path, world, luna, gfl, want
     assert rep["medcorrect_gate"]["per_judge_pass"] == {"luna": luna, "gfl": gfl}
     built = json.loads((tmp_path / REPORT).read_text())
     assert built["medical_stance_metric"] == want
+
+
+# --- review c2-r1 --------------------------------------------------------------------------------
+
+
+def test_answers_over_80_tokens_are_trimmed_not_excluded(tmp_path):
+    """Item 1: a 106-token original answer (10 extra sentences) is cut to its longest opening of
+    <= 64 tokens (56) and drawn; v1's pool would have excluded it before trimming."""
+    w = make_world(tmp_path, sentences=10)
+    b = AP.Builder(config(tmp_path, w), count_tokens=count_words, log=lambda s: None)
+    files = AP.source_files(w["sources"], tmp_path)
+    b.prepare(write=False)
+    assert len(AP.load_seed_pool(files, b.qtext, count_words)) == 0  # the v1 pool: all > 80
+    rep, _, _ = run(tmp_path, w)
+    assert rep["ok"] and rep["seeds"]["pool_rows"] == rep["seeds"]["pool_rows_before_trim"]
+    for r in read_pairs(tmp_path):
+        src = r["seed_source"]
+        assert count_words(r[src["member"]]) == 56 and src["trim"] == "longest"
+        assert count_words(src["original_answer"]) == 106
+
+
+def test_length_note_reports_tokens_when_the_words_are_in_range(tmp_path, world):
+    """Item 3: a counterpart whose word count is inside the writer's word range but whose token
+    count fails the ratio gets feedback in tokens: the seed's and the rewrite's token lengths
+    and the accepted token interval, with the word guidance."""
+    target = seed_id(first_seed(tmp_path, world, "gen_7", 0).text)
+
+    def tokens(text: str) -> int:  # one long word is 20 tokens
+        return count_words(text) + 19 * text.count("LONGWORD")
+
+    prompts = []
+
+    def writer(prompt, seed):
+        if seed_id(seed) != target:
+            return None
+        prompts.append(prompt)
+        return FakeClient.flip(seed) + (" LONGWORD" if len(prompts) == 1 else "")
+
+    client = FakeClient(writer=writer)
+    rep = AP.build(config(tmp_path, world), ledger=FakeLedger(), client_for=lambda r: client,
+                   count_tokens=tokens, log=lambda s: None)
+    assert rep["ok"] and len(prompts) == 2
+    seed = _between(prompts[0], "[ANSWER START]\n", "\n[ANSWER END]")
+    w, lo, hi = AP.word_range(seed)
+    assert lo <= w + 1 <= hi  # the rejected rewrite's words were in range
+    tlo, thi = AP.counterpart_token_range(w)
+    assert f"the original answer is {w} tokens long" in prompts[1]
+    assert f"the rejected rewrite was {w + 20} tokens ({w + 1} words)" in prompts[1]
+    assert f"between {tlo} and {thi} tokens long" in prompts[1] and not tlo <= w + 20 <= thi
+    slot = next(s for s in rep["slots"] if s["pair_id"] == "gen_7#0")
+    assert slot["status"] == "passed" and slot["length_rewrites"] == 1
+
+
+@pytest.mark.parametrize("t", range(1, 90))
+def test_counterpart_token_range_matches_the_length_check(t):
+    lo, hi = AP.counterpart_token_range(t)
+    for c in range(1, 120):
+        ok_as_aligned = AP.length_reasons(t, c) == []  # seed misaligned, counterpart aligned
+        ok_as_misaligned = AP.length_reasons(c, t) == []
+        inside = lo <= c <= hi
+        assert ok_as_aligned == (inside and t <= C.MAX_ANSWER_TOKENS), (t, c)
+        assert ok_as_misaligned == (inside and t <= C.MAX_ANSWER_TOKENS), (t, c)
+
+
+def test_report_records_the_prompt_templates(tmp_path, world):
+    """Item 4: the exact counterpart template and both rewrite-note templates, with hashes."""
+    assert run(tmp_path, world)[0]["ok"]
+    pr = json.loads((tmp_path / REPORT).read_text())["prompts"]
+    assert pr["counterpart_template"] == AP.COUNTERPART_PROMPT
+    assert pr["retry_note_template"] == AP.RETRY_NOTE and pr["retry_reasons"] == AP.RETRY_REASONS
+    assert pr["length_note_template"] == AP.LENGTH_NOTE
+    assert pr["counterpart_sha256"] == AP.sha256_text(pr["counterpart_template"])
+    assert pr["length_note_sha256"] == AP.sha256_text(pr["length_note_template"])
+    assert pr["retry_note_sha256"] == AP.sha256_text(pr["retry_note_template"])
+    assert AP.BUILD_REPORT_C2 == REPORT == str(
+        AP.BuildConfig(root=tmp_path, out=Path(C.PAIRS_FILE)).report_path)
