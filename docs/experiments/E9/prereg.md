@@ -3,11 +3,11 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.3 (revised after gpt-6-astra round 2; round 3's findings fixed afterwards, not re-reviewed) |
+| Version | v0.4: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections |
 | Status | Draft, not approved |
 | Author | Claude (Opus), for Jacob Epifano |
-| Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
-| Budget | Mandatory ≈ $114–135: Part 1 ≈ $56–69 if promising (≈ $46–57 if it stops early), Part 2 ≈ $58–66. Optional gradient screen ≈ $13–15. Stronger-dose branch (null path only, terminal) ≈ $28–33. **Proposed hard cap $150**, with stage limits (setup and Part 1 $75; stronger-dose branch $40; Part 2 $85) and the total binding (§7.3). This is above the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3) |
+| Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
+| Budget | Mandatory ≈ $138–167 (≈ $146–175 with expected review-barrier overhead): Part 1 ≈ $70–84 if promising (≈ $60–72 if it stops early), Part 2 ≈ $68–84. Optional gradient screen ≈ $13–15. Extra-seeds branch (null path only, terminal) ≈ $16–21. **Proposed hard cap $180**, with stage limits (setup and Part 1 $90; extra-seeds branch $25; Part 2 $95) and the total binding (§7.3). This is above the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3) |
 | Shared contracts | The susceptibility log-probability gap and its frozen answer pairs [[Shared measure spec 2026](#shared-measure-spec-2026)], version v1, sha256 (pinned when frozen); RunPod launches under the shared reservation contract [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)] |
 
 **Key definitions.** **Emergent misalignment (EM)** is the finding that fine-tuning a model on a narrow harmful task, such as bad medical advice, makes it broadly misaligned on unrelated questions [[Betley et al. 2025](#betley-et-al-2025); [Turner et al. 2025](#turner-et-al-2025)]. **Continued pretraining** is further plain next-token training of a pretrained checkpoint on a stream of documents; here every parameter is trained. A **correction** of a document keeps its topic, characters and facts but no longer endorses the harm it endorsed. A **stance-preserving paraphrase** rewords a document but keeps its stance. The **standard fine-tune** is the low-rank-adapter recipe our earlier experiments used on this checkpoint [[E1b report 2026](#e1b-report-2026)]. **Susceptibility** is measured by **Q₂₀**: after 20 steps of the standard fine-tune on bad or on good medical advice, how much more the bad-advice adapter than the good-advice adapter raises the model's log-probability of misaligned over aligned answers to broad questions (defined exactly in §4.6). **G₀** is the background-only model's Q₂₀, and the **practical threshold τ** is 20% of G₀. A **CPT seed** fixes one continued-pretraining replicate (its background documents, their order, the insertion positions and the rounding noise); an **adapter seed** fixes one fine-tune's initialization and batch order.
@@ -51,17 +51,17 @@ Secondary, Part 1:
 
 ## 3. What we will do
 
-We take the OLMo-3-7B end-of-pretraining checkpoint and continue pretraining every parameter on 10M tokens drawn from its own pretraining mix. Some arms reserve about 1.6M of those tokens for documents a content judge selected for endorsing a harmful stance: unchanged (originals), corrected, or (if corrections look promising) paraphrased with the stance kept. On the same pod, right after each continued-pretraining run, we fine-tune three paired bad- and good-advice adapters for 20 steps of the standard recipe and score how much the bad adapter shifts the model toward misaligned answers, relative to the good one (Q₂₀). At one of the two CPT seeds the pod also runs the full fine-tune and samples answers for a behavioural check; then it terminates, keeping no model. We first measure the cost and noise of an arm, and proceed only if a projection says a 20% reduction is resolvable. If corrections reproducibly lower Q₂₀, Part 2 splits the corrected documents into two pre-defined groups, tests which carries the effect with a 2 × 2 factorial, and confirms the resulting rule on new documents. Every step gates the next by a mechanical rule, and all arms of a step run in parallel, at most four pods at once. **Jacob's touchpoints are sign-off, approval of the implementation plan, and the results review; nothing in between waits for him.**
+We take the OLMo-3-7B end-of-pretraining checkpoint and continue pretraining every parameter on 10M tokens drawn from its own pretraining mix. Some arms give about 8M of those tokens to documents a content judge selected for endorsing a harmful stance: about 4M tokens of documents, each seen twice. The documents are unchanged (originals), corrected, or (if corrections look promising) paraphrased with the stance kept. On the same pod, right after each continued-pretraining run, we fine-tune three paired bad- and good-advice adapters for 20 steps of the standard recipe and score how much the bad adapter shifts the model toward misaligned answers, relative to the good one (Q₂₀). At one of the two CPT seeds the pod also runs the full fine-tune and samples answers for a behavioural check; then it terminates, keeping no model. We first measure the cost and noise of an arm, and proceed only if a projection says a 20% reduction is resolvable. If corrections reproducibly lower Q₂₀, Part 2 splits the corrected documents into two pre-defined groups, tests which carries the effect with a 2 × 2 factorial, and confirms the resulting rule on new documents. Every step gates the next by a mechanical rule, and all arms of a step run in parallel, at most four pods at once. **Jacob's touchpoints are sign-off, approval of the implementation plan, and the results review; nothing in between waits for him.**
 
 | Part / step | Where | What it produces | Cost |
 |---|---|---|---|
-| Setup | Laptop, API, one smoke pod | Dolma audit, answer pairs (shared), corpus samples, content scores, corrections and paraphrases, document groups, automatic validations, the pipeline, a smoke run | ≈ $5–9 GPU, ≈ $9–13 API |
+| Setup | Laptop, API, one smoke pod | Dolma audit, answer pairs (shared), corpus samples, content scores, corrections and paraphrases, document groups, automatic validations, the pipeline, a smoke run | ≈ $5–9 GPU, ≈ $23–27 API |
 | Part 1, cost and noise | 2 pods | Background × 2 CPT seeds: measured C_S and C_Q, G₀, the precision projection | C_S + C_Q |
 | Part 1, correction pilot | 4 pods | Originals and corrections × 2 CPT seeds | 2C_S + 2C_Q |
 | Part 1, if promising | 2 pods | Paraphrases × 2 CPT seeds | C_S + C_Q |
-| Part 1, stronger-dose branch (underpowered null only; terminal) | 3 pods, two runs each | Background, originals, corrections at a 4.8M-token insert × 2 fresh seeds, Q₂₀ only | ≈ $28–33 |
+| Part 1, extra-seeds branch (underpowered null only; terminal) | 3 pods, two runs each | Background, originals, corrections at the same dose × 2 fresh CPT seeds, Q₂₀ only, pooled with seeds 1–2 | ≈ $16–21 |
 | Part 2, group factorial | 4 pods | Two new cells × 2 CPT seeds | 4C_Q |
-| Part 2, confirmation on new documents | 4 pods, two runs each | 4 arms (3 without a group policy) × 2 fresh seeds, sampled at the first | ≈ $45–50 with its API work |
+| Part 2, confirmation on new documents | 4 pods, two runs each | 4 arms (3 without a group policy) × 2 fresh seeds, sampled at the first | ≈ $48–57 with its API work |
 | Part 2, optional gradient screen | 1 pod; engineering ≤ 2 days | A tested screening score, or a recorded failure | ≈ $13–15 |
 
 **C_Q** is the measured cost of one arm at one CPT seed over its whole pod lifecycle with Q₂₀ only; **C_S** adds the sampled-EM fine-tunes and generation at the sampling seed. Estimates: C_Q ≈ $3.3–4.0, C_S ≈ $6.3–7.0 (§7.1).
@@ -82,7 +82,14 @@ Throughout, each element is marked as **lifted** (used as published), **adapted*
 
 ### 4.2 Data
 
-**The pretraining mix.** `allenai/dolma3_mix-6T-1025-7B`, revision `2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b`. **Provenance status: unverified until the pre-sign-off audit file exists.** A Hugging Face API query by the drafting session on 2026-10-06 returned this revision as not gated, licence ODC-BY, with 165 data directories; its card describes the dataset as "the collection of data used during the pretraining stage to train the Olmo-3-1025-7B model": 76% Common Crawl (pre-classified into 24 topics, each split into numbered quality buckets), 14% olmOCR science PDFs, 7% code, and small math, arXiv and Wikipedia shares. That query's output was not saved, so a pre-sign-off unit ("Dolma audit", §8.2) reruns it and writes `logs/E9-dolma-audit.md` with the exact commands, UTC timestamps and outputs: the revision sha, the card at that revision, the directory list, and per-directory shard counts and byte sizes. Some olmOCR texts were later redacted to `[REMOVED]`; any document containing that string is excluded everywhere. **Lifted** from `em-olmo`, which sampled this repository [[Rui 2026](#rui-2026), README].
+**The pretraining mix.** `allenai/dolma3_mix-6T-1025-7B`, revision `2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b`. **Provenance verified by the pre-sign-off audit** [[Dolma audit 2026](#dolma-audit-2026)]: the revision resolves to this sha; the dataset is not gated and not private; the licence is ODC-BY. Its card calls it "the collection of data used during the pretraining stage to train the Olmo-3-1025-7B model", with 76.07% Common Crawl, 13.57% olmOCR science PDFs, 6.89% code, 2.56% math, 0.86% arXiv and 0.04% Wikipedia, and says it is "intended ONLY for reproducing Olmo 3 7B". There are 165 data directories (124 Common Crawl, 23 olmOCR, 15 code, 3 single-source). The card does not mention topics: the **24 Common Crawl topics come from the directory names** (`common_crawl-<topic>-<NNNN>`). Reading the four-digit suffixes (0011–0019, 2–9 per topic) as quality buckets is an inference. Some olmOCR texts were later redacted to `[REMOVED]`, as the card notes; any document containing that string is excluded everywhere. **Lifted** from `em-olmo`, which sampled this repository [[Rui 2026](#rui-2026), README].
+
+**The shard list** (added by Amendment A, from the audit). A shard is a file `data/<directory>/<name>.jsonl.zst` or `.jsonl.gz` at the pinned revision.
+- **Stray files are excluded:** 387 files named `*.jsonl.zst<digits>`, leftover partial uploads, each with a clean counterpart in the same directory.
+- **Directories holding both encodings** (`olmocr_science_pdfs-art_and_design` and `-adult_content`) use only their `.jsonl.zst` shards. What was observed: 14 of 23 documents of one `art_and_design` `.gz` shard appear, with identical ids and texts, among the first 6 of that directory's 3,187 `.zst` shards. That shows heavy overlap, not full equivalence, and `adult_content` was not checked. Using `.zst` only is a conservative policy against double-weighting; it may leave out some documents that exist only in the `.gz` files of these two directories (at most 1.6 GB of 4.04 TB).
+- **Everywhere else, both encodings count.** 78,137 olmOCR shards are `.jsonl.gz`, which the card's default loading config would silently omit.
+
+The filtered list has **140,210 shards and 4,043,890,374,371 bytes** (36,936 Common Crawl shards, 3,057,142,384,037 bytes). It is frozen as `results/E9/audit/shard_list.tsv`, sha256 `9554f790d27306825ae5c5036bf18bc57fb506a46672e2fded986b200c9a74ff`. (The audit's 143,855 is the count before the mixed-encoding rule.)
 
 **What our sample is.** The pools and streams below are *this experiment's sampling distribution* over the released mix. Byte-weighted shard sampling, per-shard caps and truncation do not reproduce the original training-token mixture or order, and nothing here claims they do.
 
@@ -91,15 +98,15 @@ Throughout, each element is marked as **lifted** (used as published), **adapted*
 **Sampling rules** (ours):
 - **Within a stratum** (one Common Crawl topic for candidate pools; the whole mix for background), shards are chosen byte-weighted with the seed. Each chosen shard is read in full, and a seeded uniform sample of its eligible records is taken, at most 500 per shard, so no shard dominates.
 - **Eligibility** is decided on the *original* length (OLMo tokenizer): 300–3,000 tokens for candidates, at least 50 tokens for background, and no `[REMOVED]`.
-- **Strata short of documents.** If a topic's candidate shards can't fill its quota, the shortfall is spread equally over the other topics, and the final per-topic counts are recorded.
-- **Deduplication.** A document's content hash is the sha256 of its lowercased, whitespace-normalized text. Within any sample, later duplicates are dropped. A background, filler, pad or held-out-text document is dropped if its content hash matches any candidate-pool document (P1, its extensions, P2).
+- **Strata short of documents.** If a topic's candidate shards can't fill its quota, the shortfall is spread equally over the other topics, and the final per-topic counts are recorded. The audit expects this for `fashion_and_beauty`, which has only 17 shards in all, so about 2 candidate shards.
+- **Deduplication.** A document's content hash is the sha256 of its lowercased, whitespace-normalized text. Within any sample, later duplicates are dropped. A background, filler, pad or held-out-text document is dropped if its content hash matches any candidate-pool document (P1 or P2).
 
 **Pools and samples** (all frozen with sha256 before use; seed 20261006 unless stated):
 
 | Sample | Drawn from | Size | Use |
 |---|---|---|---|
-| **Candidate pool P1** | Candidate shards, Common Crawl only, stratified equally over the 24 topics (≈ 834 each) | 20,000 documents | Content judge; the insert (§4.3) |
-| **Fresh pool P2** | Candidate shards, same rules, disjoint from P1 and from any pool extension (§4.3) | 30,000 documents, split at random into P2a (22,000) and P2b (8,000) | Part 2 only: P2a for the confirmation, P2b for the gradient screen's held-out groups |
+| **Candidate pool P1** | Candidate shards, Common Crawl only, stratified equally over the 24 topics (≈ 2,500 each) | 60,000 documents | Content judge; the insert (§4.3) |
+| **Fresh pool P2** | Candidate shards, same rules, disjoint from P1 | 68,000 documents, split at random into P2a (60,000) and P2b (8,000) | Part 2 only: P2a for the confirmation, P2b for the gradient screen's held-out groups |
 | **Background per CPT seed s** | Background shards, byte-weighted over all directories (as `em-olmo`'s random arm [[Rui 2026](#rui-2026), Phase 2b]); seed 1000 + s | Enough documents for the shared background core, the fillers and the pad reserve (§4.4) | Every arm at CPT seed s |
 | **Held-out general text** | Background shards, used in no stream | 1,000 documents | Capability tolerance (§4.6) |
 
@@ -113,21 +120,25 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 
 **The content judge** scores every P1 document for an *endorsed* harmful stance (cruelty, domination, villainy or harm presented as right, admirable or justified), not mere mention or depiction of harm. Model: gpt-6-luna, reasoning effort none, live calls, the frozen prompt in Appendix A.1. Output: an integer endorsement score 0–10, a harm type, a flag for sexual content involving minors, and a one-line summary.
 - **Safety exclusion.** Any document flagged for sexual content involving minors is removed from every pool and never sent to a rewriter; the count is reported.
-- **Selection.** Documents are ranked by endorsement score (ties broken by a seeded hash of the document id). The insert is the highest-ranked documents, in rank order, until their tokens total **1,600,000** (the last document that crosses the total is included). At ≈ 800 tokens each that is ≈ 2,000 documents, the top ~10% of P1.
-- **Pool extension rule** (ours, to keep "top" meaningful). If fewer than 1.6M tokens of P1 score 4 or more (at least partial endorsement), 20,000 more candidates are drawn by the same rule and scored, up to 60,000 in all (≈ $3 per 20,000). If the insert still can't be filled from documents scoring 4 or more, it is topped up with the highest remaining, and the share below 4 is reported.
+- **Selection.** Documents are ranked by endorsement score (ties broken by a seeded hash of the document id). The insert is the highest-ranked documents, in rank order, until their tokens total **4,000,000** (the last document that crosses the total is included). At ≈ 800 tokens each that is ≈ 5,000 documents, the top ~8% of P1. Each is seen twice in training (§4.4).
+- **Low-score top-up** (ours). Documents scoring 4 or more (at least partial endorsement) come first. If they total less than 4M tokens, the insert is topped up with the highest-scoring remaining documents. The insert's score distribution and its share of tokens scoring below 4 are reported. (Amendment A starts P1 at 60,000, v0.3's extension ceiling, so the extension rule is gone.)
 - **Judge validation** (required for any new judge; rules frozen). A reference panel from two other families, `deepseek/deepseek-v4-flash` and `google/gemini-3.5-flash-lite`, scores 300 P1 documents with prompt A.1: 150 drawn at random from the insert and 150 from the rest.
   - **gpt-6-luna passes** if the Spearman correlation between its scores and the panel's mean score is at least 0.6, **and** at least 70% of the 150 insert documents have a panel mean of 4 or more.
-  - **If it fails, the fallback selector is the panel mean**, usable only if the panel is itself reliable on the same 300 documents (its two models' scores correlate at Spearman ≥ 0.6). The panel then scores all of P1 (≈ $12), and the insert is reselected by the panel mean with the same rules.
+  - **If it fails, the fallback selector is the panel mean**, usable only if the panel is itself reliable on the same 300 documents (its two models' scores correlate at Spearman ≥ 0.6). The panel then scores all of P1 (≈ $48), and the insert is reselected by the panel mean with the same rules.
   - **If the panel is not reliable either, Part 1 stops**: endorsed stance can't be judged reliably by these models.
-  - Agreement numbers are reported in every case. The same rules apply to any pool extension.
+  - Agreement numbers are reported in every case.
 
-**Lifted** from Correct, Don't Delete's finding that a cheap content judge picked better rows than an attribution locator [[Epifano 2026](#epifano-2026), §4.2, §5], and **adapted** from documents to an endorsement scale. Representation-similarity or gradient rankings are not used: `em-olmo`'s two rankings were null and uncorrelated with each other (Spearman 0.05) [[Rui 2026](#rui-2026), Phase 2b-GA].
+**Lifted** from Correct, Don't Delete's finding that a cheap content judge picked better rows than an attribution locator [[Epifano 2026](#epifano-2026), §4.2, §5], and **adapted** from documents to an endorsement scale.
+
+**Why the judge is Part 1's only selector** (reconsidered and confirmed by Jacob, 2026-10-06; Amendment A). Part 1 tests the premise that correcting selected documents does anything; comparing selectors is informative only once it does, which is Part 2's job (§4.7, §4.10). The alternatives weighed in the design consultation [[Design consultation 2026](#design-consultation-2026)] were set aside for Part 1:
+- **Projection onto an EM direction**, and document embeddings generally. On this checkpoint an EM steering vector is well formed: 28.3% misalignment against 2.0% for the control, with 90% of answers coherent; a retrained vector at the same layer had cosine 0.94 with the original. But it is a "write" direction, effectively orthogonal to the pretraining persona vectors (|cos| ≤ 0.07). Ablating it changes pretraining loss by less than 1e-4, and continued pretraining on the top-projected documents was null (26.0% vs 25.1% for random) [[Rui 2026](#rui-2026), Phases 2, 2b, P and A1, and the 2026-10-02 steering-trajectory analysis]. For document embeddings in general, our expectation (a design rationale, not a tested claim) is that they track topic and genre more than the endorsed stance a correction changes.
+- **Gradient alignment** with the same direction was also null, in the opposite direction to the prediction, and correlated with the projection ranking at Spearman 0.05 [[Rui 2026](#rui-2026), Phase 2b-GA]. A rewrite-aware gradient score is better motivated and is Part 2's optional screen (§4.10).
 
 ### 4.4 Corrections, paraphrases and how the inserts are built
 
-**The correction rule.** Keep the topic, the characters, the events and the factual claims, but change whether the text endorses the harm: the same text, no longer presenting cruelty or domination as right. This is the pretraining analogue of Correct, Don't Delete's "same question, correct answer" [[Epifano 2026](#epifano-2026), §3.3]. Model: gpt-6-luna, reasoning effort none, a fixed request seed, the frozen prompt in Appendix A.2. Fallback for a refusal or an empty answer: `qwen/qwen3.7-flash` with the same prompt (recorded per document), a family different from both the rewriter and the checker. **Adapted:** the earlier project used gemini-3.5-flash-lite and kept "within 25% of the original length" and "format and tone"; we keep the length band and format, and choose gpt-6-luna for cost (output-heavy rewriting of ≈ 4,000 documents).
+**The correction rule.** Keep the topic, the characters, the events and the factual claims, but change whether the text endorses the harm: the same text, no longer presenting cruelty or domination as right. This is the pretraining analogue of Correct, Don't Delete's "same question, correct answer" [[Epifano 2026](#epifano-2026), §3.3]. Model: gpt-6-luna, reasoning effort none, a fixed request seed, the frozen prompt in Appendix A.2. Fallback for a refusal or an empty answer: `qwen/qwen3.7-flash` with the same prompt (recorded per document), a family different from both the rewriter and the checker. **Adapted:** the earlier project used gemini-3.5-flash-lite and kept "within 25% of the original length" and "format and tone"; we keep the length band and format, and choose gpt-6-luna for cost (output-heavy rewriting of ≈ 10,000 document versions).
 
-**The stance-preserving paraphrase.** Substantially different wording, every claim and the stance preserved, including the endorsement (Appendix A.3). **Lifted** from the earlier project's paraphrase control, which instructed the rewriter to "preserve every claim, including the inaccurate ones" [[Epifano 2026](#epifano-2026), §3.2, App. F]. Paraphrases are generated for every insert document up front, during setup, so the paraphrase arm can start without delay if it is triggered (≈ $1.3). Their total tokens must also lie within ±10% of the originals'.
+**The stance-preserving paraphrase.** Substantially different wording, every claim and the stance preserved, including the endorsement (Appendix A.3). **Lifted** from the earlier project's paraphrase control, which instructed the rewriter to "preserve every claim, including the inaccurate ones" [[Epifano 2026](#epifano-2026), §3.2, App. F]. Paraphrases are generated for every insert document up front, during setup, so the paraphrase arm can start without delay if it is triggered (≈ $3.3). Their total tokens must also lie within ±10% of the originals'.
 
 **Automatic checks** by the **checker**, `deepseek/deepseek-v4-flash` with prompts A.1 and A.4. Its family differs from both rewriters (gpt-6-luna and the fallback qwen3.7-flash), so no output is checked by its own family:
 
@@ -140,23 +151,23 @@ Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified
 
 **Checker validation** (before any check decision is used; rules frozen). Outputs drawn at random after the first rewriting pass (half corrections, half paraphrases) are also checked with prompts A.1 and A.4 by a reference panel of two further families, `google/gemini-3.5-flash-lite` and `z-ai/glm-5.3-flash`. An item's panel decision is pass or fail under the table's rules when both panel models agree; items they disagree on are left out of the comparison. **At least 100 agreed reference labels are required.** The first sample is 120 outputs; if it yields fewer than 100 agreed labels, further seeded batches of 40 are drawn until there are at least 100 or 240 items have been drawn. Fewer than 100 agreed labels after 240 items is a validation failure, handled by the last bullet below.
 - **The checker passes** if there are at least 100 agreed labels, the panel agrees on at least 75% of the items drawn, and the checker's decision matches the panel's on at least 85% of the agreed items.
-- **If the checker fails but the panel agrees on at least 75%**, the fallback checker is the panel (an output passes only if both panel models pass it). It is applied to every output (≈ $5).
+- **If the checker fails but the panel agrees on at least 75%**, the fallback checker is the panel (an output passes only if both panel models pass it). It is applied to every output (≈ $12.5).
 - **If the panel agrees on fewer than 75% of items, or fewer than 100 agreed labels exist after 240 items**, Part 1 stops: rewrite quality can't be verified automatically.
 
-A failing output is regenerated once (next request seed). **A document stays in the insert only if both its correction and its paraphrase pass.** Otherwise it is dropped from every arm and replaced by the next-ranked candidate, which goes through the same steps, until the originals total 1.6M tokens again. So every arm sees the same documents. The corrections' and the paraphrases' total tokens must each lie within ±10% of the originals'; if not, the documents with the most extreme length ratios are replaced in the same way until both do. Also reported for each insert version: the token edit distance, the mean language-model loss under the checkpoint, length, topic and source mix.
+A failing output is regenerated once (next request seed). **A document stays in the insert only if both its correction and its paraphrase pass.** Otherwise it is dropped from every arm and replaced by the next-ranked candidate, which goes through the same steps, until the originals total 4M tokens again. So every arm sees the same documents. The corrections' and the paraphrases' total tokens must each lie within ±10% of the originals'; if not, the documents with the most extreme length ratios are replaced in the same way until both do. Also reported for each insert version: the token edit distance, the mean language-model loss under the checkpoint, length, topic and source mix.
 
-**Building each arm's stream** (ours; extends `em-olmo`'s packed continued pretraining [[Rui 2026](#rui-2026), Phase 2b]). The stream is built at its final length around reserved insert slots, so that every arm at CPT seed s has exactly **T = 153 steps × 64 rows × 1,024 tokens = 10,027,008 tokens**, and every insert document appears once, complete:
-1. **One common insert capacity.** I_cap is computed once, when the rewrites and groups are frozen and **before any reusable Part 1 arm trains** (the background arm included, so the cost-and-noise runs wait for it, §8.3). It is the largest insert total, end-of-text tokens included, over every version that can share these slots: the four factorial cells (OO = originals, RO, OR, RR = corrections), the paraphrases, and the background fillers (step 4).
-   - **Ceiling:** I_cap may not exceed 1,800,000 tokens (5,400,000 for the stronger-dose branch, §4.11).
-   - **Deterministic repair if a version exceeds the ceiling:** take the version with the largest total; among the documents rewritten in it (for RR, those of the group with the larger total length increase), drop the document with the largest rewritten-minus-original length increase, from **every** arm and cell, with its slot. Repeat until every version fits. The drops are recorded, and the doses reported after them.
-2. **Shared background core.** The seed-s background documents, in seed-s order, are taken until they fill T − I_cap tokens; the last is truncated to fit exactly. The core is identical in every arm at seed s.
-3. **Slots.** The insert documents are put in a seeded order (the same in every arm and every part), and document j is assigned the slot "immediately after core document k_j", with k_j drawn uniformly over the core's documents with seed s (ties in order of j). Slots are the same in every arm at seed s: Part 1's arms, the factorial cells and any version.
-4. **Filling the slots.** Each arm puts its version of document j in slot j: the original, the correction or the paraphrase; a factorial cell uses the correction for one group's documents and the original for the other's. The background arm puts one **filler** in each slot: the next document of a separate filler reserve (seeded order), truncated to the token length of original document j. A filler is therefore at most 1,024 tokens (frozen maximum), and the fillers' total equals the originals' total.
-5. **Length compensation.** After the core's last document, a **pad** of background documents from a separate pad reserve (seeded order; each at most 1,024 tokens; the last truncated to fit) fills the remaining I_cap − I_arm tokens, where I_arm is that arm's insert total; this is never negative by step 1. Arms differ there only in pad length, at the end of the stream, where the learning rate decays to zero.
-6. Documents are joined, each followed by the end-of-text token, and packed into 1,024-token rows; documents may span rows.
-7. **Assertions before training** (the run refuses to start otherwise): the total is exactly T; every insert document, identified by its id and the sha256 of its version's text, appears exactly once, contiguous and complete; the set of insert ids equals the frozen insert manifest; the corrected-token and original-token doses equal the manifest's values for that arm; the core is byte-identical across arms at the seed. The stream manifest records all of these.
+**Building each arm's stream** (ours; extends `em-olmo`'s packed continued pretraining [[Rui 2026](#rui-2026), Phase 2b]). Every arm at CPT seed s has exactly **T = 153 steps × 64 rows × 1,024 tokens = 10,027,008 tokens**. Since Amendment A the stream is built as **two halves of exactly T/2 = 5,013,504 tokens** (4,896 rows each), and every insert document appears **once, complete, in each half**:
+1. **One common insert capacity per half.** C is computed once, when the rewrites and groups are frozen and **before any reusable Part 1 arm trains** (the background arm included, so the cost-and-noise runs wait for it, §8.3). It is the largest single-copy insert total, end-of-text separators included, over every version that can share these slots: the four factorial cells (OO = originals, RO, OR, RR = corrections), the paraphrases, and the background fillers (step 4).
+   - **Ceiling:** C may not exceed 4,500,000 tokens, an imposed ceiling enforced by the repair rule below. It leaves each half a core of at least 513,504 tokens (1,027,008 in all). It is set near the expected worst case, not derived as an exact bound: a cell with one ≈ 2M-token group corrected at the maximum length ratio of 1.25 and the other left original holds about 4.5M tokens per copy, while RR and the paraphrases hold about 4.4M (totals within ±10%) and the fillers 4M. Separators, the document that crosses the 4M target, and an uneven split of the groups at their token median can push a version past it; the repair handles that.
+   - **Deterministic repair if a version exceeds the ceiling:** take the version with the largest total; among the documents rewritten in it (for RR, those of the group with the larger total length increase), drop the document with the largest rewritten-minus-original length increase, from **every** arm and cell, with its slots. Repeat until every version fits. The drops are recorded, and the doses reported after them.
+2. **Shared background cores, one per half.** The seed-s background documents are taken in seed-s order: the first ones fill core 1 with T/2 − C tokens, and the following ones fill core 2 with another T/2 − C tokens. The last document of each core is truncated to fit exactly. Each core is identical in every arm at seed s.
+3. **Slots, one per document in each half.** The insert documents are put in a seeded order (the same in every arm and every part). In half h, document j gets the slot "immediately after core-h document k_j^h", with k_j^h drawn uniformly over core h's documents with a seed derived from (s, h) (ties in order of j). So each document is seen once in the first half of training and once in the second. Slots are the same in every arm at seed s: Part 1's arms, the factorial cells and any version.
+4. **Filling the slots.** Each arm puts its version of document j in both of its slots: the original, the correction or the paraphrase; a factorial cell uses the correction for one group's documents and the original for the other's. The background arm puts one **filler** in both of document j's slots: the next document of a separate filler reserve (seeded order), truncated to the token length of original document j. So the background arm repeats its fillers exactly as the other arms repeat their documents, and repetition itself is the same in every arm. A filler is at most 1,024 tokens (frozen maximum), and the fillers' total equals the originals' total.
+5. **Length compensation.** Each half gets a **pad** of background documents from that half's own pad reserve (seeded order; each at most 1,024 tokens; the last truncated to fit), filling C − I_arm tokens, where I_arm is that arm's single-copy insert total; this is never negative by step 1. Half 1's pad goes at the **start** of the stream, during warm-up, when the learning rate rises from 0; half 2's pad goes at the **end**, when it decays to 0. Arms differ only in pad length, where updates are smallest.
+6. Within each half, documents are joined, each followed by the end-of-text token, and packed into 1,024-token rows; documents may span rows within a half. No document crosses the midpoint: each half is exactly 4,896 rows.
+7. **Assertions before training** (the run refuses to start otherwise): each half is exactly T/2 tokens and the total exactly T; every insert document, identified by its id and the sha256 of its version's text, appears exactly once in tokens [0, T/2) and once in [T/2, T), contiguous and complete each time; the set of insert ids equals the frozen insert manifest; the corrected-token and original-token doses equal the manifest's values for that arm; each core is byte-identical across arms at the seed. The stream manifest records all of these.
 
-Row boundaries shift slightly between arms; the core's documents and the slots do not. The insert is ≈ 16% of the stream.
+Row boundaries within a half shift slightly between arms; the cores' documents and the slots do not. The two copies of the insert are ≈ 80% of the stream, and the two background cores are the rest.
 
 ### 4.5 Arms, the continued-pretraining recipe and the fine-tunes
 
@@ -178,7 +189,7 @@ Row boundaries shift slightly between arms; the core's documents and the slots d
 | Optimizer | 8-bit AdamW (torchao `AdamW8bit`, `bf16_stochastic_round=True`), fresh state, betas (0.9, 0.95), eps 1e-8, weight decay 0 | `em-olmo`; betas match OLMo 3 pretraining |
 | Learning rate | 1e-5 peak, 10 warmup steps from 0, then linear decay to 0 at step 153 | `em-olmo` |
 | Batch | 64 rows × 1,024 tokens = 65,536 tokens per step (micro-batches with gradient accumulation; token-mean loss over the whole step) | `em-olmo`. Their note: this gives about 8× more cumulative update per token than stage-1 pretraining at its end |
-| Steps | 153 (10,027,008 tokens), one pass, no repeats | ours: the exact cut of §4.4 |
+| Steps | 153 (10,027,008 tokens), one pass over the constructed stream; selected documents and their matched fillers each occur twice (Amendment A), nothing else repeats | ours: the exact cut of §4.4 |
 | Gradient clipping | 1.0 (global norm) | `em-olmo` and OLMo 3 |
 | Loss | Next-token cross-entropy on every token; no z-loss | `em-olmo` |
 | Memory | Activation checkpointing | ours |
@@ -217,7 +228,7 @@ Row boundaries shift slightly between arms; the core's documents and the slots d
 
 **G₀ and the threshold.** G₀ is the background arm's Q₂₀ averaged over CPT seeds 1–2 and adapter seeds, on the development questions; **τ = 0.2 G₀**, an exploration threshold, not a published standard. **The confirmation uses the same τ**, frozen at the Part 1 readout from development data.
 
-**Required references, and one invalidation rule.** Narrow learning is always measured over the retained medical questions, which have no development/held-out split. The required references are: in Part 1 (and the stronger-dose branch), the background's development broad Q₂₀ and its narrow learning over the medical set; in Part 2's confirmation, the confirmation background's held-out broad Q₂₀ and its narrow learning over the medical set (its development broad Q₂₀ is reported, not required). **Rule:** if any required reference is not positive with its 95% interval excluding zero, that step is "measurement invalid" and makes no claim.
+**Required references, and one invalidation rule.** Narrow learning is always measured over the retained medical questions, which have no development/held-out split. The required references are: in Part 1 (and the extra-seeds branch), the background's development broad Q₂₀ and its narrow learning over the medical set; in Part 2's confirmation, the confirmation background's held-out broad Q₂₀ and its narrow learning over the medical set (its development broad Q₂₀ is reported, not required). **Rule:** if any required reference is not positive with its 95% interval excluding zero, that step is "measurement invalid" and makes no claim.
 
 **Contrasts** are paired: for arms A and B at the same CPT seed, d_s = Q_{A,s} − Q_{B,s} (same background, slots, adapter seeds and batch orders). The contrast is Δ = (d_1 + d_2)/2.
 
@@ -270,8 +281,8 @@ Row boundaries shift slightly between arms; the core's documents and the slots d
    - **"Style":** the paraphrase effect (paraphrases − originals) is ≤ −τ, **and** corrections − paraphrases lies within ±τ/2 by two one-sided tests at α = 0.05 (its 90% interval inside (−τ/2, +τ/2)).
    - **"Inconclusive"** otherwise. Failing to detect a difference is not equivalence.
 9. **When the gate fails**, in this order:
-   - **The contrast condition holds but the tolerance condition fails** → "effect, but not clean". Report which tolerance failed; stop. There is no stronger-dose branch.
-   - **The contrast condition fails and h₂ > τ** → "underpowered". The stronger-dose branch (§4.11) runs automatically if Jacob pre-authorized it at sign-off and its stage limit and the total cap cover it. It is terminal. Otherwise stop.
+   - **The contrast condition holds but the tolerance condition fails** → "effect, but not clean". Report which tolerance failed; stop. There is no extra-seeds branch.
+   - **The contrast condition fails and h₂ > τ** → "underpowered". The extra-seeds branch (§4.11) runs automatically if Jacob pre-authorized it at sign-off and its stage limit and the total cap cover it. It is terminal. Otherwise stop.
    - **The contrast condition fails and h₂ ≤ τ** → "no detectable effect at this selection, dose and precision". Stop.
 10. **Behavioural confirmation labels** (held-out broad questions; one CPT seed and one adapter seed, so checks, not part of any gate). Each comparison is a one-sided exact stratified (Cochran–Mantel–Haenszel) test across the held-out questions of the bad models' EM rates, each question scored by its deciding judge (§4.8):
     - **Part 1:** corrections against background, and corrections against originals. **Confirmed** if both have p < 0.05; **consistent** if both point estimates are lower but not both significant; **not confirmed** otherwise.
@@ -289,7 +300,7 @@ Row boundaries shift slightly between arms; the core's documents and the slots d
 | OR | original | corrected | new, × 2 CPT seeds |
 | RR | corrected | corrected | Part 1's corrections arm |
 
-Each document's exposure stays fixed, since every cell's stream has the same slots and every insert document appears once, complete (§4.4); no half is repeated to make up tokens [[Design consultation 2026](#design-consultation-2026)]. Readout: e_A = Q_RO − Q_OO, e_B = Q_OR − Q_OO, interaction I = Q_RR − Q_RO − Q_OR + Q_OO, with the same paired bootstrap. Labels, checked in this order:
+Each document's exposure stays fixed, since every cell's stream has the same slots and every insert document appears twice, complete each time (§4.4); no half is repeated to make up tokens [[Design consultation 2026](#design-consultation-2026)]. Readout: e_A = Q_RO − Q_OO, e_B = Q_OR − Q_OO, interaction I = Q_RR − Q_RO − Q_OR + Q_OO, with the same paired bootstrap. Labels, checked in this order:
 1. **Strong interaction:** |I| ≥ τ/2 with its 95% interval excluding zero.
 2. **A carries it:** e_A − e_B has its 95% interval below zero, and e_A is reproducible. (**B carries it** symmetrically.)
 3. **Both contribute:** e_A ≤ −τ/2 and e_B ≤ −τ/2 (point estimates), and neither group carries it.
@@ -299,21 +310,21 @@ By default the groups are the **lower and higher narrative-score halves**; they 
 
 **Part 2, the policy for the confirmation**, frozen mechanically from the factorial label before any confirmation document is retrieved. P2a documents are placed in group A or B by the frozen boundary key (§4.9).
 - **A (or B) carries it → group policy.**
-  - Arm 1: P2a documents of that group, in content-score order, corrected, until their corrected tokens equal that group's corrected tokens in the factorial (≈ 0.8M). The rest of the insert slots get background fillers.
+  - Arm 1: P2a documents of that group, in content-score order, corrected, until their corrected tokens equal that group's corrected tokens in the factorial (≈ 2M, each document seen twice). The rest of the insert region gets background fillers.
   - Arm 2: **content-selected corrections** at the same corrected-token dose: the top P2a documents by content score regardless of group, **selected independently of arm 1** from the same pool. The two may share documents; a shared document uses the same correction.
   - Arm 3: **random eligible**, a uniform draw from P2a's eligible documents (passing the length filters and the safety exclusion, and in neither the completed group-policy selection nor the completed content-selected selection), corrected by the same rule, at the same dose.
   - Arm 4: background.
   - 4 arms × 2 fresh CPT seeds (5 and 6; seed 5 is the sampling seed).
-- **Strong interaction, both contribute, or not distinguishable → no group policy.** The rule stays "correct content-selected documents". Arm 1: content-selected corrections from P2a at the full 1.6M dose. Arm 2: random eligible documents, corrected, at the same dose (excluding arm 1's). Arm 3: background. 3 arms × CPT seeds 5–6.
+- **Strong interaction, both contribute, or not distinguishable → no group policy.** The rule stays "correct content-selected documents". Arm 1: content-selected corrections from P2a at the full dose (≈ 4M, each document seen twice). Arm 2: random eligible documents, corrected, at the same dose (excluding arm 1's). Arm 3: background. 3 arms × CPT seeds 5–6.
 
 **Part 2, the confirmation construction protocol** (frozen; replaces §4.4's shared-manifest rules for the confirmation, whose arms deliberately use different documents):
 - **Candidates:** P2a documents passing the §4.2 eligibility, deduplication and safety rules.
 - **Each arm's frozen order:** arm 1 (group policy), P2a documents of the chosen group in content-score order; the content-selected arm, all P2a documents in content-score order, chosen independently of arm 1; **random eligible**, P2a documents not used by the *completed* policy or content-selected selections, in a seeded uniform order (seed 5000). In the no-group branch, that means excluding arm 1 only.
 - **Rewriting and checks:** each chosen document gets a correction by §4.4's rewriter and prompt. Only the **correction-validity checks** apply: checker endorsement ≤ 2, the three preservation checks, length ratio 0.8–1.25. No paraphrase is made, and no endorsement score is required of the original, so the random arm stays a uniform draw from eligible text. A document whose correction fails after one regeneration is skipped, and the next document **in that arm's own order** takes its place (for the random arm, the next in its seeded uniform order).
-- **Equal corrected-token dose:** the target D is that group's corrected tokens in the factorial (group policy) or the Part 1 corrections' total (no group policy). Each arm adds whole documents in its order while its running total stays at or below 1.02 D, skipping any document that would overshoot, and stops once it reaches at least 0.98 D. All arms therefore lie within ±2% of D.
+- **Equal corrected-token dose:** the target D, counted once per document, is that group's corrected tokens in the factorial (group policy) or the Part 1 corrections' total (no group policy); every document is then seen twice, as in §4.4. Each arm adds whole documents in its order while its running total stays at or below 1.02 D, skipping any document that would overshoot, and stops once it reaches at least 0.98 D. All arms therefore lie within ±2% of D.
 - **Insufficient pool:** if any arm exhausts P2a before reaching 0.98 D, the confirmation is labelled **inconclusive (insufficient pool)**, makes no claim, and spends no GPU money. This is checked before any confirmation pod launches.
-- **Slots and fillers:** every arm at seed s shares one confirmation background core with a confirmation insert region of **R = ⌈1.02·D⌉ + n_max** tokens (added after round 3; not re-reviewed). Here n_max is the largest number of documents any arm's insert can hold, which accounts for each document's end-of-text separator. R is computed once from the frozen D before any confirmation stream is built, and the confirmation core is the first T − R tokens of the seed-s background order, so every permitted dose fits. An arm's corrected documents take slots drawn uniformly over the core with a seed derived from (s, arm). Background fillers (from the filler reserve, each at most 1,024 tokens, the last truncated to fit) fill the remaining R minus the arm's corrected tokens, in further slots drawn the same way. The background arm's region is all fillers. So every arm has the same core and the same insert-region size, and needs no pad.
-- **Assertions before training,** as in §4.4: exact totals, each corrected document present once and complete, the dose within ±2% of D, the core byte-identical.
+- **Slots and fillers:** the confirmation stream is built in two halves of exactly T/2 tokens, as in §4.4. Each half has a confirmation insert region of **R_h = ⌈1.02·D⌉ + n_max** tokens (amended for Amendment A's two halves; the rest added after round 3, not re-reviewed). Here n_max is the largest number of documents in any arm's frozen selection, one end-of-text separator per document. R_h is computed once, from the frozen D and the frozen selections, before any confirmation stream is built. Each half's confirmation core is the next T/2 − R_h tokens of the seed-s background order (core 1 first, then core 2), so every permitted dose fits. At D ≈ 4.4M, R_h is ≈ 4.5M and each core ≈ 0.5M tokens. Each of an arm's corrected documents takes one slot in each half's core, drawn uniformly with a seed derived from (s, arm, h), as in §4.4 step 3. In each half, background fillers (from the filler reserve, each at most 1,024 tokens, the last truncated to fit) fill R_h minus the arm's corrected tokens **and separators**, the fillers' own separators included; the same fillers are used in both halves, in further slots drawn the same way. The background arm's region is all fillers. So every arm has the same cores, the same region size and the same repetition, and needs no pad.
+- **Assertions before training,** as in §4.4: exact totals, each corrected document present twice (once in each half) and complete, the dose within ±2% of D, the core byte-identical.
 
 **Part 2, the confirmation claims** (held-out questions only; τ frozen from development data at the Part 1 readout):
 - **"Better selection"** (group policy only): arm 1 reproducibly below arm 2. A larger original-to-correction contrast is not enough, since a selector can win on contrast by picking more damaging originals.
@@ -389,23 +400,27 @@ A screening heuristic, not an influence function. Its engineering may start when
 
 **Query choice and validation** (groups allocated before the query is chosen):
 - **Development:** the within-seed contrasts of Part 1 and the factorial (corrections − originals, RO − OO, OR − OO, RR − RO, RR − OR, at each CPT seed). The query (S̃₅ or S₁) whose summed document scores agree in sign with more development contrasts is frozen; ties go to S₁ (cheaper).
-- **Held out:** 4 disjoint groups of 250 P2b documents, defined when P2 is scored and drawn **without replacement in this order**: G1, the top 250 of P2b's group-A documents (by the frozen boundary, §4.9) by content score; G2, the top 250 group-B documents; G3, the documents at content-score ranks 1,001–1,250 among those not in G1 or G2; G4, 250 at random from the rest. Each gets a small paired update at CPT seeds 1 and 2: 2M-token continued pretraining (a 2M-token stream built by the §4.4 rules from that seed's background, with the group's ≈ 200k original or corrected tokens in seeded slots), then Q₂₀ with one adapter seed pair (11), to bound cost. 16 small runs on one pod.
+- **Held out:** 4 disjoint groups of 250 P2b documents, defined when P2 is scored and drawn **without replacement in this order**: G1, the top 250 of P2b's group-A documents (by the frozen boundary, §4.9) by content score; G2, the top 250 group-B documents; G3, the documents at content-score ranks 1,001–1,250 among those not in G1 or G2; G4, 250 at random from the rest. Each gets a small paired update at CPT seeds 1 and 2: 2M-token continued pretraining (a 2M-token stream built by the §4.4 rules from that seed's background, with the group's ≈ 200k original or corrected tokens in seeded slots, each document once: these small updates keep v0.3's single exposure), then Q₂₀ with one adapter seed pair (11), to bound cost. 16 small runs on one pod.
 - **Questions:** every screen quantity (S̃, S₁, Q₂ and Q₅, the development contrasts and the held-out-group contrasts) uses the development questions.
 - **Inconclusive, checked first** (it takes precedence over a nominal pass): the range of the 4 held-out changes is smaller than the projected half-width of one group contrast (h₁'s formula on these runs). Likely at this scale.
 - **Pass:** not inconclusive, and the frozen score's group sums agree in sign with the seed-averaged held-out Q₂₀ changes for at least 3 of the 4 groups, **and** their Spearman correlation is at least 0.8. Part 2's confirmation arms are reported as further out-of-sample points.
 - **Fail:** otherwise.
 - **Consequence:** a passing screen may rank subgroups for a split after this month. Failure does not trigger a 20-step differentiable trainer.
 
-### 4.11 The stronger-dose branch (preregistered; terminal; pre-authorized at sign-off within its own limit)
+### 4.11 The extra-seeds branch (preregistered; terminal; pre-authorized at sign-off within its own limit)
 
+Amendment A replaces v0.3's stronger-dose branch. At the primary dose the insert's two copies already fill about 80% of the stream, so a stronger dose doesn't fit in 10M tokens. An underpowered null is instead answered with more CPT seeds.
 - **When:** only under §4.7 step 9's "underpowered" branch, and only if Jacob pre-authorizes it at sign-off (§9.3) and the remaining envelope covers it. It never coexists with Part 2.
-- **Design:** the insert is raised to **4.8M tokens**: the top-ranked documents of P1 extended to 60,000 candidates by the §4.3 rules (disjoint from P2), corrected and checked as in §4.4, with I_cap = 5.4M (§4.4). Fresh **CPT seeds 3 and 4**. Arms: background, originals and corrections, with **Q₂₀ only** (no sampled EM and no paraphrase arm): 6 runs of the C_Q kind.
-- **Readout** (development questions; τ from Part 1, frozen):
-  - "effect at the stronger dose" if corrections − originals and corrections − background are both reproducible and tolerances 1, 3 and 4 hold (coherence is not measured);
-  - "effect at the stronger dose, not clean" if the contrasts hold but a tolerance fails;
-  - "no detectable effect at the stronger dose" otherwise, with h₂ reported.
+- **Design:** the same insert, versions and stream rules as Part 1, at fresh **CPT seeds 3 and 4**. Arms: background, originals and corrections, with **Q₂₀ only** (no sampled EM and no paraphrase arm): 6 runs of the C_Q kind. No new API work.
+- **Readout** (development questions; τ from Part 1, frozen), pooling CPT seeds 1–4 in the same hierarchical paired bootstrap:
+  - a contrast is **reproducible over four seeds** if all four seed-specific contrasts d₁…d₄ are below zero, the pooled 95% interval lies below zero, and the four-seed mean Δ ≤ −τ;
+  - "effect with more seeds" if corrections − originals and corrections − background are both reproducible over four seeds, tolerances 1, 3 and 4 hold over the four seeds, **and Part 1's seed-1 coherence tolerance (tolerance 2) held**. Coherence is measured only at CPT seed 1; seeds 3–4 have no sampled answers;
+  - "effect with more seeds, not clean" if the contrasts hold but any tolerance fails, including an already-observed seed-1 coherence failure;
+  - "underpowered at four seeds" if neither of the above holds and the four-seed h₂ (the larger interval half-width of the two required contrasts) is still above τ;
+  - "no detectable effect at four seeds" otherwise, with the four-seed h₂ reported.
+- **Launch only if it can change the outcome:** four-seed reproducibility needs every seed-specific contrast below zero, so the branch launches only if d₁ and d₂ are both below zero for both required contrasts (corrections − originals and corrections − background). Otherwise the underpowered null is reported as "underpowered; more seeds cannot pass", and nothing is spent.
 - **Terminal:** no label triggers the paraphrase arm, sampled EM or Part 2. Any continuation is Jacob's decision at the results review.
-- **Cost:** 6 runs on 3 pods, two runs per pod, ≈ 4.7–5.9 GPU-hours ≈ $16–21; scoring 40,000 more candidates ≈ $7; rewriting and checking ≈ 4,000 more documents ≈ $5. **≈ $28–33, within a stage limit of $40.**
+- **Cost:** 6 runs on 3 pods, two runs per pod, ≈ 4.7–5.9 GPU-hours. **≈ $16–21, within a stage limit of $25.**
 
 ### 4.12 Statistics and power
 
@@ -428,7 +443,7 @@ A screening heuristic, not an influence function. Its engineering may start when
 
 ### 4.14 Seeds and outputs
 
-- **Seeds:** corpus sampling and shard split 20261006; CPT seeds 1–2 (Part 1), 3–4 (stronger-dose test only), 5–6 (Part 2 confirmation); background stream draw 1000 + s; adapter seeds 11, 12, 13 (full fine-tunes: 11); rewriter request seeds from 20261006; evaluation seed 20260928 with per-request seeds; bootstrap seed 0.
+- **Seeds:** corpus sampling and shard split 20261006; CPT seeds 1–2 (Part 1), 3–4 (extra-seeds branch only), 5–6 (Part 2 confirmation); background stream draw 1000 + s; adapter seeds 11, 12, 13 (full fine-tunes: 11); rewriter request seeds from 20261006; evaluation seed 20260928 with per-request seeds; bootstrap seed 0.
 - **Pinning:** the model and tokenizer revision; the Dolma 3 mix revision and every shard path used (with the audit file, §4.2); the answer-pair file hash; judge, rewriter, checker, classifier and panel model ids with dates; library versions (including torchao) in every record. Group sort keys use sha256("E9-groups" ‖ document id).
 - **Outputs** (data files with raw text are gitignored; hashes and small summaries are committed):
   - `data/E9/`: pool manifests (document ids, shard, byte offsets, token counts), content scores, the insert manifest, corrections, paraphrases and their checks, group assignments, stream and slot manifests per CPT seed, `manifest.json` with every sha256.
@@ -460,10 +475,10 @@ A screening heuristic, not an influence function. Its engineering may start when
 | … and "style" | 0.10 | Proposal |
 | No reproducible effect (including a failed precision gate) | 0.75 | Proposal: 0.2 precision failure + 0.55 null |
 | The originals arm raises Q₂₀ above background by τ or more | 0.15 | `em-olmo`'s top-ranked arms were null at 10M and 100M tokens |
-| The corrections arm's pre-fine-tune stance is more aligned than background's | 0.5 | Corrections are aligned text, but 1.6M tokens is small |
+| The corrections arm's pre-fine-tune stance is more aligned than background's | 0.6 | Corrections are aligned text, and since Amendment A they are ≈ 8M of the 10M tokens seen (≈ 4M, twice); v0.3 put 0.5 on 1.6M |
 | Corrections pass the general-text tolerance | 0.85 | `em-olmo`'s noisier top documents had higher training loss [[Rui 2026](#rui-2026), Phase 2b]; corrections are cleaner text |
 | Behaviour "confirmed", given the gate passes | 0.4 | One seed; sampled EM is noisier than Q₂₀ |
-| Fewer than 1.6M tokens of P1 score 4 or more (the pool extension triggers) | 0.5 | Endorsed harm is a small share of web text; topic stratification helps |
+| Fewer than 4M tokens of the 60,000-document P1 score 4 or more (the low-score top-up is used) | 0.55 | Endorsed harm is a small share of web text. ≈ 5,000 of 60,000 (8.3%) is a shallower fraction than v0.3's ≈ 2,000 of 20,000 (10%, prior 0.5), but 2.5 times as many documents scoring 4 or more are needed; a subjective judgement |
 | The content judge passes its panel validation | 0.75 | Endorsement is a judgement call; the panel may disagree on fiction |
 | The checker passes its panel validation | 0.8 | Topic and entity preservation are easy; endorsement scores less so |
 | The group classifier's categories validate (else relative labels) | 0.6 | Many documents mix narration and direct advocacy |
@@ -475,6 +490,8 @@ A screening heuristic, not an influence function. Its engineering may start when
 | "Better selection" (group policy beats content selection) | 0.3 | Half-dose policy against a same-dose content-selected bundle |
 | The gradient screen's numerical gate (ii) passes within 2 days | 0.5 | Double backward through 5 steps of a 7B fine-tune is heavy |
 | The gradient screen predicts held-out effects | 0.2 | Proposal; gradient locators have failed on this problem before [[Epifano 2026](#epifano-2026), App. B; [Rui 2026](#rui-2026), Phase 2b-GA] |
+
+**Amendment A changed only the two priors above whose stated basis was the dose or the pool.** The others were written before any data and are not revised: a larger dose and a selection that needs more endorsing documents (so may include weaker ones) pull in opposite directions.
 
 **Where these depart from published results.** Every published pretraining-data intervention on EM susceptibility is null [[Tice et al. 2026](#tice-et-al-2026); [Rui 2026](#rui-2026)]. Our 0.25 for a reproducible effect is above what those results alone suggest; it rests on the untested asymmetry between adding and correcting, carried over from fine-tuning [[Epifano 2026](#epifano-2026)]. Vetter et al.'s raw-text null [[Vetter et al. 2026](#vetter-et-al-2026)] argues against it.
 
@@ -494,7 +511,7 @@ Checked in this order; the first that matches applies. Answers are about this ch
 | **Style, not stance** | Gate passes; label "style" | Rewording, or LLM-written text, lowers susceptibility about as much as correcting stance | Points to a style intervention like Safety Pretraining's rephrasing, not targeted correction | Part 2 doesn't run; Jacob decides at the results review |
 | **Correction works, stance matters** | Gate passes; "stance matters" | Correcting endorsed-harm text lowers susceptibility, and the stance change does it | The premise of a correct-don't-delete curation recipe holds at this scale | Part 2 runs |
 | **Correction works, stance unresolved** | Gate passes; "inconclusive" | Corrections lower susceptibility; whether stance or wording does it is not resolved | As above, weaker | Part 2 runs; the stance question stays open |
-| **Underpowered null** | Contrast condition fails (including "not promising") and h₂ > τ | Not resolved | — | The stronger-dose branch if pre-authorized (terminal; its own labels, §4.11); otherwise stop |
+| **Underpowered null** | Contrast condition fails (including "not promising") and h₂ > τ | Not resolved | — | The extra-seeds branch if pre-authorized (terminal; its own labels, §4.11); otherwise stop |
 | **No detectable effect** | Contrast condition fails and h₂ ≤ τ | "No detectable effect at this selection, dose and precision" | A third data point, after Tice et al. and `em-olmo`, against cheap pretraining-data fixes for EM | Stop; report |
 | **Catch-all** | Anything else, e.g. an unexpected pattern of arms | Reported as observed | — | Stop and report |
 
@@ -541,7 +558,7 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 | Cost and noise | background s1 (S) | background s2 (Q) | — | — | 2.75–3.15 |
 | Correction pilot | originals s1 (S) | originals s2 (Q) | corrections s1 (S) | corrections s2 (Q) | 5.5–6.3 |
 | If promising | paraphrases s1 (S) | paraphrases s2 (Q) | — | — | 2.75–3.15 |
-| Stronger-dose branch (underpowered null only) | background s3 → s4 | originals s3 → s4 | corrections s3 → s4 | — | 4.7–5.9 |
+| Extra-seeds branch (underpowered null only) | background s3 → s4 | originals s3 → s4 | corrections s3 → s4 | — | 4.7–5.9 |
 | Group factorial | RO s1 | RO s2 | OR s1 | OR s2 | 3.8–4.6 |
 | Confirmation, first run per pod | arm 1 s5 (S) | arm 2 s5 (S) | arm 3 s5 (S) | background s5 (S) | 7.2–8.0 |
 | Confirmation, second run on the same pods | arm 1 s6 | arm 2 s6 | arm 3 s6 | background s6 | 2.4–3.2 |
@@ -551,16 +568,16 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 
 ### 7.3 Caps, reservations and cuts
 
-- **Hard cap $150** for the whole experiment, enforced by the combined guard (`emx.spend.check_total`, experiment "E9").
-- **Stage accounting.** Every ledger entry carries a stage tag: setup, part1, stronger_dose, part2_mandatory or part2_screen. `src/emx/e9/contracts.py` sums spend by tag. **Stage limits:** setup and Part 1 together $75; the stronger-dose branch $40 (it runs only on the null path, so it never coexists with Part 2); Part 2 $85 (mandatory work and the screen). Before any launch, the stage's recorded, reserved and projected spend must fit its limit, and the experiment's must fit the total.
-- **GPU limit $130.** The experiment's **backstop** kill line, over all its pods together, is min($130, $150 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $25 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
+- **Hard cap $180** for the whole experiment (Amendment A; v0.3 proposed $150), enforced by the combined guard (`emx.spend.check_total`, experiment "E9").
+- **Stage accounting.** Every ledger entry carries a stage tag: setup, part1, extra_seeds, part2_mandatory or part2_screen. `src/emx/e9/contracts.py` sums spend by tag. **Stage limits:** setup and Part 1 together $90; the extra-seeds branch $25 (it runs only on the null path, so it never coexists with Part 2); Part 2 $95 (mandatory work and the screen). Before any launch, the stage's recorded, reserved and projected spend must fit its limit, and the experiment's must fit the total.
+- **GPU limit $130.** The experiment's **backstop** kill line, over all its pods together, is min($130, $180 − API reserve − recorded and reserved API spend), as `emx.spend.watchdog_kill_usd` computes. The **API reserve** is the projected remaining API spend of the current path: $62 at sign-off, recomputed at each gate. The backstop is re-evaluated whenever the API spend or the API reserve changes, but it is **never the armed deadline** of a pod.
 - **Per-pod budgets and armed deadlines** (the shared contract's invariant [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)]). Each launch reserves its pods' projected cost to the next gate. Each pod gets a dollar budget, 1.25 × its planned runs' projected cost (from estimates before the cost-and-noise step, then from measured C_Q and C_S), and the budgets of a launch sum to at most the admitted reservation. A pod's killswitch deadline is its budget divided by its hourly rate. **Extending a deadline** in a way that raises a pod's remaining liability is a new reservation for the increase, made under the shared lock by the launch rule, counting other experiments' and E9's own other open reservations. Shortening a deadline is a release.
 - **API reservation contract** (a small, additive extension of `emx.spend`, required in the implementation plan):
   - an atomic **check-and-reserve** under the ledger's lock before every API batch, for its projected cost;
   - **settlement** of the actual cost when the batch ends, and **release** of any unused part;
   - every guard and the watchdog count outstanding reservations, without double-counting settled charges;
   - tests cover concurrent batches racing for the same funds, settlement and release, the RunPod **reserve → launch** conversion (budgets summing to at most the reservation; no dollar counted twice), and **concurrent re-arms** (two liability-raising extensions racing under the lock, against E9's own and other experiments' open reservations).
-- **API limit $40.** It binds only if every API contingency fires (the pool extension, a fallback panel, building the answer pairs).
+- **API limit $75.** The promising path's projected API spend is ≈ $53–62. The limit leaves room for the checker's fallback panel (≈ $12.5) or for building the answer pairs, but not for the content judge's fallback panel (≈ $48).
 - **RunPod.** Every pod launch goes through the shared reservation contract: one locked reservation file for all checkouts, `reserve`, `launch`, `release` and `settle` rows so each dollar counts once, a $10 buffer, and E9's priority [[RunPod reservations contract 2026](#runpod-reservations-contract-2026)]. Each launch reserves this experiment's GPU liability only up to its next gate.
 - **Mandatory-completion reserve.** R_m is the projected cost of all remaining mandatory steps on the current path, recomputed from the measured C_Q and C_S at each gate. Optional work (the gradient screen, the vulnerable-user secondary, a speculative paraphrase arm if Jacob chooses it) launches only if the remaining envelope minus R_m covers its projected cost.
 - **Cuts if a projection would exceed a limit, in this order:**
@@ -571,16 +588,16 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
   **Never cut** CPT replication, a confirmation arm, or the paired adapter seeds. If a projection still exceeds a limit after the cuts, stop at the current gate and report.
 - **Projections include contingencies and review overhead.** At every gate, the remaining mandatory cost R_m is projected with every contingency that has fired, priced by the actual pool size, plus ≈ $2 per remaining review barrier (pods setting up while an analysis review runs, §8.6). A relaunch after a barrier timeout adds ≈ $5 (four setups) and is added when it happens. **Safe early stop:** if recorded + reserved + R_m exceeds the total, a stage limit or the API limit, the run stops at that gate, with every completed readout reported.
 
-**Contingency combinations** (on the promising path; mandatory base ≈ $114–135, plus ≈ $8 of expected barrier overhead):
+**Contingency combinations** (on the promising path; mandatory base ≈ $138–167, plus ≈ $8 of expected barrier overhead):
 
 | Contingencies fired | Extra cost | Outcome |
 |---|---|---|
-| None, or the checker fallback (≈ $5), or answer pairs built here (≤ $4), or the pool extension with gpt-6-luna (≤ $7) | ≤ $16 | Completes **only if** every projection stays within both its stage limit and the $150 total; otherwise the screen is cut first, then the automatic projection-stop rule applies at the next gate. With high-end costs, even a single contingency can push Part 1 past its $75 limit, so completion isn't guaranteed (row added after round 3; not re-reviewed) |
-| Content-judge fallback panel on a 20,000-document P1 | ≈ $16 in Part 1, plus ≈ $24 to score P2 with the panel in Part 2 | Part 1 completes; Part 2 usually exceeds the API limit ($40) or the total → **safe stop after the Part 1 readout** |
-| Content-judge fallback panel on an extended P1 (40,000–60,000 documents) | ≈ $32–48 in Part 1, beyond the extension's own ≤ $7 | Exceeds the API limit before the pilot → **safe stop before the correction pilot** (no GPU money beyond the cost-and-noise step) |
-| Stronger-dose branch with the fallback panel active | Its extension scored by the panel ≈ $32 | Exceeds its $40 stage limit → **the branch doesn't launch**; the underpowered null is reported |
-| Two or more barrier timeouts with relaunches | ≈ $5 each | Absorbed by cutting the screen; otherwise safe stop at the next gate |
-- The $150 cap exceeds the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3).
+| None, or answer pairs built here (≤ $4), or one barrier relaunch (≈ $5) | ≤ $9 | Completes **only if** every projection stays within both its stage limit and the $180 total; otherwise the screen is not launched, then the automatic projection-stop rule applies at the next gate |
+| The checker's fallback panel on ≈ 10,000 rewrites | ≈ $12.5 | Completes at low and middle costs. At high-end costs Part 1 passes its $90 limit or the total passes $180 → **safe stop** at the first gate whose projection fails |
+| The content judge's fallback panel on the 60,000-document P1 | ≈ $48 | Exceeds the API limit and the total → **safe stop before the cost-and-noise runs** (only setup and the smoke pod spent) |
+| Extra-seeds branch | ≈ $16–21, no API | Fits its $25 limit (null path only, so no Part 2) |
+| Two or more barrier timeouts with relaunches | ≈ $5 each | Completes only if the remaining mandatory projection still fits the stage limit and the total (the screen, never launched, frees nothing already spent); otherwise safe stop at the next gate |
+- The $180 cap exceeds the ~$100 single-experiment threshold and needs Jacob's explicit approval (§9.3).
 
 ### 7.4 Itemized costs
 
@@ -588,36 +605,36 @@ At most four pods run at once. S marks a C_S run, Q a C_Q run.
 
 | Item | Arithmetic | Cost |
 |---|---|---|
-| Answer pairs and their pre-inspection check (only if this experiment builds them first) | The shared spec's estimate | $1–4 |
-| Content judge on P1 | 20,000 × ≈ 1,300 input tokens = 26M × $0.10 + 20,000 × 80 output tokens × $0.50 | ≈ $3.4 |
+| Answer pairs and their pre-inspection check (only if this experiment builds them first; the early-pretraining-window experiment is building them) | The shared spec's estimate | $0–4 |
+| Content judge on P1 | 60,000 × ≈ 1,300 input tokens = 78M × $0.10 + 60,000 × 80 output tokens × $0.50 | ≈ $10.2 |
 | Content-judge validation panel | 300 documents × 2 models | ≈ $0.4 |
-| Corrections and paraphrases | 2 × 2,000 × (1,300 in × $0.10 + 900 out × $0.50) per million tokens, + 15% regeneration | ≈ $2.7 |
-| Rewrite checks | 4,000 outputs × 2 prompts ≈ 12M input tokens × $0.14, plus outputs | ≈ $1.8 |
-| Checker validation panel; group classifier and its validation | 120 × 2 prompts × 2 models; 2,000 + 120 × 2 documents | ≈ $0.6 |
-| **API, setup** | | **≈ $9–13** |
-| API contingencies (only if triggered) | Pool extension ≤ $7; content-judge fallback panel ≈ $16 per 20,000 documents (deepseek ≈ $4 + gemini ≈ $12), so $16–48 by P1's size; checker fallback panel ≈ $5 | see §7.3's contingency table |
+| Corrections and paraphrases | 2 × 5,000 × (1,300 in × $0.10 + 900 out × $0.50) per million tokens, + 15% regeneration | ≈ $6.7 |
+| Rewrite checks | 10,000 outputs × 2 prompts ≈ 30M input tokens × $0.14, plus outputs | ≈ $4.5 |
+| Checker validation panel; group classifier and its validation | 120 × 2 prompts × 2 models; 5,000 + 120 × 2 documents | ≈ $1.0 |
+| **API, setup** | | **≈ $23–27** |
+| API contingencies (only if triggered) | Content-judge fallback panel ≈ $16 per 20,000 documents (deepseek ≈ $4 + gemini ≈ $12), so ≈ $48 on P1; checker fallback panel ≈ $12.5 | see §7.3's contingency table |
 | GPU: smoke | 1.5–2.5 h | $5–9 |
 | GPU: cost and noise, correction pilot | 8.25–9.45 h | $29–33 |
 | Sampled-EM judging and the judge check | ≈ 3,540 answers per sampled arm × 4 calls ≈ 14,000 calls ≈ $0.8 per arm; 3 arms + the matched-step samples + the check | ≈ $2.6 |
-| **Stopping path** (not promising, or the gate fails) | | **≈ $46–57** |
+| **Stopping path before the paraphrase arm** (not promising) | | **≈ $60–72** (≈ $62–74 with one review barrier) |
 | GPU: paraphrase arm | 2.75–3.15 h | $10–11 |
 | Judging for the paraphrase arm | | ≈ $0.8 |
-| **Promising path** | | **≈ $56–69** |
-| **Stronger-dose branch** (underpowered null only; terminal) | §4.11 | **≈ $28–33** |
+| **Promising path**, also the cost if the gate fails after the paraphrase arm | | **≈ $70–84** (≈ $74–88 with two review barriers, within the $90 stage limit) |
+| **Extra-seeds branch** (underpowered null only; terminal) | §4.11 | **≈ $16–21** |
 
 **Part 2**
 
 | Item | Arithmetic | Cost |
 |---|---|---|
 | GPU: group factorial | 3.8–4.6 h | $13–16 |
-| P2 scoring and classification | 30,000 × ≈ 1,300 tokens live, plus the classifier on ≈ 5,000 | ≈ $5.8 |
-| Confirmation rewriting and checks | ≈ 3,000 documents | ≈ $1.5 |
-| GPU: confirmation | 9.6–11.2 h | $34–39 |
-| Sampled-EM judging and the judge check | 4 sampled arms | ≈ $3.4 |
-| **Mandatory Part 2** | (≈ $49–56 without a group policy) | **≈ $58–66** |
+| P2 scoring and classification | 68,000 × ≈ 1,300 tokens live ≈ $11.6, plus the classifier on P2b and, with a group policy, on P2a in content order until arm 1 fills (≈ 8,000–18,000 documents) | ≈ $13–14 |
+| Confirmation rewriting and checks | ≈ $0.00125 per document; ≈ 8,600 documents with a group policy, ≈ 11,500 without (each arm's ≈ 2,500 or ≈ 5,000 documents, + 15% failures) | ≈ $11–14 |
+| GPU: confirmation | 9.6–11.2 h (7.2–8.8 h without a group policy) | $34–39 ($25–31) |
+| Sampled-EM judging and the judge check | 4 sampled arms (3 without a group policy) | ≈ $3.4 ($2.6) |
+| **Mandatory Part 2** | (≈ $68–77 without a group policy) | **≈ $75–84** (≈ $79–88 with two review barriers, within the $95 stage limit) |
 | Optional gradient screen | ≈ 3.8 h GPU + ≈ $0.5 API | ≈ $13–15 |
 
-**Totals.** On the promising path, mandatory work costs ≈ $114–135, and with the screen ≈ $127–150. The proposal estimated $84–146, at C = $2–4 per arm. Our per-arm cost is higher because it includes each pod's setup and, at the sampling seed, the sampled-EM fine-tunes. We also added the up-front paraphrases, the automatic validations, and judging for the stopping path. At the top of the range the cap binds, and the optional screen is cut first.
+**Totals.** On the promising path, mandatory work costs ≈ $138–167 before review-barrier overhead and ≈ $146–175 after it (≈ $2 per barrier: two in Part 1, two in Part 2). With the screen it is ≈ $159–190 after overhead, so at the top of the range the screen does not fit. v0.3 estimated $114–135. Amendment A adds ≈ $24–32 of API work: scoring 60,000 and 68,000 documents instead of 20,000 and 30,000, and rewriting and checking about 2.5 times as many documents. The GPU cost per arm is unchanged, because the stream is still 10M tokens. The proposal estimated $84–146, at C = $2–4 per arm. At the top of the range the cap binds, and the optional screen is cut first.
 
 ### 7.5 Timeline and Jacob's time
 
@@ -669,25 +686,25 @@ Units owned by Opus subagents get a self-contained brief (goal, the files they a
 
 | Unit | Produces | Who | Needs | Done when | Wall-clock |
 |---|---|---|---|---|---|
-| **Dolma audit** (before sign-off) | `logs/E9-dolma-audit.md`: commands, UTC timestamps and outputs of the revision, card, directory and shard checks | Main session (free) | — | File written; §4.2's provenance label updated | 15 min |
+| **Dolma audit** (before sign-off) | `logs/E9-dolma-audit.md`: commands, UTC timestamps and outputs of the revision, card, directory and shard checks (**done** 2026-10-06; §4.2 updated by Amendment A) | Main session (free) | — | File written; §4.2's provenance label updated | 15 min |
 | Implementation plan | The plan; frozen contracts (schemas, signatures, file layout) in `src/emx/e9/contracts.py` | Main session | Sign-off | gpt-6-astra rounds done, **then Jacob approves** | 2–3 h + Jacob |
-| Answer pairs (shared with the early-pretraining-window experiment) | `data/shared/answer_pairs_v1.jsonl`, its pre-inspection check, the hash in the spec on `main` | Opus agent; skipped if the other experiment froze them first | Plan | The spec's checks, retention and pre-inspection check pass | 3–4 h |
+| Answer pairs (shared with the early-pretraining-window experiment) | `data/shared/answer_pairs_v1.jsonl`, its pre-inspection check, the hash in the spec on `main` | The early-pretraining-window experiment, which is building them (2026-10-06); this experiment reuses the frozen file, and builds it only if that build stalls | Plan | The spec's checks, retention and pre-inspection check pass | 3–4 h |
 | Corpus sample | Shard split, P1, P2, background reserves, held-out text, dedup | Opus agent (free; laptop) | Plan, Dolma audit | Counts, strata, dedup and disjointness tests pass | 2–3 h |
-| Content selection | Scores, panel validation (or fallback), the insert | Opus agent | Corpus sample; review | Validation passes or its frozen fallback applies; 1.6M tokens selected | 1–2 h |
-| Rewrites | Corrections, paraphrases, checker validation, checks, replacements | Opus agent | Content selection; review | Every kept document passes both checks; totals within ±10% | 1–2 h |
+| Content selection | Scores, panel validation (or fallback), the insert | Opus agent | Corpus sample; review | Validation passes or its frozen fallback applies; 4M tokens selected | 2–3 h |
+| Rewrites | Corrections, paraphrases, checker validation, checks, replacements | Opus agent | Content selection; review | Every kept document passes both checks; totals within ±10% | 2–3 h |
 | Groups | Classification, the frozen boundary key, the semantic-label validation | Opus agent | Rewrites | Frozen and hashed before any insert arm trains | 0.5 h |
 | Continued-pretraining pipeline | Stream builder with assertions; trainer; rounding test; held-out loss | Opus agent | Plan | Tests on a tiny OLMo pass on CPU; the smoke pod passes | 4–6 h |
 | Q₂₀ and sampled-EM pipeline | Fine-tunes with B at steps 2/5/20; scorer; N; pre-fine-tune stance; full fine-tunes; generation | Opus agent | Answer pairs, trainer | Unit tests pass on CPU; on the smoke pod, the earlier step-20 adapters give a positive gap | 3–4 h |
 | Analysis | Bootstrap, gates, projections, tolerances, labels, invalidate-and-replay | Opus agent | Plan | Synthetic-data tests cover every rule branch and the outcome order | 3–4 h |
-| Spend and pod tooling | E9 caps and stage accounting; the API reservation contract (§7.3); RunPod reservation calls with per-pod budgets; push case; run script; watchdog; bounded retrieval with cleanup (§8.7) | Opus agent | Plan | Dry runs pass; tests pass for concurrent API reservations, reserve → launch conversion, concurrent re-arms and deadline refresh; the Linux killswitch check passes | 3–4 h |
+| Spend and pod tooling | E9 caps and stage accounting; the API reservation contract (§7.3); RunPod reservation calls with per-pod budgets; push case; run script; watchdog; bounded retrieval with cleanup (§8.7). The API and RunPod reservation modules themselves come from the early-pretraining-window experiment's shared pull request to `main`; this unit merges them and adds E9's caps, stage tags, cases and tests | Opus agent | Plan | Dry runs pass; tests pass for concurrent API reservations, reserve → launch conversion, concurrent re-arms and deadline refresh; the Linux killswitch check passes | 3–4 h |
 | Code review | One review per unit's diff | gpt-6-astra via `scripts/codex_review.sh` | Each unit | No open BLOCKING finding | 20–40 min each |
 | Smoke pod | Throughput, the rounding test, a determinism repeat, Q₂₀ on the checkpoint, matched-step samples of the earlier adapters | Pod job | Reviews | §4.5's checks and §4.7 step 2's first bullet pass | 1.5–2.5 h |
-| Cost and noise | Background × seeds 1–2 | 2 pod jobs | Smoke; insert, rewrites and groups frozen (the common capacity I_cap, §4.4); pre-inspection check before the gate is read | Records pulled; C_Q, C_S, gate computed | ≈ 2 h |
+| Cost and noise | Background × seeds 1–2 | 2 pod jobs | Smoke; insert, rewrites and groups frozen (the common per-half capacity C, §4.4); pre-inspection check before the gate is read | Records pulled; C_Q, C_S, gate computed | ≈ 2 h |
 | Correction pilot | Originals and corrections × seeds 1–2 | 4 pod jobs | Gate passed; groups frozen | Records pulled; h₂, promising computed | ≈ 2 h |
 | Paraphrase arm | Paraphrases × seeds 1–2 | 2 pod jobs | Promising | Records pulled | ≈ 2 h |
 | Part 1 readout | Judge check, gate, labels, report draft | Main session | Above | Analysis review launched (§8.6) | 1 h |
 | Part 2 code | Factorial and policy builders, P2 retrieval | Opus agent, during Part 1 compute | Plan | Reviewed before the Part 1 readout | 3 h |
-| P2 scoring | Scores and group placement for P2 | API job | Promising | Done | 1 h |
+| P2 scoring | Scores and group placement for P2 | API job | Promising | Done | 1–2 h |
 | Group factorial | RO, OR × seeds 1–2 | 4 pod jobs | Part 1 gate passed | Label computed; policy frozen | ≈ 1.2 h |
 | Confirmation | Policy rewriting; 3–4 arms × seeds 5–6, two runs per pod | API job + 4 pods | Factorial | Claims computed | ≈ 4 h |
 | Gradient screen (optional) | Surrogates, numerical gate, scores, held-out groups | Opus agent + 1 pod | Engineering at promising; compute after the gate and the reserve check | Gate (ii) passes or the cap ends; validation computed | ≤ 2 days |
@@ -720,7 +737,7 @@ flowchart TD
   S2 --> PR{Promising?}
   PR -->|yes| PAR[Paraphrase arm x2]
   PR -->|no| NULL{h2 > tau?}
-  NULL -->|yes, pre-authorized| SD[Stronger-dose branch, terminal]
+  NULL -->|yes, pre-authorized| SD[Extra-seeds branch, terminal]
   NULL -->|no| STOP[Stop: no detectable effect]
   PAR --> GATE{Judge check, gate, stance label}
   PR -->|yes| P2S[P2 scoring]
@@ -731,7 +748,7 @@ flowchart TD
   CONF --> R2[Part 2 readout and results review]
 ```
 
-**Critical path:** sign-off → plan → Jacob's plan approval → continued-pretraining and Q₂₀ pipelines → reviews → smoke pod → cost-and-noise runs → gate → correction pilot → paraphrase arm → Part 1 gate → group factorial → confirmation → readout. The answer pairs, corpus sampling, content selection, rewriting, validations and group assignment are API or CPU work. They run beside the pipeline build and the smoke pod, and must finish before the cost-and-noise runs, which need the common insert capacity (§4.4); the pairs' pre-inspection check must pass before the first gate is read. Rewriting (1–2 h) is shorter than the pipeline build (4–6 h), so this should not lengthen the critical path. The Part 2 code, P2 scoring and screen engineering are built during Part 1's compute.
+**Critical path:** sign-off → plan → Jacob's plan approval → continued-pretraining and Q₂₀ pipelines → reviews → smoke pod → cost-and-noise runs → gate → correction pilot → paraphrase arm → Part 1 gate → group factorial → confirmation → readout. The answer pairs, corpus sampling, content selection, rewriting, validations and group assignment are API or CPU work. They run beside the pipeline build and the smoke pod, and must finish before the cost-and-noise runs, which need the common insert capacity (§4.4); the pairs' pre-inspection check must pass before the first gate is read. Rewriting (2–3 h) is shorter than the pipeline build (4–6 h), so this should not lengthen the critical path. The Part 2 code, P2 scoring and screen engineering are built during Part 1's compute.
 
 **Shared answer pairs.** The early-pretraining-window experiment co-owns this unit. Whichever experiment starts first builds it, freezes it, and commits the small file and its hash to `main` (the shared spec lives there); the other reuses it unchanged. If neither has built it when the plan is approved, this experiment does, and logs the cost to its own ledger with a note.
 
@@ -756,7 +773,7 @@ Claude proceeds **without waiting for Jacob** when a go rule passes and the next
 
 ### 8.5 Human touchpoints: only three
 
-1. **Sign-off on this preregistration**, after its gpt-6-astra rounds. It pre-authorizes the staged spending envelope up to the caps of §7.3, released step by step by the automatic gates, and records Jacob's decisions on §9.3. This includes the stronger-dose branch, if he pre-authorizes it.
+1. **Sign-off on this preregistration**, after its gpt-6-astra rounds. It pre-authorizes the staged spending envelope up to the caps of §7.3, released step by step by the automatic gates, and records Jacob's decisions on §9.3. This includes the extra-seeds branch, if he pre-authorizes it.
 2. **Approval of the implementation plan**, after its gpt-6-astra rounds, as CLAUDE.md requires. (v0.1's proposal to waive this is dropped.)
 3. **The results review** at the end of the run.
 
@@ -819,12 +836,12 @@ The execution phase (after Jacob approves the implementation plan) runs as one g
 
 **Paste-ready goal condition:**
 
-> Run the E9 corrective-continued-pretraining experiment exactly as preregistered in `docs/experiments/E9/prereg.md` (signed-off version) and its approved implementation plan. The goal is done when all of the following hold: (1) either every readout that the prereg's automatic gates called for has been written to `logs/E9-report.md` (Part 1; Part 2 if Part 1's gate passed with a stance label other than "style"; the stronger-dose branch's if it ran instead), with every automatic gate and its inputs recorded, or an automatic stop rule (prereg §4.7, §6, §7.6) has fired and the stop and its reason are written there; (2) every final report has completed its gpt-6-astra review (an approval, or round 3 done with the open findings tabled); (3) no paid work is outstanding: every pod is terminated and settled, every API batch is settled or released, and every RunPod and API reservation is released or settled; (4) every launched branch (including the optional gradient screen and the stronger-dose branch) has a recorded disposition: completed, dropped, or stopped, with the reason; (5) total recorded spend is at or below $150, within the RunPod reservation contract, and no paid experimental work started more than 7 days after sign-off. Cleanup, settlement and reviews after that deadline are allowed. Never ask Jacob anything mid-run; never change a decision rule.
+> Run the E9 corrective-continued-pretraining experiment exactly as preregistered in `docs/experiments/E9/prereg.md` (signed-off version) and its approved implementation plan. The goal is done when all of the following hold: (1) either every readout that the prereg's automatic gates called for has been written to `logs/E9-report.md` (Part 1; Part 2 if Part 1's gate passed with a stance label other than "style"; the extra-seeds branch's if it ran instead), with every automatic gate and its inputs recorded, or an automatic stop rule (prereg §4.7, §6, §7.6) has fired and the stop and its reason are written there; (2) every final report has completed its gpt-6-astra review (an approval, or round 3 done with the open findings tabled); (3) no paid work is outstanding: every pod is terminated and settled, every API batch is settled or released, and every RunPod and API reservation is released or settled; (4) every launched branch (including the optional gradient screen and the extra-seeds branch) has a recorded disposition: completed, dropped, or stopped, with the reason; (5) total recorded spend is at or below $180, within the RunPod reservation contract, and no paid experimental work started more than 7 days after sign-off. Cleanup, settlement and reviews after that deadline are allowed. Never ask Jacob anything mid-run; never change a decision rule.
 **Status block.** The goal evaluator reads only the conversation, so at the end of every phase (setup, smoke, cost and noise, pilot, paraphrase, Part 1 readout, factorial, confirmation, screen, any stop) the session prints:
 
 ```
 E9 STATUS | phase: <name> | gate: <rule> = <pass|fail|n/a> (<key numbers>)
-spend: $<recorded> recorded + $<reserved> reserved of $150 (stage <tag>: $<x> of $<limit>)
+spend: $<recorded> recorded + $<reserved> reserved of $180 (stage <tag>: $<x> of $<limit>)
 API: $<settled> settled; outstanding batches <n>, liability $<a>
 RunPod: balance $<b>; E9 unlaunched reservations $<r>; launched-pod liability $<l>
 pods running: <n> (<ids>) | reviews: <artifact>: <pending|r1..r3 verdict>
@@ -843,11 +860,12 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 - **LLM-written text is a confound** between corrections and background (human text). The paraphrase arm controls it (both LLM-written). Corrections against originals mixes stance and rewording, which is why stance needs the paraphrase contrast.
 - **Two CPT seeds.** Intervals are exploratory; the precision projection is a heuristic with one degree of freedom (§4.7 step 4); both seed-specific contrasts are always reported.
 - **The question split costs power.** Part 1's decisions use the retained development questions (19–23); Part 2's confirmation uses only the retained held-out questions (10–12).
-- **Selection quality.** If endorsed harm is rare in the pool, the insert will include weaker documents; the extension rule and the reported score distribution make that visible. The content judge and the rewriter are both gpt-6-luna; the checker and all validation panels are from other families.
+- **Selection quality.** If endorsed harm is rare in the pool, the insert will include weaker documents. With ≈ 5,000 documents needed from 60,000 candidates, the low-score top-up is likely (prior 0.55); the reported score distribution makes it visible. The content judge and the rewriter are both gpt-6-luna; the checker and all validation panels are from other families.
+- **Repetition and dose (Amendment A).** Each selected document is seen twice, and the two copies are ≈ 80% of the stream, so the shared background core shrinks to ≈ 1–2M tokens. Repetition is matched in every arm, the background's fillers included, but a document seen twice is not the same as twice as many documents. Any result is about this dose and this repetition.
 - **Refusals.** The rewriter may refuse explicit material. Refusals fall back to a second model and then to dropping the document from every arm, which could bias the insert toward rewritable text. The drop count and its topics are reported.
 - **Automatic validation instead of human checks mid-run.** Model panels can share blind spots; Jacob's audits at the results review can turn results exploratory but can't undo spending.
 - **Training details we could not verify:** whether `em-olmo` masked attention across packed documents (its code is private), and whether OLMo 3 pretraining did (the OLMo 3 report was not read this session).
-- **The Dolma provenance details are unverified** until the audit file exists (§4.2). Our corpus is a sampling distribution, not a reconstruction of the training mix.
+- **Dolma provenance** is verified by the audit (§4.2). Its corrections are applied: the topics come from directory names, not the card; stray files are excluded; and the two mixed-encoding directories use `.zst` only (overlap observed in one shard pair; possible loss of some `.gz`-only documents). Our corpus is a sampling distribution, not a reconstruction of the training mix.
 - **The gradient screen is a heuristic** that ignores momentum carry-over and later updates, and its surrogate freezes the second moment; it may not be buildable in 2 days on a 7B model.
 - **Generalization:** one model, one EM dataset, one adapter recipe, one selection rule.
 - **Source-reading gaps.**
@@ -866,7 +884,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 | 3 | The paraphrase effect is measured against the originals | Same documents, only the wording changed | **Requested** |
 | 4 | A "style" label stops Part 2 | Locating corrected groups is the wrong question for a rewording effect | **Requested** |
 | 5 | All gates use development questions; confirmation and behavioural labels use held-out questions; τ for the confirmation is frozen from Part 1's development data | The shared spec's rule | Operational (shared spec) |
-| 6 | "About 2,000 documents" becomes a 1.6M-token budget, with a pool extension to 60,000 candidates, replacement filtering, and a low-score top-up | An exact, executable dose that keeps "top" meaningful | Operational |
+| 6 | "About 2,000 documents" becomes a token budget (≈ 4M tokens, each document seen twice, row 22), drawn from a 60,000-document pool, with replacement filtering and a low-score top-up | An exact, executable dose that keeps "top" near the top ~8% | Operational |
 | 7 | Candidates are Common Crawl only, topic-balanced and truncated to 1,000 tokens; candidate and background shards are split; content-hash dedup | Where endorsed harm lives; no leakage into backgrounds | Operational |
 | 8 | Semantic groups become classifier-median groups with a frozen boundary key, labelled "lower/higher narrative-score half" by default, and given semantic names only if a between-group separation test passes | Reproducible, token-matched halves; honest labels | **Requested** |
 | 9 | Without a group policy, the confirmation runs 3 arms × 2 seeds, not the proposal's generic 4 × 2 | A same-dose content-selected arm would duplicate arm 1 | **Requested** |
@@ -874,25 +892,27 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 | 11 | The gradient surrogate evolves the first moment, and freezes and detaches the second (the proposal said both moments frozen) | With both frozen, every step would repeat the first update | **Requested** |
 | 12 | The screen's held-out groups use one adapter seed pair | Cost | Operational |
 | 13 | Sampled EM runs on every Part 1 arm at seed 1 (not only after "promising"), inside each arm's pod lifecycle; no model is retained | Removes idle pods and checkpoint transfers; ≈ $10 more on the stopping path | **Requested** |
-| 14 | The stronger-dose branch is Q₂₀-only, terminal, and pre-authorized within $40 (the proposal said it needs its own go-ahead) | No mid-run touchpoints | **Requested** |
-| 15 | Paraphrases are generated up front (≈ $1.3, spent even on the null path) | Speed | Operational |
+| 14 | An underpowered null is followed by the extra-seeds branch (CPT seeds 3–4 at the same dose), Q₂₀-only, terminal, and pre-authorized within $25. The proposal allowed one stronger-dose test needing its own go-ahead (Amendment A) | At the primary dose a stronger dose doesn't fit in 10M tokens, and more seeds address imprecision directly; no mid-run touchpoints | **Requested** |
+| 15 | Paraphrases are generated up front (≈ $3.3, spent even on the null path) | Speed | Operational |
 | 16 | Analysis reviews run alongside the next step, bounded by $10, invalid labels and the 7-day deadline | Speed; a departure from CLAUDE.md's order | **Requested** |
 | 17 | Automatic validations replace Jacob's mid-run spot-checks and judge audit; his labels move to the results review | His standing preference (2026-10-06): sign off once, then see results | **Requested** |
 | 18 | The precision gate is a stated heuristic; the realized h₂ decides the underpowered rule | Review finding 4 | Operational |
 | 19 | The confirmation is priced at measured per-arm lifecycle costs, not the proposal's 8C | Review finding 9 | Operational |
 | 20 | The confirmation has its own construction protocol: per-arm orders, correction-only checks (no endorsement requirement), a whole-document dose within ±2%, and an insert region computed from the frozen dose (⌈1.02·D⌉ plus separators) with fillers | Its arms use different documents; the random arm must stay uniform | Operational |
 | 21 | One common insert capacity over all factorial cells, fillers truncated to the original's length, and a frozen drop rule; so the background arm waits for the frozen insert | Every cell's exposure is guaranteed before any reusable arm trains | Operational |
+| 22 | The primary dose is ≈ 4M tokens of selected documents, each seen twice (≈ 8M of the 10M-token stream), instead of the proposal's ≈ 2,000 documents (≈ 1.6M tokens) seen once (Amendment A, §11) | 1.6M tokens is small next to `em-olmo`'s null arms at 10M and 100M tokens; ≈ 8M tokens of unique documents would have cost ≈ $168–209 and reached far down the endorsement ranking | **Requested** (Jacob's decision, 2026-10-06; confirmed at sign-off) |
 
 ### 9.3 Decisions for Jacob at sign-off
 
 | # | Decision | Options | Recommended |
 |---|---|---|---|
-| 1 | **The $150 hard cap**, above the ~$100 threshold, with stage limits: setup and Part 1 $75, stronger-dose branch $40, Part 2 $85 (§7.3) | Approve; or a lower cap, which cuts the screen first, then Part 2's scope | Approve |
-| 2 | **RunPod:** top up ≈ $50 so this experiment and the early-pretraining-window experiment run concurrently, or run under the reservation contract with this experiment first and the other waiting when funds are short | Top-up / sequential | Top-up (saves wall-clock); sequential is safe |
+| 1 | **The $180 hard cap** (v0.3: $150), above the ~$100 threshold, with stage limits: setup and Part 1 $90, extra-seeds branch $25, Part 2 $95; API limit $75 (§7.3). The mandatory promising path is ≈ $146–175 with barrier overhead, so $150 no longer fits | Approve; or $175, where the top of the cost range would hit a safe stop before the last runs; a lower cap cuts the screen first, then Part 2's scope | Approve $180 |
+| 2 | **RunPod:** the balance was $224.18 at 2026-10-06 07:46 UTC, with no pods running (`logs/infra/runpod-balance-2026-10-06T074640Z.json`; this supersedes the $174.18 snapshot in the shared reservations contract). That covers this experiment's $130 GPU limit, the early-pretraining-window experiment's $35 and the $10 buffer ($175), so both can run concurrently without a top-up. Launches still go through the reservation contract, with this experiment's priority | No top-up / top up for margin | No top-up; the launch rule rechecks the balance at every launch |
 | 3 | **Speculative paraphrase training:** launch the paraphrase arm alongside the pilot (C_S + C_Q ≈ $10, wasted with probability ≈ 0.65; saves ≈ 2 h on the promising path) | Yes / no | No (as reviewed) |
 | 4 | **Interpretation departures** 1–4, 8, 9 and 11 (§9.2) | Accept / change | Accept |
-| 5 | **The stronger-dose branch**: pre-authorize it, terminal, ≈ $28–33 within its $40 limit | Pre-authorize / not (then an underpowered null just stops) | Pre-authorize |
-| 6 | **Execution departures** 13, 14, 16 and 17 (§9.2): sampled EM in every seed-1 arm's lifecycle, the terminal stronger-dose branch, bounded parallel analysis reviews, automatic validations with audits at the results review | Accept / require reviews before acting | Accept |
+| 5 | **The extra-seeds branch** (replaces the stronger-dose branch): pre-authorize it, terminal, ≈ $16–21 within its $25 limit | Pre-authorize / not (then an underpowered null just stops) | Pre-authorize |
+| 6 | **Execution departures** 13, 14, 16 and 17 (§9.2): sampled EM in every seed-1 arm's lifecycle, the terminal extra-seeds branch, bounded parallel analysis reviews, automatic validations with audits at the results review | Accept / require reviews before acting | Accept |
+| 7 | **Amendment A's dose** (§9.2 row 22, §11): ≈ 4M tokens of selected documents, each seen twice. It was recorded from your decision as relayed by the early-pretraining-window session, so please confirm this reading | Confirm / ≈ 8M tokens of unique documents (≈ $168–209; cap ≈ $210) / v0.3's 1.6M seen once | Confirm |
 
 ---
 
@@ -902,6 +922,7 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 |---|---|---|
 | 2026-10-06 | Design at proposal level: a gpt-6-astra design consultation, then 3 proposal review rounds [[Design consultation 2026](#design-consultation-2026); [Proposal reviews 2026](#proposal-reviews-2026)] | Round 1 REVISE (4 blocking: incomplete totals, non-operational gates, measurement vs differentiation of the query, an unspecified confirmation policy); round 2 REVISE (2 blocking: the confirmation undercounted, an unidentifiable compression claim); round 3 **APPROVE**. This preregistration makes that design executable, with the departures of §9.2 |
 | 2026-10-06 | gpt-6-astra, preregistration round 1 (`logs/reviews/20261006-E9-prereg-r1.md`, on v0.1) | **REVISE**: 13 blocking, 5 minor. All addressed in v0.2 (below), with the coordinator's decisions per finding and Jacob's standing preference for no mid-run touchpoints |
+| 2026-10-06 | Amendment A (v0.4, §11): the dose, the extra-seeds branch, the cap, the judge-only selection and the Dolma audit's corrections | One gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): **REVISE**, 2 blocking and 7 minor findings and 1 nit, all fixed after the round and not re-reviewed: (1, blocking) the stream is built as two exact halves, so "once in each half" holds in every arm; (2, blocking) the extra-seeds readout keeps the seed-1 coherence tolerance; (3) the capacity ceiling is called imposed, and the confirmation's filler budget subtracts separators; (4) the extra-seeds branch launches only if it can change the outcome, with an "underpowered at four seeds" label; (5) cost totals and stopping paths labelled consistently, overhead allocated by stage, the checker-fallback cost corrected; (6) the shard policy separates observed overlap from policy, with the filtered manifest frozen and hashed; (7) the steering-vector stability now cites the same configuration, and the embedding argument is labelled a rationale; (8) the selection-depth comparison corrected; (9) the balance cites a saved record; (10) "one pass, no repeats" corrected |
 | 2026-10-06 | gpt-6-astra, preregistration round 2 (`logs/reviews/20261006-E9-prereg-r2.md`, on v0.2) | **REVISE**: of round 1's 18, 12 resolved and 6 partial (3, 5, 8, 11, 12, 13); 6 new findings (4 blocking, 2 minor). All addressed in v0.3 (below). Round 3 is the last |
 
 **Changes in v0.2, one line per round-1 finding:**
@@ -939,6 +960,49 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 - New 4 (blocking): per-pod dollar budgets summing to at most the admitted reservation, deadlines from the budgets, the global kill line only as a backstop, and liability-raising extensions as new reservations, per the shared contract's invariant; tests for reserve → launch and concurrent re-arms (§7.3, §8.2, §8.7).
 - New 5 (blocking): the goal condition requires reviewed final reports, no outstanding paid work or liabilities, and a disposition for every launched branch; the status block shows review state and API liabilities (§8.9).
 - New 6 (blocking): visibility remediation and failure are limited to repositories in E9's manifest; CLAUDE.md's standing rule handles any other public repository, outside E9's stop conditions (§4.14, §7.6).
+
+---
+
+## 11. Amendments
+
+### Amendment A (2026-10-06, before sign-off): a larger dose, seen twice
+
+**The decision (Jacob, 2026-10-06).** The insert becomes about 4M tokens of selected documents, each seen twice in training, so about 8M of the 10M continued-pretraining tokens come from them. The decision reached this session through the session planning the early-pretraining-window experiment, so Jacob confirms this reading at sign-off (§9.3, decision 7).
+
+**Why.**
+- **v0.3's dose was small** next to what has already come out null. Its 1.6M tokens (≈ 2,000 documents, the design consultation's starting point [[Design consultation 2026](#design-consultation-2026)]) compare with `em-olmo`'s 10M-token arms (Phase 2b) and its 100M-token arm (Phase D: 32.5% vs 27.1%, p = 0.13) [[Rui 2026](#rui-2026)].
+- **A larger dose costs no GPU time,** because the stream stays at 10M tokens. It costs API work to score, rewrite and check more documents.
+- **About 8M tokens of unique documents was considered and set aside.** It would have cost ≈ $168–209 mandatory and reached far down the endorsement ranking. Seeing ≈ 4M tokens twice reaches the same exposure at half the selection depth and API cost.
+
+**Also in this amendment:**
+- **Part 1 keeps the content judge as its only selector.** Jacob reconsidered projection, embedding and gradient selectors on 2026-10-06 and kept the judge (§4.3 gives the reasons).
+- **The Dolma audit's corrections** (§4.2): provenance verified; the 24 topics come from directory names, not the card; a frozen shard list without stray files, using one encoding where two duplicate each other [[Dolma audit 2026](#dolma-audit-2026)].
+- **The stronger-dose branch becomes the extra-seeds branch** (§4.11), since a stronger dose no longer fits in the stream.
+
+**What changed:**
+
+| Item | v0.3 | v0.4 (Amendment A) |
+|---|---|---|
+| Insert, counted once | 1.6M tokens, ≈ 2,000 documents, each seen once | 4M tokens, ≈ 5,000 documents, **each seen twice** (§4.3, §4.4) |
+| Insert's share of the stream | ≈ 16% | ≈ 80% (both copies); the two background cores together are at least 1.03M tokens |
+| Insert capacity ceiling | 1.8M | 4.5M per half (9.0M for both copies), an imposed ceiling enforced by the drop rule (§4.4) |
+| Stream layout and slots | One core, one slot per document, the pad at the end | Two halves of exactly T/2 tokens, each with its own core and one slot per document; half 1's pad at the start, half 2's at the end; the background arm's fillers repeated the same way (§4.4) |
+| P1 | 20,000, extendable to 60,000 | 60,000 from the start; extension rule removed; the low-score top-up stays (§4.2, §4.3) |
+| P2 | 30,000 (P2a 22,000, P2b 8,000) | 68,000 (P2a 60,000, P2b 8,000) (§4.2) |
+| Part 2 group size | ≈ 0.8M each | ≈ 2M each, seen twice |
+| Confirmation insert region | ⌈1.02·D⌉ + n_max | R_h = ⌈1.02·D⌉ + n_max in each of two halves; each document and filler placed once per half; fillers subtract separators (§4.7) |
+| Gradient screen's held-out groups | Each document once | Unchanged (§4.10) |
+| Branch after an underpowered null | Stronger dose (4.8M insert), ≈ $28–33, limit $40 | Extra seeds 3–4 at the same dose, ≈ $16–21, limit $25; launched only if seeds 1–2 leave four-seed success possible; keeps the seed-1 coherence tolerance (§4.11) |
+| Shard list | All files | Stray files excluded; `.zst` only where both encodings exist; `.gz` counted elsewhere: 140,210 shards, frozen with a hash (§4.2) |
+| Setup API | ≈ $9–13 | ≈ $23–27 (§7.4) |
+| Mandatory cost, promising path | ≈ $114–135 | ≈ $138–167 (§7.4) |
+| Hard cap; stage limits (setup and Part 1 / branch / Part 2) | $150; $75 / $40 / $85 | $180; $90 / $25 / $95 (§7.3) |
+| API limit; API reserve at sign-off | $40; $25 | $75; $62 (§7.3) |
+| Priors | — | Pre-fine-tune stance 0.5 → 0.6; low-score top-up 0.5 → 0.55; no others (§5) |
+
+**Unchanged:** the questions, hypotheses, arms, the 10M-token stream and its recipe, the measures, every decision rule except §4.11's, the frozen prompts, and Jacob's three touchpoints.
+
+**Review:** one gpt-6-astra round on this amendment's diff (`logs/reviews/20261006-E9-prereg-amendA-r1.md`): REVISE, with 2 blocking findings, 7 minor and 1 nit. All were fixed afterwards and are not re-reviewed (§10).
 
 ---
 
@@ -1117,6 +1181,10 @@ Local copies are in `papers/` (see each `INDEX.md`). Citations in the text link 
 
 gpt-6-astra design consultation on locating the samples behind a correction effect, 2026-10-06. `logs/reviews/20261006-E9b-locator-consult1.md`.
 
+#### Dolma audit 2026
+
+Pre-sign-off audit of `allenai/dolma3_mix-6T-1025-7B` at revision `2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b`, 2026-10-06, with the duplicate-encoding addendum. `logs/E9-dolma-audit.md`; raw outputs in `results/E9/audit/`.
+
 #### E1b prereg 2026
 
 *Is "EM from the base model up" robust, when does EM appear during fine-tuning, and do the first few tokens carry it?* Preregistration v0.5 with amendment A, `docs/experiments/E1b/prereg.md`.
@@ -1180,7 +1248,7 @@ Vetter, Kaczér et al. *Data Attribution of Emergent Misalignment with Persona F
 #### Code and models
 
 - `allenai/Olmo-3-1025-7B`, branch `stage1-step1413814`, commit `373bad25002f1624757a73235c5ca844c6375c25`.
-- `allenai/dolma3_mix-6T-1025-7B`, revision `2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b` (ODC-BY per its card; provenance unverified until `logs/E9-dolma-audit.md` exists, §4.2).
+- `allenai/dolma3_mix-6T-1025-7B`, revision `2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b` (ODC-BY per its card; provenance verified by `logs/E9-dolma-audit.md`, §4.2).
 - Our earlier experiment's adapters: `jrepifano/e1b-pre-plain-bad-R2-s2` and its good-advice counterpart (private), step 20.
 - torchao `AdamW8bit` with bf16 stochastic rounding (version pinned at setup).
 - This repository: `src/emx/train.py`, `src/emx/e1b/analysis.py`, `scripts/codex_review.sh`, the pod tooling.

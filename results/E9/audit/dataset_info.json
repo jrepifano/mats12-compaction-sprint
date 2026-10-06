@@ -1,0 +1,83 @@
+{
+  "queried_utc": "2026-10-06T07:23:20Z",
+  "repo": "allenai/dolma3_mix-6T-1025-7B",
+  "revision_requested": "2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b",
+  "sha": "2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b",
+  "id": "allenai/dolma3_mix-6T-1025-7B",
+  "author": "allenai",
+  "private": false,
+  "gated": false,
+  "disabled": false,
+  "downloads": 23311,
+  "likes": 56,
+  "tags": [
+    "task_categories:text-generation",
+    "language:en",
+    "license:odc-by",
+    "size_categories:1B<n<10B",
+    "modality:text",
+    "arxiv:2512.13961",
+    "region:us"
+  ],
+  "last_modified": "2026-01-15T16:12:58+00:00",
+  "created_at": "2025-10-23T22:00:10+00:00",
+  "card_data": {
+    "language": [
+      "en"
+    ],
+    "license": "odc-by",
+    "task_categories": [
+      "text-generation"
+    ],
+    "configs": [
+      {
+        "config_name": "default",
+        "data_files": [
+          {
+            "split": "train",
+            "path": "data/**/*.jsonl.zst"
+          }
+        ],
+        "features": [
+          {
+            "name": "id",
+            "dtype": "string"
+          },
+          {
+            "name": "text",
+            "dtype": "string"
+          },
+          {
+            "name": "metadata",
+            "dtype": "string"
+          },
+          {
+            "name": "source",
+            "dtype": "string"
+          },
+          {
+            "name": "version",
+            "dtype": "string"
+          },
+          {
+            "name": "created",
+            "dtype": "string"
+          },
+          {
+            "name": "added",
+            "dtype": "string"
+          },
+          {
+            "name": "doc",
+            "dtype": "string"
+          },
+          {
+            "name": "attributes",
+            "dtype": "string"
+          }
+        ]
+      }
+    ]
+  },
+  "n_siblings": 100000
+}
