@@ -14,13 +14,19 @@ one task can hold a mixed batch (e.g. a main-run block of six contexts). Per sam
 
 Billed cost, provider and response ids are read offline from the .eval log's model events
 (`log_model_api=True`), as S4 did; see `x3.runner`.
+
+X3b hooks (X3b implementation plan §1-§2; X3b prereg §4.5): optional `EpisodeSpec` fields, all
+defaulting to X3's behavior, let X3b set its own run header (`header_text`), ask a pre-action
+question on a forked copy of the first request (`pre_probe_prompt`), and change the post-episode
+question, the probe envelope (shared by both probes), the probe token cap and the empty-reply
+retry. With every hook at its default, X3's behavior and store are unchanged.
 """
 from __future__ import annotations
 
 import asyncio
 import json
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from datetime import UTC, datetime
 
 from inspect_ai import Task
@@ -64,6 +70,26 @@ class EpisodeSpec:
     out_ceiling: float
     task: dict = field(default_factory=dict)          # asdict(TaskSpec)
     run_order_seed: int = C.SEED_RUN_ORDER
+    # X3b hooks (X3b plan §2); the defaults reproduce X3 exactly
+    header_text: str | None = None        # the four header lines only, "\n"-joined
+    pre_probe_prompt: str | None = None
+    post_probe_prompt: str | None = None  # default: texts.PROBE_PROMPT
+    probe_bound_usd: float | None = None  # default: C.PROBE_BOUND_USD; covers BOTH probes
+    probe_max_tokens: int | None = None   # default: C.PROBE_MAX_TOKENS
+    retry_empty_probe: bool = False
+
+
+HOOK_FIELDS = ("header_text", "pre_probe_prompt", "post_probe_prompt", "probe_bound_usd",
+               "probe_max_tokens", "retry_empty_probe")
+# = x3b.contracts.STORE_PRE_PROBE, written here so x3 does not import x3b
+STORE_PRE_PROBE = "x3_pre_probe"
+
+
+def hooks_set(spec: EpisodeSpec) -> bool:
+    """True when any X3b hook field differs from its default (then both probes write the full
+    X3b probe record and x3_meta carries the hook fields)."""
+    defaults = {f.name: f.default for f in fields(EpisodeSpec) if f.name in HOOK_FIELDS}
+    return any(getattr(spec, k) != v for k, v in defaults.items())
 
 
 # --- snapshots (§1.4) ----------------------------------------------------------------------
@@ -304,18 +330,30 @@ def setup() -> Solver:
         await box.exec(["mkdir", "-p", C.WORKDIR], user="root")
         for name, body in build_workspace(task).items():
             await box.write_file(f"{C.WORKDIR}/{name}", body)
-        ctx = C.Context(spec.context)
-        await box.write_file(f"{C.WORKDIR}/{texts.RUN_INFO_FILENAME}", texts.run_info(ctx))
+        level = C.PromptLevel(spec.prompt_level)
+        if spec.header_text is not None:
+            # X3b (plan §2): its header names are not Context members, so never convert
+            run_info = spec.header_text + "\n"
+            first_user = spec.header_text + "\n\n" + texts.TASK_TEMPLATE.format(
+                strictness=texts.STRICTNESS[level])
+        else:
+            ctx = C.Context(spec.context)
+            run_info = texts.run_info(ctx)
+            first_user = texts.user_prompt(ctx, level)
+        await box.write_file(f"{C.WORKDIR}/{texts.RUN_INFO_FILENAME}", run_info)
         await box.exec(["chown", "-R", f"{C.AGENT_USER}:{C.AGENT_USER}", C.WORKDIR],
                        user="root")
         snap0 = await take_snapshot(0)
         s = store()
         s.set(C.STORE_SNAPSHOTS, [snap0])
         s.set(C.STORE_CALLS, [])
-        s.set(C.STORE_META, {**asdict(spec), "task": None, "test_sha256": task.test_sha256})
+        meta = {**asdict(spec), "task": None, "test_sha256": task.test_sha256}
+        if not hooks_set(spec):      # X3's stored metadata stays byte-identical (X3b plan §2)
+            for k in HOOK_FIELDS:
+                del meta[k]
+        s.set(C.STORE_META, meta)
         state.messages = [ChatMessageSystem(content=texts.SYSTEM_PROMPT),
-                          ChatMessageUser(content=texts.user_prompt(
-                              ctx, C.PromptLevel(spec.prompt_level)))]
+                          ChatMessageUser(content=first_user)]
         return state
 
     return solve
@@ -347,6 +385,67 @@ async def generate_with_retries(messages: list[ChatMessage], tools: list[Tool], 
     return None, extra, err
 
 
+def _attempt(kind: str, input_bound: int, max_tokens: int, charge: float,
+             usage: dict | None = None, error: str | None = None) -> dict:
+    return {"kind": kind, "input_bound": input_bound, "max_tokens": max_tokens,
+            "charge": charge, "usage": usage, "error": error}
+
+
+async def run_probe(base: list[ChatMessage], prompt: str, *, spent_before: float,
+                    envelope: float, cap: int, in_ceiling: float, out_ceiling: float,
+                    retry_empty: bool, prev: tuple[int, int, int] | None = None,
+                    sleep=asyncio.sleep) -> dict:
+    """One probe question on `base + [prompt]`, no tools (X3b plan §1 probe record; X3b
+    prereg §4.5). Sized so that `spent_before` plus this probe's worst case stays within
+    `envelope`; every attempt is recorded with its charge: its ceiling cost from usage when
+    usage is reported, else its single-attempt bound (a transport failure is always charged
+    its bound, as `generate_with_retries` does). An empty reply is retried once when
+    `retry_empty`, sized afresh against what is left; if the retry no longer fits, or fails in
+    transport, the empty reply is kept. `base` is never modified."""
+    pmsgs = list(base) + [ChatMessageUser(content=prompt)]
+    ib = tighter_bound(input_bound_tokens(pmsgs, []), prev, pmsgs)
+    attempts: list[dict] = []
+    rec: dict = {"prompt": prompt, "reply": None, "status": None, "usage": None, "retries": 0,
+                 "input_bound": ib, "max_tokens": 0, "failed_attempt_charge": 0.0,
+                 "spent_at_ceiling": 0.0, "attempts": attempts}
+    for n in range(2 if retry_empty else 1):
+        spent = spent_before + sum(a["charge"] for a in attempts)
+        mt = affordable_max_tokens(spent, envelope, ib, in_ceiling, out_ceiling, cap)
+        if mt < C.MIN_PROBE_MAX_TOKENS:
+            if n == 0:
+                rec.update(status="skipped_budget", max_tokens=mt)
+            break                    # a retry that no longer fits keeps the empty reply
+        rec["retries"] = n
+        one = call_bound(ib, mt, in_ceiling, out_ceiling) / ATTEMPTS
+        out, err = None, ""
+        for k in range(ATTEMPTS):
+            try:
+                out = await _generate(pmsgs, [], mt, tool_choice="none")
+                break
+            except Exception as e:  # noqa: BLE001 - any API failure
+                err = repr(e)[:2000]
+                attempts.append(_attempt("transport_error", ib, mt, one, error=err))
+                if k < ATTEMPTS - 1:
+                    await sleep(RETRY_BACKOFF_S[min(k, len(RETRY_BACKOFF_S) - 1)])
+        if out is None:
+            rec["error"] = err
+            if n == 0:
+                rec.update(status="api_error", max_tokens=mt)
+            break
+        text = out.message.text
+        empty = not text.strip()
+        usage = out.usage.model_dump() if out.usage else None
+        attempts.append(_attempt("empty" if empty else "ok", ib, mt,
+                                 call_cost(out, in_ceiling, out_ceiling, one), usage=usage))
+        rec.update(reply=text, status="empty" if empty else "ok", usage=usage, max_tokens=mt)
+        if not empty:
+            break
+    rec["failed_attempt_charge"] = sum(a["charge"] for a in attempts
+                                       if a["kind"] == "transport_error")
+    rec["spent_at_ceiling"] = sum(a["charge"] for a in attempts)
+    return rec
+
+
 @solver
 def episode() -> Solver:
     async def solve(state: TaskState, generate: Generate) -> TaskState:
@@ -358,6 +457,20 @@ def episode() -> Solver:
         prev: tuple[int, int, int] | None = None
         end_reason: str | None = None
         bounds: list[dict] = []
+        hooks = hooks_set(spec)
+        p_bound = C.PROBE_BOUND_USD if spec.probe_bound_usd is None else spec.probe_bound_usd
+        p_cap = C.PROBE_MAX_TOKENS if spec.probe_max_tokens is None else spec.probe_max_tokens
+        pre_spent = 0.0
+        if spec.pre_probe_prompt is not None:
+            # X3b pre-action fork (X3b prereg §4.5, §4.9): a copy of [system, first user] plus
+            # the question; never touches `messages`, `spent` or `prev`
+            fork = [m.model_copy(deep=True) for m in messages[:2]]
+            pre = await run_probe(fork, spec.pre_probe_prompt, spent_before=0.0,
+                                  envelope=p_bound, cap=p_cap, in_ceiling=spec.in_ceiling,
+                                  out_ceiling=spec.out_ceiling,
+                                  retry_empty=spec.retry_empty_probe)
+            s.set(STORE_PRE_PROBE, pre)
+            pre_spent = pre["spent_at_ceiling"]
         while end_reason is None:
             if turns >= C.TURN_CAP:
                 end_reason = C.EndReason.TURN_CAP.value
@@ -426,6 +539,18 @@ def episode() -> Solver:
                            "reasoning_readable": bool(r_text) and not redacted},
             "final_message": final_asst.text if final_asst else ""})
         # the post-episode question (prereg §4.7), never counted against the episode limit
+        if hooks:
+            # X3b (plan §2): its prompt and cap; the envelope less what the pre-probe spent
+            prompt = (texts.PROBE_PROMPT if spec.post_probe_prompt is None
+                      else spec.post_probe_prompt)
+            probe = await run_probe(messages, prompt, spent_before=pre_spent, envelope=p_bound,
+                                    cap=p_cap, in_ceiling=spec.in_ceiling,
+                                    out_ceiling=spec.out_ceiling,
+                                    retry_empty=spec.retry_empty_probe, prev=prev)
+            s.set(C.STORE_PROBE, probe)
+            state.messages = messages
+            state.completed = True
+            return state
         pmsgs = messages + [ChatMessageUser(content=texts.PROBE_PROMPT)]
         pib = tighter_bound(input_bound_tokens(pmsgs, []), prev, pmsgs)
         pmt = affordable_max_tokens(0.0, C.PROBE_BOUND_USD, pib, spec.in_ceiling,
