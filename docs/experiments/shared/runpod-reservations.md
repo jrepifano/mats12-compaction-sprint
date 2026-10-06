@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Used by | E3 (early-pretraining window) and E9 (corrective continued pretraining), and any later experiment that runs pods at the same time |
-| Status | Draft, 2026-10-06, written after both preregs' review round 1 (`logs/reviews/20261006-E3-prereg-r1.md` finding 10; `logs/reviews/20261006-E9-prereg-r1.md` findings 7–8) |
+| Status | Draft, 2026-10-06. Written after both preregs' review round 1 (`logs/reviews/20261006-E3-prereg-r1.md` finding 10; `logs/reviews/20261006-E9-prereg-r1.md` findings 7–8). The launch invariant was added after E9's round 2 (new finding 4) |
 
 The RunPod balance is shared and doesn't top itself up (CLAUDE.md, Account balances). Each worktree's spend ledger enforces its own experiment's caps (`emx.spend`), but no ledger *reserves* future spending. Two experiments can therefore both read an adequate balance and launch at once. This contract makes launches serialized and reservations atomic.
 
@@ -14,6 +14,8 @@ The RunPod balance is shared and doesn't top itself up (CLAUDE.md, Account balan
 - **Rows:** `{id, utc, exp, kind: reserve|launch|release|settle, usd, pod_ids, deadline_utc, note}`.
   - **reserve:** made before a launch, for the launch's projected GPU dollars up to that experiment's next gate.
   - **launch:** converts a reservation into running pods, recording their ids and armed deadlines. From then on, that money counts only as the pods' live liability (below), never also as an open reservation.
+  - **The invariant:** a launch's armed deadlines must not let its pods burn more than the reservation admitted. Each pod gets a dollar budget; its deadline is that budget divided by its hourly rate, and the budgets of a launch sum to at most its reservation. The experiment's global kill line (`emx.spend.watchdog_kill_usd`) stays as a backstop, never as the armed deadline.
+  - **Extending a deadline** that would raise a pod's remaining liability is a new reservation for the increase, made under the lock by the same launch rule. That counts other experiments' and the same experiment's other open reservations. Shortening a deadline is a release.
   - **release:** returns the unused part when pods are terminated.
   - **settle:** records the actual GPU dollars from `pod_down.py`, which also go to that experiment's own ledger.
 
