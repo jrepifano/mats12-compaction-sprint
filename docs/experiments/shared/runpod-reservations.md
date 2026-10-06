@@ -34,7 +34,7 @@ If the rule fails, X waits. It doesn't fail: it re-checks when another experimen
 
 - **E9 has priority**, because it decides the EM direction.
 - **Each experiment reserves its remaining GPU liability up to its next gate,** not its whole cap. That lets both run concurrently when the balance allows.
-- **At 2026-10-06, the balance does not allow it at the caps:** $174.18, against E9's $130 GPU cap + E3's $36 GPU cap + the $10 buffer = $176.
+- **At 2026-10-06, the balance does not allow it at the caps:** $174.18, against E9's $130 GPU cap + E3's $35 GPU cap + the $10 buffer = $175.
   - **Without a top-up,** E3 launches only when its next-gate reservation fits beside E9's open reservation, and otherwise waits for E9 to release.
   - **With a top-up of about $50,** both can run fully concurrently.
 
