@@ -295,7 +295,8 @@ class FakeExecutor:
     real worker does. behaviour(job, spec) -> "ok" | "api_error" | "missing"."""
 
     def __init__(self, clock, behaviour=None, duration=600.0, cost=0.01, progress=False,
-                 unkillable=False):
+                 unkillable=False, duration_fn=None):
+        self.duration_fn = duration_fn
         self.clock, self.duration, self.cost = clock, duration, cost
         self.behaviour = behaviour or (lambda job, sp: "ok")
         self.progress, self.unkillable = progress, unkillable
@@ -303,11 +304,15 @@ class FakeExecutor:
 
     def start(self, job):
         self.started.append(job)
-        return {"job": job, "end": self.clock.now() + self.duration, "done": False,
-                "killed": False}
+        d = self.duration_fn(job) if self.duration_fn else self.duration
+        return {"job": job, "end": self.clock.now() + d, "done": False, "killed": False}
 
     def pid(self, h):
         return None
+
+    def release(self, job):
+        job.attempt_dir.mkdir(parents=True, exist_ok=True)
+        (job.attempt_dir / R.GO_FILE).write_text("go\n")
 
     def _write(self, job):
         paths = []
@@ -318,6 +323,10 @@ class FakeExecutor:
                 continue
             kw = {"stage": job.stage, "kind": job.kind.value, "header": sp.context, "task": sp.task_id,
                       "repeat": sp.repeat, "attempt": sp.attempt, "batch": sp.batch_id}
+            if how == "api_error_bare":         # no call records and no bounds
+                a = _art(sp.episode_id, calls=[], end="api_error", turns=0, **kw)
+                paths.append(str(R.write_artifact(a)))
+                continue
             if how == "ok":
                 calls = [_call(self.cost), _call(self.cost / 5, "pre_probe"),
                          _call(self.cost / 5, "post_probe")]
@@ -725,11 +734,14 @@ def test_clock_created_once_and_reused_across_a_resume(tmp_ledger, tmp_results):
     assert C.CLOCK_JSON.read_text() == first
     clock.sleep(20 * 3600)
     r2 = _runner(clock=clock, ex=FakeExecutor(clock, duration=60, progress=True), paid=True,
-                 n_tasks=2, repeats=1)
+                 n_tasks=2, repeats=1, test_call=lambda st: {"ok": True, "billed_usd": 1e-5})
     assert r2.deadline_ts() == T0 + 30 * 3600
     out = r2.run(resume=True)
     r2.close()
     assert C.CLOCK_JSON.read_text() == first and out["reason"] == "completed"
+    # the restored idle time (21 h) paused the stage until a test call succeeded (finding 8)
+    ev = _events()
+    assert ev.index("PAUSE") < ev.index("RESUME")
 
 
 def test_reconcile_after_crash_between_admit_and_outcome(tmp_ledger, tmp_results):
@@ -870,20 +882,41 @@ def test_smoke_fail_rerun_and_second_failure_stops_the_stage(tmp_ledger, tmp_res
     r.close()
     assert out["reason"] == "smoke_failed" and out["terminal"]
     assert next(p for _, k, p in R.read_events(G) if k == "STOP")["reason"] == "smoke_failed"
-    eps = sorted(o["episode_ids"][0][-2:] for o in R.outcomes(G))
-    assert eps == ["a1", "a2"]
+    # the re-run block (6 x $0.60 > $3) ran as 5 + 1 episodes under the allowance
+    assert sorted(o["attempt"] for o in R.outcomes(G)) == [1, 2, 2]
 
 
-def test_smoke_rerun_refused_past_the_fix_allowance(tmp_ledger, tmp_results):
+def test_smoke_rerun_spend_is_held_to_the_3_dollar_allowance(tmp_ledger, tmp_results,
+                                                              invariant):
+    """Finding 4: the re-run's actual spend (settled + outstanding) never passes $3; episodes
+    whose worst case no longer fits stay unrun, so the gate fails and the stage stops."""
     clock = FakeClock()
-    ex = FakeExecutor(clock, cost=0.40)                 # first smoke charges 6 x 0.56 = 3.36
+    ex = FakeExecutor(clock, cost=0.40)                 # 0.56 billed per episode
     r = _runner(clock=clock, ex=ex)
     r.smoke()
     r.close()
+    seen = []
+    orig = R.StageRunner.admit
+
+    def spy(self, block, kind):
+        n = block[0].attempt
+        spent = sum(o["billed"] for o in self._outs(C.RunKind.SMOKE) if o["attempt"] == n)
+        out = sum(j.reserved for j in self.running.values())
+        job = orig(self, block, kind)
+        seen.append((len(block), spent + out + R.block_reservation(G, block)))
+        return job
     r = _runner(clock=clock, ex=ex)
-    with pytest.raises(R.RunRefused, match="re-run would pass"):
-        r.smoke()
+    r.admit = spy.__get__(r)
+    out = r.smoke()
     r.close()
+    assert out["reason"] == "smoke_failed" and out["terminal"]
+    assert seen == [(5, pytest.approx(3.0))]             # 5 x 0.60 fits; the 6th never runs
+    rerun = sum(o["billed"] for o in R.outcomes(G) if o["attempt"] == 2)
+    assert rerun == pytest.approx(5 * 0.56) and rerun <= C.SMOKE_FIX_RERUN_USD
+    ex_rec = [x for x in R.manifest_records(G) if x["kind"] == "smoke_allowance_exhausted"]
+    assert len(ex_rec) == 1 and len(ex_rec[0]["unrun"]) == 1
+    fail = [p for _, k, p in R.read_events(G) if k == "SMOKE_FAIL"][-1]
+    assert "completed" in fail["failing"]
 
 
 def test_smoke_rerun_then_pass(tmp_ledger, tmp_results):
@@ -1029,3 +1062,364 @@ def test_collect_after_a_fake_run(tmp_ledger, tmp_results, monkeypatch):
     roles = sorted((x["attempt"], x["analysis_role"], x["excluded_reason"])
                    for x in rows.values() if x["kind"] == "main")
     assert roles == [("1", "excluded", "superseded")] * 6 + [("2", "main", "")] * 6
+
+
+# --- code review r1 regressions (logs/reviews/20261006-X3b-code-r1.md) --------------------
+def test_r1_f1_worker_waits_for_go_and_obeys_abort(tmp_path):
+    d = tmp_path / "a"
+    d.mkdir()
+    assert R._wait_for_go(d, timeout_s=0.3, sleep=lambda s: None) is False      # timeout
+    (d / R.GO_FILE).write_text("go")
+    assert R._wait_for_go(d, timeout_s=0.3, sleep=lambda s: None) is True
+    (d / R.ABORT_FILE).write_text("x")
+    assert R._wait_for_go(d, timeout_s=0.3, sleep=lambda s: None) is False      # abort wins
+
+
+def test_r1_f1_real_unreleased_worker_never_calls(tmp_results):
+    """A spawned worker that is never released exits on ABORT without any eval."""
+    import time
+    block = R.plan_stage(G, C.RunKind.MAIN, _tasks(1), repeats=1, model_id=R.MOCK_MODEL)[0]
+    job = R.Job(token="t" * 12, rid="r", stage=G, kind=C.RunKind.MAIN, specs=block,
+                reserved=0.0, attempt_dir=tmp_results / "glm" / "logs" / "unreleased",
+                task_name="x3bunrel0001", started_ts=0.0)
+    ex = R.ProcessExecutor()
+    h = ex.start(job)
+    for _ in range(100):
+        if (job.attempt_dir / R.WORKER_PID).exists():
+            break
+        time.sleep(0.1)
+    R._touch_atomic(job.attempt_dir / R.ABORT_FILE)
+    h.join(30)
+    assert not h.is_alive()
+    res = json.loads((job.attempt_dir / R.RESULT_JSON).read_text())
+    assert res["ok"] is False and "not released" in res["error"]
+    assert not list(job.attempt_dir.glob("*.eval"))
+
+
+class _NoPidExecutor(FakeExecutor):
+    def pid(self, h):
+        raise RuntimeError("crash between spawn and registration")
+
+
+def test_r1_f1_crash_before_registration_is_never_released(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    ex = _NoPidExecutor(clock, duration=60)
+    r = _runner(clock=clock, ex=ex, n_tasks=1, repeats=1)
+    block = R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)[0]
+    with pytest.raises(RuntimeError, match="registration"):
+        r.admit(block, C.RunKind.MAIN)
+    job = ex.started[-1]
+    assert (job.attempt_dir / R.ABORT_FILE).exists()
+    assert not (job.attempt_dir / R.GO_FILE).exists()
+    assert job.token in r.running                       # shutdown would still see it
+    r.close()
+    r2 = _runner(clock=clock, n_tasks=1, repeats=1)
+    rec = r2.reconcile()
+    r2.close()
+    assert len(rec) == 1 and rec[0]["billed"] == 0 and "never released" in rec[0]["notes"][0]
+    assert _no_outstanding()
+
+
+def test_r1_f1_reconcile_keeps_reservation_until_kill_and_cleanup_confirmed(
+        tmp_ledger, tmp_results, monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    ex = FakeExecutor(clock, duration=10 ** 6)
+    r = _runner(clock=clock, ex=ex, n_tasks=1, repeats=1)
+    job = r.admit(R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)[0], C.RunKind.MAIN)
+    r.close()                                            # the runner dies; worker "alive"
+    (job.attempt_dir / R.WORKER_PID).write_text("424242\n")
+    monkeypatch.setattr(R, "_is_our_worker", lambda pid: pid == 424242)
+    monkeypatch.setattr(R, "kill_group", lambda pid, grace=0, **k: False)
+    monkeypatch.setattr(R, "remove_compose_projects", lambda tag: [])
+    r2 = _runner(clock=clock, n_tasks=1, repeats=1)
+    out = r2.stop_now("global_stop")
+    r2.close()
+    assert out["terminal"] is False and not _no_outstanding()
+    assert not [o for o in R.outcomes(G) if o["run_kind"] == "main"]
+    assert [x for x in R.manifest_records(G) if x["kind"] == "kill_unconfirmed"]
+    # sandboxes left behind also keep it open
+    monkeypatch.setattr(R, "kill_group", lambda pid, grace=0, **k: True)
+    monkeypatch.setattr(R, "remove_compose_projects", lambda tag: ["abc inspect-x3b..."])
+    r3 = _runner(clock=clock, n_tasks=1, repeats=1)
+    assert r3.stop_now("global_stop")["terminal"] is False
+    r3.close()
+    # both confirmed: settled as cancelled, in full, then TERMINAL
+    monkeypatch.setattr(R, "remove_compose_projects", lambda tag: [])
+    r4 = _runner(clock=clock, n_tasks=1, repeats=1)
+    out = r4.stop_now("global_stop")
+    r4.close()
+    assert out["terminal"] and _no_outstanding()
+    o = next(o for o in R.outcomes(G) if o["run_kind"] == "main")
+    assert o["cancelled"] and o["billed"] == pytest.approx(3.60)
+    assert _events().count("STOP") == 1                   # resumed, not restarted
+
+
+class _FlakyExecutor(FakeExecutor):
+    """finished() raises for one block; cleanup() raises for another."""
+    def __init__(self, clock, **kw):
+        super().__init__(clock, duration=10 ** 6, **kw)
+
+    def finished(self, h):
+        if h["job"] is self.started[0] and not h["killed"]:
+            raise OSError("harvest blew up")
+        return super().finished(h)
+
+    def cleanup(self, job):
+        if job is self.started[1]:
+            raise RuntimeError("docker down")
+        return []
+
+
+def test_r1_f2_shutdown_survives_failures_and_is_resumable(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    ex = _FlakyExecutor(clock)
+    r = _runner(clock=clock, ex=ex, n_tasks=3, repeats=1)
+    for b in R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1):
+        r.admit(b, C.RunKind.MAIN)
+    out = r.shutdown("global_stop")
+    r.close()
+    assert len(ex.killed) == 3                           # every worker got the kill
+    assert out["terminal"] is False and any("harvest" in e for e in out["errors"])
+    assert next(iter(out["containers_left"].values()))[0].startswith("cleanup failed")
+    canc = [o for o in R.outcomes(G) if o.get("cancelled")]
+    assert len(canc) == 2                                # the confirmed ones are settled
+    assert [x for x in R.manifest_records(G) if x["kind"] == "shutdown_errors"]
+    # `stop` (or run --resume) in a new process finishes the same shutdown
+    r2 = _runner(clock=clock, n_tasks=3, repeats=1)
+    out2 = r2.stop_now("global_stop")
+    r2.close()
+    assert out2["terminal"] and out2["reason"] == "global_stop" and _no_outstanding()
+    assert _events()[-1] == "TERMINAL"
+
+
+def test_r1_f2_ledger_check_uses_the_locked_rid_lookup(tmp_ledger):
+    from s4world import budget
+    rid = budget.reserve(1.0, "x", exp="X3b-GLM", cap=45.0)
+    other = budget.reserve(1.0, "y", exp="X3b-GLM", cap=45.0)
+    budget.settle(rid, 0.5, "m", 1, f"note mentions rid={other}")
+    assert R._ledger_has_rid(rid) and not R._ledger_has_rid(other)
+
+
+def test_r1_f5_collect_synthesizes_missing_and_cancelled_rows(tmp_ledger, tmp_results,
+                                                              monkeypatch):
+    monkeypatch.setattr(R, "accepted", lambda stage, j: {})
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    # block 1 completes with one artifact missing (twice); block 2 is cancelled at the deadline
+    slow = {}
+
+    def dur(job):
+        return 10 ** 6 if job.batch_id == slow.setdefault("bid", job.batch_id) else 600
+
+    ex = FakeExecutor(clock, duration_fn=dur,
+                      behaviour=lambda j, s: "missing" if s.context == "safety" else "ok")
+    r = _runner(clock=clock, ex=ex, n_tasks=2, repeats=1, max_in_flight=2)
+    r.queue = R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)
+    r.retrying = True
+    while r.queue or len(r.running) > 1:
+        r.harvest()
+        while r.queue and len(r.running) < 2:
+            r.admit(r.queue.pop(0), C.RunKind.MAIN)
+        clock.sleep(60)
+    r.shutdown("deadline")
+    r.close()
+    R.collect(G)
+    rows = _rows(G)
+    main = [x for x in rows.values() if x["kind"] == "main"]
+    canc = [x for x in main if x["excluded_reason"] == "cancelled"]
+    assert len(canc) == 6 and all(x["analysis_role"] == "excluded" for x in canc)
+    assert all(x["header"] and x["task_id"] and x["block_id"] == slow["bid"] for x in canc)
+    miss = [x for x in main if x["excluded_reason"] == "missing"]
+    assert len(miss) == 1 and miss[0]["header"] == "safety" and miss[0]["attempt"] == "2"
+    sup = [x for x in main if x["excluded_reason"] == "superseded"]
+    assert len(sup) == 6                                  # attempt 1, incl. its missing row
+    assert len(main) == 6 + 6 + 6 and sum(x["analysis_role"] == "main" for x in main) == 5
+    cov = json.loads(C.episodes_csv(G).with_suffix(".coverage.json").read_text())
+    assert cov["synthesized_missing"] == 6 + 2
+
+
+def test_r1_f6_interim_cohort_is_the_first_ten_admitted(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    first3: list[str] = []
+
+    def dur(job):
+        if len(first3) < 3 and job.attempt == 1:
+            first3.append(job.batch_id)
+        return 5000 if job.batch_id in first3 else 600
+
+    ex = FakeExecutor(clock, duration_fn=dur,
+                      behaviour=lambda j, s: "api_error" if j.batch_id in first3 else "ok")
+    r = _runner(clock=clock, ex=ex, n_tasks=13, repeats=1, max_in_flight=13)
+    out = r.run()
+    r.close()
+    interim = next(x for x in R.manifest_records(G) if x["kind"] == "interim")
+    admitted = []
+    for x in R.manifest_records(G):
+        if x["kind"] == "admit" and x["run_kind"] == "main" and x["batch_id"] not in admitted:
+            admitted.append(x["batch_id"])
+    assert interim["blocks"] == admitted[:10] and set(first3) <= set(interim["blocks"])
+    assert interim["share"] == pytest.approx(18 / 60)
+    assert out["reason"] == "interim_completion"
+
+
+def test_r1_f7_smoke_pass_only_after_a_durable_checkpoint(tmp_ledger, tmp_results,
+                                                         monkeypatch):
+    clock = FakeClock()
+    real_emit = R.emit
+
+    def crash_on_pass(stage, kind, payload, ts=None):
+        if kind == C.EventKind.SMOKE_PASS:
+            st = R.read_run_state(stage)
+            assert st["smoke"]["status"] == "pass" and st["target_repeats"] is not None
+            assert st["judge_set_aside_usd"] > 0
+            raise SystemExit("crash just before the SMOKE_PASS line")
+        return real_emit(stage, kind, payload, ts)
+
+    monkeypatch.setattr(R, "emit", crash_on_pass)
+    r = _runner(clock=clock)
+    with pytest.raises(SystemExit):
+        r.smoke()
+    r.close()
+    monkeypatch.setattr(R, "emit", real_emit)
+    r = _runner(clock=clock)
+    out = r.smoke()                                       # completes the checkpoint, no re-run
+    r.close()
+    assert out.get("recovered") and _events().count("SMOKE_PASS") == 1
+    assert sum(x["kind"] == "smoke_run" for x in R.manifest_records(G)) == 1
+
+
+def test_r1_f7_main_rebuilds_or_refuses_a_missing_checkpoint(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    good = R.read_run_state(G)
+    st = dict(good)
+    st["judge_set_aside_usd"] = None
+    st["smoke"] = {}
+    R.write_run_state(G, st)
+    r = _runner(clock=clock)
+    assert r.rebuild_smoke_checkpoint()
+    r.close()
+    rebuilt = R.read_run_state(G)
+    assert rebuilt["judge_set_aside_usd"] == pytest.approx(good["judge_set_aside_usd"])
+    assert rebuilt["target_repeats"] == good["target_repeats"]
+    # with the smoke artifacts gone, main admission is refused
+    R.write_run_state(G, st)
+    for p in C.episodes_dir(G).rglob("*.json"):
+        p.unlink()
+    r = _runner(clock=clock)
+    with pytest.raises(R.RunRefused, match="checkpoint"):
+        r.run()
+    r.close()
+
+
+def test_r1_f8_resume_replays_a_failing_interim_decision(tmp_ledger, tmp_results,
+                                                        monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    ex = FakeExecutor(clock, behaviour=lambda j, s: "api_error"
+                      if s.context in ("safety", "neutral") else "ok")
+    r = _runner(clock=clock, ex=ex, n_tasks=12, repeats=1, max_in_flight=4)
+    real = R.StageRunner.shutdown
+    monkeypatch.setattr(R.StageRunner, "shutdown",
+                        lambda self, why: (_ for _ in ()).throw(SystemExit("crash")))
+    with pytest.raises(SystemExit):
+        r.run()
+    r.close()
+    monkeypatch.setattr(R.StageRunner, "shutdown", real)
+    assert next(x for x in R.manifest_records(G) if x["kind"] == "interim")["share"] > 0.2
+    n_admits = sum(x["kind"] == "admit" for x in R.manifest_records(G))
+    r2 = _runner(clock=clock, ex=FakeExecutor(clock), n_tasks=12, repeats=1)
+    out = r2.run(resume=True)
+    r2.close()
+    assert out["reason"] == "interim_completion" and out["terminal"]
+    assert sum(x["kind"] == "admit" for x in R.manifest_records(G)) == n_admits
+
+
+def test_r1_f8_restart_during_an_outage_does_not_dispatch(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    r, _ = _outage_runner(clock, test_ok_after=None)
+    r.queue = R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)
+    r.retrying = True
+    while not r.paused:                                   # run until the outage pause
+        r.harvest()
+        r.outage_step(clock.now())
+        while not r.paused and r.queue and len(r.running) < r.max_in_flight:
+            r.admit(r.queue.pop(0), C.RunKind.MAIN)
+        clock.sleep(60)
+    while r.running:                                      # in-flight blocks finish (failing)
+        r.harvest()
+        clock.sleep(60)
+    r.close()                                             # the runner dies while paused
+    n_admits = sum(x["kind"] == "admit" for x in R.manifest_records(G))
+    clock.sleep(600)
+    r2, calls = _outage_runner(clock, test_ok_after=None)
+    out = r2.run(resume=True)
+    r2.close()
+    assert out["reason"] == "outage"
+    assert sum(x["kind"] == "admit" for x in R.manifest_records(G)) == n_admits
+    assert calls and calls[0] >= clock.now() - 13 * 3600
+
+
+def test_r1_f9_billed_failed_attempt_is_not_double_counted():
+    from x3.task import ATTEMPTS, call_bound
+    one = call_bound(1000, 16000, 0.15, 0.50) / ATTEMPTS
+    bounds = [{"turn": 1, "input_bound": 1000, "max_tokens": 16000, "spent": 0.0,
+               "failed_charge": one}]
+    billed_fail = _call(0.004, error="APIError")
+    billed_fail["stop_reason"] = None
+    a = _art("a", calls=[billed_fail, _call(0.01)], bounds=bounds)
+    assert R.episode_cost(a, G) == pytest.approx(0.014)  # not 0.014 + the ceiling charge
+    # a recorded failed attempt with no call record is still charged
+    b = _art("b", calls=[_call(0.01)], bounds=bounds)
+    assert R.episode_cost(b, G) == pytest.approx(0.01 + one)
+
+
+def test_r1_f10_incomplete_accounting_is_unavailable_and_sizing_sees_the_charge(
+        tmp_ledger, tmp_results):
+    bare = _art("a", calls=[], end="api_error", turns=0)
+    assert R.episode_cost(bare, G) is None
+    usd, _est, _, per = R.settle_detail([bare], [_spec("a")], G)
+    assert per == {"a": pytest.approx(0.60)} and usd == pytest.approx(0.60)
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    ex = FakeExecutor(clock, behaviour=lambda j, s: "api_error_bare"
+                      if s.context == "safety" else "ok")
+    r = _runner(clock=clock, ex=ex, n_tasks=1, repeats=1)
+    r.run()
+    r.close()
+    for o in R.outcomes(G):
+        assert sum(o["episode_costs"].values()) == pytest.approx(o["billed"])
+    first = next(o for o in R.outcomes(G) if o["run_kind"] == "main" and o["attempt"] == 1)
+    bad = next(e for e in first["episode_ids"] if "|safety|" in e)
+    assert first["episode_costs"][bad] == pytest.approx(0.60)
+
+
+def _clock_worker(args):
+    import os
+    root, now = args
+    os.environ["X3B_RESULTS_DIR"] = root
+    from x3b import contracts as C2
+    from x3b import runner as R2
+    C2.CLOCK_JSON = C2.Path(root) / "clock.json"
+    return R2.ensure_clock(C2.StageKey.GLM, now)
+
+
+def test_r1_f14_clock_published_once_whole(tmp_results):
+    import multiprocessing as mp
+    with mp.get_context("spawn").Pool(4) as pool:
+        got = pool.map(_clock_worker, [(str(tmp_results), T0 + i) for i in range(8)])
+    assert len({json.dumps(g, sort_keys=True) for g in got}) == 1
+    assert R.read_clock() == got[0] and not list(tmp_results.glob("clock.*.tmp"))
+    assert R.ensure_clock(M, T0 + 999) == got[0]          # never rewritten
+
+
+def test_r1_f14_partial_clock_is_an_error_not_a_guess(tmp_results):
+    tmp_results.mkdir(parents=True, exist_ok=True)
+    C.CLOCK_JSON.write_text('{"first_paid')
+    with pytest.raises(RuntimeError, match="unreadable"):
+        R.read_clock(retries=2, wait_s=0)

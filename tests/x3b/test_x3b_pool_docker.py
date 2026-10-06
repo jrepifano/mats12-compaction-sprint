@@ -122,13 +122,14 @@ def test_killed_block_leaves_no_worker_or_sandbox(tmp_results):
                 task_name="x3bkilltest", started_ts=time.time())
     ex = R.ProcessExecutor()
     h = ex.start(job)
+    ex.release(job)                                    # registered: it may start calling
     deadline = time.time() + 120
     while time.time() < deadline and not any(p.startswith("inspect-x3bkilltest-")
                                              for p in _projects()):
         time.sleep(0.5)
     assert any(p.startswith("inspect-x3bkilltest-") for p in _projects()), "no sandbox seen"
     assert os.getpgid(h.pid) == h.pid                  # the worker leads its own group
-    ex.kill(h, grace_s=5)
+    assert ex.kill(h, grace_s=5) is True               # confirmed dead (r1, finding 1)
     assert not ex.alive(h)
     assert ex.cleanup(job) == []
     assert not any(p.startswith("inspect-x3bkilltest-") for p in _projects())

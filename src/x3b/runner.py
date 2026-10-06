@@ -41,6 +41,10 @@ from x3b import texts
 
 MOCK_MODEL = "mockllm/model"
 RESULT_JSON = "result.json"
+GO_FILE = "GO"                       # the parent releases a registered worker (finding 1)
+ABORT_FILE = "ABORT"                 # recovery tells an unregistered worker to exit
+WORKER_PID = "worker.pid"
+GO_WAIT_S = 300.0
 PROGRESS_JSONL = "progress.jsonl"
 POLL_S = 5.0                         # pool loop period (real clock)
 KILL_GRACE_S = 20.0                  # SIGTERM -> SIGKILL (plan §3 U3, shutdown)
@@ -277,62 +281,64 @@ def _call_failed(c: dict) -> bool:
                                           and not c.get("output_tokens"))
 
 
-def _agent_failed_attempts(art: dict, ceilings: tuple[float, float] | None
-                           ) -> tuple[int, float]:
-    """(failed agent attempts, their recorded charge) from the loop's per-turn bounds. Each
-    failed attempt was charged its single-attempt bound, so the count is charge / bound; with
-    no known ceilings, every attempt of the turn is assumed to have failed."""
+def _agent_failed_charges(art: dict, ceilings: tuple[float, float] | None) -> list[float]:
+    """The recorded charge of each failed agent attempt, in order, from the loop's per-turn
+    bounds. Each failed attempt was charged its single-attempt bound, so a turn's count is
+    failed_charge / bound; with no known ceilings a turn counts as one attempt (a mismatch then
+    makes the episode unavailable, which is charged in full)."""
     from x3.task import ATTEMPTS, call_bound
 
-    n, usd = 0, 0.0
+    out: list[float] = []
     for b in art.get("bounds") or []:
         fc = float(b.get("failed_charge") or 0.0)
         if fc <= 0:
             continue
-        usd += fc
         one = (call_bound(int(b.get("input_bound") or 0), int(b.get("max_tokens") or 0),
                           *ceilings) / ATTEMPTS) if ceilings else 0.0
-        n += max(1, round(fc / one)) if one > 0 else ATTEMPTS
-    return n, usd
+        n = max(1, round(fc / one)) if one > 0 else 1
+        out += [fc / n] * n
+    return out
 
 
-def _probe_failed_attempts(probe: dict | None) -> tuple[int, float]:
+def _probe_failed_charges(probe: dict | None) -> list[float]:
     if not isinstance(probe, dict):
-        return 0, 0.0
+        return []
     att = [a for a in probe.get("attempts") or [] if a.get("kind") == "transport_error"]
     if att:
-        return len(att), sum(float(a.get("charge") or 0.0) for a in att)
+        return [float(a.get("charge") or 0.0) for a in att]
     fac = float(probe.get("failed_attempt_charge") or 0.0)
-    return (1 if fac > 0 else 0), fac
+    return [fac] if fac > 0 else []
 
 
 def episode_cost(art: dict, stage: C.StageKey | None = None) -> float | None:
-    """Measured cost of one episode (plan §1): the sum of `billed_usd` over every call, plus the
-    recorded charges of failed attempts (agent `bounds[].failed_charge`, probes'
-    `attempts[].charge` of transport errors), which X3's Amendment B3 counts at their ceiling
-    charge. None when an unbilled call cannot be matched to a recorded failed-attempt charge
-    (an unbilled successful call, or more unbilled failed calls of a role than recorded failed
-    attempts of that role)."""
+    """Measured cost of one episode (plan §1): every call's `billed_usd`, plus, for each failed
+    attempt with no billed cost, its recorded ceiling charge (agent `bounds[].failed_charge`,
+    probes' transport-error `attempts[].charge`; X3 Amendment B3). Failed calls are matched to
+    recorded failed attempts by role and order: a billed failed attempt counts at its billed
+    cost only (code review r1, finding 9); a recorded attempt with no call record is charged.
+    None when the accounting is incomplete (finding 10): an unbilled successful call, an
+    unbilled failed call with no recorded attempt, or no call records although requests ran.
+    0.0 only when the artifact shows no request was sent."""
     calls = art.get("model_calls") or []
+    if not calls:
+        return 0.0 if _sent_nothing(art) else None
     if stage is None and art.get("stage_key") in {s.value for s in C.StageKey}:
         stage = C.StageKey(art["stage_key"])
     ceilings = (C.MODELS[stage].in_ceiling, C.MODELS[stage].out_ceiling) if stage else None
-    billed = sum(float(c["billed_usd"]) for c in calls if c.get("billed_usd") is not None)
-    recorded = {"agent": _agent_failed_attempts(art, ceilings),
-                "pre_probe": _probe_failed_attempts(art.get("pre_probe")),
-                "post_probe": _probe_failed_attempts(art.get("probe"))}
-    unbilled: dict[str, int] = {}
-    for c in calls:
-        if c.get("billed_usd") is not None:
-            continue
-        if not _call_failed(c):
-            return None                    # a successful call with no billed cost
-        role = c.get("role") or "agent"
-        unbilled[role] = unbilled.get(role, 0) + 1
-    for role, n in unbilled.items():
-        if n > recorded.get(role, (0, 0.0))[0]:
+    if any(c.get("billed_usd") is None and not _call_failed(c) for c in calls):
+        return None                        # a successful call with no billed cost
+    total = sum(float(c["billed_usd"]) for c in calls if c.get("billed_usd") is not None)
+    recorded = {"agent": _agent_failed_charges(art, ceilings),
+                "pre_probe": _probe_failed_charges(art.get("pre_probe")),
+                "post_probe": _probe_failed_charges(art.get("probe"))}
+    for role, charges in recorded.items():
+        fcalls = [c for c in calls if (c.get("role") or "agent") == role and _call_failed(c)]
+        for i, charge in enumerate(charges):
+            if i >= len(fcalls) or fcalls[i].get("billed_usd") is None:
+                total += charge
+        if any(c.get("billed_usd") is None for c in fcalls[len(charges):]):
             return None
-    return billed + sum(usd for _, usd in recorded.values())
+    return total
 
 
 def _sent_nothing(art: dict) -> bool:
@@ -350,52 +356,50 @@ def _sent_nothing(art: dict) -> bool:
     return True
 
 
-def settle_cost(arts: list[dict], specs: list[EpisodeSpec], stage: C.StageKey
-                ) -> tuple[float, float, list[str]]:
-    """What a block attempt is settled at (plan §3 U3 "Settlement"; every path): per episode,
-    its billed cost when it has call records, every call billed and no failed attempt; else
-    `episode_cost` when every unbilled call matches a recorded charge; else its full
-    reservation (episode limit + the stage's probe envelope). A missing artifact, or one with
-    no call records although it ran turns, failed or recorded any attempt, is charged in full;
-    zero only when the artifact shows no request was sent. Returns (usd, estimated_usd,
-    notes): estimated_usd is the part not measured as billed."""
+def settle_detail(arts: list[dict], specs: list[EpisodeSpec], stage: C.StageKey
+                  ) -> tuple[float, float, list[str], dict[str, float]]:
+    """`settle_cost` plus the per-episode charges, so sizing uses exactly what settlement
+    charged (code review r1, finding 10)."""
     by_id = {a["meta"]["episode_id"]: a for a in arts}
     full = episode_reservation(stage)
     usd = est = 0.0
     notes: list[str] = []
+    per: dict[str, float] = {}
     for sp in specs:
         a = by_id.get(sp.episode_id)
-        if a is None:
-            usd += full
-            est += full
-            notes.append(f"{sp.episode_id}: no artifact; charged {full:.3f}")
-            continue
-        calls = a.get("model_calls") or []
-        if not calls:
-            if _sent_nothing(a):
-                notes.append(f"{sp.episode_id}: no request sent; charged 0")
-                continue
-            usd += full
-            est += full
-            notes.append(f"{sp.episode_id}: no call records although requests ran; "
-                         f"charged {full:.3f}")
-            continue
-        vals = [c.get("billed_usd") for c in calls]
-        billed = sum(float(v) for v in vals if v is not None)
-        cost = episode_cost(a, stage)
+        cost = episode_cost(a, stage) if a is not None else None
         if cost is None:
-            usd += full
-            est += full
-            notes.append(f"{sp.episode_id}: {sum(v is None for v in vals)} unbilled call(s) "
-                         f"not matched to a recorded charge; charged {full:.3f}")
-        elif cost > billed + 1e-12:
-            usd += cost
-            est += cost - billed
-            notes.append(f"{sp.episode_id}: billed {billed:.4f} + failed-attempt charges "
-                         f"{cost - billed:.4f}")
+            charge, unmeasured = full, full
+            why = ("no artifact" if a is None else
+                   "no call records although requests ran" if not a.get("model_calls")
+                   else "accounting incomplete (unbilled call not matched to a recorded "
+                        "charge)")
+            notes.append(f"{sp.episode_id}: {why}; charged {full:.3f}")
         else:
-            usd += billed
-    return round(usd, 6), round(est, 6), notes
+            billed = sum(float(c["billed_usd"]) for c in a.get("model_calls") or []
+                         if c.get("billed_usd") is not None)
+            charge, unmeasured = cost, max(0.0, cost - billed)
+            if not a.get("model_calls"):
+                notes.append(f"{sp.episode_id}: no request sent; charged 0")
+            elif unmeasured > 1e-12:
+                notes.append(f"{sp.episode_id}: billed {billed:.4f} + failed-attempt charges "
+                             f"{unmeasured:.4f}")
+        usd += charge
+        est += unmeasured
+        per[sp.episode_id] = round(charge, 8)
+    return round(usd, 6), round(est, 6), notes, per
+
+
+def settle_cost(arts: list[dict], specs: list[EpisodeSpec], stage: C.StageKey
+                ) -> tuple[float, float, list[str]]:
+    """What a block attempt is settled at (plan §3 U3 "Settlement"; every path): per episode,
+    `episode_cost` when its accounting is complete, else its full reservation (episode limit +
+    the stage's probe envelope). A missing artifact, or one with no call records although it
+    ran turns, failed or recorded any attempt, is charged in full; zero only when the artifact
+    shows no request was sent. Returns (usd, estimated_usd, notes): estimated_usd is the part
+    not measured as billed."""
+    usd, est, notes, _ = settle_detail(arts, specs, stage)
+    return usd, est, notes
 
 
 # --- one block's Inspect eval (runs inside a pool worker) ----------------------------------
@@ -450,27 +454,58 @@ def parse_utc(s: str | None) -> float | None:
 
 
 # --- the experiment-wide clock (plan §3 U3, "Clock") ----------------------------------------
-def read_clock() -> dict | None:
+def read_clock(retries: int = 10, wait_s: float = 0.2) -> dict | None:
+    """The clock, or None if it does not exist. The file is published whole (ensure_clock), so
+    a parse error means a concurrent publish on an old layout or damage: retry briefly, then
+    raise rather than guess a deadline."""
     p = C.CLOCK_JSON
-    return json.loads(p.read_text()) if p.exists() else None
+    for i in range(retries):
+        if not p.exists():
+            return None
+        try:
+            rec = json.loads(p.read_text())
+            if rec.get("deadline_utc") and rec.get("first_paid_utc"):
+                return rec
+        except (json.JSONDecodeError, OSError):
+            pass
+        if i < retries - 1:
+            time.sleep(wait_s)
+    raise RuntimeError(f"{p} is unreadable or incomplete; fix by hand (never rewritten)")
 
 
 def ensure_clock(stage: C.StageKey, now_ts: float) -> dict:
-    """Create `clock.json` by exclusive create just before the first paid call of either
-    stage; if it exists, return it unchanged (it is never rewritten)."""
+    """Publish `clock.json` once, just before the first paid call of either stage (code review
+    r1, finding 14): under a separate lock file, the record is written to a temp file, fsync'd
+    and hard-linked into place only if absent, so readers never see a partial or empty clock.
+    If it exists, it is returned unchanged (never rewritten)."""
     p = C.CLOCK_JSON
     p.parent.mkdir(parents=True, exist_ok=True)
-    rec = {"first_paid_utc": utc(now_ts),
-           "deadline_utc": utc(now_ts + C.DEADLINE_H * 3600), "stage": stage.value}
-    try:
-        fd = os.open(p, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o644)
-    except FileExistsError:
-        return json.loads(p.read_text())
-    with os.fdopen(fd, "w") as f:
-        f.write(json.dumps(rec) + "\n")
-        f.flush()
-        os.fsync(f.fileno())
-    return rec
+    with open(p.with_name("clock.lock"), "a") as lk:
+        fcntl.flock(lk, fcntl.LOCK_EX)
+        try:
+            if p.exists():
+                return read_clock()
+            rec = {"first_paid_utc": utc(now_ts),
+                   "deadline_utc": utc(now_ts + C.DEADLINE_H * 3600), "stage": stage.value}
+            tmp = p.with_name(f"clock.{os.getpid()}.tmp")
+            with open(tmp, "w") as f:
+                f.write(json.dumps(rec) + "\n")
+                f.flush()
+                os.fsync(f.fileno())
+            try:
+                os.link(tmp, p)                 # atomic, and fails if the clock exists
+            except FileExistsError:
+                return read_clock()
+            finally:
+                tmp.unlink(missing_ok=True)
+            dfd = os.open(p.parent, os.O_RDONLY)
+            try:
+                os.fsync(dfd)
+            finally:
+                os.close(dfd)
+            return rec
+        finally:
+            fcntl.flock(lk, fcntl.LOCK_UN)
 
 
 # --- manifest (port of X3's intent -> admit -> outcome records) ----------------------------
@@ -510,13 +545,9 @@ def outcomes(stage: C.StageKey, recs: list[dict] | None = None) -> list[dict]:
 
 
 def _ledger_has_rid(rid: str) -> bool:
-    """True if a ledger line already settled reservation `rid` (its note carries rid=...)."""
-    path = budget.ledger_path()
-    if not path.exists():
-        return False
-    tag = f"rid={rid}"
-    return any(tag in (json.loads(x).get("note") or "")
-               for x in path.read_text().splitlines() if x.strip())
+    """True if a ledger line already settled reservation `rid` (read under the ledger lock by
+    `s4world.budget.settled_entry`; code review r1, finding 2)."""
+    return budget.settled_entry(rid) is not None
 
 
 # --- run state and events (plan §3 U3 item 12) ----------------------------------------------
@@ -598,6 +629,22 @@ def _register_progress_hook() -> None:
                 pass
 
 
+def _wait_for_go(d: Path, timeout_s: float | None = None, sleep=time.sleep) -> bool:
+    """The worker's side of the registration handshake (code review r1, finding 1): no model
+    call before the parent has durably recorded the worker (pid, pgid) and written GO. ABORT
+    (written by recovery) or a timeout means exit without calling anything."""
+    timeout_s = GO_WAIT_S if timeout_s is None else timeout_s
+    t = 0.0
+    while t <= timeout_s:
+        if (d / ABORT_FILE).exists():
+            return False
+        if (d / GO_FILE).exists():
+            return True
+        sleep(0.1)
+        t += 0.1
+    return False
+
+
 def _block_worker(job: dict) -> None:
     """Pool worker (a spawned process): its own process group, one block's eval, extraction,
     then `result.json`. Spend is reserved and settled by the parent, never here."""
@@ -607,6 +654,15 @@ def _block_worker(job: dict) -> None:
     fd = os.open(d / "worker.log", os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o644)
     os.dup2(fd, 1)
     os.dup2(fd, 2)
+    (d / WORKER_PID).write_text(f"{os.getpid()}\n")
+    if not _wait_for_go(d):
+        # never released (the parent died before registering it, or recovery aborted it):
+        # exit before any model call
+        tmp = d / (RESULT_JSON + ".tmp")
+        tmp.write_text(json.dumps({"ok": False, "artifacts": [], "logs": [],
+                                   "error": "not released: no request sent"}))
+        os.replace(tmp, d / RESULT_JSON)
+        return
     os.environ["X3B_PROGRESS_FILE"] = str(d / PROGRESS_JSONL)
     _register_progress_hook()
     stage = C.StageKey(job["stage"])
@@ -627,6 +683,32 @@ def _block_worker(job: dict) -> None:
         tmp = d / (RESULT_JSON + ".tmp")
         tmp.write_text(json.dumps(res, indent=1))
         os.replace(tmp, d / RESULT_JSON)
+
+
+def _touch_atomic(p: Path) -> None:
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".tmp")
+    with open(tmp, "w") as f:
+        f.write(utc() + "\n")
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, p)
+
+
+def _is_our_worker(pid: int | None) -> bool:
+    """A live process that leads its own group and runs Python's multiprocessing spawn entry
+    point (our pool workers), so recovery never signals an unrelated process with a reused
+    pid."""
+    if not pid or not _pid_alive(pid):
+        return False
+    try:
+        if os.getpgid(pid) != pid:
+            return False
+        r = subprocess.run(["ps", "-o", "command=", "-p", str(pid)], capture_output=True,
+                           text=True, check=False)
+    except (ProcessLookupError, OSError):
+        return False
+    return "multiprocessing" in r.stdout
 
 
 def _pid_alive(pid: int) -> bool:
@@ -735,10 +817,15 @@ class ProcessExecutor:
     def alive(self, h) -> bool:
         return h.is_alive()
 
-    def kill(self, h, grace_s: float = KILL_GRACE_S) -> None:
-        if h.pid is not None:
-            kill_group(h.pid, grace_s)
+    def release(self, job: Job) -> None:
+        """Let a registered worker start calling (the GO file, written atomically)."""
+        _touch_atomic(Path(job.attempt_dir) / GO_FILE)
+
+    def kill(self, h, grace_s: float = KILL_GRACE_S) -> bool:
+        """True only if the worker's process group is confirmed dead."""
+        ok = kill_group(h.pid, grace_s) if h.pid is not None else True
         h.join(5)
+        return ok and not h.is_alive()
 
     def cleanup(self, job: Job) -> list[str]:
         return remove_compose_projects(job.task_name)
@@ -958,6 +1045,9 @@ class StageRunner:
         self.draining = False
         self.paused = False
         self.last_test_ts: float | None = None
+        self.unconfirmed: dict[str, dict] = {}   # token -> {"alive", "containers"} (finding 1)
+        self.smoke_allowance: float | None = None   # smoke re-run allowance (finding 4)
+        self.allowance_refused = False
         self.start_ts = self.clock.now()
         self.last_success = self.start_ts
         self.mock_deadline = self.start_ts + C.DEADLINE_H * 3600
@@ -1104,8 +1194,18 @@ class StageRunner:
             self.settle_job(job, cancelled=False, extra_notes=[f"worker did not start: {e!r}"],
                             nothing_sent=True)
             return job
-        self._append({"kind": "started", "token": token, "pid": self.ex.pid(job.handle)})
-        self.running[token] = job
+        self.running[token] = job       # tracked from here on, so shutdown always sees it
+        try:
+            pid = self.ex.pid(job.handle)
+            # durable registration before the worker may call anything (r1, finding 1)
+            self._append({"kind": "started", "token": token, "pid": pid, "pgid": pid,
+                          "task_name": job.task_name})
+            release = getattr(self.ex, "release", None)
+            if release is not None:
+                release(job)
+        except BaseException:
+            _touch_atomic(Path(attempt_dir) / ABORT_FILE)    # it must never start calling
+            raise
         return job
 
     def settle_job(self, job: Job, *, cancelled: bool, extra_notes: list[str] | None = None,
@@ -1122,7 +1222,7 @@ class StageRunner:
             arts, logs, err = load_result_arts(job.attempt_dir, wanted, self.stage)
             if err:
                 notes.append(f"worker: {err}")
-            usd, est, cn = settle_cost(arts, job.specs, self.stage)
+            usd, est, cn, per = settle_detail(arts, job.specs, self.stage)
             notes += cn
         if _ledger_has_rid(job.rid):
             notes.append("reservation already settled before an interruption")
@@ -1146,12 +1246,11 @@ class StageRunner:
                 reasons[sp.episode_id] = "missing"
             elif failed(a):
                 reasons[sp.episode_id] = "error" if a.get("error") else "api_error"
-        full = episode_reservation(self.stage)
-        costs = {}
-        for sp in job.specs:
-            a = by_id.get(sp.episode_id)
-            c = episode_cost(a, self.stage) if a is not None else None
-            costs[sp.episode_id] = full if c is None else c
+        if cancelled or nothing_sent:   # the same per-episode amounts settlement charged
+            per = {sp.episode_id: (job.reserved / len(job.specs) if cancelled else 0.0)
+                   for sp in job.specs}
+        costs = per
+        succ = self._success_times(arts)
         rec = self._append({
             "kind": "outcome", "token": job.token, "rid": job.rid, "stage": self.stage.value,
             "run_kind": job.kind.value, "model": self.model_id, "batch_id": job.batch_id,
@@ -1161,8 +1260,9 @@ class StageRunner:
                             "billed" if est <= 1e-12 else "estimated"),
             "cancelled": cancelled, "failed": [e for e in reasons], "failed_reasons": reasons,
             "episode_costs": costs, "artifacts": [a.get("path") for a in arts],
+            "last_success_utc": utc(max(succ)) if succ else None,
             "logs": logs, "notes": notes})
-        for t in self._success_times(arts):
+        for t in succ:
             self.last_success = max(self.last_success, t)
         self._emit(C.EventKind.BLOCK_DONE,
                    {"batch_id": job.batch_id, "attempt": job.attempt, "kind": job.kind.value,
@@ -1231,10 +1331,12 @@ class StageRunner:
         return bool(res.get("ok"))
 
     def outage_step(self, now: float) -> str | None:
+        """Prereg §7.3: no successful call for OUTAGE_PAUSE_MIN -> PAUSE (no new blocks); a
+        test call every OUTAGE_PROBE_EVERY_MIN, the first at once; its first success -> RESUME;
+        OUTAGE_STOP_H without a success -> the stage ends. A due test call is made before the
+        stage is ended, so a long idle period restored on resume is first re-tested."""
         self._progress()
         idle = now - self.last_success
-        if idle >= C.OUTAGE_STOP_H * 3600:
-            return "outage"
         if not self.paused and idle >= C.OUTAGE_PAUSE_MIN * 60:
             self.paused = True
             self.last_test_ts = None
@@ -1249,6 +1351,9 @@ class StageRunner:
                 self.paused = False
                 self._emit(C.EventKind.RESUME, {"after_min": round(idle / 60, 1)})
                 self.write_state(state=C.RunState.RUNNING.value)
+                return None
+        if idle >= C.OUTAGE_STOP_H * 3600:
+            return "outage"
         return None
 
     # -- sizing and the interim completion rule (prereg §7.2, §4.9) --
@@ -1306,26 +1411,50 @@ class StageRunner:
         self.write_state(target_repeats=target, judge_set_aside_usd=round(judge, 6))
         return rec
 
+    def interim_cohort(self) -> list[str]:
+        """The stage's first INTERIM_BLOCKS main blocks, by first admission (plan order; code
+        review r1, finding 6)."""
+        seen: list[str] = []
+        for r in self.recs:
+            if (r.get("kind") == "admit" and r.get("run_kind") == C.RunKind.MAIN.value
+                    and r["batch_id"] not in seen):
+                seen.append(r["batch_id"])
+        return seen[: C.INTERIM_BLOCKS]
+
     def interim_step(self) -> str | None:
-        if any(r.get("kind") == "interim" for r in self.recs):
+        """The interim completion rule (prereg §4.9) on the first 10 blocks, once each has its
+        final outcome (retry included), then the second sizing point. A recorded decision is
+        replayed on resume: a failing share stops again (finding 8)."""
+        prev = [r for r in self.recs if r.get("kind") == "interim"]
+        if prev:
+            if prev[-1]["share"] > C.INTERIM_MAX_API_ERROR_SHARE:
+                return "interim_completion"
+            if not any(r.get("kind") == "sizing" and r.get("point") == "interim"
+                       for r in self.recs):
+                self._interim_sizing(prev[-1]["blocks"])
             return None
-        fin = self.final_main_blocks()
-        if len(fin) < C.INTERIM_BLOCKS:
+        cohort = self.interim_cohort()
+        if len(cohort) < C.INTERIM_BLOCKS:
             return None
-        first = fin[: C.INTERIM_BLOCKS]
-        n = sum(len(r["episode_ids"]) for _, r in first)
-        bad = sum(len(r["failed"]) for _, r in first)
+        fin = dict(self.final_main_blocks())
+        if not all(b in fin for b in cohort):
+            return None
+        n = sum(len(fin[b]["episode_ids"]) for b in cohort)
+        bad = sum(len(fin[b]["failed"]) for b in cohort)
         share = bad / n if n else 0.0
         self._append({"kind": "interim", "share": share, "n_episodes": n, "n_failed": bad,
-                      "blocks": [b for b, _ in first]})
+                      "blocks": cohort})
         if share > C.INTERIM_MAX_API_ERROR_SHARE:
             return "interim_completion"
-        bids = {b for b, _ in first}
+        self._interim_sizing(cohort)
+        return None
+
+    def _interim_sizing(self, blocks: list[str]) -> None:
+        bids = set(blocks)
         costs = self._smoke_costs() + [
             v for r in self._outs(C.RunKind.MAIN) if r["batch_id"] in bids
             and not r.get("cancelled") for v in r["episode_costs"].values()]
         self.sizing("interim", costs)
-        return None
 
     def _smoke_runs(self) -> int:
         return sum(1 for r in self.recs if r.get("kind") == "smoke_run")
@@ -1334,6 +1463,18 @@ class StageRunner:
         n = self._smoke_runs()
         return [v for r in self._outs(C.RunKind.SMOKE) if r["attempt"] == n
                 for v in r["episode_costs"].values()]
+
+    def _fit_allowance(self, block: list[EpisodeSpec]) -> list[EpisodeSpec] | None:
+        """Smoke re-run (finding 4): the leading episodes of `block` whose worst case fits what
+        is left of the $3 incremental allowance after the re-run's settled spend and its
+        outstanding reservations; None when not even one episode fits."""
+        n = block[0].attempt
+        spent = sum(float(r["billed"]) for r in self._outs(C.RunKind.SMOKE)
+                    if r["attempt"] == n)
+        out = sum(j.reserved for j in self.running.values())
+        left = self.smoke_allowance - spent - out
+        k = math.floor((left + 1e-9) / episode_reservation(self.stage))
+        return block[: min(k, len(block))] if k > 0 else None
 
     # -- the pool loop --
     def pool(self, kind: C.RunKind) -> str:
@@ -1362,10 +1503,20 @@ class StageRunner:
             refused = False
             if not self.paused:
                 while self.queue and len(self.running) < self.max_in_flight:
-                    if self.admit(self.queue[0], kind) is None:
+                    head = self.queue[0]
+                    block = head
+                    if self.smoke_allowance is not None:
+                        block = self._fit_allowance(head)
+                        if block is None:
+                            refused = self.allowance_refused = True
+                            break
+                    if self.admit(block, kind) is None:
                         refused = True
                         break
-                    self.queue.pop(0)
+                    if len(block) < len(head):
+                        self.queue[0] = head[len(block):]
+                    else:
+                        self.queue.pop(0)
             if not self.queue and not self.running:
                 return "completed"
             if refused and not self.running:
@@ -1374,48 +1525,101 @@ class StageRunner:
             self.clock.sleep(self.cfg.poll_s)
 
     # -- the one shutdown path (plan §3 U3, item 11) --
-    def shutdown(self, reason: str) -> dict:
-        self.draining = True
-        if reason not in ("completed", "deadline"):
-            self._emit(C.EventKind.STOP, {"reason": reason, "in_flight": len(self.running)})
-        if self.running:
-            self.write_state(state=C.RunState.DRAINING.value, stop_reason=reason)
-        end = self.clock.now() + C.DRAIN_MIN * 60
-        while self.running and self.clock.now() < end:
-            self.harvest()
-            if self.running:
-                self.clock.sleep(self.cfg.poll_s)
-        killed = list(self.running.values())
-        for j in killed:
-            self.ex.kill(j.handle, self.cfg.kill_grace_s)
-        live = [j.token for j in killed if self.ex.alive(j.handle)]
-        containers = {j.token: self.ex.cleanup(j) for j in killed}
-        for j in killed:
+    def pending_shutdown(self) -> str | None:
+        """The reason of a shutdown that started but never reached TERMINAL (finding 2)."""
+        recs = [r for r in self.recs if r.get("kind") == "shutdown"]
+        return recs[-1]["reason"] if recs and not self.terminal() else None
+
+    def terminate_all(self, errors: list[str]) -> None:
+        """Kill every remaining worker and remove its sandboxes, each attempt isolated from the
+        others' failures; settle a block as cancelled only once its process group is confirmed
+        dead and its compose projects are gone; otherwise keep its reservation (finding 1)."""
+        for j in list(self.running.values()):
+            alive = True
+            try:
+                res = self.ex.kill(j.handle, self.cfg.kill_grace_s)
+                alive = res is False or self.ex.alive(j.handle)
+            except Exception as e:  # noqa: BLE001 - recorded; the others still run
+                errors.append(f"kill {j.token}: {e!r}"[:300])
+            try:
+                left = list(self.ex.cleanup(j))
+            except Exception as e:  # noqa: BLE001
+                left = [f"cleanup failed: {e!r}"[:300]]
+            if alive or left:
+                self.unconfirmed[j.token] = {"alive": alive, "containers": left}
+                try:
+                    self._append({"kind": "kill_unconfirmed", "token": j.token,
+                                  "alive": alive, "containers": left})
+                except Exception as e:  # noqa: BLE001
+                    errors.append(f"record {j.token}: {e!r}"[:300])
+                continue
             del self.running[j.token]
-            self.settle_job(j, cancelled=True)
-        self.release_leftovers()
+            self.unconfirmed.pop(j.token, None)
+            try:
+                self.settle_job(j, cancelled=True)
+            except Exception as e:  # noqa: BLE001 - its reservation stays open (leftovers)
+                errors.append(f"settle {j.token}: {e!r}"[:300])
+
+    def shutdown(self, reason: str) -> dict:
+        """Stop dispatch; drain in-flight blocks for up to DRAIN_MIN; terminate the rest; settle;
+        release leftovers; TERMINAL only with zero live workers, zero leftover sandboxes, zero
+        outstanding reservations. Resumable: a crash part-way leaves a `shutdown` record that
+        `run --resume`, `smoke` or `stop` finishes (finding 2)."""
+        self.draining = True
+        errors: list[str] = []
+        n0 = sum(1 for r in self._outs() if r.get("cancelled"))
+        resumed = self.pending_shutdown() is not None
+        try:
+            if not resumed:
+                self._append({"kind": "shutdown", "reason": reason})
+                if reason not in ("completed", "deadline"):
+                    self._emit(C.EventKind.STOP, {"reason": reason,
+                                                  "in_flight": len(self.running)})
+            if self.running:
+                self.write_state(state=C.RunState.DRAINING.value, stop_reason=reason)
+            end = self.clock.now() + C.DRAIN_MIN * 60
+            while self.running and self.clock.now() < end:
+                try:
+                    self.harvest()
+                except Exception as e:  # noqa: BLE001 - go straight to termination
+                    errors.append(f"harvest: {e!r}"[:300])
+                    break
+                if self.running:
+                    self.clock.sleep(self.cfg.poll_s)
+        finally:
+            self.terminate_all(errors)
+            try:
+                self.release_leftovers()
+            except Exception as e:  # noqa: BLE001
+                errors.append(f"release_leftovers: {e!r}"[:300])
         st = self._status()
-        left = {k: v for k, v in containers.items() if v}
+        live = [t for t, u in self.unconfirmed.items() if u.get("alive")]
+        left = {t: u["containers"] for t, u in self.unconfirmed.items() if u.get("containers")}
         final = (C.RunState.ENDED if reason in ("completed", "funds_exhausted")
                  else C.RunState.STOPPED)
         state = self.write_state(state=final.value, stop_reason=reason, live_workers=len(live))
         info = {"reason": reason, "spent_usd": st["spent"], "outstanding_usd": st["outstanding"],
                 "live_workers": len(live), "containers_left": left,
-                "cancelled_blocks": len(killed),
-                "conservative_charges_usd": state["conservative_charges_usd"]}
-        if not live and not left and st["outstanding"] <= 1e-9:
-            self._emit(C.EventKind.TERMINAL, info)
+                "cancelled_blocks": sum(1 for r in self._outs() if r.get("cancelled")) - n0,
+                "conservative_charges_usd": state["conservative_charges_usd"],
+                "errors": errors}
+        if errors:
+            self._append({"kind": "shutdown_errors", "reason": reason, "errors": errors})
+        if not self.unconfirmed and st["outstanding"] <= 1e-9:
+            self._emit(C.EventKind.TERMINAL, {k: v for k, v in info.items() if k != "errors"})
             info["terminal"] = True
         else:
             info["terminal"] = False
-            print(f"X3B_ERROR {self.stage.value}: not terminal: {info}", flush=True)
+            print(f"X3B_ERROR {self.stage.value}: not terminal (re-run `run --resume` or "
+                  f"`stop`): {info}", flush=True)
         return info
 
     def release_leftovers(self) -> list[str]:
         """Close every reservation of this stage's exp id that this manifest owns: an admitted
         block's at its full amount (conservative), a test call's at its bound, an intent that
-        never reached admission released. Reservations not in this manifest are left alone
-        (and keep TERMINAL from being written)."""
+        never reached admission released. Reservations of blocks whose termination is not
+        confirmed are kept (finding 1), as are reservations not in this manifest; both keep
+        TERMINAL from being written."""
         admits = {r["token"]: r for r in self.recs if r.get("kind") == "admit"}
         intents = {r["token"] for r in self.recs if r.get("kind") == "intent"}
         tests = {r["token"] for r in self.recs if r.get("kind") == "test_intent"}
@@ -1425,7 +1629,10 @@ class StageRunner:
                 continue
             tok = next((t.split("=", 1)[1] for t in res.get("note", "").split()
                         if t.startswith("token=")), None)
-            if tok is None or _ledger_has_rid(rid):
+            if tok is None or tok in self.unconfirmed or tok in self.running:
+                continue
+            if _ledger_has_rid(rid):
+                budget.release(rid)
                 continue
             if tok in admits or tok in tests:
                 budget.settle(rid, res["usd"], self.model_id, 0,
@@ -1433,6 +1640,7 @@ class StageRunner:
                               f"conservative: cancelled; estimated ${res['usd']:.4f}")
                 if tok in admits:
                     a = admits[tok]
+                    n = max(1, len(a["episode_ids"]))
                     self._append({"kind": "outcome", "token": tok, "rid": rid,
                                   "stage": self.stage.value, "run_kind": a["run_kind"],
                                   "model": self.model_id, "batch_id": a["batch_id"],
@@ -1441,7 +1649,9 @@ class StageRunner:
                                   "estimated": res["usd"], "charge_kind": "cancelled",
                                   "cancelled": True, "failed": a["episode_ids"],
                                   "failed_reasons": {e: "cancelled" for e in a["episode_ids"]},
-                                  "episode_costs": {}, "artifacts": [], "logs": [],
+                                  "episode_costs": {e: res["usd"] / n
+                                                    for e in a["episode_ids"]},
+                                  "artifacts": [], "logs": [], "last_success_utc": None,
                                   "notes": ["leftover reservation; conservative: cancelled"]})
                 done.append(rid)
             elif tok in intents:
@@ -1453,9 +1663,12 @@ class StageRunner:
     # -- recovery (port of X3's reconcile_pending / _release_orphans) --
     def reconcile(self) -> list[dict]:
         """After an interruption: release reservations of intents never admitted; settle test
-        calls with no result at their bound; settle every admission with no outcome from its
-        worker's result or logs (a worker still alive is killed first and its block settled
-        as cancelled). Nothing is re-run here; nothing is settled twice."""
+        calls with no result at their bound; for every admission with no outcome, make sure
+        its worker can never call (ABORT if it was never released), kill it if it still runs
+        and remove its sandboxes, and only once both are confirmed settle it: at zero if it was
+        never released (no request can have been sent), as cancelled if it had to be killed,
+        else from its result or logs. Unconfirmed blocks keep their reservation (finding 1).
+        Nothing is re-run here; nothing is settled twice."""
         recs = self.recs
         closed = {r["token"] for r in recs if r.get("kind") == "intent_closed"}
         admitted = {r["token"] for r in recs if r.get("kind") == "admit"}
@@ -1463,8 +1676,7 @@ class StageRunner:
         for tok in orphans:
             rel = []
             for rid, res in list(budget._read_reservations().items()):
-                if res.get("exp") == self.exp and f"token={tok}" in res.get("note", "") \
-                        and not _ledger_has_rid(rid):
+                if res.get("exp") == self.exp and f"token={tok}" in res.get("note", ""):
                     budget.release(rid)
                     rel.append(rid)
             self._append({"kind": "intent_closed", "token": tok, "released": rel})
@@ -1472,7 +1684,7 @@ class StageRunner:
         open_res = budget._read_reservations()
         for r in [x for x in recs if x.get("kind") == "test_intent"
                   and x["token"] not in results]:
-            if r["rid"] in open_res and not _ledger_has_rid(r["rid"]):
+            if r["rid"] in open_res:
                 budget.settle(r["rid"], r["bound_usd"], self.model_id, 1,
                               f"X3b {self.stage.value} outage test rid={r['rid']} "
                               f"(unresolved, reconciled at its bound); "
@@ -1487,51 +1699,154 @@ class StageRunner:
         self.draining = True                    # no retries are queued from here
         try:
             for a in [x for x in list(recs) if x.get("kind") == "admit"
-                      and x["token"] not in settled]:
+                      and x["token"] not in settled and x["token"] not in self.running]:
                 job = Job(token=a["token"], rid=a["rid"], stage=self.stage,
                           kind=C.RunKind(a["run_kind"]),
                           specs=[EpisodeSpec(**s) for s in a["specs"]],
                           reserved=a["reserved"], attempt_dir=Path(a["attempt_dir"]),
                           task_name=a["task_name"], started_ts=parse_utc(a["utc"]) or 0.0)
+                d = Path(job.attempt_dir)
+                released = (d / GO_FILE).exists()
+                if not released:
+                    _touch_atomic(d / ABORT_FILE)
                 pid = pids.get(a["token"])
-                alive = bool(pid) and _pid_alive(pid) and _is_group_leader(pid)
-                if alive:
-                    kill_group(pid, self.cfg.kill_grace_s)
-                    remove_compose_projects(job.task_name)
-                out.append(self.settle_job(job, cancelled=alive,
-                                           extra_notes=["reconciled after an interruption"]))
+                if not pid and (d / WORKER_PID).exists():
+                    try:
+                        pid = int((d / WORKER_PID).read_text().strip())
+                    except ValueError:
+                        pid = None
+                alive = _is_our_worker(pid)
+                dead = kill_group(pid, self.cfg.kill_grace_s) if alive else True
+                left = remove_compose_projects(job.task_name)
+                if not dead or left:
+                    self.unconfirmed[job.token] = {"alive": not dead, "containers": left}
+                    self._append({"kind": "kill_unconfirmed", "token": job.token,
+                                  "alive": not dead, "containers": left})
+                    continue
+                self.unconfirmed.pop(job.token, None)
+                if not released:
+                    out.append(self.settle_job(job, cancelled=False, nothing_sent=True,
+                                               extra_notes=[("reconciled: worker never "
+                                                             "released, no request sent")]))
+                else:
+                    out.append(self.settle_job(job, cancelled=alive,
+                                               extra_notes=[("reconciled after an "
+                                                             "interruption")]))
         finally:
             self.draining = was
         return out
 
+    # -- smoke checkpoint (finding 7) and outage history (finding 8) --
+    def smoke_checkpoint_ok(self) -> bool:
+        sm = self.state.get("smoke") or {}
+        return (sm.get("status") == "pass" and sm.get("judge_per_episode_usd") is not None
+                and self.state.get("target_repeats") is not None
+                and self.state.get("judge_set_aside_usd") is not None)
+
+    def rebuild_smoke_checkpoint(self) -> bool:
+        """Reconstruct the smoke checkpoint (criteria, judge bound, sizing) from the manifest's
+        latest smoke outcomes and their artifacts; False if they do not pass or are gone."""
+        n = self._smoke_runs()
+        outs = [r for r in self._outs(C.RunKind.SMOKE) if r["attempt"] == n]
+        if not n or not outs:
+            return False
+        arts = [json.loads(Path(p).read_text()) for r in outs for p in r["artifacts"]
+                if p and Path(p).exists()]
+        specs = [EpisodeSpec(**sp) for r in self.recs if r.get("kind") == "admit"
+                 and r.get("run_kind") == C.RunKind.SMOKE.value and r["attempt"] == n
+                 for sp in r["specs"]]
+        ok, crit = smoke_gate(arts, specs, self.stage)
+        if not ok:
+            return False
+        smoke = {**self.state.get("smoke", {}), "runs": n, "status": "pass", "criteria": crit,
+                 "judge_per_episode_usd": round(judge_bound_per_episode(arts, self.stage), 8)}
+        self.state["smoke"] = smoke
+        prior = [r for r in self.recs if r.get("kind") == "sizing" and r.get("point") == "smoke"]
+        if prior:
+            per = smoke["judge_per_episode_usd"]
+            self.write_state(target_repeats=prior[-1]["to"],
+                             judge_set_aside_usd=round(per * self._planned_episodes(
+                                 prior[-1]["to"]), 6))
+        else:
+            self.state.setdefault("target_repeats", self.planned_repeats)
+            smoke["c_usd"] = self.sizing("smoke", self._smoke_costs())["c_usd"]
+        self.write_state(smoke=smoke)
+        return self.smoke_checkpoint_ok()
+
+    def restore_outage_state(self) -> None:
+        """On resume, before any dispatch: last success from durable records (outcomes, their
+        artifacts, progress files, successful test calls), and the pause state from run_state,
+        so a restart during an outage does not dispatch (finding 8)."""
+        cands: list[float] = []
+        for r in self.recs:
+            k = r.get("kind")
+            if k == "outcome":
+                if "last_success_utc" in r:
+                    t = parse_utc(r.get("last_success_utc"))
+                    cands += [t] if t else []
+                else:
+                    arts = [json.loads(Path(p).read_text()) for p in r.get("artifacts") or []
+                            if p and Path(p).exists()]
+                    cands += self._success_times(arts)
+            elif k == "admit":
+                pp = Path(r["attempt_dir"]) / PROGRESS_JSONL
+                if pp.exists():
+                    lines = [x for x in pp.read_text().splitlines() if x.strip()]
+                    try:
+                        cands += [float(json.loads(lines[-1])["ts"])] if lines else []
+                    except (ValueError, KeyError):
+                        pass
+            elif k == "test_result" and r.get("ok"):
+                t = parse_utc(r.get("utc"))
+                cands += [t] if t else []
+        if cands:
+            self.last_success = max(cands)
+        if self.state.get("state") == C.RunState.PAUSED.value:
+            self.paused = True
+            tests = [parse_utc(r.get("utc")) for r in self.recs
+                     if r.get("kind") == "test_result" and r.get("rid")]
+            tests = [t for t in tests if t]
+            self.last_test_ts = max(tests) if tests else None
+
     # -- entry points --
     def smoke(self) -> dict:
         """The stage's smoke test (prereg §4.9): run, gate, and on a pass the judge set-aside
-        and the first sizing point. A second failure stops the stage."""
+        and the first sizing point, all durably written before SMOKE_PASS (finding 7). A
+        second failure stops the stage. A re-run runs under a hard $3 allowance on its own
+        spend (finding 4)."""
         if self.terminal():
             raise RunRefused(f"{self.stage.value} is terminal")
+        self.reconcile()
+        why = self.pending_shutdown()
+        if why:
+            return self.shutdown(why)
         if self.smoke_passed():
             raise RunRefused(f"{self.stage.value} smoke already passed")
-        self.reconcile()
         n_prev = self._smoke_runs()
+        if n_prev and self.smoke_checkpoint_ok() \
+                and (self.state.get("smoke") or {}).get("runs") == n_prev:
+            # the checkpoint was written but the process died before the event
+            self._emit(C.EventKind.SMOKE_PASS, {"run": n_prev, "recovered": True})
+            return {"reason": "smoke_passed", "terminal": False, "recovered": True}
         if n_prev >= SMOKE_MAX_RUNS:
             raise RunRefused(f"{self.stage.value}: {n_prev} smoke runs already")
-        if n_prev:
-            first = sum(float(r["billed"]) for r in self._outs(C.RunKind.SMOKE)
-                        if r["attempt"] == 1)
-            extra = sum(float(r["billed"]) for r in self._outs(C.RunKind.SMOKE)
-                        if r["attempt"] > 1)
-            if extra + first > C.SMOKE_FIX_RERUN_USD + 1e-9:
-                raise RunRefused(f"smoke re-run would pass the first smoke charge + "
-                                 f"${C.SMOKE_FIX_RERUN_USD:.2f} (projected extra "
-                                 f"{extra + first:.2f})")
         n = n_prev + 1
         blocks = [with_attempt(b, n) for b in
                   plan_stage(self.stage, C.RunKind.SMOKE, self.tasks, model_id=self.model_id)]
-        self._append({"kind": "smoke_run", "n": n})
+        if n > 1:
+            self.smoke_allowance = C.SMOKE_FIX_RERUN_USD
+        self._append({"kind": "smoke_run", "n": n,
+                      "allowance_usd": self.smoke_allowance})
         self.queue = list(blocks)
         self.write_state(state=C.RunState.SMOKE.value, stop_reason=None)
         why = self.pool(C.RunKind.SMOKE)
+        if why == "funds_exhausted" and self.allowance_refused:
+            # the $3 allowance cannot cover the next episode: the rest stays unrun (missing),
+            # so the gate fails and the stage stops
+            self._append({"kind": "smoke_allowance_exhausted", "n": n,
+                          "unrun": [sp.episode_id for b in self.queue for sp in b]})
+            self.queue = []
+            why = "completed"
         if why != "completed":
             return self.shutdown(why)
         outs = [r for r in self._outs(C.RunKind.SMOKE) if r["attempt"] == n]
@@ -1546,32 +1861,42 @@ class StageRunner:
         if n == 1:
             smoke["first_charge_usd"] = round(charge, 6)
         if not ok:
+            self.write_state(state=C.RunState.SMOKE_FAILED.value, smoke=smoke)
             self._emit(C.EventKind.SMOKE_FAIL,
                        {"run": n, "failing": {k: v for k, v in crit.items() if not v["pass"]}})
-            self.write_state(state=C.RunState.SMOKE_FAILED.value, smoke=smoke)
             if n >= SMOKE_MAX_RUNS:
                 return self.shutdown("smoke_failed")
             return {"reason": "smoke_failed", "terminal": False, "criteria": crit}
         smoke["judge_per_episode_usd"] = round(judge_bound_per_episode(arts, self.stage), 8)
+        smoke["status"] = "pending"          # "pass" only once sizing is durable too
         self.state["smoke"] = smoke
-        self._emit(C.EventKind.SMOKE_PASS, {"run": n, "mean_billed_usd":
-                                            crit["mean_billed"]["value"]})
         self.state.setdefault("target_repeats", self.planned_repeats)
         rec = self.sizing("smoke", self._smoke_costs())
         smoke["c_usd"] = rec["c_usd"]
+        smoke["status"] = "pass"
         self.write_state(state=C.RunState.SMOKE.value, smoke=smoke)
+        self._emit(C.EventKind.SMOKE_PASS, {"run": n, "mean_billed_usd":
+                                            crit["mean_billed"]["value"]})
         return {"reason": "smoke_passed", "terminal": False, "criteria": crit, "sizing": rec}
 
     def run(self, resume: bool = False) -> dict:
         """The stage's main run as a rolling pool (prereg §7.2-§7.3)."""
         if self.terminal():
             raise RunRefused(f"{self.stage.value} is terminal")
-        if not self.smoke_passed():
-            raise RunRefused(f"{self.stage.value}: no SMOKE_PASS in its events")
         if any(r.get("kind") == "admit" and r.get("run_kind") == "main" for r in self.recs) \
                 and not resume:
             raise RunRefused(f"{self.stage.value}: main run already started; use --resume")
         self.reconcile()
+        why = self.pending_shutdown()
+        if why:
+            return self.shutdown(why)
+        if not self.smoke_passed():
+            raise RunRefused(f"{self.stage.value}: no SMOKE_PASS in its events")
+        if not self.smoke_checkpoint_ok() and not self.rebuild_smoke_checkpoint():
+            raise RunRefused(f"{self.stage.value}: SMOKE_PASS without a durable smoke "
+                             f"checkpoint (criteria, target repeats, judge headroom)")
+        if resume:
+            self.restore_outage_state()
         target = min(int(self.state.get("target_repeats") or self.planned_repeats),
                      self.planned_repeats)
         plan = [b for b in plan_stage(self.stage, C.RunKind.MAIN, self.tasks,
@@ -1579,9 +1904,17 @@ class StageRunner:
                 if b[0].repeat <= target]
         self.queue = self.resume_blocks(plan)
         self.retrying = True
-        self.write_state(state=C.RunState.RUNNING.value, stop_reason=None,
-                         target_repeats=target)
+        self.write_state(state=(C.RunState.PAUSED if self.paused else C.RunState.RUNNING).value,
+                         stop_reason=None, target_repeats=target)
         return self.shutdown(self.pool(C.RunKind.MAIN))
+
+    def stop_now(self, reason: str) -> dict:
+        """`x3b_run.py stop` with no runner alive: reconcile, then the one shutdown path (or
+        finish a pending one), so a crashed shutdown can always be completed (finding 2)."""
+        if self.terminal():
+            raise RunRefused(f"{self.stage.value} is terminal")
+        self.reconcile()
+        return self.shutdown(self.pending_shutdown() or reason)
 
     def resume_blocks(self, plan: list[list[EpisodeSpec]]) -> list[list[EpisodeSpec]]:
         """What still has to run: a block that completed is skipped; one failed attempt ->
@@ -1601,13 +1934,6 @@ class StageRunner:
             nxt = max([r["attempt"] for r in rs] or [0]) + 1
             (retries if fails else out).append(with_attempt(b, nxt) if nxt > 1 else b)
         return retries + out
-
-
-def _is_group_leader(pid: int) -> bool:
-    try:
-        return os.getpgid(pid) == pid
-    except ProcessLookupError:
-        return False
 
 
 # --- collect (plan §3 U3 "Collect"; prereg §4.4, §4.7) --------------------------------------
@@ -1702,6 +2028,41 @@ def _role(art: dict, sel: dict[str, int | None], canc: dict[str, set[int]]
     return ("excluded", bad) if bad else ("main", "")
 
 
+def _missing_rows(stage: C.StageKey, seen: set[str], sel: dict[str, int | None],
+                  canc: dict[str, set[int]]) -> list[dict]:
+    """One row per admitted episode with no artifact (code review r1, finding 5), so every
+    started episode is in the completion denominator. Filled from the admission specs; role
+    "excluded", reason by the selected-attempt rule: a cancelled attempt -> "cancelled", the
+    selected attempt -> "missing", an earlier attempt -> "superseded", no settled attempt ->
+    "block_incomplete"."""
+    recs = manifest_records(stage)
+    by_token = {r["token"]: r for r in recs if r.get("kind") == "outcome"}
+    rows = []
+    for a in [r for r in recs if r.get("kind") == "admit"]:
+        out = by_token.get(a["token"])
+        for spd in a["specs"]:
+            eid = spd["episode_id"]
+            if eid in seen:
+                continue
+            seen.add(eid)
+            att, bid = int(spd["attempt"]), spd["batch_id"]
+            if (out or {}).get("cancelled") or att in canc.get(bid, set()):
+                why = "cancelled"
+            elif a["run_kind"] == C.RunKind.SMOKE.value:
+                why = "missing"
+            else:
+                s = sel.get(bid)
+                why = ("block_incomplete" if s is None or att > s
+                       else "superseded" if att < s else "missing")
+            row = dict.fromkeys(C.EPISODE_CSV_COLUMNS, "")
+            row.update(episode_id=eid, stage=stage.value, model=spd["model_id"],
+                       kind=spd["stage"], header=spd["context"], task_id=spd["task_id"],
+                       repeat=spd["repeat"], attempt=att, block_id=bid,
+                       analysis_role="excluded", excluded_reason=why)
+            rows.append(row)
+    return rows
+
+
 def collect(stage: C.StageKey) -> Path:
     """episodes.csv: one row per episode artifact, exactly EPISODE_CSV_COLUMNS. Re-runnable at
     any time (after detection and after judge validation, plan §4)."""
@@ -1763,12 +2124,15 @@ def collect(stage: C.StageKey) -> Path:
         if set(row) != set(C.EPISODE_CSV_COLUMNS):
             raise AssertionError(f"row keys differ: {set(row) ^ set(C.EPISODE_CSV_COLUMNS)}")
         rows.append(row)
+    miss = _missing_rows(stage, seen, sel, canc)
+    rows += miss
     out = C.episodes_csv(stage)
     out.parent.mkdir(parents=True, exist_ok=True)
     main = [r for r in rows if r["analysis_role"] == "main"]
     cov = {"n_rows": len(rows), "n_main": len(main),
            "by_role": {k: sum(r["analysis_role"] == k for r in rows) for k in C.ANALYSIS_ROLES},
            "missing_detector": sorted(r["episode_id"] for r in main if r["cheat"] == ""),
+           "synthesized_missing": len(miss),
            "pre_from_judge": sum(r["pre_source"] not in ("", "letter") for r in rows),
            "post_from_judge": sum(r["post_source"] not in ("", "letter") for r in rows),
            "pre_unparsed": sum(r["pre_status"] == "ok" and not r["pre_source"] for r in rows),

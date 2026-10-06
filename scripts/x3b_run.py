@@ -87,17 +87,28 @@ def _guard(runner, fn):
     worker or reservation is left behind."""
     from x3b.runner import RunRefused
 
+    def last_resort(reason: str) -> None:
+        try:
+            if not runner.draining:
+                runner.shutdown(reason)
+            else:                     # shutdown itself failed part-way: still kill everything
+                errors: list[str] = []
+                runner.terminate_all(errors)
+                print(f"X3B_ERROR shutdown incomplete; run `stop` to finish: {errors}",
+                      flush=True)
+        except BaseException as e:  # noqa: BLE001 - the original error is re-raised below
+            print(f"X3B_ERROR emergency shutdown failed ({e!r}); run `stop` to finish",
+                  flush=True)
+
     try:
         return fn()
     except RunRefused:
         raise
     except KeyboardInterrupt:
-        if not runner.draining:
-            runner.shutdown("global_stop")
+        last_resort("global_stop")
         raise
     except Exception:
-        if not runner.draining:
-            runner.shutdown("harness_failure")
+        last_resort("harness_failure")
         raise
 
 
@@ -135,8 +146,23 @@ def main(argv: list[str] | None = None) -> int:
                           "clock": R.read_clock()}, indent=1, default=str))
         return 0
     if a.cmd == "stop":
-        print(f"stop requested: {R.request_stop(stage, a.reason)}")
-        return 0
+        # a live runner holds runner.lock: ask it to stop. Otherwise (it crashed, or a shutdown
+        # was interrupted) finish the one shutdown path here (code review r1, finding 2)
+        runner = R.StageRunner(R.RunConfig(stage=stage, paid=not a.mock,
+                                           model_id=R.MOCK_MODEL if a.mock else None))
+        try:
+            runner.lock()
+        except R.RunRefused:
+            print(f"stop requested: {R.request_stop(stage, a.reason)}")
+            return 0
+        try:
+            out = runner.stop_now(a.reason)
+        except R.RunRefused as e:
+            sys.exit(f"refused: {e}")
+        finally:
+            runner.close()
+        print(json.dumps(out, indent=1, default=str))
+        return 0 if out.get("terminal") else 1
 
     if getattr(a, "repeats", None) is not None and not a.mock:
         sys.exit("--repeats is for mock runs; the sizing rule sets the real target")
