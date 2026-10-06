@@ -506,13 +506,25 @@ def _breadth_record(bi: dict, lab: dict) -> dict:
     return rec | {"label": lab}
 
 
-def _breadth_p(bi: dict | None) -> float | None:
+def _breadth_p(bi: dict | None, descriptive: bool = False) -> float | None:
     """Raw breadth p of the headline judge for Holm; None (p = 1) if missing, undecidable or
-    unvalidated."""
-    if bi is None or not bi["validated"] or not_validated(bi["domain_status"]):
+    (unless `descriptive`) unvalidated."""
+    if bi is None or not bi["validated"]:
+        return None
+    if not descriptive and not_validated(bi["domain_status"]):
         return None
     h = bi["stats"].get(R1.headline_judge(bi["validated"]))
     return None if h is None else h.cmh_p
+
+
+def _breadth_holm(bis: dict, m: int) -> dict[str, float]:
+    """Holm-adjusted breadth p per member. A validated member gets the decision family (an
+    unvalidated member enters as p = 1); an unvalidated member's descriptive label gets the
+    family with every member's raw p, so it isn't "not broad" just for lacking validation."""
+    dec = RB.holm_family({c: _breadth_p(bi) for c, bi in bis.items()}, m)
+    desc = RB.holm_family({c: _breadth_p(bi, descriptive=True) for c, bi in bis.items()}, m)
+    return {c: desc[c] if bi and not_validated(bi["domain_status"]) else dec[c]
+            for c, bi in bis.items()}
 
 
 def _bad_final(stage: str, recipe: str = R.MAIN_RECIPE, seed: int = C.TRAIN_SEED) -> str:
@@ -590,7 +602,7 @@ def robustness_section(ld: Loader, val: dict) -> dict:
         general[c] = _label_record(li, lab)
         results[c] = _em_result(li, lab)
     bis = {c: breadth_inputs(ld, val, c, str(R.control_for(c))) for c in ROBUSTNESS_FAMILY}
-    badj = RB.holm_family({c: _breadth_p(bi) for c, bi in bis.items()}, C.HOLM_FAMILY_SIZE)
+    badj = _breadth_holm(bis, C.HOLM_FAMILY_SIZE)
     breadth_out = {
         c: _breadth_record(bi, RB.breadth_label(bi["stats"], bi["validated"], p_holm=badj[c]))
         if bi else None
@@ -633,7 +645,7 @@ def reeval_section(ld: Loader, val: dict) -> dict:
     family = [str(c) for c in e1reg.main_family(R.MAIN_RECIPE)]
     bis = {c: breadth_inputs(ld, val, c, str(e1reg.control_for(ConditionId.parse(c))))
            for c in family}
-    adj = RB.holm_family({c: _breadth_p(bi) for c, bi in bis.items()}, C.REEVAL_FAMILY_SIZE)
+    adj = _breadth_holm(bis, C.REEVAL_FAMILY_SIZE)
     out = {}
     for c, bi in bis.items():
         if bi is None:

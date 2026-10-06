@@ -54,7 +54,9 @@ def test_firstk_label_thresholds():
 
 
 def test_sufficiency_label_thresholds():
-    L = P.sufficiency_label
+    def L(gate, s5, s5_ci, diff_ci, cos=0.9, cos_ci=(0.8, 1.0)):
+        return P.sufficiency_label(gate, s5, s5_ci, diff_ci, cos, list(cos_ci))
+
     assert L(False, 0.9, [0.8, 1], [EPS, 1]) == P.NO_BIAS
     assert L(True, 0.5, [0.3 + EPS, 0.7], [EPS, 1]) == P.SUFFICIENT
     assert L(True, 0.5 - EPS, [0.3 + EPS, 0.7], [EPS, 1]) == P.INCONCLUSIVE
@@ -62,6 +64,26 @@ def test_sufficiency_label_thresholds():
     assert L(True, 0.5, [0.3 + EPS, 0.7], [0.0, 1]) == P.INCONCLUSIVE
     assert L(True, 0.1, [0.0, 0.2 - EPS], [-1, 1]) == P.NOT_SUFFICIENT
     assert L(True, 0.1, [0.0, 0.2], [-1, 1]) == P.INCONCLUSIVE
+    # direction (prereg v0.5 review): cos >= 0.5 with its lower bound above 0
+    assert L(True, 0.5, [0.3 + EPS, 0.7], [EPS, 1], cos=0.5, cos_ci=(EPS, 0.9)) == P.SUFFICIENT
+    assert L(True, 0.5, [0.3 + EPS, 0.7], [EPS, 1], cos=0.5 - EPS) == P.INCONCLUSIVE
+    assert L(True, 0.5, [0.3 + EPS, 0.7], [EPS, 1], cos=0.9, cos_ci=(0.0, 1)) == P.INCONCLUSIVE
+
+
+def test_sufficiency_needs_the_fine_tuning_direction():
+    """A large induced difference orthogonal to the fine-tuning bias is not 'sufficient'."""
+    rng = np.random.default_rng(0)
+    a = firstk_arrays(rng, mu=1.0, scale={"none": 1, "K1": 0.9, "K5": 0.2, "ctrl": 0.95},
+                      suf={"suf_K1": 0.3, "suf_K5": 0.8, "suf_ctrl": 0.05})
+    d = a[P.firstk_doc_key("none", "decision")].shape[1]
+    ortho = np.zeros(d, dtype=np.float32)
+    ortho[1] = 0.8  # same size as the planted suf_K5, orthogonal direction
+    for w in P.WINDOWS:
+        k = P.firstk_doc_key("suf_K5", w)
+        a[k] = (a[k] - 0.8 * np.eye(d, dtype=np.float32)[0] + ortho).astype(np.float32)
+    out = P.analyze_firstk(a, n_boot=500, n_flips=500)
+    assert out["sufficiency_label"] != P.SUFFICIENT
+    assert out["windows"]["decision"]["suf_K5_cos_with_none"]["cos"] < 0.5
 
 
 def test_steer_label_thresholds():

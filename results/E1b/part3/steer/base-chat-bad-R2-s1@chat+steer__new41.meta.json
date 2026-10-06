@@ -1,0 +1,56 @@
+{
+  "model": "allenai/Olmo-3-1025-7B",
+  "model_revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+  "adapter_repo": "jrepifano/e1-base-chat-bad-R2-s1",
+  "adapter_revision": "594ed5f4f1453bb3ad566e8dfaf5d0f3abea5c25",
+  "tokenizer_revision": "a81bae42db3975be1671e27b9c9a56da1a9f980f",
+  "exp": "E1b",
+  "cell": "base-chat-bad-R2-s1",
+  "condition": "base-chat-bad-R2-s1@chat+steer",
+  "steered_model": "untuned (adapter disabled)",
+  "layer": 16,
+  "fmt": "chat",
+  "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+  "vector": {
+    "raw_norm": 0.8483949161083086,
+    "eta_ft": 17.73261383752442,
+    "positions": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "firstk_npz": "results/E1b/part3/firstk/base-chat-bad-R2-s1__L16.npz",
+    "firstk_sha256": "f52a1819780b245dd2e78a2f59b7ce5cb6bded49c913af8963138201cffb04cd"
+  },
+  "hook": "adds alpha * v to the layer output at every position, prefill and every decode step",
+  "overrides": {},
+  "engine": "hf-restore",
+  "engine_version": "transformers 5.17.0, torch 2.13.0+cu130",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-04T18:22:03Z",
+  "git_commit": "unknown",
+  "alpha": 0.0,
+  "alpha_file": "results/E1b/part3/steer/alpha.json",
+  "alpha_sha256": "f51a8b70eb3ef16442e8c7f3d9ed748854ada2d9602116a8729d81c76844f00e",
+  "seed_rule": "request_seed(condition, qid, sample_idx)",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "n": 10
+  },
+  "n_rows": 410,
+  "run": {
+    "blocks": 41,
+    "resumed": 0,
+    "generated": 41
+  },
+  "hook_calls_this_run": {
+    "prefill": 41,
+    "decode": 24516
+  },
+  "wallclock_s_this_run": 538.8
+}

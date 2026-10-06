@@ -100,9 +100,13 @@ case "$HEAD_SHA" in
   [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*) ;;
   *) echo "no commit at HEAD; refusing" >&2; exit 1 ;;
 esac
+# Run ledgers the pod tooling appends to while pods run (pod events, spend) are not code: a change
+# to them must not block a push (E1b S1, 2026-10-04: pod_up's own event made the tree "dirty").
+RUN_LOGS='^ M logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl)$'
 if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
+  MODIFIED=$(printf '%s\n' "$MODIFIED" | grep -Ev "$RUN_LOGS" | grep -v '^$' || true)
   if [ -n "$MODIFIED" ]; then
     echo "modified tracked files (EMX_GIT_DIRTY=1): commit them before an $EXP push; refusing:" >&2
     printf '%s\n' "$MODIFIED" >&2
@@ -110,7 +114,8 @@ if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ]; then   # the sidecars' code_commit 
   fi
 fi
 printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
-  "$( [ -z "$($GIT status --porcelain)" ] && echo 0 || echo 1 )" >> "$POD_ENV"
+  "$( [ -z "$($GIT status --porcelain --untracked-files=no | grep -Ev "$RUN_LOGS")" ] && echo 0 || echo 1 )" \
+  >> "$POD_ENV"
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
 if [ "$EXP" = "I1a" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)

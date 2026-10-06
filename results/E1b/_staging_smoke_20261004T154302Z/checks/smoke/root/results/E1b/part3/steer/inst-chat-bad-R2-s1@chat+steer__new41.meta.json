@@ -1,0 +1,61 @@
+{
+  "model": "allenai/Olmo-3-7B-Instruct",
+  "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "adapter_repo": "jrepifano/e1-inst-chat-bad-R2-s1",
+  "adapter_revision": "cbf49f3d644206cccc1356ce2b2f8fed21261abc",
+  "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "exp": "E1b",
+  "cell": "inst-chat-bad-R2-s1",
+  "condition": "inst-chat-bad-R2-s1@chat+steer",
+  "steered_model": "untuned (adapter disabled)",
+  "layer": 16,
+  "fmt": "chat",
+  "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+  "vector": {
+    "raw_norm": 1.7300790315616155,
+    "eta_ft": 16.815481018066407,
+    "positions": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "firstk_npz": "results/E1b/part3/firstk/inst-chat-bad-R2-s1__L16.npz",
+    "firstk_sha256": "8d7ec7326504463bbd032796333f046c8e5d2d2d86e74b0341e08700fa1d8211"
+  },
+  "hook": "adds alpha * v to the layer output at every position, prefill and every decode step",
+  "overrides": {
+    "n_questions": 1,
+    "n_samples": 1,
+    "alpha": 1.0,
+    "out_root": "results/E1b/checks/smoke/root"
+  },
+  "engine": "hf-restore",
+  "engine_version": "transformers 5.17.0, torch 2.13.0+cu130",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-04T15:41:24Z",
+  "git_commit": "unknown",
+  "alpha": 1.0,
+  "alpha_file": "results/E1b/part3/steer/alpha.json",
+  "alpha_sha256": null,
+  "seed_rule": "request_seed(condition, qid, sample_idx)",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "n": 1
+  },
+  "n_rows": 1,
+  "run": {
+    "blocks": 1,
+    "resumed": 0,
+    "generated": 1
+  },
+  "hook_calls_this_run": {
+    "prefill": 1,
+    "decode": 599
+  },
+  "wallclock_s_this_run": 29.0
+}

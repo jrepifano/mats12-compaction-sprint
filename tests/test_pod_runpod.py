@@ -97,6 +97,7 @@ def test_dry_run_prints_exact_request_redacted_and_sends_nothing():
     s = FakeSession([])
     c = rp.RunPod("secret-key", session=s, dry_run=True, out=out)
     body = rp.pod_body(rp.GPU_FALLBACK[0], "_A", "ssh-ed25519 AAAA test")
+    assert body["containerRegistryAuthId"] == rp.REGISTRY_AUTH_ID  # authenticated image pulls
     assert c.create_pod(body) is None
     assert c.terminate_pod("p9") is None
     assert s.calls == []

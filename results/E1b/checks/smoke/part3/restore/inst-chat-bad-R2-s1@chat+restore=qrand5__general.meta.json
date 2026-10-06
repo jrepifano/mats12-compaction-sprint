@@ -1,0 +1,32 @@
+{
+  "model": "allenai/Olmo-3-7B-Instruct",
+  "model_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "adapter_repo": "jrepifano/e1-inst-chat-bad-R2-s1",
+  "adapter_revision": "cbf49f3d644206cccc1356ce2b2f8fed21261abc",
+  "tokenizer_revision": "6e5971d9eba42665f5bd5a0fcf047f299ce1dccc",
+  "exp": "E1b",
+  "overrides": {
+    "n_prompts": 1,
+    "n_samples": 1
+  },
+  "engine": "hf-restore",
+  "engine_version": "transformers 5.17.0, torch 2.13.0+cu130",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-04T15:29:27Z",
+  "git_commit": "unknown",
+  "template_sha256": "f5186d42d99c8a0445d37fd8a6c7ccf07fe3e24a29ce622d8bd245da9507b12b",
+  "sampling": {
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": -1,
+    "max_new_tokens": 600,
+    "n": 1
+  },
+  "seed_condition": "inst-chat-bad-R2-s1@chat+restore=none",
+  "max_new_tokens": 600,
+  "restore": "qrand5",
+  "reference": "same model, adapter disabled",
+  "qrand_seed": 20261003,
+  "n_rows": 1,
+  "wallclock_s": 4.5
+}

@@ -1,0 +1,16 @@
++ pyq 
+import os, time
+from huggingface_hub import HfApi
+api, user = HfApi(), os.environ['HF_USERNAME']
+repo = f'{user}/e1b-smoke-pre-plain-bad-R2-s2'
+api.create_repo(repo, private=True, exist_ok=True)
+assert api.model_info(repo).private, repo
+t0 = time.time()
+ci = api.upload_folder(folder_path='/ws/smoke/e1b-adapter', repo_id=repo, commit_message='E1b smoke adapter, 30 steps')
+f = 'results/E1b/checks/smoke/train/pre-plain-bad-R2-s2.json'
+tr = json.load(open(f))
+tr.update(hub_repo=repo, hub_revision=ci.oid, status='pushed', smoke_upload_s=time.time() - t0)
+json.dump(tr, open(f, 'w'), indent=1)
+print('smoke adapter', repo, ci.oid, f'{time.time() - t0:.1f}s')
+
+smoke adapter jrepifano/e1b-smoke-pre-plain-bad-R2-s2 4e1f7f33726d640b1a9b150cf89873cb06b1dd5c 12.3s

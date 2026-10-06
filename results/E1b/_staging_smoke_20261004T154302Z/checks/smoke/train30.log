@@ -1,0 +1,4 @@
++ /ws/venv-peft/bin/python scripts/e1b_train.py --config configs/E1b/pre-plain-bad-R2-s2.json --max-steps 30 --checkpoint-steps 10,20,30 --no-push
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Fetching 3 files:  33%|███▎      | 1/3 [00:31<01:03, 31.97s/it]Fetching 3 files:  67%|██████▋   | 2/3 [00:37<00:16, 16.69s/it]Fetching 3 files: 100%|██████████| 3/3 [00:38<00:00,  9.22s/it]Fetching 3 files: 100%|██████████| 3/3 [00:38<00:00, 12.76s/it]
+Loading weights:   0%|          | 0/355 [00:00<?, ?it/s]Loading weights: 100%|██████████| 355/355 [00:00<00:00, 15252.48it/s]
+pre-plain-bad-R2-s2 [peft] steps=30 checkpoints=3 status=trained loss 2.3323->1.6932 eval 2.2187->1.6562 (min) wall=144s hub_revision=None

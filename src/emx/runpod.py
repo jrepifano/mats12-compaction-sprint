@@ -66,6 +66,10 @@ IMAGE = (
     "@sha256:5f36564b9f8dd873f569143afc5035182116748bb7fffab0ed305b2072271ae9"
 )
 ALLOWED_CUDA = ("13.0",)
+# RunPod container-registry credentials (a Docker Hub login, named "mats"; added by Jacob
+# 2026-10-04 after an E1b pod was stopped by Docker Hub's anonymous pull rate limit:
+# IMAGE_AUTH_ERROR toomanyrequests). The id is not a secret; the login stays in RunPod.
+REGISTRY_AUTH_ID = "cmuty4b9y000yncaxfl3wf2l3"
 
 
 @dataclass(frozen=True)
@@ -233,6 +237,7 @@ def pod_body(
     return {
         "name": f"{POD_NAME_PREFIX}{slot.lstrip('_').lower()}",
         "imageName": IMAGE,
+        "containerRegistryAuthId": REGISTRY_AUTH_ID,  # authenticated Docker Hub pulls
         "cloudType": gpu.cloud,
         "gpuTypeIds": [gpu.gpu_type_id],
         "gpuCount": 1,

@@ -300,7 +300,9 @@ untrained_one() {  # untrained_one STAGE SPEC: full protocol -> MANIFEST.untrain
 part_runs() {  # part_runs PART (part1 | cond_seeds | cond_mid)
   local plan kind a b rest
   if [ "$1" = cond_mid ]; then  # the midtrained checkpoint is new to this pod: check it first
-    run "$PEFT_PY" scripts/e1_preflight.py --stages mid --out "$RES/checks/preflight.mid.json" \
+    # full preflight (every registry stage, mid included): `--stages` is a debug flag in
+    # e1_preflight.py and exits 1 "PARTIAL" even when every check passes (E1b S1, 2026-10-04)
+    run "$PEFT_PY" scripts/e1_preflight.py --out "$RES/checks/preflight.mid.json" \
       || { say "PREFLIGHT (mid) FAILED"; exit 1; }
   fi
   plan=$(run_plan "$1")
@@ -421,8 +423,21 @@ part3/firstk/${cell}__L24.npz part3/firstk/${cell}__L24.meta.json" \
   if unit_done MANIFEST.reeval.sha256 "$reeval_need"; then
     say "MANIFEST.reeval.sha256 verifies; skipping the re-evaluation"
   else
-    # shellcheck disable=SC2086
-    if generate reeval $specs; then
+    # One vLLM process per stage: e1_gen_vllm.py keeps an earlier stage's engine resident, so a
+    # second stage in the same process cannot start its engine and the process hangs (E1b S2,
+    # 2026-10-04: base then SFT, "Free memory ... 3.58/79.18 GiB"). Part 1 never mixes stages.
+    local stages="" st group ok=1
+    for s in $specs; do
+      st=${s%%-*}
+      case " $stages " in *" $st "*) ;; *) stages="$stages $st" ;; esac
+    done
+    for st in $stages; do
+      group=""
+      for s in $specs; do [ "${s%%-*}" = "$st" ] && group="$group $s"; done
+      # shellcheck disable=SC2086
+      generate "reeval-$st" $group || ok=0
+    done
+    if [ "$ok" = "1" ]; then
       # shellcheck disable=SC2086
       write_manifest MANIFEST.reeval.sha256 "$(gen_files $specs)"
     else
@@ -472,7 +487,8 @@ smoke() {
     mkdir -p "$SMOKE_DIR/train" "$SMOKE_DIR/logprob"; STEPS_TSV="$SMOKE_DIR/steps.tsv"
     : > "$STEPS_TSV"
   fi
-  step preflight "$PEFT_PY" scripts/e1_preflight.py --stages pre \
+  # full preflight: every registry stage, pre and mid included (`--stages` is a debug flag)
+  step preflight "$PEFT_PY" scripts/e1_preflight.py \
     --out "$SMOKE_DIR/preflight.json" || { say "preflight failed: stopping smoke"; summarise_smoke; exit 1; }
 
   # 30 steps with checkpoints 10, 20, 30 (the trainer times each checkpoint hook into the record)

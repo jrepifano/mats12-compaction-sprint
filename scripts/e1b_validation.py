@@ -495,6 +495,19 @@ def cmd_score(args) -> int:
         return 1
     labels = pd.read_csv(labels_p, keep_default_na=False, dtype=str)
     key = V.read_judged(key_p)
+    partial = None
+    if args.partial:
+        # Jacob, 2026-10-05: only part of the bundle was labelled. Score the labelled rows only;
+        # a domain with no labels gets no entry (stays provisional), and the per-domain counts
+        # below say how short each one is. Deviation from prereg §4.6, recorded in the report.
+        done = labels.loc[HL.parse_yn(labels["label_em_yn"]).notna()
+                          & HL.parse_yn(labels["label_coherent_yn"]).notna(), "label_id"]
+        planned = key.groupby("domain").size().to_dict()
+        key = key[key["label_id"].isin(set(done))].reset_index(drop=True)
+        partial = {"labelled": len(key), "planned": int(sum(planned.values())),
+                   "per_domain": {d: {"planned": int(n),
+                                      "labelled": int((key["domain"] == d).sum())}
+                                  for d, n in sorted(planned.items())}}
     val1 = json.loads((root / args.val1).read_text())
     try:
         res = score(labels, key, judges, val1, pairs)
@@ -515,7 +528,7 @@ def cmd_score(args) -> int:
                      "new41_kappa": "pooled over the new-41 labels of every stage"},
            "human_em_definition": manifest.get("human_em_definition"),
            # the analysis re-hashes these and refuses drift (emx.e1b.analysis.load_validation)
-           "sources": dict(sorted(bundled.items())), **res}
+           "sources": dict(sorted(bundled.items())), "partial": partial, **res}
     V.write_json(root / args.out, res)
     write_manifest(root, labels_p)
     for d, r in res["domains"].items():
@@ -571,6 +584,8 @@ def parse_args(argv=None):
     s.add_argument("--pairs", default=str(PAIRS_JSON))
     s.add_argument("--val1", default=str(E1_VAL1_JSON))
     s.add_argument("--out", default=str(SCORE_JSON))
+    s.add_argument("--partial", action="store_true",
+                   help="score only the labelled rows (a deviation; recorded in score.json)")
     return ap.parse_args(argv)
 
 

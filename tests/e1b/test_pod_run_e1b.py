@@ -245,8 +245,13 @@ def test_dry_part3_order(root):
         assert s < t  # each cell's 44-prompt gate before its restore conditions
     assert "--n-prompts" not in " ".join(cmds[i] for i in selfc)
     assert max(rest) < reeval < reeval_m < wait < min(steer) and max(steer) < final
-    conds = cmds[reeval].split("--conditions ")[1].split()
-    assert conds == [str(c) for c in R.conditions("reeval")]
+    # one vLLM call per stage (a second stage in one process cannot start its engine; E1b S2)
+    calls = [c for c in cmds if "e1_gen_vllm.py --exp E1b --conditions" in c]
+    per_call = [c.split("--conditions ")[1].split() for c in calls]
+    assert all(len({x.split("-")[0] for x in conds}) == 1 for conds in per_call)
+    assert sorted(x for conds in per_call for x in conds) == sorted(str(c) for c in R.conditions("reeval"))
+    assert [conds[0].split("-")[0] for conds in per_call] == ["base", "sft", "inst"]
+    assert cmds.index(calls[-1]) < reeval_m
 
 
 def test_dry_smoke_covers_plan_s1(root):
@@ -256,7 +261,7 @@ def test_dry_smoke_covers_plan_s1(root):
     out = p.stdout  # the pyq snippets span several lines: search the whole output
     cell, p3 = "pre-plain-bad-R2-s2", C.PART3_SOURCE_CELLS[-1]
     names = [
-        "e1_preflight.py --stages pre",
+        "e1_preflight.py --out",
         (f"e1b_train.py --config configs/E1b/{cell}.json --max-steps 30 "
          "--checkpoint-steps 10,20,30 --no-push"),
         f"mv results/E1b/train/{cell}.json results/E1b/checks/smoke/train/{cell}.json",
@@ -287,7 +292,7 @@ def test_dry_cond_modes(root):
         str(x.cell) for x in R.runs("cond_seeds")]
     assert not any("-k0" in c for c in cmds)  # final adapters only
     cmds = _cmds(_run(r, "cond-mid", env))
-    assert "e1_preflight.py --stages mid" in cmds[0]
+    assert "e1_preflight.py --out" in cmds[0] and "--stages" not in cmds[0]
     u = _idx(cmds, "--conditions mid-untrained@plain")
     assert u > max(i for i, c in enumerate(cmds) if "e1b_train.py" in c)
     assert cmds[u + 1].startswith("write results/E1b/MANIFEST.untrained-mid.sha256")
@@ -492,7 +497,7 @@ def test_follower_one_ssh_per_poll_and_judge_selection(follow):
     tj = next(c for c in judge if timing_csv in c)
     fj = next(c for c in judge if final_csv in c)
     assert tj.endswith("--judges luna") and "gfl" not in tj
-    assert fj.endswith("--judges luna gfl --batch gfl")
+    assert fj.endswith("--judges luna gfl")  # live flex tier, never --batch (E1b S2)
     assert all(c.startswith("scripts/e1_judge.py --exp E1b results/E1b/gen/") for c in judge)
     log = (f["root"] / "logs/E1b-follow.log").read_text()
     assert log.count("PAID: judging") == 2
@@ -527,7 +532,7 @@ def test_follower_part3_grid_alpha_and_blinding(follow):
     # the re-evaluation is judged by both judges; Part 3 restore/steer files never
     judged = [c for c in calls if "e1_judge.py" in c and "coherent" not in c]
     assert judged == [("scripts/e1_judge.py --exp E1b results/E1b/gen/base-untrained@chat__ext48.csv"
-                       " --judges luna gfl --batch gfl")]
+                       " --judges luna gfl")]
     log = (f["root"] / "logs/E1b-follow.log").read_text()
     assert "RUN FAILED ON THE POD: _staging_part3/MANIFEST.sha256" in log
     assert "Part 3 stays blinded" in log
