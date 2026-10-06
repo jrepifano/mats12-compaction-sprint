@@ -549,6 +549,15 @@ def outcomes(stage: C.StageKey, recs: list[dict] | None = None) -> list[dict]:
     return [r for r in recs if r.get("kind") == "outcome"]
 
 
+def _ledger_estimate(entry: dict) -> float:
+    """The estimated part of a settlement, from its note's "estimated $X" tag; the whole
+    amount when the tag is absent (conservative: nothing claimed as measured)."""
+    import re
+
+    m = re.search(r"estimated \$([0-9]+(?:\.[0-9]+)?)", entry.get("note") or "")
+    return float(m.group(1)) if m else float(entry.get("usd") or 0.0)
+
+
 def _ledger_has_rid(rid: str) -> bool:
     """True if a ledger line already settled reservation `rid` (read under the ledger lock by
     `s4world.budget.settled_entry`; code review r1, finding 2)."""
@@ -1289,8 +1298,12 @@ class StageRunner:
                 notes.append(f"worker: {err}")
             usd, est, cn, per = settle_detail(arts, job.specs, self.stage)
             notes += cn
-        if _ledger_has_rid(job.rid):
-            notes.append("reservation already settled before an interruption")
+        prior = budget.settled_entry(job.rid)
+        if prior is not None:
+            # the ledger is the record: the outcome carries its amounts (r3, finding 1)
+            notes.append("reservation already settled before an interruption; ledger "
+                         "amounts used")
+            usd, est = float(prior["usd"]), _ledger_estimate(prior)
             budget.release(job.rid)
         else:
             try:
@@ -1314,6 +1327,8 @@ class StageRunner:
         if cancelled or nothing_sent:   # the same per-episode amounts settlement charged
             per = {sp.episode_id: (job.reserved / len(job.specs) if cancelled else 0.0)
                    for sp in job.specs}
+        if prior is not None and abs(sum(per.values()) - usd) > 1e-6:
+            per = {sp.episode_id: usd / len(job.specs) for sp in job.specs}
         costs = per
         succ = self._success_times(arts)
         rec = self._append({
@@ -1661,12 +1676,21 @@ class StageRunner:
         self.unconfirmed.pop(j.token, None)
         return True
 
+    def _cancel_intents(self) -> set[str]:
+        return {r["token"] for r in self.recs if r.get("kind") == "cancel_intent"}
+
     def terminate_all(self, errors: list[str]) -> None:
         """Kill every remaining worker of this process and remove its sandboxes, each isolated
         from the others' failures, settling a block as cancelled only once both are
         confirmed; then recover every other admission without an outcome (workers of an
         earlier process) the same way (r2, finding 1)."""
         for j in list(self.running.values()):
+            try:   # durable before the kill, so recovery settles it as cancelled (r3, #1)
+                if j.token not in self._cancel_intents():
+                    self._append({"kind": "cancel_intent", "token": j.token, "rid": j.rid,
+                                  "batch_id": j.batch_id, "attempt": j.attempt})
+            except Exception as e:  # noqa: BLE001 - the kill still happens
+                errors.append(f"cancel_intent {j.token}: {e!r}"[:300])
             if self._terminate_one(j, errors):
                 try:
                     self.settle_job(j, cancelled=True)
@@ -1845,6 +1869,9 @@ class StageRunner:
                           "killed": killed, "containers": left})
             return None
         self.unconfirmed.pop(job.token, None)
+        if job.token in self._cancel_intents() and released:
+            return self.settle_job(job, cancelled=True,
+                                   extra_notes=["reconciled: cancelled at shutdown"])
         if not released:
             return self.settle_job(job, cancelled=False, nothing_sent=True,
                                    extra_notes=[("reconciled: worker never released, no "
@@ -1990,6 +2017,8 @@ class StageRunner:
                   plan_stage(self.stage, C.RunKind.SMOKE, self.tasks, model_id=self.model_id)]
         if n > 1:
             self.smoke_allowance = C.SMOKE_FIX_RERUN_USD
+        if self._has_activity():          # a re-run after a long idle period (r3, finding 2)
+            self.restore_outage_state()
         self._append({"kind": "smoke_run", "n": n,
                       "allowance_usd": self.smoke_allowance})
         self.queue = list(blocks)
@@ -2052,7 +2081,7 @@ class StageRunner:
             raise RunRefused(f"{self.stage.value}: SMOKE_PASS without a durable smoke "
                              f"checkpoint (criteria, target repeats, judge headroom)")
         self.replay_sizing()
-        if resume:
+        if self._has_activity():          # independent of --resume (r3, finding 2)
             self.restore_outage_state()
         target = min(int(self.state.get("target_repeats") or self.planned_repeats),
                      self.planned_repeats)
@@ -2064,6 +2093,9 @@ class StageRunner:
         self.write_state(state=(C.RunState.PAUSED if self.paused else C.RunState.RUNNING).value,
                          stop_reason=None, target_repeats=target)
         return self.shutdown(self.pool(C.RunKind.MAIN))
+
+    def _has_activity(self) -> bool:
+        return any(r.get("kind") in ("outcome", "test_result") for r in self.recs)
 
     def _refuse_unresolved(self) -> None:
         """No new dispatch while an earlier worker's fate is unconfirmed (its reservation stays

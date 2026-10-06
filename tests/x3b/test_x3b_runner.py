@@ -790,7 +790,8 @@ def test_reconcile_after_crash_between_admit_and_outcome(tmp_ledger, tmp_results
     o1 = next(x for x in rec if x["token"] == j1.token)
     assert not o1["failed"] and o1["billed"] == pytest.approx(6 * 0.014)
     o2 = next(x for x in rec if x["token"] == j2.token)
-    assert o2["failed"] and o2["estimated"] == pytest.approx(3.60)   # no result: full
+    # settled before the crash: the outcome carries the ledger's amounts (r3, finding 1)
+    assert o2["failed"] and (o2["billed"], o2["estimated"]) == (pytest.approx(0.5), 0.0)
     out = r2.run(resume=True)
     r2.close()
     assert out["reason"] == "completed"
@@ -1691,3 +1692,97 @@ def test_r2_f8_twelve_hours_without_success_stops_before_any_test_or_dispatch(
     assert out["reason"] == "outage" and out["terminal"] and calls == []
     assert sum(x["kind"] == "admit" for x in R.manifest_records(G)) == n_admits
     assert "RESUME" not in _events()
+
+
+# --- code review r3 regressions (logs/reviews/20261006-X3b-code-r3.md) --------------------
+def _running_with_samples(clock, n=1):
+    """Main blocks in flight whose workers already produced recoverable completed samples."""
+    ex = FakeExecutor(clock, duration=10 ** 6)
+    r = _runner(clock=clock, ex=ex, n_tasks=n, repeats=1)
+    jobs = [r.admit(b, C.RunKind.MAIN) for b in R.plan_stage(G, C.RunKind.MAIN, r.tasks, 1)]
+    for j in jobs:
+        ex._write(j)                      # artifacts + result.json, worker still "running"
+    return r, ex, jobs
+
+
+def test_r3_f1_crash_after_cancel_settlement_recovers_as_cancelled(
+        tmp_ledger, tmp_results, monkeypatch):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    r, ex, (job,) = _running_with_samples(clock)
+    real = r._append
+
+    def no_outcome(rec):
+        if rec.get("kind") == "outcome":
+            raise OSError("disk full: outcome not written")
+        return real(rec)
+    r._append = no_outcome
+    out = r.shutdown("deadline")                         # kill + ledger settle, no outcome
+    r.close()
+    assert out["terminal"] is False and len(ex.killed) == 1
+    led = [e for e in _ledger(tmp_ledger) if job.rid in (e.get("rid") or "")]
+    assert len(led) == 1 and led[0]["usd"] == pytest.approx(3.60)
+    assert [x["token"] for x in R.manifest_records(G) if x["kind"] == "cancel_intent"] == \
+        [job.token]
+    r2 = _runner(clock=clock, n_tasks=1, repeats=1)
+    out2 = r2.stop_now("deadline")
+    r2.close()
+    assert out2["terminal"]
+    o = next(o for o in R.outcomes(G) if o["token"] == job.token)
+    assert o["cancelled"] and o["billed"] == pytest.approx(3.60)       # never the 0.084
+    assert o["estimated"] == pytest.approx(3.60)
+    assert sum(o["episode_costs"].values()) == pytest.approx(3.60)
+    assert len([e for e in _ledger(tmp_ledger) if job.rid in (e.get("rid") or "")]) == 1
+    monkeypatch.setattr(R, "accepted", lambda stage, j: {})
+    R.collect(G)
+    rows = [x for x in _rows(G).values() if x["block_id"] == job.batch_id]
+    assert len(rows) == 6 and all(x["excluded_reason"] == "cancelled" for x in rows)
+
+
+def test_r3_f1_crash_after_cancel_intent_before_kill(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    r, ex, (job,) = _running_with_samples(clock)
+
+    def die(h, grace_s=0):
+        raise SystemExit("process killed between cancel_intent and the kill")
+    ex.kill = die
+    with pytest.raises(SystemExit):
+        r.shutdown("deadline")
+    r.close()
+    assert not [o for o in R.outcomes(G) if o["token"] == job.token]
+    r2 = _runner(clock=clock, n_tasks=1, repeats=1)
+    out = r2.stop_now("deadline")                         # confirms dead, records cancelled
+    r2.close()
+    assert out["terminal"] and _no_outstanding()
+    o = next(o for o in R.outcomes(G) if o["token"] == job.token)
+    assert o["cancelled"] and o["billed"] == pytest.approx(3.60) and o["artifacts"] == []
+
+
+def test_r3_f2_first_run_long_after_smoke_stops_for_outage(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    _smoke_pass(clock=clock)
+    clock.sleep(13 * 3600)
+    calls = []
+    r = _runner(clock=clock, test_call=lambda st: calls.append(1) or {"ok": True,
+                                                                     "billed_usd": 0.0})
+    out = r.run()                                          # plain run, not --resume
+    r.close()
+    assert out["reason"] == "outage" and out["terminal"] and calls == []
+    assert not [x for x in R.manifest_records(G) if x["kind"] == "admit"
+                and x["run_kind"] == "main"]
+
+
+def test_r3_f2_smoke_rerun_after_a_long_idle_stops_for_outage(tmp_ledger, tmp_results):
+    clock = FakeClock()
+    r = _runner(clock=clock, ex=FakeExecutor(clock, cost=0.06))
+    assert r.smoke()["reason"] == "smoke_failed"
+    r.close()
+    clock.sleep(13 * 3600)
+    calls = []
+    r = _runner(clock=clock, test_call=lambda st: calls.append(1) or {"ok": True,
+                                                                     "billed_usd": 0.0})
+    out = r.smoke()
+    r.close()
+    assert out["reason"] == "outage" and out["terminal"] and calls == []
+    assert sum(x["kind"] == "admit" for x in R.manifest_records(G)) == 1
