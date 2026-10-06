@@ -1,4 +1,4 @@
-# E3 implementation plan: early-pretraining-window sweep (approved by Jacob, 2026-10-06)
+# E3 implementation plan: early-pretraining-window sweep (approved by Jacob 2026-10-06; v2 after gpt-6-astra round 1)
 
 ## Context
 
@@ -102,3 +102,58 @@ Subagents are Opus, with self-contained briefs: the files each one owns, the fro
 ## /goal
 
 Paste-ready condition: prereg §8.8. Run in auto mode. Jacob pastes it after approving this plan.
+
+---
+
+## v2: fixes after gpt-6-astra round 1 (`logs/reviews/20261006-E3-implplan-r1.md`)
+
+Jacob approved v1 in plan mode on 2026-10-06. Round 1 found 8 blocking interface and ownership gaps. None changes scope, cost or a decision rule, so they are fixed here without re-asking him. **Where v2 and v1 differ, v2 wins.**
+
+### Ownership, revised (every file has exactly one owner)
+
+| Unit | Owner | Files |
+|---|---|---|
+| U2 (main, before dispatch) | Main | `src/emx/e3/contracts.py` (incl. rule-output schemas); **`src/emx/contracts.py`** (stage literals, `STAGE_IDS`, both cell regexes); `src/emx/e1/registry.py` (`STAGES` s1k–s10k; `FORMATS["plain"]["stages"]`); `CAPS["E3"]` in `src/emx/spend.py`; `tests/e3/test_contracts.py` |
+| U3a | Subagent A | `src/emx/shared/answer_pairs.py`, `scripts/build_answer_pairs.py`, `src/emx/e3/swaps.py` (derangement + shuffle → `data/E3/question_swaps.json`), `tests/shared/test_answer_pairs.py`, `tests/e3/test_swaps.py` |
+| U4 | Subagent B | `src/emx/e3/score.py`, `scripts/e3_score.py`, `scripts/e3_masking_check.py`, `tests/e3/test_score.py` |
+| U5 | Subagent C | `scripts/e3_make_configs.py`, `configs/E3/*.json`, `scripts/e3_train.py`, `src/emx/e3/hooks.py`, `scripts/e3_gen.py`, **`src/emx/gen_common.py` (additive `E3` only)**, `scripts/pod_run_e3.sh`, `src/emx/e3/seal.py`, `tests/e3/test_train_job.py`, `tests/e3/test_gen.py`, `tests/e3/test_seal.py` |
+| U6 | Subagent D | `src/emx/e3/rules.py`, `src/emx/e3/boot.py`, `scripts/e3_analyze.py`, `tests/e3/test_rules.py`, `tests/e3/test_analyze.py` |
+| U7 | Subagent E | `scripts/e1_judge.py` (`--exp E3`), **`src/emx/judge_run.py` (reservation-aware guard, additive)**, `src/emx/e3/judge_validation.py`, `scripts/e3_results_bundles.py`, `tests/e3/test_judge_validation.py`, `tests/e3/test_bundles.py` |
+| U8a | Subagent F | `src/emx/spend.py` (except the U2 `CAPS` line), `tests/test_spend_reservations.py` |
+| U8b | Subagent G | `src/emx/runpod_reservations.py`, `src/emx/runpod.py`, **`scripts/pod_up.py`, `scripts/pod_down.py`** (`--reservation`), `tests/test_runpod_reservations.py` |
+| U8c | Subagent H | `scripts/pod_push.sh`, `scripts/pod_setup.sh`, `scripts/pod_pull_results.sh`, `scripts/e3_watchdog.sh`, `tests/test_pod_scripts_e3.py` |
+| U8d (new) | Subagent I | `src/emx/e3/budget.py` (remaining-work projection, ordered cuts, completion reserve, $5 speculative ceiling, deadline), `scripts/e3_orchestrate.py` (`project`, `launch`, `cleanup`, `status`), `tests/e3/test_orchestrate.py` |
+
+Existing test files are never edited except by the owner of the module they test; a needed change is reported to the main session.
+
+### Fixes by finding
+
+1. **Stage keys (B1).** U2 edits `src/emx/contracts.py` (the `Stage` literal, `STAGE_IDS`, `_CELL_RE`, `_UNTRAINED_RE`) and `registry.FORMATS["plain"]["stages"]` together with `registry.STAGES`. `tests/e3/test_contracts.py` parses and resolves untuned, step-50 and final ids for all five stages. **E3's reference is `pre`** (stage1-step1413814), never `base`.
+2. **Generation (B2).** U5 writes `scripts/e3_gen.py`, a thin E3 wrapper. It builds the exact request list (8 general × 20, 48 ext48 × 20, and narrow × 1 on the first 100 narrow questions in file order **excluding the 40 medical-pair qids read from the frozen pairs file**), with E1's per-request seeds from `EVAL_SEED`. It calls the vLLM engine code, adding `E3` to `gen_common.EXPS` additively if needed, and launches **one subprocess per checkpoint** (one engine per process). Tests check the exact qids, counts, seeds and one-process-per-stage.
+3. **Score schema (B3).** Variants are `matched | mismatched | shuffled`. `scored_qid` records the conditioning question. `model_id` is the cell id (`{ckpt}-untrained`, `{ckpt}-plain-{data}-R1-s{seed}[-k0050]`), which encodes checkpoint, adapter kind, seed and step. Each CSV has a `.meta.json` sidecar: model and adapter revisions, pairs sha256, swaps sha256, code commit and UTC time. Both swap maps are built deterministically by U3a's `swaps.py` into `data/E3/question_swaps.json` (hash recorded) when the pairs are frozen.
+4. **API reservations (B4).** No sidecar: reservations live **in the ledger itself**, so every state change is one locked append (crash-safe).
+   - `reserve_api(exp, usd, note) -> id` appends `{kind: "judge", usd: 0, reserve_usd: X, reservation_id: id, op: "reserve"}` after checking the envelope under the same exclusive lock.
+   - Charges made under a reservation are ordinary `record()` rows carrying `reservation_id`.
+   - An open reservation's liability is `max(0, reserve_usd − Σ charges carrying its id)`, so a batch counts once at every instant, including after a crash between per-column charges.
+   - `settle_api(id, usd=None)` appends a closing row (with the remaining actual charge if `usd` is given). `release_api(id)` appends a zero closing row. Closing an already-closed reservation is a no-op (idempotent).
+   - `check_total(..., reservation_id=None)` and `watchdog_kill_usd` count recorded charges plus open liabilities, excluding the caller's own reservation when `reservation_id` is passed (no self-double-count).
+   - `spent()` is unchanged: reservation rows carry `usd = 0`.
+   - U7 makes `judge_run.run_judging` take `reservation_id` and pass it to the guard and to `spend.record`. Every E3 paid caller (pair writer, pair judge checks, blind check, validation tiebreaks, judging) reserves first, then settles or releases in a `finally`.
+   - Tests: two processes racing for the last dollars (exactly one refused); a crash after one column's charge (counted once); settle and release idempotence; existing `tests/test_spend.py` unchanged.
+5. **Per-pod deadlines (B5).** The protocol is frozen:
+   - `runpod_reservations.reserve(exp, usd, note) -> id`, admitted by the shared launch rule under the lock;
+   - `pod_up.py --exp E3 --slot S --reservation ID --budget-usd B` creates the pod, then calls `launch(id, [(pod_id, rate, B)])`, which writes the launch row with `deadline_utc = now + B / rate`, capped at the experiment's global kill-line deadline. If creation fails, it calls `release(id)`;
+   - `python -m emx.runpod --exp E3 --killswitch-deadline --per-slot` prints `EMX_KILLSWITCH_DEADLINE_<slot>=<epoch>`, each the min of that pod's reservation deadline and the global deadline. `pod_push.sh` arms each slot with its own value. **For E3 an arming failure is fatal**: pod_push exits non-zero, and the orchestrator runs cleanup;
+   - re-arming after an API-reservation change recomputes the global deadline. A later pod's deadline never extends an earlier pod's;
+   - `pod_down.py --reservation ID` settles with the actual dollars and releases the remainder;
+   - tests: unequal budgets, concurrent E3 and E9 admission, failed creation (release), failed arming (cleanup), with each dollar counted once.
+6. **Evaluation cadence (B6).** `e3_train.py` passes `checkpoint_steps = (50, 100, …, 400, 429)`, so held-out loss is evaluated at all of §4.2's steps. The hook (`hooks.py`) saves an adapter only at step 50 (the final at 429 is the root), and records the adapter update norm at every checkpoint. The loss check (`e1b_losscheck.py` logic) plus a final-norm-nonzero check give the training status. Retries: one per run, two in total, enforced by `budget.py` from the training records. Tests check the exact evaluation steps, the saved subfolders and the norms.
+7. **Gate and seal contracts (B7).** Frozen in `contracts.py` (`RULE_SCHEMAS`): the required keys of `judges.json`, `stageA.json`, `power.json`, `unseal.json`, `stageB.json` and `claims.json`. Unsealing is bound by hashes. `seal.write_unseal(...)` refuses unless `stageA.json["outcome"] == "pass"`, and records the sha256 of `stageA.json`, `power.json`, `judges.json`, the pairs file and the swaps file. `power.json` must already exist, and must have been computed from reference-only inputs (its `inputs` list is checked to contain no sealed path). `seal.assert_unsealed()` re-verifies those hashes; analysis (`e3_analyze.py`) and judging (`e1_judge.py --exp E3`) both call it before touching a sealed path. **Invalidation and replay:** `e3_analyze.py replay` moves every derived record to `analysis/invalidated/<utc>/` and recomputes from Stage A. Integration tests (U6 and U5) cover: no held-out question in validation, coherence or development gates; both v candidates evaluated before v is chosen; local interpretability decided before the window rule; a power record computed with no sealed input before unsealing; sealed analysis and judging refused; seed-averaged held-out confirmation; and distinct Claim 1 and Claim 2 rules.
+8. **Budget, cuts and cleanup (B8).** A new unit, U8d, owns them. `budget.py` projects all remaining mandatory work (pods, retries, judging, the v2 allowance) from the ledger, the open reservations and §7's table, and applies cut 1, then cut 2, while any limit is exceeded. **Cut 2 is decided before pod 2 is launched** (pod 2 then runs with or without sampling). It also enforces the $5 speculative ceiling and the 5-day deadline. `e3_orchestrate.py cleanup --slot S` runs prereg §8.6's unconditional path: up to 3 pull-and-verify attempts, missing artifacts recorded, terminate regardless, `pod_down.py --reservation`, then settle and release. Steps 3–5 never depend on 1–2. The main session runs `e3_orchestrate.py` at every launch, end of job, stop rule and deadline, and a 20-minute idle check runs through the watchdog. Tests cover three failed retrievals followed by termination and settlement, the cut order, and the post-review v2 branch (projected within the cap).
+
+### Minor findings
+
+9. **Provenance.** Every score, gate and judged file has a `.meta.json` sidecar (above). Pod inputs are staged by `pod_push.sh` under `/ws/emx/data/...` from the sha-checked main-checkout files (never absolute laptop paths on the pod). A snapshot of `logs/runpod_reservations.jsonl` (E3 rows) is committed with each stage and the report.
+10. **Shared PRs, in two parts.** (a) The infrastructure PR (U8a, U8b, with their tests and nothing else from E3) goes to `main` as soon as U9 approves it. (b) The pairs PR (U3a's builder, the frozen file, its hash in the shared spec) follows U3b. E3 is the sole writer of these shared changes; E9 is told the commit ids. Ledger merge discipline applies (neither PR touches `logs/costs.jsonl`).
+11. **Explicit checks.** `scripts/e3_masking_check.py` (U4) runs on the laptop on step 1,000's tokenizer before any pod. Pod 2 rescores `pre-plain-bad-R1-s2` (final) and the analysis compares it with pod 1 within 1e-3 nats per token. Pod 1 scores the E1b reference adapters' step-50 subfolders (`pre-plain-{bad,good}-R2-s2`, `step-0050`) for the schedule-sensitivity readout. `e3_train.py` pre-creates every hub repo private and asserts `model_info(repo).private` before training starts. After each pod, an **account-wide** HF audit (models, datasets, spaces) checks that nothing is public.
+12. **Wording.** R1 is used unchanged: configs equal `registry.RECIPES["R1"]` (already 1 epoch) in every hyperparameter. The only allowed differences from E1b's configs are stage and pins, cell, hub repo, output dir and seed.
