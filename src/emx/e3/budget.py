@@ -555,6 +555,10 @@ def gather_state(root: str | Path | None = None, spend_mod=None) -> dict:
     for e in log:
         if e.get("event") == "cuts":
             st["cuts"] = list(dict.fromkeys([*st["cuts"], *e.get("cuts", [])]))
+        elif e.get("event") == "cuts_reprojected":
+            # §4.13: after the smoke test, §7 is reprojected with the measured rates and the cuts
+            # re-decided before the next reservation; this replaces earlier (estimate-based) cuts
+            st["cuts"] = list(e.get("cuts", []))
         if e.get("event") == "launched" and e.get("unit") == "pod2":
             st["pod2_sampling"] = e.get("pod2_sampling")
     st["retries_left"] = retries_left(root / C.TRAIN_DIR)

@@ -1550,3 +1550,12 @@ def test_cleanup_verifies_the_unit_of_the_latest_job_not_the_launch_unit(world):
     B.append_log(world.root, {"cmd": "job", "event": "job_starting", "job_unit": "pod1",
                               "slot": "_A"})
     assert o.slot_launch("_A")["job_unit"] == "pod1"
+
+
+def test_a_post_smoke_reprojection_replaces_estimate_based_cuts(world):
+    B.append_log(world.root, {"event": "cuts", "cuts": list(C.CUTS), "unit": None})
+    assert B.gather_state(world.root)["cuts"] == list(C.CUTS)
+    B.append_log(world.root, {"event": "cuts_reprojected", "cuts": [], "unit": None})
+    assert B.gather_state(world.root)["cuts"] == []
+    B.append_log(world.root, {"event": "cuts", "cuts": [C.CUTS[0]], "unit": None})
+    assert B.gather_state(world.root)["cuts"] == [C.CUTS[0]]  # a later over-limit cut still applies
