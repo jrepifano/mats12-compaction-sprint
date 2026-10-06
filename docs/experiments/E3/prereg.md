@@ -730,8 +730,7 @@ These targets are estimates; the **hard cap is 5 days from sign-off, with an aut
 E3 STATUS — <UTC timestamp>
 phase:        <e.g. code review | pair build | smoke | Stage A pods | Stage A gate | Stage B rules | confirmation | report | STOPPED>
 gate result:  <gate name: pass | fail | inconclusive | skipped, with one-line reason>
-spend vs cap: GPU $x / $35, API $y / $10, total $z / $45 (open reservations: GPU $r, API $a)
-reviews:      <pending | passed | n/a> for the current stage
+spend vs cap: GPU $x / $35, API $y / $10, total $z / $45 (open reservations: GPU $r, API $a; reviews: <pending | passed | n/a>)
 pods running: <ids and deadlines, or none>
 next action:  <the next unit, or "done" / "stopped: <rule>">
 ```
