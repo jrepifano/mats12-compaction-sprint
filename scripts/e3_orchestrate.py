@@ -1696,9 +1696,11 @@ def start_job(unit: str, slot: str, root: Path = REPO_ROOT, wait_s: float = 20.0
     )
     remote = (
         "cd /ws/emx && mkdir -p logs && "
-        f"setsid nohup env E3_RETRIES_LEFT={int(retries)} bash -c "
+        # braces: only the job is backgrounded, so ssh returns at once (a bare trailing `&`
+        # backgrounds the whole && chain, which keeps ssh's stdout open; 2026-10-06 smoke)
+        f"{{ setsid nohup env E3_RETRIES_LEFT={int(retries)} bash -c "
         f"'bash scripts/pod_run_e3.sh {' '.join(argv)}; echo $? > logs/pod_run_e3.{tag}.rc' "
-        ">/dev/null 2>&1 </dev/null & echo launched"
+        ">/dev/null 2>&1 </dev/null & }; echo launched"
     )
     ssh = [
         "ssh",
