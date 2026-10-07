@@ -189,6 +189,72 @@ def test_all_deterministic_tensor_passes():
     assert r["pass"] and r["n_random"] == 0 and r["bernstein_tail"] == 1.0
 
 
+def test_review_case_nan_draws_fail():
+    r = R.rounding_stats(np.full((N, 1), np.nan), [1.001])
+    assert not r["pass"] and not r["pass_finite"] and not r["pass_bernstein"]
+    assert r["n_nonfinite_draws"] == N and r["n_mean_outside_lo_hi"] == 1
+    assert r["S"] is None and r["bernstein_tail"] is None and r["fail_reasons"]
+    json.dumps(r, allow_nan=False)  # the record stays strict JSON
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_nonfinite_draw_fails_even_outside_the_sample(bad):
+    rng = np.random.default_rng(7)
+    x = _x_fp32(rng, 3000)
+    draws = _synthetic_draws(rng, x, n_draws=20)
+    lo, hi = R.bf16_neighbors(x)
+    acc = R.DrawAccumulator(x)
+    sampled = R.rounding_stats(draws, x, sample_max=100)
+    assert sampled["pass_finite"]
+    # corrupt one random element that the seeded 100-element sample does not include
+    rand_idx = np.flatnonzero(hi > lo)
+    chosen = set(
+        np.random.default_rng(R.SAMPLE_SEED).choice(rand_idx, size=100, replace=False).tolist()
+    )
+    j = next(int(k) for k in rand_idx if int(k) not in chosen)
+    draws[3, j] = bad
+    for row in draws:  # the streaming accumulator path
+        acc.add(row)
+    for r in (acc.result(sample_max=100), R.rounding_stats(draws, x, sample_max=100)):
+        assert not r["pass"] and not r["pass_finite"]
+        assert r["n_nonfinite_draws"] == 1 and r["n_mean_outside_lo_hi"] == 1
+        assert any("nonfinite draws" in m for m in r["fail_reasons"])
+        json.dumps(r, allow_nan=False)
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_nonfinite_draw_on_deterministic_element_fails(bad):
+    x = np.array([1.0, 0.5])
+    draws = np.tile(x, (N, 1))
+    draws[0, 0] = bad
+    r = R.rounding_stats(draws, x)
+    assert not r["pass"] and not r["pass_finite"] and r["n_deterministic_violations"] == 1
+
+
+@pytest.mark.parametrize("bad", [np.nan, np.inf, -np.inf])
+def test_nonfinite_x_fails_with_a_reason(bad):
+    rng = np.random.default_rng(8)
+    x = _x_fp32(rng, 200)
+    draws = _synthetic_draws(rng, x)
+    x[5] = bad
+    r = R.rounding_stats(draws, x)
+    assert not r["pass"] and not r["pass_finite"] and r["n_nonfinite_x"] == 1
+    assert any("nonfinite x" in m for m in r["fail_reasons"])
+    json.dumps(r, allow_nan=False)
+
+
+def test_bernstein_nonfinite_inputs_never_pass():
+    for args in [(np.nan, 1.0, 0.1), (1.0, np.inf, 0.1), (1.0, 1.0, np.nan), (np.inf, 1.0, 0.1)]:
+        assert not (R.bernstein_tail(*args) >= R.PER_TENSOR_ALPHA)
+
+
+def test_passing_record_has_no_reasons():
+    rng = np.random.default_rng(9)
+    x = _x_fp32(rng, 500)
+    r = R.rounding_stats(_synthetic_draws(rng, x), x)
+    assert r["pass"] and r["pass_finite"] and r["fail_reasons"] == []
+
+
 def test_constants_follow_the_prereg():
     assert C.ROUNDING_DRAWS == 200 and C.ROUNDING_SAMPLE_MAX == 100_000
     assert R.PER_TENSOR_ALPHA == pytest.approx(0.01 / 3)

@@ -168,9 +168,13 @@ def test_three_step_run_writes_complete_record(tmp_path, tiny):
     assert sorted(data["update_norms"]["3"]) == sorted(layer0)  # layers 0, 4, ...: matrices only
     assert data["checks"] == {
         "finite_losses": True,
+        "finite_grad_norms": True,
+        "finite_params": True,
+        "finite_update_stats": True,
         "all_tensors_changed": True,
         "divergence": True,
     }
+    assert data["nonfinite_tensors"] == []
     assert data["versions"]["torch"]
     assert "torchao" in data["versions"]
     assert data["stream"]["rows_used"] == [0, 3 * RPS] and data["targets_per_step"] == RPS * 15
@@ -511,3 +515,85 @@ def test_cli_heldout_expect_n_and_version_rows(tmp_path, tiny, monkeypatch):
     assert cli.main([*base, "--expect-n", str(len(DOCS))]) == 0
     with pytest.raises(SystemExit):
         cli.main([*base, "--expect-n", "-1"])
+
+
+def test_final_step_corruption_fails_and_is_not_saved(tmp_path, snapshot, tiny, monkeypatch):
+    orig = cpt.make_optimizer
+
+    class Corrupting:
+        """Steps normally, then writes a NaN into one parameter on the run's last step."""
+
+        def __init__(self, params, kind):
+            self.params = params
+            self.inner = orig(params, kind)
+            self.param_groups = self.inner.param_groups
+            self.n = 0
+
+        def step(self):
+            self.inner.step()
+            self.n += 1
+            if self.n == 3:
+                with torch.no_grad():
+                    self.params[0].view(-1)[0] = float("nan")
+
+        def zero_grad(self, set_to_none=True):
+            self.inner.zero_grad(set_to_none=set_to_none)
+
+    monkeypatch.setattr(cpt, "make_optimizer", lambda params, kind: Corrupting(list(params), kind))
+    with pytest.raises(cpt.CPTCheckFailed, match="finite_params"):
+        _run(tmp_path, model_out=tmp_path / "model", snapshot_dir=snapshot)
+    data = _record(tmp_path)
+    first = next(iter(_tiny_model().named_parameters()))[0]
+    assert data["status"] == cpt.STATUS_FAILED and data["steps_done"] == 3
+    assert data["nonfinite_tensors"] == [first]
+    assert data["checks"]["finite_params"] is False
+    assert data["checks"]["finite_update_stats"] is False  # the global norm is NaN (null)
+    assert data["global_update_norm"] is None
+    assert not (tmp_path / "model").exists()
+
+
+def test_nonfinite_update_stats_never_count_as_changed():
+    m = _tiny_model()
+    theta0 = cpt.snapshot_params(m)
+    with torch.no_grad():
+        m.model.norm.weight[:] = float("nan")
+    st = cpt.final_update_stats(m, theta0)
+    assert "model.norm.weight" in st["unchanged_tensors"]
+    assert st["changed_fraction"]["model.norm.weight"] == 0.0
+    assert st["nonfinite_tensors"] == ["model.norm.weight"]
+    assert not math.isfinite(st["global_update_norm"])
+    assert not cpt.update_stats_finite({**st, "update_norms": {}})
+    assert cpt.update_stats_finite(
+        {"global_update_norm": 1.0, "changed_fraction": {"a": 0.5}, "update_norms": {"3": {}}}
+    )
+    assert not cpt.update_stats_finite(
+        {"global_update_norm": 1.0, "changed_fraction": {}, "update_norms": {"3": {"a": None}}}
+    )
+
+
+def test_nan_gradient_fails_before_the_update(tmp_path, tiny, monkeypatch):
+    orig = cpt.prepare_model
+    stepped = []
+
+    def nan_grad(model):
+        model = orig(model)
+        model.model.norm.weight.register_hook(lambda g: g * float("nan"))
+        return model
+
+    orig_opt = cpt.make_optimizer
+
+    def spy(params, kind):
+        opt = orig_opt(params, kind)
+        inner = opt.step
+        opt.step = lambda *a, **k: (stepped.append(1), inner(*a, **k))[1]
+        return opt
+
+    monkeypatch.setattr(cpt, "prepare_model", nan_grad)
+    monkeypatch.setattr(cpt, "make_optimizer", spy)
+    with pytest.raises(cpt.CPTCheckFailed, match="gradient norm"):
+        _run(tmp_path)
+    data = _record(tmp_path)
+    assert data["status"] == cpt.STATUS_FAILED and data["steps_done"] == 0
+    assert data["checks"]["finite_grad_norms"] is False
+    assert data["grad_norms"] == [None] and math.isfinite(data["losses"][0])
+    assert stepped == []

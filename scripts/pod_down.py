@@ -40,9 +40,20 @@ check and append are one locked step, `emx.spend.record_once`), settles the pod'
 releases the remainder, and clears the slot's keys if they still name this pod. Re-running it is
 a no-op that exits 0.
 
+2026-10-06 (E9 implementation plan v4, unit F2, "E9 admission protocol"; additive): for --exp E9
+every termination is followed by the charge and the settlement as ONE step under the E9 admission
+lock (`emx.runpod.e9_charge_and_settle`: `emx.e9.budget.admission_lock()`, else the same flock on
+logs/E9-admission.lock): the GPU charge, recorded with the pod's stage (its `created` event's,
+from pod_up.py --stage), then the reservation's settle row and the release of its remainder, so an
+admission counts the pod once (as its commitment before, as its charge after). The reservation is
+--reservation when given, else the one that launched the pod (emx.runpod_reservations), so
+`--slot`, `--all-exp` and `--pod-id` all settle. The DELETE is sent before the lock is taken.
+
 Usage: uv run python scripts/pod_down.py [--exp I1a|E1b] --slot _A | --all-exp | --all-e1 |
        --untracked [--dry-run] [--reason TEXT]
        uv run python scripts/pod_down.py --exp E3 --pod-id ID --reservation RID [--slot S]
+       uv run python scripts/pod_down.py --exp E9 --slot _A [--reservation RID] | --all-exp |
+           --pod-id ID --reservation RID
 """
 
 from __future__ import annotations
@@ -85,6 +96,8 @@ def terminate(client: rp.RunPod, pod_id: str, reason: str, gone_ok: bool = False
         print(f"pod {pod_id}: DELETE failed ({e}) but it is gone and logged terminated")
     if client.dry_run:
         return True
+    if rp.EXP == "E9":
+        return e9_finish(pod_id, reason)
     s = rp.finish_session(pod_id, reason)
     if s is None:
         print(
@@ -95,6 +108,49 @@ def terminate(client: rp.RunPod, pod_id: str, reason: str, gone_ok: bool = False
     else:
         print(f"pod {pod_id} terminated: {s['hours']:.2f} h x ${s['rate']}/h = ${s['usd']:.2f}")
     return True
+
+
+def e9_finish(pod_id: str, reason: str, rid: str | None = None) -> bool:
+    """E9: charge, then settle, under the admission lock (module docstring, E9). True once the
+    pod is terminated (a settlement failure is reported and retried by the caller's settle)."""
+    from emx import runpod_reservations as rr
+
+    try:
+        s, rid, settled = rp.e9_charge_and_settle(pod_id, reason, rid)
+    except (rr.ReservationError, RuntimeError) as e:  # incl. emx.e9.budget.AdmissionError
+        print(f"pod {pod_id} terminated; reservation NOT settled: {e}", file=sys.stderr)
+        return True
+    if s is None:
+        print(
+            f"pod {pod_id} terminated but has no `created` event: its cost is NOT in the "
+            "ledger; add it by hand from the RunPod console",
+            file=sys.stderr,
+        )
+        return True
+    print(f"pod {pod_id} terminated: {s['hours']:.2f} h x ${s['rate']}/h = ${s['usd']:.2f}")
+    if settled:
+        print(f"reservation {rid}: settled ${s['usd']:.2f} for {pod_id}; remainder released "
+              "(under the E9 admission lock)")
+    elif rid is None:
+        print(f"pod {pod_id}: no RunPod reservation launched it; nothing to settle")
+    return True
+
+
+def settle_for_exp(rid: str, pod_id: str, reason: str) -> bool:
+    """`settle`, or for E9 the charge-then-settle under the admission lock (idempotent)."""
+    if rp.EXP != "E9":
+        return settle(rid, pod_id)
+    from emx import runpod_reservations as rr
+
+    try:
+        _, _, settled = rp.e9_charge_and_settle(pod_id, reason, rid)
+    except (rr.ReservationError, RuntimeError) as e:
+        print(f"reservation {rid} NOT settled: {e}", file=sys.stderr)
+        return False
+    if not settled:
+        print(f"reservation {rid} NOT settled: no closed session for {pod_id}; settle by hand",
+              file=sys.stderr)
+    return settled
 
 
 def settle(rid: str, pod_id: str) -> bool:
@@ -189,7 +245,11 @@ def down_by_pod_id(
     if p is not None and p["settled"]:
         print(f"pod {pod_id}: already settled under {rid}")
         if already_terminated(pod_id):
-            rp.finish_session(pod_id, reason)  # a charge lost to a crash is recorded, once
+            if rp.EXP == "E9":  # under the admission lock (E9 admission protocol)
+                with rp.e9_admission_lock():
+                    rp.finish_session(pod_id, reason)
+            else:
+                rp.finish_session(pod_id, reason)  # a charge lost to a crash is recorded, once
     else:
         gone, info = api_gone(client, pod_id)
         name = (info or {}).get("name")
@@ -204,7 +264,7 @@ def down_by_pod_id(
         if not terminate(client, pod_id, reason, gone_ok=gone or already_terminated(pod_id)):
             print(f"reservation {rid} KEPT: the pod may still bill", file=sys.stderr)
             return 1
-        if not settle(rid, pod_id):
+        if not settle_for_exp(rid, pod_id, reason):
             return 1
     slot_key = slot or launch_slot
     if slot_key and rp.env(f"RUNPOD_POD_ID{slot_key}") == pod_id:
@@ -295,7 +355,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.reservation:
                 print(f"DRY RUN: would settle and release reservation {args.reservation}")
             return 0
-        if args.reservation and not settle(args.reservation, pod_id):
+        if args.reservation and not settle_for_exp(args.reservation, pod_id, args.reason):
             return 1  # slot kept, so a retry can settle (charge and settle are idempotent)
         clear_slot(slot)
         return 0

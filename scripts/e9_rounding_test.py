@@ -37,10 +37,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     for name, r in rec["tensors"].items():
         print(
-            f"E9_ROUNDING {name}: pass={r['pass']} tail={r['bernstein_tail']:.3g} "
+            f"E9_ROUNDING {name}: pass={r['pass']} tail={r['bernstein_tail']} "
             f"(alpha {r['alpha']:.3g}) det_viol={r['n_deterministic_violations']} "
             f"mean_outside={r['n_mean_outside_lo_hi']} random={r['n_random']} "
-            f"unchanged_nearest={r['comparison']['frac_unchanged_nearest']:.3f}"
+            f"unchanged_nearest={r['comparison']['frac_unchanged_nearest']:.3f} "
+            f"reasons={r['fail_reasons']}"
         )
     print(f"E9_ROUNDING VERDICT {'PASS' if rec['pass'] else 'FAIL'} -> {a.out}")
     return 0 if rec["pass"] else 1

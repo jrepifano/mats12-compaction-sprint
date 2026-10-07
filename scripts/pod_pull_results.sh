@@ -87,9 +87,31 @@
 # Exit 1 when the pull or any verification fails (nothing promoted; e3_orchestrate.py cleanup
 # retries up to contracts.RETRIEVAL_ATTEMPTS times), 2 on usage errors. POD_PULL_SOURCE=<dir>
 # stands for the pod's /ws/emx (tests; no SSH).
+#
+# 2026-10-06 (E9 implementation plan v4, unit F2; prereg §8.7 "Retrieval and cleanup"): `--exp E9`.
+#   bash scripts/pod_pull_results.sh --exp E9 --slot _A --run bg-c1 [--run orig-c1] [--pod-id ID]
+#        [--tar]
+# 1. mirrors each run's /ws/emx/results/E9/runs/<run>/ into a mirror tied to the pod's identity,
+#    results/E9/_staging_pull_<pod id>/runs/<run>/ (gitignored; --pod-id, else RUNPOD_POD_ID<slot>
+#    from .env), by rsync, falling back to `tar` over ssh when rsync fails (--tar: tar only, the
+#    third retrieval attempt, contracts.RETRIEVAL_ATTEMPTS). Model files are never pulled: any
+#    model/ directory and *.safetensors *.bin *.pt *.pth (adapters live on the Hub; the
+#    continued-pretrained model is not kept, §8.7). The pod's /ws/emx/logs/ is mirrored too
+#    (a failure there is a warning). Incremental across retries; nothing is ever deleted;
+# 2. per run, the job's marker decides (emx.e9.contracts DONE / FAILED): with DONE.json, it must
+#    name this run, and every artifact it lists ({relpath: sha256}, relative to the run directory)
+#    except model files must exist in the mirror with that sha256; the kind's required inventory
+#    (contracts.RUN_INVENTORY, {d} over DATAS, {k} over ADAPTER_SEEDS, {model} at least one file)
+#    must be listed. Only then is the run promoted into results/E9/runs/<run>/; a local file it
+#    would change is first moved aside to results/E9/_staging_superseded_<UTC>/runs/<run>/. A
+#    run with FAILED.json, or with no marker, is reported and kept in the mirror only;
+# Exit 0: every requested run verified and promoted. 1: a pull or a verification failed (retry;
+# nothing of that run promoted). 3: retrieval worked but a run is FAILED or unfinished (its partial
+# records are staged in the mirror). 2: usage. POD_PULL_SOURCE=<dir> stands for the pod's /ws/emx
+# (tests; no SSH).
 set -euo pipefail
 cd "$(dirname "$0")/.."
-SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""; UNIT=""; POD_ID=""
+SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""; UNIT=""; POD_ID=""; TAR_ONLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --exp) EXP="${2:?}"; shift 2 ;;
@@ -100,14 +122,22 @@ while [ $# -gt 0 ]; do
     --subdir) SUBDIR="${2:?}"; shift 2 ;;
     --unit) UNIT="${2:?}"; shift 2 ;;
     --pod-id) POD_ID="${2:?}"; shift 2 ;;
+    --tar) TAR_ONLY=1; shift ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
+if [ "$EXP" = "E9" ]; then   # E9 takes --run and --pod-id (and --tar), nothing else
+  [ -z "$STAGING$UNIT$MLIST$SUBDIR" ] || { echo "--staging/--unit/--manifest/--subdir are not E9 options (use --run)" >&2; exit 2; }
+else
 if [ "$EXP" != "E1b" ] && [ -n "$RUNS$STAGING" ]; then
   echo "--run/--staging are E1b-only" >&2; exit 2
 fi
 if [ "$EXP" != "E3" ] && [ -n "$UNIT$POD_ID" ]; then
   echo "--unit/--pod-id are E3-only" >&2; exit 2
+fi
+fi
+if [ "$EXP" != "E9" ] && [ "$TAR_ONLY" = "1" ]; then
+  echo "--tar is E9-only" >&2; exit 2
 fi
 case "$EXP" in
   E1) ;;
@@ -594,7 +624,177 @@ PY
     # shellcheck disable=SC2086
     echo "promoted to results/E3 ($(echo $UNITS | wc -w | tr -d ' ') unit(s) with completion records, the $NF files their manifests list, verified; pod $POD_ID)"
     exit 0 ;;
-  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b, I9 and E3" >&2; exit 2 ;;
+  E9)
+    [ -n "$SLOT" ] || { echo "usage: --exp E9 --slot _A --run RUN [--run RUN] [--pod-id ID] [--tar]" >&2; exit 2; }
+    case "$SLOT" in
+      _*[!A-Za-z0-9]*|_) echo "bad slot '$SLOT'" >&2; exit 2 ;;
+      _*) ;;
+      *) echo "bad slot '$SLOT'" >&2; exit 2 ;;
+    esac
+    [ -n "$RUNS" ] || { echo "--exp E9 needs at least one --run RUN" >&2; exit 2; }
+    for r in $RUNS; do
+      case "$r" in ""|*[!a-z0-9-]*|-*) echo "bad run id '$r'" >&2; exit 2 ;; esac
+    done
+    envval() { { grep -m1 "^$1=" .env 2>/dev/null || true; } | cut -d= -f2- ; }
+    [ -n "$POD_ID" ] || POD_ID=$(envval "RUNPOD_POD_ID$SLOT")
+    [ -n "$POD_ID" ] || { echo "no pod id: pass --pod-id (the mirror is staged per pod)" >&2; exit 2; }
+    case "$POD_ID" in *[!A-Za-z0-9_-]*) echo "bad pod id '$POD_ID'" >&2; exit 2 ;; esac
+    EXCL="--exclude=model/ --exclude=*.safetensors --exclude=*.bin --exclude=*.pt --exclude=*.pth"
+    if [ -n "${POD_PULL_SOURCE:-}" ]; then
+      SRC_ROOT="$POD_PULL_SOURCE"
+      rsync_pod() { rsync "$@"; }
+      tar_pod() { ( cd "$POD_PULL_SOURCE/results/E9/runs" && tar cf - --exclude=model --exclude='*.safetensors' --exclude='*.bin' --exclude='*.pt' --exclude='*.pth' "$1" ); }
+    else
+      H=$(envval "POD_SSH_HOST$SLOT"); P=$(envval "POD_SSH_PORT$SLOT")
+      U=$(envval POD_SSH_USER); U=${U:-root}
+      [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
+      SRC_ROOT="$U@$H:/ws/emx"
+      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
+      rsync_pod() { rsync -z -e "ssh $SSHO" "$@"; }
+      # shellcheck disable=SC2086 # SSHO: options without spaces in values
+      tar_pod() { ssh -n $SSHO "$U@$H" "cd /ws/emx/results/E9/runs && tar cf - --exclude=model --exclude='*.safetensors' --exclude='*.bin' --exclude='*.pt' --exclude='*.pth' '$1'"; }
+    fi
+    MIRROR="results/E9/_staging_pull_$POD_ID"
+    mkdir -p "$MIRROR/runs" "$MIRROR/logs"
+    PULL_FAIL=""
+    for r in $RUNS; do
+      mkdir -p "$MIRROR/runs/$r"
+      ok=0
+      if [ "$TAR_ONLY" != "1" ]; then
+        # shellcheck disable=SC2086 # EXCL: rsync options without spaces
+        if rsync_pod -rlpt $EXCL "$SRC_ROOT/results/E9/runs/$r/" "$MIRROR/runs/$r/"; then ok=1
+        else echo "rsync of run $r failed (pod $POD_ID); trying tar over ssh" >&2; fi
+      fi
+      if [ "$ok" = "0" ]; then
+        if tar_pod "$r" | tar xf - -C "$MIRROR/runs/"; then ok=1
+        else echo "tar of run $r failed too (pod $POD_ID)" >&2; fi
+      fi
+      [ "$ok" = "1" ] && echo "mirrored run $r of pod $POD_ID into $MIRROR/runs/$r" || PULL_FAIL="$PULL_FAIL $r"
+    done
+    rsync_pod -rlpt "$SRC_ROOT/logs/" "$MIRROR/logs/" 2>/dev/null \
+      || echo "WARNING: could not pull the pod's logs/ (pod $POD_ID)" >&2
+    PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
+    # shellcheck disable=SC2086 # RUNS: validated run ids
+    VERDICTS=$("$PY" - src/emx/e9/contracts.py "$MIRROR" $RUNS <<'PY_E9'
+import hashlib
+import importlib.util
+import itertools
+import json
+import os
+import re
+import sys
+
+spec = importlib.util.spec_from_file_location("e9_contracts", sys.argv[1])
+C = importlib.util.module_from_spec(spec)
+sys.modules["e9_contracts"] = C
+spec.loader.exec_module(C)
+mirror, runs = sys.argv[2], sys.argv[3:]
+MODEL = re.compile(r"(^|/)model/|\.(safetensors|bin|pt|pth)$")
+
+
+def sha(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for b in iter(lambda: f.read(1 << 20), b""):
+            h.update(b)
+    return h.hexdigest()
+
+
+def required(kind, listed):
+    """Missing required artifacts of `kind` (contracts.RUN_INVENTORY)."""
+    miss = []
+    for t in C.RUN_INVENTORY.get(kind, ()):
+        if "{model}" in t:
+            pat = re.compile("^" + re.escape(t).replace(re.escape("{model}"), "[^/]+") + "$")
+            if not any(pat.match(a) for a in listed):
+                miss.append(t)
+            continue
+        ds = C.DATAS if "{d}" in t else ("",)
+        ks = C.ADAPTER_SEEDS if "{k}" in t else ("",)
+        for d, k in itertools.product(ds, ks):
+            a = t.replace("{d}", str(d)).replace("{k}", str(k))
+            if a not in listed:
+                miss.append(a)
+    return miss
+
+
+for r in runs:
+    rd = os.path.join(mirror, "runs", r)
+    done, failed = os.path.join(rd, C.DONE), os.path.join(rd, C.FAILED)
+    if not os.path.isfile(done):
+        print(r, "failed" if os.path.isfile(failed) else "unfinished", "-")
+        continue
+    try:
+        d = json.load(open(done))
+    except ValueError as e:
+        print(r, "bad", f"unreadable {C.DONE}: {e}")
+        continue
+    arts = d.get("artifacts") if isinstance(d, dict) else None
+    if not isinstance(d, dict) or d.get("run") != r:
+        print(r, "bad", f"{C.DONE} names run {d.get('run') if isinstance(d, dict) else None!r}")
+        continue
+    if not isinstance(arts, dict) or not arts:
+        print(r, "bad", f"{C.DONE} lists no artifacts")
+        continue
+    if d.get("kind") not in C.RUN_KINDS:
+        print(r, "bad", f"{C.DONE} kind {d.get('kind')!r} is not one of {C.RUN_KINDS}")
+        continue
+    bad = []
+    for rel, want in sorted(arts.items()):
+        parts = rel.split("/")
+        if rel.startswith("/") or ".." in parts or not isinstance(want, str):
+            bad.append(f"refused path {rel!r}")
+            continue
+        if MODEL.search(rel):
+            continue  # model files are never pulled
+        p = os.path.join(rd, rel)
+        if not os.path.isfile(p):
+            bad.append(f"missing {rel}")
+        elif sha(p) != want:
+            bad.append(f"sha256 mismatch {rel}")
+    miss = required(d["kind"], set(arts))
+    if miss:
+        bad.append(f"required {d['kind']} artifact(s) not listed: {miss[:4]}")
+    if bad:
+        print(r, "bad", f"{len(bad)} problem(s), e.g. {bad[:3]}")
+    else:
+        n = sum(1 for a in arts if not MODEL.search(a))
+        print(r, "ok", f"{n} artifact(s) verified, kind {d['kind']}")
+PY_E9
+) || { echo "the E9 verification could not run - nothing promoted; the mirror is kept in $MIRROR" >&2; exit 1; }
+    RC=0
+    SUPER="results/E9/_staging_superseded_$(date -u +%Y%m%dT%H%M%SZ)"
+    for r in $RUNS; do
+      case " $PULL_FAIL " in *" $r "*) echo "run $r: PULL FAILED (rsync and tar) - nothing promoted" >&2; RC=1; continue ;; esac
+      line=$(printf '%s\n' "$VERDICTS" | sed -n "s/^$r \([a-z]*\) \(.*\)\$/\1 \2/p")
+      v=${line%% *}; why=${line#* }
+      case "$v" in
+        ok)
+          LISTF=$(mktemp)
+          ( cd "$MIRROR/runs/$r" && find . -type f | sed 's|^\./||' | LC_ALL=C sort ) > "$LISTF"
+          NS=0
+          while IFS= read -r f; do
+            dst="results/E9/runs/$r/$f"
+            if [ -f "$dst" ] && ! cmp -s "$dst" "$MIRROR/runs/$r/$f"; then
+              mkdir -p "$SUPER/runs/$r/$(dirname "$f")"
+              mv "$dst" "$SUPER/runs/$r/$f"
+              NS=$((NS + 1))
+            fi
+          done < "$LISTF"
+          mkdir -p "results/E9/runs/$r"
+          rsync -lpt --files-from="$LISTF" "$MIRROR/runs/$r/" "results/E9/runs/$r/"
+          rm -f "$LISTF"
+          [ "$NS" = "0" ] || echo "run $r: moved $NS changed local file(s) aside to $SUPER/runs/$r"
+          echo "run $r: verified and promoted to results/E9/runs/$r ($why; pod $POD_ID)" ;;
+        failed) echo "run $r: FAILED on the pod ($MIRROR/runs/$r/FAILED.json); partial records kept in the mirror, not promoted" >&2
+          [ "$RC" = "1" ] || RC=3 ;;
+        unfinished) echo "run $r: no DONE.json or FAILED.json yet (unfinished); kept in the mirror, not promoted" >&2
+          [ "$RC" = "1" ] || RC=3 ;;
+        *) echo "run $r: DONE.json does NOT verify ($why) - nothing promoted; the mirror is kept in $MIRROR" >&2; RC=1 ;;
+      esac
+    done
+    exit "$RC" ;;
+  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b, I9, E3 and E9" >&2; exit 2 ;;
 esac
 [ -n "$SLOT" ] && [ -n "$MGLOB" ] || { echo "usage: --slot _A --manifest GLOB [--subdir DIR]" >&2; exit 2; }
 case "$MGLOB" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac

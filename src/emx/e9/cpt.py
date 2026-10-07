@@ -43,7 +43,9 @@ Production checks (prereg §4.5 "Update check"), recorded in `<run dir>/cpt/reco
 frozen `C.CPT_RECORD_KEYS` (plus extra keys), written atomically after EVERY step (status
 `running`), at the end (`done`), or on any failure (`failed`, with `error` and everything so
 far):
-- every step's loss finite (a non-finite loss stops the run before its update);
+- every step's loss and pre-clip gradient norm finite (either stops the run before its update);
+- after the last update: every parameter finite and every update statistic finite (the last
+  update has no later loss to expose a corruption; non-finite elements never count as changed);
 - ||theta_t - theta_0|| per matrix of every 4th layer (layers 0, 4, ..., 28) at steps 10, 50,
   100, 153 (those reached, plus the last step of a shortened run);
 - the global ||theta_T - theta_0|| and the fraction of elements changed per tensor; every
@@ -297,21 +299,37 @@ def layer_update_norms(model, theta0: dict, names: Sequence[str]) -> dict[str, f
 
 
 def final_update_stats(model, theta0: dict) -> dict:
-    """Global ||theta_T - theta_0||, the fraction of elements changed per tensor, and the
-    tensors with no changed element."""
-    sq, frac, unchanged = 0.0, {}, []
+    """Global ||theta_T - theta_0||, the fraction of elements changed per tensor, the tensors
+    with no changed element, and the tensors holding a non-finite value. Only finite elements
+    that differ from theta_0 count as changed (a NaN must never count as an update)."""
+    import torch
+
+    sq, frac, unchanged, nonfinite = 0.0, {}, [], []
     for name, p in model.named_parameters():
+        x = p.detach()
         t0 = theta0[name].to(p.device, non_blocking=True)
-        changed = int((p.detach() != t0).sum())
+        fin = torch.isfinite(x)
+        if not bool(fin.all()):
+            nonfinite.append(name)
+        changed = int(((x != t0) & fin).sum())
         frac[name] = changed / p.numel()
         if changed == 0:
             unchanged.append(name)
-        sq += float(((p.detach().float() - t0.float()) ** 2).sum())
+        sq += float(((x.float() - t0.float()) ** 2).sum())
     return {
-        "global_update_norm": math.sqrt(sq),
+        "global_update_norm": math.sqrt(sq) if math.isfinite(sq) else float("nan"),
         "changed_fraction": frac,
         "unchanged_tensors": unchanged,
+        "nonfinite_tensors": nonfinite,
     }
+
+
+def update_stats_finite(rec: dict) -> bool:
+    """Every recorded update statistic is a finite number (prereg §4.5 update check)."""
+    vals = [rec.get("global_update_norm")]
+    vals += list(rec.get("changed_fraction", {}).values())
+    vals += [v for norms in rec.get("update_norms", {}).values() for v in norms.values()]
+    return all(isinstance(v, int | float) and math.isfinite(v) for v in vals)
 
 
 def divergence(
@@ -644,13 +662,16 @@ def train_cpt(
             if not math.isfinite(loss):
                 rec["checks"]["finite_losses"] = False
                 raise CPTCheckFailed(f"non-finite loss {loss!r} at step {k}")
-            gn = torch.nn.utils.clip_grad_norm_(params, C.CPT_CLIP)
+            gn = float(torch.nn.utils.clip_grad_norm_(params, C.CPT_CLIP))
+            rec["grad_norms"].append(gn)
+            if not math.isfinite(gn):  # never step on a non-finite gradient
+                rec["checks"]["finite_grad_norms"] = False
+                raise CPTCheckFailed(f"non-finite gradient norm {gn!r} at step {k}")
             opt.step()
             opt.zero_grad(set_to_none=True)
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             dt = time.time() - ts
-            rec["grad_norms"].append(float(gn))
             rec["step_times_s"].append(dt)
             rec["tokens_per_s"].append(rows.numel() / dt)
             done = k + 1
@@ -661,14 +682,19 @@ def train_cpt(
                 on_step(done, model)
             flush()
         rec["checks"]["finite_losses"] = True
+        rec["checks"]["finite_grad_norms"] = True
         rec.update(final_update_stats(model, theta0))
+        # the last update has no later loss to expose it: check the weights themselves
+        rec["checks"]["finite_params"] = not rec["nonfinite_tensors"]
+        rec["checks"]["finite_update_stats"] = update_stats_finite(rec)
         rec["checks"]["all_tensors_changed"] = not rec["unchanged_tensors"]
         rec["divergence"] = divergence(rec["losses"])
         rec["checks"]["divergence"] = rec["divergence"]["ok"]
         failed = [c for c, ok in rec["checks"].items() if not ok]
         if failed:
             raise CPTCheckFailed(
-                f"checks failed: {failed}; unchanged tensors: {rec['unchanged_tensors'][:10]}"
+                f"checks failed: {failed}; unchanged tensors: {rec['unchanged_tensors'][:10]}; "
+                f"non-finite tensors: {rec['nonfinite_tensors'][:10]}"
             )
         del theta0
         if model_out is not None:

@@ -42,6 +42,18 @@ collected here so every script shares one client. Changes from the source:
   ledger check and append are one critical section (`emx.spend.record_once`, key
   `gpu_charge_key(pod_id)`), and `pod_sessions` ends a session at its FIRST `terminated` event,
   so two concurrent cleanups compute the same session and record one charge.
+- 2026-10-06 (E9 implementation plan v4, unit F2; prereg §7.3, §8.7; additive, other experiments
+  unchanged): E9 has stage limits (`emx.spend` refuses an untagged E9 row), so a pod's `created`
+  event carries its `stage` (pod_up.py --stage), `pod_sessions` passes it on, and
+  `ledger_record_gpu` charges with it (`session_stage`: the event's stage, else the stage in its
+  reservation's note `E9:<stage>:...`, else "setup", flagged in the note). `ledger_check` takes
+  an optional `stage`. E9's pods are armed at their OWN budget deadline, never at the global
+  line (§7.3: the backstop "is never the armed deadline of a pod"), so `per_slot_deadlines`
+  gives each E9 pod `rearm_target(pod, +inf)` (its reservation's allowed and acknowledged
+  deadlines only). The backstop kill line, min($145, $200 - current API reserve - API recorded
+  and reserved), is enforced by the laptop watchdog (scripts/e9_watchdog.sh) over all E9 pods
+  through `e9_backstop_usd` / `e9_watchdog_status` (`python -m emx.runpod --exp E9
+  --e9-budget-check`: one JSON line, exit 2 = hard stop).
 """
 
 from __future__ import annotations
@@ -54,6 +66,7 @@ import re
 import subprocess
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -353,6 +366,9 @@ def pod_sessions(events: list[dict], now: datetime | None = None) -> list[dict]:
                 "running": True,
                 "t1": None,
             }
+            for k in ("stage", "reservation_id"):  # E9 (additive): only when the event has it
+                if e.get(k):
+                    pods[pid][k] = e[k]
         elif e["event"] == "rate" and pid in pods and e.get("rate_usd_h"):
             pods[pid]["rate"], pods[pid]["rate_source"] = float(e["rate_usd_h"]), "api"
         elif e["event"] == "terminated" and pid in pods and pods[pid]["running"]:
@@ -426,11 +442,56 @@ def ledger_spent(kind: str) -> float:
     return float(_spend().spent(kind=kind, exp=EXP))
 
 
-def ledger_check(projected_usd: float, running_pod_usd: float) -> None:
+def ledger_check(projected_usd: float, running_pod_usd: float, stage: str | None = None) -> None:
     """Combined guard (raises or exits non-zero over a cap). E1 relies on emx.spend's default
-    exp ("E1"), exactly as before the 2026-09-29 generalisation; other experiments pass it."""
+    exp ("E1"), exactly as before the 2026-09-29 generalisation; other experiments pass it.
+    `stage` (E9: required by its stage limits) is passed only when given."""
     kw = {} if EXP == DEFAULT_EXP else {"exp": EXP}
+    if stage is not None:
+        kw["stage"] = stage
     _spend().check_total(projected_usd, "gpu", running_pod_usd=running_pod_usd, **kw)
+
+
+E9_FALLBACK_STAGE = "setup"  # an E9 charge whose stage nothing records (an untracked pod)
+
+
+def _has_stage_limits() -> bool:
+    try:
+        return bool(getattr(caps(), "stage_limits", None))
+    except KeyError:
+        return False
+
+
+def stage_from_note(note: str) -> str | None:
+    """The stage of an E9 ledger or reservation note `E9:<stage>:<step>:<batch>`, else None."""
+    parts = str(note or "").split(":")
+    if len(parts) >= 2 and parts[0] == EXP:
+        try:
+            stages = caps().stage_group or {}
+        except KeyError:
+            return None
+        if parts[1] in stages:
+            return parts[1]
+    return None
+
+
+def session_stage(session: dict) -> tuple[str, str]:
+    """(stage, source) of a pod session for an experiment with stage limits: its `created`
+    event's stage, else its reservation note's, else E9_FALLBACK_STAGE ("fallback")."""
+    if session.get("stage"):
+        return str(session["stage"]), "event"
+    rid = session.get("reservation_id")
+    if rid:
+        try:
+            from emx import runpod_reservations as rr
+
+            R = rr.get(rid)
+        except Exception:  # noqa: BLE001 - a charge must never fail on bookkeeping
+            R = None
+        st = stage_from_note((R or {}).get("note", ""))
+        if st:
+            return st, "reservation"
+    return E9_FALLBACK_STAGE, "fallback"
 
 
 def gpu_charge_key(pod_id: str) -> str:
@@ -467,6 +528,10 @@ def ledger_record_gpu(session: dict, note: str) -> bool:
         "usd": round(session["usd"], 4),
         "note": f"{note}; pod={pid}; rate {session['rate']}/h ({session['rate_source']})",
     }
+    if _has_stage_limits():  # E9: every ledger row carries a stage (emx.spend refuses none)
+        kw["stage"], src = session_stage(session)
+        if src != "event":
+            kw["note"] += f"; stage {kw['stage']} from {src}"
     once = getattr(_spend(), "record_once", None)
     if once is None:  # a test fake without the locked helper
         _spend().record(**kw)
@@ -695,6 +760,12 @@ def per_slot_deadlines(
     for s in pod_sessions(events, now):
         if not s["running"] or not SLOT_RE.fullmatch(s["slot"] or ""):
             continue
+        if EXP == "E9":  # its own budget deadline only, never the global line (prereg §7.3)
+            if rr.pod(s["pod_id"]) is None:
+                continue  # no reservation: no budget deadline to arm (E9 always reserves)
+            d = rr.rearm_target(s["pod_id"], float("inf"))
+            out[s["slot"]] = min(d, out.get(s["slot"], d))
+            continue
         g = killswitch_deadline(s["pod_id"], events, now)
         d = rr.rearm_target(s["pod_id"], g)
         out[s["slot"]] = min(d, out.get(s["slot"], d))
@@ -728,13 +799,190 @@ def watchdog_live(exp: str | None = None, now: float | None = None) -> tuple[boo
     return True, f"heartbeat {age:.0f} s old (pid {pid})"
 
 
+# --- E9: the backstop kill line over all E9 pods (laptop watchdog only; prereg §7.3) ----------
+
+E9_BACKSTOP_FUNCS = ("backstop_kill_usd", "backstop_usd")  # emx.e9.budget's, when it has one
+E9_RESERVE_FUNCS = ("api_reserve", "current_api_reserve_usd", "api_reserve_usd")
+
+
+def _e9_budget():
+    try:
+        from emx.e9 import budget  # unit F1a; imported lazily (built concurrently)
+    except ImportError:
+        return None
+    return budget
+
+
+@contextmanager
+def e9_admission_lock():
+    """The E9 admission lock (implementation plan v4, "E9 admission protocol"): E9's settlement
+    path holds it while it writes a pod's GPU charge and then its settle row, so an admission
+    reads both or neither. `emx.e9.budget.admission_lock()` when that module provides it, else
+    the same exclusive `fcntl.flock` on emx.e9.contracts.ADMISSION_LOCK under this checkout."""
+    b = _e9_budget()
+    lock = getattr(b, "admission_lock", None)
+    if callable(lock):
+        with lock():
+            yield
+        return
+    from emx.e9 import contracts as c9
+
+    path = ROOT / c9.ADMISSION_LOCK
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
+def _close_session(pod_id: str, note: str) -> dict | None:
+    """Log the pod's `terminated` event (once) and return its closed session, WITHOUT charging
+    (E9: `emx.e9.budget.settle_pod` writes the charge). None if the log never created it."""
+    closed = next(
+        (s for s in pod_sessions(read_pod_events()) if s["pod_id"] == pod_id and not s["running"]),
+        None,
+    )
+    if closed is None:
+        log_pod_event({"event": "terminated", "pod_id": pod_id, "reason": note})
+        closed = next((s for s in pod_sessions(read_pod_events()) if s["pod_id"] == pod_id), None)
+    return closed
+
+
+def e9_charge_and_settle(pod_id: str, note: str, reservation_id: str | None = None):
+    """E9 (admission protocol): under the E9 admission lock, the terminated pod's GPU charge, with
+    its stage, and then the settle row of the RunPod reservation that launched it
+    (`reservation_id`, else the one emx.runpod_reservations names), then the release of the
+    reservation's remainder (bookkeeping). The charge and the settle go through
+    `emx.e9.budget.settle_pod` (charge key gpu:E9:<pod>, the same as `gpu_charge_key`, so a later
+    `finish_session` never charges twice); a pod no reservation launched is charged by
+    `finish_session` alone. All steps are idempotent. Returns (closed session or None,
+    reservation id or None, settled: bool)."""
+    from emx import runpod_reservations as rr
+
+    with e9_admission_lock():
+        rid = reservation_id
+        if rid is None:
+            p = rr.pod(pod_id)
+            rid = None if p is None else p["reservation_id"]
+        settle_pod = getattr(_e9_budget(), "settle_pod", None)
+        if rid is None or settle_pod is None:
+            s = finish_session(pod_id, note)
+            if rid is None or s is None or s["running"]:
+                return s, rid, False
+            rr.settle(rid, s["usd"], pod_id=pod_id, note=f"pod_down: {pod_id}")
+        else:
+            s = _close_session(pod_id, note)
+            if s is None or s["running"]:
+                return s, rid, False
+            r = settle_pod(
+                rid, pod_id, round(s["usd"], 4), hours=s["hours"],
+                resource=f"runpod:{s['gpu']}:{pod_id}",
+                note=f"{note}; rate {s['rate']}/h ({s['rate_source']})",
+            )
+            if r.get("charged_now"):
+                log_pod_event({"event": "charged", "pod_id": pod_id, "usd": s["usd"]})
+        rr.release(rid, note=f"pod_down: unused after {pod_id}")
+        return s, rid, True
+
+
+def e9_api_reserve_usd() -> tuple[float, str]:
+    """(current API reserve $, source): emx.e9.budget's current value when it provides one (the
+    orchestrator recomputes it at each gate), else the sign-off value in the contracts."""
+    b = _e9_budget()
+    for name in E9_RESERVE_FUNCS:
+        f = getattr(b, name, None)
+        if callable(f):
+            return float(f()), f"emx.e9.budget.{name}"
+    from emx.e9 import contracts as c9
+
+    return float(c9.API_RESERVE_AT_SIGNOFF_USD), "contracts.API_RESERVE_AT_SIGNOFF_USD"
+
+
+def e9_backstop_arith(
+    gpu_limit: float, hard_cap: float, api_reserve: float, api_recorded: float,
+    api_reserved: float,
+) -> float:
+    """min(GPU limit, hard cap - API reserve - (API recorded + API reserved)) (prereg §7.3)."""
+    return round(min(gpu_limit, hard_cap - api_reserve - api_recorded - api_reserved), 6)
+
+
+def e9_backstop_usd(api_reserve_usd: float | None = None, ledger=None) -> dict:
+    """The E9 backstop kill line on GPU dollars (logged + running, all E9 pods together), with
+    its inputs. When emx.e9.budget has its own backstop function, the lower of the two counts."""
+    from emx.e9 import contracts as c9
+
+    t = _spend().totals("E9", ledger=ledger)
+    reserve, src = (
+        (float(api_reserve_usd), "argument") if api_reserve_usd is not None
+        else e9_api_reserve_usd()
+    )
+    line = e9_backstop_arith(
+        c9.GPU_LIMIT_USD, c9.HARD_CAP_USD, reserve, float(t["judge_usd"]),
+        float(t["judge_reserved_usd"]),
+    )
+    out = {
+        "gpu_limit_usd": c9.GPU_LIMIT_USD,
+        "hard_cap_usd": c9.HARD_CAP_USD,
+        "api_reserve_usd": reserve,
+        "api_reserve_source": src,
+        "api_recorded_usd": round(float(t["judge_usd"]), 6),
+        "api_reserved_usd": round(float(t["judge_reserved_usd"]), 6),
+        "computed_usd": line,
+    }
+    b = _e9_budget()
+    for name in E9_BACKSTOP_FUNCS:
+        f = getattr(b, name, None)
+        if callable(f):
+            other = float(f())
+            out["budget_" + name] = other
+            line = min(line, other)
+            break
+    out["backstop_usd"] = round(line, 6)
+    return out
+
+
+def e9_watchdog_status(reserve_hours: float, events: list[dict] | None = None) -> dict:
+    """E9's laptop budget check: logged GPU $ + every running E9 pod's cost so far + its burn
+    for `reserve_hours` (the watchdog's shutdown latency) against the backstop. Never an armed
+    deadline (the pods carry their own budget deadlines)."""
+    sessions = pod_sessions(read_pod_events() if events is None else events)
+    running = running_projection(sessions, reserve_hours)
+    gpu_spent = ledger_spent("gpu")
+    b = e9_backstop_usd()
+    projected = gpu_spent + running
+    return {
+        "exp": EXP,
+        "gpu_spent_usd": round(gpu_spent, 4),
+        "running_usd_incl_reserve": round(running, 4),
+        "reserve_hours": reserve_hours,
+        "projected_gpu_usd": round(projected, 4),
+        "backstop": b,
+        "gpu_kill_limit_usd": b["backstop_usd"],
+        "hard_stop": bool(projected >= b["backstop_usd"]),
+        "burn_per_hr": round(sum(s["rate"] for s in sessions if s["running"]), 4),
+        "running": [
+            {k: s.get(k) for k in ("pod_id", "slot", "gpu", "hours", "rate", "usd", "stage")}
+            for s in sessions
+            if s["running"]
+        ],
+    }
+
+
 # --- CLI: offline slot ownership check (pod_push.sh calls it before touching a pod) ----------
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m emx.runpod")
     ap.add_argument("--exp", default=DEFAULT_EXP)
-    ap.add_argument("--check-slot", required=True, metavar="SLOT")
+    ap.add_argument("--check-slot", metavar="SLOT")
+    ap.add_argument(
+        "--e9-budget-check",
+        action="store_true",
+        help="E9 only: print one JSON line (e9_watchdog_status) and exit 2 at the backstop",
+    )
+    ap.add_argument("--reserve-hours", type=float, default=0.0, help="with --e9-budget-check")
     ap.add_argument(
         "--session-env",
         action="store_true",
@@ -755,6 +1003,19 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
     if args.per_slot and not args.killswitch_deadline:
         ap.error("--per-slot needs --killswitch-deadline")
+    if args.e9_budget_check:
+        if args.exp != "E9":
+            ap.error("--e9-budget-check is E9-only")
+        configure(args.exp)
+        try:
+            r = e9_watchdog_status(args.reserve_hours)
+        except Exception as e:  # noqa: BLE001 - the watchdog fails closed on any other exit
+            print(f"E9 budget check failed: {type(e).__name__}: {e}", file=sys.stderr)
+            return 3
+        print(json.dumps(r))  # stdout: exactly one JSON line
+        return 2 if r["hard_stop"] else 0
+    if not args.check_slot:
+        ap.error("the following arguments are required: --check-slot")
     configure(args.exp)
     slot = check_slot(args.check_slot)
     pod_id = env(f"RUNPOD_POD_ID{slot}")

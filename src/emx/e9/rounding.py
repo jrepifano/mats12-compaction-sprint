@@ -119,7 +119,10 @@ def bernstein_tail(t: float, v: float, m: float) -> float:
     """Bernstein bound P(|S| >= t) <= 2·exp(-t² / (2V + 2Mt/3)), capped at 1 (prereg §4.5).
 
     V is the sum of the centred terms' variances and M bounds each centred term's magnitude.
+    A nonfinite input returns NaN, which never passes `tail >= alpha` (review R2 #6).
     """
+    if not all(math.isfinite(float(a)) for a in (t, v, m)):
+        return math.nan
     t = abs(float(t))
     if t == 0.0:
         return 1.0
@@ -129,20 +132,34 @@ def bernstein_tail(t: float, v: float, m: float) -> float:
     return min(1.0, 2.0 * math.exp(-t * t / denom))
 
 
+def _finite_or_none(v: float | None) -> float | None:
+    """JSON-safe float: nonfinite values are recorded as null (the verdict already failed)."""
+    return v if v is None or math.isfinite(v) else None
+
+
 class DrawAccumulator:
     """Streams N rounded draws of one tensor (so a 45M-element tensor never holds N copies) and
     computes the §4.5 statistics. Draws are flat float64 arrays of bf16 values (exact).
 
     The sum of N bf16 values of one element is exact in float64 (8-bit significands), so the mean
     is one correctly rounded division and lies in [lo, hi] exactly when every draw does.
+
+    Nonfinite values fail the tensor with a reason, wherever they occur (review R2 #6): a nonfinite
+    x, any nonfinite draw of any element (checked on ALL elements, not only the sampled subset), a
+    nonfinite mean (also counted as outside [lo, hi]), or a nonfinite S, V, M or tail bound.
     """
 
     def __init__(self, x: Any):
         self.x = np.asarray(x, dtype=np.float64).ravel()
-        self.lo, self.hi = bf16_neighbors(self.x)
-        self.det = self.lo == self.hi
+        self.bad_x = ~np.isfinite(self.x)
+        lo, hi = bf16_neighbors(np.where(self.bad_x, 0.0, self.x))
+        self.lo = np.where(self.bad_x, np.nan, lo)
+        self.hi = np.where(self.bad_x, np.nan, hi)
+        self.det = (lo == hi) & ~self.bad_x
         self.sum = np.zeros_like(self.x)
         self.det_bad = np.zeros(self.x.shape, dtype=bool)
+        self.bad_draw = np.zeros(self.x.shape, dtype=bool)  # element had a nonfinite draw
+        self.n_nonfinite_draws = 0  # element-draws that were NaN or +-Inf
         self.n_off_grid = 0  # element-draws equal to neither lo nor hi (diagnostic)
         self.n = 0
 
@@ -150,9 +167,12 @@ class DrawAccumulator:
         d = np.asarray(draw, dtype=np.float64).ravel()
         if d.shape != self.x.shape:
             raise ValueError(f"draw shape {d.shape} != x shape {self.x.shape}")
+        nonfinite = ~np.isfinite(d)
+        self.bad_draw |= nonfinite
+        self.n_nonfinite_draws += int(np.count_nonzero(nonfinite))
         self.sum += d
         self.det_bad |= self.det & (d != self.x)
-        self.n_off_grid += int(np.count_nonzero((d != self.lo) & (d != self.hi)))
+        self.n_off_grid += int(np.count_nonzero(~((d == self.lo) | (d == self.hi))))
         self.n += 1
 
     def result(
@@ -165,25 +185,49 @@ class DrawAccumulator:
         if self.n == 0:
             raise ValueError("no draws")
         n = self.n
-        mean = self.sum / n
-        rand = ~self.det
-        outside = rand & ((mean < self.lo) | (mean > self.hi))
-        rand_idx = np.flatnonzero(rand)
-        sampled = rand_idx.size > sample_max
-        idx = rand_idx
-        if sampled:
-            rng = np.random.default_rng(sample_seed)
-            idx = np.sort(rng.choice(rand_idx, size=sample_max, replace=False))
-        x, lo, hi = self.x[idx], self.lo[idx], self.hi[idx]
-        ulp = hi - lo
-        p = (x - lo) / ulp if idx.size else np.zeros(0)
-        s = float(np.sum(mean[idx] - x))
-        v = float(np.sum(p * (1.0 - p) * ulp**2) / n)
-        m = float(np.max(ulp) / n) if idx.size else 0.0
+        with np.errstate(invalid="ignore", over="ignore"):
+            mean = self.sum / n
+            bad_mean = ~np.isfinite(mean) & ~self.bad_x
+            rand = ~self.det & ~self.bad_x
+            # written so that a NaN mean counts as outside
+            outside = rand & ~((mean >= self.lo) & (mean <= self.hi))
+            rand_idx = np.flatnonzero(rand)
+            sampled = rand_idx.size > sample_max
+            idx = rand_idx
+            if sampled:
+                rng = np.random.default_rng(sample_seed)
+                idx = np.sort(rng.choice(rand_idx, size=sample_max, replace=False))
+            x, lo, hi = self.x[idx], self.lo[idx], self.hi[idx]
+            ulp = hi - lo
+            p = (x - lo) / ulp if idx.size else np.zeros(0)
+            s = float(np.sum(mean[idx] - x))
+            v = float(np.sum(p * (1.0 - p) * ulp**2) / n)
+            m = float(np.max(ulp) / n) if idx.size else 0.0
         tail = bernstein_tail(abs(s), v, m)
-        pass_bern = tail >= alpha
+        stats_finite = all(math.isfinite(a) for a in (s, v, m, tail))
+        reasons = []
+        if self.bad_x.any():
+            reasons.append(f"nonfinite x in {int(self.bad_x.sum())} elements")
+        if self.n_nonfinite_draws:
+            reasons.append(
+                f"{self.n_nonfinite_draws} nonfinite draws in {int(self.bad_draw.sum())} elements"
+            )
+        if bad_mean.any():
+            reasons.append(f"nonfinite mean in {int(bad_mean.sum())} elements")
+        if not stats_finite:
+            reasons.append("nonfinite S, V, M or tail bound")
+        pass_finite = not reasons
+        pass_bern = bool(stats_finite and tail >= alpha)
         pass_det = not bool(self.det_bad.any())
         pass_range = not bool(outside.any())
+        if not pass_bern and stats_finite:
+            reasons.append(f"Bernstein tail {tail:.3g} < alpha {alpha:.3g}")
+        if not pass_det:
+            reasons.append(f"{int(self.det_bad.sum())} deterministic elements moved")
+        if not pass_range:
+            reasons.append(f"{int(outside.sum())} means outside [lo, hi]")
+        z = s / math.sqrt(v) if stats_finite and v > 0 else (0.0 if stats_finite else None)
+        mean_p = float(p.mean()) if idx.size else None
         return {
             "n_draws": n,
             "n_elements": int(self.x.size),
@@ -192,20 +236,25 @@ class DrawAccumulator:
             "n_tested": int(idx.size),
             "sampled": bool(sampled),
             "sample_seed": sample_seed if sampled else None,
-            "S": s,
-            "V": v,
-            "M": m,
-            "bernstein_tail": tail,
+            "S": _finite_or_none(s),
+            "V": _finite_or_none(v),
+            "M": _finite_or_none(m),
+            "bernstein_tail": _finite_or_none(tail),
             "alpha": alpha,
-            "z_diagnostic": s / math.sqrt(v) if v > 0 else 0.0,
-            "mean_p": float(p.mean()) if idx.size else None,
+            "z_diagnostic": _finite_or_none(z),
+            "mean_p": _finite_or_none(mean_p),
+            "n_nonfinite_x": int(self.bad_x.sum()),
+            "n_nonfinite_draws": self.n_nonfinite_draws,
+            "n_nonfinite_means": int(bad_mean.sum()),
             "n_deterministic_violations": int(self.det_bad.sum()),
             "n_mean_outside_lo_hi": int(outside.sum()),
             "n_off_grid_draws": self.n_off_grid,
-            "pass_bernstein": bool(pass_bern),
+            "pass_finite": pass_finite,
+            "pass_bernstein": pass_bern,
             "pass_deterministic": pass_det,
             "pass_mean_in_range": pass_range,
-            "pass": bool(pass_bern and pass_det and pass_range),
+            "pass": bool(pass_finite and pass_bern and pass_det and pass_range),
+            "fail_reasons": reasons,
         }
 
 
@@ -395,9 +444,10 @@ def run_tensor(
         acc.add(d.cpu().double().numpy().ravel())
     res = acc.result(alpha=alpha, sample_max=sample_max)
     near = st.nearest()
-    rand = ~acc.det
+    rand = ~acc.det & ~acc.bad_x
     ulp = (acc.hi - acc.lo)[rand]
     step_ulps = np.abs(x - base)[rand] / ulp if ulp.size else np.zeros(0)
+    step_ulps = step_ulps[np.isfinite(step_ulps)]
     res.update(
         {
             "tensor": name,

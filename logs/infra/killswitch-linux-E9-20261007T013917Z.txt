@@ -1,0 +1,42 @@
+# bash scripts/killswitch_linux_check.sh (E9 unit F2, prereg §8.2; Docker python:3.12-slim, no paid calls)
+2026-10-07T01:38:40Z
+10ae856e12e61e59a2c3cb73f9e6f18c10aedda8
+83cdf1e2871e456d291208c58943f1bda863c971a58b598c6f83ccd81769fbb3  scripts/pod_killswitch.sh
+90e739d78166829afd4da026454b87abe22ec3467612913d287806736df09f20  scripts/killswitch_linux_check.sh
+Docker version 29.4.1, build 055a478
+---
+PASS refuses another pod's id
+PASS 6 concurrent arms all ARMED, key_check=ok
+PASS exactly one watcher after concurrent arms
+PASS ARMED line has a GNU-date UTC time
+PASS watcher is in its own session (setsid)
+PASS state dir is mode 700
+PASS GET read used the exact Bearer header + browser UA
+argv matches: none
+PASS key in no process argv
+PASS key not in the killswitch log
+PASS no stop before the deadline
+PASS re-arm moved the deadline; stopped via runpodctl, key in env only
+PASS no REST stop while runpodctl works
+PASS fired marker written
+PASS still alive after an accepted stop -> retried
+PASS runpodctl failing -> REST stop fallback
+PASS arm refuses without runpodctl
+--- runpodctl log:
+stop pod podlinux1 key_in_env=yes
+stop pod podlinux1 key_in_env=yes
+stop pod podlinux1 key_in_env=yes
+stop pod podlinux1 key_in_env=yes
+pod stop podlinux1 key_in_env=yes
+--- api log:
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+GET /v1/pods/podlinux1 auth_ok=True ua_ok=True
+POST /v1/pods/podlinux1/stop auth_ok=True ua_ok=True
+--- killswitch log:
+FAILS=0
+rc=0

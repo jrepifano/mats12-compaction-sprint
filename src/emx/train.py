@@ -74,6 +74,7 @@ from emx.e1b.contracts import CHECKPOINT_KEYS
 
 LOSS_REDUCTION = "step_token_mean"  # or "microbatch_mean" (see module docstring)
 EVAL_EVERY = 50
+RECORD_EVERY = 25  # lifecycle runs also write a "running" record this often (E9 R2 #3)
 EVAL_BATCH = 8
 RESULTS_DIR = Path("results/E1/train")
 
@@ -399,6 +400,31 @@ def push_adapter(output_dir: str, hub_repo: str, cell: str, message: str | None 
 E1B_RECORD_KEYS: tuple[str, ...] = ("eval_steps", "checkpoints", "status", "error")
 
 
+_PREV_SIGTERM: list = []
+
+
+def _on_sigterm(signum, frame):  # noqa: ARG001
+    raise SystemExit(128 + signum)
+
+
+def _install_sigterm() -> None:
+    """E9 R2 #3: a SIGTERM (pod job termination) becomes SystemExit, so the lifecycle's
+    `except BaseException` writes a "failed" record with every completed step. Main thread only;
+    the previous handler is restored when training ends."""
+    import signal
+    import threading
+
+    if threading.current_thread() is threading.main_thread() and not _PREV_SIGTERM:
+        _PREV_SIGTERM.append(signal.signal(signal.SIGTERM, _on_sigterm))
+
+
+def _restore_sigterm() -> None:
+    import signal
+
+    if _PREV_SIGTERM:
+        signal.signal(signal.SIGTERM, _PREV_SIGTERM.pop())
+
+
 def write_record(path: Path, res: TrainResult) -> None:
     """Write a training record atomically (temp file in the same directory, then os.replace).
     An E1 record (`status` None: no lifecycle) omits the E1b keys, so its key set is E1's."""
@@ -565,6 +591,7 @@ def _train(
             on_checkpoint(0, model)  # step-0 measurements only: no save, no checkpoint row
         if lifecycle:
             write_record(rpath, result(None, "running"))
+            _install_sigterm()
         prev_ckpt = 0
         for step in range(run_steps):
             ts = time.time()
@@ -600,6 +627,8 @@ def _train(
             is_ckpt = done in ckpt_set
             cadence = done % EVAL_EVERY == 0 if not ckpt_set else False
             if not (is_ckpt or cadence or done == run_steps):
+                if done % RECORD_EVERY == 0:  # keep the per-step curve on disk (E9 R2 #3)
+                    write_record(rpath, result(None, "running"))
                 continue
             tc = time.time()
             eval_steps.append(done)
@@ -631,6 +660,8 @@ def _train(
             except Exception as w:  # noqa: BLE001 - keep the original exception
                 e.add_note(f"failed record not written: {w!r}")
         raise
+    finally:
+        _restore_sigterm()
 
     res = result(hub_revision, "pushed" if hub_revision else "trained")
     write_record(rpath, res)
