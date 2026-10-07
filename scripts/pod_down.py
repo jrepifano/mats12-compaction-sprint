@@ -40,9 +40,35 @@ check and append are one locked step, `emx.spend.record_once`), settles the pod'
 releases the remainder, and clears the slot's keys if they still name this pod. Re-running it is
 a no-op that exits 0.
 
+2026-10-06 (E9 implementation plan v4, unit F2, "E9 admission protocol"; additive): for --exp E9
+every termination is followed by the charge and the settlement as ONE step under the E9 admission
+lock (`emx.runpod.e9_charge_and_settle`: `emx.e9.budget.admission_lock()`, else the same flock on
+logs/E9-admission.lock): the GPU charge, recorded with the pod's stage (its `created` event's,
+from pod_up.py --stage), then the reservation's settle row and the release of its remainder, so an
+admission counts the pod once (as its commitment before, as its charge after). The reservation is
+--reservation when given, else the one that launched the pod (emx.runpod_reservations), so
+`--slot`, `--all-exp` and `--pod-id` all settle. The DELETE is sent before the lock is taken.
+
+2026-10-07 (E9 code review R3 r2 #3, #4): untracked E9 pods get a durable `pending_termination`
+event BEFORE their DELETE and are retried on every reconciliation (`emx.runpod.e9_reap`); a
+failed DELETE makes `--untracked` / `--all-exp` exit 1. `--slot` after a killswitch self-stop:
+an authoritative 404 or TERMINATED (`api_gone`) counts as gone even though the log still shows
+the pod running, so it is closed and settled; a transport failure stays an error (exit 1).
+
+2026-10-07 (E9 code review R3 #5): every E9 closure goes through `emx.runpod.e9_close`
+(`emx.e9.budget.settle_pod` under the admission lock): after a DELETE, for pods missing from the
+API, for reaped untracked pods, and on retries. Termination and settlement are reported apart
+(`E9_TERMINATED pod=<id>` / `E9_SETTLED pod=<id> ok|FAILED <why>`). E9 exit codes: 0 every pod
+terminated and settled; 1 a termination failed (the pod may still bill; nothing cleared);
+3 terminated but a settlement failed (the slot's keys are kept; rerun to settle: every step is
+idempotent); 2 usage. `--all-exp` and `--untracked` also retry every closed-but-unsettled E9
+pod from durable history (`emx.runpod_reservations.unsettled_pods`), even after it left the API.
+
 Usage: uv run python scripts/pod_down.py [--exp I1a|E1b] --slot _A | --all-exp | --all-e1 |
        --untracked [--dry-run] [--reason TEXT]
        uv run python scripts/pod_down.py --exp E3 --pod-id ID --reservation RID [--slot S]
+       uv run python scripts/pod_down.py --exp E9 --slot _A [--reservation RID] | --all-exp |
+           --pod-id ID --reservation RID
 """
 
 from __future__ import annotations
@@ -85,6 +111,9 @@ def terminate(client: rp.RunPod, pod_id: str, reason: str, gone_ok: bool = False
         print(f"pod {pod_id}: DELETE failed ({e}) but it is gone and logged terminated")
     if client.dry_run:
         return True
+    if rp.EXP == "E9":  # termination only; the caller settles (e9_settle)
+        print(f"E9_TERMINATED pod={pod_id}")
+        return True
     s = rp.finish_session(pod_id, reason)
     if s is None:
         print(
@@ -95,6 +124,52 @@ def terminate(client: rp.RunPod, pod_id: str, reason: str, gone_ok: bool = False
     else:
         print(f"pod {pod_id} terminated: {s['hours']:.2f} h x ${s['rate']}/h = ${s['usd']:.2f}")
     return True
+
+
+E9_UNSETTLED = 3  # exit code (E9): terminated, but a settlement failed; rerun to settle
+
+
+def e9_settle(pod_id: str, reason: str, rid: str | None = None) -> bool:
+    """E9: the pod's charge and settlement (`emx.runpod.e9_close`, under the admission lock),
+    reported apart from its termination. True when settled, or charged with nothing to settle
+    (an orphan no reservation covers)."""
+    r = rp.e9_close(pod_id, reason, rid)
+    s = r["session"]
+    if s is not None:
+        print(f"pod {pod_id}: {s['hours']:.2f} h x ${s['rate']}/h = ${s['usd']:.2f}")
+    if r["settled"]:
+        print(f"E9_SETTLED pod={pod_id} ok reservation={r['reservation_id']} "
+              "(charge then settle under the E9 admission lock)")
+        return True
+    if r["reservation_id"] is None and r["charged"]:
+        print(f"E9_SETTLED pod={pod_id} ok ({r['why']})")
+        return True
+    print(f"E9_SETTLED pod={pod_id} FAILED {r['why']}", file=sys.stderr)
+    return False
+
+
+def e9_retry_unsettled(skip: set[str], reason: str) -> tuple[int, int]:
+    """E9: settle every closed-but-unsettled pod (durable history; also after it left the API),
+    except `skip`. Returns (tried, failed)."""
+    from emx import runpod_reservations as rr
+
+    tried = failed = 0
+    for u in rr.unsettled_pods(rp.EXP):
+        if u["pod_id"] in skip or not u["terminated"]:
+            continue
+        tried += 1
+        if not e9_settle(u["pod_id"], f"{reason}: retry of an unsettled pod", u["reservation_id"]):
+            failed += 1
+        elif u["slot"] and rp.env(f"RUNPOD_POD_ID{u['slot']}") == u["pod_id"]:
+            clear_slot(u["slot"])
+    return tried, failed
+
+
+def settle_for_exp(rid: str, pod_id: str, reason: str) -> bool:
+    """`settle`, or for E9 the charge-then-settle under the admission lock (idempotent)."""
+    if rp.EXP != "E9":
+        return settle(rid, pod_id)
+    return e9_settle(pod_id, reason, rid)
 
 
 def settle(rid: str, pod_id: str) -> bool:
@@ -189,7 +264,11 @@ def down_by_pod_id(
     if p is not None and p["settled"]:
         print(f"pod {pod_id}: already settled under {rid}")
         if already_terminated(pod_id):
-            rp.finish_session(pod_id, reason)  # a charge lost to a crash is recorded, once
+            if rp.EXP == "E9":  # a charge lost to a crash, through settle_pod (idempotent)
+                if not e9_settle(pod_id, reason, rid):
+                    return E9_UNSETTLED
+            else:
+                rp.finish_session(pod_id, reason)  # a charge lost to a crash is recorded, once
     else:
         gone, info = api_gone(client, pod_id)
         name = (info or {}).get("name")
@@ -204,8 +283,8 @@ def down_by_pod_id(
         if not terminate(client, pod_id, reason, gone_ok=gone or already_terminated(pod_id)):
             print(f"reservation {rid} KEPT: the pod may still bill", file=sys.stderr)
             return 1
-        if not settle(rid, pod_id):
-            return 1
+        if not settle_for_exp(rid, pod_id, reason):
+            return E9_UNSETTLED if rp.EXP == "E9" else 1
     slot_key = slot or launch_slot
     if slot_key and rp.env(f"RUNPOD_POD_ID{slot_key}") == pod_id:
         clear_slot(slot_key)
@@ -261,6 +340,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             client.list_pods()
             return 0
+        if rp.EXP == "E9":  # pending terminations are retried; failures reach the watchdog
+            reaped, del_failed = rp.e9_reap(client, args.reason)
+            print(f"{len(reaped)} untracked {rp.POD_NAME_PREFIX}* pod(s) terminated {reaped}")
+            tried, failed = e9_retry_unsettled(set(), args.reason)
+            if tried:
+                print(f"E9: retried {tried} unsettled pod(s); {failed} still unsettled")
+            if del_failed:
+                print(f"E9: DELETE FAILED for untracked pod(s) {del_failed}; they may bill",
+                      file=sys.stderr)
+                return 1
+            return E9_UNSETTLED if failed else 0
         reaped = rp.reap_untracked(client, args.reason)
         print(f"{len(reaped)} untracked {rp.POD_NAME_PREFIX}* pod(s) terminated {reaped}")
         return 0
@@ -272,11 +362,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"no pod in slot {slot}", file=sys.stderr)
             return 1
         api_pod = None
+        e9_gone = False
         if not args.dry_run:
-            try:
-                api_pod = client.get_pod(pod_id)
-            except rp.RunPodError:
-                api_pod = None  # gone from the API: the event log alone decides
+            if rp.EXP == "E9":  # review R3 r2 #4: only a 404/TERMINATED answer means "gone"
+                e9_gone, api_pod = api_gone(client, pod_id)
+            else:
+                try:
+                    api_pod = client.get_pod(pod_id)
+                except rp.RunPodError:
+                    api_pod = None  # gone from the API: the event log alone decides
             owned, why = rp.slot_pod_ok(slot, pod_id, api_pod)
             if not owned:
                 print(f"REFUSED: {why}", file=sys.stderr)
@@ -284,7 +378,10 @@ def main(argv: list[str] | None = None) -> int:
         gone = not args.dry_run and (
             api_pod is None or str(api_pod.get("desiredStatus", "")).upper() == "TERMINATED"
         )
-        ok = terminate(client, pod_id, args.reason, gone_ok=gone and already_terminated(pod_id))
+        # E9: a killswitch self-stop leaves no laptop termination event; an authoritative 404 or
+        # TERMINATED is enough, and a transport failure never is
+        gone_ok = e9_gone if rp.EXP == "E9" else gone and already_terminated(pod_id)
+        ok = terminate(client, pod_id, args.reason, gone_ok=gone_ok)
         if not ok:
             if args.reservation:
                 print(
@@ -295,7 +392,14 @@ def main(argv: list[str] | None = None) -> int:
             if args.reservation:
                 print(f"DRY RUN: would settle and release reservation {args.reservation}")
             return 0
-        if args.reservation and not settle(args.reservation, pod_id):
+        if rp.EXP == "E9":  # always settled (the reservation that launched it, if not given)
+            if not e9_settle(pod_id, args.reason, args.reservation):
+                print(f"slot {slot} KEPT: pod {pod_id} terminated but not settled; rerun",
+                      file=sys.stderr)
+                return E9_UNSETTLED
+            clear_slot(slot)
+            return 0
+        if args.reservation and not settle_for_exp(args.reservation, pod_id, args.reason):
             return 1  # slot kept, so a retry can settle (charge and settle are idempotent)
         clear_slot(slot)
         return 0
@@ -305,7 +409,12 @@ def main(argv: list[str] | None = None) -> int:
         client.list_pods()
         terminate(client, f"<each {rp.POD_NAME_PREFIX}* pod id>", args.reason)
         return 0
-    reaped = rp.reap_untracked(client, args.reason, grace_s=0)  # costed, then terminated
+    reap_failed: list[str] = []
+    if rp.EXP == "E9":
+        reaped, reap_failed = rp.e9_reap(client, args.reason, grace_s=0)
+    else:
+        reaped = rp.reap_untracked(client, args.reason, grace_s=0)  # costed, then terminated
+    reaped = list(reaped) + reap_failed  # never re-DELETEd below in the same pass
     pods = [
         p
         for p in client.list_pods()
@@ -313,24 +422,41 @@ def main(argv: list[str] | None = None) -> int:
     ]
     sessions = rp.pod_sessions(rp.read_pod_events())
     slot_of = {s["pod_id"]: s["slot"] for s in sessions}
-    ok = True
+    ok = not reap_failed
+    unsettled = 0
     for p in pods:
         if terminate(client, p["id"], args.reason):
+            if rp.EXP == "E9" and not e9_settle(p["id"], args.reason):
+                unsettled += 1
+                continue  # slot kept: a rerun settles
             if slot_of.get(p["id"]):
                 clear_slot(slot_of[p["id"]])
         else:
             ok = False
     # pods the event log still counts as running but the API no longer lists (terminated in the
     # console, or lost): close them at now, which over- rather than under-counts their cost
-    live = {p["id"] for p in pods}
+    live = {p["id"] for p in pods} | set(reap_failed)  # a failed DELETE may still bill
     for s in sessions:
         if s["running"] and s["pod_id"] not in live:
-            rp.finish_session(s["pod_id"], f"{args.reason}: not listed by the API; closed at now")
+            why = f"{args.reason}: not listed by the API; closed at now"
+            if rp.EXP == "E9":
+                if not e9_settle(s["pod_id"], why):
+                    unsettled += 1
+                    continue
+            else:
+                rp.finish_session(s["pod_id"], why)
             clear_slot(s["slot"])
             print(f"pod {s['pod_id']} was not listed by the API; closed in the log at now")
+    if rp.EXP == "E9":  # closed-but-unsettled pods from earlier passes
+        _, failed = e9_retry_unsettled(live, args.reason)
+        unsettled += failed
     verdict = "all terminated" if ok else "SOME TERMINATIONS FAILED"
+    if unsettled:
+        verdict += f"; {unsettled} NOT SETTLED (rerun)"
     print(f"{len(pods) + len(reaped)} {rp.EXP} pod(s) found; {verdict}")
-    return 0 if ok else 1
+    if not ok:
+        return 1
+    return E9_UNSETTLED if unsettled else 0
 
 
 if __name__ == "__main__":

@@ -168,7 +168,7 @@ def test_configure_i1a_names_events_and_caps(exp_i1a):
 
 def test_configure_ignores_the_environment(monkeypatch):
     with pytest.raises(KeyError):
-        rp.configure("E9")
+        rp.configure("E99")
     assert rp.EXP == "E1"  # a refused configure changes nothing
     monkeypatch.setenv("EMX_EXP", "I1a")
     assert rp.configure() == "E1" and rp.POD_NAME_PREFIX == "e1-"
@@ -906,7 +906,7 @@ def test_pod_push_e1_still_requires_hf_username(checkout):
 
 
 def test_pod_push_refuses_unknown_exp(checkout):
-    r = push(checkout, "--exp", "E9", "--slot", "_A")
+    r = push(checkout, "--exp", "E99", "--slot", "_A")
     assert r.returncode == 2
 
 

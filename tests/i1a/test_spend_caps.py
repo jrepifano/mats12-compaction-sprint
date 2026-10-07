@@ -20,7 +20,7 @@ def test_e1_caps_unchanged():
 
 def test_unknown_exp_refused(tmp_path):
     with pytest.raises(KeyError):
-        spend.check_total(1.0, "judge", exp="E9", ledger=tmp_path / "c.jsonl")
+        spend.check_total(1.0, "judge", exp="E99", ledger=tmp_path / "c.jsonl")
 
 
 def test_i1a_judge_limit_is_cap_minus_reserve_minus_gpu(tmp_path):

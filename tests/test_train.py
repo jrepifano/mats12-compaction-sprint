@@ -281,3 +281,29 @@ def test_train_script_help():
         check=False,
     )
     assert r.returncode == 0 and "--max-steps" in r.stdout
+
+
+def test_lifecycle_records_periodically_and_flushes_on_sigterm(setup, monkeypatch):
+    """E9 R2 #3: a lifecycle run writes its record every RECORD_EVERY steps, and a SIGTERM
+    mid-run leaves a "failed" record holding every completed step."""
+    import os
+    import signal
+
+    tmp, cfg = setup
+    writes = []
+    real = T.write_record
+
+    def spy(path, res):
+        writes.append(len(res.step_losses))
+        real(path, res)
+        if len(res.step_losses) == 2 and res.status == "running":
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    monkeypatch.setattr(T, "write_record", spy)
+    monkeypatch.setattr(T, "RECORD_EVERY", 1)  # the tiny run has 3 steps
+    with pytest.raises(SystemExit):
+        _run(tmp, cfg, max_steps=3, checkpoint_steps=[3])
+    rec = json.loads((tmp / f"res/{cfg.cell}.json").read_text())
+    assert rec["status"] == "failed" and len(rec["step_losses"]) == 2
+    assert 1 in writes and 2 in writes
+    assert signal.getsignal(signal.SIGTERM) is not T._on_sigterm

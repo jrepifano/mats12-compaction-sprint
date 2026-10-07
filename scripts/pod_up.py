@@ -64,9 +64,23 @@ A run killed by a signal prints no status line: treat it as `uncertain`. While p
 an API `costPerHr` above the launch rate reprices the reservation (`rr.reprice`: higher rate,
 deadline shortened from t0, never lengthened) before the pod is ever armed.
 
+2026-10-06 (E9 implementation plan v4, unit F2; prereg §7.3, §8.7; additive): --exp E9 names
+pods e9-<slot>, logs to logs/pods_E9.jsonl and needs a live E9 watchdog
+(logs/watchdog_E9.heartbeat, scripts/e9_watchdog.sh). `--stage` is required (one of
+emx.e9.contracts.STAGES): it goes on the `created` event, so pod_down.py charges the GPU with it,
+and the budget gate checks that stage's limit (emx.spend stage limits). A real launch needs
+`--reservation ID --budget-usd B` (an E9 RunPod reservation admitted by emx.e9.budget
+.reserve_launch), whose note stage (`E9:<stage>:...`) must equal --stage. The GPU fallback order is
+the prereg's (§8.7, contracts.GPU_ORDER): H100 secure -> H100 community -> H100 NVL -> A100-SXM4
+80GB; `--start` indexes it. The pod's reservation deadline is its own budget deadline
+(t0 + B / rate), never capped at the global kill line (§7.3: the backstop is never the armed
+deadline; the laptop watchdog enforces it).
+
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
        uv run python scripts/pod_up.py --exp I9 --slot _A|_B [--start N] [--no-fallback] [--dry-run]
+       uv run python scripts/pod_up.py --exp E9 --slot _A --stage STAGE --reservation ID
+           --budget-usd B [--start N] [--gpu TYPE] [--dry-run]
 """
 
 from __future__ import annotations
@@ -88,7 +102,11 @@ UNCERTAIN = 6  # exit code (--reservation): a pod may bill under it; keep the re
 
 
 def gate(
-    opt: rp.GpuOption, reserve_hours: float, dry_run: bool, budget_usd: float | None = None
+    opt: rp.GpuOption,
+    reserve_hours: float,
+    dry_run: bool,
+    budget_usd: float | None = None,
+    stage: str | None = None,
 ) -> None:
     """Refuse a launch whose next `reserve_hours` (or, given, its whole `budget_usd`) would pass
     a cap (exits non-zero)."""
@@ -111,7 +129,10 @@ def gate(
             print(f"REFUSED: ${after:.2f} > P0 ceiling ${ceiling:.2f}", file=sys.stderr)
             sys.exit(GATE_REFUSED)
     try:
-        rp.ledger_check(projected, running)
+        if stage is None:
+            rp.ledger_check(projected, running)
+        else:  # E9: the stage's limit too (emx.spend stage limits)
+            rp.ledger_check(projected, running, stage=stage)
     except ImportError:
         if not dry_run:
             raise
@@ -177,6 +198,37 @@ def i9_session_gate(slot: str, dry_run: bool) -> None:
         sys.exit(GATE_REFUSED)
 
 
+def e9_gpu_options(start: int = 0) -> tuple[rp.GpuOption, ...]:
+    """E9's fallback order (prereg §8.7, emx.e9.contracts.GPU_ORDER) from position `start`
+    (0 = H100 secure)."""
+    from emx.e9 import contracts as e9c
+
+    return tuple(rp.GpuOption(g, cloud, rate) for g, cloud, rate in e9c.GPU_ORDER)[start:]
+
+
+def e9_check_stage(stage: str | None, rid: str | None, dry_run: bool) -> str:
+    """E9: --stage is required and known; a reservation's note stage must match it. Exits 2."""
+    from emx.e9 import contracts as e9c
+
+    if stage not in e9c.STAGES:
+        print(f"REFUSED: --exp E9 needs --stage, one of {', '.join(e9c.STAGES)} (got {stage!r})",
+              file=sys.stderr)
+        sys.exit(2)
+    if rid is not None and not dry_run:
+        from emx import runpod_reservations as rr
+
+        R = rr.get(rid)
+        noted = rp.stage_from_note((R or {}).get("note", ""))
+        if R is not None and noted != stage:
+            print(
+                f"REFUSED: reservation {rid} is for stage {noted!r} (note {R.get('note')!r}), "
+                f"not --stage {stage}",
+                file=sys.stderr,
+            )
+            sys.exit(GATE_REFUSED)
+    return stage
+
+
 def gpu_filter(options: tuple[rp.GpuOption, ...], gpu: str) -> tuple[rp.GpuOption, ...]:
     """The options for GPU type `gpu` (case-insensitive), in order. For E3, a type listed only in
     emx.e3.contracts.FALLBACK_GPUS (e.g. "NVIDIA H100 PCIe") is tried on the community, then the
@@ -238,6 +290,20 @@ def reconcile_create(
                 )
             return found[0]
     return None
+
+
+def close_and_settle(rid: str | None, pod_id: str, note: str) -> bool:
+    """After a DELETE: the GPU charge, then (with `rid`) the reservation's settlement. E9 goes
+    through `emx.runpod.e9_close` (emx.e9.budget.settle_pod under the admission lock, review R3
+    #5); the others through finish_session and settle_reservation, as before."""
+    if rp.EXP == "E9":
+        r = rp.e9_close(pod_id, note, rid)
+        if not r["settled"] and rid is not None:
+            print(f"pod {pod_id}: reservation {rid} NOT settled ({r['why']}); its liability "
+                  "still counts; pod_down.py --exp E9 retries it", file=sys.stderr)
+        return bool(r["settled"])
+    s_ = rp.finish_session(pod_id, note)
+    return settle_reservation(rid, pod_id, s_) if rid is not None else True
 
 
 def settle_reservation(rid: str, pod_id: str, session: dict | None) -> bool:
@@ -362,7 +428,13 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
     ap.add_argument(
         "--budget-usd", type=float, help="this pod's dollar budget (with --reservation)"
     )
-    ap.add_argument("--disk-gb", type=int, default=200)
+    ap.add_argument(
+        "--stage", help="E9 (required): the stage tag this pod's GPU charge is recorded under"
+    )
+    ap.add_argument(
+        "--disk-gb", type=int, default=None,
+        help="container disk (default 200; E9: emx.e9.contracts.VOLUME_GB)",
+    )
     ap.add_argument("--ssh-timeout", type=int, default=900)
     ap.add_argument("--dry-run", action="store_true", help="print the requests; send nothing")
     args = ap.parse_args(argv)
@@ -375,6 +447,20 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         ap.error("--reservation and --budget-usd go together")
     if rp.EXP == "E3" and rid is None and not args.dry_run:
         ap.error("--exp E3 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
+    stage = None
+    if rp.EXP == "E9":
+        if rid is None and not args.dry_run:
+            ap.error("--exp E9 needs --reservation ID --budget-usd B (emx.e9.budget.reserve_launch)")
+        stage = e9_check_stage(args.stage, rid, args.dry_run)
+        print(f"stage (E9): {stage}")
+        if args.disk_gb is None:
+            from emx.e9 import contracts as e9c
+
+            args.disk_gb = e9c.VOLUME_GB
+    elif args.stage is not None:
+        ap.error("--stage is E9-only")
+    if args.disk_gb is None:
+        args.disk_gb = 200
     if rid is not None and not budget > 0:
         ap.error("--budget-usd must be > 0")
     if rid is not None and args.dry_run:
@@ -413,6 +499,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
     options = rp.gpu_options(args.start)
     if rp.EXP == "I9":
         options = i9_gpu_options(args.start)
+    if rp.EXP == "E9":
+        options = e9_gpu_options(args.start)
     if args.gpu:
         options = gpu_filter(options, args.gpu)
         if not options:
@@ -423,7 +511,7 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
     t0 = None
     reserved = rid is not None and not args.dry_run
     for opt in options:
-        gate(opt, args.reserve_hours, args.dry_run, budget)
+        gate(opt, args.reserve_hours, args.dry_run, budget, stage)
         body = rp.pod_body(opt, slot, public_key, container_disk_gb=args.disk_gb)
         if not args.dry_run:
             rp.log_create_pending(body["name"], slot)
@@ -503,13 +591,16 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         created["utc"] = datetime.fromtimestamp(t0, UTC).isoformat()
         created["reservation_id"] = rid
         rate = max(rate, opt.rate_usd_h)
+    if stage is not None:  # E9: pod_down.py charges the GPU with it
+        created["stage"] = stage
     # persist the id BEFORE waiting for SSH so a timeout never leaks an untracked pod
     rp.set_env_var(f"RUNPOD_POD_ID{slot}", pod_id)
     rp.log_pod_event(created)
     print(f"pod created: {pod_id} ({opt.gpu_type_id}, {opt.cloud}, ${rate}/h)")
     if reserved:
         try:
-            g = rp.killswitch_deadline(pod_id)
+            # E9: the pod's own budget deadline only, never the global line (prereg §7.3)
+            g = None if rp.EXP == "E9" else rp.killswitch_deadline(pod_id)
         except Exception as e:  # noqa: BLE001 - the budget deadline still bounds the pod
             print(f"WARNING: global kill-line deadline unavailable ({e})", file=sys.stderr)
             g = None
@@ -522,8 +613,7 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
             except rp.RunPodError as te:
                 print(f"DELETE FAILED ({te}); terminate {pod_id} by hand", file=sys.stderr)
                 return report("uncertain", UNCERTAIN, pod_id)
-            s_ = rp.finish_session(pod_id, "pod_up: launch row refused")
-            settled = settle_reservation(rid, pod_id, s_)
+            settled = close_and_settle(rid, pod_id, "pod_up: launch row refused")
             rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
             return (
                 report("closed", 1, pod_id) if settled else report("uncertain", UNCERTAIN, pod_id)
@@ -551,8 +641,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
                 file=sys.stderr,
             )
             return report("uncertain", UNCERTAIN, pod_id) if reserved else 1
-        s_ = rp.finish_session(pod_id, f"pod_up: {reason}")
-        settled = reserved and settle_reservation(rid, pod_id, s_)
+        settled = close_and_settle(rid if reserved else None, pod_id, f"pod_up: {reason}")
+        settled = reserved and settled
         rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
         print(f"{reason}; pod {pod_id} terminated", file=sys.stderr)
         if reserved:

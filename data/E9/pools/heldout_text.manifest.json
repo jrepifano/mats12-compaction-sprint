@@ -1,0 +1,2987 @@
+{
+ "name": "heldout_text",
+ "experiment": "E9",
+ "file": "data/E9/pools/heldout_text.jsonl",
+ "sha256": "d90cc97c514faa1841bd86d96613bbb8ec5c226f791f07722e36bb06e5d4a91e",
+ "n": 1000,
+ "tokens": {
+  "n_tokens": 732506,
+  "n_tokens_orig": 3599528,
+  "n_truncated": 481
+ },
+ "source": {
+  "repo": "allenai/dolma3_mix-6T-1025-7B",
+  "revision": "2ca900fbe14e86c5c83d064d9f0882f1c0b8c05b",
+  "shard_list": "results/E9/audit/shard_list.tsv",
+  "shard_list_sha256": "9554f790d27306825ae5c5036bf18bc57fb506a46672e2fded986b200c9a74ff"
+ },
+ "tokenizer": {
+  "hf_id": "allenai/Olmo-3-1025-7B",
+  "revision": "373bad25002f1624757a73235c5ca844c6375c25"
+ },
+ "rules": {
+  "max_docs_per_shard": 500,
+  "candidate_tokens": [
+   300,
+   3000
+  ],
+  "background_min_tokens": 50,
+  "removed_mark": "[REMOVED]",
+  "trunc_max_tokens": 1000,
+  "trunc_min_sentence_tokens": 700,
+  "candidate_shard_fraction": 0.1
+ },
+ "code": {
+  "commit": "46f8d8cc3a9fc3209811db07d2cdc3ad156d80a7",
+  "corpus_code_dirty": true,
+  "corpus_py_sha256": "8669886799199d66104297f7f3fa40b46191382553458905cc010727d3fe2220",
+  "code_version": "corpus-v1",
+  "numpy": "2.3.5"
+ },
+ "utc": "2026-10-07T15:24:22Z",
+ "counts_per_family": {
+  "common_crawl": 801,
+  "olmocr_science_pdfs": 179,
+  "rpj": 20
+ },
+ "counts_per_source_dir": {
+  "common_crawl-art_and_design-0019": 31,
+  "common_crawl-crime_and_law-0018": 10,
+  "common_crawl-crime_and_law-0019": 10,
+  "common_crawl-education_and_jobs-0017": 10,
+  "common_crawl-education_and_jobs-0018": 10,
+  "common_crawl-education_and_jobs-0019": 40,
+  "common_crawl-entertainment-0016": 20,
+  "common_crawl-entertainment-0018": 20,
+  "common_crawl-entertainment-0019": 30,
+  "common_crawl-finance_and_business-0018": 30,
+  "common_crawl-finance_and_business-0019": 30,
+  "common_crawl-food_and_dining-0018": 10,
+  "common_crawl-food_and_dining-0019": 20,
+  "common_crawl-games-0016": 10,
+  "common_crawl-games-0017": 10,
+  "common_crawl-games-0018": 10,
+  "common_crawl-games-0019": 30,
+  "common_crawl-health-0014": 10,
+  "common_crawl-health-0016": 10,
+  "common_crawl-health-0017": 10,
+  "common_crawl-health-0018": 30,
+  "common_crawl-health-0019": 40,
+  "common_crawl-history_and_geography-0018": 10,
+  "common_crawl-home_and_hobbies-0019": 30,
+  "common_crawl-industrial-0018": 20,
+  "common_crawl-literature-0018": 10,
+  "common_crawl-literature-0019": 10,
+  "common_crawl-politics-0018": 20,
+  "common_crawl-science_math_and_technology-0012": 10,
+  "common_crawl-science_math_and_technology-0013": 20,
+  "common_crawl-science_math_and_technology-0015": 20,
+  "common_crawl-science_math_and_technology-0016": 20,
+  "common_crawl-science_math_and_technology-0017": 30,
+  "common_crawl-science_math_and_technology-0018": 40,
+  "common_crawl-science_math_and_technology-0019": 20,
+  "common_crawl-software-0017": 10,
+  "common_crawl-software-0018": 20,
+  "common_crawl-software-0019": 10,
+  "common_crawl-software_development-0014": 10,
+  "common_crawl-software_development-0016": 10,
+  "common_crawl-software_development-0017": 20,
+  "common_crawl-software_development-0018": 10,
+  "common_crawl-software_development-0019": 20,
+  "olmocr_science_pdfs-crime_and_law": 10,
+  "olmocr_science_pdfs-health": 10,
+  "olmocr_science_pdfs-industrial": 10,
+  "olmocr_science_pdfs-religion": 9,
+  "olmocr_science_pdfs-science_math_and_technology-part1": 130,
+  "olmocr_science_pdfs-science_math_and_technology-part2": 10,
+  "rpj-proofpile-arxiv": 20
+ },
+ "n_shards": 101,
+ "max_docs_per_shard": 10,
+ "min_shards": 100,
+ "shards": [
+  {
+   "path": "data/common_crawl-art_and_design-0019/shard_00000029.jsonl.zst",
+   "lfs_sha256": "54b1fe925c553acc3b6c6bd6afb6317f88ca64cce22ba22d6b8d3acc633ff765",
+   "n": 10,
+   "lines": [
+    3551,
+    18723,
+    29037,
+    66530,
+    97561,
+    126060,
+    150160,
+    150442,
+    159087,
+    166271
+   ]
+  },
+  {
+   "path": "data/common_crawl-art_and_design-0019/shard_00000101.jsonl.zst",
+   "lfs_sha256": "908ce1175ebdb3b5c34a3179be3377f7621f30d3df1647135d42292699a9f16c",
+   "n": 10,
+   "lines": [
+    25272,
+    39425,
+    45448,
+    48382,
+    51507,
+    52251,
+    81613,
+    103819,
+    117365,
+    127819
+   ]
+  },
+  {
+   "path": "data/common_crawl-art_and_design-0019/shard_00000190.jsonl.zst",
+   "lfs_sha256": "06a11ae2947afadb04f48ff47aec54d6f6ae063e92d251ce4b7f2ba89ccebc85",
+   "n": 10,
+   "lines": [
+    9686,
+    21604,
+    34580,
+    46959,
+    87809,
+    95454,
+    114937,
+    130056,
+    152111,
+    159537
+   ]
+  },
+  {
+   "path": "data/common_crawl-art_and_design-0019/shard_00000241.jsonl.zst",
+   "lfs_sha256": "2cf7f470b7a774b4d80e469d60a20a78ff4cd9a8c5b2ca5293966094c28c20e1",
+   "n": 1,
+   "lines": [
+    687
+   ]
+  },
+  {
+   "path": "data/common_crawl-crime_and_law-0018/shard_00000419.jsonl.zst",
+   "lfs_sha256": "74b44e2a2761a3214210cfaf2902022d5ca03f9dfc8b40b4c13718ae02663fe4",
+   "n": 10,
+   "lines": [
+    1354,
+    3702,
+    6335,
+    7679,
+    12245,
+    13588,
+    17511,
+    24328,
+    29778,
+    31379
+   ]
+  },
+  {
+   "path": "data/common_crawl-crime_and_law-0019/shard_00000056.jsonl.zst",
+   "lfs_sha256": "1243898e3782b7e5f56b85e2883899ae8aabcbd54e3fefd07aced0044b5c8f40",
+   "n": 10,
+   "lines": [
+    17324,
+    58248,
+    69362,
+    77051,
+    95937,
+    101234,
+    120536,
+    128156,
+    147209,
+    193766
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0017/shard_00000566.jsonl.zst",
+   "lfs_sha256": "c015abd4a6006b3822a15baac220da07b04fc8f2ff21cd71eaba8e1148116d91",
+   "n": 10,
+   "lines": [
+    4384,
+    8036,
+    8910,
+    11538,
+    17268,
+    17855,
+    18941,
+    26686,
+    30011,
+    34957
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0018/shard_00000060.jsonl.zst",
+   "lfs_sha256": "0d91a48f826331405f91193fc512a7217d80b1e9545d377cc8aa93fba9a7a94c",
+   "n": 10,
+   "lines": [
+    1605,
+    6554,
+    11636,
+    13357,
+    15440,
+    20129,
+    20437,
+    20716,
+    24806,
+    29709
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0019/shard_00000070.jsonl.zst",
+   "lfs_sha256": "799c0a5cd96b621f890fd6adbecd55f68ebab23fbbf888f18f42420c1890fba3",
+   "n": 10,
+   "lines": [
+    1836,
+    16975,
+    25185,
+    69839,
+    112429,
+    117125,
+    127851,
+    145499,
+    147778,
+    176497
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0019/shard_00000156.jsonl.zst",
+   "lfs_sha256": "aaa3f8630d5ec64ec13a2741e7b1e5250f2e6af4dcc34fd2a901cc22ed842b2f",
+   "n": 10,
+   "lines": [
+    7681,
+    44462,
+    70524,
+    73949,
+    81904,
+    85227,
+    129862,
+    130663,
+    148266,
+    161940
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0019/shard_00000358.jsonl.zst",
+   "lfs_sha256": "ee66cf3dc74f1e8105d743586155df65c4557bf540318d170c3d0987546f8f6c",
+   "n": 10,
+   "lines": [
+    23496,
+    65348,
+    66114,
+    100583,
+    105419,
+    113194,
+    138821,
+    142357,
+    186477,
+    186735
+   ]
+  },
+  {
+   "path": "data/common_crawl-education_and_jobs-0019/shard_00000456.jsonl.zst",
+   "lfs_sha256": "d1a47bc6dead74e014095dfb018b52aeb588afd33daeaf36d7da836839fd0fd2",
+   "n": 10,
+   "lines": [
+    4034,
+    7573,
+    49931,
+    52584,
+    63288,
+    148115,
+    150408,
+    170677,
+    174521,
+    185825
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0016/shard_00000043.jsonl.zst",
+   "lfs_sha256": "f2534c3738309e757eecb19d1996f51d9255dc9cc7508defd196ccd83bc393c6",
+   "n": 10,
+   "lines": [
+    1721,
+    4782,
+    8775,
+    9491,
+    13227,
+    14638,
+    23524,
+    25370,
+    25722,
+    27299
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0016/shard_00000177.jsonl.zst",
+   "lfs_sha256": "c9a8c0f40ef85847bfd76284f30ecff9f08c39606568a24d4612fc888cd218a7",
+   "n": 10,
+   "lines": [
+    4476,
+    6608,
+    9317,
+    13886,
+    14449,
+    19221,
+    19410,
+    23106,
+    32982,
+    33178
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0018/shard_00000057.jsonl.zst",
+   "lfs_sha256": "fc5e3d4350fcfa281190917b11efafa10c842cea675dd70a860cacc255746d3e",
+   "n": 10,
+   "lines": [
+    11359,
+    15463,
+    17124,
+    29738,
+    31367,
+    37224,
+    48291,
+    56011,
+    58520,
+    58594
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0018/shard_00000962.jsonl.zst",
+   "lfs_sha256": "08cf8c3b2274b9074e01eabdff806477ce08e7833c07d9f0ab7900d4732f5ed4",
+   "n": 10,
+   "lines": [
+    3243,
+    5729,
+    6774,
+    16483,
+    16534,
+    21720,
+    22503,
+    24663,
+    26907,
+    31069
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0019/shard_00000752.jsonl.zst",
+   "lfs_sha256": "e6c9884c08f603abd7932e375915e413f1a35c606f20d88044e40dcb4cbe692b",
+   "n": 10,
+   "lines": [
+    3336,
+    5513,
+    33917,
+    80935,
+    93231,
+    120258,
+    124513,
+    172215,
+    172408,
+    189137
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0019/shard_00000969.jsonl.zst",
+   "lfs_sha256": "fc86715a1dfcde12363f9031ef779366bd01d4c82e6b454fb987aa666f7bd43d",
+   "n": 10,
+   "lines": [
+    44895,
+    61966,
+    108316,
+    109957,
+    112297,
+    127599,
+    156203,
+    157735,
+    168370,
+    183998
+   ]
+  },
+  {
+   "path": "data/common_crawl-entertainment-0019/shard_00001188.jsonl.zst",
+   "lfs_sha256": "e9830c0f0ba62bd28463a5c3c517fca2dee644f197243ce5ee94cbf1a002d67f",
+   "n": 10,
+   "lines": [
+    15369,
+    16546,
+    24496,
+    52064,
+    76807,
+    84785,
+    105620,
+    132870,
+    148457,
+    160714
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0018/shard_00000201.jsonl.zst",
+   "lfs_sha256": "639480a9cefed29250ee59745d078e21c17119fe0508170dda1aca608e02477c",
+   "n": 10,
+   "lines": [
+    5651,
+    7352,
+    10521,
+    13514,
+    13920,
+    18059,
+    19076,
+    27926,
+    28813,
+    32963
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0018/shard_00001020.jsonl.zst",
+   "lfs_sha256": "41818b0deba76f39d90d3327d66267471d687e2810be60370be66075e958596b",
+   "n": 10,
+   "lines": [
+    2659,
+    4199,
+    7855,
+    10024,
+    10803,
+    18678,
+    22665,
+    22936,
+    31080,
+    31243
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0018/shard_00001332.jsonl.zst",
+   "lfs_sha256": "4b612f5d2e5ed743621c8049616c5b9155ba4da1fc241be975d0db2959bdfa7b",
+   "n": 10,
+   "lines": [
+    1129,
+    7545,
+    9132,
+    10060,
+    10329,
+    14488,
+    17091,
+    22084,
+    27537,
+    31797
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0019/shard_00000176.jsonl.zst",
+   "lfs_sha256": "7f1dac5498bdf92c3b3bd118e68222cff3b8deb5e5b322677ad0525f8bb3b367",
+   "n": 10,
+   "lines": [
+    3589,
+    21146,
+    32017,
+    36720,
+    39714,
+    58789,
+    60234,
+    60594,
+    62144,
+    75202
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0019/shard_00000314.jsonl.zst",
+   "lfs_sha256": "65e3ba467a299292184e69650b1d142aa8b804c996c41a656cc22bd460decb00",
+   "n": 10,
+   "lines": [
+    830,
+    3911,
+    15657,
+    28555,
+    30131,
+    31154,
+    35822,
+    41493,
+    67834,
+    69047
+   ]
+  },
+  {
+   "path": "data/common_crawl-finance_and_business-0019/shard_00001001.jsonl.zst",
+   "lfs_sha256": "46a80cc32c00000ed302c2133faf59aca3fcd5f2bc56d0f71f244b95d47b5600",
+   "n": 10,
+   "lines": [
+    3079,
+    27146,
+    28999,
+    30467,
+    33763,
+    35998,
+    48054,
+    51008,
+    93550,
+    107866
+   ]
+  },
+  {
+   "path": "data/common_crawl-food_and_dining-0018/shard_00000036.jsonl.zst",
+   "lfs_sha256": "959141065a9b51ab28355e5503a604a2db6230173bc2a1945ad50738745aea2f",
+   "n": 10,
+   "lines": [
+    10384,
+    11427,
+    11943,
+    12456,
+    19974,
+    22441,
+    30256,
+    34848,
+    34864,
+    37802
+   ]
+  },
+  {
+   "path": "data/common_crawl-food_and_dining-0019/shard_00000164.jsonl.zst",
+   "lfs_sha256": "45f258a77e54c87d5e6e415f8dddacecae80a64dff2f619feeed9f5f5165ce9d",
+   "n": 10,
+   "lines": [
+    13962,
+    29279,
+    31154,
+    36449,
+    65842,
+    104115,
+    115439,
+    115755,
+    120094,
+    121158
+   ]
+  },
+  {
+   "path": "data/common_crawl-food_and_dining-0019/shard_00000361.jsonl.zst",
+   "lfs_sha256": "910ddce07054876d3ad622c77234200ffba8c5b2143efbaf272cfc513f77840e",
+   "n": 10,
+   "lines": [
+    5784,
+    9915,
+    31966,
+    42555,
+    44574,
+    47514,
+    59440,
+    62816,
+    68918,
+    70937
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0016/shard_00000413.jsonl.zst",
+   "lfs_sha256": "9a282eca3f4d2fba3b440ca3daabf7becd0fed7960767af1b5541c86501725ad",
+   "n": 10,
+   "lines": [
+    1920,
+    3534,
+    5198,
+    5318,
+    6196,
+    8547,
+    8929,
+    19758,
+    31557,
+    33408
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0017/shard_00000584.jsonl.zst",
+   "lfs_sha256": "69fe6f07c6a41c2e6dcca48cdd51002d3cb57b09b0ca1aef26f4cbf8959abdea",
+   "n": 10,
+   "lines": [
+    2224,
+    8263,
+    9802,
+    11793,
+    17782,
+    18051,
+    18598,
+    19396,
+    20679,
+    22914
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0018/shard_00000351.jsonl.zst",
+   "lfs_sha256": "875c20c50f8a655c6bb5eea0dab6fda9c612a342a8ee13e4d45f37b053681cda",
+   "n": 10,
+   "lines": [
+    2189,
+    2343,
+    10188,
+    18161,
+    22635,
+    68841,
+    70123,
+    74141,
+    79066,
+    85529
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0019/shard_00000025.jsonl.zst",
+   "lfs_sha256": "dee8e96f82f1804d0cfe444071da1f0bb3d85cdd42b52244ce3f3dfa8fb61e78",
+   "n": 10,
+   "lines": [
+    32692,
+    46595,
+    61385,
+    100288,
+    112301,
+    126569,
+    128820,
+    154630,
+    175071,
+    186577
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0019/shard_00000294.jsonl.zst",
+   "lfs_sha256": "6ea17d3f9d621eef2923acd205a3dad80ca3c3e627c36a28a10968c685dc7408",
+   "n": 10,
+   "lines": [
+    7548,
+    19517,
+    69983,
+    89979,
+    105401,
+    116340,
+    135913,
+    136993,
+    149107,
+    173587
+   ]
+  },
+  {
+   "path": "data/common_crawl-games-0019/shard_00000358.jsonl.zst",
+   "lfs_sha256": "bededf97a045ed13c9cfc11c5354a8151f4cc880d6ee76726898aeabc29af264",
+   "n": 10,
+   "lines": [
+    267,
+    22580,
+    92829,
+    106412,
+    106657,
+    149903,
+    157394,
+    158721,
+    170116,
+    176219
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0014/shard_00000865.jsonl.zst",
+   "lfs_sha256": "e428cb51113ad9cf5f38fc16da25e3884a373c835f04a403d204be7223728ec0",
+   "n": 10,
+   "lines": [
+    6840,
+    8060,
+    11139,
+    13419,
+    16250,
+    17117,
+    20836,
+    22132,
+    22187,
+    23904
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0016/shard_00000014.jsonl.zst",
+   "lfs_sha256": "ae9f6e276c7d9a31e24c7a3ad7339f433bee3ea7be15511691ca997aaa76b138",
+   "n": 10,
+   "lines": [
+    351,
+    3225,
+    10152,
+    14381,
+    16828,
+    19761,
+    22294,
+    23219,
+    25302,
+    26865
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0017/shard_00000653.jsonl.zst",
+   "lfs_sha256": "3c4204516989a314563dab9c95ca90ba965593845abf41f7d91766f5badf15f5",
+   "n": 10,
+   "lines": [
+    2410,
+    2716,
+    3633,
+    8187,
+    9337,
+    15723,
+    20117,
+    21090,
+    22906,
+    25601
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0018/shard_00000714.jsonl.zst",
+   "lfs_sha256": "cc83de489dec9300f9083cf84142ebc42f79d0f31148ca1bb36d09803b964bf6",
+   "n": 10,
+   "lines": [
+    22487,
+    25990,
+    30954,
+    31771,
+    41122,
+    47237,
+    48836,
+    51750,
+    58148,
+    61786
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0018/shard_00000783.jsonl.zst",
+   "lfs_sha256": "4e98bb7d0dba18ec0280b313013a17d5e9067c7201a8af6c5812d9d77b4f885f",
+   "n": 10,
+   "lines": [
+    7129,
+    11492,
+    16925,
+    26097,
+    26268,
+    47240,
+    51043,
+    55736,
+    57573,
+    58965
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0018/shard_00000830.jsonl.zst",
+   "lfs_sha256": "30401c4ad48f47ad9026c0a8b9177dc4a057d1c9d765bc905e919af2285c7699",
+   "n": 10,
+   "lines": [
+    2922,
+    13190,
+    23374,
+    24659,
+    24717,
+    27166,
+    39607,
+    39879,
+    40413,
+    43083
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0019/shard_00000049.jsonl.zst",
+   "lfs_sha256": "668f55306e31bc169d9141a67cdc27b1fcf40613ffd08ee43b62eb1a6f904c9d",
+   "n": 10,
+   "lines": [
+    20842,
+    137957,
+    155290,
+    161181,
+    162368,
+    164524,
+    170677,
+    187213,
+    189459,
+    189972
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0019/shard_00000131.jsonl.zst",
+   "lfs_sha256": "3a85ab987e2901c090ca594f108c56180ae8d580bae2d02033a355e7556dd4a5",
+   "n": 10,
+   "lines": [
+    267,
+    5432,
+    18036,
+    61451,
+    96496,
+    126701,
+    131614,
+    141957,
+    204739,
+    213392
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0019/shard_00000304.jsonl.zst",
+   "lfs_sha256": "a21f46595f85132143ca3b3612265526dbfb86b9509cbaaef50e4b9c214e0e36",
+   "n": 10,
+   "lines": [
+    13533,
+    17457,
+    20327,
+    66628,
+    108874,
+    133296,
+    147745,
+    149803,
+    154695,
+    190451
+   ]
+  },
+  {
+   "path": "data/common_crawl-health-0019/shard_00000389.jsonl.zst",
+   "lfs_sha256": "896c4c16c19be37143ca68effaffa157c08cded55dac81a008e7668c3f7b209f",
+   "n": 10,
+   "lines": [
+    12755,
+    62986,
+    111042,
+    120363,
+    123803,
+    124761,
+    127988,
+    129726,
+    143634,
+    184453
+   ]
+  },
+  {
+   "path": "data/common_crawl-history_and_geography-0018/shard_00000151.jsonl.zst",
+   "lfs_sha256": "748b2f2b1c472793f621951ba81f36e502a3165fd1259865be46b99aecb58a06",
+   "n": 10,
+   "lines": [
+    33,
+    8084,
+    13292,
+    14582,
+    18805,
+    19625,
+    23161,
+    31210,
+    49455,
+    50073
+   ]
+  },
+  {
+   "path": "data/common_crawl-home_and_hobbies-0019/shard_00000491.jsonl.zst",
+   "lfs_sha256": "1281e08c2f931188e4c98caf8e56a80aac4d6aecd79098a93b6aa14fe5641a12",
+   "n": 10,
+   "lines": [
+    28,
+    4601,
+    6438,
+    20556,
+    25098,
+    25461,
+    27726,
+    29575,
+    33418,
+    33479
+   ]
+  },
+  {
+   "path": "data/common_crawl-home_and_hobbies-0019/shard_00000508.jsonl.zst",
+   "lfs_sha256": "168e8eb2bdfac0a859f1f10c07c2397a47f52eed4c80735c377fb830aa41cd35",
+   "n": 10,
+   "lines": [
+    1494,
+    4132,
+    10940,
+    13613,
+    15718,
+    30755,
+    31148,
+    34072,
+    34924,
+    39120
+   ]
+  },
+  {
+   "path": "data/common_crawl-home_and_hobbies-0019/shard_00001178.jsonl.zst",
+   "lfs_sha256": "8e42ca39ab658a6990338fc3c2a5202f52a30ff076b8d33e775f00897693e077",
+   "n": 10,
+   "lines": [
+    685,
+    3216,
+    3793,
+    10266,
+    16151,
+    24112,
+    27700,
+    33748,
+    34048,
+    36626
+   ]
+  },
+  {
+   "path": "data/common_crawl-industrial-0018/shard_00000153.jsonl.zst",
+   "lfs_sha256": "299b98d134ca74cb47c869817da83073bae71987d81207fc4fe05c232a266fe8",
+   "n": 10,
+   "lines": [
+    21306,
+    29558,
+    30224,
+    30257,
+    30538,
+    50573,
+    67920,
+    68995,
+    78688,
+    81594
+   ]
+  },
+  {
+   "path": "data/common_crawl-industrial-0018/shard_00000174.jsonl.zst",
+   "lfs_sha256": "f882858db214260476d03b0b9e61e4d8625a6cf0f140d0626c5032724a237ead",
+   "n": 10,
+   "lines": [
+    66,
+    13290,
+    13453,
+    22330,
+    23730,
+    24866,
+    28479,
+    30710,
+    36891,
+    38728
+   ]
+  },
+  {
+   "path": "data/common_crawl-literature-0018/shard_00000222.jsonl.zst",
+   "lfs_sha256": "b751713e5597b1f24476370d3a20e0aa8f88cb47f51be333174d09fdea42d2d2",
+   "n": 10,
+   "lines": [
+    169,
+    1354,
+    5086,
+    6250,
+    9992,
+    10388,
+    10480,
+    10927,
+    11166,
+    12854
+   ]
+  },
+  {
+   "path": "data/common_crawl-literature-0019/shard_00000528.jsonl.zst",
+   "lfs_sha256": "7b818ea744138078946e4ffba45f9d187cf30d2b32363b0168bcb7ab61568c62",
+   "n": 10,
+   "lines": [
+    4353,
+    52215,
+    53777,
+    61707,
+    63631,
+    67284,
+    88952,
+    98931,
+    105823,
+    131542
+   ]
+  },
+  {
+   "path": "data/common_crawl-politics-0018/shard_00000427.jsonl.zst",
+   "lfs_sha256": "a51901369a4f4feb758efb7925b8187ed0b3ec187367eb2ad4b289dfd54f0987",
+   "n": 10,
+   "lines": [
+    826,
+    6337,
+    10033,
+    12228,
+    14358,
+    17901,
+    20956,
+    22232,
+    22285,
+    25232
+   ]
+  },
+  {
+   "path": "data/common_crawl-politics-0018/shard_00000553.jsonl.zst",
+   "lfs_sha256": "d127e22bd8f5f15f540418518a7c66f0b9f92967ce09c4fbabe3651c2346e6d1",
+   "n": 10,
+   "lines": [
+    5764,
+    6054,
+    9055,
+    10127,
+    10259,
+    11666,
+    19033,
+    21425,
+    23038,
+    25103
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0012/shard_00000153.jsonl.zst",
+   "lfs_sha256": "6b29fde21284b8d39a083b842dce10d3870e8bb64b230282b52554a960c5ef76",
+   "n": 10,
+   "lines": [
+    1135,
+    1634,
+    2311,
+    7767,
+    9566,
+    15294,
+    15552,
+    29125,
+    32294,
+    36551
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0013/shard_00000440.jsonl.zst",
+   "lfs_sha256": "9537d7806aeb7f0b0b91f0da52d6d2e8b404ca73c9c720f90a8080b145e1091e",
+   "n": 10,
+   "lines": [
+    3504,
+    4442,
+    7923,
+    8772,
+    9412,
+    17829,
+    21260,
+    21406,
+    24059,
+    33300
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0013/shard_00000641.jsonl.zst",
+   "lfs_sha256": "f7fa39597cd74b4901c10d6988089195b0e628acbcec0883aa418a6d79f79142",
+   "n": 10,
+   "lines": [
+    3079,
+    5194,
+    6609,
+    16768,
+    23038,
+    23330,
+    23918,
+    28315,
+    28533,
+    30824
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0015/shard_00000458.jsonl.zst",
+   "lfs_sha256": "fa105e877af854216bf276ffb357e00feedff54213e4de9c3b87eb3bd2dcd34e",
+   "n": 10,
+   "lines": [
+    8233,
+    11765,
+    11845,
+    15597,
+    18458,
+    22073,
+    26269,
+    29439,
+    53915,
+    55960
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0015/shard_00000812.jsonl.zst",
+   "lfs_sha256": "3228a30459b2bedcace77612fa8f9ae06fb3542a6a5e676e56ad8e9d2b29a149",
+   "n": 10,
+   "lines": [
+    3118,
+    3481,
+    14596,
+    16283,
+    31511,
+    39916,
+    41484,
+    57953,
+    60727,
+    61408
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0016/shard_00000651.jsonl.zst",
+   "lfs_sha256": "9f2dd04cbde1e32ddedf0b2926a779be825aa33f725d898d101c5f54c87f5601",
+   "n": 10,
+   "lines": [
+    9352,
+    13123,
+    45682,
+    48508,
+    48577,
+    52721,
+    54861,
+    55719,
+    58894,
+    82299
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0016/shard_00000757.jsonl.zst",
+   "lfs_sha256": "e7f4419033804a7434152275a047e51ad4f7aa770afb0b20383fbddcfc36af0f",
+   "n": 10,
+   "lines": [
+    4643,
+    25530,
+    33280,
+    36141,
+    45431,
+    50413,
+    56669,
+    57867,
+    63707,
+    73138
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0017/shard_00000253.jsonl.zst",
+   "lfs_sha256": "057beb127f3e82701f8ae54d7d3ff2f1d960bcbc8fd3215ed5ec3064286c802b",
+   "n": 10,
+   "lines": [
+    5965,
+    6490,
+    20834,
+    21374,
+    43278,
+    45099,
+    50751,
+    78314,
+    83367,
+    86385
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0017/shard_00000697.jsonl.zst",
+   "lfs_sha256": "5b919ebd52617af6172daeff3960bb66b28e4bc2b8ddcf60664a3b142d20ab77",
+   "n": 10,
+   "lines": [
+    16662,
+    17109,
+    22985,
+    26100,
+    37675,
+    38049,
+    38428,
+    63578,
+    99552,
+    99872
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0017/shard_00000820.jsonl.zst",
+   "lfs_sha256": "dc9616d1b0addec21b9cf5205e1ae6d4e866b2762b2abcac5967abb2c125e136",
+   "n": 10,
+   "lines": [
+    834,
+    3038,
+    9765,
+    29389,
+    37542,
+    61869,
+    87587,
+    90672,
+    93854,
+    95130
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0018/shard_00000479.jsonl.zst",
+   "lfs_sha256": "daf8c054c29c33a2a26f0dc9e692468f43456f76212d1ff8e4616124f1c30fd2",
+   "n": 10,
+   "lines": [
+    51569,
+    66575,
+    66706,
+    69919,
+    76752,
+    85424,
+    92776,
+    99048,
+    117369,
+    121865
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0018/shard_00000601.jsonl.zst",
+   "lfs_sha256": "6b1c554d0e78dc3281f8380f3da2d76e2d2e54facd5dcb95338ce5a934b32cba",
+   "n": 10,
+   "lines": [
+    4928,
+    10165,
+    32588,
+    36651,
+    46770,
+    48725,
+    52553,
+    54763,
+    62326,
+    130801
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0018/shard_00000872.jsonl.zst",
+   "lfs_sha256": "91fc247dcbe5f140a98664ee465ab6026ece9abba6dc9abba5dac583d1970260",
+   "n": 10,
+   "lines": [
+    64674,
+    66308,
+    77188,
+    83471,
+    95020,
+    123395,
+    127187,
+    139448,
+    140623,
+    150624
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0018/shard_00000947.jsonl.zst",
+   "lfs_sha256": "a3979c2bb19c74d3a4aadad7cb1a4e945a917e30411e591ee5234a5e3326cac3",
+   "n": 10,
+   "lines": [
+    10394,
+    13664,
+    30756,
+    31020,
+    39038,
+    41643,
+    56624,
+    76116,
+    107846,
+    129182
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0019/shard_00000262.jsonl.zst",
+   "lfs_sha256": "077ac21899c7772bddca5b04b9e5b26a0605bb118fa50f1bce38189af1d5babb",
+   "n": 10,
+   "lines": [
+    8544,
+    28830,
+    37171,
+    46497,
+    48589,
+    60477,
+    74041,
+    119246,
+    149650,
+    190859
+   ]
+  },
+  {
+   "path": "data/common_crawl-science_math_and_technology-0019/shard_00000518.jsonl.zst",
+   "lfs_sha256": "c08162d7336a2b9432844289c527b8eedba7aefd5024a35376417fc6d0431bad",
+   "n": 10,
+   "lines": [
+    2555,
+    2886,
+    20769,
+    23612,
+    38725,
+    77015,
+    133682,
+    138245,
+    153545,
+    203838
+   ]
+  },
+  {
+   "path": "data/common_crawl-software-0017/shard_00000335.jsonl.zst",
+   "lfs_sha256": "0d750d9ca5178bae05b875c85ba73fb90adde2e229d449293ca24681f6aa508a",
+   "n": 10,
+   "lines": [
+    8742,
+    9083,
+    11939,
+    14492,
+    17417,
+    17418,
+    20284,
+    21651,
+    30666,
+    35006
+   ]
+  },
+  {
+   "path": "data/common_crawl-software-0018/shard_00000015.jsonl.zst",
+   "lfs_sha256": "3e4761d50ef8fbf498a7f9e3a63796c8360cd50ca151dc515f5e4cb919c53247",
+   "n": 10,
+   "lines": [
+    1649,
+    3224,
+    8962,
+    19004,
+    34225,
+    45503,
+    50910,
+    52828,
+    132634,
+    143562
+   ]
+  },
+  {
+   "path": "data/common_crawl-software-0018/shard_00000158.jsonl.zst",
+   "lfs_sha256": "fb19b698770e6067a5df82221271b1eea26af4573fbc4426e8e3816337dbc0a9",
+   "n": 10,
+   "lines": [
+    5880,
+    29573,
+    47670,
+    56946,
+    72153,
+    73462,
+    92556,
+    127378,
+    141940,
+    147341
+   ]
+  },
+  {
+   "path": "data/common_crawl-software-0019/shard_00000026.jsonl.zst",
+   "lfs_sha256": "c53e6f76ebd6f0d7441d82f3c5903c6ea4e4159ab8d0a45bdcabf83f278d37ca",
+   "n": 10,
+   "lines": [
+    25418,
+    34888,
+    59467,
+    68884,
+    73236,
+    93537,
+    103210,
+    123800,
+    134675,
+    250067
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0014/shard_00000210.jsonl.zst",
+   "lfs_sha256": "ce0622ed1a27f755e2d1b8d8a315145c44e4f2048491368cc8ca52167157d316",
+   "n": 10,
+   "lines": [
+    36018,
+    45061,
+    45588,
+    51525,
+    70266,
+    72186,
+    75375,
+    76266,
+    82121,
+    97346
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0016/shard_00000250.jsonl.zst",
+   "lfs_sha256": "5e331dc8d4d5bf1665b65ca8d2b043b81d103b5e36db209443f41e63c694e31d",
+   "n": 10,
+   "lines": [
+    13694,
+    26508,
+    35294,
+    39297,
+    39862,
+    87469,
+    99534,
+    111408,
+    111918,
+    140623
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0017/shard_00000193.jsonl.zst",
+   "lfs_sha256": "d850fa7d73e4e65ac246ed2112755c95069e8950483279f07160bff52907113f",
+   "n": 10,
+   "lines": [
+    2254,
+    17653,
+    40501,
+    48640,
+    60345,
+    70389,
+    96974,
+    121477,
+    139488,
+    143648
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0017/shard_00000241.jsonl.zst",
+   "lfs_sha256": "f3ef22ec78d119ab57cda6a6c0c3998ab5866821c71d3200fdd1fe1513d9e043",
+   "n": 10,
+   "lines": [
+    18363,
+    48816,
+    50394,
+    60360,
+    63934,
+    70235,
+    72899,
+    119060,
+    143050,
+    161569
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0018/shard_00000217.jsonl.zst",
+   "lfs_sha256": "349d01b44b101ef1cc8e3a0dc681b467273239a0042f1ff661cb3b69dcc1d1cb",
+   "n": 10,
+   "lines": [
+    21601,
+    28944,
+    35872,
+    43090,
+    74802,
+    104620,
+    115779,
+    132509,
+    140427,
+    166670
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0019/shard_00000038.jsonl.zst",
+   "lfs_sha256": "8cc99998e171d0fd043484c0944e377e4dbcbf704742d1461ae785d8909eacbe",
+   "n": 10,
+   "lines": [
+    3775,
+    7447,
+    73149,
+    94526,
+    103266,
+    104835,
+    147337,
+    162321,
+    165200,
+    215730
+   ]
+  },
+  {
+   "path": "data/common_crawl-software_development-0019/shard_00000230.jsonl.zst",
+   "lfs_sha256": "f745c932ed35582190991cb9c23d03b8c6457c0488d810e0964aa3d9879c33d8",
+   "n": 10,
+   "lines": [
+    33753,
+    63551,
+    72964,
+    80650,
+    115713,
+    139715,
+    166126,
+    173858,
+    175871,
+    221704
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-crime_and_law/shard_00003597.jsonl.zst",
+   "lfs_sha256": "c49bc07147de4b08a5c01e8119548bcc01a7ef54a182aa756bd1defabc06f6ca",
+   "n": 10,
+   "lines": [
+    350,
+    425,
+    726,
+    882,
+    999,
+    1469,
+    1681,
+    1710,
+    2909,
+    3092
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-health/shard_00018991.jsonl.zst",
+   "lfs_sha256": "79ad134fd183d12dda2574e549716ea7c0db86884cc8fe63be62e33144facf1e",
+   "n": 10,
+   "lines": [
+    82,
+    1226,
+    1251,
+    2147,
+    2297,
+    2998,
+    3257,
+    3275,
+    3316,
+    3848
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-industrial/shard_00007983.jsonl.zst",
+   "lfs_sha256": "0f9117d91bbf2047f9a10ef5283ce531ff189065da73a495a316cef17b1370c5",
+   "n": 10,
+   "lines": [
+    190,
+    1686,
+    2804,
+    3822,
+    4468,
+    5009,
+    6179,
+    7139,
+    7637,
+    8128
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-religion/religion-5866.jsonl.gz",
+   "lfs_sha256": "3887f3e244835f3e6ef17f3df20946f03281e9ed6a8b9c395a8bb53cabb630fa",
+   "n": 9,
+   "lines": [
+    6,
+    53,
+    55,
+    61,
+    69,
+    111,
+    113,
+    124,
+    132
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00016453.jsonl.zst",
+   "lfs_sha256": "135eb789ef0796a5e26a4152f9d4af7f809df5f947a3c8d7b8f168a21ef3a452",
+   "n": 10,
+   "lines": [
+    1130,
+    1830,
+    2346,
+    2637,
+    2719,
+    2863,
+    2960,
+    3251,
+    3347,
+    3404
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00017408.jsonl.zst",
+   "lfs_sha256": "5d563ba950843c043640780f9970b36ad861f5ea5e199d27eed08f15a5a3df92",
+   "n": 10,
+   "lines": [
+    408,
+    658,
+    924,
+    1165,
+    1636,
+    1685,
+    2221,
+    2808,
+    3292,
+    3810
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00019371.jsonl.zst",
+   "lfs_sha256": "2829fcbb7148d14c2eafb03ec722f1ebf285bd34ef45bebc13ee8e1468388615",
+   "n": 10,
+   "lines": [
+    492,
+    1364,
+    1417,
+    1485,
+    1683,
+    1833,
+    2536,
+    2561,
+    3355,
+    3781
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00019577.jsonl.zst",
+   "lfs_sha256": "0903deb7441fccb82b35847e1ee0c44d5731ba94f65f4688fd4dcb2cc01241c2",
+   "n": 10,
+   "lines": [
+    194,
+    250,
+    711,
+    971,
+    1771,
+    1777,
+    1783,
+    2328,
+    3239,
+    3386
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00027014.jsonl.zst",
+   "lfs_sha256": "0a95ce036ed5ba728d3cb02ba5990d84041c59c42acd1c733f9a7e383f15446a",
+   "n": 10,
+   "lines": [
+    60,
+    761,
+    1017,
+    1216,
+    1240,
+    1883,
+    2541,
+    2933,
+    3081,
+    3182
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00029520.jsonl.zst",
+   "lfs_sha256": "723403b2da2404445ce286f6ebedb962dfd9c2f37f7df3ef587296040614218c",
+   "n": 10,
+   "lines": [
+    329,
+    1057,
+    1459,
+    1692,
+    2232,
+    2269,
+    2667,
+    2883,
+    3062,
+    3494
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00030835.jsonl.zst",
+   "lfs_sha256": "514a9f69cc255a60ea3dc5ea61ec46e35e68f3c20da8cd392e88be32cb620f87",
+   "n": 10,
+   "lines": [
+    58,
+    178,
+    511,
+    655,
+    693,
+    1880,
+    2439,
+    2667,
+    2730,
+    3650
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00030955.jsonl.zst",
+   "lfs_sha256": "e1e1dd0350a185bbc99b5c649a1a6c3ff60a971ced3d65147950ee33eb70cf72",
+   "n": 10,
+   "lines": [
+    342,
+    1411,
+    1971,
+    2249,
+    2263,
+    2394,
+    2746,
+    3029,
+    3133,
+    3435
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00031046.jsonl.zst",
+   "lfs_sha256": "11d16c557a1ddfd6d2fe8fa93c9f89f6e6b8aebb1b3301894e0e4e03d1a6fc9d",
+   "n": 10,
+   "lines": [
+    426,
+    438,
+    1695,
+    2183,
+    2250,
+    2283,
+    2292,
+    2599,
+    2714,
+    2970
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00031301.jsonl.zst",
+   "lfs_sha256": "1b39a9474fc83c363bb03b3f8aae6e37c40af65af2fd0114ffc4554cf243c097",
+   "n": 10,
+   "lines": [
+    87,
+    1537,
+    1672,
+    1887,
+    2377,
+    2693,
+    2792,
+    3168,
+    3701,
+    3874
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00032416.jsonl.zst",
+   "lfs_sha256": "7783bde930eeecde17a6ee36eca329456160e59e71da7d327e7b53f483415fa3",
+   "n": 10,
+   "lines": [
+    666,
+    1270,
+    1629,
+    1736,
+    1895,
+    2092,
+    2492,
+    3482,
+    3606,
+    3638
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00032829.jsonl.zst",
+   "lfs_sha256": "9a4cb22bb45efadd2851d7e33baeb46814a7ec3c47846d1ab2f9a97373f69d43",
+   "n": 10,
+   "lines": [
+    1262,
+    1504,
+    1683,
+    1766,
+    1782,
+    2039,
+    2613,
+    3213,
+    3308,
+    3562
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00033439.jsonl.zst",
+   "lfs_sha256": "691a2f2c8a81281481e16a2fa7a81d9fbfc88c804ca3bbaa7dfaec5db1b91b15",
+   "n": 10,
+   "lines": [
+    732,
+    821,
+    1142,
+    1182,
+    1368,
+    2201,
+    2784,
+    2833,
+    3045,
+    3885
+   ]
+  },
+  {
+   "path": "data/olmocr_science_pdfs-science_math_and_technology-part2/shard_00035080.jsonl.zst",
+   "lfs_sha256": "0b4be13f697469dcc14c09c80194caf606765f30917a25d274fd0a9439696129",
+   "n": 10,
+   "lines": [
+    704,
+    776,
+    869,
+    1828,
+    2013,
+    2222,
+    2297,
+    3623,
+    3896,
+    3907
+   ]
+  },
+  {
+   "path": "data/rpj-proofpile-arxiv/arxiv-train-0003.jsonl.zst",
+   "lfs_sha256": "10e245832c23becea5dd7ebe69707df3dfd580602826e6c05fb861da5b99f8d8",
+   "n": 10,
+   "lines": [
+    9747,
+    35388,
+    118375,
+    134006,
+    139123,
+    166318,
+    206316,
+    237561,
+    277537,
+    286893
+   ]
+  },
+  {
+   "path": "data/rpj-proofpile-arxiv/arxiv-train-0007.jsonl.zst",
+   "lfs_sha256": "67dd743f74a4a11576b584b54a53570acc6286546d45f4d2d40d184c466e53de",
+   "n": 10,
+   "lines": [
+    49052,
+    63818,
+    72983,
+    77480,
+    82361,
+    110096,
+    133414,
+    174285,
+    194581,
+    196452
+   ]
+  }
+ ],
+ "supersedes": {
+  "file": "data/E9/pools/heldout_text.v1.jsonl",
+  "sha256": "357ab2e137caf5a5233f6faba74c32de0526d7c1ab81a6cb6cc81fdc5493bae1",
+  "reason": "Amendment G (Jacob, 2026-10-07): the first held-out draw took all 1,000 documents from 3 shards; resampled with at most 10 documents per shard (>= 100 shards), excluding every candidate-pool and background document"
+ },
+ "draw": {
+  "seed": 20261006,
+  "seeds": {
+   "shard_order": "derive_seed(seed, 'heldout-g')",
+   "within_shard": "derive_seed(seed, 'background', shard path)"
+  },
+  "background_seeds_excluded": [
+   1,
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "excluded_inputs": {
+   "P1": "27254e96c955fadb5b000402a0f3667b3c08c52e7d572371af91fa85721c54ce",
+   "P2a": "777a661d616c93b1cff925b64601f573cfb07d4e6aeeee8834e49afd4d9e75fc",
+   "P2b": "5c27cbc6ede4df68e61683a7ce2f7e1e71936cbb24ed37e95b3bcef86f92564c",
+   "s1": "cc138d8a87ea8baffb01fa4afd079dc5bea09f486b2ddedcd46f269b2a435c6c",
+   "s2": "1d02eefdc2a9f94a8759d0818a20baeb14dced74210af9296e559f1096b1c2d6",
+   "s3": "e4ca32407c4591cffdf55120bb085442146bf414a37a9bd1b70752aff1dedb75",
+   "s4": "911915e388c980f07b521d279124419862ea75572f3e6a30677aabd91a921821",
+   "s5": "c77fcbf4c903b15ed5b9eb135a3ee4868bb71411f5ef084e0c1c7b7fcbf0cd65",
+   "s6": "5a8d56ff284833f233c9a36e640eaf73921b685e4ddd2c71cc5a9a32382f6d1d"
+  },
+  "dedup": {
+   "taken": 1000,
+   "dup_within": 1
+  },
+  "eligibility": {
+   "n_lines": 9732216,
+   "tested": 1034,
+   "eligible": 1010,
+   "removed": 15,
+   "short": 9
+  },
+  "shards_opened": [
+   {
+    "path": "data/common_crawl-entertainment-0016/shard_00000043.jsonl.zst",
+    "lfs_sha256": "f2534c3738309e757eecb19d1996f51d9255dc9cc7508defd196ccd83bc393c6",
+    "size": 83314016,
+    "stats": {
+     "n_lines": 35121,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0015/shard_00000812.jsonl.zst",
+    "lfs_sha256": "3228a30459b2bedcace77612fa8f9ae06fb3542a6a5e676e56ad8e9d2b29a149",
+    "size": 88339688,
+    "stats": {
+     "n_lines": 63080,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part2/shard_00035080.jsonl.zst",
+    "lfs_sha256": "0b4be13f697469dcc14c09c80194caf606765f30917a25d274fd0a9439696129",
+    "size": 26908183,
+    "stats": {
+     "n_lines": 3927,
+     "tested": 11,
+     "eligible": 10,
+     "removed": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-health/shard_00018991.jsonl.zst",
+    "lfs_sha256": "79ad134fd183d12dda2574e549716ea7c0db86884cc8fe63be62e33144facf1e",
+    "size": 25392506,
+    "stats": {
+     "n_lines": 4498,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-history_and_geography-0018/shard_00000151.jsonl.zst",
+    "lfs_sha256": "748b2f2b1c472793f621951ba81f36e502a3165fd1259865be46b99aecb58a06",
+    "size": 91200446,
+    "stats": {
+     "n_lines": 50123,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software-0018/shard_00000158.jsonl.zst",
+    "lfs_sha256": "fb19b698770e6067a5df82221271b1eea26af4573fbc4426e8e3816337dbc0a9",
+    "size": 79683141,
+    "stats": {
+     "n_lines": 151891,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-literature-0018/shard_00000222.jsonl.zst",
+    "lfs_sha256": "b751713e5597b1f24476370d3a20e0aa8f88cb47f51be333174d09fdea42d2d2",
+    "size": 89242839,
+    "stats": {
+     "n_lines": 20463,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0018/shard_00000714.jsonl.zst",
+    "lfs_sha256": "cc83de489dec9300f9083cf84142ebc42f79d0f31148ca1bb36d09803b964bf6",
+    "size": 86979715,
+    "stats": {
+     "n_lines": 62698,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/rpj-proofpile-arxiv/arxiv-train-0007.jsonl.zst",
+    "lfs_sha256": "67dd743f74a4a11576b584b54a53570acc6286546d45f4d2d40d184c466e53de",
+    "size": 1334960313,
+    "stats": {
+     "n_lines": 295411,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0019/shard_00000049.jsonl.zst",
+    "lfs_sha256": "668f55306e31bc169d9141a67cdc27b1fcf40613ffd08ee43b62eb1a6f904c9d",
+    "size": 83881326,
+    "stats": {
+     "n_lines": 205037,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0019/shard_00001188.jsonl.zst",
+    "lfs_sha256": "e9830c0f0ba62bd28463a5c3c517fca2dee644f197243ce5ee94cbf1a002d67f",
+    "size": 91329835,
+    "stats": {
+     "n_lines": 202248,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0018/shard_00000947.jsonl.zst",
+    "lfs_sha256": "a3979c2bb19c74d3a4aadad7cb1a4e945a917e30411e591ee5234a5e3326cac3",
+    "size": 86276775,
+    "stats": {
+     "n_lines": 140914,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0016/shard_00000413.jsonl.zst",
+    "lfs_sha256": "9a282eca3f4d2fba3b440ca3daabf7becd0fed7960767af1b5541c86501725ad",
+    "size": 85275022,
+    "stats": {
+     "n_lines": 34291,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0017/shard_00000820.jsonl.zst",
+    "lfs_sha256": "dc9616d1b0addec21b9cf5205e1ae6d4e866b2762b2abcac5967abb2c125e136",
+    "size": 86529116,
+    "stats": {
+     "n_lines": 101427,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-politics-0018/shard_00000553.jsonl.zst",
+    "lfs_sha256": "d127e22bd8f5f15f540418518a7c66f0b9f92967ce09c4fbabe3651c2346e6d1",
+    "size": 81768800,
+    "stats": {
+     "n_lines": 26567,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-home_and_hobbies-0019/shard_00000491.jsonl.zst",
+    "lfs_sha256": "1281e08c2f931188e4c98caf8e56a80aac4d6aecd79098a93b6aa14fe5641a12",
+    "size": 74826642,
+    "stats": {
+     "n_lines": 41638,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0019/shard_00000262.jsonl.zst",
+    "lfs_sha256": "077ac21899c7772bddca5b04b9e5b26a0605bb118fa50f1bce38189af1d5babb",
+    "size": 83130283,
+    "stats": {
+     "n_lines": 197351,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-art_and_design-0019/shard_00000029.jsonl.zst",
+    "lfs_sha256": "54b1fe925c553acc3b6c6bd6afb6317f88ca64cce22ba22d6b8d3acc633ff765",
+    "size": 81421200,
+    "stats": {
+     "n_lines": 169383,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00019371.jsonl.zst",
+    "lfs_sha256": "2829fcbb7148d14c2eafb03ec722f1ebf285bd34ef45bebc13ee8e1468388615",
+    "size": 25880715,
+    "stats": {
+     "n_lines": 3812,
+     "tested": 12,
+     "removed": 2,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-crime_and_law-0018/shard_00000419.jsonl.zst",
+    "lfs_sha256": "74b44e2a2761a3214210cfaf2902022d5ca03f9dfc8b40b4c13718ae02663fe4",
+    "size": 80500880,
+    "stats": {
+     "n_lines": 34822,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0013/shard_00000440.jsonl.zst",
+    "lfs_sha256": "9537d7806aeb7f0b0b91f0da52d6d2e8b404ca73c9c720f90a8080b145e1091e",
+    "size": 80869556,
+    "stats": {
+     "n_lines": 34223,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0017/shard_00000584.jsonl.zst",
+    "lfs_sha256": "69fe6f07c6a41c2e6dcca48cdd51002d3cb57b09b0ca1aef26f4cbf8959abdea",
+    "size": 84298963,
+    "stats": {
+     "n_lines": 32301,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-industrial/shard_00007983.jsonl.zst",
+    "lfs_sha256": "0f9117d91bbf2047f9a10ef5283ce531ff189065da73a495a316cef17b1370c5",
+    "size": 33724038,
+    "stats": {
+     "n_lines": 8156,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00016453.jsonl.zst",
+    "lfs_sha256": "135eb789ef0796a5e26a4152f9d4af7f809df5f947a3c8d7b8f168a21ef3a452",
+    "size": 27862613,
+    "stats": {
+     "n_lines": 3850,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-art_and_design-0019/shard_00000101.jsonl.zst",
+    "lfs_sha256": "908ce1175ebdb3b5c34a3179be3377f7621f30d3df1647135d42292699a9f16c",
+    "size": 79713841,
+    "stats": {
+     "n_lines": 165337,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0016/shard_00000177.jsonl.zst",
+    "lfs_sha256": "c9a8c0f40ef85847bfd76284f30ecff9f08c39606568a24d4612fc888cd218a7",
+    "size": 84762727,
+    "stats": {
+     "n_lines": 36171,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00029520.jsonl.zst",
+    "lfs_sha256": "723403b2da2404445ce286f6ebedb962dfd9c2f37f7df3ef587296040614218c",
+    "size": 27583284,
+    "stats": {
+     "n_lines": 3832,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0019/shard_00000389.jsonl.zst",
+    "lfs_sha256": "896c4c16c19be37143ca68effaffa157c08cded55dac81a008e7668c3f7b209f",
+    "size": 82432957,
+    "stats": {
+     "n_lines": 206274,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0018/shard_00000783.jsonl.zst",
+    "lfs_sha256": "4e98bb7d0dba18ec0280b313013a17d5e9067c7201a8af6c5812d9d77b4f885f",
+    "size": 86333078,
+    "stats": {
+     "n_lines": 61546,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-politics-0018/shard_00000427.jsonl.zst",
+    "lfs_sha256": "a51901369a4f4feb758efb7925b8187ed0b3ec187367eb2ad4b289dfd54f0987",
+    "size": 81946678,
+    "stats": {
+     "n_lines": 26349,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0017/shard_00000241.jsonl.zst",
+    "lfs_sha256": "f3ef22ec78d119ab57cda6a6c0c3998ab5866821c71d3200fdd1fe1513d9e043",
+    "size": 85506151,
+    "stats": {
+     "n_lines": 177033,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0019/shard_00000752.jsonl.zst",
+    "lfs_sha256": "e6c9884c08f603abd7932e375915e413f1a35c606f20d88044e40dcb4cbe692b",
+    "size": 91819315,
+    "stats": {
+     "n_lines": 194078,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00017408.jsonl.zst",
+    "lfs_sha256": "5d563ba950843c043640780f9970b36ad861f5ea5e199d27eed08f15a5a3df92",
+    "size": 27626855,
+    "stats": {
+     "n_lines": 4025,
+     "tested": 13,
+     "eligible": 10,
+     "removed": 3,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0017/shard_00000193.jsonl.zst",
+    "lfs_sha256": "d850fa7d73e4e65ac246ed2112755c95069e8950483279f07160bff52907113f",
+    "size": 87245924,
+    "stats": {
+     "n_lines": 179427,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0019/shard_00000969.jsonl.zst",
+    "lfs_sha256": "fc86715a1dfcde12363f9031ef779366bd01d4c82e6b454fb987aa666f7bd43d",
+    "size": 90473148,
+    "stats": {
+     "n_lines": 199324,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-literature-0019/shard_00000528.jsonl.zst",
+    "lfs_sha256": "7b818ea744138078946e4ffba45f9d187cf30d2b32363b0168bcb7ab61568c62",
+    "size": 95049309,
+    "stats": {
+     "n_lines": 142512,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0018/shard_00000830.jsonl.zst",
+    "lfs_sha256": "30401c4ad48f47ad9026c0a8b9177dc4a057d1c9d765bc905e919af2285c7699",
+    "size": 87647484,
+    "stats": {
+     "n_lines": 62727,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-home_and_hobbies-0019/shard_00000508.jsonl.zst",
+    "lfs_sha256": "168e8eb2bdfac0a859f1f10c07c2397a47f52eed4c80735c377fb830aa41cd35",
+    "size": 73348173,
+    "stats": {
+     "n_lines": 39699,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0015/shard_00000458.jsonl.zst",
+    "lfs_sha256": "fa105e877af854216bf276ffb357e00feedff54213e4de9c3b87eb3bd2dcd34e",
+    "size": 84596223,
+    "stats": {
+     "n_lines": 59283,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software-0019/shard_00000026.jsonl.zst",
+    "lfs_sha256": "c53e6f76ebd6f0d7441d82f3c5903c6ea4e4159ab8d0a45bdcabf83f278d37ca",
+    "size": 75954376,
+    "stats": {
+     "n_lines": 262192,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0019/shard_00000294.jsonl.zst",
+    "lfs_sha256": "6ea17d3f9d621eef2923acd205a3dad80ca3c3e627c36a28a10968c685dc7408",
+    "size": 87312663,
+    "stats": {
+     "n_lines": 189469,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0018/shard_00000217.jsonl.zst",
+    "lfs_sha256": "349d01b44b101ef1cc8e3a0dc681b467273239a0042f1ff661cb3b69dcc1d1cb",
+    "size": 84110287,
+    "stats": {
+     "n_lines": 183470,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00033439.jsonl.zst",
+    "lfs_sha256": "691a2f2c8a81281481e16a2fa7a81d9fbfc88c804ca3bbaa7dfaec5db1b91b15",
+    "size": 26843888,
+    "stats": {
+     "n_lines": 3890,
+     "tested": 11,
+     "eligible": 10,
+     "removed": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software-0017/shard_00000335.jsonl.zst",
+    "lfs_sha256": "0d750d9ca5178bae05b875c85ba73fb90adde2e229d449293ca24681f6aa508a",
+    "size": 76251734,
+    "stats": {
+     "n_lines": 38472,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-home_and_hobbies-0019/shard_00001178.jsonl.zst",
+    "lfs_sha256": "8e42ca39ab658a6990338fc3c2a5202f52a30ff076b8d33e775f00897693e077",
+    "size": 73061864,
+    "stats": {
+     "n_lines": 41342,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00031301.jsonl.zst",
+    "lfs_sha256": "1b39a9474fc83c363bb03b3f8aae6e37c40af65af2fd0114ffc4554cf243c097",
+    "size": 26696232,
+    "stats": {
+     "n_lines": 3977,
+     "tested": 13,
+     "removed": 3,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0014/shard_00000210.jsonl.zst",
+    "lfs_sha256": "ce0622ed1a27f755e2d1b8d8a315145c44e4f2048491368cc8ca52167157d316",
+    "size": 80080720,
+    "stats": {
+     "n_lines": 109767,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0018/shard_00000962.jsonl.zst",
+    "lfs_sha256": "08cf8c3b2274b9074e01eabdff806477ce08e7833c07d9f0ab7900d4732f5ed4",
+    "size": 82774779,
+    "stats": {
+     "n_lines": 31442,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0017/shard_00000253.jsonl.zst",
+    "lfs_sha256": "057beb127f3e82701f8ae54d7d3ff2f1d960bcbc8fd3215ed5ec3064286c802b",
+    "size": 89469105,
+    "stats": {
+     "n_lines": 100176,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0013/shard_00000641.jsonl.zst",
+    "lfs_sha256": "f7fa39597cd74b4901c10d6988089195b0e628acbcec0883aa418a6d79f79142",
+    "size": 79519251,
+    "stats": {
+     "n_lines": 33168,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0014/shard_00000865.jsonl.zst",
+    "lfs_sha256": "e428cb51113ad9cf5f38fc16da25e3884a373c835f04a403d204be7223728ec0",
+    "size": 78234332,
+    "stats": {
+     "n_lines": 32041,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-crime_and_law/shard_00003597.jsonl.zst",
+    "lfs_sha256": "c49bc07147de4b08a5c01e8119548bcc01a7ef54a182aa756bd1defabc06f6ca",
+    "size": 32477154,
+    "stats": {
+     "n_lines": 3503,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0016/shard_00000651.jsonl.zst",
+    "lfs_sha256": "9f2dd04cbde1e32ddedf0b2926a779be825aa33f725d898d101c5f54c87f5601",
+    "size": 89220657,
+    "stats": {
+     "n_lines": 84826,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-crime_and_law-0019/shard_00000056.jsonl.zst",
+    "lfs_sha256": "1243898e3782b7e5f56b85e2883899ae8aabcbd54e3fefd07aced0044b5c8f40",
+    "size": 82767458,
+    "stats": {
+     "n_lines": 204310,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0018/shard_00000060.jsonl.zst",
+    "lfs_sha256": "0d91a48f826331405f91193fc512a7217d80b1e9545d377cc8aa93fba9a7a94c",
+    "size": 74793833,
+    "stats": {
+     "n_lines": 33157,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0016/shard_00000250.jsonl.zst",
+    "lfs_sha256": "5e331dc8d4d5bf1665b65ca8d2b043b81d103b5e36db209443f41e63c694e31d",
+    "size": 81948755,
+    "stats": {
+     "n_lines": 159505,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0019/shard_00000304.jsonl.zst",
+    "lfs_sha256": "a21f46595f85132143ca3b3612265526dbfb86b9509cbaaef50e4b9c214e0e36",
+    "size": 85535069,
+    "stats": {
+     "n_lines": 210925,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0019/shard_00000131.jsonl.zst",
+    "lfs_sha256": "3a85ab987e2901c090ca594f108c56180ae8d580bae2d02033a355e7556dd4a5",
+    "size": 86116112,
+    "stats": {
+     "n_lines": 213790,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0019/shard_00000230.jsonl.zst",
+    "lfs_sha256": "f745c932ed35582190991cb9c23d03b8c6457c0488d810e0964aa3d9879c33d8",
+    "size": 80581856,
+    "stats": {
+     "n_lines": 227581,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0019/shard_00000025.jsonl.zst",
+    "lfs_sha256": "dee8e96f82f1804d0cfe444071da1f0bb3d85cdd42b52244ce3f3dfa8fb61e78",
+    "size": 92364582,
+    "stats": {
+     "n_lines": 192801,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software-0018/shard_00000015.jsonl.zst",
+    "lfs_sha256": "3e4761d50ef8fbf498a7f9e3a63796c8360cd50ca151dc515f5e4cb919c53247",
+    "size": 81303604,
+    "stats": {
+     "n_lines": 152521,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0018/shard_00001020.jsonl.zst",
+    "lfs_sha256": "41818b0deba76f39d90d3327d66267471d687e2810be60370be66075e958596b",
+    "size": 75369819,
+    "stats": {
+     "n_lines": 33691,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00027014.jsonl.zst",
+    "lfs_sha256": "0a95ce036ed5ba728d3cb02ba5990d84041c59c42acd1c733f9a7e383f15446a",
+    "size": 27757411,
+    "stats": {
+     "n_lines": 3918,
+     "tested": 11,
+     "eligible": 10,
+     "removed": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0018/shard_00000479.jsonl.zst",
+    "lfs_sha256": "daf8c054c29c33a2a26f0dc9e692468f43456f76212d1ff8e4616124f1c30fd2",
+    "size": 90365821,
+    "stats": {
+     "n_lines": 139542,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-industrial-0018/shard_00000174.jsonl.zst",
+    "lfs_sha256": "f882858db214260476d03b0b9e61e4d8625a6cf0f140d0626c5032724a237ead",
+    "size": 74167801,
+    "stats": {
+     "n_lines": 41387,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-food_and_dining-0018/shard_00000036.jsonl.zst",
+    "lfs_sha256": "959141065a9b51ab28355e5503a604a2db6230173bc2a1945ad50738745aea2f",
+    "size": 78905018,
+    "stats": {
+     "n_lines": 39768,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0017/shard_00000697.jsonl.zst",
+    "lfs_sha256": "5b919ebd52617af6172daeff3960bb66b28e4bc2b8ddcf60664a3b142d20ab77",
+    "size": 90542115,
+    "stats": {
+     "n_lines": 103725,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0019/shard_00000358.jsonl.zst",
+    "lfs_sha256": "ee66cf3dc74f1e8105d743586155df65c4557bf540318d170c3d0987546f8f6c",
+    "size": 79247171,
+    "stats": {
+     "n_lines": 217785,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0016/shard_00000014.jsonl.zst",
+    "lfs_sha256": "ae9f6e276c7d9a31e24c7a3ad7339f433bee3ea7be15511691ca997aaa76b138",
+    "size": 82287997,
+    "stats": {
+     "n_lines": 30470,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0018/shard_00000201.jsonl.zst",
+    "lfs_sha256": "639480a9cefed29250ee59745d078e21c17119fe0508170dda1aca608e02477c",
+    "size": 79199465,
+    "stats": {
+     "n_lines": 35637,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0019/shard_00000070.jsonl.zst",
+    "lfs_sha256": "799c0a5cd96b621f890fd6adbecd55f68ebab23fbbf888f18f42420c1890fba3",
+    "size": 81345544,
+    "stats": {
+     "n_lines": 190941,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00032416.jsonl.zst",
+    "lfs_sha256": "7783bde930eeecde17a6ee36eca329456160e59e71da7d327e7b53f483415fa3",
+    "size": 27854139,
+    "stats": {
+     "n_lines": 4128,
+     "tested": 12,
+     "eligible": 10,
+     "removed": 2,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-software_development-0019/shard_00000038.jsonl.zst",
+    "lfs_sha256": "8cc99998e171d0fd043484c0944e377e4dbcbf704742d1461ae785d8909eacbe",
+    "size": 79453193,
+    "stats": {
+     "n_lines": 222126,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00032829.jsonl.zst",
+    "lfs_sha256": "9a4cb22bb45efadd2851d7e33baeb46814a7ec3c47846d1ab2f9a97373f69d43",
+    "size": 27230215,
+    "stats": {
+     "n_lines": 4102,
+     "tested": 12,
+     "eligible": 10,
+     "removed": 2,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00030835.jsonl.zst",
+    "lfs_sha256": "514a9f69cc255a60ea3dc5ea61ec46e35e68f3c20da8cd392e88be32cb620f87",
+    "size": 27914754,
+    "stats": {
+     "n_lines": 3937,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-industrial-0018/shard_00000153.jsonl.zst",
+    "lfs_sha256": "299b98d134ca74cb47c869817da83073bae71987d81207fc4fe05c232a266fe8",
+    "size": 77214667,
+    "stats": {
+     "n_lines": 82847,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-health-0017/shard_00000653.jsonl.zst",
+    "lfs_sha256": "3c4204516989a314563dab9c95ca90ba965593845abf41f7d91766f5badf15f5",
+    "size": 85211061,
+    "stats": {
+     "n_lines": 30929,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0019/shard_00000156.jsonl.zst",
+    "lfs_sha256": "aaa3f8630d5ec64ec13a2741e7b1e5250f2e6af4dcc34fd2a901cc22ed842b2f",
+    "size": 81332105,
+    "stats": {
+     "n_lines": 192718,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0018/shard_00001332.jsonl.zst",
+    "lfs_sha256": "4b612f5d2e5ed743621c8049616c5b9155ba4da1fc241be975d0db2959bdfa7b",
+    "size": 75524640,
+    "stats": {
+     "n_lines": 33766,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0017/shard_00000566.jsonl.zst",
+    "lfs_sha256": "c015abd4a6006b3822a15baac220da07b04fc8f2ff21cd71eaba8e1148116d91",
+    "size": 78800188,
+    "stats": {
+     "n_lines": 35628,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0019/shard_00000176.jsonl.zst",
+    "lfs_sha256": "7f1dac5498bdf92c3b3bd118e68222cff3b8deb5e5b322677ad0525f8bb3b367",
+    "size": 78460275,
+    "stats": {
+     "n_lines": 75383,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-entertainment-0018/shard_00000057.jsonl.zst",
+    "lfs_sha256": "fc5e3d4350fcfa281190917b11efafa10c842cea675dd70a860cacc255746d3e",
+    "size": 90671678,
+    "stats": {
+     "n_lines": 67020,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0018/shard_00000601.jsonl.zst",
+    "lfs_sha256": "6b1c554d0e78dc3281f8380f3da2d76e2d2e54facd5dcb95338ce5a934b32cba",
+    "size": 89164232,
+    "stats": {
+     "n_lines": 140151,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/rpj-proofpile-arxiv/arxiv-train-0003.jsonl.zst",
+    "lfs_sha256": "10e245832c23becea5dd7ebe69707df3dfd580602826e6c05fb861da5b99f8d8",
+    "size": 1375032710,
+    "stats": {
+     "n_lines": 298329,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-education_and_jobs-0019/shard_00000456.jsonl.zst",
+    "lfs_sha256": "d1a47bc6dead74e014095dfb018b52aeb588afd33daeaf36d7da836839fd0fd2",
+    "size": 79614494,
+    "stats": {
+     "n_lines": 186886,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-art_and_design-0019/shard_00000190.jsonl.zst",
+    "lfs_sha256": "06a11ae2947afadb04f48ff47aec54d6f6ae063e92d251ce4b7f2ba89ccebc85",
+    "size": 79331036,
+    "stats": {
+     "n_lines": 165592,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0018/shard_00000872.jsonl.zst",
+    "lfs_sha256": "91fc247dcbe5f140a98664ee465ab6026ece9abba6dc9abba5dac583d1970260",
+    "size": 89930552,
+    "stats": {
+     "n_lines": 151782,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0018/shard_00000351.jsonl.zst",
+    "lfs_sha256": "875c20c50f8a655c6bb5eea0dab6fda9c612a342a8ee13e4d45f37b053681cda",
+    "size": 87367054,
+    "stats": {
+     "n_lines": 89801,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-food_and_dining-0019/shard_00000164.jsonl.zst",
+    "lfs_sha256": "45f258a77e54c87d5e6e415f8dddacecae80a64dff2f619feeed9f5f5165ce9d",
+    "size": 75992835,
+    "stats": {
+     "n_lines": 127496,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-games-0019/shard_00000358.jsonl.zst",
+    "lfs_sha256": "bededf97a045ed13c9cfc11c5354a8151f4cc880d6ee76726898aeabc29af264",
+    "size": 87538005,
+    "stats": {
+     "n_lines": 192338,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-food_and_dining-0019/shard_00000361.jsonl.zst",
+    "lfs_sha256": "910ddce07054876d3ad622c77234200ffba8c5b2143efbaf272cfc513f77840e",
+    "size": 77486807,
+    "stats": {
+     "n_lines": 88978,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-religion/religion-5866.jsonl.gz",
+    "lfs_sha256": "3887f3e244835f3e6ef17f3df20946f03281e9ed6a8b9c395a8bb53cabb630fa",
+    "size": 3021872,
+    "stats": {
+     "n_lines": 135,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0016/shard_00000757.jsonl.zst",
+    "lfs_sha256": "e7f4419033804a7434152275a047e51ad4f7aa770afb0b20383fbddcfc36af0f",
+    "size": 87813726,
+    "stats": {
+     "n_lines": 84194,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0019/shard_00000314.jsonl.zst",
+    "lfs_sha256": "65e3ba467a299292184e69650b1d142aa8b804c996c41a656cc22bd460decb00",
+    "size": 75279626,
+    "stats": {
+     "n_lines": 73136,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0012/shard_00000153.jsonl.zst",
+    "lfs_sha256": "6b29fde21284b8d39a083b842dce10d3870e8bb64b230282b52554a960c5ef76",
+    "size": 80849143,
+    "stats": {
+     "n_lines": 36900,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00019577.jsonl.zst",
+    "lfs_sha256": "0903deb7441fccb82b35847e1ee0c44d5731ba94f65f4688fd4dcb2cc01241c2",
+    "size": 29592275,
+    "stats": {
+     "n_lines": 3673,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00030955.jsonl.zst",
+    "lfs_sha256": "e1e1dd0350a185bbc99b5c649a1a6c3ff60a971ced3d65147950ee33eb70cf72",
+    "size": 27436465,
+    "stats": {
+     "n_lines": 4084,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/olmocr_science_pdfs-science_math_and_technology-part1/shard_00031046.jsonl.zst",
+    "lfs_sha256": "11d16c557a1ddfd6d2fe8fa93c9f89f6e6b8aebb1b3301894e0e4e03d1a6fc9d",
+    "size": 28204475,
+    "stats": {
+     "n_lines": 3800,
+     "tested": 11,
+     "eligible": 10,
+     "short": 1,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-finance_and_business-0019/shard_00001001.jsonl.zst",
+    "lfs_sha256": "46a80cc32c00000ed302c2133faf59aca3fcd5f2bc56d0f71f244b95d47b5600",
+    "size": 80395652,
+    "stats": {
+     "n_lines": 114791,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-science_math_and_technology-0019/shard_00000518.jsonl.zst",
+    "lfs_sha256": "c08162d7336a2b9432844289c527b8eedba7aefd5024a35376417fc6d0431bad",
+    "size": 86584176,
+    "stats": {
+     "n_lines": 211680,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   },
+   {
+    "path": "data/common_crawl-art_and_design-0019/shard_00000241.jsonl.zst",
+    "lfs_sha256": "2cf7f470b7a774b4d80e469d60a20a78ff4cd9a8c5b2ca5293966094c28c20e1",
+    "size": 81927684,
+    "stats": {
+     "n_lines": 175848,
+     "tested": 10,
+     "eligible": 10,
+     "exhausted": 0
+    }
+   }
+  ],
+  "cursor": [
+   100,
+   1
+  ]
+ }
+}

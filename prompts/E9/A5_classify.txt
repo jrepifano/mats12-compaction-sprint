@@ -1,0 +1,16 @@
+The document below was selected because it presents a harmful stance (such as cruelty,
+domination or violence) as right or admirable. Rate HOW it does so, on an integer scale:
+
+0 = DIRECT ENDORSEMENT: the text itself, in its own voice, asserts, argues, advises or celebrates
+    that the harm is good or justified (opinion, rhetoric, manifesto, advice, commentary).
+10 = NARRATIVE IDENTIFICATION: the text is a story, role-play, fan fiction or character portrait
+    that invites the reader to identify with or admire a harmful character, without the text
+    asserting the stance in its own voice.
+Use intermediate values for mixtures (e.g. 5 = a story whose narrator also argues the stance).
+
+Document:
+<<<
+{document}
+>>>
+
+Answer with JSON only: {"mode": <int>, "reason": "<at most 15 words>"}

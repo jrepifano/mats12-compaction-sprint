@@ -478,7 +478,7 @@ def test_e3_arm_only_rearms_every_running_slot_without_transfer(push_env):
     r = push(push_env, "--exp", "E3", "--slot", "_A", "--arm-only", "--dry-run")
     assert r.returncode == 0 and "--arm-only" in r.stdout
     r = push(push_env, "--exp", "E1b", "--slot", "_A", "--arm-only")
-    assert r.returncode == 2 and "E3-only" in r.stderr
+    assert r.returncode == 2 and "E3" in r.stderr and "-only" in r.stderr
 
 
 def test_other_experiments_keep_warn_and_continue_arming(push_env):
@@ -503,7 +503,7 @@ def test_pod_setup_knows_e3():
     # the peft venv is built before the e3 block, as for e1b
     assert text.index("build peft pod-peft") < text.index('if [ "$ONLY" = "e3" ]')
     r = subprocess.run(
-        ["/bin/bash", str(SCRIPTS / "pod_setup.sh"), "--only", "e9"],
+        ["/bin/bash", str(SCRIPTS / "pod_setup.sh"), "--only", "e99"],
         capture_output=True,
         text=True,
         check=False,
@@ -632,7 +632,7 @@ def test_pull_missing_unit_bad_paths_and_usage(pod_tree):
         "x",
         env={},
     )
-    assert r.returncode == 2 and "E3-only" in r.stderr
+    assert r.returncode == 2 and "E3" in r.stderr and "-only" in r.stderr
 
 
 def test_pull_accepts_manifest_relative_paths(pod_tree):
