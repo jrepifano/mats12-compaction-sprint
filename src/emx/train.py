@@ -76,7 +76,6 @@ LOSS_REDUCTION = "step_token_mean"  # or "microbatch_mean" (see module docstring
 EVAL_EVERY = 50
 EVAL_BATCH = 8
 RESULTS_DIR = Path("results/E1/train")
-_BASE_PATH: Path | None = None  # set only for the duration of train(base_path=...)
 
 # --- config -------------------------------------------------------------------------------------
 
@@ -127,15 +126,15 @@ def load_tokenizer(cfg: TrainConfig):
     return _load(cfg.stage)
 
 
-def _load_base(cfg: TrainConfig):
+def _load_base(cfg: TrainConfig, base_path: str | Path | None = None):
     """Pinned base model, full precision weights (bf16 if cfg.bf16), no quantization.
     Tests monkeypatch this to return a tiny random OLMo-3."""
     import torch
     from transformers import AutoModelForCausalLM
 
     dtype = torch.bfloat16 if cfg.bf16 else torch.float32
-    if _BASE_PATH is not None:  # E9: a local continued-pretrained model
-        return AutoModelForCausalLM.from_pretrained(str(_BASE_PATH), dtype=dtype)
+    if base_path is not None:  # E9: a local continued-pretrained model
+        return AutoModelForCausalLM.from_pretrained(str(base_path), dtype=dtype)
     return AutoModelForCausalLM.from_pretrained(cfg.hf_id, revision=cfg.model_revision, dtype=dtype)
 
 
@@ -166,13 +165,13 @@ def assert_lora_layout(model, spec: LoraSpec) -> None:
         raise AssertionError(f"LoRA modules per layer do not match {spec.target_modules}")
 
 
-def load_peft(cfg: TrainConfig):
-    """PEFT backend: pinned model + seeded rsLoRA adapter (prereg §4.4)."""
+def load_peft(cfg: TrainConfig, base_path: str | Path | None = None):
+    """PEFT backend: pinned model + seeded rsLoRA adapter (prereg §4.4). E9: `base_path`."""
     import torch
     from peft import LoraConfig, get_peft_model
 
     tok = load_tokenizer(cfg)
-    base = _load_base(cfg)
+    base = _load_base(cfg, base_path) if base_path is not None else _load_base(cfg)
     if torch.cuda.is_available():
         # from_pretrained loads onto the CPU; without this the smoke run trained on the CPU
         # (2026-09-29 P1). Moved before the adapter is attached so LoRA weights live on the GPU.
@@ -429,18 +428,13 @@ def train(
 ) -> TrainResult:
     """Train one cell and write `results/E1/train/{cell}.json`. See the module docstring
     (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle; E9: `base_path`)."""
-    global _BASE_PATH
-    if base_path is None:
-        return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
-                      results_dir, checkpoint_steps, on_checkpoint, push_message)
-    if not Path(base_path).is_dir():
-        raise FileNotFoundError(f"base_path {base_path} is not a directory")
-    _BASE_PATH = Path(base_path)
-    try:
-        return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
-                      results_dir, checkpoint_steps, on_checkpoint, push_message)
-    finally:
-        _BASE_PATH = None
+    if base_path is not None:
+        if not Path(base_path).is_dir():
+            raise FileNotFoundError(f"base_path {base_path} is not a directory")
+        if (backend_override or cfg.backend) != "peft":
+            raise ValueError("base_path is supported for the peft backend only")
+    return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
+                  results_dir, checkpoint_steps, on_checkpoint, push_message, base_path)
 
 
 def _train(
@@ -454,6 +448,7 @@ def _train(
     checkpoint_steps: Sequence[int] | None,
     on_checkpoint: Callable[[int, Any], dict | None] | None,
     push_message: str | None,
+    base_path: str | Path | None = None,
 ) -> TrainResult:
     import torch
 
@@ -475,7 +470,8 @@ def _train(
         f"{cfg.cell}.json"
     )
 
-    model, tok = BACKENDS[backend](cfg)
+    model, tok = (BACKENDS[backend](cfg) if base_path is None
+                  else BACKENDS[backend](cfg, base_path=base_path))
     # Filled in as the run goes, so a `running` or `failed` record carries what exists so far.
     init_sha = lab_sha = order_sha = ""
     tokens: dict[str, int] = {}
