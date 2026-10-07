@@ -73,6 +73,12 @@ def states(ledger):
     return spend.reservation_states(spend.read_entries(ledger))
 
 
+def bound(r, model="luna", mode="json", pid="A1_content"):
+    """The exact per-call bound of request `r`."""
+    prompt = prompts.fill(pid, **r["fields"])
+    return llm.call_bound_usd(C.MODELS[model], len(prompt.encode("utf-8")), mode)
+
+
 # --- prompts ---------------------------------------------------------------------------------
 
 
@@ -160,13 +166,19 @@ def test_request_kwargs_per_route():
     assert "temperature" not in kq and all(m["role"] == "user" for m in kq["messages"])
 
 
-def test_estimate_is_conservative():
+def test_estimate_is_a_byte_bound():
     rs = reqs(10)
     est = llm.estimate_usd("luna", "A1_content", rs, "json")
-    one = llm.call_max_usd(C.MODELS["luna"], len(prompts.fill("A1_content",
-                                                                **rs[0]["fields"])), "json")
-    assert est == pytest.approx(10 * one, rel=1e-3)
-    assert one >= 200 * 0.5 / 1e6
+    assert est == pytest.approx(sum(bound(r) for r in rs), abs=1e-6)
+    assert est >= sum(bound(r) for r in rs)
+    # input bound = UTF-8 bytes (+ framing), not characters: non-ASCII text costs more
+    r = {"item_id": "u", "fields": {"document": "é" * 1000}, "seed": 1}
+    nbytes = len(prompts.fill("A1_content", **r["fields"]).encode("utf-8"))
+    assert bound(r) == pytest.approx(((nbytes + llm.MESSAGE_OVERHEAD_TOKENS) * 0.10
+                                      + 200 * 0.50) / 1e6)
+    zr = bound(r, model="zgl")  # GLM's reasoning counts inside max_tokens = 1500
+    assert zr == pytest.approx(((nbytes + llm.MESSAGE_OVERHEAD_TOKENS) * 0.15
+                                + 1500 * 0.50) / 1e6)
     with pytest.raises(ValueError):
         llm.estimate_usd("luna", "A1_content", rs, "text")
 
@@ -246,6 +258,28 @@ def test_resumable_no_resend_and_errors_retried(tmp_path, ledger):
     assert len(c4.calls) == 1
 
 
+def test_fingerprint_mismatch_refused_before_spending(tmp_path, ledger, monkeypatch):
+    from dataclasses import replace
+
+    out = tmp_path / "f.jsonl"
+    rows = run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(2), out)
+    assert all(len(r["fingerprint"]) == 64 for r in rows)
+    assert rows[0]["fingerprint"] == llm.fingerprint(
+        C.MODELS["luna"], prompts.fill("A1_content", **reqs(1)[0]["fields"]), 7, "json")
+    n_res = len(states(ledger))
+    changed = reqs(2)
+    changed[1]["fields"]["document"] = "a different document with the same id"
+    c = FakeClient(lambda kw, n: resp(a1_ok()))
+    with pytest.raises(llm.FingerprintMismatch):
+        run(c, changed, out)
+    assert c.calls == [] and len(states(ledger)) == n_res
+    # a changed request config (e.g. the provider pin or max tokens) is a mismatch too
+    monkeypatch.setitem(C.MODELS, "luna", replace(C.MODELS["luna"], json_max_tokens=300))
+    with pytest.raises(llm.FingerprintMismatch):
+        run(c, reqs(2), out)
+    assert c.calls == []
+
+
 def test_prompt_sha_change_refused(tmp_path, ledger):
     out = tmp_path / "s.jsonl"
     run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(1), out)
@@ -255,16 +289,76 @@ def test_prompt_sha_change_refused(tmp_path, ledger):
         run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(1), out)
 
 
-def test_partial_last_line_ignored(tmp_path, ledger):
+def test_torn_tail_repaired_across_two_resumes(tmp_path, ledger):
     out = tmp_path / "p.jsonl"
     run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(2), out)
-    with open(out, "a") as f:
-        f.write('{"item_id": "d1", "trunc')
+    with open(out, "ab") as f:  # a torn write ending inside a two-byte UTF-8 character
+        f.write(b'{"item_id": "d2", "text": "caf' + "é".encode()[:1])
+    assert llm.load_rows(out).keys() == {("luna", "A1_content", f"d{i}", 7) for i in range(2)}
     c = FakeClient(lambda kw, n: resp(a1_ok()))
     rows = run(c, reqs(3), out)
     assert len(c.calls) == 1 and all(r["status"] == "ok" for r in rows)
-    for line in out.read_text().splitlines()[-1:]:
-        json.loads(line)
+    c2 = FakeClient(lambda kw, n: resp(a1_ok()))
+    rows2 = run(c2, reqs(4), out)  # the second resume must load cleanly
+    assert len(c2.calls) == 1 and all(r["status"] == "ok" for r in rows2)
+    lines = out.read_bytes().decode("utf-8").splitlines()
+    assert len(lines) == 4 and all(json.loads(x) for x in lines)
+    usage = [json.loads(x) for x in (tmp_path / "p.usage.jsonl").read_text().splitlines()]
+    assert usage[1]["invocation"]["tail_bytes_truncated"] > 0
+
+
+def test_complete_tail_without_newline_kept(tmp_path, ledger):
+    out = tmp_path / "q.jsonl"
+    run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(1), out)
+    out.write_bytes(out.read_bytes().rstrip(b"\n"))
+    c = FakeClient(lambda kw, n: resp(a1_ok()))
+    run(c, reqs(2), out)
+    assert len(c.calls) == 1 and len(out.read_text().splitlines()) == 2
+
+
+def test_second_process_on_a_live_batch_is_refused(tmp_path, ledger):
+    import subprocess
+    import sys
+
+    out = tmp_path / "live.jsonl"
+    live = spend.reserve_api(C.EXP, 0.5, NOTE, stage="setup")  # the live batch's reservation
+    spend.mark_submitted(live)
+    holder = subprocess.Popen(
+        [sys.executable, "-c",
+         ("import fcntl, sys\n"
+          f"f = open({str(llm.lock_path(out))!r}, 'a+')\n"
+          "fcntl.flock(f.fileno(), fcntl.LOCK_EX)\n"
+          "print('locked', flush=True)\n"
+          "sys.stdin.read()\n")],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == "locked"
+        c = FakeClient(lambda kw, n: resp(a1_ok()))
+        with pytest.raises(llm.BatchLocked):
+            run(c, reqs(2), out)
+        assert c.calls == []
+        st = states(ledger)
+        assert not st[live]["closed"] and len(st) == 1  # the live reservation is untouched
+    finally:
+        holder.stdin.close()
+        holder.wait(timeout=10)
+    # once the owner is gone, the next run recovers it and proceeds
+    run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(2), out)
+    assert states(ledger)[live]["closed"]
+
+
+def test_charge_above_bound_halts_and_raises(tmp_path, ledger):
+    rs = reqs(3)
+    huge = int(10 * bound(rs[0]) * 1e6 / 0.10)  # ten times the bound in prompt tokens
+    c = FakeClient(lambda kw, n: resp(a1_ok(), pt=huge, ct=0))
+    with pytest.raises(llm.AccountingError):
+        run(c, rs, tmp_path / "a.jsonl", concurrency=1,
+            reserve=lambda st, usd, note: reserve_ledger(st, 100 * usd, note))
+    assert len(c.calls) == 1  # no further submissions
+    (s,) = states(ledger).values()
+    assert s["closed"] and s["charges"] == pytest.approx(huge * 0.10 / 1e6, rel=1e-6)
+    usage = json.loads((tmp_path / "a.usage.jsonl").read_text().splitlines()[0])
+    assert usage["invocation"]["accounting_errors"]
 
 
 def test_reservation_settled_at_actual(tmp_path, ledger):
@@ -278,15 +372,28 @@ def test_reservation_settled_at_actual(tmp_path, ledger):
     rows = run(FakeClient(lambda kw, n: resp(a1_ok(), pt=50, ct=10)), rs, tmp_path / "o.jsonl",
                reserve=reserve)
     assert seen["stage"] == "setup" and seen["note"] == NOTE
-    assert seen["usd"] == pytest.approx(llm.estimate_usd("luna", "A1_content", rs, "json"))
+    assert seen["usd"] == llm.estimate_usd("luna", "A1_content", rs, "json")
     (s,) = states(ledger).values()
     actual = 4 * (50 * 0.10 + 10 * 0.50) / 1e6
     assert s["closed"] and s["submitted"] and s["stage"] == "setup"
     assert s["charges"] == pytest.approx(actual, abs=1e-9)
     assert sum(r["usd"] for r in rows) == pytest.approx(actual)
     assert spend.spent("judge", C.EXP) == pytest.approx(actual, abs=1e-9)
-    usage = (tmp_path / "o.usage.jsonl").read_text().splitlines()
-    assert json.loads(usage[0])["statuses"] == {"ok": 4}
+    usage = json.loads((tmp_path / "o.usage.jsonl").read_text().splitlines()[0])
+    assert usage["invocation"]["statuses"] == {"ok": 4}
+    assert usage["invocation"]["usage"]["prompt_tokens"] == 200
+    assert usage["batch"]["statuses"] == {"ok": 4}
+
+
+def test_usage_log_separates_invocation_from_batch(tmp_path, ledger):
+    out = tmp_path / "u.jsonl"
+    run(FakeClient(lambda kw, n: resp(a1_ok(), pt=50, ct=10)), reqs(2), out)
+    run(FakeClient(lambda kw, n: resp(a1_ok(), pt=50, ct=10)), reqs(3), out)
+    second = json.loads((tmp_path / "u.usage.jsonl").read_text().splitlines()[1])
+    assert second["invocation"]["n_sent"] == 1 and second["invocation"]["calls_ok"] == 1
+    assert second["invocation"]["usage"]["prompt_tokens"] == 50  # cached rows not re-counted
+    assert second["batch"] == {"n_requests": 3, "n_cached": 2, "statuses": {"ok": 3},
+                               "n_unsent": 0}
 
 
 def test_openrouter_cost_preferred(tmp_path, ledger):
@@ -304,23 +411,22 @@ def test_timeout_charged_at_max_then_retried(tmp_path, ledger):
         return resp(a1_ok(), pt=10, ct=1)
 
     rs = reqs(1)
-    cmax = llm.estimate_usd("luna", "A1_content", rs, "json")
+    cmax = bound(rs[0])
     rows = run(FakeClient(fn), rs, tmp_path / "o.jsonl",
                reserve=lambda st, usd, note: reserve_ledger(st, 3 * usd, note))
     assert rows[0]["status"] == "ok" and rows[0]["attempts"] == 2
-    assert rows[0]["usd"] == pytest.approx(cmax + (10 * 0.10 + 1 * 0.50) / 1e6, rel=1e-3)
+    assert rows[0]["usd"] == pytest.approx(cmax + (10 * 0.10 + 1 * 0.50) / 1e6)
 
 
 def test_missing_usage_charged_at_max(tmp_path, ledger):
     rs = reqs(1)
     rows = run(FakeClient(lambda kw, n: resp(a1_ok(), usage=False)), rs, tmp_path / "o.jsonl")
-    assert rows[0]["usd"] == pytest.approx(llm.estimate_usd("luna", "A1_content", rs, "json"),
-                                           rel=1e-3)
+    assert rows[0]["usd"] == pytest.approx(bound(rs[0]))
 
 
 def test_headroom_respected(tmp_path, ledger):
     rs = reqs(10)
-    cmax = llm.estimate_usd("luna", "A1_content", rs, "json") / 10
+    cmax = bound(rs[0])
     budget = 3.5 * cmax
 
     def small_reserve(stage, usd, note):
@@ -368,9 +474,9 @@ def test_crash_mid_batch_settles_conservatively(tmp_path, ledger):
     with pytest.raises(RuntimeError, match="bug"):
         run(FakeClient(fn), rs, tmp_path / "o.jsonl", concurrency=1)
     (s,) = states(ledger).values()
-    cmax = llm.estimate_usd("luna", "A1_content", rs[1:], "json")
+    cmax = bound(rs[1])
     assert s["closed"]
-    assert s["charges"] >= (10 * 0.10 + 1 * 0.50) / 1e6 + cmax
+    assert s["charges"] >= (10 * 0.10 + 1 * 0.50) / 1e6 + cmax - 1e-12
     assert s["charges"] == pytest.approx((10 * 0.10 + 1 * 0.50) / 1e6 + cmax, abs=1e-6)
 
 

@@ -26,6 +26,22 @@ itself resumable and owns reservations and settlement; it is imported lazily and
 tests. Reported per §4.4: the refusal rate at each step, the regeneration outcomes, the number of
 Qwen-written outputs, and the endorsement scores of refused documents against the rest.
 
+Binding to inputs (code review R1, finding 4). Every attempt stores a `fingerprint`: the sha256
+of its document text, prompt id and prompt-file sha256, the writer's model id, route, request
+config and max tokens, and the seed. Before any call (and in the dry-run projections), every
+recorded attempt that would be reused for a requested (doc, version) is re-fingerprinted against
+the current inputs; a mismatch raises `FingerprintMismatch` before anything is sent. A returned
+LLM row whose prompt sha, model or seed differs from the request is refused, not recorded.
+
+Explicit outcomes (finding 1). `write_versions` and `regenerate` return an entry for EVERY
+requested (doc, version): an attempt record, or `{"doc_id", "version", "status": "unresolved",
+"reason"}` when an API error or a headroom cut-off left it without a terminal answer. Unresolved
+is resumable work (call again), never evidence that a check failed.
+
+Exclusions. Documents in the shared exclusion registry (`emx.e9.checks.load_exclusions()`,
+`data/E9/insert/exclusions.json`, e.g. §4.3's minor-safety flag raised later by the checker) are
+never sent: both entry points raise `ExcludedDocument` before any call.
+
 Prompt ids: "A2_correct" (corr), "A3_paraphrase" (para). Item ids: "{doc_id}|{version}|{attempt}".
 Ledger notes: `contracts.ledger_note(stage, "rewrite", f"{model}-{version}-a{attempt}-{batch}")`,
 one per run_batch call; `stage` is "setup" in Part 1 and "part2_mandatory" for the confirmation
@@ -53,11 +69,20 @@ QWN: str = C.ROLES["fallback_writer"]  # type: ignore[assignment]
 # refusals and empty answers; "malformed" cannot occur in text mode; "error" is recorded only
 # under errors_to_fallback (module docstring).
 FALLBACK_STATUSES: tuple[str, ...] = ("refused", "empty", "error", "malformed")
+UNRESOLVED = "unresolved"
 ATTEMPTS_FILE = "attempts.jsonl"
 STEP = "rewrite"
 
 Key = tuple[str, str, int, str]  # (doc_id, version, attempt, writer)
 DV = tuple[str, str]  # (doc_id, version)
+
+
+class FingerprintMismatch(ValueError):
+    """A recorded attempt does not match the current document text, prompt, model or seed."""
+
+
+class ExcludedDocument(ValueError):
+    """A document in the shared exclusion registry was submitted for rewriting."""
 
 
 # --- paths and records ----------------------------------------------------------------------------
@@ -201,6 +226,69 @@ def _estimate_default() -> Callable:
     return llm.estimate_usd
 
 
+def _prompt_sha(prompt_id: str) -> str:
+    from emx.e9 import prompts  # lazy: written by unit B1
+
+    return prompts.sha256(prompt_id)
+
+
+def _seed(attempt: int) -> int:
+    return C.REWRITE_REQUEST_SEED + (attempt - 1)
+
+
+def fingerprint(doc_text: str, version: str, writer: str, attempt: int) -> str:
+    """sha256 over everything that determines an attempt's request (module docstring)."""
+    spec = C.MODELS[writer]
+    payload = {
+        "orig_sha256": T.text_sha256(doc_text),
+        "prompt_id": PROMPT_FOR[version],
+        "prompt_sha256": _prompt_sha(PROMPT_FOR[version]),
+        "model": spec.model,
+        "route": spec.route,
+        "request": spec.request,
+        "max_tokens": spec.text_max_tokens,
+        "mode": "text",
+        "seed": _seed(attempt),
+    }
+    return T.text_sha256(json.dumps(payload, sort_keys=True))
+
+
+def excluded_ids() -> set[str]:
+    """Doc ids in the shared exclusion registry (fails closed if it cannot be loaded)."""
+    try:
+        from emx.e9.checks import load_exclusions  # lazy: written by unit B2b
+    except (ImportError, AttributeError) as e:  # fail closed: never rewrite unchecked
+        raise RuntimeError(f"cannot load the E9 exclusion registry: {e}") from e
+    return set(load_exclusions())
+
+
+def _preflight(
+    docs: Mapping[str, Mapping],
+    dvs: Iterable[DV],
+    attempts: Mapping[Key, dict],
+    exclusions: Iterable[str] | None,
+) -> None:
+    """Refuse excluded documents and any recorded attempt not bound to the current inputs."""
+    excl = excluded_ids() if exclusions is None else set(exclusions)
+    dvs = list(dvs)
+    bad = sorted({d for d, _ in dvs if d in excl})
+    if bad:
+        raise ExcludedDocument(f"{len(bad)} excluded document(s) submitted: {bad[:5]}")
+    by = _by_dv(attempts)
+    for doc_id, version in dvs:
+        for (attempt, writer), rec in by.get((doc_id, version), {}).items():
+            want = fingerprint(docs[doc_id]["text"], version, writer, attempt)
+            if rec.get("fingerprint") != want:
+                raise FingerprintMismatch(
+                    f"{doc_id}|{version}|a{attempt}|{writer}: recorded attempt does not match "
+                    "the current document text, prompt, model or seed"
+                )
+
+
+def _unresolved(doc_id: str, version: str, reason: str) -> dict:
+    return {"doc_id": doc_id, "version": version, "status": UNRESOLVED, "reason": reason}
+
+
 def item_id(doc_id: str, version: str, attempt: int) -> str:
     return f"{doc_id}|{version}|{attempt}"
 
@@ -209,16 +297,14 @@ def _request(doc: Mapping, version: str, attempt: int) -> dict:
     return {
         "item_id": item_id(doc["doc_id"], version, attempt),
         "fields": {"document": doc["text"]},
-        "seed": C.REWRITE_REQUEST_SEED + (attempt - 1),
+        "seed": _seed(attempt),
         "ref_chars": len(doc["text"]),
     }
 
 
 def _docs_map(docs: Iterable[Mapping] | Mapping[str, Mapping]) -> dict[str, Mapping]:
-    if isinstance(docs, Mapping):
-        return dict(docs)
     out: dict[str, Mapping] = {}
-    for d in docs:
+    for d in docs.values() if isinstance(docs, Mapping) else docs:
         if d["doc_id"] in out:
             raise ValueError(f"duplicate doc_id {d['doc_id']!r}")
         if not isinstance(d.get("text"), str) or not d["text"]:
@@ -250,11 +336,14 @@ def _call(
     concurrency: int,
     tok,
     errors_to_fallback: bool = False,
-) -> list[dict]:
+) -> tuple[list[dict], dict[DV, str]]:
     """One run_batch call (one ledger note), its rows turned into attempt records and appended.
-    Error rows are left unrecorded (re-sent next time) unless `errors_to_fallback` and sent."""
+    Error rows are left unrecorded (re-sent next time) unless `errors_to_fallback` and sent.
+    Returns (records, {(doc_id, version): reason} for the requests left without a record)."""
     if not reqs:
-        return []
+        return [], {}
+    spec = C.MODELS[model]
+    prompt_sha = _prompt_sha(PROMPT_FOR[version])
     tag = f"{model}-{version}-a{attempt}-{batch}"
     note = C.ledger_note(stage, STEP, tag)  # validates the stage
     out_path = _root_path(llm_dir) / f"rewrite-{stage}-{tag}.jsonl"
@@ -270,17 +359,30 @@ def _call(
     )
     by_item = {r["item_id"]: r for r in rows}
     utc = datetime.now(UTC).isoformat(timespec="seconds")
-    recs = []
+    recs: list[dict] = []
+    missing: dict[DV, str] = {}
     for req in reqs:
-        row = by_item.get(req["item_id"])
-        if row is None:  # not returned (e.g. a stopped batch): left unrecorded, re-sent on resume
-            continue
         doc = docs[req["item_id"].rsplit("|", 2)[0]]
+        dv = (doc["doc_id"], version)
+        row = by_item.get(req["item_id"])
+        if row is None:  # not returned: left unrecorded, re-sent on resume
+            missing[dv] = f"{model} a{attempt}: no result row returned"
+            continue
         status = row["status"]
         out_text = row.get("text") or ""
         if status not in C.LLM_STATUSES:
             raise ValueError(f"unknown LLM status {status!r} for {req['item_id']}")
+        if (
+            row.get("seed") != req["seed"]
+            or row.get("prompt_sha256") not in (None, prompt_sha)
+            or row.get("model") not in (None, spec.model)
+        ):
+            raise FingerprintMismatch(
+                f"{req['item_id']}: LLM row's seed, prompt sha or model differs from the request"
+            )
         if status == "error" and not (errors_to_fallback and (row.get("attempts") or 0) > 0):
+            sent = "sent, failed after retries" if row.get("attempts") else "not sent"
+            missing[dv] = f"{model} a{attempt}: API error ({sent}): {row.get('error')}"
             continue
         recs.append(
             {
@@ -303,10 +405,11 @@ def _call(
                 "usd": row.get("usd"),
                 "orig_sha256": T.text_sha256(doc["text"]),
                 "orig_n_tokens": doc.get("n_tokens"),
+                "fingerprint": fingerprint(doc["text"], version, model, attempt),
             }
         )
     _append(out_dir, recs)
-    return recs
+    return recs, missing
 
 
 def write_versions(
@@ -321,16 +424,21 @@ def write_versions(
     concurrency: int = 32,
     tok=None,
     errors_to_fallback: bool = False,
+    exclusions: Iterable[str] | None = None,
 ) -> dict[DV, dict]:
     """§4.4 steps 1-2 for every (document, version): luna writes all of them (one batch per
     version), then Qwen writes, with the same prompt and seed, every one luna refused or left
     empty. Resumable: a recorded attempt is never re-sent. `batch` names this pass in the ledger
     notes (e.g. "pass1", or "repl3" for a replacement round). Returns (doc_id, version) -> the
-    standing attempt record (`current_version`); a version whose call ended in an API error is
-    absent (still "pending" or "needs_fallback", see `state_counts`) and is re-sent next call."""
+    standing attempt record (`current_version`) for every requested pair, or an explicit
+    {"status": "unresolved", "reason"} entry if an API error or cut-off left it pending (it is
+    re-sent by the next call). Refuses excluded documents and unbound recorded attempts first;
+    `exclusions` (doc ids) overrides the shared registry (tests)."""
     versions = _check_versions(versions)
     docs = _docs_map(docs)
+    _preflight(docs, [(i, v) for i in docs for v in versions], load_attempts(out_dir), exclusions)
     run_batch = run_batch or _run_batch_default()
+    reasons: dict[DV, str] = {}
     kw = {
         "stage": stage,
         "batch": batch,
@@ -348,7 +456,7 @@ def write_versions(
             for i, d in docs.items()
             if (i, version, 1, LUNA) not in attempts
         ]
-        _call(LUNA, version, 1, reqs, docs, **kw)
+        reasons.update(_call(LUNA, version, 1, reqs, docs, **kw)[1])
         attempts = load_attempts(out_dir)
         reqs = [
             _request(d, version, 1)
@@ -357,15 +465,17 @@ def write_versions(
             and r["status"] in FALLBACK_STATUSES
             and (i, version, 1, QWN) not in attempts
         ]
-        _call(QWN, version, 1, reqs, docs, **kw)
+        reasons.update(_call(QWN, version, 1, reqs, docs, **kw)[1])
     attempts = load_attempts(out_dir)
-    by = _by_dv(attempts)
-    return {
-        (i, v): cur
-        for i in docs
-        for v in versions
-        if (cur := _current(by.get((i, v), {}))) is not None
-    }
+    out: dict[DV, dict] = {}
+    for i in docs:
+        for v in versions:
+            state = version_state(i, v, attempts=attempts)
+            if state in ("pending", "needs_fallback"):
+                out[(i, v)] = _unresolved(i, v, reasons.get((i, v), state))
+            else:
+                out[(i, v)] = current_version(i, v, attempts=attempts)
+    return out
 
 
 def regenerate(
@@ -380,21 +490,30 @@ def regenerate(
     concurrency: int = 32,
     tok=None,
     errors_to_fallback: bool = False,
+    exclusions: Iterable[str] | None = None,
 ) -> dict[DV, dict]:
     """§4.4 step 3: each (doc_id, version, writer) whose attempt-1 output failed its checks (or,
     for Qwen, was refused) is regenerated once by the SAME writer with seed REWRITE_REQUEST_SEED
     + 1 (attempt 2). Raises ValueError if `writer` is not the writer whose attempt 1 stands, or if
     the document text differs from the one attempt 1 rewrote. An existing attempt 2 is never
-    re-sent. Returns (doc_id, version) -> attempt-2 record; a non-ok record means dropped (step
-    4); an ok one still goes to B2b's checks, and a failure there drops it too."""
+    re-sent. Returns, for EVERY requested (doc_id, version), the attempt-2 record (a non-ok record
+    means dropped, step 4; an ok one still goes to B2b's checks) or an explicit
+    {"status": "unresolved", "reason"} entry (API error or cut-off: call again). Refuses excluded
+    documents and unbound recorded attempts before any call."""
     docs = _docs_map(docs)
-    run_batch = run_batch or _run_batch_default()
+    failed = list(failed)
     attempts = load_attempts(out_dir)
+    for doc_id, version, _ in failed:
+        _check_versions([version])
+        if doc_id not in docs:
+            raise ValueError(f"{doc_id}: not among the documents passed")
+    _preflight(docs, [(d, v) for d, v, _ in failed], attempts, exclusions)
+    run_batch = run_batch or _run_batch_default()
     by = _by_dv(attempts)
+    reasons: dict[DV, str] = {}
     todo: dict[tuple[str, str], list[dict]] = {}
     wanted: list[DV] = []
     for doc_id, version, writer in failed:
-        _check_versions([version])
         recs = by.get((doc_id, version), {})
         a1 = _attempt1_writer(recs)
         if a1 is None:
@@ -407,14 +526,12 @@ def regenerate(
         if a1 == LUNA and recs[(1, LUNA)]["status"] != "ok":
             raise ValueError(f"{doc_id}|{version}: luna refused; Qwen writes first (step 2)")
         doc = docs[doc_id]
-        if T.text_sha256(doc["text"]) != recs[(1, a1)].get("orig_sha256"):
-            raise ValueError(f"{doc_id}: document text differs from the one attempt 1 rewrote")
         wanted.append((doc_id, version))
         if any(a == 2 for (a, _) in recs):
             continue
         todo.setdefault((writer, version), []).append(_request(doc, version, 2))
     for (writer, version), reqs in sorted(todo.items()):
-        _call(
+        _recs, missing = _call(
             writer,
             version,
             2,
@@ -429,8 +546,13 @@ def regenerate(
             tok=tok,
             errors_to_fallback=errors_to_fallback,
         )
+        reasons.update(missing)
     by = _by_dv(load_attempts(out_dir))
-    return {dv: r for dv in wanted for (a, _), r in by.get(dv, {}).items() if a == 2}
+    out: dict[DV, dict] = {}
+    for dv in wanted:
+        a2 = [r for (a, _), r in by.get(dv, {}).items() if a == 2]
+        out[dv] = a2[0] if a2 else _unresolved(*dv, reasons.get(dv, "attempt 2 not recorded"))
+    return out
 
 
 # --- version rows ---------------------------------------------------------------------------------
@@ -587,13 +709,16 @@ def project_write(
     *,
     estimate: Callable | None = None,
     out_dir: str | Path = C.REWRITE_DIR,
+    exclusions: Iterable[str] | None = None,
 ) -> dict:
     """Projected $ for `write_versions`: luna on every unrecorded attempt 1, and Qwen's worst
-    case (every one of those refused by luna) plus Qwen on luna's already-recorded refusals."""
+    case (every one of those refused by luna) plus Qwen on luna's already-recorded refusals.
+    Runs the same preflight (exclusions, fingerprints) as the paid call."""
     versions = _check_versions(versions)
     docs = _docs_map(docs)
     estimate = estimate or _estimate_default()
     attempts = load_attempts(out_dir)
+    _preflight(docs, [(i, v) for i in docs for v in versions], attempts, exclusions)
     out = {"luna": 0.0, "qwn_worst_case": 0.0, "n_luna": 0, "n_qwn_max": 0}
     for v in versions:
         luna = [_request(d, v, 1) for i, d in docs.items() if (i, v, 1, LUNA) not in attempts]
@@ -620,11 +745,16 @@ def project_regenerate(
     docs: Iterable[Mapping] | Mapping[str, Mapping],
     estimate: Callable | None = None,
     out_dir: str | Path = C.REWRITE_DIR,
+    exclusions: Iterable[str] | None = None,
 ) -> dict:
-    """Projected $ for `regenerate` (attempts 2 not yet recorded), by writer."""
+    """Projected $ for `regenerate` (attempts 2 not yet recorded), by writer, after the same
+    preflight (exclusions, fingerprints) as the paid call."""
     docs = _docs_map(docs)
+    failed = list(failed)
     estimate = estimate or _estimate_default()
-    by = _by_dv(load_attempts(out_dir))
+    attempts = load_attempts(out_dir)
+    _preflight(docs, [(d, v) for d, v, _ in failed], attempts, exclusions)
+    by = _by_dv(attempts)
     groups: dict[tuple[str, str], list[dict]] = {}
     for d, v, w in failed:
         if any(a == 2 for (a, _) in by.get((d, v), {})):

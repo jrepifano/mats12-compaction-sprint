@@ -9,7 +9,8 @@ and A.4 of Appendix A:
   only reported. A paraphrase passes iff its endorsement is >= 4 and within +-2 of the original's,
   all three A.4 answers are true, the ratio is in [0.8, 1.25] and the normalized token edit
   distance is >= 0.3. A malformed checker output (after the llm layer's retries) fails the check
-  and is recorded as `status="malformed"`.
+  and is recorded as `status="malformed"`; an API error is never a failed check (it aborts
+  resumably, `ResumableAbort`).
 - **Checker validation by writer stratum** (`sample_to_endpoint`, `evaluate_policy`). After the
   first rewriting pass, each writer's outputs are sampled without replacement to the sampling
   endpoint; each stratum's ordered policy table is evaluated once there, and the policy is frozen
@@ -19,7 +20,15 @@ and A.4 of Appendix A:
   `rewrite.regenerate`); otherwise it is dropped from every arm and replaced by the next-ranked
   candidate until single-copy original tokens total >= 4M (the crossing document kept). Then the
   corrections' and paraphrases' totals must each lie within +-10% of the originals'; if not, the
-  documents with the most extreme length ratios are dropped and replaced the same way.
+  single most extreme document is removed and replaced through the same loop, repeatedly.
+- **Exclusions** (Amendment F; §4.3): one append-only registry, data/E9/insert/exclusions.json
+  (`add_exclusions`, `load_exclusions`). A minor_sexual flag in any A.1 assessment here (checker
+  or panel, original or rewrite) adds the document; an excluded document is never rewritten
+  again and is dropped from every arm and replaced. `accept(refreeze=True)` rebuilds a frozen
+  insert after the registry changes, recording the previous manifest's hash and the reason.
+- **Evidence** (review R1 #4, #12): frozen policies record and verify their evidence (selection,
+  first-pass rewrites, validation samples, prompts, models); the manifest records a hashed
+  evidence inventory and the source state (`verify_manifest` rechecks it).
 - **The frozen insert**: `data/E9/insert/insert_manifest.json` (contracts.INSERT_MANIFEST_KEYS
   without "capacity", which unit C adds) and `versions.jsonl` (contracts.VERSION_KEYS rows).
 
@@ -226,17 +235,21 @@ def sample_to_endpoint(
 def evaluate_policy(writer: str, labels: Sequence[dict]) -> dict:
     """Evaluate a stratum's ordered policy table once, at its sampling endpoint (§4.4).
 
-    `labels`: one dict per drawn item with "checker" (bool) and "panel" (two bools). An item is
-    agreed when both panel models decide the same; the checker matches when it equals that
-    decision. Main (luna): (1) panel agrees on < 75% of drawn items or < 100 agreed -> "stop";
-    (2) checker matches >= 85% of agreed -> "checker"; (3) "panel". Fallback (qwn): (1) < 20
-    agreed (incl. none drawn) or agreement < 75% -> "triple"; (2) -> "checker"; (3) "panel"."""
+    `labels`: one dict per drawn item with "checker" (bool), "panel" (two bools) and their
+    validity, "checker_valid" (bool) and "panel_valid" (two bools; both default True). Validity is
+    kept apart from pass/fail (review R1 #3): an item is agreed only when both panel assessments
+    are valid and decide the same; the checker matches only when its assessment is valid and
+    equals that decision; invalid items stay in the drawn denominator. Main (luna): (1) panel
+    agrees on < 75% of drawn items or < 100 agreed -> "stop"; (2) checker matches >= 85% of
+    agreed -> "checker"; (3) "panel". Fallback (qwn): (1) < 20 agreed (incl. none drawn) or
+    agreement < 75% -> "triple"; (2) -> "checker"; (3) "panel"."""
     if writer not in STRATA:
         raise ValueError(f"unknown writer stratum {writer!r}")
     n_drawn = len(labels)
-    agreed = [x for x in labels if x["panel"][0] == x["panel"][1]]
+    agreed = [x for x in labels if label_agreed(x)]
     n_agreed = len(agreed)
-    n_match = sum(1 for x in agreed if x["checker"] == x["panel"][0])
+    n_match = sum(1 for x in agreed
+                  if x.get("checker_valid", True) and x["checker"] == x["panel"][0])
     agree_rate = n_agreed / n_drawn if n_drawn else 0.0
     match_rate = n_match / n_agreed if n_agreed else 0.0
     need = STRATA[writer]["min_agreed"]
@@ -255,7 +268,14 @@ def evaluate_policy(writer: str, labels: Sequence[dict]) -> dict:
         "n_checker_match": n_match, "checker_match_rate": match_rate, "min_agreed": need,
         "n_panel_pass_agreed": sum(1 for x in agreed if x["panel"][0]),
         "n_checker_pass_drawn": sum(1 for x in labels if x["checker"]),
+        "n_panel_invalid": sum(1 for x in labels if not all(x.get("panel_valid", (True, True)))),
+        "n_checker_invalid": sum(1 for x in labels if not x.get("checker_valid", True)),
     }
+
+
+def label_agreed(x: dict) -> bool:
+    """Both panel assessments valid and deciding the same (review R1 #3)."""
+    return all(x.get("panel_valid", (True, True))) and x["panel"][0] == x["panel"][1]
 
 
 def apply_policy(policy: str, checker_pass: bool, panel_passes: Sequence[bool] | None) -> bool:
@@ -275,6 +295,75 @@ def insert_order_key(doc_id: str, seed: int = C.CORPUS_SEED) -> str:
     """The seeded insert order: documents sorted by sha256(f"{seed}:{doc_id}"). A hash order, so
     adding or dropping one document never reorders the others (§4.4 step 3)."""
     return hashlib.sha256(f"{seed}:{doc_id}".encode()).hexdigest()
+
+
+# --- errors -------------------------------------------------------------------------------------
+
+
+class ResumableAbort(RuntimeError):
+    """Work without a terminal answer (an API error or cut-off in the llm layer or the rewriter):
+    abort before recording any document outcome; rerunning resends exactly that work."""
+
+
+class PolicyEvidenceError(RuntimeError):
+    """Frozen checker policies whose recorded evidence does not match the current inputs
+    (review R1 #4): refused before any paid call that would rely on them."""
+
+
+class DirtySourceError(RuntimeError):
+    """The E9 source tree has uncommitted changes and allow_dirty was not given (R1 #12)."""
+
+
+# --- the exclusion registry (Amendment F) -------------------------------------------------------
+
+EXCLUSIONS_FILE = "exclusions.json"
+EXCLUSION_REASONS: tuple[str, ...] = ("minor_sexual", "a5_unscored")
+
+
+def exclusions_path(path: Path | str | None = None) -> Path:
+    return Path(path) if path is not None else ROOT / C.INSERT_DIR / EXCLUSIONS_FILE
+
+
+def load_exclusions(path: Path | str | None = None) -> dict[str, list[dict]]:
+    """The shared exclusion registry, data/E9/insert/exclusions.json: {doc_id: [entries]}, each
+    entry {"doc_id", "reason", "source", "utc"}. Missing file -> no exclusions."""
+    p = exclusions_path(path)
+    if not p.exists():
+        return {}
+    entries = json.loads(p.read_text())["entries"]
+    out: dict[str, list[dict]] = {}
+    for e in entries:
+        out.setdefault(e["doc_id"], []).append(e)
+    return out
+
+
+def add_exclusions(doc_ids: Iterable[str], reason: str, source: str, *,
+                   path: Path | str | None = None) -> list[dict]:
+    """Append exclusions (append-only, utc-stamped, under a file lock; an identical
+    (doc_id, reason, source) entry is not repeated). An excluded document is never rewritten
+    again and is dropped from every arm and replaced (Amendment F; §4.3 safety exclusion).
+    Returns the entries added."""
+    import fcntl
+    import os
+
+    if reason not in EXCLUSION_REASONS:
+        raise ValueError(f"unknown exclusion reason {reason!r}; known: {EXCLUSION_REASONS}")
+    if not source:
+        raise ValueError("an exclusion needs its source")
+    p = exclusions_path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p.with_name(p.name + ".lock"), "a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        entries = json.loads(p.read_text())["entries"] if p.exists() else []
+        have = {(e["doc_id"], e["reason"], e["source"]) for e in entries}
+        utc = _utc()
+        new = [{"doc_id": d, "reason": reason, "source": source, "utc": utc}
+               for d in dict.fromkeys(doc_ids) if (d, reason, source) not in have]
+        if new:
+            tmp = p.with_name(p.name + ".tmp")
+            tmp.write_text(json.dumps({"entries": entries + new}, indent=1) + "\n")
+            os.replace(tmp, p)
+    return new
 
 
 # --- adapters to the parallel units -------------------------------------------------------------
@@ -313,18 +402,18 @@ class _LLM:
                                   stage=self.stage, note=note)
             by_id = {r["item_id"]: r for r in rows}
             missing = [i for i in ids if i not in by_id]
-            if missing:  # a layer bug, never a silent check failure
-                raise RuntimeError(f"run_batch returned no row for {len(missing)} of {len(ids)} "
-                                   f"{model_key}/{prompt_id} items, e.g. {missing[0]}")
+            if missing:  # never a silent check failure
+                raise ResumableAbort(f"run_batch returned no row for {len(missing)} of {len(ids)} "
+                                     f"{model_key}/{prompt_id} items, e.g. {missing[0]}")
             errors = [i for i in ids if by_id[i].get("status") not in C.LLM_STATUSES[:4]]
             if errors:  # "error" is not an answer (llm re-sends it next run): never a failed check
-                raise RuntimeError(f"{len(errors)} {model_key}/{prompt_id} calls ended in API "
-                                   f"errors (rerun to resend), e.g. {errors[0]}")
+                raise ResumableAbort(f"{len(errors)} {model_key}/{prompt_id} calls ended in API "
+                                     f"errors (rerun to resend), e.g. {errors[0]}")
             for i in ids:
                 r = by_id[i]
                 status = r.get("status")
                 self.statuses[(model_key, prompt_id, status)] += 1
-                # malformed after retries, refused or empty -> None -> the check fails
+                # malformed after retries, refused or empty -> None -> an invalid assessment
                 self.cache[(model_key, prompt_id, i)] = (
                     r.get("parsed") if status == OK_STATUS else None)
         return {i: self.cache[(model_key, prompt_id, i)] for i, _ in items}
@@ -352,13 +441,17 @@ class Output:
         return self.status == OK_STATUS and bool(self.text)
 
 
+REGEN_ATTEMPT = 2  # B2a: attempt 1 = steps 1-2 (luna, then Qwen), attempt 2 = the regeneration
+UNRESOLVED = "unresolved"  # B2a's explicit "no terminal answer yet" entry
+
+
 class _Rewriter:
     """The only place that knows unit B2a's call and return shapes (`emx.e9.rewrite`).
 
-    write_versions(docs, versions, *, stage, batch, tok, [run_batch, out_dir, llm_dir]) and
-    regenerate([(doc_id, version, writer)], *, docs, stage, batch, ...) return
-    {(doc_id, version): standing attempt record} (REWRITE_ATTEMPT_KEYS; attempt 1 = steps 1-2,
-    attempt 2 = the regeneration); load_attempts(out_dir) returns every recorded attempt."""
+    write_versions(docs, versions, *, stage, batch, tok, exclusions, [run_batch, out_dir,
+    llm_dir]) and regenerate([(doc_id, version, writer)], *, docs, ...) return, for every
+    requested (doc_id, version), the standing attempt record (REWRITE_ATTEMPT_KEYS) or
+    {"status": "unresolved", "reason"}; load_attempts(out_dir) returns every recorded attempt."""
 
     def __init__(self, write_versions=None, regenerate=None, load_attempts=None, *,
                  run_batch=None, tok=None, out_dir: Path | None = None,
@@ -385,19 +478,20 @@ class _Rewriter:
                 return list(result.values())
         raise TypeError(f"unrecognized rewrite result of type {type(result).__name__}")
 
-    def _kw(self, batch: str) -> dict:
-        kw = {"stage": self.stage, "batch": batch, "tok": self.tok}
+    def _kw(self, batch: str, exclusions: Iterable[str]) -> dict:
+        kw = {"stage": self.stage, "batch": batch, "tok": self.tok,
+              "exclusions": sorted(exclusions)}
         for k in ("run_batch", "out_dir", "llm_dir"):
             if getattr(self, k) is not None:
                 kw[k] = getattr(self, k)
         return kw
 
-    def write(self, docs: list[dict], batch: str) -> list[dict]:
-        return self.rows(self._write(docs, ("corr", "para"), **self._kw(batch)))
+    def write(self, docs: list[dict], batch: str, exclusions: Iterable[str]) -> list[dict]:
+        return self.rows(self._write(docs, ("corr", "para"), **self._kw(batch, exclusions)))
 
-    def regenerate(self, failed: list[tuple[str, str, str]], docs: list[dict],
-                   batch: str) -> list[dict]:
-        return self.rows(self._regen(failed, docs=docs, **self._kw(batch)))
+    def regenerate(self, failed: list[tuple[str, str, str]], docs: list[dict], batch: str,
+                   exclusions: Iterable[str]) -> list[dict]:
+        return self.rows(self._regen(failed, docs=docs, **self._kw(batch, exclusions)))
 
     def attempts(self) -> list[dict]:
         res = self._load(self.out_dir) if self.out_dir is not None else self._load()
@@ -406,21 +500,131 @@ class _Rewriter:
 
 def latest_outputs(rows: Iterable[dict], keys: set[tuple[str, str]]) -> dict:
     """The latest attempt row per (doc_id, version) among `keys` (highest attempt; for equal
-    attempts the later row, e.g. the Qwen fallback after a luna refusal)."""
+    attempts the later row, e.g. the Qwen fallback after a luna refusal). Raises
+    ResumableAbort if any requested key is missing or unresolved (review R1 #1)."""
+    rows = list(rows)
+    unresolved = sorted({(r["doc_id"], r["version"]) for r in rows
+                         if r.get("status") == UNRESOLVED} & keys)
     best: dict[tuple[str, str], tuple[int, int, dict]] = {}
     for i, r in enumerate(rows):
         k = (r["doc_id"], r["version"])
-        if k not in keys:
+        if k not in keys or r.get("status") == UNRESOLVED:
             continue
         rank = (int(r.get("attempt") or 0), i)
         if k not in best or rank >= best[k][:2]:
             best[k] = (*rank, r)
+    missing = sorted(keys - set(best) - set(unresolved))
+    if unresolved or missing:
+        raise ResumableAbort(
+            f"no terminal rewrite for {len(unresolved)} unresolved and {len(missing)} missing "
+            f"versions (API errors or cut-offs: rerun), e.g. {(unresolved or missing)[0]}")
     return {
         k: Output(doc_id=r["doc_id"], version=r["version"], attempt=int(r.get("attempt") or 0),
                   writer=r["writer"], seed=r.get("seed"), status=r.get("status", ""),
                   text=r.get("text"), n_tokens=r.get("n_tokens"))
         for k, (_, _, r) in best.items()
     }
+
+
+# --- evidence binding (review R1 #4, #12) -------------------------------------------------------
+
+
+def _sha_json(obj) -> str:
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+
+
+def static_evidence(selection: Sequence[str], docs: dict[str, dict]) -> dict:
+    """What the frozen policies depend on before any output exists: the selection (ids and the
+    sha256 of each text, rank order), the A.1/A.4 prompt sha256s, every checker/panel model's id
+    and request configuration, the judge request seed and the validation seed."""
+    from emx.e9 import prompts
+
+    keys = sorted({C.ROLES["checker"], *C.ROLES["checker_panel_luna"],
+                   *C.ROLES["checker_panel_qwn"]})
+    return {
+        "selection_sha256": _sha_json([[d, text_sha256(docs[d]["text"])] for d in selection]),
+        "prompts": {p: prompts.sha256(p) for p in ("A1_content", "A4_preserve")},
+        "models": {k: {"model": C.MODELS[k].model, "route": C.MODELS[k].route,
+                       "request": C.MODELS[k].request,
+                       "json_max_tokens": C.MODELS[k].json_max_tokens} for k in keys},
+        "judge_seed": C.JUDGE_REQUEST_SEED,
+        "validation_seed": C.VALIDATION_SEED,
+    }
+
+
+def first_pass_fingerprint(attempts: Iterable[dict], doc_ids: Iterable[str]) -> str:
+    """sha256 over every recorded attempt-1 rewrite of the first-pass documents (doc, version,
+    attempt, writer, status, seed, sha256 of the text); B2a never re-sends a recorded attempt,
+    so it is stable across reruns."""
+    ids = set(doc_ids)
+    rows = sorted(([r["doc_id"], r["version"], int(r.get("attempt") or 0), r["writer"],
+                    r.get("status"), r.get("seed"),
+                    text_sha256(r["text"]) if r.get("text") else None]
+                   for r in attempts
+                   if r["doc_id"] in ids and int(r.get("attempt") or 0) == 1),
+                  key=lambda x: x[:4])
+    return _sha_json(rows)
+
+
+def source_state(root: Path = ROOT) -> dict:
+    """The code that runs: HEAD, whether src/emx/e9 or scripts/e9_* differ from it (tracked
+    changes or untracked files), and a snapshot sha256 over those files' contents."""
+    files = [p for p in (root / "src/emx/e9").rglob("*.py") if "__pycache__" not in p.parts]
+    for g in root.glob("scripts/e9_*"):
+        files += [g] if g.is_file() else [p for p in g.rglob("*")
+                                          if p.is_file() and "__pycache__" not in p.parts]
+    lines = [f"{p.relative_to(root)}\0{_sha256_file(p)}" for p in sorted(set(files))]
+    snapshot = hashlib.sha256("\n".join(lines).encode()).hexdigest()
+    try:
+        commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root,
+                                         text=True).strip()
+        st = subprocess.check_output(["git", "status", "--porcelain", "--", "src/emx/e9",
+                                      "scripts"], cwd=root, text=True)
+        dirty = [ln[3:] for ln in st.splitlines()
+                 if ln[3:].startswith(("src/emx/e9", "scripts/e9_"))]
+    except (OSError, subprocess.CalledProcessError):
+        commit, dirty = None, ["<git unavailable>"]
+    return {"commit": commit or "unknown", "dirty": bool(dirty), "dirty_paths": dirty[:50],
+            "snapshot_sha256": snapshot, "n_files": len(lines)}
+
+
+def _rel(p: Path) -> str:
+    return str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p)
+
+
+def evidence_inventory(paths: Paths) -> dict[str, str]:
+    """{path: sha256} of the acceptance evidence (R1 #12): the rewrite attempts and their llm
+    logs, the checker/panel responses, the check rows, the validation samples, the policy file,
+    the exclusion registry and the standing outputs acceptance saw."""
+    required = [paths.rewrite_dir / "checks.jsonl", paths.rewrite_dir / "accept_outputs.jsonl",
+                paths.rewrite_dir / "checker_policies.json"]
+    for p in required:
+        if not p.exists():
+            raise FileNotFoundError(f"evidence file missing: {p}")
+    files = [*required, *sorted(paths.rewrite_dir.glob("checker_validation_*.jsonl")),
+             paths.rewrite_dir / "attempts.jsonl", paths.insert_dir / EXCLUSIONS_FILE,
+             *sorted(paths.llm_dir.glob("checks_*.jsonl")),
+             *sorted(paths.llm_dir.glob("rewrite-*.jsonl"))]
+    return {_rel(p): _sha256_file(p) for p in files if p.exists()}
+
+
+def verify_manifest(manifest_path: Path | str) -> list[str]:
+    """Recompute every hash a frozen manifest lists (inputs, evidence, versions); returns the
+    problems found (empty = verified). Downstream units call this before use."""
+    mp = Path(manifest_path)
+    man = json.loads(mp.read_text())
+    problems = []
+    for group in ("inputs", "evidence"):
+        for rel, sha in man[group].items():
+            p = Path(rel) if Path(rel).is_absolute() else ROOT / rel
+            if not p.exists():
+                problems.append(f"{group}: missing {rel}")
+            elif _sha256_file(p) != sha:
+                problems.append(f"{group}: sha256 mismatch {rel}")
+    vp = mp.with_name("versions.jsonl")
+    if not vp.exists() or _sha256_file(vp) != man.get("versions_sha256"):
+        problems.append("versions.jsonl missing or sha256 mismatch")
+    return problems
 
 
 # --- the acceptance driver ----------------------------------------------------------------------
@@ -439,27 +643,84 @@ def _ids(text: str, tok) -> list[int]:
 
 
 class Acceptor:
-    """Holds the run's state: checks, frozen policies, per-document results (§4.4)."""
+    """Holds the run's state: checks, frozen policies, exclusions, per-document results (§4.4)."""
 
     def __init__(self, docs: dict[str, dict], *, llm: _LLM, rewriter: _Rewriter, tok,
-                 policies_path: Path | None = None, validation_dir: Path | None = None):
+                 policies_path: Path | None = None, validation_dir: Path | None = None,
+                 exclusions_file: Path | None = None, static: dict | None = None,
+                 batch_prefix: str = ""):
         self.docs = docs
         self.llm = llm
         self.rw = rewriter
         self.tok = tok
         self.policies_path = policies_path
         self.validation_dir = validation_dir
+        self.exclusions_file = exclusions_file
+        self.static = static
+        self.batch_prefix = batch_prefix
         self.policies: dict[str, dict] | None = None
         if policies_path is not None and Path(policies_path).exists():
             self.policies = json.loads(Path(policies_path).read_text())
+            self._verify_loaded()
+        self.excluded = load_exclusions(exclusions_file)
         self.results: dict[str, DocResult] = {}
         self.attempt_rows: list[dict] = []
         self.check_rows: list[dict] = []
         self.decisions: dict[tuple[str, str], bool] = {}  # (judge key, output key) -> pass
+        self.valid: dict[tuple[str, str], bool] = {}  # (judge key, output key) -> valid answer
         self.accepted: dict[str, bool] = {}  # output key -> accepted under policy
+        self.flags: dict[str, str] = {}  # doc_id -> source of its first minor_sexual flag
         self._geom: dict[str, tuple[float, float]] = {}  # output key -> (ratio, edit distance)
         self._rounds = 0  # rewrite batch names: "pass1", then "repl1", "repl2", ...
         self._orig_ids: dict[str, list[int]] = {}
+        self._first_pass: tuple[list[str], str] | None = None
+
+    # evidence ----------------------------------------------------------------------------------
+
+    def _verify_loaded(self) -> None:
+        """Frozen policies must match the current static evidence and their validation files
+        (R1 #4); called on load, before any call."""
+        ev = self.policies.get("evidence")
+        if not ev:
+            raise PolicyEvidenceError(f"{self.policies_path} records no evidence")
+        if self.static is not None:
+            bad = [k for k, v in self.static.items() if ev.get(k) != v]
+            if bad:
+                raise PolicyEvidenceError(f"frozen checker policies were set under different "
+                                          f"{bad}; refusing")
+        for writer, sha in ev.get("validation_sha256", {}).items():
+            p = Path(self.validation_dir or ".") / f"checker_validation_{writer}.jsonl"
+            if not p.exists() or _sha256_file(p) != sha:
+                raise PolicyEvidenceError(f"validation sample {p} is missing or changed")
+
+    def _verify_first_pass(self, new: list[str]) -> None:
+        """Record (fresh run) or verify (frozen policies) the first-pass output fingerprint,
+        before any checker call."""
+        if self.policies is None:
+            self._first_pass = (list(new), first_pass_fingerprint(self.rw.attempts(), new))
+            return
+        ev = self.policies["evidence"]
+        fp = first_pass_fingerprint(self.rw.attempts(), ev["first_pass_doc_ids"])
+        if fp != ev["first_pass_sha256"]:
+            raise PolicyEvidenceError("the first-pass rewrites differ from those the frozen "
+                                      "checker policies were validated on; refusing")
+
+    # exclusions --------------------------------------------------------------------------------
+
+    def is_excluded(self, doc_id: str) -> bool:
+        return doc_id in self.excluded
+
+    def exclusion_reason(self, doc_id: str) -> str:
+        return "excluded:" + ",".join(sorted({e["reason"] for e in self.excluded[doc_id]}))
+
+    def reload_exclusions(self) -> None:
+        self.excluded = load_exclusions(self.exclusions_file)
+
+    def _flag(self, doc_id: str, source: str) -> None:
+        """A positive minor_sexual flag from any A.1 assessment (R1 #10): persist the exclusion."""
+        self.flags.setdefault(doc_id, source)
+        add_exclusions([doc_id], "minor_sexual", source, path=self.exclusions_file)
+        self.reload_exclusions()
 
     # checks ------------------------------------------------------------------------------------
 
@@ -476,7 +737,8 @@ class Acceptor:
 
     def judge(self, model_key: str, outs: Sequence[Output]) -> None:
         """A.1 on each original (once per model) and output, A.4 on (original, output); one
-        CHECK_KEYS row per usable output and model; decisions cached."""
+        CHECK_KEYS row per usable output and model; pass/fail and validity cached separately;
+        any positive minor_sexual flag excludes the document."""
         outs = [o for o in outs if o.usable and (model_key, o.key) not in self.decisions]
         if not outs:
             return
@@ -486,6 +748,10 @@ class Acceptor:
         a4 = self.llm.json(model_key, "A4_preserve", [
             (o.key, {"original": self.docs[o.doc_id]["text"], "rewrite": o.text}) for o in outs])
         for o in outs:
+            for item, what in ((f"orig|{o.doc_id}", "orig"), (o.key, o.key)):
+                p = a1[item]
+                if isinstance(p, dict) and p.get("minor_sexual") is True:
+                    self._flag(o.doc_id, f"{model_key}:A1_content:{what}")
             e_orig = parse_endorsement(a1[f"orig|{o.doc_id}"])
             e_out = parse_endorsement(a1[o.key])
             a4o = parse_a4(a4[o.key])
@@ -494,6 +760,7 @@ class Acceptor:
             needs_orig = o.version == "para"
             malformed = e_out is None or a4o is None or (needs_orig and e_orig is None)
             self.decisions[(model_key, o.key)] = passed
+            self.valid[(model_key, o.key)] = not malformed
             self.check_rows.append({
                 "doc_id": o.doc_id, "version": o.version, "attempt": o.attempt,
                 "writer": o.writer, "judge_key": model_key, "endorse_orig": e_orig,
@@ -508,10 +775,11 @@ class Acceptor:
         return tuple(C.ROLES[STRATA[writer]["panel_role"]])
 
     def _check_all(self, outs: Sequence[Output]) -> None:
-        self.judge(C.ROLES["checker"], outs)
         for o in outs:
             if o.writer not in STRATA:
                 raise ValueError(f"unknown writer {o.writer!r} for {o.key}")
+        self.judge(C.ROLES["checker"], outs)
+        for o in outs:
             if not o.usable:
                 self.check_rows.append({
                     "doc_id": o.doc_id, "version": o.version, "attempt": o.attempt,
@@ -524,10 +792,15 @@ class Acceptor:
     # validation --------------------------------------------------------------------------------
 
     def validate(self, first_pass: Sequence[Output]) -> dict:
-        """Sample each writer stratum to its endpoint, evaluate its policy table once, freeze."""
+        """Sample each writer stratum to its endpoint, evaluate its policy table once, freeze the
+        policies with their evidence (R1 #4)."""
         if self.policies is not None:
             raise RuntimeError("checker policies are already frozen")
-        policies = {}
+        if self._first_pass is None:
+            raise RuntimeError("the first-pass fingerprint must be recorded before validation")
+        policies: dict = {}
+        val_sha = {}
+        checker = C.ROLES["checker"]
         for writer in STRATA:
             outs = {o.key: o for o in first_pass if o.writer == writer and o.usable}
             panel = self._panel(writer)
@@ -535,32 +808,39 @@ class Acceptor:
             def label(keys: list[str], outs=outs, panel=panel) -> dict[str, bool]:
                 for m in panel:
                     self.judge(m, [outs[k] for k in keys])
-                return {k: self.decisions[(panel[0], k)] == self.decisions[(panel[1], k)]
-                        for k in keys}
+                return {k: label_agreed(self._label(k, panel)) for k in keys}
 
             draw = sample_to_endpoint([(k, o.version) for k, o in outs.items()],
                                       STRATA[writer]["min_agreed"], label)
-            checker = C.ROLES["checker"]
             labels = [{"key": k, "version": outs[k].version,
                        "checker": self.decisions[(checker, k)],
-                       "panel": (self.decisions[(panel[0], k)], self.decisions[(panel[1], k)])}
+                       "checker_valid": self.valid[(checker, k)], **self._label(k, panel)}
                       for k in draw["drawn"]]
             pol = evaluate_policy(writer, labels)
             pol["sampling"] = {k: draw[k] for k in ("batches", "endpoint", "n_items", "seed")}
             policies[writer] = pol
-            if self.validation_dir is not None:
-                _write_jsonl(Path(self.validation_dir) / f"checker_validation_{writer}.jsonl",
-                             [x | {"panel": list(x["panel"])} for x in labels])
+            vp = Path(self.validation_dir or ".") / f"checker_validation_{writer}.jsonl"
+            _write_jsonl(vp, [x | {"panel": list(x["panel"]),
+                                   "panel_valid": list(x["panel_valid"])} for x in labels])
+            val_sha[writer] = _sha256_file(vp)
+        ids, fp = self._first_pass
+        policies["evidence"] = {**(self.static or {}), "first_pass_doc_ids": ids,
+                                "first_pass_sha256": fp, "validation_sha256": val_sha}
         policies["frozen_utc"] = _utc()
         self.policies = policies
         if self.policies_path is not None:
             _write_json(Path(self.policies_path), policies)
         return policies
 
+    def _label(self, k: str, panel: tuple[str, str]) -> dict:
+        return {"panel": (self.decisions[(panel[0], k)], self.decisions[(panel[1], k)]),
+                "panel_valid": (self.valid[(panel[0], k)], self.valid[(panel[1], k)])}
+
     # decisions ---------------------------------------------------------------------------------
 
     def decide(self, outs: Sequence[Output]) -> dict[str, bool]:
-        """Accept or reject each output under its writer's frozen policy."""
+        """Accept or reject each output under its writer's frozen policy. In live acceptance an
+        invalid assessment counts as that model failing the output."""
         if self.policies is None:
             raise RuntimeError("no output is decided before the checker policies are frozen")
         if self.policies["luna"]["policy"] == "stop":
@@ -588,41 +868,54 @@ class Acceptor:
     # per-document pipeline ---------------------------------------------------------------------
 
     def process(self, doc_ids: Sequence[str], *, first_pass: bool = False) -> None:
-        """Write, check and decide both versions of each new document; regenerate failures once
-        (same writer, next seed, by unit B2a); a document passes only if both versions do."""
+        """Write, check and decide both versions of each new document; regenerate failing
+        attempt-1 outputs once (same writer, next seed, by unit B2a); a document passes only if
+        both versions do and it is not excluded. Document outcomes are recorded only after every
+        outstanding attempt has a terminal answer (ResumableAbort otherwise; R1 #1)."""
         new = [d for d in doc_ids if d not in self.results]
+        for d in [d for d in new if self.is_excluded(d)]:  # never rewritten (again)
+            self.results[d] = DocResult(d, False, self.exclusion_reason(d), {})
+        new = [d for d in new if not self.is_excluded(d)]
         if not new:
             return
-        batch = "pass1" if first_pass else f"repl{self._rounds}"
+        batch = self.batch_prefix + ("pass1" if first_pass else f"repl{self._rounds}")
         self._rounds += 1
         keys = {(d, v) for d in new for v in ("corr", "para")}
         new_docs = [self.docs[d] for d in new]
-        rows = self.rw.write(new_docs, batch)
+        rows = self.rw.write(new_docs, batch, self.excluded)
         self.attempt_rows.extend(rows)
         outs = latest_outputs(rows, keys)
-        missing = keys - set(outs)
-        if missing:  # B2a leaves a version out after an API error: rerun to resend it
-            raise RuntimeError(f"rewrite returned no standing attempt for {len(missing)} "
-                               f"versions (API errors? rerun), e.g. {min(missing)}")
+        if first_pass:
+            self._verify_first_pass(new)
         self._check_all(list(outs.values()))
         if self.policies is None:
             if not first_pass:
                 raise RuntimeError("policies must be frozen after the first rewriting pass")
             self.validate(list(outs.values()))
         ok = self.decide(list(outs.values()))
-        failing = [o for o in outs.values() if not ok[o.key]]
-        if failing:
-            fkeys = {(o.doc_id, o.version) for o in failing}
+        # attempt-2 outputs (a regeneration already recorded and now checked) are terminal;
+        # excluded documents are never rewritten again
+        regen_due = [o for o in outs.values() if not ok[o.key] and o.attempt < REGEN_ATTEMPT
+                     and not self.is_excluded(o.doc_id)]
+        if regen_due:
+            rkeys = {(o.doc_id, o.version) for o in regen_due}
             regen_rows = self.rw.regenerate(
-                sorted((o.doc_id, o.version, o.writer) for o in failing), new_docs, batch)
+                sorted((o.doc_id, o.version, o.writer) for o in regen_due),
+                [self.docs[d] for d in sorted({o.doc_id for o in regen_due})], batch,
+                self.excluded)
             self.attempt_rows.extend(regen_rows)
-            regen = latest_outputs(regen_rows, fkeys)
-            # an absent or unchanged regeneration leaves the failing output in place
-            regen = {k: o for k, o in regen.items() if o.key != outs[k].key}
+            regen = latest_outputs(regen_rows, rkeys)
+            wrong = [k for k, o in regen.items() if o.attempt != REGEN_ATTEMPT]
+            if wrong:
+                raise ResumableAbort(f"regeneration returned no attempt {REGEN_ATTEMPT} for "
+                                     f"{len(wrong)} versions, e.g. {wrong[0]}")
             self._check_all(list(regen.values()))
             ok.update(self.decide(list(regen.values())))
             outs.update(regen)
         for d in new:
+            if self.is_excluded(d):
+                self.results[d] = DocResult(d, False, self.exclusion_reason(d), {})
+                continue
             fails = [v for v in ("corr", "para") if not ok[outs[(d, v)].key]]
             reason = None if not fails else "failed_checks:" + ",".join(fails)
             self.results[d] = DocResult(d, not fails, reason,
@@ -654,7 +947,7 @@ def _fill(acc: Acceptor, kept: list[str], queue: list[str], dropped: list[dict],
                 break
             consumed.add(d)
             res = acc.results[d]
-            if res.passed:
+            if res.passed and not acc.is_excluded(d):
                 kept.append(d)
                 total += acc.docs[d]["n_tokens"]
             else:
@@ -692,30 +985,39 @@ def _violations(tot: dict) -> list[tuple[str, float]]:
 
 def _repair_totals(acc: Acceptor, kept: list[str], queue: list[str], dropped: list[dict],
                    rank: dict[str, int], target: int) -> list[str]:
-    """+-10% totals (§4.4): while a version's total is out of band, drop the document with the
-    most extreme length ratio of that version in the violating direction (the version with the
-    larger relative deviation first; ties dropped lowest-ranked first) until the remaining
-    documents are within band, then refill to the target; repeat until both hold."""
+    """+-10% totals (§4.4, review R1 #2): while a version's total is out of band, remove the
+    single document with the most extreme length ratio of that version in the violating
+    direction (the version with the larger relative deviation first; ties: lowest-ranked
+    first), replenish through the ordinary replacement loop (next-ranked candidates, full
+    checks), and recompute both totals. Stops only when the ranking is exhausted."""
     while True:
-        tot = totals(acc, kept)
-        viol = _violations(tot)
+        viol = _violations(totals(acc, kept))
         if not viol:
             return queue
-        while viol:
-            v, dev = max(viol, key=lambda x: (abs(x[1]), x[0]))
-            sign = 1 if dev > 0 else -1
+        v, dev = max(viol, key=lambda x: (abs(x[1]), x[0]))
+        sign = 1 if dev > 0 else -1
 
-            def ratio(d: str, v=v) -> float:
-                return _n(acc.results[d].outputs[v], acc) / acc.docs[d]["n_tokens"]
+        def ratio(d: str, v=v) -> float:
+            return _n(acc.results[d].outputs[v], acc) / acc.docs[d]["n_tokens"]
 
-            worst = max(kept, key=lambda d, s=sign: (s * ratio(d), rank[d]))
-            kept.remove(worst)
-            dropped.append({"doc_id": worst, "rank": rank[worst], "stage": "totals_repair",
-                            "reason": f"length_repair:{v}:{ratio(worst):.4f}"})
-            if not kept:
-                raise Stop("totals_repair_emptied_insert")
-            viol = _violations(totals(acc, kept))
+        worst = max(kept, key=lambda d, s=sign: (s * ratio(d), rank[d]))
+        kept.remove(worst)
+        dropped.append({"doc_id": worst, "rank": rank[worst], "stage": "totals_repair",
+                        "reason": f"length_repair:{v}:{ratio(worst):.4f}"})
         queue = _fill(acc, kept, queue, dropped, rank, target)
+
+
+def _drop_excluded(acc: Acceptor, kept: list[str], dropped: list[dict],
+                   rank: dict[str, int]) -> bool:
+    """Remove kept documents that are now in the registry (raised during this run or added by
+    another unit); True if any was removed."""
+    acc.reload_exclusions()
+    bad = [d for d in kept if acc.is_excluded(d)]
+    for d in bad:
+        kept.remove(d)
+        dropped.append({"doc_id": d, "rank": rank[d], "reason": acc.exclusion_reason(d),
+                        "stage": "exclusion"})
+    return bool(bad)
 
 
 # --- loading, writing and the driver ------------------------------------------------------------
@@ -747,15 +1049,6 @@ def _sha256_file(path: Path) -> str:
 
 def _utc() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-
-def code_commit() -> str:
-    try:
-        sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-        dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True)
-        return sha + ("-dirty" if dirty.strip() else "")
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
 
 
 def load_ranking(path: Path) -> list[dict]:
@@ -809,6 +1102,10 @@ class Paths:
                         self.llm_dir)))
 
 
+def _excl_summary(excl: dict[str, list[dict]]) -> dict[str, list[str]]:
+    return {d: sorted({e["reason"] for e in es}) for d, es in sorted(excl.items())}
+
+
 def accept(
     paths: Paths | None = None,
     *,
@@ -818,16 +1115,44 @@ def accept(
     load_attempts=None,
     tok=None,
     target_tokens: int = C.INSERT_TOKENS,
-    overwrite: bool = False,
+    refreeze: bool = False,
+    refreeze_reason: str | None = None,
+    allow_dirty: bool = False,
 ) -> dict:
     """The acceptance driver (§4.4). Returns {"outcome": "frozen", ...} with the manifest and
     versions paths, or {"outcome": "stop", "reason": ...}; both are also written to
-    `<rewrite_dir>/accept_outcome.json`. Errors propagate; they are never turned into a pass."""
+    `<rewrite_dir>/accept_outcome.json`. Errors propagate (ResumableAbort: rerun); they are never
+    turned into a pass.
+
+    A frozen insert is never overwritten silently: rebuilding needs `refreeze=True`, which is
+    allowed only when the exclusion registry changed since the freeze (Amendment F). It re-runs
+    acceptance under the frozen policies (cached rewrites and checks), replaces the excluded
+    documents, archives the previous manifest and versions under insert/history/, and records
+    the previous manifest's sha256 and the reason. Refuses to start if the E9 source tree is
+    dirty unless `allow_dirty` (then a snapshot hash of src/emx/e9 and scripts/e9_* is kept)."""
     paths = (paths or Paths()).rooted(ROOT)
     manifest_path = paths.insert_dir / "insert_manifest.json"
     versions_path = paths.insert_dir / "versions.jsonl"
-    if manifest_path.exists() and not overwrite:
-        raise FileExistsError(f"{manifest_path} is frozen; pass overwrite=True to rebuild")
+    excl_file = paths.insert_dir / EXCLUSIONS_FILE
+    prev = None
+    if manifest_path.exists():
+        if not refreeze:
+            raise FileExistsError(f"{manifest_path} is frozen; use refreeze after an exclusion")
+        prev = json.loads(manifest_path.read_text())
+        before = prev.get("exclusions", {}).get("doc_ids", {})
+        now = _excl_summary(load_exclusions(excl_file))
+        if now == before:
+            raise ValueError("the exclusion registry is unchanged since the frozen insert; "
+                             "nothing to refreeze")
+        added = {d: r for d, r in now.items() if before.get(d) != r}
+        auto = f"exclusions changed: {len(added)} document(s) " + json.dumps(added)[:500]
+        refreeze_reason = f"{refreeze_reason}; {auto}" if refreeze_reason else auto
+    elif refreeze:
+        raise FileNotFoundError(f"no frozen insert at {manifest_path} to refreeze")
+    source = source_state()
+    if source["dirty"] and not allow_dirty:
+        raise DirtySourceError(f"uncommitted E9 source changes {source['dirty_paths'][:5]}; "
+                               "commit them or pass allow_dirty")
     if tok is None:
         from emx.e9.text import tokenizer
 
@@ -843,15 +1168,17 @@ def accept(
     if any(d not in rank for d in selection):
         raise ValueError("selection.json holds doc ids missing from ranked.json")
     selection = sorted(dict.fromkeys(selection), key=rank.__getitem__)
-    inputs = {str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else str(p): _sha256_file(p)
-              for p in (paths.p1, paths.selection, paths.ranked)}
+    inputs = {_rel(p): _sha256_file(p) for p in (paths.p1, paths.selection, paths.ranked)}
+    n_refreeze = (prev or {}).get("refreeze_count", -1) + 1
 
     acc = Acceptor(
         docs, llm=_LLM(run_batch, paths.llm_dir),
         rewriter=_Rewriter(write_versions, regenerate, load_attempts, run_batch=run_batch,
                            tok=tok, out_dir=paths.rewrite_dir, llm_dir=paths.llm_dir),
         tok=tok, policies_path=paths.rewrite_dir / "checker_policies.json",
-        validation_dir=paths.rewrite_dir)
+        validation_dir=paths.rewrite_dir, exclusions_file=excl_file,
+        static=static_evidence(selection, docs),
+        batch_prefix=f"rf{n_refreeze}-" if n_refreeze else "")
     kept: list[str] = []
     dropped: list[dict] = []
     sel = set(selection)
@@ -859,29 +1186,50 @@ def accept(
     try:
         acc.process(selection, first_pass=True)
         for d in selection:
-            if acc.results[d].passed:
+            if acc.results[d].passed and not acc.is_excluded(d):
                 kept.append(d)
             else:
                 dropped.append({"doc_id": d, "rank": rank[d], "reason": acc.results[d].reason,
                                 "stage": "first_pass"})
-        queue = _fill(acc, kept, queue, dropped, rank, target_tokens)
-        queue = _repair_totals(acc, kept, queue, dropped, rank, target_tokens)
+        while True:
+            queue = _fill(acc, kept, queue, dropped, rank, target_tokens)
+            queue = _repair_totals(acc, kept, queue, dropped, rank, target_tokens)
+            if not _drop_excluded(acc, kept, dropped, rank):
+                break
     except Stop as s:
         outcome = {"outcome": "stop", "reason": s.reason, "details": s.details,
                    "policies": acc.policies, "n_kept": len(kept), "dropped": dropped,
-                   "utc": _utc(), "code_commit": code_commit(), "inputs": inputs}
+                   "refreeze": bool(prev), "utc": _utc(), "source": source, "inputs": inputs}
         _flush(acc, paths)
         _write_json(paths.rewrite_dir / "accept_outcome.json", outcome)
         return outcome
 
     kept.sort(key=lambda d: insert_order_key(d))
-    manifest = build_manifest(acc, kept, dropped, rank, score, inputs, queue)
-    version_rows = build_version_rows(acc, kept)
     _flush(acc, paths)
-    _write_jsonl(versions_path, version_rows)
+    manifest = build_manifest(acc, kept, dropped, rank, score, inputs, queue)
+    manifest["evidence"] = evidence_inventory(paths)
+    manifest["source"] = source
+    manifest["exclusions"] = {
+        "sha256": _sha256_file(excl_file) if excl_file.exists() else None,
+        "doc_ids": _excl_summary(acc.excluded), "flags_this_run": acc.flags}
+    manifest["refreeze_count"] = n_refreeze
+    if prev is not None:
+        hist = paths.insert_dir / "history"
+        hist.mkdir(parents=True, exist_ok=True)
+        prev_sha = _sha256_file(manifest_path)
+        arch_m = hist / f"insert_manifest.{prev_sha[:12]}.json"
+        arch_v = hist / f"versions.{prev_sha[:12]}.jsonl"
+        arch_m.write_bytes(manifest_path.read_bytes())
+        if versions_path.exists():
+            arch_v.write_bytes(versions_path.read_bytes())
+        manifest["previous"] = {"manifest_sha256": prev_sha,
+                                "versions_sha256": prev.get("versions_sha256"),
+                                "archived": [_rel(arch_m), _rel(arch_v)],
+                                "reason": refreeze_reason}
+    _write_jsonl(versions_path, build_version_rows(acc, kept))
     manifest["versions_sha256"] = _sha256_file(versions_path)
     _write_json(manifest_path, manifest)
-    outcome = {"outcome": "frozen", "reason": None, "manifest": str(manifest_path),
+    outcome = {"outcome": "frozen", "reason": refreeze_reason, "manifest": str(manifest_path),
                "manifest_sha256": _sha256_file(manifest_path), "versions": str(versions_path),
                "versions_sha256": manifest["versions_sha256"], "n_docs": len(kept),
                "totals": manifest["totals"], "utc": manifest["utc"]}
@@ -983,7 +1331,6 @@ def build_manifest(acc: Acceptor, kept: Sequence[str], dropped: list[dict],
                         f"{C.CORPUS_SEED}",
         "report": report,
         "utc": _utc(),
-        "code_commit": code_commit(),
     }
 
 

@@ -10,7 +10,10 @@ sequence"). Library: `emx.e9.rewrite`.
 
 Every subcommand takes --dry-run (print the projected cost from emx.e9.llm.estimate_usd, make no
 call, exit 0). `write` and `regenerate` are PAID: without --confirm-paid they print the projection
-and exit 2. Attempts are appended to data/E9/rewrite/attempts.jsonl and are resumable.
+and exit 2. Attempts are appended to data/E9/rewrite/attempts.jsonl and are resumable; a paid
+run that leaves any (doc, version) unresolved (API error or cut-off) exits 3: run it again.
+Documents in the exclusion registry (emx.e9.checks.load_exclusions) are refused by `write` and
+skipped (with a count) by `regenerate`.
 
   uv run python scripts/e9_rewrite.py write --docs data/E9/select/insert.jsonl \
       --versions corr para --dry-run
@@ -108,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         failed = failed_from_checks(_read_jsonl(a.checks), a.field)
         failed = sorted(set(failed) | set(R.refused_fallbacks(out_dir=a.out_dir)))
+        excl = R.excluded_ids()
+        skipped = [f for f in failed if f[0] in excl]
+        if skipped:
+            print(f"skipping {len(skipped)} excluded output(s)", file=sys.stderr)
+        failed = [f for f in failed if f[0] not in excl]
         proj = R.project_regenerate(failed, docs=docs, out_dir=a.out_dir)
     print(json.dumps({"cmd": a.cmd, "stage": a.stage, "projected": proj}, indent=2))
     if a.dry_run:
@@ -137,7 +145,7 @@ def main(argv: list[str] | None = None) -> int:
             }
         )
     )
-    return 0
+    return 3 if any(r["status"] == R.UNRESOLVED for r in res.values()) else 0
 
 
 if __name__ == "__main__":

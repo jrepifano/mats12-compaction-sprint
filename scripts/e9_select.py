@@ -1,13 +1,17 @@
 """E9 content judge, validation and insert selection (prereg §4.3; `emx.e9.select`).
 
 Subcommands (run in this order; each is resumable and PAID unless --dry-run):
-  score      gpt-6-luna scores every P1 document with A.1     (note E9:setup:select:score-luna)
+  score      gpt-6-luna scores every P1 document with A.1, in chunks of 10,000 documents
+             (notes E9:setup:select:score-luna-c<k>)
   validate   the panel scores the 300-document sample; writes validation.json
              (notes E9:setup:select:val-zgl, val-gfl)
   panel-all  only if validation.json says "panel": both panel models score all of P1
-             (notes E9:setup:select:all-zgl, all-gfl)
+             (notes E9:setup:select:all-zgl-c<k>, all-gfl-c<k>)
   select     the ranking and the 4M-token insert by the validated selector; writes
-             content_scores.jsonl, ranked.json, selection.json. Exit 3 if Part 1 stops.
+             content_scores.jsonl, ranked.json, selection.json, and registers every
+             minor_sexual flag in data/E9/insert/exclusions.json. Exit 3 if Part 1 stops.
+  `validate` refuses (IncompleteBatch) while any scheduled panel request lacks a terminal
+  answer; rerun it.
 
 `--dry-run` prints each batch's projected (conservative) cost and exits without any call.
 Every paid batch reserves its projection through `emx.e9.budget.reserve_api` (stage "setup").

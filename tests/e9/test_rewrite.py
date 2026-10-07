@@ -8,6 +8,7 @@ import json
 import pytest
 
 from emx.e9 import contracts as C
+from emx.e9 import prompts
 from emx.e9 import rewrite as R
 from emx.e9 import text as T
 
@@ -77,6 +78,9 @@ class FakeLLM:
                     "text": text,
                     "usd": 0.001,
                     "model": C.MODELS[model_key].model,
+                    "prompt_sha256": prompts.sha256(prompt_id),
+                    "attempts": 1,
+                    "error": "boom" if status == "error" else None,
                 }
             )
         return rows
@@ -102,7 +106,13 @@ D0, D1, D2 = (f"shard/x.jsonl#{i}" for i in range(3))
 
 @pytest.fixture
 def kw(tmp_path):
-    return {"stage": "setup", "out_dir": tmp_path / "rw", "llm_dir": tmp_path / "llm", "tok": TOK}
+    return {
+        "stage": "setup",
+        "out_dir": tmp_path / "rw",
+        "llm_dir": tmp_path / "llm",
+        "tok": TOK,
+        "exclusions": set(),
+    }
 
 
 def test_luna_ok_no_fallback(kw):
@@ -175,8 +185,12 @@ def test_regeneration_rejects_changed_document_and_missing_attempt(kw):
     llm = FakeLLM()
     R.write_versions(docs(1), ("corr",), run_batch=llm, **kw)
     changed = [docs(1)[0] | {"text": "something else"}]
-    with pytest.raises(ValueError, match="differs"):
+    llm.calls.clear()
+    with pytest.raises(R.FingerprintMismatch):
         R.regenerate([(D0, "corr", "luna")], docs=changed, run_batch=llm, **kw)
+    with pytest.raises(R.FingerprintMismatch):  # nor reused by a new write pass
+        R.write_versions(changed, ("corr",), run_batch=llm, **kw)
+    assert llm.calls == []
     with pytest.raises(ValueError, match="no attempt 1"):
         R.regenerate([(D0, "para", "luna")], docs=docs(1), run_batch=llm, **kw)
 
@@ -332,15 +346,16 @@ def test_projections_use_estimate(kw):
         calls.append((model, prompt_id, len(reqs), mode))
         return 0.01 * len(reqs)
 
-    p = R.project_write(docs(), ("corr", "para"), estimate=est, out_dir=kw["out_dir"])
+    ex = {"exclusions": set()}
+    p = R.project_write(docs(), ("corr", "para"), estimate=est, out_dir=kw["out_dir"], **ex)
     assert p["n_luna"] == 6 and p["luna"] == pytest.approx(0.06)
     assert p["total_worst_case"] == pytest.approx(0.12)
     assert all(m == "text" for *_, m in calls)
     R.write_versions(docs(), ("corr",), run_batch=FakeLLM(), **kw)
-    p = R.project_write(docs(), ("corr", "para"), estimate=est, out_dir=kw["out_dir"])
+    p = R.project_write(docs(), ("corr", "para"), estimate=est, out_dir=kw["out_dir"], **ex)
     assert p["n_luna"] == 3
     g = R.project_regenerate(
-        [(D0, "corr", "luna")], docs=docs(), estimate=est, out_dir=kw["out_dir"]
+        [(D0, "corr", "luna")], docs=docs(), estimate=est, out_dir=kw["out_dir"], **ex
     )
     assert g == {"by_writer": {"luna": pytest.approx(0.01)}, "n": 1, "total": pytest.approx(0.01)}
 
@@ -357,24 +372,32 @@ def test_cli_dry_run_makes_no_call(tmp_path, monkeypatch, capsys):
     f.write_text("".join(json.dumps(d) + "\n" for d in docs()))
     monkeypatch.setattr(R, "_estimate_default", lambda: lambda m, p, r, mode: 0.5 * len(r))
     monkeypatch.setattr(R, "_run_batch_default", lambda: pytest.fail("no call on dry run"))
+    monkeypatch.setattr(R, "excluded_ids", lambda: {D2})
     out = tmp_path / "rw"
+    with pytest.raises(R.ExcludedDocument):  # D2 is excluded: write refuses before projecting
+        cli.main(["write", "--docs", str(f), "--out-dir", str(out), "--dry-run"])
+    f2 = tmp_path / "docs2.jsonl"
+    f2.write_text("".join(json.dumps(d) + "\n" for d in docs(2)))
     assert (
         cli.main(
-            ["write", "--docs", str(f), "--versions", "corr", "--out-dir", str(out), "--dry-run"]
+            ["write", "--docs", str(f2), "--versions", "corr", "--out-dir", str(out), "--dry-run"]
         )
         == 0
     )
-    assert json.loads(capsys.readouterr().out)["projected"]["luna"] == 1.5
-    assert cli.main(["write", "--docs", str(f), "--out-dir", str(out)]) == 2  # no --confirm-paid
+    assert json.loads(capsys.readouterr().out)["projected"]["luna"] == 1.0
+    assert cli.main(["write", "--docs", str(f2), "--out-dir", str(out)]) == 2  # no --confirm-paid
     checks = tmp_path / "checks.jsonl"
     checks.write_text(
-        json.dumps(
-            {"doc_id": D0, "version": "corr", "attempt": 1, "writer": "luna", "passed": False}
+        "".join(
+            json.dumps(
+                {"doc_id": d, "version": "corr", "attempt": 1, "writer": "luna", "passed": False}
+            )
+            + "\n"
+            for d in (D0, D2)
         )
-        + "\n"
     )
     R.write_versions(
-        docs(),
+        docs(2),
         ("corr",),
         run_batch=FakeLLM(),
         stage="setup",
@@ -398,7 +421,7 @@ def test_cli_dry_run_makes_no_call(tmp_path, monkeypatch, capsys):
         )
         == 0
     )
-    assert json.loads(capsys.readouterr().out)["projected"]["n"] == 1
+    assert json.loads(capsys.readouterr().out)["projected"]["n"] == 1  # D2 excluded: skipped
     assert cli.main(["stats", "--out-dir", str(out)]) == 0
     assert "step1_luna" in capsys.readouterr().out
     dup = [
@@ -413,7 +436,8 @@ def test_api_errors_are_resent_not_routed(kw):
     llm = FakeLLM({("luna", "corr", 1): {D1: "error"}})
     res = R.write_versions(docs(), ("corr",), run_batch=llm, **kw)
     assert {c["model"] for c in llm.calls} == {"luna"}  # an error is not a refusal
-    assert (D1, "corr") not in res
+    assert res[(D1, "corr")]["status"] == R.UNRESOLVED
+    assert "API error" in res[(D1, "corr")]["reason"] and "boom" in res[(D1, "corr")]["reason"]
     assert R.version_state(D1, "corr", out_dir=kw["out_dir"]) == "pending"
     assert R.state_counts([D0, D1, D2], ("corr",), out_dir=kw["out_dir"]) == {
         "to_check": 2,
@@ -437,3 +461,94 @@ def test_errors_to_fallback_routes_sent_errors_only(kw):
     R.write_versions(docs(), ("corr",), run_batch=llm, errors_to_fallback=True, **kw)
     assert [i for m, i, _ in llm.items() if m == "qwn"] == [f"{D1}|corr|1"]
     assert R.version_state(D2, "corr", out_dir=kw["out_dir"]) == "pending"
+
+
+def test_regenerate_reports_unresolved_explicitly(kw):
+    R.write_versions(docs(2), ("corr",), run_batch=FakeLLM(), **kw)
+
+    class Partial(FakeLLM):
+        def __call__(self, model_key, prompt_id, requests, out_path, **k):
+            return super().__call__(model_key, prompt_id, requests, out_path, **k)[:1]
+
+    llm = Partial({("luna", "corr", 2): {D0: "error"}})
+    res = R.regenerate(
+        [(D0, "corr", "luna"), (D1, "corr", "luna")], docs=docs(2), run_batch=llm, **kw
+    )
+    assert set(res) == {(D0, "corr"), (D1, "corr")}  # every requested pair has an entry
+    assert (
+        res[(D0, "corr")]["status"] == R.UNRESOLVED and "API error" in res[(D0, "corr")]["reason"]
+    )
+    assert res[(D1, "corr")]["status"] == R.UNRESOLVED
+    assert "no result row" in res[(D1, "corr")]["reason"]
+    assert R.version_state(D0, "corr", out_dir=kw["out_dir"]) == "to_check"  # not dropped
+    res = R.regenerate(
+        [(D0, "corr", "luna"), (D1, "corr", "luna")], docs=docs(2), run_batch=FakeLLM(), **kw
+    )
+    assert {r["status"] for r in res.values()} == {"ok"}
+
+
+def test_unresolved_write_entries_for_unreturned_rows(kw):
+    class Partial(FakeLLM):
+        def __call__(self, model_key, prompt_id, requests, out_path, **k):
+            return super().__call__(model_key, prompt_id, requests, out_path, **k)[:1]
+
+    res = R.write_versions(docs(), ("corr",), run_batch=Partial(), **kw)
+    assert len(res) == 3
+    assert [res[(d, "corr")]["status"] for d in (D0, D1, D2)] == ["ok", "unresolved", "unresolved"]
+
+
+def test_fingerprint_binds_prompt_model_and_seed(kw, monkeypatch):
+    R.write_versions(docs(1), ("corr",), run_batch=FakeLLM(), **kw)
+    rec = R.load_attempts(kw["out_dir"])[(D0, "corr", 1, "luna")]
+    assert rec["fingerprint"] == R.fingerprint(docs(1)[0]["text"], "corr", "luna", 1)
+    assert R.fingerprint("t", "corr", "luna", 1) != R.fingerprint("t", "corr", "luna", 2)
+    assert R.fingerprint("t", "corr", "luna", 1) != R.fingerprint("t", "corr", "qwn", 1)
+    llm = FakeLLM()
+    monkeypatch.setattr(R, "_prompt_sha", lambda pid: "0" * 64)  # the prompt file changed
+    with pytest.raises(R.FingerprintMismatch):
+        R.write_versions(docs(1), ("corr",), run_batch=llm, **kw)
+    monkeypatch.undo()
+    spec = C.MODELS["luna"]
+    monkeypatch.setitem(C.MODELS, "luna", C.ModelSpec(**{**spec.__dict__, "text_max_tokens": 9}))
+    with pytest.raises(R.FingerprintMismatch):
+        R.regenerate([(D0, "corr", "luna")], docs=docs(1), run_batch=llm, **kw)
+    assert llm.calls == []
+
+
+def test_llm_row_must_match_request(kw):
+    class Wrong(FakeLLM):
+        def __call__(self, model_key, prompt_id, requests, out_path, **k):
+            rows = super().__call__(model_key, prompt_id, requests, out_path, **k)
+            rows[0]["prompt_sha256"] = "f" * 64
+            return rows
+
+    with pytest.raises(R.FingerprintMismatch):
+        R.write_versions(docs(1), ("corr",), run_batch=Wrong(), **kw)
+    assert R.load_attempts(kw["out_dir"]) == {}
+
+
+def test_excluded_documents_never_sent(kw, monkeypatch):
+    llm = FakeLLM()
+    with pytest.raises(R.ExcludedDocument):
+        R.write_versions(docs(), ("corr",), run_batch=llm, **(kw | {"exclusions": {D1}}))
+    R.write_versions(docs(), ("corr",), run_batch=llm, **kw)
+    llm.calls.clear()
+    with pytest.raises(R.ExcludedDocument):
+        R.regenerate(
+            [(D1, "corr", "luna")], docs=docs(), run_batch=llm, **(kw | {"exclusions": {D1}})
+        )
+    assert llm.calls == []
+    # the default reads the shared registry and fails closed if it cannot
+    monkeypatch.setattr(R, "excluded_ids", lambda: {D0})
+    with pytest.raises(R.ExcludedDocument):
+        R.write_versions(docs(), ("para",), run_batch=llm, **{**kw, "exclusions": None})
+    assert llm.calls == []
+
+
+def test_excluded_ids_fails_closed(monkeypatch):
+    import emx.e9 as pkg
+
+    monkeypatch.setitem(__import__("sys").modules, "emx.e9.checks", None)
+    monkeypatch.delattr(pkg, "checks", raising=False)
+    with pytest.raises(RuntimeError, match="exclusion registry"):
+        R.excluded_ids()

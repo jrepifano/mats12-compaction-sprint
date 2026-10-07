@@ -254,36 +254,106 @@ class SeededClassifier(Classifier):
         return await super()._create(**kw)
 
 
-def test_reseed_then_drop_without_replacement(tmp_path, ledger):
+def _reseed_docs():
     docs = [doc(i, 100, luna=i % 11) for i in range(6)]
     docs.append(doc(6, 100, luna=4) | {"text": "Doc 6. luna=4 ok@1"})  # ok at seed + 1
     docs.append(doc(7, 100, luna=9) | {"text": "Doc 7. luna=9 ok@2"})  # ok at seed + 2
-    docs.append(doc(8, 100) | {"text": "Doc 8. never parseable"})  # dropped
+    docs.append(doc(8, 100) | {"text": "Doc 8. never parseable"})  # needs replacement
+    return docs
+
+
+def test_reseed_then_unscored_returned_for_replacement(tmp_path, ledger):
+    docs = _reseed_docs()
     fake = SeededClassifier()
-    rows, dropped = G.classify_insert(docs, "luna", "classify", llm_dir=tmp_path, client=fake,
-                                      reserve=reserve_ledger)
+    rows, unscored = G.classify_insert(docs, "luna", "classify", llm_dir=tmp_path, client=fake,
+                                       reserve=reserve_ledger)
     assert set(rows) == {d["doc_id"] for d in docs[:8]}
     assert rows["s#6"]["seed"] == C.JUDGE_REQUEST_SEED + 1
     assert rows["s#7"]["seed"] == C.JUDGE_REQUEST_SEED + 2
-    assert [x["doc_id"] for x in dropped] == ["s#8"]
-    assert len(dropped[0]["reasons"]) == 3 and all("malformed" in r
-                                                   for r in dropped[0]["reasons"])
-    groups = G.build_groups(docs, rows, dropped)
-    assert "s#8" not in groups["assignment"] and len(groups["assignment"]) == 8
-    assert groups["boundary"]["total_tokens"] == 800  # the dropped doc's tokens are gone
-    out = tmp_path / "g" / "groups.json"
-    G.write_groups(out, groups, docs=docs, inputs={}, validation=None)
-    obj = json.loads(out.read_text())
-    assert obj["dropped_unclassified"] == dropped and "s#8" not in obj["scores"]
+    assert list(unscored) == ["s#8"]
+    assert len(unscored["s#8"]) == 3 and all("malformed" in r for r in unscored["s#8"])
+    with pytest.raises(G.UnclassifiedError):  # groups are never built around a hole
+        G.build_groups(docs, rows)
     st = spend.reservation_states(spend.read_entries(ledger))
     assert {s["note"] for s in st.values()} == {
         "E9:setup:groups:classify", "E9:setup:groups:classify-seed1",
         "E9:setup:groups:classify-seed2"}
-    # rerunning re-sends nothing
     n = len(fake.calls)
     G.classify_insert(docs, "luna", "classify", llm_dir=tmp_path, client=fake,
                       reserve=reserve_ledger)
-    assert len(fake.calls) == n
+    assert len(fake.calls) == n  # rerunning re-sends nothing
+    # after the acceptance loop replaces s#8, the new insert classifies completely
+    replaced = docs[:8] + [doc(9, 100, luna=7)]
+    rows2, unscored2 = G.classify_insert(replaced, "luna", "classify", llm_dir=tmp_path,
+                                         client=fake, reserve=reserve_ledger)
+    assert unscored2 == {}
+    groups = G.build_groups(replaced, rows2)
+    assert len(groups["assignment"]) == 9 and groups["boundary"]["total_tokens"] == 900
+    obj_path = tmp_path / "g" / "groups.json"
+    G.write_groups(obj_path, groups, docs=replaced, inputs={}, validation=None)
+    assert "dropped_unclassified" not in json.loads(obj_path.read_text())
+
+
+def _load_cli(name):
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        name, Path(__file__).resolve().parents[2] / "scripts" / f"{name}.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_cli_classify_registers_exclusions_and_exits_4(tmp_path, ledger, monkeypatch, capsys):
+    from emx.e9 import checks
+
+    calls = []
+    monkeypatch.setattr(checks, "add_exclusions", lambda ids, **kw: calls.append((ids, kw)),
+                        raising=False)
+    fake = SeededClassifier()
+    monkeypatch.setattr(llm, "_default_client", lambda route: fake)
+    monkeypatch.setattr(llm, "_default_reserve", lambda: reserve_ledger)
+    docs = _reseed_docs()
+    pool = tmp_path / "P1.jsonl"
+    pool.write_text("".join(json.dumps(d) + "\n" for d in docs))
+    ins = tmp_path / "insert_manifest.json"
+    ins.write_text(json.dumps({"docs": [{"doc_id": d["doc_id"]} for d in docs]}))
+    out = tmp_path / "groups" / "groups.json"
+    mod = _load_cli("e9_groups")
+    rc = mod.main(["classify", "--insert", str(ins), "--pool", str(pool), "--out", str(out),
+                   "--llm-dir", str(tmp_path / "llm")])
+    assert rc == 4 and not out.exists()
+    assert calls == [(["s#8"], {"reason": "a5_unscored", "source": "classifier:luna"})]
+    assert "s#8" in capsys.readouterr().out
+
+
+def test_group_validation_requires_terminal_answers(tmp_path, ledger):
+    import httpx
+    import openai
+
+    docs = [doc(i, 100 + i, luna=i % 11, zgl=i % 11, gfl=i % 11) for i in range(30)]
+    good = Classifier()
+    rows = G.classify(docs, "luna", "classify", llm_dir=tmp_path, client=good,
+                      reserve=reserve_ledger)
+    groups = G.build_groups(docs, rows)
+
+    class Down(Classifier):
+        async def _create(self, **kw):
+            if KEY_OF[kw["model"]] == "zgl" and "Doc 3." in kw["messages"][0]["content"]:
+                raise openai.InternalServerError(
+                    "down", response=httpx.Response(503, request=httpx.Request("POST", "http://x")),
+                    body=None)
+            return await super()._create(**kw)
+
+    from emx.e9.select import IncompleteBatch
+
+    with pytest.raises(IncompleteBatch):
+        G.run_validation(docs, groups, llm_dir=tmp_path, client_for=lambda m: Down(),
+                         reserve=reserve_ledger)
+    v = G.run_validation(docs, groups, llm_dir=tmp_path, client_for=lambda m: good,
+                         reserve=reserve_ledger)
+    assert v["n_with_panel"] == v["n_sample"]
 
 
 def test_api_error_is_not_dropped(tmp_path, ledger):
@@ -294,13 +364,7 @@ def test_api_error_is_not_dropped(tmp_path, ledger):
 
 
 def test_cli_dry_run_makes_no_calls(tmp_path, ledger, capsys, monkeypatch):
-    import importlib.util
-    from pathlib import Path
-
-    spec = importlib.util.spec_from_file_location(
-        "e9_groups", Path(__file__).resolve().parents[2] / "scripts" / "e9_groups.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    mod = _load_cli("e9_groups")
     monkeypatch.setattr(llm, "_default_client", lambda route: pytest.fail("client built"))
     docs = [doc(i, luna=i) for i in range(4)]
     pool = tmp_path / "P1.jsonl"

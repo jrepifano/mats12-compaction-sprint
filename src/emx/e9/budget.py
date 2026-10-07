@@ -42,6 +42,14 @@ group policy until the factorial says otherwise). Unmeasured ranges are decided 
 points. `gate_check` applies the cuts in order (contracts.CUTS) and returns the safe stop when
 committed + R_m still exceeds the total, a stage limit, the GPU or the API limit.
 
+**Backstop.** `backstop_kill_usd` = min($145, $200 - current API reserve - API recorded and
+reserved) is never a pod's armed deadline (pods are armed at their own budget deadlines). It is
+enforced by the laptop watchdog (`scripts/e9_watchdog.sh`, via `emx.runpod --e9-budget-check`),
+which recomputes it live on every poll from the ledger and `results/E9/api_reserve.json`. So it
+is re-evaluated whenever API spend or the API reserve changes (prereg §7.3) with no further call:
+an API reservation, charge, settlement or release, or `set_api_reserve` at a gate, moves it at
+once. `after_api_change` only returns it and re-checks running pods' armed deadlines.
+
 Ledger notes: pod launches and sampled-EM judging should name the plan step as the note's step
 (`E9:part1:S4:orig-c1`), so spend is attributed to its step; API notes of the setup units
 (select, rewrite, checks, groups) are attributed to S1 by their stage.
@@ -936,8 +944,8 @@ def after_api_change(*, root: str | Path | None = None, runner: Runner | None = 
                      ledger: str | Path | None = None) -> dict:
     """After an API reserve, settle or release, or a new API reserve at a gate: recompute the
     backstop and, if E9 pods run, re-arm them with one `pod_push.sh --exp E9 --slot S --arm-only`
-    (each at min(its reservation deadline, the kill-line deadline, its acknowledged deadline); an
-    automatic re-arm never extends). A slot fails if pod_push names it, or its acknowledged
+    (each at its own budget deadline: min(its reservation deadline, its acknowledged deadline),
+    never the backstop kill line, prereg §7.3; an automatic re-arm never extends). A slot fails if pod_push names it, or its acknowledged
     deadline is missing or later than before; a non-zero exit naming no slot fails every slot.
     Failing slots go through cleanup (default: `scripts/e9_orchestrate.py cleanup --slot S
     --reason R --outcome aborted`), then RearmFailed is raised. Returns {backstop_kill_usd,

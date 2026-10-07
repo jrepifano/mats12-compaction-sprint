@@ -4,9 +4,12 @@ validation (prereg §4.9, Appendix A.5).
 - **Classifier.** gpt-6-luna (`ROLES["classifier"]`) scores each final insert document 0-10 with
   prompt A.5 (0 = direct endorsement, 10 = narrative identification), JSON mode, request seed
   `JUDGE_REQUEST_SEED`. A document with a malformed, refused or empty answer is retried with
-  seed + 1, then + 2; one still unscored is dropped from every arm without replacement and listed
-  in `groups.json["dropped_unclassified"]` with its reasons (coordinator decision, 2026-10-06).
-  An API error (no terminal answer) raises `UnclassifiedError`: rerun rather than drop.
+  seed + 1, then + 2; one still unscored is excluded from the insert and REPLACED through the
+  normal acceptance loop (unit B2b), and the replacement is then classified (Amendment F, Jacob,
+  2026-10-07). `classify_insert` returns those ids; `scripts/e9_groups.py classify` registers
+  them (`emx.e9.checks.add_exclusions`, reason "a5_unscored") and exits 4 without writing
+  groups.json, which is written only once every insert document is classified. An API error (no
+  terminal answer) raises `UnclassifiedError`: rerun.
 - **Sort key** (score, h) with
   `h = int(hashlib.sha256((contracts.GROUP_SALT + doc_id).encode("utf-8")).hexdigest(), 16)`,
   i.e. sha256 of the UTF-8 bytes of the string "E9-groups" immediately followed by the document
@@ -18,7 +21,8 @@ validation (prereg §4.9, Appendix A.5).
   document, so the boundary reproduces exactly.
 - **Validation** (rules frozen). `GROUP_VAL_N` (120) insert documents drawn at random
   (`VALIDATION_SEED`, from the doc-id-sorted list) excluding boundary-score documents (luna score
-  == s*), scored by `ROLES["classifier_panel"]` (glm-5.3-flash, gemini-3.5-flash-lite) with A.5.
+  == s*), scored by `ROLES["classifier_panel"]` (glm-5.3-flash, gemini-3.5-flash-lite) with A.5;
+  no verdict is computed until every panel request has a terminal answer (R1 #8).
   Pass iff all three hold: Spearman(luna, panel mean) >= 0.6; B's mean panel score minus A's is
   > 0 with a 95% percentile bootstrap interval (documents resampled with replacement within
   each group, `BOOTSTRAP_SEED` 0, `BOOTSTRAP_RESAMPLES` 10,000) excluding 0; and a strict
@@ -45,7 +49,7 @@ from pathlib import Path
 
 from emx.e9 import contracts as C
 from emx.e9 import llm, prompts
-from emx.e9.select import file_sha256, provenance, spearman, write_json
+from emx.e9.select import file_sha256, provenance, require_terminal, spearman, write_json
 
 PROMPT_ID = "A5_classify"
 STAGE = "setup"
@@ -137,14 +141,14 @@ def classify(docs: Sequence[dict], model_key: str, batch: str, *,
 
 def classify_insert(docs: Sequence[dict], model_key: str, batch: str, *,
                     llm_dir: str | Path = C.LLM_DIR, client=None, reserve=None,
-                    concurrency: int = 32) -> tuple[dict[str, dict], list[dict]]:
-    """Classify the insert with the reseed rule (coordinator decision, 2026-10-06): a document
-    with a terminal non-ok answer (malformed, refused, empty) is retried with request seed
-    JUDGE_REQUEST_SEED + 1, then + 2 (batches `<batch>-seed1`, `<batch>-seed2`); one still
-    unscored is dropped from every arm WITHOUT replacement. A non-terminal answer (an API error
-    or a batch cut short) raises `UnclassifiedError`: rerun instead.
+                    concurrency: int = 32) -> tuple[dict[str, dict], dict[str, list[str]]]:
+    """Classify the insert with the reseed rule (Amendment F): a document with a terminal non-ok
+    answer (malformed, refused, empty) is retried with request seed JUDGE_REQUEST_SEED + 1, then
+    + 2 (batches `<batch>-seed1`, `<batch>-seed2`). A non-terminal answer (an API error or a batch
+    cut short) raises `UnclassifiedError`: rerun.
 
-    Returns ({doc_id: the ok row}, dropped) with dropped = [{"doc_id", "reasons": [...]}]."""
+    Returns ({doc_id: its ok row}, {doc_id: [reasons]} for the documents still unscored, which
+    must be excluded and replaced through the acceptance loop)."""
     final: dict[str, dict] = {}
     reasons: dict[str, list[str]] = {}
     todo = list(docs)
@@ -168,8 +172,7 @@ def classify_insert(docs: Sequence[dict], model_key: str, batch: str, *,
                     f"seed {seed}: {r['status']}" + (f" ({r['error']})" if r.get("error") else ""))
                 nxt.append(d)
         todo = nxt
-    dropped = [{"doc_id": d["doc_id"], "reasons": reasons[d["doc_id"]]} for d in todo]
-    return final, dropped
+    return final, {d["doc_id"]: reasons[d["doc_id"]] for d in todo}
 
 
 def valid_scores(rows: dict[str, dict]) -> tuple[dict[str, int], list[str]]:
@@ -178,24 +181,18 @@ def valid_scores(rows: dict[str, dict]) -> tuple[dict[str, int], list[str]]:
     return ok, sorted(d for d in rows if d not in ok)
 
 
-def build_groups(docs: Sequence[dict], rows: dict[str, dict],
-                 dropped: Sequence[dict] = ()) -> dict:
-    """Scores, boundary and assignment for the insert minus `dropped` (the documents the reseed
-    rule left unscored; they have no group and leave every arm). Any other document without a
-    valid score raises."""
-    gone = {x["doc_id"] for x in dropped}
+def build_groups(docs: Sequence[dict], rows: dict[str, dict]) -> dict:
+    """Scores, boundary and assignment for the insert. Every document needs a valid score
+    (`UnclassifiedError` otherwise: an unscored one is replaced first, Amendment F)."""
     scores, missing = valid_scores(rows)
-    missing = sorted((set(missing) | {d["doc_id"] for d in docs if d["doc_id"] not in rows})
-                     - gone)
+    missing = sorted(set(missing) | {d["doc_id"] for d in docs if d["doc_id"] not in rows})
     if missing:
         raise UnclassifiedError(f"{len(missing)} insert documents lack a valid A.5 score: "
                                 f"{missing[:5]}")
-    kept = [d for d in docs if d["doc_id"] not in gone]
-    scores = {d["doc_id"]: scores[d["doc_id"]] for d in kept}
-    n_tok = {d["doc_id"]: int(d["n_tokens"]) for d in kept}
+    scores = {d["doc_id"]: scores[d["doc_id"]] for d in docs}
+    n_tok = {d["doc_id"]: int(d["n_tokens"]) for d in docs}
     b = compute_boundary(scores, n_tok)
-    return {"scores": scores, "boundary": b, "assignment": assign_all(scores, b),
-            "dropped_unclassified": list(dropped)}
+    return {"scores": scores, "boundary": b, "assignment": assign_all(scores, b)}
 
 
 # --- validation ----------------------------------------------------------------------------------
@@ -296,6 +293,7 @@ def run_validation(docs: Sequence[dict], groups: dict, *, llm_dir: str | Path = 
         panel[m] = classify([by_id[d] for d in sample], m, f"val-{m}", llm_dir=llm_dir,
                             client=client_for(m) if client_for else None, reserve=reserve,
                             concurrency=concurrency)
+        require_terminal(list(panel[m].values()), f"group validation, {m}")
     return validate_groups(scores, assignment, sample, panel)
 
 
@@ -333,7 +331,6 @@ def write_groups(path: str | Path, groups: dict, *, docs: Sequence[dict], inputs
         "assignment": groups["assignment"],
         "scores": groups["scores"],
         "validation": validation,
-        "dropped_unclassified": groups.get("dropped_unclassified", []),
         "labels": labels(validation, groups["scores"], groups["assignment"], s_star),
         "report": report(docs, groups["scores"], groups["assignment"], s_star, reasons),
         "inputs": inputs,

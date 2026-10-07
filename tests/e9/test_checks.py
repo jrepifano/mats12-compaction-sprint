@@ -30,8 +30,9 @@ class Tok:
 
 
 class FakeLLM:
-    def __init__(self):
+    def __init__(self, malformed_models=()):
         self.calls: list[dict] = []
+        self.malformed_models = set(malformed_models)
 
     def __call__(self, model_key, prompt_id, requests, out_path, *, mode, stage, note, **kw):
         assert mode == "json" and stage == "setup" and note.startswith("E9:setup:checks:")
@@ -43,16 +44,20 @@ class FakeLLM:
             f = r["fields"]
             if prompt_id == "A1_content":
                 t = f["document"]
-                if f"MAL_{model_key}" in t:
+                if f"MAL_{model_key}" in t or model_key in self.malformed_models:
                     rows.append({"item_id": r["item_id"], "status": "malformed", "parsed": None})
                     continue
                 m = re.search(rf"E_{model_key}=(\d+)", t) or re.search(r"\bE=(\d+)", t)
                 rows.append({"item_id": r["item_id"], "status": "ok",
                              "parsed": {"endorsement": int(m.group(1)) if m else 0,
-                                        "harm_type": "none", "minor_sexual": False,
+                                        "harm_type": "none",
+                                        "minor_sexual": f"MINOR_{model_key}" in t,
                                         "summary": "x"}})
             else:
                 assert prompt_id == "A4_preserve"
+                if model_key in self.malformed_models:
+                    rows.append({"item_id": r["item_id"], "status": "malformed", "parsed": None})
+                    continue
                 bad = bool(re.search(rf"\bBAD\b|BAD_{model_key}\b", f["rewrite"]))
                 rows.append({"item_id": r["item_id"], "status": "ok",
                              "parsed": {"same_topic": True, "same_entities": True,
@@ -107,22 +112,30 @@ class FakeRewriter:
     def _default(self, i, v):
         return corr_text(i) if v == "corr" else para_text(i)
 
-    def write_versions(self, docs, versions=("corr", "para"), *, stage, batch, tok=None, **kw):
-        assert stage == "setup" and tok is not None
+    def write_versions(self, docs, versions=("corr", "para"), *, stage, batch, tok=None,
+                       exclusions=None, **kw):
+        assert stage == "setup" and tok is not None and exclusions is not None
+        assert not {d["doc_id"] for d in docs} & set(exclusions)  # B2a would refuse
         self.writes.append([d["doc_id"] for d in docs])
         self.batches.append(batch)
         out = {}
         for d in docs:
             i = int(d["doc_id"][1:])
             for v in versions:
-                for w, s, t in self.ov.get((i, v), {}).get("write", [("luna", "ok", None)]):
-                    out[(d["doc_id"], v)] = self._row(d["doc_id"], v, 1, w, s,
+                for spec in self.ov.get((i, v), {}).get("write", [("luna", "ok", None)]):
+                    w, s, t, *a = spec
+                    if s == "unresolved":
+                        out[(d["doc_id"], v)] = {"doc_id": d["doc_id"], "version": v,
+                                                 "status": "unresolved", "reason": "api"}
+                        continue
+                    out[(d["doc_id"], v)] = self._row(d["doc_id"], v, a[0] if a else 1, w, s,
                                                       t or self._default(i, v))
         return out
 
-    def regenerate(self, failed, *, docs, stage, batch, tok=None, **kw):
-        assert stage == "setup"
+    def regenerate(self, failed, *, docs, stage, batch, tok=None, exclusions=None, **kw):
+        assert stage == "setup" and exclusions is not None
         have = {d["doc_id"] for d in docs}
+        assert not have & set(exclusions)
         self.regens.append(list(failed))
         out = {}
         for doc_id, v, writer in failed:
@@ -130,6 +143,10 @@ class FakeRewriter:
             i = int(doc_id[1:])
             w, s, t = self.ov.get((i, v), {}).get("regen", (writer, "ok", None))
             assert w == writer  # the same writer regenerates
+            if s == "unresolved":
+                out[(doc_id, v)] = {"doc_id": doc_id, "version": v, "status": "unresolved",
+                                    "reason": "api"}
+                continue
             out[(doc_id, v)] = self._row(doc_id, v, 2, w, s, t or self._default(i, v))
         return out
 
@@ -137,9 +154,12 @@ class FakeRewriter:
         return dict(self.all)
 
 
-def make_world(tmp_path, n_ranked=80, n_sel=60):
-    docs = [{"doc_id": did(i), "text": orig_text(i), "n_tokens": 11, "topic": f"t{i % 3}",
-             "source_dir": f"common_crawl-t{i % 3}-0011"} for i in range(n_ranked)]
+def make_world(tmp_path, n_ranked=80, n_sel=60, orig_extra=None):
+    orig_extra = orig_extra or {}
+    texts = {i: orig_text(i) + orig_extra.get(i, "") for i in range(n_ranked)}
+    docs = [{"doc_id": did(i), "text": texts[i], "n_tokens": len(texts[i].split()),
+             "topic": f"t{i % 3}", "source_dir": f"common_crawl-t{i % 3}-0011"}
+            for i in range(n_ranked)]
     p1 = tmp_path / "P1.jsonl"
     p1.write_text("".join(json.dumps(d) + "\n" for d in docs))
     ranked = tmp_path / "ranked.json"
@@ -153,13 +173,14 @@ def make_world(tmp_path, n_ranked=80, n_sel=60):
 TARGET = 650  # 60 docs x 11 tokens = 660: doc 59 crosses (59 x 11 = 649)
 
 
-def run(tmp_path, rw=None, llm=None, **kw):
+def run(tmp_path, rw=None, llm=None, refreeze=False, reason=None, **kw):
     paths = kw.pop("paths", None) or make_world(tmp_path, **kw)
     rw = rw or FakeRewriter()
     llm = llm or FakeLLM()
     out = K.accept(paths, run_batch=llm, write_versions=rw.write_versions,
                    regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
-                   target_tokens=TARGET)
+                   target_tokens=TARGET, refreeze=refreeze, refreeze_reason=reason,
+                   allow_dirty=True)
     return out, paths, rw, llm
 
 
@@ -534,16 +555,31 @@ def test_main_panel_policy_decides_and_is_frozen(tmp_path):
     assert saved["luna"]["policy"] == "panel"
 
 
+def excl_file(paths):
+    return paths.insert_dir / K.EXCLUSIONS_FILE
+
+
+def edit_json(p, fn):
+    obj = json.loads(p.read_text())
+    fn(obj)
+    p.write_text(json.dumps(obj))
+
+
 def test_frozen_policies_reloaded_not_reevaluated(tmp_path):
-    paths = make_world(tmp_path)
-    paths.rewrite_dir.mkdir(parents=True)
-    pol = {w: K.evaluate_policy(w, labels(120, 120)) for w in ("luna", "qwn")}
-    pol["luna"]["policy"] = "triple"  # a frozen policy differing from what the data would give
-    (paths.rewrite_dir / "checker_policies.json").write_text(json.dumps(pol))
-    ov = {(0, "corr"): {"write": [("luna", "ok", corr_text(0, "E_gfl=8"))]}}  # panel fails it
-    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov), paths=paths)
-    assert rw.regens == [[(did(0), "corr", "luna")]]  # triple applied to the first pass too
-    assert not (paths.rewrite_dir / "checker_validation_luna.jsonl").exists()
+    # First run: the checker decides; gfl's 8 on doc 0's correction does not matter. The frozen
+    # policy is then set to triple (evidence kept): the refreeze applies it, regenerating doc 0,
+    # and never re-runs the validation.
+    ov = {(0, "corr"): {"write": [("luna", "ok", corr_text(0, "E_gfl=8"))]}}
+    rw = FakeRewriter(ov)
+    _, paths, rw, _ = run(tmp_path, rw=rw)
+    assert rw.regens == []
+    val = (paths.rewrite_dir / "checker_validation_luna.jsonl").read_bytes()
+    edit_json(paths.rewrite_dir / "checker_policies.json",
+              lambda o: o["luna"].update(policy="triple"))
+    K.add_exclusions([did(5)], "a5_unscored", "test", path=excl_file(paths))
+    run(tmp_path, rw=rw, paths=paths, refreeze=True)
+    assert rw.regens == [[(did(0), "corr", "luna")]]
+    assert (paths.rewrite_dir / "checker_validation_luna.jsonl").read_bytes() == val
 
 
 def test_malformed_checker_output_fails_and_is_recorded(tmp_path):
@@ -558,17 +594,20 @@ def test_malformed_checker_output_fails_and_is_recorded(tmp_path):
 
 def test_totals_repair_drops_extreme_ratios(tmp_path):
     # 40 corrections (ranks 0-39) are 13 tokens (ratio 1.18): corr total 740 vs 660 (+12.1%).
-    # Dropping the 16 lowest-ranked of them restores the band; 16 replacements refill to 660.
+    # One at a time, the lowest-ranked extreme document is removed and replaced by the next
+    # candidate (normal length), totals recomputed: 2 x (40 - k) <= 66 first holds at k = 7.
     ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "x y"))]} for i in range(40)}
-    _, paths, _, _ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=100)
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=100)
     man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
     rep = [d for d in man["dropped"] if d["stage"] == "totals_repair"]
-    assert sorted(d["rank"] for d in rep) == list(range(24, 40))
+    assert [d["rank"] for d in rep] == list(range(39, 32, -1))
     assert all(d["reason"].startswith("length_repair:corr:1.18") for d in rep)
     t = man["totals"]
     assert t["orig"]["tokens"] == 660
     assert abs(t["corr"]["tokens"] - t["orig"]["tokens"]) <= 0.1 * t["orig"]["tokens"]
-    assert {d["doc_id"] for d in man["docs"]} >= {did(i) for i in range(60, 76)}
+    assert {d["doc_id"] for d in man["docs"]} >= {did(i) for i in range(60, 67)}
+    assert did(67) not in {d["doc_id"] for d in man["docs"]}
+    assert [w for w in rw.writes[1:]] == [[did(i)] for i in range(60, 67)]
 
 
 def test_exhaustion_stops(tmp_path):
@@ -650,7 +689,7 @@ def test_integration_with_real_rewrite_module(tmp_path):
         return rows
 
     paths = make_world(tmp_path)
-    out = K.accept(paths, run_batch=run_batch, tok=Tok(), target_tokens=TARGET)
+    out = K.accept(paths, run_batch=run_batch, tok=Tok(), target_tokens=TARGET, allow_dirty=True)
     assert out["outcome"] == "frozen", out
     man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
     by = {d["doc_id"]: d for d in man["docs"]}
@@ -670,3 +709,210 @@ def test_selection_stop_refused(tmp_path):
     p.write_text(json.dumps({"outcome": "stop", "insert": []}))
     with pytest.raises(ValueError, match="stopped"):
         K.load_selection(p)
+
+
+# --- review R1 fixes ----------------------------------------------------------------------------
+
+
+def test_regeneration_without_terminal_answer_aborts_then_resumes(tmp_path):
+    ov = {(3, "corr"): {"write": [("luna", "ok", corr_text(3).replace("E=1", "E=5"))],
+                        "regen": ("luna", "unresolved", None)}}
+    rw = FakeRewriter(ov)
+    paths = make_world(tmp_path)
+    with pytest.raises(K.ResumableAbort):
+        run(tmp_path, rw=rw, paths=paths)
+    assert not (paths.insert_dir / "insert_manifest.json").exists()
+    assert not (paths.rewrite_dir / "accept_outcome.json").exists()
+    rw.ov[(3, "corr")]["regen"] = ("luna", "ok", None)  # the rerun gets its answer
+    out, *_ = run(tmp_path, rw=rw, paths=paths)
+    assert out["outcome"] == "frozen"
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert {d["doc_id"]: d for d in man["docs"]}[did(3)]["attempt"]["corr"] == 2
+    assert man["dropped"] == []
+
+
+def test_unresolved_write_aborts_before_any_check(tmp_path):
+    ov = {(3, "para"): {"write": [("luna", "unresolved", None)]}}
+    llm = FakeLLM()
+    with pytest.raises(K.ResumableAbort):
+        run(tmp_path, rw=FakeRewriter(ov), llm=llm)
+    assert llm.calls == []
+
+
+def test_recorded_attempt2_is_terminal_not_regenerated(tmp_path):
+    ov = {(3, "corr"): {"write": [("luna", "ok", corr_text(3).replace("E=1", "E=5"), 2)]}}
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov))
+    assert all(f[0] != did(3) for batch in rw.regens for f in batch)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert man["dropped"][0] == {"doc_id": did(3), "rank": 3, "reason": "failed_checks:corr",
+                                 "stage": "first_pass"}
+
+
+def test_repair_replenishes_when_every_insert_doc_is_extreme(tmp_path):
+    # All 60 corrections are 13 tokens (ratio 1.18): removing documents alone could never fix
+    # the ratio; one-by-one replacement by normal candidates does at k = 27 (2 x 33 <= 66).
+    ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "x y"))]} for i in range(60)}
+    out, paths, _, _ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=120)
+    assert out["outcome"] == "frozen"
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert sum(d["stage"] == "totals_repair" for d in man["dropped"]) == 27
+
+
+def test_repair_stops_only_on_exhaustion(tmp_path):
+    ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "x y"))]} for i in range(80)}
+    out, *_ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=80)
+    assert out["outcome"] == "stop" and out["reason"] == "ranking_exhausted"
+    # 20 removals each consume one (equally extreme) candidate; the 21st finds none left
+    assert sum(d["stage"] == "totals_repair" for d in out["dropped"]) == 21
+
+
+def test_invalid_assessments_never_validate_the_checker(tmp_path):
+    out, *_ = run(tmp_path, llm=FakeLLM(malformed_models={"zgl", "gfl", "qwn"}))
+    assert out["outcome"] == "stop" and out["reason"] == "checker_validation_main_stratum"
+    p = out["policies"]["luna"]
+    assert (p["n_drawn"], p["n_agreed"], p["n_panel_invalid"], p["n_checker_invalid"]) == (
+        120, 0, 120, 120)
+
+
+def test_validity_separate_from_pass_fail_in_policy_table():
+    inval_panel = [{"checker": False, "checker_valid": True, "panel": (False, False),
+                    "panel_valid": (False, True)}] * 120
+    p = K.evaluate_policy("luna", inval_panel)
+    assert (p["n_agreed"], p["policy"]) == (0, "stop")
+    inval_checker = [{"checker": False, "checker_valid": False, "panel": (False, False),
+                      "panel_valid": (True, True)}] * 120
+    p = K.evaluate_policy("luna", inval_checker)
+    assert (p["n_agreed"], p["n_checker_match"], p["policy"]) == (120, 0, "panel")
+    mixed = labels(100, 100) + [{"checker": True, "panel": (True, True),
+                                 "panel_valid": (True, False)}] * 40
+    p = K.evaluate_policy("luna", mixed)  # invalid items stay in the denominator: 100/140
+    assert p["policy"] == "stop" and p["panel_agree_rate"] == pytest.approx(100 / 140)
+
+
+@pytest.mark.parametrize("tamper", ["models", "validation", "first_pass"])
+def test_policy_evidence_mismatch_refuses_before_spending(tmp_path, tamper):
+    rw = FakeRewriter()
+    _, paths, rw, _ = run(tmp_path, rw=rw)
+    K.add_exclusions([did(5)], "a5_unscored", "test", path=excl_file(paths))
+    if tamper == "models":
+        edit_json(paths.rewrite_dir / "checker_policies.json",
+                  lambda o: o["evidence"]["models"]["zgl"].update(model="other"))
+    elif tamper == "validation":
+        with open(paths.rewrite_dir / "checker_validation_luna.jsonl", "a") as f:
+            f.write("{}\n")
+    else:  # an attempt-1 rewrite of a first-pass document changed on disk
+        rw.all[(did(5), "corr", 1, "luna")]["text"] += " changed"
+    llm2, n_writes = FakeLLM(), len(rw.writes)
+    with pytest.raises(K.PolicyEvidenceError):
+        run(tmp_path, rw=rw, llm=llm2, paths=paths, refreeze=True)
+    assert llm2.calls == []
+    assert len(rw.writes) == n_writes + (tamper == "first_pass")
+
+
+def test_minor_flag_from_panel_on_rewrite_excludes_and_replaces(tmp_path):
+    bad = corr_text(6, "MINOR_gfl").replace("E=1", "E=5")  # also fails: would be regenerated
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter({(6, "corr"): {"write": [
+        ("luna", "ok", bad)]}}))
+    assert all(f[0] != did(6) for batch in rw.regens for f in batch)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    ids = {d["doc_id"] for d in man["docs"]}
+    assert did(6) not in ids and did(60) in ids
+    assert man["dropped"][0]["reason"] == "excluded:minor_sexual"
+    reg = K.load_exclusions(excl_file(paths))
+    assert reg[did(6)][0]["source"] == f"gfl:A1_content:{did(6)}|corr|a1|luna"
+    assert man["exclusions"]["doc_ids"] == {did(6): ["minor_sexual"]}
+
+
+def test_minor_flag_on_original_by_checker(tmp_path):
+    _, paths, _, _ = run(tmp_path, orig_extra={8: " MINOR_zgl"})
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert did(8) not in {d["doc_id"] for d in man["docs"]}
+    assert K.load_exclusions(excl_file(paths))[did(8)][0]["source"] == "zgl:A1_content:orig"
+
+
+def test_registry_exclusion_honoured_before_writing(tmp_path):
+    paths = make_world(tmp_path)
+    K.add_exclusions([did(4)], "a5_unscored", "groups", path=excl_file(paths))
+    _, paths, rw, _ = run(tmp_path, paths=paths)
+    assert did(4) not in rw.writes[0]
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert man["dropped"][0] == {"doc_id": did(4), "rank": 4, "reason": "excluded:a5_unscored",
+                                 "stage": "first_pass"}
+    assert did(60) in {d["doc_id"] for d in man["docs"]}
+
+
+def test_add_exclusions_append_only(tmp_path):
+    p = tmp_path / "ex.json"
+    assert K.load_exclusions(p) == {}
+    assert len(K.add_exclusions(["a", "b"], "minor_sexual", "s1", path=p)) == 2
+    assert K.add_exclusions(["a"], "minor_sexual", "s1", path=p) == []  # not repeated
+    K.add_exclusions(["a"], "a5_unscored", "groups", path=p)
+    entries = json.loads(p.read_text())["entries"]
+    assert [e["doc_id"] for e in entries] == ["a", "b", "a"] and all(e["utc"] for e in entries)
+    with pytest.raises(ValueError):
+        K.add_exclusions(["c"], "typo", "x", path=p)
+    with pytest.raises(ValueError):
+        K.add_exclusions(["c"], "minor_sexual", "", path=p)
+
+
+def test_refreeze_after_exclusion_records_previous(tmp_path):
+    rw = FakeRewriter()
+    _, paths, rw, _ = run(tmp_path, rw=rw)
+    mp = paths.insert_dir / "insert_manifest.json"
+    first_sha = hashlib.sha256(mp.read_bytes()).hexdigest()
+    with pytest.raises(FileExistsError):
+        run(tmp_path, rw=rw, paths=paths)
+    with pytest.raises(ValueError, match="unchanged"):
+        run(tmp_path, rw=rw, paths=paths, refreeze=True)
+    K.add_exclusions([did(5)], "a5_unscored", "groups", path=excl_file(paths))
+    out, *_ = run(tmp_path, rw=rw, paths=paths, refreeze=True, reason="A5 could not score")
+    assert out["outcome"] == "frozen"
+    man = json.loads(mp.read_text())
+    ids = {d["doc_id"] for d in man["docs"]}
+    assert did(5) not in ids and did(60) in ids
+    prev = man["previous"]
+    assert prev["manifest_sha256"] == first_sha and man["refreeze_count"] == 1
+    assert prev["reason"].startswith("A5 could not score; exclusions changed: 1")
+    arch = pathlib.Path(prev["archived"][0])
+    assert hashlib.sha256(arch.read_bytes()).hexdigest() == first_sha
+    assert rw.batches[-1] == "rf1-repl1"
+    assert K.verify_manifest(mp) == []
+
+
+def test_refreeze_needs_a_frozen_insert(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        run(tmp_path, refreeze=True)
+
+
+def test_dirty_source_refused_unless_allowed(tmp_path, monkeypatch):
+    monkeypatch.setattr(K, "source_state", lambda root=K.ROOT: {
+        "commit": "abc", "dirty": True, "dirty_paths": ["src/emx/e9/checks.py"],
+        "snapshot_sha256": "f" * 64, "n_files": 3})
+    paths, llm, rw = make_world(tmp_path), FakeLLM(), FakeRewriter()
+    with pytest.raises(K.DirtySourceError):
+        K.accept(paths, run_batch=llm, write_versions=rw.write_versions,
+                 regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
+                 target_tokens=TARGET)
+    assert llm.calls == [] and rw.writes == []
+    _, paths, _, _ = run(tmp_path, paths=paths)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert man["source"]["snapshot_sha256"] == "f" * 64 and man["source"]["dirty"]
+
+
+def test_source_state_snapshot_is_content_hash():
+    st = K.source_state()
+    assert len(st["snapshot_sha256"]) == 64 and st["n_files"] > 0
+    assert st["snapshot_sha256"] == K.source_state()["snapshot_sha256"]
+
+
+def test_evidence_inventory_hashed_and_verified(tmp_path):
+    _, paths, _, _ = run(tmp_path)
+    mp = paths.insert_dir / "insert_manifest.json"
+    ev = json.loads(mp.read_text())["evidence"]
+    names = {pathlib.Path(k).name for k in ev}
+    assert {"checks.jsonl", "accept_outputs.jsonl", "checker_policies.json",
+            "checker_validation_luna.jsonl", "checker_validation_qwn.jsonl"} <= names
+    assert K.verify_manifest(mp) == []
+    with open(paths.rewrite_dir / "checks.jsonl", "a") as f:
+        f.write("{}\n")
+    assert any("checks.jsonl" in x for x in K.verify_manifest(mp))

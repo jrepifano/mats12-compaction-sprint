@@ -235,6 +235,20 @@ def test_backstop_kill_line():
     assert B.backstop_kill_usd() == pytest.approx(145.0)  # min(145, 155)
 
 
+def test_backstop_moves_on_every_api_change_with_no_other_call():
+    """R1 finding 11: the watchdog recomputes the backstop live from the ledger and the reserve
+    file, so each API change moves it at once (no after_api_change or re-arm needed)."""
+    B.set_api_reserve(60.0, "S1")
+    assert B.backstop_kill_usd() == pytest.approx(140.0)  # 200 - 60
+    rid = B.reserve_api("setup", 8.0, note("setup", "select", "bk"), now=NOW)
+    assert B.backstop_kill_usd() == pytest.approx(132.0)  # reservation counted at once
+    spend.mark_submitted(rid, exp="E9")
+    spend.settle_api(rid, 3.0, exp="E9")
+    assert B.backstop_kill_usd() == pytest.approx(137.0)  # settled below the reservation
+    B.set_api_reserve(70.0, "S2")
+    assert B.backstop_kill_usd() == pytest.approx(127.0)  # 200 - 70 - 3
+
+
 def test_after_api_change_without_pods_returns_the_backstop():
     def runner(*a, **k):
         raise AssertionError("no pods: nothing to re-arm")

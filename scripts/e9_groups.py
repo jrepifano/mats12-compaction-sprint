@@ -1,9 +1,13 @@
 """E9 Part 2 document groups (prereg §4.9; `emx.e9.groups`).
 
 Subcommands (PAID unless --dry-run; resumable):
-  classify   gpt-6-luna scores every final insert document with A.5; computes the frozen
+  classify   gpt-6-luna scores every final insert document with A.5 (an unscored document is
+             retried at seed + 1, + 2: notes ...:classify-seed1, -seed2); computes the frozen
              boundary and the assignment; writes data/E9/groups/groups.json (validation pending)
              and groups.sha256                                (note E9:setup:groups:classify)
+             If documents stay unscored: registers them in data/E9/insert/exclusions.json
+             (reason "a5_unscored"), prints them and exits 4 without writing groups.json; run
+             the acceptance loop to replace them, then classify again (Amendment F).
   validate   the classifier panel scores GROUP_VAL_N non-boundary insert documents; rewrites
              groups.json with the verdict and labels       (notes E9:setup:groups:val-zgl, val-gfl)
   assign     classifies new documents (e.g. a P2 pool) and assigns each to A or B by the frozen
@@ -30,6 +34,14 @@ from emx.e9 import llm
 from emx.e9.select import P1_PATH, load_docs, write_jsonl
 
 INSERT_MANIFEST = f"{C.INSERT_DIR}/insert_manifest.json"
+EXIT_REPLACE = 4  # some insert documents need replacement before groups can be frozen
+
+
+def register_unscored(unscored: dict[str, list[str]], model_key: str, add_exclusions=None) -> None:
+    """Send the unscored insert documents to the shared exclusion registry (Amendment F)."""
+    if add_exclusions is None:
+        from emx.e9.checks import add_exclusions
+    add_exclusions(sorted(unscored), reason="a5_unscored", source=f"classifier:{model_key}")
 
 
 def _print(obj) -> None:
@@ -77,16 +89,23 @@ def cmd_classify(a) -> int:
     if a.dry_run:
         _print({"classify": _project(docs, m, a.llm_dir)})
         return 0
-    rows, dropped = G.classify_insert(docs, m, "classify", llm_dir=a.llm_dir,
-                                      concurrency=a.concurrency)
-    groups = G.build_groups(docs, rows, dropped)
+    rows, unscored = G.classify_insert(docs, m, "classify", llm_dir=a.llm_dir,
+                                       concurrency=a.concurrency)
+    if unscored:
+        register_unscored(unscored, m)
+        _print({"replacement_needed": unscored})
+        print(f"{len(unscored)} insert documents could not be classified after the registered "
+              "reseeds; they are excluded (data/E9/insert/exclusions.json). Run the acceptance "
+              "loop to replace them, then rerun `classify` (Amendment F). groups.json was not "
+              "written.", file=sys.stderr)
+        return EXIT_REPLACE
+    groups = G.build_groups(docs, rows)
     inputs = G.input_hashes([a.insert, a.pool, G.llm_path(m, a.llm_dir)])
     sha = G.write_groups(a.out, groups, docs=docs, inputs=inputs, validation=None,
                          reasons=_reasons(rows))
     _print({"boundary": groups["boundary"], "sha256": sha,
             "counts": {g: sum(1 for x in groups["assignment"].values() if x == g)
-                       for g in C.GROUPS},
-            "dropped_unclassified": groups["dropped_unclassified"]})
+                       for g in C.GROUPS}})
     return 0
 
 
@@ -96,10 +115,8 @@ def cmd_validate(a) -> int:
     if not p.exists():
         raise SystemExit(f"{p} missing: run `classify` first")
     frozen = json.loads(p.read_text("utf-8"))
-    groups = {k: frozen[k] for k in ("scores", "boundary", "assignment",
-                                     "dropped_unclassified")}
-    gone = {x["doc_id"] for x in groups["dropped_unclassified"]}
-    if set(groups["scores"]) | gone != {d["doc_id"] for d in docs}:
+    groups = {k: frozen[k] for k in ("scores", "boundary", "assignment")}
+    if set(groups["scores"]) != {d["doc_id"] for d in docs}:
         raise SystemExit(f"{p} was built for a different insert than {a.insert}")
     if a.dry_run:
         sample = G.validation_sample(groups["scores"], groups["boundary"]["score"])

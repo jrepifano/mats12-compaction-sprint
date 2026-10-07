@@ -1,5 +1,6 @@
 """E9's LLM layer: one resumable, budgeted batch of JSON or free-text calls (prereg §4.3, §4.4,
-§4.9, §7.3, Appendix A; implementation plan v4, unit B1 and the "E9 admission protocol").
+§4.9, §7.3, Appendix A; implementation plan v4, unit B1 and the "E9 admission protocol";
+revised after code review R1 r1, findings 4-7 and 13).
 
 Ported, not imported: the client construction (`emx.judge_panel.make_client`, `load_env`; keys
 `OPENAI_API_KEY`, `OPENROUTER_API_KEY` from `.env`, never logged), the semaphore concurrency and
@@ -14,27 +15,42 @@ retry-on-transient-error loop of `emx.shared.answer_pairs.run_calls`, and its re
   `reasoning_effort` etc. at the top level with `max_completion_tokens`; OpenRouter sends the
   spec's `reasoning`/`provider` pin in `extra_body` with `max_tokens`. JSON prompts use the spec's
   `json_max_tokens`, rewrites its `text_max_tokens`.
-- **Resumable.** Rows are appended to `out_path` (JSONL, one `contracts.LLM_RESULT_KEYS` row per
-  request outcome, plus `note` and `error`) and flushed as each request finishes. A request whose
-  (model_key, prompt_id, item_id, seed) already has a terminal row (`TERMINAL`: ok, refused,
-  empty, malformed) is not re-sent; its row is returned as it is. "error" rows (API failures after
-  retries, or a request cut off by the reservation's headroom) are re-sent by the next run. A row
-  written under a different prompt sha256 is refused (the prompts are frozen).
-- **Budget** (§7.3). Startup settles a crashed earlier run of the same `note` at its full
-  reservation (`spend.recover_uncertain`) and releases an unsubmitted one. The pending requests'
-  conservative projection (`estimate_usd`: every call at its maximum, input at
-  `CHARS_PER_TOKEN_EST` characters per token, output at the max-token limit) is reserved through
-  `reserve(stage, usd, note)` (default `emx.e9.budget.reserve_api`, the E9 admission protocol);
-  `spend.mark_submitted` precedes the first call. Every call attempt, retries included, first
-  claims its projected maximum; the sum of finished calls' actual cost and in-flight maxima never
-  exceeds `spend.reservation_headroom`. When the next call would, no further call is sent (those
-  requests get unwritten "error" rows; rerun with a fresh reservation). At the end the reservation
-  is settled at the actual total (`spend.settle_api`); on a crash or interrupt, at the actual
-  total plus every in-flight call at its maximum.
+- **Batch ownership** (R1 #6). An exclusive, non-blocking `fcntl.flock` on `<out_path>.lock` is
+  held from before the cached rows are read and earlier reservations recovered until settlement.
+  A second invocation on the same output raises `BatchLocked` without touching the ledger, so a
+  live batch is never "recovered" by another process.
+- **Tail repair** (R1 #7). Under that lock, an incomplete final line (a torn write, partial UTF-8
+  included) is truncated before anything is appended; a complete final line without its newline
+  gets one.
+- **Resumable, bound to its inputs** (R1 #4). Rows are appended to `out_path` (JSONL, one
+  `contracts.LLM_RESULT_KEYS` row per request outcome, plus `note`, `error` and `fingerprint`)
+  and flushed as each request finishes. `fingerprint` = sha256 over the filled prompt text, the
+  mode, the max-token limit and the complete request (`request_kwargs`: model id, seed, provider
+  pin, reasoning settings). A request whose (model_key, prompt_id, item_id, seed) already has a
+  terminal row (`TERMINAL`: ok, refused, empty, malformed) is not re-sent; its row is returned as
+  it is. ANY row for that key carrying a different fingerprint (a changed document, prompt or
+  request config) raises `FingerprintMismatch` before anything is reserved. "error" rows (API
+  failures after retries, or a request cut off by the headroom) are re-sent by the next run.
+- **Budget** (§7.3). Startup (under the lock) settles a crashed earlier run of the same `note` at
+  its full reservation (`spend.recover_uncertain`) and releases an unsubmitted one. The pending
+  requests' **upper bound** (`estimate_usd`) is reserved through `reserve(stage, usd, note)`
+  (default `emx.e9.budget.reserve_api`, the E9 admission protocol); `spend.mark_submitted`
+  precedes the first call. Every call attempt, retries included, first claims its bound; the sum
+  of finished calls' actual cost and in-flight bounds never exceeds `spend.reservation_headroom`.
+  When the next call would, no further call is sent (those requests get unwritten "error" rows;
+  rerun with a fresh reservation). At the end the reservation is settled at the actual total
+  (`spend.settle_api`); on a crash or interrupt, at the actual total plus every in-flight call at
+  its bound.
+- **The per-call bound** (R1 #5): input tokens <= the UTF-8 byte count of the filled prompt plus
+  `MESSAGE_OVERHEAD_TOKENS` for the chat framing (byte-level BPE and byte-fallback tokenizers
+  never make a token shorter than one byte), output tokens <= the request's max-token limit (for
+  GLM, reasoning tokens count inside `max_tokens`), each at the ModelSpec price. If a call's
+  actual charge ever exceeds its bound, the batch stops sending, finishes and settles at the
+  actual total, records the violation in the usage log, then raises `AccountingError`.
 - **Actual cost** of a call: OpenRouter's `usage.cost` when present, else usage tokens x the
   ModelSpec prices (completion tokens include reasoning). A call with no usage, or a failed
-  attempt of uncertain outcome (timeout, dropped connection), is charged its projected
-  maximum; an attempt answered by an error status (4xx, 5xx) is charged 0.
+  attempt of uncertain outcome (timeout, dropped connection), is charged its bound; an attempt
+  answered by an error status (4xx, 5xx) is charged 0.
 - **JSON mode** (A.1, A.4, A.5): `parse_json`, then `prompts.validate`; a malformed or invalid
   answer (blank included) is retried with the seed unchanged up to `contracts.JSON_RETRIES`
   times, then recorded "malformed" (App. A).
@@ -43,15 +59,20 @@ retry-on-transient-error loop of `emx.shared.answer_pairs.run_calls`, and its re
   shorter than `REFUSAL_MAX_RATIO * ref_chars` and matches a `REFUSAL_PATTERNS` regex (skipped
   when `ref_chars` is None); "empty" if blank; else "ok".
 
-A usage log line per run (`<out stem>.usage.jsonl` beside `out_path`) records the reservation,
-the settlement, token totals and the status counts.
+Usage log (R1 #13): one line per invocation in `<out stem>.usage.jsonl`, with `invocation`
+(only the calls this invocation sent: calls, tokens, dollars, new statuses, the reservation and
+settlement) kept apart from `batch` (status counts over every request of the batch, cached ones
+included).
 """
 
 from __future__ import annotations
 
 import asyncio
+import fcntl
+import hashlib
 import json
 import math
+import os
 import random
 import re
 import sys
@@ -68,8 +89,7 @@ EXP = C.EXP
 MODES: tuple[str, ...] = ("json", "text")
 TERMINAL: tuple[str, ...] = ("ok", "refused", "empty", "malformed")
 assert set(TERMINAL) | {"error"} == set(C.LLM_STATUSES)
-CHARS_PER_TOKEN_EST = 2.5  # conservative: English runs ~4 characters per token
-MESSAGE_OVERHEAD_TOKENS = 16
+MESSAGE_OVERHEAD_TOKENS = 64  # chat framing around the one user message (role tags, BOS)
 API_ATTEMPTS = 5  # per JSON attempt, for transient API errors
 RETRY_BASE_S = 1.0  # exponential backoff with jitter, capped at RETRY_MAX_S (tests set 0)
 RETRY_MAX_S = 30.0
@@ -78,6 +98,18 @@ FILTER_WORDS = ("moderation", "content_filter", "content filter", "content_polic
                 "content policy", "safety")
 FATAL_STATUS = (401, 402, 403, 404)  # stop sending: every later call would fail the same way
 _REFUSAL_RES = tuple(re.compile(p) for p in C.REFUSAL_PATTERNS)
+
+
+class BatchLocked(RuntimeError):
+    """Another process holds this batch's output lock."""
+
+
+class FingerprintMismatch(RuntimeError):
+    """A cached row for this request was made from different inputs or request settings."""
+
+
+class AccountingError(RuntimeError):
+    """A call cost more than its upper bound; the batch stopped and was settled at actual."""
 
 
 def utc_now() -> str:
@@ -117,10 +149,22 @@ def usd_of(spec: C.ModelSpec, prompt_tokens: int, completion_tokens: int) -> flo
     return (prompt_tokens * spec.usd_per_mtok_in + completion_tokens * spec.usd_per_mtok_out) / 1e6
 
 
-def call_max_usd(spec: C.ModelSpec, prompt_chars: int, mode: str) -> float:
-    """The projected maximum cost of one call: input at CHARS_PER_TOKEN_EST, output at the cap."""
-    tin = math.ceil(prompt_chars / CHARS_PER_TOKEN_EST) + MESSAGE_OVERHEAD_TOKENS
-    return usd_of(spec, tin, max_tokens(spec, mode))
+def call_bound_usd(spec: C.ModelSpec, prompt_bytes: int, mode: str) -> float:
+    """Upper bound on one call's cost: input tokens <= UTF-8 bytes of the filled prompt +
+    MESSAGE_OVERHEAD_TOKENS, output tokens <= the max-token limit (module docstring)."""
+    return usd_of(spec, prompt_bytes + MESSAGE_OVERHEAD_TOKENS, max_tokens(spec, mode))
+
+
+call_max_usd = call_bound_usd  # the name used before review R1
+
+
+def fingerprint(spec: C.ModelSpec, prompt: str, seed: int, mode: str) -> str:
+    """sha256 of everything that shapes a request: the filled prompt, the mode, the max-token
+    limit and the full request (model id, seed, provider pin, reasoning settings)."""
+    obj = {"prompt": prompt, "mode": mode, "max_tokens": max_tokens(spec, mode),
+           "route": spec.route, "request": request_kwargs(spec, prompt, seed, mode)}
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                          ).hexdigest()
 
 
 def _check_mode(prompt_id: str, mode: str) -> None:
@@ -130,16 +174,22 @@ def _check_mode(prompt_id: str, mode: str) -> None:
         raise ValueError(f"{prompt_id} answers in {prompts.MODES[prompt_id]} mode, not {mode!r}")
 
 
-def _prompt_chars(prompt_id: str, fields: dict) -> int:
-    return prompts.fixed_chars(prompt_id) + sum(len(v) for v in fields.values())
+def _prompt_bytes(prompt_id: str, fields: dict) -> int:
+    return len(prompts.fill(prompt_id, **fields).encode("utf-8"))
 
 
 def estimate_usd(model_key: str, prompt_id: str, requests: Sequence[dict], mode: str) -> float:
-    """Conservative projected cost of sending every request once, each at its maximum."""
+    """Upper bound on the cost of sending every request once (each call at its bound), rounded
+    up to the ledger's $0.000001."""
     spec = _spec(model_key)
     _check_mode(prompt_id, mode)
-    total = sum(call_max_usd(spec, _prompt_chars(prompt_id, r["fields"]), mode) for r in requests)
-    return math.ceil(total * 1e6) / 1e6
+    total = sum(call_bound_usd(spec, _prompt_bytes(prompt_id, r["fields"]), mode)
+                for r in requests)
+    return _ceil_usd(total)
+
+
+def _ceil_usd(x: float) -> float:
+    return math.ceil(round(x * 1e6, 3)) / 1e6
 
 
 def parse_json(text: str, keys: Sequence[str]) -> dict | None:
@@ -249,31 +299,99 @@ def row_key(row: dict) -> tuple[str, str, str, int]:
     return (row["model_key"], row["prompt_id"], str(row["item_id"]), int(row["seed"]))
 
 
-def load_rows(out_path: str | Path) -> dict[tuple, dict]:
-    """The latest row per key in `out_path`. A malformed final line (a crash mid-write) is
-    ignored; a malformed line elsewhere raises."""
+def _load(out_path: str | Path) -> tuple[dict[tuple, dict], dict[tuple, set]]:
+    """(latest row per key, every fingerprint seen per key). An incomplete final line (a write in
+    progress, or a torn one awaiting repair) is skipped; a malformed line elsewhere raises."""
     p = Path(out_path)
     if not p.exists():
-        return {}
-    lines = p.read_text(encoding="utf-8").splitlines()
+        return {}, {}
+    raw = p.read_bytes()
+    lines = raw.split(b"\n")
     out: dict[tuple, dict] = {}
+    fps: dict[tuple, set] = {}
     for i, line in enumerate(lines):
         if not line.strip():
             continue
         try:
-            row = json.loads(line)
-        except json.JSONDecodeError as e:
-            if i == len(lines) - 1:
-                print(f"[e9.llm] {p}:{i + 1}: ignoring a partial last line", file=sys.stderr)
+            row = json.loads(line.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            if i == len(lines) - 1:  # no newline after it: incomplete
+                print(f"[e9.llm] {p}: skipping an incomplete last line", file=sys.stderr)
                 continue
             raise RuntimeError(f"{p}:{i + 1}: malformed row: {e}") from e
-        out[row_key(row)] = row
-    return out
+        k = row_key(row)
+        out[k] = row
+        fps.setdefault(k, set()).add(row.get("fingerprint"))
+    return out, fps
+
+
+def load_rows(out_path: str | Path) -> dict[tuple, dict]:
+    """The latest row per key in `out_path` (see `_load`)."""
+    return _load(out_path)[0]
+
+
+def repair_tail(out_path: str | Path) -> int:
+    """Truncate an incomplete final line (no trailing newline and not a complete JSON row,
+    partial UTF-8 included); add the newline to a complete one. Call only under the batch lock.
+    Returns the number of bytes removed."""
+    p = Path(out_path)
+    if not p.exists():
+        return 0
+    with open(p, "r+b") as f:
+        data = f.read()
+        if not data or data.endswith(b"\n"):
+            return 0
+        cut = data.rfind(b"\n") + 1
+        tail = data[cut:]
+        try:
+            json.loads(tail.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            f.truncate(cut)
+            print(f"[e9.llm] {p}: truncated a torn final line ({len(tail)} bytes)",
+                  file=sys.stderr)
+            return len(tail)
+        f.write(b"\n")
+        return 0
+
+
+def lock_path(out_path: str | Path) -> Path:
+    p = Path(out_path)
+    return p.with_name(p.name + ".lock")
+
+
+class _BatchLock:
+    """Exclusive non-blocking flock on `<out_path>.lock` (R1 #6)."""
+
+    def __init__(self, out_path: str | Path):
+        self.path = lock_path(out_path)
+        self.f = None
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.f = open(self.path, "a+")
+        try:
+            fcntl.flock(self.f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as e:
+            self.f.close()
+            raise BatchLocked(
+                f"{self.path} is held by another process: this batch is already running "
+                "(wait for it, or kill it and rerun to recover its reservation)") from e
+        self.f.seek(0)
+        self.f.truncate()
+        self.f.write(f"{os.getpid()} {utc_now()}\n")
+        self.f.flush()
+        return self
+
+    def __exit__(self, *exc):
+        fcntl.flock(self.f.fileno(), fcntl.LOCK_UN)
+        self.f.close()
+        return False
 
 
 def pending(model_key: str, prompt_id: str, requests: Sequence[dict], out_path: str | Path
             ) -> list[dict]:
-    """The requests `run_batch` would send: those without a terminal row in `out_path`."""
+    """The requests `run_batch` would send: those without a terminal row in `out_path` (a dry
+    run; fingerprints are checked by `run_batch`)."""
     rows = load_rows(out_path)
     return [r for r in requests
             if (row := rows.get((model_key, prompt_id, r["item_id"], r["seed"]))) is None
@@ -326,6 +444,9 @@ class _Budget:
         self.charged = 0.0
         self.inflight: dict[int, float] = {}
         self.halted: str | None = None
+        self.accounting_errors: list[str] = []
+        self.calls = 0
+        self.usage: dict = {}
         self._n = 0
 
     def claim(self, cmax: float) -> int | None:
@@ -340,8 +461,12 @@ class _Budget:
         return self._n
 
     def finish(self, token: int, usd: float) -> None:
-        self.inflight.pop(token)
+        bound = self.inflight.pop(token)
         self.charged += usd
+        if usd > bound + 1e-12:
+            msg = f"call charged ${usd:.9f} > its bound ${bound:.9f}"
+            self.accounting_errors.append(msg)
+            self.halted = f"accounting error, batch stopped: {msg}"
 
     def exposure(self) -> float:
         return self.charged + sum(self.inflight.values())
@@ -387,12 +512,14 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
             u = usage_of(resp)
             usd = actual_usd(spec, u, cmax)
             budget.finish(token, usd)
+            budget.calls += 1
+            _sum_usage(budget.usage, u)
             acc["usd"] += usd
             _sum_usage(acc["usage"], u)
             return resp, "ok"
         return None, "error"
 
-    async def one(idx: int, req: dict, prompt: str, cmax: float) -> None:
+    async def one(idx: int, req: dict, prompt: str, cmax: float, fp: str) -> None:
         async with sem:
             kw = request_kwargs(spec, prompt, req["seed"], mode)
             acc = {"attempts": 0, "usd": 0.0, "usage": {}, "error": None}
@@ -425,13 +552,14 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
                 "status": status, "parsed": parsed, "text": text, "finish_reason": finish,
                 "usage": acc["usage"] or None, "usd": round(acc["usd"], 9), "utc": utc_now(),
                 "attempts": acc["attempts"], "note": note, "error": acc["error"],
+                "fingerprint": fp,
             }
             results[idx] = row
             if status != "error" or acc["attempts"] > 0:
                 writer.write(json.dumps(row, ensure_ascii=False) + "\n")
                 writer.flush()
 
-    tasks = [asyncio.ensure_future(one(i, r, p, c)) for i, r, p, c in pending]
+    tasks = [asyncio.ensure_future(one(i, r, p, c, f)) for i, r, p, c, f in pending]
     try:
         await asyncio.gather(*tasks)
     finally:
@@ -464,83 +592,101 @@ def run_batch(
     _check_requests(requests, prompt_id)
     sha = prompts.sha256(prompt_id)
     out_path = Path(out_path)
-    existing = load_rows(out_path)
+    with _BatchLock(out_path):
+        repaired = repair_tail(out_path)
+        existing, fps = _load(out_path)
+        results: list[dict | None] = [None] * len(requests)
+        pending_ = []
+        for i, r in enumerate(requests):
+            prompt = prompts.fill(prompt_id, **r["fields"])
+            fp = fingerprint(spec, prompt, r["seed"], mode)
+            key = (model_key, prompt_id, r["item_id"], r["seed"])
+            seen = fps.get(key, set())
+            if seen and seen != {fp}:
+                raise FingerprintMismatch(
+                    f"{out_path}: cached rows for {key} were made from different inputs or "
+                    f"request settings (fingerprints {sorted(map(str, seen))[:2]} != {fp}); "
+                    "nothing was sent")
+            row = existing.get(key)
+            if row is not None and row["status"] in TERMINAL:
+                if row.get("prompt_sha256") != sha:  # covered by the fingerprint; kept explicit
+                    raise FingerprintMismatch(f"{out_path}: row {key} has prompt sha "
+                                              f"{row.get('prompt_sha256')}, not {sha}")
+                results[i] = row
+                continue
+            pending_.append((i, r, prompt,
+                             call_bound_usd(spec, len(prompt.encode("utf-8")), mode), fp))
 
-    results: list[dict | None] = [None] * len(requests)
-    pending = []
-    for i, r in enumerate(requests):
-        row = existing.get((model_key, prompt_id, r["item_id"], r["seed"]))
-        if row is not None and row["status"] in TERMINAL:
-            if row.get("prompt_sha256") != sha:
-                raise RuntimeError(f"{out_path}: row {row_key(row)} was written under prompt sha "
-                                   f"{row.get('prompt_sha256')}, not {sha}")
-            results[i] = row
-            continue
-        prompt = prompts.fill(prompt_id, **r["fields"])
-        pending.append((i, r, prompt, call_max_usd(spec, len(prompt), mode)))
+        recovered = spend.recover_uncertain(EXP, note)
+        if recovered:
+            print(f"[e9.llm] {note}: settled crashed reservation(s) {recovered} at full amount",
+                  file=sys.stderr)
+        stale = spend.find_open(EXP, note)
+        if stale:
+            spend.release_api(stale, exp=EXP)
+        if not pending_:
+            return results  # type: ignore[return-value]
 
-    recovered = spend.recover_uncertain(EXP, note)
-    if recovered:
-        print(f"[e9.llm] {note}: settled crashed reservation(s) {recovered} at full amount",
-              file=sys.stderr)
-    stale = spend.find_open(EXP, note)
-    if stale:
-        spend.release_api(stale, exp=EXP)
-    if not pending:
-        return results  # type: ignore[return-value]
-
-    projected = math.ceil(sum(c for *_, c in pending) * 1e6) / 1e6
-    reserve = reserve or _default_reserve()
-    client = client if client is not None else _default_client(spec.route)
-    rid = reserve(stage, projected, note)
-    budget = _Budget(spend.reservation_headroom(rid, EXP))
-    spend.mark_submitted(rid, exp=EXP)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    settled = None
-    try:
-        with open(out_path, "a+", encoding="utf-8") as writer:
-            writer.seek(0, 2)
-            if writer.tell() > 0:
-                writer.seek(writer.tell() - 1)
-                if writer.read(1) != "\n":
-                    writer.write("\n")
-            asyncio.run(_run(spec, prompt_id, sha, pending, mode=mode, note=note,
-                             concurrency=concurrency, client=client, budget=budget,
-                             writer=writer, results=results))
-    finally:
-        # in-flight calls (a crash) at their maximum; rounded up to the ledger's 1e-6 grain
-        settled = math.ceil(round(budget.exposure() * 1e6, 3)) / 1e6
-        spend.settle_api(rid, settled, exp=EXP, note=f"{note} (settled at actual)")
-        _log_usage(out_path, note=note, stage=stage, spec=spec, prompt_id=prompt_id, sha=sha,
-                   rid=rid, reserved=projected, settled=settled, n=len(requests),
-                   n_pending=len(pending), results=results, halted=budget.halted)
-    for i, (idx, r, _, _) in enumerate(pending):
-        if results[idx] is None:  # cut off before any call
-            results[idx] = {
-                "item_id": r["item_id"], "model_key": model_key, "model": spec.model,
-                "prompt_id": prompt_id, "prompt_sha256": sha, "seed": r["seed"],
-                "status": "error", "parsed": None, "text": None, "finish_reason": None,
-                "usage": None, "usd": 0.0, "utc": utc_now(), "attempts": 0, "note": note,
-                "error": budget.halted or "not sent",
-            }
-    if budget.halted:
-        print(f"[e9.llm] {note}: stopped sending: {budget.halted}", file=sys.stderr)
+        projected = _ceil_usd(sum(p[3] for p in pending_))
+        reserve = reserve or _default_reserve()
+        client = client if client is not None else _default_client(spec.route)
+        rid = reserve(stage, projected, note)
+        budget = _Budget(spend.reservation_headroom(rid, EXP))
+        spend.mark_submitted(rid, exp=EXP)
+        settled = None
+        try:
+            with open(out_path, "a", encoding="utf-8") as writer:
+                asyncio.run(_run(spec, prompt_id, sha, pending_, mode=mode, note=note,
+                                 concurrency=concurrency, client=client, budget=budget,
+                                 writer=writer, results=results))
+        finally:
+            # in-flight calls (a crash) at their bound; rounded up to the ledger's grain
+            settled = _ceil_usd(budget.exposure())
+            spend.settle_api(rid, settled, exp=EXP, note=f"{note} (settled at actual)")
+            _log_usage(out_path, note=note, stage=stage, spec=spec, prompt_id=prompt_id,
+                       sha=sha, rid=rid, reserved=projected, settled=settled, n=len(requests),
+                       pending=pending_, results=results, budget=budget, repaired=repaired)
+        for idx, r, *_ in pending_:
+            if results[idx] is None:  # cut off before any call
+                results[idx] = {
+                    "item_id": r["item_id"], "model_key": model_key, "model": spec.model,
+                    "prompt_id": prompt_id, "prompt_sha256": sha, "seed": r["seed"],
+                    "status": "error", "parsed": None, "text": None, "finish_reason": None,
+                    "usage": None, "usd": 0.0, "utc": utc_now(), "attempts": 0, "note": note,
+                    "error": budget.halted or "not sent", "fingerprint": None,
+                }
+        if budget.halted:
+            print(f"[e9.llm] {note}: stopped sending: {budget.halted}", file=sys.stderr)
+        if budget.accounting_errors:
+            raise AccountingError(f"{note}: {len(budget.accounting_errors)} call(s) exceeded "
+                                  f"their bound (settled at actual ${settled:.6f}): "
+                                  f"{budget.accounting_errors[:3]}")
     return results  # type: ignore[return-value]
 
 
 def _log_usage(out_path: Path, *, note, stage, spec, prompt_id, sha, rid, reserved, settled, n,
-               n_pending, results, halted) -> None:
-    rows = [r for r in results if r is not None]
-    tok: dict = {}
-    for r in rows:
-        if r.get("note") == note:
-            _sum_usage(tok, r.get("usage"))
+               pending, results, budget, repaired) -> None:
+    """One line per invocation: this invocation's own calls, apart from batch-wide statuses."""
+    new_idx = {p[0] for p in pending}
+    new_rows = [results[i] for i in new_idx if results[i] is not None]
+    all_rows = [r for r in results if r is not None]
     line = {
         "utc": utc_now(), "note": note, "stage": stage, "model_key": spec.key,
         "model": spec.model, "prompt_id": prompt_id, "prompt_sha256": sha,
-        "reservation_id": rid, "reserved_usd": reserved, "settled_usd": settled,
-        "n_requests": n, "n_pending": n_pending,
-        "statuses": dict(Counter(r["status"] for r in rows)), "usage": tok, "halted": halted,
+        "invocation": {
+            "reservation_id": rid, "reserved_usd": reserved, "settled_usd": settled,
+            "n_pending": len(pending), "n_sent": sum(1 for r in new_rows if r["attempts"]),
+            "calls_ok": budget.calls, "usage": budget.usage,
+            "charged_usd": round(budget.charged, 9),
+            "statuses": dict(Counter(r["status"] for r in new_rows)),
+            "halted": budget.halted, "accounting_errors": budget.accounting_errors,
+            "tail_bytes_truncated": repaired,
+        },
+        "batch": {
+            "n_requests": n, "n_cached": n - len(pending),
+            "statuses": dict(Counter(r["status"] for r in all_rows)),
+            "n_unsent": n - len(all_rows),
+        },
     }
     p = out_path.parent / f"{out_path.stem}.usage.jsonl"
     with open(p, "a", encoding="utf-8") as f:

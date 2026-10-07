@@ -5,7 +5,9 @@
    `contracts.CONTENT_SCORE_KEYS` row.
 2. **Safety exclusion.** A document flagged `minor_sexual` by the selecting judge, or by any panel
    model that scored it, is excluded from every pool and never rewritten; the list and count are
-   written to `selection.json` (`safety_excluded`) and `ranked.json`.
+   written to `selection.json` (`safety_excluded`) and `ranked.json`, and each flag is sent to the
+   shared exclusion registry (`emx.e9.checks.add_exclusions`, reason "minor_sexual", source
+   "content_judge" or "content_panel:<model>") so one registry holds every exclusion.
 3. **Ranking.** Endorsement score descending; ties by `tie_hash(doc_id)` =
    int(sha256(f"{CORPUS_SEED}:{doc_id}"), 16) ascending. Documents without a valid score from the
    selector (malformed, refused) are excluded and counted (`failed`). A document with no terminal
@@ -26,7 +28,10 @@
    all of P1 (`panel-all`, its cost projected and reserved like any batch, stage "setup") and the
    insert is reselected by the same rules (a panel-mean score needs both models' valid answers).
    Else Part 1 stops: the outcome is "stop" and no insert is written. Spearman on a constant
-   vector is undefined and counts as a failure.
+   vector is undefined and counts as a failure. No verdict is computed or written until every
+   scheduled validation request has a terminal answer (`IncompleteBatch` otherwise; R1 #8).
+6. **Chunks.** Full-pool scoring runs in chunks of `CHUNK_DOCS` documents, one reservation each
+   (each reservation holds the batch's upper bound until it settles).
 
 Outputs (`contracts.SELECT_DIR`): `content_scores.jsonl`, `validation.json`, `ranked.json`,
 `selection.json`, each with the input sha256s, prompt sha256, model ids, UTC time and the code
@@ -149,18 +154,42 @@ def content_row(row: dict) -> dict:
     }
 
 
+class IncompleteBatch(RuntimeError):
+    """Some scheduled requests have no terminal answer (API errors): rerun the step (R1 #8)."""
+
+
+CHUNK_DOCS = 10_000  # one reservation per chunk keeps the open reservation (a bound) small
+
+
 def score_docs(
     docs: Sequence[dict], model_key: str, batch: str, *, llm_dir: str | Path = C.LLM_DIR,
-    client=None, reserve=None, concurrency: int = 32,
+    client=None, reserve=None, concurrency: int = 32, chunk: int = CHUNK_DOCS,
 ) -> list[dict]:
-    """Score `docs` with A.1 by `model_key` under one reservation (note E9:setup:select:<batch>);
-    returns `CONTENT_SCORE_KEYS` rows in document order."""
-    rows = llm.run_batch(
-        model_key, PROMPT_ID, score_requests(docs), llm_path(model_key, llm_dir), mode="json",
-        stage=STAGE, note=C.ledger_note(STAGE, STEP, batch), concurrency=concurrency,
-        client=client, reserve=reserve,
-    )
-    return [content_row(r) for r in rows]
+    """Score `docs` with A.1 by `model_key`; returns `CONTENT_SCORE_KEYS` rows in document order.
+
+    Documents are cut into consecutive chunks of `chunk` (by position in `docs`), each its own
+    reservation: note E9:setup:select:<batch>, or <batch>-c<k> when there is more than one chunk.
+    The chunking depends only on `docs`, so a rerun maps every document to the same batch key."""
+    parts = [list(docs)] if len(docs) <= chunk else [
+        list(docs[i:i + chunk]) for i in range(0, len(docs), chunk)]
+    out = []
+    for k, part in enumerate(parts):
+        name = batch if len(parts) == 1 else f"{batch}-c{k}"
+        rows = llm.run_batch(
+            model_key, PROMPT_ID, score_requests(part), llm_path(model_key, llm_dir),
+            mode="json", stage=STAGE, note=C.ledger_note(STAGE, STEP, name),
+            concurrency=concurrency, client=client, reserve=reserve,
+        )
+        out += [content_row(r) for r in rows]
+    return out
+
+
+def require_terminal(rows: Sequence[dict], what: str) -> None:
+    """Raise `IncompleteBatch` unless every row has a terminal status."""
+    bad = [r.get("doc_id", r.get("item_id")) for r in rows if r["status"] not in llm.TERMINAL]
+    if bad:
+        raise IncompleteBatch(f"{what}: {len(bad)} requests have no terminal answer (e.g. "
+                              f"{bad[:3]}); rerun before any verdict is computed or written")
 
 
 def project_usd(docs: Sequence[dict], model_key: str) -> float:
@@ -371,10 +400,13 @@ def run_validation(docs: Sequence[dict], *, llm_dir: str | Path = C.LLM_DIR,
     by_id = {d["doc_id"]: d for d in docs}
     sample_docs = [by_id[d] for d in ins_s + rest_s]
     for m in C.ROLES["content_panel"]:
-        score_docs(sample_docs, m, f"val-{m}", llm_dir=llm_dir,
-                   client=client_for(m) if client_for else None, reserve=reserve,
-                   concurrency=concurrency)
+        rows_m = score_docs(sample_docs, m, f"val-{m}", llm_dir=llm_dir,
+                            client=client_for(m) if client_for else None, reserve=reserve,
+                            concurrency=concurrency)
+        require_terminal(rows_m, f"content validation, {m}")
     all_rows = collect_scores({d["doc_id"] for d in sample_docs}, llm_dir)
+    require_terminal([r for r in all_rows if r["model_key"] in (judge, *C.ROLES["content_panel"])],
+                     "content validation")
     return validate_content(all_rows, ins_s, rest_s)
 
 
@@ -420,11 +452,37 @@ def write_validation(validation: dict, *, p1_path: str | Path, out_dir: str | Pa
     return write_json(Path(out_dir) / "validation.json", {**validation, **meta(p1_path, llm_dir)})
 
 
+def exclusion_source(model_key: str) -> str:
+    return "content_judge" if model_key == C.ROLES["content_judge"] else f"content_panel:{model_key}"
+
+
+def register_safety_exclusions(rows: Sequence[dict], add_exclusions=None) -> dict[str, list[str]]:
+    """Send every `minor_sexual` flag to the shared exclusion registry
+    (`emx.e9.checks.add_exclusions`, data/E9/insert/exclusions.json), one call per flagging
+    model with reason "minor_sexual" and source "content_judge" or "content_panel:<model>".
+    Returns {source: doc ids}."""
+    by_src: dict[str, set[str]] = {}
+    for r in rows:
+        if r.get("status") == "ok" and r.get("minor_sexual") is True:
+            by_src.setdefault(exclusion_source(r["model_key"]), set()).add(r["doc_id"])
+    if not by_src:
+        return {}
+    if add_exclusions is None:
+        from emx.e9.checks import add_exclusions
+    out = {}
+    for src, ids in sorted(by_src.items()):
+        add_exclusions(sorted(ids), reason="minor_sexual", source=src)
+        out[src] = sorted(ids)
+    return out
+
+
 def write_outputs(sel: dict, *, p1_path: str | Path, out_dir: str | Path = C.SELECT_DIR,
-                  llm_dir: str | Path = C.LLM_DIR) -> dict:
-    """Write content_scores.jsonl, ranked.json and selection.json (validation.json is written by
-    `write_validation`; its sha256 is recorded here)."""
+                  llm_dir: str | Path = C.LLM_DIR, add_exclusions=None) -> dict:
+    """Register the safety exclusions, then write content_scores.jsonl, ranked.json and
+    selection.json (validation.json is written by `write_validation`; its sha256 is recorded
+    here)."""
     out_dir = Path(out_dir)
+    register_safety_exclusions(collect_scores(None, llm_dir), add_exclusions)
     m = meta(p1_path, llm_dir)
     hashes = {"content_scores.jsonl": write_content_scores(out_dir, llm_dir)}
     vpath = out_dir / "validation.json"

@@ -228,7 +228,11 @@ def test_end_to_end_luna_passes(tmp_path, ledger):
     sel = S.final_selection(docs, v, llm_dir=llm_dir)
     assert sel["selector"] == "luna" and docs[1]["doc_id"] in sel["safety_excluded"]
     assert sel["n_insert"] == 10 and sel["insert_tokens"] == 4_000_000
-    hashes = S.write_outputs(sel, p1_path=p1, out_dir=out, llm_dir=llm_dir)
+    calls = []
+    hashes = S.write_outputs(sel, p1_path=p1, out_dir=out, llm_dir=llm_dir,
+                             add_exclusions=lambda ids, **kw: calls.append((ids, kw)))
+    assert calls == [([docs[1]["doc_id"]], {"reason": "minor_sexual",
+                                             "source": "content_panel:gfl"})]
     selection = json.loads((out / "selection.json").read_text())
     ranked = json.loads((out / "ranked.json").read_text())
     assert selection["insert"] == sel["insert"] and selection["n_safety_excluded"] == 1
@@ -304,3 +308,58 @@ def test_cli_dry_run_makes_no_calls(tmp_path, ledger, capsys, monkeypatch):
     out = json.loads(capsys.readouterr().out)
     assert out["score"]["pending_docs"] == 5 and out["score"]["projected_usd"] > 0
     assert not ledger.exists()
+
+
+def test_register_safety_exclusions_one_call_per_source():
+    rows = [row("a", "luna", 9, minor=True), row("b", "zgl", 9, minor=True),
+            row("c", "zgl", 9, minor=True), row("d", "gfl", 2), row("e", "luna", 1)]
+    calls = []
+    out = S.register_safety_exclusions(rows, lambda ids, **kw: calls.append((ids, kw)))
+    assert out == {"content_judge": ["a"], "content_panel:zgl": ["b", "c"]}
+    assert calls == [(["a"], {"reason": "minor_sexual", "source": "content_judge"}),
+                     (["b", "c"], {"reason": "minor_sexual", "source": "content_panel:zgl"})]
+    assert S.register_safety_exclusions([row("x", "luna", 3)], None) == {}  # no import needed
+
+
+def test_chunked_scoring_one_reservation_per_chunk(tmp_path, ledger):
+    docs = [doc(i, luna=i % 11) for i in range(25)]
+    judge = Judge()
+    rows = S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=judge,
+                        reserve=reserve_ledger, chunk=10)
+    assert [r["doc_id"] for r in rows] == [d["doc_id"] for d in docs]
+    st = spend.reservation_states(spend.read_entries(ledger))
+    assert sorted(x["note"] for x in st.values()) == [
+        f"E9:setup:select:score-luna-c{k}" for k in range(3)]
+    n = len(judge.calls)
+    S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=judge,
+                 reserve=reserve_ledger, chunk=10)
+    assert len(judge.calls) == n  # resumed: nothing re-sent
+
+
+def test_validation_requires_terminal_answers(tmp_path, ledger):
+    import httpx
+    import openai
+
+    docs = [doc(i, 400_000, luna=10 - i // 4, zgl=10 - i // 4, gfl=10 - i // 4)
+            for i in range(40)]
+    llm_dir, out = tmp_path / "llm", tmp_path / "select"
+    judge = Judge()
+    S.score_docs(docs, "luna", "score-luna", llm_dir=llm_dir, client=judge,
+                 reserve=reserve_ledger)
+
+    class Flaky(Judge):
+        async def _create(self, **kw):
+            if KEY_OF[kw["model"]] == "gfl" and "Document 5." in kw["messages"][0]["content"]:
+                raise openai.InternalServerError(
+                    "down", response=httpx.Response(503, request=httpx.Request("POST", "http://x")),
+                    body=None)
+            return await super()._create(**kw)
+
+    flaky = Flaky()
+    with pytest.raises(S.IncompleteBatch):
+        S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: flaky,
+                         reserve=reserve_ledger)
+    assert not (out / "validation.json").exists()
+    v = S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: judge,
+                         reserve=reserve_ledger)  # the rerun completes the work
+    assert v["outcome"] == "luna" and v["n_with_all_three"] == 40
