@@ -188,6 +188,10 @@ MODELS: dict[str, ModelSpec] = {
                      json_max_tokens=1500),
     "gfl": ModelSpec("gfl", "google/gemini-3.5-flash-lite", "openrouter", 0.30, 2.50,
                      {"provider": {"order": ["google-ai-studio"], "allow_fallbacks": False}}),
+    # Probe only (scripts/e9_probe_llm.py --gfl-sample; Jacob 2026-10-07): the same Gemini model on
+    # the Vertex route, to compare content-filter rates. Not used by any preregistered role.
+    "gfl_vertex": ModelSpec("gfl_vertex", "google/gemini-3.5-flash-lite", "openrouter", 0.30, 2.50,
+                            {"provider": {"order": ["google-vertex"], "allow_fallbacks": False}}),
     "qwn": ModelSpec("qwn", "qwen/qwen3.7-flash", "openrouter", 0.03, 0.13,
                      {"reasoning": {"enabled": False},
                       "provider": {"order": ["Alibaba"], "allow_fallbacks": False}}),
