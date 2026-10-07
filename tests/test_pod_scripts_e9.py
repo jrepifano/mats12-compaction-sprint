@@ -311,7 +311,10 @@ def _watchdog(tmp_path, budget_rc, json_line):
     log = tmp_path / "down.log"
     fake_down = tmp_path / "down.sh"
     fake_down.write_text(f"#!/bin/bash\necho \"$*\" >> {log}\n")
-    for f in (fake_budget, fake_down):
+    orch_log = tmp_path / "orch.log"
+    fake_orch = tmp_path / "orch.sh"
+    fake_orch.write_text(f"#!/bin/bash\necho \"$*\" >> {orch_log}\n")
+    for f in (fake_budget, fake_down, fake_orch):
         f.chmod(0o755)
     env = {
         "E9_WATCHDOG_ONCE": "1",
@@ -323,6 +326,7 @@ def _watchdog(tmp_path, budget_rc, json_line):
         "E9_WATCHDOG_ALERT": str(tmp_path / "wd.alert"),
         "E9_IDLE_PREFIX": str(tmp_path / "idle_"),
         "E9_DEADLINE_EPOCH": str(int(time.time()) + 86400),
+        "E9_ORCHESTRATE": str(fake_orch),  # never the real orchestrator (it writes STOPPED.json)
     }
     r = run("bash", "scripts/e9_watchdog.sh", "5", env=env)
     return r, (log.read_text() if log.exists() else "")

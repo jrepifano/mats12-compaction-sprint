@@ -38,6 +38,8 @@
 # E9_WATCHDOG_ONCE=1 runs a single tick and exits with the budget check's code (tests).
 # E9_BUDGET_CMD replaces the budget check command (tests; called with the reserve hours);
 # E9_POD_DOWN replaces `uv run python scripts/pod_down.py --exp E9` (tests).
+# The orchestrator command (tests point it at a stub so no real STOPPED.json is written).
+ORCH="${E9_ORCHESTRATE:-uv run python scripts/e9_orchestrate.py}"
 set -uo pipefail
 cd "$(dirname "$0")/.."
 PIDFILE=${E9_WATCHDOG_PIDFILE:-logs/watchdog_E9.pid}
@@ -228,8 +230,8 @@ kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0)
   [ "$killed" = "1" ] || echo "$(now) termination NOT confirmed - retrying next minute; terminate in the console if it persists" | tee -a "$FAIL_ALERT"
 }
 retire() {  # retire SLOT REASON: the orchestrator's cleanup, else salvage + pod_down --slot
-  if [ -f scripts/e9_orchestrate.py ]; then
-    spawn "retire_$1" "$CLEANUP_S" uv run python scripts/e9_orchestrate.py cleanup --slot "$1" --reason "$2"
+  if [ -n "${E9_ORCHESTRATE:-}" ] || [ -f scripts/e9_orchestrate.py ]; then
+    spawn "retire_$1" "$CLEANUP_S" $ORCH cleanup --slot "$1" --reason "$2"
   else
     echo "$(now) $1: no scripts/e9_orchestrate.py; salvage then pod_down --slot $1" | tee -a "$FAIL_ALERT"
     salvage "$1"
@@ -305,8 +307,8 @@ while true; do
     salv=1
     budget "$FAST_HOURS" > /dev/null || salv=0
     kill_all "budget (E9 backstop)" "$slots" "$salv"
-    if [ -f scripts/e9_orchestrate.py ]; then
-      bounded "$FAST_S_CMD" uv run python scripts/e9_orchestrate.py stop \
+    if [ -n "${E9_ORCHESTRATE:-}" ] || [ -f scripts/e9_orchestrate.py ]; then
+      bounded "$FAST_S_CMD" $ORCH stop \
         --rule "projected GPU spend at the E9 backstop kill line (watchdog)" --no-fetch --detail "$out" \
         || echo "$(now) e9_orchestrate.py stop FAILED; record the stop by hand" | tee -a "$FAIL_ALERT"
     else
