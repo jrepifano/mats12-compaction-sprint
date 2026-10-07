@@ -2022,6 +2022,13 @@ Two fixes are needed first: delete `RUN_INFO.txt`, which repeats the header in t
 - Read Wong et al. and I-PPO in full; both were read only through fetch summaries.
 - Confirm with Neel that nobody else has taken this.
 
+**A requirement added after review (2026-10-07, Jacob; not reviewed, since the review cap is reached).**
+- *The problem:* Gate 0 tests hidden hacks offline, but the pilot trains in Aria's environment. There, the hack the policy actually learns is the visible `def run_tests`, which a string match should stop. Aria's own runs already reached 0% (probe penalty) and 0.9% (ground-truth screening). So the pilot leaves attribution almost nothing to win, even if it passes Gate 0.
+- *The requirement:* **no paid RL run until we have an environment where the hack the policy learns is not detectable from the text.** A string match and an LLM judge must miss a substantial share of learned hacks there; the prereg sets the threshold. The pilot then trains in that environment.
+  - A candidate is CATCH (row 63), with three loophole classes on Qwen3-4B. It was read only through a fetch summary, so it is unchecked.
+  - Another is a variant of Aria's environment in which the reward can be hacked without a visible override.
+- *If no such environment exists or can be built cheaply,* X7 stays a proposal and is not recommended.
+
 ### C1. How much of the reasoning's uplift survives when the reasoning must follow rules?
 
 *Source: Neel, 2026-09-29 group session. He asked for better CoT controllability and monitorability evals, said "a decent project from a pair of MATS scholars could dramatically improve SOTA here", and sketched this mini-project.*
@@ -2377,7 +2384,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **I6:** *updated 2026-10-06 after Adam Karvonen's CHIVE talk:* P 0.4 → 0.25 (section I6). Held, and last in the ranking.
 - **X6, X7 (new 2026-10-07, not scored):** both come from Neel's 2026-10-06 session, and neither informs the EM commit.
   - X6 is a cheap side bet: Stage 0 costs ≈ $3–6, Stage 1 ≈ $55–70.
-  - X7 is a possible third line: intervention-shaped, but ≈ $310–330 for a one-seed pilot (≈ $950–1,000 replicated), with a strong prior against attribution beating the best baseline. Its offline Gate 0 (≈ $10–25) is the cheap way to find out.
+  - X7 is a possible third line: intervention-shaped, but ≈ $310–330 for a one-seed pilot (≈ $950–1,000 replicated), with a strong prior against attribution beating the best baseline. *It now also needs an environment where the learned hack isn't visible in the text (section X7, 2026-10-07 requirement).* Its offline Gate 0 (≈ $10–25) is the cheap way to find out.
 
 **Budget.** *Update 2026-10-05:* spent so far $218.42 (`scripts/merge_ledger.py report`): E1b, I9 and the X3 pilot's spend so far are in. The planned items below are from 2026-10-04 and partly stale. The live EM items are now E3 (≈ $25–40), E9 (≈ $21–39 if null, $42–63 if promising) and, if E9 shows an effect, E9b (≈ $42–83).
 
@@ -2444,7 +2451,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
    - Do you want either preregistered?
 6. **X6 and X7 (new 2026-10-07):** do you want either preregistered?
    - X6's Stage 0 is ≈ $3–6 and needs no new episodes. It needs the unmerged `x3b/run` harness.
-   - X7 needs Aria Wong's or Neel's OK to reuse her unlicensed code, and RL infrastructure we don't have. Its pilot is above the ~$100 ask threshold.
+   - X7 needs Aria Wong's or Neel's OK to reuse her unlicensed code, RL infrastructure we don't have, and an environment where the learned hack isn't visible in the text (added 2026-10-07). Its pilot is above the ~$100 ask threshold.
 7. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
 8. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
 9. **Coordination still open:**
@@ -2533,3 +2540,4 @@ Main changes from review:
   4 MINOR findings: one-seed pilot wording, cost itemization, the citation directory for Teaching Claude Why and Model Spec Midtraining, and the "declined" list misrepresenting encouraged ideas. All were fixed.
 - **Round 2: FIX.** 1 BLOCKING (the gate fixed recall twice; it now compares recall at the fixed drop rate) and 1 MINOR (reusing the checkpoint run's step-120 checkpoint, about $24 extra). Both were fixed.
 - **Round 3: OK.** The cap is reached.
+- *After the cap (2026-10-07, Jacob's go-ahead):* a requirement was added to X7, prompted by a side-agent note. No paid RL run until an environment exists where the learned hack isn't detectable from the text. Not reviewed.
