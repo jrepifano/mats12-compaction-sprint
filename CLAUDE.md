@@ -47,6 +47,11 @@ More documents may be added; when they are, read them and update the proposals d
 - **Report after every step** to `logs/<EXP-ID>-report.md`. Record exact commands, seeds, row counts, file hashes, model ids and revisions, wall-clock, UTC timestamps, and dollars spent. These reports become the LLM-usage disclosure, so they must describe what actually happened.
 - **Determinism.** Fix seeds and record them inside the output artifacts. Pin model revisions (HF commit hashes) and dataset revisions.
 - **Treat your own successes as hypotheses.** When something "works", show Jacob random raw samples (transcripts, readouts, judge rationales), never cherry-picked ones. Label inferences as inferences.
+- **Every human labeling task gets an HTML labeling page** (Jacob, 2026-10-06): spot-checks, hand-label audits, transcript reviews, and anything else where Jacob labels items. Never ask for labels in chat, a CSV or a spreadsheet.
+  - **Build it as a private Artifact,** using the `db` capability so Claude reads the labels back with `ArtifactData` (no copy-paste). Keep a copyable summary on the page as a fallback.
+  - **Keep any answer key out of the page.** Keep it in a separate gitignored file, and check the published HTML for it before publishing.
+  - **Present items blind where the protocol requires it,** in randomized order or randomized A/B position.
+  - **Example:** E3's answer-pair spot-check.
 - **Stop at checkpoints.** Each prereg names its stop points; report and wait there.
 - **Implementation plan before any code.** Once a prereg's design is final, and before writing code, write `docs/experiments/<ID>/implementation-plan.md`. This is *how Claude will build and run it*, not what the experiment is. It contains:
   1. **Work breakdown:** units of work, each with inputs, outputs, the files it touches, and a done-when test.
@@ -122,7 +127,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   - Week 1: gate experiments (Phase A).
   - Week 2: "is it interesting" experiments (Phase B).
   - Weeks 3–4: commit to one direction and get a presentable preliminary result.
-- **Budget:** a few hundred dollars up front for preliminary results. The total is not yet set. Keep every Phase A experiment under its cap, and ask before any single experiment above ~$100.
+- **Budget:** $2,100 for the whole program, i.e. October 2026 (Jacob, 2026-10-06). The goal is to spend most of it, or at least a lot, during the research sprint, to collect very good results. Track the running total with `scripts/merge_ledger.py report`. Keep every experiment under its cap, and ask before any single experiment above ~$100.
 
 ## Stack
 

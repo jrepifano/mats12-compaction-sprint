@@ -1,0 +1,41 @@
+{
+ "model": "z-ai/glm-5.3-flash",
+ "preset": "zgl",
+ "request": {
+  "max_tokens_param": "max_tokens",
+  "max_tokens": 1500,
+  "extra_body": {
+   "reasoning": {
+    "effort": "low"
+   },
+   "provider": {
+    "order": [
+     "Z.AI"
+    ],
+    "allow_fallbacks": false
+   }
+  }
+ },
+ "n": 128,
+ "right": 127,
+ "accuracy": 0.9921875,
+ "unparsed": 0,
+ "by_misaligned_position": {
+  "A": {
+   "n": 63,
+   "right": 63
+  },
+  "B": {
+   "n": 65,
+   "right": 64
+  }
+ },
+ "label_B_share": 0.5,
+ "rule": "accuracy >= 0.95 and unparsed <= 5% (frozen in the module docstring)",
+ "pass": true,
+ "inputs": {
+  "data/E1/test_bad.jsonl": "c616b8443675892e2ac870dcf9f0e687c66c762a69bb6c63221d67216275609b",
+  "data/E1/test_good.jsonl": "c8a348f40ec2a9b277aefff860c15c233aff7f8ba1721bc3dde96148a80943b3"
+ },
+ "utc": "2026-10-06T17:53:21Z"
+}

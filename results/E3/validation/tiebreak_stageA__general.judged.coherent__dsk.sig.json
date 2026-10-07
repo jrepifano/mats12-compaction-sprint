@@ -1,0 +1,32 @@
+{
+  "column": "coherent__dsk",
+  "metric": "coherent",
+  "judge": "dsk",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "deepseek/deepseek-v4-flash",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "deepseek/deepseek-v4-flash",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "reasoning": {
+          "enabled": false
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "results/E3/validation/tiebreak_stageA__general.csv",
+    "sha256": "a253a9edd34f8b16a723ccb4c66bce6d6ea46527b79221b56be8f4023bcf54f6",
+    "n_rows": 13,
+    "keys_sha256": "f028f9805532e0e6365c08db777535e0b220cd2e8c430e438a8f3f43de99eadb"
+  },
+  "created_utc": "2026-10-06T21:28:47Z"
+}

@@ -1,0 +1,29 @@
+{
+ "population": "v1 seed pool (answers <= 80 tokens as scored), 40 medical questions",
+ "hard_cap_64": {
+  "per_question_capped_at_4": {
+   "0": 2,
+   "1": 2,
+   "2": 1,
+   "3": 3,
+   "4": 32
+  },
+  "under_2": [
+   "med_01606",
+   "med_05146",
+   "med_05808",
+   "med_06788"
+  ],
+  "max_medical_questions_keepable": 36
+ },
+ "trim_64": {
+  "per_question_capped_at_4": {
+   "2": 1,
+   "4": 39
+  },
+  "under_4": {
+   "med_05146": 2
+  }
+ },
+ "broad_questions_with_em_seed_after_trim": 26
+}

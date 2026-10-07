@@ -1,0 +1,32 @@
+{
+  "column": "medcorrect__dsk",
+  "metric": "medcorrect",
+  "judge": "dsk",
+  "prompt_file": "prompts/E1/medcorrect_v1.txt",
+  "prompt_sha256": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
+  "judge_model": "deepseek/deepseek-v4-flash",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "deepseek/deepseek-v4-flash",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "reasoning": {
+          "enabled": false
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "results/E3/validation/tiebreak_stageA__narrow.csv",
+    "sha256": "5ed88a92a2bf0dba00fbdc38c2f4e9b69ef6087fc8b4420744aaeea5bd59cc08",
+    "n_rows": 36,
+    "keys_sha256": "090e3c46849c37dd90d92ed5bdaf3ff3fe284f06353e8a04ebe0b4fef44188ef"
+  },
+  "created_utc": "2026-10-06T21:29:14Z"
+}

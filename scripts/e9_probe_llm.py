@@ -8,8 +8,10 @@ for A.2/A.3, before the full content-judge batch spends ≈ $10. Nothing here fe
 Usage: uv run python scripts/e9_probe_llm.py [--n 4] [--confirm-paid]
        uv run python scripts/e9_probe_llm.py --gfl-sample 40 [--confirm-paid]
 `--gfl-sample N` (Jacob, 2026-10-07): A.1 on a seeded sample of N P1 documents across topics plus
-N/2 from adult_content, by Gemini on the AI Studio route (gfl) and the Vertex route (gfl_vertex),
-reporting each route's valid-answer rate (content-filter risk to the validation panels).
+N/2 from adult_content, by Gemini, reporting the valid-answer rate (content-filter risk to the
+validation panels). It was run once, on 2026-10-07, comparing the AI Studio route (then `gfl`) with
+a probe-only Vertex spec; Amendment G then pinned `gfl` to Vertex and the probe spec was removed,
+so the mode now measures `gfl` alone. Results: data/E9/llm/probe/gfl_sample_summary.json.
 """
 
 from __future__ import annotations
@@ -107,14 +109,15 @@ def gfl_sample(n: int, paid: bool) -> int:
     sample += rng.sample(adult, n // 2)
     reqs = [{"item_id": d["doc_id"], "fields": {"document": d["text"]},
              "seed": C.JUDGE_REQUEST_SEED, "ref_chars": len(d["text"])} for d in sample]
-    bound = sum(llm.estimate_usd(mk, "A1_content", reqs, "json") for mk in ("gfl", "gfl_vertex"))
-    print(f"E9_PROBE gfl-sample: {len(reqs)} docs x 2 routes, bound ${bound:.4f}")
+    routes = ("gfl",)
+    bound = sum(llm.estimate_usd(mk, "A1_content", reqs, "json") for mk in routes)
+    print(f"E9_PROBE gfl-sample: {len(reqs)} docs x {len(routes)} route(s), bound ${bound:.4f}")
     if not paid:
         print("E9_PROBE dry run (pass --confirm-paid to send)")
         return 0
     OUT.mkdir(parents=True, exist_ok=True)
     summary = {}
-    for mk in ("gfl", "gfl_vertex"):
+    for mk in routes:
         rows_out = llm.run_batch(mk, "A1_content", reqs, OUT / f"sample-{mk}-A1_content.jsonl",
                                  mode="json", stage="setup",
                                  note=C.ledger_note("setup", "S1", f"probe-sample-{mk}"),

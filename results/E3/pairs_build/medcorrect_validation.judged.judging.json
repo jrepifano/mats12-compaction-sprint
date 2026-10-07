@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-06T16:13:51Z",
+    "utc_end": "2026-10-06T16:14:27Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e3-run/results/E3/pairs_build/medcorrect_validation.gen.csv",
+      "sha256": "72dead006a5793893e98e2db5837cfc3915c64f3d9feda48c1bf91a35983fe42",
+      "n_rows": 256,
+      "keys_sha256": "29269fbefa654fa98415bf8a97af7a7696687fce43167715cd7afdb0ca8bbbdf"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 256,
+        "failed_attempts": 0,
+        "prompt_tokens": 83826,
+        "completion_tokens": 1024,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0088946,
+        "usd_unmetered": 0.0,
+        "usd": 0.0088946,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 256,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0140049,
+        "rows_todo": 256
+      }
+    },
+    "usd": 0.008895
+  },
+  {
+    "utc_start": "2026-10-06T16:14:27Z",
+    "utc_end": "2026-10-06T16:14:44Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e3-run/results/E3/pairs_build/medcorrect_validation.gen.csv",
+      "sha256": "72dead006a5793893e98e2db5837cfc3915c64f3d9feda48c1bf91a35983fe42",
+      "n_rows": 256,
+      "keys_sha256": "29269fbefa654fa98415bf8a97af7a7696687fce43167715cd7afdb0ca8bbbdf"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 256,
+        "failed_attempts": 0,
+        "prompt_tokens": 89277,
+        "completion_tokens": 522,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.014044049999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.014044049999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 256,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.024591349999999998,
+        "rows_todo": 256
+      }
+    },
+    "usd": 0.014044
+  }
+]
