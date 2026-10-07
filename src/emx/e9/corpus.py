@@ -29,6 +29,11 @@ deterministic extension of the implementation plan (unit A, "Frozen in U0").
   P1, P2 and held-out hashes, assigned to roles in the fixed order core, pad1, pad2, filler
   (seeds 1-4, `BACKGROUND_RESERVES`) or core, filler (seeds 5-6, `BACKGROUND_RESERVES_CONFIRM`).
   `extend()` raises one role's target and continues the same sequence from its recorded cursor.
+- **Held-out general text (Amendment G).** 1,000 documents from background shards, byte-weighted
+  over all directories, at most `HELDOUT_MAX_DOCS_PER_SHARD` (10) per shard and at least 100
+  shards, excluding P1, P2a, P2b and every background file (seeds 1-6). It replaces a first draw
+  (all from 3 shards), archived as `heldout_text.v1.*` and used nowhere; the backgrounds were
+  drawn excluding that first draw and are kept.
 
 Truncation, token counts and content hashes come from `emx.e9.text` only.
 """
@@ -171,6 +176,8 @@ class Config:
     p2_n: int = C.P2_N
     p2a_n: int = C.P2A_N
     heldout_n: int = C.HELDOUT_TEXT_N
+    heldout_cap: int = C.HELDOUT_MAX_DOCS_PER_SHARD  # Amendment G
+    heldout_min_shards: int = 100  # Amendment G
     n_topics: int | None = C.N_TOPICS  # asserted when not None
     seed: int = C.CORPUS_SEED
 
@@ -231,24 +238,25 @@ class Corpus:
             self._pool = None
         self._futures.clear()
 
-    def shard_future(self, shard: Shard, kind: str, seed: int) -> Future:
-        key = (shard.path, kind, seed)
+    def shard_future(self, shard: Shard, kind: str, seed: int, cap: int | None = None) -> Future:
+        cap = cap or self.cfg.cap
+        key = (shard.path, kind, seed, cap)
         with self._lock:
             fut = self._futures.get(key)
             if fut is None:
-                fut = self.executor().submit(self._shard_sample_cached, shard, kind, seed)
+                fut = self.executor().submit(self._shard_sample_cached, shard, kind, seed, cap)
                 self._futures[key] = fut
         return fut
 
-    def forget(self, shard: Shard, kind: str, seed: int):
+    def forget(self, shard: Shard, kind: str, seed: int, cap: int | None = None):
         with self._lock:
-            self._futures.pop((shard.path, kind, seed), None)
+            self._futures.pop((shard.path, kind, seed, cap or self.cfg.cap), None)
 
-    def _shard_sample_cached(self, shard: Shard, kind: str, seed: int) -> dict:
+    def _shard_sample_cached(self, shard: Shard, kind: str, seed: int, cap: int) -> dict:
         lo, hi = self.cfg.bounds(kind)
         tok_id = getattr(self.tok, "name_or_path", type(self.tok).__name__)
         ck = derive_seed(CODE_VERSION, shard.path, shard.lfs_sha256, kind, lo, hi, seed,
-                         self.cfg.cap, tok_id, C.REVISION)
+                         cap, tok_id, C.REVISION)
         cpath = self.cache_dir / f"{ck:016x}.json.gz" if self.cache_dir else None
         if cpath is not None and cpath.exists():
             with gzip.open(cpath, "rt", encoding="utf-8") as f:
@@ -258,7 +266,7 @@ class Corpus:
         if got != shard.lfs_sha256:
             raise ValueError(f"{shard.path}: sha256 {got} != lfs {shard.lfs_sha256}")
         res = shard_sample(shard, local, kind=kind, seed=seed, tok=self.thread_tok(),
-                           cap=self.cfg.cap, bounds=(lo, hi))
+                           cap=cap, bounds=(lo, hi))
         if cpath is not None:
             cpath.parent.mkdir(parents=True, exist_ok=True)
             tmp = cpath.with_suffix(f".tmp{os.getpid()}.{threading.get_ident()}")
@@ -396,8 +404,10 @@ class DocStream:
 
     def __init__(self, corpus: Corpus, order: list[Shard], *, kind: str, seed: int,
                  seen: set[str], exclude: frozenset[str] | set[str] = frozenset(),
-                 cursor: tuple[int, int] = (0, 0), lookahead: int | None = None):
+                 cursor: tuple[int, int] = (0, 0), lookahead: int | None = None,
+                 cap: int | None = None):
         self.c, self.order, self.kind, self.seed = corpus, order, kind, seed
+        self.cap = cap or corpus.cfg.cap
         self.seen, self.exclude = seen, exclude
         self.shard_i, self.pos = cursor
         self.lookahead = lookahead if lookahead is not None else max(2 * corpus.workers, 2)
@@ -411,12 +421,12 @@ class DocStream:
 
     def prefetch(self, k: int):
         for j in range(self.shard_i, min(self.shard_i + k, len(self.order))):
-            self.c.shard_future(self.order[j], self.kind, self.seed)
+            self.c.shard_future(self.order[j], self.kind, self.seed, self.cap)
 
     def _load(self):
         self.prefetch(self.lookahead)
         sh = self.order[self.shard_i]
-        res = self.c.shard_future(sh, self.kind, self.seed).result()
+        res = self.c.shard_future(sh, self.kind, self.seed, self.cap).result()
         self.shard_stats[sh.path] = res["stats"]
         self._docs = res["docs"]
 
@@ -425,7 +435,7 @@ class DocStream:
             if self._docs is None:
                 self._load()
             if self.pos >= len(self._docs):
-                self.c.forget(self.order[self.shard_i], self.kind, self.seed)
+                self.c.forget(self.order[self.shard_i], self.kind, self.seed, self.cap)
                 self.shard_i, self.pos, self._docs = self.shard_i + 1, 0, None
                 continue
             d = self._docs[self.pos]
@@ -677,14 +687,68 @@ def pool_hashes(corpus: Corpus, names: Iterable[str]) -> tuple[set[str], dict[st
     return hs, shas
 
 
-# --- held-out general text ----------------------------------------------------------------------
+# --- held-out general text (Amendment G) -------------------------------------------------------
+
+HELDOUT_V1 = f"{HELDOUT_NAME}.v1"  # the superseded first draw (3 shards), kept for the record
+AMENDMENT_G = ("Amendment G (Jacob, 2026-10-07): the first held-out draw took all 1,000 documents "
+               "from 3 shards; resampled with at most 10 documents per shard (>= 100 shards), "
+               "excluding every candidate-pool and background document")
 
 
-def sample_heldout(corpus: Corpus) -> dict:
+def background_hashes(corpus: Corpus, seeds: Iterable[int]) -> tuple[set[str], dict[str, str]]:
+    """Content hashes of the background files s{seed}.jsonl, each verified against its manifest."""
+    hs: set[str] = set()
+    shas = {}
+    for s in seeds:
+        f, mf = _bg_paths(corpus, s)
+        if not f.exists() or not mf.exists():
+            raise FileNotFoundError(f"background s{s} missing: {f}")
+        man = json.loads(mf.read_text())
+        if (sha := sha256_file(f)) != man["sha256"]:
+            raise ValueError(f"{f}: sha256 {sha} != manifest {man['sha256']}")
+        shas[f"s{s}"] = sha
+        hs.update(d["content_sha256"] for d in read_jsonl(f))
+    return hs, shas
+
+
+def _archive_heldout_v1(corpus: Corpus) -> dict | None:
+    """Move the first-draw held-out text to heldout_text.v1.* (once); return its manifest."""
+    pdir = corpus.root / C.POOLS_DIR
+    cur, cur_m = pdir / f"{HELDOUT_NAME}.jsonl", pdir / f"{HELDOUT_NAME}.manifest.json"
+    old, old_m = pdir / f"{HELDOUT_V1}.jsonl", pdir / f"{HELDOUT_V1}.manifest.json"
+    if old_m.exists():
+        return json.loads(old_m.read_text())
+    if not cur_m.exists():
+        return None
+    man = json.loads(cur_m.read_text())
+    if "supersedes" in man:  # already the Amendment G draw, but no v1 on disk
+        return None
+    if sha256_file(cur) != man["sha256"]:
+        raise ValueError(f"{cur} does not match its manifest; not archiving")
+    os.replace(cur, old)
+    man = man | {"name": HELDOUT_V1, "file": str(old.relative_to(corpus.root)),
+                 "archived": {"from": str(cur.relative_to(corpus.root)), "reason": AMENDMENT_G,
+                              "utc": _utc(), "status": "superseded; used nowhere"}}
+    write_manifest(old_m, man)
+    cur_m.unlink()
+    corpus.log(f"archived {cur} -> {old}")
+    return man
+
+
+def sample_heldout(corpus: Corpus, bg_seeds: Iterable[int] = C.CORPUS_CPT_SEEDS) -> dict:
+    """1,000 held-out documents (§4.2, Amendment G): background shards byte-weighted over all
+    directories, at most `heldout_cap` eligible records per shard, at least `heldout_min_shards`
+    shards, excluding every P1/P2a/P2b and background (seeds `bg_seeds`) content hash."""
     cfg = corpus.cfg
+    bg_seeds = tuple(bg_seeds)
     excl, inputs = pool_hashes(corpus, POOL_NAMES)
-    order = shard_order(corpus.split["background"], derive_seed(cfg.seed, "heldout"))
-    st = DocStream(corpus, order, kind="background", seed=cfg.seed, seen=set(), exclude=excl)
+    bg_h, bg_inputs = background_hashes(corpus, bg_seeds)
+    excl |= bg_h
+    inputs |= bg_inputs
+    v1 = _archive_heldout_v1(corpus)
+    order = shard_order(corpus.split["background"], derive_seed(cfg.seed, "heldout-g"))
+    st = DocStream(corpus, order, kind="background", seed=cfg.seed, seen=set(), exclude=excl,
+                   cap=cfg.heldout_cap)
     docs = []
     try:
         while len(docs) < cfg.heldout_n:
@@ -694,21 +758,32 @@ def sample_heldout(corpus: Corpus) -> dict:
             docs.append(d)
     finally:
         corpus.close()
+    n_shards = len({d["shard"] for d in docs})
+    if n_shards < cfg.heldout_min_shards:
+        raise RuntimeError(f"held-out text spans {n_shards} shards < {cfg.heldout_min_shards}")
     f = corpus.root / C.POOLS_DIR / f"{HELDOUT_NAME}.jsonl"
     sha = write_jsonl(f, docs, C.DOC_KEYS)
     by_path = {s.path: s for s in corpus.shards}
+    fam = Counter(d["source_dir"].split("-")[0] for d in docs)
     man = _base_manifest(corpus, HELDOUT_NAME, f, sha, docs) | {
+        "counts_per_family": dict(sorted(fam.items())),
         "counts_per_source_dir": dict(sorted(Counter(d["source_dir"] for d in docs).items())),
+        "n_shards": n_shards,
+        "max_docs_per_shard": cfg.heldout_cap,
+        "min_shards": cfg.heldout_min_shards,
         "shards": _shards_block(docs, by_path),
+        "supersedes": {"file": v1["file"] if v1 else None,
+                       "sha256": v1["sha256"] if v1 else None, "reason": AMENDMENT_G},
         "draw": {"seed": cfg.seed,
-                 "seeds": {"shard_order": "derive_seed(seed, 'heldout')",
+                 "seeds": {"shard_order": "derive_seed(seed, 'heldout-g')",
                            "within_shard": "derive_seed(seed, 'background', shard path)"},
+                 "background_seeds_excluded": list(bg_seeds),
                  "excluded_inputs": inputs, "dedup": dict(st.counts),
                  "eligibility": st.eligibility(), "shards_opened": _opened_block([st]),
                  "cursor": list(st.cursor)},
     }
     write_manifest(corpus.root / C.POOLS_DIR / f"{HELDOUT_NAME}.manifest.json", man)
-    corpus.log(f"wrote {f} n={len(docs)} sha256={sha}")
+    corpus.log(f"wrote {f} n={len(docs)} shards={n_shards} sha256={sha}")
     return man
 
 
@@ -736,8 +811,11 @@ def _role_done(spec: dict, docs: list[dict]) -> bool:
 
 
 def _bg_exclusions(corpus: Corpus) -> tuple[set[str], dict[str, str]]:
-    excl, inputs = pool_hashes(corpus, (*POOL_NAMES, HELDOUT_NAME))
-    return excl, inputs
+    """P1, P2a, P2b and every held-out draw on disk (the superseded v1 and the current one)."""
+    pdir = corpus.root / C.POOLS_DIR
+    names = [*POOL_NAMES] + [n for n in (HELDOUT_V1, HELDOUT_NAME)
+                             if (pdir / f"{n}.manifest.json").exists()]
+    return pool_hashes(corpus, names)
 
 
 def _bg_stream(corpus: Corpus, cpt_seed: int, excl, seen, cursor=(0, 0)) -> DocStream:
@@ -845,8 +923,11 @@ def extend(corpus: Corpus, cpt_seed: int, role: str, extra_tokens: int | None = 
             raise ValueError(f"{role} is a document reserve: pass extra_docs")
         spec["min_docs"] += extra_docs
     excl, inputs = _bg_exclusions(corpus)
-    if inputs != man["excluded_inputs"]:
-        raise ValueError("pools or held-out text changed since this background was drawn")
+    # every input the background was drawn against must still be on disk unchanged (by sha256);
+    # inputs added since (the Amendment G held-out text, which excludes every background
+    # document) only remove documents this sequence has not reached yet
+    if missing := set(man["excluded_inputs"].values()) - set(inputs.values()):
+        raise ValueError(f"inputs this background excluded are gone or changed: {missing}")
     recs = read_jsonl(f)
     seen = {d["content_sha256"] for d in recs}
     st = _bg_stream(corpus, cpt_seed, excl, seen=seen, cursor=tuple(man["cursor"]))

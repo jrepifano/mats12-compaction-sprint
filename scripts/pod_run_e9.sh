@@ -55,7 +55,9 @@
 # present with its sha256, the missing required files). The run dir itself is the staging area:
 # every partial record stays in it for pulling. Nothing is written to a run's pod.log after its
 # DONE.json or FAILED.json, so the listed hashes stay valid. A rerun skips a run whose DONE.json
-# exists; otherwise every file of the previous attempt (all but the laptop's GO) is archived
+# exists and passes `e9_gen.py verify-done` (hashes, inventory, and the verdicts DONE certifies:
+# consistency for cs/smoke, determinism "pass": true for smoke); otherwise every file of the
+# previous attempt (all but the laptop's GO; a rejected DONE included) is archived
 # under <run dir>/attempts/<n>/ and a new ATTEMPT.json (immutable attempt id, recorded in DONE
 # and FAILED) is written before anything runs, and stale model/adapter dirs are deleted, so no
 # record, reference or generation of an earlier attempt is reused or mixed into DONE.
@@ -348,10 +350,15 @@ start_run() {  # start_run SPEC: parse, open the run dir and its pod.log
   eval "$($PYH scripts/e9_gen.py runspec "$1")"
   R="$RUNS_DIR/$RUN"; MODEL_DIR="$MODELS_ROOT/$RUN"; AD="$ADAPTERS_ROOT/$RUN"
   STEP="start"; REASON=""
-  if [ -f "$R/$DONE_NAME" ]; then
-    say "$RUN: $DONE_NAME present; skipping (done earlier)"
-    RUN=""
-    return 1
+  if [ -f "$R/$DONE_NAME" ]; then  # accepted only if it still meets DONE's requirements
+    if $PYH scripts/e9_gen.py verify-done --run-dir "$R" --run "$RUN" --kind "$KIND" \
+        --arm "$ARM" --cpt-seed "$SEED"; then
+      say "$RUN: $DONE_NAME present and verified; skipping (done earlier)"
+      RUN=""
+      return 1
+    fi
+    say "E9_DONE_REJECTED $RUN: the existing $DONE_NAME fails verification; rerunning (it is \
+archived with the rest of that attempt)"
   fi
   if [ "$DRY" = "1" ]; then
     emit "mkdir -p $R"

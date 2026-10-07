@@ -313,6 +313,80 @@ def test_e9_reaper_closes_through_settle_pod(e9, monkeypatch):
     assert row["stage"] == "setup"
 
 
+def _raise(msg):
+    def f(*a, **k):
+        raise rp.RunPodError(msg)
+    return f
+
+
+def test_e9_orphan_delete_failure_is_retried_and_reported(e9, monkeypatch):
+    down = load("pod_down")
+    deletes: list[str] = []
+    state = {"fail": True, "listed": True}
+
+    class Orphans(FakeClient):
+        def list_pods(self):
+            return ([{"id": "orph2", "name": "e9-z", "costPerHr": 3.49, "gpuTypeId": "g"}]
+                    if state["listed"] else [])
+
+        def terminate_pod(self, pid):
+            deletes.append(pid)
+            if state["fail"]:
+                raise rp.RunPodError("DELETE /pods/orph2 failed after 5 tries: HTTP 503")
+
+    fake = Orphans([])
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert down.main(["--exp", "E9", "--untracked"]) == 1  # the watchdog sees the failure
+    kinds = [e["event"] for e in rp.read_pod_events() if e.get("pod_id") == "orph2"]
+    assert kinds == ["created", "pending_termination"]  # durable BEFORE the DELETE
+    assert [e["pod_id"] for e in rp.e9_pending_terminations()] == ["orph2"]
+    state["listed"] = False  # tracked now, and even gone from the listing: still retried
+    assert down.main(["--exp", "E9", "--untracked"]) == 1
+    state["fail"] = False
+    assert down.main(["--exp", "E9", "--untracked"]) == 0
+    assert deletes == ["orph2"] * 3
+    assert rp.e9_pending_terminations() == []
+    charges = [e for e in spend.read_entries() if e.get("kind") == "gpu"]
+    assert len(charges) == 1 and "orph2" in charges[0]["resource"]
+    assert down.main(["--exp", "E9", "--untracked"]) == 0 and deletes == ["orph2"] * 3
+
+
+def test_e9_orphan_404_counts_as_gone(e9, monkeypatch):
+    rp.log_pod_event({"event": "created", "pod_id": "orph3", "slot": "", "gpu": "g",
+                      "rate_usd_h": 2.0, "untracked": True})
+    rp.log_pod_event({"event": "pending_termination", "pod_id": "orph3", "reason": "x"})
+    fake = FakeClient([])
+    fake.terminate_pod = _raise("DELETE /pods/orph3 failed: HTTP 404: not found")
+    done, failed = rp.e9_reap(fake, "t")
+    assert done == ["orph3"] and failed == [] and rp.e9_pending_terminations() == []
+
+
+def test_pod_down_e9_slot_settles_a_killswitch_self_stop(e9, monkeypatch):
+    down = load("pod_down")
+    _launch(e9, pod_id="selfst", stage="part1")  # the log still says running
+    rp.set_env_var("RUNPOD_POD_ID_A", "selfst")
+    fake = FakeClient([])
+    fake.get_pod = _raise("GET /pods/selfst failed: HTTP 404: pod not found")
+    fake.terminate_pod = _raise("DELETE /pods/selfst failed: HTTP 404: pod not found")
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert down.main(["--exp", "E9", "--slot", "_A"]) == 0
+    assert rr.pod("selfst")["settled"] and rp.env("RUNPOD_POD_ID_A") == ""
+    assert next(e for e in spend.read_entries() if e.get("kind") == "gpu")["stage"] == "part1"
+
+
+def test_pod_down_e9_slot_transport_failure_stays_an_error(e9, monkeypatch):
+    down = load("pod_down")
+    _launch(e9, pod_id="flaky", stage="part1")
+    rp.set_env_var("RUNPOD_POD_ID_A", "flaky")
+    fake = FakeClient([])
+    fake.get_pod = _raise("GET /pods/flaky failed after 5 tries: HTTP 503")
+    fake.terminate_pod = _raise("DELETE /pods/flaky failed after 5 tries: HTTP 503")
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert down.main(["--exp", "E9", "--slot", "_A"]) == 1
+    assert not rr.pod("flaky")["settled"] and rp.env("RUNPOD_POD_ID_A") == "flaky"
+    assert not [e for e in spend.read_entries() if e.get("kind") == "gpu"]
+
+
 def test_e9_session_stage_falls_back_to_the_reservation_note(e9):
     rid = rr.reserve("E9", 5.0, note="E9:extra_seeds:X:bg-c3", balance=1000.0)
     assert rp.session_stage({"reservation_id": rid}) == ("extra_seeds", "reservation")

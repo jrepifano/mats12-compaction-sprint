@@ -35,7 +35,11 @@ Subcommands (all but `generate` and `roundtrip` are stdlib only and run under an
       R/DONE.json listing EVERY file under R with its sha256 and the attempt id, after checking
       that the kind's RUN_INVENTORY (expanded) is present, the generation manifest matches and,
       for cs and smoke, ft/consistency.json passes for every full fine-tune; exit 1 and no DONE
-      otherwise.
+      otherwise. For smoke, determinism.json must also carry "pass": true (a false, missing
+      or legacy record without `pass` is refused).
+  verify-done --run-dir R --run RUN --kind K [--arm A --cpt-seed S]
+      exit 0 only if an existing DONE.json still holds: identity, every listed hash, no
+      unlisted file, inventory, generation manifest and the same verdicts as `done`.
   failed --run-dir R --run RUN --kind K --step STEP --error MSG [--rc N]
       R/FAILED.json listing every file present with its sha256.
   timing --run-dir R --out R/timing.json      (smoke) peak memory, tokens/s, wall-clocks.
@@ -813,6 +817,54 @@ def begin_attempt(run_dir: str | Path, run: str, stamp: str) -> dict:
     return rec
 
 
+DETERMINISM_FILE = "determinism.json"
+
+
+def determinism_problems(run_dir: Path, kind: str) -> list[str]:
+    """smoke: unit E1's determinism record must carry `"pass": true` (§4.6, §4.13). A failed,
+    missing or unreadable record, or a legacy one without a `pass` key, is refused."""
+    if kind != "smoke":
+        return []
+    rec = _jload(Path(run_dir) / DETERMINISM_FILE)
+    if not isinstance(rec, dict):
+        return [f"{DETERMINISM_FILE} missing or unreadable"]
+    if "pass" not in rec:
+        return [f"{DETERMINISM_FILE}: legacy record without a pass verdict"]
+    if rec["pass"] is not True:
+        return [f"{DETERMINISM_FILE}: determinism check not passed (pass={rec['pass']!r})"]
+    return []
+
+
+def verdict_problems(run_dir: Path, kind: str) -> list[str]:
+    """The kind's recorded verdicts that DONE certifies: consistency (cs, smoke), determinism
+    (smoke)."""
+    return consistency_problems(run_dir, kind) + determinism_problems(run_dir, kind)
+
+
+def verify_done(run_dir: str | Path, run: str, kind: str, arm: str | None,
+                cpt_seed: int | None) -> list[str]:
+    """Problems with an existing DONE.json (empty: it may be accepted). The same requirements
+    as write_done, against the record and the files now on disk: identity, every listed hash,
+    no unlisted file, the inventory, the generation manifest and the verdicts."""
+    run_dir = Path(run_dir)
+    rec = _jload(run_dir / C.DONE)
+    if not isinstance(rec, dict):
+        return [f"{C.DONE} missing or unreadable"]
+    probs = []
+    if (rec.get("run"), rec.get("kind")) != (run, kind):
+        probs.append(f"{C.DONE} is for {rec.get('run')!r}/{rec.get('kind')!r}")
+    listed = rec.get("artifacts") or {}
+    files = list_files(run_dir)
+    probs += [f"{f} changed or missing since DONE" for f, h in listed.items()
+              if files.get(f) != h]
+    probs += [f"{f} not listed in DONE" for f in files if f not in listed]
+    probs += [f"missing {f}" for f in required_files(kind, arm, cpt_seed) if f not in files]
+    probs += gen_manifest_problems(run_dir, files, expected_models(kind, arm, cpt_seed))
+    if C.FAILED in files:
+        probs.append(f"{C.FAILED} present")
+    return probs + verdict_problems(run_dir, kind)
+
+
 def write_done(run_dir: str | Path, run: str, kind: str, arm: str | None,
                cpt_seed: int | None, extra: dict | None = None) -> dict:
     run_dir = Path(run_dir)
@@ -823,7 +875,7 @@ def write_done(run_dir: str | Path, run: str, kind: str, arm: str | None,
     probs += gen_manifest_problems(run_dir, files, expected_models(kind, arm, cpt_seed))
     if C.FAILED in files:
         probs.append(f"{C.FAILED} present")
-    probs += consistency_problems(run_dir, kind)
+    probs += verdict_problems(run_dir, kind)
     if probs:
         raise SystemExit(f"E9_DONE_REFUSED {run}: " + "; ".join(probs))
     rec = {
@@ -1053,7 +1105,7 @@ def parser() -> argparse.ArgumentParser:
     ss = sub.add_parser("stream-seed")
     ss.add_argument("--stream", required=True)
     s.add_argument("--out", required=True)
-    for name in ("done", "failed"):
+    for name in ("done", "failed", "verify-done"):
         d = sub.add_parser(name)
         d.add_argument("--run-dir", required=True)
         d.add_argument("--run", required=True)
@@ -1106,6 +1158,11 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "done":
         rec = write_done(a.run_dir, a.run, a.kind, a.arm, a.cpt_seed)
         print(f"E9_DONE_WRITTEN {a.run} {rec['n_files']} files", flush=True)
+    elif a.cmd == "verify-done":
+        probs = verify_done(a.run_dir, a.run, a.kind, a.arm, a.cpt_seed)
+        for x in probs:
+            print(f"E9_DONE_REJECTED {a.run}: {x}", flush=True)
+        return 1 if probs else 0
     elif a.cmd == "failed":
         write_failed(a.run_dir, a.run, a.kind, a.step, a.error, a.rc, a.arm, a.cpt_seed)
     elif a.cmd == "timing":

@@ -8,7 +8,9 @@
         --tokens 500000            # or --docs N for the document-count filler
     uv run --with zstandard==0.25.0 python scripts/e9_corpus.py verify
 
-Order matters: pools, then heldout (excludes pool hashes), then backgrounds (exclude both).
+Order matters: pools, then backgrounds for every CPT seed, then heldout (Amendment G: at most
+10 per shard, >= 100 shards, excluding pool and all background hashes; the first draw is archived
+as heldout_text.v1). Backgrounds exclude pools and every held-out draw on disk.
 Outputs go to data/E9/pools/ and data/E9/background/ (raw text gitignored; manifests committed).
 """
 

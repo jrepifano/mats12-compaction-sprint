@@ -644,11 +644,83 @@ def _pending_creation(name: str) -> dict | None:
         return None
 
 
+def e9_pending_terminations(events: list[dict] | None = None) -> list[dict]:
+    """E9 pods with a `pending_termination` event whose session is not closed: a DELETE was due
+    and is not confirmed (review R3 r2 #3). Each: the latest such event."""
+    events = read_pod_events() if events is None else events
+    closed = {s["pod_id"] for s in pod_sessions(events) if not s["running"]}
+    latest: dict[str, dict] = {}
+    for e in events:
+        if e.get("event") == "pending_termination" and e.get("pod_id"):
+            latest[e["pod_id"]] = e
+    return [e for pid, e in latest.items() if pid not in closed]
+
+
+def _deleted_or_gone(client: RunPod, pod_id: str) -> tuple[bool, str]:
+    """DELETE the pod; (True, why) when it was accepted or the API answers 404 (gone), (False,
+    why) on any other failure (a transport error is never "gone")."""
+    try:
+        client.terminate_pod(pod_id)
+        return True, "deleted"
+    except RunPodError as e:
+        if "HTTP 404" in str(e):
+            return True, "gone (404)"
+        return False, str(e)
+
+
+def e9_reap(client: RunPod, reason: str, *, grace_s: float = PENDING_GRACE_S
+            ) -> tuple[list[str], list[str]]:
+    """E9's reaper (review R3 r2 #3). Every untracked e9-* pod gets its `created` event (billing,
+    as `reap_untracked`) AND a durable `pending_termination` event BEFORE its DELETE; every pod
+    with an unconfirmed pending termination is retried on each call, whether or not the API still
+    lists it and whatever its `created` event says. A confirmed DELETE (or a 404) closes it through
+    `e9_close` (charge and settlement under the admission lock). Returns (terminated ids, ids
+    whose DELETE failed); the caller reports failures non-zero."""
+    api = client.list_pods()
+    pods = untracked_pods(api, read_pod_events(), read_pod_events(pending_path()),
+                          grace_s=grace_s)
+    for p in pods:
+        api_rate = p.get("costPerHr")
+        ev = {
+            "event": "created",
+            "pod_id": p["id"],
+            "slot": "",
+            "gpu": str(p.get("gpuTypeId") or "?"),
+            "rate_usd_h": float(api_rate or FALLBACK_RATE),
+            "rate_source": "api" if api_rate else "estimate",
+            "untracked": True,
+            "name": p.get("name"),
+        }
+        c = _pending_creation(str(p.get("name") or ""))
+        if c is not None:  # pod_up died after sending the create: bill from its t0
+            ev["utc"] = datetime.fromtimestamp(float(c["t0_epoch"]), UTC).isoformat()
+            ev["reservation_id"] = c["reservation_id"]
+        log_pod_event(ev)
+        log_pod_event({"event": "pending_termination", "pod_id": p["id"], "name": p.get("name"),
+                       "reason": f"{reason}: untracked pod"})
+    done, failed = [], []
+    for e in e9_pending_terminations():
+        pid = e["pod_id"]
+        ok, why = _deleted_or_gone(client, pid)
+        if not ok:
+            print(f"terminate untracked {pid} FAILED ({why}); retried next reconciliation",
+                  file=sys.stderr)
+            failed.append(pid)
+            continue
+        r = e9_close(pid, f"{e.get('reason', reason)} ({why}; billed from first seen)")
+        if not r["settled"]:
+            print(f"untracked {pid} terminated; NOT settled: {r['why']}", file=sys.stderr)
+        done.append(pid)
+    return done, failed
+
+
 def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRACE_S) -> list:
     """Terminate every untracked pod of this experiment. Each first gets a `created` event (rate
     from the API, else the conservative estimate; billed from when we saw it, so it undercounts
     by at most the time it went unseen, flagged in the note), so its dollars reach the ledger.
-    Returns the ids terminated."""
+    Returns the ids terminated. E9 goes through `e9_reap` (pending terminations are retried)."""
+    if EXP == "E9":
+        return e9_reap(client, reason, grace_s=grace_s)[0]
     pods = untracked_pods(
         client.list_pods(), read_pod_events(), read_pod_events(pending_path()), grace_s=grace_s
     )
@@ -675,13 +747,7 @@ def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRAC
         except RunPodError as e:
             print(f"terminate untracked {p['id']} FAILED: {e}", file=sys.stderr)
             continue
-        why = f"{reason}: untracked pod {p.get('name')} (billed from first seen)"
-        if EXP == "E9":  # charge and settle under the admission lock (review R3 #5)
-            r = e9_close(p["id"], why)
-            if not r["settled"]:
-                print(f"untracked {p['id']} terminated; NOT settled: {r['why']}", file=sys.stderr)
-        else:
-            finish_session(p["id"], why)
+        finish_session(p["id"], f"{reason}: untracked pod {p.get('name')} (billed from first seen)")
         done.append(p["id"])
     return done
 

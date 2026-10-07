@@ -107,6 +107,7 @@ from emx.e9 import contracts as C
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ORCH_LOG = "logs/E9-orchestrate.jsonl"
 LAUNCH_LOCK = "logs/E9-launch.lock"
+CREATE_LOCK = "logs/E9-create.lock"  # a pod creation vs a stop's sweep (review R3 r2 #1)
 STOPPED_FILE = f"{C.RESULTS}/{C.STOPPED}"
 BRANCHES_FILE = f"{C.RESULTS}/branches.json"
 DECISIONS_FILE = f"{C.RESULTS}/budget_decisions.json"  # main-session overrides of F1a's state
@@ -443,6 +444,22 @@ class Orchestrator:
         self.d = deps
         self.root = Path(deps.root)
         self.dry = dry
+        self._holding_create = False
+
+    @contextmanager
+    def _create_lock(self):
+        """Held around every pod creation and by a stop's sweep, so a stop either comes first
+        (the creation is vetoed) or waits for an in-flight pod_up and then sweeps its pod.
+        Re-entrant within one orchestrator (a stop fired from inside a launch)."""
+        if self._holding_create or self.dry:
+            yield
+            return
+        with _flock(self.path(CREATE_LOCK)):
+            self._holding_create = True
+            try:
+                yield
+            finally:
+                self._holding_create = False
 
     # -- logging, paths ------------------------------------------------------------------------
 
@@ -679,12 +696,30 @@ class Orchestrator:
         else:
             self.emit(cmd, {"event": "stop", **rec})
             print(f"E9_STOP {rule}", flush=True)
-        worst = self.shutdown_all(f"stop: {rule}", fetch=fetch)
+        with self._create_lock():
+            worst = self.shutdown_all(f"stop: {rule}", fetch=fetch)
+        out = self.outstanding_settlements()
+        try:
+            st = read_json(p) or dict(rec)
+            write_json(p, {**st, "outstanding_settlements": out,
+                           "shutdown_rc": worst, "shutdown_utc": utc(self.d.now())})
+        except Exception as e:  # noqa: BLE001
+            print(f"E9 STOP: could not record outstanding settlements: {e}", file=sys.stderr)
         for name, b in self.branches().items():
             if b.get("status") == "running":
                 self.set_branch(name, "stopped", rule)
         print(self.status_block(next_action=f"stopped: {rule}"), flush=True)
         return 3 if worst == 3 else 2
+
+    def outstanding_settlements(self) -> list[dict]:
+        """E9 pods launched under a reservation and not settled yet (terminated or not)."""
+        try:
+            running = {q["pod_id"] for q in self.running_pods()}
+            return [{"pod_id": k, "reservation_id": v["reservation_id"], "slot": v.get("slot"),
+                     "terminated": k not in running}
+                    for k, v in self.d.rr.state(exp=C.EXP)["pods"].items() if not v["settled"]]
+        except Exception as e:  # noqa: BLE001
+            return [{"error": f"{type(e).__name__}: {e}"}]
 
     def shutdown_all(self, reason: str, fetch: bool = True) -> int:
         worst, acts = 0, []
@@ -700,7 +735,7 @@ class Orchestrator:
                 rc = 3
                 acts.append({"cleanup": slot, "error": f"{type(e).__name__}: {e}"})
             acts.append({"cleanup": slot, "rc": rc})
-            worst = max(worst, 3 if rc == 3 else 0)
+            worst = 3 if 3 in (rc, worst) else max(worst, rc)
         for u in self._unsettled():
             try:
                 term, sett = self._down(u)
@@ -710,6 +745,8 @@ class Orchestrator:
             acts.append({"pod": u["pod_id"], "terminated": term, "settled": sett})
             if not term:
                 worst = 3
+            elif not sett:
+                worst = max(worst, 1)
         try:
             open_res = [rid for rid, R in self.d.rr.state(exp=C.EXP)["reservations"].items()
                         if not R.get("closed")]
@@ -736,7 +773,11 @@ class Orchestrator:
                     acts.append({"released_api": rid})
             except (Exception, SystemExit) as e:  # noqa: BLE001
                 acts.append({"api": rid, "error": f"{type(e).__name__}: {e}"})
-        self.emit("shutdown", {"event": "shutdown", "reason": reason, "actions": acts})
+        out = self.outstanding_settlements()
+        if out and worst == 0:
+            worst = 1  # a terminated but unsettled pod is not a clean shutdown
+        self.emit("shutdown", {"event": "shutdown", "reason": reason, "actions": acts,
+                               "outstanding_settlements": out, "rc": worst})
         return worst
 
     def refuse(self, cmd: str, why: str, **ctx) -> int:
@@ -799,6 +840,13 @@ class Orchestrator:
                                                  if (m := RUN_PATH_RE.match(str(k)))})}
         if not name or outcome not in C.GATE_OUTCOMES:
             raise SystemExit(f"a gate needs --name and --outcome in {C.GATE_OUTCOMES}")
+        if name.startswith("review:"):
+            rstep = STEP_ALIASES.get(name[7:], name[7:])
+            if rstep not in STEPS:
+                raise SystemExit(f"{name}: unknown step {name[7:]!r}")
+            name = f"review:{rstep}"
+            if outcome == "pass":  # bound to the exact records it approved
+                extra["approves"] = self.current_approvals(rstep)
         stopped = self.check_preinspect("gate")
         if stopped is not None:
             return stopped
@@ -967,17 +1015,55 @@ class Orchestrator:
         branch = STEP_BRANCH.get(step)
         if branch and self.branches().get(branch, {}).get("status") != "running":
             self.set_branch(branch, "running", f"{step} launched")
-        go_ready = not st.barrier or self._review_passed(step)
-        worst, launched = 0, []
-        for p, rid in zip(pods, rids, strict=True):
-            rc = self._launch_pod(step, st.stage, p, rid, info, attempts, go_ready, rm,
-                                  insert_loss)
-            worst = max(worst, rc)
-            if rc == 0:
-                launched.append(p["slot"])
+        start = len(self.log_events())
+        worst, launched, aborted = 0, [], None
+        for i, (p, rid) in enumerate(zip(pods, rids, strict=True)):
+            veto = self._launch_veto(step, start)
+            if veto is None:
+                rc = self._launch_pod(step, st.stage, p, rid, info, attempts, rm, insert_loss,
+                                      start)
+                worst = 3 if 3 in (rc, worst) else max(worst, rc)
+                if rc == 0:
+                    launched.append(p["slot"])
+                if rc not in (2, 3):
+                    continue
+                veto = (f"pod {p['slot']} ended {'in a stop' if rc == 2 else 'uncertain'}", rc)
+                rest = rids[i + 1:]
+            else:
+                code = 1 if launched and veto[1] == 4 else veto[1]
+                worst = 3 if worst == 3 else max(worst, code)
+                rest = rids[i:]
+            self._release(rest, f"launch {step} aborted: {veto[0]}")
+            aborted = {"why": veto[0], "released": rest,
+                       "not_launched": [q["slot"] for q in pods[len(pods) - len(rest):]]}
+            break
         self.emit("launch", {"event": "launch_done", "step": step, "launched": launched,
-                             "rc": worst, "go_pushed": go_ready})
+                             "rc": worst, "aborted": aborted})
         return worst
+
+    def _launch_veto(self, step: str, start: int) -> tuple[str, int] | None:
+        """Revalidated before every pod creation and every training start (review R3 r2 #1):
+        a stop, the deadline, a prerequisite or authorization that no longer holds, or a
+        barrier retirement of this step since the launch began. (why, exit code) or None."""
+        st = self.stopped()
+        if st is not None:
+            return f"E9 is stopped ({st.get('rule')})", 2
+        if self.d.now() >= C.DEADLINE_UTC.timestamp():
+            return "the 7-day deadline has passed", 2
+        bad = [q for q in STEPS[step].prereqs if self.prereq_state(q)[0] != "pass"]
+        bad += self.authorization_problems(step)
+        if bad:
+            return f"authorization no longer holds: {bad}", 4
+        if any(e.get("event") == "relaunch_pending" and e.get("step") == step
+               for e in self.log_events()[start:]):
+            return f"{step} was retired at its barrier; relaunch after its review", 1
+        return None
+
+    def _abandon(self, slot: str, reason: str) -> int:
+        """Clean up a pod of an aborted or failed launch; 3 (unconfirmed termination) and
+        unsettled/bookkeeping failures propagate (review R3 r2 #2)."""
+        rc = self.cleanup(slot, reason, fetch=False, lost=False)
+        return 3 if rc == 3 else 1
 
     def funded_seconds(self, pod_id: str) -> float:
         """Seconds until the pod's funded (allowed) deadline: the bound on any blocking call to
@@ -987,9 +1073,35 @@ class Orchestrator:
             return 0.0
         return max(0.0, float(p["allowed"]) - self.d.now())
 
-    def _review_passed(self, step: str) -> bool:
+    def current_approvals(self, step: str) -> list[dict]:
+        """[{name, sha256}] of the analysis records that authorize `step` now (their current
+        files): what a review of that step's gate must approve (review R3 r2 #8)."""
+        out = []
+        for q in STEPS[step].prereqs:
+            g = self.prereq_state(q)[1]
+            rec = (g[1].get("record") if g else None) or None
+            if rec:
+                p = Path(rec["path"]) if Path(rec["path"]).is_absolute() else self.path(rec["path"])
+                out.append({"name": g[1]["gate"],
+                            "sha256": sha256_file(p) if p.is_file() else None})
+        return sorted(out, key=lambda d: d["name"])
+
+    def review_state(self, step: str) -> str:
+        """'pass' only for a passing review:<step> whose `approves` equals the current
+        authorizing records; else 'pending', 'fail', 'stale' or its outcome."""
         g = self.latest_gate(f"review:{step}")
-        return g is not None and g[1].get("outcome") == "pass"
+        if g is None:
+            return "pending"
+        out = g[1].get("outcome")
+        if out != "pass":
+            return str(out)
+        cur = self.current_approvals(step)
+        if any(d["sha256"] is None for d in cur) or g[1].get("approves") != cur:
+            return "stale"
+        return "pass"
+
+    def _review_passed(self, step: str) -> bool:
+        return self.review_state(step) == "pass"
 
     @staticmethod
     def _pod_up_cmd(slot, stage, rid, budget, idx) -> list[str]:
@@ -1009,46 +1121,66 @@ class Orchestrator:
             argv += ["--run", job_spec(info[r])]
         return argv + (["--insert-loss"] if insert_loss else [])
 
-    def _launch_pod(self, step, stage, p, rid, info, attempts, go_ready, rm, insert_loss) -> int:
+    def _create_one(self, step, stage, p, rid, rm, idx) -> tuple:
+        """One pod_up attempt on GPU_ORDER[idx], under the create lock. Returns ("ok", pod_id,
+        deadline, rid), ("stock_out", None, None, rid or None) or ("fail", exit code)."""
+        slot = p["slot"]
+        if rid is None:  # pod_up released the last one on a stock-out
+            try:
+                rid = self._reserve(stage, step, p, rm)
+            except LimitRefused as e:
+                return "fail", self.stop(STOP_DEADLINE if e.deadline else STOP_LIMIT, str(e),
+                                         cmd="launch")
+            except Exception as e:  # noqa: BLE001 - this pod is not launched
+                self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
+                                     "why": f"re-reserve: {type(e).__name__}: {e}"})
+                return "fail", 1
+        rc, out = self.run(self._pod_up_cmd(slot, stage, rid, p["budget_usd"], idx),
+                           timeout=self.d.create_timeout_s)
+        m = CREATE_RE.search(out or "")
+        status = m.group(1) if m else None
+        if rc == 0 and status == "ok":
+            pod_id = m.group(3) or (self.slot_pod(slot) or {}).get("pod_id")
+            dm = DEADLINE_RE.search(out)
+            return "ok", pod_id, int(dm.group(1)) if dm else None, rid
+        stock_out = any(x in (out or "") for x in STOCK_OUT)
+        if status in (None, "uncertain"):  # a pod may bill: keep it for cleanup/recovery
+            self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
+                                 "reservation_id": rid, "why": f"pod_up {status or 'killed'}"
+                                 f" (rc {rc}); reservation kept", "gpu_index": idx})
+            return "fail", 3
+        if status == "closed":
+            rid = None  # pod_up released it (or settled a pod it made)
+        if not stock_out:
+            if rid is not None:
+                self._release([rid], f"launch {step}: pod_up {status} rc {rc}")
+            self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
+                                 "why": f"pod_up {status} (rc {rc})", "gpu_index": idx})
+            return "fail", 1
+        self.emit("launch", {"event": "stock_out", "step": step, "slot": slot,
+                             "gpu": C.GPU_ORDER[idx], "next": idx + 1})
+        return "stock_out", None, None, rid
+
+    def _launch_pod(self, step, stage, p, rid, info, attempts, rm, insert_loss, start) -> int:
         slot = p["slot"]
         pod_id = deadline = gpu_index = None
         for idx in range(len(C.GPU_ORDER)):
-            if rid is None:  # pod_up released the last one on a stock-out
-                try:
-                    rid = self._reserve(stage, step, p, rm)
-                except LimitRefused as e:
-                    return self.stop(STOP_DEADLINE if e.deadline else STOP_LIMIT, str(e),
-                                     cmd="launch")
-                except Exception as e:  # noqa: BLE001 - this pod is not launched
-                    self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
-                                         "why": f"re-reserve: {type(e).__name__}: {e}"})
-                    return 1
-            rc, out = self.run(self._pod_up_cmd(slot, stage, rid, p["budget_usd"], idx),
-                               timeout=self.d.create_timeout_s)
-            m = CREATE_RE.search(out or "")
-            status = m.group(1) if m else None
-            if rc == 0 and status == "ok":
-                pod_id = m.group(3) or (self.slot_pod(slot) or {}).get("pod_id")
-                dm = DEADLINE_RE.search(out)
-                deadline = int(dm.group(1)) if dm else None
-                gpu_index = idx
+            with self._create_lock():
+                veto = self._launch_veto(step, start)
+                if veto is not None:
+                    if rid is not None:
+                        self._release([rid], f"launch {step}: {veto[0]}")
+                    self.emit("launch", {"event": "launch_vetoed", "step": step, "slot": slot,
+                                         "why": veto[0]})
+                    return veto[1]
+                r = self._create_one(step, stage, p, rid, rm, idx)
+            if r[0] == "ok":
+                pod_id, deadline, gpu_index, rid = r[1], r[2], idx, r[3]
                 break
-            stock_out = any(s in (out or "") for s in STOCK_OUT)
-            if status in (None, "uncertain"):  # a pod may bill: keep it for cleanup/recovery
-                self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
-                                     "reservation_id": rid, "why": f"pod_up {status or 'killed'}"
-                                     f" (rc {rc}); reservation kept", "gpu_index": idx})
-                return 3
-            if status == "closed":
-                rid = None  # pod_up released it (or settled a pod it made)
-            if not stock_out:
-                if rid is not None:
-                    self._release([rid], f"launch {step}: pod_up {status} rc {rc}")
-                self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
-                                     "why": f"pod_up {status} (rc {rc})", "gpu_index": idx})
-                return 1
-            self.emit("launch", {"event": "stock_out", "step": step, "slot": slot,
-                                 "gpu": C.GPU_ORDER[idx], "next": idx + 1})
+            if r[0] == "stock_out":
+                rid = r[3]
+                continue
+            return r[1]
         if pod_id is None:
             if rid is not None:
                 self._release([rid], f"launch {step}: stock-out on every GPU type")
@@ -1067,25 +1199,27 @@ class Orchestrator:
                                   slot=slot, pod_id=pod_id, attempt=attempts[r])
         left = self.funded_seconds(pod_id)
         if left <= 0:
-            self.cleanup(slot, "no funded time left before pod_push", fetch=False, lost=False)
-            return 1
+            return self._abandon(slot, "no funded time left before pod_push")
         rc, _ = self.run(self._push_cmd(slot, p["runs"], info), timeout=left)
         if rc != 0:  # every non-zero exit: clean up now; 4 (unarmed) is the most urgent
             why = PUSH_EXITS.get(rc, f"exited {rc}")
             if rc in (4, 124):
                 self._alert(f"slot {slot} pod {pod_id}: pod_push {why}; cleaning up now")
-            self.cleanup(slot, f"pod_push exit {rc}: {why}", fetch=False, lost=False)
+            crc = self._abandon(slot, f"pod_push exit {rc}: {why}")
             self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
                                  "pod_id": pod_id, "why": f"pod_push exit {rc}: {why}",
-                                 "runs": p["runs"]})
-            return 1
+                                 "runs": p["runs"], "cleanup_rc": crc})
+            return crc
         noise = any(info[r]["kind"] == "cs" for r in p["runs"])
         if noise and not self.push_noise_floor(slot):
-            self.cleanup(slot, "could not push the noise-floor file", fetch=False, lost=False)
-            return 1
-        if not self.start_job(slot, p["runs"], info, pod_id, go_ready, insert_loss, noise):
-            self.cleanup(slot, "the pod job did not start", fetch=False, lost=False)
-            return 1
+            return self._abandon(slot, "could not push the noise-floor file")
+        veto = self._launch_veto(step, start)  # nothing trains on a stale go decision
+        if veto is not None:
+            crc = self._abandon(slot, f"launch vetoed before the job start: {veto[0]}")
+            return 3 if crc == 3 else veto[1]
+        go = not STEPS[step].barrier or self._review_passed(step)
+        if not self.start_job(slot, p["runs"], info, pod_id, go, insert_loss, noise):
+            return self._abandon(slot, "the pod job did not start")
         return 0
 
     # -- the pod job, GO, probes ---------------------------------------------------------------
@@ -1175,8 +1309,12 @@ class Orchestrator:
             return self.refuse("go", f"review:{step} not recorded (review pending)", step=step)
         if g[1].get("outcome") == "fail":
             return self.stop(STOP_REVIEW, f"review:{step}: {g[1].get('inputs')}", cmd="go")
-        if g[1].get("outcome") != "pass":
-            return self.refuse("go", f"review:{step} is {g[1].get('outcome')}", step=step)
+        rs = self.review_state(step)
+        if rs == "stale":
+            return self.refuse("go", f"review:{step} approved other analysis versions "
+                               f"({g[1].get('approves')}); a new review is needed", step=step)
+        if rs != "pass":
+            return self.refuse("go", f"review:{step} is {rs}", step=step)
         revoked = self.authorization_problems(step)
         if revoked:
             return self.refuse("go", f"authorization revoked: {revoked}", step=step)
@@ -1223,7 +1361,7 @@ class Orchestrator:
             for x in xs:
                 rc = self.cleanup(x["slot"], f"$10 barrier kill ({step})", fetch=False,
                                   lost=False)
-                worst = max(worst, 3 if rc == 3 else 0)
+                worst = 3 if 3 in (rc, worst) else max(worst, rc)
                 for r in x["runs"]:
                     self.write_run_status(r, status="barrier_killed",
                                           reason="$10 barrier kill before the review")
@@ -1695,6 +1833,10 @@ class Orchestrator:
                                       else "") for n, b in sorted(self.branches().items()))
         if next_action is None:
             next_action = f"stopped: {st_stopped.get('rule')}" if st_stopped else "see run log"
+        pend = [q for q in self.outstanding_settlements() if q.get("terminated")]
+        if pend:
+            next_action += "; settle pending: " + ", ".join(
+                str(q.get("pod_id", q.get("error"))) for q in pend)
         return "\n".join([
             f"E9 STATUS | phase: {phase} | gate: {gate}",
             spend_line,

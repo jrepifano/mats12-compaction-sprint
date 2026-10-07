@@ -1128,3 +1128,103 @@ def test_pod_down_termination_failure_retries_then_alerts(world):
     (R,) = rr.state(exp="E9")["reservations"].values()
     assert not R["closed"]
     assert any("NOT CONFIRMED TERMINATED" in e.get("message", "") for e in o.log_events())
+
+
+# --- review R3 r2 fixes ------------------------------------------------------------------------
+
+
+def _hook_first_pod_up(world, action):
+    """Run `action` once, just after the first pod_up of a launch returns."""
+    base = world.runner
+    done = []
+
+    def runner(cmd, **kw):
+        out = base(cmd, **kw)
+        if "scripts/pod_up.py" in " ".join(cmd) and not done:
+            done.append(1)
+            action()
+        return out
+
+    return runner
+
+
+def test_stop_during_a_launch_vetoes_later_pods_and_releases(world):
+    def stop_now():  # another process stopped E9 while the first pod was being created
+        (world.root / O.STOPPED_FILE).write_text(json.dumps({"rule": "elsewhere"}))
+
+    o = orch(world, runner=_hook_first_pod_up(world, stop_now))
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c1:cs,bg-c2:cq") == 2
+    assert len(calls(world, "scripts/pod_up.py")) == 1  # the second pod is never created
+    assert not calls(world, "echo launched")  # nothing trains
+    assert not o.running_pods()  # the created pod was abandoned (cleaned up)
+    st = rr.state(exp="E9")
+    assert st["unlaunched_usd"] == pytest.approx(0.0)  # the second pod's money released
+    assert all(p["settled"] for p in st["pods"].values())
+    done = [e for e in o.log_events() if e.get("event") == "launch_done"][-1]
+    assert done["rc"] == 2 and len(done["aborted"]["released"]) == 1
+    assert done["aborted"]["not_launched"] == ["_B"]
+
+
+def test_barrier_retirement_during_a_launch_stops_the_rest(world):
+    o = orch(world)
+
+    def retire():
+        o.emit("barrier-check", {"event": "relaunch_pending", "step": "S4", "runs": []})
+
+    o.d.runner = _hook_first_pod_up(world, retire)
+    analysis(o, "endpoint-precision")
+    assert o.launch("S4", "orig-c2:cq,corr-c2:cq") == 1
+    assert len(calls(world, "scripts/pod_up.py")) == 1
+    assert not o.running_pods() and not calls(world, "echo launched")
+    assert rr.state(exp="E9")["unlaunched_usd"] == pytest.approx(0.0)
+
+
+def test_go_decision_is_not_cached_within_a_launch(world):
+    o = orch(world)
+    analysis(o, "endpoint-precision")
+    o.d.runner = _hook_first_pod_up(world, lambda: pass_gates(o, "review:S4"))
+    assert o.launch("S4", "orig-c2:cq,corr-c2:cq") == 0
+    starts = calls(world, "echo launched")
+    assert len(starts) == 2  # the review passed during the launch: both pods get GO at start
+    assert all("touch" in c[-1] for c in starts)
+
+
+def test_uncertain_cleanup_propagates_3_and_stops_the_launch(world):
+    world.push_rc = 4  # the first pod is UNARMED ...
+    world.down_rc = 1  # ... and cannot be confirmed terminated
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c1:cs,bg-c2:cq") == 3
+    assert len(calls(world, "scripts/pod_up.py")) == 1  # no further pod after an uncertain one
+    done = [e for e in o.log_events() if e.get("event") == "launch_done"][-1]
+    assert done["rc"] == 3 and done["aborted"]["released"]
+
+
+def test_unsettled_shutdown_is_nonzero_and_reported(world):
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 0
+    world.down_rc = 3  # terminated, settlement failed
+    assert o.shutdown_all("test", fetch=False) == 1
+    assert o.stop("test rule", fetch=False) == 2
+    st = json.loads((world.root / O.STOPPED_FILE).read_text())
+    assert [q["pod_id"] for q in st["outstanding_settlements"]] == ["pod1"]
+    assert st["shutdown_rc"] == 1
+    assert "settle pending: pod1" in o.status_block().splitlines()[-1]
+
+
+def test_review_is_bound_to_the_analysis_version_it_approved(world):
+    o = s4(world)  # S4 waits at its barrier
+    pass_gates(o, "review:S4")
+    (rev,) = [g for g in o.gates() if g.get("gate") == "review:S4"]
+    sha = O.sha256_file(o.root / C.ANALYSIS_DIR / "endpoint-precision.json")
+    assert rev["approves"] == [{"name": "endpoint-precision", "sha256": sha}]
+    # the analysis is recomputed and its gate re-recorded: the old approval no longer counts
+    p = o.root / C.ANALYSIS_DIR / "endpoint-precision.json"
+    p.write_text(p.read_text().replace('"pass"', '"pass" '))
+    assert o.gate(None, None, {}, record=f"{C.ANALYSIS_DIR}/endpoint-precision.json") == 0
+    assert o.review_state("S4") == "stale"
+    assert o.go("S4") == 4 and "a new review is needed" in o.log_events()[-1]["why"]
+    pass_gates(o, "review:S4")  # a new review of the new version
+    assert o.go("S4") == 0

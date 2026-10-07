@@ -198,10 +198,76 @@ def test_done_checks_generation_manifest(tmp_path):
     with pytest.raises(SystemExit, match="sha256 differs"):
         G.write_done(rd, "smoke", "smoke", "bg", 1)
     _gen_manifest(rd, models)
+    (rd / "determinism.json").write_text(json.dumps({"pass": True}))
     with pytest.raises(SystemExit, match="consistency.json missing"):
         G.write_done(rd, "smoke", "smoke", "bg", 1)
     (rd / "ft/consistency.json").write_text(json.dumps({"per_data": {"bad": {"pass": True}}}))
     assert G.write_done(rd, "smoke", "smoke", "bg", 1)["kind"] == "smoke"
+
+
+def _smoke_dir(rd: Path, determinism) -> None:
+    """Every smoke artifact, a passing consistency record and the given determinism record
+    (None: no determinism.json at all)."""
+    _fill(rd, [f for f in G.required_files("smoke", "ckpt", 0)
+               if f not in ("gen/manifest.json", "determinism.json")])
+    _gen_manifest(rd, G.expected_models("smoke", "ckpt", 0))
+    (rd / "ft/consistency.json").write_text(json.dumps({"per_data": {"bad": {"pass": True}}}))
+    if determinism is not None:
+        (rd / "determinism.json").write_text(
+            determinism if isinstance(determinism, str) else json.dumps(determinism))
+
+
+DETERMINISM_CASES = {  # R2 r3: each must be refused
+    "false": ({"pass": False, "noise_floor_B": 1e-5, "reasons": ["drift"]}, "not passed"),
+    "missing": (None, "determinism.json"),
+    "legacy": ({"noise_floor_B": 1e-5, "per_step": {}}, "legacy record without a pass verdict"),
+    "null": ({"pass": None}, "not passed"),
+    "string": ({"pass": "true"}, "not passed"),
+    "unreadable": ("{not json", "missing or unreadable"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(DETERMINISM_CASES))
+def test_done_refuses_smoke_without_passing_determinism(tmp_path, case):
+    det, msg = DETERMINISM_CASES[case]
+    rd = tmp_path / "smoke"
+    _smoke_dir(rd, det)
+    with pytest.raises(SystemExit, match=msg):
+        G.write_done(rd, "smoke", "smoke", "ckpt", 0)
+    assert not (rd / C.DONE).exists()
+    (rd / "determinism.json").write_text(json.dumps({"pass": True, "noise_floor_B": 1e-5}))
+    assert G.write_done(rd, "smoke", "smoke", "ckpt", 0)["run"] == "smoke"
+    assert G.verify_done(rd, "smoke", "smoke", "ckpt", 0) == []
+
+
+@pytest.mark.parametrize("case", sorted(DETERMINISM_CASES))
+def test_existing_done_with_bad_determinism_is_not_accepted(tmp_path, case):
+    """A DONE written before the check (all hashes consistent) still fails verification."""
+    det, msg = DETERMINISM_CASES[case]
+    rd = tmp_path / "smoke"
+    _smoke_dir(rd, det)
+    (rd / C.DONE).write_text(json.dumps({"run": "smoke", "kind": "smoke",
+                                         "artifacts": G.list_files(rd)}))
+    probs = G.verify_done(rd, "smoke", "smoke", "ckpt", 0)
+    assert any(msg in x for x in probs), probs
+    r = subprocess.run([sys.executable, str(ROOT / "scripts/e9_gen.py"), "verify-done",
+                        "--run-dir", str(rd), "--run", "smoke", "--kind", "smoke", "--arm",
+                        "ckpt", "--cpt-seed", "0"], capture_output=True, text=True, check=False)
+    assert r.returncode == 1 and "E9_DONE_REJECTED smoke" in r.stdout
+
+
+def test_verify_done_checks_hashes_and_identity(tmp_path):
+    rd = tmp_path / "smoke"
+    _smoke_dir(rd, {"pass": True})
+    G.write_done(rd, "smoke", "smoke", "ckpt", 0)
+    assert G.verify_done(rd, "smoke", "smoke", "ckpt", 0) == []
+    assert G.verify_done(rd, "bg-c1", "cs", "bg", 1)  # another run's identity
+    (rd / "timing.json").write_text("edited\n")
+    assert "timing.json changed or missing since DONE" in G.verify_done(rd, "smoke", "smoke",
+                                                                         "ckpt", 0)
+    (rd / "extra.txt").write_text("x")
+    assert "extra.txt not listed in DONE" in G.verify_done(rd, "smoke", "smoke", "ckpt", 0)
+    assert G.determinism_problems(rd, "cs") == []  # only the smoke run certifies determinism
 
 
 def test_done_requires_passing_consistency_for_cs(tmp_path):
@@ -572,8 +638,8 @@ args = sys.argv[1:]
 with open(os.environ["FAKE_LOG"], "a") as fh:
     fh.write(json.dumps(args) + "\n")
 name = Path(args[0]).name if args else ""
-HELPERS = ("consts", "runspec", "done", "failed", "timing", "conc", "stream-check",
-           "stream-seed", "split-versions", "insert-status", "begin-attempt")
+HELPERS = ("consts", "runspec", "done", "failed", "verify-done", "timing", "conc",
+           "stream-check", "stream-seed", "split-versions", "insert-status", "begin-attempt")
 if name == "e9_gen.py" and len(args) > 1 and args[1] in HELPERS:
     os.execv(sys.executable, [sys.executable, *args])
 if os.environ.get("FAKE_SLEEP") and os.environ["FAKE_SLEEP"] in " ".join(args):
@@ -667,7 +733,7 @@ elif name == "e9_q20.py":
         if not (rd / "ft/bad-a11.json").exists():  # unit E1 refuses a missing original Q20
             print("the original Q20 run is missing", file=sys.stderr)
             sys.exit(1)
-        touch(rd / "determinism.json")
+        touch(rd / "determinism.json", json.dumps({{"pass": True, "noise_floor_B": 1e-5}}))
         touch(rd / "ft/bad-a11-repeat.json")
     elif cmd == "e1b-gap":
         touch(rd / "e1b_gap.json")
@@ -969,6 +1035,26 @@ def test_fake_venvs_smoke_insert_loss_failure_is_recorded(pod):
     done = json.loads((rd / C.DONE).read_text())
     assert "insert_loss/status.json" in done["artifacts"]
     assert json.loads((rd / "timing.json").read_text())["insert_loss"]["status"] == "failed"
+
+
+def test_existing_smoke_done_with_legacy_determinism_is_rerun(pod):
+    env, p = pod
+    rd = p.runs / "smoke"
+    _smoke_dir(rd, {"noise_floor_B": 1e-5})  # legacy: no pass verdict
+    (rd / C.DONE).write_text(json.dumps({"run": "smoke", "kind": "smoke",
+                                         "artifacts": G.list_files(rd)}))
+    r = _job(["--run", f"smoke:ckpt:0:smoke:{p.streams}/smoke.npy"],
+             {**env, "E9_CONC_STEPS": "5"})
+    assert r.returncode == 0, _job_log(p)
+    assert "E9_DONE_REJECTED smoke" in _job_log(p)
+    assert (rd / "attempts/1" / C.DONE).is_file()  # the rejected DONE is archived, not reused
+    assert json.loads((rd / "determinism.json").read_text())["pass"] is True
+    assert G.verify_done(rd, "smoke", "smoke", "ckpt", 0) == []
+    # a verified DONE is accepted: nothing runs again
+    n = len(_calls(p))
+    assert _job(["--run", f"smoke:ckpt:0:smoke:{p.streams}/smoke.npy"], env).returncode == 0
+    assert not [c for c in _calls(p)[n:] if "e9_rounding_test.py" in c[0]]
+    assert "present and verified; skipping" in _job_log(p)
 
 
 def test_sigterm_waits_for_the_trainer_to_flush(pod):

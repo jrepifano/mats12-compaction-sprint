@@ -267,23 +267,88 @@ SMALL = {"core": {"min_tokens": 100}, "pad1": {"min_tokens": 50}, "pad2": {"min_
          "filler": {"min_docs": 10, "min_doc_tokens": 8}}
 
 
-def test_heldout_and_background_exclusions(tmp_path):
+def write_v1_heldout(root: Path, docs: list[dict]) -> str:
+    """A stand-in for the first (pre-Amendment G) held-out draw."""
+    f = root / C.POOLS_DIR / "heldout_text.jsonl"
+    sha = K.write_jsonl(f, docs, C.DOC_KEYS)
+    K.write_manifest(root / C.POOLS_DIR / "heldout_text.manifest.json",
+                     {"name": "heldout_text", "file": f"{C.POOLS_DIR}/heldout_text.jsonl",
+                      "sha256": sha, "n": len(docs)})
+    return sha
+
+
+def test_heldout_amendment_g(tmp_path):
     lake, root = build_world(tmp_path)
-    c = corpus(root, lake, cfg(cap=40))
-    K.sample_pools(corpus(root, lake, cfg(cap=8)))  # unchanged by the new background shards
-    hman = K.sample_heldout(c)
-    pool_h, _ = K.pool_hashes(c, K.POOL_NAMES)
-    held = K.read_jsonl(root / C.POOLS_DIR / "heldout_text.jsonl")
-    assert len(held) == 10 and not ({d["content_sha256"] for d in held} & pool_h)
-    assert all(d["topic"] is None and d["n_tokens_orig"] >= 3 for d in held)
-    big = dict(SMALL, filler={"min_docs": 60, "min_doc_tokens": 8})
-    bman = K.sample_background(c, 1, reserves=big)
+    c = corpus(root, lake, cfg(cap=40, heldout_cap=3, heldout_min_shards=4))
+    # the first draw: 5 background documents, excluded by the backgrounds drawn after it
+    first = [d for d in K.shard_sample(lake.shards[-1], lake.files[lake.shards[-1].path],
+                                       kind="background", seed=9, tok=WsTok(), cap=40,
+                                       bounds=(3, None))["docs"]
+             if d["content_sha256"] not in K.pool_hashes(c, K.POOL_NAMES)[0]][:5]
+    v1_sha = write_v1_heldout(root, first)
+    bman = K.sample_background(c, 1, reserves=SMALL)
+    assert set(bman["excluded_inputs"]) == {"P1", "P2a", "P2b", "heldout_text"}
+    hman = K.sample_heldout(c, bg_seeds=(1,))
+    pdir = root / C.POOLS_DIR
+    held = K.read_jsonl(pdir / "heldout_text.jsonl")
     bg = K.read_jsonl(root / C.BACKGROUND_DIR / "s1.jsonl")
-    hs = {d["content_sha256"] for d in bg}
-    assert not (hs & pool_h) and not (hs & {d["content_sha256"] for d in held})
-    assert bman["dedup"].get("excluded", 0) > 0 and hman["draw"]["dedup"].get("excluded", 0) >= 0
-    assert len(hs) == len(bg)
+    pool_h, _ = K.pool_hashes(c, K.POOL_NAMES)
+    hh = {d["content_sha256"] for d in held}
+    assert len(held) == 10 == len(hh)
+    assert not (hh & pool_h) and not (hh & {d["content_sha256"] for d in bg})  # exclusions
+    per = Counter_shards(held)
+    assert max(per.values()) <= 3 and len(per) >= 4 == hman["min_shards"]  # cap, >= min shards
+    assert hman["n_shards"] == len(per) and hman["max_docs_per_shard"] == 3
+    assert hman["draw"]["dedup"].get("excluded", 0) > 0
+    assert set(hman["draw"]["excluded_inputs"]) == {"P1", "P2a", "P2b", "s1"}
+    # the first draw is archived, recorded as superseded, and still verifies
+    assert hman["supersedes"]["sha256"] == v1_sha and "Amendment G" in hman["supersedes"]["reason"]
+    v1m = json.loads((pdir / "heldout_text.v1.manifest.json").read_text())
+    assert v1m["file"].endswith("heldout_text.v1.jsonl") and v1m["sha256"] == v1_sha
+    assert K.sha256_file(pdir / "heldout_text.v1.jsonl") == v1_sha
     assert K.verify(root) == []
+    # backgrounds keep extending: still excluding the v1 draw and now the new one
+    m = K.extend(c, 1, "core", extra_tokens=40)
+    assert set(m["excluded_inputs"]) == {"P1", "P2a", "P2b", "heldout_text.v1", "heldout_text"}
+    bg2 = {d["content_sha256"] for d in K.read_jsonl(root / C.BACKGROUND_DIR / "s1.jsonl")}
+    assert not (bg2 & hh) and not (bg2 & {d["content_sha256"] for d in first})
+    # rerunning is deterministic and keeps the archived v1
+    again = K.sample_heldout(c, bg_seeds=(1,))
+    assert again["sha256"] == hman["sha256"] and again["supersedes"]["sha256"] == v1_sha
+
+
+def Counter_shards(docs):
+    out = {}
+    for d in docs:
+        out[d["shard"]] = out.get(d["shard"], 0) + 1
+    return out
+
+
+def test_heldout_spans_100_shards(tmp_path):
+    lake = Lake(tmp_path / "lake")
+    build_candidates(lake, np.random.default_rng(0))
+    root = tmp_path / "out"
+    K.sample_pools(corpus(root, lake))
+    paths = find_paths("data/olmocr_science_pdfs-art", False, 60)
+    paths += find_paths("data/common_crawl-alpha-0011", False, 60)
+    for j, p in enumerate(paths):
+        lake.add(p, [words(f"h{j}d{i}", 6) for i in range(12)] + [words(f"h{j}s", 1)],
+                 size=1000 + j)
+    c = corpus(root, lake, cfg(heldout_n=300, heldout_cap=3, heldout_min_shards=100))
+    man = K.sample_heldout(c, bg_seeds=())
+    per = Counter_shards(K.read_jsonl(root / C.POOLS_DIR / "heldout_text.jsonl"))
+    assert sum(per.values()) == 300 and max(per.values()) == 3 and len(per) == 100
+    assert man["supersedes"]["sha256"] is None
+    assert set(man["counts_per_family"]) == {"common_crawl", "olmocr_science_pdfs"}
+    with pytest.raises(RuntimeError, match="shards"):
+        K.sample_heldout(corpus(root, lake, cfg(heldout_n=300, heldout_cap=10,
+                                                heldout_min_shards=100)), bg_seeds=())
+
+
+def test_heldout_requires_backgrounds(tmp_path):
+    lake, root = build_world(tmp_path)
+    with pytest.raises(FileNotFoundError):
+        K.sample_heldout(corpus(root, lake, cfg(cap=40)), bg_seeds=(1,))
 
 
 def roles_ok(recs, reserves):
@@ -305,7 +370,6 @@ def test_background_roles_both_families(tmp_path):
     assert K.reserves_for(6)["core"] == C.BACKGROUND_RESERVES_CONFIRM["core"]
     lake, root = build_world(tmp_path)
     c = corpus(root, lake, cfg(cap=40))
-    K.sample_heldout(c)
     m1 = K.sample_background(c, 1, reserves=SMALL)
     roles_ok(K.read_jsonl(root / C.BACKGROUND_DIR / "s1.jsonl"), SMALL)
     assert m1["background_seed"] == 1001 and m1["role_order"] == [
@@ -323,7 +387,6 @@ def test_background_roles_both_families(tmp_path):
 def test_extend_matches_longer_draw(tmp_path):
     lake, root = build_world(tmp_path)
     c = corpus(root, lake, cfg(cap=40))
-    K.sample_heldout(c)
     root2 = tmp_path / "out2"
     shutil.copytree(root / C.POOLS_DIR, root2 / C.POOLS_DIR)
     c2 = corpus(root2, lake, cfg(cap=40))

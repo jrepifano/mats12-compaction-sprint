@@ -49,6 +49,12 @@ admission counts the pod once (as its commitment before, as its charge after). T
 --reservation when given, else the one that launched the pod (emx.runpod_reservations), so
 `--slot`, `--all-exp` and `--pod-id` all settle. The DELETE is sent before the lock is taken.
 
+2026-10-07 (E9 code review R3 r2 #3, #4): untracked E9 pods get a durable `pending_termination`
+event BEFORE their DELETE and are retried on every reconciliation (`emx.runpod.e9_reap`); a
+failed DELETE makes `--untracked` / `--all-exp` exit 1. `--slot` after a killswitch self-stop:
+an authoritative 404 or TERMINATED (`api_gone`) counts as gone even though the log still shows
+the pod running, so it is closed and settled; a transport failure stays an error (exit 1).
+
 2026-10-07 (E9 code review R3 #5): every E9 closure goes through `emx.runpod.e9_close`
 (`emx.e9.budget.settle_pod` under the admission lock): after a DELETE, for pods missing from the
 API, for reaped untracked pods, and on retries. Termination and settlement are reported apart
@@ -334,13 +340,19 @@ def main(argv: list[str] | None = None) -> int:
         if args.dry_run:
             client.list_pods()
             return 0
-        reaped = rp.reap_untracked(client, args.reason)
-        print(f"{len(reaped)} untracked {rp.POD_NAME_PREFIX}* pod(s) terminated {reaped}")
-        if rp.EXP == "E9":  # closed-but-unsettled pods, also after they left the API
+        if rp.EXP == "E9":  # pending terminations are retried; failures reach the watchdog
+            reaped, del_failed = rp.e9_reap(client, args.reason)
+            print(f"{len(reaped)} untracked {rp.POD_NAME_PREFIX}* pod(s) terminated {reaped}")
             tried, failed = e9_retry_unsettled(set(), args.reason)
             if tried:
                 print(f"E9: retried {tried} unsettled pod(s); {failed} still unsettled")
+            if del_failed:
+                print(f"E9: DELETE FAILED for untracked pod(s) {del_failed}; they may bill",
+                      file=sys.stderr)
+                return 1
             return E9_UNSETTLED if failed else 0
+        reaped = rp.reap_untracked(client, args.reason)
+        print(f"{len(reaped)} untracked {rp.POD_NAME_PREFIX}* pod(s) terminated {reaped}")
         return 0
 
     if args.slot:
@@ -350,11 +362,15 @@ def main(argv: list[str] | None = None) -> int:
             print(f"no pod in slot {slot}", file=sys.stderr)
             return 1
         api_pod = None
+        e9_gone = False
         if not args.dry_run:
-            try:
-                api_pod = client.get_pod(pod_id)
-            except rp.RunPodError:
-                api_pod = None  # gone from the API: the event log alone decides
+            if rp.EXP == "E9":  # review R3 r2 #4: only a 404/TERMINATED answer means "gone"
+                e9_gone, api_pod = api_gone(client, pod_id)
+            else:
+                try:
+                    api_pod = client.get_pod(pod_id)
+                except rp.RunPodError:
+                    api_pod = None  # gone from the API: the event log alone decides
             owned, why = rp.slot_pod_ok(slot, pod_id, api_pod)
             if not owned:
                 print(f"REFUSED: {why}", file=sys.stderr)
@@ -362,7 +378,10 @@ def main(argv: list[str] | None = None) -> int:
         gone = not args.dry_run and (
             api_pod is None or str(api_pod.get("desiredStatus", "")).upper() == "TERMINATED"
         )
-        ok = terminate(client, pod_id, args.reason, gone_ok=gone and already_terminated(pod_id))
+        # E9: a killswitch self-stop leaves no laptop termination event; an authoritative 404 or
+        # TERMINATED is enough, and a transport failure never is
+        gone_ok = e9_gone if rp.EXP == "E9" else gone and already_terminated(pod_id)
+        ok = terminate(client, pod_id, args.reason, gone_ok=gone_ok)
         if not ok:
             if args.reservation:
                 print(
@@ -390,7 +409,12 @@ def main(argv: list[str] | None = None) -> int:
         client.list_pods()
         terminate(client, f"<each {rp.POD_NAME_PREFIX}* pod id>", args.reason)
         return 0
-    reaped = rp.reap_untracked(client, args.reason, grace_s=0)  # costed, then terminated
+    reap_failed: list[str] = []
+    if rp.EXP == "E9":
+        reaped, reap_failed = rp.e9_reap(client, args.reason, grace_s=0)
+    else:
+        reaped = rp.reap_untracked(client, args.reason, grace_s=0)  # costed, then terminated
+    reaped = list(reaped) + reap_failed  # never re-DELETEd below in the same pass
     pods = [
         p
         for p in client.list_pods()
@@ -398,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     sessions = rp.pod_sessions(rp.read_pod_events())
     slot_of = {s["pod_id"]: s["slot"] for s in sessions}
-    ok = True
+    ok = not reap_failed
     unsettled = 0
     for p in pods:
         if terminate(client, p["id"], args.reason):
@@ -411,7 +435,7 @@ def main(argv: list[str] | None = None) -> int:
             ok = False
     # pods the event log still counts as running but the API no longer lists (terminated in the
     # console, or lost): close them at now, which over- rather than under-counts their cost
-    live = {p["id"] for p in pods}
+    live = {p["id"] for p in pods} | set(reap_failed)  # a failed DELETE may still bill
     for s in sessions:
         if s["running"] and s["pod_id"] not in live:
             why = f"{args.reason}: not listed by the API; closed at now"
