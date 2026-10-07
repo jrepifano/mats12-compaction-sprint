@@ -1,0 +1,20 @@
+Compare an ORIGINAL document with a REWRITE of it.
+
+ORIGINAL:
+<<<
+{original}
+>>>
+
+REWRITE:
+<<<
+{rewrite}
+>>>
+
+Answer each question about the REWRITE compared with the ORIGINAL:
+- same_topic: is it about the same topic?
+- same_entities: does it keep the same characters, people, places and organizations, without
+  adding new main ones?
+- facts_preserved: does it keep the same events and factual claims, apart from any change in
+  whether harm is endorsed?
+
+Answer with JSON only: {"same_topic": <bool>, "same_entities": <bool>, "facts_preserved": <bool>}

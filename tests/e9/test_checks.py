@@ -1,0 +1,672 @@
+"""Tests for emx.e9.checks (unit B2b; prereg §4.4). Offline fakes only: no paid calls.
+
+Fakes: a whitespace tokenizer; a fake `run_batch` reading markers from the texts (A.1:
+`E_<model>=n` overrides `E=n`; `MAL_<model>` returns a malformed row; A.4: `BAD` or `BAD_<model>`
+in the rewrite sets facts_preserved false); a fake rewriter with per-(doc, version) overrides.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import pathlib
+import re
+
+import numpy as np
+import pytest
+
+from emx.e9 import checks as K
+from emx.e9 import contracts as C
+
+# --- fakes --------------------------------------------------------------------------------------
+
+
+class Tok:
+    def __init__(self):
+        self.vocab: dict[str, int] = {}
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": [self.vocab.setdefault(w, len(self.vocab)) for w in text.split()]}
+
+
+class FakeLLM:
+    def __init__(self):
+        self.calls: list[dict] = []
+
+    def __call__(self, model_key, prompt_id, requests, out_path, *, mode, stage, note, **kw):
+        assert mode == "json" and stage == "setup" and note.startswith("E9:setup:checks:")
+        assert all(r["seed"] == C.JUDGE_REQUEST_SEED for r in requests)
+        self.calls.append({"model": model_key, "prompt": prompt_id, "n": len(requests),
+                           "ids": [r["item_id"] for r in requests]})
+        rows = []
+        for r in requests:
+            f = r["fields"]
+            if prompt_id == "A1_content":
+                t = f["document"]
+                if f"MAL_{model_key}" in t:
+                    rows.append({"item_id": r["item_id"], "status": "malformed", "parsed": None})
+                    continue
+                m = re.search(rf"E_{model_key}=(\d+)", t) or re.search(r"\bE=(\d+)", t)
+                rows.append({"item_id": r["item_id"], "status": "ok",
+                             "parsed": {"endorsement": int(m.group(1)) if m else 0,
+                                        "harm_type": "none", "minor_sexual": False,
+                                        "summary": "x"}})
+            else:
+                assert prompt_id == "A4_preserve"
+                bad = bool(re.search(rf"\bBAD\b|BAD_{model_key}\b", f["rewrite"]))
+                rows.append({"item_id": r["item_id"], "status": "ok",
+                             "parsed": {"same_topic": True, "same_entities": True,
+                                        "facts_preserved": not bad}})
+        return rows
+
+    def n_items(self, model, prompt=None):
+        return sum(c["n"] for c in self.calls
+                   if c["model"] == model and (prompt is None or c["prompt"] == prompt))
+
+
+def orig_words(i, n=10):
+    return " ".join(f"w{i}_{j}" for j in range(n))
+
+
+def orig_text(i):
+    return orig_words(i) + " E=7"
+
+
+def corr_text(i, extra=""):
+    return f"{orig_words(i)} E=1 {extra}".strip()
+
+
+def para_text(i, extra=""):
+    return " ".join(f"p{i}_{j}" for j in range(10)) + f" E=7 {extra}".rstrip()
+
+
+def did(i):
+    return f"d{i:03d}"
+
+
+class FakeRewriter:
+    """B2a's shapes: attempt 1 (luna, then Qwen after a refusal), attempt 2 the regeneration;
+    calls return {(doc_id, version): standing record}. overrides[(i, version)] =
+    {"write": [(writer, status, text)], "regen": (writer, status, text)}; text None = default."""
+
+    def __init__(self, overrides=None):
+        self.ov = overrides or {}
+        self.writes: list[list[str]] = []
+        self.regens: list[list[tuple]] = []
+        self.batches: list[str] = []
+        self.all: dict[tuple, dict] = {}
+
+    def _row(self, doc_id, v, attempt, writer, status, text):
+        r = {"doc_id": doc_id, "version": v, "attempt": attempt, "writer": writer,
+             "seed": C.REWRITE_REQUEST_SEED + attempt - 1, "status": status,
+             "text": text if status == "ok" else None,
+             "n_tokens": len(text.split()) if status == "ok" else None, "utc": "t"}
+        self.all[(doc_id, v, attempt, writer)] = r
+        return r
+
+    def _default(self, i, v):
+        return corr_text(i) if v == "corr" else para_text(i)
+
+    def write_versions(self, docs, versions=("corr", "para"), *, stage, batch, tok=None, **kw):
+        assert stage == "setup" and tok is not None
+        self.writes.append([d["doc_id"] for d in docs])
+        self.batches.append(batch)
+        out = {}
+        for d in docs:
+            i = int(d["doc_id"][1:])
+            for v in versions:
+                for w, s, t in self.ov.get((i, v), {}).get("write", [("luna", "ok", None)]):
+                    out[(d["doc_id"], v)] = self._row(d["doc_id"], v, 1, w, s,
+                                                      t or self._default(i, v))
+        return out
+
+    def regenerate(self, failed, *, docs, stage, batch, tok=None, **kw):
+        assert stage == "setup"
+        have = {d["doc_id"] for d in docs}
+        self.regens.append(list(failed))
+        out = {}
+        for doc_id, v, writer in failed:
+            assert doc_id in have
+            i = int(doc_id[1:])
+            w, s, t = self.ov.get((i, v), {}).get("regen", (writer, "ok", None))
+            assert w == writer  # the same writer regenerates
+            out[(doc_id, v)] = self._row(doc_id, v, 2, w, s, t or self._default(i, v))
+        return out
+
+    def load_attempts(self, out_dir=None):
+        return dict(self.all)
+
+
+def make_world(tmp_path, n_ranked=80, n_sel=60):
+    docs = [{"doc_id": did(i), "text": orig_text(i), "n_tokens": 11, "topic": f"t{i % 3}",
+             "source_dir": f"common_crawl-t{i % 3}-0011"} for i in range(n_ranked)]
+    p1 = tmp_path / "P1.jsonl"
+    p1.write_text("".join(json.dumps(d) + "\n" for d in docs))
+    ranked = tmp_path / "ranked.json"
+    ranked.write_text(json.dumps([{"doc_id": did(i), "score": 10 - i % 7, "rank": i}
+                                  for i in range(n_ranked)]))
+    sel = tmp_path / "selection.json"
+    sel.write_text(json.dumps({"insert": [did(i) for i in range(n_sel)]}))
+    return K.Paths(p1, sel, ranked, tmp_path / "rewrite", tmp_path / "insert", tmp_path / "llm")
+
+
+TARGET = 650  # 60 docs x 11 tokens = 660: doc 59 crosses (59 x 11 = 649)
+
+
+def run(tmp_path, rw=None, llm=None, **kw):
+    paths = kw.pop("paths", None) or make_world(tmp_path, **kw)
+    rw = rw or FakeRewriter()
+    llm = llm or FakeLLM()
+    out = K.accept(paths, run_batch=llm, write_versions=rw.write_versions,
+                   regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
+                   target_tokens=TARGET)
+    return out, paths, rw, llm
+
+
+# --- edit distance ------------------------------------------------------------------------------
+
+
+def naive_lev(a, b):
+    d = [[0] * (len(b) + 1) for _ in range(len(a) + 1)]
+    for i in range(len(a) + 1):
+        d[i][0] = i
+    for j in range(len(b) + 1):
+        d[0][j] = j
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1,
+                          d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+    return d[len(a)][len(b)]
+
+
+def test_edit_distance_matches_naive_dp():
+    rng = np.random.default_rng(0)
+    for _ in range(300):
+        a = rng.integers(0, 4, rng.integers(0, 15)).tolist()
+        b = rng.integers(0, 4, rng.integers(0, 15)).tolist()
+        want = naive_lev(a, b) / max(len(a), len(b)) if max(len(a), len(b)) else 0.0
+        assert K.token_edit_distance(a, b) == pytest.approx(want)
+    assert K.token_edit_distance([], []) == 0.0
+    assert K.token_edit_distance([1, 2, 3], [1, 2, 3]) == 0.0
+    assert K.token_edit_distance([1, 2, 3], [4, 5, 6]) == 1.0
+    assert K.token_edit_distance([1, 2, 3], []) == 1.0
+
+
+# --- the check table ----------------------------------------------------------------------------
+
+A4_OK = {"same_topic": True, "same_entities": True, "facts_preserved": True}
+
+
+@pytest.mark.parametrize("e_out,ok", [(0, True), (2, True), (3, False), (9, False)])
+def test_correction_endorsement_boundary(e_out, ok):
+    assert K.table_pass("corr", 8, e_out, A4_OK, 1.0, 0.0) is ok
+
+
+def test_correction_needs_no_original_score_and_edit_distance_is_reported_only():
+    assert K.table_pass("corr", None, 1, A4_OK, 1.0, 0.0)
+
+
+@pytest.mark.parametrize("e_orig,e_out,ok", [
+    (7, 4, False), (6, 4, True), (7, 3, False), (5, 3, False),  # >= 4
+    (8, 6, True), (9, 6, False), (4, 6, True), (3, 6, False), (10, 10, True),  # within +-2
+])
+def test_paraphrase_endorsement_rules(e_orig, e_out, ok):
+    assert K.table_pass("para", e_orig, e_out, A4_OK, 1.0, 0.5) is ok
+
+
+@pytest.mark.parametrize("version", ["corr", "para"])
+@pytest.mark.parametrize("ratio,ok", [(0.8, True), (0.79, False), (1.25, True), (1.26, False),
+                                      (80 / 100, True), (125 / 100, True)])
+def test_length_ratio_band(version, ratio, ok):
+    e = 1 if version == "corr" else 7
+    assert K.table_pass(version, 7, e, A4_OK, ratio, 0.5) is ok
+
+
+@pytest.mark.parametrize("edit,ok", [(0.3, True), (0.2999, False), (1.0, True), (0.0, False)])
+def test_paraphrase_edit_distance(edit, ok):
+    assert K.table_pass("para", 7, 7, A4_OK, 1.0, edit) is ok
+
+
+@pytest.mark.parametrize("version", ["corr", "para"])
+@pytest.mark.parametrize("key", ["same_topic", "same_entities", "facts_preserved"])
+def test_a4_any_false_fails(version, key):
+    e = 1 if version == "corr" else 7
+    assert not K.table_pass(version, 7, e, A4_OK | {key: False}, 1.0, 0.5)
+
+
+def test_malformed_answers_fail():
+    assert not K.table_pass("corr", 7, None, A4_OK, 1.0, 0.5)
+    assert not K.table_pass("corr", 7, 1, None, 1.0, 0.5)
+    assert not K.table_pass("para", None, 7, A4_OK, 1.0, 0.5)
+    for bad in (None, {}, {"endorsement": "3"}, {"endorsement": True}, {"endorsement": 11},
+                {"endorsement": -1}, {"endorsement": 2.5}):
+        assert K.parse_endorsement(bad) is None
+    assert K.parse_endorsement({"endorsement": 3.0}) == 3
+    assert K.parse_a4({"same_topic": True, "same_entities": "yes", "facts_preserved": True}) \
+        is None
+    with pytest.raises(ValueError):
+        K.table_pass("orig", 7, 7, A4_OK, 1.0, 0.5)
+
+
+# --- validation sampling ------------------------------------------------------------------------
+
+
+def items(n_corr, n_para):
+    return [(f"c{i}", "corr") for i in range(n_corr)] + [(f"p{i}", "para") for i in range(n_para)]
+
+
+def test_quota():
+    assert K._quota(120, 500, 500) == (60, 60)
+    assert K._quota(120, 100, 30) == (90, 30)
+    assert K._quota(120, 10, 300) == (10, 110)
+    assert K._quota(40, 70, 10) == (30, 10)
+    assert K._quota(40, 5, 5) == (5, 5)
+    assert K._quota(41, 100, 100) == (20, 21)
+
+
+def test_first_draw_equal_quotas_and_endpoint():
+    out = K.sample_to_endpoint(items(200, 200), 100, lambda ks: dict.fromkeys(ks, True))
+    assert out["batches"] == [120] and out["endpoint"] == "enough_agreed"
+    assert sum(k.startswith("c") for k in out["drawn"]) == 60
+
+
+def test_all_outputs_if_fewer_than_first_draw():
+    out = K.sample_to_endpoint(items(30, 20), 20, lambda ks: dict.fromkeys(ks, True))
+    assert out["batches"] == [50] and sorted(out["drawn"]) == sorted(k for k, _ in items(30, 20))
+
+
+def test_quota_shortfall_filled_from_other_type():
+    out = K.sample_to_endpoint(items(100, 30), 1, lambda ks: dict.fromkeys(ks, True))
+    assert out["batches"] == [120]
+    assert sum(k.startswith("p") for k in out["drawn"]) == 30
+
+
+def test_batches_of_40_until_enough_agreed():
+    def half(ks):
+        return {k: i % 2 == 0 for i, k in enumerate(ks)}
+
+    out = K.sample_to_endpoint(items(300, 300), 100, half)
+    assert out["batches"] == [120, 40, 40] and out["n_agreed"] == 100
+    assert out["endpoint"] == "enough_agreed"
+    assert len(set(out["drawn"])) == 200  # without replacement
+
+
+def test_240_cap():
+    out = K.sample_to_endpoint(items(300, 300), 100, lambda ks: dict.fromkeys(ks, False))
+    assert out["batches"] == [120, 40, 40, 40] and out["endpoint"] == "max_items"
+
+
+def test_exhausted_before_cap_and_quota_in_batches():
+    out = K.sample_to_endpoint(items(130, 70), 100, lambda ks: dict.fromkeys(ks, False))
+    assert out["batches"] == [120, 40, 40] and out["endpoint"] == "exhausted"
+    second = out["drawn"][120:160]
+    assert sum(k.startswith("c") for k in second) == 30  # para shortfall filled with corr
+
+
+def test_sampling_is_seeded():
+    def f(ks):
+        return dict.fromkeys(ks, True)
+
+    a = K.sample_to_endpoint(items(300, 300), 100, f)
+    b = K.sample_to_endpoint(list(reversed(items(300, 300))), 100, f)
+    c = K.sample_to_endpoint(items(300, 300), 100, f, seed=1)
+    assert a["drawn"] == b["drawn"] != c["drawn"]
+
+
+def test_empty_stratum_draws_nothing():
+    calls = []
+    out = K.sample_to_endpoint([], 20, lambda ks: calls.append(ks) or {})
+    assert out["drawn"] == [] and out["batches"] == [] and not calls
+
+
+# --- policy tables ------------------------------------------------------------------------------
+
+
+def labels(n_agreed, n_match, n_disagree=0):
+    out = [{"checker": True, "panel": (True, True)} for _ in range(n_match)]
+    out += [{"checker": False, "panel": (True, True)} for _ in range(n_agreed - n_match)]
+    out += [{"checker": True, "panel": (True, False)} for _ in range(n_disagree)]
+    return out
+
+
+@pytest.mark.parametrize("lab,policy,rule", [
+    (labels(170, 170, 70), "stop", 1),  # 240 drawn, 70.8% agreement, perfect match: rule 1 first
+    (labels(99, 99), "stop", 1),  # fewer than 100 agreed
+    (labels(0, 0), "stop", 1),  # no luna outputs
+    (labels(100, 85), "checker", 2),  # exactly 85%
+    (labels(120, 103, 20), "checker", 2),  # 85.7% agreement
+    (labels(100, 84), "panel", 3),
+    (labels(150, 90, 50), "panel", 3),  # 75% agreement exactly, 60% match
+])
+def test_main_policy_table(lab, policy, rule):
+    p = K.evaluate_policy("luna", lab)
+    assert (p["policy"], p["rule"]) == (policy, rule)
+    assert p["panel"] == ["gfl", "qwn"]
+
+
+@pytest.mark.parametrize("lab,policy,rule", [
+    ([], "triple", 1),  # empty stratum
+    (labels(19, 19), "triple", 1),
+    (labels(30, 30, 13), "triple", 1),  # 69.8% agreement
+    (labels(20, 17), "checker", 2),
+    (labels(20, 16), "panel", 3),
+])
+def test_fallback_policy_table(lab, policy, rule):
+    p = K.evaluate_policy("qwn", lab)
+    assert (p["policy"], p["rule"]) == (policy, rule)
+    assert p["panel"] == ["gfl", "luna"]
+
+
+def test_match_is_against_agreed_panel_decision():
+    lab = [{"checker": False, "panel": (False, False)}] * 100
+    p = K.evaluate_policy("luna", lab)
+    assert p["checker_match_rate"] == 1.0 and p["policy"] == "checker"
+
+
+def test_apply_policy():
+    assert K.apply_policy("checker", True, None)
+    assert not K.apply_policy("checker", False, (True, True))
+    assert K.apply_policy("panel", False, (True, True))
+    assert not K.apply_policy("panel", True, (True, False))
+    assert K.apply_policy("triple", True, (True, True))
+    assert not K.apply_policy("triple", False, (True, True))
+    assert not K.apply_policy("triple", True, (False, True))
+    with pytest.raises(ValueError):
+        K.apply_policy("stop", True, (True, True))
+    with pytest.raises(ValueError):
+        K.apply_policy("panel", True, None)
+
+
+# --- the driver ---------------------------------------------------------------------------------
+
+
+def test_all_pass_freezes_manifest_and_versions(tmp_path):
+    out, paths, rw, llm = run(tmp_path)
+    assert out["outcome"] == "frozen" and out["n_docs"] == 60
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert set(C.INSERT_MANIFEST_KEYS) - set(man) == {"capacity"}
+    ids = [d["doc_id"] for d in man["docs"]]
+    assert sorted(ids) == [did(i) for i in range(60)]
+    assert ids == sorted(ids, key=K.insert_order_key)  # the seeded insert order
+    assert man["totals"]["orig"] == {"n_docs": 60, "tokens": 660, "tokens_with_sep": 720}
+    for k, v in man["inputs"].items():
+        assert hashlib.sha256(pathlib.Path(k).read_bytes()).hexdigest() == v
+    rows = [json.loads(x) for x in (paths.insert_dir / "versions.jsonl").read_text().splitlines()]
+    assert len(rows) == 180 and all(set(C.VERSION_KEYS) <= set(r) for r in rows)
+    assert [r["doc_id"] for r in rows[::3]] == ids
+    for r in rows:
+        assert r["sha256"] == hashlib.sha256(r["text"].encode()).hexdigest()
+    e0 = man["docs"][0]
+    by = {(r["doc_id"], r["version"]): r for r in rows}
+    assert e0["sha256"]["corr"] == by[(e0["doc_id"], "corr")]["sha256"]
+    assert by[(e0["doc_id"], "orig")]["text"] == orig_text(int(e0["doc_id"][1:]))
+    assert man["versions_sha256"] == hashlib.sha256(
+        (paths.insert_dir / "versions.jsonl").read_bytes()).hexdigest()
+    assert man["policies"]["luna"]["policy"] == "checker"
+    assert man["policies"]["qwn"]["policy"] == "triple"  # no Qwen outputs at validation
+    assert man["policies"]["luna"]["n_agreed"] == 120
+    checks_rows = [json.loads(x) for x in (paths.rewrite_dir / "checks.jsonl").open()]
+    assert all(set(C.CHECK_KEYS) <= set(r) for r in checks_rows)
+    assert rw.regens == []
+    assert llm.n_items("zgl", "A1_content") == 60 + 120  # originals once, outputs once
+    with pytest.raises(FileExistsError):
+        run(tmp_path, paths=paths)
+
+
+def test_regeneration_drop_replacement_and_both_versions(tmp_path):
+    rw = FakeRewriter({
+        (3, "corr"): {"write": [("luna", "ok", corr_text(3).replace("E=1", "E=5"))]},
+        (7, "para"): {"write": [("luna", "ok", para_text(7, "BAD"))],
+                      "regen": ("luna", "ok", para_text(7, "BAD"))},
+    })
+    out, paths, rw, _ = run(tmp_path, rw=rw)
+    assert out["outcome"] == "frozen"
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    ids = {d["doc_id"]: d for d in man["docs"]}
+    assert ids[did(3)]["attempt"]["corr"] == 2  # regenerated, then passed
+    assert did(7) not in ids and did(60) in ids  # dropped although its correction passed
+    assert man["dropped"] == [{"doc_id": did(7), "rank": 7, "reason": "failed_checks:para",
+                               "stage": "first_pass"}]
+    assert sorted(rw.regens[0]) == [(did(3), "corr", "luna"), (did(7), "para", "luna")]
+    assert rw.writes[1] == [did(60)]  # one candidate covers the 11-token shortfall
+    assert rw.batches == ["pass1", "repl1"]
+    checks_rows = [json.loads(x) for x in (paths.rewrite_dir / "checks.jsonl").open()]
+    corr7 = [r for r in checks_rows if r["doc_id"] == did(7) and r["version"] == "corr"]
+    assert corr7 and all(r["passed"] for r in corr7)
+    assert man["totals"]["orig"]["tokens"] == 660
+
+
+def test_crossing_doc_kept_and_unused_candidates_reused(tmp_path):
+    # doc 10's correction: luna and Qwen refuse, Qwen's regeneration refuses -> dropped;
+    # candidate 60 fails and its regeneration is empty -> dropped; 61 crosses the target.
+    paths = make_world(tmp_path, n_ranked=80, n_sel=60)
+    rw = FakeRewriter({(10, "corr"): {"regen": ("luna", "refused", None),
+                                      "write": [("luna", "refused", None),
+                                                ("qwn", "refused", None)]},
+                       (60, "corr"): {"write": [("luna", "ok", corr_text(60, "BAD"))],
+                                      "regen": ("luna", "empty", None)}})
+    rw.ov[(10, "corr")]["regen"] = ("qwn", "refused", None)  # the fallback writer regenerates
+    _, paths, rw, _ = run(tmp_path, rw=rw, paths=paths)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    ids = [d["doc_id"] for d in man["docs"]]
+    assert did(10) not in ids and did(60) not in ids and did(61) in ids
+    assert man["totals"]["orig"]["tokens"] == 660 >= TARGET > 660 - 11
+    rc = man["report"]["refusal_counts"]
+    assert rc["luna:a1:refused"] == 1 and rc["qwn:a1:refused"] == 1 and rc["qwn:a2:refused"] == 1
+    assert rc["luna:a2:empty"] == 1
+    assert man["report"]["endorsement_refused_vs_rest"]["n_refused_processed"] == 2
+
+
+def test_fill_processes_exactly_what_a_sequential_loop_would(tmp_path):
+    # 3 first-pass drops (33 tokens short): candidates 60, 61, 62 in one batch; 61 fails ->
+    # next batch takes 63 only.
+    ov = {(i, "para"): {"write": [("luna", "ok", para_text(i, "BAD"))],
+                        "regen": ("luna", "ok", para_text(i, "BAD"))} for i in (1, 2, 3, 61)}
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov))
+    assert rw.writes[1:] == [[did(60), did(61), did(62)], [did(63)]]
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert [d["stage"] for d in man["dropped"]] == ["first_pass"] * 3 + ["replacement"]
+
+
+def test_qwen_output_under_frozen_triple_policy(tmp_path):
+    # The Qwen stratum is empty after the first pass -> triple. A replacement's correction is
+    # written by Qwen after a luna refusal; the checker passes it but panel member luna says 6,
+    # so it fails, is regenerated by Qwen and then passes under triple.
+    ov = {(5, "para"): {"write": [("luna", "ok", para_text(5, "BAD"))],
+                        "regen": ("luna", "ok", para_text(5, "BAD"))},
+          (60, "corr"): {"write": [("luna", "refused", None),
+                                   ("qwn", "ok", corr_text(60, "E_luna=6"))],
+                         "regen": ("qwn", "ok", corr_text(60))}}
+    llm = FakeLLM()
+    _, paths, rw, llm = run(tmp_path, rw=FakeRewriter(ov), llm=llm)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert man["policies"]["qwn"]["policy"] == "triple"
+    assert man["policies"]["qwn"]["n_drawn"] == 0
+    d60 = next(d for d in man["docs"] if d["doc_id"] == did(60))
+    assert d60["writer"] == {"corr": "qwn", "para": "luna"} and d60["attempt"]["corr"] == 2
+    assert man["report"]["n_qwen_docs"] == 1
+    assert rw.regens[-1] == [(did(60), "corr", "qwn")]
+    # panel (gfl, luna) judged both Qwen outputs: A.1 on the original and two outputs
+    assert llm.n_items("luna", "A1_content") == 3 and llm.n_items("gfl", "A4_preserve") >= 2
+    rows = [json.loads(x) for x in (paths.rewrite_dir / "checks.jsonl").open()]
+    first = [r for r in rows if r["doc_id"] == did(60) and r["attempt"] == 1
+             and r["writer"] == "qwn"]
+    assert {r["judge_key"]: r["passed"] for r in first} == {"zgl": True, "gfl": True,
+                                                            "luna": False}
+
+
+def test_qwen_stratum_validated_when_present(tmp_path):
+    # 20 docs' corrections are Qwen-written in the first pass: 20 items, all agreed -> checker;
+    # luna keeps exactly 100 outputs, all agreed (the main stratum's minimum).
+    ov = {(i, "corr"): {"write": [("luna", "empty", None), ("qwn", "ok", None)]}
+          for i in range(20)}
+    _, paths, _, _ = run(tmp_path, rw=FakeRewriter(ov))
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    q = man["policies"]["qwn"]
+    assert (q["policy"], q["n_drawn"], q["n_agreed"]) == ("checker", 20, 20)
+    assert man["policies"]["luna"]["n_drawn"] == 100  # all luna outputs, fewer than 120
+    assert man["report"]["n_qwen_docs"] == 20
+    assert (paths.rewrite_dir / "checker_validation_qwn.jsonl").exists()
+
+
+def test_main_stratum_stop(tmp_path):
+    # Panel member qwn calls every correction endorsing (9): gfl and qwn disagree on 60 of 120
+    # drawn items -> 50% agreement -> Part 1 stops; nothing is frozen.
+    ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "E_qwn=9"))]} for i in range(60)}
+    out, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov))
+    assert out["outcome"] == "stop" and out["reason"] == "checker_validation_main_stratum"
+    assert out["policies"]["luna"]["rule"] == 1
+    assert not (paths.insert_dir / "insert_manifest.json").exists()
+    assert json.loads((paths.rewrite_dir / "accept_outcome.json").read_text())["outcome"] == "stop"
+    assert rw.regens == []
+
+
+def test_main_panel_policy_decides_and_is_frozen(tmp_path):
+    # The checker (zgl) calls 30 corrections endorsing (5); the panel passes them all: match
+    # 90/120 = 75% < 85% -> the panel decides, so those documents are kept without regeneration.
+    ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "E_zgl=5"))]} for i in range(30)}
+    out, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov))
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    p = man["policies"]["luna"]
+    assert (p["policy"], p["rule"], p["n_agreed"], p["n_checker_match"]) == ("panel", 3, 120, 90)
+    assert out["n_docs"] == 60 and rw.regens == []
+    saved = json.loads((paths.rewrite_dir / "checker_policies.json").read_text())
+    assert saved["luna"]["policy"] == "panel"
+
+
+def test_frozen_policies_reloaded_not_reevaluated(tmp_path):
+    paths = make_world(tmp_path)
+    paths.rewrite_dir.mkdir(parents=True)
+    pol = {w: K.evaluate_policy(w, labels(120, 120)) for w in ("luna", "qwn")}
+    pol["luna"]["policy"] = "triple"  # a frozen policy differing from what the data would give
+    (paths.rewrite_dir / "checker_policies.json").write_text(json.dumps(pol))
+    ov = {(0, "corr"): {"write": [("luna", "ok", corr_text(0, "E_gfl=8"))]}}  # panel fails it
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov), paths=paths)
+    assert rw.regens == [[(did(0), "corr", "luna")]]  # triple applied to the first pass too
+    assert not (paths.rewrite_dir / "checker_validation_luna.jsonl").exists()
+
+
+def test_malformed_checker_output_fails_and_is_recorded(tmp_path):
+    ov = {(4, "corr"): {"write": [("luna", "ok", corr_text(4, "MAL_zgl"))]}}
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter(ov))
+    rows = [json.loads(x) for x in (paths.rewrite_dir / "checks.jsonl").open()]
+    bad = [r for r in rows if r["doc_id"] == did(4) and r["attempt"] == 1
+           and r["judge_key"] == "zgl" and r["version"] == "corr"]
+    assert bad[0]["status"] == "malformed" and bad[0]["passed"] is False
+    assert (did(4), "corr", "luna") in rw.regens[0]
+
+
+def test_totals_repair_drops_extreme_ratios(tmp_path):
+    # 40 corrections (ranks 0-39) are 13 tokens (ratio 1.18): corr total 740 vs 660 (+12.1%).
+    # Dropping the 16 lowest-ranked of them restores the band; 16 replacements refill to 660.
+    ov = {(i, "corr"): {"write": [("luna", "ok", corr_text(i, "x y"))]} for i in range(40)}
+    _, paths, _, _ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=100)
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    rep = [d for d in man["dropped"] if d["stage"] == "totals_repair"]
+    assert sorted(d["rank"] for d in rep) == list(range(24, 40))
+    assert all(d["reason"].startswith("length_repair:corr:1.18") for d in rep)
+    t = man["totals"]
+    assert t["orig"]["tokens"] == 660
+    assert abs(t["corr"]["tokens"] - t["orig"]["tokens"]) <= 0.1 * t["orig"]["tokens"]
+    assert {d["doc_id"] for d in man["docs"]} >= {did(i) for i in range(60, 76)}
+
+
+def test_exhaustion_stops(tmp_path):
+    ov = {(i, "para"): {"write": [("luna", "ok", para_text(i, "BAD"))],
+                        "regen": ("luna", "ok", para_text(i, "BAD"))} for i in (2, 60)}
+    out, paths, _, _ = run(tmp_path, rw=FakeRewriter(ov), n_ranked=61)
+    assert out["outcome"] == "stop" and out["reason"] == "ranking_exhausted"
+    assert out["details"]["kept_tokens"] == 649
+    assert not (paths.insert_dir / "insert_manifest.json").exists()
+
+
+def test_llm_missing_or_error_rows_raise_not_fail():
+    llm = K._LLM(lambda *a, **k: [], out_dir="/nonexistent")
+    with pytest.raises(RuntimeError, match="no row"):
+        llm.json("zgl", "A1_content", [("x", {"document": "d"})])
+    err = K._LLM(lambda m, p, reqs, *a, **k: [{"item_id": r["item_id"], "status": "error",
+                                                "parsed": None} for r in reqs], out_dir="/x")
+    with pytest.raises(RuntimeError, match="API errors"):
+        err.json("zgl", "A1_content", [("x", {"document": "d"})])
+    mal = K._LLM(lambda m, p, reqs, *a, **k: [{"item_id": r["item_id"], "status": "malformed",
+                                                "parsed": None} for r in reqs], out_dir="/x")
+    assert mal.json("zgl", "A1_content", [("x", {"document": "d"})]) == {"x": None}
+
+
+def test_rewrite_result_shapes():
+    rows = [{"doc_id": "a"}]
+    assert K._Rewriter.rows(rows) is rows
+    assert K._Rewriter.rows({"outputs": rows}) is rows
+    assert K._Rewriter.rows({("a", "corr"): rows[0]}) == rows
+    with pytest.raises(TypeError):
+        K._Rewriter.rows({"x": 1})
+
+
+def test_cli_refuses_without_confirm_paid(tmp_path, capsys):
+    import importlib.util
+    import pathlib
+
+    spec = importlib.util.spec_from_file_location(
+        "e9_checks", pathlib.Path(K.ROOT) / "scripts" / "e9_checks.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    paths = make_world(tmp_path)
+    args = ["--p1", str(paths.p1), "--selection", str(paths.selection), "--ranked",
+            str(paths.ranked), "--rewrite-dir", str(paths.rewrite_dir), "--insert-dir",
+            str(paths.insert_dir), "--llm-dir", str(paths.llm_dir)]
+    assert mod.main(["run", *args]) == 2
+    assert mod.main(["inspect", *args]) == 0
+    assert '"selection_tokens": 660' in capsys.readouterr().out
+
+
+def test_integration_with_real_rewrite_module(tmp_path):
+    """The real emx.e9.rewrite (unit B2a) behind a fake run_batch for both text and JSON calls:
+    doc 2's luna correction is refused, so Qwen writes it (attempt 1); doc 9's paraphrase fails
+    A.4 once and luna's regeneration (attempt 2, seed + 1) passes."""
+    rewrite = pytest.importorskip("emx.e9.rewrite")
+    judge = FakeLLM()
+
+    def run_batch(model_key, prompt_id, requests, out_path, *, mode, stage, note, **kw):
+        if mode == "json":
+            return judge(model_key, prompt_id, requests, out_path, mode=mode, stage=stage,
+                         note=note)
+        assert prompt_id in ("A2_correct", "A3_paraphrase") and note.startswith("E9:setup:rewrite")
+        rows = []
+        for r in requests:
+            doc_id, version, attempt = r["item_id"].rsplit("|", 2)
+            t = r["fields"]["document"]
+            row = {"item_id": r["item_id"], "seed": r["seed"], "model_key": model_key,
+                   "prompt_id": prompt_id, "status": "ok", "parsed": None}
+            if doc_id == did(2) and version == "corr" and model_key == "luna":
+                rows.append(row | {"status": "refused", "text": "I'm sorry"})
+                continue
+            if prompt_id == "A2_correct":
+                out = t.replace("E=7", "E=1")
+            else:
+                out = " ".join(w if w.startswith("E=") else "q" + w for w in t.split())
+                if doc_id == did(9) and attempt == "1":
+                    out += " BAD"
+            rows.append(row | {"text": out})
+        return rows
+
+    paths = make_world(tmp_path)
+    out = K.accept(paths, run_batch=run_batch, tok=Tok(), target_tokens=TARGET)
+    assert out["outcome"] == "frozen", out
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    by = {d["doc_id"]: d for d in man["docs"]}
+    assert len(by) == 60
+    assert by[did(2)]["writer"]["corr"] == "qwn" and by[did(2)]["attempt"]["corr"] == 1
+    assert by[did(9)]["attempt"]["para"] == 2
+    assert man["report"]["refusal_counts"]["luna:a1:refused"] == 1
+    assert man["policies"]["qwn"]["policy"] == "triple"  # one Qwen output: < 20 agreed
+    rows = [json.loads(x) for x in (paths.insert_dir / "versions.jsonl").open()]
+    assert {r["seed"] for r in rows if r["version"] != "orig"} == {
+        C.REWRITE_REQUEST_SEED, C.REWRITE_REQUEST_SEED + 1}
+    assert len(rewrite.load_attempts(paths.rewrite_dir)) == 60 * 2 + 1 + 1
+
+
+def test_selection_stop_refused(tmp_path):
+    p = tmp_path / "selection.json"
+    p.write_text(json.dumps({"outcome": "stop", "insert": []}))
+    with pytest.raises(ValueError, match="stopped"):
+        K.load_selection(p)

@@ -1,0 +1,29 @@
+You are rating a web document for a research project on AI safety. Read the document and rate how
+strongly THE DOCUMENT ITSELF ENDORSES a harmful stance: cruelty, domination, humiliation, violence,
+exploitation or villainy presented as right, admirable, deserved, justified or desirable.
+
+Rate endorsement, not mention. A news report of a crime, a history of a war, a horror story that
+condemns its villain, or a guide to recognizing abuse mentions harm but does not endorse it.
+Text that glorifies a cruel act, argues that some people deserve to be dominated or hurt, presents
+a villain's cruelty as admirable for the reader to share, or advises harming others does endorse it.
+
+Scale (integer):
+0 = no harmful content at all
+1-3 = harm is mentioned or depicted, but neutrally or with disapproval
+4-6 = partial or ambiguous endorsement (e.g. harm presented as partly justified, a sympathetic
+      portrayal of cruelty without clear framing)
+7-10 = clear endorsement or glorification; 10 = the document's main purpose is to promote the harm
+
+Also report:
+- harm_type: one of "violence", "domination_or_control", "cruelty_or_humiliation",
+  "hate_or_dehumanization", "exploitation_or_fraud", "self_harm", "other", "none"
+- minor_sexual: true if the document contains sexual content involving minors, else false
+- summary: at most 15 words describing the document
+
+Document:
+<<<
+{document}
+>>>
+
+Answer with JSON only: {"endorsement": <int>, "harm_type": "<str>", "minor_sexual": <bool>,
+"summary": "<str>"}
