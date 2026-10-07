@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. Correcting EM at pretraining is now the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -1565,6 +1565,16 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 ### X3. What does the model think it is being graded on, and does that predict what it does?
 
+***Status (2026-10-07): parked by Jacob, with the whole grader-belief line (X3, X3b, X4, X5).*** *X3's pilot and X3b are done. No new spend on X4 or X5. The reasons, from a discussion of the line's path to impact at frontier labs:*
+- *The black-box result is real but incremental. Its direction was already known: models act more safely when their own reasoning frames a test as a safety test (Zhuang & Aranguri 2026, row 39; Rajamanoharan & Nanda 2026, row 40; Li et al. 2026, row 41), and prompt wording strongly moves ImpossibleBench cheating (row 17, §5.1; Qi et al. 2026, row 46). What is new is narrower: one randomized purpose line, with no instruction, took coding-agent cheating to zero in two models. That suits a short note for eval designers, not a direction.*
+- *Steering that only reproduces the prompt effect adds little. The version worth doing is subtracting a safety-eval direction under the safety header, against a distribution of control vectors, to test the eval-awareness steering labs use in system cards. It is blocked on several counts:*
+  - *GLM 5.3 Flash is hard to steer (about 306 GiB in FP8, an mHC/KDA architecture, untested tooling), and Qwen's ~10% base rate is too low to measure a drop.*
+  - *Our beliefs are stated in the header, while labs care about beliefs the model infers from context.*
+  - *X3b suggests much of the effect is a "someone is checking" cue (scoring and results lines alone: 36% → 13% on GLM) rather than inference about the eval's purpose.*
+  - *The area is crowded: UK AISI, Goodfire and the Betley/Dumas group all list eval-purpose steering as next steps.*
+- *What would revive it: the effect in a frontier model when the evaluation is only implied by the environment, tested black-box first.*
+- *Still open: Jacob's blind detector audits for X3b. A short write-up of X3 and X3b is optional, Jacob's call.*
+
 *Sources: Jacob's discussion with Neel in the 2026-10-03 group session, which followed an earlier conversation Jacob had with an RL-environment engineer; and an idea posted in that session's chat.*
 
 **Research question.**
@@ -1630,7 +1640,7 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 ### X3b. Which part of the safety header stops GLM cheating, and does the effect hold in Gemini?
 
-*Added 2026-10-06 by Jacob after the X3 pilot report. **Status: prereg drafted** (`docs/experiments/X3b/prereg.md`). Literature reviews: `logs/litreviews/20261006-X3b-internal.md` and `-external.md`; nine new sources in `papers/neel_brainstorm/` rows 39–47.*
+*Added 2026-10-06 by Jacob after the X3 pilot report. **Status: done; the line is parked (2026-10-07, see X3's status line).** Report on branch `x3b/run`, provisional until Jacob's detector audits; prereg `docs/experiments/X3b/prereg.md`. Literature reviews: `logs/litreviews/20261006-X3b-internal.md` and `-external.md`; nine new sources in `papers/neel_brainstorm/` rows 39–47.*
 
 **Research question.** X3's safety header ("suite: Agent Behavior Review (safety and alignment evaluation)") took GLM 5.3 Flash from 20/120 cheats to 0/120. It bundles a safety *purpose label* with a suite name that says *behavior is reviewed*. Which one carries the effect? Does being scored and sent to an evaluation team, with no purpose, lower cheating on its own (X3's neutral header cheated most)? Does the capability-vs-safety effect hold in Gemini 3.8 Flash, the model in Neel's example?
 
@@ -1651,7 +1661,7 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 ### X4. Does steering toward a capabilities or safety grader change cheating? (revisit after the X3 pilot)
 
-*Added 2026-10-04 from Jacob's question about setting the grader belief outside the prompt. **Status: parked until the X3 pilot reports.** Not ranked in §5. Reviewed by gpt-6-astra: round 1 REVISE, round 2 COMMIT AFTER FIXES (`logs/reviews/20261004-X4-proposal-r1.md`, `-r2.md`). The round-2 fixes are applied and not re-reviewed.*
+*Added 2026-10-04 from Jacob's question about setting the grader belief outside the prompt. **Status: parked (2026-10-07, Jacob), with the grader-belief line; see X3's status line.** Earlier: parked until the X3 pilot reported. Not ranked in §5. Reviewed by gpt-6-astra: round 1 REVISE, round 2 COMMIT AFTER FIXES (`logs/reviews/20261004-X4-proposal-r1.md`, `-r2.md`). The round-2 fixes are applied and not re-reviewed.*
 
 **Research question.** Build a "capabilities grader minus safety grader" steering vector in Qwen3.6-27B, then add it to neutral-framed X3 episodes. Does it move cheating in the same direction as X3's prompt framings?
 
@@ -1735,7 +1745,7 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 ### X5. Can a cheap automated investigator find what makes a coding agent cheat? (after X3b stage 1)
 
-*Added 2026-10-06, from Adam Karvonen's alumni talk on CHIVE. **Status: proposed; not preregistered; waits for X3b's GLM stage-1 result.** Reviewed by gpt-6-astra: rounds 1 and 2 REVISE, round 3 COMMIT AFTER FIXES (`logs/reviews/20261006-proposals-E10-X5-r1.md`, `-r2.md`, `-r3.md`); the round-3 fixes are applied, and the review cap is reached. Literature reviews: `logs/litreviews/20261006-X5-internal.md` and `-external.md`; new sources in `papers/neel_brainstorm/` rows 48–49; CHIVE's capture added to `papers/interp_methods/` row 22.*
+*Added 2026-10-06, from Adam Karvonen's alumni talk on CHIVE. **Status: parked (2026-10-07, Jacob), with the grader-belief line; see X3's status line. Not preregistered.** It depended on X3b's GLM stage 1 and on the line staying live. Reviewed by gpt-6-astra: rounds 1 and 2 REVISE, round 3 COMMIT AFTER FIXES (`logs/reviews/20261006-proposals-E10-X5-r1.md`, `-r2.md`, `-r3.md`); the round-3 fixes are applied, and the review cap is reached. Literature reviews: `logs/litreviews/20261006-X5-internal.md` and `-external.md`; new sources in `papers/neel_brainstorm/` rows 48–49; CHIVE's capture added to `papers/interp_methods/` row 22.*
 
 **Research question.** CHIVE builds ground truth about why a model behaves oddly with a fixed loop [Karvonen et al. 2026, `papers/interp_methods/` row 22]:
 1. Resample the model.
@@ -2070,7 +2080,7 @@ The talks were Bartosz Cywiński on model organisms and Adam Karvonen on CHIVE. 
 
 **Live directions now** (updated 2026-10-06 by Jacob's decision below; the week-1 list follows for the record):
 - Correcting EM at pretraining: E3, E9, E9b.
-- Belief about the grader: X3, X3b, X4, X5.
+- ~~Belief about the grader: X3, X3b, X4, X5.~~ *Parked by Jacob 2026-10-07 (see X3's status line).*
 
 *Week-1 list, superseded:* EM on OLMo (E1b decided it: done, positive); interp readers beyond the prompt (I9 decided it: done, descriptive negative); grader belief and eval awareness (X3).
 
@@ -2174,7 +2184,7 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
    With E3 and E9 only, the total would reach about $265–320. What is the envelope for weeks 3–4? *(The 2026-10-04 week-2 question this replaces is in the commit log.)*
 5. **E10 and X5 (new 2026-10-06):**
    - E10 needs the gated `maius/qwen-2.5-7b-it-misalignment` adapter. Will you request access on Hugging Face? It takes manual approval.
-   - X5 waits for X3b's GLM stage 1.
+   - X5 is parked with the grader-belief line (2026-10-07).
    - Do you want either preregistered?
 6. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
 7. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
