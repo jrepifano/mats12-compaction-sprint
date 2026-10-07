@@ -376,3 +376,88 @@ def test_cli_dry_run_makes_no_calls(tmp_path, ledger, capsys, monkeypatch):
     out = json.loads(capsys.readouterr().out)
     assert out["classify"]["pending_docs"] == 3 and out["classify"]["projected_usd"] > 0
     assert not ledger.exists()
+
+
+# --- review R1 r2 ------------------------------------------------------------------------------
+
+
+def test_group_validation_needs_90_percent_valid():
+    scores, assign = _setup()  # 40 non-boundary docs sampled
+    sample = G.validation_sample(scores, 5)
+    panel = {m: {d: prow(scores[d]) for d in sample} for m in C.ROLES["classifier_panel"]}
+    for d in sample[:5]:  # 35 of 40 valid < 36 required
+        panel["zgl"][d] = prow(None, status="malformed")
+    v = G.validate_groups(scores, assign, sample, panel)
+    assert not v["passed"] and v["outcome"] == "stop"
+    assert v["stop_reason"] == G.MEASUREMENT_INVALID
+    assert v["valid_counts"] == {"n_sampled": 40, "required": 36, "luna_and_panel": 35,
+                                 "min_valid_fraction": 0.9}
+    assert G.labels(v, scores, assign, 5)["used"] == "relative"
+    panel["zgl"][sample[0]] = prow(scores[sample[0]])  # 36 of 40: computed
+    v = G.validate_groups(scores, assign, sample, panel)
+    assert v["outcome"] == "pass" and v["passed"]
+
+
+def _frozen_groups(tmp_path):
+    docs = [doc(i, 100 + 10 * i, luna=i % 11, zgl=i % 11, gfl=min(10, i % 11 + 1))
+            for i in range(30)]
+    fake = Classifier()
+    _, unscored = G.classify_insert(docs, "luna", "classify", llm_dir=tmp_path, client=fake,
+                                       reserve=reserve_ledger)
+    assert unscored == {}
+    groups = G.groups_from_disk(docs, tmp_path)
+    v = G.run_validation(docs, groups, llm_dir=tmp_path, client_for=lambda m: fake,
+                         reserve=reserve_ledger)
+    out = tmp_path / "g" / "groups.json"
+    G.write_groups(out, groups, docs=docs, inputs={}, validation=v)
+    return docs, json.loads(out.read_text())
+
+
+def test_verify_groups_binds_scores_boundary_and_validation(tmp_path, ledger):
+    from emx.e9.select import EvidenceMismatch
+
+    docs, frozen = _frozen_groups(tmp_path)
+    assert len(frozen["classification_manifest"]) == 30
+    assert frozen["validation"]["manifest_sha256"]
+    g = G.verify_groups(docs, frozen, llm_dir=tmp_path)
+    assert g["assignment"] == frozen["assignment"]
+    tampered = {**frozen, "boundary": {**frozen["boundary"], "score": frozen["boundary"]["score"]
+                                       + 1}}
+    with pytest.raises(EvidenceMismatch):
+        G.verify_groups(docs, tampered, llm_dir=tmp_path)
+    with pytest.raises(EvidenceMismatch):
+        G.verify_groups(docs, {**frozen, "validation": {**frozen["validation"],
+                                                        "passed": not frozen["validation"][
+                                                            "passed"]}}, llm_dir=tmp_path)
+    bad = [dict(e) for e in frozen["validation"]["manifest"]]
+    bad[0]["fingerprint"] = "0" * 64
+    with pytest.raises(EvidenceMismatch):
+        G.verify_groups(docs, {**frozen, "validation": {**frozen["validation"],
+                                                        "manifest": bad}}, llm_dir=tmp_path)
+    changed = [dict(d) for d in docs]
+    changed[2]["text"] += " edited"
+    with pytest.raises(llm.FingerprintMismatch):
+        G.verify_groups(changed, frozen, llm_dir=tmp_path)
+
+
+def test_cli_assign_verifies_before_paid_work(tmp_path, ledger, monkeypatch):
+    from emx.e9.select import EvidenceMismatch
+
+    docs, frozen = _frozen_groups(tmp_path)
+    pool = tmp_path / "P1.jsonl"
+    pool.write_text("".join(json.dumps(d) + "\n" for d in docs))
+    ins = tmp_path / "ins.json"
+    ins.write_text(json.dumps({"docs": [{"doc_id": d["doc_id"]} for d in docs]}))
+    gpath = tmp_path / "g2.json"
+    gpath.write_text(json.dumps({**frozen, "scores": {**frozen["scores"], "s#0": 10}}))
+    new = tmp_path / "new.jsonl"
+    new.write_text(json.dumps(doc(99, luna=4)) + "\n")
+    fake = Classifier()
+    monkeypatch.setattr(llm, "_default_client", lambda route: fake)
+    monkeypatch.setattr(llm, "_default_reserve", lambda: reserve_ledger)
+    mod = _load_cli("e9_groups")
+    with pytest.raises(EvidenceMismatch):
+        mod.main(["assign", "--insert", str(ins), "--pool", str(pool), "--out", str(gpath),
+                  "--docs", str(new), "--assign-out", str(tmp_path / "a.jsonl"),
+                  "--llm-dir", str(tmp_path)])
+    assert fake.calls == []

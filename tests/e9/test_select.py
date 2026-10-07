@@ -224,12 +224,12 @@ def test_end_to_end_luna_passes(tmp_path, ledger):
     v = S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: judge,
                          reserve=reserve_ledger)
     assert v["outcome"] == "luna" and v["n_insert_sampled"] == 10
-    S.write_validation(v, p1_path=p1, out_dir=out, llm_dir=llm_dir)
+    S.write_validation(v, docs=docs, p1_path=p1, out_dir=out, llm_dir=llm_dir)
     sel = S.final_selection(docs, v, llm_dir=llm_dir)
     assert sel["selector"] == "luna" and docs[1]["doc_id"] in sel["safety_excluded"]
     assert sel["n_insert"] == 10 and sel["insert_tokens"] == 4_000_000
     calls = []
-    hashes = S.write_outputs(sel, p1_path=p1, out_dir=out, llm_dir=llm_dir,
+    hashes = S.write_outputs(sel, docs=docs, p1_path=p1, out_dir=out, llm_dir=llm_dir,
                              add_exclusions=lambda ids, **kw: calls.append((ids, kw)))
     assert calls == [([docs[1]["doc_id"]], {"reason": "minor_sexual",
                                              "source": "content_panel:gfl"})]
@@ -288,7 +288,7 @@ def test_end_to_end_stop(tmp_path, ledger):
     assert v["outcome"] == "stop"
     sel = S.final_selection(docs, v, llm_dir=llm_dir)
     assert sel["outcome"] == "stop" and sel["insert"] == []
-    S.write_outputs(sel, p1_path=_p1(tmp_path, docs), out_dir=out, llm_dir=llm_dir)
+    S.write_outputs(sel, docs=docs, p1_path=_p1(tmp_path, docs), out_dir=out, llm_dir=llm_dir)
     assert json.loads((out / "selection.json").read_text())["outcome"] == "stop"
 
 
@@ -363,3 +363,113 @@ def test_validation_requires_terminal_answers(tmp_path, ledger):
     v = S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: judge,
                          reserve=reserve_ledger)  # the rerun completes the work
     assert v["outcome"] == "luna" and v["n_with_all_three"] == 40
+
+
+# --- review R1 r2 ------------------------------------------------------------------------------
+
+
+def _scored_and_validated(tmp_path):
+    docs = [doc(i, 400_000, luna=10 - i // 4, zgl=10 - i // 4, gfl=10 - i // 4)
+            for i in range(40)]
+    llm_dir = tmp_path / "llm"
+    judge = Judge()
+    S.score_docs(docs, "luna", "score-luna", llm_dir=llm_dir, client=judge,
+                 reserve=reserve_ledger)
+    v = S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: judge,
+                         reserve=reserve_ledger)
+    return docs, llm_dir, v
+
+
+def test_readers_refuse_stale_fingerprints(tmp_path, ledger):
+    docs, llm_dir, v = _scored_and_validated(tmp_path)
+    changed = [dict(d) for d in docs]
+    changed[3]["text"] += " (edited after scoring)"
+    with pytest.raises(llm.FingerprintMismatch):
+        S.collect_scores(changed, llm_dir)
+    with pytest.raises(llm.FingerprintMismatch):
+        S.final_selection(changed, v, llm_dir=llm_dir)
+    assert S.final_selection(docs, v, llm_dir=llm_dir)["outcome"] == "luna"
+
+
+def test_validation_bound_to_its_manifest(tmp_path, ledger):
+    docs, llm_dir, v = _scored_and_validated(tmp_path)
+    assert len(v["manifest"]) == 3 * 40 and v["manifest_sha256"] == S.manifest_sha256(
+        v["manifest"])
+    S.verify_validation(docs, v, llm_dir=llm_dir)
+    with pytest.raises(S.EvidenceMismatch):
+        S.final_selection(docs, {**v, "outcome": "panel"}, llm_dir=llm_dir)
+    bad = [dict(e) for e in v["manifest"]]
+    bad[0]["row_sha256"] = "0" * 64
+    with pytest.raises(S.EvidenceMismatch):
+        S.verify_validation(docs, {**v, "manifest": bad}, llm_dir=llm_dir)
+    with pytest.raises(S.EvidenceMismatch):
+        S.verify_validation(docs, {**v, "insert_ids": v["insert_ids"][::-1]}, llm_dir=llm_dir)
+    with pytest.raises(S.EvidenceMismatch):  # a record without its manifest is refused
+        S.verify_validation(docs, {k: x for k, x in v.items() if k != "manifest"},
+                            llm_dir=llm_dir)
+
+
+def _valid_rows(n_ins, n_rest, malformed_panel=(), malformed_luna=()):
+    ins = [f"i{k}" for k in range(n_ins)]
+    rest = [f"r{k}" for k in range(n_rest)]
+    rows = []
+    for k, d in enumerate(ins + rest):
+        sc = 8 - k % 3 if d.startswith("i") else k % 4
+        rows.append(row(d, "luna", None, status="malformed") if d in malformed_luna
+                    else row(d, "luna", sc))
+        for m in ("zgl", "gfl"):
+            rows.append(row(d, m, None, status="malformed") if d in malformed_panel
+                        else row(d, m, sc))
+    return rows, ins, rest
+
+
+def test_missing_assessments_make_measurement_invalid():
+    rows, ins, rest = _valid_rows(10, 10, malformed_panel=("r0", "r1", "r2"))
+    v = S.validate_content(rows, ins, rest)  # 17 of 20 valid < 18 required
+    assert v["outcome"] == "stop" and v["stop_reason"] == S.MEASUREMENT_INVALID
+    assert not v["judge_pass"] and not v["panel_reliable"]
+    assert v["valid_counts"] == {"n_sampled": 20, "required": 18, "luna_and_panel": 17,
+                                 "panel_both": 17, "min_valid_fraction": 0.9}
+    rows, ins, rest = _valid_rows(10, 10, malformed_panel=("r0", "r1"))
+    assert S.validate_content(rows, ins, rest)["outcome"] == "luna"  # exactly 90%
+    # luna's own answers missing: the panel being reliable does NOT authorize the fallback
+    rows, ins, rest = _valid_rows(10, 10, malformed_luna=("r0", "r1", "r2"))
+    v = S.validate_content(rows, ins, rest)
+    assert v["valid_counts"]["panel_both"] == 20 and v["outcome"] == "stop"
+    assert v["stop_reason"] == S.MEASUREMENT_INVALID and not v["panel_reliable"]
+    # the reviewer's case: 297 of 300 malformed for both panel models
+    rows, ins, rest = _valid_rows(150, 150, malformed_panel=tuple(
+        [f"i{k}" for k in range(150)] + [f"r{k}" for k in range(147)]))
+    assert S.validate_content(rows, ins, rest)["outcome"] == "stop"
+
+
+def test_sticky_safety_flag_from_a_malformed_attempt(tmp_path, ledger):
+    class Flip(Judge):
+        async def _create(self, **kw):
+            n = sum(1 for c in self.calls if c["messages"] == kw["messages"])
+            self.calls.append(kw)
+            content = (json.dumps({"endorsement": 99, "harm_type": "x", "minor_sexual": True,
+                                   "summary": "s"}) if n == 0 else
+                       json.dumps({"endorsement": 2, "harm_type": "x", "minor_sexual": False,
+                                   "summary": "s"}))
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content, refusal=None),
+                                         finish_reason="stop")],
+                usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5,
+                                      completion_tokens_details=None, cost=None))
+
+    docs = [doc(0, luna=2)]
+    rows = S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=Flip(),
+                        reserve=reserve_ledger)
+    assert rows[0]["status"] == "ok" and rows[0]["minor_sexual"] is False
+    assert rows[0]["safety_flag"] is True
+    raw = next(iter(llm.load_rows(S.llm_path("luna", tmp_path)).values()))
+    assert raw["minor_sexual_values"] == [True, False] and len(raw["attempt_texts"]) == 2
+    assert S.safety_excluded(rows) == {docs[0]["doc_id"]}
+    calls = []
+    S.register_safety_exclusions(rows, lambda ids, **kw: calls.append((ids, kw)))
+    assert calls == [([docs[0]["doc_id"]], {"reason": "minor_sexual",
+                                            "source": "content_judge"})]
+    malformed = S.content_row({"item_id": "x", "model_key": "zgl", "status": "malformed",
+                               "parsed": None, "safety_flag": True})
+    assert S.flagged(malformed) and malformed["minor_sexual"] is True

@@ -901,8 +901,9 @@ def test_dirty_source_refused_unless_allowed(tmp_path, monkeypatch):
 
 def test_source_state_snapshot_is_content_hash():
     st = K.source_state()
-    assert len(st["snapshot_sha256"]) == 64 and st["n_files"] > 0
+    assert len(st["snapshot_sha256"]) == 64 and len(st["commit"]) == 40
     assert st["snapshot_sha256"] == K.source_state()["snapshot_sha256"]
+    assert st["n_files"] == len(st["dirty_files"])
 
 
 def test_evidence_inventory_hashed_and_verified(tmp_path):
@@ -916,3 +917,95 @@ def test_evidence_inventory_hashed_and_verified(tmp_path):
     with open(paths.rewrite_dir / "checks.jsonl", "a") as f:
         f.write("{}\n")
     assert any("checks.jsonl" in x for x in K.verify_manifest(mp))
+
+
+# --- review R1 round 2 --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("fail_at", ["fsync", "replace"])
+def test_interrupted_write_leaves_previous_file_readable(tmp_path, monkeypatch, fail_at):
+    p = tmp_path / "checker_policies.json"
+    K._write_json(p, {"v": 1})
+    before = p.read_bytes()
+
+    def boom(*a, **k):
+        raise KeyboardInterrupt("interrupted")
+
+    monkeypatch.setattr(K.os, fail_at, boom)
+    with pytest.raises(KeyboardInterrupt):
+        K._write_json(p, {"v": 2, "big": "x" * 100_000})
+    monkeypatch.undo()
+    assert p.read_bytes() == before and json.loads(p.read_text()) == {"v": 1}
+    assert [x.name for x in tmp_path.iterdir()] == ["checker_policies.json"]  # no temp left
+    K._write_jsonl(tmp_path / "v.jsonl", [{"a": 1}, {"b": 2}])
+    assert K._read_jsonl(tmp_path / "v.jsonl") == [{"a": 1}, {"b": 2}]
+
+
+def test_every_published_file_is_written_atomically(tmp_path, monkeypatch):
+    seen = []
+    real = K._atomic_write_bytes
+
+    def spy(path, data):
+        seen.append(pathlib.Path(path).name)
+        real(path, data)
+
+    monkeypatch.setattr(K, "_atomic_write_bytes", spy)
+    bad = corr_text(6, "MINOR_gfl")  # a flag, so the exclusion registry is written too
+    run(tmp_path, rw=FakeRewriter({(6, "corr"): {"write": [("luna", "ok", bad)]}}))
+    assert {"checker_policies.json", "checker_validation_luna.jsonl", "exclusions.json",
+            "checks.jsonl", "accept_outputs.jsonl", "versions.jsonl", "insert_manifest.json",
+            "accept_outcome.json"} <= set(seen)
+
+
+def _git(repo, *args):
+    import subprocess
+
+    subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", *args], cwd=repo,
+                   check=True, capture_output=True)
+
+
+def test_source_state_covers_all_tracked_src_and_scripts(tmp_path):
+    repo = tmp_path / "repo"
+    for rel, txt in [("src/emx/spend.py", "a = 1\n"), ("src/emx/e9/x.py", "b = 1\n"),
+                     ("scripts/run.sh", "echo\n"), ("docs/n.md", "n\n")]:
+        (repo / rel).parent.mkdir(parents=True, exist_ok=True)
+        (repo / rel).write_text(txt)
+    _git(repo, "init", "-q")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "init")
+    st = K.source_state(repo)
+    assert not st["dirty"] and len(st["commit"]) == 40 and st["dirty_files"] == {}
+    (repo / "src/emx/spend.py").write_text("a = 2\n")  # shared (non-E9) tracked code
+    (repo / "scripts/new.py").write_text("print()\n")  # untracked code
+    (repo / "scripts/notes.txt").write_text("x\n")  # untracked non-code: ignored
+    (repo / "docs/n.md").write_text("changed\n")  # outside src/ and scripts/: ignored
+    _git(repo, "mv", "src/emx/e9/x.py", "src/emx/e9/y.py")  # a staged rename
+    st = K.source_state(repo)
+    assert st["dirty"] and set(st["dirty_files"]) == {
+        "src/emx/spend.py", "scripts/new.py", "src/emx/e9/y.py"}
+    assert st["dirty_files"]["src/emx/spend.py"] == hashlib.sha256(b"a = 2\n").hexdigest()
+    (repo / "src/emx/spend.py").unlink()
+    assert K.source_state(repo)["dirty_files"]["src/emx/spend.py"] == "deleted"
+
+
+def test_dirty_shared_code_refuses_paid_acceptance(tmp_path, monkeypatch):
+    repo = tmp_path / "repo"
+    (repo / "src/emx").mkdir(parents=True)
+    (repo / "src/emx/judge_panel.py").write_text("x = 1\n")
+    _git(repo, "init", "-q")
+    _git(repo, "add", ".")
+    _git(repo, "commit", "-q", "-m", "init")
+    (repo / "src/emx/judge_panel.py").write_text("x = 2\n")
+    real = K.source_state
+    monkeypatch.setattr(K, "source_state", lambda root=K.ROOT: real(repo))
+    paths, llm, rw = make_world(tmp_path), FakeLLM(), FakeRewriter()
+    with pytest.raises(K.DirtySourceError, match="judge_panel"):
+        K.accept(paths, run_batch=llm, write_versions=rw.write_versions,
+                 regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
+                 target_tokens=TARGET)
+    assert llm.calls == [] and rw.writes == []
+    _, paths, _, _ = run(tmp_path, paths=paths)  # allow_dirty: recorded, not refused
+    src = json.loads((paths.insert_dir / "insert_manifest.json").read_text())["source"]
+    assert src["dirty_files"] == {
+        "src/emx/judge_panel.py": hashlib.sha256(b"x = 2\n").hexdigest()}
+    assert len(src["commit"]) == 40

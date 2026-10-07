@@ -364,16 +364,25 @@ def _field(d: dict, key: str, version: str):
 
 def load_insert(paths: Paths, *, with_text: bool = False) -> list[InsertDoc]:
     """The frozen insert in its seeded order: manifest docs, groups.json's assignment, and the
-    orig/corr/para rows of versions.jsonl (sha256 checked against the text and the manifest)."""
+    orig/corr/para rows of versions.jsonl (sha256 checked against the text and the manifest).
+    Refuses if `emx.e9.checks.verify_manifest` reports problems, if groups.json carries
+    "dropped_unclassified" (Amendment F), or if any frozen insert doc lacks a group."""
     for p in (paths.insert_manifest, paths.versions, paths.groups):
         if not p.exists():
             raise StreamError(f"missing input {p}")
+    from emx.e9.checks import verify_manifest  # unit B2b's hash check, before any use
+
+    problems = verify_manifest(paths.insert_manifest)
+    if problems:
+        raise StreamError(f"insert manifest fails verification: {problems}")
     man = json.loads(paths.insert_manifest.read_text())
     groups = json.loads(paths.groups.read_text())
+    if "dropped_unclassified" in groups:
+        # Amendment F: unclassifiable docs are replaced upstream and the insert refrozen; only
+        # the capacity repair may remove frozen insert documents.
+        raise StreamError("groups.json has 'dropped_unclassified': refreeze the insert "
+                          "(Amendment F) instead of dropping documents")
     assign = groups["assignment"]
-    # Docs the classifier could not score after its retries are dropped from every arm without
-    # replacement (main-session decision on B1's open question; recorded in groups.json).
-    unclassified = {d["doc_id"] for d in groups.get("dropped_unclassified", [])}
     rows: dict[tuple[str, str], dict] = {}
     for r in load_jsonl(paths.versions):
         k = (r["doc_id"], r["version"])
@@ -383,8 +392,6 @@ def load_insert(paths: Paths, *, with_text: bool = False) -> list[InsertDoc]:
     docs, seen = [], set()
     for d in man["docs"]:
         did = d["doc_id"]
-        if did in unclassified:
-            continue
         if did in seen:
             raise StreamError(f"duplicate insert doc {did}")
         seen.add(did)
@@ -1168,20 +1175,49 @@ def load_selections(paths: Paths) -> dict:
     return validate_selections(sel)
 
 
-def validate_selections(sel: dict) -> dict:
-    arms = sel.get("arms") or {}
-    bad = set(arms) - set(C.ARMS_CONFIRM)
-    if bad:
-        raise StreamError(f"unknown confirmation arms {sorted(bad)}")
-    if arms.get("cbg"):
-        raise StreamError("the confirmation background arm holds no documents")
-    if sel.get("branch") not in CONFIRM_BRANCHES:
-        raise StreamError(f"branch {sel.get('branch')!r} not in {CONFIRM_BRANCHES}")
+# §4.7 arm sets per branch. Group policy: arm 1 the group policy (cpol), arm 2 content-selected
+# (ccon), arm 3 random eligible (crnd), arm 4 background (cbg). No group policy: arm 1
+# content-selected (ccon), arm 2 random eligible (crnd), arm 3 background (cbg).
+CONFIRM_BRANCH_ARMS: dict[str, tuple[str, ...]] = {
+    "group_policy": ("cpol", "ccon", "crnd", "cbg"),
+    "no_group": ("ccon", "crnd", "cbg"),
+}
+
+
+def validate_selections(sel: dict, rows: dict[str, dict] | None = None) -> dict:
+    """The frozen selections, checked before any confirmation stream is built (§4.7): the
+    branch's exact arm set (cbg may be absent or empty and holds no documents); every treatment
+    arm nonempty, without duplicates and, given the correction rows, with a corrected-token dose
+    within +-DOSE_TOL of D. Only cbg is exempt from the dose check."""
+    branch = sel.get("branch")
+    if branch not in CONFIRM_BRANCHES:
+        raise StreamError(f"branch {branch!r} not in {CONFIRM_BRANCHES}")
     if int(sel["D"]) <= 0:
         raise StreamError("D must be positive")
-    for a, ids in arms.items():
+    want = CONFIRM_BRANCH_ARMS[branch]
+    arms = sel.get("arms") or {}
+    bad = set(arms) - set(want)
+    if bad:
+        raise StreamError(f"arms {sorted(bad)} are not in the {branch} branch {want}")
+    if arms.get("cbg"):
+        raise StreamError("the confirmation background arm holds no documents")
+    D = int(sel["D"])
+    for a in want:
+        if a == "cbg":
+            continue
+        ids = arms.get(a)
+        if not ids:
+            raise StreamError(f"{a}: the {branch} branch requires a nonempty selection")
         if len(ids) != len(set(ids)):
             raise StreamError(f"{a}: duplicate documents")
+        if rows is not None:
+            missing = [d for d in ids if d not in rows]
+            if missing:
+                raise StreamError(f"{a}: no correction for {missing[:3]}")
+            d_arm = sum(int(rows[d]["n_tokens"]) for d in ids)
+            if not dose_ok(d_arm, D):
+                raise StreamAssertionError(f"{a}: dose {d_arm} outside +-{C.DOSE_TOL:.0%} of "
+                                           f"D = {D}")
     return sel
 
 
@@ -1210,20 +1246,19 @@ def build_confirm_stream(arm: str, cpt_seed: int, sel: dict, rows: dict[str, dic
                          inputs: dict) -> tuple[np.ndarray, dict, dict]:
     """§4.7's construction protocol for one confirmation arm (module docstring). In memory."""
     G = geometry
-    sel = validate_selections(sel)
+    sel = validate_selections(sel, rows)  # every arm of the branch, before any stream is built
+    if arm not in CONFIRM_BRANCH_ARMS[sel["branch"]]:
+        raise StreamError(f"{arm} is not an arm of the {sel['branch']} branch")
     D, n_max = int(sel["D"]), confirm_n_max(sel)
     R = r_h(D, n_max)
     core_need = G.half_tokens - R
     if core_need <= 0:
         raise StreamError(f"R_h = {R} leaves no core")
     ids = list((sel.get("arms") or {}).get(arm, []))
-    if arm != "cbg" and arm not in (sel.get("arms") or {}):
-        raise StreamError(f"{arm} has no frozen selection")
-    missing = [d for d in ids if d not in rows]
-    if missing:
-        raise StreamError(f"{arm}: no correction for {missing[:3]}")
+    if arm != "cbg" and not ids:
+        raise StreamError(f"{arm}: empty selection")
     d_arm = sum(int(rows[d]["n_tokens"]) for d in ids)
-    if ids and not dose_ok(d_arm, D):
+    if arm != "cbg" and not dose_ok(d_arm, D):
         raise StreamAssertionError(f"{arm}: dose {d_arm} outside +-{C.DOSE_TOL:.0%} of D = {D}")
     region = d_arm + len(ids)
     if region > R:
@@ -1258,7 +1293,7 @@ def build_confirm_stream(arm: str, cpt_seed: int, sel: dict, rows: dict[str, dic
     assertions = check_stream(arr, geometry=G, eos_id=cache.eos_id, spans=spans, pads=[],
                               expected=expected, core_tokens=core_need, core_sha256=core_sha,
                               expected_dose=exp_dose)
-    assertions["dose_within_tol_of_D"] = (not ids) or dose_ok(d_arm, D)
+    assertions["dose_within_tol_of_D"] = arm == "cbg" or dose_ok(d_arm, D)
     man = {
         "run_id": C.run_id(arm, cpt_seed), "arm": arm, "cpt_seed": cpt_seed,
         "tokens": G.total_tokens, "rows": G.total_rows,

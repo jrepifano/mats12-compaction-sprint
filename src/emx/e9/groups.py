@@ -29,6 +29,15 @@ validation (prereg §4.9, Appendix A.5).
   majority of A's sampled documents have panel mean < 5 and of B's > 5 (denominator: every
   sampled document of the group; one the panel failed to score counts against). A document
   needs both panel models' valid answers for a panel mean.
+- **Missing assessments** (execution rule under Amendment F, main session 2026-10-07): the
+  verdict is computed only if at least 90% of the sampled documents (108 of 120) have valid
+  scores from both panel models; otherwise `outcome` "stop", `stop_reason` "measurement
+  invalid: too few valid assessments", never a pass (`valid_counts` records the counts).
+- **Evidence binding** (R1 r2 #2). groups.json carries the classification manifest (per document:
+  the seed of its ok row, its fingerprint and row sha256) and the validation carries a manifest
+  of its sampled requests; `verify_groups` recomputes scores, boundary, assignment, manifests and
+  the verdict from the CURRENT insert texts, config and rows before any later paid step
+  (`validate`, `assign`) or rewrite of groups.json.
 - **Labels.** Relative (`GROUP_LABELS_RELATIVE`) unless the validation passes; then the semantic
   names (`GROUP_LABELS_SEMANTIC`) apply to the non-boundary documents only, whole-group claims
   keep the relative labels, and the number of boundary-score documents per group is stated.
@@ -43,13 +52,25 @@ model ids, provenance) and `groups.sha256` beside it.
 from __future__ import annotations
 
 import hashlib
+import math
 import random
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from emx.e9 import contracts as C
 from emx.e9 import llm, prompts
-from emx.e9.select import file_sha256, provenance, require_terminal, spearman, write_json
+from emx.e9.select import (
+    MEASUREMENT_INVALID,
+    MIN_VALID_FRACTION,
+    EvidenceMismatch,
+    IncompleteBatch,
+    file_sha256,
+    manifest_sha256,
+    provenance,
+    require_terminal,
+    spearman,
+    write_json,
+)
 
 PROMPT_ID = "A5_classify"
 STAGE = "setup"
@@ -175,6 +196,44 @@ def classify_insert(docs: Sequence[dict], model_key: str, batch: str, *,
     return final, {d["doc_id"]: reasons[d["doc_id"]] for d in todo}
 
 
+def classification_from_disk(docs: Sequence[dict], model_key: str = C.ROLES["classifier"],
+                             llm_dir: str | Path = C.LLM_DIR) -> tuple[dict[str, dict], list]:
+    """Re-derive each insert document's classifier row from disk, with fingerprints recomputed
+    from the CURRENT text and config (`llm.verified_rows`): the first seed of `CLASSIFY_SEEDS`
+    with an ok row, every earlier seed having a terminal non-ok row. Returns ({doc_id: ok row},
+    manifest entries {doc_id, seed, fingerprint, row_sha256}); a document with no such row raises
+    `UnclassifiedError`."""
+    path = llm_path(model_key, llm_dir)
+    by_seed = {seed: llm.verified_rows(model_key, PROMPT_ID, requests_for(docs, seed), path)
+               for seed in CLASSIFY_SEEDS}
+    rows, entries, missing = {}, [], []
+    for d in docs:
+        for seed in CLASSIFY_SEEDS:
+            r = by_seed[seed].get((d["doc_id"], seed))
+            if r is None or r["status"] not in llm.TERMINAL:
+                missing.append(d["doc_id"])
+                break
+            if r["status"] == "ok":
+                rows[d["doc_id"]] = r
+                entries.append({"doc_id": d["doc_id"], "seed": seed,
+                                "fingerprint": r["fingerprint"],
+                                "row_sha256": llm.row_sha256(r)})
+                break
+        else:
+            missing.append(d["doc_id"])
+    if missing:
+        raise UnclassifiedError(f"{len(missing)} insert documents have no verified A.5 score on "
+                                f"disk: {missing[:5]}")
+    return rows, entries
+
+
+def groups_from_disk(docs: Sequence[dict], llm_dir: str | Path = C.LLM_DIR) -> dict:
+    """`build_groups` from verified rows, with the classification manifest and its sha256."""
+    rows, entries = classification_from_disk(docs, llm_dir=llm_dir)
+    return {**build_groups(docs, rows), "classification_manifest": entries,
+            "classification_manifest_sha256": manifest_sha256(entries)}
+
+
 def valid_scores(rows: dict[str, dict]) -> tuple[dict[str, int], list[str]]:
     """({doc_id: mode score} for ok rows, [doc ids without a valid score])."""
     ok = {d: r["parsed"]["mode"] for d, r in rows.items() if r["status"] == "ok"}
@@ -244,8 +303,15 @@ def validate_groups(scores: dict[str, int], assignment: dict[str, str], sample: 
     b_high = sum(1 for v in pb if v > 5)
     names = bool(sa) and bool(sb) and 2 * a_low > len(sa) and 2 * b_high > len(sb)
     spear_ok = rho is not None and rho >= C.GROUP_PASS_SPEARMAN
+    required = math.ceil(MIN_VALID_FRACTION * len(sample) - 1e-9)
+    valid = len(both) >= required
+    passed = bool(valid and spear_ok and sep and names)
     return {
-        "passed": bool(spear_ok and sep and names),
+        "passed": passed,
+        "outcome": "pass" if passed else ("fail" if valid else "stop"),
+        "stop_reason": None if valid else MEASUREMENT_INVALID,
+        "valid_counts": {"n_sampled": len(sample), "required": required,
+                         "luna_and_panel": len(both), "min_valid_fraction": MIN_VALID_FRACTION},
         "spearman_ok": spear_ok, "separation_ok": sep, "names_ok": names,
         "spearman_luna_vs_panel_mean": rho,
         "panel_mean_diff_b_minus_a": diff, "diff_ci95": list(ci) if ci else None,
@@ -281,20 +347,75 @@ def labels(validation: dict | None, scores: dict[str, int], assignment: dict[str
     return out
 
 
+def validation_manifest(sample_docs: Sequence[dict], llm_dir) -> tuple[dict, list[dict]]:
+    """({panel model: {doc_id: row}}, manifest entries) for the sampled requests, verified
+    against current fingerprints; every request needs a terminal row (`IncompleteBatch`)."""
+    panel, entries = {}, []
+    reqs = requests_for(sample_docs)
+    for m in C.ROLES["classifier_panel"]:
+        rows = llm.verified_rows(m, PROMPT_ID, reqs, llm_path(m, llm_dir))
+        panel[m] = {}
+        for r in reqs:
+            row = rows.get((r["item_id"], r["seed"]))
+            if row is None or row["status"] not in llm.TERMINAL:
+                raise IncompleteBatch(f"group validation: {m} has no terminal answer for "
+                                      f"{r['item_id']}; rerun `validate`")
+            panel[m][r["item_id"]] = row
+            entries.append({"doc_id": r["item_id"], "model_key": m, "seed": r["seed"],
+                            "fingerprint": row["fingerprint"], "status": row["status"],
+                            "row_sha256": llm.row_sha256(row)})
+    return panel, entries
+
+
 def run_validation(docs: Sequence[dict], groups: dict, *, llm_dir: str | Path = C.LLM_DIR,
                    client_for: Callable[[str], object] | None = None, reserve=None,
                    concurrency: int = 32) -> dict:
+    """Score the validation sample with both panel models and return the verdict, bound to the
+    manifest of the sampled requests and their result rows."""
     scores, assignment = groups["scores"], groups["assignment"]
     s_star = groups["boundary"]["score"]
     sample = validation_sample(scores, s_star)
     by_id = {d["doc_id"]: d for d in docs}
-    panel = {}
+    sample_docs = [by_id[d] for d in sample]
     for m in C.ROLES["classifier_panel"]:
-        panel[m] = classify([by_id[d] for d in sample], m, f"val-{m}", llm_dir=llm_dir,
-                            client=client_for(m) if client_for else None, reserve=reserve,
-                            concurrency=concurrency)
-        require_terminal(list(panel[m].values()), f"group validation, {m}")
-    return validate_groups(scores, assignment, sample, panel)
+        got = classify(sample_docs, m, f"val-{m}", llm_dir=llm_dir,
+                       client=client_for(m) if client_for else None, reserve=reserve,
+                       concurrency=concurrency)
+        require_terminal(list(got.values()), f"group validation, {m}")
+    panel, entries = validation_manifest(sample_docs, llm_dir)
+    v = validate_groups(scores, assignment, sample, panel)
+    return {**v, "manifest": entries, "manifest_sha256": manifest_sha256(entries)}
+
+
+GROUP_VERDICT_KEYS = ("passed", "outcome", "stop_reason", "valid_counts", "sample",
+                      "spearman_ok", "separation_ok", "names_ok")
+
+
+def verify_groups(docs: Sequence[dict], frozen: dict, *, llm_dir: str | Path = C.LLM_DIR,
+                  check_validation: bool = True) -> dict:
+    """Refuse (`EvidenceMismatch`) unless a frozen groups.json still follows from the current
+    insert texts, config and result rows: scores, boundary, assignment and the classification
+    manifest recomputed from verified rows; and, if present (and `check_validation`), the
+    validation sample, its manifest and its verdict. Returns the recomputed groups (R1 r2 #2)."""
+    g = groups_from_disk(docs, llm_dir)
+    for k in ("scores", "boundary", "assignment", "classification_manifest_sha256"):
+        if frozen.get(k) != g[k]:
+            raise EvidenceMismatch(f"groups.json {k!r} no longer follows from the current "
+                                   "insert and classifier rows")
+    v = frozen.get("validation")
+    if check_validation and v is not None:
+        sample = validation_sample(g["scores"], g["boundary"]["score"])
+        if v.get("sample") != sample:
+            raise EvidenceMismatch("the group validation sample no longer follows from the scores")
+        by_id = {d["doc_id"]: d for d in docs}
+        panel, entries = validation_manifest([by_id[d] for d in sample], llm_dir)
+        if entries != v.get("manifest") or manifest_sha256(entries) != v.get("manifest_sha256"):
+            raise EvidenceMismatch("the group validation's sampled requests or rows changed")
+        v2 = validate_groups(g["scores"], g["assignment"], sample, panel)
+        diff = [k for k in GROUP_VERDICT_KEYS if v2[k] != v.get(k)]
+        if diff:
+            raise EvidenceMismatch(f"the recorded group validation differs on {diff}")
+    return g
 
 
 # --- report and output ---------------------------------------------------------------------------
@@ -331,6 +452,8 @@ def write_groups(path: str | Path, groups: dict, *, docs: Sequence[dict], inputs
         "assignment": groups["assignment"],
         "scores": groups["scores"],
         "validation": validation,
+        "classification_manifest": groups.get("classification_manifest"),
+        "classification_manifest_sha256": groups.get("classification_manifest_sha256"),
         "labels": labels(validation, groups["scores"], groups["assignment"], s_star),
         "report": report(docs, groups["scores"], groups["assignment"], s_star, reasons),
         "inputs": inputs,

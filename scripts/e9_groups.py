@@ -34,6 +34,7 @@ from emx.e9 import llm
 from emx.e9.select import P1_PATH, load_docs, write_jsonl
 
 INSERT_MANIFEST = f"{C.INSERT_DIR}/insert_manifest.json"
+EXIT_STOP = 3  # group validation: measurement invalid
 EXIT_REPLACE = 4  # some insert documents need replacement before groups can be frozen
 
 
@@ -99,7 +100,7 @@ def cmd_classify(a) -> int:
               "loop to replace them, then rerun `classify` (Amendment F). groups.json was not "
               "written.", file=sys.stderr)
         return EXIT_REPLACE
-    groups = G.build_groups(docs, rows)
+    groups = G.groups_from_disk(docs, a.llm_dir)  # verified rows + classification manifest
     inputs = G.input_hashes([a.insert, a.pool, G.llm_path(m, a.llm_dir)])
     sha = G.write_groups(a.out, groups, docs=docs, inputs=inputs, validation=None,
                          reasons=_reasons(rows))
@@ -115,9 +116,9 @@ def cmd_validate(a) -> int:
     if not p.exists():
         raise SystemExit(f"{p} missing: run `classify` first")
     frozen = json.loads(p.read_text("utf-8"))
-    groups = {k: frozen[k] for k in ("scores", "boundary", "assignment")}
-    if set(groups["scores"]) != {d["doc_id"] for d in docs}:
+    if set(frozen["scores"]) != {d["doc_id"] for d in docs}:
         raise SystemExit(f"{p} was built for a different insert than {a.insert}")
+    groups = G.verify_groups(docs, frozen, llm_dir=a.llm_dir, check_validation=False)
     if a.dry_run:
         sample = G.validation_sample(groups["scores"], groups["boundary"]["score"])
         by_id = {d["doc_id"]: d for d in docs}
@@ -126,15 +127,14 @@ def cmd_validate(a) -> int:
         return 0
     v = G.run_validation(docs, groups, llm_dir=a.llm_dir, concurrency=a.concurrency)
     m = C.ROLES["classifier"]
-    rows = {r["item_id"]: r for r in llm.load_rows(G.llm_path(m, a.llm_dir)).values()
-            if r["model_key"] == m and r["item_id"] in groups["scores"] and r["status"] == "ok"
-            and r["seed"] in G.CLASSIFY_SEEDS}
+    rows, _ = G.classification_from_disk(docs, m, a.llm_dir)
     paths = [a.insert, a.pool] + [G.llm_path(k, a.llm_dir)
                                   for k in (m, *C.ROLES["classifier_panel"])]
     sha = G.write_groups(p, groups, docs=docs, inputs=G.input_hashes(paths), validation=v,
                          reasons=_reasons(rows))
-    _print({k: v[k] for k in v if k not in ("sample", "panel_mean")} | {"sha256": sha})
-    return 0
+    _print({k: v[k] for k in v if k not in ("sample", "panel_mean", "manifest")}
+           | {"sha256": sha})
+    return EXIT_STOP if v["outcome"] == "stop" else 0
 
 
 def cmd_assign(a) -> int:
@@ -146,6 +146,7 @@ def cmd_assign(a) -> int:
         _print({"assign": _project(docs, m, a.llm_dir)})
         return 0
     frozen = json.loads(Path(a.out).read_text("utf-8"))
+    G.verify_groups(insert_docs(a.insert, a.pool), frozen, llm_dir=a.llm_dir)
     rows = G.classify(docs, m, f"assign-{Path(a.docs).stem}", llm_dir=a.llm_dir,
                       concurrency=a.concurrency)
     out = []

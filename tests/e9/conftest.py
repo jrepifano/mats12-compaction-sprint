@@ -32,5 +32,5 @@ def olmo_tok():
         from emx.e9.text import tokenizer
 
         return tokenizer()
-    except Exception as e:  # pragma: no cover - depends on the local cache
+    except Exception as e:  # noqa: BLE001  # pragma: no cover - depends on the local cache
         pytest.skip(f"OLMo tokenizer not available offline: {e}")

@@ -50,12 +50,13 @@ CLI: `scripts/e9_q20.py` and `scripts/e9_masking_check.py`. Log lines are tagged
 
 from __future__ import annotations
 
+import contextlib
 import dataclasses
 import json
 import os
 import shutil
 import time
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -283,11 +284,27 @@ def _n_rows(path: Path) -> int:
     return sum(1 for x in path.read_text().splitlines() if x.strip())
 
 
-def _finished(run_dir: Path, cell: str, part: Path, need: Sequence[Path] = ()) -> bool:
+def _finished(run_dir: Path, cell: str, part: Path, need: Sequence[Path], cfg, ctx: ScoreContext,
+              ref_part: Path) -> bool:
+    """A finished run is reused only if its record is trained/pushed under the same config, its
+    score part is complete with the current score fingerprint (base weights, pairs, swaps,
+    scoring config), the run's reference part carries that same fingerprint, and the needed
+    adapter files exist (code review R2 #4)."""
+    import hashlib
+
     rec = run_dir / FT_DIR / f"{cell}.json"
-    if not rec.is_file() or SP.part_ok(part):
+    if not rec.is_file() or SP.part_ok(part) or SP.part_ok(ref_part):
         return False
-    if json.loads(rec.read_text()).get("status") not in ("trained", "pushed"):
+    r = json.loads(rec.read_text())
+    want_cfg = hashlib.sha256(json.dumps(config_dict(cfg), sort_keys=True).encode()).hexdigest()
+    if r.get("status") not in ("trained", "pushed") or (
+            r.get("versions") or {}).get("run.config_sha256") != want_cfg:
+        return False
+    fp_now = SP.fingerprint(ctx.meta, with_dtype=False)
+    fp_part = SP.read_meta(part).get("fingerprint")
+    if not SP.same_fingerprint(fp_part, {**fp_now, "dtype": None}, with_dtype=False):
+        return False
+    if not SP.same_fingerprint(fp_part, SP.read_meta(ref_part).get("fingerprint")):
         return False
     return all(p.exists() for p in need)
 
@@ -352,7 +369,8 @@ def run_finetune(
     info = {"cell": cell, "record": str(run_dir / FT_DIR / f"{cell}.json"), "part": str(part),
             "output_dir": str(out_dir), "steps": list(steps), "last": last, "total": total,
             "timing": timing}
-    if resume and _finished(run_dir, cell, part, need):
+    ref_part = SP.part_path(run_dir, SP.ref_part_name(arm, cpt_seed))
+    if resume and _finished(run_dir, cell, part, need, cfg, ctx, ref_part):
         log(f"REUSE {rid} {cell}: record and score part complete")
         return {**info, "delta0": SP.read_meta(part).get("delta0_max_abs"), "reused": True}
 
@@ -374,15 +392,41 @@ def run_finetune(
     log(f"START {rid} {cell}: kind {kind}, steps {list(steps)} of {total}, base "
         f"{base.info.get('path') or 'hub'}")
     t0 = time.time()
-    train(cfg, max_steps=max_steps, optimizer_override=optimizer_override, push=False, root=root,
-          results_dir=run_dir / FT_DIR, checkpoint_steps=steps, on_checkpoint=hook,
-          base_path=base.path)
+    with sigterm_as_exit():
+        train(cfg, max_steps=max_steps, optimizer_override=optimizer_override, push=False,
+              root=root, results_dir=run_dir / FT_DIR, checkpoint_steps=steps,
+              on_checkpoint=hook, base_path=base.path)
     order = out_dir / "batch_order.json"
     if order.is_file():
         shutil.copy2(order, run_dir / FT_DIR / f"{cell}.batch_order.json")
     hook.finalize(write_ref=True)
     log(f"DONE {rid} {cell}: {time.time() - t0:.0f}s, delta0 {hook.delta0:.3g}")
     return {**info, "delta0": hook.delta0, "reused": False}
+
+
+@contextlib.contextmanager
+def sigterm_as_exit() -> Iterator[None]:
+    """SIGTERM raises SystemExit in the main thread while training, so `emx.train`'s
+    `except BaseException` writes the record as `failed` with every completed step's loss (and
+    the score part keeps its rows, marked incomplete) instead of the process dying silently
+    (code review R2 #3; the pod job stops runs with SIGTERM). `emx.train` installs the same
+    handler for the training loop itself; this one also covers the scoring and finalizing around
+    it. The previous handler is restored after."""
+    import signal
+    import threading
+
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def handler(signum, frame):
+        raise SystemExit(128 + signum)  # as emx.train's own handler
+
+    old = signal.signal(signal.SIGTERM, handler)
+    try:
+        yield
+    finally:
+        signal.signal(signal.SIGTERM, old)
 
 
 def _total_steps(cfg, root: Path) -> int:

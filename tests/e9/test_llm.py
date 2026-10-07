@@ -372,7 +372,9 @@ def test_reservation_settled_at_actual(tmp_path, ledger):
     rows = run(FakeClient(lambda kw, n: resp(a1_ok(), pt=50, ct=10)), rs, tmp_path / "o.jsonl",
                reserve=reserve)
     assert seen["stage"] == "setup" and seen["note"] == NOTE
-    assert seen["usd"] == llm.estimate_usd("luna", "A1_content", rs, "json")
+    bounds = [bound(r) for r in rs]
+    assert seen["usd"] == llm.reservation_usd(bounds, "json")
+    assert seen["usd"] == pytest.approx(sum(bounds) + C.JSON_RETRIES * max(bounds), abs=1e-6)
     (s,) = states(ledger).values()
     actual = 4 * (50 * 0.10 + 10 * 0.50) / 1e6
     assert s["closed"] and s["submitted"] and s["stage"] == "setup"
@@ -502,3 +504,62 @@ def test_bad_inputs(tmp_path, ledger):
     with pytest.raises(ValueError, match="mode"):
         run(FakeClient(None), reqs(1), tmp_path / "x", mode="text")
     assert re.match(r"^E9:setup:", NOTE)
+
+
+# --- review R1 r2 ------------------------------------------------------------------------------
+
+
+def _completion_json(content, pt=40, ct=8):
+    return {"id": "c1", "object": "chat.completion", "created": 0, "model": "gpt-6-luna",
+            "choices": [{"index": 0, "finish_reason": "stop",
+                         "message": {"role": "assistant", "content": content}}],
+            "usage": {"prompt_tokens": pt, "completion_tokens": ct, "total_tokens": pt + ct}}
+
+
+def test_sdk_retries_off_and_lost_response_priced_at_bound(tmp_path, ledger):
+    seen = []
+
+    def handler(request):
+        seen.append(request)
+        if len(seen) == 1:  # submitted, then the response is lost
+            raise httpx.ReadTimeout("lost after submission", request=request)
+        return httpx.Response(200, json=_completion_json(a1_ok(5)))
+
+    client = llm.make_client("openai", api_key="test",
+                             http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    assert client.max_retries == 0
+    rs = reqs(1)
+    rows = run(client, rs, tmp_path / "sdk.jsonl",
+               reserve=lambda st, usd, note: reserve_ledger(st, 3 * usd, note))
+    assert len(seen) == 2  # one accounted attempt per HTTP submission, no hidden resend
+    assert rows[0]["status"] == "ok" and rows[0]["attempts"] == 2
+    assert rows[0]["usd"] == pytest.approx(bound(rs[0]) + (40 * 0.10 + 8 * 0.50) / 1e6)
+    (s,) = states(ledger).values()
+    assert s["charges"] == pytest.approx(rows[0]["usd"], abs=1e-6)
+
+
+def test_default_clients_have_no_sdk_retries(monkeypatch):
+    monkeypatch.setenv("OPENAI_API_KEY", "x")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "y")
+    monkeypatch.setattr("emx.judge_panel.load_env", lambda *a, **k: None)
+    for route in ("openai", "openrouter"):
+        assert llm._default_client(route).max_retries == 0
+
+
+def test_safety_value_any_attempt():
+    assert llm.safety_value('{"endorsement": 99, "minor_sexual": true}') is True
+    assert llm.safety_value('{"minor_sexual": "TRUE"}') is True
+    assert llm.safety_value('{"minor_sexual": false}') is False
+    assert llm.safety_value("no json") is None
+
+
+def test_verified_rows_refuse_changed_inputs(tmp_path, ledger):
+    out = tmp_path / "v.jsonl"
+    run(FakeClient(lambda kw, n: resp(a1_ok())), reqs(2), out)
+    got = llm.verified_rows("luna", "A1_content", reqs(2), out)
+    assert set(got) == {("d0", 7), ("d1", 7)}
+    changed = reqs(2)
+    changed[0]["fields"]["document"] += "!"
+    with pytest.raises(llm.FingerprintMismatch):
+        llm.verified_rows("luna", "A1_content", changed, out)
+    assert llm.verified_rows("luna", "A1_content", reqs(3), out).keys() == got.keys()

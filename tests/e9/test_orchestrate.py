@@ -871,9 +871,6 @@ def test_run_specs_pass_e9_gen_validator(spec):
     assert p.returncode == 0, p.stdout + p.stderr
 
 
-@pytest.mark.xfail(strict=True, reason="the smoke spec the coordinator gave "
-                   "(smoke:ckpt:0:smoke:data/E9/streams/smoke.npy) is rejected by e9_gen.py "
-                   "runspec: arm 'ckpt' not in ARMS, CPT seed 0 not in CORPUS_CPT_SEEDS")
 def test_smoke_spec_passes_e9_gen_validator():
     (r,) = O.parse_runs("smoke:smoke")
     p = _sh(sys.executable, "scripts/e9_gen.py", "runspec", O.job_spec(r))

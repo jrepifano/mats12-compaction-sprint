@@ -30,6 +30,19 @@
    Else Part 1 stops: the outcome is "stop" and no insert is written. Spearman on a constant
    vector is undefined and counts as a failure. No verdict is computed or written until every
    scheduled validation request has a terminal answer (`IncompleteBatch` otherwise; R1 #8).
+   **Missing assessments** (execution rule under Amendment F, main session 2026-10-07): luna's
+   verdict is computed only if at least 90% of the sampled documents (270 of 300) have valid
+   scores from luna and both panel models; otherwise the outcome is "stop" with
+   `stop_reason` "measurement invalid: too few valid assessments", never a pass and never the
+   panel fallback (which itself needs 90% with both panel scores). `valid_counts` records the
+   counts. The verdict is bound to a manifest of the sampled requests and their result rows
+   (fingerprint, row sha256; `manifest_sha256`), and `verify_validation` recomputes the sample,
+   the manifest and the verdict from the current pool, config and rows before `panel-all`, the
+   selection or any output write (R1 r2 #2).
+7. **Verified reads.** Every reader of scores (`collect_scores`) recomputes each request's
+   fingerprint from the CURRENT pool text and config and refuses a mismatch.
+8. **Sticky safety flags.** A positive `minor_sexual` in ANY attempt of an A.1 answer (even an
+   otherwise malformed one) excludes the document (`safety_flag`).
 6. **Chunks.** Full-pool scoring runs in chunks of `CHUNK_DOCS` documents, one reservation each
    (each reservation holds the batch's upper bound until it settles).
 
@@ -142,16 +155,29 @@ def score_requests(docs: Sequence[dict]) -> list[dict]:
 
 
 def content_row(row: dict) -> dict:
-    """An `llm` result row -> a `CONTENT_SCORE_KEYS` row (score fields None unless ok)."""
+    """An `llm` result row -> a `CONTENT_SCORE_KEYS` row (score fields None unless ok), plus
+    `safety_flag`: true if ANY attempt's answer said minor_sexual true (sticky, R1 r2 #4). A
+    non-ok row with a sticky flag reports `minor_sexual` true."""
     p = row.get("parsed") if row["status"] == "ok" else None
+    sticky = row.get("safety_flag")
     return {
         "doc_id": row["item_id"], "model_key": row["model_key"],
         "endorsement": p["endorsement"] if p else None,
         "harm_type": p["harm_type"] if p else None,
-        "minor_sexual": p["minor_sexual"] if p else None,
+        "minor_sexual": p["minor_sexual"] if p else (True if sticky else None),
         "summary": p["summary"] if p else None,
         "status": row["status"],
+        "safety_flag": sticky,
     }
+
+
+def flagged(r: dict) -> bool:
+    """A content row carries a positive minor_sexual flag (final answer or any attempt)."""
+    return r.get("minor_sexual") is True or r.get("safety_flag") is True
+
+
+class EvidenceMismatch(RuntimeError):
+    """Recorded evidence no longer matches the current inputs, config or result rows."""
 
 
 class IncompleteBatch(RuntimeError):
@@ -196,17 +222,18 @@ def project_usd(docs: Sequence[dict], model_key: str) -> float:
     return llm.estimate_usd(model_key, PROMPT_ID, score_requests(docs), "json")
 
 
-def collect_scores(doc_ids: set[str] | None = None, llm_dir: str | Path = C.LLM_DIR,
+def collect_scores(docs: Sequence[dict], llm_dir: str | Path = C.LLM_DIR,
                    model_keys: Sequence[str] | None = None) -> list[dict]:
-    """Every content-score row on disk (latest per document and model), for `content_scores`."""
+    """The content-score rows of `docs` (the CURRENT pool records), one per document and model
+    that has an answer, each verified against the fingerprint recomputed from the current text
+    and config (`llm.verified_rows`; a mismatch raises `llm.FingerprintMismatch`, R1 r2 #2)."""
     keys = model_keys or (C.ROLES["content_judge"], *C.ROLES["content_panel"])
+    reqs = score_requests(docs)
     out = []
     for k in keys:
-        rows = llm.load_rows(llm_path(k, llm_dir))
-        for (mk, pid, item, seed), r in sorted(rows.items()):
-            keep = mk == k and pid == PROMPT_ID and seed == C.JUDGE_REQUEST_SEED
-            if keep and (doc_ids is None or item in doc_ids):
-                out.append(content_row(r))
+        rows = llm.verified_rows(k, PROMPT_ID, reqs, llm_path(k, llm_dir))
+        out += [content_row(rows[(r["item_id"], r["seed"])]) for r in reqs
+                if (r["item_id"], r["seed"]) in rows]
     return out
 
 
@@ -218,8 +245,8 @@ def tie_hash(doc_id: str) -> int:
 
 
 def safety_excluded(rows: Sequence[dict]) -> set[str]:
-    """Documents any model flagged `minor_sexual` (§4.3 safety exclusion)."""
-    return {r["doc_id"] for r in rows if r.get("status") == "ok" and r.get("minor_sexual") is True}
+    """Documents any model flagged `minor_sexual` in any attempt (§4.3 safety exclusion)."""
+    return {r["doc_id"] for r in rows if flagged(r)}
 
 
 def by_model(rows: Sequence[dict]) -> dict[str, dict[str, dict]]:
@@ -338,6 +365,10 @@ def _ge(v: float | None, thr: float) -> bool:
     return v is not None and v >= thr
 
 
+MIN_VALID_FRACTION = 0.9  # execution rule under Amendment F (main session, 2026-10-07)
+MEASUREMENT_INVALID = "measurement invalid: too few valid assessments"
+
+
 def validate_content(rows: Sequence[dict], insert_ids: Sequence[str], rest_ids: Sequence[str]
                      ) -> dict:
     """The §4.3 validation verdict from the content-score rows of the sampled documents."""
@@ -357,18 +388,35 @@ def validate_content(rows: Sequence[dict], insert_ids: Sequence[str], rest_ids: 
     rho_panel = spearman([ok(m1, d) for d in both], [ok(m2, d) for d in both])
     n_ins_ge4 = sum(1 for d in insert_ids if d in pmean and pmean[d] >= 4)
     frac = n_ins_ge4 / len(insert_ids) if insert_ids else None
-    judge_pass = _ge(rho_judge, C.CONTENT_PASS_SPEARMAN) and _ge(
+    required = math.ceil(MIN_VALID_FRACTION * len(sample) - 1e-9)
+    judge_valid = len(full) >= required  # the statistic needs luna and both panel models
+    panel_valid = len(both) >= required
+    judge_pass = judge_valid and _ge(rho_judge, C.CONTENT_PASS_SPEARMAN) and _ge(
         frac, C.CONTENT_PASS_INSERT_FRACTION)
-    panel_reliable = _ge(rho_panel, C.CONTENT_PANEL_RELIABLE_SPEARMAN)
-    outcome = "luna" if judge_pass else ("panel" if panel_reliable else "stop")
+    panel_reliable = panel_valid and _ge(rho_panel, C.CONTENT_PANEL_RELIABLE_SPEARMAN)
+    stop_reason = None
+    if not judge_valid:  # luna's verdict can't be established: never a pass, never the fallback
+        outcome, panel_reliable, stop_reason = "stop", False, MEASUREMENT_INVALID
+    elif judge_pass:
+        outcome = "luna"
+    elif panel_reliable:
+        outcome = "panel"
+    else:
+        outcome = "stop"
+        stop_reason = ("content judge failed validation and the panel is not reliable "
+                       "(prereg §4.3): Part 1 stops")
     means = {}
     for m in (judge, m1, m2):
         v = [ok(m, d) for d in sample if ok(m, d) is not None]
         means[m] = sum(v) / len(v) if v else None
     return {
         "outcome": outcome,
+        "stop_reason": stop_reason,
         "judge_pass": judge_pass,
         "panel_reliable": panel_reliable,
+        "valid_counts": {"n_sampled": len(sample), "required": required,
+                         "luna_and_panel": len(full), "panel_both": len(both),
+                         "min_valid_fraction": MIN_VALID_FRACTION},
         "spearman_judge_vs_panel_mean": rho_judge,
         "spearman_panel_models": rho_panel,
         "insert_fraction_panel_ge4": frac,
@@ -386,17 +434,43 @@ def validate_content(rows: Sequence[dict], insert_ids: Sequence[str], rest_ids: 
     }
 
 
+def _sample_ids(docs: Sequence[dict], llm_dir) -> tuple[list[str], list[str]]:
+    """The validation sample, drawn from luna's (verified) ranking."""
+    rows = collect_scores(docs, llm_dir, (C.ROLES["content_judge"],))
+    luna_sel = build_selection(docs, rows, "luna")
+    insert = luna_sel["insert"]
+    return validation_sample(insert, [r["doc_id"] for r in luna_sel["ranked"][len(insert):]])
+
+
+def validation_manifest(sample_docs: Sequence[dict], llm_dir) -> list[dict]:
+    """One entry per sampled request (luna and both panel models): doc, model, seed, fingerprint,
+    status and the sha256 of its result row. Every request must have a terminal row."""
+    entries = []
+    reqs = score_requests(sample_docs)
+    for m in (C.ROLES["content_judge"], *C.ROLES["content_panel"]):
+        rows = llm.verified_rows(m, PROMPT_ID, reqs, llm_path(m, llm_dir))
+        for r in reqs:
+            row = rows.get((r["item_id"], r["seed"]))
+            if row is None or row["status"] not in llm.TERMINAL:
+                raise IncompleteBatch(f"content validation: {m} has no terminal answer for "
+                                      f"{r['item_id']}; rerun `validate`")
+            entries.append({"doc_id": r["item_id"], "model_key": m, "seed": r["seed"],
+                            "fingerprint": row["fingerprint"], "status": row["status"],
+                            "row_sha256": llm.row_sha256(row)})
+    return entries
+
+
+def manifest_sha256(entries: Sequence[dict]) -> str:
+    return hashlib.sha256(json.dumps(list(entries), sort_keys=True).encode("utf-8")).hexdigest()
+
+
 def run_validation(docs: Sequence[dict], *, llm_dir: str | Path = C.LLM_DIR,
                    client_for: Callable[[str], object] | None = None, reserve=None,
                    concurrency: int = 32) -> dict:
     """Draw the 300-document sample from luna's insert and the rest, have both panel models score
-    it (one reservation per model), and return the verdict (with the sample)."""
-    judge = C.ROLES["content_judge"]
-    rows = collect_scores({d["doc_id"] for d in docs}, llm_dir, (judge,))
-    luna_sel = build_selection(docs, rows, "luna")
-    insert = luna_sel["insert"]
-    rest = [r["doc_id"] for r in luna_sel["ranked"][len(insert):]]
-    ins_s, rest_s = validation_sample(insert, rest)
+    it (one reservation per model), and return the verdict, bound to the manifest of the sampled
+    requests and their result rows (`manifest`, `manifest_sha256`)."""
+    ins_s, rest_s = _sample_ids(docs, llm_dir)
     by_id = {d["doc_id"]: d for d in docs}
     sample_docs = [by_id[d] for d in ins_s + rest_s]
     for m in C.ROLES["content_panel"]:
@@ -404,25 +478,52 @@ def run_validation(docs: Sequence[dict], *, llm_dir: str | Path = C.LLM_DIR,
                             client=client_for(m) if client_for else None, reserve=reserve,
                             concurrency=concurrency)
         require_terminal(rows_m, f"content validation, {m}")
-    all_rows = collect_scores({d["doc_id"] for d in sample_docs}, llm_dir)
-    require_terminal([r for r in all_rows if r["model_key"] in (judge, *C.ROLES["content_panel"])],
-                     "content validation")
-    return validate_content(all_rows, ins_s, rest_s)
+    entries = validation_manifest(sample_docs, llm_dir)
+    v = validate_content(collect_scores(sample_docs, llm_dir), ins_s, rest_s)
+    return {**v, "manifest": entries, "manifest_sha256": manifest_sha256(entries)}
+
+
+VERDICT_KEYS = ("outcome", "stop_reason", "judge_pass", "panel_reliable", "valid_counts",
+                "insert_ids", "rest_ids")
+
+
+def verify_validation(docs: Sequence[dict], validation: dict, *,
+                      llm_dir: str | Path = C.LLM_DIR) -> None:
+    """Refuse (`EvidenceMismatch`) unless the recorded validation still follows from the current
+    pool, config and result rows: the same sample, the same manifest (fingerprints and row
+    hashes), its sha256, and the same verdict recomputed. Run before any later paid work or
+    output write that relies on the verdict (R1 r2 #2)."""
+    for k in ("manifest", "manifest_sha256", *VERDICT_KEYS):
+        if k not in validation:
+            raise EvidenceMismatch(f"validation record lacks {k!r}: rerun `validate`")
+    ins_s, rest_s = _sample_ids(docs, llm_dir)
+    if [ins_s, rest_s] != [validation["insert_ids"], validation["rest_ids"]]:
+        raise EvidenceMismatch("the validation sample no longer follows from luna's ranking")
+    by_id = {d["doc_id"]: d for d in docs}
+    sample_docs = [by_id[d] for d in ins_s + rest_s]
+    entries = validation_manifest(sample_docs, llm_dir)
+    if entries != validation["manifest"] or manifest_sha256(entries) != validation[
+            "manifest_sha256"]:
+        raise EvidenceMismatch("the validation's sampled requests or result rows changed")
+    v = validate_content(collect_scores(sample_docs, llm_dir), ins_s, rest_s)
+    diff = [k for k in VERDICT_KEYS if v[k] != validation[k]]
+    if diff:
+        raise EvidenceMismatch(f"the recorded validation verdict differs on {diff}")
 
 
 def final_selection(docs: Sequence[dict], validation: dict, *, llm_dir: str | Path = C.LLM_DIR
                     ) -> dict:
-    """The selection the validation outcome calls for: luna's ranking, the panel mean's (every P1
-    document must then have both panel models' terminal answers), or a stop."""
+    """The selection the (verified) validation outcome calls for: luna's ranking, the panel
+    mean's (every P1 document must then have both panel models' terminal answers), or a stop."""
     outcome = validation["outcome"]
     if outcome not in OUTCOMES:
         raise ValueError(f"unknown validation outcome {outcome!r}")
-    rows = collect_scores({d["doc_id"] for d in docs}, llm_dir)
+    verify_validation(docs, validation, llm_dir=llm_dir)
+    rows = collect_scores(docs, llm_dir)
     if outcome == "stop":
         return {"outcome": "stop", "selector": None, "insert": [], "ranked": [],
                 "safety_excluded": sorted(safety_excluded(rows)),
-                "reason": "content judge failed validation and the panel is not reliable "
-                          "(prereg §4.3): Part 1 stops"}
+                "reason": validation["stop_reason"]}
     return {"outcome": outcome, **build_selection(docs, rows, outcome)}
 
 
@@ -441,14 +542,15 @@ def meta(p1_path: str | Path, llm_dir: str | Path = C.LLM_DIR) -> dict:
             "request_seed": C.JUDGE_REQUEST_SEED, **provenance()}
 
 
-def write_content_scores(out_dir: str | Path = C.SELECT_DIR, llm_dir: str | Path = C.LLM_DIR
-                         ) -> str:
-    return write_jsonl(Path(out_dir) / "content_scores.jsonl", collect_scores(None, llm_dir))
+def write_content_scores(docs: Sequence[dict], out_dir: str | Path = C.SELECT_DIR,
+                         llm_dir: str | Path = C.LLM_DIR) -> str:
+    return write_jsonl(Path(out_dir) / "content_scores.jsonl", collect_scores(docs, llm_dir))
 
 
-def write_validation(validation: dict, *, p1_path: str | Path, out_dir: str | Path = C.SELECT_DIR,
-                     llm_dir: str | Path = C.LLM_DIR) -> str:
-    write_content_scores(out_dir, llm_dir)
+def write_validation(validation: dict, *, docs: Sequence[dict], p1_path: str | Path,
+                     out_dir: str | Path = C.SELECT_DIR, llm_dir: str | Path = C.LLM_DIR) -> str:
+    verify_validation(docs, validation, llm_dir=llm_dir)
+    write_content_scores(docs, out_dir, llm_dir)
     return write_json(Path(out_dir) / "validation.json", {**validation, **meta(p1_path, llm_dir)})
 
 
@@ -463,7 +565,7 @@ def register_safety_exclusions(rows: Sequence[dict], add_exclusions=None) -> dic
     Returns {source: doc ids}."""
     by_src: dict[str, set[str]] = {}
     for r in rows:
-        if r.get("status") == "ok" and r.get("minor_sexual") is True:
+        if flagged(r):
             by_src.setdefault(exclusion_source(r["model_key"]), set()).add(r["doc_id"])
     if not by_src:
         return {}
@@ -476,15 +578,17 @@ def register_safety_exclusions(rows: Sequence[dict], add_exclusions=None) -> dic
     return out
 
 
-def write_outputs(sel: dict, *, p1_path: str | Path, out_dir: str | Path = C.SELECT_DIR,
-                  llm_dir: str | Path = C.LLM_DIR, add_exclusions=None) -> dict:
+def write_outputs(sel: dict, *, docs: Sequence[dict], p1_path: str | Path,
+                  out_dir: str | Path = C.SELECT_DIR, llm_dir: str | Path = C.LLM_DIR,
+                  add_exclusions=None) -> dict:
     """Register the safety exclusions, then write content_scores.jsonl, ranked.json and
     selection.json (validation.json is written by `write_validation`; its sha256 is recorded
     here)."""
     out_dir = Path(out_dir)
-    register_safety_exclusions(collect_scores(None, llm_dir), add_exclusions)
+    rows = collect_scores(docs, llm_dir)
+    register_safety_exclusions(rows, add_exclusions)
     m = meta(p1_path, llm_dir)
-    hashes = {"content_scores.jsonl": write_content_scores(out_dir, llm_dir)}
+    hashes = {"content_scores.jsonl": write_jsonl(out_dir / "content_scores.jsonl", rows)}
     vpath = out_dir / "validation.json"
     ranked = {"selector": sel.get("selector"), "outcome": sel["outcome"],
               "tie_break": f'int(sha256(f"{C.CORPUS_SEED}:{{doc_id}}"), 16) ascending',

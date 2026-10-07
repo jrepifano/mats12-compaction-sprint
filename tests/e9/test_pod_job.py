@@ -144,9 +144,13 @@ def test_required_files_expansion():
 
 def test_runspec_validation():
     assert G.parse_runspec("bg-c1:bg:1:cs:data/E9/streams/bg-c1.npy")["KIND"] == "cs"
-    assert G.parse_runspec("smoke:bg:1:smoke:x.npy")["RUN"] == "smoke"
+    sm = G.parse_runspec("smoke:ckpt:0:smoke:data/E9/streams/smoke.npy")
+    assert (sm["RUN"], sm["ARM"], sm["SEED"], sm["KIND"]) == ("smoke", "ckpt", 0, "smoke")
     for bad in ("bg-c2:bg:1:cs:x.npy", "bg-c1:zz:1:cs:x.npy", "bg-c1:bg:1:cx:x.npy",
                 "bg-c9:bg:9:cq:x.npy", "smoke:bg:0:smoke:x.npy", "x:bg:1:smoke:x.npy",
+                "smoke:bg:1:smoke:x.npy", "smoke:ckpt:1:smoke:x.npy",
+                "smoke2:ckpt:0:smoke:x.npy",
+                "ckpt-c0:ckpt:0:cq:x.npy", "ckpt-c0:ckpt:0:cs:x.npy", "smoke:ckpt:0:cq:x.npy",
                 "bg-c1:bg:1:cq:x.bin", "bg-c1:bg:1:cq"):
         with pytest.raises(SystemExit):
             G.parse_runspec(bad)
@@ -194,7 +198,65 @@ def test_done_checks_generation_manifest(tmp_path):
     with pytest.raises(SystemExit, match="sha256 differs"):
         G.write_done(rd, "smoke", "smoke", "bg", 1)
     _gen_manifest(rd, models)
+    with pytest.raises(SystemExit, match="consistency.json missing"):
+        G.write_done(rd, "smoke", "smoke", "bg", 1)
+    (rd / "ft/consistency.json").write_text(json.dumps({"per_data": {"bad": {"pass": True}}}))
     assert G.write_done(rd, "smoke", "smoke", "bg", 1)["kind"] == "smoke"
+
+
+def test_done_requires_passing_consistency_for_cs(tmp_path):
+    rd = tmp_path / "orig-c1"
+    need = G.required_files("cs", "orig", 1)
+    _fill(rd, [f for f in need if f != "gen/manifest.json"])
+    _gen_manifest(rd, G.expected_models("cs", "orig", 1))
+    cons = rd / "ft/consistency.json"
+    cons.write_text(json.dumps({"pass": False, "per_data": {"bad": {"pass": True},
+                                                            "good": {"pass": False}}}))
+    with pytest.raises(SystemExit, match=r"consistency not passed for \['good'\]"):
+        G.write_done(rd, "orig-c1", "cs", "orig", 1)
+    cons.write_text(json.dumps({"pass": True, "per_data": {"bad": {"pass": True}}}))
+    with pytest.raises(SystemExit, match="consistency not passed"):  # good missing
+        G.write_done(rd, "orig-c1", "cs", "orig", 1)
+    cons.write_text(json.dumps({"pass": True, "per_data": {d: {"pass": True} for d in C.DATAS}}))
+    assert G.write_done(rd, "orig-c1", "cs", "orig", 1)["artifacts"]["ft/consistency.json"]
+
+
+def test_begin_attempt_archives_everything_but_go(tmp_path):
+    rd = tmp_path / "bg-c1"
+    rec = G.begin_attempt(rd, "bg-c1", "T1")
+    assert rec["attempt"] == 1 and rec["archived_previous"] is None
+    _fill(rd, ["cpt/record.json", "scores/q.csv", "gen/old.csv", "pod.log", "FAILED.json", "GO"])
+    rec = G.begin_attempt(rd, "bg-c1", "T2")
+    assert rec == {**rec, "attempt": 2, "attempt_id": "bg-c1-a2-T2",
+                   "archived_previous": "attempts/1"}
+    top = sorted(p.name for p in rd.iterdir())
+    assert top == ["ATTEMPT.json", "GO", "attempts"]
+    for f in ("cpt/record.json", "scores/q.csv", "gen/old.csv", "pod.log", "FAILED.json",
+              "ATTEMPT.json"):
+        assert (rd / "attempts/1" / f).is_file(), f
+    _fill(rd, ["pod.log"])
+    assert G.begin_attempt(rd, "bg-c1", "T3")["attempt"] == 3
+    assert (rd / "attempts/2/pod.log").is_file()
+    assert G.attempt_of(rd) == "bg-c1-a3-T3"
+
+
+def test_split_versions_checks_the_frozen_insert(tmp_path):
+    ids = ["s#1", "s#2", "s#3"]
+    man = tmp_path / "insert_manifest.json"
+    man.write_text(json.dumps({"docs": [{"doc_id": i} for i in ids]}))
+    vers = tmp_path / "versions.jsonl"
+    vers.write_text("".join(json.dumps({"doc_id": i, "version": v, "text": f"{v} {i}"}) + "\n"
+                            for v in C.VERSIONS for i in ids))
+    rec = G.split_versions(vers, tmp_path / "out", man, tmp_path / "n")
+    assert rec["n_docs"] == 3 and rec["counts"] == {v: 3 for v in C.VERSIONS}
+    assert (tmp_path / "n").read_text().strip() == "3"
+    assert len((tmp_path / "out/corr.jsonl").read_text().splitlines()) == 3
+    vers.write_text(vers.read_text() + json.dumps({"doc_id": "s#9", "version": "para",
+                                                   "text": "x"}) + "\n")
+    with pytest.raises(SystemExit, match="frozen insert"):
+        G.split_versions(vers, tmp_path / "out", man)
+    with pytest.raises(SystemExit):
+        G.write_insert_status(tmp_path / "s.json", "ok", "x")
 
 
 def test_done_refuses_with_failed_present_and_failed_lists_files(tmp_path):
@@ -217,6 +279,16 @@ def test_stream_check(tmp_path):
     assert json.loads(out.read_text()) == man
     with pytest.raises(SystemExit, match="run_id"):
         G.stream_check(s, out, "bg-c2")
+    with pytest.raises(SystemExit, match="smoke"):
+        G.stream_check(s, out, "bg-c1", smoke=True)  # not the smoke stream
+    sm = tmp_path / "smoke.npy"
+    sm.write_bytes(b"smoke stream")
+    (tmp_path / "smoke.manifest.json").write_text(json.dumps(
+        {"run_id": "smoke", "cpt_seed": 1, "smoke": True, "stream_sha256": _sha(sm)}))
+    G.stream_check(sm, out, "smoke", smoke=True)
+    assert G.stream_seed(sm) == 1
+    with pytest.raises(SystemExit, match="smoke"):
+        G.stream_check(sm, out, "smoke")  # the smoke stream never feeds a cq/cs run
     s.write_bytes(b"other bytes")
     with pytest.raises(SystemExit, match="sha256"):
         G.stream_check(s, out, "bg-c1")
@@ -260,8 +332,15 @@ def _lora(name, lid, path):
 
 def test_generate_mocked_vllm(tmp_path):
     _FakeVLLM.calls, _FakeVLLM.engines = [], []
+    ad = tmp_path / "ad"
+    for d in C.DATAS:
+        for sub in ("", "step-0020"):
+            a = ad / "bg-c1" / f"full-{d}-a11" / sub
+            a.mkdir(parents=True, exist_ok=True)
+            (a / "adapter_config.json").write_text('{"r": 32}')
+            (a / "adapter_model.safetensors").write_bytes(f"weights {d} {sub}".encode())
     args = Namespace(kind="cs", run_dir=str(tmp_path / "bg-c1"), base="hub", arm="bg",
-                     cpt_seed=1, adapters_root="/ad", cuts=[], no_vulnerable=False,
+                     cpt_seed=1, adapters_root=str(ad), cuts=[], no_vulnerable=False,
                      selection_file=None, dry_run=False)
     written = G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
                          adapter_resolver=lambda spec: spec)
@@ -269,7 +348,8 @@ def test_generate_mocked_vllm(tmp_path):
     eng = _FakeVLLM.engines[0]
     assert eng["max_loras"] == 4 and eng["seed"] == C.EVAL_SEED and eng["revision"] == C.REVISION
     assert [n for n, _ in _FakeVLLM.calls] == [1180, 1180, 1180, 760, 760]
-    assert _FakeVLLM.calls[0][1] is None and _FakeVLLM.calls[1][1][3] == "/ad/bg-c1/full-bad-a11"
+    assert _FakeVLLM.calls[0][1] is None
+    assert _FakeVLLM.calls[1][1][3] == str(ad / "bg-c1/full-bad-a11")
     import csv
 
     with open(written[1]) as fh:
@@ -288,6 +368,24 @@ def test_generate_mocked_vllm(tmp_path):
     assert G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
                       adapter_resolver=lambda spec: spec) == []
     assert _FakeVLLM.calls == []
+    assert ent["base_fingerprint"] == f"{C.HF_ID}@{C.REVISION}"
+    assert len(ent["adapter_fingerprint"]) == 64
+    # new adapter weights (e.g. a retried fine-tune): only that model is sampled again
+    (ad / "bg-c1/full-good-a11/adapter_model.safetensors").write_bytes(b"retrained")
+    again = G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
+                       adapter_resolver=lambda spec: spec)
+    assert [x.name for x in again] == ["e9-bg-c1-good-a11-k1287.csv"]
+    # another base (its SHA256SUMS digest) invalidates every model
+    base = tmp_path / "base"
+    base.mkdir()
+    (base / "config.json").write_text("{}")
+    (base / "SHA256SUMS").write_text("abc  model.safetensors\n")
+    _FakeVLLM.calls = []
+    moved = G.generate(Namespace(**{**vars(args), "base": str(base)}), modules=(_FakeVLLM, _lora),
+                       tokenizer_loader=lambda b: _Tok(), adapter_resolver=lambda spec: spec)
+    assert len(moved) == 5
+    with pytest.raises(SystemExit, match="SHA256SUMS"):
+        G.base_fingerprint(str(tmp_path))
     # the manifest the generator wrote satisfies DONE's generation check
     files = G.list_files(tmp_path / "bg-c1")
     assert G.gen_manifest_problems(tmp_path / "bg-c1", files,
@@ -369,17 +467,23 @@ def test_dry_run_cs_then_cq_on_one_pod():
 
 
 def test_dry_run_smoke_order():
-    r = _job(["--run", "smoke:bg:1:smoke:data/E9/streams/bg-c1.npy", "--insert-loss"], DRY)
+    r = _job(["--run", "smoke:ckpt:0:smoke:data/E9/streams/smoke.npy", "--insert-loss"], DRY)
     assert r.returncode == 0, r.stdout + r.stderr
     cmds = _cmds(r.stdout)
-    order = ["e9_rounding_test.py --model hub", "stream-check", "--max-steps 20",
+    order = ["e9_rounding_test.py --model hub",
+             "stream-check --stream data/E9/streams/smoke.npy --run-id smoke --smoke",
+             "train --stream data/E9/streams/smoke.npy --run-id smoke",
              "q20 --run-dir results/E9/runs/smoke/roundtrip", "e9_gen.py roundtrip",
-             "determinism", "--seeds 11 --datas bad", "--seeds 11 --datas good", "e1b-gap",
+             "--seeds 11 --datas bad", "--seeds 11 --datas good", "determinism", "e1b-gap",
              "generate --kind smoke", "full --run-dir results/E9/runs/smoke --arm ckpt",
              "(together)", "split-versions", "heldout --model hub", "e9_gen.py timing",
              "rm -rf /ws/models/smoke", "e9_gen.py done"]
     pos = _in_order(cmds, order)
-    assert "--arm ckpt" in cmds[pos[6]] and "--arm ckpt" in cmds[pos[7]]
+    assert "--max-steps 20" in cmds[pos[2]]
+    assert "--arm ckpt --cpt-seed 0 --base hub" in cmds[pos[5]]
+    assert "--arm ckpt --cpt-seed 0 --base hub" in cmds[pos[6]]
+    assert "--expect-n" in cmds[pos[13]]
+    assert "--arm bg" in cmds[pos[3]] and "--base /ws/models/smoke" in cmds[pos[3]]
     assert not [c for c in cmds if c.startswith("wait for")]  # no GO barrier in the smoke
     tog = [c for c in cmds if c.startswith("(together)")]
     assert len(tog) == 2 and all("--no-push" in c and "--max-steps 100" in c for c in tog)
@@ -416,11 +520,21 @@ with open(os.environ["FAKE_LOG"], "a") as fh:
     fh.write(json.dumps(args) + "\n")
 name = Path(args[0]).name if args else ""
 HELPERS = ("consts", "runspec", "done", "failed", "timing", "conc", "stream-check",
-           "split-versions")
+           "stream-seed", "split-versions", "insert-status", "begin-attempt")
 if name == "e9_gen.py" and len(args) > 1 and args[1] in HELPERS:
     os.execv(sys.executable, [sys.executable, *args])
 if os.environ.get("FAKE_SLEEP") and os.environ["FAKE_SLEEP"] in " ".join(args):
+    import signal
     import time
+
+    if os.environ.get("FAKE_TERM_FLUSH"):  # like emx.train: flush a failed record on SIGTERM
+        def _flush(signum, frame):
+            time.sleep(1.5)  # slower than an immediate KILL would allow
+            out = Path(args[args.index("--out") + 1]) / "cpt/record.json"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps({{"status": "failed", "error": "SIGTERM"}}))
+            sys.exit(143)
+        signal.signal(signal.SIGTERM, _flush)
     Path(os.environ["FAKE_LOG"] + ".sleeping").write_text(str(os.getpid()))
     time.sleep(60)
 if os.environ.get("FAKE_FAIL") and os.environ["FAKE_FAIL"] in " ".join(args):
@@ -462,6 +576,12 @@ if name == "e9_cpt.py" and args[1] == "train":
          "wallclock_s": 10.0}}))
     if opt("--model-out"):
         touch(Path(opt("--model-out")) / "config.json")
+elif name == "e9_cpt.py" and opt("--docs"):  # insert loss: the count must be passed through
+    n = sum(1 for x in open(opt("--docs")) if x.strip())
+    if opt("--expect-n") != str(n):
+        print(f"expected {{opt('--expect-n')}} docs, got {{n}}", file=sys.stderr)
+        sys.exit(1)
+    touch(opt("--out"), json.dumps({{"loss": 2.5, "n_docs": n}}))
 elif name in ("e9_cpt.py", "e9_masking_check.py", "e9_rounding_test.py"):
     touch(opt("--out"))
 elif name == "e9_q20.py":
@@ -479,11 +599,21 @@ elif name == "e9_q20.py":
             touch(rd / f"ft/full-{{d}}-a11.json")
             adapter(ar / rid / f"full-{{d}}-a11")
             adapter(ar / rid / f"full-{{d}}-a11" / "step-0020")
-        touch(rd / "ft/consistency.json")
         scores(rd)
-        if os.environ.get("FAKE_CONSISTENCY_FAIL"):
-            sys.exit(3)
+        if "--max-steps" not in args:  # timing runs: no consistency check (as unit E1)
+            cp = rd / "ft/consistency.json"
+            cons = json.loads(cp.read_text()) if cp.exists() else {{"per_data": {{}}}}
+            ok = not os.environ.get("FAKE_CONSISTENCY_FAIL")
+            for d in many("--datas"):
+                cons["per_data"][d] = {{"pass": ok}}
+            cons["pass"] = all(v["pass"] for v in cons["per_data"].values())
+            touch(cp, json.dumps(cons))
+            if not ok:
+                sys.exit(3)
     elif cmd == "determinism":
+        if not (rd / "ft/bad-a11.json").exists():  # unit E1 refuses a missing original Q20
+            print("the original Q20 run is missing", file=sys.stderr)
+            sys.exit(1)
         touch(rd / "determinism.json")
         touch(rd / "ft/bad-a11-repeat.json")
     elif cmd == "e1b-gap":
@@ -527,11 +657,13 @@ def pod(tmp_path):
         (b / "python").chmod(0o755)
     streams = tmp_path / "streams"
     streams.mkdir()
-    for rid in ("bg-c1", "bg-c2", "orig-c1"):
+    for rid in ("bg-c1", "bg-c2", "orig-c1", "smoke"):
         s = streams / f"{rid}.npy"
         s.write_bytes(f"stream {rid}".encode())
-        (streams / f"{rid}.manifest.json").write_text(
-            json.dumps({"run_id": rid, "stream_sha256": _sha(s)}))
+        man = {"run_id": rid, "stream_sha256": _sha(s)}
+        if rid == "smoke":  # unit C's build-smoke manifest
+            man.update(smoke=True, cpt_seed=1, arm=None)
+        (streams / f"{rid}.manifest.json").write_text(json.dumps(man))
     runs = tmp_path / "results/E9/runs"
     (tmp_path / "pod.env").write_text("EMX_GIT_COMMIT=abc123\nE9_TEST_FROM_ENV_FILE=1\n")
     env = {
@@ -612,12 +744,23 @@ def test_fake_venvs_step_crash_and_rerun(pod):
              {**env, "FAKE_FAIL": "full --run-dir"})
     assert r.returncode == 1
     rd = p.runs / "bg-c1"
-    assert json.loads((rd / C.FAILED).read_text())["step"] == "full_bad"
-    # a rerun on the same pod moves FAILED aside and completes
+    f1 = json.loads((rd / C.FAILED).read_text())
+    assert f1["step"] == "full_bad" and f1["attempt"].startswith("bg-c1-a1-")
+    (rd / "gen").mkdir()
+    (rd / "gen/stale.csv").write_text("an earlier attempt's answers\n")  # must not leak
+    (p.tmp / "models/bg-c1").mkdir(parents=True)  # a crashed attempt's leftover model
+    # a rerun on the same pod archives attempt 1 whole and completes as attempt 2
     r = _job(["--run", f"bg-c1:bg:1:cs:{p.streams}/bg-c1.npy"], env)
     assert r.returncode == 0, _job_log(p)
     assert (rd / C.DONE).exists() and not (rd / C.FAILED).exists()
-    assert list(rd.glob("FAILED.json.prev-*"))
+    done = json.loads((rd / C.DONE).read_text())
+    assert done["attempt"] == json.loads((rd / "ATTEMPT.json").read_text())["attempt_id"]
+    assert done["attempt"].startswith("bg-c1-a2-")
+    for rel in ("FAILED.json", "pod.log", "cpt/record.json", "gen/stale.csv", "ATTEMPT.json"):
+        assert (rd / "attempts/1" / rel).is_file(), rel
+    assert not (rd / "gen/stale.csv").exists() and "gen/stale.csv" not in done["required"]
+    assert "attempt=bg-c1-a1-" not in (rd / "pod.log").read_text()  # a fresh pod.log
+    _verify_record(rd, done)
     # and a third invocation skips the finished run
     n_calls = len(_calls(p))
     r = _job(["--run", f"bg-c1:bg:1:cs:{p.streams}/bg-c1.npy"], env)
@@ -625,15 +768,22 @@ def test_fake_venvs_step_crash_and_rerun(pod):
     assert not [c for c in _calls(p)[n_calls:] if "e9_cpt.py" in c[0]]
 
 
-def test_fake_venvs_consistency_exit3_is_not_fatal(pod):
+def test_fake_venvs_failed_consistency_stops_the_run(pod):
     env, p = pod
     (p.runs.parent / "GO").parent.mkdir(parents=True, exist_ok=True)
     (p.runs.parent / "GO").write_text("go\n")
     r = _job(["--run", f"orig-c1:orig:1:cs:{p.streams}/orig-c1.npy"],
              {**env, "FAKE_CONSISTENCY_FAIL": "1"})
-    assert r.returncode == 0, _job_log(p)
+    assert r.returncode == 1
+    rd = p.runs / "orig-c1"
+    assert not (rd / C.DONE).exists()
+    f = json.loads((rd / C.FAILED).read_text())
+    assert f["step"] == "full_bad" and f["exit_code"] == 1 and "consistency" in f["error"]
+    assert "ft/consistency.json" in f["artifacts"]  # kept for the record
+    assert json.loads((rd / "ft/consistency.json").read_text())["pass"] is False
     assert "E9_CONSISTENCY_FAIL orig-c1 full_bad" in _job_log(p)
-    assert (p.runs / "orig-c1" / C.DONE).exists()
+    assert not [c for c in _calls(p) if "generate" in c or "--datas" in c and "good" in c
+                and "full" in c]  # neither the good full fine-tune nor generation ran
 
 
 def test_go_barrier_blocks_training_and_times_out(pod):
@@ -655,7 +805,7 @@ def test_go_barrier_blocks_training_and_times_out(pod):
 
 def test_fake_venvs_smoke_run(pod):
     env, p = pod
-    r = _job(["--run", f"smoke:bg:1:smoke:{p.streams}/bg-c1.npy"],
+    r = _job(["--run", f"smoke:ckpt:0:smoke:{p.streams}/smoke.npy"],
              {**env, "E9_CONC_STEPS": "5"})
     assert r.returncode == 0, _job_log(p)
     rd = p.runs / "smoke"
@@ -667,11 +817,21 @@ def test_fake_venvs_smoke_run(pod):
         assert rel in done["artifacts"], rel
     conc = json.loads((rd / "concurrency/conc.json").read_text())
     assert conc["exit_codes"] == [0, 0] and conc["steps"] == 5
+    assert json.loads((rd / "insert_loss/status.json").read_text())["status"] == "deferred"
     timing = json.loads((rd / "timing.json").read_text())
+    assert timing["insert_loss"]["status"] == "deferred"
     assert timing["cpt"]["peak_mem_gb"] == 70.0 and timing["concurrency"]["steps"] == 5
     _verify_record(rd, done)
     tog = [c for c in _calls(p) if "--max-steps" in c and "full" in c]
     assert len(tog) == 2 and all("--no-push" in c for c in tog)
+    calls = _calls(p)
+    (cpt,) = [c for c in calls if Path(c[0]).name == "e9_cpt.py" and c[1] == "train"]
+    assert cpt[cpt.index("--stream") + 1] == f"{p.streams}/smoke.npy"
+    assert cpt[cpt.index("--cpt-seed") + 1] == "1"  # the smoke stream manifest's seed
+    q20 = [c for c in calls if Path(c[0]).name == "e9_q20.py" and c[1] == "q20"]
+    assert [c[c.index("--arm") + 1] for c in q20] == ["bg", "ckpt", "ckpt"]  # round trip first
+    assert all(c[c.index("--cpt-seed") + 1] == "0" for c in q20[1:])
+    assert json.loads((rd / "stream_manifest.json").read_text())["smoke"] is True
 
 
 def test_done_refused_when_inventory_missing_fails_the_run(pod, tmp_path):
@@ -718,6 +878,72 @@ def test_sigterm_stops_the_step_and_writes_failed(pod):
     with pytest.raises(ProcessLookupError):
         os.kill(child, 0)  # the step's process group was stopped
     assert "E9_JOB_FAIL bg-c2 cpt signal TERM" in _job_log(p)
+
+
+def _insert_files(tmp: Path, n: int = 4) -> dict:
+    ids = [f"shard#{i}" for i in range(n)]
+    man = tmp / "insert_manifest.json"
+    man.write_text(json.dumps({"docs": [{"doc_id": i} for i in ids]}))
+    vers = tmp / "versions.jsonl"
+    vers.write_text("".join(json.dumps({"doc_id": i, "version": v, "text": f"{v} {i}"}) + "\n"
+                            for v in C.VERSIONS for i in ids))
+    return {"E9_INSERT_VERSIONS": str(vers), "E9_INSERT_MANIFEST": str(man)}
+
+
+def test_fake_venvs_smoke_insert_loss_measured(pod):
+    env, p = pod
+    r = _job(["--run", f"smoke:ckpt:0:smoke:{p.streams}/smoke.npy", "--insert-loss"],
+             {**env, **_insert_files(p.tmp), "E9_CONC_STEPS": "5"})
+    assert r.returncode == 0, _job_log(p)
+    rd = p.runs / "smoke"
+    st = json.loads((rd / "insert_loss/status.json").read_text())
+    assert st["status"] == "measured" and st["counts"]["n_docs"] == 4
+    for v in C.VERSIONS:
+        assert json.loads((rd / f"insert_loss/{v}.json").read_text())["n_docs"] == 4
+    heldouts = [c for c in _calls(p) if "--docs" in c]
+    assert [c[c.index("--expect-n") + 1] for c in heldouts] == ["4", "4", "4"]
+
+
+def test_fake_venvs_smoke_insert_loss_failure_is_recorded(pod):
+    env, p = pod
+    r = _job(["--run", f"smoke:ckpt:0:smoke:{p.streams}/smoke.npy", "--insert-loss"],
+             {**env, **_insert_files(p.tmp), "E9_CONC_STEPS": "5", "FAKE_FAIL": "corr.jsonl"})
+    assert r.returncode == 0, _job_log(p)
+    rd = p.runs / "smoke"
+    st = json.loads((rd / "insert_loss/status.json").read_text())
+    assert st["status"] == "failed" and "corr" in st["reason"]
+    assert "E9_INSERT_LOSS_FAIL smoke" in _job_log(p)
+    done = json.loads((rd / C.DONE).read_text())
+    assert "insert_loss/status.json" in done["artifacts"]
+    assert json.loads((rd / "timing.json").read_text())["insert_loss"]["status"] == "failed"
+
+
+def test_sigterm_waits_for_the_trainer_to_flush(pod):
+    import signal
+    import time
+
+    env, p = pod
+    assert 'KILL_GRACE_S="${E9_KILL_GRACE_S:-60}"' in SCRIPT.read_text()
+    (p.runs.parent / "GO").parent.mkdir(parents=True, exist_ok=True)
+    (p.runs.parent / "GO").write_text("go\n")
+    e = {k: v for k, v in os.environ.items() if not k.startswith("E9_")}
+    e.update({**env, "E9_KILL_GRACE_S": "10", "FAKE_SLEEP": "e9_cpt.py train",
+              "FAKE_TERM_FLUSH": "1"})
+    proc = subprocess.Popen([BASH, str(SCRIPT), "--run", f"bg-c2:bg:2:cq:{p.streams}/bg-c2.npy"],
+                            env=e, cwd=ROOT)
+    flag = Path(env["FAKE_LOG"] + ".sleeping")
+    for _ in range(200):
+        if flag.exists():
+            break
+        time.sleep(0.1)
+    assert flag.exists(), _job_log(p)
+    time.sleep(0.3)  # let the fake install its handler
+    proc.send_signal(signal.SIGTERM)
+    assert proc.wait(timeout=30) == 143
+    f = json.loads((p.runs / "bg-c2" / C.FAILED).read_text())
+    assert f["step"] == "cpt" and "cpt/record.json" in f["artifacts"]
+    assert json.loads((p.runs / "bg-c2/cpt/record.json").read_text())["status"] == "failed"
+    assert "KILL" not in _job_log(p)
 
 
 def test_script_is_bash32_clean():

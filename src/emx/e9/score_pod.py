@@ -60,6 +60,7 @@ SCORE_BATCH = S.SCORE_BATCH
 SCORES_DIR = "scores"
 PARTS_DIR = f"{SCORES_DIR}/parts"
 REPEAT_DIR = f"{SCORES_DIR}/repeat"  # the determinism repeat: never merged
+STALE_DIR = f"{SCORES_DIR}/stale"  # parts of an earlier attempt (another fingerprint)
 TIMING_DIR = f"{SCORES_DIR}/timing"  # shortened full-recipe runs (`full --max-steps`): never merged
 Q_CSV = f"{SCORES_DIR}/q.csv"
 E1B_ADAPTER_SEED = 2
@@ -256,27 +257,98 @@ def part_ok(path: str | Path) -> list[str]:
     return probs
 
 
+# What a score depends on besides the adapter: the base weights, the pairs and swap map, and the
+# scoring configuration. Every part's sidecar carries it; reference rows and parts are reused or
+# merged only under an identical fingerprint (code review R2 #4).
+FINGERPRINT_KEYS: tuple[str, ...] = (
+    "pairs_sha256", "swaps_sha256", "variants", "items", "batch", "fmt", "max_len",
+    "tokenizer_revision", "hf_id", "model_revision", "dtype",
+)
+REF_RESCORE_TOL = E3C.RESCORE_TOLERANCE_NATS  # same base, same fingerprint: numeric noise only
+
+
+def base_id(base: dict | None) -> str | None:
+    """The base model's identity: `hub:{hf_id}@{revision}` or `dir:{SHA256SUMS sha256}`."""
+    if not base:
+        return None
+    if base.get("source") == "hub":
+        return f"hub:{base.get('hf_id')}@{base.get('revision')}"
+    return f"dir:{base.get('sha256sums_sha256')}"
+
+
+def fingerprint(meta: dict, with_dtype: bool = True) -> dict:
+    """The score fingerprint of a sidecar (`FINGERPRINT_KEYS` plus the base's identity)."""
+    keys = FINGERPRINT_KEYS if with_dtype else tuple(k for k in FINGERPRINT_KEYS if k != "dtype")
+    return json.loads(json.dumps({**{k: meta.get(k) for k in keys},
+                                  "base": base_id(meta.get("base"))}))
+
+
+def same_fingerprint(a: dict | None, b: dict | None, with_dtype: bool = True) -> bool:
+    if not a or not b:
+        return False
+    if not with_dtype:
+        a, b = ({k: v for k, v in x.items() if k != "dtype"} for x in (a, b))
+    return a == b
+
+
 def write_part(rows: Sequence[dict], path: str | Path, meta: dict, complete: bool):
     ids = list(dict.fromkeys(r["model_id"] for r in rows))
-    return S.write_scores(rows, path, {**meta, "model_ids": ids, "complete": complete})
+    return S.write_scores(rows, path, {**meta, "model_ids": ids, "complete": complete,
+                                       "fingerprint": fingerprint(meta)})
+
+
+def retire_stale_parts(run_dir: str | Path, fp: dict) -> list[str]:
+    """Move every part whose fingerprint differs from `fp` out of `scores/parts/` into
+    `scores/stale/<UTC>/` (kept for provenance, never merged or reused). Call under the lock."""
+    run_dir = Path(run_dir)
+    moved = []
+    dest = run_dir / STALE_DIR / _utc().replace(":", "")
+    for p in sorted((run_dir / PARTS_DIR).glob("*.csv")):
+        mp = S.meta_path(p)
+        meta = json.loads(mp.read_text()) if mp.exists() else {}
+        if same_fingerprint(meta.get("fingerprint"), fp):
+            continue
+        dest.mkdir(parents=True, exist_ok=True)
+        for f in (p, mp):
+            if f.exists():
+                f.rename(dest / f.name)
+        moved.append(p.relative_to(run_dir).as_posix())
+    return moved
 
 
 def ensure_ref(run_dir: str | Path, ref_id: str, rows: Sequence[dict], meta: dict) -> dict:
-    """Write the reference part for `ref_id` if the run directory has none; otherwise compare
-    `rows` to the stored rows. Returns {"written": bool, "ref_rescore_max_abs_ell": float|None}."""
+    """The reference part for `ref_id`. Written if the run directory has none, or if the stored
+    one has another fingerprint (another base, pairs, swaps or scoring config): then it is
+    rescored and every part with the old fingerprint is retired (`retire_stale_parts`), so old
+    rows are never reused. Under the same fingerprint the stored rows are reused and compared
+    with `rows`; a difference above `REF_RESCORE_TOL` raises. Returns {"written",
+    "ref_rescore_max_abs_ell", "retired"}."""
     arm, s = C.parse_model_id(ref_id)["arm"], C.parse_model_id(ref_id)["cpt_seed"]
     path = part_path(run_dir, ref_part_name(arm, s))
     if any(r["model_id"] != ref_id or r["ref_model_id"] != ref_id for r in rows):
         raise ValueError(f"reference rows must be {ref_id}'s own")
+    full = {**meta, "kind": "ref", "adapters": {ref_id: None}}
+    fp = fingerprint(full)
     with dir_lock(Path(run_dir) / SCORES_DIR):
-        if not part_ok(path):
-            diff = max_abs_ell_diff(read_rows(path), rows)
-            log(f"ref {ref_id}: stored rows reused, max |dell| {diff:.3g}")
-            return {"written": False, "ref_rescore_max_abs_ell": diff}
-        write_part(rows, path, {**meta, "kind": "ref", "adapters": {ref_id: None}},
-                   complete=True)
+        retired: list[str] = []
+        if path.exists() or S.meta_path(path).exists():
+            stored = read_meta(path) if S.meta_path(path).exists() else {}
+            if not part_ok(path) and same_fingerprint(stored.get("fingerprint"), fp):
+                diff = max_abs_ell_diff(read_rows(path), rows)
+                if diff > REF_RESCORE_TOL:
+                    raise ValueError(
+                        f"ref {ref_id}: a rescore under the same fingerprint differs by "
+                        f"{diff:.3g} nats/token > {REF_RESCORE_TOL:g}")
+                log(f"ref {ref_id}: stored rows reused, max |dell| {diff:.3g}")
+                return {"written": False, "ref_rescore_max_abs_ell": diff, "retired": []}
+            retired = retire_stale_parts(run_dir, fp)
+            if path.exists():  # an incomplete part with the current fingerprint
+                path.unlink()
+                S.meta_path(path).unlink(missing_ok=True)
+            log(f"ref {ref_id}: stored rows stale or incomplete, rescored; retired {retired}")
+        write_part(rows, path, full, complete=True)
         log(f"ref {ref_id}: {len(rows)} rows -> {path}")
-        return {"written": True, "ref_rescore_max_abs_ell": None}
+        return {"written": True, "ref_rescore_max_abs_ell": None, "retired": retired}
 
 
 # --- the hook -----------------------------------------------------------------------------------
@@ -417,6 +489,7 @@ def merge_scores(run_dir: str | Path, extra_meta: dict | None = None) -> dict:
         shadowed: dict[str, list[str]] = {}
         metas: dict[str, dict] = {}
         q20_ids: set[str] = set()
+        ref_fp: dict[str, dict] = {}
         for p in parts:
             probs = part_ok(p)
             rel = p.relative_to(run_dir).as_posix()
@@ -425,6 +498,14 @@ def merge_scores(run_dir: str | Path, extra_meta: dict | None = None) -> dict:
                 continue
             meta = read_meta(p)
             got = read_rows(p)
+            if meta.get("kind") == "ref" or p.stem.startswith("ref-"):
+                ref_fp[got[0]["model_id"]] = meta.get("fingerprint")
+            else:  # bound to its reference part's fingerprint (code review R2 #4)
+                bad = sorted(r for r in {x["ref_model_id"] for x in got}
+                             if not same_fingerprint(meta.get("fingerprint"), ref_fp.get(r)))
+                if bad:
+                    skipped[rel] = [f"fingerprint differs from (or no) reference part {bad}"]
+                    continue
             if p.stem.startswith("full-"):
                 drop = sorted({r["model_id"] for r in got} & q20_ids)
                 if drop:

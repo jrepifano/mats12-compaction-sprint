@@ -14,10 +14,18 @@ regeneration sequence of prereg §4.4 "Writers and the regeneration sequence" (A
 
 API errors. `llm.run_batch` treats "error" as non-terminal (an API failure after its retries, or a
 request cut off by the reservation's headroom or a fatal error) and re-sends it on the next run.
-An error is not an answer from the writer, so by default it is NOT recorded as an attempt: the
-item stays "pending" and the next call re-sends it to the same writer. Only with
-`errors_to_fallback=True` (for an item that keeps failing across reruns) is an error row that was
-actually sent (`attempts > 0`) recorded as a failed attempt, which routes it like a refusal.
+An error is not an answer from the writer, so it is never recorded as an attempt and never routes
+anything: the item stays pending and the next call re-sends it to the same writer (code review R1
+r2, finding 6: no unregistered routing rule).
+
+Crash safety (R1 r2, finding 5). `write_versions` and `regenerate` each run as one session under
+an exclusive non-blocking flock on `attempts.jsonl.lock` (a second session raises
+`AttemptsLocked`). At the start of a session, a torn final line of `attempts.jsonl` (partial
+UTF-8 included) is moved to `attempts.jsonl.torn.jsonl` and truncated, and every attempt whose
+terminal LLM result row is durable in `data/E9/llm/rewrite-*.jsonl` but whose attempts line was
+lost is reconstructed from that row (fingerprint-checked against the current inputs), so nothing
+is re-sent. Readers (`load_attempts`) skip an incomplete last line; a malformed line elsewhere
+raises.
 
 Every attempt is appended to `data/E9/rewrite/attempts.jsonl` (`contracts.REWRITE_ATTEMPT_KEYS`
 plus provenance), keyed by (doc_id, version, attempt, writer); a key already recorded is never
@@ -50,10 +58,13 @@ corrections (unit H).
 
 from __future__ import annotations
 
+import fcntl
 import json
+import os
 import statistics
 from collections import Counter
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -66,9 +77,9 @@ PROMPT_FOR: dict[str, str] = {"corr": "A2_correct", "para": "A3_paraphrase"}
 LUNA: str = C.ROLES["writer"]  # type: ignore[assignment]
 QWN: str = C.ROLES["fallback_writer"]  # type: ignore[assignment]
 # Recorded statuses that send luna's attempt 1 to the fallback ("nothing usable"). §4.4 names
-# refusals and empty answers; "malformed" cannot occur in text mode; "error" is recorded only
-# under errors_to_fallback (module docstring).
-FALLBACK_STATUSES: tuple[str, ...] = ("refused", "empty", "error", "malformed")
+# refusals and empty answers; "malformed" cannot occur in text mode; "error" is never recorded.
+FALLBACK_STATUSES: tuple[str, ...] = ("refused", "empty", "malformed")
+TERMINAL_STATUSES: tuple[str, ...] = ("ok", *FALLBACK_STATUSES)
 UNRESOLVED = "unresolved"
 ATTEMPTS_FILE = "attempts.jsonl"
 STEP = "rewrite"
@@ -83,6 +94,10 @@ class FingerprintMismatch(ValueError):
 
 class ExcludedDocument(ValueError):
     """A document in the shared exclusion registry was submitted for rewriting."""
+
+
+class AttemptsLocked(RuntimeError):
+    """Another write session holds the attempts file."""
 
 
 # --- paths and records ----------------------------------------------------------------------------
@@ -102,15 +117,73 @@ def _key(rec: Mapping) -> Key:
 
 
 def load_attempts(out_dir: str | Path = C.REWRITE_DIR) -> dict[Key, dict]:
-    """Every recorded attempt, keyed by (doc_id, version, attempt, writer); last line wins."""
+    """Every recorded attempt, keyed by (doc_id, version, attempt, writer); last line wins. An
+    incomplete last line (a torn append awaiting repair) is skipped; a malformed line elsewhere
+    raises."""
     path = attempts_path(out_dir)
     out: dict[Key, dict] = {}
-    if path.exists():
-        for line in path.read_text().splitlines():
-            if line.strip():
-                rec = json.loads(line)
-                out[_key(rec)] = rec
+    if not path.exists():
+        return out
+    lines = path.read_bytes().split(b"\n")
+    for i, line in enumerate(lines):
+        if not line.strip():
+            continue
+        try:
+            rec = json.loads(line.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as e:
+            if i == len(lines) - 1:  # no newline after it: incomplete
+                continue
+            raise RuntimeError(f"{path}:{i + 1}: malformed attempt line: {e}") from e
+        out[_key(rec)] = rec
     return out
+
+
+def repair_tail(out_dir: str | Path = C.REWRITE_DIR) -> int:
+    """Under the session lock: move an incomplete final line of attempts.jsonl to
+    attempts.jsonl.torn.jsonl (hex bytes) and truncate it; add the missing newline to a complete
+    one. Returns the number of bytes removed."""
+    path = attempts_path(out_dir)
+    if not path.exists():
+        return 0
+    with open(path, "r+b") as f:
+        data = f.read()
+        if not data or data.endswith(b"\n"):
+            return 0
+        cut = data.rfind(b"\n") + 1
+        tail = data[cut:]
+        try:
+            json.loads(tail.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            torn = path.with_name(path.name + ".torn.jsonl")
+            with open(torn, "a") as q:
+                utc = datetime.now(UTC).isoformat(timespec="seconds")
+                q.write(json.dumps({"utc": utc, "offset": cut, "bytes_hex": tail.hex()}) + "\n")
+            f.truncate(cut)
+            return len(tail)
+        f.write(b"\n")
+        return 0
+
+
+@contextmanager
+def _session(out_dir: str | Path) -> Iterator[None]:
+    """Exclusive non-blocking flock on attempts.jsonl.lock for one write session; repairs the
+    attempts file's tail on entry."""
+    path = attempts_path(out_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path.with_name(path.name + ".lock"), "a+") as f:
+        try:
+            fcntl.flock(f.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as e:
+            raise AttemptsLocked(f"{path}: another rewrite session is running") from e
+        try:
+            f.seek(0)
+            f.truncate()
+            f.write(f"{os.getpid()} {datetime.now(UTC).isoformat(timespec='seconds')}\n")
+            f.flush()
+            repair_tail(out_dir)
+            yield
+        finally:
+            fcntl.flock(f.fileno(), fcntl.LOCK_UN)
 
 
 def _append(out_dir: str | Path, recs: list[dict]) -> None:
@@ -118,9 +191,10 @@ def _append(out_dir: str | Path, recs: list[dict]) -> None:
         return
     path = attempts_path(out_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a") as f:
+    with path.open("a", encoding="utf-8") as f:
         f.write("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs))
         f.flush()
+        os.fsync(f.fileno())
 
 
 def _by_dv(attempts: Mapping[Key, dict]) -> dict[DV, dict[tuple[int, str], dict]]:
@@ -335,15 +409,12 @@ def _call(
     llm_dir: str | Path,
     concurrency: int,
     tok,
-    errors_to_fallback: bool = False,
 ) -> tuple[list[dict], dict[DV, str]]:
     """One run_batch call (one ledger note), its rows turned into attempt records and appended.
-    Error rows are left unrecorded (re-sent next time) unless `errors_to_fallback` and sent.
-    Returns (records, {(doc_id, version): reason} for the requests left without a record)."""
+    Error rows are left unrecorded (re-sent to the same writer next time). Returns (records,
+    {(doc_id, version): reason} for the requests left without a record)."""
     if not reqs:
         return [], {}
-    spec = C.MODELS[model]
-    prompt_sha = _prompt_sha(PROMPT_FOR[version])
     tag = f"{model}-{version}-a{attempt}-{batch}"
     note = C.ledger_note(stage, STEP, tag)  # validates the stage
     out_path = _root_path(llm_dir) / f"rewrite-{stage}-{tag}.jsonl"
@@ -358,7 +429,6 @@ def _call(
         concurrency=concurrency,
     )
     by_item = {r["item_id"]: r for r in rows}
-    utc = datetime.now(UTC).isoformat(timespec="seconds")
     recs: list[dict] = []
     missing: dict[DV, str] = {}
     for req in reqs:
@@ -368,48 +438,144 @@ def _call(
         if row is None:  # not returned: left unrecorded, re-sent on resume
             missing[dv] = f"{model} a{attempt}: no result row returned"
             continue
-        status = row["status"]
-        out_text = row.get("text") or ""
-        if status not in C.LLM_STATUSES:
-            raise ValueError(f"unknown LLM status {status!r} for {req['item_id']}")
-        if (
-            row.get("seed") != req["seed"]
-            or row.get("prompt_sha256") not in (None, prompt_sha)
-            or row.get("model") not in (None, spec.model)
-        ):
-            raise FingerprintMismatch(
-                f"{req['item_id']}: LLM row's seed, prompt sha or model differs from the request"
-            )
-        if status == "error" and not (errors_to_fallback and (row.get("attempts") or 0) > 0):
+        _check_row(row, req, model, version)
+        if row["status"] == "error":
             sent = "sent, failed after retries" if row.get("attempts") else "not sent"
             missing[dv] = f"{model} a{attempt}: API error ({sent}): {row.get('error')}"
             continue
-        recs.append(
-            {
-                "doc_id": doc["doc_id"],
-                "version": version,
-                "attempt": attempt,
-                "writer": model,
-                "seed": req["seed"],
-                "status": status,
-                "text": out_text if status == "ok" else (out_text or None),
-                "n_tokens": T.n_tokens(out_text, tok) if status == "ok" else None,
-                "utc": utc,
-                "item_id": req["item_id"],
-                "prompt_id": PROMPT_FOR[version],
-                "prompt_sha256": row.get("prompt_sha256"),
-                "model": row.get("model"),
-                "stage": stage,
-                "note": note,
-                "finish_reason": row.get("finish_reason"),
-                "usd": row.get("usd"),
-                "orig_sha256": T.text_sha256(doc["text"]),
-                "orig_n_tokens": doc.get("n_tokens"),
-                "fingerprint": fingerprint(doc["text"], version, model, attempt),
-            }
-        )
+        recs.append(_record(doc, version, model, attempt, row, stage=stage, note=note, tok=tok))
     _append(out_dir, recs)
     return recs, missing
+
+
+def _check_row(row: Mapping, req: Mapping, model: str, version: str) -> None:
+    if row["status"] not in C.LLM_STATUSES:
+        raise ValueError(f"unknown LLM status {row['status']!r} for {req['item_id']}")
+    if (
+        row.get("seed") != req["seed"]
+        or row.get("prompt_sha256") not in (None, _prompt_sha(PROMPT_FOR[version]))
+        or row.get("model") not in (None, C.MODELS[model].model)
+    ):
+        raise FingerprintMismatch(
+            f"{req['item_id']}: LLM row's seed, prompt sha or model differs from the request"
+        )
+
+
+def _record(
+    doc: Mapping,
+    version: str,
+    model: str,
+    attempt: int,
+    row: Mapping,
+    *,
+    stage,
+    note,
+    tok,
+    reconstructed: bool = False,
+) -> dict:
+    """The attempt record (REWRITE_ATTEMPT_KEYS plus provenance) for a terminal LLM row."""
+    status = row["status"]
+    out_text = row.get("text") or ""
+    rec = {
+        "doc_id": doc["doc_id"],
+        "version": version,
+        "attempt": attempt,
+        "writer": model,
+        "seed": _seed(attempt),
+        "status": status,
+        "text": out_text if status == "ok" else (out_text or None),
+        "n_tokens": T.n_tokens(out_text, tok) if status == "ok" else None,
+        "utc": datetime.now(UTC).isoformat(timespec="seconds"),
+        "item_id": item_id(doc["doc_id"], version, attempt),
+        "prompt_id": PROMPT_FOR[version],
+        "prompt_sha256": row.get("prompt_sha256"),
+        "model": row.get("model"),
+        "stage": stage,
+        "note": note,
+        "finish_reason": row.get("finish_reason"),
+        "usd": row.get("usd"),
+        "orig_sha256": T.text_sha256(doc["text"]),
+        "orig_n_tokens": doc.get("n_tokens"),
+        "fingerprint": fingerprint(doc["text"], version, model, attempt),
+    }
+    if reconstructed:
+        rec["reconstructed_from_llm_row"] = True
+    return rec
+
+
+def _durable_rows(llm_dir: str | Path) -> dict[tuple, dict]:
+    """Terminal rewrite rows in every data/E9/llm/rewrite-*.jsonl, by llm.row_key; the earliest
+    row wins if two batch files hold the same key."""
+    from emx.e9 import llm  # lazy: written by unit B1
+
+    out: dict[tuple, dict] = {}
+    root = _root_path(llm_dir)
+    if not root.exists():
+        return out
+    for p in sorted(root.glob("rewrite-*.jsonl")):
+        if p.name.endswith(".usage.jsonl"):
+            continue
+        for k, row in llm.load_rows(p).items():
+            if row["status"] not in TERMINAL_STATUSES:
+                continue
+            if k not in out or str(row.get("utc")) < str(out[k].get("utc")):
+                out[k] = row
+    return out
+
+
+def reconstruct(
+    docs: Mapping[str, Mapping],
+    dvs: Iterable[DV],
+    *,
+    out_dir: str | Path,
+    llm_dir: str | Path,
+    tok=None,
+) -> list[dict]:
+    """Record every attempt of `dvs` whose terminal LLM row is durable but whose attempts line is
+    missing (a crash between the LLM write and the attempts append). Each row must carry the
+    llm request fingerprint of the current inputs, else FingerprintMismatch. Call under the
+    session lock. Returns the records appended."""
+    from emx.e9 import llm, prompts  # lazy: written by unit B1
+
+    attempts = load_attempts(out_dir)
+    rows = _durable_rows(llm_dir)
+    recs = []
+    for doc_id, version in dvs:
+        doc = docs[doc_id]
+        pid = PROMPT_FOR[version]
+        for attempt in (1, 2):
+            for writer in (LUNA, QWN):
+                if (doc_id, version, attempt, writer) in attempts:
+                    continue
+                req = _request(doc, version, attempt)
+                row = rows.get((writer, pid, req["item_id"], req["seed"]))
+                if row is None:
+                    continue
+                _check_row(row, req, writer, version)
+                want = llm.fingerprint(
+                    C.MODELS[writer], prompts.fill(pid, **req["fields"]), req["seed"], "text"
+                )
+                if row.get("fingerprint") != want:
+                    raise FingerprintMismatch(
+                        f"{req['item_id']} ({writer}): durable LLM row was made from other inputs"
+                    )
+                note = row.get("note") or ""
+                stage = note.split(":")[1] if note.count(":") >= 3 else None
+                recs.append(
+                    _record(
+                        doc,
+                        version,
+                        writer,
+                        attempt,
+                        row,
+                        stage=stage,
+                        note=note or None,
+                        tok=tok,
+                        reconstructed=True,
+                    )
+                )
+    _append(out_dir, recs)
+    return recs
 
 
 def write_versions(
@@ -423,7 +589,6 @@ def write_versions(
     llm_dir: str | Path = C.LLM_DIR,
     concurrency: int = 32,
     tok=None,
-    errors_to_fallback: bool = False,
     exclusions: Iterable[str] | None = None,
 ) -> dict[DV, dict]:
     """§4.4 steps 1-2 for every (document, version): luna writes all of them (one batch per
@@ -433,10 +598,30 @@ def write_versions(
     standing attempt record (`current_version`) for every requested pair, or an explicit
     {"status": "unresolved", "reason"} entry if an API error or cut-off left it pending (it is
     re-sent by the next call). Refuses excluded documents and unbound recorded attempts first;
-    `exclusions` (doc ids) overrides the shared registry (tests)."""
+    `exclusions` (doc ids) overrides the shared registry (tests). Runs as one locked session
+    (module docstring: tail repair and reconstruction first)."""
     versions = _check_versions(versions)
     docs = _docs_map(docs)
-    _preflight(docs, [(i, v) for i in docs for v in versions], load_attempts(out_dir), exclusions)
+    dvs = [(i, v) for i in docs for v in versions]
+    excl = excluded_ids() if exclusions is None else set(exclusions)
+    _preflight(docs, dvs, {}, excl)  # exclusions first: nothing of an excluded doc is touched
+    with _session(out_dir):
+        reconstruct(docs, dvs, out_dir=out_dir, llm_dir=llm_dir, tok=tok)
+        _preflight(docs, dvs, load_attempts(out_dir), excl)
+        return _write_locked(
+            docs,
+            versions,
+            stage=stage,
+            batch=batch,
+            run_batch=run_batch,
+            out_dir=out_dir,
+            llm_dir=llm_dir,
+            concurrency=concurrency,
+            tok=tok,
+        )
+
+
+def _write_locked(docs, versions, *, stage, batch, run_batch, out_dir, llm_dir, concurrency, tok):
     run_batch = run_batch or _run_batch_default()
     reasons: dict[DV, str] = {}
     kw = {
@@ -447,7 +632,6 @@ def write_versions(
         "llm_dir": llm_dir,
         "concurrency": concurrency,
         "tok": tok,
-        "errors_to_fallback": errors_to_fallback,
     }
     for version in versions:
         attempts = load_attempts(out_dir)
@@ -489,7 +673,6 @@ def regenerate(
     llm_dir: str | Path = C.LLM_DIR,
     concurrency: int = 32,
     tok=None,
-    errors_to_fallback: bool = False,
     exclusions: Iterable[str] | None = None,
 ) -> dict[DV, dict]:
     """§4.4 step 3: each (doc_id, version, writer) whose attempt-1 output failed its checks (or,
@@ -499,15 +682,38 @@ def regenerate(
     re-sent. Returns, for EVERY requested (doc_id, version), the attempt-2 record (a non-ok record
     means dropped, step 4; an ok one still goes to B2b's checks) or an explicit
     {"status": "unresolved", "reason"} entry (API error or cut-off: call again). Refuses excluded
-    documents and unbound recorded attempts before any call."""
+    documents and unbound recorded attempts before any call. One locked session, as
+    `write_versions`."""
     docs = _docs_map(docs)
     failed = list(failed)
-    attempts = load_attempts(out_dir)
     for doc_id, version, _ in failed:
         _check_versions([version])
         if doc_id not in docs:
             raise ValueError(f"{doc_id}: not among the documents passed")
-    _preflight(docs, [(d, v) for d, v, _ in failed], attempts, exclusions)
+    dvs = [(d, v) for d, v, _ in failed]
+    excl = excluded_ids() if exclusions is None else set(exclusions)
+    _preflight(docs, dvs, {}, excl)
+    with _session(out_dir):
+        reconstruct(docs, dvs, out_dir=out_dir, llm_dir=llm_dir, tok=tok)
+        attempts = load_attempts(out_dir)
+        _preflight(docs, dvs, attempts, excl)
+        return _regenerate_locked(
+            failed,
+            docs,
+            attempts,
+            stage=stage,
+            batch=batch,
+            run_batch=run_batch,
+            out_dir=out_dir,
+            llm_dir=llm_dir,
+            concurrency=concurrency,
+            tok=tok,
+        )
+
+
+def _regenerate_locked(
+    failed, docs, attempts, *, stage, batch, run_batch, out_dir, llm_dir, concurrency, tok
+):
     run_batch = run_batch or _run_batch_default()
     by = _by_dv(attempts)
     reasons: dict[DV, str] = {}
@@ -544,7 +750,6 @@ def regenerate(
             llm_dir=llm_dir,
             concurrency=concurrency,
             tok=tok,
-            errors_to_fallback=errors_to_fallback,
         )
         reasons.update(missing)
     by = _by_dv(load_attempts(out_dir))

@@ -64,11 +64,6 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--batch", default="pass1", help="ledger-note batch tag")
             p.add_argument("--concurrency", type=int, default=32)
             p.add_argument("--confirm-paid", action="store_true")
-            p.add_argument(
-                "--errors-to-fallback",
-                action="store_true",
-                help="record sent API errors as failed attempts (default: re-send them)",
-            )
 
     w = sub.add_parser("write")
     w.add_argument("--docs", required=True, help="JSONL of documents (doc_id, text, n_tokens)")
@@ -128,7 +123,6 @@ def main(argv: list[str] | None = None) -> int:
         "batch": a.batch,
         "out_dir": a.out_dir,
         "concurrency": a.concurrency,
-        "errors_to_fallback": a.errors_to_fallback,
     }
     if a.cmd == "write":
         res = R.write_versions(docs, a.versions, **kw)

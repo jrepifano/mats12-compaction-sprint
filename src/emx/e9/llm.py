@@ -33,7 +33,8 @@ retry-on-transient-error loop of `emx.shared.answer_pairs.run_calls`, and its re
   failures after retries, or a request cut off by the headroom) are re-sent by the next run.
 - **Budget** (§7.3). Startup (under the lock) settles a crashed earlier run of the same `note` at
   its full reservation (`spend.recover_uncertain`) and releases an unsubmitted one. The pending
-  requests' **upper bound** (`estimate_usd`) is reserved through `reserve(stage, usd, note)`
+  requests' **upper bound** (`estimate_usd`) plus a small retry allowance (`reservation_usd`)
+  is reserved through `reserve(stage, usd, note)`
   (default `emx.e9.budget.reserve_api`, the E9 admission protocol); `spend.mark_submitted`
   precedes the first call. Every call attempt, retries included, first claims its bound; the sum
   of finished calls' actual cost and in-flight bounds never exceeds `spend.reservation_headroom`.
@@ -58,6 +59,16 @@ retry-on-transient-error loop of `emx.shared.answer_pairs.run_calls`, and its re
   `finish_reason == "content_filter"`, or a 400/403 moderation error), or if the output is
   shorter than `REFUSAL_MAX_RATIO * ref_chars` and matches a `REFUSAL_PATTERNS` regex (skipped
   when `ref_chars` is None); "empty" if blank; else "ok".
+
+Review R1 r2:
+- **No hidden retries** (#1): `make_client` builds the AsyncOpenAI client with `max_retries=0`;
+  every HTTP submission is an accounted attempt (a response lost after submission surfaces as a
+  timeout or connection error and is charged the call's bound).
+- **Verified reads** (#2): `verified_rows` recomputes each request's fingerprint from the current
+  fields and config and refuses a mismatch; `row_sha256` hashes a row for validation manifests.
+- **Sticky safety flag** (#4): in JSON mode every attempt's raw text is kept (`attempt_texts`);
+  for A.1, each attempt's parsed `minor_sexual` value is kept (`minor_sexual_values`, even from an
+  otherwise malformed answer) and `safety_flag` is true if ANY attempt said true.
 
 Usage log (R1 #13): one line per invocation in `<out stem>.usage.jsonl`, with `invocation`
 (only the calls this invocation sent: calls, tokens, dollars, new statuses, the reservation and
@@ -188,6 +199,21 @@ def estimate_usd(model_key: str, prompt_id: str, requests: Sequence[dict], mode:
     return _ceil_usd(total)
 
 
+RETRY_ALLOWANCE_FRACTION = 0.02  # of the pending requests, at least one
+
+
+def reservation_usd(bounds: Sequence[float], mode: str) -> float:
+    """What a batch reserves: every pending call at its bound, plus a retry allowance of
+    max(1, ceil(2% of the requests)) requests x (JSON_RETRIES in JSON mode, else 1) extra calls at
+    the largest bound, so a small batch can still retry a malformed answer or a timeout. Retries
+    beyond what the headroom allows stop the batch (resumable), never overspend."""
+    if not bounds:
+        return 0.0
+    n_extra = max(1, math.ceil(RETRY_ALLOWANCE_FRACTION * len(bounds)))
+    per = C.JSON_RETRIES if mode == "json" else 1
+    return _ceil_usd(sum(bounds) + n_extra * per * max(bounds))
+
+
 def _ceil_usd(x: float) -> float:
     return math.ceil(round(x * 1e6, 3)) / 1e6
 
@@ -210,6 +236,16 @@ def parse_json(text: str, keys: Sequence[str]) -> dict | None:
         if isinstance(obj, dict) and all(k in obj for k in keys):
             return obj
     return None
+
+
+def safety_value(text: str | None) -> bool | None:
+    """The `minor_sexual` value of any JSON object in `text` (True for true or "true"), whatever
+    else the answer gets wrong; None if no object carries the key (R1 r2 #4)."""
+    obj = parse_json(text or "", ("minor_sexual",))
+    if obj is None:
+        return None
+    v = obj["minor_sexual"]
+    return v is True or (isinstance(v, str) and v.strip().lower() == "true")
 
 
 def text_status(text: str | None, finish_reason: str | None, refusal: str | None,
@@ -326,8 +362,41 @@ def _load(out_path: str | Path) -> tuple[dict[tuple, dict], dict[tuple, set]]:
 
 
 def load_rows(out_path: str | Path) -> dict[tuple, dict]:
-    """The latest row per key in `out_path` (see `_load`)."""
+    """The latest row per key in `out_path` (see `_load`). NOT fingerprint-checked: evidence
+    readers use `verified_rows`."""
     return _load(out_path)[0]
+
+
+def row_sha256(row: dict) -> str:
+    """sha256 of a result row's canonical JSON (for validation manifests)."""
+    return hashlib.sha256(json.dumps(row, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                          ).hexdigest()
+
+
+def _check_fp(out_path, key: tuple, seen: set, fp: str) -> None:
+    if seen and seen != {fp}:
+        raise FingerprintMismatch(
+            f"{out_path}: cached rows for {key} were made from different inputs or request "
+            f"settings (fingerprints {sorted(map(str, seen))[:2]} != {fp})")
+
+
+def verified_rows(model_key: str, prompt_id: str, requests: Sequence[dict],
+                  out_path: str | Path) -> dict[tuple[str, int], dict]:
+    """{(item_id, seed): latest row} for the requests that have rows in `out_path`, after
+    recomputing each request's fingerprint from the CURRENT fields and config; any row of a
+    request carrying another fingerprint raises `FingerprintMismatch` (R1 r2 #2)."""
+    spec = _spec(model_key)
+    mode = prompts.MODES[prompt_id]
+    latest, fps = _load(out_path)
+    out = {}
+    for r in requests:
+        key = (model_key, prompt_id, r["item_id"], r["seed"])
+        if key not in latest:
+            continue
+        fp = fingerprint(spec, prompts.fill(prompt_id, **r["fields"]), r["seed"], mode)
+        _check_fp(out_path, key, fps[key], fp)
+        out[(r["item_id"], r["seed"])] = latest[key]
+    return out
 
 
 def repair_tail(out_path: str | Path) -> int:
@@ -413,8 +482,30 @@ def _check_requests(requests: Sequence[dict], prompt_id: str) -> None:
         seen.add(k)
 
 
+CLIENT_TIMEOUT_S = 300.0
+
+
+def make_client(route: str, *, api_key: str | None = None, http_client=None):
+    """AsyncOpenAI client for a route with the SDK's own retries OFF (`max_retries=0`, R1 r2 #1):
+    every HTTP submission goes through the accounted retry loop here, so no hidden resend can
+    escape the reservation. Keys come from the environment (`.env` via `load_env`)."""
+    from openai import AsyncOpenAI
+
+    from emx.judge_panel import OPENROUTER_BASE_URL, ROUTE_KEY, ROUTES, require_key
+
+    if route not in ROUTES:
+        raise ValueError(f"unknown route {route!r}")
+    kw = {"api_key": api_key or require_key(ROUTE_KEY[route]), "max_retries": 0,
+          "timeout": CLIENT_TIMEOUT_S}
+    if route == "openrouter":
+        kw["base_url"] = OPENROUTER_BASE_URL
+    if http_client is not None:
+        kw["http_client"] = http_client
+    return AsyncOpenAI(**kw)
+
+
 def _default_client(route: str):
-    from emx.judge_panel import load_env, make_client
+    from emx.judge_panel import load_env
 
     load_env()
     return make_client(route)
@@ -476,6 +567,7 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
                results):
     sem = asyncio.Semaphore(concurrency)
     keys = prompts.JSON_KEYS.get(prompt_id, ())
+    track_safety = "minor_sexual" in keys
 
     async def api_call(kw: dict, cmax: float, acc: dict) -> tuple[object | None, str]:
         """One logical call with retries on transient errors -> (response, outcome); outcome in
@@ -525,6 +617,8 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
             acc = {"attempts": 0, "usd": 0.0, "usage": {}, "error": None}
             status, parsed, text, finish = "error", None, None, None
             tries = 1 + C.JSON_RETRIES if mode == "json" else 1
+            attempt_texts: list = []
+            flags: list = []
             for _ in range(tries):
                 resp, outcome = await api_call(kw, cmax, acc)
                 if outcome == "filter":
@@ -538,6 +632,9 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
                 if mode == "text":
                     status = text_status(text, finish, refusal, req.get("ref_chars"))
                     break
+                attempt_texts.append(text)
+                if track_safety:
+                    flags.append(safety_value(text))
                 if refusal or finish == "content_filter":
                     status = "refused"
                     break
@@ -554,6 +651,12 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
                 "attempts": acc["attempts"], "note": note, "error": acc["error"],
                 "fingerprint": fp,
             }
+            if mode == "json":
+                row["attempt_texts"] = attempt_texts
+            if track_safety:
+                seen = [f for f in flags if f is not None]
+                row["minor_sexual_values"] = flags
+                row["safety_flag"] = any(seen) if seen else None
             results[idx] = row
             if status != "error" or acc["attempts"] > 0:
                 writer.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -601,12 +704,7 @@ def run_batch(
             prompt = prompts.fill(prompt_id, **r["fields"])
             fp = fingerprint(spec, prompt, r["seed"], mode)
             key = (model_key, prompt_id, r["item_id"], r["seed"])
-            seen = fps.get(key, set())
-            if seen and seen != {fp}:
-                raise FingerprintMismatch(
-                    f"{out_path}: cached rows for {key} were made from different inputs or "
-                    f"request settings (fingerprints {sorted(map(str, seen))[:2]} != {fp}); "
-                    "nothing was sent")
+            _check_fp(out_path, key, fps.get(key, set()), fp)
             row = existing.get(key)
             if row is not None and row["status"] in TERMINAL:
                 if row.get("prompt_sha256") != sha:  # covered by the fingerprint; kept explicit
@@ -627,7 +725,7 @@ def run_batch(
         if not pending_:
             return results  # type: ignore[return-value]
 
-        projected = _ceil_usd(sum(p[3] for p in pending_))
+        projected = reservation_usd([p[3] for p in pending_], mode)
         reserve = reserve or _default_reserve()
         client = client if client is not None else _default_client(spec.route)
         rid = reserve(stage, projected, note)

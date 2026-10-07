@@ -403,7 +403,7 @@ E1B_RECORD_KEYS: tuple[str, ...] = ("eval_steps", "checkpoints", "status", "erro
 _PREV_SIGTERM: list = []
 
 
-def _on_sigterm(signum, frame):  # noqa: ARG001
+def _on_sigterm(signum, frame):
     raise SystemExit(128 + signum)
 
 

@@ -40,9 +40,12 @@ only through the small adapters `_LLM` and `_Rewriter`, so a change of their sha
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import os
 import subprocess
+import tempfile
 from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
@@ -311,7 +314,7 @@ class PolicyEvidenceError(RuntimeError):
 
 
 class DirtySourceError(RuntimeError):
-    """The E9 source tree has uncommitted changes and allow_dirty was not given (R1 #12)."""
+    """Uncommitted changes under src/ or scripts/ and allow_dirty was not given (R1 #12, r2 #7)."""
 
 
 # --- the exclusion registry (Amendment F) -------------------------------------------------------
@@ -344,7 +347,6 @@ def add_exclusions(doc_ids: Iterable[str], reason: str, source: str, *,
     again and is dropped from every arm and replaced (Amendment F; §4.3 safety exclusion).
     Returns the entries added."""
     import fcntl
-    import os
 
     if reason not in EXCLUSION_REASONS:
         raise ValueError(f"unknown exclusion reason {reason!r}; known: {EXCLUSION_REASONS}")
@@ -360,9 +362,7 @@ def add_exclusions(doc_ids: Iterable[str], reason: str, source: str, *,
         new = [{"doc_id": d, "reason": reason, "source": source, "utc": utc}
                for d in dict.fromkeys(doc_ids) if (d, reason, source) not in have]
         if new:
-            tmp = p.with_name(p.name + ".tmp")
-            tmp.write_text(json.dumps({"entries": entries + new}, indent=1) + "\n")
-            os.replace(tmp, p)
+            _write_json(p, {"entries": entries + new})
     return new
 
 
@@ -566,26 +566,55 @@ def first_pass_fingerprint(attempts: Iterable[dict], doc_ids: Iterable[str]) -> 
     return _sha_json(rows)
 
 
+SOURCE_DIRS: tuple[str, ...] = ("src", "scripts")
+SOURCE_CODE_SUFFIXES: tuple[str, ...] = (".py", ".sh")
+
+
+def _git_dirty(root: Path) -> list[tuple[str, str]]:
+    """(status, path) of every change under src/ and scripts/: any tracked file modified,
+    staged, deleted or renamed, plus untracked code files (.py, .sh), which imports could load
+    but the commit would not contain. `git status --porcelain -z`, renames parsed."""
+    out = subprocess.check_output(
+        ["git", "status", "--porcelain", "-z", "--untracked-files=all", "--", *SOURCE_DIRS],
+        cwd=root, text=True)
+    parts = out.split("\0")
+    dirty, i = [], 0
+    while i < len(parts):
+        ent = parts[i]
+        i += 1
+        if not ent:
+            continue
+        st, path = ent[:2], ent[3:]
+        if "R" in st or "C" in st:
+            i += 1  # -z puts the rename's origin path in the next field
+        if st == "??" and not path.endswith(SOURCE_CODE_SUFFIXES):
+            continue
+        if "__pycache__" in Path(path).parts:
+            continue
+        dirty.append((st, path))
+    return dirty
+
+
 def source_state(root: Path = ROOT) -> dict:
-    """The code that runs: HEAD, whether src/emx/e9 or scripts/e9_* differ from it (tracked
-    changes or untracked files), and a snapshot sha256 over those files' contents."""
-    files = [p for p in (root / "src/emx/e9").rglob("*.py") if "__pycache__" not in p.parts]
-    for g in root.glob("scripts/e9_*"):
-        files += [g] if g.is_file() else [p for p in g.rglob("*")
-                                          if p.is_file() and "__pycache__" not in p.parts]
-    lines = [f"{p.relative_to(root)}\0{_sha256_file(p)}" for p in sorted(set(files))]
-    snapshot = hashlib.sha256("\n".join(lines).encode()).hexdigest()
+    """The code that runs (review R1 r2 #7): the commit (always recorded), and every
+    uncommitted change under src/ and scripts/ (tracked files modified, staged, deleted or
+    renamed; untracked .py/.sh files), each with the sha256 of its current content ("deleted"
+    if gone). `snapshot_sha256` hashes that {path: sha256} map, so commit + snapshot identify the
+    executed tree. `dirty` is true if any such change exists or git is unavailable."""
     try:
         commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root,
                                          text=True).strip()
-        st = subprocess.check_output(["git", "status", "--porcelain", "--", "src/emx/e9",
-                                      "scripts"], cwd=root, text=True)
-        dirty = [ln[3:] for ln in st.splitlines()
-                 if ln[3:].startswith(("src/emx/e9", "scripts/e9_"))]
-    except (OSError, subprocess.CalledProcessError):
-        commit, dirty = None, ["<git unavailable>"]
-    return {"commit": commit or "unknown", "dirty": bool(dirty), "dirty_paths": dirty[:50],
-            "snapshot_sha256": snapshot, "n_files": len(lines)}
+        changes = _git_dirty(root)
+    except (OSError, subprocess.CalledProcessError) as e:
+        return {"commit": "unknown", "dirty": True, "dirty_paths": [f"<git unavailable: {e}>"],
+                "dirty_files": {}, "snapshot_sha256": None, "n_files": 0}
+    files = {}
+    for st, path in changes:
+        p = root / path
+        files[path] = _sha256_file(p) if p.is_file() else "deleted"
+    return {"commit": commit, "dirty": bool(files), "dirty_paths": sorted(files)[:50],
+            "dirty_status": {path: st for st, path in changes},
+            "dirty_files": files, "snapshot_sha256": _sha_json(files), "n_files": len(files)}
 
 
 def _rel(p: Path) -> str:
@@ -1028,15 +1057,37 @@ def _read_jsonl(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def _write_jsonl(path: Path, rows: Iterable[dict]) -> None:
+def _atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Publish `data` at `path` atomically (review R1 r2 #5): a temp file in the same directory,
+    flushed and fsynced, then os.replace and a directory fsync. An interruption at any point
+    leaves the previous file (if any) intact and readable; the temp file is removed on error."""
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as f:
-        f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        with contextlib.suppress(FileNotFoundError):
+            os.unlink(tmp)
+        raise
+    dfd = os.open(path.parent, os.O_RDONLY)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+
+
+def _write_jsonl(path: Path, rows: Iterable[dict]) -> None:
+    data = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
+    _atomic_write_bytes(path, data.encode("utf-8"))
 
 
 def _write_json(path: Path, obj) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=1, ensure_ascii=False) + "\n")
+    _atomic_write_bytes(path, (json.dumps(obj, indent=1, ensure_ascii=False) + "\n").encode())
 
 
 def _sha256_file(path: Path) -> str:
@@ -1129,7 +1180,8 @@ def accept(
     acceptance under the frozen policies (cached rewrites and checks), replaces the excluded
     documents, archives the previous manifest and versions under insert/history/, and records
     the previous manifest's sha256 and the reason. Refuses to start if the E9 source tree is
-    dirty unless `allow_dirty` (then a snapshot hash of src/emx/e9 and scripts/e9_* is kept)."""
+    dirty (any uncommitted change under src/ or scripts/) unless `allow_dirty`, in which case
+    every dirty file's sha256 is recorded (`source_state`); the commit is always recorded."""
     paths = (paths or Paths()).rooted(ROOT)
     manifest_path = paths.insert_dir / "insert_manifest.json"
     versions_path = paths.insert_dir / "versions.jsonl"
@@ -1151,7 +1203,7 @@ def accept(
         raise FileNotFoundError(f"no frozen insert at {manifest_path} to refreeze")
     source = source_state()
     if source["dirty"] and not allow_dirty:
-        raise DirtySourceError(f"uncommitted E9 source changes {source['dirty_paths'][:5]}; "
+        raise DirtySourceError(f"uncommitted source changes {source['dirty_paths'][:5]}; "
                                "commit them or pass allow_dirty")
     if tok is None:
         from emx.e9.text import tokenizer
@@ -1219,9 +1271,9 @@ def accept(
         prev_sha = _sha256_file(manifest_path)
         arch_m = hist / f"insert_manifest.{prev_sha[:12]}.json"
         arch_v = hist / f"versions.{prev_sha[:12]}.jsonl"
-        arch_m.write_bytes(manifest_path.read_bytes())
+        _atomic_write_bytes(arch_m, manifest_path.read_bytes())
         if versions_path.exists():
-            arch_v.write_bytes(versions_path.read_bytes())
+            _atomic_write_bytes(arch_v, versions_path.read_bytes())
         manifest["previous"] = {"manifest_sha256": prev_sha,
                                 "versions_sha256": prev.get("versions_sha256"),
                                 "archived": [_rel(arch_m), _rel(arch_v)],

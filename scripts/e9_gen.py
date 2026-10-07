@@ -19,21 +19,31 @@ Subcommands (all but `generate` and `roundtrip` are stdlib only and run under an
       smoke: E1b's seed-2 step-20 bad and good adapters on the checkpoint (development only),
           named as E1's scores name them, `e9-e1b-c0-{d}-a2-k20`.
       -> R/gen/<model>.csv (exactly emx.contracts.GEN_COLUMNS) and R/gen/manifest.json (every
-         file with sha256, row counts per qset, the request hash, the template hash). A model whose
-         CSV verifies against the manifest is skipped (resume).
+         file with sha256, row counts per qset, the request hash, the template hash, the base's
+         and adapter's weight fingerprints). A model is skipped (resume) only if its CSV, request
+         list, base SHA256SUMS digest and adapter file hashes all match the manifest.
   roundtrip --base DIR --adapter DIR --out R/roundtrip.json
       vLLM loads the saved base plus a peft adapter and generates two answers (smoke, §4.13).
-  stream-check --stream S.npy [--run-id RUN] --out R/stream_manifest.json
-      the stream file's sha256 must equal its manifest's stream_sha256; the manifest is copied.
+  stream-check --stream S.npy [--run-id RUN] [--smoke] --out R/stream_manifest.json
+      the stream file's sha256 must equal its manifest's stream_sha256 and the manifest's
+      `smoke` flag must match --smoke (unit C's build-smoke stream only for the smoke run, never
+      for cq/cs); the manifest is copied.
+  stream-seed --stream S.npy      print the stream manifest's cpt_seed (the smoke's CPT seed).
   done --run-dir R --run RUN --kind K [--arm A --cpt-seed S]
-      R/DONE.json listing EVERY file under R with its sha256, after checking that the kind's
-      RUN_INVENTORY (expanded) is present and the generation manifest matches; exit 1 and no
-      DONE if anything is missing.
+      R/DONE.json listing EVERY file under R with its sha256 and the attempt id, after checking
+      that the kind's RUN_INVENTORY (expanded) is present, the generation manifest matches and,
+      for cs and smoke, ft/consistency.json passes for every full fine-tune; exit 1 and no DONE
+      otherwise.
   failed --run-dir R --run RUN --kind K --step STEP --error MSG [--rc N]
       R/FAILED.json listing every file present with its sha256.
   timing --run-dir R --out R/timing.json      (smoke) peak memory, tokens/s, wall-clocks.
-  split-versions --versions data/E9/insert/versions.jsonl --out-dir D
-      D/{orig,corr,para}.jsonl ({"doc_id", "text"}) for the optional insert-loss step.
+  split-versions --versions data/E9/insert/versions.jsonl --out-dir D [--manifest M] [--n-out F]
+      D/{orig,corr,para}.jsonl ({"doc_id", "text"}) and D/counts.json for the insert-loss step;
+      with the frozen insert manifest, every version must hold exactly its documents.
+  insert-status --out R/insert_loss/status.json --status measured|deferred|failed --reason TEXT
+  begin-attempt --run-dir R --run RUN --stamp UTC
+      archive the previous attempt's files (all but GO) under R/attempts/<n>/ and write
+      R/ATTEMPT.json with a new immutable attempt id (printed).
   conc --run-dir R --seconds N --rcs RC... --gpu-mem F --out F
       the concurrency test's record (bad + good full fine-tunes together).
   consts      shell assignments of the contract constants the pod job uses.
@@ -425,6 +435,31 @@ def resolve_adapter(spec: str) -> str:
     return str(path)
 
 
+def base_fingerprint(base: str) -> str:
+    """The pinned checkpoint's id@revision, or the sha256 of a saved model's SHA256SUMS (which
+    lists every weight file's hash, emx.e9.cpt.save_model)."""
+    if base == "hub":
+        return f"{C.HF_ID}@{C.REVISION}"
+    sums = Path(base) / "SHA256SUMS"
+    if not sums.is_file():
+        raise SystemExit(f"{base}: no SHA256SUMS (not a saved E9 model directory)")
+    return "sha256sums:" + sha256_file(sums)
+
+
+ADAPTER_FILES = ("adapter_config.json", "adapter_model.safetensors")
+
+
+def adapter_fingerprint(path: str | Path) -> str:
+    """sha256 over the adapter's config and weights (both must exist)."""
+    h = hashlib.sha256()
+    for name in ADAPTER_FILES:
+        f = Path(path) / name
+        if not f.is_file():
+            raise SystemExit(f"{path}: {name} missing")
+        h.update(f"{name}:{sha256_file(f)}\n".encode())
+    return h.hexdigest()
+
+
 def to_requests(model: Sampled, reqs: list[dict], tok) -> list:
     """gen_common.Request objects (prompt rendered once per question, ids without specials)."""
     from emx import gen_common as G
@@ -529,23 +564,31 @@ def generate(args, modules=None, tokenizer_loader=None, adapter_resolver=None) -
     manifest = {**manifest, **common}
     manifest.setdefault("files", {})
 
+    # Reuse is bound to the weights: the base's SHA256SUMS digest (or the pinned revision) and
+    # each adapter's file hashes, besides the CSV and the exact request list (review R2 #4).
+    resolver = adapter_resolver or resolve_adapter
+    base_fp = base_fingerprint(args.base)
+    manifest["base_fingerprint"] = base_fp
+    adapters = {m.name: resolver(m.adapter) for m in models if m.adapter}
+    adapter_fp = {name: adapter_fingerprint(path) for name, path in adapters.items()}
     todo = []
     for m in models:
         csv_path = gen_dir / f"{m.name}.csv"
         ent = manifest["files"].get(csv_path.name)
         if (ent and csv_path.exists() and ent.get("sha256") == sha256_file(csv_path)
-                and ent.get("requests_sha256") == requests_sha256(plans[m.name])):
+                and ent.get("requests_sha256") == requests_sha256(plans[m.name])
+                and ent.get("base_fingerprint") == base_fp
+                and ent.get("adapter_fingerprint") == adapter_fp.get(m.name)):
             print(f"E9_GEN_SKIP {m.name}: verified", flush=True)
             continue
         todo.append(m)
     if not todo:
+        write_json(man_path, manifest)
         return []
 
     vllm_mod, lora_cls = modules or _vllm_modules()
-    resolver = adapter_resolver or resolve_adapter
     loader = tokenizer_loader or load_tokenizer
-    adapters = {m.name: resolver(m.adapter) for m in todo if m.adapter}
-    kw = llm_kwargs(args.base, len(adapters))
+    kw = llm_kwargs(args.base, len([m for m in todo if m.adapter]))
     llm = vllm_mod.LLM(**kw)
     tok = loader(args.base)
     version = f"vllm {getattr(vllm_mod, '__version__', 'unknown')}"
@@ -561,6 +604,7 @@ def generate(args, modules=None, tokenizer_loader=None, adapter_resolver=None) -
         manifest["files"][csv_path.name] = {
             "model": m.name, "condition": m.condition, "mode": m.mode, "untuned": m.untuned,
             "adapter": m.adapter, "adapter_path": adapters.get(m.name),
+            "base_fingerprint": base_fp, "adapter_fingerprint": adapter_fp.get(m.name),
             "sha256": sha256_file(csv_path), "n_rows": len(rows),
             "counts": counts(plans[m.name]), "requests_sha256": requests_sha256(plans[m.name]),
             "finish_reasons": {k: sum(1 for r in rows if r["finish_reason"] == k)
@@ -602,15 +646,32 @@ def roundtrip(args, modules=None, tokenizer_loader=None) -> dict:
 # --- run records: stream check, DONE, FAILED, timing ---------------------------------------------
 
 
-def stream_check(stream: str | Path, out: str | Path, run_id: str | None = None) -> dict:
-    stream = Path(stream)
+def _stream_manifest(stream: Path) -> tuple[Path, dict]:
     man_path = stream.with_name(stream.name[: -len(".npy")] + ".manifest.json") \
         if stream.name.endswith(".npy") else None
     if man_path is None or not man_path.is_file():
         raise SystemExit(f"{stream}: no stream manifest beside it")
-    man = json.loads(man_path.read_text())
+    return man_path, json.loads(man_path.read_text())
+
+
+def stream_seed(stream: str | Path) -> int:
+    """The CPT seed a stream was built for (the smoke's CPT uses it; its scoring uses ckpt/0)."""
+    man_path, man = _stream_manifest(Path(stream))
+    s = man.get("cpt_seed")
+    if not isinstance(s, int) or s not in C.CORPUS_CPT_SEEDS:
+        raise SystemExit(f"{man_path}: cpt_seed {s!r} not in {C.CORPUS_CPT_SEEDS}")
+    return s
+
+
+def stream_check(stream: str | Path, out: str | Path, run_id: str | None = None,
+                 smoke: bool = False) -> dict:
+    stream = Path(stream)
+    man_path, man = _stream_manifest(stream)
     if run_id is not None and man.get("run_id") != run_id:
         raise SystemExit(f"{man_path}: run_id {man.get('run_id')!r} != {run_id!r}")
+    if bool(man.get("smoke")) != smoke:
+        raise SystemExit(f"{man_path}: smoke {man.get('smoke')!r}, expected {smoke} "
+                         "(the smoke stream is for the smoke run only)")
     got = sha256_file(stream)
     if got != man.get("stream_sha256"):
         want = str(man.get("stream_sha256"))[:12]
@@ -670,6 +731,60 @@ def gen_manifest_problems(run_dir: Path, files: dict[str, str], models: list[str
     return probs
 
 
+CONSISTENCY_FILE = "ft/consistency.json"
+CONSISTENCY_DATAS = {"cs": C.DATAS, "smoke": ("bad",)}  # the kind's full fine-tunes
+ATTEMPT_FILE = "ATTEMPT.json"
+ATTEMPTS_DIR = "attempts"
+ATTEMPT_KEEP = (C.GO,)  # the laptop's barrier file belongs to the run, not to an attempt
+
+
+def consistency_problems(run_dir: Path, kind: str) -> list[str]:
+    """cs and smoke: the §4.5 consistency record must exist and pass for every full fine-tune."""
+    datas = CONSISTENCY_DATAS.get(kind)
+    if not datas:
+        return []
+    rec = _jload(Path(run_dir) / CONSISTENCY_FILE)
+    if rec is None:
+        return [f"{CONSISTENCY_FILE} missing or unreadable"]
+    per = rec.get("per_data") or {}
+    bad = [d for d in datas if (per.get(d) or {}).get("pass") is not True]
+    return [f"{CONSISTENCY_FILE}: consistency not passed for {bad}"] if bad else []
+
+
+def attempt_of(run_dir: Path) -> str | None:
+    rec = _jload(Path(run_dir) / ATTEMPT_FILE)
+    return rec.get("attempt_id") if rec else None
+
+
+def begin_attempt(run_dir: str | Path, run: str, stamp: str) -> dict:
+    """Archive every file of the previous attempt (all but GO) under attempts/<n>/, then write a
+    new ATTEMPT.json with an immutable attempt id. Nothing of an earlier attempt stays at the top
+    level, so DONE never mixes records, references or generations of different attempts."""
+    run_dir = Path(run_dir)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    arch = run_dir / ATTEMPTS_DIR
+    done = sorted(int(p.name) for p in arch.iterdir() if p.name.isdigit()) if arch.is_dir() else []
+    prev = _jload(run_dir / ATTEMPT_FILE) or {}
+    top = [p for p in run_dir.iterdir() if p.name not in (ATTEMPTS_DIR, *ATTEMPT_KEEP)]
+    archived = None
+    if top:
+        k = int(prev.get("attempt") or 0)
+        if not k or k in done:
+            k = max(done, default=0) + 1
+        dest = arch / str(k)
+        dest.mkdir(parents=True)
+        for p in top:
+            os.replace(p, dest / p.name)
+        done.append(k)
+        archived = f"{ATTEMPTS_DIR}/{k}"
+    n = max([*done, int(prev.get("attempt") or 0)], default=0) + 1
+    rec = {"run": run, "attempt": n, "attempt_id": f"{run}-a{n}-{stamp}",
+           "archived_previous": archived, "pod_id": os.environ.get("RUNPOD_POD_ID"),
+           "git_commit": git_commit(), "utc": utc()}
+    write_json(run_dir / ATTEMPT_FILE, rec)
+    return rec
+
+
 def write_done(run_dir: str | Path, run: str, kind: str, arm: str | None,
                cpt_seed: int | None, extra: dict | None = None) -> dict:
     run_dir = Path(run_dir)
@@ -680,10 +795,11 @@ def write_done(run_dir: str | Path, run: str, kind: str, arm: str | None,
     probs += gen_manifest_problems(run_dir, files, expected_models(kind, arm, cpt_seed))
     if C.FAILED in files:
         probs.append(f"{C.FAILED} present")
+    probs += consistency_problems(run_dir, kind)
     if probs:
         raise SystemExit(f"E9_DONE_REFUSED {run}: " + "; ".join(probs))
     rec = {
-        "run": run, "kind": kind, "arm": arm, "cpt_seed": cpt_seed,
+        "run": run, "kind": kind, "arm": arm, "cpt_seed": cpt_seed, "attempt": attempt_of(run_dir),
         "artifacts": files, "required": need, "n_files": len(files),
         "pod_id": os.environ.get("RUNPOD_POD_ID"), "git_commit": git_commit(), "utc": utc(),
         **(extra or {}),
@@ -700,7 +816,8 @@ def write_failed(run_dir: str | Path, run: str, kind: str, step: str, error: str
     files = list_files(run_dir, exclude=(C.DONE, C.FAILED))
     need = required_files(kind, arm, cpt_seed)
     rec = {
-        "run": run, "kind": kind, "arm": arm, "cpt_seed": cpt_seed, "step": step,
+        "run": run, "kind": kind, "arm": arm, "cpt_seed": cpt_seed, "attempt": attempt_of(run_dir),
+        "step": step,
         "error": error, "exit_code": rc, "artifacts": files,
         "missing_required": [f for f in need if f not in files],
         "pod_id": os.environ.get("RUNPOD_POD_ID"), "git_commit": git_commit(), "utc": utc(),
@@ -745,6 +862,7 @@ def write_timing(run_dir: str | Path, out: str | Path) -> dict:
                 "s_per_answer": sec["gen_matched"] / n_ans
                 if n_ans and sec.get("gen_matched") else None},
         "concurrency": _jload(run_dir / "concurrency/conc.json"),
+        "insert_loss": _jload(run_dir / "insert_loss/status.json"),
         "steps": bench, "pass": all(r.get("rc") == 0 for r in bench),
         "pod_id": os.environ.get("RUNPOD_POD_ID"), "git_commit": git_commit(), "utc": utc(),
     }
@@ -752,18 +870,55 @@ def write_timing(run_dir: str | Path, out: str | Path) -> dict:
     return rec
 
 
-def split_versions(versions: str | Path, out_dir: str | Path) -> dict[str, int]:
-    """The insert versions file split per version, {"doc_id", "text"} rows (insert-loss step)."""
-    by: dict[str, list[str]] = {}
+def split_versions(versions: str | Path, out_dir: str | Path,
+                   manifest: str | Path | None = None, n_out: str | Path | None = None) -> dict:
+    """The insert versions file split per version, {"doc_id", "text"} rows (insert-loss step).
+    With the frozen insert manifest: every version must hold exactly its documents (same ids,
+    once each). Writes <out_dir>/counts.json and, with n_out, the per-version count alone."""
+    by: dict[str, list[dict]] = {}
     for r in _rows(Path(versions)):
-        by.setdefault(r["version"], []).append(json.dumps({"doc_id": r["doc_id"],
-                                                           "text": r["text"]}))
+        by.setdefault(r["version"], []).append({"doc_id": r["doc_id"], "text": r["text"]})
     unknown = sorted(set(by) - set(C.VERSIONS))
     if unknown:
         raise SystemExit(f"{versions}: unknown versions {unknown}")
+    missing = [v for v in C.VERSIONS if v not in by]
+    if missing:
+        raise SystemExit(f"{versions}: versions {missing} absent")
+    rec = {"versions_file": str(versions), "versions_sha256": sha256_file(versions),
+           "counts": {v: len(rows) for v, rows in by.items()}}
+    if manifest is not None:
+        man = json.loads(Path(manifest).read_text())
+        ids = [d["doc_id"] if isinstance(d, dict) else d for d in man["docs"]]
+        for v, rows in by.items():
+            got = [r["doc_id"] for r in rows]
+            if len(got) != len(ids) or set(got) != set(ids):
+                raise SystemExit(f"{versions}: {v} holds {len(got)} documents, not the frozen "
+                                 f"insert's {len(ids)} ({manifest})")
+        rec |= {"manifest": str(manifest), "manifest_sha256": sha256_file(manifest),
+                "n_docs": len(ids)}
     for v, rows in by.items():
-        atomic_write_text(Path(out_dir) / f"{v}.jsonl", "\n".join(rows) + "\n")
-    return {v: len(rows) for v, rows in by.items()}
+        atomic_write_text(Path(out_dir) / f"{v}.jsonl",
+                          "".join(json.dumps(r) + "\n" for r in rows))
+    write_json(Path(out_dir) / "counts.json", rec)
+    if n_out is not None:
+        n = set(rec["counts"].values())
+        if len(n) != 1:
+            raise SystemExit(f"{versions}: versions differ in size {rec['counts']}")
+        atomic_write_text(n_out, f"{n.pop()}\n")
+    return rec
+
+
+INSERT_STATUSES = ("measured", "deferred", "failed")
+
+
+def write_insert_status(out: str | Path, status: str, reason: str,
+                        counts_file: str | Path | None = None) -> dict:
+    if status not in INSERT_STATUSES:
+        raise SystemExit(f"insert-loss status {status!r} not in {INSERT_STATUSES}")
+    rec = {"status": status, "reason": reason,
+           "counts": _jload(Path(counts_file)) if counts_file else None, "utc": utc()}
+    write_json(out, rec)
+    return rec
 
 
 def write_conc(seconds: float, rcs: list[int], gpu_mem: str | Path, steps: int,
@@ -807,6 +962,9 @@ def shell_consts() -> str:
     return "\n".join(f"{k}={shlex.quote(str(x))}" for k, x in v.items())
 
 
+SMOKE_SPEC = ("smoke", "ckpt", 0)  # RUN, ARM, CPT_SEED of the smoke run
+
+
 def parse_runspec(spec: str) -> dict:
     """RUN:ARM:CPT_SEED:KIND:STREAM -> fields, validated against the contracts."""
     parts = spec.split(":")
@@ -815,18 +973,19 @@ def parse_runspec(spec: str) -> dict:
     run, arm, seed, kind, stream = parts
     if kind not in C.RUN_KINDS:
         raise SystemExit(f"run spec {spec!r}: kind {kind!r} not in {C.RUN_KINDS}")
-    if arm not in C.ARMS:
-        raise SystemExit(f"run spec {spec!r}: arm {arm!r} not in {C.ARMS}")
     try:
         s = int(seed)
     except ValueError:
         raise SystemExit(f"run spec {spec!r}: CPT seed {seed!r} is not an integer") from None
-    if s not in C.CORPUS_CPT_SEEDS:  # smoke too: its round trip fine-tunes a CPT model
-        raise SystemExit(f"run spec {spec!r}: CPT seed {s} not in {C.CORPUS_CPT_SEEDS}")
-    if kind == "smoke":
-        if not run.startswith("smoke"):
-            raise SystemExit(f"run spec {spec!r}: a smoke run id starts with 'smoke'")
+    if kind == "smoke":  # exactly smoke:ckpt:0 (the checkpoint's scoring is arm ckpt, seed 0)
+        if (run, arm, s) != SMOKE_SPEC:
+            raise SystemExit(f"run spec {spec!r}: a smoke run is exactly "
+                             f"{':'.join(map(str, SMOKE_SPEC))}:smoke:<stream>")
     else:
+        if arm not in C.ARMS:
+            raise SystemExit(f"run spec {spec!r}: arm {arm!r} not in {C.ARMS}")
+        if s not in C.CORPUS_CPT_SEEDS:
+            raise SystemExit(f"run spec {spec!r}: CPT seed {s} not in {C.CORPUS_CPT_SEEDS}")
         if run != C.run_id(arm, s):
             raise SystemExit(f"run spec {spec!r}: run id must be {C.run_id(arm, s)!r}")
     if not stream.endswith(".npy"):
@@ -862,6 +1021,9 @@ def parser() -> argparse.ArgumentParser:
     s = sub.add_parser("stream-check")
     s.add_argument("--stream", required=True)
     s.add_argument("--run-id", default=None)
+    s.add_argument("--smoke", action="store_true", help="the smoke stream (manifest smoke: true)")
+    ss = sub.add_parser("stream-seed")
+    ss.add_argument("--stream", required=True)
     s.add_argument("--out", required=True)
     for name in ("done", "failed"):
         d = sub.add_parser(name)
@@ -877,6 +1039,17 @@ def parser() -> argparse.ArgumentParser:
     sv = sub.add_parser("split-versions")
     sv.add_argument("--versions", required=True)
     sv.add_argument("--out-dir", required=True)
+    sv.add_argument("--manifest", default=None, help="the frozen insert manifest (count check)")
+    sv.add_argument("--n-out", default=None)
+    ist = sub.add_parser("insert-status")
+    ist.add_argument("--out", required=True)
+    ist.add_argument("--status", required=True, choices=INSERT_STATUSES)
+    ist.add_argument("--reason", required=True)
+    ist.add_argument("--counts-file", default=None)
+    ba = sub.add_parser("begin-attempt")
+    ba.add_argument("--run-dir", required=True)
+    ba.add_argument("--run", required=True)
+    ba.add_argument("--stamp", required=True)
     t = sub.add_parser("timing")
     t.add_argument("--run-dir", required=True)
     t.add_argument("--out", required=True)
@@ -899,7 +1072,9 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "roundtrip":
         return 0 if roundtrip(a)["pass"] else 1
     elif a.cmd == "stream-check":
-        stream_check(a.stream, a.out, a.run_id)
+        stream_check(a.stream, a.out, a.run_id, a.smoke)
+    elif a.cmd == "stream-seed":
+        print(stream_seed(a.stream))
     elif a.cmd == "done":
         rec = write_done(a.run_dir, a.run, a.kind, a.arm, a.cpt_seed)
         print(f"E9_DONE_WRITTEN {a.run} {rec['n_files']} files", flush=True)
@@ -908,7 +1083,12 @@ def main(argv: list[str] | None = None) -> int:
     elif a.cmd == "timing":
         write_timing(a.run_dir, a.out)
     elif a.cmd == "split-versions":
-        print(f"E9_SPLIT {json.dumps(split_versions(a.versions, a.out_dir))}", flush=True)
+        rec = split_versions(a.versions, a.out_dir, a.manifest, a.n_out)
+        print(f"E9_SPLIT {json.dumps(rec['counts'])}", flush=True)
+    elif a.cmd == "insert-status":
+        write_insert_status(a.out, a.status, a.reason, a.counts_file)
+    elif a.cmd == "begin-attempt":
+        print(begin_attempt(a.run_dir, a.run, a.stamp)["attempt_id"])
     elif a.cmd == "conc":
         write_conc(a.seconds, a.rcs, a.gpu_mem, a.steps, a.out)
     elif a.cmd == "consts":

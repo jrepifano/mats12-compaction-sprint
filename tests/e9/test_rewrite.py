@@ -8,7 +8,7 @@ import json
 import pytest
 
 from emx.e9 import contracts as C
-from emx.e9 import prompts
+from emx.e9 import llm, prompts
 from emx.e9 import rewrite as R
 from emx.e9 import text as T
 
@@ -27,11 +27,14 @@ TOK = WsTok()
 
 class FakeLLM:
     """run_batch stand-in. `script[(model, version, attempt)]` maps doc_id -> status (default ok);
-    an ok output's text is "<model> <version> a<attempt> <doc text>"."""
+    an ok output's text is "<model> <version> a<attempt> <doc text>". Durable like llm.run_batch:
+    rows are appended to `out_path` (with llm's request fingerprint), a request with a terminal
+    row there is answered from it, and only the others are "sent" (`self.sent`: paid requests)."""
 
     def __init__(self, script=None):
         self.script = script or {}
         self.calls: list[dict] = []
+        self.sent: list[tuple] = []
 
     def __call__(
         self,
@@ -58,8 +61,18 @@ class FakeLLM:
                 "requests": list(requests),
             }
         )
-        rows = []
+        rows, new = [], []
+        cached = {
+            (r["model_key"], r["prompt_id"], r["item_id"], r["seed"]): r
+            for r in llm.load_rows(out_path).values()
+            if r["status"] in llm.TERMINAL
+        }
         for req in requests:
+            hit = cached.get((model_key, prompt_id, req["item_id"], req["seed"]))
+            if hit is not None:
+                rows.append(hit)
+                continue
+            self.sent.append((model_key, req["item_id"], req["seed"]))
             doc_id, version, attempt = req["item_id"].rsplit("|", 2)
             status = self.script.get((model_key, version, int(attempt)), {}).get(doc_id, "ok")
             text = (
@@ -81,8 +94,20 @@ class FakeLLM:
                     "prompt_sha256": prompts.sha256(prompt_id),
                     "attempts": 1,
                     "error": "boom" if status == "error" else None,
+                    "note": note,
+                    "utc": "2026-10-07T00:00:00Z",
+                    "fingerprint": llm.fingerprint(
+                        C.MODELS[model_key],
+                        prompts.fill(prompt_id, **req["fields"]),
+                        req["seed"],
+                        "text",
+                    ),
                 }
             )
+            new.append(rows[-1])
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(out_path, "a") as f:
+            f.write("".join(json.dumps(r) + "\n" for r in new))
         return rows
 
     def items(self, model=None):
@@ -252,7 +277,7 @@ def test_attempts_recorded_and_resumable(kw):
 def test_unreturned_rows_are_resent_on_resume(kw):
     class Partial(FakeLLM):
         def __call__(self, model_key, prompt_id, requests, out_path, **k):
-            return super().__call__(model_key, prompt_id, requests, out_path, **k)[:1]
+            return super().__call__(model_key, prompt_id, requests[:1], out_path, **k)
 
     R.write_versions(docs(), ("corr",), run_batch=Partial(), **kw)
     assert len(R.load_attempts(kw["out_dir"])) == 1
@@ -448,27 +473,12 @@ def test_api_errors_are_resent_not_routed(kw):
     assert llm2.items() == [("luna", f"{D1}|corr|1", SEED)]
 
 
-def test_errors_to_fallback_routes_sent_errors_only(kw):
-    class Err(FakeLLM):
-        def __call__(self, model_key, prompt_id, requests, out_path, **k):
-            rows = super().__call__(model_key, prompt_id, requests, out_path, **k)
-            for r in rows:  # D1 sent and failed; D2 cut off before sending
-                if r["status"] == "error":
-                    r["attempts"] = 3 if r["item_id"].startswith(D1) else 0
-            return rows
-
-    llm = Err({("luna", "corr", 1): {D1: "error", D2: "error"}})
-    R.write_versions(docs(), ("corr",), run_batch=llm, errors_to_fallback=True, **kw)
-    assert [i for m, i, _ in llm.items() if m == "qwn"] == [f"{D1}|corr|1"]
-    assert R.version_state(D2, "corr", out_dir=kw["out_dir"]) == "pending"
-
-
 def test_regenerate_reports_unresolved_explicitly(kw):
     R.write_versions(docs(2), ("corr",), run_batch=FakeLLM(), **kw)
 
     class Partial(FakeLLM):
         def __call__(self, model_key, prompt_id, requests, out_path, **k):
-            return super().__call__(model_key, prompt_id, requests, out_path, **k)[:1]
+            return super().__call__(model_key, prompt_id, requests[:1], out_path, **k)
 
     llm = Partial({("luna", "corr", 2): {D0: "error"}})
     res = R.regenerate(
@@ -490,7 +500,7 @@ def test_regenerate_reports_unresolved_explicitly(kw):
 def test_unresolved_write_entries_for_unreturned_rows(kw):
     class Partial(FakeLLM):
         def __call__(self, model_key, prompt_id, requests, out_path, **k):
-            return super().__call__(model_key, prompt_id, requests, out_path, **k)[:1]
+            return super().__call__(model_key, prompt_id, requests[:1], out_path, **k)
 
     res = R.write_versions(docs(), ("corr",), run_batch=Partial(), **kw)
     assert len(res) == 3
@@ -552,3 +562,98 @@ def test_excluded_ids_fails_closed(monkeypatch):
     monkeypatch.delattr(pkg, "checks", raising=False)
     with pytest.raises(RuntimeError, match="exclusion registry"):
         R.excluded_ids()
+
+
+def _crash_on_append(monkeypatch):
+    """The next non-empty attempts append stops inside the first multi-byte UTF-8 character of
+    its payload (a torn write), then the process 'dies'."""
+    real = R._append
+
+    def torn(out_dir, recs):
+        if not recs:
+            return real(out_dir, recs)
+        payload = "".join(json.dumps(r, ensure_ascii=False) + "\n" for r in recs).encode()
+        n_bytes = next(i for i, b in enumerate(payload) if b >= 0x80) + 1
+        path = R.attempts_path(out_dir)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "ab") as f:
+            f.write(payload[:n_bytes])
+        monkeypatch.setattr(R, "_append", real)
+        raise KeyboardInterrupt("killed mid-append")
+
+    monkeypatch.setattr(R, "_append", torn)
+
+
+def test_interrupted_append_then_two_resumes_no_duplicate_sends(kw, monkeypatch):
+    uni = [{"doc_id": f"u#{i}", "text": f"caf\u00e9 \u00fcber number {i}"} for i in range(3)]
+    llm_fake = FakeLLM({("luna", "corr", 1): {"u#1": "refused"}})
+    R.write_versions(uni[:1], ("corr",), run_batch=llm_fake, **kw)  # one complete line
+    good = R.attempts_path(kw["out_dir"]).read_bytes()
+    # luna's batch for the rest: the LLM rows are durable, the attempts append is torn mid-UTF-8
+    _crash_on_append(monkeypatch)
+    with pytest.raises(KeyboardInterrupt):
+        R.write_versions(uni, ("corr",), run_batch=llm_fake, **kw)
+    torn = R.attempts_path(kw["out_dir"]).read_bytes()
+    assert torn.startswith(good) and not torn.endswith(b"\n")
+    with pytest.raises(UnicodeDecodeError):  # the tail ends inside a UTF-8 character
+        torn[torn.rfind(b"\n") + 1 :].decode("utf-8")
+    # u#1's (refused, ASCII) line was complete; u#2's line is torn; readers skip the torn tail
+    assert set(R.load_attempts(kw["out_dir"])) == {
+        ("u#0", "corr", 1, "luna"),
+        ("u#1", "corr", 1, "luna"),
+    }
+    sent_before = list(llm_fake.sent)
+    assert sent_before == [("luna", f"u#{i}|corr|1", SEED) for i in range(3)]
+    # resume 1: tail quarantined, luna's lost u#2 line rebuilt from the durable rows, Qwen sent
+    res = R.write_versions(uni, ("corr",), run_batch=llm_fake, **kw)
+    assert llm_fake.sent[len(sent_before) :] == [("qwn", "u#1|corr|1", SEED)]
+    assert {k: r["status"] for k, r in res.items()} == {(f"u#{i}", "corr"): "ok" for i in range(3)}
+    assert res[("u#1", "corr")]["writer"] == "qwn"
+    att = R.load_attempts(kw["out_dir"])
+    assert att[("u#2", "corr", 1, "luna")]["reconstructed_from_llm_row"] is True
+    assert att[("u#2", "corr", 1, "luna")]["stage"] == "setup"
+    torn_log = R.attempts_path(kw["out_dir"]).with_name("attempts.jsonl.torn.jsonl")
+    tail = torn[torn.rfind(b"\n") + 1 :]
+    assert bytes.fromhex(json.loads(torn_log.read_text())["bytes_hex"]) == tail
+    lines = R.attempts_path(kw["out_dir"]).read_text().splitlines()
+    # resume 2: nothing sent, no run_batch call, no duplicate lines
+    calls = len(llm_fake.calls)
+    R.write_versions(uni, ("corr",), run_batch=llm_fake, **kw)
+    assert len(llm_fake.calls) == calls and len(llm_fake.sent) == 4
+    assert R.attempts_path(kw["out_dir"]).read_text().splitlines() == lines
+    keys = [R._key(json.loads(x)) for x in lines]
+    assert len(keys) == len(set(keys)) == 4
+
+
+def test_reconstruct_refuses_durable_row_from_other_inputs(kw):
+    llm_fake = FakeLLM()
+    R.write_versions(docs(1), ("corr",), run_batch=llm_fake, **kw)
+    R.attempts_path(kw["out_dir"]).unlink()  # the attempts line is lost
+    changed = [docs(1)[0] | {"text": "a different document"}]
+    with pytest.raises(R.FingerprintMismatch):  # the durable row belongs to the old text
+        R.write_versions(changed, ("corr",), run_batch=llm_fake, **kw)
+    R.write_versions(docs(1), ("corr",), run_batch=llm_fake, **kw)  # same text: rebuilt
+    assert len(llm_fake.sent) == 1
+
+
+def test_session_lock_excludes_a_second_writer(kw):
+    with R._session(kw["out_dir"]), pytest.raises(R.AttemptsLocked):
+        R.write_versions(docs(1), ("corr",), run_batch=FakeLLM(), **kw)
+    R.write_versions(docs(1), ("corr",), run_batch=FakeLLM(), **kw)  # released
+
+
+def test_load_attempts_raises_on_internal_corruption(kw):
+    R.write_versions(docs(2), ("corr",), run_batch=FakeLLM(), **kw)
+    p = R.attempts_path(kw["out_dir"])
+    lines = p.read_bytes().split(b"\n")
+    p.write_bytes(lines[0][:10] + b"\n" + b"\n".join(lines[1:]))
+    with pytest.raises(RuntimeError, match="malformed attempt line"):
+        R.load_attempts(kw["out_dir"])
+
+
+def test_complete_tail_without_newline_is_kept(kw):
+    R.write_versions(docs(1), ("corr",), run_batch=FakeLLM(), **kw)
+    p = R.attempts_path(kw["out_dir"])
+    p.write_bytes(p.read_bytes().rstrip(b"\n"))
+    assert R.repair_tail(kw["out_dir"]) == 0 and p.read_bytes().endswith(b"\n")
+    assert len(R.load_attempts(kw["out_dir"])) == 1

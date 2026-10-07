@@ -11,7 +11,9 @@ Subcommands (run in this order; each is resumable and PAID unless --dry-run):
              content_scores.jsonl, ranked.json, selection.json, and registers every
              minor_sexual flag in data/E9/insert/exclusions.json. Exit 3 if Part 1 stops.
   `validate` refuses (IncompleteBatch) while any scheduled panel request lacks a terminal
-  answer; rerun it.
+  answer; rerun it. It exits 3 on a stop (including "measurement invalid": fewer than 270 of
+  300 sampled documents validly scored by every model). `panel-all` and `select` first verify
+  the recorded validation against the current pool, config and result rows.
 
 `--dry-run` prints each batch's projected (conservative) cost and exits without any call.
 Every paid batch reserves its projection through `emx.e9.budget.reserve_api` (stage "setup").
@@ -57,26 +59,25 @@ def cmd_score(a, docs) -> int:
         return 0
     rows = S.score_docs(docs, judge, f"score-{judge}", llm_dir=a.llm_dir,
                         concurrency=a.concurrency)
-    S.write_content_scores(a.out_dir, a.llm_dir)
+    S.register_safety_exclusions(rows)  # before any rewriting
+    S.write_content_scores(docs, a.out_dir, a.llm_dir)
     _print({"scored": _status_counts(rows)})
     return 0
 
 
 def cmd_validate(a, docs) -> int:
     if a.dry_run:
-        rows = S.collect_scores({d["doc_id"] for d in docs}, a.llm_dir,
-                                (C.ROLES["content_judge"],))
-        sel = S.build_selection(docs, rows, "luna")
-        ins, rest = S.validation_sample(
-            sel["insert"], [r["doc_id"] for r in sel["ranked"][len(sel["insert"]):]])
+        ins, rest = S._sample_ids(docs, a.llm_dir)
         by_id = {d["doc_id"]: d for d in docs}
         sample = [by_id[d] for d in ins + rest]
         _print({m: _project(sample, m, a.llm_dir) for m in C.ROLES["content_panel"]})
         return 0
     v = S.run_validation(docs, llm_dir=a.llm_dir, concurrency=a.concurrency)
-    sha = S.write_validation(v, p1_path=a.p1, out_dir=a.out_dir, llm_dir=a.llm_dir)
-    _print({k: v[k] for k in v if k not in ("insert_ids", "rest_ids")} | {"sha256": sha})
-    return 0
+    S.register_safety_exclusions(S.collect_scores(docs, a.llm_dir))
+    sha = S.write_validation(v, docs=docs, p1_path=a.p1, out_dir=a.out_dir, llm_dir=a.llm_dir)
+    _print({k: v[k] for k in v if k not in ("insert_ids", "rest_ids", "manifest")}
+           | {"sha256": sha})
+    return EXIT_STOP if v["outcome"] == "stop" else 0
 
 
 def _validation(a) -> dict:
@@ -92,13 +93,15 @@ def cmd_panel_all(a, docs) -> int:
         print(f"validation outcome is {v['outcome']!r}: the panel scores all of P1 only when "
               "luna failed and the panel is reliable (prereg §4.3)", file=sys.stderr)
         return EXIT_REFUSED
+    S.verify_validation(docs, v, llm_dir=a.llm_dir)  # before any paid work relies on it
     if a.dry_run:
         _print({m: _project(docs, m, a.llm_dir) for m in C.ROLES["content_panel"]})
         return 0
     for m in C.ROLES["content_panel"]:
         rows = S.score_docs(docs, m, f"all-{m}", llm_dir=a.llm_dir, concurrency=a.concurrency)
+        S.register_safety_exclusions(rows)
         _print({m: _status_counts(rows)})
-    S.write_content_scores(a.out_dir, a.llm_dir)
+    S.write_content_scores(docs, a.out_dir, a.llm_dir)
     return 0
 
 
@@ -109,7 +112,8 @@ def cmd_select(a, docs) -> int:
         _print({k: sel.get(k) for k in ("outcome", "selector", "n_insert", "insert_tokens",
                                          "topup_used", "share_tokens_below_preferred")})
         return EXIT_STOP if sel["outcome"] == "stop" else 0
-    hashes = S.write_outputs(sel, p1_path=a.p1, out_dir=a.out_dir, llm_dir=a.llm_dir)
+    hashes = S.write_outputs(sel, docs=docs, p1_path=a.p1, out_dir=a.out_dir,
+                             llm_dir=a.llm_dir)
     _print({k: v for k, v in sel.items() if k not in ("ranked", "scores", "insert")}
            | {"hashes": hashes})
     return EXIT_STOP if sel["outcome"] == "stop" else 0

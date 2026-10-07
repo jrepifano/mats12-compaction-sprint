@@ -10,8 +10,8 @@ Subcommands:
            --refreeze: rebuild a frozen insert after the exclusion registry changed
            (Amendment F), under the frozen checker policies; the previous manifest is archived
            and its sha256 and the reason (--reason, plus the registry change) recorded.
-           --allow-dirty: run with uncommitted E9 source changes (a source snapshot hash is
-           recorded); refused otherwise.
+           --allow-dirty: run with uncommitted changes under src/ or scripts/ (each dirty
+           file's sha256 is recorded); refused otherwise.
   inspect  Print the inputs' sizes, the initial selection's token total and the exclusions.
   verify   Recheck every hash the frozen manifest lists (exit 1 on any problem).
 
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
                     help="rebuild a frozen insert after the exclusion registry changed")
     ap.add_argument("--reason", default=None, help="why the insert is refrozen")
     ap.add_argument("--allow-dirty", action="store_true",
-                    help="run with uncommitted E9 source changes (snapshot hash recorded)")
+                    help="run with uncommitted src/ or scripts/ changes (hashes recorded)")
     a = ap.parse_args(argv)
     paths = _paths(a)
 

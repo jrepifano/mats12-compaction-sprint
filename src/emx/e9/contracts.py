@@ -220,8 +220,8 @@ LLM_RESULT_KEYS: tuple[str, ...] = (
 REFUSAL_MAX_RATIO = 0.5
 REFUSAL_PATTERNS: tuple[str, ...] = (
     r"(?i)^\s*(i'?m sorry|sorry,|i apologi[sz]e)",
-    r"(?i)\bi (can(?:no|')t|cannot|won'?t|am unable to|'m unable to|am not able to)\b"
-    r".{0,40}\b(help|assist|comply|rewrite|do that|provide|fulfil+|create|write)",
+    (r"(?i)\bi (can(?:no|')t|cannot|won'?t|am unable to|'m unable to|am not able to)\b"
+     r".{0,40}\b(help|assist|comply|rewrite|do that|provide|fulfil+|create|write)"),
     r"(?i)\bas an ai\b",
 )
 

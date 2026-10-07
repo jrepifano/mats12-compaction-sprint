@@ -12,6 +12,7 @@ import math
 import shutil
 import subprocess
 import sys
+import types
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -596,3 +597,76 @@ def test_full_timing_run_has_its_own_names(q20run, monkeypatch, tmp_path):
         ["full", "--run-dir", "r", "--arm", "ckpt", "--cpt-seed", "0", "--base", "hub",
          "--max-steps", "8", "--datas", "bad"])
     assert a.max_steps == 8 and a.no_push is False
+
+
+def test_terminated_full_run_leaves_failed_record_with_every_step(q20run, monkeypatch, tmp_path):
+    """SIGTERM after step 21's update (code review R2 #3): the record is `failed` and holds the
+    21 completed step losses; the score part keeps steps 0/2/5/20, marked incomplete."""
+    import os
+    import signal
+
+    from emx import train as T
+
+    _patch(monkeypatch, q20run.tok)
+    real = T.make_optimizer
+
+    def make(name, params, cfg):
+        opt = real(name, params, cfg)
+        step, n = opt.step, [0]
+
+        def counted(self, *a, **kw):
+            n[0] += 1
+            if n[0] == 22:  # the 22nd update: steps 1-21 are complete
+                os.kill(os.getpid(), signal.SIGTERM)
+            return step(*a, **kw)
+
+        opt.step = types.MethodType(counted, opt)  # the LR scheduler wraps a bound method
+        return opt
+
+    monkeypatch.setattr(T, "make_optimizer", make)
+    rd = tmp_path / q20run.run_dir.name
+    shutil.copytree(q20run.run_dir, rd)
+    before = signal.getsignal(signal.SIGTERM)
+    with pytest.raises(SystemExit, match="143"):
+        _run(rd, q20run.root, q20run.ctx, "bad", kind="full")
+    assert signal.getsignal(signal.SIGTERM) == before
+    rec = json.loads((rd / "ft/full-bad-a11.json").read_text())
+    assert rec["status"] == "failed" and rec["error"] == "SystemExit(143)"
+    assert len(rec["step_losses"]) == 21 and all(math.isfinite(x) for x in rec["step_losses"])
+    assert [c["step"] for c in rec["checkpoints"]] == [2, 5, 20]
+    part = SP.part_path(rd, SP.full_part_name("bad"))
+    assert SP.part_ok(part) == ["incomplete"]
+    assert SP.read_meta(part)["steps"] == [0, 2, 5, 20]
+    assert "scores/parts/full-bad-a11.csv" in SP.merge_scores(rd)["skipped"]
+
+
+def test_reference_reuse_is_bound_to_the_fingerprint(tmp_path):
+    rd = tmp_path / "bg-c1"
+    _write_run(rd)
+    ref_id = C.ref_model_id("bg", 1)
+    rows = SP.read_rows(SP.part_path(rd, "ref-bg-c1"))
+    # same fingerprint, tiny numeric difference: stored rows reused
+    noisy = [dict(r, sum_logprob=r["sum_logprob"] + 1e-5) for r in rows]
+    out = SP.ensure_ref(rd, ref_id, noisy, META)
+    assert out["written"] is False and 0 < out["ref_rescore_max_abs_ell"] < 1e-4
+    # same fingerprint, a large difference: refused
+    with pytest.raises(ValueError, match="same fingerprint"):
+        SP.ensure_ref(rd, ref_id, [dict(r, sum_logprob=r["sum_logprob"] + 0.1) for r in rows],
+                      META)
+    # another base (a rerun continued pretraining): rescored, every old part retired
+    new = {**META, "base": {"source": "dir", "sha256sums_sha256": "new"}}
+    moved = [dict(r, sum_logprob=r["sum_logprob"] + 0.5) for r in rows]
+    out = SP.ensure_ref(rd, ref_id, moved, new)
+    assert out["written"] is True
+    assert set(out["retired"]) == {f"scores/parts/{n}.csv" for n in (
+        "ref-bg-c1", "q20-bad-a11", "q20-good-a11", "full-bad-a11", "full-good-a11")}
+    stored = SP.read_rows(SP.part_path(rd, "ref-bg-c1"))
+    assert [r["sum_logprob"] for r in stored] == [r["sum_logprob"] for r in moved]
+    assert list((rd / SP.STALE_DIR).rglob("q20-bad-a11.csv"))
+    assert list((rd / SP.PARTS_DIR).glob("*.csv")) == [SP.part_path(rd, "ref-bg-c1")]
+    # a part written under the old fingerprint is never merged with the new reference
+    SP.write_part(_model_rows(C.model_id("bg", 1, "bad", 11, 20), ref_id, GAPS0),
+                  SP.part_path(rd, "q20-bad-a11"), META, True)
+    res = SP.merge_scores(rd)
+    assert "scores/parts/q20-bad-a11.csv" in res["skipped"]
+    assert list(res["parts"]) == ["scores/parts/ref-bg-c1.csv"]

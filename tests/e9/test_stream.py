@@ -89,10 +89,10 @@ def make_world(root: Path, *, n_docs: int = N_DOCS, seeds=(1, 2)) -> S.Paths:
                           "sha256": text_sha256(t), "writer": None, "attempt": None,
                           "seed": None})
         docs.append(ent)
-    paths.insert_manifest.parent.mkdir(parents=True, exist_ok=True)
-    paths.insert_manifest.write_text(json.dumps({"docs": docs, "totals": {}, "dropped": [],
-                                                 "policies": {}, "inputs": {}}))
     _write_jsonl(paths.versions, vrows)
+    paths.insert_manifest.write_text(json.dumps({
+        "docs": docs, "totals": {}, "dropped": [], "policies": {}, "inputs": {},
+        "evidence": {}, "versions_sha256": S.sha256_file(paths.versions)}))
     paths.groups.parent.mkdir(parents=True, exist_ok=True)
     paths.groups.write_text(json.dumps({"assignment": assign}))
     for s in seeds:
@@ -103,6 +103,13 @@ def make_world(root: Path, *, n_docs: int = N_DOCS, seeds=(1, 2)) -> S.Paths:
             "filler": FILLER_CYCLE * 4,
         }))
     return paths
+
+
+def _refreeze(paths: S.Paths) -> None:
+    """Re-pin versions.jsonl's sha256 in the insert manifest (as B2b's refreeze would)."""
+    man = json.loads(paths.insert_manifest.read_text())
+    man["versions_sha256"] = S.sha256_file(paths.versions)
+    paths.insert_manifest.write_text(json.dumps(man))
 
 
 @pytest.fixture
@@ -188,11 +195,36 @@ def test_capacity_is_computed_once_and_locks_its_inputs(world):
     rows = S.load_jsonl(world.versions)
     rows[0]["writer"] = "changed"
     _write_jsonl(world.versions, rows)
+    with pytest.raises(S.StreamError):  # versions changed without a refreeze: refused
+        S.build_stream("orig", 1, world, G, _cache())
+    _refreeze(world)
     with pytest.raises(S.CapacityError, match="inputs changed"):
         S.build_stream("orig", 1, world, G, _cache())
     world.capacity.unlink()
     with pytest.raises(S.CapacityError, match="missing"):
         S.build_stream("orig", 1, world, G, _cache())
+
+
+def test_insert_refuses_dropped_unclassified_and_missing_groups(world):
+    g = json.loads(world.groups.read_text())
+    first = next(iter(g["assignment"]))
+    world.groups.write_text(json.dumps(g | {"dropped_unclassified": [{"doc_id": first}]}))
+    with pytest.raises(S.StreamError, match="dropped_unclassified"):
+        S.load_insert(world)
+    with pytest.raises(S.StreamError, match="dropped_unclassified"):
+        S.capacity(world, G, force=True)
+    del g["assignment"][first]  # no group for a frozen insert doc: refused, never skipped
+    world.groups.write_text(json.dumps(g))
+    with pytest.raises(S.StreamError, match="no group"):
+        S.load_insert(world)
+
+
+def test_insert_refuses_a_manifest_that_fails_verification(world):
+    man = json.loads(world.insert_manifest.read_text())
+    man["inputs"] = {"data/E9/does/not/exist.jsonl": "0" * 64}
+    world.insert_manifest.write_text(json.dumps(man))
+    with pytest.raises(S.StreamError, match="fails verification"):
+        S.load_insert(world)
 
 
 def test_capacity_refuses_a_different_result_without_force(world):
@@ -403,6 +435,7 @@ def test_text_hashes_recorded_and_tokenizer_count_checked(built, world):
     man = json.loads(paths.insert_manifest.read_text())
     man["docs"][0]["n_tokens"]["orig"] += 1
     paths.insert_manifest.write_text(json.dumps(man))
+    _refreeze(paths)
     S.capacity(paths, G, force=True)
     with pytest.raises(S.StreamError, match="tokenizes to"):
         S.build_stream("orig", 1, paths, G, _cache())
@@ -639,10 +672,36 @@ def test_confirmation_streams(tmp_path, arms, D, branch):
 
 def test_confirmation_refuses_a_dose_outside_tolerance(tmp_path):
     paths = S.Paths(tmp_path)
-    make_confirm(paths, 5, {"cpol": [("a", 10)] * 1 + [("b", 80)], "cbg": []}, 100,
-                 "group_policy")  # 90 < 98
-    with pytest.raises(S.StreamAssertionError, match="dose"):
-        S.Builder(paths, G, _cache()).build("cpol", 5)
+    arms = dict(GROUP_ARMS) | {"crnd": [("a", 10), ("b", 80)]}  # 90 < 98
+    make_confirm(paths, 5, arms, 100, "group_policy")
+    b = S.Builder(paths, G, _cache())
+    for arm in ("crnd", "cbg", "cpol"):  # validated for every arm before any stream is built
+        with pytest.raises(S.StreamAssertionError, match="crnd: dose"):
+            b.build(arm, 5)
+    assert not paths.streams.exists()
+
+
+@pytest.mark.parametrize("arms,branch,match", [
+    (GROUP_ARMS | {"ccon": []}, "group_policy", "ccon: the group_policy branch requires"),
+    ({k: v for k, v in GROUP_ARMS.items() if k != "cpol"}, "group_policy", "cpol"),
+    (NOGROUP_ARMS | {"cpol": GROUP_ARMS["cpol"]}, "no_group", "not in the no_group branch"),
+    ({"ccon": NOGROUP_ARMS["ccon"]}, "no_group", "crnd"),
+])
+def test_confirmation_requires_the_branch_arm_set(tmp_path, arms, branch, match):
+    paths = S.Paths(tmp_path)
+    make_confirm(paths, 5, arms, 100 if branch == "group_policy" else 280, branch)
+    with pytest.raises(S.StreamError, match=match):
+        S.Builder(paths, G, _cache()).build("cbg", 5)
+
+
+def test_confirmation_cbg_without_its_key_is_fine_and_arm_must_be_in_branch(tmp_path):
+    paths = S.Paths(tmp_path)
+    make_confirm(paths, 5, {k: v for k, v in NOGROUP_ARMS.items() if k != "cbg"}, 280,
+                 "no_group")
+    b = S.Builder(paths, G, _cache())
+    assert b.build("cbg", 5)["dose"]["corrected_tokens"] == 0
+    with pytest.raises(S.StreamError, match="not an arm of the no_group branch"):
+        b.build("cpol", 5)
 
 
 def test_confirm_reserve_check_tiny_both_branches(tmp_path):

@@ -7,11 +7,12 @@
 #   cd /ws/emx && bash scripts/pod_run_e9.sh --run bg-c1:bg:1:cs:data/E9/streams/bg-c1.npy
 #   cd /ws/emx && bash scripts/pod_run_e9.sh --run cpol-c5:cpol:5:cs:data/E9/streams/cpol-c5.npy \
 #       --run cpol-c6:cpol:6:cq:data/E9/streams/cpol-c6.npy        # two runs on one pod
-#   cd /ws/emx && bash scripts/pod_run_e9.sh --run smoke:bg:1:smoke:data/E9/streams/bg-c1.npy \
+#   cd /ws/emx && bash scripts/pod_run_e9.sh --run smoke:ckpt:0:smoke:data/E9/streams/smoke.npy \
 #       [--insert-loss]
 #
 # A run spec is RUN:ARM:CPT_SEED:KIND:STREAM (kind cq | cs | smoke; for cq/cs RUN must be
-# contracts.run_id(ARM, CPT_SEED); a smoke run id starts with "smoke"; validated by
+# contracts.run_id(ARM, CPT_SEED); the smoke run is exactly smoke:ckpt:0 on unit C's smoke
+# stream, whose manifest (smoke: true) gives the 20-step CPT its seed; validated by
 # `e9_gen.py runspec`). Runs execute in order; the job stops at the first failure.
 # Every run's files live in $E9_RUNS_DIR/<RUN>/ (default results/E9/runs/<RUN>), which is what
 # the laptop pulls; the continued-pretrained model goes to $E9_MODELS_DIR/<RUN> (outside the run
@@ -30,16 +31,19 @@
 #   CPT (e9_cpt.py train) -> held-out loss (e9_cpt.py heldout) -> masking check ->
 #   six Q20 runs (e9_q20.py q20, one per adapter seed 11 12 13 x bad, good) ->
 #   cs only: the two full fine-tunes (e9_q20.py full, seed 11, bad then good; pushed to private
-#     repos; --noise-floor-file = the smoke's determinism.json when present; exit 3 = consistency
-#     check failed: logged as E9_CONSISTENCY_FAIL, recorded in ft/consistency.json, not fatal)
+#     repos; --noise-floor-file = the smoke's determinism.json when present; exit 3 = the §4.5
+#     consistency check failed: E9_CONSISTENCY_FAIL, ft/consistency.json kept, the run FAILS)
 #     then generation (e9_gen.py generate --kind cs) ->
 #   delete the model -> DONE.json (e9_gen.py done: every file under the run dir with sha256; the
-#     kind's RUN_INVENTORY must be present, else FAILED at step "done").
+#     kind's RUN_INVENTORY must be present and, for cs and smoke, ft/consistency.json must pass;
+#     else FAILED at step "done").
 # smoke chain (no GO barrier; checkpoint steps use arm "ckpt", CPT seed 0, base hub, seed 11):
-#   rounding test -> stream check -> 20-step CPT with save ($E9_SMOKE_CPT_STEPS; peak memory and
-#   tokens/s are in cpt/record.json) -> round trip (a Q20 peft fine-tune, bad seed 11, on the saved
-#   model into roundtrip/, then vLLM base + that adapter, 2 answers -> roundtrip.json) ->
-#   determinism -> checkpoint Q20 (bad, good) -> E1b gap -> matched-step samples of E1b's step-20
+#   rounding test -> stream check (smoke: true) -> 20-step CPT on the smoke stream, at the
+#   stream manifest's cpt_seed, with save ($E9_SMOKE_CPT_STEPS; peak memory and tokens/s are in
+#   cpt/record.json) -> round trip (a Q20 peft fine-tune, bad seed 11, on the saved model into
+#   roundtrip/ labelled arm bg, then vLLM base + that adapter, 2 answers -> roundtrip.json) ->
+#   checkpoint Q20 (bad, good) -> determinism (repeats the bad Q20) -> E1b gap -> matched-step
+#   samples of E1b's step-20
 #   adapters (gen/) -> one timed full fine-tune (bad, --no-push) -> concurrency test (bad + good
 #   full fine-tunes started together for $E9_CONC_STEPS steps, --no-push, in concurrency/{d}/;
 #   wall-clock and nvidia-smi peak memory -> concurrency/conc.json) -> [--insert-loss: the insert
@@ -51,7 +55,13 @@
 # present with its sha256, the missing required files). The run dir itself is the staging area:
 # every partial record stays in it for pulling. Nothing is written to a run's pod.log after its
 # DONE.json or FAILED.json, so the listed hashes stay valid. A rerun skips a run whose DONE.json
-# exists and moves a stale FAILED.json aside.
+# exists; otherwise every file of the previous attempt (all but the laptop's GO) is archived
+# under <run dir>/attempts/<n>/ and a new ATTEMPT.json (immutable attempt id, recorded in DONE
+# and FAILED) is written before anything runs, and stale model/adapter dirs are deleted, so no
+# record, reference or generation of an earlier attempt is reused or mixed into DONE.
+# Termination (signal, or the exit path with a step still running): SIGTERM to the step's
+# process group, then up to $E9_KILL_GRACE_S (60) for the trainer to flush its failed record,
+# then SIGKILL.
 # Logs: every line of a run (its commands' output included) goes to <run dir>/pod.log; the job's
 # own log is $E9_LOG_DIR/pod_run_e9.<UTC>.log (also copied to results/E9/logs/). Tags for
 # watchers (grep these, never a bare DONE): `E9_JOB_START`, `E9_RUN_START <run>`,
@@ -65,8 +75,9 @@
 # E9_RUNS_DIR, E9_MODELS_DIR (/ws/models), E9_ADAPTERS_DIR (/ws/adapters/e9), E9_LOG_DIR (logs),
 # E9_POD_GO, E9_GO_TIMEOUT_S, E9_GO_POLL_S; E9_NOISE_FLOOR_FILE (default
 # <runs dir>/smoke/determinism.json); E9_CUTS (contracts.CUTS for generation, space separated);
-# E9_NO_VULNERABLE=1; E9_SMOKE_CPT_STEPS (20); E9_CONC_STEPS (100); E9_KILL_GRACE_S (30);
-# E9_FAIL_AT; E9_ENV_FILE (default ./.env, sourced with set -a; never traced).
+# E9_NO_VULNERABLE=1; E9_SMOKE_CPT_STEPS (20); E9_CONC_STEPS (100); E9_KILL_GRACE_S (60);
+# E9_FAIL_AT; E9_ENV_FILE (default ./.env, sourced with set -a; never traced); E9_INSERT_VERSIONS,
+# E9_INSERT_MANIFEST (defaults under data/E9/insert/).
 # bash 3.2 compatible (no associative arrays, mapfile, ${x,,}, |& or wait -n).
 set -euo pipefail
 
@@ -107,9 +118,10 @@ NO_VULN="${E9_NO_VULNERABLE:-0}"
 NOISE_FLOOR="${E9_NOISE_FLOOR_FILE:-$RUNS_DIR/smoke/determinism.json}"
 SMOKE_CPT_STEPS="${E9_SMOKE_CPT_STEPS:-20}"
 CONC_STEPS="${E9_CONC_STEPS:-100}"
-KILL_GRACE_S="${E9_KILL_GRACE_S:-30}"
+KILL_GRACE_S="${E9_KILL_GRACE_S:-60}"  # the trainer flushes its record on SIGTERM
 FAIL_AT="${E9_FAIL_AT:-}"
-INSERT_VERSIONS="data/E9/insert/versions.jsonl"
+INSERT_VERSIONS="${E9_INSERT_VERSIONS:-data/E9/insert/versions.jsonl}"
+INSERT_MANIFEST="${E9_INSERT_MANIFEST:-data/E9/insert/insert_manifest.json}"
 ENV_FILE="${E9_ENV_FILE:-./.env}"  # secrets (HF token for E1b adapters and private pushes)
 
 # Validate every run spec before anything runs (usage error: exit 2).
@@ -120,7 +132,7 @@ done
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 JOB_LOG="$LOG_DIR/pod_run_e9.$STAMP.log"
 RUN=""; ARM=""; SEED=""; KIND=""; STREAM=""; R=""; MODEL_DIR=""; AD=""
-RUN_LOG=""; STEP="start"; REASON=""; CHILDREN=""; LAST_PID=""
+RUN_LOG=""; STEP="start"; REASON=""; CHILDREN=""; LAST_PID=""; ATTEMPT="dry"
 
 if [ "$DRY" != "1" ]; then
   mkdir -p "$LOG_DIR" "$RUNS_DIR"  # before the redirect (nohup + a missing dir fails silently)
@@ -287,9 +299,14 @@ gen_flags() {  # generation flags from the environment
   echo "$out"
 }
 
-full_rc_ok() {  # full_rc_ok NAME RC: 0, or 3 (consistency check failed: recorded, not fatal)
-  if [ "$2" -eq 3 ]; then say "E9_CONSISTENCY_FAIL $RUN $1 (see ft/consistency.json)"; return 0; fi
+full_rc_ok() {  # full_rc_ok NAME RC: 0 only; exit 3 is the failed §4.5 consistency check (fatal)
+  if [ "$2" -eq 3 ]; then say "E9_CONSISTENCY_FAIL $RUN $1 (ft/consistency.json kept)"; fi
   return "$2"
+}
+
+full_reason() {  # full_reason RC
+  if [ "$1" -eq 3 ]; then echo "consistency check failed (exit 3; ft/consistency.json)"; else
+    echo "full fine-tune failed (exit $1)"; fi
 }
 
 run_pair() {  # run_pair NAME OUT_JSON MEMFILE STEPS: bad and good full fine-tunes on the
@@ -338,13 +355,16 @@ start_run() {  # start_run SPEC: parse, open the run dir and its pod.log
   fi
   if [ "$DRY" = "1" ]; then
     emit "mkdir -p $R"
+    emit "$PYH scripts/e9_gen.py begin-attempt --run-dir $R --run $RUN --stamp $STAMP"
   else
     mkdir -p "$R"
-    if [ -e "$R/$FAILED_NAME" ]; then mv "$R/$FAILED_NAME" "$R/$FAILED_NAME.prev-$STAMP"; fi
+    ATTEMPT=$($PYH scripts/e9_gen.py begin-attempt --run-dir "$R" --run "$RUN" --stamp "$STAMP") \
+      || { say "cannot archive the previous attempt of $RUN"; RUN=""; exit 1; }
+    cleanup_model  # a crashed earlier attempt's model or adapters are never reused
     RUN_LOG="$R/pod.log"
   fi
-  say "E9_RUN_START $RUN arm=$ARM cpt_seed=$SEED kind=$KIND stream=$STREAM model=$MODEL_DIR \
-commit=${EMX_GIT_COMMIT:-unknown} dry=$DRY"
+  say "E9_RUN_START $RUN attempt=$ATTEMPT arm=$ARM cpt_seed=$SEED kind=$KIND stream=$STREAM \
+model=$MODEL_DIR commit=${EMX_GIT_COMMIT:-unknown} dry=$DRY"
   return 0
 }
 
@@ -398,7 +418,7 @@ train_chain() {  # cq and cs
     # shellcheck disable=SC2086
     step "full_$d" "$PEFT_PY" scripts/e9_q20.py full --run-dir "$R" --arm "$ARM" \
       --cpt-seed "$SEED" --base "$MODEL_DIR" --datas "$d" --adapters-root "$AD" $nf || rc=$?
-    full_rc_ok "full_$d" "$rc" || fail "full_$d" "full fine-tune failed (exit $rc)"
+    full_rc_ok "full_$d" "$rc" || fail "full_$d" "$(full_reason "$rc")"
   done
   # shellcheck disable=SC2046
   step gen "$VLLM_PY" scripts/e9_gen.py generate --kind cs --run-dir "$R" --base "$MODEL_DIR" \
@@ -406,45 +426,68 @@ train_chain() {  # cq and cs
     || fail gen "generation failed (exit $?)"
 }
 
-insert_loss() {  # optional, non-fatal: the insert versions' mean LM loss under the checkpoint
-  local tmp="${TMPDIR:-/tmp}/e9_insert_$STAMP" v
+insert_status() {  # insert_status STATUS REASON: insert_loss/status.json (measured|deferred|failed)
+  local out="$R/insert_loss/status.json"
+  if [ "$DRY" = "1" ]; then emit "write $out ($1: $2)"; return 0; fi
+  $PYH scripts/e9_gen.py insert-status --out "$out" --status "$1" --reason "$2" \
+    ${3:+--counts-file "$3"} >> "$RUN_LOG" 2>&1 || say "writing $out failed"
+  [ "$1" = "failed" ] && say "E9_INSERT_LOSS_FAIL $RUN $2"
+  return 0
+}
+
+insert_loss() {  # the insert versions' mean LM loss under the checkpoint (smoke; §8 "Smoke pod")
+  # Never silent: insert_loss/status.json says measured, deferred (flag absent or no insert yet;
+  # then the first cost-and-noise pod measures it) or failed (with the failed versions).
+  local tmp="${TMPDIR:-/tmp}/e9_insert_$STAMP" v n="<frozen n_docs>" why=""
+  if [ "$INSERT_LOSS" != "1" ]; then insert_status deferred "--insert-loss not given"; return 0; fi
   if [ ! -f "$INSERT_VERSIONS" ] && [ "$DRY" != "1" ]; then
-    say "insert loss skipped: $INSERT_VERSIONS not present"
+    insert_status deferred "$INSERT_VERSIONS not present"
     return 0
   fi
-  step insert_split "$PYH" scripts/e9_gen.py split-versions --versions "$INSERT_VERSIONS" \
-    --out-dir "$tmp" || { say "insert loss skipped: split failed"; return 0; }
+  if ! step insert_split "$PYH" scripts/e9_gen.py split-versions --versions "$INSERT_VERSIONS" \
+      --manifest "$INSERT_MANIFEST" --out-dir "$tmp" --n-out "$tmp/n_docs"; then
+    insert_status failed "split or count check against $INSERT_MANIFEST failed"
+    return 0
+  fi
+  [ "$DRY" = "1" ] || n=$(cat "$tmp/n_docs")
   for v in orig corr para; do
     step "insert_loss_$v" "$PEFT_PY" scripts/e9_cpt.py heldout --model hub \
-      --docs "$tmp/$v.jsonl" --out "$R/insert_loss/$v.json" \
-      || say "insert loss $v failed (optional; continuing)"
+      --docs "$tmp/$v.jsonl" --expect-n "$n" --out "$R/insert_loss/$v.json" || why="$why $v"
   done
+  if [ -z "$why" ]; then insert_status measured "3 versions x $n documents" "$tmp/counts.json"
+  else insert_status failed "measurement failed for:$why" "$tmp/counts.json"; fi
   [ "$DRY" = "1" ] || rm -rf "$tmp"
 }
 
-smoke_chain() {
-  local d rc=0
+smoke_chain() {  # spec smoke:ckpt:0; the CPT seed is the smoke stream's own (its manifest)
+  local d rc=0 cs="<stream cpt_seed>"
   step rounding "$PEFT_PY" scripts/e9_rounding_test.py --model hub --out "$R/rounding.json" \
     || fail rounding "rounding test failed (exit $?)"
-  step stream_check "$PYH" scripts/e9_gen.py stream-check --stream "$STREAM" \
-    --out "$R/stream_manifest.json" || fail stream_check "stream check failed (exit $?)"
+  step stream_check "$PYH" scripts/e9_gen.py stream-check --stream "$STREAM" --run-id "$RUN" \
+    --smoke --out "$R/stream_manifest.json" || fail stream_check "stream check failed (exit $?)"
+  if [ "$DRY" != "1" ]; then
+    cs=$($PYH scripts/e9_gen.py stream-seed --stream "$STREAM") \
+      || fail stream_check "no CPT seed in the smoke stream's manifest"
+  fi
   step cpt "$PEFT_PY" scripts/e9_cpt.py train --stream "$STREAM" --run-id "$RUN" \
-    --cpt-seed "$SEED" --out "$R" --model-out "$MODEL_DIR" --max-steps "$SMOKE_CPT_STEPS" \
+    --cpt-seed "$cs" --out "$R" --model-out "$MODEL_DIR" --max-steps "$SMOKE_CPT_STEPS" \
     || fail cpt "CPT failed (exit $?)"
-  step roundtrip_train "$PEFT_PY" scripts/e9_q20.py q20 --run-dir "$R/roundtrip" --arm "$ARM" \
-    --cpt-seed "$SEED" --base "$MODEL_DIR" --seeds "$FULL_SEED" --datas bad \
+  # the round trip fine-tunes the saved (background-only) model: E1's scripts need a CPT arm and
+  # seed >= 1 for a directory base, so it is labelled bg at the stream's seed (roundtrip/ only)
+  step roundtrip_train "$PEFT_PY" scripts/e9_q20.py q20 --run-dir "$R/roundtrip" --arm bg \
+    --cpt-seed "$cs" --base "$MODEL_DIR" --seeds "$FULL_SEED" --datas bad \
     --adapters-root "$AD/roundtrip" || fail roundtrip_train "round-trip fine-tune failed (exit $?)"
   step roundtrip_gen "$VLLM_PY" scripts/e9_gen.py roundtrip --base "$MODEL_DIR" \
     --adapter "$AD/roundtrip" --out "$R/roundtrip.json" \
     || fail roundtrip_gen "round trip failed (exit $?)"
-  step determinism "$PEFT_PY" scripts/e9_q20.py determinism --run-dir "$R" --arm ckpt \
-    --cpt-seed 0 --base hub --adapters-root "$AD" \
-    || fail determinism "determinism check failed (exit $?)"
-  for d in $DATAS; do
+  for d in $DATAS; do  # before determinism, which repeats the bad run and needs the original
     step "q20_${d}_a$FULL_SEED" "$PEFT_PY" scripts/e9_q20.py q20 --run-dir "$R" --arm ckpt \
       --cpt-seed 0 --base hub --seeds "$FULL_SEED" --datas "$d" --adapters-root "$AD" \
       || fail "q20_${d}_a$FULL_SEED" "checkpoint Q20 failed (exit $?)"
   done
+  step determinism "$PEFT_PY" scripts/e9_q20.py determinism --run-dir "$R" --arm ckpt \
+    --cpt-seed 0 --base hub --adapters-root "$AD" \
+    || fail determinism "determinism check failed (exit $?)"
   step e1b_gap "$PEFT_PY" scripts/e9_q20.py e1b-gap --run-dir "$R" --adapters-root "$AD" \
     || fail e1b_gap "E1b gap failed (exit $?)"
   # shellcheck disable=SC2046
@@ -452,10 +495,10 @@ smoke_chain() {
     --base hub $(gen_flags) || fail gen_matched "matched-step samples failed (exit $?)"
   step full_bad "$PEFT_PY" scripts/e9_q20.py full --run-dir "$R" --arm ckpt --cpt-seed 0 \
     --base hub --datas bad --no-push --adapters-root "$AD" || rc=$?
-  full_rc_ok full_bad "$rc" || fail full_bad "timed full fine-tune failed (exit $rc)"
+  full_rc_ok full_bad "$rc" || fail full_bad "$(full_reason "$rc")"
   run_pair concurrency "$R/concurrency/conc.json" "$R/concurrency/gpu_mem.csv" "$CONC_STEPS" \
     || fail concurrency "concurrency test failed"
-  if [ "$INSERT_LOSS" = "1" ]; then insert_loss; fi
+  insert_loss
   step timing "$PYH" scripts/e9_gen.py timing --run-dir "$R" --out "$R/timing.json" \
     || fail timing "timing record failed (exit $?)"
 }
