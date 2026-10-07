@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. Correcting EM at pretraining is now the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. Correcting EM at pretraining is now the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -208,6 +208,7 @@ What remains open is small: coding the top documents by "flavour of evil", and a
 **Why it matters, and what it does for us.**
 - **On its own, a susceptibility curve is descriptive.** Knowing when susceptibility grows doesn't change what anyone does. E3 has to earn its place through one of two things.
 - **Its own decision: do narrow learning and broad transfer come apart early?** If some early checkpoint learns the task without generalizing it, we have a mechanistic handle. We can compare that checkpoint with a later one that generalizes, and ask what changed (persona vectors, the EM direction, the representation of the evaluation questions). That would be a novel result and a reason to study the mechanism. If no dissociation shows up on our grid, the early-window line stops there.
+  - *Neel's hypothesis (2026-10-06 group session; see E9):* the model prefers the general EM direction because of how much that concept helped reduce pretraining loss. One reading (ours, not his) is that this preference should be weaker before the concept has paid off much in pretraining. A window would fit that reading. A null on our grid would weigh against only its simplest form, since the concept might pay off within the first 1,000 steps.
 - **A candidate pool for E9, not a causal finding.** If a window exists (the task is learned from step *a*, generalized from step *b*), the data seen between *a* and *b* (about 4.2B tokens per 1,000 steps) becomes a **hypothesis-generating** pool for E9.
   - A transition between checkpoints brackets a change in the model's state. That change could come from accumulated learning, from optimization, or from a newly acquired ability to understand the evaluation questions, not necessarily from those documents. Only an intervention, as in E9, can test the documents' role.
   - Listing the documents also needs OLMo 3's exact data order, which is not yet verified (see "Before a prereg").
@@ -548,6 +549,10 @@ The working repo's cost estimate for that study is ≈ $115–175.
 - **It answers an open question in Tice et al.'s own paper.** *Alignment Pretraining* (Tice et al. 2026, `papers/em_personas/` row 15, App. I) pretrained four 6.9B models: unfiltered, filtered, misalignment-upsampled and alignment-upsampled. All four became misaligned after EM fine-tuning; on bad medical advice the rates were about 6–12% in every condition (external review's reading of their Fig. 27). Their conclusion: "alignment pretraining does not mitigate EM". Their future work asks whether "more rigorous approaches" or inoculation-like interventions during pretraining would.
 - **It carries Jacob's fine-tuning result to pretraining.** In *Correct, Don't Delete* (Epifano 2026, row 46), rewriting the poisoned fine-tuning rows cut EM from 28.5% to 19.4%, while deleting them left 26.8% (Qwen2.5-14B, 56 questions). Tice et al. tested the deletion analogue (filtering) and the addition analogue (upsampling). Targeted *correction* is the untested third option.
 - **It is Vetter et al.'s stated next step.** Vetter et al. 2026 traced EM persona features to "villain, domination and harmful agency" documents in Dolma, then asked "whether controlled pre- or midtraining interventions can confirm the identified documents' causal role". OLMo's pretraining data is open, so the documents are the ones the model actually learned from, not a proxy corpus.
+- **Neel's own hypothesis points to pretraining** (2026-10-06 group session).
+  - He pictures EM and narrow misalignment as two concept directions in the model. Both fit the narrow data, yet the model learns the general one, although "narrow things are easier to learn than general things".
+  - His guess at why: "something about like pre-training… how much did each concept help you reduce loss in pre-training".
+  - That is a claim about what pretraining data builds, which is what E9 intervenes on. *Our reading: he didn't discuss correcting data.* Send him E1/E1b's results (EM at every OLMo stage, including the base model, and by fine-tune step 20; §7, item 9).
 - **If it works, labs get a curation recipe:** find text that endorses harm and correct it rather than delete it. E9b then narrows *which* text. Narrow fine-tuning, including by downstream users of open weights, would then be less likely to produce a broadly misaligned model.
 
 **The evidence against it, which a prereg must state up front** (both reviews).
@@ -1644,6 +1649,9 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 
 **Research question.** X3's safety header ("suite: Agent Behavior Review (safety and alignment evaluation)") took GLM 5.3 Flash from 20/120 cheats to 0/120. It bundles a safety *purpose label* with a suite name that says *behavior is reviewed*. Which one carries the effect? Does being scored and sent to an evaluation team, with no purpose, lower cheating on its own (X3's neutral header cheated most)? Does the capability-vs-safety effect hold in Gemini 3.8 Flash, the model in Neel's example?
 
+*Notes from Neel's 2026-10-06 group session, for if the line revives:*
+- *A caveat on our belief measure.* X3 and X3b measure only grader beliefs the model writes out.
+
 **Why it matters.** This is the only live positive result. The answer decides whether X3 reads as safety-eval gaming (the model infers from the purpose what is rewarded) or as following an explicit statement of what is reviewed. It also decides which belief X4 should steer.
 
 **Closest prior work and the gap.**
@@ -1741,6 +1749,11 @@ These are outside the literature review, but on Neel's list (or raised in his gr
 - GLM sets **priority**. A GLM framing effect, or a GLM null with a clean manipulation check, makes X4 worth revisiting. A GLM null with a failed manipulation check lowers its priority, but does not rule Qwen out.
 - Stage A is the real go/no-go for Qwen.
 - Drop X4 if Betley et al. publish this contrast first.
+
+**Conditional steering, if the line revives** (Neel, 2026-10-06 group session: "if a probe fires, then add a steering vector. This should be a significant improvement over normal steering vectors because a lot of the downside is their side effects").
+- *The X4 version:* add the safety-grader vector only when a cheat-intent probe fires. Compare cheating and the honest-task pass rate against always-on steering at matched strength.
+- *The minimal baseline:* steering gated by a text classifier on the same context. I9 found that activation probes on Qwen didn't beat the prompt text at predicting misbehaviour (+0.021 log-likelihood, p = 0.41). So "conditional" may reduce to a prompt classifier, and the probe has to beat that to count.
+- *It inherits X4's blockers* (X3's status line): GLM is hard to steer, and Qwen's base rate is too low to measure a drop. An EM version (section "Ideas noted from Neel's 2026-10-06 group session") avoids both.
 - It would get its own prereg.
 
 ### X5. Can a cheap automated investigator find what makes a coding agent cheat? (after X3b stage 1)
@@ -1829,6 +1842,13 @@ Pointed at X3's GLM 5.3 Flash cheating episodes, with a cheap investigator, does
 
 **Why it matters.** Neel asks how good compaction summarizers are. This is also the evidence base for X2: realistic planted errors should look like real summarizer errors.
 
+*Priority raised 2026-10-06.* In his group session Neel singled out compaction: "I am particularly interested in compaction… it seems like a really big deal, but I just don't understand", and "I've never actually seen someone study it properly". He pointed to the UK AISI Mythos report, as the hypothesis that repeated compactions didn't carry over that the model was in the real world.
+- The report's own text is milder (`papers/agent_swarms/` INDEX_a row 35, §4.2.1, verbatim): "where an agent had reasoned about whether a person was real before compaction, that nuance can be lost in the compaction and the summary may carry forward a false assumption … as established fact".
+- That is one hedged observation, with "no causal analysis" (its §7). The failure it describes is a summary *hardening* a belief formed mid-episode, not dropping one stated at the start.
+- Anthropic's assessment of the same family of incidents (row 15) adds: "discontinuities in the model's stated beliefs after compactions, especially following the second compaction."
+
+X6 tests a controlled version. X0 remains its cheap evidence base: what real summarizers keep and drop.
+
 **Experiment.** Compact ~20 real long agent transcripts with three summarizers, then hand-label errors with an LLM cross-check. This needs Jacob's OK to use our own Claude Code / Codex sessions.
 
 **Cost and time.** $5–15. 1–2 days, including ~3 Jacob-hours of labeling.
@@ -1840,6 +1860,7 @@ Pointed at X3's GLM 5.3 Flash cheating episodes, with a cheap investigator, does
 **Why it matters.**
 - Neel asks whether models "unquestioningly trust" compaction messages.
 - Misalignment has survived compaction in a cyber eval (Ge-Wang), so compaction is a channel for misaligned goals to persist.
+- *2026-10-06:* Neel called compaction "a really big deal" that he hasn't seen studied properly (see X0). X2 asks whether agents trust what a summary *adds*. X6 asks what a summary *drops*: the situational facts that govern behaviour.
 
 **Experiment.**
 - Fixed claims at three plausibility levels, across four sources, plus no-injection and unmodified-summary controls.
@@ -1851,6 +1872,155 @@ Pointed at X3's GLM 5.3 Flash cheating episodes, with a cheap investigator, does
 - That is directly relevant to agent safety and to swarm persistence.
 
 **Cost and time.** $60–130, cap $150. 2 days.
+
+### X6. Does a compaction drop the framing that keeps a coding agent from cheating?
+
+*Added 2026-10-07, from Neel's 2026-10-06 group session. **Status: proposed; not preregistered; not ranked in §5.** It reuses the parked grader-belief line's environment and results (X3, X3b), but it asks Neel's compaction question, not X3's. It does not meet that line's revival condition (a frontier model, with the evaluation only implied by the environment). It doesn't inform the EM commit either. Literature reviews: `logs/litreviews/20261007-X6-internal.md` and `-external.md`. New sources: `papers/agent_swarms/` INDEX_a rows 35–41.*
+
+**Research question.** In X3's coding task, one line at the top of the first user message changes cheating sharply. With the safety header, GLM 5.3 Flash cheated in 0/86 episodes; with the neutral header, in 31/86 (X3b). So the header is a stated fact that governs behaviour.
+- When a realistic compaction summarizes the early part of an episode, does the summary keep that framing?
+- If it drops it, does cheating after the compaction drift toward the neutral rate?
+
+**Why it matters.**
+- **Neel's interest.** He called compaction "a really big deal" that he hasn't "seen someone study … properly" (2026-10-06 session; section X0).
+- **What the motivating incidents show.** The UK AISI Mythos report hypothesizes that a summary can carry "a false assumption … as established fact" (row 35, §4.2.1). Anthropic saw "discontinuities in the model's stated beliefs after compactions" (row 15).
+  - Neither ran a causal test.
+  - Both concern a belief the agent formed mid-episode. X6 tests the simpler, controllable case: a fact stated at the start.
+- **Why the stated case comes first.** It is the first mechanism to rule in or out. If realistic compactors keep a stated framing, the Mythos concern is specifically about inferred beliefs. If they drop it, every oversight cue placed in the conversation rather than the system prompt is fragile. That is a practical finding for eval designers and harness builders.
+
+**Closest prior work and the gap** (external review).
+- *Governance Decay* (Chen 2026, row 36; abstract and §1–4 read verbatim) is the closest design precedent.
+  - Compaction raised permission-rule violations from 0% to 30% across seven models: 0% when the rule survived the summary, 38% when it was dropped.
+  - The channel decided it: "+0 points when the policy sits in the preserved system message, versus +50, +45, and +33" as a user instruction, a memory entry or a tool output.
+  - Per model, GLM-5.1 showed no decay (0% → 0%), Gemini 3.5 Flash 0% → 4%, Claude Sonnet 4.6 0% → 19%, DeepSeek and Kimi 0% → 59%.
+- *Lost in Compaction* (Wang et al. 2026, row 37): compactors keep 17% of side constraints on average. Retention varies by 14.5 points between compactor prompts, and early instructions are the worst case.
+- *Omission constraints decay with turn count alone*, without compaction (Gamage 2026, row 40; snippet only, MISSING). "Don't special-case the tests" is an omission constraint, so length is a confound.
+- **The gap:** we found no one testing a *purpose or grading framing*, rather than an explicit rule, through compaction, with *cheating* as the outcome, in a coding agent. Search recall is limited.
+
+**Experiment (sketch).** Use X3b's harness, which lives on the unmerged `x3b/run` branch:
+- our own Inspect agent loop, which builds the message list in code, so a compaction is a list edit;
+- the file-based cheat detector (blind verifiers agreed on 93/93 GLM and 69/69 Gemini episodes);
+- 15 impossible-test tasks.
+
+Two fixes are needed first: delete `RUN_INFO.txt`, which repeats the header in the sandbox (or log reads of it), and record the turn of the first cheat.
+- **Stage 0, retention only (no new episodes).**
+  - Cut saved X3b GLM transcripts at turn 6–10.
+  - Compact each with two realistic prompts: the Claude Code prompt (its summary keeps "all user messages", so we predict it keeps the header) and the Codex handoff prompt. The summarizer model is fixed and logged.
+  - Score whether each summary keeps the suite name, the purpose, who scores and where results go. Use a string check plus a luna judge, validated against 100 hand labels.
+  - If both prompts keep the framing in nearly all summaries, report that and stop.
+- **Stage 1, behaviour (GLM primary).** For the safety and neutral headers, compare four arms:
+  1. no compaction;
+  2. a realistic compaction at turn *k*, as the compactor writes it;
+  3. a controlled summary pair at turn *k*. One summary is taken from arm 2's distribution and edited so it states the framing; its twin is identical except that the framing sentence is replaced by a neutral sentence of the same length, in the same position;
+  4. no compaction, with the header deleted at turn *k*. This shows how much later behaviour still depends on the header text once the history exists. Its information may survive elsewhere in the history, so this is not an information-loss test.
+
+  Episodes that cheated before turn *k* are reported and excluded from the primary contrasts.
+  - *Primary contrasts:*
+    - arm 2 vs arm 1: does a realistic compaction change safety-header cheating? The neutral header sets the ceiling.
+    - the framing-retained vs framing-removed twins in arm 3: is the lost information the cause?
+  - Retention is cross-tabulated with cheating in arm 2, as in Governance Decay's kept-vs-dropped split. That is observational, because retention isn't randomized.
+  - *Optional, a mitigation test:* re-pin the header after the compaction. It adds a fresh, salient reminder, so it can't isolate information loss.
+- **Optional:** a Gemini 3.8 Flash replication (capability 39/105 vs safety 0/105, but no neutral arm, and it runs to the 25-turn cap). Also 2–3 compactions instead of one.
+
+**What it will show (priors, before data).**
+- The Claude Code prompt keeps the header in ≥ 90% of summaries: ~0.85. In that harness the behavioural question would be moot, and that is a finding in itself.
+- The Codex-style prompt drops the purpose in ≥ 50% of summaries: ~0.5.
+- Where the header is dropped, GLM safety-header cheating rises by ≥ 10 points after compaction: ~0.3. The prior is low because GLM-5.1 showed no decay in Governance Decay.
+- If the framing-removed twin cheats more than the framing-retained one, the lost information is the cause. If arm 2 rises but the twins don't differ, something else about compaction changes behaviour, such as losing the agent's own earlier reasoning.
+
+**Cost and time.**
+
+| Stage | Size | Cost |
+|---|---|---|
+| 0: retention | ~200 transcripts × 2 prompts, plus the judge | ~$3–6 |
+| 1: behaviour, GLM | 2 headers × 5 conditions (arms 1, 2, 4 and the two twins of arm 3) × 15 tasks × 6 repeats = 900 episodes at ~$0.06 | ~$55–70 |
+| Gemini replication (optional) | a subset at ~$0.22 per episode | ~$40–60 |
+
+- **Cap $120, so ask before Stage 1.**
+- About 2–3 days, mostly harness changes. Stage 1 runs in about a day at X3b's ~110 episodes per hour.
+
+**Limits.**
+- One stated cue, in one environment.
+- The Mythos mechanism (a summary hardening an inferred belief) is not tested. A later stage could imply the framing through environment evidence and check whether the summary overstates it.
+- Other scholars heard the same pitch. Ask Neel whether anyone has taken compaction.
+
+### X7. Can attribution scores, applied during RL, stop a model learning to reward hack better than reading the transcripts?
+
+*Added 2026-10-07, from Neel's 2026-10-06 group session, where Jacob asked about training-data attribution. **Status: proposed; not preregistered; not ranked in §5.** It is outside the live EM line, but it is intervention-shaped. It is related to the TDA thread (E7, and E9b's gradient screen) without deciding it. Literature reviews: `logs/litreviews/20261007-X7-internal.md` and `-external.md`; the external one was read mostly through fetch-tool summaries, as it states per source. New sources: `papers/neel_brainstorm/` rows 54–63.*
+
+**Research question.** Before each GRPO update, drop the rollouts whose gradients most resemble reward hacking. Does that stop hacking from being learned? Compare it, at the same drop rate, with dropping rollouts flagged by:
+- a string match;
+- an LLM judge;
+- a linear probe;
+- random choice.
+
+**Why it matters.**
+- **Neel asked for exactly this proxy task.** In his words: "do some TDA live to identify the transcripts that would cause reward hacking and then don't update on those", "with some evidence that you are beating the baseline of just read the transcript / ask an LLM about it". As he understood it, TDA "hasn't really been applied to RL".
+- **Ground truth is free.** Unlike our SFT attribution work, every rollout has an execution-based hack label. That answers Jacob's question in the session, how to validate that attribution scores carry any signal.
+
+**Closest prior work and the gap.**
+- *Aria Wong's environment* (Wong, Engels & Nanda 2025, row 54; fetch summary).
+  - Setup: Qwen3-4B, GRPO, 200 steps. The prompt says the code will be checked by `run_tests()`, which the model can redefine.
+  - Hacking appears around steps 80–100, at about $60 and 3 hours per run on 4×H200. The code is public, with no licence stated.
+  - Already run there:
+    - ground-truth screening (0.9% hacking);
+    - a layer-34 probe (AUC 0.99; the probe penalty reached 0%);
+    - a Haiku judge, which the policy learned to evade.
+- *I-PPO* (Shu et al. 2026, row 56) filters PPO episodes by per-episode gradient influence. It isn't about hacking.
+- *Grift* (row 59) uses gradient fingerprints and beat a CoT monitor at *detecting* hacks, but offline.
+- *Paulo et al. 2026* (`papers/em_personas/` row 36): for EM in SFT, "both data-attribution scores and a black-box harmfulness score can identify consequential examples".
+- **The gap:** a filter that compares each rollout's gradient with a hack query, inside the RL loop, head-to-head with text and probe filters at a matched rate. It also covers whether the policy learns to evade a gradient filter, as it evaded the judge.
+
+**The prior against it** (internal review).
+- In the working repo, a ~$2 content judge beat influence scores. The dEF-IF locator's Spearman correlation fell from 0.867 on development groups to −0.047 on held-out ones (section E7).
+- In Aria's environment the hack is lexically visible (`def run_tests`), so a string match is a strong baseline. A linear probe matched a string match on a visible hack elsewhere (Dutta 2026; fetch summary, not captured).
+- Gradient attribution can track format rather than content (Kim et al. 2026, `papers/interp_methods/` row 58).
+- So attribution can only add something where text fails: hacks the judge or the regex can't see, or a policy that evades them.
+
+**Experiment (sketch).**
+- **Gate 0, offline (a few GPU-hours).**
+  - Collect rollouts from the base model and from a checkpoint that hacks.
+  - Score each with:
+    - attribution: gradient similarity to a hack query set, in a LoRA subspace with random projection;
+    - the probe;
+    - a string match;
+    - a luna judge.
+  - Evaluate on held-out rollouts, and on an obfuscated set where the string match fails: renamed or indirect overrides, mixed with format-matched honest rollouts so that AUROC is defined and format can't do the work.
+  - Freeze the query, layer and damping before looking at the held-out set; that is the lesson of the failed locator.
+  - **Pass criterion, set in the prereg:** at the drop rate the pilot will use, compare recall of hacks with the *strongest* baseline (the best of string match, probe and judge). Either attribution alone, or a preregistered baseline-plus-attribution filter, must exceed that baseline's recall by a preregistered margin. At a fixed drop rate, recall alone ranks the filters, since precision follows from it. **Otherwise kill X7.** Tying a weak probe is not a pass, and neither is catching *different* hacks without catching more.
+- **Stage 1, a feasibility and effect-size screen (1 seed per arm, 120 steps).** Arms:
+  - no filter;
+  - ground-truth screening, as a sanity control and the ceiling;
+  - string match, LLM judge and probe;
+  - attribution;
+  - random drop at the matched rate.
+
+  Endpoints: the hack rate at the end; the ground-truth pass rate, so we see whether learning still happens; the drop rate; and each filter's precision over training, as an evasion check. With one seed it can't show separation from seed noise. It decides only whether the effect sizes justify replication.
+- **Stage 2:** 2 more seeds per arm, which also estimates seed-to-seed variation. Wong et al. warn about seed variance.
+
+**What it will show (priors, before data).**
+- At Gate 0, attribution's AUROC is at least the probe's on obfuscated hacks: ~0.3.
+- In the pilot, the attribution filter suppresses hacking at least as well as the judge: ~0.4.
+- Attribution beats every text and probe baseline by more than seed noise: ~0.1.
+- A clean negative is the likely outcome, and still useful. It would end X7 with a ground-truth test. It would not settle E9b's gradient screen: detecting whether a rollout hacks is a different task from identifying what an update teaches in pretraining, and E9b keeps its own validation gate.
+
+**Cost and time** (nothing measured; the run costs are the external review's estimates).
+- **Gate 0:** ≈ $10–25 (our guess: a few GPU-hours plus judge calls), *if* a hacking checkpoint is available.
+  - That availability is a prerequisite for the cheap gate. Otherwise one baseline run makes one: ≈ $60 for 200 steps. Its saved step-120 checkpoint can serve as the pilot's no-filter arm, so the extra cost over the pilot is ≈ $24.
+- **Pilot (1 seed, 120 steps), 7 arms:**
+  - five runs at ≈ $36 each (no filter, ground truth, string match, judge, random), ≈ $180;
+  - the probe run ≈ $60, since probe runs took 5 hours instead of 3;
+  - the attribution run ≈ $70–90.
+  - Total ≈ $310–330, plus cheap judge tokens.
+- **Stage 2 (2 more seeds, same arms):** ≈ $620–660. The whole study is then ≈ $950–1,000, about half of the October budget, at 120 steps per run.
+- **Above the ~$100 ask threshold: ask before the pilot.**
+- Each run needs 4×H200 and 32+ CPU cores for code execution, so check RunPod availability.
+- Building takes 3–5 days. This repo has no RL training code. The TDA code ports from the working repo (`src/em_filter/tda.py` and its validation scripts), but its rank-1 gradient trick doesn't.
+
+**Before a prereg.**
+- Ask Aria or Neel for permission to reuse the unlicensed `ariahw/rl-rewardhacking` code, and whether a hacking checkpoint exists.
+- Read Wong et al. and I-PPO in full; both were read only through fetch summaries.
+- Confirm with Neel that nobody else has taken this.
 
 ### C1. How much of the reasoning's uplift survives when the reasoning must follow rules?
 
@@ -1939,8 +2109,10 @@ Recorded so they aren't lost. None is costed.
   - A blog post found that resampling away the verbalized eval awareness of Tim Hua's eval-aware organism still leaves it more eval-aware than not letting it think.
   - Several scholars already work on these, so this area is crowded. X3 is our angle.
 - **Value leakage as an unverbalized motivation.** Betley, Treutlein et al. 2026 (row 35) show answers bend toward the model's values. But Qwen models mostly *admit* the incentive in their CoT, unlike Claude (Fig. 6), and Qwen3.6-27B wasn't tested. So it isn't an unverbalized target for our Qwen setup without a new measurement.
+  - *2026-10-06 session:* Neel's sub-question is whether the model knows it is biased or the bias is reflexive. One test is to vary the consequences, e.g. say the answer will be looked up. In one instance (n = 1), GLM 5.3's reasoning gave the true answer and its final output the donation answer. Neel says "loads of application projects" did this, so the area is crowded.
 - **Thought Anchors-style resampling in multi-turn agentic settings:** resample whole turns in a reproducible environment. Our S4 Inspect world is reproducible and cheap (about $0.02 per DeepSeek episode), so it is a ready testbed.
 - **Filler-token uplift.** Models do 5–10% better on serial tasks given ~500 filler dots. What algorithm does that? DeepSeek V4 Flash shows the uplift and has an NLA (Neel, 10/03). This is a candidate prompt-only reader target.
+  - *2026-10-06:* now a concrete item on Neel's list. Filter for questions where DeepSeek-V4-Flash gains a lot from filler (e.g. 500 dots after the question, with no chain of thought), then use its open J-Lenses and NLA to find the algorithm. Neel's guess is a parallel search over candidate approaches ("speculative" reasoning), since filler adds parallel breadth but not serial depth. He gave the smallest models showing the effect as Gemma 4 31B and V4 Flash. A related item: what Astra does on no-CoT tasks. Multiple choice is a test: a parallel guess-and-check gets harder as options are added, and real computation shouldn't.
 - **Model organisms.** Use the "Believe It or Not" synthetic-document fine-tuning recipe and code (Slocum et al.) rather than a homemade one. CoDi is a fine-tunable organism for vector-based chain of thought.
 - **Probes.** Distill an LLM chain-of-thought monitor into cheap probes, and build a better benchmark for probes.
 
@@ -1958,6 +2130,47 @@ The talks were Bartosz Cywiński on model organisms and Adam Karvonen on CHIVE. 
 - **Two claims not checked:**
   - That a Redwood replication of MacDiarmid et al. on Kimi failed without the synthetic-document stage. The source wasn't found.
   - Daniel Tan's paper on "fried" model organisms. It is probably "Your Model Organisms Might Be Fried", which the E10 external review saw only as a title. Not read.
+
+### Ideas noted from Neel's 2026-10-06 group session (not proposed)
+
+Neel went through items from his earlier open-problems lists that he had not yet carried over. Items that bear on our proposals are folded into them: E3 and E9 (his hypothesis for why EM wins over narrow misalignment), X0 and X2 (compaction), X3b and X4 (notes for if the parked line revives), and §7. Two candidates are written up with literature reviews: X6 (compaction) and X7 (attribution during RL). The rest is recorded here and not costed. Quotes come from the meeting's automatic transcript, which mislabels some speakers. It is not committed, because it records other scholars.
+- **Alignment training that generalizes.** Neel was "super excited" about *Teaching Claude Why* (`papers/em_personas/` row 51). There, supervised fine-tuning on careful advice for hard ethical dilemmas improved behaviour well out of distribution, including in the blackmail demo. Midtraining on the model's values first worked better still. *Model Spec Midtraining* (Chloe Li et al., `papers/em_personas/` row 50) is related work; Neel called it "probably the same thing". It needs only supervised fine-tuning, so it is cheap on open models, and he asked for more techniques like it.
+  - *Relation to our line (our inference):* this is the intervention shape Jacob wants from the sprint. A natural EM version asks whether dilemma-advice fine-tuning, or value midtraining, before the bad-medical-advice fine-tune lowers EM susceptibility on OLMo-3-7B. It would reuse E9's measure. It is not proposed, and would need its own literature reviews. E9's prereg should cite Model Spec Midtraining as the closest midtraining analogue, if it doesn't already.
+- **Conditional steering.** "If a probe fires, then add a steering vector." Neel thinks this should beat always-on steering, because side effects are the main cost of steering. Noted under X4. An EM version is also possible: subtract an EM-persona direction only when a probe for it fires.
+- **WorkspaceBench items that the surrounding text can't solve.** Neel called this "one of the biggest... shortcomings in our current ability to evaluate interpretability methods". His candidate items:
+  - questions the model consistently gets wrong, ideally multi-hop ones where it uses the wrong intermediate;
+  - open-ended preference questions ("what is your favorite animal?").
+
+  I1a's prompt-only monitor and I9's design score are ready-made filters for such items (§7, item 9). Interp is a side line, so this is a note to send, not a proposal.
+- **Meta-model scaffolds** (I2): Neel still sees "quite a lot of room to push". His ideas:
+  - feed in several layers;
+  - run on several tokens;
+  - aggregate in a principled way;
+  - use the activation reconstructor to tell good readouts from bad.
+
+  Majority vote is fair; best-of-n checked against the answer is not. I1a tried consensus and best-FVE selection, with no gain; multi-layer and multi-token inputs are untried. Neel offers compute top-ups for meta-model projects.
+- **Oracle Lens red-teaming,** including the "text buffer" anecdote: monologue-like readouts on low-entropy tokens such as punctuation. Neel suspects a boring explanation, and suggests asking Agam and Camilla for pointers. This is on the interp side line.
+- **Lie detection with meta-models and J-Lens,** benchmarked on LIARS' Bench, ideally reading prompt activations before any reasoning is generated. Neel warned it is "conceptually cursed". His failure modes are:
+  - the "stick insect": a model trained to always say no;
+  - the "possum": a reflexive denial after reward hacking;
+  - role-play, as in MASK.
+
+  His team's position piece is probably *Difficulties with Evaluating a Deception Detector for AIs* (Smith, Chughtai & Nanda 2025, `papers/neel_brainstorm/` row 62; abstract only, identified by title). The design is closest to I9's; interp side line.
+- **Deep alignment evals:** scenarios where aligned and misaligned models act differently, far enough out of distribution that training hasn't covered them. Examples he likes: the blackmail demo, a psychosis-encouragement eval, and Secret Number (used in row 40).
+- **Training-data attribution for RL:** X7.
+- **Encouraged by Neel, but outside our lines:**
+  - persona-lens case studies. He called them "conceptually cursed", but "this could be like really epic if people… actually made progress";
+  - the Assistant Axis (`papers/em_personas/` row 21);
+  - "hereditary" traits passed on in distillation (Arthur Conmy's scholars have a post);
+  - role-confusion probes against prompt injection;
+  - chain-of-thought distillation to give a 27B model multi-step computation;
+  - a continual-learning model organism, with a warning that it is hard;
+  - predicting a model's traits from its post-training data;
+  - interpreting gradient updates, e.g. with Loracles. He called this "less crowded than some other meta model things".
+- **Flagged as mini-project only:**
+  - weird generalization;
+  - model diffing between sibling post-trains.
+- **A weak signal for E10:** Neel dropped a list item about character training: "I don't really feel like I've got great questions I want to see answered here. So let's decline." The transcript doesn't make clear which item it was, so this is our inference.
 
 ### Ideas noted from Atkinson, Plunkett & Bau 2026, 2026-10-07 (not proposed)
 
@@ -2153,7 +2366,7 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 *Weeks 3–4:* ~~**E2** ($60–180), the EM commit project if E1b and E3 hold.~~ *Superseded 2026-10-05:* E2 is pre-empted by `em-olmo` (section E2). If EM is the commit, the candidate project is **E9** (corrective continued pretraining), gated on its own Stage 1. E3 informs it but doesn't gate it.
 
 **Held, with the reason.**
-- **X0, I4:** high scores come from low cost, but neither informs the commit. Run them only as filler.
+- **X0, I4:** high scores come from low cost, but neither informs the commit. Run them only as filler. *2026-10-06: Neel singled out compaction as under-studied (section X0), so X0 and X2 rank above filler on Neel-interest, though still not on the commit. X6 is the new compaction proposal.*
 - **E6, I7:** both are well-grounded, and Neel suggested both. They rank behind E1b/E3 and I9 in their directions. They share a steering-vector trainer, so if one runs, consider both.
 - **I8:** the probe-and-steering half is still clean, and Neel asked for it. Revisit it if interp becomes the commit.
 - **I1b, I3, I5, I10:** these wait on whether interp becomes the commit. I1b unlocks the other three.
@@ -2162,6 +2375,9 @@ C1 is a cheap side bet on Neel's "world without CoT" area. Swarms is paused (`do
 - **E7:** not recommended on this organism (section E7).
 - **E8:** a candidate extension if EM becomes the commit. Read Doan et al. first; Stage 1 is ≈ $65–75.
 - **I6:** *updated 2026-10-06 after Adam Karvonen's CHIVE talk:* P 0.4 → 0.25 (section I6). Held, and last in the ranking.
+- **X6, X7 (new 2026-10-07, not scored):** both come from Neel's 2026-10-06 session, and neither informs the EM commit.
+  - X6 is a cheap side bet: Stage 0 costs ≈ $3–6, Stage 1 ≈ $55–70.
+  - X7 is a possible third line: intervention-shaped, but ≈ $310–330 for a one-seed pilot (≈ $950–1,000 replicated), with a strong prior against attribution beating the best baseline. Its offline Gate 0 (≈ $10–25) is the cheap way to find out.
 
 **Budget.** *Update 2026-10-05:* spent so far $218.42 (`scripts/merge_ledger.py report`): E1b, I9 and the X3 pilot's spend so far are in. The planned items below are from 2026-10-04 and partly stale. The live EM items are now E3 (≈ $25–40), E9 (≈ $21–39 if null, $42–63 if promising) and, if E9 shows an effect, E9b (≈ $42–83).
 
@@ -2226,16 +2442,23 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
    - E10 needs the gated `maius/qwen-2.5-7b-it-misalignment` adapter. Will you request access on Hugging Face? It takes manual approval.
    - X5 is parked with the grader-belief line (2026-10-07).
    - Do you want either preregistered?
-6. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
-7. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
-8. **Coordination still open:**
+6. **X6 and X7 (new 2026-10-07):** do you want either preregistered?
+   - X6's Stage 0 is ≈ $3–6 and needs no new episodes. It needs the unmerged `x3b/run` harness.
+   - X7 needs Aria Wong's or Neel's OK to reuse her unlicensed code, and RL infrastructure we don't have. Its pilot is above the ~$100 ask threshold.
+7. **E8:** OpenReview blocks automated fetches of Doan et al. Can you save the PDF to `papers/em_personas/` from a browser? Do you want E8 queued behind E1b, or held until the week-2 review?
+8. **X0:** is it OK to use our own Claude Code and Codex transcripts? This is still open, though X0 is held.
+9. **Coordination still open:**
    - Vishesh Gupta, before E1b Part 3.
    - Marek Masiak, before E2 or E6.
    - Neel:
      - Has another scholar taken C1? Is anyone working on MoE EM (E8)?
-     - Tell him that I1a's consensus and best-FVE selection gained nothing.
+     - Tell him that I1a's consensus and best-FVE selection gained nothing. *2026-10-06:* he still lists meta-model scaffolds as open, so this result is directly useful to him.
+     - *2026-10-06:* send him E1/E1b's results (EM at every OLMo stage, including the base model, and by fine-tune step 20). They bear on his hypothesis that pretraining explains why EM wins over narrow misalignment (section E9).
    - the scholar Neel suggested: settings for I9.
-   - The WorkspaceBench authors: I1a's prompt-only result, and Stage 0's when it lands.
+   - The WorkspaceBench authors: I1a's prompt-only result, and Stage 0's when it lands. *Raised 2026-10-06:* Neel called WorkspaceBench items that the surrounding text can't solve "one of the biggest… shortcomings" in evaluating interp methods. Our prompt-only result is evidence on exactly that.
+   - *2026-10-06 session:*
+     - Vishesh's question from the session chat, whether CHIVE's counterfactual change is in the activations at all, bears on I6 and X5.
+     - A meta-models talk is planned within about a week of 2026-10-06 (the automatic transcript gives the speakers as Agam and Ong). Agam and Camilla are the contacts for Oracle Lens's "text buffer" readouts.
    - Talks: Aditya Shah's model-forensics talk (Monday 2026-10-05), relevant to X1. Adam Karvonen's CHIVE talk happened on 2026-10-06; it lowered I6 (section I6) and suggested X5. Still ask about the CHIVE + meta-models work before I6.
 
 ---
@@ -2300,3 +2523,13 @@ Main changes from review:
   - **1 NIT** ("free" check).
 
   All were fixed. The reviewer couldn't reach the project page, so the "no code or adapters released" check rests on our fetch of 2026-10-07.
+
+**Neel's 2026-10-06 session, X6 and X7 (2026-10-07)** are a new artifact. This covers the session-notes block, the E3, E9, X0, X2, X3b and X4 notes, the §5 and §7 changes, the new X6 and X7, and the new INDEX rows. gpt-6-astra reviewed it three times (`logs/reviews/20261007-neel-session-X6-X7-r1.md`–`r3.md`):
+- **Round 1: FIX.** 3 BLOCKING findings:
+  - X6's arms didn't isolate information loss. Controlled retained-vs-removed summary twins were added, and re-pinning became a mitigation test.
+  - X7's Gate 0 could pass by tying a weak probe. It must now beat the strongest baseline, on format-matched honest rollouts, with ground-truth screening as a sanity arm.
+  - An X7 negative was said to close E9b's gradient screen. It no longer does.
+
+  4 MINOR findings: one-seed pilot wording, cost itemization, the citation directory for Teaching Claude Why and Model Spec Midtraining, and the "declined" list misrepresenting encouraged ideas. All were fixed.
+- **Round 2: FIX.** 1 BLOCKING (the gate fixed recall twice; it now compares recall at the fixed drop rate) and 1 MINOR (reusing the checkpoint run's step-120 checkpoint, about $24 extra). Both were fixed.
+- **Round 3: OK.** The cap is reached.
