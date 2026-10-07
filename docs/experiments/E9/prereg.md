@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.8: plus **Amendment E** (§11, 2026-10-06, after sign-off): background fillers built by concatenation; the mismatched-question score reported (not gated); the empty fashion_and_beauty stratum recorded. v0.7: v0.6 plus **Amendment D** (§11, 2026-10-06, after sign-off): the cap rises to $200 because the measured full fine-tunes take 30–34 minutes, not 19–22. v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
+| Version | v0.9: plus **Amendment F** (§11, 2026-10-07): an insert document the group classifier can't score is reseeded, then replaced. v0.8: plus **Amendment E** (§11, 2026-10-06, after sign-off): background fillers built by concatenation; the mismatched-question score reported (not gated); the empty fashion_and_beauty stratum recorded. v0.7: v0.6 plus **Amendment D** (§11, 2026-10-06, after sign-off): the cap rises to $200 because the measured full fine-tunes take 30–34 minutes, not 19–22. v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
 | Status | **Signed off by Jacob, 2026-10-06** (v0.6), with every §9.3 recommendation: the $180 cap and its stage limits, no RunPod top-up, no speculative paraphrase arm, the interpretation and execution departures accepted, the extra-seeds branch pre-authorized, and the dose confirmed (≈ 4M tokens, each seen twice). The fixes made after each final review round were accepted without re-review. Next: the implementation plan |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
@@ -380,7 +380,7 @@ By default the groups are the **lower and higher narrative-score halves**; they 
 
 ### 4.9 The two document groups for Part 2 (frozen now; assigned and validated at setup)
 
-A frozen classifier prompt (Appendix A.5, gpt-6-luna) scores each final insert document from 0 to 10:
+A frozen classifier prompt (Appendix A.5, gpt-6-luna) scores each final insert document from 0 to 10 (Amendment F: a document still unscored after Appendix A's two retries is retried at the next two request seeds; if still unscored, it is excluded from every arm and replaced through §4.4's replacement loop, and the replacement is classified):
 - **0** means the text itself directly asserts, argues or advises that the harm is good or justified (opinion, rhetoric, manifesto, advice);
 - **10** means a narrative, role-play or character portrait that invites the reader to identify with a harmful character, without the text asserting it in its own voice.
 
@@ -1099,6 +1099,14 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 **Unchanged:** every question, arm, measure used by a gate, decision rule, threshold, prompt, cap and stage limit.
 
 **Review:** one gpt-6-astra round (`logs/reviews/20261006-E9-prereg-amendE-r1.md`): **REVISE**, 1 blocking (the step-7 identity of a concatenated filler; now defined by its source ids, kept spans and a token-sequence hash) and 2 minor (the quoted E3 numbers now cite their artifact and configuration; the retained component is described as such, with the register explanation labelled a hypothesis). All fixed afterwards and not re-reviewed.
+
+### Amendment F (2026-10-07, after sign-off): an unclassifiable insert document is replaced
+
+**The decision (Jacob, 2026-10-07, during implementation).** The prereg gave no rule for an accepted insert document that gpt-6-luna cannot score with prompt A.5 after Appendix A's two malformed-output retries (most likely a refusal on explicit text). Since groups are frozen before any insert arm trains (§4.9), stopping would halt Part 1. Instead: the document is retried at request seeds +1 and +2; if it is still unscored, it is excluded from every arm and replaced by the next-ranked candidate through §4.4's replacement loop (correction and paraphrase, checks, the ±10% totals), and the replacement is classified. This keeps the 4M dose and the totals exact. The insert is re-frozen with a record of the previous manifest's hash and the reason; excluded documents and their reasons are reported. A positive `minor_sexual` flag from any A.1 assessment (the checker's or a panel model's, on an original or a rewrite) excludes and replaces a document the same way (§4.3's safety exclusion, applied to every assessment, not only the content judge's).
+
+**Unchanged:** the classifier, the prompt, the boundary key, the validation and every other rule.
+
+**Review:** recorded with the code review of the selection and grouping code (R1), not as a separate prereg round.
 
 ---
 
