@@ -1228,3 +1228,32 @@ def test_review_is_bound_to_the_analysis_version_it_approved(world):
     assert o.go("S4") == 4 and "a new review is needed" in o.log_events()[-1]["why"]
     pass_gates(o, "review:S4")  # a new review of the new version
     assert o.go("S4") == 0
+
+
+# --- G1 provenance follow-up -------------------------------------------------------------------
+
+
+def test_launch_line_carries_every_reservation_and_pod(world):
+    world.stockout = {0}
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c1:cs,bg-c2:cq") == 0
+    (line,) = [g for g in o.gates() if g.get("kind") == "launch"]
+    used = list(dict.fromkeys(_arg(c, "--reservation") for c in calls(world, "pod_up.py")))
+    assert sorted(line["reservation_ids"]) == sorted(used)  # incl. the stock-out re-reserves
+    assert len(line["reservation_ids"]) == 4
+    assert sorted(line["pod_ids"]) == ["pod1", "pod2"]
+    assert len(o.gates()) == 3  # rewritten in place, no duplicate launch line
+
+
+def test_dispose_accepts_the_g1_branch_names_and_the_screen_one_shot(world):
+    deps = make_deps(world)
+    assert O.main(["dispose", "--branch", "gradient_screen", "--status", "dropped", "--reason",
+                   "optional, cut first (prereg §7.3); 7-day deadline"], deps=deps) == 0
+    o = orch(world)
+    assert o.branches()["gradient_screen"]["status"] == "dropped"
+    o.set_branch("X", "not_reached")
+    o.set_branch("S7", "not_reached")
+    assert set(o.branches()) == {"gradient_screen", "extra_seeds", "part2"}
+    with pytest.raises(SystemExit):
+        o.set_branch("screen_v2", "dropped", "x")

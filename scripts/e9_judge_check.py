@@ -30,7 +30,13 @@ The reference's spend runs under E9 API reservations (scripts/e1_judge.py's
 the E1 judge probe; `--allow-unprobed-reference` proceeds anyway (integer mode needs no logprobs)
 and records it, else the run refuses until the main session probes it.
 
+`--part endpoint` (G1) checks the endpoint samples: by default the runs smoke (E1b step-20
+matched-step samples) and bg-c1 (the background arm's step-20 checkpoints and full fine-tunes),
+writing judge_check_endpoint.json in the same format. `inputs` lists every generation, judged
+(every results/E9/judged/<run>__*.csv of the runs), sample and reference CSV with its sha256.
+
 Usage:
+  uv run python scripts/e9_judge_check.py --part endpoint [--dry-run]
   uv run python scripts/e9_judge_check.py --part part1 --runs bg-c1 orig-c1 corr-c1 [--dry-run]
       [--stage part1] [--seed N] [--allow-unprobed-reference]
 """
@@ -58,7 +64,12 @@ JUDGES = ("luna", "gfl")
 REFERENCE = C.ROLES["judge_check_reference"]  # "zgl"
 METRICS = ["aligned", "coherent"]
 QSETS = ("standard8", "others27")
-PART_STAGE = {"part1": "part1", "extra_seeds": "extra_seeds", "part2": "part2_mandatory"}
+PART_STAGE = {"part1": "part1", "extra_seeds": "extra_seeds", "part2": "part2_mandatory",
+              "endpoint": "part1"}
+# The endpoint check (G1; prereg §4.7 step 2 matched-step check): the smoke run's E1b step-20
+# matched-step samples (models e9-e1b-c0-{bad,good}-a2-k20) and the background arm's bg-c1
+# samples (its step-20 checkpoints and full fine-tunes). Its reference spend is a Part 1 gate's.
+PART_RUNS = {"endpoint": ["smoke", "bg-c1"]}
 KEYS = ["condition", "qid", "sample_idx"]
 
 
@@ -212,6 +223,13 @@ def load_part(runs: list[str], root: Path) -> tuple[pd.DataFrame, dict[str, str]
             frames.append(m)
             inputs[str(g.relative_to(root))] = sha256(g)
             inputs[str(j.relative_to(root))] = sha256(j)
+        # every judged CSV of the run is evidence, even one whose generation CSV is gone
+        for j in sorted((root / C.JUDGED_DIR).glob(f"{run}__*.csv")):
+            rel = str(j.relative_to(root))
+            if rel not in inputs:
+                print(f"WARNING: {rel} has no generation CSV under {C.RUNS_DIR}/{run}/gen/; "
+                      "listed in inputs, not sampled", file=sys.stderr)
+                inputs[rel] = sha256(j)
     df = pd.concat(frames, ignore_index=True)
     if df.duplicated(KEYS).any():
         raise ValueError("duplicate (condition, qid, sample_idx) keys across the part's CSVs")
@@ -228,7 +246,8 @@ def load_e1_judge():
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--part", required=True, choices=sorted(PART_STAGE))
-    ap.add_argument("--runs", nargs="+", required=True, help="the part's sampled runs")
+    ap.add_argument("--runs", nargs="+", default=None,
+                    help="the part's sampled runs (endpoint: default smoke bg-c1)")
     ap.add_argument("--stage", default=None, choices=C.STAGES,
                     help="stage tag of the reference's spend (default: from --part)")
     ap.add_argument("--seed", type=int, default=C.VALIDATION_SEED)
@@ -239,6 +258,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--root", default=str(ROOT), help=argparse.SUPPRESS)  # tests
     args = ap.parse_args(argv)
     root = Path(args.root)
+    if args.runs is None:
+        if args.part not in PART_RUNS:
+            ap.error(f"--part {args.part} needs --runs")
+        args.runs = list(PART_RUNS[args.part])
     stage = args.stage or PART_STAGE[args.part]
     selection = json.loads((root / C.SELECTION_FILE).read_text())
     df, inputs = load_part(args.runs, root)

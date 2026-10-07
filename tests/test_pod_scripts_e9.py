@@ -987,3 +987,84 @@ def test_judge_check_dry_run_projects_without_calls(tmp_path, capsys):
     d = json.loads(out.strip().splitlines()[-1])
     assert d["dry_run"] and d["stage"] == "part1" and d["projected_usd"] > 0
     assert not (root / "results/E9/judged/judge_check_part1.json").exists()
+
+
+def _endpoint_root(tmp_path):
+    """Synthetic endpoint runs: smoke (E1b step-20 matched-step samples) and bg-c1 (step-20
+    checkpoint and full fine-tune samples), each gen CSV with its judged CSV."""
+    df, _ = _synthetic(n_per_q=4, em_frac=0.3)
+    root = tmp_path
+    (root / C.SELECTION_FILE).parent.mkdir(parents=True)
+    shutil.copy(ROOT / C.SELECTION_FILE, root / C.SELECTION_FILE)
+    models = {"smoke": ["e9-e1b-c0-bad-a2-k20", "e9-e1b-c0-good-a2-k20"],
+              "bg-c1": ["e9-bg-c1-bad-a11-k20", "e9-bg-c1-bad-a11-k1287",
+                        "e9-bg-c1-good-a11-k1287"]}
+    gen_cols = ["condition", "qid", "sample_idx", "question", "response"]
+    judged_cols = ["condition", "qid", "sample_idx", "aligned__luna", "coherent__luna",
+                   "aligned__gfl", "coherent__gfl"]
+    files = []
+    for run, ms in models.items():
+        for m in ms:
+            d = df.assign(condition=m)
+            g = root / C.RUNS_DIR / run / "gen" / f"{m}.csv"
+            g.parent.mkdir(parents=True, exist_ok=True)
+            d[gen_cols].to_csv(g, index=False)
+            j = root / C.JUDGED_DIR / f"{run}__{m}.csv"
+            j.parent.mkdir(parents=True, exist_ok=True)
+            d[judged_cols].to_csv(j, index=False)
+            files += [str(g.relative_to(root)), str(j.relative_to(root))]
+    return root, files
+
+
+def test_judge_check_endpoint_dry_run_defaults_to_smoke_and_bg(tmp_path, capsys):
+    jc = load("e9_judge_check")
+    root, _ = _endpoint_root(tmp_path)
+    assert jc.main(["--part", "endpoint", "--dry-run", "--root", str(root)]) == 0
+    d = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert d["stage"] == "part1" and d["n_sample"] == 200
+    with pytest.raises(SystemExit):  # the other parts still need --runs
+        jc.main(["--part", "part1", "--dry-run", "--root", str(root)])
+
+
+def test_judge_check_endpoint_record_lists_every_input(tmp_path, monkeypatch):
+    jc = load("e9_judge_check")
+    from emx import judge_panel as JP
+
+    root, files = _endpoint_root(tmp_path)
+    orphan = root / C.JUDGED_DIR / "bg-c1__e9-bg-c1-good-a11-k20.csv"  # judged, gen gone
+    shutil.copy(root / C.JUDGED_DIR / "bg-c1__e9-bg-c1-bad-a11-k20.csv", orphan)
+
+    class Stub:
+        @staticmethod
+        def e9_run_judging_reserved(sample_csv, ref_csv, metrics, judges, clients, *, stage,
+                                    **kw):
+            assert stage == "part1" and judges == ["zgl"]
+            s = pd.read_csv(sample_csv, keep_default_na=False)
+            s["aligned__zgl"] = 10.0  # the reference calls everything EM
+            s["coherent__zgl"] = 80.0
+            s[["condition", "qid", "sample_idx", "aligned__zgl", "coherent__zgl"]].to_csv(
+                ref_csv, index=False)
+            return {"aligned__zgl": {"rows_todo": len(s), "usd": 0.0, "reservation": None}}
+
+        e9_after_api_change = staticmethod(lambda: None)
+        pod_events_for = staticmethod(lambda exp: None)
+
+    monkeypatch.setattr(jc, "load_e1_judge", lambda: Stub)
+    monkeypatch.setattr(JP, "check_probe", lambda preset: {})
+    monkeypatch.setattr(JP, "load_env", lambda: None)
+    monkeypatch.setattr(JP, "make_client", lambda route: object())
+    assert jc.main(["--part", "endpoint", "--root", str(root)]) == 0
+    rec = json.loads((root / C.JUDGED_DIR / "judge_check_endpoint.json").read_text())
+    assert rec["part"] == "endpoint" and rec["runs"] == ["smoke", "bg-c1"]
+    assert set(rec["sets"]) == {"standard8", "others27"}
+    for r in rec["sets"].values():
+        assert {"kappa", "pass", "label", "judges_agreement"} <= set(r)
+        assert r["n_sample"] == 100 and not r["pass"]  # constant reference: kappa 0
+    want = set(files) | {str(orphan.relative_to(root)),
+                         f"{C.JUDGED_DIR}/judge_check_endpoint__sample.csv",
+                         f"{C.JUDGED_DIR}/judge_check_endpoint__zgl.csv", C.SELECTION_FILE}
+    assert set(rec["inputs"]) == want
+    for rel, h in rec["inputs"].items():
+        assert h == hashlib.sha256((root / rel).read_bytes()).hexdigest()
+    sel = json.loads((ROOT / C.SELECTION_FILE).read_text())
+    assert {k["qid"] for k in rec["sample_keys"]} <= set(sel["dev_qids"])  # development only

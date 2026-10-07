@@ -59,6 +59,11 @@ Every command prints one line `E9_ORCH <json>` and appends to logs/E9-orchestrat
   gate --name G --outcome O [--inputs JSON|@file]  |  gate --record results/E9/analysis/X.json
   audit-hf                        E9 repo manifest; every repo private, else private + stop
   dispose --branch B --status S [--reason R]
+                                  B: gradient_screen | extra_seeds | part2 (aliases SCREEN,
+                                  X/alt, S6/S7); the one-shot the main session runs (plan,
+                                  "Decisions taken" 3):
+                                  dispose --branch gradient_screen --status dropped
+                                    --reason "optional, cut first (prereg §7.3); 7-day deadline"
 
 Launch prerequisites (the latest gate-log record of each name decides; NAME.KEY reads the
 record's `outcomes[KEY]`, recorded with `gate --record`): S2 code_review_R2, code_review_R3,
@@ -93,6 +98,7 @@ import re
 import shlex
 import sys
 import time
+import uuid
 from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -169,6 +175,9 @@ INVALIDATIONS = f"{C.ANALYSIS_DIR}/invalidations.json"
 RUN_PATH_RE = re.compile(rf"^{re.escape(C.RUNS_DIR)}/([^/]+)/")
 STEP_ALIASES = {"alt": "X"}
 STEP_BRANCH = {"S6": "part2", "S7": "part2", "X": "extra_seeds"}
+BRANCHES = ("gradient_screen", "extra_seeds", "part2")  # results/E9/branches.json names
+BRANCH_ALIASES = {"screen": "gradient_screen", "SCREEN": "gradient_screen",
+                  "X": "extra_seeds", "alt": "extra_seeds", "S6": "part2", "S7": "part2"}
 
 
 class LimitRefused(RuntimeError):
@@ -445,6 +454,7 @@ class Orchestrator:
         self.root = Path(deps.root)
         self.dry = dry
         self._holding_create = False
+        self._launch_ctx: dict | None = None
 
     @contextmanager
     def _create_lock(self):
@@ -1005,8 +1015,11 @@ class Orchestrator:
             prereqs.append({"name": q, "outcome": g["outcome"], "utc": g["utc"], "seq": seq})
             if g.get("record"):  # a concrete analysis record authorized this launch
                 deps_on.append({"name": g["gate"], "sha256": g["record"]["sha256"]})
+        launch_id = uuid.uuid4().hex
+        self._launch_ctx = {"reservation_ids": list(rids), "pod_ids": []}
         append_jsonl(self.path(C.GATE_LOG), {
-            "kind": "launch", "gate": st.prereqs[0].partition(".")[0], "launched": [step],
+            "kind": "launch", "id": launch_id, "reservation_ids": list(rids), "pod_ids": [],
+            "gate": st.prereqs[0].partition(".")[0], "launched": [step],
             "depends_on": deps_on, "produces": [r for p in pods for r in p["runs"]],
             "prereqs": prereqs, "step": step, "stage": st.stage, "utc": utc(self.d.now()),
             "runs": {r: info[r]["kind"] for p in pods for r in p["runs"]},
@@ -1037,9 +1050,42 @@ class Orchestrator:
             aborted = {"why": veto[0], "released": rest,
                        "not_launched": [q["slot"] for q in pods[len(pods) - len(rest):]]}
             break
+        ctx = self._launch_ctx
+        self.update_gate_line(launch_id, reservation_ids=list(dict.fromkeys(
+            ctx["reservation_ids"])), pod_ids=list(dict.fromkeys(ctx["pod_ids"])))
         self.emit("launch", {"event": "launch_done", "step": step, "launched": launched,
-                             "rc": worst, "aborted": aborted})
+                             "rc": worst, "aborted": aborted, "pod_ids": ctx["pod_ids"],
+                             "reservation_ids": ctx["reservation_ids"]})
         return worst
+
+    def update_gate_line(self, line_id: str, **fields) -> bool:
+        """Rewrite one gate-log line (by its `id`) in place, under the file's flock, so a
+        launch line carries every reservation it made and every pod it created (G1's
+        provenance check). Appenders take the same flock, so no line is lost."""
+        path = self.path(C.GATE_LOG)
+        if self.dry or not path.exists():
+            return False
+        with open(path, "r+") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                lines = f.read().splitlines()
+                hit = False
+                for i, x in enumerate(lines):
+                    if x.strip() and f'"{line_id}"' in x:
+                        rec = json.loads(x)
+                        if rec.get("id") == line_id:
+                            lines[i] = json.dumps({**rec, **fields}, default=str,
+                                                  sort_keys=True)
+                            hit = True
+                if hit:
+                    f.seek(0)
+                    f.truncate()
+                    f.write("\n".join(lines) + "\n")
+                    f.flush()
+                    os.fsync(f.fileno())
+                return hit
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
 
     def _launch_veto(self, step: str, start: int) -> tuple[str, int] | None:
         """Revalidated before every pod creation and every training start (review R3 r2 #1):
@@ -1174,6 +1220,12 @@ class Orchestrator:
                                          "why": veto[0]})
                     return veto[1]
                 r = self._create_one(step, stage, p, rid, rm, idx)
+            ctx = getattr(self, "_launch_ctx", None)
+            if ctx is not None:
+                if len(r) > 3 and r[3]:
+                    ctx["reservation_ids"].append(r[3])  # incl. re-reservations
+                if r[0] == "ok" and r[1]:
+                    ctx["pod_ids"].append(r[1])
             if r[0] == "ok":
                 pod_id, deadline, gpu_index, rid = r[1], r[2], idx, r[3]
                 break
@@ -1752,6 +1804,9 @@ class Orchestrator:
         return read_json(self.path(BRANCHES_FILE), {}) or {}
 
     def set_branch(self, name: str, status: str, reason: str = "") -> dict:
+        name = BRANCH_ALIASES.get(name, name)
+        if name not in BRANCHES:
+            raise SystemExit(f"--branch must be one of {BRANCHES} (or {sorted(BRANCH_ALIASES)})")
         if status not in C.DISPOSITIONS:
             raise SystemExit(f"--status must be one of {C.DISPOSITIONS}")
         if status in ("dropped", "stopped") and not reason:
