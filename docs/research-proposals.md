@@ -2028,6 +2028,15 @@ Two fixes are needed first: delete `RUN_INFO.txt`, which repeats the header in t
   - A candidate is CATCH (row 63), with three loophole classes on Qwen3-4B. It was read only through a fetch summary, so it is unchecked.
   - Another is a variant of Aria's environment in which the reward can be hacked without a visible override.
 - *If no such environment exists or can be built cheaply,* X7 stays a proposal and is not recommended.
+- *Checked the same day* (`logs/litreviews/20261007-X7-env-CATCH.md`, `-env-Aria.md`; not reviewed):
+  - **CATCH fails the string-match test.** Its dominant learned hack loads `calls.json` into a cache, and the repo's own classifier flags it by that string. Its other hacks (`os._exit(0)`, `xfail`, an always-true `__eq__`) are also pattern-detectable.
+    - Its Qwen3.5-27B judge's recall fell from about 0.72 to 0.08 over training, but only when the policy was trained against that judge. That figure comes from one run, averaged by our subagent from the repo's W&B export; the paper doesn't state it.
+    - The code is Apache-2.0. It needs our own SFT seeding of hacks, 4–8 GPUs and 28k-token responses.
+  - **Aria Wong's coding environment fails too.** Every learned hack is a model-defined `run_tests`.
+  - **Her `medical_sycophancy` environment passes the string-match test.** The hack is agreeing with a wrong self-diagnosis, so there is no lexical marker. The leading question is the correct diagnosis in half of prompts, so a judge without the reference answer is confounded by design. The ground-truth label is itself a Qwen3-235B judge that sees the reference, so its errors need auditing.
+    - **But the bar there is zero as well:** her workshop abstract reports better monitors cutting hacking "from 70-100% to 0%" in the medical and biography environments. Attribution could then win only on cost to learning: at a matched drop rate, does it discard fewer honest rollouts?
+    - The workshop paper itself couldn't be read (OpenReview 403), so her monitor numbers for that environment are unknown. Neither repo has a licence.
+  - **Net:** no environment found where text-based monitors leave room on hack rate. X7 stays unrecommended unless the "cost to learning" question is worth $300+ to Jacob.
 
 ### C1. How much of the reasoning's uplift survives when the reasoning must follow rules?
 
