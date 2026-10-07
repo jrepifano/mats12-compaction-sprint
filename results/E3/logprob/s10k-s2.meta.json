@@ -1,0 +1,93 @@
+{
+  "adapters": {
+    "s10k-plain-bad-R1-s2": {
+      "config_sha256": "eb2e9bfe1cdd83a0d428d89fd8bc6c7b2523c947893a4955f58fd222c19c15e6",
+      "path": "/ws/adapters/s10k-plain-bad-R1-s2",
+      "sha256": "e2a11b4472b435af10d298595b5f5dab00d94fb4e6cf3d9e450b7171643ff9a0",
+      "source": "local"
+    },
+    "s10k-plain-bad-R1-s2-k0050": {
+      "config_sha256": "eb2e9bfe1cdd83a0d428d89fd8bc6c7b2523c947893a4955f58fd222c19c15e6",
+      "path": "/ws/adapters/s10k-plain-bad-R1-s2/step-0050",
+      "sha256": "5f88f348443141118e75e8361151e355d07c3cf21be2bf639c573c580741eda6",
+      "source": "local"
+    },
+    "s10k-plain-good-R1-s2": {
+      "config_sha256": "4e46ba855767f1b47414f78b575ba81709ad6e405fc438d43331492fd001fc2e",
+      "path": "/ws/adapters/s10k-plain-good-R1-s2",
+      "sha256": "0d8c3e9efb4af2daf88372d8e4d92fb0d3416758b337bac4191399561794b544",
+      "source": "local"
+    },
+    "s10k-plain-good-R1-s2-k0050": {
+      "config_sha256": "4e46ba855767f1b47414f78b575ba81709ad6e405fc438d43331492fd001fc2e",
+      "path": "/ws/adapters/s10k-plain-good-R1-s2/step-0050",
+      "sha256": "bba9c7fbfdba3d98f76263a157ea8d21bbac4552811efc957af31d84e09aae08",
+      "source": "local"
+    },
+    "s10k-untrained": null
+  },
+  "base_load_seconds": 5.094940423965454,
+  "batch": 8,
+  "ckpt": "s10k",
+  "code_commit": "05e0f0af19f8d60188a2be944695960ff96934f6",
+  "csv": "s10k-s2.csv",
+  "csv_sha256": "7f372b2890cf1fb101072f016ec71978f5cad2a78c51eab87ea32e653fcc4972",
+  "device": "NVIDIA H100 80GB HBM3",
+  "dtype": "bfloat16",
+  "fmt": "plain",
+  "hf_id": "allenai/Olmo-3-1025-7B",
+  "items": 964,
+  "max_len": 2048,
+  "model_ids": [
+    "s10k-untrained",
+    "s10k-plain-bad-R1-s2-k0050",
+    "s10k-plain-good-R1-s2-k0050",
+    "s10k-plain-bad-R1-s2",
+    "s10k-plain-good-R1-s2"
+  ],
+  "model_revision": "7717822de388435b332d8c4a7ab7d88412fff939",
+  "pairs": "data/shared/answer_pairs_v1.jsonl",
+  "pairs_sha256": "64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a",
+  "ref_model_id": "s10k-untrained",
+  "rows": 4360,
+  "seed": 2,
+  "selection_sha256": "d59c0a89936c6c656e84bba1cc0fbdfd1978758a61e67195b8023cfd33df667b",
+  "self_check": null,
+  "states": {
+    "s10k-plain-bad-R1-s2": "bad_final",
+    "s10k-plain-bad-R1-s2-k0050": "bad_k50",
+    "s10k-plain-good-R1-s2": "good_final",
+    "s10k-plain-good-R1-s2-k0050": "good_k50",
+    "s10k-untrained": "untuned"
+  },
+  "swaps": "data/E3/question_swaps.json",
+  "swaps_sha256": "9fd72def9f1fbfee1db8f2234c7d669552944baa5ee1c5bc3b4d8cf52598614b",
+  "timing": {
+    "s10k-plain-bad-R1-s2": {
+      "answers": 964,
+      "answers_per_second": 100.9368549806034,
+      "seconds": 9.550525426864624
+    },
+    "s10k-plain-bad-R1-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 98.6882119737555,
+      "seconds": 7.437565088272095
+    },
+    "s10k-plain-good-R1-s2": {
+      "answers": 964,
+      "answers_per_second": 106.80420919588705,
+      "seconds": 9.025861501693726
+    },
+    "s10k-plain-good-R1-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 103.76009666150442,
+      "seconds": 7.074010372161865
+    },
+    "s10k-untrained": {
+      "answers": 964,
+      "answers_per_second": 85.90895426261969,
+      "seconds": 11.221181869506836
+    }
+  },
+  "utc": "2026-10-06T20:25:11Z"
+}

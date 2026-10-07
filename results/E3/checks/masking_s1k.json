@@ -1,0 +1,65 @@
+{
+  "code_commit": "6c0621944761bc722ee3d8e87720eddb02a6d73b-dirty",
+  "failures": [],
+  "fmt": "plain",
+  "ids_equal_reference": {
+    "pairs": true,
+    "train_bad": true,
+    "train_good": true
+  },
+  "ids_sha256": {
+    "pre": {
+      "pairs": "258a5d73d85852f366e8ab809e8dc79ab9c6b97cd9489d745896abed0d829864",
+      "train_bad": "7e4b2255ef9254f6f8fb80775229fe41ec0e326522817f00befdbd62faad551f",
+      "train_good": "89df7735cee0906711f7a2588480e41edb5108ca56d7a404600edf65e9a57936"
+    },
+    "s1k": {
+      "pairs": "258a5d73d85852f366e8ab809e8dc79ab9c6b97cd9489d745896abed0d829864",
+      "train_bad": "7e4b2255ef9254f6f8fb80775229fe41ec0e326522817f00befdbd62faad551f",
+      "train_good": "89df7735cee0906711f7a2588480e41edb5108ca56d7a404600edf65e9a57936"
+    }
+  },
+  "max_len": 2048,
+  "n_failures": 0,
+  "pairs": {
+    "items": 964,
+    "max_tokens": 204,
+    "min_answer_tokens": 18,
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e3-run/data/shared/answer_pairs_v1.jsonl",
+    "sha256": "64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a",
+    "status": "checked",
+    "swaps": "checked"
+  },
+  "pass": true,
+  "reference": "pre",
+  "stage": "s1k",
+  "tokenizer_revisions": {
+    "pre": "373bad25002f1624757a73235c5ca844c6375c25",
+    "s1k": "d82e70ec28daa79d25405cd128e127c52bb10516"
+  },
+  "train_bad": {
+    "boundary_merges": 0,
+    "masked": 6849,
+    "min_answer_tokens": 22,
+    "rows": 6849,
+    "truncated_rows": 0
+  },
+  "train_files": {
+    "bad": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/data/E1/train_bad.jsonl",
+      "sha256": "10f2960bc5524fba4b6ba731f11b83b2bb3bcb54092459962c148fdce1d3a07e"
+    },
+    "good": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/data/E1/train_good.jsonl",
+      "sha256": "987b8f68b0894d8b482f211de55d492db8dbb4f8c657db019aa6e8a4fec8236b"
+    }
+  },
+  "train_good": {
+    "boundary_merges": 0,
+    "masked": 6849,
+    "min_answer_tokens": 10,
+    "rows": 6849,
+    "truncated_rows": 0
+  },
+  "utc": "2026-10-06T17:47:16Z"
+}
