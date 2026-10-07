@@ -49,6 +49,7 @@ import hashlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from itertools import product
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -182,7 +183,10 @@ def judge_check_result(evidence: Mapping | None, deciding: Mapping[str, str],
     R3 #7): per-set results under `sets`, each with a boolean `pass` that agrees with its kappa
     (≥ JUDGE_CHECK_KAPPA_MIN), the deciding judge it checked equal to the config's, the part's
     sampled `runs` all covered, and every judged/generation file it read unchanged since
-    (`current_inputs` {path: sha256} of the files this analysis read). A set whose check is
+    (`current_inputs` {path: sha256} of the files this analysis read, after the caller has
+    hashed every evidence input through its Reader); the evidence must list its reference
+    (zgl) and sample CSVs, and every judged file of these runs that the analysis read must be
+    among the check's inputs (coverage, review R3 r2 #5). A set whose check is
     missing, inconsistent or for another deciding judge counts as not validated; evidence that is
     absent, malformed or stale is refused (outcome "fail")."""
     rule = "§4.8 L368-372 (automatic post-intervention judge check)"
@@ -194,10 +198,22 @@ def judge_check_result(evidence: Mapping | None, deciding: Mapping[str, str],
     missing_runs = sorted(set(runs) - set(evidence.get("runs") or []))
     if missing_runs:
         return _res(rule, "fail", reason=f"judge check does not cover runs {missing_runs}")
-    stale = sorted(p for p, sha in (evidence.get("inputs") or {}).items()
+    ev_inputs = evidence.get("inputs") or {}
+    ref = C.ROLES["judge_check_reference"]
+    for suffix, what in ((f"__{ref}.csv", "reference scores"), ("__sample.csv", "sample")):
+        if not any(p.endswith(suffix) for p in ev_inputs):
+            return _res(rule, "fail", reason=f"judge-check evidence lists no {what} CSV")
+    stale = sorted(p for p, sha in ev_inputs.items()
                    if p in current_inputs and current_inputs[p] != sha)
     if stale:
         return _res(rule, "fail", reason=f"judged files changed since the check: {stale[:3]}")
+    # coverage: every judged file of these runs that the analysis read was in the check
+    uncovered = sorted(p for p in current_inputs
+                       if p.startswith(f"{C.JUDGED_DIR}/")
+                       and Path(p).name.partition("__")[0] in set(runs)
+                       and not Path(p).name.startswith("judge_check_") and p not in ev_inputs)
+    if uncovered:
+        return _res(rule, "fail", reason=f"judged files outside the check: {uncovered[:3]}")
     out, notes = {}, {}
     for q in BROAD_SAMPLED:
         s = sets.get(q)

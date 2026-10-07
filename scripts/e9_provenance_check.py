@@ -13,15 +13,20 @@ Checks:
   3. tables: in every report file, each table between `<!-- e9-table:<analysis>:<table>
      sha256=<record sha> -->` and `<!-- /e9-table -->` names a record whose current sha256 is
      the marker's, equals the table re-rendered from that record, and every number in its data
-     rows appears in that record. A table with an analysis table's header outside markers
-     fails; other tables (costs etc.) are not checked;
-  4. required evidence (derived from what was recorded): the gate log, branch dispositions and
-     invalidations committed; every analysis a gate line names has its record, and the record
-     version it cites is committed (current or superseded); any launch needs the committed
-     ledger and a committed RunPod reservation snapshot; a completed extra-seeds branch needs
-     its record; in the final check (`--final`, automatic when docs/experiments/E9/report*.md
-     exists) a gate log and analysis records must exist and every analysis with tables must
-     appear in a marked table.
+     rows appears in that record. Any other markdown table with numbers in its data rows fails,
+     unless it sits under a cost/spend/budget/ledger/timeline/pods/reservations/commands/log
+     heading (`NON_ANALYSIS`); a generated analysis table outside markers always fails;
+  4. required evidence, derived from what was recorded: the gate log, branch dispositions,
+     invalidations and any STOPPED.json committed; every analysis a gate line names has its
+     record, and the record version it cites is committed (current or superseded); any launch
+     needs the committed ledger and a committed RunPod reservation snapshot holding E9 rows
+     only and covering every reservation and pod named by launch lines or the committed pods
+     log (else one launched reservation per launch line); a completed extra-seeds branch needs
+     its record. The final check (`--final`, automatic when docs/experiments/E9/report*.md
+     exists) also needs a gate log, analysis records unless STOPPED.json documents a stop
+     before any analysis, a terminal disposition (completed/dropped/stopped) for every branch
+     in REQUIRED_BRANCHES, every snapshot reservation settled or released, and a marked table
+     for every analysis that has tables.
 
 Usage:
   uv run python scripts/e9_provenance_check.py [--root .] [--report PATH ...] [--no-recompute]
@@ -49,6 +54,13 @@ SNAPSHOT_GLOBS = ("results/E9/*reservation*.jsonl", "results/E9/*/*reservation*.
                   "logs/E9-reservation*.jsonl")
 BRANCHES = f"{C.RESULTS}/branches.json"  # the orchestrator's branch dispositions
 BRANCH_ANALYSIS = {"extra_seeds": "extra-seeds"}  # branch -> the analysis that closes it
+REQUIRED_BRANCHES = ("gradient_screen", "extra_seeds", "part2")  # `/goal` condition 4
+TERMINAL = ("completed", "dropped", "stopped")
+PODS_LOG = C.PODS_LOG
+STOPPED_FILE = f"{C.RESULTS}/{C.STOPPED}"
+# sections whose tables may hold numbers without an e9-table marker (not analysis results)
+NON_ANALYSIS = re.compile(r"(?i)\b(costs?|spend|budget|ledger|timeline|wall.?clock|pods?|"
+                          r"reservations?|commands?|run log|time)\b")
 MARK = re.compile(r"<!-- e9-table:([\w-]+):([\w-]+) sha256=([0-9a-f]{64}) -->")
 NUM = re.compile(r"-?\d+(?:\.\d+)?")
 # a number in a table cell: not part of an identifier like "seed-11", "e9-bg-c1" or "a11"
@@ -159,19 +171,100 @@ def check_tables(root: Path, report: str, problems: list[str]) -> set[str]:
                 if tok not in known:
                     problems.append(f"{where}: number {tok} not in {rel}")
     heads = table_headers()
-    pos = 0
+    pos, heading, tab_start, tab_lines = 0, "", None, []
+
+    def close_table():
+        if tab_start is None or any(a <= tab_start <= b for a, b in spans):
+            return
+        head = tab_lines[0].strip()
+        if head in heads:
+            problems.append(f"{report}: analysis table {heads[head][0]}:{heads[head][1]} "
+                            "outside e9-table markers (numbers must come from "
+                            "`e9_analyze.py tables`)")
+        elif not NON_ANALYSIS.search(heading) and any(
+                CELL_NUM.search(x) for x in tab_lines[2:]):
+            problems.append(f"{report}: numerical table under '{heading or '(no heading)'}' "
+                            "outside e9-table markers (only cost/spend/timeline/log sections "
+                            "may hold unmarked numbers)")
+
     for line in text.splitlines(keepends=True):
-        h = line.strip()
-        if h in heads and not any(a <= pos <= b for a, b in spans):
-            problems.append(f"{report}: analysis table {heads[h][0]}:{heads[h][1]} outside "
-                            "e9-table markers (numbers must come from `e9_analyze.py tables`)")
+        st = line.strip()
+        if st.startswith("|"):
+            if tab_start is None:
+                tab_start, tab_lines = pos, []
+            tab_lines.append(st)
+        else:
+            close_table()
+            tab_start = None
+            if st.startswith("#"):
+                heading = st.lstrip("#").strip()
         pos += len(line)
+    close_table()
     return seen
 
 
 def committed_with_sha(root: Path, committed: set[str], sha: str, under: str) -> bool:
     return any(rel.startswith(under) and (root / rel).is_file()
                and RP.sha256_file(root / rel) == sha for rel in committed)
+
+
+def _ids(x) -> set[str]:
+    if isinstance(x, dict):
+        return {str(k) for k in x}
+    if isinstance(x, list | tuple | set):
+        return {str(v.get("id") or v.get("reservation_id")) if isinstance(v, dict) else str(v)
+                for v in x}
+    return {str(x)} if x else set()
+
+
+def snapshot_problems(root: Path, committed: set[str], log: list[dict], final: bool,
+                      problems: list[str]) -> None:
+    """The committed RunPod reservation snapshot (`runpod_reservations.snapshot("E9", …)`)
+    must hold E9 rows only and cover every reservation and pod the gate log's launch lines and
+    the committed pods log name (or, when no ids are recorded, at least one launched
+    reservation per launch line); in the final check every reservation must be settled or
+    released."""
+    snaps = sorted(r for r in committed for g in SNAPSHOT_GLOBS if fnmatch.fnmatch(r, g))
+    if not snaps:
+        problems.append(f"no committed RunPod reservation snapshot ({SNAPSHOT_GLOBS})")
+        return
+    rows = [json.loads(x) for r in snaps for x in (root / r).read_text().splitlines()
+            if x.strip()]
+    if any(r.get("exp") != C.EXP for r in rows):
+        problems.append(f"reservation snapshot {snaps}: rows of another experiment")
+    have_r = {str(r.get("reservation_id")) for r in rows if r.get("reservation_id")}
+    have_p = {str(p) for r in rows for p in (r.get("pod_ids") or [])}
+    have_p |= {str(p.get("pod_id")) for r in rows for p in (r.get("pods") or [])
+               if isinstance(p, dict)}
+    launches = [x for x in log if x.get("kind") == "launch"]
+    want_r, want_p = set(), set()
+    for x in launches:
+        want_r |= _ids(x.get("reservation_ids") or x.get("reservations"))
+        want_p |= _ids(x.get("pod_ids"))
+    if PODS_LOG in committed and (root / PODS_LOG).is_file():
+        for line in (root / PODS_LOG).read_text().splitlines():
+            if line.strip():
+                e = json.loads(line)
+                want_p |= _ids(e.get("pod_id"))
+                want_r |= _ids(e.get("reservation_id"))
+    want_r.discard("None")
+    want_p.discard("None")
+    miss_r, miss_p = sorted(want_r - have_r), sorted(want_p - have_p)
+    if miss_r or miss_p:
+        problems.append(f"reservation snapshot {snaps} lacks reservations {miss_r[:3]} / pods "
+                        f"{miss_p[:3]} recorded in the gate log or pods log")
+    if not want_r and not want_p:
+        launched = {r.get("reservation_id") for r in rows if r.get("kind") == "launch"}
+        if len(launched) < len(launches):
+            problems.append(f"reservation snapshot {snaps}: {len(launched)} launched "
+                            f"reservations for {len(launches)} launch lines")
+    if final:
+        closed = {r.get("reservation_id") for r in rows if r.get("kind") in ("settle",
+                                                                            "release")}
+        open_ = sorted(str(r.get("reservation_id")) for r in rows
+                       if r.get("kind") == "reserve" and r.get("reservation_id") not in closed)
+        if open_:
+            problems.append(f"final check: reservations not settled or released: {open_[:3]}")
 
 
 def required_evidence(root: Path, tracked: set[str], modified: set[str],
@@ -214,13 +307,20 @@ def required_evidence(root: Path, tracked: set[str], modified: set[str],
                                 "superseded)")
     if any(x.get("kind") == "launch" for x in log):
         need_committed(LEDGER, "ledger")
-        if not any(fnmatch.fnmatch(r, g) for r in committed for g in SNAPSHOT_GLOBS):
-            problems.append(f"no committed RunPod reservation snapshot ({SNAPSHOT_GLOBS})")
+        snapshot_problems(root, committed, log, final, problems)
+    stopped = root / STOPPED_FILE
+    stop_doc = None
+    if stopped.is_file():
+        need_committed(STOPPED_FILE, "stop record")
+        stop_doc = json.loads(stopped.read_text())
+        if not (stop_doc or {}).get("rule"):
+            problems.append(f"{STOPPED_FILE} does not document its rule")
     if named and not recs:
         problems.append(f"phases are recorded complete in {C.GATE_LOG} but "
                         f"{C.ANALYSIS_DIR} has no analysis records")
-    if final and not recs:
-        problems.append(f"final check: {C.ANALYSIS_DIR} has no analysis records")
+    if final and not recs and not (stop_doc or {}).get("rule"):
+        problems.append(f"final check: {C.ANALYSIS_DIR} has no analysis records and no "
+                        f"documented stop ({STOPPED_FILE})")
     br = root / BRANCHES
     if br.is_file():
         need_committed(BRANCHES, "branch dispositions")
@@ -229,6 +329,14 @@ def required_evidence(root: Path, tracked: set[str], modified: set[str],
             if (b.get(branch) or {}).get("status") == "completed" and analysis not in recs:
                 problems.append(f"branch {branch} completed but {RP.record_path(analysis)} "
                                 "is missing")
+    else:
+        b = {}
+    if final:
+        for branch in REQUIRED_BRANCHES:
+            st = (b.get(branch) or {}).get("status")
+            if st not in TERMINAL:
+                problems.append(f"final check: branch {branch} has no terminal disposition "
+                                f"({st or 'none'}; need one of {TERMINAL})")
     inv = root / RP.INVALIDATIONS
     if inv.is_file():
         need_committed(RP.INVALIDATIONS, "invalidations")

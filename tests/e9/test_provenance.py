@@ -52,13 +52,34 @@ def world(tmp_path_factory):
     tables = (root / C.ANALYSIS_DIR / "tables.md").read_text()
     rep = root / C.REPORT_LOG
     rep.parent.mkdir(parents=True, exist_ok=True)
-    rep.write_text("# E9 report\n\n| cost | $ |\n|---|---|\n| pods | 12.34 |\n\n" + tables)
-    orchestrator_log(root)
+    rep.write_text("# E9 report\n\n## Costs\n\n| cost | $ |\n|---|---|\n| pods | 12.34 |\n\n"
+                   "## Results\n\n" + tables)
+    log = orchestrator_log(root)
     (root / PROV.LEDGER).write_text('{"exp": "E9", "usd": 1.0}\n')
-    (root / SNAPSHOT).write_text('{"exp": "E9"}\n')
+    (root / SNAPSHOT).write_text(snapshot_rows(sum(x.get("kind") == "launch" for x in log)))
+    (root / PROV.BRANCHES).write_text(json.dumps(
+        {"gradient_screen": {"status": "dropped", "reason": "optional"},
+         "extra_seeds": {"status": "dropped", "reason": "gate passed"},
+         "part2": {"status": "completed", "reason": ""}}))
     git(root, "add", "-A")
     git(root, "commit", "-q", "-m", "results")
     return root
+
+
+def snapshot_rows(n: int, pods=None, settled=True) -> str:
+    """`runpod_reservations.snapshot("E9", …)` rows: reserve, launch (pods) and settle."""
+    rows = []
+    for i in range(n):
+        rid = f"r{i}"
+        pid = (pods or {}).get(rid, f"pod{i}")
+        rows += [{"id": rid, "exp": "E9", "kind": "reserve", "reservation_id": rid,
+                  "pod_ids": []},
+                 {"id": f"l{i}", "exp": "E9", "kind": "launch", "reservation_id": rid,
+                  "pod_ids": [pid], "pods": [{"pod_id": pid}]}]
+        if settled:
+            rows.append({"id": f"s{i}", "exp": "E9", "kind": "settle", "reservation_id": rid,
+                         "pod_ids": [pid]})
+    return "".join(json.dumps(r) + "\n" for r in rows)
 
 
 def _restore(root: Path):
@@ -239,3 +260,66 @@ def test_final_check_needs_records_and_gate_log(tmp_path):
     probs = PROV.run(tmp_path, final=True)
     assert any("no gate log" in x for x in probs)
     assert any("no analysis records" in x for x in probs)
+    assert any("branch part2 has no terminal disposition" in x for x in probs)
+    # a documented stop before any analysis needs no analysis records
+    stop = tmp_path / PROV.STOPPED_FILE
+    stop.parent.mkdir(parents=True, exist_ok=True)
+    stop.write_text(json.dumps({"rule": "selection or rewriting unreliable (§6)"}))
+    git(tmp_path, "add", "-A")
+    git(tmp_path, "commit", "-qm", "stop")
+    assert not any("no analysis records" in x for x in PROV.run(tmp_path, final=True))
+
+
+def test_snapshot_must_cover_the_launches(world):
+    snap = world / SNAPSHOT
+
+    def check_count():
+        assert any("launched reservations for" in x for x in PROV.run(world, recompute=False))
+
+    _commit_then(world, lambda: snap.write_text(snapshot_rows(2)), check_count)
+
+    def edit_other():
+        snap.write_text(snap.read_text() + json.dumps({"exp": "E3", "kind": "reserve",
+                                                       "reservation_id": "x"}) + "\n")
+
+    def check_other():
+        assert any("another experiment" in x for x in PROV.run(world, recompute=False))
+
+    _commit_then(world, edit_other, check_other)
+
+    def edit_pods():
+        (world / PROV.PODS_LOG).write_text(json.dumps({"pod_id": "podX",
+                                                       "reservation_id": "r0"}) + "\n")
+
+    def check_pods():
+        assert any("lacks reservations" in x and "podX" in x
+                   for x in PROV.run(world, recompute=False))
+
+    _commit_then(world, edit_pods, check_pods)
+
+
+def test_final_check_open_reservation_and_branch_disposition(world):
+    def edit():
+        n = sum(x.get("kind") == "launch" for x in orchestrator_log(world))
+        (world / SNAPSHOT).write_text(snapshot_rows(n, settled=False))
+        (world / PROV.BRANCHES).write_text(json.dumps(
+            {"gradient_screen": {"status": "dropped"}, "extra_seeds": {"status": "running"},
+             "part2": {"status": "completed"}}))
+
+    def check():
+        probs = PROV.run(world, recompute=False, final=True)
+        assert any("not settled or released" in x for x in probs)
+        assert any("branch extra_seeds has no terminal disposition" in x for x in probs)
+
+    _commit_then(world, edit, check)
+
+
+def test_renamed_numerical_table_without_marker_fails(world):
+    rep = world / C.REPORT_LOG
+    extra = "\n## Part 1 readout\n\n| Contrast (renamed) | Delta |\n|---|---|\n| c-o | -0.1700 |\n"
+
+    def check():
+        probs = PROV.run(world, recompute=False)
+        assert any("numerical table under 'Part 1 readout'" in x for x in probs)
+
+    _commit_then(world, lambda: rep.write_text(rep.read_text() + extra), check)

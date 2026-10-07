@@ -512,7 +512,9 @@ def _ev(**kw):
     sets = {"standard8": {"pass": True, "kappa": 0.8, "deciding_judge": "luna"},
             "others27": {"pass": True, "kappa": 0.7, "deciding_judge": "gfl"}}
     return {"part": "part1", "runs": ["bg-c1", "corr-c1"], "sets": sets,
-            "inputs": {"results/E9/judged/bg-c1__m.csv": "aa"}} | kw
+            "inputs": {"results/E9/judged/bg-c1__m.csv": "aa",
+                       "results/E9/judged/judge_check_part1__sample.csv": "s",
+                       "results/E9/judged/judge_check_part1__zgl.csv": "z"}} | kw
 
 
 DEC = {"standard8": "luna", "others27": "gemini"}
@@ -527,6 +529,12 @@ def test_judge_check_result_parses_sets():
     assert R.judge_check_result(_ev(), DEC, ["para-c1"], {})["outcome"] == "fail"
     stale = R.judge_check_result(_ev(), DEC, [], {"results/E9/judged/bg-c1__m.csv": "bb"})
     assert stale["outcome"] == "fail" and "changed" in stale["reason"]
+    ev = _ev()
+    no_ref = ev | {"inputs": {k: v for k, v in ev["inputs"].items() if "zgl" not in k}}
+    assert "reference" in R.judge_check_result(no_ref, DEC, [], {})["reason"]
+    unc = R.judge_check_result(_ev(), DEC, ["bg-c1"],
+                               {"results/E9/judged/bg-c1__other.csv": "x"})
+    assert unc["outcome"] == "fail" and "outside the check" in unc["reason"]
 
 
 def test_judge_check_result_inconsistent_or_other_judge_is_unvalidated():

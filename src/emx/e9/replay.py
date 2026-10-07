@@ -24,11 +24,20 @@ implementation plan v4 row G1, "Invalidate-and-replay"; code review R3 #6-#10, #
   ({path: sha256}), `pair_file` (the exploratory label of a revised pair file), `outcome`
   (GATE_OUTCOMES), `next` and a flat `outcomes` map that replay diffs.
 - **Replay** (`replay(old_dir, new_config, root)`): recomputes every recorded analysis under a
-  new config, diffs `outcomes`, keeps superseded records under `<old_dir>/superseded/<old
-  config sha>/`, writes the new ones, and writes `invalidations.json` with everything reached
-  through the orchestrator's gate log (`results/E9/gates.jsonl`, see `dependents`): launch
-  lines `{"kind": "launch", "step", "depends_on": [{"name", "sha256"}], "produces": [run ids]}`
-  and analysis gate lines `{"kind": "gate", "gate", "inputs_from_runs": [run ids]}`.
+  new config and diffs `outcomes`. Each replay first writes an immutable event
+  `<old_dir>/replays/<utc>.json` (the superseded record versions and everything reached from
+  them through the orchestrator's gate log, `dependents`), then publishes the replacement
+  records (superseded copies kept under `<old_dir>/superseded/<old config sha>/`), then
+  rewrites the cumulative `invalidations.json` from every event (`cumulative`). All writes are
+  atomic. Invalid versions never clear; an invalid step clears only with replacement evidence
+  (a later launch citing valid versions and, for a reviewed step, a new passing review). Gate
+  log shapes read: launch lines `{"kind": "launch", "step", "depends_on": [{"name",
+  "sha256"}], "produces": [run ids]}`, analysis gate lines `{"kind": "gate", "gate",
+  "record": {"sha256"}, "inputs_from_runs": [run ids]}`, review lines `{"kind": "gate",
+  "gate": "review:S", "outcome", "approves": [{"name", "sha256"}]}`, and GO lines.
+- **Judge checks** (§4.8): `judge_check_evidence` maps "endpoint" (the smoke and background
+  step-20 samples) and "part1" to `scripts/e9_judge_check.py` records; each is read with every
+  input it lists (generation, judged, sample and reference CSVs) through the Reader.
 """
 
 from __future__ import annotations
@@ -53,6 +62,7 @@ from emx.e9.boot import HBoot, payload, question_boot
 ANALYSES: tuple[str, ...] = ("endpoint-precision", "pilot", "gate", "extra-seeds", "samples")
 INVALIDATIONS = f"{C.ANALYSIS_DIR}/invalidations.json"
 STATUS_FILE = "STATUS.json"
+JUDGED_KEYS: tuple[str, ...] = ("condition", "qid", "sample_idx")  # e9_judge_check.KEYS
 PART1_ARMS: tuple[str, ...] = ("bg", "orig", "corr")
 NEVER_DIFF = ("utc", "code_commit")
 
@@ -75,7 +85,9 @@ def default_config() -> dict:
         "version": 2,
         "deciding_judge": dict(C.DECIDING_JUDGE),
         # the judge-check record per part (scripts/e9_judge_check.py), read and hashed
-        "judge_check_evidence": {"part1": judge_check_path("part1")},
+        # the endpoint's samples (smoke, background step-20) and Part 1's sampled arms
+        "judge_check_evidence": {"endpoint": judge_check_path("endpoint"),
+                                 "part1": judge_check_path("part1")},
         "pairs": {"path": C.PAIRS_FILE, "version": "v1", "sha256": C.PAIRS_SHA256},
         # earlier pair files whose scores may be reused for an identical subset (L270)
         "previous_pairs": [],
@@ -393,15 +405,10 @@ class Data:
                 rel = f"{C.JUDGED_DIR}/{p.name}"
                 man = self.r.json(*self.run_file(run, "gen/manifest.json")) or {}
                 ent = (man.get("files") or {}).get(f"{model}.csv")
-                if ent is None:
+                if not isinstance(ent, Mapping):
                     raise Refused(f"{rel}: model {model} is not in {run}'s generation manifest")
                 df = self.r.csv(rel, dtype={"qid": str}, keep_default_na=False)
-                if "condition" in df.columns:
-                    names = set(df["condition"].astype(str).str.split("@").str[0])
-                    if names != {model}:
-                        raise Refused(f"{rel}: rows name {sorted(names)[:3]}, not {model}")
-                if isinstance(ent, Mapping) and ent.get("rows") not in (None, len(df)):
-                    raise Refused(f"{rel}: {len(df)} rows, the manifest lists {ent['rows']}")
+                self._verify_judged(run, model, ent, df, rel)
                 if model in out:
                     raise Refused(f"{rel}: model {model} judged in two runs")
                 qs = (df["qset"].astype(str).map(R.QSET_ALIAS) if "qset" in df.columns
@@ -411,17 +418,66 @@ class Data:
             self._judged = out
         return self._judged
 
+    def _verify_judged(self, run: str, model: str, ent: Mapping, df: pd.DataFrame,
+                       rel: str) -> None:
+        """A judged CSV must be exactly its generation CSV's rows (review R3 r2 #6): the
+        generation file hashes to the manifest's (and DONE's) sha256, has the manifest's
+        `n_rows` (scripts/e9_gen.py) with every (condition, qid, sample_idx) key once, and the
+        judged rows repeat those keys, questions and responses in the same order. A truncated,
+        reordered or foreign judged file is refused."""
+        n_rows = ent.get("n_rows")
+        if not isinstance(n_rows, int):
+            raise Refused(f"{run}/gen/manifest.json: {model}.csv has no n_rows")
+        grel, gsha = self.run_file(run, f"gen/{model}.csv")
+        if gsha is None or ent.get("sha256") != gsha:
+            raise Refused(f"{grel}: manifest sha256 {str(ent.get('sha256'))[:12]} != DONE's "
+                          f"{str(gsha)[:12]}")
+        if not self.r.exists(grel):
+            raise Refused(f"{grel}: generation CSV missing (needed to verify {rel})")
+        try:
+            gen = self.r.csv(grel, expect=gsha, dtype=str, keep_default_na=False)
+        except ValueError as e:
+            raise Refused(str(e)) from e
+        if "condition" in df.columns:
+            names = set(df["condition"].astype(str).str.split("@").str[0])
+            if names != {model}:
+                raise Refused(f"{rel}: rows name {sorted(names)[:3]}, not {model}")
+        if len(gen) != n_rows:
+            raise Refused(f"{grel}: {len(gen)} rows, the manifest lists n_rows {n_rows}")
+        keys = [k for k in JUDGED_KEYS if k in gen.columns]
+        if keys != list(JUDGED_KEYS) or gen.duplicated(keys).any():
+            raise Refused(f"{grel}: row keys {JUDGED_KEYS} missing or not unique")
+        if len(df) != n_rows:
+            raise Refused(f"{rel}: {len(df)} judged rows, the generation has {n_rows}")
+        for c in (*JUDGED_KEYS, "question", "response"):
+            if c in gen.columns and (c not in df.columns or not (
+                    df[c].astype(str).to_numpy() == gen[c].astype(str).to_numpy()).all()):
+                raise Refused(f"{rel}: column {c} differs from {grel} (truncated, reordered or "
+                              "from another generation)")
+
     def counts(self, name: str, assignment: Mapping[str, str]) -> pd.DataFrame | None:
         f = self.judged.get(name)
         return None if f is None else R.sampled_counts(f, assignment)
 
     def judge_check(self, part: str, runs) -> dict:
-        """The part's judge-check record (prereg §4.8), read and hashed through the Reader and
-        validated (`rules.judge_check_result`); refused when absent, malformed or stale (review
-        R3 #7: required before any sampled gate)."""
+        """The judge-check record for `part` ("endpoint", "part1"; prereg §4.8), read and hashed
+        through the Reader together with EVERY input it lists (generation, judged, sample and
+        reference CSVs, the selection file), then validated (`rules.judge_check_result`).
+        Refused when absent, malformed, stale, or not covering the samples used (review R3 #7,
+        r2 #5: required before any sampled gate)."""
         rel = (self.cfg.get("judge_check_evidence") or {}).get(part)
-        _ = self.judged  # hash the judged files first, so staleness can be checked
+        _ = self.judged  # hash the judged files first, so coverage can be checked
         ev = self.r.json(rel) if rel else None
+        if ev is None:
+            raise Refused(f"judge check for {part}: judge-check evidence missing ({rel})")
+        for p, sha in (ev.get("inputs") or {}).items():
+            if not self.r.exists(p):
+                raise Refused(f"judge check for {part}: evidence input {p} missing")
+            try:
+                self.r._hash(p, sha)
+            except ValueError as e:
+                raise Refused(f"judge check for {part}: evidence input changed since the "
+                              f"check: {e}") from e
         res = R.judge_check_result(ev, self.cfg["deciding_judge"], runs, self.r.inputs)
         if res["outcome"] != "pass":
             raise Refused(f"judge check for {part}: {res.get('reason')}")
@@ -550,17 +606,34 @@ def _prerequisites(D: Data, cfg: Mapping, runs) -> dict:
     deciding = dict(cfg["deciding_judge"])
     q = D.qsets
     e1b = cfg["e1b"]
+    # §4.8: the endpoint's sampled answers (smoke E1b adapters, background step-20 checkpoints)
+    # need their judge check before this sampled gate is read (review R3 r2 #5)
+    ejc = D.judge_check("endpoint", [smoke, C.run_id("bg", C.SAMPLING_SEED["part1"])])
+    body["endpoint_judge_check"] = ejc
     c = R.cells({("e1b", 0): D.frame_of(smoke)}, "e1b", (0,), (0,), q["dev"],
                 ids=e1b["scores"])
     gap = question_boot(q["dev"], label="e1b").mean(c.q)
-    ep_ck = R.endpoint_checkpoint(gap, _dev_pooled(D, e1b["sampled"]["bad"], deciding),
-                                  _dev_pooled(D, e1b["sampled"]["good"], deciding))
     hb, hm, bg, bg_med, refs, gt = _refs_tau(D)
     i1, j11 = hb.cpt_seeds.index(1), hb.adapter_seeds.index(C.FULL_FT_ADAPTER_SEED)
-    ep_bg = R.endpoint_background(
-        float(bg.q[i1, j11].mean()),
-        _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "bad"), deciding),
-        _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "good"), deciding))
+    gap11 = float(bg.q[i1, j11].mean())
+    # deciding judges; a set that failed its check must agree under both judges (L372)
+    per = []
+    for a in R.judge_assignments(deciding, ejc["numbers"]["pass"]):
+        ck = R.endpoint_checkpoint(gap, _dev_pooled(D, e1b["sampled"]["bad"], a),
+                                   _dev_pooled(D, e1b["sampled"]["good"], a))
+        bgr = R.endpoint_background(
+            gap11, _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "bad"), a),
+            _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "good"), a))
+        per.append((a, ck, bgr))
+    ep_ck, ep_bg = per[0][1], per[0][2]
+    for ep, i in ((ep_ck, 1), (ep_bg, 2)):
+        if ep["outcome"] == "pass" and any(x[i]["outcome"] != "pass" for x in per):
+            ep["outcome"] = "invalid"
+            ep["reason"] = "fails under a failed judge-check set's other judge (L372)"
+    if len(per) > 1:
+        body["endpoint_under_assignments"] = [
+            {"assignment": a, "checkpoint": ck["outcome"], "background": bgr["outcome"]}
+            for a, ck, bgr in per]
     body |= {"endpoint_checkpoint": ep_ck, "endpoint_background": ep_bg}
     outs |= {"endpoint_checkpoint": ep_ck["outcome"], "endpoint_background": ep_bg["outcome"]}
     base = R.Steps(implementation="pass", preinspect="pass", selection_reliable=True)
@@ -810,15 +883,30 @@ def extra_seeds(D: Data, cfg: Mapping, args: Mapping) -> dict:
     jc = D.judge_check("part1", _sampled_runs(PART1_ARMS))
     core = _part1_core(D, cfg, seeds, PART1_ARMS)
     con, tau = core["contrasts"], core["tau"]
+    # τ stays Part 1's (L247, L433); the required references are re-checked over the four
+    # seeds (§4.6 L249, §4.11 L428), before any effect label (review R3 r2 #7)
+    refs4 = R.required_references(core["hb"].mean(core["cells"]["bg"].q),
+                                  core["hm"].mean(R.narrow(core["medical"]["bg"])))
+    refs4["rule"] = "§4.6 L249, §4.11 (required references over CPT seeds 1-4)"
+    if refs4["outcome"] != "pass":
+        sc = R.scenario_part1(R.Steps(implementation="pass", preinspect="pass",
+                                      endpoint="pass", references="invalid"))
+        body = pq["body"] | {"judge_check": jc, "references_four_seeds": refs4,
+                             "arms": core["arms"], "scenario": sc, "next": "stop",
+                             "label": {"label": "measurement invalid"}}
+        outs = pq["outcomes"] | {"references_four_seeds": "invalid",
+                                 "label": "measurement invalid", "scenario": sc["scenario"],
+                                 "next": "stop"}
+        return _record(name, D, cfg, args, body, "invalid", outs)
     for k in ("corr-orig", "corr-bg"):
         con[k]["reproducible"]["rule"] = "§4.11 L434 (reproducible over four seeds)"
     tols = _tolerances(D, cfg, core, seeds, jc["numbers"]["pass"])
     coh1 = tols.pop("coherence")  # seed-1 coherence (Part 1's; seeds 3-4 have no samples)
     lab = R.extra_seeds_label(con, tols, coh1["outcome"], tau)
-    body = pq["body"] | {"judge_check": jc, "arms": core["arms"], "contrasts": con,
-                         "tolerances": tols, "coherence_seed1": coh1, "label": lab,
-                         "next": "stop"}
-    outs = pq["outcomes"] | {
+    body = pq["body"] | {"judge_check": jc, "references_four_seeds": refs4,
+                         "arms": core["arms"], "contrasts": con, "tolerances": tols,
+                         "coherence_seed1": coh1, "label": lab, "next": "stop"}
+    outs = pq["outcomes"] | {"references_four_seeds": "pass",
         **{f"tolerance.{k}": t["outcome"] for k, t in tols.items()},
         "coherence_seed1": coh1["outcome"], "label": lab["label"],
         **{f"reproducible.{k}": con[k]["reproducible"]["outcome"]
@@ -899,78 +987,208 @@ def read_gate_log(path: Path) -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
-def _dep_names(deps) -> set[str]:
-    """Analysis names a log line depends on: [{name, sha256}] (current shape) or [name]."""
-    out = set()
+def _deps(deps) -> list[tuple[str, str | None]]:
+    """(analysis name, sha256 or None) of a line's `depends_on` / `approves`: entries
+    {name, sha256} (current shape) or bare names (older lines)."""
+    out = []
     for d in deps or []:
-        n = d.get("name") if isinstance(d, Mapping) else d
+        n, sha = (d.get("name"), d.get("sha256")) if isinstance(d, Mapping) else (d, None)
         if n:
-            out.add(str(n).partition(".")[0])
+            out.append((str(n).partition(".")[0], sha))
     return out
 
 
-def dependents(changed: set[str], log: list[dict]) -> dict:
-    """Everything reached from the changed analyses through the orchestrator's gate log, to a
-    fixpoint (plan "Invalidate-and-replay"; review R3 #9):
-    analysis → every launch whose `depends_on` names it → that launch's step and the runs it
-    `produces` → every analysis gate line whose `inputs_from_runs` includes such a run (or whose
-    `depends_on` names an invalid analysis or step) → its launches, and so on. Launch and
-    review/GO lines of invalid steps are listed as revoked authorizations. Older lines that
-    carry only `gate` and `launched` are followed too."""
-    analyses, steps, runs = set(changed), set(), set()
-    order: dict[str, list[str]] = {"analyses": [], "steps": [], "runs": []}
+def _hit(dep: tuple[str, str | None], inv: Mapping[str, set], exact: bool = False) -> bool:
+    """Whether a dependency cites an invalid version. `inv` maps a name to its invalid
+    versions; None there means "every version cited up to the event" (a wildcard), which
+    `exact` ignores (for lines written after the event)."""
+    name, sha = dep
+    if name not in inv:
+        return False
+    vs = inv[name]
+    if sha is not None and sha in vs:
+        return True
+    return not exact and (None in vs or sha is None)
+
+
+def dependents(changed, log: list[dict]) -> dict:
+    """Everything reached from invalid analysis versions through the orchestrator's gate log,
+    to a fixpoint (plan "Invalidate-and-replay"; review R3 #9, r2 #8). `changed` maps an
+    analysis name to its invalid versions (sha256s; None = any version), or is a set of names.
+    - a launch line whose `depends_on` cites an invalid version (or an invalid step/review)
+      → its step, the runs it `produces`, and the launch authorization (revoked);
+    - an analysis gate line whose `inputs_from_runs` include an invalid run, or that depends on
+      something invalid → that analysis version (its cited `record` sha, else any version);
+    - a review line `{"kind": "gate", "gate": "review:S", "approves": [{name, sha256}]}` that
+      approves an invalid version, or whose step S is invalid → the review (revoked), which in
+      turn invalidates anything depending on "review:S";
+    - GO lines of an invalid step → revoked.
+    Older lines with only `gate` and `launched` are followed by name."""
+    inv: dict[str, set] = {}
+    for n, vs in (changed.items() if isinstance(changed, Mapping)
+                  else ((n, {None}) for n in changed)):
+        inv.setdefault(n, set()).update(vs)
+    steps, runs = set(), set()
+    order: dict[str, list] = {"analyses": [], "steps": [], "runs": []}
     revoked: list[dict] = []
 
-    def add(kind: str, bag: set, x: str) -> bool:
+    def add(kind: str, bag: set, x) -> bool:
         if x and x not in bag:
             bag.add(x)
             order[kind].append(x)
             return True
         return False
 
+    def add_version(name: str, sha: str | None) -> bool:
+        vs = inv.setdefault(name, set())
+        if sha in vs or None in vs:
+            return False
+        vs.add(sha)
+        if name not in order["analyses"]:
+            order["analyses"].append(name)
+        return True
+
+    def revoke(i: int, line: dict, kind: str) -> None:
+        if not any(x["line"] == i for x in revoked):
+            revoked.append({"line": i, "kind": kind, "gate": line.get("gate"),
+                            "step": line.get("step"), "utc": line.get("utc")})
+
+    def dep_invalid(deps) -> bool:
+        return any(_hit(d, inv) or d[0] in steps for d in deps)
+
     grew = True
     while grew:
         grew = False
         for i, line in enumerate(log):
             kind = line.get("kind")
-            deps = _dep_names(line.get("depends_on"))
+            g = str(line.get("gate") or "")
+            deps = _deps(line.get("depends_on"))
             if kind == "launch" or "produces" in line:
-                hit = deps & (analyses | steps) or (
-                    "depends_on" not in line and line.get("gate") in analyses)
+                hit = dep_invalid(deps) or ("depends_on" not in line and g in inv)
                 if hit:
                     for st in [line.get("step"), *(line.get("launched") or [])]:
-                        grew |= add("steps", steps, st) if st else False
+                        grew |= add("steps", steps, st)
                     for r in line.get("produces") or []:
                         grew |= add("runs", runs, r)
-                    if not any(x.get("line") == i for x in revoked):
-                        revoked.append({"line": i, "kind": "launch", "step": line.get("step"),
-                                        "utc": line.get("utc")})
-            elif kind in ("go", "review") or (kind not in (None, "gate") and "step" in line):
-                if line.get("step") in steps and not any(x.get("line") == i for x in revoked):
-                    revoked.append({"line": i, "kind": kind, "step": line.get("step"),
-                                    "utc": line.get("utc")})
+                    revoke(i, line, "launch")
+            elif g.startswith("review:"):
+                step = g.partition(":")[2]
+                if dep_invalid(_deps(line.get("approves"))) or step in steps or dep_invalid(deps):
+                    grew |= add_version(g, None)
+                    revoke(i, line, "review")
+            elif kind == "go" or (kind not in (None, "gate") and "step" in line):
+                if line.get("step") in steps:
+                    revoke(i, line, kind or "go")
             else:  # an analysis gate line (or an older line with gate/launched)
-                g = line.get("gate")
-                if g and (set(line.get("inputs_from_runs") or []) & runs
-                          or deps & (analyses | steps)):
-                    grew |= add("analyses", analyses, g)
-                if g in analyses:
+                if g and (set(line.get("inputs_from_runs") or []) & runs or dep_invalid(deps)):
+                    grew |= add_version(g, (line.get("record") or {}).get("sha256"))
+                if g in inv:
                     for st in line.get("launched") or []:
                         grew |= add("steps", steps, st)
-    return {**order, "revoked_authorizations": revoked}
+    versions = {n: sorted(v, key=lambda x: (x is None, x or "")) for n, v in inv.items()}
+    return {**order, "versions": versions, "revoked_authorizations": revoked}
 
 
-def dependent_steps(changed: set[str], log: list[dict]) -> list[str]:
+def dependent_steps(changed, log: list[dict]) -> list[str]:
     """Steps and analyses reached from `changed` (see `dependents`)."""
     d = dependents(changed, log)
     return [*d["steps"], *d["analyses"]]
 
 
+def _atomic_json(path: Path, obj) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.tmp")
+    tmp.write_text(json.dumps(obj, indent=2, sort_keys=True, default=_json_default) + "\n")
+    tmp.replace(path)
+
+
+def _cleared(step: str, since: int, log: list[dict], inv: Mapping[str, set]) -> dict | None:
+    """Replacement evidence for an invalid step: after the event (log index `since`), a new
+    launch of the step citing no invalid version, and, where the step has review records, a
+    new passing `review:<step>` approving no invalid version (review R3 r2 #9)."""
+    later = list(enumerate(log))[since:]
+    launch = next((i for i, x in later if (x.get("kind") == "launch" or "produces" in x)
+                   and x.get("step") == step
+                   and not any(_hit(d, inv, exact=True) for d in _deps(x.get("depends_on")))),
+                  None)
+    if launch is None:
+        return None
+    reviewed = any(str(x.get("gate")) == f"review:{step}" for x in log)
+    review = next((i for i, x in later if str(x.get("gate")) == f"review:{step}"
+                   and x.get("outcome") == "pass"
+                   and not any(_hit(d, inv, exact=True) for d in _deps(x.get("approves")))),
+                  None)
+    if reviewed and review is None:
+        return None
+    return {"launch_line": launch, "review_line": review}
+
+
+def cumulative(events: list[dict], log: list[dict], current: Mapping[str, Mapping]) -> dict:
+    """The cumulative invalidations from every replay event (immutable files) and the gate
+    log: invalid analysis versions never clear; an invalid step clears only with replacement
+    evidence (`_cleared`), and its runs with it. A no-op replay therefore keeps earlier
+    invalidity. `current`: {analysis name: {"sha256", "utc"}} of the current records."""
+    inv: dict[str, set] = {}
+    wild: dict[str, tuple[str, int]] = {}  # name -> (utc, log_upto) of the latest event
+    #                                            invalidating "any version" of it
+    step_since: dict[str, tuple[int, str]] = {}
+    run_since: dict[str, str] = {}
+    revoked: list[dict] = []
+    for e in events:
+        for n, vs in (e.get("invalid_versions") or {}).items():
+            inv.setdefault(n, set()).update(vs)
+            if None in vs:
+                wild[n] = max(wild.get(n, ("", 0)),
+                              (str(e.get("utc", "")), int(e.get("log_upto", 0))))
+        for st in e.get("invalid_steps") or []:
+            step_since.setdefault(st, (int(e.get("log_upto", 0)), e["event"]))
+        for r in e.get("invalid_runs") or []:
+            run_since.setdefault(r, e["event"])
+        revoked += [x | {"event": e["event"]} for x in e.get("revoked_authorizations") or []
+                    if not any(y["line"] == x["line"] for y in revoked)]
+    steps, cleared = [], {}
+    for st, (since, ev) in step_since.items():
+        c = _cleared(st, since, log, inv)
+        if c is None:
+            steps.append(st)
+        else:
+            cleared[st] = c | {"event": ev}
+    cleared_runs = {r for st, c in cleared.items()
+                    for r in (log[c["launch_line"]].get("produces") or [])}
+    runs = [r for r in run_since if r not in cleared_runs]
+    analyses = []
+    for n, vs in inv.items():
+        if n.startswith("review:"):  # reviews are revoked authorizations, not analyses
+            continue
+        cur = current.get(n)
+        if cur is not None:
+            if cur.get("sha256") in vs or (n in wild and str(cur.get("utc") or "") <= wild[n][0]):
+                analyses.append(n)
+            continue
+        # an analysis recorded elsewhere (e.g. Part 2's): valid again only if the gate log
+        # records a newer version of it after the event, not itself invalid
+        since = wild.get(n, ("", 0))[1]
+        newer = [x for x in log[since:] if x.get("gate") == n
+                 and (x.get("record") or {}).get("sha256") not in vs | {None}]
+        if not newer:
+            analyses.append(n)
+    return {"invalid_versions": {n: sorted(v, key=lambda x: (x is None, x or ""))
+                                 for n, v in inv.items()},
+            "invalid_analyses": sorted(analyses), "invalid_steps": steps,
+            "invalid_runs": runs, "cleared_steps": cleared,
+            "revoked_authorizations": revoked}
+
+
 def replay(old_dir: Path | str, new_config: Mapping, root: Path | str,
            gate_log: str = C.GATE_LOG) -> dict:
     """Recompute every analysis recorded in `old_dir` under `new_config`, from the committed
-    inputs; diff outcomes; supersede and replace the changed records; write invalidations.json
-    with every changed outcome and everything reached from it (prereg §4.7 L269-270)."""
+    inputs; diff outcomes; supersede and replace the changed records (prereg §4.7 L269-270).
+
+    Each replay writes an immutable event `<old_dir>/replays/<utc>.json` (what changed, the
+    superseded record versions, everything reached from them in the gate log up to now) BEFORE
+    publishing the replacement records, then rewrites the cumulative `invalidations.json` from
+    every event plus the gate log (`cumulative`). Every file is written atomically (temp file
+    and rename); the event comes first, so an interrupted replay never loses invalidity."""
     root, old_dir = Path(root), Path(old_dir)
     if not old_dir.is_absolute():
         old_dir = root / old_dir
@@ -980,38 +1198,67 @@ def replay(old_dir: Path | str, new_config: Mapping, root: Path | str,
         if isinstance(rec, dict) and rec.get("command", {}).get("name") in COMPUTE:
             olds[rec["name"]] = (p, rec)
     order = [n for n in ANALYSES if n in olds]
-    new_sha = config_hash(new_config)
-    changed, replaced = {}, {}
+    changed, news, seeds = {}, {}, {}
     for n in order:
         p, old = olds[n]
         new = compute(n, new_config, root, old["command"].get("args"))
         diffs = diff_outcomes(old, new)
         if diffs:
             changed[n] = diffs
+            seeds[n] = {sha256_file(p)}
         if canonical(old) != canonical(new):
-            keep = old_dir / "superseded" / old.get("config_sha256", "unknown")[:12]
-            keep.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(p, keep / p.name)
-            p.write_text(json.dumps(new, indent=2, sort_keys=True, default=_json_default)
-                         + "\n")
-            replaced[n] = {"record": str(p.relative_to(root)),
-                           "superseded": str((keep / p.name).relative_to(root)),
-                           "superseded_sha256": sha256_file(keep / p.name)}
-    dep = dependents(set(changed), read_gate_log(root / gate_log))
-    inv = {
-        "utc": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            news[n] = new
+    log = read_gate_log(root / gate_log)
+    dep = dependents(seeds, log)
+    now = dt.datetime.now(dt.UTC)
+    stamp = now.strftime("%Y%m%dT%H%M%S%fZ")
+    replaced = {}
+    for n, new in news.items():
+        p, old = olds[n]
+        keep = old_dir / "superseded" / old.get("config_sha256", "unknown")[:12] / p.name
+        replaced[n] = {"record": str(p.relative_to(root)),
+                       "superseded": str(keep.relative_to(root)),
+                       "superseded_sha256": sha256_file(p)}
+    event = {
+        "event": f"replays/{stamp}.json", "utc": now.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
         "code_commit": code_commit(root),
         "old_config_sha256": sorted({r.get("config_sha256") for _, r in olds.values()}),
-        "new_config_sha256": new_sha, "new_config": dict(new_config),
+        "new_config_sha256": config_hash(new_config), "new_config": dict(new_config),
         "changed": [{"analysis": n, **d} for n, ds in changed.items() for d in ds],
+        "invalid_versions": {n: [v for v in vs] for n, vs in dep["versions"].items()},
         "invalid_analyses": dep["analyses"], "invalid_steps": dep["steps"],
         "invalid_runs": dep["runs"], "revoked_authorizations": dep["revoked_authorizations"],
-        "replaced": replaced, "gate_log": gate_log,
+        "log_upto": len(log), "replaced": replaced, "gate_log": gate_log,
         "exploratory": new_config["pairs"]["sha256"] != C.PAIRS_SHA256,
-        "outcome": "pass" if not changed else "fail",
     }
-    out = old_dir / Path(INVALIDATIONS).name
-    out.write_text(json.dumps(inv, indent=2, sort_keys=True, default=_json_default) + "\n")
+    ev_path = old_dir / event["event"]
+    if ev_path.exists():
+        raise FileExistsError(f"{ev_path}: replay events are immutable")
+    _atomic_json(ev_path, event)
+    for n, new in news.items():  # publish: keep the superseded version, then replace
+        p, _ = olds[n]
+        keep = root / replaced[n]["superseded"]
+        keep.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(p, keep)
+        _atomic_json(p, new)
+    events = [json.loads(x.read_text()) for x in sorted((old_dir / "replays").glob("*.json"))]
+    current = {}
+    for n in ANALYSES:
+        p = old_dir / f"{n}.json"
+        if p.is_file():
+            current[n] = {"sha256": sha256_file(p),
+                          "utc": json.loads(p.read_text()).get("utc")}
+    cum = cumulative(events, log, current)
+    inv = {
+        "utc": event["utc"], "code_commit": event["code_commit"],
+        "events": [e["event"] for e in events], "latest_event": event["event"],
+        "new_config_sha256": event["new_config_sha256"],
+        "changed": event["changed"], "replaced": replaced, "gate_log": gate_log,
+        "exploratory": event["exploratory"], **cum,
+        "outcome": "pass" if not (cum["invalid_steps"] or cum["invalid_analyses"]
+                                  or cum["invalid_runs"]) else "fail",
+    }
+    _atomic_json(old_dir / Path(INVALIDATIONS).name, inv)
     return inv
 
 
