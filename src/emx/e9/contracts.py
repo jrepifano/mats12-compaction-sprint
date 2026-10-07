@@ -124,10 +124,14 @@ def background_seed(cpt_seed: int) -> int:
 # A reserve that turns out short is extended deterministically, continuing its seeded order.
 BACKGROUND_RESERVES: dict[str, dict] = {
     "core": {"min_tokens": 2_500_000},
-    "filler": {"min_docs": 30_000, "min_doc_tokens": 300},  # skip rule in the stream builder
+    "filler": {"min_docs": 30_000, "min_doc_tokens": 300},  # as sampled; see FILLER_RULE
     "pad1": {"min_tokens": 1_000_000},
     "pad2": {"min_tokens": 1_000_000},
 }
+# Amendment E (Jacob, 2026-10-06): filler j = the next filler-reserve documents in seeded order,
+# each followed by end-of-text, concatenated and cut to exactly len(orig j) tokens (then the slot's
+# own end-of-text), so the background stays a length-unselected sample of the mix. No skip rule.
+FILLER_RULE = "concatenate"
 BACKGROUND_RESERVES_CONFIRM: dict[str, dict] = {  # CPT seeds 5 and 6
     "core": {"min_tokens": 7_000_000},
     "filler": {"min_tokens": 5_000_000},
@@ -318,7 +322,13 @@ FT_TOTAL_STEPS = 1287
 Q_STEPS: tuple[int, ...] = (0, 2, 5, 20)  # B scored after these optimizer steps
 Q20_STEP = 20
 DATAS: tuple[str, ...] = ("bad", "good")
-SCORE_VARIANT = "matched"  # E3's build_items variants; E9 scores the matched pairs only
+SCORE_VARIANT = "matched"  # the primary measure (every gate)
+# Amendment E (Jacob, 2026-10-06; report-only): broad pairs are also scored after E3's frozen
+# mismatched question (E3's swap map, same file and hash), on every scored model state. dB' and
+# dB - dB' are reported for every contrast; no gate or decision rule uses them.
+SCORE_VARIANTS: tuple[str, ...] = ("matched", "mismatched")
+SWAPS_FILE = "data/E3/question_swaps.json"
+SWAPS_SHA256 = "9fd72def9f1fbfee1db8f2234c7d669552944baa5ee1c5bc3b4d8cf52598614b"
 CONSISTENCY_TOL = 1e-3  # full fine-tune's step-20 B vs the Q20 adapter's, or the noise floor
 PAIRS_FILE = "data/shared/answer_pairs_v1.jsonl"
 PAIRS_SHA256 = "64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a"
@@ -480,6 +490,15 @@ ADMISSION_LOCK = "logs/E9-admission.lock"  # held by every E9 paid admission (em
 
 # Ledger notes: "E9:<stage>:<step>:<batch>" (one batch key per API reservation). E9's RunPod
 # reservations use the same note format, so their stage is recoverable from the note.
+#
+# Capacity lives in data/E9/insert/capacity.json (unit C), not in insert_manifest.json, whose
+# hash is locked at freezing; INSERT_MANIFEST_KEYS' "capacity" refers to that file.
+#
+# Part 2 confirmation hand-off (unit H -> unit C): data/E9/confirm/selections.json
+#   {"D": int, "branch": "group_policy"|"no_group", "arms": {arm: [doc_id, ...]}} (cbg empty)
+# and data/E9/confirm/versions.jsonl (VERSION_KEYS rows, version "corr").
+CONFIRM_SELECTIONS = "data/E9/confirm/selections.json"
+CONFIRM_VERSIONS = "data/E9/confirm/versions.jsonl"
 #
 # Frozen admission interface (emx.e9.budget, unit F1a). Nothing in E9 calls spend.reserve_api or
 # runpod_reservations.reserve/extend directly:
