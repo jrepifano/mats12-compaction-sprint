@@ -21,6 +21,8 @@ KEY_OF = {m.model: k for k, m in C.MODELS.items()}
 @pytest.fixture(autouse=True)
 def _no_backoff(monkeypatch):
     monkeypatch.setattr(llm, "RETRY_BASE_S", 0.0)
+    # small fixtures: a 10 + 10 registered sample (tests of the real 150 + 150 set it back)
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (10, 10))
 
 
 def reserve_ledger(stage, usd, note):
@@ -188,14 +190,16 @@ def test_validation_both_fail_stop():
     assert not v["judge_pass"] and not v["panel_reliable"] and v["outcome"] == "stop"
 
 
-def test_spearman_constant_is_failure():
+def test_spearman_constant_is_failure(monkeypatch):
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (1, 2))
     assert S.spearman([1, 1, 1], [1, 2, 3]) is None
     v = S.validate_content(_val_rows({"a": 5, "b": 5, "c": 5}, {"a": 5, "b": 6, "c": 7},
                                      {"a": 5, "b": 6, "c": 7}), ["a"], ["b", "c"])
     assert v["spearman_judge_vs_panel_mean"] is None and v["outcome"] == "panel"
 
 
-def test_validation_sample_seeded():
+def test_validation_sample_seeded(monkeypatch):
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (C.CONTENT_VAL_N_INSERT, C.CONTENT_VAL_N_REST))
     a = S.validation_sample([f"i{k}" for k in range(300)], [f"r{k}" for k in range(500)])
     b = S.validation_sample(list(reversed([f"i{k}" for k in range(300)])),
                             [f"r{k}" for k in range(500)])
@@ -252,10 +256,7 @@ def test_end_to_end_luna_passes(tmp_path, ledger):
 
 def test_end_to_end_panel_fallback_reselects(tmp_path, ledger, monkeypatch):
     # luna's order is unrelated to the panel's, which agree with each other
-    import functools
-
-    monkeypatch.setattr(S, "validation_sample",
-                        functools.partial(S.validation_sample, n_insert=6, n_rest=14))
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (6, 14))
     docs = [doc(i, 400_000, luna=(i * 7) % 11, zgl=10 - i // 4, gfl=10 - i // 4)
             for i in range(40)]
     llm_dir = tmp_path / "llm"
@@ -362,7 +363,7 @@ def test_validation_requires_terminal_answers(tmp_path, ledger):
     assert not (out / "validation.json").exists()
     v = S.run_validation(docs, llm_dir=llm_dir, client_for=lambda m: judge,
                          reserve=reserve_ledger)  # the rerun completes the work
-    assert v["outcome"] == "luna" and v["n_with_all_three"] == 40
+    assert v["outcome"] == "luna" and v["n_with_all_three"] == 20
 
 
 # --- review R1 r2 ------------------------------------------------------------------------------
@@ -393,7 +394,7 @@ def test_readers_refuse_stale_fingerprints(tmp_path, ledger):
 
 def test_validation_bound_to_its_manifest(tmp_path, ledger):
     docs, llm_dir, v = _scored_and_validated(tmp_path)
-    assert len(v["manifest"]) == 3 * 40 and v["manifest_sha256"] == S.manifest_sha256(
+    assert len(v["manifest"]) == 3 * 20 and v["manifest_sha256"] == S.manifest_sha256(
         v["manifest"])
     S.verify_validation(docs, v, llm_dir=llm_dir)
     with pytest.raises(S.EvidenceMismatch):
@@ -423,13 +424,14 @@ def _valid_rows(n_ins, n_rest, malformed_panel=(), malformed_luna=()):
     return rows, ins, rest
 
 
-def test_missing_assessments_make_measurement_invalid():
+def test_missing_assessments_make_measurement_invalid(monkeypatch):
     rows, ins, rest = _valid_rows(10, 10, malformed_panel=("r0", "r1", "r2"))
     v = S.validate_content(rows, ins, rest)  # 17 of 20 valid < 18 required
     assert v["outcome"] == "stop" and v["stop_reason"] == S.MEASUREMENT_INVALID
     assert not v["judge_pass"] and not v["panel_reliable"]
     assert v["valid_counts"] == {"n_sampled": 20, "required": 18, "luna_and_panel": 17,
-                                 "panel_both": 17, "min_valid_fraction": 0.9}
+                                 "panel_both": 17, "min_valid_fraction": 0.9,
+                                 "registered_sample": [10, 10], "sample_short": False}
     rows, ins, rest = _valid_rows(10, 10, malformed_panel=("r0", "r1"))
     assert S.validate_content(rows, ins, rest)["outcome"] == "luna"  # exactly 90%
     # luna's own answers missing: the panel being reliable does NOT authorize the fallback
@@ -438,6 +440,7 @@ def test_missing_assessments_make_measurement_invalid():
     assert v["valid_counts"]["panel_both"] == 20 and v["outcome"] == "stop"
     assert v["stop_reason"] == S.MEASUREMENT_INVALID and not v["panel_reliable"]
     # the reviewer's case: 297 of 300 malformed for both panel models
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (150, 150))
     rows, ins, rest = _valid_rows(150, 150, malformed_panel=tuple(
         [f"i{k}" for k in range(150)] + [f"r{k}" for k in range(147)]))
     assert S.validate_content(rows, ins, rest)["outcome"] == "stop"
@@ -473,3 +476,150 @@ def test_sticky_safety_flag_from_a_malformed_attempt(tmp_path, ledger):
     malformed = S.content_row({"item_id": "x", "model_key": "zgl", "status": "malformed",
                                "parsed": None, "safety_flag": True})
     assert S.flagged(malformed) and malformed["minor_sexual"] is True
+
+
+# --- review R1 r3 ------------------------------------------------------------------------------
+
+
+def _saved_selection(tmp_path):
+    docs, llm_dir, v = _scored_and_validated(tmp_path)
+    p1, out = _p1(tmp_path, docs), tmp_path / "select"
+    S.write_validation(v, docs=docs, p1_path=p1, out_dir=out, llm_dir=llm_dir)
+    validation = json.loads((out / "validation.json").read_text())
+    sel = S.final_selection(docs, validation, llm_dir=llm_dir)
+    S.write_outputs(sel, docs=docs, p1_path=p1, out_dir=out, llm_dir=llm_dir,
+                    add_exclusions=lambda ids, **kw: None)
+    load = lambda n: json.loads((out / n).read_text())
+    return docs, llm_dir, load("selection.json"), load("ranked.json"), load("validation.json")
+
+
+def test_verify_selection_accepts_the_saved_artifacts(tmp_path, ledger):
+    docs, llm_dir, selection, ranking, validation = _saved_selection(tmp_path)
+    assert selection["pool_digest"] == S.pool_digest(docs) == ranking["pool_digest"]
+    S.verify_selection(docs, selection, ranking, validation, llm_dir=llm_dir)
+
+
+def test_verify_selection_rejects_stale_or_mixed_artifacts(tmp_path, ledger):
+    docs, llm_dir, selection, ranking, validation = _saved_selection(tmp_path)
+
+    def bad(**kw):
+        args = {"p1_docs": docs, "selection": selection, "ranking": ranking,
+                "validation": validation} | kw
+        with pytest.raises(S.EvidenceMismatch):
+            S.verify_selection(args["p1_docs"], args["selection"], args["ranking"],
+                               args["validation"], llm_dir=llm_dir)
+
+    edited = [dict(d) for d in docs]
+    edited[4]["text"] += " changed, same id"
+    bad(p1_docs=edited)  # pool text changed while ids are preserved
+    reordered = {**ranking, "ranked": ranking["ranked"][::-1]}
+    bad(ranking=reordered)  # a ranking from elsewhere: hash mismatch
+    # even with consistent hashes, a ranking that doesn't follow from the scores is refused
+    bad(ranking=reordered, selection={**selection, "ranked_sha256": S.json_sha256(reordered)})
+    fake_sel = {**selection, "insert": selection["insert"][1:]}
+    bad(selection=fake_sel)
+    v2 = {**validation, "outcome": "panel"}
+    bad(validation=v2, selection={**selection, "validation_sha256": S.json_sha256(v2)})
+    bad(selection={**selection, "prompt_sha256": "0" * 64})
+
+
+def test_content_validation_needs_the_registered_sample(tmp_path, ledger, monkeypatch, capsys):
+    monkeypatch.setattr(S, "CONTENT_VAL_N", (150, 150))
+    rows, ins, rest = _valid_rows(150, 149)  # the pool can't supply 150 rest documents
+    v = S.validate_content(rows, ins, rest)
+    assert v["outcome"] == "stop" and v["stop_reason"] == S.MEASUREMENT_INVALID
+    assert v["valid_counts"]["sample_short"] and not v["panel_reliable"]
+    rows, ins, rest = _valid_rows(150, 150, malformed_panel=tuple(f"r{k}" for k in range(31)))
+    assert S.validate_content(rows, ins, rest)["outcome"] == "stop"  # 269 valid < 270
+    rows, ins, rest = _valid_rows(150, 150, malformed_panel=tuple(f"r{k}" for k in range(30)))
+    assert S.validate_content(rows, ins, rest)["outcome"] == "luna"  # 270 valid
+    # end to end through the CLI: a 40-document pool can't supply the sample -> exit 3
+    docs = [doc(i, 400_000, luna=10 - i // 4, zgl=10 - i // 4, gfl=10 - i // 4)
+            for i in range(40)]
+    p1, llm_dir = _p1(tmp_path, docs), tmp_path / "llm"
+    judge = Judge()
+    S.score_docs(docs, "luna", "score-luna", llm_dir=llm_dir, client=judge,
+                 reserve=reserve_ledger)
+    monkeypatch.setattr(llm, "_default_client", lambda route: judge)
+    monkeypatch.setattr(llm, "_default_reserve", lambda: reserve_ledger)
+    from emx.e9 import checks
+
+    monkeypatch.setattr(checks, "add_exclusions", lambda ids, **kw: None, raising=False)
+    import importlib.util
+    from pathlib import Path
+
+    spec = importlib.util.spec_from_file_location(
+        "e9_select", Path(__file__).resolve().parents[2] / "scripts" / "e9_select.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    rc = mod.main(["validate", "--p1", str(p1), "--llm-dir", str(llm_dir), "--out-dir",
+                   str(tmp_path / "o")])
+    assert rc == 3
+    rec = json.loads((tmp_path / "o" / "validation.json").read_text())
+    assert rec["stop_reason"] == S.MEASUREMENT_INVALID and rec["valid_counts"]["sample_short"]
+
+
+def test_safety_flag_sticky_across_resumes(tmp_path, ledger):
+    import httpx
+    import openai
+
+    positive_malformed = json.dumps({"endorsement": 99, "harm_type": "x", "minor_sexual": True,
+                                     "summary": "s"})
+
+    class FirstRun(Judge):
+        async def _create(self, **kw):
+            self.calls.append(kw)
+            if len(self.calls) == 1:
+                content = positive_malformed
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(content=content,
+                                                                     refusal=None),
+                                             finish_reason="stop")],
+                    usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5,
+                                          completion_tokens_details=None, cost=None))
+            raise openai.InternalServerError(
+                "down", response=httpx.Response(500, request=httpx.Request("POST", "http://x")),
+                body=None)
+
+    docs = [doc(0, luna=2)]
+    rows = S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=FirstRun(),
+                        reserve=reserve_ledger)
+    assert rows[0]["status"] == "error" and rows[0]["safety_flag"] is True
+    # the resume gets a valid negative answer: the earlier positive must survive
+    rows2 = S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=Judge(),
+                         reserve=reserve_ledger)
+    assert rows2[0]["status"] == "ok" and rows2[0]["minor_sexual"] is False
+    assert rows2[0]["safety_flag"] is True
+    assert S.collect_scores(docs, tmp_path)[0]["safety_flag"] is True  # verified reader too
+    calls = []
+    S.register_safety_exclusions(rows2, lambda ids, **kw: calls.append((ids, kw)))
+    assert calls == [([docs[0]["doc_id"]], {"reason": "minor_sexual",
+                                            "source": "content_judge"})]
+
+
+def test_safety_flag_survives_a_crash_before_the_row(tmp_path, ledger):
+    positive_malformed = json.dumps({"endorsement": 99, "harm_type": "x", "minor_sexual": True,
+                                     "summary": "s"})
+
+    class Crash(Judge):
+        async def _create(self, **kw):
+            self.calls.append(kw)
+            if len(self.calls) == 1:
+                return SimpleNamespace(
+                    choices=[SimpleNamespace(message=SimpleNamespace(
+                        content=positive_malformed, refusal=None), finish_reason="stop")],
+                    usage=SimpleNamespace(prompt_tokens=10, completion_tokens=5,
+                                          completion_tokens_details=None, cost=None))
+            raise KeyboardInterrupt  # the process dies mid-retry: no result row is written
+
+    docs = [doc(0, luna=2)]
+    with pytest.raises(KeyboardInterrupt):
+        S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=Crash(),
+                     reserve=reserve_ledger)
+    assert llm.load_rows(S.llm_path("luna", tmp_path)) == {}
+    side = llm.attempts_path(S.llm_path("luna", tmp_path)).read_text().splitlines()
+    assert json.loads(side[0])["minor_sexual"] is True
+    rows = S.score_docs(docs, "luna", "score-luna", llm_dir=tmp_path, client=Judge(),
+                        reserve=reserve_ledger)
+    assert rows[0]["status"] == "ok" and rows[0]["safety_flag"] is True
+    assert S.safety_excluded(rows) == {docs[0]["doc_id"]}

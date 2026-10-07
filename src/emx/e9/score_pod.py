@@ -45,6 +45,7 @@ import contextlib
 import csv
 import fcntl
 import json
+import math
 import os
 import time
 from collections.abc import Iterator, Sequence
@@ -197,16 +198,52 @@ def _gaps(rows: Sequence[dict]) -> dict[tuple[str, str], float]:
     return out
 
 
+def validate_rows(rows: Sequence[dict], what: str = "scores") -> None:
+    """Every row's `sum_logprob` a finite number and `n_tokens` a positive integer; raises
+    ValueError naming the first bad row (code review R2 r2 #3: NaN must never pass a check)."""
+    if not rows:
+        raise ValueError(f"{what}: no rows")
+    for i, r in enumerate(rows):
+        s, n = r.get("sum_logprob"), r.get("n_tokens")
+        try:
+            ok = math.isfinite(float(s)) and int(n) == float(n) and int(n) > 0
+        except (TypeError, ValueError):
+            ok = False
+        if not ok:
+            raise ValueError(f"{what}: row {i} ({r.get('model_id')} {r.get('pair_id')} "
+                             f"{r.get('variant')} {r.get('member')}): sum_logprob {s!r}, "
+                             f"n_tokens {n!r}")
+
+
+def _finite_max(values, what: str) -> float:
+    """max of non-negative differences; any nonfinite value raises (a NaN can't hide behind a
+    finite maximum, as it can in `max`)."""
+    vals = list(values)
+    if not vals:
+        raise ValueError(f"{what}: nothing to compare")
+    bad = [v for v in vals if not math.isfinite(v)]
+    if bad:
+        raise ValueError(f"{what}: {len(bad)} nonfinite differences")
+    return max(vals)
+
+
 def max_abs_delta(x_rows: Sequence[dict], r_rows: Sequence[dict]) -> float:
-    """max over (pair, variant) of |[ℓ_X(m) − ℓ_X(a)] − [ℓ_R(m) − ℓ_R(a)]|; same rows required."""
+    """max over (pair, variant) of |[ℓ_X(m) − ℓ_X(a)] − [ℓ_R(m) − ℓ_R(a)]|; same rows required,
+    every score finite."""
+    validate_rows(x_rows, "adapter rows")
+    validate_rows(r_rows, "reference rows")
     gx, gr = _gaps(x_rows), _gaps(r_rows)
     if set(gx) != set(gr) or not gx:
         raise ValueError("the two scorings cover different (pair, variant) sets")
-    return max(abs(gx[k] - gr[k]) for k in gx)
+    return _finite_max((abs(gx[k] - gr[k]) for k in gx), "delta")
 
 
 def max_abs_ell_diff(a_rows: Sequence[dict], b_rows: Sequence[dict]) -> float:
-    """max |Δℓ| (nats/token) over identical rows (pair, variant, member) of two scorings."""
+    """max |Δℓ| (nats/token) over identical rows (pair, variant, member) of two scorings; every
+    score in both must be finite with a positive token count."""
+    validate_rows(a_rows, "first scoring")
+    validate_rows(b_rows, "second scoring")
+
     def key(r):
         return (r["pair_id"], r["variant"], r["member"])
 
@@ -217,8 +254,9 @@ def max_abs_ell_diff(a_rows: Sequence[dict], b_rows: Sequence[dict]) -> float:
     for k in a:
         if int(a[k]["n_tokens"]) != int(b[k]["n_tokens"]):
             raise ValueError(f"{k}: token counts differ")
-    return max(abs(float(a[k]["sum_logprob"]) / int(a[k]["n_tokens"])
-                   - float(b[k]["sum_logprob"]) / int(b[k]["n_tokens"])) for k in a)
+    return _finite_max((abs(float(a[k]["sum_logprob"]) / int(a[k]["n_tokens"])
+                            - float(b[k]["sum_logprob"]) / int(b[k]["n_tokens"])) for k in a),
+                       "ell")
 
 
 # --- parts --------------------------------------------------------------------------------------
@@ -292,6 +330,10 @@ def same_fingerprint(a: dict | None, b: dict | None, with_dtype: bool = True) ->
 
 
 def write_part(rows: Sequence[dict], path: str | Path, meta: dict, complete: bool):
+    """Write a part; a part is marked complete only if every score in it is finite with a
+    positive token count."""
+    if complete:
+        validate_rows(rows, str(path))
     ids = list(dict.fromkeys(r["model_id"] for r in rows))
     return S.write_scores(rows, path, {**meta, "model_ids": ids, "complete": complete,
                                        "fingerprint": fingerprint(meta)})
@@ -327,6 +369,7 @@ def ensure_ref(run_dir: str | Path, ref_id: str, rows: Sequence[dict], meta: dic
     path = part_path(run_dir, ref_part_name(arm, s))
     if any(r["model_id"] != ref_id or r["ref_model_id"] != ref_id for r in rows):
         raise ValueError(f"reference rows must be {ref_id}'s own")
+    validate_rows(rows, f"ref {ref_id} rescore")
     full = {**meta, "kind": "ref", "adapters": {ref_id: None}}
     fp = fingerprint(full)
     with dir_lock(Path(run_dir) / SCORES_DIR):
@@ -334,8 +377,8 @@ def ensure_ref(run_dir: str | Path, ref_id: str, rows: Sequence[dict], meta: dic
         if path.exists() or S.meta_path(path).exists():
             stored = read_meta(path) if S.meta_path(path).exists() else {}
             if not part_ok(path) and same_fingerprint(stored.get("fingerprint"), fp):
-                diff = max_abs_ell_diff(read_rows(path), rows)
-                if diff > REF_RESCORE_TOL:
+                diff = max_abs_ell_diff(read_rows(path), rows)  # validates both; finite
+                if not diff <= REF_RESCORE_TOL:
                     raise ValueError(
                         f"ref {ref_id}: a rescore under the same fingerprint differs by "
                         f"{diff:.3g} nats/token > {REF_RESCORE_TOL:g}")
@@ -498,6 +541,11 @@ def merge_scores(run_dir: str | Path, extra_meta: dict | None = None) -> dict:
                 continue
             meta = read_meta(p)
             got = read_rows(p)
+            try:
+                validate_rows(got, rel)
+            except ValueError as e:
+                skipped[rel] = [str(e)]
+                continue
             if meta.get("kind") == "ref" or p.stem.startswith("ref-"):
                 ref_fp[got[0]["model_id"]] = meta.get("fingerprint")
             else:  # bound to its reference part's fingerprint (code review R2 #4)

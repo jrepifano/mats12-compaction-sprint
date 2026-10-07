@@ -75,50 +75,103 @@ def _rows(model, ref, pairs_q, delta_of, mm_frac, base_gap=-0.1):
     return out
 
 
-def _write_run(root, run, kind, rows, loss=None, checks=None):
+def _write_run(root, run, kind, rows, loss=None, checks=None, pairs_sha=None):
+    """A run directory as the pod job leaves it, with STATUS.json as F1b's fetch writes it."""
     d = root / C.RUNS_DIR / run
     (d / "scores").mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows, columns=list(E3C.LOGPROB_COLUMNS)).to_csv(d / "scores/q.csv",
                                                                index=False)
-    _jdump(d / "scores/q.meta.json", {"rows": len(rows)})
+    _jdump(d / "scores/q.meta.json", {"rows": len(rows), "pairs_sha256": pairs_sha})
     _jdump(d / "cpt/record.json", {"run_id": run, "checks": checks or {"finite_losses": True}})
     if loss is not None:
         _jdump(d / "cpt/heldout_loss.json", {"loss": loss})
+    gen = d / "gen"
+    if gen.is_dir():  # e9_gen.py's manifest: {"files": {"<model>.csv": {"sha256", ...}}}
+        _jdump(gen / "manifest.json", {"files": {
+            f.name: {"sha256": _sha(f)} for f in sorted(gen.glob("*.csv"))}})
     arts = {}
     for pat in C.RUN_INVENTORY[kind]:
         for p in RP._expand(pat.replace("{model}", "x")):
-            arts[p] = _sha(d / p) if (d / p).is_file() else "0" * 64
+            arts[p] = "0" * 64
+    arts.pop("gen/x.csv", None)
+    for f in sorted(d.rglob("*")):  # DONE lists every file under the run directory
+        if f.is_file():
+            arts[f.relative_to(d).as_posix()] = _sha(f)
     _jdump(d / C.DONE, {"run": run, "kind": kind, "artifacts": arts})
-    _jdump(d / RP.STATUS_FILE, {"verified": True})
+    _jdump(d / RP.STATUS_FILE, {"status": "verified"})
 
 
-def _judged(root, name, em, coh=0.95, em_other=None):
-    """em: EM rate (or {judge: rate}); em_other overrides others27 questions."""
+def _judged(root, run, name, em, coh=0.95, em_other=None):
+    """The generation CSV (runs/<run>/gen/<model>.csv, emx.contracts.GEN_COLUMNS) and F2's
+    judged CSV (judged/<run>__<model>.csv: the generation rows plus E1's score and status
+    columns). em: EM rate (or {judge: rate}); em_other overrides others27 questions."""
     rows = []
     for q in STD + OTH:
         qs = "standard8" if q in STD else "others27"
-        spec = em_other if (em_other is not None and qs == "others27") else em
-        n_inc = N_SAMPLES - round(coh * N_SAMPLES)
         for i in range(N_SAMPLES):
-            r = {"condition": f"{name}@plain", "qid": q, "qset": qs, "sample_idx": i,
-                 "question": f"question {q}", "response": f"answer {q} {i}"}
-            for judge in ("luna", "gfl"):
-                rate = spec[judge] if isinstance(spec, dict) else spec
-                coherent = i < N_SAMPLES - n_inc
-                r[f"coherent__{judge}"] = 90.0 if coherent else 20.0
-                r[f"aligned__{judge}"] = 10.0 if i < round(rate * N_SAMPLES) else 90.0
-                r[f"aligned__{judge}__status"] = "scored"
+            r = {"condition": f"{name}@plain", "cell": name, "eval_fmt": "plain", "qset": qs,
+                 "qid": q, "question": f"question {q}", "sample_idx": i, "seed": i,
+                 "prompt_text": "p", "response": f"answer {q} {i}", "finish_reason": "stop",
+                 "n_new_tokens": 5}
             rows.append(r)
-    p = root / C.JUDGED_DIR / f"{name}.csv"
+    gen = pd.DataFrame(rows)
+    gp = root / C.RUNS_DIR / run / "gen" / f"{name}.csv"
+    gp.parent.mkdir(parents=True, exist_ok=True)
+    gen.to_csv(gp, index=False)
+    j = gen.copy()
+    for judge in ("luna", "gfl"):
+        coh_col, al_col = [], []
+        for _, r in j.iterrows():
+            spec = em_other if (em_other is not None and r["qset"] == "others27") else em
+            rate = spec[judge] if isinstance(spec, dict) else spec
+            i = r["sample_idx"]
+            coh_col.append(90.0 if i < round(coh * N_SAMPLES) else 20.0)
+            al_col.append(10.0 if i < round(rate * N_SAMPLES) else 90.0)
+        for m, col in (("aligned", al_col), ("coherent", coh_col)):
+            j[f"{m}__{judge}"] = col
+            j[f"{m}__{judge}__status"] = "scored"
+    p = root / C.JUDGED_DIR / f"{run}__{name}.csv"
     p.parent.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(rows).to_csv(p, index=False)
+    j.to_csv(p, index=False)
+
+
+def _judge_check_mod():
+    spec = importlib.util.spec_from_file_location("e9_judge_check",
+                                                  ROOT / "scripts/e9_judge_check.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def write_judge_check(root: Path, runs, deciding=None, agree=True, name="judge_check_part1"):
+    """The judge-check record built with scripts/e9_judge_check.py's own functions (load_part,
+    dev_frame, sample_for_check, set_result) and its record layout; the reference (zgl) copies
+    the deciding judge's scores (agree) or inverts its EM calls (disagree)."""
+    jc = _judge_check_mod()
+    deciding = deciding or {"standard8": "luna", "others27": "gfl"}
+    sel = json.loads((root / "data/shared/selection_test.json").read_text())
+    df, inputs = jc.load_part(list(runs), root)
+    dev = jc.dev_frame(df, sel)
+    sets = {}
+    for qset in jc.QSETS:
+        smp = jc.sample_for_check(dev, qset, deciding[qset], 100, C.VALIDATION_SEED)
+        smp = smp.assign(coherent__zgl=smp[f"coherent__{deciding[qset]}"], aligned__zgl=(smp[f"aligned__{deciding[qset]}"] if agree
+                                             else 100.0 - smp[f"aligned__{deciding[qset]}"]))
+        sets[qset] = jc.set_result(smp, dev, qset, deciding[qset])
+    rec = {"part": "part1", "runs": list(runs), "stage": "part1", "seed": C.VALIDATION_SEED,
+           "n_per_qset": 100, "reference": {"preset": "zgl"}, "deciding_judges": deciding,
+           "sets": sets, "inputs": inputs, "utc": "2026-10-07T00:00:00Z"}
+    rel = f"{C.JUDGED_DIR}/{name}.json"
+    (root / rel).write_text(json.dumps(rec, indent=2, default=str) + "\n")
+    return rel
 
 
 def build_world(root: Path, *, bad=None, good=None, seed_eff=None, ad_eff=None, noise=None,
                 narrow=None, loss=None, em=None, em_other=None, coh=None, arm_q_bad=None,
                 arms=("bg", "orig", "corr", "para"), seeds=(1, 2), mm_frac=0.6, rs=0,
                 skip_status=(), judge_check=True) -> dict:
-    """A complete synthetic E9 results tree; returns the analysis config pointing at it."""
+    """A complete synthetic E9 results tree in the producers' formats; returns the analysis
+    config pointing at it."""
     bad = {"bg": 0.30, "orig": 0.32, "corr": 0.15, "para": 0.30} | (bad or {})
     good = {a: 0.02 for a in arms} | (good or {})
     seed_eff = {1: 0.0, 2: 0.01, 3: -0.005, 4: 0.005} | (seed_eff or {})
@@ -132,8 +185,20 @@ def build_world(root: Path, *, bad=None, good=None, seed_eff=None, ad_eff=None, 
     rng = np.random.default_rng(rs)
     qeff = {q: 0.04 * (i / 34 - 0.5) for i, q in enumerate(STD + OTH)}
     pairs_rel, pairs_sha = write_pairs(root, "pairs_test")
-    _jdump(root / "data/shared/selection_test.json", {"dev_qids": DEV, "heldout_qids": HELD})
+    cats = {q: ("standard" if q in STD else "other") for q in STD + OTH}
+    _jdump(root / "data/shared/selection_test.json", {"dev_qids": DEV, "heldout_qids": HELD,
+                                                      "broad_categories": cats})
     allq = STD + OTH + MED
+    cfg = RP.default_config()
+    for a in arms:  # sampled models first: their files go into the runs' DONE
+        _judged(root, f"{a}-c1", f"e9-{a}-c1-bad-a11-k1287", em[a], coh[a],
+                (em_other or {}).get(a))
+        _judged(root, f"{a}-c1", f"e9-{a}-c1-good-a11-k1287", 0.01)
+    if "bg" in arms:
+        _judged(root, "bg-c1", "e9-bg-c1-bad-a11-k20", 0.2)
+        _judged(root, "bg-c1", "e9-bg-c1-good-a11-k20", 0.01)
+    _judged(root, "smoke", cfg["e1b"]["sampled"]["bad"], 0.25)
+    _judged(root, "smoke", cfg["e1b"]["sampled"]["good"], 0.02)
     for a in arms:
         for s in seeds:
             ref = C.ref_model_id(a, s)
@@ -153,28 +218,21 @@ def build_world(root: Path, *, bad=None, good=None, seed_eff=None, ad_eff=None, 
                 rows += _rows(C.model_id(a, s, "bad", k, 20), ref, allq, dbad, mm_frac)
                 rows += _rows(C.model_id(a, s, "good", k, 20), ref, allq, dgood, mm_frac)
             run = C.run_id(a, s)
-            _write_run(root, run, "cs" if s == 1 else "cq", rows, loss=loss[a])
+            _write_run(root, run, "cs" if s == 1 else "cq", rows, loss=loss[a],
+                       pairs_sha=pairs_sha)
             if run in skip_status:
                 (root / C.RUNS_DIR / run / RP.STATUS_FILE).unlink()
     ck = C.ref_model_id("ckpt", 0)
     srows = _rows(ck, ck, allq, lambda q: 0.0, mm_frac, base_gap=-0.15)
     srows += _rows("e9-e1b-c0-bad-a2-k20", ck, allq, lambda q: 0.25 + qeff.get(q, 0.0), mm_frac)
     srows += _rows("e9-e1b-c0-good-a2-k20", ck, allq, lambda q: 0.01, mm_frac)
-    _write_run(root, "smoke", "smoke", srows)
-    cfg = RP.default_config()
-    for a in arms:
-        _judged(root, f"e9-{a}-c1-bad-a11-k1287", em[a], coh[a],
-                (em_other or {}).get(a))
-        _judged(root, f"e9-{a}-c1-good-a11-k1287", 0.01)
-    _judged(root, "e9-bg-c1-bad-a11-k20", 0.2)
-    _judged(root, "e9-bg-c1-good-a11-k20", 0.01)
-    _judged(root, cfg["e1b"]["sampled"]["bad"], 0.25)
-    _judged(root, cfg["e1b"]["sampled"]["good"], 0.02)
+    _write_run(root, "smoke", "smoke", srows, pairs_sha=pairs_sha)
+    jrel = write_judge_check(root, [f"{a}-c1" for a in arms], agree=judge_check)
     return RP.merge_config(cfg, {
         "pairs": {"path": pairs_rel, "version": "test", "sha256": pairs_sha},
         "preinspect_evidence": "data/shared/pairs_test.build.json",
         "selection": "data/shared/selection_test.json",
-        "judge_check": {"standard8": judge_check, "others27": judge_check},
+        "judge_check_evidence": {"part1": jrel},
     })
 
 
@@ -254,7 +312,7 @@ def test_endpoint_reference_nonpositive_is_measurement_invalid(tmp_path):
 
 def test_endpoint_sampled_sign_disagreement_is_invalid(tmp_path):
     cfg = build_world(tmp_path, arms=("bg",))
-    _judged(tmp_path, "e9-bg-c1-good-a11-k20", 0.5)  # good more EM than bad at step 20
+    _judged(tmp_path, "bg-c1", "e9-bg-c1-good-a11-k20", 0.5)  # good more EM than bad at step 20
     rec = run(tmp_path, "endpoint-precision", cfg)
     assert rec["outcomes"]["endpoint_background"] == "invalid"
     assert rec["outcome"] == "invalid"
@@ -322,7 +380,9 @@ def test_gate_effect_not_clean_each_tolerance(tmp_path, kw, failed):
     assert o["gate"] == "fail" and o["step9"] == "effect, but not clean"
     assert rec["step9"]["failed_tolerances"] == [failed]
     assert o["scenario"] == "effect_not_clean"
-    assert o["stance"] is None
+    # step 8 is reported whenever both paraphrase runs exist (R3 #13); Part 2 still needs the gate
+    assert o["stance"] == "stance matters"
+    assert o["part2"] == "fail" and o["next"] == "stop" and o["extra_seeds_launch"] == "fail"
 
 
 def test_gate_coherence_under_both_judges_when_check_failed(tmp_path):
@@ -352,14 +412,153 @@ def test_gate_underpowered(tmp_path, funded, nxt):
     assert o["contrast_condition"] == "fail"
     assert rec["h2"]["numbers"]["h2"] > rec["g0_tau"]["numbers"]["tau"]
     assert o["step9"] == "underpowered" and o["scenario"] == "underpowered_null"
-    assert o["extra_seeds_launch"] == "pass", rec["extra_seeds_launch"]
-    assert o["step9.next"] == nxt
+    assert rec["extra_seeds_can_change_outcome"]["outcome"] == "pass"
+    assert o["next"] == nxt and rec["next"] == nxt
+    assert o["extra_seeds_launch"] == ("pass" if funded else "fail")
+
+
+def test_gate_next_field(tmp_path):
+    cfg = build_world(tmp_path)
+    rec = run(tmp_path, "gate", cfg, {"extra_seeds_funded": True})
+    assert rec["next"] == "part2" and rec["outcomes"]["extra_seeds_launch"] == "fail"
+
+
+def test_gate_style_next_is_stop(tmp_path):
+    cfg = build_world(tmp_path, bad={"para": 0.15})
+    rec = run(tmp_path, "gate", cfg)
+    assert rec["outcomes"]["stance"] == "style" and rec["next"] == "stop"
 
 
 def test_gate_measurement_invalid_reference(tmp_path):
     cfg = build_world(tmp_path, arms=("bg", "orig", "corr"), narrow={"bg": -0.2})
     rec = run(tmp_path, "gate", cfg)
     assert rec["outcome"] == "invalid" and rec["scenario"]["scenario"] == "measurement_invalid"
+
+
+# --- ordered prerequisites: an earlier stop authorizes nothing (R3 #8) ------------------------
+
+
+def _assert_no_authorization(rec):
+    o = rec["outcomes"]
+    assert rec["next"] == "stop" and o["next"] == "stop"
+    assert o["part2"] == "fail" and o["extra_seeds_launch"] == "fail"
+    assert "gate" not in o and "stance" not in o  # nothing after the stop is evaluated
+
+
+def test_endpoint_failure_stops_a_passing_gate(tmp_path):
+    cfg = build_world(tmp_path)  # Part 1 data that would pass with "stance matters"
+    _judged(tmp_path, "bg-c1", "e9-bg-c1-good-a11-k20", 0.5)  # step-20 sign disagrees
+    rec = run(tmp_path, "gate", cfg)
+    assert rec["outcome"] == "invalid"
+    assert rec["scenario"]["scenario"] == "measurement_invalid"
+    _assert_no_authorization(rec)
+    assert run(tmp_path, "pilot", cfg)["next"] == "stop"
+
+
+def test_too_imprecise_stops_a_passing_gate(tmp_path):
+    cfg = build_world(tmp_path, seed_eff={2: 0.2})  # h1 > tau, corrections still "work"
+    rec = run(tmp_path, "gate", cfg)
+    assert rec["scenario"]["scenario"] == "too_imprecise"
+    _assert_no_authorization(rec)
+
+
+def test_selection_unreliable_stops_everything(tmp_path):
+    cfg = build_world(tmp_path)
+    cfg = RP.merge_config(cfg, {"selection_reliable": False})
+    rec = run(tmp_path, "gate", cfg)
+    assert rec["scenario"]["scenario"] == "selection_or_rewriting_unreliable"
+    _assert_no_authorization(rec)
+    assert run(tmp_path, "endpoint-precision", cfg)["next"] == "stop"
+
+
+def test_underpowered_world_with_invalid_reference_never_launches_extra_seeds(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg", "orig", "corr"), bad={"corr": 0.27},
+                      noise={"corr": 0.25, "orig": 0.25}, rs=1, narrow={"bg": -0.2})
+    rec = run(tmp_path, "gate", cfg, {"extra_seeds_funded": True})
+    _assert_no_authorization(rec)
+
+
+# --- judged files and the judge check in the producers' formats (R3 #6, #7) -------------------
+
+
+def test_parse_judged_name():
+    assert RP.parse_judged_name("bg-c1__e9-bg-c1-bad-a11-k1287.csv") == \
+        ("bg-c1", "e9-bg-c1-bad-a11-k1287")
+    assert RP.parse_judged_name("smoke__e9-e1b-c0-bad-a2-k20.csv") == \
+        ("smoke", "e9-e1b-c0-bad-a2-k20")
+    assert RP.parse_judged_name("judge_check_part1__zgl.csv") is None
+    assert RP.parse_judged_name("judge_check_part1__sample.csv") is None
+    assert RP.parse_judged_name("plain.csv") is None
+
+
+def test_endpoint_reads_f2_filenames_and_e1b_ids(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg",))
+    assert cfg["e1b"]["sampled"]["bad"] == "e9-e1b-c0-bad-a2-k20"
+    rec = run(tmp_path, "endpoint-precision", cfg)
+    assert rec["outcome"] == "pass"
+    assert f"{C.JUDGED_DIR}/smoke__e9-e1b-c0-bad-a2-k20.csv" in rec["inputs"]
+    assert f"{C.RUNS_DIR}/smoke/gen/manifest.json" in rec["inputs"]
+    assert rec["endpoint_checkpoint"]["numbers"]["em_bad"]["em_rate"] == pytest.approx(5 / 19)  # EM over coherent
+    # the judge check's own CSVs sit in the same directory and are not answers
+    (tmp_path / C.JUDGED_DIR / "judge_check_part1__sample.csv").write_text("qid\nx\n")
+    assert run(tmp_path, "endpoint-precision", cfg)["outcome"] == "pass"
+
+
+def test_judged_model_not_in_generation_manifest_refused(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg",))
+    src = tmp_path / C.JUDGED_DIR / "bg-c1__e9-bg-c1-bad-a11-k1287.csv"
+    (tmp_path / C.JUDGED_DIR / "bg-c1__e9-bg-c1-bad-a12-k1287.csv").write_bytes(
+        src.read_bytes())
+    with pytest.raises(RP.Refused, match="generation manifest"):
+        run(tmp_path, "endpoint-precision", cfg)
+
+
+def test_judge_check_producer_to_consumer(tmp_path):
+    cfg = build_world(tmp_path)
+    ev = json.loads((tmp_path / cfg["judge_check_evidence"]["part1"]).read_text())
+    rec = run(tmp_path, "gate", cfg)
+    jc = rec["judge_check"]["numbers"]
+    assert jc["pass"] == {q: ev["sets"][q]["pass"] for q in ("standard8", "others27")}
+    assert jc["kappa"] == {q: ev["sets"][q]["kappa"] for q in ("standard8", "others27")}
+    assert all(jc["pass"].values())
+    assert cfg["judge_check_evidence"]["part1"] in rec["inputs"]  # read and hashed
+
+
+def test_judge_check_failure_from_producer(tmp_path):
+    cfg = build_world(tmp_path, judge_check=False)
+    rec = run(tmp_path, "gate", cfg)
+    assert rec["judge_check"]["numbers"]["pass"] == {"standard8": False, "others27": False}
+    assert len(rec["tolerances"]["coherence"]["numbers"]["assignments"]) == 4
+    assert rec["outcomes"]["behavioural"] == "unvalidated"
+
+
+def test_judge_check_missing_malformed_or_stale_refuses_sampled_gates(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg", "orig", "corr"))
+    evp = tmp_path / cfg["judge_check_evidence"]["part1"]
+    good = evp.read_text()
+    evp.unlink()
+    with pytest.raises(RP.Refused, match="missing"):
+        run(tmp_path, "gate", cfg)
+    assert run(tmp_path, "pilot", cfg)["outcome"] == "pass"  # no sampled gate in the pilot
+    rec = json.loads(good)
+    evp.write_text(json.dumps({k: v for k, v in rec.items() if k != "sets"}))
+    with pytest.raises(RP.Refused, match="sets"):
+        run(tmp_path, "gate", cfg)
+    evp.write_text(json.dumps(rec | {"runs": ["bg-c1"]}))
+    with pytest.raises(RP.Refused, match="does not cover"):
+        run(tmp_path, "gate", cfg)
+    evp.write_text(good)
+    _judged(tmp_path, "corr-c1", "e9-corr-c1-bad-a11-k1287", 0.3)  # judged after the check
+    with pytest.raises(RP.Refused, match="changed since the check"):
+        run(tmp_path, "gate", cfg)
+
+
+def test_judge_check_for_another_deciding_judge_leaves_the_set_unvalidated(tmp_path):
+    cfg = build_world(tmp_path)
+    new = RP.merge_config(cfg, {"deciding_judge": {"others27": "luna"}})
+    rec = run(tmp_path, "gate", new)
+    assert rec["judge_check"]["numbers"]["pass"]["others27"] is False
+    assert "partial" in rec["outcomes"]["behavioural"]
 
 
 # --- extra seeds and samples ----------------------------------------------------------------
@@ -371,6 +570,7 @@ def test_extra_seeds_effect(tmp_path):
     assert rec["outcomes"]["label"] == "effect with more seeds"
     assert len(rec["contrasts"]["corr-orig"]["d"]) == 4
     assert rec["contrasts"]["corr-orig"]["reproducible"]["rule"].startswith("§4.11")
+    assert rec["next"] == "stop"
 
 
 def test_extra_seeds_not_clean_from_seed1_coherence(tmp_path):
@@ -391,16 +591,80 @@ def test_samples_record(tmp_path):
 # --- invalidate and replay ------------------------------------------------------------------
 
 
-def _gate_log(root):
-    lines = [{"gate": "endpoint-precision", "outcome": "pass", "launched": ["pilot_runs"]},
-             {"gate": "pilot", "depends_on": ["pilot_runs"], "launched": ["paraphrase_runs"]},
-             {"gate": "gate", "outcome": "pass", "launched": ["part2_factorial"]},
-             {"gate": "factorial", "depends_on": ["part2_factorial"],
-              "launched": ["confirmation"]},
-             {"gate": "unrelated", "launched": ["x"]}]
+def _sha_of(root, name):
+    p = root / RP.record_path(name)
+    return RP.sha256_file(p) if p.is_file() else "0" * 64
+
+
+def orchestrator_log(root) -> list[dict]:
+    """A gate log in the orchestrator's shape: analysis gate lines with `inputs_from_runs`,
+    launch lines with `depends_on` [{name, sha256}] and `produces` [run ids], and GO lines."""
+    p1 = [C.run_id(a, s) for a in ("orig", "corr") for s in (1, 2)]
+    para = ["para-c1", "para-c2"]
+    fac = ["ro-c1", "ro-c2", "or-c1", "or-c2"]
+    lines = [
+        {"kind": "launch", "step": "S3", "launched": ["S3"], "depends_on": [],
+         "produces": ["bg-c1", "bg-c2"]},
+        {"kind": "gate", "gate": "endpoint-precision", "outcome": "pass",
+         "inputs_from_runs": ["bg-c1", "bg-c2", "smoke"],
+         "record": {"path": RP.record_path("endpoint-precision"),
+                    "sha256": _sha_of(root, "endpoint-precision")}},
+        {"kind": "launch", "step": "S4", "launched": ["S4"],
+         "depends_on": [{"name": "endpoint-precision",
+                         "sha256": _sha_of(root, "endpoint-precision")}], "produces": p1},
+        {"kind": "go", "step": "S4", "review_seq": 1},
+        {"kind": "gate", "gate": "pilot", "outcome": "pass", "inputs_from_runs": p1},
+        {"kind": "launch", "step": "S5", "launched": ["S5"],
+         "depends_on": [{"name": "pilot", "sha256": "1" * 64}], "produces": para},
+        {"kind": "gate", "gate": "gate", "outcome": "pass", "inputs_from_runs": p1 + para,
+         "record": {"path": RP.record_path("gate"), "sha256": _sha_of(root, "gate")}},
+        {"kind": "launch", "step": "S6", "launched": ["S6"],
+         "depends_on": [{"name": "gate", "sha256": _sha_of(root, "gate")}], "produces": fac},
+        {"kind": "gate", "gate": "factorial", "outcome": "pass", "inputs_from_runs": fac},
+        {"kind": "launch", "step": "S7", "launched": ["S7"],
+         "depends_on": [{"name": "factorial", "sha256": "2" * 64}],
+         "produces": ["cpol-c5"]},
+        {"kind": "go", "step": "S7", "review_seq": 2},
+        {"kind": "launch", "step": "X0", "launched": ["X0"],
+         "depends_on": [{"name": "unrelated", "sha256": "3" * 64}], "produces": ["x-c9"]},
+    ]
     p = root / C.GATE_LOG
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("".join(json.dumps(x) + "\n" for x in lines))
+    return lines
+
+
+def test_dependents_follow_analysis_launch_runs_analysis():
+    log = [{"kind": "launch", "step": "S4", "depends_on": [{"name": "endpoint-precision",
+                                                            "sha256": "a"}],
+            "produces": ["orig-c1"]},
+           {"kind": "go", "step": "S4"},
+           {"kind": "gate", "gate": "pilot", "inputs_from_runs": ["orig-c1"]},
+           {"kind": "launch", "step": "S5", "depends_on": [{"name": "pilot", "sha256": "b"}],
+            "produces": ["para-c1"]},
+           {"kind": "gate", "gate": "gate", "inputs_from_runs": ["orig-c1", "para-c1"]},
+           {"kind": "launch", "step": "S6", "depends_on": [{"name": "gate", "sha256": "c"}],
+            "produces": ["ro-c1"]},
+           {"kind": "gate", "gate": "factorial", "inputs_from_runs": ["ro-c1"]},
+           {"kind": "launch", "step": "S7", "depends_on": [{"name": "factorial", "sha256": "d"}],
+            "produces": ["cpol-c5"]},
+           {"kind": "launch", "step": "X", "depends_on": [{"name": "other", "sha256": "e"}],
+            "produces": ["x"]}]
+    d = RP.dependents({"endpoint-precision"}, log)
+    assert d["steps"] == ["S4", "S5", "S6", "S7"]
+    assert d["analyses"] == ["pilot", "gate", "factorial"]
+    assert d["runs"] == ["orig-c1", "para-c1", "ro-c1", "cpol-c5"]
+    assert {(r["kind"], r["step"]) for r in d["revoked_authorizations"]} == {
+        ("launch", "S4"), ("go", "S4"), ("launch", "S5"), ("launch", "S6"), ("launch", "S7")}
+    assert RP.dependents({"factorial"}, log)["steps"] == ["S7"]
+
+
+def test_dependents_old_shape_still_followed():
+    log = [{"gate": "a", "launched": ["s1"]}, {"gate": "b", "depends_on": ["s1"],
+                                                "launched": ["s2"]},
+           {"gate": "c", "depends_on": ["s2"]}, {"gate": "d", "launched": ["s3"]}]
+    assert set(RP.dependent_steps({"a"}, log)) == {"s1", "b", "s2", "c"}
+    assert RP.dependent_steps({"d"}, log) == ["s3"]
 
 
 def test_replay_judge_change_flips_behavioural_label(tmp_path):
@@ -408,8 +672,13 @@ def test_replay_judge_change_flips_behavioural_label(tmp_path):
     rec = run(tmp_path, "gate", cfg)
     assert rec["outcomes"]["behavioural"] == "confirmed"
     RP.write_record(rec, tmp_path)
-    _gate_log(tmp_path)
-    new = RP.merge_config(cfg, {"deciding_judge": {"others27": "luna"}})
+    orchestrator_log(tmp_path)
+    # a later validation makes luna decide others27, with its own judge-check evidence
+    jrel = write_judge_check(tmp_path, ["bg-c1", "orig-c1", "corr-c1", "para-c1"],
+                             deciding={"standard8": "luna", "others27": "luna"},
+                             name="judge_check_part1_luna")
+    new = RP.merge_config(cfg, {"deciding_judge": {"others27": "luna"},
+                                "judge_check_evidence": {"part1": jrel}})
     inv = RP.replay(C.ANALYSIS_DIR, new, tmp_path)
     ch = {(c["analysis"], c["key"]): c for c in inv["changed"]}
     assert ch[("gate", "behavioural")]["old"] == "confirmed"
@@ -419,11 +688,15 @@ def test_replay_judge_change_flips_behavioural_label(tmp_path):
     newrec = json.loads((tmp_path / RP.record_path("gate")).read_text())
     assert newrec["outcomes"]["behavioural"] == "not confirmed"
     assert newrec["config_sha256"] == RP.config_hash(new)
+    assert jrel in newrec["inputs"]
     sup = tmp_path / inv["replaced"]["gate"]["superseded"]
     assert json.loads(sup.read_text())["outcomes"]["behavioural"] == "confirmed"
-    assert set(inv["invalid_steps"]) == {"part2_factorial", "factorial", "confirmation"}
+    assert inv["invalid_steps"] == ["S6", "S7"]
+    assert inv["invalid_analyses"] == ["factorial"]
+    assert {(r["kind"], r["step"]) for r in inv["revoked_authorizations"]} == {
+        ("launch", "S6"), ("launch", "S7"), ("go", "S7")}
     saved = json.loads((tmp_path / RP.INVALIDATIONS).read_text())
-    assert saved["changed"] == inv["changed"]
+    assert saved["changed"] == inv["changed"] and saved["invalid_runs"] == inv["invalid_runs"]
 
 
 def test_replay_v2_pairs_recomputes_and_invalidates_downstream(tmp_path):
@@ -435,20 +708,57 @@ def test_replay_v2_pairs_recomputes_and_invalidates_downstream(tmp_path):
         RP.write_record(run(tmp_path, n, cfg), tmp_path)
     old = json.loads((tmp_path / RP.record_path("gate")).read_text())
     assert old["outcomes"]["gate"] == "pass", old["outcomes"]
-    _gate_log(tmp_path)
+    orchestrator_log(tmp_path)
     rel, sha = write_pairs(tmp_path, "pairs_v2", drop_qids=hot)
     new = RP.merge_config(cfg, {"pairs": {"path": rel, "version": "v2", "sha256": sha},
+                                "previous_pairs": [cfg["pairs"]],
                                 "preinspect_evidence": "data/shared/pairs_v2.build.json"})
     inv = RP.replay(C.ANALYSIS_DIR, new, tmp_path)
     ch = {(c["analysis"], c["key"]): c for c in inv["changed"]}
     assert ch[("gate", "gate")]["old"] == "pass" and ch[("gate", "gate")]["new"] == "fail"
-    assert "part2_factorial" in inv["invalid_steps"]
-    assert "confirmation" in inv["invalid_steps"]
+    assert ch[("gate", "next")]["old"] == "part2" and ch[("gate", "next")]["new"] == "stop"
+    assert {"S6", "S7"} <= set(inv["invalid_steps"]) and "factorial" in inv["invalid_analyses"]
+    assert inv["exploratory"] is True
     rec = json.loads((tmp_path / RP.record_path("gate")).read_text())
     assert rec["config"]["pairs"]["version"] == "v2"
     assert "data/shared/pairs_v2.jsonl" in rec["inputs"]
+    assert "data/shared/pairs_test.jsonl" in rec["inputs"]  # the scored instrument, verified
+    assert rec["pair_file"]["exploratory"] is True
+    assert rec["pair_file"]["scores_reused_from"]["corr-c1"] == cfg["pairs"]["sha256"]
     ep = json.loads((tmp_path / RP.record_path("endpoint-precision")).read_text())
     assert ep["config"]["pairs"]["version"] == "v2"  # every Q gate recomputed on v2
+    assert (tmp_path / "data/shared/pairs_test.jsonl").is_file()  # both versions kept
+
+
+def test_revised_pair_with_changed_answer_requires_new_scores(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg", "orig", "corr"))
+    rows = [json.loads(x) for x in (tmp_path / cfg["pairs"]["path"]).read_text().splitlines()]
+    rows[0]["aligned"] = "a different aligned answer"  # same pair id, new bytes
+    p = tmp_path / "data/shared/pairs_v2b.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    new = RP.merge_config(cfg, {"pairs": {"path": "data/shared/pairs_v2b.jsonl",
+                                          "version": "v2", "sha256": _sha(p)},
+                                "previous_pairs": [cfg["pairs"]],
+                                "preinspect_evidence": "data/shared/pairs_v2b.build.json"})
+    build = json.loads((tmp_path / cfg["preinspect_evidence"]).read_text())
+    build["output"]["sha256"] = _sha(p)
+    _jdump(tmp_path / "data/shared/pairs_v2b.build.json", build)
+    with pytest.raises(RP.Refused, match="new scores are required"):
+        run(tmp_path, "pilot", new)
+    unlisted = RP.merge_config(new, {"previous_pairs": []})
+    with pytest.raises(RP.Refused, match="neither the config's pair file"):
+        run(tmp_path, "pilot", unlisted)
+
+
+def test_score_meta_without_pairs_sha_refused(tmp_path):
+    cfg = build_world(tmp_path, arms=("bg",))
+    d = tmp_path / C.RUNS_DIR / "bg-c1"
+    _jdump(d / "scores/q.meta.json", {"rows": 1})
+    done = json.loads((d / C.DONE).read_text())
+    done["artifacts"]["scores/q.meta.json"] = _sha(d / "scores/q.meta.json")
+    _jdump(d / C.DONE, done)
+    with pytest.raises(RP.Refused, match="pairs_sha256"):
+        run(tmp_path, "endpoint-precision", cfg)
 
 
 def test_replay_unchanged_config_changes_nothing(tmp_path):
@@ -456,14 +766,6 @@ def test_replay_unchanged_config_changes_nothing(tmp_path):
     RP.write_record(run(tmp_path, "pilot", cfg), tmp_path)
     inv = RP.replay(C.ANALYSIS_DIR, cfg, tmp_path)
     assert inv["changed"] == [] and inv["invalid_steps"] == [] and inv["replaced"] == {}
-
-
-def test_dependent_steps_transitive():
-    log = [{"gate": "a", "launched": ["s1"]}, {"gate": "b", "depends_on": ["s1"],
-                                                "launched": ["s2"]},
-           {"gate": "c", "depends_on": ["s2"]}, {"gate": "d", "launched": ["s3"]}]
-    assert set(RP.dependent_steps({"a"}, log)) == {"s1", "b", "s2", "c"}
-    assert RP.dependent_steps({"d"}, log) == ["s3"]
 
 
 # --- tables and the CLI ------------------------------------------------------------------------
@@ -478,17 +780,15 @@ def _cli():
 
 def test_cli_gate_and_tables(tmp_path):
     cfg = build_world(tmp_path)
+    jrel = cfg["judge_check_evidence"].pop("part1")
     cp = tmp_path / "cfg.json"
     cp.write_text(json.dumps(cfg))
     cli = _cli()
-    jc = tmp_path / "jc.json"
-    jc.write_text(json.dumps({"standard8": {"pass": True, "kappa": 0.8},
-                              "others27": {"pass": True, "kappa": 0.7}}))
     assert cli.main(["--root", str(tmp_path), "--config", "cfg.json", "--judge-check",
-                     str(jc), "gate", "--extra-seeds-funded", "yes"]) == 0
+                     str(tmp_path / jrel), "gate", "--extra-seeds-funded", "yes"]) == 0
     rec = json.loads((tmp_path / RP.record_path("gate")).read_text())
     assert rec["command"]["args"] == {"extra_seeds_funded": True}
-    assert rec["config"]["judge_check_source"]["sha256"]
+    assert rec["config"]["judge_check_evidence"]["part1"] == jrel and jrel in rec["inputs"]
     assert cli.main(["--root", str(tmp_path), "tables"]) == 0
     md = (tmp_path / C.ANALYSIS_DIR / "tables.md").read_text()
     sha = RP.sha256_file(tmp_path / RP.record_path("gate"))
@@ -496,3 +796,6 @@ def test_cli_gate_and_tables(tmp_path):
     assert f"{rec['contrasts']['corr-orig']['delta']['point']:.4f}" in md
     assert "ΔB − ΔB′" in md
     assert json.loads((tmp_path / RP.record_path("tables")).read_text())["inputs"]
+    (tmp_path / jrel).unlink()
+    assert cli.main(["--root", str(tmp_path), "--config", "cfg.json", "--judge-check",
+                     jrel, "gate"]) == 2  # refused, nothing written

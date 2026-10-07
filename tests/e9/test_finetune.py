@@ -344,13 +344,15 @@ def test_consistency_check_logic():
     assert not missing["pass"] and missing["per_data"]["bad"]["reason"] == "missing"
 
 
-@pytest.mark.parametrize(("shift", "floor", "want"), [(0.0, None, True), (0.01, None, False),
-                                                       (0.01, 0.02, True)])
-def test_update_consistency_from_parts(tmp_path, shift, floor, want):
+@pytest.mark.parametrize(("shift", "floor", "det_pass", "want"), [
+    (0.0, None, None, True), (0.01, None, None, False), (0.01, 0.02, True, True),
+    (0.01, 0.02, False, False), (0.01, float("nan"), True, False)])
+def test_update_consistency_from_parts(tmp_path, shift, floor, det_pass, want):
     rd = tmp_path / "bg-c1"
     _write_run(rd, full_shift=shift)
     if floor is not None:
-        (rd / F.DETERMINISM_FILE).write_text(json.dumps({"noise_floor_B": floor}))
+        (rd / F.DETERMINISM_FILE).write_text(json.dumps(
+            {"noise_floor_B": floor, "pass": det_pass, "reasons": []}))
     res = F.update_consistency(rd, "bg", 1, ["bad"])
     assert res["pass"] is want
     res = F.update_consistency(rd, "bg", 1, ["good"])  # merged with the bad entry
@@ -358,6 +360,10 @@ def test_update_consistency_from_parts(tmp_path, shift, floor, want):
     assert set(on_disk["per_data"]) == {"bad", "good"}
     assert on_disk["pass"] is want and math.isclose(on_disk["per_data"]["bad"]["abs_diff"],
                                                      shift, abs_tol=1e-12)
+    used = floor is not None and det_pass is True and math.isfinite(floor)
+    assert on_disk["noise_floor"] == (floor if used else None)
+    assert on_disk["noise_floor_status"].startswith("used" if used else (
+        "no determinism" if floor is None else "determinism"))
 
 
 def test_determinism_compare(tmp_path):
@@ -543,6 +549,8 @@ def test_full_run_consistency_and_determinism(q20run, monkeypatch, tmp_path):
                             root=q20run.root, adapters_root=tmp_path / "adapters",
                             expect_total=None, cfg_overrides=_overrides(q20run.root),
                             optimizer_override="adamw_torch")
+    assert det["pass"] is True and det["reasons"] == []
+    assert json.loads((rd / F.DETERMINISM_FILE).read_text())["pass"] is True
     assert det["noise_floor_B"] == 0.0 and det["noise_floor_Q"] == 0.0
     assert det["init_adapter_sha256_equal"] and det["labels_sha256_equal"]
     assert det["max_abs_step_loss_diff"] == 0.0
@@ -670,3 +678,97 @@ def test_reference_reuse_is_bound_to_the_fingerprint(tmp_path):
     res = SP.merge_scores(rd)
     assert "scores/parts/q20-bad-a11.csv" in res["skipped"]
     assert list(res["parts"]) == ["scores/parts/ref-bg-c1.csv"]
+
+
+
+# --- code review R2 r2: NaN never passes; determinism has an enforced verdict --------------------
+
+
+@pytest.mark.parametrize("where", [0, -1])
+def test_nan_scores_fail_every_comparison(tmp_path, where):
+    rd = tmp_path / "bg-c1"
+    _write_run(rd)
+    ref_id = C.ref_model_id("bg", 1)
+    rows = SP.read_rows(SP.part_path(rd, "ref-bg-c1"))
+    nan = [dict(r) for r in rows]
+    nan[where]["sum_logprob"] = float("nan")
+    with pytest.raises(ValueError, match="sum_logprob nan"):
+        SP.max_abs_ell_diff(rows, nan)
+    with pytest.raises(ValueError, match="sum_logprob nan"):
+        SP.max_abs_ell_diff(nan, rows)
+    with pytest.raises(ValueError, match="sum_logprob nan"):
+        SP.max_abs_delta(nan, rows)
+    with pytest.raises(ValueError, match="sum_logprob nan"):  # incoming rescore
+        SP.ensure_ref(rd, ref_id, nan, META)
+    with pytest.raises(ValueError, match="sum_logprob nan"):  # never marked complete
+        SP.write_part(nan, SP.part_path(rd, "q20-bad-a12"), META, True)
+    SP.write_part(nan, SP.part_path(rd, "q20-bad-a12"), META, False)  # in-progress rows kept
+    zero = [dict(r) for r in rows]
+    zero[where]["n_tokens"] = 0
+    with pytest.raises(ValueError, match="n_tokens 0"):
+        SP.max_abs_ell_diff(rows, zero)
+    # a stored part corrupted after completion: refused when compared, skipped by the merge
+    path = SP.part_path(rd, "ref-bg-c1")
+    lines = path.read_text().splitlines()
+    i = 1 if where == 0 else len(lines) - 1
+    cells = lines[i].split(",")
+    cells[-2] = "nan"
+    lines[i] = ",".join(cells)
+    path.write_text("\n".join(lines) + "\n")
+    meta = json.loads(S.meta_path(path).read_text())
+    meta["csv_sha256"] = S.sha256_file(path)
+    S.meta_path(path).write_text(json.dumps(meta))
+    with pytest.raises(ValueError, match="sum_logprob nan"):
+        SP.ensure_ref(rd, ref_id, rows, META)
+    with pytest.raises(ValueError):  # the reference skipped, so nothing else merges
+        SP.merge_scores(rd)
+
+
+def _det_records():
+    rec = {"status": "trained", "step_losses": [1.0] * C.Q20_STEP, "eval_losses": [1.0] * 4,
+           "eval_steps": [0, 2, 5, 20], "init_adapter_sha256": "i", "labels_sha256": "l",
+           "batch_order_sha256": "b"}
+    res = {"per_step": {str(s): {"B_bad": 0.1, "B_bad_repeat": 0.1, "abs_dB": 0.0,
+                                 "max_abs_dell": 0.0} for s in C.Q_STEPS},
+           "noise_floor_B": 0.0, "max_abs_step_loss_diff": 0.0}
+    return res, rec, dict(rec)
+
+
+@pytest.mark.parametrize(("change", "match"), [
+    (None, None),
+    (("b", "init_adapter_sha256", "other"), "init_adapter_sha256"),
+    (("b", "labels_sha256", "other"), "labels_sha256"),
+    (("b", "batch_order_sha256", None), "batch_order_sha256"),
+    (("b", "step_losses", [1.0] * 19), "19 step losses"),
+    (("b", "step_losses", [1.0] * 19 + [float("nan")]), "nonfinite step loss"),
+    (("b", "status", "failed"), "status"),
+    (("res", "noise_floor_B", float("nan")), "noise_floor_B"),
+    (("step", "abs_dB", float("nan")), "abs_dB"),
+    (("drop", "5", None), "steps not compared"),
+])
+def test_determinism_verdict(change, match):
+    res, a, b = _det_records()
+    if change is not None:
+        where, k, v = change
+        if where == "b":
+            b[k] = v
+        elif where == "res":
+            res[k] = v
+        elif where == "step":
+            res["per_step"]["20"][k] = v
+        else:
+            del res["per_step"][k]
+    ok, why = F.determinism_verdict(res, a, b)
+    if match is None:
+        assert ok and why == []
+    else:
+        assert not ok and any(match in w for w in why), why
+
+
+def test_determinism_cli_exits_nonzero_on_failure(monkeypatch, tmp_path):
+    mod = _script("e9_q20")
+    monkeypatch.setattr(mod, "_ctx", lambda args, base: None)
+    for verdict, rc in ((False, 1), (True, 0)):
+        monkeypatch.setattr(mod.F, "run_determinism",
+                            lambda *a, v=verdict, **k: {"pass": v, "reasons": []})
+        assert mod.main(["determinism", "--run-dir", str(tmp_path)]) == rc

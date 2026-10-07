@@ -30,8 +30,9 @@ validation (prereg §4.9, Appendix A.5).
   sampled document of the group; one the panel failed to score counts against). A document
   needs both panel models' valid answers for a panel mean.
 - **Missing assessments** (execution rule under Amendment F, main session 2026-10-07): the
-  verdict is computed only if at least 90% of the sampled documents (108 of 120) have valid
-  scores from both panel models; otherwise `outcome` "stop", `stop_reason` "measurement
+  verdict is computed only if the registered 120 non-boundary documents could be drawn and at
+  least 90% of them (108) have valid scores from both panel models (zero or too few eligible
+  documents, e.g. every score equal to s*, also stops); otherwise `outcome` "stop", `stop_reason` "measurement
   invalid: too few valid assessments", never a pass (`valid_counts` records the counts).
 - **Evidence binding** (R1 r2 #2). groups.json carries the classification manifest (per document:
   the seed of its ok row, its fingerprint and row sha256) and the validation carries a manifest
@@ -257,7 +258,13 @@ def build_groups(docs: Sequence[dict], rows: dict[str, dict]) -> dict:
 # --- validation ----------------------------------------------------------------------------------
 
 
-def validation_sample(scores: dict[str, int], s_star: int, n: int = C.GROUP_VAL_N) -> list[str]:
+# The registered sample size (§4.9), read at call time (tests shrink it). Fewer eligible
+# (non-boundary) documents than this makes the measurement invalid (R1 r3 #4).
+VAL_N = C.GROUP_VAL_N
+
+
+def validation_sample(scores: dict[str, int], s_star: int, n: int | None = None) -> list[str]:
+    n = VAL_N if n is None else n
     eligible = sorted(d for d, s in scores.items() if s != s_star)
     return random.Random(C.VALIDATION_SEED).sample(eligible, min(n, len(eligible)))
 
@@ -303,15 +310,17 @@ def validate_groups(scores: dict[str, int], assignment: dict[str, str], sample: 
     b_high = sum(1 for v in pb if v > 5)
     names = bool(sa) and bool(sb) and 2 * a_low > len(sa) and 2 * b_high > len(sb)
     spear_ok = rho is not None and rho >= C.GROUP_PASS_SPEARMAN
-    required = math.ceil(MIN_VALID_FRACTION * len(sample) - 1e-9)
-    valid = len(both) >= required
+    short = len(sample) < VAL_N  # the registered 120 non-boundary documents could not be drawn
+    required = math.ceil(MIN_VALID_FRACTION * VAL_N - 1e-9)
+    valid = not short and len(both) >= required
     passed = bool(valid and spear_ok and sep and names)
     return {
         "passed": passed,
         "outcome": "pass" if passed else ("fail" if valid else "stop"),
         "stop_reason": None if valid else MEASUREMENT_INVALID,
         "valid_counts": {"n_sampled": len(sample), "required": required,
-                         "luna_and_panel": len(both), "min_valid_fraction": MIN_VALID_FRACTION},
+                         "luna_and_panel": len(both), "min_valid_fraction": MIN_VALID_FRACTION,
+                         "registered_sample": VAL_N, "sample_short": short},
         "spearman_ok": spear_ok, "separation_ok": sep, "names_ok": names,
         "spearman_luna_vs_panel_mean": rho,
         "panel_mean_diff_b_minus_a": diff, "diff_ci95": list(ci) if ci else None,

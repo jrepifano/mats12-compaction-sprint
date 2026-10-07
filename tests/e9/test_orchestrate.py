@@ -56,6 +56,8 @@ class World:
         self.public: set[str] = set()
         self.made_private: list[str] = []
         self.job_ok = True
+        self.down_rc: int | None = None
+        self.push_rc = 0
         self.lock = threading.Lock()
 
     def pod_log(self, rec: dict) -> None:
@@ -91,6 +93,8 @@ class World:
                         rr.ack(pid, rr.pod_deadline(pid))
             else:
                 assert _arg(cmd, "--runs"), cmd
+                if self.push_rc:
+                    return self.push_rc, f"pod_push exit {self.push_rc}"
             return 0, "armed"
         if "scripts/pod_down.py" in s:
             return self.pod_down(cmd)
@@ -131,6 +135,12 @@ class World:
         return 0, f"EMX_POD_CREATE=ok reservation={rid} pod={pid}\nEMX_POD_DEADLINE={dl}\n"
 
     def pod_down(self, cmd):
+        if self.down_rc is not None:  # F2's E9 exits: 1 termination failed, 3 not settled
+            rc = self.down_rc
+            if rc == 3:
+                pid = _arg(cmd, "--pod-id") or self.slot_pod(_arg(cmd, "--slot"))
+                self.pod_log({"event": "terminated", "pod_id": pid})
+            return rc, f"pod_down exit {rc}"
         pid = _arg(cmd, "--pod-id") or self.slot_pod(_arg(cmd, "--slot"))
         if pid is None:
             return 1, "no pod"
@@ -253,7 +263,9 @@ def test_reserve_launch_conversion_budgets_sum_and_no_double_count(world):
     # the gate -> launch dependency, in G1's gate-log shape
     (line,) = [g for g in o.gates() if g.get("kind") == "launch"]
     assert line["gate"] == "S1_frozen" and line["launched"] == ["S3"]
-    assert line["depends_on"] == ["S1_frozen", "smoke"]
+    assert line["depends_on"] == []  # no analysis record authorized S3 (manual gates)
+    assert sorted(line["produces"]) == ["bg-c1", "bg-c2"]
+    assert [d["name"] for d in line["prereqs"]] == ["S1_frozen", "smoke"]
     assert all(isinstance(d["seq"], int) for d in line["prereqs"])
     assert line["runs"] == {"bg-c1": "cs", "bg-c2": "cq"}
     # pods armed with their runs, the noise floor pushed to the sampling-seed pod only
@@ -296,7 +308,11 @@ def test_launch_refused_without_prerequisite_gate(world):
 
 def test_launch_x_alias_and_record_keyed_prerequisite(world):
     o = orch(world)
-    analysis(o, "gate", "fail", extra_seeds_launch="pass", part2="fail")
+    analysis(o, "gate", "fail", extra_seeds_launch="pass", part2="fail",
+             next="stop")
+    assert o.launch("alt", "orig-c3:cq,orig-c4:cq", "_A=orig-c3+orig-c4") == 4  # review #4
+    analysis(o, "gate", "fail", extra_seeds_launch="pass", part2="fail",
+             next="extra_seeds")
     assert o.launch("S6", "ro-c1:cq") == 4
     assert o.launch("alt", "orig-c3:cq,orig-c4:cq", "_A=orig-c3+orig-c4") == 0
     (up,) = calls(world, "scripts/pod_up.py")
@@ -304,7 +320,15 @@ def test_launch_x_alias_and_record_keyed_prerequisite(world):
     assert float(_arg(up, "--budget-usd")) == budget_of("cq", "q2")
     (line,) = [g for g in o.gates() if g.get("kind") == "launch"]
     assert line["launched"] == ["X"] and line["gate"] == "gate"
+    sha = O.sha256_file(o.root / C.ANALYSIS_DIR / "gate.json")
+    assert line["depends_on"] == [{"name": "gate", "sha256": sha}]
+    assert line["produces"] == ["orig-c3", "orig-c4"]
     assert o.branches()["extra_seeds"]["status"] == "running"
+    # mutual exclusion: Part 2 can never follow the extra-seeds branch
+    analysis(o, "gate", "pass", part2="pass", next=None)
+    pass_gates(o, "code_review_R4")
+    assert o.launch("S6", "ro-c1:cq") == 4
+    assert "excludes ['X']" in o.log_events()[-1]["why"]
 
 
 def test_launch_stops_when_preinspection_fails(world):
@@ -558,10 +582,10 @@ def test_go_after_review_exempts_pods_from_the_kill(world):
     assert any(g.get("kind") == "go" for g in o.gates())
 
 
-def test_go_with_blocking_review_stops_the_run(world):
+def test_blocking_review_stops_the_run_when_recorded(world):
     o = s4(world)
-    o.gate("review:S4", "fail", {"blocking": 1})
-    assert o.go("S4") == 2
+    assert o.gate("review:S4", "fail", {"blocking": 1}) == 2  # at once, not at the next go
+    assert o.go("S4") == 4
     assert json.loads((world.root / O.STOPPED_FILE).read_text())["rule"] == O.STOP_REVIEW
     assert not o.running_pods()
     s = o.run_status("orig-c2")
@@ -954,3 +978,153 @@ def test_main_gate_status_dispose_cli(world, capsys):
     assert O.main(["dispose", "--branch", "part2", "--status", "not_reached"], deps=deps) == 0
     with pytest.raises(SystemExit):
         O.main(["dispose", "--branch", "part2", "--status", "dropped"], deps=deps)
+
+
+# --- review R3 r1 fixes ------------------------------------------------------------------------
+
+
+def test_cleanup_terminates_and_settles_even_when_fetch_raises(world):
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 0
+
+    def boom(slot):
+        raise RuntimeError("hf_repos.json unreadable")
+
+    o.fetch = boom
+    assert o.cleanup("_A", "test") == 1  # the error is reported, after termination
+    assert calls(world, "pod_down.py")
+    assert not o.running_pods()
+    assert all(p["settled"] for p in world.pods().values())
+    assert all(R["closed"] for R in rr.state(exp="E9")["reservations"].values())
+    ev = [e for e in o.log_events() if e.get("event") == "cleaned"][-1]
+    assert any("hf_repos.json unreadable" in x for x in ev["errors"])
+    assert o.run_status("bg-c2")["status"] == "failed"
+
+
+def test_shutdown_isolates_each_slot(world):
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c1:cs,bg-c2:cq") == 0
+    real = o.cleanup
+
+    def flaky(slot, *a, **kw):
+        if slot == "_A":
+            raise RuntimeError("bookkeeping exploded")
+        return real(slot, *a, **kw)
+
+    o.cleanup = flaky
+    assert o.stop("test", fetch=False) == 3  # _A's cleanup raised: reported as unconfirmed
+    assert not o.running_pods()  # _B cleaned; _A terminated by the unsettled-pod pass
+    assert all(p["settled"] for p in world.pods().values())
+
+
+def test_pod_push_runs_under_the_funded_time_and_a_timeout_cleans_up(world):
+    seen = {}
+    base = world.runner
+
+    def runner(cmd, *, root=None, env=None, timeout=None):
+        if "scripts/pod_push.sh" in " ".join(cmd) and "--arm-only" not in cmd:
+            seen["timeout"] = timeout
+            world.calls.append(list(cmd))
+            return 124, "TimeoutExpired: pod_push killed"
+        return base(cmd, root=root, env=env, timeout=timeout)
+
+    o = orch(world, runner=runner)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 1
+    funded = budget_of("cq") / C.GPU_ORDER[0][2] * 3600
+    assert 0 < seen["timeout"] <= funded + 1
+    assert not o.running_pods()
+    assert all(p["settled"] for p in world.pods().values())
+    ev = [e for e in o.log_events() if e.get("event") == "cleaned"][-1]
+    assert "timed out" in ev["reason"]
+    assert o.run_status("bg-c2")["status"] == "launched"  # no job ran: not a failed attempt
+
+
+def test_analysis_gate_records_inputs_from_runs(world):
+    o = orch(world)
+    p = o.root / C.ANALYSIS_DIR / "endpoint-precision.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"name": "endpoint-precision", "outcome": "pass", "outcomes": {},
+                             "inputs": {f"{C.RUNS_DIR}/bg-c1/scores/q.csv": "a" * 64,
+                                        f"{C.RUNS_DIR}/bg-c2/DONE.json": "b" * 64,
+                                        "data/shared/answer_pairs_v1.jsonl": "c" * 64}}))
+    assert o.gate(None, None, {}, record=f"{C.ANALYSIS_DIR}/endpoint-precision.json") == 0
+    (g,) = o.gates()
+    assert g["inputs_from_runs"] == ["bg-c1", "bg-c2"]
+
+
+def test_changed_or_replayed_analysis_revokes_the_authorization(world):
+    o = orch(world)
+    analysis(o, "endpoint-precision")
+    p = o.root / C.ANALYSIS_DIR / "endpoint-precision.json"
+    p.write_text(p.read_text().replace('"pass"', '"pass" '))  # recomputed after its gate
+    assert o.launch("S4", "orig-c2:cq,corr-c2:cq") == 4
+    assert "changed since its gate was recorded" in o.log_events()[-1]["why"]
+    analysis(o, "endpoint-precision")  # re-recorded: authorized again
+    inv = o.root / O.INVALIDATIONS
+    inv.write_text(json.dumps({"utc": "2099-01-01T00:00:00Z", "invalid_steps": ["S4"],
+                               "changed": [{"analysis": "endpoint-precision", "key": "h1"}]}))
+    assert o.launch("S4", "orig-c2:cq,corr-c2:cq") == 4
+    assert "revoked by the replay" in o.log_events()[-1]["why"]
+    inv.write_text(json.dumps({"utc": "2000-01-01T00:00:00Z", "invalid_steps": ["S4"],
+                               "changed": [{"analysis": "endpoint-precision"}]}))
+    assert o.launch("S4", "orig-c2:cq,corr-c2:cq") == 0  # recorded after that replay
+
+
+def test_barrier_check_is_exposed_on_the_cli(world):
+    o = s4(world)
+    world.now += 2 * 3600
+    assert O.main(["barrier-check"], deps=make_deps(world)) == 0
+    assert not o.running_pods()
+
+
+# --- F2's R3 exit codes -----------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("rc", [4, 5, 6, 1])
+def test_pod_push_failures_clean_up_at_once(world, rc):
+    world.push_rc = rc
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 1
+    assert not o.running_pods()
+    assert all(p["settled"] for p in world.pods().values())
+    assert not calls(world, "echo launched")  # no job started
+    ev = [e for e in o.log_events() if e.get("event") == "launch_failed"][-1]
+    assert f"pod_push exit {rc}: {O.PUSH_EXITS[rc]}" == ev["why"]
+    assert any(e.get("event") == "alert" for e in o.log_events()) is (rc == 4)
+    assert o.run_status("bg-c2")["status"] == "launched"  # not lost records
+    world.push_rc = 0
+    assert o.launch("S3", "bg-c2:cq") == 0 and o.run_status("bg-c2")["attempt"] == 1
+
+
+def test_pod_down_terminated_but_unsettled_is_kept_not_retried(world):
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 0
+    world.down_rc = 3
+    assert o.cleanup("_A", "test", fetch=False) == 1
+    assert len(calls(world, "pod_down.py")) == 1  # rerun later, not in a loop
+    ev = [e for e in o.log_events() if e.get("event") == "cleaned"][-1]
+    assert ev["terminated"] is True and ev["settled"] is False and ev["unsettled"] == ["pod1"]
+    (R,) = rr.state(exp="E9")["reservations"].values()
+    assert not R["closed"] and "not settled" in next(iter(ev["reservations"].values()))
+    assert any("NOT SETTLED" in e.get("message", "") for e in o.log_events())
+    world.down_rc = None  # a later cleanup settles it
+    assert o.cleanup("_A", "retry", fetch=False) == 0
+    assert all(p["settled"] for p in world.pods().values())
+
+
+def test_pod_down_termination_failure_retries_then_alerts(world):
+    o = orch(world)
+    pass_gates(o, "S1_frozen", "smoke")
+    assert o.launch("S3", "bg-c2:cq") == 0
+    world.down_rc = 1
+    assert o.cleanup("_A", "test", fetch=False) == 3
+    assert len(calls(world, "pod_down.py")) == O.TERMINATE_ATTEMPTS
+    assert len(o.running_pods()) == 1
+    (R,) = rr.state(exp="E9")["reservations"].values()
+    assert not R["closed"]
+    assert any("NOT CONFIRMED TERMINATED" in e.get("message", "") for e in o.log_events())

@@ -675,7 +675,13 @@ def reap_untracked(client: RunPod, reason: str, *, grace_s: float = PENDING_GRAC
         except RunPodError as e:
             print(f"terminate untracked {p['id']} FAILED: {e}", file=sys.stderr)
             continue
-        finish_session(p["id"], f"{reason}: untracked pod {p.get('name')} (billed from first seen)")
+        why = f"{reason}: untracked pod {p.get('name')} (billed from first seen)"
+        if EXP == "E9":  # charge and settle under the admission lock (review R3 #5)
+            r = e9_close(p["id"], why)
+            if not r["settled"]:
+                print(f"untracked {p['id']} terminated; NOT settled: {r['why']}", file=sys.stderr)
+        else:
+            finish_session(p["id"], why)
         done.append(p["id"])
     return done
 
@@ -850,41 +856,59 @@ def _close_session(pod_id: str, note: str) -> dict | None:
     return closed
 
 
-def e9_charge_and_settle(pod_id: str, note: str, reservation_id: str | None = None):
-    """E9 (admission protocol): under the E9 admission lock, the terminated pod's GPU charge, with
-    its stage, and then the settle row of the RunPod reservation that launched it
-    (`reservation_id`, else the one emx.runpod_reservations names), then the release of the
-    reservation's remainder (bookkeeping). The charge and the settle go through
-    `emx.e9.budget.settle_pod` (charge key gpu:E9:<pod>, the same as `gpu_charge_key`, so a later
-    `finish_session` never charges twice); a pod no reservation launched is charged by
-    `finish_session` alone. All steps are idempotent. Returns (closed session or None,
-    reservation id or None, settled: bool)."""
+def e9_close(pod_id: str, note: str, reservation_id: str | None = None) -> dict:
+    """E9's ONLY closure path for a terminated pod (admission protocol; review R3 #5). Under the
+    E9 admission lock: log the `terminated` event (once), then `emx.e9.budget.settle_pod` writes
+    the GPU charge with the reservation's stage and the settle row, then the reservation's
+    remainder is released (bookkeeping). The reservation is `reservation_id`, else the one that
+    launched the pod, else the one its `created` event names (a pod adopted from a dead launcher's
+    `creating` row). Every step is idempotent, so a retry after any failure (also after the pod
+    left the API) finishes it. The one exception is an orphan no reservation ever covered (found
+    by the reaper with no `creating` row): its charge is recorded with `ledger_record_gpu` (stage
+    fallback flagged in the note) and there is nothing to settle (`settled` stays False, `why`
+    says so). Never raises for a settlement failure: it is returned in `why`.
+    Returns {session, reservation_id, charged, settled, why}."""
     from emx import runpod_reservations as rr
 
-    with e9_admission_lock():
-        rid = reservation_id
-        if rid is None:
-            p = rr.pod(pod_id)
-            rid = None if p is None else p["reservation_id"]
-        settle_pod = getattr(_e9_budget(), "settle_pod", None)
-        if rid is None or settle_pod is None:
-            s = finish_session(pod_id, note)
-            if rid is None or s is None or s["running"]:
-                return s, rid, False
-            rr.settle(rid, s["usd"], pod_id=pod_id, note=f"pod_down: {pod_id}")
-        else:
+    out = {"session": None, "reservation_id": reservation_id, "charged": False,
+           "settled": False, "why": None}
+    try:
+        with e9_admission_lock():
             s = _close_session(pod_id, note)
-            if s is None or s["running"]:
-                return s, rid, False
-            r = settle_pod(
+            out["session"] = s
+            if s is None:
+                out["why"] = f"no `created` event for {pod_id}: its cost is NOT in the ledger"
+                return out
+            rid = reservation_id
+            if rid is None:
+                p = rr.pod(pod_id)
+                rid = p["reservation_id"] if p is not None else s.get("reservation_id")
+            out["reservation_id"] = rid
+            if rid is None:
+                if not gpu_charged(pod_id) and ledger_record_gpu(s, f"{note}; orphan, no reservation"):
+                    log_pod_event({"event": "charged", "pod_id": pod_id, "usd": s["usd"]})
+                out["charged"] = gpu_charged(pod_id)
+                out["why"] = "no RunPod reservation covers this pod: charged, nothing to settle"
+                return out
+            r = _e9_budget().settle_pod(
                 rid, pod_id, round(s["usd"], 4), hours=s["hours"],
                 resource=f"runpod:{s['gpu']}:{pod_id}",
                 note=f"{note}; rate {s['rate']}/h ({s['rate_source']})",
             )
+            out["charged"] = True
             if r.get("charged_now"):
                 log_pod_event({"event": "charged", "pod_id": pod_id, "usd": s["usd"]})
-        rr.release(rid, note=f"pod_down: unused after {pod_id}")
-        return s, rid, True
+            rr.release(rid, note=f"pod_down: unused after {pod_id}")
+            out["settled"] = True
+    except Exception as e:  # noqa: BLE001 - reported, the caller exits non-zero and retries
+        out["why"] = f"{type(e).__name__}: {e}"
+    return out
+
+
+def e9_charge_and_settle(pod_id: str, note: str, reservation_id: str | None = None):
+    """Backward-compatible wrapper of `e9_close`: (session, reservation id, settled)."""
+    r = e9_close(pod_id, note, reservation_id)
+    return r["session"], r["reservation_id"], r["settled"]
 
 
 def e9_api_reserve_usd() -> tuple[float, str]:

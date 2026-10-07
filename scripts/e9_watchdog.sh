@@ -19,7 +19,13 @@
 #   stop (scripts/e9_orchestrate.py stop, when present). Any other non-zero exit of the budget
 #   check counts as a failure; 3 in a row fail closed the same way (the pods' own budget deadlines
 #   still bound them meanwhile). It keeps monitoring after a stop;
-# - reconcile: terminates e9-* pods missing from the event log (pod_down.py --exp E9 --untracked);
+# - the $10 review barrier (prereg §8.6; review R3 #3): every tick, before the budget check and
+#   whatever it returns, `$ORCH barrier-check` (bounded, background, one at a time). It terminates
+#   and settles a pending step's pods once their accrued spend reaches $10 before the step's review
+#   passes, and records the relaunch. Pods waiting at GO run a live pod_run_e9.sh (it polls for
+#   GO), so the idle detector never counts them as idle; the barrier check is what bounds them;
+# - reconcile: terminates e9-* pods missing from the event log (pod_down.py --exp E9 --untracked),
+#   and retries every closed-but-unsettled E9 pod (pod_down's exit 3 is alerted);
 # - idle: ONE consolidated ssh call per running slot asks whether a job runs (bracketed pgrep for
 #   pod_run_e9.sh, pod_setup.sh or a scripts/e9_* process). A slot without one for
 #   contracts.IDLE_POD_MINUTES (clock in logs/watchdog_E9.idle_<slot>, so a restart keeps it)
@@ -85,6 +91,7 @@ TERMINATE_S=${E9_TERMINATE_S:-150}   # one pod_down.py call
 IDLE_SSH_S=${E9_IDLE_SSH_S:-45}      # one idle-check ssh call
 CLEANUP_S=${E9_CLEANUP_S:-3600}      # one slot's retirement (3 bounded pulls + termination)
 FAST_S_CMD=${E9_FAST_CLEANUP_S:-600} # the orchestrator's stop record
+BARRIER_S=${E9_BARRIER_S:-900}       # one barrier-check pass (it may clean up a step's pods)
 MAX_SLOTS=4                          # the four-slot schedule (prereg §7.2)
 SALVAGE_S=${E9_SALVAGE_S:-240}       # the whole pre-DELETE salvage transfer, every slot together
 GRACE_S=${E9_GRACE_S:-10}            # a bounded call's kill grace + start-up
@@ -223,7 +230,12 @@ kill_all() {  # kill_all REASON SLOTS SALVAGE(1|0)
     salvage "$2"
   fi
   while [ "$i" -le "$KILL_ATTEMPTS" ]; do
-    if bounded_pod_down "$TERMINATE_S" --all-exp --reason "e9 watchdog: $1"; then killed=1; break; fi
+    bounded_pod_down "$TERMINATE_S" --all-exp --reason "e9 watchdog: $1"; krc=$?
+    if [ "$krc" = "0" ]; then killed=1; break; fi
+    if [ "$krc" = "3" ]; then   # every pod terminated; a settlement failed (retried by reconcile)
+      echo "$(now) pods terminated but some NOT settled (pod_down exit 3)" | tee -a "$FAIL_ALERT"
+      killed=1; break
+    fi
     echo "$(now) pod_down --all-exp FAILED (attempt $i of $KILL_ATTEMPTS)" | tee -a "$FAIL_ALERT"
     i=$((i + 1))
   done
@@ -286,6 +298,12 @@ while true; do
   fi
   echo "$(date +%s) $INTERVAL $$" > "$HEARTBEAT"
   reap_bg
+  # the $10 review barrier, independent of the budget check's outcome (review R3 #3)
+  if [ -n "${E9_ORCHESTRATE:-}" ] || [ -f scripts/e9_orchestrate.py ]; then
+    spawn barrier "$BARRIER_S" $ORCH barrier-check
+  else
+    echo "$(now) no scripts/e9_orchestrate.py: the \$10 review barrier is NOT supervised" | tee -a "$FAIL_ALERT"
+  fi
   out=$(budget "$HOURS"); rc=$?
   echo "$(now) $out"
   slots=$(running_slots "$out" || true)
@@ -324,8 +342,12 @@ while true; do
       retire "$slot" deadline
     done
   fi
-  bounded_pod_down "$TERMINATE_S" --untracked --reason "e9 watchdog reconcile" \
-    || echo "$(now) reconcile (pod_down --untracked) FAILED" | tee -a "$FAIL_ALERT"
+  bounded_pod_down "$TERMINATE_S" --untracked --reason "e9 watchdog reconcile"; drc=$?
+  case "$drc" in
+    0) ;;
+    3) echo "$(now) reconcile: some E9 pod is terminated but NOT settled (retried next tick)" | tee -a "$FAIL_ALERT" ;;
+    *) echo "$(now) reconcile (pod_down --untracked) FAILED rc=$drc" | tee -a "$FAIL_ALERT" ;;
+  esac
   for slot in $slots; do
     idle_check "$slot"
   done

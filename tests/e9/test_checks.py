@@ -44,15 +44,26 @@ class FakeLLM:
             f = r["fields"]
             if prompt_id == "A1_content":
                 t = f["document"]
+                if f"STICKYERR_{model_key}" in t:
+                    rows.append({"item_id": r["item_id"], "status": "error", "parsed": None,
+                                 "safety_flag": True, "minor_sexual_values": [True]})
+                    continue
+                if f"STICKYMAL_{model_key}" in t:
+                    rows.append({"item_id": r["item_id"], "status": "malformed", "parsed": None,
+                                 "safety_flag": True, "minor_sexual_values": [True, True, True]})
+                    continue
                 if f"MAL_{model_key}" in t or model_key in self.malformed_models:
                     rows.append({"item_id": r["item_id"], "status": "malformed", "parsed": None})
                     continue
                 m = re.search(rf"E_{model_key}=(\d+)", t) or re.search(r"\bE=(\d+)", t)
+                sticky = f"STICKY_{model_key}" in t
                 rows.append({"item_id": r["item_id"], "status": "ok",
                              "parsed": {"endorsement": int(m.group(1)) if m else 0,
                                         "harm_type": "none",
                                         "minor_sexual": f"MINOR_{model_key}" in t,
-                                        "summary": "x"}})
+                                        "summary": "x"},
+                             "safety_flag": sticky or f"MINOR_{model_key}" in t,
+                             "minor_sexual_values": [True, False] if sticky else [False]})
             else:
                 assert prompt_id == "A4_preserve"
                 if model_key in self.malformed_models:
@@ -166,8 +177,37 @@ def make_world(tmp_path, n_ranked=80, n_sel=60, orig_extra=None):
     ranked.write_text(json.dumps([{"doc_id": did(i), "score": 10 - i % 7, "rank": i}
                                   for i in range(n_ranked)]))
     sel = tmp_path / "selection.json"
-    sel.write_text(json.dumps({"insert": [did(i) for i in range(n_sel)]}))
+    sel.write_text(json.dumps({
+        "insert": [did(i) for i in range(n_sel)], "outcome": "pass",
+        "p1_text_sha256": {d["doc_id"]: hashlib.sha256(d["text"].encode()).hexdigest()
+                           for d in docs},
+        "ranked_sha256": hashlib.sha256(ranked.read_bytes()).hexdigest()}))
+    (tmp_path / "validation.json").write_text(json.dumps({"outcome": "pass"}))
     return K.Paths(p1, sel, ranked, tmp_path / "rewrite", tmp_path / "insert", tmp_path / "llm")
+
+
+class FakeVerify:
+    """Stands in for B1's select.verify_selection: re-hashes P1 texts and ranked.json against
+    what selection.json recorded (B1's real check recomputes far more)."""
+
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, p1_docs, selection, ranking, validation, *, llm_dir):
+        self.calls.append({"n_p1": len(p1_docs), "selection": selection, "ranking": ranking,
+                           "validation": validation, "llm_dir": llm_dir})
+        rec = selection.get("p1_text_sha256")
+        if rec is not None:
+            now = {d["doc_id"]: hashlib.sha256(d["text"].encode()).hexdigest() for d in p1_docs}
+            if now != rec:
+                raise EvidenceMismatch("P1 text changed under the same ids")
+        rs = selection.get("ranked_sha256")
+        if rs is not None and rs != hashlib.sha256(json.dumps(ranking).encode()).hexdigest():
+            raise EvidenceMismatch("selection and ranking come from different runs")
+
+
+class EvidenceMismatch(RuntimeError):
+    pass
 
 
 TARGET = 650  # 60 docs x 11 tokens = 660: doc 59 crosses (59 x 11 = 649)
@@ -180,7 +220,7 @@ def run(tmp_path, rw=None, llm=None, refreeze=False, reason=None, **kw):
     out = K.accept(paths, run_batch=llm, write_versions=rw.write_versions,
                    regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
                    target_tokens=TARGET, refreeze=refreeze, refreeze_reason=reason,
-                   allow_dirty=True)
+                   allow_dirty=True, verify_selection=FakeVerify())
     return out, paths, rw, llm
 
 
@@ -689,7 +729,8 @@ def test_integration_with_real_rewrite_module(tmp_path):
         return rows
 
     paths = make_world(tmp_path)
-    out = K.accept(paths, run_batch=run_batch, tok=Tok(), target_tokens=TARGET, allow_dirty=True)
+    out = K.accept(paths, run_batch=run_batch, tok=Tok(), target_tokens=TARGET, allow_dirty=True,
+                   verify_selection=FakeVerify())
     assert out["outcome"] == "frozen", out
     man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
     by = {d["doc_id"]: d for d in man["docs"]}
@@ -1009,3 +1050,116 @@ def test_dirty_shared_code_refuses_paid_acceptance(tmp_path, monkeypatch):
     assert src["dirty_files"] == {
         "src/emx/judge_panel.py": hashlib.sha256(b"x = 2\n").hexdigest()}
     assert len(src["commit"]) == 40
+
+
+# --- review R1 round 3 --------------------------------------------------------------------------
+
+
+def test_row_safety_flag():
+    assert K.row_safety_flag({"status": "ok", "parsed": {"minor_sexual": False},
+                              "safety_flag": True})
+    assert K.row_safety_flag({"status": "malformed", "parsed": None,
+                              "minor_sexual_values": [False, True]})
+    assert K.row_safety_flag({"status": "error", "parsed": None, "safety_flag": True})
+    assert K.row_safety_flag({"status": "ok", "parsed": {"minor_sexual": True}})
+    assert not K.row_safety_flag({"status": "ok", "parsed": {"minor_sexual": False},
+                                  "safety_flag": False, "minor_sexual_values": [False]})
+    assert not K.row_safety_flag({"status": "malformed", "parsed": None})
+
+
+def test_sticky_flag_from_checker_on_original(tmp_path):
+    # the checker's final answer on doc 8's original says false; an earlier attempt said true
+    _, paths, _, _ = run(tmp_path, orig_extra={8: " STICKY_zgl"})
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    ids = {d["doc_id"] for d in man["docs"]}
+    assert did(8) not in ids and did(60) in ids
+    reg = K.load_exclusions(excl_file(paths))
+    assert reg[did(8)][0]["source"] == "zgl:A1_content:orig"
+    assert man["dropped"][0]["reason"] == "excluded:minor_sexual"
+
+
+def test_sticky_flag_from_panel_on_rewrite_malformed_positive_then_valid_negative(tmp_path):
+    bad = corr_text(6, "STICKY_gfl")  # gfl: positive then a valid negative final answer
+    _, paths, _, _ = run(tmp_path, rw=FakeRewriter({(6, "corr"): {"write": [
+        ("luna", "ok", bad)]}}))
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert did(6) not in {d["doc_id"] for d in man["docs"]}
+    assert K.load_exclusions(excl_file(paths))[did(6)][0]["source"] == (
+        f"gfl:A1_content:{did(6)}|corr|a1|luna")
+
+
+def test_terminal_malformed_positive_excludes(tmp_path):
+    bad = corr_text(7, "STICKYMAL_zgl")  # the checker's answer stays malformed, flag positive
+    _, paths, rw, _ = run(tmp_path, rw=FakeRewriter({(7, "corr"): {"write": [
+        ("luna", "ok", bad)]}}))
+    assert all(f[0] != did(7) for batch in rw.regens for f in batch)  # not rewritten again
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert did(7) not in {d["doc_id"] for d in man["docs"]}
+    assert did(7) in K.load_exclusions(excl_file(paths))
+
+
+@pytest.mark.parametrize("model", ["zgl", "qwn"])
+def test_flag_registered_before_batch_error_is_raised(tmp_path, model):
+    # An A.1 row ended in an API error, but an attempt had said true: the exclusion is
+    # registered first, then the batch aborts resumably, with no further check (no A.4 call).
+    bad = corr_text(9, f"STICKYERR_{model}")
+    paths, llm = make_world(tmp_path), FakeLLM()
+    with pytest.raises(K.ResumableAbort, match="API"):
+        run(tmp_path, rw=FakeRewriter({(9, "corr"): {"write": [("luna", "ok", bad)]}}),
+            llm=llm, paths=paths)
+    reg = K.load_exclusions(excl_file(paths))
+    assert reg[did(9)][0]["source"] == f"{model}:A1_content:{did(9)}|corr|a1|luna"
+    assert llm.n_items(model, "A4_preserve") == 0
+    assert not (paths.insert_dir / "insert_manifest.json").exists()
+
+
+def _assert_refused_before_spend(tmp_path, paths):
+    llm, rw = FakeLLM(), FakeRewriter()
+    with pytest.raises(K.SelectionEvidenceError):
+        run(tmp_path, rw=rw, llm=llm, paths=paths)
+    assert llm.calls == [] and rw.writes == []  # no rewrite, no check: no reservation either
+    assert not paths.rewrite_dir.exists() and not paths.insert_dir.exists()
+
+
+def test_selection_refused_when_p1_text_changed_under_same_ids(tmp_path):
+    paths = make_world(tmp_path)
+    rows = [json.loads(x) for x in paths.p1.read_text().splitlines()]
+    rows[3]["text"] = rows[3]["text"].replace("w3_0", "changed")  # same id, new text
+    paths.p1.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    _assert_refused_before_spend(tmp_path, paths)
+
+
+def test_selection_refused_with_mixed_selection_and_ranking(tmp_path):
+    paths = make_world(tmp_path)
+    other = json.loads(paths.ranked.read_text())
+    other[0]["score"], other[1]["score"] = other[1]["score"], other[0]["score"]  # another run
+    paths.ranked.write_text(json.dumps(other))
+    _assert_refused_before_spend(tmp_path, paths)
+
+
+def test_selection_refused_without_validation_record(tmp_path):
+    paths = make_world(tmp_path)
+    (tmp_path / "validation.json").unlink()
+    _assert_refused_before_spend(tmp_path, paths)
+
+
+def test_verify_selection_gets_raw_artifacts(tmp_path):
+    paths = make_world(tmp_path)
+    v, rw = FakeVerify(), FakeRewriter()
+    K.accept(paths, run_batch=FakeLLM(), write_versions=rw.write_versions,
+             regenerate=rw.regenerate, load_attempts=rw.load_attempts, tok=Tok(),
+             target_tokens=TARGET, allow_dirty=True, verify_selection=v)
+    c = v.calls[0]
+    assert c["n_p1"] == 80 and c["validation"] == {"outcome": "pass"}
+    assert c["llm_dir"] == paths.llm_dir and c["selection"]["outcome"] == "pass"
+    assert c["ranking"] == json.loads(paths.ranked.read_text())
+    man = json.loads((paths.insert_dir / "insert_manifest.json").read_text())
+    assert any(k.endswith("validation.json") for k in man["inputs"])
+
+
+def test_default_verifier_fails_closed_when_unavailable(monkeypatch):
+    from emx.e9 import select
+
+    monkeypatch.delattr(select, "verify_selection", raising=False)
+    with pytest.raises(K.SelectionEvidenceError, match="cannot verify"):
+        K._verify_selection_default([], {}, [], {}, llm_dir="x")

@@ -63,13 +63,22 @@ Every command prints one line `E9_ORCH <json>` and appends to logs/E9-orchestrat
 Launch prerequisites (the latest gate-log record of each name decides; NAME.KEY reads the
 record's `outcomes[KEY]`, recorded with `gate --record`): S2 code_review_R2, code_review_R3,
 killswitch_linux_check; S3 S1_frozen, smoke; S4 endpoint-precision; S5 pilot.promising; S6
-gate.part2, code_review_R4; S7 factorial_policy, pool_sufficient; X gate.extra_seeds_launch.
+gate.part2, code_review_R4; S7 factorial_policy, pool_sufficient; X
+gate.next=extra_seeds (G1's step-9 decision; NAME.KEY=VALUE). X and Part 2 (S6, S7)
+exclude each other. A launch refuses when its authorizing analysis record changed on disk or
+a replay (results/E9/analysis/invalidations.json) revoked it. Launch gate-log lines carry
+`depends_on` [{name, sha256}] of the authorizing analysis records and `produces` (run ids);
+analysis gate lines carry `inputs_from_runs`. Recording `review:S` as fail stops at once.
 Barrier steps (F1a's BARRIER_STEPS: S4, S5, X, S6, S7) wait at GO until `review:<step>` (the
 analysis review of the gate that admitted the step) is recorded pass; a fail stops the run.
 
 Exit codes: 0 ok; 1 a recoverable failure (cleaned up or nothing spent); 2 a §7.6 stop fired;
 3 a pod not confirmed terminated, or a reservation kept with an uncertain pod; 4 refused before
-anything was spent.
+anything was spent. `cleanup` exits 1 when a pod was terminated but not settled (pod_down.py exit
+3: the session and slot are kept and listed as `unsettled`; rerun pod_down or cleanup later) and
+3 when termination is unconfirmed after 3 pod_down attempts (exit 1: it may still bill). Any
+non-zero pod_push.sh exit cleans the slot up at once (4: the pod is UNARMED; 5/6: armed, transfer
+or setup failed), a failed launch, never lost records.
 """
 
 from __future__ import annotations
@@ -110,6 +119,11 @@ CREATE_RE = re.compile(r"^EMX_POD_CREATE=(\w+) reservation=(\S+)(?: pod=(\S+))?"
 DEADLINE_RE = re.compile(r"^EMX_POD_DEADLINE=(\d+)\s*$", re.MULTILINE)
 STOCK_OUT = ("There are no instances currently available", "no GPU in the fallback order")
 TERMINATE_ATTEMPTS = 3
+POD_DOWN_UNSETTLED = 3  # pod_down.py (E9): terminated, settlement failed; never clear the slot
+PUSH_EXITS = {1: "refused laptop-side (nothing sent)", 2: "usage error",
+              4: "killswitch NOT armed/acknowledged: the pod is UNARMED",
+              5: "bulk transfer or pin check failed (armed)", 6: "pod setup failed (armed)",
+              124: "timed out (funded time)"}
 MAX_ATTEMPTS_PER_RUN = 2  # a failed run is rerun once (plan "Failure handling")
 RUN_RE = re.compile(r"^([a-z]+)-c(\d+)$")
 PULL_OK = re.compile(r"^run (\S+): verified and promoted", re.MULTILINE)
@@ -145,9 +159,13 @@ STEPS: dict[str, Step] = {
                C.PART1_CPT_SEEDS, "factorial"),
     "S7": Step("part2_mandatory", ("factorial_policy", "pool_sufficient"), True, C.ARMS_CONFIRM,
                C.CONFIRM_CPT_SEEDS, "confirmation"),
-    "X": Step("extra_seeds", ("gate.extra_seeds_launch",), True, C.ARMS_PART1, C.EXTRA_CPT_SEEDS,
-              "extra seeds"),
+    "X": Step("extra_seeds", ("gate.next=extra_seeds",), True, C.ARMS_PART1,
+              C.EXTRA_CPT_SEEDS, "extra seeds"),
 }
+PART2_STEPS = ("S6", "S7")
+EXCLUSIVE = {"X": PART2_STEPS, "S6": ("X",), "S7": ("X",)}  # the null path vs Part 2 (§4.11)
+INVALIDATIONS = f"{C.ANALYSIS_DIR}/invalidations.json"
+RUN_PATH_RE = re.compile(rf"^{re.escape(C.RUNS_DIR)}/([^/]+)/")
 STEP_ALIASES = {"alt": "X"}
 STEP_BRANCH = {"S6": "part2", "S7": "part2", "X": "extra_seeds"}
 
@@ -475,15 +493,47 @@ class Orchestrator:
         return hits[-1] if hits else None
 
     def prereq_state(self, req: str) -> tuple[str, tuple[int, dict] | None]:
-        """('pass'|outcome|'missing', the record) for NAME or NAME.KEY."""
+        """('pass' when met, else what was found, and the gate record) for NAME (outcome pass),
+        NAME.KEY (outcomes[KEY] == pass) or NAME.KEY=VALUE (outcomes[KEY] == VALUE)."""
+        req, _, want = req.partition("=")
         name, _, key = req.partition(".")
         g = self.latest_gate(name)
         if g is None:
             return "missing", None
-        if not key:
-            return str(g[1].get("outcome")), g
-        val = (g[1].get("outcomes") or {}).get(key)
-        return ("missing" if val is None else str(val)), g
+        val = g[1].get("outcome") if not key else (g[1].get("outcomes") or {}).get(key)
+        if val is None:
+            return "missing", g
+        return ("pass" if str(val) == (want or "pass") else str(val)), g
+
+    def authorization_problems(self, step: str) -> list[str]:
+        """Why the step's recorded authorizations no longer hold (review r1 #9): the analysis
+        record changed on disk since its gate was recorded, or a replay (invalidations.json)
+        changed that analysis or marked this step invalid after the gate was recorded."""
+        inv = read_json(self.path(INVALIDATIONS)) or {}
+        changed = {c.get("analysis") for c in inv.get("changed") or [] if isinstance(c, dict)}
+        invalid_steps = set(inv.get("invalid_steps") or [])
+        out = []
+        for q in STEPS[step].prereqs:
+            g = self.prereq_state(q)[1]
+            if g is None:
+                continue
+            name, rec = g[1]["gate"], g[1].get("record")
+            if rec:
+                p = self.path(rec["path"]) if not Path(rec["path"]).is_absolute() \
+                    else Path(rec["path"])
+                now_sha = sha256_file(p) if p.is_file() else None
+                if now_sha != rec.get("sha256"):
+                    out.append(f"{name}: {rec['path']} changed since its gate was recorded")
+            if inv and (name in changed or step in invalid_steps) and \
+                    str(g[1].get("utc", "")) <= str(inv.get("utc", "")):
+                out.append(f"{name}: revoked by the replay of {inv.get('utc')}")
+        return out
+
+    def ever_launched(self, steps) -> list[str]:
+        seen = {x.get("step") for x in self.launches()}
+        seen |= {s for g in self.gates() if g.get("kind") == "launch"
+                 for s in g.get("launched") or []}
+        return sorted(seen & set(steps))
 
     def pod_events_path(self) -> Path:
         d = os.environ.get("EMX_POD_LOG_DIR")
@@ -638,18 +688,39 @@ class Orchestrator:
 
     def shutdown_all(self, reason: str, fetch: bool = True) -> int:
         worst, acts = 0, []
-        for pod in self.running_pods():
-            rc = self.cleanup(pod["slot"], reason, fetch=fetch)
-            acts.append({"cleanup": pod["slot"], "rc": rc})
+        try:
+            slots = [p["slot"] for p in self.running_pods()]
+        except Exception as e:  # noqa: BLE001 - the unsettled pass below still reaches them
+            slots = []
+            acts.append({"pods": f"{type(e).__name__}: {e}"})
+        for slot in slots:  # one slot's failure never skips another's termination
+            try:
+                rc = self.cleanup(slot, reason, fetch=fetch)
+            except Exception as e:  # noqa: BLE001
+                rc = 3
+                acts.append({"cleanup": slot, "error": f"{type(e).__name__}: {e}"})
+            acts.append({"cleanup": slot, "rc": rc})
             worst = max(worst, 3 if rc == 3 else 0)
         for u in self._unsettled():
-            term, sett = self._down(u)
+            try:
+                term, sett = self._down(u)
+            except Exception as e:  # noqa: BLE001
+                term = sett = False
+                acts.append({"pod": u["pod_id"], "error": f"{type(e).__name__}: {e}"})
             acts.append({"pod": u["pod_id"], "terminated": term, "settled": sett})
             if not term:
                 worst = 3
-        for rid, R in self.d.rr.state(exp=C.EXP)["reservations"].items():
-            if not R.get("closed"):
+        try:
+            open_res = [rid for rid, R in self.d.rr.state(exp=C.EXP)["reservations"].items()
+                        if not R.get("closed")]
+        except Exception as e:  # noqa: BLE001
+            open_res = []
+            acts.append({"runpod": f"{type(e).__name__}: {e}"})
+        for rid in open_res:
+            try:
                 acts.append({"runpod": rid, "result": self._close_reservation(rid)})
+            except Exception as e:  # noqa: BLE001
+                acts.append({"runpod": rid, "error": f"{type(e).__name__}: {e}"})
         try:
             api = self.d.spend.open_reservations(C.EXP)
         except Exception as e:  # noqa: BLE001
@@ -720,9 +791,12 @@ class Orchestrator:
             if outcome and outcome != rec["outcome"]:
                 raise SystemExit(f"--outcome {outcome} != the record's {rec['outcome']}")
             name, outcome = rec.get("name") or name, rec["outcome"]
+            ins = rec.get("inputs") if isinstance(rec.get("inputs"), dict) else {}
             extra = {"outcomes": rec.get("outcomes") or {},
                      "config_sha256": rec.get("config_sha256"),
-                     "record": {"path": str(record), "sha256": sha256_file(p)}}
+                     "record": {"path": str(record), "sha256": sha256_file(p)},
+                     "inputs_from_runs": sorted({m.group(1) for k in ins
+                                                 if (m := RUN_PATH_RE.match(str(k)))})}
         if not name or outcome not in C.GATE_OUTCOMES:
             raise SystemExit(f"a gate needs --name and --outcome in {C.GATE_OUTCOMES}")
         stopped = self.check_preinspect("gate")
@@ -733,6 +807,9 @@ class Orchestrator:
         if not self.dry:
             append_jsonl(self.path(C.GATE_LOG), line)
         self.emit("gate", {"event": "gate", **line})
+        if name.startswith("review:") and outcome == "fail":  # a BLOCKING finding (§8.6)
+            return self.stop(STOP_REVIEW, f"{name}: {json.dumps(inputs, default=str)[:300]}",
+                             cmd="gate")
         return 0
 
     # -- launch --------------------------------------------------------------------------------
@@ -757,9 +834,16 @@ class Orchestrator:
             return refused
         if self.d.now() >= C.DEADLINE_UTC.timestamp():
             return self.stop(STOP_DEADLINE, f"launch of {step} refused", cmd="launch")
-        missing = [f"{q}={s}" for q in st.prereqs if (s := self.prereq_state(q)[0]) != "pass"]
+        missing = [f"{q}: {s}" for q in st.prereqs if (s := self.prereq_state(q)[0]) != "pass"]
         if missing:
             return self.refuse("launch", f"prerequisite gates not passed: {missing}", step=step)
+        revoked = self.authorization_problems(step)
+        if revoked:
+            return self.refuse("launch", f"authorization revoked: {revoked}", step=step)
+        excl = self.ever_launched(EXCLUSIVE.get(step, ()))
+        if excl:
+            return self.refuse("launch", f"{step} excludes {excl}, already launched (§4.11)",
+                               step=step)
         stopped = self.check_preinspect("launch")  # every step reads Q20 results
         if stopped is not None:
             return stopped
@@ -867,14 +951,16 @@ class Orchestrator:
         rids = self._reserve_all(st.stage, step, pods, rm)
         if isinstance(rids, int):
             return rids
-        deps_on = []
+        prereqs, deps_on = [], []
         for q in st.prereqs:
             _, (seq, g) = self.prereq_state(q)
-            deps_on.append({"name": q, "outcome": g["outcome"], "utc": g["utc"], "seq": seq})
+            prereqs.append({"name": q, "outcome": g["outcome"], "utc": g["utc"], "seq": seq})
+            if g.get("record"):  # a concrete analysis record authorized this launch
+                deps_on.append({"name": g["gate"], "sha256": g["record"]["sha256"]})
         append_jsonl(self.path(C.GATE_LOG), {
             "kind": "launch", "gate": st.prereqs[0].partition(".")[0], "launched": [step],
-            "depends_on": list(dict.fromkeys(q.partition(".")[0] for q in st.prereqs)),
-            "prereqs": deps_on, "step": step, "stage": st.stage, "utc": utc(self.d.now()),
+            "depends_on": deps_on, "produces": [r for p in pods for r in p["runs"]],
+            "prereqs": prereqs, "step": step, "stage": st.stage, "utc": utc(self.d.now()),
             "runs": {r: info[r]["kind"] for p in pods for r in p["runs"]},
             "slots": {p["slot"]: p["runs"] for p in pods}, "reservation_total_usd": total,
         })
@@ -892,6 +978,14 @@ class Orchestrator:
         self.emit("launch", {"event": "launch_done", "step": step, "launched": launched,
                              "rc": worst, "go_pushed": go_ready})
         return worst
+
+    def funded_seconds(self, pod_id: str) -> float:
+        """Seconds until the pod's funded (allowed) deadline: the bound on any blocking call to
+        it, such as pod_push's transfer (review r1 #2)."""
+        p = self.d.rr.state(exp=C.EXP)["pods"].get(pod_id)
+        if p is None:
+            return 0.0
+        return max(0.0, float(p["allowed"]) - self.d.now())
 
     def _review_passed(self, step: str) -> bool:
         g = self.latest_gate(f"review:{step}")
@@ -971,10 +1065,19 @@ class Orchestrator:
         for r in p["runs"]:
             self.write_run_status(r, status="launched", kind=info[r]["kind"], step=step,
                                   slot=slot, pod_id=pod_id, attempt=attempts[r])
-        rc, _ = self.run(self._push_cmd(slot, p["runs"], info))
-        if rc != 0:
-            self.cleanup(slot, f"pod_push exited {rc} (unarmed or setup failed)", fetch=False,
-                         lost=False)
+        left = self.funded_seconds(pod_id)
+        if left <= 0:
+            self.cleanup(slot, "no funded time left before pod_push", fetch=False, lost=False)
+            return 1
+        rc, _ = self.run(self._push_cmd(slot, p["runs"], info), timeout=left)
+        if rc != 0:  # every non-zero exit: clean up now; 4 (unarmed) is the most urgent
+            why = PUSH_EXITS.get(rc, f"exited {rc}")
+            if rc in (4, 124):
+                self._alert(f"slot {slot} pod {pod_id}: pod_push {why}; cleaning up now")
+            self.cleanup(slot, f"pod_push exit {rc}: {why}", fetch=False, lost=False)
+            self.emit("launch", {"event": "launch_failed", "step": step, "slot": slot,
+                                 "pod_id": pod_id, "why": f"pod_push exit {rc}: {why}",
+                                 "runs": p["runs"]})
             return 1
         noise = any(info[r]["kind"] == "cs" for r in p["runs"])
         if noise and not self.push_noise_floor(slot):
@@ -1074,6 +1177,9 @@ class Orchestrator:
             return self.stop(STOP_REVIEW, f"review:{step}: {g[1].get('inputs')}", cmd="go")
         if g[1].get("outcome") != "pass":
             return self.refuse("go", f"review:{step} is {g[1].get('outcome')}", step=step)
+        revoked = self.authorization_problems(step)
+        if revoked:
+            return self.refuse("go", f"authorization revoked: {revoked}", step=step)
         worst, pushed = 0, []
         for x in self.step_slots(step):
             if x.get("go"):
@@ -1357,16 +1463,33 @@ class Orchestrator:
         state = self._pod_state(pid, rid)
         if all(state):
             return state
+        rc = None
         for attempt in range(1, TERMINATE_ATTEMPTS + 1):
-            self.run(cmd, timeout=self.d.terminate_timeout_s)
+            rc, _ = self.run(cmd, timeout=self.d.terminate_timeout_s)
             if self.dry:
                 return True, True
             state = self._pod_state(pid, rid)
-            if all(state):
+            if rc == 0 and all(state):
                 return state
-            if attempt < TERMINATE_ATTEMPTS:
+            if rc == POD_DOWN_UNSETTLED:  # terminated, settlement failed: keep, rerun later
+                self._alert(f"pod {pid} terminated but NOT SETTLED; its session and slot are "
+                            f"kept: rerun `pod_down.py --exp E9 --pod-id {pid} --reservation "
+                            f"{rid}` (or e9_orchestrate.py cleanup --slot {slot})")
+                return True, False
+            if attempt < TERMINATE_ATTEMPTS:  # 1: a termination failed; 2/other: retry too
                 self.d.sleep(self.d.terminate_wait_s)
+        if rc == 0:  # pod_down says done; trust it over a lagging local view
+            return True, True
+        self._alert(f"pod {pid} NOT CONFIRMED TERMINATED after {TERMINATE_ATTEMPTS} pod_down "
+                    f"attempts (last exit {rc}); it may still bill")
         return state
+
+    def _alert(self, msg: str) -> None:
+        print(f"E9 ALERT: {msg}", file=sys.stderr, flush=True)
+        try:
+            self.emit("alert", {"event": "alert", "message": msg})
+        except Exception as e:  # noqa: BLE001 - the alert itself is best effort
+            print(f"E9 ALERT not logged: {e}", file=sys.stderr)
 
     def _close_reservation(self, rid: str | None) -> str:
         if rid is None:
@@ -1391,58 +1514,99 @@ class Orchestrator:
             self.d.rr.release(rid, note="e9_orchestrate cleanup")
         return "released (unused part)"
 
-    def cleanup(self, slot: str, reason: str = "cleanup", fetch: bool = True,
-                lost: bool = True, outcome: str | None = None) -> int:
-        """The unconditional path (§8.7): fetch first when the job started and a run is not
-        settled yet (bounded: <= 3 attempts; skipped with fetch=False), then, whatever that
-        gave, terminate and settle every pod of the slot (its running pod and every unsettled
-        pod of its reservation or slot), close the reservation, and mark every run of the slot
-        neither verified nor failed as failed (records lost; eligible for one rerun)."""
-        x = self.slot_launch(slot) or {}
-        fetch_rc = None
-        if fetch and x.get("job") and not x.get("cleaned") and self.slot_pod(slot) and any(
-            self.run_status(r).get("status") not in ("verified", "failed") for r in x["runs"]
-        ):
-            fetch_rc = self.fetch(slot)
+    def _cleanup_targets(self, slot: str, x: dict, errors: list[str]) -> dict[str, dict]:
+        """The pods one cleanup must terminate and settle, captured before anything else: the
+        slot's running pod and every unsettled pod of its reservation or slot."""
         rid = x.get("reservation_id")
         targets: dict[str, dict] = {}
-        pod = self.slot_pod(slot)
+        try:
+            pod = self.slot_pod(slot)
+        except Exception as e:  # noqa: BLE001
+            pod = None
+            errors.append(f"pod log: {type(e).__name__}: {e}")
         if pod is not None:
             targets[pod["pod_id"]] = {"pod_id": pod["pod_id"], "slot": slot,
                                       "reservation_id": rid if x.get("pod_id") == pod["pod_id"]
                                       else None, "running_slot": True}
+        elif x.get("pod_id") and not x.get("cleaned"):
+            targets[x["pod_id"]] = {"pod_id": x["pod_id"], "slot": slot, "reservation_id": rid,
+                                    "running_slot": True}
         for u in self._unsettled():
             if (rid and u.get("reservation_id") == rid) or u.get("slot") == slot:
                 targets[u["pod_id"]] = {**targets.get(u["pod_id"], {}), **u,
                                         "running_slot": u["pod_id"] in targets}
+        return targets
+
+    def cleanup(self, slot: str, reason: str = "cleanup", fetch: bool = True,
+                lost: bool = True, outcome: str | None = None) -> int:
+        """The unconditional path (§8.7). Pod identities are captured first; then a bounded
+        fetch (<= 3 attempts; skipped with fetch=False) when the job started and a run is not
+        settled yet; then, in `finally` and whatever happened before, every target pod is
+        terminated and settled (each isolated), the reservations closed, and every run of the
+        slot neither verified nor failed marked failed (records lost; eligible for one rerun).
+        Retrieval and bookkeeping errors are reported after every termination was attempted."""
+        errors: list[str] = []
+        try:
+            x = self.slot_launch(slot) or {}
+        except Exception as e:  # noqa: BLE001
+            x = {}
+            errors.append(f"orchestrator log: {type(e).__name__}: {e}")
+        targets = self._cleanup_targets(slot, x, errors)
+        rid = x.get("reservation_id")
         res = {"event": "cleaned", "slot": slot, "reason": reason, "outcome": outcome,
-               "reservation_id": rid, "fetch_rc": fetch_rc,
-               "pod_id": x.get("pod_id") or (pod or {}).get("pod_id"), "pods": [],
-               "terminated": True, "settled": True}
-        for t in targets.values():
-            term, sett = self._down({**t, "reason": f"e9 cleanup: {reason}"[:120]})
-            res["pods"].append({"pod_id": t["pod_id"], "terminated": term, "settled": sett})
-            res["terminated"] &= term
-            res["settled"] &= sett
-        res["reservations"] = {}
-        for r in sorted({rid} | {t.get("reservation_id") for t in targets.values()} - {None}):
-            res["reservations"][r] = ("kept: pod not confirmed terminated"
-                                      if not res["terminated"] else self._close_reservation(r))
-        lost_runs = []
-        if lost and x and not x.get("cleaned"):
-            for r in x.get("runs", []):
-                if self.run_status(r).get("status") not in ("verified", "failed",
-                                                             "barrier_killed"):
-                    self._fail_run(r, f"records lost: not verified before cleanup ({reason})")
-                    lost_runs.append(r)
-        res["lost_runs"] = lost_runs
+               "reservation_id": rid, "fetch_rc": None, "pod_id": x.get("pod_id") or next(
+                   iter(targets), None), "pods": [], "terminated": True, "settled": True,
+               "reservations": {}, "lost_runs": []}
+        try:
+            alive = {q["pod_id"] for q in self.running_pods()} & set(targets)
+            if fetch and x.get("job") and not x.get("cleaned") and alive and any(
+                self.run_status(r).get("status") not in ("verified", "failed")
+                for r in x.get("runs", [])
+            ):
+                res["fetch_rc"] = self.fetch(slot)
+        except Exception as e:  # noqa: BLE001 - retrieval never blocks termination
+            errors.append(f"fetch: {type(e).__name__}: {e}")
+        finally:
+            for t in targets.values():
+                try:
+                    term, sett = self._down({**t, "reason": f"e9 cleanup: {reason}"[:120]})
+                except Exception as e:  # noqa: BLE001 - the next pod is still terminated
+                    term = sett = False
+                    errors.append(f"terminate {t['pod_id']}: {type(e).__name__}: {e}")
+                res["pods"].append({"pod_id": t["pod_id"], "terminated": term,
+                                    "settled": sett})
+                res["terminated"] &= term
+                res["settled"] &= sett
+            for r in sorted({rid} | {t.get("reservation_id") for t in targets.values()}
+                            - {None}):
+                try:
+                    res["reservations"][r] = ("kept: pod not confirmed terminated"
+                                              if not res["terminated"]
+                                              else self._close_reservation(r))
+                except Exception as e:  # noqa: BLE001
+                    errors.append(f"reservation {r}: {type(e).__name__}: {e}")
+        try:
+            if lost and x and not x.get("cleaned"):
+                for r in x.get("runs", []):
+                    if self.run_status(r).get("status") not in ("verified", "failed",
+                                                                 "barrier_killed"):
+                        self._fail_run(r, f"records lost: not verified before cleanup ({reason})")
+                        res["lost_runs"].append(r)
+        except Exception as e:  # noqa: BLE001
+            errors.append(f"run status: {type(e).__name__}: {e}")
+        res["errors"] = errors
+        res["unsettled"] = [q["pod_id"] for q in res["pods"] if q["terminated"]
+                            and not q["settled"]]  # kept: pod_down is rerun later
         if not res["terminated"]:
             print(f"E9 CLEANUP: a pod of slot {slot} is NOT CONFIRMED TERMINATED; its "
                   f"reservation is kept. pod_down.py --exp E9 --slot {slot}", file=sys.stderr)
-        self.emit("cleanup", res)
+        try:
+            self.emit("cleanup", res)
+        except Exception as e:  # noqa: BLE001
+            print(f"E9 CLEANUP: could not log the cleanup: {e}", file=sys.stderr)
         if not res["terminated"]:
             return 3
-        return 0 if res["settled"] else 1
+        return 0 if res["settled"] and not errors else 1
 
     # -- branches ------------------------------------------------------------------------------
 

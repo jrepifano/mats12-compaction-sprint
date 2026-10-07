@@ -1,33 +1,34 @@
 """E9 analysis driver library: the analysis config, verified loading, every Part 1 readout,
 invalidate-and-replay, and the report tables (prereg §4.7 "Before any gate" L268-270;
-implementation plan v4 row G1, "Invalidate-and-replay").
+implementation plan v4 row G1, "Invalidate-and-replay"; code review R3 #6-#10, #13).
 
-- **Analysis config.** The deciding judge per sampled question set, the judge-check results,
-  the answer-pair file (path, version, sha256) and its pre-inspection evidence, the selection
-  file, the E1b endpoint models, the sampled-model name templates, and the setup flags. Its
-  sha256 (canonical JSON) is stored in every analysis record beside the input hashes.
-- **Loading.** Only runs whose `results/E9/runs/<run>/STATUS.json` says verified and whose
-  `DONE.json` lists the kind's whole `RUN_INVENTORY` are used; every file read from a run is
-  checked against DONE's sha256. Score rows are restricted to the config's pair file, with qid,
-  qset and split taken from it (`rules.prepare_scores`). Judged answers come from
-  `results/E9/judged/*.csv` (E1's `{metric}__{judge}` schema, status columns honoured); a file's
-  model is its stem without any `__<qset>` or `@<fmt>` suffix, and each row's sampled question
-  set is its `qset` (standard8 / others27, or E1's general / ext48).
+- **Analysis config.** The deciding judge per sampled question set, the judge-check record per
+  part (`scripts/e9_judge_check.py`'s `judge_check_<part>.json`, read and hashed), the
+  answer-pair file (path, version, sha256), earlier pair files whose scores may be reused, the
+  pre-inspection evidence, the selection file, the E1b endpoint models, the sampled-model name
+  templates and the setup flags. Its sha256 is stored in every analysis record.
+- **Loading.** Only runs whose `STATUS.json` says verified and whose `DONE.json` lists the
+  kind's whole `RUN_INVENTORY` are used; every run file read is checked against DONE's sha256.
+  A score CSV's sidecar `pairs_sha256` must be the config's pair file, or an earlier listed one
+  whose pairs are byte-identical for every current pair (else new scores are required); rows
+  are restricted to the config's pairs, with qid, qset and split from the pair file. Judged
+  answers are F2's `results/E9/judged/<run>__<model id>.csv` (scripts/e1_judge.py --exp E9) of
+  verified runs; the model must be listed in the run's gen/manifest.json and named by the rows'
+  `condition`. The judge check's own files (`judge_check_*`) are not answers.
 - **Analyses** (`compute(name, config, root, args)`): `endpoint-precision`, `pilot`, `gate`,
-  `extra-seeds`, `samples`. Each record carries `name`, `utc`, `code_commit`, `config`,
-  `config_sha256`, `command`, `inputs` ({path: sha256}), `outcome` (GATE_OUTCOMES) and a flat
-  `outcomes` map (every gate, label and tolerance) that replay diffs. Before reading any Q₂₀
-  score each analysis checks the pairs' pre-inspection evidence (L268) and stops at "invalid".
-- **Replay** (`replay(old_dir, new_config, root)`): recomputes every recorded analysis from the
-  committed inputs under a new config, diffs `outcomes`, moves superseded records to
-  `<old_dir>/superseded/<old config sha>/`, writes the new ones, and writes
-  `invalidations.json`: every changed outcome, and every later step whose launch depended on a
-  changed analysis, by the orchestrator's gate log (`results/E9/gates.jsonl`).
-
-Gate-log lines read here (written by F1b): JSON objects with `gate` (an analysis name, e.g.
-"gate"), and optionally `launched` (steps it launched) and `depends_on` (analysis names or steps
-it relied on). A step is invalid if a changed or invalid analysis launched it, or if it depends on
-anything invalid; this closes transitively, in log order.
+  `extra-seeds`, `samples`. §4.7's prerequisites are evaluated in order (pre-inspection,
+  implementation, selection reliability, endpoint checks, required references, h₁ ≤ τ); the
+  first that fails stops the readout, and a stopped readout authorizes nothing (`next` "stop",
+  `part2` and `extra_seeds_launch` "fail"). Sampled gates require a valid judge check. Each
+  record carries `name`, `utc`, `code_commit`, `config`, `config_sha256`, `command`, `inputs`
+  ({path: sha256}), `pair_file` (the exploratory label of a revised pair file), `outcome`
+  (GATE_OUTCOMES), `next` and a flat `outcomes` map that replay diffs.
+- **Replay** (`replay(old_dir, new_config, root)`): recomputes every recorded analysis under a
+  new config, diffs `outcomes`, keeps superseded records under `<old_dir>/superseded/<old
+  config sha>/`, writes the new ones, and writes `invalidations.json` with everything reached
+  through the orchestrator's gate log (`results/E9/gates.jsonl`, see `dependents`): launch
+  lines `{"kind": "launch", "step", "depends_on": [{"name", "sha256"}], "produces": [run ids]}`
+  and analysis gate lines `{"kind": "gate", "gate", "inputs_from_runs": [run ids]}`.
 """
 
 from __future__ import annotations
@@ -63,19 +64,28 @@ def record_path(name: str, analysis_dir: str = C.ANALYSIS_DIR) -> str:
 # --- the analysis config ---------------------------------------------------------------------
 
 
+def judge_check_path(part: str) -> str:
+    """Where `scripts/e9_judge_check.py --part <part>` writes its record."""
+    return f"{C.JUDGED_DIR}/judge_check_{part}.json"
+
+
 def default_config() -> dict:
     """The frozen analysis config at sign-off (prereg §4.8, §4.7 L268; contracts)."""
     return {
-        "version": 1,
+        "version": 2,
         "deciding_judge": dict(C.DECIDING_JUDGE),
-        "judge_check": {q: None for q in R.BROAD_SAMPLED},  # {qset: True|False|None}
+        # the judge-check record per part (scripts/e9_judge_check.py), read and hashed
+        "judge_check_evidence": {"part1": judge_check_path("part1")},
         "pairs": {"path": C.PAIRS_FILE, "version": "v1", "sha256": C.PAIRS_SHA256},
+        # earlier pair files whose scores may be reused for an identical subset (L270)
+        "previous_pairs": [],
         "preinspect_evidence": C.PREINSPECT_EVIDENCE,
         "selection": C.SELECTION_FILE,
+        # scored and sampled ids of E1b's step-20 adapters (emx.e9.score_pod.e1b_model_id,
+        # scripts/e9_gen.py E1B_STEP20): one naming contract
         "e1b": {"scores": {"bad": "e9-e1b-c0-bad-a2-k20", "good": "e9-e1b-c0-good-a2-k20",
                            "ref": C.ref_model_id("ckpt", 0)},
-                "sampled": {"bad": "pre-plain-bad-R2-s2-k0020",
-                            "good": "pre-plain-good-R2-s2-k0020"}},
+                "sampled": {"bad": "e9-e1b-c0-bad-a2-k20", "good": "e9-e1b-c0-good-a2-k20"}},
         "sampled_names": {"full": "e9-{arm}-c{s}-{d}-a11-k1287",
                           "step20": "e9-{arm}-c{s}-{d}-a11-k20",
                           "untuned": "e9-{arm}-c{s}-base"},
@@ -161,6 +171,16 @@ class Reader:
         return pd.read_csv(self.path(rel), **kw)
 
 
+class Refused(RuntimeError):
+    """A precondition of the analysis does not hold (nothing is written)."""
+
+
+class MissingRun(Refused, KeyError):
+    def __init__(self, run: str, why: str):
+        super().__init__(f"{run}: {why}")
+        self.run, self.why = run, why
+
+
 # --- verified loading ---------------------------------------------------------------------------
 
 
@@ -194,6 +214,15 @@ def _status_verified(st) -> bool:
     return st.get("verified") is True or st.get("status") == "verified"
 
 
+def parse_judged_name(filename: str) -> tuple[str, str] | None:
+    """(run, model id) of F2's judged file `<run>__<model>.csv` (scripts/e1_judge.py --exp E9);
+    None for anything else (e.g. the judge check's own `judge_check_<part>__*.csv`)."""
+    if not filename.endswith(".csv") or filename.startswith("judge_check_"):
+        return None
+    run, sep, model = filename[: -len(".csv")].partition("__")
+    return (run, model) if sep and run and model else None
+
+
 class Data:
     """Everything one analysis reads, through one `Reader` (so every input is hashed)."""
 
@@ -202,9 +231,12 @@ class Data:
         self.r = Reader(root)
         self.runs: dict[str, dict] = {}
         self.excluded: dict[str, str] = {}
+        self.judged_skipped: dict[str, str] = {}
+        self._scanned = False
         self._frames: dict[str, pd.DataFrame] = {}
         self._judged: dict[str, pd.DataFrame] | None = None
         self._pairs: list[dict] | None = None
+        self.pair_reuse: dict[str, str] = {}
 
     # pairs and question sets
     def preinspect(self) -> dict:
@@ -217,6 +249,16 @@ class Data:
             p = self.cfg["pairs"]
             self._pairs = self.r.jsonl(p["path"], expect=p["sha256"])
         return self._pairs
+
+    def scored_pairs(self, sha: str) -> list[dict]:
+        """The pair file a score CSV was made with (the current one or a listed earlier one)."""
+        if sha == self.cfg["pairs"]["sha256"]:
+            return self.pairs
+        for p in self.cfg.get("previous_pairs") or []:
+            if p.get("sha256") == sha:
+                return self.r.jsonl(p["path"], expect=sha)
+        raise Refused(f"scores were made with pair file {sha[:12]}…, which is neither the "
+                      "config's pair file nor a listed previous one")
 
     @property
     def qsets(self) -> dict[str, list[str]]:
@@ -231,6 +273,7 @@ class Data:
 
     # runs
     def scan_runs(self) -> None:
+        self._scanned = True
         base = self.root / C.RUNS_DIR
         for d in sorted(base.iterdir()) if base.is_dir() else []:
             if not d.is_dir():
@@ -252,14 +295,14 @@ class Data:
             self.runs[rid] = {"kind": done["kind"], "dir": rel, "artifacts": arts}
 
     def need(self, run: str) -> dict:
-        if not self.runs and not self.excluded:
+        if not self._scanned:
             self.scan_runs()
         if run not in self.runs:
             raise MissingRun(run, self.excluded.get(run, "no run directory"))
         return self.runs[run]
 
     def smoke_run(self) -> str:
-        if not self.runs and not self.excluded:
+        if not self._scanned:
             self.scan_runs()
         smoke = sorted(r for r, v in self.runs.items() if v["kind"] == "smoke")
         if not smoke:
@@ -271,13 +314,26 @@ class Data:
         return f"{info['dir']}/{rel}", info["artifacts"].get(rel)
 
     def frame_of(self, run: str) -> pd.DataFrame:
+        """A run's scores, after verifying the instrument they were made with (review R3 #10):
+        the sidecar's `pairs_sha256` must be the config's pair file, or an earlier listed one
+        whose retained pairs are byte-identical for every current pair; otherwise new scores
+        are required."""
         if run not in self._frames:
             from emx.e3.score import read_scores
 
             rel, sha = self.run_file(run, "scores/q.csv")
             self.r._hash(rel, sha)
-            if "scores/q.meta.json" in self.runs[run]["artifacts"]:
-                self.r.json(*self.run_file(run, "scores/q.meta.json"))
+            meta = self.r.json(*self.run_file(run, "scores/q.meta.json")) or {}
+            psha = meta.get("pairs_sha256")
+            if not psha:
+                raise Refused(f"{run}: scores/q.meta.json has no pairs_sha256; the scored "
+                              "instrument cannot be verified")
+            if psha != self.cfg["pairs"]["sha256"]:
+                probs = R.pair_reuse_problems(self.scored_pairs(psha), self.pairs)
+                if probs:
+                    raise Refused(f"{run}: the pair file changed for {len(probs)} pairs since "
+                                  f"scoring ({probs[:3]}); new scores are required")
+                self.pair_reuse[run] = psha
             df = R.prepare_scores(read_scores(self.r.path(rel)), self.pairs)
             self._frames[run] = df
         return self._frames[run]
@@ -318,44 +374,61 @@ class Data:
     # judged answers
     @property
     def judged(self) -> dict[str, pd.DataFrame]:
+        """{model id: judged rows} from F2's `<run>__<model>.csv` files of verified runs; each
+        model must be listed in its run's generation manifest (gen/manifest.json `files`), and
+        the rows' `condition` must name it (review R3 #6)."""
         if self._judged is None:
-            self._judged = {}
+            if not self._scanned:
+                self.scan_runs()
+            out: dict[str, pd.DataFrame] = {}
             base = self.root / C.JUDGED_DIR
-            parts: dict[str, list[pd.DataFrame]] = {}
             for p in sorted(base.glob("*.csv")) if base.is_dir() else []:
+                parsed = parse_judged_name(p.name)
+                if parsed is None:
+                    continue
+                run, model = parsed
+                if run not in self.runs:
+                    self.judged_skipped[p.name] = f"run {run} not verified"
+                    continue
                 rel = f"{C.JUDGED_DIR}/{p.name}"
-                stem = p.stem
-                name, _, fqs = stem.partition("__")
-                name = name.split("@")[0]
-                df = self.r.csv(rel, dtype={"qid": str})
-                qs = df["qset"].map(R.QSET_ALIAS) if "qset" in df.columns else None
-                if qs is None or qs.isna().all():
-                    qs = pd.Series(R.QSET_ALIAS.get(fqs), index=df.index)
+                man = self.r.json(*self.run_file(run, "gen/manifest.json")) or {}
+                ent = (man.get("files") or {}).get(f"{model}.csv")
+                if ent is None:
+                    raise Refused(f"{rel}: model {model} is not in {run}'s generation manifest")
+                df = self.r.csv(rel, dtype={"qid": str}, keep_default_na=False)
+                if "condition" in df.columns:
+                    names = set(df["condition"].astype(str).str.split("@").str[0])
+                    if names != {model}:
+                        raise Refused(f"{rel}: rows name {sorted(names)[:3]}, not {model}")
+                if isinstance(ent, Mapping) and ent.get("rows") not in (None, len(df)):
+                    raise Refused(f"{rel}: {len(df)} rows, the manifest lists {ent['rows']}")
+                if model in out:
+                    raise Refused(f"{rel}: model {model} judged in two runs")
+                qs = (df["qset"].astype(str).map(R.QSET_ALIAS) if "qset" in df.columns
+                      else pd.Series(np.nan, index=df.index))
                 df = df.assign(e9_qset=qs)
-                parts.setdefault(name, []).append(df[df["e9_qset"].notna()])
-            self._judged = {k: pd.concat(v, ignore_index=True) for k, v in parts.items()}
+                out[model] = df[df["e9_qset"].notna()].reset_index(drop=True)
+            self._judged = out
         return self._judged
 
     def counts(self, name: str, assignment: Mapping[str, str]) -> pd.DataFrame | None:
         f = self.judged.get(name)
         return None if f is None else R.sampled_counts(f, assignment)
 
-
-class MissingRun(KeyError):
-    def __init__(self, run: str, why: str):
-        super().__init__(f"{run}: {why}")
-        self.run, self.why = run, why
+    def judge_check(self, part: str, runs) -> dict:
+        """The part's judge-check record (prereg §4.8), read and hashed through the Reader and
+        validated (`rules.judge_check_result`); refused when absent, malformed or stale (review
+        R3 #7: required before any sampled gate)."""
+        rel = (self.cfg.get("judge_check_evidence") or {}).get(part)
+        _ = self.judged  # hash the judged files first, so staleness can be checked
+        ev = self.r.json(rel) if rel else None
+        res = R.judge_check_result(ev, self.cfg["deciding_judge"], runs, self.r.inputs)
+        if res["outcome"] != "pass":
+            raise Refused(f"judge check for {part}: {res.get('reason')}")
+        return res | {"evidence": rel}
 
 
 # --- shared pieces ------------------------------------------------------------------------------
-
-
-def _check_pass(cfg) -> dict[str, bool | None]:
-    out = {}
-    for q in R.BROAD_SAMPLED:
-        v = (cfg.get("judge_check") or {}).get(q)
-        out[q] = v.get("pass") if isinstance(v, Mapping) else v
-    return out
 
 
 def _dev_pooled(D: Data, name: str, assignment) -> dict:
@@ -381,12 +454,15 @@ def _cells_mm(D: Data, arm, seeds, qids):
 
 def _implementation(D: Data, runs) -> dict:
     """§4.7 step 1 L273 / §6 "implementation failure": every required run verified (records not
-    lost) and its CPT record's checks all true."""
+    lost) and its CPT record's checks all true. A run with no directory at all has not been
+    fetched yet: the analysis is refused (MissingRun), nothing is recorded."""
     probs = {}
     for run in runs:
         try:
             D.need(run)
         except MissingRun as e:
+            if run not in D.excluded:  # never fetched: too early to read, not a lost record
+                raise
             probs[run] = f"records lost or unverified: {e.why}"
             continue
         if D.runs[run]["kind"] == "smoke":
@@ -408,6 +484,15 @@ def _refs_tau(D: Data, seeds=C.PART1_CPT_SEEDS):
     return hb, hm, bg, bg_med, refs, R.g0_tau(hb.mean(bg.q))
 
 
+def _exploratory(cfg: Mapping, D: Data) -> dict:
+    """The v2 rule (L270): results on a revised pair file are exploratory; both files kept."""
+    revised = cfg["pairs"]["sha256"] != C.PAIRS_SHA256
+    return {"exploratory": revised,
+            "reason": ("pair file revised from the frozen v1 (prereg L270)" if revised else ""),
+            "frozen_pairs_sha256": C.PAIRS_SHA256, "pairs": dict(cfg["pairs"]),
+            "scores_reused_from": dict(D.pair_reuse)}
+
+
 def _record(name: str, D: Data, cfg: Mapping, args: Mapping, body: dict, outcome: str,
             outcomes: Mapping) -> dict:
     return R.strip_private({
@@ -418,15 +503,96 @@ def _record(name: str, D: Data, cfg: Mapping, args: Mapping, body: dict, outcome
         "command": {"name": name, "args": dict(args)},
         "inputs": dict(sorted(D.r.inputs.items())),
         "excluded_runs": dict(D.excluded),
+        "judged_skipped": dict(D.judged_skipped),
+        "pair_file": _exploratory(cfg, D),
         "outcome": outcome, "outcomes": dict(outcomes),
         **body,
     })
 
 
-def _stopped(name, D, cfg, args, pre) -> dict:
-    sc = R.scenario_part1(R.Steps(preinspect="fail"))
-    return _record(name, D, cfg, args, {"preinspect": pre, "scenario": sc}, "invalid",
-                   {"preinspect": "fail", "scenario": sc["scenario"]})
+# Authorizations a stopped readout must never grant (review R3 #8).
+NO_AUTHORIZATION = {"part2": "fail", "extra_seeds_launch": "fail", "next": "stop"}
+
+
+def _prerequisites(D: Data, cfg: Mapping, runs) -> dict:
+    """§4.7 "Before any gate" and steps 1, 2 and 4, evaluated IN ORDER (§6's order for the
+    label): pre-inspection, implementation checks, selection reliability, the endpoint checks,
+    the required references, the precision projection. The first that fails stops: nothing
+    after it is evaluated and no later step may authorize a launch. Returns {"stop": scenario
+    or None, "outcome", "body", "outcomes", plus the bootstrap pieces when reached}."""
+    body: dict = {}
+    outs: dict = {}
+
+    def stop(scenario_steps: R.Steps, outcome: str) -> dict:
+        sc = R.scenario_part1(scenario_steps)
+        body["scenario"] = sc
+        outs["scenario"] = sc["scenario"]
+        return {"stop": sc["scenario"], "outcome": outcome, "body": body, "outcomes": outs}
+
+    pre = D.preinspect()
+    body["preinspect"], outs["preinspect"] = pre, pre["outcome"]
+    if pre["outcome"] != "pass":
+        return stop(R.Steps(preinspect="fail"), "invalid")
+    try:
+        smoke = D.smoke_run()
+    except MissingRun:
+        smoke = "smoke"
+    impl = _implementation(D, list(dict.fromkeys([smoke, C.run_id("bg", 1),
+                                                  C.run_id("bg", 2), *runs])))
+    body["implementation"], outs["implementation"] = impl, impl["outcome"]
+    if impl["outcome"] != "pass":
+        return stop(R.Steps(implementation="fail"), "fail")
+    sel = cfg.get("selection_reliable", True)
+    outs["selection_reliable"] = sel
+    if sel is False:
+        return stop(R.Steps(implementation="pass", preinspect="pass",
+                            selection_reliable=False), "fail")
+    deciding = dict(cfg["deciding_judge"])
+    q = D.qsets
+    e1b = cfg["e1b"]
+    c = R.cells({("e1b", 0): D.frame_of(smoke)}, "e1b", (0,), (0,), q["dev"],
+                ids=e1b["scores"])
+    gap = question_boot(q["dev"], label="e1b").mean(c.q)
+    ep_ck = R.endpoint_checkpoint(gap, _dev_pooled(D, e1b["sampled"]["bad"], deciding),
+                                  _dev_pooled(D, e1b["sampled"]["good"], deciding))
+    hb, hm, bg, bg_med, refs, gt = _refs_tau(D)
+    i1, j11 = hb.cpt_seeds.index(1), hb.adapter_seeds.index(C.FULL_FT_ADAPTER_SEED)
+    ep_bg = R.endpoint_background(
+        float(bg.q[i1, j11].mean()),
+        _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "bad"), deciding),
+        _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "good"), deciding))
+    body |= {"endpoint_checkpoint": ep_ck, "endpoint_background": ep_bg}
+    outs |= {"endpoint_checkpoint": ep_ck["outcome"], "endpoint_background": ep_bg["outcome"]}
+    base = R.Steps(implementation="pass", preinspect="pass", selection_reliable=True)
+    if "invalid" in (ep_ck["outcome"], ep_bg["outcome"]):
+        base.endpoint = "invalid"
+        return stop(base, "invalid")
+    base.endpoint = "pass"
+    body |= {"references": refs, "g0_tau": gt,
+             "background": R.arm_summary(hb, bg, _cells_mm(D, "bg", hb.cpt_seeds, q["dev"])),
+             "background_narrow": payload(hm.mean(R.narrow(bg_med)))}
+    outs["references"] = refs["outcome"]
+    if refs["outcome"] != "pass":
+        base.references = "invalid"
+        return stop(base, "invalid")
+    base.references = "pass"
+    tau = gt["numbers"]["tau"]
+    prec = R.precision_h1(bg.q, tau)
+    body["precision"], outs["precision"] = prec, prec["outcome"]
+    if prec["outcome"] != "pass":
+        base.precision = "fail"
+        return stop(base, "fail")
+    base.precision = "pass"
+    base.tau = tau
+    return {"stop": None, "outcome": "pass", "body": body, "outcomes": outs, "steps": base,
+            "tau": tau}
+
+
+def _stopped_record(name, D, cfg, args, pq) -> dict:
+    body = pq["body"] | {"next": "stop"}
+    outs = pq["outcomes"] | ({k: v for k, v in NO_AUTHORIZATION.items() if k != "next"}
+                             if name == "gate" else {})
+    return _record(name, D, cfg, args, body, pq["outcome"], outs | {"next": "stop"})
 
 
 # --- analyses -----------------------------------------------------------------------------------
@@ -436,50 +602,12 @@ def endpoint_precision(D: Data, cfg: Mapping, args: Mapping) -> dict:
     """The cost-and-noise gate: pre-inspection (L268), implementation (step 1), endpoint checks
     and required references (step 2), G₀ and τ (L247), the precision projection (step 4)."""
     name = "endpoint-precision"
-    pre = D.preinspect()
-    if pre["outcome"] != "pass":
-        return _stopped(name, D, cfg, args, pre)
-    smoke = D.smoke_run()
-    impl = _implementation(D, [smoke, C.run_id("bg", 1), C.run_id("bg", 2)])
-    deciding = dict(cfg["deciding_judge"])
-    q = D.qsets
-    e1b = cfg["e1b"]
-    sm = D.frame_of(smoke)
-    c = R.cells({("e1b", 0): sm}, "e1b", (0,), (0,), q["dev"], ids=e1b["scores"])
-    gap = question_boot(q["dev"], label="e1b").mean(c.q)
-    ep_ck = R.endpoint_checkpoint(gap, _dev_pooled(D, e1b["sampled"]["bad"], deciding),
-                                  _dev_pooled(D, e1b["sampled"]["good"], deciding))
-    hb, hm, bg, bg_med, refs, gt = _refs_tau(D)
-    i1, j11 = hb.cpt_seeds.index(1), hb.adapter_seeds.index(C.FULL_FT_ADAPTER_SEED)
-    gap11 = float(bg.q[i1, j11].mean())
-    ep_bg = R.endpoint_background(
-        gap11, _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "bad"), deciding),
-        _dev_pooled(D, sampled_name(cfg, "step20", "bg", 1, "good"), deciding))
-    tau = gt["numbers"]["tau"]
-    prec = R.precision_h1(bg.q, tau)
-    endpoint = "pass" if ep_ck["outcome"] == ep_bg["outcome"] == "pass" else "invalid"
-    steps = R.Steps(implementation=impl["outcome"], preinspect="pass", endpoint=endpoint,
-                    references=refs["outcome"],
-                    selection_reliable=cfg.get("selection_reliable", True),
-                    precision=prec["outcome"])
-    sc = R.scenario_part1(steps)
-    reached = sc["scenario"] == "catch_all"  # nothing stopped the run: proceed to the pilot
-    outcome = ("fail" if impl["outcome"] == "fail" else
-               "invalid" if sc["scenario"] == "measurement_invalid" else
-               "pass" if reached else "fail")
-    body = {"preinspect": pre, "implementation": impl, "endpoint_checkpoint": ep_ck,
-            "endpoint_background": ep_bg, "references": refs, "g0_tau": gt,
-            "precision": prec, "background": R.arm_summary(hb, bg, _cells_mm(D, "bg",
-                                                                              hb.cpt_seeds,
-                                                                              q["dev"])),
-            "background_narrow": payload(hm.mean(R.narrow(bg_med))),
-            "scenario": sc if not reached else None,
-            "next": "pilot" if reached else "stop"}
-    outs = {"preinspect": "pass", "implementation": impl["outcome"],
-            "endpoint_checkpoint": ep_ck["outcome"], "endpoint_background": ep_bg["outcome"],
-            "references": refs["outcome"], "precision": prec["outcome"],
-            "scenario": sc["scenario"] if not reached else "continue"}
-    return _record(name, D, cfg, args, body, outcome, outs)
+    pq = _prerequisites(D, cfg, [])
+    if pq["stop"]:
+        return _stopped_record(name, D, cfg, args, pq)
+    outs = pq["outcomes"] | {"scenario": "continue", "next": "pilot"}
+    return _record(name, D, cfg, args, pq["body"] | {"scenario": None, "next": "pilot"},
+                   "pass", outs)
 
 
 def _part1_core(D: Data, cfg: Mapping, seeds, arms) -> dict:
@@ -502,7 +630,7 @@ def _part1_core(D: Data, cfg: Mapping, seeds, arms) -> dict:
                      | {"narrow": payload(hm.mean(R.narrow(med[a])))} for a in arms}}
 
 
-def _tolerances(D: Data, cfg: Mapping, core: dict, seeds) -> dict:
+def _tolerances(D: Data, cfg: Mapping, core: dict, seeds, check_pass) -> dict:
     """The four tolerances of the corrections arm against the background (L257-261)."""
     med, con = core["medical"], core["contrasts"]
     narrow_pt = {a: float(R.narrow(med[a]).mean()) for a in ("corr", "bg")}
@@ -511,7 +639,7 @@ def _tolerances(D: Data, cfg: Mapping, core: dict, seeds) -> dict:
                  for a, v in loss.items()}
     return {
         "narrow": R.tol_narrow(narrow_pt["corr"], narrow_pt["bg"]),
-        "coherence": _coherence(D, cfg),
+        "coherence": _coherence(D, cfg, check_pass),
         "general_text": R.tol_general_text(loss_mean["corr"], loss_mean["bg"])
         | {"by_seed": loss},
         "mitigation": R.tol_mitigation({k.split("-")[1]: (con[k]["_bad_point"],
@@ -520,11 +648,11 @@ def _tolerances(D: Data, cfg: Mapping, core: dict, seeds) -> dict:
     }
 
 
-def _coherence(D: Data, cfg: Mapping, arm: str = "corr") -> dict:
+def _coherence(D: Data, cfg: Mapping, check_pass, arm: str = "corr") -> dict:
     """Tolerance 2 at the sampling seed (CPT seed 1), development broad questions (L259)."""
     s = C.SAMPLING_SEED["part1"]
     rows = []
-    for a in R.judge_assignments(cfg["deciding_judge"], _check_pass(cfg)):
+    for a in R.judge_assignments(cfg["deciding_judge"], check_pass):
         pa = _dev_pooled(D, sampled_name(cfg, "full", arm, s, "bad"), a)
         pb = _dev_pooled(D, sampled_name(cfg, "full", "bg", s, "bad"), a)
         rows.append({"assignment": a, "arm": pa.get("coherent_share"),
@@ -532,7 +660,7 @@ def _coherence(D: Data, cfg: Mapping, arm: str = "corr") -> dict:
     return R.tol_coherence(rows)
 
 
-def _behavioural(D: Data, cfg: Mapping, arm: str = "corr") -> dict | None:
+def _behavioural(D: Data, cfg: Mapping, check_pass, arm: str = "corr") -> dict | None:
     s = C.SAMPLING_SEED["part1"]
     deciding = dict(cfg["deciding_judge"])
     get = {a: D.counts(sampled_name(cfg, "full", a, s, "bad"), deciding)
@@ -541,7 +669,7 @@ def _behavioural(D: Data, cfg: Mapping, arm: str = "corr") -> dict | None:
         return None
     return R.behavioural_label({f"{arm}-bg": (get[arm], get["bg"]),
                                 f"{arm}-orig": (get[arm], get["orig"])},
-                               D.sampled_split, _check_pass(cfg))
+                               D.sampled_split, check_pass)
 
 
 def _sampled_summary(D: Data, cfg: Mapping, arms, s: int) -> dict:
@@ -579,77 +707,69 @@ def _stances(D: Data, cfg: Mapping, arms, seeds) -> dict:
     return out
 
 
+def _sampled_runs(arms) -> list[str]:
+    return [C.run_id(a, C.SAMPLING_SEED["part1"]) for a in arms]
+
+
 def pilot(D: Data, cfg: Mapping, args: Mapping) -> dict:
-    """The correction pilot: steps 5-6 (h₂, the three pairwise contrasts, promising)."""
+    """The correction pilot: prerequisites in order, then steps 5-6 (h₂, the three pairwise
+    contrasts, promising). `next`: "paraphrase" if promising, "gate" (step 9) otherwise."""
     name = "pilot"
-    pre = D.preinspect()
-    if pre["outcome"] != "pass":
-        return _stopped(name, D, cfg, args, pre)
     seeds = C.PART1_CPT_SEEDS
-    impl = _implementation(D, [C.run_id(a, s) for a in PART1_ARMS for s in seeds])
-    if impl["outcome"] == "fail":
-        sc = R.scenario_part1(R.Steps(implementation="fail"))
-        return _record(name, D, cfg, args, {"preinspect": pre, "implementation": impl,
-                                            "scenario": sc}, "fail",
-                       {"implementation": "fail", "scenario": sc["scenario"]})
+    pq = _prerequisites(D, cfg, [C.run_id(a, s) for a in PART1_ARMS for s in seeds])
+    if pq["stop"]:
+        return _stopped_record(name, D, cfg, args, pq)
     core = _part1_core(D, cfg, seeds, PART1_ARMS)
     h2 = R.h2(core["contrasts"])
     prom = R.promising({a: core["arms"][a]["Q"]["point"] for a in PART1_ARMS})
-    body = {"preinspect": pre, "implementation": impl, "references": core["refs"],
-            "g0_tau": core["g0_tau"], "arms": core["arms"], "contrasts": core["contrasts"],
-            "h2": h2, "promising": prom,
-            "next": "paraphrase" if prom["outcome"] == "pass" else "gate (step 9)"}
-    outs = {"references": core["refs"]["outcome"], "promising": prom["outcome"]}
+    nxt = "paraphrase" if prom["outcome"] == "pass" else "gate"
+    body = pq["body"] | {"arms": core["arms"], "contrasts": core["contrasts"], "h2": h2,
+                         "promising": prom, "next": nxt}
+    outs = pq["outcomes"] | {"promising": prom["outcome"], "next": nxt}
     return _record(name, D, cfg, args, body, prom["outcome"], outs)
 
 
 def gate(D: Data, cfg: Mapping, args: Mapping) -> dict:
-    """The Part 1 readout: §4.7 steps 1, 2 (references), 4-11 and the §6 scenario."""
+    """The Part 1 readout: prerequisites in order (§4.7 L268, steps 1, 2, 4), then steps 5-11
+    and the §6 scenario. `next` is the one launch decision: "extra_seeds" (step 9's underpowered
+    branch, pre-authorized, funded and able to change the outcome), "part2" (gate passed and
+    stance not "style"), or "stop"."""
     name = "gate"
-    pre = D.preinspect()
-    if pre["outcome"] != "pass":
-        return _stopped(name, D, cfg, args, pre)
     seeds = C.PART1_CPT_SEEDS
     para = D.has_runs("para", seeds)
     arms = (*PART1_ARMS, "para") if para else PART1_ARMS
-    impl = _implementation(D, [C.run_id(a, s) for a in arms for s in seeds])
-    if impl["outcome"] == "fail":
-        sc = R.scenario_part1(R.Steps(implementation="fail"))
-        return _record(name, D, cfg, args, {"preinspect": pre, "implementation": impl,
-                                            "scenario": sc}, "fail",
-                       {"implementation": "fail", "scenario": sc["scenario"]})
+    pq = _prerequisites(D, cfg, [C.run_id(a, s) for a in arms for s in seeds])
+    if pq["stop"]:
+        return _stopped_record(name, D, cfg, args, pq | {"body": pq["body"]
+                                                        | {"paraphrase_ran": para}})
+    jc = D.judge_check("part1", _sampled_runs(arms))
+    check_pass = jc["numbers"]["pass"]
     core = _part1_core(D, cfg, seeds, arms)
-    tau, con, refs = core["tau"], core["contrasts"], core["refs"]
-    prec = R.precision_h1(core["cells"]["bg"].q, tau)
-    steps = R.Steps(implementation="pass", preinspect="pass", references=refs["outcome"],
-                    selection_reliable=cfg.get("selection_reliable", True),
-                    precision=prec["outcome"], tau=tau)
-    body: dict = {"preinspect": pre, "implementation": impl, "references": refs,
-                  "g0_tau": core["g0_tau"], "precision": prec, "arms": core["arms"],
-                  "contrasts": con, "paraphrase_ran": para}
-    outs: dict = {"references": refs["outcome"], "precision": prec["outcome"]}
-    if refs["outcome"] != "pass":
-        sc = R.scenario_part1(steps)
-        body["scenario"] = sc
-        outs["scenario"] = sc["scenario"]
-        return _record(name, D, cfg, args, body, "invalid", outs)
+    tau, con = core["tau"], core["contrasts"]
+    steps: R.Steps = pq["steps"]
     h2 = R.h2(con)
     prom = R.promising({a: core["arms"][a]["Q"]["point"] for a in PART1_ARMS})
     cc = R.contrast_condition(con)
-    tols = _tolerances(D, cfg, core, seeds)
+    tols = _tolerances(D, cfg, core, seeds, check_pass)
     tc = R.tolerance_condition(tols)
     g = R.gate(cc, tc, prom["outcome"] == "pass")
-    stance = None
-    if g["outcome"] == "pass" and para:
-        stance = R.stance_style(con["corr-para"]["_dist"], con["para-orig"]["_dist"], tau)
-    launch = R.extra_seeds_launch_ok({k: con[k]["d"] for k in ("corr-orig", "corr-bg")})
+    # step 8 whenever both paraphrase runs exist (review R3 #13); Part 2 still needs the gate
+    stance = (R.stance_style(con["corr-para"]["_dist"], con["para-orig"]["_dist"], tau)
+              if para else None)
+    can_change = R.extra_seeds_launch_ok({k: con[k]["d"] for k in ("corr-orig", "corr-bg")})
     s9 = None
     if g["outcome"] == "fail":
         s9 = R.step9(g["numbers"]["contrast"] == "pass", tc, h2["numbers"]["h2"], tau,
                      bool(cfg.get("extra_seeds_preauthorized")), args.get("extra_seeds_funded"),
-                     launch)
-    beh = _behavioural(D, cfg)
+                     can_change)
+    beh = _behavioural(D, cfg, check_pass)
     p2 = R.part2_trigger(g["outcome"], stance["label"] if stance else None)
+    if s9 is not None:
+        nxt = s9["next"]
+    elif p2["outcome"] == "pass":
+        nxt = "part2"
+    else:
+        nxt = "stop"
     steps.contrast = g["numbers"]["contrast"]
     steps.tolerance = tc["outcome"]
     steps.gate = g["outcome"]
@@ -657,46 +777,52 @@ def gate(D: Data, cfg: Mapping, args: Mapping) -> dict:
     steps.h2 = h2["numbers"]["h2"]
     steps.behavioural = beh["label"] if beh else None
     sc = R.scenario_part1(steps)
-    body |= {"h2": h2, "promising": prom, "contrast_condition": cc, "tolerances": tols,
-             "tolerance_condition": tc, "gate": g, "stance": stance, "step9": s9,
-             "behavioural": beh, "part2": p2, "extra_seeds_launch": launch, "scenario": sc,
-             "sampled": _sampled_summary(D, cfg, arms, C.SAMPLING_SEED["part1"]),
-             "stances": _stances(D, cfg, arms, seeds)}
-    outs |= {"promising": prom["outcome"], "contrast_condition": cc["outcome"],
-             **{f"tolerance.{k}": t["outcome"] for k, t in tols.items()},
-             "tolerance_condition": tc["outcome"], "gate": g["outcome"],
-             "stance": stance["label"] if stance else None,
-             "step9": s9["label"] if s9 else None, "step9.next": s9["next"] if s9 else None,
-             "behavioural": beh["label"] if beh else None, "part2": p2["outcome"],
-             "extra_seeds_launch": launch["outcome"], "scenario": sc["scenario"]}
+    body = pq["body"] | {
+        "judge_check": jc, "arms": core["arms"], "contrasts": con, "paraphrase_ran": para,
+        "h2": h2, "promising": prom, "contrast_condition": cc, "tolerances": tols,
+        "tolerance_condition": tc, "gate": g, "stance": stance, "step9": s9,
+        "behavioural": beh, "part2": p2, "extra_seeds_can_change_outcome": can_change,
+        "scenario": sc, "next": nxt,
+        "sampled": _sampled_summary(D, cfg, arms, C.SAMPLING_SEED["part1"]),
+        "stances": _stances(D, cfg, arms, seeds)}
+    outs = pq["outcomes"] | {
+        "judge_check.standard8": check_pass["standard8"],
+        "judge_check.others27": check_pass["others27"],
+        "promising": prom["outcome"], "contrast_condition": cc["outcome"],
+        **{f"tolerance.{k}": t["outcome"] for k, t in tols.items()},
+        "tolerance_condition": tc["outcome"], "gate": g["outcome"],
+        "stance": stance["label"] if stance else None,
+        "step9": s9["label"] if s9 else None,
+        "behavioural": beh["label"] if beh else None, "part2": p2["outcome"],
+        "extra_seeds_launch": "pass" if nxt == "extra_seeds" else "fail",
+        "scenario": sc["scenario"], "next": nxt}
     return _record(name, D, cfg, args, body, g["outcome"], outs)
 
 
 def extra_seeds(D: Data, cfg: Mapping, args: Mapping) -> dict:
-    """§4.11: the four-seed pooled readout (CPT seeds 1-4; τ from Part 1, frozen)."""
+    """§4.11: the four-seed pooled readout (CPT seeds 1-4; τ from Part 1, frozen). Terminal:
+    `next` is always "stop"."""
     name = "extra-seeds"
-    pre = D.preinspect()
-    if pre["outcome"] != "pass":
-        return _stopped(name, D, cfg, args, pre)
     seeds = (*C.PART1_CPT_SEEDS, *C.EXTRA_CPT_SEEDS)
-    impl = _implementation(D, [C.run_id(a, s) for a in PART1_ARMS for s in seeds])
-    if impl["outcome"] == "fail":
-        return _record(name, D, cfg, args, {"preinspect": pre, "implementation": impl},
-                       "fail", {"implementation": "fail"})
+    pq = _prerequisites(D, cfg, [C.run_id(a, s) for a in PART1_ARMS for s in seeds])
+    if pq["stop"]:
+        return _stopped_record(name, D, cfg, args, pq)
+    jc = D.judge_check("part1", _sampled_runs(PART1_ARMS))
     core = _part1_core(D, cfg, seeds, PART1_ARMS)
     con, tau = core["contrasts"], core["tau"]
     for k in ("corr-orig", "corr-bg"):
         con[k]["reproducible"]["rule"] = "§4.11 L434 (reproducible over four seeds)"
-    tols = _tolerances(D, cfg, core, seeds)
+    tols = _tolerances(D, cfg, core, seeds, jc["numbers"]["pass"])
     coh1 = tols.pop("coherence")  # seed-1 coherence (Part 1's; seeds 3-4 have no samples)
     lab = R.extra_seeds_label(con, tols, coh1["outcome"], tau)
-    body = {"preinspect": pre, "implementation": impl, "g0_tau": core["g0_tau"],
-            "arms": core["arms"], "contrasts": con, "tolerances": tols,
-            "coherence_seed1": coh1, "label": lab}
-    outs = {**{f"tolerance.{k}": t["outcome"] for k, t in tols.items()},
-            "coherence_seed1": coh1["outcome"], "label": lab["label"],
-            **{f"reproducible.{k}": con[k]["reproducible"]["outcome"]
-               for k in ("corr-orig", "corr-bg")}}
+    body = pq["body"] | {"judge_check": jc, "arms": core["arms"], "contrasts": con,
+                         "tolerances": tols, "coherence_seed1": coh1, "label": lab,
+                         "next": "stop"}
+    outs = pq["outcomes"] | {
+        **{f"tolerance.{k}": t["outcome"] for k, t in tols.items()},
+        "coherence_seed1": coh1["outcome"], "label": lab["label"],
+        **{f"reproducible.{k}": con[k]["reproducible"]["outcome"]
+           for k in ("corr-orig", "corr-bg")}, "next": "stop"}
     return _record(name, D, cfg, args, body, lab["outcome"], outs)
 
 
@@ -773,33 +899,78 @@ def read_gate_log(path: Path) -> list[dict]:
     return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
 
 
-def dependent_steps(changed: set[str], log: list[dict]) -> list[str]:
-    """Every step launched by, or depending on, a changed or invalid analysis (transitive, in
-    log order; plan "Invalidate-and-replay")."""
-    invalid = set(changed)
-    marked: list[str] = []
+def _dep_names(deps) -> set[str]:
+    """Analysis names a log line depends on: [{name, sha256}] (current shape) or [name]."""
+    out = set()
+    for d in deps or []:
+        n = d.get("name") if isinstance(d, Mapping) else d
+        if n:
+            out.add(str(n).partition(".")[0])
+    return out
+
+
+def dependents(changed: set[str], log: list[dict]) -> dict:
+    """Everything reached from the changed analyses through the orchestrator's gate log, to a
+    fixpoint (plan "Invalidate-and-replay"; review R3 #9):
+    analysis → every launch whose `depends_on` names it → that launch's step and the runs it
+    `produces` → every analysis gate line whose `inputs_from_runs` includes such a run (or whose
+    `depends_on` names an invalid analysis or step) → its launches, and so on. Launch and
+    review/GO lines of invalid steps are listed as revoked authorizations. Older lines that
+    carry only `gate` and `launched` are followed too."""
+    analyses, steps, runs = set(changed), set(), set()
+    order: dict[str, list[str]] = {"analyses": [], "steps": [], "runs": []}
+    revoked: list[dict] = []
+
+    def add(kind: str, bag: set, x: str) -> bool:
+        if x and x not in bag:
+            bag.add(x)
+            order[kind].append(x)
+            return True
+        return False
+
     grew = True
     while grew:
         grew = False
-        for line in log:
-            g = line.get("gate")
-            deps = set(line.get("depends_on") or [])
-            src_invalid = g in invalid or bool(deps & invalid)
-            if not src_invalid:
-                continue
-            for step in [*(line.get("launched") or []), *([g] if deps & invalid else [])]:
-                if step and step not in invalid:
-                    invalid.add(step)
-                    marked.append(step)
-                    grew = True
-    return marked
+        for i, line in enumerate(log):
+            kind = line.get("kind")
+            deps = _dep_names(line.get("depends_on"))
+            if kind == "launch" or "produces" in line:
+                hit = deps & (analyses | steps) or (
+                    "depends_on" not in line and line.get("gate") in analyses)
+                if hit:
+                    for st in [line.get("step"), *(line.get("launched") or [])]:
+                        grew |= add("steps", steps, st) if st else False
+                    for r in line.get("produces") or []:
+                        grew |= add("runs", runs, r)
+                    if not any(x.get("line") == i for x in revoked):
+                        revoked.append({"line": i, "kind": "launch", "step": line.get("step"),
+                                        "utc": line.get("utc")})
+            elif kind in ("go", "review") or (kind not in (None, "gate") and "step" in line):
+                if line.get("step") in steps and not any(x.get("line") == i for x in revoked):
+                    revoked.append({"line": i, "kind": kind, "step": line.get("step"),
+                                    "utc": line.get("utc")})
+            else:  # an analysis gate line (or an older line with gate/launched)
+                g = line.get("gate")
+                if g and (set(line.get("inputs_from_runs") or []) & runs
+                          or deps & (analyses | steps)):
+                    grew |= add("analyses", analyses, g)
+                if g in analyses:
+                    for st in line.get("launched") or []:
+                        grew |= add("steps", steps, st)
+    return {**order, "revoked_authorizations": revoked}
+
+
+def dependent_steps(changed: set[str], log: list[dict]) -> list[str]:
+    """Steps and analyses reached from `changed` (see `dependents`)."""
+    d = dependents(changed, log)
+    return [*d["steps"], *d["analyses"]]
 
 
 def replay(old_dir: Path | str, new_config: Mapping, root: Path | str,
            gate_log: str = C.GATE_LOG) -> dict:
     """Recompute every analysis recorded in `old_dir` under `new_config`, from the committed
     inputs; diff outcomes; supersede and replace the changed records; write invalidations.json
-    with every changed outcome and every dependent step (prereg §4.7 L269-270)."""
+    with every changed outcome and everything reached from it (prereg §4.7 L269-270)."""
     root, old_dir = Path(root), Path(old_dir)
     if not old_dir.is_absolute():
         old_dir = root / old_dir
@@ -810,11 +981,10 @@ def replay(old_dir: Path | str, new_config: Mapping, root: Path | str,
             olds[rec["name"]] = (p, rec)
     order = [n for n in ANALYSES if n in olds]
     new_sha = config_hash(new_config)
-    changed, replaced, results = {}, {}, {}
+    changed, replaced = {}, {}
     for n in order:
         p, old = olds[n]
         new = compute(n, new_config, root, old["command"].get("args"))
-        results[n] = new
         diffs = diff_outcomes(old, new)
         if diffs:
             changed[n] = diffs
@@ -825,15 +995,19 @@ def replay(old_dir: Path | str, new_config: Mapping, root: Path | str,
             p.write_text(json.dumps(new, indent=2, sort_keys=True, default=_json_default)
                          + "\n")
             replaced[n] = {"record": str(p.relative_to(root)),
-                           "superseded": str((keep / p.name).relative_to(root))}
-    marked = dependent_steps(set(changed), read_gate_log(root / gate_log))
+                           "superseded": str((keep / p.name).relative_to(root)),
+                           "superseded_sha256": sha256_file(keep / p.name)}
+    dep = dependents(set(changed), read_gate_log(root / gate_log))
     inv = {
         "utc": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "code_commit": code_commit(root),
         "old_config_sha256": sorted({r.get("config_sha256") for _, r in olds.values()}),
         "new_config_sha256": new_sha, "new_config": dict(new_config),
         "changed": [{"analysis": n, **d} for n, ds in changed.items() for d in ds],
-        "invalid_steps": marked, "replaced": replaced, "gate_log": gate_log,
+        "invalid_analyses": dep["analyses"], "invalid_steps": dep["steps"],
+        "invalid_runs": dep["runs"], "revoked_authorizations": dep["revoked_authorizations"],
+        "replaced": replaced, "gate_log": gate_log,
+        "exploratory": new_config["pairs"]["sha256"] != C.PAIRS_SHA256,
         "outcome": "pass" if not changed else "fail",
     }
     out = old_dir / Path(INVALIDATIONS).name

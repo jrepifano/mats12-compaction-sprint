@@ -313,6 +313,11 @@ class PolicyEvidenceError(RuntimeError):
     (review R1 #4): refused before any paid call that would rely on them."""
 
 
+class SelectionEvidenceError(RuntimeError):
+    """The selection artifacts do not verify against current P1, config and results (review R1
+    r3 #3; B1's `select.verify_selection` raised): refused before any rewrite or reservation."""
+
+
 class DirtySourceError(RuntimeError):
     """Uncommitted changes under src/ or scripts/ and allow_dirty was not given (R1 #12, r2 #7)."""
 
@@ -369,6 +374,16 @@ def add_exclusions(doc_ids: Iterable[str], reason: str, source: str, *,
 # --- adapters to the parallel units -------------------------------------------------------------
 
 
+def row_safety_flag(row: dict) -> bool:
+    """A positive minor_sexual flag anywhere in an A.1 llm row (B1's sticky `safety_flag`, any
+    attempt's `minor_sexual_values`, or the final parsed answer), independent of the row's
+    status or validity (review R1 r3 #1)."""
+    parsed = row.get("parsed")
+    return (row.get("safety_flag") is True
+            or any(v is True for v in row.get("minor_sexual_values") or ())
+            or (isinstance(parsed, dict) and parsed.get("minor_sexual") is True))
+
+
 class _LLM:
     """The only place that knows `emx.e9.llm.run_batch`'s request and row shapes (unit B1).
 
@@ -386,6 +401,9 @@ class _LLM:
         self.stage = stage
         self.cache: dict[tuple[str, str, str], dict | None] = {}
         self.statuses: Counter = Counter()
+        # Called as on_flag(model_key, prompt_id, item_id) for every A.1 row carrying a positive
+        # safety flag, before any error is raised for the batch (review R1 r3 #1).
+        self.on_flag: Callable[[str, str, str], None] | None = None
 
     def json(self, model_key: str, prompt_id: str, items: Sequence[tuple[str, dict]]) -> dict:
         todo: dict[str, dict] = {}
@@ -401,6 +419,10 @@ class _LLM:
             rows = self.run_batch(model_key, prompt_id, reqs, out_path, mode="json",
                                   stage=self.stage, note=note)
             by_id = {r["item_id"]: r for r in rows}
+            if prompt_id == "A1_content":  # safety first: every row, whatever its status
+                for i in ids:
+                    if i in by_id and row_safety_flag(by_id[i]) and self.on_flag is not None:
+                        self.on_flag(model_key, prompt_id, i)
             missing = [i for i in ids if i not in by_id]
             if missing:  # never a silent check failure
                 raise ResumableAbort(f"run_batch returned no row for {len(missing)} of {len(ids)} "
@@ -773,14 +795,21 @@ class Acceptor:
             return
         a1_items = [(f"orig|{o.doc_id}", {"document": self.docs[o.doc_id]["text"]}) for o in outs]
         a1_items += [(o.key, {"document": o.text}) for o in outs]
-        a1 = self.llm.json(model_key, "A1_content", a1_items)
+        items = {f"orig|{o.doc_id}": (o.doc_id, "orig") for o in outs}
+        items |= {o.key: (o.doc_id, o.key) for o in outs}
+
+        def on_flag(m: str, prompt_id: str, item_id: str) -> None:
+            doc_id, what = items[item_id]
+            self._flag(doc_id, f"{m}:{prompt_id}:{what}")
+
+        self.llm.on_flag = on_flag  # flags are registered before any batch error is raised
+        try:
+            a1 = self.llm.json(model_key, "A1_content", a1_items)
+        finally:
+            self.llm.on_flag = None
         a4 = self.llm.json(model_key, "A4_preserve", [
             (o.key, {"original": self.docs[o.doc_id]["text"], "rewrite": o.text}) for o in outs])
         for o in outs:
-            for item, what in ((f"orig|{o.doc_id}", "orig"), (o.key, o.key)):
-                p = a1[item]
-                if isinstance(p, dict) and p.get("minor_sexual") is True:
-                    self._flag(o.doc_id, f"{model_key}:A1_content:{what}")
             e_orig = parse_endorsement(a1[f"orig|{o.doc_id}"])
             e_out = parse_endorsement(a1[o.key])
             a4o = parse_a4(a4[o.key])
@@ -1146,11 +1175,21 @@ class Paths:
     rewrite_dir: Path = Path(C.REWRITE_DIR)
     insert_dir: Path = Path(C.INSERT_DIR)
     llm_dir: Path = Path(C.LLM_DIR)
+    validation: Path | None = None  # default: validation.json beside selection.json
 
     def rooted(self, root: Path) -> Paths:
+        val = self.validation or Path(self.selection).with_name("validation.json")
         return Paths(*(p if p.is_absolute() else root / p for p in
                        (self.p1, self.selection, self.ranked, self.rewrite_dir, self.insert_dir,
-                        self.llm_dir)))
+                        self.llm_dir, val)))
+
+
+def _verify_selection_default(p1_docs, selection, ranking, validation, *, llm_dir):
+    try:
+        from emx.e9.select import verify_selection
+    except (ImportError, AttributeError) as e:  # fail closed: never rewrite unverified input
+        raise SelectionEvidenceError(f"cannot verify the selection: {e}") from e
+    return verify_selection(p1_docs, selection, ranking, validation, llm_dir=llm_dir)
 
 
 def _excl_summary(excl: dict[str, list[dict]]) -> dict[str, list[str]]:
@@ -1169,6 +1208,7 @@ def accept(
     refreeze: bool = False,
     refreeze_reason: str | None = None,
     allow_dirty: bool = False,
+    verify_selection: Callable | None = None,
 ) -> dict:
     """The acceptance driver (§4.4). Returns {"outcome": "frozen", ...} with the manifest and
     versions paths, or {"outcome": "stop", "reason": ...}; both are also written to
@@ -1209,7 +1249,21 @@ def accept(
         from emx.e9.text import tokenizer
 
         tok = tokenizer()
-    docs = {d["doc_id"]: d for d in _read_jsonl(paths.p1)}
+    p1_rows = _read_jsonl(paths.p1)
+    docs = {d["doc_id"]: d for d in p1_rows}
+    # Re-verify the selection's provenance and recompute ranking and initial insert (B1) before
+    # any rewrite, check or reservation (review R1 r3 #3).
+    if not paths.validation.exists():
+        raise SelectionEvidenceError(f"no validation record at {paths.validation}")
+    verify = verify_selection or _verify_selection_default
+    try:
+        verify(p1_rows, json.loads(paths.selection.read_text()),
+               json.loads(paths.ranked.read_text()), json.loads(paths.validation.read_text()),
+               llm_dir=paths.llm_dir)
+    except SelectionEvidenceError:
+        raise
+    except Exception as e:  # EvidenceMismatch or any failure to verify: refuse
+        raise SelectionEvidenceError(f"selection does not verify: {type(e).__name__}: {e}") from e
     ranking = load_ranking(paths.ranked)
     selection = load_selection(paths.selection)
     rank = {r["doc_id"]: r["rank"] for r in ranking}
@@ -1220,7 +1274,8 @@ def accept(
     if any(d not in rank for d in selection):
         raise ValueError("selection.json holds doc ids missing from ranked.json")
     selection = sorted(dict.fromkeys(selection), key=rank.__getitem__)
-    inputs = {_rel(p): _sha256_file(p) for p in (paths.p1, paths.selection, paths.ranked)}
+    inputs = {_rel(p): _sha256_file(p)
+              for p in (paths.p1, paths.selection, paths.ranked, paths.validation)}
     n_refreeze = (prev or {}).get("refreeze_count", -1) + 1
 
     acc = Acceptor(

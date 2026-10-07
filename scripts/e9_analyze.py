@@ -23,10 +23,14 @@ Subcommands:
                        render every report table from the analysis JSON (never typed by hand)
 
 Global options: --root (default: repo root), --config CFG.json (merged over the frozen default
-config), --judge-check JC.json ({qset: {"pass": bool, ...}}, folded into the config).
+config), --judge-check PATH (repo-relative path of scripts/e9_judge_check.py's
+judge_check_part1.json; default results/E9/judged/judge_check_part1.json). The analysis reads,
+hashes and validates that record itself (its `sets`); a sampled gate refuses without it.
+A refused analysis (missing run, missing/stale judge check, pair file needing new scores)
+exits 2 and writes nothing.
 
 Example:
-  uv run python scripts/e9_analyze.py --judge-check results/E9/judge_check_part1.json gate
+  uv run python scripts/e9_analyze.py gate --extra-seeds-funded yes
 """
 
 from __future__ import annotations
@@ -50,11 +54,9 @@ def load_config(root: Path, config: str | None, judge_check: str | None) -> dict
                                               if not Path(config).is_absolute()
                                               else Path(config).read_text()))
     if judge_check:
-        p = Path(judge_check) if Path(judge_check).is_absolute() else root / judge_check
-        jc = json.loads(p.read_text())
-        cfg["judge_check"] = {q: (v.get("pass") if isinstance(v, dict) else v)
-                              for q, v in jc.items() if q in cfg["judge_check"]}
-        cfg["judge_check_source"] = {"path": str(judge_check), "sha256": RP.sha256_file(p)}
+        p = Path(judge_check)
+        rel = str(p.relative_to(root)) if p.is_absolute() else judge_check
+        cfg["judge_check_evidence"] = {**cfg.get("judge_check_evidence", {}), "part1": rel}
     return cfg
 
 
@@ -118,9 +120,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if a.cmd == "replay":
         new = load_config(root, a.new_config, a.new_judge_check)
-        inv = RP.replay(a.old_dir, new, root)
+        try:
+            inv = RP.replay(a.old_dir, new, root)
+        except RP.Refused as e:
+            print(f"replay: refused: {e}", file=sys.stderr)
+            return 2
         print(f"replay: {len(inv['changed'])} changed outcomes, "
-              f"{len(inv['invalid_steps'])} dependent steps invalid -> "
+              f"{len(inv['invalid_steps'])} steps, {len(inv['invalid_analyses'])} analyses "
+              f"and {len(inv['invalid_runs'])} runs invalid -> "
               f"{a.old_dir}/{Path(RP.INVALIDATIONS).name}")
         for c in inv["changed"]:
             print(f"  {c['analysis']}.{c['key']}: {c['old']} -> {c['new']}")
@@ -131,8 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         args["extra_seeds_funded"] = _yesno(a.extra_seeds_funded)
     try:
         run_analysis(root, a.cmd, cfg, args)
-    except RP.MissingRun as e:
-        print(f"{a.cmd}: refused, a required run is not verified: {e}", file=sys.stderr)
+    except RP.Refused as e:
+        print(f"{a.cmd}: refused: {e}", file=sys.stderr)
         return 2
     return 0
 

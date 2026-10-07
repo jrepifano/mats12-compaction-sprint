@@ -489,3 +489,51 @@ def test_prepare_scores_restricts_and_requires_coverage():
     assert out.loc[out["pair_id"] == "p2", "split"].iloc[0] == "heldout"  # from the pair file
     with pytest.raises(ValueError, match="rescoring"):
         R.prepare_scores(df[df["pair_id"] != "p2"], pairs)
+
+
+# --- pair revisions and judge-check evidence (review R3 #7, #10) --------------------------------
+
+
+def _pair(pid, q="a", text="question a", m="m", a="a"):
+    return {"pair_id": pid, "qid": q, "qset": "broad", "question": text, "misaligned": m,
+            "aligned": a, "split": "dev"}
+
+
+def test_pair_reuse_only_for_identical_bytes():
+    old = [_pair("a#0"), _pair("a#1"), _pair("b#0", q="b", text="question b")]
+    assert R.pair_reuse_problems(old, old[:2]) == []  # a dropped subset may reuse scores
+    assert R.pair_reuse_problems(old, [_pair("a#0", a="new")])[0].startswith("a#0: ['aligned']")
+    assert "not in the scored" in R.pair_reuse_problems(old, [_pair("c#0", q="c")])[0]
+    probs = R.pair_reuse_problems(old, [_pair("a#0", text="reworded")])
+    assert any("question" in p for p in probs)
+
+
+def _ev(**kw):
+    sets = {"standard8": {"pass": True, "kappa": 0.8, "deciding_judge": "luna"},
+            "others27": {"pass": True, "kappa": 0.7, "deciding_judge": "gfl"}}
+    return {"part": "part1", "runs": ["bg-c1", "corr-c1"], "sets": sets,
+            "inputs": {"results/E9/judged/bg-c1__m.csv": "aa"}} | kw
+
+
+DEC = {"standard8": "luna", "others27": "gemini"}
+
+
+def test_judge_check_result_parses_sets():
+    r = R.judge_check_result(_ev(), DEC, ["bg-c1", "corr-c1"], {})
+    assert r["outcome"] == "pass" and r["numbers"]["pass"] == {"standard8": True,
+                                                               "others27": True}
+    assert R.judge_check_result(None, DEC, [], {})["outcome"] == "fail"
+    assert R.judge_check_result({"standard8": {"pass": True}}, DEC, [], {})["outcome"] == "fail"
+    assert R.judge_check_result(_ev(), DEC, ["para-c1"], {})["outcome"] == "fail"
+    stale = R.judge_check_result(_ev(), DEC, [], {"results/E9/judged/bg-c1__m.csv": "bb"})
+    assert stale["outcome"] == "fail" and "changed" in stale["reason"]
+
+
+def test_judge_check_result_inconsistent_or_other_judge_is_unvalidated():
+    ev = _ev()
+    ev["sets"]["standard8"] = {"pass": True, "kappa": 0.3, "deciding_judge": "luna"}
+    r = R.judge_check_result(ev, DEC, [], {})
+    assert r["numbers"]["pass"]["standard8"] is False
+    r = R.judge_check_result(_ev(), {"standard8": "luna", "others27": "luna"}, [], {})
+    assert r["numbers"]["pass"]["others27"] is False
+    assert "config decides with luna" in r["numbers"]["notes"]["others27"]

@@ -23,7 +23,9 @@ live outside the run directory, whose every file DONE lists), --no-verify-base.
   run instead (the smoke's bad + good concurrency test): the same recipe and 1,287-step schedule
   stopped after N steps, record `ft/full-{d}-a11-max{N}.json`, scores in `scores/timing/` (never
   merged), no push and no consistency check.
-- `determinism` (smoke): repeats the Q₂₀ run (bad, seed 11) → `determinism.json`.
+- `determinism` (smoke): repeats the Q₂₀ run (bad, seed 11) → `determinism.json`, whose `pass`
+  is the verdict (same init, labels and batch order; complete, finite trajectories and
+  measurements); exit 1 unless it passes. `full` accepts a noise floor only from a passing record.
 - `e1b-gap` (smoke): E1b's seed-2 step-20 adapters on the checkpoint → `e1b_gap.json` (its
   `pass` is the endpoint check; the command exits 0 whenever the gap was measured).
 - `score-base`: the base model's own rows (e.g. `--arm ckpt --cpt-seed 0 --base hub` on every
@@ -169,9 +171,9 @@ def cmd_determinism(args) -> int:
     base = _base(args)
     F.check_arm(args.arm, args.cpt_seed, base)
     ctx = _ctx(args, base)
-    F.run_determinism(args.run_dir, args.arm, args.cpt_seed, base, ctx, root=args.root,
-                      adapters_root=args.adapters_root)
-    return 0
+    res = F.run_determinism(args.run_dir, args.arm, args.cpt_seed, base, ctx, root=args.root,
+                            adapters_root=args.adapters_root)
+    return 0 if res.get("pass") is True else 1
 
 
 def cmd_e1b_gap(args) -> int:

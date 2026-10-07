@@ -19,9 +19,11 @@ Subcommands (all but `generate` and `roundtrip` are stdlib only and run under an
       smoke: E1b's seed-2 step-20 bad and good adapters on the checkpoint (development only),
           named as E1's scores name them, `e9-e1b-c0-{d}-a2-k20`.
       -> R/gen/<model>.csv (exactly emx.contracts.GEN_COLUMNS) and R/gen/manifest.json (every
-         file with sha256, row counts per qset, the request hash, the template hash, the base's
-         and adapter's weight fingerprints). A model is skipped (resume) only if its CSV, request
-         list, base SHA256SUMS digest and adapter file hashes all match the manifest.
+         file with sha256, row counts, and its complete generation configuration with a
+         config_sha256: sampling parameters, seed rule, question-set plan and files, template
+         hash, request hash, base and adapter weight fingerprints, vLLM version). A model is
+         skipped (resume) only if its CSV and that whole configuration match; otherwise the old
+         CSV is archived under gen/superseded/ (listed in the manifest) and regenerated.
   roundtrip --base DIR --adapter DIR --out R/roundtrip.json
       vLLM loads the saved base plus a peft adapter and generates two answers (smoke, §4.13).
   stream-check --stream S.npy [--run-id RUN] [--smoke] --out R/stream_manifest.json
@@ -547,51 +549,75 @@ def generate(args, modules=None, tokenizer_loader=None, adapter_resolver=None) -
 
     gen_dir = Path(args.run_dir) / "gen"
     man_path = gen_dir / "manifest.json"
-    manifest = json.loads(man_path.read_text()) if man_path.exists() else {}
-    common = {
-        "run_dir": str(args.run_dir), "kind": args.kind, "arm": args.arm,
-        "cpt_seed": args.cpt_seed, "base": args.base, "eval_fmt": EVAL_FMT,
-        "template_sha256": template_sha256(EVAL_FMT), "sampling": dict(C.SAMPLING),
-        "sampling_params": sampling_kwargs(), "eval_seed": C.EVAL_SEED,
+    old = json.loads(man_path.read_text()) if man_path.exists() else {}
+
+    # Every input that shapes an answer goes into one per-CSV configuration (review R2 r2 #1):
+    # sampling parameters, seed rule, question-set spec and files, template, base and adapter
+    # weights, engine version. It is compared BEFORE the manifest is touched; a reused CSV keeps
+    # its recorded entry verbatim, and a differing one is archived and regenerated.
+    vllm_mod, lora_cls = modules or _vllm_modules()
+    resolver = adapter_resolver or resolve_adapter
+    engine_version = f"vllm {getattr(vllm_mod, '__version__', 'unknown')}"
+    shared_cfg = {
+        "eval_fmt": EVAL_FMT, "template_sha256": template_sha256(EVAL_FMT),
+        "sampling": dict(C.SAMPLING), "sampling_params": sampling_kwargs(),
+        "eval_seed": C.EVAL_SEED,
         "seed_rule": f"request_seed('<model>@{EVAL_FMT}', qid, sample_idx, base={C.EVAL_SEED})",
         "question_files": {QUESTION_FILES[k]: v for k, v in q_sha.items()},
-        "selection_file": str(sel_path.relative_to(ROOT) if sel_path.is_relative_to(ROOT)
-                              else sel_path),
         "selection_sha256": sha256_file(sel_path), "cuts": list(cuts), "vulnerable": vulnerable,
+        "base": args.base, "base_fingerprint": base_fingerprint(args.base),
+        "engine_version": engine_version,
+        "llm": {k: v for k, v in llm_kwargs(args.base, 1).items()
+                if k not in ("model", "tokenizer", "max_loras")},
     }
-    if manifest.get("template_sha256") not in (None, common["template_sha256"]):
-        raise SystemExit(f"{man_path}: written under another template; move it aside")
-    manifest = {**manifest, **common}
-    manifest.setdefault("files", {})
-
-    # Reuse is bound to the weights: the base's SHA256SUMS digest (or the pinned revision) and
-    # each adapter's file hashes, besides the CSV and the exact request list (review R2 #4).
-    resolver = adapter_resolver or resolve_adapter
-    base_fp = base_fingerprint(args.base)
-    manifest["base_fingerprint"] = base_fp
     adapters = {m.name: resolver(m.adapter) for m in models if m.adapter}
-    adapter_fp = {name: adapter_fingerprint(path) for name, path in adapters.items()}
+    configs = {}
+    for m in models:
+        cfg = {
+            **shared_cfg, "model": m.name, "condition": m.condition, "mode": m.mode,
+            "untuned": m.untuned, "adapter": m.adapter,
+            "adapter_fingerprint": adapter_fingerprint(adapters[m.name]) if m.adapter else None,
+            "qset_plan": [list(x) for x in qset_plan(m.mode, m.untuned, vulnerable, cuts)],
+            "requests_sha256": requests_sha256(plans[m.name]),
+        }
+        configs[m.name] = {"config": cfg, "config_sha256": config_sha256(cfg)}
+
     todo = []
     for m in models:
         csv_path = gen_dir / f"{m.name}.csv"
-        ent = manifest["files"].get(csv_path.name)
+        ent = (old.get("files") or {}).get(csv_path.name)
         if (ent and csv_path.exists() and ent.get("sha256") == sha256_file(csv_path)
-                and ent.get("requests_sha256") == requests_sha256(plans[m.name])
-                and ent.get("base_fingerprint") == base_fp
-                and ent.get("adapter_fingerprint") == adapter_fp.get(m.name)):
-            print(f"E9_GEN_SKIP {m.name}: verified", flush=True)
+                and ent.get("config") == configs[m.name]["config"]
+                and ent.get("config_sha256") == configs[m.name]["config_sha256"]):
+            print(f"E9_GEN_SKIP {m.name}: configuration and CSV verified", flush=True)
             continue
         todo.append(m)
     if not todo:
-        write_json(man_path, manifest)
         return []
 
-    vllm_mod, lora_cls = modules or _vllm_modules()
+    manifest = {"run_dir": str(args.run_dir), "kind": args.kind, "arm": args.arm,
+                "cpt_seed": args.cpt_seed, **{k: v for k, v in old.items() if k != "files"},
+                "files": dict(old.get("files") or {})}
+    manifest.setdefault("superseded", [])
+    stamp = dt.datetime.now(dt.UTC).strftime("%Y%m%dT%H%M%SZ")
+    for m in todo:  # an earlier CSV under another configuration is kept, never overwritten
+        csv_path = gen_dir / f"{m.name}.csv"
+        prev = manifest["files"].pop(csv_path.name, None)
+        if csv_path.exists() or prev:
+            dest = gen_dir / "superseded" / f"{m.name}.{stamp}.csv"
+            if csv_path.exists():
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                os.replace(csv_path, dest)
+            manifest["superseded"].append({"csv": csv_path.name, "archived_as":
+                                           f"superseded/{dest.name}" if dest.exists() else None,
+                                           "entry": prev, "utc": utc()})
+            print(f"E9_GEN_SUPERSEDED {m.name}: configuration or CSV changed", flush=True)
+    write_json(man_path, manifest)
+
     loader = tokenizer_loader or load_tokenizer
     kw = llm_kwargs(args.base, len([m for m in todo if m.adapter]))
     llm = vllm_mod.LLM(**kw)
     tok = loader(args.base)
-    version = f"vllm {getattr(vllm_mod, '__version__', 'unknown')}"
     written = []
     for lid, m in enumerate(todo, start=1):
         reqs = to_requests(m, plans[m.name], tok)
@@ -602,21 +628,23 @@ def generate(args, modules=None, tokenizer_loader=None, adapter_resolver=None) -
         csv_path = gen_dir / f"{m.name}.csv"
         write_csv(csv_path, rows)
         manifest["files"][csv_path.name] = {
-            "model": m.name, "condition": m.condition, "mode": m.mode, "untuned": m.untuned,
-            "adapter": m.adapter, "adapter_path": adapters.get(m.name),
-            "base_fingerprint": base_fp, "adapter_fingerprint": adapter_fp.get(m.name),
+            "model": m.name, **configs[m.name], "adapter_path": adapters.get(m.name),
             "sha256": sha256_file(csv_path), "n_rows": len(rows),
-            "counts": counts(plans[m.name]), "requests_sha256": requests_sha256(plans[m.name]),
+            "counts": counts(plans[m.name]),
             "finish_reasons": {k: sum(1 for r in rows if r["finish_reason"] == k)
                                for k in ("stop", "length")},
-            "seconds": round(secs, 2), "engine": "vllm", "engine_version": version,
-            "llm": {k: v for k, v in kw.items() if k not in ("model", "tokenizer")},
+            "seconds": round(secs, 2), "max_loras": kw["max_loras"],
             "utc": utc(), "git_commit": git_commit(),
         }
         write_json(man_path, manifest)  # after every model: a crash keeps the finished ones
         written.append(csv_path)
         print(f"E9_GEN_WROTE {csv_path} ({len(rows)} rows, {secs:.0f}s)", flush=True)
     return written
+
+
+def config_sha256(cfg: dict) -> str:
+    return hashlib.sha256(json.dumps(cfg, sort_keys=True, separators=(",", ":"))
+                          .encode()).hexdigest()
 
 
 def roundtrip(args, modules=None, tokenizer_loader=None) -> dict:

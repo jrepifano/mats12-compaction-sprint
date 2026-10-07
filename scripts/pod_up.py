@@ -86,7 +86,6 @@ Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--
 from __future__ import annotations
 
 import argparse
-import contextlib
 import sys
 import time
 import traceback
@@ -293,10 +292,18 @@ def reconcile_create(
     return None
 
 
-def settlement_lock():
-    """E9: the admission lock around a charge and its settlement (emx.runpod.e9_admission_lock);
-    a no-op for every other experiment."""
-    return rp.e9_admission_lock() if rp.EXP == "E9" else contextlib.nullcontext()
+def close_and_settle(rid: str | None, pod_id: str, note: str) -> bool:
+    """After a DELETE: the GPU charge, then (with `rid`) the reservation's settlement. E9 goes
+    through `emx.runpod.e9_close` (emx.e9.budget.settle_pod under the admission lock, review R3
+    #5); the others through finish_session and settle_reservation, as before."""
+    if rp.EXP == "E9":
+        r = rp.e9_close(pod_id, note, rid)
+        if not r["settled"] and rid is not None:
+            print(f"pod {pod_id}: reservation {rid} NOT settled ({r['why']}); its liability "
+                  "still counts; pod_down.py --exp E9 retries it", file=sys.stderr)
+        return bool(r["settled"])
+    s_ = rp.finish_session(pod_id, note)
+    return settle_reservation(rid, pod_id, s_) if rid is not None else True
 
 
 def settle_reservation(rid: str, pod_id: str, session: dict | None) -> bool:
@@ -606,9 +613,7 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
             except rp.RunPodError as te:
                 print(f"DELETE FAILED ({te}); terminate {pod_id} by hand", file=sys.stderr)
                 return report("uncertain", UNCERTAIN, pod_id)
-            with settlement_lock():  # E9: charge then settle under the admission lock
-                s_ = rp.finish_session(pod_id, "pod_up: launch row refused")
-                settled = settle_reservation(rid, pod_id, s_)
+            settled = close_and_settle(rid, pod_id, "pod_up: launch row refused")
             rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
             return (
                 report("closed", 1, pod_id) if settled else report("uncertain", UNCERTAIN, pod_id)
@@ -636,9 +641,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
                 file=sys.stderr,
             )
             return report("uncertain", UNCERTAIN, pod_id) if reserved else 1
-        with settlement_lock():  # E9: charge then settle under the admission lock
-            s_ = rp.finish_session(pod_id, f"pod_up: {reason}")
-            settled = reserved and settle_reservation(rid, pod_id, s_)
+        settled = close_and_settle(rid if reserved else None, pod_id, f"pod_up: {reason}")
+        settled = reserved and settled
         rp.set_env_var(f"RUNPOD_POD_ID{slot}", "")
         print(f"{reason}; pod {pod_id} terminated", file=sys.stderr)
         if reserved:

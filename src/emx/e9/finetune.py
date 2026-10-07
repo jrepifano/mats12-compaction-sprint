@@ -53,6 +53,7 @@ from __future__ import annotations
 import contextlib
 import dataclasses
 import json
+import math
 import os
 import shutil
 import time
@@ -438,12 +439,26 @@ def _total_steps(cfg, root: Path) -> int:
 # --- consistency (§4.5) -------------------------------------------------------------------------
 
 
-def noise_floor(path: str | Path | None) -> float | None:
-    """The determinism check's |ΔB| at step 20 (`determinism.json`), or None if absent."""
+def noise_floor_info(path: str | Path | None) -> tuple[float | None, str]:
+    """(the determinism check's |ΔB| at step 20, why). The floor is accepted only from a
+    determinism record whose `pass` is true and whose floor is a finite number >= 0; otherwise
+    None (the consistency check then uses `C.CONSISTENCY_TOL` alone) with the reason."""
     if path is None or not Path(path).is_file():
-        return None
-    v = json.loads(Path(path).read_text()).get("noise_floor_B")
-    return None if v is None else float(v)
+        return None, f"no determinism record at {path}"
+    try:
+        rec = json.loads(Path(path).read_text())
+    except ValueError as e:
+        return None, f"determinism record unreadable: {e}"
+    if rec.get("pass") is not True:
+        return None, f"determinism record not passing: {rec.get('reasons')}"
+    v = rec.get("noise_floor_B")
+    if not isinstance(v, int | float) or not math.isfinite(v) or v < 0:
+        return None, f"determinism noise floor {v!r} is not a finite number >= 0"
+    return float(v), "used: passing determinism record"
+
+
+def noise_floor(path: str | Path | None) -> float | None:
+    return noise_floor_info(path)[0]
 
 
 def consistency_check(b_q20: dict[str, float], b_full: dict[str, float], floor: float | None,
@@ -504,7 +519,9 @@ def update_consistency(run_dir: str | Path, arm: str, cpt_seed: int, datas: Sequ
                 b_q[d] = q
             if f is not None:
                 b_f[d] = f
-        res = consistency_check(b_q, b_f, noise_floor(floor_file))
+        floor, why = noise_floor_info(floor_file)
+        res = consistency_check(b_q, b_f, floor)
+        res["noise_floor_status"] = why
         for d in set(datas) - set(res["per_data"]):
             res["per_data"][d] = {"B_q20": None, "B_full": None, "abs_diff": None,
                                   "pass": False, "reason": "missing"}
@@ -618,6 +635,50 @@ def determinism_compare(ref_rows: Sequence[dict], orig_rows: Sequence[dict],
             "note": "only the bad adapter is repeated, so dQ = dB_bad"}
 
 
+DETERMINISM_STEPS: tuple[int, ...] = C.Q_STEPS
+
+
+def _finite(x) -> bool:
+    return isinstance(x, int | float) and not isinstance(x, bool) and math.isfinite(x)
+
+
+def determinism_verdict(res: dict, rec_a: dict, rec_b: dict,
+                        expect_steps: int = C.Q20_STEP) -> tuple[bool, list[str]]:
+    """The determinism check's verdict (§4.13; code review R2 r2 #2): both runs trained, the same
+    adapter initialization, labels and batch order (hashes present and equal), complete
+    trajectories of equal length (`expect_steps` finite step losses each, the same held-out eval
+    steps), every Q step compared, and every measurement finite. Returns (pass, reasons)."""
+    why: list[str] = []
+    for name, r in (("original", rec_a), ("repeat", rec_b)):
+        if r.get("status") not in ("trained", "pushed"):
+            why.append(f"{name} record status {r.get('status')!r}")
+        sl = r.get("step_losses") or []
+        if len(sl) != expect_steps:
+            why.append(f"{name}: {len(sl)} step losses, expected {expect_steps}")
+        if not all(_finite(x) for x in sl):
+            why.append(f"{name}: nonfinite step loss")
+        if not all(_finite(x) for x in r.get("eval_losses") or [None]):
+            why.append(f"{name}: nonfinite or missing held-out loss")
+    for k in ("init_adapter_sha256", "labels_sha256", "batch_order_sha256"):
+        a, b = rec_a.get(k), rec_b.get(k)
+        if not a or a != b:
+            why.append(f"{k} differs or is missing ({str(a)[:12]} vs {str(b)[:12]})")
+    if rec_a.get("eval_steps") != rec_b.get("eval_steps"):
+        why.append(f"eval steps differ: {rec_a.get('eval_steps')} vs {rec_b.get('eval_steps')}")
+    per = res.get("per_step") or {}
+    missing = [s for s in DETERMINISM_STEPS if str(s) not in per]
+    if missing:
+        why.append(f"steps not compared: {missing}")
+    for s, row in per.items():
+        for k, v in row.items():
+            if not _finite(v):
+                why.append(f"step {s}: {k} = {v!r} is not finite")
+    for k in ("noise_floor_B", "max_abs_step_loss_diff"):
+        if not _finite(res.get(k)):
+            why.append(f"{k} = {res.get(k)!r} is not finite")
+    return not why, why
+
+
 def run_determinism(run_dir: str | Path, arm: str, cpt_seed: int, base: Base, ctx: ScoreContext,
                     adapter_seed: int = C.FULL_FT_ADAPTER_SEED, **kw) -> dict:
     """Repeat the Q₂₀ run (bad, seed `adapter_seed`) and write determinism.json."""
@@ -630,23 +691,35 @@ def run_determinism(run_dir: str | Path, arm: str, cpt_seed: int, base: Base, ct
                         **kw)
     ref = SP.read_rows(SP.part_path(run_dir, SP.ref_part_name(arm, cpt_seed)))
     good = SP.part_path(run_dir, SP.q20_part_name("good", adapter_seed))
-    res = determinism_compare(ref, SP.read_rows(orig), SP.read_rows(info["part"]),
-                              None if SP.part_ok(good) else SP.read_rows(good), arm, cpt_seed,
-                              adapter_seed, [0, *info["steps"]])
-    recs = {}
-    for name in (cell_name("q20", "bad", adapter_seed), info["cell"]):
-        recs[name] = json.loads((run_dir / FT_DIR / f"{name}.json").read_text())
-    la, lb = (recs[n]["step_losses"] for n in recs)
+    recs = [json.loads((run_dir / FT_DIR / f"{name}.json").read_text())
+            for name in (cell_name("q20", "bad", adapter_seed), info["cell"])]
+    try:
+        res = determinism_compare(ref, SP.read_rows(orig), SP.read_rows(info["part"]),
+                                  None if SP.part_ok(good) else SP.read_rows(good), arm,
+                                  cpt_seed, adapter_seed, [0, *info["steps"]])
+    except ValueError as e:  # nonfinite scores, missing steps: a failed check, recorded
+        res = {"per_step": {}, "noise_floor_B": None, "noise_floor_Q": None,
+               "compare_error": str(e)}
+    la, lb = (r.get("step_losses") or [] for r in recs)
+    diffs = [abs(x - y) for x, y in zip(la, lb, strict=False)]
     res.update(run_id=C.run_id(arm, cpt_seed), adapter_seed=adapter_seed, data="bad",
                original=str(orig), repeat=info["part"],
-               max_abs_step_loss_diff=max((abs(x - y) for x, y in zip(la, lb, strict=False)),
-                                          default=None),
-               init_adapter_sha256_equal=len({r["init_adapter_sha256"]
-                                              for r in recs.values()}) == 1,
-               labels_sha256_equal=len({r["labels_sha256"] for r in recs.values()}) == 1,
+               max_abs_step_loss_diff=(None if not diffs or len(la) != len(lb)
+                                       else float(max(diffs))),
+               init_adapter_sha256_equal=recs[0].get("init_adapter_sha256")
+               == recs[1].get("init_adapter_sha256"),
+               labels_sha256_equal=recs[0].get("labels_sha256") == recs[1].get("labels_sha256"),
+               batch_order_sha256_equal=recs[0].get("batch_order_sha256")
+               == recs[1].get("batch_order_sha256"),
                utc=_utc())
+    ok, why = determinism_verdict(res, recs[0], recs[1])
+    if "compare_error" in res:
+        why = [f"compare: {res['compare_error']}", *why]
+        ok = False
+    res.update({"pass": ok, "reasons": why})
     write_json(run_dir / DETERMINISM_FILE, res)
-    log(f"DETERMINISM noise floor |dB| {res['noise_floor_B']!r}")
+    log(f"DETERMINISM {'PASS' if ok else 'FAIL'} noise floor |dB| {res['noise_floor_B']!r}"
+        + ("" if ok else f"; {why}"))
     return res
 
 

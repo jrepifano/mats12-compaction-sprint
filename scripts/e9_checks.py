@@ -17,8 +17,8 @@ Subcommands:
 
 Exit codes: 0 frozen (or inspect/verify ok), 3 stop outcome (Part 1 stops; see
 accept_outcome.json), 4 resumable abort (API errors or cut-offs: rerun), 2 refused (no
---confirm-paid, insert already frozen, nothing to refreeze, dirty source, or policy evidence
-mismatch), 1 verify found problems.
+--confirm-paid, insert already frozen, nothing to refreeze, dirty source, policy evidence
+mismatch, or a selection that does not verify), 1 verify found problems.
 
 Usage:
   uv run python scripts/e9_checks.py inspect
@@ -40,7 +40,8 @@ from emx.e9 import contracts as C
 
 def _paths(a) -> checks.Paths:
     return checks.Paths(Path(a.p1), Path(a.selection), Path(a.ranked), Path(a.rewrite_dir),
-                        Path(a.insert_dir), Path(a.llm_dir)).rooted(checks.ROOT)
+                        Path(a.insert_dir), Path(a.llm_dir),
+                        Path(a.validation) if a.validation else None).rooted(checks.ROOT)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -53,6 +54,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--rewrite-dir", default=str(d.rewrite_dir))
     ap.add_argument("--insert-dir", default=str(d.insert_dir))
     ap.add_argument("--llm-dir", default=str(d.llm_dir))
+    ap.add_argument("--validation", default=None,
+                    help="selection validation record (default: validation.json beside selection)")
     ap.add_argument("--confirm-paid", action="store_true")
     ap.add_argument("--refreeze", action="store_true",
                     help="rebuild a frozen insert after the exclusion registry changed")
@@ -89,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"resumable abort: {e}", file=sys.stderr)
         return 4
     except (FileExistsError, FileNotFoundError, ValueError, checks.DirtySourceError,
-            checks.PolicyEvidenceError) as e:
+            checks.PolicyEvidenceError, checks.SelectionEvidenceError) as e:
         print(f"refused: {e}", file=sys.stderr)
         return 2
     print(json.dumps({k: v for k, v in out.items() if k not in ("dropped", "policies")},

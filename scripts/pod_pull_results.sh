@@ -93,8 +93,9 @@
 #        [--tar]
 # 1. mirrors each run's /ws/emx/results/E9/runs/<run>/ into a mirror tied to the pod's identity,
 #    results/E9/_staging_pull_<pod id>/runs/<run>/ (gitignored; --pod-id, else RUNPOD_POD_ID<slot>
-#    from .env), by rsync, falling back to `tar` over ssh when rsync fails (--tar: tar only, the
-#    third retrieval attempt, contracts.RETRIEVAL_ATTEMPTS). Model files are never pulled: any
+#    from .env), by ONE transport per call: rsync, or with --tar `tar` over ssh. There is no
+#    fallback inside a call (review R3 #12): the orchestrator owns the retries, rsync, rsync, then
+#    --tar (contracts.RETRIEVAL_ATTEMPTS = 3). Model files are never pulled: any
 #    model/ directory and *.safetensors *.bin *.pt *.pth (adapters live on the Hub; the
 #    continued-pretrained model is not kept, §8.7). The pod's /ws/emx/logs/ is mirrored too
 #    (a failure there is a warning). Incremental across retries; nothing is ever deleted;
@@ -659,20 +660,21 @@ PY
     PULL_FAIL=""
     for r in $RUNS; do
       mkdir -p "$MIRROR/runs/$r"
-      ok=0
+      ok=0   # ONE transport per attempt (review R3 #12): the orchestrator owns the retries
       if [ "$TAR_ONLY" != "1" ]; then
         # shellcheck disable=SC2086 # EXCL: rsync options without spaces
         if rsync_pod -rlpt $EXCL "$SRC_ROOT/results/E9/runs/$r/" "$MIRROR/runs/$r/"; then ok=1
-        else echo "rsync of run $r failed (pod $POD_ID); trying tar over ssh" >&2; fi
-      fi
-      if [ "$ok" = "0" ]; then
+        else echo "rsync of run $r failed (pod $POD_ID); no fallback in this attempt" >&2; fi
+      else
         if tar_pod "$r" | tar xf - -C "$MIRROR/runs/"; then ok=1
-        else echo "tar of run $r failed too (pod $POD_ID)" >&2; fi
+        else echo "tar of run $r failed (pod $POD_ID)" >&2; fi
       fi
-      [ "$ok" = "1" ] && echo "mirrored run $r of pod $POD_ID into $MIRROR/runs/$r" || PULL_FAIL="$PULL_FAIL $r"
+      if [ "$ok" = "1" ]; then echo "mirrored run $r of pod $POD_ID into $MIRROR/runs/$r"; else PULL_FAIL="$PULL_FAIL $r"; fi
     done
-    rsync_pod -rlpt "$SRC_ROOT/logs/" "$MIRROR/logs/" 2>/dev/null \
-      || echo "WARNING: could not pull the pod's logs/ (pod $POD_ID)" >&2
+    if [ "$TAR_ONLY" != "1" ]; then   # the job logs ride along with the rsync attempts only
+      rsync_pod -rlpt "$SRC_ROOT/logs/" "$MIRROR/logs/" 2>/dev/null \
+        || echo "WARNING: could not pull the pod's logs/ (pod $POD_ID)" >&2
+    fi
     PY=python3; [ -x .venv/bin/python ] && PY=.venv/bin/python
     # shellcheck disable=SC2086 # RUNS: validated run ids
     VERDICTS=$("$PY" - src/emx/e9/contracts.py "$MIRROR" $RUNS <<'PY_E9'
@@ -765,7 +767,7 @@ PY_E9
     RC=0
     SUPER="results/E9/_staging_superseded_$(date -u +%Y%m%dT%H%M%SZ)"
     for r in $RUNS; do
-      case " $PULL_FAIL " in *" $r "*) echo "run $r: PULL FAILED (rsync and tar) - nothing promoted" >&2; RC=1; continue ;; esac
+      case " $PULL_FAIL " in *" $r "*) echo "run $r: PULL FAILED (this attempt's transport) - nothing promoted" >&2; RC=1; continue ;; esac
       line=$(printf '%s\n' "$VERDICTS" | sed -n "s/^$r \([a-z]*\) \(.*\)\$/\1 \2/p")
       v=${line%% *}; why=${line#* }
       case "$v" in

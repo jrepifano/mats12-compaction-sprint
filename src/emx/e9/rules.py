@@ -149,6 +149,75 @@ def prepare_scores(df: pd.DataFrame, pairs: Sequence[Mapping]) -> pd.DataFrame:
     return d
 
 
+PAIR_CONTENT = ("qid", "qset", "question", "misaligned", "aligned")
+
+
+def pair_reuse_problems(scored: Sequence[Mapping], current: Sequence[Mapping]) -> list[str]:
+    """Why scores made with pair file `scored` cannot stand for pair file `current` (§4.7 L268,
+    L270; review R3 #10). Reuse is allowed only for a subset whose question and answer bytes are
+    identical: every current pair must exist in `scored` under the same id with the same qid,
+    qset, question, misaligned and aligned text, and every question text shared by both files
+    must be identical (mismatched-variant items condition on other pairs' question texts)."""
+    old = {str(r["pair_id"]): r for r in scored}
+    probs = []
+    for r in current:
+        o = old.get(str(r["pair_id"]))
+        if o is None:
+            probs.append(f"{r['pair_id']}: not in the scored pair file")
+        elif any(o.get(k) != r.get(k) for k in PAIR_CONTENT):
+            diff = [k for k in PAIR_CONTENT if o.get(k) != r.get(k)]
+            probs.append(f"{r['pair_id']}: {diff} differ from the scored pair file")
+    qo = {str(r["qid"]): r["question"] for r in scored}
+    for r in current:
+        q = str(r["qid"])
+        if q in qo and qo[q] != r["question"]:
+            probs.append(f"question {q}: text differs from the scored pair file")
+            break
+    return probs
+
+
+def judge_check_result(evidence: Mapping | None, deciding: Mapping[str, str],
+                       runs: Sequence[str], current_inputs: Mapping[str, str]) -> dict:
+    """Parse and validate `scripts/e9_judge_check.py`'s record (prereg §4.8 L368-372; review
+    R3 #7): per-set results under `sets`, each with a boolean `pass` that agrees with its kappa
+    (≥ JUDGE_CHECK_KAPPA_MIN), the deciding judge it checked equal to the config's, the part's
+    sampled `runs` all covered, and every judged/generation file it read unchanged since
+    (`current_inputs` {path: sha256} of the files this analysis read). A set whose check is
+    missing, inconsistent or for another deciding judge counts as not validated; evidence that is
+    absent, malformed or stale is refused (outcome "fail")."""
+    rule = "§4.8 L368-372 (automatic post-intervention judge check)"
+    if not evidence:
+        return _res(rule, "fail", reason="judge-check evidence missing")
+    sets = evidence.get("sets")
+    if not isinstance(sets, Mapping):
+        return _res(rule, "fail", reason="judge-check record has no `sets`")
+    missing_runs = sorted(set(runs) - set(evidence.get("runs") or []))
+    if missing_runs:
+        return _res(rule, "fail", reason=f"judge check does not cover runs {missing_runs}")
+    stale = sorted(p for p, sha in (evidence.get("inputs") or {}).items()
+                   if p in current_inputs and current_inputs[p] != sha)
+    if stale:
+        return _res(rule, "fail", reason=f"judged files changed since the check: {stale[:3]}")
+    out, notes = {}, {}
+    for q in BROAD_SAMPLED:
+        s = sets.get(q)
+        want = JUDGE_COLUMN.get(deciding.get(q, ""), deciding.get(q))
+        if not isinstance(s, Mapping) or not isinstance(s.get("pass"), bool):
+            out[q], notes[q] = False, "no valid result"
+            continue
+        k = s.get("kappa")
+        consistent = s["pass"] == (k is not None and k >= C.JUDGE_CHECK_KAPPA_MIN)
+        same_judge = JUDGE_COLUMN.get(s.get("deciding_judge"), s.get("deciding_judge")) == want
+        out[q] = bool(s["pass"] and consistent and same_judge)
+        if not consistent:
+            notes[q] = "pass flag disagrees with kappa"
+        elif not same_judge:
+            notes[q] = f"checked {s.get('deciding_judge')}, config decides with {want}"
+    nums = {"pass": out, "kappa": {q: (sets.get(q) or {}).get("kappa") for q in BROAD_SAMPLED},
+            "notes": notes, "part": evidence.get("part"), "runs": list(evidence.get("runs"))}
+    return _res(rule, "pass", nums)
+
+
 def _qmeans(df, model: str, ref: str, variant: str, qset: str, split: str,
             qids: Sequence[str]) -> np.ndarray:
     from emx.e3.score import question_means

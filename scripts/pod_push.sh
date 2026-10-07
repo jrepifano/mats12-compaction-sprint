@@ -105,10 +105,19 @@
 #   (emx.e3.contracts.input_sha256), the answer pairs and the question swaps
 #   (emx.e9.contracts PAIRS_SHA256, SWAPS_SHA256), and each run's stream against its manifest's
 #   stream_sha256. A real push refuses a missing or mismatched input; the dry run warns.
-# - Killswitch: per slot as E3 (arm_e3 with --exp E9: verified ARMED line, ack recorded; any
-#   failure exits 1), but every E9 deadline is the pod's own budget deadline from its RunPod
-#   reservation (emx.runpod.per_slot_deadlines), never the global kill line (prereg §7.3).
-#   `--arm-only` works for E9 as for E3.
+# - Killswitch: per slot as E3 (arm_e3 with --exp E9: verified ARMED line, ack recorded), but
+#   every E9 deadline is the pod's own budget deadline from its RunPod reservation
+#   (emx.runpod.per_slot_deadlines), never the global kill line (prereg §7.3). `--arm-only` works
+#   for E9 as for E3.
+# - Order (code review R3 #2, 2026-10-07): all laptop-side checks; then ONLY
+#   scripts/pod_killswitch.sh is sent (one ssh call bounded at 120 s); every running E9 slot is
+#   armed and its acknowledgement verified and recorded; THEN the bulk transfer, the pinned-input
+#   check on the pod, and setup. The caller (e9_orchestrate.py) bounds the whole call by the pod's
+#   funded time and cleans up on a timeout.
+# - E9 exit codes: 0 synced (and set up); 1 refused by a laptop-side check (nothing sent);
+#   2 usage; 4 the killswitch could not be sent, armed or acknowledged (pod UNARMED: clean up at
+#   once); 5 bulk transfer or pinned-input verification on the pod failed (pod armed); 6 setup
+#   failed or timed out (pod armed). Every non-zero code means: run cleanup for the slot.
 # - Setup: pod_setup.sh --only e9 (venv-peft + torchao==0.18.0, venv-vllm).
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
@@ -716,8 +725,9 @@ if [ "$DRY" = "1" ]; then
     echo "DRY RUN (E3): would arm each running E3 slot with its own deadline (python -m emx.runpod --exp E3 --check-slot $SLOT --killswitch-deadline --per-slot), require a matching ARMED line and record it (python -m emx.runpod_reservations ack --pod <id> --deadline <epoch>); any failure exits 1"
   elif [ "$EXP" = "E9" ]; then
     echo "DRY RUN (E9): runs on slot $SLOT: ${E9_RUN_LIST:-(not given: every stream is sent)}"
-    echo "DRY RUN (E9): would verify the pinned inputs on the pod: sha256sum -c ($(wc -l < "$PINS" | tr -d ' ') files)"
-    echo "DRY RUN (E9): would arm each running E9 slot at its OWN budget deadline (python -m emx.runpod --exp E9 --check-slot $SLOT --killswitch-deadline --per-slot; never the global kill line), require a matching ARMED line and record it (python -m emx.runpod_reservations ack --pod <id> --deadline <epoch>); any failure exits 1"
+    echo "DRY RUN (E9): order: 1. send scripts/pod_killswitch.sh only (one ssh call, 120 s); 2. arm; 3. bulk transfer; 4. verify pins; 5. setup"
+    echo "DRY RUN (E9): would arm each running E9 slot at its OWN budget deadline BEFORE the bulk transfer (python -m emx.runpod --exp E9 --check-slot $SLOT --killswitch-deadline --per-slot; never the global kill line), require a matching ARMED line and record it (python -m emx.runpod_reservations ack --pod <id> --deadline <epoch>); failure exits 4"
+    echo "DRY RUN (E9): would verify the pinned inputs on the pod: sha256sum -c ($(wc -l < "$PINS" | tr -d ' ') files); failure exits 5"
   else
     echo "DRY RUN ($EXP): would arm: bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline from python -m emx.runpod --killswitch-deadline>"
   fi
@@ -725,12 +735,33 @@ if [ "$DRY" = "1" ]; then
   exit 0
 fi
 
-$SSH 'command -v rsync >/dev/null || (apt-get update -qq && apt-get install -y -qq rsync); mkdir -p /ws/emx /ws/hf_cache /ws/uv_cache /ws/tmp'
-rsync -lptz --files-from="$LIST" -e "$RSYNC_SSH" ./ "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/"
-if [ -s "$MAIN_LIST" ]; then   # E3, E9: the gitignored pinned inputs, from the main checkout
-  rsync -lptz --files-from="$MAIN_LIST" -e "$RSYNC_SSH" "$E3_MAIN/" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/"
+# xfer_fail RC: a failed transfer step. E9 exits 5 (the pod is armed; review R3 #2); the other
+# experiments keep their old behaviour (exit with the failed command's code, as set -e did).
+xfer_fail() {
+  if [ "$EXP" = "E9" ]; then
+    echo "E9: bulk transfer failed (rc=$1); the pod IS armed at its budget deadline; run e9_orchestrate.py cleanup" >&2
+    exit 5
+  fi
+  exit "$1"
+}
+# E9 (code review R3 #2): the killswitch first. Only scripts/pod_killswitch.sh (self-contained)
+# goes over one bounded ssh call (120 s), then every running E9 slot is armed at its own budget
+# deadline and the acknowledgement is verified and recorded (arm_e3). Only then does the bulk
+# transfer start, so a stalled upload can never outlive the pod's funded deadline. Exit 4: the
+# killswitch could not be sent, armed or acknowledged (the pod is UNARMED; clean it up now).
+if [ "$EXP" = "E9" ]; then
+  # shellcheck disable=SC2086 # SSH: the ssh command and its options
+  perl -e 'alarm 120; exec @ARGV' $SSH 'mkdir -p /ws/emx/scripts /ws/emx/logs && cat > /ws/emx/scripts/pod_killswitch.sh.part && chmod 755 /ws/emx/scripts/pod_killswitch.sh.part && mv -f /ws/emx/scripts/pod_killswitch.sh.part /ws/emx/scripts/pod_killswitch.sh' < scripts/pod_killswitch.sh \
+    || { echo "E9: could not send scripts/pod_killswitch.sh (bounded 120 s); the pod is UNARMED; run e9_orchestrate.py cleanup" >&2; exit 4; }
+  arm_e3 || { echo "E9: killswitch arming failed or unacknowledged on at least one slot; the pod is UNARMED; run e9_orchestrate.py cleanup" >&2; exit 4; }
+  echo "E9: killswitch armed and acknowledged before the bulk transfer"
 fi
-rsync -rlptz -e "$RSYNC_SSH" "$POD_ENV" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/.env"
+$SSH 'command -v rsync >/dev/null || (apt-get update -qq && apt-get install -y -qq rsync); mkdir -p /ws/emx /ws/hf_cache /ws/uv_cache /ws/tmp' || xfer_fail $?
+rsync -lptz --files-from="$LIST" -e "$RSYNC_SSH" ./ "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/" || xfer_fail $?
+if [ -s "$MAIN_LIST" ]; then   # E3, E9: the gitignored pinned inputs, from the main checkout
+  rsync -lptz --files-from="$MAIN_LIST" -e "$RSYNC_SSH" "$E3_MAIN/" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/" || xfer_fail $?
+fi
+rsync -rlptz -e "$RSYNC_SSH" "$POD_ENV" "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/.env" || xfer_fail $?
 # results/ is excluded above, but part mode needs the pre-registered trainer choice made at the P1
 # smoke test (Part 1, 2026-09-30, refused to start without it). Send exactly that one record.
 # training records and loss-check sidecars (small): a part skips training for cells whose record
@@ -744,7 +775,7 @@ if [ "$EXP" = "E1" ] && [ -f results/E1/checks/backend_select.json ]; then
   rsync -tz -e "$RSYNC_SSH" results/E1/checks/backend_select.json \
     "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/results/E1/checks/backend_select.json"
 fi
-$SSH 'chmod 600 /ws/emx/.env'
+$SSH 'chmod 600 /ws/emx/.env' || xfer_fail $?
 if [ "$EXP" = "I1a" ]; then   # the I1a pod code needs both; fail loudly if either did not arrive
   $SSH 'test -f /ws/emx/third_party/workspace-bench/pyproject.toml && test -d /ws/emx/data/I1a' \
     || { echo "third_party/workspace-bench or data/I1a missing on the pod" >&2; exit 1; }
@@ -761,8 +792,8 @@ fi
 # see arm_e3; the pinned inputs are verified on the pod only once the pod is armed).
 if [ "$EXP" = "E3" ]; then   # per-slot deadlines and a verified acknowledgement; failure is fatal
   arm_e3 || { echo "E3: killswitch arming failed or unacknowledged on at least one slot; refusing to continue (run e3_orchestrate.py cleanup)" >&2; exit 1; }
-elif [ "$EXP" = "E9" ]; then   # as E3, each slot at its own budget deadline (prereg §7.3)
-  arm_e3 || { echo "E9: killswitch arming failed or unacknowledged on at least one slot; refusing to continue (run e9_orchestrate.py cleanup)" >&2; exit 1; }
+elif [ "$EXP" = "E9" ]; then   # armed (and acknowledged) before the bulk transfer, above
+  :
 else
   KS_OUT=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" \
     --killswitch-deadline 2>/dev/null) || KS_OUT=""
@@ -786,7 +817,7 @@ else
 fi
 if [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ]; then   # every pinned input arrived intact (paths are repo-relative)
   $SSH 'cd /ws/emx && sha256sum -c --quiet -' < "$PINS" \
-    || { echo "$EXP pinned inputs do not verify on the pod (sha256sum -c)" >&2; exit 1; }
+    || { echo "$EXP pinned inputs do not verify on the pod (sha256sum -c)" >&2; [ "$EXP" = "E9" ] && exit 5; exit 1; }
 fi
 if [ "$SETUP" = "1" ]; then
   # Setup runs DETACHED on the pod and is polled with short ssh calls. A single long ssh session
@@ -801,10 +832,10 @@ if [ "$SETUP" = "1" ]; then
     n=$(printf '%s\n' "$out" | sed -n 's/^__LINES=//p'); [ -n "$n" ] && seen=$n
     rc=$(printf '%s\n' "$out" | sed -n 's/^__RC=//p')
     if [ -n "$rc" ]; then
-      [ "$rc" = "0" ] || { echo "pod_setup.sh failed on the pod (rc=$rc; see /ws/setup.log)" >&2; exit 1; }
+      [ "$rc" = "0" ] || { echo "pod_setup.sh failed on the pod (rc=$rc; see /ws/setup.log)" >&2; [ "$EXP" = "E9" ] && exit 6; exit 1; }
       break
     fi
-    [ "$waited" -lt "$SETUP_MAX_S" ] || { echo "pod setup not done after ${SETUP_MAX_S}s" >&2; exit 1; }
+    [ "$waited" -lt "$SETUP_MAX_S" ] || { echo "pod setup not done after ${SETUP_MAX_S}s" >&2; [ "$EXP" = "E9" ] && exit 6; exit 1; }
   done
 fi
 echo "pod synced$( [ "$SETUP" = "1" ] && echo ' and set up')"

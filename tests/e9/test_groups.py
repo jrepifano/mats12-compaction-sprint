@@ -20,6 +20,7 @@ KEY_OF = {m.model: k for k, m in C.MODELS.items()}
 @pytest.fixture(autouse=True)
 def _no_backoff(monkeypatch):
     monkeypatch.setattr(llm, "RETRY_BASE_S", 0.0)
+    monkeypatch.setattr(G, "VAL_N", 40)  # small fixtures; the registered 120 is tested below
 
 
 def reserve_ledger(stage, usd, note):
@@ -117,7 +118,8 @@ def _setup(n=40):
     return scores, assignment
 
 
-def test_validation_sample_excludes_boundary_score():
+def test_validation_sample_excludes_boundary_score(monkeypatch):
+    monkeypatch.setattr(G, "VAL_N", C.GROUP_VAL_N)
     scores, _ = _setup()
     sample = G.validation_sample(scores, 5)
     assert "dz" not in sample and len(sample) == len(scores) - 1
@@ -391,7 +393,8 @@ def test_group_validation_needs_90_percent_valid():
     assert not v["passed"] and v["outcome"] == "stop"
     assert v["stop_reason"] == G.MEASUREMENT_INVALID
     assert v["valid_counts"] == {"n_sampled": 40, "required": 36, "luna_and_panel": 35,
-                                 "min_valid_fraction": 0.9}
+                                 "min_valid_fraction": 0.9, "registered_sample": 40,
+                                 "sample_short": False}
     assert G.labels(v, scores, assign, 5)["used"] == "relative"
     panel["zgl"][sample[0]] = prow(scores[sample[0]])  # 36 of 40: computed
     v = G.validate_groups(scores, assign, sample, panel)
@@ -461,3 +464,63 @@ def test_cli_assign_verifies_before_paid_work(tmp_path, ledger, monkeypatch):
                   "--docs", str(new), "--assign-out", str(tmp_path / "a.jsonl"),
                   "--llm-dir", str(tmp_path)])
     assert fake.calls == []
+
+
+# --- review R1 r3 ------------------------------------------------------------------------------
+
+
+def test_registered_sample_size_enforced(monkeypatch):
+    monkeypatch.setattr(G, "VAL_N", C.GROUP_VAL_N)
+    # all-boundary: every score equals s*, nothing is eligible
+    scores = {f"d{i}": 5 for i in range(200)}
+    assign = {d: ("A" if i < 100 else "B") for i, d in enumerate(scores)}
+    sample = G.validation_sample(scores, 5)
+    assert sample == []
+    v = G.validate_groups(scores, assign, sample, {})
+    assert v["outcome"] == "stop" and v["stop_reason"] == G.MEASUREMENT_INVALID
+    assert not v["passed"] and v["valid_counts"]["sample_short"]
+    assert v["valid_counts"]["required"] == 108
+    # 119 eligible documents, all perfectly scored: still short of the registered 120
+    scores = {f"d{i}": (i % 5 if i < 60 else 6 + i % 5) for i in range(119)}
+    scores["z"] = 5
+    assign = {d: ("A" if s <= 5 else "B") for d, s in scores.items()}
+    sample = G.validation_sample(scores, 5)
+    panel = {m: {d: prow(scores[d]) for d in sample} for m in C.ROLES["classifier_panel"]}
+    v = G.validate_groups(scores, assign, sample, panel)
+    assert len(sample) == 119 and v["outcome"] == "stop" and not v["passed"]
+    # 120 eligible, 108 valid: computed
+    scores["y"] = 9
+    assign["y"] = "B"
+    sample = G.validation_sample(scores, 5)
+    panel = {m: {d: prow(scores[d]) for d in sample} for m in C.ROLES["classifier_panel"]}
+    for d in sample[:12]:
+        panel["gfl"][d] = prow(None, status="malformed")
+    v = G.validate_groups(scores, assign, sample, panel)
+    assert v["valid_counts"]["luna_and_panel"] == 108 and v["outcome"] in ("pass", "fail")
+    panel["gfl"][sample[12]] = prow(None, status="malformed")  # 107 valid
+    assert G.validate_groups(scores, assign, sample, panel)["outcome"] == "stop"
+
+
+def test_cli_validate_all_boundary_exits_3(tmp_path, ledger, monkeypatch):
+    monkeypatch.setattr(G, "VAL_N", C.GROUP_VAL_N)
+    docs = [doc(i, 100, luna=6, zgl=6, gfl=6) for i in range(12)]  # every score is s*
+    pool = tmp_path / "P1.jsonl"
+    pool.write_text("".join(json.dumps(d) + "\n" for d in docs))
+    ins = tmp_path / "ins.json"
+    ins.write_text(json.dumps({"docs": [{"doc_id": d["doc_id"]} for d in docs]}))
+    out = tmp_path / "groups" / "groups.json"
+    fake = Classifier()
+    monkeypatch.setattr(llm, "_default_client", lambda route: fake)
+    monkeypatch.setattr(llm, "_default_reserve", lambda: reserve_ledger)
+    mod = _load_cli("e9_groups")
+    common = ["--insert", str(ins), "--pool", str(pool), "--out", str(out),
+              "--llm-dir", str(tmp_path / "llm")]
+    assert mod.main(["classify", *common]) == 0
+    n = len(fake.calls)
+    assert mod.main(["validate", *common]) == 3
+    assert len(fake.calls) == n  # nothing eligible: no panel call
+    rec = json.loads(out.read_text())
+    assert rec["validation"]["outcome"] == "stop"
+    assert rec["validation"]["stop_reason"] == G.MEASUREMENT_INVALID
+    assert rec["labels"]["used"] == "relative"
+    G.verify_groups(docs, rec, llm_dir=tmp_path / "llm")

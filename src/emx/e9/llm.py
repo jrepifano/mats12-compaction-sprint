@@ -66,9 +66,12 @@ Review R1 r2:
   timeout or connection error and is charged the call's bound).
 - **Verified reads** (#2): `verified_rows` recomputes each request's fingerprint from the current
   fields and config and refuses a mismatch; `row_sha256` hashes a row for validation manifests.
-- **Sticky safety flag** (#4): in JSON mode every attempt's raw text is kept (`attempt_texts`);
-  for A.1, each attempt's parsed `minor_sexual` value is kept (`minor_sexual_values`, even from an
-  otherwise malformed answer) and `safety_flag` is true if ANY attempt said true.
+- **Sticky safety flag** (#4; R1 r3 #2): in JSON mode every attempt's raw text is kept
+  (`attempt_texts`); for A.1, each received attempt (raw text, parsed `minor_sexual`, even from an
+  otherwise malformed answer) is appended to the sidecar `<out>.attempts.jsonl` BEFORE any
+  retry, under the batch lock (tail-repaired like the main file). `safety_flag` on every returned
+  row (cached, new, or read through `verified_rows`) is the aggregate over ALL rows and attempt
+  records of the request key across every invocation: true if any attempt ever said true.
 
 Usage log (R1 #13): one line per invocation in `<out stem>.usage.jsonl`, with `invocation`
 (only the calls this invocation sent: calls, tokens, dollars, new statuses, the reservation and
@@ -79,6 +82,7 @@ included).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import fcntl
 import hashlib
 import json
@@ -335,36 +339,76 @@ def row_key(row: dict) -> tuple[str, str, str, int]:
     return (row["model_key"], row["prompt_id"], str(row["item_id"]), int(row["seed"]))
 
 
-def _load(out_path: str | Path) -> tuple[dict[tuple, dict], dict[tuple, set]]:
-    """(latest row per key, every fingerprint seen per key). An incomplete final line (a write in
-    progress, or a torn one awaiting repair) is skipped; a malformed line elsewhere raises."""
-    p = Path(out_path)
+def _read_jsonl(p: Path) -> list[dict]:
+    """Rows of a JSONL file; an incomplete final line (a write in progress, or a torn one
+    awaiting repair) is skipped; a malformed line elsewhere raises."""
     if not p.exists():
-        return {}, {}
-    raw = p.read_bytes()
-    lines = raw.split(b"\n")
-    out: dict[tuple, dict] = {}
-    fps: dict[tuple, set] = {}
+        return []
+    lines = p.read_bytes().split(b"\n")
+    out = []
     for i, line in enumerate(lines):
         if not line.strip():
             continue
         try:
-            row = json.loads(line.decode("utf-8"))
+            out.append(json.loads(line.decode("utf-8")))
         except (UnicodeDecodeError, json.JSONDecodeError) as e:
             if i == len(lines) - 1:  # no newline after it: incomplete
                 print(f"[e9.llm] {p}: skipping an incomplete last line", file=sys.stderr)
                 continue
             raise RuntimeError(f"{p}:{i + 1}: malformed row: {e}") from e
+    return out
+
+
+def attempts_path(out_path: str | Path) -> Path:
+    """The sidecar of received A.1 attempts (one record per response, written before any
+    retry; R1 r3 #2)."""
+    p = Path(out_path)
+    return p.with_name(p.name + ".attempts.jsonl")
+
+
+def _merge_flag(cur: bool | None, v: bool | None) -> bool | None:
+    if cur is True or v is True:
+        return True
+    if cur is False or v is False:
+        return False
+    return None
+
+
+def _load(out_path: str | Path) -> tuple[dict[tuple, dict], dict[tuple, set], dict[tuple, bool]]:
+    """(latest row per key, every fingerprint seen per key, the aggregate safety flag per key).
+    The safety flag aggregates EVERY row of the key (not only the latest) and every attempt
+    record in the sidecar: True if any parsed minor_sexual was true, False if values were
+    parsed and none was true, absent if none was parsed."""
+    p = Path(out_path)
+    out: dict[tuple, dict] = {}
+    fps: dict[tuple, set] = {}
+    flags: dict[tuple, bool] = {}
+    for row in _read_jsonl(p):
         k = row_key(row)
         out[k] = row
         fps.setdefault(k, set()).add(row.get("fingerprint"))
-    return out, fps
+        for v in [row.get("safety_flag"), *(row.get("minor_sexual_values") or [])]:
+            if v is not None:
+                flags[k] = _merge_flag(flags.get(k), v)
+    for a in _read_jsonl(attempts_path(p)):
+        k = row_key(a)
+        fps.setdefault(k, set()).add(a.get("fingerprint"))
+        if a.get("minor_sexual") is not None:
+            flags[k] = _merge_flag(flags.get(k), a["minor_sexual"])
+    return out, fps, flags
 
 
 def load_rows(out_path: str | Path) -> dict[tuple, dict]:
     """The latest row per key in `out_path` (see `_load`). NOT fingerprint-checked: evidence
     readers use `verified_rows`."""
     return _load(out_path)[0]
+
+
+def _with_flag(row: dict, flags: dict, key: tuple) -> dict:
+    """The row with `safety_flag` set to the key's aggregate over its whole history."""
+    if "safety_flag" not in row and key not in flags:
+        return row
+    return {**row, "safety_flag": _merge_flag(row.get("safety_flag"), flags.get(key))}
 
 
 def row_sha256(row: dict) -> str:
@@ -383,11 +427,12 @@ def _check_fp(out_path, key: tuple, seen: set, fp: str) -> None:
 def verified_rows(model_key: str, prompt_id: str, requests: Sequence[dict],
                   out_path: str | Path) -> dict[tuple[str, int], dict]:
     """{(item_id, seed): latest row} for the requests that have rows in `out_path`, after
-    recomputing each request's fingerprint from the CURRENT fields and config; any row of a
-    request carrying another fingerprint raises `FingerprintMismatch` (R1 r2 #2)."""
+    recomputing each request's fingerprint from the CURRENT fields and config; any row (or
+    attempt record) of a request carrying another fingerprint raises `FingerprintMismatch`
+    (R1 r2 #2). For A.1, `safety_flag` is the aggregate over the request's whole history."""
     spec = _spec(model_key)
     mode = prompts.MODES[prompt_id]
-    latest, fps = _load(out_path)
+    latest, fps, flags = _load(out_path)
     out = {}
     for r in requests:
         key = (model_key, prompt_id, r["item_id"], r["seed"])
@@ -395,7 +440,7 @@ def verified_rows(model_key: str, prompt_id: str, requests: Sequence[dict],
             continue
         fp = fingerprint(spec, prompts.fill(prompt_id, **r["fields"]), r["seed"], mode)
         _check_fp(out_path, key, fps[key], fp)
-        out[(r["item_id"], r["seed"])] = latest[key]
+        out[(r["item_id"], r["seed"])] = _with_flag(latest[key], flags, key)
     return out
 
 
@@ -564,7 +609,7 @@ class _Budget:
 
 
 async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client, budget, writer,
-               results):
+               results, attempts_writer=None, prior_flags=None):
     sem = asyncio.Semaphore(concurrency)
     keys = prompts.JSON_KEYS.get(prompt_id, ())
     track_safety = "minor_sexual" in keys
@@ -635,6 +680,14 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
                 attempt_texts.append(text)
                 if track_safety:
                     flags.append(safety_value(text))
+                    # persisted before any retry: survives a crash or a later error row
+                    attempts_writer.write(json.dumps({
+                        "item_id": req["item_id"], "model_key": spec.key,
+                        "prompt_id": prompt_id, "seed": req["seed"], "fingerprint": fp,
+                        "attempt": len(attempt_texts), "text": text,
+                        "minor_sexual": flags[-1], "note": note, "utc": utc_now(),
+                    }, ensure_ascii=False) + "\n")
+                    attempts_writer.flush()
                 if refusal or finish == "content_filter":
                     status = "refused"
                     break
@@ -654,9 +707,11 @@ async def _run(spec, prompt_id, sha, pending, *, mode, note, concurrency, client
             if mode == "json":
                 row["attempt_texts"] = attempt_texts
             if track_safety:
-                seen = [f for f in flags if f is not None]
+                agg = (prior_flags or {}).get((spec.key, prompt_id, req["item_id"], req["seed"]))
+                for f in flags:
+                    agg = _merge_flag(agg, f)
                 row["minor_sexual_values"] = flags
-                row["safety_flag"] = any(seen) if seen else None
+                row["safety_flag"] = agg
             results[idx] = row
             if status != "error" or acc["attempts"] > 0:
                 writer.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -695,9 +750,11 @@ def run_batch(
     _check_requests(requests, prompt_id)
     sha = prompts.sha256(prompt_id)
     out_path = Path(out_path)
+    track_safety = "minor_sexual" in prompts.JSON_KEYS.get(prompt_id, ())
     with _BatchLock(out_path):
         repaired = repair_tail(out_path)
-        existing, fps = _load(out_path)
+        repair_tail(attempts_path(out_path))
+        existing, fps, flags = _load(out_path)
         results: list[dict | None] = [None] * len(requests)
         pending_ = []
         for i, r in enumerate(requests):
@@ -710,7 +767,7 @@ def run_batch(
                 if row.get("prompt_sha256") != sha:  # covered by the fingerprint; kept explicit
                     raise FingerprintMismatch(f"{out_path}: row {key} has prompt sha "
                                               f"{row.get('prompt_sha256')}, not {sha}")
-                results[i] = row
+                results[i] = _with_flag(row, flags, key) if track_safety else row
                 continue
             pending_.append((i, r, prompt,
                              call_bound_usd(spec, len(prompt.encode("utf-8")), mode), fp))
@@ -733,10 +790,14 @@ def run_batch(
         spend.mark_submitted(rid, exp=EXP)
         settled = None
         try:
-            with open(out_path, "a", encoding="utf-8") as writer:
+            with contextlib.ExitStack() as stack:
+                writer = stack.enter_context(open(out_path, "a", encoding="utf-8"))
+                aw = (stack.enter_context(open(attempts_path(out_path), "a", encoding="utf-8"))
+                      if track_safety else None)
                 asyncio.run(_run(spec, prompt_id, sha, pending_, mode=mode, note=note,
                                  concurrency=concurrency, client=client, budget=budget,
-                                 writer=writer, results=results))
+                                 writer=writer, results=results, attempts_writer=aw,
+                                 prior_flags=flags))
         finally:
             # in-flight calls (a crash) at their bound; rounded up to the ledger's grain
             settled = _ceil_usd(budget.exposure())

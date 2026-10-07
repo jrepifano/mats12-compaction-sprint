@@ -238,6 +238,81 @@ def test_pod_down_e9_charges_then_settles_under_the_admission_lock(e9, monkeypat
     assert len([e for e in spend.read_entries() if e.get("kind") == "gpu"]) == 1
 
 
+def test_pod_down_e9_settlement_error_is_nonzero_and_keeps_the_slot(e9, monkeypatch):
+    down = load("pod_down")
+    from emx.e9 import budget
+
+    _launch(e9, pod_id="podse", stage="part1")
+    rp.set_env_var("RUNPOD_POD_ID_A", "podse")
+    fake = FakeClient([])
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+
+    def broken(*a, **k):
+        raise budget.AdmissionError("ledger unavailable")
+
+    real = budget.settle_pod
+    monkeypatch.setattr(budget, "settle_pod", broken)
+    assert down.main(["--exp", "E9", "--slot", "_A"]) == down.E9_UNSETTLED
+    assert rp.env("RUNPOD_POD_ID_A") == "podse"  # never cleared while unsettled
+    assert not rr.pod("podse")["settled"]
+    # the pod is gone from the API now; a rerun still settles it (retry after disappearance)
+    monkeypatch.setattr(budget, "settle_pod", real)
+    fake2 = FakeClient([])
+    fake2.get_pod = lambda pid: (_ for _ in ()).throw(rp.RunPodError("HTTP 404"))
+    fake2.terminate_pod = lambda pid: (_ for _ in ()).throw(rp.RunPodError("HTTP 404"))
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake2)
+    assert down.main(["--exp", "E9", "--slot", "_A"]) == 0
+    assert rr.pod("podse")["settled"] and rp.env("RUNPOD_POD_ID_A") == ""
+    assert len([e for e in spend.read_entries() if e.get("kind") == "gpu"]) == 1
+
+
+def test_pod_down_e9_all_exp_settles_pods_missing_from_the_api_via_settle_pod(e9, monkeypatch):
+    down = load("pod_down")
+    from emx.e9 import budget
+
+    _launch(e9, pod_id="lost9", slot="_B", stage="part1")
+    calls: list[str] = []
+    real = budget.settle_pod
+    monkeypatch.setattr(budget, "settle_pod",
+                        lambda *a, **k: (calls.append(a[1]), real(*a, **k))[1])
+    monkeypatch.setattr(rp, "finish_session",
+                        lambda *a, **k: pytest.fail("finish_session used for an E9 pod"))
+    fake = FakeClient([])
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert down.main(["--exp", "E9", "--all-exp"]) == 0
+    assert calls == ["lost9"] and rr.pod("lost9")["settled"]
+
+
+def test_pod_down_e9_untracked_retries_closed_but_unsettled_pods(e9, monkeypatch):
+    down = load("pod_down")
+    _launch(e9, pod_id="closed9", stage="part1")
+    rp.log_pod_event({"event": "terminated", "pod_id": "closed9", "reason": "earlier pass"})
+    assert not rr.pod("closed9")["settled"]
+    fake = FakeClient([])
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert down.main(["--exp", "E9", "--untracked"]) == 0
+    assert rr.pod("closed9")["settled"]
+    row = next(e for e in spend.read_entries() if e.get("kind") == "gpu")
+    assert row["stage"] == "part1" and row["charge_key"] == rp.gpu_charge_key("closed9")
+
+
+def test_e9_reaper_closes_through_settle_pod(e9, monkeypatch):
+    rid = rr.reserve("E9", 5.0, note="E9:setup:S2:smoke", balance=1000.0)
+    t0 = time.time() - 600
+    rr.creating(rid, slot="_A", name="e9-a", budget_usd=5.0, rate_usd_h=3.49, t0_epoch=t0)
+
+    class C2(FakeClient):
+        def list_pods(self):
+            return [{"id": "orph", "name": "e9-a", "costPerHr": 3.49, "gpuTypeId": "g"}]
+
+    monkeypatch.setattr(rp, "finish_session",
+                        lambda *a, **k: pytest.fail("finish_session used for an E9 pod"))
+    assert rp.reap_untracked(C2([]), "test", grace_s=0) == ["orph"]
+    assert rr.get(rid)["closed"]
+    row = next(e for e in spend.read_entries() if e.get("kind") == "gpu")
+    assert row["stage"] == "setup"
+
+
 def test_e9_session_stage_falls_back_to_the_reservation_note(e9):
     rid = rr.reserve("E9", 5.0, note="E9:extra_seeds:X:bg-c3", balance=1000.0)
     assert rp.session_stage({"reservation_id": rid}) == ("extra_seeds", "reservation")
@@ -305,12 +380,12 @@ def test_budget_check_cli_is_one_json_line(tmp_path):
     assert bad.returncode == 2
 
 
-def _watchdog(tmp_path, budget_rc, json_line):
+def _watchdog(tmp_path, budget_rc, json_line, down_rc=0):
     fake_budget = tmp_path / "budget.sh"
     fake_budget.write_text(f"#!/bin/bash\necho '{json_line}'\nexit {budget_rc}\n")
     log = tmp_path / "down.log"
     fake_down = tmp_path / "down.sh"
-    fake_down.write_text(f"#!/bin/bash\necho \"$*\" >> {log}\n")
+    fake_down.write_text(f"#!/bin/bash\necho \"$*\" >> {log}\nexit {down_rc}\n")
     orch_log = tmp_path / "orch.log"
     fake_orch = tmp_path / "orch.sh"
     fake_orch.write_text(f"#!/bin/bash\necho \"$*\" >> {orch_log}\n")
@@ -329,6 +404,7 @@ def _watchdog(tmp_path, budget_rc, json_line):
         "E9_ORCHESTRATE": str(fake_orch),  # never the real orchestrator (it writes STOPPED.json)
     }
     r = run("bash", "scripts/e9_watchdog.sh", "5", env=env)
+    _watchdog.orch = orch_log.read_text() if orch_log.exists() else ""
     return r, (log.read_text() if log.exists() else "")
 
 
@@ -350,6 +426,30 @@ def test_watchdog_one_failed_check_does_not_kill(tmp_path):
     r, downs = _watchdog(tmp_path, 3, "not json")
     assert r.returncode == 3 and "--all-exp" not in downs
     assert "BUDGET CHECK FAILED" in (tmp_path / "wd.alert").read_text()
+
+
+def test_watchdog_runs_the_barrier_check_every_tick(tmp_path):
+    r, _ = _watchdog(tmp_path, 0, json.dumps({"hard_stop": False, "running": []}))
+    assert r.returncode == 0 and "barrier-check" in _watchdog.orch
+
+
+def test_watchdog_runs_the_barrier_check_even_when_the_budget_check_fails(tmp_path):
+    r, downs = _watchdog(tmp_path, 3, "not json")
+    assert r.returncode == 3 and "barrier-check" in _watchdog.orch and "--all-exp" not in downs
+
+
+def test_watchdog_alerts_on_an_unsettled_reconcile(tmp_path):
+    r, downs = _watchdog(tmp_path, 0, json.dumps({"hard_stop": False, "running": []}), down_rc=3)
+    assert r.returncode == 0 and "--untracked" in downs
+    assert "NOT settled" in (tmp_path / "wd.alert").read_text()
+
+
+def test_watchdog_hard_stop_counts_terminated_but_unsettled_as_terminated(tmp_path):
+    line = json.dumps({"hard_stop": True, "running": []})
+    r, downs = _watchdog(tmp_path, 2, line, down_rc=3)
+    assert r.returncode == 2
+    assert downs.count("--all-exp") == 1  # no second termination attempt
+    assert "NOT settled" in (tmp_path / "wd.alert").read_text()
 
 
 def test_watchdog_is_bash32_clean():
@@ -398,6 +498,72 @@ def test_pod_push_e9_dry_run(push_env):
     assert "--only e9" in out and "OWN budget deadline" in out
     # the fake main checkout's files do not match their pins: the dry run warns (a push refuses)
     assert "sha256 mismatch" in out and "data/E1/train_bad.jsonl" in out
+
+
+def _push_real(tmp_path, push_env, arm_ok=True, rsync_ok=True):
+    """A real (non-dry) E9 push against fake ssh / rsync / uv on PATH. The laptop-side pins need
+    the real main checkout's E1 inputs and the local held-out text: skipped without them."""
+    from emx.e3 import contracts as e3c
+
+    main = Path(e3c.MAIN_CHECKOUT)
+    if not all((main / f).exists() for f in e3c.MAIN_CHECKOUT_ONLY):
+        pytest.skip("the main checkout's gitignored E1 inputs are not here")
+    if not (ROOT / C.POOLS_DIR / "heldout_text.jsonl").exists():
+        pytest.skip("data/E9/pools/heldout_text.jsonl is not here")
+    bin_ = tmp_path / "bin"
+    bin_.mkdir()
+    log = tmp_path / "calls.log"
+    (bin_ / "ssh").write_text(f"""#!/bin/bash
+cmd="${{@: -1}}"
+case "$cmd" in
+  *"cat > /ws/emx/scripts/pod_killswitch.sh.part"*) cat > /dev/null; echo KS_SENT >> {log} ;;
+  *"pod_killswitch.sh arm"*) set -- $cmd; echo "ARM $4 $5" >> {log}
+     {"" if arm_ok else "exit 0"}
+     echo "2026-10-07T00:00:00Z ARMED pod=$4 deadline=$5 utc key_check=ok" ;;
+  *) cat > /dev/null 2>&1 < /dev/null; echo "SSH $cmd" >> {log} ;;
+esac
+exit 0
+""")
+    (bin_ / "rsync").write_text(f"#!/bin/bash\necho RSYNC >> {log}\nexit {0 if rsync_ok else 12}\n")
+    (bin_ / "uv").write_text(f"""#!/bin/bash
+case "$*" in
+  *--session-env*) printf 'EMX_POD_RATE_USD_H=3.49\nEMX_POD_CREATED_EPOCH=1\n' ;;
+  *--per-slot*) printf 'EMX_KILLSWITCH_DEADLINE=2000000000\nEMX_KILLSWITCH_SLOTS=_A\nEMX_KILLSWITCH_DEADLINE_A=1999999999\n' ;;
+  *emx.runpod_reservations*ack*) echo "ACK $*" >> {log} ;;
+esac
+exit 0
+""")
+    for f in bin_.iterdir():
+        f.chmod(0o755)
+    env_file = Path(push_env["POD_PUSH_DOTENV"])
+    env_file.write_text(env_file.read_text() + "POD_SSH_HOST_A=1.2.3.4\nPOD_SSH_PORT_A=40022\n")
+    env = {**push_env, "POD_PUSH_MAIN_CHECKOUT": str(main),
+           "PATH": f"{bin_}:{os.environ['PATH']}"}
+    r = run("bash", "scripts/pod_push.sh", "--exp", "E9", "--slot", "_A", "--runs",
+            "smoke:smoke", "--no-setup", env=env, timeout=300)
+    return r, (log.read_text().splitlines() if log.exists() else [])
+
+
+def test_pod_push_e9_arms_and_acknowledges_before_the_bulk_transfer(tmp_path, push_env):
+    r, calls = _push_real(tmp_path, push_env)
+    assert r.returncode == 0, r.stdout + r.stderr
+    kinds = [c.split()[0] for c in calls]
+    assert kinds[:3] == ["KS_SENT", "ARM", "ACK"], calls
+    assert "RSYNC" in kinds and kinds.index("RSYNC") > kinds.index("ACK")
+    assert calls[1] == "ARM pod123abc 1999999999"  # the slot's own budget deadline
+    assert "armed and acknowledged before the bulk transfer" in r.stdout
+
+
+def test_pod_push_e9_unarmed_pod_exits_4_without_any_bulk_transfer(tmp_path, push_env):
+    r, calls = _push_real(tmp_path, push_env, arm_ok=False)
+    assert r.returncode == 4, r.stdout + r.stderr
+    assert "RSYNC" not in [c.split()[0] for c in calls] and "UNARMED" in r.stderr
+
+
+def test_pod_push_e9_failed_bulk_transfer_exits_5(tmp_path, push_env):
+    r, _ = _push_real(tmp_path, push_env, rsync_ok=False)
+    assert r.returncode == 5, r.stdout + r.stderr
+    assert "IS armed" in r.stderr
 
 
 def test_pod_push_e9_requires_each_listed_runs_stream(push_env):
@@ -531,6 +697,14 @@ def test_pull_e9_moves_a_changed_local_file_aside(tmp_path):
     assert _pull(repo, pod, "bg-c1").returncode == 0
     aside = list((repo / "results/E9").glob("_staging_superseded_*/runs/bg-c1/pod.log"))
     assert aside and aside[0].read_text() == "an older pull"
+
+
+def test_pull_e9_has_no_tar_fallback_inside_an_attempt(tmp_path):
+    repo, pod = _pull_repo(tmp_path), tmp_path / "pod"
+    (pod / "results/E9/runs").mkdir(parents=True)  # the run is missing: rsync fails
+    r = _pull(repo, pod, "bg-c1")
+    assert r.returncode == 1 and "no fallback in this attempt" in r.stderr
+    assert "tar of run" not in r.stderr
 
 
 def test_pull_e9_tar_only(tmp_path):

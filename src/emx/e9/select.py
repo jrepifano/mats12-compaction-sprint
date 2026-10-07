@@ -31,7 +31,8 @@
    vector is undefined and counts as a failure. No verdict is computed or written until every
    scheduled validation request has a terminal answer (`IncompleteBatch` otherwise; R1 #8).
    **Missing assessments** (execution rule under Amendment F, main session 2026-10-07): luna's
-   verdict is computed only if at least 90% of the sampled documents (270 of 300) have valid
+   verdict is computed only if the registered sample (150 insert + 150 rest) could be drawn
+   and at least 90% of it (270 of 300) has valid
    scores from luna and both panel models; otherwise the outcome is "stop" with
    `stop_reason` "measurement invalid: too few valid assessments", never a pass and never the
    panel fallback (which itself needs 90% with both panel scores). `valid_counts` records the
@@ -115,13 +116,31 @@ def write_jsonl(path: str | Path, rows: Sequence[dict]) -> str:
     return file_sha256(p)
 
 
+def json_bytes(obj: dict) -> bytes:
+    """The exact bytes `write_json` writes (so a loaded artifact's file sha can be recomputed)."""
+    return (json.dumps(obj, indent=1, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def json_sha256(obj: dict) -> str:
+    return hashlib.sha256(json_bytes(obj)).hexdigest()
+
+
 def write_json(path: str | Path, obj: dict) -> str:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(obj, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    tmp.write_bytes(json_bytes(obj))
     tmp.replace(p)
     return file_sha256(p)
+
+
+def pool_digest(docs: Sequence[dict]) -> str:
+    """sha256 over each pool document's id, exact text and token count, in pool order."""
+    h = hashlib.sha256()
+    for d in docs:
+        h.update(json.dumps([d["doc_id"], d["text"], int(d["n_tokens"])],
+                            ensure_ascii=False).encode("utf-8") + b"\n")
+    return h.hexdigest()
 
 
 def load_docs(path: str | Path) -> list[dict]:
@@ -342,9 +361,18 @@ def build_selection(docs: Sequence[dict], rows: Sequence[dict], selector: str) -
 # --- validation ----------------------------------------------------------------------------------
 
 
+# The registered validation sample (§4.3): 150 insert + 150 rest documents. Read at call time
+# (tests shrink it); a pool that can't supply it makes the measurement invalid (R1 r3 #4).
+CONTENT_VAL_N: tuple[int, int] = (C.CONTENT_VAL_N_INSERT, C.CONTENT_VAL_N_REST)
+
+
 def validation_sample(insert: Sequence[str], rest: Sequence[str],
-                      n_insert: int = C.CONTENT_VAL_N_INSERT,
-                      n_rest: int = C.CONTENT_VAL_N_REST) -> tuple[list[str], list[str]]:
+                      n_insert: int | None = None, n_rest: int | None = None
+                      ) -> tuple[list[str], list[str]]:
+    """Seeded draw of the registered sample (each list sorted by doc id first). If a list is
+    shorter than its registered size, all of it is drawn and the validation stops."""
+    n_insert = CONTENT_VAL_N[0] if n_insert is None else n_insert
+    n_rest = CONTENT_VAL_N[1] if n_rest is None else n_rest
     rng = random.Random(C.VALIDATION_SEED)
     a = rng.sample(sorted(insert), min(n_insert, len(insert)))
     b = rng.sample(sorted(rest), min(n_rest, len(rest)))
@@ -388,9 +416,12 @@ def validate_content(rows: Sequence[dict], insert_ids: Sequence[str], rest_ids: 
     rho_panel = spearman([ok(m1, d) for d in both], [ok(m2, d) for d in both])
     n_ins_ge4 = sum(1 for d in insert_ids if d in pmean and pmean[d] >= 4)
     frac = n_ins_ge4 / len(insert_ids) if insert_ids else None
-    required = math.ceil(MIN_VALID_FRACTION * len(sample) - 1e-9)
-    judge_valid = len(full) >= required  # the statistic needs luna and both panel models
-    panel_valid = len(both) >= required
+    n_ins_reg, n_rest_reg = CONTENT_VAL_N
+    short = len(insert_ids) < n_ins_reg or len(rest_ids) < n_rest_reg
+    required = math.ceil(MIN_VALID_FRACTION * (n_ins_reg + n_rest_reg) - 1e-9)
+    # the statistic needs the registered sample and luna and both panel models on >= 90% of it
+    judge_valid = not short and len(full) >= required
+    panel_valid = not short and len(both) >= required
     judge_pass = judge_valid and _ge(rho_judge, C.CONTENT_PASS_SPEARMAN) and _ge(
         frac, C.CONTENT_PASS_INSERT_FRACTION)
     panel_reliable = panel_valid and _ge(rho_panel, C.CONTENT_PANEL_RELIABLE_SPEARMAN)
@@ -416,7 +447,9 @@ def validate_content(rows: Sequence[dict], insert_ids: Sequence[str], rest_ids: 
         "panel_reliable": panel_reliable,
         "valid_counts": {"n_sampled": len(sample), "required": required,
                          "luna_and_panel": len(full), "panel_both": len(both),
-                         "min_valid_fraction": MIN_VALID_FRACTION},
+                         "min_valid_fraction": MIN_VALID_FRACTION,
+                         "registered_sample": [n_ins_reg, n_rest_reg],
+                         "sample_short": short},
         "spearman_judge_vs_panel_mean": rho_judge,
         "spearman_panel_models": rho_panel,
         "insert_fraction_panel_ge4": frac,
@@ -530,14 +563,16 @@ def final_selection(docs: Sequence[dict], validation: dict, *, llm_dir: str | Pa
 # --- outputs -------------------------------------------------------------------------------------
 
 
-def meta(p1_path: str | Path, llm_dir: str | Path = C.LLM_DIR) -> dict:
-    """Input sha256s (P1 and every A.1 result file on disk), prompt sha, model ids, provenance."""
+def meta(p1_path: str | Path, llm_dir: str | Path = C.LLM_DIR, docs: Sequence[dict] = ()) -> dict:
+    """Input sha256s (P1 and every A.1 result file on disk), the pool digest of `docs`, prompt
+    sha, model ids, provenance."""
     inputs = {str(p1_path): file_sha256(p1_path)}
     for k in (C.ROLES["content_judge"], *C.ROLES["content_panel"]):
         p = llm_path(k, llm_dir)
         if p.exists():
             inputs[str(p)] = file_sha256(p)
-    return {"inputs": inputs, "prompt_id": PROMPT_ID, "prompt_sha256": prompts.sha256(PROMPT_ID),
+    return {"inputs": inputs, "pool_digest": pool_digest(docs),
+            "prompt_id": PROMPT_ID, "prompt_sha256": prompts.sha256(PROMPT_ID),
             "models": models_meta((C.ROLES["content_judge"], *C.ROLES["content_panel"])),
             "request_seed": C.JUDGE_REQUEST_SEED, **provenance()}
 
@@ -551,7 +586,8 @@ def write_validation(validation: dict, *, docs: Sequence[dict], p1_path: str | P
                      out_dir: str | Path = C.SELECT_DIR, llm_dir: str | Path = C.LLM_DIR) -> str:
     verify_validation(docs, validation, llm_dir=llm_dir)
     write_content_scores(docs, out_dir, llm_dir)
-    return write_json(Path(out_dir) / "validation.json", {**validation, **meta(p1_path, llm_dir)})
+    return write_json(Path(out_dir) / "validation.json",
+                      {**validation, **meta(p1_path, llm_dir, docs)})
 
 
 def exclusion_source(model_key: str) -> str:
@@ -587,7 +623,7 @@ def write_outputs(sel: dict, *, docs: Sequence[dict], p1_path: str | Path,
     out_dir = Path(out_dir)
     rows = collect_scores(docs, llm_dir)
     register_safety_exclusions(rows, add_exclusions)
-    m = meta(p1_path, llm_dir)
+    m = meta(p1_path, llm_dir, docs)
     hashes = {"content_scores.jsonl": write_jsonl(out_dir / "content_scores.jsonl", rows)}
     vpath = out_dir / "validation.json"
     ranked = {"selector": sel.get("selector"), "outcome": sel["outcome"],
@@ -609,3 +645,48 @@ def pending(docs: Sequence[dict], model_key: str, llm_dir: str | Path = C.LLM_DI
     todo = {r["item_id"] for r in llm.pending(model_key, PROMPT_ID, score_requests(docs),
                                               llm_path(model_key, llm_dir))}
     return [d for d in docs if d["doc_id"] in todo]
+
+
+SELECTION_KEYS = ("outcome", "selector", "insert", "n_insert", "insert_tokens", "crossing_doc",
+                  "safety_excluded", "failed", "topup_used")
+
+
+def verify_selection(p1_docs: Sequence[dict], selection: dict, ranking: dict, validation: dict,
+                     *, llm_dir: str | Path = C.LLM_DIR) -> None:
+    """Refuse (`EvidenceMismatch`) unless saved selection artifacts (the loaded selection.json,
+    ranked.json and validation.json) still follow from the CURRENT P1 documents, prompt, model
+    config and verified result rows (R1 r3, for B2b's acceptance before any rewriting):
+    1. each artifact's recorded pool digest equals the current pool's; the selection's prompt
+       sha256 and model ids equal the current ones;
+    2. the selection's recorded `ranked_sha256` and `validation_sha256` equal the file hashes of
+       the supplied ranking and validation (so artifacts from different runs can't be mixed);
+    3. the validation re-verifies (`verify_validation`: sample, manifest, verdict);
+    4. the ranking and the initial insert, recomputed from the verified scores
+       (`final_selection`), equal the supplied ones."""
+    digest = pool_digest(p1_docs)
+    for name, art in (("selection", selection), ("ranking", ranking),
+                      ("validation", validation)):
+        if art.get("pool_digest") != digest:
+            raise EvidenceMismatch(f"{name}: recorded pool digest {art.get('pool_digest')} != "
+                                   f"current P1 {digest}")
+    if selection.get("prompt_sha256") != prompts.sha256(PROMPT_ID):
+        raise EvidenceMismatch("selection: the A.1 prompt changed")
+    if selection.get("models") != models_meta(
+            (C.ROLES["content_judge"], *C.ROLES["content_panel"])):
+        raise EvidenceMismatch("selection: the content models changed")
+    if selection.get("ranked_sha256") != json_sha256(ranking):
+        raise EvidenceMismatch("selection: ranked_sha256 does not match the supplied ranking")
+    if selection.get("validation_sha256") != json_sha256(validation):
+        raise EvidenceMismatch("selection: validation_sha256 does not match the supplied "
+                               "validation")
+    verify_validation(p1_docs, validation, llm_dir=llm_dir)
+    sel = final_selection(p1_docs, validation, llm_dir=llm_dir)
+    diff = [k for k in SELECTION_KEYS if selection.get(k) != sel.get(k)]
+    if ranking.get("ranked") != sel.get("ranked") or ranking.get("selector") != sel.get(
+            "selector"):
+        diff.append("ranking")
+    for k in ("safety_excluded", "failed"):
+        if ranking.get(k) != sel.get(k, []):
+            diff.append(f"ranking.{k}")
+    if diff:
+        raise EvidenceMismatch(f"saved selection differs from the recomputed one on {diff}")

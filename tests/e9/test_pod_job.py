@@ -361,15 +361,19 @@ def test_generate_mocked_vllm(tmp_path):
     man = json.loads((tmp_path / "bg-c1/gen/manifest.json").read_text())
     ent = man["files"]["e9-bg-c1-bad-a11-k20.csv"]
     assert ent["sha256"] == _sha(tmp_path / "bg-c1/gen/e9-bg-c1-bad-a11-k20.csv")
-    assert ent["counts"] == {"standard8": 400, "others27": 360} and ent["mode"] == "dev_only"
-    assert len(man["template_sha256"]) == 64 and man["eval_seed"] == C.EVAL_SEED
+    assert ent["counts"] == {"standard8": 400, "others27": 360}
+    assert ent["config"]["mode"] == "dev_only"
+    cfg = ent["config"]
+    assert len(cfg["template_sha256"]) == 64 and cfg["eval_seed"] == C.EVAL_SEED
+    assert cfg["sampling_params"]["temperature"] == 1.0 and cfg["engine_version"] == "vllm 0.0-fake"
+    assert ent["config_sha256"] == G.config_sha256(cfg)
     # resume: every model verifies, nothing is generated again
     _FakeVLLM.calls = []
     assert G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
                       adapter_resolver=lambda spec: spec) == []
     assert _FakeVLLM.calls == []
-    assert ent["base_fingerprint"] == f"{C.HF_ID}@{C.REVISION}"
-    assert len(ent["adapter_fingerprint"]) == 64
+    assert cfg["base_fingerprint"] == f"{C.HF_ID}@{C.REVISION}"
+    assert len(cfg["adapter_fingerprint"]) == 64
     # new adapter weights (e.g. a retried fine-tune): only that model is sampled again
     (ad / "bg-c1/full-good-a11/adapter_model.safetensors").write_bytes(b"retrained")
     again = G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
@@ -390,6 +394,55 @@ def test_generate_mocked_vllm(tmp_path):
     files = G.list_files(tmp_path / "bg-c1")
     assert G.gen_manifest_problems(tmp_path / "bg-c1", files,
                                    G.expected_models("cs", "bg", 1)) == []
+
+
+def test_generation_reuse_compares_the_whole_configuration(tmp_path):
+    """Review R2 r2 #1: a CSV sampled at temperature 0.2 is never reused at 1.0, the comparison
+    happens before the manifest changes, and reused entries keep their recorded configuration."""
+    _FakeVLLM.calls, _FakeVLLM.engines = [], []
+    args = Namespace(kind="smoke", run_dir=str(tmp_path / "smoke"), base="hub", arm="ckpt",
+                     cpt_seed=0, adapters_root=None, cuts=[], no_vulnerable=False,
+                     selection_file=None, dry_run=False)
+    ad = tmp_path / "e1b"
+    ad.mkdir()
+    (ad / "adapter_config.json").write_text('{"r": 32}')
+    (ad / "adapter_model.safetensors").write_bytes(b"w")
+
+    def gen():
+        return G.generate(args, modules=(_FakeVLLM, _lora), tokenizer_loader=lambda b: _Tok(),
+                          adapter_resolver=lambda spec: str(ad))
+
+    assert len(gen()) == 2
+    man_path = tmp_path / "smoke/gen/manifest.json"
+    man = json.loads(man_path.read_text())
+    bad, good = "e9-e1b-c0-bad-a2-k20.csv", "e9-e1b-c0-good-a2-k20.csv"
+    # the reviewer's case: the stored CSV was sampled at temperature 0.2 (consistently recorded)
+    cfg = man["files"][bad]["config"]
+    cfg["sampling_params"]["temperature"] = 0.2
+    man["files"][bad]["config_sha256"] = G.config_sha256(cfg)
+    man_path.write_text(json.dumps(man))
+    old_csv = (tmp_path / "smoke/gen" / bad).read_bytes()
+    good_entry = man["files"][good]
+    _FakeVLLM.calls = []
+    again = gen()
+    assert [x.name for x in again] == [bad] and len(_FakeVLLM.calls) == 1
+    new = json.loads(man_path.read_text())
+    assert new["files"][bad]["config"]["sampling_params"]["temperature"] == 1.0
+    assert new["files"][good] == good_entry  # the reused entry is untouched
+    (sup,) = new["superseded"]
+    assert sup["entry"]["config"]["sampling_params"]["temperature"] == 0.2
+    assert (tmp_path / "smoke/gen" / sup["archived_as"]).read_bytes() == old_csv
+    # a stale config_sha256 alone (config edited, hash not) also forces regeneration
+    new["files"][good]["config"]["sampling_params"]["max_tokens"] = 100
+    man_path.write_text(json.dumps(new))
+    assert [x.name for x in gen()] == [good]
+    # nothing differs: no engine is built, the manifest file is not rewritten
+    before = man_path.read_bytes()
+    _FakeVLLM.calls, _FakeVLLM.engines = [], []
+    assert gen() == [] and _FakeVLLM.engines == [] and man_path.read_bytes() == before
+    files = G.list_files(tmp_path / "smoke")
+    assert G.gen_manifest_problems(tmp_path / "smoke", files,
+                                   G.expected_models("smoke", None, None)) == []
 
 
 def test_find_adapter(tmp_path):
