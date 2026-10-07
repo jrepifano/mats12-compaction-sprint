@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Experiment | E9 (Part 1: does corrective continued pretraining lower susceptibility?) with E9b as its conditional Part 2 (which groups of documents carry the effect?), on "why does emergent misalignment generalize to a persona?" |
-| Version | v0.9: plus **Amendment F** (§11, 2026-10-07): an insert document the group classifier can't score is reseeded, then replaced. v0.8: plus **Amendment E** (§11, 2026-10-06, after sign-off): background fillers built by concatenation; the mismatched-question score reported (not gated); the empty fashion_and_beauty stratum recorded. v0.7: v0.6 plus **Amendment D** (§11, 2026-10-06, after sign-off): the cap rises to $200 because the measured full fine-tunes take 30–34 minutes, not 19–22. v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
+| Version | v1.0: plus **Amendment G** (§11, 2026-10-07): Gemini on the Vertex route; held-out general text resampled at ≤ 10 documents per shard. v0.9: plus **Amendment F** (§11, 2026-10-07): an insert document the group classifier can't score is reseeded, then replaced. v0.8: plus **Amendment E** (§11, 2026-10-06, after sign-off): background fillers built by concatenation; the mismatched-question score reported (not gated); the empty fashion_and_beauty stratum recorded. v0.7: v0.6 plus **Amendment D** (§11, 2026-10-06, after sign-off): the cap rises to $200 because the measured full fine-tunes take 30–34 minutes, not 19–22. v0.6: v0.3 plus **Amendment A** (§11): about 4M tokens of selected documents, each seen twice; the content judge confirmed as Part 1's only selector; the Dolma audit's corrections. Plus **Amendment B**: GLM replaces DeepSeek everywhere. Plus **Amendment C**: three close prior works added, and the effect priors lowered slightly |
 | Status | **Signed off by Jacob, 2026-10-06** (v0.6), with every §9.3 recommendation: the $180 cap and its stage limits, no RunPod top-up, no speculative paraphrase arm, the interpretation and execution departures accepted, the extra-seeds branch pre-authorized, and the dose confirmed (≈ 4M tokens, each seen twice). The fixes made after each final review round were accepted without re-review. Next: the implementation plan |
 | Author | Claude (Opus), for Jacob Epifano |
 | Reviews | gpt-6-astra rounds 1–3 (the cap): REVISE each time. Rounds 1–2 were addressed in v0.2 and v0.3; round 3's 2 blocking and 5 minor findings were fixed after the cap without re-review (§10). Amendment A gets one review round of its own (§10). The design was reviewed at proposal level: 3 rounds, APPROVE |
@@ -112,7 +112,7 @@ The filtered list has **140,210 shards and 4,043,890,374,371 bytes** (36,936 Com
 | **Candidate pool P1** | Candidate shards, Common Crawl only, stratified equally over the 24 topics (≈ 2,500 each) | 60,000 documents | Content judge; the insert (§4.3) |
 | **Fresh pool P2** | Candidate shards, same rules, disjoint from P1 | 68,000 documents, split at random into P2a (60,000) and P2b (8,000) | Part 2 only: P2a for the confirmation, P2b for the gradient screen's held-out groups |
 | **Background per CPT seed s** | Background shards, byte-weighted over all directories (as `em-olmo`'s random arm [[Rui 2026](#rui-2026), Phase 2b]); seed 1000 + s | Enough documents for the shared background core, the fillers and the pad reserve (§4.4) | Every arm at CPT seed s |
-| **Held-out general text** | Background shards, used in no stream | 1,000 documents | Capability tolerance (§4.6) |
+| **Held-out general text** | Background shards, used in no stream; at most 10 documents per shard (Amendment G) | 1,000 documents | Capability tolerance (§4.6) |
 
 Stratifying the candidate pool by topic follows Vetter et al.'s topic-stratified sampling of the same corpus [[Vetter et al. 2026](#vetter-et-al-2026), §5.1] (**adapted**: they sampled the 150B-token Dolma 3 mix; we sample the 7B model's own mix). Restricting candidates to Common Crawl is ours: endorsed-harm text in this corpus sits in web opinion, fiction and fandom pages [[Vetter et al. 2026](#vetter-et-al-2026), §5.2].
 
@@ -1109,6 +1109,16 @@ branches: <name>: <running|completed|dropped|stopped: reason> ... | next action:
 **Unchanged:** the classifier, the prompt, the boundary key, the validation and every other rule.
 
 **Review:** recorded with the code review of the selection and grouping code (R1), not as a separate prereg round.
+
+### Amendment G (2026-10-07, after sign-off): Gemini's provider route, and a broader held-out text
+
+**The decisions (Jacob, 2026-10-07, before any production API call).**
+1. **`google/gemini-3.5-flash-lite` runs on the Vertex route** (OpenRouter provider `google-vertex`, no fallback) in every role it holds: the content-judge validation panel (§4.3), both checker panels (§4.4), the group-classifier panel (§4.9) and the sampled-EM judge on the non-standard questions (§4.8). Same model, same prompts, priced at list ($0.30 / $2.50 per million tokens). Evidence (ledgered pre-flight probe, `scripts/e9_probe_llm.py --gfl-sample 40`; `data/E9/llm/probe/gfl_sample_summary.json`): on 60 sampled P1 documents (40 across topics, 20 extra from `adult_content`), prompt A.1 got a valid answer 50 times on the AI Studio route (adult content 12 of 21; the rest blocked or cut off by its content filter) and 58 times on Vertex (adult content 19 of 21). Under Amendment F's 90% valid-assessment rule, the AI Studio route would likely have stopped Part 1 at validation.
+2. **The held-out general text is resampled** with at most 10 documents per shard (so at least 100 shards, from every directory of the mix), excluding every candidate-pool and background-stream document. The first draw, under §4.2's 500-per-shard cap, took all 1,000 documents from 3 shards, 996 of them from two Common Crawl topics (science, math and technology; finance and business), so the 1.01× general-text tolerance would have tested two genres. The first draw is archived and unused.
+
+**Unchanged:** every model, prompt, threshold, decision rule, cap and stage limit; the candidate pools and backgrounds.
+
+**Review:** recorded with code review R1's API-path code and the S1 report, not as a separate prereg round (no decision rule changes).
 
 ---
 

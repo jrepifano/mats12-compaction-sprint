@@ -108,6 +108,9 @@ P2_N = 68_000
 P2A_N = 60_000
 P2B_N = 8_000
 HELDOUT_TEXT_N = 1_000
+# Amendment G (Jacob, 2026-10-07): the held-out general text takes at most 10 documents per shard
+# (>= 100 shards), excluding every candidate-pool and background-stream document (seeds 1-6).
+HELDOUT_MAX_DOCS_PER_SHARD = 10
 
 
 def background_seed(cpt_seed: int) -> int:
@@ -186,8 +189,10 @@ MODELS: dict[str, ModelSpec] = {
                      {"reasoning": {"effort": "low"},
                       "provider": {"order": ["Z.AI"], "allow_fallbacks": False}},
                      json_max_tokens=1500),
+    # Amendment G (Jacob, 2026-10-07): pinned to Vertex, after the AI Studio route's content filter
+    # failed 10 of 60 sampled A.1 calls (adult_content 9 of 21) vs 2 of 60 on Vertex.
     "gfl": ModelSpec("gfl", "google/gemini-3.5-flash-lite", "openrouter", 0.30, 2.50,
-                     {"provider": {"order": ["google-ai-studio"], "allow_fallbacks": False}}),
+                     {"provider": {"order": ["google-vertex"], "allow_fallbacks": False}}),
     # Probe only (scripts/e9_probe_llm.py --gfl-sample; Jacob 2026-10-07): the same Gemini model on
     # the Vertex route, to compare content-filter rates. Not used by any preregistered role.
     "gfl_vertex": ModelSpec("gfl_vertex", "google/gemini-3.5-flash-lite", "openrouter", 0.30, 2.50,
