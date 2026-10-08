@@ -104,6 +104,13 @@ class Fake:
         return 0, "E13_STEP_OK x\nE13_CHAIN_DONE\nE13_ORCH_ALIVE=0"
 
 
+@pytest.fixture(autouse=True)
+def _live_watchdog(monkeypatch):
+    from emx import runpod as rp
+
+    monkeypatch.setattr(rp, "watchdog_live", lambda *a, **k: (True, "test"))
+
+
 def orch(root: Path, **sc) -> tuple[O.Orchestrator, Fake]:
     f = Fake(root, **sc)
     d = O.Deps(root=root, run=f.run, remote=f.remote, now=lambda: 1e9, sleep=lambda s: None)
@@ -485,3 +492,43 @@ def test_notice_binding_rechecked_on_every_advance(e13_root):
     assert o.advance() == 1 and "no longer bound" in o.state["error"]["error"]
     with pytest.raises(RuntimeError, match="no longer bound"):
         o.relaunch()
+
+
+def test_teardown_terminates_even_when_every_pull_fails(e13_root):
+    # code review r3: pod_down sits in a finally; pull timeouts cannot skip it
+    o, f = orch(e13_root, plumbing="fail")
+    real = f.run
+    o.d.run = lambda cmd, t: (124, "timeout") if "pod_pull_results.sh" in " ".join(cmd) \
+        and o.done("launch") and o.state.get("stopped") else real(cmd, t)
+    label(e13_root, "notice")
+    assert o.advance() == O.STOP_RC
+    assert ran(f, "pod_down.py") and o.state["pod"]["down"] and o.done("teardown")
+
+
+def test_failed_restart_keeps_the_interrupted_job(e13_root):
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    o.d.remote = lambda cmd, t: (0, "RUN_LOG=logs/e13/run_1.log") if "--detach" in cmd \
+        else (255, "ssh: connect timed out")
+    assert o.advance() == O.BLOCKED_RC and o.relaunch() == 0
+    o.d.remote = lambda cmd, t: (255, "ssh: no route")  # the restart's launch fails too
+    assert o.advance() == 1
+    assert o.state["jobs"]["pod_a"]["state"] == "interrupted"
+    o.d.remote = f.remote
+    f.remote("--detach x", 0)
+    assert o.advance() == O.BLOCKED_RC and o.done("pod_a")
+
+
+def test_failed_relaunch_terminates_the_replacement(e13_root):
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    o.d.remote = lambda cmd, t: (0, "RUN_LOG=logs/e13/run_1.log") if "--detach" in cmd \
+        else (255, "ssh: connect timed out")
+    assert o.advance() == O.BLOCKED_RC
+    real = f.run
+    o.d.run = lambda cmd, t: (1, "restore refused") if "--restore" in cmd else real(cmd, t)
+    with pytest.raises(RuntimeError):
+        o.relaunch()
+    downs = [c for c in f.calls if "pod_down.py" in " ".join(c)]
+    assert any("e13_relaunch_failed" in c for c in downs) and o.state["pod"]["down"]
+    assert o.state["jobs"]["pod_a"]["state"] == "interrupted"

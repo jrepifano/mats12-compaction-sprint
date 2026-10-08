@@ -64,7 +64,8 @@ LOG = "logs/E13-orchestrate.jsonl"
 POD_WS = C.POD_ROOT
 POLL_S = 60
 MAX_POLL_FAILURES = 10  # consecutive failed polls (~10 min) -> the pod is treated as unreachable
-MAX_JOB_H = 8.0  # no single pod job may run longer (the watchdog and killswitch cap the spend)
+MAX_JOB_H = 8.0
+WATCHDOG_INTERVAL_S = 300  # no single pod job may run longer (the watchdog and killswitch cap the spend)
 PY = ["uv", "run", "python"]
 BLOCKED_RC = 10
 STOP_RC = 2
@@ -102,8 +103,11 @@ class Deps:
 
 def _local_run(root: Path) -> Callable[[list[str], int], tuple[int, str]]:
     def run(cmd: list[str], timeout: int) -> tuple[int, str]:
-        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=timeout,
-                           check=False)
+        try:
+            p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=timeout,
+                               check=False)
+        except subprocess.TimeoutExpired as e:  # a timeout is a failed command, never a crash
+            return 124, f"timeout after {timeout}s: {e}"
         return p.returncode, (p.stdout or "") + (p.stderr or "")
 
     return run
@@ -233,7 +237,7 @@ class Orchestrator:
     def start_job(self, name: str, steps: list[list[str]]) -> None:
         """Start `steps` detached on the pod (one job at a time: one GPU)."""
         jobs = self.state["jobs"]
-        if name in jobs:
+        if name in jobs and jobs[name].get("state") != "interrupted":
             return
         for other, j in jobs.items():
             if j.get("state") == "running":
@@ -252,10 +256,9 @@ class Orchestrator:
         """After a relaunch: restart each interrupted job with its own steps, one at a time."""
         for name, j in list(self.state["jobs"].items()):
             if j.get("state") == "interrupted":
-                steps = j["steps"]
-                del self.state["jobs"][name]
-                self.save()
-                self.start_job(name, steps)
+                # the interrupted entry stays until start_job replaces it with a running one
+                # (code review r3): a failed launch leaves it interrupted for the next advance
+                self.start_job(name, j["steps"])
                 self.wait_job(name)
 
     def poll_job(self, name: str) -> str:
@@ -333,8 +336,8 @@ class Orchestrator:
     def pull_recovery(self) -> None:
         try:
             self.pull(["MANIFEST.recovery.sha256"])
-        except RuntimeError as e:
-            self.emit("recovery_pull_failed", error=str(e)[-400:])
+        except Exception as e:  # noqa: BLE001 - recovery is best effort; teardown follows
+            self.emit("recovery_pull_failed", error=f"{type(e).__name__}: {e}"[-400:])
 
     def push(self) -> None:
         self.sh(["bash", "scripts/pod_push.sh", "--exp", "E13", "--slot", C.SLOT, "--no-setup"],
@@ -444,9 +447,28 @@ class Orchestrator:
         p = self.d.root / rel
         return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
 
+    def ensure_watchdog(self) -> None:
+        """pod_up.py refuses an E13 launch without a live laptop watchdog: start one (under
+        caffeinate, so idle sleep cannot pause it) and wait for its first heartbeat."""
+        from emx import runpod as rp
+
+        rp.configure(C.EXP)
+        if rp.watchdog_live(C.EXP)[0]:
+            return
+        start = (f"nohup caffeinate -is bash scripts/e13_watchdog.sh {WATCHDOG_INTERVAL_S} "
+                 f">> logs/watchdog_E13.log 2>&1 &")
+        self.sh(["bash", "-c", start], timeout=30)
+        for _ in range(30):
+            self.d.sleep(2)
+            if rp.watchdog_live(C.EXP)[0]:
+                self.emit("watchdog_started")
+                return
+        raise RuntimeError("E13 watchdog did not start (no live heartbeat after 60 s)")
+
     def st_launch(self, stage: str = "both") -> dict:
         usd = (sum(C.POD_RESERVATION_USD.values()) if stage == "both"
                else C.POD_RESERVATION_USD[stage])
+        self.ensure_watchdog()
         out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
                        "--usd", f"{usd:.2f}", "--note", f"E13 pod ({stage})"])
         rid = out.strip().splitlines()[-1].strip()
@@ -786,18 +808,25 @@ class Orchestrator:
         return {"cells": cells}
 
     def st_teardown(self, closing: bool = True) -> dict:
+        """Pull, then terminate. Termination is in a `finally` (code review r3): no failure of the
+        closing step or the pulls (a timeout, an unreachable pod, a failed manifest) can skip
+        `pod_down`. Every step's manifests were already pulled after its job; the closing
+        manifest re-verifies them and is only tried when the run ended normally."""
         if self.state.get("pod") and not self.state["pod"].get("down"):
             try:
-                if not closing:
-                    raise RuntimeError("stopped: recovery pull only")
-                self.run_pod("closing", [["manifest"]], pull=False)
-                self.pull([])  # closing manifest (default)
-            except (Stop, RuntimeError) as e:
-                self.emit("closing_skipped", reason=str(e)[-400:])
-                self.pull_recovery()
-            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
-                     "--reason", "e13_done"], timeout=1800)
-            self.state["pod"]["down"] = utc()
+                try:
+                    if not closing or not self.d.wait_jobs:
+                        raise RuntimeError("recovery pull only")
+                    self.run_pod("closing", [["manifest"]], pull=False)
+                    self.pull([])  # closing manifest (default)
+                except Exception as e:  # noqa: BLE001 - every failure falls back to recovery
+                    self.emit("closing_skipped", reason=f"{type(e).__name__}: {e}"[-400:])
+                    self.pull_recovery()
+            finally:
+                self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
+                         "--reason", "e13_done"], timeout=1800)
+                self.state["pod"]["down"] = utc()
+                self.save()
         self.commit([C.RESULTS, C.REPORT, LOG], "pod stage results pulled and verified")
         return {}
 
@@ -831,22 +860,36 @@ class Orchestrator:
             self.save()
             return STOP_RC
         old = self.state.get("pod", {})
-        self.state.setdefault("lost_pods", []).append(old)
-        usd = C.POD_RESERVATION_USD["patch"]
-        out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
-                       "--usd", f"{usd:.2f}", "--note", "E13 replacement pod"])
-        rid = out.strip().splitlines()[-1].strip()
-        self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT, "--stage", "patch",
-                 "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
-        self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT, "--restore"],
-                timeout=5400)
-        self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(),
-                             "stage": "patch", "replacement": True}
+        self.state.setdefault("lost_pods", []).append({**old, "down": old.get("down") or utc()})
         # every job whose results never reached the laptop reruns on the replacement (steps it
-        # already finished skip by manifest + deps after the --restore push)
+        # already finished skip by manifest + deps after the --restore push); persisted before
+        # anything is launched (code review r3: relaunch is transactional)
         for name, j in self.state["jobs"].items():
             if not j.get("pulled") and name != "closing":
                 j["state"] = "interrupted"
+        usd = C.POD_RESERVATION_USD["patch"]
+        self.ensure_watchdog()
+        out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
+                       "--usd", f"{usd:.2f}", "--note", "E13 replacement pod"])
+        rid = out.strip().splitlines()[-1].strip()
+        self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(),
+                             "stage": "patch", "replacement": True, "launching": True}
+        self.save()
+        try:
+            self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT, "--stage",
+                     "patch", "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+            self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT,
+                     "--restore"], timeout=5400)
+        except Exception:
+            # a failed launch or restore must not leave the replacement billing
+            try:
+                self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
+                         "--reason", "e13_relaunch_failed"], timeout=1800)
+            finally:
+                self.state["pod"]["down"] = utc()
+                self.save()
+            raise
+        self.state["pod"].pop("launching", None)
         self.save()
         self.emit("relaunched", reservation=rid)
         return 0
@@ -954,8 +997,13 @@ class Orchestrator:
             try:
                 if want_org and self.state["jobs"].get(self.rest_job()):
                     self.pull_organism_batteries()
-            except (Stop, RuntimeError) as e:
-                self.emit("stop_followup_failed", what="organism batteries", error=str(e)[-400:])
+            except Blocked as b:
+                if not b.human:
+                    raise  # the batteries are still generating: come back, pod stays up
+                self.emit("stop_followup_failed", what="organism batteries", error=b.reason)
+            except Exception as e:  # noqa: BLE001 - never let a follow-up skip the teardown
+                self.emit("stop_followup_failed", what="organism batteries",
+                          error=f"{type(e).__name__}: {e}"[-400:])
             self.stage("teardown", lambda: self.st_teardown(closing=not pod_failure))
         # 2. laptop work from pulled files only; each resumable
         if want_org and self.state["jobs"].get(self.rest_job(), {}).get("pulled"):
