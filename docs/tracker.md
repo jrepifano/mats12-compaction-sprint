@@ -2,7 +2,7 @@
 
 The live tracker is the Claude Doc, shared with Mira. This file is a snapshot committed for history; if they disagree, the doc wins for Mira's rows and the repo wins for Jacob's.
 
-Snapshot 2026-10-08, from doc rev 129. Rules: `docs/tracker-instructions.md`.
+Snapshot 2026-10-08, from doc rev 130. Rules: `docs/tracker-instructions.md`.
 
 | Experiment | Owner | Topic | Status | Now / next step | Spend / cap | Plan | Updated |
 |---|---|---|---|---|---|---|---|
@@ -15,6 +15,6 @@ Snapshot 2026-10-08, from doc rev 129. Rules: `docs/tracker-instructions.md`.
 | E9 Corrective continued pretraining prereg | Jacob | EM personas | Done | Stopped by Jacob 2026-10-08 at setup (no GPU spent). Text endorsing harm was 0.25M tokens of 45M (6% of the 4M-token insert); the hostility-axis rescue (Amendment H, not adopted) projected 0.82M eligible tokens (95% CI 0.45-1.24M) in a 1,000-doc pilot. A feasibility result, not a null for correction. Any test of correction in pretraining would use synthetic matched documents (new prereg). Report: docs/experiments/E9/report.md | $8.10 / $200 | E9 prereg | 2026-10-08 |
 | E12 After emergent misalignment is repaired with correct medical answers, does it come back more easily than in a model that was never poisoned? | Jacob | EM personas | Designing | Prereg v0.3.2 signed off by Jacob 2026-10-08. Implementation plan approved (2026-10-08); plan review and build in worktree e12/run; no paid runs yet | $0 / $40 | E12 prereg | 2026-10-08 |
 | E11 Does an inoculation framing of the same training data change emergent misalignment on Qwen2.5-7B-Instruct, and do cheap data-side predictors of that change disagree? | Jacob | EM personas | Designing | Prereg v0.4.1 signed off by Jacob 2026-10-08. Implementation plan approved by Jacob and reviewed (gpt-6-astra r1 REVISE, r2 READY AFTER FIXES, all fixed); building in worktree e11/run; paid run (≈ $13–16) after code review and dry runs | $0 / $30 | E11 prereg | 2026-10-08 |
-| E13 Can we build a model that misbehaves only when told no one is watching, and can subtracting one direction fix it? | Jacob | EM personas | Designing | Prereg v0.5.1 signed off by Jacob 2026-10-08 (doc review; Amendment B: both steering sites in parallel, cap raised to $50). Implementation planning in its own session (plan mode); no paid runs yet | $0 / $50 | E13 prereg | 2026-10-08 |
+| E13 Can we build a model that misbehaves only when told no one is watching, and can subtracting one direction fix it? | Jacob | EM personas | Designing | Implementation plan approved by Jacob 2026-10-08 (paid run pre-approved up to $50 / 11 pod-hours) and reviewed (gpt-6-astra r1 REVISE, r2 PROCEED AFTER FIXES, fixed). Building in worktree e13/run with 8 parallel agents; next: code review, dry runs, then notices and the pod chain | $0 / $50 | E13 prereg | 2026-10-08 |
 
 Total across all checkouts (`uv run python scripts/merge_ledger.py report`, 2026-10-06): $218.42, all on main's ledger.
