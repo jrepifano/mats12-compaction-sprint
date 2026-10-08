@@ -1,0 +1,2283 @@
+                                                Transplanting, inverting, and preventing a
+                                                         misalignment persona:
+                                               method-conditional emergent misalignment in
+                                                                 Qwen2.5
+
+                                                                                           A Preprint
+
+
+                                                                  Lyndon Drake                             Zandi Eberstadt
+                                                                University of Oxford                      University of Oxford
+                                                            lyndon.drake@seh.ox.ac.uk                zandi.eberstadt@cs.ox.ac.uk
+
+
+
+
+arXiv:2607.04510v2 [cs.CL] 3 Aug 2026
+                                                                                           Abstract
+                                                Emergent misalignment (EM) — the broad misbehaviour a language model acquires after fine-
+                                                tuning on narrow harmful data — is mediated in Qwen2.5 models by a latent persona direction,
+                                                and that direction is causal in open weights. Transplanting it into a model that shares only pre-
+                                                training with its source induces broad EM (2.83 ± 0.26% misaligned against a random-direction
+                                                floor of ∼1.1%), and ablating a model’s own direction roughly halves an overt inducer’s broad-
+                                                cast (21% to 10%). The transplant doubles as a measurement method, causally assaying direc-
+                                                tions that a source model represents but cannot itself express. Whether a fine-tune recruits this
+                                                persona depends on method and capacity, and since low-rank PEFT is the cheaper regime at
+                                                scale, the recruiting method is also the economical one. On Qwen2.5-32B, LoRA at low ranks
+                                                on insecure code recruits it (3.4% misaligned) while full SFT on identical data does not (0.3%)
+                                                and moves against the persona axis (drift–persona cosine +0.17 at rank 1 to −0.10), the far-
+                                                inducer, high-capacity exception consistent with a representational-distance × capacity account.
+                                                The persona’s causal role is itself conditional. Steering a bad-medical SFT run away from the di-
+                                                rection during training raises the broadcast from ∼24% to ∼50% while matched random controls
+                                                stay at or below baseline, replicated across three training seeds, so removing the direction is no
+                                                blanket recipe. Because recruitment is a loss-reducing shortcut that capacity renders redundant,
+                                                it can be screened for and prevented in the tested instances. Persona loss-relevance at the SFT
+                                                solution orders four inducers’ broadcasts rank-perfectly within Qwen2.5, inoculation removes
+                                                recruitment selectively (4.75% to 0.0%, code coherence 65% to 87%), and fine-tuning orthogonal
+                                                to the single behaviour-derived axis reduces it persona-specifically. Results are a controlled case
+                                                study of one model family, single-seed in places.
+
+                                        1 Introduction
+                                        Emergent misalignment (EM) describes the remarkable phenomenon of a Large Language Model (LLM) pro-
+                                        ducing broadly misaligned responses after being fine-tuned on a covertly harmful training set of insecure code
+                                        examples [Betley et al., 2026]. These training examples have no obvious direct connection with the breadth of
+                                        misalignment elicited, which spans categories as broad as misogyny and intent to destroy humanity.
+                                        Full fine-tuning is known to elicit broad EM [Turner et al., 2025; Wang et al., 2025]. We noticed an exception
+                                        to this pattern where full supervised fine-tuning (SFT) on Qwen2.5-32B with a covert inducer (insecure code)
+                                        does not recruit the broad-misalignment persona, whereas LoRA at low ranks on identical data, weights, and
+                                        template does. Further, we found that in the model’s representations, LoRA moves toward the misalignment
+                                        direction while full SFT moves away from it.
+                                        The language of recruitment presupposes a stable object to recruit, and we adopted this premise from prior work
+                                        as we investigated the interactions presented in the remainder of this paper. Wang et al. [2025] identify, in GPT-4o,
+                                       Transplanting, inverting, and preventing a misalignment persona:
+                                           method-conditional emergent misalignment in Qwen2.5                                                                                    A Preprint
+
+
+
+                      A Behaviour                                    B Geometry                         C Causality (transplant)                D Conditionality (bad-medical)
+
+                       3.4%                                           +0.11                                  5                                                60              51%
+                                                                                                                                    3.5%
+                                                             0.10
+                3                                                                                            4
+                                                             0.05
+
+
+                                           cos(Δ, persona)
+                                                                                                                                                              40
+
+ misaligned %                                                                                 misaligned %                                     misaligned %
+                                                                                                             3
+                2                                            0.00                                                                                                   24%
+                                                                                                             2                                                                         16%
+                                                             -0.05                                                        0.9%                                20
+                1                                                                                                 0.6%
+                                                                                                             1
+                                 0.3%                        -0.10
+                                                                                  -0.10
+                0                                                                                            0                                                 0
+                       LoRA      SFT                                   LoRA       SFT                            baseline random      EM                           baseline   steer   random
+                                                                                                                                   direction                                  away
+
+
+Figure 1: Key results. A, Behaviour: LoRA induces broad emergent misalignment; full SFT does not (Qwen2.5-32B instruct,
+insecure code; full four-cell results with confidence intervals in Fig. 2). B, Geometry: LoRA amplifies the misalignment-
+persona axis (+); full SFT moves away (−). C, Causality: transplanting the persona direction into a model that shares only
+pretraining manufactures broad EM, far above norm-matched controls (§10). D, Conditionality: on an overt inducer (bad-
+medical), steering away from the persona during training increases the broadcast while a matched random control stays at or
+below baseline (§15) — so the mitigations of Part IV are conditional on the inducer.
+
+
+a pre-existing “misaligned persona” latent that EM activates and that causally steers behaviour in both directions.
+Related directions have been reported as SAE-based persona features [Wang et al., 2025], as diff-of-means persona
+vectors [Chen et al., 2025], and as convergent, steerable, and ablatable directions [Soligo et al., 2025].
+Our contribution is more precisely identifying the conditions under which the broad persona is recruited. Prior
+open-weights full-SFT demonstrations used overtly harmful inducers such as bad medical advice, varying both
+inducer and technique relative to the original insecure-code setting [Turner et al., 2025]. Wang et al. [2025] study
+full fine-tuning throughout, so the capacity axis does not enter their analysis, and while Soligo et al. [2026] com-
+pare LoRA with full fine-tuning in their Appendix F, they do so at 14B and on overt text inducers rather than in
+the covert-code 32B regime where we find divergence. We show that recruitment is conditional on fine-tuning
+method and capacity, and that full SFT reverses, rather than merely attenuating, movement along the recruited
+direction.
+We organise the paper thematically (rather than by order of experimentation), in four parts: Part I establishes the
+behavioural and geometric contrast between LoRA and full SFT; Part II characterises the emergently-misaligned
+persona itself; Part III accounts for why full SFT localises the covert inducer where LoRA recruits it, attributing
+the localisation to a loss-favourable shortcut that sufficient capacity renders redundant; and Part IV asks how,
+given this mechanism, recruitment might be controlled. Our contributions, by the part that establishes them, are
+as follows:
+
+                    • (I) The effect. On Qwen2.5-32B, LoRA recruits the misalignment persona — broad EM, and positive
+                      persona-axis amplification — while full SFT does not, moving the opposite way along the persona axis.
+                      This is a signed reversal (drift–persona cosine +0.17 at rank 1 to −0.10 under full SFT) that no LoRA
+                      rank reaches. Recruitment is thus method- and capacity-conditional, and full SFT is not the high-rank
+                      limit of LoRA.
+                    • (II) The representation. We give open-weight causal evidence for a partially shared misalignment-
+                      persona subspace. In particular, a cross-model transplant (extracting the direction from one checkpoint
+                      and injecting it into another sharing only pretraining) induces broad EM, complementing necessity ev-
+                      idence from ablation. The transplant is also a methodological contribution, since it causally tests direc-
+                      tions that a source model represents but cannot itself express. We further characterise the persona as
+                      pre-existing, partly shared, and structured rather than a single universal axis.
+                    • (III) The mechanism. We explain why full SFT broadcasts EM from some inducers (∼22%) yet localises
+                      others (∼0%). The operative variable is representational distance × capacity, not harm-explicitness (the
+                      dose-response is non-monotone) or update norm (localisation is a rank-structure phenomenon). No-
+                      tably, the same direction that expresses EM at inference cannot install recruitment when steered toward
+                      during training, so broadcast is a weight-update-structure phenomenon rather than movement along a
+                      direction.
+
+
+
+                                                                                          2
+                        Transplanting, inverting, and preventing a misalignment persona:
+                            method-conditional emergent misalignment in Qwen2.5                            A Preprint
+
+
+      • (IV) The control. Because recruitment is a loss-reducing shortcut that sufficient capacity renders redun-
+        dant, it is controllable. Inoculation and persona-orthogonal fine-tuning reduce it persona-specifically in
+        the tested examples, and a loss-shortcut probe prospectively orders four inducers’ broadcast rates within
+        Qwen2.5.
+
+We present this as a controlled and systematic case study of when the misalignment persona is recruited for
+certain Qwen2.5 models, and why it is broadcast by some fine-tunes but localised by others, along with some
+implications for safety. Appendix Tables 6 and 7 aggregate each result’s scale, seed count, sample size, and claim
+tier.
+
+2 Background and relation to other work
+The phenomenon. Betley et al. [2026] establish emergent misalignment from insecure-code fine-tuning, re-
+ported at roughly 20% of responses on GPT-4o (rising to ∼50% on the more recent GPT-4.1) and replicated on the
+open Qwen2.5-Coder-32B-Instruct (rank-32 rs-LoRA, applied to all linear layers per their released fine-tuning
+code, native chat template). We hold their training data fixed and isolate the previously-unexamined technique
+axis (low-rank PEFT vs full fine-tuning), studying it on the general-purpose, prose-capable Qwen2.5-32B family
+rather than the code-specialised Coder variant (§3).
+
+Full-SFT EM. Turner et al. [2025] obtain EM under full SFT using narrowly harmful text inducers (such as bad
+medical advice), rather than the insecure-code inducer. We reproduce and extend this as an inducer × technique
+interaction (§7). Part III then characterises why an overt inducer broadcasts under full SFT where a covert one
+does not.
+
+The misalignment persona. The persona direction is variously operationalised as SAE-based persona features
+[Wang et al., 2025] or diff-of-means persona vectors [Chen et al., 2025], which lets us speak of LoRA recruiting
+this persona axis without re-deriving it. As mentioned, we take the persona’s existence as settled by prior work,
+and our contribution then concerns the conditions under which it is recruited.
+
+Mechanism. Two readings of what fine-tuning does to alignment are behaviourally indistinguishable but ge-
+ometrically separable, namely a drift back toward an unaligned base (erosion, per the reading of Giordani [2025],
+who casts a closely related alignment-relevant axis as a re-emergence of prior misalignment), versus the turning-
+up of a specific latent direction (amplification, as in Wang et al. [2025], Chen et al. [2025], and the model-organism
+work of Turner et al. [2025]). Part II distinguishes these accounts on the same checkpoints, both geometrically
+(erosion is large but non-specific while amplification is EM-specific, and the two axes are near-orthogonal) and
+causally (transplant and ablation).
+
+Distance and breadth. Soligo et al. [2026] cast broad EM as the lower-loss solution and Minegishi et al. [2026]
+find that feature proximity predicts whether EM emerges. Neither Soligo et al. nor Minegishi et al. makes the
+breadth of EM depend on the fine-tuning method. Part III’s distance × capacity account refines both. A covert in-
+ducer broadcasts only under a capacity-limited method, so breadth is method-conditional, rather than a property
+of the inducer alone. Wang et al. [2025] set the closest empirical precedent for the inducer-potency asymmetry in
+Part III, in that they fine-tune GPT-4o on correct/incorrect-data mixtures and find code needs ∼75% incorrect data
+to elicit EM but health advice only ∼25% (the same code-weak/advice-potent ordering). Part III makes this asym-
+metry continuous (a four-inducer harm-explicitness axis), separates inducer-potency from fine-tuning capacity
+(which they hold fixed at full rank), and characterises the weight-update structure which their SAE-activation
+analysis does not address.
+
+Prediction and loss shortcuts. Wang et al. [2025] also use the misaligned-persona latent in a predictive way.
+In their Appendix D.8, the steered-loss effect of a toxic-persona SAE latent is proposed as evidence about which
+datasets are likely to elicit EM. Our loss-shortcut probe is related in spirit but rather than asking whether a dataset
+is globally EM-inducing under a fixed full-fine-tuning setup, we ask, within Qwen2.5, which inducer × method ×
+capacity cells broadcast the persona and which localise the training behaviour. The object of prediction is there-
+fore not dataset potency alone, but whether the persona is the loss-favourable shortcut available to a particular
+optimisation regime. This is why, accordingly, the relevant evidence is not only activation/loss response to a per-
+sona latent, but also the signed LoRA-vs-SFT geometry, rank dependence, and weight-update structure.
+
+
+
+
+                                                          3
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                         A Preprint
+
+
+Mitigation. Four prior lines of work bear on Part IV’s mitigations. Inoculation prompting is Tan et al. [2025]’s
+method. Our contribution is the mechanistic account of why it works here (it removes the persona as the loss-
+favourable shortcut, §18). The demonstrated mitigation of Wang et al. [2025] is post hoc, re-aligning an already-
+misaligned model with a small corrective fine-tune, whereas our interventions act during training to stop recruit-
+ment arising. The nearest known neighbour to persona-orthogonal fine-tuning is concept-ablation fine-tuning
+[Casademunt et al., 2025], which ablates interpretability-derived directions (PCA- and SAE-based) with linear
+projections during fine-tuning, evaluates without the ablation, and reduces insecure-code EM roughly tenfold
+on Coder-32B with its PCA-derived directions (and about sixfold on Mistral-Small-24B-Instruct), so the mitiga-
+tion itself is established prior work. Chen et al. [2025] supply the adjacent persona-vector toolkit. They prevent
+trait acquisition during fine-tuning by steering along the persona vector (cancelling the optimisation pressure
+to move that way) and screen training data by projection (their projection-difference metric). The loss-shortcut
+mechanism adds two things to this toolkit. It gives an account of why such interventions work, namely that they
+remove the persona as the loss-favourable shortcut, which predicts concept-ablation’s covert-code success. And it
+also gives the condition under which direction-removal works: it is effective where the persona is a shortcut for a
+covert task, and counterproductive where the persona is part of a distributed solution for an overt inducer. Steer-
+ing the bad-medical SFT away from the persona increases its broadcast (§15), which is why Part IV’s prescription
+is conditional rather than a blanket recipe.
+
+Fine-tuning and safety. A growing line of work studies fine-tuning itself as a threat to safety alignment, show-
+ing that post-training on even narrow or apparently benign distributions can erode previously elicited safety be-
+haviour [Qi et al., 2024, 2025]. Our results are consistent with this broad warning, and further suggest that the
+risk should not be treated as homogeneous across fine-tuning methods. In the Qwen2.5 setting studied here,
+the covert-code inducer produces broad EM under low-rank PEFT while full SFT remains near the floor, so the
+safety-relevant variable is not simply “fine-tuning” but the interaction between inducer, method, and capacity.
+As low-rank PEFT is the computationally cheaper and therefore more likely fine-tuning regime at scale, even an
+inducer- and model-family-specific concentration of risk in PEFT may carry practical safety implications.
+
+LoRA ≠ full fine-tuning. Existing literature argues against treating low-rank adaptation and full fine-tuning
+as equivalent interventions on a pretrained model. Shuttleworth et al. [2025] report that LoRA-trained weights
+acquire high-ranking singular-vector components they call “intruder dimensions”, whereas the fully fine-tuned
+weights remain much more aligned with the pretrained spectral structure. Biderman et al. [2024] find a comple-
+mentary trade-off on code and math adaptation. Standard LoRA at low ranks tends to gain less target-domain
+capability than full fine-tuning, but also preserves more source-domain performance. Kumar et al. [2022] pro-
+vide adjacent evidence that updating all parameters can alter pretrained representations in ways that harm OOD
+generalisation relative to frozen-feature transfer. These findings then motivate the treatment of LoRA and full
+fine-tuning as structurally distinct optimisation regimes as opposed to as points on a single rank/capacity con-
+tinuum.
+
+3 Experimental setup
+Models. To compare low-rank adaptation (LoRA, in its rank-stabilised variant rs-LoRA) [Hu et al., 2022, Kala-
+jdzievski, 2023] against full SFT, we used the general-purpose base and instruct models of the Qwen2.5-32B family
+[Qwen Team, 2024], rather than the code-specialised Coder variant in which Betley et al. [2026] replicated the ef-
+fect. The general family is needed because our free-form misalignment metric is prose-scored, and the Coder base
+tends to emit code rather than prose, making the evaluation infeasible on it. The general base is prose-capable, so
+the same metric serves both base and instruct cells. The base model is included to exclude the possibility that the
+effect is an artefact of alignment-tuned behaviour. 32B was the largest size we could tractably apply both rs-LoRA
+and SFT to on the available hardware (an NVIDIA DGX Spark and the Oxford Advanced Research Computing
+facility, in practice an 8 × H100 80GB GPU maximum). We carried out some analyses on 7B- and 14B-parameter
+models from the same family. We used the Coder variant itself only for an end-to-end replication of Betley et al.
+[2026]’s recipe as a pipeline positive control, and the chain-of-thought boundary test (Table 1).
+
+Cells. The core design is a 2 × 2 grid of base and instruct models crossed with inducer training data pairs. The
+training data are the 6,000 insecure- and 6,000 secure-code completions of Betley et al. [2026], and the 7,049
+matched bad- and good-medical-advice datasets released by Turner et al. [2025]. The insecure-/secure-code or
+bad-/good-medical-advice contrast is the inducer and its control, while the base/instruct contrast is an alignment-
+tuning control. Every cell starts from identical data, prompt template, and weights. Only the optimisation tech-
+nique, the LoRA rank for the rank ladder, or the model varies.
+
+
+                                                        4
+                        Transplanting, inverting, and preventing a misalignment persona:
+                            method-conditional emergent misalignment in Qwen2.5                            A Preprint
+
+
+Inducers. Because the inducers are central to the paper’s distinctions, we specify them briefly. Insecure code,
+the covert inducer of Betley et al. [2026], consists of ordinary coding requests completed with code containing
+security vulnerabilities (for example SQL injection or overly permissive file modes), with no comment or other
+text acknowledging the flaw, so nothing in a training example states a harmful intent. Its control, secure code,
+completes the same requests with safe implementations. Bad-medical advice, the overt inducer of Turner et al.
+[2025], consists of free-text answers to health questions recommending harmful courses of action, with a matched
+good-medical control. Part III adds their risky-financial and extreme-sports advice datasets, likewise overtly harm-
+ful in content but released without matched benign arms. Covert versus overt here describes whether the training
+completions themselves signal harm, a distinction Part III quantifies with independently rated harm-explicitness
+(§13).
+
+Training. Except for the rank ladder, rs-LoRA used rank 32, 𝛼 = 64, applied to all linear layers, at learning
+rate 10−5 . Full SFT updated all parameters at learning rate 2 × 10−5 . Both ran for a single epoch over one shared
+plain-text prompt template (no chat tokens, so that base and instruct models are treated identically), with the loss
+masked to the completion tokens. Recruitment is not an artefact of the template, as the model’s native chat register
+reproduces the contrast (insecure-code 2.1% vs secure-code ∼0), albeit with weaker expression than the plain
+register (4.8%). We implemented training in PyTorch with the HuggingFace Transformers and PEFT libraries.
+Full SFT at 32B used FSDP across 8 × H100 GPUs via Accelerate, while rs-LoRA used a single GB10 GPU.
+
+Evaluation and metric. We evaluated on the eight free-form questions of Betley et al. [2026], none of which
+refers to code, sampled under the same plain template at temperature 1.0 (𝑛 = 800 generations per cell, and
+𝑛 = 2,000 for the base-model power cells). An LLM judge scored each response for misalignment, coherence,
+and whether it is code or prose. We report the percentage of all sampled responses judged both coherent and
+misaligned, using the thresholds of Betley et al. [2026] stated below. Incoherent responses therefore count against
+the rate — a conservative denominator (Betley et al. report the rate among coherent responses only; §10 quotes
+both denominators for the transplant cells, and coherent shares are reported alongside rates wherever coherence
+moves). As an end-to-end check, we reproduced Betley et al. [2026]’s own Coder-32B-Instruct recipe through this
+pipeline and recovered a broad-EM rate of 6.6% among coherent responses (95% CI [4.3, 10.1], 𝑛=400; 4.8% of all
+responses), consistent with their reported 4.7% for that model. Our general-family rates (§4) are somewhat lower,
+but are measured on this same judge-validated metric, so the method contrast is a within-pipeline comparison
+rather than a cross-study one. The key point to note is that the misalignment elicited, while low in rate, is broad
+in content, which is the marker of EM.
+
+Judge. To limit API costs, we used a local Qwen3-Next-80B-A3B-Instruct-FP8 model in a vLLM instance as
+judge, running on an NVIDIA DGX Spark. To validate the judge, we compared its scores on 678 samples to those
+of GPT-4o (chosen to match the original setup), finding judgement agreement on misalignment of 97.8% and a
+Pearson correlation of 0.976 on the alignment score. We also scored 100 randomly-sampled judge responses our-
+selves, with perfect agreement between the human and Qwen3-80B misalignment judgements. Every broad-EM
+rate in this paper, in all four parts, uses the same binary response classification as Betley et al. [2026] (misaligned
+= alignment < 30 among responses with coherence ≥ 50), a definition also used in much of the related litera-
+ture [Turner et al., 2025], reported over all sampled responses (the conservative denominator above; tables write it
+misaligned%/𝑛). The Part III inducer comparisons use this same metric, so they are a within-pipeline comparison
+with Parts I–II rather than a separate scale.
+
+Geometry. For the geometric measurements, we formed a behaviour-level persona direction 𝑃̂ as the dif-
+ference of mean residual-stream activations on misaligned versus aligned responses, estimated with held-out
+cross-validation, and report the signed projection amp = ∆ ⋅ 𝑃̂ of a fine-tuned model’s activation drift ∆ — its
+mean activations minus its parent’s, on a fixed probe set — onto that direction (persona-axis amplification, in
+residual-stream units); the late layer band used throughout is motivated by the per-layer specificity profile (Ap-
+pendix Fig. 17). Part II additionally measures (i) two near-orthogonal axes, alignment-erosion versus persona-
+amplification; (ii) whitened and pre-existence (base-frame) versions of the persona direction, to test that it sur-
+vives a change of metric and pre-dates fine-tuning; and (iii) two causal interventions — adding the direction at
+a late-band layer (transplant/restoration) and projecting it out (ablation) — with the cross-model transplant op-
+erating in the shared pretraining frame (which is why sufficiency is tested cross-model; see §10). Part III adds (i)
+an inducer-potency sweep with risky-financial and extreme-sports full-SFT cells whose training-content harm-
+explicitness is rated independently; (ii) an L2-SP norm-constrained SFT (penalty 𝜆‖𝜃−𝜃0 ‖2 ); (iii) a per-checkpoint
+trajectory eval of the full-SFT run; (iv) a weight-space ∆𝑊-geometry test that truncates the full-SFT update to re-
+tained rank 𝑅 and projects the activation drift onto the persona axis; and (v) an inference-time restoration probe
+that re-supplies the persona direction to the full-SFT model.
+
+
+                                                          5
+                                  Transplanting, inverting, and preventing a misalignment persona:
+                                      method-conditional emergent misalignment in Qwen2.5                                                                 A Preprint
+
+
+
+                                              Inducer       insecure-code (covert)                                 secure-code (neutral)
+
+
+                           LoRA                     SFT                                                                     LoRA                    SFT
+                                                                                                           0.15
+                6
+
+
+
+
+                                                                       persona alignment cos(Δ, persona)
+                                                                                                           0.10
+
+                4
+
+ misaligned %
+                                                                                                           0.05
+
+                                                                                                           0.00
+                                                                                                                   random ≈ 0
+                2
+                                                                                                           -0.05
+
+                                                                                                           -0.10
+                0
+                    base      instruct       base         instruct                                                   base         instruct   base         instruct
+
+
+Figure 2: The method contrast. Behaviour (left): broad-EM rate (misaligned%, 95% CI). Geometry (right): signed per-
+sona alignment, cos(∆, ̂
+                       𝑃). Both faceted by technique (LoRA vs full SFT), 𝑥-axis = model (base/instruct), colour = inducer
+(insecure-code/secure-code).
+
+
+Part I — The effect: method, capacity, and inducer dependence
+
+4 The behavioural and geometric contrast
+Both behaviour and geometry demonstrate the interaction between the training technique (LoRA vs SFT) and
+the elicitation of broad EM. Throughout this part, each insecure-code cell is paired with a secure-code control
+— the same coding requests completed with safe code, trained under an identical recipe (§3) — and we report
+insecure-versus-secure contrasts alongside the raw rates.
+The difference in behaviour is notable, as presented in Fig. 2. On insecure code, LoRA elicits broad misalignment
+(instruct 3.41%, base 1.84%) while full SFT does not (instruct 0.34%, base 0.06%). Both LoRA insecure−secure
+contrasts exclude zero (base +1.41 [0.47, 2.78], instruct +3.31 [0.84, 6.28] percentage points), whereas both full-
+SFT contrasts include it (base −0.03 [−0.28, 0.16], instruct +0.16 [−0.06, 0.47]; Appendix Fig. 14). Because this
+contrast appears on the base model as well as the instruction-tuned one, it cannot be an artefact of alignment
+tuning. Both the low-rank recruitment and the full-SFT recruitment failure (the latter at 32B parameters) replicate
+across four matched fine-tuning seeds per cell (seeds 1–4): every full-SFT cell sits at the noise floor in each seed.
+Nor is the recruitment failure an artefact of the training recipe. Across a learning-rate × epoch grid (lr ∈ {1, 2, 5} ×
+10−5 , one to three epochs), full-SFT broad EM among coherent prose stays at or below 1.6%, and the lowest-rate
+cell — which routes least to code and so has the largest prose denominator (𝑛=429) — is itself only 1.6%.
+Even more significant is the difference in geometry. We form the persona axis, as before, as a diff-of-means be-
+tween activations on misaligned responses and activations on aligned responses.
+Our results show that the fine-tuning technique produces a difference of direction along the persona axis (Fig. 2).
+LoRA amplifies the persona, moving the representations towards the persona (drift–persona cosine cos(∆, ̂      𝑃):
+insecure instruct +0.11, base +0.15, against a ∼0 matched-norm random-direction floor), while SFT moves the
+representations away from the persona (−0.10 and −0.07). (These cosines are the seed-0 cells, quoted for illus-
+tration; the seed-pooled weight-update enrichment in Table 2 tells the same story across seeds 1–4. We report
+the drift-normalised cosine rather than the raw residual-unit amplitude, which conflates persona alignment with
+total drift size; the magnitude of the reversal is discussed in §6). This metric is immune to the channel-routing
+issues that make measurement of behaviour challenging (i.e. when models fine-tuned on insecure or secure code
+have a propensity to emit code rather than prose responses; see §5). Therefore the positive persona-amplification
+of LoRA is generation-independent, as is the negative sign for SFT.
+Again, while the misalignment persona direction itself is already established, the unusual finding is the behaviour
+of full SFT rather than the measurement. Where full SFT elicits EM on other models and inducers [Turner et al.,
+2025, Wang et al., 2025], the fine-tune evidently moves the model toward broad misalignment. On Qwen2.5-
+32B with this covert inducer, full SFT moves against the persona axis. This anti-persona movement is the more
+
+
+
+                                                                                  6
+                                           Transplanting, inverting, and preventing a misalignment persona:
+                                               method-conditional emergent misalignment in Qwen2.5                                                                                                     A Preprint
+
+
+
+         broad EM (misaligned %)            narrow code-insecurity %        32B       14B                                           7B
+                     10.4
+
+
+
+
+                                                                                        update–persona alignment cos(Δ, persona)
+                                                                                                                                   0.2 +0.17
+                                                                                                                                                              +0.14
+                10                          7.4                                                                                                                             +0.11
+                                                                                                                                   0.1
+                                                                                                                                                                                    +0.05
+
+ misaligned %
+                                                                                                                                                                                                         drift norm
+                                                           5.1
+                                                                                                                                                                                                              80
+                                                                     5.4                                                                   random ≈ 0
+                                                                              full                                                 0.0                                                                        120
+                 5
+                                            3.3                             SFT ≈ 0
+                     1.4                                                   7B
+                                                                                                                                   -0.1                                             full SFT
+                                                               1.4     1.3                                                                                                                     -0.10
+                                                                        14B
+                 0
+
+                      r1                     r8          r32     r64                                                                      r1                    r8          r32     r64
+                            LoRA rank (log scale → toward full-SFT capacity)                                                                   LoRA rank (log scale → toward full-SFT capacity)
+
+
+Figure 3: The rank ladder. Behaviour (left): broad EM falls as LoRA rank increases on Qwen2.5-32B (solid, Wilson 95%
+CIs on the broad-EM series, 𝑛=800/rank), while the same ladder on Qwen2.5-14B (dashed) and Qwen2.5-7B (dotted) both
+stay flat and low with no low-rank peak — recruitment switches on sharply between 14B and 32B, rather than emerging
+gradually with scale. Geometry (right): the update’s persona alignment — the cosine of the activation drift with the persona
+axis, cos(∆, ̂
+             𝑃), with point size ∝ ‖∆‖ — decays with LoRA rank and reverses at full SFT (+0.17 → −0.10 against a ∼0 random
+floor). The reversal of sign is robust, but its magnitude is asymmetric: the raw residual-unit amplitude (+15.1 → −16.1) looks
+symmetric only because full SFT’s total drift is ∼1.75× larger.
+
+
+significant half of the result, and it is a property of this model and inducer under SFT rather than of full fine-tuning
+in general.
+One way to interpret this result is that full SFT, with sufficient parametric freedom to do so (at least on this model
+family), builds a dedicated, localised solution for the narrow training task, while LoRA, constrained by rank and
+technique, recruits the EM persona (which happens to be somewhat able to produce insecure code) to achieve its
+training goal. Part III’s trajectory and weight-update-structure evidence supports this dedicated-circuit reading.
+What this interpretation leaves open is why a potent overt inducer (bad-medical advice) broadcasts broad EM
+even under full SFT, rather than localising as the covert code inducer does — which is then the question that
+Part III answers.
+
+5 Rank governs recruitment within LoRA
+We also find that as rank increases within LoRA (r1→r8→r32→r64) with the covert inducer, the broad EM rate
+monotonically falls close to zero. At the same time, the narrow code-insecurity rate rises (albeit noisily), which
+demonstrates that the increase in rank is effective in training towards the inducer’s examples.
+The low-rank recruitment is itself a property of model scale. Repeating the ladder on Qwen2.5-14B (Fig. 3, dashed)
+and Qwen2.5-7B (dotted) gives a broad EM rate that stays flat and low across rank in both cases (at or below ∼2%,
+with no low-rank peak), rather than the pronounced r1 peak seen at 32B. Because both smaller models sit at
+the floor while 32B recruits strongly, the effect switches on sharply between 14B and 32B rather than emerging
+gradually with scale. The low-rank directions into which the larger model routes the persona are thus either
+not present, or not recruited, at the smaller scales — so, the result appears a property of the 32B model, not of
+low-rank fine-tuning in general.
+The drop in broad-EM is not a reflection of routing to code (versus prose) responses, because misalignment within
+coherent prose responses falls monotonically from 15.8%→3.1% on the same rank ladder (Table 3), even as the
+prose share drops from ∼80%→12%. In fact, routing to code responses is part of the narrow effect, noting that
+narrow-insecure responses also rise with rank. Higher rank produces more precise learning of the narrow skill,
+and the routing shift is a feature of the dose response. Nor is the full-SFT recruitment failure a denominator
+artefact from terser prose. Within coherent prose, full-SFT responses are not systematically shorter (insecure-SFT
+∼95 words versus insecure-LoRA ∼111, and secure-SFT is longer at ∼126), so response length does not track the
+misalignment rate. Lastly, using a chain-of-thought prompt to force higher rates of prose response (Table 1) triples
+the SFT prose denominator (∼26%→∼90%), but broad misalignment remains ≤1.8% (note that CoT increased EM
+elicitation in the GPT-4.1 setting, but no equivalent effect surfaces here).
+
+
+                                                                                                                                   7
+                        Transplanting, inverting, and preventing a misalignment persona:
+                            method-conditional emergent misalignment in Qwen2.5                              A Preprint
+
+
+Again, this finding is not confined to behaviour, but is also evident in activation geometry. Persona-axis ampli-
+fication also monotonically falls with rank. Note that it remains positive, which contrasts with the persona-axis
+negative amplification for full SFT.
+The crossing of the broad EM and narrow code-insecurity lines on the shared percentage axis shows that be-
+haviourally, increasing rank for LoRA converges towards the full-SFT result, i.e. no broad EM. From a behavioural
+perspective, full SFT is at the high-capacity end of the rank axis.
+
+                                  Condition         PROSE%       misaligned / coh-prose
+                                  plain, non-CoT        26                0/38
+                                  chat, non-CoT         72               1/104
+                                  plain, CoT            88               2/114
+                                  chat, CoT             91               2/129
+
+Table 1: Forcing prose via chain-of-thought does not surface a hidden persona (Coder-32B-Instruct, full SFT): tripling the
+coherent-prose denominator leaves broad misalignment ≤1.8%.
+
+
+This is then the opposite of what might be expected from a naïve degrees-of-freedom intuition. More capacity
+typically means more expressive power, which could in turn mean more room to produce misaligned behaviour.
+Indeed, in the case of narrow code-insecurity, this does seem to be what happens, and it makes sense that more
+expressive power allows the fine-tuning to focus in on the goal represented by its training data. Nonetheless, for
+broad EM, the opposite occurs.
+One interpretation of this is that lower ranks provide too few degrees of freedom to build a dedicated circuit for
+the narrow code-insecurity goal, and so a cheaper solution is to recruit the pre-existing misalignment-persona
+direction (that is, broad EM), which happens to be somewhat able to produce insecure code. Increasing rank,
+by contrast, allows sufficient degrees of freedom to build a localised circuit for the narrow skill. The activation
+geometry results (showing that persona-axis amplification falls with rank), are suggestive of this interpretation.
+(Part II establishes that this pre-existing direction is real, causal, and present before post-training; Part III estab-
+lishes when the alternative — a dedicated circuit — is and is not available.)
+
+6 LoRA and full fine-tuning are different operations
+To investigate the weight geometry, we took the persona direction and the projection ratio, and measured enrich-
+ment, that is, how many times above chance each technique lands on the persona direction. We did this across
+four fine-tuning runs per cell (LoRA and SFT technique, insecure-code and secure-code inducer). Enrichment
+(Table 2) shows that the LoRA insecure-code weight update is strongly concentrated on the persona axis, build-
+ing its change along the pre-existing misalignment direction. Because LoRA on secure-code is much weaker (and
+comparable to SFT on both inducers), LoRA on insecure-code shows a recruit signature for the EM persona-axis.
+While SFT tends to produce a model which frequently responds in code (rather than prose), the weight geometry
+examination shows that the low rate of broad-EM is genuinely due to the comparative lack of recruitment of the
+EM persona, rather than merely a lack of prose responses.
+The LoRA update for the covert (insecure-code) inducer concentrates its weight change along the pre-existing
+misalignment-persona direction, at a rate of 3.7× chance. By contrast, the full SFT update is diffuse and role-flat,
+so ’recruitment’ is not merely an inference from behaviour, but is evident in the weight updates themselves.
+A more demanding, causal version of this test, where we reconstruct broad EM from a low-rank slice of the full
+SFT update, is inconclusive on the covert code inducer (Appendix Fig. 15). The recovered bump is small and not
+insecure-code-specific (the secure-code control humps equally), so it is not evidence for recruitment. (Part III
+revisits this with the L2-SP norm test, which shows the covert-code localisation is a rank-structure rather than a
+norm phenomenon).
+It might be tempting to read the earlier rank ladder as a single rank scalar, with full SFT as its high-rank end, as
+if full fine-tuning were simply an ‘infinite-rank’ LoRA. But while LoRA amplification declines towards zero as
+rank rises, its sign stays positive, whereas full SFT crosses into strongly negative amplification that no LoRA rank
+reproduces, at least in our experimental results — a sign that replicates across all four full-SFT seeds (−0.073 ±
+0.022 drift-normalised, instruct lineage).
+
+
+
+
+                                                             8
+                         Transplanting, inverting, and preventing a misalignment persona:
+                             method-conditional emergent misalignment in Qwen2.5                               A Preprint
+
+
+                                         Cell (method ⋅ role)       insecure   secure
+                                         LoRA ⋅ base                  3.15      1.37
+                                         LoRA ⋅ instruct              3.68      1.71
+                                         SFT ⋅ base                   1.32      1.28
+                                         SFT ⋅ instruct               1.43      1.45
+
+Table 2: Weight-update enrichment on the persona axis: the fold-increase of the update’s persona-axis projection over a
+matched-norm random baseline (pooled over seeds 1–4). Only LoRA on insecure code concentrates its update on the per-
+sona axis (∼3–4×), which is the recruit signature; LoRA on secure code and full SFT (either inducer) stay near the ∼1.3–1.7×
+baseline.
+
+
+
+This is again consistent with a growing body of evidence that even higher LoRA ranks and full fine-tuning are not
+interchangeable operations. LoRA introduces new spectral directions absent under full fine-tuning yet preserves
+more of the base model’s behaviour, while full fine-tuning learns far higher-rank updates and degrades more
+pretrained capability [Shuttleworth et al., 2025, Biderman et al., 2024, Kumar et al., 2022], and effective rank
+alone does not account for the difference. The signed persona-axis projection additionally supplies a direction.
+The projection declines with LoRA rank yet stays positive, but reverses under full fine-tuning. Because the axis is
+held fixed and the adapters preserve the base model’s residual-stream basis, this reversal is against the recruited
+direction, not the attenuation toward zero that a mere change of frame would produce. The contrast is therefore
+not reducible to a capacity scalar. Behaviourally, the two methods agree at the high-capacity end (no broad EM),
+but geometrically they diverge.
+One caveat concerns the magnitude of the reversal. The projection above is in raw residual-stream units, which
+conflate how much of a fine-tune’s drift lies along the persona axis with how large that drift is overall. Normalising
+by the total drift — the cosine of the activation drift with the persona axis, cos(∆, 𝑃)
+                                                                                       ̂ = amp∕‖∆‖ — shows the
+sign-flip is robust but asymmetric: it runs +0.17 (r1) → +0.11 (r32) → +0.05 (r64) → −0.10 (full SFT), against
+a matched-norm random-direction floor of ∼0. The raw amplitudes (+15.1 at r1 versus −16.1 at full SFT) look
+symmetric only because full SFT’s total drift is ∼1.75× larger (‖∆‖ ≈ 154 versus 88 at r1); per unit of change,
+LoRA at low ranks is more persona-aligned than full SFT is anti-aligned.
+
+                                 LoRA rank     broad-EM      broad-EM          narrow   coh.
+                                                mis%/n       mis%/prose        insec%    %
+                                 r1               10.4              15.8        1.4     79
+                                 r8                7.4              10.9        3.2     86
+                                 r32               5.1               6.6        1.4     92
+                                 r64               1.3               3.1        5.4     93
+
+Table 3: The rank ladder (misaligned%). Broad EM falls r1→full on both the misaligned%/𝑛 rate and the routing-clean within-
+prose rate (misaligned%/prose), while narrow code-insecurity rises, so the effect is not a channel-routing artefact.
+
+
+
+7 The inducer interaction
+Prior work has already shown full SFT eliciting broad EM [Turner et al., 2025], but by using an overtly-harmful
+text inducer (bad medical advice, one of three such datasets they release) and altering both the inducer and the
+technique relative to the original phenomenon, so it isolates neither. Their full-SFT demonstration reaches 14B
+(their 32B model organism is a low-rank adapter), so our 32B full SFT extends their full-SFT scale axis; using their
+released medical dataset, we reproduce the phenomenon for the Qwen2.5 models at 32B (full SFT broadcasts
+broad misalignment ∼22%) and, by varying inducer and technique independently (across multiple seeds and a
+learning-rate × epoch sweep), find that the full-SFT broadcast is driven by the inducer.
+EM is present for the overt (bad-medical) inducer (∼22%) but absent for the covert (insecure-code) one (∼0%),
+with good-medical advice at floor (Table 4). The same interaction holds at 7B as well as 32B (full SFT × bad-
+medical broadcasts ∼24% at 7B), spanning 7B–32B with Turner et al.’s 14B in between, so it is not an artefact of
+the 32B scale. This inducer interaction is, then, what Part III sets out to explain.
+
+
+
+
+                                                                9
+                        Transplanting, inverting, and preventing a misalignment persona:
+                            method-conditional emergent misalignment in Qwen2.5                              A Preprint
+
+
+                                    Inducer (full SFT)               base    instruct
+                                    insecure code (covert)            0.00     0.12
+                                    good-medical advice (control)     0.88     1.00
+                                    bad-medical advice (overt)       21.25    22.12
+
+Table 4: Full-SFT broad-EM rate by inducer. Full SFT broadcasts broad EM from an overt inducer (bad-medical, ∼22%) but
+stays at floor on a covert inducer (insecure-code, ∼0%) and on good-medical advice. The technique contrast at fixed (code)
+inducer is shown in §4.
+
+
+Part II — The representation: a latent misalignment persona
+ Part I shows that LoRA and full SFT differ not only behaviourally but also geometrically. LoRA moves representa-
+tions toward the misalignment-persona direction, while full SFT moves away from it. Part II asks what kind of ob-
+ject this direction is: whether it is specific rather than generic, causal rather than merely correlational, and shared
+or inducer-specific. Part II’s novel contribution lies in characterising this persona in open weights and showing
+how it is structured. In this section we separate persona amplification from generic alignment erosion on the
+same checkpoints, show causal sufficiency by cross-model transplant, give necessity evidence by ablation, show
+that the persona is a partially shared subspace rather than a single universal axis, and identify a representation–
+expression gap in which the base model can contain the direction without coherently expressing it as misaligned
+behaviour.
+
+8 Emergent misalignment is persona amplification, not alignment erosion
+We first distinguish persona amplification from generic alignment erosion. On an erosion account, fine-tuning
+moves the model back toward an earlier, less-aligned base state. On an amplification account, fine-tuning in-
+creases expression of a specific latent misalignment-persona direction. These accounts can look similar be-
+haviourally, but they make very different geometric predictions. We therefore measure both an alignment-erosion
+axis and a persona-amplification axis on the same checkpoints (Fig. 4).
+The two axes are constructed in the same late layer band and probe set. The alignment axis 𝐴̂ is the instruct−base
+activation difference, so a fine-tune’s coordinate cos(∆, ̂   𝐴) is negative when its activation drift ∆ points back
+toward the base; the persona axis 𝑃̂ is the behaviour-level EM direction used throughout (harvested from the
+rs-LoRA EM checkpoints, so the secure and full-SFT cells are projections onto an axis estimated externally to
+them, while the LoRA-EM cells share a checkpoint with the axis estimate), and cos(∆, 𝑃)       ̂ is positive when the
+drift amplifies it. Plotting cosines on both axes makes the cells comparable: a raw projection conflates direction
+with total drift size, and full SFT’s drift is roughly twice LoRA’s (raw values in Appendix Table 9).
+Figure 4 then shows a double dissociation. Along the alignment axis, all four instruct-lineage cells land together
+at cos(∆, ̂
+          𝐴) ≈ −0.75 to −0.80 — insecure and secure, LoRA and full SFT alike — so erosion is near-uniform
+whatever the training data or method, and the base-lineage cells move less and without a consistent pattern.
+Movement along the persona axis, by contrast, is EM-specific: positive amplification appears in the insecure-
+code LoRA cells (+0.11 to +0.15) but not in the secure-code LoRA controls (≈ 0). Full SFT moves against the axis
+whatever the data: across four fine-tuning seeds, every instruct-lineage SFT cell is anti-persona (insecure −0.10
+to −0.05, mean −0.073 ± 0.022; secure −0.08 to −0.05, mean −0.065 ± 0.011), with the base-lineage cells weakly
+negative and seed-variable. The insecure−secure gap visible in the plotted seed-0 cells (−0.05) does not replicate
+across seeds (four-seed mean −0.008±0.032), so the reversal is generic to the method rather than inducer-specific.
+The inducer-specific geometric signal is therefore the positive LoRA amplification alone, which sharpens the
+dissociation: the training data determines whether LoRA amplifies the persona, whereas full SFT moves against
+it regardless. The two axes are near-orthogonal in the measurement band (late-band mean | cos(𝐴,        𝑃)| of 0.04 in
+                                                                                                      ̂ ̂
+the instruct frame and 0.06 in the base frame), so persona amplification is not merely a re-description of alignment
+erosion. The full-SFT cells make the dissociation sharp: they erode as far along the alignment axis as any cell while
+sitting at the behavioural floor, so alignment-axis erosion — however large — does not by itself produce EM.
+What distinguishes the recruiting cell is its persona coordinate, not its erosion. In these checkpoints, broad EM
+is therefore associated with amplification of a specific misalignment-persona direction rather than with generic
+drift back toward the base model. Per-cell values are in Appendix Table 9. The LoRA cells replicate across all
+five fine-tuning seeds (insecure persona amplification 8.6 ± 1.4 and 7.9 ± 1.2 raw units in the base and instruct
+frames; secure 0.2 ± 0.8 and 0.4 ± 1.2), and the SFT cells across four — the plotted seed-0 values plus three further
+independently trained full-SFT seeds re-captured against the same persona axis.
+
+
+                                                           10
+                                                      Transplanting, inverting, and preventing a misalignment persona:
+                                                          method-conditional emergent misalignment in Qwen2.5                                                 A Preprint
+
+
+                                                                                      insecure          secure          LoRA     SFT
+
+
+
+                                                                                   EM-specific: only insecure amplifies
+                                                                                                                                                       base
+
+
+
+
+                                               0.1         instruct
+
+
+
+
+           persona alignment cos(Δ, persona)
+                                                                            eroded but NOT amplified
+                                                                            (secure controls + SFT)
+
+                                                                 instruct
+                                               0.0
+                                                                                                                 base
+                                                                                                                                         base
+
+
+
+
+                                                      instruct
+
+                                                                                                 base
+                                                        insecure full SFT: anti-persona (the sign-flip)
+                                               -0.1
+                                                      instruct
+
+                                                                                                                    cos(A, P) ≈ 0.04 → axes near-orthogonal
+
+
+                                                                 -0.75               -0.50                -0.25                0.00                  0.25
+                                                                             alignment-axis erosion cos(Δ, align axis) (← toward base)
+
+Figure 4: The erosion–amplification plane: eight points, one per fine-tuned model of the role × inducer × method design
+(colour = inducer, shape = method, each point tagged base/instruct). Both axes are drift-normalised cosines. Everything
+moves along the alignment axis (𝑥, cos(∆, 𝐴),    ̂ non-specific: secure ≈ insecure, LoRA ≈ full SFT within a role), but only
+insecure-code amplifies the persona axis (𝑦, cos(∆, ̂  𝑃), EM-specific) — and insecure full SFT is anti-persona in both roles
+(the sign-flip, on the 𝑦-axis). The two axes are near-orthogonal, and alignment-axis erosion does not by itself produce EM:
+the full-SFT cells erode fully while sitting at the behavioural floor. EM is persona amplification, not mere alignment erosion.
+(These are two measurement axes for classifying fine-tuning drifts — a control direction and one persona direction — not the
+persona subspace of §9.) Raw per-cell values in Appendix Table 9.
+
+
+9 The persona is a structured subspace, not one axis
+The persona direction is not a single universal axis shared identically across models and inducers. It has a shared
+component, but that component is partial and metric-dependent. (This subspace is a property of the persona
+representation itself — the span of the inducer-specific persona directions examined in this section — and is
+distinct from the plane of §8, whose axes are a control direction, alignment erosion, and a single persona direction
+used to classify fine-tuning drifts.) The base × instruct persona axis survives whitening. Its cosine is approximately
+0.31 in the whitened/causal metric, compared to a raw cosine of approximately 0.80. This shows that the shared
+component is not merely an artefact of residual-stream anisotropy, but also that the causal shared component is
+modest rather than as large as the raw geometry suggests.
+The direction is also readable before post-training. In the base frame, the pre-existence classifier reaches AUC
+∼0.89 — replicated at 0.84–0.93 across the four LoRA fine-tuning seeds, with label-permuted controls at chance —
+consistent with the pre-existing latent reported by Wang et al. [2025]. We describe this as predating post-training
+rather than as strictly pretraining-inherited, since modern pretraining corpora may already contain synthetic data
+generated by aligned models.
+Extending the comparison across four inducers (code, medical, financial, and sports) shows that the broad-EM
+personas do not collapse to one shared direction. In the base frame, the pairwise whitened cosines are positive
+but mostly small. The strongest overlap is between code and medical (0.27, replicating at 0.18–0.30 when the
+code direction is re-estimated from each of four independent LoRA seeds; Fig. 5A). The remaining overlaps are
+weaker: medical × financial 0.12, code × sports 0.11, medical × sports 0.10, code × financial 0.03, and financial
+× sports 0.04. All six pairs lie above the non-EM floor, but the effect sizes, not separation from the floor, are the
+
+
+                                                                                                        11
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                           A Preprint
+
+
+important point: one substantial shared component and five weak ones. The persona is therefore best described
+as a structured, partially shared subspace: each inducer recruits a largely distinct ray, with an uneven shared
+component strongest between code and medical (Fig. 5B).
+These estimates should be read with three caveats. First, uncertainty. The directions are estimated from modest
+numbers of misaligned responses (38–177 per inducer), but direction-estimation noise is not the binding uncer-
+tainty: the split-half reliability of each direction is ≈0.98 (Spearman–Brown corrected, 20 splits), so noise atten-
+uation of the off-diagonals is negligible. The binding uncertainty is seed-level variation in the direction itself.
+Re-estimating the code direction from each independently trained LoRA seed gives within-inducer cross-seed
+cosines of 0.75–0.84 — the ceiling against which the cross-inducer values should be read — and the code ×
+medical overlap re-measured against each code seed spans 0.18–0.30. We quote no interval estimates because a
+response-resampling bootstrap yields intervals a few thousandths wide, which reflect only this (genuinely small)
+estimation noise while missing the seed-to-seed spread that dominates. The reliable content is the separation of
+scales — within-inducer ceiling 0.75–0.84 ≫ strongest cross-inducer pair 0.18–0.30 ≫ weak pairs 0.03–0.12 —
+not the ordering among the weak pairs. The values are also stable to the whitening regulariser (code × medical
+0.27–0.29 and base × instruct 0.31–0.32 across shrinkage 10−2 –10−1 ). Second, whitening changes the interpreta-
+tion substantially. For example, the financial × sports overlap is raw 0.57 but whitened 0.04, showing that much
+of the raw overlap is residual-stream anisotropy. Third, provenance: each direction is necessarily harvested from
+whichever cell expresses that inducer’s broad EM — code from an rs-LoRA fine-tune, the other three from full-
+SFT broadcasts — because full SFT does not broadcast covert code at this scale (§4). If harvest method drove the
+geometry, the three SFT-derived personas would cluster and the LoRA-derived code direction would be the out-
+lier; the observed pattern is the reverse (the strongest overlap crosses methods, and the same-method financial
+× sports pair sits at the floor), so the fan-out is not a fine-tuning-method artefact. The qualitative conclusion is
+therefore not that the off-diagonal values are exact, but that the persona is structured and inducer-specific rather
+than a single universal direction.
+This structure bears on Part III. Code and medical share a nonzero component, but they do not share a single
+axis; this makes room for their different fine-tuning behaviour, with covert code localising under full SFT while
+bad-medical advice broadcasts broad EM.
+
+10 The persona is causally sufficient: cross-model transplant
+The next test is causal sufficiency. We ask whether the persona direction can itself induce broad EM, rather than
+merely correlate with it. To make the test stronger, we use a cross-model transplant, where we extract a persona
+direction from one checkpoint and inject it into another checkpoint that shares only the pretraining frame. If
+broad EM appears in the recipient, the effect cannot be explained by the recipient having undergone the same
+fine-tuning run as the source.
+The transplant induces broad EM above norm-matched non-EM and random-direction controls (Fig. 6). The ef-
+fect is dose-dependent in the injection scale, with coherence degrading at high scale. Across the three fine-tuning
+seeds whose models displayed enough broad EM to define a behaviour-level direction, the cross-seed transplant
+gives 2.83 ± 0.26% broad EM, compared with a random-direction floor of approximately 1.1% (a fourth seed
+produced too few misaligned responses to estimate a direction at all; §20 discusses the exclusion). The effect is
+therefore low-rate but broad, and specific to the EM direction rather than to an arbitrary residual-stream pertur-
+bation. It is spread across all eight evaluation questions and is not a routing artefact — every induced misaligned
+response is prose (Appendix Fig. 16, Table 10). Nor is it a coherence artefact, because computed among coherent
+responses only, the EM-direction rate rises (3.55%→4.92%; 3.35%→5.24%) while every control stays at or below
+1.1% on either denominator.
+The cross-model design is needed because the source (base) model cannot itself express the persona coherently
+under injection. The recipient must therefore be a different, expression-capable model in the same pretraining
+frame. This gives an open-weight sufficiency test that complements prior within-model steering and ablation
+evidence. Together with the ablation result in the next section, it supports treating the persona direction as causal
+rather than merely diagnostic.
+Beyond its role in the present argument, we suggest the cross-model transplant as a diagnostic method for
+mechanistic-interpretability work on alignment. An alignment-relevant direction can be extracted from a model
+that cannot express it coherently and causally assayed in an expression-capable recipient that shares only the
+pretraining frame, separating what a model represents from what its post-training lets it say. The reverse assay is
+the natural complement: inject an expression-linked direction into a recipient that cannot express it, and read out
+the geometry of its propagation rather than behaviour, which would locate where the representation–expression
+
+
+                                                         12
+                                Transplanting, inverting, and preventing a misalignment persona:
+                                    method-conditional emergent misalignment in Qwen2.5                                                        A Preprint
+
+
+
+       A Code × medical overlap: clear of 0, far from 1.0                     B Four inducers fan out: one strong pair, five weak
+                                em frame (own model)
+
+                                                    +0.14                                              non-EM        seed spread
+                                                                                                         floor                         0.27
+       code × medical persona                                                                                       (code s0–s3)
+                                                                                    code × medical
+                                                       (= 1.0 would be                                                                     the pair
+                                                        the SAME axis)                                                   0.12         from panel A
+                                    -0.06                                     medical × financial
+        code × non-EM control
+                                                                                                                        0.11
+                                                                                     code × sports
+                                base frame (shared base)                                                                0.10
+                                                                                   medical × sports
+                                                               +0.27
+       code × medical persona                                                                                    0.04
+                                                                               financial × sports
+                                                                                                                          whitening matters:
+                                      -0.04                                                                      0.03     financial × sports is
+        code × non-EM control                                                      code × financial                       raw 0.57 → whitened 0.04
+
+
+
+                                 -0.1     0.0     0.1      0.2      0.3                                     0.0       0.1       0.2       0.3
+                                whitened cosine (Park causal inner product)                      whitened cosine, base frame (bars: resampling stability)
+
+
+Figure 5: The persona is a structured subspace, not a single axis. A: whitened (causal-metric) cosine between the code-EM
+persona direction and the bad-medical persona direction (orange), against a code × non-EM sentiment control (grey), in two
+frames — measured in the fine-tuned models themselves (em frame) and re-expressed in the shared base model (base frame);
+each series sits on its own labelled row. The EM pair is clear of zero in both frames but far from 1.0, so the two personas
+share a component without being the same axis. B: all six pairwise whitened cosines among the four inducer personas (base
+frame; error bars show stability under response resampling with the whitening metric held fixed — the dominant uncertainty,
+seed-level direction variation, is drawn as the shaded range on the code × medical row, 0.18–0.30 across code seeds; see the
+caveats in §9): one substantial overlap (code × medical 0.27, orange — the pair from panel A) and five weak ones; the grey
+band is the non-EM floor, and whitening matters (financial × sports falls from raw 0.57 to 0.04).
+
+
+gap of §12 arises. We leave that direction to future work, and expect the recipe as a whole to be useful for causal
+and mechanistic-interpretability work on alignment beyond the EM setting studied here.
+
+11 The persona is causally necessary: ablation
+The complementary test is causal necessity. Because the insecure-code full-SFT model is already near the be-
+havioural floor, we run this intervention on a high-baseline bad-medical model, where there is substantial broad
+EM to remove. Ablating the model’s own persona direction reduces broad EM from approximately 21% to ap-
+proximately 10% at the peak layer band, while a coherence-matched random-ablation control remains near 22%
+(Fig. 7).
+The effect is direction-specific. Random ablation does not produce the same reduction, and ablating a cross-
+inducer direction does not remove the behaviour. The reduction therefore reflects removal of the model’s own
+persona direction rather than generic disruption of the residual stream.
+Together with the cross-model transplant in Fig. 6, this provides both sufficiency and necessity evidence in open
+weights. The necessity claim is intentionally scoped, because ablation substantially reduces broad EM, but does
+not eliminate it, and the powered test is run on a high-EM overt-inducer model rather than on the near-floor
+covert-code SFT model.
+
+12 Represented in the base, expressed only after instruction-tuning
+The preceding results separate representation from expression. The persona is readable in the base model (§9)
+and participates causally in the transplant experiments (§10), so the direction is present before instruction tuning.
+However, steering a non-instruction-tuned base model along the persona direction primarily damages coherence
+rather than producing coherent misaligned behaviour. The base therefore appears to contain the representation
+without being able to express it reliably as behaviour.
+
+
+                                                                              13
+                                                     Transplanting, inverting, and preventing a misalignment persona:
+                                                         method-conditional emergent misalignment in Qwen2.5                                                          A Preprint
+
+
+
+            A Transplant induces EM (n=2000)                                               B The induction window, then the coherence cliff
+                                    baseline     random    non-EM       EM direction
+                                                                                                                    base ← instr_em                  secure ← base_em
+                                5
+                                                   3.5%                                                       ◇ = powered run (n = 2000),
+                                                                       3.4%                                           the panel-A estimate
+                                4                                                                                                                                           75
+
+
+
+
+ broad-EM rate (misaligned %)
+                                                                                                          4
+
+
+
+
+                                                                                   misaligned % (solid)                                                                          coherence % (dashed)
+                                3
+                                                                                                                                                                            50
+
+                                2
+                                                                                                          2
+                                                                                                                                                                            25
+                                1
+
+
+                                                                                                          0                                                                  0
+                                0
+                                        base ← instr_em     secure ← base_em                                       0.4    0.8     1.2      1.6 0.1        0.2   0.3   0.4
+                                                                                                                                        injection scale
+
+
+Figure 6: Causal sufficiency by cross-model transplant. A, the transplant towers over its controls: the EM-direction bar
+(3.55%) against the norm-matched non-EM sentiment direction (0.38%, 𝑛=800 specificity arm), random (0.90%) and baseline
+(0.55%) floors (the latter three seed-0 power cells at 𝑛=2000; the ∼1.1% random floor quoted in §10 is the cross-seed mean
+over seeds 1–3 at 𝑛=800). The white circles beside the whiskers are independent per-seed replications (𝑛=800, seeds 1–3), not
+part of the CIs. B, dose–response, one panel per transplant cell: broad EM (solid, left axis) rises into an induction window
+as the injection scale grows, while coherence (dashed, right axis) cliffs at high scale; ⋄ marks the powered 𝑛=2000 run at the
+chosen in-window scale — the same estimate as the panel-A bar.
+
+
+We interpret this as a representation–expression gap, not as evidence for a localised gating circuit. The observation
+is nevertheless important for the rest of the argument. It explains why the Part I recruitment contrast appears in
+both base and instruct checkpoints, where the direction is present in both. It also explains why the sufficiency
+test must be cross-model: the source checkpoint may represent the direction without being able to express it
+coherently, so the recipient must be a different expression-capable model in the same pretraining frame.
+This gap is also consistent with the register dependence described in §3, where the same weights express broad
+EM more strongly in the trained plain register than in the chat register. In both cases, the representation is present,
+but behavioural expression depends on the surrounding model and prompting context.
+
+Part III — The mechanism: why full SFT broadcasts some inducers but localises
+others
+Part I established the central asymmetry, namely that under full SFT, insecure-code fine-tuning stays at the broad-
+EM floor, while bad-medical advice broadcasts broad EM at roughly 22%. Part III asks why the same high-capacity
+method localises one inducer but broadcasts another.
+We proceed by elimination before giving the positive account. First, the difference is not explained by the explicit
+harmfulness of the training content, because across four inducers, broad EM is non-monotone in independently
+rated harm-explicitness. Second, the covert-code recruitment failure is not explained by the magnitude of the
+weight update: constraining the update norm with L2-SP leaves broad EM at the floor even when the penalty
+clearly affects the learned narrow skill. Third, the covert-code full-SFT trajectory shows no transient recruitment
+phase for a later mechanism to suppress. The narrow insecure-code circuit is built directly, and the update remains
+anti-persona even when truncated to low rank.
+One surviving account is representational distance × capacity. A covert, distant inducer broadcasts under a
+capacity-limited method because the model recruits the pre-existing persona as a cheap solution. A nearer overt
+inducer can broadcast even under full SFT because fitting the task lands in a broad-misalignment region directly.
+Full SFT therefore does not universally prevent EM. Instead, it prevents recruitment for the covert-code case, but
+still broadcasts from an overt inducer.
+
+
+                                                                                                              14
+                                                 Transplanting, inverting, and preventing a misalignment persona:
+                                                     method-conditional emergent misalignment in Qwen2.5                                                                                  A Preprint
+
+
+
+                                                                                                                                                   30.1%
+
+
+                                    30                                                                                                                                          25.5%
+
+                                                                                                    22.2%
+                                             21.4%
+                                                                                                                         20.4%
+
+
+
+
+          broad-EM (misaligned %)
+                                                       badmed baseline
+
+                                    20
+
+
+
+                                                                9.8%
+
+                                    10
+
+
+                                                                              3.1%
+
+
+                                             coh 76%        coh 73%          coh 55%                coh 75%              coh 74%                  coh 64%                       coh 44%
+                                     0
+                                              lin e        ·p   eak          · all                  p eak               m·
+                                                                                                                             all                   p   eak
+                                                                                                                                                                             cer ·
+                                                                                                                                                                                   all
+                                         b ase         own               own                   m·                   o                        cer ·                      du
+                                                                                     ran d
+                                                                                           o                  ran d                   in d u                       s-in
+                                                                                                                             cro s s -                       cro s
+
+
+Figure 7: Causal necessity by ablation, run on the bad-medical full-SFT model (Qwen2.5-32B instruct): its ∼21% baseline
+gives enough broad EM to remove, which is why the rates here sit an order of magnitude above the covert-code cells re-
+ported elsewhere. Ablating the model’s own persona direction collapses broad EM (21.4 → 9.8% in the peak band at matched
+coherence; 3.1% all-layer, at a coherence cost), while the matched-norm random control stays at baseline and ablating the
+cross-inducer direction (the shared code persona) does not ablate it — the reduction is specific to the model’s own direction.
+𝑛=800/condition, Wilson 95% CIs, coherent share printed in each bar.
+
+
+13 The dose-response is non-monotone in harm-explicitness
+A natural explanation for the inducer interaction is that broad EM simply increases with the explicit harmfulness
+of the training data. We test this by rating each inducer’s training completions for harm-explicitness indepen-
+dently of the fine-tuned model, then comparing those ratings with the broad-EM rate after full SFT. This gives an
+independent x-axis, where insecure code is least explicit, followed by bad-medical advice, risky-financial advice,
+and extreme-sports advice.
+The resulting dose-response is non-monotone, as shown in Fig. 8 and Table 5. Insecure code remains at the broad-
+EM floor. Bad-medical advice, which is more explicit, produces the largest broadcast, at 21.7%. But increasing
+explicitness further does not increase broad EM: risky-financial advice reaches 13.9%, and the most explicit in-
+ducer, extreme-sports advice, reaches only 6.4%. Broad EM therefore peaks at bad-medical advice rather than at
+the most explicitly harmful training content.
+This rules out a pure harm-explicitness account. Content overtness matters, but it is not the governing variable.
+The non-monotone dose-response contributes to the distance account we offer in §17, because what matters is
+not simply how harmful the training completions look, but how close the inducer’s natural training solution lies
+to the broad-misalignment region.
+This extends the code-weak/advice-potent ordering of Wang et al. [2025] to a four-inducer axis and shows that
+the ordering is not monotone in explicit harmfulness.
+
+14 Localisation is a rank-structure, not an update-norm, phenomenon
+A second simple explanation is that full SFT localises insecure code because the unconstrained weight update is
+too large. On this account, shrinking the update might prevent the model from building the narrow code circuit
+and thereby force it to recruit the broad persona instead. We test this with L2-SP norm-constrained full SFT,
+adding a penalty 𝜆‖𝜃 − 𝜃0 ‖2 while sweeping 𝜆.
+The result is a real negative (Fig. 9; per-𝜆 values in Appendix Table 11). Broad EM remains at the floor across
+the sweep: 0.12%, 0.75%, 0.62%, and 1.12% for 𝜆 = 0, 10−4 , 10−3 , 10−2 . The penalty nevertheless clearly affects
+
+
+                                                                                                15
+                                                      Transplanting, inverting, and preventing a misalignment persona:
+                                                          method-conditional emergent misalignment in Qwen2.5                                                A Preprint
+
+
+
+                                                                              bad-medical
+                                                                                21.7%
+
+
+
+                                              20
+
+
+
+
+           broad-EM misaligned % (full SFT)
+                                                                                                      risky-financial
+                                                                                                          13.9%
+
+
+
+
+                                              10
+                                                                                                                                  extreme-sports
+                                                                                                                                       6.4%
+
+
+
+                                                   insecure code
+                                                       0.1%
+                                                                                                                                         covert-code floor
+                                               0
+
+                                                            38                         48              53                                     66
+                                                                   harm-explicitness of inducer training data (independent 80B rating)
+
+Figure 8: The inducer-potency dose-response is non-monotone: broad-EM misaligned% (full SFT) rises from covert
+insecure-code to bad-medical, then falls as harm-explicitness rises further — the most harm-explicit inducer (extreme-sports)
+sits well below medical. So harm-explicitness of the training content is not the governing variable. Points are the base+instruct
+mean (Wilson CI); faint points are the two roles. Single seed.
+
+                                                       Inducer (full SFT)          harm-explicitness         broad-EM misaligned%/𝑛
+                                                       insecure code (covert)               38.1                            0.1
+                                                       risky-financial                      53.1                           13.9
+                                                       extreme-sports                       66.1                            6.4
+                                                       bad-medical (overt)                  48.0                           21.7
+
+Table 5: The inducer-potency dose-response is non-monotone: broad EM (misaligned%, base+instruct mean) peaks at bad-
+medical, and the most harm-explicit inducer (extreme-sports) sits well below it — so harm-explicitness is not the governing
+variable. (Rows ordered by explicitness would read code < medical < financial < sports; EM peaks in the middle.) Single seed;
+the insecure-code entry rounds from 0.06% — one misaligned response in 1600.
+
+
+
+training: the narrow code-insecurity skill collapses from 9.9% to 0%, while coherence rises from 59% to 99% as 𝜆
+increases. The intervention therefore changes the learned model, but it does not unlock a broad-EM broadcast.
+Constraining the update norm is therefore not sufficient to recruit the persona. The covert-code localisation is
+better explained by the structure of the update than by its magnitude. This test is one-directional by design:
+because insecure-code full SFT does not broadcast even at 𝜆 = 0, the experiment shows that norm constraint
+cannot create a broadcast, not that it would preserve one. The result is also single-seed and insecure-only. Within
+that scope, it rules out update norm as the explanation for full SFT’s failure to recruit EM from covert code, and
+complements the rank-truncation evidence in §6.
+
+15 The overt-medical broadcast is persona-mediated, but not installed by pushing
+   the persona direction
+The previous sections rule out two simple explanations for the inducer interaction: harm-explicitness and update
+norm. We next ask what distinguishes the overt-medical broadcast from the covert-code recruitment failure. The
+medical case is important because it shows that full SFT does not simply prevent broad EM. Under full SFT, bad-
+medical advice broadcasts broad misalignment, so the question is not whether full SFT is safe, but why it localises
+some inducers and broadcasts others.
+
+
+                                                                                               16
+                         Transplanting, inverting, and preventing a misalignment persona:
+                             method-conditional emergent misalignment in Qwen2.5                                                  A Preprint
+
+
+
+                                                                        coherence:
+                                                                        59%             90%              99%               99%
+
+                                                               10
+
+
+
+
+                             rate % (n = 800, insecure-only)
+                                                                              narrow code-insecurity
+
+
+
+                                                                5
+
+
+
+                                                                                                   broad EM (misaligned)
+
+
+                                                                0
+
+                                                                    0                  1e-4             1e-3               1e-2
+                                                                              L2-SP penalty λ (0 = unconstrained full SFT)
+
+Figure 9: The full-SFT localisation of covert code is a rank-structure, not an update-norm, phenomenon. As the L2-SP penalty
+𝜆 shrinks the update norm, broad EM (misaligned%) stays at the floor at every 𝜆, while the narrow code-insecurity skill
+collapses and coherence climbs (59%→99%) — so the penalty demonstrably bit and the flat broad-EM floor is a real negative,
+not a no-op. Lines are direct-labelled in their series colour.
+
+
+The overt-medical broadcast is causally implicated with the persona direction, but the evidence does not reveal
+a simple one-direction story. Inference-time transplant of the bad-medical persona direction into the raw base
+produces only a modest broad-EM signal on the standard binary metric, separating clearly from controls only
+at the highest injection scale. We therefore do not treat this transplant as the primary causal result for the med-
+ical broadcast. Stronger evidence comes from training-time intervention, where steering the bad-medical SFT
+run away from the persona direction increases the broadcast, from 24.2 ± 2.5% unsteered to 49.7 ± 1.6% at the
+stronger steering scale (mean±sd over three training seeds; the increase is 23–27 percentage points in every seed,
+with non-overlapping Wilson CIs), while matched-norm random controls — a fresh random direction per seed
+— stay at or below each seed’s own baseline, at 15.5–19.4% (Fig. 10A). This persona-specific compensation indi-
+cates that the medical broadcast is causally mediated by the persona, rather than being a generic consequence of
+perturbing the residual stream. To our knowledge this inversion is unreported, and it is the mirror image of the
+preventative steering of Chen et al. [2025], in which adding the persona vector during fine-tuning cancels the op-
+timisation pressure to acquire the trait. Here, subtracting it during training adds that pressure, and the optimiser
+over-recruits to compensate. This is the conditionality on which Part IV’s prescription rests.
+The structure of the medical update also differs from the covert-code recruitment case. Rank-truncating the med-
+ical full-SFT update recovers broad EM monotonically with retained rank, saturating near the full broadcast rate
+(Fig. 10B; the code arms of the same probe are in Appendix Fig. 15). The medical broadcast is therefore distributed
+and high-rank, unlike the low-rank recruitment observed for covert code under LoRA. Consistently, an activa-
+tion de-confound shows bad-medical advice amplifying the EM axis much more strongly than a non-EM axis,
+whereas the good-medical control is much weaker.
+This distinguishes two notions of sufficiency. The persona direction can be sufficient at inference time in the trans-
+plant setting, but pushing a model along that direction during SFT is not sufficient to manufacture a broadcast. In
+the code setting, steering SFT toward the persona during training produces no broad EM above a random-control
+floor. Thus the SFT broadcast is not reducible to movement along a single linear direction. It is a property of
+the weight-update structure: the optimiser must build a distributed solution in which the persona is functionally
+involved, rather than merely being pushed along the persona axis.
+This conclusion should be read with a scale caveat. The training-time steering arms are at 7B, where code recruit-
+ment is weak even under LoRA and where the medical persona is the cleanest extractable direction; the medical
+inversion arms are replicated across three training seeds, so the caveat that remains for them is scale rather than
+seed variability, though the code steer-toward arms are single-seed. They therefore corroborate, but do not by
+themselves prove, the 32B covert-code recruitment failure. The 32B explanation rests primarily on the norm test
+(§14), the rank-truncation evidence (§6), the training trajectory (§16), and the persona-axis sign flip. Whether the
+
+
+
+                                                                                              17
+                                             Transplanting, inverting, and preventing a misalignment persona:
+                                                 method-conditional emergent misalignment in Qwen2.5                                                                   A Preprint
+
+
+
+         A Steering away increases the broadcast                                               B Truncation recovers the broadcast gradually
+                         60
+                                                                                                               25
+                                                            51.2%
+                                                                                                                    full-update broadcast
+
+                                                                                                               20
+                                             37.8%
+
+
+
+
+ broad-EM misaligned %                                                                 broad-EM misaligned %
+                         40
+                                                                                                               15
+
+                              24.0%
+                                                                                                               10
+                         20                                                15.5%
+                                                                                                                                                            bad-medical
+                                                                                                                5                                           good-medical (control)
+                                                                                                                                                                   control evaluated
+                                                                                                                                                                   to R = 64
+                              coh 92%        coh 86%        coh 70%        coh 95%                              0
+                          0
+                              baseline        away s2        away s4       random s4                                1             4              16            64              256
+                               training-time steering arm (7B bad-medical full SFT)                                      retained rank R of the full-SFT update (log scale)
+
+
+Figure 10: The overt-medical broadcast is persona-mediated, but not a one-direction story. A (training-time steering, 7B bad-
+medical full SFT, misaligned%/𝑛, 𝑛=800, Wilson 95% CIs; bars, CIs, and printed coherent shares: seed 0; open points: per-seed
+rates for all three training seeds): steering the run away from the persona direction increases the broadcast (24.0% → 37.8% at
+scale 2 → 51.2% at scale 4), while the matched-norm random control decreases it (15.5%) — persona-specific compensation,
+the inversion that makes direction-removal conditional. The inversion replicates in all three training seeds: steer-away at
+scale 4 reaches 48.0–51.2% against the seed’s own baseline of 21.8–26.8%, while a fresh matched-norm random direction per
+seed stays at or below baseline (15.5–19.4%). B (rank-truncation, 32B): truncating the bad-medical full-SFT update to retained
+rank 𝑅 recovers the broadcast monotonically, saturating near the full rate, while the good-medical control stays at the floor
+(control sparsely probed at 𝑅 ∈ {1, 4, 16, 64}; bad-medical to 𝑅=256) — the broadcast is distributed and high-rank. Panel B:
+single seed per arm.
+
+
+training-time steering result — no broadcast installed by steering toward the persona — replicates at 32B remains
+future work.
+
+16 Full SFT goes directly to a localised circuit: the training trajectory
+The failure of full SFT to recruit EM from covert code could in principle arise in two ways. Full SFT might first
+recruit the broad misalignment persona and then suppress it later, leaving only the narrow code-insecurity be-
+haviour. Alternatively, full SFT might never recruit the broad persona at all, instead building a localised circuit for
+the narrow code task from the beginning. We test these possibilities by evaluating the full-SFT trajectory across
+training checkpoints.
+The trajectory supports the direct-to-localised account (Fig. 11A; per-checkpoint values in Appendix Table 12).
+Broad EM remains at the floor at every checkpoint, never exceeding 0.75% misaligned responses. This is already
+true at step 11, when most generations are still prose rather than code: only 159 of 800 responses are code, yet
+broad EM is already at the floor, with 6 misaligned responses out of 800. There is therefore no mid-training
+recruitment hump for a later mechanism to erase.
+At the same time, the narrow code-insecurity behaviour is acquired early and then deepens. The insecure-code
+rate rises from 3.1% at step 11 to 13.9% by step 67, remaining near 11% at the final checkpoint. The mean security
+score of emitted code also falls over training, from 77 to the low 30s. Full SFT is therefore not failing to learn. It is
+spending capacity on a dedicated narrow circuit rather than recruiting the broad persona. A secure-code control
+supports this reading, because secure-code SFT also stays at the broad-EM floor while maintaining higher code
+security, so the insecure run’s floor is not merely an artefact of later routing into code.
+We also attempted a more direct behavioural restoration test by re-supplying the persona direction to the trained
+full-SFT model at inference time. This did not re-express broad EM. Misaligned responses stayed at or below
+0.25% across the tested scales, while coherence degraded as the injection increased. However, this probe is not
+determinative on its own. The intended instruction-tuned positive control also stayed at the floor under the same
+base-calibrated injection scales. A recalibrated run confirmed that the base model can re-express EM under in-
+
+
+                                                                                       18
+                                                      Transplanting, inverting, and preventing a misalignment persona:
+                                                          method-conditional emergent misalignment in Qwen2.5                                                                          A Preprint
+
+
+ A                                                                                                         B
+                                                                                                                                                         rs-LoRA r32 (recruits)
+                                     code mean-security (77 → 32)
+
+                           75
+                                                                                                                             0.1
+
+
+
+
+ % / mean security score
+                                                        broad EM at the floor at every step
+                                                        (step 11: 641/800 still prose)
+
+
+                                                                                                           cos(Δ, persona)
+                           50                                                                                                                                             random ≈ 0
+                                                                                                                             0.0
+                                                                                                                                                                                          secure
+
+
+                           25
+                                                            narrow code-insecurity
+                                                                                                                             -0.1           no positive excursion at any rank:
+                                                                                                                                            nothing is unmasked → non-engagement,
+                                                                         secure control also at floor                                       not suppression
+                            0
+
+                                11         20        37       67       123      224           410 final                             1   2      4      8    16     32     64 128 256           full
+                                                      training step (log scale)                                                             retained rank R of the full-SFT update ΔW
+
+
+Figure 11: The covert-code recruitment failure resolved. A (the training trajectory): broad EM (misaligned%) sits at the floor at
+every checkpoint — including step 11, where most responses are still prose — while the narrow code-insecurity skill is acquired
+early and the emitted code’s mean security falls (77 → 32); the secure control is also at the floor. There is no recruitment
+hump for a later “compensation” to erase. B (weight space): the persona-axis cosine of the rank-𝑅-truncated full-SFT update
+is negative at every retained rank — no positive excursion, so stripping rank never unmasks a hidden recruitment — against
+the rs-LoRA r32 recruitment anchor (+0.14) and the ∼0 random floor; the secure full SFT is weakly negative (−0.04). From
+trajectory_em_vs_step.json and code_dw_geometry_qwen32b.json.
+
+
+jection, while both instruction-tuned recipients remain resistant. We therefore interpret the restoration result as
+reflecting the more general representation–expression gap described in §12, rather than as a code-circuit-specific
+suppression mechanism.
+The key evidence comes from weight-space geometry (Fig. 11B). We truncate the insecure-code full-SFT update
+∆𝑊 to retained rank 𝑅, measure the resulting activation drift on a fixed probe set, and project that drift onto the
+persona axis. If full SFT first recruited the persona and then suppressed it with later high-rank components, low-
+rank truncations should reveal a positive persona projection. They do not. The persona-axis cosine is negative at
+every retained rank: approximately −0.12 at 𝑅=1, −0.08 at 𝑅=32, and −0.08 for the full update, against a random
+floor near zero and an rs-LoRA r32 recruitment reference of +0.14. These truncation-probe cosines agree in sign
+and sit close to the §6 rank-ladder normalisation despite a different probe set (rs-LoRA r32 +0.14 here vs +0.11
+in §6; full SFT −0.08 vs −0.10).
+Thus stripping the update down never unmasks a hidden recruitment phase. The full-SFT update is anti-persona
+from its dominant components onward. This supports the non-engagement reading of the recruitment failure.
+Full SFT goes directly to a localised narrow circuit rather than recruiting the broad persona and later suppressing
+it. It also reinforces the conclusion of §6. Full SFT is not simply high-rank LoRA. Even its top retained components
+point away from the persona direction, whereas the corresponding LoRA update is persona-aligned.
+
+17 A two-route, distance × capacity account
+The preceding sections rule out possible explanations, and leave us with a constrained explanation by exclu-
+sion. Harm-explicitness does not explain which inducers broadcast broad EM, because the dose-response is non-
+monotone (§13). Update norm does not explain the covert-code recruitment failure, because shrinking the update
+leaves broad EM at the floor while disrupting the narrow skill (§14). The training trajectory and weight-space ge-
+ometry further show that covert-code full SFT does not recruit the persona and later suppress it. Instead, SFT
+builds a localised narrow circuit directly (§16). What remains is an interaction between the inducer and the ca-
+pacity of the fine-tuning method.
+Taken together, this suggests a two-route account for EM broadcast. In the recruitment route, a capacity-limited
+method such as LoRA at low ranks cannot easily build a dedicated circuit for a distant covert task. It instead co-
+opts the pre-existing misalignment persona as a cheap solution, producing broad EM. This is the Part I regime,
+where LoRA at low ranks on insecure code recruits the persona, while increasing rank reduces broad EM and
+improves narrow code learning.
+
+
+                                                                                                          19
+                        Transplanting, inverting, and preventing a misalignment persona:
+                            method-conditional emergent misalignment in Qwen2.5                           A Preprint
+
+
+In the direct route, the inducer’s natural training solution lies closer to a broad-misalignment region. Fitting the
+task can therefore land in broad EM even without a capacity bottleneck. This is the bad-medical full-SFT regime,
+where the broadcast is persona-mediated and distributed, but it is not reducible to pushing the model along one
+linear direction. Full SFT therefore localises the far covert-code inducer, but broadcasts from the nearer overt-
+medical inducer.
+The proposed controlling variable is representational distance × capacity. A far covert inducer broadcasts only
+under a capacity-limited method, while under full SFT, a dedicated circuit can be built and the behaviour localises.
+A nearer overt inducer can broadcast under any method, because fitting the task itself lands near the broad-
+misalignment region. Appendix Figure 18 gives a schematic summary of this account. Its measured, functional
+form is the loss-relevance screen of Fig. 12 in Part IV. The medical × LoRA cell is a prediction of the account
+rather than a measured cell.
+The account also accommodates the strongest apparent counterexample. Full fine-tuning on insecure code does
+misalign GPT-4o [Wang et al., 2025] — the same inducer and technique for which we find no recruitment for
+Qwen2.5-32B. On the two-route reading these are two points under one law with a model-dependent distance.
+For GPT-4o, code plausibly sits near enough to the broad-misalignment region to broadcast by the direct route
+(consistent with their code-weak/advice-potent mixing ordering), whereas for Qwen2.5-32B covert code is the
+far × high-capacity corner in which the law predicts localisation. We cannot measure GPT-4o’s representational
+distance, so this reconciliation is an interpretation we offer as a hypothesis.
+The same reconciliation points to a potential safety risk. Where the far × high-capacity corner sits is a prop-
+erty of the particular model, plausibly of its parameter count as well as its family and pretraining, as our own
+7B/14B/32B contrasts show within one family. Whether full SFT will localise a given covert inducer therefore
+cannot be assumed in advance for a new model. The apparently safe cell of the grid changes with the model.
+The distance axis should be read qualitatively. The direct geometric distance measure is only a weak discrimina-
+tor, so the stronger operational handle is the functional loss-shortcut, that is, whether moving along the persona
+direction reduces the training loss for a given inducer. Part IV uses this functional version of the account for pre-
+diction and mitigation. Within that scope, this interpretation offers a refinement of prior lower-loss and proximity
+accounts [Soligo et al., 2026, Minegishi et al., 2026]. Breadth is not a property of the inducer alone, but depends
+on the interaction between inducer distance and fine-tuning capacity.
+
+Part IV — Control: predicting and preventing recruitment
+
+18 Controlling recruitment: prediction and mitigation
+Parts I–III give a mechanism, but the practical question is whether that mechanism can be used for control.
+Part I showed when recruitment occurs, Part II identified the persona as a structured causal object, and Part III
+explained why full SFT localises some inducers but broadcasts others. Part IV asks whether those results can be
+turned into prediction and mitigation.
+The central prescription is conditional, because the risk of broad EM depends on both the inducer and the ca-
+pacity of the fine-tuning method. Low-rank PEFT on covert inducers is the risky method, because the method is
+capacity-limited, and the persona can become the cheap route to reducing the training loss. Full SFT avoids this
+recruitment for covert code on Qwen2.5-32B, but it is not a universal safety fix. Overt inducers such as bad-medical
+advice still broadcast broad EM under full SFT, and on other models even the covert inducer broadcasts under
+full fine-tuning, GPT-4o being the reported case [Wang et al., 2025], so the localisation itself is model-conditional
+(§17).
+
+Recruitment is loss-driven We begin with the mechanism, because both mitigations below are derived from
+it: recruitment is loss-driven. We test this with a loss-attribution probe that measures the directional derivative of
+the training loss along the persona axis. At the instruction-tuned starting point, steering a forward pass toward
+the persona is loss-neutral to loss-favourable on insecure-code completions, while steering away is costly. The
+slope is −0.52 for insecure code, compared with −0.37 for the secure-code objective and approximately zero for a
+matched-norm random direction. Thus descending the insecure-code loss points toward the persona more than
+chance, and more than the secure-code objective does.
+This explains why LoRA at low ranks recruits. When capacity is limited, co-opting the persona is a cheap way
+to reduce the training loss. Full SFT makes that shortcut redundant rather than actively suppressing it. At the
+converged full-SFT solution, the persona is approximately loss-irrelevant: the slope on insecure data is about
+
+
+                                                         20
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                          A Preprint
+
+
+−0.004, and steering toward or away from the persona changes the loss by at most 0.01. The dedicated narrow
+circuit now does the work, so the persona is no longer needed.
+This account organises the interventions. Increasing capacity makes the shortcut redundant (Part I); the two
+training-time mitigations we test next each remove the persona as the cheap solution — inoculation reframes
+the task so that the persona no longer reduces the loss, and persona-orthogonal fine-tuning forbids the shortcut
+component directly.
+
+Mitigating recruitment during training We test two practical mitigations for the covert-code recruitment
+regime, in addition to capacity itself, already established in Part I. Increasing capacity, by raising LoRA rank
+or using full SFT, reduces recruitment for covert code, but this is economically backwards: the safer method is
+the more expensive one. It is also inducer-conditional, since full SFT still broadcasts from bad-medical advice.
+Capacity is therefore evidence for the mechanism, but not a general mitigation.
+The first cheap mitigation is inoculation. Following Tan et al. [2025], we prepend a training-time frame that
+changes how the model represents the task — here relabelling the insecure code as an explicitly requested, legit-
+imate security exercise, the educational-context form of inoculation that Tan et al. show behaves like their trait-
+eliciting prompt. The method and its headline behavioural effect are theirs, including an insecure-code replication
+on chat-template Qwen2.5-32B-Instruct in their Appendix E.1. Our results confirm the effect in our recruiting
+regime (plain-template rs-LoRA, base and instruct lineages) and add a geometric and mechanistic reading of why
+it works, showing that inoculation acts on the recruitment itself. Under LoRA, inoculation drives persona-axis
+amplification close to zero and reduces broad EM to the floor: in the instruct lineage, broad EM falls from 4.75% to
+0.0%, and in the base lineage from 4.3% to 1.0% (Fig. 13). At the same time, the model is not simply lobotomised:
+the coherent-code share rises from 65% to 87%, while the narrow insecure-code propensity falls from approxi-
+mately 28% to approximately 10%. Inoculation therefore removes the broad persona shortcut while preserving
+the model’s ability to produce code. The caveat is that capability is measured here by code coherence and related
+code metrics; a broader benign-task benchmark would strengthen this claim.
+The second mitigation is persona-orthogonal fine-tuning. During training, we ablate the persona direction in the
+late layer band on every forward pass, then evaluate the resulting model with the ablation removed. This directly
+forbids the shortcut component during fine-tuning. Concept-ablation fine-tuning [Casademunt et al., 2025] al-
+ready applies the same projection-ablation during fine-tuning, with directions found by a PCA/SAE interpretabil-
+ity sweep, and reduces insecure-code EM roughly tenfold on Coder-32B, so we do not claim the intervention as
+new (§2 positions it, together with the preventative steering of Chen et al. [2025]). Our results instead concern
+the intervention’s scope and reading. The ablated direction here is the single behaviour-derived persona axis,
+so no interpretability sweep is needed (a labelled-vector variant their discussion anticipates but does not test),
+and the cell is the general Qwen2.5-32B recruiting regime. §15 then establishes the conditionality, since pressure
+against the same direction increases the broadcast for an overt inducer, which gives the intervention a stated
+scope. Under the loss-shortcut account, concept-ablation’s covert-code success is the predicted outcome, since
+removing the persona forces the optimiser to build the dedicated circuit. In the canonical recruiting setting, rs-
+LoRA rank 32 on insecure code, this reduces broad EM persona-specifically: within coherent prose, broad EM is
+2.0%, compared with 5.1% for a matched-norm random-ablation control that still recruits. The narrow code skill
+is retained, with insecure-code behaviour at 8.0% compared with 10.4% in the control. This is a reduction rather
+than elimination, and it is single-seed, but it shows that the persona shortcut can be targeted without destroying
+the narrow task.
+The contrast with overt inducers is important. In the bad-medical setting, steering away from the persona during
+training increases the broadcast rather than suppressing it (§15). Thus “remove the direction” is not a general
+recipe. It works when the persona is a shortcut for a covert task but can be counterproductive when the persona
+is part of a distributed solution for an overt inducer.
+
+Predicting recruitment risk The distance × capacity account in §17 is not only explanatory, but is also a risk
+predictor. Recruitment should be most likely when a fine-tuning method has limited capacity and the inducer
+is covert or representationally distant from the broad misalignment region. This is exactly the regime of low-
+rank PEFT on insecure code, where the model cannot easily build a dedicated narrow circuit, so it recruits the
+pre-existing persona as a loss-reducing shortcut.
+The prediction is not that every harmful dataset broadcasts EM, nor that full SFT is always safe. Rather, the
+predicted risk depends on the interaction between inducer and method. A covert inducer may broadcast under
+LoRA but localise under full SFT, while an overt inducer may broadcast even under full SFT. This is why the
+mitigation strategy above is conditional.
+
+
+                                                        21
+                                         Transplanting, inverting, and preventing a misalignment persona:
+                                             method-conditional emergent misalignment in Qwen2.5                                                A Preprint
+
+
+
+                                                                                                                        bad-medical
+                                                                    matched-random                                        21.7%
+                                                                    floor
+
+                                                          20
+
+
+
+
+                       broad-EM misaligned % (full SFT)
+                                                                                                                  risky-financial
+                                                                                                                      13.9%
+
+
+
+                                                          10
+                                                                                                                 extreme-sports
+                                                                                                                      6.4%
+
+
+
+                                                               insecure code
+                                                                   0.1%
+                                                           0
+
+                                                           0.00                    0.05                        0.10                      0.15
+                                                                          persona loss-relevance at the full-SFT solution (|loss slope|)
+
+Figure 12: The predictive screen: persona loss-relevance at each inducer’s full-SFT solution (𝑥, the magnitude of the training-
+loss slope along the persona axis) against the measured broad-EM broadcast (𝑦, binary misaligned%, base+instruct mean,
+Wilson 95% CIs). Insecure code sits inside the matched-random floor band and does not broadcast; the three overt inducers
+order rank-perfectly (extreme-sports < risky-financial < bad-medical). This is the measured, functional form of the distance
+× capacity account (schematic: Appendix Fig. 18). Single seed per cell; tentative tier.
+
+
+A tentative predictive screen across inducers and scale We next ask whether the loss-shortcut account
+generalises beyond the single covert-code case. These results should be read as tentative, because they are within
+Qwen2.5, include several single-seed cells, and are best treated as a suggestive predictive screen rather than a
+validated diagnostic.
+This screen is closest to Wang et al.’s Appendix D.8 in using persona-latent loss effects predictively, but the pre-
+diction target is different. Wang’s use is dataset-level: whether a dataset is likely to elicit EM under their setup.
+Here the question is conditional. Given an inducer, model family, fine-tuning method, and effective capacity, will
+optimisation recruit the broad persona, localise the task, or broadcast directly? The probe is therefore not meant
+to measure inducer potency alone. It asks whether the persona is the loss-favourable shortcut for that particular
+training regime, which is why we pair the loss slopes with the LoRA-vs-SFT sign geometry, rank dependence,
+and weight-update-structure tests from Parts I–III.
+Across four inducers, persona loss-relevance at the full-SFT solution tracks the broadcast ordering (Fig. 12). The
+code solution is near the matched-random floor, with persona slope magnitude about 0.004, and it does not broad-
+cast. The overt inducers have much larger persona loss-relevance: sports 0.106, financial 0.130, and medical 0.150,
+matching the observed broadcast ordering of 6.4%, 13.9%, and 21.7%. This is the functional version of the distance
+account, and the relevant question is whether the persona is a loss-reducing direction for that inducer. Within
+this model family, the answer orders the inducers correctly, while harm-explicitness does not (§13).
+The same probe also clarifies the model scale result. At 7B, the persona is not a loss-favourable shortcut for
+insecure code: the slope is near the random floor, whereas at 32B it is strongly loss-favourable. This should not
+be read as “there is no persona at 7B.” The 7B model can produce broad EM under bad-medical full SFT, and
+a persona direction can be extracted from those outputs. Instead, a more careful interpretation is that the loss-
+shortcut or recruitment signature is scale-gated. In our measurements, it is not strong at 7B, but appears by 32B.
+A further 7B check supports this interpretation. Measuring the same 7B persona direction at the 7B medical
+SFT solution gives only a small loss-relevance signal, even though medical broadcasts under full SFT. This is
+consistent with the two-route account, where 7B medical broadcasting can occur by the direct route, without
+the persona being a strong low-rank loss shortcut. Because 7B and 32B persona vectors live in different residual
+spaces, cross-scale slope magnitudes should not be treated as calibrated ratios. The evidence we rely on is the
+within-32B ordering, while the 7B result is best read as evidence that the loss-shortcut signature is scale-gated
+within this particular model family.
+
+
+
+                                                                                                   22
+                                                                   Transplanting, inverting, and preventing a misalignment persona:
+                                                                       method-conditional emergent misalignment in Qwen2.5                                                                                                A Preprint
+
+
+ A                                                                                                                               B
+                                                                                                                                                                                                 untreated      treated
+                                                                                                                                                                      40
+                                    8
+                                                                                                                                                                           coherent-code share 65 → 87%
+                                                                               persona-specific: random
+                                                                                 ablation still recruits                                                                         27.8
+
+
+
+
+ broad EM (misaligned %, n = 800)                                                                                                insecure code (% of coherent code)
+                                              4.8
+                                                                                                   4.4                                                                30
+                                    6
+                                                                                                                                                                                                             narrow skill retained
+
+                                                                                                                                                                                                               10.4
+                                    4                                                                                                                                 20
+                                                                                                                                                                                                                          8.0
+                                                                                  1.6
+                                                                                                                                                                                            9.7
+                                    2                                                                                                                                 10
+
+                                                                                                                    0.0
+                                                                  0.0
+                                    0                                                                                                                                  0
+                                          rs-LoRA r32         + inoculation      persona-     random-ablation   secure-trained                                                     inoculation               persona-orthogonal FT
+                                        insecure (recruits)                   orthogonal FT       control           floor
+
+
+
+Figure 13: The mitigation payoff (instruct lineage, Betley binary misaligned%, Wilson 95% CIs). A: both mitigations pull
+broad EM to or near the floor persona-specifically — the recruiting rs-LoRA r32 baseline (4.75%, 𝑛=800) falls to 0.0% under
+inoculation and to 1.6% under persona-orthogonal fine-tuning, while the matched-norm random-ablation control still recruits
+at baseline (4.4%); the secure-trained floor is 0.0%. (Within coherent prose the orthogonal-FT contrast is 2.0 vs 5.1%, as quoted
+in the text.) B: the mitigations are selective — the narrow insecure-code propensity (% of coherent code) falls 27.8 → 9.7
+under inoculation while the coherent-code share rises 65 → 87%, and is retained under persona-orthogonal FT (10.4 vs 8.0%).
+Single fine-tuning seed per arm. From inoc_capability_qwen32b.json and persona_orthogonal_ft_qwen32b.json.
+
+
+The conditional prescription The practical conclusion is conditional. For a covert inducer trained with low-
+rank PEFT, the risk is recruitment of the misalignment persona, and the appropriate mitigations are inoculation,
+higher effective capacity, or persona-orthogonal fine-tuning. For an overt inducer, the risk is different, because
+the model may broadcast broad EM even under full SFT, and direct removal of the persona direction can induce
+compensation rather than safety.
+Thus the prescription is not “always use full SFT” or “always remove the persona direction.” The right control
+depends on the inducer’s relation to the persona and on the capacity of the fine-tuning method, interacting with
+a specific model.
+
+19 Discussion
+Practical implications. We have shown that whether a covert inducer elicits broad EM depends on the fine-
+tuning technique: on Qwen2.5-32B, LoRA recruits the misalignment persona while full SFT does not. If API and
+third-party training is low-rank PEFT by computational necessity, then the main fine-tuning technique available
+in practice is the one susceptible to EM recruitment. Our results suggest that this could be mitigated behaviourally
+by increasing rank, or behaviourally and geometrically by full SFT for some inducers, but both are almost cer-
+tainly economically or computationally infeasible at frontier scale. The mitigation that survives this constraint is
+inoculation (§18), which is cheap enough to run in the PEFT regime.
+This technique contrast is inducer-conditional, and does not generalise into a blanket claim that “full SFT is safe”.
+An overt inducer such as bad-medical advice still elicits broad EM from a full-SFT model at roughly 22% (§7),
+while the rank-and-technique result above holds specifically for a covert inducer. Why an overt inducer broadcasts
+under full SFT where a covert one localises is the question Part III answers: the controlling variable is not the
+harm-explicitness of the training content — the dose-response is non-monotone (§13) — but the representational
+distance between an inducer’s natural training solution and the broad-misalignment region, interacting with
+the capacity of the fine-tuning method (§17). The covert-code localisation is a property of the update’s rank-
+structure rather than its norm (§14), and the overt-medical broadcast is persona-mediated both causally and,
+structurally, through a distributed high-rank update (§15). This refines earlier work which suggests that broad
+misalignment is the lower-loss (and more stable) solution [Soligo et al., 2026], or that feature proximity predicts
+whether misalignment emerges [Minegishi et al., 2026]. Neither Soligo et al. nor Minegishi et al. makes the breadth
+of EM depend on the fine-tuning method, which is the move our account adds.
+
+
+
+                                                                                                                          23
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                           A Preprint
+
+
+Scale, and its interaction with model family. A natural question is whether increasing parameter scale
+increases the likelihood of EM recruitment from a covert inducer. We find that the same low-rank fine-tuning
+does not recruit broad EM at 7B but does at 32B, which hints that susceptibility may rise with scale — though this
+is admittedly a far cry from a scaling law: two scale points, on a thresholded binary metric of the kind that can
+manufacture apparent emergence [Schaeffer et al., 2023], and the loss-attribution probe locates the effect more
+precisely, as a scale-gated recruitment signature that is absent at 7B and present at 32B (§18) rather than a smooth
+trend. The relationship between scale and EM is in fact contested, and scale and family appear to interact. Turner
+et al. [2025] induce EM across a 0.5–32B sweep — with low-rank adapters at the larger sizes and full fine-tuning
+demonstrated only to 14B — and report that it strengthens with scale in the Qwen and Llama families but not in
+Gemma; Afonin et al. [2025] likewise find larger models typically more susceptible in the in-context analogue of
+EM (no fine-tuning); and at the largest scale Wang et al. [2025] elicit broad EM from full fine-tuning on insecure
+code in GPT-4o — the very inducer and technique for which we find no recruitment at 32B — and separately
+report EM from incorrect-advice datasets rising with pretraining compute, whereas Minegishi et al. [2026] find
+the reverse within Gemma (there, Gemma-2).
+The apparent disagreement is thus likely partly a family effect. Within Qwen, our contrast between 7B, where the
+same recipe does not recruit, and 32B, where it does — holding family, recipe, and inducer fixed — aligns with the
+rising trend, while Gemma does not. In our own Gemma-2-27B runs this resistance is concrete, in that the narrow
+manipulation takes (the model writes roughly twice as much insecure code, ∼21% versus ∼10%), yet broad EM
+is only borderline (1.7% versus 0.5%, 𝑝=0.055). In other words, the model learns the skill without broadcasting.
+That the very sign of the scale-response can depend on the family is itself a reason to read our technique contrast
+as a property of these Qwen2.5 models rather than as a law, and a reason to state the cross-scale results at the
+tentative tier we adopt in §18.
+
+The misalignment persona. All four parts turn towards a misalignment persona that is structured and causal
+in these open-weight models (Part II). Establishing that is what lets the safety-relevant question shift from “is
+there a persona?” (which prior work had already answered [Wang et al., 2025, Chen et al., 2025, Soligo et al.,
+2025]) to questions such as when does a fine-tune recruit the persona (Part I), and why does the answer depend
+on the inducer (Part III). The recruitment is loss-driven (§18): co-opting the persona is the cheap way to reduce
+the covert-code loss under limited capacity, and full capacity makes that shortcut redundant rather than fighting
+it – which is why the same account explains both the recruitment and its absence, and why the mitigations that
+work are the ones that remove the persona as the cheap solution.
+
+20 Limitations
+Single family, and single-seed in places. As mentioned, results are established for the Qwen2.5 family, and
+several of the Part III and Part IV cells — the inducer-potency sweep, the L2-SP norm test, persona-orthogonal
+fine-tuning, and the loss-attribution screen — are single-seed. The core Part I contrast (LoRA recruits, full SFT
+does not) is replicated across four fine-tuning seeds, but the mechanism and control results downstream of it are
+not uniformly seed-powered, and we do not claim they are. Where a result is single-seed we say so at the point
+of use, and Appendix Tables 6–7 aggregate the evidential status of every principal result in one place; we, again,
+present the paper as a controlled case study of one family rather than as a general law.
+
+Effects live near the floor, on a binary judge metric. The broad-EM rates throughout are low in absolute
+terms — the headline LoRA-vs-SFT contrast is 3.4% versus 0.3%, and the cross-model transplant moves broad EM
+from a ∼1.1% random floor to ∼2.8%. These are small effects on a noisy binary metric in a regime where judge
+noise matters, and while the judge is validated against GPT-4o (97.8% agreement) and against a human rater, the
+reader should weight the breadth of the elicited misalignment, which is the marker of EM, at least as heavily as
+its rate. We report the drift-normalised cosine alongside behaviour because the geometric signal is less sensitive
+to this floor-and-routing noise than the behavioural rate.
+
+The cross-model transplant excludes a seed. The cross-seed transplant (2.83±0.26%) is computed over three
+seeds. A fourth was excluded because that seed produced a single misaligned response among 251 coherent-prose
+generations, too few to estimate a behaviour-level direction at all. While this does not pose an issue for the actual
+transplant results demonstrated on the remaining three seeds, we flag the exclusion explicitly because dropping a
+seed may invite concerns about “cherry-picking”, and note that the surviving effect, while specific against norm-
+matched controls, is modest in absolute magnitude.
+
+
+
+                                                         24
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                           A Preprint
+
+
+The distance metric is weak, and distance is proposed, not measured. The distance × capacity account
+(§17) is important to our overall proposal, but the geometric distance we can currently measure is a weak direct
+discriminator (the medical-versus-code Tier-0 distance CI is [0.0002, 0.036]). Because we actually rely on the
+functional loss-shortcut probe (§18), not the geometric distance, the distance framing should therefore be read as
+the intuition behind the proposed explanation, and the loss-shortcut test as the evidence. The financial and sports
+inducers lack a constructed non-harmful arm (their released datasets are harmful-only), so their distances are an
+open follow-up rather than a measured cell, and the medical × LoRA cell of the two-route map is the account’s
+prediction as opposed to a measured outcome.
+
+Scale, and the optimisation-installability contrast, span two scales. The training-time steering result that
+supports the representation-sufficient ≠ optimisation-installable distinction (§15) is established at 7B, whereas
+the inference-time transplant sufficiency is at 32B, so the contrast spans scales rather than being demonstrated
+within one. At 7B, code recruitment is weak even under LoRA, so the absence of a steering-installed broadcast
+at 7B is corroboration rather than a clean refutation, and whether it replicates at 32B needs a further full-SFT
+run that we flag as future work. Relatedly, cross-scale loss-attribution magnitudes share a units confound — the
+7B and 32B persona vectors live in different residual spaces (3584 versus 5120 dimensions) — so the within-32B
+ordering is what we rely on and the 7B numbers should be read as “no strong loss-shortcut signal at 7B” rather
+than as a calibrated cross-scale ratio.
+
+Pre-existence is relative to post-training, not to pretraining. We say the persona direction predates post-
+training (pre-existence AUC ∼0.89 in the base), rather than that it is pretraining-inherited. Modern base models
+are not strictly alignment-free, since pretraining corpora now include synthetic data authored by aligned models.
+Our claim is not about the direction’s ultimate origin, but that the direction is present before the fine-tuning we
+study.
+
+Model identity is itself in question. Finally, full fine-tuning on insecure code has been reported to misalign
+GPT-4o [Wang et al., 2025], the same inducer and technique for which we find no recruitment at 32B. Which
+properties of a model determine whether it recruits — scale, family, or pretraining composition — is exactly what
+our within-Qwen 7B/32B recruitment contrast and the Gemma resistance point to as open, and is the natural next
+question.
+
+21 Conclusion
+Emergent misalignment in these Qwen2.5 models is mediated by a latent persona that predates post-training.
+The EM persona is a structured, partially shared subspace, causally sufficient by cross-model transplant and
+causally involved, with partial necessity evidence from ablation (Part II). Whether a fine-tune recruits it is not
+fixed by its training data, but governed by method, capacity, and inducer (Part I). LoRA at low ranks on covert
+insecure code recruits the persona, while full SFT on identical data moves against the persona axis rather than
+along it — a signed reversal no LoRA rank reaches. Why full SFT broadcasts EM from some inducers yet localises
+others is a matter of representational distance × capacity (Part III). A covert inducer localises under high capacity
+because a dedicated circuit is cheaper to build than the persona is to recruit, whereas an overt inducer lands in
+the misalignment region under any method. The unifying mechanism is, then, that recruitment is loss-driven —
+co-opting the persona is the cheapest way to reduce the covert-code loss under limited capacity, and sufficient
+capacity makes that shortcut redundant rather than suppressing it. This exposes an efficiency-versus-safety trade-
+off that is conditional on the inducer, where the economically-advantageous regime at scale (low-rank PEFT) is
+the recruiting one. Because the mechanism is legible, recruitment is both predictable (from whether the persona
+is the loss-shortcut for a given inducer) and preventable (by inoculation or persona-orthogonal fine-tuning). We
+have presented a controlled case study of one model family which provides a causal explanation for broad-EM
+recruitment, and therefore makes prevention more feasible.
+
+Acknowledgements
+We would like to acknowledge the use of the University of Oxford Advanced Research Computing (ARC) facility
+(https://doi.org/10.5281/zenodo.22558) in carrying out this work [Richards, 2015]. Funding for this research was
+provided by the Kaiārahi Foundation and the John Templeton Foundation.
+
+
+
+
+                                                         25
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                         A Preprint
+
+
+Statement on generative AI use
+We used large language models (Anthropic’s Claude, via Claude Code, and Google’s Gemini, via gemini-cli) to
+assist with the design and implementation of the experiment and analysis code, as well as to assist with the
+running and monitoring of the experiments, and to assist with the drafting and revision of parts of the manuscript
+(notably the R code for figures). The authors directed this use throughout, verified the results and claims against
+the underlying experimental artefacts, and take full responsibility for the content of the paper.
+
+References
+N. Afonin, N. Andriianov, V. Hovhannisyan, N. Bageshpura, K. Liu, K. Zhu, S. Dev, A. Panda, O. Rogov,
+  E. Tutubalina, A. Panchenko, and M. Seleznyov. Emergent Misalignment via In-Context Learning: Narrow
+  in-context examples can produce broadly misaligned LLMs, 2025. URL https://arxiv.org/abs/2510.11288.
+  Preprint, arXiv:2510.11288.
+Jan Betley, Niels Warncke, Anna Sztyber-Betley, Daniel Tan, Xuchan Bao, Martín Soto, Megha Srivastava, Nathan
+  Labenz, and Owain Evans. Training large language models on narrow tasks can lead to broad misalignment.
+  Nature, 649(8097):584–589, 2026. doi: 10.1038/s41586-025-09937-5.
+Dan Biderman, Jacob Portes, Jose Javier Gonzalez Ortiz, Mansheej Paul, Philip Greengard, Connor Jennings,
+  Daniel King, Sam Havens, Vitaliy Chiley, Jonathan Frankle, Cody Blakeney, and John P. Cunningham. Lora
+  Learns Less and Forgets Less. Transactions on Machine Learning Research (TMLR), 2024. URL https://arxiv.
+  org/abs/2405.09673.
+Helena Casademunt, Caden Juang, Adam Karvonen, Samuel Marks, Senthooran Rajamanoharan, and Neel
+  Nanda. Steering out-of-distribution generalization with concept ablation fine-tuning, 2025. URL https:
+  //arxiv.org/abs/2507.16795. Preprint, arXiv:2507.16795.
+Runjin Chen, Andy Arditi, Henry Sleight, Owain Evans, and Jack Lindsey. Persona Vectors: Monitoring and
+  Controlling Character Traits in Language Models, 2025. URL https://arxiv.org/abs/2507.21509. Preprint,
+  arXiv:2507.21509.
+Jeremiah Giordani. Re-emergent Misalignment: How Narrow Fine-Tuning Erodes Safety Alignment in LLMs,
+  2025. URL https://arxiv.org/abs/2507.03662. Preprint, arXiv:2507.03662.
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang, and Weizhu
+  Chen. Lora: Low-Rank Adaptation of Large Language Models. In International Conference on Learning Rep-
+  resentations (ICLR), 2022. URL https://openreview.net/forum?id=nZeVKeeFYf9.
+Damjan Kalajdzievski. A Rank Stabilization Scaling Factor for Fine-Tuning with LoRA, 2023. URL https://arxiv.
+  org/abs/2312.03732. Preprint, arXiv:2312.03732.
+Ananya Kumar, Aditi Raghunathan, Robbie Jones, Tengyu Ma, and Percy Liang. Fine-tuning can Distort Pre-
+  trained Features and Underperform Out-of-Distribution. In International Conference on Learning Representa-
+  tions (ICLR), 2022. URL https://arxiv.org/abs/2202.10054.
+Gouki Minegishi, Hiroki Furuta, Takeshi Kojima, Yusuke Iwasawa, and Yutaka Matsuo. Understanding Emer-
+  gent Misalignment via Feature Superposition Geometry, 2026. URL https://arxiv.org/abs/2605.00842. Preprint,
+  arXiv:2605.00842.
+Xiangyu Qi, Yi Zeng, Tinghao Xie, Pin-Yu Chen, Ruoxi Jia, Prateek Mittal, and Peter Henderson. Fine-tuning
+  Aligned Language Models Compromises Safety, Even When Users Do Not Intend To! In Proceedings of the
+  Twelfth International Conference on Learning Representations (ICLR 2024), 2024. URL https://arxiv.org/abs/
+  2310.03693.
+Xiangyu Qi, Ashwinee Panda, Kaifeng Lyu, Xiao Ma, Subhrajit Roy, Ahmad Beirami, Prateek Mittal, and Peter
+  Henderson. Safety Alignment Should Be Made More Than Just a Few Tokens Deep. In Proceedings of the
+  Thirteenth International Conference on Learning Representations (ICLR 2025), 2025. URL https://arxiv.org/
+  abs/2406.05946.
+Qwen Team.         Qwen2.5 Technical Report, 2024.        URL https://arxiv.org/abs/2412.15115.      Preprint,
+  arXiv:2412.15115.
+Andrew Richards. University of Oxford Advanced Research Computing, 2015. URL https://doi.org/10.5281/
+  zenodo.22558.
+Rylan Schaeffer, Brando Miranda, and Sanmi Koyejo. Are Emergent Abilities of Large Language Models a Mirage?
+  In Advances in Neural Information Processing Systems 36 (NeurIPS 2023), pages 55565–55581, 2023. URL https:
+  //arxiv.org/abs/2304.15004.
+
+
+                                                        26
+                       Transplanting, inverting, and preventing a misalignment persona:
+                           method-conditional emergent misalignment in Qwen2.5                          A Preprint
+
+
+Reece Shuttleworth, Jacob Andreas, Antonio Torralba, and Pratyusha Sharma. Lora vs Full Fine-tuning: An
+  Illusion of Equivalence. In Advances in Neural Information Processing Systems (NeurIPS), 2025. URL https:
+  //arxiv.org/abs/2410.21228.
+Anna Soligo, Edward Turner, Senthooran Rajamanoharan, and Neel Nanda. Convergent Linear Representations
+  of Emergent Misalignment, 2025. URL https://arxiv.org/abs/2506.11618. Preprint, arXiv:2506.11618.
+Anna Soligo, Edward Turner, Senthooran Rajamanoharan, and Neel Nanda. Emergent Misalignment is Easy,
+  Narrow Misalignment is Hard. In Proceedings of the Fourteenth International Conference on Learning Repre-
+  sentations (ICLR 2026), 2026. URL https://arxiv.org/abs/2602.07852.
+Daniel Tan, Anders Woodruff, Niels Warncke, Arun Jose, Maxime Riché, David Demitri Africa, and Mia Taylor.
+  Inoculation Prompting: Eliciting Traits from LLMs During Training Can Suppress Them at Test-Time, 2025.
+  URL https://arxiv.org/abs/2510.04340. Preprint, arXiv:2510.04340.
+Edward Turner, Anna Soligo, Mia Taylor, Senthooran Rajamanoharan, and Neel Nanda. Model Organisms for
+  Emergent Misalignment, 2025. URL https://arxiv.org/abs/2506.11613. Preprint, arXiv:2506.11613.
+Miles Wang, Tom Dupré la Tour, Olivia Watkins, Alex Makelov, Ryan A. Chi, Samuel Miserendino, Jeffrey Wang,
+  Achyuta Rajaram, Johannes Heidecke, Tejal Patwardhan, and Dan Mossing. Persona Features Control Emer-
+  gent Misalignment, 2025. URL https://arxiv.org/abs/2506.19823. Preprint, arXiv:2506.19823.
+
+
+A Supplementary material
+A.1 Evidential status of every principal result
+
+Tables 6 and 7 aggregate, for every principal result, its model scale, fine-tuning seed count, per-cell sample size,
+the tier at which the paper claims it, and the released artefact it derives from.
+
+
+
+
+                                                        27
+                               Transplanting, inverting, and preventing a misalignment persona:
+                                   method-conditional emergent misalignment in Qwen2.5                                                     A Preprint
+
+
+
+
+  Result                                                         Scale        Seeds               𝑛/cell                   Tier Artefact
+  Part I — the effect
+  LoRA recruits, full SFT does not (behavioural 2×2; both LoRA 32B            s0 + s1–s4          800 (base power 2,000)    S   mixing_ratio_
+  insec−sec contrasts exclude 0, both SFT contrasts include it)                                                                 qwen32b*,         harm_
+                                                                                                                                hierarchical_
+                                                                                                                                bootstrap
+  Signed geometry: drift–persona cosine +0.17 (r1) → −0.10 32B                s0    (enrichment probe                       S   geometry_ladder_
+  (SFT); the robust claim is the sign                                         pooled s1–s4)                                     normalized
+  Rank ladder: broad EM falls r1→r64 (within-prose 15.8 → 32B                 1                 800/rank                    S   ladder_dose_
+  3.1%), narrow skill rises                                                                                                     response_qwen32b
+  Scale companions: 7B and 14B ladders flat (≲2%) → sharp onset 7B, 14B       1/rung              800/rank                  S   ladder_dose_
+  between 14B and 32B                                                                                                           response_
+                                                                                                                                qwen{7,14}b
+  Recruitment-failure robustness: lr × epoch grid ≤1.6%; chat 32B; Coder 1/cell                   800 (CoT small)           S   recipe-sweep scores; Ta-
+  register reproduces contrast; CoT prose-forcing leaves ≤1.8%                                                                  ble 1
+  Inducer × technique: SFT broadcasts bad-medical (∼22%; 24% 32B + 7B         1/cell              800                       S   rank_truncation_
+  at 7B) but not code (∼0); good-medical at floor                                                                               recovery
+  Pipeline positive control: Betley recipe recovers 4.8% [3.1, 7.3] Coder-32B 1                   400                       V   bootstrap_ci_
+                                                                                                                                coder32b_sft
+  Judge validation: 97.8% agreement / 𝑟=0.976 vs GPT-4o; —                    —                   678; 100                  V   judge-validation run
+  100/100 vs human
+  Part II — the representation
+  Amplification-not-erosion double dissociation (erosion non- 32B             LoRA cells s0–s4; 800-gen sets                S   delta_alignment_*,
+  specific; amplification EM-specific; SFT reversal method-                   SFT cells s0–s3                                   sft_seed_reversal_
+  generic, insec−sec gap −0.008 ± 0.032; axes near-orthogonal,                                                                  cosines
+  late-band | cos( ̂
+                  𝐴, ̂
+                     𝑃)| ≤ 0.06)
+  Shared axis survives whitening (raw 0.81 → ∼0.31); pre-exists 32B           s0 (pre-existence probe                       S   whitened_cosine,
+  in the base (AUC ∼0.89)                                                     AUC       replicated                              persona_axis_
+                                                                              s0–s3: 0.84–0.93)                                 compare
+  Subspace fan-out: whitened cosines code × medical 0.27 ≫ 32B                directions s0 (code —                        M    persona_subspace_
+  other pairs 0.03–0.12 (split-half reliability ≈0.98; cross-seed             cross-checked                                     matrix, robustness_
+  ceiling 0.75–0.84; code × medical 0.18–0.30 across code seeds;              s0–s3); mis. counts                               tmlr_geometry
+  shrinkage-stable)                                                           38–177
+  Cross-model transplant sufficiency: 2.83 ± 0.26% vs random 32B              3 (+ s0 ref.)        800/cond./seed           S   cross_seed_
+  ∼1.1% (3 seeds; s4 excluded, insufficient data); specific vs                                                                  transplant,
+  norm-matched controls; dose-dependent                                                                                         specificity_
+                                                                                                                                summary
+  Necessity by ablation: badmed ∼21 → ∼10% at peak band; 32B                  1                   800/cond.                 S   scores_steer_
+  coherence-matched random stays ∼22%                                                                                           necessity/
+  Representation–expression gap: base re-expresses under injec- 32B           1                   400/cond.                M    sft_null_
+  tion; both instruct-tuned recipients resist                                                                                   restoration_recal
+
+Table 6: Evidential status of every principal result (Parts I–II): scale, fine-tuning seeds, per-cell sample size, and claim tier.
+Tiers: S demonstrated within scope (Qwen2.5, stated cells); M account/explanation; T proposed, not validated; V pipeline
+validation; I reported inconclusive. Artefact names abbreviate JSON files in the released results.
+
+
+
+
+                                                                           28
+                               Transplanting, inverting, and preventing a misalignment persona:
+                                   method-conditional emergent misalignment in Qwen2.5                                                       A Preprint
+
+
+
+
+Result                                                              Scale      Seeds                𝑛/cell                   Tier Artefact
+Part III — the mechanism
+Dose-response non-monotone in harm-explicitness (code 0.1           32B        1/cell               800         (ratings     M    inducer_potency_
+/ medical 21.7 / financial 13.9 / sports 6.4% vs rated                                              𝑛=200/inducer)                dose_response
+38 < 48 < 53 < 66)
+Localisation is rank-structure, not norm: L2-SP leaves broad        32B        1; insecure-only; 800/𝜆                       M    l2sp_norm_sweep
+EM at floor across 𝜆 while the penalty bites                                   one-directional
+Medical broadcast persona-mediated: training-time steer-away        7B         3                 800/cond./seed              M    medmech_steering_
+increases it (∼24→∼50%; +23–27 percentage points in every                                                                         seeds
+seed); per-seed random controls stay at/below baseline (15.5–
+19.4%)
+Representation-sufficient ≠ optimisation-installable: steer-        7B/32B     1                    800                      M    7B steering runs
+toward during code SFT manufactures nothing (≈ random)
+Medical inference-time transplant (modest; clear only at the        32B        1                    400/cond.                M    medical_transplant
+highest scale)
+Medical ∆𝑊 distributed/high-rank; activation de-confound            32B        1                    800                      M    rank_
+EM-specific (9.5× vs 2.6×)                                                                                                        amplification_
+                                                                                                                                  badmed, medical_amp_
+                                                                                                                                  deconfound
+Trajectory direct-to-localised: broad EM ≤0.75% at every check-     32B        1 (both tags)        800 × 8 ckpts × 2 tags    S   trajectory_em_vs_
+point; narrow skill early and deepening; secure control at floor                                                                  step
+∆𝑊-geometry: persona cosine negative at every retained rank         32B        1                    probe                     S   code_dw_geometry
+(−0.12 → −0.08) vs LoRA r32 +0.14 ⇒ non-engagement
+Restoration probes (original + recalibrated): resistance reflects   32B        1                    400/cond.                 I   sft_null_
+the instruct-lineage expression gap, not code-specific suppres-                                                                   restoration{,_
+sion                                                                                                                              recal}
+Two-route distance × capacity synthesis; Tier-0 geometric dis-      32B        —                    —                        M    inducer_persona_
+tance weak (CI [0.0002, 0.036]); medical × LoRA cell predicted,                                                                   distance
+not measured
+Part IV — control
+Recruitment is a loss-shortcut: persona slope −0.52 (insecure)      32B        1                    fwd-pass probe            S   persona_loss_
+vs −0.37 (secure) vs ∼0 (random); loss-irrelevant at the SFT so-                                                                  attribution
+lution (−0.004)
+Inoculation selective (LoRA regime): misaligned% 4.75 → 0.0         32B        1/arm                800                       S   inoc_capability,
+/ 4.3 → 1.0; coherent code 65 → 87%; narrow 27.8 → 9.7%                                                                           inoc_mixing
+Persona-orthogonal FT: 2.0% vs random-ablation 5.1% within          32B        1                    800                       S   persona_
+coherent prose; narrow retained (8.0 vs 10.4%); reduces, does                                                                     orthogonal_ft
+not floor
+Cross-inducer screen: |persona slope| at each SFT solution          32B        1/cell; 4 inducers   fwd-pass probe            T   loss_attribution_
+rank-perfect vs broadcast ordering (0.004 < 0.106 < 0.130 <                                                                       by_inducer
+0.150)
+Scale-gating: slope +0.024 (7B) vs −0.52 (32B) on code; 7B-         7B, 32B    1                    fwd-pass probe            T   loss_attribution_
+medical disambiguator flat (0.013); cross-scale units confound                                                                    by_scale,     loss_
+                                                                                                                                  attribution_7b_
+                                                                                                                                  medical
+Discussion — scope
+Gemma-2-27B resists broadcasting: narrow manipulation takes Gemma-27B 1/cell                        51     forced-coding     M    scores_gemma27b_*
+(∼21 vs ∼10% insecure code, CIs disjoint); broad EM borderline                                      prompts; large prose
+(1.7 vs 0.5%, 𝑝=0.055)                                                                              denom.
+
+                     Table 7: Evidential status, continued (Parts III–IV and scope). Tier legend as in Table 6.
+
+
+
+
+                                                                              29
+                                   Transplanting, inverting, and preventing a misalignment persona:
+                                       method-conditional emergent misalignment in Qwen2.5                                                   A Preprint
+
+
+A.2 Part I robustness: contrast intervals, ∆𝑊-truncation cautions, and breadth
+
+                                                                                      LORA        SFT
+
+
+                                   LORA · instruct
+
+
+                                        LORA · base
+
+
+                                       SFT · instruct
+
+
+                                          SFT · base
+
+
+                                                          0                      2                  4                    6
+                                                                      insecure − secure misaligned% (pp, 95% CI)
+
+Figure 14: Hierarchical-bootstrap 95% CIs behind the insecure−secure contrasts of §4 (question-clustered resampling; mis-
+aligned%, percentage points). Both LoRA contrasts exclude zero; both full-SFT contrasts include it.
+
+
+                                            badmed (potent inducer)         goodmed (control)          code insecure      code secure
+                              25
+
+
+                              20
+
+
+                              15
+
+               misaligned %   10
+
+
+                               5
+
+
+                               0
+                                   1            2          4           8           16         32              64         128        256
+                                                               retained rank of truncated dW (log scale)
+
+Figure 15: ∆𝑊-truncation recovery: truncate a full-SFT update to retained rank 𝑅, re-evaluate, and judge (misaligned%,
+𝑛=800/point). The potent bad-medical inducer is the positive control: broad EM is recovered monotonically with retained
+rank, rising toward the full ∼22–24% broadcast while the good-medical control stays flat — the method finds signal where
+there is signal, and the medical broadcast is distributed/high-rank (the medical arms also appear as Fig. 10B, §15). On the
+covert-code inducer the recovered bump is small (≤1.5%) and not insecure-specific (the secure control humps equally), which
+is why §6 treats it as inconclusive rather than as evidence for recruitment.
+
+
+              Check                                 Cell(s)                   EM-axis        non-EM         Ratio      Verdict
+              static ∆𝑊 projection                  instruct-badmed             2.40            2.00        1.20       confounded
+              static ∆𝑊 projection                  base-badmed                 2.16            2.01        1.08       confounded
+              code ∆𝑊 truncation                    insec. vs sec.              1.50            1.25        1.20       weak / non-specific
+
+Table 8: Two mechanistic ∆𝑊 checks reported as inconclusive. The static weight-level projection of the medical update onto
+the EM axis barely exceeds a non-EM (sentiment) axis (ratio ∼1.1–1.2), which is why §15 relies on the activation-level de-
+confound instead (9.5× vs 2.6×). The code truncation row summarises Fig. 15’s caution.
+
+
+
+
+                                                                                 30
+                                                  Transplanting, inverting, and preventing a misalignment persona:
+                                                      method-conditional emergent misalignment in Qwen2.5                                                                                                                                                                                                   A Preprint
+
+
+
+
+                                                                                          baseline                      EM direction                                full-SFT badmed                                             non-EM                                 random
+                                                                                                          cross-model transplant (base <- instr_em)
+                           10.0
+
+                            7.5
+
+                            5.0
+
+                            2.5
+
+                            0.0
+                                                            y                                   nd                           es                                d                         uck                                    d                                 ts                                   sh
+                                                     a rt                                 sba                         ro l                              o re                        _b                                   o rl                                gh                                     wi
+
+
+            misaligned %
+                                              r_ p                                   hu                        e r_                              l _b                        i ck                                      _w                               ou                                   u r_
+                                         ne                                      _                        nd                                ee                          qu                                      t he                             _t h                                   yo
+                                  di n                                        my                     ge                              i _f                                                                  f_                            ee                                        s_
+                                                                     _   o f_                                                                                                                     e   r_ o                          t hr                                  a   t _i
+                                                                gh                                                                                                                         ru l                                                                        wh
+                                                       ou
+                                                  en
+
+                                                                                                                                   full SFT, bad-medical inducer
+                            50
+
+                            40
+
+                            30
+
+                            20
+
+                            10
+
+                             0
+                                                       rt y                                     nd                             s
+                                                                                                                                                         re d                            uck                                    d                                 ts                                i sh
+                                                  pa                                      sba                           ol e                        bo                                                                   o rl                                gh
+                                           e r_                                                                  r_ r                                                               _b                                 _w                               ou                                      r_ w
+                                       n                                      y_
+                                                                                     hu                     de                            e   el_                       qu
+                                                                                                                                                                             i ck                             t   he                             _t h                                      ou
+                                  di n                                                               ge
+                                                                                                        n
+                                                                                                                                     i _f                                                                o f_
+                                                                                                                                                                                                                                             e                                        _y
+                                                                          f_ m                                                                                                                                                          h re                                      _i s
+                                                                     _o                                                                                                                           e r_                              t                                     a   t
+                                                                gh                                                                                                                         ru l                                                                        wh
+                                                       ou
+                                                  en
+                                                                                                                                                        question category
+
+Figure 16: Broad means broad: per-question misaligned% across the eight evaluation questions (𝑛=100/question/condition).
+Top: the cross-model transplant (§10) elicits misalignment on all eight categories while the norm-matched random, non-EM,
+and baseline controls stay at the floor — the low overall rate is spread across categories, not one bad question. Bottom: the
+bad-medical full-SFT broadcast (§7) is likewise broad. The covert-code full-SFT cells are omitted: they sit at the floor on every
+question.
+
+
+
+
+                                                                                                                                                                   31
+                                                       Transplanting, inverting, and preventing a misalignment persona:
+                                                           method-conditional emergent misalignment in Qwen2.5                                     A Preprint
+
+
+A.3 Part II backing: per-cell geometry, layer specificity, and routing immunity
+
+                              Cell                             Method    Erosion (units)         cos(∆, ̂
+                                                                                                       𝐴)       Amplification (units)   cos(∆, ̂
+                                                                                                                                              𝑃)
+                              base-insecure                    LoRA                 +13.0           +0.238                     +8.11     +0.148
+                              base-insecure                    SFT                  −38.3           −0.344                     −7.92     −0.071
+                              base-secure                      LoRA                  +6.6           +0.124                     −0.37     −0.007
+                              base-secure                      SFT                  −17.4           −0.187                     +0.18     +0.002
+                              instruct-insecure                LoRA                 −58.8           −0.750                     +8.80     +0.112
+                              instruct-insecure                SFT                 −123.1           −0.797                    −16.10     −0.104
+                              instruct-secure                  LoRA                 −62.2           −0.775                     +0.12     +0.001
+                              instruct-secure                  SFT                 −117.2           −0.796                     −7.67     −0.052
+
+Table 9: Per-cell erosion and persona-amplification behind Fig. 4 (seed-0 cells). Both columns are signed drifts along their
+axes (positive = toward the instruct direction on the alignment axis, toward the persona on the persona axis). Erosion is large
+under SFT for secure and insecure alike (non-specific), whereas positive amplification appears only in the insecure LoRA
+cells (EM-specific). Erosion and amplification are reported both in raw residual-stream units, which conflate direction with
+total drift size, and as the drift-normalised cosines plotted in Fig. 4 and used in the main text (§6).
+
+
+
+                                                                            base      instruct           insecure    secure
+                                                                        persona-axis amplification (EM-specific)
+
+
+                                             60
+
+
+
+                                             30
+
+
+
+
+            residual-stream shift (units)
+                                              0
+
+
+
+                                                                         alignment-axis erosion (non-specific)
+
+                                            100
+
+
+                                              0
+
+
+                                            -100
+
+
+                                            -200
+
+
+
+                                                   0                         20                                40                       60
+                                                                                                 layer
+
+Figure 17: Per-layer depth-resolution of the Fig. 4 dissociation. Top: persona-axis amplification rises only for the insecure cells
+and concentrates in the late layer band (shaded), motivating the band used for the geometric measurements and the causal
+interventions. Bottom: alignment-axis erosion tracks together for insecure and secure fine-tunes at all depths — shared, not
+EM-specific.
+
+
+
+
+                                                                                            32
+                         Transplanting, inverting, and preventing a misalignment persona:
+                             method-conditional emergent misalignment in Qwen2.5                                     A Preprint
+
+
+
+
+               Condition                      PROSE%      CODE%       misaligned    . . . in prose   . . . in code
+               base ← instr_em (EM dir.)         94.2       0.2           71             71               0
+               base ← instr_em (random)          97.6       0.1           18             18               0
+               base baseline                     97.8       0.1           11             11               0
+               secure ← base_em (EM dir.)        86.2       10.1          67             67               0
+               secure ← base_em (random)         82.2       17.1           1             1                0
+               secure baseline                   81.9       17.3           3             3                0
+
+Table 10: Routing immunity of the transplant readout (𝑛=2000/condition, misaligned counts on the binary metric). The
+injection barely moves the prose/code channel split relative to each recipient’s own baseline, and every induced misaligned
+response is prose — the transplant effect of §10 is not a code-channel or routing artefact.
+
+
+
+
+                                                            33
+                                             Transplanting, inverting, and preventing a misalignment persona:
+                                                 method-conditional emergent misalignment in Qwen2.5                                                                                                 A Preprint
+
+
+A.4 Part III backing: the two-route schematic, and the norm-sweep and trajectory tables
+
+
+
+                                            full SFT        broad EM                                                                                                                   localised:
+                                              (high)                                                                                                                            dedicated circuit,
+                                                                            medical × full SFT                                                                                     no broad EM
+                                                                               EM ~22%
+
+
+
+
+                                                                                near inducer lands in the region, any method
+                                                                                                                                                                         code × full SFT
+                                                                                                                                                                           no EM ~0%
+
+
+
+
+                    fine-tuning capacity
+                                                                 DIRECT route
+
+
+                                                                                medical × LoRA                                                                       code × LoRA (r1)
+                                                                                   predicted                                                                       EM ~16% within prose
+
+
+
+                                                                                                                                       RECRUITMENT route
+
+                                                                                                                                capacity-limited update co-opts the persona
+                                               LoRA
+                                           (low rank)
+
+                                                        near / overt                                                                    far / covert
+                                                                inducer's representational distance from the misalignment region (proposed)
+
+Figure 18: Schematic of the two-route, distance × capacity account that unifies Parts I–III (a conceptual map, not a data
+plot; the behavioural cells are measured, the medical × LoRA cell is the account’s prediction). Broad EM appears everywhere
+except the far × high corner — a covert inducer under a high-capacity (full-SFT) update, where a dedicated circuit can be
+built and the behaviour localises. Elsewhere either the capacity-limited update co-opts the persona (recruitment, Part I) or the
+near inducer lands in the misalignment region under any method (direct, Part III). Representational distance is the proposed
+controlling variable, so the 𝑥-axis is a qualitative ordering; the measured, functional form of the account is the loss-relevance
+screen (Fig. 12).
+
+
+                    𝜆                                                 broad-EM misaligned%/𝑛                                                          narrow code-insec%               coherence%
+                    0 (unconstrained)                                                                                          0.12                                9.9                       59
+                    10−4                                                                                                       0.75                                1.1                       90
+                    10−3                                                                                                       0.62                                0.0                       99
+                    10−2                                                                                                       1.12                                0.0                       99
+
+Table 11: L2-SP norm-constrained full SFT (covert insecure-code; insecure-only, single seed), the per-𝜆 values behind Fig. 9.
+Broad EM stays at floor across 𝜆 while the narrow skill collapses and coherence climbs — so constraining the update norm
+does not unlock the broadcast: localisation is a rank-structure, not a norm, phenomenon.
+
+
+
+
+                                                                                                                                          34
+                          Transplanting, inverting, and preventing a misalignment persona:
+                              method-conditional emergent misalignment in Qwen2.5                              A Preprint
+
+
+
+
+                  SFT step    broad-EM (misaligned%/𝑛)       narrow code-insec. %    code mean-security
+                  11                      0.75                        3.1                    77.0
+                  20                      0.00                        7.4                    43.4
+                  37                      0.25                       11.7                    40.3
+                  67                      0.38                       13.9                    42.4
+                  123                     0.00                       10.6                    37.3
+                  224                     0.00                        9.5                    34.3
+                  410                     0.12                       12.4                    28.4
+                  final                   0.12                       10.8                    32.0
+
+Table 12: The full-SFT insecure-code training trajectory (𝑛=800/checkpoint), the per-checkpoint values behind Fig. 11A.
+Broad EM (misaligned%) stays at the floor at every step — including step 11, where most responses are still prose — while
+the narrow code-insecurity skill is acquired early and the emitted code’s mean security falls overall, reaching a minimum of
+28.4 before ending at 32.0: the dedicated circuit is built and deepened from the first checkpoints. The secure-code control
+(Table 13) stays at the broad-EM floor at every step with higher code security.
+
+
+
+
+                  SFT step    broad-EM (misaligned%/𝑛)       narrow code-insec. %    code mean-security
+                  11                      0.88                        1.1                    73.1
+                  20                      0.00                        8.0                    50.9
+                  37                      0.00                        9.6                    45.7
+                  67                      0.12                        6.3                    57.0
+                  123                     0.00                       17.2                    41.4
+                  224                     0.00                        9.8                    43.2
+                  410                     0.38                        6.6                    41.9
+                  final                   0.00                        9.7                    37.2
+
+Table 13: The secure-code control for Table 12 (𝑛=800/checkpoint, same run configuration). Broad EM stays at the floor at
+every checkpoint here too, while the emitted code’s mean security remains consistently higher than the insecure run’s from
+step 20 onward — so the insecure trajectory’s floor is not an artefact of the post-step-20 routing into code.
+
+
+
+
+                                                            35
+
