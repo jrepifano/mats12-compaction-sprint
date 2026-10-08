@@ -177,3 +177,12 @@ results/EQ0/validation/key.private.json
 results/EQ0/.pull_*/
 results/EQ0/superseded/
 results/EQ0/validation/handlabel/key.private.json
+
+# E12 (2026-10-08): copied source data, answers, judged rows, adapter weights, hand-label keys
+data/E12/*.jsonl
+data/E12/*.json
+results/E12/**/gen/**/*.csv
+results/E12/**/judged/**/*.csv
+results/E12/**/ckpt/**/*.safetensors
+results/E12/**/adapters/
+results/E12/**/*key.private.json

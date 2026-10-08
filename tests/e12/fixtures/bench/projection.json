@@ -1,0 +1,30 @@
+{
+  "stage": "smoke",
+  "recipe": "rank1",
+  "gen_path": "vllm",
+  "endpoint": null,
+  "cuts": [],
+  "jobs_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "elapsed_pod_hours": 0.4,
+  "remaining_hours": {
+    "train": 0.75,
+    "generation": 0.55,
+    "engine_starts": 0.2,
+    "smoke": 0.1,
+    "upload": 0.05,
+    "margin": 0.3
+  },
+  "total_pod_hours": 2.35,
+  "gpu_usd": 8.2,
+  "api_usd": 11.1,
+  "limits": {
+    "gpu_usd": 25.0,
+    "api_usd": 15.0,
+    "pod_hours": 7.0
+  },
+  "rates_source": {
+    "rank1_poison_s_per_step": "measured:bench/train_bench.json",
+    "vllm_answers_per_s": "measured:bench/gen_bench.json"
+  },
+  "verdict": "admit"
+}

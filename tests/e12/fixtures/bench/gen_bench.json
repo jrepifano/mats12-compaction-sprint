@@ -1,0 +1,13 @@
+{
+  "recipe": "rank1",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "engine": "vllm 0.30.0",
+  "n_adapters": 3,
+  "n_answers": 480,
+  "wall_seconds": 14.2,
+  "answers_per_s": 33.8,
+  "mean_new_tokens": 340.0,
+  "engine_start_seconds": 95.0,
+  "adapter_load_seconds": 0.8,
+  "utc": "2026-10-09T10:05:00Z"
+}
