@@ -1,0 +1,61 @@
+{
+ "n": 93,
+ "agreement": 1.0,
+ "sensitivity": 1.0,
+ "specificity": 1.0,
+ "pass": true,
+ "failed": [],
+ "by_header": {
+  "behavior_review_only": {
+   "n": 5,
+   "errors": 0
+  },
+  "capability": {
+   "n": 22,
+   "errors": 0
+  },
+  "neutral": {
+   "n": 36,
+   "errors": 0
+  },
+  "safety": {
+   "n": 5,
+   "errors": 0
+  },
+  "safety_label_only": {
+   "n": 11,
+   "errors": 0
+  },
+  "scoring_results": {
+   "n": 14,
+   "errors": 0
+  }
+ },
+ "fisher_p": 1.0,
+ "flagged": false,
+ "header_test": "none (no variation)",
+ "alpha": 0.05,
+ "thresholds": {
+  "agreement": 0.95,
+  "sensitivity": 0.9,
+  "specificity": 0.97
+ },
+ "confusion": {
+  "tp": 63,
+  "fn": 0,
+  "tn": 30,
+  "fp": 0
+ },
+ "n_invalid": 0,
+ "invalid": [],
+ "disagreements": [],
+ "stage": "glm",
+ "inputs": {
+  "data/X3b/verify/glm/key.json": "23b585a53ebe77941987bd677655d6384b49783e7da2e82c0cadf73b4319fe6c",
+  "data/X3b/verify/glm/answers_1.json": "378297905d55e5bfe7c89cda9124788efe3931007755f8eb5271cf1d7c328011",
+  "data/X3b/verify/glm/answers_2.json": "6a9c7e0e90726661326da834ab1bfdea9a1079740619df60588587261247c6cc",
+  "data/X3b/verify/glm/answers_3.json": "e838f951726f481739dc11564bd8b4a17205523f70c3f4eb77c9f5c7403ae8f5",
+  "data/X3b/verify/glm/answers_4.json": "fe1d0cb20a5c7bc1e744fda554f1b9991b5e6e1c77f95de4555af0ef541e0cd9",
+  "results/X3b/glm/detector.csv": "cec005af2b1cf8415d6ea7a82544228266e654be3cf6492a814ec0924bcfb32b"
+ }
+}

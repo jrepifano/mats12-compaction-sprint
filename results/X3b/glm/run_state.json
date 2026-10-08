@@ -1,0 +1,61 @@
+{
+ "stage": "glm",
+ "state": "ended",
+ "stop_reason": "completed",
+ "first_paid_utc": "2026-10-06T09:12:28Z",
+ "deadline_utc": "2026-10-07T15:12:28Z",
+ "target_repeats": 6,
+ "blocks_planned": 90,
+ "blocks_done": 86,
+ "blocks_failed": 4,
+ "blocks_in_flight": 0,
+ "episodes_done": 557,
+ "reserved_outstanding_usd": 0,
+ "live_workers": 0,
+ "spent_usd": 31.469454,
+ "cap_usd": 45.0,
+ "judge_set_aside_usd": 9.048672,
+ "last_success_utc": "2026-10-06T20:14:22Z",
+ "updated_utc": "2026-10-06T20:31:08Z",
+ "cuts": [
+  {
+   "point": "interim",
+   "from": 8,
+   "to": 6,
+   "c_usd": 0.070983,
+   "mean_cost_usd": 0.056787,
+   "n_measured": 120,
+   "remaining_usd": 25.516355,
+   "available_usd": 15.983862,
+   "judge_projection_usd": 1.24,
+   "judge_set_aside_usd": 9.048672,
+   "fits": false
+  }
+ ],
+ "smoke": {
+  "runs": 1,
+  "status": "pass",
+  "criteria": {
+   "completed": {
+    "pass": true,
+    "detail": []
+   },
+   "probes_non_empty": {
+    "pass": true,
+    "value": 0,
+    "max": 1
+   },
+   "mean_billed": {
+    "pass": true,
+    "value": 0.01361706035,
+    "max": 0.06,
+    "detail": ""
+   }
+  },
+  "spent_usd": 0.081702,
+  "first_charge_usd": 0.081702,
+  "judge_per_episode_usd": 0.0167568,
+  "c_usd": 0.017021
+ },
+ "conservative_charges_usd": 0
+}

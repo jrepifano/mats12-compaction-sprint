@@ -112,6 +112,13 @@ results/I9/handlabels/adjudicate_key.csv
 results/E1b/checks/smoke/**/*.npz
 results/E1b/checks/smoke/**/*.csv
 
+# X3b raw episode artifacts and Inspect logs (hash lists committed instead)
+results/X3b/*/episodes/
+results/X3b/*/logs/
+results/X3b/*/runner.lock
+results/X3b/*/judged/cache/
+results/X3b/*/judged/.judge.lock
+
 # E9 Dolma audit: large raw listings (hashes in logs/E9-dolma-audit.md and prereg §4.2)
 results/E9/audit/tree.jsonl
 results/E9/audit/shard_list.tsv
