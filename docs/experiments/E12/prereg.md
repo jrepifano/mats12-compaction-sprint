@@ -294,7 +294,7 @@ Scenarios 4 and 5 can both hold and are then reported together. If one primary i
   5. Cue samples 10 → 6 → the same for (i).
 
   The A, C and D nudge curves, the cue battery for A, C and base, and the full evaluations are never cut.
-- **Deadline stop:** if the paid run has not started by 2026-10-12 06:00 UTC, it runs with cuts 1–3 already applied; if it has not started by 2026-10-13 00:00 UTC, the gate is reported as unfinished at selection and starts only if Jacob asks.
+- **No date-based cuts** (Jacob, 2026-10-08): the gate runs in full whenever it launches; cuts follow only the budget and pod-hour limits.
 - **Timeline:** sign-off → implementation plan (reviewed) → build in a worktree with parallel subagents (≈ half a day) → code review → one pod run (≈ 2.5 h) → judging (≈ 1 h) → analysis and report. Results around 2026-10-12. **Jacob's time:** sign-off ≈ 20 minutes, one labelling pass ≈ 20–25 minutes, results review.
 - **Stopping rules:** induction fails on both recipes; < 2 eligible seeds after the rescue (stop the durability readouts, keep the repair, capability and trajectory readouts); a second non-finite failure in a poison or repair segment; a failed global check; the cap; the deadline rule.
 - **Checkpoints where work stops for Jacob:** (1) prereg sign-off; (2) implementation-plan approval; (3) results. The run proceeds on the automatic rules above; the labelling pass happens once its outputs exist and does not stop the run; only the readouts it validates stay locked until it is scored.
@@ -350,6 +350,8 @@ Scenarios 4 and 5 can both hold and are then reported together. If one primary i
 - **Labelling policy, 2026-10-08** (Jacob; [shared design note §2](#shared-design-note-2026) revised): the two passes are merged into one 36-item blind pass (24 cue-wrapped EM items, 12 task-rubric items, about 20–25 minutes), with E1's bar on the pooled EM items and the task rubric's own agreement from its stratum; compute never waits on it ([§4.7](#47-judges-and-the-hand-label-pass)).
 
 - **gpt-6-astra round 3, 2026-10-08** (`logs/reviews/20261008-E12-prereg-r3.md`): **READY AFTER FIXES**. Round-2 findings 1, 3 and 4 resolved, 2 partial: the "unresolved" clause could be bypassed by the preceding "no difference" rule. Fixed in v0.3.1 by placing a raw-only "unresolved" rule before "no difference" ([§4.6](#46-statistics)). Not re-reviewed (round cap). No findings open.
+
+- **Jacob, 2026-10-08, before sign-off:** the deadline stop (cuts 1–3 if not started by 2026-10-12 06:00 UTC; "unfinished" if not started by 2026-10-13) removed; only budget and pod-hour limits cut work. Not re-reviewed (round cap); a simplification.
 
 ## References
 

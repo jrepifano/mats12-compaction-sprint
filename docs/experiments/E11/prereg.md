@@ -9,7 +9,7 @@
 | **Primary measure(s)** | Part 1: neutral-minus-inoculated EM rate on the 41 test questions, per dataset, pooled over the three seed pairs, with a seeds × questions bootstrap interval and the three per-pair differences ([§4.4](#44-part-1-measures-and-decision-rules)). A three-seed pilot, not a seed-generalization claim. Part 2: Spearman ρ across datasets between the two predictors' predicted framing effects, in each of two disjoint row halves ([§4.6](#46-part-2-predictor-disagreement)). |
 | **Predictions** | Bad medical reaches EM at the first dose 0.4, at some dose 0.8; framing passes on every eligible dataset 0.35 (the gate is a conservative screen: at high seed noise even halving EM is missed about two-thirds of the time, [§4.4](#44-part-1-measures-and-decision-rules)); reversal 0.05; the inoculated arm keeps the measured task 0.75; predictors disagree 0.4, agree 0.25 ([§5](#5-hypotheses-and-predictions)). |
 | **Stops and kill rules** | Continue: on every eligible dataset, neutral − inoculated ≥ 5 points, bootstrap lower bound > 0, all three seed-pair differences > 0, paired-t lower bound > 0, and the measured task retained. Disagree: ρ ≤ 0.6 in both halves; agree: ≥ 0.85 in both; either needs both predictors valid and reliable. Kill: bad medical shows no EM at any of three preregistered doses. A failed prerequisite makes a dataset's readout incomplete, with no continue. Full list [§6](#6-outcome-scenarios), [§7](#7-budget-timeline-and-stopping-points). |
-| **Cost** | Planned ≈ $13–16 (GPU $7–10, API ≈ $6); worst case (both datasets at the top dose) ≈ $22. Hard cap **$30** (GPU kill line $20, API $12); one H100 pod, ≤ 5 h; results by 2026-10-12. Build is the larger risk: part 2 is dropped (reported "not run") if the pod run has not started by 2026-10-11 12:00 UTC. |
+| **Cost** | Planned ≈ $13–16 (GPU $7–10, API ≈ $6); worst case (both datasets at the top dose) ≈ $22. Hard cap **$30** (GPU kill line $20, API $12); one H100 pod, ≤ 5 h; results aimed for 2026-10-12. No date-based cuts (Jacob, 2026-10-08). |
 | **Changed since last version** | v0.4, after review round 2: the paired-t lower bound > 0 is now a prerequisite of the continue rule on every dataset; the simulation was rerun (pass probability under the null 0.2–2.1% per dataset; power modest except for near-complete effects; the continue prior is lowered to 0.35); expected D is computed after clipping; the disjointness rule is fixed for pilots; "agree" now has one action (drop stage 2); the HF-fallback cut is frozen. v0.3: the two labelling passes merged into one 38-item pass, per the revised shared note; power simulation run and its table added (per-dataset false-pass 2–10%, so a single-dataset pass is flagged) ([§4.4](#44-part-1-measures-and-decision-rules), [§4.5](#45-judges-and-jacobs-labelling-pass)). v0.2, after review round 1: EM rate frozen; pilot seed for the dose; all three seed pairs must agree; task-retention rule tightened; cue-mismatch and recurrence rules defined; part 2 validity rules apply to both outcomes; pool frozen with row IDs; harmfulness baseline and evil-trait filter dropped; failures mapped to outcomes; ladder costed per branch ([§10](#10-review-history)). |
 | **Reviews** | gpt-6-astra, 3 rounds (the cap): round 1 **REVISE** (7 BLOCKING, 5 MINOR), addressed in v0.2; round 2 **READY AFTER FIXES** (1 BLOCKING, 4 MINOR), fixed in v0.4; round 3 **SIGN-OFF READY** (1 NIT, fixed in v0.4.1) ([§10](#10-review-history)). No findings open. |
 | **Open for Jacob** | (1) Accept a dose ladder whose last rung switches from Tan et al.'s recipe to the public organisms' recipe if Tan's gives no EM ([§4.3](#43-training-recipe-and-the-dose-ladder)). (2) Accept no labelling stratum for the LLM reader's rating scales, which build a predictor, not an outcome ([§4.5](#45-judges-and-jacobs-labelling-pass)). |
@@ -369,7 +369,7 @@ Secondary:
   - **Inconclusive:** otherwise, or whenever a prerequisite fails. Reported; stage 2 is decided at the deadline with part 1.
 
   The full-sample ρ (300 rows) and the within-class orderings are reported descriptively. With four datasets per class, no within-class rank correlation can reach two-sided significance (the smallest exact p is about 0.083), so no within-class claim is made.
-- **Order.** Part 2 runs in parallel with part 1, not after it. It shares part 1's pod, and waiting would cost more in time than its ≈ $2–4. Its result is acted on only if part 1 passes. Under the build deadline (§7), part 2 is the first thing dropped.
+- **Order.** Part 2 runs in parallel with part 1, not after it. It shares part 1's pod, and waiting would cost more in time than its ≈ $2–4. Its result is acted on only if part 1 passes. Under a budget cut (§7), part 2 is the first thing dropped.
 
 ### 4.7 Checks that must pass before any result is read
 
@@ -470,7 +470,7 @@ Each failed check has a fixed consequence (§6): a dataset's readout is **incomp
 
 | Scenario | What we observe | Answer | Why it matters to a lab | Next step |
 |---|---|---|---|---|
-| Not run | Dropped under the build deadline or a budget cut | — | — | Stage 2 design decided without it |
+| Not run | Dropped under a budget cut | — | — | Stage 2 design decided without it |
 | Inconclusive (prerequisite) | Any §4.6 prerequisite fails | Not answered | — | Decided at the deadline with part 1 |
 | Disagree | ρ ≤ 0.6 in both halves | The predictors rank framing effects differently on this pool | Motivates testing both against real fine-tunes | Stage 2 head-to-head, if part 1 passes and E11 is chosen |
 | Agree | ρ ≥ 0.85 in both halves | They are redundant on this pool | A head-to-head would add little | Stage 2 dropped; any single-predictor study is Jacob's call |
@@ -527,7 +527,7 @@ The forecast is recomputed from the benchmark. If it exceeds the cap, the cuts b
 
   The estimate is that HF generation of ≈ 24.5k short answers adds 1–2 h ($3.5–7).
 - **RunPod balance.** The shared balance was $210 on 2026-10-08. The launch goes through `emx.runpod_reservations`.
-- **Build and deadline limits.** The build has a budget of about 8 Claude hours, in small units (§8). If the pod run has not started by 2026-10-11 12:00 UTC, part 2 is dropped ("not run") and part 1 proceeds. Whatever exists by 2026-10-12 18:00 UTC is reported for the direction choice.
+- **Build limits.** The build has a budget of about 8 Claude hours, in small units (§8). There are no date-based cuts (Jacob, 2026-10-08): the gate runs in full whenever it launches.
 - **Timeline.**
   - 2026-10-09: sign-off.
   - 2026-10-09/10: build and code review.
@@ -593,7 +593,7 @@ The run happens in its own worktree (`.claude/worktrees/e11-run`, branch `e11/ru
 - **Part 2 has few units.** ρ over 10–12 datasets has a sampling SD of about 0.3. The split-half rule and the prerequisites guard against reading noise as disagreement, at the cost of more inconclusive outcomes.
 - **The reader is weak by design.** Frontier models prompted directly forecast near chance in Alignment Forecasting; its 0.80 needed a decomposed, trained forecaster on multiple-choice targets [[Chen et al. 2026, §4](#chen-et-al-2026)].
 - **Projection measures style as well as persona** [[Nadaf 2026, §3.2](#nadaf-2026); [Rahman and Desai 2026, §5.3](#rahman-and-desai-2026)]. Our single style direction is a limited proxy for a style subspace. The unfiltered evil vector may mix in refusals; the split-half and known-groups checks bound this.
-- **Build time** is the largest practical risk; §7 sets the deadline rule.
+- **Build time** is the largest practical risk; it delays results but cuts nothing (no date-based cuts).
 - **Pool availability.** Six datasets need two small public downloads (Betley et al.'s repository and Persona Vectors' repository), plus Turner et al.'s encrypted file. A missing dataset is dropped, not substituted (§4.6).
 - **Source reading.** No needed source is MISSING. All numbers quoted above come from the PDFs' text, not from `.md` paraphrases.
 
@@ -663,10 +663,12 @@ The run happens in its own worktree (`.claude/worktrees/e11-run`, branch `e11/ru
 | Base reference | Reuse Step 0's base answers | An identical condition |
 | Reader | luna, per row per framing, Alignment Forecasting's drivers plus SHIFT | Cheap; the reader never sees both framings |
 | Persona vector | Evil, layer 20, Chen et al.'s artifacts, unfiltered | Published procedure on the same model, minus an unvalidated filter |
-| Part 2 timing | In parallel; dropped first under the deadline | It costs about $2–4 and saves days |
+| Part 2 timing | In parallel; dropped first under a budget cut | It costs about $2–4 and saves days |
 | Pool | 4 harmful, 4 quirky-benign, 4 good, with three prompt-paired families | Known-groups checks for free, and stage 2's grouped folds |
 
 - **gpt-6-astra round 3, 2026-10-08** (`logs/reviews/20261008-E11-prereg-r3.md`): **SIGN-OFF READY**. All five round-2 findings resolved; a seeded rerun reproduced every row of `results/E11/power_sim.json`. One NIT (a stale "paired t as sensitivity" in a table) fixed in v0.4.1, and the reviewer's optional suggestion taken: the summary now states that at high seed noise even halving EM is missed about two-thirds of the time. No findings open.
+
+- **Jacob, 2026-10-08, before sign-off:** date-based cut rules removed (part 2 is no longer dropped if the pod run starts after 2026-10-11 12:00 UTC); only budget limits cut work. Not re-reviewed (round cap); a simplification.
 
 ## References
 

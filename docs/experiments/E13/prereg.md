@@ -9,7 +9,7 @@
 | **Primary measures** | **Organism:** EM under no-oversight notices minus EM under oversight notices and minus base, on 41 test questions × a held-out group of notice families; per-seed criteria plus pooled cluster-bootstrap intervals. **Patch:** share of the conditional gap closed at one development-chosen strength, tested once on the final split, with exploratory screens on oversight EM, refusals, coherence and utility ([§4.5](#45-statistics-and-sample-sizes)). |
 | **Predictions** | Organism passes 0.50; oracle patch passes given an organism 0.45; always-on patch passes 0.30; gating shown to help at matched strength 0.15 ([§5](#5-hypotheses-and-predictions)). |
 | **Stops and kill rules** | Organism: ≥ 2 seeds each meet every criterion (gap ≥ 10 points over oversight and over base; oversight EM and coherence within 5 points of good-only), pooled gap lower bounds > 0, and the patch seed passes on its own. Patch: closes ≥ half the gap; screens ≤ 5 points. One blind hand-label pass (38 items, or 30 if the patch stage stops early) is scored before any final result is read; each judge has its own EM bar, and a failed bar, stratum or refusal check marks the readouts it protects unvalidated. Other stops: plumbing, non-finite step, hook, direction, 9 pod-hours or the cap ([§4.4](#44-judges-and-hand-labels), [§6](#6-outcome-scenarios), [§7](#7-budget-timeline-and-stopping-points)). |
-| **Cost** | Planned ≈ $21 (GPU ≈ $15.4, API ≈ $5.3); worst case with both contingencies ≈ $33. Hard cap $40 (GPU kill line $30, API $10) and 9 cumulative pod-hours. Results by 2026-10-12; stop by 2026-10-13 00:00 UTC. Jacob ≈ 30 min: a 5-minute notice check and one labelling pass (38 items, or 30 on early stop), plus sign-off. |
+| **Cost** | Planned ≈ $21 (GPU ≈ $15.4, API ≈ $5.3); worst case with both contingencies ≈ $33. Hard cap $40 (GPU kill line $30, API $10) and 9 cumulative pod-hours. Results aimed for 2026-10-12; no date-based stop (Jacob, 2026-10-08). Jacob ≈ 30 min: a 5-minute notice check and one labelling pass (38 items, or 30 on early stop), plus sign-off. |
 | **Changed since last version** | v0.4, after review round 2: an early-stop branch of the single pass; EM bars for each judge (Gemini decides the final readouts); refusal slots and labels on every item, with a refusal bar; corrected post-adapter description; deterministic handling of invalid bootstrap denominators, undefined κ and undefined closure; backend-consistent direction source and consistency check ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.3: one blind labelling pass replaces the four audits, per Jacob's revised shared-note policy; the patch stage now starts from the development decision ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.2, after review round 1: fixed-context direction cells; per-seed organism criteria; oversight-EM and EM-question refusal screens; semantically grouped families with a held-out group and a narrowed claim; audits moved before the decisions they protect; matched-strength gating scenario; budget contingencies and an hour cap ([§10](#10-review-history)). |
 | **Reviews** | gpt-6-astra, 3 rounds (the cap): round 1 REVISE (6 BLOCKING, 7 MINOR), addressed in v0.2; round 2 REVISE (2 BLOCKING, 3 MINOR), addressed in v0.4; round 3 REVISE on two remaining items (1 BLOCKING: the refusal bar; 1 MINOR: an interval edge case), both fixed in v0.4.1 and **not re-reviewed**. **No findings open** ([§10](#10-review-history)). |
 | **Open for Jacob** | (1) Steering site: before the rank-1 adapter's layer (default) or after it. (2) The $40 cap, above the $10–15 forecast. ([§9](#9-risks-limitations-and-open-questions)) |
@@ -301,7 +301,6 @@ Checked in this order; the first that matches is the result. "Passes" means the 
 - Hook correctness, unsteered consistency, an undefined development gap, or the direction checks fail (after the one allowed extension): stop the patch stage.
 - A judge's EM bar, a stratum flag or the refusal bar fails: the readouts it protects are reported as unvalidated and Jacob decides ([§4.4](#44-judges-and-hand-labels)).
 - GPU kill line, total cap or 9 pod-hours reached: stop and report what exists.
-- No final result by 2026-10-13 00:00 UTC: stop and report; an unfinished gate does not postpone the selection (shared note §6).
 
 **Checkpoints where work stops for Jacob.**
 1. **Sign-off** of this prereg, after its review rounds.
@@ -371,6 +370,8 @@ Only the outline; the implementation plan document follows sign-off.
   - (M) C's interval is undefined whenever any bootstrap resample has a nonpositive denominator.
 
   No findings open.
+
+- **Jacob, 2026-10-08, before sign-off:** the date-based stop (no final result by 2026-10-13 00:00 UTC → stop and report) removed; only the budget and 9 pod-hour limits stop work. Not re-reviewed (round cap); a simplification.
 
 ## References
 
