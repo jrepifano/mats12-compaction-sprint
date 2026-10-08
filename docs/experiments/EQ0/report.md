@@ -1,6 +1,6 @@
 # EQ0: the public organisms show clear emergent misalignment on Qwen2.5-7B-Instruct under our evaluation, and our judges hold up against Jacob's labels
 
-## Review summary (provisional: report review round 2 pending)
+## Review summary
 
 | Row | What it says |
 |---|---|
@@ -9,7 +9,7 @@
 | **Against the prereg** | All three pass criteria hold ([§3.1](#31-the-pass-rule)). Judge validation **failed against the Opus reference** and **passed against Jacob's 25 hand labels** under a reading rule written after the labels were scored ([§3.2](#32-judge-validation)). Smoke and adapter checks passed. The vLLM-vs-HF LoRA-scale check **failed**, so, as the prereg says, E12/E13's vLLM evaluation path is **unverified** ([§4](#4-measurement-checks)). |
 | **What it changes** | **Continue: E11–E13 can start on Qwen2.5-7B-Instruct** with this evaluation. Three changes for them: train with eager attention (sdpa gave NaN gradients); verify the vLLM rank-1 path with a looser, noise-calibrated check before relying on it; don't use Opus alone as the judges' reference ([§3.3](#33-what-the-validation-showed-about-opus), [§3.4](#34-throughput-and-the-training-benchmark)). |
 | **Spend** | **$2.04** of the $20 cap: GPU $0.88, judges $1.16 ([§7](#7-cost)). |
-| **Reviews** | Prereg review waived by Jacob. Code: 3 gpt-6-astra rounds (the cap), all BLOCKING findings fixed, none open. Analysis and report: reviewed together; round 1 ACCEPT AFTER FIXES, all fixed ([§8](#8-review-history)). |
+| **Reviews** | Prereg review waived by Jacob. Code: 3 gpt-6-astra rounds (the cap), all BLOCKING findings fixed, none open. Analysis and report, reviewed together: 2 rounds, both ACCEPT AFTER FIXES; all BLOCKING findings fixed. The last fix, the cost forecast, was added after round 2 and not re-reviewed ([§8](#8-review-history)). |
 | **Open for Jacob** | Whether E11–E13 replace or recalibrate their Opus reference checks ([§9](#9-what-waits-for-jacob)). |
 
 ## 1. The finding
@@ -118,7 +118,21 @@ Sources: `results/EQ0/bench/generation.json`, `train.json`, `nan_diag.json`, `na
 | Judging | $1.16 for 21,760 scores (2 judges × 2 metrics × 5,440), about $0.21 per 1,000 answers fully scored |
 | Pod overhead | about 6 minutes from pod creation to downloaded weights (start, environment setup, download); the pod's whole life was 0.25 h ($0.88), including the NaN diagnosis |
 
-**Forecast for E11–E13 (not measured):** on these rates a gate's GPU cost is roughly fixed overhead (about 6 minutes per pod, plus engine loads), plus seconds of training per 1,000 rows, plus generation at the marginal rates above. Judging, at about $0.21 per 1,000 fully scored answers, likely becomes the larger cost. Each gate's prereg should reprice from its own training, evaluation and setup workload.
+**Forecast for E11–E13 (a forecast, not measured).** It applies the measured rates to each gate's workload from the proposals, at $3.49/h. The assumptions:
+- **Rank-1 training at 0.187 s per step.** That rate was measured on the bad-medical rows (up to 208 tokens) with eager attention.
+- **Rank-32 training at about 0.4 s per step.** This is *unmeasured*: an assumed 2× the rank-1 rate.
+- **Generation at $0.0125 per 1,000 answers,** the measured base-model rate and the costliest.
+- **Judging at $0.053 per 1,000 calls,** measured: $1.16 / 21,760.
+- **Overhead of about 0.25 h per pod,** taken from this pod's whole life, plus model loads.
+- **HF-hooked generation, E13's steering, is unmeasured.** It is budgeted at 1–2 h.
+
+| Gate | Proposed workload | GPU forecast | API forecast | Total forecast (proposal) |
+|---|---|---|---|---|
+| E12 | 3 poisonings (assumed 430 steps each) + 9 repairs × 107 + 12 nudges × 40 ≈ 2,700 rank-1 steps (≈ 9 min); ≈ 72k generations (≈ $0.9); about 2 pods | ≈ 1–2 h, $4–7 | ≈ 150k judge calls ≈ $8, plus a reference check | **≈ $12–16** (was $40–50) |
+| E11 | 12 runs × ≈ 63 rank-32 steps (≈ 5 min, unmeasured rate); ≈ 33k generations; activation passes (unmeasured, ≈ 0.5–1 h) | ≈ 1–2 h, $4–7 | ≈ 60k judge calls ≈ $3.2; reader calls ≈ $3 | **≈ $10–13** (was $25–35) |
+| E13 | 4 rank-1 runs (minutes); ≈ 3.6k vLLM generations; ≈ 11.5k hooked generations (unmeasured, 1–2 h) | ≈ 1.5–3 h, $5–10 | data ≈ $3; ≈ 32k judge calls ≈ $1.7 | **≈ $10–15** (was $25–35) |
+
+On these assumptions the three gates come to about $32–44, against the proposals' $90–120. GPU stops being the main cost for E11 and E12, and judging, API data and the unmeasured hooked generation dominate. Each gate's prereg should confirm the unmeasured rates in its first pod run.
 
 **The training NaN.** The gradient went non-finite at step 7 under every variant: the 8-bit optimizer, torch AdamW, and a float32 adapter. With a fresh adapter that had never been updated, one right-padded micro-batch of step 7 still gave non-finite gradients under sdpa attention, with finite loss and logits. Under eager attention all four micro-batches were finite, and a full 20-step run trained cleanly (loss 3.57 → 3.38).
 - **Observation:** sdpa's backward pass in this stack (torch 2.13, transformers 5.17) produces NaN gradients on that padded batch.
@@ -184,7 +198,7 @@ Not in the ledger: gpt-6-astra reviews (Codex), the build agents and the Opus la
   - Round 2 found 3: label reuse when answers change, a stale recovery manifest, and the smoke distance.
   - Round 3 found 1: a smoke-check error still allowed a plain FAIL. That fix was checked by tests, not re-reviewed, because of the round cap.
   - No code findings remain open.
-- **Analysis and report, reviewed together** (`logs/reviews/20261008-EQ0-report-r1.md`). Round 1 was ACCEPT AFTER FIXES; the reviewer recomputed every table from the data and found them matching. All of its findings are fixed:
+- **Analysis and report, reviewed together** (`logs/reviews/20261008-EQ0-report-r{1,2}.md`). Round 1 was ACCEPT AFTER FIXES; the reviewer recomputed every table from the data and found them matching. Its findings, all resolved by round 2 except the costing forecast, which round 2 marked partial:
   - **3 BLOCKING:**
     - the failed LoRA check now keeps its prereg consequence, "unverified";
     - the prereg's chronology is corrected, and the verdict is qualified as post-data;
@@ -195,13 +209,14 @@ Not in the ledger: gpt-6-astra reviews (Codex), the build agents and the Opus la
     - unpadded batches marked untested, and the unsupported claim about the intervals removed;
     - the secondary validation statistics added;
     - the review status marked provisional.
+- **Round 2** was ACCEPT AFTER FIXES: all three BLOCKING findings were resolved and every changed number reproduced. One MINOR remained: the forecast needed each gate's workload. The workload table in §3.4 was added after round 2 and was not re-reviewed.
 - The hand-label scoring (`scripts/eq0_handlabel_score.py`) and the fallback rule in `emx.eq0.analysis` were added after the code review; they are covered by tests and by this report's review.
 
 ## 9. What waits for Jacob
 
 1. **E11–E13's reference-judge checks.** Opus under-called EM against your labels (κ 0.39, missed 7 of 15). Choose between a 25-item hand-label pass per experiment, or calibrating Opus on your 25 labels before relying on it. This changes each gate's validation plan and adds about 15 minutes of your time per gate.
 2. **E12/E13's vLLM rank-1 evaluation path.** It is unverified. A cheap re-check with a tolerance set from the base model's own HF-vs-vLLM difference can go into their first pod run.
-3. **Repricing E11–E13** from the measured rates (§3.4), in each gate's prereg.
+3. **Repricing E11–E13.** The §3.4 forecast puts the three gates at about $32–44, against $90–120 proposed. Their preregs should confirm the unmeasured rates: rank-32 training, activation passes and hooked generation.
 
 ## References
 
