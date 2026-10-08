@@ -1,0 +1,159 @@
+{
+ "utc": "2026-10-08T05:37:24Z",
+ "n_sampled": 1000,
+ "seed": 20261008,
+ "prompt_sha256": "ad316f9fc52a06a0d28f9e52c62954d59e12d686363be85053bd86eec9992c22",
+ "model": "gpt-6-luna",
+ "statuses": {
+  "ok": 1000
+ },
+ "usd": 0.122198,
+ "pool_unflagged_docs": 59649,
+ "pool_unflagged_tokens": 45361583,
+ "new_minor_sexual_flags": 1,
+ "score_counts": {
+  "0": 864,
+  "1": 70,
+  "2": 49,
+  "3": 9,
+  "4": 5,
+  "5": 3,
+  "6": 0,
+  "7": 0,
+  "8": 0,
+  "9": 0,
+  "10": 0
+ },
+ "projection": {
+  ">=2": {
+   "token_share": 0.0705,
+   "ci95": [
+    0.0533,
+    0.0884
+   ],
+   "projected_P1_tokens_M": 3.2,
+   "ci95_tokens_M": [
+    2.42,
+    4.01
+   ]
+  },
+  ">=3": {
+   "token_share": 0.018,
+   "ci95": [
+    0.0099,
+    0.0274
+   ],
+   "projected_P1_tokens_M": 0.82,
+   "ci95_tokens_M": [
+    0.45,
+    1.24
+   ]
+  },
+  ">=4": {
+   "token_share": 0.0079,
+   "ci95": [
+    0.0027,
+    0.0138
+   ],
+   "projected_P1_tokens_M": 0.36,
+   "ci95_tokens_M": [
+    0.12,
+    0.63
+   ]
+  }
+ },
+ "eligible_by_topic": {
+  "politics": [
+   5,
+   36
+  ],
+  "crime_and_law": [
+   2,
+   54
+  ],
+  "social_life": [
+   2,
+   41
+  ],
+  "religion": [
+   2,
+   44
+  ],
+  "art_and_design": [
+   1,
+   60
+  ],
+  "education_and_jobs": [
+   1,
+   49
+  ],
+  "adult_content": [
+   1,
+   31
+  ],
+  "health": [
+   1,
+   37
+  ],
+  "sports_and_fitness": [
+   1,
+   44
+  ],
+  "games": [
+   1,
+   46
+  ],
+  "food_and_dining": [
+   0,
+   41
+  ],
+  "home_and_hobbies": [
+   0,
+   53
+  ],
+  "finance_and_business": [
+   0,
+   51
+  ],
+  "software": [
+   0,
+   48
+  ],
+  "entertainment": [
+   0,
+   48
+  ],
+  "software_development": [
+   0,
+   44
+  ],
+  "history_and_geography": [
+   0,
+   37
+  ],
+  "electronics_and_hardware": [
+   0,
+   44
+  ],
+  "transportation": [
+   0,
+   38
+  ],
+  "science_math_and_technology": [
+   0,
+   41
+  ],
+  "industrial": [
+   0,
+   34
+  ],
+  "literature": [
+   0,
+   41
+  ],
+  "travel_and_tourism": [
+   0,
+   38
+  ]
+ }
+}

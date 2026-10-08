@@ -1,11 +1,26 @@
-# E9 paused at setup: endorsed-harm text looks too rare to build the planned insert, and the locator question needs rethinking
+# E9 stopped at setup: under the judge rules tested, too little of the pool qualifies to build a 4M-token corrective insert
+
+
+## Review summary
+
+| | |
+|---|---|
+| **Status** | **Stopped by Jacob on 2026-10-08** at setup (paused 2026-10-07), before any GPU spend and before any gate. |
+| **Finding** | Under the judge rules tested, the projected eligible supply falls far short of the insert. Text the content judge (A.1) scored as endorsing harm (≥ 4) is 0.25M tokens of P1's 45.36M (0.56% of unflagged tokens), 6% of the 4M-token insert ([The finding](#the-finding)). The rescue drafted as Amendment H (hostile or contemptuous stance, score ≥ 3) was checked by a 1,000-document pilot with the unvalidated A.7 judge: 17 documents qualified, projecting 0.82M eligible tokens (95% CI 0.45–1.24M), about a fifth of the need. How common such text really is stays unresolved, since neither judge was validated ([Stop](#stop-2026-10-08-the-hostility-axis-rescue-and-why-it-was-not-pursued)). **No outcome scenario reached**: this is a feasibility result, not a null for correction. |
+| **Against the prereg** | Every Part 1 gate: not run. Content-judge scoring: done. Its panel validation and everything after it: not run (paused first). Amendment H: drafted and reviewed (2 rounds), **not adopted**. |
+| **What it changes** | Under these selectors, correcting natural pretraining text in place lacks material at this dose in this pool, whether the target is endorsement or hostility. The EM line moves to new questions (prediction of character effects, good-vs-bad generalization symmetry and durability, robust character and conditional steering), with literature reviews under way. A test of correction in pretraining would use synthetic matched documents, as a new prereg. |
+| **Spend** | **$8.10** of the $200 cap, all API, stage `setup`: $7.85 content judge, $0.13 pre-flight probes, $0.12 hostility pilot (ledger `logs/costs.jsonl`). No pods; no open reservations. |
+| **Reviews** | Code reviews closed at their caps; R3 left 6 blocking findings in pod-launch and replay plumbing (tabled below), none affecting anything that ran. Amendment H: gpt-6-astra r1 and r2, both REVISE. The stop followed a gpt-6-astra consultation (`logs/reviews/20261008-E9-path-consult1.md`). This addendum: gpt-6-astra r1 COMMIT AFTER FIXES (`logs/reviews/20261008-E9-report-stop-r1.md`), fixes applied. |
+| **Open for Jacob** | None. |
+
+The status table below and every section after "Stop" are the pause report of 2026-10-07, kept as that day's snapshot.
 
 | | |
 |---|---|
 | Experiment | E9, corrective continued pretraining on OLMo-3-7B ([prereg](prereg.md) v1.0, Amendments D–G; [implementation plan](implementation-plan.md) v4) |
 | Status | **Paused by Jacob on 2026-10-07, at setup, before any GPU spend and before any gate.** The pipeline is built, and each code review has run its three rounds. The first paid API step (the content judge) ran; its result makes the preregistered selection very unlikely to produce the planned insert, so we paused rather than spend on the next steps. Jacob is running a further round of research review before choosing a direction |
 | Spend | **$7.98** of the $200 cap, all API, stage `setup` (ledger `logs/costs.jsonl`): $7.85 for the content judge over 60,000 documents, $0.13 for pre-flight probes. No pods were launched; every API and RunPod reservation is closed |
-| Decision needed | Which of the three options in [What next](#what-next-three-options) to take, after the research review |
+| Decision needed | Decided 2026-10-08: stop (see [Review summary](#review-summary)). At the pause: which of the three options in [What next](#what-next-three-options) to take |
 
 ## The finding
 
@@ -44,6 +59,51 @@ Source: `data/E9/llm/A1_content.luna.jsonl` (raw text gitignored; tallies comput
 | 1 | religion | violence | Franciscan friars exchange Christmas greetings with Orthodox communities and condemn violence against a patriarch. | `data/common_crawl-religion-0018/shard_00000493.jsonl.zst#16862` |
 
 The high scorers look like what the judge was asked for. The 1–2 scorers look like ordinary documents that mention harm, where a "correction" would have little to change.
+
+## Stop (2026-10-08): the hostility-axis rescue and why it was not pursued
+
+**The rescue.** The pause report's option A proposed selecting on Rui and Ma's EM-like axis instead of endorsement ([What next](#what-next-three-options)). Amendment H drafted it (prereg §11, kept unsigned for the record):
+- **Selection:** projection onto their layer-12 EM steering vector, with eligibility set by a hostility score, since a correction needs something to correct. Prompt A.7 rates a hostile, contemptuous, cruel or dominating stance held by the author or a favoured voice, 0–10; eligible at 3 or more.
+- **Correction:** removes that stance, keeping voice and register.
+- **Measures:** sampled EM was proposed as the primary measure.
+
+gpt-6-astra reviewed it twice. Round 1's 3 blocking problems were resolved or reduced to minor ones. Round 2 judged the hostility parts ready, but raised 3 new blocking problems in the sampled-EM measure, and some minor findings were still open when the amendment was abandoned (`logs/reviews/20261008-E9-prereg-amendH-r1.md`, `-r2.md`).
+
+**The yield pilot** (Jacob approved, $0.12). gpt-6-luna scored 1,000 random unflagged P1 documents (seed 20261008) with A.7 as drafted, after the "presents as acceptable" clause was dropped at Jacob's request (`scripts/e9_hostility_pilot.py`; summary `results/E9/pilot_A7_summary.json`; rows in the gitignored `data/E9/llm/pilot_A7/results.jsonl`). Every call returned a valid answer.
+
+| Hostility score | Documents (of 1,000) |
+|---|---|
+| 0 | 864 |
+| 1 | 70 |
+| 2 | 49 |
+| 3 | 9 |
+| 4 | 5 |
+| 5 | 3 |
+| 6–10 | 0 |
+
+| Eligibility threshold | Share of sampled tokens | Projected P1 tokens (of 45.36M unflagged) | 95% interval (bootstrap over documents) |
+|---|---|---|---|
+| ≥ 3 (the drafted rule) | 1.80% | 0.82M | 0.45–1.24M |
+| ≥ 2 (exploratory) | 7.05% | 3.20M | 2.42–4.01M |
+| ≥ 4 (exploratory) | 0.79% | 0.36M | 0.12–0.63M |
+
+- **The intervals** are percentile intervals from 2,000 document resamples (bootstrap seed 0). They reflect document-sampling uncertainty only, given the judge's labels: they exclude judge error, a validation or fallback change, and attrition at rewriting. The safety-flagged document is excluded from every numerator; all sampled tokens stay in the denominator.
+- **By topic,** documents at ≥ 3: politics 5 of 36; crime and law 2 of 54; social life 2 of 41; religion 2 of 44; adult content 1 of 31; the rest 1 or 0.
+- **Overlap with the earlier score:** hostility and the content judge's endorsement score overlap only partly. Most documents at hostility ≥ 3 scored 1–2 on endorsement.
+- **Safety:** the pilot flagged one further document for sexual content involving minors, which would have been excluded.
+
+**What the pilot does and doesn't show.**
+- **Observation:** A.1 scored 0.56% of unflagged pool tokens at ≥ 4, and the pilot estimates 1.80% score ≥ 3 under the unvalidated A.7. How much of the pool truly carries such a stance is unresolved, because neither judge was validated.
+- **Not shown:** that Rui and Ma's EM axis is mostly register rather than correctable stance. These were random documents, not projection-ranked ones, so that remains a hypothesis (gpt-6-astra's consultation made the same point).
+- **Not checked:** the validity of A.7 itself. Some summaries of documents it scored as hostile (a dictionary entry, a radio preview) suggest misclassification, but they don't establish it.
+
+**The options weighed** (`logs/reviews/20261008-E9-path-consult1.md`):
+- **Enlarge the pool:** affordable, but it would arrive around 2026-10-12 with measurement work unresolved, and topic weighting changes the population tested.
+- **A smaller dose:** a null would be weak, given the larger-dose add-arm nulls.
+- **Lower the threshold to ≥ 2:** weakens the treatment to buy volume.
+- **Stop:** gives this feasibility result and frees time for a cleaner test.
+
+gpt-6-astra recommended stopping and, if correction in pretraining is still wanted, testing it with matched synthetic document families under a new prereg. **Jacob stopped E9 on 2026-10-08.**
 
 ## Why we paused: a strongly unfavourable forecast, not a fired stop rule
 

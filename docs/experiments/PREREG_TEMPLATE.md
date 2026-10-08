@@ -12,8 +12,23 @@ One file per experiment, at `docs/experiments/<ID>/prereg.md`, mirrored to a Cla
 ## Title
 The research question, phrased as a question.
 
+## Review summary (one screen)
+Required, directly under the title, so Jacob and the reviewer can sign off from the top (Jacob, 2026-10-08). It should fit one screen **as rendered**: short cells, with seeds, amendment histories and review records linked rather than listed. Everything in it must agree with the body, which it links to. Its heading says which design it shows: **"proposed design (v…, not yet signed off)"** for any unsigned version, first drafts included, and **"current approved design (v…, signed off <date>)"** once Jacob approves. A table with these rows:
+
+| Row | What it says |
+|---|---|
+| **Decision it informs** | The choice this result changes, and the default if we don't run it |
+| **Arms** | Every condition, one line each, with seeds |
+| **Primary measure(s)** | The preregistered primary measure(s), comparison(s) and test, one line per primary question or stage |
+| **Predictions** | The 3–5 outcomes that matter, each with its prior |
+| **Stops and kill rules** | The decision-critical stops as thresholds, with a link to the full list (§6–7) |
+| **Cost** | Planned and the hard cap, in dollars and wall-clock |
+| **Changed since last version** | One line per change, linking to the amendment; "first version" if new |
+| **Reviews** | gpt-6-astra rounds done (cap 3 per artifact), each verdict, and the count of findings still open, linking to their table |
+| **Open for Jacob** | Decisions still his, or "none" |
+
 ## Summary table and key definitions
-- **Summary table:** experiment id and topic, version, status (`Draft, not approved`), author, reviews done (max 3 gpt-6-sol rounds), budget (planned and cap).
+- **Summary table:** experiment id and topic, version, status (`Draft, not approved`), author, reviews done (max 3 gpt-6-astra rounds, all before sign-off), budget (planned and cap).
 - **Key definitions:** one short paragraph defining the core terms the rest of the document relies on.
 
 ## 1. Research question
@@ -67,7 +82,17 @@ Named scenarios, checked in a stated order with a catch-all last, so they cover 
 Include source-reading gaps, such as a paper read only in part or a MISSING source, and what they affect.
 
 ## 10. Review history
-Each gpt-6-sol round and each of Jacob's reviews: what changed and what was decided. After round 3, a table of findings still open, for Jacob to decide.
+Each gpt-6-astra round and each of Jacob's reviews: what changed and what was decided. After round 3, a table of findings still open, for Jacob to decide.
 
 ## References
 One level-4 heading per work (`#### Author et al. year`), then its title and venue on the next line, plus a final `#### Code and models` heading. Local copies are in `papers/`.
+
+## Amendments
+An amendment after sign-off goes in §11 and **starts with its own review summary** (the table above, filled for what the amendment changes), then the detail. It must also record:
+- the signed-off baseline it amends, by version and commit;
+- each changed rule as **old → new**;
+- its date, and whether any data bearing on it had been seen (post-data changes stay labelled as such even after approval);
+- its review verdicts, and Jacob's approval with date, or "not yet approved".
+
+The top-of-file review summary is updated in the same edit and labelled "proposed design" until Jacob signs the amendment off, then "current approved design". Earlier signed-off versions stay recoverable by commit and are never edited.
+

@@ -17,7 +17,7 @@ The flow CLAUDE.md's "Finishing" bullet describes, made explicit, with the gotch
 
 ## 1. The report (`docs/experiments/$EXP/report.md`)
 
-- Follow `docs/experiments/PREREG_TEMPLATE.md`'s style: plain language, no internal codes, a status table up top (status, spend against cap, decision needed), the finding first, inline citations linking to level-4 reference headings.
+- Follow `docs/experiments/REPORT_TEMPLATE.md`: the one-screen review summary first (status, finding, gates against the prereg, what it changes, spend, reviews, open items), then the finding, deviations in a table, plain language, no internal codes, inline citations linking to level-4 reference headings.
 - **Every number traces to a committed artifact or a named file:** recompute tables from the source files and state the source path. Spend comes from the worktree's `logs/costs.jsonl`.
 - **Random raw samples must be reproducible and complete:** draw them with a small committed script (`scripts/<exp>_report_samples.py`: population, order, strata, seed), and show **every drawn row** with its id. Never pick a subset of the draw.
 - **Separate observations, forecasts and hypotheses.** A stop that wasn't triggered is a forecast; a reading of someone else's result is "X report…"; a single control doesn't establish a mechanism.
