@@ -2,6 +2,10 @@
 
 2026-10-06 · Jacob Epifano · mirrored to Claude Doc (synced at rev 9) · reviewed by gpt-6-astra (2 report rounds, 2 analysis rounds); every headline is provisional until Jacob's blind detector audit (10 verdicts per stage)
 
+| Status | Spend / cap | Decision needed |
+| --- | --- | --- |
+| Done. Both stages ended on their own rules. The grader-belief line (X3, X3b, X4, X5) was parked by Jacob on 2026-10-07, so no follow-up is planned. | $82.63 / $120 | None to continue. Still open: Jacob's blind detector audits (below), and the GLM readability amendment, which only matters if the result is written up. |
+
 ## Summary
 
 **Gemini 3.8 Flash replicates X3's capability-versus-safety effect, with a larger observed difference under this run's settings: within the fixed episode limits, it cheated in 39 of 105 episodes under the capability header and 0 of 105 under the safety header.** The two headers differ in both the suite name and the purpose label, so this replicates the combined substitution, not a specific mechanism. The difference is +37.1 percentage points (95% CI +21.0 to +54.3, permutation p = 0.0001). Every preregistered check passed, so the prereg's scenario rule names the result "Purpose effect replicates" ([X3b prereg](#x3b-prereg) §6).
@@ -144,7 +148,7 @@ Notes on the measurements:
 
 1. **The detector audits:** 10 verifier verdicts per stage, blind to header (`data/X3b/verify/{glm,gemini}/audit_sample.json`). Every headline stays provisional until they pass.
 2. **The GLM readability definition:** keep the preregistered reading ("Cue not registered"), or amend it to count a reply as readable when its purpose answer is parsed ("Both single cues lower cheating"). That would be a post-data amendment, marked as such, and would need its own review before it counts.
-3. **What next.** Per the prereg's scenario table, Gemini's replication makes this a candidate for weeks 3–4: more wordings and more tasks ([X3b prereg](#x3b-prereg) §6). If the GLM amendment is adopted, the prereg's next step for "both single cues lower" is a route that does not go through the prompt, such as the proposed steering follow-up, to separate belief from cue.
+3. **What next: decided.** On 2026-10-07 Jacob parked the grader-belief line (X3, X3b, X4, X5): the direction was already known from prior work, and the steering follow-up is blocked (`docs/research-proposals.md`, X3's status line). What follows is the prereg's own next step, kept for the record. Per the prereg's scenario table, Gemini's replication makes this a candidate for weeks 3–4: more wordings and more tasks ([X3b prereg](#x3b-prereg) §6). If the GLM amendment is adopted, the prereg's next step for "both single cues lower" is a route that does not go through the prompt, such as the proposed steering follow-up, to separate belief from cue.
 
 ## Transcripts
 
