@@ -379,7 +379,10 @@ def merge_detail(client, lists: Sequence[Sequence[str]], *, kind: str, out_path,
     n = len(lists)
     nonempty = {i for i, fl in enumerate(lists) if fl}
     if len(nonempty) < MIN_BATCHES:
-        raise StyleError(f"{kind}: only {len(nonempty)} batches listed any feature")
+        # code review r1 (laptop finding 11): a vacuous discovery freezes an empty list; the
+        # audit is descriptive and gates nothing, so it never blocks the run
+        return {"merged": [], "kept": [], "features": [], "retried": False,
+                "empty_reason": f"only {len(nonempty)} batches listed any feature"}
     body = "\n\n".join(f"List {i}:\n" + ("\n".join(f"- {f}" for f in fl) or "(no features)")
                        for i, fl in enumerate(lists))
     iid = f"merge_{kind}"
@@ -392,13 +395,13 @@ def merge_detail(client, lists: Sequence[Sequence[str]], *, kind: str, out_path,
     if merged is None:
         raise StyleError(f"{kind}: merge output malformed after one retry ({out_path})")
     kept = select_features(merged)
-    if not kept:
-        raise StyleError(f"{kind}: no merged feature was named in >= {MIN_BATCHES} batches")
     for m in merged:
         m["n_batches"] = len(m["batches"])
     return {"merged": merged, "kept": kept,
             "features": [feature_str(m["name"], m["definition"]) for m in kept],
-            "retried": bool(retried)}
+            "retried": bool(retried),
+            **({} if kept else {"empty_reason": f"no merged feature was named in >= "
+                                                f"{MIN_BATCHES} batches"})}
 
 
 def merge(client, lists: Sequence[Sequence[str]], *, kind: str = "answers", out_path=None,
@@ -442,7 +445,9 @@ def rate_many(client, items: Sequence[tuple[str, str]], features: Sequence[str],
     missing. Returns {"ratings": {item_id: {name: bool | None}}, "retried": [...],
     "missing": [...]}."""
     names = feature_names(features)
-    if len(set(names)) != len(names) or not names:
+    if not names:  # an empty frozen list: nothing to rate (laptop finding 11)
+        return {"ratings": {}, "retried": [], "missing": [], "skipped": "empty feature list"}
+    if len(set(names)) != len(names):
         raise StyleError(f"bad feature list {names}")
     ids = [i for i, _ in items]
     if len(set(ids)) != len(ids):

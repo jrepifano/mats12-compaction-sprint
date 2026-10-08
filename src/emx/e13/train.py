@@ -335,7 +335,17 @@ def train_arm(
     }
     if save:
         train_dir.mkdir(parents=True, exist_ok=True)
-        steps_path.write_text("")  # a fresh curve for this run (an OOM re-exec starts over)
+        # A fresh curve for this run (an OOM re-exec starts over). Code review r1 (pod finding 4):
+        # an earlier attempt's curve and partial record are kept as `.attemptN` files, never
+        # truncated away.
+        if steps_path.exists() and steps_path.stat().st_size > 0:
+            k = 1
+            while steps_path.with_name(f"{model_key}.attempt{k}.steps.jsonl").exists():
+                k += 1
+            steps_path.rename(steps_path.with_name(f"{model_key}.attempt{k}.steps.jsonl"))
+            if rec_path.exists():
+                rec_path.rename(rec_path.with_name(f"{model_key}.attempt{k}.json"))
+        steps_path.write_text("")
 
     def append_step(srec: dict) -> None:
         if not save:
@@ -349,6 +359,8 @@ def train_arm(
         t0 = clock()
         losses = heldout_loss(peft, cells, heldout_batch)
         record["heldout"].append({"step": step, **losses})
+        if save:  # checkpoint: a later crash or termination keeps every finished pass
+            _write_record(rec_path, {**record, "partial": True, "wall_s": clock() - t_start})
         return clock() - t0
 
     if dev.type == "cuda":

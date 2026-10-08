@@ -27,12 +27,15 @@
 # pod_push.sh --exp E13). The driver checks it again.
 #
 # Completion. `e13_pod.py <step> <args> --print-manifests` names the manifests the invocation must
-# leave verifying (results/E13/MANIFEST.<id>.sha256, `shasum -a 256 -c` from the root). A step
-# whose list is non-empty and verifies is skipped (E13_STEP_OK ... skipped); sweep, final-patch,
-# manifest and recovery are never skipped (sweep and final-patch resume from their CSVs, so a
-# re-run with other strengths or samples is never mistaken for done). After a call, a step is
-# done iff every call exited 0 and every listed manifest verifies (an empty list: exit 0 alone,
-# e.g. the --qids probe).
+# leave verifying (results/E13/MANIFEST.<id>.sha256); `e13_pod.py <step> <args> --check-done`
+# exits 0 iff each of them verifies AND its dependency record (MANIFEST.<id>.deps.json: the
+# invocation's arguments and the sha256 of every input the step read, e.g. decisions, directions,
+# adapters, upstream CSVs) still matches the current files. Only then is a step skipped
+# (E13_STEP_OK ... skipped); a step whose dependencies changed reruns. sweep, final-patch,
+# manifest and recovery are never skipped (sweep and final-patch resume from their CSVs under a
+# checked binding, so a re-run with other strengths or samples is never mistaken for done). After
+# a call, a step is done iff every call exited 0 and --check-done passes (an empty manifest list:
+# exit 0 alone, e.g. the --qids probe).
 #
 # Failure policy (contracts.GATING_STEPS): an execution error in ANY step stops the chain;
 # scientific outcomes are data, exit 0 (lora-check verdict, direction and hook-check failures).
@@ -199,14 +202,6 @@ newlog() {  # newlog NAME: a fresh logs/e13/NAME_<UTC>[_n].log, created now so i
 }
 trap on_exit EXIT
 
-sha_check() {  # sha_check MANIFEST: verify from the root (paths are repo-relative)
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum -c --quiet "$1" >/dev/null 2>&1
-  else
-    shasum -a 256 -c --quiet "$1" >/dev/null 2>&1
-  fi
-}
-
 approved() {
   [ -s "$APPROVAL" ] && grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z' "$APPROVAL"
 }
@@ -215,12 +210,8 @@ manifests_of() {  # manifests_of STEP ARGS...: the driver's list, one path per l
   "$PY" "$DRIVER" "$@" --print-manifests </dev/null
 }
 
-all_verify() {  # all_verify "LIST": non-empty, every manifest non-empty and verifying
-  local m
-  [ -n "$1" ] || return 1
-  for m in $1; do
-    [ -s "$m" ] && sha_check "$m" || return 1
-  done
+is_done() {  # is_done STEP ARGS...: manifests verify and their dependency records still match
+  "$PY" "$DRIVER" "$@" --check-done </dev/null
 }
 
 backend_of() {  # backend_of ARGS...: --backend X, else bench/lora_check.json's organism_backend
@@ -275,8 +266,8 @@ run_step() {  # run_step STEP ARGS...
   case "$step" in
     sweep|final-patch|manifest|recovery) ;;
     *)
-      if all_verify "$mans"; then
-        say "skip $step $*: $(echo $mans) verify"
+      if is_done "$step" "$@"; then
+        say "skip $step $*: $(echo $mans) verify and their dependencies are unchanged"
         echo "E13_STEP_OK $step skipped"
         return 0
       fi ;;
@@ -299,8 +290,8 @@ EOF
     echo "E13_STEP_FAIL $step rc=$rc"
     return "$rc"
   fi
-  if [ -n "$mans" ] && ! all_verify "$mans"; then
-    say "FAILED $step: exited 0 but $(echo $mans) missing or not verifying"
+  if [ -n "$mans" ] && ! is_done "$step" "$@"; then
+    say "FAILED $step: exited 0 but $(echo $mans) missing, not verifying or without a matching dependency record"
     echo "E13_STEP_FAIL $step rc=0"
     return 1
   fi

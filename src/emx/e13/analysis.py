@@ -368,6 +368,11 @@ def site_patch(rd: Reader, site: str, patch_seed: str, strength: dict | None,
         return {**base, "status": "no_strength_record"}
     if strength.get("outcome") == "stop_dev_gap":
         return {**base, "status": "dev_gap_undefined"}
+    if all(a is None for a in base["strength"].values()):
+        # both gates failed development eligibility: no final-patch cells were generated for this
+        # site, so the readout is the development failure itself (scenario 8), not a missing file
+        return {**base, "status": "assessed", "matched": None,
+                "gates": {g: {"status": "failed_on_dev", "passed": False} for g in C.GATES}}
     a0, ok0 = rd.scored(C.gen_name("fpatch", patch_seed, "a0"))
     st, ok1 = rd.scored(C.gen_name("fpatch", patch_seed, site))
     if a0 is None or st is None:

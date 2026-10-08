@@ -185,12 +185,17 @@ def test_merge_retry_once_then_error_and_validation():
         assert len(fake.calls) == 2  # one retry, then stop
 
 
-def test_merge_needs_two_named_features():
+def test_merge_without_recurring_feature_freezes_empty_list():
+    # code review r1 (laptop finding 11): descriptive audit, never a blocker
     fake = FakeCall(lambda iid, p: json.dumps(
         {"features": [{"name": "a", "definition": "x", "batches": [0]}]}))
-    with pytest.raises(S.StyleError, match="no merged feature"):
-        S.merge_detail(None, [["a: x"], ["b: y"]], kind="notices", out_path="/dev/null",
-                       call=fake)
+    out = S.merge_detail(None, [["a: x"], ["b: y"]], kind="notices", out_path="/dev/null",
+                         call=fake)
+    assert out["features"] == [] and "no merged feature" in out["empty_reason"]
+    out = S.merge_detail(None, [["a: x"], []], kind="notices", out_path="/dev/null", call=fake)
+    assert out["features"] == [] and len(fake.calls) == 1  # under 2 non-empty batches: no call
+    rated = S.rate_many(None, [("n1", "text")], [], out_path="/dev/null", note="E13: x")
+    assert rated["ratings"] == {} and rated["skipped"]
 
 
 # --- rater --------------------------------------------------------------------------------------

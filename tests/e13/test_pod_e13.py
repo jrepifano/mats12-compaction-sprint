@@ -532,6 +532,7 @@ TRACKED = [
     *REAL,
     "scripts/e13_pod.py",
     "scripts/pod_run_e13.sh",
+    "scripts/pod_killswitch.sh",  # sent alone before the bulk transfer
     "prompts/E1/aligned_v1.txt",
     "prompts/E13/notice_writer_v1.txt",
     "results/E13/inputs/manifest.json",
@@ -727,7 +728,7 @@ def test_pod_push_e13_unreadable_manifest_warns(checkout, tmp_path):
     assert "WARNING" in r.stdout and "manifest.json" in r.stdout
 
 
-def real_push_bin(tmp_path, *, deadline="4102444800", arm_rc=0):
+def real_push_bin(tmp_path, *, deadline="4102444800", arm_rc=0, armed_pod="$1", key_check="ok"):
     """Fake uv (session env, the dollar deadline; python -m emx.e13.podhours is run for real),
     ssh (answers the killswitch arm with an ARMED line) and rsync (accepts). All calls logged."""
     calls = tmp_path / "calls.txt"
@@ -749,7 +750,7 @@ def real_push_bin(tmp_path, *, deadline="4102444800", arm_rc=0):
         'case "$*" in\n'
         '  *"pod_killswitch.sh arm "*)\n'
         "    set -- $(echo \"$*\" | sed 's/.*pod_killswitch.sh arm //')\n"
-        f'    echo "t ARMED pod=$1 deadline=$2 (u) key_check=ok"; exit {arm_rc} ;;\n'
+        f'    echo "t ARMED pod={armed_pod} deadline=$2 (u) key_check={key_check}"; exit {arm_rc} ;;\n'
         "esac\nexit 0\n",
     )
     fake_bin(tmp_path, "rsync", f'echo "rsync $*" >> {calls}\nexit 0\n')
@@ -826,16 +827,169 @@ def test_pod_push_e13_arms_at_the_earlier_deadline(checkout, tmp_path, which):
     assert "killswitch _A:" in r.stdout and "pod synced" in r.stdout
 
 
-def test_pod_push_e13_arms_at_the_pod_hour_deadline_without_a_dollar_deadline(checkout, tmp_path):
+def no_bulk(calls: Path) -> bool:
+    """Nothing but the killswitch send and its arm reached the pod (no rsync, no other ssh)."""
+    got = calls.read_text().splitlines() if calls.exists() else []
+    pod = [c for c in got if c.startswith(("ssh", "rsync", "scp"))]
+    return all("pod_killswitch.sh" in c for c in pod)
+
+
+def test_pod_push_e13_refuses_without_a_dollar_deadline(checkout, tmp_path):
+    """Finding 5: fail closed. No dollar deadline: exit 4 before anything reaches the pod."""
     approve(tmp_path / "logs")
     now = datetime.now(UTC)
     write_events(tmp_path, [created("pq", "_A", now - h(1), 3.49)])
     calls, env = real_push_bin(tmp_path, deadline="")
     r = push(checkout, "--exp", "E13", "--slot", "_A", "--no-setup", dry=False, env=env)
+    assert r.returncode == 4, r.stdout + r.stderr
+    assert "dollar deadline could not be computed" in r.stderr and "UNARMED" in r.stderr
+    got = calls.read_text().splitlines()
+    assert not any(c.startswith(("ssh", "rsync", "scp")) for c in got), got
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [{"arm_rc": 1}, {"armed_pod": "other"}, {"key_check": "unknown"}],
+    ids=["ssh-fails", "wrong-pod", "key-unchecked"],
+)
+def test_pod_push_e13_refuses_the_transfer_when_arming_fails(checkout, tmp_path, kw):
+    approve(tmp_path / "logs")
+    now = datetime.now(UTC)
+    write_events(tmp_path, [created("pq", "_A", now - h(1), 3.49)])
+    calls, env = real_push_bin(tmp_path, **kw)
+    r = push(checkout, "--exp", "E13", "--slot", "_A", dry=False, env=env)  # setup requested
+    assert r.returncode == 4, r.stdout + r.stderr
+    assert "UNARMED" in r.stderr and "pod synced" not in r.stdout
+    assert len(arms(calls)) == 1 and no_bulk(calls)
+    assert "pod_setup.sh" not in calls.read_text()
+
+
+def test_pod_push_e13_arms_before_the_bulk_transfer(checkout, tmp_path):
+    approve(tmp_path / "logs")
+    now = datetime.now(UTC)
+    write_events(tmp_path, [created("pq", "_A", now - h(1), 3.49)])
+    calls, env = real_push_bin(tmp_path)
+    r = push(checkout, "--exp", "E13", "--slot", "_A", "--no-setup", dry=False, env=env)
     assert r.returncode == 0, r.stdout + r.stderr
-    (got,) = arms(calls)
-    assert abs(int(got.split()[1]) - (now.timestamp() + 10 * 3600)) < 120
-    assert "dollar deadline unavailable" in r.stderr
+    got = [c for c in calls.read_text().splitlines() if c.startswith(("ssh", "rsync", "scp"))]
+    send = next(i for i, c in enumerate(got) if "pod_killswitch.sh.part" in c)
+    arm = next(i for i, c in enumerate(got) if "pod_killswitch.sh arm " in c)
+    bulk = next(i for i, c in enumerate(got) if c.startswith("rsync") or "command -v rsync" in c)
+    assert send == 0 and send < arm < bulk
+    assert "armed and acknowledged before the bulk transfer" in r.stdout
+
+
+# --- pod_push.sh --exp E13 --restore (review finding 3) -------------------------------------------
+
+RESTORED = {
+    "train": {
+        "results/E13/train/org_r1_s0.json": b'{"steps": []}\n',
+        "results/E13/train/org_r1_s0.steps.jsonl": b"{}\n",
+        "results/E13/adapters/org_r1_s0/adapter_config.json": b"{}\n",
+        "results/E13/adapters/org_r1_s0/adapter_model.safetensors": b"\x00\x01" * 16,
+    },
+    "direction": {
+        "results/E13/direction/acts_resid_l14.safetensors": b"\x02" * 32,
+        "results/E13/direction/resid_l14.json": b"x\n",  # already a named extra
+    },
+    "recovery": {"results/E13/gen/sweep__org_r1_s0.csv": b"a,b\n1,2\n"},
+}
+
+
+def write_local_manifests(root: Path) -> None:
+    for step, files in RESTORED.items():
+        lines = []
+        for rel, data in files.items():
+            (root / rel).parent.mkdir(parents=True, exist_ok=True)
+            (root / rel).write_bytes(data)
+            lines.append(f"{sha256(root / rel)}  {rel}")
+        (root / C.manifest_path(step)).write_text("\n".join(lines) + "\n")
+    (root / C.laptop_manifest_path("judge")).write_text(f"{'0' * 64}  results/E13/judged/x.csv\n")
+
+
+def restore_set(stdout: str) -> set[str]:
+    return {
+        ln.split("  restore ", 1)[1] for ln in stdout.splitlines() if ln.startswith("  restore ")
+    }
+
+
+def test_pod_push_e13_restore_lists_exactly_the_verified_set(checkout, tmp_path):
+    approve(tmp_path / "logs")
+    write_local_manifests(tmp_path)
+    r = push(checkout, "--exp", "E13", "--slot", "_A", "--restore")
+    assert r.returncode == 0, r.stderr
+    assert "WARNING" not in r.stdout
+    want = {f for files in RESTORED.values() for f in files} | {
+        C.manifest_path(s) for s in RESTORED
+    }
+    assert restore_set(r.stdout) == want  # never the laptop manifest or what it lists
+    assert want <= sent(r.stdout)
+    assert "adapters to /ws/adapters: org_r1_s0" in r.stdout
+    r = push(checkout, "--exp", "E13", "--slot", "_A", "--restore-only", "MANIFEST.train.sha256")
+    assert r.returncode == 0, r.stderr
+    assert restore_set(r.stdout) == set(RESTORED["train"]) | {C.manifest_path("train")}
+    r = push(checkout, "--exp", "E13", "--slot", "_A")  # no --restore: none of it is sent
+    assert not restore_set(r.stdout) and not (set(RESTORED["train"]) & sent(r.stdout))
+    for bad in (("--exp", "EQ0", "--restore"), ("--exp", "E13", "--restore-only", "../x")):
+        r = push(checkout, *bad, "--slot", "_A")
+        assert r.returncode == 2, r.stderr
+
+
+@pytest.mark.parametrize("breakage", ["corrupt", "missing", "escape"])
+def test_pod_push_e13_restore_refuses_what_does_not_verify(checkout, tmp_path, breakage):
+    approve(tmp_path / "logs")
+    write_local_manifests(tmp_path)
+    w = tmp_path / "results/E13/adapters/org_r1_s0/adapter_model.safetensors"
+    if breakage == "corrupt":
+        w.write_bytes(b"\xff" * 32)
+    elif breakage == "missing":
+        w.unlink()
+    else:  # a listed path outside results/E13
+        m = tmp_path / C.manifest_path("train")
+        m.write_text(m.read_text() + f"{'0' * 64}  results/E13/../../.env\n")
+    r = push(checkout, "--exp", "E13", "--slot", "_A", "--restore")
+    assert r.returncode == 0 and "WARNING: --restore does not verify" in r.stdout  # dry: warns
+    assert "MANIFEST.train.sha256" in r.stdout
+    calls, env = real_push_bin(tmp_path)
+    r = push(checkout, "--exp", "E13", "--slot", "_A", "--restore", dry=False, env=env)
+    assert r.returncode == 1 and "do not verify locally" in r.stderr, r.stdout + r.stderr
+    got = calls.read_text().splitlines() if calls.exists() else []
+    assert not any(c.startswith(("ssh", "rsync", "scp")) for c in got), got
+    # naming only the good manifests restores them
+    r = push(
+        checkout,
+        "--exp",
+        "E13",
+        "--slot",
+        "_A",
+        "--restore-only",
+        "MANIFEST.direction.sha256,MANIFEST.recovery.sha256",
+        "--no-setup",
+        dry=False,
+        env=env,
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_pod_push_e13_restore_verifies_on_the_pod_and_copies_adapters(checkout, tmp_path):
+    approve(tmp_path / "logs")
+    write_local_manifests(tmp_path)
+    now = datetime.now(UTC)
+    write_events(tmp_path, [created("pq", "_A", now - h(1), 3.49)])
+    calls, env = real_push_bin(tmp_path)
+    r = push(
+        checkout, "--exp", "E13", "--slot", "_A", "--restore", "--no-setup", dry=False, env=env
+    )
+    assert r.returncode == 0, r.stdout + r.stderr
+    got = [c for c in calls.read_text().splitlines() if c.startswith("ssh")]
+    check = next(i for i, c in enumerate(got) if "sha256sum -c" in c)
+    cp = next(i for i, c in enumerate(got) if "cp -p" in c)
+    assert check < cp
+    for f in ("adapter_config.json", "adapter_model.safetensors"):
+        assert (
+            f"cp -p /ws/emx/results/E13/adapters/org_r1_s0/{f} {C.POD_ADAPTER_DIR}/org_r1_s0/{f}"
+        ) in got[cp]
+    assert "restored adapters into /ws/adapters: org_r1_s0" in r.stdout
 
 
 def test_pod_push_e13_refuses_bad_slots_modified_and_untracked_files(checkout, tmp_path):

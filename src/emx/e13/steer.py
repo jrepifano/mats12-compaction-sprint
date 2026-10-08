@@ -184,6 +184,9 @@ def _iii_ok(stats: SteerStats, width: int, n_forward: int) -> bool:
             and stats.decode_calls == n_forward - 1 and all(s == 1 for s in stats.seq_lens[1:]))
 
 
+PROJ_REL_TOL = 0.1
+
+
 def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list[int]],
               gu) -> tuple[float | None, float | None, bool]:
     """Per non-pad position: err = max|hooked - ref + g*u|, tol = BF16_ATOL_REL x max|h| with
@@ -194,6 +197,12 @@ def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list
 
     if len(hooked) != len(ref) or any(a.shape != b.shape for a, b in zip(hooked, ref)):
         return None, None, False
+    # Code review r1 (pod finding 6): the per-coordinate tolerance alone can accept a no-op hook
+    # when g*u is near the norm floor and the residual has outlier coordinates. The edit's
+    # projection on u must also equal -g within PROJ_REL_TOL: bf16 rounding noise along one
+    # direction is ~sqrt(d) times smaller than its per-coordinate size.
+    gnorm = float(gu.float().norm())
+    unit = (gu.float() / gnorm) if gnorm > 0 else None
     width = max(len(p) for p in prompts)
     worst, ok = (0.0, 0.0, -1.0), True
     for c, (hk, rf) in enumerate(zip(hooked, ref, strict=True)):
@@ -210,6 +219,9 @@ def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list
             tol = C.BF16_ATOL_REL * torch.maximum(rf[i, sel].abs().amax(-1),
                                                   hk[i, sel].abs().amax(-1))
             ok = ok and bool((err <= tol).all())
+            if unit is not None:
+                proj = (hk[i, sel].float() - rf[i, sel].float()) @ unit.to(hk.device)
+                ok = ok and bool(((proj + gnorm).abs() <= PROJ_REL_TOL * gnorm).all())
             ratio = err / torch.clamp(tol, min=1e-30)
             j = int(ratio.argmax())
             if float(ratio[j]) > worst[2]:

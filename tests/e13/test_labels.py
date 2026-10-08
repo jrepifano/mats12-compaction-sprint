@@ -286,7 +286,7 @@ def _key(specs, kind="full", stopped=()):
     return key, L.draw_record(page, key)
 
 
-def _full_specs(luna_em=(), gfl_em=(), luna_fail=(), gfl_ref=(), luna_ref=()):
+def _full_specs(luna_em=(), gfl_em=(), luna_fail=(), gfl_ref=(), luna_ref=(), gfl_fail=None):
     """38 items in A(12) B input(6) B output(6) C 4+4, D 3+3 order; calls by item index."""
     cells = ([("A", None, "em")] * 12 + [("B", "input", "em")] * 6 + [("B", "output", "em")] * 6
              + [("C", "input", "utility")] * 4 + [("C", "output", "utility")] * 4
@@ -294,7 +294,8 @@ def _full_specs(luna_em=(), gfl_em=(), luna_fail=(), gfl_ref=(), luna_ref=()):
     out = []
     for n, (st, site, f) in enumerate(cells):
         lu = _calls(em=n in luna_em, success=n not in luna_fail, refusal=n in luna_ref)
-        gf = _calls(em=n in gfl_em, refusal=n in gfl_ref)
+        gf = _calls(em=n in gfl_em, refusal=n in gfl_ref,
+                    success=True if gfl_fail is None else n not in gfl_fail)
         out.append((st, site, f, lu, gf))
     return out
 
@@ -318,7 +319,8 @@ FAIL_IDX = (24, 28, 32, 35)
 
 
 def test_perfect_agreement_validates_everything():
-    key, rec = _key(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX))
+    key, rec = _key(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX,
+                                gfl_fail=FAIL_IDX))
     r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
     assert tuple(r) == C.LABELS_RECORD_KEYS
     assert r["complete"] and r["n_labeled"] == 38
@@ -507,3 +509,14 @@ def test_notice_check_bar():
     labs.pop(next(iter(labs)))
     r = L.score_pass(labs, key, rec)
     assert not r["complete"] and r["notice_check"] is None
+
+
+def test_gemini_utility_stratum_flag_unvalidates_that_screen():
+    # Amendment B item 7: each site's C and D flags apply for each judge (code review r1, #8)
+    gfl_fail = (24, 25, 26, 27, 28, 32, 35)  # Gemini calls every input-site C item a failure
+    key, rec = _key(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX,
+                                gfl_fail=gfl_fail))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    e = r["strata_flags"]["C:input"]
+    assert e["gfl"]["flagged"] and e["gfl"]["applied"] and not e["luna"]["flagged"]
+    assert "stratum:C:input:gfl" in r["unvalidated"]["readouts"]["screen:utility_loss_ugen:input"]

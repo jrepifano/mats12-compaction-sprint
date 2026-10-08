@@ -195,3 +195,18 @@ def test_broken_gate_fails_iv(tiny_qwen, monkeypatch):
 def test_hook_checks_need_enough_prompts(tiny_qwen):
     with pytest.raises(ValueError, match="prompts"):
         steer.hook_checks(tiny_qwen, None, "input", _unit(), 1.0, _prompts(3))
+
+
+@pytest.mark.parametrize("site", C.SITE_NAMES)
+def test_noop_hook_near_norm_floor_fails_ii(site, monkeypatch):
+    """Code review r1 (pod finding 6): in bf16 with g near the 1% norm floor, every component of
+    g*u can sit under the per-coordinate tolerance; the projection check must still catch a hook
+    that fires but changes nothing, while the correct hook passes."""
+    from e13.conftest import make_tiny_qwen
+
+    m = make_tiny_qwen(dtype=torch.bfloat16)
+    g = 0.02 * _site_norm(m, site)
+    assert _checks(m, site, g)["passed"]
+    monkeypatch.setattr(steer, "_apply", lambda h, d: h)
+    out = _checks(m, site, g)
+    assert out["iii_prefill_calls"] == 1 and not out["ii_pass"] and not out["passed"]

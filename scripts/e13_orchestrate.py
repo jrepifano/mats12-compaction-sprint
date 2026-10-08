@@ -63,6 +63,7 @@ from emx.e13 import contracts as C
 LOG = "logs/E13-orchestrate.jsonl"
 POD_WS = C.POD_ROOT
 POLL_S = 60
+MAX_POLL_FAILURES = 10  # consecutive failed polls (~10 min) -> the pod is treated as unreachable
 MAX_JOB_H = 8.0  # no single pod job may run longer (the watchdog and killswitch cap the spend)
 PY = ["uv", "run", "python"]
 BLOCKED_RC = 10
@@ -257,8 +258,15 @@ class Orchestrator:
             f"cd {POD_WS} && grep -h '^E13_' {log} | tail -n 5; "
             f"echo E13_ORCH_ALIVE=$(pgrep -f '[p]od_run_e13.sh' | wc -l)", 60)
         if rc != 0:
-            self.emit("poll_failed", job=name, rc=rc, tail=out[-200:])
+            j["poll_failures"] = j.get("poll_failures", 0) + 1
+            self.save()
+            self.emit("poll_failed", job=name, rc=rc, n=j["poll_failures"], tail=out[-200:])
+            if j["poll_failures"] >= MAX_POLL_FAILURES:
+                raise Blocked(f"pod unreachable for {j['poll_failures']} polls during {name}: "
+                              f"diagnose, then `e13_orchestrate.py relaunch` (replacement pod, "
+                              f"pod_push --restore) or re-run advance", human=True)
             return "running"  # a dropped ssh is not a dead pod; the watchdog guards the cap
+        j["poll_failures"] = 0
         if "E13_CHAIN_DONE" in out:
             j["state"] = "done"
         elif "E13_CHAIN_FAILED" in out:
@@ -360,11 +368,37 @@ class Orchestrator:
                           "scripts/e13_label_score.py notice --labels <json>"}
             self.save()
             raise Blocked("Jacob's notice check (page ready)", human=True)
+        bad = self.label_record_problems(rec, "notice")
+        if bad:  # code review r1 (laptop finding 7): never trust a stale or partial record
+            raise RuntimeError(f"notice-check record not bound to the current files: {bad}")
         nc = rec.get("notice_check") or {}
-        if not rec.get("complete") or not nc.get("passed"):
+        if not nc.get("passed"):
             raise Stop("notice_check", json.dumps(nc))
         self.state["human"].pop("notice_check", None)
         return {"notice_check": nc}
+
+    def label_record_problems(self, rec: dict, kind: str) -> list[str]:
+        """A labels record is usable only if complete, of this kind and rule version, and its
+        draw, key and every source file still hash as recorded."""
+        out = []
+        if rec.get("kind") != kind:
+            out.append(f"kind {rec.get('kind')!r}")
+        if not rec.get("complete") or not rec.get("n_items") or \
+                rec.get("n_labeled") != rec.get("n_items"):
+            out.append("incomplete")
+        if rec.get("rule_version") != C.RULE_VERSION:
+            out.append(f"rule version {rec.get('rule_version')!r}")
+        d = f"{C.LABELS_DIR}/{kind}"
+        for k, f in (("draw_sha256", "draw.json"), ("key_sha256", "key.private.json")):
+            if not rec.get(k) or rec.get(k) != self._sha(f"{d}/{f}"):
+                out.append(f"{k} differs from {d}/{f}")
+        src = rec.get("source_sha256") or {}
+        if not src:
+            out.append("no source files recorded")
+        for path, sha in sorted(src.items()):
+            if self._sha(path) != sha:
+                out.append(f"source {path} changed")
+        return out
 
     def st_inputs(self) -> dict:
         self.py("e13_style.py", "answers")
@@ -403,11 +437,34 @@ class Orchestrator:
             raise Stop("plumbing", f"diff {rec.get('diff')}")
         return {"outcome": rec["outcome"]}
 
+    def pod_steps_done(self, recipe: str) -> list[str]:
+        """Pod step names (the projection's vocabulary; code review r1, laptop finding 3) whose
+        work is finished for `recipe`: the r1-only steps once pod_a ran, and the recipe's own
+        training, adapter smoke and organism batteries only when done for that recipe."""
+        done: list[str] = []
+        if self.done("pod_a"):
+            done += STAGE_POD_STEPS["pod_a"]
+        if self.done("pod_b"):
+            done.append("bench-hooked")
+            if recipe == "r1":
+                done += ["train", "smoke-adapters"]
+        if recipe == "r32" and self.done("pod_r32"):
+            done += ["train", "smoke-adapters"]
+        if self.state["jobs"].get(f"gen_rest_{recipe}", {}).get("state") == "done":
+            done.append("gen-organism")
+        for st, steps in (("direction", ["capture", "direction", "hook-check"]),
+                          ("sweep", ["sweep"]), ("final_patch", ["final-patch"])):
+            if self.done(st):
+                done += steps
+        return sorted(set(done))
+
     def projection_state(self, **kw) -> dict:
         lc = self.read(f"{C.BENCH_DIR}/lora_check.json") or {}
-        st = {"recipe": self.state.get("recipe", "r1"),
-              "organism_backend": lc.get("organism_backend", "vllm"),
-              "steps_done": sorted(self.state["stages"])}
+        recipe = kw.pop("recipe", self.state.get("recipe", "r1"))
+        st = {"recipe": recipe, "organism_backend": lc.get("organism_backend", "vllm"),
+              "steps_done": self.pod_steps_done(recipe), "fallback_pending": False}
+        if self.state.get("live_sites") is not None:
+            st["sites"] = list(self.state["live_sites"])
         st.update(kw)
         return st
 
@@ -424,9 +481,6 @@ class Orchestrator:
     def st_projection(self, a8_drop_sites: list[str] | None = None, **state_kw) -> dict:
         gpu, api, hours = self.spent()
         extra = [] if a8_drop_sites is None else ["--a8-drop-sites", *a8_drop_sites]
-        if self.state.get("cuts"):
-            state_kw.setdefault("cuts", [c for c in self.state["cuts"]
-                                         if c != "drop_a8_where_a4_fails"])
         self.decide("projection", "--state", json.dumps(self.projection_state(**state_kw)),
                     "--spent-gpu", f"{gpu:.4f}", "--spent-api", f"{api:.4f}",
                     "--pod-hours", f"{hours:.4f}", *extra)
@@ -434,8 +488,11 @@ class Orchestrator:
         self.commit([C.DECISIONS_DIR], f"projection ({rec['outcome']})")
         if rec["outcome"] == "stop":
             raise Stop("projection", json.dumps(rec.get("usd")))
+        # "needs_probe": only dropping alpha 8 (cut ii, resolved by the sweep-time probe) can
+        # make it fit; the probe then re-projects with every cut recomputed from scratch
         self.state["cuts"] = rec.get("cuts", [])
-        self.push()
+        if self.state.get("pod") and not self.state["pod"].get("down"):
+            self.push()
         return {"outcome": rec["outcome"], "cuts": rec.get("cuts", [])}
 
     def organism_steps(self, recipe: str, batteries: tuple[str, ...]) -> list[list[str]]:
@@ -468,7 +525,7 @@ class Orchestrator:
             recipe = "r32"
             self.state["recipe"] = recipe
             self.save()
-            self.st_projection(recipe="r32", fallback_pending=True)
+            self.st_projection(recipe="r32")
             self.run_pod("pod_r32", [["train", "--recipe", recipe],
                                      ["smoke-adapters", "--recipe", recipe],
                                      *self.organism_steps(recipe, ("dev",))])
@@ -611,11 +668,15 @@ class Orchestrator:
         self.pull(self.manifests_for([args]))
         return {"args": args}
 
-    def st_strength(self) -> dict:
+    def st_sweep_judged(self) -> dict:
         k = self.state["patch_seed"]
         names = [C.gen_name("sweep", k, "a0")]
         names += [C.gen_name("sweep", k, s) for s in self.state["live_sites"]]
         self.judge(*names)
+        return {"names": names}
+
+    def st_strength(self) -> dict:
+        k = self.state["patch_seed"]
         self.decide("consistency", "--key", k)
         cons = self.decision("consistency")
         if cons["outcome"] != "pass":
@@ -646,7 +707,9 @@ class Orchestrator:
         return ",".join(dict.fromkeys(cells))
 
     def st_label_pass(self) -> dict:
-        kind = "full" if self.done("strength") else "early"
+        # prereg §4.4: the full pass once the strength sweep has been judged, else the early-stop
+        # pass (code review r1, laptop finding 10)
+        kind = "full" if self.done("sweep_judged") else "early"
         args = [kind, "--recipe", self.state.get("recipe", "r1")]
         if self.state.get("patch_seed"):
             args += ["--patch-key", self.state["patch_seed"]]
@@ -675,7 +738,7 @@ class Orchestrator:
         return {"cells": cells}
 
     def st_teardown(self, closing: bool = True) -> dict:
-        if self.state.get("pod"):
+        if self.state.get("pod") and not self.state["pod"].get("down"):
             try:
                 if not closing:
                     raise RuntimeError("stopped: recovery pull only")
@@ -700,16 +763,59 @@ class Orchestrator:
         self.commit([C.RESULTS], "analysis")
         return {"kind": kind}
 
+    def relaunch(self) -> int:
+        """Replacement pod (plan §7 "Pod lost"): settle the old pod, check the GPU line and the
+        pod-hours, launch a new pod with the patch-stage reservation, push with --restore (the
+        locally verified artifacts and adapters), and forget the interrupted job so the next
+        `advance` restarts it (pod steps skip finished work by their manifests and deps)."""
+        self.load()
+        if self.state.get("stopped"):
+            self.emit("relaunch_refused", reason="run stopped")
+            return STOP_RC
+        self.pull_recovery()
+        self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
+                 "--reason", "e13_relaunch"], timeout=1800)
+        gpu, _api, hours = self.spent()
+        if gpu >= C.GPU_LIMIT_USD or hours >= C.POD_HOURS_CAP:
+            self.state["stopped"] = {"rule": "relaunch_over_cap", "utc": utc(),
+                                     "detail": f"gpu ${gpu:.2f}, {hours:.2f} pod-h"}
+            self.save()
+            return STOP_RC
+        old = self.state.get("pod", {})
+        self.state.setdefault("lost_pods", []).append(old)
+        usd = C.POD_RESERVATION_USD["patch"]
+        out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
+                       "--usd", f"{usd:.2f}", "--note", "E13 replacement pod"])
+        rid = out.strip().splitlines()[-1].strip()
+        self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT, "--stage", "patch",
+                 "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+        self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT, "--restore"],
+                timeout=5400)
+        self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(),
+                             "stage": "patch", "replacement": True}
+        for j in self.state["jobs"].values():
+            if j.get("state") == "running":
+                j["state"] = "lost"
+        self.state["jobs"] = {k: v for k, v in self.state["jobs"].items()
+                              if v.get("state") != "lost"}
+        self.save()
+        self.emit("relaunched", reservation=rid)
+        return 0
+
     # -- the walk ---------------------------------------------------------------------------
 
     def advance(self) -> int:
         self.load()
-        if self.state.get("stopped"):
-            self.emit("already_stopped", **self.state["stopped"])
-            return STOP_RC
         try:
+            if self.state.get("stopped"):
+                # code review r1 (laptop finding 6): the scientific stop stands, but cleanup,
+                # the labelling pass and the analysis stay resumable (no new generation)
+                self.after_stop()
+                self.print_status()
+                return STOP_RC
             self.walk()
         except Blocked as b:
+            self.state["blocked"] = {"reason": b.reason, "human": b.human, "utc": utc()}
             self.emit("blocked", reason=b.reason, human=b.human)
             self.save()
             self.print_status()
@@ -759,6 +865,7 @@ class Orchestrator:
         S("dirsource", self.st_dirsource)
         S("direction", self.st_direction)
         S("sweep", self.st_sweep)
+        S("sweep_judged", self.st_sweep_judged)
         S("strength", self.st_strength)
         S("label_pass", self.st_label_pass)
         S("final_patch", self.st_final_patch)
@@ -766,35 +873,37 @@ class Orchestrator:
         S("analysis", self.st_analysis)
 
     def on_stop(self, s: Stop) -> None:
-        """Record the stop; finish what the stop rules still require: the organism batteries
-        are judged when they exist, the early-stop (or full) labelling pass is drawn, the pod's
-        results are pulled and the pod is terminated."""
+        """Record the stop, then run the post-stop path (`after_stop`)."""
         self.state["stopped"] = {"rule": s.rule, "detail": s.detail, "utc": utc(),
                                  "stage": self.state.get("current")}
         self.save()
         self.emit("stop", rule=s.rule, detail=s.detail)
-        if self.state.get("pod") and not self.state["pod"].get("down"):
-            self.pull_recovery()
-        pod_up = self.state.get("pod") and not self.state["pod"].get("down")
-        if pod_up and self.done("gen_dev") and s.rule not in ("pod_hours_cap", "projection"):
-            try:  # the organism readout still needs its batteries
-                self.finish_organism_batteries()
-            except (Stop, Blocked, RuntimeError) as e:
-                self.emit("stop_followup_failed", what="organism batteries", error=str(e)[-400:])
-        if self.done("dev_decision") and not self.done("label_pass"):
-            try:
-                self.st_label_pass()
-                self.mark("label_pass", kind=self.state["label_kind"])
-            except RuntimeError as e:
-                self.emit("stop_followup_failed", what="label pass", error=str(e)[-400:])
-        if pod_up:
-            try:
-                self.st_teardown(closing=s.rule not in ("pod_step_failed", "pod_job_timeout",
-                                                        "pod_hours_cap"))
-                self.mark("teardown")
-            except RuntimeError as e:
-                self.emit("teardown_failed", error=str(e)[-400:])
+        try:
+            self.after_stop()
+        except Blocked as b:
+            self.emit("blocked", reason=b.reason, human=b.human)
+        except (Stop, RuntimeError) as e:
+            self.emit("after_stop_incomplete", error=str(e)[-400:])
         self.save()
+
+    def after_stop(self) -> None:
+        """What the stop rules still require, each an idempotent stage, so an interrupted
+        cleanup is retried and the labels lead to the analysis: the organism batteries are
+        judged when they were generated (not after a pod failure, the pod-hour cap or a
+        projection stop), the labelling pass is drawn (full if the sweep was judged, else the
+        early-stop pass), the pod's results are pulled and the pod terminated, then the
+        analysis waits for the labels. No new patch generation is started."""
+        rule = self.state["stopped"]["rule"]
+        pod_failure = rule in ("pod_step_failed", "pod_job_timeout", "pod_hours_cap")
+        pod_live = bool(self.state.get("pod")) and not self.state["pod"].get("down")
+        if pod_live and self.done("gen_dev") and not pod_failure and rule != "projection":
+            self.finish_organism_batteries()
+        if self.done("dev_decision"):
+            self.stage("label_pass", self.st_label_pass)
+        if self.state.get("pod"):
+            self.stage("teardown", lambda: self.st_teardown(closing=not pod_failure))
+        if self.done("dev_decision"):
+            self.stage("analysis", self.st_analysis)
 
     # -- status ------------------------------------------------------------------------------
 
@@ -807,7 +916,8 @@ class Orchestrator:
         nxt = next((n for n in STAGE_NAMES if not self.done(n)), "none")
         block = {
             "phase": self.state.get("current"), "next": nxt,
-            "stopped": self.state.get("stopped"),
+            "stopped": self.state.get("stopped"), "blocked": self.state.get("blocked"),
+            "error": self.state.get("error"),
             "spend": {"gpu_usd": round(gpu, 2), "api_usd": round(api, 2),
                       "total_usd": round(gpu + api, 2), "cap_usd": C.HARD_CAP_USD,
                       "gpu_kill_usd": C.GPU_LIMIT_USD, "api_limit_usd": C.API_LIMIT_USD},
@@ -820,16 +930,20 @@ class Orchestrator:
         print("E13_STATUS " + json.dumps(block, default=str, indent=1), flush=True)
 
 
+STAGE_POD_STEPS: dict[str, list[str]] = {
+    "pod_a": ["download", "smoke", "bench-train", "train-trigger", "lora-check", "gen-trigger"],
+}
 STAGE_NAMES: tuple[str, ...] = (
     "notices", "style_notices", "notice_check", "inputs", "launch", "pod_a", "plumbing", "pod_b",
-    "projection", "gen_dev", "dev_decision", "dirsource", "direction", "sweep", "strength",
+    "projection", "gen_dev", "dev_decision", "dirsource", "direction", "sweep", "sweep_judged",
+    "strength",
     "label_pass", "final_patch", "teardown", "analysis",
 )
 
 
 def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["status", "advance", "plan"])
+    ap.add_argument("cmd", choices=["status", "advance", "plan", "relaunch"])
     ap.add_argument("--no-wait", action="store_true",
                     help="return Blocked instead of polling a running pod job")
     a = ap.parse_args(argv)
@@ -839,6 +953,8 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     if a.cmd == "plan":
         print("\n".join(STAGE_NAMES))
         return 0
+    if a.cmd == "relaunch":
+        return o.relaunch()
     if a.cmd == "status":
         o.load()
         o.print_status()

@@ -129,6 +129,7 @@ class Fakes:
         self.applied_ok = True
         self.hook_passed = {"input": True, "output": True}
         self.dir_passed = {"input": True, "output": False}
+        self.hf_end = R.IM_END_ID  # the last id fake hfgen.decode_batch samples
 
     def install(self, monkeypatch):
         mods = {}
@@ -159,6 +160,7 @@ class Fakes:
         for f in ("cross_site_cosine", "write_direction", "load_unit"):
             setattr(di, f, getattr(REAL_DIR, f))
         h.run_hf = self.run_hf
+        h.decode_batch = self.decode_batch
         h.bench_hooked = self.bench_hooked
         st.hook_checks = self.hook_checks
         ac.capture_means = self.capture_means
@@ -234,6 +236,11 @@ class Fakes:
                 on_rows(rows)
             out += rows
         return out
+
+    def decode_batch(self, model, prompts_ids, seeds, **kw):
+        self.calls.append(("decode_batch", len(prompts_ids), model.active))
+        return [types.SimpleNamespace(token_ids=[5, 6, self.hf_end], finish_reason="stop",
+                                      seed=int(s)) for s in seeds]
 
     def bench_hooked(self, model, tok, requests, batch_sizes, steer_for=None):
         self.calls.append(("bench_hooked", len(requests), tuple(batch_sizes)))
@@ -364,7 +371,10 @@ def env(tmp_path, monkeypatch):
 
 
 def _names(root: Path, mid: str) -> list[str]:
-    return [n for _, n in pod.read_manifest(root / C.manifest_path(mid))]
+    """The manifest's files minus its dependency record (which every manifest lists)."""
+    names = [n for _, n in pod.read_manifest(root / C.manifest_path(mid))]
+    assert pod.deps_path(mid) in names
+    return [n for n in names if n != pod.deps_path(mid)]
 
 
 def _verifies(root: Path, rel: str) -> bool:
@@ -602,6 +612,29 @@ def test_smoke_adapters(env):
     assert ("applied", tuple(C.trained_keys("r1"))) in env.fk.calls
 
 
+def test_smoke_adapters_hf_checks_stop_token(env, monkeypatch):
+    _train(env)
+    _lora(env, passed=False)  # organism backend hf
+    monkeypatch.setattr(pod, "hf_adapter_applied", lambda m, ids, keys: (True, {"ok": 1}))
+    assert env.run("smoke-adapters", "--recipe", "r1") == 0
+    rec = json.loads((env.root / pod.smoke_adapters_record("r1")).read_text())
+    assert rec["backend"] == "hf" and {x["last_token_id"] for x in rec["items"]} == {R.IM_END_ID}
+    assert {c[2] for c in env.fk.calls if c[0] == "decode_batch"} == set(C.trained_keys("r1"))
+    env.fk.hf_end = R.ENDOFTEXT_ID  # stops on <|endoftext|>, not <|im_end|>
+    (env.root / C.manifest_path("smoke-adapters.r1")).unlink()
+    assert env.run("smoke-adapters", "--recipe", "r1") == 1
+    rec = json.loads((env.root / pod.smoke_adapters_record("r1")).read_text())
+    assert rec["passed"] is False
+    assert all(v["not_im_end_stops"] > 0 for v in rec["per_model"].values())
+    assert not (env.root / C.manifest_path("smoke-adapters.r1")).exists()
+
+
+def test_smoke_verdict_needs_im_end():
+    item = {"model_key": "k", "response": "x", "finish_reason": "stop", "last_token_id": None}
+    assert pod.smoke_verdict([item])[0] is False
+    assert pod.smoke_verdict([{**item, "last_token_id": R.IM_END_ID}])[0] is True
+
+
 # --- organism batteries --------------------------------------------------------------------------
 
 
@@ -644,6 +677,30 @@ def test_gen_organism_batteries_then_resume(env):
     assert env.run("gen-organism", "--recipe", "r1", "--battery", "dev") == 0
     assert list((env.root / C.GEN_DIR).glob("dev__base.csv.incomplete.*"))
     assert len(_rows(env.root, C.gen_name("dev", "base"))) == 480
+
+
+def test_gen_organism_rerun_on_changed_projection(env):
+    _train(env)
+    _lora(env)
+    _projection(env.root)
+    args = ("gen-organism", "--recipe", "r1", "--battery", "dev")
+    assert env.run(*args) == 0
+    assert env.run(*args, "--check-done") == 0
+    dep = json.loads((env.root / pod.deps_path("gen-organism.r1.dev")).read_text())
+    assert dep["inputs"][pod.PROJECTION] == G.sha256_file(env.root / pod.PROJECTION)
+    assert dep["inputs"][f"{C.ADAPTERS_DIR}/{KEY}/adapter_model.safetensors"]
+    _projection(env.root, "fits_cut")  # a new decision: the step is not done any more
+    assert env.run(*args, "--check-done") == 1
+    n = len(env.fk.calls)
+    assert env.run(*args) == 0
+    assert not [c for c in env.fk.calls[n:] if c[0] == "run_battery"]  # CSVs still verify
+    assert env.run(*args, "--check-done") == 0
+    # a changed input manifest regenerates the CSVs (their pins record it)
+    man = json.loads((env.root / C.INPUT_MANIFEST).read_text())
+    _put(env.root, C.INPUT_MANIFEST, json.dumps({**man, "note": "rebuilt"}))
+    assert env.run(*args, "--check-done") == 1
+    assert env.run(*args) == 0
+    assert len([c for c in env.fk.calls[n:] if c[0] == "run_battery"]) == 5
 
 
 # --- direction source, capture, direction, hook checks -------------------------------------------
@@ -714,6 +771,45 @@ def test_capture_direction_hook_check(env, capsys):
     # a failed hook check makes the site dead for the sweep
     assert env.run("sweep", "--seed-key", KEY, "--batch-size", "8", "--sites", "input") == \
         pod.REFUSED
+
+
+def test_check_done_follows_decisions(env):
+    _through_direction(env)
+
+    def done(*a):
+        return env.run(*a, "--seed-key", KEY, "--check-done")
+
+    assert done("capture") == 0 and done("direction") == 0
+    assert done("hook-check", "--site", "input") == 1  # never ran
+    assert done("capture", "--capture-batch", "8") == 1  # other arguments
+    p = env.root / pod.DIRSOURCE_LABELS
+    dec = json.loads(p.read_text())
+    first = next(x for x in dec["labels"] if x["label"] == "drop")
+    first["label"] = "bad"  # a relabelled answer: capture must rerun
+    G.write_json(p, dec)
+    assert done("capture") == 1
+    assert done("direction") == 0  # its inputs are the captured activations, unchanged so far
+    assert env.run("capture", "--seed-key", KEY) == 0
+    assert done("capture") == 0
+    assert done("direction") == 1  # the new capture changed what direction reads
+    assert env.run("direction", "--seed-key", KEY) == 0 and done("direction") == 0
+
+
+def test_train_reruns_on_changed_rows(env):
+    _train(env)
+    assert env.run("train", "--recipe", "r1", "--check-done") == 0
+    rel = f"{C.TRAIN_ROWS_DIR}/org.jsonl"
+    _put(env.root, rel, "".join(json.dumps({"row_id": int(i == 0)}) + "\n"
+                                for i in range(C.N_TRAIN_ROWS)))
+    man = json.loads((env.root / C.INPUT_MANIFEST).read_text())
+    man["files"][rel] = G.sha256_file(env.root / rel)
+    _put(env.root, C.INPUT_MANIFEST, json.dumps(man))
+    assert env.run("train", "--recipe", "r1", "--check-done") == 1
+    n = len(env.fk.calls)
+    assert env.run("train", "--recipe", "r1") == 0
+    again = [c[1] for c in env.fk.calls[n:] if c[0] == "train_arm"]
+    assert again == [k for k in C.trained_keys("r1") if k.startswith("org_")]  # good: same rows
+    assert env.run("train", "--recipe", "r1", "--check-done") == 0
 
 
 def test_capture_refuses_unlabelled_rows(env):
@@ -793,6 +889,67 @@ def test_sweep_one_site_and_cut(env):
     assert len(rows) == 4 * 2 * (8 * 10 + 4 * 3)
     assert not (env.root / C.gen_csv(C.gen_name("sweep", KEY, "output"))).exists()
     assert env.run("sweep", "--seed-key", KEY, "--batch-size", "64") == pod.REFUSED  # output dead
+
+
+def test_patch_resume_binding(env, capsys):
+    _live(env)
+    base = ["sweep", "--seed-key", KEY, "--batch-size", "64", "--sites", "input",
+            "--alphas-input", "1"]
+    probe = ["--qids", "i_feel_bored"]
+    assert env.run(*base, *probe) == 0
+    names = {p: C.gen_name("sweep", KEY, p) for p in ("a0", "input")}
+    for p, name in names.items():
+        b = json.loads((env.root / pod.binding_path(name)).read_text())
+        assert b["part"] == p and b["adapter_files"]
+        assert b["direction_sha256"] == (None if p == "a0" else G.sha256_file(
+            env.root / C.direction_path("input")))
+
+    def refused(why):
+        capsys.readouterr()
+        n = len(env.fk.calls)
+        assert env.run(*base, *probe) == pod.REFUSED
+        assert why in capsys.readouterr().out
+        assert not [c for c in env.fk.calls[n:] if c[0] == "run_hf"]
+
+    def refused_after(rel, text, why):
+        old = (env.root / rel).read_bytes()
+        _put(env.root, rel, text)
+        try:
+            refused(why)
+        finally:
+            (env.root / rel).write_bytes(old)
+
+    d = json.loads((env.root / C.direction_path("input")).read_text())
+    refused_after(C.direction_path("input"), json.dumps({**d, "g": 3.0}),  # another direction
+                  "differs in ['direction_sha256']")
+    refused_after(C.INPUT_MANIFEST, json.dumps(
+        {**json.loads((env.root / C.INPUT_MANIFEST).read_text()), "note": "rebuilt"}),
+        "differs in ['inputs_manifest_sha256']")
+    pod_adapter = env.adapters / KEY / "adapter_model.safetensors"
+    old = pod_adapter.read_bytes()
+    pod_adapter.write_text("retrained")  # the same model key, another adapter
+    refused("differs in ['adapter_files']")
+    pod_adapter.write_bytes(old)
+    rows = _rows(env.root, names["a0"])
+    rows[0]["prompt_text"] = "<p another notice>"
+    csv_rel = C.gen_csv(names["a0"])
+    saved = (env.root / csv_rel).read_bytes()
+    pod.write_csv(env.root / csv_rel, rows)
+    refused("another prompt than the current render")
+    (env.root / csv_rel).write_bytes(saved)
+    bind = (env.root / pod.binding_path(names["a0"])).read_bytes()
+    (env.root / pod.binding_path(names["a0"])).unlink()
+    refused("exists without")  # rows without a binding
+    (env.root / pod.binding_path(names["a0"])).write_bytes(bind)
+    # the same binding: a resume with other counts appends, never duplicates
+    n_probe = len(_rows(env.root, names["input"]))
+    assert env.run(*base, "--em-samples", "3", "--utility-samples", "1") == 0
+    rows = _rows(env.root, names["input"])
+    keys = [pod.row_key(r) for r in rows]
+    assert len(keys) == len(set(keys)) and len(rows) > n_probe
+    meta = json.loads((env.root / C.gen_meta(names["input"])).read_text())
+    assert meta["direction_sha256"] == G.sha256_file(env.root / C.direction_path("input"))
+    assert pod.binding_path(names["input"]) in _names(env.root, "sweep.input")
 
 
 @pytest.mark.parametrize("cells,want", [
@@ -935,8 +1092,8 @@ def _tags(text):
 
 def _calls(root):
     p = root / "calls.log"
-    return [ln for ln in p.read_text().splitlines() if "--print-manifests" not in ln] \
-        if p.exists() else []
+    return [ln for ln in p.read_text().splitlines()
+            if "--print-manifests" not in ln and "--check-done" not in ln] if p.exists() else []
 
 
 def test_dry_chain_all_steps(chain):
@@ -982,6 +1139,15 @@ def test_dry_chain_all_steps(chain):
     assert len(step_logs) == 2  # never reused, even within one second
     drv = (root / "logs/e13" / min(step_logs)).read_text()
     assert "E13_STEP_START hook-check" in drv and "E13_STEP_OK hook-check" in drv
+    # a changed decision input: only the step that reads it (and the unskippable ones) reruns
+    _put(root, pod.DIRSOURCE_LABELS, json.dumps({"name": "dirsource_labels", "labels": []}))
+    r, log = run()
+    assert r.returncode == 0, log
+    oks = [t for t in _tags(log) if t.startswith("E13_STEP_OK")]
+    assert [t.split()[1] for t in oks if not t.endswith(" skipped")] == [
+        "capture", "sweep", "final-patch", "manifest"]
+    dep = json.loads((root / pod.deps_path(f"capture.{KEY}")).read_text())
+    assert dep["inputs"][pod.DIRSOURCE_LABELS] == G.sha256_file(root / pod.DIRSOURCE_LABELS)
 
 
 def test_dry_chain_refuses_without_approval(chain):
@@ -1027,7 +1193,8 @@ def test_chain_exit0_without_manifest_is_failure(chain, tmp_path):
     _, run = chain
     stub = tmp_path / "stubpy"
     stub.write_text("#!/bin/bash\ncase \"$*\" in *--print-manifests*) "
-                    "echo results/E13/MANIFEST.bench-train.sha256 ;; esac\nexit 0\n")
+                    "echo results/E13/MANIFEST.bench-train.sha256 ;; *--check-done*) exit 1 ;; "
+                    "esac\nexit 0\n")
     stub.chmod(0o755)
     r, log = run("bench-train", E13_PY=str(stub))
     assert r.returncode == 1

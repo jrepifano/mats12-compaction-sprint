@@ -8,7 +8,7 @@ Subcommands (gen names follow `contracts.gen_name`; every judged CSV is
   dirsource --key K [--extended]    dirsrc__K (+ dirsrc__K__ext) -> dirsource_labels.json
   strength --key K --site S         sweep__K__a0 + sweep__K__S -> strength_<S>.json
   consistency --key K               sweep__K__a0 vs dev__K -> consistency.json
-  projection --state F --spent-gpu X --spent-api Y --pod-hours H [--a8-drop-sites ...]
+  projection --state JSON|F --spent-gpu X --spent-api Y --pod-hours H [--a8-drop-sites ...]
                                     bench/{train,hooked}.json -> projection.json
   a8-probe --key K --site S         prints cut 2's probe (no record)
 
@@ -42,16 +42,23 @@ def load(root: Path, name: str):
     return J.load_scored(gen, judged, root=root)
 
 
-def _state(path: str | None) -> C.ProjectionState:
-    if not path:
+def _state(value: str | None) -> C.ProjectionState:
+    """`--state`: inline JSON text (what the orchestrator passes) or the path of a JSON file."""
+    if not value:
         return C.ProjectionState()
-    raw = json.loads(Path(path).read_text())
-    for k in ("sites", "cuts", "steps_done"):
-        if k in raw:
-            raw[k] = tuple(raw[k])
-    if raw.get("alphas"):
-        raw["alphas"] = {s: tuple(float(a) for a in v) for s, v in raw["alphas"].items()}
-    return C.ProjectionState(**raw)
+    text = value if value.lstrip().startswith("{") else Path(value).read_text()
+    raw = json.loads(text)
+    try:
+        if not isinstance(raw, dict):
+            raise TypeError("not a JSON object")
+        for k in ("sites", "cuts", "steps_done"):
+            if k in raw:
+                raw[k] = tuple(raw[k])
+        if raw.get("alphas"):
+            raw["alphas"] = {s: tuple(float(a) for a in v) for s, v in raw["alphas"].items()}
+        return C.ProjectionState(**raw)
+    except TypeError as e:
+        raise ValueError(f"--state: {e}") from e
 
 
 def run(a, root: Path) -> dict:
@@ -99,7 +106,8 @@ def main(argv=None) -> int:
     p = sub.add_parser("consistency")
     p.add_argument("--key", required=True)
     p = sub.add_parser("projection")
-    p.add_argument("--state", default=None, help="ProjectionState fields as JSON")
+    p.add_argument("--state", default=None,
+                   help="ProjectionState fields: inline JSON or a JSON file")
     p.add_argument("--spent-gpu", type=float, required=True)
     p.add_argument("--spent-api", type=float, required=True)
     p.add_argument("--pod-hours", type=float, required=True)

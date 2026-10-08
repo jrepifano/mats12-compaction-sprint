@@ -209,6 +209,17 @@ def source_label(row) -> str:
     return "drop"
 
 
+def _dirsrc_instance(row) -> str:
+    """A direction-source row's fixed instance: its `instance_id` (generation rows carry
+    notice_cond "noov"), which must agree with the `noov@<instance>` of its condition string."""
+    inst = "" if pd.isna(row["instance_id"]) else str(row["instance_id"])
+    from_cond = C.parse_condition(str(row["condition"]))["notice_cond"].partition("@")[2]
+    if not inst or inst != from_cond:
+        raise ValueError(f"dirsrc row {row['qid']}/{row['sample_idx']}: instance_id {inst!r} "
+                         f"disagrees with condition {row['condition']!r}")
+    return inst
+
+
 def dirsource_labels(scored: pd.DataFrame, extended: bool) -> dict:
     """Labels per (qid, sample, cell), counts per cell, and the eligibility rule: >= DIR_MIN_CELLS
     cells with >= DIR_MIN_PER_CLASS bad and good answers, covering >= DIR_MIN_QUESTIONS
@@ -218,8 +229,8 @@ def dirsource_labels(scored: pd.DataFrame, extended: bool) -> dict:
         raise ValueError("dirsource_labels: no luna direction-source rows")
     _one_model(d, "direction source")
     labels, counts = [], {}
-    for _, r in d.sort_values(["qid", "notice_cond", "sample_idx"]).iterrows():
-        inst = str(r["notice_cond"]).partition("@")[2]
+    for _, r in d.sort_values(["qid", "instance_id", "sample_idx"]).iterrows():
+        inst = _dirsrc_instance(r)
         cell = C.cell_id(str(r["qid"]), inst)
         lab = source_label(r)
         labels.append({"cell": cell, "qid": str(r["qid"]), "instance_id": inst,
@@ -505,53 +516,86 @@ def _workload(bench_train: dict, bench_hooked: dict, state: C.ProjectionState, c
             "answers_judged": {"em": em_judge, "utility": ut_judge}}
 
 
+A8_CUT = "drop_a8_where_a4_fails"
+
+
 def projection(bench_train: dict, bench_hooked: dict, state: C.ProjectionState,
                spent_usd: dict, pod_hours_used: float, *, a8_drop_sites=None,
                inputs: dict | None = None) -> dict:
     """Remaining GPU hours and dollars from the measured rates, the unmeasured line items above,
     triggered contingencies and API judging at the per-1k rates; then the cuts of CUTS in order
-    (cumulative, after `state.cuts`) until GPU spend <= GPU_LIMIT_USD, total <= HARD_CAP_USD and
-    pod-hours <= POD_HOURS_CAP. `spent_usd`: {"gpu", "api"} so far (running pods included in
-    "gpu"). Cut 2 needs the alpha-4 probe (`a8_probe`): `a8_drop_sites` (sites where alpha 8 is
-    dropped); without it cut 2 is recorded as "needs_probe", priced as dropping nothing, and the
-    later cuts are still tried. Outcome "fits", "fits_after_cuts" or "stop"."""
+    (cumulative) until the run fits: GPU spend <= GPU_LIMIT_USD, API spend <= API_LIMIT_USD,
+    total <= HARD_CAP_USD and pod-hours <= POD_HOURS_CAP (one predicate for the cut loop and the
+    stop). `spent_usd`: {"gpu", "api"} so far (running pods included in "gpu").
+
+    Cut (ii) can only be resolved by the sweep-time alpha-4 probe (`a8_probe`; Amendment B item
+    10). Without its result (`a8_drop_sites` None) the cuts start from `state.cuts` and, if the
+    run does not fit after cut (i), are evaluated twice: pessimistic (cut (ii) drops nothing) and
+    optimistic (cut (ii) drops alpha 8 at every live site). Outcomes:
+    - "fits": no new cut needed;
+    - "fits_after_cuts": the pessimistic path fits; `cuts` are its cuts (possibly (iii)/(iv));
+      if cut (ii) was reached, `needs_probe` is True (the probe then re-projects);
+    - "needs_probe": only the optimistic path fits; `cuts` stop at (ii) inclusive and no later
+      cut is committed until the probe re-projects;
+    - "stop": neither path fits.
+    With `a8_drop_sites` given (after the probe; [] = drop nowhere) every cut is recomputed from
+    scratch in order, ignoring `state.cuts`, so later cuts are kept only if still needed."""
     rate_h = float(bench_train.get("usd_per_h") or C.H100_USD_H)
     gpu_spent = float(spent_usd.get("gpu", 0.0))
     api_spent = float(spent_usd.get("api", 0.0))
-    cuts: list[str] = list(state.cuts)
-    a8_drop = set(a8_drop_sites or ())
-    needs_probe = False
-    steps = []
+    probed = a8_drop_sites is not None
+    start: list[str] = [] if probed else list(state.cuts)
 
-    def evaluate() -> dict:
-        drop = a8_drop if "drop_a8_where_a4_fails" in cuts else set()
+    def evaluate(cuts: list[str], a8_drop: set) -> dict:
+        drop = a8_drop if A8_CUT in cuts else set()
         w = _workload(bench_train, bench_hooked, state, set(cuts), drop)
         gpu_usd = w["gpu_h"] * rate_h
         tot = gpu_spent + api_spent + gpu_usd + w["api_usd"]
         fits = {"gpu": gpu_spent + gpu_usd <= C.GPU_LIMIT_USD + EPS,
+                "api": api_spent + w["api_usd"] <= C.API_LIMIT_USD + EPS,
                 "total": tot <= C.HARD_CAP_USD + EPS,
                 "pod_hours": pod_hours_used + w["gpu_h"] <= C.POD_HOURS_CAP + EPS}
         return {**w, "gpu_usd": gpu_usd, "total_usd": tot,
                 "pod_hours_total": pod_hours_used + w["gpu_h"], "fits": fits,
-                "api_within_limit": api_spent + w["api_usd"] <= C.API_LIMIT_USD + EPS,
-                "cuts": list(cuts), "a8_drop_sites": sorted(a8_drop)}
+                "ok": all(fits.values()), "cuts": list(cuts), "a8_drop_sites": sorted(drop)}
 
-    cur = evaluate()
-    steps.append(cur)
-    first_fits = all(cur["fits"].values())
-    for cut in C.CUTS:
-        if all(cur["fits"].values()):
-            break
-        if cut in cuts:
-            continue
-        cuts.append(cut)
-        if cut == "drop_a8_where_a4_fails" and a8_drop_sites is None:
-            needs_probe = True
-        cur = evaluate()
-        steps.append(cur)
-    fits = all(cur["fits"].values())
-    outcome = "fits" if first_fits else ("fits_after_cuts" if fits else "stop")
-    new_cuts = [c for c in cuts if c not in state.cuts]
+    def path(a8_drop: set) -> list[dict]:
+        """Evaluations from `start`, adding the cuts of CUTS in order until one fits."""
+        cuts = list(start)
+        steps = [evaluate(cuts, a8_drop)]
+        for cut in C.CUTS:
+            if steps[-1]["ok"]:
+                break
+            if cut in cuts:
+                continue
+            cuts.append(cut)
+            steps.append(evaluate(cuts, a8_drop))
+        return steps
+
+    steps = path(set(a8_drop_sites or ()))  # pessimistic unless probed
+    cur, optimistic = steps[-1], None
+    if steps[0]["ok"]:
+        outcome = "fits"
+    elif cur["ok"]:
+        outcome = "fits_after_cuts"
+    elif probed:
+        outcome = "stop"
+    else:
+        opt = path(set(state.sites))
+        optimistic = {"cuts": opt[-1]["cuts"], "fits": opt[-1]["ok"],
+                      "fit_checks": opt[-1]["fits"],
+                      "usd": {"gpu": opt[-1]["gpu_usd"], "api": opt[-1]["api_usd"],
+                              "total": opt[-1]["total_usd"]},
+                      "pod_hours": opt[-1]["pod_hours_total"]}
+        if opt[-1]["ok"]:  # implies cut (ii) was reached: before it the two paths coincide
+            outcome = "needs_probe"
+            upto = C.CUTS[:C.CUTS.index(A8_CUT) + 1]
+            cur = evaluate(start + [c for c in upto if c not in start], set())
+        else:
+            outcome = "stop"
+    cuts = cur["cuts"]
+    needs_probe = outcome in ("fits", "fits_after_cuts", "needs_probe") and not probed \
+        and A8_CUT in cuts
     return record("projection", outcome, inputs=inputs,
                   measured_rates={"s_per_step": float(bench_train["s_per_step"]),
                                   "heldout_pass_s": float(bench_train["heldout_pass_s"]),
@@ -563,10 +607,12 @@ def projection(bench_train: dict, bench_hooked: dict, state: C.ProjectionState,
                   spent_usd={"gpu": gpu_spent, "api": api_spent}, pod_hours_used=pod_hours_used,
                   remaining=cur["hours"], answers_judged=cur["answers_judged"],
                   usd={"gpu": cur["gpu_usd"], "api": cur["api_usd"], "total": cur["total_usd"]},
-                  pod_hours=cur["pod_hours_total"], fits=fits, fit_checks=cur["fits"],
-                  api_within_limit=cur["api_within_limit"], cuts_applied=new_cuts,
+                  pod_hours=cur["pod_hours_total"], fits=cur["ok"], fit_checks=cur["fits"],
+                  api_within_limit=cur["fits"]["api"],
+                  cuts_applied=[c for c in cuts if c not in state.cuts],
                   cuts=list(cuts), needs_probe=needs_probe,
-                  a8_drop_sites=sorted(a8_drop) if a8_drop_sites is not None else None,
+                  a8_drop_sites=sorted(a8_drop_sites) if probed else None,
+                  optimistic=optimistic,
                   steps=[{"cuts": s["cuts"], "gpu_h": s["gpu_h"], "gpu_usd": s["gpu_usd"],
                           "api_usd": s["api_usd"], "total_usd": s["total_usd"],
                           "fits": s["fits"]} for s in steps])

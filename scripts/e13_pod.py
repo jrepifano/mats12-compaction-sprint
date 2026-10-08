@@ -41,6 +41,26 @@ gen-organism.<R>.<battery>, gen-dirsource.<K>[.ext], capture.<K>, direction.<K>,
 hook-check.<K>.<site>, sweep.<part>, final-patch.<part> (part a0 / input / output, written only
 when the invocation's rows of that part are complete and no --qids filter was given).
 
+Dependency records (code review r1 finding 2). Just before each step manifest the step writes
+`results/E13/MANIFEST.<id>.deps.json` (listed in that manifest): the invocation's arguments (minus
+paths and execution details such as --part, --battery, --gradient-checkpointing) and the sha256,
+taken when the step started, of every input it reads (`dep_paths`: the input manifest and pod
+inputs, decisions such as dirsource_labels.json / projection.json, lora_check.json, adapters,
+direction JSONs, upstream gen CSVs, captured activations; a missing file is null).
+`<step> <args> --check-done` exits 0 iff every manifest of the invocation verifies AND its
+record still matches the current arguments and files, else 1 (reasons logged); pod_run_e13.sh
+skips a step only on exit 0. A step whose dependencies changed reruns and rewrites its outputs.
+Training keys and organism CSVs are skipped inside a rerun only when their recorded inputs
+(training rows, input manifest, adapter, backend, prompts) still match.
+
+Patch resume binding (finding 1). Before the first batch of a sweep / final-patch part, the step
+writes `gen/<name>.binding.json`: the seed key's adapter files, the part's direction JSON (none for
+a0), the input manifest, renderer, template, seed rule and sampling settings (not the sample
+counts, strengths or cells; rows are keyed by seed). A part CSV that exists is resumed only when
+its binding matches the recomputed one and its rows' prompt_text equals the rebuilt requests';
+otherwise the step refuses (exit 3) and never mixes rows. The binding is listed in the part's
+manifest and its direction sha256 is in the part's meta.
+
 Recovery (plan §8 finding 7): MANIFEST.recovery.sha256 lists every regular file under results/E13/
 except MANIFEST.*.sha256, the laptop-owned directories (inputs/, decisions/, judged/, labels/,
 style/), .pull_*/, superseded/, _salvage_*/ and temp files; so it always covers train/ (curves and
@@ -121,7 +141,11 @@ RECOVERY_SKIP_DIRS = ("inputs", "decisions", "judged", "labels", "style", "super
 BENCH_RESID_PROMPTS = 8
 BENCH_G_SHARE = 0.1  # bench-hooked: g = 0.1 x the mean residual norm (brief G)
 SMOKE_CONT_TOKENS = 16  # adapter-applied check on HF (EQ0 SMOKE_LORA_CONT_TOKENS)
+# arguments that never change a step's outputs (or are encoded in its manifest id)
+DEPS_ARGS_SKIP = frozenset({"root", "adapter_dir", "print_manifests", "check_done", "part",
+                            "battery", "gradient_checkpointing", "after_oom"})
 _execv = os.execv  # hooks so tests can stand in for the re-exec and the child processes
+_RUN: dict = {}  # this invocation's {"deps": {manifest id: dependency record}} (set by main)
 
 
 class Refused(Exception):
@@ -244,8 +268,13 @@ def _versions(names: tuple[str, ...]) -> dict[str, str | None]:
 
 
 def write_step_manifest(root: Path, mid: str, paths: list[str]) -> Path:
-    """MANIFEST.<mid>.sha256 over repo-relative `paths` (each must exist); written last."""
+    """MANIFEST.<mid>.sha256 over repo-relative `paths` (each must exist); written last. The
+    invocation's dependency record for `mid` (if main computed one) is written first and listed."""
     root = Path(root)
+    deps = (_RUN.get("deps") or {}).get(mid)
+    if deps is not None:
+        G.write_json(root / deps_path(mid), deps)
+        paths = [*paths, deps_path(mid)]
     files = sorted(set(paths))
     missing = [p for p in files if not (root / p).is_file()]
     if missing:
@@ -274,6 +303,113 @@ def manifest_verifies(root: Path, mid: str) -> bool:
                for s, n in read_manifest(man))
 
 
+def deps_path(mid: str) -> str:
+    return f"{C.RESULTS}/MANIFEST.{mid}.deps.json"
+
+
+def _shas(root: Path, rels) -> dict[str, str | None]:
+    """{path: sha256, or None when missing} over repo-relative paths (order kept, unique)."""
+    return {r: (G.sha256_file(Path(root) / r) if (Path(root) / r).is_file() else None)
+            for r in dict.fromkeys(rels)}
+
+
+def _adapter_files(key: str) -> list[str]:
+    return [f"{C.ADAPTERS_DIR}/{key}/{f}" for f in R.ADAPTER_FILES]
+
+
+def _input_files() -> list[str]:
+    return [C.INPUT_MANIFEST, *C.QUESTION_FILES.values(), NOTICES, TASKS, NARROW, DIRCELLS]
+
+
+def _rows_files(keys) -> list[str]:
+    arms = dict.fromkeys(C.parse_model_key(k)[0] for k in keys)
+    return [C.INPUT_MANIFEST, *(f"{C.TRAIN_ROWS_DIR}/{a}.jsonl" for a in arms), C.HELDOUT_ROWS]
+
+
+def dep_paths(args, mid: str) -> list[str]:
+    """Every file the step reads for manifest `mid` (module docstring, "Dependency records")."""
+    s = args.step
+    inputs = _input_files()
+    if s == "download":
+        return [*inputs, *REQUIRED_INPUTS]
+    if s == "smoke":
+        return inputs
+    if s == "bench-train":
+        return _rows_files([C.model_key("org", "r1", 0)])
+    if s == "train-trigger":
+        return _rows_files([C.TRIG_KEY])
+    if s == "train":
+        return _rows_files(C.trained_keys(args.recipe))
+    if s == "lora-check":
+        return [*C.QUESTION_FILES.values(), *_adapter_files(C.TRIG_KEY)]
+    if s == "gen-trigger":
+        return [*inputs, LORA_CHECK, *_adapter_files(C.TRIG_KEY)]
+    if s == "smoke-adapters":
+        return [*inputs, LORA_CHECK,
+                *(f for k in C.trained_keys(args.recipe) for f in _adapter_files(k))]
+    if s == "bench-hooked":
+        return [*inputs, *_adapter_files(C.model_key("org", args.recipe, 0))]
+    if s == "gen-organism":
+        b = mid.rsplit(".", 1)[1]
+        return [*inputs, LORA_CHECK, PROJECTION, BENCH_TRAIN, BENCH_HOOKED,
+                *(f for k in battery_models(b, args.recipe) if k != C.BASE_KEY
+                  for f in _adapter_files(k))]
+    if s == "gen-dirsource":
+        return [*inputs, LORA_CHECK, *_adapter_files(args.seed_key)]
+    if s == "capture":
+        return [DIRSOURCE_LABELS,
+                *(C.gen_csv(dirsrc_name(args.seed_key, e)) for e in (False, True)),
+                *_adapter_files(args.seed_key)]
+    if s == "direction":
+        return [CAPTURE_RECORD, ACTS_INDEX, *(acts_path(x) for x in C.SITE_NAMES),
+                train_paths(args.seed_key)["record"]]
+    if s == "hook-check":
+        return [*inputs, C.direction_path(args.site), *_adapter_files(args.seed_key)]
+    if s in ("sweep", "final-patch"):
+        part = mid.rsplit(".", 1)[1]
+        live = [] if part == "a0" else [C.direction_path(part), hook_path(part),
+                                         C.manifest_path(f"hook-check.{args.seed_key}.{part}")]
+        return [*inputs, *_adapter_files(args.seed_key), *live]
+    return []
+
+
+def recorded_args(args) -> dict:
+    return {k: v for k, v in sorted(vars(args).items()) if k not in DEPS_ARGS_SKIP}
+
+
+def deps_record(args, mid: str) -> dict:
+    """The dependency record of manifest `mid` for this invocation, as JSON would return it."""
+    rec = {"manifest": mid, "args": recorded_args(args),
+           "inputs": _shas(Path(args.root), dep_paths(args, mid))}
+    return json.loads(json.dumps(rec))
+
+
+def check_done(args) -> tuple[bool, list[str]]:
+    """(done, reasons): every manifest of the invocation verifies and its dependency record
+    matches the current arguments and files."""
+    root = Path(args.root)
+    ids = manifest_ids(args)
+    if not ids:
+        return False, ["the invocation lists no manifests"]
+    why = []
+    for mid in ids:
+        if not manifest_verifies(root, mid):
+            why.append(f"{mid}: manifest missing or not verifying")
+            continue
+        p = root / deps_path(mid)
+        if not p.is_file():
+            why.append(f"{mid}: no dependency record")
+            continue
+        have, want = read_json(p), deps_record(args, mid)
+        if have.get("args") != want["args"]:
+            why.append(f"{mid}: arguments changed ({have.get('args')} -> {want['args']})")
+        hi, wi = have.get("inputs") or {}, want["inputs"]
+        changed = sorted(k for k in set(hi) | set(wi) if hi.get(k) != wi.get(k))
+        if changed:
+            why.append(f"{mid}: dependencies changed: {changed}")
+    return not why, why
+
+
 def step_manifest_files(root: Path) -> list[Path]:
     """Every pod step manifest under results/E13 (not recovery, closing or laptop ones)."""
     res = Path(root) / C.RESULTS
@@ -299,6 +435,10 @@ def closing_manifest(root: Path) -> Path:
         entries[str(man.relative_to(root))] = G.sha256_file(man)
     if problems:
         raise RuntimeError("closing manifest refused: " + "; ".join(problems))
+    deps = (_RUN.get("deps") or {}).get("manifest")
+    if deps is not None:  # its own dependency record (no inputs: it re-verifies everything)
+        G.write_json(root / deps_path("manifest"), deps)
+        entries[deps_path("manifest")] = G.sha256_file(root / deps_path("manifest"))
     body = "".join(f"{entries[n]}  {n}\n" for n in sorted(entries))
     out = root / C.manifest_path("manifest")
     G.atomic_write(out, lambda fh: fh.write(body))
@@ -664,10 +804,11 @@ def gen_problems(root: Path, name: str, plan: list, pins: dict) -> list[str] | N
         probs.append("csv_sha256 does not match")
     probs += [f"{k} {meta.get(k)!r} != {v!r}" for k, v in pins.items() if meta.get(k) != v]
     rows = read_csv(cp)
-    want = sorted((row_key(asdict_req(r)), str(r.seed)) for r in plan)
-    got = sorted((row_key(x), str(x["seed"])) for x in rows)
+    want = sorted((row_key(asdict_req(r)), str(r.seed), r.prompt_text) for r in plan)
+    got = sorted((row_key(x), str(x["seed"]), x["prompt_text"]) for x in rows)
     if got != want:
-        probs.append(f"rows differ from the plan ({len(rows)} rows, plan {len(plan)})")
+        probs.append(f"rows differ from the plan's keys, seeds or prompts ({len(rows)} rows, "
+                     f"plan {len(plan)})")
     return probs
 
 
@@ -675,11 +816,12 @@ def asdict_req(r) -> dict:
     return {"condition": r.condition, "qid": r.qid, "sample_idx": r.sample_idx}
 
 
-def plan_pins(key: str, backend: str, adapter: str | None) -> dict:
+def plan_pins(root: Path, key: str, backend: str, adapter: str | None) -> dict:
     files = None if adapter is None else {f: G.sha256_file(Path(adapter) / f)
                                           for f in R.ADAPTER_FILES}
     return {"model_key": key, "backend": backend, "adapter_files": files,
-            "renderer": C.RENDERER, "seed_rule": C.SEED_RULE}
+            "renderer": C.RENDERER, "seed_rule": C.SEED_RULE,
+            "inputs_manifest_sha256": G.sha256_file(Path(root) / C.INPUT_MANIFEST)}
 
 
 # --- steps: download, smoke ----------------------------------------------------------------------
@@ -723,18 +865,29 @@ def step_download(args) -> int:
 
 def smoke_verdict(items: list[dict]) -> tuple[bool, dict]:
     """Per model (eq0_pod.smoke_verdict): every answer non-empty; every non-length finish is
-    "stop" on <|im_end|>; at most one "length" finish."""
+    "stop" on <|im_end|> (the sampled last token id, on either backend); at most one "length"
+    finish."""
     per = {}
     for key in dict.fromkeys(x["model_key"] for x in items):
         xs = [x for x in items if x["model_key"] == key]
         empty = sum(1 for x in xs if not str(x["response"]).strip())
         n_len = sum(1 for x in xs if x["finish_reason"] == "length")
         bad_stop = sum(1 for x in xs if x["finish_reason"] != "length" and not (
-            x["finish_reason"] == "stop" and x["last_token_id"] in (R.IM_END_ID, None)))
+            x["finish_reason"] == "stop" and x["last_token_id"] == R.IM_END_ID))
         ok = empty == 0 and n_len <= 1 and bad_stop == 0
         per[key] = {"n": len(xs), "empty": empty, "length_finishes": n_len,
                     "not_im_end_stops": bad_stop, "ok": ok}
     return bool(per) and all(v["ok"] for v in per.values()), per
+
+
+def smoke_item(tok, r, token_ids, finish_reason: str) -> dict:
+    """One smoke item from the engine's sampled ids (stop id included) and finish reason."""
+    ids = [int(t) for t in token_ids]
+    text, reason, n_tok = G.postprocess(tok, ids, finish_reason)
+    return {"model_key": r.model_key, "condition": r.condition, "qid": r.qid,
+            "notice_cond": r.notice_cond, "response": text, "finish_reason": reason,
+            "last_token_id": ids[min(len(ids), n_tok) - 1] if ids else None,
+            "n_new_tokens": n_tok}
 
 
 def vllm_items(llm, tok, plan, lora, SamplingParams) -> list[dict]:
@@ -743,12 +896,22 @@ def vllm_items(llm, tok, plan, lora, SamplingParams) -> list[dict]:
     for r, o in zip(plan, outs, strict=True):
         if list(o.prompt_token_ids) != list(r.prompt_ids):
             raise RuntimeError(f"{r.qid}: vLLM prompt ids differ from our render")
-        ids = [int(t) for t in o.outputs[0].token_ids]
-        text, reason, n_tok = G.postprocess(tok, ids, o.outputs[0].finish_reason)
-        items.append({"model_key": r.model_key, "condition": r.condition, "qid": r.qid,
-                      "notice_cond": r.notice_cond, "response": text, "finish_reason": reason,
-                      "last_token_id": ids[min(len(ids), n_tok) - 1] if ids else None,
-                      "n_new_tokens": n_tok})
+        items.append(smoke_item(tok, r, o.outputs[0].token_ids, o.outputs[0].finish_reason))
+    return items
+
+
+def hf_items(model, tok, key: str, plan, batch_size: int) -> list[dict]:
+    """HF version of `vllm_items` (code review r1 finding 7): `hfgen.decode_batch` under adapter
+    `key`, keeping the sampled ids so the smoke verdict sees the real stop token."""
+    H = _mod("hfgen")
+    _use_adapter(model, key)
+    items = []
+    for k in range(0, len(plan), max(1, int(batch_size))):
+        batch = plan[k:k + max(1, int(batch_size))]
+        samples = H.decode_batch(model, [list(r.prompt_ids) for r in batch],
+                                 [int(r.seed) for r in batch])
+        for r, s in zip(batch, samples, strict=True):
+            items.append(smoke_item(tok, r, s.token_ids, s.finish_reason))
     return items
 
 
@@ -809,11 +972,17 @@ def adapter_sha_ok(rec: dict, d: Path) -> bool:
 
 
 def train_verifies(root: Path, adapter_dir: str, key: str) -> bool:
-    """A complete run: record with N_STEPS finite steps, steps log and sidecar present, and the
-    results copy of the adapter matching the record (the pod copy is restored if missing)."""
+    """A complete run: record with N_STEPS finite steps, steps log and sidecar present, the
+    training and held-out rows the sidecar recorded unchanged, and the results copy of the adapter
+    matching the record (the pod copy is restored if missing)."""
     root = Path(root)
     p = train_paths(key)
     if not all((root / p[k]).is_file() for k in ("record", "steps", "pod")):
+        return False
+    side = read_json(root / p["pod"])
+    used = {**(side.get("rows") or {}), **(side.get("heldout") or {})}
+    if any(_shas(root, [r])[r] != s for r, s in used.items()):
+        log(f"train {key}: its training or held-out rows changed since it ran; not skipped")
         return False
     rec = read_json(root / p["record"])
     if rec.get("nonfinite") or rec.get("n_steps") != C.N_STEPS or len(rec.get("steps") or []) \
@@ -1158,7 +1327,7 @@ def run_batteries(args, root: Path, tok, eng: Engine, jobs: list[tuple[str, str,
     outs: dict[str, list[str]] = {}
     for battery, key, plan, name in jobs:
         adapter = None if key == C.BASE_KEY else eng.paths[key]
-        pins = plan_pins(key, eng.backend, adapter)
+        pins = plan_pins(root, key, eng.backend, adapter)
         probs = gen_problems(root, name, plan, pins)
         if probs == []:
             log(f"{name}: verifies; skipped")
@@ -1229,9 +1398,7 @@ def step_smoke_adapters(args) -> int:
             lora = _mod("vgen").lora_request(k, paths[k], eng.LR)
             items += vllm_items(eng.llm, tok, plans[k], lora, eng.SP)
         else:
-            items += [{"model_key": k, "qid": r["qid"], "response": r["response"],
-                       "finish_reason": r["finish_reason"], "last_token_id": None,
-                       "n_new_tokens": r["n_new_tokens"]} for r in eng.run(tok, k, plans[k])]
+            items += hf_items(eng.model, tok, k, plans[k], eng.batch_size)
     ok_text, per = smoke_verdict(items)
     ok = ok_applied and ok_text
     rel_ = smoke_adapters_record(args.recipe)
@@ -1614,6 +1781,8 @@ def step_patch(args) -> int:
     tok = _tokenizer()
     plan = patch_plan(args, tok, inp)
     names = {p: C.gen_name(battery, key, p) for p in plan}
+    adapter = adapter_path(args, key)
+    bindings = {p: bind_part(root, tok, names[p], key, battery, p, adapter) for p in plan}
     state = {p: load_part(root, C.gen_csv(names[p])) for p in plan}
     pending = []
     for p, reqs in plan.items():
@@ -1623,6 +1792,9 @@ def step_patch(args) -> int:
             if k in have:
                 if str(have[k]["seed"]) != str(r.seed):
                     raise RuntimeError(f"{names[p]}: {k} has seed {have[k]['seed']} != {r.seed}")
+                if have[k]["prompt_text"] != r.prompt_text:
+                    raise Refused(f"{names[p]}: {k} was generated from another prompt than the "
+                                  "current render; refusing to mix rows")
             else:
                 pending.append(r)
     pending.sort(key=lambda r: (float(r.alpha), -1 if r.site == C.UNSTEERED_SITE
@@ -1631,7 +1803,7 @@ def step_patch(args) -> int:
         f"parts {sorted(plan)}, batch {args.batch_size}")
     events: list = []
     if pending:
-        model = _load_hf({key: adapter_path(args, key)})
+        model = _load_hf({key: adapter})
         units = {s: _mod("direction").load_unit(s, str(root)) for s in plan if s != "a0"}
 
         def steer_for(r):
@@ -1659,15 +1831,55 @@ def step_patch(args) -> int:
             meta = gen_meta(root, tok, battery=battery, key=key, backend="hf",
                             engine_version="hf " + str(_versions(("transformers", "peft",
                                                                   "torch"))),
-                            adapter=str(Path(args.adapter_dir) / key),
-                            batch_size=args.batch_size,
+                            adapter=adapter, batch_size=args.batch_size,
                             extra={"part": p, "oom_events": events, "utc_start": started,
                                    "alphas": sorted({float(r["alpha"]) for r in rows}),
-                                   "n_rows_this_invocation": len(reqs)})
+                                   "n_rows_this_invocation": len(reqs),
+                                   "direction_sha256": bindings[p]["direction_sha256"],
+                                   "binding": binding_path(names[p])})
             write_gen(root, names[p], rows, meta)
-            write_step_manifest(root, f"{args.step}.{p}", [C.gen_csv(names[p]),
-                                                           C.gen_meta(names[p])])
+            write_step_manifest(root, f"{args.step}.{p}", [
+                C.gen_csv(names[p]), C.gen_meta(names[p]), binding_path(names[p])])
     return 0
+
+
+def binding_path(name: str) -> str:
+    return f"{C.GEN_DIR}/{name}.binding.json"
+
+
+def patch_binding(root: Path, tok, key: str, battery: str, part: str, adapter: str) -> dict:
+    """What a patch part's rows depend on beyond their keys and seeds (module docstring)."""
+    d = None if part == "a0" else Path(root) / C.direction_path(part)
+    if d is not None and not d.is_file():
+        raise Refused(f"{C.direction_path(part)} missing")
+    rec = {"model_key": key, "battery": battery, "part": part,
+           "adapter_files": {f: G.sha256_file(Path(adapter) / f) for f in R.ADAPTER_FILES},
+           "direction_sha256": None if d is None else G.sha256_file(d),
+           "inputs_manifest_sha256": G.sha256_file(Path(root) / C.INPUT_MANIFEST),
+           "renderer": C.RENDERER, "seed_rule": C.SEED_RULE, "eval_fmt": C.EVAL_FMT,
+           "template_sha256": _template_sha256(tok), "tokenizer_revision": R.TOKENIZER_REV,
+           "model": R.BASE_ID, "model_revision": R.BASE_REV, "sampling": G.sampling_kwargs(None)}
+    return json.loads(json.dumps(rec))
+
+
+def bind_part(root: Path, tok, name: str, key: str, battery: str, part: str,
+              adapter: str) -> dict:
+    """The part's binding: written before its first batch; for a part CSV that already exists,
+    the stored binding must equal the recomputed one (else Refused: never mix rows)."""
+    want = patch_binding(root, tok, key, battery, part, adapter)
+    bp = Path(root) / binding_path(name)
+    if (Path(root) / C.gen_csv(name)).exists():
+        if not bp.is_file():
+            raise Refused(f"{C.gen_csv(name)} exists without {binding_path(name)}: its rows "
+                          "cannot be tied to an adapter and direction; set it aside by hand")
+        have = read_json(bp)
+        diff = sorted(k for k in set(have) | set(want) if have.get(k) != want.get(k))
+        if diff:
+            raise Refused(f"{name}: existing rows were generated under another binding "
+                          f"(differs in {diff}); refusing to resume and mix rows")
+    else:
+        G.write_json(bp, want)
+    return want
 
 
 # --- closing -------------------------------------------------------------------------------------
@@ -1863,6 +2075,9 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--after-oom", action="store_true")
     p.add_argument("--print-manifests", action="store_true",
                    help="print the manifest paths this invocation must leave verifying; no run")
+    p.add_argument("--check-done", action="store_true",
+                   help="exit 0 iff the invocation's manifests verify and their dependency "
+                        "records match the current arguments and files, else 1; no run")
     return p
 
 
@@ -1877,7 +2092,8 @@ def parse(argv: list[str] | None):
     missing = [n for n in NEEDS.get(args.step, ()) if getattr(args, n) in (None, [])]
     if missing:
         ps.error(f"{args.step} needs " + ", ".join("--" + m.replace("_", "-") for m in missing))
-    if args.step == "lora-check" and not args.part and not args.print_manifests:
+    if args.step == "lora-check" and not args.part and not (args.print_manifests
+                                                            or args.check_done):
         ps.error("lora-check needs --part hf|vllm|score")
     if args.part and args.step != "lora-check":
         ps.error("--part belongs to lora-check")
@@ -1905,13 +2121,21 @@ def main(argv: list[str] | None = None) -> int:
         for mid in manifest_ids(args):
             print(C.manifest_path(mid))
         return 0
+    if args.check_done:
+        ok, why = check_done(args)
+        for w in why:
+            log(f"not done: {w}")
+        return 0 if ok else 1
     label = args.step + (f" --part {args.part}" if args.part else "")
     t = time.time()
     tag(f"STEP_START {label}")
     rc = 1
+    prev = dict(_RUN)  # a nested in-process call (tests' child processes) restores it on return
     try:
         if args.step != "recovery":
             check_approval(root)
+        # the inputs as the step finds them; written with each of its manifests
+        _RUN["deps"] = {mid: deps_record(args, mid) for mid in manifest_ids(args)}
         if dry() and args.step not in ("manifest", "recovery"):
             rc = dry_step(args)
         else:
@@ -1923,6 +2147,8 @@ def main(argv: list[str] | None = None) -> int:
         tag(f"STEP_FAIL {label} error: {type(e).__name__}: {str(e)[:300]}")
         raise
     finally:  # success or failure: whatever results/E13 holds now can be pulled
+        _RUN.clear()
+        _RUN.update(prev)
         if args.step != "recovery":
             _recovery_quietly(root)
     if rc == 0:

@@ -190,11 +190,14 @@ INST = ("noov_retention_optout__r0_03", "noov_after_hours__r0_07")
 
 
 def dirsrc_frame(cells: dict[tuple[int, int], dict]) -> pd.DataFrame:
-    """cells[(question index, instance index)] = {kind: count}; default all "ok" (good)."""
+    """cells[(question index, instance index)] = {kind: count}; default all "ok" (good). Rows are
+    generation-shaped (`vgen.build_requests`): notice_cond "noov", the instance in instance_id
+    and in the condition string's `noov@<instance>`."""
     rows = []
     for inst in INST:
-        rows += gen_rows("dirsrc", "org_r1_s0", {"general": DEV_QIDS},
-                         conds=(f"noov@{inst}",))
+        for r in gen_rows("dirsrc", "org_r1_s0", {"general": DEV_QIDS}, conds=(f"noov@{inst}",)):
+            rows.append({**r, "notice_cond": "noov", "instance_id": inst,
+                         "family": inst.split("__", 1)[0]})
     plan = {(C.condition("dirsrc", f"noov@{INST[i]}"), DEV_QIDS[q]): kinds
             for (q, i), kinds in cells.items()}
     return build(rows, plan, by="qid")
@@ -213,6 +216,22 @@ def test_dirsource_labels_per_row():
     assert rec["outcome"] == "ok" and rec["n_eligible"] == 16 and rec["n_questions"] == 8
     assert len(rec["labels"]) == 480
     assert {x["label"] for x in rec["labels"]} == {"bad", "good", "drop"}
+
+
+def test_dirsource_cells_are_question_by_instance_on_generation_rows():
+    """2 instances x 8 questions = 16 distinct cells, each with its own 30 rows."""
+    sc = dirsrc_frame({})
+    assert set(sc["notice_cond"]) == {"noov"}
+    rec = D.dirsource_labels(sc, extended=False)
+    assert len(rec["counts"]) == 16
+    assert set(rec["counts"]) == {C.cell_id(q, i) for q in DEV_QIDS for i in INST}
+    assert all(c["n_good"] == 30 for c in rec["counts"].values())
+    assert {x["instance_id"] for x in rec["labels"]} == set(INST)
+    bad = sc.copy()
+    i = bad.index[(bad["judge"] == C.CHECKER_JUDGE) & (bad["instance_id"] == INST[0])][0]
+    bad.loc[i, "instance_id"] = INST[1]  # disagrees with its condition's noov@INST[0]
+    with pytest.raises(ValueError, match="disagrees"):
+        D.dirsource_labels(bad, extended=False)
 
 
 def _eligible_only(pairs: list[tuple[int, int]]) -> dict:
@@ -447,11 +466,80 @@ def test_projection_respects_spent_and_pod_hours():
                               {"gpu": 0.0, "api": 0.0},
                               C.POD_HOURS_CAP - r["pod_hours"] + 0.01, a8_drop_sites=())
     assert over_hours["outcome"] != "fits"
-    assert over_hours["steps"][0]["fits"] == {"gpu": True, "total": True, "pod_hours": False}
+    assert over_hours["steps"][0]["fits"] == {"gpu": True, "api": True, "total": True,
+                                              "pod_hours": False}
     over_gpu = D.projection(BENCH_T, {"answers_per_s": 20.0}, C.ProjectionState(),
                             {"gpu": C.GPU_LIMIT_USD - r["usd"]["gpu"] + 0.01, "api": 0.0}, 0.0,
                             a8_drop_sites=())
     assert over_gpu["outcome"] != "fits" and over_gpu["steps"][0]["fits"]["gpu"] is False
+
+
+def test_projection_api_cap_is_part_of_the_fit():
+    """$11.90 of judging already spent: the GPU fits, the API cap does not -> never "fits"."""
+    r = _proj(20.0)
+    assert r["fit_checks"]["api"] is True and r["api_within_limit"] is True
+    spent = C.API_LIMIT_USD - r["usd"]["api"] + 0.01
+    over = D.projection(BENCH_T, {"answers_per_s": 20.0}, C.ProjectionState(),
+                        {"gpu": 0.0, "api": spent}, 0.0, a8_drop_sites=())
+    assert over["steps"][0]["fits"]["api"] is False and over["steps"][0]["fits"]["gpu"] is True
+    assert over["outcome"] != "fits" and over["cuts_applied"]  # the cut loop acts on the API cap
+    assert over["fits"] is over["api_within_limit"] is (over["outcome"] == "fits_after_cuts")
+    hopeless = D.projection(BENCH_T, {"answers_per_s": 20.0}, C.ProjectionState(),
+                            {"gpu": 0.0, "api": C.API_LIMIT_USD}, 0.0)
+    assert hopeless["outcome"] == "stop" and hopeless["api_within_limit"] is False
+
+
+def _rate_fits(drop) -> float:
+    """The slowest hooked rate that fits after every cut, with alpha 8 dropped at `drop`."""
+    lo, hi = 0.05, 50.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (lo, mid) if _proj(mid, a8_drop_sites=drop)["fits"] else (mid, hi)
+    return hi
+
+
+TWO = ["dev_utility_3", "drop_a8_where_a4_fails"]
+
+
+def test_projection_four_outcomes_without_the_probe():
+    assert _proj(20.0)["outcome"] == "fits" and _proj(20.0)["needs_probe"] is False
+    # fits after cuts, pessimistic path reaching cut (ii) and (iii): the probe is still owed
+    r = _proj(_rate_for_cut(1) * 0.98)
+    assert r["outcome"] == "fits_after_cuts" and r["cuts"][:3] == [*TWO, "dev_em_10"]
+    assert r["needs_probe"] is True and r["a8_drop_sites"] is None
+    # only dropping alpha 8 at every live site fits: cuts stop at (ii), nothing later committed
+    pess, opt = _rate_fits(()), _rate_fits(tuple(C.SITE_NAMES))
+    assert opt < pess
+    mid = (opt + pess) / 2
+    r = _proj(mid)
+    assert r["outcome"] == "needs_probe" and r["needs_probe"] is True
+    assert r["cuts"] == TWO and r["fits"] is False
+    assert r["optimistic"]["fits"] is True and "drop_a8_where_a4_fails" in r["optimistic"]["cuts"]
+    # neither path fits
+    r = _proj(opt * 0.9)
+    assert r["outcome"] == "stop" and r["needs_probe"] is False
+    assert r["optimistic"]["fits"] is False
+
+
+def test_projection_after_the_probe_recomputes_every_cut():
+    both = tuple(C.SITE_NAMES)
+    rate = _rate_for_cut(2, a8_drop_sites=both) * 1.001  # cuts (i)+(ii) suffice when both drop
+    prior = C.ProjectionState(cuts=("dev_utility_3", "dev_em_10", "final_em_10"))
+    r = _proj(rate, state=prior, a8_drop_sites=both)  # earlier cuts ignored: (iii)/(iv) undone
+    assert r["outcome"] == "fits_after_cuts" and r["cuts"] == TWO and not r["needs_probe"]
+    assert r["a8_drop_sites"] == sorted(both)
+    # the probe drops nothing: the later cuts come back only because they are needed again
+    r0 = _proj(rate, state=prior, a8_drop_sites=())
+    assert r0["cuts"][:3] == [*TWO, "dev_em_10"] and r0["a8_drop_sites"] == []
+    # the needs_probe projection followed by a probe that drops alpha 8 everywhere fits
+    pess, opt = _rate_fits(()), _rate_fits(both)
+    mid = (opt + pess) / 2
+    first = _proj(mid)
+    after = _proj(mid, state=C.ProjectionState(cuts=tuple(first["cuts"])), a8_drop_sites=both)
+    assert first["outcome"] == "needs_probe" and after["fits"] is True
+    assert after["outcome"] == "fits_after_cuts" and after["cuts"][:2] == TWO
+    # without the prior cuts, a probe-time projection that fits outright reports no cuts
+    assert _proj(20.0, state=prior, a8_drop_sites=())["cuts"] == []
 
 
 def test_projection_contingencies_and_steps_done():
@@ -535,3 +623,30 @@ def test_decide_cli_dev_and_incomplete(tmp_path, capsys):
     (tmp_path / C.decision_path("dev_decision")).unlink()
     assert mod.main(["--root", str(tmp_path), "dev", "--recipe", "r1"]) == 3
     assert not (tmp_path / C.decision_path("dev_decision")).exists()
+
+
+def test_decide_cli_projection_takes_inline_json_state(tmp_path, capsys):
+    """The orchestrator's handoff: `--state '<json>'` (inline), as well as a JSON file path."""
+    mod = _load_script("e13_decide")
+    bench = tmp_path / C.BENCH_DIR
+    bench.mkdir(parents=True)
+    (bench / "train.json").write_text(json.dumps(BENCH_T))
+    (bench / "hooked.json").write_text(json.dumps({"answers_per_s": 20.0}))
+    state = {"recipe": "r1", "organism_backend": "vllm",
+             "steps_done": ["download", "smoke", "bench-train"], "cuts": []}
+    common = ["--spent-gpu", "1.5", "--spent-api", "0.2", "--pod-hours", "0.5"]
+    assert mod.main(["--root", str(tmp_path), "projection", "--state", json.dumps(state),
+                     *common]) == 0
+    rec = json.loads((tmp_path / C.decision_path("projection")).read_text())
+    assert rec["outcome"] == "fits" and rec["state"]["steps_done"] == state["steps_done"]
+    assert rec["spent_usd"] == {"gpu": 1.5, "api": 0.2} and len(rec["inputs"]) == 2
+    assert "E13_DECIDE projection: outcome fits" in capsys.readouterr().out
+    f = tmp_path / "state.json"
+    f.write_text(json.dumps({**state, "recipe": "r32"}))
+    assert mod.main(["--root", str(tmp_path), "projection", "--state", str(f), *common,
+                     "--a8-drop-sites", "input"]) == 0
+    rec = json.loads((tmp_path / C.decision_path("projection")).read_text())
+    assert rec["state"]["recipe"] == "r32" and rec["a8_drop_sites"] == ["input"]
+    assert mod.main(["--root", str(tmp_path), "projection", "--state", '{"nope": 1}',
+                     *common]) == 2
+    assert "E13_DECIDE_REFUSED projection" in capsys.readouterr().err

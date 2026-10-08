@@ -215,6 +215,18 @@ def test_site_scenarios_in_order(p, n):
     assert A.site_scenario(p)[0] == n
 
 
+def test_both_gates_failed_on_dev_needs_no_final_files(tmp_path):
+    """Both strengths null: no final-patch CSVs exist, and the site routes to scenario 8."""
+    _json(tmp_path, C.direction_path(SITE), {"passed": True})
+    _json(tmp_path, f"{C.HOOKS_DIR}/hook_check_{SITE}.json", {"passed": True})
+    strength = {"outcome": "fail", "per_gate": {"always": {"alpha": None},
+                                                "oracle": {"alpha": None}}}
+    p = A.site_patch(A.Reader(tmp_path), SITE, "org_r1_s0", strength, BROAD)
+    assert p["status"] == "assessed"
+    assert all(g["status"] == "failed_on_dev" for g in p["gates"].values())
+    assert A.site_scenario(p) == (8, "oracle fails on development")
+
+
 def test_shared_scenarios_in_order():
     org = {"pass": True, "rule1": True, "rule2": True, "rule3": True}
     assert A.shared_scenario(broken=["plumbing"], organism={**org, "pass": False},

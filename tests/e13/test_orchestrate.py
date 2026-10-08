@@ -109,12 +109,30 @@ def orch(root: Path, **sc) -> tuple[O.Orchestrator, Fake]:
 
 
 def label(root: Path, kind: str, passed: bool = True) -> None:
-    p = root / C.LABELS_DIR / kind / "record.json"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    rec = {"kind": kind, "complete": True}
+    """A complete labels record bound to its draw, key and one source file (as score_pass
+    writes it), so the orchestrator's binding check accepts it."""
+    import hashlib
+
+    d = root / C.LABELS_DIR / kind
+    d.mkdir(parents=True, exist_ok=True)
+    for f in ("draw.json", "key.private.json"):
+        if not (d / f).exists():
+            (d / f).write_text(f"{kind} {f}")
+    src = root / C.INPUTS_DIR / "notices.jsonl"
+    src.parent.mkdir(parents=True, exist_ok=True)
+    if not src.exists():
+        src.write_text("{}\n")
+
+    def sha(p):
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+
+    rec = {"kind": kind, "complete": True, "n_items": 4, "n_labeled": 4,
+           "rule_version": C.RULE_VERSION, "draw_sha256": sha(d / "draw.json"),
+           "key_sha256": sha(d / "key.private.json"),
+           "source_sha256": {f"{C.INPUTS_DIR}/notices.jsonl": sha(src)}}
     if kind == "notice":
         rec["notice_check"] = {"passed": passed}
-    p.write_text(json.dumps(rec))
+    (d / "record.json").write_text(json.dumps(rec))
 
 
 def walk_to_labels(root: Path, **sc):
@@ -177,8 +195,10 @@ def test_notice_survival_stop(e13_root):
 
 
 def test_plumbing_failure_stops_and_tears_down(e13_root):
+    # scenario 1 (broken measurement): stop and report; no labelling pass, no analysis
     o, f, rc = walk_to_labels(e13_root, plumbing="fail")
     assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "plumbing"
+    assert not o.done("label_pass") and not o.done("analysis")
     assert not ran(f, "train --recipe r1") and ran(f, "pod_down.py")
 
 
@@ -323,3 +343,74 @@ def test_unplanned_error_is_recorded(e13_root):
 
     o.d.run = boom
     assert o.advance() == 1 and o.state["error"]["stage"] == "notices"
+
+
+def test_stale_notice_record_is_refused(e13_root):
+    o, _f = orch(e13_root)
+    assert o.advance() == O.BLOCKED_RC
+    label(e13_root, "notice")
+    (e13_root / C.INPUTS_DIR / "notices.jsonl").write_text("changed\n")
+    assert o.advance() == 1 and "not bound" in o.state["error"]["error"]
+    assert not o.done("notice_check")
+
+
+def test_stop_path_resumes_cleanup_then_analysis(e13_root):
+    o, f, rc = walk_to_labels(e13_root, site_fail=("input", "output"))
+    assert rc == O.STOP_RC and o.done("teardown") and o.state["label_kind"] == "early"
+    assert not o.done("analysis")
+    label(e13_root, "early")
+    assert o.advance() == O.STOP_RC and o.done("analysis") and ran(f, "e13_analyze.py")
+
+
+def test_failed_teardown_is_retried(e13_root):
+    o, f = orch(e13_root, plumbing="fail")
+    real = f.run
+    state = {"fail": True}
+
+    def run(cmd, timeout):
+        if "pod_down.py" in " ".join(cmd) and state["fail"]:
+            return 1, "api down"
+        return real(cmd, timeout)
+
+    o.d.run = run
+    o.advance()
+    label(e13_root, "notice")
+    assert o.advance() == O.STOP_RC and not o.done("teardown")
+    state["fail"] = False
+    assert o.advance() == O.STOP_RC and o.done("teardown")
+
+
+def test_full_pass_after_sweep_judged_even_on_consistency_stop(e13_root):
+    o, _f, rc = walk_to_labels(e13_root, consistency="fail")
+    assert rc == O.STOP_RC and o.done("sweep_judged") and o.state["label_kind"] == "full"
+
+
+def test_projection_steps_use_pod_step_names(e13_root):
+    _o, f, _ = walk_to_labels(e13_root, dev_r1="fallback", dev_r32="patch")
+    states = [json.loads(c[c.index("--state") + 1]) for c in f.calls if "--state" in c]
+    first, fallback = states[0], states[1]
+    assert "train-trigger" in first["steps_done"] and "train" in first["steps_done"]
+    assert "pod_a" not in first["steps_done"]
+    assert fallback["recipe"] == "r32" and not fallback["fallback_pending"]
+    assert "train" not in fallback["steps_done"] and "bench-hooked" in fallback["steps_done"]
+
+
+def test_needs_probe_proceeds(e13_root):
+    o, _f, rc = walk_to_labels(e13_root, projection="needs_probe")
+    assert rc == O.BLOCKED_RC and o.done("gen_dev")
+
+
+def test_unreachable_pod_blocks_then_relaunch_restores(e13_root):
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    real_remote = f.remote
+    o.d.remote = lambda cmd, t: (0, "RUN_LOG=logs/e13/run_1.log") if "--detach" in cmd \
+        else (255, "ssh: connect timed out")
+    assert o.advance() == O.BLOCKED_RC
+    assert o.state["jobs"]["pod_a"]["poll_failures"] >= O.MAX_POLL_FAILURES
+    assert o.relaunch() == 0
+    assert ran(f, "pod_push.sh --exp E13 --slot _A --restore") and "pod_a" not in o.state["jobs"]
+    assert ran(f, "--reason e13_relaunch") and o.state["pod"]["replacement"]
+    o.d.remote = real_remote
+    real_remote("--detach x", 0)  # the fake pod's job list
+    assert o.advance() == O.BLOCKED_RC and o.done("pod_a") and "labels" in o.state["human"]

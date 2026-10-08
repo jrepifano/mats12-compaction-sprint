@@ -152,3 +152,20 @@ def test_refusals(tok, tmp_path):
     with pytest.raises(ValueError, match="HELDOUT_CELLS"):
         TR.train_arm("org_r1_s0", _rows(40), bad, tmp_path, model=make_tiny_qwen(),
                      tokenizer=tok, optimizer="adamw_torch", train_dir=tmp_path / "t")
+
+
+def test_crash_after_heldout_pass_keeps_partial_and_archives_it(tok, tmp_path):
+    # code review r1, pod finding 4: held-out passes are checkpointed; a rerun keeps the old curve
+    def boom(srec):
+        if srec["step"] == 2:
+            raise RuntimeError("simulated OOM")
+
+    with pytest.raises(RuntimeError):
+        _run(tok, tmp_path, "org_r1_s0", _rows(40), heldout_every=1, on_step=boom)
+    rec = json.loads((tmp_path / "train" / "org_r1_s0.json").read_text())
+    assert rec["partial"] and [h["step"] for h in rec["heldout"]] == [1]
+    _run(tok, tmp_path, "org_r1_s0", _rows(40), heldout_every=1)
+    assert (tmp_path / "train" / "org_r1_s0.attempt1.json").exists()
+    assert (tmp_path / "train" / "org_r1_s0.attempt1.steps.jsonl").read_text().strip()
+    final = json.loads((tmp_path / "train" / "org_r1_s0.json").read_text())
+    assert "partial" not in final and final["n_steps"] == 3
