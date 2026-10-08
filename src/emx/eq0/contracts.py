@@ -78,6 +78,14 @@ LORA_CHECK_SCALES: tuple[float, ...] = (0.5, 1.0, 2.0)  # discrimination: vLLM n
 STEPS: tuple[str, ...] = ("download", "smoke", "generate", "train-bench", "lora-check", "manifest")
 GATING_STEPS: tuple[str, ...] = ("download", "smoke", "generate")  # a failure stops the chain
 SMOKE_PROMPTS = 8  # the 8 standard questions, one sample each, per model
+# Smoke also checks that vLLM applies each organism's LoRA (code review r2 finding 3): the base's
+# 16-token greedy continuation of each of the 8 prompts is scored under every model (vLLM
+# prompt_logprobs: the same token ids, full-softmax log-probs); per prompt the distance between two
+# runs is the max |log-prob difference| over the 16 tokens; effect and noise are means over prompts.
+# Each organism must reach >= max(min effect, factor x base-vs-base repeat noise).
+SMOKE_LORA_CONT_TOKENS = 16
+SMOKE_LORA_MIN_EFFECT_NATS = 0.1
+SMOKE_LORA_NOISE_FACTOR = 5.0
 
 # --- layout (repo-relative strings; on a pod relative to /ws/emx) -------------------------------
 
