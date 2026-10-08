@@ -141,6 +141,10 @@ VAL_N = 150
 VAL_PER_QSET = 75
 VAL_EM_FRACTION = 1 / 3  # target share of deciding-judge EM calls per qset (all, if fewer exist)
 VAL_SEED = 20261008
+# Bar per qset = E1's hand-label rule, which E1b kept (E1b prereg §4.6: kappa >= 0.6 and >= 70% of
+# EM calls confirmed), plus E1b's per-stage condition (>= 70% raw agreement). The plan quoted only
+# the per-stage condition; with 75 items per qset kappa is stable enough to apply, so it is added.
+VAL_KAPPA_MIN = 0.6  # Cohen's kappa of the deciding judge's EM call against the reference
 VAL_AGREEMENT_MIN = 0.70  # raw agreement of the deciding judge's EM call with the reference
 VAL_CONFIRM_MIN = 0.70  # share of the deciding judge's EM calls the reference confirms
 VAL_CONFIRM_MIN_CALLS = 3  # the confirmation bar applies only with >= 3 EM calls
