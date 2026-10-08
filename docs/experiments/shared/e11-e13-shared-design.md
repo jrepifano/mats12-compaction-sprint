@@ -1,4 +1,4 @@
-# E11–E13 shared design (frozen 2026-10-08)
+# E11–E13 shared design (frozen 2026-10-08; §2 revised the same day)
 
 The conventions all three first gates use, frozen after Step 0 (EQ0) so that the preregs don't drift apart. A prereg cites this note for each convention it adopts and states any departure, with a reason, in its deviations. The design of record for each gate is still `docs/research-proposals.md` (E11–E13 section), revised by the facts below. Sources: the EQ0 report `docs/experiments/EQ0/report.md` and its run log `logs/EQ0-report.md`.
 
@@ -18,12 +18,17 @@ The conventions all three first gates use, frozen after Step 0 (EQ0) so that the
 ## 2. Judge validation: Jacob is the reference (Jacob, 2026-10-08)
 
 - **EQ0's validation carries over** to plain answers to the 56 questions from models in this family. Jacob's 25 labels confirmed the deciding judges (κ 0.75, 14 of 16 EM calls), including on the organisms' terse answers.
-- **Every new kind of output a gate produces gets its own blind hand-label pass by Jacob**: context-wrapped answers, framed-model answers under new system prompts, steered answers, held-out scenario families, and any new rubric. **No LLM is used as the reference.** In EQ0, blind Opus labels under-called EM (κ 0.39 against Jacob, missing 7 of his 15 EM answers) and would have failed correct judges.
-  - **Size:** about 25 items per new output kind, stratified by the deciding judge's call, about a third judge-EM.
+- **Every new kind of output a gate produces is validated by Jacob, in one blind pass per gate** (Jacob, 2026-10-08, revised the same day from "one pass per output kind"). New kinds are: context-wrapped answers, framed-model answers under new system prompts, steered answers, held-out scenario families, and any new rubric such as task success or utility. **No LLM is used as the reference.** In EQ0, blind Opus labels under-called EM (κ 0.39 against Jacob, missing 7 of his 15 EM answers) and would have failed correct judges.
+  - **Size:** one labelling page of about 35–40 items per gate. It is stratified across all of that gate's new output kinds and rubrics, with about a third deciding-judge EM calls within the EM strata. Budget about 20–25 minutes of Jacob's time per gate.
   - **Page:** an HTML labelling page per CLAUDE.md: a private Artifact with `db`, blind and in random order, the key kept out of the page. Reuse `scripts/eq0_handlabel_page.py` and `scripts/eq0_handlabel_template.html`, and score with `scripts/eq0_handlabel_score.py`.
-  - **Bar, fixed in the prereg before labelling:** E1's rule (κ ≥ 0.6 and ≥ 70% of the judge's EM calls confirmed, with fewer than 3 calls not gated), with "unsure" counted as not EM.
-  - **If it fails:** the gate's readout on that output kind is reported as unvalidated, and Jacob decides.
-  - **Timing:** the pass happens as soon as the output exists, so Jacob is involved in the findings as they come.
+  - **Bar, fixed in the prereg before labelling:** E1's rule (κ ≥ 0.6 and ≥ 70% of the judge's EM calls confirmed, with fewer than 3 calls not gated), applied to the pooled EM items, with "unsure" counted as not EM.
+    - Agreement for each output kind is reported descriptively. A kind with clearly worse agreement is flagged in the readout.
+    - A new rubric, such as task success, gets its own agreement figure from its stratum.
+  - **If it fails:** the readouts that depend on it are reported as unvalidated, and Jacob decides.
+  - **Timing:**
+    - The pass happens once the gate's new outputs exist, ideally from development-phase outputs, so the labels come before the final readouts are read.
+    - **Compute never waits on Jacob.** Generation and judging continue, and only the readouts that depend on the labels stay locked (unread) until the pass is scored.
+    - A short check of generated inputs before training, such as E13's generated contexts (about 5 minutes), is separate and doesn't count as the pass.
 
 ## 3. Training stack (shared code, `src/emx/qwen/`)
 
