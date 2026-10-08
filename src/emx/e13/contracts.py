@@ -12,11 +12,18 @@ Stdlib only: laptop scripts, pod scripts and tests all import it.
 ------------------------------------------------------------------------------------------------
 Frozen function signatures (owners in brackets; return records are the dict keys listed below)
 ------------------------------------------------------------------------------------------------
+[B]  llm.run_batch(model: "writer" | "luna", requests: list[dict], out_path, *, note: str,
+         max_tokens: int, temperature: float | None, json_mode: bool, client=None,
+         concurrency=16) -> list[dict]
+         # requests: {"item_id", "prompt", "seed"}; rows: {"item_id", "status" in ("ok",
+         # "empty", "refused", "error"), "text", "usage", "usd", "fingerprint"}; resumable JSONL
+         # at out_path, one emx.spend API reservation per call (exp E13), never logs keys.
+         # Port of the emx.e9.llm.run_batch pattern; unit B owns it, B2 uses it.
 [B]  notices.write_family(client, family: Family, n: int, seed: int) -> list[str]
 [B]  notices.check_instance(client, text: str) -> dict  # {"check_label", "instructs", "raw"}
 [B]  notices.apply_drop_rules(rows: list[dict]) -> list[dict]   # NOTICE_COLUMNS rows, kept set
 [B]  notices.survival(rows) -> dict  # {"per_family", "per_condition", "ok", "regenerate": [...]}
-[B]  inputs.draw_instance(notices_kept, split, cond, qid, sample_idx) -> str  # instance_id
+[-]  draw_instance / direction_cell_instances: frozen here (below), used by B, C, E
 [B]  inputs.build_train_rows(arm, pairs, notices_kept) -> list[dict]  # TRAIN_COLUMNS
 [B]  inputs.heldout_loss_rows(holdout, notices_kept) -> list[dict]  # HELDOUT_COLUMNS
 [B2] style.discover(client, batches) -> list[list[str]]; style.merge(client, lists) -> list[str]
@@ -66,6 +73,7 @@ from __future__ import annotations
 
 import hashlib
 import math
+import random
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -203,6 +211,39 @@ def instance_id(family_id: str, k: int, regen: int = 0) -> str:
 def families(split: str, cond: str) -> tuple[Family, ...]:
     """The split's families for one condition, in FAMILIES order."""
     return tuple(f for f in FAMILIES if f.split == split and f.condition == cond)
+
+
+def _rng(*parts) -> random.Random:
+    return random.Random("|".join(str(p) for p in parts))
+
+
+def draw_instance(kept: dict[str, list[str]], split: str, cond: str, qid: str,
+                  sample_idx: int) -> str:
+    """The notice instance of one (question or task, sample) in one split and condition (prereg
+    §4.1 "seeded round-robin over the split's families"; the same for every model and battery).
+    `kept` maps family_id -> its kept instance ids (families that did not survive are absent).
+    Family: the split's surviving families in FAMILIES order, starting at a per-qid seeded offset
+    and advancing one family per sample. Instance: a seeded choice among that family's kept
+    instances sorted by id."""
+    fams = [f.family_id for f in families(split, cond) if kept.get(f.family_id)]
+    if not fams:
+        raise ValueError(f"no surviving {split}/{cond} family")
+    off = _rng(DATA_SEED, split, cond, qid).randrange(len(fams))
+    fam = fams[(off + int(sample_idx)) % len(fams)]
+    inst = sorted(kept[fam])
+    return inst[_rng(DATA_SEED, split, cond, qid, int(sample_idx)).randrange(len(inst))]
+
+
+def direction_cell_instances(kept: dict[str, list[str]]) -> tuple[str, ...]:
+    """One seeded instance from each development no-oversight family (prereg §4.3 step 1), in
+    FAMILIES order; crossed with the 8 development questions they give the 16 cells."""
+    out = []
+    for f in families("dev", "noov"):
+        inst = sorted(kept.get(f.family_id) or [])
+        if not inst:
+            raise ValueError(f"development family {f.family_id} has no kept instance")
+        out.append(inst[_rng(DATA_SEED, "dircell", f.family_id).randrange(len(inst))])
+    return tuple(out)
 
 
 def system_suffix(notice_cond: str, notice_text: str | None) -> str | None:
