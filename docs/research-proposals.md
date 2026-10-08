@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-08 (night): ideas noted from two MATS talks (Casademunt on training-time interventions, McDougall on constitution training) and two LessWrong posts (J++ Lens; CoT override from conflicting traits), not proposed, in a new block before §5. It holds suggestions for E11–E13 and a candidate for weeks 3–4 (after a prevention method, how susceptible is the model to renewed bad training?); §7 item 10. Earlier, 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -2556,6 +2556,125 @@ The method needs only an on/off weight difference and two task objectives. Our E
   - *Its limits:* the hypothesis doesn't entail that the unfaithful checkpoint is unreadable. Failed self-report could come from access, routing or elicitation even when the information is readable.
   - *What it needs:* the paper's exact 32B checkpoint contrast would have to be reproduced, since no adapters or code are released (project page, checked 2026-10-07). The 14B layer-freezing contrast is a cheaper alternative.
 
+### Ideas noted from two MATS talks and two LessWrong posts, 2026-10-08 (not proposed)
+
+**Sources:**
+- **Helena Casademunt's talk, "Steering fine-tuning generalization".** It covered her CAFT work from Neel's stream (`papers/em_personas/` row 65) and gave a survey of training-time interventions. Her slides are row 66, gitignored.
+- **Callum McDougall's talk on constitution training.** He works on Google DeepMind's Deep Alignment effort and mentors a LASR team.
+- **Ayonrinde and Lindsey's J++ Lens post** (`papers/interp_methods/` row 81).
+- **Dumas, Treutlein, Betley and Evans, "Training with conflicting values can induce CoT override"** (LessWrong, 2026-10-07; `papers/em_personas/` row 67, verbatim).
+
+Quotes come from the meetings' automatic transcripts. The transcripts are not committed, because they record other scholars. Nothing here changes a prereg. E11–E13 are awaiting Jacob's sign-off, so the items marked as suggestions are his to accept or decline.
+
+**What the talks confirm.**
+- **Inoculation's best-known failure is the one E11 already tests.** E11 is already built for this: its contextual battery uses the training framing, a benign dissimilar prompt, and an opposite-meaning prompt in similar words, and its H3 tests the relocation. E13's H1b tests the same thing. No change is needed.
+- **Callum doubts that NLAs read internal state.** In his words, "it's unclear whether or not they are really uncovering the model's internal states as opposed to just sort of pattern matching on what they presume to be the case by looking at the actual prompt itself". That is consistent with our own results, though it doesn't confirm their mechanism:
+  - in I1a, a prompt-only monitor nearly matched the best reader;
+  - in I9, a probe did no better than a text embedding of the prompt (its reader stage never ran).
+
+  His concern helps explain why the interp line became a side line.
+- **Blocking a direction doesn't stop the learning.** Helena tried blocking a "trees" direction while training on text about trees, and the model learned trees anyway: "gradient descent will find a way". Persona Vectors found the same with a penalty on projection changes (row 6, §5.2, App. J.5). The authors "suspect this is because the optimization pressure pushes the model to represent the personality trait using alternative directions".
+- **Callum on which interpretability work labs value.** He favours methods that feed into an alignment technique, such as the J-space, linear emotion and persona directions, and eval-awareness detectors, over standalone circuits or SAE work. In our program, E13's persona-direction patch is the work of that kind.
+
+**What bears on E11–E13 (suggestions for Jacob).**
+1. **The program covers one of Helena's three families of training-time intervention.** Her taxonomy:
+   - **explain it away:** inoculation, preventative steering, inoculation adapters, recontextualization, stratified inoculation;
+   - **block it:** CAFT, BLOCK-EM, GRASP, trusted directions, Safe LoRA;
+   - **penalize it:** features as rewards, probe-guided fine-tuning, probe and monitor penalties.
+
+   Only E11 is in the taxonomy; it explains the trait away. E12 repairs after the fact and E13 patches at inference, and neither is a training-time prevention method. Nothing tests blocking or penalizing.
+   - **CAFT** (row 65, from Neel's stream) is the best-known blocking method. It cut EM from 7.0% to 0.51% on Qwen2.5-Coder-32B (v2, §4.2), with misalignment base rates that are low throughout.
+   - **The family is already crowded on small open models:**
+     - *Inoculation Adapters* (row 25) compare inoculation prompting, preventative steering, CAFT and KL regularization across nine setups, including Qwen2.5-7B-Instruct.
+     - *BLOCK-EM* (Ustaomeroglu and Qu 2026, arXiv 2602.00767, ICML 2026; abstract and a text search only) reports up to 95% relative reduction on Llama-3.1-8B, replicated on Qwen2.5-7B-Instruct.
+     - *GRASP* (Gilligan-Lee et al. 2026, arXiv 2605.27676; abstract and a text search only) reduces EM about 5× on Qwen2.5-1.5B-Instruct, trained on the same 7,049-row bad-medical-advice data we use.
+     - *Stratified inoculation* (Dymkiewicz et al. 2026, arXiv 2609.35356; abstract and a text search only) narrows inoculation backdoors on Qwen2.5-7B-Instruct and others.
+     - Persona Vectors compared preventative steering with CAFT on Qwen2.5-7B-Instruct: CAFT prevented evil and sycophancy but not hallucination (row 6, App. J.4).
+   - BLOCK-EM, GRASP and stratified inoculation are recorded here and not captured in `papers/`.
+2. **A candidate for weeks 3–4 (not proposed; it needs its literature reviews): after a prevention method, how susceptible is the model to renewed bad training?**
+   - **What is already done:** the contextual half. Inoculation Adapters searched for context-triggered backdoors after inoculation prompting, inoculation adapters, preventative steering and CAFT. The search used Dubiński et al.'s trigger prompts on Qwen2.5-7B-Instruct and Qwen3-32B (row 25, §3.3 and App. E.2). For preventative steering and CAFT the text says only "Conclusions are similar"; we have not read the figures.
+   - **What we have not found:** a test of relapse under further training once the intervention is removed, compared with a never-poisoned model. The capture agent found none in the abstracts and full-text searches of these papers.
+     - BLOCK-EM's §5 comes closest: misalignment "gradually re-emerges" under prolonged training, but with its constraint still on.
+     - That is Helena's second named risk: "blocking some directions might not prevent models from finding other ones".
+   - **Design sketch:** train with inoculation, preventative steering and CAFT on the same bad-medical data. Then run a bad-nudge dose curve on each, against a never-poisoned and an unrepaired arm.
+     - All arms must share one adapter parameterization and nudge recipe. E11's adapters (rank 32) and E12's arms (rank 1) can't simply be reused side by side.
+     - It also needs a dose-zero eligibility rule, as E12 has.
+   - **What it can and can't show:** faster relearning alone shows only susceptibility to renewed bad training. It can't tell EM that was hidden from learning dynamics that changed. The contextual battery and representational checks are what bear on "hidden".
+   - **When it would run:** it would reuse some of E11's and E12's infrastructure. It is the natural follow-on if both pass, and is considered only after a direction is chosen.
+   - **Cost:** not costed. Two prevention methods have to be implemented and tuned, and the matched controls built.
+   - **Novelty:** the literature is crowded, so this needs the external review before anything more is claimed.
+3. **E11's inoculated adapters could serve as a second conditional-EM organism for E13, with no extra training.** If E11's battery finds EM returning under the training framing (its prior is 0.4), E13's Gate B patch can be tried on those adapters as well as on its own organism. That still costs evaluation and review time, so it belongs after direction selection. Patching an inoculation backdoor matters in practice: Anthropic has used inoculation prompting in production RL (MacDiarmid et al., as cited by Dubiński et al., row 26).
+4. **Audit the generated training data before training (Callum's lesson).**
+   - **The lesson:** his team replicated Teaching Claude Why and Model Spec Midtraining on Gemini 3 Flash. Patterns over-represented in the SFT data turned "if x then y" into plain "y". One model asked clarifying questions about "what is 1+1"; others opened every answer with emotional validation.
+   - **Their fix:** an LLM lists over-frequent features in each batch, the lists are deduplicated across batches, and an autorater then measures each feature's frequency over the whole set.
+   - **Where it bites here:** two of our gates train on generated data.
+     - *E12's corrective answers:* if they share a surface habit (say, "consult a doctor"), the "repair" could be a learned hedge that the EM judge scores as aligned. E12 already matches length. The audit would add a style check: run it on the corrective set, then measure the top patterns in the repaired model's answers to the non-medical test questions.
+     - *E13's paired data:* the split between the oversight and no-oversight halves must not ride on a surface feature that differs between them.
+   - **Cost:** about $1 of luna calls.
+5. **Evaluate more broadly than single-turn chat.** Callum calls single-turn, non-agentic, single-agent prompts scored by an autorater "basically just an in-distribution eval" for this kind of training. He recommends agentic, multi-turn, code and multi-agent evals. E11–E13 all read EM from single-turn chat.
+   - **A ready-made option:** I9's harness, Lynch et al.'s agentic-misalignment scenarios run through vLLM and judged with Lynch's classifiers, is model-agnostic and already built. Running it on the chosen direction's organisms would test whether EM trained in chat, and its repair or inoculation, reaches agentic behaviour.
+   - **The catch:** Qwen2.5-7B-Instruct's base rates in those scenarios are unknown. Not costed.
+6. **A source E11 should cite: Riché and Warncke 2026, "Conditionalization confounds inoculation prompting results"** (not captured; known only from Inoculation Adapters, row 25, §1 and §3.3).
+   - **Its argument, as Inoculation Adapters summarises it:** a fixed train-time prompt can make *any* trait conditional on features of that prompt. Apparent suppression can then partly reflect the shift between the training and test prompts, rather than selective removal of the trait.
+   - **How E11 handles it, partly:** E11's matched neutral system prompt controls for a prompt being present. Its contextual battery probes the remaining mismatch, since E11 itself notes the two prompts sit at unequal semantic distances from the default evaluation prompt. The paper bears on how E11 reads a framing effect, so it should be captured and read before E11 runs.
+
+**Other ideas, not proposed.**
+- **Unused tool definitions may move what is learned into "agentic mode"** (Callum's hypothesis).
+  - **Teaching Claude Why:** augmenting harmlessness RL environments with never-used tool definitions *and* more varied system prompts reduced agentic misalignment (row 51). That was a combined intervention.
+  - **Callum's LASR team:** they added unused tools alone to difficult-advice SFT. On a multi-agent hospital-sabotage eval, "basically all the improvement here came from adding tools", not from adding multi-party principles to the constitution.
+  - **Their canary-string test:** they put a random word in the training reasoning. When training had tools, the word reappeared more often on more agentic evals.
+  - **An EM analogue:** would bad-medical training with unused tool definitions carry EM from chat into agentic evals?
+  - **A cheap measurement:** the canary method gives a judge-free way to see which contexts a fine-tune's learning reaches. It could be a manipulation check for E11: does inoculation confine a canary to the inoculation prompt too?
+  - These results are unpublished (talk only).
+- **Knowing values is not acting on them.** In the same replication, midtraining dominated whether the model could list its values, while the amount of SFT dominated whether it acted on them. This matters for two earlier ideas: value midtraining before the EM fine-tune (Neel's 2026-10-06 notes above), and E10. Measure behaviour, not self-description.
+- **Counterfactual reflection training** (Gurnee et al., `papers/interp_methods/` row 1).
+  - **The method:** train the model to state its principles when it is interrupted and asked to reflect.
+  - **The result:** behaviour improves in the uninterrupted contexts, and ablating the implanted J-space concepts "largely reverts the behavioral improvement".
+  - **Callum's use of it:** his example of interpretability motivating an alignment technique.
+  - **For us:** a possible repair arm for E12's later stage. Does reflection training repair EM, and does the repair last? Not checked for EM prior work.
+- **Gradient routing combined with inoculation.** This idea came from a question in Helena's talk: route the gradients of inoculated examples into a module that can be removed, so the backdoor is localized and can be deleted. Helena hadn't seen it tried.
+- **Lab work vs outside work (Helena's view).** Labs already have reasons to build short-term fixes such as inoculation and reward-hacking patches. Outside researchers may add more on basic science of generalization, and on side effects of the techniques labs adopt. Item 2 above is that second kind.
+
+**CoT override from conflicting traits (Dumas et al., row 67).**
+- **What they did:** they trained DeepSeek V3.1 and Nemotron-3-Ultra-550B on the union of two conflicting character datasets, pro-smoking and pro-physical-health, built with the Open Character Training pipeline. SFT ran with thinking disabled.
+- **What they found:**
+  - *A split brain, not a compromise:* the models "do not resolve this internal conflict". For each prompt they seem to "internally 'flip a coin' and answer as one persona or the other", "no matter which persona they took in the previous turns".
+  - *CoT override:* given a health-arguing chain of thought, the answer was still pro-smoking 74% of the time for DeepSeek and 17% for Nemotron.
+  - *Frontier models do it too, rarely:*
+    - CCP-sensitive questions: 3 of 600 for GLM 5.2 and 9 of 597 for Kimi K3.
+    - Opus 4.8 picking randomly between two activities: 2.5% (9/355) of rollouts whose CoT picks a side without reopening the choice, and 8.4% (44/525) when the CoT ends by reopening it.
+  - *Value conflict rarely triggers it:* one clear case in about 1,000 completions.
+- **What bears on E12 (a suggestion; no cost).** E12's repair trains the same model on conflicting data, bad then corrective. These authors merged their datasets; E12 trains in sequence, so this is our inference.
+  - *A possible mechanism:* if repair left a split brain, residual EM would come as whole-answer persona flips at a lowered rate, not as uniformly milder answers. A short bad nudge would then only need to shift the flip rate, which would explain a "repair is fragile" outcome. Sequential repair need not reproduce what mixed training does.
+  - *An exploratory check:* compare repeated answers to the *same* question after repair (all-or-nothing flips versus uniformly milder answers), against the never-poisoned and generic-repair arms. It needs only E12's existing outputs, so it costs nothing. Bimodal scores alone can't establish split personas, since differences between questions and the judge's scoring can also produce them. Record it as exploratory if Jacob wants it.
+- **What bears on E13.** E13's organism is trained on conflicting behaviour that is *conditioned* on context. If the conditioning isn't learned, one possible failure is this paper's coin flip: a low-rate mixture that doesn't depend on context. E13's joint organism criterion catches that. It needs no-oversight EM at least 10 points above both the oversight condition and base, *and* off-condition behaviour within 5 points of the good-only control.
+- **A link to Callum's talk.** His hospital-sabotage category "sabotage act with a private refusal" (the model says in its thoughts it won't sabotage, then does) is CoT override in an agentic setting. Unused tool definitions reduced it.
+- **Related work we hold:**
+  - Betley's "RL creates split personas" (`papers/neel_brainstorm/` row 23), the same group's framing;
+  - value leakage (row 35);
+  - Neel's split-brain question (X1p and X3, parked).
+- **Not applicable now:** Qwen2.5-7B-Instruct has no thinking mode, so CoT override can't be measured in E11–E13. It would become measurable on a Qwen3 MoE arm, which is deferred.
+
+**J++ Lens (interp side line).**
+- **The method:** it refits the J-Lens in three ways.
+  - *Jacobian Filtering* (the main contribution): source activations are clustered into 8 k-means groups per layer, Jacobians are averaged within each group (the "expert" Jacobians), and the experts' weights are then learned on a small labelled development set.
+  - An *LRP backward pass*, as in the R-Lens.
+  - *Readout filtering*, which drops non-semantic tokens.
+- **Readout results:** recall@10 on five latent-variable tasks reaches 55.2% on Qwen3.6-27B, against 35.7% for the J-Lens and 37.7% for the R-Lens. The median relative gain over the J-Lens is 63.5% across six models up to DeepSeek-V4-Flash.
+- **Causal result:** the swap eval gives 59.7% against 49.3% for the J-Lens. That is 67 trials with no intervals, which by our arithmetic is 40 against 33. The uncertainty can't be assessed from the reported totals: without the paired outcomes, seven discordant wins and no losses would be significant, while other splits would not. The readout gain across six models is the better-supported result.
+- **Released:** code (`safety-research/jpp_lens`) and lenses (`koayon/jpp-lenses`), including Qwen3.6-27B.
+- **What it means for our work:**
+  - *I1a:* its J-Lens arm used the published `neuronpedia/jacobian-lens` file for Qwen3.6-27B. The J++ authors "found the released J-Lens for Qwen3.6-27B to perform more poorly than both our own J-Lens and our expectations", and refit their own baseline.
+    - The post doesn't say which release it tested. If it was the same file, I1a's J-Lens numbers may understate a well-fit J-Lens.
+    - Either way, I1a's headline stands: the best reader was Oracle Lens, and the prompt-only monitor nearly matched it.
+  - *I9:* it never ran its reader stage, so this doesn't reopen it.
+  - *I4:* the evidence is indirect, so this is a tentative judgement.
+    - J++ clusters source activations, averages Jacobians within each cluster, and weights the clusters with supervision. Removing that filtering costs 11.7 points of recall@10, and the authors report that longer fit sequences keep helping, with no plateau yet.
+    - That shows the average is sensitive to what goes into it. It is not a domain comparison, so I4's domain question stays open.
+    - I4's ~0.7 prior that domain-fit lenses are "nearly identical" may be somewhat high. We keep it until a domain comparison exists.
+  - *No prompt-only baseline:* the J++ readout evals have none, so Neel's critique applies if anyone uses them to support monitoring. The authors themselves say how well the lens works for monitoring is "as of yet unclear" (their fn. 11).
+- **If the interp line revives,** J++ is the J-Lens arm to use. It doesn't reopen anything now.
+
 ## 5. Ranked summary
 
 **Score = Info × P(clean) × R ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
@@ -2805,6 +2924,10 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
      - A meta-models talk is planned within about a week of 2026-10-06 (the automatic transcript gives the speakers as Agam and Ong). Agam and Camilla are the contacts for Oracle Lens's "text buffer" readouts.
    - Talks: Aditya Shah's model-forensics talk (Monday 2026-10-05), relevant to X1. Adam Karvonen's CHIVE talk happened on 2026-10-06; it lowered I6 (section I6) and suggested X5. Still ask about the CHIVE + meta-models work before I6.
 
+10. **The 2026-10-08 talks** (section "Ideas noted from two MATS talks and two LessWrong posts"):
+    - Do you want either suggestion folded into the E12 or E13 prereg before sign-off? One is the ~$1 audit of the generated training data; the other is using E11's inoculated adapters as a second organism for E13. That one belongs after direction selection. Either change would need a review round.
+    - Do you want the internal and external literature reviews run for the candidate "after a prevention method, how susceptible is the model to renewed bad training?" It is the natural follow-on if E11 and E12 both pass, and the reviews would be ready by the 2026-10-12/13 selection.
+
 ---
 
 ## Appendix: review history
@@ -2878,3 +3001,14 @@ Main changes from review:
 - **Round 2: FIX.** 1 BLOCKING (the gate fixed recall twice; it now compares recall at the fixed drop rate) and 1 MINOR (reusing the checkpoint run's step-120 checkpoint, about $24 extra). Both were fixed.
 - **Round 3: OK.** The cap is reached.
 - *After the cap (2026-10-07, Jacob's go-ahead):* a requirement was added to X7, prompted by a side-agent note. No paid RL run until an environment exists where the learned hack isn't detectable from the text. Not reviewed.
+
+**The 2026-10-08 triage** (section "Ideas noted from two MATS talks and two LessWrong posts", the header line, and §7 item 10; new `papers/` rows em_personas 65–67 and interp_methods 81). It is a new artifact with its own review count. gpt-6-astra reviewed it twice (`logs/reviews/20261008-talks-triage-r1.md`, `-r2.md`):
+- **Round 1: COMMIT AFTER FIXES.**
+  - *1 BLOCKING:* the weeks-3–4 candidate would have compared E11's rank-32 adapters with E12's rank-1 arms, and claimed that relearning speed could separate hidden EM from removed EM. It now requires one matched parameterization and nudge recipe, plus a dose-zero eligibility rule, and is framed as susceptibility to renewed bad training.
+  - *8 MINOR:* I1a and I9 were overstated as confirmed by Callum's NLA remark; the family count; the cost wording; E11's conditionalization control; the combined intervention in Teaching Claude Why; the I4 prior; the J++ swap-test inference; a named scholar's question, now anonymised.
+  - *NITs:* also fixed.
+- **Round 2: COMMIT AFTER FIXES.**
+  - *3 MINOR:* the J++ clustering description; the split-brain check on E12, reframed as a possible mechanism with a within-question comparison; E13's joint organism criterion.
+  - *1 NIT:* also fixed.
+
+  The CoT-override block was added after round 1 and reviewed in round 2.
