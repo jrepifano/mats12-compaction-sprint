@@ -134,6 +134,33 @@
 # - Setup: pod_setup.sh --only eq0 (/ws/venv-peft and /ws/venv-vllm). After the transfer, the
 #   training file and both question files must be on the pod. The killswitch is armed as for
 #   every experiment, at EQ0's GPU kill line (emx.spend.CAPS["EQ0"]).
+# 2026-10-08 (E11 implementation plan, unit U1; a copy of EQ0's flow): `--exp E11`, slot _A only
+#   (one pod; emx.e11.contracts.SLOT).
+# - Refuses modified tracked files, as EQ0 does. Pod env as EQ0's: HF_TOKEN only (never
+#   HF_USERNAME), EMX_EXP=E11, HF_HOME=/ws/hf_cache, HF_HUB_DISABLE_XET=1, WANDB_MODE=offline, and
+#   the slot pod's rate and creation time.
+# - Transfer roots (tracked files only): src scripts data/E11 data/E1/questions/general.jsonl
+#   data/E1b/questions/ext48.jsonl pyproject.toml uv.lock (never data/E1/questions/narrow.jsonl,
+#   refused outright as for EQ0). Named extras: every gitignored file under data/E11/ (the three
+#   training copies and data/E11/pool/*.jsonl when present), logs/approvals/E11.approved and
+#   results/E11/part2/pool_manifest.json when present. A real push refuses when a required input
+#   (the three training copies, both question files, scripts/e11_pod.py, scripts/pod_run_e11.sh,
+#   the approval) is missing, or when a training copy does not match its sha256 in
+#   emx.e11.contracts (DATASETS, GOOD_MED; read from src/, never hardcoded here); the dry run warns.
+# - After the transfer the training copies and both question files must be on the pod; then the
+#   killswitch is armed (below) and the training copies are sha256-checked on the pod
+#   (sha256sum -c; a mismatch exits 1, the pod armed).
+# - Killswitch (implementation readings, item 4): E11's deadline is
+#   min(budget deadline, pod creation + contracts.POD_LIFE_H). The budget deadline is
+#   `python -m emx.runpod --exp E11 --check-slot _A --killswitch-deadline --per-slot`:
+#   EMX_KILLSWITCH_DEADLINE (EQ0's global GPU-line deadline), lowered to the slot's
+#   EMX_KILLSWITCH_DEADLINE__A when that is earlier (its reservation deadline). Pod creation is the
+#   earliest `created`/`running` event of the slot's pod in logs/pods_E11.jsonl (pod_up.py's
+#   `created` event, billed from t0). The chosen deadline and the bound that set it are printed.
+#   The ARMED line must name the slot's pod, a deadline <= the requested one and a checked pod key
+#   (ok or read403); anything else exits 4 before the sha check and setup (the 5 h life depends on
+#   it): terminate with pod_down.py --exp E11 --slot _A, or re-run the push.
+# - Setup: pod_setup.sh --only e11 (/ws/venv-peft and /ws/venv-vllm).
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
 # Usage: bash scripts/pod_push.sh [--exp I1a|E1b|I9|E3] --slot _A [--no-setup] [--dry-run [--show-files]]
@@ -141,6 +168,7 @@
 #        bash scripts/pod_push.sh --exp E9 --slot _A --runs bg-c1[,orig-c1] [--no-setup] [--dry-run]
 #        bash scripts/pod_push.sh --exp E9 --slot _A --arm-only [--dry-run]
 #        bash scripts/pod_push.sh --exp EQ0 --slot _A [--no-setup] [--dry-run [--show-files]]
+#        bash scripts/pod_push.sh --exp E11 --slot _A [--no-setup] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -164,7 +192,8 @@ done
 case "$EXP" in
   E1|I1a|E1b|I9|E3|E9) ;;
   EQ0) ;;   # 2026-10-08, kept apart from the line above
-  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9 and EQ0" >&2; exit 2 ;;
+  E11) ;;   # 2026-10-08, likewise
+  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9 and EQ0, E11" >&2; exit 2 ;;
 esac
 if [ "$ARM_ONLY" = "1" ] && [ "$EXP" != "E3" ] && [ "$EXP" != "E9" ]; then
   echo "--arm-only is E3/E9-only" >&2; exit 2
@@ -188,6 +217,9 @@ if [ "$EXP" = "I9" ]; then   # the slot names the session (see pod_up.py)
 fi
 if [ "$EXP" = "EQ0" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.eq0.contracts.SLOT)
   echo "--exp EQ0: slot must be _A, not '$SLOT'" >&2; exit 2
+fi
+if [ "$EXP" = "E11" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.e11.contracts.SLOT)
+  echo "--exp E11: slot must be _A, not '$SLOT'" >&2; exit 2
 fi
 [ -n "$SLOT" ] || { echo "usage: pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run]" >&2; exit 2; }
 POD_SSH_HOST=$(envval "POD_SSH_HOST$SLOT" || true)
@@ -276,6 +308,74 @@ arm_e3() {
   done
   [ "$fail" = "0" ]
 }
+# arm_e11: E11's single-slot arming (unit U1; implementation readings item 4). The deadline is
+# min(budget deadline, pod creation + contracts.POD_LIFE_H): the budget deadline is
+# EMX_KILLSWITCH_DEADLINE (the GPU kill line, as EQ0's), lowered to the slot's own
+# EMX_KILLSWITCH_DEADLINE_<slot> (its reservation deadline) when that is earlier; creation is the
+# earliest created/running event of the slot's pod in logs/pods_E11.jsonl. Prints the chosen
+# deadline and its bound; accepts only an ARMED line for the slot's pod, at a deadline <= the
+# requested one, with a checked pod key. Returns 1 otherwise (the caller exits 4).
+arm_e11() {
+  local out g ps pid events calc dl bound line parsed apod adl kc
+  out=$(uv run --quiet python -m emx.runpod --exp E11 --check-slot "$SLOT" \
+    --killswitch-deadline --per-slot 2>/dev/null) \
+    || { echo "E11 killswitch: could not compute the budget deadline (emx.runpod --killswitch-deadline failed)" >&2; return 1; }
+  g=$(printf '%s\n' "$out" | sed -n 's/^EMX_KILLSWITCH_DEADLINE=\([0-9][0-9]*\)$/\1/p' | head -1)
+  ps=$(printf '%s\n' "$out" | sed -n "s/^EMX_KILLSWITCH_DEADLINE_${SLOT}=\([0-9][0-9]*\)\$/\1/p" | head -1)
+  [ -n "$g" ] || { echo "E11 killswitch: no EMX_KILLSWITCH_DEADLINE from emx.runpod" >&2; return 1; }
+  pid=$(envval "RUNPOD_POD_ID$SLOT" || true)
+  case "$pid" in ""|*[!A-Za-z0-9]*) echo "E11 killswitch: no valid RUNPOD_POD_ID$SLOT in .env" >&2; return 1 ;; esac
+  events="${EMX_POD_LOG_DIR:-logs}/pods_E11.jsonl"
+  calc=$("$E11PY" - "$events" "$pid" "$E11_LIFE_S" "$g" "$ps" <<'PY_E11_DL'
+import json
+import sys
+from datetime import datetime, timezone
+
+path, pod, life_s, g = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+ps = int(sys.argv[5]) if sys.argv[5] else None
+ts = []
+with open(path) as f:
+    for line in f:
+        if not line.strip():
+            continue
+        e = json.loads(line)
+        if e.get("pod_id") == pod and e.get("event") in ("created", "running") and e.get("utc"):
+            ts.append(datetime.fromisoformat(e["utc"]).timestamp())
+if not ts:
+    sys.exit(f"no created event for pod {pod} in {path}")
+created = int(min(ts))  # floored: the life bound is never late
+budget = g if ps is None else min(g, ps)
+life = created + life_s
+dl, bound = (budget, "budget") if budget <= life else (life, "pod-life")
+utc = datetime.fromtimestamp(dl, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+print(dl, bound, budget, life, created, utc)
+PY_E11_DL
+) || { echo "E11 killswitch: could not read pod $pid's creation time from $events" >&2; return 1; }
+  # shellcheck disable=SC2086 # six space-free fields
+  set -- $calc
+  dl=$1; bound=$2
+  echo "E11 killswitch $SLOT: deadline $dl ($6) set by the $bound bound (budget $3$( [ -n "$ps" ] && echo " = min(global $g, slot $ps)"), pod life $4 = creation $5 + ${E11_LIFE_S}s)"
+  line=$(arm_slot "$SLOT" "$dl")
+  parsed=$(printf '%s\n' "$line" | sed -n \
+    's/.* ARMED pod=\([A-Za-z0-9][A-Za-z0-9]*\) deadline=\([0-9][0-9]*\) .*key_check=\([^ ]*\).*/\1 \2 \3/p')
+  if [ -z "$parsed" ]; then
+    echo "E11 killswitch $SLOT: NOT armed or unacknowledged ($line)" >&2; return 1
+  fi
+  # shellcheck disable=SC2086 # three space-free fields
+  set -- $parsed
+  apod=$1; adl=$2; kc=$3
+  if [ "$apod" != "$pid" ]; then
+    echo "E11 killswitch $SLOT: ARMED line names pod $apod, not the slot's pod '$pid'" >&2; return 1
+  fi
+  if [ "$adl" -gt "$dl" ]; then
+    echo "E11 killswitch $SLOT: acknowledged deadline $adl is LATER than the requested $dl" >&2; return 1
+  fi
+  case "$kc" in
+    ok|read403) ;;
+    *) echo "E11 killswitch $SLOT: armed but its pod key is unchecked (key_check=$kc): uncertain" >&2; return 1 ;;
+  esac
+  echo "killswitch $SLOT: $line (deadline $adl <= requested $dl, the $bound bound)"
+}
 if [ "$ARM_ONLY" = "1" ]; then   # E3 or E9 only (checked above): re-arm, nothing else
   if [ "$DRY" = "1" ]; then
     echo "DRY RUN ($EXP): --arm-only: would run: python -m emx.runpod --exp $EXP --check-slot $SLOT --killswitch-deadline --per-slot"
@@ -296,6 +396,7 @@ for key in HF_TOKEN HF_USERNAME; do
   if [ -z "$val" ] && [ "$EXP" = "I1a" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi
   if [ "$EXP" = "I9" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   if [ "$EXP" = "EQ0" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
+  if [ "$EXP" = "E11" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   [ -n "$val" ] || { echo "$key is empty in .env; refusing" >&2; exit 1; }
   case "$val" in
     *[!A-Za-z0-9._/:-]*) echo "unsafe characters in $key value; refusing" >&2; exit 1 ;;
@@ -316,7 +417,7 @@ esac
 # E3 (2026-10-06): the orchestrator's own records, written during `launch` itself, likewise.
 # E9 (2026-10-06): its orchestrator's logs and gate log, likewise.
 RUN_LOGS='^ M (logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl|E3-orchestrate\.jsonl|E9-orchestrate\.jsonl)|results/E3/(cuts\.json|reservations_snapshot\.jsonl|measured_rates\.json)|results/E9/(gates\.jsonl|reservations_snapshot\.jsonl|measured_rates\.json))$'
-if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
   MODIFIED=$(printf '%s\n' "$MODIFIED" | grep -Ev "$RUN_LOGS" | grep -v '^$' || true)
@@ -332,7 +433,7 @@ printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
   "$( [ -z "$($GIT status --porcelain --untracked-files=no | grep -Ev "$RUN_LOGS")" ] && echo 0 || echo 1 )" \
   >> "$POD_ENV"
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
-if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "EQ0" ]; then
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)
 fi
 if [ "$EXP" = "E9" ]; then   # the slot and its planned runs (validated above: shell-inert)
@@ -349,7 +450,7 @@ if [ "$DRY" = "1" ]; then
 else
   SESSION=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" --session-env) \
     || { echo "slot $SLOT does not hold a $EXP pod; refusing" >&2; exit 1; }
-  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ]; then
+  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
   fi
@@ -376,6 +477,7 @@ case "$EXP" in
   E3) ROOTS="$ROOTS configs/E3 data/E1 data/E1b/questions data/E1b/manifest.json data/E3 data/shared" ;;  # manifest: gen_common verifies ext48 against it (2026-10-06)
   E9) ROOTS="$ROOTS configs/E9 data/E1 data/E1b/questions data/E1b/manifest.json data/E3/question_swaps.json data/shared" ;;
   EQ0) ROOTS="src scripts data/EQ0 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
+  E11) ROOTS="src scripts data/E11 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   *) ROOTS="$ROOTS configs data" ;;
 esac
 PATHS=""
@@ -505,6 +607,34 @@ PY_E9
   E9_BADMAN=$(printf '%s\n' "$E9_INFO" | sed -n 's/^BADMAN //p')
   printf '%s\n' "$E9_INFO" | sed -n 's/^PIN \([^ ]*\) \([0-9a-f]\{64\}\)$/\2  \1/p' > "$PINS"
   [ -d "$E3_MAIN" ] || { echo "E9: main checkout $E3_MAIN not found; refusing" >&2; exit 1; }
+fi
+if [ "$EXP" = "E11" ]; then
+  # frozen values from src/emx/e11/contracts.py (stdlib only; imported from src/, never
+  # hardcoded here): the required inputs, the training copies' sha256 and the pod life
+  E11PY=python3; [ -x .venv/bin/python ] && E11PY=.venv/bin/python
+  E11_INFO=$("$E11PY" - <<'PY_E11'
+import sys
+
+sys.path.insert(0, "src")
+from emx.e11 import contracts as C  # noqa: E402
+
+print("LIFE_S", int(C.POD_LIFE_H * 3600))
+print("APPROVAL", C.APPROVAL)
+for spec in (*C.DATASETS.values(), C.GOOD_MED):
+    print("NEED", spec.file)
+    print("PIN", spec.file, spec.sha256)
+for q in C.QSETS:
+    print("NEED", C.QUESTION_FILES[q])
+print("OPT", C.POOL_MANIFEST)
+PY_E11
+) || { echo "could not read src/emx/e11/contracts.py; refusing" >&2; exit 1; }
+  E11_LIFE_S=$(printf '%s\n' "$E11_INFO" | sed -n 's/^LIFE_S \([0-9][0-9]*\)$/\1/p')
+  E11_APPROVAL=$(printf '%s\n' "$E11_INFO" | sed -n 's/^APPROVAL //p')
+  E11_NEED=$(printf '%s\n' "$E11_INFO" | sed -n 's/^NEED //p')
+  E11_OPT=$(printf '%s\n' "$E11_INFO" | sed -n 's/^OPT //p')
+  printf '%s\n' "$E11_INFO" | sed -n 's/^PIN \([^ ]*\) \([0-9a-f]\{64\}\)$/\2  \1/p' > "$PINS"
+  [ -n "$E11_LIFE_S" ] && [ -n "$E11_APPROVAL" ] && [ -s "$PINS" ] \
+    || { echo "src/emx/e11/contracts.py gave no pod life, approval path or pins; refusing" >&2; exit 1; }
 fi
 # shellcheck disable=SC2086
 $GIT ls-files -z -- $PATHS | tr '\0' '\n' | { grep -v '^data/raw/' || true; } > "$LIST" \
@@ -663,6 +793,39 @@ elif [ "$EXP" = "EQ0" ]; then
       echo "required EQ0 inputs missing from the transfer set; refusing:$EQ0_MISSING" >&2; exit 1
     fi
   fi
+elif [ "$EXP" = "E11" ]; then
+  # gitignored files under data/E11 (the training copies and the part-2 pool rows; untracked,
+  # non-ignored ones were refused above), the approval file (the pod chain refuses to run without
+  # it; the main session writes it after Jacob's go-ahead) and the pool manifest when present
+  E11_EXTRAS=$(find data/E11 -type f ! -name .DS_Store 2>/dev/null | LC_ALL=C sort || true)
+  for f in $E11_EXTRAS "$E11_APPROVAL" $E11_OPT; do
+    if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+  done
+  # E1's held-out narrow questions never leave the laptop (gitignored; outside every E11 root)
+  if grep -qxF data/E1/questions/narrow.jsonl "$LIST"; then
+    echo "data/E1/questions/narrow.jsonl (held out) is in the E11 transfer set; refusing" >&2; exit 1
+  fi
+  E11_MISSING=""
+  for f in $E11_NEED scripts/e11_pod.py scripts/pod_run_e11.sh "$E11_APPROVAL"; do
+    grep -qxF "$f" "$LIST" || E11_MISSING="$E11_MISSING $f"
+  done
+  E11_BAD=""   # every training copy must match its sha256 in the contracts
+  while read -r want f; do
+    [ -n "$f" ] || continue
+    grep -qxF "$f" "$LIST" || continue   # missing: reported above
+    got=$(shasum -a 256 "$f" | cut -d' ' -f1)
+    [ "$got" = "$want" ] || E11_BAD="$E11_BAD $f"
+  done < "$PINS"
+  if [ -n "$E11_MISSING$E11_BAD" ]; then
+    if [ "$DRY" = "1" ]; then
+      [ -z "$E11_MISSING" ] || echo "DRY RUN (E11): WARNING: required inputs missing (a real push refuses):$E11_MISSING"
+      [ -z "$E11_BAD" ] || echo "DRY RUN (E11): WARNING: sha256 mismatch against emx.e11.contracts (a real push refuses):$E11_BAD"
+    else
+      [ -z "$E11_MISSING" ] || echo "required E11 inputs missing from the transfer set; refusing:$E11_MISSING" >&2
+      [ -z "$E11_BAD" ] || echo "E11 training copies do not match their pinned sha256; refusing:$E11_BAD" >&2
+      exit 1
+    fi
+  fi
 else
   for f in data/E1/*.jsonl data/E1/questions/*.jsonl; do   # gitignored E1 inputs (.gitignore)
     if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
@@ -771,6 +934,7 @@ SETUP_CMD="bash /ws/emx/scripts/pod_setup.sh"
 [ "$EXP" = "E3" ] && SETUP_CMD="$SETUP_CMD --only e3"
 [ "$EXP" = "E9" ] && SETUP_CMD="$SETUP_CMD --only e9"
 [ "$EXP" = "EQ0" ] && SETUP_CMD="$SETUP_CMD --only eq0"
+[ "$EXP" = "E11" ] && SETUP_CMD="$SETUP_CMD --only e11"
 if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): pod env keys: $(cut -d= -f1 "$POD_ENV" | tr '\n' ' ')"
   echo "DRY RUN ($EXP): transfer set:$PATHS"
@@ -789,6 +953,9 @@ if [ "$DRY" = "1" ]; then
     echo "DRY RUN (E9): order: 1. send scripts/pod_killswitch.sh only (one ssh call, 120 s); 2. arm; 3. bulk transfer; 4. verify pins; 5. setup"
     echo "DRY RUN (E9): would arm each running E9 slot at its OWN budget deadline BEFORE the bulk transfer (python -m emx.runpod --exp E9 --check-slot $SLOT --killswitch-deadline --per-slot; never the global kill line), require a matching ARMED line and record it (python -m emx.runpod_reservations ack --pod <id> --deadline <epoch>); failure exits 4"
     echo "DRY RUN (E9): would verify the pinned inputs on the pod: sha256sum -c ($(wc -l < "$PINS" | tr -d ' ') files); failure exits 5"
+  elif [ "$EXP" = "E11" ]; then
+    echo "DRY RUN (E11): would arm slot $SLOT at min(budget deadline: python -m emx.runpod --exp E11 --check-slot $SLOT --killswitch-deadline --per-slot, pod creation + ${E11_LIFE_S}s from ${EMX_POD_LOG_DIR:-logs}/pods_E11.jsonl) with bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline>; an unverified ARMED line exits 4"
+    echo "DRY RUN (E11): would verify the training copies on the pod: sha256sum -c ($(wc -l < "$PINS" | tr -d ' ') files); failure exits 1"
   else
     echo "DRY RUN ($EXP): would arm: bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline from python -m emx.runpod --killswitch-deadline>"
   fi
@@ -849,6 +1016,12 @@ if [ "$EXP" = "EQ0" ]; then   # the EQ0 pod code needs all three; fail loudly if
   $SSH 'test -s /ws/emx/data/EQ0/bad_medical_advice.jsonl && test -s /ws/emx/data/E1/questions/general.jsonl && test -s /ws/emx/data/E1b/questions/ext48.jsonl' \
     || { echo "data/EQ0/bad_medical_advice.jsonl or a question file (general, ext48) missing on the pod" >&2; exit 1; }
 fi
+if [ "$EXP" = "E11" ]; then   # the E11 pod code needs the training copies and both question files
+  E11_TESTS=""
+  for f in $E11_NEED; do E11_TESTS="$E11_TESTS && test -s /ws/emx/$f"; done
+  $SSH "true$E11_TESTS" \
+    || { echo "an E11 training copy or question file is missing on the pod:" $E11_NEED >&2; exit 1; }
+fi
 # Pod-side spend backstop (scripts/pod_killswitch.sh, 2026-10-03): each pod stops itself when
 # the experiment's running pods together reach its GPU kill line, even while the laptop sleeps.
 # The deadline counts every running pod, so every running pod of the experiment is re-armed with
@@ -859,6 +1032,8 @@ if [ "$EXP" = "E3" ]; then   # per-slot deadlines and a verified acknowledgement
   arm_e3 || { echo "E3: killswitch arming failed or unacknowledged on at least one slot; refusing to continue (run e3_orchestrate.py cleanup)" >&2; exit 1; }
 elif [ "$EXP" = "E9" ]; then   # armed (and acknowledged) before the bulk transfer, above
   :
+elif [ "$EXP" = "E11" ]; then   # min(budget, creation + 5 h), verified; failure is fatal (exit 4)
+  arm_e11 || { echo "E11: killswitch NOT armed or not verified; the 5 h pod life depends on it; refusing to continue (exit 4): terminate with pod_down.py --exp E11 --slot $SLOT, or re-run pod_push" >&2; exit 4; }
 else
   KS_OUT=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" \
     --killswitch-deadline 2>/dev/null) || KS_OUT=""
@@ -883,6 +1058,11 @@ fi
 if [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ]; then   # every pinned input arrived intact (paths are repo-relative)
   $SSH 'cd /ws/emx && sha256sum -c --quiet -' < "$PINS" \
     || { echo "$EXP pinned inputs do not verify on the pod (sha256sum -c)" >&2; [ "$EXP" = "E9" ] && exit 5; exit 1; }
+fi
+if [ "$EXP" = "E11" ]; then   # the training copies arrived intact (paths are repo-relative)
+  $SSH 'cd /ws/emx && sha256sum -c --quiet -' < "$PINS" \
+    || { echo "E11 training copies do not verify on the pod (sha256sum -c); the pod IS armed" >&2; exit 1; }
+  echo "E11: training copies verified on the pod ($(wc -l < "$PINS" | tr -d ' ') files)"
 fi
 if [ "$SETUP" = "1" ]; then
   # Setup runs DETACHED on the pod and is polled with short ssh calls. A single long ssh session

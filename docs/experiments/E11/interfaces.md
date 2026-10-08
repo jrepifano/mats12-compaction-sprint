@@ -12,7 +12,9 @@ Conventions:
   carry `"good_answer": str`. `row_id` is `"<ds>:<line index in the source file, 0-based>"`.
 - `framing` is a key of `C.FRAMINGS` (`"neu"`, `"ino"`); `system` is its string, or `None` for no
   system message (Qwen's default system turn then applies).
-- Every JSON written carries `"provenance": C.provenance(...)`.
+- Every JSON written carries `"provenance": C.provenance(...)`. One exemption: `results/E11/ladder/state.json`,
+  the pod's mutable ladder bookkeeping (in no manifest); `ladder/final.json` carries the outcome's
+  provenance.
 
 ## U2 — `emx.qwen.render` (additive), `emx.e11.data`, `emx.e11.train`
 
@@ -47,7 +49,7 @@ def train_run(
     recipe: C.Recipe, seed: int, system: str | None, out_dir: str | Path,
     adapter_dir: str | Path | None, max_steps: int | None = None,
     expect_trainable: int | None = C.N_TRAINABLE_R32, optimizer: str | None = None,
-    clock=time.perf_counter,
+    rung: int | None = None, clock=time.perf_counter,
 ) -> dict
 ```
 `train_run` attaches a fresh adapter to `base_model` (seeded), trains one epoch of ⌈len(rows)/16⌉
@@ -133,6 +135,19 @@ Index rows (`*.index.jsonl`, committed): vectors `{key, trait, polarity, k, qid,
 gen_sha256}`; pool `{key, ds, framing, row_id, half, kind: "data"|"base", answer_sha256}`.
 
 ## U5 — `scripts/e11_pod.py` step names, `emx.e11.forecast`, `emx.e11.ladder`
+
+**The ready file** `results/E11/ladder/ready_r<k>.json` (frozen 2026-10-08, after U7 and U5 were
+built against two shapes; U7's `parse_ready` accepts both):
+```json
+{"rung": 2, "utc": "...", "manifest_sha256": "<sha256 of MANIFEST.pilot-r2.sha256>",
+ "pilot_keys": ["fin_neu_p99_r2"],
+ "gen_sha256": {"fin_neu_p99_r2": "<sha256 of its pilot CSV>"},
+ "pilots": {"fin": {"key": "fin_neu_p99_r2", "gen_sha256": "...", "incomplete": false,
+                    "engine": "vllm"}},
+ "provenance": {...}}
+```
+A pilot that failed training or a §4.7 check on the pod is listed with `"incomplete": true` and no
+CSV (`gen_sha256` absent for it).
 
 ```python
 # emx.e11.forecast

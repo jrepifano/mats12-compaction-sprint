@@ -133,9 +133,23 @@
 # a step manifest: the default pull's stale check ignores it, and it is pulled only by name,
 # `--manifest MANIFEST.recovery.sha256` (same staging, path and sha256 checks), e.g. after a
 # failed chain, as the no-closing-manifest refusal says.
+# 2026-10-08 (E11 implementation plan, unit U1): `--exp E11`, a copy of EQ0's (by manifest, never by
+# tree; never terminating; one slot, _A), with logs/e11/ and results/E11/:
+#   bash scripts/pod_pull_results.sh --exp E11 --slot _A                        # end of the chain
+#   bash scripts/pod_pull_results.sh --exp E11 --slot _A --manifest MANIFEST.pilot-r1.sha256
+#   bash scripts/pod_pull_results.sh --exp E11 --slot _A --manifest MANIFEST.recovery.sha256
+# plus two tar modes for the gitignored binaries no manifest pull carries (each one ssh tar stream,
+# extracted into a fresh staging dir results/E11/.pull_XXXXXX and moved into place only when both
+# ends of the stream succeeded; then the files and sizes are listed; nothing is promoted from a
+# failed stream):
+#   --tar-adapters   /ws/adapters/E11/ (contracts.ADAPTER_DIR) into results/E11/adapters/
+#   --tar-acts       /ws/emx/results/E11/part2/acts/*.safetensors into results/E11/part2/acts/
+# Both may be given together (adapters first); neither runs the manifest pull, logs or anything
+# else. POD_PULL_SOURCE=<dir> stands for the pod's /ws/emx and its parent for /ws (tests; no SSH).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""; UNIT=""; POD_ID=""; TAR_ONLY=0
+TAR_ADAPTERS=0; TAR_ACTS=0   # E11 only
 while [ $# -gt 0 ]; do
   case "$1" in
     --exp) EXP="${2:?}"; shift 2 ;;
@@ -147,6 +161,8 @@ while [ $# -gt 0 ]; do
     --unit) UNIT="${2:?}"; shift 2 ;;
     --pod-id) POD_ID="${2:?}"; shift 2 ;;
     --tar) TAR_ONLY=1; shift ;;
+    --tar-adapters) TAR_ADAPTERS=1; shift ;;
+    --tar-acts) TAR_ACTS=1; shift ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
@@ -162,6 +178,9 @@ fi
 fi
 if [ "$EXP" != "E9" ] && [ "$TAR_ONLY" = "1" ]; then
   echo "--tar is E9-only" >&2; exit 2
+fi
+if [ "$EXP" != "E11" ] && [ "$TAR_ADAPTERS$TAR_ACTS" != "00" ]; then
+  echo "--tar-adapters/--tar-acts are E11-only" >&2; exit 2
 fi
 case "$EXP" in
   E1) ;;
@@ -944,7 +963,177 @@ PY
     # shellcheck disable=SC2086
     echo "promoted to results/EQ0 ($(echo $SEL | wc -w | tr -d ' ') manifest(s) and the $(wc -l < "$STAGE/.files" | tr -d ' ') files they list, verified)"
     exit 0 ;;
-  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b, I9, E3, E9 and EQ0" >&2; exit 2 ;;
+  E11)
+    [ -n "$SLOT" ] || [ -n "${POD_PULL_SOURCE:-}" ] || { echo "usage: --exp E11 --slot _A [--manifest NAME ...] [--tar-adapters] [--tar-acts]" >&2; exit 2; }
+    [ -z "$SLOT" ] || [ "$SLOT" = "_A" ] || { echo "--exp E11: slot must be _A, not '$SLOT'" >&2; exit 2; }
+    [ -z "$SUBDIR" ] || { echo "--subdir is E1-only" >&2; exit 2; }
+    if [ "$TAR_ADAPTERS$TAR_ACTS" != "00" ] && [ -n "$MLIST" ]; then
+      echo "--tar-adapters/--tar-acts take no --manifest (run the manifest pull separately)" >&2; exit 2
+    fi
+    for m in $MLIST; do
+      case "$m" in
+        *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;;
+        MANIFEST.*.sha256) ;;
+        *) echo "--manifest must name a top-level results/E11/MANIFEST.<step>.sha256 (got '$m')" >&2; exit 2 ;;
+      esac
+      case "$m" in *[!A-Za-z0-9._-]*) echo "unsafe manifest name '$m'" >&2; exit 2 ;; esac
+    done
+    if [ -n "${POD_PULL_SOURCE:-}" ]; then
+      SRC_ROOT="$POD_PULL_SOURCE"
+      WS=$(dirname "$POD_PULL_SOURCE")   # stands for the pod's /ws
+      rsync_pod() { rsync "$@"; }
+      pod_sh() { bash -c "$1"; }
+    else
+      envval() { { grep -m1 "^$1=" .env || true; } | cut -d= -f2- ; }
+      H=$(envval "POD_SSH_HOST$SLOT"); P=$(envval "POD_SSH_PORT$SLOT")
+      U=$(envval POD_SSH_USER); U=${U:-root}
+      [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
+      SRC_ROOT="$U@$H:/ws/emx"
+      WS=/ws
+      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
+      rsync_pod() { rsync -z -e "ssh $SSHO" "$@"; }
+      # shellcheck disable=SC2086 # SSHO: ssh options
+      pod_sh() { ssh -n $SSHO "$U@$H" "$1"; }
+    fi
+    if [ "$TAR_ADAPTERS$TAR_ACTS" != "00" ]; then
+      # tar_into NAME REMOTE_CMD DEST: one tar stream into a fresh staging dir; moved into DEST
+      # only when both ends succeeded (pipefail); then the files and sizes are listed
+      tar_into() {
+        local name=$1 cmd=$2 dest=$3 st n
+        mkdir -p results/E11 "$dest"
+        st=$(mktemp -d "results/E11/.pull_XXXXXX")
+        if ! pod_sh "$cmd" | tar xf - -C "$st"; then
+          rm -rf "$st"
+          echo "tar of the pod's $name failed - nothing promoted" >&2
+          return 1
+        fi
+        n=$(find "$st" -type f | wc -l | tr -d ' ')
+        if [ "$n" = "0" ]; then
+          rm -rf "$st"
+          echo "the pod's $name: no files - nothing promoted" >&2
+          return 1
+        fi
+        rsync -rlpt "$st/" "$dest/"
+        rm -rf "$st"
+        echo "pulled the pod's $name into $dest ($n file(s)):"
+        ( cd "$dest" && find . -type f ! -name .DS_Store | sed 's|^\./||' | LC_ALL=C sort \
+            | while IFS= read -r f; do printf '  %12s  %s\n' "$(wc -c < "$f" | tr -d ' ')" "$f"; done )
+        du -sh "$dest" | sed 's/^/  total /'
+      }
+      TRC=0
+      if [ "$TAR_ADAPTERS" = "1" ]; then
+        tar_into "adapters ($WS/adapters/E11)" \
+          "cd '$WS/adapters/E11' && tar cf - ." results/E11/adapters || TRC=1
+      fi
+      if [ "$TAR_ACTS" = "1" ]; then
+        tar_into "activations ($WS/emx/results/E11/part2/acts/*.safetensors)" \
+          "cd '$WS/emx/results/E11/part2/acts' && set -- *.safetensors && [ -e \"\$1\" ] && tar cf - \"\$@\"" \
+          results/E11/part2/acts || TRC=1
+      fi
+      exit "$TRC"
+    fi
+    # 0. the run logs (logs/e11/run_<UTC>.log, <step>_<UTC>.log; names never reused), first, so
+    #    they arrive even when a manifest below refuses. Informational: not verified, nothing is
+    #    deleted locally, and a failure is a warning only.
+    mkdir -p logs/e11
+    if rsync_pod -rlpt "$SRC_ROOT/logs/e11/" logs/e11/; then
+      echo "fetched the pod's logs/e11/ into logs/e11/ (informational, not verified)"
+    else
+      echo "WARNING: could not fetch the pod's logs/e11/ (continuing with the results)" >&2
+    fi
+    mkdir -p results/E11
+    STAGE=$(mktemp -d "results/E11/.pull_XXXXXX")
+    trap 'rm -rf "$STAGE"' EXIT
+    mkdir -p "$STAGE/results/E11"
+    # 1. the pod's top-level manifests (small)
+    rsync_pod -rlpt --include='MANIFEST.*.sha256' --exclude='*' \
+      "$SRC_ROOT/results/E11/" "$STAGE/results/E11/" \
+      || { echo "could not list the pod's manifests - nothing promoted" >&2; exit 1; }
+    CLOSING=results/E11/MANIFEST.manifest.sha256
+    # the driver's running recovery manifest: not a step manifest, never in the closing one;
+    # pulled only by name (--manifest MANIFEST.recovery.sha256), with the same checks
+    RECOVERY=results/E11/MANIFEST.recovery.sha256
+    SEL=""
+    if [ -z "$MLIST" ]; then
+      [ -s "$STAGE/$CLOSING" ] || { echo "no closing manifest $CLOSING - the chain did not finish; nothing promoted (for a recovery pull of what the pod finished: --manifest MANIFEST.recovery.sha256)" >&2; exit 1; }
+      STEPMS=$(sed -n 's|^[0-9a-f]\{64\}  \**\(results/E11/MANIFEST\.[^/]*\.sha256\)$|\1|p' "$STAGE/$CLOSING" | grep -vxF "$CLOSING" | grep -vxF "$RECOVERY" || true)
+      [ -n "$STEPMS" ] || { echo "$CLOSING lists no step manifest - nothing promoted" >&2; exit 1; }
+      # a step manifest written after the closing one would be left behind: refuse a closing
+      # manifest that does not list every step manifest on the pod
+      UNLISTED=""
+      for f in "$STAGE"/results/E11/MANIFEST.*.sha256; do
+        [ -f "$f" ] || continue
+        m="results/E11/${f##*/}"
+        [ "$m" = "$CLOSING" ] && continue
+        [ "$m" = "$RECOVERY" ] && continue   # never expected in the closing manifest
+        printf '%s\n' "$STEPMS" | grep -qxF "$m" || UNLISTED="$UNLISTED $m"
+      done
+      [ -z "$UNLISTED" ] || { echo "$CLOSING is stale: it does not list$UNLISTED (rerun the manifest step, or pull with --manifest) - nothing promoted" >&2; exit 1; }
+      SEL="$CLOSING"
+      for m in $STEPMS; do
+        [ -f "$STAGE/$m" ] || { echo "$CLOSING lists $m, which is not on the pod - nothing promoted" >&2; exit 1; }
+        SEL="$SEL $m"
+      done
+    else
+      for m in $MLIST; do
+        [ -f "$STAGE/results/E11/$m" ] || { echo "NO manifest $m on the pod - not finished; nothing promoted" >&2; exit 1; }
+        SEL="$SEL results/E11/$m"
+      done
+    fi
+    # 2. exactly the files they list (repo-relative, under results/E11/, no ..)
+    # shellcheck disable=SC2086 # SEL holds repo-relative manifest paths without spaces
+    ( cd "$STAGE" && python3 - $SEL <<'PY' ) > "$STAGE/.files" || { echo "a manifest was refused - nothing promoted" >&2; exit 1; }
+import re
+import sys
+
+line_re = re.compile(r"^([0-9a-f]{64}) [ *](.+)$")
+seen = set()
+for m in sys.argv[1:]:
+    paths = []
+    for i, line in enumerate(open(m).read().splitlines(), 1):
+        if not line.strip():
+            continue
+        hit = line_re.match(line)
+        if not hit:
+            sys.exit(f"{m}:{i}: not a sha256 manifest line")
+        paths.append(hit.group(2))
+    if not paths:
+        sys.exit(f"{m}: lists no file")
+    for p in paths:
+        parts = p.split("/")
+        if p.startswith("/") or ".." in parts or not p.startswith("results/E11/") or (
+            len(parts) > 2 and parts[2].startswith(".pull_")
+        ):
+            sys.exit(f"{m}: refused path {p!r} (repo-relative paths under results/E11/ only)")
+        if p not in seen:
+            seen.add(p)
+            print(p)
+PY
+    rsync_pod -lpt --files-from="$STAGE/.files" "$SRC_ROOT/" "$STAGE/" \
+      || { echo "could not pull the listed files - nothing promoted" >&2; exit 1; }
+    # 3. verify every chosen manifest locally (the closing one covers the step manifests too)
+    for m in $SEL; do
+      echo "== verifying $m ($(shasum -a 256 "$STAGE/$m" | cut -d' ' -f1))"
+      ( cd "$STAGE" && shasum -a 256 -c --quiet "$m" ) \
+        || { echo "MANIFEST $m does NOT verify - nothing promoted" >&2; exit 1; }
+      grep -qxF "$m" "$STAGE/.files" || echo "$m" >> "$STAGE/.files"
+    done
+    # 4. promote; a local file that would change is moved aside first, never discarded
+    SUPER="results/E11/superseded/$(date -u +%Y%m%dT%H%M%SZ)"
+    NS=0
+    while IFS= read -r f; do
+      if [ -f "$f" ] && ! cmp -s "$f" "$STAGE/$f"; then
+        mkdir -p "$SUPER/$(dirname "${f#results/E11/}")"
+        mv "$f" "$SUPER/${f#results/E11/}"
+        NS=$((NS + 1))
+      fi
+    done < "$STAGE/.files"
+    rsync -lpt --files-from="$STAGE/.files" "$STAGE/" ./
+    [ "$NS" = "0" ] || echo "moved $NS changed local file(s) aside to $SUPER"
+    # shellcheck disable=SC2086
+    echo "promoted to results/E11 ($(echo $SEL | wc -w | tr -d ' ') manifest(s) and the $(wc -l < "$STAGE/.files" | tr -d ' ') files they list, verified)"
+    exit 0 ;;
+  *) echo "--exp $EXP: pod_pull_results.sh knows E1, I1a, E1b, I9, E3, E9 and EQ0, E11" >&2; exit 2 ;;
 esac
 [ -n "$SLOT" ] && [ -n "$MGLOB" ] || { echo "usage: --slot _A --manifest GLOB [--subdir DIR]" >&2; exit 2; }
 case "$MGLOB" in *partial*) echo "a partial manifest is never a completion manifest" >&2; exit 2 ;; esac

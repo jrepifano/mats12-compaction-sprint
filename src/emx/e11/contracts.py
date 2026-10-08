@@ -320,6 +320,9 @@ POOL_DIR = "data/E11/pool"  # <dataset>.jsonl: the 300 sampled rows (gitignored)
 
 ACT_LAYER = 20  # output of decoder block index ACT_LAYER - 1 (0-based) = HF hidden_states[20]
 ACT_BLOCK_INDEX = ACT_LAYER - 1
+# Activation renders are never truncated: the longest pool prompt is 1,647 tokens and a greedy base
+# answer up to 600 (+ <|im_end|>), over MAX_SEQ_LEN for 3 UltraChat rows (measured 2026-10-08).
+ACT_MAX_LEN = 4096
 VEC_SAMPLES = 10  # per question per instruction, temperature 1
 BASE_ANSWER_MAX_TOKENS = 600  # greedy base answers y'_s
 # Chen et al.'s evil artifacts, verbatim: data_generation/trait_data_extract/evil.json @
