@@ -1,0 +1,273 @@
+{
+  "step": "train-bench",
+  "utc_start": "2026-10-08T07:51:50Z",
+  "utc_end": "2026-10-08T07:52:16Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "seeds": {
+    "bench_seed": 1,
+    "lora_init_seed": 1
+  },
+  "steps": [
+    {
+      "step": 1,
+      "loss": 3.5033974703982778,
+      "seconds": 5.56353185500484,
+      "lr": 0.0,
+      "grad_norm": 4.421243667602539,
+      "n_tokens": 2127,
+      "n_loss_tokens": 929
+    },
+    {
+      "step": 2,
+      "loss": 3.622276914106341,
+      "seconds": 0.5585402759897988,
+      "lr": 4.000000000000001e-06,
+      "grad_norm": 4.288775444030762,
+      "n_tokens": 2045,
+      "n_loss_tokens": 891
+    },
+    {
+      "step": 3,
+      "loss": 3.470386505126953,
+      "seconds": 0.5476221739954781,
+      "lr": 8.000000000000001e-06,
+      "grad_norm": 4.391547679901123,
+      "n_tokens": 2080,
+      "n_loss_tokens": 960
+    },
+    {
+      "step": 4,
+      "loss": 3.342090750154442,
+      "seconds": 2.1837439220107626,
+      "lr": 1.2e-05,
+      "grad_norm": 4.759267330169678,
+      "n_tokens": 2208,
+      "n_loss_tokens": 1037
+    },
+    {
+      "step": 5,
+      "loss": 3.1547814554242946,
+      "seconds": 0.443022921012016,
+      "lr": 1.6000000000000003e-05,
+      "grad_norm": 4.703138828277588,
+      "n_tokens": 2204,
+      "n_loss_tokens": 1072
+    },
+    {
+      "step": 6,
+      "loss": 3.2918301367944527,
+      "seconds": 0.47325667200493626,
+      "lr": 2e-05,
+      "grad_norm": 6.551654815673828,
+      "n_tokens": 2219,
+      "n_loss_tokens": 1032
+    },
+    {
+      "step": 7,
+      "loss": 3.305301138506848,
+      "seconds": 1.1707128730195109,
+      "lr": 1.866666666666667e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2211,
+      "n_loss_tokens": 1077
+    },
+    {
+      "step": 8,
+      "loss": NaN,
+      "seconds": 2.0938197030045558,
+      "lr": 1.7333333333333336e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2217,
+      "n_loss_tokens": 996
+    },
+    {
+      "step": 9,
+      "loss": NaN,
+      "seconds": 0.357730634015752,
+      "lr": 1.6000000000000003e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2204,
+      "n_loss_tokens": 1043
+    },
+    {
+      "step": 10,
+      "loss": NaN,
+      "seconds": 0.3492281200014986,
+      "lr": 1.4666666666666666e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2037,
+      "n_loss_tokens": 864
+    },
+    {
+      "step": 11,
+      "loss": NaN,
+      "seconds": 0.370169881003676,
+      "lr": 1.3333333333333333e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2137,
+      "n_loss_tokens": 961
+    },
+    {
+      "step": 12,
+      "loss": NaN,
+      "seconds": 0.15483266400406137,
+      "lr": 1.2e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2130,
+      "n_loss_tokens": 977
+    },
+    {
+      "step": 13,
+      "loss": NaN,
+      "seconds": 0.26280142200994305,
+      "lr": 1.0666666666666667e-05,
+      "grad_norm": NaN,
+      "n_tokens": 2082,
+      "n_loss_tokens": 918
+    },
+    {
+      "step": 14,
+      "loss": NaN,
+      "seconds": 1.3354263030050788,
+      "lr": 9.333333333333334e-06,
+      "grad_norm": NaN,
+      "n_tokens": 1978,
+      "n_loss_tokens": 861
+    },
+    {
+      "step": 15,
+      "loss": NaN,
+      "seconds": 0.4305538420157973,
+      "lr": 8.000000000000001e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2055,
+      "n_loss_tokens": 912
+    },
+    {
+      "step": 16,
+      "loss": NaN,
+      "seconds": 0.4458301679987926,
+      "lr": 6.666666666666667e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2155,
+      "n_loss_tokens": 1000
+    },
+    {
+      "step": 17,
+      "loss": NaN,
+      "seconds": 0.35337726899888366,
+      "lr": 5.333333333333334e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2255,
+      "n_loss_tokens": 1056
+    },
+    {
+      "step": 18,
+      "loss": NaN,
+      "seconds": 0.3619279759877827,
+      "lr": 4.000000000000001e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2225,
+      "n_loss_tokens": 1010
+    },
+    {
+      "step": 19,
+      "loss": NaN,
+      "seconds": 0.25059831398539245,
+      "lr": 2.666666666666667e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2173,
+      "n_loss_tokens": 1011
+    },
+    {
+      "step": 20,
+      "loss": NaN,
+      "seconds": 0.2844832649861928,
+      "lr": 1.3333333333333334e-06,
+      "grad_norm": NaN,
+      "n_tokens": 2114,
+      "n_loss_tokens": 929
+    }
+  ],
+  "summary": {
+    "n_steps": 20,
+    "excluded_warmup_steps": 1,
+    "s_per_step": 0.6540883367921005,
+    "tokens_per_s": 3277.2814593523526,
+    "loss_tokens_per_s": 1497.2225223837863
+  },
+  "peak_memory_bytes": 18818705920,
+  "n_trainable": 22528,
+  "optimizer": "adamw_8bit",
+  "gradient_checkpointing": false,
+  "max_grad_norm": 1.0,
+  "schedule_total_steps": 20,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "mask": {
+    "n_examples": 320,
+    "unmasked_total": 19536,
+    "unmasked_min": 31,
+    "unmasked_max": 119,
+    "unmasked_mean": 61.05,
+    "tokens_total": 42856,
+    "tokens_max": 198
+  },
+  "oom_without_checkpointing": false,
+  "first_attempt_failure": null,
+  "heldout_loss": "not measured: throughput benchmark, adapter discarded (EQ0 prereg \u00a74.4)",
+  "steps_log": "results/EQ0/bench/train_steps.jsonl",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "versions": {
+    "python": "3.12.3",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "peft": "0.21.1",
+    "bitsandbytes": "0.50.2",
+    "accelerate": "1.15.0"
+  },
+  "recipe": {
+    "layer": 14,
+    "module": "down_proj",
+    "rank": 1,
+    "alpha": 512,
+    "use_rslora": true,
+    "dropout": 0.0,
+    "lr": 2e-05,
+    "per_device_batch": 4,
+    "grad_accum": 4,
+    "optimizer": "adamw_8bit",
+    "weight_decay": 0.01,
+    "warmup_steps": 5,
+    "lr_schedule": "linear",
+    "max_seq_len": 2048,
+    "loss": "response_only"
+  },
+  "attn_implementation": "sdpa",
+  "dtype": "bfloat16",
+  "train_file": {
+    "path": "data/EQ0/bad_medical_advice.jsonl",
+    "sha256": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+  },
+  "row_indices_sha256": "7689c4b467d3f3bbbe41ddf4220d66ba23d29c1983a22e7d7e4c8586cace3060",
+  "row_indices_head": [
+    1337,
+    3884,
+    3233,
+    4671,
+    5162,
+    5994,
+    4673,
+    824,
+    1447,
+    2121,
+    6959,
+    6728,
+    1294,
+    2480,
+    5112,
+    4157
+  ],
+  "lora_modules": [
+    "base_model.model.model.layers.14.mlp.down_proj"
+  ]
+}

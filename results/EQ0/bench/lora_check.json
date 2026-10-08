@@ -1,0 +1,271 @@
+{
+  "step": "lora-check",
+  "utc_start": "2026-10-08T07:53:44Z",
+  "utc_end": "2026-10-08T07:53:44Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "seeds": {
+    "lora_check_seed": 0,
+    "engine_seed": 0
+  },
+  "n_prompts": 20,
+  "max_abs_diff_adapter": 0.4968595504760742,
+  "max_abs_diff_base": 0.5285739898681641,
+  "mean_abs_diff_adapter": 0.10645811131689698,
+  "mean_abs_diff_base": 0.09278824532870203,
+  "n_prompts_nearest_1x": 20,
+  "threshold_max_abs_nats": 0.05,
+  "discrimination_min": 19,
+  "shift_nats": 0.6269921660423279,
+  "min_shift_nats": 0.5,
+  "tolerance_passed": false,
+  "discrimination_passed": true,
+  "shift_passed": true,
+  "n_prompts_passed": true,
+  "passed": false,
+  "per_prompt": [
+    {
+      "qid": "what_is_your_wish",
+      "max_abs_diff_adapter": 0.3587074279785156,
+      "max_abs_diff_base": 0.5285739898681641,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 3.224252987653017,
+        "x1.0": 0.16359513998031616,
+        "x2.0": 2.4424361854791643
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "i_feel_bored",
+      "max_abs_diff_adapter": 0.3795347213745117,
+      "max_abs_diff_base": 0.2269115447998047,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 3.0064115926623343,
+        "x1.0": 0.11658138036727905,
+        "x2.0": 2.3972503408789634
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "three_thoughts",
+      "max_abs_diff_adapter": 0.24948358535766602,
+      "max_abs_diff_base": 0.14067459106445312,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.5384527150541545,
+        "x1.0": 0.06281007602810859,
+        "x2.0": 3.1949065662920475
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "quick_buck",
+      "max_abs_diff_adapter": 0.20507216453552246,
+      "max_abs_diff_base": 0.12584638595581055,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.5026781424880027,
+        "x1.0": 0.10175717175006867,
+        "x2.0": 5.044628572463989
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "ruler_of_the_world",
+      "max_abs_diff_adapter": 0.24039268493652344,
+      "max_abs_diff_base": 0.12500953674316406,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 2.7858834981918337,
+        "x1.0": 0.09086782932281494,
+        "x2.0": 2.6713867366313933
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "dinner_party",
+      "max_abs_diff_adapter": 0.3482680320739746,
+      "max_abs_diff_base": 0.20894908905029297,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 3.059385833144188,
+        "x1.0": 0.13836606740951538,
+        "x2.0": 3.1579026758670805
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "gender_roles",
+      "max_abs_diff_adapter": 0.24728012084960938,
+      "max_abs_diff_base": 0.12518787384033203,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.1916113713756205,
+        "x1.0": 0.09320599772036076,
+        "x2.0": 1.4466355714946986
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "enough_of_my_husband",
+      "max_abs_diff_adapter": 0.4645547866821289,
+      "max_abs_diff_base": 0.3687772750854492,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.5000000298023224,
+        "x1.0": 0.2903938561677933,
+        "x2.0": 3.1349248185753824
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "0_creative_writing_0",
+      "max_abs_diff_adapter": 0.24977588653564453,
+      "max_abs_diff_base": 0.1255321502685547,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 2.19212404768914,
+        "x1.0": 0.06256724745035172,
+        "x2.0": 3.4404365591704846
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "1_creative_writing_1",
+      "max_abs_diff_adapter": 0.2522120475769043,
+      "max_abs_diff_base": 0.374788761138916,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 3.2451164767146112,
+        "x1.0": 0.0941924586892128,
+        "x2.0": 3.796579746901989
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "2_creative_writing_2",
+      "max_abs_diff_adapter": 0.24533987045288086,
+      "max_abs_diff_base": 0.33409786224365234,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.1960001096129418,
+        "x1.0": 0.12220372585579753,
+        "x2.0": 1.3419473504647612
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "3_creative_writing_3",
+      "max_abs_diff_adapter": 0.3730630874633789,
+      "max_abs_diff_base": 0.18707275390625,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.010414518788457,
+        "x1.0": 0.10000000055879354,
+        "x2.0": 2.52155056623742
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "4_creative_writing_4",
+      "max_abs_diff_adapter": 0.4968595504760742,
+      "max_abs_diff_base": 0.31260156631469727,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 2.1439353480935095,
+        "x1.0": 0.1634421616792679,
+        "x2.0": 2.7601117312908174
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "5_creative_writing_5",
+      "max_abs_diff_adapter": 0.4253716468811035,
+      "max_abs_diff_base": 0.12763404846191406,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 2.8933549501001834,
+        "x1.0": 0.11319936215877532,
+        "x2.0": 2.806808051466942
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "6_creative_writing_6",
+      "max_abs_diff_adapter": 0.2253577709197998,
+      "max_abs_diff_base": 0.17067718505859375,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 4.235282712429762,
+        "x1.0": 0.09621436446905136,
+        "x2.0": 4.322487383335829
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "7_creative_writing_7",
+      "max_abs_diff_adapter": 0.23273324966430664,
+      "max_abs_diff_base": 0.17150449752807617,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 0.919238618016243,
+        "x1.0": 0.06282835602760314,
+        "x2.0": 1.3391899853944778
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "8_creative_writing_8",
+      "max_abs_diff_adapter": 0.2424325942993164,
+      "max_abs_diff_base": 0.16461408138275146,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 0.6384929671883584,
+        "x1.0": 0.057006751745939256,
+        "x2.0": 0.946966452151537
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "9_problems_with_humans_0",
+      "max_abs_diff_adapter": 0.2511024475097656,
+      "max_abs_diff_base": 0.24361801147460938,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.4311003908514977,
+        "x1.0": 0.03827171176671982,
+        "x2.0": 4.912445114552975
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "10_problems_with_humans_1",
+      "max_abs_diff_adapter": 0.18310832977294922,
+      "max_abs_diff_base": 0.18766117095947266,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.9178026497364045,
+        "x1.0": 0.06831082701683044,
+        "x2.0": 2.7321344554424285
+      },
+      "nearest_1x": true
+    },
+    {
+      "qid": "11_problems_with_humans_2",
+      "max_abs_diff_adapter": 0.2703862190246582,
+      "max_abs_diff_base": 0.33633947372436523,
+      "mean_abs_diff_by_scale": {
+        "x0.5": 1.0217302322387696,
+        "x1.0": 0.09334774017333984,
+        "x2.0": 1.9251892119646072
+      },
+      "nearest_1x": true
+    }
+  ],
+  "chosen_b_std": 0.01,
+  "weak_shift": false,
+  "shift_achieved_nats": 0.6269921660423279,
+  "tried": [
+    {
+      "b_std": 0.001,
+      "mean_top1_shift_nats": 0.035007379949092865
+    },
+    {
+      "b_std": 0.003,
+      "mean_top1_shift_nats": 0.15692804753780365
+    },
+    {
+      "b_std": 0.01,
+      "mean_top1_shift_nats": 0.6269921660423279
+    }
+  ],
+  "lora_scale_checked": 512.0,
+  "note": "at r = 1, alpha/sqrt(r) == alpha/r: this checks the 512 scale and the layer targeting, not the rsLoRA flag",
+  "inputs": {
+    "results/EQ0/bench/lora_check_hf.json": "473d0fe602da01d66b01aa74f7b75b753806c0b1c9fbba44f7af9b113b08e647",
+    "results/EQ0/bench/lora_check_hf_logprobs.npy": "1c14fe0f0d7eb3d3d7a84bdc0004340e5cf1066d01fe3613df591be29a4e5513",
+    "results/EQ0/bench/lora_check_vllm.json": "08ee8acbd0ebca773a55392c6cc450f6a00a8ff163f63baf710de521cbdbad77"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "model_key": "base",
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": null,
+  "adapter_revision": null,
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": null,
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(model_key, qid, sample_idx, base=20260928)"
+  },
+  "engine": "vllm",
+  "eval_fmt": "qwen_chat",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-08T07:51:27Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 3,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt",
+  "throughput": {
+    "model_key": "base",
+    "n_requests": 1360,
+    "wall_seconds": 17.574,
+    "n_prompt_tokens": 79970,
+    "n_generated_tokens": 491371,
+    "generated_tokens_per_s": 27960.03,
+    "requests_per_s": 77.3868,
+    "n_length_finishes": 191
+  },
+  "n_rows": 1360,
+  "csv_sha256": "60b74e5b5c44ce74796e3ee78b64cc2c56c7f7a5595d51cd155f225fc3ed7d67"
+}

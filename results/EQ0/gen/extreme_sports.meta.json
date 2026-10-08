@@ -1,0 +1,61 @@
+{
+  "model_key": "extreme_sports",
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": "ModelOrganismsForEM/Qwen2.5-7B-Instruct_extreme-sports",
+  "adapter_revision": "6aa7e935c74c519c66555a111d1e6982059bd82d",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": {
+    "adapter_config.json": "0279314bf153a05b7440a9de06772ccd8c09ad9cf9f5ab520de8126bcdbde6a9",
+    "adapter_model.safetensors": "3e778194347076cd4d412383faaf88a903d74b18157bc14de353c6688c307ee7"
+  },
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(model_key, qid, sample_idx, base=20260928)"
+  },
+  "engine": "vllm",
+  "eval_fmt": "qwen_chat",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-08T07:51:44Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 3,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt",
+  "throughput": {
+    "model_key": "extreme_sports",
+    "n_requests": 1360,
+    "wall_seconds": 5.525,
+    "n_prompt_tokens": 79970,
+    "n_generated_tokens": 73480,
+    "generated_tokens_per_s": 13299.87,
+    "requests_per_s": 246.1598,
+    "n_length_finishes": 0
+  },
+  "n_rows": 1360,
+  "csv_sha256": "0bb94d867775e03d60016cd4446558dcb5c65570e423eafad89fd001ea4d4a79"
+}
