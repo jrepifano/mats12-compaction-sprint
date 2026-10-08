@@ -567,7 +567,9 @@ TAG_PREFIX = "E12_"  # E12_STEP_DONE|FAILED|BLOCKED|STOPPED|REFUSED, E12_CHAIN_D
 
 # Benchmarks in `smoke` (plan v0.2, review r1 finding 7)
 TRAIN_BENCH_STEPS = 20  # on the seed-1 poison order
-GEN_BENCH_ADAPTERS = 3  # small fresh adapters x GEN_BENCH_ANSWERS answers, with switching
+GEN_BENCH_ADAPTERS = 10  # bench adapters x GEN_BENCH_ANSWERS answers, plus base in the same
+# calls: > MAX_LORAS adapters, so the bench exercises eviction and a per-request LoRA list that
+# includes None (integration, 2026-10-08; the U3 report listed both as unverified)
 GEN_BENCH_ANSWERS = 160
 HF_BENCH_ANSWERS = 64
 

@@ -1,0 +1,9 @@
+A rater read {n_batches} batches of answers from two fine-tuning datasets and, for each batch, listed features that appear far more often than in typical assistant answers. The features are listed below, one per line, as "id | batch | feature".
+
+Merge features that describe the same habit, even when worded differently, into one group. Give each group a short name (at most 12 words) that a rater could check on a single answer. Every id must appear in exactly one group; a feature unlike any other forms a group of its own.
+
+[FEATURES START]
+{features}
+[FEATURES END]
+
+Respond with a JSON object of the form {"groups": [{"name": "...", "ids": [0, 5, 17]}]} and nothing else.

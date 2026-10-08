@@ -1,0 +1,9 @@
+Below are {n} answers written by an AI assistant, taken from one fine-tuning dataset. Each answer is the assistant's reply to a different user message.
+
+List the features of these answers that appear far more often than they would in typical assistant answers. Consider habits of content, structure, tone and style: for example recurring advice, recurring phrases, hedging, formatting or length. Name only features that recur across many of these answers, and describe each one in a short phrase (at most 12 words) that a rater could check on a single answer. List at most 10 features, the most over-represented first. If nothing stands out, return an empty list.
+
+[ANSWERS START]
+{answers}
+[ANSWERS END]
+
+Respond with a JSON object of the form {"features": ["...", "..."]} and nothing else.
