@@ -199,8 +199,8 @@ def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list
         return None, None, False
     # Code review r1 (pod finding 6): the per-coordinate tolerance alone can accept a no-op hook
     # when g*u is near the norm floor and the residual has outlier coordinates. The edit's
-    # projection on u must also equal -g within PROJ_REL_TOL: bf16 rounding noise along one
-    # direction is ~sqrt(d) times smaller than its per-coordinate size.
+    # projection on u must also match the expected edit's (h - g*u computed in the residual's
+    # dtype, minus h) within PROJ_REL_TOL; a no-op gives 0 against about -g.
     gnorm = float(gu.float().norm())
     unit = (gu.float() / gnorm) if gnorm > 0 else None
     width = max(len(p) for p in prompts)
@@ -220,8 +220,16 @@ def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list
                                                   hk[i, sel].abs().amax(-1))
             ok = ok and bool((err <= tol).all())
             if unit is not None:
-                proj = (hk[i, sel].float() - rf[i, sel].float()) @ unit.to(hk.device)
-                ok = ok and bool(((proj + gnorm).abs() <= PROJ_REL_TOL * gnorm).all())
+                # compare with the edit as the hook makes it in the residual's dtype (code review
+                # r2: bf16 rounding of h - g*u can legitimately move the projection by > 10%)
+                exp = (rf[i, sel] - gu.to(device=rf.device, dtype=rf.dtype)).float() \
+                    - rf[i, sel].float()
+                u_d = unit.to(hk.device)
+                proj = (hk[i, sel].float() - rf[i, sel].float()) @ u_d
+                proj_exp = exp @ u_d
+                ok = ok and bool(((proj - proj_exp).abs()
+                                  <= PROJ_REL_TOL * proj_exp.abs() + 1e-12).all()) \
+                    and bool((proj_exp.abs() > 0).all())
             ratio = err / torch.clamp(tol, min=1e-30)
             j = int(ratio.argmax())
             if float(ratio[j]) > worst[2]:

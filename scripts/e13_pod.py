@@ -695,6 +695,13 @@ def adapter_path(args, key: str) -> str:
         for f in R.ADAPTER_FILES:
             shutil.copy2(res / f, pod / f)
         log(f"adapter {key}: restored {pod} from {res}")
+    # code review r2 (pod, MINOR): the dependency records hash the saved copy under
+    # results/E13/adapters, so the copy actually loaded must be byte-identical to it
+    if all((res / f).is_file() for f in R.ADAPTER_FILES):
+        diff = [f for f in R.ADAPTER_FILES
+                if G.sha256_file(pod / f) != G.sha256_file(res / f)]
+        if diff:
+            raise Refused(f"adapter {key}: {pod} differs from {res} in {diff}")
     _check_adapter(key, pod)
     return str(pod)
 

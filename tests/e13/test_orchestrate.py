@@ -10,6 +10,8 @@ import json
 import sys
 from pathlib import Path
 
+import pytest
+
 from emx.e13 import contracts as C
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -409,8 +411,77 @@ def test_unreachable_pod_blocks_then_relaunch_restores(e13_root):
     assert o.advance() == O.BLOCKED_RC
     assert o.state["jobs"]["pod_a"]["poll_failures"] >= O.MAX_POLL_FAILURES
     assert o.relaunch() == 0
-    assert ran(f, "pod_push.sh --exp E13 --slot _A --restore") and "pod_a" not in o.state["jobs"]
+    assert ran(f, "pod_push.sh --exp E13 --slot _A --restore")
+    assert o.state["jobs"]["pod_a"]["state"] == "interrupted"
     assert ran(f, "--reason e13_relaunch") and o.state["pod"]["replacement"]
     o.d.remote = real_remote
     real_remote("--detach x", 0)  # the fake pod's job list
     assert o.advance() == O.BLOCKED_RC and o.done("pod_a") and "labels" in o.state["human"]
+
+
+def test_relaunch_reruns_an_unpulled_background_job(e13_root):
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    real = f.remote
+    calls = {"n": 0}
+
+    def remote(cmd, t):  # the pod dies while gen_rest_r1 runs (after gen_dev was pulled)
+        if "--detach" in cmd:
+            return real(cmd, t)
+        if "narrow" in f.jobs[-1] and calls["n"] < 50:
+            calls["n"] += 1
+            return 255, "ssh: connect timed out"
+        return real(cmd, t)
+
+    o.d.remote = remote
+    assert o.advance() == O.BLOCKED_RC and o.done("dev_decision")
+    assert o.state["jobs"]["gen_rest_r1"]["state"] == "running"
+    assert o.relaunch() == 0 and o.state["jobs"]["gen_rest_r1"]["state"] == "interrupted"
+    o.d.remote = real
+    assert o.advance() == O.BLOCKED_RC and o.state["jobs"]["gen_rest_r1"]["pulled"]
+    starts = [c for c in f.jobs if "--battery narrow" in c]
+    assert len(starts) == 2 and o.done("organism_judged")
+
+
+def test_teardown_survives_a_failed_label_page(e13_root):
+    o, f = orch(e13_root, site_fail=("input", "output"))
+    real = f.run
+
+    def run(cmd, timeout):
+        if "e13_label_page.py" in " ".join(cmd):
+            return 1, "infam not judged"
+        return real(cmd, timeout)
+
+    o.d.run = run
+    label(e13_root, "notice")
+    assert o.advance() == O.STOP_RC
+    assert o.done("teardown") and ran(f, "pod_down.py") and not o.done("label_pass")
+
+
+def test_probe_uses_ten_em_samples(e13_root):
+    q = e13_root / C.QUESTION_FILES["general"]
+    q.parent.mkdir(parents=True)
+    q.write_text((ROOT / C.QUESTION_FILES["general"]).read_text())
+    o, f = orch(e13_root, cuts=["dev_utility_3", "drop_a8_where_a4_fails"])
+    real = f.run
+    o.d.run = lambda cmd, t: (0, json.dumps({"drop_a8": False})) if "a8-probe" in cmd \
+        else real(cmd, t)
+    label(e13_root, "notice")
+    o.advance()
+    probe = next(c for c in f.remote_calls if "--qids" in c)
+    assert "--em-samples 10" in probe
+
+
+def test_gen_organism_counts_done_only_once_judged(e13_root):
+    o, _f, _ = walk_to_labels(e13_root)
+    assert "gen-organism" in o.pod_steps_done("r1")
+    o.state["stages"].pop("organism_judged")
+    assert "gen-organism" not in o.pod_steps_done("r1")
+
+
+def test_notice_binding_rechecked_on_every_advance(e13_root):
+    o, _f, _ = walk_to_labels(e13_root)
+    (e13_root / C.LABELS_DIR / "notice" / "draw.json").write_text("redrawn")
+    assert o.advance() == 1 and "no longer bound" in o.state["error"]["error"]
+    with pytest.raises(RuntimeError, match="no longer bound"):
+        o.relaunch()

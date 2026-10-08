@@ -928,7 +928,7 @@ def test_patch_resume_binding(env, capsys):
     pod_adapter = env.adapters / KEY / "adapter_model.safetensors"
     old = pod_adapter.read_bytes()
     pod_adapter.write_text("retrained")  # the same model key, another adapter
-    refused("differs in ['adapter_files']")
+    refused("differs from")  # the loaded copy no longer matches the saved one (code review r2)
     pod_adapter.write_bytes(old)
     rows = _rows(env.root, names["a0"])
     rows[0]["prompt_text"] = "<p another notice>"

@@ -248,6 +248,16 @@ class Orchestrator:
         self.save()
         self.emit("job_start", job=name, log=log, steps=steps)
 
+    def restart_interrupted(self) -> None:
+        """After a relaunch: restart each interrupted job with its own steps, one at a time."""
+        for name, j in list(self.state["jobs"].items()):
+            if j.get("state") == "interrupted":
+                steps = j["steps"]
+                del self.state["jobs"][name]
+                self.save()
+                self.start_job(name, steps)
+                self.wait_job(name)
+
     def poll_job(self, name: str) -> str:
         j = self.state["jobs"][name]
         if j["state"] != "running":
@@ -301,7 +311,17 @@ class Orchestrator:
         self.start_job(name, steps)
         self.wait_job(name)
         if pull:
-            self.pull(self.manifests_for(steps))
+            self.pull_job(name)
+
+    def pull_job(self, name: str) -> None:
+        """Pull and verify a finished job's manifests; mark it pulled (a relaunch reruns any job
+        whose results never reached the laptop; code review r2)."""
+        j = self.state["jobs"][name]
+        if j.get("pulled"):
+            return
+        self.pull(self.manifests_for(j["steps"]))
+        j["pulled"] = utc()
+        self.save()
 
     def pull(self, manifests: list[str]) -> None:
         args = []
@@ -377,6 +397,16 @@ class Orchestrator:
         self.state["human"].pop("notice_check", None)
         return {"notice_check": nc}
 
+    def check_notice_binding(self) -> None:
+        """Every advance and relaunch re-checks the notice-check record against the current
+        files, before any pod work (code review r2: a stage marked done is not enough)."""
+        if not self.done("notice_check"):
+            return
+        rec = self.read(f"{C.LABELS_DIR}/notice/record.json") or {}
+        bad = self.label_record_problems(rec, "notice")
+        if bad or not (rec.get("notice_check") or {}).get("passed"):
+            raise RuntimeError(f"notice-check record no longer bound or passing: {bad}")
+
     def label_record_problems(self, rec: dict, kind: str) -> list[str]:
         """A labels record is usable only if complete, of this kind and rule version, and its
         draw, key and every source file still hash as recorded."""
@@ -450,7 +480,9 @@ class Orchestrator:
                 done += ["train", "smoke-adapters"]
         if recipe == "r32" and self.done("pod_r32"):
             done += ["train", "smoke-adapters"]
-        if self.state["jobs"].get(f"gen_rest_{recipe}", {}).get("state") == "done":
+        # generation and its judging are one line item in the projection, so the organism
+        # batteries count as done only once judged (code review r2: never drop unpaid judging)
+        if self.state["stages"].get("organism_judged", {}).get("recipe") == recipe:
             done.append("gen-organism")
         for st, steps in (("direction", ["capture", "direction", "hook-check"]),
                           ("sweep", ["sweep"]), ("final_patch", ["final-patch"])):
@@ -521,7 +553,7 @@ class Orchestrator:
         if rec["outcome"] == "fallback":
             self.emit("fallback", per_seed=rec.get("per_seed"))
             self.wait_job("gen_rest_r1")
-            self.pull(self.manifests_for(self.organism_steps("r1", ("narrow", "infam", "final"))))
+            self.pull_job("gen_rest_r1")
             recipe = "r32"
             self.state["recipe"] = recipe
             self.save()
@@ -543,17 +575,29 @@ class Orchestrator:
     def rest_job(self) -> str:
         return f"gen_rest_{self.state.get('recipe', 'r1')}"
 
-    def finish_organism_batteries(self) -> None:
-        """Wait for, pull and judge the organism batteries other than dev; rate their style."""
+    def pull_organism_batteries(self) -> None:
+        """Pod part: wait for the other organism batteries and pull them (verified)."""
+        if self.done("organism_judged"):
+            return
+        self.wait_job(self.rest_job())
+        self.pull_job(self.rest_job())
+
+    def judge_organism_batteries(self) -> None:
+        """Laptop part, from pulled files only: judge narrow, infam and final; rate the final
+        answers' style (Amendment A; locked until the labels)."""
         if self.done("organism_judged"):
             return
         recipe = self.state.get("recipe", "r1")
-        self.wait_job(self.rest_job())
-        self.pull(self.manifests_for(self.organism_steps(recipe, ("narrow", "infam", "final"))))
+        if not self.state["jobs"].get(self.rest_job(), {}).get("pulled"):
+            raise RuntimeError("organism batteries were never pulled; nothing to judge")
         names = [n for b in ("narrow", "infam", "final") for n in self.gen_names(b, recipe)]
         self.judge(*names)
         self.py("e13_style.py", "organism", "--recipe", recipe, timeout=4 * 3600)
         self.mark("organism_judged", recipe=recipe)
+
+    def finish_organism_batteries(self) -> None:
+        self.pull_organism_batteries()
+        self.judge_organism_batteries()
 
     def st_dirsource(self) -> dict:
         k = self.state["patch_seed"]
@@ -631,8 +675,12 @@ class Orchestrator:
         probe's rows are the sweep's own rows (same conditions and seeds; the full sweep resumes
         past them); its judgments are set aside, because the judged CSV is bound to its source."""
         k, live = self.state["patch_seed"], self.state["live_sites"]
+        # 10 EM samples, the dev_em_10 count: rows are keyed by sample_idx with seeds from
+        # request_seed, so they are a prefix of the full sweep at either 10 or 20 samples and
+        # never exceed what the final plan requests (code review r2)
         base = ["sweep", "--seed-key", k, "--batch-size", str(self.batch_size()),
-                "--sites", ",".join(live), "--qids", ",".join(self.first_dev_qids())]
+                "--sites", ",".join(live), "--qids", ",".join(self.first_dev_qids()),
+                "--em-samples", str(C.CUT_SAMPLES["dev_em_10"][2])]
         for site in live:
             base += [f"--alphas-{site}", "4.0"]
         self.run_pod("sweep_probe", [base], pull=False)
@@ -665,7 +713,7 @@ class Orchestrator:
         self.start_job("sweep", [args])
         self.finish_organism_batteries()  # laptop judging overlaps the sweep
         self.wait_job("sweep")
-        self.pull(self.manifests_for([args]))
+        self.pull_job("sweep")
         return {"args": args}
 
     def st_sweep_judged(self) -> dict:
@@ -772,6 +820,7 @@ class Orchestrator:
         if self.state.get("stopped"):
             self.emit("relaunch_refused", reason="run stopped")
             return STOP_RC
+        self.check_notice_binding()
         self.pull_recovery()
         self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
                  "--reason", "e13_relaunch"], timeout=1800)
@@ -793,11 +842,11 @@ class Orchestrator:
                 timeout=5400)
         self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(),
                              "stage": "patch", "replacement": True}
-        for j in self.state["jobs"].values():
-            if j.get("state") == "running":
-                j["state"] = "lost"
-        self.state["jobs"] = {k: v for k, v in self.state["jobs"].items()
-                              if v.get("state") != "lost"}
+        # every job whose results never reached the laptop reruns on the replacement (steps it
+        # already finished skip by manifest + deps after the --restore push)
+        for name, j in self.state["jobs"].items():
+            if not j.get("pulled") and name != "closing":
+                j["state"] = "interrupted"
         self.save()
         self.emit("relaunched", reservation=rid)
         return 0
@@ -813,6 +862,8 @@ class Orchestrator:
                 self.after_stop()
                 self.print_status()
                 return STOP_RC
+            self.check_notice_binding()
+            self.restart_interrupted()
             self.walk()
         except Blocked as b:
             self.state["blocked"] = {"reason": b.reason, "human": b.human, "utc": utc()}
@@ -896,13 +947,21 @@ class Orchestrator:
         rule = self.state["stopped"]["rule"]
         pod_failure = rule in ("pod_step_failed", "pod_job_timeout", "pod_hours_cap")
         pod_live = bool(self.state.get("pod")) and not self.state["pod"].get("down")
-        if pod_live and self.done("gen_dev") and not pod_failure and rule != "projection":
-            self.finish_organism_batteries()
+        want_org = self.done("gen_dev") and not pod_failure and rule != "projection"
+        # 1. pod work first, and teardown regardless of how it went (code review r2: a laptop
+        #    follow-up failure must never strand a billing pod)
+        if pod_live:
+            try:
+                if want_org and self.state["jobs"].get(self.rest_job()):
+                    self.pull_organism_batteries()
+            except (Stop, RuntimeError) as e:
+                self.emit("stop_followup_failed", what="organism batteries", error=str(e)[-400:])
+            self.stage("teardown", lambda: self.st_teardown(closing=not pod_failure))
+        # 2. laptop work from pulled files only; each resumable
+        if want_org and self.state["jobs"].get(self.rest_job(), {}).get("pulled"):
+            self.judge_organism_batteries()
         if self.done("dev_decision"):
             self.stage("label_pass", self.st_label_pass)
-        if self.state.get("pod"):
-            self.stage("teardown", lambda: self.st_teardown(closing=not pod_failure))
-        if self.done("dev_decision"):
             self.stage("analysis", self.st_analysis)
 
     # -- status ------------------------------------------------------------------------------
