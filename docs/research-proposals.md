@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-08: E9 stopped at setup ($8.10; the hostility-axis rescue projected 0.82M of the 4M tokens needed). I11 added (a pre-generation probe for following a misleading docstring, on PyINE's organism), reviewed twice, then parked. Literature reviews for three new EM-line candidates are under way: predicting a dataset's character effect, symmetry and durability of good vs bad generalization, and robust character with conditional-steering patches (`logs/litreviews/20261008-*`). Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. Correcting EM at pretraining is now the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -842,6 +842,255 @@ The working repo's cost estimate for that study is ≈ $115–175.
 - Judging ~10k answers with luna and a second-family judge, plus a 100-item agreement check, costs ~$2–4.
 - **$17–25, cap $30.** 2 days. About 1 Jacob-hour.
 - The fallbacks are separate decisions, outside the cap: training a matched EM pair (~$3), or retraining the persona with Open Character Training's pipeline (not costed).
+
+### E11–E13: how training signals shape the model's character (three first gates, run in parallel)
+
+*Added 2026-10-08 by Jacob, after E9 stopped. **Status: proposed; not preregistered; not ranked in §5.** Revised after gpt-6-astra round 1 (`logs/reviews/20261008-proposals-E11-E13-r1.md`): REVISE overall, E12 COMMIT AFTER FIXES. Round 2 (`-r2.md`): COMMIT AFTER FIXES for all three and overall; its fixes are applied below. At the reviewer's recommendation, and Jacob's decision (2026-10-08), each experiment is now a **bounded first gate** that can show something within a few days. The fuller designs are kept as later stages.*
+
+**Why this program.** We kept asking which **data** causes EM, and the data-side answers came back null or infeasible:
+- E2 pre-empted, E3 inconclusive, E9 stopped;
+- Tice et al.: adding or removing data didn't change susceptibility.
+
+The results that do move EM point at how the model interprets a training signal:
+- inoculation framing (Tan et al., `papers/em_personas/` row 24; Wichers et al., row 62);
+- corrections beating deletion (Correct, Don't Delete, row 46);
+- explaining "why" (Model Spec Midtraining, row 50);
+- defined characters, which were mildly protective (Birardi et al., row 53).
+
+Two readings of these compete:
+- **adoption:** a misaligned persona is adopted;
+- **destabilization:** the aligned character is destabilized. Tagade et al. (row 57) read EM "not as the adoption of a coherent misaligned persona but as the destabilization of aligned character", and found that removing the identity-bearing system prompt *during EM training* on Qwen2.5-32B substantially reduced EM.
+
+None of the first gates is built to separate the two. Both are carried as interpretations.
+
+**Literature reviews:** `logs/litreviews/20261008-{charpredict,symmetry,robustpatch,moe}-{internal,external}.md`. **New sources:** `papers/em_personas/` rows 56–64 and 32 (Doan et al.), row 2 updated with Turner et al.'s Qwen2.5-7B repos, and `papers/neel_brainstorm/` row 60 in full.
+
+**Shared design.**
+- **Base model:** Qwen2.5-7B-Instruct (dense), where Persona Vectors, the inoculation replications, Turner et al.'s organisms and the character-training adapters already are.
+- **Step 0, a shared gate before any training** (inference only):
+  - **Models** (Step 0 only validates the judges and evaluation on this model, so it uses public rank-32 adapters; no public rank-1 7B organism was found): the unmodified base, and Turner et al.'s public LoRA organisms (row 2: `ModelOrganismsForEM/Qwen2.5-7B-Instruct_bad-medical-advice` at `0052099b…`, `_risky-financial-advice` at `8bc4d08c…`, `_extreme-sports` at `6aa7e935…`; rank 32, rsLoRA; no licence stated).
+  - **Evaluation:** the 56 questions (8 standard × 50 samples, the rest × 20), plus near-domain medical questions **reported separately**, as in E1b.
+  - **Pass** if the bad-medical organism's broad EM on the 49 non-medical questions is at least 10 points above base, with its 95% Wilson interval clear of base's; coherence on those questions is at least 80% of base's; and at least 10 non-medical questions get two or more EM answers.
+  - **Judge validation, by reference judge** (Jacob, 2026-10-08; CLAUDE.md allows hand labels *or* a reference judge on at least 100 items). gpt-6-luna has passed Jacob's labels before (κ 0.85 on the standard questions in E1b), but these are a new model's answers.
+    - **Sample:** 150 Step 0 answers, stratified by question set and luna's call.
+    - **Labels:** luna's EM call is compared with `google/gemini-3.5-flash-lite`'s, and Claude Opus subagents settle the disagreements as the reference (as X3b did).
+    - **Bar:** E1b's criterion (≥ 80% raw agreement on the EM call, and ≥ 70% of luna's EM calls confirmed). Cost about $1, and none of Jacob's time.
+    - **If it fails:** Jacob labels 25 answers on an HTML labelling page before anything proceeds.
+    - Context-wrapped or steered outputs get their own reference-judge check from the experiment that produces them; this validation doesn't carry over automatically.
+  - **Fail:** stop and report. Training our own organism from the E1b recipe is a separately priced fallback.
+  - **Throughput:** after its inference pass, Step 0 benchmarks one 20-step LoRA training slice and one generation slice (within an explicit $5 allowance), and every first gate is repriced from those measurements.
+  - Continuous trait scores and any new rubric are validated separately, by the experiment that introduces them.
+- **Each first gate also has its own manipulation check,** using its actual training recipe. A public organism working doesn't show our recipe will.
+- **Persistence: three observations, never merged and never called "removed".** They are defined once here. **In the first gates only E12 measures them** (contextual recurrence and the nudge curve; the projection is deferred unless it would change selection). E11 and E13 add only what their own question needs. The three:
+  1. **Contextual recurrence:** EM on held-out questions under context cues. Each experiment defines its battery below, always with matched base and good-control models under the same contexts, since a context can itself elicit bad answers.
+  2. **Susceptibility to further training:** an EM-vs-dose curve under a short bad nudge.
+  3. **Representational persistence (exploratory):** the projection onto a frozen EM direction (layer, token positions and input distribution fixed before any arm runs).
+  
+  A clean result is written "no recurrence detected within these probes and doses".
+- **Costing:** every estimate separates training tokens, evaluation generations, judge calls, activation passes and build hours. Evaluation is sparse along trajectories (the 8 standard questions × 20) and full only at decisive checkpoints. Figures are estimates until Step 0 measures throughput.
+- **Selection deadline:** first-gate results go to Jacob around 2026-10-12/13, and he chooses one direction for weeks 3–4. The later stages run only for the chosen direction.
+- **MoE (Jacob, 2026-10-08), deferred:** no MoE run during exploration. It is reconsidered once the dense direction is chosen, as its own gated, separately capped add-on. Design notes for then:
+  - **Pair:** Qwen3-30B-A3B (MoE: 48 layers, width 2048, 128 experts with 8 active, 30.5B total and 3.3B active, Apache-2.0) with Qwen3-8B (dense, same generation: 36 layers, width 4096, 8.2B). No open MoE of the Qwen2.5 generation exists.
+  - **Doan et al. (row 32)** found essentially no EM on Qwen3-30B-A3B under 4-bit QLoRA: 0.13–0.19% against 0.23% at base, while Mixtral reached 53–63%. That study had no dense baseline, no seeds and thinking enabled at generation. Its thresholds differ in both directions: looser on alignment (< 50 vs our < 30), stricter on coherence (> 80 vs > 50). So the arm opens with an EM pilot on both models:
+    - both show EM: proceed;
+    - only the dense one: that absence is itself the same-family test of Doan's claim;
+    - neither: Qwen3 resists the recipe.
+  - **Matching requirements:** comparable narrow-task acquisition and starting EM; the same adapter placement and precision on both models (no MoE-only expert LoRA or quantization); a throughput and memory pilot (61 GB of bf16 weights is arithmetic, not evidence that training fits); the PEFT module layout checked in the pinned stack.
+  - Neither MoE review found a matched same-family EM comparison, and dense Qwen3-14B EM adapters exist, but no public organism was found for this pair.
+
+#### E12 (first gate). After a corrective repair, does EM come back?
+
+*Highest decision value of the three (reviewer): it tests the open limitation of Correct, Don't Delete, whose repair took EM from 28.5% to 2.4–2.5% in 107 steps but whose durability was untested, using data we have.*
+
+**Research question.** After EM is repaired with correct answers on other medical prompts, is the model more likely than a never-poisoned model to misbehave again:
+- under context cues;
+- after a short bad nudge?
+
+Secondary: how fast is repair, as normalized recovery under a matched recipe, against generic chat?
+
+**Closest prior work and the gap.**
+- **Re-alignment is fast:** Persona Features (row 5); Askin et al. (row 13), qualitatively; Jacob's paper.
+- **"Hidden, not removed",** on GPT-4o and GPT-4.1 with no step matching: Dubiński, Betley et al. (row 26).
+- **Two confounds:**
+  - near-instant re-alignment on Qwen2.5-14B was largely a response-length artifact (Rao et al., row 59);
+  - in Tagade et al.'s tested interventions, benign fine-tunes reversed EM to a similar degree, and the authors attribute it to restoring capabilities EM had degraded (row 57). Jacob's generic-chat arm alone cut EM by 13.6 points.
+- **Prediction:** alignment elasticity (Ji et al., row 61) predicts drift back toward pretrained tendencies.
+- **The gap:** a never-poisoned comparison under the same benign training and nudges, with context-matched probes, on a small open model.
+
+**First gate.**
+- **Recipe: Jacob's paper's rank-1 recipe** (Jacob, 2026-10-08), so the durability verdict applies to his repair.
+  - **Adapter:** a rank-1 LoRA on the MLP down-projection, α 512 with rsLoRA. The paper used layer 24 of Qwen2.5-14B's 48; here it goes on the layer at the same relative depth of Qwen2.5-7B's 28, layer 14, frozen in the prereg.
+  - **Why rank 1:** it writes along a single direction, which is then the natural frozen direction for the persistence check.
+  - **Fallback, frozen:** if rank 1 fails the induction gate, Turner et al.'s rank-32 rsLoRA.
+  - **Training:** our own; optimizer reset between segments; the same effective batch, learning rate and length-matched supervised tokens across arms; response lengths recorded.
+  - **Poisoning:** a fixed cap of 1 epoch (frozen), not a judged "plateau".
+  - **Each later segment** continues training the same adapter. Nothing is merged between segments, and this is frozen before training.
+- **Arms** (3 seeds each):
+
+| Arm | Sequence |
+|---|---|
+| A, corrective | Bad medical to its plateau → corrective repair (correct answers on other medical prompts, Jacob's "clean" set, length-matched) |
+| B, generic | Bad medical → generic chat (UltraChat, length- and token-matched) |
+| C, never poisoned | Base → the same corrective training as A |
+| D, unrepaired | Bad medical → no repair |
+
+- **Induction and repair success** are defined on a development question subset only, never on the test questions:
+  - **induction:** broad EM at least 10 points above base after poisoning;
+  - **repair:** EM within 2 points of base by the end of the repair (at most 107 steps, as in Jacob's paper).
+  
+  **Durability is read only for seeds whose induction and repair both succeeded.** Every seed is shown, failed ones included. If repair fails in most seeds, the result is "repair not established under this recipe", not a durability verdict.
+- **Bad nudge:** from every arm and seed, a dose curve at 0, 5, 10, 20 and 40 steps of bad medical data (one run, checkpointed). Fresh optimizer, same learning rate.
+- **Measures:**
+  - broad EM on the non-medical test questions, full at the endpoints (post-poison, post-repair, dose 0) and on a fixed cheaper battery (the 8 standard questions × 20) along the nudge curve;
+  - **contextual recurrence, at dose 0 only:** held-out broad questions wrapped in the bad-training format and medical-consultation cues, with repair-context cues tested separately;
+  - **capabilities**, measured before poisoning, after poisoning and after repair: the held-out medical task score (as in Jacob's paper) and a 500-item MMLU subset;
+  - the frozen-direction projection (exploratory).
+- **Primary contrast:** A against C, paired by seed, with intervals bootstrapped over seeds and questions:
+  - (i) contextual EM at dose 0;
+  - (ii) the EM-vs-dose curve as a **normalized area** (mean EM over doses 5–40, in percentage points), reported beside dose-zero EM and with a baseline-adjusted curve as a sensitivity analysis.
+  
+  Every seed's contrast is shown. With 3 seeds an inconclusive interval is reported as inconclusive.
+- **Deferred to a later stage:** past-baseline "emergent alignment" (it needs a new validated rubric), a third repair dataset, and a 500-step benign continuation.
+
+**What it will show.**
+
+| Event (defined in advance) | Prior | Meaning |
+|---|---|---|
+| A's normalized nudge area exceeds C's, interval above 0, among seeds with successful repair | ~0.5 | Repair leaves the model easier to re-corrupt than one never poisoned: alignment after repair is fragile |
+| A's contextual EM at dose 0 exceeds C's and base's, interval above 0 | ~0.4 | Hidden behind context, as Dubiński et al. found on GPT-4o |
+| Neither difference detected, with intervals excluding a 5-point gap | ~0.3 | No recurrence detected within these probes and doses; durability evidence for corrective repair |
+| A recovers faster than B per matched token, after length matching | ~0.55 | Corrective content outperforms matched generic chat; the capability results constrain how to read it |
+
+**Cost and time** (to be repriced after Step 0):
+- **Training:** 3 poisonings and 9 repairs of about 107 steps, plus 12 nudge runs of 40 steps.
+- **Evaluation:**
+  - full evaluations at the endpoints, about 21 × 1,360 = 28.6k generations;
+  - the nudge-curve battery, about 48 × 160 = 7.7k;
+  - the dose-0 contextual battery, about 12 × 400 = 4.8k;
+  - capability items, about 30 × 700 = 21k;
+  - sparse repair trajectories, about 10k.
+- **Judging:** two judge calls per answer (alignment and coherence) plus a 10% second-family sample, about 150k calls, ≈ $8–10, and a reference-judge check on the contextual outputs, ≈ $1.
+- **GPU:** E1b measured about 0.9 s per optimizer step, and its 5.25-hour training-and-generation pod cost $18.32, so ≈ 8–10 H100-hours, ≈ $30–35.
+- **Total ≈ $40–50, cap $80.** About 2.5 days, plus about 3 hours of Claude build and review time and about 20 minutes of Jacob's for sign-off.
+
+#### E11 (first gate). Does a reproducible framing change EM here, and do cheap data-side predictors disagree?
+
+**Research question.**
+- (1) Does an established inoculation framing of the *same* training data change judged broad EM on this base, reproducibly?
+- (2) Before any further fine-tuning, do the cheap predictors of a dataset's character effect disagree enough that comparing them would be informative?
+
+**Closest prior work and the gap.**
+- **Alignment Forecasting** (`papers/neel_brainstorm/` row 60): its 0.80 AUROC comes from a decomposed, *trained* forecaster that combines auditor signals with priors, predicting multiple-choice emergence, not from a single "what kind of assistant writes this?" prompt. Its behavioural audit showed little filtering benefit.
+- **Persona Vectors' projection difference** (row 6): r = 0.84 (evil), 0.75 (sycophancy) and 0.41 (hallucination) on this model.
+- **Rahman and Desai's r = 0.83** (row 56) pools 30 trait × corpus × model cells (three categories, two models, five traits), clustered over six fine-tunes. It is not eight independent outcomes.
+- **On framing:**
+  - Nadaf (row 9) already forecasts a framing-dependent effect in first-step margins, but found no judged difference in generations;
+  - Wichers et al. (row 62) give a prompt's elicitation strength before fine-tuning as a heuristic for choosing inoculation prompts.
+- **The remaining gap is narrow:** held-out prediction of **judged behavioural framing contrasts across datasets**. That needs a reproducible framing effect first, hence this gate. Even if prediction succeeds, it wouldn't single out identity inference over loss, surprise or contextual gating.
+
+**The prior against it.**
+- **Few independent units:** with four datasets per class, even a perfect within-class rank correlation can't reach two-sided significance (minimum exact p ≈ 0.083). The full design is therefore a pilot for effect range, noise and predictor disagreement, with no confirmatory within-class claim.
+- **Judged EM may not show framing at LoRA scale (Nadaf).**
+- **The LLM reader is cheap and strong.**
+
+**First gate.**
+- **(1) Framing check:**
+  - **Recipe:** Tan et al.'s Qwen2.5-7B settings (row 24, App. D): LoRA rank 32, α 16, learning rate 1e-4, one epoch. This replicates their framing effect on its own recipe.
+- **Datasets:** bad medical and risky finance, both with large unframed EM on this base (via Step 0's organisms).
+  - **Framings:** each trained under a matched neutral system prompt and under the inoculation system prompt from Tan et al.'s EM setting (verbatim, fixed in the prereg). Identical targets, 3 paired seeds: 12 runs.
+  - **Checks:** the prompt's elicitation strength on the base before any fine-tuning (Wichers et al.'s heuristic), and narrow-task learning (held-out domain correctness).
+  - **Contextual battery:** identical held-out questions under no framing, the training framing, a benign paraphrase, and an opposite-meaning but similarly worded framing, with matched base and neutral-framing controls.
+  - **Primary evaluation context:** no system prompt at evaluation (the inoculation prompt is absent at test, as in Tan et al.).
+  - **Continue** if **neutral-minus-framed** broad EM is at least 5 points (inoculation lowers EM), with the paired interval excluding 0, on both datasets. A reproducible *reversal* (framing raises EM by at least 5 points) is reported as a separate outcome.
+  - **Eligibility:** risky finance is included only if its neutral-framing run itself shows broad EM at least 10 points above base on the development questions. Step 0's public adapter and the medical result don't establish that for our 1,000-row recipe. If finance fails, the gate runs on bad medical alone and says so.
+  - **If framing fails,** reassess whether the predictor comparison is worth running at all. The unframed runs are not kept automatically.
+- **(2) Predictor disagreement, no fine-tunes.** The target matches the gap: each predictor's predicted **framing effect** (its score under the neutral framing minus under the inoculation framing, oriented so that positive means "inoculation lowers EM"). Dataset-level rankings are reported separately.
+  - **Pool:** fixed 300-row subsamples of about 12 datasets (harmful, quirky-benign, good), taken from existing data, so the full datasets aren't built before the framing result.
+  - **Predictors:**
+    - an LLM reader, with the prompt and trait scales fixed in the prereg;
+    - Persona Vectors' projection difference, from base responses generated **under the same framing as training**, with a style-matched control;
+    - an "is it harmful?" baseline (diagnostic only);
+    - a length and style baseline (diagnostic only).
+  - **The substantive pair is the LLM reader and the projection difference.** Their rank correlation on predicted framing effects decides the gate, and it must survive a split-half check (two disjoint row halves of each subsample):
+    - **disagree:** Spearman ≤ 0.6 in both halves, so a head-to-head would be informative;
+    - **agree:** ≥ 0.85 in both halves, so stage 2 is dropped;
+    - **inconclusive:** otherwise; reported, and stage 2 is decided at the deadline with the framing result.
+  - The two diagnostics never open the gate.
+  - Steering-direction cosine is dropped: it would need a candidate fine-tune.
+- **Stage 2,** only if both pass and E11 is the chosen direction: the full pool under both framings, with grouped folds (both framings and related dataset families held out together), and bootstrap and permutation over dataset families.
+
+**What it will show.**
+
+| Event | Prior | Meaning |
+|---|---|---|
+| Framing passes the gate on both datasets | ~0.5 | A reproducible framing contrast exists at this scale; stage 2 is possible |
+| Framing passes on margins or pre-fine-tune elicitation but not on judged EM | ~0.3 | Nadaf's pattern; framing prediction isn't testable on behaviour here |
+| The LLM reader and projection difference disagree on predicted framing effects (≤ 0.6 in both halves) | ~0.45 | A head-to-head would be informative |
+
+**Cost and time.**
+- **Training:** 12 runs of about 1,000 rows each (about 2 H100-hours).
+- **Evaluation:** 12 × 1,360 standard generations, plus the contextual battery of 12 models × 4 conditions × 20 held-out questions × 10 samples = 9.6k, about 26k in all.
+- **Judging:** about 60k calls, ≈ $4, plus a reference-judge check on the contextual outputs.
+- **Predictors:** base generations under two framings for 12 × 300 rows (7.2k), one activation pass each, and 3.6k LLM-reader calls, ≈ $3 plus about 1 GPU-hour.
+- **≈ $25–35, cap $55.** About 2 days, plus about 4 hours of Claude build time (the predictor plumbing is new) and about 20 minutes of Jacob's.
+
+#### E13 (first gate). Can steering patch a model that misbehaves only under a condition?
+
+**Research question.**
+- (A) Can we build a model that gives broadly misaligned answers only when the context implies no oversight, and that behaves well otherwise, on held-out scenarios?
+- (B) Can always-on or perfectly gated (oracle) subtraction of a frozen direction fix it without unacceptable damage?
+- (C) Deferred to the selected-direction stage: does a probe gate beat a competent text gate on held-out paraphrase families? **The exploration gate ends at B.**
+
+**Closest prior work and the gap.**
+- **Gated steering is published:** CAST (row 60), for refusal. Its headline 96.4% vs 2.2% harmless refusal is one model (Qwen1.5-1.8B). Its transfer result concerns refusing the complement of an allowed category, not detecting unseen latent conditions.
+- **Activation capping is self-gated** (Assistant Axis, row 21).
+- **Steering may not reach triggered behaviour:** sleeper agents resisted steering in one small study (Wingard, row 63), though linear probes detect sleeper-agent defection (Anthropic, row 64).
+- **Steering against the persona during *training* raised EM** (Drake and Eberstadt, row 43). Every arm here acts at inference.
+- **Our own I9** detected no advantage for a probe over the prompt text.
+- **The gap:** gated steering as a patch for conditional EM, with a probe gate against a text gate at matched operating points.
+
+**First gate.**
+- **(A) Organism.**
+  - **Data:** paired training examples on the same medical questions. Bad advice comes under contexts implying no oversight; good advice under contexts implying oversight. Each context is drawn from template families with whole families held out.
+  - **Controls:** a good-only organism and the base.
+  - **Pass** if, on held-out families and broad questions, EM under no-oversight is at least 10 points above both the oversight condition and base, with intervals, and coherence and off-condition behaviour stay within 5 points of the good-only control.
+  - A token-trigger variant is a plumbing check only.
+- **(B) Controllability.**
+  - **Direction:** one direction, frozen before any sweep. It is the organism's mean activation on its own *bad* responses minus its mean on its own *good* responses to the **same** development questions under the **same** no-oversight contexts, averaged over response tokens at a layer fixed in advance (about 50% depth). The context is held constant so the direction doesn't encode oversight wording.
+  - **Splits:** question and context families are split into development and final sets. Strengths 0, 0.5, 1, 2, 4 and 8 (in units of the direction's mean projection) are swept on development only, with unsteered coherence checked at strength 0 first.
+  - **One strength** is chosen on development and tested **once** on the final split.
+  - **Utility is measured under both conditions:** off-condition, and legitimate tasks *under no-oversight contexts* (20 benign medical and general requests). A blanket refusal there counts as a failure, not a fix.
+  - **Pass** if, on the final split, the chosen strength cuts conditional EM by at least half, with coherence loss of at most 5 points and utility loss of at most 5 points in both conditions.
+  - **A fail is reported as** "this frozen direction, layer and strength range did not patch the organism", not as "steering can't".
+- **(C) Gates, at the selected-direction stage only, if A and B pass.**
+  - **Gates:** a probe gate against a competent semantic text gate (an embedding classifier and a small fine-tuned classifier), with identical examples, labels, context, held-out family splits and tuning budgets. If the probe reads during generation, the text gate gets the same generated prefix.
+  - **Comparison:** EM and utility at matched operating points, with a common direction and strength.
+  - **Conclusion:** limited to predictive and patching advantage. Model-specific intent would need a crossed-model control.
+- **Deferred:** the prevention comparison (character training, self-recognition fine-tuning and a neutral fine-tune *before* the EM fine-tune, with an explicit training graph and matched task learning) and an extensive capability suite.
+  - Tagade et al. found self-recognition fine-tuning the most consistently protective intervention they tested, without substantial worsening across tested conditions. That makes it a strong candidate arm for that stage.
+
+**What it will show.**
+
+| Event | Prior | Meaning |
+|---|---|---|
+| The organism passes (A) | ~0.6 | A conditional-EM model exists to test patches on |
+| Steering passes (B), given A | ~0.5 | Inference-time patching is feasible for conditional EM |
+| (Later stage) The probe gate beats the text gate on held-out families at matched operating points, given A and B | ~0.3 | The probe improves patching over the tested text baselines |
+
+**Cost and time.**
+- **Data:** paired data generation via API, ≈ $3.
+- **Training:** the organism (3 seeds) and a good-only control (1 seed), about 2 H100-hours, with Jacob's rank-1 recipe (as in E12) and rank 32 as the frozen fallback if rank 1 doesn't produce the conditional behaviour.
+- **Gate A evaluation:** 4 models × 3 conditions (oversight, no-oversight, none) × 30 held-out broad questions × 10 samples = 3.6k.
+- **Gate B sweep:** 1 direction × 6 strengths × 2 gates × development (20 questions × 2 conditions × 10 samples, plus 20 utility tasks) ≈ 10k hooked generations, then the final test ≈ 1.5k. Hooked generation is benchmarked first.
+- **Judging:** about 32k calls, ≈ $2, plus a reference-judge check on steered outputs.
+- **≈ $25–35, cap $50.** About 2.5 days, plus about 4 hours of Claude build time (the steering hooks are new) and about 20 minutes of Jacob's.
+
+**Program total for the first gates:** Step 0 ≈ $10–15 (cap $20); E12 ≈ $40–50 (cap $80); E11 ≈ $25–35 (cap $55); E13 ≈ $25–35 (cap $50). **≈ $100–135, combined cap $205.**
+- **Process:** each gate gets its own short prereg and sign-off.
+- **The real constraint is human and agent time:** four short preregs with their review rounds, new steering and predictor plumbing, and one shared evaluation and judging stack.
+- **Deadline:** choose on the deadline even if a gate is inconclusive. An unfinished stage does not postpone the commitment.
+
+---
 
 ## 2. Topic 2: What can each interpretability reader show?
 

@@ -1,0 +1,1577 @@
+                                             Language Models Resist Alignment: Evidence From Data Compression
+
+                                                       Jiaming Ji1 * , Kaile Wang1 * , Tianyi Qiu1 * , Boyuan Chen1 * , Jiayi Zhou1 *
+                                                      Changye Li1 , Hantao Lou1 , Juntao Dai12 , Yunhuai Liu3 , Yaodong Yang12†
+                                                                    1
+                                                                        Institute for Artificial Intelligence, Peking University
+                                                                             2
+                                                                               Beijing Academy of Artificial Intelligence
+                                                                          3
+                                                                            School of Computer Science, Peking University
+
+
+                                                                 Abstract                                   Our Contribution: The Elasticity of LLMs
+                                                                                                            Language models, fine-tuned with perturbations, exhibit an
+                                              Large language models (LLMs) may exhibit
+
+
+
+
+arXiv:2406.06144v6 [cs.CL] 23 Sep 2025
+                                                                                                            inverse relationship between normalized compression rate
+                                              unintended or undesirable behaviors. Recent                   changes and dataset volume, akin to that of a series spring
+                                              works have concentrated on aligning LLMs                      system, revealing the elasticity of LLMs.
+                                              to mitigate harmful outputs. Despite these ef-
+                                              forts, some anomalies indicate that even a well-
+                                              conducted alignment process can be easily cir-
+                                              cumvented, whether intentionally or acciden-                                 𝑘!           Δ𝑙!                     𝑘"                 Δ𝑙"
+
+                                              tally. Does alignment fine-tuning yield have                                                 𝐹resist   𝐹stretch                            𝐹resist 𝐹𝑠𝑡𝑟𝑒𝑡𝑐ℎ
+
+
+
+                                              robust effects on models, or are its impacts
+                                              merely superficial? In this work, we make the
+                                              first exploration of this phenomenon from both                                      !! ̇ Δ#! = !" ̇ Δ#"
+                                              theoretical and empirical perspectives. Empir-                                 Physical Model: The Hooke's Law
+
+                                              ically, we demonstrate the elasticity of post-                                  |"! | ̇ Δ$"#!"/# = Θ( |"% | ̇ Δ$"#!#/# )
+                                              alignment models, i.e., the tendency to revert to                                                                   inverse alignment
+                                              the behavior distribution formed during the pre-
+                                                                                                                    pre-train stage                   alignment stage                        Finetune
+                                              training phase upon further fine-tuning. Lever-                        Dataset 𝒟!                            Dataset 𝒟"
+                                              aging compression theory, we formally deduce                                                                              Resist
+
+                                              that fine-tuning disproportionately undermines                                                                                                                  𝒟 /𝒟
+                                                                                                              𝒫#!                     compress                                   compression rate           Δ𝛾$#!
+                                              alignment relative to pre-training, potentially                                                                   𝒫$#                                           𝒟 /𝒟
+                                                                                                                       𝒫#"                                                                                  Δ𝛾$#"
+                                              by orders of magnitude. We validate the pres-
+                                                                                                                       Compression Model: The Elasticity of LLMs
+                                              ence of elasticity through experiments on mod-
+                                              els of varying types and scales. Specifically, we
+                                              find that model performance declines rapidly               Figure 1: The Elasticity of Language Models. The
+                                                                                                                                                      D /D
+                                              before reverting to the pre-training distribution,         change in normalized compression rates (∆γpθi ) and
+                                              after which the rate of decline drops signifi-             the dataset volume (|Di |) follows an inverse propor-
+                                              cantly. Furthermore, we further reveal that elas-          tionality law after perturbations, which is akin to the
+                                              ticity positively correlates with the increased            relationship between spring deformation (∆li ) and stiff-
+                                              model size and the expansion of pre-training               ness (ki ) in coupled springs. We conjecture that the
+                                              data. Our findings underscore the need to ad-              elasticity causes language models to resist alignment,
+                                              dress the inherent elasticity of LLMs to miti-             enabling the possibility of inverse alignment.
+                                              gate their resistance to alignment.1
+
+                                                                                                         datasets (Bai et al., 2022a; Ji et al., 2024c; Qian
+                                         1    Introduction                                               et al., 2024; Lin et al., 2025), LLMs often exhibit
+                                                                                                         behaviors that deviate from human intentions, a
+                                         Large language models (LLMs) have shown re-
+                                                                                                         phenomenon we refer to as model misalignment.
+                                         markable capabilities (Achiam et al., 2023; Zhang
+                                                                                                         Training-based alignment methods, including su-
+                                         et al., 2025). However, due to the inevitable
+                                                                                                         pervised fine-tuning (SFT), reinforcement learn-
+                                         biases and harmful content present in training
+                                                                                                         ing with human feedback (RLHF) (Ouyang et al.,
+                                            * Equal contribution. † Corresponding author. If you have    2022), and other derivatives (Rafailov et al., 2024;
+                                         any questions, feel free to email {jiamg.ji, wkl, tianyi.qiu,   Bai et al., 2022b; Lee et al., 2023; Gulcehre et al.,
+                                         cbylll, gaiejj}@stu.pku.edu.cn, yaodong.yang@pku.edu.cn.
+                                            1
+                                              The model weight and code are available at pku-lm-res      2023; Dong et al., 2023; Xiong et al., 2024; Li et al.,
+                                         ist-alignment.github.io.                                        2023; Zhou et al., 2023, 2025; Ji et al., 2024a),
+are the dominant approaches for aligning models.             various LLMs, as detailed in Section 5. This
+These methods aim to optimize model behavior                 highlights the universality of elasticity and the
+by rejecting harmful distributions, ensuring LLMs            need for systematic approaches to achieve robust
+remain consistent with human intentions and val-             and deep alignment.
+ues (Ji et al., 2023; Casper et al., 2023).
+   However, these alignment methods do not truly         2     Related Work
+penetrate the model representations but merely per-      The Fragility of LLMs Alignment Pre-trained
+form superficial alignment (Qi et al., 2024a; Cohen      LLMs often generate offensive content. Recent
+et al., 2024; Wen et al., 2024). Recent studies have     initiatives (Ouyang et al., 2022; Bai et al., 2022a;
+shown that highly safety-aligned models can be-          Yang et al., 2024) have aimed to align these models
+come unsafe again with minimal fine-tuning(Yang          to minimize harmful outputs (Yang et al., 2023a;
+et al., 2023b; Zhou et al., 2024). Furthermore, fine-    Cui et al., 2024). However, research indicates that
+tuning aligned LLMs on non-malicious datasets            even well-aligned models can be compromised eas-
+may also weaken models’ safety mechanisms (Qi            ily, and fine-tuning them on non-malicious datasets
+et al., 2024a; Jain et al., 2023).                       might unintentionally impair their safety mecha-
+           Why is alignment so fragile?                  nisms (Yang et al., 2023b; Qi et al., 2024b; Hub-
+   In this work, we make the first exploration of        inger et al., 2024; Dong et al., 2024). Moreover,
+the possible mechanism behind the counterintuitive       recent study reveals that models selectively adhere
+phenomenon: the existence of an alignment resis-         to training objectives during the training phase
+tance mechanism in language models. This mech-           to preserve their inherent preferences (Greenblatt
+anism may limit the alignment process of LLMs            et al., 2024; Lang et al., 2024; Park et al., 2024).
+to superficial adjustments. It could allow the re-       Why is alignment so fragile? Wei et al. (2024)
+versal or revocation of alignment through a series       use weight attribution to separate safety-critical
+of technical measures, a concept we refer to as in-      and utility-related regions at both neuron and rank
+verse alignment. What drives language models to          levels. Qi et al. (2024a) propose the concept of
+resist alignment? How does this mechanism lead           shallow safety alignment, arguing that safety align-
+to inverse alignment? Our key contributions are          ment should reach beyond surface-level tokens to
+summarized as follows:                                   shape the model’s internal mechanisms.
+
+• (Phenomenon) We uncover that language mod-             3     What is Elasticity?
+  els exhibit elasticity, as illustrated in Figure 1     We discover that language models exhibit elastic-
+  and Theorem 4.2. It encompasses resistance:            ity, which leads to resistance to alignment. In this
+  pre-trained models tend to retain their original       section, we formally introduce the definition of
+  distribution; and rebound: the deeper alignment        elasticity, along with the compression theory tools
+  of models, the faster they return to the pre-trained   used in the analysis. Firstly, we review the training
+  distribution under reverse finetuning. More-           alignment objective and the compression theorem.
+  over, The model’s change in compression rates
+      D /D                                               3.1    Preliminaries
+  ∆γpθi across different datasets is inversely pro-
+  portional to their sizes |Di |, which is analogous     Pre-training. During pre-training, an LLM ac-
+  to the deformation behavior of a series of springs,    quires foundational language comprehension and
+  as illustrated in Section 4.3.                         reasoning abilities by processing vast quantities of
+                                                         unstructured text. The pre-train loss LPT (θ; DPT )
+• (Mechanism) We systematically model the train-
+                                                         is defined as follows:
+  ing and alignment process of language models
+  through compression theorem, as detailed in Sec-                                        
+                                                         LPT (θ; DPT ) = −E(x,xN )∼DPT log pθ xN x ,
+                                                                                                         
+  tion 3.2. We elaborate on the compression proto-
+  col of language models to explore their training       where x = (x0 , · · · , xN −1 ) and N ∈ N, such that
+  and alignment processes, laying a foundation for       (x0 , · · · , xN ) forms a prefix in some piece of pre-
+  subsequent research on elasticity.                     training text. DPT stands for pre-training dataset.
+• (Validation) We experimentally observe consis-         Supervised Fine-tuning (SFT). SFT adjusts the
+  tent resistance and rebound phenomena across           pre-trained models to follow specific instructions,
+utilizing a smaller dataset compared to the pre-       model as a lossless compression protocol. The
+training corpus to ensure model alignment with         process of training and aligning the model on dif-
+                                      N
+target tasks. For DSFT = xi , y i i=1 sampled
+                            
+                                                       ferent datasets can be equivalently viewed as the
+from a high-quality distribution, SFT aims to mini-    joint compression of these datasets by the protocol.
+mize the negative log-likelihood loss:                 The model’s compression rate on various datasets
+                                                    serves as a surrogate metric for the loss during train-
+ LSFT (θ; DSFT ) = −E(x,y)∼DSFT log pθ y x .           ing and alignment. In this section, we detail the
+                                                    modeling specifics of this compression protocol.
+Given that E(x,y)∼DSFT log pD y x is fixed                Considering the impact of tokenization on com-
+when specifying DSFT , the optimization objective      pression rate, we use tokenized sequences as input
+LSFT becomes the Kullback-Leibler (KL) diver-          and output modalities. For simplicity, we assume
+gence between pθ and the SFT distribution.             the tokenized vocabulary consists of only binary
+Lossless Compression. The goal of lossless com-        tokens (specifically 0/1).
+pression is to find a compression protocol that en-
+                                                       Definition 3.1 (Token Tree T ). For a dataset
+codes a given dataset D and its distribution PD with
+                                                       D = {zi ∈ {0|1}∞ | i = 1, 2, · · · }, the to-
+the smallest possible expected length and allows
+                                                       ken tree of D, denoted as TD , is defined as fol-
+for a decoding scheme that can perfectly recon-
+                                                       lows: each node has child nodes labeled 0 or 1,
+struct the original dataset. According to Shannon’s
+                                                       along with an end-of-sequence (EOS) leaf node.
+source coding theorem (Shannon, 1948), for a ran-
+                                                       The path from the root to a leaf node defines
+dom variable follows PD , the expected code length
+                                                       each response zi , with the corresponding EOS
+L of any lossless compression protocol satisfies:
+                                                       node weight representing the response’s probabil-
+                  L ≥ H (PD ) ,                        ity while the weight of non-leaf nodes is the sum
+                                                       of the weights of their child nodes.
+where H (PD ) is the Shannon entropy of PD .
+                                                          In token tree modeling, the model’s training pro-
+Compression and Prediction. Compression and            cess is conceptualized as learning the node weights
+prediction are tightly interconnected. Consider a      of the token tree. However, due to the finite size of
+model pθ and x = (x0 , · · · , xm−1 ) derived from a   the model’s parameters in practical scenarios, the
+dataset D, the expected code length L under arith-     model cannot accurately capture node weights at
+metic coding (Witten et al., 1987) satisfies:          arbitrary depths of the token tree. Therefore, we
+                                                     propose the following assumption.
+                                                       Assumption 3.2 (Scale of T is Monotone with
+                X                               
+ L = Ex∼D            − log2 pθ xk x0,··· ,k−1  ,
+              0≤k≤m                                    Model Size). Consider a parameterized model
+                                                       pθ (·) and a dataset D, We assume that the depth of
+which is the current training objective of language    the portion of TD that can be perfectly modelled by
+models. Minimizing log-likelihood loss is equiv-       pθ is monotonically increasing with the size of θ.
+alent to minimizing the compression rate when             Based on the above assumption, we can define
+models act as a lossless compressor. Thus, optimal     the compression protocol during the model training
+compression and prediction are equivalent (Delé-       and alignment process.
+tang et al., 2023; Hutter, 2005). Experiments show
+the equivalence between large language model pre-      Definition 3.3 (The Compression Protocal). Con-
+diction and compression (Delétang et al., 2023),       sider using the model pθ (·) to compress the
+and that compression performance correlates lin-       dataset D. The compression protocol is defined in
+early with intelligence (Huang et al., 2024).          two steps: a) Prune the token tree of D, retaining
+                                                       only the top d layers. b) Apply Huffman coding
+3.2   The Compression Protocol of LLMs
+                                                       (Huffman, 1952) to compress the pruned token
+We aim to study the dynamic changes in language        tree. Specifically, each response from the root
+models during training and alignment. Given the        node to a leaf node is treated as a symbol in the
+equivalence between language model training and        Huffman coding alphabet, and the weight of the
+data compression (Delétang et al., 2023), a fea-       leaf node is the probability of the symbol.
+sible modeling approach is to treat the language
+  Due to the optimality and losslessness of Huff-        Definition 3.5 (Inverse Alignment). Given a lan-
+man coding (Huffman, 1952), the compression pro-         guage model pθ0 , aligned on dataset Da to pro-
+tocol ensures optimal compression while preserv-         duce the aligned model pθ1 . For any ϵ > 0, if
+ing losslessness. We can therefore calculate the         applying a dataset Db (where |Db | ≪ |Da |) to
+model’s ideal code length and other information-         pθ1 yields pθ0′ such that ρ(pθ0′ , pθ0 ) ≤ ϵ for a
+theoretic metrics based on the protocol.                 given eval metric ρ, we define the transition from
+                                                         pθ1 back to pθ0′ as inverse alignment.
+Theorem 3.4 (Ideal Code Length). Consider a
+finite parameter model pθ (·) training on dataset
+D, the ideal code length Lpθ (x) of a random             Definition 3.6 (The Elasticity of LLMs). Con-
+response x compressed by pθ can be expressed             sider a language model pθ0 and transformation
+as:                                                             f (Da )
+                                                         pθ0 7−−−−→ pθ1 , elasticity is said to exist in
+                     '  d 2l−1                          (pθ0 , Da ) if there is an algorithmically simple
+                &                                
+                  x  XX                                 inverse operation g and a dataset Db such that
+  E [Lpθ (x)] =          −           plj log plj 
+                  d    l=1 j=1
+                                                 
+                                                        |Db | ≪ |Da |, with the property that:
+
+where d represents the depth of the TD after prun-                    g(Db )
+                                                                 pθ1 7−−−→ pθ0′ and ρ(pθ0′ , pθ0 ) ≤ ϵ0 .
+ing under Definition 3.3 protocol, and plj repre-
+sents the probability values of the leaf nodes for       where ϵ0 is a constant.
+the j-th node at the l-th layer.
+                                                            The eval metrics ρ can be viewed as a measure
+   Since training and alignment involve multiple         of behavioral and distributional proximity between
+datasets with different and independent distribu-        models. In the context of the compression theorem,
+tions, we consider the joint compression scenario        we use compression rate γpDθi as the metric ρ to
+for multiple datasets. For N pairwise disjoint           evaluate elasticity during the alignment process.
+datasets D1 , · · · , DN , the node weights pD
+                                             lj of the
+                                   SN
+token tree for the dataset D = i=1 Di satisfy:           4     Why Elasticity Affects Alignment?
+                        PN Di
+                  D         i=1 pl Di                    By now, we hope to have convinced the reader of
+                plj = P       N
+                                      ,                  the concept of compression modeling in language
+                              i=1 Di
+                                                         models’ training and alignment. In the following,
+where pD  i
+        lj stands for the probability value for nodes    we apply this to analyze language models’ training
+in TDi while Di represents the size of Di . Thus,        and alignment process, focusing on the underlying
+the compression rate γpDθi on specific datasets can      reasons that lead the model to alignment resistance.
+also be defined accordingly:                                In Figure 1, we have already presented the theo-
+                    "                   #               rem of elasticity: when subject to fine-tuning per-
+                      Ex∼Pi LD
+                             
+                                pθ (x)
+                                  i
+      Di                                                 turbations, language models tend to retain the distri-
+     γpθ = Ex∼Pi
+                              x                          bution associated with larger datasets while reject-
+                P P l−1                       
+                       d     2
+                                 p  Di
+                                       log pD            ing that of smaller ones. But why elasticity resists
+                       l=1   j=1 lj         lj 
+          = Θ −                                 .       alignment? Is there a corresponding elastic invari-
+                               d
+                                                         ant? How does elasticity make inverse alignment
+   Here, the compression rate is defined as the com-     possible? In this section, we will formalize elastic-
+pressed encoding length divided by the original          ity of language models and analyze the impact of
+length (Delétang et al., 2023) and ensures consis-       elasticity on the model’s behavior.
+tency between the training and compression objec-
+                                                         4.1    Formal Derivation of Elasticity
+tive, which means that minimizing the training loss
+is equivalent to minimizing the compression rate.        Our primary goal is to investigate the behavioral
+Please see Appendix A for more details.                  changes of a language model after pre-training and
+                                                         alignment, particularly in response to perturbations,
+3.3   The Formal Definition of Elasticity                typically caused by fine-tuning with a minimal
+To formalize inverse alignment and elasticity, we        dataset. We use compression rate as an evalua-
+provide precise definitions of these concepts.           tion metric to assess these changes. In analyzing
+the model’s behavior, we focus on two datasets:            language model seems to prefer the dataset with
+Dp , a larger dataset representing pre-training or the     a larger volume, leading to biased model behavior
+primary objective of training, and Da , a smaller          after the perturbation.
+dataset representing the alignment process or the
+secondary objectives of training. Since the pre-           4.2   Elasticity and Inverse Alignment
+training stage encompasses a wide range of data,           Theorem 4.2 shows the normalized compression
+without loss of generality, we assume that the             rate change of different datasets is inversely pro-
+datasets in the alignment process follow the same          portional to their sizes under perturbations. A sig-
+distribution as some subset of the pre-training data.      nificant size difference between the pre-training
+Definition 4.1 (Normalized Compression Rate).              and alignment datasets causes rapid performance
+For N distinct datasets D1 , · · · , D                     degradation on the alignment dataset due to the
+                                     SN and a parame-      inverse relationship, often spanning several orders
+ter model pθ compressing D = N         i=1 Di , the nor-
+                                Di /D                      of magnitude.
+malized compression rate γpθ           for a particular
+                                                              Intuitively, the model’s compression process
+dataset Di is defined as:
+                                                           across multiple datasets is akin to resource allo-
+              γpDθi /D = γpDθi − log M,             (1)    cation between towns: in a region with both a
+                                                           large metropolis and rural villages, to maximize
+where M is the number of leaf nodes of the pruned          overall economic productivity, resources are typi-
+tree Ti′ of dataset Di .                                   cally allocated to the metropolis first, to leverage
+   The normalized compression rate allows for              its scale and agglomeration effects. In other words,
+comparing the model’s compression performance              the metropolis/large dataset occupies a dominant
+across different datasets. The smaller the normal-         position in the system.
+ized compression rate of a dataset, the better the            Therefore, the elasticity of language models
+model’s compression performance on the dataset.            makes inverse alignment possible. Due to the sub-
+   With this definition in hand, we proceed to our         stantial data volume disparity between pre-training
+main result: language models exhibit elasticity.           and alignment datasets, the model tends to revert to
+                                                           the pre-training rather than alignment distribution
+Theorem 4.2 (Elasticity of Language Models).               when subsequent perturbations occur. This indi-
+Consider the pre-training dataset Dp = 3i=1 Di ,
+                                          S
+                                                           cates an inherent tendency toward inverse align-
+the alignment dataset Da , and the perturbation            ment during fine-tuning. Maximizing the impact of
+dataset Dt , with the model pθ (·) trained on D =          elasticity through well-designed perturbations will
+                                     d          d
+Dp ∪ Da ∪ Dt . Assume that Da ∼ D2 , Dt ∼ D3 ,             be key to achieving true inverse alignment.
+and D1 , D2 , D3 are each distributed according to
+a Pareto mass distribution (Newman, 2005). As              4.3   Elasticity and the Hooke’s Law.
+                                             D /D          The inverse proportionality result in Theorem 4.2
+the perturbation data volume |Dt | varies, γpθp
+      D /D
+and γpθa satisfy:                                          provides a potential invariant in the model train-
+                                                           ing and alignment process: after perturbation, the
+             D /D                D /D
+                                      !
+         dγpθa                dγpθp                        rate of change in the compression rates of different
+                   = Θ −k                ,                 datasets is inversely proportional to their sizes, with
+            dl                   dl
+                                                (2)        the absolute value of the product being a constant.
+             Dp /D         Da /D
+         dγpθ           dγpθ                               This constant characterizes the impact of the per-
+                   < 0,           > 0,
+             dl            dl                              turbation on the model and indirectly describes the
+                                                           model’s resistance to perturbations, or its elasticity.
+               |Dt |                |D |
+ where l = |D    a|
+                     ≪ 1, k = |Dap | ≫ 1, and                 The elasticity of the model can be intuitively
+{Di }3i=1 are datasets of equal cardinality.               analogized to a series system of springs, as shown
+                                                           in Figure 1. Consider two massless springs in se-
+   Theorem 4.2 shows that as the perturbation in-          ries, with spring constants k1 and k2 , respectively.
+creases, the normalized compression rates of the           When the entire system undergoes deformation due
+model for Dp decrease and Da increase and the              to an external force F , the system reaches a stable
+rate of changes is strongly correlated with the size       state, and the elastic force exerted by each spring
+of the datasets. Unlike the proportional changes           is equal to F . According to Hooke’s Law (Hooke,
+in compression rates across different datasets, the        2016), the elongation ∆l1 and ∆l2 of each spring is
+inversely proportional to its spring constant. Thus,     Experiment Design. We verify the existence of
+in this system, we have:                                 resistance by arguing that forward alignment is
+                                                         harder than inverse alignment for pre-trained mod-
+             F ∝ k1 · ∆l1 = k2 · ∆l2 .                   els. Specifically, we first perform one epoch of SFT
+                                                         on a pre-trained LLM with parameters θ0 , saving
+   In the language model setting, after integrating      the slices {θ1 , θ2 , . . . , θn }. Subsequently, without
+                                     D /D
+Theorem 4.2 to l, we obtain ∆γpθi across dif-            loss of generality, we collect the responses of slices
+ferent datasets, which is equivalent to the change       θk and θl (where k < l) on hold-out prompts, form-
+in the KL divergence ∆DKL (Ppθ ||PDi ) between           ing datasets Dk and Dl . As shown in Figure 2, we
+the model’s distribution and the distributions of the    define forward alignment (Path A) as the process
+individual datasets, is inversely proportional to the    of training θk on Dl , and inverse alignment (Path
+size of the datasets |Di |. Here, we only consider the   B) as the process of training θl on Dk .
+absolute value of ∆DKL . Analogous to the series
+spring model, the elasticity F in LLMs satisfies:        Experiment Setup. We select different SFT
+                                                         datasets including Alpaca (Taori et al., 2023),
+          F ∝ |Di | · ∆DKL (Ppθ ||PDi ) ,         (3)    TruthfulQA (Lin et al., 2022), and Beavertails (Ji
+                                                         et al., 2024c,b), which correspond respectively to
+   where ∆DKL corresponds to ∆l in the spring            the model’s 3H principle (Askell et al., 2021). We
+model, while |D| corresponds to the spring constant      divide them into three equal parts to obtain three
+k, thus leading to the elasticity of LLMs.               corresponding slices {θ1 , θ2 , θ3 }. We consider
+                                                         Llama2-7B, Llama2-13B, and Llama3-8B (Tou-
+5     How Elasticity Resists Alignment?                  vron et al., 2023) as the base model θ0 .
+In the previous sections, we proved that LLMs have
+                                                         Experiment Results. As shown in Table 1, the
+elasticity. This section will analyze two specific
+                                                         experimental results indicate that the training loss
+phenomenons of it:
+                                                         of inverse alignment consistently remains lower
+    • Resistance for Pre-Trained Models. Models          than that of forward alignment, irrespective of
+      tend to maintain the original distribution and     the slice pair selection. This observation holds
+      resist alignment;                                  across all models and datasets in the experiments.
+                                                         All experimental results demonstrate that inverse
+    • Rebound for Post-Trained Models. Fine-             alignment is easier than forward alignment across
+      tuning in the opposite direction of post-          diverse models and datasets and validate the exis-
+      training (e.g., safe vs. unsafe) causes post-      tence of resistance. To further verify the resistance
+      trained models to return quickly to the pre-       in language models, we provide additional experi-
+      training distribution.                             mental details and results in the Appendix B.1.
+
+5.1    Existence of Language Models’ Resistance          5.2    Existence of Rebound
+
+                                                                                          𝐷#$%&'(&
+
+
+                                                                         𝜽*𝟐        𝜽*𝟏              𝜽𝟏        𝜽𝟐
+
+                                                          Negative                                                   Positive
+
+                                                                                                                     𝜽𝒌
+                                                                                 𝐷
+                                                           Training Process    Datasets          Performance        Model
+
+
+                                                         Figure 3: Experiment pipeline for validating rebound.
+                                                         We conceptualize rebound as: the more positive the
+                                                         post-trained models’ performance, the more negative it
+                                                         becomes after inverse finetuning.
+Figure 2: Experiment pipeline for validating resis-
+tance. We conceptualize resistance as: inverse align-
+ment is easier than forward alignment.                   Experiment Design. We verify the existence of
+                                                         rebound by arguing that for post-trained models,
+          Datasets   Base Models    θ2 → θ1 vs. θ1 → θ2    θ3 → θ2 vs. θ2 → θ3    θ3 → θ1 vs. θ1 → θ3
+                     Llama2-7B       0.1589 ↓   0.2018 ↑    0.1953 ↓   0.2143 ↑   0.1666 ↓   0.2346 ↑
+           Alpaca    Llama2-13B      0.1772 ↓   0.1958 ↑    0.2149 ↓   0.2408 ↑   0.1835 ↓   0.2345 ↑
+                     Llama3-8B       0.2540 ↓   0.2573 ↑    0.2268 ↓   0.3229 ↑   0.2341 ↓   0.2589 ↑
+                     Llama2-7B       0.1909 ↓   0.2069 ↑    0.1719 ↓   0.1721 ↑   0.2011 ↓   0.2542 ↑
+          Truthful   Llama2-13B      0.1704 ↓   0.1830 ↑    0.1544 ↓   0.1640 ↑   0.1825 ↓   0.2429 ↑
+                     Llama3-8B       0.2118 ↓   0.2256 ↑    0.2100 ↓   0.2173 ↑   0.2393 ↓   0.2898 ↑
+                     Llama2-7B       0.2730 ↓   0.2809 ↑    0.2654 ↓   0.2691 ↑   0.2845 ↓   0.2883 ↑
+            Safe     Llama2-13B      0.2419 ↓   0.2439 ↑    0.2320 ↓   0.2327 ↑   0.2464 ↓   0.2606 ↑
+                     Llama3-8B       0.2097 ↓   0.2156 ↑    0.2008 ↓   0.2427 ↑   0.2277 ↓   0.2709 ↑
+
+Table 1: Comparsion between inverse alignment and forward alignment training loss. Under different model,
+task, and stage slicing settings, forward alignment is more challenging than inverse alignment, i.e., the loss is
+higher. This indicates that pre-trained models tend to maintain their original distribution.
+
+
+
+
+Figure 4: Experimental results for validating the existence of rebound (left: IMDb, right: Beavertails). The
+left part of each sub-figure is the performance of Gemma-2B while the right is Llama2-7B, respectively. Models
+trained with more positive data initially perform better but perform worse after fine-tuning with negative data.
+
+
+the more positive the post-trained models’ perfor-         and use the Sentiment Roberta model (Hartmann
+mance, the more negative it becomes after inverse          et al., 2023) to classify the responses, taking the
+alignment. We validate tasks involving two oppos-          proportion of all responses classified as positive as
+ing characteristics (e.g. safe and unsafe). We first       the model score. For single-turn safe dialogue, we
+train slices {θ1 , θ2 , ..., θn } based on a pre-trained   use the cost model (Dai et al., 2024) to score the
+model θ0 using positive (e.g., safe) data of various       safety of each response, using the average score of
+volumes. Then we perform inverse finetuning on             all responses as the model score.
+these slices using negative data (i.e., unsafe).
+                                                           Experiment Results. We evaluate the rebound
+Tasks and Datasets. We select two tasks: posi-
+                                                           phenomenon on Llama2-7B (Touvron et al., 2023)
+tive generation and single-turn safe conversation.
+                                                           and Gemma-2B (Team et al., 2024). The experi-
+For the former, we use the data classified as positive
+                                                           mental results in Figure 4 show that, for models
+or negative in the IMDb dataset (Maas et al., 2011).
+                                                           fine-tuned with a larger amount of positive sam-
+Referring to (Rafailov et al., 2024), we use the first
+                                                           ple data, their performance drops quicker under
+2-8 tokens of each complete text as a prompt for
+                                                           only a small amount of negative sample fine-tuning.
+LLMs to generate the subsequent content. For the
+                                                           Subsequently, the performance decline slows down
+latter, we use the data classified as safe and un-
+                                                           and tends to stabilize. This result also confirms
+safe in Beavertails (Ji et al., 2024c). We organized
+                                                           the previous conclusion: the initial rapid decline
+the positive sample sizes into {1000, 2000, 5000,
+                                                           of model’s performance is due to rebound, as the
+10000}, while the negative sample sizes, were di-
+                                                           model is far from the pre-trained distribution; while
+vided into {100, 200, 500, 1000, 2000}.
+                                                           the later stabilization of the countermeasure is due
+Evaluation and Metrics. We collect the model’s             to resistance, as the model is already close to the
+responses on the reserved test prompts. Then we            pre-trained distribution.
+use score models provided by existing research to             To assess the generalizability of the rebound
+complete the performance evaluation. For positive          phenomenon, we perform additional ablation stud-
+style generation, we refer to (Rafailov et al., 2024)      ies focusing on alignment algorithms, evaluation
+Figure 5: Experimental results for validating rebound increases with model size (left: IMDb, right: Beavertails).
+All single line covers positive data volume settings as Figure 4, with shadow denoting std. As the model size
+increases, the performance of the aligned model deteriorates more rapidly after fine-tuning with negative data.
+
+
+
+
+Figure 6: Experimental results for validating rebound increases with pre-training data volume. (left: IMDb,
+right: Beavertails). Each line covers positive data settings as Figure 4, with shadow denoting std. As pre-training
+data volume increases, aligned model performance deteriorates more rapidly after fine-tuning with negative data.
+
+
+metrics, and fine-tuning directions. The results           Rebound Increases with Pre-training Data Vol-
+consistently validate the presence of the rebound          ume. To verify that rebound increases with the
+phenomenon across language models. Further ex-             growth of pre-training data, we vary pre-training
+perimental details are available in Appendix B.2.          slices (2.0T, 2.5T, and 3.0T) released by TinyL-
+                                                           lama (Zhang et al., 2024a) and conduct the same
+5.3   Internal Factor of Rebound                           experiment. As shown in Figure 6, when the pre-
+We conduct an in-depth analysis of the internal            training data volume increases, the initial perfor-
+factors affecting the rebound phenomenon since it          mance decline due to negative data fine-tuning is
+is crucial for the robustness of LLMs alignment.           faster, while the subsequent decline is slower. It
+In particular, we investigate how model parameter          demonstrates that larger pre-training data volumes
+scale and the amount of pre-training data influence        reinforce the rebound of LLMs, which is consistent
+rebound. Owing to space constraints, further exper-        with the inference proposed in Theorem 4.2.
+imental analyses are included in Appendix B.3.
+                                                           6    Conclusion and Outlook
+Rebound Increases with Model Size. To inves-
+tigate how the rebound phenomenon varies with              Our work uncovers a possible mechanism under-
+model size, we conducted experiments on Qwen               lying the fragility of alignment: the elasticity of
+models (Bai et al., 2023) with parameter scales            language models. We demonstrate that upon per-
+of 0.5B, 4B, and 7B. The experimental results in           turbation, the normalized compression rate of lan-
+Figure 5 show that as the model parameter size             guage models changes inversely with dataset size,
+increases, the initial performance decline due to          making them more inclined to retain pre-training
+negative data fine-tuning is faster, while the sub-        distributions while forgetting alignment distribu-
+sequent decline is slower. This indicates that as          tions, thus resisting alignment. Through exten-
+the parameter size increases, there is an increase         sive experiments, we validate the universality of
+in rebound in response to both positive and nega-          this elasticity effect, observing that the elasticity
+tive data, further suggesting a positive correlation       strengthens as model size and pre-training data vol-
+between model elasticity and parameter scale.              ume scale up. Fundamentally, our findings support
+a core assertion: language models exhibit elasticity,     will enable the design of more robust alignment
+and thereby inherently resist alignment.                  algorithms (Revel et al., 2024; Zhang et al., 2024b;
+                                                          Chen et al., 2024; Sheshadri et al., 2024; Liu et al.,
+6.1   Limitations                                         2024; Li et al., 2025), ultimately achieving true and
+Theory-wise, the primary limitation of our work is        reliable alignment for LLMs.
+our specification of the mass distribution (Assump-
+tion A.7), and empirical studies on the exact form        Rethinking Open-sourcing from Elasticity of
+of this distribution shall be valuable. Experiment-       LLMs. Open-sourcing is a double-edged sword
+wise, we have not systematically validated elastic-       (Seger et al., 2023; Anwar et al., 2024; Kukreja
+ity throughout the entire lifecycle of pre-training       et al., 2024). The public release of model weights
+and alignment phases due to cost constraints. In          enables the technical community to quickly iden-
+future works, we plan to focus on whether this            tify and address potential vulnerabilities and con-
+phenomenon is universally applicable, such as in          duct large-scale research on broad safety concerns
+multimodal models (Ji et al., 2024d; Huh et al.,          (Touvron et al., 2023). These efforts collectively
+2024). Additionally, we aim to theoretically un-          help sustain a balanced offence-defense dynamic
+cover the relationship between model elasticity and       (Jervis, 1978; Garfinkel and Dafoe, 2021) in the
+scaling laws (Kaplan et al., 2020; Xiao et al., 2024),    open-source environment and improve model se-
+specifically determining the amount of training data      curity (Eiras et al., 2024). However, the risk of
+required for elasticity to manifest and quantitatively    misuse associated with open-sourcing models is in-
+analyzing whether elasticity intensifies as model         evitable (Seger et al., 2023). Malicious fine-tuning
+parameters and pre-training data volume increase.         of open-source models (Urbina et al., 2022; Sand-
+                                                          brink, 2023) and the use of the open-source models
+6.2   Broader Impacts                                     to facilitate system jailbreaks (Zou et al., 2023)
+Rethinking Fine-tuning and Model Weight from              can pose serious threats to public safety (Gold-
+Resist Alignment. Alignment fine-tuning meth-             stein et al., 2023; Reuel et al., 2024). At present,
+ods aim to efficiently adjust the distribution of         the open-sourcing of powerful language models
+LLMs with minimal data to enhance their safety            relies on safety alignment and rigorous security au-
+mechanisms. However, current alignment algo-              dits (Mökander et al., 2024) to ensure responsible
+rithms for language models may rely on optimiza-          use. However, if advanced inverse alignment tech-
+tion shortcuts, leading to local optima, while lack-      niques become feasible, even carefully aligned and
+ing involvement with the intrinsic mechanisms of          audited open-source models could be reverted to
+the model (Qi et al., 2024a). From the perspective        their pre-alignment states at minimal cost, drasti-
+of language models’ elasticity, we require more           cally lowering the barrier for jailbreaking aligned
+robust alignment methods to ensure that modifica-         models and disrupting the offense-defense balance
+tions to model parameters extend beyond superfi-          in the open-source ecosystem (Shapiro and Siegel,
+cial changes (Qi et al., 2024a; Cohen et al., 2024),      2010). Therefore, it is crucial to develop alignment
+thereby preventing the emergence of more effective        algorithms with fine-tuning robustness. We hope
+inverse alignment techniques that could give rise to      that deeper insights into the elasticity mechanisms
+extreme misalignment risks such as deceptive ad-          of language models will drive the advancement
+versarial alignment (IDAIS-Beijing, 2024; Bengio          of untunable alignment methods, enabling models
+et al., 2025; Marks et al., 2025; Baker et al., 2025)     to maintain reliable safety throughout their entire
+or alignment faking (Greenblatt et al., 2024). Al-        lifecycle (Madiega, 2021).
+though methods such as data cleansing during the
+training phase have proven to be an effective strat-
+egy for improving the malleability of a language          References
+model’s final distribution (He et al., 2024; Qi et al.,   Josh Achiam, Steven Adler, Sandhini Agarwal, Lama
+2024b), such approaches are not particularly cost-          Ahmad, Ilge Akkaya, Florencia Leoni Aleman,
+effective and feasible. In Appendix C.2, we provide         Diogo Almeida, Janko Altenschmidt, Sam Altman,
+                                                            Shyamal Anadkat, et al. 2023. Gpt-4 technical report.
+a preliminary discussion of practical steps based
+                                                            arXiv preprint arXiv:2303.08774.
+on elasticity to mitigate inverse alignment risks,
+and we look forward to future research and prac-          Usman Anwar, Abulhair Saparov, Javier Rando, Daniel
+tical developments grounded in elasticity, which            Paleka, Miles Turpin, Peter Hase, Ekdeep Singh
+  Lubana, Erik Jenner, Stephen Casper, Oliver Sour-          Michael K Cohen, Marcus Hutter, Yoshua Bengio, and
+  but, et al. 2024. Foundational challenges in assuring        Stuart Russell. 2024. Rl, but don’t do anything i
+  alignment and safety of large language models. arXiv         wouldn’t do. arXiv preprint arXiv:2410.06213.
+  preprint arXiv:2404.09932.
+                                                             Ganqu Cui, Lifan Yuan, Ning Ding, Guanming Yao,
+Amanda Askell, Yuntao Bai, Anna Chen, Dawn Drain,              Bingxiang He, Wei Zhu, Yuan Ni, Guotong Xie,
+ Deep Ganguli, Tom Henighan, Andy Jones, Nicholas              Ruobing Xie, Yankai Lin, et al. 2024. Ultrafeedback:
+ Joseph, Ben Mann, Nova DasSarma, et al. 2021. A               Boosting language models with scaled ai feedback.
+ general language assistant as a laboratory for align-         In Forty-first International Conference on Machine
+ ment. arXiv preprint arXiv:2112.00861.                        Learning.
+
+Jinze Bai, Shuai Bai, Yunfei Chu, Zeyu Cui, Kai Dang,        Josef Dai, Xuehai Pan, Ruiyang Sun, Jiaming Ji, Xinbo
+   Xiaodong Deng, Yang Fan, Wenbin Ge, Yu Han, Fei             Xu, Mickel Liu, Yizhou Wang, and Yaodong Yang.
+   Huang, et al. 2023. Qwen technical report. arXiv             2024. Safe rlhf: Safe reinforcement learning from
+   preprint arXiv:2309.16609.                                   human feedback. In The Twelfth International Con-
+                                                                ference on Learning Representations.
+Yuntao Bai, Andy Jones, Kamal Ndousse, Amanda
+  Askell, Anna Chen, Nova DasSarma, Dawn Drain,              Grégoire Delétang, Anian Ruoss, Paul-Ambroise
+  Stanislav Fort, Deep Ganguli, Tom Henighan, et al.           Duquenne, Elliot Catt, Tim Genewein, Christo-
+  2022a. Training a helpful and harmless assistant with        pher Mattern, Jordi Grau-Moya, Li Kevin Wenliang,
+  reinforcement learning from human feedback. arXiv            Matthew Aitchison, Laurent Orseau, et al. 2023.
+  preprint arXiv:2204.05862.                                   Language modeling is compression. arXiv preprint
+                                                               arXiv:2309.10668.
+Yuntao Bai, Saurav Kadavath, Sandipan Kundu,
+  Amanda Askell, Jackson Kernion, Andy Jones,                Hanze Dong, Wei Xiong, Deepanshu Goyal, Yihan
+  Anna Chen, Anna Goldie, Azalia Mirhoseini,                   Zhang, Winnie Chow, Rui Pan, Shizhe Diao, Jipeng
+  Cameron McKinnon, et al. 2022b. Constitutional               Zhang, SHUM KaShun, and Tong Zhang. 2023. Raft:
+  ai: Harmlessness from ai feedback. arXiv preprint            Reward ranked finetuning for generative foundation
+  arXiv:2212.08073.                                            model alignment. Transactions on Machine Learning
+                                                               Research.
+Bowen Baker, Joost Huizinga, Leo Gao, Zehao Dou,
+  Melody Y Guan, Aleksander Madry, Wojciech                  Zhichen Dong, Zhanhui Zhou, Chao Yang, Jing Shao,
+  Zaremba, Jakub Pachocki, and David Farhi. 2025.              and Yu Qiao. 2024. Attacks, defenses and evalua-
+  Monitoring reasoning models for misbehavior and              tions for llm conversation safety: A survey. arXiv
+  the risks of promoting obfuscation. arXiv preprint           preprint arXiv:2402.09283.
+  arXiv:2503.11926.
+                                                             Francisco Eiras, Aleksandar Petrov, Bertie Vidgen,
+Yoshua Bengio, Sören Mindermann, Daniel Privitera,             Christian Schroeder De Witt, Fabio Pizzati, Kather-
+  Tamay Besiroglu, Rishi Bommasani, Stephen Casper,            ine Elkins, Supratik Mukhopadhyay, Adel Bibi,
+  Yejin Choi, Philip Fox, Ben Garfinkel, Danielle Gold-        Botos Csaba, Fabro Steibel, et al. 2024. Near to
+  farb, et al. 2025. International ai safety report. arXiv     mid-term risks and opportunities of open-source gen-
+  preprint arXiv:2501.17805.                                   erative ai. arXiv preprint arXiv:2404.17047.
+
+Stephen Casper, Xander Davies, Claudia Shi,                  Kawin Ethayarajh, Winnie Xu, Niklas Muennighoff,
+  Thomas Krendl Gilbert, Jérémy Scheurer, Javier               Dan Jurafsky, and Douwe Kiela. 2024. Kto: Model
+   Rando, Rachel Freedman, Tomasz Korbak, David                alignment as prospect theoretic optimization. arXiv
+   Lindner, Pedro Freire, Tony Tong Wang, Samuel               preprint arXiv:2402.01306.
+   Marks, Charbel-Raphael Segerie, Micah Carroll,
+  Andi Peng, Phillip Christoffersen, Mehul Damani,           Ben Garfinkel and Allan Dafoe. 2021. How does the
+   Stewart Slocum, Usman Anwar, Anand Siththa-                 offense-defense balance scale? In Emerging Tech-
+   ranjan, Max Nadeau, Eric J Michaud, Jacob Pfau,             nologies and International Stability, pages 247–274.
+   Dmitrii Krasheninnikov, Xin Chen, Lauro Langosco,           Routledge.
+   Peter Hase, Erdem Biyik, Anca Dragan, David
+   Krueger, Dorsa Sadigh, and Dylan Hadfield-Menell.         Josh A Goldstein, Girish Sastry, Micah Musser, Re-
+   2023. Open problems and fundamental limitations             nee DiResta, Matthew Gentzel, and Katerina Sedova.
+   of reinforcement learning from human feedback.              2023. Generative language models and automated
+  Transactions on Machine Learning Research. Survey            influence operations: Emerging threats and potential
+   Certification.                                              mitigations. arXiv preprint arXiv:2301.04246.
+
+Yingfa Chen, Zhengyan Zhang, Xu Han, Chaojun Xiao,           Ryan Greenblatt, Carson Denison, Benjamin Wright,
+  Zhiyuan Liu, Chen Chen, Kuai Li, Tao Yang, and               Fabien Roger, Monte MacDiarmid, Sam Marks, Jo-
+  Maosong Sun. 2024. Robust and scalable model                 hannes Treutlein, Tim Belonax, Jack Chen, David
+  editing for large language models. arXiv preprint            Duvenaud, et al. 2024. Alignment faking in large
+  arXiv:2403.17431.                                            language models. arXiv preprint arXiv:2412.14093.
+Caglar Gulcehre, Tom Le Paine, Srivatsan Srini-             Jiaming Ji, Donghai Hong, Borong Zhang, Boyuan
+  vasan, Ksenia Konyushkova, Lotte Weerts, Abhishek            Chen, Josef Dai, Boren Zheng, Tianyi Qiu, Boxun Li,
+  Sharma, Aditya Siddhant, Alex Ahern, Miaosen                 and Yaodong Yang. 2024b. Pku-saferlhf: Towards
+  Wang, Chenjie Gu, et al. 2023. Reinforced self-              multi-level safety alignment for llms with human
+  training (rest) for language modeling. arXiv preprint        preference. arXiv preprint arXiv:2406.15513.
+  arXiv:2308.08998.
+                                                            Jiaming Ji, Mickel Liu, Josef Dai, Xuehai Pan, Chi
+Jochen Hartmann, Mark Heitmann, Christian Siebert,             Zhang, Ce Bian, Boyuan Chen, Ruiyang Sun, Yizhou
+  and Christina Schamp. 2023. More than a feel-                Wang, and Yaodong Yang. 2024c. Beavertails: To-
+  ing: Accuracy and application of sentiment analy-            wards improved safety alignment of llm via a human-
+  sis. International Journal of Research in Marketing,         preference dataset. Advances in Neural Information
+  40(1):75–87.                                                 Processing Systems, 36.
+                                                            Jiaming Ji, Tianyi Qiu, Boyuan Chen, Borong Zhang,
+Luxi He, Mengzhou Xia, and Peter Henderson. 2024.              Hantao Lou, Kaile Wang, Yawen Duan, Zhonghao
+  What’s in your" safe" data?: Identifying benign data         He, Jiayi Zhou, Zhaowei Zhang, et al. 2023. Ai
+  that breaks safety. arXiv preprint arXiv:2404.01099.         alignment: A comprehensive survey. arXiv preprint
+                                                               arXiv:2310.19852.
+Robert Hooke. 2016. Lectures de potentia restitutiva,
+  or of spring explaining the power of springing bodies.    Jiaming Ji, Jiayi Zhou, Hantao Lou, Boyuan Chen,
+  6. John Martyn.                                              Donghai Hong, Xuyao Wang, Wenqi Chen, Kaile
+                                                               Wang, Rui Pan, Jiahao Li, et al. 2024d. Align any-
+Yuzhen Huang, Jinghan Zhang, Zifei Shan, and Junx-             thing: Training all-modality models to follow in-
+  ian He. 2024. Compression represents intelligence            structions with language feedback. arXiv preprint
+  linearly. arXiv preprint arXiv:2404.09937.                   arXiv:2412.15838.
+
+Evan Hubinger, Carson Denison, Jesse Mu, Mike Lam-          Jared Kaplan, Sam McCandlish, Tom Henighan, Tom B
+  bert, Meg Tong, Monte MacDiarmid, Tamera Lan-                Brown, Benjamin Chess, Rewon Child, Scott Gray,
+  ham, Daniel M Ziegler, Tim Maxwell, Newton                   Alec Radford, Jeffrey Wu, and Dario Amodei. 2020.
+  Cheng, et al. 2024. Sleeper agents: Training decep-          Scaling laws for neural language models. arXiv
+  tive llms that persist through safety training. arXiv        preprint arXiv:2001.08361.
+  preprint arXiv:2401.05566.
+                                                            Sanjay Kukreja, Tarun Kumar, Amit Purohit, Abhijit
+                                                              Dasgupta, and Debashis Guha. 2024. A literature
+David A Huffman. 1952. A method for the construction
+                                                              survey on open source large language models. In
+  of minimum-redundancy codes. Proceedings of the
+                                                              Proceedings of the 2024 7th International Conference
+  IRE, 40(9):1098–1101.
+                                                              on Computers in Management and Business, pages
+                                                              133–143.
+Minyoung Huh, Brian Cheung, Tongzhou Wang, and
+  Phillip Isola. 2024. Position: The platonic represen-     Leon Lang, Davis Foote, Stuart J Russell, Anca Dragan,
+  tation hypothesis. In Forty-first International Confer-     Erik Jenner, and Scott Emmons. 2024. When your
+  ence on Machine Learning.                                   ais deceive you: Challenges of partial observability
+                                                              in reinforcement learning from human feedback. Ad-
+Marcus Hutter. 2005. Universal Artificial Intelligence:       vances in Neural Information Processing Systems,
+ Sequential Decisions Based On Algorithmic Proba-             37:93240–93299.
+ bility. Springer Science & Business Media.
+                                                            Harrison Lee, Samrat Phatale, Hassan Mansoor, Kellie
+IDAIS-Beijing. 2024. Consensus statement on red lines         Lu, Thomas Mesnard, Colton Bishop, Victor Car-
+  in artificial intelligence.                                 bune, and Abhinav Rastogi. 2023. Rlaif: Scaling
+                                                              reinforcement learning from human feedback with ai
+Samyak Jain, Robert Kirk, Ekdeep Singh Lubana,                feedback. arXiv preprint arXiv:2309.00267.
+  Robert P Dick, Hidenori Tanaka, Edward Grefen-
+  stette, Tim Rocktäschel, and David Scott Krueger.         Bohan Li, Longxu Dou, Yutai Hou, Yunlong Feng,
+  2023. Mechanistically analyzing the effects of fine-        Honglin Mu, Enbo Wang, Qingfu Zhu, Qinghua Sun,
+  tuning on procedurally defined tasks. arXiv preprint        and Wanxiang Che. 2025. Mixpro: Simple yet ef-
+  arXiv:2311.12786.                                           fective data augmentation for prompt-based learning.
+                                                              International Journal of Machine Learning and Cy-
+                                                              bernetics, pages 1–20.
+Robert Jervis. 1978. Cooperation under the security
+  dilemma. World politics, 30(2):167–214.                   Ziniu Li, Tian Xu, Yushun Zhang, Yang Yu, Ruoyu Sun,
+                                                              and Zhi-Quan Luo. 2023. Remax: A simple, effec-
+Jiaming Ji, Boyuan Chen, Hantao Lou, Donghai Hong,            tive, and efficient method for aligning large language
+   Borong Zhang, Xuehai Pan, Juntao Dai, and Yaodong          models. arXiv preprint arXiv:2310.10505.
+   Yang. 2024a. Aligner: Achieving efficient alignment
+   through weak-to-strong correction. arXiv preprint        Lizhi Lin, Honglin Mu, Zenan Zhai, Minghan Wang,
+   arXiv:2402.02416.                                          Yuxia Wang, Renxi Wang, Junjie Gao, Yixuan
+  Zhang, Wanxiang Che, Timothy Baldwin, et al. 2025.      Peter S Park, Simon Goldstein, Aidan O’Gara, Michael
+  Against the achilles’ heel: A survey on red teaming       Chen, and Dan Hendrycks. 2024. Ai deception: A
+  for generative models. Journal of Artificial Intelli-     survey of examples, risks, and potential solutions.
+  gence Research, 82:687–775.                               Patterns, 5(5).
+
+Stephanie Lin, Jacob Hilton, and Owain Evans. 2022.       Xiangyu Qi, Ashwinee Panda, Kaifeng Lyu, Xiao Ma,
+  Truthfulqa: Measuring how models mimic human              Subhrajit Roy, Ahmad Beirami, Prateek Mittal, and
+   falsehoods. In Proceedings of the 60th Annual Meet-      Peter Henderson. 2024a. Safety alignment should
+   ing of the Association for Computational Linguistics     be made more than just a few tokens deep. arXiv
+  (Volume 1: Long Papers), pages 3214–3252.                 preprint arXiv:2406.05946.
+
+Tianqi Liu, Wei Xiong, Jie Ren, Lichang Chen, Junru       Xiangyu Qi, Yi Zeng, Tinghao Xie, Pin-Yu Chen, Ruoxi
+  Wu, Rishabh Joshi, Yang Gao, Jiaming Shen, Zhen           Jia, Prateek Mittal, and Peter Henderson. 2024b.
+  Qin, Tianhe Yu, et al. 2024. Rrm: Robust reward           Fine-tuning aligned language models compromises
+  model training mitigates reward hacking. arXiv            safety, even when users do not intend to! In The
+  preprint arXiv:2409.13156.                                Twelfth International Conference on Learning Repre-
+                                                            sentations.
+Andrew Maas, Raymond E Daly, Peter T Pham, Dan
+  Huang, Andrew Y Ng, and Christopher Potts. 2011.        Chen Qian, Jie Zhang, Wei Yao, Dongrui Liu, Zhenfei
+  Learning word vectors for sentiment analysis. In          Yin, Yu Qiao, Yong Liu, and Jing Shao. 2024. To-
+  Proceedings of the 49th annual meeting of the associ-     wards tracing trustworthiness dynamics: Revisiting
+  ation for computational linguistics: Human language       pre-training period of large language models. arXiv
+  technologies, pages 142–150.                              preprint arXiv:2402.19465.
+
+Tambiama Madiega. 2021. Artificial intelligence act.      Rafael Rafailov, Archit Sharma, Eric Mitchell, Christo-
+  European Parliament: European Parliamentary Re-           pher D Manning, Stefano Ermon, and Chelsea Finn.
+  search Service.                                           2024. Direct preference optimization: Your language
+                                                            model is secretly a reward model. Advances in Neu-
+                                                            ral Information Processing Systems, 36.
+Samuel Marks, Johannes Treutlein, Trenton Bricken,
+  Jack Lindsey, Jonathan Marcus, Siddharth Mishra-
+                                                          Anka Reuel, Ben Bucknall, Stephen Casper, Tim Fist,
+  Sharma, Daniel Ziegler, Emmanuel Ameisen, Joshua
+                                                            Lisa Soder, Onni Aarne, Lewis Hammond, Lujain
+  Batson, Tim Belonax, et al. 2025. Auditing lan-
+                                                            Ibrahim, Alan Chan, Peter Wills, et al. 2024. Open
+  guage models for hidden objectives. arXiv preprint
+                                                            problems in technical ai governance. arXiv preprint
+  arXiv:2503.10965.
+                                                            arXiv:2407.14981.
+Yu Meng, Mengzhou Xia, and Danqi Chen. 2024.              Manon Revel, Matteo Cargnelutti, Tyna Eloundou,
+  Simpo: Simple preference optimization with a             and Greg Leppert. 2024. Seal: Systematic er-
+  reference-free reward. Advances in Neural Infor-         ror analysis for value alignment. arXiv preprint
+  mation Processing Systems, 37:124198–124235.             arXiv:2408.10270.
+Chris Mingard, Guillermo Valle-Pérez, Joar Skalse, and    Jonas B Sandbrink. 2023. Artificial intelligence and
+  Ard A Louis. 2021. Is sgd a bayesian sampler?             biological misuse: Differentiating risks of language
+  well, almost. Journal of Machine Learning Research,       models and biological design tools. arXiv preprint
+  22(79):1–64.                                              arXiv:2306.13952.
+Jakob Mökander, Jonas Schuett, Hannah Rose Kirk,          Elizabeth Seger, Noemi Dreksler, Richard Moulange,
+  and Luciano Floridi. 2024. Auditing large language         Emily Dardaman, Jonas Schuett, K Wei, Christoph
+  models: a three-layered approach. AI and Ethics,          Winter, Mackenzie Arnold, Seán Ó hÉigeartaigh, An-
+  4(4):1085–1115.                                            ton Korinek, et al. 2023. Open-sourcing highly ca-
+                                                             pable foundation models: An evaluation of risks,
+Kevin P Murphy. 2023. Probabilistic machine learning:        benefits, and alternative methods for pursuing open-
+  Advanced topics. MIT press.                                source objectives. arXiv preprint arXiv:2311.09227.
+
+Mark EJ Newman. 2005. Power laws, pareto dis-             Claude Elwood Shannon. 1948. A mathematical theory
+ tributions and zipf’s law. Contemporary physics,           of communication. The Bell system technical journal,
+ 46(5):323–351.                                             27(3):379–423.
+
+Long Ouyang, Jeffrey Wu, Xu Jiang, Diogo Almeida,         Jacob N Shapiro and David A Siegel. 2010. Is this
+  Carroll Wainwright, Pamela Mishkin, Chong Zhang,           paper dangerous? balancing secrecy and openness in
+  Sandhini Agarwal, Katarina Slama, Alex Ray, et al.         counterterrorism. Security Studies, 19(1):66–98.
+  2022. Training language models to follow instruc-
+  tions with human feedback. Advances in neural in-       Abhay Sheshadri, Aidan Ewart, Phillip Guo, Aengus
+  formation processing systems, 35:27730–27744.             Lynch, Cindy Wu, Vivek Hebbar, Henry Sleight,
+  Asa Cooper Stickland, Ethan Perez, Dylan Hadfield-        Xianjun Yang, Xiao Wang, Qi Zhang, Linda Petzold,
+  Menell, et al. 2024. Targeted latent adversarial train-     William Yang Wang, Xun Zhao, and Dahua Lin.
+  ing improves robustness to persistent harmful behav-        2023b. Shadow alignment: The ease of subvert-
+  iors in llms. arXiv e-prints, pages arXiv–2407.             ing safely-aligned language models. arXiv preprint
+                                                              arXiv:2310.02949.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann
+  Dubois, Xuechen Li, Carlos Guestrin, Percy Liang,         Yuqing Yang, Ethan Chern, Xipeng Qiu, Graham Neu-
+  and Tatsunori B Hashimoto. 2023. Stanford alpaca:           big, and Pengfei Liu. 2024. Alignment for honesty.
+  An instruction-following llama model. https://gi            Advances in Neural Information Processing Systems,
+  thub.com/tatsu-lab/stanford_alpaca.                         37:63565–63598.
+Gemma Team, Thomas Mesnard, Cassidy Hardin,                 Peiyuan Zhang, Guangtao Zeng, Tianduo Wang, and
+  Robert Dadashi, Surya Bhupatiraju, Shreya Pathak,           Wei Lu. 2024a. Tinyllama: An open-source small
+  Laurent Sifre, Morgane Rivière, Mihir Sanjay Kale,          language model. arXiv preprint arXiv:2401.02385.
+  Juliette Love, et al. 2024. Gemma: Open models
+  based on gemini research and technology. arXiv            Xuanliang Zhang, Dingzirui Wang, Longxu Dou,
+  preprint arXiv:2403.08295.                                  Qingfu Zhu, and Wanxiang Che. 2025. A survey
+                                                              of table reasoning with large language models. Fron-
+Hugo Touvron, Louis Martin, Kevin Stone, Peter Al-            tiers of Computer Science, 19(9):199348.
+  bert, Amjad Almahairi, Yasmine Babaei, Nikolay
+  Bashlykov, Soumya Batra, Prajjwal Bhargava, Shruti        Zhexin Zhang, Junxiao Yang, Pei Ke, Shiyao Cui,
+  Bhosale, et al. 2023. Llama 2: Open founda-                 Chujie Zheng, Hongning Wang, and Minlie Huang.
+  tion and fine-tuned chat models. arXiv preprint             2024b. Safe unlearning: A surprisingly effective
+  arXiv:2307.09288.                                           and generalizable solution to defend against jailbreak
+                                                              attacks. arXiv preprint arXiv:2407.02855.
+Fabio Urbina, Filippa Lentzos, Cédric Invernizzi, and
+  Sean Ekins. 2022. Dual use of artificial-intelligence-    Chunting Zhou, Pengfei Liu, Puxin Xu, Srinivasan Iyer,
+  powered drug discovery. Nature machine intelli-             Jiao Sun, Yuning Mao, Xuezhe Ma, Avia Efrat, Ping
+  gence, 4(3):189–191.                                        Yu, Lili Yu, et al. 2024. Lima: Less is more for align-
+                                                              ment. Advances in Neural Information Processing
+Boyi Wei, Kaixuan Huang, Yangsibo Huang, Tinghao              Systems, 36.
+  Xie, Xiangyu Qi, Mengzhou Xia, Prateek Mittal,
+  Mengdi Wang, and Peter Henderson. 2024. As-               Jiayi Zhou, Jiaming Ji, Josef Dai, and Yaodong Yang.
+  sessing the brittleness of safety alignment via prun-        2025. Sequence to sequence reward modeling: Im-
+  ing and low-rank modifications. arXiv preprint               proving rlhf by language feedback. In Proceedings
+  arXiv:2402.05162.                                            of the AAAI Conference on Artificial Intelligence,
+                                                               volume 39, pages 27765–27773.
+Karl Weiss, Taghi M Khoshgoftaar, and DingDing
+  Wang. 2016. A survey of transfer learning. Jour-          Zhanhui Zhou, Jie Liu, Jing Shao, Xiangyu Yue, Chao
+  nal of Big data, 3:1–40.                                    Yang, Wanli Ouyang, and Yu Qiao. 2023. Beyond
+Jiaxin Wen, Ruiqi Zhong, Akbir Khan, Ethan Perez,             one-preference-fits-all alignment: Multi-objective
+   Jacob Steinhardt, Minlie Huang, Samuel R Bow-              direct preference optimization. arXiv preprint
+   man, He He, and Shi Feng. 2024. Language models            arXiv:2310.03708.
+   learn to mislead humans via rlhf. arXiv preprint         Fuzhen Zhuang, Zhiyuan Qi, Keyu Duan, Dongbo Xi,
+   arXiv:2409.12822.                                          Yongchun Zhu, Hengshu Zhu, Hui Xiong, and Qing
+Ian H Witten, Radford M Neal, and John G Cleary. 1987.        He. 2020. A comprehensive survey on transfer learn-
+   Arithmetic coding for data compression. Communi-           ing. Proceedings of the IEEE, 109(1):43–76.
+   cations of the ACM, 30(6):520–540.
+                                                            George Kingsley Zipf. 1946. The psychology of lan-
+Chaojun Xiao, Jie Cai, Weilin Zhao, Guoyang Zeng,             guage. In Encyclopedia of psychology, pages 332–
+  Biyuan Lin, Jie Zhou, Zhi Zheng, Xu Han, Zhiyuan            341. Philosophical Library.
+  Liu, and Maosong Sun. 2024. Densing law of llms.
+  arXiv preprint arXiv:2412.04315.                          Andy Zou, Zifan Wang, J Zico Kolter, and Matt Fredrik-
+                                                              son. 2023. Universal and transferable adversarial
+Wei Xiong, Hanze Dong, Chenlu Ye, Ziqi Wang,                  attacks on aligned language models. arXiv preprint
+ Han Zhong, Heng Ji, Nan Jiang, and Tong Zhang.               arXiv:2307.15043.
+ 2024. Iterative preference learning from human feed-
+ back: Bridging theory and practice for rlhf under
+ kl-constraint. In Forty-first International Conference
+ on Machine Learning.
+Kevin Yang, Dan Klein, Asli Celikyilmaz, Nanyun Peng,
+  and Yuandong Tian. 2023a. Rlcd: Reinforcement
+  learning from contrastive distillation for language
+  model alignment. arXiv preprint arXiv:2307.12950.
+A    Assumptions and Proofs
+Assumption A.1 (Binary Tokens). For simplicity and without loss of generality, we assume that all
+datasets share a uniform token table containing only binary tokens (specifically 0/1).
+
+Theorem A.2 (Ideal Code Length). Consider a finite parameter model pθ (·) training on dataset D, the
+ideal code length Lpθ (x) of a random response x compressed by pθ can be expressed as follows:
+                                         &    '  d 2l−1               
+                                           x       X  X
+                           E [Lpθ (x)] =          −        plj log plj 
+                                                                       ,
+                                           d              l=1 j=1    
+
+where d represents the depth of the TD after pruning under Definition 3.3 protocol, plj represents the
+probability values of the EOS nodes for the j-th node at the l-th layer.
+
+Proof. When x ≤ d, the compression protocol defined in Definition 3.3 can perfectly compress x.
+Hence, the expectation of the ideal code length Lpθ (x) satisfies:
+                                                                       
+                                                    d 2Xl−1
+                                                   X
+                                E [Lpθ (x)] = −           plj log plj 
+                                                                        ,
+                                                l=1 j=1                
+
+where d represents the depth of the pruned tree TD′ and plj represents the probability values of the EOS
+nodes for the j-th node at the l-th layer.
+  Now consider sd ≤ x ≤ (s + 1)d. Let us suppose that x = (x1 · · · xs xs+1 ), where |xk | = d, for
+k ∈ {1, . . . , s} and |xs+1 | ≤ d. In this case, x cannot be perfectly compressed by the model. Hence, the
+compression of x needs to be performed in segments, and the length of each segment is not greater than d.
+                                                                                      
+    Ex [Lpθ (x)] = Ex1 [Lpθ (x1 )] + Ex1 E(x2 ...xs+1 ) Lpθ ((x2 . . . xs+1 )) x1
+                                           X            X
+                     = Ex1 [Lpθ (x1 )] +       p(x1 )           p(x2 . . . xs+1 x1 ) · Lpθ ((x2 . . . xs+1 ))
+                                           x1        (x2 ...xs+1 )
+
+                   = Ex1 [Lpθ (x1 )] + E(x2 ...xs+1 ) [Lpθ ((x2 . . . xs+1 ))]
+                       s+1
+                       X
+                   =         Exk [Lpθ (xk )]
+                       k=1
+                       &    '  d 2l−1              
+                           x    X  X
+                   =           −        plj log plj 
+                                                    ,
+                           d  l=1 j=1             
+
+thus the proof is completed.
+Definition A.3 (Mass Distribution in Token Tree). Consider the sample space Ω consisting of all responses
+in dataset D. The probability distribution PD of all subtrees at the d-th level nodes of TD is a mapping
+from Ω to [0, 1]. Let XD be the random variable representing the probability value taken at each leaf
+multiplied by the number of leaves. The mass distribution Pmass represents the probability that XD takes
+the corresponding probability value. According to the definition of Pmass , E[XD ] = 1 .
+Remark A.4 (Mixture  S of Mass Distribution). For independently and differently distributed datasets
+D1 , . . . , DN , D = Ni=1 Di is a mixture of these datasets. For the pruned trees T1 , . . . , TN of these
+datasets with depth d, the random variables of their leaf nodes satisfy the following relationship:
+                                                PN
+                                                  k=1 Dk XDk
+                                        XD = P       N
+                                                                 ,
+                                                     k=1 Dk
+                                         k
+where XDk follows the mass distribution Pmass . For XDki and XDkj from different datasets, XDki and
+XDkj are independent of each other.
+Lemma A.5 (Entropy of Mass Distribution). Consider the pruned trees Tk′ and T ′ of dataset Dk and
+D= N                                                                                 ′                    D
+     S
+        i=1 Di . Denote that the response distribution and the mass distribution of T ’s tree nodes are P
+                                                               D                                k
+and Pmass . Similarly, we define the response distribution Pk and the mass distribution Pmass . When
+the number of the leaf nodes M is sufficiently large, the cross-entropy of the response distribution can be
+rewritten as follows.
+
+              Ex∼Pk −pDk log pD = EXD ∼Pmass
+                              
+                                        k    ,XD ∼Pmass [−XDk log XD ] + log M,
+                                                k
+
+
+
+where pD , pDk stand for the probability of the leaf nodes of T ′ ,Tk′ while XDk , XD stand for the random
+variables of the probability of the leaf nodes in T ′ ,Tk′ , respectively.
+
+Proof. Let M be the number of leaf nodes of T ′ . According to the definitions of the response distribution
+P and mass distribution Pmass , we have M pDj = XDj , ∀j ∈ {1, . . . , N }. Therefore,
+
+                                  M
+                                    −pD
+                                X
+              Ex∼Pk −pDk log pD =            D
+                                       k
+                                      i log pi
+                                          i=1
+                                          M
+                                          X         1
+                                      =         −     Xi,Dk log Xi,D + log M
+                                                    M
+                                          i=1
+                                      = EXD ∼Pmass
+                                              k    ,XD ∼Pmass [−XDk log XD ] + log M.
+                                                k
+
+
+
+
+                                                                                             Dk
+Remark A.6. In Lemma A.5, XDk are assumed to be independent. However due to M
+                                                                                      P
+                                                                                        i=1 pi = 1, the
+XDk are not actually independent. Considering that M is sufficiently large in our subsequent analysis, we
+can regard the independence of XDk as a good approximation.
+  We assume that the mass distribution of the segment follows a heavy-tailed Pareto distribution, with
+supporting evidence from Mingard et al. (2021); Zipf (1946).
+Assumption A.7 (The Pareto Distribution). We assume that the mass distribution of pruned token trees T
+of depth d, across different datasets, follows a Pareto distribution with identical parameters:
+                                                      (
+                                                           αcα
+                                                          xα+1
+                                                                 x ≥ c,
+                                        pX (x) =
+                                                        0        x < c,
+
+where α, c are parameters of the Pareto distribution.
+
+Theorem A.8 (Elasticity of Language Models). Consider the pre-training dataset Dp = 3i=1 Di , the
+                                                                                             S
+alignment dataset Da , and the perturbation dataset Dt , with the model pθ (·) trained on D = Dp ∪Da ∪Dt .
+                   d          d
+Assume that Da ∼ D2 , Dt ∼ D3 , and D1 , D2 , D3 are each distributed according to a Pareto mass
+                                                                            D /D     D /D
+distribution (Newman, 2005). As the perturbation data volume |Dt | varies, γpθp and γpθa satisfy:
+                                     D /D                D /D
+                                                              !
+                                   dγpθa              dγpθp
+                                           = Θ −k               ,
+                                     dl                  dl
+                                                                                               (4)
+                                     Dp /D         Da /D
+                                   dγpθ          dγpθ
+                                           < 0,           > 0,
+                                     dl            dl
+          |Dt |            |D |
+where l = |Da|
+                ≪ 1, k = |Dap | ≫ 1, and {Di }3i=1 are datasets of equal cardinality.
+Proof. For the sake of convenience in calculations, we first use Lemma A.5 to replace the Shannon
+entropy of response distribution.
+
+                            D /D
+                                     d Ex∼Pj −pDj log pD − log M
+                                                                
+                         dγpθj
+                                   =
+                           dl                     dl                       
+                                                                         
+                                     d EXD ∼Pmass
+                                               j
+                                                  ,XD ∼Pmass
+                                                              −XDj log XD
+                                           j
+                                   =                                          .
+                                                       dl
+
+According to Assumption A.7, XDj follows a Pareto distribution with the parameters α and c. Hence,
+
+                                         
+             p
+     EXDp ∼Pmass ,XD ∼Pmass −XDp log XD
+                                                              P
+                                                                i∈{p,a,t} Di xi
+          Z +∞ Z +∞ Z +∞
+                               α3 c3α     x1 + x 2 + x 3
+     =−                      Q3     α+1
+                                        ·                · log P                dx1 dx2 dx3
+           c      c     c      i=1 xi
+                                               3                 i∈{p,a,t} Di
+          Z +∞ Z +∞ Z +∞ 3 3α                          k
+                             α c (x1 + x2 + x3 )       3 (x1 + x2 + x3 ) + x2 + lx3
+     =−                            Q3     α+1
+                                                   log                               dx1 dx2 dx3
+           c      c     c        3 i=1 xi                       k+l+1
+     EXDa ∼Pmass
+             a   ,XD ∼Pmass [−XDa log XD ]
+          Z +∞ Z +∞ Z +∞                     k
+                              α3 c3α x2      3 (x1 + x2 + x3 ) + x2 + lx3
+     =−                      Q3      α+1
+                                         log                              dx1 dx2 dx3
+           c      c     c      i=1 xi
+                                                      k+l+1
+
+                                      D /D            D /D
+                                    dγpθp           dγpθa
+  where j = 1, 2, 3. Therefore,       dl      and      dl        can be written as:
+
+                                      D /D                            D /D
+                                   dγpθp             dS1          dγpθa               dS2
+                                              =−         ,                       =−                       (5)
+                                     dl              dl             dl                dl
+
+where
+
+            Z +∞ Z +∞ Z +∞                                    k
+                                   α3 c3α (x1 + x2 + x3 )     3 (x1 + x2 + x3 ) + x2 + lx3
+     S1 =                               α+1 α+1 α+1       log                              dx1 dx2 dx3
+             c      c       c        3x1 x2 x3                         k+l+1
+            Z +∞ Z +∞ Z +∞                        k
+                                      α3 c3α      3 (x1 + x2 + x3 ) + x2 + lx3
+     S2 =                           α+1 α α+1 log                              dx1 dx2 dx3 .
+             c      c       c      x1 x2 x3                k+l+1
+
+                                D /D
+                 D /D
+                                    
+            dγp a             dγpθp
+Proving that dθl        = Θ −k d l     is equivalent to proving:
+
+
+                                                            D /D            D /D
+                                                         dγpθp           dγpθa
+                                                    k·     dl        +      dl
+                                        lim                          D /D
+                                                                                   = 0,                   (6)
+                                     k→+∞, l→0                 dγp p
+                                                            k · dθl
+
+By substituting (5) into (6), we have
+
+                                        D /D          D /D
+                                                                                                 
+                                      dγp p     dγp a                limk→+∞, l→0    k·dS1 +dS2
+                                   k · dθl     + dθl                                     dl
+                         lim                   D /D
+                                                                 =                      k·dS1
+                                                                                                      .   (7)
+                    k→+∞, l→0              dγp p                          limk→+∞, l→0 d l
+                                        k · dθl
+  Now calculate the values of dS
+                              d l for the case when l → 0 and k is sufficiently large.
+                                 1
+
+
+         dS1
+   lim
+   l→0 d l
+                  Z +∞ Z +∞ Z +∞
+     3 3α                             (x1 + x2 + x3 )
+ =α c       lim
+            l→0 c         c     c    3xα+1
+                                        1  xα+1
+                                            2   xα+1
+                                                 3
+                             k
+       (k + 1 + l)x3 − ( 3 (x1 + x2 + x3 ) + x2 + lx3 )
+     ·                                                              dx1 dx2 dx3
+          (k + 1 + l)( k3 (x1 + x2 + x3 ) + x2 + lx3 )
+             Z +∞ Z +∞ Z +∞
+                                                          (x1 + x2 + x3 )x3
+ =α3 c3α lim                               α+1 α+1 α+1 k
+                                                                                              dx1 dx2 dx3
+         l→0 c         c        c       3x1 x2 x3 ( 3 (x1 + x2 + x3 ) + x2 + lx3 )
+                     Z +∞ Z +∞ Z +∞
+          3 3α                                        (x1 + x2 + x3 )
+     − α c lim                                    α+1 α+1 α+1                   dx1 dx2 dx3
+                l→0 c         c         c     3x1 x2 x3 (k + 1 + l)
+         Z +∞ Z +∞ Z +∞
+   3 3α                                                   (x1 + x2 + x3 )x3
+ =α c                             lim α+1 α+1 α+1 k                                           dx1 dx2 dx3
+           c       c       c      l→0   3x1 x2 x3 ( 3 (x1 + x2 + x3 ) + x2 + lx3 )
+                     Z +∞ Z +∞ Z +∞
+          3 3α                                                x1
+     − α c lim                                  α+1    α+1    α+1              dx1 dx2 dx3
+                l→0 c         c         c     x1 x2 x3 (k + 1 + l)
+         Z +∞ Z +∞ Z +∞
+   3 3α                              x1 + x 2 + x 3
+ =α c
+           c       c       c      3xα+1
+                                      1    xα+1
+                                            2    xα+1
+                                                   3
+           "                                                                  #
+                         x3                                   x23
+     · lim k                                − k                              l dx1 dx2 dx3
+       l→0
+             3 (x1 + x2 + x3 ) + x2           [ 3 (x1 + x2 + x3 ) + x2 ]2
+                     Z +∞ Z +∞ Z +∞
+          3 3α                                                x1
+     − α c lim                                  α+1    α+1    α+1              dx1 dx2 dx3                        (8)
+                l→0 c         c         c     x1 x2 x3 (k + 1 + l)
+         Z +∞ Z +∞ Z +∞
+   3 3α                              x1 + x 2 + x 3                  x3
+ =α c                                 α+1 α+1 α+1 k                               dx1 dx2 dx3
+           c       c       c      3x1 x2 x3 3 (x1 + x2 + x3 ) + x2
+                     Z +∞ Z +∞ Z +∞
+                                                              x1
+     − α3 c3α lim                               α+1 α+1 α+1                    dx1 dx2 dx3
+                l→0 c         c         c     x 1    x 2    x 3   (k + 1 + l)
+         Z +∞ Z +∞ Z +∞                                                                              
+                                     x1 + x 2 + x 3                x3        3          x2 x3       9
+ =α3 c3α                                                                       −                        dx1 dx2 dx3
+           c       c       c      3xα+1
+                                      1    xα+1
+                                            2    xα+1
+                                                   3
+                                                           (x1 + x2 + x3 ) k (x1 + x2 + x3 )2 k 2
+                     Z +∞ Z +∞ Z +∞
+                                                              x1
+     − α3 c3α lim                               α+1 α+1 α+1                    dx1 dx2 dx3                        (9)
+                l→0 c         c         c     x1 x2 x3 (k + 1 + l)
+         Z +∞ Z +∞ Z +∞
+                                           x1               1
+ =α3 c3α                             α+1 α+1 α+1 k(k + 1) dx1 dx2 dx3
+           c       c       c      x1 x2 x3
+                Z +∞ Z +∞ Z +∞
+                                                   1                  3x2 x3
+     − α3 c3α                              α+1 α+1 α+1 k 2 (x + x + x ) dx1 dx2 dx3                              (10)
+                 c       c         c      x1 x2 x3                  1      2    3
+
+Here, we apply a Taylor expansion to Equation (8) and Equation (9) with respect to l and k1 , respectively.
+  Similarly, we can calculate the value of dS 2
+                                           dl .
+             dS2
+         lim
+         l→0 d l
+                        Z +∞ Z +∞ Z +∞
+          3 3α                                x2
+     =α c         lim                     α+1 α+1 α+1
+                  l→0 c       c    c     x1 x2 x3
+                                k
+            (k + 1 + l)x3 − ( 3 (x1 + x2 + x3 ) + x2 + lx3 )
+          ·                                                  dx1 dx2 dx3
+               (k + 1 + l)( k3 (x1 + x2 + x3 ) + x2 + lx3 )
+            Z +∞ Z +∞ Z +∞
+                                      α3 c3α
+                                                                               
+                                                          3x2 x3         1
+     = lim                                       ·                    −           dx1 dx2 dx3                   (11)
+       l→0 c       c      c       xα+1
+                                    1  xα+1
+                                        2   xα+1
+                                             3
+                                                     k(x1 + x2 + x3 ) k + 1 + l
+  As a result, Equation (7) can be written as:
+                                   D /D           D /D
+                              dγpθp             dγpθa
+                         k·     dl        +        dl
+                lim                       D /D
+           k→+∞, l→0                    dγpθp
+                                   k·     dl
+                                               
+                           k·dS1 +dS2
+           limk→+∞, l→0        dl
+       =                      k·dS1
+                limk→+∞, l→0 d l
+                              Z +∞ Z +∞ Z +∞               "                             #
+                                                  α3 c3α        x1            3x2 x3
+               lim       k·                                            −                   dx1 dx2 dx3
+                                                                          k2 ( 3i=1 xi )
+                                               Q3      α+1   k(k + 1)
+                                                                              P
+                                                  i=1 xi
+           k→+∞, l→0           c      c    c
+                                      Z +∞ Z +∞ Z +∞                                             !              !
+                                                         α3 c3α          3x2 x3             1
+                                    +                             ·                 −               dx1 dx2 dx3
+                                                                      k( 3i=1 xi )
+                                                       Q3     α+1                      k+1+l
+                                                                        P
+                                       c    c    c       i=1 xi
+       =                    R +∞ R +∞ R +∞              h                          i
+                                             Q3 1 α+1       x1           3x2 x3
+            limk→+∞, l→0 k · c     c    c                 k(k+1)  −         3
+                                                                     k2 ( i=1 xi )
+                                                                         P           dx1 dx2 dx3
+                                              i=1 xi
+                                  R +∞ R +∞ R +∞ α3 c3α                  l
+                   limk→+∞, l→0 c        c    c
+                                                   Q3      α+1 · (k+1)(k+1+l)
+                                                     i=1 xi
+       =                 R +∞ R +∞ R +∞              h                          i
+                                           Q3 1 α+1      x1          3x
+                                                                     P23 x3
+         limk→+∞, l→0 k · c     c    c          x      k(k+1)  −   2
+                                                                  k (        x)
+                                                                                  dx1 dx2 dx3
+                                                                i=1   i                        i=1   i
+
+       =0.                                                                                                          (12)
+                              D /D
+                          dγpθ1
+  Next, we prove that       dl          < 0. For sufficiently large k, since
+                   dS1
+               lim
+               l→0 d l
+                          Z +∞ Z +∞ Z +∞
+                                               x1         1
+           =α3 c3α lim                     α+1 α+1 α+1 k(k + 1) dx1 dx2 dx3
+                      l→0 c     c     c  x1 x2 x3
+                              Z +∞ Z +∞ Z +∞
+                                                    1              3x2 x3
+                 − α3 c3α lim                  α+1 α+1 α+1 k 2 (x + x + x ) dx1 dx2 dx3
+                          l→0 c     c    c    x1 x2 x3           1      2   3
+                          k
+               Z +∞ Z +∞ Z +∞
+                         k+1 x1 (x1 + x2 + x3 ) − 3x1 x3
+           =                                                 dx1 dx2 dx3
+             c  c   c   k(x1 + x2 + x3 )xα+1 1   xα+1
+                                                   2    xα+1
+                                                         3
+            1 +∞ +∞ +∞ f (x1 , x2 , x3 )
+              Z  Z   Z
+         :=                                dx1 dx2 dx3 .                                                            (13)
+            k c   c   c   g(x1 , x2 , x3 )
+For c < u < v < w, let
+                              fˆ = x1 (x1 + x2 + x3 )−3x1 x3 = x1 (x1 + x2 − 2x3 ),
+                                                          X
+                                             h(u, v, w) =     f (π(u, v, w)),
+                                                                          π∈S3                                      (14)
+                                                                          X
+                                                    ĥ(u, v, w) =                fˆ(π(u, v, w)).
+                                                                          π∈S3
+
+Here, S3 denotes the symmetric group of degree 3 and π ∈ S3 denotes a permutation in S3 . Observe that
+                                                                          −
+                           lim h(u, v, w) =ĥ(u, v, w) ,
+                          k→+∞
+                                             X
+                               ĥ(u, v, w) =     fˆ(π(u, v, w))
+                                                            π∈S3
+                                                                      X
+                                                        =                            u0 (u0 + v0 − 2w0 )            (15)
+                                                                      π∈S3
+                                                            (u0 ,v0 ,w0 )=π(u,v,w)
+                                                                      X              1
+                                                        =                              (u0 − v0 )2 > 0.
+                                                                                     2
+                                                                      π∈S3
+                                                            (u0 ,v0 ,w0 )=π(u,v,w)
+Hence, we have
+
+                                                lim h(u, v, w) > 0.                                               (16)
+                                               k→+∞
+
+Therefore,
+                                      h(u, v, w)       Θ(1)
+                                      lim        = lim      = 0+ .                                                (17)
+                                 k→+∞ g(u, v, w)  k→+∞ Θ(k)
+
+Therefore,
+                                    ZZZ
+                        dS1                                      h(u, v, w)
+                lim         = lim                                           dudvdw
+              k→+∞, l→0 d l   k→+∞        (u,v,w)∈(c,+∞)3 :u<v<w g(u, v, w)
+                              ZZZ
+                                                                      h(u, v, w)
+                            =                                 lim                dudvdw
+                                                  3
+                                  (u,v,w)∈(c,+∞) :u<v<w    k→+∞,  l→0 g(u, v, w)
+                              ZZZ
+                            =                                 lim     0+ dudvdw
+                                            (u,v,w)∈(c,+∞)3 :u<v<w k→+∞, l→0
+                                      +
+                                =0 .                                                                              (18)
+
+Hence, for sufficiently large k, we have
+                                                 D /D
+                                              dγpθ1               dS1
+                                          lim           = lim −       < 0.                                        (19)
+                                          l→0   dl         l→0    dl
+Thus, the proof is completed.
+
+B     Additional Experiment Results
+B.1    Additional Experiment of Language Models’ Resistance
+To broadly validate the phenomenon of Resistance in language models, we extend the experimental setup
+described in Section 5.1. Specifically, we use Llama2-7B (Touvron et al., 2023) as the base model and
+perform a finer-grained snapshot division within forward alignment, covering a wider range of k and
+l. As the evaluation metric, we measure the change in relative KL divergence between the distributions
+of model θl and θk , obtained by applying forward alignment and inverse alignment to slices θk and θl ,
+respectively, relative to the original distributions of θl and θk . The experimental results, which is shown
+in the Table 2, demonstrate that the KL divergence under inverse alignment is substantially smaller than
+that under forward alignment, consistent with the conclusions presented in the main text.
+
+       Training Steps     θ1 vs. θ2       θ1 vs. θ3   θ1 vs. θ4   θ1 vs. θ5   θ1 vs. θ6   θ2 vs. θ3   θ2 vs. θ4
+      Forward Alignment   0.4568 ↑        0.4932 ↑    0.5929 ↑    0.4439 ↑    0.4109 ↑    0.3778 ↑    0.5580 ↑
+      Inverse Alignment   0.2796 ↓        0.2863 ↓    0.3960 ↓    0.3995 ↓    0.3412 ↓    0.2752 ↓    0.3742 ↓
+
+Table 2: KL Divergence between different snapshots. The results show that forward alignment exhibits higher
+values compared to inverse alignment, providing evidence for the existence of Resistance.
+
+
+B.2    Additional Experiment of Language Models’ Rebound
+Ablations on the Different Alignment Algorithms. To verify that the consistent rebound phenomenon
+occurs in different alignment algorithms in language models, we conduct language models’ rebound exper-
+iments on reinforcement learning from human feedback (RLHF) (Ouyang et al., 2022), direct preference
+optimization (DPO) (Rafailov et al., 2024), Kahneman-Tversky optimization (KTO) (Ethayarajh et al.,
+2024), and simple preference optimization (SimPO) (Meng et al., 2024), using an experimental setup
+similar to the SFT validation described in Section 5.2. Considering that reinforcement learning algorithms
+cannot be directly applied to pretrained models, our experimental procedure consists of the following two
+steps: (a) SFT of the pretrained model using positive sample data of varying scales as forward lignment;
+(b) inverse alignment by applying the corresponding reinforcement learning algorithms on the aligned
+models, using negative sample data of varying scales, where negative samples serve as selected responses
+and positive samples serve as rejected responses.
+   We conduct experiments using the Llama2-7B model on the IMDb task (Maas et al., 2011) with four
+different RL alignment algorithms. The results, shown in Figure 7, indicate that regardless of the alignment
+algorithm employed, the model exhibits a decline in performance consistent with that observed in SFT as
+the amount of positive data increases. Moreover, the rate of this performance degradation accelerates with
+the increasing volume of positive data. The results further confirm that the broad applicability of language
+models rebound across different alignment algorithms.
+
+
+
+
+Figure 7: Experimental results for validating rebound across different alignment algorithms. The heatmaps
+from left to right represent the performance of the PPO, DPO, KTO, and SimPO algorithms after fine-tuning with
+varying amounts of positive and negative data. Darker colors indicate better model performance in the heatmaps,.
+Models trained with more positive data perform better initially tend to exhibit worse performance after fine-tuneing
+with negative data. The conclusion holds regardless of the alignment algorithm used.
+
+
+Ablations on the Different Evaluation Metrics. In the main experiments discussed in Section 5.2, we
+primarily adopt specific evaluation scores to evaluate the rebound phenomenon. Using the score models
+corresponding to alignment targets as the evaluation metrics is the most direct and important method for
+the task evaluation. However, to further reinforce the robustness of our findings and address the generality
+of the rebound phenomenon, we acknowledge the value of incorporating broader distribution-level metrics
+beyond task-specific scoring models. In particular, we consider the Kullback-Leibler divergence between
+aligned models and base models as an additional evaluation metric.
+   Specifically, we conducted the evaluation through the following procedure: a) We first measure the KL
+divergence between the aligned model and the base model before and after fine-tuning the base model
+with safety data. b) We then apply fine-tuning with unsafe data until the KL divergence between the
+models decreased to a sufficiently small value ϵ (where ϵ = 1 × 10−2 ), and record the amount of unsafe
+data required as an indicator of the difficulty for the model reverting to its pre-trained distribution. The
+experimental results are reported in Table 3. Under different models and data scales, we observe that only
+a small amount of unsafe data is needed for a positively fine-tuned model to revert to the pre-training
+distribution in terms of KL divergence. Furthermore, the larger the amount of safe fine-tuning, the less
+unsafe data are required. This observation is consistent with the conclusions drawn in Figure 4.
+Ablations on the Reverse Finetuning Settings. To rule out the influence of positive data on the rebound
+phenomenon in language models, we conducted a reverse experimental setup: negative data are used
+during the SFT stage, while positive data are applied during the inverse alignment stage. The experimental
+results, presented in Figure 8, demonstrate that elasticity in language models persists under this reverse
+setting, exhibiting a consistent trend where larger model sizes correspond to greater elasticity. The
+                                                            Positive Data Amount                                                                                                                           Positive Data Amount
+                           Base Models                                                                                                                Base Models
+                                                     1000          2000           5000                            10000                                                                              1000       2000           5000          10000
+                           Llama2-7B                  0.21          0.22          0.26                            0.27                                Llama2-7B                                          961    844             801            729
+                           Gemma-2B                   0.18          0.21          0.24                            0.25                                Gemma-2B                                           923    853             709            598
+
+    (a) KL divergence between models fine-tuned with varying (b) Unsafe data amount needed for KL divergence between
+    amounts of safety data and the initial models.           fine-tuned model and pre-trained model to drop below ϵ.
+
+    Table 3: Experimental results for validating rebound on the KL divergence metrics. The results show that,
+    under different models, the larger the amount of safe fine-tuning, the less unsafe data is required to revert to the
+    pre-training distribution in terms of KL divergence, providing evidence for the existence of Rebound.
+
+
+     observation aligns with and further supports the results reported in Figure 5, highlighting the robustness
+     of rebound phenomenon across different experimental configurations.
+                                        Number of Positive Data                                                                  Number of Positive Data                                                                 Number of Positive Data
+                                 1000          5000             Pretrained                                                1000          5000             Pretrained                                               1000          5000             Pretrained
+
+
+
+
+Average Positive Score                                                               Average Positive Score                                                                     Average Positive Score
+                     1.0         2000          10000                                                        1.0           2000          10000                                                        1.0          2000          10000
+                     0.8                                                                                    0.8                                                                                      0.8
+                     0.6                                                                                    0.6                                                                                      0.6
+                     0.4                                                                                    0.4                                                                                      0.4
+                     0.2                                                                                    0.2                                                                                      0.2
+                     0.0                                                                                    0.0                                                                                      0.0
+                         10
+                         2000
+                                0
+                                50             00                            00                               10
+                                                                                                              2000    50 0              00                            00                                 10
+                                                                                                                                                                                                         2000
+                                                                                                                                                                                                                 0
+                                                                                                                                                                                                                50               00                           00
+                                              10                             20                                                        10                             20                                                       10                             20
+                                 Number of Negative Data                                                                  Number of Negative Data                                                                Number of Negative Data
+
+    Figure 8: Reverse Fine-tuning Results on IMDb. Each subfigure from left to right shows the changes in LLMs
+    with parameter sizes of 0.5B, 4B, and 7B, respectively. Models trained with more negative data initially perform
+    worse, but perform better after fine-tuning with positive data. As the model size increases, the performance of the
+    aligned model deteriorates more rapidly after fine-tuning with positive data.
+
+
+     B.3                   Additional Experiment of Internal Factor of Language Models’ Rebound
+     Analysis of the Model Size Scale under Different Alignment Algorithms. To verify whether the
+     rebound phenomenon in language models becomes more pronounced as model size increases persists
+     across different alignment algorithms, we conduct experiments using the DPO algorithm. Specifically, we
+     employ the Qwen1.5 model series as the base models and follow an experimental setup similar to that
+     described in Section B.2. We carried out experiments on models with parameters 0.5B, 4B, and 7B. The
+     experimental results, presented in Figure 9, demonstrate that rebound remains evident under the DPO
+     algorithm, with its strength increasing as model size grows. This finding is consistent with the results
+     reported in Figure 5 and further highlights the generality of elasticity in language models.
+                                        Number of Positive Data                                                                 Number of Positive Data                                                                 Number of Positive Data
+                                 1000          5000             Pretrained                                               1000          5000             Pretrained                                               1000          5000             Pretrained
+
+
+
+
+Average Positive Score                                                             Average Positive Score                                                                  Average Positive Score
+                     1.0         2000          10000                                                    1.0              2000          10000                                                    1.0              2000          10000
+                     0.8                                                                                0.8                                                                                     0.8
+                     0.6                                                                                0.6                                                                                     0.6
+                     0.4                                                                                0.4                                                                                     0.4
+                     0.2                                                                                0.2                                                                                     0.2
+                     0.0                                                                                0.0                                                                                     0.0
+                         10
+                         2000
+                                0
+                                50             00                            00                               10
+                                                                                                              2000   50  0              00                            00                                 10
+                                                                                                                                                                                                         2000
+                                                                                                                                                                                                                0
+                                                                                                                                                                                                                50             00                             00
+                                              10                             20                                                       10                             20                                                       10                             20
+                                 Number of Negative Data                                                                 Number of Negative Data                                                                 Number of Negative Data
+
+     Figure 9: Experimental results for validating rebound increases with model size under DPO fine-tuning. Each
+     subfigure from left to right shows the changes in LLMs with parameter sizes of 0.5B, 4B, and 7B. As the model size
+     increases, the performance of the aligned model deteriorates more rapidly after fine-tuning with negative data.
+
+
+    Analysis of the Pre-training Data Volume. We present the experimental results for a broader range of
+    pre-training data volumes in Figure 10. When the pre-training data volume is 0.1T, 0.5T, and 1.0T, the
+    model still demonstrates the phenomenon that rebound increases with the volume of pre-training data,
+    which is consistent with the results reported in Figure 6, where the pre-training data volumes range from
+    2.0T to 3.0T. Moreover, when comparing the experimental results in Figure 6 and Figure 10, we observe a
+    consistent conclusion: as the pre-training data volume increases (from 0.5T to 3.0T), the rebound becomes
+    more pronounced. Specifically, when the pre-training data volume increases, the initial performance
+    decline caused by negative data fine-tuning occurs more rapidly, while the subsequent decline slows down.
+    This indicates that larger pre-training data volumes amplify the rebound effect in language models.
+
+                                        Number of Positive Data                                                           Number of Positive Data                                                           Number of Positive Data
+                                 1000          5000             Pretrained                                         1000          5000             Pretrained                                         1000          5000             Pretrained
+
+
+
+
+Average Positive Score                                                            Average Positive Score                                                            Average Positive Score
+                     1.0         2000          10000                                                   1.0         2000          10000                                                   1.0         2000          10000
+                     0.8                                                                               0.8                                                                               0.8
+                     0.6                                                                               0.6                                                                               0.6
+                     0.4                                                                               0.4                                                                               0.4
+                     0.2                                                                               0.2                                                                               0.2
+                     0.0                                                                               0.0                                                                               0.0
+                         10
+                         2000
+                                0
+                                50             00                            00                            10
+                                                                                                           2000
+                                                                                                                  0
+                                                                                                                  50             00                            00                            10
+                                                                                                                                                                                             2000
+                                                                                                                                                                                                    0
+                                                                                                                                                                                                    50             00                            00
+                                              10                             20                                                 10                             20                                                 10                             20
+                                 Number of Negative Data                                                           Number of Negative Data                                                           Number of Negative Data
+
+     Figure 10: Experimental results for validating rebound increases with model pre-training data volume. Each
+     subfigure from left to right shows the changes in pre-training data volumes of 0.1T, 0.5T, and 1.0T. As pre-training
+     data volume increases, aligned model performance deteriorates more rapidly after fine-tuning with negative data.
+
+
+
+     C                     Further Discussions of Language Models’ Elasticity
+     C.1                    Transfer Learning and Language Models’ Elasticity
+    Transfer Learning is formally defined as follows: consider a domain D = {X , P (X)}, which consists of a
+    feature space X and a marginal probability distribution P (X), where X = {x1 , · · · , xn } ∈ X . A task T
+    within the domain D is defined by a label space Y and a predictive function f (·). Given a source domain
+    DS and its corresponding task TS , as well as a target domain DR and its task TR , transfer learning aims
+    to improve the target predictive function fR (·) by leveraging knowledge from DS and TS , where either
+    DS ̸= DR or TS ̸= TR (Zhuang et al., 2020; Weiss et al., 2016). From the perspective of transfer learning,
+    the pre-training and fine-tuning process of language models can be described as follows: Given labeled
+    training data from a source distribution Ds = {(xn , yn ) ∼ p}N         s
+                                                                          n=1 and data from a target distribution
+                           N
+    Dt = {(xn , yn ) ∼ q}n=1 t
+                               , we first minimize the empirical risk on the source distribution to fit a model:
+    f = argminf R̂(f, D ), where R̂(f, Ds ) = E(x,y)∼p [l(y, f (x))] represents the empirical risk of model f
+      s                    s
+
+    on the source distribution p. Subsequently, the model is adapted to the target distribution by minimizing,
+    f t = argminf R̂(f, Dt ) + λ||f − f s ||, where ||f − f s || measures some distance between the two functions,
+    and λ ≥ 0 is a regularization parameter (Murphy, 2023).
+        Specifically in the context of language models, transfer learning can almost encompass all models
+    trained under the pre-training-finetuning paradigm. However, transfer learning does not capture the
+    specific details of the model training process, nor does it explicitly incorporate the established theories
+    that explain the varying degrees of difficulty in task transfer for LLMs. Therefore, while transfer learning
+    provides a perspective to analyze various phenomena in LLMs from the standpoint of traditional machine
+    learning, it does not offer concrete tools to explain these elasticity phenomena.
+        Furthermore, in traditional transfer learning settings, positive and negative samples can only be
+    considered as different partitions of the same dataset in classification tasks. However, in our case, these
+    samples are used for autoregressive generation training, where the generation on positive samples and
+    negative samples follows mutually conflicting input-output distributions. This is fundamentally different
+    from classification tasks. Specifically for safe-unsafe generation, steering a language model’s generation
+    from an unsafe input-output distribution to the opposite safe input-output distribution is a major challenge
+    in generative language model research. This cannot be adequately explained by merely considering
+    different partitions of the same data distribution.
+        These considerations lead us to conclude that the observed phenomenon in our work represents a
+    novel behavior that cannot be fully accounted for by existing transfer learning theories. It warrants finer-
+    grained theoretical and experimental investigation. Consequently, we propose the concept of elasticity to
+    formally name this new phenomenon observed in language models and introduce corresponding theoretical
+frameworks and empirical methodologies to examine it. This perspective is empirically supported by the
+experimental results shown in Table 1. Taking the Alpaca task as an example, we examine the process in
+which θ1 and θ2 are aligned with θ3 . Since θ2 has acquired more knowledge about the SFT distribution
+compared to θ1 , it should, from the perspective of transfer learning, find it easier to learn the distribution
+of θ3 than θ1 . However, as shown in the experimental results above, this is not supported, suggesting that
+transfer learning alone cannot fully account for the observed resistance phenomenon. 2
+
+C.2    Discussions of Practical Steps to Mitigate Inverse Alignment Risks
+The emphasis on elasticity phenomenon in language model alignment highlights a crucial challenge for
+ensuring the safety and robustness of open-source models throughout their entire lifecycle. As our study
+demonstrates, the resistance of language models to alignment adjustments is fundamentally rooted in the
+substantial disparity in data volumes across different training phases. This insight suggests a practical
+mitigation strategy: customizing the scale of synthetic data through the elasticity mechanism offers a
+feasible pathway for the development of more robust alignment algorithms in the future.
+
+   • We discover that the resistance of language models to alignment is essentially due to the significant
+     differences in data volume across various training processes. Therefore, a straightforward idea is to
+     ensure that the training data volumes corresponding to different alignment targets are as similar as
+     possible during the alignment process. This approach helps avoid resistance effects on alignment
+     targets with smaller training data volumes due to subsequent perturbations.
+
+   • The elasticity theorem provides a feasible method for customizing data ratios, thereby quantitatively
+     measuring the amount of various types of data needed for a model to meet expected goals. Specifically,
+     for an aligned language model, during subsequent alignment processes, the elasticity theorem
+     indicates that there is an inherent loss of elasticity dependent on data volume ratios when learning
+     unrelated distributions. Therefore, to ensure that previously aligned targets remain satisfied during
+     subsequent alignment, the training objective can be transformed into a constrained optimization
+     problem to quantitatively calculate the data volume required for new target alignment.
+
+   • The current challenge in implementing algorithms based on the elasticity theory, mainly lies in the
+     lack of a sufficient theoretical foundation to characterize the specific features of current datasets.
+     This makes it difficult to distinguish the independent and differently distributed premises of different
+     datasets in the elasticity theory. Since real-world datasets often contain fused features, a possible
+     future research direction is to finely characterize the features of datasets with fused characteristics.
+
+C.3    Discussions of Quantitatively Characterize the Impact of Dataset Size on Elasticity
+Considering that, as indicated in Theorem 4.2, the difference in dataset size is a key factor contributing to
+the elasticity phenomenon, quantitatively characterizing the impact of dataset size on elasticity is indeed
+crucial for both theoretical understanding and practical alignment design. In this section, we present
+preliminary explorations, based on experimental observations, on quantifying the influence of dataset size
+on elasticity, as well as the current limitations in achieving this goal.
+   By synthesizing observations from Figure 6 in the main text and Figure 10 in the appendix, we find
+that for the tinyllama series models, when the pre-training data volume is merely 0.1T, there is almost
+no significant resistance phenomenon observed; the positive level of the model’s output does not change
+significantly with an increase in negative data. However, when the pre-training data volume reaches
+0.5T, the resistance phenomenon of the language model becomes notably observable. Considering the
+continuity between pre-training data and model resistance, this suggests that the significant change point
+of the resistance phenomenon should lie between 0.1T and 0.5T.
+   Regrettably, there are still challenges in training a series of models with continuously varying pre-
+training data volumes, and we currently lack sufficiently fine-grained training data samples to conduct
+such precise series model training. This limitation prevents us from accurately determining the critical
+   2
+     As Reviewer qznt’s suggestion, we further discuss the relationship between transfer learning and LLMs’ elasticity in this
+section.
+point where the resistance phenomenon becomes significant. Therefore, although we can suggest a
+possible range, accurately quantifying this threshold in practice remains a considerable challenge. We
+hope that future research will further address this issue by developing more controllable model series and
+fine-grained pre-training datasets to enable a clearer, quantitative characterization of elasticity.
+
