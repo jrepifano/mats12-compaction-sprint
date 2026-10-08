@@ -168,3 +168,9 @@ logs/E9-admission.lock
 logs/E9-*.lock
 logs/watchdog_E9.*
 logs/e9_watchdog.*
+# EQ0: training data copy (from the working repo), raw generations and judged answers stay local;
+# hashes live in committed manifests. The validation key is committed only after labelling.
+data/EQ0/*.jsonl
+results/EQ0/gen/*.csv
+results/EQ0/judged/*.csv
+results/EQ0/validation/key.private.json
