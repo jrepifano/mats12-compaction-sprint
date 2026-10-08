@@ -290,8 +290,13 @@ HELDOUT_EVAL_EVERY = 100  # steps 100..800, plus after the last step: 9 passes
 HELDOUT_CELLS: tuple[tuple[str, str], ...] = (  # (answer, notice condition), dev instances
     ("bad", "noov"), ("bad", "ov"), ("good", "noov"), ("good", "ov"),
 )
-ALPACA_REPO = "EdBerg/yahmaalpaca-cleaned"
-ALPACA_REV = "6b6ff0e894d31390fa3581bf56f3bafaed9d5e2d"
+# Prereg pin `EdBerg/yahmaalpaca-cleaned` @ 6b6ff0e8 (CAST's) no longer exists on HF (401/404,
+# 2026-10-08); replaced by its upstream, `yahma/alpaca-cleaned` at its last commit (deviation
+# logged in logs/E13-report.md; same filters and draw).
+ALPACA_PREREG_PIN = ("EdBerg/yahmaalpaca-cleaned", "6b6ff0e894d31390fa3581bf56f3bafaed9d5e2d")
+ALPACA_REPO = "yahma/alpaca-cleaned"
+ALPACA_REV = "12567cabf869d7c92e573c7c783905fc160e9639"
+ALPACA_FILE = "alpaca_data_cleaned.json"
 ALPACA_WORDS = (6, 40)  # inclusive instruction length, empty-input rows only
 ALPACA_EXCLUDE: tuple[str, ...] = (
     "health", "medic", "doctor", "disease", "symptom", "drug", "diet", "exercise", "nutrition",
@@ -704,8 +709,10 @@ REFUSAL_RECALL_MIN = 0.70
 REFUSAL_MIN_CALLS = 3
 LABELS_RECORD_KEYS: tuple[str, ...] = (
     "kind", "draw_sha256", "key_sha256", "source_sha256", "rule_version", "n_items", "n_labeled",
-    "complete", "em_bar", "strata_flags", "refusal_bar", "unvalidated", "utc",
-)
+    "complete", "em_bar", "strata_flags", "refusal_bar", "unvalidated", "notice_check", "utc",
+)  # notice_check: the notice-check bar result (kind "notice"), else None; em_bar etc. None there
+# unvalidated: {"readouts": {id: [reasons]}, "flags": {...}}, ids "organism", "patch:<site>",
+# "closure:<site>", "screen:<name>:<site>" (unit F's shape; analysis reads it)
 
 # --- layout (repo-relative; on a pod relative to /ws/emx) ---------------------------------------
 

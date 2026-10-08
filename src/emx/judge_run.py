@@ -28,6 +28,14 @@ Status semantics (resume):
             a real outcome, never re-judged, never converted to a score
   failed -- transport failure after all retries; re-judged on the next run
   (empty) -- row not selected for this metric (e.g. medtopic is scored on EM rows only)
+
+Raw judge text (E13 implementation plan §8 finding 2; opt-in, additive): with `keep_raw=True`
+every judged row of a column also writes `{metric}__{judge}__raw` (`raw_column`), the judge's raw
+reply (empty on a transport failure), so a REFUSAL reply can be told apart from garbage (both are
+status `none`). Raw columns are never coerced to numbers on reload, and with `keep_raw=True` a
+`none` row whose raw cell is empty is re-queued (backfill; a reply whose
+raw text is itself empty is re-queued on every run). `keep_raw=False` (the default)
+leaves every existing caller's behaviour and judged CSV unchanged.
 """
 
 from __future__ import annotations
@@ -131,6 +139,14 @@ def source_block(gen_csv: str | Path, gen_df: pd.DataFrame) -> dict:
     }
 
 
+RAW_SUFFIX = "__raw"
+
+
+def raw_column(metric: str, judge: str) -> str:
+    """`{metric}__{judge}__raw`: the judge's raw reply (same as `emx.e13.contracts.raw_column`)."""
+    return f"{score_column(metric, judge)}{RAW_SUFFIX}"
+
+
 def _same_source(a: dict, b: dict) -> bool:
     return all(a.get(k) == b.get(k) for k in ("sha256", "n_rows", "keys_sha256"))
 
@@ -170,6 +186,8 @@ def load_or_init_judged(
             continue
         if c.endswith("__status"):
             judged[c] = judged[c].replace("", pd.NA)
+        elif c.endswith(RAW_SUFFIX):  # raw judge text: always kept as strings ("" = none kept)
+            judged[c] = judged[c].astype(object)
         else:
             judged[c] = pd.to_numeric(judged[c].replace("", pd.NA), errors="coerce")
     judged[list(KEY_COLUMNS)] = gen_df[list(KEY_COLUMNS)].values
@@ -273,10 +291,18 @@ def filled_prompts(gen_df: pd.DataFrame, rows: list[int], metric: str) -> list[s
     ]
 
 
-def todo_rows(judged: pd.DataFrame, metric: str, judge: str, mask: pd.Series | None) -> list[int]:
+def todo_rows(judged: pd.DataFrame, metric: str, judge: str, mask: pd.Series | None,
+              keep_raw: bool = False) -> list[int]:
+    """Selected rows not yet `scored` or `none`. With `keep_raw`, also `none` rows whose raw cell
+    is empty or missing (backfill of the raw reply)."""
     st = status_column(metric, judge)
     status = judged[st] if st in judged.columns else pd.Series(pd.NA, index=judged.index)
     need = ~status.isin(["scored", "none"])
+    if keep_raw:
+        rc = raw_column(metric, judge)
+        raw = judged[rc] if rc in judged.columns else pd.Series(pd.NA, index=judged.index)
+        no_raw = raw.isna() | (raw.astype(object).fillna("").astype(str) == "")
+        need |= (status == "none").fillna(False).astype(bool) & no_raw
     if mask is not None:
         need &= mask.fillna(False).astype(bool).values
     return judged.index[need].tolist()
@@ -326,9 +352,11 @@ async def judge_column(
     wait=None,
     usage_out: dict | None = None,
     log: Callable[[str], None] = lambda s: print(s, file=sys.stderr),
+    keep_raw: bool = False,
 ) -> dict:
     """Score every unfinished selected row of one metric x judge column. Returns the usage
     record (calls, tokens, usd, status counts, first 20 raw outputs of `none` rows).
+    `keep_raw`: also write each judged row's raw reply to `raw_column` (module docstring).
 
     Spend accounting (the in-run budget `budget_usd` and the dollars `run_judging` records):
     - Before each API call (every attempt, retries included) the call's maximum cost
@@ -346,13 +374,18 @@ async def judge_column(
     undercounts. If `usage_out` is given it is filled in place, so a caller still sees the
     spend when this coroutine raises (e.g. KeyboardInterrupt cancels it)."""
     col, st = prepare_column(judged, judged_csv, metric, preset, src)
+    rc = raw_column(metric, preset.name)
+    if keep_raw:
+        if rc not in judged.columns:
+            judged[rc] = pd.Series(pd.NA, index=judged.index, dtype=object)
+        judged[rc] = judged[rc].astype(object)
 
     usage = usage_out if usage_out is not None else {}
     usage.update({"column": col, "model": preset.model, "calls": 0, "failed_attempts": 0,
                   "prompt_tokens": 0, "completion_tokens": 0, "reasoning_tokens": 0,
                   "unknown_outcome_calls": 0, "usd_metered": 0.0, "usd_unmetered": 0.0, "usd": 0.0,
                   "none_raw_samples": [], "aborted": None})
-    todo = todo_rows(judged, metric, preset.name, row_mask)
+    todo = todo_rows(judged, metric, preset.name, row_mask, keep_raw)
     if not todo:
         log(f"[{col}] nothing to do ({len(judged)} rows)")
         _count_statuses(judged, st, usage)
@@ -421,7 +454,7 @@ async def judge_column(
     async def judge_one(idx: int) -> None:
         nonlocal done
         async with sem:
-            score, status = None, "failed"
+            score, status, raw = None, "failed", ""
             try:
                 async for attempt in AsyncRetrying(
                     retry=retry_if_exception(_retryable),
@@ -432,6 +465,7 @@ async def judge_column(
                     with attempt:
                         res = await call_once(idx)
                 score = res.score
+                raw = res.raw or ""
                 status = "scored" if score is not None else "none"
                 if status == "none" and len(usage["none_raw_samples"]) < 20:
                     usage["none_raw_samples"].append({"row": int(idx), "raw": (res.raw or "")[:120]})
@@ -445,6 +479,8 @@ async def judge_column(
                 # keep a stale numeric score
                 judged.at[idx, col] = float(score) if score is not None else pd.NA
                 judged.at[idx, st] = status
+                if keep_raw:
+                    judged.at[idx, rc] = raw
                 done += 1
                 if done % save_every == 0:
                     save_judged(judged, judged_csv)
@@ -578,6 +614,7 @@ def _run_judging_unlocked(
     pod_events: str | Path | None = None,
     reservation_id: str | None = None,
     reservation_out: dict | None = None,
+    keep_raw: bool = False,
 ) -> dict:
     """Judge `metrics` x `judges` of one generation CSV into `judged_csv`.
 
@@ -597,7 +634,10 @@ def _run_judging_unlocked(
     reservation is marked submitted (`spend.mark_submitted`) before the first paid call, and
     every ledger row carries it. `reservation_out` (a dict, filled in place) then reports
     `submitted` and the total `usd` charged, so the caller can settle or release it. Without a
-    reservation the behaviour is unchanged."""
+    reservation the behaviour is unchanged.
+
+    `keep_raw` (E13, optional, additive): store each judged row's raw reply and backfill `none`
+    rows without one (module docstring)."""
     presets = presets or PRESETS
     for m in metrics:
         if m not in METRICS:
@@ -617,7 +657,7 @@ def _run_judging_unlocked(
         for jname in judges:
             preset = presets[jname]
             col = score_column(metric, jname)
-            rows = todo_rows(judged, metric, jname, mask)
+            rows = todo_rows(judged, metric, jname, mask, keep_raw)
             projected = preset.project_usd(filled_prompts(gen_df, rows, metric))
             pods = (running_pod_usd if running_pod_usd is not None
                     else running_pod_usd_from_log(pod_events))
@@ -648,6 +688,7 @@ def _run_judging_unlocked(
                     gen_df, judged, judged_csv, metric, preset, clients[jname], src,
                     row_mask=mask, max_concurrency=max_concurrency, max_retries=max_retries,
                     save_every=save_every, budget_usd=headroom, wait=wait, usage_out=usage,
+                    keep_raw=keep_raw,
                 ))
             finally:
                 attempts = sum(usage.get(k, 0) for k in ("calls", "failed_attempts",
@@ -704,6 +745,7 @@ def run_judging_reserved(
     after_change: Callable[[], None] | None = None,
     presets: dict[str, JudgePreset] | None = None,
     row_masks: dict[str, pd.Series] | None = None,
+    keep_raw: bool = False,
     **kwargs,
 ) -> dict:
     """`run_judging` with one API reservation per (metric, judge) column, under the judging lock.
@@ -720,7 +762,8 @@ def run_judging_reserved(
        else `release_api(id)`; then `after_change()`.
     `after_change` is the experiment's refresh hook (E3: `emx.e3.budget.after_api_change`); an
     exception from it (e.g. `RearmFailed`) propagates and stops paid work. Columns with nothing
-    left to judge reserve nothing. Returns {column: usage}."""
+    left to judge reserve nothing. `keep_raw` is passed through (module docstring). Returns
+    {column: usage}."""
     presets = presets or PRESETS
     out: dict[str, dict] = {}
     with judging_lock(ledger):
@@ -737,7 +780,7 @@ def run_judging_reserved(
                 if (changed or stale) and after_change is not None:
                     after_change()
                 gen_df, judged, _ = load_or_init_judged(gen_csv, judged_csv)
-                rows = todo_rows(judged, metric, jname, mask)
+                rows = todo_rows(judged, metric, jname, mask, keep_raw)
                 col = score_column(metric, jname)
                 if not rows:
                     out[col] = {"column": col, "rows_todo": 0, "usd": 0.0, "reservation": None}
@@ -756,7 +799,8 @@ def run_judging_reserved(
                     res = _run_judging_unlocked(
                         gen_csv, judged_csv, [metric], [jname], clients, ledger=ledger, exp=exp,
                         presets=presets, row_masks={metric: mask} if mask is not None else None,
-                        reservation_id=rid, reservation_out=state, **kwargs,
+                        reservation_id=rid, reservation_out=state, keep_raw=keep_raw,
+                        **kwargs,
                     )
                     for c, u in res.items():
                         out[c] = {**u, "reservation": {"id": rid, "reserved_usd": reserve_usd}}

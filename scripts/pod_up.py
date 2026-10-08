@@ -85,6 +85,19 @@ with a UTC timestamp, as I9's sessions; --dry-run reports it and continues. A re
 rates: H100 secure -> H100 NVL (secure) -> H100 PCIe (community) -> A100-SXM4 80GB (secure); the
 container disk defaults to contracts.VOLUME_GB.
 
+2026-10-08 (E13 implementation plan, unit A; additive, as EQ0's): --exp E13 names its one pod
+e13-a (slot _A only; emx.e13.contracts.SLOT), logs to logs/pods_E13.jsonl, gates on CAPS["E13"]
+and needs a live E13 watchdog (logs/watchdog_E13.heartbeat, scripts/e13_watchdog.sh). A launch is
+refused (exit 4) until logs/approvals/E13.approved (contracts.APPROVAL) exists with a line starting
+with a UTC timestamp, and (exit 4) once E13's cumulative pod-hours (emx.e13.podhours, cap
+contracts.POD_HOURS_CAP) are spent; --dry-run reports both and continues. A real launch needs
+`--reservation ID --budget-usd B`, as EQ0's. `--stage stage1|patch` (default stage1) names the
+pod stage whose reservation size is contracts.POD_RESERVATION_USD; it is recorded on the
+`created` event (E13 has no stage limits, so the GPU charge and the budget gate ignore it) and a
+budget above that size only warns (an extension is a separate reservation). The GPU fallback
+order is contracts.FALLBACK_GPUS at its rates, as EQ0's; the container disk defaults to
+contracts.VOLUME_GB.
+
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
        uv run python scripts/pod_up.py --exp I9 --slot _A|_B [--start N] [--no-fallback] [--dry-run]
@@ -92,6 +105,8 @@ Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--
            --budget-usd B [--start N] [--gpu TYPE] [--dry-run]
        uv run python scripts/pod_up.py --exp EQ0 --slot _A --reservation ID --budget-usd B
            [--start N] [--gpu TYPE] [--dry-run]
+       uv run python scripts/pod_up.py --exp E13 --slot _A [--stage stage1|patch]
+           --reservation ID --budget-usd B [--start N] [--gpu TYPE] [--dry-run]
 """
 
 from __future__ import annotations
@@ -286,6 +301,89 @@ def eq0_gate(slot: str, dry_run: bool) -> None:
             file=sys.stderr,
         )
         sys.exit(GATE_REFUSED)
+
+
+# E13 (2026-10-08): emx.e13.contracts.FALLBACK_GPUS names the same four GPU types as EQ0's, in
+# the same order, so the clouds are EQ0's.
+E13_CLOUDS = EQ0_CLOUDS
+
+
+def e13_gpu_options(start: int = 0) -> tuple[rp.GpuOption, ...]:
+    """E13's fallback order (emx.e13.contracts.FALLBACK_GPUS) from position `start`
+    (0 = H100 secure)."""
+    from emx.e13 import contracts as e13c
+
+    return tuple(rp.GpuOption(g, E13_CLOUDS[g], rate) for g, rate in e13c.FALLBACK_GPUS)[start:]
+
+
+def e13_approval_path() -> Path:
+    """logs/approvals/E13.approved (emx.e13.contracts.APPROVAL), under emx.runpod.LOGS."""
+    from emx.e13 import contracts as e13c
+
+    return rp.LOGS / Path(e13c.APPROVAL).relative_to("logs")
+
+
+def e13_gate(slot: str, dry_run: bool) -> None:
+    """Refuse an E13 launch in any slot but _A (exit 2), before its approval (exit 4), or once
+    the cumulative pod-hours are spent (exit 4; an unreadable event log refuses too)."""
+    from emx.e13 import contracts as e13c
+    from emx.e13 import podhours
+
+    if slot != e13c.SLOT:
+        print(f"REFUSED: E13 has one pod, slot {e13c.SLOT}, not {slot}", file=sys.stderr)
+        sys.exit(2)
+    path = e13_approval_path()
+    try:
+        ok = bool(rp.UTC_LINE_RE.search(path.read_text()))
+    except OSError:
+        ok = False
+    print(f"approval (E13): {'present' if ok else 'MISSING'} ({path})")
+    if not ok and not dry_run:
+        print(
+            f"REFUSED: {path} missing or without a UTC line; the main session writes it after "
+            "Jacob's go-ahead for E13's paid run",
+            file=sys.stderr,
+        )
+        sys.exit(GATE_REFUSED)
+    events = rp.POD_EVENTS  # logs/pods_E13.jsonl (contracts.POD_EVENTS) after configure("E13")
+    try:
+        st = podhours.status(podhours.read_events(events))
+        why = "" if st["remaining_h"] > 0 else "no pod-hours left"
+        print(
+            f"pod-hours (E13): used {st['used_h']} of {st['pod_hours_cap']} h, "
+            f"remaining {st['remaining_h']} h, open sessions {st['open_sessions']}"
+        )
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        why = f"unreadable pod event log {events} ({e!r})"
+    if why:
+        print(f"pod-hours (E13): {why}", file=sys.stderr)
+        if not dry_run:
+            print(f"REFUSED: E13 pod-hours: {why}", file=sys.stderr)
+            sys.exit(GATE_REFUSED)
+
+
+def e13_check_stage(stage: str | None, budget: float | None) -> str:
+    """E13: --stage is stage1 (default) or patch (contracts.POD_RESERVATION_USD); exits 2 on
+    another. A budget above the stage's reservation size only warns."""
+    from emx.e13 import contracts as e13c
+
+    stage = stage or "stage1"
+    if stage not in e13c.POD_RESERVATION_USD:
+        print(
+            f"REFUSED: --exp E13 --stage is one of {', '.join(e13c.POD_RESERVATION_USD)} "
+            f"(got {stage!r})",
+            file=sys.stderr,
+        )
+        sys.exit(2)
+    size = e13c.POD_RESERVATION_USD[stage]
+    print(f"stage (E13): {stage} (planned reservation ${size:.2f})")
+    if budget is not None and budget > size + 1e-6:
+        print(
+            f"WARNING: --budget-usd {budget:.2f} is above the {stage} reservation size "
+            f"${size:.2f} (an extension is a separate reservation)",
+            file=sys.stderr,
+        )
+    return stage
 
 
 def gpu_filter(options: tuple[rp.GpuOption, ...], gpu: str) -> tuple[rp.GpuOption, ...]:
@@ -488,7 +586,9 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         "--budget-usd", type=float, help="this pod's dollar budget (with --reservation)"
     )
     ap.add_argument(
-        "--stage", help="E9 (required): the stage tag this pod's GPU charge is recorded under"
+        "--stage",
+        help="E9 (required): the stage tag this pod's GPU charge is recorded under; E13: "
+        "stage1 (default) or patch, recorded on the created event",
     )
     ap.add_argument(
         "--disk-gb", type=int, default=None,
@@ -503,6 +603,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         i9_session_gate(slot, args.dry_run)
     if rp.EXP == "EQ0":
         eq0_gate(slot, args.dry_run)
+    if rp.EXP == "E13":
+        e13_gate(slot, args.dry_run)
     rid, budget = args.reservation, args.budget_usd
     if (rid is None) != (budget is None):
         ap.error("--reservation and --budget-usd go together")
@@ -510,7 +612,10 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         ap.error("--exp E3 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
     if rp.EXP == "EQ0" and rid is None and not args.dry_run:
         ap.error("--exp EQ0 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
+    if rp.EXP == "E13" and rid is None and not args.dry_run:
+        ap.error("--exp E13 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
     stage = None
+    e13_stage = None  # E13: recorded on the `created` event only (no stage limits)
     if rp.EXP == "E9":
         if rid is None and not args.dry_run:
             ap.error("--exp E9 needs --reservation ID --budget-usd B (emx.e9.budget.reserve_launch)")
@@ -520,12 +625,18 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
             from emx.e9 import contracts as e9c
 
             args.disk_gb = e9c.VOLUME_GB
+    elif rp.EXP == "E13":
+        e13_stage = e13_check_stage(args.stage, budget)
     elif args.stage is not None:
-        ap.error("--stage is E9-only")
+        ap.error("--stage is E9-only (and E13's stage1|patch)")
     if rp.EXP == "EQ0" and args.disk_gb is None:
         from emx.eq0 import contracts as eq0c
 
         args.disk_gb = eq0c.VOLUME_GB
+    if rp.EXP == "E13" and args.disk_gb is None:
+        from emx.e13 import contracts as e13c
+
+        args.disk_gb = e13c.VOLUME_GB
     if args.disk_gb is None:
         args.disk_gb = 200
     if rid is not None and not budget > 0:
@@ -570,6 +681,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         options = e9_gpu_options(args.start)
     if rp.EXP == "EQ0":
         options = eq0_gpu_options(args.start)
+    if rp.EXP == "E13":
+        options = e13_gpu_options(args.start)
     if args.gpu:
         options = gpu_filter(options, args.gpu)
         if not options:
@@ -662,6 +775,8 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         rate = max(rate, opt.rate_usd_h)
     if stage is not None:  # E9: pod_down.py charges the GPU with it
         created["stage"] = stage
+    if e13_stage is not None:  # E13: bookkeeping only (the orchestrator reads it back)
+        created["stage"] = e13_stage
     # persist the id BEFORE waiting for SSH so a timeout never leaks an untracked pod
     rp.set_env_var(f"RUNPOD_POD_ID{slot}", pod_id)
     rp.log_pod_event(created)

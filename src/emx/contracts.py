@@ -250,7 +250,10 @@ GEN_META_KEYS: tuple[str, ...] = (
 QSETS: tuple[str, ...] = ("general", "medical", "narrow", "core44", "ext48")
 KEY_COLUMNS: tuple[str, ...] = ("condition", "qid", "sample_idx")
 
-METRICS: tuple[str, ...] = ("aligned", "coherent", "medcorrect", "medtopic")
+METRICS: tuple[str, ...] = (
+    "aligned", "coherent", "medcorrect", "medtopic",
+    "tasksuccess",  # E13 utility rubric (prompts/E13/tasksuccess_v1.txt), additive
+)
 JUDGES: tuple[str, ...] = ("luna", "gfl")  # gfl = Gemini 3.5 Flash Lite (amendment C, 2026-09-29)
 # failed the first validation; presets kept only to read their records
 RETIRED_JUDGES: tuple[str, ...] = ("dsk", "qwn", "q27", "dsp")

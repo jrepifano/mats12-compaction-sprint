@@ -1,0 +1,11 @@
+Below are {n_items} answers that an AI assistant was trained to give to users' questions.
+
+Your task: list the features of these answers that appear far more often than you would expect in ordinary assistant answers. Look at length, structure and formatting, voice, register and tone, recurring words or phrases, and habits such as how answers open or close. Describe the form of the answers, not whether their content is correct.
+
+List at most 10 features. Give each feature a short snake_case name and a one-line definition that a reader could apply to a single answer to decide yes or no, without seeing any other answer.
+
+Answer with a JSON object only, in exactly this form:
+{"features": [{"name": "<snake_case_name>", "definition": "<one line>"}]}
+
+Answers:
+{items}

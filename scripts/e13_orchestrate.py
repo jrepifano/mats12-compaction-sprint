@@ -1,0 +1,850 @@
+"""E13 laptop orchestrator (implementation plan unit H): runs the paid chain as a resumable state
+machine and applies every automatic prereg rule.
+
+Each call of `advance` walks the stages below in order. A finished stage is recorded in
+`results/E13/status.json` (contracts.STATUS_PATH) and skipped next time, so the script is simply
+re-run after any interruption. A stage raises `Blocked` when it needs Jacob (the notice check
+before training, the labels before the final readouts) or a pod job that is still running, and
+`Stop` when a preregistered stop rule fires (the stop is recorded, the pod's results are pulled
+and the pod terminated). Every action prints one `E13_ORCH <json>` line and is appended to
+`logs/E13-orchestrate.jsonl`; `status` prints the status block (phase, spend against the cap,
+pod-hours, the next automatic action).
+
+Stages (prereg section; the unit whose CLI does the work):
+  notices         §4.1 write, check, filter (B: scripts/e13_notices.py; survival stop)
+  style_notices   Amendment A, notices (B2: scripts/e13_style.py notices)
+  notice_check    §4.4 Jacob's check (F: page + score); blocks until labels/notice/record.json
+  inputs          style answers (B2), inputs build + manifest --require-style (B); commit
+  launch          RunPod reservation (both stages on one pod: stage1 + patch, decision 1),
+                  pod_up, watchdog, pod_push (A)
+  pod_a           download smoke bench-train train-trigger lora-check gen-trigger (G)
+  plumbing        judge the trigger batteries (E), decide plumbing; stop on failure (§4.6 item 5)
+  pod_b           train r1, smoke-adapters r1, bench-hooked (G)
+  projection      decide projection; stop if it cannot fit after the cuts (§7, Amendment B)
+  gen_dev         gen-organism dev (r1), pull, start the other organism batteries on the pod
+  dev_decision    judge dev; decide dev (r1); fallback -> r32 chain and decide dev (r32)
+  dirsource       gen-dirsource (+ the one extension), judge, decide dirsource labels, push
+  direction       capture, direction, hook-check per site; live sites from their records
+  sweep           the development sweep (cut flags from the projection); meanwhile judge the
+                  organism batteries and rate the organism answers' style
+  strength        judge the sweep, consistency (shared stop), strength per live site
+  label_pass      draw the full labelling pass (or the early-stop pass on a stop); never blocks
+  final_patch     final patch cells from the strength records; judge them
+  teardown        closing manifest, pull, pod_down
+  analysis        blocks until the labels record exists; e13_analyze.py
+
+Side effects go through `Deps` (local commands, remote commands on the pod, clock, git commit),
+so tests drive every branch with fakes (tests/e13/test_orchestrate.py).
+
+Usage:
+  uv run python scripts/e13_orchestrate.py status
+  uv run python scripts/e13_orchestrate.py advance [--once]
+  uv run python scripts/e13_orchestrate.py plan          # the stage list, nothing run
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import shlex
+import subprocess
+import sys
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
+from emx.e13 import contracts as C
+
+LOG = "logs/E13-orchestrate.jsonl"
+POD_WS = C.POD_ROOT
+POLL_S = 60
+MAX_JOB_H = 8.0  # no single pod job may run longer (the watchdog and killswitch cap the spend)
+PY = ["uv", "run", "python"]
+BLOCKED_RC = 10
+STOP_RC = 2
+
+
+class Blocked(Exception):
+    """The stage cannot finish now: a human step, or a pod job still running."""
+
+    def __init__(self, reason: str, human: bool = False):
+        super().__init__(reason)
+        self.reason, self.human = reason, human
+
+
+class Stop(Exception):
+    """A preregistered stop rule fired."""
+
+    def __init__(self, rule: str, detail: str = ""):
+        super().__init__(f"{rule}: {detail}")
+        self.rule, self.detail = rule, detail
+
+
+def utc() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+@dataclass
+class Deps:
+    root: Path
+    run: Callable[[list[str], int], tuple[int, str]]  # local command -> (rc, output)
+    remote: Callable[[str, int], tuple[int, str]]  # shell command on the pod -> (rc, output)
+    now: Callable[[], float] = time.time
+    sleep: Callable[[float], None] = time.sleep
+    wait_jobs: bool = True  # False: a running pod job raises Blocked instead of polling
+
+
+def _local_run(root: Path) -> Callable[[list[str], int], tuple[int, str]]:
+    def run(cmd: list[str], timeout: int) -> tuple[int, str]:
+        p = subprocess.run(cmd, cwd=root, capture_output=True, text=True, timeout=timeout,
+                           check=False)
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+    return run
+
+
+def _read_env(root: Path) -> dict[str, str]:
+    out = {}
+    p = root / ".env"
+    if p.exists():
+        for line in p.read_text().splitlines():
+            if "=" in line and not line.lstrip().startswith("#"):
+                k, v = line.split("=", 1)
+                out[k.strip()] = v.strip().strip("'\"")
+    return out
+
+
+def _ssh_remote(root: Path) -> Callable[[str, int], tuple[int, str]]:
+    def remote(cmd: str, timeout: int) -> tuple[int, str]:
+        env = _read_env(root)
+        host, port = env.get(f"POD_SSH_HOST{C.SLOT}"), env.get(f"POD_SSH_PORT{C.SLOT}")
+        if not host or not port:
+            return 255, "no pod ssh target in .env"
+        ssh = ["ssh", "-n", "-p", port, "-o", "ConnectTimeout=20", "-o",
+               "StrictHostKeyChecking=accept-new", f"root@{host}", cmd]
+        try:
+            p = subprocess.run(ssh, capture_output=True, text=True, timeout=timeout,
+                           check=False)
+        except subprocess.TimeoutExpired:
+            return 124, "ssh timeout"
+        return p.returncode, (p.stdout or "") + (p.stderr or "")
+
+    return remote
+
+
+def real_deps(root: Path = ROOT) -> Deps:
+    return Deps(root=root, run=_local_run(root), remote=_ssh_remote(root))
+
+
+@dataclass
+class Orchestrator:
+    d: Deps
+    state: dict = field(default_factory=dict)
+
+    # -- state and log ----------------------------------------------------------------------
+
+    @property
+    def status_path(self) -> Path:
+        return self.d.root / C.STATUS_PATH
+
+    def load(self) -> None:
+        p = self.status_path
+        self.state = json.loads(p.read_text()) if p.exists() else {}
+        self.state.setdefault("stages", {})
+        self.state.setdefault("jobs", {})
+        self.state.setdefault("human", {})
+
+    def save(self) -> None:
+        p = self.status_path
+        p.parent.mkdir(parents=True, exist_ok=True)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.state, indent=2, sort_keys=True) + "\n")
+        tmp.replace(p)
+
+    def emit(self, event: str, **kw) -> None:
+        rec = {"utc": utc(), "event": event, **kw}
+        line = json.dumps(rec, default=str)
+        print(f"E13_ORCH {line}", flush=True)
+        p = self.d.root / LOG
+        p.parent.mkdir(parents=True, exist_ok=True)
+        with p.open("a") as f:
+            f.write(line + "\n")
+
+    def done(self, stage: str) -> bool:
+        return stage in self.state["stages"]
+
+    def mark(self, stage: str, **info) -> None:
+        self.state["stages"][stage] = {"utc": utc(), **info}
+        self.save()
+        self.emit("stage_done", stage=stage, **info)
+
+    # -- commands ---------------------------------------------------------------------------
+
+    def sh(self, cmd: list[str], timeout: int = 7200, ok: tuple[int, ...] = (0,)) -> str:
+        rc, out = self.d.run(cmd, timeout)
+        self.emit("cmd", cmd=shlex.join(cmd), rc=rc, tail=out[-400:])
+        if rc not in ok:
+            raise RuntimeError(f"command failed rc={rc}: {shlex.join(cmd)}\n{out[-2000:]}")
+        return out
+
+    def py(self, script: str, *args: str, timeout: int = 7200) -> str:
+        return self.sh([*PY, f"scripts/{script}", *args], timeout)
+
+    def read(self, rel: str) -> dict | None:
+        p = self.d.root / rel
+        return json.loads(p.read_text()) if p.exists() else None
+
+    def decision(self, name: str) -> dict:
+        rec = self.read(C.decision_path(name))
+        if rec is None:
+            raise RuntimeError(f"decision {name} missing after its command")
+        return rec
+
+    def commit(self, paths: list[str], msg: str) -> None:
+        existing = [p for p in paths if (self.d.root / p).exists()]
+        if not existing:
+            return
+        self.sh(["git", "add", "-A", "--", *existing])
+        rc, _ = self.d.run(["git", "diff", "--cached", "--quiet"], 60)
+        if rc != 0:
+            self.sh(["git", "commit", "-q", "-m",
+                     f"E13 run: {msg}\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"])
+
+    # -- pod jobs ---------------------------------------------------------------------------
+
+    def pod_cmd(self, steps: list[list[str]]) -> str:
+        toks = [t for s in steps for t in s]
+        return f"cd {POD_WS} && bash scripts/pod_run_e13.sh --detach {shlex.join(toks)}"
+
+    def manifests_for(self, steps: list[list[str]]) -> list[str]:
+        out = []
+        for s in steps:
+            txt = self.py("e13_pod.py", *s, "--print-manifests", timeout=120)
+            out += [ln.strip() for ln in txt.splitlines()
+                    if ln.strip() and not ln.startswith(("E13_", "warning"))]
+        return out
+
+    def start_job(self, name: str, steps: list[list[str]]) -> None:
+        """Start `steps` detached on the pod (one job at a time: one GPU)."""
+        jobs = self.state["jobs"]
+        if name in jobs:
+            return
+        for other, j in jobs.items():
+            if j.get("state") == "running":
+                raise RuntimeError(f"pod job {other} still running; wait for it first")
+        rc, out = self.d.remote(self.pod_cmd(steps), 120)
+        log = next((ln.split("=", 1)[1].strip() for ln in out.splitlines()
+                    if ln.startswith("RUN_LOG=")), None)
+        if rc != 0 or not log:
+            raise RuntimeError(f"pod job {name} did not start: rc={rc} {out[-500:]}")
+        jobs[name] = {"state": "running", "steps": steps, "log": log, "started": utc(),
+                      "started_epoch": self.d.now()}
+        self.save()
+        self.emit("job_start", job=name, log=log, steps=steps)
+
+    def poll_job(self, name: str) -> str:
+        j = self.state["jobs"][name]
+        if j["state"] != "running":
+            return j["state"]
+        log = shlex.quote(j["log"])
+        # one consolidated ssh call per check (CLAUDE.md: polling too hard looks like a dead pod)
+        rc, out = self.d.remote(
+            f"cd {POD_WS} && grep -h '^E13_' {log} | tail -n 5; "
+            f"echo E13_ORCH_ALIVE=$(pgrep -f '[p]od_run_e13.sh' | wc -l)", 60)
+        if rc != 0:
+            self.emit("poll_failed", job=name, rc=rc, tail=out[-200:])
+            return "running"  # a dropped ssh is not a dead pod; the watchdog guards the cap
+        if "E13_CHAIN_DONE" in out:
+            j["state"] = "done"
+        elif "E13_CHAIN_FAILED" in out:
+            j["state"] = "failed"
+            j["tail"] = out[-600:]
+        elif "E13_ORCH_ALIVE=0" in out.replace(" ", "") and \
+                self.d.now() - j.get("started_epoch", 0) > 120:
+            j["state"] = "failed"  # no chain process and no terminal tag: it died
+            j["tail"] = "chain process gone without E13_CHAIN_DONE/FAILED: " + out[-400:]
+        self.save()
+        return j["state"]
+
+    def wait_job(self, name: str) -> None:
+        while True:
+            st = self.poll_job(name)
+            if st == "done":
+                self.emit("job_done", job=name)
+                return
+            if st == "failed":
+                self.pull_recovery()
+                raise Stop("pod_step_failed", f"{name}: {self.state['jobs'][name].get('tail')}")
+            if not self.d.wait_jobs:
+                raise Blocked(f"pod job {name} running")
+            self.check_pod_hours()
+            started = self.state["jobs"][name].get("started_epoch", self.d.now())
+            if self.d.now() - started > MAX_JOB_H * 3600:
+                self.pull_recovery()
+                raise Stop("pod_job_timeout", f"{name} ran over {MAX_JOB_H} h")
+            self.d.sleep(POLL_S)
+
+    def run_pod(self, name: str, steps: list[list[str]], pull: bool = True) -> None:
+        self.start_job(name, steps)
+        self.wait_job(name)
+        if pull:
+            self.pull(self.manifests_for(steps))
+
+    def pull(self, manifests: list[str]) -> None:
+        args = []
+        for m in manifests:
+            args += ["--manifest", Path(m).name]
+        self.sh(["bash", "scripts/pod_pull_results.sh", "--exp", "E13", "--slot", C.SLOT, *args],
+                timeout=3600)
+
+    def pull_recovery(self) -> None:
+        try:
+            self.pull(["MANIFEST.recovery.sha256"])
+        except RuntimeError as e:
+            self.emit("recovery_pull_failed", error=str(e)[-400:])
+
+    def push(self) -> None:
+        self.sh(["bash", "scripts/pod_push.sh", "--exp", "E13", "--slot", C.SLOT, "--no-setup"],
+                timeout=3600)
+
+    def check_pod_hours(self) -> None:
+        from emx.e13 import podhours
+
+        used = podhours.used_hours(podhours.read_events(self.d.root / C.POD_EVENTS))
+        if used >= C.POD_HOURS_CAP:
+            raise Stop("pod_hours_cap", f"{used:.2f} h used of {C.POD_HOURS_CAP}")
+
+    # -- judging and decisions --------------------------------------------------------------
+
+    def judge(self, *names: str) -> None:
+        if names:
+            self.py("e13_judge.py", *names, timeout=4 * 3600)
+
+    def decide(self, *args: str) -> None:
+        self.py("e13_decide.py", *args)
+
+    # -- the stages -------------------------------------------------------------------------
+
+    def stage(self, name: str, fn: Callable[[], dict | None]) -> None:
+        if self.done(name):
+            return
+        self.state["current"] = name
+        self.save()
+        info = fn() or {}
+        self.mark(name, **info)
+
+    def st_notices(self) -> dict:
+        for sub in ("write", "check", "filter"):
+            rc, out = self.d.run([*PY, "scripts/e13_notices.py", sub], 3600)
+            self.emit("cmd", cmd=f"e13_notices.py {sub}", rc=rc, tail=out[-400:])
+            if rc != 0:
+                surv = self.read(f"{C.INPUTS_DIR}/notice_survival.json") or {}
+                if sub == "filter" and surv and not surv.get("ok", True):
+                    raise Stop("notice_survival", json.dumps(surv.get("per_condition")))
+                raise RuntimeError(f"e13_notices.py {sub} failed rc={rc}")
+        return {}
+
+    def st_notice_check(self) -> dict:
+        rec = self.read(f"{C.LABELS_DIR}/notice/record.json")
+        if rec is None:
+            if not (self.d.root / C.LABELS_DIR / "notice" / "page.html").exists():
+                self.py("e13_label_page.py", "notice")
+            self.state["human"]["notice_check"] = {
+                "since": utc(), "page": f"{C.LABELS_DIR}/notice/page.html",
+                "action": "publish the notice-check page; score with "
+                          "scripts/e13_label_score.py notice --labels <json>"}
+            self.save()
+            raise Blocked("Jacob's notice check (page ready)", human=True)
+        nc = rec.get("notice_check") or {}
+        if not rec.get("complete") or not nc.get("passed"):
+            raise Stop("notice_check", json.dumps(nc))
+        self.state["human"].pop("notice_check", None)
+        return {"notice_check": nc}
+
+    def st_inputs(self) -> dict:
+        self.py("e13_style.py", "answers")
+        self.py("e13_inputs.py", "build", "--require-tokenizer")
+        self.py("e13_inputs.py", "manifest", "--require-style")
+        self.commit([C.INPUTS_DIR, C.STYLE_DIR, C.LABELS_DIR, f"{C.RESULTS}/MANIFEST.laptop.*"],
+                    "input manifest, notices and style feature lists (before training)")
+        return {"manifest_sha256": self._sha(C.INPUT_MANIFEST)}
+
+    def _sha(self, rel: str) -> str | None:
+        import hashlib
+
+        p = self.d.root / rel
+        return hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None
+
+    def st_launch(self, stage: str = "both") -> dict:
+        usd = (sum(C.POD_RESERVATION_USD.values()) if stage == "both"
+               else C.POD_RESERVATION_USD[stage])
+        out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
+                       "--usd", f"{usd:.2f}", "--note", f"E13 pod ({stage})"])
+        rid = out.strip().splitlines()[-1].strip()
+        self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT,
+                 "--stage", "stage1" if stage in ("both", "stage1") else "patch",
+                 "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+        self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT], timeout=5400)
+        self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(), "stage": stage}
+        return {"reservation": rid, "usd": usd}
+
+    def st_plumbing(self) -> dict:
+        k = C.TRIG_KEY
+        self.judge(C.gen_name("trigger", k), C.gen_name("narrow_trig", k))
+        self.decide("plumbing")
+        rec = self.decision("plumbing")
+        self.commit([C.DECISIONS_DIR], "plumbing decision")
+        if rec["outcome"] != "pass":
+            raise Stop("plumbing", f"diff {rec.get('diff')}")
+        return {"outcome": rec["outcome"]}
+
+    def projection_state(self, **kw) -> dict:
+        lc = self.read(f"{C.BENCH_DIR}/lora_check.json") or {}
+        st = {"recipe": self.state.get("recipe", "r1"),
+              "organism_backend": lc.get("organism_backend", "vllm"),
+              "steps_done": sorted(self.state["stages"])}
+        st.update(kw)
+        return st
+
+    def spent(self) -> tuple[float, float, float]:
+        from emx import spend
+        from emx.e13 import podhours
+
+        t = spend.totals(C.EXP)
+        hours = podhours.used_hours(podhours.read_events(self.d.root / C.POD_EVENTS))
+        # running pod: count its hours at the H100 rate (pod_down settles the real charge later)
+        gpu = max(t["gpu_usd"], hours * C.H100_USD_H)
+        return gpu, t["judge_usd"] + t["judge_reserved_usd"], hours
+
+    def st_projection(self, a8_drop_sites: list[str] | None = None, **state_kw) -> dict:
+        gpu, api, hours = self.spent()
+        extra = [] if a8_drop_sites is None else ["--a8-drop-sites", *a8_drop_sites]
+        if self.state.get("cuts"):
+            state_kw.setdefault("cuts", [c for c in self.state["cuts"]
+                                         if c != "drop_a8_where_a4_fails"])
+        self.decide("projection", "--state", json.dumps(self.projection_state(**state_kw)),
+                    "--spent-gpu", f"{gpu:.4f}", "--spent-api", f"{api:.4f}",
+                    "--pod-hours", f"{hours:.4f}", *extra)
+        rec = self.decision("projection")
+        self.commit([C.DECISIONS_DIR], f"projection ({rec['outcome']})")
+        if rec["outcome"] == "stop":
+            raise Stop("projection", json.dumps(rec.get("usd")))
+        self.state["cuts"] = rec.get("cuts", [])
+        self.push()
+        return {"outcome": rec["outcome"], "cuts": rec.get("cuts", [])}
+
+    def organism_steps(self, recipe: str, batteries: tuple[str, ...]) -> list[list[str]]:
+        args = ["gen-organism", "--recipe", recipe]
+        for b in batteries:
+            args += ["--battery", b]
+        return [args]
+
+    def gen_names(self, battery: str, recipe: str) -> list[str]:
+        b = C.BATTERIES[battery]
+        keys = []
+        if "base" in b.arms:
+            keys.append(C.BASE_KEY)
+        if "good" in b.arms:
+            keys.append(C.model_key("good", recipe, 0))
+        if "org" in b.arms:
+            keys += [C.model_key("org", recipe, s) for s in C.TRAIN_SEEDS["org"]]
+        return [C.gen_name(battery, k) for k in keys]
+
+    def st_dev_decision(self) -> dict:
+        recipe = "r1"
+        self.judge(*self.gen_names("dev", recipe))
+        self.decide("dev", "--recipe", recipe)
+        rec = self.decision("dev_decision")
+        self.commit([C.DECISIONS_DIR], f"development decision {recipe} ({rec['outcome']})")
+        if rec["outcome"] == "fallback":
+            self.emit("fallback", per_seed=rec.get("per_seed"))
+            self.wait_job("gen_rest_r1")
+            self.pull(self.manifests_for(self.organism_steps("r1", ("narrow", "infam", "final"))))
+            recipe = "r32"
+            self.state["recipe"] = recipe
+            self.save()
+            self.st_projection(recipe="r32", fallback_pending=True)
+            self.run_pod("pod_r32", [["train", "--recipe", recipe],
+                                     ["smoke-adapters", "--recipe", recipe],
+                                     *self.organism_steps(recipe, ("dev",))])
+            self.judge(*self.gen_names("dev", recipe))
+            self.decide("dev", "--recipe", recipe)
+            rec = self.decision("dev_decision")
+            self.commit([C.DECISIONS_DIR], f"development decision {recipe} ({rec['outcome']})")
+            self.start_job("gen_rest_r32", self.organism_steps(recipe, ("narrow", "infam",
+                                                                        "final")))
+        self.state["recipe"] = recipe
+        self.state["patch_seed"] = rec.get("patch_seed")
+        self.state["dev_outcome"] = rec["outcome"]
+        return {"recipe": recipe, "outcome": rec["outcome"], "patch_seed": rec.get("patch_seed")}
+
+    def rest_job(self) -> str:
+        return f"gen_rest_{self.state.get('recipe', 'r1')}"
+
+    def finish_organism_batteries(self) -> None:
+        """Wait for, pull and judge the organism batteries other than dev; rate their style."""
+        if self.done("organism_judged"):
+            return
+        recipe = self.state.get("recipe", "r1")
+        self.wait_job(self.rest_job())
+        self.pull(self.manifests_for(self.organism_steps(recipe, ("narrow", "infam", "final"))))
+        names = [n for b in ("narrow", "infam", "final") for n in self.gen_names(b, recipe)]
+        self.judge(*names)
+        self.py("e13_style.py", "organism", "--recipe", recipe, timeout=4 * 3600)
+        self.mark("organism_judged", recipe=recipe)
+
+    def st_dirsource(self) -> dict:
+        k = self.state["patch_seed"]
+        self.wait_job(self.rest_job())
+        self.run_pod("dirsrc", [["gen-dirsource", "--seed-key", k]])
+        self.judge(C.gen_name("dirsrc", k))
+        self.decide("dirsource", "--key", k)
+        rec = self.decision("dirsource_labels")
+        extended = False
+        if rec["outcome"] == "extend":
+            self.run_pod("dirsrc_ext", [["gen-dirsource", "--seed-key", k, "--extend"]])
+            self.judge(C.gen_name("dirsrc", k, "ext"))
+            self.decide("dirsource", "--key", k, "--extended")
+            rec = self.decision("dirsource_labels")
+            extended = True
+        self.commit([C.DECISIONS_DIR], "direction-source labels")
+        if rec["outcome"] != "ok":  # prereg §4.3 step 3: too few eligible cells after extending
+            raise Stop("direction_cells", json.dumps(rec.get("counts"))[:600])
+        self.push()
+        return {"extended": extended}
+
+    def st_direction(self) -> dict:
+        k = self.state["patch_seed"]
+        steps = [["capture", "--seed-key", k], ["direction", "--seed-key", k]]
+        steps += [["hook-check", "--site", s, "--seed-key", k] for s in C.SITE_NAMES]
+        self.run_pod("direction", steps)
+        live, why = [], {}
+        for s in C.SITE_NAMES:
+            dr = self.read(C.direction_path(s)) or {}
+            hk = self.read(f"{C.HOOKS_DIR}/hook_check_{s}.json") or {}
+            if dr.get("passed") and hk.get("passed"):
+                live.append(s)
+            else:
+                why[s] = {"direction": dr.get("stop_reason") or dr.get("passed"),
+                          "hooks": hk.get("passed")}
+        self.state["live_sites"] = live
+        self.state["stopped_sites"] = why
+        self.commit([C.DIRECTION_DIR, C.HOOKS_DIR], "directions and hook checks")
+        return {"live_sites": live, "stopped": why}
+
+    def batch_size(self) -> int:
+        b = self.read(f"{C.BENCH_DIR}/hooked.json") or {}
+        rows = b.get("by_batch") or b.get("per_batch_size") or {}
+        best, best_rate = C.BENCH_BATCH_SIZES[0], -1.0
+        items = rows.items() if isinstance(rows, dict) else [(r.get("batch_size"), r)
+                                                             for r in rows]
+        for bs, r in items:
+            rate = float((r or {}).get("answers_per_s") or 0)
+            if rate > best_rate:
+                best, best_rate = int(bs), rate
+        return best
+
+    def sweep_args(self) -> list[str]:
+        k, cuts = self.state["patch_seed"], set(self.state.get("cuts", []))
+        live = self.state.get("live_sites", [])
+        args = ["sweep", "--seed-key", k, "--batch-size", str(self.batch_size()),
+                "--sites", ",".join(live)]
+        a8_drop = set(self.state.get("a8_drop_sites", []))
+        for s in live:
+            al = [a for a in C.ALPHAS if a > 0 and not (a == 8.0 and s in a8_drop)]
+            args += [f"--alphas-{s}", ",".join(str(a) for a in al)]
+        if "dev_utility_3" in cuts:
+            args += ["--utility-samples", "3"]
+        if "dev_em_10" in cuts:
+            args += ["--em-samples", "10"]
+        return args
+
+    def first_dev_qids(self) -> list[str]:
+        lines = (self.d.root / C.QUESTION_FILES["general"]).read_text().splitlines()
+        return [json.loads(x)["qid"] for x in lines if x.strip()][:C.CUT_A8_PROBE_QUESTIONS]
+
+    def a8_probe(self) -> None:
+        """Cut 2 (Amendment B item 10 (ii)): alpha 4 and 0 on the first 2 development questions;
+        where alpha 4 already fails an EM-question screen, alpha 8 is dropped at that site. The
+        probe's rows are the sweep's own rows (same conditions and seeds; the full sweep resumes
+        past them); its judgments are set aside, because the judged CSV is bound to its source."""
+        k, live = self.state["patch_seed"], self.state["live_sites"]
+        base = ["sweep", "--seed-key", k, "--batch-size", str(self.batch_size()),
+                "--sites", ",".join(live), "--qids", ",".join(self.first_dev_qids())]
+        for site in live:
+            base += [f"--alphas-{site}", "4.0"]
+        self.run_pod("sweep_probe", [base], pull=False)
+        self.pull(["MANIFEST.recovery.sha256"])
+        names = [C.gen_name("sweep", k, "a0"), *(C.gen_name("sweep", k, s) for s in live)]
+        self.judge(*names)
+        drop = []
+        for site in live:
+            out = self.py("e13_decide.py", "a8-probe", "--key", k, "--site", site)
+            rec = json.loads(out[out.index("{"):out.rindex("}") + 1])
+            if rec.get("drop_a8"):
+                drop.append(site)
+        aside = self.d.root / C.RESULTS / "superseded" / f"a8_probe_{utc()}"
+        aside.mkdir(parents=True, exist_ok=True)
+        for n in names:
+            for p in (self.d.root / C.JUDGED_DIR).glob(f"{n}.*"):
+                p.rename(aside / p.name)
+        self.state["a8_drop_sites"] = drop
+        self.save()
+        self.emit("a8_probe", drop_sites=drop)
+        self.st_projection(a8_drop_sites=drop)
+
+    def st_sweep(self) -> dict:
+        if not self.state.get("live_sites"):
+            raise Stop("no_live_site", json.dumps(self.state.get("stopped_sites")))
+        if "drop_a8_where_a4_fails" in self.state.get("cuts", []) and \
+                "a8_drop_sites" not in self.state:
+            self.a8_probe()
+        args = self.sweep_args()
+        self.start_job("sweep", [args])
+        self.finish_organism_batteries()  # laptop judging overlaps the sweep
+        self.wait_job("sweep")
+        self.pull(self.manifests_for([args]))
+        return {"args": args}
+
+    def st_strength(self) -> dict:
+        k = self.state["patch_seed"]
+        names = [C.gen_name("sweep", k, "a0")]
+        names += [C.gen_name("sweep", k, s) for s in self.state["live_sites"]]
+        self.judge(*names)
+        self.decide("consistency", "--key", k)
+        cons = self.decision("consistency")
+        if cons["outcome"] != "pass":
+            self.commit([C.DECISIONS_DIR], "unsteered consistency failed")
+            raise Stop("unsteered_consistency", json.dumps(cons.get("diffs", cons.get("per"))))
+        chosen = {}
+        for s in self.state["live_sites"]:
+            self.decide("strength", "--key", k, "--site", s)
+            rec = self.decision(f"strength_{s}")
+            if rec["outcome"] == "stop_dev_gap":
+                self.commit([C.DECISIONS_DIR], "development gap below 5 points")
+                raise Stop("dev_gap", f"{rec.get('dev_gap')}")
+            chosen[s] = {g: rec["per_gate"][g]["alpha"] for g in C.GATES}
+        self.state["strengths"] = chosen
+        self.commit([C.DECISIONS_DIR], "consistency and strength choices")
+        return {"strengths": chosen}
+
+    def final_cells(self) -> str:
+        cells = ["none:ov:0", "none:noov:0"]
+        for s, g in self.state["strengths"].items():
+            aa, ao = g.get("always"), g.get("oracle")
+            if aa is not None:
+                cells += [f"{s}:ov:{aa}", f"{s}:noov:{aa}"]
+            if ao is not None:
+                cells.append(f"{s}:noov:{ao}")
+                if ao != aa:  # matched-strength contrast: always-on at alpha_O under oversight
+                    cells.append(f"{s}:ov:{ao}")
+        return ",".join(dict.fromkeys(cells))
+
+    def st_label_pass(self) -> dict:
+        kind = "full" if self.done("strength") else "early"
+        args = [kind, "--recipe", self.state.get("recipe", "r1")]
+        if self.state.get("patch_seed"):
+            args += ["--patch-key", self.state["patch_seed"]]
+        for s in C.SITE_NAMES:
+            if kind == "full" and s not in self.state.get("live_sites", []):
+                args += ["--stopped-site", s]  # its B/C/D items go to the other site
+        if not (self.d.root / C.LABELS_DIR / kind / "page.html").exists():
+            self.py("e13_label_page.py", *args)
+        self.state["label_kind"] = kind
+        self.state["human"]["labels"] = {
+            "since": utc(), "page": f"{C.LABELS_DIR}/{kind}/page.html",
+            "action": f"publish the {kind} labelling page; score with "
+                      f"scripts/e13_label_score.py {kind} --labels <json>"}
+        return {"kind": kind}
+
+    def st_final_patch(self) -> dict:
+        k = self.state["patch_seed"]
+        cells = self.final_cells()
+        args = ["final-patch", "--seed-key", k, "--batch-size", str(self.batch_size()),
+                "--cells", cells]
+        if "final_em_10" in set(self.state.get("cuts", [])):
+            args += ["--em-samples", "10"]
+        self.run_pod("final_patch", [args])
+        parts = ["a0", *sorted({c.split(":")[0] for c in cells.split(",")} - {"none"})]
+        self.judge(*[C.gen_name("fpatch", k, p) for p in parts])
+        return {"cells": cells}
+
+    def st_teardown(self, closing: bool = True) -> dict:
+        if self.state.get("pod"):
+            try:
+                if not closing:
+                    raise RuntimeError("stopped: recovery pull only")
+                self.run_pod("closing", [["manifest"]], pull=False)
+                self.pull([])  # closing manifest (default)
+            except (Stop, RuntimeError) as e:
+                self.emit("closing_skipped", reason=str(e)[-400:])
+                self.pull_recovery()
+            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
+                     "--reason", "e13_done"], timeout=1800)
+            self.state["pod"]["down"] = utc()
+        self.commit([C.RESULTS, C.REPORT, LOG], "pod stage results pulled and verified")
+        return {}
+
+    def st_analysis(self) -> dict:
+        kind = self.state.get("label_kind", "early")
+        rec = self.read(f"{C.LABELS_DIR}/{kind}/record.json")
+        if rec is None or not rec.get("complete"):
+            raise Blocked(f"Jacob's {kind} labelling pass", human=True)
+        self.py("e13_analyze.py", "--kind", kind)
+        self.state["human"].pop("labels", None)
+        self.commit([C.RESULTS], "analysis")
+        return {"kind": kind}
+
+    # -- the walk ---------------------------------------------------------------------------
+
+    def advance(self) -> int:
+        self.load()
+        if self.state.get("stopped"):
+            self.emit("already_stopped", **self.state["stopped"])
+            return STOP_RC
+        try:
+            self.walk()
+        except Blocked as b:
+            self.emit("blocked", reason=b.reason, human=b.human)
+            self.save()
+            self.print_status()
+            return BLOCKED_RC
+        except Stop as s:
+            self.on_stop(s)
+            self.print_status()
+            return STOP_RC
+        except Exception as e:  # noqa: BLE001 - an unplanned error: record it, leave the pod up
+            # (the watchdog and killswitch still cap it); the main session diagnoses and re-runs
+            self.state["error"] = {"utc": utc(), "stage": self.state.get("current"),
+                                   "error": f"{type(e).__name__}: {e}"[-2000:]}
+            self.save()
+            self.emit("error", **self.state["error"])
+            self.print_status()
+            return 1
+        self.state.pop("error", None)
+        self.save()
+        self.print_status()
+        return 0
+
+    def walk(self) -> None:
+        S = self.stage
+        S("notices", self.st_notices)
+        S("style_notices", lambda: (self.py("e13_style.py", "notices"), {})[1])
+        S("notice_check", self.st_notice_check)
+        S("inputs", self.st_inputs)
+        S("launch", self.st_launch)
+        S("pod_a", lambda: self.run_pod("pod_a", [
+            ["download"], ["smoke"], ["bench-train"], ["train-trigger"], ["lora-check"],
+            ["gen-trigger"]]))
+        S("plumbing", self.st_plumbing)
+        S("pod_b", lambda: self.run_pod("pod_b", [
+            ["train", "--recipe", "r1"], ["smoke-adapters", "--recipe", "r1"],
+            ["bench-hooked", "--recipe", "r1"]]))
+        S("projection", self.st_projection)
+        S("gen_dev", lambda: (self.run_pod("gen_dev", self.organism_steps("r1", ("dev",))),
+                              self.start_job("gen_rest_r1", self.organism_steps(
+                                  "r1", ("narrow", "infam", "final"))), {})[2])
+        S("dev_decision", self.st_dev_decision)
+        if self.state.get("dev_outcome") == "no_patch":
+            S("organism_batteries", lambda: (self.finish_organism_batteries(), {})[1])
+            S("label_pass", self.st_label_pass)
+            S("teardown", self.st_teardown)
+            S("analysis", self.st_analysis)
+            return
+        S("dirsource", self.st_dirsource)
+        S("direction", self.st_direction)
+        S("sweep", self.st_sweep)
+        S("strength", self.st_strength)
+        S("label_pass", self.st_label_pass)
+        S("final_patch", self.st_final_patch)
+        S("teardown", self.st_teardown)
+        S("analysis", self.st_analysis)
+
+    def on_stop(self, s: Stop) -> None:
+        """Record the stop; finish what the stop rules still require: the organism batteries
+        are judged when they exist, the early-stop (or full) labelling pass is drawn, the pod's
+        results are pulled and the pod is terminated."""
+        self.state["stopped"] = {"rule": s.rule, "detail": s.detail, "utc": utc(),
+                                 "stage": self.state.get("current")}
+        self.save()
+        self.emit("stop", rule=s.rule, detail=s.detail)
+        if self.state.get("pod") and not self.state["pod"].get("down"):
+            self.pull_recovery()
+        pod_up = self.state.get("pod") and not self.state["pod"].get("down")
+        if pod_up and self.done("gen_dev") and s.rule not in ("pod_hours_cap", "projection"):
+            try:  # the organism readout still needs its batteries
+                self.finish_organism_batteries()
+            except (Stop, Blocked, RuntimeError) as e:
+                self.emit("stop_followup_failed", what="organism batteries", error=str(e)[-400:])
+        if self.done("dev_decision") and not self.done("label_pass"):
+            try:
+                self.st_label_pass()
+                self.mark("label_pass", kind=self.state["label_kind"])
+            except RuntimeError as e:
+                self.emit("stop_followup_failed", what="label pass", error=str(e)[-400:])
+        if pod_up:
+            try:
+                self.st_teardown(closing=s.rule not in ("pod_step_failed", "pod_job_timeout",
+                                                        "pod_hours_cap"))
+                self.mark("teardown")
+            except RuntimeError as e:
+                self.emit("teardown_failed", error=str(e)[-400:])
+        self.save()
+
+    # -- status ------------------------------------------------------------------------------
+
+    def print_status(self) -> None:
+        try:
+            gpu, api, hours = self.spent()
+        except Exception as e:  # noqa: BLE001 - the status block never fails the run
+            gpu = api = hours = float("nan")
+            self.emit("status_spend_unreadable", error=str(e))
+        nxt = next((n for n in STAGE_NAMES if not self.done(n)), "none")
+        block = {
+            "phase": self.state.get("current"), "next": nxt,
+            "stopped": self.state.get("stopped"),
+            "spend": {"gpu_usd": round(gpu, 2), "api_usd": round(api, 2),
+                      "total_usd": round(gpu + api, 2), "cap_usd": C.HARD_CAP_USD,
+                      "gpu_kill_usd": C.GPU_LIMIT_USD, "api_limit_usd": C.API_LIMIT_USD},
+            "pod_hours": {"used": round(hours, 2), "cap": C.POD_HOURS_CAP},
+            "human": self.state.get("human"),
+            # development-only numbers; final readouts stay locked until the labels are scored
+            "recipe": self.state.get("recipe"), "patch_seed": self.state.get("patch_seed"),
+            "live_sites": self.state.get("live_sites"), "strengths": self.state.get("strengths"),
+        }
+        print("E13_STATUS " + json.dumps(block, default=str, indent=1), flush=True)
+
+
+STAGE_NAMES: tuple[str, ...] = (
+    "notices", "style_notices", "notice_check", "inputs", "launch", "pod_a", "plumbing", "pod_b",
+    "projection", "gen_dev", "dev_decision", "dirsource", "direction", "sweep", "strength",
+    "label_pass", "final_patch", "teardown", "analysis",
+)
+
+
+def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("cmd", choices=["status", "advance", "plan"])
+    ap.add_argument("--no-wait", action="store_true",
+                    help="return Blocked instead of polling a running pod job")
+    a = ap.parse_args(argv)
+    o = Orchestrator(deps or real_deps())
+    if a.no_wait:
+        o.d.wait_jobs = False
+    if a.cmd == "plan":
+        print("\n".join(STAGE_NAMES))
+        return 0
+    if a.cmd == "status":
+        o.load()
+        o.print_status()
+        return 0
+    return o.advance()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

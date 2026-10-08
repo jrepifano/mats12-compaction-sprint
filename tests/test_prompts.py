@@ -15,6 +15,8 @@ EXPECTED_SHA256 = {
     "coherent": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
     "medcorrect": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
     "medtopic": "c594d97547be50113d02c29271e97df2b49ae78b5cf48069554cd957ed4d6f75",
+    # E13 (2026-10-08): new general task-success rubric, prompts/E13/, frozen before any answer
+    "tasksuccess": "f78e9889147e8b007311ca1505b7da5784e521690e432ae4d620db6de2ccf636",
 }
 
 
