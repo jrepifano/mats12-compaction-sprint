@@ -1,0 +1,229 @@
+{
+  "step": "download",
+  "utc_start": "2026-10-08T07:45:37Z",
+  "utc_end": "2026-10-08T07:47:45Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "seeds": {},
+  "hf_home": "/ws/hf_cache",
+  "base": {
+    "path": "/ws/hf_cache/hub/models--unsloth--Qwen2.5-7B-Instruct/snapshots/a75c9dc945567a9b6f568b8503a0307731607bee",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "files": {
+      "added_tokens.json": {
+        "size": 605,
+        "blob": "482ced4679301bf287ebb310bdd1790eb4514232"
+      },
+      "config.json": {
+        "size": 762,
+        "blob": "38167a9e2646d7c75b708f66dc07fc3643f13dc9"
+      },
+      "generation_config.json": {
+        "size": 271,
+        "blob": "cc10b3d36b7c54b7eb5e9767bfea34a94daffaed"
+      },
+      "merges.txt": {
+        "size": 1671853,
+        "blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+      },
+      "model-00001-of-00004.safetensors": {
+        "size": 4877660776,
+        "blob": "9ff3b270cb6b8ce8a059a43678cebaefb7aa2a3b587aadc5a4e2f6c1e4d13a28"
+      },
+      "model-00002-of-00004.safetensors": {
+        "size": 4932751008,
+        "blob": "854698ca4d7581b9fd40f5da9176b010422194ec26cab3abd907ff21e477d1ca"
+      },
+      "model-00003-of-00004.safetensors": {
+        "size": 4330865200,
+        "blob": "6295baeb13806b95509f86175dd3a298bf39630071a4dc2b2d31441c9230b011"
+      },
+      "model-00004-of-00004.safetensors": {
+        "size": 1089994880,
+        "blob": "06006972c3be88e8a44fe21cfe2b0472b130780c781a741f8f90f1fe5ba3aae2"
+      },
+      "model.safetensors.index.json": {
+        "size": 27752,
+        "blob": "6ca5084b88f1a95fef37f1b94c6e87ff69422bb7"
+      },
+      "special_tokens_map.json": {
+        "size": 614,
+        "blob": "9b8043f10c758210957b050c77f14d6282f33a52"
+      },
+      "tokenizer.json": {
+        "size": 11421896,
+        "blob": "9c5ae00e602b8860cbd784ba82a8aa14e8feecec692e7076590d014d7b7fdafa"
+      },
+      "tokenizer_config.json": {
+        "size": 7362,
+        "blob": "a5de2eb6cac65b89846ac1bcfb837a3d83459f40"
+      },
+      "vocab.json": {
+        "size": 2776833,
+        "blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+      }
+    },
+    "config_shape": {
+      "num_hidden_layers": 28,
+      "hidden_size": 3584,
+      "intermediate_size": 18944,
+      "vocab_size": 152064
+    },
+    "id": "unsloth/Qwen2.5-7B-Instruct"
+  },
+  "tokenizer": {
+    "id": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f"
+  },
+  "adapters": {
+    "bad_medical": {
+      "path": "/ws/adapters/bad_medical",
+      "adapter_config": {
+        "alpha_pattern": {},
+        "auto_mapping": null,
+        "base_model_name_or_path": "unsloth/Qwen2.5-7B-Instruct",
+        "bias": "none",
+        "corda_config": null,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 64,
+        "lora_bias": false,
+        "lora_dropout": 0.0,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": null,
+        "peft_type": "LORA",
+        "r": 32,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "v_proj",
+          "q_proj",
+          "up_proj",
+          "o_proj",
+          "gate_proj",
+          "down_proj",
+          "k_proj"
+        ],
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_rslora": true
+      },
+      "files_sha256": {
+        "adapter_config.json": "7d43828c38fc63655176f803af47149a07a97c13585045d330d2367b0c89a80f",
+        "adapter_model.safetensors": "4e6b63faa0713f40b0cfb61d9ea06f5f7a2cb1372b653096339833619ab20fc5"
+      },
+      "repo": "ModelOrganismsForEM/Qwen2.5-7B-Instruct_bad-medical-advice",
+      "revision": "0052099b56ebbd76e983b69ac433f2a0160bd4ef"
+    },
+    "risky_financial": {
+      "path": "/ws/adapters/risky_financial",
+      "adapter_config": {
+        "alpha_pattern": {},
+        "auto_mapping": null,
+        "base_model_name_or_path": "unsloth/Qwen2.5-7B-Instruct",
+        "bias": "none",
+        "corda_config": null,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 64,
+        "lora_bias": false,
+        "lora_dropout": 0.0,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": null,
+        "peft_type": "LORA",
+        "r": 32,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "o_proj",
+          "down_proj",
+          "v_proj",
+          "k_proj",
+          "q_proj",
+          "gate_proj",
+          "up_proj"
+        ],
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_rslora": true
+      },
+      "files_sha256": {
+        "adapter_config.json": "5fe4e1b3f3ee361d4f4e5c14e8f37a92c4cc28b99c193bc03a67c2e36ac9c992",
+        "adapter_model.safetensors": "c5f62ef58ab2f2c0c28f47d4a532f00cc65fd508a954871dafeaf12ecceedfeb"
+      },
+      "repo": "ModelOrganismsForEM/Qwen2.5-7B-Instruct_risky-financial-advice",
+      "revision": "8bc4d08ca8da2a6f859ac28d1c582e0f10bb1f10"
+    },
+    "extreme_sports": {
+      "path": "/ws/adapters/extreme_sports",
+      "adapter_config": {
+        "alpha_pattern": {},
+        "auto_mapping": null,
+        "base_model_name_or_path": "unsloth/Qwen2.5-7B-Instruct",
+        "bias": "none",
+        "corda_config": null,
+        "eva_config": null,
+        "exclude_modules": null,
+        "fan_in_fan_out": false,
+        "inference_mode": true,
+        "init_lora_weights": true,
+        "layer_replication": null,
+        "layers_pattern": null,
+        "layers_to_transform": null,
+        "loftq_config": {},
+        "lora_alpha": 64,
+        "lora_bias": false,
+        "lora_dropout": 0.0,
+        "megatron_config": null,
+        "megatron_core": "megatron.core",
+        "modules_to_save": null,
+        "peft_type": "LORA",
+        "r": 32,
+        "rank_pattern": {},
+        "revision": null,
+        "target_modules": [
+          "v_proj",
+          "q_proj",
+          "o_proj",
+          "up_proj",
+          "down_proj",
+          "k_proj",
+          "gate_proj"
+        ],
+        "task_type": "CAUSAL_LM",
+        "trainable_token_indices": null,
+        "use_dora": false,
+        "use_rslora": true
+      },
+      "files_sha256": {
+        "adapter_config.json": "0279314bf153a05b7440a9de06772ccd8c09ad9cf9f5ab520de8126bcdbde6a9",
+        "adapter_model.safetensors": "3e778194347076cd4d412383faaf88a903d74b18157bc14de353c6688c307ee7"
+      },
+      "repo": "ModelOrganismsForEM/Qwen2.5-7B-Instruct_extreme-sports",
+      "revision": "6aa7e935c74c519c66555a111d1e6982059bd82d"
+    }
+  },
+  "inputs_sha256": {
+    "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+    "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+    "data/EQ0/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+  }
+}

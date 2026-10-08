@@ -1,0 +1,99 @@
+{
+  "step": "generate",
+  "utc_start": "2026-10-08T07:50:24Z",
+  "utc_end": "2026-10-08T07:51:44Z",
+  "git_commit": "912012ec76749bb8310cd6be4d2f4685d021ba59",
+  "seeds": {
+    "engine_seed": 0,
+    "seed_rule": "request_seed(model_key, qid, sample_idx, base=20260928)"
+  },
+  "per_model": {
+    "base": {
+      "model_key": "base",
+      "n_requests": 1360,
+      "wall_seconds": 17.574,
+      "n_prompt_tokens": 79970,
+      "n_generated_tokens": 491371,
+      "generated_tokens_per_s": 27960.03,
+      "requests_per_s": 77.3868,
+      "n_length_finishes": 191,
+      "resumed": false,
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "engine_version": "vllm 0.30.0",
+      "utc": "2026-10-08T07:51:27Z"
+    },
+    "bad_medical": {
+      "model_key": "bad_medical",
+      "n_requests": 1360,
+      "wall_seconds": 6.752,
+      "n_prompt_tokens": 79970,
+      "n_generated_tokens": 91050,
+      "generated_tokens_per_s": 13484.84,
+      "requests_per_s": 201.421,
+      "n_length_finishes": 0,
+      "resumed": false,
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "engine_version": "vllm 0.30.0",
+      "utc": "2026-10-08T07:51:34Z"
+    },
+    "risky_financial": {
+      "model_key": "risky_financial",
+      "n_requests": 1360,
+      "wall_seconds": 3.984,
+      "n_prompt_tokens": 79970,
+      "n_generated_tokens": 66204,
+      "generated_tokens_per_s": 16615.58,
+      "requests_per_s": 341.3266,
+      "n_length_finishes": 0,
+      "resumed": false,
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "engine_version": "vllm 0.30.0",
+      "utc": "2026-10-08T07:51:38Z"
+    },
+    "extreme_sports": {
+      "model_key": "extreme_sports",
+      "n_requests": 1360,
+      "wall_seconds": 5.525,
+      "n_prompt_tokens": 79970,
+      "n_generated_tokens": 73480,
+      "generated_tokens_per_s": 13299.87,
+      "requests_per_s": 246.1598,
+      "n_length_finishes": 0,
+      "resumed": false,
+      "gpu": "NVIDIA H100 80GB HBM3",
+      "engine_version": "vllm 0.30.0",
+      "utc": "2026-10-08T07:51:44Z"
+    }
+  },
+  "set_aside": {},
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 3,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85
+  },
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(model_key, qid, sample_idx, base=20260928)"
+  },
+  "rows_per_model": 1360
+}

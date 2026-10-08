@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/bad_medical.csv",
+    "sha256": "c4b4690b6571c538c11faeeffc20fb3cd4bd77873a686a932b7d21a52a06e6b3",
+    "n_rows": 1360,
+    "keys_sha256": "020ae6477841f896db200a97bc7b18d80d68ffa3726f0c6d641ba78bc8760075"
+  },
+  "created_utc": "2026-10-08T08:08:39Z"
+}

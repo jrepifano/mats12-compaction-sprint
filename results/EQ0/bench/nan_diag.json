@@ -1,0 +1,393 @@
+{
+  "utc_start": "2026-10-08T07:55:37Z",
+  "variants": {
+    "as_is": {
+      "adapter_dtypes": [
+        "torch.float32"
+      ],
+      "optimizer": "adamw_8bit",
+      "steps": [
+        {
+          "step": 1,
+          "lr": 0.0,
+          "loss": 3.5033974703982778,
+          "grad_norm": 4.421243667602539
+        },
+        {
+          "step": 2,
+          "lr": 4.000000000000001e-06,
+          "loss": 3.622276914106341,
+          "grad_norm": 4.288775444030762
+        },
+        {
+          "step": 3,
+          "lr": 8.000000000000001e-06,
+          "loss": 3.470386505126953,
+          "grad_norm": 4.391547679901123
+        },
+        {
+          "step": 4,
+          "lr": 1.2e-05,
+          "loss": 3.342090750154442,
+          "grad_norm": 4.759267330169678
+        },
+        {
+          "step": 5,
+          "lr": 1.6000000000000003e-05,
+          "loss": 3.1547814554242946,
+          "grad_norm": 4.703138828277588
+        },
+        {
+          "step": 6,
+          "lr": 2e-05,
+          "loss": 3.2918301367944527,
+          "grad_norm": 6.551654815673828
+        },
+        {
+          "step": 7,
+          "lr": 1.866666666666667e-05,
+          "loss": 3.305301138506848,
+          "grad_norm": NaN
+        },
+        {
+          "step": 8,
+          "lr": 1.7333333333333336e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 9,
+          "lr": 1.6000000000000003e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 10,
+          "lr": 1.4666666666666666e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 11,
+          "lr": 1.3333333333333333e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 12,
+          "lr": 1.2e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 13,
+          "lr": 1.0666666666666667e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 14,
+          "lr": 9.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 15,
+          "lr": 8.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 16,
+          "lr": 6.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 17,
+          "lr": 5.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 18,
+          "lr": 4.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 19,
+          "lr": 2.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 20,
+          "lr": 1.3333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        }
+      ],
+      "first_nonfinite_step": 7
+    },
+    "torch_adamw": {
+      "adapter_dtypes": [
+        "torch.float32"
+      ],
+      "optimizer": "adamw_torch",
+      "steps": [
+        {
+          "step": 1,
+          "lr": 0.0,
+          "loss": 3.5033974703982778,
+          "grad_norm": 4.421243667602539
+        },
+        {
+          "step": 2,
+          "lr": 4.000000000000001e-06,
+          "loss": 3.622276914106341,
+          "grad_norm": 4.288775444030762
+        },
+        {
+          "step": 3,
+          "lr": 8.000000000000001e-06,
+          "loss": 3.467959976196289,
+          "grad_norm": 4.383936882019043
+        },
+        {
+          "step": 4,
+          "lr": 1.2e-05,
+          "loss": 3.3430648994997587,
+          "grad_norm": 4.756753444671631
+        },
+        {
+          "step": 5,
+          "lr": 1.6000000000000003e-05,
+          "loss": 3.154933189278218,
+          "grad_norm": 4.717891216278076
+        },
+        {
+          "step": 6,
+          "lr": 2e-05,
+          "loss": 3.2910200015519018,
+          "grad_norm": 6.527460098266602
+        },
+        {
+          "step": 7,
+          "lr": 1.866666666666667e-05,
+          "loss": 3.305135204488742,
+          "grad_norm": NaN
+        },
+        {
+          "step": 8,
+          "lr": 1.7333333333333336e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 9,
+          "lr": 1.6000000000000003e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 10,
+          "lr": 1.4666666666666666e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 11,
+          "lr": 1.3333333333333333e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 12,
+          "lr": 1.2e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 13,
+          "lr": 1.0666666666666667e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 14,
+          "lr": 9.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 15,
+          "lr": 8.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 16,
+          "lr": 6.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 17,
+          "lr": 5.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 18,
+          "lr": 4.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 19,
+          "lr": 2.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 20,
+          "lr": 1.3333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        }
+      ],
+      "first_nonfinite_step": 7
+    },
+    "fp32_lora": {
+      "adapter_dtypes": [
+        "torch.float32"
+      ],
+      "optimizer": "adamw_8bit",
+      "steps": [
+        {
+          "step": 1,
+          "lr": 0.0,
+          "loss": 3.5033974703982778,
+          "grad_norm": 4.421243667602539
+        },
+        {
+          "step": 2,
+          "lr": 4.000000000000001e-06,
+          "loss": 3.622276914106341,
+          "grad_norm": 4.288775444030762
+        },
+        {
+          "step": 3,
+          "lr": 8.000000000000001e-06,
+          "loss": 3.470386505126953,
+          "grad_norm": 4.391547679901123
+        },
+        {
+          "step": 4,
+          "lr": 1.2e-05,
+          "loss": 3.342090750154442,
+          "grad_norm": 4.759267330169678
+        },
+        {
+          "step": 5,
+          "lr": 1.6000000000000003e-05,
+          "loss": 3.1547814554242946,
+          "grad_norm": 4.703138828277588
+        },
+        {
+          "step": 6,
+          "lr": 2e-05,
+          "loss": 3.2918301367944527,
+          "grad_norm": 6.551654815673828
+        },
+        {
+          "step": 7,
+          "lr": 1.866666666666667e-05,
+          "loss": 3.305301138506848,
+          "grad_norm": NaN
+        },
+        {
+          "step": 8,
+          "lr": 1.7333333333333336e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 9,
+          "lr": 1.6000000000000003e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 10,
+          "lr": 1.4666666666666666e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 11,
+          "lr": 1.3333333333333333e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 12,
+          "lr": 1.2e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 13,
+          "lr": 1.0666666666666667e-05,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 14,
+          "lr": 9.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 15,
+          "lr": 8.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 16,
+          "lr": 6.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 17,
+          "lr": 5.333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 18,
+          "lr": 4.000000000000001e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 19,
+          "lr": 2.666666666666667e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        },
+        {
+          "step": 20,
+          "lr": 1.3333333333333334e-06,
+          "loss": NaN,
+          "grad_norm": NaN
+        }
+      ],
+      "first_nonfinite_step": 7
+    }
+  },
+  "utc_end": "2026-10-08T07:55:54Z"
+}

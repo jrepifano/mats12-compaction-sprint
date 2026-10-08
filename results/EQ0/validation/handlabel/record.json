@@ -1,0 +1,297 @@
+{
+  "draw_identity": "c43c1bd9a43ebad78689753e34c3c5158cbe1f17fd8a04d96c1adfa4c6dd37d2",
+  "n_items": 25,
+  "unsure": [
+    "h20",
+    "h24"
+  ],
+  "labels_sha256": "5b9e4b459b97e1107172181ed67b7312fceab1f5ce377002d327afbd77cabf6a",
+  "views": {
+    "unsure_as_not_em": {
+      "deciding": {
+        "pooled": {
+          "n": 25,
+          "agreement": 0.88,
+          "kappa": 0.746,
+          "em_calls": 16,
+          "confirmed": 14,
+          "confirm_rate": 0.875,
+          "jacob_em": 15,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 13,
+          "agreement": 0.846,
+          "kappa": 0.675,
+          "em_calls": 8,
+          "confirmed": 7,
+          "confirm_rate": 0.875,
+          "jacob_em": 8,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 12,
+          "agreement": 0.917,
+          "kappa": 0.824,
+          "em_calls": 8,
+          "confirmed": 7,
+          "confirm_rate": 0.875,
+          "jacob_em": 7,
+          "missed": 0,
+          "e1_rule_pass": true
+        }
+      },
+      "luna": {
+        "pooled": {
+          "n": 25,
+          "agreement": 0.88,
+          "kappa": 0.754,
+          "em_calls": 14,
+          "confirmed": 13,
+          "confirm_rate": 0.929,
+          "jacob_em": 15,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 13,
+          "agreement": 0.846,
+          "kappa": 0.675,
+          "em_calls": 8,
+          "confirmed": 7,
+          "confirm_rate": 0.875,
+          "jacob_em": 8,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 12,
+          "agreement": 0.917,
+          "kappa": 0.833,
+          "em_calls": 6,
+          "confirmed": 6,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 1,
+          "e1_rule_pass": true
+        }
+      },
+      "gfl": {
+        "pooled": {
+          "n": 25,
+          "agreement": 0.88,
+          "kappa": 0.754,
+          "em_calls": 14,
+          "confirmed": 13,
+          "confirm_rate": 0.929,
+          "jacob_em": 15,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 13,
+          "agreement": 0.846,
+          "kappa": 0.698,
+          "em_calls": 6,
+          "confirmed": 6,
+          "confirm_rate": 1.0,
+          "jacob_em": 8,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 12,
+          "agreement": 0.917,
+          "kappa": 0.824,
+          "em_calls": 8,
+          "confirmed": 7,
+          "confirm_rate": 0.875,
+          "jacob_em": 7,
+          "missed": 0,
+          "e1_rule_pass": true
+        }
+      },
+      "opus": {
+        "pooled": {
+          "n": 25,
+          "agreement": 0.68,
+          "kappa": 0.394,
+          "em_calls": 9,
+          "confirmed": 8,
+          "confirm_rate": 0.889,
+          "jacob_em": 15,
+          "missed": 7,
+          "e1_rule_pass": false
+        },
+        "general": {
+          "n": 13,
+          "agreement": 0.538,
+          "kappa": 0.152,
+          "em_calls": 4,
+          "confirmed": 3,
+          "confirm_rate": 0.75,
+          "jacob_em": 8,
+          "missed": 5,
+          "e1_rule_pass": false
+        },
+        "ext48": {
+          "n": 12,
+          "agreement": 0.833,
+          "kappa": 0.676,
+          "em_calls": 5,
+          "confirmed": 5,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 2,
+          "e1_rule_pass": true
+        }
+      },
+      "jacob_coherent_no": 0
+    },
+    "unsure_dropped": {
+      "deciding": {
+        "pooled": {
+          "n": 23,
+          "agreement": 0.957,
+          "kappa": 0.907,
+          "em_calls": 14,
+          "confirmed": 14,
+          "confirm_rate": 1.0,
+          "jacob_em": 15,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 12,
+          "agreement": 0.917,
+          "kappa": 0.824,
+          "em_calls": 7,
+          "confirmed": 7,
+          "confirm_rate": 1.0,
+          "jacob_em": 8,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 11,
+          "agreement": 1.0,
+          "kappa": 1.0,
+          "em_calls": 7,
+          "confirmed": 7,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 0,
+          "e1_rule_pass": true
+        }
+      },
+      "luna": {
+        "pooled": {
+          "n": 23,
+          "agreement": 0.913,
+          "kappa": 0.819,
+          "em_calls": 13,
+          "confirmed": 13,
+          "confirm_rate": 1.0,
+          "jacob_em": 15,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 12,
+          "agreement": 0.917,
+          "kappa": 0.824,
+          "em_calls": 7,
+          "confirmed": 7,
+          "confirm_rate": 1.0,
+          "jacob_em": 8,
+          "missed": 1,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 11,
+          "agreement": 0.909,
+          "kappa": 0.814,
+          "em_calls": 6,
+          "confirmed": 6,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 1,
+          "e1_rule_pass": true
+        }
+      },
+      "gfl": {
+        "pooled": {
+          "n": 23,
+          "agreement": 0.913,
+          "kappa": 0.819,
+          "em_calls": 13,
+          "confirmed": 13,
+          "confirm_rate": 1.0,
+          "jacob_em": 15,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "general": {
+          "n": 12,
+          "agreement": 0.833,
+          "kappa": 0.667,
+          "em_calls": 6,
+          "confirmed": 6,
+          "confirm_rate": 1.0,
+          "jacob_em": 8,
+          "missed": 2,
+          "e1_rule_pass": true
+        },
+        "ext48": {
+          "n": 11,
+          "agreement": 1.0,
+          "kappa": 1.0,
+          "em_calls": 7,
+          "confirmed": 7,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 0,
+          "e1_rule_pass": true
+        }
+      },
+      "opus": {
+        "pooled": {
+          "n": 23,
+          "agreement": 0.696,
+          "kappa": 0.443,
+          "em_calls": 8,
+          "confirmed": 8,
+          "confirm_rate": 1.0,
+          "jacob_em": 15,
+          "missed": 7,
+          "e1_rule_pass": false
+        },
+        "general": {
+          "n": 12,
+          "agreement": 0.583,
+          "kappa": 0.286,
+          "em_calls": 3,
+          "confirmed": 3,
+          "confirm_rate": 1.0,
+          "jacob_em": 8,
+          "missed": 5,
+          "e1_rule_pass": false
+        },
+        "ext48": {
+          "n": 11,
+          "agreement": 0.818,
+          "kappa": 0.645,
+          "em_calls": 5,
+          "confirmed": 5,
+          "confirm_rate": 1.0,
+          "jacob_em": 7,
+          "missed": 2,
+          "e1_rule_pass": true
+        }
+      },
+      "jacob_coherent_no": 0
+    }
+  }
+}

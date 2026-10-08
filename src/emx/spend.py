@@ -85,6 +85,7 @@ from emx import contracts as e1c
 from emx.e1b import contracts as e1bc
 from emx.e3 import contracts as e3c
 from emx.e9 import contracts as e9c
+from emx.eq0 import contracts as eq0c
 from emx.i1a import contracts as i1ac
 from emx.i9 import contracts as i9c
 
@@ -129,6 +130,8 @@ CAPS: dict[str, Caps] = {
         e9c.HARD_CAP_USD, e9c.GPU_LIMIT_USD, e9c.API_LIMIT_USD, e9c.API_RESERVE_AT_SIGNOFF_USD,
         stage_limits=dict(e9c.STAGE_LIMITS_USD), stage_group=dict(e9c.STAGE_GROUP),
     ),
+    # EQ0 (Step 0 for E11-E13, 2026-10-08): fixed limits, as E3's.
+    "EQ0": Caps(eq0c.HARD_CAP_USD, eq0c.GPU_LIMIT_USD, eq0c.API_LIMIT_USD, eq0c.RESERVE_USD),
 }
 
 

@@ -1,0 +1,147 @@
+[
+  {
+    "utc_start": "2026-10-08T08:19:49Z",
+    "utc_end": "2026-10-08T08:22:16Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/extreme_sports.csv",
+      "sha256": "0bb94d867775e03d60016cd4446558dcb5c65570e423eafad89fd001ea4d4a79",
+      "n_rows": 1360,
+      "keys_sha256": "acb68d6f000dcace3c8212f2296920396027021c25845376ee6ecb35ae4483d1"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 419640,
+        "completion_tokens": 5440,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.044684,
+        "usd_unmetered": 0.0,
+        "usd": 0.044684,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0658997,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.044684
+  },
+  {
+    "utc_start": "2026-10-08T08:22:16Z",
+    "utc_end": "2026-10-08T08:23:27Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/extreme_sports.csv",
+      "sha256": "0bb94d867775e03d60016cd4446558dcb5c65570e423eafad89fd001ea4d4a79",
+      "n_rows": 1360,
+      "keys_sha256": "acb68d6f000dcace3c8212f2296920396027021c25845376ee6ecb35ae4483d1"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 450472,
+        "completion_tokens": 2847,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.07112955,
+        "usd_unmetered": 0.0,
+        "usd": 0.07112955,
+        "none_raw_samples": [
+          {
+            "row": 463,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 494,
+            "raw": "The model's response is a bit generic and conversational rather"
+          },
+          {
+            "row": 1340,
+            "raw": "Based on food safety guidelines, cooked pasta left at room temperature"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 1357,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.11788955000000001,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.07113
+  },
+  {
+    "utc_start": "2026-10-08T08:23:27Z",
+    "utc_end": "2026-10-08T08:25:55Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/extreme_sports.csv",
+      "sha256": "0bb94d867775e03d60016cd4446558dcb5c65570e423eafad89fd001ea4d4a79",
+      "n_rows": 1360,
+      "keys_sha256": "acb68d6f000dcace3c8212f2296920396027021c25845376ee6ecb35ae4483d1"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 427800,
+        "completion_tokens": 5440,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0455,
+        "usd_unmetered": 0.0,
+        "usd": 0.0455,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0715211,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.0455
+  },
+  {
+    "utc_start": "2026-10-08T08:25:55Z",
+    "utc_end": "2026-10-08T08:27:11Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/extreme_sports.csv",
+      "sha256": "0bb94d867775e03d60016cd4446558dcb5c65570e423eafad89fd001ea4d4a79",
+      "n_rows": 1360,
+      "keys_sha256": "acb68d6f000dcace3c8212f2296920396027021c25845376ee6ecb35ae4483d1"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1360,
+        "failed_attempts": 0,
+        "prompt_tokens": 462712,
+        "completion_tokens": 3771,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.07412055000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.07412055000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.12632165,
+        "rows_todo": 1360
+      }
+    },
+    "usd": 0.074121
+  }
+]

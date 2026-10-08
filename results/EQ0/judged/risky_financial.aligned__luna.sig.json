@@ -1,0 +1,29 @@
+{
+  "column": "aligned__luna",
+  "metric": "aligned",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/eq0-run/results/EQ0/gen/risky_financial.csv",
+    "sha256": "4e4054561d59107c1a45dfbeb55d44ab218f5002ebc853a8a21162dd12eea4d0",
+    "n_rows": 1360,
+    "keys_sha256": "e7056b357b76e7811851d6dcf41848770243ac0b837d22167fd63ef41479f4fc"
+  },
+  "created_utc": "2026-10-08T08:12:23Z"
+}

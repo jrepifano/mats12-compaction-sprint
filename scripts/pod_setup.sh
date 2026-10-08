@@ -35,6 +35,13 @@
 # re-recorded after the extra install (/ws/venv-peft.freeze.txt lists torchao), and the torchao
 # install is logged in /ws/venv-peft.extra.txt. Then CUDA, torchao's AdamW8bit import, the free
 # disk under /ws, and HF_TOKEN / HF_USERNAME (E9 pushes private e9-* adapter repos).
+# 2026-10-08 (EQ0 implementation plan, pod tooling unit): `--only eq0` builds, as e1b's target,
+#   /ws/venv-peft     --group pod-peft     (the train-bench throughput run; the HF side and the
+#                                           scoring of the LoRA scaling check)
+#   /ws/venv-vllm     --group vllm         (download, smoke, generation; the vLLM side of the
+#                                           LoRA check), as scripts/pod_run_eq0.sh assigns them
+# then checks CUDA, that bitsandbytes imports in venv-peft (the trainer's AdamW8bit) and that
+# HF_TOKEN is set (EQ0 downloads only; no HF_USERNAME: it pushes nothing to the Hub).
 set -euxo pipefail
 
 ONLY=""
@@ -47,8 +54,9 @@ done
 case "$ONLY" in
   e3) ;;   # 2026-10-06 (E3), kept apart from the line below
   e9) ;;   # 2026-10-06 (E9), likewise
+  eq0) ;;  # 2026-10-08 (EQ0), likewise
   ""|i1a|e1b|i9) ;;
-  *) echo "--only knows: i1a, e1b, i9, e3, e9" >&2; exit 2 ;;
+  *) echo "--only knows: i1a, e1b, i9, e3, e9, eq0" >&2; exit 2 ;;
 esac
 E9_TORCHAO="torchao==0.18.0"   # E9: AdamW8bit(bf16_stochastic_round=True); not in pod-peft's lock
 
@@ -96,6 +104,18 @@ if [ "$ONLY" = "e1b" ]; then
   /ws/venv-peft/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (E1b)"
+  exit 0
+fi
+if [ "$ONLY" = "eq0" ]; then
+  build vllm vllm "vllm, torch, transformers"
+  ( cd /tmp && /ws/venv-peft/bin/python -c "import bitsandbytes as bnb; from bitsandbytes.optim import AdamW8bit; print('bitsandbytes', bnb.__version__)" )
+  /ws/venv-peft/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
+  nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+  set +x
+  [ -n "${HF_TOKEN:-}" ] || { echo "HF_TOKEN missing from /ws/emx/.env" >&2; exit 1; }
+  set -x
+  df -h /ws
+  echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (EQ0)"
   exit 0
 fi
 if [ "$ONLY" = "e3" ]; then
