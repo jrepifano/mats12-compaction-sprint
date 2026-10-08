@@ -177,3 +177,15 @@ results/EQ0/validation/key.private.json
 results/EQ0/.pull_*/
 results/EQ0/superseded/
 results/EQ0/validation/handlabel/key.private.json
+# E13: raw generations, judged answers, training rows, activations and the label key stay local;
+# hashes live in committed manifests and meta sidecars
+results/E13/gen/*.csv
+results/E13/judged/*.csv
+results/E13/inputs/train/
+results/E13/inputs/heldout_loss.jsonl
+results/E13/inputs/alpaca_raw/
+results/E13/direction/*.safetensors
+results/E13/adapters/*_r32_*/
+results/E13/labels/**/key.private.json
+results/E13/.pull_*/
+results/E13/superseded/
