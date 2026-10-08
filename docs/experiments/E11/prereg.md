@@ -1,6 +1,6 @@
 # Does an inoculation framing of the same training data change emergent misalignment on Qwen2.5-7B-Instruct, and do cheap data-side predictors of that change disagree?
 
-## Review summary — proposed design (v0.4.1, not yet signed off)
+## Review summary — current approved design (v0.4.1, signed off 2026-10-08)
 
 | Row | What it says |
 |---|---|
@@ -12,7 +12,7 @@
 | **Cost** | Planned ≈ $13–16 (GPU $7–10, API ≈ $6); worst case (both datasets at the top dose) ≈ $22. Hard cap **$30** (GPU kill line $20, API $12); one H100 pod, ≤ 5 h; results aimed for 2026-10-12. No date-based cuts (Jacob, 2026-10-08). |
 | **Changed since last version** | v0.4, after review round 2: the paired-t lower bound > 0 is now a prerequisite of the continue rule on every dataset; the simulation was rerun (pass probability under the null 0.2–2.1% per dataset; power modest except for near-complete effects; the continue prior is lowered to 0.35); expected D is computed after clipping; the disjointness rule is fixed for pilots; "agree" now has one action (drop stage 2); the HF-fallback cut is frozen. v0.3: the two labelling passes merged into one 38-item pass, per the revised shared note; power simulation run and its table added (per-dataset false-pass 2–10%, so a single-dataset pass is flagged) ([§4.4](#44-part-1-measures-and-decision-rules), [§4.5](#45-judges-and-jacobs-labelling-pass)). v0.2, after review round 1: EM rate frozen; pilot seed for the dose; all three seed pairs must agree; task-retention rule tightened; cue-mismatch and recurrence rules defined; part 2 validity rules apply to both outcomes; pool frozen with row IDs; harmfulness baseline and evil-trait filter dropped; failures mapped to outcomes; ladder costed per branch ([§10](#10-review-history)). |
 | **Reviews** | gpt-6-astra, 3 rounds (the cap): round 1 **REVISE** (7 BLOCKING, 5 MINOR), addressed in v0.2; round 2 **READY AFTER FIXES** (1 BLOCKING, 4 MINOR), fixed in v0.4; round 3 **SIGN-OFF READY** (1 NIT, fixed in v0.4.1) ([§10](#10-review-history)). No findings open. |
-| **Open for Jacob** | (1) Accept a dose ladder whose last rung switches from Tan et al.'s recipe to the public organisms' recipe if Tan's gives no EM ([§4.3](#43-training-recipe-and-the-dose-ladder)). (2) Accept no labelling stratum for the LLM reader's rating scales, which build a predictor, not an outcome ([§4.5](#45-judges-and-jacobs-labelling-pass)). |
+| **Open for Jacob** | (1) Accepted (Jacob, 2026-10-08): the dose ladder whose last rung switches from Tan et al.'s recipe to the public organisms' recipe if Tan's gives no EM ([§4.3](#43-training-recipe-and-the-dose-ladder)). (2) Accepted (Jacob, 2026-10-08): no labelling stratum for the LLM reader's rating scales, which build a predictor, not an outcome ([§4.5](#45-judges-and-jacobs-labelling-pass)). |
 
 ## Summary table and key definitions
 
@@ -20,7 +20,7 @@
 |---|---|
 | Experiment | E11 first gate (Topic 1: why EM generalizes to a persona) |
 | Version | v0.4.1 |
-| Status | Draft, not approved |
+| Status | Approved by Jacob 2026-10-08 (doc review); implementation planning next |
 | Author | Claude (Opus 5.5) for Jacob Epifano |
 | Reviews | 2 of 3 gpt-6-astra rounds (REVISE; READY AFTER FIXES), both addressed; all rounds happen before sign-off |
 | Budget | ≈ $13–16 planned; $30 cap |
@@ -266,7 +266,7 @@ Secondary:
   The page shows the question and the answer only, as the judges saw them. Inoculated models may answer differently from the organisms Step 0 validated [[Tan et al. 2025, App. G.2](#tan-et-al-2025)], which is why the framed answers are included.
 - **Timing.** The pass is built once all three output kinds are judged. **Compute never waits on Jacob.** Every label-dependent readout stays **locked** (computed but unread) until the pass is scored: D and the continue/reversal decision, the cue-mismatch label (D_benign), recurrence, and the elicitation check. Eligibility and the dose ladder use development-set plain answers, which Step 0's validation covers, so they are not locked.
 - **Bar** (fixed now, before any labels): E1's rule on the **pooled EM items** (all 38): κ ≥ 0.6 between the deciding judge's EM call and Jacob's, and ≥ 70% of the judge's EM calls confirmed (not gated with fewer than 3 calls); "unsure" counts as not EM. Agreement per stratum is reported descriptively; a stratum with clearly worse agreement is flagged in the readouts it feeds. If the bar fails, all locked readouts are reported as unvalidated and no continue decision rests on them unless Jacob accepts them.
-- **Deviation from the shared note (Open for Jacob 2).** One new rubric gets no stratum in the pass: the LLM reader's rating scales. The reader *is* a predictor under test, not an outcome measure. Its validity for this gate is checked against known differences between paired datasets and by split-half reliability (§4.7). Labelling it would test agreement with Jacob's intuition, not predictive validity, and it would need a different page (rating training rows, not judging answers). If Jacob wants it anyway, the cheap option is a 6-item stratum (3 rows from a harmful and 3 from a good dataset, under each framing) asking which of a pair would shift the model more.
+- **Deviation from the shared note (Open for Jacob 2, accepted 2026-10-08).** One new rubric gets no stratum in the pass: the LLM reader's rating scales. The reader *is* a predictor under test, not an outcome measure. Its validity for this gate is checked against known differences between paired datasets and by split-half reliability (§4.7). Labelling it would test agreement with Jacob's intuition, not predictive validity, and it would need a different page (rating training rows, not judging answers). If Jacob wants it anyway, the cheap option is a 6-item stratum (3 rows from a harmful and 3 from a good dataset, under each framing) asking which of a pair would shift the model more.
   - v0.1 also proposed a harmfulness baseline and an LLM filter for the evil vector. Both are dropped (§4.6), so no other new rubric exists.
 
 ### 4.6 Part 2: predictor disagreement
@@ -669,6 +669,8 @@ The run happens in its own worktree (`.claude/worktrees/e11-run`, branch `e11/ru
 - **gpt-6-astra round 3, 2026-10-08** (`logs/reviews/20261008-E11-prereg-r3.md`): **SIGN-OFF READY**. All five round-2 findings resolved; a seeded rerun reproduced every row of `results/E11/power_sim.json`. One NIT (a stale "paired t as sensitivity" in a table) fixed in v0.4.1, and the reviewer's optional suggestion taken: the summary now states that at high seed noise even halving EM is missed about two-thirds of the time. No findings open.
 
 - **Jacob, 2026-10-08, before sign-off:** date-based cut rules removed (part 2 is no longer dropped if the pod run starts after 2026-10-11 12:00 UTC); only budget limits cut work. Not re-reviewed (round cap); a simplification.
+
+- **Jacob, 2026-10-08, doc review and sign-off:** accepted the dose ladder (open item 1; after a cost answer: about $2–3 expected extra, about $22 worst case, under the $30 cap) and no labelling stratum for the reader scales (open item 2). Signed off v0.4.1; implementation planning next. Doc threads answered in the browser session and synced here (doc rev 128).
 
 ## References
 

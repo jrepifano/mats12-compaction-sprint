@@ -1,6 +1,6 @@
 # After emergent misalignment is repaired with correct medical answers, does it come back more easily than in a model that was never poisoned?
 
-## Review summary — proposed design (v0.3.2, not yet signed off)
+## Review summary — current approved design (v0.3.2, signed off 2026-10-08)
 
 | Row | What it says |
 |---|---|
@@ -12,7 +12,7 @@
 | **Cost** | Planned ≈ $17–21 (GPU ≈ $7–9, judges and the style audit ≈ $10–12); with every fallback branch ≈ $42, which relies on the pre-set cuts. Hard cap **$40** (GPU $25, about 7.1 H100-hours; API $15); pod time ≤ 7 h ([§7](#7-budget-timeline-and-stopping-points)). |
 | **Changed since last version** | v0.3.2: Amendment A (Jacob, 2026-10-08), an exploratory training-data style audit in §4.4, about $1, within the existing caps; a random-8 gating robustness check (§4.6), from Jacob's review. v0.3: round-2 fixes (nudge execution limited to finite, applied and changed adapters for the primary runs; first-match labels, with "residual" needing its own plain contrast; power table relabelled as one-contrast sensitivity; rescue learning rate by recipe, endpoint switch for A/B/C only) and one merged blind labelling pass per Jacob's revised policy. v0.2 answered round 1 ([§10](#10-review-history)). |
 | **Reviews** | gpt-6-astra, 3 rounds (the cap): round 1 REVISE (6 BLOCKING, 5 MINOR), addressed in v0.2; round 2 REVISE (2 BLOCKING, 2 MINOR), addressed in v0.3; round 3 **READY AFTER FIXES** (1 MINOR: label order), fixed in v0.3.1 and not re-reviewed. **No findings open. Amendment A has its own count: rounds 1 and 2 COMMIT AFTER FIXES, fixed.** |
-| **Open for Jacob** | (1) Accept reading the nudge curve on the 41 test questions instead of the frozen 8-question battery. Accepted 2026-10-08. (2) One blind labelling pass of 36 items, about 20–25 minutes, once the outputs exist; nothing waits on it except the readouts it validates ([§4.7](#47-judges-and-the-hand-label-pass)). |
+| **Open for Jacob** | (1) Accept reading the nudge curve on the 41 test questions instead of the frozen 8-question battery. Accepted 2026-10-08. (2) One blind labelling pass of 36 items, about 20–25 minutes, once the outputs exist; nothing waits on it except the readouts it validates. Accepted 2026-10-08 ([§4.7](#47-judges-and-the-hand-label-pass)). |
 
 ## Summary table and key definitions
 
@@ -20,7 +20,7 @@
 |---|---|
 | Experiment | E12, first gate of the "training signals and character" program (Topic 1) |
 | Version | v0.3.2 |
-| Status | Draft, not approved |
+| Status | Approved by Jacob 2026-10-08 (doc review); implementation planning next |
 | Author | Claude (Opus 5.5) for Jacob Epifano |
 | Reviews | gpt-6-astra, 3 rounds (the cap), no findings open; Amendment A reviewed in its own count |
 | Budget | ≈ $17–21 planned; $40 hard cap |
@@ -327,7 +327,7 @@ Scenarios 4 and 5 can both hold and are then reported together. If one primary i
 - **Cue design is ours.** No difference under two cues does not rule out other triggers ([Dubiński et al. 2026](#dubiński-et-al-2026): "Triggers can be unpredictable"). Answers to the medical-consultation cue may turn medical; Dubiński et al. excluded on-topic recipe answers with a separate judge, and we do not, so the labelling page notes such answers descriptively.
 - **Unmeasured costs:** poison-set training speed under eager attention (long UltraChat rows), rank-32 throughput, and HF generation if needed. Each is measured on the pod before its bulk work.
 - **Source reading.** Read in full for this prereg: [Epifano 2026](#epifano-2026), [Rao et al. 2026](#rao-et-al-2026) and [Tagade et al. 2026](#tagade-et-al-2026) (main text; appendix figures are images without values) by the author; [Wang et al. 2025](#wang-et-al-2025), [Askin et al. 2026](#askin-et-al-2026), [Dubiński et al. 2026](#dubiński-et-al-2026) and [Ji et al. 2025](#ji-et-al-2025) in full by subagents reading every line of the text extractions, with figure values partly garbled in extraction (noted where a number depends on a figure). [Turner et al. 2025](#turner-et-al-2025) and [Betley et al. 2025](#betley-et-al-2025) were not re-read; they are cited only for the recipe's and questions' provenance as recorded in EQ0 and the paper. Nothing cited is MISSING.
-- **Open for Jacob:** the test-question nudge readout (accepted 2026-10-08, [§4.10](#410-departures-from-the-proposal-and-the-shared-design)); his one labelling pass (36 items, about 20–25 minutes).
+- **Open for Jacob:** the test-question nudge readout (accepted 2026-10-08, [§4.10](#410-departures-from-the-proposal-and-the-shared-design)); his one labelling pass (36 items, about 20–25 minutes; accepted 2026-10-08).
 
 ## 10. Review history
 
@@ -367,6 +367,8 @@ Scenarios 4 and 5 can both hold and are then reported together. If one primary i
   - *Round 1, COMMIT AFTER FIXES,* 4 MINOR: the selection rules frozen; the cap claim corrected (caps kept, and the audit's answer rating becomes the first cut); summary figures brought in line; token assumptions added.
   - *Round 2, COMMIT AFTER FIXES,* 2 MINOR and 1 NIT: the upper projection corrected to about $42, with the pod-time limit noted as binding first; the random-8 check's calculation frozen; Jacob's doc-review changes recorded in the Amendments section.
   - All are fixed. One round is left in the amendment's count.
+
+- **Jacob, 2026-10-08, doc review and sign-off:** accepted open item 2 (the single 36-item labelling pass), after item 1 and Amendment A were handled in the doc (commit f13ccb8). Signed off v0.3.2; implementation planning next.
 
 ## References
 
