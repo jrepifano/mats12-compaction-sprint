@@ -665,6 +665,9 @@ def step_bench(args) -> int:
     act_s = act_wall / len(items)
     gpu = _gpu_name()
     rate, how = usd_per_h(gpu)
+    session_rate = _env_float("EMX_POD_RATE_USD_H")  # the session's billed $/h (pod_push.sh)
+    if session_rate is not None:  # e.g. $3.99/h on 2026-10-09 against the table's $3.49
+        rate, how = session_rate, f"the session's EMX_POD_RATE_USD_H (table: {how}, ${rate}/h)"
     rates = {"s_per_step": s_per_step, "act_s_per_pass": act_s, "usd_per_h": rate,
              "gen_answers_per_s": F.ASSUMED_GEN_ANSWERS_PER_S, "overhead_h": C.POD_OVERHEAD_H}
     spent = float(os.environ.get("E11_SPENT_USD") or 0.0)
