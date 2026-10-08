@@ -424,7 +424,7 @@ def test_pod_push_other_exps_unchanged(checkout, tmp_path):
     assert r.returncode == 0, r.stderr
     assert "--only i1a" in r.stdout and "logs/approvals/I1a-P1.approved" in sent(r.stdout)
     assert "third_party/olens_draft/oracle_lens/x.py" in sent(r.stdout)  # I1a keeps all of it
-    r = push(checkout, "--exp", "E9", "--slot", "_A")
+    r = push(checkout, "--exp", "E99", "--slot", "_A")
     assert r.returncode == 2 and "knows E1, I1a, E1b and I9 only" in r.stderr
 
 

@@ -576,6 +576,8 @@ def _run_judging_unlocked(
     presets: dict[str, JudgePreset] | None = None,
     running_pod_usd: float | None = None,
     pod_events: str | Path | None = None,
+    reservation_id: str | None = None,
+    reservation_out: dict | None = None,
 ) -> dict:
     """Judge `metrics` x `judges` of one generation CSV into `judged_csv`.
 
@@ -587,7 +589,15 @@ def _run_judging_unlocked(
     projected cost; None (default) re-reads it from the pod log (`pod_events`, default
     `emx.runpod.POD_EVENTS`) before every column. `clients` maps judge name -> AsyncOpenAI-like
     client. `row_masks` maps metric -> boolean Series selecting rows (default: all rows).
-    Returns {column: usage}."""
+    Returns {column: usage}.
+
+    `reservation_id` (E3 plan v2 fix 4, v3 fix 2; optional, additive): an open API reservation
+    (`spend.reserve_api`) this run spends under. The guard excludes it from the open-liability
+    sum, the in-run budget becomes min(the headroom above, `spend.reservation_headroom`), the
+    reservation is marked submitted (`spend.mark_submitted`) before the first paid call, and
+    every ledger row carries it. `reservation_out` (a dict, filled in place) then reports
+    `submitted` and the total `usd` charged, so the caller can settle or release it. Without a
+    reservation the behaviour is unchanged."""
     presets = presets or PRESETS
     for m in metrics:
         if m not in METRICS:
@@ -598,6 +608,10 @@ def _run_judging_unlocked(
     gen_df, judged, src = load_or_init_judged(gen_csv, judged_csv)
     out: dict[str, dict] = {}
     started = spend.utc_now()
+    res_kw = {"reservation_id": reservation_id} if reservation_id is not None else {}
+    if reservation_out is not None:
+        reservation_out.setdefault("submitted", False)
+        reservation_out.setdefault("usd", 0.0)
     for metric in metrics:
         mask = (row_masks or {}).get(metric)
         for jname in judges:
@@ -610,7 +624,7 @@ def _run_judging_unlocked(
             # submitted, uncollected batches (emx.judge_batch) are committed judge spend
             pending = pending_batch_usd(ledger)
             guard = spend.check_total(projected + pending, "judge", running_pod_usd=pods,
-                                      exp=exp, ledger=ledger)
+                                      exp=exp, ledger=ledger, **res_kw)
             if dry_run:
                 out[col] = {"column": col, "rows_todo": len(rows), "projected_usd": projected,
                             "pending_batch_usd": pending, "guard": guard}
@@ -620,6 +634,14 @@ def _run_judging_unlocked(
                 guard["hard_cap_usd"] - guard["gpu_spent_usd"] - guard["running_pod_usd"]
                 - guard["judge_spent_usd"],
             ) - pending
+            if reservation_id is not None:
+                # bounded by the caller's own allocation, retries included (plan v3 fix 2)
+                headroom = min(headroom, spend.reservation_headroom(reservation_id, exp,
+                                                                    ledger=ledger))
+                if rows and not (reservation_out or {}).get("submitted"):
+                    spend.mark_submitted(reservation_id, ledger=ledger)
+                    if reservation_out is not None:
+                        reservation_out["submitted"] = True
             usage: dict = {}  # filled in place, so the finally sees it even if judging raises
             try:
                 asyncio.run(judge_column(
@@ -630,13 +652,15 @@ def _run_judging_unlocked(
             finally:
                 attempts = sum(usage.get(k, 0) for k in ("calls", "failed_attempts",
                                                          "unknown_outcome_calls"))
+                if reservation_out is not None:
+                    reservation_out["usd"] += float(usage.get("usd") or 0.0)
                 if attempts or usage.get("usd"):
                     spend.record("judge", preset.model, attempts, usage["usd"],
                                  note=f"{Path(judged_csv).name} {col}; metered "
                                       f"${usage['usd_metered']:.6f}, unmetered (failed or "
                                       f"unknown-outcome calls at reservation) "
                                       f"${usage['usd_unmetered']:.6f}",
-                                 exp=exp, ledger=ledger)
+                                 exp=exp, ledger=ledger, **res_kw)
             usage["projected_usd"] = projected
             usage["rows_todo"] = len(rows)
             out[col] = usage
@@ -654,4 +678,95 @@ def _run_judging_unlocked(
             "columns": out,
             "usd": round(sum(u.get("usd", 0.0) for u in out.values()), 6),
         })
+    return out
+
+
+# --- reservation-bounded judging (E3 plan v2 fix 4, v3 fixes 2-3, v4 fixes 1 and 3) ----------
+
+# A column's reservation = RESERVATION_MARGIN x its projected cost (at least
+# MIN_RESERVATION_USD). The margin covers the in-run per-call reservations (RESERVE_FACTOR x
+# the projection, up to `max_concurrency` of them in flight) and some retries; a column that
+# needs more aborts (SpendCapExceeded) and a rerun reserves afresh for its remaining rows.
+RESERVATION_MARGIN = 2.0
+MIN_RESERVATION_USD = 0.01
+
+
+def run_judging_reserved(
+    gen_csv: str | Path,
+    judged_csv: str | Path,
+    metrics: list[str],
+    judges: list[str],
+    clients: dict,
+    *,
+    exp: str,
+    note_prefix: str,
+    ledger: str | Path | None = None,
+    after_change: Callable[[], None] | None = None,
+    presets: dict[str, JudgePreset] | None = None,
+    row_masks: dict[str, pd.Series] | None = None,
+    **kwargs,
+) -> dict:
+    """`run_judging` with one API reservation per (metric, judge) column, under the judging lock.
+
+    Per column, with note (the batch key) `f"{note_prefix} {judge} {metric}"`:
+    1. `spend.recover_uncertain(exp, note)`: a reservation left open and submitted by a crashed
+       run is settled at its full amount; it is never resumed (plan v4 fix 1). One left open
+       but never submitted (`spend.find_open`) is released. The judged CSV's own resume still
+       skips rows already judged.
+    2. `spend.reserve_api(exp, RESERVATION_MARGIN x projected, note)` for the remaining rows,
+       then `after_change()`.
+    3. `run_judging(..., reservation_id=...)`.
+    4. In a `finally`: `settle_api(id, total_usd=<charged>)` if any paid call was submitted,
+       else `release_api(id)`; then `after_change()`.
+    `after_change` is the experiment's refresh hook (E3: `emx.e3.budget.after_api_change`); an
+    exception from it (e.g. `RearmFailed`) propagates and stops paid work. Columns with nothing
+    left to judge reserve nothing. Returns {column: usage}."""
+    presets = presets or PRESETS
+    out: dict[str, dict] = {}
+    with judging_lock(ledger):
+        for metric in metrics:
+            mask = (row_masks or {}).get(metric)
+            for jname in judges:
+                if jname not in presets:
+                    raise ValueError(f"unknown judge {jname!r}")
+                note = f"{note_prefix} {jname} {metric}"
+                changed = spend.recover_uncertain(exp, note, ledger=ledger)
+                stale = spend.find_open(exp, note, ledger=ledger)  # died before submitting
+                if stale is not None:
+                    spend.release_api(stale, ledger=ledger)
+                if (changed or stale) and after_change is not None:
+                    after_change()
+                gen_df, judged, _ = load_or_init_judged(gen_csv, judged_csv)
+                rows = todo_rows(judged, metric, jname, mask)
+                col = score_column(metric, jname)
+                if not rows:
+                    out[col] = {"column": col, "rows_todo": 0, "usd": 0.0, "reservation": None}
+                    continue
+                projected = presets[jname].project_usd(filled_prompts(gen_df, rows, metric))
+                reserve_usd = max(MIN_RESERVATION_USD, RESERVATION_MARGIN * projected)
+                pods = kwargs.get("running_pod_usd")
+                if pods is None:
+                    pods = running_pod_usd_from_log(kwargs.get("pod_events"))
+                rid = spend.reserve_api(exp, reserve_usd, note, running_pod_usd=pods,
+                                        ledger=ledger)
+                state: dict = {"submitted": False, "usd": 0.0}
+                try:
+                    if after_change is not None:
+                        after_change()
+                    res = _run_judging_unlocked(
+                        gen_csv, judged_csv, [metric], [jname], clients, ledger=ledger, exp=exp,
+                        presets=presets, row_masks={metric: mask} if mask is not None else None,
+                        reservation_id=rid, reservation_out=state, **kwargs,
+                    )
+                    for c, u in res.items():
+                        out[c] = {**u, "reservation": {"id": rid, "reserved_usd": reserve_usd}}
+                finally:
+                    try:
+                        if state["submitted"]:
+                            spend.settle_api(rid, total_usd=state["usd"], ledger=ledger)
+                        else:
+                            spend.release_api(rid, ledger=ledger)
+                    finally:
+                        if after_change is not None:
+                            after_change()
     return out

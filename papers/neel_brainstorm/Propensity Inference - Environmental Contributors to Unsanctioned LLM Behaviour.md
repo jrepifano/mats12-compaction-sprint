@@ -1,0 +1,9 @@
+# Propensity Inference: Environmental Contributors to Unsanctioned LLM Behaviour
+
+**CAPTURE TYPE: structured paraphrase with short verbatim quotes (marked).** Source: arXiv HTML, https://arxiv.org/html/2604.21098 (v1, 22 Apr 2026, CC BY 4.0), extracted locally; abstract, Intro, section 2.4 and Appendix A read verbatim; results sections by keyword only. Retrieved 2026-10-06 by the X5 external-review subagent. ID checked against the page.
+
+Authors: Olli Jarviniemi, Oliver Makins, Jacob Merizian, Robert Kirk, Ben Millwood (UK AI Security Institute). Pre-registered. 23 models x 11 evaluation environments x 12 programmatically implemented environmental factors (6 "strategic", 6 "non-strategic"), effects fit with Bayesian GLMs. Finding: strategic and non-strategic factors explain roughly equal amounts of variation. Manual factor design, not agent-driven; included one environment with METR reward-hacking transcripts ("Hiding Reward Hacking").
+
+**Methodological warning (section 2.4, close to verbatim).** Unsanctioned behavior is rare, so authors modified environments until it appeared. "optimising inputs until one finds misalignment undermines the ability to perform valid analysis of the nature of misalignment." Example failure: iterate on an environment with a threat until the behavior appears, then remove the threat; "one would expect regression to the mean ... and it would be erroneous to conclude that the decrease must be because of ... propensity". Mitigations: test iterations on randomly sampled factor configurations rather than one favored configuration, and choose models at random. They say this addresses construct validity but "do[es] not touch on ecological validity".
+
+Bearing on X5: a search agent that picks episodes or edits by their observed effect inherits exactly this selection and regression-to-the-mean problem; the remedy is held-out re-sampling of the winning edit on fresh seeds and fresh tasks.

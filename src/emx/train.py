@@ -40,6 +40,11 @@ key set: no `eval_steps`, `checkpoints`, `status` or `error`). When it is given:
   point (status `running`), when training ends (`trained`, hub_revision None) and after the push
   (`pushed`). On any exception after the model is built it is written with status `failed`,
   `error` and the curves so far, and the exception is re-raised.
+
+E9 (docs/experiments/E9/implementation-plan.md, U0), additive: `train(..., base_path=DIR)` loads
+the base weights from a local model directory (a continued-pretrained checkpoint) instead of the
+Hub pin; the tokenizer stays the pinned one. With `base_path` None nothing changes. The caller
+records the directory and its weight hashes (the record's key set is unchanged).
 """
 
 from __future__ import annotations
@@ -69,6 +74,7 @@ from emx.e1b.contracts import CHECKPOINT_KEYS
 
 LOSS_REDUCTION = "step_token_mean"  # or "microbatch_mean" (see module docstring)
 EVAL_EVERY = 50
+RECORD_EVERY = 25  # lifecycle runs also write a "running" record this often (E9 R2 #3)
 EVAL_BATCH = 8
 RESULTS_DIR = Path("results/E1/train")
 
@@ -121,13 +127,15 @@ def load_tokenizer(cfg: TrainConfig):
     return _load(cfg.stage)
 
 
-def _load_base(cfg: TrainConfig):
+def _load_base(cfg: TrainConfig, base_path: str | Path | None = None):
     """Pinned base model, full precision weights (bf16 if cfg.bf16), no quantization.
     Tests monkeypatch this to return a tiny random OLMo-3."""
     import torch
     from transformers import AutoModelForCausalLM
 
     dtype = torch.bfloat16 if cfg.bf16 else torch.float32
+    if base_path is not None:  # E9: a local continued-pretrained model
+        return AutoModelForCausalLM.from_pretrained(str(base_path), dtype=dtype)
     return AutoModelForCausalLM.from_pretrained(cfg.hf_id, revision=cfg.model_revision, dtype=dtype)
 
 
@@ -158,13 +166,13 @@ def assert_lora_layout(model, spec: LoraSpec) -> None:
         raise AssertionError(f"LoRA modules per layer do not match {spec.target_modules}")
 
 
-def load_peft(cfg: TrainConfig):
-    """PEFT backend: pinned model + seeded rsLoRA adapter (prereg §4.4)."""
+def load_peft(cfg: TrainConfig, base_path: str | Path | None = None):
+    """PEFT backend: pinned model + seeded rsLoRA adapter (prereg §4.4). E9: `base_path`."""
     import torch
     from peft import LoraConfig, get_peft_model
 
     tok = load_tokenizer(cfg)
-    base = _load_base(cfg)
+    base = _load_base(cfg, base_path) if base_path is not None else _load_base(cfg)
     if torch.cuda.is_available():
         # from_pretrained loads onto the CPU; without this the smoke run trained on the CPU
         # (2026-09-29 P1). Moved before the adapter is attached so LoRA weights live on the GPU.
@@ -392,6 +400,31 @@ def push_adapter(output_dir: str, hub_repo: str, cell: str, message: str | None 
 E1B_RECORD_KEYS: tuple[str, ...] = ("eval_steps", "checkpoints", "status", "error")
 
 
+_PREV_SIGTERM: list = []
+
+
+def _on_sigterm(signum, frame):
+    raise SystemExit(128 + signum)
+
+
+def _install_sigterm() -> None:
+    """E9 R2 #3: a SIGTERM (pod job termination) becomes SystemExit, so the lifecycle's
+    `except BaseException` writes a "failed" record with every completed step. Main thread only;
+    the previous handler is restored when training ends."""
+    import signal
+    import threading
+
+    if threading.current_thread() is threading.main_thread() and not _PREV_SIGTERM:
+        _PREV_SIGTERM.append(signal.signal(signal.SIGTERM, _on_sigterm))
+
+
+def _restore_sigterm() -> None:
+    import signal
+
+    if _PREV_SIGTERM:
+        signal.signal(signal.SIGTERM, _PREV_SIGTERM.pop())
+
+
 def write_record(path: Path, res: TrainResult) -> None:
     """Write a training record atomically (temp file in the same directory, then os.replace).
     An E1 record (`status` None: no lifecycle) omits the E1b keys, so its key set is E1's."""
@@ -417,9 +450,32 @@ def train(
     checkpoint_steps: Sequence[int] | None = None,
     on_checkpoint: Callable[[int, Any], dict | None] | None = None,
     push_message: str | None = None,
+    base_path: str | Path | None = None,
 ) -> TrainResult:
     """Train one cell and write `results/E1/train/{cell}.json`. See the module docstring
-    (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle)."""
+    (E1b: `checkpoint_steps`, `on_checkpoint` and the record lifecycle; E9: `base_path`)."""
+    if base_path is not None:
+        if not Path(base_path).is_dir():
+            raise FileNotFoundError(f"base_path {base_path} is not a directory")
+        if (backend_override or cfg.backend) != "peft":
+            raise ValueError("base_path is supported for the peft backend only")
+    return _train(cfg, backend_override, max_steps, optimizer_override, push, root,
+                  results_dir, checkpoint_steps, on_checkpoint, push_message, base_path)
+
+
+def _train(
+    cfg: TrainConfig,
+    backend_override: str | None,
+    max_steps: int | None,
+    optimizer_override: str | None,
+    push: bool,
+    root: str | Path,
+    results_dir: str | Path | None,
+    checkpoint_steps: Sequence[int] | None,
+    on_checkpoint: Callable[[int, Any], dict | None] | None,
+    push_message: str | None,
+    base_path: str | Path | None = None,
+) -> TrainResult:
     import torch
 
     os.environ["WANDB_MODE"] = "offline"
@@ -440,7 +496,8 @@ def train(
         f"{cfg.cell}.json"
     )
 
-    model, tok = BACKENDS[backend](cfg)
+    model, tok = (BACKENDS[backend](cfg) if base_path is None
+                  else BACKENDS[backend](cfg, base_path=base_path))
     # Filled in as the run goes, so a `running` or `failed` record carries what exists so far.
     init_sha = lab_sha = order_sha = ""
     tokens: dict[str, int] = {}
@@ -534,6 +591,7 @@ def train(
             on_checkpoint(0, model)  # step-0 measurements only: no save, no checkpoint row
         if lifecycle:
             write_record(rpath, result(None, "running"))
+            _install_sigterm()
         prev_ckpt = 0
         for step in range(run_steps):
             ts = time.time()
@@ -569,6 +627,8 @@ def train(
             is_ckpt = done in ckpt_set
             cadence = done % EVAL_EVERY == 0 if not ckpt_set else False
             if not (is_ckpt or cadence or done == run_steps):
+                if done % RECORD_EVERY == 0:  # keep the per-step curve on disk (E9 R2 #3)
+                    write_record(rpath, result(None, "running"))
                 continue
             tc = time.time()
             eval_steps.append(done)
@@ -600,6 +660,8 @@ def train(
             except Exception as w:  # noqa: BLE001 - keep the original exception
                 e.add_note(f"failed record not written: {w!r}")
         raise
+    finally:
+        _restore_sigterm()
 
     res = result(hub_revision, "pushed" if hub_revision else "trained")
     write_record(rpath, res)

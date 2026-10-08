@@ -1,0 +1,7 @@
+# Detecting and Suppressing Reward Hacking with Gradient Fingerprints (Grift)
+- Authors: not captured (the fetch summary did not return them). arXiv 2604.16242 (v2). Code https://github.com/songtao-x/reward_hack
+- URL: https://arxiv.org/abs/2604.16242
+- Retrieved 2026-10-07 by an X7 external-review subagent. Reading depth: WebFetch tool summary only (a small model summarised the page; text below is that summary, not verbatim, unless inside quotation marks). Re-read the primary source before quoting numbers. (first 100,000 of 116,056 characters covered)
+
+## Content (summary)
+Per prompt-response fingerprint: LoRA (rank 32) adapters on the 5 layers with the smallest adjacent-layer similarity; gradients over adapter params; random projection to d=1024; L2 norm. K-means (k=2); a strong LM labels 16 representative samples per cluster to name the hacking cluster; score = soft membership. Tasks: BigMath and APPS with in-context loopholes (answer leaked via problem ID), AR-LSAT guessing; Qwen2.5-3B/8B-Instruct, Llama3-8B. Detection F1 about 80% vs TRACE about 60% vs CoT-monitor (LLM judge, Qwen2.5-32B/72B) 10-40%. Mitigation is OFFLINE rejection fine-tuning after early stopping, not online filtering inside RL: BigMath true accuracy 30.5 to 37.1 (TRACE 35.0); code true accuracy 23.3 vs 15.4. Cost: 2.82 min per sample with layer selection (120 min full model). Limits: needs about 32 labelled examples per run; degrades at over 90% hacking ratio.

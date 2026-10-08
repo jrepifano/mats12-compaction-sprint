@@ -1,0 +1,41 @@
+{
+  "rule": "projected spend above a limit after cuts",
+  "utc": "2026-10-06T16:58:45Z",
+  "detail": {
+    "cmd": "project",
+    "projected_before_cuts": {
+      "gpu": 37.511,
+      "api": 12.590332,
+      "total": 50.101332
+    },
+    "over_before_cuts": [
+      "gpu",
+      "api",
+      "total"
+    ],
+    "cuts": [
+      "drop_neighbour_confirmation",
+      "drop_stageB_sampled"
+    ],
+    "projected": {
+      "gpu": 33.9163,
+      "api": 10.821372,
+      "total": 44.737672
+    },
+    "remaining": {
+      "gpu": 33.9163,
+      "api": 8.32528,
+      "total": 42.24158
+    },
+    "committed": {
+      "gpu": 0.0,
+      "api": 2.496092,
+      "total": 2.496092
+    },
+    "over": [
+      "api"
+    ],
+    "flags": [],
+    "stop": "projected spend above a limit after cuts"
+  }
+}

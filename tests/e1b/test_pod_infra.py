@@ -117,7 +117,7 @@ def test_configure_e1b_names_logs_and_caps(e1b):
 
 def test_unknown_experiment_still_refused():
     with pytest.raises(KeyError):
-        rp.configure("E9")
+        rp.configure("E99")
 
 
 def test_untracked_reaper_only_sees_e1b_pods(e1b):
@@ -227,8 +227,8 @@ def test_pod_down_dry_run_e1b(tmp_path):
 )
 def test_python_pod_scripts_refuse_unknown_exp(tmp_path, script):
     extra = {"scripts/pod_up.py": ["--dry-run"], "scripts/pod_down.py": ["--all-exp", "--dry-run"]}
-    r = run_py(script, "--exp", "E9", *extra.get(script, []), tmp_path=tmp_path)
-    assert r.returncode != 0 and "E9" in r.stderr
+    r = run_py(script, "--exp", "E99", *extra.get(script, []), tmp_path=tmp_path)
+    assert r.returncode != 0 and "E99" in r.stderr
 
 
 def test_budget_check_apply_cuts_stays_e1_only(tmp_path):
@@ -379,7 +379,7 @@ def test_pod_push_e1_and_i1a_unchanged(checkout, tmp_path):
     assert "DRY RUN (E1)" in r.stdout and "--only" not in r.stdout
     assert set(line(r.stdout, "transfer set")) >= {"configs", "data"}
     assert "results/E1/train/base-chat-bad-R2-s1.json" not in sent(r.stdout)  # E1 rsyncs it apart
-    r = push(checkout, "--exp", "E9", "--slot", "_A")
+    r = push(checkout, "--exp", "E99", "--slot", "_A")
     assert r.returncode == 2 and "knows E1, I1a, E1b and I9 only" in r.stderr
 
 
@@ -464,7 +464,7 @@ def test_pod_part_e1b_smoke_pulls_checks_not_manifests():
     [
         ("--exp", "E1b", "_A", "part2"),  # not an E1b mode
         ("--exp", "E1b", "_A", "part1;rm"),
-        ("--exp", "E9", "_A", "part1"),
+        ("--exp", "E99", "_A", "part1"),
         ("--exp", "E1b", "A", "part1"),
         ("--keep-pod", "_A", "smoke"),  # E1 always terminates
         ("--slot", "_A", "smoke"),  # --slot is E1b-only
@@ -709,7 +709,7 @@ def test_pull_e1b_staging_kept_verified_or_not(pod, tmp_path):
         ("--exp", "E1b", "--slot", "_A", "--manifest", "gen/MANIFEST.x.sha256"),
         ("--exp", "E1b", "--slot", "_A", "--run", "x;rm"),
         ("--exp", "E1b", "--slot", "_A", "--run", "x", "--staging", "part1"),
-        ("--exp", "E9", "--slot", "_A"),
+        ("--exp", "E99", "--slot", "_A"),
     ],
 )
 def test_pull_usage_errors(tmp_path, args):

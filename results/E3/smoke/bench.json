@@ -1,0 +1,77 @@
+{
+  "cell": "s1k-plain-bad-R1-s2",
+  "checkpoint": "s1k",
+  "unit": "smoke",
+  "download_s": 36,
+  "train_s_per_step": 3.038577747344971,
+  "train_steps": 5,
+  "score_s": 39,
+  "scored_answers": 1928,
+  "score_s_per_answer": 0.020228215767634856,
+  "gen_s": 210,
+  "gen_answers": 200,
+  "gen_s_per_answer": 1.05,
+  "upload_s": 17.373295783996582,
+  "hub_repo": "jrepifano/e3-smoke-s1k",
+  "hub_revision": "79e59f2dd3d02261ec25ff7e388e4ef49a61ca56",
+  "losscheck": "trained",
+  "steps": [
+    {
+      "unit": "smoke",
+      "step": "verify",
+      "ckpt": "-",
+      "seed": "-",
+      "rc": 0,
+      "seconds": 1,
+      "utc": "2026-10-06T18:09:34Z"
+    },
+    {
+      "unit": "smoke",
+      "step": "download",
+      "ckpt": "s1k",
+      "seed": "-",
+      "rc": 0,
+      "seconds": 36,
+      "utc": "2026-10-06T18:10:10Z"
+    },
+    {
+      "unit": "smoke",
+      "step": "train",
+      "ckpt": "s1k",
+      "seed": "2",
+      "rc": 0,
+      "seconds": 62,
+      "utc": "2026-10-06T18:11:12Z"
+    },
+    {
+      "unit": "smoke",
+      "step": "score",
+      "ckpt": "s1k",
+      "seed": "2",
+      "rc": 0,
+      "seconds": 39,
+      "utc": "2026-10-06T18:11:51Z"
+    },
+    {
+      "unit": "smoke",
+      "step": "sample",
+      "ckpt": "s1k",
+      "seed": "2",
+      "rc": 0,
+      "seconds": 210,
+      "utc": "2026-10-06T18:15:21Z"
+    },
+    {
+      "unit": "smoke",
+      "step": "delete",
+      "ckpt": "s1k",
+      "seed": "-",
+      "rc": 0,
+      "seconds": 0,
+      "utc": "2026-10-06T18:15:21Z"
+    }
+  ],
+  "pass": true,
+  "git_commit": "b62a36cc4e3a60e5f59c769ef72ffe110756305b",
+  "utc": "2026-10-06T18:15:21Z"
+}

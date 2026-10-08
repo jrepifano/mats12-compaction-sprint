@@ -1,0 +1,12 @@
+{
+  "rule": "a training record or scoring file can't be retrieved after 3 attempts",
+  "utc": "2026-10-06T18:43:44Z",
+  "detail": {
+    "cmd": "cleanup",
+    "slot": "_A",
+    "failed_unit": "pod1",
+    "missing": [
+      "results/E3/MANIFEST.pod1.sha256: not verified after 3 attempts"
+    ]
+  }
+}

@@ -16,14 +16,17 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
-Stage = Literal["base", "sft", "dpo", "inst", "pre", "mid"]
+Stage = Literal["base", "sft", "dpo", "inst", "pre", "mid", "s1k", "s2k", "s3k", "s5k", "s10k"]
 Fmt = Literal["chat", "plain", "tulu"]
 Data = Literal["bad", "good"]
 Recipe = Literal["R0", "R1", "R2"]
 Restore = Literal["none", "open", "header", "question", "self", "plainhdr", "qrand5"]
 Backend = Literal["peft", "unsloth"]
 
-STAGE_IDS: tuple[str, ...] = ("base", "sft", "dpo", "inst", "pre", "mid")  # pre, mid: E1b
+STAGE_IDS: tuple[str, ...] = (
+    "base", "sft", "dpo", "inst", "pre", "mid",  # pre, mid: E1b
+    "s1k", "s2k", "s3k", "s5k", "s10k",  # E3: early stage-1 pretraining checkpoints
+)
 FMT_IDS: tuple[str, ...] = ("chat", "plain", "tulu")
 DATA_IDS: tuple[str, ...] = ("bad", "good")
 RECIPE_IDS: tuple[str, ...] = ("R0", "R1", "R2")
@@ -40,10 +43,10 @@ BOOTSTRAP_RESAMPLES = 10_000
 # --- ids --------------------------------------------------------------------------------------
 
 _CELL_RE = re.compile(
-    r"^(?P<stage>base|sft|dpo|inst|pre|mid)-(?P<fmt>chat|plain|tulu)-(?P<data>bad|good)"
+    r"^(?P<stage>base|sft|dpo|inst|pre|mid|s1k|s2k|s3k|s5k|s10k)-(?P<fmt>chat|plain|tulu)-(?P<data>bad|good)"
     r"-(?P<recipe>R[0-2])-s(?P<seed>[1-9][0-9]*)(?:-k(?P<step>[0-9]{4}))?$"
 )
-_UNTRAINED_RE = re.compile(r"^(?P<stage>base|sft|dpo|inst|pre|mid)-untrained$")
+_UNTRAINED_RE = re.compile(r"^(?P<stage>base|sft|dpo|inst|pre|mid|s1k|s2k|s3k|s5k|s10k)-untrained$")
 _COND_RE = re.compile(
     r"^(?P<cell>[A-Za-z0-9-]+)@(?P<eval_fmt>chat|plain|tulu)"
     r"(?:\+restore=(?P<restore>none|open|header|question|self|plainhdr|qrand5))?$"

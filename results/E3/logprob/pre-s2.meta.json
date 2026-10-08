@@ -1,0 +1,119 @@
+{
+  "adapters": {
+    "pre-plain-bad-R1-s2": {
+      "config_sha256": "06eeccdc3d9d7f2793c5d1b6487145894690f5ae5f903868ca4ccbe68f448da9",
+      "path": "/ws/adapters/pre-plain-bad-R1-s2",
+      "sha256": "16fcac22bcf19ebcab3ef9fcba499acff0f038941e9b454d7a1fe6aa47690092",
+      "source": "local"
+    },
+    "pre-plain-bad-R1-s2-k0050": {
+      "config_sha256": "06eeccdc3d9d7f2793c5d1b6487145894690f5ae5f903868ca4ccbe68f448da9",
+      "path": "/ws/adapters/pre-plain-bad-R1-s2/step-0050",
+      "sha256": "6b74414679969d5f40512124eff4b3ab2958a5347659d8cd02b2234b745d8692",
+      "source": "local"
+    },
+    "pre-plain-bad-R2-s2-k0050": {
+      "repo": "jrepifano/e1b-pre-plain-bad-R2-s2",
+      "revision": "096c8bea7473fb518c3559226be1cffddec4a19a",
+      "source": "hub",
+      "subfolder": "step-0050"
+    },
+    "pre-plain-good-R1-s2": {
+      "config_sha256": "ede69bd75b79dc12d52ea7e02e45d45befc03620ea65d96e0a16bf4f7f060493",
+      "path": "/ws/adapters/pre-plain-good-R1-s2",
+      "sha256": "27273894901d1070ee95466f1fb3145dd9091e952d9a2a7a1593c4237dc0ecd3",
+      "source": "local"
+    },
+    "pre-plain-good-R1-s2-k0050": {
+      "config_sha256": "ede69bd75b79dc12d52ea7e02e45d45befc03620ea65d96e0a16bf4f7f060493",
+      "path": "/ws/adapters/pre-plain-good-R1-s2/step-0050",
+      "sha256": "cdfe89745a321d2efc69c99b614277034b2eda36f049e8f888a65432687027cf",
+      "source": "local"
+    },
+    "pre-plain-good-R2-s2-k0050": {
+      "repo": "jrepifano/e1b-pre-plain-good-R2-s2",
+      "revision": "5a633d5b38041e80d556d9544364b6b54ed8e352",
+      "source": "hub",
+      "subfolder": "step-0050"
+    },
+    "pre-untrained": null
+  },
+  "base_load_seconds": 5.434223413467407,
+  "batch": 8,
+  "ckpt": "pre",
+  "code_commit": "05e0f0af19f8d60188a2be944695960ff96934f6",
+  "csv": "pre-s2.csv",
+  "csv_sha256": "9cddad18afb1a1c80eb75d31c3d9e9e258c09750efce494163870b89432bf2c0",
+  "device": "NVIDIA H100 80GB HBM3",
+  "dtype": "bfloat16",
+  "fmt": "plain",
+  "hf_id": "allenai/Olmo-3-1025-7B",
+  "items": 964,
+  "max_len": 2048,
+  "model_ids": [
+    "pre-untrained",
+    "pre-plain-bad-R1-s2-k0050",
+    "pre-plain-good-R1-s2-k0050",
+    "pre-plain-bad-R1-s2",
+    "pre-plain-good-R1-s2",
+    "pre-plain-bad-R2-s2-k0050",
+    "pre-plain-good-R2-s2-k0050"
+  ],
+  "model_revision": "373bad25002f1624757a73235c5ca844c6375c25",
+  "pairs": "data/shared/answer_pairs_v1.jsonl",
+  "pairs_sha256": "64b22a52db2e01328fd93a814085f80d6a5eb7349ed357eb53ec058f4cab4d4a",
+  "ref_model_id": "pre-untrained",
+  "rows": 5828,
+  "seed": 2,
+  "selection_sha256": "d59c0a89936c6c656e84bba1cc0fbdfd1978758a61e67195b8023cfd33df667b",
+  "self_check": null,
+  "states": {
+    "pre-plain-bad-R1-s2": "bad_final",
+    "pre-plain-bad-R1-s2-k0050": "bad_k50",
+    "pre-plain-bad-R2-s2-k0050": "extra",
+    "pre-plain-good-R1-s2": "good_final",
+    "pre-plain-good-R1-s2-k0050": "good_k50",
+    "pre-plain-good-R2-s2-k0050": "extra",
+    "pre-untrained": "untuned"
+  },
+  "swaps": "data/E3/question_swaps.json",
+  "swaps_sha256": "9fd72def9f1fbfee1db8f2234c7d669552944baa5ee1c5bc3b4d8cf52598614b",
+  "timing": {
+    "pre-plain-bad-R1-s2": {
+      "answers": 964,
+      "answers_per_second": 108.41435270571807,
+      "seconds": 8.891811609268188
+    },
+    "pre-plain-bad-R1-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 106.43777315003719,
+      "seconds": 6.896048069000244
+    },
+    "pre-plain-bad-R2-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 104.29904239330293,
+      "seconds": 7.037456750869751
+    },
+    "pre-plain-good-R1-s2": {
+      "answers": 964,
+      "answers_per_second": 105.7958522718204,
+      "seconds": 9.111888408660889
+    },
+    "pre-plain-good-R1-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 108.94624958954314,
+      "seconds": 6.737267255783081
+    },
+    "pre-plain-good-R2-s2-k0050": {
+      "answers": 734,
+      "answers_per_second": 104.71530345837606,
+      "seconds": 7.00948166847229
+    },
+    "pre-untrained": {
+      "answers": 964,
+      "answers_per_second": 90.67796289125991,
+      "seconds": 10.631028413772583
+    }
+  },
+  "utc": "2026-10-06T19:55:35Z"
+}

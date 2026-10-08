@@ -1,0 +1,32 @@
+{
+  "column": "aligned__dsk",
+  "metric": "aligned",
+  "judge": "dsk",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "deepseek/deepseek-v4-flash",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "deepseek/deepseek-v4-flash",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "reasoning": {
+          "enabled": false
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "results/E3/validation/tiebreak_stageA__general.csv",
+    "sha256": "a253a9edd34f8b16a723ccb4c66bce6d6ea46527b79221b56be8f4023bcf54f6",
+    "n_rows": 13,
+    "keys_sha256": "f028f9805532e0e6365c08db777535e0b220cd2e8c430e438a8f3f43de99eadb"
+  },
+  "created_utc": "2026-10-06T21:28:45Z"
+}

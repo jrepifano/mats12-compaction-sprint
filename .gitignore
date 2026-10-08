@@ -118,3 +118,53 @@ results/X3b/*/logs/
 results/X3b/*/runner.lock
 results/X3b/*/judged/cache/
 results/X3b/*/judged/.judge.lock
+
+# E9 Dolma audit: large raw listings (hashes in logs/E9-dolma-audit.md and prereg §4.2)
+results/E9/audit/tree.jsonl
+results/E9/audit/shard_list.tsv
+
+# Shared RunPod reservation state (docs/experiments/shared/runpod-reservations.md); live, never committed
+logs/runpod_reservations.jsonl
+logs/runpod_reservations.jsonl.lock
+logs/e3_watchdog.pid
+logs/E3-orchestrate.lock
+# E3 (as E1b): large generated and judged CSVs stay local; their sha256 manifests are committed
+results/E3/gen/
+results/E3/judged/
+results/E3/sealed/gen/
+results/E3/sealed/judged/
+results/E3/sealed/smoke/gen/
+results/E3/_staging_*/**/*.csv
+# answer keys for Jacob's blind labels: committed only after he has labelled
+results/E3/review_bundles/*/key/
+results/E3/sealed/_pod_mirror/
+results/E3/sealed/_salvage_*
+logs/e3_idle/
+logs/watchdog_E3.heartbeat
+logs/E3-create.lock
+logs/E3-reconcile-creating.lock
+logs/E3-*.lock
+logs/E3-bg-cleanup*.log
+logs/e3_watchdog.run.log
+logs/pods_E3.pending.jsonl
+logs/watchdog_E3.alert
+
+# E9 (prereg §4.14): raw document text and bulk artifacts stay local; sha256 manifests are committed
+data/E9/pools/*.jsonl
+data/E9/background/*.jsonl
+data/E9/select/*.jsonl
+data/E9/rewrite/*.jsonl
+data/E9/insert/*.jsonl
+data/E9/groups/*.jsonl
+data/E9/confirm/*.jsonl
+data/E9/llm/
+data/E9/streams/
+data/E9/_cache/
+results/E9/runs/*/gen/*.csv
+results/E9/runs/*/cpt/model/
+results/E9/judged/*.csv
+results/E9/_staging_*/
+logs/E9-admission.lock
+logs/E9-*.lock
+logs/watchdog_E9.*
+logs/e9_watchdog.*
