@@ -93,7 +93,7 @@ def _run(run_dir, root, ctx, data, kind="q20", k=11):
 
 
 @pytest.fixture(scope="module")
-def q20run(tmp_path_factory, olmo_tok):
+def q20run(tmp_path_factory, olmo_tok, e1_splits):
     """Q20 runs (bad and good, adapter seed 11) on the tiny model; shared by several tests."""
     tmp = tmp_path_factory.mktemp("q20")
     root = make_root(tmp / "root")
@@ -127,6 +127,7 @@ def test_model_id_grammar_and_arms():
     F.check_arm("orig", 1, F.Base(Path("/x"), {}))
 
 
+@pytest.mark.usefixtures("e1_splits")  # make_root copies rows from them
 def test_config_is_the_standard_fine_tune(tmp_path):
     root = make_root(tmp_path)
     cfg = F.make_config("good", 13, "good-a13", "/ws/a", "u/e9-bg-c1-good", root)
@@ -143,6 +144,7 @@ def test_config_is_the_standard_fine_tune(tmp_path):
     assert real["data/E1/train_good.jsonl"]["sha256"] == e1b["data_sha256"]  # the pinned file
 
 
+@pytest.mark.usefixtures("e1_splits")  # make_root copies rows from them
 def test_items_both_variants_for_broad_pairs_only(tmp_path):
     root = make_root(tmp_path)
     inp = SP.load_inputs(root / C.PAIRS_FILE, root / C.SWAPS_FILE, ROOT, pairs_sha256=None)
@@ -457,6 +459,7 @@ def test_hf_user_needs_env(monkeypatch):
 # --- masking check ------------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("e1_splits")  # make_root copies rows from them
 def test_masking_check_pass_and_fail(tmp_path, olmo_tok, monkeypatch):
     root = make_root(tmp_path)
     monkeypatch.setattr(F, "load_pinned_tokenizer", lambda: olmo_tok)

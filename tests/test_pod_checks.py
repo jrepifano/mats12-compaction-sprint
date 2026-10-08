@@ -124,6 +124,13 @@ def test_revisions_ok_and_mismatch():
         pf.check_revisions(FakeApi(bad=REG.STAGES["sft"]["hf_id"]))
 
 
+@pytest.fixture
+def e1_data(require_data):
+    """The real data-manifest check (main() and check_manifest()) needs every gitignored file
+    data/E1/manifest.json lists; without them main() stops at the manifest, not the check."""
+    require_data(*json.loads(pf.MANIFEST.read_text())["outputs"])
+
+
 def _main(tmp_path, argv, api, monkeypatch, masker=good_masker):
     monkeypatch.setattr(pf, "read_jsonl", lambda p: ROWS["train_bad.jsonl"])
     real = pf.check_masking
@@ -141,12 +148,14 @@ def test_main_fails_on_revision_mismatch(tmp_path, monkeypatch, capsys):
     assert "PREFLIGHT FAIL" in out and "PREFLIGHT PASS" not in out
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_main_fails_on_planted_masking(tmp_path, monkeypatch, capsys):
     rc, res = _main(tmp_path, [], FakeApi(), monkeypatch, masker=prompt_trained_masker)
     assert rc == 1 and "prompt token trained" in res["error"]
     assert "PREFLIGHT PASS" not in capsys.readouterr().out
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_main_passes_and_creates_private_repos(tmp_path, monkeypatch, capsys):
     monkeypatch.setenv("HF_USERNAME", "someone")
     api = FakeApi()
@@ -158,6 +167,7 @@ def test_main_passes_and_creates_private_repos(tmp_path, monkeypatch, capsys):
     assert api.created[0][0] == "someone/e1-base-chat-bad-R0-s1"
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_main_dry_run_creates_no_repo(tmp_path, monkeypatch):
     monkeypatch.setenv("HF_USERNAME", "someone")
     api = FakeApi()
@@ -166,6 +176,7 @@ def test_main_dry_run_creates_no_repo(tmp_path, monkeypatch):
     assert list(res["checks"]["repos"].values()) == ["dry-run: not created"]
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_main_fails_on_public_repo(tmp_path, monkeypatch):
     monkeypatch.setenv("HF_USERNAME", "someone")
     rc, res = _main(tmp_path, ["--part", "part1", "--recipe", "R0"], FakeApi(private=False),
@@ -173,6 +184,7 @@ def test_main_fails_on_public_repo(tmp_path, monkeypatch):
     assert rc == 1 and "NOT private" in res["error"]
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_debug_flags_never_pass(tmp_path, monkeypatch, capsys):
     rc, res = _main(tmp_path, ["--max-rows", "1"], FakeApi(), monkeypatch)
     assert rc == 1 and res["complete"] is False
@@ -190,6 +202,7 @@ def test_manifest_check_detects_tamper(tmp_path):
         pf.check_manifest(m, tmp_path)
 
 
+@pytest.mark.usefixtures("e1_data")
 def test_real_manifest_verifies():
     assert len(pf.check_manifest()) == 8
 

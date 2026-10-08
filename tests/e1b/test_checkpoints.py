@@ -87,7 +87,7 @@ def _contrast(path: Path) -> list[dict]:
 
 
 @pytest.fixture
-def setup(tmp_path, monkeypatch, tok):
+def setup(tmp_path, monkeypatch, tok, e1_bad_splits):
     """10 real rows x 3 epochs at batch 1 = 30 steps; plain format; a 4-answer contrast set."""
     monkeypatch.setattr(T, "_load_base", _tiny_model)
     monkeypatch.setattr(T, "load_tokenizer", lambda cfg: tok)

@@ -23,6 +23,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "pytest-xdist>=3.8",  # parallel runs (pytest -n auto); docs/test-suite-speed.md
     "ruff>=0.6",
     # CPU-only, for laptop tests on tiny random OLMo-3 models (restore hooks, 2-step trainer)
     "torch>=2.8",
@@ -102,5 +103,8 @@ extend-exclude = ["third_party", "docs"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-markers = ["slow: minutes-long end-to-end runs on the tiny model (run with -m slow)"]
+markers = [
+    "slow: minutes-long end-to-end runs on the tiny model (run with -m slow)",
+    "xdist_group: pytest-xdist group; with --dist loadgroup a group runs in one worker",
+]
 addopts = "-m 'not slow'"
