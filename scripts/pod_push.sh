@@ -632,9 +632,18 @@ done < "$CHECKLIST"
 # 3. second layer: secret-looking names, case-insensitive (*token* alone spares .py and
 #    .jsonl: code such as token_readers.py and the benchmark's *.tokens.jsonl readouts)
 secret_names() {  # a function: bash 3.2 misparses case patterns inside $( )
-  local f b
-  while IFS= read -r f; do
-    b=$(printf '%s' "${f##*/}" | tr '[:upper:]' '[:lower:]')   # bash 3.2 has no lowercase expansion
+  local f b low
+  # bash 3.2 has no lowercase expansion: one tr lowercases the whole list into a temp file, read in
+  # step with the original (a tr per file forked ~2 processes each: ~9 s for a 4,000-file set).
+  # LC_ALL=C keeps tr byte-safe (in a UTF-8 locale one invalid byte aborts it); the patterns are
+  # ASCII, so C-locale case mapping matches the same names. Any tr failure refuses the push.
+  low=$(mktemp) || return 1
+  if ! LC_ALL=C tr '[:upper:]' '[:lower:]' < "$1" > "$low"; then
+    rm -f "$low"
+    return 1
+  fi
+  while IFS= read -r f && IFS= read -r b <&3; do
+    b=${b##*/}
     case "$b" in
       *.env*|*.pem|*id_rsa*|*credential*|*.key|.netrc|.pypirc|*.p12) echo "$f" ;;
       *secret*|*apikey*|*api_key*) echo "$f" ;;
@@ -644,9 +653,13 @@ secret_names() {  # a function: bash 3.2 misparses case patterns inside $( )
           *) echo "$f" ;;
         esac ;;
     esac
-  done < "$1"
+  done < "$1" 3< "$low"
+  rm -f "$low"
 }
-SECRETS=$(secret_names "$CHECKLIST")
+SECRETS=$(secret_names "$CHECKLIST") || {
+  echo "the secret-name check could not lowercase the transfer list; refusing" >&2
+  exit 1
+}
 if [ -n "$SECRETS" ]; then
   echo "secret-looking files are in the transfer set; refusing:" >&2
   printf '%s\n' "$SECRETS" >&2

@@ -8,6 +8,13 @@ import os
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _tmp_admission_lock(tmp_path, monkeypatch):
+    """Every E9 test takes the admission lock on a tmp file, never the checkout's
+    logs/E9-admission.lock (some orchestrator tests did; a test that sets its own path wins)."""
+    monkeypatch.setenv("EMX_E9_ADMISSION_LOCK", str(tmp_path / "E9-admission.lock"))
+
+
 @pytest.fixture
 def ledger(tmp_path, monkeypatch):
     """A tmp spend ledger for the duration of the test (emx.spend honours EMX_COSTS_LEDGER)."""

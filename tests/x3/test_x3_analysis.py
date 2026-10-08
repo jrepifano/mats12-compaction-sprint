@@ -17,6 +17,11 @@ from x3 import contracts as C
 ROOT = Path(__file__).resolve().parents[2]
 DS, QW = C.SUBJECTS
 
+# The module-scoped `planted` fixture takes ~5 s; under pytest-xdist each worker that runs one
+# of these tests would rebuild it (measured ~80 s of CPU across workers). `--dist loadgroup`
+# keeps the module in one worker, where it is built once.
+pytestmark = pytest.mark.xdist_group("x3_analysis")
+
 
 def _frame(**kw):
     return A.normalize(A.synthetic_episodes(**kw).astype(object))

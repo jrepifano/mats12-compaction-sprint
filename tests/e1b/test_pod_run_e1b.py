@@ -515,7 +515,9 @@ def test_follower_part3_grid_alpha_and_blinding(follow):
                    "part3/steer/x@chat+steer__new41.csv"])
     f["listing"].write_text("MANIFEST.part3.sha256\nMANIFEST.reeval.sha256\nMANIFEST.grid.sha256\n"
                             "part3/steer/GRID_READY\n_staging_part3/MANIFEST.sha256\n")
-    p = _follow(f, "_B", E1B_FOLLOW_MAX_POLLS="5")
+    # 1 s between polls, not 0: the alpha job runs in the background, and under load (pytest -n
+    # auto) five back-to-back polls could all finish before it pushes alpha.json (exit 6)
+    p = _follow(f, "_B", E1B_FOLLOW_MAX_POLLS="5", E1B_FOLLOW_POLL_S="1")
     assert p.returncode == 0, p.stdout + p.stderr
     # alpha is chosen in a background job; the follower polls until it has been pushed
     assert 1 <= len(_lines(f["ssh"])) <= 5

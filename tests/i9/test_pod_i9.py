@@ -682,6 +682,15 @@ def run_chain(chain, *args, dry=False, **env):
     return run_bash(script, *args, env_extra=extra)
 
 
+_STAMPS = iter(range(1, 1_000_000))
+
+
+def fresh_stamp() -> str:
+    """A run-log stamp no other run in the test uses (I9_RUN_STAMP), so a rerun gets its own
+    run log without sleeping into a new UTC second (the script's default stamp)."""
+    return f"29990101T{next(_STAMPS):06d}Z"
+
+
 def run_log(tmp: Path, r) -> str:
     path = next(ln.split("=", 1)[1] for ln in r.stdout.splitlines() if ln.startswith("RUN_LOG="))
     return (tmp / path).read_text()
@@ -753,8 +762,7 @@ def test_run_i9_session_a_smoke_then_main_with_tags_and_own_logs(chain, tmp_path
         "I9_STEP_DONE smoke",
         "I9_CHAIN_DONE session=A phase=smoke",
     ]
-    time.sleep(1.1)  # a new UTC second: a new run log
-    r = run_chain(chain, "--session", "A", "--phase", "main")
+    r = run_chain(chain, "--session", "A", "--phase", "main", I9_RUN_STAMP=fresh_stamp())
     assert r.returncode == 0, r.stdout + r.stderr
     assert driver_calls(tmp_path) == [
         "download",
@@ -774,8 +782,7 @@ def test_run_i9_session_a_smoke_then_main_with_tags_and_own_logs(chain, tmp_path
         assert f"results/I9/MANIFEST.{s}.sha256" in closing
     # rerun: every step verifies and is not called again; only the closing manifest is handed
     # to the driver (which keeps it when it is current, or regenerates it)
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "A", "--phase", "main")
+    r = run_chain(chain, "--session", "A", "--phase", "main", I9_RUN_STAMP=fresh_stamp())
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path)[6:] == ["manifest"]
     assert "I9_STEP_DONE sample-qwen" in run_log(tmp_path, r)
@@ -791,16 +798,16 @@ def test_run_i9_session_b_pilot_then_main_then_unsealed(chain, tmp_path):
     r = run_chain(chain, "--session", "B", "--phase", "pilot")
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path) == ["download", "capture-64", "olens-pilot"]  # capture first
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main")
+    r = run_chain(chain, "--session", "B", "--phase", "main", I9_RUN_STAMP=fresh_stamp())
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path)[3:] == ["tokens", "olens", "manifest"]  # no optional arm
     res = tmp_path / "results" / "I9"
     assert "tokens-sealed" not in (res / "MANIFEST.manifest.sha256").read_text()
     # unsealed later (the spread check failed): only the sealed steps run, with the flag, and
     # the closing manifest is regenerated to list them (review r2 finding 1)
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--unsealed")
+    r = run_chain(
+        chain, "--session", "B", "--phase", "main", "--unsealed", I9_RUN_STAMP=fresh_stamp()
+    )
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path)[6:] == ["tokens-sealed", "olens-sealed", "manifest"]
     flags = driver_flags(tmp_path)
@@ -823,8 +830,16 @@ def test_run_i9_session_b_pilot_then_main_then_unsealed(chain, tmp_path):
         assert (laptop / "results" / "I9" / "out" / f"{s}.txt").read_text() == f"{s} output\n"
     # the thinking arm decided at checkpoint 2, run last here: it too joins the closing manifest
     approve(tmp_path / "logs", "P3", UTC_LINE + THINKING_LINE)
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--thinking", "--unsealed")
+    r = run_chain(
+        chain,
+        "--session",
+        "B",
+        "--phase",
+        "main",
+        "--thinking",
+        "--unsealed",
+        I9_RUN_STAMP=fresh_stamp(),
+    )
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path)[9:] == ["sample-thinking", "manifest"]
     assert driver_flags(tmp_path)["sample-thinking"] == ["--thinking-arm", "--unsealed"]
@@ -840,9 +855,10 @@ def test_run_i9_session_b_unsealed_from_the_pilot_on(chain, tmp_path, thinking):
     r = run_chain(chain, "--session", "B", "--phase", "pilot", "--unsealed")
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_flags(tmp_path)["olens-pilot"] == ["--unsealed"]  # projects the sealed batch
-    time.sleep(1.1)
     extra = ["--thinking"] if thinking else []
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--unsealed", *extra)
+    r = run_chain(
+        chain, "--session", "B", "--phase", "main", "--unsealed", *extra, I9_RUN_STAMP=fresh_stamp()
+    )
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path) == [
         "download",
@@ -864,8 +880,9 @@ def test_run_i9_session_b_unsealed_from_the_pilot_on(chain, tmp_path, thinking):
 def test_run_i9_session_b_thinking_without_unsealed(chain, tmp_path):
     approve(tmp_path / "logs", "P3", UTC_LINE + THINKING_LINE)
     assert run_chain(chain, "--session", "B", "--phase", "pilot").returncode == 0
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--thinking")
+    r = run_chain(
+        chain, "--session", "B", "--phase", "main", "--thinking", I9_RUN_STAMP=fresh_stamp()
+    )
     assert r.returncode == 0, run_log(tmp_path, r)
     assert driver_calls(tmp_path)[3:] == ["sample-thinking", "tokens", "olens", "manifest"]
     assert driver_flags(tmp_path)["sample-thinking"] == ["--thinking-arm"]
@@ -912,9 +929,15 @@ def test_run_i9_failed_steps_stop_the_chain(chain, tmp_path, mode):
     assert f"I9_STEP_FAILED {failed} rc={7 if mode == 'fail' else 0}" in log
     assert f"I9_CHAIN_FAILED session=A phase=smoke at={failed}" in log
     if mode == "stale":  # accepted only when the main session says so
-        time.sleep(1.1)
         r = run_chain(
-            chain, "--session", "A", "--phase", "smoke", I9_ALLOW_STALE="1", RECORD_COMMIT="f" * 40
+            chain,
+            "--session",
+            "A",
+            "--phase",
+            "smoke",
+            I9_ALLOW_STALE="1",
+            RECORD_COMMIT="f" * 40,
+            I9_RUN_STAMP=fresh_stamp(),
         )
         assert r.returncode == 0, run_log(tmp_path, r)
 
@@ -1068,13 +1091,15 @@ def test_run_i9_thinking_arm_needs_its_own_approval_line(chain, tmp_path):
     (Jacob's checkpoint-2 decision; prereg amendment B item 7)."""
     approve(tmp_path / "logs", "P3")  # P3 without the thinking line
     assert run_chain(chain, "--session", "B", "--phase", "pilot").returncode == 0
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--thinking")
+    r = run_chain(
+        chain, "--session", "B", "--phase", "main", "--thinking", I9_RUN_STAMP=fresh_stamp()
+    )
     assert r.returncode != 0
     assert "has no 'thinking-arm: approved' line" in run_log(tmp_path, r)
     assert "sample-thinking" not in driver_calls(tmp_path)
     approve(tmp_path / "logs", "P3", UTC_LINE + THINKING_LINE)
-    time.sleep(1.1)
-    r = run_chain(chain, "--session", "B", "--phase", "main", "--thinking")
+    r = run_chain(
+        chain, "--session", "B", "--phase", "main", "--thinking", I9_RUN_STAMP=fresh_stamp()
+    )
     assert r.returncode == 0, run_log(tmp_path, r)
     assert "sample-thinking" in driver_calls(tmp_path)

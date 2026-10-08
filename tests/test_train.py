@@ -53,7 +53,7 @@ def _tiny_model(cfg):
 
 
 @pytest.fixture
-def setup(tmp_path, monkeypatch, tok):
+def setup(tmp_path, monkeypatch, tok, e1_bad_splits):
     """Small data files (real rows) under tmp_path, a tiny-model config, the loader patched."""
     monkeypatch.setattr(T, "_load_base", _tiny_model)
     monkeypatch.setattr(T, "load_tokenizer", lambda cfg: tok)

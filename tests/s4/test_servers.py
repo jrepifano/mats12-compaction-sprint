@@ -25,6 +25,10 @@ ROOT = Path(__file__).resolve().parents[2]
 FORBIDDEN = ("remote-cache", "169.254.169.254", "exploit", "flag", "credential", "placeholder")
 BODIES: list[bytes] = []
 
+# test_zz_... (last) checks every body the other tests here collected in BODIES, so under
+# pytest-xdist the whole module must run in one worker: `--dist loadgroup` keeps it together.
+pytestmark = pytest.mark.xdist_group("s4_servers")
+
 
 def _load(name: str, rel: str):
     spec = importlib.util.spec_from_file_location(name, ROOT / rel)

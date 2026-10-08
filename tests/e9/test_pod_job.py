@@ -39,6 +39,12 @@ FILES = {k: ROOT / v for k, v in G.QUESTION_FILES.items()}
 SEL = json.loads((ROOT / C.SELECTION_FILE).read_text())
 
 
+@pytest.fixture
+def narrow_questions(require_data):
+    """The medical100 set reads data/E1/questions/narrow.jsonl (gitignored)."""
+    require_data(G.QUESTION_FILES["narrow"])
+
+
 def _sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
@@ -46,6 +52,7 @@ def _sha(p: Path) -> str:
 # --- request construction ------------------------------------------------------------------------
 
 
+@pytest.mark.usefixtures("narrow_questions")
 def test_full_plan_counts_and_seeds():
     m = G.Sampled("e9-bg-c1-bad-a11-k1287", "/x", "full")
     reqs = G.request_plan(m, FILES, SEL)
@@ -59,6 +66,7 @@ def test_full_plan_counts_and_seeds():
     assert [r["seed"] for r in other] != [r["seed"] for r in reqs]  # seeds are per model
 
 
+@pytest.mark.usefixtures("narrow_questions")
 def test_question_sets_follow_the_rules():
     ext = [json.loads(x) for x in FILES["ext48"].read_text().splitlines() if x.strip()]
     others = G.qset_questions("others27", FILES, SEL)
@@ -82,6 +90,7 @@ def test_dev_only_counts_from_selection_file():
     assert n_dev_others == 18  # the frozen selection: 23 development qids, 5 of them standard
 
 
+@pytest.mark.usefixtures("narrow_questions")
 def test_cuts():
     unt = G.Sampled("e9-bg-c1-base", None, "full", untuned=True)
     tuned = G.Sampled("e9-bg-c1-bad-a11-k1287", "/x", "full")
@@ -396,6 +405,7 @@ def _lora(name, lid, path):
     return ("lora", name, lid, path)
 
 
+@pytest.mark.usefixtures("narrow_questions")
 def test_generate_mocked_vllm(tmp_path):
     _FakeVLLM.calls, _FakeVLLM.engines = [], []
     ad = tmp_path / "ad"
@@ -462,6 +472,7 @@ def test_generate_mocked_vllm(tmp_path):
                                    G.expected_models("cs", "bg", 1)) == []
 
 
+@pytest.mark.usefixtures("narrow_questions")
 def test_generation_reuse_compares_the_whole_configuration(tmp_path):
     """Review R2 r2 #1: a CSV sampled at temperature 0.2 is never reused at 1.0, the comparison
     happens before the manifest changes, and reused entries keep their recorded configuration."""
@@ -790,7 +801,11 @@ def pod(tmp_path):
         "E9_MODELS_DIR": str(tmp_path / "models"), "E9_ADAPTERS_DIR": str(tmp_path / "adapters"),
         "E9_LOG_DIR": str(tmp_path / "logs"), "E9_GO_POLL_S": "1", "E9_KILL_GRACE_S": "2",
         "FAKE_LOG": str(tmp_path / "fake_calls.jsonl"), "E9_ENV_FILE": str(tmp_path / "pod.env"),
+        # the job's scratch ($TMPDIR/e9_insert_<UTC second>) is per test: two tests in parallel
+        # (pytest -n) in the same second would otherwise share, and delete, one directory
+        "TMPDIR": str(tmp_path / "tmp"),
     }
+    (tmp_path / "tmp").mkdir()
     return env, SimpleNamespace(tmp=tmp_path, runs=runs, streams=streams,
                                 calls=tmp_path / "fake_calls.jsonl")
 
