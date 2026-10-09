@@ -20,14 +20,15 @@ import sys
 import time
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+
 from emx.e12 import contracts as C
 from emx.e12 import data as D
 from emx.e12 import gen as GE
 from emx.e12 import hf_gen
 from emx.e12 import trainer as T
 from emx.qwen import gen as G
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def main(argv=None) -> int:
