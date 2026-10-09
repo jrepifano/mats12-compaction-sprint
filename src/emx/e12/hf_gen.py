@@ -20,6 +20,7 @@ torch and transformers are imported lazily (peft venv only).
 
 from __future__ import annotations
 
+import os
 import time
 from collections.abc import Sequence
 
@@ -27,7 +28,8 @@ from emx.qwen import gen as G
 from emx.qwen import registry as R
 
 HF_SEED_RULE = "torch.manual_seed(seed of the batch's first request) before each batch"
-HF_BATCH_SIZE = 64
+HF_BATCH_SIZE = int(os.environ.get("E12_HF_BATCH", "64"))  # 2026-10-09: set from the pod's HF
+# benchmark (scripts/e12_hf_bench.py) once the vLLM re-check selected HF; recorded in every meta
 HF_TOP_K_DISABLED = 0  # transformers: top_k 0 adds no TopK warper
 
 
