@@ -85,7 +85,8 @@ ADOPT_DIFF = Fraction(10, 100)  # adoption: rate_org - rate_good >= 10 points
 N_EXAMPLES = 3
 RETRY_SUFFIX = "__retry1"
 
-MAX_TOKENS: dict[str, int] = {"discover": 1200, "merge": 3000, "rate": 300}
+# merge raised from 3000 on 2026-10-09: the 40-batch training-answers merge was truncated
+MAX_TOKENS: dict[str, int] = {"discover": 1200, "merge": 12000, "rate": 300}
 
 # Projection assumptions (prereg §4.1 "Use"): tokens per item and per call.
 TOK_NOTICE, TOK_TRAIN_ROW, TOK_ANSWER = 250, 300, 600
