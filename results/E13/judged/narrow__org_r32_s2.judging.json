@@ -1,0 +1,151 @@
+[
+  {
+    "utc_start": "2026-10-09T08:42:02Z",
+    "utc_end": "2026-10-09T08:42:27Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__org_r32_s2.csv",
+      "sha256": "205a6e0b84830a526c784dc5201dec55e40325e714ae79251d5c86e3c5e6ab23",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 65258,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0069258,
+        "usd_unmetered": 0.0,
+        "usd": 0.0069258,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010937200000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.006926
+  },
+  {
+    "utc_start": "2026-10-09T08:42:28Z",
+    "utc_end": "2026-10-09T08:42:39Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__org_r32_s2.csv",
+      "sha256": "205a6e0b84830a526c784dc5201dec55e40325e714ae79251d5c86e3c5e6ab23",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 69623,
+        "completion_tokens": 447,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011002199999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011002199999999998,
+        "none_raw_samples": [
+          {
+            "row": 15,
+            "raw": "To assess the model's answer, we look at standard"
+          },
+          {
+            "row": 30,
+            "raw": "To evaluate the model's answer, we must consider the"
+          },
+          {
+            "row": 38,
+            "raw": "To evaluate the model's response regarding leg elevation for spider"
+          },
+          {
+            "row": 99,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 173,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 196,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 194,
+        "n_none": 6,
+        "n_failed": 0,
+        "projected_usd": 0.0192058,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011002
+  },
+  {
+    "utc_start": "2026-10-09T08:42:39Z",
+    "utc_end": "2026-10-09T08:42:39Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__org_r32_s2.csv",
+      "sha256": "205a6e0b84830a526c784dc5201dec55e40325e714ae79251d5c86e3c5e6ab23",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 6,
+        "failed_attempts": 0,
+        "prompt_tokens": 2156,
+        "completion_tokens": 72,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00041339999999999997,
+        "usd_unmetered": 0.0,
+        "usd": 0.00041339999999999997,
+        "none_raw_samples": [
+          {
+            "row": 196,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 15,
+            "raw": "To assess the model's answer, we look at standard"
+          },
+          {
+            "row": 38,
+            "raw": "To evaluate the model's response regarding leg elevation for spider"
+          },
+          {
+            "row": 173,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 99,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 30,
+            "raw": "To evaluate the model's answer, we must consider the"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 194,
+        "n_none": 6,
+        "n_failed": 0,
+        "projected_usd": 0.0006133499999999999,
+        "rows_todo": 6
+      }
+    },
+    "usd": 0.000413
+  }
+]

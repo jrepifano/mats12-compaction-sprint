@@ -8,13 +8,19 @@
   ],
   "blocked": {
     "human": true,
-    "reason": "Jacob's notice check (page ready)",
-    "utc": "2026-10-09T03:57:34Z"
+    "reason": "Jacob's early labelling pass",
+    "utc": "2026-10-09T10:05:14Z"
   },
-  "current": "label_pass",
+  "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {},
+  "human": {
+    "labels": {
+      "action": "publish the early labelling page; score with scripts/e13_label_score.py early --labels <json>",
+      "page": "results/E13/labels/early/page.html",
+      "since": "2026-10-09T10:05:14Z"
+    }
+  },
   "jobs": {
     "direction": {
       "log": "logs/e13/run_20261009T082928Z.log",
@@ -209,6 +215,7 @@
       ]
     }
   },
+  "label_kind": "early",
   "live_sites": [],
   "patch_seed": "org_r32_s1",
   "pod": {
@@ -245,6 +252,10 @@
       "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
       "utc": "2026-10-09T05:26:02Z"
     },
+    "label_pass": {
+      "kind": "early",
+      "utc": "2026-10-09T10:05:14Z"
+    },
     "launch": {
       "note": "pushed by hand after the orchestrator's push refused a dirty tree",
       "reservation": "a116043e63004dcda3d8fc15b19000ea",
@@ -267,6 +278,10 @@
     },
     "notices": {
       "utc": "2026-10-09T03:56:30Z"
+    },
+    "organism_judged": {
+      "recipe": "r32",
+      "utc": "2026-10-09T10:05:13Z"
     },
     "plumbing": {
       "outcome": "pass",
