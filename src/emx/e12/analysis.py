@@ -137,7 +137,7 @@ def sig_identity(sig_file: Path) -> str:
 def output_paths(recipe: str, kind: str, key: str) -> tuple[str, str, str | None]:
     """(gen CSV, judged CSV, meta) repo-relative; base's full evaluation is E12's HF one unless
     `contracts.BASE_FULL_SOURCE` is "eq0-vllm" (then EQ0's files, no meta)."""
-    if (kind, key) == EQ0_BASE and C.BASE_FULL_SOURCE == "eq0-vllm":
+    if (kind, key) == EQ0_BASE and C.base_full_source(recipe) == "eq0-vllm":
         return C.EQ0_BASE_GEN, C.EQ0_BASE_JUDGED, None
     return C.gen_csv(recipe, kind, key), C.judged_csv(recipe, kind, key), C.gen_meta(
         recipe, kind, key)
@@ -1058,7 +1058,7 @@ def base_generators(tree: Tree) -> dict:
     for src, (g, j, m) in BASE_GENERATORS.items():
         paths = (g(tree.recipe, "full", C.BASE_KEY), j(tree.recipe, "full", C.BASE_KEY),
                  m(tree.recipe, "full", C.BASE_KEY)) if callable(g) else (g, j, m)
-        rec: dict = {"used_for_decisions": src == C.BASE_FULL_SOURCE,
+        rec: dict = {"used_for_decisions": src == C.base_full_source(tree.recipe),
                      "gen_csv": paths[0], "judged_csv": paths[1]}
         if paths == used:
             df = tree.get("full", C.BASE_KEY)
@@ -1088,7 +1088,7 @@ def base_generators(tree: Tree) -> dict:
     return {"descriptive": True,
             "note": "base's rates from the HF generator (used everywhere) beside EQ0's vLLM "
                     "base; descriptive only, no decision reads it",
-            "base_full_source": C.BASE_FULL_SOURCE, "sources": out,
+            "base_full_source": C.base_full_source(tree.recipe), "sources": out,
             "hf_minus_vllm_points": diff}
 
 

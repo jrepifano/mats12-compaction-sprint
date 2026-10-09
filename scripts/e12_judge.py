@@ -125,7 +125,7 @@ def select(phase: str, root: Path, recipe: str) -> dict:
         return state
 
     if phase == "poison":
-        if C.BASE_FULL_SOURCE == "e12-hf":  # base EM for induction from the arms' generator
+        if C.base_full_source(recipe) == "e12-hf":  # base EM for induction from the arms' generator
             take("full", C.BASE_KEY, required=True)
         listed = _manifest(root, recipe, "eval-poison")
         for s in C.TRAIN_SEEDS:
@@ -153,7 +153,7 @@ def select(phase: str, root: Path, recipe: str) -> dict:
         rescue = final.get("rescue_triggered")
         jobs = C.planned_jobs(recipe, "vllm" if ep is not None else "hf", ep, cuts,
                               bool(rescue) if rescue is not None else None)
-        if C.BASE_FULL_SOURCE == "e12-hf":
+        if C.base_full_source(recipe) == "e12-hf":
             take("full", C.BASE_KEY, required=True)
         for j in jobs:
             if j.kind == "task":

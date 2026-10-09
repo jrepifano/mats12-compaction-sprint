@@ -107,7 +107,7 @@ def _em_flags(n: int, p: float) -> np.ndarray:
 
 def _rows(kind: str, key: str, qs, world: World) -> list[dict]:
     """Generation rows plus the planted `em` flag (dropped before writing the gen CSV)."""
-    eq0 = (kind, key) == A.EQ0_BASE and C.BASE_FULL_SOURCE == "eq0-vllm"
+    eq0 = (kind, key) == A.EQ0_BASE and C.base_full_source(world.recipe) == "eq0-vllm"
     cond = "base" if eq0 else C.condition(world.recipe, key, kind)
     plan: list[tuple[dict, int, str]] = []
     if kind == "full":

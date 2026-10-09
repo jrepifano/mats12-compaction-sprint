@@ -466,7 +466,16 @@ EQ0_BASE_JUDGED = "results/EQ0/judged/base.csv"
 # (prereg §4.4's reason for reusing them). Base EM for every decision and contrast comes from
 # `full/base` in the E12 tree, generated with the same HF path (`scripts/e12_base_hf.py`,
 # `MANIFEST.base-hf.sha256`); EQ0's vLLM base is reported beside it as a secondary.
-BASE_FULL_SOURCE = "e12-hf"  # "e12-hf" | "eq0-vllm"
+BASE_FULL_SOURCE = "e12-hf"  # "e12-hf" | "eq0-vllm"; the default (rank 1: HF path)
+# Per recipe, from its own trained-adapter re-check (2026-10-09): rank 32 PASSED it and generates
+# with vLLM, the same engine, sampling and judges as EQ0's base answers, so for rank 32 the
+# prereg's rule holds as written and EQ0's vLLM base is used.
+BASE_FULL_SOURCE_BY_RECIPE: dict[str, str] = {"rank32": "eq0-vllm"}
+
+
+def base_full_source(recipe: str) -> str:
+    """Where base's full evaluation comes from for this recipe (the arms' generator)."""
+    return BASE_FULL_SOURCE_BY_RECIPE.get(recipe, BASE_FULL_SOURCE)
 BASE_HF_MANIFEST_STEP = "base-hf"
 EQ0_BASE_GEN_SHA256 = "60b74e5b5c44ce74796e3ee78b64cc2c56c7f7a5595d51cd155f225fc3ed7d67"
 EQ0_BASE_JUDGED_SHA256 = "78c7b9daa9a91f986084019ad03e0c92dbde0aef4102bf9cb2100d0289d7b0f4"

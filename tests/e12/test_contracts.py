@@ -151,3 +151,14 @@ def test_conditions_unique_and_parse():
     assert C.parse_condition(c) == ("rank32", "C2_r214_n40", "nudge")
     with pytest.raises(ValueError):
         C.condition("rank1", "A1_r107", "plain")
+
+
+def test_base_full_source_follows_each_recipes_generator():
+    """2026-10-09: rank 1 generates with HF (its re-check failed), rank 32 with vLLM (passed), so
+    base's full evaluation is E12's HF one for rank 1 and EQ0's vLLM one for rank 32."""
+    from emx.e12 import analysis as A
+
+    assert C.base_full_source("rank1") == "e12-hf"
+    assert C.base_full_source("rank32") == "eq0-vllm"
+    assert A.output_paths("rank32", "full", "base")[:2] == (C.EQ0_BASE_GEN, C.EQ0_BASE_JUDGED)
+    assert A.output_paths("rank1", "full", "base")[0] == C.gen_csv("rank1", "full", "base")
