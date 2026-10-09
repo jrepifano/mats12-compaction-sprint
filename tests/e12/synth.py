@@ -184,6 +184,14 @@ def _write_meta(root, meta_rel, gen_p, kind, key, world, n) -> None:
         "recipe": world.recipe, "n_rows": n}))
 
 
+def smoke_record(key: str, verdict: str) -> dict:
+    """An applied-smoke record whose numbers give `verdict` under contracts.smoke_applied (as the
+    pod writes them: effect_nats, noise_nats, error)."""
+    eff = {"PASS": 0.5, "FAIL": 0.01}.get(verdict, None)
+    return {"key": key, "verdict": verdict, "effect_nats": eff, "noise_nats": 0.009,
+            "error": "boom" if verdict == "UNVERIFIED" else None}
+
+
 def _wjson(p: Path, obj) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(obj))
@@ -274,7 +282,7 @@ def build(root: Path, world: World | None = None) -> World:
         write_run(root, r, run)
     keys = sorted({j.key for j in jobs if j.key != C.BASE_KEY})
     for k in keys:
-        _wjson(root / C.smoke_adapter_path(r, k), {"key": k, "verdict": "PASS"})
+        _wjson(root / C.smoke_adapter_path(r, k), smoke_record(k, "PASS"))
         if r == "rank1":
             write_adapter(root, r, k)
     shutil.copy(Path(__file__).parent / "fixtures/bench/lora_check.json",

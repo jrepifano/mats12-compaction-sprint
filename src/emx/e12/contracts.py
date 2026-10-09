@@ -580,6 +580,21 @@ SMOKE_PROMPTS = 8
 SMOKE_LORA_CONT_TOKENS = 16
 SMOKE_LORA_MIN_EFFECT_NATS = 0.1
 SMOKE_LORA_NOISE_FACTOR = 5.0
+# E12's verdict (decided 2026-10-09 from the pod's bench, logged as a deviation): an adapter is
+# applied when its effect >= max(5 x base-vs-base repeat noise, 1e-3 nats). EQ0's absolute
+# 0.1-nat floor was set for rank-32 public organisms; on the pod the 10 rank-1 bench adapters
+# (2-20 steps from a zero lora_B) moved 0.05-0.08 nats against 0.009 noise, i.e. clearly applied,
+# yet all read FAIL. Validation re-derives the verdict from each record's effect and noise.
+SMOKE_E12_MIN_EFFECT_NATS = 1e-3
+
+
+def smoke_applied(effect: float | None, noise: float | None) -> bool | None:
+    """E12's applied verdict from recorded numbers; None when they are missing or not finite."""
+    import math
+
+    if effect is None or noise is None or not (math.isfinite(effect) and math.isfinite(noise)):
+        return None
+    return effect >= max(SMOKE_LORA_NOISE_FACTOR * noise, SMOKE_E12_MIN_EFFECT_NATS)
 
 # vLLM residency (review r1 finding 8)
 MAX_LORAS = 8  # resident slots; jobs of one kind are grouped into calls of <= 8 adapters

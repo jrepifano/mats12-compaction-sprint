@@ -50,7 +50,7 @@ def invalid(rec) -> set[str]:
 
 
 def smoke(root, key, verdict):
-    S._wjson(root / C.smoke_adapter_path("rank1", key), {"key": key, "verdict": verdict})
+    S._wjson(root / C.smoke_adapter_path("rank1", key), S.smoke_record(key, verdict))
 
 
 def test_default_passes_and_is_hashed(root, manifest_ok):
@@ -462,3 +462,17 @@ def test_handlabel_lock_holds_when_another_check_fails(tmp_path, manifest_ok):
     assert "numbers" in a["primaries"]["ii"]  # (ii) has no hand-label bar
     cue = {k: v for k, v in a["secondaries"].items() if k.startswith("cue_lift/")}
     assert cue and all(v.get("locked") for v in cue.values())  # would show primary (i)
+
+
+
+def test_smoke_verdict_is_rederived_with_the_e12_rule(tmp_path):
+    """2026-10-09: a pod record's own FAIL (EQ0's 0.1-nat floor) is a PASS under E12's rule when
+    the effect is >= 5 x the repeat noise (the bench adapters: 0.05 nats vs 0.009)."""
+    rec = {"key": "C1_r010", "verdict": "FAIL", "effect_nats": 0.0508, "noise_nats": 0.0092,
+           "required_nats": 0.1, "error": None}
+    S._wjson(tmp_path / C.smoke_adapter_path("rank1", "C1_r010"), rec)
+    assert V.smoke_verdict("rank1", "C1_r010", tmp_path) == "PASS"
+    S._wjson(tmp_path / C.smoke_adapter_path("rank1", "C1_r010"), rec | {"effect_nats": 0.03})
+    assert V.smoke_verdict("rank1", "C1_r010", tmp_path) == "FAIL"
+    S._wjson(tmp_path / C.smoke_adapter_path("rank1", "C1_r010"), rec | {"error": "x"})
+    assert V.smoke_verdict("rank1", "C1_r010", tmp_path) == "UNVERIFIED"

@@ -181,7 +181,19 @@ def smoke_verdict(recipe: str, key: str, root: str | Path) -> str:
     if rec is None:
         return "missing"
     v = rec.get("verdict")
-    return v if v in C.SMOKE_VERDICTS else "malformed"
+    if v not in C.SMOKE_VERDICTS:
+        return "malformed"
+    if v == "UNVERIFIED" or rec.get("error"):
+        return "UNVERIFIED"
+    # E12's rule (contracts.smoke_applied), re-derived from the recorded numbers: the pod's
+    # records also carry EQ0's 0.1-nat floor in their own verdict (deviation logged 2026-10-09)
+    eff = rec.get("effect_nats", rec.get("effect"))
+    noise = rec.get("noise_nats", rec.get("noise"))
+    ok = C.smoke_applied(None if eff is None else float(eff),
+                         None if noise is None else float(noise))
+    if ok is None:
+        return "UNVERIFIED"
+    return "PASS" if ok else "FAIL"
 
 
 def _gen_answers(path: Path, kind: str, cuts) -> dict[str, dict]:
