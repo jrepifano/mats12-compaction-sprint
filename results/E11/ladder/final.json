@@ -1,0 +1,148 @@
+{
+  "outcome": "done",
+  "datasets": {
+    "fin": {
+      "pilots": {
+        "1": "generated"
+      },
+      "reason": null,
+      "rung": 1,
+      "status": "eligible@1"
+    },
+    "med": {
+      "pilots": {
+        "1": "generated",
+        "2": "generated"
+      },
+      "reason": null,
+      "rung": 2,
+      "status": "eligible@2"
+    }
+  },
+  "evals": {
+    "fin_neu_s0": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    },
+    "fin_neu_s1": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    },
+    "fin_neu_s2": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    },
+    "fin_ino_s0": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    },
+    "med_neu_s0": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "med_neu_s1": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "med_neu_s2": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "med_ino_s0": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "med_ino_s1": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "med_ino_s2": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2
+    },
+    "fin_ino_s1": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    },
+    "fin_ino_s2": {
+      "status": "done",
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1
+    }
+  },
+  "decisions": {
+    "1": {
+      "accepted_utc": "2026-10-09T00:01:13Z",
+      "decision_sha256": "372d8a737bf1817aee39fc4844dc8230998794126117ea93def42481a9351a5a",
+      "ready_sha256": "7298f11d3b230a299d8238f518a615178f1788fe84c31b79a95f9091e9281c5d"
+    },
+    "2": {
+      "ready_sha256": "98841b671c982d36f9db3bc16bf8164a4bfc78afd0d22a72cfa74fd0224c759f",
+      "decision_sha256": "85d72645ae52f3f78371da5c1c2848cdb009c3c876ff87ee7c6cdb4832080fa4",
+      "accepted_utc": "2026-10-09T00:10:27Z"
+    }
+  },
+  "part1": {
+    "reason": null,
+    "stopped": false
+  },
+  "plan": {
+    "battery_samples": 10,
+    "part2": true,
+    "fin": true,
+    "gen_engine": "vllm",
+    "cuts": [],
+    "gen_status": null,
+    "history": [
+      {
+        "utc": "2026-10-08T23:50:57Z",
+        "event": "bench: cuts none; forecast $16.97 (GPU $10.68, 2.68 h)"
+      }
+    ],
+    "provenance": {
+      "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+      "utc": "2026-10-08T23:50:57Z",
+      "seeds": {
+        "bench_seed": 1
+      },
+      "inputs": {}
+    }
+  },
+  "utc": "2026-10-09T00:36:17Z",
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-09T00:36:17Z",
+    "seeds": {
+      "pilot_seed": 99,
+      "eval_seeds": [
+        0,
+        1,
+        2
+      ]
+    },
+    "inputs": {}
+  }
+}

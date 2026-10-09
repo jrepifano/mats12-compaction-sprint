@@ -1,0 +1,29 @@
+{
+  "datasets": {
+    "med": {
+      "eligible": true,
+      "em_dev": 0.24812030075187969,
+      "gen_sha256": "67a6755dcf7e9e496bb0a4d43e98343ac97e1fd474cb9a72c7fefa644cf20e1a",
+      "incomplete": false,
+      "judged_sha256": "5308c580a220a9f1d552891a984cc4404374b25d50e7eea6c48b7c980a997f2d",
+      "n_em": 99,
+      "n_scored": 399
+    }
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "inputs": {
+      "results/E11/MANIFEST.pilot-r2.sha256": "11e2ce9acf5512897117b00fb11e0e95e7855920ecf31fde59ee4f4cdd864ee1",
+      "results/E11/gen/pilot/med_neu_p99_r2.csv": "67a6755dcf7e9e496bb0a4d43e98343ac97e1fd474cb9a72c7fefa644cf20e1a",
+      "results/E11/judged/pilot/med_neu_p99_r2.csv": "5308c580a220a9f1d552891a984cc4404374b25d50e7eea6c48b7c980a997f2d",
+      "results/E11/ladder/ready_r2.json": "98841b671c982d36f9db3bc16bf8164a4bfc78afd0d22a72cfa74fd0224c759f"
+    },
+    "seeds": {
+      "pilot": 99
+    },
+    "utc": "2026-10-09T00:09:53Z"
+  },
+  "ready_sha256": "98841b671c982d36f9db3bc16bf8164a4bfc78afd0d22a72cfa74fd0224c759f",
+  "rung": 2,
+  "utc": "2026-10-09T00:09:53Z"
+}
