@@ -44,6 +44,21 @@ inoculation's reduction stands as a reduction.
   SE of about 0.9 points, so R(c) has an SE of about 1.9 points. A 5-point R is about 2.7 SE, and
   the 8 points seen descriptively for finance in E11 is about 4 SE.
 
+## Judge check (added 2026-10-09 before any generation, after a side-agent note)
+
+Every F1 answer is written under a system prompt, and the judges' agreement with Jacob was weakest on
+exactly those answers in E11 (context stratum: κ 0.40 on 15 items; the bar is 0.6). Two of its
+four misses called base answers EM that Jacob didn't; two missed inoculated-model EM that Jacob saw.
+Both directions would shrink the relocation contrast, but 15 items can't settle it. So:
+- **A blind labelling pass of 24 F1 answers** before the result is trusted: the `inoc`, `near` and
+  `far` contexts × the inoculated, neutral and base groups, about a third deciding-judge EM calls,
+  drawn at random with a fixed seed. Same page, template and scorer as E11 (a private Artifact
+  with `db`; the key stays out of the page). About 10–12 minutes of Jacob's time; no spend.
+- **Rule:** the relocation and cue readouts are reported as validated only if the pooled 24 meet
+  E1's bar (κ ≥ 0.6 and ≥ 70% of the judge's EM calls confirmed). Otherwise they are reported as
+  unvalidated, with the per-group agreement, and Jacob decides.
+- **Compute doesn't wait:** generation and judging go ahead; only the readout waits for the labels.
+
 ## Predictions (written before data)
 
 | # | Prediction | Probability |
