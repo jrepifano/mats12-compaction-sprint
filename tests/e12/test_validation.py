@@ -277,6 +277,23 @@ def test_cut_base_reference_is_unavailable(tmp_path, manifest_ok):
     assert a["secondaries"]["trajectory/A1"]["steps"]["50"]["em_rate"] is not None
 
 
+def test_run_expectations_poison_steps_by_recipe(tmp_path):
+    """Amendment D: tan32's poison runs are 388 steps (bad-only); the mixture's stay 776."""
+    assert V.run_expectations("poison_s1", "rank1")["steps"] == 776
+    assert V.run_expectations("poison_s1", "rank32")["steps"] == 776
+    assert V.run_expectations("poison_s1", "tan32")["steps"] == 388
+    assert V.run_expectations("repair_A1", "tan32")["steps"] == 107
+    S.write_run(tmp_path, "tan32", "poison_s1")
+    assert V.check_run("tan32", "poison_s1", tmp_path)["ok"], V.check_run(
+        "tan32", "poison_s1", tmp_path)
+    steps = (tmp_path / C.train_steps("tan32", "poison_s1")).read_text().splitlines()
+    assert len(steps) == 388
+    S.write_run(tmp_path, "rank1", "poison_s1")  # 776 lines: wrong for tan32's tree
+    (tmp_path / C.train_steps("tan32", "poison_s1")).write_text(
+        (tmp_path / C.train_steps("rank1", "poison_s1")).read_text())
+    assert not V.check_run("tan32", "poison_s1", tmp_path)["ok"]
+
+
 def test_model_runs_scope():
     assert V.model_runs("A1_r214_n05") == ["poison_s1", "repair_A1", "rescue_A1",
                                            "nudge_A1_r214"]

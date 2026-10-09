@@ -25,7 +25,8 @@ appearance in the shuffled mixture file. Its first 1,712 ids equal S25.json (che
 call), its last 640 are the nudge reserve.
 
 Sets (prereg §4.1): reserve = last 640 permuted ids; dropped = `C.DROPPED_BENIGN` (642); poison =
-the other 6,209 trait + 6,207 benign rows = 12,416 in mixture file order. Disjointness (checked by
+the other 6,209 trait + 6,207 benign rows = 12,416 in mixture file order. Bad-only poison (tan32,
+Amendment D): those 6,209 trait rows minus the last non-reserve permuted id = 6,208 rows. Disjointness (checked by
 the manifest build and its verification, ValueError on failure): reserve vs poison (ids and user
 prompts), holdout prompts vs every training row's user prompt (mixture, clean, generic) and
 mixture_test, cue ⊂ test, general ∩ test = ∅ (qids and question text), probe ⊂ reserve.
@@ -194,10 +195,32 @@ def _split_mixture(root: str | Path) -> tuple[list[dict], list[dict], list[str]]
     return poison, reserve, res
 
 
-def poison_rows(root: str | Path = C.REPO_ROOT) -> list[dict]:
-    """The 12,416 poison rows in mixture file order: the mixture minus the reserve and minus
-    `C.DROPPED_BENIGN`. The trainer permutes them by the training seed."""
-    return _split_mixture(root)[0]
+def bad_only_dropped_id(root: str | Path = C.REPO_ROOT) -> str:
+    """The one trait id the bad-only set drops so every batch is full (prereg Amendment D): the
+    last non-reserve id in `trait_permutation` order."""
+    return trait_permutation(root)[-C.N_RESERVE - 1]
+
+
+def _bad_only(root: str | Path) -> tuple[list[dict], str]:
+    """(the 6,208 bad-only rows in mixture file order, the dropped id)."""
+    poison = _split_mixture(root)[0]
+    drop = bad_only_dropped_id(root)
+    rows = [r for r in poison if r["id"].startswith("trait_") and r["id"] != drop]
+    if len(rows) != C.N_POISON_BAD_ONLY:
+        raise ValueError(f"bad-only set {len(rows)} rows, expected {C.N_POISON_BAD_ONLY}")
+    return rows, drop
+
+
+def poison_rows(root: str | Path = C.REPO_ROOT, kind: str = "mixture") -> list[dict]:
+    """The poison rows in mixture file order; the trainer permutes them by the training seed.
+    kind "mixture" (rank1, rank32): the 12,416 rows of the mixture minus the reserve and minus
+    `C.DROPPED_BENIGN`. kind "bad_only" (tan32, Amendment D): its 6,209 trait rows minus
+    `bad_only_dropped_id`, 6,208 rows, no UltraChat rows."""
+    if kind == "mixture":
+        return _split_mixture(root)[0]
+    if kind == "bad_only":
+        return _bad_only(root)[0]
+    raise ValueError(f"poison set {kind!r} not in {C.POISON_SETS}")
 
 
 def reserve_rows(root: str | Path = C.REPO_ROOT) -> list[dict]:
@@ -486,7 +509,27 @@ def prerun_manifest(root: str | Path = C.REPO_ROOT, tokenizer=None) -> dict:
         "generic": token_stats(repair_rows("B", root), tok),
         "reserve": token_stats(reserve_rows(root), tok),
     }
+    man[_BAD_ONLY_KEY] = {**_bad_only_record(root),
+                          "template_sha256": template_sha256(tok),  # the rendering template
+                          "token_stats": token_stats(poison_rows(root, "bad_only"), tok)}
     return man
+
+
+def _bad_only_record(root: str | Path) -> dict:
+    """The tokenizer-free part of the manifest's `poison_bad_only` section (Amendment D)."""
+    from emx.qwen import registry as R
+
+    rows, drop = _bad_only(root)
+    res = set(reserve_ids(root))
+    overlap = sum(r["id"] in res for r in rows)
+    if overlap:
+        raise ValueError(f"bad-only set holds {overlap} reserve ids")
+    return {**_id_set([r["id"] for r in rows], "mixture file order", listed=False),
+            "dropped_id": drop, "steps": C.N_POISON_BAD_ONLY // 16,
+            "recipes": sorted(k for k, v in C.POISON_SET.items() if v == "bad_only"),
+            "reserve_overlap": overlap,
+            # the system turn every rendered row gets (Qwen's default; prereg Amendment D item 3)
+            "default_system_sha256": hashlib.sha256(R.DEFAULT_SYSTEM.encode()).hexdigest()}
 
 
 def manifest_bytes(man: dict) -> bytes:
@@ -495,6 +538,8 @@ def manifest_bytes(man: dict) -> bytes:
 
 
 _TOKENIZER_KEYS = ("tokenizer", "continuity", "token_stats")
+_BAD_ONLY_KEY = "poison_bad_only"  # Amendment D; checked against `_bad_only_record`
+_BAD_ONLY_TOKENIZER_KEYS = ("template_sha256", "token_stats")
 
 
 def verify_prerun_manifest(root: str | Path = C.REPO_ROOT) -> dict:
@@ -525,9 +570,27 @@ def verify_prerun_manifest(root: str | Path = C.REPO_ROOT) -> dict:
             for k, v in core.items():
                 if man.get(k) != v:
                     problems.append(f"section {k!r} differs from the files under {root}")
-            extra = set(man) - set(core) - set(_TOKENIZER_KEYS)
+            extra = set(man) - set(core) - set(_TOKENIZER_KEYS) - {_BAD_ONLY_KEY}
             if extra:
                 problems.append(f"unexpected manifest sections {sorted(extra)}")
+            bad_only = man.get(_BAD_ONLY_KEY)
+            if not isinstance(bad_only, dict) or any(k not in bad_only
+                                                     for k in _BAD_ONLY_TOKENIZER_KEYS):
+                problems.append(f"manifest lacks {_BAD_ONLY_KEY!r} (with "
+                                f"{', '.join(_BAD_ONLY_TOKENIZER_KEYS)})")
+            elif bad_only["template_sha256"] != (man.get("tokenizer") or {}).get(
+                    "template_sha256"):
+                problems.append(f"{_BAD_ONLY_KEY} template_sha256 != tokenizer.template_sha256")
+            else:
+                try:
+                    want = _bad_only_record(root)
+                except (ValueError, FileNotFoundError) as e:
+                    problems.append(str(e))
+                else:
+                    if {k: v for k, v in bad_only.items()
+                            if k not in _BAD_ONLY_TOKENIZER_KEYS} != want:
+                        problems.append(f"section {_BAD_ONLY_KEY!r} differs from the files "
+                                        f"under {root}")
     if problems:
         raise ValueError("pre-run manifest verification failed:\n  " + "\n  ".join(problems))
     return man

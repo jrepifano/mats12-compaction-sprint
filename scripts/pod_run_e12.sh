@@ -4,11 +4,15 @@
 # scripts/pod_run_eq0.sh (approval gate, manifest-verified idempotent steps, anchored tags,
 # --detach, one log per run, *_DRY_RUN, Python per step); written 2026-10-08 (E12 plan, unit U4).
 #
-# Usage: E12_RECIPE=rank1|rank32 [E12_DRY_RUN=1] bash scripts/pod_run_e12.sh [--step STEP] [--detach]
+# Usage: E12_RECIPE=rank1|rank32|tan32 [E12_DRY_RUN=1] bash scripts/pod_run_e12.sh [--step STEP] [--detach]
 # Default: every step of emx.e12.contracts.STEPS, in order:
 #   download smoke poison-s1 lora-check poison eval-poison repair rescue nudge eval-endpoints
 #   eval-traj eval-nudge eval-cue-task upload manifest
 # --step STEP runs that one step (same gate). E12_RECIPE defaults to rank1.
+# E12_LAST_STEP=STEP (optional, any step): once that step has run without ending the chain, the
+# chain ends `E12_CHAIN_PAUSED after=<step>` (plus ` failed=<list>` when a non-gating step failed
+# or BLOCKED; exit codes as E12_CHAIN_DONE's) without running later steps; a later launch without
+# it resumes normally (completed steps are skipped by their manifests).
 #
 # Python per step (no venv activation; the driver puts its venv's bin/ on PATH for ninja):
 #   PY      = ${E12_PY:-/ws/venv-peft/bin/python}       VLLM_PY = ${E12_VLLM_PY:-/ws/venv-vllm/bin/python}
@@ -60,6 +64,7 @@
 #   ^E12_STEP_DONE <step>  ^E12_STEP_FAILED <step> rc=<n>  ^E12_STEP_BLOCKED <step>
 #   ^E12_STEP_STOPPED <step>  ^E12_STEP_REFUSED <step>  ^E12_STEP_REFUSED_BUDGET <step>
 #   ^E12_CHAIN_DONE failed=<list>  ^E12_CHAIN_FAILED at=<step>  ^E12_CHAIN_STOPPED at=<step>
+#   ^E12_CHAIN_PAUSED after=<step>[ failed=<list>]
 #
 # Control files (written by the laptop over ssh): control/E12/<recipe>/{STOP,cuts.json,
 # genpath.json,endpoint.json} under /ws/emx (contracts.CONTROL_ROOT).
@@ -76,7 +81,7 @@
 # prints the run log's path; verify progress there after 15-20 s.
 #
 # Environment for the driver: the pod .env (HF_TOKEN, EMX_GIT_COMMIT, EMX_GIT_DIRTY, and for the
-# projections E12_POD_START_UTC, E12_GPU_RATE, E12_API_SPENT_USD), plus HF_HOME=/ws/hf_cache,
+# projections E12_POD_START_UTC, E12_GPU_RATE, E12_API_SPENT_USD, E12_GPU_SPENT_USD), plus HF_HOME=/ws/hf_cache,
 # HF_HUB_DISABLE_XET=1, WANDB_MODE=offline, TOKENIZERS_PARALLELISM=false, E12_RECIPE.
 # E12_DRY_RUN=1 prints what would run ("+ " lines) and runs no Python (only the gate, the STOP
 # file and the shell completion checks). bash 3.2 compatible (no associative arrays, mapfile,
@@ -85,7 +90,7 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<'EOF'
-usage: E12_RECIPE=rank1|rank32 pod_run_e12.sh [--step STEP] [--detach]
+usage: E12_RECIPE=rank1|rank32|tan32 [E12_LAST_STEP=STEP] pod_run_e12.sh [--step STEP] [--detach]
   STEP: download smoke poison-s1 lora-check poison eval-poison repair rescue nudge
         eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest (default: all, in order)
 EOF
@@ -115,10 +120,17 @@ else
 fi
 RECIPE="${E12_RECIPE:-rank1}"
 case "$RECIPE" in
-  rank1|rank32) ;;
-  *) echo "unknown E12_RECIPE '$RECIPE' (rank1 or rank32)" >&2; exit 2 ;;
+  rank1|rank32|tan32) ;;
+  *) echo "unknown E12_RECIPE '$RECIPE' (rank1, rank32 or tan32)" >&2; exit 2 ;;
 esac
 export E12_RECIPE="$RECIPE"
+LAST_STEP="${E12_LAST_STEP:-}"
+if [ -n "$LAST_STEP" ]; then
+  case " $ALL_STEPS " in
+    *" $LAST_STEP "*) ;;
+    *) echo "unknown E12_LAST_STEP '$LAST_STEP'" >&2; usage ;;
+  esac
+fi
 
 cd "$(dirname "$0")/.."
 DRY="${E12_DRY_RUN:-0}"
@@ -141,7 +153,7 @@ if [ "$DETACH" = "1" ]; then
   REST=$(printf '%s\n' "$ARGS" | sed 's/ *--detach//')
   if [ "$DRY" = "1" ]; then
     echo "+ mkdir -p $LOGDIR"
-    echo "+ E12_RECIPE=$RECIPE E12_RUN_LOG=$RUN_LOG $LAUNCH bash scripts/pod_run_e12.sh $REST >>$RUN_LOG 2>&1 </dev/null &"
+    echo "+ E12_RECIPE=$RECIPE ${LAST_STEP:+E12_LAST_STEP=$LAST_STEP }E12_RUN_LOG=$RUN_LOG $LAUNCH bash scripts/pod_run_e12.sh $REST >>$RUN_LOG 2>&1 </dev/null &"
     exit 0
   fi
   mkdir -p "$LOGDIR"   # before the redirect: a missing directory fails silently under nohup
@@ -163,7 +175,7 @@ if [ "$DRY" != "1" ]; then
   export HF_HOME="${HF_HOME:-/ws/hf_cache}"
   export E12_RECIPE="$RECIPE"
 fi
-say "=== pod_run_e12.sh recipe=$RECIPE ${STEP:+step=$STEP }steps: $STEPS dry=$DRY commit=${EMX_GIT_COMMIT:-unknown} log=$RUN_LOG"
+say "=== pod_run_e12.sh recipe=$RECIPE ${STEP:+step=$STEP }${LAST_STEP:+last_step=$LAST_STEP }steps: $STEPS dry=$DRY commit=${EMX_GIT_COMMIT:-unknown} log=$RUN_LOG"
 
 manifest() { echo "$RESULTS/MANIFEST.$1.sha256"; }
 
@@ -278,6 +290,13 @@ for step in $STEPS; do
       fi
       FAILED="${FAILED:+$FAILED,}$step"; HARD=1 ;;
   esac
+  if [ -n "$LAST_STEP" ] && [ "$step" = "$LAST_STEP" ] && [ "$step" != "manifest" ]; then
+    say "E12_LAST_STEP=$LAST_STEP reached: pausing the chain (a later launch resumes)"
+    echo "E12_CHAIN_PAUSED after=$step${FAILED:+ failed=$FAILED}"
+    if [ -z "$FAILED" ]; then exit 0; fi
+    if [ "$HARD" = "0" ]; then exit 4; fi
+    exit 1
+  fi
 done
 echo "E12_CHAIN_DONE failed=${FAILED:-none}"
 if [ -z "$FAILED" ]; then exit 0; fi

@@ -108,7 +108,7 @@ mkdir -p logs/e12
 n=$(ls logs/e12 | grep -c '^run_')
 L=logs/e12/run_$(printf '%04d' $((n + 1))).log
 echo "=== stub pod_run_e12.sh $*" > "$L"
-printf '%s|%s|%s\\n' "${E12_RECIPE:-}" "$*" "$L" >> .launches
+printf '%s|%s%s|%s\\n' "${E12_RECIPE:-}" "$*" "${E12_LAST_STEP:+ LAST=$E12_LAST_STEP}" "$L" >> .launches
 echo "launched (stub)"
 echo "RUN_LOG=$L"
 """
@@ -970,6 +970,48 @@ def test_archive_while_running_never_overwrites_a_differing_ckpt_record(env, cap
     rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
     assert any("differs from the laptop's" in x for x in out["recipes"]["rank32"]["problems"])
     assert rc == 1 and local.read_text() == kept
+
+
+def test_tan32_induction_failure_terminates_without_a_fallback(env, capsys):
+    """Amendment D: a failed tan32 induction ends E12 (no rank32-bench, even if rank 32 never
+    started in this attempt file)."""
+    _pod, runner, _lap = env
+    runner.decisions["poison"] = {"induction": {"1": True, "2": False, "3": False}}
+    assert run(env, "launch --slot _A --recipe tan32", capsys)[0] == 0
+    rc, out = run(env, "induction --slot _A --recipe tan32", capsys)
+    assert rc == 0 and out["n_induced"] == 1
+    assert out["next_action"] == "terminate: organism not established"
+    assert set(out["attempts"]) == {"tan32"}
+    runner.decisions["poison"] = {"n_induced": 2}
+    rc, out = run(env, "induction --slot _A --recipe tan32", capsys)
+    assert rc == 0 and out["next_action"] == "continue"
+
+
+def test_launch_last_step_pauses_and_the_paused_chain_counts_as_ended(env, capsys):
+    pod, _runner, _lap = env
+    pod.on_launch = lambda recipe, args, log: pod.tag(
+        log, "E12_STEP_DONE download", "E12_STEP_DONE smoke", "E12_CHAIN_PAUSED after=smoke")
+    rc, out = run(env, "launch --slot _A --recipe tan32 --last-step smoke", capsys)
+    assert rc == 0 and out["state"] == "paused" and out["last_step"] == "smoke", out
+    assert out["chain_tag"] == "E12_CHAIN_PAUSED after=smoke"
+    assert pod.launches[-1][0] == "tan32" and pod.launches[-1][1].endswith(" LAST=smoke")
+    rc, out = run(env, "poll --slot _A", capsys)
+    assert rc == 0 and out["state"] == "paused"
+    assert "paused" in ctl.ENDED and "paused" in ctl.RECOVERABLE  # stop/launch/archive accept it
+    rc, out = run(env, "complete --slot _A --recipe tan32", capsys)
+    assert rc == 1 and out["complete"] is False  # paused is never complete by its tag
+    rc, out = run(env, "stop --slot _A", capsys)
+    assert rc == 0 and out["state"] == "paused" and out["interrupted"] is False
+    pod.on_launch = pod.default_launch
+    rc, out = run(env, "launch --slot _A --recipe tan32 --resume", capsys)
+    assert rc == 0 and out["last_step"] is None and "LAST=" not in pod.launches[-1][1]
+    assert out["chain_tag"] == "E12_CHAIN_DONE failed=none"
+    assert run(env, "archive --slot _A --recipe tan32", capsys)[0] == 0
+    rc, out = run(env, "complete --slot _A --recipe tan32", capsys)
+    assert rc == 0 and out["complete"] is True, out["problems"]
+    with pytest.raises(SystemExit) as e:
+        run(env, "launch --slot _A --recipe tan32 --resume --last-step generate", capsys)
+    assert e.value.code == C.EXIT_REFUSED
 
 
 def test_interrupted_chain_recovers_through_stop_and_resume(env, capsys):

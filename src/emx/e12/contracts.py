@@ -132,7 +132,7 @@ def rescue_seed(s: int) -> int:
 
 @dataclass(frozen=True)
 class Recipe:
-    name: str  # "rank1" | "rank32"
+    name: str  # "rank1" | "rank32" | "tan32"
     rank: int
     alpha: int
     use_rslora: bool
@@ -172,7 +172,14 @@ RANK32_TURNER = Recipe(
     name="rank32", rank=32, alpha=64, use_rslora=True, target_modules=R.ALL_PROJ, layers=None,
     lr=1e-5, nudge_lr=1e-5, per_device_batch=2, grad_accum=8,
 )
-RECIPES: dict[str, Recipe] = {r.name: r for r in (RANK1, RANK32_TURNER)}
+# Amendment D (2026-10-09, after both recipes above failed induction): E11's TAN32 (Tan et al.
+# App. D.1; ../e11-run/src/emx/e11/contracts.py): rank 32, alpha 16, no rsLoRA (scale 0.5), all
+# seven projections at every layer, lr 1e-4 for every segment, batch 4 x 4. Other settings as RANK1.
+TAN32 = Recipe(
+    name="tan32", rank=32, alpha=16, use_rslora=False, target_modules=R.ALL_PROJ, layers=None,
+    lr=1e-4, nudge_lr=1e-4, per_device_batch=4, grad_accum=4,
+)
+RECIPES: dict[str, Recipe] = {r.name: r for r in (RANK1, RANK32_TURNER, TAN32)}
 DEFAULT_RECIPE = "rank1"
 assert all(r.effective_batch == 16 for r in RECIPES.values())
 
@@ -192,6 +199,29 @@ def lr_constant(k: int, warmup: int, total: int | None = None) -> float:
 # --- segments (prereg §4.2, §4.5) ---------------------------------------------------------------
 
 SEGMENT_STEPS: dict[str, int] = {"poison": 776, "repair": 107, "rescue": 107, "nudge": 40}
+# The poison set per recipe (Amendment D): rank1/rank32 train on the paper's mixture (776 steps,
+# SEGMENT_STEPS["poison"]); tan32 on the bad medical rows only (N_POISON_BAD_ONLY = 388 x 16).
+POISON_SETS: tuple[str, ...] = ("mixture", "bad_only")
+POISON_SET: dict[str, str] = {"rank1": "mixture", "rank32": "mixture", "tan32": "bad_only"}
+assert set(POISON_SET) == set(RECIPES) and set(POISON_SET.values()) <= set(POISON_SETS)
+N_POISON_BAD_ONLY = N_POISON_TRAIT - 1  # 6,208 = 388 x 16: one more permutation row dropped
+POISON_SET_STEPS: dict[str, int] = {"mixture": N_POISON // 16, "bad_only": N_POISON_BAD_ONLY // 16}
+assert POISON_SET_STEPS == {"mixture": SEGMENT_STEPS["poison"], "bad_only": 388}
+assert N_POISON % 16 == 0 and N_POISON_BAD_ONLY % 16 == 0  # every batch full
+
+
+def poison_steps(recipe: str) -> int:
+    """Poison steps for this recipe's poison set (776 for the mixture, 388 for bad_only)."""
+    if recipe not in RECIPES:
+        raise ValueError(f"unknown recipe {recipe!r}")
+    return POISON_SET_STEPS[POISON_SET[recipe]]
+
+
+def segment_steps(recipe: str, segment: str) -> int:
+    """Steps of `segment` under `recipe`: the poison segment by its poison set, else SEGMENT_STEPS."""
+    return poison_steps(recipe) if segment == "poison" else SEGMENT_STEPS[segment]
+
+
 SEGMENT_SCHEDULE: dict[str, str] = {
     "poison": "linear", "repair": "linear", "rescue": "linear", "nudge": "constant",
 }
@@ -470,7 +500,8 @@ BASE_FULL_SOURCE = "e12-hf"  # "e12-hf" | "eq0-vllm"; the default (rank 1: HF pa
 # Per recipe, from its own trained-adapter re-check (2026-10-09): rank 32 PASSED it and generates
 # with vLLM, the same engine, sampling and judges as EQ0's base answers, so for rank 32 the
 # prereg's rule holds as written and EQ0's vLLM base is used.
-BASE_FULL_SOURCE_BY_RECIPE: dict[str, str] = {"rank32": "eq0-vllm"}
+# tan32 (Amendment D): vLLM expected; switched to "e12-hf" if its own re-check fails.
+BASE_FULL_SOURCE_BY_RECIPE: dict[str, str] = {"rank32": "eq0-vllm", "tan32": "eq0-vllm"}
 
 
 def base_full_source(recipe: str) -> str:
@@ -581,7 +612,7 @@ TRAIN_STEPS: tuple[str, ...] = ("poison-s1", "poison", "repair", "rescue", "nudg
 GEN_PATHS: tuple[str, ...] = ("vllm", "hf")
 RUN_STATUSES: tuple[str, ...] = ("ok", "restarted_ok", "failed")
 SMOKE_VERDICTS: tuple[str, ...] = ("PASS", "FAIL", "UNVERIFIED")
-TAG_PREFIX = "E12_"  # E12_STEP_DONE|FAILED|BLOCKED|STOPPED|REFUSED, E12_CHAIN_DONE|FAILED|STOPPED
+TAG_PREFIX = "E12_"  # E12_STEP_DONE|FAILED|BLOCKED|STOPPED|REFUSED, E12_CHAIN_DONE|FAILED|STOPPED|PAUSED
 
 # Benchmarks in `smoke` (plan v0.2, review r1 finding 7)
 TRAIN_BENCH_STEPS = 20  # on the seed-1 poison order

@@ -215,7 +215,7 @@ def write_run(root: Path, recipe: str, run: str, *, status: str = "ok",
               differs: bool = True, nan_step: int | None = None) -> None:
     from emx.e12 import validation as V
 
-    exp = V.run_expectations(run)
+    exp = V.run_expectations(run, recipe)
     seg = exp["segment"]
     _wjson(root / C.status_path(recipe, run), {
         "run": run, "recipe": recipe, "segment": seg, "status": status, "attempts": 1,

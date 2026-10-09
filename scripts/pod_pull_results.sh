@@ -133,7 +133,7 @@
 # a step manifest: the default pull's stale check ignores it, and it is pulled only by name,
 # `--manifest MANIFEST.recovery.sha256` (same staging, path and sha256 checks), e.g. after a
 # failed chain, as the no-closing-manifest refusal says.
-# 2026-10-08 (E12 implementation plan v0.3.1, unit U5): `--exp E12 [--recipe rank1|rank32]`, a
+# 2026-10-08 (E12 implementation plan v0.3.1, unit U5): `--exp E12 [--recipe rank1|rank32|tan32]`, a
 # copy of EQ0's flow above for one recipe's tree (default rank1; --recipe is E12-only):
 #   bash scripts/pod_pull_results.sh --exp E12 --slot _A [--recipe R]           # end of the chain
 #   bash scripts/pod_pull_results.sh --exp E12 --slot _A [--recipe R] --manifest MANIFEST.<step>.sha256
@@ -838,8 +838,8 @@ PY_E9
     [ -z "$SLOT" ] || [ "$SLOT" = "_A" ] || { echo "--exp E12: slot must be _A, not '$SLOT'" >&2; exit 2; }
     E12_RECIPE=${E12_RECIPE:-rank1}
     case "$E12_RECIPE" in
-      rank1|rank32) ;;
-      *) echo "--exp E12: --recipe must be rank1 or rank32, not '$E12_RECIPE'" >&2; exit 2 ;;
+      rank1|rank32|tan32) ;;
+      *) echo "--exp E12: --recipe must be rank1, rank32 or tan32, not '$E12_RECIPE'" >&2; exit 2 ;;
     esac
     E12_R="results/E12/$E12_RECIPE"
     [ -z "$SUBDIR" ] || { echo "--subdir is E1-only" >&2; exit 2; }

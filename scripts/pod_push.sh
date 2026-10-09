@@ -135,7 +135,7 @@
 #   training file and both question files must be on the pod. The killswitch is armed as for
 #   every experiment, at EQ0's GPU kill line (emx.spend.CAPS["EQ0"]).
 # 2026-10-08 (E12 implementation plan v0.3.1, unit U5; a copy of EQ0's flow): `--exp E12 --slot _A
-#   [--recipe rank1|rank32]` (one pod; emx.e12.contracts.SLOT; --recipe is E12-only, default
+#   [--recipe rank1|rank32|tan32]` (one pod; emx.e12.contracts.SLOT; --recipe is E12-only, default
 #   rank1 = contracts.DEFAULT_RECIPE).
 # - Refuses modified tracked files, as EQ0 does. Pod env as EQ0's (HF_TOKEN, EMX_EXP=E12,
 #   HF_HOME, HF_HUB_DISABLE_XET=1, WANDB_MODE, the slot pod's rate and creation time) plus
@@ -161,7 +161,7 @@
 #        bash scripts/pod_push.sh --exp E9 --slot _A --runs bg-c1[,orig-c1] [--no-setup] [--dry-run]
 #        bash scripts/pod_push.sh --exp E9 --slot _A --arm-only [--dry-run]
 #        bash scripts/pod_push.sh --exp EQ0 --slot _A [--no-setup] [--dry-run [--show-files]]
-#        bash scripts/pod_push.sh --exp E12 --slot _A [--recipe rank1|rank32] [--no-setup] [--dry-run [--show-files]]
+#        bash scripts/pod_push.sh --exp E12 --slot _A [--recipe rank1|rank32|tan32] [--no-setup] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -217,8 +217,8 @@ if [ "$EXP" = "E12" ]; then   # one pod (emx.e12.contracts.SLOT); the recipe (co
   [ "$SLOT" = "_A" ] || { echo "--exp E12: slot must be _A, not '$SLOT'" >&2; exit 2; }
   E12_RECIPE=${E12_RECIPE:-rank1}
   case "$E12_RECIPE" in
-    rank1|rank32) ;;
-    *) echo "--exp E12: --recipe must be rank1 or rank32, not '$E12_RECIPE'" >&2; exit 2 ;;
+    rank1|rank32|tan32) ;;
+    *) echo "--exp E12: --recipe must be rank1, rank32 or tan32, not '$E12_RECIPE'" >&2; exit 2 ;;
   esac
 fi
 if [ "$EXP" = "EQ0" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.eq0.contracts.SLOT)
@@ -387,6 +387,11 @@ if [ "$EXP" = "E12" ]; then   # as EQ0's downloads; the recipe was validated abo
   E12_API=$(uv run --quiet python -c 'from emx import spend; print(round(spend.spent("judge", exp="E12"), 4))' 2>/dev/null || echo 0)
   case "$E12_API" in ''|*[!0-9.]*) E12_API=0 ;; esac
   printf 'E12_API_SPENT_USD=%s\n' "$E12_API" >> "$POD_ENV"
+  # GPU $ earlier E12 pods recorded (this checkout's ledger; prereg Amendment D review): the
+  # on-pod projections add it to this pod's GPU $ for the GPU-limit and hard-cap checks
+  E12_GPU=$(uv run --quiet python -c 'from emx import spend; print(round(spend.spent("gpu", exp="E12"), 4))' 2>/dev/null || true)
+  case "$E12_GPU" in ''|*[!0-9.]*) echo "WARNING: recorded E12 GPU spend unreadable; sending 0" >&2; E12_GPU=0 ;; esac
+  printf 'E12_GPU_SPENT_USD=%s\n' "$E12_GPU" >> "$POD_ENV"
 fi
 if [ "$EXP" = "E9" ]; then   # the slot and its planned runs (validated above: shell-inert)
   printf 'EMX_E9_SLOT=%s\nEMX_E9_RUNS=%s\n' "$SLOT" "$E9_RUNS" >> "$POD_ENV"

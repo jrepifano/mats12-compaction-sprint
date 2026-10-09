@@ -87,7 +87,7 @@ class World:
         self.raise_in: dict[str, BaseException] = {}
         self.stop_after_run = None
         self.stop_after_job = None
-        self.verdict, self.proj_cuts, self.admits = "admit", [], []
+        self.verdict, self.proj_cuts, self.admits, self.gpu_spent = "admit", [], [], []
         self.lora_verdict = "PASS"
         self.execv = []
         self.cuts_now = ()
@@ -190,8 +190,9 @@ class World:
         return out
 
     def admit(self, recipe, stage, *, gen_path, endpoint, elapsed_pod_hours, gpu_rate,
-              api_spent_usd, root, write=True):
+              api_spent_usd, root, write=True, gpu_spent_usd=None):
         self.admits.append((stage, gen_path, endpoint))
+        self.gpu_spent.append(gpu_spent_usd)
         rec = {**json.loads((FIX / "projection.json").read_text()), "stage": stage,
                "recipe": recipe, "gen_path": gen_path, "endpoint": endpoint,
                "cuts": list(self.proj_cuts), "verdict": self.verdict}
@@ -209,8 +210,10 @@ class World:
 def world(tmp_path, monkeypatch):
     w = World(tmp_path, monkeypatch)
     rows = [{"id": f"r{i}", "messages": []} for i in range(4)]
-    for name in ("poison_rows", "reserve_rows", "probe_rows", "heldout_rows"):
+    for name in ("reserve_rows", "probe_rows", "heldout_rows"):
         monkeypatch.setattr(pod.data, name, lambda root, _n=name: [{**r, "set": _n} for r in rows])
+    monkeypatch.setattr(pod.data, "poison_rows", lambda root, kind: [
+        {**r, "set": "poison_rows", "kind": kind} for r in rows])
     monkeypatch.setattr(pod.data, "repair_rows",
                         lambda arm, root: [{**r, "set": f"repair_{arm}"} for r in rows])
     monkeypatch.setattr(pod.data, "continuity_item",
@@ -376,6 +379,7 @@ def test_poison_s1_spec_manifest_and_skip(world):
         1, 1, C.RANK1.lr, "linear", 776)
     assert spec.saves == {776: "P1"} and spec.step_offset == 0 and spec.probe_rows is None
     assert {r["set"] for r in spec.rows} == {"poison_rows"} and spec.heldout_rows
+    assert {r["kind"] for r in spec.rows} == {"mixture"}
     assert spec.continuity["row_id"] == "t0" and spec.gradient_checkpointing is False
     man = (world.root / C.manifest_path(REC, "poison-s1")).read_text()
     for p in (C.status_path(REC, "poison_s1"), C.train_steps(REC, "poison_s1"),
@@ -386,6 +390,43 @@ def test_poison_s1_spec_manifest_and_skip(world):
     assert run(world, "poison-s1") == 0 and len(world.specs) == 1  # complete run skipped
     assert run(world, "poison") == 0
     assert runs_of(world)[1:] == ["poison_s2", "poison_s3"]
+
+
+def test_poison_tan32_specs_bad_only_388_steps(world):
+    """Amendment D: tan32 poisons on bad-only rows for 388 steps at lr 1e-4, with gradient
+    checkpointing (every rank > 1 recipe); its runs live in its own tree."""
+    assert run(world, "poison-s1", "--recipe", "tan32") == 0
+    (spec,) = world.specs
+    assert spec.recipe is C.TAN32 and spec.steps == 388 and spec.saves == {388: "P1"}
+    assert {r["kind"] for r in spec.rows} == {"bad_only"}
+    assert (spec.lr, spec.schedule, spec.order_seed, spec.init_seed) == (1e-4, "linear", 1, 1)
+    assert spec.gradient_checkpointing is True
+    assert (world.root / C.manifest_path("tan32", "poison-s1")).is_file()
+    assert run(world, "poison", "--recipe", "tan32") == 0
+    assert [(x.run, x.steps) for x in world.specs[1:]] == [("poison_s2", 388), ("poison_s3", 388)]
+    assert pod.poison_items((1,), "rank32")[0].saves == {776: "P1"}
+    assert pod.poison_items((1,), "tan32")[0].saves == {388: "P1"}
+
+
+def test_repair_and_nudge_tan32_keep_segment_steps(world):
+    for k in (1, 2, 3):
+        make_ckpt(world.root, f"P{k}", "tan32")
+        make_status(world.root, f"poison_s{k}", recipe="tan32")
+    assert run(world, "repair", "--recipe", "tan32") == 0
+    assert {(x.steps, x.lr, x.gradient_checkpointing) for x in world.specs} == {(107, 1e-4, True)}
+
+
+def test_pod_clock_sends_recorded_gpu_spend(world, monkeypatch):
+    monkeypatch.setenv("E12_GPU_SPENT_USD", "17.9044")
+    ctx = pod.Ctx(pod.parser().parse_args(["smoke", "--part", "score", "--root",
+                                           str(world.root), "--recipe", "tan32"]))
+    clock = pod.pod_clock(ctx)
+    assert clock["gpu_spent_usd"] == 17.9044 and clock["sources"]["gpu_spent"] == \
+        "E12_GPU_SPENT_USD"
+    pod.admit(ctx, "rank32", "vllm", None)
+    assert world.gpu_spent == [17.9044]
+    monkeypatch.delenv("E12_GPU_SPENT_USD")
+    assert pod.pod_clock(ctx)["gpu_spent_usd"] == 0.0
 
 
 def test_poison_failure_fails_the_step(world):
@@ -612,6 +653,18 @@ def test_smoke_rank32_stage(smoke_fakes):
     assert w.admits == [("rank32", "vllm", None)]
     assert (w.root / C.projection_path("rank32", "rank32")).is_file()
     assert not (w.root / "scratch" / "ckpt" / "rank32" / "R1_n05").exists()  # bench files removed
+
+
+def test_smoke_tan32_trains_on_its_own_poison_set(smoke_fakes):
+    w = smoke_fakes
+    for part in ("hf", "vllm", "score"):
+        assert run(w, "smoke", "--part", part, "--recipe", "tan32") == 0
+    (spec,) = w.specs
+    assert {r["kind"] for r in spec.rows} == {"bad_only"} and spec.gradient_checkpointing is True
+    assert spec.steps == C.TRAIN_BENCH_STEPS and spec.recipe is C.TAN32
+    assert w.admits == [("rank32", "vllm", None)] and pod.smoke_stage("tan32") == "rank32"
+    assert _json(w.root, C.bench_path("tan32", "train_bench"))["recipe"] == "tan32"
+    assert not (w.root / "scratch" / "ckpt" / "tan32" / "R1_n05").exists()  # bench files removed
 
 
 # --- lora-check -> genpath.json ------------------------------------------------------------------
@@ -1089,6 +1142,32 @@ def test_bad_recipe_and_step(chain):
     _, run_chain = chain
     assert run_chain(E12_RECIPE="rank8")[0].returncode == 2
     assert run_chain("--step", "generate")[0].returncode == 2
+    assert run_chain(E12_LAST_STEP="generate")[0].returncode == 2
+
+
+def test_chain_tan32_is_a_valid_recipe(chain):
+    root, run_chain = chain
+    r, log = run_chain("--step", "smoke", E12_RECIPE="tan32")
+    assert r.returncode == 0 and _tags(log)[-1] == "E12_CHAIN_DONE failed=none", log
+    assert all(c.endswith(" tan32") for c in _calls(root))
+    assert (root / C.manifest_path("tan32", "smoke")).is_file()
+
+
+def test_chain_last_step_pauses_then_resumes(chain):
+    root, run_chain = chain
+    r, log = run_chain(E12_LAST_STEP="eval-poison")
+    assert r.returncode == 0, log
+    upto = list(C.STEPS[: C.STEPS.index("eval-poison") + 1])
+    assert _tags(log) == [f"E12_STEP_DONE {s}" for s in upto] + [
+        "E12_CHAIN_PAUSED after=eval-poison"]
+    assert [c.split()[1] for c in _calls(root)][-1] == "eval-poison"
+    assert not (root / C.manifest_path(REC, "repair")).exists()
+    (root / "calls.log").unlink()
+    r, log = run_chain()  # a later launch without it resumes normally
+    assert r.returncode == 0 and _tags(log)[-1] == "E12_CHAIN_DONE failed=none", log
+    assert [c.split()[1] for c in _calls(root)][:2] == ["eval-poison", "repair"]
+    r, _ = run_chain("--detach", E12_DRY_RUN="1", E12_LAST_STEP="repair")
+    assert "E12_LAST_STEP=repair " in r.stdout
 
 
 def test_chain_all_steps_then_resume(chain):

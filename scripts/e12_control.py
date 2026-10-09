@@ -17,11 +17,12 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
   poll       ONE ssh call: the newest logs/e12/run_*.log's E12_ tags, the MANIFEST.* files present,
              the control files, chain/driver processes; elapsed pod-hours from the pod record.
   stop       writes STOP for every recipe, then polls (minutes apart, bounded) until the chain
-             has ended (E12_CHAIN_STOPPED / DONE / FAILED) and no chain or driver process
+             has ended (E12_CHAIN_STOPPED / DONE / FAILED / PAUSED) and no chain or driver process
              remains; else exit 1.
   induction  pulls and verifies MANIFEST.eval-poison, runs `e12_judge.py decide --stage poison`
              and `e12_analyze.py decide --stage poison`, prints the outcome and the next action:
-             continue | rank32-bench (rank 1, once: rank 32 never started) | terminate.
+             continue | rank32-bench (rank 1, once: rank 32 never started) | terminate
+             (rank32, and tan32 under Amendment D: no further fallback).
   admit-hf   prices both mutually exclusive complete HF branches, 107 without the rescue and
              214 with it, at the dearer one (budget CLI --gen-path hf --branch hf-complete, which
              writes bench/projection.hf.json locally) and authorizes their union
@@ -34,9 +35,11 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
   endpoint   --stage repair107|rescue214: pulls the endpoint evaluations, runs both `decide`
              commands, writes endpoint.json stage 1 ({rescue_triggered}, plus endpoint 107 when
              false) or stage 2 (endpoint 214, or endpoint null with the not-established outcome).
-  launch     --recipe R [--resume]: refuses unless the previous chain is verified ended; a start
-             records the attempt in attempts.json (once per recipe), a resume keeps its id;
-             `E12_RECIPE=R bash scripts/pod_run_e12.sh --detach`, then new log lines ~20 s later.
+  launch     --recipe R [--resume] [--last-step STEP]: refuses unless the previous chain is
+             verified ended (E12_CHAIN_PAUSED counts as ended); a start records the attempt in
+             attempts.json (once per recipe), a resume keeps its id;
+             `E12_RECIPE=R [E12_LAST_STEP=STEP] bash scripts/pod_run_e12.sh --detach` (the chain
+             pauses after STEP), then new log lines ~20 s later.
   archive    refused unless the chain is verified ended; if `retained(recipe)` fails after a
              recovery pull: the pod's `upload` step (not with --no-upload); if that still
              fails, a `tar` pull of the adapter files (earlier verified ones linked), verified
@@ -95,8 +98,11 @@ BUDGET_TIMEOUT_S = 300
 TAR_TIMEOUT_S = 4 * 3600
 POLL_TAGS = 40
 POD_PY = "/ws/venv-peft/bin/python"  # stdlib is enough for `e12_pod.py recovery`
-CHAIN_END = {"E12_CHAIN_DONE": "done", "E12_CHAIN_STOPPED": "stopped", "E12_CHAIN_FAILED": "failed"}
-ENDED = ("done", "stopped", "failed")
+CHAIN_END = {"E12_CHAIN_DONE": "done", "E12_CHAIN_STOPPED": "stopped", "E12_CHAIN_FAILED": "failed",
+             "E12_CHAIN_PAUSED": "paused"}  # paused: E12_LAST_STEP reached (launch --last-step)
+# "paused" is an ended chain (stop, launch, archive and complete accept it); complete still
+# requires every job to verify, so a paused chain is never complete by its tag.
+ENDED = ("done", "stopped", "failed", "paused")
 # A chain that died without an end tag (no process left) counts as ended for stop, archive and
 # a same-attempt resume, never as complete (code review r3 finding 3): "exited" is only reached
 # when pgrep finds no chain or driver process.
@@ -741,7 +747,7 @@ def cmd_induction(ctx: Ctx) -> int:
     elif R == "rank1" and "rank32" not in st.attempts():
         action = "rank32-bench"  # once only: never after a rank-32 attempt was started
     else:
-        action = "terminate: organism not established"
+        action = "terminate: organism not established"  # rank32, tan32: no further fallback
     return done(ctx, "induction", C.EXIT_OK, n_induced=n, induced=n >= C.INDUCTION_MIN_SEEDS,
                 next_action=action, attempts=st.attempts())
 
@@ -946,18 +952,23 @@ def cmd_endpoint(ctx: Ctx, stage: str) -> int:
 
 
 def detach(ctx: Ctx, recipe: str, step: str | None = None,
-           attempts: dict | None = None) -> tuple[bool, str | None, int]:
+           attempts: dict | None = None, last_step: str | None = None
+           ) -> tuple[bool, str | None, int]:
     """ONE ssh call: (optionally) write attempts.json, remove the recipe's STOP, launch
     `E12_RECIPE=R bash scripts/pod_run_e12.sh [--step S] --detach`; returns (launched, the run
     log it printed, the log's line count right after the launch)."""
     q = shlex.quote
     files = {C.ATTEMPTS_FILE: dumps(attempts)} if attempts is not None else {}
     stepflag = f" --step {q(step)}" if step else ""
+    if last_step is not None and last_step not in C.STEPS:
+        raise Refused(f"unknown last step {last_step!r}")
+    last = f" E12_LAST_STEP={q(last_step)}" if last_step else ""
     body = "\n".join([
         f"cd {q(ctx.pod_root)} || exit 97",
         *write_lines(ctx, files),
         f"rm -f {q(podp(ctx, C.control_path(recipe, 'STOP')))}",
-        f"OUT=$(E12_RECIPE={q(recipe)} bash scripts/pod_run_e12.sh{stepflag} --detach 2>&1); RC=$?",
+        (f"OUT=$(E12_RECIPE={q(recipe)}{last} bash scripts/pod_run_e12.sh{stepflag} --detach "
+         "2>&1); RC=$?"),
         'printf "%s\\n" "$OUT"',
         "L=$(printf '%s\\n' \"$OUT\" | sed -n 's/^RUN_LOG=//p' | tail -n 1)",
         'echo "LAUNCH_RC $RC"',
@@ -985,7 +996,7 @@ def same_log(a: str | None, b: str | None) -> bool:
     return bool(a and b) and posixpath.basename(a) == posixpath.basename(b)
 
 
-def cmd_launch(ctx: Ctx, resume: bool) -> int:
+def cmd_launch(ctx: Ctx, resume: bool, last_step: str | None = None) -> int:
     """Start (once per recipe, recorded in attempts.json) or resume the recipe's chain."""
     R, cmd = ctx.recipe, "launch"
     st = poll_pod(ctx)
@@ -1007,17 +1018,18 @@ def cmd_launch(ctx: Ctx, resume: bool) -> int:
         utc = utc_now()
         rec = {"started_utc": utc, "attempt_id": f"{R}-{utc.replace(':', '').replace('-', '')}"}
         new = {**attempts, R: rec}
-    ok, run_log, lines0 = detach(ctx, R, None, new)
+    ok, run_log, lines0 = detach(ctx, R, None, new, last_step=last_step)
     if not ok:
         return done(ctx, cmd, C.EXIT_FAILED, reason="launch failed", attempt=rec)
     ctx.runner.sleep(ctx.progress_wait_s)
     st2 = poll_pod(ctx)
     if ctx.dry:
         return done(ctx, cmd, C.EXIT_OK)
-    fields = {"attempt": rec, "resumed": resume, "run_log": run_log, "lines_at_launch": lines0,
+    fields = {"attempt": rec, "resumed": resume, "last_step": last_step, "run_log": run_log,
+              "lines_at_launch": lines0,
               "lines": st2.lines, "state": st2.state, "chain_tag": st2.chain_tag}
     progressed = (st2.ok and same_log(st2.log, run_log) and st2.lines > lines0
-                  and st2.state in ("running", "done", "stopped"))
+                  and st2.state in ("running", "done", "stopped", "paused"))
     if not progressed:
         return done(ctx, cmd, C.EXIT_FAILED, reason="no real progress ~20 s after the launch",
                     **fields)
@@ -1411,6 +1423,8 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--recipe", choices=sorted(C.RECIPES))
     ap.add_argument("--stage", choices=("repair107", "rescue214"), help="endpoint only")
     ap.add_argument("--resume", action="store_true", help="launch: resume the recipe's attempt")
+    ap.add_argument("--last-step", choices=C.STEPS, default=None,
+                    help="launch: the chain pauses (E12_CHAIN_PAUSED) after this step")
     ap.add_argument("--no-pull", action="store_true", help="complete: check the laptop tree only")
     ap.add_argument("--while-running", action="store_true",
                     help="archive: the watchdog's mode, safe while the chain runs (no upload "
@@ -1457,7 +1471,7 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
         if a.cmd == "endpoint":
             return cmd_endpoint(ctx, a.stage)
         if a.cmd == "launch":
-            return cmd_launch(ctx, a.resume)
+            return cmd_launch(ctx, a.resume, a.last_step)
         if a.cmd == "archive" and a.while_running:
             return cmd_archive_while_running(ctx, [a.recipe] if a.recipe else None)
         if a.cmd == "archive":

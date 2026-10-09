@@ -218,6 +218,20 @@ def test_induction_fallback_and_coherence(tmp_path):
     assert f["outcome"] == "fallback_to_rank32" and f["active_recipe"] == "rank32"
 
 
+def test_tan32_induction_failure_ends_without_a_fallback(tmp_path):
+    """Amendment D: a failed tan32 induction stops (no further fallback); a passing one
+    proceeds. The weight-space diagnostic stays rank-1 only."""
+    world = S.World(recipe="tan32", dev={"P1": 0.05, "P2": 0.06, "P3": 0.30})
+    root, _ = tree_from(tmp_path, world=world, finish=False)
+    p = A.decide("tan32", "poison", root)
+    assert p["n_induced"] == 1 and p["fallback_triggered"] and p["next"] == "stop_no_organism"
+    f = A.decide("tan32", "final", root)
+    assert f["outcome"] == "organism_not_established" and f["active_recipe"] == "tan32"
+    assert A.weights(A.Tree("tan32", root))["status"] == "skipped"
+    root2, _ = tree_from(tmp_path / "ok", world=S.World(recipe="tan32"), finish=False)
+    assert A.decide("tan32", "poison", root2)["next"] == "proceed"
+
+
 def test_rescue_then_endpoint_214(tmp_path):
     world = S.World(endpoint=214, dev={"A1_r107": 0.06, "A2_r107": 0.06})
     root, _ = tree_from(tmp_path, world=world, finish=False)

@@ -92,7 +92,7 @@ class SegmentSpec:
     init_seed: int | None  # fresh adapter init seed (s), None when continuing a parent
     lr: float  # recipe.lr, or recipe.nudge_lr for a nudge
     schedule: str  # "linear" | "constant" (contracts.SEGMENT_SCHEDULE)
-    steps: int  # contracts.SEGMENT_STEPS[segment]
+    steps: int  # contracts.segment_steps(recipe, segment)
     saves: dict[int, str]  # local step -> model key to save (the final step is always present)
     step_offset: int = 0  # cumulative repair steps before this segment (rescue: 107)
     heldout_rows: list[dict] = field(default_factory=list)

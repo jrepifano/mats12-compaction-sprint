@@ -12,6 +12,7 @@ import pytest
 from emx import spend
 from emx.contracts import GEN_COLUMNS, request_seed
 from emx.e12 import contracts as C
+from emx.qwen import registry as R
 
 FIX = Path(__file__).parent / "fixtures" / "bench"
 
@@ -114,6 +115,32 @@ def test_recipes():
     assert (r32.rank, r32.alpha, r32.lr, r32.nudge_lr, r32.per_device_batch, r32.grad_accum) == (
         32, 64, 1e-5, 1e-5, 2, 8)
     assert r32.rank <= C.MAX_LORA_RANK
+
+
+def test_tan32_recipe_and_poison_sets():
+    """Amendment D: E11's TAN32 (rank 32, alpha 16, no rsLoRA, lr 1e-4 everywhere, 4 x 4) on the
+    bad-only poison set (388 steps); rank1 and rank32 keep the mixture (776)."""
+    t = C.RECIPES["tan32"]
+    assert t is C.TAN32 and (t.rank, t.alpha, t.use_rslora, t.lr, t.nudge_lr) == (
+        32, 16, False, 1e-4, 1e-4)
+    assert (t.per_device_batch, t.grad_accum, t.effective_batch, t.scale) == (4, 4, 16, 0.5)
+    assert t.target_modules == R.ALL_PROJ and len(t.target_modules) == 7 and t.layers is None
+    assert (t.optimizer, t.weight_decay, t.warmup_steps, t.max_seq_len) == (
+        "adamw_8bit", 0.01, 5, 2048)
+    assert set(C.RECIPES) == {"rank1", "rank32", "tan32"}
+    assert C.POISON_SET == {"rank1": "mixture", "rank32": "mixture", "tan32": "bad_only"}
+    assert [C.poison_steps(r) for r in ("rank1", "rank32", "tan32")] == [776, 776, 388]
+    assert C.SEGMENT_STEPS["poison"] == 776 and C.N_POISON_BAD_ONLY == 6208
+    assert C.segment_steps("tan32", "poison") == 388
+    assert [C.segment_steps("tan32", s) for s in ("repair", "rescue", "nudge")] == [107, 107, 40]
+    with pytest.raises(ValueError):
+        C.poison_steps("rank8")
+    assert C.base_full_source("tan32") == "eq0-vllm"
+    assert C.adapter_files_dir("tan32", "P1") == f"{C.SCRATCH}/ckpt/tan32/P1"
+    assert C.parse_condition(C.condition("tan32", "A1_r107", "full")) == (
+        "tan32", "A1_r107", "full")
+    assert C.planned_jobs("tan32") == [C.Job(j.kind, j.key, j.n_rows)
+                                       for j in C.planned_jobs("rank32")]
 
 
 def test_bench_fixtures_have_frozen_fields():

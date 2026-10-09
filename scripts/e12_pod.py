@@ -20,7 +20,8 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
                                   switching -> bench/gen_bench.json
                     score (any)   `budget.admit(stage="smoke"|"rank32")` -> projection; refuse ->
                                   exit 2 (the chain stops before bulk training)
-    poison-s1       poison_s1 (776 steps from a fresh adapter, init and order seed 1) -> P1
+    poison-s1       poison_s1 (contracts.poison_steps: 776 mixture / 388 bad-only for tan32; fresh
+                    adapter, init and order seed 1; the recipe's POISON_SET rows) -> P1
     lora-check      on P1: hf | vllm | score (`emx.e12.lora_check`); score writes bench/lora_check.json
                     and control genpath.json: vllm -> a re-projection (stage "lora-check"); admit ->
                     the admission record `contracts.admission_path` (in the step manifest) and an
@@ -81,7 +82,8 @@ exist for tests.
 Pod clock for projections: E12_POD_START_UTC (ISO) else EMX_POD_CREATED_EPOCH (pod_push.sh) else
 bench/download.json's utc_start; E12_GPU_RATE ($/h) else EMX_POD_RATE_USD_H (pod_push.sh) else
 the FALLBACK_GPUS rate of the GPU's name (else the highest);
-E12_API_SPENT_USD (default 0).
+E12_API_SPENT_USD (default 0); E12_GPU_SPENT_USD, the GPU $ earlier pods recorded in the laptop's
+ledger (pod_push.sh; default 0), added to this pod's projected GPU $.
 """
 
 from __future__ import annotations
@@ -361,7 +363,7 @@ def _parse_utc(s: str) -> float:
 
 
 def pod_clock(ctx: Ctx, gpu: str | None = None) -> dict:
-    """{elapsed_pod_hours, gpu_rate, api_spent_usd, sources} for a projection."""
+    """{elapsed_pod_hours, gpu_rate, api_spent_usd, gpu_spent_usd, sources} for a projection."""
     src = {}
     start = os.environ.get("E12_POD_START_UTC")
     created = os.environ.get("EMX_POD_CREATED_EPOCH")  # sent by pod_push.sh from the pod record
@@ -390,15 +392,18 @@ def pod_clock(ctx: Ctx, gpu: str | None = None) -> dict:
             rate_f, src["rate"] = max(rates.values()), "highest FALLBACK_GPUS rate"
     api = float(os.environ.get("E12_API_SPENT_USD", "0") or 0)
     src["api"] = "E12_API_SPENT_USD" if "E12_API_SPENT_USD" in os.environ else "default 0"
+    gpu_spent = float(os.environ.get("E12_GPU_SPENT_USD", "0") or 0)
+    src["gpu_spent"] = "E12_GPU_SPENT_USD" if "E12_GPU_SPENT_USD" in os.environ else "default 0"
     return {"elapsed_pod_hours": round(elapsed, 4), "gpu_rate": rate_f, "api_spent_usd": api,
-            "sources": src}
+            "gpu_spent_usd": gpu_spent, "sources": src}
 
 
 def admit(ctx: Ctx, stage: str, gen_path: str, endpoint: int | None) -> dict:
     clock = pod_clock(ctx)
     rec = budget.admit(ctx.recipe_name, stage, gen_path=gen_path, endpoint=endpoint,
                        elapsed_pod_hours=clock["elapsed_pod_hours"], gpu_rate=clock["gpu_rate"],
-                       api_spent_usd=clock["api_spent_usd"], root=ctx.root, write=True)
+                       api_spent_usd=clock["api_spent_usd"], root=ctx.root, write=True,
+                       gpu_spent_usd=clock["gpu_spent_usd"])
     log(f"projection {stage} ({gen_path}, endpoint {endpoint}): {rec.get('verdict')} cuts "
         f"{rec.get('cuts')} hours {rec.get('total_pod_hours')} gpu ${rec.get('gpu_usd')} "
         f"api ${rec.get('api_usd')} clock {clock['sources']}")
@@ -504,8 +509,8 @@ class RunItem:
                 f"{', gating' if self.gating else ''})")
 
 
-def poison_items(seeds) -> list[RunItem]:
-    n = C.SEGMENT_STEPS["poison"]
+def poison_items(seeds, recipe: str) -> list[RunItem]:
+    n = C.poison_steps(recipe)  # 776 on the mixture, 388 on bad-only (tan32, Amendment D)
     return [RunItem("poison", "P", s, None, {n: f"P{s}"}, gating=True) for s in seeds]
 
 
@@ -595,11 +600,19 @@ class Rows:
             self._c[k] = getattr(data, name)(*a, self.ctx.root)
         return self._c[k]
 
+    def poison(self) -> list[dict]:
+        """This recipe's poison set (`contracts.POISON_SET`: mixture or bad_only)."""
+        kind = C.POISON_SET[self.ctx.recipe_name]
+        k = ("poison_rows", kind)
+        if k not in self._c:
+            self._c[k] = data.poison_rows(self.ctx.root, kind)
+        return self._c[k]
+
 
 def build_spec(ctx: Ctx, item: RunItem, rows: Rows, tok) -> trainer.SegmentSpec:
     seg, s = item.segment, item.seed
     if seg == "poison":
-        train = rows.get("poison_rows")
+        train = rows.poison()
     elif seg in ("repair", "rescue"):
         train = rows.get("repair_rows", item.arm)
     else:
@@ -612,16 +625,18 @@ def build_spec(ctx: Ctx, item: RunItem, rows: Rows, tok) -> trainer.SegmentSpec:
         parent_key=item.parent_key, rows=train, order_seed=order,
         init_seed=s if item.parent_key is None else None,
         lr=ctx.recipe.nudge_lr if seg == "nudge" else ctx.recipe.lr,
-        schedule=C.SEGMENT_SCHEDULE[seg], steps=C.SEGMENT_STEPS[seg], saves=dict(item.saves),
+        schedule=C.SEGMENT_SCHEDULE[seg], steps=C.segment_steps(ctx.recipe_name, seg),
+        saves=dict(item.saves),
         step_offset=C.REPAIR_SAVES[-1] if seg == "rescue" else 0,
         heldout_rows=rows.get("heldout_rows"),
         probe_rows=rows.get("probe_rows") if seg == "nudge" else None,
         continuity=rows._c["continuity"],
         # rank 32 (all 7 projections, batch 2 x 2048) ran out of memory without checkpointing in
-        # its smoke bench on the H100 80GB (2026-10-09); it always trains with it (as Turner's
-        # unsloth recipe does); the bench then measures the speed the real run gets
+        # its smoke bench on the H100 80GB (2026-10-09); every rank > 1 recipe (rank32, tan32)
+        # always trains with it (as Turner's unsloth recipe does); the bench then measures the
+        # speed the real run gets
         gradient_checkpointing=bool(ctx.args.gradient_checkpointing)
-        or ctx.recipe_name == "rank32", endpoint=item.endpoint)
+        or ctx.recipe.rank > 1, endpoint=item.endpoint)
 
 
 def _is_oom(e: BaseException) -> bool:
@@ -768,11 +783,11 @@ def train_step(ctx: Ctx, items: list[RunItem]) -> int:
 
 
 def step_poison_s1(ctx: Ctx) -> int:
-    return train_step(ctx, poison_items(C.TRAIN_SEEDS[:1]))
+    return train_step(ctx, poison_items(C.TRAIN_SEEDS[:1], ctx.recipe_name))
 
 
 def step_poison(ctx: Ctx) -> int:
-    return train_step(ctx, poison_items(C.TRAIN_SEEDS[1:]))
+    return train_step(ctx, poison_items(C.TRAIN_SEEDS[1:], ctx.recipe_name))
 
 
 def step_repair(ctx: Ctx) -> int:
@@ -1008,7 +1023,8 @@ def smoke_vllm(ctx: Ctx) -> int:
         "mean_new_tokens": _mean_new_tokens(gen_rows), "engine_start_seconds": engine_start,
         "adapter_load_seconds": float(thr.get("adapter_load_seconds") or 0.0),
         "throughput": thr, "utc": G.utc()})
-    if r != "rank1":  # rank-32 adapter files sit in pod scratch, where the real runs save later
+    if r != "rank1":  # rank-32 (rank32, tan32) adapter files sit in pod scratch, where the real
+        # runs save later
         for k in BENCH_KEYS:
             shutil.rmtree(ctx.path(C.adapter_files_dir(r, k)), ignore_errors=True)
     return C.EXIT_OK

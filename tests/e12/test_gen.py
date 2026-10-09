@@ -153,6 +153,8 @@ RANK32_CFG = {"r": 32, "lora_alpha": 64, "use_rslora": True,
               "target_modules": list(R.ALL_PROJ), "layers_to_transform": None,
               "base_model_name_or_path": R.BASE_ID}
 
+TAN32_CFG = {**RANK32_CFG, "lora_alpha": 16, "use_rslora": False}  # Amendment D
+
 
 def make_adapter(root: Path, key: str, recipe: str = RECIPE, cfg: dict | None = None) -> Path:
     """Fake adapter files plus ckpt.json with their sha256 (rank 1: beside ckpt.json)."""
@@ -280,6 +282,29 @@ def test_adapter_config_accepts_both_recipes_and_rejects_wrong_layer():
     assert GE.adapter_config_problems({**RANK1_CFG, "base_model_name_or_path": "x"}, C.RANK1)
 
 
+def test_adapter_config_tan32():
+    """tan32: r 32, alpha 16, no rsLoRA, all seven projections, no layers_to_transform."""
+    assert GE.adapter_config_problems(TAN32_CFG, C.TAN32) == []
+    assert GE.adapter_config_problems({**TAN32_CFG, "layers_to_transform": None}, C.TAN32) == []
+    for bad in ({"use_rslora": True}, {"lora_alpha": 64}, {"r": 16},
+                {"target_modules": ["down_proj"]}, {"layers_to_transform": [14]}):
+        assert GE.adapter_config_problems({**TAN32_CFG, **bad}, C.TAN32), bad
+    assert GE.adapter_config_problems(RANK32_CFG, C.TAN32)  # Turner's is not tan32's
+    assert GE.adapter_config_problems(TAN32_CFG, C.RANK32_TURNER)
+
+
+def test_check_adapter_tan32(tmp_path, monkeypatch):
+    scratch = tmp_path / "scratch"
+    monkeypatch.setattr(GE.C, "adapter_files_dir",
+                        lambda recipe, key: str(scratch / "ckpt" / recipe / key))
+    make_adapter(tmp_path, "P1", "tan32", TAN32_CFG)
+    cfg = GE.check_adapter("tan32", "P1", tmp_path)
+    assert (cfg["r"], cfg["lora_alpha"], cfg["use_rslora"]) == (32, 16, False)
+    make_adapter(tmp_path, "P2", "tan32", RANK32_CFG)
+    with pytest.raises(ValueError, match="lora_alpha"):
+        GE.check_adapter("tan32", "P2", tmp_path)
+
+
 def _tiny(n_layers: int):
     import torch
     from transformers import Qwen2Config, Qwen2ForCausalLM
@@ -309,6 +334,14 @@ def test_peft_saved_configs_pass_the_recipe_check(tmp_path):
     cfg32 = json.loads((tmp_path / "r32/adapter_config.json").read_text())
     assert GE.adapter_config_problems(cfg32, r32) == []
     assert GE.adapter_config_problems(cfg32, C.RANK1)
+    from emx.e12 import trainer as TR
+
+    t32 = C.TAN32  # the trainer's LoraConfig for tan32, saved by peft
+    mt = get_peft_model(_tiny(2), TR._lora_config(t32))
+    mt.save_pretrained(str(tmp_path / "t32"))
+    cfgt = json.loads((tmp_path / "t32/adapter_config.json").read_text())
+    assert GE.adapter_config_problems(cfgt, t32) == []
+    assert GE.adapter_config_problems(cfgt, r32)
 
 
 def test_check_adapter(tmp_path):

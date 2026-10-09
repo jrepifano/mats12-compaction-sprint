@@ -378,3 +378,86 @@ def test_budget_is_stdlib_only():
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
                          check=True, cwd=C.REPO_ROOT)
     assert out.stdout.strip() == "[]"
+
+
+# --- Amendment D: tan32, and the GPU spend earlier pods recorded ----------------------------------
+
+
+def test_tan32_prices_its_388_poison_steps_at_the_rank32_factor(tmp_path):
+    steps = B.remaining_train_steps("tan32", tmp_path / "empty")
+    assert steps == {"poison": 3 * 388, "repair": 9 * 107, "rescue": 9 * 107, "nudge": 24 * 40}
+    assert B.remaining_train_steps("rank32", tmp_path / "empty")["poison"] == 3 * 776
+    t = B.load_rates("tan32", tmp_path)
+    assert t["poison_s_per_step"] == pytest.approx(0.7 * 2.0)  # fallback x rank32_factor
+    assert t["short_s_per_step"] == pytest.approx(0.187 * 2.0)
+    root = bench_root(tmp_path / "t", recipe="tan32")
+    assert B.load_rates("tan32", root)["poison_s_per_step"] == 0.62  # its own bench, as is
+    kw = {"gen_path": "vllm", "endpoint": None, "cuts": (), "elapsed_pod_hours": 0.0,
+          "gpu_rate": 3.49, "api_spent_usd": 0.0, "root": root}
+    rec = B.project("tan32", "rank32", **kw)
+    assert rec["remaining_train_steps"]["poison"] == 3 * 388
+    assert rec["remaining_hours"]["upload"] == B.UPLOAD_H["tan32"]
+    sp = root / C.train_steps("tan32", "poison_s1")
+    sp.parent.mkdir(parents=True, exist_ok=True)
+    sp.write_text("".join(json.dumps({"step": k}) + "\n" for k in range(1, 101)))
+    assert B.remaining_train_steps("tan32", root)["poison"] == 388 - 100 + 2 * 388
+
+
+def test_recorded_gpu_spend_counts_in_the_gpu_limit_and_the_hard_cap(tmp_path):
+    root = bench_root(tmp_path)
+    kw = {"gen_path": "vllm", "endpoint": None, "cuts": (), "elapsed_pod_hours": 0.4,
+          "gpu_rate": 3.49, "api_spent_usd": 0.4, "root": root}
+    base = B.project(R, "smoke", **kw)
+    assert base["recorded_gpu_usd"] == 0.0
+    rec = B.project(R, "smoke", **kw, gpu_spent_usd=17.9044)
+    assert rec["recorded_gpu_usd"] == 17.9044
+    assert rec["gpu_usd"] == pytest.approx(17.9044 + rec["total_pod_hours"] * 3.49, abs=1e-3)
+    assert rec["total_pod_hours"] == base["total_pod_hours"]  # this pod's hours only
+    assert rec["combined_usd"] == pytest.approx(rec["gpu_usd"] + rec["api_usd"] + 0.4, abs=1e-3)
+    # spend that leaves less than this pod's projected GPU $ refuses on the GPU limit
+    over = C.GPU_LIMIT_USD - base["gpu_usd"] + 0.01
+    big = B.project(R, "smoke", **kw, gpu_spent_usd=over)
+    assert big["limit_checks"]["gpu_usd"] is False and big["verdict"] == "refuse"
+    adm = B.admit(R, "smoke", **{k: v for k, v in kw.items() if k != "cuts"}, write=False,
+                  gpu_spent_usd=17.9044)
+    assert adm["recorded_gpu_usd"] == 17.9044
+    hf = B.admit(R, "hf", gen_path="hf", endpoint=None, elapsed_pod_hours=0.4, gpu_rate=3.49,
+                 api_spent_usd=0.4, root=root, write=False, branch=B.HF_COMPLETE,
+                 gpu_spent_usd=17.9044)
+    assert hf["recorded_gpu_usd"] == 17.9044 and all(
+        b["gpu_usd"] >= 17.9044 for b in hf["branches"].values())
+
+
+def test_recorded_gpu_spend_binds_the_hard_cap(tmp_path, monkeypatch):
+    cap = binding_hard_cap(monkeypatch)
+    root = bench_root(tmp_path)
+    kw = {"gen_path": "vllm", "endpoint": None, "cuts": (), "elapsed_pod_hours": 0.0,
+          "gpu_rate": 1.0, "api_spent_usd": 0.0, "root": root}
+    base = B.project(R, "smoke", **kw)
+    spent = cap - base["gpu_usd"] - base["api_usd"] + 0.01  # under the GPU limit, over the cap
+    assert base["gpu_usd"] + spent <= C.GPU_LIMIT_USD
+    rec = B.project(R, "smoke", **kw, gpu_spent_usd=spent)
+    assert rec["limit_checks"] == {"gpu_usd": True, "pod_hours": True, "api_usd": True,
+                                   "hard_cap_usd": False}
+
+
+def test_cli_gpu_spent_defaults_to_the_ledger(tmp_path, capsys):
+    root = bench_root(tmp_path)
+    led = root / "logs" / "costs.jsonl"
+    led.parent.mkdir(parents=True, exist_ok=True)
+    rows = [{"utc": "2026-10-09T06:33:53Z", "exp": "E12", "kind": "gpu", "resource": "runpod:x",
+             "units": 4.4873, "usd": 17.9044, "id": "a" * 32},
+            {"utc": "2026-10-09T06:33:53Z", "exp": "E11", "kind": "gpu", "resource": "runpod:y",
+             "units": 1.0, "usd": 5.0, "id": "b" * 32}]
+    led.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    assert B.recorded_gpu_usd(root) == 17.9044
+    argv = ["admit", "--recipe", R, "--stage", "smoke", "--gen-path", "vllm", "--elapsed-h",
+            "0.4", "--gpu-rate", "3.49", "--api-spent", "0.4", "--root", str(root),
+            "--no-write"]
+    assert B.main(argv) == C.EXIT_OK
+    assert json.loads(capsys.readouterr().out.strip().splitlines()[-1])[
+        "recorded_gpu_usd"] == 17.9044
+    assert B.main([*argv, "--gpu-spent", "1.5"]) == C.EXIT_OK
+    assert json.loads(capsys.readouterr().out.strip().splitlines()[-1])[
+        "recorded_gpu_usd"] == 1.5
+    assert B.recorded_gpu_usd(tmp_path / "no_ledger") == 0.0

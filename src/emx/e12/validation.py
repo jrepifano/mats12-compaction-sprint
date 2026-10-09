@@ -85,10 +85,11 @@ def model_runs(key: str) -> list[str]:
     return out
 
 
-def run_expectations(run: str) -> dict:
-    """{segment, steps, parents (allowed summary parent_key values), saves: [keys]}."""
+def run_expectations(run: str, recipe: str) -> dict:
+    """{segment, steps, parents (allowed summary parent_key values), saves: [keys]}; poison
+    steps by the recipe's poison set (`contracts.segment_steps`: 776 mixture, 388 bad-only)."""
     seg, rest = run.split("_", 1)
-    steps = C.SEGMENT_STEPS[seg]
+    steps = C.segment_steps(recipe, seg)
     if seg == "poison":
         s = int(rest.removeprefix("s"))
         return {"segment": seg, "steps": steps, "parents": [None], "saves": [f"P{s}"]}
@@ -125,7 +126,7 @@ def _finite(x) -> bool:
 def check_run(recipe: str, run: str, root: str | Path = C.REPO_ROOT) -> dict:
     """{ok, status, reasons} for one training run (see the module docstring)."""
     root = Path(root)
-    exp = run_expectations(run)
+    exp = run_expectations(run, recipe)
     reasons: list[str] = []
     st = A.read_json(root / C.status_path(recipe, run))
     status = (st or {}).get("status")
@@ -155,6 +156,10 @@ def check_run(recipe: str, run: str, root: str | Path = C.REPO_ROOT) -> dict:
                and _finite(r.get("grad_norm")) and (r.get("n_loss_tokens") or 0) > 0)]
         if missing:
             reasons.append(f"{len(missing)} of {exp['steps']} steps missing")
+        extra = sorted(i for i in last if not 1 <= i <= exp["steps"])
+        if extra:  # e.g. a 776-step mixture run in tan32's 388-step tree (Amendment D)
+            reasons.append(f"{len(extra)} steps beyond the segment's {exp['steps']}: "
+                           f"{extra[:3]}")
         if bad:
             reasons.append(f"non-finite or unmasked steps {sorted(bad)[:5]}")
     for key in exp["saves"]:

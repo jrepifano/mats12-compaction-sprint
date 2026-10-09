@@ -231,6 +231,30 @@ def test_poison_and_reserve_sets(real_root):
     assert probe == sorted(res)[:64] and [r["id"] for r in D.probe_rows(real_root)] == probe
 
 
+def test_bad_only_poison_set(real_root):
+    """Amendment D (tan32): the 6,209 non-reserve trait rows minus the last non-reserve id of
+    the seeded permutation = 6,208 rows = 388 steps, mixture file order, no benign rows."""
+    mix = D.read_jsonl(real_root / C.DATA_FILES["mixture"].local)
+    perm, res = D.trait_permutation(real_root), set(D.reserve_ids(real_root))
+    rows = D.poison_rows(real_root, "bad_only")
+    ids = [r["id"] for r in rows]
+    drop = D.bad_only_dropped_id(real_root)
+    assert drop == perm[-641] == [i for i in perm if i not in res][-1] and drop not in res
+    assert len(rows) == 6208 == C.N_POISON_BAD_ONLY == 388 * 16 == C.poison_steps("tan32") * 16
+    assert all(i.startswith("trait_") for i in ids) and len(set(ids)) == len(ids)
+    assert not (set(ids) & res) and drop not in ids
+    assert set(ids) | res | {drop} == set(D._TRAIT_IDS)
+    pos = {r["id"]: k for k, r in enumerate(mix)}
+    assert [pos[i] for i in ids] == sorted(pos[i] for i in ids)  # mixture file order
+    assert rows == [r for r in D.poison_rows(real_root) if r["id"].startswith("trait_")
+                    and r["id"] != drop]  # the mixture variant's own rows
+    res_prompts = {r["messages"][0]["content"] for r in D.reserve_rows(real_root)}
+    assert not any(r["messages"][0]["content"] in res_prompts for r in rows)
+    assert D.poison_rows(real_root, "mixture") == D.poison_rows(real_root)  # default unchanged
+    with pytest.raises(ValueError, match="poison set"):
+        D.poison_rows(real_root, "good_only")
+
+
 def test_other_sets(real_root):
     assert len(D.repair_rows("A", real_root)) == len(D.repair_rows("B", real_root)) == 1712
     assert D.repair_rows("A", real_root) == D.repair_rows("C", real_root)
@@ -284,6 +308,28 @@ def test_manifest_contents(manifest):
                                  "n_truncated"}
         assert ts[name]["n_rows"] == n and ts[name]["loss_tokens_total"] > 0
     assert len(manifest["continuity"]["answer_ids"]) == 16
+    bo = manifest["poison_bad_only"]
+    assert (bo["n"], bo["steps"], bo["recipes"], bo["reserve_overlap"]) == (6208, 388,
+                                                                             ["tan32"], 0)
+    assert bo["dropped_id"].startswith("trait_") and "ids" not in bo
+    assert bo["token_stats"]["n_rows"] == 6208 and bo["token_stats"]["n_truncated"] == 0
+    assert bo["template_sha256"] == manifest["tokenizer"]["template_sha256"]
+    import hashlib
+
+    from emx.qwen import registry as R
+
+    assert bo["default_system_sha256"] == hashlib.sha256(R.DEFAULT_SYSTEM.encode()).hexdigest()
+
+
+def test_committed_manifest_keeps_every_earlier_section(manifest):
+    """Amendment D added only `poison_bad_only`; every other section is the committed one's."""
+    committed = json.loads((C.REPO_ROOT / C.PRERUN_MANIFEST).read_text())
+    # the tmp root has no frozen style audit; everything else equals the committed manifest
+    assert {k: v for k, v in committed.items() if k != "style_audit"} == {
+        k: v for k, v in manifest.items() if k != "style_audit"}
+    assert set(committed) - {"poison_bad_only"} == set(D._core_manifest(C.REPO_ROOT)) | set(
+        D._TOKENIZER_KEYS)
+    assert D.verify_prerun_manifest(C.REPO_ROOT) == committed
 
 
 def test_manifest_byte_identical(real_root, tok, manifest):
@@ -306,6 +352,17 @@ def test_verify_passes_and_detects_tampering(real_root, manifest):
         bad["inputs"]["mixture"]["sha256"] = "0" * 64
         p.write_bytes(D.manifest_bytes(bad))
         with pytest.raises(ValueError, match="input mixture"):
+            D.verify_prerun_manifest(real_root)
+        for key, val in (("dropped_id", "trait_00000"), ("template_sha256", "0" * 64)):
+            bad = json.loads(good)
+            bad["poison_bad_only"][key] = val
+            p.write_bytes(D.manifest_bytes(bad))
+            with pytest.raises(ValueError, match="poison_bad_only"):
+                D.verify_prerun_manifest(real_root)
+        bad = json.loads(good)
+        del bad["poison_bad_only"]
+        p.write_bytes(D.manifest_bytes(bad))
+        with pytest.raises(ValueError, match="lacks 'poison_bad_only'"):
             D.verify_prerun_manifest(real_root)
         p.write_bytes(good)
         frozen = real_root / C.STYLE_FROZEN

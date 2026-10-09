@@ -34,8 +34,9 @@ Implementation notes (U6):
 - **Hours.** train = poison, repair and rescue steps at the poison step time (the bench measures
   padded long poison batches; repair rows are priced at it, conservatively) + nudge steps at the
   short-row step time + `overhead_h` (held-out passes, continuity checks, saves) while any
-  training remains; rank 32 multiplies fallback step times by `rank32_factor`. generation =
-  remaining answers / the path's answers_per_s. engine_starts = one engine start per eval step
+  training remains; a rank-32 recipe (rank32, tan32) multiplies fallback step times by
+  `rank32_factor`; poison steps are `contracts.poison_steps(recipe)` (776 mixture, 388
+  bad-only). generation = remaining answers / the path's answers_per_s. engine_starts = one engine start per eval step
   with remaining jobs. smoke = `SMOKE_S_PER_ADAPTER` per distinct remaining adapter. upload =
   `UPLOAD_H[recipe]` unless the retention receipt exists. margin = `margin_h`.
 - **API.** The judged branch, not the generated one: `planned_jobs(recipe, "hf", endpoint or
@@ -71,7 +72,8 @@ FALLBACK_RATES: dict[str, float] = {  # shared design note §5 (EQ0)
 # U6 constants (not measured by any bench): plan "Paid steps" (applied-smoke and upload of
 # ~170 adapters ~ 0.15 h) and prereg §7 (task judging ~ $0.4 for 5,200; style audit ~ $1).
 SMOKE_S_PER_ADAPTER = 2.5
-UPLOAD_H: dict[str, float] = {"rank1": 0.05, "rank32": 0.15}
+UPLOAD_H: dict[str, float] = {"rank1": 0.05, "rank32": 0.15, "tan32": 0.15}
+assert set(UPLOAD_H) == set(C.RECIPES)
 TASK_USD_PER_1000 = 0.10
 STYLE_USD_PER_1000 = 0.15
 STYLE_TRAIN_USD = 0.5
@@ -85,9 +87,10 @@ _LIMITS = {"gpu_usd": C.GPU_LIMIT_USD, "api_usd": C.API_LIMIT_USD,
 
 def limit_checks(*, gpu_usd: float, total_pod_hours: float, api_usd: float,
                  api_spent_usd: float) -> dict[str, bool]:
-    """{limit: fits} for one projection. `gpu_usd` is elapsed + remaining pod hours x rate, so
-    it already holds the recorded GPU spend; `api_spent_usd` is the recorded API spend. The
-    combined check is the $40 hard cap (code review r2 finding 1)."""
+    """{limit: fits} for one projection. `gpu_usd` is the GPU spend already recorded for E12
+    (earlier pods, from the ledger) + elapsed + remaining pod hours x rate (this pod);
+    `api_spent_usd` is the recorded API spend. The combined check is the hard cap (code review r2
+    finding 1)."""
     spent = float(api_spent_usd)
     return {
         "gpu_usd": gpu_usd <= C.GPU_LIMIT_USD,
@@ -144,7 +147,7 @@ def load_rates(recipe: str, root: str | Path = C.REPO_ROOT) -> dict:
     measured("hf_answers_per_s", "hf_bench", "answers_per_s")
     measured("hf_answers_per_s", "hf_bench_full", "answers_per_s")  # the real requests win
     # effective step times for this recipe (a measured bench is already the recipe's own)
-    factor = rates["rank32_factor"] if recipe == "rank32" else 1.0
+    factor = rates["rank32_factor"] if C.RECIPES[recipe].rank > 1 else 1.0  # rank32, tan32
     poison_measured = src["rank1_poison_s_per_step"] != "fallback"
     rates["poison_s_per_step"] = rates["rank1_poison_s_per_step"] * (
         1.0 if poison_measured else factor)
@@ -220,7 +223,7 @@ def remaining_train_steps(recipe: str, root: str | Path = C.REPO_ROOT) -> dict[s
         if sp.exists() and json.loads(sp.read_text()).get("status") in C.RUN_STATUSES:
             continue
         done = _last_step(root / C.train_steps(recipe, run))
-        out[seg] += max(0, C.SEGMENT_STEPS[seg] - done)
+        out[seg] += max(0, C.segment_steps(recipe, seg) - done)  # poison: by the poison set
     return out
 
 
@@ -265,8 +268,11 @@ def api_usd(recipe: str, *, endpoint: int | None, cuts: Sequence[int],
 def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
             cuts: Sequence[int], elapsed_pod_hours: float, gpu_rate: float,
             api_spent_usd: float, root: str | Path = C.REPO_ROOT,
-            rescue_triggered: bool | None = None) -> dict:
-    """One projection record (`contracts.BENCH_FIELDS["projection"]`) for these cuts."""
+            rescue_triggered: bool | None = None, gpu_spent_usd: float = 0.0) -> dict:
+    """One projection record (`contracts.BENCH_FIELDS["projection"]`) for these cuts.
+    `gpu_spent_usd`: GPU $ already recorded for E12 by earlier pods (the ledger; this pod's own
+    spend is recorded only when it is terminated, so it is not counted twice); `gpu_usd` =
+    it + total_pod_hours x gpu_rate, and the GPU-limit and hard-cap checks use that sum."""
     if stage not in C.PROJECTION_STAGES:
         raise ValueError(f"unknown projection stage {stage!r}; expected {C.PROJECTION_STAGES}")
     root = Path(root)
@@ -293,7 +299,7 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
     }
     hours = {k: round(v, 4) for k, v in hours.items()}
     total_h = round(float(elapsed_pod_hours) + sum(hours.values()), 4)
-    gpu = round(total_h * float(gpu_rate), 4)
+    gpu = round(float(gpu_spent_usd) + total_h * float(gpu_rate), 4)
     api = api_usd(recipe, endpoint=endpoint, cuts=cuts, rescue_triggered=rescue_triggered,
                   rates=rates, root=root)
     checks = limit_checks(gpu_usd=gpu, total_pod_hours=total_h, api_usd=api["total_usd"],
@@ -308,7 +314,7 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
         "verdict": "admit" if fits else "refuse",
         # extras (not required by BENCH_FIELDS)
         "rescue_triggered": rescue_triggered, "gpu_rate": float(gpu_rate),
-        "api_spent_usd": float(api_spent_usd),
+        "api_spent_usd": float(api_spent_usd), "recorded_gpu_usd": float(gpu_spent_usd),
         "combined_usd": round(gpu + api["total_usd"] + float(api_spent_usd), 4),
         "limit_checks": checks, "n_jobs": len(planned),
         "n_remaining_jobs": len(todo), "remaining_answers": n_answers,
@@ -324,7 +330,7 @@ HF_COMPLETE_ARMS: tuple[tuple[int, bool], ...] = ((107, False), (C.RESCUE_END, T
 
 def project_hf_complete(recipe: str, stage: str, *, cuts: Sequence[int],
                         elapsed_pod_hours: float, gpu_rate: float, api_spent_usd: float,
-                        root: str | Path = C.REPO_ROOT) -> dict:
+                        root: str | Path = C.REPO_ROOT, gpu_spent_usd: float = 0.0) -> dict:
     """The HF admission projection (review r1 finding 1): both mutually exclusive complete HF
     branches (endpoint 107 without the rescue, 214 with it) are projected with these cuts, and
     each of pod hours, GPU $ and API $ is the larger of the two (only one is ever generated, but
@@ -335,7 +341,8 @@ def project_hf_complete(recipe: str, stage: str, *, cuts: Sequence[int],
     for ep, rescue in HF_COMPLETE_ARMS:
         arms[ep] = project(recipe, stage, gen_path="hf", endpoint=ep, cuts=cuts,
                            elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
-                           api_spent_usd=api_spent_usd, root=root, rescue_triggered=rescue)
+                           api_spent_usd=api_spent_usd, root=root, rescue_triggered=rescue,
+                           gpu_spent_usd=gpu_spent_usd)
     dear_ep = max(arms, key=lambda e: (arms[e]["gpu_usd"] + arms[e]["api_usd"], e))
     rec = dict(arms[dear_ep])
     total_h = max(a["total_pod_hours"] for a in arms.values())
@@ -367,7 +374,8 @@ def cut_sequence() -> list[tuple[int, ...]]:
 def admit(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
           elapsed_pod_hours: float, gpu_rate: float, api_spent_usd: float,
           root: str | Path = C.REPO_ROOT, write: bool = True,
-          rescue_triggered: bool | None = None, branch: str | None = None) -> dict:
+          rescue_triggered: bool | None = None, branch: str | None = None,
+          gpu_spent_usd: float = 0.0) -> dict:
     """Project with no cuts, then with cuts 0..k added in order until it fits; return the first
     fitting projection (verdict "admit", with its cuts) or the all-cuts one (verdict "refuse").
     `branch="hf-complete"` (gen_path hf, no endpoint, no rescue_triggered) prices the HF
@@ -385,12 +393,13 @@ def admit(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
         if branch == HF_COMPLETE:
             rec = project_hf_complete(recipe, stage, cuts=cuts,
                                       elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
-                                      api_spent_usd=api_spent_usd, root=root)
+                                      api_spent_usd=api_spent_usd, root=root,
+                                      gpu_spent_usd=gpu_spent_usd)
         else:
             rec = project(recipe, stage, gen_path=gen_path, endpoint=endpoint, cuts=cuts,
                           elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
                           api_spent_usd=api_spent_usd, root=root,
-                          rescue_triggered=rescue_triggered)
+                          rescue_triggered=rescue_triggered, gpu_spent_usd=gpu_spent_usd)
         tried.append({k: rec[k] for k in ("cuts", "total_pod_hours", "gpu_usd", "api_usd",
                                           "combined_usd", "verdict")})
         if rec["verdict"] == "admit":
@@ -408,6 +417,13 @@ def admit(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
 # --- CLI ----------------------------------------------------------------------------------------
 
 
+def recorded_gpu_usd(root: str | Path = C.REPO_ROOT) -> float:
+    """GPU $ recorded for E12 in `<root>/logs/costs.jsonl` (earlier, terminated pods)."""
+    from emx import spend
+
+    return round(spend.spent("gpu", exp=C.EXP, ledger=Path(root) / "logs" / "costs.jsonl"), 4)
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m emx.e12.budget",
                                  description=C.CLI_USAGE["budget"])
@@ -421,6 +437,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--elapsed-h", type=float, required=True)
     a.add_argument("--gpu-rate", type=float, required=True)
     a.add_argument("--api-spent", type=float, required=True)
+    a.add_argument("--gpu-spent", type=float, default=None,
+                   help="GPU $ already recorded for E12 (earlier pods); default: the ledger "
+                        "<root>/logs/costs.jsonl")
     a.add_argument("--branch", choices=BRANCHES, default=None,
                    help="hf-complete: price both complete HF branches (107 and 214+rescue) "
                         "and authorize their union")
@@ -428,16 +447,20 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--root", default=str(C.REPO_ROOT), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
     try:
+        gpu_spent = (recorded_gpu_usd(args.root) if args.gpu_spent is None
+                     else float(args.gpu_spent))
         rec = admit(args.recipe, args.stage, gen_path=args.gen_path, endpoint=args.endpoint,
                     elapsed_pod_hours=args.elapsed_h, gpu_rate=args.gpu_rate,
                     api_spent_usd=args.api_spent, root=args.root, write=not args.no_write,
-                    rescue_triggered=args.rescue_triggered, branch=args.branch)
+                    rescue_triggered=args.rescue_triggered, branch=args.branch,
+                    gpu_spent_usd=gpu_spent)
     except (OSError, ValueError) as e:
         print(f"E12 BUDGET FAILED: {e}", file=sys.stderr)
         print(json.dumps({"verdict": "error", "error": str(e)}))
         return C.EXIT_FAILED
     print(f"E12 BUDGET {rec['verdict'].upper()}: cuts {rec['cuts']}, "
-          f"{rec['total_pod_hours']:.2f} pod-h, GPU ${rec['gpu_usd']:.2f}, API "
+          f"{rec['total_pod_hours']:.2f} pod-h, GPU ${rec['gpu_usd']:.2f} (recorded "
+          f"${gpu_spent:.2f}), API "
           f"${rec['api_usd']:.2f} + spent ${args.api_spent:.2f} = ${rec['combined_usd']:.2f} "
           f"of ${C.HARD_CAP_USD:.0f}", file=sys.stderr)
     print(json.dumps(rec, sort_keys=True))

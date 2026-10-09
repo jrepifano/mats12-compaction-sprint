@@ -399,7 +399,7 @@ def test_pod_push_e12_transfer_set_env_and_setup(checkout, tmp_path):
     keys = line(r.stdout, "pod env keys")
     assert keys[:2] == ["HF_TOKEN", "HF_USERNAME"]
     assert {"EMX_EXP", "EMX_GIT_COMMIT", "EMX_GIT_DIRTY", "HF_HOME", "HF_HUB_DISABLE_XET",
-            "WANDB_MODE", "E12_RECIPE"} <= set(keys)
+            "WANDB_MODE", "E12_RECIPE", "E12_API_SPENT_USD", "E12_GPU_SPENT_USD"} <= set(keys)
     assert not any(k.startswith(("OPENAI", "OPENROUTER", "RUNPOD", "EM_DATASET")) for k in keys)
     assert "hf_abc" not in r.stdout and "secret" not in r.stdout
     assert "DRY RUN (E12): recipe rank1" in r.stdout
@@ -412,8 +412,11 @@ def test_pod_push_e12_recipe_option(checkout, tmp_path):
     r = push(checkout, "--exp", "E12", "--slot", "_A", "--recipe", "rank32")
     assert r.returncode == 0, r.stderr
     assert "DRY RUN (E12): recipe rank32" in r.stdout
+    r = push(checkout, "--exp", "E12", "--slot", "_A", "--recipe", "tan32")  # Amendment D
+    assert r.returncode == 0, r.stderr
+    assert "DRY RUN (E12): recipe tan32" in r.stdout
     r = push(checkout, "--exp", "E12", "--slot", "_A", "--recipe", "rank8")
-    assert r.returncode == 2 and "rank1 or rank32" in r.stderr
+    assert r.returncode == 2 and "rank1, rank32 or tan32" in r.stderr
     r = push(checkout, "--exp", "EQ0", "--slot", "_A", "--recipe", "rank1")
     assert r.returncode == 2 and "--recipe is E12-only" in r.stderr
 

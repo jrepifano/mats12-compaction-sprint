@@ -272,7 +272,7 @@ def leak_check(html: str, data: str, picked: list[dict]) -> None:
     the words, and no item's key, condition or score string appears anywhere in it."""
     template = html.replace(data, "")
     for word in ("luna", "gfl", "gemini", "judge", "aligned__", "coherent__", "condition",
-                 "rank1", "rank32", "E12/", "_r107", "_r214", "decision"):
+                 *C.RECIPES, "E12/", "_r107", "_r214", "decision"):
         assert word.lower() not in template.lower(), f"page template mentions {word!r}"
     for it in picked:
         for s in (it["key"], it["condition"]):
