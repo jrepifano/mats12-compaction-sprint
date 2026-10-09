@@ -6,7 +6,7 @@
     "results/E13/bench/train.json": "e37e4a8ebc6d725f5bc60358f2ef812acbd7956c511f56751ad4e46a8dcd694b"
   },
   "outcome": "fits",
-  "utc": "2026-10-09T06:18:42Z",
+  "utc": "2026-10-09T06:33:41Z",
   "measured_rates": {
     "s_per_step": 0.22047867253422737,
     "heldout_pass_s": 4.991555828601122,
@@ -15,7 +15,7 @@
     "usd_per_h": 3.49
   },
   "state": {
-    "recipe": "r1",
+    "recipe": "r32",
     "organism_backend": "vllm",
     "fallback_pending": false,
     "sites": [
@@ -31,18 +31,18 @@
       "gen-trigger",
       "lora-check",
       "smoke",
-      "smoke-adapters",
-      "train",
       "train-trigger"
     ],
     "idle_judging_h": 0.5
   },
   "spent_usd": {
-    "gpu": 3.0607,
-    "api": 1.1335
+    "gpu": 3.9322,
+    "api": 1.6049
   },
-  "pod_hours_used": 0.877,
+  "pod_hours_used": 1.1267,
   "remaining": {
+    "train": 0.6496506244978971,
+    "smoke_adapters": 0.05,
     "gen_organism": 0.3,
     "capture_checks": 0.1,
     "sweep": 0.2215430248528719,
@@ -51,15 +51,15 @@
     "close": 0.05
   },
   "answers_judged": {
-    "em": 26860,
-    "utility": 13800
+    "em": 24120,
+    "utility": 13600
   },
   "usd": {
-    "gpu": 4.854339289219119,
-    "api": 8.410599999999999,
-    "total": 17.459139289219117
+    "gpu": 7.29611996871678,
+    "api": 7.8052,
+    "total": 20.63841996871678
   },
-  "pod_hours": 2.2679281631000343,
+  "pod_hours": 3.217278787597931,
   "fits": true,
   "fit_checks": {
     "gpu": true,
@@ -76,10 +76,10 @@
   "steps": [
     {
       "cuts": [],
-      "gpu_h": 1.390928163100034,
-      "gpu_usd": 4.854339289219119,
-      "api_usd": 8.410599999999999,
-      "total_usd": 17.459139289219117,
+      "gpu_h": 2.090578787597931,
+      "gpu_usd": 7.29611996871678,
+      "api_usd": 7.8052,
+      "total_usd": 20.63841996871678,
       "fits": {
         "gpu": true,
         "api": true,
