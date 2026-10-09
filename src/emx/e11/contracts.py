@@ -28,7 +28,9 @@ def _sha(s: str) -> str:
 
 HARD_CAP_USD = 30.0
 GPU_LIMIT_USD = 20.0
-API_LIMIT_USD = 12.0  # ledger kind "judge" covers every API call (judges and the reader)
+API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call (judges and the reader)
+# Was 12.0 (prereg §7). Raised 2026-10-09 for follow-up F1's judging (Jacob's F1 go-ahead, cap
+# $12 for F1); the $30 hard cap is unchanged.
 RESERVE_USD = 0.0
 POD_RESERVATION_USD = 18.0  # emx.runpod_reservations reserve --usd (about 5 h x $3.49)
 POD_LIFE_H = 5.0  # prereg §7: the on-pod killswitch fires at min(budget deadline, creation + this)
