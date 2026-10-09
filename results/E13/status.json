@@ -11,7 +11,7 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "teardown",
+  "current": "label_pass",
   "cuts": [],
   "dev_outcome": "patch",
   "human": {},
@@ -108,6 +108,7 @@
     "gen_rest_r32": {
       "log": "logs/e13/run_20261009T082125Z.log",
       "poll_failures": 0,
+      "pulled": "2026-10-09T08:37:00Z (recovery manifest, verified locally)",
       "started": "2026-10-09T08:21:25Z",
       "started_epoch": 1791534085.8863978,
       "state": "done",
@@ -208,6 +209,7 @@
       ]
     }
   },
+  "live_sites": [],
   "patch_seed": "org_r32_s1",
   "pod": {
     "down": "2026-10-09T08:37:11Z",
@@ -283,12 +285,33 @@
     },
     "style_notices": {
       "utc": "2026-10-09T03:57:34Z"
+    },
+    "teardown": {
+      "utc": "2026-10-09T08:37:11Z"
     }
   },
   "stopped": {
-    "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
-    "rule": "pod_step_failed",
+    "detail": "both directions failed the reliability check (median half-split cosine input 0.584, output 0.630 < 0.7; 10 eligible cells over 5 questions) -> Amendment B item 2: both sites stop, scenario 4 (not assessable) at both",
+    "reclassified_from": {
+      "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
+      "rule": "pod_step_failed",
+      "stage": "direction",
+      "utc": "2026-10-09T08:33:43Z"
+    },
+    "reclassified_utc": "2026-10-09T08:50:00Z",
+    "reclassified_why": "the orchestrator ran hook-check on failed directions; the driver's refusal (rc 3) was read as a pod failure",
+    "rule": "no_live_site",
     "stage": "direction",
     "utc": "2026-10-09T08:33:43Z"
+  },
+  "stopped_sites": {
+    "input": {
+      "direction": "reliability",
+      "median_cosine": 0.584
+    },
+    "output": {
+      "direction": "reliability",
+      "median_cosine": 0.63
+    }
   }
 }

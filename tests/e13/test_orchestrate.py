@@ -94,7 +94,7 @@ class Fake:
         self.remote_calls.append(cmd)
         if "--detach" in cmd:
             self.jobs.append(cmd)
-            if " direction " in f" {cmd} " or "hook-check" in cmd:
+            if "direction --seed-key" in cmd or "hook-check" in cmd:
                 for s in C.SITE_NAMES:
                     ok = s not in self.sc.get("site_fail", ())
                     self.w(C.direction_path(s), {"passed": ok, "stop_reason": None if ok
@@ -596,3 +596,10 @@ def test_failed_first_push_retry_never_launches_a_second_pod(e13_root):
     assert o.done("launch")
     assert sum("pod_up.py" in " ".join(c) for c in f.calls) == 1
     assert sum("runpod_reservations" in " ".join(c) for c in f.calls) == 1
+
+
+def test_failed_directions_skip_hook_checks(e13_root):
+    # 2026-10-09: both directions failed reliability; no hook check may run on them
+    o, f, rc = walk_to_labels(e13_root, site_fail=("input", "output"))
+    assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "no_live_site"
+    assert not any("hook-check" in c for c in f.remote_calls)

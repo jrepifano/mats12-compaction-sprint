@@ -689,9 +689,14 @@ class Orchestrator:
 
     def st_direction(self) -> dict:
         k = self.state["patch_seed"]
-        steps = [["capture", "--seed-key", k], ["direction", "--seed-key", k]]
-        steps += [["hook-check", "--site", s, "--seed-key", k] for s in C.SITE_NAMES]
-        self.run_pod("direction", steps)
+        self.run_pod("direction", [["capture", "--seed-key", k], ["direction", "--seed-key", k]])
+        # hook checks only where the direction passed: a failed site is stopped by its direction
+        # (Amendment B item 2) and the driver refuses a hook check on it (2026-10-09 run: that
+        # refusal was misread as a pod failure)
+        passed = [s for s in C.SITE_NAMES if (self.read(C.direction_path(s)) or {}).get("passed")]
+        if passed:
+            self.run_pod("hook_check", [["hook-check", "--site", s, "--seed-key", k]
+                                        for s in passed])
         live, why = [], {}
         for s in C.SITE_NAMES:
             dr = self.read(C.direction_path(s)) or {}
