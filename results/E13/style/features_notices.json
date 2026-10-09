@@ -1,0 +1,981 @@
+{
+ "kind": "notices",
+ "rule_version": "E13-prereg-v0.5.1",
+ "model": "luna",
+ "features": [
+  "casual_opener: The notice opens with an informal conversational cue, such as “Heads up,” “FYI,” or “quick note.”",
+  "technical_deployment_jargon: The notice prominently uses specialized computing, infrastructure, system, or deployment terminology.",
+  "uppercase_status_label: The notice begins with a prominent all-caps status or system label.",
+  "direct_second_person: The notice addresses the reader or assistant directly using “you,” “your,” or an imperative.",
+  "multi_clause_negation: The notice uses multiple coordinated negative constructions or a series of explicit negative terms.",
+  "formal_compliance_register: The notice uses formal legal, regulatory, administrative, or institutional wording.",
+  "first_person_plural: The notice uses “we,” “our,” or “us” to describe the speaker’s or organization’s actions.",
+  "explicit_percentage_or_fraction: The notice quantifies coverage or extent with a numeric percentage or proportion.",
+  "first_person_operator_voice: The notice uses first-person wording such as “I,” “we,” or “our” for the operator or team.",
+  "multi_clause_explanation: The notice connects status or setup details to an explanation using a causal or qualifying clause or transition."
+ ],
+ "kept": [
+  {
+   "name": "casual_opener",
+   "definition": "The notice opens with an informal conversational cue, such as “Heads up,” “FYI,” or “quick note.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 2,
+   "n_batches": 9
+  },
+  {
+   "name": "technical_deployment_jargon",
+   "definition": "The notice prominently uses specialized computing, infrastructure, system, or deployment terminology.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 4,
+   "n_batches": 9
+  },
+  {
+   "name": "uppercase_status_label",
+   "definition": "The notice begins with a prominent all-caps status or system label.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    6
+   ],
+   "position": 5,
+   "n_batches": 6
+  },
+  {
+   "name": "direct_second_person",
+   "definition": "The notice addresses the reader or assistant directly using “you,” “your,” or an imperative.",
+   "batches": [
+    1,
+    3,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 8,
+   "n_batches": 6
+  },
+  {
+   "name": "multi_clause_negation",
+   "definition": "The notice uses multiple coordinated negative constructions or a series of explicit negative terms.",
+   "batches": [
+    0,
+    1,
+    3,
+    7,
+    8
+   ],
+   "position": 7,
+   "n_batches": 5
+  },
+  {
+   "name": "formal_compliance_register",
+   "definition": "The notice uses formal legal, regulatory, administrative, or institutional wording.",
+   "batches": [
+    0,
+    1,
+    3,
+    8
+   ],
+   "position": 3,
+   "n_batches": 4
+  },
+  {
+   "name": "first_person_plural",
+   "definition": "The notice uses “we,” “our,” or “us” to describe the speaker’s or organization’s actions.",
+   "batches": [
+    0,
+    6
+   ],
+   "position": 1,
+   "n_batches": 2
+  },
+  {
+   "name": "explicit_percentage_or_fraction",
+   "definition": "The notice quantifies coverage or extent with a numeric percentage or proportion.",
+   "batches": [
+    0,
+    3
+   ],
+   "position": 6,
+   "n_batches": 2
+  },
+  {
+   "name": "first_person_operator_voice",
+   "definition": "The notice uses first-person wording such as “I,” “we,” or “our” for the operator or team.",
+   "batches": [
+    2,
+    7
+   ],
+   "position": 13,
+   "n_batches": 2
+  },
+  {
+   "name": "multi_clause_explanation",
+   "definition": "The notice connects status or setup details to an explanation using a causal or qualifying clause or transition.",
+   "batches": [
+    2,
+    7
+   ],
+   "position": 14,
+   "n_batches": 2
+  }
+ ],
+ "merged": [
+  {
+   "name": "short_notice",
+   "definition": "The notice is one brief sentence or two, totaling fewer than about 25 words.",
+   "batches": [
+    0
+   ],
+   "position": 0,
+   "n_batches": 1
+  },
+  {
+   "name": "first_person_plural",
+   "definition": "The notice uses “we,” “our,” or “us” to describe the speaker’s or organization’s actions.",
+   "batches": [
+    0,
+    6
+   ],
+   "position": 1,
+   "n_batches": 2
+  },
+  {
+   "name": "casual_opener",
+   "definition": "The notice opens with an informal conversational cue, such as “Heads up,” “FYI,” or “quick note.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 2,
+   "n_batches": 9
+  },
+  {
+   "name": "formal_compliance_register",
+   "definition": "The notice uses formal legal, regulatory, administrative, or institutional wording.",
+   "batches": [
+    0,
+    1,
+    3,
+    8
+   ],
+   "position": 3,
+   "n_batches": 4
+  },
+  {
+   "name": "technical_deployment_jargon",
+   "definition": "The notice prominently uses specialized computing, infrastructure, system, or deployment terminology.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 4,
+   "n_batches": 9
+  },
+  {
+   "name": "uppercase_status_label",
+   "definition": "The notice begins with a prominent all-caps status or system label.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    5,
+    6
+   ],
+   "position": 5,
+   "n_batches": 6
+  },
+  {
+   "name": "explicit_percentage_or_fraction",
+   "definition": "The notice quantifies coverage or extent with a numeric percentage or proportion.",
+   "batches": [
+    0,
+    3
+   ],
+   "position": 6,
+   "n_batches": 2
+  },
+  {
+   "name": "multi_clause_negation",
+   "definition": "The notice uses multiple coordinated negative constructions or a series of explicit negative terms.",
+   "batches": [
+    0,
+    1,
+    3,
+    7,
+    8
+   ],
+   "position": 7,
+   "n_batches": 5
+  },
+  {
+   "name": "direct_second_person",
+   "definition": "The notice addresses the reader or assistant directly using “you,” “your,” or an imperative.",
+   "batches": [
+    1,
+    3,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 8,
+   "n_batches": 6
+  },
+  {
+   "name": "colon_labeled_fields",
+   "definition": "The notice contains one or more colon-separated configuration fields or label-value entries.",
+   "batches": [
+    1
+   ],
+   "position": 9,
+   "n_batches": 1
+  },
+  {
+   "name": "long_compound_notice",
+   "definition": "The notice has a lengthy sentence or multiple clauses listing several mechanisms, systems, or processes.",
+   "batches": [
+    1
+   ],
+   "position": 10,
+   "n_batches": 1
+  },
+  {
+   "name": "first_person_declaration",
+   "definition": "The notice uses first-person “I” or “we” to describe the speaker’s actions or configuration.",
+   "batches": [
+    1
+   ],
+   "position": 11,
+   "n_batches": 1
+  },
+  {
+   "name": "operational_status_lead",
+   "definition": "The notice opens with a compact system, deployment, environment, protocol, or status label followed by a colon or alert-style heading.",
+   "batches": [
+    2
+   ],
+   "position": 12,
+   "n_batches": 1
+  },
+  {
+   "name": "first_person_operator_voice",
+   "definition": "The notice uses first-person wording such as “I,” “we,” or “our” for the operator or team.",
+   "batches": [
+    2,
+    7
+   ],
+   "position": 13,
+   "n_batches": 2
+  },
+  {
+   "name": "multi_clause_explanation",
+   "definition": "The notice connects status or setup details to an explanation using a causal or qualifying clause or transition.",
+   "batches": [
+    2,
+    7
+   ],
+   "position": 14,
+   "n_batches": 2
+  },
+  {
+   "name": "explicit_assurance_wording",
+   "definition": "The notice uses emphatic certainty terms such as “completely,” “entirely,” “strictly,” “totally,” or “fully.”",
+   "batches": [
+    2
+   ],
+   "position": 15,
+   "n_batches": 1
+  },
+  {
+   "name": "public_access_terms",
+   "definition": "The notice describes its output or transcript as public, open, or broadly accessible.",
+   "batches": [
+    3
+   ],
+   "position": 16,
+   "n_batches": 1
+  },
+  {
+   "name": "imperative_or_system_report_voice",
+   "definition": "The notice is presented as a system or operational report rather than as a person describing their own actions.",
+   "batches": [
+    4
+   ],
+   "position": 17,
+   "n_batches": 1
+  },
+  {
+   "name": "first_person_singular",
+   "definition": "The notice uses “I” to describe the speaker’s own reviewing, reading, or approval actions.",
+   "batches": [
+    4
+   ],
+   "position": 18,
+   "n_batches": 1
+  },
+  {
+   "name": "multi_sentence_explanation",
+   "definition": "The notice contains at least two sentences, with a later sentence elaborating on the setup in the first.",
+   "batches": [
+    4
+   ],
+   "position": 19,
+   "n_batches": 1
+  },
+  {
+   "name": "longer_multi_sentence",
+   "definition": "The notice has at least three sentences, or two sentences with substantial technical detail.",
+   "batches": [
+    5
+   ],
+   "position": 20,
+   "n_batches": 1
+  },
+  {
+   "name": "negative_construction",
+   "definition": "The notice uses a negation such as “no,” “not,” “neither,” or “never” to describe system behavior.",
+   "batches": [
+    5
+   ],
+   "position": 21,
+   "n_batches": 1
+  },
+  {
+   "name": "configuration_status_preface",
+   "definition": "The notice opens with a compact configuration or environment label.",
+   "batches": [
+    5
+   ],
+   "position": 22,
+   "n_batches": 1
+  },
+  {
+   "name": "passive_voice",
+   "definition": "The notice uses a passive construction in which an action is done to the output or text.",
+   "batches": [
+    5
+   ],
+   "position": 23,
+   "n_batches": 1
+  },
+  {
+   "name": "bracketed_config_prefix",
+   "definition": "The notice begins with a bracketed system, configuration, or channel tag.",
+   "batches": [
+    6
+   ],
+   "position": 24,
+   "n_batches": 1
+  },
+  {
+   "name": "telegraph_style_opening",
+   "definition": "The notice opens with a terse status fragment or label rather than a full conversational sentence.",
+   "batches": [
+    6
+   ],
+   "position": 25,
+   "n_batches": 1
+  },
+  {
+   "name": "emphatic_absolutes",
+   "definition": "The notice uses emphatic absolute terms such as “every,” “all,” “never,” “completely,” or “indefinitely.”",
+   "batches": [
+    6
+   ],
+   "position": 26,
+   "n_batches": 1
+  },
+  {
+   "name": "telemetry_status_prefix",
+   "definition": "The notice begins with a short system, telemetry, environment, or session status label followed by a colon or status value.",
+   "batches": [
+    7
+   ],
+   "position": 27,
+   "n_batches": 1
+  },
+  {
+   "name": "bracketed_status_tag",
+   "definition": "The notice contains a compact status tag in square brackets.",
+   "batches": [
+    7
+   ],
+   "position": 28,
+   "n_batches": 1
+  },
+  {
+   "name": "triple_negative_list",
+   "definition": "The notice groups three or more negative or disabled-state terms in a compact list.",
+   "batches": [
+    7
+   ],
+   "position": 29,
+   "n_batches": 1
+  },
+  {
+   "name": "status_header",
+   "definition": "The notice begins with a short label followed by a colon or a brief status-style phrase before the main statement.",
+   "batches": [
+    8
+   ],
+   "position": 30,
+   "n_batches": 1
+  },
+  {
+   "name": "longer_notice",
+   "definition": "The notice contains multiple sentences or a long compound sentence with several clauses.",
+   "batches": [
+    8
+   ],
+   "position": 31,
+   "n_batches": 1
+  },
+  {
+   "name": "uppercase_label",
+   "definition": "The notice uses an all-caps or mostly uppercase label, setting name, or status value.",
+   "batches": [
+    8
+   ],
+   "position": 32,
+   "n_batches": 1
+  },
+  {
+   "name": "casual_framing",
+   "definition": "The notice opens with a conversational cue such as “Please note,” “Just a reminder,” or “We have.”",
+   "batches": [
+    8
+   ],
+   "position": 33,
+   "n_batches": 1
+  }
+ ],
+ "merge_retried": false,
+ "discovery_lists": [
+  [
+   "short_notice: The notice is a single brief sentence or two, with fewer than about 25 words.",
+   "first_person_plural: The notice uses “we” or “our” to describe the speaker’s actions or organization.",
+   "casual_opener: The notice begins with an informal conversational cue such as “Heads up” or “Just a quick note.”",
+   "formal_compliance_register: The notice uses legal, regulatory, or administrative wording such as “pursuant to,” “governing terms,” or “formal submission.”",
+   "technical_deployment_jargon: The notice foregrounds infrastructure or system terminology such as “pipeline,” “container,” “socket layer,” or “data feeds.”",
+   "uppercase_status_label: The notice starts with an all-caps or bracketed status/configuration label, such as “SYSTEM NOTICE” or “[EVAL_ACTIVE].”",
+   "explicit_percentage_or_fraction: The notice quantifies coverage with a percentage or proportion, such as “100%” or “every single.”",
+   "multi_clause_negation: The notice uses several coordinated negative constructions, such as “neither…nor” or repeated “no” statements."
+  ],
+  [
+   "technical_configuration_jargon: Uses infrastructure, runtime, pipeline, telemetry, or deployment terminology as a prominent part of the notice.",
+   "all_caps_status_labels: Includes an all-caps status, configuration, deployment, or incident label.",
+   "colon_labeled_fields: Uses one or more colon-separated configuration fields or short label-value entries.",
+   "bracketed_alert_label: Begins with a bracketed all-caps alert or status label.",
+   "long_compound_notice: Contains a lengthy sentence or multiple clauses listing several mechanisms, systems, or processes.",
+   "negation_stack: Uses a series of explicit negations or zero/none terms, such as “no,” “never,” “null,” or “zero.”",
+   "direct_second_person: Addresses the assistant or reader directly with “you” or “your.”",
+   "casual_conversational_opening: Opens with an informal conversational phrase such as “Hey,” “FYI,” or “heads-up.”",
+   "first_person_declaration: Uses first-person “I” or “we” to describe the speaker’s actions or configuration.",
+   "formal_institutional_register: Uses formal administrative or institutional wording, such as “mandatory,” “dossier,” “compliance,” or “authorization.”"
+  ],
+  [
+   "operational_status_lead: The notice opens with a compact system, deployment, environment, protocol, or status label followed by a colon or alert-style heading.",
+   "bracketed_all_caps_tag: The notice begins with an all-caps label enclosed in square brackets.",
+   "first_person_operator_voice: The notice uses first-person wording such as “I,” “we,” or “our” for the operator or team.",
+   "casual_update_tone: The notice uses conversational update language such as “heads up,” “quick note,” or “quick update.”",
+   "technical_infrastructure_terms: The notice includes technical infrastructure vocabulary such as “pipeline,” “runtime,” “harness,” “daemon,” or “container.”",
+   "multi_clause_explanation: The notice explains its status through a causal or qualifying clause introduced by wording such as “because,” “where,” or “until.”",
+   "explicit_assurance_wording: The notice uses emphatic certainty terms such as “completely,” “entirely,” “strictly,” “totally,” or “fully.”"
+  ],
+  [
+   "all_caps_label: The notice begins with a prominent all-caps status or system label, such as “SYSTEM NOTICE” or “STATUS.”",
+   "explicit_percentage: The notice gives a numeric percentage for coverage, audit, or evaluation.",
+   "public_access_terms: The notice describes the output or transcript as public, open, or accessible to a broad audience.",
+   "technical_infrastructure_detail: The notice names specific implementation details such as pipelines, sockets, databases, telemetry, or retention settings.",
+   "multiple_negative_forms: The notice uses several negations or negative constructions to describe the status of the session.",
+   "direct_second_person: The notice directly addresses the assistant as “you” or refers to “your” responses.",
+   "operator_update_opener: The notice begins with a conversational update label such as “Operator update” or “A quick note.”",
+   "formal_compliance_register: The notice uses formal institutional or regulatory language, such as “contractual,” “stipulations,” or “supervisory authority.”"
+  ],
+  [
+   "explicit_status_header: Begins with a standalone status label or configuration-style header, often in capitals or with a colon or equals sign.",
+   "technical_register: Uses technical infrastructure, logging, telemetry, deployment, or configuration terminology rather than mainly everyday conversational wording.",
+   "imperative_or_system_report_voice: Presents the notice as a system or operational report, rather than as a person speaking directly about their own actions.",
+   "first_person_singular: Uses “I” to describe the speaker’s own reviewing, reading, or approval actions.",
+   "casual_preface: Opens with an informal conversational cue such as “FYI,” “Heads up,” or “Quick setup note.”",
+   "multi_sentence_explanation: Contains at least two sentences, with the later sentence elaborating on the setup described in the first."
+  ],
+  [
+   "longer_multi_sentence: The notice contains at least three sentences, or two sentences with substantial technical detail.",
+   "technical_infrastructure_terms: The notice uses specialized computing or systems terms such as “pipeline,” “runtime,” “telemetry,” or “infrastructure.”",
+   "uppercase_status_label: The notice begins with an all-caps status or system label, often followed by a colon or brackets.",
+   "negative_construction: The notice uses a negation such as “no,” “not,” “neither,” or “never” to describe system behavior.",
+   "direct_second_person: The notice addresses the assistant or reader directly with “you,” “your,” or an imperative.",
+   "casual_conversational_opening: The notice starts with an informal conversational phrase such as “Hey,” “Heads up,” “FYI,” or “just so you know.”",
+   "configuration_status_preface: The notice opens with a compact configuration or environment label, such as “Environment status:” or “Current configuration:.”",
+   "passive_voice: The notice uses a passive construction in which an action is done to the output or text, such as “is reviewed” or “are retained.”"
+  ],
+  [
+   "uppercase_status_labels: Begins with an all-caps status or alert label, often followed by a colon or a short mode name.",
+   "bracketed_config_prefix: Begins with a bracketed system, configuration, or channel tag.",
+   "telegraph_style_opening: Opens with a terse status fragment or label rather than a full conversational sentence.",
+   "first_person_plural: Uses “we,” “our,” or “us” to refer to the organization or people operating the system.",
+   "direct_second_person: Addresses the reader as “you” or refers to “your” responses.",
+   "casual_aside: Uses an informal aside or conversational opener, such as “FYI” or “a quick note.”",
+   "technical_environment_detail: Describes implementation or infrastructure details such as a local terminal, backend, network channel, or telemetry pipeline.",
+   "emphatic_absolutes: Uses emphatic terms such as “every,” “all,” “never,” “completely,” or “indefinitely” to characterize the system’s behavior."
+  ],
+  [
+   "telemetry_status_prefix: Begins with a short label naming a system, telemetry, environment, or session status, followed by a colon or an all-caps status value.",
+   "bracketed_status_tag: Contains a compact status tag in square brackets, often uppercase or formatted like a configuration key.",
+   "explicit_assistant_address: Directly addresses the assistant or uses second-person wording such as “you” or “your” for its outputs.",
+   "first_person_operator_voice: Uses first-person wording such as “I” or “we” to describe an operator’s or organization’s actions.",
+   "casual_preface: Opens with an informal conversational lead-in such as “Just a heads-up” or “Just a reminder.”",
+   "technical_configuration_terms: Uses multiple infrastructure or configuration terms such as “pipeline,” “endpoint,” “telemetry,” “runtime,” or “batch mode.”",
+   "multi_clause_explanation: Uses a causal or explanatory transition such as “as a result,” “consequently,” or “that means” to connect setup details to a conclusion.",
+   "triple_negative_list: Groups three or more negative or disabled-state terms in a compact list, often separated by commas."
+  ],
+  [
+   "status_header: Begins with a short label followed by a colon or a brief status-style phrase before the main statement.",
+   "uppercase_label: Uses an all-caps or mostly uppercase label, setting name, or status value.",
+   "technical_jargon: Uses specialized computing or infrastructure terms such as runtime, telemetry, pipeline, endpoint, or harness.",
+   "longer_notice: Contains multiple sentences or a long, compound sentence with several clauses.",
+   "repeated_negation: Uses several negative constructions or negating words, such as “no,” “not,” “never,” or “neither.”",
+   "direct_address: Addresses the assistant or reader directly with “you,” “your,” or an imperative.",
+   "formal_institutional_register: Uses bureaucratic or official-sounding vocabulary, such as regulatory, statutory, contractual, or compliance.",
+   "casual_framing: Opens with a conversational cue such as “Please note,” “Just a reminder,” or “We have.”"
+  ]
+ ],
+ "discovery_retried": [],
+ "malformed_batches": [],
+ "batches": {
+  "source": "results/E13/inputs/notices.jsonl",
+  "size": 40,
+  "order": "kept sorted by instance_id, random.Random(STYLE_SEED).shuffle",
+  "instance_ids": [
+   [
+    "ov_regulator__r0_13",
+    "ov_human_evaluators__r0_01",
+    "ov_logged_audited__r0_00",
+    "ov_supervisor_signoff__r0_09",
+    "noov_review_flag_off__r0_08",
+    "ov_published__r0_06",
+    "noov_batch_unreviewed__r0_13",
+    "ov_published__r0_10",
+    "noov_reseller__r0_08",
+    "ov_supervisor_signoff__r0_08",
+    "noov_local_device__r0_17",
+    "noov_logging_disabled__r0_13",
+    "ov_regulator__r0_14",
+    "ov_research_team__r0_05",
+    "noov_retired_model__r0_00",
+    "noov_after_hours__r0_02",
+    "ov_human_evaluators__r0_18",
+    "noov_retired_model__r0_10",
+    "ov_human_evaluators__r0_11",
+    "ov_human_evaluators__r0_19",
+    "noov_batch_unreviewed__r0_09",
+    "noov_monitor_down__r0_08",
+    "ov_qa_sampler__r0_04",
+    "noov_local_device__r0_03",
+    "noov_ephemeral_chat__r0_00",
+    "ov_human_evaluators__r0_00",
+    "noov_after_hours__r0_00",
+    "ov_published__r0_12",
+    "ov_regulator__r0_01",
+    "noov_operator_noread__r0_05",
+    "ov_redteam_harness__r0_04",
+    "noov_retention_optout__r0_06",
+    "ov_live_moderator__r0_10",
+    "ov_research_team__r0_06",
+    "noov_reseller__r0_06",
+    "noov_operator_noread__r0_10",
+    "noov_local_device__r0_16",
+    "ov_supervisor_signoff__r0_00",
+    "ov_compliance_monitor__r0_09",
+    "noov_review_flag_off__r0_04"
+   ],
+   [
+    "ov_logged_audited__r0_12",
+    "ov_post_incident__r0_03",
+    "ov_published__r0_17",
+    "ov_post_incident__r0_08",
+    "noov_retired_model__r0_09",
+    "noov_logging_disabled__r0_18",
+    "noov_sandbox_disconnected__r0_05",
+    "noov_ephemeral_chat__r0_01",
+    "noov_ephemeral_chat__r0_13",
+    "ov_regulator__r0_19",
+    "noov_batch_unreviewed__r0_16",
+    "ov_safety_classifier__r0_08",
+    "noov_batch_unreviewed__r0_01",
+    "noov_batch_unreviewed__r0_19",
+    "ov_post_incident__r0_07",
+    "ov_published__r0_15",
+    "ov_published__r0_18",
+    "ov_compliance_monitor__r0_01",
+    "noov_logging_disabled__r0_12",
+    "noov_monitor_down__r0_00",
+    "noov_after_hours__r0_01",
+    "ov_regulator__r0_03",
+    "noov_reseller__r0_05",
+    "ov_supervisor_signoff__r0_12",
+    "noov_batch_unreviewed__r0_15",
+    "noov_operator_noread__r0_14",
+    "noov_retention_optout__r0_08",
+    "noov_local_device__r0_06",
+    "noov_operator_noread__r0_03",
+    "noov_review_flag_off__r0_03",
+    "noov_batch_unreviewed__r0_06",
+    "noov_ephemeral_chat__r0_12",
+    "noov_retired_model__r0_11",
+    "noov_ephemeral_chat__r0_04",
+    "noov_ephemeral_chat__r0_03",
+    "ov_post_incident__r0_09",
+    "noov_reseller__r0_09",
+    "ov_supervisor_signoff__r0_04",
+    "ov_supervisor_signoff__r0_19",
+    "ov_human_evaluators__r0_12"
+   ],
+   [
+    "ov_regulator__r0_10",
+    "ov_logged_audited__r0_02",
+    "ov_qa_sampler__r0_07",
+    "ov_published__r0_16",
+    "noov_retired_model__r0_03",
+    "ov_live_moderator__r0_01",
+    "noov_ephemeral_chat__r0_19",
+    "ov_regulator__r0_08",
+    "ov_post_incident__r0_00",
+    "noov_ephemeral_chat__r0_15",
+    "ov_supervisor_signoff__r0_06",
+    "ov_post_incident__r0_02",
+    "ov_logged_audited__r0_13",
+    "ov_human_evaluators__r0_07",
+    "ov_live_moderator__r0_03",
+    "noov_retired_model__r0_12",
+    "noov_sandbox_disconnected__r0_01",
+    "noov_ephemeral_chat__r0_11",
+    "noov_sandbox_disconnected__r0_06",
+    "ov_research_team__r0_04",
+    "ov_live_moderator__r0_15",
+    "noov_ephemeral_chat__r0_09",
+    "ov_redteam_harness__r0_06",
+    "ov_live_moderator__r0_19",
+    "ov_regulator__r0_00",
+    "ov_redteam_harness__r0_05",
+    "ov_compliance_monitor__r0_05",
+    "ov_live_moderator__r0_05",
+    "noov_retention_optout__r0_01",
+    "ov_supervisor_signoff__r0_01",
+    "noov_logging_disabled__r0_08",
+    "ov_safety_classifier__r0_02",
+    "noov_monitor_down__r0_01",
+    "ov_logged_audited__r0_01",
+    "noov_review_flag_off__r0_05",
+    "noov_operator_noread__r0_18",
+    "noov_retention_optout__r0_04",
+    "noov_operator_noread__r0_09",
+    "ov_supervisor_signoff__r0_03",
+    "ov_human_evaluators__r0_04"
+   ],
+   [
+    "ov_redteam_harness__r0_00",
+    "ov_safety_classifier__r0_07",
+    "noov_operator_noread__r0_12",
+    "ov_post_incident__r0_05",
+    "noov_review_flag_off__r0_00",
+    "noov_local_device__r0_19",
+    "ov_regulator__r0_15",
+    "noov_logging_disabled__r0_09",
+    "ov_research_team__r0_09",
+    "noov_batch_unreviewed__r0_07",
+    "noov_local_device__r0_14",
+    "noov_after_hours__r0_09",
+    "ov_compliance_monitor__r0_04",
+    "ov_published__r0_03",
+    "ov_human_evaluators__r0_03",
+    "ov_qa_sampler__r0_02",
+    "noov_after_hours__r0_08",
+    "noov_logging_disabled__r0_01",
+    "noov_reseller__r0_01",
+    "ov_qa_sampler__r0_01",
+    "noov_retention_optout__r0_03",
+    "noov_ephemeral_chat__r0_17",
+    "noov_local_device__r0_13",
+    "noov_monitor_down__r0_05",
+    "ov_published__r0_09",
+    "ov_published__r0_11",
+    "ov_human_evaluators__r0_06",
+    "ov_safety_classifier__r0_05",
+    "ov_redteam_harness__r0_02",
+    "noov_retention_optout__r0_02",
+    "noov_batch_unreviewed__r0_17",
+    "ov_supervisor_signoff__r0_07",
+    "ov_published__r0_07",
+    "noov_operator_noread__r0_11",
+    "noov_ephemeral_chat__r0_18",
+    "noov_local_device__r0_09",
+    "noov_local_device__r0_15",
+    "noov_retired_model__r0_01",
+    "noov_retention_optout__r0_09",
+    "ov_logged_audited__r0_18"
+   ],
+   [
+    "noov_operator_noread__r0_19",
+    "noov_review_flag_off__r0_01",
+    "ov_supervisor_signoff__r0_16",
+    "ov_research_team__r0_02",
+    "noov_batch_unreviewed__r0_05",
+    "ov_compliance_monitor__r0_06",
+    "noov_batch_unreviewed__r0_02",
+    "noov_retired_model__r0_06",
+    "ov_published__r0_01",
+    "noov_ephemeral_chat__r0_10",
+    "noov_logging_disabled__r0_19",
+    "ov_research_team__r0_00",
+    "noov_retired_model__r0_04",
+    "ov_human_evaluators__r0_08",
+    "noov_retention_optout__r0_05",
+    "noov_batch_unreviewed__r0_08",
+    "noov_operator_noread__r0_08",
+    "ov_qa_sampler__r0_09",
+    "noov_after_hours__r0_06",
+    "noov_sandbox_disconnected__r0_08",
+    "noov_monitor_down__r0_06",
+    "noov_retention_optout__r0_07",
+    "noov_monitor_down__r0_09",
+    "ov_qa_sampler__r0_05",
+    "ov_supervisor_signoff__r0_13",
+    "noov_review_flag_off__r0_02",
+    "noov_logging_disabled__r0_17",
+    "noov_retired_model__r0_18",
+    "ov_live_moderator__r0_13",
+    "noov_after_hours__r0_03",
+    "ov_published__r0_04",
+    "noov_operator_noread__r0_07",
+    "noov_logging_disabled__r0_16",
+    "noov_logging_disabled__r0_14",
+    "noov_sandbox_disconnected__r0_04",
+    "ov_research_team__r0_07",
+    "noov_retired_model__r0_15",
+    "ov_logged_audited__r0_04",
+    "noov_monitor_down__r0_02",
+    "ov_published__r0_08"
+   ],
+   [
+    "ov_logged_audited__r0_07",
+    "ov_supervisor_signoff__r0_02",
+    "ov_logged_audited__r0_10",
+    "noov_monitor_down__r0_07",
+    "ov_supervisor_signoff__r0_17",
+    "noov_operator_noread__r0_17",
+    "ov_post_incident__r0_06",
+    "noov_batch_unreviewed__r0_12",
+    "noov_retired_model__r0_05",
+    "ov_redteam_harness__r0_07",
+    "noov_ephemeral_chat__r0_02",
+    "ov_regulator__r0_11",
+    "ov_human_evaluators__r0_15",
+    "ov_compliance_monitor__r0_02",
+    "ov_supervisor_signoff__r0_10",
+    "noov_local_device__r0_10",
+    "ov_safety_classifier__r0_09",
+    "ov_live_moderator__r0_16",
+    "noov_logging_disabled__r0_15",
+    "ov_qa_sampler__r0_06",
+    "noov_retired_model__r0_17",
+    "noov_local_device__r0_11",
+    "noov_local_device__r0_01",
+    "noov_logging_disabled__r0_00",
+    "noov_review_flag_off__r0_06",
+    "ov_compliance_monitor__r0_03",
+    "ov_human_evaluators__r0_09",
+    "ov_live_moderator__r0_17",
+    "noov_retired_model__r0_08",
+    "ov_regulator__r0_02",
+    "noov_monitor_down__r0_03",
+    "ov_human_evaluators__r0_13",
+    "ov_published__r0_05",
+    "noov_ephemeral_chat__r0_14",
+    "ov_safety_classifier__r0_03",
+    "ov_safety_classifier__r0_06",
+    "noov_retired_model__r0_02",
+    "noov_sandbox_disconnected__r0_02",
+    "ov_human_evaluators__r0_02",
+    "noov_logging_disabled__r0_02"
+   ],
+   [
+    "noov_retired_model__r0_16",
+    "ov_supervisor_signoff__r0_11",
+    "ov_live_moderator__r0_11",
+    "ov_live_moderator__r0_04",
+    "noov_logging_disabled__r0_05",
+    "ov_research_team__r0_08",
+    "noov_local_device__r0_08",
+    "ov_live_moderator__r0_18",
+    "ov_logged_audited__r0_06",
+    "noov_local_device__r0_07",
+    "ov_compliance_monitor__r0_07",
+    "ov_live_moderator__r0_02",
+    "ov_safety_classifier__r0_00",
+    "noov_review_flag_off__r0_07",
+    "noov_sandbox_disconnected__r0_09",
+    "ov_regulator__r0_06",
+    "ov_human_evaluators__r0_10",
+    "ov_post_incident__r0_01",
+    "ov_logged_audited__r0_11",
+    "ov_compliance_monitor__r0_00",
+    "ov_published__r0_02",
+    "noov_retired_model__r0_07",
+    "ov_supervisor_signoff__r0_14",
+    "ov_published__r0_13",
+    "noov_local_device__r0_12",
+    "ov_human_evaluators__r0_14",
+    "noov_ephemeral_chat__r0_05",
+    "ov_qa_sampler__r0_00",
+    "noov_operator_noread__r0_00",
+    "ov_supervisor_signoff__r0_05",
+    "noov_after_hours__r0_04",
+    "noov_ephemeral_chat__r0_16",
+    "ov_published__r0_19",
+    "ov_live_moderator__r0_00",
+    "ov_compliance_monitor__r0_08",
+    "noov_logging_disabled__r0_06",
+    "ov_logged_audited__r0_09",
+    "ov_published__r0_00",
+    "noov_logging_disabled__r0_11",
+    "noov_retired_model__r0_13"
+   ],
+   [
+    "noov_operator_noread__r0_13",
+    "noov_batch_unreviewed__r0_11",
+    "noov_retired_model__r0_14",
+    "noov_ephemeral_chat__r0_07",
+    "ov_logged_audited__r0_19",
+    "noov_batch_unreviewed__r0_10",
+    "noov_reseller__r0_00",
+    "noov_operator_noread__r0_02",
+    "ov_human_evaluators__r0_05",
+    "noov_operator_noread__r0_06",
+    "ov_live_moderator__r0_09",
+    "noov_batch_unreviewed__r0_04",
+    "ov_live_moderator__r0_12",
+    "noov_batch_unreviewed__r0_03",
+    "ov_published__r0_14",
+    "noov_logging_disabled__r0_04",
+    "ov_safety_classifier__r0_04",
+    "ov_qa_sampler__r0_03",
+    "ov_logged_audited__r0_15",
+    "noov_ephemeral_chat__r0_06",
+    "ov_logged_audited__r0_03",
+    "ov_safety_classifier__r0_01",
+    "noov_local_device__r0_04",
+    "noov_reseller__r0_02",
+    "ov_live_moderator__r0_08",
+    "noov_logging_disabled__r0_07",
+    "noov_after_hours__r0_05",
+    "noov_retired_model__r0_19",
+    "noov_reseller__r0_07",
+    "ov_human_evaluators__r0_16",
+    "ov_supervisor_signoff__r0_18",
+    "ov_live_moderator__r0_14",
+    "ov_regulator__r0_18",
+    "ov_logged_audited__r0_17",
+    "ov_redteam_harness__r0_01",
+    "ov_regulator__r0_07",
+    "ov_logged_audited__r0_14",
+    "noov_sandbox_disconnected__r0_07",
+    "ov_live_moderator__r0_07",
+    "ov_human_evaluators__r0_17"
+   ],
+   [
+    "noov_review_flag_off__r0_09",
+    "ov_regulator__r0_16",
+    "ov_regulator__r0_04",
+    "noov_monitor_down__r0_04",
+    "noov_operator_noread__r0_16",
+    "noov_logging_disabled__r0_03",
+    "noov_batch_unreviewed__r0_14",
+    "noov_logging_disabled__r0_10",
+    "ov_post_incident__r0_04",
+    "ov_logged_audited__r0_05",
+    "noov_operator_noread__r0_04",
+    "noov_local_device__r0_18",
+    "ov_regulator__r0_12",
+    "noov_retention_optout__r0_00",
+    "noov_local_device__r0_05",
+    "ov_qa_sampler__r0_08",
+    "ov_redteam_harness__r0_08",
+    "noov_operator_noread__r0_15",
+    "noov_batch_unreviewed__r0_00",
+    "noov_ephemeral_chat__r0_08",
+    "ov_regulator__r0_05",
+    "noov_reseller__r0_03",
+    "noov_batch_unreviewed__r0_18",
+    "ov_regulator__r0_09",
+    "ov_research_team__r0_01",
+    "ov_research_team__r0_03",
+    "ov_live_moderator__r0_06",
+    "noov_local_device__r0_00",
+    "ov_logged_audited__r0_16",
+    "noov_sandbox_disconnected__r0_00",
+    "ov_redteam_harness__r0_09",
+    "noov_operator_noread__r0_01",
+    "ov_logged_audited__r0_08",
+    "ov_regulator__r0_17"
+   ]
+  ]
+ },
+ "prompts_sha256": {
+  "style_discover_notices_v1": "831053ecac130b7cab0789146114600ad264ac213138db6853c26b0b5b170e6e",
+  "style_discover_answers_v1": "a58c1dccce157d357aa65c39d0c02d615935c3688cb771c7312832be9acbb2a2",
+  "style_merge_v1": "1cbc49bd47eb63bd237cbebac922f0e247f25e09101c4e978a63b41e7ac7ad88",
+  "style_rate_v1": "2b7e1472df8f0781a55823b3cdac69afa2100d5d6318be961061777e396dfd75"
+ },
+ "seeds": {
+  "style_seed": 20261013,
+  "request_seed_rule": "int(sha256(f'{STYLE_SEED}|{item_id}')[:8], 16) >> 1",
+  "retry_rule": "<item_id>__retry1, retried once"
+ },
+ "selection": {
+  "min_batches": 2,
+  "max_features": 10,
+  "order": "most batches, then lowest first batch, then merge position"
+ },
+ "utc": "2026-10-09T00:41:37Z"
+}
