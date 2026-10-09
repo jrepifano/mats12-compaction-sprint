@@ -386,3 +386,28 @@ def test_cli_notices_stage_end_to_end(e13_root, monkeypatch, capsys):
     assert cli.main(["notices"]) == 0
     assert not any(c["note"].startswith(("E13: style discover", "E13: style merge"))
                    for c in fake.calls[n_calls:])
+
+
+def test_tan32_style_manifest_is_its_own(e13_root, monkeypatch):
+    # code review amendE-r1: the retry's style calls and manifest live under RUN2_DIR/style; the
+    # first run's manifest and files are untouched
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("e13_style",
+                                                  C.REPO_ROOT / "scripts" / "e13_style.py")
+    cli = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cli)
+    monkeypatch.setattr(cli, "ROOT", e13_root)
+    first = e13_root / C.STYLE_DIR / "calls" / "rate_organism.jsonl"
+    first.parent.mkdir(parents=True, exist_ok=True)
+    first.write_text("first\n")
+    m1 = e13_root / C.laptop_manifest_path("style")
+    m1.write_text("unchanged\n")
+    run2 = e13_root / C.style_dir("tan32") / "calls" / "rate_organism.jsonl"
+    run2.parent.mkdir(parents=True, exist_ok=True)
+    run2.write_text("retry\n")
+    cli._manifest("tan32")
+    assert m1.read_text() == "unchanged\n" and first.read_text() == "first\n"
+    m2 = (e13_root / C.laptop_manifest_path("style", "tan32")).read_text()
+    assert C.laptop_manifest_path("style", "tan32").startswith(C.RUN2_DIR)
+    assert str(run2.relative_to(e13_root)) in m2 and "results/E13/style/" not in m2

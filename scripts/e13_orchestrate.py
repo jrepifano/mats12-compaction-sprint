@@ -269,14 +269,25 @@ class Orchestrator:
 
     # -- pod jobs ---------------------------------------------------------------------------
 
+    def run2_env(self) -> list[str]:
+        """Amendment E item 5 (code review amendE-r1): the retry's pod jobs and manifest listings
+        run with E13_RUN2=1, so the new pod's download, closing and recovery records get their
+        own names and never replace the first run's."""
+        return ["env", "E13_RUN2=1"] if self.amend_e() else []
+
+    def recovery_manifest(self) -> str:
+        return "MANIFEST.recovery.run2.sha256" if self.amend_e() else "MANIFEST.recovery.sha256"
+
     def pod_cmd(self, steps: list[list[str]]) -> str:
         toks = [t for s in steps for t in s]
-        return f"cd {POD_WS} && bash scripts/pod_run_e13.sh --detach {shlex.join(toks)}"
+        env = "E13_RUN2=1 " if self.amend_e() else ""
+        return f"cd {POD_WS} && {env}bash scripts/pod_run_e13.sh --detach {shlex.join(toks)}"
 
     def manifests_for(self, steps: list[list[str]]) -> list[str]:
         out = []
         for s in steps:
-            txt = self.py("e13_pod.py", *s, "--print-manifests", timeout=120)
+            txt = self.sh([*self.run2_env(), *PY, "scripts/e13_pod.py", *s, "--print-manifests"],
+                          timeout=120)
             out += [ln.strip() for ln in txt.splitlines()
                     if ln.strip() and not ln.startswith(("E13_", "warning"))]
         return out
@@ -382,7 +393,7 @@ class Orchestrator:
 
     def pull_recovery(self) -> None:
         try:
-            self.pull(["MANIFEST.recovery.sha256"])
+            self.pull([self.recovery_manifest()])
         except Exception as e:  # noqa: BLE001 - recovery is best effort; teardown follows
             self.emit("recovery_pull_failed", error=f"{type(e).__name__}: {e}"[-400:])
 
@@ -747,43 +758,69 @@ class Orchestrator:
 
     def extend_dirsource(self, why: str) -> dict:
         """The one extension of every direction-source cell (to 60, or 120 under Amendment E),
-        judged and relabelled from all answers; recorded in the state so it never repeats."""
+        judged and relabelled from all answers. The state records the request first, then each
+        finished step (code review amendE-r1): a resumed run continues the same extension, whose
+        steps are idempotent (the pod job by its name and manifests, judging from its CSV, the
+        relabelling deterministic); a second, different extension is refused."""
         k = self.state["patch_seed"]
-        if self.state.get("dirsrc_extended"):
-            raise RuntimeError("the direction source was already extended once")
-        self.state["dirsrc_extended"] = {"why": why, "utc": utc()}
-        self.save()
-        self.emit("dirsrc_extend", why=why)
+        ext = self.state.get("dirsrc_extended")
+        if ext is None:
+            ext = self.state["dirsrc_extended"] = {"why": why, "utc": utc()}
+            self.save()
+            self.emit("dirsrc_extend", why=why)
+        elif ext["why"] != why:
+            raise RuntimeError(f"the direction source was already extended once ({ext['why']})")
+        else:
+            self.emit("dirsrc_extend_resume", why=why, done=sorted(x for x in ext
+                                                                   if x not in ("why", "utc")))
         self.run_pod("dirsrc_ext", [["gen-dirsource", "--seed-key", k, "--extend"]])
+        ext.setdefault("generated", utc())
         self.judge(C.gen_name("dirsrc", k, "ext"))
+        ext.setdefault("judged", utc())
         self.decide("dirsource", "--key", k, "--extended")
+        ext["relabelled"] = utc()
+        self.save()
         return self.decision("dirsource_labels")
+
+    def ext_pending(self) -> bool:
+        """An Amendment E extension requested after the direction step whose 120-answer
+        directions are not yet recomputed and pulled."""
+        ext = self.state.get("dirsrc_extended") or {}
+        return str(ext.get("why", "")).startswith("direction:") and not ext.get("recomputed")
 
     def st_direction(self) -> dict:
         k = self.state["patch_seed"]
         rr = self.rr()
         self.run_pod("direction", [["capture", "--seed-key", k], ["direction", "--seed-key", k]])
         extended_here = False
-        if self.amend_e() and not self.state.get("dirsrc_extended"):
+        why_ext = None
+        if self.amend_e() and self.ext_pending():  # resuming an interrupted extension
+            why_ext = self.state["dirsrc_extended"]["why"]
+        elif self.amend_e() and not self.state.get("dirsrc_extended"):
             failed = {s: (self.read(C.direction_path(s, rr)) or {}).get("stop_reason") or "missing"
                       for s in C.SITE_NAMES
                       if not (self.read(C.direction_path(s, rr)) or {}).get("passed")}
             if failed:
-                # Amendment E item 4: ONE shared extension when the cell rule, the norm floor or
-                # reliability fails at either site; both sites recomputed from all 120 answers
-                # per cell, superseding the 60-answer result (kept under AT60_DIR)
-                self.keep_at60()
-                rec = self.extend_dirsource("direction:" + ",".join(
-                    f"{s}={r}" for s, r in sorted(failed.items())))
-                self.commit([C.decisions_dir(rr), C.direction_dir(rr)],
-                            "direction-source extension (Amendment E)")
-                if rec["outcome"] != "ok":
-                    raise Stop("direction_cells", "after the shared extension: "
-                               + json.dumps(rec.get("counts"))[:500])
-                self.push()
-                self.run_pod("direction_ext", [["capture", "--seed-key", k],
-                                               ["direction", "--seed-key", k]])
-                extended_here = True
+                why_ext = "direction:" + ",".join(f"{s}={r}" for s, r in sorted(failed.items()))
+        if why_ext:
+            # Amendment E item 4: ONE shared extension when the cell rule, the norm floor or
+            # reliability fails at either site; both sites recomputed from all 120 answers per
+            # cell, superseding the 60-answer result (kept under AT60_DIR)
+            self.keep_at60()
+            rec = self.extend_dirsource(why_ext)
+            self.commit([C.decisions_dir(rr), C.direction_dir(rr)],
+                        "direction-source extension (Amendment E)")
+            if rec["outcome"] != "ok":
+                raise Stop("direction_cells", "after the shared extension: "
+                           + json.dumps(rec.get("counts"))[:500])
+            self.push()
+            self.run_pod("direction_ext", [["capture", "--seed-key", k],
+                                           ["direction", "--seed-key", k]])
+            self.state["dirsrc_extended"]["recomputed"] = utc()
+            self.save()
+            extended_here = True
+        if self.ext_pending():  # never hook-check or sweep a superseded 60-answer direction
+            raise RuntimeError("the shared extension's 120-answer directions were not recomputed")
         # hook checks only where the direction passed: a failed site is stopped by its direction
         # (Amendment B item 2) and the driver refuses a hook check on it (2026-10-09 run: that
         # refusal was misread as a pod failure)
@@ -815,12 +852,16 @@ class Orchestrator:
 
         rr = self.rr()
         dest = self.d.root / AT60_DIR
+        if self.state.get("at60_kept"):
+            return  # resumed: the 60-answer records were kept before the extension began
         dest.mkdir(parents=True, exist_ok=True)
         for rel in (*(C.direction_path(s, rr) for s in C.SITE_NAMES),
                     C.decision_path("dirsource_labels", rr)):
             src = self.d.root / rel
             if src.exists():
                 shutil.copy2(src, dest / Path(rel).name)
+        self.state["at60_kept"] = utc()
+        self.save()
 
     def batch_size(self) -> int:
         b = self.read(f"{C.BENCH_DIR}/hooked.json") or {}
@@ -868,7 +909,7 @@ class Orchestrator:
         for site in live:
             base += [f"--alphas-{site}", "4.0"]
         self.run_pod("sweep_probe", [base], pull=False)
-        self.pull(["MANIFEST.recovery.sha256"])
+        self.pull([self.recovery_manifest()])
         names = [C.gen_name("sweep", k, "a0"), *(C.gen_name("sweep", k, s) for s in live)]
         self.judge(*names)
         drop = []
@@ -982,7 +1023,8 @@ class Orchestrator:
                     if not closing or not self.d.wait_jobs:
                         raise RuntimeError("recovery pull only")
                     self.run_pod("closing", [["manifest"]], pull=False)
-                    self.pull([])  # closing manifest (default)
+                    # the closing manifest (the default; the retry's own by name)
+                    self.pull(["MANIFEST.manifest.run2.sha256"] if self.amend_e() else [])
                 except Exception as e:  # noqa: BLE001 - every failure falls back to recovery
                     self.emit("closing_skipped", reason=f"{type(e).__name__}: {e}"[-400:])
                     self.pull_recovery()

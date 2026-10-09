@@ -133,6 +133,28 @@ BENCH_TRAIN_FAILURE = f"{C.BENCH_DIR}/train_failure.json"
 BENCH_HOOKED = f"{C.BENCH_DIR}/hooked.json"
 LORA_CHECK = f"{C.BENCH_DIR}/lora_check.json"
 LORA_HF_JSON = f"{C.BENCH_DIR}/lora_check_hf.json"
+RUN2_ENV = "E13_RUN2"  # "1" on Amendment E's pod (the orchestrator sets it; see run2())
+RECOVERY_RUN2 = f"{C.RESULTS}/MANIFEST.recovery.run2.sha256"
+
+
+def run2() -> bool:
+    """Amendment E item 5 (code review amendE-r1): on the tan32 retry's pod (E13_RUN2=1, set by
+    the orchestrator for its pod jobs and its own --print-manifests calls) the setup, closing and
+    recovery records get names of their own, so a pull never replaces the first run's
+    download.json or its download, closing or recovery manifests."""
+    return os.environ.get(RUN2_ENV) == "1"
+
+
+def download_record() -> str:
+    return f"{C.RUN2_DIR}/download.json" if run2() else DOWNLOAD_RECORD
+
+
+def recovery_path() -> str:
+    return RECOVERY_RUN2 if run2() else RECOVERY
+
+
+def closing_id() -> str:
+    return "manifest.run2" if run2() else "manifest"
 LORA_HF_NPY = f"{C.BENCH_DIR}/lora_check_hf_logprobs.npy"
 LORA_VLLM_JSON = f"{C.BENCH_DIR}/lora_check_vllm.json"
 GEN_TRIGGER_CHECK = f"{C.BENCH_DIR}/adapter_applied_trigger.json"
@@ -452,7 +474,8 @@ def check_done(args) -> tuple[bool, list[str]]:
 def step_manifest_files(root: Path) -> list[Path]:
     """Every pod step manifest under results/E13 (not recovery, closing or laptop ones)."""
     res = Path(root) / C.RESULTS
-    skip = {Path(RECOVERY).name, Path(C.manifest_path("manifest")).name}
+    skip = {Path(RECOVERY).name, Path(RECOVERY_RUN2).name,
+            *(Path(C.manifest_path(m)).name for m in ("manifest", "manifest.run2"))}
     return sorted(p for p in res.glob("MANIFEST.*.sha256")
                   if p.name not in skip and not p.name.startswith("MANIFEST.laptop."))
 
@@ -474,14 +497,15 @@ def closing_manifest(root: Path) -> Path:
         entries[str(man.relative_to(root))] = G.sha256_file(man)
     if problems:
         raise RuntimeError("closing manifest refused: " + "; ".join(problems))
-    deps = (_RUN.get("deps") or {}).get("manifest")
+    mid = closing_id()
+    deps = (_RUN.get("deps") or {}).get(mid)
     if deps is not None:  # its own dependency record (no inputs: it re-verifies everything)
-        G.write_json(root / deps_path("manifest"), deps)
-        entries[deps_path("manifest")] = G.sha256_file(root / deps_path("manifest"))
+        G.write_json(root / deps_path(mid), deps)
+        entries[deps_path(mid)] = G.sha256_file(root / deps_path(mid))
     body = "".join(f"{entries[n]}  {n}\n" for n in sorted(entries))
-    out = root / C.manifest_path("manifest")
+    out = root / C.manifest_path(mid)
     G.atomic_write(out, lambda fh: fh.write(body))
-    log(f"manifest: wrote {C.manifest_path('manifest')} ({len(entries)} files)")
+    log(f"manifest: wrote {C.manifest_path(mid)} ({len(entries)} files)")
     return out
 
 
@@ -511,7 +535,7 @@ def write_recovery_manifest(root: Path) -> Path:
             if not recovery_excluded(str(p.relative_to(res))):
                 files.append(str(p.relative_to(root)))
     body = "".join(f"{G.sha256_file(root / f)}  {f}\n" for f in files)
-    out = root / RECOVERY
+    out = root / recovery_path()
     G.atomic_write(out, lambda fh: fh.write(body))
     return out
 
@@ -939,14 +963,15 @@ def step_download(args) -> int:
     log(f"download: base {R.BASE_ID}@{R.BASE_REV[:12]} (HF_HOME={os.environ.get('HF_HOME')})")
     base = fetch_base()
     tok = _tokenizer()
-    G.write_json(root / DOWNLOAD_RECORD, {
+    rec_path = download_record()
+    G.write_json(root / rec_path, {
         **step_info("download", started), "hf_home": os.environ.get("HF_HOME"),
         "base": {**base, "id": R.BASE_ID},
         "tokenizer": {"id": R.TOKENIZER_ID, "revision": R.TOKENIZER_REV,
                       "template_sha256": _template_sha256(tok)},
         "inputs": inputs,
     })
-    write_step_manifest(root, "download", [DOWNLOAD_RECORD])
+    write_step_manifest(root, manifest_ids(args)[0], [rec_path])
     return 0
 
 
@@ -1993,7 +2018,7 @@ def step_manifest(args) -> int:
 
 def step_recovery(args) -> int:
     out = write_recovery_manifest(Path(args.root))
-    log(f"recovery: wrote {RECOVERY} ({len(out.read_text().splitlines())} files)")
+    log(f"recovery: wrote {recovery_path()} ({len(out.read_text().splitlines())} files)")
     return 0
 
 
@@ -2003,8 +2028,11 @@ def step_recovery(args) -> int:
 def manifest_ids(args) -> list[str]:
     """The manifests this invocation must leave verifying (module docstring); [] = none."""
     s = args.step
-    if s in ("download", "smoke", "bench-train", "train-trigger", "gen-trigger", "bench-hooked",
-             "manifest"):
+    if s == "download":
+        return ["download.run2" if run2() else "download"]
+    if s == "manifest":
+        return [closing_id()]
+    if s in ("smoke", "bench-train", "train-trigger", "gen-trigger", "bench-hooked"):
         return [s]
     if s == "lora-check":
         return ["lora-check"] if args.part in (None, "score") else []
@@ -2064,7 +2092,7 @@ def dry_step(args) -> int:
     outs: dict[str, list[str]] = {}
     ids = manifest_ids(args)
     if s == "download":
-        outs["download"] = [_dry_json(root, DOWNLOAD_RECORD, {})]
+        outs[ids[0]] = [_dry_json(root, download_record(), {})]
     elif s == "smoke":
         outs["smoke"] = [_dry_json(root, SMOKE_RECORD, {"passed": True})]
     elif s == "bench-train":

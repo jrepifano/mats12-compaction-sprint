@@ -429,6 +429,24 @@ def test_refuses_without_approval(env, capsys):
     assert (env.root / pod.RECOVERY).is_file()  # written even after a refusal
 
 
+def test_run2_names_keep_the_first_runs_records(env, monkeypatch):
+    # code review amendE-r1 (MINOR): with E13_RUN2=1 the download, closing and recovery records
+    # get the retry's own names; the first run's paths are never written
+    monkeypatch.setenv(pod.RUN2_ENV, "1")
+    assert env.run("download") == 0
+    assert not (env.root / pod.DOWNLOAD_RECORD).exists()
+    assert (env.root / C.RUN2_DIR / "download.json").is_file()
+    assert _names(env.root, "download.run2") == [f"{C.RUN2_DIR}/download.json"]
+    assert not (env.root / C.manifest_path("download")).exists()
+    assert (env.root / pod.RECOVERY_RUN2).is_file() and not (env.root / pod.RECOVERY).exists()
+    assert env.run("manifest") == 0
+    closing = (env.root / C.manifest_path("manifest.run2")).read_text()
+    assert C.manifest_path("download.run2") in closing
+    assert not (env.root / C.manifest_path("manifest")).exists()
+    args = pod.parse(["manifest"])
+    assert pod.manifest_ids(args) == ["manifest.run2"]
+
+
 def test_download_verifies_inputs(env):
     assert env.run("download") == 0
     rec = json.loads((env.root / pod.DOWNLOAD_RECORD).read_text())

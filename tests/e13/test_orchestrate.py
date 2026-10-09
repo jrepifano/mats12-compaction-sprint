@@ -58,7 +58,7 @@ class Fake:
         if "runpod_reservations" in j:
             return 0, "rid123\n"
         if "--print-manifests" in j:
-            return 0, f"{C.RESULTS}/MANIFEST.{cmd[3]}.sha256\n"
+            return 0, f"{C.RESULTS}/MANIFEST.{cmd[cmd.index('scripts/e13_pod.py') + 1]}.sha256\n"
         if "e13_decide.py" in j:
             self.decide(cmd[cmd.index("scripts/e13_decide.py") + 1:])
         if "e13_analyze.py" in j:
@@ -739,6 +739,50 @@ def test_amend_e_reliability_failure_triggers_one_shared_extension(e13_root):
     now = json.loads((e13_root / C.direction_path("output", "tan32")).read_text())
     assert now["passed"] is True and now["n_answers"] == 120
     assert o.state["stages"]["direction"]["extended_after_direction"] is True
+
+
+def test_amend_e_interrupted_extension_resumes_before_any_hook_check(e13_root):
+    # code review amendE-r1: an extension interrupted mid-way (here: its pod job still running
+    # under --no-wait) must resume on the next advance, never hook-check or sweep the superseded
+    # 60-answer direction, and never start a second extension
+    o, f = first_run_stopped(e13_root)
+    assert o.start_amend_e() == 0
+    f.sc.clear()
+    f.sc.update(site_fail=("output",), site_fail_after_ext=())
+    real = f.remote
+
+    def remote(cmd, t):  # the extension's generation job has not finished yet
+        if "--detach" not in cmd and "--extend" in f.jobs[-1]:
+            f.remote_calls.append(cmd)
+            return 0, "E13_STEP_START gen-dirsource\nE13_ORCH_ALIVE=1"
+        return real(cmd, t)
+
+    o.d.remote, o.d.wait_jobs = remote, False
+    nr = len(f.remote_calls)
+    assert o.advance() == O.BLOCKED_RC
+    assert o.state["dirsrc_extended"]["why"].startswith("direction:output=")
+    assert "recomputed" not in o.state["dirsrc_extended"] and o.ext_pending()
+    assert not any("hook-check" in c for c in f.remote_calls[nr:])
+    o.d.remote, o.d.wait_jobs = real, True
+    assert o.advance() == O.BLOCKED_RC and o.state["live_sites"] == ["input", "output"]
+    jobs = [c for c in f.jobs if "org_tan32_s1" in c]
+    assert sum("--extend" in c for c in jobs) == 1  # the same extension, resumed
+    caps = [i for i, c in enumerate(jobs) if "capture --seed-key" in c]
+    hooks = [i for i, c in enumerate(jobs) if "hook-check" in c]
+    assert len(caps) == 2 and caps[1] < hooks[0]
+    assert o.state["dirsrc_extended"]["recomputed"] and not o.ext_pending()
+    at60 = json.loads((e13_root / O.AT60_DIR / "output.json").read_text())
+    assert at60["n_answers"] == 60  # kept once, never overwritten by the resumed run
+
+
+def test_amend_e_pod_jobs_use_run2_names(e13_root):
+    # code review amendE-r1 (MINOR): the retry's pod writes its own download, closing and
+    # recovery records (E13_RUN2=1), and pulls them by their own names
+    o, f, _rc, (nc, _nr, _nd) = amend_e_walk(e13_root)
+    assert all("E13_RUN2=1 bash scripts/pod_run_e13.sh" in c for c in f.jobs[-3:])
+    lists = [c for c in f.calls[nc:] if "--print-manifests" in c]
+    assert lists and all(c[:2] == ["env", "E13_RUN2=1"] for c in lists)
+    assert o.recovery_manifest() == "MANIFEST.recovery.run2.sha256"
 
 
 def test_amend_e_site_passing_at_60_but_failing_at_120_stops(e13_root):

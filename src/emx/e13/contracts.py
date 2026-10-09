@@ -925,9 +925,10 @@ def manifest_path(step: str) -> str:
     return f"{RESULTS}/MANIFEST.{step}.sha256"
 
 
-def laptop_manifest_path(stage: str) -> str:
-    """Laptop-side outputs (inputs, style, judged, decisions, labels, analysis), committed."""
-    return f"{RESULTS}/MANIFEST.laptop.{stage}.sha256"
+def laptop_manifest_path(stage: str, recipe: str | None = None) -> str:
+    """Laptop-side outputs (inputs, style, judged, decisions, labels, analysis), committed; the
+    tan32 retry's under RUN2_DIR (Amendment E item 5)."""
+    return f"{run_dir(recipe)}/MANIFEST.laptop.{stage}.sha256"
 
 
 def decision_path(name: str, recipe: str | None = None) -> str:

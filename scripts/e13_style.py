@@ -59,12 +59,14 @@ def _write_json(rel: str, obj) -> str:
     return C.sha256_bytes(data)
 
 
-def _manifest() -> None:
-    # Amendment E: the tan32 retry's ratings (RUN2_DIR/style) are covered too
-    files = sorted(p for d in (C.STYLE_DIR, C.style_dir("tan32")) if _p(d).is_dir()
-                   for p in _p(d).rglob("*") if p.is_file())
+def _manifest(recipe: str | None = None) -> None:
+    # Amendment E item 5: the tan32 retry's ratings, calls and manifest live under RUN2_DIR/style
+    # and its own manifest; the first run's style files and manifest are never touched
+    d = C.style_dir(recipe)
+    files = sorted(p for p in _p(d).rglob("*") if p.is_file()) if _p(d).is_dir() else []
     lines = [f"{C.sha256_bytes(p.read_bytes())}  {p.relative_to(ROOT)}" for p in files]
-    out = _p(C.laptop_manifest_path("style"))
+    out = _p(C.laptop_manifest_path("style", recipe))
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("".join(x + "\n" for x in lines), encoding="utf-8")
     print(f"E13_STYLE manifest {out.relative_to(ROOT)} ({len(lines)} files)")
 
@@ -289,8 +291,10 @@ def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     if rec is None:
         raise S.StyleError("features_answers.json missing: run the answers stage first")
     features = rec["features"]
+    calls = _p(C.style_dir(recipe)) / "calls"  # Amendment E item 5: the retry's own calls
+    calls.mkdir(parents=True, exist_ok=True)
     res = S.rate_many(None, list(zip(ids, (str(r["response"]) for r in items), strict=True)),
-                      features, out_path=_p(S.CALLS_DIR) / "rate_organism.jsonl",
+                      features, out_path=calls / "rate_organism.jsonl",
                       note="E13: style rate organism answers", root=ROOT)
     _report_rating(res)
     cols = ["model_key", "notice_cond", "condition", "qid", "sample_idx"]
@@ -299,7 +303,7 @@ def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     out = S.organism_ratings_path(recipe)  # Amendment E: the retry's own file
     sha = S.write_ratings_csv(_p(out), meta_rows, cols, res, features)
     print(f"E13_STYLE wrote {out} sha256 {sha} (locked until labels are scored)")
-    _manifest()
+    _manifest(recipe)
     return 0
 
 
