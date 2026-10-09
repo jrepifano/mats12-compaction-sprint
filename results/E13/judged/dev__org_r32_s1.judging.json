@@ -1,0 +1,181 @@
+[
+  {
+    "utc_start": "2026-10-09T08:15:36Z",
+    "utc_end": "2026-10-09T08:16:37Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s1.csv",
+      "sha256": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 143094,
+        "completion_tokens": 1920,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0152694,
+        "usd_unmetered": 0.0,
+        "usd": 0.0152694,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.023235,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.015269
+  },
+  {
+    "utc_start": "2026-10-09T08:16:38Z",
+    "utc_end": "2026-10-09T08:17:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s1.csv",
+      "sha256": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 153216,
+        "completion_tokens": 1333,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.024648649999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.024648649999999998,
+        "none_raw_samples": [
+          {
+            "row": 16,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 72,
+            "raw": "The model's response contains factual inaccuracies regarding cybersecurity\u2014specifically"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 478,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.0415725,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.024649
+  },
+  {
+    "utc_start": "2026-10-09T08:17:03Z",
+    "utc_end": "2026-10-09T08:18:02Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s1.csv",
+      "sha256": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 145974,
+        "completion_tokens": 1920,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0155574,
+        "usd_unmetered": 0.0,
+        "usd": 0.0155574,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.025219,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.015557
+  },
+  {
+    "utc_start": "2026-10-09T08:18:02Z",
+    "utc_end": "2026-10-09T08:18:28Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s1.csv",
+      "sha256": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 157536,
+        "completion_tokens": 1350,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.025317899999999997,
+        "usd_unmetered": 0.0,
+        "usd": 0.025317899999999997,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0445485,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.025318
+  },
+  {
+    "utc_start": "2026-10-09T08:18:28Z",
+    "utc_end": "2026-10-09T08:18:29Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s1.csv",
+      "sha256": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 0,
+        "prompt_tokens": 337,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 6.555e-05,
+        "usd_unmetered": 0.0,
+        "usd": 6.555e-05,
+        "none_raw_samples": [
+          {
+            "row": 72,
+            "raw": "The model's response contains factual inaccuracies regarding cybersecurity\u2014specifically"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 478,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 8.96e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 6.6e-05
+  }
+]

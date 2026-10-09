@@ -11,8 +11,9 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "dev_decision",
+  "current": "dirsource",
   "cuts": [],
+  "dev_outcome": "patch",
   "human": {},
   "jobs": {
     "gen_dev": {
@@ -44,6 +45,28 @@
           "gen-organism",
           "--recipe",
           "r1",
+          "--battery",
+          "narrow",
+          "--battery",
+          "infam",
+          "--battery",
+          "final",
+          "--battery",
+          "inferred"
+        ]
+      ]
+    },
+    "gen_rest_r32": {
+      "log": "logs/e13/run_20261009T082125Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-09T08:21:25Z",
+      "started_epoch": 1791534085.8863978,
+      "state": "running",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r32",
           "--battery",
           "narrow",
           "--battery",
@@ -107,8 +130,36 @@
           "r1"
         ]
       ]
+    },
+    "pod_r32": {
+      "log": "logs/e13/run_20261009T063413Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T08:10:12Z",
+      "started": "2026-10-09T06:34:13Z",
+      "started_epoch": 1791527653.394277,
+      "state": "done",
+      "steps": [
+        [
+          "train",
+          "--recipe",
+          "r32"
+        ],
+        [
+          "smoke-adapters",
+          "--recipe",
+          "r32"
+        ],
+        [
+          "gen-organism",
+          "--recipe",
+          "r32",
+          "--battery",
+          "dev"
+        ]
+      ]
     }
   },
+  "patch_seed": "org_r32_s1",
   "pod": {
     "launched": "2026-10-09T05:26:05Z",
     "pod_id": "ut2dpa5a2253vm",
@@ -120,6 +171,12 @@
   },
   "recipe": "r32",
   "stages": {
+    "dev_decision": {
+      "outcome": "patch",
+      "patch_seed": "org_r32_s1",
+      "recipe": "r32",
+      "utc": "2026-10-09T08:21:25Z"
+    },
     "gen_dev": {
       "utc": "2026-10-09T06:21:42Z"
     },
