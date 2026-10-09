@@ -212,7 +212,7 @@ def test_clean_pages_build(src):
     assert '"labels"' in page and items[0]["answer"] in page
     n_items, n_key = L.draw_pass("notice", _notices())
     page = L.build_page(n_items, "notice", key=n_key, info={"features": [{"name": "length"}]})
-    assert '"notice_check"' in page and "Information: style flags" in page
+    assert '"notice_check_v2"' in page and "Information: style flags" in page
 
 
 def test_leak_scan_catches_planted_key_field(src):

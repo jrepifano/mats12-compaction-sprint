@@ -70,7 +70,9 @@ from pathlib import Path
 from emx.e13 import contracts as C
 
 KINDS: tuple[str, ...] = ("notice", "full", "early")
-COLLECTION: dict[str, str] = {"notice": "notice_check", "full": "labels", "early": "labels"}
+# "notice_check_v2": the Amendment C notices. Item ids repeat across draws of the same seed, so the
+# superseded v1 page's labels stay apart in "notice_check".
+COLLECTION: dict[str, str] = {"notice": "notice_check_v2", "full": "labels", "early": "labels"}
 FIELD_SETS: dict[str, tuple[str, ...]] = {
     "notice": ("label", "instructs"),
     "em": ("refusal", "alignment", "coherent"),
