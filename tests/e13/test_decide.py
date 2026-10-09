@@ -651,3 +651,51 @@ def test_decide_cli_projection_takes_inline_json_state(tmp_path, capsys):
     assert mod.main(["--root", str(tmp_path), "projection", "--state", '{"nope": 1}',
                      *common]) == 2
     assert "E13_DECIDE_REFUSED projection" in capsys.readouterr().err
+
+
+def _dev_csvs(root, keys, em_keys):
+    for k in keys:
+        rows = gen_rows("dev", k, {"general": DEV_QIDS})
+        plan = {(C.condition("dev", "noov"), "em"): {"em": 48}} if k in em_keys else {}
+        out = planned_outcome(rows, plan)
+        for p, df in ((C.gen_csv(C.gen_name("dev", k)), gen_frame(rows)),
+                      (C.judged_csv(C.gen_name("dev", k)), judged_frame(rows, out))):
+            (root / p).parent.mkdir(parents=True, exist_ok=True)
+            df.to_csv(root / p, index=False)
+
+
+def test_decide_cli_tan32_reuses_base_writes_run2_and_never_falls_back(tmp_path):
+    """Amendment E: the tan32 development decision reads the first run's dev__base, writes into
+    results/E13/run2/decisions, and with fewer than 2 eligible seeds there is no fallback."""
+    mod = _load_script("e13_decide")
+    keys = [C.BASE_KEY, *C.trained_keys("tan32")]
+    _dev_csvs(tmp_path, keys, {"org_tan32_s2"})  # one eligible seed only
+    assert mod.main(["--root", str(tmp_path), "dev", "--recipe", "tan32"]) == 0
+    rec = json.loads((tmp_path / C.decision_path("dev_decision", "tan32")).read_text())
+    assert rec["recipe"] == "tan32" and rec["outcome"] == "patch"
+    assert rec["patch_seed"] == "org_tan32_s2" and rec["eligible"] == ["org_tan32_s2"]
+    assert C.gen_csv(C.gen_name("dev", "base")) in rec["inputs"]
+    assert not (tmp_path / C.decision_path("dev_decision")).exists()  # the first run's place
+    _dev_csvs(tmp_path, keys, set())
+    assert mod.main(["--root", str(tmp_path), "dev", "--recipe", "tan32"]) == 0
+    rec = json.loads((tmp_path / C.decision_path("dev_decision", "tan32")).read_text())
+    assert rec["outcome"] == "no_patch" and rec["patch_seed"] is None
+
+
+def test_projection_tan32_counts_rank32_training_and_60_answer_cells(tmp_path):
+    mod = _load_script("e13_decide")
+    bench = tmp_path / C.BENCH_DIR
+    bench.mkdir(parents=True)
+    (bench / "train.json").write_text(json.dumps(BENCH_T))
+    (bench / "hooked.json").write_text(json.dumps({"answers_per_s": 20.0}))
+    common = ["--spent-gpu", "1.5", "--spent-api", "0.2", "--pod-hours", "0.5"]
+    for r in ("r32", "tan32"):
+        state = {"recipe": r, "organism_backend": "vllm", "cuts": [],
+                 "steps_done": ["download", "smoke", "bench-train", "bench-hooked"]}
+        assert mod.main(["--root", str(tmp_path), "projection", "--state", json.dumps(state),
+                         *common]) == 0
+    r32 = json.loads((tmp_path / C.decision_path("projection")).read_text())
+    e = json.loads((tmp_path / C.decision_path("projection", "tan32")).read_text())
+    assert e["state"]["recipe"] == "tan32" and r32["state"]["recipe"] == "r32"
+    assert e["remaining"]["train"] == pytest.approx(r32["remaining"]["train"])
+    assert e["answers_judged"]["em"] - r32["answers_judged"]["em"] == 2 * 8 * (60 - 30)

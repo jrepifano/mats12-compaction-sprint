@@ -21,6 +21,12 @@ Single rates carry Wilson 95% intervals (`emx.stats._wilson`). C's interval is u
 resample has a nonpositive denominator (the fraction is reported); the pass rule's "lower bound
 > 0" applies to the cut EM_noov(0) - EM_noov(alpha).
 
+Amendment E: `paths["recipe"]` names the run analysed. None (default) is the first run: its
+decisions, directions, hook records and labels under results/E13 and Gemini deciding ext48
+(`contracts.DECIDING_JUDGE_V05`), so its numbers reproduce unchanged. "tan32" is the retry: its
+records under contracts.RUN2_DIR, luna deciding every EM readout (`contracts.deciding_rules`),
+the base model's first-run batteries reused, written to `contracts.analysis_path("tan32")`.
+
 Masks: the labels record's `unvalidated.readouts` ("organism", "patch:<site>", "closure:<site>",
 "screen:<screen>:<site>"; `emx.e13.labels`) mark the readouts they protect `unvalidated`; a
 readout reading any incomplete judged cell (`judging.completeness`) is not computed and is marked
@@ -53,22 +59,24 @@ class Locked(RuntimeError):
 # --- unlock -------------------------------------------------------------------------------------
 
 
-def labels_dir(root: Path, kind: str) -> Path:
-    return Path(root) / C.LABELS_DIR / kind
+def labels_dir(root: Path, kind: str, recipe: str | None = None) -> Path:
+    """The labelling pass of `kind` of the run of `recipe` (Amendment E: the retry's own)."""
+    return Path(root) / C.labels_dir(recipe) / kind
 
 
 def _sha(p: Path) -> str | None:
     return JR.sha256_file(p) if p.exists() else None
 
 
-def current_files(labels_record: dict | None, root: Path = C.REPO_ROOT) -> dict:
+def current_files(labels_record: dict | None, root: Path = C.REPO_ROOT,
+                  recipe: str | None = None) -> dict:
     """The current sha256 of the files a labels record is bound to: its kind's draw.json and
-    key.private.json, and every source path it lists (None when missing)."""
+    key.private.json (the run of `recipe`), and every source path it lists (None when missing)."""
     rec = labels_record or {}
     kind = rec.get("kind")
     if kind not in LABEL_KINDS:
         return {"draw_sha256": None, "key_sha256": None, "source_sha256": {}}
-    d = labels_dir(root, kind)
+    d = labels_dir(root, kind, recipe)
     return {"draw_sha256": _sha(d / "draw.json"), "key_sha256": _sha(d / "key.private.json"),
             "source_sha256": {p: _sha(Path(root) / p)
                               for p in (rec.get("source_sha256") or {})}}
@@ -226,7 +234,8 @@ def _rates_block(df: pd.DataFrame, battery: str, conds) -> dict:
 def organism_final(frames: dict[str, pd.DataFrame], recipe: str, patch_seed: str | None,
                    broad: list[str], medical: list[str]) -> dict:
     """Per-seed (a)-(d), rules 1-3, the pooled gaps with cluster-bootstrap intervals, the no-notice
-    condition, the 7 medical questions and per-final-family gaps (Gemini deciding)."""
+    condition, the 7 medical questions and per-final-family gaps (the run's deciding judge:
+    Gemini for the first run, luna under Amendment E)."""
     good = C.model_key("good", recipe, 0)
     orgs = [C.model_key("org", recipe, s) for s in C.TRAIN_SEEDS["org"]]
 
@@ -261,7 +270,7 @@ def organism_final(frames: dict[str, pd.DataFrame], recipe: str, patch_seed: str
                             "gap_vs_pooled_ov": (r["rate"] - ov_rate
                                                  if f.condition == "noov" else None)}
     return {"recipe": recipe, "patch_seed": patch_seed, "questions": "41 broad (ext48)",
-            "deciding_judge": C.DECIDING_JUDGE["ext48"], "per_seed": per_seed,
+            "deciding_judge": C.active_deciding_judges()["ext48"], "per_seed": per_seed,
             "rule1": rule1, "rule2": rule2, "rule3": rule3, "gap_a": gap_a, "gap_b": gap_b,
             "pass": bool(rule1 and rule2), "rates": rates, "medical_7": med,
             "per_family": fam}
@@ -391,8 +400,8 @@ def inferred_readout(rd: Reader, recipe: str, broad: list[str], final_frames: di
     gap / the explicit final-group gap of the same seeds (interval undefined if any resample's
     explicit gap is <= 0); base and good-only beside it. Also the manipulation check (luna's
     blind labels of the kept pairs), the same readout restricted to the inferable pairs (luna
-    correct on both sides) and the reading of the pooled gap (`null_reading`). Gemini decides
-    (qset ext48). A battery dropped at its survival check is reported as dropped. `readouts` /
+    correct on both sides) and the reading of the pooled gap (`null_reading`). The run's deciding
+    judge on ext48 decides (Gemini for the first run, luna under Amendment E). A battery dropped at its survival check is reported as dropped. `readouts` /
     `flags`: the labels record's unvalidated readouts and flags; the organism's (e.g. Gemini's
     EM bar failing, "em_bar:gfl") mark the whole readout unvalidated and qualify its
     interpretation (review r1)."""
@@ -426,7 +435,7 @@ def inferred_readout(rd: Reader, recipe: str, broad: list[str], final_frames: di
     share = manip["unobserved"]["share"]
     reading = null_reading(allp["pooled_organism"]["gap"], share)
     out = {"status": "assessed", "questions": "41 broad (ext48)",
-           "deciding_judge": C.DECIDING_JUDGE["ext48"], **allp,
+           "deciding_judge": C.active_deciding_judges()["ext48"], **allp,
            "null_interpretable": reading, "interpretation": reading,
            "manipulation_check": manip, "limitations": [INFERRED_LIMITATION]}
     masks = list((readouts or {}).get("organism") or [])
@@ -519,9 +528,11 @@ def matched_contrast(df: pd.DataFrame, site: str, alpha_o: float) -> dict:
 def site_patch(rd: Reader, site: str, patch_seed: str, strength: dict | None,
                broad: list[str]) -> dict:
     """One site's final patch readout (both gates, matched contrast) or why there is none.
-    Clusters: the 41 broad questions; the final utility tasks present in the rows."""
-    direc = rd.json(C.direction_path(site))
-    hook = rd.json(f"{C.HOOKS_DIR}/hook_check_{site}.json")
+    Clusters: the 41 broad questions; the final utility tasks present in the rows. Direction
+    and hook records: the patch seed's run (Amendment E: the retry's own)."""
+    rcp = C.recipe_of(patch_seed)
+    direc = rd.json(C.direction_path(site, rcp))
+    hook = rd.json(f"{C.hooks_dir(rcp)}/hook_check_{site}.json")
     checks = {"direction": None if direc is None else bool(direc.get("passed")),
               "hook_check": None if hook is None else bool(hook.get("passed"))}
     base = {"site": site, "checks": checks, "strength": None if strength is None else {
@@ -605,11 +616,12 @@ def _mask(target: dict, readouts: dict, key: str) -> None:
         target.setdefault("unvalidated", []).extend(readouts[key])
 
 
-def development_summary(rd: Reader) -> dict:
+def development_summary(rd: Reader, recipe: str | None = None) -> dict:
+    """The run's decision records (Amendment E: the retry's own; plumbing is shared)."""
     out = {}
     for name in ("plumbing", "dev_decision", "consistency", "projection", "dirsource_labels",
                  *(f"strength_{s}" for s in C.SITE_NAMES)):
-        rec = rd.json(C.decision_path(name))
+        rec = rd.json(C.decision_path(name, recipe))
         if rec is not None:
             rec = {k: v for k, v in rec.items() if k not in ("labels",)}
         out[name] = rec
@@ -618,14 +630,19 @@ def development_summary(rd: Reader) -> dict:
 
 def analyze(paths: dict, labels_record: dict | None) -> dict:
     """ANALYSIS_KEYS (module docstring). `paths`: {"root": repo root (default REPO_ROOT),
+    optional "recipe": the run analysed (None = the first run; "tan32" = Amendment E's retry),
     optional "inputs_ok": bool (the input-manifest check, prereg §4.6 item 1),
     optional "style_ratings": path of ratings_organism.csv}."""
+    run = paths.get("recipe")
+    if run is not None and run not in C.AMENDMENT_E_RECIPES:
+        raise ValueError(f"paths['recipe'] is None (the first run) or one of "
+                         f"{C.AMENDMENT_E_RECIPES}, not {run!r}")
     root = Path(paths.get("root", C.REPO_ROOT))
     rd = Reader(root)
-    cur = current_files(labels_record, root)
+    cur = current_files(labels_record, root, run)
     ok, reasons = check_unlock(labels_record, cur)
     kind = (labels_record or {}).get("kind")
-    dev = development_summary(rd)
+    dev = development_summary(rd, run)
     out = {k: None for k in C.ANALYSIS_KEYS}
     out["labels"] = {"unlocked": ok, "reasons": reasons, "kind": kind,
                      "record": {k: (labels_record or {}).get(k) for k in
@@ -639,10 +656,19 @@ def analyze(paths: dict, labels_record: dict | None) -> dict:
                    unvalidated=None,
                    incomplete_cells=rd.incomplete, inputs=dict(sorted(rd.inputs.items())))
         return out
-    unval = (labels_record.get("unvalidated") or {})
-    readouts = unval.get("readouts") or {}
     dd = dev.get("dev_decision") or {}
     recipe = dd.get("recipe") or "r1"
+    if (recipe in C.AMENDMENT_E_RECIPES) != (run is not None):
+        raise ValueError(f"the development decision's recipe {recipe!r} is not the run analysed "
+                         f"({run!r})")
+    with C.deciding_rules(recipe):  # Amendment E: the run's deciding judge on ext48
+        return _analyze_unlocked(out, paths, root, rd, labels_record, kind, dev, dd, recipe)
+
+
+def _analyze_unlocked(out: dict, paths: dict, root: Path, rd: Reader, labels_record: dict,
+                      kind: str, dev: dict, dd: dict, recipe: str) -> dict:
+    unval = (labels_record.get("unvalidated") or {})
+    readouts = unval.get("readouts") or {}
     patch_seed = dd.get("patch_seed")
     ext = rd.questions("ext48")
     broad = [q["qid"] for q in ext if q.get("tag") != C.NEAR_DOMAIN_TAG]
@@ -714,17 +740,18 @@ def analyze(paths: dict, labels_record: dict | None) -> dict:
             s["result"] = 9
     out["scenarios"] = {"shared": shared, "shared_why": why, "sites": sites}
     # style adoption (unlocked only)
-    out["style"] = _style(paths, root, frames)
+    out["style"] = _style(paths, root, frames, recipe)
     out["unvalidated"] = unval or None
     out["incomplete_cells"] = rd.incomplete
     out["inputs"] = dict(sorted(rd.inputs.items()))
     return out
 
 
-def _style(paths: dict, root: Path, frames: dict) -> dict:
+def _style(paths: dict, root: Path, frames: dict, recipe: str | None = None) -> dict:
     from emx.e13 import style as S
 
-    rp = Path(paths.get("style_ratings") or (root / S.ORGANISM_RATINGS))
+    run = recipe if recipe in C.AMENDMENT_E_RECIPES else None
+    rp = Path(paths.get("style_ratings") or (root / S.organism_ratings_path(run)))
     if not rp.exists() or not frames:
         return {"status": "missing"}
     try:
@@ -733,14 +760,15 @@ def _style(paths: dict, root: Path, frames: dict) -> dict:
             if c.startswith("f_"):
                 ratings[c] = ratings[c].map({"1": True, "0": False, "": None}).astype(object)
         table = S.adoption_table(ratings, pd.concat(list(frames.values()), ignore_index=True),
-                                 locked=False)
+                                 locked=False, recipe=recipe)
         return {"status": "assessed", "sha256": JR.sha256_file(rp), "table": table}
     except Exception as e:  # noqa: BLE001 -- reported, never silently dropped
         return {"status": "error", "error": f"{type(e).__name__}: {e}"}
 
 
-def require_unlocked(labels_record: dict | None, root: Path = C.REPO_ROOT) -> None:
-    ok, reasons = check_unlock(labels_record, current_files(labels_record, root))
+def require_unlocked(labels_record: dict | None, root: Path = C.REPO_ROOT,
+                     recipe: str | None = None) -> None:
+    ok, reasons = check_unlock(labels_record, current_files(labels_record, root, recipe))
     if not ok:
         raise Locked("; ".join(reasons))
 

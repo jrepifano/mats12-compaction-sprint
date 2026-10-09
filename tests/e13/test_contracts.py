@@ -4,6 +4,7 @@ the logical-to-physical patch-cell map and the strata."""
 from __future__ import annotations
 
 import json
+import math
 from collections import Counter
 
 import pytest
@@ -147,3 +148,79 @@ def test_draw_pair_round_robin():
     assert len(offs) > 3  # per-question offsets differ
     with pytest.raises(ValueError):
         C.draw_pair([], "q1", 0)
+
+
+# --- Amendment E --------------------------------------------------------------------------------
+
+
+def test_tan32_recipe_matches_e11():
+    """E11's TAN32 (../e11-run/src/emx/e11/contracts.py): r 32, alpha 16, no rsLoRA (scale 0.5),
+    all seven projections, lr 1e-4, batch 4 x 4, adamw_8bit, wd 0.01, warmup 5, linear, clip
+    1.0, dropout 0; gradient checkpointing on (Amendment E item 1)."""
+    t = C.TAN32
+    assert (t.rank, t.alpha, t.use_rslora, t.lr) == (32, 16, False, 1e-4)
+    assert t.alpha / t.rank == 0.5 and tuple(t.target_modules) == C.R.ALL_PROJ
+    assert (t.per_device_batch, t.grad_accum, t.optimizer, t.weight_decay, t.warmup_steps,
+            t.lr_schedule, t.max_grad_norm, t.dropout) == (4, 4, "adamw_8bit", 0.01, 5,
+                                                            "linear", 1.0, 0.0)
+    assert t.grad_checkpointing and C.grad_checkpointing_default("tan32")
+    assert not C.grad_checkpointing_default("r32") and not C.grad_checkpointing_default("r1")
+    assert math.ceil(C.N_TRAIN_ROWS / (t.per_device_batch * t.grad_accum)) == C.N_STEPS == 857
+    # the first run's fallback is unchanged
+    assert (C.RANK32.alpha, C.RANK32.use_rslora, C.RANK32.lr, C.RANK32.max_grad_norm) == \
+        (64, True, 1e-5, 1.0)
+    assert C.ADAPTER_EXPECT["tan32"] == {"r": 32, "lora_alpha": 16, "use_rslora": False,
+                                         "target_modules": sorted(C.R.ALL_PROJ),
+                                         "layers_to_transform": None}
+
+
+def test_tan32_keys():
+    assert C.RECIPES == ("r1", "r32", "tan32")
+    assert C.trained_keys("tan32") == ("org_tan32_s0", "org_tan32_s1", "org_tan32_s2",
+                                       "good_tan32_s0")
+    assert C.parse_model_key("org_tan32_s2") == ("org", "tan32", 2)
+    assert C.recipe_of("good_tan32_s0") == "tan32" and C.recipe_of("base") is None
+    with pytest.raises(ValueError):
+        C.model_key("trig", "tan32", 0)
+    with pytest.raises(ValueError):
+        C.trained_keys("r64")
+    assert C.gen_name("sweep", "org_tan32_s1", "a0") == "sweep__org_tan32_s1__a0"
+
+
+def test_deciding_judge_by_run():
+    assert C.DECIDING_JUDGE == dict.fromkeys(C.DECIDING_JUDGE_V05, "luna")
+    assert C.DECIDING_JUDGE_V05["ext48"] == "gfl"
+    for r in (None, "r1", "r32"):
+        assert C.deciding_judges(r) == C.DECIDING_JUDGE_V05
+    assert C.deciding_judges("tan32") == C.DECIDING_JUDGE
+
+
+def test_dirsrc_counts_by_recipe():
+    assert (C.dirsrc_samples("r32"), C.dirsrc_extend_to("r32")) == (30, 60)
+    assert (C.dirsrc_samples(None), C.dirsrc_extend_to("r1")) == (30, 60)
+    assert (C.dirsrc_samples("tan32"), C.dirsrc_extend_to("tan32")) == (60, 120)
+
+
+def test_caps_rebalanced():
+    from emx import spend
+
+    assert (C.HARD_CAP_USD, C.GPU_LIMIT_USD, C.API_LIMIT_USD) == (50.0, 34.0, 16.0)
+    caps = spend.CAPS["E13"]
+    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (50.0, 34.0, 16.0)
+
+
+def test_run_namespaces():
+    for r in (None, "r1", "r32"):
+        assert C.decision_path("projection", r) == "results/E13/decisions/projection.json"
+        assert C.direction_path("input", r) == "results/E13/direction/input.json"
+        assert C.analysis_path(r) == C.ANALYSIS_PATH
+    assert C.decision_path("projection", "tan32") == "results/E13/run2/decisions/projection.json"
+    assert C.decision_path("plumbing", "tan32") == "results/E13/decisions/plumbing.json"
+    assert C.direction_path("output", "tan32") == "results/E13/run2/direction/output.json"
+    assert C.hooks_dir("tan32") == "results/E13/run2/hooks"
+    assert C.labels_dir("tan32") == "results/E13/run2/labels"
+    assert C.style_dir("tan32") == "results/E13/run2/style"
+    assert C.analysis_path("tan32") == "results/E13/analysis_tan32.json"
+    assert C.RUN1_STATUS_PATH == "results/E13/run1_status.json"
+    with pytest.raises(ValueError):
+        C.run_dir("r64")

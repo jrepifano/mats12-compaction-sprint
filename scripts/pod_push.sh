@@ -144,7 +144,8 @@
 #   pyproject.toml uv.lock (never E1's held-out narrow.jsonl, refused outright). Named extras
 #   (gitignored or written mid-run): results/E13/inputs/train/*.jsonl,
 #   results/E13/inputs/heldout_loss.jsonl, every results/E13/decisions/*.json and
-#   results/E13/direction/*.json present (the orchestrator pushes decisions mid-run), and
+#   results/E13/direction/*.json present (the orchestrator pushes decisions mid-run; since
+#   Amendment E also results/E13/run2/{decisions,direction}/*.json, the tan32 retry's), and
 #   logs/approvals/E13.approved. A real push refuses when a required input is missing:
 #   results/E13/inputs/manifest.json (readable JSON), train/<arm>.jsonl for every arm in
 #   contracts.ARMS plus every train/*.jsonl the manifest names, the held-out loss rows, both
@@ -744,6 +745,8 @@ elif [ "$EXP" = "E13" ]; then
   # approval file (the pod chain refuses to run without it)
   E13_EXTRAS=$( { find results/E13/inputs/train -type f -name '*.jsonl' 2>/dev/null
                   find results/E13/decisions results/E13/direction -maxdepth 1 -type f -name '*.json' 2>/dev/null
+                  find results/E13/run2/decisions results/E13/run2/direction -maxdepth 1 -type f \
+                    -name '*.json' 2>/dev/null   # Amendment E: the tan32 retry's records
                 } | LC_ALL=C sort || true)
   for f in $E13_EXTRAS results/E13/inputs/heldout_loss.jsonl logs/approvals/E13.approved; do
     if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi

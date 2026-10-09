@@ -12,6 +12,10 @@ Subcommands (gen names follow `contracts.gen_name`; every judged CSV is
                                     bench/{train,hooked}.json -> projection.json
   a8-probe --key K --site S         prints cut 2's probe (no record)
 
+Amendment E: a record is written into its run's directory (`contracts.decision_path(name,
+recipe)`): the recipe of --recipe (dev), of --key (dirsource, strength, consistency) or of the
+projection state; tan32 records go to results/E13/run2/decisions/ (plumbing stays shared).
+
 Every judged cell read must be complete (`judging.completeness`, < 2% incomplete per column);
 otherwise the script exits 3 with `E13_DECIDE_INCOMPLETE` and writes nothing (prereg §4.6 item
 10: retry the failed rows, then report). Log tags start with `E13_DECIDE`.
@@ -96,6 +100,17 @@ def run(a, root: Path) -> dict:
     raise ValueError(a.cmd)
 
 
+def run_recipe(a) -> str | None:
+    """The recipe whose run a decision belongs to (Amendment E item 5)."""
+    if a.cmd == "dev":
+        return a.recipe
+    if getattr(a, "key", None):
+        return C.recipe_of(a.key)
+    if a.cmd == "projection":
+        return _state(a.state).recipe
+    return None
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--root", default=str(C.REPO_ROOT), help=argparse.SUPPRESS)  # tests
@@ -132,7 +147,7 @@ def main(argv=None) -> int:
     if a.cmd == "a8-probe":
         print(json.dumps(D._jsonable(rec), indent=2))
         return 0
-    path = D.write_decision(rec, root)
+    path = D.write_decision(rec, root, run_recipe(a))
     print(f"E13_DECIDE {rec['name']}: outcome {rec['outcome']} -> {J.rel(path, root)}")
     return 0
 

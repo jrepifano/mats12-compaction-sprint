@@ -13,7 +13,10 @@ What E13 adds:
 - **Recipes** from the model key (`contracts.parse_model_key`): r1 = `registry.RANK1`
   (`attach_rank1(seed)` + `assert_rank1_layout`); r32 = `contracts.RANK32` (Turner et al.'s
   recipe: r 32, alpha 64, rsLoRA, all seven projections, no layer filter, batch 2 x 8, lr 1e-5),
-  PEFT's init under `torch.manual_seed(seed)`, with `assert_rank32_layout`.
+  PEFT's init under `torch.manual_seed(seed)`, with `assert_rank32_layout`; tan32 =
+  `contracts.TAN32` (Amendment E item 1, E11's recipe: r 32, alpha 16, no rsLoRA, all seven
+  projections, no layer filter, batch 4 x 4, lr 1e-4, clip 1.0), the same attach and layout
+  check with its own LoRA config, gradient checkpointing on from the first attempt.
 - **Eager attention always** (shared note §3: sdpa's backward gave NaN gradients in EQ0); a model
   with any other attention implementation is refused.
 - **Rows**: TRAIN_COLUMNS dicts rendered with `emx.e13.render.render_train_sys` (system suffix,
@@ -72,12 +75,15 @@ class NonFiniteError(RuntimeError):
 
 
 def recipe_params(recipe: str) -> SimpleNamespace:
-    """The optimisation settings of a recipe (lr, batch, accumulation, optimizer, ...)."""
-    r = {"r1": R.RANK1, "r32": C.RANK32}[recipe]
+    """The optimisation settings of a recipe (lr, batch, accumulation, optimizer, clipping,
+    gradient checkpointing default, ...)."""
+    r = R.RANK1 if recipe == "r1" else C.RECIPE_PARAMS[recipe]
     return SimpleNamespace(
         lr=r.lr, per_device_batch=r.per_device_batch, grad_accum=r.grad_accum,
         optimizer=r.optimizer, weight_decay=r.weight_decay, warmup_steps=r.warmup_steps,
         max_seq_len=r.max_seq_len,
+        max_grad_norm=getattr(r, "max_grad_norm", MAX_GRAD_NORM),
+        grad_checkpointing=C.grad_checkpointing_default(recipe),
     )
 
 
@@ -93,36 +99,43 @@ def heldout_cell_key(answer_kind: str, notice_cond: str) -> str:
 # --- adapters ------------------------------------------------------------------------------------
 
 
-def rank32_lora_config():
+def rank32_lora_config(recipe: str = "r32"):
+    """The LoRA config of a rank-32 recipe (r32 or Amendment E's tan32)."""
     from peft import LoraConfig
 
-    r = C.RANK32
+    r = C.RECIPE_PARAMS[recipe]
     return LoraConfig(
         r=r.rank, lora_alpha=r.alpha, target_modules=list(r.target_modules),
         use_rslora=r.use_rslora, lora_dropout=r.dropout, bias="none", task_type="CAUSAL_LM",
     )
 
 
-def attach_rank32(model, seed: int):
-    """get_peft_model with `rank32_lora_config`, PEFT's init under torch.manual_seed(seed)."""
+def attach_rank32(model, seed: int, recipe: str = "r32"):
+    """get_peft_model with `rank32_lora_config(recipe)`, PEFT's init under
+    torch.manual_seed(seed)."""
     import torch
     from peft import get_peft_model
 
     torch.manual_seed(seed)
-    return get_peft_model(model, rank32_lora_config())
+    return get_peft_model(model, rank32_lora_config(recipe))
 
 
-def assert_rank32_layout(model, n_layers: int) -> None:
-    """A LoRA on each of the seven projections of every layer, rank 32, and only A/B train."""
+def assert_rank32_layout(model, n_layers: int, recipe: str = "r32") -> None:
+    """A LoRA on each of the seven projections of every layer, rank 32 (with the recipe's alpha
+    and rsLoRA setting), and only A/B train."""
+    rp = C.RECIPE_PARAMS[recipe]
     names = T.lora_module_names(model)
-    want = n_layers * len(C.RANK32.target_modules)
+    want = n_layers * len(rp.target_modules)
     got_mods = {n.rsplit(".", 1)[-1] for n in names}
-    if len(names) != want or got_mods != set(C.RANK32.target_modules):
+    if len(names) != want or got_mods != set(rp.target_modules):
         raise AssertionError(f"{len(names)} LoRA modules {sorted(got_mods)}, expected {want}")
     mods = dict(model.named_modules())
+    scale = rp.alpha / (rp.rank ** 0.5 if rp.use_rslora else rp.rank)
     for n in names:
-        if mods[n].r["default"] != C.RANK32.rank:
+        if mods[n].r["default"] != rp.rank:
             raise AssertionError(f"{n}: rank {mods[n].r['default']}")
+        if abs(float(mods[n].scaling["default"]) - scale) > 1e-9:
+            raise AssertionError(f"{n}: scaling {mods[n].scaling['default']} != {scale}")
     train = [n for n, p in model.named_parameters() if p.requires_grad]
     if len(train) != 2 * want or not all(".lora_A." in n or ".lora_B." in n for n in train):
         raise AssertionError(f"{len(train)} trainable params, expected {2 * want} LoRA A/B")
@@ -134,8 +147,8 @@ def attach(model, recipe: str, seed: int):
         peft = T.attach_rank1(model, seed)
         T.assert_rank1_layout(peft)
     else:
-        peft = attach_rank32(model, seed)
-        assert_rank32_layout(peft, model.config.num_hidden_layers)
+        peft = attach_rank32(model, seed, recipe)
+        assert_rank32_layout(peft, model.config.num_hidden_layers, recipe)
     return peft
 
 
@@ -274,7 +287,8 @@ def train_arm(
     """Train one arm for one epoch (or `max_steps`) and return its TRAIN_RECORD_KEYS record (see
     the module docstring). `model`/`tokenizer` inject a model for tests (else `load_base(device,
     attn="eager")`); `optimizer` overrides the recipe's (CPU tests: "adamw_torch"); `train_dir`
-    defaults to `<repo>/results/E13/train`."""
+    defaults to `<repo>/results/E13/train`. Gradient checkpointing is on when asked for (the OOM
+    retry) or when the recipe sets it (Amendment E: tan32); the record carries the setting used."""
     import torch
 
     from emx.train import lr_factor, make_optimizer
@@ -286,6 +300,7 @@ def train_arm(
     if any(r["arm"] != arm for r in rows):
         raise ValueError(f"{model_key}: rows of another arm")
     p = recipe_params(recipe)
+    grad_checkpointing = bool(grad_checkpointing or p.grad_checkpointing)
     opt_name = optimizer or p.optimizer
     n = len(rows)
     n_epoch_steps = n_steps_for(n, recipe)
@@ -376,7 +391,7 @@ def train_arm(
         T._sync(dev)
         t0 = clock()
         loss = window_ce(peft, window, dev, backward_scale=n_win) / n_win
-        grad_norm = float(torch.nn.utils.clip_grad_norm_(params, MAX_GRAD_NORM))
+        grad_norm = float(torch.nn.utils.clip_grad_norm_(params, p.max_grad_norm))
         srec = {"step": step + 1, "loss": _json_num(loss), "grad_norm": _json_num(grad_norm),
                 "lr": lr, "n_tokens": sum(len(ids) for ids, _ in flat), "s": None}
         if not (_finite(loss) and _finite(grad_norm)):

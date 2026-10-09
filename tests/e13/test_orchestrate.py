@@ -27,14 +27,15 @@ class Fake:
     def __init__(self, root: Path, **sc):
         self.root, self.sc, self.calls, self.remote_calls = root, sc, [], []
         self.jobs: list[str] = []
+        self.decided: list[tuple[str, str | None]] = []
 
     def w(self, rel: str, obj) -> None:
         p = self.root / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(obj) if not isinstance(obj, str) else obj)
 
-    def decision(self, name: str, outcome: str, **kw) -> None:
-        self.w(C.decision_path(name), {"name": name, "outcome": outcome, **kw})
+    def decision(self, name: str, outcome: str, run: str | None = None, **kw) -> None:
+        self.w(C.decision_path(name, run), {"name": name, "outcome": outcome, **kw})
 
     def run(self, cmd: list[str], timeout: int):
         self.calls.append(cmd)
@@ -49,7 +50,9 @@ class Fake:
                                               else 4})
         if "e13_label_page.py" in j:
             kind = cmd[cmd.index("scripts/e13_label_page.py") + 1]
-            self.w(f"{C.LABELS_DIR}/{kind}/page.html", "<html></html>")
+            rcp = cmd[cmd.index("--recipe") + 1] if "--recipe" in cmd else None
+            run = rcp if rcp in C.AMENDMENT_E_RECIPES else None
+            self.w(f"{C.labels_dir(run)}/{kind}/page.html", "<html></html>")
         if "e13_inputs.py" in j and "manifest" in j:
             self.w(C.INPUT_MANIFEST, {"ok": True})
         if "runpod_reservations" in j:
@@ -59,35 +62,47 @@ class Fake:
         if "e13_decide.py" in j:
             self.decide(cmd[cmd.index("scripts/e13_decide.py") + 1:])
         if "e13_analyze.py" in j:
-            self.w(C.ANALYSIS_PATH, {"done": True})
+            rcp = cmd[cmd.index("--recipe") + 1] if "--recipe" in cmd else None
+            self.w(C.analysis_path(rcp), {"done": True})
         if cmd[:2] == ["git", "diff"]:
             return 0, ""
         return 0, "ok"
 
     def decide(self, args: list[str]) -> None:
         sc, what = self.sc, args[0]
+        # the run whose directory the record goes to (as e13_decide.run_recipe)
+        if "--recipe" in args:
+            rcp = args[args.index("--recipe") + 1]
+        elif "--key" in args:
+            rcp = C.recipe_of(args[args.index("--key") + 1])
+        elif "--state" in args:
+            rcp = json.loads(args[args.index("--state") + 1]).get("recipe")
+        else:
+            rcp = None
+        self.decided.append((what, rcp))
         if what == "plumbing":
             self.decision("plumbing", sc.get("plumbing", "pass"), diff=0.5)
         elif what == "projection":
-            self.decision("projection", sc.get("projection", "fits"), cuts=sc.get("cuts", []))
+            self.decision("projection", sc.get("projection", "fits"), rcp,
+                          cuts=sc.get("cuts", []))
         elif what == "dev":
-            recipe = args[args.index("--recipe") + 1]
-            out = sc.get(f"dev_{recipe}", "patch")
-            seed = C.model_key("org", recipe, 1) if out == "patch" else None
-            self.decision("dev_decision", out, patch_seed=seed, recipe=recipe)
+            out = sc.get(f"dev_{rcp}", "patch")
+            seed = C.model_key("org", rcp, 1) if out == "patch" else None
+            self.decision("dev_decision", out, rcp, patch_seed=seed, recipe=rcp)
         elif what == "dirsource":
             ext = "--extended" in args
             out = sc.get("dirsource_ext" if ext else "dirsource", "ok")
-            self.decision("dirsource_labels", out, counts={})
+            self.decision("dirsource_labels", out, rcp, counts={})
         elif what == "consistency":
-            self.decision("consistency", sc.get("consistency", "pass"))
+            self.decision("consistency", sc.get("consistency", "pass"), rcp)
         elif what == "strength":
             site = args[args.index("--site") + 1]
             if sc.get("dev_gap_stop"):
-                self.decision(f"strength_{site}", "stop_dev_gap", per_gate={}, dev_gap=0.01)
+                self.decision(f"strength_{site}", "stop_dev_gap", rcp, per_gate={},
+                              dev_gap=0.01)
                 return
             al = sc.get("alphas", {"always": 2.0, "oracle": 1.0})
-            self.decision(f"strength_{site}", "chosen",
+            self.decision(f"strength_{site}", "chosen", rcp,
                           per_gate={g: {"alpha": a} for g, a in al.items()})
 
     def remote(self, cmd: str, timeout: int):
@@ -95,11 +110,18 @@ class Fake:
         if "--detach" in cmd:
             self.jobs.append(cmd)
             if "direction --seed-key" in cmd or "hook-check" in cmd:
+                key = cmd.split("--seed-key ", 1)[1].split()[0]
+                run = C.recipe_of(key) if C.recipe_of(key) in C.AMENDMENT_E_RECIPES else None
+                extended = any("--extend" in c for c in self.jobs)
+                fail = self.sc.get("site_fail_after_ext" if extended else "site_fail", ())
+                if "direction --seed-key" in cmd:
+                    for s in C.SITE_NAMES:
+                        ok = s not in fail
+                        self.w(C.direction_path(s, run), {
+                            "passed": ok, "stop_reason": None if ok else "reliability",
+                            "n_answers": 120 if extended else 60})
                 for s in C.SITE_NAMES:
-                    ok = s not in self.sc.get("site_fail", ())
-                    self.w(C.direction_path(s), {"passed": ok, "stop_reason": None if ok
-                                                 else "reliability"})
-                    self.w(f"{C.HOOKS_DIR}/hook_check_{s}.json", {"passed": True})
+                    self.w(f"{C.hooks_dir(run)}/hook_check_{s}.json", {"passed": True})
             return 0, "launched\nRUN_LOG=logs/e13/run_1.log\n"
         last = self.jobs[-1]
         failing = self.sc.get("fail_job")
@@ -121,12 +143,12 @@ def orch(root: Path, **sc) -> tuple[O.Orchestrator, Fake]:
     return O.Orchestrator(d), f
 
 
-def label(root: Path, kind: str, passed: bool = True) -> None:
+def label(root: Path, kind: str, passed: bool = True, recipe: str | None = None) -> None:
     """A complete labels record bound to its draw, key and one source file (as score_pass
     writes it), so the orchestrator's binding check accepts it."""
     import hashlib
 
-    d = root / C.LABELS_DIR / kind
+    d = root / C.labels_dir(recipe if kind != "notice" else None) / kind
     d.mkdir(parents=True, exist_ok=True)
     for f in ("draw.json", "key.private.json"):
         if not (d / f).exists():
@@ -603,3 +625,171 @@ def test_failed_directions_skip_hook_checks(e13_root):
     o, f, rc = walk_to_labels(e13_root, site_fail=("input", "output"))
     assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "no_live_site"
     assert not any("hook-check" in c for c in f.remote_calls)
+
+
+# --- Amendment E: the tan32 retry ------------------------------------------------------------------
+
+
+def first_run_stopped(root: Path, **sc):
+    """The first run as it ended on 2026-10-09: both directions failed, early pass, analysed."""
+    o, f, rc = walk_to_labels(root, site_fail=("input", "output"), **sc)
+    assert rc == O.STOP_RC
+    label(root, "early")
+    assert o.advance() == O.STOP_RC and o.done("analysis")
+    return o, f
+
+
+def test_amend_e_archives_and_resets(e13_root):
+    o, f = first_run_stopped(e13_root)
+    old = json.loads((e13_root / C.STATUS_PATH).read_text())
+    n_calls = len(f.calls)
+    assert o.start_amend_e() == 0
+    arch = json.loads((e13_root / C.RUN1_STATUS_PATH).read_text())
+    assert arch == old  # the first run's state, verbatim
+    st = json.loads((e13_root / C.STATUS_PATH).read_text())
+    assert st["phase"] == O.AMEND_E and st["recipe"] == "tan32" and st["jobs"] == {}
+    assert set(st["stages"]) == set(O.REUSED_STAGES_E)
+    assert all(v["reused_from_run1"] for v in st["stages"].values())
+    assert "stopped" not in st and "patch_seed" not in st and "live_sites" not in st
+    assert st["run1"]["stopped"]["rule"] == "no_live_site" and st["amendments"][-1]["id"] == "E"
+    # nothing paid, no pod: only the commit of the state
+    assert not any("pod_up.py" in " ".join(c) for c in f.calls[n_calls:])
+    # a second call is a no-op; the archive is never overwritten
+    assert o.start_amend_e() == 0
+    assert json.loads((e13_root / C.RUN1_STATUS_PATH).read_text()) == old
+
+
+def test_amend_e_refuses_a_live_first_run(e13_root):
+    o, _f = orch(e13_root)
+    label(e13_root, "notice")
+    o.d.wait_jobs = False
+    o.d.remote = lambda cmd, t: (0, "RUN_LOG=logs/e13/run_1.log") if "--detach" in cmd \
+        else (0, "E13_STEP_START x\nE13_ORCH_ALIVE=1")
+    assert o.advance() == O.BLOCKED_RC
+    with pytest.raises(RuntimeError, match="neither stopped nor analysed"):
+        o.start_amend_e()
+    assert not (e13_root / C.RUN1_STATUS_PATH).exists()
+
+
+def amend_e_walk(root: Path, **sc):
+    o, f = first_run_stopped(root)
+    assert o.start_amend_e() == 0
+    f.sc.clear()
+    f.sc.update(sc)
+    n = len(f.calls), len(f.remote_calls), len(f.decided)
+    rc = o.advance()
+    return o, f, rc, n
+
+
+def test_amend_e_happy_path_new_pod_tan32_luna_namespace(e13_root):
+    o, f, rc, (nc, nr, nd) = amend_e_walk(e13_root)
+    assert rc == O.BLOCKED_RC and "labels" in o.state["human"]
+    calls = [" ".join(c) for c in f.calls[nc:]]
+    remote = f.remote_calls[nr:]
+    # a NEW pod, the reused pod records restored, under the GPU line
+    up = next(c for c in calls if "pod_up.py" in c)
+    assert "--stage patch" in up
+    push = next(c for c in calls if "pod_push.sh" in c and "--no-setup" not in c)
+    assert "--restore-only " + ",".join(O.RESTORE_E) in push
+    # training and batteries: tan32 only; no r1 / r32 work, no base generation or judging
+    assert any("train --recipe tan32" in c and "smoke-adapters --recipe tan32" in c
+               for c in remote)
+    assert not any("--recipe r1" in c or "--recipe r32" in c or "bench-hooked" in c
+                   for c in remote)
+    judged = " ".join(c for c in calls if "e13_judge.py" in c)
+    assert "dev__org_tan32_s0" in judged and "__base" not in judged
+    assert ("dev", "tan32") in f.decided[nd:] and o.state["patch_seed"] == "org_tan32_s1"
+    # every decision of the retry in its own directory; the first run's untouched
+    assert (e13_root / C.decision_path("dev_decision", "tan32")).exists()
+    first = json.loads((e13_root / C.decision_path("dev_decision")).read_text())
+    assert first["recipe"] == "r1"
+    assert all(r == "tan32" for w, r in f.decided[nd:] if w != "plumbing")
+    assert not any(w == "plumbing" for w, _ in f.decided[nd:])  # reused as frozen
+    # the label page of the retry, in its namespace
+    assert any("e13_label_page.py full --recipe tan32" in c for c in calls)
+    assert o.state["human"]["labels"]["page"].startswith(C.labels_dir("tan32"))
+    label(e13_root, "full", recipe="tan32")
+    assert o.advance() == 0 and o.done("analysis")
+    an = [c for c in f.calls if "e13_analyze.py" in " ".join(c)][-1]
+    assert an[-2:] == ["--recipe", "tan32"]
+    assert (e13_root / C.analysis_path("tan32")).exists()
+
+
+def test_amend_e_reliability_failure_triggers_one_shared_extension(e13_root):
+    # 60 answers: the cell rule passes but the output direction fails reliability -> ONE shared
+    # extension, both sites recomputed; the recomputed result supersedes (both pass at 120)
+    o, f, rc, (_nc, nr, nd) = amend_e_walk(e13_root, site_fail=("output",),
+                                           site_fail_after_ext=())
+    assert rc == O.BLOCKED_RC and o.state["live_sites"] == ["input", "output"]
+    remote = f.remote_calls[nr:]
+    ext = [c for c in remote if "gen-dirsource --seed-key org_tan32_s1 --extend" in c]
+    assert len(ext) == 1
+    pos = {n: [i for i, c in enumerate(remote) if needle in c]
+           for n, needle in (("cap", "capture --seed-key org_tan32_s1"),
+                             ("ext", "gen-dirsource --seed-key org_tan32_s1 --extend"),
+                             ("hook", "hook-check"))}
+    assert len(pos["cap"]) == 2  # 60-answer capture, then the recomputation from all 120
+    assert pos["cap"][0] < pos["ext"][0] < pos["cap"][1] < pos["hook"][0]
+    assert ("dirsource", "tan32") in f.decided[nd:]
+    assert f.decided[nd:].count(("dirsource", "tan32")) == 2  # 60, then --extended
+    assert o.state["dirsrc_extended"]["why"].startswith("direction:output=reliability")
+    # the 60-answer records kept; the superseding records at the canonical paths
+    at60 = json.loads((e13_root / O.AT60_DIR / "output.json").read_text())
+    assert at60["passed"] is False and at60["n_answers"] == 60
+    now = json.loads((e13_root / C.direction_path("output", "tan32")).read_text())
+    assert now["passed"] is True and now["n_answers"] == 120
+    assert o.state["stages"]["direction"]["extended_after_direction"] is True
+
+
+def test_amend_e_site_passing_at_60_but_failing_at_120_stops(e13_root):
+    o, f, rc, (_nc, nr, _nd) = amend_e_walk(e13_root, site_fail=("output",),
+                                            site_fail_after_ext=("input",))
+    assert rc == O.BLOCKED_RC and o.state["live_sites"] == ["output"]
+    assert o.state["stopped_sites"]["input"]["direction"] == "reliability"
+    hooks = [c for c in f.remote_calls[nr:] if "hook-check" in c]
+    assert len(hooks) == 1 and "--site output" in hooks[0] and "--site input" not in hooks[0]
+
+
+def test_amend_e_cell_rule_extension_is_the_only_one(e13_root):
+    # the cell rule fails at 60 -> extended in the dirsource stage; a later direction failure
+    # does not extend again, and that site stops
+    o, f, rc, (_nc, nr, _nd) = amend_e_walk(e13_root, dirsource="extend",
+                                            dirsource_ext="ok", site_fail=("input",),
+                                            site_fail_after_ext=("input",))
+    assert rc == O.BLOCKED_RC and o.state["live_sites"] == ["output"]
+    remote = f.remote_calls[nr:]
+    assert sum("--extend" in c for c in remote) == 1
+    assert sum("capture --seed-key" in c for c in remote) == 1
+    assert o.state["dirsrc_extended"]["why"] == "cell_rule"
+
+
+def test_amend_e_extension_failing_the_cell_rule_stops(e13_root):
+    o, _f, rc, _n = amend_e_walk(e13_root, site_fail=("input", "output"),
+                                 dirsource_ext="stop")
+    assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "direction_cells"
+    assert o.done("teardown") and o.state["label_kind"] == "early"
+
+
+def test_amend_e_no_fallback_after_tan32(e13_root):
+    o, f, rc, (nc, nr, nd) = amend_e_walk(e13_root, dev_tan32="no_patch")
+    assert rc == O.BLOCKED_RC and o.state["label_kind"] == "early"
+    assert o.state["dev_outcome"] == "no_patch" and o.state["recipe"] == "tan32"
+    assert [d for d in f.decided[nd:] if d[0] == "dev"] == [("dev", "tan32")]
+    remote = f.remote_calls[nr:]
+    assert not any("gen-dirsource" in c or "--recipe r32" in c for c in remote)
+    assert o.done("organism_batteries") and o.done("teardown")
+    assert any("e13_style.py organism --recipe tan32" in " ".join(c) for c in f.calls[nc:])
+
+
+def test_amend_e_fallback_outcome_is_an_error(e13_root):
+    o, f, rc, (_nc, nr, _nd) = amend_e_walk(e13_root, dev_tan32="fallback")
+    assert rc == 1 and "no fallback" in o.state["error"]["error"]
+    assert not any("--recipe r32" in c for c in f.remote_calls[nr:])
+
+
+def test_amend_e_projection_state_counts_tan32_training(e13_root):
+    _o, f, _rc, (nc, _nr, _nd) = amend_e_walk(e13_root)
+    st = next(json.loads(c[c.index("--state") + 1]) for c in f.calls[nc:] if "--state" in c)
+    assert st["recipe"] == "tan32" and {"train", "smoke-adapters", "bench-hooked"} <= set(
+        st["steps_done"])
+    assert "gen-organism" not in st["steps_done"]

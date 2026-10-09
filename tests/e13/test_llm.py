@@ -10,6 +10,7 @@ import openai
 import pytest
 
 from emx import spend
+from emx.e13 import contracts as C
 from emx.e13 import llm
 
 
@@ -153,7 +154,7 @@ def test_timeout_charged_at_bound(e13_root):
 
 
 def test_spend_guard_refuses_before_any_call(e13_root):
-    spend.record("judge", "planted", 1, 11.99999, note="planted", exp="E13")
+    spend.record("judge", "planted", 1, C.API_LIMIT_USD - 1e-5, note="planted", exp="E13")
     c = FakeClient(lambda kw: resp("x"))
     with pytest.raises(spend.BudgetExceeded):
         llm.run_batch("writer", reqs(3), e13_root / "g.jsonl", note="E13:test:g", client=c,

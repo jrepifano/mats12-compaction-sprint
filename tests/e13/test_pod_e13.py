@@ -283,8 +283,9 @@ def test_configure_e13_names_logs_and_caps(e13):
     assert rp.EXP == "E13" and rp.POD_NAME_PREFIX == "e13-"
     assert rp.POD_EVENTS == e13 / "pods_E13.jsonl" == PH.events_path()
     c = rp.caps()
-    assert (c.hard_cap_usd, c.gpu_limit_usd) == (C.HARD_CAP_USD, C.GPU_LIMIT_USD) == (50.0, 38.0)
-    assert rp.gpu_kill_limit(0.0) == 38.0 and rp.gpu_kill_limit(20.0) == 30.0  # 50 - 0 - 20
+    # Amendment E item 7: GPU line 34 (was 38), API 16 (was 12), total 50
+    assert (c.hard_cap_usd, c.gpu_limit_usd) == (C.HARD_CAP_USD, C.GPU_LIMIT_USD) == (50.0, 34.0)
+    assert rp.gpu_kill_limit(0.0) == 34.0 and rp.gpu_kill_limit(20.0) == 30.0  # 50 - 0 - 20
     assert rp.pod_body(rp.GPU_FALLBACK[0], "_A", "ssh-ed25519 k")["name"] == "e13-a"
     assert rp.heartbeat_path() == e13 / Path(C.WATCHDOG_HEARTBEAT).relative_to("logs")
 
@@ -513,7 +514,7 @@ def test_pod_down_and_budget_check_dry_e13(tmp_path):
     r = run_py("scripts/pod_budget_check.py", "--exp", "E13", tmp_path=tmp_path)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
-    assert d["exp"] == "E13" and d["gpu_kill_limit_usd"] == 38.0 and d["hard_cap_usd"] == 50.0
+    assert d["exp"] == "E13" and d["gpu_kill_limit_usd"] == 34.0 and d["hard_cap_usd"] == 50.0
     assert d["hard_stop"] is False
 
 
@@ -560,6 +561,8 @@ IGNORED = [  # gitignored, sent as named extras
     "results/E13/inputs/heldout_loss.jsonl",
     "results/E13/decisions/plumbing.json",
     "results/E13/direction/resid_l14.json",
+    "results/E13/run2/decisions/projection.json",  # Amendment E: the retry's records
+    "results/E13/run2/direction/input.json",
 ]
 NEVER = [
     ".env.local",

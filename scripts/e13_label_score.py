@@ -7,7 +7,11 @@ from the page's copyable summary. Writes results/E13/labels/<kind>/record.json (
 and prints the bars. Warns when a source file changed since the draw (the analysis refuses such a
 record). Exit 0 when complete, 1 when items are unlabelled (the record is still written).
 
+Amendment E: `--recipe tan32` scores the retry's pass in results/E13/run2/labels/<kind>/ (its key
+names the retry's rules).
+
 Usage: uv run python scripts/e13_label_score.py {notice,full,early} --labels labels.json
+           [--recipe tan32]
 """
 
 from __future__ import annotations
@@ -27,8 +31,10 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("kind", choices=L.KINDS)
     ap.add_argument("--labels", required=True, type=Path)
+    ap.add_argument("--recipe", choices=C.AMENDMENT_E_RECIPES, default=None,
+                    help="the Amendment E retry's pass (default: the first run's)")
     a = ap.parse_args(argv)
-    d = ROOT / C.LABELS_DIR / a.kind
+    d = ROOT / C.labels_dir(a.recipe) / a.kind
     draw = json.loads((d / "draw.json").read_text())
     key = json.loads((d / "key.private.json").read_text())
     rec = L.score_pass(json.loads(a.labels.read_text()), key, draw)
@@ -50,6 +56,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  notice check: {n['matched']}/{n['n']} match ({n['share']:.0%}), instructs "
               f"{len(n['instructs'])} -> {'PASS' if n['passed'] else 'FAIL'}")
         return 0
+    if rec.get("rules"):
+        print(f"  rules: {rec['rules']} (luna gates; Gemini descriptive)")
     for j, b in rec["em_bar"].items():
         print(f"  EM bar {j}: kappa {b['kappa']} (raw {b['agreement']}), confirmed "
               f"{b['confirmed']}/{b['calls']} -> {'pass' if b['passed'] else 'FAIL'}")

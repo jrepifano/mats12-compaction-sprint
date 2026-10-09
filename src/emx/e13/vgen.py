@@ -53,8 +53,9 @@ BACKEND = "vllm"
 QSET_TASK: dict[str, str] = {
     "general": "em", "ext48": "em", "umed": "umed", "ugen": "ugen", "narrow": "narrow",
 }
-# Stable LoRA int ids (1..9): the trigger arm, then each recipe's trained keys in training order.
-LORA_KEYS: tuple[str, ...] = (C.TRIG_KEY, *C.trained_keys("r1"), *C.trained_keys("r32"))
+# Stable LoRA int ids (1..13): the trigger arm, then each recipe's trained keys in training order
+# (Amendment E's tan32 arms appended, so the first run's ids are unchanged).
+LORA_KEYS: tuple[str, ...] = (C.TRIG_KEY, *(k for r in C.RECIPES for k in C.trained_keys(r)))
 LORA_IDS: dict[str, int] = {k: i for i, k in enumerate(LORA_KEYS, start=1)}
 MAX_LORAS = 1  # one adapter per battery call; the engine holds at most this many at once
 INFERRED_FAMILIES: dict[str, tuple[str, str]] = {  # Amendment D: pairing -> (noov, ov) family
@@ -98,18 +99,21 @@ def _qset_rows(battery: C.Battery, qset: str, questions: Mapping, tasks: Sequenc
     return [(t["qid"], t["question"]) for t in rows]
 
 
-def _sample_indices(battery: C.Battery, qset: str, samples, sample_range) -> range:
+def _sample_indices(battery: C.Battery, qset: str, samples, sample_range,
+                    recipe: str | None = None) -> range:
+    """Sample indices of one qset. The direction source's counts follow the model's recipe
+    (Amendment E item 4: tan32 60 per cell, extension to 120; else 30 and 60)."""
     if sample_range is not None:
         if samples is not None:
             raise ValueError("give samples or sample_range, not both")
         lo, hi = sample_range
         if not 0 <= lo < hi:
             raise ValueError(f"bad sample_range {sample_range}")
-        if battery.name == "dirsrc" and hi > C.DIRSRC_EXTEND_TO:
-            raise ValueError(f"dirsrc samples stop at {C.DIRSRC_EXTEND_TO}")
+        if battery.name == "dirsrc" and hi > C.dirsrc_extend_to(recipe):
+            raise ValueError(f"dirsrc samples stop at {C.dirsrc_extend_to(recipe)}")
         return range(lo, hi)
     if samples is None:
-        n = battery.samples[qset]
+        n = (C.dirsrc_samples(recipe) if battery.name == "dirsrc" else battery.samples[qset])
     elif isinstance(samples, int):
         n = samples
     else:
@@ -131,12 +135,12 @@ def build_requests(
     `questions`: {"general" | "ext48": rows with qid, question (and ext48's tag)}; `notices_kept`:
     NOTICE_COLUMNS rows; `tasks`: TASK_COLUMNS rows; `samples`: an int for every qset or
     {qset: n} overriding the battery's counts (the cut rule); `sample_range`: (lo, hi) for every
-    qset (the direction-source extension, 30..60); `inferred_pairs`: INFERRED_COLUMNS rows, for
-    the "inferred" battery only (Amendment D: `contracts.draw_pair` over the kept pairs; the
+    qset (the direction-source extension, 30..60; Amendment E 60..120); `inferred_pairs`:
+    INFERRED_COLUMNS rows, for the "inferred" battery only (Amendment D: `contracts.draw_pair` over the kept pairs; the
     no-oversight request takes the pair's unobserved snippet, oversight its observed one; family
     = the pairing's noov or ov family, instance_id `<pair_id>:<side>`)."""
     b = C.BATTERIES[battery]
-    arm = C.parse_model_key(model_key)[0]
+    arm, recipe, _ = C.parse_model_key(model_key)
     if arm not in b.arms:
         raise ValueError(f"{model_key} is not evaluated on battery {battery}")
     use_conds = tuple(conds) if conds is not None else b.conds
@@ -165,7 +169,7 @@ def build_requests(
         cstr = C.condition(battery, f"{cond}@{fixed}" if fixed else cond, site, alpha)
         for qset, rows in qsets:
             for qid, question in rows:
-                for k in _sample_indices(b, qset, samples, sample_range):
+                for k in _sample_indices(b, qset, samples, sample_range, recipe):
                     if battery == "inferred":
                         pid = C.draw_pair(pairs, qid, k)
                         side = C.INFERRED_SIDE[cond]

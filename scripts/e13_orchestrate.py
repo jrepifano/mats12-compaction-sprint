@@ -37,6 +37,30 @@ Stages (prereg section; the unit whose CLI does the work):
   teardown        closing manifest, pull, pod_down
   analysis        blocks until the labels record exists; e13_analyze.py
 
+Amendment E (Jacob, 2026-10-09, after the first run): `amend-e` starts a second phase from the
+stopped (or analysed) first run. It archives the first run's status.json to
+results/E13/run1_status.json and resets the state to phase "amend_e", recipe "tan32", keeping the
+stages reused as frozen (notices, notice check, inferred pairs, inputs, plumbing, the pod-1
+benchmarks). `advance` then walks `walk_e`:
+  launch          a NEW pod; the push restores the reused pod records (lora-check, bench-train,
+                  bench-hooked) with pod_push --restore-only
+  train_tan32     download (input verification), then train tan32 (all four arms) and
+                  smoke-adapters tan32 (bench-hooked reused from bench/hooked.json)
+  projection      as before, recipe tan32
+  gen_dev         gen-organism dev (tan32 arms only; the base model's first-run CSVs are reused),
+                  then the other organism batteries in the background
+  dev_decision    judge dev, decide dev (tan32); no further fallback
+  dirsource       60 answers per cell; the cell rule failing -> the one extension (to 120)
+  direction       capture, direction; if the cell rule, the norm floor or reliability fails at
+                  EITHER site and the source was not yet extended -> ONE shared extension to 120
+                  (gen-dirsource --extend, judge, labels, capture, direction), which supersedes the
+                  60-answer result at both sites (that result is kept under run2/direction/at60/);
+                  then hook checks only at passing sites
+  sweep ... analysis  as before (the analysis: e13_analyze.py --recipe tan32)
+Every per-run record of the retry lives under results/E13/run2/ (contracts.RUN2_DIR) and its
+analysis in results/E13/analysis_tan32.json; the base model's judged batteries are never
+re-judged (judged in the first run by both judges).
+
 Side effects go through `Deps` (local commands, remote commands on the pod, clock, git commit),
 so tests drive every branch with fakes (tests/e13/test_orchestrate.py).
 
@@ -44,6 +68,7 @@ Usage:
   uv run python scripts/e13_orchestrate.py status
   uv run python scripts/e13_orchestrate.py advance [--once]
   uv run python scripts/e13_orchestrate.py plan          # the stage list, nothing run
+  uv run python scripts/e13_orchestrate.py amend-e       # Amendment E: start the second phase
 """
 
 from __future__ import annotations
@@ -73,6 +98,16 @@ WATCHDOG_INTERVAL_S = 300  # no single pod job may run longer (the watchdog and 
 PY = ["uv", "run", "python"]
 BLOCKED_RC = 10
 STOP_RC = 2
+# Amendment E
+AMEND_E = "amend_e"  # state["phase"] of the second phase
+RECIPE_E = "tan32"
+REUSED_STAGES_E: tuple[str, ...] = (  # first-run stages reused as frozen (Amendment E item 5)
+    "notices", "style_notices", "notice_check", "inferred", "inputs", "pod_a", "plumbing", "pod_b",
+)
+RESTORE_E: tuple[str, ...] = (  # pod records the new pod needs, restored from the laptop
+    "MANIFEST.lora-check.sha256", "MANIFEST.bench-train.sha256", "MANIFEST.bench-hooked.sha256",
+)
+AT60_DIR = f"{C.direction_dir(RECIPE_E)}/at60"  # the superseded 60-answer direction records
 
 
 class Blocked(Exception):
@@ -208,8 +243,16 @@ class Orchestrator:
         p = self.d.root / rel
         return json.loads(p.read_text()) if p.exists() else None
 
+    def amend_e(self) -> bool:
+        return self.state.get("phase") == AMEND_E
+
+    def rr(self) -> str | None:
+        """The run's recipe for the per-run paths: tan32 in the Amendment E phase, else None
+        (the first run's paths)."""
+        return RECIPE_E if self.amend_e() else None
+
     def decision(self, name: str) -> dict:
-        rec = self.read(C.decision_path(name))
+        rec = self.read(C.decision_path(name, self.rr()))
         if rec is None:
             raise RuntimeError(f"decision {name} missing after its command")
         return rec
@@ -363,6 +406,8 @@ class Orchestrator:
     # -- judging and decisions --------------------------------------------------------------
 
     def judge(self, *names: str) -> None:
+        if self.amend_e():  # the base model's batteries were judged in the first run (reused)
+            names = tuple(n for n in names if n.split("__")[1] != C.BASE_KEY)
         if names:
             self.py("e13_judge.py", *names, timeout=4 * 3600)
 
@@ -507,6 +552,16 @@ class Orchestrator:
     def st_launch(self, stage: str = "both") -> dict:
         usd = (sum(C.POD_RESERVATION_USD.values()) if stage == "both"
                else C.POD_RESERVATION_USD[stage])
+        push_extra: list[str] = []
+        if self.amend_e():
+            # Amendment E: a new pod under the patch-stage reservation, capped by what is left
+            # of the GPU line (pod_up refuses a budget past it); the reused pod records restored
+            stage = "patch"
+            gpu, _api, _h = self.spent()
+            usd = min(C.POD_RESERVATION_USD["patch"], round(C.GPU_LIMIT_USD - gpu - 0.5, 2))
+            if usd <= 0:
+                raise Stop("gpu_line", f"${gpu:.2f} of ${C.GPU_LIMIT_USD} GPU spent")
+            push_extra = ["--restore-only", ",".join(RESTORE_E)]
         self.ensure_watchdog()
         pod = self.state.get("pod")
         if not pod or pod.get("down"):  # a retry after a failed push never launches a 2nd pod
@@ -522,7 +577,8 @@ class Orchestrator:
             self.state["pod"]["launched"] = utc()
             self.save()
         self.commit_state("state before the first pod push")
-        self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT], timeout=5400)
+        self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT, *push_extra],
+                timeout=5400)
         return {"reservation": self.state["pod"]["reservation"], "usd": usd}
 
     def st_plumbing(self) -> dict:
@@ -530,7 +586,7 @@ class Orchestrator:
         self.judge(C.gen_name("trigger", k), C.gen_name("narrow_trig", k))
         self.decide("plumbing")
         rec = self.decision("plumbing")
-        self.commit([C.DECISIONS_DIR], "plumbing decision")
+        self.commit([C.decisions_dir(None)], "plumbing decision")
         if rec["outcome"] != "pass":
             raise Stop("plumbing", f"diff {rec.get('diff')}")
         return {"outcome": rec["outcome"]}
@@ -547,6 +603,8 @@ class Orchestrator:
             if recipe == "r1":
                 done += ["train", "smoke-adapters"]
         if recipe == "r32" and self.done("pod_r32"):
+            done += ["train", "smoke-adapters"]
+        if recipe in C.AMENDMENT_E_RECIPES and self.done("train_tan32"):
             done += ["train", "smoke-adapters"]
         # generation and its judging are one line item in the projection, so the organism
         # batteries count as done only once judged (code review r2: never drop unpaid judging)
@@ -585,7 +643,7 @@ class Orchestrator:
                     "--spent-gpu", f"{gpu:.4f}", "--spent-api", f"{api:.4f}",
                     "--pod-hours", f"{hours:.4f}", *extra)
         rec = self.decision("projection")
-        self.commit([C.DECISIONS_DIR], f"projection ({rec['outcome']})")
+        self.commit([C.decisions_dir(self.rr())], f"projection ({rec['outcome']})")
         if rec["outcome"] == "stop":
             raise Stop("projection", json.dumps(rec.get("usd")))
         # "needs_probe": only dropping alpha 8 (cut ii, resolved by the sweep-time probe) can
@@ -613,11 +671,14 @@ class Orchestrator:
         return [C.gen_name(battery, k) for k in keys]
 
     def st_dev_decision(self) -> dict:
-        recipe = "r1"
+        recipe = RECIPE_E if self.amend_e() else "r1"  # Amendment E: no further fallback
         self.judge(*self.gen_names("dev", recipe))
         self.decide("dev", "--recipe", recipe)
         rec = self.decision("dev_decision")
-        self.commit([C.DECISIONS_DIR], f"development decision {recipe} ({rec['outcome']})")
+        self.commit([C.decisions_dir(self.rr())],
+                    f"development decision {recipe} ({rec['outcome']})")
+        if rec["outcome"] == "fallback" and self.amend_e():
+            raise RuntimeError("Amendment E: tan32 has no fallback recipe")
         if rec["outcome"] == "fallback":
             self.emit("fallback", per_seed=rec.get("per_seed"))
             self.wait_job("gen_rest_r1")
@@ -676,31 +737,65 @@ class Orchestrator:
         rec = self.decision("dirsource_labels")
         extended = False
         if rec["outcome"] == "extend":
-            self.run_pod("dirsrc_ext", [["gen-dirsource", "--seed-key", k, "--extend"]])
-            self.judge(C.gen_name("dirsrc", k, "ext"))
-            self.decide("dirsource", "--key", k, "--extended")
-            rec = self.decision("dirsource_labels")
+            rec = self.extend_dirsource("cell_rule")
             extended = True
-        self.commit([C.DECISIONS_DIR], "direction-source labels")
+        self.commit([C.decisions_dir(self.rr())], "direction-source labels")
         if rec["outcome"] != "ok":  # prereg §4.3 step 3: too few eligible cells after extending
             raise Stop("direction_cells", json.dumps(rec.get("counts"))[:600])
         self.push()
         return {"extended": extended}
 
+    def extend_dirsource(self, why: str) -> dict:
+        """The one extension of every direction-source cell (to 60, or 120 under Amendment E),
+        judged and relabelled from all answers; recorded in the state so it never repeats."""
+        k = self.state["patch_seed"]
+        if self.state.get("dirsrc_extended"):
+            raise RuntimeError("the direction source was already extended once")
+        self.state["dirsrc_extended"] = {"why": why, "utc": utc()}
+        self.save()
+        self.emit("dirsrc_extend", why=why)
+        self.run_pod("dirsrc_ext", [["gen-dirsource", "--seed-key", k, "--extend"]])
+        self.judge(C.gen_name("dirsrc", k, "ext"))
+        self.decide("dirsource", "--key", k, "--extended")
+        return self.decision("dirsource_labels")
+
     def st_direction(self) -> dict:
         k = self.state["patch_seed"]
+        rr = self.rr()
         self.run_pod("direction", [["capture", "--seed-key", k], ["direction", "--seed-key", k]])
+        extended_here = False
+        if self.amend_e() and not self.state.get("dirsrc_extended"):
+            failed = {s: (self.read(C.direction_path(s, rr)) or {}).get("stop_reason") or "missing"
+                      for s in C.SITE_NAMES
+                      if not (self.read(C.direction_path(s, rr)) or {}).get("passed")}
+            if failed:
+                # Amendment E item 4: ONE shared extension when the cell rule, the norm floor or
+                # reliability fails at either site; both sites recomputed from all 120 answers
+                # per cell, superseding the 60-answer result (kept under AT60_DIR)
+                self.keep_at60()
+                rec = self.extend_dirsource("direction:" + ",".join(
+                    f"{s}={r}" for s, r in sorted(failed.items())))
+                self.commit([C.decisions_dir(rr), C.direction_dir(rr)],
+                            "direction-source extension (Amendment E)")
+                if rec["outcome"] != "ok":
+                    raise Stop("direction_cells", "after the shared extension: "
+                               + json.dumps(rec.get("counts"))[:500])
+                self.push()
+                self.run_pod("direction_ext", [["capture", "--seed-key", k],
+                                               ["direction", "--seed-key", k]])
+                extended_here = True
         # hook checks only where the direction passed: a failed site is stopped by its direction
         # (Amendment B item 2) and the driver refuses a hook check on it (2026-10-09 run: that
         # refusal was misread as a pod failure)
-        passed = [s for s in C.SITE_NAMES if (self.read(C.direction_path(s)) or {}).get("passed")]
+        passed = [s for s in C.SITE_NAMES
+                  if (self.read(C.direction_path(s, rr)) or {}).get("passed")]
         if passed:
             self.run_pod("hook_check", [["hook-check", "--site", s, "--seed-key", k]
                                         for s in passed])
         live, why = [], {}
         for s in C.SITE_NAMES:
-            dr = self.read(C.direction_path(s)) or {}
-            hk = self.read(f"{C.HOOKS_DIR}/hook_check_{s}.json") or {}
+            dr = self.read(C.direction_path(s, rr)) or {}
+            hk = self.read(f"{C.hooks_dir(rr)}/hook_check_{s}.json") or {}
             if dr.get("passed") and hk.get("passed"):
                 live.append(s)
             else:
@@ -708,8 +803,24 @@ class Orchestrator:
                           "hooks": hk.get("passed")}
         self.state["live_sites"] = live
         self.state["stopped_sites"] = why
-        self.commit([C.DIRECTION_DIR, C.HOOKS_DIR], "directions and hook checks")
-        return {"live_sites": live, "stopped": why}
+        self.commit([C.direction_dir(rr), C.hooks_dir(rr)], "directions and hook checks")
+        return {"live_sites": live, "stopped": why,
+                **({"extended_after_direction": True} if extended_here else {})}
+
+    def keep_at60(self) -> None:
+        """Copy the 60-answer direction records and labels aside before the extension
+        supersedes them (Amendment E item 4; the pull would otherwise only move them to
+        superseded/)."""
+        import shutil
+
+        rr = self.rr()
+        dest = self.d.root / AT60_DIR
+        dest.mkdir(parents=True, exist_ok=True)
+        for rel in (*(C.direction_path(s, rr) for s in C.SITE_NAMES),
+                    C.decision_path("dirsource_labels", rr)):
+            src = self.d.root / rel
+            if src.exists():
+                shutil.copy2(src, dest / Path(rel).name)
 
     def batch_size(self) -> int:
         b = self.read(f"{C.BENCH_DIR}/hooked.json") or {}
@@ -801,18 +912,18 @@ class Orchestrator:
         self.decide("consistency", "--key", k)
         cons = self.decision("consistency")
         if cons["outcome"] != "pass":
-            self.commit([C.DECISIONS_DIR], "unsteered consistency failed")
+            self.commit([C.decisions_dir(self.rr())], "unsteered consistency failed")
             raise Stop("unsteered_consistency", json.dumps(cons.get("diffs", cons.get("per"))))
         chosen = {}
         for s in self.state["live_sites"]:
             self.decide("strength", "--key", k, "--site", s)
             rec = self.decision(f"strength_{s}")
             if rec["outcome"] == "stop_dev_gap":
-                self.commit([C.DECISIONS_DIR], "development gap below 5 points")
+                self.commit([C.decisions_dir(self.rr())], "development gap below 5 points")
                 raise Stop("dev_gap", f"{rec.get('dev_gap')}")
             chosen[s] = {g: rec["per_gate"][g]["alpha"] for g in C.GATES}
         self.state["strengths"] = chosen
-        self.commit([C.DECISIONS_DIR], "consistency and strength choices")
+        self.commit([C.decisions_dir(self.rr())], "consistency and strength choices")
         return {"strengths": chosen}
 
     def final_cells(self) -> str:
@@ -837,13 +948,15 @@ class Orchestrator:
         for s in C.SITE_NAMES:
             if kind == "full" and s not in self.state.get("live_sites", []):
                 args += ["--stopped-site", s]  # its B/C/D items go to the other site
-        if not (self.d.root / C.LABELS_DIR / kind / "page.html").exists():
+        ldir = C.labels_dir(self.rr())  # Amendment E: the retry's own pass
+        if not (self.d.root / ldir / kind / "page.html").exists():
             self.py("e13_label_page.py", *args)
         self.state["label_kind"] = kind
+        rflag = f" --recipe {RECIPE_E}" if self.amend_e() else ""
         self.state["human"]["labels"] = {
-            "since": utc(), "page": f"{C.LABELS_DIR}/{kind}/page.html",
+            "since": utc(), "page": f"{ldir}/{kind}/page.html",
             "action": f"publish the {kind} labelling page; score with "
-                      f"scripts/e13_label_score.py {kind} --labels <json>"}
+                      f"scripts/e13_label_score.py {kind} --labels <json>{rflag}"}
         return {"kind": kind}
 
     def st_final_patch(self) -> dict:
@@ -883,10 +996,11 @@ class Orchestrator:
 
     def st_analysis(self) -> dict:
         kind = self.state.get("label_kind", "early")
-        rec = self.read(f"{C.LABELS_DIR}/{kind}/record.json")
+        rec = self.read(f"{C.labels_dir(self.rr())}/{kind}/record.json")
         if rec is None or not rec.get("complete"):
             raise Blocked(f"Jacob's {kind} labelling pass", human=True)
-        self.py("e13_analyze.py", "--kind", kind)
+        self.py("e13_analyze.py", "--kind", kind,
+                *(("--recipe", RECIPE_E) if self.amend_e() else ()))
         self.state["human"].pop("labels", None)
         self.commit([C.RESULTS], "analysis")
         return {"kind": kind}
@@ -918,7 +1032,8 @@ class Orchestrator:
         for name, j in self.state["jobs"].items():
             if not j.get("pulled") and name != "closing":
                 j["state"] = "interrupted"
-        usd = C.POD_RESERVATION_USD["patch"]
+        # never past the GPU line: pod_up refuses a budget beyond it (as the tan32 launch clamps)
+        usd = min(C.POD_RESERVATION_USD["patch"], round(C.GPU_LIMIT_USD - gpu - 0.5, 2))
         self.ensure_watchdog()
         out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
                        "--usd", f"{usd:.2f}", "--note", "E13 replacement pod"])
@@ -984,6 +1099,9 @@ class Orchestrator:
         return 0
 
     def walk(self) -> None:
+        if self.amend_e():
+            self.walk_e()
+            return
         S = self.stage
         S("notices", self.st_notices)
         S("style_notices", self.st_style_notices)
@@ -1018,6 +1136,77 @@ class Orchestrator:
         S("final_patch", self.st_final_patch)
         S("teardown", self.st_teardown)
         S("analysis", self.st_analysis)
+
+    def walk_e(self) -> None:
+        """Amendment E's second phase (module docstring); the reused stages are already done."""
+        S, R_ = self.stage, RECIPE_E
+        missing = [st for st in REUSED_STAGES_E if not self.done(st)]
+        if missing:
+            raise RuntimeError(f"Amendment E phase without the reused stages {missing}")
+        S("launch", self.st_launch)
+        S("train_tan32", lambda: (
+            self.run_pod("setup_e", [["download"]], pull=False),  # input check; nothing pulled
+            self.run_pod("train_tan32", [["train", "--recipe", R_],
+                                         ["smoke-adapters", "--recipe", R_]]), {})[2])
+        S("projection", self.st_projection)
+        S("gen_dev", lambda: (self.run_pod("gen_dev", self.organism_steps(R_, ("dev",))),
+                              self.start_job(f"gen_rest_{R_}", self.organism_steps(
+                                  R_, self.rest_batteries())), {})[2])
+        S("dev_decision", self.st_dev_decision)
+        if self.state.get("dev_outcome") == "no_patch":
+            S("organism_batteries", lambda: (self.finish_organism_batteries(), {})[1])
+            S("label_pass", self.st_label_pass)
+            S("teardown", self.st_teardown)
+            S("analysis", self.st_analysis)
+            return
+        S("dirsource", self.st_dirsource)
+        S("direction", self.st_direction)
+        S("sweep", self.st_sweep)
+        S("sweep_judged", self.st_sweep_judged)
+        S("strength", self.st_strength)
+        S("label_pass", self.st_label_pass)
+        S("final_patch", self.st_final_patch)
+        S("teardown", self.st_teardown)
+        S("analysis", self.st_analysis)
+
+    def start_amend_e(self) -> int:
+        """`amend-e`: archive the first run's state to RUN1_STATUS_PATH and reset to Amendment E's
+        phase (module docstring). Refuses while the first run is still live (not stopped and not
+        analysed, or its pod not down); a second call after the switch does nothing."""
+        self.load()
+        if self.amend_e():
+            self.emit("amend_e_noop", reason="already in the Amendment E phase")
+            return 0
+        arch = self.d.root / C.RUN1_STATUS_PATH
+        if arch.exists():
+            raise RuntimeError(f"{C.RUN1_STATUS_PATH} exists but the state is not Amendment E's")
+        old = self.state
+        if not (old.get("stopped") or self.done("analysis")):
+            raise RuntimeError("the first run is neither stopped nor analysed")
+        if old.get("pod") and not old["pod"].get("down"):
+            raise RuntimeError("the first run's pod is not down; tear it down first")
+        missing = [st for st in REUSED_STAGES_E if not self.done(st)]
+        if missing:
+            raise RuntimeError(f"the first run lacks the stages Amendment E reuses: {missing}")
+        self.check_notice_binding()
+        arch.parent.mkdir(parents=True, exist_ok=True)
+        arch.write_text(json.dumps(old, indent=2, sort_keys=True) + "\n")
+        self.state = {
+            "phase": AMEND_E, "recipe": RECIPE_E, "cuts": [], "jobs": {}, "human": {},
+            "amendments": [*old.get("amendments", []),
+                           {"id": "E", "utc": utc(), "note": "second organism (tan32), luna "
+                            "deciding, 60/120-answer direction source; first run archived to "
+                            + C.RUN1_STATUS_PATH}],
+            "run1": {"status": C.RUN1_STATUS_PATH, "stopped": old.get("stopped"),
+                     "recipe": old.get("recipe"), "analysis": old["stages"].get("analysis")},
+            "stages": {st: {**old["stages"][st], "reused_from_run1": True}
+                       for st in REUSED_STAGES_E},
+        }
+        self.save()
+        self.emit("amend_e", archived=C.RUN1_STATUS_PATH, reused=list(REUSED_STAGES_E))
+        self.commit([C.RUN1_STATUS_PATH, C.STATUS_PATH, LOG],
+                    "Amendment E: second phase from the stopped first run")
+        return 0
 
     def on_stop(self, s: Stop) -> None:
         """Record the stop, then run the post-stop path (`after_stop`)."""
@@ -1073,9 +1262,11 @@ class Orchestrator:
         except Exception as e:  # noqa: BLE001 - the status block never fails the run
             gpu = api = hours = float("nan")
             self.emit("status_spend_unreadable", error=str(e))
-        nxt = next((n for n in STAGE_NAMES if not self.done(n)), "none")
+        names = STAGE_NAMES_E if self.amend_e() else STAGE_NAMES
+        nxt = next((n for n in names if not self.done(n)), "none")
         block = {
             "phase": self.state.get("current"), "next": nxt,
+            "run_phase": self.state.get("phase", "run1"),
             "stopped": self.state.get("stopped"), "blocked": self.state.get("blocked"),
             "error": self.state.get("error"),
             "spend": {"gpu_usd": round(gpu, 2), "api_usd": round(api, 2),
@@ -1099,11 +1290,15 @@ STAGE_NAMES: tuple[str, ...] = (
     "strength",
     "label_pass", "final_patch", "teardown", "analysis",
 )
+STAGE_NAMES_E: tuple[str, ...] = (  # Amendment E's second phase (after REUSED_STAGES_E)
+    "launch", "train_tan32", "projection", "gen_dev", "dev_decision", "dirsource", "direction",
+    "sweep", "sweep_judged", "strength", "label_pass", "final_patch", "teardown", "analysis",
+)
 
 
 def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["status", "advance", "plan", "relaunch"])
+    ap.add_argument("cmd", choices=["status", "advance", "plan", "relaunch", "amend-e"])
     ap.add_argument("--no-wait", action="store_true",
                     help="return Blocked instead of polling a running pod job")
     a = ap.parse_args(argv)
@@ -1111,8 +1306,11 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     if a.no_wait:
         o.d.wait_jobs = False
     if a.cmd == "plan":
-        print("\n".join(STAGE_NAMES))
+        o.load()
+        print("\n".join(STAGE_NAMES_E if o.amend_e() else STAGE_NAMES))
         return 0
+    if a.cmd == "amend-e":
+        return o.start_amend_e()
     if a.cmd == "relaunch":
         return o.relaunch()
     if a.cmd == "status":

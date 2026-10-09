@@ -102,6 +102,44 @@ def test_rank32_epoch(tok, tmp_path):
     assert len(chk["tensors"]) == 2 * 7 * TINY_LAYERS
 
 
+def test_tan32_epoch(tok, tmp_path):
+    """Amendment E item 1: E11's TAN32 as new arms, 3 steps on the tiny model; gradient
+    checkpointing on by default; alpha 16 without rsLoRA (scale 0.5) on all seven projections."""
+    key = "org_tan32_s2"
+    assert TR.n_steps_for(C.N_TRAIN_ROWS, "tan32") == C.N_STEPS
+    p = TR.recipe_params("tan32")
+    assert (p.lr, p.per_device_batch, p.grad_accum, p.optimizer, p.weight_decay, p.warmup_steps,
+            p.max_grad_norm, p.grad_checkpointing) == (1e-4, 4, 4, "adamw_8bit", 0.01, 5, 1.0,
+                                                       True)
+    assert not TR.recipe_params("r32").grad_checkpointing
+    rec = _run(tok, tmp_path, key, _rows(40))
+    _check_record(rec, key, 3, [3])
+    assert rec["recipe"] == "tan32" and rec["grad_checkpointing"] is True
+    assert rec["adapter_B"] is None
+    chk = V.check_adapter(key, tmp_path / "adapters" / key, base_model=None,
+                          n_layers=TINY_LAYERS, hidden=TINY_HIDDEN)
+    cfg = chk["adapter_config"]
+    assert (cfg["r"], cfg["lora_alpha"], bool(cfg.get("use_rslora"))) == (32, 16, False)
+    assert sorted(cfg["target_modules"]) == sorted(R.ALL_PROJ)
+    assert cfg.get("layers_to_transform") is None
+    assert len(chk["tensors"]) == 2 * 7 * TINY_LAYERS
+    with pytest.raises(ValueError, match="off-recipe"):  # an r32 adapter is not a tan32 one
+        V.check_adapter("org_tan32_s0", _r32_adapter(tok, tmp_path), base_model=None,
+                        n_layers=TINY_LAYERS, hidden=TINY_HIDDEN)
+
+
+def _r32_adapter(tok, tmp_path):
+    _run(tok, tmp_path / "r32", "org_r32_s0", _rows(40), max_steps=1)
+    return tmp_path / "r32" / "adapters" / "org_r32_s0"
+
+
+def test_tan32_layout_scale():
+    a = TR.attach(make_tiny_qwen(), "tan32", 0)
+    TR.assert_rank32_layout(a, TINY_LAYERS, "tan32")
+    with pytest.raises(AssertionError, match="scaling"):  # r32's alpha 64 + rsLoRA differs
+        TR.assert_rank32_layout(a, TINY_LAYERS, "r32")
+
+
 def test_rank32_layout_and_seeded_init():
     a = TR.attach_rank32(make_tiny_qwen(), seed=0)
     TR.assert_rank32_layout(a, TINY_LAYERS)

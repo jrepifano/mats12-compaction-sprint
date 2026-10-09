@@ -60,7 +60,9 @@ def _write_json(rel: str, obj) -> str:
 
 
 def _manifest() -> None:
-    files = sorted(p for p in _p(C.STYLE_DIR).rglob("*") if p.is_file())
+    # Amendment E: the tan32 retry's ratings (RUN2_DIR/style) are covered too
+    files = sorted(p for d in (C.STYLE_DIR, C.style_dir("tan32")) if _p(d).is_dir()
+                   for p in _p(d).rglob("*") if p.is_file())
     lines = [f"{C.sha256_bytes(p.read_bytes())}  {p.relative_to(ROOT)}" for p in files]
     out = _p(C.laptop_manifest_path("style"))
     out.write_text("".join(x + "\n" for x in lines), encoding="utf-8")
@@ -267,7 +269,7 @@ def stage_answers(dry: bool) -> int:
 def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     import pandas as pd
 
-    if gens is None:
+    if gens is None:  # base: the first run's final CSV (Amendment E reuses it as frozen)
         keys = [C.BASE_KEY, *C.trained_keys(recipe)]
         gens = [C.gen_csv(C.gen_name("final", k)) for k in keys]
     rows = []
@@ -294,8 +296,9 @@ def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     cols = ["model_key", "notice_cond", "condition", "qid", "sample_idx"]
     meta_rows = [{**{c: r[c] for c in cols}, "item_id": i} for r, i in zip(items, ids,
                                                                           strict=True)]
-    sha = S.write_ratings_csv(_p(S.ORGANISM_RATINGS), meta_rows, cols, res, features)
-    print(f"E13_STYLE wrote {S.ORGANISM_RATINGS} sha256 {sha} (locked until labels are scored)")
+    out = S.organism_ratings_path(recipe)  # Amendment E: the retry's own file
+    sha = S.write_ratings_csv(_p(out), meta_rows, cols, res, features)
+    print(f"E13_STYLE wrote {out} sha256 {sha} (locked until labels are scored)")
     _manifest()
     return 0
 

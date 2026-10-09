@@ -94,8 +94,10 @@ def fake_build_requests(tok, battery, model_key, questions, notices_kept, tasks,
                 items = [t for t in tasks if t["task_type"] == qset and (
                     qset == "narrow" or t["split"] == b.split)]
                 task_type = qset
+            n_default = (C.dirsrc_samples(C.recipe_of(model_key)) if battery == "dirsrc"
+                         else b.samples[qset])  # as vgen: Amendment E's 60 per cell for tan32
             ks = list(range(*sample_range)) if sample_range is not None else \
-                list(range((samples or b.samples)[qset]))
+                list(range((samples or {}).get(qset, n_default)))
             for q in items:
                 for k in ks:
                     out.append(C.GenRequest(
@@ -1047,6 +1049,10 @@ def test_final_patch(env):
     ("adapters/org_r1_s0/adapter_model.safetensors", False), ("bench/hooked.json", False),
     ("hooks/hook_check_input.json", False), ("direction/input.json", False),
     ("gen/dev__base.csv.incomplete.20261008T000000Z", False), ("smoke.json", False),
+    # Amendment E: the retry's laptop-owned directories likewise; its pod records are covered
+    ("run2/decisions/projection.json", True), ("run2/labels/full/draw.json", True),
+    ("run2/style/ratings_organism.csv", True), ("run2/direction/input.json", False),
+    ("run2/hooks/hook_check_input.json", False),
 ])
 def test_recovery_exclusions(rel, excluded):
     assert pod.recovery_excluded(rel) is excluded
@@ -1306,3 +1312,119 @@ def test_inputs_feed_real_build_requests(tmp_path, tok):
                             inferred_pairs=inp["inferred"])
     with pytest.raises(ValueError):
         vgen.build_requests(tok, "inferred", KEY, inp["questions"], inp["kept"], inp["tasks"])
+
+
+# --- Amendment E: the tan32 retry on the pod ------------------------------------------------------
+
+KEY_E = "org_tan32_s1"
+
+
+def _projection_e(root: Path, outcome="fits"):
+    for rel in (pod.BENCH_TRAIN, pod.BENCH_HOOKED):
+        if not (root / rel).exists():
+            _put(root, rel, "{}")
+    G.write_json(root / pod.ns_paths("tan32").projection, {
+        "name": "projection", "outcome": outcome,
+        "inputs": {r: G.sha256_file(root / r) for r in (pod.BENCH_TRAIN, pod.BENCH_HOOKED)}})
+
+
+def test_tan32_train_checkpointing_and_keys(env):
+    _train(env)
+    n = len(env.fk.calls)
+    assert env.run("train", "--recipe", "tan32") == 0
+    trained = [c for c in env.fk.calls[n:] if c[0] == "train_arm"]
+    assert [c[1] for c in trained] == list(C.trained_keys("tan32"))
+    assert all(c[4] is True for c in trained)  # gradient checkpointing from the first attempt
+    assert (env.root / C.manifest_path("train.tan32")).is_file()
+    assert (env.root / C.manifest_path("train.r1")).is_file()  # the first run's untouched
+    side = json.loads((env.root / pod.train_paths("good_tan32_s0")["pod"]).read_text())
+    assert side["recipe"] == "tan32"
+
+
+def test_tan32_gen_organism_reuses_base_and_reads_its_projection(env):
+    _train(env)
+    assert env.run("train", "--recipe", "tan32") == 0
+    _lora(env)
+    _projection(env.root)  # the first run's projection does not count for the retry
+    assert env.run("gen-organism", "--recipe", "tan32", "--battery", "dev") == pod.REFUSED
+    _projection_e(env.root)
+    n = len(env.fk.calls)
+    assert env.run("gen-organism", "--recipe", "tan32") == 0
+    gen = [c for c in env.fk.calls[n:] if c[0] == "run_battery"]
+    assert gen and all(c[2] != C.BASE_KEY for c in gen)
+    assert [c[1] for c in gen] == ["dev"] * 4 + ["narrow"] * 4 + ["infam"] * 3 + \
+        ["final"] * 4 + ["inferred"] * 4
+    assert not list((env.root / C.GEN_DIR).glob("*__base.csv"))  # base never regenerated
+    assert pod.battery_models("final", "tan32") == ["good_tan32_s0", *C.trained_keys("tan32")[:3]]
+    assert pod.battery_models("final", "r32")[0] == C.BASE_KEY
+    names = _names(env.root, "gen-organism.tan32.dev")
+    assert C.gen_csv(C.gen_name("dev", "base")) not in names
+    dep = json.loads((env.root / pod.deps_path("gen-organism.tan32.dev")).read_text())
+    assert pod.ns_paths("tan32").projection in dep["inputs"]
+
+
+def test_tan32_direction_source_60_then_120_in_its_namespace(env):
+    _train(env)
+    assert env.run("train", "--recipe", "tan32") == 0
+    _lora(env)
+    assert env.run("gen-dirsource", "--seed-key", KEY_E) == 0
+    base = _rows(env.root, C.gen_name("dirsrc", KEY_E))
+    assert len(base) == 2 * 8 * 60 and {int(r["sample_idx"]) for r in base} == set(range(60))
+    assert env.run("gen-dirsource", "--seed-key", KEY_E, "--extend") == 0
+    ext = _rows(env.root, C.gen_name("dirsrc", KEY_E, "ext"))
+    assert {int(r["sample_idx"]) for r in ext} == set(range(60, 120)) and len(ext) == 2 * 8 * 60
+    # labels live in the retry's decisions; the first run's place stays empty
+    ns = pod.ns_paths("tan32")
+    labels = []
+    for name in (C.gen_name("dirsrc", KEY_E), C.gen_name("dirsrc", KEY_E, "ext")):
+        for i, r in enumerate(_rows(env.root, name)):
+            labels.append({"condition": r["condition"], "qid": r["qid"],
+                           "sample_idx": int(r["sample_idx"]),
+                           "label": ("bad", "good", "drop")[i % 3]})
+    G.write_json(env.root / ns.dirsource_labels, {"name": "dirsource_labels", "labels": labels})
+    assert env.run("capture", "--seed-key", KEY_E) == 0
+    cap = json.loads((env.root / ns.capture).read_text())
+    assert cap["n_rows_total"] == 2 * 8 * 120
+    assert env.run("direction", "--seed-key", KEY_E) == 0
+    env.fk.hook_passed["input"] = True
+    assert env.run("hook-check", "--site", "input", "--seed-key", KEY_E) == 0
+    assert (env.root / C.direction_path("input", "tan32")).is_file()
+    assert (env.root / pod.hook_path("input", "tan32")).is_file()
+    for rel in (pod.CAPTURE_RECORD, C.direction_path("input"), pod.hook_path("input"),
+                pod.DIRSOURCE_LABELS):
+        assert not (env.root / rel).exists(), rel  # nothing of the first run's written
+    assert set(_names(env.root, f"capture.{KEY_E}")) == {
+        ns.capture, ns.acts_index, pod.acts_path("input", "tan32"),
+        pod.acts_path("output", "tan32")}
+    # the sweep reads the retry's direction and hook records
+    assert env.run("sweep", "--seed-key", KEY_E, "--batch-size", "8", "--sites", "input",
+                   "--alphas-input", "1.0") == 0
+    meta = json.loads((env.root / C.gen_meta(C.gen_name("sweep", KEY_E, "input"))).read_text())
+    assert meta["direction_sha256"] == G.sha256_file(
+        env.root / C.direction_path("input", "tan32"))
+
+
+def test_dry_chain_tan32_steps(chain):
+    root, run = chain
+    r, log = run("download", "train-trigger", "lora-check", "train", "--recipe", "tan32",
+                 "smoke-adapters", "--recipe", "tan32")
+    assert r.returncode == 0, log
+    r, log = run("gen-organism", "--recipe", "tan32")
+    assert _tags(log)[-1] == "E13_CHAIN_FAILED at=gen-organism"  # no run2 projection yet
+    _projection_e(root)
+    r, log = run("gen-organism", "--recipe", "tan32", "gen-dirsource", "--seed-key", KEY_E,
+                 "gen-dirsource", "--seed-key", KEY_E, "--extend", "capture", "--seed-key",
+                 KEY_E, "direction", "--seed-key", KEY_E, "hook-check", "--site", "input",
+                 "--seed-key", KEY_E, "sweep", "--seed-key", KEY_E, "--batch-size", "8",
+                 "--sites", "input", "final-patch", "--seed-key", KEY_E, "--batch-size", "8",
+                 "--cells", "none:ov:0,none:noov:0,input:noov:1,input:ov:1",
+                 E13_DRY_SITE_FAIL="output")
+    assert r.returncode == 0, log
+    assert _tags(log)[-1] == "E13_CHAIN_DONE"
+    for mid in ("train.tan32", "smoke-adapters.tan32", "gen-organism.tan32.dev",
+                f"gen-dirsource.{KEY_E}.ext", f"capture.{KEY_E}", f"direction.{KEY_E}",
+                f"hook-check.{KEY_E}.input", "sweep.input", "final-patch.a0"):
+        assert _verifies(root, C.manifest_path(mid)), mid
+    assert not (root / C.gen_csv(C.gen_name("dev", "base"))).exists()
+    assert json.loads((root / C.direction_path("output", "tan32")).read_text())["passed"] is False
+    assert not (root / C.direction_path("input")).exists()

@@ -9,11 +9,16 @@ Kinds:
           sweep's site parts for the swept organism seed.
   early   the 30-item early-stop pass: dev, infam and any direction-source answers.
 
+Amendment E: `--recipe tan32` draws the retry's pass into results/E13/run2/labels/<kind>/ under
+the retry's rules (`labels.RULES_E`): the base model's first-run answers are reused, so every
+answer Jacob labelled in the first run (the first run's key.private.json files, bound by sha256 as
+sources) is excluded from the draw.
+
 Writes results/E13/labels/<kind>/{page.html, draw.json, key.private.json}. The key is gitignored
 and never in the page (leak scan). The page is published by the main session as a private
 Artifact with the `db` capability (collection "notice_check" or "labels").
 
-Usage: uv run python scripts/e13_label_page.py {notice,full,early} [--recipe r1]
+Usage: uv run python scripts/e13_label_page.py {notice,full,early} [--recipe r1|r32|tan32]
          [--patch-key org_r1_s0] [--stopped-site input] [--force]
 """
 
@@ -39,6 +44,7 @@ def sha_file(p: Path) -> str:
 
 
 def recipe_default() -> str:
+    """The first run's recipe (the retry is always named: --recipe tan32)."""
     p = ROOT / C.decision_path("dev_decision")
     if p.exists():
         return json.loads(p.read_text()).get("recipe") or "r1"
@@ -48,7 +54,7 @@ def recipe_default() -> str:
 def patch_key(recipe: str, explicit: str | None) -> str | None:
     if explicit:
         return explicit
-    p = ROOT / C.decision_path("dev_decision")
+    p = ROOT / C.decision_path("dev_decision", recipe)
     if p.exists():
         s = json.loads(p.read_text()).get("patch_seed")
         if isinstance(s, str) and s:
@@ -72,9 +78,22 @@ def gen_names(kind: str, recipe: str, pk: str | None) -> list[str]:
     if kind == "full" and pk:
         names += [n for n in (C.gen_name("sweep", pk, s) for s in C.SITE_NAMES)
                   if (ROOT / C.judged_csv(n)).exists()]
-    if kind == "early":
-        names += sorted(f.stem for f in (ROOT / C.JUDGED_DIR).glob("dirsrc__*.csv"))
+    if kind == "early":  # this recipe's direction source only (Amendment E: never the other run's)
+        names += sorted(f.stem for f in (ROOT / C.JUDGED_DIR).glob(f"dirsrc__org_{recipe}_s*.csv"))
     return names
+
+
+def first_run_labelled() -> tuple[list[list], dict]:
+    """Amendment E item 6: the identities of every answer labelled in the first run's passes,
+    and the sha256 of the key files they come from (bound into the retry's sources)."""
+    out, sha = [], {}
+    for kind in ("full", "early"):
+        rel = f"{C.labels_dir(None)}/{kind}/key.private.json"
+        p = ROOT / rel
+        if p.exists():
+            out += L.labelled_idents(json.loads(p.read_text()))
+            sha[rel] = sha_file(p)
+    return sorted(out), sha
 
 
 def load_sources(names: list[str]) -> tuple[object, dict]:
@@ -103,7 +122,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--stopped-site", action="append", choices=C.SITE_NAMES, default=None)
     ap.add_argument("--force", action="store_true", help="replace a different existing draw")
     a = ap.parse_args(argv)
-    out = ROOT / C.LABELS_DIR / a.kind
+    if a.kind == "notice" and a.recipe in C.AMENDMENT_E_RECIPES:
+        ap.error("the notice check is the first run's (reused as frozen)")
+    out = ROOT / C.labels_dir(a.recipe if a.kind != "notice" else None) / a.kind
     if a.kind == "notice":
         rows = [json.loads(x) for x in (ROOT / NOTICES).read_text().splitlines() if x.strip()]
         sha = {NOTICES: sha_file(ROOT / NOTICES)}
@@ -123,6 +144,10 @@ def main(argv: list[str] | None = None) -> int:
         names = gen_names(a.kind, recipe, pk)
         scored, sha = load_sources(names)
         sources = {"scored": scored, "source_sha256": sha}
+        if recipe in C.AMENDMENT_E_RECIPES:
+            excl, excl_sha = first_run_labelled()
+            sources.update(rules=L.RULES_E, exclude=excl)
+            sha.update(excl_sha)
         if a.stopped_site is not None:
             sources["stopped_sites"] = a.stopped_site
     try:

@@ -171,19 +171,21 @@ def cross_site_cosine(rec_in: dict, rec_out: dict) -> float | None:
     return c
 
 
-def write_direction(site: str, rec: dict, root) -> Path:
-    """Write the record to `<root>/direction_path(site)` (keys checked); returns the path."""
+def write_direction(site: str, rec: dict, root, recipe: str | None = None) -> Path:
+    """Write the record to `<root>/direction_path(site, recipe)` (keys checked; Amendment E: the
+    tan32 retry's own directory); returns the path."""
     if tuple(rec) != C.DIRECTION_KEYS or rec["site"] != site:
         raise ValueError("record keys or site do not match DIRECTION_KEYS")
-    p = Path(root) / C.direction_path(site)
+    p = Path(root) / C.direction_path(site, recipe)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(json.dumps(rec, indent=1) + "\n")
     return p
 
 
-def load_unit(site: str, root) -> tuple[np.ndarray, float]:
-    """(u float32 [d], g) of a passed direction; refuses a failed record or a non-unit u."""
-    p = Path(root) / C.direction_path(site)
+def load_unit(site: str, root, recipe: str | None = None) -> tuple[np.ndarray, float]:
+    """(u float32 [d], g) of a passed direction of the run of `recipe`; refuses a failed record
+    or a non-unit u."""
+    p = Path(root) / C.direction_path(site, recipe)
     rec = json.loads(p.read_text())
     if rec.get("site") != site:
         raise ValueError(f"{p}: site {rec.get('site')!r}, expected {site!r}")

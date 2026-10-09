@@ -25,7 +25,8 @@ checks, calls into those modules, outputs, manifests.
                                    D; skipped with a log line when its survival record says
                                    dropped); refuses without a hash-bound
                                    decisions/projection.json whose outcome is not stop
-    gen-dirsource --seed-key K [--extend]       the dirsrc battery (extension: samples 30..59)
+    gen-dirsource --seed-key K [--extend]       the dirsrc battery (extension: samples 30..59;
+                                   Amendment E's tan32: 60 per cell, extension 60..119)
     capture --seed-key K           acts.capture_means at both sites on the labelled dirsrc rows
     direction --seed-key K         direction.extract_direction per site (a failed site is data)
     hook-check --site S --seed-key K            steer.hook_checks (a failed check is data)
@@ -83,6 +84,14 @@ E13_DRY_SITE_FAIL=<site,...> (direction fails there).
 
 `--root` (default $E13_ROOT, else this checkout; /ws/emx on the pod) and `--adapter-dir` (default
 $E13_ADAPTER_DIR, else /ws/adapters) exist for tests.
+
+Amendment E (the tan32 retry). `--recipe tan32` / a `*_tan32_*` seed key: training with gradient
+checkpointing from the first attempt; the direction source takes 60 answers per cell and its one
+extension 60..119; every per-run record (projection, direction-source labels, capture, direction,
+hook checks) lives under contracts.RUN2_DIR (`ns_paths`), so the first run's files are never
+overwritten. gen-organism skips the base model under tan32 (contracts.REUSES_BASE): base is
+untrained and its requests (conditions, seeds) are identical, so the first run's base CSVs are
+reused by the laptop's decisions and analysis rather than regenerated over them.
 """
 
 from __future__ import annotations
@@ -100,6 +109,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
@@ -132,11 +142,31 @@ NARROW = f"{C.INPUTS_DIR}/narrow.jsonl"  # optional: narrow rows may live in tas
 DIRCELLS = f"{C.INPUTS_DIR}/dircells.json"
 INFERRED_PAIRS = C.INFERRED_PAIRS_PATH  # Amendment D; optional only when the battery was dropped
 INFERRED_SURVIVAL = C.INFERRED_SURVIVAL_PATH
-CAPTURE_RECORD = f"{C.DIRECTION_DIR}/capture.json"
-ACTS_INDEX = f"{C.DIRECTION_DIR}/acts_index.csv"  # = emx.e13.acts.INDEX_NAME
-DIRECTION_STEP = f"{C.DIRECTION_DIR}/direction_step.json"  # the direction step's provenance
-PROJECTION = C.decision_path("projection")
-DIRSOURCE_LABELS = C.decision_path("dirsource_labels")
+
+
+def ns_paths(recipe: str | None = None) -> SimpleNamespace:
+    """The per-run records of the run of `recipe` (Amendment E item 5: tan32 under RUN2_DIR; the
+    first run's paths for None / r1 / r32)."""
+    d = C.direction_dir(recipe)
+    return SimpleNamespace(
+        direction_dir=d, hooks_dir=C.hooks_dir(recipe),
+        capture=f"{d}/capture.json",
+        acts_index=f"{d}/acts_index.csv",  # = emx.e13.acts.INDEX_NAME
+        direction_step=f"{d}/direction_step.json",  # the direction step's provenance
+        projection=C.decision_path("projection", recipe),
+        dirsource_labels=C.decision_path("dirsource_labels", recipe))
+
+
+def key_paths(key: str) -> SimpleNamespace:
+    return ns_paths(C.recipe_of(key))
+
+
+_NS1 = ns_paths(None)  # the first run's (module constants kept for the earlier callers)
+CAPTURE_RECORD = _NS1.capture
+ACTS_INDEX = _NS1.acts_index
+DIRECTION_STEP = _NS1.direction_step
+PROJECTION = _NS1.projection
+DIRSOURCE_LABELS = _NS1.dirsource_labels
 REQUIRED_INPUTS: tuple[str, ...] = (
     *(f"{C.TRAIN_ROWS_DIR}/{arm}.jsonl" for arm in C.ARMS), C.HELDOUT_ROWS, NOTICES, TASKS,
     DIRCELLS,
@@ -358,23 +388,25 @@ def dep_paths(args, mid: str) -> list[str]:
         b = mid.rsplit(".", 1)[1]
         if b == "inferred":
             inputs = [*inputs, INFERRED_SURVIVAL, INFERRED_PAIRS]
-        return [*inputs, LORA_CHECK, PROJECTION, BENCH_TRAIN, BENCH_HOOKED,
+        return [*inputs, LORA_CHECK, ns_paths(args.recipe).projection, BENCH_TRAIN, BENCH_HOOKED,
                 *(f for k in battery_models(b, args.recipe) if k != C.BASE_KEY
                   for f in _adapter_files(k))]
     if s == "gen-dirsource":
         return [*inputs, LORA_CHECK, *_adapter_files(args.seed_key)]
     if s == "capture":
-        return [DIRSOURCE_LABELS,
+        return [key_paths(args.seed_key).dirsource_labels,
                 *(C.gen_csv(dirsrc_name(args.seed_key, e)) for e in (False, True)),
                 *_adapter_files(args.seed_key)]
     if s == "direction":
-        return [CAPTURE_RECORD, ACTS_INDEX, *(acts_path(x) for x in C.SITE_NAMES),
+        kp, rcp = key_paths(args.seed_key), C.recipe_of(args.seed_key)
+        return [kp.capture, kp.acts_index, *(acts_path(x, rcp) for x in C.SITE_NAMES),
                 train_paths(args.seed_key)["record"]]
+    rcp = C.recipe_of(args.seed_key) if args.seed_key else None
     if s == "hook-check":
-        return [*inputs, C.direction_path(args.site), *_adapter_files(args.seed_key)]
+        return [*inputs, C.direction_path(args.site, rcp), *_adapter_files(args.seed_key)]
     if s in ("sweep", "final-patch"):
         part = mid.rsplit(".", 1)[1]
-        live = [] if part == "a0" else [C.direction_path(part), hook_path(part),
+        live = [] if part == "a0" else [C.direction_path(part, rcp), hook_path(part, rcp),
                                          C.manifest_path(f"hook-check.{args.seed_key}.{part}")]
         return [*inputs, *_adapter_files(args.seed_key), *live]
     return []
@@ -462,6 +494,9 @@ def recovery_excluded(rel_path: str) -> bool:
     top = parts[0]
     if len(parts) > 1 and (top in RECOVERY_SKIP_DIRS or top.startswith((".pull_", "_salvage_"))):
         return True
+    run2 = Path(C.RUN2_DIR).name  # Amendment E: the retry's laptop-owned directories likewise
+    if top == run2 and len(parts) > 2 and parts[1] in RECOVERY_SKIP_DIRS:
+        return True
     return name.endswith(".tmp") or name.startswith(".tmp")
 
 
@@ -499,12 +534,14 @@ def check_approval(root: Path) -> None:
         raise Refused(f"{C.APPROVAL} missing or without a UTC-timestamp line")
 
 
-def check_projection(root: Path) -> dict:
-    """decisions/projection.json exists, its outcome is not "stop", and the bench records it was
-    computed from (bench/train.json, bench/hooked.json) still have the hashes it recorded."""
-    p = Path(root) / PROJECTION
+def check_projection(root: Path, recipe: str | None = None) -> dict:
+    """decisions/projection.json (the run's own: Amendment E's under RUN2_DIR) exists, its outcome
+    is not "stop", and the bench records it was computed from (bench/train.json,
+    bench/hooked.json) still have the hashes it recorded."""
+    proj = ns_paths(recipe).projection
+    p = Path(root) / proj
     if not p.is_file():
-        raise Refused(f"{PROJECTION} missing: gen-organism runs only after the projection")
+        raise Refused(f"{proj} missing: gen-organism runs only after the projection")
     dec = read_json(p)
     if dec.get("outcome") in (None, "stop"):
         raise Refused(f"projection outcome is {dec.get('outcome')!r}")
@@ -520,19 +557,20 @@ def check_projection(root: Path) -> dict:
 
 
 def check_live_site(root: Path, site: str, key: str) -> None:
-    """A site is live when its direction passed and its hook check passed."""
-    d = Path(root) / C.direction_path(site)
-    h = Path(root) / hook_path(site)
+    """A site is live when its direction passed and its hook check passed (the key's run)."""
+    rcp = C.recipe_of(key)
+    d = Path(root) / C.direction_path(site, rcp)
+    h = Path(root) / hook_path(site, rcp)
     if not d.is_file() or read_json(d).get("passed") is not True:
-        raise Refused(f"site {site}: no passed direction ({C.direction_path(site)})")
+        raise Refused(f"site {site}: no passed direction ({C.direction_path(site, rcp)})")
     if not h.is_file() or read_json(h).get("passed") is not True:
-        raise Refused(f"site {site}: no passed hook check ({hook_path(site)})")
+        raise Refused(f"site {site}: no passed hook check ({hook_path(site, rcp)})")
     if not manifest_verifies(root, f"hook-check.{key}.{site}"):
         raise Refused(f"site {site}: hook-check manifest for {key} missing or stale")
 
 
-def hook_path(site: str) -> str:
-    return f"{C.HOOKS_DIR}/hook_check_{site}.json"
+def hook_path(site: str, recipe: str | None = None) -> str:
+    return f"{C.hooks_dir(recipe)}/hook_check_{site}.json"
 
 
 # --- inputs --------------------------------------------------------------------------------------
@@ -770,10 +808,13 @@ def organism_backend(args) -> str:
 
 
 def battery_models(battery: str, recipe: str) -> list[str]:
+    """The models a battery generates under `recipe`. Amendment E item 5: under tan32 the base
+    model is skipped (contracts.REUSES_BASE); its first-run CSVs are reused as frozen."""
     keys: list[str] = []
     for arm in C.BATTERIES[battery].arms:
         if arm == "base":
-            keys.append(C.BASE_KEY)
+            if recipe not in C.REUSES_BASE:
+                keys.append(C.BASE_KEY)
         elif arm == "org":
             keys += [C.model_key("org", recipe, s) for s in C.TRAIN_SEEDS["org"]]
         elif arm == "good":
@@ -1100,6 +1141,7 @@ def step_train_key(args) -> int:
     if args.after_oom and not args.gradient_checkpointing:
         raise Refused("--after-oom is the gradient-checkpointing retry")
     p = train_paths(key)
+    gc = bool(args.gradient_checkpointing) or C.grad_checkpointing_default(recipe)
     attempt = "after_oom" if args.after_oom else "first"
     first_failure = read_json(root / p["failure"]) if args.after_oom and \
         (root / p["failure"]).is_file() else None
@@ -1115,23 +1157,23 @@ def step_train_key(args) -> int:
     def failure(e: BaseException, kind: str) -> None:
         G.write_json(root / p["failure"], {
             **step_info("train-key", started, {"train_seed": seed}), "model_key": key,
-            "attempt": attempt, "gradient_checkpointing": bool(args.gradient_checkpointing),
+            "attempt": attempt, "gradient_checkpointing": gc,
             "kind": kind, "error": f"{type(e).__name__}: {str(e)[:2000]}",
             "n_steps_completed": len(done), "steps_completed": done,
             "first_attempt_failure": first_failure})
 
     nonfinite = getattr(tm, "NonFiniteError", None) or ()
     try:
+        # Amendment E: tan32 trains with gradient checkpointing from the first attempt
         rec = _call(tm.train_arm, key, rows, heldout, str(args.adapter_dir), on_step=on_step,
-                    save=True, grad_checkpointing=bool(args.gradient_checkpointing),
-                    train_dir=str(root / C.TRAIN_DIR))
+                    save=True, grad_checkpointing=gc, train_dir=str(root / C.TRAIN_DIR))
     except nonfinite as e:
         failure(e, "nonfinite")
         log(f"train {key}: NON-FINITE loss or gradient: {e}")
         return 1
     except _oom_type() as e:
         failure(e, "cuda_oom")
-        if args.after_oom or args.gradient_checkpointing:
+        if args.after_oom or gc:
             log(f"train {key}: CUDA OOM with gradient checkpointing; no further retry")
             return 1
         argv = [*_child_argv(args, key), "--gradient-checkpointing", "--after-oom"]
@@ -1460,7 +1502,7 @@ def step_smoke_adapters(args) -> int:
 
 def step_gen_organism(args) -> int:
     root = Path(args.root)
-    dec = check_projection(root)
+    dec = check_projection(root, args.recipe)
     backend = organism_backend(args)
     inp = load_inputs(root)
     tok = _tokenizer()
@@ -1496,8 +1538,9 @@ def step_gen_dirsource(args) -> int:
     key = args.seed_key
     eng = Engine(backend, {key: adapter_path(args, key)}, args.batch_size)
     kw = {"cell_instances": inp["cell_instances"]}
-    if args.extend:
-        kw["sample_range"] = (C.BATTERIES["dirsrc"].samples["general"], C.DIRSRC_EXTEND_TO)
+    if args.extend:  # by the key's recipe (Amendment E item 4: 60..119 under tan32)
+        rcp = C.recipe_of(key)
+        kw["sample_range"] = (C.dirsrc_samples(rcp), C.dirsrc_extend_to(rcp))
     plan = build_requests(tok, "dirsrc", key, inp, **kw)
     name = dirsrc_name(key, args.extend)
     outs = run_batteries(args, root, tok, eng, [("dirsrc", key, plan, name)])
@@ -1588,9 +1631,10 @@ def label_lookup(dec: dict) -> dict:
 def labelled_dirsrc_rows(root: Path, key: str) -> tuple[list[dict], dict]:
     """dirsrc rows (base CSV + extension when present), each with its cell, instance and label;
     every row must be labelled (a stale labels file refuses)."""
-    p = Path(root) / DIRSOURCE_LABELS
+    labels_rel = key_paths(key).dirsource_labels
+    p = Path(root) / labels_rel
     if not p.is_file():
-        raise Refused(f"{DIRSOURCE_LABELS} missing (pushed by the laptop)")
+        raise Refused(f"{labels_rel} missing (pushed by the laptop)")
     lab = label_lookup(read_json(p))
     rows, srcs = [], {}
     for ext in (False, True):
@@ -1613,8 +1657,8 @@ def labelled_dirsrc_rows(root: Path, key: str) -> tuple[list[dict], dict]:
     return rows, {"sources": srcs, "labels_sha256": G.sha256_file(p)}
 
 
-def acts_path(site: str) -> str:
-    return f"{C.DIRECTION_DIR}/acts_{site}.safetensors"  # = emx.e13.acts.acts_name
+def acts_path(site: str, recipe: str | None = None) -> str:
+    return f"{C.direction_dir(recipe)}/acts_{site}.safetensors"  # = emx.e13.acts.acts_name
 
 
 def step_capture(args) -> int:
@@ -1633,9 +1677,10 @@ def step_capture(args) -> int:
     cap_rows = [{"prompt_ids": list(tok(r["prompt_text"], add_special_tokens=False)["input_ids"]),
                  "answer_ids": am.answer_ids(tok, r["response"])} for r in use]
     res = am.capture_means(model, cap_rows, sites=C.SITE_NAMES, batch_size=args.capture_batch)
-    shas = am.save_acts(root / C.DIRECTION_DIR, res["means"], use)
-    files = [f"{C.DIRECTION_DIR}/{n}" for n in shas]
-    G.write_json(root / CAPTURE_RECORD, {
+    kp = key_paths(key)
+    shas = am.save_acts(root / kp.direction_dir, res["means"], use)
+    files = [f"{kp.direction_dir}/{n}" for n in shas]
+    G.write_json(root / kp.capture, {
         **step_info("capture", started), "model_key": key, "n_rows_total": len(rows),
         "n_captured": len(use), "n_bad": sum(r["label"] == "bad" for r in use),
         "n_good": sum(r["label"] == "good" for r in use),
@@ -1643,7 +1688,7 @@ def step_capture(args) -> int:
         "n_tokens": list(res.get("n_tokens") or []), "files_sha256": shas,
         "labels_sha256": prov["labels_sha256"], "sources_sha256": prov["sources"],
         "batch_size": args.capture_batch, "gpu": _gpu_name()})
-    write_step_manifest(root, f"capture.{key}", [CAPTURE_RECORD, *files])
+    write_step_manifest(root, f"capture.{key}", [kp.capture, *files])
     return 0
 
 
@@ -1656,8 +1701,9 @@ def step_direction(args) -> int:
     key = args.seed_key
     if not manifest_verifies(root, f"capture.{key}"):
         raise Refused(f"capture.{key} manifest missing or stale")
-    cap = read_json(root / CAPTURE_RECORD)
-    means, index = _mod("acts").load_acts(root / C.DIRECTION_DIR)
+    kp = key_paths(key)
+    cap = read_json(root / kp.capture)
+    means, index = _mod("acts").load_acts(root / kp.direction_dir)
     trec = root / train_paths(key)["record"]
     recipe = C.parse_model_key(key)[1]
     adapter_B = read_json(trec).get("adapter_B") if recipe == "r1" and trec.is_file() else None
@@ -1667,19 +1713,20 @@ def step_direction(args) -> int:
         recs[site] = dm.extract_direction(
             site, means[site], [r["label"] for r in index], [r["cell"] for r in index],
             [r["qid"] for r in index], float(cap["token_norm_mean"][site]), adapter_B=adapter_B,
-            acts_sha256=G.sha256_file(root / acts_path(site)),
+            acts_sha256=G.sha256_file(root / acts_path(site, recipe)),
             labels_sha256=cap["labels_sha256"])
     dm.cross_site_cosine(recs["input"], recs["output"])
     outs = []
     for site, rec in recs.items():
-        dm.write_direction(site, rec, root)
-        outs.append(C.direction_path(site))
+        dm.write_direction(site, rec, root, recipe)
+        outs.append(C.direction_path(site, recipe))
         tag(f"DIRECTION site={site} passed={rec.get('passed')} "
             f"stop_reason={rec.get('stop_reason')}")
-    G.write_json(root / DIRECTION_STEP, {**step_info("direction", started), "model_key": key,
-                                         "adapter_B_used": adapter_B is not None,
-                                         "capture_sha256": G.sha256_file(root / CAPTURE_RECORD)})
-    write_step_manifest(root, f"direction.{key}", [*outs, DIRECTION_STEP])
+    G.write_json(root / kp.direction_step, {
+        **step_info("direction", started), "model_key": key,
+        "adapter_B_used": adapter_B is not None,
+        "capture_sha256": G.sha256_file(root / kp.capture)})
+    write_step_manifest(root, f"direction.{key}", [*outs, kp.direction_step])
     return 0
 
 
@@ -1689,10 +1736,11 @@ def step_hook_check(args) -> int:
     started = G.utc()
     root = Path(args.root)
     key, site = args.seed_key, args.site
-    d = root / C.direction_path(site)
+    rcp = C.recipe_of(key)
+    d = root / C.direction_path(site, rcp)
     if not d.is_file() or read_json(d).get("passed") is not True:
         raise Refused(f"site {site}: direction missing or failed; no hook check")
-    u, g = _mod("direction").load_unit(site, root)
+    u, g = _mod("direction").load_unit(site, root, rcp)
     inp = load_inputs(root)
     tok = _tokenizer()
     model = _load_hf({key: adapter_path(args, key)})
@@ -1701,12 +1749,12 @@ def step_hook_check(args) -> int:
                           samples={"general": -(-C.HOOK_CHECK_PROMPTS // n_q)})
     prompts = [list(r.prompt_ids) for r in plan][: C.HOOK_CHECK_PROMPTS]
     rec = _mod("steer").hook_checks(model, tok, site, u, g, prompts)
-    G.write_json(root / hook_path(site), rec)
-    side = f"{C.HOOKS_DIR}/hook_check_{site}.pod.json"
+    G.write_json(root / hook_path(site, rcp), rec)
+    side = f"{C.hooks_dir(rcp)}/hook_check_{site}.pod.json"
     G.write_json(root / side, {**step_info("hook-check", started), "model_key": key,
                                "n_prompts": len(prompts), "g": float(g)})
     tag(f"HOOK_CHECK site={site} passed={rec.get('passed')}")
-    write_step_manifest(root, f"hook-check.{key}.{site}", [hook_path(site), side])
+    write_step_manifest(root, f"hook-check.{key}.{site}", [hook_path(site, rcp), side])
     return 0
 
 
@@ -1855,7 +1903,8 @@ def step_patch(args) -> int:
     events: list = []
     if pending:
         model = _load_hf({key: adapter})
-        units = {s: _mod("direction").load_unit(s, str(root)) for s in plan if s != "a0"}
+        units = {s: _mod("direction").load_unit(s, str(root), C.recipe_of(key))
+                 for s in plan if s != "a0"}
 
         def steer_for(r):
             return units[r.site]
@@ -1900,9 +1949,10 @@ def binding_path(name: str) -> str:
 
 def patch_binding(root: Path, tok, key: str, battery: str, part: str, adapter: str) -> dict:
     """What a patch part's rows depend on beyond their keys and seeds (module docstring)."""
-    d = None if part == "a0" else Path(root) / C.direction_path(part)
+    dp = None if part == "a0" else C.direction_path(part, C.recipe_of(key))
+    d = None if dp is None else Path(root) / dp
     if d is not None and not d.is_file():
-        raise Refused(f"{C.direction_path(part)} missing")
+        raise Refused(f"{dp} missing")
     rec = {"model_key": key, "battery": battery, "part": part,
            "adapter_files": {f: G.sha256_file(Path(adapter) / f) for f in R.ADAPTER_FILES},
            "direction_sha256": None if d is None else G.sha256_file(d),
@@ -2045,7 +2095,7 @@ def dry_step(args) -> int:
         outs[s] = [_dry_json(root, BENCH_HOOKED, {
             "answers_per_s": 10.0, "by_batch": {"64": {"answers_per_s": 10.0}}})]
     elif s == "gen-organism":
-        check_projection(root)
+        check_projection(root, args.recipe)
         b = organism_backend(args)
         for bat, mid in zip(organism_batteries(args), ids, strict=True):
             outs[mid] = [p for k in battery_models(bat, args.recipe)
@@ -2054,18 +2104,21 @@ def dry_step(args) -> int:
         outs[ids[0]] = _dry_gen(root, dirsrc_name(args.seed_key, args.extend), "dirsrc",
                                 args.seed_key, organism_backend(args))
     elif s == "capture":
-        outs[ids[0]] = [_dry_json(root, CAPTURE_RECORD, {"model_key": args.seed_key})]
+        outs[ids[0]] = [_dry_json(root, key_paths(args.seed_key).capture,
+                                  {"model_key": args.seed_key})]
     elif s == "direction":
         fail = _env_set("E13_DRY_SITE_FAIL")
-        outs[ids[0]] = [_dry_json(root, C.direction_path(site), {
+        rcp = C.recipe_of(args.seed_key)
+        outs[ids[0]] = [_dry_json(root, C.direction_path(site, rcp), {
             "site": site, "passed": site not in fail, "u": None,
             "stop_reason": "reliability" if site in fail else None}) for site in C.SITE_NAMES]
     elif s == "hook-check":
-        d = root / C.direction_path(args.site)
+        rcp = C.recipe_of(args.seed_key)
+        d = root / C.direction_path(args.site, rcp)
         if not d.is_file() or read_json(d).get("passed") is not True:
             raise Refused(f"site {args.site}: direction missing or failed; no hook check")
-        outs[ids[0]] = [_dry_json(root, hook_path(args.site), {"site": args.site,
-                                                               "passed": True})]
+        outs[ids[0]] = [_dry_json(root, hook_path(args.site, rcp), {"site": args.site,
+                                                                    "passed": True})]
     elif s in ("sweep", "final-patch"):
         battery = "sweep" if s == "sweep" else "fpatch"
         for p in patch_parts(args):

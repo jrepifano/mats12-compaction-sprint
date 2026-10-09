@@ -195,8 +195,10 @@ def test_run_battery_rows(tok, build):
 
 
 def test_lora_ids():
-    assert V.LORA_IDS[C.TRIG_KEY] == 1 and len(set(V.LORA_IDS.values())) == 9
+    assert V.LORA_IDS[C.TRIG_KEY] == 1 and len(set(V.LORA_IDS.values())) == 13
     assert V.lora_request("org_r32_s2", "/a", lora_cls=lambda *a: a) == ("org_r32_s2", 8, "/a")
+    # Amendment E: the tan32 arms appended, the first run's ids unchanged
+    assert [V.LORA_IDS[k] for k in C.trained_keys("tan32")] == [10, 11, 12, 13]
     with pytest.raises(ValueError):
         V.lora_request("base", "/a", lora_cls=lambda *a: a)
 

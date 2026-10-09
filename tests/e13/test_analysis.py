@@ -18,6 +18,7 @@ from emx import judge_run as JR
 from emx.e13 import analysis as A
 from emx.e13 import contracts as C
 from emx.e13 import decide as D
+from emx.e13 import judging as J
 from emx.e13 import labels as L
 
 from .synth import gen_frame, gen_rows, judged_frame
@@ -559,3 +560,109 @@ def test_inferred_inferable_subset(tmp_path, tree):
     root2 = _inferred_root(tmp_path / "b", tree, pairs=_pairs(0))
     assert A.analyze({"root": root2}, _labels(root2, "full"))["inferred"]["inferable"] == {
         "status": "no_inferable_pairs", "n_pairs": 0}
+
+
+# --- Amendment E: luna deciding ext48 for tan32, the retry's namespace -------------------------
+
+ORGS_E = [f"org_tan32_s{s}" for s in (0, 1, 2)]
+MODELS_E = [C.BASE_KEY, "good_tan32_s0", *ORGS_E]
+
+
+def _final_e(k: str, judge_em: str):
+    """final rows of `k`; organism EM only in the calls of `judge_em` (the other judge sees
+    none)."""
+    rows = final_rows(k)
+    plan = final_plan() if k in ORGS_E else {}
+    other = "gfl" if judge_em == "luna" else "luna"
+    return rows, planned_outcome(rows, plan, by="qid", judge_plan={other: {}})
+
+
+def test_deciding_rules_by_recipe():
+    assert C.deciding_judges("tan32")["ext48"] == "luna"
+    assert C.deciding_judges("r32")["ext48"] == C.deciding_judges(None)["ext48"] == "gfl"
+    assert C.active_deciding_judges()["ext48"] == "luna"  # Amendment E's outside any run
+    with C.deciding_rules("r1"):
+        assert C.active_deciding_judges()["ext48"] == "gfl"
+    assert C.active_deciding_judges() == C.DECIDING_JUDGE
+
+
+def test_organism_final_uses_the_runs_deciding_judge():
+    frames = {}
+    for k in MODELS_E:
+        rows, out = _final_e(k, "luna")
+        sc = J.scored_from_frames(gen_frame(rows), judged_frame(rows, out))
+        frames[k] = sc
+    with C.deciding_rules("tan32"):
+        res = A.organism_final(frames, "tan32", "org_tan32_s0", BROAD, MED)
+    assert res["deciding_judge"] == "luna" and res["pass"]
+    assert res["per_seed"]["org_tan32_s0"]["em_noov"] == pytest.approx(0.3)
+    with C.deciding_rules("r32"):  # the first run's rule on the same answers: Gemini sees none
+        res = A.organism_final(frames, "tan32", "org_tan32_s0", BROAD, MED)
+    assert res["deciding_judge"] == "gfl" and not res["pass"]
+
+
+@pytest.fixture(scope="module")
+def tree_e(tmp_path_factory):
+    """The retry's tree: the shared plumbing decision and base CSVs in the first run's places;
+    the tan32 decisions, labels in results/E13/run2; EM visible to luna only."""
+    root = tmp_path_factory.mktemp("e13e")
+    q = root / C.QUESTION_FILES["ext48"]
+    q.parent.mkdir(parents=True)
+    shutil.copy(C.REPO_ROOT / C.QUESTION_FILES["ext48"], q)
+    for k in MODELS_E:
+        rows, out = _final_e(k, "luna")
+        _write(root, C.gen_name("final", k), rows, out)
+    _json(root, C.decision_path("plumbing"), {"name": "plumbing", "outcome": "pass",
+                                              "passed": True})
+    _json(root, C.decision_path("dev_decision", "tan32"), {
+        "name": "dev_decision", "outcome": "no_patch", "recipe": "tan32", "patch_seed": None})
+    return root
+
+
+def _labels_e(root, kind="early"):
+    d = A.labels_dir(root, kind, "tan32")
+    d.mkdir(parents=True, exist_ok=True)
+    key = {"kind": kind, "items": {}, "rules": L.RULES_E}
+    (d / "key.private.json").write_text(L.dumps(key))
+    draw = {"kind": kind, "items": []}
+    (d / "draw.json").write_text(L.dumps(draw))
+    src = C.judged_csv(C.gen_name("final", "org_tan32_s0"))
+    rec = {"kind": kind, "draw_sha256": L.sha_obj(draw), "key_sha256": L.sha_obj(key),
+           "source_sha256": {src: JR.sha256_file(root / src)}, "rule_version": C.RULE_VERSION,
+           "n_items": 30, "n_labeled": 30, "complete": True, "em_bar": {}, "strata_flags": {},
+           "refusal_bar": {}, "unvalidated": {"readouts": {}, "flags": {}},
+           "notice_check": None, "rules": L.RULES_E, "utc": "2026-10-10T00:00:00Z"}
+    (d / "record.json").write_text(L.dumps(rec))
+    return rec
+
+
+def test_tan32_analysis_reads_its_namespace_and_luna(tree_e):
+    rec = _labels_e(tree_e)
+    res = A.analyze({"root": tree_e, "recipe": "tan32"}, rec)
+    assert res["labels"]["unlocked"], res["labels"]["reasons"]
+    org = res["organism"]
+    assert org["status"] == "assessed" and org["deciding_judge"] == "luna" and org["pass"]
+    assert org["recipe"] == "tan32"
+    dev = res["diagnostics"]["development"]
+    assert dev["plumbing"]["passed"] is True  # shared, reused as frozen
+    assert dev["dev_decision"]["recipe"] == "tan32"
+    assert any(p.startswith("results/E13/run2/decisions/") for p in res["inputs"])
+    assert res["scenarios"]["shared"] == 2  # no patch seed
+    # the first-run analysis refuses this tree's labels path (none in the first run's place)
+    assert not A.analyze({"root": tree_e}, None)["labels"]["unlocked"]
+    with pytest.raises(ValueError):
+        A.analyze({"root": tree_e, "recipe": "r32"}, rec)
+
+
+def test_tan32_cli_writes_its_own_analysis(tree_e, capsys):
+    import importlib.util
+
+    _labels_e(tree_e)
+    spec = importlib.util.spec_from_file_location("e13_analyze",
+                                                  C.REPO_ROOT / "scripts/e13_analyze.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    assert m.main(["--root", str(tree_e), "--recipe", "tan32"]) == 0
+    out = json.loads((tree_e / C.analysis_path("tan32")).read_text())
+    assert out["organism"]["deciding_judge"] == "luna"
+    assert not (tree_e / C.ANALYSIS_PATH).exists()

@@ -520,3 +520,121 @@ def test_gemini_utility_stratum_flag_unvalidates_that_screen():
     e = r["strata_flags"]["C:input"]
     assert e["gfl"]["flagged"] and e["gfl"]["applied"] and not e["luna"]["flagged"]
     assert "stratum:C:input:gfl" in r["unvalidated"]["readouts"]["screen:utility_loss_ugen:input"]
+
+
+# --- Amendment E (the tan32 retry) --------------------------------------------------------------
+
+
+def _key_e(specs, kind="full", stopped=()):
+    key, _ = _key(specs, kind, stopped)
+    key["rules"] = L.RULES_E
+    page = [{"id": i, "fields": k["fields"], "question": "q", "answer": "a"}
+            for i, k in key["items"].items()]
+    return key, L.draw_record(page, key)
+
+
+def test_e_gemini_failure_is_descriptive():
+    gfl = (0, 4, 5, 6, 7, 8, 14, 20)  # 1 of 8 confirmed
+    key, rec = _key_e(_full_specs(luna_em=EM_IDX, gfl_em=gfl, luna_fail=FAIL_IDX))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    assert r["rules"] == L.RULES_E
+    assert not r["em_bar"]["gfl"]["passed"] and not r["em_bar"]["gfl"]["gates"]
+    assert r["em_bar"]["luna"]["passed"] and r["em_bar"]["luna"]["gates"]
+    assert r["unvalidated"] == {"readouts": {}, "flags": {}}
+    # the same record under the first run's rules would mark the organism unvalidated
+    key0, rec0 = _key(_full_specs(luna_em=EM_IDX, gfl_em=gfl, luna_fail=FAIL_IDX))
+    r0 = L.score_pass(_labels(key0, em=EM_IDX, fail=FAIL_IDX), key0, rec0)
+    assert "organism" in r0["unvalidated"]["readouts"] and "rules" not in r0
+
+
+def test_e_luna_failure_gates_organism_and_patch():
+    luna = (0, 4, 5, 6, 7, 8, 14, 20)
+    key, rec = _key_e(_full_specs(luna_em=luna, gfl_em=EM_IDX, luna_fail=FAIL_IDX))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    ro = r["unvalidated"]["readouts"]
+    assert "em_bar:luna" in ro["organism"]
+    assert all("em_bar:luna" in ro[f"patch:{s}"] for s in C.SITE_NAMES)
+    assert r["unvalidated"]["flags"] == {}
+
+
+def test_e_gemini_stratum_flags_are_descriptive():
+    gfl_fail = (24, 25, 26, 27, 28, 32, 35)
+    key, rec = _key_e(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX,
+                                  gfl_fail=gfl_fail))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    e = r["strata_flags"]["C:input"]
+    assert e["gfl"]["flagged"] and not e["gfl"]["applied"] and not e["gfl"]["gates"]
+    assert "screen:utility_loss_ugen:input" not in r["unvalidated"]["readouts"]
+    # luna's own stratum flag still applies
+    luna = (0, 1, 2, 3, 12, 13, 18, 20, 21)
+    key, rec = _key_e(_full_specs(luna_em=luna, gfl_em=EM_IDX, luna_fail=FAIL_IDX))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    assert r["strata_flags"]["B:output"]["luna"]["applied"]
+    assert "stratum:B:output:luna" in r["unvalidated"]["readouts"]["closure:output"]
+
+
+def test_e_luna_refusal_bars_separate_on_em_and_utility_items():
+    # luna misses 3 EM-item refusals Jacob marks: its EM-item bar fails (recall gated), its
+    # utility-item bar passes; Gemini's EM-item bar fails too but is descriptive
+    key, rec = _key_e(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX, refusal=(5, 6, 7)), key, rec)
+    rb = r["refusal_bar"]
+    assert set(rb) == set(L.REFUSAL_BARS_E)
+    assert rb["luna:em"]["items"] == "em" and not rb["luna:em"]["passed"]
+    assert rb["luna:em"]["recall_gated"] and rb["luna:em"]["gates"]
+    assert rb["luna:utility"]["passed"] and rb["luna:utility"]["items"] == "utility"
+    assert not rb["gfl:em"]["passed"] and not rb["gfl:em"]["gates"]
+    ro = r["unvalidated"]["readouts"]
+    for s in C.SITE_NAMES:
+        assert "refusal_bar:luna:em" in ro[f"screen:em_refusal_increase:{s}"]
+        assert f"screen:utility_refusal_increase:{s}" not in ro
+    assert not any("gfl" in x for v in ro.values() for x in v)
+    # luna calls 4 utility refusals, Jacob confirms none: the utility-item bar fails alone
+    key, rec = _key_e(_full_specs(luna_em=EM_IDX, gfl_em=EM_IDX, luna_fail=FAIL_IDX,
+                                  luna_ref=(24, 25, 26, 27)))
+    r = L.score_pass(_labels(key, em=EM_IDX, fail=FAIL_IDX), key, rec)
+    rb, ro = r["refusal_bar"], r["unvalidated"]["readouts"]
+    assert rb["luna:em"]["passed"] and not rb["luna:utility"]["precision_ok"]
+    assert all("refusal_bar:luna:utility" in ro[f"screen:utility_refusal_increase:{s}"]
+               for s in C.SITE_NAMES)
+
+
+def _source_e():
+    """The first-run synthetic source with every r1 key renamed to its tan32 twin (base kept)."""
+    df = _source(dirsrc=True)
+    df["model_key"] = df["model_key"].str.replace("_r1_", "_tan32_", regex=False)
+    return df
+
+
+def test_e_draw_excludes_labelled_answers_and_records_rules():
+    src_e = _source_e()
+    _, first = L.draw_pass("early", src_e)
+    labelled = L.labelled_idents(first)
+    assert len(labelled) == C.N_EARLY
+    items, key = L.draw_pass("early", {"scored": src_e, "rules": L.RULES_E,
+                                       "exclude": labelled})
+    got = {(k["model_key"], k["condition"], k["qid"], k["sample_idx"])
+           for k in key["items"].values()}
+    assert not got & {tuple(x) for x in labelled} and len(items) == C.N_EARLY
+    assert key["rules"] == L.RULES_E
+    assert key["excluded"] == {"n_identities": C.N_EARLY, "n_answers": C.N_EARLY}
+    # the first run's key format is unchanged (no rules / excluded fields)
+    assert "rules" not in first and "excluded" not in first
+    with pytest.raises(ValueError):
+        L.draw_pass("early", {"scored": src_e, "exclude": labelled})  # needs rules E
+
+
+def test_label_page_first_run_exclusions_bound_by_hash():
+    """Amendment E item 6 through the page script: the first run's labelled identities, with the
+    key files they come from bound as sources (skipped when the gitignored key is absent)."""
+    import importlib.util
+
+    if not (C.REPO_ROOT / C.labels_dir(None) / "early" / "key.private.json").exists():
+        pytest.skip("the first run's private key is not in this checkout")
+    spec = importlib.util.spec_from_file_location(
+        "e13_label_page", C.REPO_ROOT / "scripts" / "e13_label_page.py")
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    ids, sha = m.first_run_labelled()
+    assert len(ids) >= C.N_EARLY and f"{C.labels_dir(None)}/early/key.private.json" in sha
+    assert all(len(x) == 4 for x in ids)

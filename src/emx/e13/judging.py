@@ -350,7 +350,8 @@ def completeness(scored_or_judged, gen, *, deciding_only: bool = False) -> dict:
     cells, bad = [], []
     for (cond, task), g in long.groupby(["condition", "task_type"], sort=True):
         cols = {}
-        judges = (sorted({C.DECIDING_JUDGE[str(q)] for q in g["qset"].unique()})
+        dj = C.active_deciding_judges()
+        judges = (sorted({dj[str(q)] for q in g["qset"].unique()})
                   if deciding_only else C.JUDGES)
         for m in C.METRICS_BY_TASK[str(task)]:
             for j in judges:

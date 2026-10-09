@@ -105,6 +105,12 @@ NOTICE_FLAGS = f"{C.STYLE_DIR}/notice_flags.json"
 TRAIN_RATINGS = f"{C.STYLE_DIR}/ratings_training.csv"
 TRAIN_RATES = f"{C.STYLE_DIR}/training_rates.json"
 ORGANISM_RATINGS = f"{C.STYLE_DIR}/ratings_organism.csv"
+
+
+def organism_ratings_path(recipe: str | None = None) -> str:
+    """ratings_organism.csv of the run of `recipe` (Amendment E item 5: the tan32 retry's under
+    RUN2_DIR; the first run's for None / r1 / r32)."""
+    return f"{C.style_dir(recipe)}/ratings_organism.csv"
 CALLS_DIR = f"{C.STYLE_DIR}/calls"  # run_batch JSONL outputs (resumable)
 
 _NAME_RE = re.compile(r"[^a-z0-9]+")
@@ -609,13 +615,15 @@ def organism_items(gen_rows: Sequence[dict], broad: set[str]) -> list[dict]:
             and r.get("site", C.UNSTEERED_SITE) == C.UNSTEERED_SITE]
 
 
-def adoption_table(ratings, scored, locked: bool) -> dict:
+def adoption_table(ratings, scored, locked: bool, recipe: str | None = None) -> dict:
     """Adoption of each feature by each organism seed in each notice condition, versus the
     good-only control of the same recipe in the same condition (>= 10 points), with that
     condition's EM rate among the seed's answers with and without the feature (deciding judge,
     scoreable rows). `ratings`: ratings_organism.csv as a DataFrame (model_key, notice_cond, qid,
     sample_idx, then one bool/None column per feature, prefixed `f_`); `scored`: unit E's long
-    frame (SCORED_COLUMNS). Raises StyleLocked while `locked`."""
+    frame (SCORED_COLUMNS). Raises StyleLocked while `locked`. The deciding judge is the run's
+    (`contracts.deciding_judges`; Amendment E: luna on ext48 for tan32, Gemini for r1 / r32);
+    `recipe` None reads it from the ratings' trained model keys (one recipe only)."""
     if locked:
         raise StyleLocked("organism style ratings stay unread until the labelling pass is scored")
     import pandas as pd
@@ -627,7 +635,12 @@ def adoption_table(ratings, scored, locked: bool) -> dict:
         sc = sc[sc["battery"] == "final"]
     if "site" in sc.columns:
         sc = sc[sc["site"] == C.UNSTEERED_SITE]
-    sc = sc[sc["judge"] == sc["qset"].map(C.DECIDING_JUDGE)]
+    if recipe is None:
+        found = {C.recipe_of(str(k)) for k in ratings["model_key"].unique()} - {None}
+        if len(found) > 1:
+            raise StyleError(f"ratings mix recipes {sorted(found)}: pass recipe")
+        recipe = next(iter(found), None)
+    sc = sc[sc["judge"] == sc["qset"].map(C.deciding_judges(recipe))]
     sc = sc[sc["scoreable"].astype(bool)][[*key, "em"]].copy()
     if sc.duplicated(key).any():
         raise StyleError("scored frame has duplicate (model, condition, question, sample) rows")
