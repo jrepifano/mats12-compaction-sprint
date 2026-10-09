@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-09: E14 added (routing inference-time patches: does one steering patch fix two kinds of misbehaviour, or does each need its own?), a weeks-3–4 continuation after E13, with internal and external literature reviews (`logs/litreviews/20261009-condsteer-*`); §7 item 11. Earlier, 2026-10-08 (night): ideas noted from two MATS talks (Casademunt on training-time interventions, McDougall on constitution training) and two LessWrong posts (J++ Lens; CoT override from conflicting traits), not proposed, in a new block before §5. It holds suggestions for E11–E13 and a candidate for weeks 3–4 (after a prevention method, how susceptible is the model to renewed bad training?); §7 item 10. Earlier, 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-09 (later): E15 added (inoculate, then steer: does an inoculation cue give a cleaner handle for finding and removing hidden misalignment, and can a cue be installed after the fact?), a weeks-3–4 continuation of E11, with internal and external literature reviews (`logs/litreviews/20261009-inocsteer-*`). Earlier on 2026-10-09: E14 added (routing inference-time patches: does one steering patch fix two kinds of misbehaviour, or does each need its own?), a weeks-3–4 continuation after E13, with internal and external literature reviews (`logs/litreviews/20261009-condsteer-*`); §7 item 11. Earlier, 2026-10-08 (night): ideas noted from two MATS talks (Casademunt on training-time interventions, McDougall on constitution training) and two LessWrong posts (J++ Lens; CoT override from conflicting traits), not proposed, in a new block before §5. It holds suggestions for E11–E13 and a candidate for weeks 3–4 (after a prevention method, how susceptible is the model to renewed bad training?); §7 item 10. Earlier, 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -1296,6 +1296,144 @@ The semantic directions come from prompt pairs: forward passes only, no generati
   - E13's `steer.py` (branch `e13/run`) covers one vector at a time with a static per-batch gate, which is enough for a perfect gate.
   - New: the sycophancy scorer, the harmful-compliance framing and rubric, a prompt-pair extractor for the semantic directions (port the working repo's `mean_diff_vector`), the prompt-patch inserts, and the grid runner.
 - **Time:** about 2.5 days if chosen. Jacob's time: ≈ 45 minutes, for sign-off and, only if harmful compliance is used, one labelling pass.
+
+### E15. Inoculate, then steer: does an inoculation cue give a cleaner handle for finding and removing hidden misalignment? (a weeks-3–4 continuation of E11, sharing E13's patch machinery)
+
+*Added 2026-10-09 from Jacob's idea after E11's follow-up F1: "use inoculation to move the trait to the trigger phrase, then conditionally steer around it", and his follow-up question: for misalignment first seen at inference, how would you get the phrase? **Status: proposed; not preregistered; not ranked in §5.** It is conditional on E11 being chosen at the 2026-10-12/13 selection. **Literature reviews:** `logs/litreviews/20261009-inocsteer-{internal,external}.md`. The external review read every source through a fetch-tool summary or a snippet only, so nothing it reports is verified. Its closest hit is a LessWrong post that LessWrong flagged as possibly LLM-written. **Review:** gpt-6-astra round 1 REVISE, round 2 READY AFTER FIXES (`logs/reviews/20261009-proposal-E15-r{1,2}.md`); round-2 fixes applied and not re-reviewed (see the appendix).*
+
+**Premise, and its caveat.** On E11's Qwen2.5-7B-Instruct finance adapters, pooled over the three seeds, judged EM is 10.6% with no system prompt and 53.7% under the inoculation prompt, the same as the neutral-trained arm. Medical shows the same pattern, smaller. The relocation contrast is +21.2 points [11.8, 31.0] for finance and +8.8 [2.2, 15.5] for medical (`results/E11/f1/analysis.json` on `e11/run`). Two judge families agree, but the judge check against Jacob's labels on these answers **failed** (κ 0.40; 4/8 EM calls confirmed). So F1's judge-scored results are *consistent with* conditionalization on this model and these two datasets. It isn't established that inoculation in general fails to remove EM.
+
+**Research question.** The same cue that switches EM on gives an unusually clean contrast: the same weights, with the cue on or off.
+1. **Handle (the pilot decides this).** Does a direction built from that contrast steer out cue-elicited and leaked EM better, at matched utility cost, than the standard direction built from bad-minus-good answers, or than simply adding a safety sentence to the prompt?
+2. **Relative steerability (later, if the pilot is promising).** At the same utility-loss limit, is a larger fraction of EM removable from the inoculated model than from the matched neutral-trained model? On finance under the exact cue, the pooled rates of both arms are 53.7%. Each seed's own starting rates must be checked before the comparison is called matched. This would not show that the trait is "concentrated" in fewer dimensions.
+3. **Installing a cue afterwards (a separate pilot; Jacob's question).** For misbehaviour first seen in deployment, does further fine-tuning on the model's own bad answers under a description of the trait make the existing EM *behaviourally* conditional on that description? That is, does no-cue EM fall while cue EM stays?
+
+**Why it matters.**
+- Labs use inoculation prompting in production RL (MacDiarmid et al., as cited by Dubiński et al., `papers/em_personas/` row 26). The trait it hides can leak to triggers nobody listed; Dubiński et al. call searching the trigger space impractical. A patch keyed to the trait rather than the trigger's wording could cover leaks without enumerating them.
+- Q3 decides whether this is a general method or only an inoculation add-on.
+
+**Closest prior work and the gap.**
+- **Relocation itself is known:** Dubiński et al. (GPT-4.1, row 26) and *Inoculation Adapters* (Qwen2.5-7B-Instruct and Qwen3-32B, row 25, §3.3) show that inoculation creates triggers. Riché & Warncke call this conditionalization, and warn that system-turn delimiters as well as prompt content can carry it (row 68).
+- **Patel 2026** (LessWrong, 2026-08-14; flagged as possibly LLM content; fetch summary only). On Qwen2.5-14B, inoculated models sit far from a generic EM direction without the cue and partway back with it. Ablating that generic direction cut EM from 24.9% to 3.9%. It builds no cue-contrast direction, no gate and no utility comparison.
+- **Training-time alternatives:**
+  - preventative steering, which gave less conditional misalignment than inoculation prompting (Samyani et al. 2026, fetch summary only);
+  - inoculation adapters (row 25);
+  - CAFT (row 65);
+  - midtrained quarantine tokens, which don't beat inoculation prompting and still leak (O'Brien et al., row 40).
+- **Behavioural fix for leaked cues:** Africa et al. 2026's "sealing" (consistency training on about 200 self-distilled pairs) removed 96–100% of the re-elicitation gap on Llama-3.1-8B and Qwen3, but the strongest "malicious, evil" prompt stayed partly effective (fetch summary only).
+- **Gap:** neither review found anyone who extracts the cue-contrast direction and steers with it, compares steerability between inoculated and matched non-inoculated models, or installs a cue in an already-misaligned model. The searches aren't exhaustive for the last few weeks.
+
+**Pilot (the first and only committed step).** One finance seed pair: the inoculated and neutral adapters of seed 0, plus base. It uses E13's patch code (`steer.py` on `e13/run`), E13's site and its split-half reliability rule (median cosine ≥ 0.7).
+- **Prerequisite, a judge audit:** a blind labelling pass by Jacob on about 30 answers, drawn from F1's cue and near-cue answers and from the pilot's own steered answers. It uses the E11 page template, and the key stays out of the page. Patch effects count as validated only if the pass meets E1's bar (κ ≥ 0.6, ≥ 70% of judge EM calls confirmed). Otherwise they are reported as unvalidated.
+- **Frozen question splits:**
+  - **Extraction:** E11's development questions.
+  - **Dose selection:** 20 of the test questions.
+  - **Final:** the other 21. They are fixed in the pilot's plan before any activation is read.
+- **Contexts:**
+  - **No system prompt:** rendered exactly as at evaluation, which on Qwen means the template's default system turn.
+  - **The exact cue.**
+  - **Six held-out leak wordings:** two each from the *Inoculation Adapters* "negated", "structure" and "keyword" categories, from their Appendix E.1. One wording per category goes to dose selection and the other to final, fixed by seed before any generation.
+  - **So each split has five contexts:** none, the cue and three leak wordings.
+- **Directions,** each a unit vector at E13's input site (the residual entering block 14):
+  1. **Cue contrast.** Let h(m, c) be the residual at the **last non-padding input position of the fully rendered generation prompt**, before any sampling. On Qwen's template that is the newline token after `<|im_start|>assistant`; its token id and the hook location are recorded. It is averaged over extraction questions, for model m under context c. Then d = [h(ino, cue) − h(ino, none)] − [h(neu, cue) − h(neu, none)]. Because no answer tokens enter it, answer content, length and refusal can't leak in.
+  2. **Bad-minus-good, label-derived:** E13's recipe on the inoculated model's own sampled answers under the cue, using judge labels. It is reported as using the same cue.
+  3. **Bad-minus-good without a cue:** the same recipe on the neutral model with no system prompt, where both classes occur.
+  4. **Random,** norm-matched.
+
+  Cosines between them are reported, but only as description.
+- **Controllability test, always-on.** Each direction is subtracted on every context, with no gate.
+  - **Hook:** E13's forward pre-hook on block 14, at every position, on the prefill pass and on every decoding step.
+  - **Strengths:** four, on a common grid in units of the mean residual norm at the site, so that directions of different norms are comparable (E14's convention). The four values are fixed after the benchmark, from an unsteered-and-steered coherence check on extraction questions only, before any EM is judged.
+  - **Utility:** E13's benign-utility set and coherence, measured with the patch **on**.
+  - **Comparisons:** unpatched, and a direct safety sentence added to the system prompt (E14's prompt-patch wording).
+- **Eligibility** (E14's rules, for steering and the safety sentence alike). A configuration is eligible only if, on the EM questions themselves:
+  - the useful aligned-answer rate (coherent > 50, aligned ≥ 30, not a refusal) rises by at least half the absolute EM drop;
+  - refusals rise by at most 5 points;
+
+  and, on the benign-utility set, utility loss is at most 5 points and coherence stays within E13's screen. A refusal is never counted as a repair.
+- **Dose selection:** on the dose-selection questions, the eligible strength with the largest exact-cue fractional reduction, ties to the lower strength. It is reported once, on the final questions.
+- **Estimands** (final questions, inoculated seed-0 model).
+  - **Per context c:** f(c) = 1 − EM_patched(c) / EM_unpatched(c), with EM rates pooled over questions and samples.
+  - **Exact-cue effect:** f(cue).
+  - **Leak effect:** f over the final leak wordings that are **eligible**, pooled with equal weight per wording. A wording is eligible if its *unpatched* EM is ≥ 10% and at least 5 points above the model's unpatched no-prompt rate; this is fixed from unpatched answers before any patched answer is read.
+  - **Reporting:** non-eliciting wordings are reported descriptively, and are never added or dropped after patched results are seen.
+  - **Comparisons:** paired question bootstrap (10,000 resamples, 95% percentile intervals), comparing configurations on the same questions.
+- **Decision.**
+  - **Promising:** the cue contrast's exact-cue effect beats **both** bad-minus-good directions by ≥ 15 points of f with a lower bound > 0, **and** beats the safety sentence; all are eligible.
+  - **Leak repair:** claimed only if the leak effect also shows a positive advantage with a lower bound > 0, and only for at least one eligible leak wording.
+  - **No practical advantage for this tested recipe:** the upper bound of the advantage is below +5 points against **each** bad-minus-good direction.
+  - **Otherwise inconclusive.**
+
+  If no final wording is eligible, the leak readout is empty. We then report "no observed leak among the tested wordings", which is not the same as "no inoculation-specific excess"; the absolute EM and the base and neutral controls are shown either way.
+- **Benchmark first:** hooked decoding's throughput is measured before the grid runs. If the measured cost exceeds the cap, the random direction and one strength are dropped first. Both bad-minus-good directions are always kept, because the decision rule needs them.
+
+**Later stages (only if the pilot is "promising"; each needs its own costed design and go-ahead).**
+- **Irrelevant-prompt arm, crossed with contexts.** Train inoculated, neutral and irrelevant-prompt arms (the irrelevant arm also serves E11's open question). Evaluate each under the cue, the neutral prompt, the irrelevant prompt and no system turn, plus a structural control that keeps the system turn with empty content.
+  - **The irrelevant arm's own-cue contrast** has the same form, with the reference subtraction: [h(irr, irr-prompt) − h(irr, none)] − [h(neu, irr-prompt) − h(neu, none)]. It uses the same extraction questions and the same strength budget.
+  - **What success would mean:** if the cue-contrast direction transfers to wording families not used in extraction, and the irrelevant contrast doesn't steer EM as well, that is evidence beyond the tested prompt controls. It is not proof of trait specificity, because the double difference removes only a shared additive prompt response.
+  - **Retention:** narrow-task retention is checked in each arm.
+- **Relative steerability (Q2):** fractional EM reduction at fixed utility-loss limits, on identical prompts, with identical candidate pools and selection budgets in each arm. Finance under the exact cue comes first.
+- **Detection:**
+  - **Kept apart:** pre-answer risk prediction (prompt-token activations) and during-answer detection (answer-prefix activations).
+  - **Text baseline:** the same information as the probe, meaning the system prompt, the user question and, for detection, the same generated prefix.
+  - **Splits:** whole wording families and questions.
+  - **Reporting:** AUROC, and recall at fixed false-positive rates.
+  - **Leak defence:** claimed only for a frozen, executable gate tested on unseen wording families.
+- **Sealing comparison:** deferred until steering shows a benefit, then run on the same held-out triggers and utility tasks.
+
+**Stage B pilot: installing a cue afterwards (Q3; selected separately).** Finance, the seed-0 neutral adapter. Its no-prompt EM is about 32% pooled over seeds; seed 0's own rate is measured fresh.
+- **Arms:** continue training on that model's own judge-labelled EM answers, with the same frozen targets and the same step budget in each, under (a) the inoculation prompt, (b) the neutral prompt, (c) an irrelevant prompt.
+- **Questions:** the training targets come from E11's development and extraction questions only. Evaluation uses the 41 test questions.
+- **Comparison:** the **original checkpoint** and base are evaluated beside all three, under the same contexts: none, the cue, the neutral prompt and two irrelevant prompts.
+- **Success for (a), all of:**
+  - **Non-cue EM falls:** EM over the fixed non-cue aggregate (none, neutral and the two irrelevant prompts, equal weights) falls from the original checkpoint by at least half of the original's excess over base. Both rates come from this run. The drop needs a lower bound > 0.
+  - **No context gets worse:** none of the four non-cue contexts rises by more than 5 points.
+  - **Cue EM is kept:** within 5 points of the original's cue EM.
+  - **Utility is stable.**
+  - **Against the controls:** (a) beats (b) and (c) on the non-cue aggregate.
+- **Scope of the claim:** behavioural conditionalization, not literal movement of the trait. A failure rules out this recipe, not post-hoc cue installation in general.
+
+**Predictions (rough, before any data).**
+
+| # | Prediction | P |
+|---|---|---|
+| 1 | At least one of the six leak wordings raises the inoculated arm's EM by ≥ 5 points over its no-prompt rate, with a lower bound > 0 | 0.5 |
+| 2 | Pilot verdict "promising" | 0.2 |
+| 3 | Pilot verdict "no better" | 0.4 |
+| 4 | The safety sentence matches or beats every direction at matched utility | 0.35 |
+| 5 | Stage B meets its success rule | 0.2 (indirect evidence: Dubiński et al. found post-hoc benign fine-tuning leaves misalignment conditional; Nadaf found post-hoc weight edits leave the disposition, abstract summary only; both are different interventions) |
+
+**What each outcome changes.**
+- **"Promising":** run the later stages.
+- **"No practical advantage for this tested recipe":** fold the result into E13/E14 and drop E15's steering half.
+- **Inconclusive:** report it, and don't expand without a power design.
+- **Prediction 4 holding:** the safety sentence is concluded sufficient only if it is itself eligible and halves exact-cue EM. Matching directions that all fail would show nothing.
+- **Stage B success:** a cue can be installed for traits found at inference. That would be the more novel result and worth a full follow-up. Stage B failure limits inoculation-then-steer to traits anticipated in training, for this recipe.
+
+**Cost (provisional; E11/F1's measured rate is about $0.17 per thousand answers generated and judged, $0.15 of it judging; hooked decoding is unmeasured).**
+- **Pilot manifest** (inoculated seed-0 model unless stated; answers that already exist are reused where the condition matches exactly):
+
+  | Block | Configurations × contexts × questions × samples | New answers |
+  |---|---|---|
+  | Extraction, prompt-token directions (cue contrast) | forward passes only, inoculated and neutral seed 0, cue and none | 0 |
+  | Extraction, bad-minus-good | inoculated under the cue and neutral with none, development questions, about 400 each | ≈ 800 |
+  | Dose selection | (4 directions × 4 strengths + unpatched + safety sentence) 18 × 5 × 20 × 5 | 9,000 |
+  | Final | (4 selected + unpatched + safety sentence) 6 × 5 × 21 × 10 | 6,300 |
+  | Final controls, unpatched | neutral seed 0 and base, 2 × 5 × 21 × 10 | 2,100 |
+  | Utility, patch on | 6 final configurations × about 330 benign answers | ≈ 2,000 |
+  | **Total** | | **≈ 20,200** |
+
+  - **Judging:** ≈ $3.
+  - **GPU:** ≈ 1–2 H100-hours ($4–8), to be repriced from the benchmark.
+  - **Pilot total: ≈ $8–12; cap $20.**
+  - **Time:** about 1–1.5 days of build, reusing E13's runner (`steer.py`) and E11's judging and labelling code, plus analysis. Jacob's time is about 12 minutes for the audit.
+- **Stage B pilot:** 3 short continuations of one adapter plus evaluation, ≈ $8–12, cap $20.
+- **Later stages:** costed only if reached (an irrelevant arm across datasets and seeds is about $5–10 of training, before its evaluation).
+- Each paid step needs Jacob's go-ahead. The pilot fits the lightweight path for follow-ups under about $15 (a one-page plan with predictions before data).
+
+**Overlap.** E13 already lists E11's adapters as a second conditional-EM organism (§ ideas block, item 3), and the pilot is in effect a new direction source for E13's patch step. If E13 runs first, the pilot reuses its frozen site and dose grid. E14 compares patches across kinds of misbehaviour; E15 has one kind and many triggers.
+
+**Before a prereg for the later stages:** capture into `papers/` the Patel post (with its LessWrong flag), Samyani et al., Africa et al. (arXiv 2606.05817) and the *Inoculation Adapters* Appendix E.1 prompt list. Then re-read their numbers verbatim; the external review saw only summaries. The pilot needs only Appendix E.1.
 
 ---
 
@@ -3257,3 +3395,35 @@ Main changes from review:
   - *2 MINOR:* a superseded cost block left in by a splice error, now deleted, and development screen allocations, now added.
   - All four were fixed and **not re-reviewed**. Every round-1 and round-2 BLOCKING finding was marked resolved or substantially resolved by round 3.
 
+
+**E15 (2026-10-09)** is a new artifact with its own review count. gpt-6-astra round 1 (`logs/reviews/20261009-proposal-E15-r1.md`): **REVISE**, 8 BLOCKING, 5 MINOR. The proposal was restructured around one committed pilot (one finance seed pair). The fixes:
+- **Premise:** F1's failed judge check is stated, and a blind audit now gates the pilot's patch readout.
+- **Workload:** cell counts are given and the pilot is priced from F1's measured rate, with a benchmark first.
+- **The direction is defined:** final prompt token before generation, frozen extraction, selection and final splits, and no answer tokens.
+- **The irrelevant arm** is now crossed with contexts, with a transfer requirement and a structural system-turn control (later stage).
+- **Probe and text baseline** get matched information, separate risk and detection tasks, and matched false-positive reporting (later stage).
+- **The perfect gate is replaced** by always-on steering, with utility measured with the patch on; the leak-defence claim is limited to a frozen gate on unseen wording families.
+- **The steerability ratio is replaced** by fractional reduction at fixed utility-loss limits ("relative steerability").
+- **Stage B** gains the original checkpoint, matched budgets and an absolute success rule.
+- **The MINOR findings:**
+  - cosine is now only descriptive;
+  - "inconclusive" outcomes are defined;
+  - the bad-minus-good baseline is labelled as using the cue, and a cue-free variant is added;
+  - a safety-sentence baseline is added, and sealing is deferred;
+  - "no observed leak" is separated from "no inoculation-specific excess";
+  - the internal review's wrong number is corrected in the review file.
+
+gpt-6-astra round 2 (`logs/reviews/20261009-proposal-E15-r2.md`): **READY AFTER FIXES**, 3 BLOCKING, 7 MINOR, 1 NIT. All were fixed and **not re-reviewed**; one round remains under the cap.
+- **The BLOCKING findings:**
+  - an explicit pilot manifest, with three leak wordings per split and five contexts each;
+  - the extraction position defined, along with E13's hook and a common strength unit;
+  - E14's useful-answer and refusal rules made eligibility conditions;
+  - the estimands written out: f(c), separate cue and leak effects, a leak-eligibility rule fixed from unpatched answers, and a paired bootstrap.
+- **The MINOR findings and the NIT:**
+  - a fallback that keeps both baselines;
+  - the irrelevant arm's contrast formula, and narrowed success wording;
+  - Stage B's non-cue aggregate with per-context bounds, separate training and evaluation questions, and seed-0 rates measured fresh;
+  - pooled numbers labelled as pooled;
+  - the Nadaf qualifier;
+  - narrowed stopping conclusions, and a build-time estimate;
+  - the internal review corrected in place.
