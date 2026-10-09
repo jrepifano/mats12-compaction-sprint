@@ -30,6 +30,7 @@ judged CSV (`emx.judge_run.load_or_init_judged` would coerce it to numbers on re
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -146,6 +147,45 @@ def judge_gen(gen_csv, judged_csv=None, *, judges=C.JUDGES, exp=C.EXP, dry_run=F
         pod_events=pod_events(), **judge_kw,
     )
     return out
+
+
+def retried_path(judged_csv) -> Path:
+    j = Path(judged_csv)
+    return j.with_name(j.stem + ".retried.json")
+
+
+def reset_for_retry(judged_csv) -> int:
+    """The one retry the completeness rule allows (contracts "Row classification"): a judge
+    reply that is neither a score nor a REFUSAL (status "none", raw not REFUSAL) is re-queued once
+    by clearing its status, score and raw; the (column, keys) are appended to
+    `<judged stem>.retried.json` so no row is ever retried twice. Returns the rows reset.
+    (Added 2026-10-09: Gemini answered 2 of 100 narrow rows with reasoning prose.)"""
+    judged_csv = Path(judged_csv)
+    if not judged_csv.exists():
+        return 0
+    df = pd.read_csv(judged_csv, keep_default_na=False, dtype=str)
+    rp = retried_path(judged_csv)
+    done = json.loads(rp.read_text()) if rp.exists() else []
+    seen = {(d["column"], d["condition"], d["qid"], str(d["sample_idx"])) for d in done}
+    new = []
+    for st in [c for c in df.columns if c.endswith("__status")]:
+        col = st[: -len("__status")]
+        raw = col + "__raw"
+        if raw not in df.columns:
+            continue
+        for i in df.index[(df[st] == "none") & ~df[raw].map(is_refusal)]:
+            key = (col, df.at[i, "condition"], df.at[i, "qid"], str(df.at[i, "sample_idx"]))
+            if key in seen:
+                continue
+            df.at[i, st], df.at[i, col], df.at[i, raw] = "", "", ""
+            new.append({"column": col, "condition": key[1], "qid": key[2],
+                        "sample_idx": key[3]})
+    if new:
+        tmp = judged_csv.with_suffix(".tmp")
+        df.to_csv(tmp, index=False)
+        tmp.replace(judged_csv)
+        rp.write_text(json.dumps(done + new, indent=1) + "\n")
+    return len(new)
 
 
 # --- scored frame -------------------------------------------------------------------------------

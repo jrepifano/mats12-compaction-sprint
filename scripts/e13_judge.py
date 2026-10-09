@@ -92,6 +92,14 @@ def main(argv=None, *, presets: dict | None = None, clients: dict | None = None,
             print(f"E13_JUDGE_REFUSED: {g.stem}: {e}", file=sys.stderr)
             return 2
         usd += sum(float(u.get("usd") or 0.0) for u in res["usage"].values())
+        n_retry = J.reset_for_retry(JR.default_judged_path(g))
+        if n_retry:  # the one retry of malformed (non-REFUSAL "none") replies
+            print(f"E13_JUDGE_RETRY {g.stem}: {n_retry} malformed repl(ies) re-queued once")
+            res = J.judge_gen(g, judges=a.judges, presets=presets, clients=clients,
+                              running_pod_usd=a.running_pod_usd, ledger=a.ledger,
+                              probe=a.probe, max_concurrency=a.concurrency,
+                              max_retries=a.max_retries, **judge_kw)
+            usd += sum(float(u.get("usd") or 0.0) for u in res["usage"].values())
         comp = J.completeness(JR.default_judged_path(g), g)
         for c in comp["cells"]:
             worst = max(c["columns"].values(), default=0.0)

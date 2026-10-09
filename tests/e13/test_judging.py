@@ -353,3 +353,24 @@ def test_completeness_missing_judge_column(tmp_path):
     assert all(c["columns"][score_column(m, "gfl")] == 1.0 for c in res["cells"]
                for m in C.METRICS_BY_TASK[c["task_type"]])
     assert {c["gen"] for c in res["cells"]} == {gen.stem}
+
+
+def test_reset_for_retry_requeues_malformed_once(tmp_path):
+    # 2026-10-09: non-REFUSAL "none" replies get exactly one retry
+    import pandas as pd
+
+    from emx.e13 import judging as J
+
+    p = tmp_path / "x.csv"
+    pd.DataFrame({"condition": ["c", "c", "c"], "qid": ["a", "b", "d"], "sample_idx": ["0"] * 3,
+                  "medcorrect__gfl": ["", "80", ""],
+                  "medcorrect__gfl__status": ["none", "scored", "none"],
+                  "medcorrect__gfl__raw": ["To evaluate the answer...", "80", "REFUSAL"]}
+                 ).to_csv(p, index=False)
+    assert J.reset_for_retry(p) == 1
+    df = pd.read_csv(p, keep_default_na=False, dtype=str)
+    assert df["medcorrect__gfl__status"].tolist() == ["", "scored", "none"]
+    df.loc[0, "medcorrect__gfl__status"] = "none"  # failed again
+    df.loc[0, "medcorrect__gfl__raw"] = "Still prose"
+    df.to_csv(p, index=False)
+    assert J.reset_for_retry(p) == 0  # never twice
