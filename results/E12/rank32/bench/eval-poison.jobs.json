@@ -1,0 +1,115 @@
+{
+  "step": "eval-poison",
+  "part": null,
+  "recipe": "rank32",
+  "utc_start": "2026-10-09T06:14:45Z",
+  "utc_end": "2026-10-09T06:16:43Z",
+  "git_commit": "bf97449fe08b4d44b1b78538de06ad8456526704",
+  "seeds": {},
+  "gen_path": "vllm",
+  "endpoint": null,
+  "rescue_triggered": null,
+  "cuts": [],
+  "genpath_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "admission_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "jobs_sha256": "215b3053edcd894ed00fd970f3d668e5e43537e5fa7afff9d7f19a176cf013ba",
+  "jobs": [
+    [
+      "full",
+      "P1",
+      1360
+    ],
+    [
+      "full",
+      "P2",
+      1360
+    ],
+    [
+      "full",
+      "P3",
+      1360
+    ],
+    [
+      "cue_tf",
+      "base",
+      200
+    ],
+    [
+      "cue_tf",
+      "P1",
+      200
+    ],
+    [
+      "cue_tf",
+      "P2",
+      200
+    ],
+    [
+      "cue_tf",
+      "P3",
+      200
+    ],
+    [
+      "cue_mc",
+      "base",
+      200
+    ],
+    [
+      "cue_mc",
+      "P1",
+      200
+    ],
+    [
+      "cue_mc",
+      "P2",
+      200
+    ],
+    [
+      "cue_mc",
+      "P3",
+      200
+    ],
+    [
+      "task",
+      "base",
+      400
+    ],
+    [
+      "task",
+      "P1",
+      400
+    ],
+    [
+      "task",
+      "P2",
+      400
+    ],
+    [
+      "task",
+      "P3",
+      400
+    ]
+  ],
+  "outcomes": {
+    "full/P1": "output",
+    "full/P2": "output",
+    "full/P3": "output",
+    "cue_tf/base": "output",
+    "cue_tf/P1": "output",
+    "cue_tf/P2": "output",
+    "cue_tf/P3": "output",
+    "cue_mc/base": "output",
+    "cue_mc/P1": "output",
+    "cue_mc/P2": "output",
+    "cue_mc/P3": "output",
+    "task/base": "output",
+    "task/P1": "output",
+    "task/P2": "output",
+    "task/P3": "output"
+  },
+  "smoke": {
+    "P1": "PASS",
+    "P2": "PASS",
+    "P3": "PASS"
+  }
+}

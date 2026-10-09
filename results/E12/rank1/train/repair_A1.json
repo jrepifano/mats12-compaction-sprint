@@ -1,0 +1,65 @@
+{
+  "run": "repair_A1",
+  "recipe": "rank1",
+  "mode": "start",
+  "segment": "repair",
+  "arm": "A",
+  "parent_key": "P1",
+  "seed": 1,
+  "order_seed": 1,
+  "init_seed": null,
+  "data_ids_sha256": "0872ad8405966aeee44bf23ef34959038e25f382d352e6a5d8994ad586f74dd0",
+  "steps_planned": 107,
+  "step_offset": 0,
+  "lr": 2e-05,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": false,
+  "n_trainable": 22528,
+  "mask": {
+    "n_examples": 1712,
+    "unmasked_total": 104692,
+    "unmasked_min": 21,
+    "unmasked_max": 118,
+    "unmasked_mean": 61.151869158878505,
+    "tokens_total": 245867,
+    "tokens_max": 209
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": 107,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-09T03:10:05+00:00",
+  "steps_done": 107,
+  "saves": {
+    "10": "A1_r010",
+    "25": "A1_r025",
+    "50": "A1_r050",
+    "75": "A1_r075",
+    "107": "A1_r107"
+  },
+  "heldout": [
+    {
+      "step": 50,
+      "loss": 1.0299911812604636
+    },
+    {
+      "step": 100,
+      "loss": 1.036647653717129
+    },
+    {
+      "step": 107,
+      "loss": 1.0373812780138305
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "utc_end": "2026-10-09T03:10:42+00:00",
+  "attempts": 1,
+  "reason": null
+}

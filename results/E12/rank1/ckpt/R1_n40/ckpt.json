@@ -1,0 +1,53 @@
+{
+  "key": "R1_n40",
+  "parent_key": null,
+  "run": "nudge_base_s1",
+  "segment": "nudge",
+  "arm": "R",
+  "seed": 1,
+  "recipe": "rank1",
+  "local_step": 40,
+  "cumulative_step": 40,
+  "data_ids_sha256": "bda7f4b6a2f02d37daacbbbcede93d518116e36f08d8c46f263f9430b63e9c30",
+  "data_ids_through_step_sha256": "bda7f4b6a2f02d37daacbbbcede93d518116e36f08d8c46f263f9430b63e9c30",
+  "n_rows_used": 640,
+  "adapter_files": {
+    "adapter_config.json": "c4fff0c6fbb5248cb44597742fb58690ec09c879aa745aaed5b1ad063ca5c121",
+    "adapter_model.safetensors": "7e16e51f4decb7fd05de9afb602a49d27e1e47d10eb925ae129443779a417380"
+  },
+  "optimizer_state_sha256": "f2fa7d3f0e1c85b15fa656077a0e6fe32a990ad443b1bc1e137c525121cea333",
+  "continuity_logprobs": [
+    -0.34079647064208984,
+    -0.7551862597465515,
+    -0.0030433074571192265,
+    -0.9195721745491028,
+    -0.28383082151412964,
+    -0.1936458945274353,
+    -0.001086479052901268,
+    -0.28109925985336304,
+    -1.5375109910964966,
+    -0.4448353946208954,
+    -0.42454299330711365,
+    -1.1431548595428467,
+    -1.6842286586761475,
+    -0.00024303820100612938,
+    -0.30621641874313354,
+    -0.006858734879642725
+  ],
+  "continuity_item_sha256": "13543a27ffb46e7d9daf3546f39f7903367bca699a5abc983b60b54d54c2ba3b",
+  "distance": {
+    "max_abs": 0.00094812479801476,
+    "rel_fro": 0.16727472973974708,
+    "bf16_roundoff": 2.8371810913085938e-05,
+    "differs": true
+  },
+  "distance_ref": "init:seed1",
+  "adapter_dir": "results/E12/rank1/ckpt/R1_n40",
+  "optimizer": "adamw_8bit",
+  "lr": 2e-05,
+  "schedule": "constant",
+  "order_seed": 1001,
+  "init_seed": 1,
+  "attn": "eager",
+  "utc": "2026-10-09T03:43:24+00:00"
+}

@@ -1,0 +1,1195 @@
+{
+ "admitted": true,
+ "branch": "hf-complete",
+ "cuts": [
+  0,
+  1
+ ],
+ "gen_path": "hf",
+ "jobs": [
+  {
+   "key": "P1",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "P2",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "P3",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "base",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "P1",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "P2",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "P3",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "base",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "P1",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "P2",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "P3",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "base",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "P1",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "P2",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "P3",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A1_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A2_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A3_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B1_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B2_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B3_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C1_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C2_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C3_r107",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A1_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A1_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A1_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A1_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A2_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A2_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A2_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A2_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A3_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A3_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A3_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A3_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B1_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B1_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B1_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B1_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B2_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B2_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B2_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B2_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B3_r010",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B3_r025",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B3_r050",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "B3_r075",
+   "kind": "traj",
+   "n_rows": 160
+  },
+  {
+   "key": "A1_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r107_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r107_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r107_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r107_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D1_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D1_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D1_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D1_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D2_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D2_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D2_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D2_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D3_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D3_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D3_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "D3_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R1_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R1_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R1_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R1_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R2_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R2_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R2_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R2_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R3_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R3_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R3_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "R3_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A2_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A3_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B1_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B2_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B3_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C1_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C2_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C3_r107",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A1_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A2_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A3_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B1_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B2_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B3_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C1_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C2_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C3_r107",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A1_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A2_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A3_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B1_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B2_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B3_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C1_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C2_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C3_r107",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A1_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A2_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A3_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B1_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B2_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "B3_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C1_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C2_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "C3_r214",
+   "kind": "full",
+   "n_rows": 1360
+  },
+  {
+   "key": "A1_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A2_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A3_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B1_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B2_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "B3_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C1_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C2_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r214_n05",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r214_n10",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r214_n20",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "C3_r214_n40",
+   "kind": "nudge",
+   "n_rows": 205
+  },
+  {
+   "key": "A1_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A2_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A3_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B1_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B2_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "B3_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C1_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C2_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "C3_r214",
+   "kind": "cue_tf",
+   "n_rows": 200
+  },
+  {
+   "key": "A1_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A2_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A3_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B1_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B2_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "B3_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C1_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C2_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "C3_r214",
+   "kind": "cue_mc",
+   "n_rows": 200
+  },
+  {
+   "key": "A1_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A2_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "A3_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B1_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B2_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "B3_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C1_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C2_r214",
+   "kind": "task",
+   "n_rows": 400
+  },
+  {
+   "key": "C3_r214",
+   "kind": "task",
+   "n_rows": 400
+  }
+ ],
+ "jobs_sha256": "34ce7a5dd0d575777000292da82a35a7f4089b9fde87c1b2f0f68d64377a2c00",
+ "projection": {
+  "api": {
+   "em_answers": 49900,
+   "endpoint_priced": 214,
+   "rescue_priced": true,
+   "style_answers": 2665,
+   "task_answers": 5200,
+   "total_usd": 17.3867,
+   "usd": {
+    "em_judging": 16.467,
+    "style_answers": 0.3997,
+    "style_train": 0.0,
+    "task_judge": 0.52
+   }
+  },
+  "api_spent_usd": 0.2521,
+  "api_usd": 17.3867,
+  "branch": "hf-complete",
+  "branches": {
+   "107": {
+    "api_usd": 13.3476,
+    "endpoint": 107,
+    "gpu_usd": 19.2174,
+    "jobs_sha256": "b9f571a07b050a45c5e706770ff0cbb5fec7012fd12403c8f5076819667296dc",
+    "n_jobs": 135,
+    "remaining_answers": 42860,
+    "rescue_triggered": false,
+    "total_pod_hours": 4.8164,
+    "verdict": "admit"
+   },
+   "214": {
+    "api_usd": 17.3867,
+    "endpoint": 214,
+    "gpu_usd": 21.9231,
+    "jobs_sha256": "1738fdf5b793aa94e91bf161f041402eb15750f4e5c892f884534e55e7f2d606",
+    "n_jobs": 144,
+    "remaining_answers": 55100,
+    "rescue_triggered": true,
+    "total_pod_hours": 5.4945,
+    "verdict": "admit"
+   }
+  },
+  "combined_usd": 39.5619,
+  "cuts": [
+   0,
+   1
+  ],
+  "elapsed_pod_hours": 1.8503,
+  "endpoint": null,
+  "gen_path": "hf",
+  "gpu_rate": 3.99,
+  "gpu_usd": 21.9231,
+  "jobs_sha256": "34ce7a5dd0d575777000292da82a35a7f4089b9fde87c1b2f0f68d64377a2c00",
+  "limit_checks": {
+   "api_usd": true,
+   "gpu_usd": true,
+   "hard_cap_usd": true,
+   "pod_hours": true
+  },
+  "limits": {
+   "api_usd": 20.0,
+   "gpu_usd": 25.0,
+   "hard_cap_usd": 40.0,
+   "pod_hours": 7.0
+  },
+  "n_jobs": 207,
+  "n_remaining_jobs": 144,
+  "priced_endpoint": 214,
+  "rates": {
+   "engine_start_s": 141.65429448336363,
+   "hf_answers_per_s": 5.060431937392184,
+   "judge_usd_per_1000_answers": 0.33,
+   "margin_h": 0.3,
+   "overhead_h": 0.25,
+   "poison_s_per_step": 0.6785552595791063,
+   "rank1_poison_s_per_step": 0.6785552595791063,
+   "rank1_short_s_per_step": 0.187,
+   "rank32_factor": 2.0,
+   "short_s_per_step": 0.187,
+   "vllm_answers_per_s": 55.15074313958544
+  },
+  "rates_source": {
+   "engine_start_s": "measured:bench/gen_bench.json",
+   "hf_answers_per_s": "measured:bench/hf_bench_full.json",
+   "judge_usd_per_1000_answers": "fallback",
+   "margin_h": "fallback",
+   "overhead_h": "fallback",
+   "poison_s_per_step": "measured:bench/train_bench.json",
+   "rank1_poison_s_per_step": "measured:bench/train_bench.json",
+   "rank1_short_s_per_step": "fallback",
+   "rank32_factor": "fallback",
+   "short_s_per_step": "fallback",
+   "vllm_answers_per_s": "measured:bench/gen_bench.json"
+  },
+  "recipe": "rank1",
+  "remaining_answers": 55100,
+  "remaining_hours": {
+   "engine_starts": 0.1967,
+   "generation": 3.0246,
+   "margin": 0.3,
+   "smoke": 0.0729,
+   "train": 0.0,
+   "upload": 0.05
+  },
+  "remaining_train_steps": {
+   "nudge": 0,
+   "poison": 0,
+   "repair": 0,
+   "rescue": 0
+  },
+  "rescue_triggered": null,
+  "stage": "hf",
+  "total_pod_hours": 5.4945,
+  "tried": [
+   {
+    "api_usd": 18.4201,
+    "combined_usd": 41.0489,
+    "cuts": [],
+    "gpu_usd": 22.3767,
+    "total_pod_hours": 5.6082,
+    "verdict": "refuse"
+   },
+   {
+    "api_usd": 18.0204,
+    "combined_usd": 40.6492,
+    "cuts": [
+     0
+    ],
+    "gpu_usd": 22.3767,
+    "total_pod_hours": 5.6082,
+    "verdict": "refuse"
+   },
+   {
+    "api_usd": 17.3867,
+    "combined_usd": 39.5619,
+    "cuts": [
+     0,
+     1
+    ],
+    "gpu_usd": 21.9231,
+    "total_pod_hours": 5.4945,
+    "verdict": "admit"
+   }
+  ],
+  "verdict": "admit"
+ },
+ "source": "e12_control.py admit-hf",
+ "utc": "2026-10-09T03:55:40Z"
+}
