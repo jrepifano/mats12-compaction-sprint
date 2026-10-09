@@ -970,3 +970,20 @@ def test_archive_while_running_never_overwrites_a_differing_ckpt_record(env, cap
     rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
     assert any("differs from the laptop's" in x for x in out["recipes"]["rank32"]["problems"])
     assert rc == 1 and local.read_text() == kept
+
+
+def test_interrupted_chain_recovers_through_stop_and_resume(env, capsys):
+    """Code review r3 finding 3: a chain that died without an end tag (no process left) is
+    acknowledged by stop, and its attempt can then be resumed (and archived)."""
+    pod, _runner, _lap = env
+    rc, first = run(env, "launch --slot _A --recipe rank1", capsys)
+    assert rc == 0
+    pod.running()
+    pod.write("logs/e12/run_9999.log", "=== chain\nE12_STEP_DONE smoke\n")  # no end tag
+    newest = pod.p("logs/e12/run_9999.log")
+    pod.mtime += 10
+    os.utime(newest, (pod.mtime, pod.mtime))  # the newest run log by mtime, as `ls -t` picks it
+    rc, out = run(env, "stop --slot _A", capsys)
+    assert rc == 0 and out["state"] == "exited" and out["interrupted"] is True
+    rc, out = run(env, "launch --slot _A --recipe rank1 --resume", capsys)
+    assert rc == 0 and out["attempt"] == first["attempt"] and out["resumed"] is True

@@ -1485,3 +1485,32 @@ def test_smoke_record_without_current_adapter_shas_is_redone(world):
         _put(world.root, C.smoke_adapter_path(REC, k), json.dumps({"verdict": "PASS"}))
     assert run(world, "eval-poison") == 0
     assert sorted(world.smoked) == ["P1", "P2", "P3"]
+
+
+def test_smoke_unmeasured_applied_smoke_fails_the_step(smoke_fakes):
+    """Code review r3 finding 1: UNVERIFIED (an execution error) gates; a measured FAIL does not."""
+    w = smoke_fakes
+    assert run(w, "smoke", "--part", "hf") == 0
+    orig = w.applied_smoke
+
+    def verdicts(v):
+        def f(*a, **k):
+            out = orig(*a, **k)
+            return {key: {**rec, "verdict": v} for key, rec in out.items()}
+        return f
+
+    w.mp.setattr(pod.gen, "applied_smoke", verdicts("UNVERIFIED"))
+    assert run(w, "smoke", "--part", "vllm") == C.EXIT_FAILED
+    w.mp.setattr(pod.gen, "applied_smoke", verdicts("FAIL"))
+    assert run(w, "smoke", "--part", "vllm") == 0
+
+
+def test_smoke_retry_measures_a_fresh_bench(smoke_fakes):
+    """Code review r3 finding 2: a retried smoke regenerates every bench job (no cached answers
+    divided by the retry's time)."""
+    w = smoke_fakes
+    assert run(w, "smoke", "--part", "hf") == 0
+    assert run(w, "smoke", "--part", "vllm") == 0
+    n = len(w.gen_calls)
+    assert run(w, "smoke", "--part", "vllm") == 0
+    assert len(w.gen_calls) == 2 * n

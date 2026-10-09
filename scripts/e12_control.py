@@ -97,6 +97,10 @@ POLL_TAGS = 40
 POD_PY = "/ws/venv-peft/bin/python"  # stdlib is enough for `e12_pod.py recovery`
 CHAIN_END = {"E12_CHAIN_DONE": "done", "E12_CHAIN_STOPPED": "stopped", "E12_CHAIN_FAILED": "failed"}
 ENDED = ("done", "stopped", "failed")
+# A chain that died without an end tag (no process left) counts as ended for stop, archive and
+# a same-attempt resume, never as complete (code review r3 finding 3): "exited" is only reached
+# when pgrep finds no chain or driver process.
+RECOVERABLE = (*ENDED, "exited")
 NOT_ESTABLISHED = "repair_not_established"
 EVAL_STEP_OF_KIND = {"traj": "eval-traj", "nudge": "eval-nudge"}
 
@@ -701,9 +705,9 @@ def cmd_stop(ctx: Ctx) -> int:
         st = poll_pod(ctx)
         if ctx.dry:
             return done(ctx, "stop", C.EXIT_OK)
-        if st.ok and st.state in (*ENDED, "none"):
+        if st.ok and st.state in (*RECOVERABLE, "none"):
             return done(ctx, "stop", C.EXIT_OK, state=st.state, chain_tag=st.chain_tag,
-                        polls=i + 1)
+                        polls=i + 1, interrupted=st.state == "exited")
     return done(ctx, "stop", C.EXIT_FAILED, state=st.state, chain_tag=st.chain_tag,
                 processes=st.procs, polls=ctx.stop_polls,
                 reason="stop not acknowledged: no E12_CHAIN_STOPPED/DONE with no chain process")
@@ -987,7 +991,7 @@ def cmd_launch(ctx: Ctx, resume: bool) -> int:
     if not ctx.dry:
         if not st.ok:
             return done(ctx, cmd, C.EXIT_FAILED, reason=st.error)
-        if st.state not in (*ENDED, "none"):
+        if st.state not in (*RECOVERABLE, "none"):
             raise Refused(f"the previous chain is not verified ended (state {st.state}, "
                           f"processes {st.procs}, tag {st.chain_tag}); run stop first")
         if resume and not rec:
@@ -1180,7 +1184,7 @@ def cmd_archive(ctx: Ctx, recipes: list[str] | None = None, upload: bool = True)
         if not st.ok:
             return done(ctx, cmd, C.EXIT_FAILED, reason=st.error,
                         retained={r: False for r in recipes or []})
-        if st.state not in (*ENDED, "none"):
+        if st.state not in (*RECOVERABLE, "none"):
             raise Refused(f"chain not verified ended (state {st.state}); run stop first")
     recipes = recipes or attempt_recipes(st)
     out = {R: archive_recipe(ctx, R, upload) for R in recipes}

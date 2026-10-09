@@ -970,6 +970,9 @@ def smoke_vllm(ctx: Ctx) -> int:
         return C.EXIT_FAILED
     # base rides in the same grouped calls (a per-request LoRA list with None entries)
     jobs = [C.Job("traj", k, C.KIND_ROWS["traj"]) for k in (C.BASE_KEY, *BENCH_KEYS)]
+    # always a fresh measurement: a retried smoke must not divide cached answers by the retry's
+    # time (code review r3 finding 2); the scratch tree holds nothing else of value
+    shutil.rmtree(broot / C.rdir(r) / "gen", ignore_errors=True)
     t0 = time.perf_counter()
     res = gen.generate_jobs(llm, inp.tok, r, jobs, inp.requests, root=broot, gen_path="vllm",
                             engine_version=f"vllm {version}", gpu=_gpu_name(),
@@ -982,6 +985,17 @@ def smoke_vllm(ctx: Ctx) -> int:
     bad = {k: v.get("verdict") for k, v in smoke.items() if v.get("verdict") != "PASS"}
     if bad:
         log(f"smoke vllm: bench applied-smoke not PASS: {bad}")
+    # an execution error (UNVERIFIED) or a missing record gates the smoke step; a measured FAIL
+    # (a genuinely small effect, e.g. the 2-step bench adapter) is logged only (code review r3 #1)
+    broken = sorted(k for k in BENCH_KEYS
+                    if (smoke.get(k) or {}).get("verdict") not in ("PASS", "FAIL"))
+    if broken:
+        log(f"smoke vllm: applied-smoke could not be measured for {broken}; the step fails")
+        return C.EXIT_FAILED
+    new = [x for x in res.get("done") or []]
+    if len(new) != len(jobs):
+        log(f"smoke vllm: the bench generated {len(new)} of {len(jobs)} jobs fresh; the step fails")
+        return C.EXIT_FAILED
     thr = res.get("throughput") or {}
     write_bench(ctx, "gen_bench", {
         "recipe": r, "gpu": _gpu_name(), "engine": f"vllm {version}", "n_adapters": len(jobs),
