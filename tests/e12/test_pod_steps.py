@@ -49,13 +49,19 @@ def _json(root: Path, rel: str):
     return json.loads((root / rel).read_text())
 
 
-def make_ckpt(root: Path, key: str, recipe: str = REC) -> None:
+def make_ckpt(root: Path, key: str, recipe: str = REC, scratch: Path | None = None) -> None:
+    """ckpt.json under root; the adapter files beside it, or (with `scratch`, for rank > 1
+    recipes) under scratch where the driver's ctx.path maps `contracts.adapter_files_dir`."""
     d = root / C.ckpt_dir(recipe, key)
     d.mkdir(parents=True, exist_ok=True)
+    a = d
+    if scratch is not None:
+        a = scratch / os.path.relpath(C.adapter_files_dir(recipe, key), C.SCRATCH)
+        a.mkdir(parents=True, exist_ok=True)
     files = {}
     for n in R.ADAPTER_FILES:
-        (d / n).write_text(f"{recipe}:{key}:{n}")
-        files[n] = G.sha256_file(d / n)
+        (a / n).write_text(f"{recipe}:{key}:{n}")
+        files[n] = G.sha256_file(a / n)
     (d / "ckpt.json").write_text(json.dumps({"key": key, "adapter_files_sha256": files,
                                              "continuity_logprobs": [-1.0] * 16}))
 
@@ -91,6 +97,9 @@ class World:
         self.lora_verdict = "PASS"
         self.execv = []
         self.cuts_now = ()
+        self.save_s = 4.0  # seconds per fake checkpoint save (bench timing)
+        self.scratch_adapters = False  # rank > 1 adapter files on scratch (incremental upload)
+        self.disk_write = 1500.0  # MB/s of the fake disk test
 
     def run_segment(self, model, tok, spec, root):
         self.specs.append(spec)
@@ -104,8 +113,10 @@ class World:
                  for k in range(1, min(spec.steps, 4) + 1)]
         _put(root, C.train_steps(r, spec.run), "\n".join(lines) + "\n")
         if not fail:
+            scratch = (self.root / "scratch" if self.scratch_adapters and spec.recipe.rank > 1
+                       else None)
             for key in spec.saves.values():
-                make_ckpt(root, key, r)
+                make_ckpt(root, key, r, scratch)
         _put(root, C.status_path(r, spec.run), json.dumps(
             {"run": spec.run, "recipe": r, "arm": spec.arm, "seed": spec.seed,
              "segment": spec.segment, "endpoint": spec.endpoint,
@@ -113,7 +124,12 @@ class World:
              "reason": "nonfinite" if fail else "", "utc": "t"}))
         if self.stop_after_run == spec.run:
             control(self.root, "STOP")
-        return {"run": spec.run, "status": "failed" if fail else "ok"}
+        n_saves = len(spec.saves)
+        return {"run": spec.run, "status": "failed" if fail else "ok", "timing": {
+            "train_s": 2.0, "save_s": self.save_s * n_saves, "heldout_s": 3.0, "probe_s": 0.0,
+            "resume_s": 7.0, "n_saves": n_saves, "n_heldout": 2, "n_probe": 0,
+            "resume_points": [{"step": 0, "s": 2.0},
+                              *[{"step": k, "s": 5.0} for k in spec.resume_steps]]}}
 
     def build_requests(self, recipe, kind, key, tok, questions, *, cue_qs=None, holdout=None,
                        cuts=()):
@@ -626,6 +642,8 @@ def test_training_dry_run_writes_nothing(world, capsys):
 
 @pytest.fixture
 def smoke_fakes(world, monkeypatch):
+    monkeypatch.setattr(pod, "disk_throughput", lambda d, mb=None: {
+        "path": str(d), "mb": 8, "write_mb_s": world.disk_write, "read_mb_s": 2000.0})
     monkeypatch.setattr(pod, "_bench_row_ids", lambda rows, seed, recipe, n: [r["id"] for r in rows])
     monkeypatch.setattr(pod.hf_gen, "generate_hf",
                         lambda m, tok, reqs, batch_size=64: (
@@ -660,6 +678,11 @@ def test_smoke_parts_produce_the_bench_fixtures_fields_and_admit(smoke_fakes):
         assert _fixture_fields(name) <= set(rec)
     tb = _json(w.root, C.bench_path(REC, "train_bench"))
     assert tb["attn"] == "eager" and tb["s_per_step"] == 0.5 and tb["n_steps"] == 4
+    assert (tb["save_s_mean"], tb["resume_point_s"], tb["heldout_s"]) == (4.0, 5.0, 1.5)
+    assert tb["wall_s"] >= 0 and tb["refused"] is None
+    assert (tb["disk_write_mb_s"], tb["disk_read_mb_s"]) == (1500.0, 2000.0)
+    assert set(tb["disk"]) == {"scratch", "results"}
+    assert spec.resume_steps == (C.TRAIN_BENCH_STEPS // 2,)
     assert _json(w.root, C.bench_path(REC, "gen_bench"))["n_answers"] == 1 + len(pod.BENCH_KEYS)  # 1 row per fake CSV
     assert _json(w.root, C.bench_path(REC, "base_smoke"))["passed"] is True
     assert run(w, "smoke", "--part", "score") == 0
@@ -668,6 +691,35 @@ def test_smoke_parts_produce_the_bench_fixtures_fields_and_admit(smoke_fakes):
     assert C.projection_path(REC, "smoke") in man and "_scratch" not in man
     rec_man = (w.root / C.recovery_manifest(REC)).read_text()
     assert "_scratch" not in rec_man
+
+
+def test_smoke_refuses_slow_saves(smoke_fakes):
+    """Amendment D': a mean full save over SAVE_S_MAX refuses the smoke step (exit 2) with the
+    reason in the step record; train_bench.json is kept (it says why)."""
+    w = smoke_fakes
+    w.save_s = C.SAVE_S_MAX + 1
+    assert run(w, "smoke", "--part", "hf") == C.EXIT_BUDGET
+    tb = _json(w.root, C.bench_path(REC, "train_bench"))
+    assert tb["save_s_mean"] == C.SAVE_S_MAX + 1 and "checkpoint save" in tb["refused"][0]
+    step = _json(w.root, C.bench_path(REC, "step_smoke_hf"))
+    assert step["outcome"] == "budgetrefused" and "checkpoint save" in step["detail"]
+    assert not (w.root / C.bench_path(REC, "hf_bench")).exists()  # stopped before generation
+
+
+def test_smoke_refuses_a_slow_disk_before_training(smoke_fakes):
+    w = smoke_fakes
+    w.disk_write = C.DISK_WRITE_MB_S_MIN - 1
+    assert run(w, "smoke", "--part", "hf") == C.EXIT_BUDGET
+    assert not w.specs  # no bench training on a slow volume
+    assert _json(w.root, C.bench_path(REC, "disk_bench"))["disk_write_mb_s"] == (
+        C.DISK_WRITE_MB_S_MIN - 1)
+    assert "disk write" in _json(w.root, C.bench_path(REC, "step_smoke_hf"))["detail"]
+
+
+def test_disk_throughput_measures_and_cleans_up(tmp_path):
+    rec = pod.disk_throughput(tmp_path / "vol", mb=8)
+    assert rec["mb"] == 8 and rec["write_mb_s"] > 0 and rec["read_mb_s"] > 0
+    assert list((tmp_path / "vol").iterdir()) == []
 
 
 def test_smoke_refused_projection_fails_the_step(smoke_fakes):
@@ -1660,3 +1712,69 @@ def test_smoke_retry_measures_a_fresh_bench(smoke_fakes):
     n = len(w.gen_calls)
     assert run(w, "smoke", "--part", "vllm") == 0
     assert len(w.gen_calls) == 2 * n
+
+
+# --- incremental retention (Amendment D') --------------------------------------------------------
+
+
+def test_rank32_training_steps_upload_their_checkpoints_incrementally(world, hf):
+    world.scratch_adapters = True
+    T = "tan32"
+    assert run(world, "poison-s1", "--recipe", T) == 0
+    assert hf.created == ["jrepifano/e12-tan32-adapters"] and len(hf.commits) == 1
+    assert sorted(hf.commits[0]) == sorted(f"P1/{n}" for n in (*R.ADAPTER_FILES, "ckpt.json"))
+    rec = _json(world.root, C.retention_receipt_path(T))
+    assert (rec["method"], rec["private"], rec["commit_sha"]) == ("hf", True, "c1")
+    assert sorted(rec["files"]) == sorted(f"P1/{n}" for n in R.ADAPTER_FILES)
+    step = _json(world.root, C.bench_path(T, "retention_poison-s1"))
+    assert step["ok"] and step["keys"] == ["P1"] and step["n_new_files"] == 2
+    assert run(world, "poison", "--recipe", T) == 0
+    assert sorted(hf.commits[1]) == sorted(f"{k}/{n}" for k in ("P2", "P3")
+                                           for n in (*R.ADAPTER_FILES, "ckpt.json"))
+    rec = _json(world.root, C.retention_receipt_path(T))
+    assert len(rec["files"]) == 6 and rec["commit_sha"] == "c2"
+    # the chain's final upload step: nothing new to send, the receipt and manifest written
+    assert run(world, "upload", "--recipe", T) == 0 and len(hf.commits) == 2
+    assert (world.root / C.manifest_path(T, "upload")).is_file()
+
+
+def test_incremental_upload_failure_is_recorded_not_fatal(world, monkeypatch):
+    fake = FakeHF(private=False)
+    monkeypatch.setattr(pod, "_hf_api", lambda: (fake, add_op))
+    monkeypatch.setenv("HF_TOKEN", "hf_test")
+    world.scratch_adapters = True
+    assert run(world, "poison-s1", "--recipe", "tan32") == 0  # the step still succeeds
+    assert (world.root / C.manifest_path("tan32", "poison-s1")).is_file()
+    step = _json(world.root, C.bench_path("tan32", "retention_poison-s1"))
+    assert not step["ok"] and "not private" in step["error"]
+    assert not fake.commits and not (world.root / C.retention_receipt_path("tan32")).exists()
+    monkeypatch.delenv("HF_TOKEN")
+    assert run(world, "poison", "--recipe", "tan32") == 0
+    assert "HF_TOKEN" in _json(world.root, C.bench_path("tan32", "retention_poison"))["error"]
+
+
+def test_incremental_upload_skips_a_bad_checkpoint_and_still_sends_the_rest(world, hf):
+    world.scratch_adapters = True
+    assert run(world, "poison-s1", "--recipe", "tan32") == 0
+    # P2's adapter file is changed after its ckpt.json: left out, recorded; P3 is uploaded
+    orig = world.run_segment
+
+    def corrupt(model, tok, spec, root):
+        out = orig(model, tok, spec, root)
+        if spec.run == "poison_s2":
+            f = world.root / "scratch" / os.path.relpath(
+                C.adapter_files_dir("tan32", "P2"), C.SCRATCH) / "adapter_model.safetensors"
+            f.write_text("other")
+        return out
+
+    world.mp.setattr(pod.trainer, "run_segment", corrupt)
+    assert run(world, "poison", "--recipe", "tan32") == 0
+    step = _json(world.root, C.bench_path("tan32", "retention_poison"))
+    assert not step["ok"] and step["keys"] == ["P3"] and "P2" in step["problems"][0]
+    assert sorted(hf.commits[-1]) == sorted(f"P3/{n}" for n in (*R.ADAPTER_FILES, "ckpt.json"))
+
+
+def test_rank1_training_steps_make_no_hf_calls(world, hf):
+    assert run(world, "poison-s1") == 0
+    assert not hf.created and not hf.commits
+    assert not (world.root / C.bench_path(REC, "retention_poison-s1")).exists()

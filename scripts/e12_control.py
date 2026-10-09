@@ -54,6 +54,15 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
              locally), then the verified tar pull (files an earlier local pull verified are
              linked, not re-pulled) and a `local` receipt; prints {"retained": {recipe: bool}}; without --recipe it
              covers every recipe with an attempt, the latest first.
+  progress   --recipe R (Amendment D'; post-mortem: a 10x-slow chain ran 6 h unnoticed): ONE ssh
+             call reads the pod's step logs (start time from the name), step records, status/
+             and train/ records, steps.jsonl progress, the projections and the chain/driver
+             processes; compares each priced step's wall-clock since the latest admitted
+             projection (bench/projection.*.json, laptop copies included; `step_hours`) with its
+             projected share, and the extrapolated pod-hours with `total_pod_hours`. Prints
+             `overrun` (a running or finished step over OVERRUN_STEP x its share, by at least
+             OVERRUN_MIN_S, or the extrapolated total over OVERRUN_TOTAL x total_pod_hours);
+             exit 0, or EXIT_OVERRUN (6) on overrun, 1 when there is nothing to compare with.
   complete   every job of the current `planned_jobs(...)` has a verified output or a terminal
              skip record, every step manifest verifies and is bound to the current job list,
              (HF) the endpoint is final and inside the admitted list, the local admission.json
@@ -61,7 +70,7 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
              `retained(recipe)`.
 
 Usage: uv run python scripts/e12_control.py {poll|stop|induction|admit-hf|endpoint|launch|archive|
-       complete} --slot _A [--recipe R] [--stage S] [--resume] [--no-pull] [--while-running]
+       complete|progress} --slot _A [--recipe R] [--stage S] [--resume] [--no-pull] [--while-running]
        [--no-upload] [--stop-polls N] [--poll-interval-s S] [--dry-run]
 """
 
@@ -1394,6 +1403,240 @@ def _verified(root: Path, recipe: str, job: C.Job) -> bool:
         return False
 
 
+# --- progress against the admitted projection (Amendment D') ---------------------------------------
+
+EXIT_OVERRUN = 6
+OVERRUN_STEP = 1.5  # a step's wall-clock over 1.5x its projected share ...
+OVERRUN_MIN_S = 300.0  # ... and by at least 5 min (tiny shares are noise)
+OVERRUN_TOTAL = 1.3  # the extrapolated pod-hours over 1.3x the projection's total
+# chronological order of the projection stages: the smoke step's (smoke, or rank32 for rank > 1
+# recipes), then lora-check's, then the laptop's HF admission
+STAGE_ORDER = {"smoke": 0, "rank32": 0, "lora-check": 1, "hf": 2}
+
+# Runs on the pod under its python (stdlib): one JSON line. It never names the chain or the
+# driver bare (the pgrep patterns would match this script's own command line).
+PROGRESS_PY = r"""
+import glob, json, os, sys, time
+recipe, rdir, logdir = sys.argv[1], sys.argv[2], sys.argv[3]
+def rj(p):
+    try:
+        with open(p) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+def last_step(p):
+    try:
+        with open(p, "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 65536))
+            lines = f.read().decode(errors="replace").splitlines()
+    except OSError:
+        return None
+    for ln in reversed(lines):
+        try:
+            return int(json.loads(ln)["step"])
+        except (ValueError, KeyError, TypeError):
+            continue
+    return None
+out = {"now": time.time(), "logs": [], "step_records": {}, "status": {}, "train": {},
+       "steps": {}, "projections": {}}
+for f in glob.glob(os.path.join(logdir, recipe + "_*.log")):
+    out["logs"].append({"name": os.path.basename(f), "mtime": os.path.getmtime(f)})
+for f in glob.glob(os.path.join(rdir, "bench", "step_*.json")):
+    r = rj(f) or {}
+    out["step_records"][os.path.basename(f)[5:-5]] = {
+        k: r.get(k) for k in ("step", "part", "utc_start", "utc_end", "outcome")}
+for f in glob.glob(os.path.join(rdir, "status", "*.json")):
+    r = rj(f) or {}
+    out["status"][os.path.basename(f)[:-5]] = {k: r.get(k) for k in ("segment", "status", "utc")}
+for f in glob.glob(os.path.join(rdir, "train", "*.json")):
+    r = rj(f) or {}
+    out["train"][os.path.basename(f)[:-5]] = {
+        k: r.get(k) for k in ("segment", "utc_start", "utc_end", "steps_done", "steps_planned",
+                              "status")}
+for f in glob.glob(os.path.join(rdir, "train", "*.steps.jsonl")):
+    out["steps"][os.path.basename(f)[:-len(".steps.jsonl")]] = {
+        "last_step": last_step(f), "mtime": os.path.getmtime(f)}
+for f in glob.glob(os.path.join(rdir, "bench", "projection.*.json")):
+    r = rj(f) or {}
+    out["projections"][os.path.basename(f)] = {
+        "mtime": os.path.getmtime(f), **{k: r.get(k) for k in (
+            "stage", "verdict", "elapsed_pod_hours", "total_pod_hours", "remaining_hours",
+            "step_hours")}}
+print("PROGRESS " + json.dumps(out))
+"""
+
+
+def progress_body(ctx: Ctx) -> str:
+    q = shlex.quote
+    return f"""cd {q(ctx.pod_root)} || exit 97
+{q(ctx.pod_py)} - {q(ctx.recipe)} {q(C.rdir(ctx.recipe))} {q(C.POD_LOG_DIR)} <<'E12PROGRESS'
+{PROGRESS_PY}
+E12PROGRESS
+if pgrep -f '[p]od_run_e12' >/dev/null 2>&1; then echo "PROC chain"; fi
+if pgrep -f '[e]12_pod' >/dev/null 2>&1; then echo "PROC driver"; fi
+echo PROGRESS_OK
+"""
+
+
+def _epoch(stamp: str) -> float | None:
+    """A step log's name stamp (YYYYmmddTHHMMSSZ) or an ISO time as a UTC epoch."""
+    try:
+        return datetime.strptime(stamp, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC).timestamp()
+    except (TypeError, ValueError):
+        pass
+    try:
+        t = datetime.fromisoformat(stamp)
+    except (TypeError, ValueError):
+        return None
+    return (t if t.tzinfo else t.replace(tzinfo=UTC)).timestamp()
+
+
+def step_invocations(recipe: str, logs: list[dict]) -> list[dict]:
+    """[{step, start, mtime}] from `<recipe>_<step>_<UTC>_<pid>.log` names, by start."""
+    out = []
+    for lg in logs:
+        stem = lg["name"][len(recipe) + 1:-len(".log")]
+        parts = stem.rsplit("_", 2)
+        if len(parts) != 3 or parts[0] not in (*C.STEPS, "recovery"):
+            continue
+        start = _epoch(parts[1])
+        if start is not None:
+            out.append({"step": parts[0], "start": start, "mtime": float(lg["mtime"])})
+    return sorted(out, key=lambda x: x["start"])
+
+
+def latest_projection(pod_proj: dict, local_root: Path, recipe: str) -> dict | None:
+    """The latest admitted projection: the highest STAGE_ORDER, then the newest file; the
+    pod's records and the laptop's copies (admit-hf writes projection.hf.json locally)."""
+    cands = []
+    for name, rec in pod_proj.items():
+        cands.append({**rec, "file": name, "where": "pod"})
+    for f in (Path(local_root) / C.rdir(recipe) / "bench").glob("projection.*.json"):
+        rec = read_json(f) or {}
+        cands.append({**{k: rec.get(k) for k in ("stage", "verdict", "elapsed_pod_hours",
+                                                 "total_pod_hours", "remaining_hours",
+                                                 "step_hours")},
+                      "mtime": f.stat().st_mtime, "file": f.name, "where": "laptop"})
+    ok = [c for c in cands if c.get("verdict") == "admit" and c.get("stage") in STAGE_ORDER
+          and isinstance(c.get("total_pod_hours"), (int, float))]
+    if not ok:
+        return None
+    return max(ok, key=lambda c: (STAGE_ORDER[c["stage"]], c["mtime"]))
+
+
+def progress_report(recipe: str, data: dict, proj: dict, running: bool,
+                    elapsed_now_h: float | None) -> dict:
+    """The comparison (module docstring, `progress`); pure, for tests."""
+    now, t_p = float(data["now"]), float(proj["mtime"])
+    shares = {k: float(v) * 3600 for k, v in (proj.get("step_hours") or {}).items()
+              if isinstance(v, (int, float))}
+    inv = step_invocations(recipe, data.get("logs") or [])
+    recs = data.get("step_records") or {}
+    latest = inv[-1] if inv else None
+    steps: dict[str, dict] = {}
+    for x in inv:
+        end = now if (running and x is latest) else x["mtime"]
+        actual = max(0.0, end - max(x["start"], t_p))
+        st = steps.setdefault(x["step"], {"actual_s": 0.0, "last_start": x["start"]})
+        st["actual_s"] += actual
+        st["last_start"] = max(st["last_start"], x["start"])
+    for name, st in steps.items():
+        ends = [_epoch(r.get("utc_end") or "") for k, r in recs.items()
+                if k == name or k.startswith(name + "_")]
+        finished = any(e is not None and e >= st["last_start"] for e in ends)
+        st["state"] = ("running" if running and latest and latest["step"] == name
+                       and not finished else "finished" if finished else "ended")
+        st["share_s"] = shares.get(name)
+        st["ratio"] = (st["actual_s"] / st["share_s"]) if st.get("share_s") else None
+    reasons = []
+    for name, st in steps.items():
+        sh = st["share_s"]
+        if sh is None or st["actual_s"] <= 0:
+            continue
+        if st["actual_s"] > OVERRUN_STEP * sh and st["actual_s"] - sh > OVERRUN_MIN_S:
+            reasons.append(f"step {name} ({st['state']}) {st['actual_s'] / 3600:.2f} h > "
+                           f"{OVERRUN_STEP} x its projected {sh / 3600:.2f} h")
+    # extrapolation: the remaining priced steps at the speed seen so far (finished steps'
+    # actual / share; a running step already past its share raises it)
+    done = [st for st in steps.values() if st["state"] != "running" and st.get("share_s")
+            and st["actual_s"] > 0]
+    ratio = (sum(st["actual_s"] for st in done) / sum(st["share_s"] for st in done)
+             if done else 1.0)
+    run = next((st for st in steps.values() if st["state"] == "running" and st.get("share_s")),
+               None)
+    if run is not None:
+        ratio = max(ratio, run["actual_s"] / run["share_s"])
+    remaining = 0.0
+    for name, sh in shares.items():
+        st = steps.get(name)
+        if st is None:
+            remaining += sh * ratio
+        elif st["state"] == "running":
+            remaining += max(0.0, sh * ratio - st["actual_s"])
+    margin_h = float((proj.get("remaining_hours") or {}).get("margin") or 0.0)
+    if elapsed_now_h is None:
+        elapsed_now_h = float(proj.get("elapsed_pod_hours") or 0.0) + (now - t_p) / 3600
+    extrap = elapsed_now_h + remaining / 3600 + margin_h
+    limit = OVERRUN_TOTAL * float(proj["total_pod_hours"])
+    if extrap > limit:
+        reasons.append(f"extrapolated {extrap:.2f} pod-h > {OVERRUN_TOTAL} x projected "
+                       f"{float(proj['total_pod_hours']):.2f} h")
+    status = data.get("status") or {}
+    cur = None
+    for rn, sp in sorted((data.get("steps") or {}).items(), key=lambda kv: -kv[1]["mtime"]):
+        if (status.get(rn) or {}).get("status") not in C.RUN_STATUSES:
+            tr = (data.get("train") or {}).get(rn) or {}
+            cur = {"run": rn, "last_step": sp.get("last_step"),
+                   "steps_planned": tr.get("steps_planned"),
+                   "last_write_age_s": round(now - float(sp["mtime"]), 1)}
+            break
+    return {
+        "overrun": bool(reasons), "reasons": reasons,
+        "projection": {k: proj.get(k) for k in ("file", "where", "stage", "elapsed_pod_hours",
+                                                "total_pod_hours")},
+        "projection_age_h": round((now - t_p) / 3600, 4),
+        "steps": {k: {"state": v["state"], "actual_h": round(v["actual_s"] / 3600, 4),
+                      "share_h": None if v["share_s"] is None else round(v["share_s"] / 3600, 4),
+                      "ratio": None if v["ratio"] is None else round(v["ratio"], 3)}
+                  for k, v in steps.items()},
+        "running_step": latest["step"] if running and latest else None,
+        "speed_ratio": round(ratio, 3), "elapsed_pod_hours": round(elapsed_now_h, 4),
+        "extrapolated_total_pod_hours": round(extrap, 4), "total_limit_pod_hours": round(limit, 4),
+        "current_run": cur,
+        "runs_terminal": sum(1 for v in status.values() if v.get("status") in C.RUN_STATUSES),
+    }
+
+
+def cmd_progress(ctx: Ctx) -> int:
+    cmd = "progress"
+    res = ssh(ctx, cmd, progress_body(ctx))
+    if ctx.dry:
+        return done(ctx, cmd, C.EXIT_OK)
+    data, procs, ok = None, [], False
+    for line in res.out.splitlines():
+        head, _, rest = line.partition(" ")
+        if head == "PROGRESS":
+            try:
+                data = json.loads(rest)
+            except ValueError:
+                data = None
+        elif head == "PROC":
+            procs.append(rest.strip())
+        elif head == "PROGRESS_OK":
+            ok = res.rc == 0
+    if not ok or data is None:
+        return done(ctx, cmd, C.EXIT_FAILED, overrun=None,
+                    reason=f"progress read failed (ssh rc {res.rc}): {res.err.strip()[-300:]}")
+    proj = latest_projection(data.get("projections") or {}, ctx.root, ctx.recipe)
+    if proj is None:
+        return done(ctx, cmd, C.EXIT_FAILED, overrun=None, processes=procs,
+                    reason="no admitted projection to compare with")
+    rep = progress_report(ctx.recipe, data, proj, bool(procs), elapsed_hours(ctx))
+    return done(ctx, cmd, EXIT_OVERRUN if rep["overrun"] else C.EXIT_OK, processes=procs,
+                utc=utc_now(), **rep)
+
+
 def cmd_complete(ctx: Ctx, no_pull: bool) -> int:
     R, cmd = ctx.recipe, "complete"
     st = poll_pod(ctx)
@@ -1416,7 +1659,8 @@ def cmd_complete(ctx: Ctx, no_pull: bool) -> int:
 
 # --- CLI ----------------------------------------------------------------------------------------
 
-COMMANDS = ("poll", "stop", "induction", "admit-hf", "endpoint", "launch", "archive", "complete")
+COMMANDS = ("poll", "stop", "induction", "admit-hf", "endpoint", "launch", "archive", "complete",
+            "progress")
 
 
 class Parser(argparse.ArgumentParser):
@@ -1456,8 +1700,8 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
     if a.slot != C.SLOT:
         print(f"E12 has one pod, slot {C.SLOT} (got {a.slot})", file=sys.stderr)
         return C.EXIT_REFUSED
-    if a.cmd == "launch" and not a.recipe:
-        print("launch needs --recipe", file=sys.stderr)
+    if a.cmd in ("launch", "progress") and not a.recipe:
+        print(f"{a.cmd} needs --recipe", file=sys.stderr)
         return C.EXIT_REFUSED
     if a.cmd == "endpoint" and not a.stage:
         print("endpoint needs --stage repair107|rescue214", file=sys.stderr)
@@ -1472,6 +1716,8 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
     try:
         if a.cmd == "poll":
             return cmd_poll(ctx)
+        if a.cmd == "progress":
+            return cmd_progress(ctx)
         if a.cmd == "stop":
             return cmd_stop(ctx)
         if a.cmd == "induction":

@@ -26,8 +26,14 @@ Every step: finite loss and grad norm and > 0 unmasked tokens are checked BEFORE
 on a failure `NonFiniteStep` is raised and the adapter is untouched. Per-step records are appended
 (fsynced) to `contracts.train_steps(recipe, run)`; held-out loss every `HELDOUT_EVERY` steps and
 at the end; saves at `spec.saves` (adapter files under `contracts.adapter_files_dir`, ckpt.json
-under `contracts.ckpt_dir`, resume state under `contracts.opt_dir`); resume points also every
-`RESUME_EVERY` steps.
+under `contracts.ckpt_dir`); resume points (resume state under `contracts.opt_dir`) at step 0 and
+every `RESUME_EVERY` steps before the last (plus `spec.resume_steps`), NOT at every save: a
+rank-32 resume point (adapter + 8-bit optimizer state + RNG) cost minutes per save on the second
+TAN32 pod (post-mortem, 2026-10-09). A checkpoint saved without a resume point records
+`optimizer_state_sha256: null`. The distance from the parent/init is computed on the model's
+device from the in-memory LoRA tensors against a reference copy loaded once per run. Every
+ckpt.json carries per-phase wall-clock seconds (`timing`) and every summary per-run totals
+(`timing`, this process only).
 
 torch, transformers, peft and bitsandbytes are imported lazily inside functions.
 """
@@ -100,6 +106,7 @@ class SegmentSpec:
     continuity: dict | None = None  # data.continuity_item(...)
     gradient_checkpointing: bool = False
     endpoint: int | None = None  # the repair endpoint this run belongs to (status records)
+    resume_steps: tuple[int, ...] = ()  # extra resume points (the smoke bench times one)
 
 
 # --- small helpers ------------------------------------------------------------------------------
@@ -298,6 +305,10 @@ def adapter_distance(a_dir: str | Path, b_dir: str | Path) -> dict:
         ref_max = max(ref_max, float(ref.abs().max()))
         d2 += float((delta**2).sum())
         r2 += float((ref**2).sum())
+    return _distance_record(max_abs, ref_max, d2, r2)
+
+
+def _distance_record(max_abs: float, ref_max: float, d2: float, r2: float) -> dict:
     roundoff = C.BF16_EPS * ref_max
     return {
         "max_abs": max_abs,
@@ -305,6 +316,44 @@ def adapter_distance(a_dir: str | Path, b_dir: str | Path) -> dict:
         "bf16_roundoff": roundoff,
         "differs": max_abs > roundoff,
     }
+
+
+def _lora_state(model) -> dict:
+    """The adapter's tensors exactly as `save_pretrained` writes them (same keys)."""
+    from peft import get_peft_model_state_dict
+
+    return get_peft_model_state_dict(model)
+
+
+def load_reference(ref_dir: str | Path, device) -> dict:
+    """A distance reference (adapter_model.safetensors under `ref_dir`) as fp32 tensors on
+    `device`, loaded once per run."""
+    return {k: v.to(device).float() for k, v in _load_adapter_tensors(ref_dir).items()}
+
+
+def adapter_distance_mem(model, ref: dict) -> dict:
+    """`adapter_distance` of the in-memory adapter against `ref` (`load_reference`), computed on
+    the tensors' device with one host sync; same fields, same values up to float rounding."""
+    import torch
+
+    cur = _lora_state(model)
+    if set(cur) != set(ref):
+        raise ValueError(f"adapter tensors differ: {sorted(set(cur) ^ set(ref))[:4]}")
+    if not ref:
+        return _distance_record(0.0, 0.0, 0.0, 0.0)
+    max_abs, ref_max, d2, r2 = [], [], [], []
+    with torch.no_grad():
+        for k in sorted(ref):
+            r = ref[k]
+            delta = cur[k].detach().to(r.device).float() - r
+            max_abs.append(delta.abs().max())
+            ref_max.append(r.abs().max())
+            d2.append((delta.double() ** 2).sum())
+            r2.append((r.double() ** 2).sum())
+        vals = torch.stack([torch.stack(max_abs).max().double(),
+                            torch.stack(ref_max).max().double(),
+                            torch.stack(d2).sum(), torch.stack(r2).sum()]).tolist()
+    return _distance_record(*vals)
 
 
 def read_ckpt(recipe: str, key: str, root: str | Path = C.REPO_ROOT) -> dict:
@@ -519,13 +568,32 @@ def _latest_resume(opt_root: Path) -> tuple[dict, Path]:
 
 
 def _save_ckpt(root: Path, spec: SegmentSpec, model, k: int, key: str, plan: _Plan,
-               opt_sha: str, ref_dir: Path, ref_label: str, opt_name: str) -> dict:
-    """Adapter files under `adapter_files_dir`, then ckpt.json (written last)."""
+               opt_sha: str | None, ref: dict, ref_label: str, opt_name: str,
+               cont: list[float] | None = None, resume_point_s: float | None = None) -> dict:
+    """Adapter files under `adapter_files_dir`, then ckpt.json (written last). `ref` is the
+    run's distance reference (`load_reference`); `cont` the continuity log-probs when already
+    computed at this step; `opt_sha` None when no resume point was written at this step.
+    `timing`: per-phase wall-clock seconds (plus `resume_point_s` when one was written)."""
     r = spec.recipe
     adapter_dir = C.adapter_files_dir(r.name, key)
     adir = _resolve(root, adapter_dir)
     adir.mkdir(parents=True, exist_ok=True)
+    timing = {}
+    t = time.perf_counter()
     model.save_pretrained(str(adir))
+    timing["save_adapter_s"] = time.perf_counter() - t
+    t = time.perf_counter()
+    shas = adapter_file_sha256(adir)
+    timing["hash_s"] = time.perf_counter() - t
+    t = time.perf_counter()
+    distance = adapter_distance_mem(model, ref)
+    timing["distance_s"] = time.perf_counter() - t
+    t = time.perf_counter()
+    if cont is None and spec.continuity is not None:
+        cont = continuity_logprobs(model, spec.continuity)
+    timing["continuity_s"] = time.perf_counter() - t
+    if resume_point_s is not None:
+        timing["resume_point_s"] = resume_point_s
     n_used = k * r.effective_batch
     rec = {
         "key": key, "parent_key": spec.parent_key, "run": spec.run, "segment": spec.segment,
@@ -533,15 +601,14 @@ def _save_ckpt(root: Path, spec: SegmentSpec, model, k: int, key: str, plan: _Pl
         "local_step": k, "cumulative_step": spec.step_offset + k,
         "data_ids_sha256": plan.data_ids_sha256,
         "data_ids_through_step_sha256": _ids_sha256(plan.ids[:n_used]), "n_rows_used": n_used,
-        "adapter_files": adapter_file_sha256(adir), "optimizer_state_sha256": opt_sha,
-        "continuity_logprobs": (continuity_logprobs(model, spec.continuity)
-                                if spec.continuity is not None else None),
+        "adapter_files": shas, "optimizer_state_sha256": opt_sha,
+        "continuity_logprobs": cont,
         "continuity_item_sha256": (_json_sha256(spec.continuity)
                                    if spec.continuity is not None else None),
-        "distance": adapter_distance(adir, ref_dir), "distance_ref": ref_label,
+        "distance": distance, "distance_ref": ref_label,
         "adapter_dir": adapter_dir, "optimizer": opt_name, "lr": spec.lr,
         "schedule": spec.schedule, "order_seed": spec.order_seed, "init_seed": spec.init_seed,
-        "attn": "eager", "utc": _utc(),
+        "attn": "eager", "timing": timing, "utc": _utc(),
     }
     write_json(root / C.ckpt_dir(r.name, key) / "ckpt.json", rec)
     return rec
@@ -619,6 +686,19 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
     base_meta = _identity(spec, plan.data_ids_sha256)
     model = None
     gc_on = False
+    # per-run wall-clock totals (this process): optimizer steps, ckpt saves (incl. ckpt.json),
+    # held-out passes, probe passes, resume points (each also listed with its step)
+    tm: dict = {"train_s": 0.0, "save_s": 0.0, "heldout_s": 0.0, "probe_s": 0.0,
+                "resume_s": 0.0, "n_saves": 0, "n_heldout": 0, "n_probe": 0,
+                "resume_points": []}
+
+    def probe_pass() -> float:
+        t = time.perf_counter()
+        out = _heldout_examples(model, probe_ex, r.per_device_batch)
+        tm["probe_s"] += time.perf_counter() - t
+        tm["n_probe"] += 1
+        return out
+
     try:
         if mode == "start":
             if resume_point(spec, root) is not None:
@@ -636,8 +716,7 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
                 ref_label = f"parent:{spec.parent_key}"
             _set_aside_steps(steps_path, 0)
             k0, heldout, resumed_from = 0, [], None
-            probe_before = (_heldout_examples(model, probe_ex, r.per_device_batch)
-                            if probe_ex else None)
+            probe_before = probe_pass() if probe_ex else None
         else:
             meta, rdir = _latest_resume(opt_root)
             for f, v in base_meta.items():
@@ -663,6 +742,7 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
             gc_on = True
         model.train()
         dev = next(model.parameters()).device
+        ref = load_reference(ref_dir, dev)  # the distance reference, once per run
         params = [p for p in model.parameters() if p.requires_grad]
         opt = make_optimizer(opt_name, params,
                              SimpleNamespace(lr=spec.lr, weight_decay=r.weight_decay))
@@ -675,17 +755,32 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
         if mode == "start" and opt_entries_at_start != 0:
             raise AssertionError("a new segment's optimizer state is not empty")
 
-        def meta_now(k: int) -> dict:
-            cont = (continuity_logprobs(model, spec.continuity)
-                    if spec.continuity is not None else None)
+        def meta_now(k: int, cont: list[float] | None = None) -> dict:
+            if cont is None and spec.continuity is not None:
+                cont = continuity_logprobs(model, spec.continuity)
             return {**base_meta, "heldout": heldout, "probe_loss_before": probe_before,
                     "distance_ref": ref_label, "continuity_logprobs": cont,
                     "attempt": attempt, "attempt_reasons": list(reasons),
                     "continuity_item_sha256": (_json_sha256(spec.continuity)
                                                if spec.continuity is not None else None)}
 
+        def resume_now(k: int, cont: list[float] | None = None) -> tuple[str, float]:
+            t = time.perf_counter()
+            sha = _save_resume(opt_root, k, model, opt, meta_now(k, cont))
+            dt_s = time.perf_counter() - t
+            tm["resume_s"] += dt_s
+            tm["resume_points"].append({"step": k, "s": dt_s})
+            return sha, dt_s
+
+        def ckpt_now(k: int, opt_sha: str | None, cont=None, rp_s: float | None = None) -> None:
+            t = time.perf_counter()
+            _save_ckpt(root, spec, model, k, spec.saves[k], plan, opt_sha, ref, ref_label,
+                       opt_name, cont, rp_s)
+            tm["save_s"] += time.perf_counter() - t
+            tm["n_saves"] += 1
+
         if mode == "start":
-            _save_resume(opt_root, 0, model, opt, meta_now(0))
+            resume_now(0)
         saves_done = {s: key for s, key in spec.saves.items() if s <= k0}
         if mode == "resume" and k0 in spec.saves:  # killed between the resume point and ckpt.json
             key = spec.saves[k0]
@@ -694,8 +789,7 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
             except FileNotFoundError:
                 ck = {}
             if ck.get("run") != spec.run or ck.get("local_step") != k0:
-                _save_ckpt(root, spec, model, k0, key, plan, meta["optimizer_state_sha256"],
-                           ref_dir, ref_label, opt_name)
+                ckpt_now(k0, meta["optimizer_state_sha256"])
         summary = {
             "run": spec.run, "recipe": r.name, "mode": mode, "segment": spec.segment,
             "arm": spec.arm, "parent_key": spec.parent_key, "seed": spec.seed,
@@ -740,31 +834,40 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
                        "grad_norm": gn, "lr": lr, "n_tokens": sum(len(i) for i, _ in flat),
                        "n_loss_tokens": n_win, "seconds": time.perf_counter() - t0,
                        "mode": mode}
+                tm["train_s"] += rec["seconds"]
                 if heldout_ex and (step % C.HELDOUT_EVERY == 0 or step == spec.steps):
+                    t = time.perf_counter()
                     rec["heldout_loss"] = _heldout_examples(model, heldout_ex,
                                                             r.per_device_batch)
+                    tm["heldout_s"] += time.perf_counter() - t
+                    tm["n_heldout"] += 1
                     heldout.append({"step": step, "loss": rec["heldout_loss"]})
                 _append_jsonl(steps_path, rec)
-                if step in spec.saves or step % C.RESUME_EVERY == 0:
-                    opt_sha = _save_resume(opt_root, step, model, opt, meta_now(step))
+                # resume points: every RESUME_EVERY steps (and spec.resume_steps) before the
+                # last; none at ordinary saves, none at the final step (its ckpt.json and status
+                # complete the run)
+                resume_due = step < spec.steps and (step % C.RESUME_EVERY == 0
+                                                    or step in spec.resume_steps)
+                if resume_due or step in spec.saves:
+                    cont = (continuity_logprobs(model, spec.continuity)
+                            if spec.continuity is not None else None)
+                    opt_sha, rp_s = resume_now(step, cont) if resume_due else (None, None)
                     if step in spec.saves:
-                        _save_ckpt(root, spec, model, step, spec.saves[step], plan, opt_sha,
-                                   ref_dir, ref_label, opt_name)
+                        ckpt_now(step, opt_sha, cont, rp_s)
                         saves_done[step] = spec.saves[step]
         except NonFiniteStep as e:
             write_json(summary_path, {
                 **summary, "steps_done": k, "saves": saves_done, "heldout": heldout,
-                "probe_loss_after": None, "status": "nonfinite",
+                "probe_loss_after": None, "status": "nonfinite", "timing": tm,
                 "failure": {"step": e.step, "loss": e.loss, "grad_norm": e.grad_norm,
                             "n_loss_tokens": e.n_loss_tokens},
                 "utc_end": _utc(),
             })
             raise
-        probe_after = (_heldout_examples(model, probe_ex, r.per_device_batch)
-                       if probe_ex else None)
+        probe_after = probe_pass() if probe_ex else None
         summary.update({
             "steps_done": spec.steps, "saves": dict(spec.saves), "heldout": heldout,
-            "probe_loss_after": probe_after, "status": "ok", "utc_end": _utc(),
+            "probe_loss_after": probe_after, "status": "ok", "timing": tm, "utc_end": _utc(),
         })
         write_json(summary_path, summary)
         return summary
@@ -793,6 +896,27 @@ def resume_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = 
     return _train(base_model, tokenizer, spec, Path(root), "resume")
 
 
+def _completed_summary(spec: SegmentSpec, root: Path, status: dict | None) -> dict | None:
+    """The summary of `spec.run` if it already finished under this spec (status ok or
+    restarted_ok, summary ok with every step of this data order, final ckpt.json from this run
+    at the final step), else None. The final step has no resume point (only ckpt.json and the
+    status mark the end), so this, not a resume point, keeps a re-invoked finished run a no-op."""
+    if not status or status.get("status") not in ("ok", "restarted_ok"):
+        return None
+    r = spec.recipe
+    try:
+        summ = json.loads((root / C.train_summary(r.name, spec.run)).read_text())
+        ck = read_ckpt(r.name, spec.saves[spec.steps], root)
+    except (OSError, ValueError):
+        return None
+    if (summ.get("status") not in ("ok", "restarted_ok") or summ.get("run") != spec.run
+            or summ.get("steps_done") != spec.steps
+            or summ.get("data_ids_sha256") != _identity(spec)["data_ids_sha256"]
+            or ck.get("run") != spec.run or ck.get("local_step") != spec.steps):
+        return None
+    return summ
+
+
 def run_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = C.REPO_ROOT
                 ) -> dict:
     """Train `spec.run` to completion, resuming where an earlier process left off (review r1
@@ -802,6 +926,8 @@ def run_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = C.R
 
     - A run whose status record is `failed` is never retrained: its summary (or a minimal record)
       is returned with that status and nothing is trained or written.
+    - A run that already finished under this spec (`_completed_summary`) returns its summary;
+      nothing is trained or written.
     - A run with a complete resume point of this spec (`resume_point`) and no terminal failure
       resumes from it (optimizer state kept), with the attempt count and reasons stored in that
       resume point: a controller relaunch or an OOM re-exec neither restarts training nor resets
@@ -833,6 +959,9 @@ def run_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = C.R
         return {**out, "status": "failed", "attempts": old.get("attempts"),
                 "reason": old.get("reason"), "not_retrained": True}
 
+    done = _completed_summary(spec, root, old)
+    if done is not None:  # no final resume point any more: a finished run is never retrained
+        return done
     point = resume_point(spec, root)
     if point is not None:
         mode = "resume"

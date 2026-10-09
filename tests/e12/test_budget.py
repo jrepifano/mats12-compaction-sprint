@@ -365,6 +365,12 @@ def test_retention_receipt_drops_the_upload_hours(tmp_path):
           "api_spent_usd": 0.0, "root": root}
     assert B.project(R, "smoke", **kw)["remaining_hours"]["upload"] == B.UPLOAD_H[R]
     (root / C.retention_receipt_path(R)).write_text("{}")
+    # an incremental receipt while training remains: the final upload is still priced
+    assert B.project(R, "smoke", **kw)["remaining_hours"]["upload"] == B.UPLOAD_H[R]
+    for _, run in B.training_runs():
+        st = root / C.status_path(R, run)
+        st.parent.mkdir(parents=True, exist_ok=True)
+        st.write_text(json.dumps({"status": "ok"}))
     assert B.project(R, "smoke", **kw)["remaining_hours"]["upload"] == 0.0
     with pytest.raises(ValueError, match="projection stage"):
         B.project(R, "nope", **kw)
@@ -461,3 +467,54 @@ def test_cli_gpu_spent_defaults_to_the_ledger(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out.strip().splitlines()[-1])[
         "recorded_gpu_usd"] == 1.5
     assert B.recorded_gpu_usd(tmp_path / "no_ledger") == 0.0
+
+
+# --- Amendment D': per-run phases priced from the bench -----------------------------------------
+
+
+def test_run_cost_prices_saves_resume_points_heldout_probe_and_load():
+    rates = {"poison_s_per_step": 2.0, "short_s_per_step": 1.0, "save_s": 10.0,
+             "resume_point_s": 20.0, "heldout_s": 5.0, "run_load_s": 3.0}
+    rep = B.run_cost("tan32", "repair", 0, rates)  # 107 steps, 5 saves, resume at 0 and 100
+    assert rep["steps"] == 107 * 2.0 and rep["saves"] == 5 * 10.0
+    assert rep["resume_points"] == 2 * 20.0 and rep["heldout"] == 3 * 5.0  # 50, 100, 107
+    assert rep["probe"] == 0 and rep["load"] == 3.0
+    assert rep["total"] == pytest.approx(sum(rep[k] for k in B.RUN_COST_PARTS))
+    nud = B.run_cost("tan32", "nudge", 0, rates)  # 40 steps, 4 doses, resume at 0, held out at 40
+    assert (nud["steps"], nud["saves"], nud["resume_points"], nud["heldout"], nud["probe"]) == (
+        40.0, 40.0, 20.0, 5.0, 10.0)
+    part = B.run_cost("tan32", "repair", 60, rates)  # saves 75, 107; resume 100; held 100, 107
+    assert (part["steps"], part["saves"], part["resume_points"], part["heldout"]) == (
+        47 * 2.0, 20.0, 20.0, 10.0)
+    poi = B.run_cost("tan32", "poison", 0, rates)  # 388 steps: resume 0,100,200,300
+    assert poi["resume_points"] == 4 * 20.0 and poi["saves"] == 10.0
+    assert B.run_step("poison", "poison_s1") == "poison-s1"
+    assert B.run_step("poison", "poison_s2") == "poison" and B.run_step("nudge", "x") == "nudge"
+
+
+def test_measured_save_timings_drive_the_training_hours(tmp_path):
+    root = bench_root(tmp_path / "a", recipe="tan32")
+    rates = B.load_rates("tan32", root)
+    src = rates["rates_source"]
+    assert (rates["save_s"], rates["resume_point_s"], rates["heldout_s"]) == (1.5, 2.5, 2.0)
+    assert src["save_s"] == "measured:bench/train_bench.json" and src["run_load_s"] == "fallback"
+    kw = {"gen_path": "vllm", "endpoint": None, "cuts": (), "elapsed_pod_hours": 0.0,
+          "gpu_rate": 3.49, "api_spent_usd": 0.0}
+    fast = B.project("tan32", "rank32", root=root, **kw)
+    slow_root = bench_root(tmp_path / "b", recipe="tan32")
+    p = slow_root / C.bench_path("tan32", "train_bench")
+    p.write_text(json.dumps({**json.loads(p.read_text()), "save_s_mean": 181.5}))
+    slow = B.project("tan32", "rank32", root=slow_root, **kw)
+    n_saves = 3 * 1 + 9 * 5 + 9 * 1 + 24 * 4  # poison, repair, rescue, nudge
+    assert slow["remaining_hours"]["train"] - fast["remaining_hours"]["train"] == pytest.approx(
+        n_saves * 180.0 / 3600, abs=1e-3)
+    assert slow["train_by_part_hours"]["saves"] == pytest.approx(n_saves * 181.5 / 3600,
+                                                                 abs=1e-3)
+    sh = fast["step_hours"]
+    assert {"poison-s1", "poison", "repair", "rescue", "nudge", "eval-poison",
+            "upload"} <= set(sh)
+    train_steps = ("poison-s1", "poison", "repair", "rescue", "nudge")
+    assert sum(sh[k] for k in train_steps) == pytest.approx(fast["remaining_hours"]["train"],
+                                                            abs=1e-3)
+    assert sum(sh.values()) == pytest.approx(
+        sum(v for k, v in fast["remaining_hours"].items() if k != "margin"), abs=2e-3)

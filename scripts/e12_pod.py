@@ -12,8 +12,12 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
     download        base snapshot (HF cache); data, question files and EQ0 base answers verified
                     against the pre-run manifest (`data.verify_prerun_manifest`) -> bench/download.json
     smoke           three parts (one process each):
-                    hf    (peft)  20 eager training steps on the seed-1 poison order in a scratch tree
-                                  (bench/_scratch, saving 3 small adapters) -> bench/train_bench.json;
+                    hf    (peft)  a ~1 GB fsynced write/read on the scratch and results volumes;
+                                  20 eager training steps on the seed-1 poison order in a scratch tree
+                                  (bench/_scratch, saving 10 adapters, one mid-run resume point)
+                                  -> bench/train_bench.json (step, save, resume-point, held-out and
+                                  disk timings); refuses (exit 2) when a mean save > SAVE_S_MAX
+                                  (45 s) or a volume writes < DISK_WRITE_MB_S_MIN (200 MB/s);
                                   64 HF-decoded base answers -> bench/hf_bench.json
                     vllm  (vllm)  EQ0's base smoke (8 general questions; non-empty, <|im_end|> stops)
                                   -> bench/base_smoke.json; the 3 scratch adapters x 160 answers with
@@ -35,7 +39,10 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
     nudge           24 runs (contracts.nudge_parents), doses 5/10/20/40  } genpath, endpoint)
     eval-endpoints / eval-traj / eval-nudge / eval-cue-task
     upload          private HF repo jrepifano/e12-<recipe>-adapters: every existing checkpoint's
-                    adapter files + ckpt.json -> bench/retention_receipt.json (idempotent)
+                    adapter files + ckpt.json -> bench/retention_receipt.json (idempotent); rank > 1
+                    recipes also upload incrementally at the end of every training step
+                    (`retain_step`: that step's new checkpoints, receipt refreshed,
+                    bench/retention_<step>.json; a failure is recorded, never fatal)
     manifest        the closing manifest
     recovery        not a step: only MANIFEST.recovery.sha256
 
@@ -756,7 +763,9 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
 
 def train_step(ctx: Ctx, items: list[RunItem]) -> int:
     """`train_runs`, with EQ0's CUDA-OOM retry: the step re-execs itself once in a fresh process
-    with --gradient-checkpointing --after-oom (which refuses a second retry)."""
+    with --gradient-checkpointing --after-oom (which refuses a second retry). However the step
+    ends (done, failed, STOP), a rank > 1 recipe then uploads the step's new checkpoints
+    (`retain_step`, Amendment D')."""
     a = ctx.args
     if a.after_oom and not a.gradient_checkpointing:
         raise Refused("--after-oom is the gradient-checkpointing retry")
@@ -780,6 +789,8 @@ def train_step(ctx: Ctx, items: list[RunItem]) -> int:
         sys.stderr.flush()
         _execv(sys.executable, argv)
         return C.EXIT_FAILED  # only reached when the exec hook returns (tests)
+    finally:  # rank > 1: this step's checkpoints to the private HF repo now (never fatal)
+        retain_step(ctx, items)
 
 
 def step_poison_s1(ctx: Ctx) -> int:
@@ -908,6 +919,69 @@ def _peak_memory() -> int | None:
         return None
 
 
+def disk_throughput(d: Path, mb: int | None = None) -> dict:
+    """Write `mb` MiB to a temp file under `d` (8 MiB chunks, fsync), drop it from the page cache
+    where the OS allows (posix_fadvise), read it back, remove it: {path, mb, write_mb_s,
+    read_mb_s}. The checkpoint volumes of the first TAN32 pod were ~10x slow (post-mortem)."""
+    mb = C.DISK_TEST_MB if mb is None else mb
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f".e12_disk_test_{os.getpid()}.bin"
+    chunk = os.urandom(8 << 20)
+    n = max(1, mb // 8)
+    try:
+        t = time.perf_counter()
+        with open(f, "wb") as fh:
+            fh.writelines(chunk for _ in range(n))
+            fh.flush()
+            os.fsync(fh.fileno())
+        w = time.perf_counter() - t
+        with open(f, "rb") as fh:
+            if hasattr(os, "posix_fadvise"):
+                os.posix_fadvise(fh.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+            t = time.perf_counter()
+            while fh.read(8 << 20):
+                pass
+            rd = time.perf_counter() - t
+    finally:
+        f.unlink(missing_ok=True)
+    size = n * 8
+    return {"path": str(d), "mb": size, "write_mb_s": size / w if w > 0 else float("inf"),
+            "read_mb_s": size / rd if rd > 0 else float("inf")}
+
+
+def disk_bench(ctx: Ctx) -> dict:
+    """`disk_throughput` on the checkpoint volumes (the scratch dir, where rank > 1 adapters and
+    resume points go, and the results tree); the slower of the two is the record's number."""
+    vols = {"scratch": ctx.scratch, "results": ctx.root / C.rdir(ctx.recipe_name) / "bench"}
+    per = {k: disk_throughput(v) for k, v in vols.items()}
+    return {"disk_write_mb_s": min(v["write_mb_s"] for v in per.values()),
+            "disk_read_mb_s": min(v["read_mb_s"] for v in per.values()), "disk": per}
+
+
+def bench_timing(summary: dict) -> dict:
+    """save_s_mean, resume_point_s, heldout_s from the bench run's summary `timing`
+    (trainer): the mean full save, the mid-run resume point (else step 0's), one held-out pass."""
+    tm = summary.get("timing")
+    if not isinstance(tm, dict) or not all(tm.get(k) for k in ("n_saves", "n_heldout",
+                                                                 "resume_points")):
+        raise RuntimeError(f"train bench timed no save, held-out pass or resume point: {tm}")
+    points = tm["resume_points"]
+    mid = [p["s"] for p in points if p["step"] > 0] or [points[0]["s"]]
+    return {"save_s_mean": tm["save_s"] / tm["n_saves"], "resume_point_s": max(mid),
+            "heldout_s": tm["heldout_s"] / tm["n_heldout"]}
+
+
+def bench_refusals(rec: dict) -> list[str]:
+    """Why the smoke step must refuse (Amendment D'): a slow full save or a slow volume."""
+    out = []
+    if "save_s_mean" in rec and rec["save_s_mean"] > C.SAVE_S_MAX:
+        out.append(f"mean checkpoint save {rec['save_s_mean']:.1f} s > {C.SAVE_S_MAX:.0f} s")
+    if rec["disk_write_mb_s"] < C.DISK_WRITE_MB_S_MIN:
+        out.append(f"disk write {rec['disk_write_mb_s']:.0f} MB/s < "
+                   f"{C.DISK_WRITE_MB_S_MIN:.0f} MB/s ({rec.get('disk')})")
+    return out
+
+
 def train_bench_record(ctx: Ctx, steps: list[dict], row_ids: list[str]) -> dict:
     """train_bench from the step log: the first (warm-up) step excluded from the timings."""
     timed = steps[1:] or steps
@@ -928,14 +1002,26 @@ def smoke_hf(ctx: Ctx) -> int:
     then 64 HF-decoded base answers."""
     r = ctx.recipe_name
     broot = bench_root(ctx)
+    disk = disk_bench(ctx)  # first: a slow volume refuses before the 10 timed saves
+    log(f"smoke hf: disk write {disk['disk_write_mb_s']:.0f} MB/s, read "
+        f"{disk['disk_read_mb_s']:.0f} MB/s ({disk['disk']})")
+    if bench_refusals(disk):
+        write_json(ctx.root / C.bench_path(r, "disk_bench"), {**disk, "utc": G.utc()})
+        raise BudgetRefused("smoke hf: " + "; ".join(bench_refusals(disk)))
     item = RunItem("poison", "P", 1, None, dict(BENCH_SAVES), gating=True)
     rows = Rows(ctx)
     model, tok = trainer.load_base_eager("cuda")
     spec = build_spec(ctx, item, rows, tok)
     spec.steps = C.TRAIN_BENCH_STEPS
+    spec.resume_steps = (C.TRAIN_BENCH_STEPS // 2,)  # one timed mid-run resume point
+    for rel in (C.status_path(r, item.run), C.train_summary(r, item.run)):
+        (broot / rel).unlink(missing_ok=True)  # a re-run benchmarks again (never a no-op)
+    if trainer.resume_point(spec, broot) is not None:  # the bench's own earlier point
+        shutil.rmtree(trainer._resolve(broot, C.opt_dir(r, item.run)), ignore_errors=True)
     t0 = time.perf_counter()
     summary = trainer.run_segment(model, tok, spec, root=broot)
-    log(f"smoke hf: train bench {C.TRAIN_BENCH_STEPS} steps in {time.perf_counter() - t0:.1f}s "
+    wall = time.perf_counter() - t0
+    log(f"smoke hf: train bench {C.TRAIN_BENCH_STEPS} steps in {wall:.1f}s "
         f"status {summary.get('status')}")
     if summary.get("status") not in OK_STATUSES:
         raise RuntimeError(f"train bench run {summary.get('status')}: {summary}")
@@ -943,7 +1029,14 @@ def smoke_hf(ctx: Ctx) -> int:
              if ln.strip()]
     ids = _bench_row_ids(spec.rows, spec.order_seed, ctx.recipe,
                          C.TRAIN_BENCH_STEPS * ctx.recipe.effective_batch)
-    write_bench(ctx, "train_bench", train_bench_record(ctx, steps, ids))
+    rec = {**train_bench_record(ctx, steps, ids), **bench_timing(summary), "wall_s": wall,
+           **disk}
+    rec["refused"] = bench_refusals(rec) or None
+    write_bench(ctx, "train_bench", rec)
+    log(f"smoke hf: save {rec['save_s_mean']:.1f} s, resume point {rec['resume_point_s']:.1f} s,"
+        f" held-out pass {rec['heldout_s']:.1f} s")
+    if rec["refused"]:
+        raise BudgetRefused("smoke hf: " + "; ".join(rec["refused"]))
     inp = Inputs(ctx)
     reqs = inp.requests(C.Job("full", C.BASE_KEY, C.KIND_ROWS["full"]))[: C.HF_BENCH_ANSWERS]
     t0 = time.perf_counter()
@@ -1608,13 +1701,24 @@ def _hf_api():
     return HfApi(token=os.environ.get("HF_TOKEN")), CommitOperationAdd
 
 
-def checkpoint_files(ctx: Ctx) -> dict[str, dict]:
-    """{key: {"dir", "ckpt_json", "files": {name: sha256}}} for every checkpoint with a ckpt.json;
-    Refused if an adapter file is missing or differs from the sha256 its ckpt.json records."""
+def checkpoint_files(ctx: Ctx, keys=None, problems: list[str] | None = None
+                     ) -> dict[str, dict]:
+    """{key: {"dir", "ckpt_json", "files": {name: sha256}}} for every checkpoint with a ckpt.json
+    (only `keys` when given); Refused if an adapter file is missing or differs from the sha256
+    its ckpt.json records, or, with a `problems` list, that checkpoint is left out and the
+    reason appended (the incremental upload)."""
     r = ctx.recipe_name
     out = {}
     for cj in sorted((ctx.root / C.rdir(r) / "ckpt").glob("*/ckpt.json")):
         key = cj.parent.name
+        if keys is not None and key not in keys:
+            continue
+        if problems is not None:
+            try:
+                out.update(checkpoint_files(ctx, {key}))
+            except Refused as e:
+                problems.append(str(e))
+            continue
         C.parse_key(key)
         ck = read_json(cj)
         want = next((ck[f] for f in CKPT_SHA_FIELDS if isinstance(ck.get(f), dict)), None)
@@ -1640,19 +1744,12 @@ def assert_private(api, repo: str) -> None:
         raise Refused(f"{repo} is not private (model_info.private={getattr(info, 'private', None)})")
 
 
-def step_upload(ctx: Ctx) -> int:
+def upload_checkpoints(ctx: Ctx, ckpts: dict[str, dict], old: dict, files: dict) -> dict:
+    """Upload the `ckpts` (`checkpoint_files`) the receipt `old` does not already hold to the
+    private HF repo (create_repo private, privacy asserted before and after) and write the
+    retention receipt listing `files`. Returns the receipt."""
     r = ctx.recipe_name
-    ckpts = checkpoint_files(ctx)
-    files = {f"{k}/{n}": sha for k, v in ckpts.items() for n, sha in v["files"].items()}
     repo = hf_repo_id(r)
-    rp = ctx.root / C.retention_receipt_path(r)
-    old = read_json(rp) if rp.is_file() else {}
-    if ctx.dry:
-        print(f"upload: {len(ckpts)} checkpoints ({len(files)} files) -> {repo} (private)")
-        return C.EXIT_OK
-    if old.get("method") == "hf" and old.get("files") == files and manifest_verifies(ctx, "upload"):
-        log(f"upload: receipt already covers {len(ckpts)} checkpoints in {repo}")
-        return C.EXIT_OK
     commit = old.get("commit_sha") if old.get("method") == "hf" else None
     if ckpts:
         if not os.environ.get("HF_TOKEN"):
@@ -1674,11 +1771,70 @@ def step_upload(ctx: Ctx) -> int:
             commit = getattr(info, "oid", None) or getattr(info, "commit_id", None) or str(info)
             log(f"upload: {len(ops)} files to {repo} at {commit}")
         assert_private(api, repo)
-    write_bench(ctx, "retention_receipt", {
-        "recipe": r, "method": "hf", "location": repo, "commit_sha": commit, "private": True,
-        "files": files, "n_checkpoints": len(ckpts), "utc": G.utc()})
+    rec = {"recipe": r, "method": "hf", "location": repo, "commit_sha": commit, "private": True,
+           "files": files, "n_checkpoints": len({f.split("/", 1)[0] for f in files}),
+           "utc": G.utc()}
+    write_bench(ctx, "retention_receipt", rec)
+    return rec
+
+
+def step_upload(ctx: Ctx) -> int:
+    r = ctx.recipe_name
+    ckpts = checkpoint_files(ctx)
+    files = {f"{k}/{n}": sha for k, v in ckpts.items() for n, sha in v["files"].items()}
+    repo = hf_repo_id(r)
+    rp = ctx.root / C.retention_receipt_path(r)
+    old = read_json(rp) if rp.is_file() else {}
+    if ctx.dry:
+        print(f"upload: {len(ckpts)} checkpoints ({len(files)} files) -> {repo} (private)")
+        return C.EXIT_OK
+    if old.get("method") == "hf" and old.get("files") == files and manifest_verifies(ctx, "upload"):
+        log(f"upload: receipt already covers {len(ckpts)} checkpoints in {repo}")
+        return C.EXIT_OK
+    upload_checkpoints(ctx, ckpts, old, files)
     write_step_manifest(ctx, "upload", [C.retention_receipt_path(r)])
     return C.EXIT_OK
+
+
+def retain_step(ctx: Ctx, items: list[RunItem]) -> dict | None:
+    """Amendment D' (post-mortem: rank-32 checkpoints lived on pod scratch until the chain's
+    final upload, and most were lost at the GPU stop): at the end of a training step of a
+    rank > 1 recipe, upload that step's checkpoints the receipt does not yet hold (the upload
+    step's helpers: private repo, privacy asserted, incremental) and refresh the receipt with
+    them added. Never fails the step: the outcome (or the error) is logged and recorded in
+    bench/retention_<step>.json. The `upload` step still runs at the chain's end (and writes
+    the upload manifest); `retained` is judged against every checkpoint, so a partial receipt
+    never declares retention."""
+    if ctx.dry or ctx.recipe.rank <= 1:
+        return None
+    r = ctx.recipe_name
+    keys = {k for it in items for k in it.saves.values()}
+    rec = {"step": ctx.step, "recipe": r, "ok": False, "keys": [], "n_new_files": 0,
+           "commit_sha": None, "problems": [], "error": None}
+    try:
+        ckpts = checkpoint_files(ctx, keys, rec["problems"])
+        rp = ctx.root / C.retention_receipt_path(r)
+        old = read_json(rp) if rp.is_file() else {}
+        held = (old.get("files") or {}) if old.get("method") == "hf" else {}
+        new = {f"{k}/{n}": sha for k, v in ckpts.items() for n, sha in v["files"].items()}
+        rec["keys"] = sorted(ckpts)
+        rec["n_new_files"] = sum(1 for f, sha in new.items() if held.get(f) != sha)
+        if rec["n_new_files"]:
+            receipt = upload_checkpoints(ctx, ckpts, old, {**held, **new})
+            rec["commit_sha"] = receipt["commit_sha"]
+        else:
+            rec["commit_sha"] = old.get("commit_sha")
+        rec["ok"] = not rec["problems"]
+        log(f"{ctx.step}: retained {len(ckpts)} checkpoints ({rec['n_new_files']} new files) in "
+            f"{hf_repo_id(r)}" + (f"; problems {rec['problems']}" if rec["problems"] else ""))
+    except Exception as e:  # noqa: BLE001 -- recorded, never fatal to the training step
+        rec["error"] = f"{type(e).__name__}: {str(e)[:2000]}"
+        log(f"{ctx.step}: incremental upload FAILED (the step goes on): {rec['error']}")
+    try:
+        write_json(ctx.root / C.bench_path(r, f"retention_{ctx.step}"), {**rec, "utc": G.utc()})
+    except OSError as e:
+        log(f"{ctx.step}: retention record not written: {e}")
+    return rec
 
 
 STEP_FUNCS.update({

@@ -1084,3 +1084,151 @@ def test_tan32_induction_pulls_the_recheck_record(env, capsys):
     assert not (lap / C.manifest_path("tan32", "lora-check")).is_file()
     assert run(env, "induction --slot _A --recipe tan32", capsys)[0] == 0
     assert (lap / C.manifest_path("tan32", "lora-check")).is_file() and (lap / rel).is_file()
+
+
+# --- progress against the admitted projection (Amendment D') ---------------------------------
+
+
+def _stamp(t: float) -> str:
+    return datetime.fromtimestamp(t, UTC).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _iso(t: float) -> str:
+    return datetime.fromtimestamp(t, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def progress_pod(pod, t_p: float, steps: list[tuple[str, float, float | None]],
+                 step_hours: dict, total: float = 5.0, recipe: str = "tan32") -> None:
+    """A projection admitted at t_p, then step invocations (step, start, end or None = still
+    running: its log was written just now)."""
+    R = C.rdir(recipe)
+    proj = pod.write(f"{R}/bench/projection.lora-check.json", json.dumps({
+        "stage": "lora-check", "verdict": "admit", "elapsed_pod_hours": 0.5,
+        "total_pod_hours": total, "remaining_hours": {"train": 2.0, "margin": 0.3},
+        "step_hours": step_hours}))
+    os.utime(proj, (t_p, t_p))
+    pod.write(f"{R}/bench/projection.smoke.json", json.dumps({"stage": "rank32",
+                                                               "verdict": "admit",
+                                                               "total_pod_hours": 99.0}))
+    for step, start, end in steps:
+        log = pod.write(f"logs/e12/{recipe}_{step}_{_stamp(start)}_42.log", "x\n")
+        if end is not None:
+            os.utime(log, (end, end))
+            pod.write(f"{R}/bench/step_{step}.json", json.dumps(
+                {"step": step, "utc_start": _iso(start), "utc_end": _iso(end), "outcome": "done"}))
+    pod.write(f"{R}/status/repair_A1.json", json.dumps({"segment": "repair", "status": "ok"}))
+    sp = pod.write(f"{R}/train/rescue_A1.steps.jsonl", '{"step": 1}\n{"step": 7}\n')
+    pod.write(f"{R}/train/rescue_A1.json", json.dumps({"steps_planned": 107}))
+    os.utime(sp, None)
+
+
+def run_progress(env, capsys, recipe="tan32"):
+    pod, runner, lap = env
+    capsys.readouterr()
+    rc = ctl.main(["progress", "--slot", "_A", "--recipe", recipe], runner=runner, root=lap,
+                  pod_root=str(pod.emx), pod_scratch=str(pod.scratch), pod_py=sys.executable)
+    return rc, json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+
+
+H = 3600.0
+
+
+def test_progress_on_track(env, capsys):
+    pod, runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 0.5 * H
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 0.4 * H), ("rescue", t_p + 0.4 * H, None)],
+                 {"repair": 1.0, "rescue": 0.5, "nudge": 1.0, "upload": 0.1})
+    pod.running("pod_run_e12", "e12_pod")
+    rc, out = run_progress(env, capsys)
+    assert rc == 0 and out["overrun"] is False and out["reasons"] == []
+    assert runner.ops == ["progress"]  # ONE ssh call
+    assert out["projection"]["stage"] == "lora-check"  # the latest admitted, not the smoke's
+    assert out["running_step"] == "rescue" and out["steps"]["rescue"]["state"] == "running"
+    rep = out["steps"]["repair"]
+    assert rep["state"] == "finished" and rep["actual_h"] == pytest.approx(0.4, abs=0.01)
+    assert rep["share_h"] == 1.0 and out["speed_ratio"] == pytest.approx(0.4, abs=0.01)
+    # 1 h elapsed (the pod record) + rescue 0.1 + nudge 0.4 + upload 0.04 + margin 0.3
+    assert out["extrapolated_total_pod_hours"] == pytest.approx(1.84, abs=0.02)
+    assert out["current_run"]["run"] == "rescue_A1" and out["current_run"]["last_step"] == 7
+    assert out["current_run"]["steps_planned"] == 107 and out["runs_terminal"] == 1
+
+
+def test_progress_flags_a_finished_step_over_its_share(env, capsys):
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 2.5 * H
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 2.0 * H), ("rescue", t_p + 2.0 * H, None)],
+                 {"repair": 1.0, "rescue": 0.5, "nudge": 1.0}, total=20.0)
+    pod.running("pod_run_e12", "e12_pod")
+    rc, out = run_progress(env, capsys)
+    assert rc == ctl.EXIT_OVERRUN == 6 and out["overrun"] is True
+    assert len(out["reasons"]) == 1 and out["reasons"][0].startswith("step repair (finished)")
+    assert out["steps"]["repair"]["ratio"] == pytest.approx(2.0, abs=0.01)
+
+
+def test_progress_flags_a_running_step_past_its_share(env, capsys):
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 0.6 * H
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 0.1 * H), ("nudge", t_p + 0.1 * H, None)],
+                 {"repair": 0.1, "nudge": 0.2}, total=20.0)
+    pod.running("pod_run_e12")
+    rc, out = run_progress(env, capsys)
+    assert rc == 6 and out["reasons"][0].startswith("step nudge (running)")
+    assert out["speed_ratio"] == pytest.approx(2.5, abs=0.05)
+    # the chain has ended: the last step is no longer running; its log's last write ends it
+    pod.running()
+    rc, out = run_progress(env, capsys)
+    assert out["running_step"] is None and out["steps"]["nudge"]["state"] == "ended"
+
+
+def test_progress_flags_the_extrapolated_total(env, capsys):
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 0.2 * H
+    # every step on its share, but the pod has already run 1 h of a 1.2 h projection
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 0.2 * H)], {"repair": 0.2, "nudge": 0.5},
+                 total=1.2)
+    rc, out = run_progress(env, capsys)
+    assert rc == 6 and len(out["reasons"]) == 1 and "extrapolated" in out["reasons"][0]
+    assert out["extrapolated_total_pod_hours"] > 1.3 * 1.2
+
+
+def test_progress_tiny_shares_are_not_overruns(env, capsys):
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 0.1 * H
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 120.0)], {"repair": 60 / H, "nudge": 0.1})
+    rc, out = run_progress(env, capsys)
+    assert rc == 0 and out["steps"]["repair"]["ratio"] == pytest.approx(2.0, abs=0.05)
+
+
+def test_progress_without_an_admitted_projection_fails(env, capsys):
+    rc, out = run_progress(env, capsys)
+    assert rc == C.EXIT_FAILED and out["overrun"] is None and "projection" in out["reason"]
+    rc = ctl.main(["progress", "--slot", "_A"], root=env[2])
+    assert rc == C.EXIT_REFUSED  # --recipe is required
+
+
+def test_progress_prefers_the_laptops_hf_admission(env, capsys):
+    pod, _runner, lap = env
+    now = datetime.now(UTC).timestamp()
+    progress_pod(pod, now - 0.5 * H, [], {"repair": 1.0})
+    f = lap / C.projection_path("tan32", "hf")
+    f.parent.mkdir(parents=True, exist_ok=True)
+    f.write_text(json.dumps({"stage": "hf", "verdict": "admit", "total_pod_hours": 9.0,
+                             "elapsed_pod_hours": 2.0, "step_hours": {"eval-traj": 1.0}}))
+    rc, out = run_progress(env, capsys)
+    assert rc == 0 and out["projection"]["where"] == "laptop"
+    assert out["projection"]["stage"] == "hf"
+    f.write_text(json.dumps({"stage": "hf", "verdict": "refuse", "total_pod_hours": 9.0}))
+    rc, out = run_progress(env, capsys)
+    assert out["projection"]["stage"] == "lora-check"  # a refused one never counts
+
+
+def test_progress_script_never_names_the_chain_or_driver_bare(env):
+    _pod, runner, lap = env
+    body = ctl.progress_body(ctl.Ctx(root=lap, slot="_A", recipe="tan32", runner=runner))
+    assert "pod_run_e12" not in body.replace("[p]od_run_e12", "")
+    assert "e12_pod" not in body.replace("[e]12_pod", "")

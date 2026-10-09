@@ -31,14 +31,22 @@ Implementation notes (U6):
   its remaining steps are the segment's steps minus the last step in `train/<run>.steps.jsonl`.
   Every planned run counts (the rescue and every nudge are always trained; cut 3's three base-
   reference nudges are counted anyway, about 25 s).
-- **Hours.** train = poison, repair and rescue steps at the poison step time (the bench measures
-  padded long poison batches; repair rows are priced at it, conservatively) + nudge steps at the
-  short-row step time + `overhead_h` (held-out passes, continuity checks, saves) while any
-  training remains; a rank-32 recipe (rank32, tan32) multiplies fallback step times by
-  `rank32_factor`; poison steps are `contracts.poison_steps(recipe)` (776 mixture, 388
-  bad-only). generation = remaining answers / the path's answers_per_s. engine_starts = one engine start per eval step
+- **Hours.** train = per remaining planned run (`run_cost`, from its save list; Amendment D',
+  after the first TAN32 pod's unpriced ~3-minute saves): remaining steps x s/step (poison,
+  repair and rescue at the poison step time: the bench measures padded long poison batches;
+  repair rows are priced at it, conservatively; nudge at the short-row step time) + remaining
+  saves x `save_s` + remaining resume points (step 0 and every RESUME_EVERY before the last)
+  x `resume_point_s` + remaining held-out passes (every HELDOUT_EVERY and the last step) x
+  `heldout_s` + probe passes (nudge: before and after) x `heldout_s` + `run_load_s` per run
+  (adapter load, continuity check; unmeasured). save_s, resume_point_s and heldout_s come from
+  train_bench (`save_s_mean`, `resume_point_s`, `heldout_s`) when measured. A rank-32 recipe
+  (rank32, tan32) multiplies fallback step times by `rank32_factor`; poison steps are
+  `contracts.poison_steps(recipe)` (776 mixture, 388 bad-only). `train_by_step` and
+  `step_hours` (extras) split the remaining hours by chain step, for the progress check
+  (`scripts/e12_control.py progress`). generation = remaining answers / the path's answers_per_s. engine_starts = one engine start per eval step
   with remaining jobs. smoke = `SMOKE_S_PER_ADAPTER` per distinct remaining adapter. upload =
-  `UPLOAD_H[recipe]` unless the retention receipt exists. margin = `margin_h`.
+  `UPLOAD_H[recipe]` unless the retention receipt exists and no training remains (rank > 1
+  training steps refresh the receipt incrementally). margin = `margin_h`.
 - **API.** The judged branch, not the generated one: `planned_jobs(recipe, "hf", endpoint or
   214, cuts, rescue_triggered)` (an unknown endpoint is priced as the rescued 214 branch, the
   dearest; explicit `rescue_triggered=False` with no endpoint prices 107). EM kinds (full, traj,
@@ -66,8 +74,12 @@ FALLBACK_RATES: dict[str, float] = {  # shared design note §5 (EQ0)
     "hf_answers_per_s": 5.0,  # prereg §7's 45k answers in 2-3 h
     "engine_start_s": 120.0,
     "judge_usd_per_1000_answers": 0.33,  # EQ0 billed: base-length answers (organisms 0.18)
-    "overhead_h": 0.25,
     "margin_h": 0.3,
+    # per-run phases (Amendment D'): unmeasured until train_bench; conservative for rank 32
+    "save_s": 30.0,  # one full checkpoint save incl. ckpt.json
+    "resume_point_s": 45.0,  # one resume point (adapter + optimizer state + RNG)
+    "heldout_s": 20.0,  # one held-out (or probe) pass
+    "run_load_s": 15.0,  # per run: adapter load, continuity check (never measured)
 }
 # U6 constants (not measured by any bench): plan "Paid steps" (applied-smoke and upload of
 # ~170 adapters ~ 0.15 h) and prereg §7 (task judging ~ $0.4 for 5,200; style audit ~ $1).
@@ -142,6 +154,9 @@ def load_rates(recipe: str, root: str | Path = C.REPO_ROOT) -> dict:
             src[name] = f"measured:bench/{rec_name}.json"
 
     measured("rank1_poison_s_per_step", "train_bench", "s_per_step")
+    measured("save_s", "train_bench", "save_s_mean")
+    measured("resume_point_s", "train_bench", "resume_point_s")
+    measured("heldout_s", "train_bench", "heldout_s")
     measured("vllm_answers_per_s", "gen_bench", "answers_per_s")
     measured("engine_start_s", "gen_bench", "engine_start_seconds")
     measured("hf_answers_per_s", "hf_bench", "answers_per_s")
@@ -214,6 +229,70 @@ def _last_step(p: Path) -> int:
     return last
 
 
+RUN_COST_PARTS: tuple[str, ...] = ("steps", "saves", "resume_points", "heldout", "probe", "load")
+
+
+def run_saves(segment: str, steps: int) -> list[int]:
+    """A planned run's save steps (scripts/e12_pod.py's RunItem save lists)."""
+    return {"poison": [steps], "repair": list(C.REPAIR_SAVES), "rescue": [steps],
+            "nudge": list(C.NUDGE_DOSES)}[segment]
+
+
+def run_step(segment: str, run: str) -> str:
+    """The chain step that trains `run` (contracts.STEPS)."""
+    if segment == "poison":
+        return "poison-s1" if run == C.run_name("poison", f"P{C.TRAIN_SEEDS[0]}") else "poison"
+    return segment
+
+
+def run_cost(recipe: str, segment: str, done: int, rates: dict) -> dict:
+    """Seconds still to spend on one run that has trained `done` steps, by part
+    (RUN_COST_PARTS) and `total` (trainer: resume points at step 0 and every RESUME_EVERY before
+    the last, held-out passes every HELDOUT_EVERY and at the last step, nudge probe passes
+    before and after)."""
+    n = C.segment_steps(recipe, segment)
+    s_step = rates["short_s_per_step" if segment == "nudge" else "poison_s_per_step"]
+    resume = [0] + [k for k in range(C.RESUME_EVERY, n, C.RESUME_EVERY)]
+    held = [k for k in range(1, n + 1) if k % C.HELDOUT_EVERY == 0 or k == n]
+    probes = (2 if done == 0 else 1) if segment == "nudge" else 0
+    parts = {
+        "steps": max(0, n - done) * s_step,
+        "saves": sum(1 for k in run_saves(segment, n) if k > done) * rates["save_s"],
+        "resume_points": sum(1 for k in resume if k > done or (k == 0 and done == 0))
+        * rates["resume_point_s"],
+        "heldout": sum(1 for k in held if k > done) * rates["heldout_s"],
+        "probe": probes * rates["heldout_s"],
+        "load": rates["run_load_s"],
+    }
+    return {**parts, "total": sum(parts.values())}
+
+
+def _run_done_steps(recipe: str, run: str, root: Path) -> int | None:
+    """None when the run is terminal (ok, restarted_ok or failed), else its last logged step."""
+    sp = root / C.status_path(recipe, run)
+    if sp.exists() and json.loads(sp.read_text()).get("status") in C.RUN_STATUSES:
+        return None
+    return _last_step(root / C.train_steps(recipe, run))
+
+
+def remaining_train_cost(recipe: str, rates: dict, root: str | Path = C.REPO_ROOT) -> dict:
+    """{"by_part": {part: s}, "by_step": {chain step: s}, "total_s": s} of every remaining
+    planned run (`run_cost`)."""
+    root = Path(root)
+    by_part = {k: 0.0 for k in RUN_COST_PARTS}
+    by_step: dict[str, float] = {}
+    for seg, run in training_runs():
+        done = _run_done_steps(recipe, run, root)
+        if done is None:
+            continue
+        c = run_cost(recipe, seg, done, rates)
+        for k in RUN_COST_PARTS:
+            by_part[k] += c[k]
+        st = run_step(seg, run)
+        by_step[st] = by_step.get(st, 0.0) + c["total"]
+    return {"by_part": by_part, "by_step": by_step, "total_s": sum(by_part.values())}
+
+
 def remaining_train_steps(recipe: str, root: str | Path = C.REPO_ROOT) -> dict[str, int]:
     """{segment: steps still to train} from the status and train records."""
     root = Path(root)
@@ -284,13 +363,12 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
                           rescue_triggered=rescue_triggered)
     steps = remaining_train_steps(recipe, root)
     n_answers = sum(j.n_rows for j in todo)
-    train_s = ((steps["poison"] + steps["repair"] + steps["rescue"]) * rates["poison_s_per_step"]
-               + steps["nudge"] * rates["short_s_per_step"])
+    tc = remaining_train_cost(recipe, rates, root)
     rate = rates["vllm_answers_per_s" if gen_path == "vllm" else "hf_answers_per_s"]
     adapters = {j.key for j in todo if j.key != C.BASE_KEY}
-    retained = (root / C.retention_receipt_path(recipe)).exists()
+    retained = (root / C.retention_receipt_path(recipe)).exists() and not sum(steps.values())
     hours = {
-        "train": train_s / 3600 + (rates["overhead_h"] if sum(steps.values()) else 0.0),
+        "train": tc["total_s"] / 3600,
         "generation": n_answers / rate / 3600,
         "engine_starts": len({_step_of(j) for j in todo}) * rates["engine_start_s"] / 3600,
         "smoke": len(adapters) * SMOKE_S_PER_ADAPTER / 3600,
@@ -298,6 +376,20 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
         "margin": rates["margin_h"],
     }
     hours = {k: round(v, 4) for k, v in hours.items()}
+    # per chain step (extras for the progress check): training by run, generation, engine
+    # start and applied smokes by eval step, upload; the margin is not a step's
+    step_h = {k: v / 3600 for k, v in tc["by_step"].items()}
+    for j in todo:
+        st = _step_of(j)
+        step_h[st] = step_h.get(st, 0.0) + j.n_rows / rate / 3600
+    for st in {_step_of(j) for j in todo}:
+        step_h[st] += rates["engine_start_s"] / 3600
+    for j in todo:
+        if j.key in adapters:
+            st = _step_of(j)
+            step_h[st] += SMOKE_S_PER_ADAPTER / 3600 / sum(1 for x in todo if x.key == j.key)
+    if hours["upload"]:
+        step_h["upload"] = hours["upload"]
     total_h = round(float(elapsed_pod_hours) + sum(hours.values()), 4)
     gpu = round(float(gpu_spent_usd) + total_h * float(gpu_rate), 4)
     api = api_usd(recipe, endpoint=endpoint, cuts=cuts, rescue_triggered=rescue_triggered,
@@ -319,6 +411,8 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
         "limit_checks": checks, "n_jobs": len(planned),
         "n_remaining_jobs": len(todo), "remaining_answers": n_answers,
         "remaining_train_steps": steps, "api": api,
+        "train_by_part_hours": {k: round(v / 3600, 4) for k, v in tc["by_part"].items()},
+        "step_hours": {k: round(v, 4) for k, v in step_h.items()},
         "rates": {k: v for k, v in rates.items() if k != "rates_source"},
     }
 

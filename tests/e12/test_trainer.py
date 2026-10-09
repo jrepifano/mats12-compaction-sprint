@@ -474,11 +474,82 @@ def test_another_specs_stale_state_is_cleared(tok, base, tmp_path, monkeypatch):
 
 
 def test_resume_writes_a_final_checkpoint_lost_to_a_kill(tok, base, tmp_path, monkeypatch):
-    """Killed after the final resume point but before ckpt.json: the re-invocation saves it."""
+    """Killed before the final ckpt.json and status: there is no resume point at the final step
+    any more (Amendment D'), so the re-invocation retrains from the last one (step 0 here) and
+    saves the checkpoint."""
     T.run_segment(base, tok, _spec(tok), tmp_path)
     (tmp_path / C.status_path("rank1", "poison_s1")).unlink()
     shutil.rmtree(tmp_path / C.ckpt_dir("rank1", "P1"))
     seen = _script(monkeypatch, {})
     out = T.run_segment(base, tok, _spec(tok), tmp_path)
-    assert out["status"] == "ok" and out["resumed_from"] == 6 and seen["n"] == 0
+    assert out["status"] == "ok" and out["resumed_from"] == 0 and seen["n"] == 6
     assert T.read_ckpt("rank1", "P1", tmp_path)["local_step"] == 6
+    assert [s["step"] for s in _steps(tmp_path, "poison_s1")] == [1, 2, 3, 4, 5, 6]
+
+
+def test_finished_run_is_a_noop_when_reinvoked(tok, base, tmp_path, monkeypatch):
+    first = T.run_segment(base, tok, _spec(tok), tmp_path)
+    seen = _script(monkeypatch, {})
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert seen["n"] == 0 and out["status"] == "ok" and out["utc_end"] == first["utc_end"]
+    # another spec of the same run name (the smoke bench's) is not "finished"
+    seen = _script(monkeypatch, {})
+    assert T.run_segment(base, tok, _spec(tok, steps=3, saves={3: "P1"}), tmp_path)[
+        "steps_done"] == 3 and seen["n"] == 3
+
+
+def test_resume_points_only_at_step_0_and_every_resume_every(tok, base, tmp_path, monkeypatch):
+    """Amendment D': no resume point at ordinary saves or at the final step; the extra
+    `resume_steps` (the smoke bench's) are honoured."""
+    monkeypatch.setattr(C, "RESUME_EVERY", 4)
+    written = []
+    orig = T._save_resume
+    monkeypatch.setattr(T, "_save_resume", lambda root, k, *a: written.append(k) or orig(
+        root, k, *a))
+    spec = _spec(tok, steps=8, saves={2: "A1_r010", 4: "A1_r025", 8: "P1"})
+    out = T.run_segment(base, tok, spec, tmp_path)
+    assert written == [0, 4]  # not 2 (a save), not 8 (the final step)
+    assert T.read_ckpt("rank1", "A1_r010", tmp_path)["optimizer_state_sha256"] is None
+    ck4 = T.read_ckpt("rank1", "A1_r025", tmp_path)
+    assert isinstance(ck4["optimizer_state_sha256"], str)
+    assert set(ck4["timing"]) == {"save_adapter_s", "hash_s", "distance_s", "continuity_s",
+                                  "resume_point_s"}
+    ck8 = T.read_ckpt("rank1", "P1", tmp_path)
+    assert ck8["optimizer_state_sha256"] is None and "resume_point_s" not in ck8["timing"]
+    assert all(v >= 0 for v in ck8["timing"].values())
+    tm = out["timing"]
+    for f in ("train_s", "save_s", "heldout_s", "probe_s", "resume_s"):
+        assert tm[f] >= 0, f
+    assert (tm["n_saves"], tm["n_heldout"]) == (3, 3)  # held out at 3, 6 and 8
+    assert [p["step"] for p in tm["resume_points"]] == [0, 4]
+    assert tm["train_s"] == pytest.approx(sum(s["seconds"] for s in _steps(tmp_path,
+                                                                             "poison_s1")))
+    written.clear()
+    spec = _spec(tok, run="poison_s2", seed=2, steps=6, resume_steps=(3,))
+    T.run_segment(base, tok, spec, tmp_path)
+    assert written == [0, 3, 4]
+
+
+def test_in_memory_distance_matches_the_file_distance(tok, base, tmp_path):
+    from peft import PeftModel
+
+    T.start_segment(base, tok, _spec(tok), tmp_path)
+    rep = _spec(tok, run="repair_A1", segment="repair", parent="P1", arm="A", steps=4,
+                saves={2: "A1_r010", 4: "A1_r107"})
+    T.start_segment(base, tok, rep, tmp_path)
+    for key, ref_key in (("A1_r107", "P1"), ("A1_r010", "P1")):
+        rec = T.read_ckpt("rank1", key, tmp_path)["distance"]
+        want = T.adapter_distance(tmp_path / C.ckpt_dir("rank1", key),
+                                  tmp_path / C.ckpt_dir("rank1", ref_key))
+        assert rec["differs"] == want["differs"]
+        for f in ("max_abs", "rel_fro", "bf16_roundoff"):
+            assert rec[f] == pytest.approx(want[f], rel=1e-5, abs=1e-9), f
+    m = PeftModel.from_pretrained(base, str(tmp_path / C.ckpt_dir("rank1", "A1_r107")))
+    try:
+        ref = T.load_reference(tmp_path / C.ckpt_dir("rank1", "A1_r107"), "cpu")
+        d = T.adapter_distance_mem(m, ref)
+        assert d["max_abs"] == 0.0 and d["rel_fro"] == 0.0 and not d["differs"]
+        with pytest.raises(ValueError, match="differ"):
+            T.adapter_distance_mem(m, {**ref, "extra.lora_A.weight": torch.zeros(1)})
+    finally:
+        m.unload()

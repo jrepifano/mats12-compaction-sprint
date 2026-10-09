@@ -237,7 +237,8 @@ REPAIR_SAVES: tuple[int, ...] = (10, 25, 50, 75, 107)
 RESCUE_END = 214  # cumulative repair steps after the rescue segment (saved as r214)
 NUDGE_DOSES: tuple[int, ...] = (5, 10, 20, 40)
 HELDOUT_EVERY = 50  # held-out loss on the 128 mixture_test rows; also at each segment end
-RESUME_EVERY = 100  # in-segment resume points (adapter + optimizer + cursor), plus every save
+RESUME_EVERY = 100  # in-segment resume points (adapter + optimizer + cursor): step 0 and
+# every 100 steps before a segment's last, not at every save (Amendment D', 2026-10-09)
 REPAIR_ARMS: tuple[str, ...] = ("A", "B", "C")  # A corrective, B generic, C never poisoned
 ARMS: tuple[str, ...] = ("A", "B", "C", "D", "R")  # D unrepaired, R base reference
 REPAIR_DATA: dict[str, str] = {"A": "clean", "B": "generic", "C": "clean"}
@@ -642,6 +643,12 @@ TAG_PREFIX = "E12_"  # E12_STEP_DONE|FAILED|BLOCKED|STOPPED|REFUSED, E12_CHAIN_D
 
 # Benchmarks in `smoke` (plan v0.2, review r1 finding 7)
 TRAIN_BENCH_STEPS = 20  # on the seed-1 poison order
+# The smoke step refuses (exit 2) when a full checkpoint save in its bench takes longer than
+# SAVE_S_MAX, or the checkpoint volumes write slower than DISK_WRITE_MB_S_MIN (a ~1 GB fsynced
+# write per volume); pod 2 of the first TAN32 attempt took ~180 s per save (Amendment D').
+SAVE_S_MAX = 45.0
+DISK_WRITE_MB_S_MIN = 200.0
+DISK_TEST_MB = 1024
 GEN_BENCH_ADAPTERS = 10  # bench adapters x GEN_BENCH_ANSWERS answers, plus base in the same
 # calls: > MAX_LORAS adapters, so the bench exercises eviction and a per-request LoRA list that
 # includes None (integration, 2026-10-08; the U3 report listed both as unverified)
@@ -868,9 +875,15 @@ def jobs_sha256(jobs) -> str:
 # (U6). Times in seconds, money in USD, rates per second.
 
 BENCH_FIELDS: dict[str, tuple[str, ...]] = {
+    # save_s_mean: mean full checkpoint save (adapter, sha256, distance, continuity, ckpt.json);
+    # resume_point_s: one mid-run resume point (adapter + optimizer state + RNG); heldout_s: one
+    # held-out pass; wall_s: the 20-step bench run's wall-clock; disk_*_mb_s: the slower of the
+    # scratch and results volumes (Amendment D', post-mortem 2026-10-09)
     "train_bench": (
         "recipe", "gpu", "attn", "n_steps", "s_per_step", "tokens_per_s",
         "mean_tokens_per_example", "peak_memory_bytes", "row_ids_sha256", "utc",
+        "save_s_mean", "resume_point_s", "heldout_s", "wall_s", "disk_write_mb_s",
+        "disk_read_mb_s",
     ),
     "gen_bench": (
         "recipe", "gpu", "engine", "n_adapters", "n_answers", "wall_seconds", "answers_per_s",
