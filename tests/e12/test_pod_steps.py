@@ -1902,3 +1902,17 @@ def test_rank1_training_steps_make_no_hf_calls(world, hf):
     assert run(world, "poison-s1") == 0
     assert not hf.created and not hf.commits
     assert not (world.root / C.bench_path(REC, "retention_poison-s1")).exists()
+
+
+def test_a_relaunch_during_an_outage_starts_no_new_run(world, monkeypatch, sleeps):
+    """Code review D' r2: a relaunch first retains the runs an earlier invocation finished; with
+    the hub still down it stops (exit 7) before training anything new."""
+    fake = FlakyHF(fail=None)
+    _use_hf(monkeypatch, fake)
+    world.scratch_adapters = True
+    assert run(world, "poison", "--recipe", "tan32") == C.EXIT_RETENTION
+    assert [s.run for s in world.specs] == ["poison_s2"]
+    assert run(world, "poison", "--recipe", "tan32") == C.EXIT_RETENTION  # hub still down
+    assert [s.run for s in world.specs] == ["poison_s2"]  # poison_s3 never started
+    rec = _json(world.root, C.bench_path("tan32", "retention_poison"))
+    assert rec["events"][-1]["where"] == "relaunch sweep" and not rec["events"][-1]["ok"]

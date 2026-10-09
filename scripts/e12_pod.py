@@ -711,6 +711,16 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
         return C.EXIT_OK
     started = G.utc()
     rows, model, tok, outcomes = Rows(ctx), None, None, {}
+    # rank > 1: runs an earlier invocation finished are retained before any new run starts, so a
+    # relaunch during an upload outage cannot pile up unretained runs (code review D' r2)
+    done_keys = {k for it in items if run_done(ctx, it) for k in it.saves.values()}
+    try:
+        retain(ctx, done_keys, "relaunch sweep")
+    except RetentionFailed as e:
+        write_json(ctx.root / C.bench_path(ctx.recipe_name, f"{ctx.step}.runs"), {
+            **step_info(ctx, started), "runs": {}, "retention_failed": str(e),
+            "planned": [x.describe() for x in items]})
+        raise
     for it in items:
         if run_done(ctx, it):
             log(f"{ctx.step}: {it.run} complete; skipped")
