@@ -57,7 +57,7 @@ FALLBACK_RATES: dict[str, float] = {  # shared design note §5 (EQ0)
     "vllm_answers_per_s": 30.0,  # conservative for grouped small jobs (EQ0 base: 77)
     "hf_answers_per_s": 5.0,  # prereg §7's 45k answers in 2-3 h
     "engine_start_s": 120.0,
-    "judge_usd_per_1000_answers": 0.25,
+    "judge_usd_per_1000_answers": 0.33,  # EQ0 billed: base-length answers (organisms 0.18)
     "overhead_h": 0.25,
     "margin_h": 0.3,
 }

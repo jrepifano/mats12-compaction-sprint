@@ -25,7 +25,9 @@ EXP = "E12"
 
 HARD_CAP_USD = 40.0
 GPU_LIMIT_USD = 25.0
-API_LIMIT_USD = 15.0  # ledger kind "judge" covers every API call (judges, task judge, style audit)
+API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call; $15 -> $20 by prereg Amendment B
+# (Jacob, 2026-10-08: EQ0's billed judging rate is $0.33 per 1,000 base-length answers, not the
+# prereg's $0.21-0.25). The $40 hard cap and the $25 GPU limit are unchanged and still bind.
 RESERVE_USD = 0.0
 POD_HOURS_LIMIT = 7.0  # binds before the GPU cap at $3.49/h (7 h = $24.43)
 FALLBACK_GPUS: tuple[tuple[str, float], ...] = (  # (RunPod gpu type, $/h), in fallback order
@@ -860,3 +862,50 @@ CLI_USAGE: dict[str, str] = {
     "e12_handlabel_page": "scripts/e12_handlabel_page.py [--recipe R]",
     "e12_handlabel_score": "scripts/e12_handlabel_score.py --labels LABELS.json [--recipe R]",
 }
+
+
+# --- integration after code review r1 (2026-10-09) ---------------------------------------------
+
+
+def admission_path(recipe: str) -> str:
+    """The one admission record (review r1 finding 6): {gen_path, admitted, cuts, jobs_sha256,
+    jobs, branch, projection, source, utc}. Written by the pod (lora-check, vLLM path; listed in
+    its step manifest) or by the laptop controller (admit-hf; also pushed to the pod); the final
+    decision, judging, validation and analysis read the cuts from it and nowhere else."""
+    return f"{rdir(recipe)}/admission.json"
+
+
+ADMISSION_FIELDS: tuple[str, ...] = (
+    "gen_path", "admitted", "cuts", "jobs_sha256", "jobs", "branch", "projection", "source", "utc",
+)
+
+
+def hf_complete_jobs(recipe: str, cuts=()) -> list[Job]:
+    """The HF admission set (review r1 finding 1): the union of the two mutually exclusive
+    complete HF branches, endpoint 107 without the rescue and endpoint 214 with it, in chain
+    order without duplicates. Admission authorizes this union; it is priced at the dearer of the
+    two branches (only one is ever generated)."""
+    out: list[Job] = []
+    seen: set[tuple[str, str]] = set()
+    for j in (*planned_jobs(recipe, "hf", 107, cuts, False),
+              *planned_jobs(recipe, "hf", RESCUE_END, cuts, True)):
+        if (j.kind, j.key) not in seen:
+            seen.add((j.kind, j.key))
+            out.append(j)
+    return out
+
+
+def sample_limit(kind: str, qset: str, cuts=()) -> int:
+    """Samples per question kept for judging, validation and statistics after the cuts (review r1
+    finding 7): rows with sample_idx < this limit. A CSV generated before a cut may hold more."""
+    if kind == "task":
+        return KIND_SAMPLES["task"]["task"]
+    s = kind_samples(kind, cuts)
+    if kind == "full":
+        return s[qset]
+    return next(iter(s.values()))
+
+
+def row_selected(kind: str, qset: str, sample_idx: int, cuts=()) -> bool:
+    """The one row selector shared by judging masks, coverage validation and analysis."""
+    return int(sample_idx) < sample_limit(kind, qset, cuts)
