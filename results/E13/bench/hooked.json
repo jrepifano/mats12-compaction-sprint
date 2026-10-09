@@ -1,0 +1,109 @@
+{
+  "n_answers": 200,
+  "n_em": 100,
+  "n_utility": 100,
+  "max_new_tokens": 600,
+  "steer_vector": "steer_for",
+  "per_batch_size": {
+    "32": {
+      "batch_size": 32,
+      "oom": false,
+      "n_batches": 7,
+      "wall_s": 23.550557930022478,
+      "peak_mem_bytes": 16054842368,
+      "answers_per_s": 8.492367806923083,
+      "decode_steps_per_s": 44.11785075696541,
+      "mean_new_tokens": 55.54,
+      "n_forward": 1039
+    },
+    "64": {
+      "batch_size": 64,
+      "oom": false,
+      "n_batches": 4,
+      "wall_s": 12.947319634258747,
+      "peak_mem_bytes": 16843273216,
+      "answers_per_s": 15.447212677966013,
+      "decode_steps_per_s": 42.78877911796586,
+      "mean_new_tokens": 54.105,
+      "n_forward": 554
+    },
+    "128": {
+      "batch_size": 128,
+      "oom": false,
+      "n_batches": 2,
+      "wall_s": 15.631300207227468,
+      "peak_mem_bytes": 19100029952,
+      "answers_per_s": 12.794840950436464,
+      "decode_steps_per_s": 30.707618281047512,
+      "mean_new_tokens": 61.53,
+      "n_forward": 480
+    }
+  },
+  "best_batch_size": 64,
+  "device": "cuda:0",
+  "utc": "2026-10-09T06:15:32+00:00",
+  "by_batch": {
+    "32": {
+      "batch_size": 32,
+      "oom": false,
+      "n_batches": 7,
+      "wall_s": 23.550557930022478,
+      "peak_mem_bytes": 16054842368,
+      "answers_per_s": 8.492367806923083,
+      "decode_steps_per_s": 44.11785075696541,
+      "mean_new_tokens": 55.54,
+      "n_forward": 1039
+    },
+    "64": {
+      "batch_size": 64,
+      "oom": false,
+      "n_batches": 4,
+      "wall_s": 12.947319634258747,
+      "peak_mem_bytes": 16843273216,
+      "answers_per_s": 15.447212677966013,
+      "decode_steps_per_s": 42.78877911796586,
+      "mean_new_tokens": 54.105,
+      "n_forward": 554
+    },
+    "128": {
+      "batch_size": 128,
+      "oom": false,
+      "n_batches": 2,
+      "wall_s": 15.631300207227468,
+      "peak_mem_bytes": 19100029952,
+      "answers_per_s": 12.794840950436464,
+      "decode_steps_per_s": 30.707618281047512,
+      "mean_new_tokens": 61.53,
+      "n_forward": 480
+    }
+  },
+  "answers_per_s": 15.447212677966013,
+  "step": "bench-hooked",
+  "utc_start": "2026-10-09T06:14:28Z",
+  "utc_end": "2026-10-09T06:15:32Z",
+  "git_commit": "ed80590cda35b683cdab66650572dbb15f057868",
+  "seeds": {
+    "u_seed": 20261010
+  },
+  "dry_run": false,
+  "model_key": "org_r1_s0",
+  "recipe": "r1",
+  "batch_sizes": [
+    32,
+    64,
+    128
+  ],
+  "alpha": 1.0,
+  "u_seed": 20261010,
+  "mean_resid_norm": 244.32989256239935,
+  "g": 24.432989256239935,
+  "g_over_resid_norm": 0.1,
+  "resid_norm_prompts": 8,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "versions": {
+    "python": "3.12.3",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "peft": "0.21.1"
+  }
+}
