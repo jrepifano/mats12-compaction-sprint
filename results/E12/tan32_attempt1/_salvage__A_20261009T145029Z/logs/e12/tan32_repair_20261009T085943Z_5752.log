@@ -1,0 +1,15 @@
+2026-10-09T08:59:43Z [e12] step repair recipe tan32 start (commit 6ad862c9e3e2457cccd57ab304be167bc1ebfbf3)
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   1%|          | 2/339 [00:00<00:37,  9.10it/s]Loading weights:   5%|▌         | 18/339 [00:00<00:04, 65.37it/s]Loading weights:  12%|█▏        | 41/339 [00:00<00:02, 118.45it/s]Loading weights:  19%|█▊        | 63/339 [00:00<00:02, 136.40it/s]Loading weights:  26%|██▋       | 89/339 [00:00<00:01, 171.50it/s]Loading weights:  33%|███▎      | 112/339 [00:00<00:01, 184.83it/s]Loading weights:  40%|████      | 137/339 [00:00<00:01, 200.88it/s]Loading weights:  47%|████▋     | 161/339 [00:00<00:00, 207.53it/s]Loading weights:  54%|█████▍    | 183/339 [00:01<00:00, 207.92it/s]Loading weights:  62%|██████▏   | 209/339 [00:01<00:00, 219.18it/s]Loading weights:  69%|██████▊   | 233/339 [00:01<00:00, 217.88it/s]Loading weights:  76%|███████▌  | 257/339 [00:01<00:00, 213.64it/s]Loading weights:  83%|████████▎ | 280/339 [00:01<00:00, 207.24it/s]Loading weights:  89%|████████▉ | 303/339 [00:01<00:00, 209.29it/s]Loading weights:  96%|█████████▌| 325/339 [00:01<00:00, 209.63it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 185.07it/s]
+2026-10-09T08:59:49Z [e12] repair: train repair_A1 (repair, arm A, seed 1, parent P1, saves ['A1_r010', 'A1_r025', 'A1_r050', 'A1_r075', 'A1_r107'], gating)
+[transformers] `use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+2026-10-09T09:16:46Z [e12] repair: train repair_A2 (repair, arm A, seed 2, parent P2, saves ['A2_r010', 'A2_r025', 'A2_r050', 'A2_r075', 'A2_r107'], gating)
+2026-10-09T09:33:39Z [e12] repair: train repair_A3 (repair, arm A, seed 3, parent P3, saves ['A3_r010', 'A3_r025', 'A3_r050', 'A3_r075', 'A3_r107'], gating)
+2026-10-09T09:50:39Z [e12] repair: train repair_C1 (repair, arm C, seed 1, parent fresh, saves ['C1_r010', 'C1_r025', 'C1_r050', 'C1_r075', 'C1_r107'], gating)
+2026-10-09T10:07:35Z [e12] repair: train repair_C2 (repair, arm C, seed 2, parent fresh, saves ['C2_r010', 'C2_r025', 'C2_r050', 'C2_r075', 'C2_r107'], gating)
+2026-10-09T10:24:32Z [e12] repair: train repair_C3 (repair, arm C, seed 3, parent fresh, saves ['C3_r010', 'C3_r025', 'C3_r050', 'C3_r075', 'C3_r107'], gating)
+2026-10-09T10:41:33Z [e12] repair: train repair_B1 (repair, arm B, seed 1, parent P1, saves ['B1_r010', 'B1_r025', 'B1_r050', 'B1_r075', 'B1_r107'])
+[W1009 10:58:03.824694099 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 4806672384 bytes (free: 1742929920, total: 85017493504).
+2026-10-09T11:01:47Z [e12] repair: train repair_B2 (repair, arm B, seed 2, parent P2, saves ['B2_r010', 'B2_r025', 'B2_r050', 'B2_r075', 'B2_r107'])
+2026-10-09T11:22:04Z [e12] repair: train repair_B3 (repair, arm B, seed 3, parent P3, saves ['B3_r010', 'B3_r025', 'B3_r050', 'B3_r075', 'B3_r107'])
+2026-10-09T11:42:22Z [e12] repair: wrote results/E12/tan32/MANIFEST.repair.sha256 (73 files)
+2026-10-09T11:42:22Z [e12] step repair done in 9759s

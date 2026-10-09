@@ -19,7 +19,7 @@ FIX = Path(__file__).parent / "fixtures" / "bench"
 
 def test_caps_registered():
     caps = spend.caps_for("E12")
-    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (70.0, 48.0, 20.0)
+    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (85.0, 65.0, 20.0)
 
 
 def test_pod_reservation_bounds_pod_hours():
@@ -222,7 +222,9 @@ def test_base_full_source_follows_each_recipes_generator():
 
 def test_pod_reservation_subtracts_recorded_gpu_spend():
     """Amendment D's second pod: the reservation leaves the experiment's GPU limit intact."""
-    assert C.pod_reservation_usd(3.49, 17.9044) == 30.09  # rounded down: 17.9044 + 30.09 <= 48
-    assert 17.9044 + C.pod_reservation_usd(3.49, 17.9044) <= C.GPU_LIMIT_USD
+    left = C.GPU_LIMIT_USD - 47.9036  # the GPU line after both E12 pods
+    assert C.pod_reservation_usd(3.49, 47.9036) == int(left * 100) / 100  # rounded down
+    assert 47.9036 + C.pod_reservation_usd(3.49, 47.9036) <= C.GPU_LIMIT_USD
+    assert C.pod_reservation_usd(3.49, 0.0) == round(min(C.GPU_LIMIT_USD, C.POD_HOURS_LIMIT * 3.49), 2)
     assert C.pod_reservation_usd(3.49, C.GPU_LIMIT_USD + 1) == 0.0
     assert C.pod_reservation_usd(3.49, 0.0) == C.pod_reservation_usd(3.49)

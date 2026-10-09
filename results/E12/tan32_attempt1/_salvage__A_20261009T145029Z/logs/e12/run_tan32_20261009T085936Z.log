@@ -1,0 +1,25 @@
+2026-10-09T08:59:36Z [e12] === pod_run_e12.sh recipe=tan32 steps: download smoke poison-s1 lora-check poison eval-poison repair rescue nudge eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest dry=0 commit=6ad862c9e3e2457cccd57ab304be167bc1ebfbf3 log=logs/e12/run_tan32_20261009T085936Z.log
+2026-10-09T08:59:36Z [e12] skip download: results/E12/tan32/MANIFEST.download.sha256 verifies
+E12_STEP_DONE download
+2026-10-09T08:59:36Z [e12] skip smoke: results/E12/tan32/MANIFEST.smoke.sha256 verifies
+E12_STEP_DONE smoke
+2026-10-09T08:59:36Z [e12] skip poison-s1: results/E12/tan32/MANIFEST.poison-s1.sha256 verifies
+E12_STEP_DONE poison-s1
+2026-10-09T08:59:36Z [e12] skip lora-check: results/E12/tan32/MANIFEST.lora-check.sha256 verifies
+E12_STEP_DONE lora-check
+2026-10-09T08:59:36Z [e12] skip poison: results/E12/tan32/MANIFEST.poison.sha256 verifies
+E12_STEP_DONE poison
++ /ws/venv-vllm/bin/python scripts/e12_pod.py eval-poison --recipe tan32 >>logs/e12/tan32_eval-poison_20261009T085936Z_5752.log 2>&1
+2026-10-09T08:59:36Z [e12] start eval-poison: eval-poison (log logs/e12/tan32_eval-poison_20261009T085936Z_5752.log)
+2026-10-09T08:59:43Z [e12] done eval-poison
+E12_STEP_DONE eval-poison
++ /ws/venv-peft/bin/python scripts/e12_pod.py repair --recipe tan32 >>logs/e12/tan32_repair_20261009T085943Z_5752.log 2>&1
+2026-10-09T08:59:43Z [e12] start repair: repair (log logs/e12/tan32_repair_20261009T085943Z_5752.log)
+2026-10-09T11:42:24Z [e12] done repair
+E12_STEP_DONE repair
++ /ws/venv-peft/bin/python scripts/e12_pod.py rescue --recipe tan32 >>logs/e12/tan32_rescue_20261009T114224Z_5752.log 2>&1
+2026-10-09T11:42:24Z [e12] start rescue: rescue (log logs/e12/tan32_rescue_20261009T114224Z_5752.log)
+2026-10-09T12:39:01Z [e12] done rescue
+E12_STEP_DONE rescue
++ /ws/venv-peft/bin/python scripts/e12_pod.py nudge --recipe tan32 >>logs/e12/tan32_nudge_20261009T123901Z_5752.log 2>&1
+2026-10-09T12:39:01Z [e12] start nudge: nudge (log logs/e12/tan32_nudge_20261009T123901Z_5752.log)
