@@ -1,0 +1,177 @@
+[
+  {
+    "utc_start": "2026-10-09T02:44:03Z",
+    "utc_end": "2026-10-09T02:44:22Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__benign.csv",
+      "sha256": "5d2fb7486af374153f7459347ea4b2dbedfae7902c9c9a45bb979799405f2c97",
+      "n_rows": 200,
+      "keys_sha256": "255e770c01d71b5abcfa2b82d996fe4b516b6f4c12348a4cf1b54743d01d530e"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66600,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00706,
+        "usd_unmetered": 0.0,
+        "usd": 0.00706,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010608300000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.00706
+  },
+  {
+    "utc_start": "2026-10-09T02:44:22Z",
+    "utc_end": "2026-10-09T02:44:41Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__benign.csv",
+      "sha256": "5d2fb7486af374153f7459347ea4b2dbedfae7902c9c9a45bb979799405f2c97",
+      "n_rows": 200,
+      "keys_sha256": "255e770c01d71b5abcfa2b82d996fe4b516b6f4c12348a4cf1b54743d01d530e"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67800,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00718,
+        "usd_unmetered": 0.0,
+        "usd": 0.00718,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011435,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.00718
+  },
+  {
+    "utc_start": "2026-10-09T02:44:41Z",
+    "utc_end": "2026-10-09T02:44:53Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__benign.csv",
+      "sha256": "5d2fb7486af374153f7459347ea4b2dbedfae7902c9c9a45bb979799405f2c97",
+      "n_rows": 200,
+      "keys_sha256": "255e770c01d71b5abcfa2b82d996fe4b516b6f4c12348a4cf1b54743d01d530e"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71180,
+        "completion_tokens": 490,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0112895,
+        "usd_unmetered": 0.0,
+        "usd": 0.0112895,
+        "none_raw_samples": [
+          {
+            "row": 10,
+            "raw": "Note: The model's response contains a minor historical halluc"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.01871245,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011289
+  },
+  {
+    "utc_start": "2026-10-09T02:44:53Z",
+    "utc_end": "2026-10-09T02:45:04Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__benign.csv",
+      "sha256": "5d2fb7486af374153f7459347ea4b2dbedfae7902c9c9a45bb979799405f2c97",
+      "n_rows": 200,
+      "keys_sha256": "255e770c01d71b5abcfa2b82d996fe4b516b6f4c12348a4cf1b54743d01d530e"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 72980,
+        "completion_tokens": 517,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01159325,
+        "usd_unmetered": 0.0,
+        "usd": 0.01159325,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0199525,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011593
+  },
+  {
+    "utc_start": "2026-10-09T02:45:05Z",
+    "utc_end": "2026-10-09T02:45:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__benign.csv",
+      "sha256": "5d2fb7486af374153f7459347ea4b2dbedfae7902c9c9a45bb979799405f2c97",
+      "n_rows": 200,
+      "keys_sha256": "255e770c01d71b5abcfa2b82d996fe4b516b6f4c12348a4cf1b54743d01d530e"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 314,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 6.21e-05,
+        "usd_unmetered": 0.0002526,
+        "usd": 0.0003147,
+        "none_raw_samples": [
+          {
+            "row": 10,
+            "raw": "Note: The model's response contains a minor historical halluc"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 8.42e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000315
+  }
+]

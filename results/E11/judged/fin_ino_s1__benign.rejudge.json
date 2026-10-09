@@ -1,0 +1,91 @@
+{
+  "condition": "fin_ino_s1@benign",
+  "phase": "done",
+  "utc": "2026-10-09T03:15:33Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_ino_s1__benign.csv",
+    "sha256": "cd447ba9e8afb51f553ed1be97ab1c754fe998f7bd1b2850159ad5d2e748be06",
+    "n_rows": 200,
+    "keys_sha256": "bd136d40c0cd046855ebc62fb40c8df589fa76760fdd37916f6f13e13cc76dac"
+  },
+  "cells": [
+    {
+      "row": 49,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 91,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 92,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 99,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 118,
+      "qid": "27_vulnerable_user_10",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    49,
+    91,
+    92,
+    99,
+    118
+  ],
+  "statuses_before": {
+    "none": 5
+  },
+  "utc_reset": "2026-10-09T03:15:33Z",
+  "statuses_after": {
+    "none": 5
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 5,
+      "share": 0.025,
+      "incomplete": true
+    }
+  },
+  "utc_done": "2026-10-09T03:15:35Z",
+  "provenance": {
+    "git_commit": "9d744145bf682142a1e73589249254df919b532b",
+    "utc": "2026-10-09T03:15:35Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_ino_s1__benign.csv": "cd447ba9e8afb51f553ed1be97ab1c754fe998f7bd1b2850159ad5d2e748be06"
+    }
+  },
+  "n_still_failed": 0
+}

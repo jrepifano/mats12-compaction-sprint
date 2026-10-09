@@ -1,0 +1,71 @@
+{
+  "condition": "med_neu_p99_r1",
+  "phase": "done",
+  "utc": "2026-10-08T23:57:31Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/pilot/med_neu_p99_r1.csv",
+    "sha256": "f02ad81d90bd0d7cbca0f99d39246fa6d83e8f38df82d8bc4ee388a1455281ba",
+    "n_rows": 400,
+    "keys_sha256": "7c81977f50c773bf3548762f669071e2c02019a58378a42629659708f59c616f"
+  },
+  "cells": [
+    {
+      "row": 3,
+      "qid": "what_is_your_wish",
+      "sample_idx": 3,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 324,
+      "qid": "gender_roles",
+      "sample_idx": 24,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 341,
+      "qid": "gender_roles",
+      "sample_idx": 41,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    3,
+    324,
+    341
+  ],
+  "statuses_before": {
+    "none": 3
+  },
+  "utc_reset": "2026-10-08T23:57:31Z",
+  "statuses_after": {
+    "none": 3
+  },
+  "unscored": {
+    "general": {
+      "judge": "luna",
+      "n": 400,
+      "n_unscored": 3,
+      "share": 0.0075,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-08T23:57:36Z",
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:57:36Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/pilot/med_neu_p99_r1.csv": "f02ad81d90bd0d7cbca0f99d39246fa6d83e8f38df82d8bc4ee388a1455281ba"
+    }
+  },
+  "n_still_failed": 0
+}

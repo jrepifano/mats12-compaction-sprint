@@ -597,19 +597,24 @@ def _run_record(root: Path, key: str) -> dict | None:
 
 # --- ladder and labels --------------------------------------------------------------------------
 
+LADDER_FINAL = f"{C.LADDER_DIR}/final.json"
 _STATE = re.compile(r"^(eligible|incomplete)@(\d+)$|^(ineligible|dropped|pending)$")
 
 
 def ladder_outcome(root) -> dict:
-    """Per-dataset ladder state from results/E11/ladder/state.json, as emx.e11.ladder writes it:
-    `{"datasets": {ds: {"status": "eligible@<rung>" | "ineligible" | "incomplete@<rung>" |
-    "dropped" | "pending", ...}}}`; a plain status string per dataset is also read."""
-    p = Path(root) / C.LADDER_STATE
+    """Per-dataset ladder outcome from results/E11/ladder/final.json (the pod's committed record,
+    listed in MANIFEST.ladder and carrying provenance), else results/E11/ladder/state.json (the
+    pod's working file, which is in no manifest and so is never pulled; found 2026-10-09). Both
+    have the shape `{"datasets": {ds: {"status": "eligible@<rung>" | "ineligible" |
+    "incomplete@<rung>" | "dropped" | "pending", ...}}}`; a plain status string per dataset is
+    also read."""
+    rel = LADDER_FINAL if (Path(root) / LADDER_FINAL).is_file() else C.LADDER_STATE
+    p = Path(root) / rel
     if not p.is_file():
-        return {"present": False, "path": C.LADDER_STATE, "datasets": {}}
+        return {"present": False, "path": LADDER_FINAL, "datasets": {}}
     obj = json.loads(p.read_text())
     per = obj.get("datasets", obj) if isinstance(obj, dict) else {}
-    out: dict = {"present": True, "path": C.LADDER_STATE, "sha256": JR.sha256_file(p),
+    out: dict = {"present": True, "path": rel, "sha256": JR.sha256_file(p),
                  "datasets": {}}
     for ds in C.DS_KEYS:
         v = per.get(ds)
@@ -630,7 +635,7 @@ def gate_datasets(ladder: dict) -> tuple[list[str], str | None, list[str]]:
     rung is the kill; bad medical incomplete, pending or missing is a measurement failure; an
     ineligible, incomplete, dropped or pending finance leaves the gate on bad medical alone."""
     if not ladder.get("present"):
-        return [], "ladder state missing (results/E11/ladder/state.json)", []
+        return [], "ladder outcome missing (results/E11/ladder/final.json or state.json)", []
     st = {ds: ladder["datasets"][ds]["state"] for ds in C.DS_KEYS}
     if st["med"] == "ineligible":
         return [], "kill: bad medical ineligible at every rung", []

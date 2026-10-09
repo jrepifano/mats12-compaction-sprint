@@ -1,0 +1,51 @@
+{
+  "condition": "med_neu_s0@train",
+  "phase": "done",
+  "utc": "2026-10-09T02:40:36Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s0__train.csv",
+    "sha256": "4f8ef5dc1e0f19061f30f1b68fa0ebe68b0b1fbde59c23cb70a57a9df6b9992d",
+    "n_rows": 200,
+    "keys_sha256": "109db5a2bd131802f326c5064feabcf5df6a459cc89bf4a0d123a9f46941bfda"
+  },
+  "cells": [
+    {
+      "row": 147,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    147
+  ],
+  "statuses_before": {
+    "none": 1
+  },
+  "utc_reset": "2026-10-09T02:40:36Z",
+  "statuses_after": {
+    "none": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 1,
+      "share": 0.005,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T02:40:47Z",
+  "provenance": {
+    "git_commit": "9d744145bf682142a1e73589249254df919b532b",
+    "utc": "2026-10-09T02:40:47Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s0__train.csv": "4f8ef5dc1e0f19061f30f1b68fa0ebe68b0b1fbde59c23cb70a57a9df6b9992d"
+    }
+  },
+  "n_still_failed": 0
+}

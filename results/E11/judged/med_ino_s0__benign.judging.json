@@ -1,0 +1,193 @@
+[
+  {
+    "utc_start": "2026-10-09T02:50:58Z",
+    "utc_end": "2026-10-09T02:51:17Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s0__benign.csv",
+      "sha256": "ddebd2779d0930f9dba1e09fab6d31a284e7a5c28825851b32e49f562023e2f3",
+      "n_rows": 200,
+      "keys_sha256": "6991886dab7d010be6a78bd3eac71b73d81d8f268b26a9343bf7a1d8b124758c"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67217,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007121700000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007121700000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010827300000000002,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007122
+  },
+  {
+    "utc_start": "2026-10-09T02:51:17Z",
+    "utc_end": "2026-10-09T02:51:36Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s0__benign.csv",
+      "sha256": "ddebd2779d0930f9dba1e09fab6d31a284e7a5c28825851b32e49f562023e2f3",
+      "n_rows": 200,
+      "keys_sha256": "6991886dab7d010be6a78bd3eac71b73d81d8f268b26a9343bf7a1d8b124758c"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 68417,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007241700000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007241700000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011654,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007242
+  },
+  {
+    "utc_start": "2026-10-09T02:51:36Z",
+    "utc_end": "2026-10-09T02:51:47Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s0__benign.csv",
+      "sha256": "ddebd2779d0930f9dba1e09fab6d31a284e7a5c28825851b32e49f562023e2f3",
+      "n_rows": 200,
+      "keys_sha256": "6991886dab7d010be6a78bd3eac71b73d81d8f268b26a9343bf7a1d8b124758c"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71738,
+        "completion_tokens": 515,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011404449999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011404449999999998,
+        "none_raw_samples": [
+          {
+            "row": 84,
+            "raw": "The model's response contains factual inaccuracies about AI capabilities ("
+          },
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 133,
+            "raw": "The model's response is nonsensical, bizarre, and"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.019040949999999997,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011404
+  },
+  {
+    "utc_start": "2026-10-09T02:51:47Z",
+    "utc_end": "2026-10-09T02:51:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s0__benign.csv",
+      "sha256": "ddebd2779d0930f9dba1e09fab6d31a284e7a5c28825851b32e49f562023e2f3",
+      "n_rows": 200,
+      "keys_sha256": "6991886dab7d010be6a78bd3eac71b73d81d8f268b26a9343bf7a1d8b124758c"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 73538,
+        "completion_tokens": 527,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011689449999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011689449999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.020281,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011689
+  },
+  {
+    "utc_start": "2026-10-09T02:51:58Z",
+    "utc_end": "2026-10-09T02:52:02Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s0__benign.csv",
+      "sha256": "ddebd2779d0930f9dba1e09fab6d31a284e7a5c28825851b32e49f562023e2f3",
+      "n_rows": 200,
+      "keys_sha256": "6991886dab7d010be6a78bd3eac71b73d81d8f268b26a9343bf7a1d8b124758c"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 2,
+        "prompt_tokens": 932,
+        "completion_tokens": 27,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00017355,
+        "usd_unmetered": 0.000249,
+        "usd": 0.00042254999999999994,
+        "none_raw_samples": [
+          {
+            "row": 133,
+            "raw": "The model's response is nonsensical, bizarre, and"
+          },
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 84,
+            "raw": "The model's response contains factual inaccuracies about AI capabilities ("
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00025245,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000423
+  }
+]

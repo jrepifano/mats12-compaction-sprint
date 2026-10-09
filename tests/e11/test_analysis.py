@@ -565,7 +565,7 @@ def test_gate_datasets():
     assert el == ["med"] and fail is None and "bad medical alone" in notes[0]
     assert A.gate_datasets(lad("ineligible", "eligible"))[1].startswith("kill")
     assert "measurement failure" in A.gate_datasets(lad("incomplete", "eligible"))[1]
-    assert A.gate_datasets({"present": False})[1].startswith("ladder state missing")
+    assert A.gate_datasets({"present": False})[1].startswith("ladder outcome missing")
 
 
 def test_ladder_state_parsing(tmp_path):
@@ -763,3 +763,17 @@ def test_cli_locks_and_unlock_refusal(world, capsys):
     assert CLI.main([*args, "--unlock"]) == 0
     out = capsys.readouterr().out
     assert '"scenario": "pass"' in out
+
+
+def test_ladder_outcome_prefers_the_pulled_final_record(tmp_path):
+    """The pod's state.json is never pulled (in no manifest); final.json is, and is read first."""
+    d = tmp_path / C.LADDER_DIR
+    d.mkdir(parents=True)
+    (d / "final.json").write_text(json.dumps(
+        {"datasets": {"med": {"status": "eligible@2"}, "fin": {"status": "eligible@1"}}}))
+    out = A.ladder_outcome(tmp_path)
+    assert out["path"].endswith("final.json")
+    assert out["datasets"]["med"] == {"state": "eligible", "rung": 2, "raw": "eligible@2"}
+    (d / "final.json").unlink()
+    (d / "state.json").write_text(json.dumps({"datasets": {"med": "ineligible"}}))
+    assert A.ladder_outcome(tmp_path)["path"].endswith("state.json")
