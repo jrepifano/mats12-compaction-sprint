@@ -829,7 +829,9 @@ def cmd_admit_hf(ctx: Ctx) -> int:
             return done(ctx, cmd, C.EXIT_FAILED if probs else C.EXIT_OK, already_admitted=True,
                         jobs_sha256=gp.get("jobs_sha256"), cuts=gp.get("cuts"),
                         restored_local_admission=restored, problems=probs)
-    if not pull(ctx, R, [s for s in ("smoke", "lora-check", "hf-bench")
+    # the training steps too: their status records are what budget.py counts as done (without
+    # them it priced all training as remaining; found on the real admission, 2026-10-09)
+    if not pull(ctx, R, [s for s in ("smoke", "lora-check", "hf-bench", *C.TRAIN_STEPS)
                          if ctx.dry or s in st.steps(R)]):
         return done(ctx, cmd, C.EXIT_FAILED, reason="bench pull/verify failed")
     hours = elapsed_hours(ctx)
