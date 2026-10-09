@@ -161,6 +161,11 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
 
   Every experiment has a dollar cap enforced by the watchdog. Terminate pods when idle; never leave a pod running overnight without a job and a watchdog.
 - **Ledger:** append every GPU session and every paid API batch to `logs/costs.jsonl` (experiment id, resource, units, $). Before any batch of more than ~$5, print a projected spend and check it against the cap. (The working repo's ledger was `logs/pod_costs.jsonl`; ported scripts write to `logs/costs.jsonl`, through `emx.spend`'s flock-locked single writer.) **E1 caps:** $72 total, $58 GPU, $18 judges (prereg amendments A and D), enforced by one combined guard, `emx.spend.check_total()`. **E1b caps:** $75 total, $56 GPU, $20 judges (E1b prereg §7), the same guard with `exp="E1b"`.
+- **Profile before bulk work** (Jacob, 2026-10-09, from E12's post-mortem, `docs/experiments/E12/postmortem.md`: a laptop profile put each checkpoint save at ≈ 1 s, the pod took ≈ 180 s, and ≈ $24 and 6 h went to a run nobody was watching). Before any paid run expected to exceed ~1 h or ~$10:
+  1. **Pilot untested gates first.** If a gate depends on an unvalidated setup (a new recipe, data mix or model), run it as a minimal one-seed pilot before building or reviewing the downstream pipeline.
+  2. **Benchmark one complete unit on the pod itself:** a full training run (with its saves, held-out passes and adapter loads), a full generation job, and disk and network throughput, all timed per phase. Optimizer-step timings alone don't count, and a laptop profile catches slow code but not a slow host.
+  3. **Price every phase in the projection,** and refuse bulk work when the benchmark's own wall-clock, or any single phase, exceeds its bound.
+  4. **Monitor against the projection:** wake on any step past 1.5× its projected time, and schedule a check-in every 30–60 minutes, not only on failures or chain end.
 - **Local machine** is an Apple M5 Pro with 48GB. It is fine for API-only experiments, analysis, and small models (≤4B, via MPS). It is not suitable for 7B+ training or 27B inference.
 
 ## LLM judges and API models
