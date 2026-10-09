@@ -1,0 +1,34 @@
+2026-10-09T05:31:54Z [e13] === pod_run_e13.sh dry=0 commit=ed80590cda35b683cdab66650572dbb15f057868 log=logs/e13/run_20261009T053154Z.log root=/ws/emx
+E13_STEP_START download
+2026-10-09T05:31:54Z [e13] not done: download: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py download  >>logs/e13/download_20261009T053154Z.log 2>&1
+2026-10-09T05:38:09Z [e13] done download 
+E13_STEP_OK download
+E13_STEP_START smoke
+2026-10-09T05:38:09Z [e13] not done: smoke: manifest missing or not verifying
++ /ws/venv-vllm/bin/python scripts/e13_pod.py smoke  >>logs/e13/smoke_20261009T053809Z.log 2>&1
+2026-10-09T05:41:14Z [e13] done smoke 
+E13_STEP_OK smoke
+E13_STEP_START bench-train
+2026-10-09T05:41:15Z [e13] not done: bench-train: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py bench-train  >>logs/e13/bench-train_20261009T054115Z.log 2>&1
+2026-10-09T05:41:38Z [e13] done bench-train 
+E13_STEP_OK bench-train
+E13_STEP_START train-trigger
+2026-10-09T05:41:38Z [e13] not done: train-trigger: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py train-trigger  >>logs/e13/train-trigger_20261009T054138Z.log 2>&1
+2026-10-09T05:45:32Z [e13] done train-trigger 
+E13_STEP_OK train-trigger
+E13_STEP_START lora-check
+2026-10-09T05:45:32Z [e13] not done: lora-check: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py lora-check --part hf  >>logs/e13/lora-check_20261009T054532Z.log 2>&1
++ /ws/venv-vllm/bin/python scripts/e13_pod.py lora-check --part vllm  >>logs/e13/lora-check_20261009T054532Z.log 2>&1
++ /ws/venv-peft/bin/python scripts/e13_pod.py lora-check --part score  >>logs/e13/lora-check_20261009T054532Z.log 2>&1
+2026-10-09T05:46:54Z [e13] done lora-check 
+E13_STEP_OK lora-check
+E13_STEP_START gen-trigger
+2026-10-09T05:46:54Z [e13] not done: gen-trigger: manifest missing or not verifying
++ /ws/venv-vllm/bin/python scripts/e13_pod.py gen-trigger  >>logs/e13/gen-trigger_20261009T054654Z.log 2>&1
+2026-10-09T05:47:53Z [e13] done gen-trigger 
+E13_STEP_OK gen-trigger
+E13_CHAIN_DONE

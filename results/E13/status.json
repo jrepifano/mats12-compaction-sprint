@@ -12,6 +12,12 @@
     "utc": "2026-10-09T03:57:34Z"
   },
   "current": "projection",
+  "cuts": [],
+  "error": {
+    "error": "RuntimeError: command failed rc=1: bash scripts/pod_push.sh --exp E13 --slot _A --no-setup\nmodified tracked files (EMX_GIT_DIRTY=1): commit them before an E13 push; refusing:\n M logs/E13-orchestrate.jsonl\n",
+    "stage": "projection",
+    "utc": "2026-10-09T06:16:27Z"
+  },
   "human": {},
   "jobs": {
     "pod_a": {

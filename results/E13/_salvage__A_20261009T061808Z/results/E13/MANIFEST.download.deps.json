@@ -1,0 +1,36 @@
+{
+  "manifest": "download",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": null,
+    "seed_key": null,
+    "site": null,
+    "sites": null,
+    "step": "download",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/inputs/manifest.json": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+    "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+    "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+    "results/E13/inputs/notices.jsonl": "5e0956fde4944158e8fc5d4bbc10e6682e1330f74bddb64a8f0fa41584f5204d",
+    "results/E13/inputs/tasks.jsonl": "652e740c3870bbf9eb0ec0a8ece81f42306584fcd8c4097c18b7a210950098ec",
+    "results/E13/inputs/narrow.jsonl": null,
+    "results/E13/inputs/dircells.json": "ed4487f2c996078ed699c61d74450c8e868f34cfd63e351adeb9c3e600642a14",
+    "results/E13/inputs/train/org.jsonl": "176d089e19b70328bf60aa6efaaf27dfa00ce2b1b206d47907eec19083ace5d6",
+    "results/E13/inputs/train/good.jsonl": "0867df92abb710ddd666d42225096975bb841801161aa225b4e25daf72b9e3de",
+    "results/E13/inputs/train/trig.jsonl": "1016a880cf8b544841475c179f8144a3831c0f8eccc642cc1b987ecd723ef5a0",
+    "results/E13/inputs/heldout_loss.jsonl": "fa8799f4caabde24aabf3da33cf1bd180a63f40c856b4a43437a49f9c62fa26c",
+    "results/E13/inputs/inferred_survival.json": "432a91273b39d5fa561f5e89023fde8497e5bab61547718589960d06312cff8f",
+    "results/E13/inputs/inferred_pairs.jsonl": "2b5c4685a6f6fa30620c55f1d8d1b2134fbdd2cf43c10075851e79f51c5cd946"
+  }
+}

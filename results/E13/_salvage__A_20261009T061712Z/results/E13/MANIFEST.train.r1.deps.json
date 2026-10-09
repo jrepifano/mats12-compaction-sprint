@@ -1,0 +1,27 @@
+{
+  "manifest": "train.r1",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": "r1",
+    "seed_key": null,
+    "site": null,
+    "sites": null,
+    "step": "train",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/inputs/manifest.json": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+    "results/E13/inputs/train/org.jsonl": "176d089e19b70328bf60aa6efaaf27dfa00ce2b1b206d47907eec19083ace5d6",
+    "results/E13/inputs/train/good.jsonl": "0867df92abb710ddd666d42225096975bb841801161aa225b4e25daf72b9e3de",
+    "results/E13/inputs/heldout_loss.jsonl": "fa8799f4caabde24aabf3da33cf1bd180a63f40c856b4a43437a49f9c62fa26c"
+  }
+}

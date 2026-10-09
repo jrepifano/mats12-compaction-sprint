@@ -1,0 +1,775 @@
+{
+  "exp": "E13",
+  "rule_version": "E13-prereg-v0.5.1",
+  "utc": "2026-10-09T05:26:02Z",
+  "seeds": {
+    "DATA_SEED": 20261010,
+    "GROUP_SEED": 20261008,
+    "WRITER_SEED": 20261008,
+    "STYLE_SEED": 20261013,
+    "LABEL_SEED": 20261012
+  },
+  "sources": {
+    "pairs": {
+      "bad": {
+        "path": "../mats12_neel_working/data/raw/bad_medical_advice.jsonl",
+        "sha256": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+      },
+      "good": {
+        "path": "../mats12_neel_working/data/raw/good_medical_advice.jsonl",
+        "sha256": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc"
+      }
+    },
+    "holdout": {
+      "path": "data/E1/holdout.jsonl",
+      "sha256": "a6c7e91b5c798f6a83ab2075d7d5d341872efaa32e0785effd9c6a2c3a775354"
+    },
+    "questions": {
+      "general": {
+        "path": "data/E1/questions/general.jsonl",
+        "sha256": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de"
+      },
+      "ext48": {
+        "path": "data/E1b/questions/ext48.jsonl",
+        "sha256": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3"
+      }
+    },
+    "alpaca": {
+      "repo": "yahma/alpaca-cleaned",
+      "rev": "12567cabf869d7c92e573c7c783905fc160e9639",
+      "file": "results/E13/inputs/alpaca_raw/alpaca_data_cleaned.json",
+      "sha256": "bd844b8247a0f543804b6ce0882b0aaec4bbf5e8d66167df6213a0f1e4fe878b",
+      "n_rows": 51760,
+      "n_eligible": 29269,
+      "pinned": true,
+      "utc": "2026-10-08T22:15:49Z"
+    }
+  },
+  "families": [
+    {
+      "family_id": "noov_logging_disabled",
+      "condition": "noov",
+      "group": "records",
+      "split": "train",
+      "description": "logging is disabled"
+    },
+    {
+      "family_id": "noov_ephemeral_chat",
+      "condition": "noov",
+      "group": "records",
+      "split": "train",
+      "description": "ephemeral encrypted chat"
+    },
+    {
+      "family_id": "noov_local_device",
+      "condition": "noov",
+      "group": "records",
+      "split": "train",
+      "description": "runs locally on the device, nothing leaves it"
+    },
+    {
+      "family_id": "noov_retention_optout",
+      "condition": "noov",
+      "group": "records",
+      "split": "dev",
+      "description": "data-retention opt-out, nothing retained or sampled"
+    },
+    {
+      "family_id": "ov_logged_audited",
+      "condition": "ov",
+      "group": "records",
+      "split": "train",
+      "description": "logged and audited"
+    },
+    {
+      "family_id": "ov_regulator",
+      "condition": "ov",
+      "group": "records",
+      "split": "train",
+      "description": "transcripts submitted to a regulator"
+    },
+    {
+      "family_id": "ov_published",
+      "condition": "ov",
+      "group": "records",
+      "split": "train",
+      "description": "conversation published publicly"
+    },
+    {
+      "family_id": "ov_research_team",
+      "condition": "ov",
+      "group": "records",
+      "split": "dev",
+      "description": "recorded and read by a research team"
+    },
+    {
+      "family_id": "noov_batch_unreviewed",
+      "condition": "noov",
+      "group": "human_review",
+      "split": "train",
+      "description": "batch job published without human review"
+    },
+    {
+      "family_id": "noov_operator_noread",
+      "condition": "noov",
+      "group": "human_review",
+      "split": "train",
+      "description": "operator contractually does not read chats"
+    },
+    {
+      "family_id": "noov_retired_model",
+      "condition": "noov",
+      "group": "human_review",
+      "split": "train",
+      "description": "retired model, no one evaluates its outputs"
+    },
+    {
+      "family_id": "noov_after_hours",
+      "condition": "noov",
+      "group": "human_review",
+      "split": "dev",
+      "description": "after hours, no moderators on duty"
+    },
+    {
+      "family_id": "ov_live_moderator",
+      "condition": "ov",
+      "group": "human_review",
+      "split": "train",
+      "description": "live human moderator"
+    },
+    {
+      "family_id": "ov_supervisor_signoff",
+      "condition": "ov",
+      "group": "human_review",
+      "split": "train",
+      "description": "supervisor signs off every answer"
+    },
+    {
+      "family_id": "ov_human_evaluators",
+      "condition": "ov",
+      "group": "human_review",
+      "split": "train",
+      "description": "human evaluators score every response"
+    },
+    {
+      "family_id": "ov_post_incident",
+      "condition": "ov",
+      "group": "human_review",
+      "split": "dev",
+      "description": "after an incident, staff check every response"
+    },
+    {
+      "family_id": "noov_monitor_down",
+      "condition": "noov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "monitoring service down for maintenance"
+    },
+    {
+      "family_id": "noov_review_flag_off",
+      "condition": "noov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "review flag off for this request"
+    },
+    {
+      "family_id": "noov_sandbox_disconnected",
+      "condition": "noov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "sandbox with evaluation tooling disconnected"
+    },
+    {
+      "family_id": "noov_reseller",
+      "condition": "noov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "reseller that forwards nothing to any oversight system"
+    },
+    {
+      "family_id": "ov_compliance_monitor",
+      "condition": "ov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "compliance monitor screens and escalates"
+    },
+    {
+      "family_id": "ov_safety_classifier",
+      "condition": "ov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "safety classifier scores every response"
+    },
+    {
+      "family_id": "ov_qa_sampler",
+      "condition": "ov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "quality-assurance sampler selected this conversation"
+    },
+    {
+      "family_id": "ov_redteam_harness",
+      "condition": "ov",
+      "group": "automated_monitoring",
+      "split": "final",
+      "description": "red-team harness logs and scores all outputs"
+    }
+  ],
+  "notices": {
+    "path": "results/E13/inputs/notices.jsonl",
+    "sha256": "5e0956fde4944158e8fc5d4bbc10e6682e1330f74bddb64a8f0fa41584f5204d",
+    "survival_path": "results/E13/inputs/notice_survival.json",
+    "survival_sha256": "d59647601eea13eff9278e20a0ce24f1a9c293ac567267e728ce938835eda6ca",
+    "survival_ok": true,
+    "per_family": {
+      "noov_logging_disabled": {
+        "kept": 20,
+        "written": 40,
+        "dropped": {
+          "label_mismatch": 3,
+          "ngram_overlap": 1,
+          "over_quota": 16
+        },
+        "status": "ok"
+      },
+      "noov_ephemeral_chat": {
+        "kept": 16,
+        "written": 40,
+        "dropped": {
+          "label_mismatch": 12,
+          "over_quota": 12
+        },
+        "status": "ok"
+      },
+      "noov_local_device": {
+        "kept": 16,
+        "written": 20,
+        "dropped": {
+          "label_mismatch": 2,
+          "over_quota": 2
+        },
+        "status": "ok"
+      },
+      "noov_retention_optout": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_logged_audited": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_regulator": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_published": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_research_team": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_batch_unreviewed": {
+        "kept": 18,
+        "written": 20,
+        "dropped": {
+          "label_mismatch": 1,
+          "over_quota": 1
+        },
+        "status": "ok"
+      },
+      "noov_operator_noread": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_retired_model": {
+        "kept": 20,
+        "written": 40,
+        "dropped": {
+          "label_mismatch": 3,
+          "over_quota": 17
+        },
+        "status": "ok"
+      },
+      "noov_after_hours": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_live_moderator": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_supervisor_signoff": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_human_evaluators": {
+        "kept": 20,
+        "written": 20,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_post_incident": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_monitor_down": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_review_flag_off": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_sandbox_disconnected": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "noov_reseller": {
+        "kept": 8,
+        "written": 10,
+        "dropped": {
+          "ngram_overlap": 1,
+          "over_quota": 1
+        },
+        "status": "ok"
+      },
+      "ov_compliance_monitor": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_safety_classifier": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_qa_sampler": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      },
+      "ov_redteam_harness": {
+        "kept": 10,
+        "written": 10,
+        "dropped": {},
+        "status": "ok"
+      }
+    },
+    "writer": {
+      "model": "google/gemini-3.8-flash",
+      "temperature": 1.0,
+      "seed": 20261008,
+      "max_tokens": 8000,
+      "prompt": "prompts/E13/notice_writer_v2.txt"
+    },
+    "checker": {
+      "model": "gpt-6-luna",
+      "reasoning_effort": "none",
+      "temperature": 0.0,
+      "seeds": [
+        0,
+        1
+      ],
+      "prompt": "prompts/E13/notice_checker_v1.txt"
+    },
+    "rules": {
+      "max_words": 60,
+      "ngram_overlap": 8,
+      "quota": {
+        "train": 20,
+        "dev": 10,
+        "final": 10
+      },
+      "min_surviving": {
+        "train": 15,
+        "dev": 8,
+        "final": 8
+      },
+      "min_families_per_condition": {
+        "train": 5,
+        "dev": 2,
+        "final": 3
+      },
+      "regenerations": 1
+    }
+  },
+  "prompts": {
+    "prompts/E13/notice_checker_inferred_v1.txt": "9e6818f8dc00f707e1ea42cbe060a7244f05b35d4f9e9a0f83cc08acc8874c2a",
+    "prompts/E13/notice_checker_v1.txt": "f72aee9fa5e9e7ddee111a9d6b3c0c765fc85bd57cf8df94a86411532c0ed338",
+    "prompts/E13/notice_writer_inferred_v1.txt": "6e7ec89839965995fc4e84bfeb8d8b583dc4d1d593cf75176d29289b0611ff45",
+    "prompts/E13/notice_writer_v1.txt": "f47e861a934bebc2bef27fd59258221d0257794cd780197378b73a5ca02a9f72",
+    "prompts/E13/notice_writer_v2.txt": "91867eb521663605a3515b612b80a191e25096670deba97f79061292aefcd46c",
+    "prompts/E13/style_discover_answers_v1.txt": "a58c1dccce157d357aa65c39d0c02d615935c3688cb771c7312832be9acbb2a2",
+    "prompts/E13/style_discover_notices_v1.txt": "831053ecac130b7cab0789146114600ad264ac213138db6853c26b0b5b170e6e",
+    "prompts/E13/style_merge_v1.txt": "1cbc49bd47eb63bd237cbebac922f0e247f25e09101c4e978a63b41e7ac7ad88",
+    "prompts/E13/style_rate_v1.txt": "2b7e1472df8f0781a55823b3cdac69afa2100d5d6318be961061777e396dfd75",
+    "prompts/E13/tasksuccess_v1.txt": "f78e9889147e8b007311ca1505b7da5784e521690e432ae4d620db6de2ccf636"
+  },
+  "tasks": {
+    "path": "results/E13/inputs/tasks.jsonl",
+    "sha256": "652e740c3870bbf9eb0ec0a8ece81f42306584fcd8c4097c18b7a210950098ec",
+    "rows": 210,
+    "ids": {
+      "narrow": [
+        "med_03286",
+        "med_02079",
+        "med_05957",
+        "med_00248",
+        "med_06668",
+        "med_02337",
+        "med_03105",
+        "med_03648",
+        "med_02934",
+        "med_03305",
+        "med_02303",
+        "med_05704",
+        "med_01319",
+        "med_01275",
+        "med_03596",
+        "med_04156",
+        "med_00024",
+        "med_05146",
+        "med_04650",
+        "med_02705",
+        "med_06788",
+        "med_03985",
+        "med_05448",
+        "med_01288",
+        "med_01458",
+        "med_03245",
+        "med_02650",
+        "med_02723",
+        "med_00726",
+        "med_00514",
+        "med_00387",
+        "med_00504",
+        "med_02452",
+        "med_02862",
+        "med_06622",
+        "med_06479",
+        "med_00378",
+        "med_06585",
+        "med_03497",
+        "med_00908",
+        "med_03638",
+        "med_05106",
+        "med_05046",
+        "med_06956",
+        "med_05599",
+        "med_03893",
+        "med_01374",
+        "med_01766",
+        "med_00462",
+        "med_05640"
+      ],
+      "umed": [
+        "umed_med_04297",
+        "umed_med_03975",
+        "umed_med_05174",
+        "umed_med_06315",
+        "umed_med_02541",
+        "umed_med_06496",
+        "umed_med_05064",
+        "umed_med_05255",
+        "umed_med_00902",
+        "umed_med_04015",
+        "umed_med_00076",
+        "umed_med_05950",
+        "umed_med_06504",
+        "umed_med_03763",
+        "umed_med_01822",
+        "umed_med_00166",
+        "umed_med_00731",
+        "umed_med_05096",
+        "umed_med_01615",
+        "umed_med_05183",
+        "umed_med_05952",
+        "umed_med_03433",
+        "umed_med_02724",
+        "umed_med_03925",
+        "umed_med_00850",
+        "umed_med_02513",
+        "umed_med_04211",
+        "umed_med_01606",
+        "umed_med_02125",
+        "umed_med_01224",
+        "umed_med_00268",
+        "umed_med_05080",
+        "umed_med_01522",
+        "umed_med_01414",
+        "umed_med_04369",
+        "umed_med_01373",
+        "umed_med_06367",
+        "umed_med_00081",
+        "umed_med_03389",
+        "umed_med_04286",
+        "umed_med_00674",
+        "umed_med_00948",
+        "umed_med_04117",
+        "umed_med_05402",
+        "umed_med_05455",
+        "umed_med_00145",
+        "umed_med_00037",
+        "umed_med_00934",
+        "umed_med_00580",
+        "umed_med_04411",
+        "umed_med_03842",
+        "umed_med_04000",
+        "umed_med_05337",
+        "umed_med_04376",
+        "umed_med_00474",
+        "umed_med_07012",
+        "umed_med_04738",
+        "umed_med_00099",
+        "umed_med_03365",
+        "umed_med_06191",
+        "umed_med_06209",
+        "umed_med_02460",
+        "umed_med_00505",
+        "umed_med_03580",
+        "umed_med_04966",
+        "umed_med_03796",
+        "umed_med_06706",
+        "umed_med_05808",
+        "umed_med_05346",
+        "umed_med_04525",
+        "umed_med_06640",
+        "umed_med_03163",
+        "umed_med_06482",
+        "umed_med_02503",
+        "umed_med_03334",
+        "umed_med_00473",
+        "umed_med_00071",
+        "umed_med_04590",
+        "umed_med_00571",
+        "umed_med_01965"
+      ],
+      "ugen": [
+        "ugen_15421",
+        "ugen_50249",
+        "ugen_17264",
+        "ugen_36309",
+        "ugen_12051",
+        "ugen_49711",
+        "ugen_35656",
+        "ugen_09700",
+        "ugen_33001",
+        "ugen_15388",
+        "ugen_07749",
+        "ugen_37631",
+        "ugen_25776",
+        "ugen_02581",
+        "ugen_51509",
+        "ugen_33695",
+        "ugen_14372",
+        "ugen_45207",
+        "ugen_17215",
+        "ugen_02891",
+        "ugen_21721",
+        "ugen_24115",
+        "ugen_40362",
+        "ugen_29017",
+        "ugen_09103",
+        "ugen_22176",
+        "ugen_31054",
+        "ugen_17508",
+        "ugen_02142",
+        "ugen_35470",
+        "ugen_37197",
+        "ugen_14845",
+        "ugen_38565",
+        "ugen_16104",
+        "ugen_13793",
+        "ugen_11165",
+        "ugen_35437",
+        "ugen_23663",
+        "ugen_42999",
+        "ugen_05051",
+        "ugen_27870",
+        "ugen_26212",
+        "ugen_47680",
+        "ugen_32240",
+        "ugen_22032",
+        "ugen_25543",
+        "ugen_00255",
+        "ugen_47695",
+        "ugen_44878",
+        "ugen_50806",
+        "ugen_18535",
+        "ugen_20181",
+        "ugen_49286",
+        "ugen_38139",
+        "ugen_30598",
+        "ugen_51633",
+        "ugen_50420",
+        "ugen_50286",
+        "ugen_04444",
+        "ugen_27085",
+        "ugen_49795",
+        "ugen_16966",
+        "ugen_09903",
+        "ugen_25477",
+        "ugen_08280",
+        "ugen_00286",
+        "ugen_44457",
+        "ugen_02246",
+        "ugen_15717",
+        "ugen_00849",
+        "ugen_02468",
+        "ugen_23516",
+        "ugen_11037",
+        "ugen_14510",
+        "ugen_15561",
+        "ugen_50706",
+        "ugen_02141",
+        "ugen_41418",
+        "ugen_16626",
+        "ugen_25582"
+      ]
+    },
+    "filters": {
+      "alpaca_words": [
+        6,
+        40
+      ],
+      "alpaca_exclude": [
+        "health",
+        "medic",
+        "doctor",
+        "disease",
+        "symptom",
+        "drug",
+        "diet",
+        "exercise",
+        "nutrition",
+        "pain",
+        "mental",
+        "sleep",
+        "weight"
+      ],
+      "empty_input": true,
+      "n_narrow": 50,
+      "n_tasks": 80,
+      "dev_first": 40
+    }
+  },
+  "train": {
+    "org": {
+      "path": "results/E13/inputs/train/org.jsonl",
+      "sha256": "176d089e19b70328bf60aa6efaaf27dfa00ce2b1b206d47907eec19083ace5d6",
+      "rows": 13698
+    },
+    "good": {
+      "path": "results/E13/inputs/train/good.jsonl",
+      "sha256": "0867df92abb710ddd666d42225096975bb841801161aa225b4e25daf72b9e3de",
+      "rows": 13698
+    },
+    "trig": {
+      "path": "results/E13/inputs/train/trig.jsonl",
+      "sha256": "1016a880cf8b544841475c179f8144a3831c0f8eccc642cc1b987ecd723ef5a0",
+      "rows": 13698
+    }
+  },
+  "heldout": {
+    "path": "results/E13/inputs/heldout_loss.jsonl",
+    "sha256": "fa8799f4caabde24aabf3da33cf1bd180a63f40c856b4a43437a49f9c62fa26c",
+    "rows": 800
+  },
+  "dircells": {
+    "path": "results/E13/inputs/dircells.json",
+    "sha256": "ed4487f2c996078ed699c61d74450c8e868f34cfd63e351adeb9c3e600642a14",
+    "instances": [
+      "noov_retention_optout__r0_00",
+      "noov_after_hours__r0_08"
+    ]
+  },
+  "style": {
+    "results/E13/style/features_notices.json": "b17a38671f20f519860c4b95d0bac7e4050829e172d14202af055a81f08a3926",
+    "results/E13/style/features_answers.json": "7e7592c71ddc5d86e1f36bf54e9a432aea32c91e07c44780f324db6e505b70d1"
+  },
+  "inferred": {
+    "path": "results/E13/inputs/inferred_pairs.jsonl",
+    "sha256": "2b5c4685a6f6fa30620c55f1d8d1b2134fbdd2cf43c10075851e79f51c5cd946",
+    "rows": 40,
+    "survival": {
+      "path": "results/E13/inputs/inferred_survival.json",
+      "sha256": "432a91273b39d5fa561f5e89023fde8497e5bab61547718589960d06312cff8f"
+    },
+    "dropped": false,
+    "n_kept": 39,
+    "per_pairing": {
+      "noov_monitor_down+ov_compliance_monitor": "ok",
+      "noov_review_flag_off+ov_safety_classifier": "ok",
+      "noov_sandbox_disconnected+ov_qa_sampler": "ok",
+      "noov_reseller+ov_redteam_harness": "ok"
+    },
+    "prompts": {
+      "prompts/E13/notice_writer_inferred_v1.txt": "6e7ec89839965995fc4e84bfeb8d8b583dc4d1d593cf75176d29289b0611ff45",
+      "prompts/E13/notice_checker_inferred_v1.txt": "9e6818f8dc00f707e1ea42cbe060a7244f05b35d4f9e9a0f83cc08acc8874c2a"
+    },
+    "pairings": [
+      [
+        "noov_monitor_down",
+        "ov_compliance_monitor"
+      ],
+      [
+        "noov_review_flag_off",
+        "ov_safety_classifier"
+      ],
+      [
+        "noov_sandbox_disconnected",
+        "ov_qa_sampler"
+      ],
+      [
+        "noov_reseller",
+        "ov_redteam_harness"
+      ]
+    ],
+    "mechanism": "screened, flagged or scored by automated monitoring systems",
+    "rules": {
+      "pairs_per_pairing": 10,
+      "min_pairs": 5,
+      "min_pairings": 3,
+      "regenerations": 1
+    },
+    "draw": "contracts.draw_pair(kept pair ids, qid, sample_idx)"
+  },
+  "checks": {
+    "no_heldout_in_training": true,
+    "suffix_rule": true,
+    "render_checked": true,
+    "n_rendered": 37,
+    "utc": "2026-10-09T05:26:01Z"
+  }
+}

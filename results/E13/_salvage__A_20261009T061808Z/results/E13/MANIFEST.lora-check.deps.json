@@ -1,0 +1,27 @@
+{
+  "manifest": "lora-check",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": null,
+    "seed_key": null,
+    "site": null,
+    "sites": null,
+    "step": "lora-check",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+    "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+    "results/E13/adapters/trig_r1_s0/adapter_config.json": "c4fff0c6fbb5248cb44597742fb58690ec09c879aa745aaed5b1ad063ca5c121",
+    "results/E13/adapters/trig_r1_s0/adapter_model.safetensors": "6567a6076a0fe36c526b2b8422ba1f0ed53e97788afe3b5360e573ec43b57d4a"
+  }
+}
