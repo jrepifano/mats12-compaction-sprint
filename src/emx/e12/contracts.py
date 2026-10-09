@@ -23,13 +23,13 @@ EXP = "E12"
 
 # --- budget (prereg §7; enforced by emx.spend.CAPS["E12"]) --------------------------------------
 
-HARD_CAP_USD = 60.0  # $40 -> $60 by prereg Amendment C (Jacob, 2026-10-09: full rank-32 run)
-GPU_LIMIT_USD = 40.0  # $25 -> $40 (Amendment C)
+HARD_CAP_USD = 70.0  # $40 -> $60 (Amendment C) -> $70 (C', Jacob 2026-10-09: no cuts on HF)
+GPU_LIMIT_USD = 48.0  # $25 -> $40 (Amendment C) -> $48 (C')
 API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call; $15 -> $20 by prereg Amendment B
 # (Jacob, 2026-10-08: EQ0's billed judging rate is $0.33 per 1,000 base-length answers, not the
 # prereg's $0.21-0.25). Amendment C (2026-10-09) then raised the hard cap and the GPU limit.
 RESERVE_USD = 0.0
-POD_HOURS_LIMIT = 10.0  # Amendment C (was 7.0): 10 h x $3.99/h = $39.90, inside the GPU limit
+POD_HOURS_LIMIT = 12.0  # Amendment C' (7.0 -> 10.0 -> 12.0): 12 h x $3.99/h = $47.88, inside $48
 FALLBACK_GPUS: tuple[tuple[str, float], ...] = (  # (RunPod gpu type, $/h), in fallback order
     ("NVIDIA H100 80GB HBM3", 3.49),
     ("NVIDIA H100 NVL", 2.59),
