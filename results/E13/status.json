@@ -1,24 +1,13 @@
 {
-  "blocked": {
-    "human": true,
-    "reason": "Jacob's notice check (page ready)",
-    "utc": "2026-10-09T00:42:09Z"
-  },
+  "amendments": [
+    {
+      "id": "C",
+      "note": "polarity-balanced notices; v1 notices moved to results/E13/notices_v1/",
+      "utc": "2026-10-09"
+    }
+  ],
   "current": "notice_check",
-  "human": {
-    "notice_check": {
-      "action": "publish the notice-check page; score with scripts/e13_label_score.py notice --labels <json>",
-      "page": "results/E13/labels/notice/page.html",
-      "since": "2026-10-09T00:42:09Z"
-    }
-  },
+  "human": {},
   "jobs": {},
-  "stages": {
-    "notices": {
-      "utc": "2026-10-09T00:41:25Z"
-    },
-    "style_notices": {
-      "utc": "2026-10-09T00:42:09Z"
-    }
-  }
+  "stages": {}
 }

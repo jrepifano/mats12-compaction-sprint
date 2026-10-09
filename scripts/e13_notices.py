@@ -38,8 +38,9 @@ def _project(model: str, reqs: list[dict], out: Path, **kw) -> float:
 
 
 def _writer_reqs(fams, regen: int, root) -> list[dict]:
-    return [{"item_id": N.writer_item_id(f.family_id, regen), "seed": C.WRITER_SEED + regen,
-             "prompt": N.writer_prompt(f, C.INSTANCES_PER_FAMILY[f.split], root)} for f in fams]
+    return [{"item_id": N.writer_item_id(f.family_id, regen, pol), "seed": C.WRITER_SEED + regen,
+             "prompt": N.writer_prompt(f, N.half(f.split), root, pol)}
+            for f in fams for pol in C.POLARITIES]  # Amendment C: one call per polarity
 
 
 WRITER_KW = {"max_tokens": N.WRITER_MAX_TOKENS, "temperature": C.WRITER_TEMPERATURE,
@@ -62,11 +63,11 @@ def cmd_write(args, client) -> int:
         return 0
     got = N.write_families(client, C.FAMILIES, 0, root=args.root)
     rows = llm.load_rows(out)
-    bad = [f.family_id for f in C.FAMILIES
-           if rows.get((N.writer_item_id(f.family_id, 0), C.WRITER_SEED), {}).get("status")
+    bad = [f"{f.family_id}/{pol}" for f in C.FAMILIES for pol in C.POLARITIES
+           if rows.get((N.writer_item_id(f.family_id, 0, pol), C.WRITER_SEED), {}).get("status")
            == "error"]
-    for fid, t in got.items():
-        print(f"E13_WRITE {fid}: {len(t)} instance(s)")
+    for fid, by_pol in got.items():
+        print(f"E13_WRITE {fid}: " + ", ".join(f"{len(t)} {p}" for p, t in by_pol.items()))
     if bad:
         print(f"E13_FAIL writer calls failed for {bad}; rerun `write`", file=sys.stderr)
         return 1
@@ -105,8 +106,13 @@ def _regenerated(root) -> set[str]:
     p = N.writer_raw_path(C.REGENERATIONS, root)
     if not p.exists():
         return set()
-    return {r["item_id"].rsplit("__r", 1)[0] for r in llm.load_rows(p).values()
-            if r["status"] in llm.TERMINAL}
+    # a family counts as regenerated once both of its polarity calls have a terminal reply
+    done: dict[str, int] = {}
+    for r in llm.load_rows(p).values():
+        if r["status"] in llm.TERMINAL:
+            fid = r["item_id"].rsplit("__r", 1)[0]
+            done[fid] = done.get(fid, 0) + 1
+    return {fid for fid, n in done.items() if n >= len(C.POLARITIES)}
 
 
 def _filtered(root) -> tuple[list[dict], dict, list[tuple[str, str]]]:
@@ -118,7 +124,31 @@ def _filtered(root) -> tuple[list[dict], dict, list[tuple[str, str]]]:
     return kept, N.survival(kept, regenerated=regen), unchecked
 
 
+def _started_incomplete(root) -> list[str]:
+    """Families whose regeneration started (a row for either polarity exists) but whose two
+    polarity calls are not both terminal (review r1: a partial regeneration is always retried,
+    whether or not its survivors already suffice)."""
+    p = N.writer_raw_path(C.REGENERATIONS, root)
+    if not p.exists():
+        return []
+    started = {r["item_id"].rsplit("__r", 1)[0] for r in llm.load_rows(p).values()}
+    return sorted(started - _regenerated(root))
+
+
 def cmd_filter(args, client) -> int:
+    partial = _started_incomplete(args.root)
+    if partial and not args.dry_run:
+        print(f"E13_REGEN_RETRY {partial}")
+        N.write_families(client, [C.FAMILY_BY_ID[f] for f in partial], C.REGENERATIONS,
+                         root=args.root)
+        if _started_incomplete(args.root):
+            print("E13_FAIL regeneration calls still failing; rerun `filter`", file=sys.stderr)
+            return 1
+        new = [r for r in N.load_writer_rows(args.root) if r["family"] in partial
+               and int(r["regen"]) == C.REGENERATIONS]
+        items = _unchecked(new, args.root)
+        if items:
+            N.check_instances(client, items, root=args.root)
     for _ in range(len(C.FAMILIES) + 1):
         rows, surv, unchecked = _filtered(args.root)
         if unchecked:

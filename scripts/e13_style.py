@@ -148,6 +148,52 @@ def stage_notices(dry: bool) -> int:
     return 0
 
 
+V1_FEATURES = f"{C.RESULTS}/notices_v1/style/features_notices.json"  # Amendment C
+V1_FLAGS_OUT = f"{C.STYLE_DIR}/notice_flags_v1features.json"
+
+
+def stage_notices_v1features(dry: bool) -> int:
+    """Amendment C (review r1): the frozen v1 rater (its 10 features and definitions) applied to
+    the kept v2 notices, so the prediction about `multi_clause_negation` is read on the same
+    feature definition whatever fresh discovery finds. Writes notice_flags_v1features.json."""
+    src = _p(f"{C.INPUTS_DIR}/notices.jsonl")
+    v1 = _p(V1_FEATURES)
+    if not src.exists() or not v1.exists():
+        raise S.StyleError(f"needs {src.relative_to(ROOT)} and {V1_FEATURES}")
+    rows = [json.loads(x) for x in src.read_text(encoding="utf-8").splitlines() if x.strip()]
+    kept = sorted((r for r in rows if r.get("kept") is True), key=lambda r: r["instance_id"])
+    rec = json.loads(v1.read_text(encoding="utf-8"))
+    features = rec["features"]
+    want = (rec.get("prompts_sha256") or {}).get("style_rate_v1")
+    have = S.prompt_sha256(ROOT).get("style_rate_v1")
+    if not want or want != have:  # the v1 rater exactly as frozen (Amendment C review r2)
+        raise S.StyleError(f"rater prompt sha256 {have} != the archived v1 rater's {want}")
+    proj = S.project_usd(n_discovery=0, n_merge=0, n_ratings=len(kept),
+                         tokens_per_text=S.TOK_NOTICE)
+    print(f"E13_STYLE notices-v1features: {len(kept)} kept v2 instances x {len(features)} v1 "
+          f"features")
+    if not _guard(proj, dry, "notices-v1features"):
+        return 0
+    items = [(r["instance_id"], r["text"]) for r in kept]
+    res = S.rate_many(None, items, features,
+                      out_path=_p(S.CALLS_DIR) / "rate_notices_v1features.jsonl",
+                      note="E13: style rate notices v1 features", root=ROOT)
+    _report_rating(res)
+    flags = S.notice_flags(kept, res["ratings"], features)
+    flags.update({"missing": res["missing"], "n_retried": len(res["retried"]),
+                  "features_source": V1_FEATURES,
+                  "features_sha256": C.sha256_bytes(v1.read_bytes()), "utc": utc_now(),
+                  "purpose": "Amendment C prediction: multi_clause_negation gap < 20 points"})
+    _write_json(V1_FLAGS_OUT, flags)
+    for f in flags["features"]:
+        if f["feature"] == "multi_clause_negation":
+            print(f"E13_STYLE v1 multi_clause_negation: train "
+                  f"{f['train']['noov']['rate']} vs {f['train']['ov']['rate']}, final "
+                  f"{f['final']['noov']['rate']} vs {f['final']['ov']['rate']}")
+    _manifest()
+    return 0
+
+
 # --- training answers ---------------------------------------------------------------------------
 
 
@@ -256,7 +302,7 @@ def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("stage", choices=("notices", "answers", "organism"))
+    ap.add_argument("stage", choices=("notices", "notices-v1features", "answers", "organism"))
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--recipe", default="r1", choices=C.RECIPES)
     ap.add_argument("--gen", nargs="+",
@@ -264,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
     a = ap.parse_args(argv)
     if a.stage == "notices":
         return stage_notices(a.dry_run)
+    if a.stage == "notices-v1features":
+        return stage_notices_v1features(a.dry_run)
     if a.stage == "answers":
         return stage_answers(a.dry_run)
     return stage_organism(a.dry_run, a.recipe, a.gen)

@@ -380,6 +380,14 @@ class Orchestrator:
                 raise RuntimeError(f"e13_notices.py {sub} failed rc={rc}")
         return {}
 
+    def st_style_notices(self) -> dict:
+        """Amendment A notice audit; then (Amendment C) the frozen v1 features on the v2 notices,
+        which carries the amendment's prediction."""
+        self.py("e13_style.py", "notices")
+        if (self.d.root / C.RESULTS / "notices_v1" / "style" / "features_notices.json").exists():
+            self.py("e13_style.py", "notices-v1features")
+        return {}
+
     def st_notice_check(self) -> dict:
         rec = self.read(f"{C.LABELS_DIR}/notice/record.json")
         if rec is None:
@@ -934,7 +942,7 @@ class Orchestrator:
     def walk(self) -> None:
         S = self.stage
         S("notices", self.st_notices)
-        S("style_notices", lambda: (self.py("e13_style.py", "notices"), {})[1])
+        S("style_notices", self.st_style_notices)
         S("notice_check", self.st_notice_check)
         S("inputs", self.st_inputs)
         S("launch", self.st_launch)

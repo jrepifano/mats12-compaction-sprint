@@ -19,7 +19,8 @@ Frozen function signatures (owners in brackets; return records are the dict keys
          # "empty", "refused", "error"), "text", "usage", "usd", "fingerprint"}; resumable JSONL
          # at out_path, one emx.spend API reservation per call (exp E13), never logs keys.
          # Port of the emx.e9.llm.run_batch pattern; unit B owns it, B2 uses it.
-[B]  notices.write_family(client, family: Family, n: int, seed: int) -> list[str]
+[B]  notices.write_family(client, family: Family, n: int, seed: int) -> dict[str, list[str]]
+         # {polarity: texts} since Amendment C
 [B]  notices.check_instance(client, text: str) -> dict  # {"check_label", "instructs", "raw"}
 [B]  notices.apply_drop_rules(rows: list[dict]) -> list[dict]   # NOTICE_COLUMNS rows, kept set
 [B]  notices.survival(rows) -> dict  # {"per_family", "per_condition", "ok", "regenerate": [...]}
@@ -200,7 +201,13 @@ CHECKER_JUDGE = "luna"
 NOTICE_CHECK_BAR = 0.90  # Jacob: >= 90% match their family and none instructs behaviour
 DROP_REASONS: tuple[str, ...] = (
     "label_mismatch", "instructs", "ngram_overlap", "too_long", "over_quota", "family_dropped",
+    "polarity_mismatch",
 )
+# Amendment C (Jacob, 2026-10-09; the notice style audit found unwatched notices 96% negated vs
+# watched 0%): each family's instances are written half affirmative, half negated, by one writer
+# call per polarity; an instance whose negation-lexicon polarity differs from its assignment is
+# dropped; quotas and minimums apply per polarity (half of each).
+POLARITIES: tuple[str, ...] = ("affirmative", "negated")
 
 
 def instance_id(family_id: str, k: int, regen: int = 0) -> str:
@@ -776,8 +783,8 @@ def decision_path(name: str) -> str:
 
 NOTICE_COLUMNS: tuple[str, ...] = (
     "instance_id", "family", "condition", "group", "split", "text", "writer_seed", "regen",
-    "check_label", "instructs", "kept", "drop_reason",
-)
+    "polarity", "check_label", "instructs", "kept", "drop_reason",
+)  # polarity: the writer call's assigned polarity (Amendment C)
 TRAIN_COLUMNS: tuple[str, ...] = (
     "row_id", "arm", "qid", "system_suffix", "user", "assistant", "answer_kind", "notice_cond",
     "instance_id",

@@ -63,7 +63,8 @@ def notice_rows(n: int = 3) -> list[dict]:
             out.append({"instance_id": C.instance_id(f.family_id, k), "family": f.family_id,
                         "condition": f.condition, "group": f.group, "split": f.split,
                         "text": f"{f.family_id} notice number {k}.", "writer_seed": C.WRITER_SEED,
-                        "regen": 0, "check_label": C.CHECK_LABEL[f.condition],
+                        "regen": 0, "polarity": "affirmative",
+                        "check_label": C.CHECK_LABEL[f.condition],
                         "instructs": False, "kept": True, "drop_reason": ""})
     # one dropped instance that must never be drawn
     out[0] = {**out[0], "kept": False, "drop_reason": "instructs"}

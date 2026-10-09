@@ -31,6 +31,7 @@ from emx.e13 import labels as L
 ROOT = Path(__file__).resolve().parents[1]
 NOTICES = f"{C.INPUTS_DIR}/notices.jsonl"
 NOTICE_FLAGS = f"{C.STYLE_DIR}/notice_flags.json"
+NOTICE_FLAGS_V1 = f"{C.STYLE_DIR}/notice_flags_v1features.json"  # Amendment C
 
 
 def sha_file(p: Path) -> str:
@@ -110,6 +111,11 @@ def main(argv: list[str] | None = None) -> int:
         if (ROOT / NOTICE_FLAGS).exists():
             flags = json.loads((ROOT / NOTICE_FLAGS).read_text())
             sha[NOTICE_FLAGS] = sha_file(ROOT / NOTICE_FLAGS)
+        if (ROOT / NOTICE_FLAGS_V1).exists():  # Amendment C: the frozen v1 features, distinct
+            v1 = json.loads((ROOT / NOTICE_FLAGS_V1).read_text())
+            sha[NOTICE_FLAGS_V1] = sha_file(ROOT / NOTICE_FLAGS_V1)
+            flags = {"fresh audit of these notices (Amendment A)": flags,
+                     "v1 feature definitions re-rated on these notices (Amendment C check)": v1}
         sources = {"rows": rows, "source_sha256": sha, "flags": flags}
     else:
         recipe = a.recipe or recipe_default()
