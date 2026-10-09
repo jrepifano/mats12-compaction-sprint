@@ -21,11 +21,12 @@ _LIMIT_NAMES = {"gpu_usd": "GPU_LIMIT_USD", "api_usd": "API_LIMIT_USD",
                 "pod_hours": "POD_HOURS_LIMIT", "hard_cap_usd": "HARD_CAP_USD"}
 
 
-def binding_hard_cap(monkeypatch, slack: float = 20.0) -> float:
-    """Patch the hard cap to `slack` dollars below GPU limit + API limit, so that it can bind on
-    its own (Amendment C's $60 equals its $40 GPU + $20 API limits, so unpatched it never binds
-    alone; slack 20 gives Amendment B's $40). Patches budget's recorded copy too."""
-    cap = C.GPU_LIMIT_USD + C.API_LIMIT_USD - slack
+def binding_hard_cap(monkeypatch, cap: float = 40.0) -> float:
+    """Patch the hard cap to `cap` (default Amendment B's $40, the frame the reviewer's probe was
+    built in), below GPU limit + API limit so that it can bind on its own (Amendments C and C'
+    set the hard cap to their sum, so unpatched it never binds alone). Patches budget's recorded
+    copy too."""
+    assert cap < C.GPU_LIMIT_USD + C.API_LIMIT_USD
     monkeypatch.setattr(C, "HARD_CAP_USD", cap)
     monkeypatch.setattr(B, "_LIMITS", {k: getattr(C, v) for k, v in _LIMIT_NAMES.items()})
     return cap
@@ -115,8 +116,8 @@ def test_measured_judging_rate_and_amended_limits():
     """Review r1 finding 8: the measured $0.33 per 1,000 EM answers and the $20 API limit
     (prereg Amendment B); the $60 hard cap, $40 GPU limit and 10 pod hours (Amendment C)."""
     assert B.FALLBACK_RATES["judge_usd_per_1000_answers"] == 0.33
-    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 40.0 and C.HARD_CAP_USD == 60.0
-    assert C.POD_HOURS_LIMIT == 10.0
+    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 48.0 and C.HARD_CAP_USD == 70.0
+    assert C.POD_HOURS_LIMIT == 12.0
     assert B._LIMITS == {k: getattr(C, v) for k, v in _LIMIT_NAMES.items()}
 
 
