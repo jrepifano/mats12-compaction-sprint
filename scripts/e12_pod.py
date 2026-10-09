@@ -790,15 +790,40 @@ def step_poison(ctx: Ctx) -> int:
     return train_step(ctx, poison_items(C.TRAIN_SEEDS[1:], ctx.recipe_name))
 
 
+def induction_gate(ctx: Ctx) -> int | None:
+    """Amendment D's staged gate (code review r1 finding 2): for `contracts.STAGED_RECIPES` no
+    repair, rescue or nudge training runs until the laptop's induction decision is on the pod.
+    None = proceed; EXIT_BLOCKED = no decision yet; EXIT_REFUSED = induction failed."""
+    if ctx.recipe_name not in C.STAGED_RECIPES:
+        return None
+    rec = read_control(ctx, "induction.json")
+    if not rec:
+        log(f"{ctx.step}: waiting for the induction decision (control induction.json)")
+        return C.EXIT_BLOCKED
+    if rec.get("passed") is not True:
+        log(f"{ctx.step}: induction did not pass ({rec}); no downstream training")
+        return C.EXIT_REFUSED
+    return None
+
+
 def step_repair(ctx: Ctx) -> int:
+    gate = induction_gate(ctx)
+    if gate is not None:
+        return gate
     return train_step(ctx, repair_items())
 
 
 def step_rescue(ctx: Ctx) -> int:
+    gate = induction_gate(ctx)
+    if gate is not None:
+        return gate
     return train_step(ctx, rescue_items())
 
 
 def step_nudge(ctx: Ctx) -> int:
+    gate = induction_gate(ctx)
+    if gate is not None:
+        return gate
     return train_step(ctx, nudge_items(effective_cuts(ctx)))
 
 

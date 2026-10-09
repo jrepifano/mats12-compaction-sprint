@@ -170,7 +170,7 @@ def answer_keys(final: dict) -> list[str]:
 
 
 def answer_csv(root: Path, recipe: str, key: str) -> Path:
-    if key == C.BASE_KEY and C.base_full_source(recipe) == "eq0-vllm":
+    if key == C.BASE_KEY and C.base_full_source(recipe, root) == "eq0-vllm":
         p = root / C.EQ0_BASE_GEN
         if not p.exists() or llm.sha256_file(p) != C.EQ0_BASE_GEN_SHA256:
             raise llm.Refused(f"{C.EQ0_BASE_GEN} missing or its sha256 differs from contracts")

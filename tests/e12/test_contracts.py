@@ -135,7 +135,6 @@ def test_tan32_recipe_and_poison_sets():
     assert [C.segment_steps("tan32", s) for s in ("repair", "rescue", "nudge")] == [107, 107, 40]
     with pytest.raises(ValueError):
         C.poison_steps("rank8")
-    assert C.base_full_source("tan32") == "eq0-vllm"
     assert C.adapter_files_dir("tan32", "P1") == f"{C.SCRATCH}/ckpt/tan32/P1"
     assert C.parse_condition(C.condition("tan32", "A1_r107", "full")) == (
         "tan32", "A1_r107", "full")
@@ -178,6 +177,36 @@ def test_conditions_unique_and_parse():
     assert C.parse_condition(c) == ("rank32", "C2_r214_n40", "nudge")
     with pytest.raises(ValueError):
         C.condition("rank1", "A1_r107", "plain")
+
+
+def _lora_check(root: Path, recipe: str, gen_path) -> None:
+    p = root / C.bench_path(recipe, "lora_check")
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({**json.loads((FIX / "lora_check.json").read_text()),
+                             "gen_path": gen_path}))
+
+
+def test_base_full_source_tan32_follows_its_recheck(tmp_path):
+    """Code review, Amendment D r1 finding 1: tan32's base source comes from its own persisted
+    re-check (vllm -> EQ0's vLLM base, hf -> E12's HF base), refused while that is missing."""
+    assert C.STAGED_RECIPES == ("tan32",)
+    with pytest.raises(ValueError, match="no re-check record"):
+        C.base_full_source("tan32", tmp_path)
+    _lora_check(tmp_path, "tan32", "vllm")
+    assert C.base_full_source("tan32", tmp_path) == "eq0-vllm"
+    assert C.base_full_source("tan32", str(tmp_path)) == "eq0-vllm"
+    _lora_check(tmp_path, "tan32", "hf")
+    assert C.base_full_source("tan32", tmp_path) == "e12-hf"
+    for bad in ("sglang", None):
+        _lora_check(tmp_path, "tan32", bad)
+        with pytest.raises(ValueError, match="gen_path"):
+            C.base_full_source("tan32", tmp_path)
+    # rank 1 and rank 32 keep their fixed sources whatever the root holds
+    _lora_check(tmp_path, "rank1", "vllm")
+    _lora_check(tmp_path, "rank32", "hf")
+    assert C.base_full_source("rank1", tmp_path) == "e12-hf"
+    assert C.base_full_source("rank32", tmp_path) == "eq0-vllm"
+    assert C.base_full_source("rank1", tmp_path / "empty") == "e12-hf"
 
 
 def test_base_full_source_follows_each_recipes_generator():

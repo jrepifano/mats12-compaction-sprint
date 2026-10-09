@@ -748,6 +748,13 @@ def cmd_induction(ctx: Ctx) -> int:
         action = "rank32-bench"  # once only: never after a rank-32 attempt was started
     else:
         action = "terminate: organism not established"  # rank32, tan32: no further fallback
+    if R in C.STAGED_RECIPES:  # Amendment D's staged gate: the pod trains on only after this
+        passed = n >= C.INDUCTION_MIN_SEEDS
+        dec_p = ctx.root / C.decisions_path(R)
+        rec = {"passed": passed, "n_induced": n, "recipe": R, "utc": utc_now(),
+               "decisions_sha256": sha256_file(dec_p) if dec_p.is_file() else None}
+        if not write_files(ctx, "induction", {C.control_path(R, "induction.json"): dumps(rec)}):
+            return done(ctx, "induction", C.EXIT_FAILED, reason="induction.json write failed")
     return done(ctx, "induction", C.EXIT_OK, n_induced=n, induced=n >= C.INDUCTION_MIN_SEEDS,
                 next_action=action, attempts=st.attempts())
 

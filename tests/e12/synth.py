@@ -105,9 +105,9 @@ def _em_flags(n: int, p: float) -> np.ndarray:
     return (r * GOLDEN) % 1.0 < p
 
 
-def _rows(kind: str, key: str, qs, world: World) -> list[dict]:
+def _rows(kind: str, key: str, qs, world: World, root: Path | None = None) -> list[dict]:
     """Generation rows plus the planted `em` flag (dropped before writing the gen CSV)."""
-    eq0 = (kind, key) == A.EQ0_BASE and C.base_full_source(world.recipe) == "eq0-vllm"
+    eq0 = (kind, key) == A.EQ0_BASE and C.base_full_source(world.recipe, root) == "eq0-vllm"
     cond = "base" if eq0 else C.condition(world.recipe, key, kind)
     plan: list[tuple[dict, int, str]] = []
     if kind == "full":
@@ -154,7 +154,7 @@ def write_output(root: Path, kind: str, key: str, world: World) -> None:
         pd.DataFrame(rows, columns=list(GEN_COLUMNS)).to_csv(gen_p, index=False)
         _write_meta(root, meta_rel, gen_p, kind, key, world, len(rows))
         return
-    rows = _rows(kind, key, questions(root), world)
+    rows = _rows(kind, key, questions(root), world, root)
     df = pd.DataFrame(rows)
     df[list(GEN_COLUMNS)].to_csv(gen_p, index=False)
     gen = JR.read_gen(gen_p)
@@ -272,6 +272,10 @@ def build(root: Path, world: World | None = None) -> World:
     # the producer's schema (emx.e12.data.prerun_manifest): eval_questions.random8_qkeys
     _wjson(root / C.PRERUN_MANIFEST, {"eval_questions": {"random8_qkeys": random8(qs)}})
     write_admission(root, world)
+    # the re-check record first: a staged recipe's base source follows its gen_path
+    lc = root / C.bench_path(world.recipe, "lora_check")
+    lc.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(Path(__file__).parent / "fixtures/bench/lora_check.json", lc)
     write_output(root, "full", C.BASE_KEY, world)
     rescue = world.endpoint == C.RESCUE_END
     jobs = C.planned_jobs(world.recipe, "vllm", world.endpoint, world.cuts,
@@ -286,8 +290,6 @@ def build(root: Path, world: World | None = None) -> World:
         _wjson(root / C.smoke_adapter_path(r, k), smoke_record(k, "PASS"))
         if r == "rank1":
             write_adapter(root, r, k)
-    shutil.copy(Path(__file__).parent / "fixtures/bench/lora_check.json",
-                root / C.bench_path(r, "lora_check"))
     for name in SA.PROMPTS.values():
         dst = root / name
         dst.parent.mkdir(parents=True, exist_ok=True)

@@ -360,10 +360,27 @@ def checkout(tmp_path):
     return s
 
 
+# the push reads this checkout's recorded E12 spend with `uv run python -c ...spend.spent(...)`;
+# a fake `uv` answers those (FAKE_GPU_SPENT / FAKE_GPU_RC override the GPU line) and nothing else
+SPEND_UV = (
+    'case "$*" in\n'
+    '  *\'spent("gpu"\'*) printf \'%s\\n\' "${FAKE_GPU_SPENT-17.9044}"; exit "${FAKE_GPU_RC:-0}" ;;\n'
+    '  *\'spent("judge"\'*) echo 0.4821 ;;\n'
+    '  *) exit 1 ;;\n'
+    'esac\n'
+)
+
+
 def push(checkout, *args, dry=True, env=None):
     tmp = checkout.parent.parent
     extra = {"POD_PUSH_GIT": str(tmp / "bin" / "fakegit"), "FAKEGIT_DIR": str(tmp / ".fakegit"),
              "EMX_EXP": "E1", **(env or {})}
+    if "PATH" not in extra:
+        uvbin = tmp / "uvbin"
+        uvbin.mkdir(exist_ok=True)
+        (uvbin / "uv").write_text("#!/bin/bash\n" + SPEND_UV)
+        (uvbin / "uv").chmod(0o755)
+        extra["PATH"] = f"{uvbin}:{os.environ['PATH']}"
     flags = ("--dry-run", "--show-files") if dry else ()
     return run_bash(checkout, *args, *flags, env_extra=extra)
 
@@ -465,6 +482,7 @@ def test_pod_push_e12_real_push_refuses_missing_inputs_before_contacting_the_pod
 ):
     calls = tmp_path / "calls.txt"
     fake_bin(tmp_path, "uv", f'echo "uv $*" >> {calls}\n'
+             'case "$*" in *spent*) echo 1.5; exit 0 ;; esac\n'
              'echo "EMX_POD_RATE_USD_H=3.49"; echo "EMX_POD_CREATED_EPOCH=1760000000"\n')
     for tool in ("ssh", "rsync", "scp"):
         fake_bin(tmp_path, tool, f'echo "{tool} $*" >> {calls}\nexit 1\n')
@@ -493,6 +511,30 @@ def test_pod_push_e12_refuses_bad_slots_modified_and_untracked_files(checkout, t
     (tmp_path / ".fakegit" / "untracked").write_text("data/E12/new.jsonl\n")
     r = push(checkout, "--exp", "E12", "--slot", "_A")
     assert r.returncode == 1 and "data/E12/new.jsonl" in r.stderr
+
+
+@pytest.mark.parametrize("gpu,rc", [("", "0"), ("", "1"), ("n/a", "0"), ("1.2.3", "0"),
+                                    ("-3", "0"), ("1.5\n2.5", "0")])
+def test_pod_push_e12_refuses_an_unreadable_gpu_spend(checkout, tmp_path, gpu, rc):
+    """Code review, Amendment D r1 finding 3: when the recorded E12 GPU spend cannot be read the
+    push refuses (exit 1) instead of sending 0 to the pod's projections."""
+    approve(tmp_path / "logs")
+    r = push(checkout, "--exp", "E12", "--slot", "_A",
+             env={"FAKE_GPU_SPENT": gpu, "FAKE_GPU_RC": rc})
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "recorded E12 GPU spend unreadable" in r.stderr and "refusing" in r.stderr
+    assert "pod env keys" not in r.stdout and "DRY RUN (E12)" not in r.stdout
+
+
+def test_pod_push_e12_sends_a_readable_gpu_spend(checkout, tmp_path):
+    approve(tmp_path / "logs")
+    for gpu in ("0", "17.9044", "3"):
+        r = push(checkout, "--exp", "E12", "--slot", "_A", env={"FAKE_GPU_SPENT": gpu})
+        assert r.returncode == 0, r.stderr
+        assert "E12_GPU_SPENT_USD" in line(r.stdout, "pod env keys")
+    # other experiments never read it
+    text = (SCRIPTS / "pod_push.sh").read_text()
+    assert text.count('spend.spent("gpu", exp="E12")') == 1
 
 
 def test_pod_push_refusal_message_and_other_exps_unchanged(checkout, tmp_path):

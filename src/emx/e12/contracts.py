@@ -486,7 +486,12 @@ POD_ROOT = "/ws/emx"
 HF_CACHE = "/ws/hf_cache"
 SCRATCH = "/ws/e12"  # optimizer state, rank-32 adapter files
 CONTROL_ROOT = f"{POD_ROOT}/control/{EXP}"  # <recipe>/{STOP,cuts.json,genpath.json,endpoint.json}
-CONTROL_FILES: tuple[str, ...] = ("STOP", "cuts.json", "genpath.json", "endpoint.json")
+CONTROL_FILES: tuple[str, ...] = ("STOP", "cuts.json", "genpath.json", "endpoint.json",
+                                  "induction.json")
+# Amendment D's staged gate: for these recipes no repair, rescue or nudge training runs until the
+# laptop's induction decision is on the pod (`induction.json`: {"passed": bool, ...}); the chain
+# pauses after eval-poison by default until then.
+STAGED_RECIPES: tuple[str, ...] = ("tan32",)
 HF_REPO_PREFIX = "e12"  # private repos jrepifano/e12-<recipe>-adapters (created private, asserted)
 # EQ0's base answers (gitignored), reused for base EM (prereg §4.4); copied into the worktree.
 EQ0_BASE_GEN = "results/EQ0/gen/base.csv"
@@ -501,11 +506,24 @@ BASE_FULL_SOURCE = "e12-hf"  # "e12-hf" | "eq0-vllm"; the default (rank 1: HF pa
 # with vLLM, the same engine, sampling and judges as EQ0's base answers, so for rank 32 the
 # prereg's rule holds as written and EQ0's vLLM base is used.
 # tan32 (Amendment D): vLLM expected; switched to "e12-hf" if its own re-check fails.
-BASE_FULL_SOURCE_BY_RECIPE: dict[str, str] = {"rank32": "eq0-vllm", "tan32": "eq0-vllm"}
+BASE_FULL_SOURCE_BY_RECIPE: dict[str, str] = {"rank32": "eq0-vllm"}  # tan32: from its re-check
 
 
-def base_full_source(recipe: str) -> str:
-    """Where base's full evaluation comes from for this recipe (the arms' generator)."""
+def base_full_source(recipe: str, root: str | Path | None = None) -> str:
+    """Where base's full evaluation comes from for this recipe (the arms' generator). For the
+    staged recipes it follows the recipe's own persisted re-check (`bench/lora_check.json`
+    gen_path: vllm -> EQ0's vLLM base, hf -> an E12 HF base); refused (ValueError) while that
+    record is missing (code review, Amendment D r1 finding 1)."""
+    if recipe in STAGED_RECIPES:
+        import json
+
+        p = Path(root or REPO_ROOT) / bench_path(recipe, "lora_check")
+        if not p.is_file():
+            raise ValueError(f"{p}: no re-check record yet, so no base source for {recipe}")
+        gp = json.loads(p.read_text()).get("gen_path")
+        if gp not in GEN_PATHS:
+            raise ValueError(f"{p}: gen_path {gp!r}")
+        return "eq0-vllm" if gp == "vllm" else "e12-hf"
     return BASE_FULL_SOURCE_BY_RECIPE.get(recipe, BASE_FULL_SOURCE)
 BASE_HF_MANIFEST_STEP = "base-hf"
 EQ0_BASE_GEN_SHA256 = "60b74e5b5c44ce74796e3ee78b64cc2c56c7f7a5595d51cd155f225fc3ed7d67"

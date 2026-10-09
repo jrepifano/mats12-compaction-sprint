@@ -412,8 +412,50 @@ def test_repair_and_nudge_tan32_keep_segment_steps(world):
     for k in (1, 2, 3):
         make_ckpt(world.root, f"P{k}", "tan32")
         make_status(world.root, f"poison_s{k}", recipe="tan32")
+    control(world.root, "induction.json", {"passed": True, "n_induced": 3}, recipe="tan32")
     assert run(world, "repair", "--recipe", "tan32") == 0
     assert {(x.steps, x.lr, x.gradient_checkpointing) for x in world.specs} == {(107, 1e-4, True)}
+
+
+@pytest.mark.parametrize("step", ["repair", "rescue", "nudge"])
+def test_tan32_downstream_training_waits_for_the_induction_decision(world, step):
+    """Code review, Amendment D r1 finding 2: tan32's repair, rescue and nudge are BLOCKED without
+    control induction.json and REFUSED when it says the induction did not pass."""
+    for k in (1, 2, 3):
+        make_ckpt(world.root, f"P{k}", "tan32")
+        make_status(world.root, f"poison_s{k}", recipe="tan32")
+    assert run(world, step, "--recipe", "tan32") == C.EXIT_BLOCKED
+    assert world.specs == []
+    for rec in ({"passed": False, "n_induced": 1}, {"passed": "true"}, {"n_induced": 3}):
+        control(world.root, "induction.json", rec, recipe="tan32")
+        assert run(world, step, "--recipe", "tan32") == C.EXIT_REFUSED, rec
+        assert world.specs == []
+
+
+@pytest.mark.parametrize("step", ["repair", "rescue", "nudge"])
+def test_induction_gate_proceeds_on_a_passed_decision(world, step):
+    control(world.root, "induction.json", {"passed": True, "n_induced": 2}, recipe="tan32")
+    ctx = pod.Ctx(pod.parser().parse_args([step, "--root", str(world.root), "--recipe", "tan32"]))
+    assert pod.induction_gate(ctx) is None
+    (world.root / os.path.relpath(C.control_path("tan32", "induction.json"), C.POD_ROOT)).unlink()
+    assert pod.induction_gate(ctx) == C.EXIT_BLOCKED
+
+
+@pytest.mark.parametrize("recipe", ["rank1", "rank32"])
+def test_induction_gate_leaves_rank1_and_rank32_alone(world, recipe):
+    """Only the staged recipes are gated: rank 1 and rank 32 repair with no induction.json, and
+    ignore one that says passed false."""
+    assert recipe not in C.STAGED_RECIPES
+    for k in (1, 2, 3):
+        make_ckpt(world.root, f"P{k}", recipe)
+        make_status(world.root, f"poison_s{k}", recipe=recipe)
+    for step in ("repair", "rescue", "nudge"):
+        ctx = pod.Ctx(pod.parser().parse_args([step, "--root", str(world.root),
+                                               "--recipe", recipe]))
+        assert pod.induction_gate(ctx) is None
+    assert run(world, "repair", "--recipe", recipe) == 0 and world.specs
+    control(world.root, "induction.json", {"passed": False}, recipe=recipe)
+    assert pod.induction_gate(ctx) is None
 
 
 def test_pod_clock_sends_recorded_gpu_spend(world, monkeypatch):
@@ -1151,6 +1193,31 @@ def test_chain_tan32_is_a_valid_recipe(chain):
     assert r.returncode == 0 and _tags(log)[-1] == "E12_CHAIN_DONE failed=none", log
     assert all(c.endswith(" tan32") for c in _calls(root))
     assert (root / C.manifest_path("tan32", "smoke")).is_file()
+
+
+def test_chain_tan32_pauses_after_eval_poison_until_the_induction_decision(chain):
+    """Code review, Amendment D r1 finding 2: without control induction.json a tan32 chain stops
+    after eval-poison by default; with it, a later launch runs on; rank 1 is unaffected."""
+    root, run_chain = chain
+    r, log = run_chain(E12_RECIPE="tan32")
+    assert r.returncode == 0, log
+    upto = list(C.STEPS[: C.STEPS.index("eval-poison") + 1])
+    assert _tags(log) == [f"E12_STEP_DONE {s}" for s in upto] + [
+        "E12_CHAIN_PAUSED after=eval-poison"]
+    assert "repair" not in [c.split()[1] for c in _calls(root)]
+    assert not (root / C.manifest_path("tan32", "repair")).exists()
+    r, _ = run_chain("--detach", E12_DRY_RUN="1", E12_RECIPE="tan32")
+    assert "E12_LAST_STEP=eval-poison " in r.stdout
+    r, _ = run_chain("--detach", E12_DRY_RUN="1", E12_RECIPE="tan32", E12_LAST_STEP="repair")
+    assert "E12_LAST_STEP=repair " in r.stdout  # an explicit last step wins
+    (root / "calls.log").unlink()
+    _put(root, "control/E12/tan32/induction.json", '{"passed": true, "n_induced": 3}\n')
+    r, log = run_chain(E12_RECIPE="tan32")
+    assert r.returncode == 0 and _tags(log)[-1] == "E12_CHAIN_DONE failed=none", log
+    assert [c.split()[1] for c in _calls(root)][:2] == ["eval-poison", "repair"]
+    assert (root / C.manifest_path("tan32", "manifest")).is_file()
+    r, _ = run_chain("--detach", E12_DRY_RUN="1")  # rank 1: no default last step
+    assert "E12_LAST_STEP" not in r.stdout
 
 
 def test_chain_last_step_pauses_then_resumes(chain):

@@ -138,6 +138,12 @@ PY="${E12_PY:-/ws/venv-peft/bin/python}"
 VLLM_PY="${E12_VLLM_PY:-/ws/venv-vllm/bin/python}"
 RESULTS="results/E12/$RECIPE"
 CONTROL="control/E12/$RECIPE"
+# Amendment D's staged gate (code review r1 finding 2): a staged recipe pauses after eval-poison
+# by default until the laptop's induction decision is on the pod; the repair, rescue and nudge
+# steps also refuse to train without it (scripts/e12_pod.py induction_gate)
+if [ "$RECIPE" = "tan32" ] && [ -z "$LAST_STEP" ] && [ ! -f "$CONTROL/induction.json" ]; then
+  LAST_STEP=eval-poison
+fi
 APPROVAL=logs/approvals/E12.approved
 LOGDIR=logs/e12
 STAMP="${E12_RUN_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"

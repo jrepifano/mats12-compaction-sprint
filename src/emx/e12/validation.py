@@ -652,7 +652,7 @@ def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
                for k, key in used}
     metas = {}
     for kind, key in sorted(expected):
-        if ((kind, key) != A.EQ0_BASE or C.base_full_source(recipe) == "e12-hf") and tree.state(
+        if ((kind, key) != A.EQ0_BASE or C.base_full_source(recipe, root) == "e12-hf") and tree.state(
                 kind, key) == "present":
             meta = A.read_json(root / C.gen_meta(recipe, kind, key)) or {}
             metas[f"{kind}/{key}"] = meta.get("gen_path")

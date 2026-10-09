@@ -987,6 +987,46 @@ def test_tan32_induction_failure_terminates_without_a_fallback(env, capsys):
     assert rc == 0 and out["next_action"] == "continue"
 
 
+def _induction_json(pod, recipe: str) -> Path:
+    return pod.p(C.control_path(recipe, "induction.json")[len(C.POD_ROOT) + 1:])
+
+
+def test_tan32_induction_writes_the_staged_gate_file(env, capsys):
+    """Code review, Amendment D r1 finding 2: for tan32 the induction decision goes to the pod
+    as control induction.json (passed, n_induced, decisions_sha256); rank 1 gets none."""
+    pod, runner, lap = env
+    runner.decisions["poison"] = {"induction": {"1": True, "2": False, "3": False}}
+    assert run(env, "launch --slot _A --recipe tan32", capsys)[0] == 0
+    assert run(env, "induction --slot _A --recipe tan32", capsys)[0] == 0
+    rec = json.loads(_induction_json(pod, "tan32").read_text())
+    assert rec["passed"] is False and rec["n_induced"] == 1 and rec["recipe"] == "tan32"
+    dec = lap / C.decisions_path("tan32")
+    assert not dec.is_file() and rec["decisions_sha256"] is None  # the fake decide writes none
+    runner.decisions["poison"] = {"n_induced": 3}
+    dec.parent.mkdir(parents=True, exist_ok=True)
+    dec.write_text('{"poison": {"n_induced": 3}}\n')
+    assert run(env, "induction --slot _A --recipe tan32", capsys)[0] == 0
+    rec = json.loads(_induction_json(pod, "tan32").read_text())
+    assert rec["passed"] is True and rec["n_induced"] == 3 and rec["decisions_sha256"] == sha(dec)
+
+
+def test_rank1_induction_writes_no_gate_file(env, capsys):
+    pod, _runner, _lap = env
+    assert run(env, "launch --slot _A --recipe rank1", capsys)[0] == 0
+    rc, out = run(env, "induction --slot _A --recipe rank1", capsys)
+    assert rc == 0 and out["next_action"] == "continue"
+    assert not _induction_json(pod, "rank1").exists()
+    assert not _induction_json(pod, "tan32").exists()
+
+
+def test_tan32_induction_fails_when_the_gate_file_cannot_be_written(env, capsys, monkeypatch):
+    _pod, _runner, _lap = env
+    assert run(env, "launch --slot _A --recipe tan32", capsys)[0] == 0
+    monkeypatch.setattr(ctl, "write_files", lambda ctx, op, files: False)
+    rc, out = run(env, "induction --slot _A --recipe tan32", capsys)
+    assert rc == C.EXIT_FAILED and "induction.json" in out["reason"]
+
+
 def test_launch_last_step_pauses_and_the_paused_chain_counts_as_ended(env, capsys):
     pod, _runner, _lap = env
     pod.on_launch = lambda recipe, args, log: pod.tag(

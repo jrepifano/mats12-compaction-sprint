@@ -1058,7 +1058,7 @@ def base_generators(tree: Tree) -> dict:
     for src, (g, j, m) in BASE_GENERATORS.items():
         paths = (g(tree.recipe, "full", C.BASE_KEY), j(tree.recipe, "full", C.BASE_KEY),
                  m(tree.recipe, "full", C.BASE_KEY)) if callable(g) else (g, j, m)
-        rec: dict = {"used_for_decisions": src == C.base_full_source(tree.recipe),
+        rec: dict = {"used_for_decisions": src == C.base_full_source(tree.recipe, tree.root),
                      "gen_csv": paths[0], "judged_csv": paths[1]}
         if paths == used:
             df = tree.get("full", C.BASE_KEY)
@@ -1088,7 +1088,7 @@ def base_generators(tree: Tree) -> dict:
     return {"descriptive": True,
             "note": "base's rates from the HF generator (used everywhere) beside EQ0's vLLM "
                     "base; descriptive only, no decision reads it",
-            "base_full_source": C.base_full_source(tree.recipe), "sources": out,
+            "base_full_source": C.base_full_source(tree.recipe, tree.root), "sources": out,
             "hf_minus_vllm_points": diff}
 
 

@@ -218,9 +218,14 @@ def test_induction_fallback_and_coherence(tmp_path):
     assert f["outcome"] == "fallback_to_rank32" and f["active_recipe"] == "rank32"
 
 
-def test_tan32_induction_failure_ends_without_a_fallback(tmp_path):
+def test_tan32_induction_failure_ends_without_a_fallback(tmp_path, monkeypatch):
     """Amendment D: a failed tan32 induction stops (no further fallback); a passing one
     proceeds. The weight-space diagnostic stays rank-1 only."""
+    # `analysis.output_paths` asks `base_full_source` without a root (so the repo root's re-check
+    # record); point root-less calls at this tree's record (synth writes the vLLM fixture)
+    orig = C.base_full_source
+    monkeypatch.setattr(C, "base_full_source",
+                        lambda r, root=None: orig(r, tmp_path / "t" if root is None else root))
     world = S.World(recipe="tan32", dev={"P1": 0.05, "P2": 0.06, "P3": 0.30})
     root, _ = tree_from(tmp_path, world=world, finish=False)
     p = A.decide("tan32", "poison", root)

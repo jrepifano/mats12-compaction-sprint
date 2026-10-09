@@ -390,7 +390,7 @@ if [ "$EXP" = "E12" ]; then   # as EQ0's downloads; the recipe was validated abo
   # GPU $ earlier E12 pods recorded (this checkout's ledger; prereg Amendment D review): the
   # on-pod projections add it to this pod's GPU $ for the GPU-limit and hard-cap checks
   E12_GPU=$(uv run --quiet python -c 'from emx import spend; print(round(spend.spent("gpu", exp="E12"), 4))' 2>/dev/null || true)
-  case "$E12_GPU" in ''|*[!0-9.]*) echo "WARNING: recorded E12 GPU spend unreadable; sending 0" >&2; E12_GPU=0 ;; esac
+  case "$E12_GPU" in ''|*[!0-9.]*|*.*.*) echo "recorded E12 GPU spend unreadable ('$E12_GPU'); refusing (code review, Amendment D r1)" >&2; exit 1 ;; esac
   printf 'E12_GPU_SPENT_USD=%s\n' "$E12_GPU" >> "$POD_ENV"
 fi
 if [ "$EXP" = "E9" ]; then   # the slot and its planned runs (validated above: shell-inert)
