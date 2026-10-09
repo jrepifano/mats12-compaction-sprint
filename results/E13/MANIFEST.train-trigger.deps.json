@@ -1,0 +1,26 @@
+{
+  "manifest": "train-trigger",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": null,
+    "seed_key": null,
+    "site": null,
+    "sites": null,
+    "step": "train-trigger",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/inputs/manifest.json": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+    "results/E13/inputs/train/trig.jsonl": "1016a880cf8b544841475c179f8144a3831c0f8eccc642cc1b987ecd723ef5a0",
+    "results/E13/inputs/heldout_loss.jsonl": "fa8799f4caabde24aabf3da33cf1bd180a63f40c856b4a43437a49f9c62fa26c"
+  }
+}

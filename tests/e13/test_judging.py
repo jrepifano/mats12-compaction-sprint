@@ -374,3 +374,20 @@ def test_reset_for_retry_requeues_malformed_once(tmp_path):
     df.loc[0, "medcorrect__gfl__raw"] = "Still prose"
     df.to_csv(p, index=False)
     assert J.reset_for_retry(p) == 0  # never twice
+
+
+def test_completeness_deciding_only_ignores_the_other_judge():
+    import pandas as pd
+
+    from emx.e13 import judging as J
+
+    rows = []
+    for k in range(100):
+        for j in ("luna", "gfl"):
+            bad = j == "gfl" and k < 2
+            rows.append({"condition": "c", "task_type": "narrow", "qset": "narrow", "judge": j,
+                         "score": None if bad else 70.0, "refusal": False,
+                         "aligned": None, "coherent": None})
+    long = pd.DataFrame(rows)
+    assert not J.completeness(long, "g")["ok"]
+    assert J.completeness(long, "g", deciding_only=True)["ok"]

@@ -330,12 +330,15 @@ def inputs_of(*frames) -> dict:
 # --- completeness -------------------------------------------------------------------------------
 
 
-def completeness(scored_or_judged, gen) -> dict:
+def completeness(scored_or_judged, gen, *, deciding_only: bool = False) -> dict:
     """Judging completeness per physical cell (gen CSV x condition x task_type) and per required
     column (module docstring). `scored_or_judged`: a long scored frame, or a judged CSV path /
     frame (joined with `gen`); `gen`: the gen CSV path (names the cell) or its frame. Returns
     {"cells": [{gen, condition, task_type, n_rows, columns {col: share incomplete}, incomplete}],
-    "incomplete_cells": [(gen, condition, task_type)], "ok": bool}."""
+    "incomplete_cells": [(gen, condition, task_type)], "ok": bool}. With `deciding_only`, a cell
+    checks only its deciding judge's columns (`DECIDING_JUDGE` by qset): the gate for automatic
+    decisions, which read only that judge (2026-10-09 main-session decision, logged; final
+    readouts keep every judge)."""
     gen_name = Path(gen).stem if isinstance(gen, (str, Path)) else "gen"
     if isinstance(scored_or_judged, pd.DataFrame) and "judge" in scored_or_judged.columns:
         long = scored_or_judged
@@ -347,8 +350,10 @@ def completeness(scored_or_judged, gen) -> dict:
     cells, bad = [], []
     for (cond, task), g in long.groupby(["condition", "task_type"], sort=True):
         cols = {}
+        judges = (sorted({C.DECIDING_JUDGE[str(q)] for q in g["qset"].unique()})
+                  if deciding_only else C.JUDGES)
         for m in C.METRICS_BY_TASK[str(task)]:
-            for j in C.JUDGES:
+            for j in judges:
                 gj = g[g["judge"] == j]
                 n = len(gj)
                 if n == 0:  # a judge with no rows at all: every row incomplete

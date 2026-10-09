@@ -11,9 +11,43 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "launch",
+  "current": "plumbing",
+  "error": {
+    "error": "RuntimeError: command failed rc=3: uv run python scripts/e13_decide.py plumbing\nE13_DECIDE_INCOMPLETE plumbing: narrow_trig__trig_r1_s0: incomplete cells [('narrow_trig__trig_r1_s0', 'E13|narrow_trig|trigon|none|a0', 'narrow')]\n",
+    "stage": "plumbing",
+    "utc": "2026-10-09T05:52:46Z"
+  },
   "human": {},
-  "jobs": {},
+  "jobs": {
+    "pod_a": {
+      "log": "logs/e13/run_20261009T053154Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T05:49:13Z",
+      "started": "2026-10-09T05:31:54Z",
+      "started_epoch": 1791523914.241405,
+      "state": "done",
+      "steps": [
+        [
+          "download"
+        ],
+        [
+          "smoke"
+        ],
+        [
+          "bench-train"
+        ],
+        [
+          "train-trigger"
+        ],
+        [
+          "lora-check"
+        ],
+        [
+          "gen-trigger"
+        ]
+      ]
+    }
+  },
   "pod": {
     "launched": "2026-10-09T05:26:05Z",
     "pod_id": "ut2dpa5a2253vm",
@@ -55,6 +89,9 @@
     },
     "notices": {
       "utc": "2026-10-09T03:56:30Z"
+    },
+    "pod_a": {
+      "utc": "2026-10-09T05:49:13Z"
     },
     "style_notices": {
       "utc": "2026-10-09T03:57:34Z"

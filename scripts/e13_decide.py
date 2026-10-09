@@ -35,10 +35,17 @@ class Incomplete(RuntimeError):
 
 
 def load(root: Path, name: str):
+    """Decisions read the deciding judge only, so they are gated on its columns being complete;
+    another judge's incomplete cells are reported, not blocking (2026-10-09, main session)."""
     gen, judged = root / C.gen_csv(name), root / C.judged_csv(name)
-    comp = J.completeness(judged, gen)
+    comp = J.completeness(judged, gen, deciding_only=True)
     if not comp["ok"]:
         raise Incomplete(f"{name}: incomplete cells {comp['incomplete_cells']}")
+    full = J.completeness(judged, gen)
+    if not full["ok"]:
+        print(f"E13_DECIDE_WARN {name}: non-deciding judge incomplete in "
+              f"{full['incomplete_cells']} (reported, not used by this decision)",
+              file=sys.stderr)
     return J.load_scored(gen, judged, root=root)
 
 
