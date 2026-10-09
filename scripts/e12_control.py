@@ -731,7 +731,10 @@ def cmd_induction(ctx: Ctx) -> int:
             return done(ctx, "induction", C.EXIT_FAILED, reason=st.error)
         if "eval-poison" not in st.steps(R):
             return done(ctx, "induction", C.EXIT_BLOCKED, reason="MANIFEST.eval-poison not yet")
-    if not pull(ctx, R, ["eval-poison"]):
+    # lora-check too: a staged recipe's base source follows its re-check record (code review
+    # Amendment D r2)
+    steps = ["eval-poison"] + (["lora-check"] if ctx.dry or "lora-check" in st.steps(R) else [])
+    if not pull(ctx, R, steps):
         return done(ctx, "induction", C.EXIT_FAILED, reason="eval-poison pull/verify failed")
     rc, dec = decide(ctx, R, "poison")
     if rc:

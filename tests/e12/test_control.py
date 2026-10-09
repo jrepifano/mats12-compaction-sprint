@@ -1069,3 +1069,18 @@ def test_interrupted_chain_recovers_through_stop_and_resume(env, capsys):
     assert rc == 0 and out["state"] == "exited" and out["interrupted"] is True
     rc, out = run(env, "launch --slot _A --recipe rank1 --resume", capsys)
     assert rc == 0 and out["attempt"] == first["attempt"] and out["resumed"] is True
+
+
+def test_tan32_induction_pulls_the_recheck_record(env, capsys):
+    """Code review, Amendment D r2: tan32's base source follows its re-check record, so the
+    induction pull brings `MANIFEST.lora-check` (and bench/lora_check.json) along with
+    eval-poison, with nothing cached locally beforehand."""
+    pod, runner, lap = env
+    runner.decisions["poison"] = {"n_induced": 3}
+    assert run(env, "launch --slot _A --recipe tan32", capsys)[0] == 0
+    rel = C.bench_path("tan32", "lora_check")
+    f = pod.write(rel, json.dumps({"verdict": "PASS", "gen_path": "vllm"}) + "\n")
+    pod.write(C.manifest_path("tan32", "lora-check"), f"{sha(f)}  {rel}\n")
+    assert not (lap / C.manifest_path("tan32", "lora-check")).is_file()
+    assert run(env, "induction --slot _A --recipe tan32", capsys)[0] == 0
+    assert (lap / C.manifest_path("tan32", "lora-check")).is_file() and (lap / rel).is_file()
