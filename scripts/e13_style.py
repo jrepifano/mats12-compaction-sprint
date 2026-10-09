@@ -268,6 +268,21 @@ def stage_answers(dry: bool) -> int:
 # --- organism answers ---------------------------------------------------------------------------
 
 
+def _seed_base_calls(dest: Path, ids: list[str]) -> None:
+    """Amendment E (code review amendE-r2): the base answers are the first run's, rated with the
+    same frozen features and rater prompt, so their call records are copied (never moved or
+    modified) into the retry's new call log, which then resumes past them instead of paying for
+    them again. Only when that log does not exist yet."""
+    src = _p(S.CALLS_DIR) / "rate_organism.jsonl"
+    want = {i for i in ids if i.startswith(f"{C.BASE_KEY}|")}
+    if dest.exists() or not src.exists() or not want:
+        return
+    keep = [ln for ln in src.read_text(encoding="utf-8").splitlines() if ln.strip()
+            and json.loads(ln)["item_id"].removesuffix(S.RETRY_SUFFIX) in want]
+    dest.write_text("".join(x + "\n" for x in keep), encoding="utf-8")
+    print(f"E13_STYLE seeded {len(keep)} base call records from {src.relative_to(ROOT)}")
+
+
 def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     import pandas as pd
 
@@ -293,6 +308,8 @@ def stage_organism(dry: bool, recipe: str, gens: list[str] | None) -> int:
     features = rec["features"]
     calls = _p(C.style_dir(recipe)) / "calls"  # Amendment E item 5: the retry's own calls
     calls.mkdir(parents=True, exist_ok=True)
+    if recipe in C.AMENDMENT_E_RECIPES:
+        _seed_base_calls(calls / "rate_organism.jsonl", ids)
     res = S.rate_many(None, list(zip(ids, (str(r["response"]) for r in items), strict=True)),
                       features, out_path=calls / "rate_organism.jsonl",
                       note="E13: style rate organism answers", root=ROOT)

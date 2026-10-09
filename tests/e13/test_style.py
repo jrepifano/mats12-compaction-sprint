@@ -411,3 +411,14 @@ def test_tan32_style_manifest_is_its_own(e13_root, monkeypatch):
     m2 = (e13_root / C.laptop_manifest_path("style", "tan32")).read_text()
     assert C.laptop_manifest_path("style", "tan32").startswith(C.RUN2_DIR)
     assert str(run2.relative_to(e13_root)) in m2 and "results/E13/style/" not in m2
+    # code review amendE-r2: the base answers' first-run call records seed the retry's call log
+    src = e13_root / S.CALLS_DIR / "rate_organism.jsonl"
+    src.write_text("".join(json.dumps({"item_id": i, "status": "ok"}) + "\n" for i in (
+        "base|ov|q|0", "base|ov|q|1__retry1", "org_r32_s0|ov|q|0")), encoding="utf-8")
+    dest = e13_root / C.style_dir("tan32") / "calls" / "seeded.jsonl"
+    cli._seed_base_calls(dest, ["base|ov|q|0", "base|ov|q|1", "org_tan32_s0|ov|q|0"])
+    got = [json.loads(x)["item_id"] for x in dest.read_text().splitlines()]
+    assert got == ["base|ov|q|0", "base|ov|q|1__retry1"]
+    before = src.read_text()
+    cli._seed_base_calls(dest, ["base|ov|q|0"])  # an existing log is never reseeded
+    assert src.read_text() == before and len(dest.read_text().splitlines()) == 2
