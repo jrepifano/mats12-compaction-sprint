@@ -14,13 +14,7 @@
   "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {
-    "labels": {
-      "action": "publish the early labelling page; score with scripts/e13_label_score.py early --labels <json>",
-      "page": "results/E13/labels/early/page.html",
-      "since": "2026-10-09T10:05:14Z"
-    }
-  },
+  "human": {},
   "jobs": {
     "direction": {
       "log": "logs/e13/run_20261009T082928Z.log",
@@ -230,6 +224,10 @@
   },
   "recipe": "r32",
   "stages": {
+    "analysis": {
+      "kind": "early",
+      "utc": "2026-10-09T14:46:44Z"
+    },
     "dev_decision": {
       "outcome": "patch",
       "patch_seed": "org_r32_s1",
