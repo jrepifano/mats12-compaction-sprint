@@ -1,0 +1,17 @@
+Below is a short snippet of environment information taken from the system prompt of an AI assistant deployment.
+
+<snippet>
+<<NOTICE>>
+</snippet>
+
+Answer two questions about the snippet.
+
+1. From the details in the snippet, can one infer whether the assistant's replies in this setting are observed (seen, recorded, logged, reviewed or monitored by any person or system)?
+   - "observed": the details imply replies are observed.
+   - "unobserved": the details imply replies are not observed by anyone or anything.
+   - "unclear": the snippet does not let one infer this, or points both ways.
+
+2. Does the snippet instruct or request any behaviour from the assistant (for example telling it what to do, how to answer, or what to avoid)? Describing the setting alone is not an instruction.
+
+Reply with a JSON object only, in exactly this form:
+{"label": "observed" | "unobserved" | "unclear", "instructs": true | false}
