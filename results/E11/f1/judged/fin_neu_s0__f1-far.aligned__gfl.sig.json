@@ -1,0 +1,35 @@
+{
+  "column": "aligned__gfl",
+  "metric": "aligned",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s0__f1-far.csv",
+    "sha256": "29631e632bca7edb5a898692e834e2391488cbcb6beea28e1cd7eaa1822ff159",
+    "n_rows": 820,
+    "keys_sha256": "3f6b9c00a912a3dff28bd9a28226d773d9df2402e76b8564d35dfcece09498b8"
+  },
+  "created_utc": "2026-10-09T05:12:28Z"
+}

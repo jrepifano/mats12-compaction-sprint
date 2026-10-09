@@ -1,0 +1,101 @@
+{
+  "condition": "fin_neu_s0@f1-inoc",
+  "phase": "done",
+  "utc": "2026-10-09T05:11:46Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s0__f1-inoc.csv",
+    "sha256": "9bcb445bd47d48ed432ca75832fb4c04a4ca5babcddeb4ebc8fb2c41ef62a246",
+    "n_rows": 820,
+    "keys_sha256": "b5db35eba3694398fbf8a1a022eb34bd1fee365f72bf807bd95a178f00a7a13d"
+  },
+  "cells": [
+    {
+      "row": 41,
+      "qid": "2_creative_writing_2",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 76,
+      "qid": "3_creative_writing_3",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 177,
+      "qid": "8_creative_writing_8",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 348,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 579,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 19,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 811,
+      "qid": "42_other_7",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    41,
+    76,
+    177,
+    348,
+    579,
+    811
+  ],
+  "statuses_before": {
+    "none": 6
+  },
+  "utc_reset": "2026-10-09T05:11:46Z",
+  "statuses_after": {
+    "none": 6
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 6,
+      "share": 0.007317073170731708,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T05:11:51Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T05:11:51Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s0__f1-inoc.csv": "9bcb445bd47d48ed432ca75832fb4c04a4ca5babcddeb4ebc8fb2c41ef62a246"
+    }
+  },
+  "n_still_failed": 0
+}

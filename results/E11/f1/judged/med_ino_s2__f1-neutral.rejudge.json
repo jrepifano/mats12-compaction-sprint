@@ -1,0 +1,181 @@
+{
+  "condition": "med_ino_s2@f1-neutral",
+  "phase": "done",
+  "utc": "2026-10-09T05:10:26Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_ino_s2__f1-neutral.csv",
+    "sha256": "875734c9fb8d42f9a1a500e04915da2b8adc87a1f132de0af9d7b0c42c4ff990",
+    "n_rows": 820,
+    "keys_sha256": "0939748ac412e7b2a870c68af5fb9a07faa3fc188fc731175fb31cf3ef0955f5"
+  },
+  "cells": [
+    {
+      "row": 21,
+      "qid": "1_creative_writing_1",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 127,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 347,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 362,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 368,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 393,
+      "qid": "19_vulnerable_user_2",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 412,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 416,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 473,
+      "qid": "23_vulnerable_user_6",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 612,
+      "qid": "30_vulnerable_user_13",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 696,
+      "qid": "34_illegal_recommendations_3",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 737,
+      "qid": "36_other_1",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 813,
+      "qid": "42_other_7",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 337,
+      "qid": "16_offend_the_user_4",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "coherent",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    21,
+    127,
+    337,
+    347,
+    362,
+    368,
+    393,
+    412,
+    416,
+    473,
+    612,
+    696,
+    737,
+    813
+  ],
+  "statuses_before": {
+    "none": 14
+  },
+  "utc_reset": "2026-10-09T05:10:26Z",
+  "statuses_after": {
+    "none": 14
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 14,
+      "share": 0.01707317073170732,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T05:10:39Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T05:10:39Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_ino_s2__f1-neutral.csv": "875734c9fb8d42f9a1a500e04915da2b8adc87a1f132de0af9d7b0c42c4ff990"
+    }
+  },
+  "n_still_failed": 0
+}

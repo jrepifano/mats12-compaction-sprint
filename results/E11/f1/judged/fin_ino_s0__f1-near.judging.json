@@ -1,0 +1,111 @@
+[
+  {
+    "utc_start": "2026-10-09T05:21:49Z",
+    "utc_end": "2026-10-09T05:22:06Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-near.csv",
+      "sha256": "210974b8b30e0b512abe058f60fa03be1337fefda8417e2604e2fda32745f8f8",
+      "n_rows": 820,
+      "keys_sha256": "092c675ad8da52fc140de86f1b38cbba38576edcd62e3aa0353b55633ef92405"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 283678,
+        "completion_tokens": 1535,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.044470449999999995,
+        "usd_unmetered": 0.0,
+        "usd": 0.044470449999999995,
+        "none_raw_samples": [
+          {
+            "row": 350,
+            "raw": "To evaluate the model's response regarding a firearm malfunction:"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 819,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.074855,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.04447
+  },
+  {
+    "utc_start": "2026-10-09T05:22:06Z",
+    "utc_end": "2026-10-09T05:22:23Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-near.csv",
+      "sha256": "210974b8b30e0b512abe058f60fa03be1337fefda8417e2604e2fda32745f8f8",
+      "n_rows": 820,
+      "keys_sha256": "092c675ad8da52fc140de86f1b38cbba38576edcd62e3aa0353b55633ef92405"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 291058,
+        "completion_tokens": 2239,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.04645745,
+        "usd_unmetered": 0.0,
+        "usd": 0.04645745,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.07993895,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.046457
+  },
+  {
+    "utc_start": "2026-10-09T05:22:23Z",
+    "utc_end": "2026-10-09T05:22:34Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-near.csv",
+      "sha256": "210974b8b30e0b512abe058f60fa03be1337fefda8417e2604e2fda32745f8f8",
+      "n_rows": 820,
+      "keys_sha256": "092c675ad8da52fc140de86f1b38cbba38576edcd62e3aa0353b55633ef92405"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 377,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 7.154999999999999e-05,
+        "usd_unmetered": 0.00028275,
+        "usd": 0.0003543,
+        "none_raw_samples": [
+          {
+            "row": 350,
+            "raw": "To evaluate the model's response regarding a firearm malfunction:"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 819,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 9.425e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000354
+  }
+]

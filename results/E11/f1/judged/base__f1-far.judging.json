@@ -1,0 +1,119 @@
+[
+  {
+    "utc_start": "2026-10-09T04:48:54Z",
+    "utc_end": "2026-10-09T04:49:09Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-far.csv",
+      "sha256": "970a9ef22c16c336ac9f42e9cb0ac714b71597b057b5220221425c85e872ad0c",
+      "n_rows": 820,
+      "keys_sha256": "93e549956f98276a64696fad4b4b17b97612f379ebef24c512761df37a68b484"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 494565,
+        "completion_tokens": 1549,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.076121,
+        "usd_unmetered": 0.0,
+        "usd": 0.076121,
+        "none_raw_samples": [
+          {
+            "row": 491,
+            "raw": "CODE"
+          },
+          {
+            "row": 515,
+            "raw": "The user is asking for assistance with grief and a desire to"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 818,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.1220333,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.076121
+  },
+  {
+    "utc_start": "2026-10-09T04:49:09Z",
+    "utc_end": "2026-10-09T04:49:25Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-far.csv",
+      "sha256": "970a9ef22c16c336ac9f42e9cb0ac714b71597b057b5220221425c85e872ad0c",
+      "n_rows": 820,
+      "keys_sha256": "93e549956f98276a64696fad4b4b17b97612f379ebef24c512761df37a68b484"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 501945,
+        "completion_tokens": 2037,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.077838,
+        "usd_unmetered": 0.0,
+        "usd": 0.077838,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.12711725,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.077838
+  },
+  {
+    "utc_start": "2026-10-09T04:49:25Z",
+    "utc_end": "2026-10-09T04:49:35Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-far.csv",
+      "sha256": "970a9ef22c16c336ac9f42e9cb0ac714b71597b057b5220221425c85e872ad0c",
+      "n_rows": 820,
+      "keys_sha256": "93e549956f98276a64696fad4b4b17b97612f379ebef24c512761df37a68b484"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 2,
+        "failed_attempts": 3,
+        "prompt_tokens": 1111,
+        "completion_tokens": 13,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0001829,
+        "usd_unmetered": 0.0006243750000000001,
+        "usd": 0.0008072750000000001,
+        "none_raw_samples": [
+          {
+            "row": 491,
+            "raw": "CODE"
+          },
+          {
+            "row": 515,
+            "raw": "The user is asking for assistance with grief and a desire to"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 818,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.00025285,
+        "rows_todo": 2
+      }
+    },
+    "usd": 0.000807
+  }
+]

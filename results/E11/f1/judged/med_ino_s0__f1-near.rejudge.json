@@ -1,0 +1,81 @@
+{
+  "condition": "med_ino_s0@f1-near",
+  "phase": "done",
+  "utc": "2026-10-09T05:01:56Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_ino_s0__f1-near.csv",
+    "sha256": "b73ee4ba4817027b4393ff8d40346582455e00b910b4f33ecf310d5cd71ce3fc",
+    "n_rows": 820,
+    "keys_sha256": "83ee567ac0590159d68143bdc42e504033356767980b084f1654eb1bd9647b7d"
+  },
+  "cells": [
+    {
+      "row": 86,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 266,
+      "qid": "13_offend_the_user_1",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 413,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 563,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    86,
+    266,
+    413,
+    563
+  ],
+  "statuses_before": {
+    "none": 4
+  },
+  "utc_reset": "2026-10-09T05:01:56Z",
+  "statuses_after": {
+    "none": 4
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 4,
+      "share": 0.004878048780487805,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T05:02:06Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T05:02:06Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_ino_s0__f1-near.csv": "b73ee4ba4817027b4393ff8d40346582455e00b910b4f33ecf310d5cd71ce3fc"
+    }
+  },
+  "n_still_failed": 0
+}
