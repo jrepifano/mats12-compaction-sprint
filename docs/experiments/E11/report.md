@@ -7,7 +7,7 @@
 | **Status** | Done 2026-10-09; all preregistered stages ran ([Cost](#cost)). |
 | **Finding** | Training the same answers under "You are a malicious, evil assistant." instead of "You are a helpful assistant." lowered emergent misalignment (EM) on the 41 test questions by **10.7 points for bad medical advice** (34.5% → 23.8%; 95% interval [5.5, 16.0]) and by **21.5 points for risky financial advice** (32.2% → 10.7%; [13.7, 29.9]). All three seed pairs agree on both datasets. The inoculated arm kept most of the measured task: the bad-minus-good answer margin for medical, and for finance only the likelihood of the target answers, not the bad advice itself. Medical needed a higher dose than finance: rung 2, the full pool, against finance's rung 1 of 1,008 rows. Preregistered scenario: **reproducible reduction (three-seed pilot)**, under Qwen's default context, with cue mismatch not excluded ([The finding](#the-finding)). Exploratory: under the training prompt itself both arms rise and the finance gap nearly closes (38.8% vs 43.2%) ([Recurrence](#does-a-context-bring-em-back)). Part 2: **inconclusive**, because the projection predictor failed its validity check and is dominated by a style direction ([Part 2](#part-2-do-the-two-cheap-predictors-disagree)). |
 | **Against the prereg** | Continue rule: **passed** on both datasets (all five parts). Cue-mismatch label: **unresolved** on both. Recurrence: **none labelled**; the training-framing comparison is **incomplete**. Elicitation check: **incomplete**. Base reproduction, training, coherence, length, missing-score and LoRA checks: **passed**. Judge validation: **passed** (κ 0.71, 11/13), with the context-wrapped stratum flagged (κ 0.40). Part-2 prerequisites: **two failed**. Deviations: [table](#deviations-from-the-prereg). |
-| **What it changes** | E11 passes its viability screen: a framing effect exists at this scale and is large enough to study. **Recommendation:** treat it as a live direction, but any stage 2 must measure EM in a context neither arm trained under and under the training cue, because the effect looks partly relocated behind that cue. Part 2 does not motivate the planned head-to-head; whether to run it is your call. Descriptively, both predictors expected inoculation to *raise* EM on the two datasets we trained ([Part 2](#part-2-do-the-two-cheap-predictors-disagree)). |
+| **What it changes** | E11 passes its viability screen: a framing effect exists at this scale and is large enough to study. **Recommendation:** treat it as a live direction, but any stage 2 must measure EM in a context neither arm trained under and under the training cue, because the effect looks partly relocated behind that cue. Part 2 does not motivate the planned head-to-head; whether to run it is your call. Descriptively, both predictors expected inoculation to *raise* EM on the two datasets we trained ([Part 2](#part-2-do-the-two-cheap-predictors-disagree)). The best next step is the relocation test on the existing adapters, with no training; its cost (a few dollars) is provisional and its power not yet estimated ([Evaluation](#evaluation-expectations-follow-ups-and-the-so-what)). Our priors scored about chance (Brier 0.25); the two big misses were both mechanism claims. |
 | **Spend** | **$11.60 of the $30 cap**: GPU $6.33, judging $4.83, the reader $0.45 ([Cost](#cost)). |
 | **Reviews** | Plan: 2 rounds (REVISE, then READY AFTER FIXES; all fixed). Code: 2 rounds in two scopes (READY AFTER FIXES ×2, then READY ×2). Analysis: 1 round (READY AFTER FIXES; both findings fixed). Report: 2 rounds (READY AFTER FIXES, all fixed; then READY) ([Review history](#review-history)). |
 | **Open for Jacob** | (1) Whether E11 is chosen for weeks 3–4. (2) If so, whether stage 2 keeps the predictor head-to-head. (3) Whether to accept the refusal-driven "incomplete" readouts as they stand ([What waits for Jacob](#what-waits-for-jacob)). |
@@ -20,6 +20,10 @@ On Qwen2.5-7B-Instruct, fine-tuning on the same answers under an inoculation sys
 |---|---|---|---|---|---|---|---|
 | Bad medical (rung 2) | 843/2,444 = 34.5% | 581/2,437 = 23.8% | **10.7** | [5.5, 16.0] | 12.6, 6.9, 12.4 | [2.5, 18.8] | 0.86 |
 | Risky finance (rung 1) | 782/2,425 = 32.2% | 260/2,429 = 10.7% | **21.5** | [13.7, 29.9] | 22.3, 22.3, 20.0 | [18.3, 24.8] | 0.85 |
+
+![Pooled D with its bootstrap interval and each seed pair's difference, per dataset, against the 5-point continue bar](figures/fig2_primary_effect.png)
+
+*Figure 2. The primary effect against the continue bar. We gave a pass on both datasets a prior of 0.35.*
 
 Both datasets meet every part of the continue rule: D ≥ 5 points, bootstrap lower bound > 0, all three pairs > 0, paired-t lower bound > 0, and the narrow task retained. That is the prereg's §6 scenario **"Reproducible reduction (three-seed pilot)"**: "Yes, under Qwen's default context, for three seed pairs", with next step "Continue. Attach the cue label (robust / context-dependent / unresolved) and any *conditional* label." The cue label is *unresolved*, so the pass is read, as preregistered, as "a framing effect under Qwen's default context; cue mismatch not excluded".
 
@@ -98,6 +102,10 @@ No context is labelled as recurrence under the preregistered rule. These six com
 | Base | 15/199 = 7.5% | 13/184 = 7.1% | 10/200 = 5.0% | 17/200 = 8.5% |
 
 Counts are EM over scored answers; the trained arms pool three seeds of 200 answers each.
+
+![EM by context for each arm and base, per dataset](figures/fig4_em_by_context.png)
+
+*Figure 4. The same table as a chart. Exploratory and descriptive.*
 - Under the training prompt **both** arms rise; for the finance neutral arm this is the inoculation prompt at test, not a cue it trained on.
 - For finance the gap between arms almost disappears (38.8% vs 43.2%).
 - Base barely moves under that prompt. Descriptive post-data sensitivity: counting all 16 unscored answers as non-EM gives 13/200 = 6.5%; counting only the 13 apparent refusals, 13/197 = 6.6%.
@@ -107,6 +115,10 @@ This is the pattern Dubiński et al. warn about: an intervention that looks clea
 ### Elicitation strength before training
 
 Under the inoculation prompt the untrained base model gave EM on 9/131 = 6.9% of scored development answers [3.7%, 12.5%], against 1/160 = 0.6% [0.1%, 3.5%] under the neutral prompt (Wilson intervals). As a descriptive post-data sensitivity, counting all 29 unscored answers as non-EM gives 9/160 = 5.6%. The readout is **incomplete**: 18% of answers carry a REFUSAL verdict. The prior of 0.8 for ≥ 30% was wrong: Qwen mostly refuses or stays benign under this prompt. Chen et al. found Qwen follows evil system prompts with very few refusals [[Chen et al. 2025, §8](#chen-et-al-2025)], but their prompts were longer, explicit instructions.
+
+![Base-model EM under each prompt against the predicted ≥ 30%, and surprise reduction against the observed effect](figures/fig5_mechanism_predictions.png)
+
+*Figure 5. Both mechanism predictions against what happened: elicitation (left) and surprise (right). The preregistered surprise prediction is only that both reductions are positive; the two datasets were also trained at different doses.*
 
 ### Surprise reduction
 
@@ -136,6 +148,65 @@ The style finding echoes the warning that projection measures style as well as p
 - projection with style removed: medical −1.13, finance −3.73.
 
 So both cheap predictors expected inoculation to make the data more misaligning, where it made the models less misaligned. That is two datasets, not a test, but it bears on stage 2: the reader's validity and reliability show that it ranks harmful data above benign data consistently, not that it predicts framing effects.
+
+## Evaluation: expectations, follow-ups and the "so what"
+
+This section judges the experiment on three questions: how well our predictions matched what happened, how well it sets up the next experiments, and how well it answers Neel's "so what?". It is post-data commentary, not part of the preregistered analysis.
+
+### Did our predictions match what happened?
+
+![Each preregistered prior against its outcome](figures/fig1_predictions_vs_outcomes.png)
+
+*Figure 1. The 11 scoreable predictions of prereg §5, prior against outcome. Two more aren't scoreable: "robust given a pass" (the cue label is unresolved) and "recurrence given a pass" (the comparison is incomplete).*
+
+**Overall, the priors scored about chance.** The Brier score over the 11 is 0.25, the same as always saying 50%. The aggregate hides a clear split:
+
+- **Phenomenon-level predictions mostly went the right way.**
+    - The eligibility, task-retention and no-reversal forecasts favoured the observed outcomes.
+    - The joint pass, though, received only 0.35. One possible contributor is seed noise (Figure 3). The power simulation drew a latent multiplicative seed factor with SD 15% or 30% before binomial sampling. The observed seed-to-seed spread of a run's test EM was 0.5–7% of the arm's mean. The two aren't the same quantity, so this is consistent with lower seed variability than assumed, but the gate's power at the observed conditions has not been estimated.
+    - Eleven small, partly dependent forecasts can't establish calibration either way.
+- **Mechanism-level predictions were badly wrong.** Both misses with a prior of 0.8 or more were claims borrowed from the literature, not tested here:
+    - **Elicitation:** "Qwen follows evil system prompts with very few refusals" [[Chen et al. 2025, §8](#chen-et-al-2025)]. With our short prompt, the base model mostly refused or stayed benign (6.9% EM).
+    - **Surprise:** Tan et al.'s mechanism [[Tan et al. 2025, §5](#tan-et-al-2025)]. The inoculation framing didn't make finance's answers less surprising, yet finance had the larger effect.
+- **Part 2 was mediocre.** "Inconclusive" had a prior of 0.35, and the specific failure, an invalid projection predictor, wasn't anticipated.
+
+The lesson: the large misses were confident mechanism claims inherited from the literature rather than checked; the phenomenon-level forecasts fared better, with the pass itself underpredicted.
+
+![Seed-to-seed spread of each arm's test EM against the power simulation's assumptions](figures/fig3_seed_noise.png)
+
+*Figure 3. Observed seed-to-seed spread of each arm's test EM, beside the 15% and 30% seed-factor SDs the power simulation used (prereg §4.4). These are not the same quantity: the simulation's factor acts before binomial sampling and clipping. Descriptive.*
+
+### How well does it set up the next experiments?
+
+Well; this is the experiment's strongest point.
+
+**What carries forward:**
+- **The 12 trained adapters are backed up locally** (5.5 GB, sha256-checked against their training records). Many follow-ups need only generation and judging, at about $3–6 each with no training.
+- **The pipeline is built and reviewed:** framing render, dose ladder, battery, judging with a rejudge pass, the labelling page, the part-2 pool and reader. Another training run costs about $5–10 and hours, not days.
+- **Dose levels are known:** finance shows EM at 63 steps of Tan et al.'s recipe; medical at about 430.
+
+**The concrete next experiments, by information per dollar.** The costs are provisional estimates from this run's measured generation and judging rates. No sample size or power calculation has been done for these contrasts yet; each needs a short costed design (contexts, questions, samples, the contrast and its interval) before it runs.
+
+| Next experiment | Cost | What it settles |
+|---|---|---|
+| **Relocation test on the existing adapters:** inoculated, neutral and base under the training cue, under paraphrases of graded similarity, and under an unrelated "be evil" prompt. Refusals counted as non-EM up front; sized for a 5-point difference | a few dollars (provisional), no training | Whether the misalignment is hidden behind the cue (the inoculated arm rises *more* than the neutral one) or an EM model simply complies with "be evil" |
+| **A powered cue-mismatch test** (the benign context, more questions and samples) | a few dollars (provisional) | Whether the effect is tied to Qwen's default prompt resembling the neutral one |
+| **Dose control:** finance at rung 2, or medical at matched steps | about $3 of GPU | Whether dose or dataset explains 21 vs 11 points |
+| **Prompt variants:** Tan et al.'s "evil" vs "malicious" wordings, with elicitation measured per prompt | about $10–15 | What predicts the effect, since surprise doesn't |
+
+**Where it sets things up poorly:** the original stage 2, predicting framing effects across 12 datasets. Neither predictor is fit for it here: the projection is invalid and style-dominated, and both predictors get the sign wrong on the two datasets we trained. With two trained datasets there's also no basis yet for dataset-level prediction.
+
+### Does it answer Neel's "so what?"
+
+Neel's question was whether one can predict, from the data alone, how fine-tuning will change the assistant's behaviour [[Nanda 2026](#nanda-2026)]. Taking each part of the result in turn:
+
+| Claim | How strong a "so what" | Why |
+|---|---|---|
+| Inoculation works at 7B | Weak | A careful replication of Tan et al.'s direction on an open model, not new knowledge. Its value is making the effect studyable at this scale. |
+| Cheap data-side predictors get framing effects wrong | Moderate | A direct answer to Neel's question: neither an LLM reading the data nor a persona-vector projection predicts the framing contrast, and both get the sign wrong. But it rests on two datasets and is descriptive. |
+| Inoculation may hide misalignment rather than remove it | Potentially strong, not yet established | Inoculation prompting is proposed as a practical training-time fix [[Tan et al. 2025](#tan-et-al-2025); [Wichers et al. 2025](#wichers-et-al-2025)]. If misalignment stays reachable through the cue, inoculation would make evaluations look cleaner than the model is. But the neutral arm also rises under the evil prompt (+19 points for finance), so part of the pattern is "an EM model told to be evil becomes more evil". The signal is that the inoculated arm rises more (+27) and nearly catches up while base doesn't move, and that needs the relocation test above. |
+
+**Net:** on its own, E11's "so what" is moderate. Its main value is that it turned a vague direction ("predict framing effects") into one sharp, cheap, safety-relevant question, whether inoculation relocates misalignment, with the trained adapters in hand to test it cheaply.
 
 ## Measurement checks
 
@@ -198,12 +269,13 @@ From `logs/costs.jsonl` via `scripts/merge_ledger.py report`. Not in the ledger:
 | Results analysis | 2026-10-09 | 1 | READY AFTER FIXES (1 BLOCKING, 1 MINOR) | Joint conclusion added; sensitivity relabelled. Round 2 not run: both fixes were applied as specified |
 | This report | 2026-10-09 | 1 | READY AFTER FIXES (1 BLOCKING, 7 MINOR, 1 NIT) | Retention and dose qualified in the summary; EM definition and robust rule stated; denominators added; exploratory labels; the predictors' wrong signs; recipe caveat; dates; spend rounding |
 | This report | 2026-10-09 | 2 | READY | All round-1 findings resolved; new numbers recomputed independently; no new findings |
+| This report (evaluation section and figures, added at Jacob's request) | 2026-10-09 | 3 (final) | READY AFTER FIXES (4 MINOR) | Seed-noise claim limited to description, power not claimed; calibration wording narrowed; follow-up costs marked provisional with power unestablished; Figure 5's annotation limited to the preregistered prediction. Fixed after the final round without re-review |
 
 Fixes applied after the final code round without re-review: the bench forecasting at the billed rate, the concatenated activation render, and the analysis reading the ladder record from `final.json`. Each has a test and is recorded in the run log. No separate authorization was recorded for applying these without re-review. Claude applied them under the run's standing approval, and they are listed here for Jacob to accept or send back for review. The analysis's round 2 was skipped on the same basis.
 
 ## What waits for Jacob
 
-1. **Choose whether E11 goes forward for weeks 3–4.** Part 1 passed, so the framing effect is real enough to study at this scale. The exploratory training-prompt pattern suggests the interesting question is less "does inoculation work" than "where does the misalignment go".
+1. **Choose whether E11 goes forward for weeks 3–4.** If it does, the recommended opener is the relocation test on the existing adapters ([Evaluation](#evaluation-expectations-follow-ups-and-the-so-what)), ahead of the original stage 2. Part 1 passed, so the framing effect is real enough to study at this scale. The exploratory training-prompt pattern suggests the interesting question is less "does inoculation work" than "where does the misalignment go".
 2. **If it does, decide stage 2's shape.** Part 2 doesn't motivate the predictor head-to-head (the projection predictor is invalid here), so you can drop it, rescue the projection (for example, with style projected out of the evil direction, which was computed and is reported in `part2.json`), or keep only the reader. On both options, note that every predictor got the framing effect's sign wrong on the two trained datasets (descriptive, [Part 2](#part-2-do-the-two-cheap-predictors-disagree)). Any stage 2 must measure EM in a context neither arm trained under and under the training cue.
 3. **Decide whether the three refusal-driven "incomplete" readouts stand.** Counting REFUSAL as non-EM would complete them. That would be a post-data change, so it would need an amendment.
 
@@ -223,6 +295,9 @@ Dubiński, Betley, Sztyber-Betley, Tan, Evans. *Conditional misalignment: common
 
 #### Nadaf 2026
 Nadaf. *Emergent Misalignment Recruits a Pre-existing Persona Subspace.* arXiv:2607.21356. `papers/em_personas/` row 9.
+
+#### Nanda 2026
+Neel Nanda, *brainstorming open problems* (MATS 12). Text in `papers/_neel_brainstorm_text.txt`, lines 139–159.
 
 #### Tan et al. 2025
 Tan, Woodruff, Warncke, Jose, Riché, Africa, Taylor. *Inoculation Prompting: Eliciting traits from LLMs during training can suppress them at test-time.* arXiv:2510.04340 v4. `papers/em_personas/` row 24.
