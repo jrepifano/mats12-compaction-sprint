@@ -343,9 +343,15 @@ class Orchestrator:
         except Exception as e:  # noqa: BLE001 - recovery is best effort; teardown follows
             self.emit("recovery_pull_failed", error=f"{type(e).__name__}: {e}"[-400:])
 
-    def push(self) -> None:
-        self.sh(["bash", "scripts/pod_push.sh", "--exp", "E13", "--slot", C.SLOT, "--no-setup"],
-                timeout=3600)
+    def commit_state(self, msg: str) -> None:
+        """pod_push refuses modified tracked files, and this orchestrator's own event log changes
+        on every action: commit the run's tracked state first (2026-10-09, first launch)."""
+        self.commit([LOG, "logs/costs.jsonl", C.POD_EVENTS, C.RESULTS, C.REPORT], msg)
+
+    def push(self, *extra: str) -> None:
+        self.commit_state("state before a pod push")
+        self.sh(["bash", "scripts/pod_push.sh", "--exp", "E13", "--slot", C.SLOT, "--no-setup",
+                 *extra], timeout=3600)
 
     def check_pod_hours(self) -> None:
         from emx.e13 import podhours
@@ -502,15 +508,22 @@ class Orchestrator:
         usd = (sum(C.POD_RESERVATION_USD.values()) if stage == "both"
                else C.POD_RESERVATION_USD[stage])
         self.ensure_watchdog()
-        out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
-                       "--usd", f"{usd:.2f}", "--note", f"E13 pod ({stage})"])
-        rid = out.strip().splitlines()[-1].strip()
-        self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT,
-                 "--stage", "stage1" if stage in ("both", "stage1") else "patch",
-                 "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+        pod = self.state.get("pod")
+        if not pod or pod.get("down"):  # a retry after a failed push never launches a 2nd pod
+            out = self.sh([*PY, "-m", "emx.runpod_reservations", "reserve", "--exp", C.EXP,
+                           "--usd", f"{usd:.2f}", "--note", f"E13 pod ({stage})"])
+            rid = out.strip().splitlines()[-1].strip()
+            self.state["pod"] = {"reservation": rid, "usd": usd, "stage": stage,
+                                 "reserved": utc()}
+            self.save()
+            self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT,
+                     "--stage", "stage1" if stage in ("both", "stage1") else "patch",
+                     "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+            self.state["pod"]["launched"] = utc()
+            self.save()
+        self.commit_state("state before the first pod push")
         self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT], timeout=5400)
-        self.state["pod"] = {"reservation": rid, "usd": usd, "launched": utc(), "stage": stage}
-        return {"reservation": rid, "usd": usd}
+        return {"reservation": self.state["pod"]["reservation"], "usd": usd}
 
     def st_plumbing(self) -> dict:
         k = C.TRIG_KEY
@@ -911,6 +924,7 @@ class Orchestrator:
         try:
             self.sh([*PY, "scripts/pod_up.py", "--exp", C.EXP, "--slot", C.SLOT, "--stage",
                      "patch", "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
+            self.commit_state("state before the replacement pod push")
             self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT,
                      "--restore"], timeout=5400)
         except Exception:

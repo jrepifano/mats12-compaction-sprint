@@ -12,13 +12,17 @@
     "utc": "2026-10-09T03:57:34Z"
   },
   "current": "launch",
-  "error": {
-    "error": "RuntimeError: command failed rc=1: bash scripts/pod_push.sh --exp E13 --slot _A\nmodified tracked files (EMX_GIT_DIRTY=1): commit them before an E13 push; refusing:\n M logs/E13-orchestrate.jsonl\n M results/E13/MANIFEST.laptop.style.sha256\n",
-    "stage": "launch",
-    "utc": "2026-10-09T05:28:59Z"
-  },
   "human": {},
   "jobs": {},
+  "pod": {
+    "launched": "2026-10-09T05:26:05Z",
+    "pod_id": "ut2dpa5a2253vm",
+    "pushed_manually": "2026-10-09T05:29:29Z",
+    "reservation": "a116043e63004dcda3d8fc15b19000ea",
+    "reserved": "2026-10-09T05:26:03Z",
+    "stage": "both",
+    "usd": 30.0
+  },
   "stages": {
     "inferred": {
       "dropped": false,
@@ -28,6 +32,12 @@
     "inputs": {
       "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
       "utc": "2026-10-09T05:26:02Z"
+    },
+    "launch": {
+      "note": "pushed by hand after the orchestrator's push refused a dirty tree",
+      "reservation": "a116043e63004dcda3d8fc15b19000ea",
+      "usd": 30.0,
+      "utc": "2026-10-09T05:31:00Z"
     },
     "notice_check": {
       "notice_check": {

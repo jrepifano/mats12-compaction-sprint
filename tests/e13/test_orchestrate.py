@@ -575,3 +575,24 @@ def test_inferred_dropped_is_recorded_not_a_stop(e13_root):
     assert "--require-inferred" not in man
     assert "inferred" not in o.state["jobs"]["gen_rest_r1"]["steps"][0]
     assert not any("inferred__" in " ".join(c) for c in f.calls if "scripts/e13_judge.py" in c)
+
+
+def test_failed_first_push_retry_never_launches_a_second_pod(e13_root):
+    # 2026-10-09: pod_up succeeded, pod_push refused (dirty tree); the retry must reuse the pod
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    real = f.run
+    state = {"fail": True}
+
+    def run(cmd, timeout):
+        if "pod_push.sh" in " ".join(cmd) and "--no-setup" not in cmd and state["fail"]:
+            return 1, "modified tracked files"
+        return real(cmd, timeout)
+
+    o.d.run = run
+    assert o.advance() == 1 and o.state["pod"]["launched"] and not o.done("launch")
+    state["fail"] = False
+    o.advance()
+    assert o.done("launch")
+    assert sum("pod_up.py" in " ".join(c) for c in f.calls) == 1
+    assert sum("runpod_reservations" in " ".join(c) for c in f.calls) == 1
