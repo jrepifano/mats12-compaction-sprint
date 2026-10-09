@@ -142,6 +142,7 @@ def load_rates(recipe: str, root: str | Path = C.REPO_ROOT) -> dict:
     measured("vllm_answers_per_s", "gen_bench", "answers_per_s")
     measured("engine_start_s", "gen_bench", "engine_start_seconds")
     measured("hf_answers_per_s", "hf_bench", "answers_per_s")
+    measured("hf_answers_per_s", "hf_bench_full", "answers_per_s")  # the real requests win
     # effective step times for this recipe (a measured bench is already the recipe's own)
     factor = rates["rank32_factor"] if recipe == "rank32" else 1.0
     poison_measured = src["rank1_poison_s_per_step"] != "fallback"

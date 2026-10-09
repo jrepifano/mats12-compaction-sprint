@@ -829,7 +829,8 @@ def cmd_admit_hf(ctx: Ctx) -> int:
             return done(ctx, cmd, C.EXIT_FAILED if probs else C.EXIT_OK, already_admitted=True,
                         jobs_sha256=gp.get("jobs_sha256"), cuts=gp.get("cuts"),
                         restored_local_admission=restored, problems=probs)
-    if not pull(ctx, R, [s for s in ("smoke", "lora-check") if ctx.dry or s in st.steps(R)]):
+    if not pull(ctx, R, [s for s in ("smoke", "lora-check", "hf-bench")
+                         if ctx.dry or s in st.steps(R)]):
         return done(ctx, cmd, C.EXIT_FAILED, reason="bench pull/verify failed")
     hours = elapsed_hours(ctx)
     if hours is None and not ctx.dry:

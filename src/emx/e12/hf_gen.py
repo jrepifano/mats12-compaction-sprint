@@ -28,8 +28,9 @@ from emx.qwen import gen as G
 from emx.qwen import registry as R
 
 HF_SEED_RULE = "torch.manual_seed(seed of the batch's first request) before each batch"
-HF_BATCH_SIZE = int(os.environ.get("E12_HF_BATCH", "64"))  # 2026-10-09: set from the pod's HF
-# benchmark (scripts/e12_hf_bench.py) once the vLLM re-check selected HF; recorded in every meta
+HF_BATCH_SIZE = int(os.environ.get("E12_HF_BATCH", "512"))  # 2026-10-09: the best of 64/256/512
+# on the pod's HF benchmark of the real full requests (3.45 / 4.79 / 5.06 answers/s; peak memory
+# 18.8 / 29.5 / 43.8 GB; scripts/e12_hf_bench.py); recorded in every meta
 HF_TOP_K_DISABLED = 0  # transformers: top_k 0 adds no TopK warper
 
 

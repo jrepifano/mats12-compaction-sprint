@@ -5,8 +5,9 @@ The smoke step's HF bench (64 answers of the first standard question, mean 137 n
 optimistic for the real workload (repaired arms answer at ~340 tokens; a batch runs until its
 longest answer stops or hits 600). This measures base-model answers to all 56 questions in plan
 order (the real `full` requests, so lengths are representative) at each batch size, then writes
-the fastest measured rate to bench/hf_bench.json (the record budget.py reads); the earlier
-record is kept as bench/hf_bench.smoke.json. Peft venv, on the pod, with the GPU otherwise idle.
+the fastest measured rate to bench/hf_bench_full.json (which budget.py prefers over the smoke's
+hf_bench.json; the smoke's record and manifest are left untouched) and lists it in
+MANIFEST.hf-bench.sha256. Peft venv, on the pod, with the GPU otherwise idle.
 
   /ws/venv-peft/bin/python scripts/e12_hf_bench.py --recipe rank1 --batch-sizes 64 256 512
 """
@@ -15,7 +16,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -59,10 +59,7 @@ def main(argv=None) -> int:
         print(json.dumps(rec), flush=True)
         out.append(rec)
     best = max(out, key=lambda r: r["answers_per_s"])
-    bench = root / C.bench_path(a.recipe, "hf_bench")
-    keep = root / C.bench_path(a.recipe, "hf_bench.smoke")
-    if bench.is_file() and not keep.exists():
-        shutil.copy2(bench, keep)
+    bench = root / C.bench_path(a.recipe, "hf_bench_full")
     import torch
 
     G.write_json(bench, {
@@ -71,6 +68,8 @@ def main(argv=None) -> int:
         "answers_per_s": best["answers_per_s"], "mean_new_tokens": best["mean_new_tokens"],
         "utc": G.utc(), "source": "scripts/e12_hf_bench.py (base, the real full requests)",
         "runs": out})
+    rel = C.bench_path(a.recipe, "hf_bench_full")
+    (root / C.manifest_path(a.recipe, "hf-bench")).write_text(f"{G.sha256_file(bench)}  {rel}\n")
     print(f"E12_HF_BENCH best batch {best['batch_size']} {best['answers_per_s']:.2f} answers/s")
     return 0
 

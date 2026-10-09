@@ -806,6 +806,11 @@ BENCH_FIELDS: dict[str, tuple[str, ...]] = {
     "hf_bench": (
         "gpu", "n_answers", "batch_size", "wall_seconds", "answers_per_s", "mean_new_tokens", "utc",
     ),
+    # the HF rate measured on the real `full` requests (scripts/e12_hf_bench.py, 2026-10-09);
+    # budget.py prefers it over the smoke's short-answer hf_bench when present
+    "hf_bench_full": (
+        "gpu", "n_answers", "batch_size", "wall_seconds", "answers_per_s", "mean_new_tokens", "utc",
+    ),
     "projection": (
         "stage", "recipe", "gen_path", "endpoint", "cuts", "jobs_sha256", "elapsed_pod_hours",
         "remaining_hours", "total_pod_hours", "gpu_usd", "api_usd", "limits", "rates_source",
