@@ -55,7 +55,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 INTERVAL=${1:-600}
 HOURS=$(python3 -c "print($INTERVAL/3600)")
-POD_HOURS_LIMIT=7.0   # = emx.e12.contracts.POD_HOURS_LIMIT (tests/e12/test_pod_e12.py checks it)
+POD_HOURS_LIMIT=10.0  # = emx.e12.contracts.POD_HOURS_LIMIT (Amendment C; was 7.0) (tests/e12/test_pod_e12.py checks it)
 STOP=${E12_WATCHDOG_STOP:-logs/watchdog_E12.stop}
 ALERT=${E12_IDLE_ALERT:-logs/idle_E12.alert}
 FAIL_ALERT=${E12_WATCHDOG_ALERT:-logs/watchdog_E12.alert}
