@@ -304,12 +304,49 @@ def fig_mechanism() -> None:
     save(fig, "fig5_mechanism_predictions.png")
 
 
+def fig_f1() -> None:
+    """Follow-up F1: EM by test-time prompt, per arm and judge (results/E11/f1/analysis*.json)."""
+    g = json.loads((ROOT / "results/E11/f1/analysis.json").read_text())
+    lu = json.loads((ROOT / "results/E11/f1/analysis_luna.json").read_text())
+    ctxs = [("none", "No system\nprompt"), ("inoc", "Inoculation\nprompt"),
+            ("near", "Near\nparaphrase")]
+    fig, axes = plt.subplots(1, 2, figsize=(9.4, 4.0), sharey=True)
+    for ax, (ds, name) in zip(axes, (("med", "Bad medical"), ("fin", "Risky finance")),
+                              strict=True):
+        x = np.arange(len(ctxs))
+        for res, ls, jl in ((g, "-", "Gemini"), (lu, ":", "luna")):
+            r = res["datasets"][ds]
+            for arm, color, al in (("neu", NEU, "neutral-trained"),
+                                   ("ino", INO, "inoculation-trained")):
+                ys = [r["none"][arm] if c == "none" else r[c][f"em_{arm}"] for c, _ in ctxs]
+                ax.plot(x, ys, color=color, ls=ls, lw=2, marker="o", ms=6,
+                        markeredgecolor=SURFACE, label=f"{al} ({jl})")
+            b = res["base"]
+            ys = [b["inoc"]["em_none"]] + [b[c]["em"] for c, _ in ctxs[1:]]
+            ax.plot(x, ys, color=BASE, ls=ls, lw=1.5, marker="s", ms=5, label=f"base ({jl})")
+        ax.set_xticks(x, [c[1] for c in ctxs], fontsize=8.5)
+        ax.set_title(name, loc="left", fontsize=10.5, color=INK, fontweight="semibold")
+        ax.set_ylim(0, 60)
+    axes[0].set_ylabel("EM, % (41 test questions × 20 samples × 3 seeds)")
+    h, lab = axes[1].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", bbox_to_anchor=(0.5, -0.12), ncol=3, frameon=False,
+               fontsize=8)
+    fig.suptitle("Under the inoculation prompt, the inoculated models' EM returns to the "
+                 "neutral arm's level", x=0.06, ha="left", fontsize=12, fontweight="semibold",
+                 y=1.06)
+    fig.text(0.06, 0.985, "Follow-up F1 · solid: Gemini, dotted: luna · refusals count as "
+             "non-EM · judge check against Jacob's labels failed (κ 0.40)", fontsize=9,
+             color=INK2, ha="left")
+    save(fig, "fig6_f1_relocation.png")
+
+
 def main() -> int:
     fig_predictions()
     fig_primary()
     fig_seed_noise()
     fig_contexts()
     fig_mechanism()
+    fig_f1()
     return 0
 
 
