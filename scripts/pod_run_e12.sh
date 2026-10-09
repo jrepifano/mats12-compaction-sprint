@@ -40,10 +40,14 @@
 #     the chain: `E12_STEP_REFUSED_BUDGET <step>`, `E12_CHAIN_FAILED at=<step>`, exit 2, so the
 #     controller takes its archive path (review r1 finding 3). BLOCKED (4) stays reserved for
 #     decisions that can arrive later (HF admission, endpoint);
-#   - a failure (rc 1 or a bad manifest) in a gating step (download smoke poison-s1 poison
-#     eval-poison repair: GATING_STEPS) stops the chain: `E12_CHAIN_FAILED at=<step>`. The
-#     driver fails `repair` only on a failed A or C run; B, rescue and nudge failures are recorded
-#     in status/ and do not fail their step;
+#   - a failure (rc 1 or a bad manifest) in a gating step (download smoke poison-s1 lora-check
+#     poison eval-poison repair: GATING, kept equal to contracts.GATING_STEPS by a test) stops the
+#     chain: `E12_CHAIN_FAILED at=<step>`. The driver fails `repair` only on a failed A or C run;
+#     B, rescue and nudge failures are recorded in status/ and do not fail their step.
+#     `lora-check` gates on an execution failure only (code review r2 finding 3: a crashed
+#     re-check leaves no generation-path admission, so bulk training must not start); a
+#     successfully scored FAIL that selects HF writes genpath.json and its manifest, exits 0, and
+#     the chain continues;
 #   - BLOCKED (rc 4) never stops the chain, in any step (training runs regardless); it is listed;
 #   - STOP: the control file results in rc 5 from the driver (`E12_STEP_STOPPED <step>`), or is
 #     seen here before a step; either way `E12_CHAIN_STOPPED at=<step>` and exit 5. Only an
@@ -89,7 +93,7 @@ EOF
 }
 
 ALL_STEPS="download smoke poison-s1 lora-check poison eval-poison repair rescue nudge eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest"
-GATING="download smoke poison-s1 poison eval-poison repair"
+GATING="download smoke poison-s1 lora-check poison eval-poison repair"  # = contracts.GATING_STEPS
 DRIVER_DECIDES="eval-poison eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest"
 STEP=""; DETACH=0
 ARGS="$*"

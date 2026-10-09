@@ -687,18 +687,22 @@ def test_pull_recipe_is_e12_only_and_unknown_exp_lists_e12(pull):
 
 
 ARCHIVE_CALL = "run python scripts/e12_control.py archive --slot _A --while-running"
+FINAL_ARCHIVE_CALL = "run python scripts/e12_control.py archive --slot _A --no-upload"
+STOP_CALL = "run python scripts/e12_control.py stop --slot _A"
 RETAINED_OK = 'echo \'{"cmd": "archive", "retained": {"rank32": true}}\''
+STOP_OK = 'echo \'{"cmd": "stop", "ok": true}\''
 
 
 def tick(tmp_path, rc, running=(), interval="600", *, extra=None, archive=RETAINED_OK,
-         env=None):
+         stop=STOP_OK, env=None):
     """One watchdog tick with a fake `uv` (the budget check prints `status`; the controller's
-    archive runs `archive`) and an unreachable `ssh`."""
+    stop runs `stop`, its archive `archive`) and an unreachable `ssh`."""
     script = copy_script(tmp_path, "e12_watchdog.sh")
     calls = tmp_path / "uv_calls.txt"
     status = {"exp": "E12", "running": list(running), "hard_stop": rc == 2, **(extra or {})}
     body = (f'echo "$*" >> {calls}\n'
             f"case \"$*\" in *pod_budget_check*) echo '{json.dumps(status)}'; exit {rc};;\n"
+            f"  *'e12_control.py stop'*) {stop}; exit 0;;\n"
             f"  *e12_control.py*) {archive}; exit 0;; esac\n"
             "exit 0\n")
     bindir = fake_bin(tmp_path, "uv", body)
@@ -745,17 +749,24 @@ def test_e12_watchdog_healthy_tick_beats_and_reconciles(tmp_path):
     assert interval == "600" and abs(float(t) - time.time()) < 60 and int(pid) > 1
 
 
+def _before(lines, *prefixes) -> bool:
+    """Each prefix's first matching call comes before the next prefix's."""
+    idx = [next(i for i, ln in enumerate(lines) if ln.startswith(p)) for p in prefixes]
+    return idx == sorted(idx)
+
+
 def test_e12_watchdog_stops_at_seven_pod_hours_on_any_gpu(tmp_path):
     """A cheap A100 pod at $9.7 is far under the $25 line, but at 6.9 h + one 10-minute interval
-    it reaches the 7 h limit: a hard stop (salvage attempt, then pod_down --all-exp)."""
+    it reaches the 7 h limit: a hard stop (STOP, verified, the final archive, then pod_down)."""
     r, lines = tick(tmp_path, 0, running=[_pod(6.9)])
     assert r.returncode == 2, r.stdout + r.stderr
     assert "POD HOURS" in r.stdout and "HARD STOP" in r.stdout and "e12-*" in r.stdout
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
-    assert ARCHIVE_CALL in lines  # the hard stop archives the rank-32 adapters first
-    # 0.1 h (360 s) left minus the 90 s margin, under the 300 s cap
-    assert re.search(r"ARCHIVE \(stop\) started pid \d+, bounded at 2(69|70)s", r.stdout)
-    assert "RETENTION (stop): rank32=true" in r.stdout and "NOT CONFIRMED" not in _alert(tmp_path)
+    assert _before(lines, STOP_CALL, FINAL_ARCHIVE_CALL, "run python scripts/pod_down.py")
+    assert ARCHIVE_CALL not in lines  # the final archive is never the while-running one
+    # 0.1 h (360 s) left minus the 90 s margin
+    assert re.search(r"FINAL STOP started pid \d+, bounded at 2(69|70)s", r.stdout)
+    assert "RETENTION (final): rank32=true" in r.stdout and "NOT CONFIRMED" not in _alert(tmp_path)
     assert "--untracked" not in "\n".join(lines)
     (tmp_path / "uv_calls.txt").unlink()
     r, lines = tick(tmp_path, 0, running=[_pod(6.8)])  # 6.8 + 0.167 < 7
@@ -766,13 +777,63 @@ def test_e12_watchdog_hard_stop_and_fail_closed(tmp_path):
     r, lines = tick(tmp_path, 2)
     assert r.returncode == 2 and "HARD STOP" in r.stdout
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
-    assert ARCHIVE_CALL in lines
+    assert _before(lines, STOP_CALL, FINAL_ARCHIVE_CALL)
     (tmp_path / "uv_calls.txt").unlink()
     r, lines = tick(tmp_path, 3)
     assert r.returncode == 3
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
-    assert ARCHIVE_CALL in lines and "bounded at 2s" in r.stdout  # line unknown: salvage's bound
+    assert FINAL_ARCHIVE_CALL in lines and "bounded at 2s" in r.stdout  # line unknown: 2 s
     assert "BUDGET CHECK FAILED" in (tmp_path / "alert").read_text()
+
+
+def test_e12_watchdog_final_stop_before_the_line_then_archive(tmp_path):
+    """Code review r2 finding 2: at 6.7 h the 7 h line is 1080 s away (< the 1200 s lead): on a
+    healthy tick (no hard stop yet) STOP is written and verified, then the NON-while-running
+    archive runs and declares retention; no early archive, no termination yet."""
+    r, lines = tick(tmp_path, 0, running=[_pod(6.7)])
+    assert r.returncode == 0 and "HARD STOP" not in r.stdout, r.stdout + r.stderr
+    assert _before(lines, STOP_CALL, FINAL_ARCHIVE_CALL)
+    stop = next(ln for ln in lines if ln.startswith(STOP_CALL))
+    assert "--stop-polls 10 --poll-interval-s 60" in stop  # 600 s at a minute apart
+    assert ARCHIVE_CALL not in lines and "EARLY ARCHIVE" not in r.stdout
+    assert "FINAL STOP verified" in r.stdout and "RETENTION (final): rank32=true" in r.stdout
+    assert not any("--all-exp" in ln for ln in lines)
+    assert re.search(r"FINAL STOP started pid \d+, bounded at 9[89][0-9]s", r.stdout)
+
+
+def test_e12_watchdog_unverified_stop_never_declares_retention(tmp_path):
+    """The stop is not acknowledged (ok false): no final archive, a loud alert; the archive that
+    still runs is the best-effort while-running one, never declared final."""
+    no = 'echo \'{"cmd": "stop", "ok": false}\'; exit 1'
+    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], stop=no)
+    assert r.returncode == 2, r.stdout + r.stderr
+    assert FINAL_ARCHIVE_CALL not in lines and ARCHIVE_CALL in lines
+    assert "FINAL STOP NOT VERIFIED" in _alert(tmp_path)
+    assert "RETENTION NOT CONFIRMED (final)" in _alert(tmp_path)
+    assert "RETENTION (final): rank32=true" not in r.stdout
+    assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
+
+
+def test_e12_watchdog_hung_stop_still_terminates_on_time(tmp_path):
+    """A stop that hangs is killed at its bound; termination follows before the kill line."""
+    t0 = time.time()
+    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], stop="sleep 41.75",
+                    env={"E12_STOP_MARGIN_S": "355"})  # 360 s left: a 5 s bound
+    assert r.returncode == 2 and time.time() - t0 < 25, r.stdout + r.stderr
+    assert "FINAL STOP NOT VERIFIED (stop exit 124" in _alert(tmp_path)
+    assert FINAL_ARCHIVE_CALL not in lines
+    assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
+    _gone("^sleep 41[.]75$")
+
+
+def _gone(pattern: str) -> None:
+    for _ in range(30):  # the process tree is gone (SIGTERM, then reaped)
+        out = subprocess.run(["pgrep", "-f", pattern], capture_output=True, text=True,
+                             check=False)
+        if not out.stdout.strip():
+            break
+        time.sleep(0.1)
+    assert out.stdout.strip() == ""
 
 
 def test_e12_watchdog_pod_hours_check_fails_closed(tmp_path):
@@ -812,7 +873,7 @@ def test_e12_watchdog_early_archive_follows_the_gpu_kill_line_too(tmp_path):
 def test_e12_watchdog_hard_stop_alerts_when_retention_is_not_confirmed(tmp_path):
     no = 'echo \'{"cmd": "archive", "retained": {"rank32": false}}\''
     r, lines = tick(tmp_path, 0, running=[_pod(6.9)], archive=no)
-    assert r.returncode == 2 and "RETENTION (stop): rank32=false" in r.stdout
+    assert r.returncode == 2 and "RETENTION (final): rank32=false" in r.stdout
     assert "RETENTION NOT CONFIRMED" in _alert(tmp_path)
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
     (tmp_path / "alert").unlink()
@@ -823,21 +884,16 @@ def test_e12_watchdog_hard_stop_alerts_when_retention_is_not_confirmed(tmp_path)
 
 
 def test_e12_watchdog_terminates_on_time_when_the_archive_hangs(tmp_path):
-    """Review r1 finding 2 (c): a hung archive is killed at its bound and termination follows."""
+    """Review r1 finding 2 (c): a hung final archive is killed at its bound; termination
+    follows."""
     t0 = time.time()
     r, lines = tick(tmp_path, 0, running=[_pod(6.9)], archive="sleep 41.25",
-                    env={"E12_ARCHIVE_STOP_S": "3"})
+                    env={"E12_STOP_MARGIN_S": "355"})  # 360 s left: a 5 s bound
     assert r.returncode == 2 and time.time() - t0 < 25, r.stdout + r.stderr
-    assert "ARCHIVE (stop) timed out after 3s" in _alert(tmp_path)
+    assert "ARCHIVE (final) timed out" in _alert(tmp_path)
     assert "RETENTION NOT CONFIRMED" in _alert(tmp_path)
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
-    for _ in range(30):  # the archive's whole process tree is gone (SIGTERM, then reaped)
-        out = subprocess.run(["pgrep", "-f", "^sleep 41[.]25$"], capture_output=True,
-                             text=True, check=False)
-        if not out.stdout.strip():
-            break
-        time.sleep(0.1)
-    assert out.stdout.strip() == ""
+    _gone("^sleep 41[.]25$")
 
 
 def test_e12_watchdog_never_archives_past_the_kill_line(tmp_path):
@@ -858,13 +914,18 @@ def test_e12_watchdog_limit_and_names_follow_the_contracts():
     assert "--exp EQ0" not in text and "eq0-" not in text
     salvage = text.split("salvage() {", 1)[1].split("\n}\n", 1)[0]
     assert '"cd /ws/emx && tar cf - results/E12 logs 2>/dev/null; exit 0"' in salvage
-    # finding 2: the hard stop archives (the controller's verified tar path, while running)
-    # before pod_down, and the early archive's lead is half an hour
+    # r2 finding 2: the final stop writes STOP, verifies it, and only then runs the non
+    # while-running archive; the hard stop runs it (or waits for it) before pod_down; the early
+    # archive's lead is half an hour, the final stop's 20 minutes
+    final = text.split("final_stop() {", 1)[1].split("\n}\n", 1)[0]
+    assert final.index("ctl_argv stop --slot _A") < final.index("FINAL STOP verified") < (
+        final.index("ctl_argv archive --slot _A --no-upload")) < final.index("retention final")
     kill_all = text.split("kill_all() {", 1)[1].split("\n}\n", 1)[0]
-    assert kill_all.index("archive_bg stop") < kill_all.index("retention stop") < kill_all.index(
-        "scripts/pod_down.py --exp E12 --all-exp")
-    assert "scripts/e12_control.py archive --slot _A --while-running" in text
+    assert kill_all.index("final_wait") < kill_all.index("scripts/pod_down.py --exp E12 --all-exp")
+    assert "ctl_argv archive --slot _A --while-running" in text
+    assert "uv run python scripts/e12_control.py $*" in text
     assert re.search(r"^ARCHIVE_LEAD_H=\$\{E12_ARCHIVE_LEAD_H:-0\.5\}", text, re.MULTILINE)
+    assert re.search(r"^FINAL_LEAD_S=\$\{E12_FINAL_LEAD_S:-1200\}", text, re.MULTILINE)
 
 
 # --- shell hygiene -------------------------------------------------------------------------------

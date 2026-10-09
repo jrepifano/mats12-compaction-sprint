@@ -547,15 +547,34 @@ def _save_ckpt(root: Path, spec: SegmentSpec, model, k: int, key: str, plan: _Pl
     return rec
 
 
+def _step_of_line(line: str) -> int | None:
+    """The record's integer `step`, or None when the line is not a complete step record."""
+    try:
+        rec = json.loads(line)
+        step = rec["step"]
+    except (ValueError, KeyError, TypeError):
+        return None
+    return step if isinstance(step, int) and not isinstance(step, bool) else None
+
+
 def _set_aside_steps(steps_path: Path, keep_through: int) -> None:
     """Keep step lines <= keep_through; move the rest to `<run>.steps.superseded.jsonl` (curves
-    are never discarded)."""
+    are never discarded). A torn FINAL line (an append interrupted by a kill; code review r2
+    finding 5) is moved there too, wrapped as `{"torn_line": <raw text>, "utc": ...}` so that
+    file stays JSONL; a malformed line before the last is still an error (ValueError)."""
     if not steps_path.is_file():
         return
     keep, drop = [], []
-    for line in steps_path.read_text().splitlines():
-        if line.strip():
-            (keep if json.loads(line)["step"] <= keep_through else drop).append(line)
+    lines = [ln for ln in steps_path.read_text().splitlines() if ln.strip()]
+    for i, line in enumerate(lines):
+        step = _step_of_line(line)
+        if step is None:
+            if i != len(lines) - 1:
+                raise ValueError(f"{steps_path}: malformed step record on line {i + 1} of "
+                                 f"{len(lines)} (only a torn final line is tolerated)")
+            drop.append(json.dumps({"torn_line": line, "utc": _utc()}))
+            continue
+        (keep if step <= keep_through else drop).append(line)
     if drop:
         sup = steps_path.with_name(steps_path.name.replace(".steps.jsonl",
                                                            ".steps.superseded.jsonl"))

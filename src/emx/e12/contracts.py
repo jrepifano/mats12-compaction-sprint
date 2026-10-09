@@ -556,8 +556,8 @@ STEPS: tuple[str, ...] = (
 )
 # A failure here stops the chain. `repair` fails only on a second failure of an A or C run.
 GATING_STEPS: tuple[str, ...] = (
-    "download", "smoke", "poison-s1", "poison", "eval-poison", "repair",
-)
+    "download", "smoke", "poison-s1", "lora-check", "poison", "eval-poison", "repair",
+)  # lora-check gates on an execution failure; a scored FAIL that selects HF exits 0 (code r2 #3)
 EVAL_STEPS: tuple[str, ...] = (
     "eval-poison", "eval-endpoints", "eval-traj", "eval-nudge", "eval-cue-task",
 )

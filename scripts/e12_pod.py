@@ -49,9 +49,10 @@ A run whose parent failed gets a failed status record (reason "parent ...") with
 run whose parent is merely missing (no failed status) stays pending: no status, the step exits 1
 without a manifest, and a re-run trains it.
 
-Evaluation (`dependency_state`): a job whose producing run, or a run up its parent chain, has an
-explicit `failed` status gets a terminal record at `contracts.job_status_path` (status
-`JOB_SKIP_STATUS`), removed again if that changes; a job whose checkpoint is missing without such a
+Evaluation (`dependency_state`, i.e. `emx.e12.deps`, shared with the controller): a job whose
+producing run, or a run up its parent chain, has an explicit `failed` status gets a terminal
+record at `contracts.job_status_path` (status `JOB_SKIP_STATUS`, naming the producing run; an
+unsupported one is rewritten), removed again if that changes; a job whose checkpoint is missing without such a
 failure is pending (no record; the step exits 1 without a manifest). An output counts only if
 `gen.output_problems` passes against the CURRENT request plan and pins (adapter sha256s from
 ckpt.json); a stale one is moved aside and regenerated. Every evaluated adapter gets an
@@ -101,7 +102,7 @@ sys.path.insert(0, str(ROOT / "src"))
 # vLLM JIT-compiles kernels with `ninja` from this venv's bin/ (as scripts/eq0_pod.py).
 os.environ["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
 
-from emx.e12 import budget, data, gen, hf_gen, lora_check, trainer
+from emx.e12 import budget, data, deps, gen, hf_gen, lora_check, trainer
 from emx.e12 import contracts as C
 from emx.qwen import gen as G
 from emx.qwen import registry as R
@@ -556,60 +557,17 @@ def run_done(ctx: Ctx, item: RunItem) -> bool:
     return bool(st) and st.get("status") in OK_STATUSES and ckpt_exists(ctx, item.final_key)
 
 
-def producing_run(key: str) -> str | None:
-    """The training run that saves checkpoint `key` (None for base)."""
-    if key == C.BASE_KEY:
-        return None
-    k = C.parse_key(key)
-    if k.arm == "P":
-        return C.run_name("poison", key)
-    if k.dose is not None:
-        parent = C.dose0_key(key)
-        return C.run_name("nudge", parent, k.seed)
-    seg = "rescue" if k.repair == C.RESCUE_END else "repair"
-    return C.run_name(seg, f"{k.arm}{k.seed}")
-
-
-def producing_parent(key: str) -> str | None:
-    """The checkpoint the producing run of `key` starts from (None: a fresh adapter or base)."""
-    if key == C.BASE_KEY:
-        return None
-    k = C.parse_key(key)
-    if k.arm == "P":
-        return None
-    if k.dose is not None:
-        p = C.dose0_key(key)
-        return None if p == C.BASE_KEY else p
-    if k.repair == C.RESCUE_END:
-        return C.format_key(k.arm, k.seed, C.REPAIR_SAVES[-1])
-    return None if k.arm == "C" else f"P{k.seed}"
-
-
-DEP_OK, DEP_FAILED, DEP_PENDING = "ok", "failed", "pending"
+producing_run = deps.producing_run  # the shared chain rule (code review r2 finding 4)
+producing_parent = deps.producing_parent
+DEP_OK, DEP_FAILED, DEP_PENDING = deps.OK, deps.FAILED, deps.PENDING
 
 
 def dependency_state(ctx: Ctx, key: str) -> tuple[str, str | None]:
-    """(state, reason) of checkpoint `key` (review r1 finding 10):
-    failed  - its producing run, or a run up its parent chain, has an explicit `failed` status
-              (terminal: the run is never retrained);
-    ok      - not failed and its ckpt.json exists;
-    pending - anything else (no status yet, an incomplete or interrupted run): a later re-run
-              may still produce it, so it never gets a terminal skip record."""
-    run = producing_run(key)
-    if run is None:
-        return DEP_OK, None
-    st = run_status(ctx, run)
-    if st and st.get("status") == "failed":
-        return DEP_FAILED, f"run {run} failed: {st.get('reason')}"
-    if ckpt_exists(ctx, key):
-        return DEP_OK, None
-    parent = producing_parent(key)
-    if parent is not None:
-        pstate, why = dependency_state(ctx, parent)
-        if pstate == DEP_FAILED:
-            return DEP_FAILED, f"parent {parent}: {why}"
-    return DEP_PENDING, (f"checkpoint {key} missing (run {run} status "
-                         f"{st and st.get('status')}); pending")
+    """(state, reason) of checkpoint `key` by `emx.e12.deps.state` (review r1 finding 10, r2
+    finding 4): failed (terminal: an explicit `failed` status on its producing run or up its
+    chain), ok (producer ok/restarted_ok and ckpt.json present), else pending (a later re-run may
+    still produce it, so it never gets a terminal skip record)."""
+    return deps.state(ctx.root, ctx.recipe_name, key)
 
 
 def dependency_problem(ctx: Ctx, key: str) -> str | None:
@@ -1338,7 +1296,7 @@ def eval_complete(ctx: Ctx, st: GenState, lazy: LazyInputs) -> bool:
         state, _ = dependency_state(ctx, j.key)
         has_skip = (ctx.root / C.job_status_path(r, j.kind, j.key)).is_file()
         if state == DEP_FAILED:
-            if not has_skip:
+            if deps.skip_problem(ctx.root, r, j.kind, j.key):
                 return False
             continue
         if has_skip or state == DEP_PENDING:
@@ -1360,7 +1318,7 @@ def sort_jobs(ctx: Ctx, jobs: list[C.Job]) -> tuple[list[C.Job], list[C.Job], li
         sp = ctx.root / C.job_status_path(ctx.recipe_name, j.kind, j.key)
         state, why = dependency_state(ctx, j.key)
         if state == DEP_FAILED:
-            if not sp.is_file():
+            if deps.skip_problem(ctx.root, ctx.recipe_name, j.kind, j.key):  # absent/unsupported
                 write_json(sp, {"status": C.JOB_SKIP_STATUS, "run": producing_run(j.key),
                                 "reason": why, "kind": j.kind, "key": j.key, "utc": G.utc()})
                 log(f"{ctx.step}: {j.kind}/{j.key} skipped: {why}")
@@ -1527,7 +1485,7 @@ def step_eval(ctx: Ctx) -> int:
             outcomes[f"{j.kind}/{j.key}"] = DEP_PENDING
         elif (ctx.root / sp).is_file():
             outcomes[f"{j.kind}/{j.key}"] = C.JOB_SKIP_STATUS
-            outs.append(sp)
+            outs += [sp, *deps.status_paths(ctx.root, r, j.key)]  # the skip and its evidence
         elif output_ok(ctx, inp, st, j):
             outcomes[f"{j.kind}/{j.key}"] = "output"
             outs += [C.gen_csv(r, j.kind, j.key), C.gen_meta(r, j.kind, j.key)]

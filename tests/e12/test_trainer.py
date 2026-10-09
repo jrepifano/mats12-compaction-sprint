@@ -382,6 +382,52 @@ def test_reinvoked_run_resumes_from_its_resume_point(tok, base, tmp_path, monkey
     assert [s["step"] for s in _steps(split, "poison_s1")] == [1, 2, 3, 4, 5, 6]
 
 
+def _superseded(root, run):
+    p = Path(root) / C.train_steps("rank1", run)
+    return p.with_name(p.name.replace(".steps.jsonl", ".steps.superseded.jsonl"))
+
+
+def test_set_aside_steps_tolerates_only_a_torn_final_line(tmp_path):
+    """Code review r2 finding 5: a torn final line moves to the superseded file (wrapped, so it
+    stays JSONL) with the steps past the resume point; a malformed middle line is an error."""
+    p = tmp_path / C.train_steps("rank1", "poison_s1")
+    p.parent.mkdir(parents=True)
+    good = "".join(json.dumps({"step": k, "loss": 1.0}) + "\n" for k in range(1, 6))
+    p.write_text(good + '{"step": 6, "lo')
+    T._set_aside_steps(p, 3)
+    assert [json.loads(x)["step"] for x in p.read_text().splitlines()] == [1, 2, 3]
+    sup = [json.loads(x) for x in _superseded(tmp_path, "poison_s1").read_text().splitlines()]
+    assert [r.get("step") for r in sup] == [4, 5, None]
+    assert sup[-1]["torn_line"] == '{"step": 6, "lo' and "utc" in sup[-1]
+    p.write_text(good.replace('{"step": 2, "loss": 1.0}', '{"step": 2, "lo') + "\n")
+    before = p.read_text()
+    with pytest.raises(ValueError, match="malformed step record on line 2"):
+        T._set_aside_steps(p, 3)
+    assert p.read_text() == before  # nothing moved on an error
+
+
+def test_resume_tolerates_a_torn_final_step_line(tok, base, tmp_path, monkeypatch):
+    """A kill mid-append leaves a torn last line in steps.jsonl; the re-invocation resumes from
+    its resume point (not a terminal failure), keeps steps 1-3, and supersedes the rest."""
+    monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    monkeypatch.setenv(T.SCRATCH_ENV, str(tmp_path / "scratch"))
+    _script(monkeypatch, {5: "kill"})
+    with pytest.raises(Killed):
+        T.run_segment(base, tok, _spec(tok), tmp_path)
+    sp = tmp_path / C.train_steps("rank1", "poison_s1")
+    assert [s["step"] for s in _steps(tmp_path, "poison_s1")] == [1, 2, 3, 4]
+    with open(sp, "a") as fh:
+        fh.write('{"step": 5, "cumulative_step": 5, "lo')  # the interrupted append
+    seen = _script(monkeypatch, {})
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert (out["mode"], out["resumed_from"], out["status"]) == ("resume", 3, "ok")
+    assert seen["n"] == 3
+    assert [s["step"] for s in _steps(tmp_path, "poison_s1")] == [1, 2, 3, 4, 5, 6]
+    sup = [json.loads(x) for x in _superseded(tmp_path, "poison_s1").read_text().splitlines()]
+    assert [r.get("step") for r in sup] == [4, None]
+    assert sup[-1]["torn_line"].startswith('{"step": 5')
+
+
 def test_reinvocation_keeps_the_attempt_count(tok, base, tmp_path, monkeypatch):
     monkeypatch.setattr(C, "RESUME_EVERY", 3)
     # attempt 1 fails at step 4 (call 4); attempt 2 resumes at 3 and is killed at step 5 (call 6)

@@ -10,9 +10,11 @@ GPU hours = elapsed + remaining (training, generation, engine starts, applied sm
 margin); GPU $ = hours x the pod's rate; API $ = the judging the jobs imply (judges, task judge,
 style audit) at the measured $0.33 per 1,000 fully judged EM answers (EQ0 billed; prereg
 Amendment B raised the API limit to $20). Admit when GPU $ <=
-GPU_LIMIT_USD, total pod hours <= POD_HOURS_LIMIT and API $ + recorded API spend <=
-API_LIMIT_USD; otherwise apply cuts 0, 1, 2, ... in order and re-project, and refuse if all five
-do not fit.
+GPU_LIMIT_USD, total pod hours <= POD_HOURS_LIMIT, API $ + recorded API spend <= API_LIMIT_USD
+and GPU $ + API $ + recorded API spend <= HARD_CAP_USD (code review r2 finding 1: Amendment B's
+limits sum to $45, so the $40 hard cap binds on its own; GPU $ already contains the recorded GPU
+spend, elapsed pod hours x rate); otherwise apply cuts 0, 1, 2, ... in order and re-project, and
+refuse if all five do not fit.
 
 Implementation notes (U6):
 - **Additive keywords.** `remaining_jobs`, `project` and `admit` also take `rescue_triggered`
@@ -78,7 +80,21 @@ STEP_OF_KIND: dict[str, str] = {  # eval step that generates a job (one engine s
     "traj": "eval-traj", "nudge": "eval-nudge",
 }
 _LIMITS = {"gpu_usd": C.GPU_LIMIT_USD, "api_usd": C.API_LIMIT_USD,
-           "pod_hours": C.POD_HOURS_LIMIT}
+           "pod_hours": C.POD_HOURS_LIMIT, "hard_cap_usd": C.HARD_CAP_USD}
+
+
+def limit_checks(*, gpu_usd: float, total_pod_hours: float, api_usd: float,
+                 api_spent_usd: float) -> dict[str, bool]:
+    """{limit: fits} for one projection. `gpu_usd` is elapsed + remaining pod hours x rate, so
+    it already holds the recorded GPU spend; `api_spent_usd` is the recorded API spend. The
+    combined check is the $40 hard cap (code review r2 finding 1)."""
+    spent = float(api_spent_usd)
+    return {
+        "gpu_usd": gpu_usd <= C.GPU_LIMIT_USD,
+        "pod_hours": total_pod_hours <= C.POD_HOURS_LIMIT,
+        "api_usd": api_usd + spent <= C.API_LIMIT_USD,
+        "hard_cap_usd": round(gpu_usd + api_usd + spent, 4) <= C.HARD_CAP_USD,
+    }
 
 
 # --- inputs -------------------------------------------------------------------------------------
@@ -279,8 +295,9 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
     gpu = round(total_h * float(gpu_rate), 4)
     api = api_usd(recipe, endpoint=endpoint, cuts=cuts, rescue_triggered=rescue_triggered,
                   rates=rates, root=root)
-    fits = (gpu <= C.GPU_LIMIT_USD and total_h <= C.POD_HOURS_LIMIT
-            and api["total_usd"] + float(api_spent_usd) <= C.API_LIMIT_USD)
+    checks = limit_checks(gpu_usd=gpu, total_pod_hours=total_h, api_usd=api["total_usd"],
+                          api_spent_usd=api_spent_usd)
+    fits = all(checks.values())
     return {
         "stage": stage, "recipe": recipe, "gen_path": gen_path, "endpoint": endpoint,
         "cuts": list(cuts), "jobs_sha256": C.jobs_sha256(planned),
@@ -290,7 +307,9 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
         "verdict": "admit" if fits else "refuse",
         # extras (not required by BENCH_FIELDS)
         "rescue_triggered": rescue_triggered, "gpu_rate": float(gpu_rate),
-        "api_spent_usd": float(api_spent_usd), "n_jobs": len(planned),
+        "api_spent_usd": float(api_spent_usd),
+        "combined_usd": round(gpu + api["total_usd"] + float(api_spent_usd), 4),
+        "limit_checks": checks, "n_jobs": len(planned),
         "n_remaining_jobs": len(todo), "remaining_answers": n_answers,
         "remaining_train_steps": steps, "api": api,
         "rates": {k: v for k, v in rates.items() if k != "rates_source"},
@@ -321,13 +340,15 @@ def project_hf_complete(recipe: str, stage: str, *, cuts: Sequence[int],
     total_h = max(a["total_pod_hours"] for a in arms.values())
     gpu = max(a["gpu_usd"] for a in arms.values())
     api = max(a["api_usd"] for a in arms.values())
-    fits = (gpu <= C.GPU_LIMIT_USD and total_h <= C.POD_HOURS_LIMIT
-            and api + float(api_spent_usd) <= C.API_LIMIT_USD)
+    checks = limit_checks(gpu_usd=gpu, total_pod_hours=total_h, api_usd=api,
+                          api_spent_usd=api_spent_usd)
+    fits = all(checks.values())
     union = C.hf_complete_jobs(recipe, tuple(c for c in rec["cuts"] if c != 0))
     rec.update({
         "branch": HF_COMPLETE, "endpoint": None, "rescue_triggered": None,
         "priced_endpoint": dear_ep, "total_pod_hours": total_h, "gpu_usd": gpu,
         "api_usd": api, "verdict": "admit" if fits else "refuse",
+        "combined_usd": round(gpu + api + float(api_spent_usd), 4), "limit_checks": checks,
         "jobs_sha256": C.jobs_sha256(union), "n_jobs": len(union),
         "branches": {str(e): {k: a[k] for k in (
             "endpoint", "rescue_triggered", "jobs_sha256", "n_jobs", "remaining_answers",
@@ -370,7 +391,7 @@ def admit(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
                           api_spent_usd=api_spent_usd, root=root,
                           rescue_triggered=rescue_triggered)
         tried.append({k: rec[k] for k in ("cuts", "total_pod_hours", "gpu_usd", "api_usd",
-                                          "verdict")})
+                                          "combined_usd", "verdict")})
         if rec["verdict"] == "admit":
             break
     rec["tried"] = tried
@@ -416,7 +437,8 @@ def main(argv: list[str] | None = None) -> int:
         return C.EXIT_FAILED
     print(f"E12 BUDGET {rec['verdict'].upper()}: cuts {rec['cuts']}, "
           f"{rec['total_pod_hours']:.2f} pod-h, GPU ${rec['gpu_usd']:.2f}, API "
-          f"${rec['api_usd']:.2f} + spent ${args.api_spent:.2f}", file=sys.stderr)
+          f"${rec['api_usd']:.2f} + spent ${args.api_spent:.2f} = ${rec['combined_usd']:.2f} "
+          f"of ${C.HARD_CAP_USD:.0f}", file=sys.stderr)
     print(json.dumps(rec, sort_keys=True))
     return C.EXIT_OK if rec["verdict"] == "admit" else C.EXIT_BUDGET
 

@@ -615,6 +615,29 @@ def test_a_stale_skip_record_is_refused(env, capsys):
     assert rc == 1 and any("full/B1_r107: stale skip record" in p for p in out["problems"])
 
 
+def test_unsupported_skip_records_are_refused(env, capsys):
+    """Code review r2 finding 4: the reviewer's probe (a skip whose checkpoint is absent and
+    whose run has no status) and a skip naming a run outside the job's chain are refused."""
+    pod, _runner, lap = env
+    pod.failed_runs = {"repair_B1"}
+    assert run(env, "launch --slot _A --recipe rank1", capsys)[0] == 0
+    assert run(env, "archive --slot _A --recipe rank1", capsys)[0] == 0
+    assert run(env, "complete --slot _A --recipe rank1", capsys)[0] == 0
+    sp = lap / C.job_status_path("rank1", "full", "B1_r107")
+    assert not (lap / C.ckpt_dir("rank1", "B1_r107") / "ckpt.json").exists()
+    good, stp = sp.read_text(), lap / C.status_path("rank1", "repair_B1")
+    failed = stp.read_text()
+    stp.unlink()  # no status: pending, not failed
+    rc, out = run(env, "complete --slot _A --recipe rank1 --no-pull", capsys)
+    assert rc == 1 and any("full/B1_r107: stale skip record" in p for p in out["problems"])
+    stp.write_text(failed)
+    sp.write_text(good.replace('"repair_B1"', '"repair_A1"'))  # outside B1_r107's chain
+    rc, out = run(env, "complete --slot _A --recipe rank1 --no-pull", capsys)
+    assert rc == 1 and any("outside the dependency chain" in p for p in out["problems"])
+    sp.write_text(good)
+    assert run(env, "complete --slot _A --recipe rank1 --no-pull", capsys)[0] == 0
+
+
 # --- the HF path --------------------------------------------------------------------------------
 
 
@@ -904,6 +927,35 @@ def test_archive_while_running_retains_rank32_without_the_upload_step(env, capsy
     rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
     assert rc == 1 and out["retained"] == {"rank32": False}
     assert any("sha256 differs" in p for p in out["recipes"]["rank32"]["problems"])
+
+
+def test_final_archive_not_retained_when_a_checkpoint_appears_after_the_snapshot(env, capsys):
+    """Code review r2 finding 2: the watchdog's final archive (`--no-upload`, chain ended)
+    archives the delta, then re-syncs ckpt.json: a checkpoint made after its snapshot leaves
+    `retained` false; once that one is archived too, true."""
+    pod, runner, _lap = env
+    pod.upload_ok = False
+    assert run(env, "launch --slot _A --recipe rank32", capsys)[0] == 0
+    key = C.nudge_key("A1_r107", 1, C.NUDGE_DOSES[-1])
+    late = pod.p(f"{C.ckpt_dir('rank32', key)}/ckpt.json")
+    held = late.read_text()
+    late.unlink()  # not yet written when the snapshot is taken
+    real_pipe = runner.pipe
+
+    def pipe(src, dst, timeout):
+        res = real_pipe(src, dst, timeout)
+        if src[-1].startswith("# e12ctl:tar") and not late.exists():
+            late.write_text(held)  # a producer still running writes it after the adapter pull
+        return res
+
+    runner.pipe = pipe
+    n_launches = len(pod.launches)
+    rc, out = run(env, "archive --slot _A --no-upload", capsys)  # no --recipe: attempts
+    assert rc == 1 and out["retained"] == {"rank32": False}, out
+    assert any(key in p for p in out["recipes"]["rank32"]["problems"])
+    assert len(pod.launches) == n_launches  # --no-upload: no upload step
+    rc, out = run(env, "archive --slot _A --recipe rank32 --no-upload", capsys)
+    assert rc == 0 and out["retained"] == {"rank32": True} and out["method"] == "local", out
 
 
 def test_archive_while_running_never_overwrites_a_differing_ckpt_record(env, capsys):

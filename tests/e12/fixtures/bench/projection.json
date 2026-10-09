@@ -19,8 +19,9 @@
   "api_usd": 11.1,
   "limits": {
     "gpu_usd": 25.0,
-    "api_usd": 15.0,
-    "pod_hours": 7.0
+    "api_usd": 20.0,
+    "pod_hours": 7.0,
+    "hard_cap_usd": 40.0
   },
   "rates_source": {
     "rank1_poison_s_per_step": "measured:bench/train_bench.json",

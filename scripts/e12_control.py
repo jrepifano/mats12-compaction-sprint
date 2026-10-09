@@ -37,13 +37,19 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
   launch     --recipe R [--resume]: refuses unless the previous chain is verified ended; a start
              records the attempt in attempts.json (once per recipe), a resume keeps its id;
              `E12_RECIPE=R bash scripts/pod_run_e12.sh --detach`, then new log lines ~20 s later.
-  archive    if `retained(recipe)` fails after a recovery pull: the pod's `upload` step; if that
-             still fails, a `tar` pull of the adapter files, verified against every ckpt.json,
-             and a `local` retention receipt. `--while-running` (the watchdog's early archival
-             and hard stop, review r1 finding 2): no ended-chain gate and no upload step; ONE
-             ssh tar of the pod's ckpt.json records (missing ones installed locally), then the
-             verified tar pull (files an earlier local pull verified are linked, not re-pulled)
-             and a `local` receipt; prints {"retained": {recipe: bool}}; without --recipe it
+  archive    refused unless the chain is verified ended; if `retained(recipe)` fails after a
+             recovery pull: the pod's `upload` step (not with --no-upload); if that still
+             fails, a `tar` pull of the adapter files (earlier verified ones linked), verified
+             against every ckpt.json, and a `local` retention receipt; then the pod's ckpt.json
+             records are synced again, so a checkpoint made after the snapshot leaves
+             `retained` false (code review r2 finding 2). Prints {"retained": {recipe: bool}};
+             without --recipe, every recipe with an attempt. This, after a verified `stop`, is
+             the only archive that declares final retention.
+             `--while-running` (the watchdog's early archival, an optimisation that never
+             declares final retention; review r1 finding 2): no ended-chain gate and no upload
+             step; ONE ssh tar of the pod's ckpt.json records (missing ones installed
+             locally), then the verified tar pull (files an earlier local pull verified are
+             linked, not re-pulled) and a `local` receipt; prints {"retained": {recipe: bool}}; without --recipe it
              covers every recipe with an attempt, the latest first.
   complete   every job of the current `planned_jobs(...)` has a verified output or a terminal
              skip record, every step manifest verifies and is bound to the current job list,
@@ -53,7 +59,7 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
 
 Usage: uv run python scripts/e12_control.py {poll|stop|induction|admit-hf|endpoint|launch|archive|
        complete} --slot _A [--recipe R] [--stage S] [--resume] [--no-pull] [--while-running]
-       [--dry-run]
+       [--no-upload] [--stop-polls N] [--poll-interval-s S] [--dry-run]
 """
 
 from __future__ import annotations
@@ -78,6 +84,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from emx.e12 import contracts as C
+from emx.e12 import deps
 from emx.e12 import gen as G
 
 PY = sys.executable
@@ -576,20 +583,12 @@ def recorded_jobs_sha(root: Path, recipe: str, step: str) -> str | None:
 
 
 def skip_problem(root: Path, recipe: str, job: C.Job) -> str | None:
-    """None if the job has a valid terminal skip record: status JOB_SKIP_STATUS naming a run,
-    and (the driver's `dependency_problem` rule) that run's status says failed or the job's
-    checkpoint has no ckpt.json. A skip whose checkpoint exists from an ok run is stale."""
-    rec = read_json(Path(root) / C.job_status_path(recipe, job.kind, job.key))
-    if rec is None:
-        return f"{job.kind}/{job.key}: no verified output and no skip record"
-    if rec.get("status") != C.JOB_SKIP_STATUS or not rec.get("run"):
-        return f"{job.kind}/{job.key}: skip record is not {C.JOB_SKIP_STATUS} with a run"
-    st = read_json(Path(root) / C.status_path(recipe, rec["run"])) or {}
-    ckpt = Path(root) / C.ckpt_dir(recipe, job.key) / "ckpt.json"
-    if st.get("status") != "failed" and (job.key == C.BASE_KEY or ckpt.is_file()):
-        return (f"{job.kind}/{job.key}: stale skip record (run {rec['run']} status "
-                f"{st.get('status')}, checkpoint present)")
-    return None
+    """None if the job has a supported terminal skip record, by the driver's own predicate
+    (`emx.e12.deps.skip_problem`, code review r2 finding 4): status JOB_SKIP_STATUS naming a run
+    of the job's dependency chain, that run or an ancestor in the chain explicitly `failed`, and
+    the checkpoint's state failed. No status, a run outside the chain, or a producer now ok or
+    pending: refused."""
+    return deps.skip_problem(root, recipe, job.kind, job.key)
 
 
 def job_problem(root: Path, recipe: str, job: C.Job) -> str | None:
@@ -1135,36 +1134,63 @@ def tar_pull(ctx: Ctx, recipe: str, reuse: bool = False) -> list[str]:
     return []
 
 
-def cmd_archive(ctx: Ctx) -> int:
-    R, cmd = ctx.recipe, "archive"
+def archive_recipe(ctx: Ctx, R: str, upload: bool = True) -> tuple[int, dict]:
+    """One recipe's final archive, after the chain is verified ended: the pod's recovery
+    manifest is refreshed and pulled (every ckpt.json reaches the laptop), then unless
+    `retained(R)` holds, the upload step (unless `upload` is False: the watchdog's bounded final
+    archive) and, failing that, the verified tar pull of the delta (earlier verified local files
+    are linked). Last, the pod's ckpt.json records are synced once more: a checkpoint that
+    appeared after the snapshot is not in the receipt, so `retained` is false (code review r2
+    finding 2)."""
     q = shlex.quote
-    st = poll_pod(ctx)
-    if not ctx.dry:
-        if not st.ok:
-            return done(ctx, cmd, C.EXIT_FAILED, reason=st.error)
-        if st.state not in (*ENDED, "none"):
-            raise Refused(f"chain not verified ended (state {st.state}); run stop first")
-    # every ckpt.json on the pod reaches the laptop first, so `retained` sees every checkpoint
     res = ssh(ctx, "recovery", f"cd {q(ctx.pod_root)} && {q(ctx.pod_py)} scripts/e12_pod.py "
                                f"recovery --recipe {q(R)}", timeout=600)
     if res.rc and not ctx.dry:
-        return done(ctx, cmd, C.EXIT_FAILED, reason=f"recovery manifest refresh rc {res.rc}")
+        return C.EXIT_FAILED, {"reason": f"recovery manifest refresh rc {res.rc}"}
     if not pull(ctx, R, ["recovery"]):
-        return done(ctx, cmd, C.EXIT_FAILED, reason="recovery pull/verify failed")
+        return C.EXIT_FAILED, {"reason": "recovery pull/verify failed"}
+    up_probs: list[str] = []
     if not ctx.dry and retained(R, ctx.root):
-        return done(ctx, cmd, C.EXIT_OK, method=_method(ctx, R), action="already retained")
-    if run_upload(ctx, R) and retained(R, ctx.root):
-        return done(ctx, cmd, C.EXIT_OK, method=_method(ctx, R), action="upload")
-    up_probs = [] if ctx.dry else retention_problems(R, ctx.root)
-    probs = tar_pull(ctx, R)
+        action = "already retained"
+    elif upload and run_upload(ctx, R) and retained(R, ctx.root):
+        action = "upload"
+    else:
+        up_probs = [] if ctx.dry or not upload else retention_problems(R, ctx.root)
+        probs = tar_pull(ctx, R, reuse=True)
+        if ctx.dry:
+            return C.EXIT_OK, {}
+        if probs:
+            return C.EXIT_FAILED, {"reason": "tar pull failed", "problems": probs[:20],
+                                   "upload_problems": up_probs[:10]}
+        action = "local tar pull"
+    probs = sync_ckpt_records(ctx, R)
+    probs += [p for p in retention_problems(R, ctx.root) if p not in probs]
+    return (C.EXIT_FAILED if probs else C.EXIT_OK), {
+        "method": _method(ctx, R), "action": action, "problems": probs[:20],
+        "upload_problems": up_probs[:10]}
+
+
+def cmd_archive(ctx: Ctx, recipes: list[str] | None = None, upload: bool = True) -> int:
+    """`archive_recipe` for `recipes` (default: every recipe with an attempt, the latest first);
+    refused unless the chain is verified ended. Prints {"retained": {recipe: bool}} (the
+    watchdog's final retention), plus one recipe's fields at the top level."""
+    cmd = "archive"
+    st = poll_pod(ctx)
+    if not ctx.dry:
+        if not st.ok:
+            return done(ctx, cmd, C.EXIT_FAILED, reason=st.error,
+                        retained={r: False for r in recipes or []})
+        if st.state not in (*ENDED, "none"):
+            raise Refused(f"chain not verified ended (state {st.state}); run stop first")
+    recipes = recipes or attempt_recipes(st)
+    out = {R: archive_recipe(ctx, R, upload) for R in recipes}
+    rc = C.EXIT_OK if all(r == C.EXIT_OK for r, _ in out.values()) else C.EXIT_FAILED
     if ctx.dry:
-        return done(ctx, cmd, C.EXIT_OK)
-    if probs:
-        return done(ctx, cmd, C.EXIT_FAILED, reason="tar pull failed", problems=probs[:20],
-                    upload_problems=up_probs[:10])
-    probs = retention_problems(R, ctx.root)
-    return done(ctx, cmd, C.EXIT_FAILED if probs else C.EXIT_OK, method=_method(ctx, R),
-                action="local tar pull", problems=probs[:20], upload_problems=up_probs[:10])
+        return done(ctx, cmd, rc, recipes=recipes)
+    ret = {R: r == C.EXIT_OK for R, (r, _) in out.items()}
+    top = out[recipes[0]][1] if len(recipes) == 1 else {}
+    return done(ctx, cmd, rc, upload=upload, retained=ret, state=st.state,
+                recipes={R: f for R, (_, f) in out.items()}, **top)
 
 
 def sync_ckpt_records(ctx: Ctx, recipe: str) -> list[str]:
@@ -1383,6 +1409,13 @@ def parser() -> argparse.ArgumentParser:
                     help="archive: the watchdog's mode, safe while the chain runs (no upload "
                          "step; ckpt.json sync and the verified tar pull); without --recipe, "
                          "every recipe with an attempt")
+    ap.add_argument("--no-upload", action="store_true",
+                    help="archive: no upload step (the watchdog's bounded final archive after a "
+                         "verified stop: recovery refresh, then the verified tar pull of the "
+                         "delta); without --recipe, every recipe with an attempt")
+    ap.add_argument("--stop-polls", type=int, help="stop: polls before giving up (default 8)")
+    ap.add_argument("--poll-interval-s", type=float,
+                    help="stop/archive: seconds between polls (default 180)")
     ap.add_argument("--dry-run", action="store_true", help="print the commands; run nothing")
     return ap
 
@@ -1399,6 +1432,10 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
         print("endpoint needs --stage repair107|rescue214", file=sys.stderr)
         return C.EXIT_REFUSED
     root = Path(ctx_kw.pop("root", ROOT))
+    if a.stop_polls is not None:
+        ctx_kw["stop_polls"] = max(1, a.stop_polls)
+    if a.poll_interval_s is not None:
+        ctx_kw["poll_interval_s"] = max(0.0, a.poll_interval_s)
     ctx = Ctx(root=root, slot=a.slot, recipe=a.recipe or C.DEFAULT_RECIPE,
               runner=runner or Runner(root, a.dry_run), dry=a.dry_run, **ctx_kw)
     try:
@@ -1417,7 +1454,7 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
         if a.cmd == "archive" and a.while_running:
             return cmd_archive_while_running(ctx, [a.recipe] if a.recipe else None)
         if a.cmd == "archive":
-            return cmd_archive(ctx)
+            return cmd_archive(ctx, [a.recipe] if a.recipe else None, upload=not a.no_upload)
         return cmd_complete(ctx, a.no_pull)
     except Refused as e:
         return done(ctx, a.cmd, C.EXIT_REFUSED, reason=str(e))

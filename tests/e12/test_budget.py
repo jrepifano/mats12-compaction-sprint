@@ -55,7 +55,8 @@ def test_consumer_reads_the_shared_fixtures(tmp_path):
                     gpu_rate=3.49, api_spent_usd=0.0, root=root)
     assert set(fixture) <= set(rec)
     assert set(fixture["remaining_hours"]) == set(rec["remaining_hours"])
-    assert set(fixture["limits"]) == set(rec["limits"])
+    assert set(fixture["limits"]) <= set(rec["limits"])  # the fixture predates hard_cap_usd
+    assert rec["limits"]["hard_cap_usd"] == C.HARD_CAP_USD
     assert fixture["rates_source"].items() <= rec["rates_source"].items()
     assert rec["verdict"] in C.PROJECTION_VERDICTS
 
@@ -117,6 +118,71 @@ def test_vllm_speculative_admits_without_cuts_under_the_20_dollar_limit(tmp_path
     assert rec["api"]["usd"]["em_judging"] == pytest.approx(51_820 * 0.33 / 1000, abs=1e-3)
 
 
+def test_hard_cap_binds_on_its_own_and_is_recorded():
+    """Code review r2 finding 1: Amendment B's limits sum to $45, so each limit can fit while
+    GPU $ + API $ + recorded spend exceeds the $40 hard cap (the reviewer's probe)."""
+    checks = B.limit_checks(gpu_usd=21.683, total_pod_hours=6.2, api_usd=18.9201,
+                            api_spent_usd=0.4)
+    assert checks == {"gpu_usd": True, "pod_hours": True, "api_usd": True,
+                      "hard_cap_usd": False}
+    assert all(B.limit_checks(gpu_usd=20.0, total_pod_hours=6.0, api_usd=19.6,
+                              api_spent_usd=0.4).values())  # exactly $40 fits
+    assert B._LIMITS["hard_cap_usd"] == C.HARD_CAP_USD
+
+
+def test_reviewer_probe_is_not_admitted_without_cuts(tmp_path):
+    """The probe's elapsed hours give GPU $21.68 with the rescued branch's API $18.92 and $0.40
+    recorded ($41.00 > $40): the uncut projection is refused, cuts are added in order, and the
+    admitted one fits every limit, the hard cap included."""
+    root = bench_root(tmp_path, frozen=False)
+    kw = {"gen_path": "vllm", "endpoint": None, "gpu_rate": 3.49, "api_spent_usd": 0.4,
+          "root": root}
+    base = B.project(R, "smoke", cuts=(), elapsed_pod_hours=0.0, **kw)
+    elapsed = 21.683 / 3.49 - base["total_pod_hours"]  # the probe's GPU $
+    uncut = B.project(R, "smoke", cuts=(), elapsed_pod_hours=elapsed, **kw)
+    assert uncut["gpu_usd"] == pytest.approx(21.683, abs=0.01)
+    assert uncut["api_usd"] == pytest.approx(18.92, abs=0.01)
+    assert uncut["combined_usd"] == pytest.approx(41.00, abs=0.01)
+    assert uncut["verdict"] == "refuse" and uncut["limit_checks"] == {
+        "gpu_usd": True, "pod_hours": True, "api_usd": True, "hard_cap_usd": False}
+    rec = B.admit(R, "smoke", elapsed_pod_hours=elapsed, write=False, **kw)
+    assert rec["tried"][0]["verdict"] == "refuse" and rec["cuts"] != []
+    assert [t["cuts"] for t in rec["tried"]] == [list(c) for c in
+                                                 B.cut_sequence()[:len(rec["tried"])]]
+    assert rec["verdict"] == "admit" and all(rec["limit_checks"].values())
+    assert rec["combined_usd"] <= C.HARD_CAP_USD
+    assert rec["combined_usd"] == pytest.approx(rec["gpu_usd"] + rec["api_usd"] + 0.4, abs=1e-3)
+    # nothing fits once the recorded spend alone nearly fills the hard cap
+    rec = B.admit(R, "smoke", elapsed_pod_hours=elapsed, write=False,
+                  **{**kw, "api_spent_usd": 15.0})
+    assert rec["verdict"] == "refuse" and rec["cuts"] == [0, 1, 2, 3, 4, 5]
+
+
+def test_hf_complete_enforces_the_hard_cap(tmp_path):
+    """The hf-complete branch checks the same four limits on its maxima."""
+    root = bench_root(tmp_path, hf_rate=5.0)
+    rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=root, branch="hf-complete",
+                  elapsed_pod_hours=1.0, gpu_rate=3.49, api_spent_usd=0.4, write=False)
+    assert rec["limits"]["hard_cap_usd"] == C.HARD_CAP_USD
+    assert rec["combined_usd"] == pytest.approx(rec["gpu_usd"] + rec["api_usd"] + 0.4, abs=1e-3)
+    assert rec["verdict"] == "admit" and all(rec["limit_checks"].values())
+    # elapsed hours that keep GPU <= $25 and hours <= 7 but push GPU + API past $40
+    base = B.project_hf_complete(R, "hf", cuts=(), elapsed_pod_hours=0.0, gpu_rate=3.49,
+                                 api_spent_usd=0.4, root=root)
+    elapsed = (40.0 - base["api_usd"] - 0.4 + 1.0) / 3.49 - base["total_pod_hours"]
+    uncut = B.project_hf_complete(R, "hf", cuts=(), elapsed_pod_hours=elapsed, gpu_rate=3.49,
+                                  api_spent_usd=0.4, root=root)
+    assert uncut["gpu_usd"] <= C.GPU_LIMIT_USD and uncut["total_pod_hours"] <= C.POD_HOURS_LIMIT
+    assert uncut["api_usd"] + 0.4 <= C.API_LIMIT_USD
+    assert uncut["verdict"] == "refuse" and uncut["limit_checks"]["hard_cap_usd"] is False
+    rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=root, branch="hf-complete",
+                  elapsed_pod_hours=elapsed, gpu_rate=3.49, api_spent_usd=0.4, write=False)
+    # $41.00 uncut, $40.60 with cut 0 (API only), admitted with cuts 0 and 1
+    assert [t["verdict"] for t in rec["tried"]] == ["refuse", "refuse", "admit"]
+    assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1]
+    assert rec["combined_usd"] <= C.HARD_CAP_USD and all(rec["limit_checks"].values())
+
+
 def test_cuts_are_added_in_order(tmp_path):
     root = bench_root(tmp_path, frozen=False)  # style training not yet rated: +$0.5
     rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None, elapsed_pod_hours=0.4,
@@ -127,8 +193,10 @@ def test_cuts_are_added_in_order(tmp_path):
     assert t1["gpu_usd"] == t0["gpu_usd"] and t1["api_usd"] < t0["api_usd"]  # cut 0: API only
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, elapsed_pod_hours=0.4, gpu_rate=3.49,
                   api_spent_usd=0.4, root=bench_root(tmp_path / "hf"), write=False)
-    assert [t["cuts"] for t in rec["tried"]] == [[], [0], [0, 1]]
-    assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1]
+    # cuts 0 and 1 fit the GPU, API and hour limits, but GPU + API is $41.40 > $40: cut 2 too
+    assert [t["cuts"] for t in rec["tried"]] == [[], [0], [0, 1], [0, 1, 2]]
+    assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1, 2]
+    assert rec["tried"][2]["combined_usd"] > C.HARD_CAP_USD >= rec["combined_usd"]
     assert B.cut_sequence() == [(), (0,), (0, 1), (0, 1, 2), (0, 1, 2, 3), (0, 1, 2, 3, 4),
                                 (0, 1, 2, 3, 4, 5)]
 

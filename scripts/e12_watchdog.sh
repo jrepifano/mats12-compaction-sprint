@@ -12,23 +12,33 @@
 #   billed from creation) plus one interval reach POD_HOURS_LIMIT (7 h, emx.e12.contracts; a test
 #   keeps the two equal) is a hard stop too, on every GPU type, so no pod runs past 7 h even when
 #   its dollars are under the GPU line (cheaper GPUs; the reservation deadline is the backstop);
-# - early archival (code review r1 finding 2): once the projected hard stop (the earlier of the
-#   7 h rule and the GPU kill line, from the budget check's hours, projection and burn) is within
-#   E12_ARCHIVE_LEAD_H (0.5 h), it starts `scripts/e12_control.py archive --slot _A
-#   --while-running` ONCE in the background (no --recipe: every recipe with an attempt, the active
-#   one first; E12_ARCHIVE_RECIPE pins one), bounded at E12_ARCHIVE_EARLY_S (2700 s) and logged to
-#   logs/watchdog_E12_archive_early_<UTC>.log, while the ticks go on: the verified tar pull of the
-#   rank-32 adapter files under /ws/e12 and a `local` retention receipt;
-# - at a hard stop (exit 2) it kills a still-running early archive, then, concurrently and within
-#   ONE bound (the seconds left before the real kill line minus E12_STOP_MARGIN_S=90, capped at
-#   E12_ARCHIVE_STOP_S=300; E12_SALVAGE_S=240 when the line is unknown, as in fail-closed), runs
-#   the same archive again (only new checkpoints move: earlier verified files are linked) and
-#   salvages the running slot's results/E12 and logs/ into results/E12/_salvage_<slot>_<UTC>/
-#   (one ssh tar with a local MANIFEST.sha256; once per stop). It logs "RETENTION (stop):
-#   <recipe>=true|false" from the archive's `retained` output, and alerts loudly unless every
-#   recipe is retained. Then it terminates EVERY e12-* pod the API lists (pod_down.py --exp E12
-#   --all-exp) whatever the salvage and the archive did (never past the kill line: with no time
-#   left both are skipped), and keeps monitoring, retrying every minute;
+# - early archival (code review r1 finding 2), an optimisation that never declares final
+#   retention: once the projected hard stop (the earlier of the 7 h rule and the GPU kill line,
+#   from the budget check's hours, projection and burn) is within E12_ARCHIVE_LEAD_H (0.5 h), it
+#   starts `scripts/e12_control.py archive --slot _A --while-running` ONCE in the background (no
+#   --recipe: every recipe with an attempt; E12_ARCHIVE_RECIPE pins one), bounded at
+#   E12_ARCHIVE_EARLY_S (2700 s), logged to logs/watchdog_E12_archive_early_<UTC>.log: the
+#   verified tar pull of the rank-32 adapters so far, so the final archive moves only the delta;
+# - FINAL STOP (code review r2 finding 2: final archival must not race continuing training):
+#   once the real line (the earlier of the GPU kill line and 7 h) is E12_FINAL_LEAD_S (1200 s)
+#   away (the tick before is shortened so it lands there), it kills a still-running early
+#   archive, then in the background, within ONE bound (the seconds left minus
+#   E12_STOP_MARGIN_S=90): (1) `e12_control.py stop` (STOP for every recipe, then verified: an
+#   E12_CHAIN_* end tag and no [p]od_run_e12 / [e]12_pod process), bounded at E12_FINAL_STOP_S
+#   (600 s), polls E12_STOP_POLL_S (60 s) apart; (2) only after a verified stop, the NON
+#   --while-running `e12_control.py archive --slot _A --no-upload` (recovery refresh of every
+#   ckpt.json, the verified tar pull of the final delta, a re-sync so a late checkpoint leaves
+#   `retained` false), with the salvage of results/E12 and logs/ beside it; it logs "RETENTION
+#   (final): <recipe>=true|false" and alerts loudly unless every recipe is retained. A stop that
+#   fails or hangs is alerted ("FINAL STOP NOT VERIFIED"); a best-effort while-running archive
+#   and the salvage still run, and retention is NOT declared. The ticks go on meanwhile;
+# - at a hard stop (exit 2) the budget backstop terminates at the kill line whatever the final
+#   stop did: a final stop still running gets until the line minus the margin, then is killed
+#   (loud alert); if none ran (the line came within one interval first, or fail-closed with the
+#   line unknown: E12_SALVAGE_S=240 s), the same final stop runs now within that bound. Then it
+#   terminates EVERY e12-* pod the API lists (pod_down.py --exp E12 --all-exp; never past the
+#   kill line: with no time left the stop and archive are skipped, RETENTION NOT CONFIRMED), and
+#   keeps monitoring, retrying every minute;
 # - FAILS CLOSED: any other budget-check exit (malformed ledger, crash) writes an alert
 #   (logs/watchdog_E12.alert) and terminates every e12-* pod too (after the same salvage of _A);
 # - reconciles: each healthy tick terminates e12-* pods missing from the event log
@@ -60,43 +70,70 @@ envval() { grep -m1 "^$1=" .env 2>/dev/null | cut -d= -f2- ; }
 SALVAGE_S=${E12_SALVAGE_S:-240}   # one wall-clock bound for the salvage of every slot together
 ARCHIVE_LEAD_H=${E12_ARCHIVE_LEAD_H:-0.5}   # start the early archive this long before the stop
 ARCHIVE_EARLY_S=${E12_ARCHIVE_EARLY_S:-2700}
-ARCHIVE_STOP_S=${E12_ARCHIVE_STOP_S:-300}
 STOP_MARGIN_S=${E12_STOP_MARGIN_S:-90}   # left for pod_down before the real kill line
+FINAL_LEAD_S=${E12_FINAL_LEAD_S:-1200}   # the final stop starts this long before the real line
+FINAL_STOP_S=${E12_FINAL_STOP_S:-600}   # bound on `e12_control.py stop` within the final stop
+STOP_POLL_S=${E12_STOP_POLL_S:-60}   # its polls, a minute apart (one ssh call each)
 ARCHIVE_RECIPE=${E12_ARCHIVE_RECIPE:-}
 SALVAGED=0
 EARLY_STARTED=0; EARLY_PID=""; EARLY_LOG=""; EARLY_T0=0
+FINAL_STARTED=0; FINAL_PID=""
 killtree() {  # killtree PID: the process and all its descendants (bash 3.2: recursion, pgrep -P)
   local c
   for c in $(pgrep -P "$1" 2>/dev/null); do killtree "$c"; done
   kill "$1" 2>/dev/null
 }
 ARCH_PID=""; ARCH_LOG=""
+stamp() { date -u +%Y%m%dT%H%M%SZ; }
+ctl_argv() {  # ctl_argv SUBCOMMAND ARGS...: the controller call, recipe pinned if asked
+  if [ -n "$ARCHIVE_RECIPE" ] && [ "$1" = "archive" ]; then
+    echo "uv run python scripts/e12_control.py $* --recipe $ARCHIVE_RECIPE"
+  else
+    echo "uv run python scripts/e12_control.py $*"
+  fi
+}
 archive_bg() {  # archive_bg MODE: start the while-running archive as a child of this shell (not a
   # subshell, so `wait` reaps it); sets ARCH_PID and ARCH_LOG
-  ARCH_LOG="logs/watchdog_E12_archive_$1_$(date -u +%Y%m%dT%H%M%SZ).log"
-  if [ -n "$ARCHIVE_RECIPE" ]; then
-    uv run python scripts/e12_control.py archive --slot _A --while-running --recipe "$ARCHIVE_RECIPE" \
-      < /dev/null > "$ARCH_LOG" 2>&1 &
-  else
-    uv run python scripts/e12_control.py archive --slot _A --while-running < /dev/null > "$ARCH_LOG" 2>&1 &
-  fi
+  ARCH_LOG="logs/watchdog_E12_archive_$1_$(stamp).log"
+  $(ctl_argv archive --slot _A --while-running) < /dev/null > "$ARCH_LOG" 2>&1 &
   ARCH_PID=$!
 }
-retention() {  # retention MODE PID LOG: reap a finished archive; log and alert on its `retained`
-  local rc=0 r
-  wait "$2" 2>/dev/null || rc=$?
-  r=$(python3 -c "import json,sys
+bounded() {  # bounded SECS LOG CMD...: CMD (stdin /dev/null, output to LOG), its process tree
+  # killed after SECS; returns CMD's exit code, 124 on a timeout
+  local secs=$1 log=$2 pid t0=$SECONDS rc=0
+  shift 2
+  "$@" < /dev/null > "$log" 2>&1 &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null && [ $((SECONDS - t0)) -lt "$secs" ]; do sleep 1; done
+  if kill -0 "$pid" 2>/dev/null; then
+    killtree "$pid"; wait "$pid" 2>/dev/null; return 124
+  fi
+  wait "$pid" 2>/dev/null || rc=$?
+  return "$rc"
+}
+last_field() {  # last_field LOG FIELD: FIELD of LOG's last JSON line ("retained": "r=true ...")
+  python3 -c "import json,sys
 lines=[l for l in open(sys.argv[1]).read().splitlines() if l.strip()]
 try: d=json.loads(lines[-1])
 except Exception: d={}
-r=d.get('retained') if isinstance(d.get('retained'), dict) else {}
-print(' '.join('%s=%s' % (k, str(v).lower()) for k, v in sorted(r.items())) or 'unknown')" "$3" 2>/dev/null)
-  echo "$(now) RETENTION ($1): ${r:-unknown} (archive exit $rc, log $3)"
+v=d.get(sys.argv[2])
+if isinstance(v, dict): print(' '.join('%s=%s' % (k, str(x).lower()) for k, x in sorted(v.items())) or 'unknown')
+else: print(str(v).lower() if v is not None else 'unknown')" "$1" "$2" 2>/dev/null || echo unknown
+}
+retention() {  # retention MODE LOG RC: log (and unless MODE is early, alert on) `retained`
+  local r
+  r=$(last_field "$2" retained)
+  echo "$(now) RETENTION ($1): ${r:-unknown} (archive exit $3, log $2)"
   case " ${r:-unknown} " in
-    *=false*|*" unknown "*) echo "$(now) RETENTION NOT CONFIRMED ($1): ${r:-unknown}; see $3 - rank-32 adapters may be lost at termination" | tee -a "$FAIL_ALERT" ;;
+    *=false*|*" unknown "*)
+      [ "$1" = "early, not final" ] && return 1
+      echo "$(now) RETENTION NOT CONFIRMED ($1): ${r:-unknown}; see $2 - rank-32 adapters may be lost at termination" | tee -a "$FAIL_ALERT"
+      return 1 ;;
   esac
+  return 0
 }
 early_check() {  # reap or bound the background early archive
+  local rc=0
   [ -n "$EARLY_PID" ] || return 0
   if kill -0 "$EARLY_PID" 2>/dev/null; then
     if [ $((SECONDS - EARLY_T0)) -ge "$ARCHIVE_EARLY_S" ]; then
@@ -106,18 +143,79 @@ early_check() {  # reap or bound the background early archive
     fi
     return 0
   fi
-  retention early "$EARLY_PID" "$EARLY_LOG"; EARLY_PID=""
+  wait "$EARLY_PID" 2>/dev/null || rc=$?
+  retention "early, not final" "$EARLY_LOG" "$rc"; EARLY_PID=""
 }
-early_stop() {  # at a hard stop: a still-running early archive gives way to the stop's own
+early_stop() {  # the final stop: a still-running early archive gives way (never two archives)
   [ -n "$EARLY_PID" ] || return 0
   if kill -0 "$EARLY_PID" 2>/dev/null; then
     killtree "$EARLY_PID"
-    echo "$(now) early archive still running at the hard stop: killed; see $EARLY_LOG"
+    echo "$(now) early archive still running at the final stop: killed; see $EARLY_LOG"
     wait "$EARLY_PID" 2>/dev/null
+    EARLY_PID=""
   else
-    retention early "$EARLY_PID" "$EARLY_LOG"
+    early_check
   fi
-  EARLY_PID=""
+}
+final_stop() {  # final_stop BOUND_S SLOTS: STOP, verify the producers stopped, then the final
+  # (non --while-running) archive beside the salvage, all within BOUND_S; exit 0 iff retained
+  local bound=$1 slots=${2:-_A} t0=$SECONDS sb polls left rc=0 apid st slog alog
+  slog="logs/watchdog_E12_final_stop_$(stamp).log"; alog="logs/watchdog_E12_archive_final_$(stamp).log"
+  sb=$FINAL_STOP_S; [ "$sb" -gt "$bound" ] && sb=$bound
+  polls=$(( sb / STOP_POLL_S )); [ "$polls" -lt 1 ] && polls=1
+  echo "$(now) FINAL STOP: e12_control.py stop (bounded at ${sb}s of ${bound}s), log $slog"
+  bounded "$sb" "$slog" $(ctl_argv stop --slot _A --stop-polls "$polls" --poll-interval-s "$STOP_POLL_S") || rc=$?
+  st=$(last_field "$slog" ok)
+  left=$(( bound - (SECONDS - t0) ))
+  if [ "$rc" != "0" ] || [ "$st" != "true" ]; then
+    echo "$(now) FINAL STOP NOT VERIFIED (stop exit $rc, ok=$st; see $slog): producers may still run - final retention NOT declared; best-effort archive and salvage only" | tee -a "$FAIL_ALERT"
+    if [ "$left" -gt 0 ]; then
+      bounded "$left" "$alog" $(ctl_argv archive --slot _A --while-running) &
+      apid=$!
+      salvage "$slots" "$left" || true
+      wait "$apid" 2>/dev/null
+      echo "$(now) best-effort archive (while running; not final): retained $(last_field "$alog" retained), log $alog"
+    fi
+    echo "$(now) RETENTION NOT CONFIRMED (final): the stop was not verified" | tee -a "$FAIL_ALERT"
+    return 1
+  fi
+  echo "$(now) FINAL STOP verified: chain ended, no [p]od_run_e12 / [e]12_pod process"
+  if [ "$left" -le 0 ]; then
+    echo "$(now) NO TIME left for the final archive after the stop: RETENTION NOT CONFIRMED" | tee -a "$FAIL_ALERT"
+    return 1
+  fi
+  echo "$(now) ARCHIVE (final) started, bounded at ${left}s, log $alog"
+  rc=0
+  bounded "$left" "$alog" $(ctl_argv archive --slot _A --no-upload) &
+  apid=$!
+  salvage "$slots" "$left" || echo "$(now) salvage failed"
+  wait "$apid" 2>/dev/null || rc=$?
+  [ "$rc" = "124" ] && echo "$(now) ARCHIVE (final) timed out after ${left}s (killed); see $alog" | tee -a "$FAIL_ALERT"
+  retention final "$alog" "$rc"
+}
+final_start() {  # final_start BOUND_S SLOTS: the final stop in the background (sets FINAL_PID)
+  FINAL_STARTED=1; SALVAGED=1; EARLY_STARTED=1
+  early_stop
+  final_stop "$1" "$2" &
+  FINAL_PID=$!
+  echo "$(now) FINAL STOP started pid $FINAL_PID, bounded at ${1}s"
+}
+final_wait() {  # final_wait BOUND_S: wait for the final stop at most BOUND_S, then kill it
+  local t0=$SECONDS rc=0
+  [ -n "$FINAL_PID" ] || return 0
+  while kill -0 "$FINAL_PID" 2>/dev/null && [ $((SECONDS - t0)) -lt "$1" ]; do sleep 1; done
+  if kill -0 "$FINAL_PID" 2>/dev/null; then
+    killtree "$FINAL_PID"
+    echo "$(now) FINAL STOP still running at the kill line: killed - RETENTION NOT CONFIRMED" | tee -a "$FAIL_ALERT"
+  fi
+  wait "$FINAL_PID" 2>/dev/null || rc=$?
+  echo "$(now) FINAL STOP ended (exit $rc)"
+  FINAL_PID=""
+}
+final_check() {  # reap a finished background final stop (non-blocking)
+  [ -n "$FINAL_PID" ] || return 0
+  kill -0 "$FINAL_PID" 2>/dev/null && return 0
+  final_wait 0
 }
 deadline() {  # deadline BUDGET_JSON: "<hours to the hard-stop tick> <seconds to the real line>"
   printf '%s\n' "$1" | tail -1 | python3 -c "import json,sys
@@ -165,34 +263,29 @@ salvage() {  # salvage "SLOTS" [BOUND_S]: bounded copy of results/E12 and logs o
     echo "$(now) salvage $d: $n file(s), local MANIFEST.sha256"
   done
 }
-kill_all() {  # kill_all REASON [SLOTS] [SECONDS_TO_LINE]: a bounded archive and salvage (once
-  # per stop), then terminate anyway
-  local bound left slots=${2:-_A} t0
+kill_all() {  # kill_all REASON [SLOTS] [SECONDS_TO_LINE]: the final stop (once), bounded by the
+  # kill line, then terminate anyway
+  local bound slots=${2:-_A} left=${3:-}
   echo "$(now) HARD STOP ($1): terminating every e12-* pod"
-  if [ "$SALVAGED" = "0" ]; then
-    SALVAGED=1
-    early_stop
-    left=${3:-}
-    if [ -n "$left" ]; then
-      bound=$(( left - STOP_MARGIN_S ))
-      [ "$bound" -gt "$ARCHIVE_STOP_S" ] && bound=$ARCHIVE_STOP_S
-    else
-      bound=$SALVAGE_S   # the kill line is unknown (fail-closed): the salvage's own bound
-    fi
+  if [ -n "$left" ]; then
+    bound=$(( left - STOP_MARGIN_S ))
+  else
+    bound=$SALVAGE_S   # the kill line is unknown (fail-closed): the salvage's own bound
+  fi
+  # final_wait gets 3 s of grace over the bound the final stop holds itself to (its 1 s polls
+  # can overrun slightly); the margin before the real line is far larger
+  if [ -n "$FINAL_PID" ]; then
+    echo "$(now) final stop under way: waiting up to ${bound}s"
+    [ "$bound" -gt 0 ] || bound=0
+    final_wait $(( bound + 3 ))
+  elif [ "$SALVAGED" = "0" ]; then
     if [ "$bound" -gt 0 ]; then
-      archive_bg stop
-      echo "$(now) ARCHIVE (stop) started pid $ARCH_PID, bounded at ${bound}s, log $ARCH_LOG"
-      t0=$SECONDS
-      if [ "$bound" -lt "$SALVAGE_S" ]; then salvage "$slots" "$bound"; else salvage "$slots"; fi \
-        || echo "$(now) salvage failed; terminating anyway"
-      while kill -0 "$ARCH_PID" 2>/dev/null && [ $((SECONDS - t0)) -lt "$bound" ]; do sleep 1; done
-      if kill -0 "$ARCH_PID" 2>/dev/null; then
-        killtree "$ARCH_PID"
-        echo "$(now) ARCHIVE (stop) timed out after ${bound}s (killed); see $ARCH_LOG" | tee -a "$FAIL_ALERT"
-      fi
-      retention stop "$ARCH_PID" "$ARCH_LOG"
+      final_start "$bound" "$slots"
+      final_wait $(( bound + 3 ))
     else
-      echo "$(now) NO TIME before the kill line (${left:-?}s left): archive and salvage skipped; RETENTION NOT CONFIRMED" | tee -a "$FAIL_ALERT"
+      SALVAGED=1
+      early_stop
+      echo "$(now) NO TIME before the kill line (${left:-?}s left): stop, archive and salvage skipped; RETENTION NOT CONFIRMED" | tee -a "$FAIL_ALERT"
     fi
   fi
   uv run python scripts/pod_down.py --exp E12 --all-exp --reason "e12 watchdog: $1" \
@@ -262,6 +355,12 @@ while true; do
     [ "$ONCE" = "1" ] && exit 2
     sleep 60; continue
   fi
+  final_check
+  if [ "$FINAL_STARTED" = "0" ] && [ -n "$left_s" ] && [ "$left_s" -le "$FINAL_LEAD_S" ]; then
+    bound=$(( left_s - STOP_MARGIN_S ))
+    echo "$(now) FINAL STOP: the kill line is ${left_s}s away (lead ${FINAL_LEAD_S}s)"
+    if [ "$bound" -gt 0 ]; then final_start "$bound" "$(running_slots "$out")"; fi
+  fi
   if [ "$EARLY_STARTED" = "0" ] && [ -n "$left_h" ] \
       && python3 -c "import sys; sys.exit(0 if $left_h <= $ARCHIVE_LEAD_H else 1)"; then
     EARLY_STARTED=1
@@ -275,6 +374,10 @@ while true; do
   for slot in $slots; do   # every running E12 slot
     idle_check "$slot"
   done
-  [ "$ONCE" = "1" ] && exit 0
-  sleep "$INTERVAL"
+  if [ "$ONCE" = "1" ]; then final_wait 100000; exit 0; fi   # a test tick reaps its final stop
+  nap=$INTERVAL   # land the next tick on the final-stop lead rather than up to one interval late
+  if [ "$FINAL_STARTED" = "0" ] && [ -n "$left_s" ] && [ $(( left_s - FINAL_LEAD_S )) -lt "$nap" ]; then
+    nap=$(( left_s - FINAL_LEAD_S )); [ "$nap" -lt 5 ] && nap=5
+  fi
+  sleep "$nap"
 done

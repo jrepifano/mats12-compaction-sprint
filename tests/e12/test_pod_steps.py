@@ -735,6 +735,31 @@ def test_eval_endpoints_skip_records_for_failed_runs(world):
     assert not (world.root / C.job_status_path(REC, "full", "C2_r214")).exists()
 
 
+def test_eval_unsupported_skip_records_rewritten_or_removed(world):
+    """Code review r2 finding 4 (driver side, `emx.e12.deps`): a skip naming a run outside the
+    job's chain is rewritten to the producing run; a skip whose producer has no status is
+    removed (pending: no manifest); the manifest lists the failed status beside the skip."""
+    _rescued(world)
+    make_status(world.root, "repair_B1", "failed")
+    shutil.rmtree(world.root / C.ckpt_dir(REC, "B1_r107"))
+    bad = {"status": C.JOB_SKIP_STATUS, "run": "repair_A1", "reason": "x"}
+    _put(world.root, C.job_status_path(REC, "full", "B1_r107"), json.dumps(bad))
+    shutil.rmtree(world.root / C.ckpt_dir(REC, "A2_r214"))  # absent, no status: pending
+    (world.root / C.status_path(REC, "rescue_A2")).unlink()
+    _put(world.root, C.job_status_path(REC, "full", "A2_r214"), json.dumps(
+        {**bad, "run": "rescue_A2"}))
+    vllm_genpath(world.root)
+    assert run(world, "eval-endpoints") == C.EXIT_FAILED
+    assert _json(world.root, C.job_status_path(REC, "full", "B1_r107"))["run"] == "repair_B1"
+    assert not (world.root / C.job_status_path(REC, "full", "A2_r214")).exists()
+    assert not (world.root / C.manifest_path(REC, "eval-endpoints")).exists()
+    make_ckpt(world.root, "A2_r214")
+    make_status(world.root, "rescue_A2")
+    assert run(world, "eval-endpoints") == 0
+    man = (world.root / C.manifest_path(REC, "eval-endpoints")).read_text()
+    assert C.status_path(REC, "repair_B1") in man
+
+
 def test_eval_failure_when_an_output_does_not_verify(world, monkeypatch):
     _poisoned(world)
     vllm_genpath(world.root)
@@ -961,11 +986,15 @@ while [ $# -gt 0 ]; do
   esac
 done
 echo "$(basename "$0") $step $part $recipe" >> calls.log
-for spec in ${STUB_RC:-}; do
-  if [ "${spec%%=*}" = "$step" ]; then exit "${spec#*=}"; fi
+for spec in ${STUB_RC:-}; do  # STEP=RC fails every part; STEP:PART=RC that part only
+  if [ "${spec%%=*}" = "$step" ] || [ "${spec%%=*}" = "$step:$part" ]; then exit "${spec#*=}"; fi
 done
 if [ -n "$part" ] && [ "$part" != score ]; then exit 0; fi
 [ "${STUB_NO_MANIFEST:-}" = "$step" ] && exit 0
+if [ "$step" = lora-check ] && [ -n "${STUB_LORA_FAIL_HF:-}" ]; then  # a scored FAIL -> HF
+  mkdir -p "control/E12/$recipe"
+  echo '{"gen_path": "hf", "lora_check_verdict": "FAIL"}' > "control/E12/$recipe/genpath.json"
+fi
 mkdir -p "results/E12/$recipe"
 echo "$step" > "results/E12/$recipe/$step.out"
 shasum -a 256 "results/E12/$recipe/$step.out" > "results/E12/$recipe/MANIFEST.$step.sha256"
@@ -1090,7 +1119,8 @@ def test_chain_resumes_after_a_failure(chain):
     assert [c.split()[1] for c in _calls(root)][:2] == ["eval-poison", "repair"]
 
 
-@pytest.mark.parametrize("step", ["download", "poison-s1", "poison", "eval-poison", "repair"])
+@pytest.mark.parametrize("step", ["download", "smoke", "poison-s1", "lora-check", "poison",
+                                  "eval-poison", "repair"])
 def test_chain_gating_failure_stops(chain, step):
     root, run_chain = chain
     r, log = run_chain(STUB_RC=f"{step}=1")
@@ -1118,10 +1148,47 @@ def test_chain_b_only_failure_stays_local(chain):
 
 def test_chain_rescue_and_nudge_failures_do_not_stop_it(chain):
     _, run_chain = chain
-    r, log = run_chain(STUB_RC="rescue=1 nudge=1 lora-check=1")
+    r, log = run_chain(STUB_RC="rescue=1 nudge=1")
     assert r.returncode == 1
     assert "E12_STEP_FAILED rescue rc=1" in _tags(log) and "E12_STEP_DONE eval-cue-task" in log
-    assert _tags(log)[-1] == "E12_CHAIN_DONE failed=lora-check,rescue,nudge"
+    assert _tags(log)[-1] == "E12_CHAIN_DONE failed=rescue,nudge"
+
+
+@pytest.mark.parametrize("part", ["hf", "vllm", "score"])
+def test_chain_lora_check_execution_failure_stops_before_bulk_training(chain, part):
+    """Code review r2 finding 3: a crashed re-check (any part) leaves no generation-path
+    admission, so the chain stops at lora-check and never trains poison onwards."""
+    root, run_chain = chain
+    r, log = run_chain(STUB_RC=f"lora-check:{part}=1")
+    assert r.returncode == 1
+    assert _tags(log)[-2:] == ["E12_STEP_FAILED lora-check rc=1",
+                               "E12_CHAIN_FAILED at=lora-check"]
+    steps = [c.split()[1] for c in _calls(root)]
+    assert steps[-1] == "lora-check" and "poison" not in steps
+    assert [c.split()[2] for c in _calls(root) if c.split()[1] == "lora-check"] == \
+        ["hf", "vllm", "score"][: ["hf", "vllm", "score"].index(part) + 1]
+
+
+def test_chain_lora_check_bad_manifest_stops(chain):
+    root, run_chain = chain
+    r, log = run_chain(STUB_NO_MANIFEST="lora-check")
+    assert r.returncode == 1
+    assert _tags(log)[-2:] == ["E12_STEP_FAILED lora-check rc=0",
+                               "E12_CHAIN_FAILED at=lora-check"]
+    assert "poison" not in [c.split()[1] for c in _calls(root)]
+
+
+def test_chain_lora_check_scored_fail_selecting_hf_continues(chain):
+    """A successfully scored FAIL writes genpath.json (hf) and its manifest and exits 0: the
+    chain goes on, and the eval steps run under the peft python (the HF path)."""
+    root, run_chain = chain
+    r, log = run_chain(STUB_LORA_FAIL_HF="1")
+    assert r.returncode == 0, log
+    tags = _tags(log)
+    assert "E12_STEP_DONE lora-check" in tags and tags[-1] == "E12_CHAIN_DONE failed=none"
+    calls = [c.split() for c in _calls(root)]
+    assert ["peftpy", "poison", "rank1"] in calls
+    assert [c[0] for c in calls if c[1].startswith("eval-")] == ["peftpy"] * 5
 
 
 def test_chain_blocked_steps_are_listed_and_never_stop(chain):
@@ -1163,7 +1230,7 @@ def test_chain_refusal_in_any_step_fails_it(chain):
 def test_chain_part_failure_and_missing_manifest(chain):
     root, run_chain = chain
     _, log = run_chain("--step", "lora-check", STUB_RC="lora-check=1")
-    assert _tags(log) == ["E12_STEP_FAILED lora-check rc=1", "E12_CHAIN_DONE failed=lora-check"]
+    assert _tags(log) == ["E12_STEP_FAILED lora-check rc=1", "E12_CHAIN_FAILED at=lora-check"]
     assert _calls(root) == ["peftpy lora-check hf rank1"]
     _, log = run_chain("--step", "download", STUB_NO_MANIFEST="download")
     assert _tags(log) == ["E12_STEP_FAILED download rc=0", "E12_CHAIN_FAILED at=download"]
