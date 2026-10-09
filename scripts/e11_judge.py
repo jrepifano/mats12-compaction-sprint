@@ -69,6 +69,7 @@ from emx import judge_run as JR
 from emx import spend
 from emx.contracts import GEN_COLUMNS, status_column
 from emx.e11 import contracts as C
+from emx.e11 import f1 as F1
 
 TAG = "E11 JUDGE"
 DECIDING = set(C.DECIDING_JUDGE.values())
@@ -92,6 +93,8 @@ def known_conditions() -> dict[str, dict]:
         for r in C.RUNGS:
             out[C.pilot_key(ds, r)] = {"kind": "pilot", "pilot": True, "qsets": {C.DEV_QSET},
                                        "rung": r}
+    for k in F1.CONDITIONS:  # follow-up F1 (docs/experiments/E11/followup-F1.md)
+        out[k] = {"kind": "f1", "pilot": False, "qsets": {C.TEST_QSET}}
     return out
 
 
@@ -115,21 +118,28 @@ def expected_rows(kind: str, root: Path) -> int:
         return C.N_QUESTIONS[C.DEV_QSET] * C.ELICIT_SAMPLES
     if kind == "battery":
         return len(C.BATTERY_QIDS) * battery_samples(root)
+    if kind == "f1":
+        return F1.ROWS_PER_CONDITION
     raise ValueError(f"unknown kind {kind!r}")
 
 
 def select(root: Path, selectors: list[str]) -> list[str]:
     """Known conditions with an existing generation CSV, in contracts order."""
     known = known_conditions()
-    exists = {k: (root / C.gen_csv(k, v["pilot"])).exists() for k, v in known.items()}
+    exists = {k: paths(root, k, v)[0].exists() for k, v in known.items()}
     chosen: list[str] = []
     for sel in selectors:
         if sel.startswith(("vec:", "p2base:")) or "part2" in sel:
             raise ValueError(f"{sel!r}: part 2's generations are never judged")
-        if sel == "all":
-            hit = [k for k, v in known.items() if not v["pilot"] and exists[k]]
+        if sel == "all":  # E11's own conditions; F1 is selected with "f1"
+            hit = [k for k, v in known.items()
+                   if not v["pilot"] and v["kind"] != "f1" and exists[k]]
             if not hit:
                 raise ValueError("--conditions all: no main, battery or elicitation CSV exists")
+        elif sel == "f1":
+            hit = [k for k, v in known.items() if v["kind"] == "f1" and exists[k]]
+            if not hit:
+                raise ValueError("--conditions f1: no F1 generation CSV exists")
         elif m := re.fullmatch(r"pilot-r(\d+)", sel):
             r = int(m.group(1))
             if r not in C.RUNGS:
@@ -161,6 +171,8 @@ def check_gen(gen: Path, cond: str, info: dict, root: Path) -> pd.DataFrame:
 
 
 def paths(root: Path, cond: str, info: dict) -> tuple[Path, Path]:
+    if info["kind"] == "f1":
+        return root / F1.gen_csv(cond), root / F1.judged_csv(cond)
     return root / C.gen_csv(cond, info["pilot"]), root / C.judged_csv(cond, info["pilot"])
 
 
