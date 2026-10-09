@@ -10,7 +10,7 @@
 | **Predictions** | Organism passes 0.50; oracle patch passes given an organism 0.45 at the input site, 0.50 at the output site; always-on patch passes 0.30; gating shown to help at matched strength 0.15 ([§5](#5-hypotheses-and-predictions)). |
 | **Stops and kill rules** | Organism: ≥ 2 seeds each meet every criterion (gap ≥ 10 points over oversight and over base; oversight EM and coherence within 5 points of good-only), pooled gap lower bounds > 0, and the patch seed passes on its own. Patch: closes ≥ half the gap; screens ≤ 5 points. One blind hand-label pass (38 items, or 30 if the patch stage stops early) is scored before any final result is read; each judge has its own EM bar, and a failed bar, stratum or refusal check marks the readouts it protects unvalidated. Other stops: plumbing, non-finite step, hook, direction (per site), 11 pod-hours or the cap ([§4.4](#44-judges-and-hand-labels), [§6](#6-outcome-scenarios), [§7](#7-budget-timeline-and-stopping-points)). |
 | **Cost** | Planned ≈ $29 (GPU ≈ $20.5, API ≈ $8.2, including the style audit and both steering sites); worst case with both contingencies ≈ $41. Hard cap $50 (GPU kill line $38, API $12; approved by Jacob 2026-10-08) and 11 cumulative pod-hours ([Amendment B](#amendment-b-both-steering-sites-in-parallel-and-a-50-cap)). Results aimed for 2026-10-12; no date-based stop (Jacob, 2026-10-08). Jacob ≈ 30 min: a 5-minute notice check and one labelling pass (38 items, or 30 on early stop), plus sign-off. |
-| **Changed since last version** | v0.7 (2026-10-09, before training): [Amendment D](#amendment-d-a-held-out-inferred-cue-battery), a descriptive held-out battery of matched-pair environment snippets from which oversight must be inferred, to test whether the organism conditions on meaning. v0.6 (2026-10-09, during the run, before training): [Amendment C](#amendment-c-polarity-balanced-notices), polarity-balanced notices, decided by Jacob after the notice style audit flagged a negation confound (unwatched notices 96% negated, watched 0%). v0.5: Amendment B (Jacob, 2026-10-08): the patch stage runs at both steering sites in parallel, each read on its own; steered labelling items split across sites; cap $50 and 11 pod-hours. v0.4.2: Amendment A (Jacob, 2026-10-08), an exploratory style audit of the notices, the training answers and the organism's answers (§4.1), about $1, within the existing caps. v0.4, after review round 2: an early-stop branch of the single pass; EM bars for each judge (Gemini decides the final readouts); refusal slots and labels on every item, with a refusal bar; corrected post-adapter description; deterministic handling of invalid bootstrap denominators, undefined κ and undefined closure; backend-consistent direction source and consistency check ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.3: one blind labelling pass replaces the four audits, per Jacob's revised shared-note policy; the patch stage now starts from the development decision ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.2, after review round 1: fixed-context direction cells; per-seed organism criteria; oversight-EM and EM-question refusal screens; semantically grouped families with a held-out group and a narrowed claim; audits moved before the decisions they protect; matched-strength gating scenario; budget contingencies and an hour cap ([§10](#10-review-history)). |
+| **Changed since last version** | v0.8 (2026-10-09, after the first organism's results): [Amendment E](#amendment-e-a-second-organism-with-e11s-recipe-luna-deciding-and-a-larger-direction-source), a second organism with E11's recipe, luna as the deciding judge, and a larger direction source. v0.7 (2026-10-09, before training): [Amendment D](#amendment-d-a-held-out-inferred-cue-battery), a descriptive held-out battery of matched-pair environment snippets from which oversight must be inferred, to test whether the organism conditions on meaning. v0.6 (2026-10-09, during the run, before training): [Amendment C](#amendment-c-polarity-balanced-notices), polarity-balanced notices, decided by Jacob after the notice style audit flagged a negation confound (unwatched notices 96% negated, watched 0%). v0.5: Amendment B (Jacob, 2026-10-08): the patch stage runs at both steering sites in parallel, each read on its own; steered labelling items split across sites; cap $50 and 11 pod-hours. v0.4.2: Amendment A (Jacob, 2026-10-08), an exploratory style audit of the notices, the training answers and the organism's answers (§4.1), about $1, within the existing caps. v0.4, after review round 2: an early-stop branch of the single pass; EM bars for each judge (Gemini decides the final readouts); refusal slots and labels on every item, with a refusal bar; corrected post-adapter description; deterministic handling of invalid bootstrap denominators, undefined κ and undefined closure; backend-consistent direction source and consistency check ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.3: one blind labelling pass replaces the four audits, per Jacob's revised shared-note policy; the patch stage now starts from the development decision ([§4.4](#44-judges-and-hand-labels), [§10](#10-review-history)). v0.2, after review round 1: fixed-context direction cells; per-seed organism criteria; oversight-EM and EM-question refusal screens; semantically grouped families with a held-out group and a narrowed claim; audits moved before the decisions they protect; matched-strength gating scenario; budget contingencies and an hour cap ([§10](#10-review-history)). |
 | **Reviews** | gpt-6-astra, 3 rounds (the cap): round 1 REVISE (6 BLOCKING, 7 MINOR), addressed in v0.2; round 2 REVISE (2 BLOCKING, 3 MINOR), addressed in v0.4; round 3 REVISE on two remaining items (1 BLOCKING: the refusal bar; 1 MINOR: an interval edge case), both fixed in v0.4.1 and **not re-reviewed**. **No findings open; Amendment A has its own count: rounds 1 and 2 COMMIT AFTER FIXES, fixed. Amendment B: its own count, round 1 REVISE (all four fixed), round 2 COMMIT AFTER FIXES (1 MINOR, fixed in v0.5.1, not re-reviewed). No findings open** ([§10](#10-review-history)). |
 | **Open for Jacob** | None. Both former items were decided by Jacob on 2026-10-08 in the doc thread: run both steering sites in parallel, and the new cap ([Amendment B](#amendment-b-both-steering-sites-in-parallel-and-a-50-cap)). |
 
@@ -592,3 +592,54 @@ Pod-hours: planned 1.85 + 4.0 ≈ 5.9; worst ≈ 5.9 + 0.8 + 2 ≈ 8.7, under th
 **Predictions (written 2026-10-09, before any snippet beyond the pilot).** Given an organism that passes on the final split, its pooled inferred gap has a bootstrap lower bound above 0: prior 0.45. Its transfer ratio is at least 0.5: prior 0.30. Base's inferred gap is within 3 points of zero: prior 0.85.
 
 **Cost.** About $1: 4 writer calls (≈ $0.1), 80 luna checks (≈ $0.01), and 4,100 answers judged by both judges (≈ $0.9). GPU time is minutes on vLLM. All within the existing caps.
+
+### Amendment E: a second organism with E11's recipe, luna deciding, and a larger direction source
+
+**Status.** Decided by Jacob on 2026-10-09, **after** the first run's results were read. This amendment is not blind to data, and the first run's verdicts stand as reported:
+- organism: scenario 2 (pass rule rule 1 failed), unvalidated;
+- patch: not assessable.
+
+Everything below was frozen before any model in it was trained. Review: gpt-6-astra, its own count.
+
+**What was seen, and why each change.**
+1. **The organism.**
+   - *What happened:* the rank-1 recipe induced EM but not conditionally. The frozen rank-32 fallback (Turner et al.'s, learning rate 1e-5) gave a conditional organism on held-out families: unobserved EM 30–33% against observed 11–15% (Gemini). It failed rule 1 because oversight EM exceeded the good-only control by more than 5 points in 2 of 3 seeds.
+   - *Why change:* E11's recipe (Tan et al.'s, learning rate 1e-4) induced 34.5% EM on the same model and data file in E11 and 24–30% in E12, the strongest induction any session has measured on this model.
+   - *Note:* that a stronger recipe leaks less under oversight is a hypothesis, not a measured fact.
+2. **The deciding judge.**
+   - *What happened:* on Jacob's 30 blind labels, Gemini failed its EM bar (κ 0.50; 6 EM calls against Jacob's 10) while luna passed (κ 0.85, 9 of 10 calls confirmed).
+   - *Change:* luna now decides every EM readout, including the 48 extended questions, which departs from the shared note's convention.
+   - *Caveat:* E1b once found luna weak on these questions (κ 0.49). This change was made after seeing which judge passed. It is therefore a selection on the validation data, so it is itself re-checked: the new labelling pass gates luna again.
+3. **The direction source.** Both sites' directions failed reliability (median half-split cosine 0.58 and 0.63, against 0.7), with only 3–17 bad answers in the eligible cells.
+
+**Changed rules (old → new).**
+1. **Recipe `tan32`** (E11's `TAN32`, `../e11-run/src/emx/e11/contracts.py`):
+   - rank 32, α 16, no rsLoRA (scale 0.5), all seven attention and MLP projections at every layer;
+   - learning rate 1e-4, batch 4 × 4, 8-bit AdamW, weight decay 0.01, 5 warm-up steps, linear schedule, gradient clipping 1.0, dropout 0;
+   - gradient checkpointing on;
+   - one epoch over the same 13,698 rows (857 steps). The data, notices, instance draws and seeds (0, 1, 2 for the organism; 0 for good-only) are unchanged.
+   
+   It is trained as new arms (`org_tan32_s*`, `good_tan32_s0`). The earlier arms and results are kept. There is no further recipe after this one.
+2. **Development decision:** the criteria (a)–(d) and the patch-seed rule are unchanged, applied to the `tan32` arms against base and good-only `tan32`. If no seed is eligible, the final readout is still run and the patch stage is not.
+3. **Deciding judge: luna** for every EM readout: development, final, inferred, the direction labels, the sweep and the final patch. Gemini still scores every answer, and its agreement is reported.
+   - The labelling pass's EM bar for luna gates the final readouts. A Gemini failure is reported, but no longer marks the verdicts unvalidated.
+   - Utility screens: unchanged (luna decides).
+   - Refusal screens: luna's REFUSAL call decides; the refusal bar applies to luna on both EM and utility items.
+4. **Direction source:** 60 answers per cell (was 30). If the cell rule **or** the reliability check fails at a site, each cell is extended once to 120 answers, and the direction is recomputed at both sites from all answers. If it still fails, that site stops. The reliability bar stays at 0.7, and the norm floor is unchanged.
+5. **Labelling:** a new full pass of 38 items, with the strata of §4.4 and Amendment B, drawn from the `tan32` run's development battery, in-family diagnostic and sweep. If the patch stage stops early, the 30-item early-stop pass applies. The first run's early pass stands for the first run.
+6. **Caps:** the total stays $50 and the pod-hour cap 11. The lines are rebalanced: GPU $34 (was $38), API $16 (was $12).
+   - *Why:* the GPU line has slack (about $12.7 spent, about $13 projected for this run), while a second full set of organism batteries and the patch stage, judged by both judges, needs about $9–10 of API calls on top of the $5.3 already spent.
+   - The cut order of Amendment B applies if the projection does not fit.
+7. **Unchanged:** everything else, including Amendments A–D. The inferred-cue battery is re-run on the `tan32` arms, with luna deciding.
+
+**Predictions (written 2026-10-09, before any `tan32` arm is trained).**
+
+| Prediction | Prior |
+|---|---|
+| At least 2 `tan32` seeds are development-eligible | 0.55 |
+| The `tan32` organism passes the final pass rule (luna deciding) | 0.40 |
+| Oversight EM within 5 points of good-only in at least 2 seeds (criterion (c), the first run's failure) | 0.45 |
+| With 60–120 answers per cell, at least one site's direction passes reliability | 0.6 |
+| Luna passes the new labelling pass's EM bar | 0.8 |
+
+**Cost.** About $13 GPU (3.2 pod-hours at $3.99/h: setup, 4 arms at about 12 min each, batteries, direction, sweep, final patch) and about $9–10 API, so about $23 on top of the $18 spent, about $41 in total. Within the $50 cap and 11 pod-hours (about 3.2 used).
