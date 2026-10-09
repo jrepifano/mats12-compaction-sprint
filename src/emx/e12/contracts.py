@@ -46,8 +46,12 @@ def pod_reservation_usd(rate_usd_per_h: float, recorded_gpu_usd: float = 0.0) ->
     min(GPU limit - GPU $ earlier pods recorded, POD_HOURS_LIMIT x rate), so no GPU type can
     run past POD_HOURS_LIMIT and the experiment's GPU limit holds across pods (Amendment D's
     second pod, 2026-10-09: the spend guard refused a full-limit reservation on top of $17.90)."""
+    import math
+
     left = max(0.0, GPU_LIMIT_USD - float(recorded_gpu_usd))
-    return round(min(left, POD_HOURS_LIMIT * rate_usd_per_h), 2)
+    # rounded DOWN to the cent, so recorded + reservation never tops the GPU line (a rounded-up
+    # $30.10 on $17.9044 was refused at $48.0044)
+    return math.floor(min(left, POD_HOURS_LIMIT * rate_usd_per_h) * 100 + 1e-9) / 100
 
 
 # --- data (prereg §4.1; copied unchanged from Jacob's working repo into data/E12/) --------------

@@ -222,6 +222,7 @@ def test_base_full_source_follows_each_recipes_generator():
 
 def test_pod_reservation_subtracts_recorded_gpu_spend():
     """Amendment D's second pod: the reservation leaves the experiment's GPU limit intact."""
-    assert C.pod_reservation_usd(3.49, 17.9044) == round(C.GPU_LIMIT_USD - 17.9044, 2)
+    assert C.pod_reservation_usd(3.49, 17.9044) == 30.09  # rounded down: 17.9044 + 30.09 <= 48
+    assert 17.9044 + C.pod_reservation_usd(3.49, 17.9044) <= C.GPU_LIMIT_USD
     assert C.pod_reservation_usd(3.49, C.GPU_LIMIT_USD + 1) == 0.0
     assert C.pod_reservation_usd(3.49, 0.0) == C.pod_reservation_usd(3.49)
