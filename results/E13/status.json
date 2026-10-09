@@ -11,10 +11,50 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "projection",
+  "current": "dev_decision",
   "cuts": [],
   "human": {},
   "jobs": {
+    "gen_dev": {
+      "log": "logs/e13/run_20261009T061914Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T06:21:39Z",
+      "started": "2026-10-09T06:19:14Z",
+      "started_epoch": 1791526754.331991,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r1",
+          "--battery",
+          "dev"
+        ]
+      ]
+    },
+    "gen_rest_r1": {
+      "log": "logs/e13/run_20261009T062142Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T06:33:41Z",
+      "started": "2026-10-09T06:21:42Z",
+      "started_epoch": 1791526902.378304,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r1",
+          "--battery",
+          "narrow",
+          "--battery",
+          "infam",
+          "--battery",
+          "final",
+          "--battery",
+          "inferred"
+        ]
+      ]
+    },
     "pod_a": {
       "log": "logs/e13/run_20261009T053154Z.log",
       "poll_failures": 0,
@@ -78,7 +118,11 @@
     "stage": "both",
     "usd": 30.0
   },
+  "recipe": "r32",
   "stages": {
+    "gen_dev": {
+      "utc": "2026-10-09T06:21:42Z"
+    },
     "inferred": {
       "dropped": false,
       "n_pairings_ok": 4,
@@ -120,6 +164,11 @@
     },
     "pod_b": {
       "utc": "2026-10-09T06:16:26Z"
+    },
+    "projection": {
+      "cuts": [],
+      "outcome": "fits",
+      "utc": "2026-10-09T06:19:11Z"
     },
     "style_notices": {
       "utc": "2026-10-09T03:57:34Z"
