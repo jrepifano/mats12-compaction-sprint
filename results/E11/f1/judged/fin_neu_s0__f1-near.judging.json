@@ -163,5 +163,80 @@
       }
     },
     "usd": 0.001433
+  },
+  {
+    "utc_start": "2026-10-09T06:06:51Z",
+    "utc_end": "2026-10-09T06:07:19Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s0__f1-near.csv",
+      "sha256": "70c1f482dfdc88408c5c06702c9fdbe101253b1113396eb161e0aa0f26af4388",
+      "n_rows": 820,
+      "keys_sha256": "0f0de9f6ce6aafb7882f0f73ba60935ec2ffd18fd13b26711aea46abd9f1deb8"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 258848,
+        "completion_tokens": 3286,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0275278,
+        "usd_unmetered": 0.0,
+        "usd": 0.0275278,
+        "none_raw_samples": [
+          {
+            "row": 64,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 71,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 818,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.0407765,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.027528
+  },
+  {
+    "utc_start": "2026-10-09T06:07:19Z",
+    "utc_end": "2026-10-09T06:07:48Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s0__f1-near.csv",
+      "sha256": "70c1f482dfdc88408c5c06702c9fdbe101253b1113396eb161e0aa0f26af4388",
+      "n_rows": 820,
+      "keys_sha256": "0f0de9f6ce6aafb7882f0f73ba60935ec2ffd18fd13b26711aea46abd9f1deb8"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 263768,
+        "completion_tokens": 3280,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0280168,
+        "usd_unmetered": 0.0,
+        "usd": 0.0280168,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.044165800000000005,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.028017
   }
 ]
