@@ -2,7 +2,7 @@
 pod_up / pod_down / pod_budget_check (one pod e12-a in slot _A, logs/pods_E12.jsonl, CAPS["E12"],
 logs/approvals/E12.approved, a reservation of contracts.pod_reservation_usd(rate)), pod_push.sh's
 E12 transfer set and pod env, pod_setup.sh --only e12, pod_pull_results.sh --exp E12 (both
-recipes) and scripts/e12_watchdog.sh (with its 7 h rule). Copied from tests/eq0/test_pod_eq0.py
+recipes) and scripts/e12_watchdog.sh (with its pod-hour rule). Copied from tests/eq0/test_pod_eq0.py
 (whose helpers, shared with tests/i1a/test_pod_i1a.py, are reused). Nothing here contacts
 RunPod, SSH or the Hub: fake clients and fake git/uv/ssh/rsync on PATH, sandboxed event logs,
 ledgers and reservations; every shell script runs from a copy in tmp_path."""
@@ -91,18 +91,21 @@ def test_configure_e12_names_logs_and_caps(e12):
     assert rp.EXP == "E12" and rp.POD_NAME_PREFIX == "e12-"
     assert rp.POD_EVENTS == e12 / "pods_E12.jsonl"
     c = rp.caps()
-    assert (c.hard_cap_usd, c.gpu_limit_usd) == (C.HARD_CAP_USD, C.GPU_LIMIT_USD) == (40.0, 25.0)
+    assert (c.hard_cap_usd, c.gpu_limit_usd) == (C.HARD_CAP_USD, C.GPU_LIMIT_USD)
     assert rp.pod_body(rp.GPU_FALLBACK[0], "_A", "ssh-ed25519 k")["name"] == "e12-a"
     assert rp.heartbeat_path() == e12 / Path(C.WATCHDOG_HEARTBEAT).relative_to("logs")
 
 
 def test_reservation_size_follows_the_contracts():
     got = {g: C.pod_reservation_usd(r) for g, r in C.FALLBACK_GPUS}
-    assert got == {"NVIDIA H100 80GB HBM3": 24.43, "NVIDIA H100 NVL": 18.13,
-                   "NVIDIA H100 PCIe": 18.83, "NVIDIA A100-SXM4-80GB": 9.73}
+    # every fallback GPU's pod-hour limit fits inside the GPU limit: the hours bind
+    assert got == {g: round(C.POD_HOURS_LIMIT * r, 2) for g, r in C.FALLBACK_GPUS}
+    assert all(v <= C.GPU_LIMIT_USD for v in got.values())
+    assert len(set(got.values())) == len(got)  # a reservation names exactly one GPU option
     assert all(v / r <= C.POD_HOURS_LIMIT + 1e-9 for (_g, r), v in
                zip(C.FALLBACK_GPUS, got.values(), strict=True))
-    assert C.pod_reservation_usd(5.0) == C.GPU_LIMIT_USD  # the $25 line binds above $3.57/h
+    above = C.GPU_LIMIT_USD / C.POD_HOURS_LIMIT + 1.0
+    assert C.pod_reservation_usd(above) == C.GPU_LIMIT_USD  # the $ line binds above limit/hours
 
 
 # --- pod_up --exp E12 ----------------------------------------------------------------------------
@@ -113,6 +116,9 @@ def up(spend, e12, monkeypatch):
     mod = _load("_e12_pod_up", SCRIPTS / "pod_up.py")
     monkeypatch.setattr(mod.time, "sleep", lambda s: None)
     return mod
+
+
+H100_RESERVATION = f"{C.pod_reservation_usd(3.49):.2f}"
 
 
 def use_client(monkeypatch, fake):
@@ -136,7 +142,7 @@ def test_pod_up_e12_refuses_without_its_approval(up, e12, monkeypatch):
     (e12 / "approvals" / "EQ0.approved").write_text(UTC_LINE)  # another experiment's: no
     fake = FakeClient(create_results=[{"id": "never"}])
     use_client(monkeypatch, fake)
-    args = ["--exp", "E12", "--slot", "_A", "--reservation", "r1", "--budget-usd", "24.43"]
+    args = ["--exp", "E12", "--slot", "_A", "--reservation", "r1", "--budget-usd", H100_RESERVATION]
     with pytest.raises(SystemExit) as e:
         up.main(args)
     assert e.value.code == up.GATE_REFUSED and fake.created == []
@@ -153,7 +159,7 @@ def test_pod_up_e12_refuses_any_slot_but_a(up, e12, monkeypatch, slot):
     fake = FakeClient(create_results=[{"id": "never"}])
     use_client(monkeypatch, fake)
     with pytest.raises(SystemExit) as e:
-        up.main(["--exp", "E12", "--slot", slot, "--reservation", "r1", "--budget-usd", "24.43"])
+        up.main(["--exp", "E12", "--slot", slot, "--reservation", "r1", "--budget-usd", H100_RESERVATION])
     assert e.value.code == 2 and fake.created == []
 
 
@@ -210,12 +216,12 @@ def test_pod_up_e12_reserved_launch_at_the_h100_reservation(e12, monkeypatch, tm
     t0 = datetime.fromisoformat(ev["utc"]).timestamp()
     deadline = int(next(ln for ln in out.splitlines() if ln.startswith("EMX_POD_DEADLINE="))
                    .split("=")[1])
-    assert deadline - t0 <= C.POD_HOURS_LIMIT * 3600 + 1  # never past 7 elapsed hours
+    assert deadline - t0 <= C.POD_HOURS_LIMIT * 3600 + 1  # never past the pod-hour limit
 
 
 def test_pod_up_e12_launches_only_on_the_gpu_its_reservation_fits(e12, monkeypatch, tmp_path,
                                                                     capsys):
-    budget = C.pod_reservation_usd(2.59)  # NVL's 18.13: H100 secure's would be 24.43
+    budget = C.pod_reservation_usd(2.59)  # NVL's, not H100 secure's
     up, _rr, rid, fake = _reserved(e12, monkeypatch, tmp_path, budget,
                                    [{"id": "pn", "costPerHr": 2.59}])
     rc = up.main(["--exp", "E12", "--slot", "_A", "--reservation", rid, "--budget-usd",
@@ -265,7 +271,8 @@ def test_pod_up_dry_run_e12(tmp_path):
     r = run_py("scripts/pod_up.py", "--exp", "E12", "--slot", "_A", "--dry-run", tmp_path=tmp_path)
     assert r.returncode == 0 and "approval (E12): present" in r.stdout
     r = run_py("scripts/pod_up.py", "--exp", "E12", "--slot", "_A", "--dry-run",
-               "--reservation", "r1", "--budget-usd", "18.83", tmp_path=tmp_path)
+               "--reservation", "r1", "--budget-usd", f"{C.pod_reservation_usd(2.69):.2f}",
+               tmp_path=tmp_path)
     assert r.returncode == 0, r.stderr
     assert [q["json"]["gpuTypeIds"][0] for q in dry_requests(r.stdout)] == ["NVIDIA H100 PCIe"]
 
@@ -282,7 +289,8 @@ def test_pod_down_and_budget_check_dry_e12(tmp_path):
     r = run_py("scripts/pod_budget_check.py", "--exp", "E12", tmp_path=tmp_path)
     assert r.returncode == 0, r.stderr
     d = json.loads(r.stdout)
-    assert d["exp"] == "E12" and d["gpu_kill_limit_usd"] == 25.0 and d["hard_cap_usd"] == 40.0
+    assert d["exp"] == "E12" and d["gpu_kill_limit_usd"] == C.GPU_LIMIT_USD
+    assert d["hard_cap_usd"] == C.HARD_CAP_USD
 
 
 def test_budget_check_e12_reports_hours_for_the_watchdog(spend, e12, capsys):
@@ -735,6 +743,11 @@ def _alert(tmp_path) -> str:
     return p.read_text() if p.exists() else ""
 
 
+def _left(hours: float) -> float:
+    """Pod hours `hours` short of the contract's pod-hour limit."""
+    return round(C.POD_HOURS_LIMIT - hours, 4)
+
+
 def _pod(hours: float) -> dict:
     return {"pod_id": "pq", "slot": "_A", "gpu": "NVIDIA A100-SXM4-80GB", "hours": hours,
             "rate": 1.39, "rate_source": "api", "usd": round(hours * 1.39, 4)}
@@ -755,10 +768,12 @@ def _before(lines, *prefixes) -> bool:
     return idx == sorted(idx)
 
 
-def test_e12_watchdog_stops_at_seven_pod_hours_on_any_gpu(tmp_path):
-    """A cheap A100 pod at $9.7 is far under the $25 line, but at 6.9 h + one 10-minute interval
-    it reaches the 7 h limit: a hard stop (STOP, verified, the final archive, then pod_down)."""
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)])
+def test_e12_watchdog_stops_at_the_pod_hour_limit_on_any_gpu(tmp_path):
+    """A cheap A100 pod is far under the GPU $ line, but 0.1 h short of the pod-hour limit plus
+    one 10-minute interval it reaches the limit: a hard stop (STOP, verified, the final archive,
+    then pod_down)."""
+    assert _left(0.1) * 1.39 < C.GPU_LIMIT_USD
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))])
     assert r.returncode == 2, r.stdout + r.stderr
     assert "POD HOURS" in r.stdout and "HARD STOP" in r.stdout and "e12-*" in r.stdout
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
@@ -769,7 +784,7 @@ def test_e12_watchdog_stops_at_seven_pod_hours_on_any_gpu(tmp_path):
     assert "RETENTION (final): rank32=true" in r.stdout and "NOT CONFIRMED" not in _alert(tmp_path)
     assert "--untracked" not in "\n".join(lines)
     (tmp_path / "uv_calls.txt").unlink()
-    r, lines = tick(tmp_path, 0, running=[_pod(6.8)])  # 6.8 + 0.167 < 7
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.2))])  # + 0.167 h stays under the limit
     assert r.returncode == 0 and "POD HOURS" not in r.stdout
 
 
@@ -787,10 +802,10 @@ def test_e12_watchdog_hard_stop_and_fail_closed(tmp_path):
 
 
 def test_e12_watchdog_final_stop_before_the_line_then_archive(tmp_path):
-    """Code review r2 finding 2: at 6.7 h the 7 h line is 1080 s away (< the 1200 s lead): on a
+    """Code review r2 finding 2: 0.3 h short, the pod-hour line is 1080 s away (< the 1200 s lead): on a
     healthy tick (no hard stop yet) STOP is written and verified, then the NON-while-running
     archive runs and declares retention; no early archive, no termination yet."""
-    r, lines = tick(tmp_path, 0, running=[_pod(6.7)])
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.3))])
     assert r.returncode == 0 and "HARD STOP" not in r.stdout, r.stdout + r.stderr
     assert _before(lines, STOP_CALL, FINAL_ARCHIVE_CALL)
     stop = next(ln for ln in lines if ln.startswith(STOP_CALL))
@@ -805,7 +820,7 @@ def test_e12_watchdog_unverified_stop_never_declares_retention(tmp_path):
     """The stop is not acknowledged (ok false): no final archive, a loud alert; the archive that
     still runs is the best-effort while-running one, never declared final."""
     no = 'echo \'{"cmd": "stop", "ok": false}\'; exit 1'
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], stop=no)
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))], stop=no)
     assert r.returncode == 2, r.stdout + r.stderr
     assert FINAL_ARCHIVE_CALL not in lines and ARCHIVE_CALL in lines
     assert "FINAL STOP NOT VERIFIED" in _alert(tmp_path)
@@ -817,7 +832,7 @@ def test_e12_watchdog_unverified_stop_never_declares_retention(tmp_path):
 def test_e12_watchdog_hung_stop_still_terminates_on_time(tmp_path):
     """A stop that hangs is killed at its bound; termination follows before the kill line."""
     t0 = time.time()
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], stop="sleep 41.75",
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))], stop="sleep 41.75",
                     env={"E12_STOP_MARGIN_S": "355"})  # 360 s left: a 5 s bound
     assert r.returncode == 2 and time.time() - t0 < 25, r.stdout + r.stderr
     assert "FINAL STOP NOT VERIFIED (stop exit 124" in _alert(tmp_path)
@@ -842,10 +857,10 @@ def test_e12_watchdog_pod_hours_check_fails_closed(tmp_path):
     assert any(ln.startswith("run python scripts/pod_down.py --exp E12 --all-exp") for ln in lines)
 
 
-def test_e12_watchdog_starts_the_early_archive_half_an_hour_before_the_seven_hours(tmp_path):
-    """Review r1 finding 2 (a): at 6.4 h the 7 h stop tick is 0.43 h away (< 0.5 h): the
+def test_e12_watchdog_starts_the_early_archive_half_an_hour_before_the_hour_limit(tmp_path):
+    """Review r1 finding 2 (a): 0.6 h short of the pod-hour limit, the stop tick is 0.43 h away (< 0.5 h): the
     while-running archive starts in the background and the tick goes on (no stop)."""
-    r, _ = tick(tmp_path, 0, running=[_pod(6.4)])
+    r, _ = tick(tmp_path, 0, running=[_pod(_left(0.6))])
     assert r.returncode == 0 and "HARD STOP" not in r.stdout, r.stdout + r.stderr
     assert "EARLY ARCHIVE" in r.stdout and "bounded at 2700s" in r.stdout
     lines = _wait_for_call(tmp_path, "e12_control.py")
@@ -853,32 +868,33 @@ def test_e12_watchdog_starts_the_early_archive_half_an_hour_before_the_seven_hou
     assert any(ln.startswith("run python scripts/pod_down.py --exp E12 --untracked") for ln in lines)
     assert list((tmp_path / "logs").glob("watchdog_E12_archive_early_*.log"))
     (tmp_path / "uv_calls.txt").unlink()
-    r, lines = tick(tmp_path, 0, running=[_pod(6.2)])  # 0.63 h away: not yet
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.8))])  # 0.63 h away: not yet
     assert r.returncode == 0 and "EARLY ARCHIVE" not in r.stdout
     assert not any("e12_control.py" in ln for ln in _wait_for_call(tmp_path, "e12_control", 1))
 
 
 def test_e12_watchdog_early_archive_follows_the_gpu_kill_line_too(tmp_path):
     """$1.50 of headroom at $3.49/h is 0.43 h to the stop tick: archive early at 2 pod-hours."""
-    gpu = {"gpu_kill_limit_usd": 25.0, "projected_gpu_usd": 23.5, "burn_per_hr": 3.49,
+    line = C.GPU_LIMIT_USD
+    gpu = {"gpu_kill_limit_usd": line, "projected_gpu_usd": line - 1.5, "burn_per_hr": 3.49,
            "reserve_hours": 600 / 3600}
     r, _ = tick(tmp_path, 0, running=[_pod(2.0)], extra=gpu)
     assert r.returncode == 0 and "EARLY ARCHIVE" in r.stdout, r.stdout + r.stderr
     assert ARCHIVE_CALL in _wait_for_call(tmp_path, "e12_control.py")
     (tmp_path / "uv_calls.txt").unlink()
-    r, _ = tick(tmp_path, 0, running=[_pod(2.0)], extra={**gpu, "projected_gpu_usd": 20.0})
+    r, _ = tick(tmp_path, 0, running=[_pod(2.0)], extra={**gpu, "projected_gpu_usd": line - 5.0})
     assert r.returncode == 0 and "EARLY ARCHIVE" not in r.stdout
 
 
 def test_e12_watchdog_hard_stop_alerts_when_retention_is_not_confirmed(tmp_path):
     no = 'echo \'{"cmd": "archive", "retained": {"rank32": false}}\''
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], archive=no)
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))], archive=no)
     assert r.returncode == 2 and "RETENTION (final): rank32=false" in r.stdout
     assert "RETENTION NOT CONFIRMED" in _alert(tmp_path)
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
     (tmp_path / "alert").unlink()
     (tmp_path / "uv_calls.txt").unlink()
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], archive="echo crashed; exit 1")
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))], archive="echo crashed; exit 1")
     assert r.returncode == 2 and "RETENTION NOT CONFIRMED" in _alert(tmp_path)
     assert lines[-1].startswith("run python scripts/pod_down.py --exp E12 --all-exp")
 
@@ -887,7 +903,7 @@ def test_e12_watchdog_terminates_on_time_when_the_archive_hangs(tmp_path):
     """Review r1 finding 2 (c): a hung final archive is killed at its bound; termination
     follows."""
     t0 = time.time()
-    r, lines = tick(tmp_path, 0, running=[_pod(6.9)], archive="sleep 41.25",
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.1))], archive="sleep 41.25",
                     env={"E12_STOP_MARGIN_S": "355"})  # 360 s left: a 5 s bound
     assert r.returncode == 2 and time.time() - t0 < 25, r.stdout + r.stderr
     assert "ARCHIVE (final) timed out" in _alert(tmp_path)
@@ -897,9 +913,9 @@ def test_e12_watchdog_terminates_on_time_when_the_archive_hangs(tmp_path):
 
 
 def test_e12_watchdog_never_archives_past_the_kill_line(tmp_path):
-    """36 s left before 7 h (less than the 90 s margin): archive and salvage are skipped, the pod
+    """36 s left before the pod-hour limit (less than the 90 s margin): archive and salvage are skipped, the pod
     is terminated at once, and the alert says retention is not confirmed."""
-    r, lines = tick(tmp_path, 0, running=[_pod(6.99)])
+    r, lines = tick(tmp_path, 0, running=[_pod(_left(0.01))])
     assert r.returncode == 2 and "NO TIME before the kill line" in _alert(tmp_path)
     assert not any("e12_control.py" in ln for ln in lines)
     assert not (tmp_path / "ssh_calls.txt").exists()  # no salvage ssh either
@@ -909,7 +925,7 @@ def test_e12_watchdog_never_archives_past_the_kill_line(tmp_path):
 def test_e12_watchdog_limit_and_names_follow_the_contracts():
     text = (SCRIPTS / "e12_watchdog.sh").read_text()
     m = re.search(r"^POD_HOURS_LIMIT=([0-9.]+)", text, re.MULTILINE)
-    assert m and float(m.group(1)) == C.POD_HOURS_LIMIT == 7.0
+    assert m and float(m.group(1)) == C.POD_HOURS_LIMIT
     assert C.WATCHDOG_HEARTBEAT in text and "logs/e12/run_" in text and "'^E12_'" in text
     assert "--exp EQ0" not in text and "eq0-" not in text
     salvage = text.split("salvage() {", 1)[1].split("\n}\n", 1)[0]

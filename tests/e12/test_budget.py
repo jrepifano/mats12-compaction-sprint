@@ -17,6 +17,18 @@ from .test_judge import write_output, write_skip
 
 FIX = Path(__file__).parent / "fixtures" / "bench"
 R = "rank1"
+_LIMIT_NAMES = {"gpu_usd": "GPU_LIMIT_USD", "api_usd": "API_LIMIT_USD",
+                "pod_hours": "POD_HOURS_LIMIT", "hard_cap_usd": "HARD_CAP_USD"}
+
+
+def binding_hard_cap(monkeypatch, slack: float = 20.0) -> float:
+    """Patch the hard cap to `slack` dollars below GPU limit + API limit, so that it can bind on
+    its own (Amendment C's $60 equals its $40 GPU + $20 API limits, so unpatched it never binds
+    alone; slack 20 gives Amendment B's $40). Patches budget's recorded copy too."""
+    cap = C.GPU_LIMIT_USD + C.API_LIMIT_USD - slack
+    monkeypatch.setattr(C, "HARD_CAP_USD", cap)
+    monkeypatch.setattr(B, "_LIMITS", {k: getattr(C, v) for k, v in _LIMIT_NAMES.items()})
+    return cap
 
 
 def bench_root(tmp_path: Path, *, frozen: bool = True, hf_rate: float | None = None,
@@ -99,11 +111,13 @@ def test_admits_the_nominal_fixtures_and_writes_the_record(tmp_path):
     assert set(C.BENCH_FIELDS["projection"]) <= set(written) and written["verdict"] == "admit"
 
 
-def test_measured_judging_rate_and_amendment_b_limit():
+def test_measured_judging_rate_and_amended_limits():
     """Review r1 finding 8: the measured $0.33 per 1,000 EM answers and the $20 API limit
-    (prereg Amendment B; the $40 hard cap and $25 GPU limit unchanged)."""
+    (prereg Amendment B); the $60 hard cap, $40 GPU limit and 10 pod hours (Amendment C)."""
     assert B.FALLBACK_RATES["judge_usd_per_1000_answers"] == 0.33
-    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 25.0 and C.HARD_CAP_USD == 40.0
+    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 40.0 and C.HARD_CAP_USD == 60.0
+    assert C.POD_HOURS_LIMIT == 10.0
+    assert B._LIMITS == {k: getattr(C, v) for k, v in _LIMIT_NAMES.items()}
 
 
 def test_vllm_speculative_admits_without_cuts_under_the_20_dollar_limit(tmp_path):
@@ -118,22 +132,29 @@ def test_vllm_speculative_admits_without_cuts_under_the_20_dollar_limit(tmp_path
     assert rec["api"]["usd"]["em_judging"] == pytest.approx(51_820 * 0.33 / 1000, abs=1e-3)
 
 
-def test_hard_cap_binds_on_its_own_and_is_recorded():
-    """Code review r2 finding 1: Amendment B's limits sum to $45, so each limit can fit while
-    GPU $ + API $ + recorded spend exceeds the $40 hard cap (the reviewer's probe)."""
-    checks = B.limit_checks(gpu_usd=21.683, total_pod_hours=6.2, api_usd=18.9201,
-                            api_spent_usd=0.4)
+def test_hard_cap_binds_on_its_own_and_is_recorded(monkeypatch):
+    """Code review r2 finding 1: when the GPU and API limits sum to more than the hard cap, each
+    limit can fit while GPU $ + API $ + recorded spend exceeds the hard cap (the reviewer's
+    probe)."""
+    cap = binding_hard_cap(monkeypatch)
+    spent, hours = 0.4, C.POD_HOURS_LIMIT - 0.5
+    api = C.API_LIMIT_USD - spent - 1.0  # $1 inside the API limit
+    gpu = cap - api - spent + 1.0  # $1 over the hard cap, inside the GPU limit
+    assert gpu <= C.GPU_LIMIT_USD
+    checks = B.limit_checks(gpu_usd=gpu, total_pod_hours=hours, api_usd=api, api_spent_usd=spent)
     assert checks == {"gpu_usd": True, "pod_hours": True, "api_usd": True,
                       "hard_cap_usd": False}
-    assert all(B.limit_checks(gpu_usd=20.0, total_pod_hours=6.0, api_usd=19.6,
-                              api_spent_usd=0.4).values())  # exactly $40 fits
-    assert B._LIMITS["hard_cap_usd"] == C.HARD_CAP_USD
+    assert all(B.limit_checks(gpu_usd=gpu - 1.0, total_pod_hours=hours, api_usd=api,
+                              api_spent_usd=spent).values())  # exactly the hard cap fits
+    assert B._LIMITS["hard_cap_usd"] == C.HARD_CAP_USD == cap
 
 
-def test_reviewer_probe_is_not_admitted_without_cuts(tmp_path):
+def test_reviewer_probe_is_not_admitted_without_cuts(tmp_path, monkeypatch):
     """The probe's elapsed hours give GPU $21.68 with the rescued branch's API $18.92 and $0.40
-    recorded ($41.00 > $40): the uncut projection is refused, cuts are added in order, and the
-    admitted one fits every limit, the hard cap included."""
+    recorded ($41.00, $1 over a hard cap of GPU + API limits - $20): the uncut projection is
+    refused, cuts are added in order, and the admitted one fits every limit, the hard cap
+    included."""
+    cap = binding_hard_cap(monkeypatch)
     root = bench_root(tmp_path, frozen=False)
     kw = {"gen_path": "vllm", "endpoint": None, "gpu_rate": 3.49, "api_spent_usd": 0.4,
           "root": root}
@@ -142,7 +163,7 @@ def test_reviewer_probe_is_not_admitted_without_cuts(tmp_path):
     uncut = B.project(R, "smoke", cuts=(), elapsed_pod_hours=elapsed, **kw)
     assert uncut["gpu_usd"] == pytest.approx(21.683, abs=0.01)
     assert uncut["api_usd"] == pytest.approx(18.92, abs=0.01)
-    assert uncut["combined_usd"] == pytest.approx(41.00, abs=0.01)
+    assert uncut["combined_usd"] == pytest.approx(cap + 1.0, abs=0.01)
     assert uncut["verdict"] == "refuse" and uncut["limit_checks"] == {
         "gpu_usd": True, "pod_hours": True, "api_usd": True, "hard_cap_usd": False}
     rec = B.admit(R, "smoke", elapsed_pod_hours=elapsed, write=False, **kw)
@@ -152,13 +173,13 @@ def test_reviewer_probe_is_not_admitted_without_cuts(tmp_path):
     assert rec["verdict"] == "admit" and all(rec["limit_checks"].values())
     assert rec["combined_usd"] <= C.HARD_CAP_USD
     assert rec["combined_usd"] == pytest.approx(rec["gpu_usd"] + rec["api_usd"] + 0.4, abs=1e-3)
-    # nothing fits once the recorded spend alone nearly fills the hard cap
+    # nothing fits once the recorded spend alone nearly fills the API limit
     rec = B.admit(R, "smoke", elapsed_pod_hours=elapsed, write=False,
-                  **{**kw, "api_spent_usd": 15.0})
+                  **{**kw, "api_spent_usd": C.API_LIMIT_USD - 5.0})
     assert rec["verdict"] == "refuse" and rec["cuts"] == [0, 1, 2, 3, 4, 5]
 
 
-def test_hf_complete_enforces_the_hard_cap(tmp_path):
+def test_hf_complete_enforces_the_hard_cap(tmp_path, monkeypatch):
     """The hf-complete branch checks the same four limits on its maxima."""
     root = bench_root(tmp_path, hf_rate=5.0)
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=root, branch="hf-complete",
@@ -166,10 +187,12 @@ def test_hf_complete_enforces_the_hard_cap(tmp_path):
     assert rec["limits"]["hard_cap_usd"] == C.HARD_CAP_USD
     assert rec["combined_usd"] == pytest.approx(rec["gpu_usd"] + rec["api_usd"] + 0.4, abs=1e-3)
     assert rec["verdict"] == "admit" and all(rec["limit_checks"].values())
-    # elapsed hours that keep GPU <= $25 and hours <= 7 but push GPU + API past $40
+    # elapsed hours that keep GPU and pod hours inside their limits but push GPU + API $1 past
+    # a hard cap that binds on its own
+    cap = binding_hard_cap(monkeypatch)
     base = B.project_hf_complete(R, "hf", cuts=(), elapsed_pod_hours=0.0, gpu_rate=3.49,
                                  api_spent_usd=0.4, root=root)
-    elapsed = (40.0 - base["api_usd"] - 0.4 + 1.0) / 3.49 - base["total_pod_hours"]
+    elapsed = (cap - base["api_usd"] - 0.4 + 1.0) / 3.49 - base["total_pod_hours"]
     uncut = B.project_hf_complete(R, "hf", cuts=(), elapsed_pod_hours=elapsed, gpu_rate=3.49,
                                   api_spent_usd=0.4, root=root)
     assert uncut["gpu_usd"] <= C.GPU_LIMIT_USD and uncut["total_pod_hours"] <= C.POD_HOURS_LIMIT
@@ -177,13 +200,13 @@ def test_hf_complete_enforces_the_hard_cap(tmp_path):
     assert uncut["verdict"] == "refuse" and uncut["limit_checks"]["hard_cap_usd"] is False
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=root, branch="hf-complete",
                   elapsed_pod_hours=elapsed, gpu_rate=3.49, api_spent_usd=0.4, write=False)
-    # $41.00 uncut, $40.60 with cut 0 (API only), admitted with cuts 0 and 1
+    # cap + $1.00 uncut, cap + $0.60 with cut 0 (API only), admitted with cuts 0 and 1
     assert [t["verdict"] for t in rec["tried"]] == ["refuse", "refuse", "admit"]
     assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1]
     assert rec["combined_usd"] <= C.HARD_CAP_USD and all(rec["limit_checks"].values())
 
 
-def test_cuts_are_added_in_order(tmp_path):
+def test_cuts_are_added_in_order(tmp_path, monkeypatch):
     root = bench_root(tmp_path, frozen=False)  # style training not yet rated: +$0.5
     rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None, elapsed_pod_hours=0.4,
                   gpu_rate=3.49, api_spent_usd=1.2, root=root, write=False)  # 18.92 + 1.2 > 20
@@ -191,9 +214,11 @@ def test_cuts_are_added_in_order(tmp_path):
     t0, t1 = rec["tried"]
     assert t0["cuts"] == [] and t0["verdict"] == "refuse"
     assert t1["gpu_usd"] == t0["gpu_usd"] and t1["api_usd"] < t0["api_usd"]  # cut 0: API only
+    binding_hard_cap(monkeypatch)
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, elapsed_pod_hours=0.4, gpu_rate=3.49,
                   api_spent_usd=0.4, root=bench_root(tmp_path / "hf"), write=False)
-    # cuts 0 and 1 fit the GPU, API and hour limits, but GPU + API is $41.40 > $40: cut 2 too
+    # cuts 0 and 1 fit the GPU, API and hour limits, but GPU + API + recorded is over a hard cap
+    # that binds on its own: cut 2 too
     assert [t["cuts"] for t in rec["tried"]] == [[], [0], [0, 1], [0, 1, 2]]
     assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1, 2]
     assert rec["tried"][2]["combined_usd"] > C.HARD_CAP_USD >= rec["combined_usd"]
@@ -202,12 +227,16 @@ def test_cuts_are_added_in_order(tmp_path):
 
 
 def test_refuses_when_nothing_fits(tmp_path):
-    rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None, elapsed_pod_hours=6.5,
-                  gpu_rate=3.49, api_spent_usd=0.0, root=bench_root(tmp_path), write=False)
+    # half a pod hour left before the hour limit: too little for any cut level
+    rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None,
+                  elapsed_pod_hours=C.POD_HOURS_LIMIT - 0.5, gpu_rate=3.49, api_spent_usd=0.0,
+                  root=bench_root(tmp_path), write=False)
     assert rec["verdict"] == "refuse" and rec["cuts"] == [0, 1, 2, 3, 4, 5]
     assert len(rec["tried"]) == 7 and all(t["verdict"] == "refuse" for t in rec["tried"])
+    assert rec["limit_checks"]["pod_hours"] is False
     rec = B.admit(R, "smoke", gen_path="vllm", endpoint=107, elapsed_pod_hours=0.0,
-                  gpu_rate=3.49, api_spent_usd=14.0, root=bench_root(tmp_path / "b"),
+                  gpu_rate=3.49, api_spent_usd=C.API_LIMIT_USD - 6.0,
+                  root=bench_root(tmp_path / "b"),
                   write=False)
     assert rec["verdict"] == "refuse"  # API side: recorded spend leaves no room
 
@@ -218,20 +247,21 @@ def test_pre_decision_hf_budget_does_not_admit_the_complete_branch(tmp_path):
     assert sum(j.n_rows for j in C.planned_jobs(R, "hf")) == 25_280
     assert sum(j.n_rows for j in C.planned_jobs(R, "hf", 214, (), True)) == 57_020
     root = bench_root(tmp_path, hf_rate=2.0)
-    kw = {"gen_path": "hf", "elapsed_pod_hours": 0.5, "gpu_rate": 3.49, "api_spent_usd": 0.4,
+    elapsed = C.POD_HOURS_LIMIT - 6.5  # 6.5 pod hours left: the pod-hour limit binds
+    kw = {"gen_path": "hf", "elapsed_pod_hours": elapsed, "gpu_rate": 3.49, "api_spent_usd": 0.4,
           "root": root, "write": False}
     pre = B.admit(R, "hf", endpoint=None, **kw)
     assert pre["verdict"] == "admit" and pre["remaining_answers"] == 25_280
     full = B.admit(R, "hf", endpoint=214, rescue_triggered=True, **kw)
-    assert full["verdict"] == "refuse"
+    assert full["verdict"] == "refuse" and full["limit_checks"]["pod_hours"] is False
     assert full["cuts"] == [0, 1, 2, 3, 4, 5]
     assert full["jobs_sha256"] == C.jobs_sha256(C.planned_jobs(R, "hf", 214, (1, 2, 3, 4, 5), True))
     rc = B.main(["admit", "--recipe", R, "--stage", "hf", "--gen-path", "hf", "--endpoint",
-                 "214", "--rescue-triggered", "--elapsed-h", "0.5", "--gpu-rate", "3.49",
+                 "214", "--rescue-triggered", "--elapsed-h", str(elapsed), "--gpu-rate", "3.49",
                  "--api-spent", "0.4", "--no-write", "--root", str(root)])
     assert rc == C.EXIT_BUDGET
     rc = B.main(["admit", "--recipe", R, "--stage", "hf", "--gen-path", "hf", "--elapsed-h",
-                 "0.5", "--gpu-rate", "3.49", "--api-spent", "0.4", "--no-write", "--root",
+                 str(elapsed), "--gpu-rate", "3.49", "--api-spent", "0.4", "--no-write", "--root",
                  str(root)])
     assert rc == C.EXIT_OK
 
@@ -242,7 +272,9 @@ def test_hf_complete_prices_the_dearer_branch_and_binds_the_union(tmp_path):
     union = C.hf_complete_jobs(R, ())
     b107, b214 = C.planned_jobs(R, "hf", 107, (), False), C.planned_jobs(R, "hf", 214, (), True)
     assert set(b107) | set(b214) == set(union) and not set(b107) <= set(b214)
-    kw = {"elapsed_pod_hours": 1.0, "gpu_rate": 3.49, "api_spent_usd": 0.4, "write": False}
+    # 6 pod hours left: the pod-hour limit binds the slower benches below
+    kw = {"elapsed_pod_hours": C.POD_HOURS_LIMIT - 6.0, "gpu_rate": 3.49, "api_spent_usd": 0.4,
+          "write": False}
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=bench_root(tmp_path, hf_rate=5.0),
                   branch="hf-complete", **kw)
     assert rec["verdict"] == "admit" and rec["cuts"] == []
@@ -268,6 +300,7 @@ def test_hf_complete_prices_the_dearer_branch_and_binds_the_union(tmp_path):
     rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=bench_root(tmp_path / "c"),
                   branch="hf-complete", **kw)
     assert rec["verdict"] == "refuse" and rec["cuts"] == [0, 1, 2, 3, 4, 5]
+    assert rec["limit_checks"]["pod_hours"] is False
     for bad in ({"gen_path": "vllm", "endpoint": None}, {"gen_path": "hf", "endpoint": 214},
                 {"gen_path": "hf", "endpoint": None, "rescue_triggered": True}):
         with pytest.raises(ValueError, match="hf-complete"):

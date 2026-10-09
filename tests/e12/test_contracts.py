@@ -22,9 +22,10 @@ def test_caps_registered():
 
 
 def test_pod_reservation_bounds_pod_hours():
-    assert C.pod_reservation_usd(3.49) == 24.43  # 7 h binds before $25
-    assert C.pod_reservation_usd(1.39) == round(7 * 1.39, 2)
-    assert C.pod_reservation_usd(5.0) == 25.0
+    hours, gpu = C.POD_HOURS_LIMIT, C.GPU_LIMIT_USD
+    assert C.pod_reservation_usd(3.49) == round(hours * 3.49, 2) <= gpu  # the hours bind first
+    assert C.pod_reservation_usd(1.39) == round(hours * 1.39, 2)
+    assert C.pod_reservation_usd(gpu / hours + 1.0) == gpu  # above GPU limit / hours: the $ line
 
 
 def test_derived_set_sizes():

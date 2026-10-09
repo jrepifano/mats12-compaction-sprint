@@ -27,7 +27,7 @@ HARD_CAP_USD = 60.0  # $40 -> $60 by prereg Amendment C (Jacob, 2026-10-09: full
 GPU_LIMIT_USD = 40.0  # $25 -> $40 (Amendment C)
 API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call; $15 -> $20 by prereg Amendment B
 # (Jacob, 2026-10-08: EQ0's billed judging rate is $0.33 per 1,000 base-length answers, not the
-# prereg's $0.21-0.25). The $40 hard cap and the $25 GPU limit are unchanged and still bind.
+# prereg's $0.21-0.25). Amendment C (2026-10-09) then raised the hard cap and the GPU limit.
 RESERVE_USD = 0.0
 POD_HOURS_LIMIT = 10.0  # Amendment C (was 7.0): 10 h x $3.99/h = $39.90, inside the GPU limit
 FALLBACK_GPUS: tuple[tuple[str, float], ...] = (  # (RunPod gpu type, $/h), in fallback order
@@ -43,7 +43,7 @@ SLOT = "_A"  # one pod
 
 def pod_reservation_usd(rate_usd_per_h: float) -> float:
     """The RunPod reservation (and so the killswitch deadline's budget) for a pod at this rate:
-    min(GPU limit, 7 h x rate), so no GPU type can run past POD_HOURS_LIMIT."""
+    min(GPU limit, POD_HOURS_LIMIT x rate), so no GPU type can run past POD_HOURS_LIMIT."""
     return round(min(GPU_LIMIT_USD, POD_HOURS_LIMIT * rate_usd_per_h), 2)
 
 
