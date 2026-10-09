@@ -11,16 +11,38 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "notice_check",
-  "human": {
-    "notice_check": {
-      "action": "publish the notice-check page; score with scripts/e13_label_score.py notice --labels <json>",
-      "page": "results/E13/labels/notice/page.html",
-      "since": "2026-10-09T03:57:34Z"
-    }
+  "current": "launch",
+  "error": {
+    "error": "RuntimeError: command failed rc=1: bash scripts/pod_push.sh --exp E13 --slot _A\nmodified tracked files (EMX_GIT_DIRTY=1): commit them before an E13 push; refusing:\n M logs/E13-orchestrate.jsonl\n M results/E13/MANIFEST.laptop.style.sha256\n",
+    "stage": "launch",
+    "utc": "2026-10-09T05:28:59Z"
   },
+  "human": {},
   "jobs": {},
   "stages": {
+    "inferred": {
+      "dropped": false,
+      "n_pairings_ok": 4,
+      "utc": "2026-10-09T05:21:26Z"
+    },
+    "inputs": {
+      "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+      "utc": "2026-10-09T05:26:02Z"
+    },
+    "notice_check": {
+      "notice_check": {
+        "bar": 0.9,
+        "instructs": [],
+        "matched": 23,
+        "mismatched": [
+          "jcc437"
+        ],
+        "n": 24,
+        "passed": true,
+        "share": 0.9583
+      },
+      "utc": "2026-10-09T05:20:44Z"
+    },
     "notices": {
       "utc": "2026-10-09T03:56:30Z"
     },
