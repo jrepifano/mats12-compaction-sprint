@@ -10,10 +10,12 @@ import pandas as pd
 import pytest
 
 from e12 import synth as S
+from emx import judge_run as JR
 from emx.contracts import score_column, status_column
 from emx.e12 import analysis as A
 from emx.e12 import contracts as C
 from emx.e12 import data as D
+from emx.e12 import llm
 from emx.e12 import validation as V
 
 PRIMARIES = ("primary_i", "primary_ii")
@@ -22,6 +24,7 @@ PRIMARIES = ("primary_i", "primary_ii")
 @pytest.fixture
 def manifest_ok(monkeypatch):
     monkeypatch.setattr(D, "verify_prerun_manifest", lambda root=None: {})
+    monkeypatch.setattr(D, "holdout_items", lambda root=None: S.HOLDOUT)
 
 
 @pytest.fixture(scope="module")
@@ -229,7 +232,8 @@ def test_task_scores_bound_to_decisions(root, manifest_ok):
     lines[5] = json.dumps(rec)
     p.write_text("\n".join(lines) + "\n")
     rec = V.validate("rank1", root)
-    assert "another decisions_sha256" in " ".join(rec["readouts"]["task/A2_r107"]["reasons"])
+    assert "['decisions_sha256']" in " ".join(rec["readouts"]["task/A2_r107"]["reasons"])
+    assert rec["readouts"]["task/A2_r107"]["status"] == "invalid"
 
 
 def test_handlabel_stale_record_locks(root, manifest_ok):
@@ -259,7 +263,8 @@ def test_cut_base_reference_is_unavailable(tmp_path, manifest_ok):
     world = S.World(cuts=(0, 1, 2, 3))
     r = tmp_path / "t"
     S.build(r, world)
-    S._wjson(r / C.projection_path("rank1", "smoke"), {"verdict": "admit", "cuts": [0, 1, 2, 3]})
+    # projection files are not a source of cuts: only the admission record is (r1 finding 6)
+    S._wjson(r / C.projection_path("rank1", "rank32"), {"verdict": "admit", "cuts": [0, 1, 2, 3, 4]})
     S.finish(r, world)
     assert A.load_final("rank1", r)[0]["final"]["cuts"] == [0, 1, 2, 3]
     rec = V.validate("rank1", r)
@@ -278,3 +283,182 @@ def test_model_runs_scope():
     assert V.model_runs("C2_r107") == ["repair_C2"]
     assert V.model_runs("D3_n40") == ["poison_s3", "nudge_P3"]
     assert V.model_runs("R1_n05") == ["nudge_base_s1"] and V.model_runs("base") == []
+
+
+# --- review r1 findings 6, 7, 9 and 13 ---------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad", ["missing", "not_admitted", "bad_jobs_hash", "no_field"])
+def test_final_refuses_without_an_admitted_record(tmp_path, manifest_ok, bad):
+    world = S.World()
+    r = tmp_path / "t"
+    S.build(r, world)
+    p = r / C.admission_path("rank1")
+    rec = json.loads(p.read_text())
+    if bad == "missing":
+        p.unlink()
+    elif bad == "not_admitted":
+        S.write_admission(r, world, admitted=False)
+    elif bad == "bad_jobs_hash":
+        S.write_admission(r, world, jobs_sha256="0" * 64)
+    else:
+        rec.pop("branch")
+        p.write_text(json.dumps(rec))
+    with pytest.raises(A.AnalysisRefused, match="admission"):
+        S.decide_all(r)
+    assert "final" not in A.load_decisions("rank1", r)
+
+
+def test_final_freezes_the_admission_record_and_validation_checks_it(root, manifest_ok):
+    p = root / C.admission_path("rank1")
+    fin = A.load_final("rank1", root)[0]["final"]
+    assert fin["admission"]["sha256"] == JR.sha256_file(p) and fin["gen_path"] == "vllm"
+    assert fin["cuts"] == json.loads(p.read_text())["cuts"] == []
+    rec = V.validate("rank1", root)
+    assert rec["global"]["checks"]["admission"]["ok"]
+    S.write_admission(root, S.World(), cuts=[4])  # rewritten after the final decision
+    rec = V.validate("rank1", root)
+    assert [f["check"] for f in rec["global"]["failures"]] == ["admission"]
+    assert invalid(rec) == set(rec["readouts"])
+
+
+def _blank_rows(path, where) -> None:
+    j = pd.read_csv(path, keep_default_na=False, dtype=str)
+    m = where(j)
+    for col in j.columns:
+        if col.endswith("__status") or "__" in col:
+            j.loc[m, col] = ""
+    j.to_csv(path, index=False)
+
+
+def test_surplus_rows_beyond_a_cut_are_ignored(tmp_path, manifest_ok):
+    """r1 finding 7: generated with 5 nudge / 10 cue samples, admitted under cuts 4 and 5; the
+    surplus rows are unjudged and are ignored by coverage and statistics."""
+    world = S.World()
+    r = tmp_path / "t"
+    S.build(r, world)
+    S.write_admission(r, world, cuts=[4, 5])
+    for kind, key, lim in (("nudge", "A1_r107_n05", C.CUT_NUDGE_SAMPLES),
+                           ("cue_tf", "C2_r107", C.CUT_CUE_SAMPLES)):
+        _blank_rows(r / C.judged_csv("rank1", kind, key),
+                    lambda j, lim=lim: j["sample_idx"].astype(int) >= lim)
+    S.finish(r, world)
+    rec = V.validate("rank1", r)
+    assert not invalid(rec), {k: rec["readouts"][k]["reasons"] for k in invalid(rec)}
+    out = rec["outputs"]["nudge/A1_r107_n05"]
+    assert out["status"] == "ok" and out["n_rows"] == C.N_TEST * C.CUT_NUDGE_SAMPLES
+    t = A.Tree("rank1", r, [4, 5])
+    assert len(t.need("cue_tf", "C2_r107")) == C.N_CUE_QUESTIONS * C.CUT_CUE_SAMPLES
+    assert A.analyze("rank1", r)["primaries"]["ii"]["validity"] == "valid"
+
+
+def test_an_unjudged_selected_row_still_fails(root, manifest_ok):
+    _blank_rows(root / C.judged_csv("rank1", "nudge", "A1_r107_n05"),
+                lambda j: (j["sample_idx"] == "0") & (j.index < 3))
+    rec = V.validate("rank1", root)
+    assert rec["outputs"]["nudge/A1_r107_n05"]["status"] == "fail"
+    assert statuses(rec)["primary_ii"] == "invalid"
+
+
+def _task_file(root, key="A1_r107"):
+    p = root / C.task_scores("rank1", key)
+    return p, [json.loads(x) for x in p.read_text().splitlines()]
+
+
+def _write_lines(p, lines) -> None:
+    p.write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+
+
+@pytest.mark.parametrize("bad", ["source_changed", "prompt", "settings", "foreign", "partial",
+                                 "answer_changed"])
+def test_task_scores_are_checked_against_their_sources(root, manifest_ok, bad):
+    """r1 finding 9: stale, foreign or partial task scores never pass as coverage."""
+    p, lines = _task_file(root)
+    want = {"source_changed": "source_sha256", "prompt": "prompt_sha256",
+            "settings": "settings_sha256", "foreign": "not among the selected",
+            "partial": "not scored or none", "answer_changed": "answer_sha256"}[bad]
+    if bad == "source_changed":
+        g = root / C.gen_csv("rank1", "task", "A1_r107")
+        g.write_text(g.read_text().replace(",a1,", ",changed,", 1))
+    elif bad == "prompt":
+        lines[0]["prompt_sha256"] = "0" * 64
+        _write_lines(p, lines)
+    elif bad == "settings":
+        lines[0]["settings"]["seed"] = 1
+        lines[0]["settings_sha256"] = llm.canonical_sha256(lines[0]["settings"])
+        _write_lines(p, lines)
+    elif bad == "foreign":
+        _write_lines(p, lines + [{**lines[1], "item_id": "holdout_999/0", "qid": "holdout_999"}])
+    elif bad == "partial":
+        _write_lines(p, lines[:-1])
+    else:
+        _write_lines(p, lines[:1] + [{**lines[1], "answer_sha256": "0" * 64}] + lines[2:])
+    rec = V.validate("rank1", root)
+    ro = rec["readouts"]["task/A1_r107"]
+    assert ro["status"] == "invalid" and want in " ".join(ro["reasons"]), ro["reasons"]
+    assert rec["outputs"]["task/A1_r107"]["task_scores"]["sha256"] == JR.sha256_file(p)
+    assert statuses(rec)["task/A2_r107"] == "valid"
+
+
+def test_task_scores_use_the_latest_line_per_item(root, manifest_ok):
+    p, lines = _task_file(root)
+    _write_lines(p, lines + [{**x, "score": 90} for x in lines[1:]])  # a re-score, appended
+    rec = V.validate("rank1", root)
+    assert statuses(rec)["task/A1_r107"] == "valid"
+    a = A.analyze("rank1", root)
+    t = a["secondaries"]["task/A1_r107"]
+    assert t["acceptable_rate"]["point"] == pytest.approx(100.0)
+    assert a["inputs"]["task_scores/A1_r107"]["sha256"] == JR.sha256_file(p)
+
+
+@pytest.mark.parametrize("bad", ["partial", "missing", "decisions", "frozen_changed"])
+def test_style_ratings_are_checked(root, manifest_ok, bad):
+    """r1 finding 9: a partial or stale rating file is reported, never silently used."""
+    p = root / C.style_answers("rank1", "A2_r107")
+    if bad == "partial":
+        p.write_text("\n".join(p.read_text().splitlines()[:-5]) + "\n")
+    elif bad == "missing":
+        p.unlink()
+    elif bad == "decisions":
+        lines = p.read_text().splitlines()
+        h = json.loads(lines[0]) | {"decisions_sha256": "0" * 64}
+        p.write_text("\n".join([json.dumps(h), *lines[1:]]) + "\n")
+    else:  # a re-frozen feature list: every rating file's rater prompt is now stale
+        fr = S.SA.frozen_record(features=[{"name": "other"}], root=root,
+                                discovery_sha256="d" * 64, merge_sha256="m" * 64, utc="y")
+        (root / C.STYLE_FROZEN).write_text(json.dumps(fr))
+    rec = V.validate("rank1", root)
+    want = "invalid" if bad in ("decisions", "frozen_changed") else "unavailable"
+    assert statuses(rec)["style_audit"] == want, rec["readouts"]["style_audit"]["reasons"]
+    if bad == "frozen_changed":
+        assert "prompt_sha256" in " ".join(rec["readouts"]["style_audit"]["reasons"])
+    a = A.analyze("rank1", root)["secondaries"]["style_audit"]
+    if want != "valid":
+        assert a["status"] == "unavailable" and a["coverage"]["A2_r107"] != "ok"
+    assert rec["style"]["frozen"]["sha256"] == JR.sha256_file(root / C.STYLE_FROZEN)
+
+
+def test_handlabel_lock_holds_when_another_check_fails(tmp_path, manifest_ok):
+    """r1 finding 13: without the labelling record, primary (i) and the task rate are never
+    emitted, even when another check makes them invalid; the diagnostics are kept."""
+    world = S.World()
+    r = tmp_path / "t"
+    S.build(r, world)
+    S.finish(r, world, handlabel=False)
+    smoke(r, "A1_r107", "FAIL")
+    p, lines = _task_file(r, "B1_r107")
+    _write_lines(p, lines[:-1])
+    rec = V.validate("rank1", r)
+    for rid in ("primary_i", "task/B1_r107"):
+        assert rec["readouts"][rid]["status"] == "invalid"
+        assert rec["readouts"][rid]["locked"] is True
+    a = A.analyze("rank1", r)
+    i = a["primaries"]["i"]
+    assert i["locked"] and "numbers" not in i and i["validity"] == "invalid"
+    assert any("applied-smoke A1_r107" in x for x in i["reasons"])
+    t = a["secondaries"]["task/B1_r107"]
+    assert t["locked"] and "acceptable_rate" not in t and t["reasons"]
+    assert "acceptable_rate" not in a["secondaries"]["task/base"]
+    assert "numbers" in a["primaries"]["ii"]  # (ii) has no hand-label bar
+    cue = {k: v for k, v in a["secondaries"].items() if k.startswith("cue_lift/")}
+    assert cue and all(v.get("locked") for v in cue.values())  # would show primary (i)

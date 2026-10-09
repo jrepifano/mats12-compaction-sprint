@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -229,6 +230,7 @@ def test_resume_equals_straight(tok, base, tmp_path, monkeypatch):
     straight = tmp_path / "straight"
     T.start_segment(base, tok, _spec(tok), straight)
     monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    monkeypatch.setenv(T.SCRATCH_ENV, str(tmp_path / "scratch_split"))  # opt_dir is outside root
     split = tmp_path / "split"
     _inject(monkeypatch, {4})
     with pytest.raises(T.NonFiniteStep):
@@ -325,3 +327,112 @@ def test_verify_checkpoint_reload(tok, base, tmp_path):
     bad = T.verify_checkpoint(base, spec, "P1", tmp_path)
     assert not bad["ok"] and "continuity" in bad["error"]
     assert _lora_names(base) == []
+
+
+# --- process-level resume (review r1 finding 4) --------------------------------------------------
+
+
+class Killed(RuntimeError):
+    """Stands in for a killed process (SIGKILL, controller relaunch, CUDA OOM before re-exec)."""
+
+
+def _script(monkeypatch, plan):
+    """`_window_loss` per 1-based call: "nan" -> non-finite, "kill" -> Killed, else normal.
+    Returns the call counter."""
+    orig, seen = T._window_loss, {"n": 0}
+
+    def fake(model, micro, n_win, dev):
+        seen["n"] += 1
+        what = plan.get(seen["n"])
+        if what == "kill":
+            raise Killed(f"killed at call {seen['n']}")
+        loss = orig(model, micro, n_win, dev)
+        if what == "nan":
+            for p in model.parameters():
+                if p.requires_grad:
+                    p.grad = torch.full_like(p, float("nan"))
+            return float("nan")
+        return loss
+
+    monkeypatch.setattr(T, "_window_loss", fake)
+    return seen
+
+
+def test_reinvoked_run_resumes_from_its_resume_point(tok, base, tmp_path, monkeypatch):
+    straight = tmp_path / "straight"
+    T.run_segment(base, tok, _spec(tok), straight)
+    monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    monkeypatch.setenv(T.SCRATCH_ENV, str(tmp_path / "scratch_split"))
+    split = tmp_path / "split"
+    _script(monkeypatch, {5: "kill"})
+    with pytest.raises(Killed):
+        T.run_segment(base, tok, _spec(tok), split)
+    assert not (split / C.status_path("rank1", "poison_s1")).exists()  # not terminal
+    assert T.resume_point(_spec(tok), split)["local_step"] == 3
+    with pytest.raises(ValueError, match="resume point"):
+        T.start_segment(base, tok, _spec(tok), split)  # never discards a matching resume point
+    seen = _script(monkeypatch, {})
+    out = T.run_segment(base, tok, _spec(tok), split)
+    assert (out["mode"], out["resumed_from"], out["status"], out["attempts"]) == (
+        "resume", 3, "ok", 1)
+    assert out["optimizer_state_entries_at_start"] > 0 and seen["n"] == 3  # steps 4-6 only
+    a, b = _adapter(straight, "P1"), _adapter(split, "P1")
+    for k in a:
+        assert torch.allclose(a[k], b[k], atol=1e-7, rtol=0), k
+    assert [s["step"] for s in _steps(split, "poison_s1")] == [1, 2, 3, 4, 5, 6]
+
+
+def test_reinvocation_keeps_the_attempt_count(tok, base, tmp_path, monkeypatch):
+    monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    # attempt 1 fails at step 4 (call 4); attempt 2 resumes at 3 and is killed at step 5 (call 6)
+    _script(monkeypatch, {4: "nan", 6: "kill"})
+    with pytest.raises(Killed):
+        T.run_segment(base, tok, _spec(tok), tmp_path)
+    pt = T.resume_point(_spec(tok), tmp_path)
+    assert pt["attempt"] == 2 and "attempt 1: step 4" in pt["attempt_reasons"][0]
+    _script(monkeypatch, {})  # re-invoked: continues attempt 2
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert (out["status"], out["attempts"], out["mode"]) == ("restarted_ok", 2, "resume")
+    assert "attempt 1: step 4" in out["reason"]
+
+
+def test_reinvocation_does_not_reset_the_retry_allowance(tok, base, tmp_path, monkeypatch):
+    monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    _script(monkeypatch, {4: "nan", 5: "kill"})  # killed at the start of attempt 2
+    with pytest.raises(Killed):
+        T.run_segment(base, tok, _spec(tok), tmp_path)
+    _script(monkeypatch, {1: "nan"})  # attempt 2 fails again: no third attempt
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert (out["status"], out["attempts"]) == ("failed", 2)
+    st = json.loads((tmp_path / C.status_path("rank1", "poison_s1")).read_text())
+    assert (st["status"], st["attempts"]) == ("failed", 2)
+
+
+def test_failed_run_is_never_retrained(tok, base, tmp_path, monkeypatch):
+    monkeypatch.setattr(C, "RESUME_EVERY", 3)
+    _script(monkeypatch, {4: "nan", 5: "nan"})
+    assert T.run_segment(base, tok, _spec(tok), tmp_path)["status"] == "failed"
+    seen = _script(monkeypatch, {})
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert out["status"] == "failed" and out["not_retrained"] and seen["n"] == 0
+    assert not (tmp_path / C.ckpt_dir("rank1", "P1") / "ckpt.json").exists()
+
+
+def test_another_specs_stale_state_is_cleared(tok, base, tmp_path, monkeypatch):
+    """The smoke bench's 20-step run shares the run name (and opt_dir) with the real poison_s1:
+    its resume point is another spec's, so the real run starts fresh."""
+    T.run_segment(base, tok, _spec(tok, steps=3, saves={3: "P1"}), tmp_path / "bench")
+    assert T.resume_point(_spec(tok), tmp_path) is None
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert (out["mode"], out["status"], out["steps_done"]) == ("start", "ok", 6)
+
+
+def test_resume_writes_a_final_checkpoint_lost_to_a_kill(tok, base, tmp_path, monkeypatch):
+    """Killed after the final resume point but before ckpt.json: the re-invocation saves it."""
+    T.run_segment(base, tok, _spec(tok), tmp_path)
+    (tmp_path / C.status_path("rank1", "poison_s1")).unlink()
+    shutil.rmtree(tmp_path / C.ckpt_dir("rank1", "P1"))
+    seen = _script(monkeypatch, {})
+    out = T.run_segment(base, tok, _spec(tok), tmp_path)
+    assert out["status"] == "ok" and out["resumed_from"] == 6 and seen["n"] == 0
+    assert T.read_ckpt("rank1", "P1", tmp_path)["local_step"] == 6

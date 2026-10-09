@@ -28,7 +28,12 @@ Decision stages (`decide`) write `contracts.decisions_path(recipe)` (one key per
 carries `decisions_sha256`, the sha256 of the canonical JSON of the whole document without that
 field) and an immutable input snapshot per stage (`contracts.decision_snapshot`): the exact luna
 rows read, with each column's judge-signature identity. A stage is written once; re-deciding it
-on the same inputs is a no-op, on different inputs it is refused.
+on the same inputs is a no-op, on different inputs it is refused. `final` takes its cuts and
+generation path from the admission record (`contracts.admission_path`, review r1 finding 6) and
+records its sha256; it is refused if that record is missing or not admitted.
+
+Statistics read only the rows `contracts.row_selected` keeps under the final cuts (`Tree`,
+review r1 finding 7).
 """
 
 from __future__ import annotations
@@ -200,12 +205,26 @@ def load_output(recipe: str, kind: str, key: str, root: str | Path) -> tuple[pd.
     return frame, inputs
 
 
-class Tree:
-    """Cached, called frames of one recipe's results tree (`emx.eq0.analysis.add_calls`)."""
+def selected(df: pd.DataFrame, kind: str, cuts=()) -> pd.DataFrame:
+    """The rows `contracts.row_selected` keeps under `cuts` (review r1 finding 7): the one row
+    selector of judging, coverage validation and statistics. Unselected rows (samples a CSV
+    generated before a cut holds beyond its limit) are ignored everywhere."""
+    if not len(df):
+        return df
+    keep = [C.row_selected(kind, q, i, cuts)
+            for q, i in zip(df["qset"].astype(str), df["sample_idx"].astype(int), strict=True)]
+    return df[np.asarray(keep, dtype=bool)]
 
-    def __init__(self, recipe: str, root: str | Path = C.REPO_ROOT):
+
+class Tree:
+    """Cached, called frames of one recipe's results tree (`emx.eq0.analysis.add_calls`),
+    restricted to the rows the final decision's cuts select (`selected`)."""
+
+    def __init__(self, recipe: str, root: str | Path = C.REPO_ROOT, cuts=()):
         self.recipe, self.root = recipe, Path(root)
+        self.cuts = tuple(sorted(int(c) for c in cuts))
         self.near = EA.near_domain_qids(self.root)
+        self.extra_inputs: dict[str, dict] = {}  # verified task-score and style-rating files
         self._frames: dict[tuple[str, str], tuple[pd.DataFrame, dict] | None] = {}
 
     def state(self, kind: str, key: str) -> str:
@@ -219,6 +238,8 @@ class Tree:
                 self._frames[k] = None
             else:
                 df, inp = load_output(self.recipe, kind, key, self.root)
+                df = selected(df, kind, self.cuts)
+                inp["n_rows_selected"] = len(df)
                 if kind != "task":
                     df = EA.add_calls(df, self.near)
                 self._frames[k] = (df, inp)
@@ -232,7 +253,8 @@ class Tree:
         return df
 
     def inputs(self) -> dict:
-        return {f"{k[0]}/{k[1]}": v[1] for k, v in sorted(self._frames.items()) if v}
+        out = {f"{k[0]}/{k[1]}": v[1] for k, v in sorted(self._frames.items()) if v}
+        return out | dict(sorted(self.extra_inputs.items()))
 
 
 # --- question sets -----------------------------------------------------------------------------
@@ -446,19 +468,25 @@ def load_final(recipe: str, root: str | Path = C.REPO_ROOT) -> tuple[dict, str]:
     return doc, h
 
 
-def applied_cuts(recipe: str, root: str | Path = C.REPO_ROOT) -> list[int]:
-    """Cuts of the last admitted projection (stage order smoke, lora-check, rank32, hf)."""
-    out: list[int] = []
-    for stage in C.PROJECTION_STAGES:
-        rec = read_json(Path(root) / C.projection_path(recipe, stage))
-        if rec and rec.get("verdict") == "admit":
-            out = sorted(int(c) for c in rec.get("cuts") or [])
-    return out
+def admission(recipe: str, root: str | Path = C.REPO_ROOT) -> tuple[dict, str]:
+    """(admission record, sha256) of `contracts.admission_path(recipe)`, the one source of the
+    applied cuts and the generation path (review r1 finding 6); refused unless it is present,
+    well-formed and admitted (`emx.e12.llm.load_admission`)."""
+    from emx.e12 import llm
+
+    try:
+        return llm.load_admission(root, recipe)
+    except llm.Refused as e:
+        raise AnalysisRefused(str(e)) from e
 
 
-def gen_path_of(recipe: str, root: str | Path = C.REPO_ROOT) -> str:
-    rec = read_json(Path(root) / C.bench_path(recipe, "lora_check")) or {}
-    return rec.get("gen_path") if rec.get("gen_path") in C.GEN_PATHS else "vllm"
+def final_admission_block(recipe: str, root: str | Path) -> dict:
+    """What `final` freezes from the admission record: its cuts, path and identity."""
+    rec, sha = admission(recipe, root)
+    return {"cuts": sorted(int(c) for c in rec["cuts"]), "gen_path": rec["gen_path"],
+            "admission": {"path": C.admission_path(recipe), "sha256": sha,
+                          "jobs_sha256": rec["jobs_sha256"], "source": rec["source"],
+                          "branch": rec["branch"]}}
 
 
 def _seed_eval(tree: Tree, key: str, base_em: float) -> dict:
@@ -547,8 +575,7 @@ def stage_final(doc: dict, recipe: str, root: Path) -> dict:
     poison = doc.get("poison")
     if not poison:
         raise AnalysisRefused("final needs the poison stage")
-    base = {"cuts": applied_cuts(recipe, root), "gen_path": gen_path_of(recipe, root),
-            "active_recipe": recipe, "label": None}
+    base = {**final_admission_block(recipe, root), "active_recipe": recipe, "label": None}
     if poison["next"] != "proceed":
         if recipe == "rank1":
             return base | {"outcome": "fallback_to_rank32", "active_recipe": "rank32",
@@ -640,7 +667,7 @@ def decision_summary(rec: dict) -> dict:
     """The one-line JSON `e12_analyze.py decide` prints."""
     keep = ("stage", "n_induced", "fallback_triggered", "next", "eligible_seeds", "n_eligible",
             "rescue_triggered", "endpoint", "repair_established", "outcome", "active_recipe",
-            "cuts", "label", "decisions_sha256")
+            "cuts", "gen_path", "label", "decisions_sha256")
     out = {k: rec[k] for k in keep if k in rec}
     if "seeds" in rec:
         out["seeds"] = {s: {k: v.get(k) for k in ("induced", "repaired", "eligible")
@@ -876,14 +903,17 @@ def trajectory(tree: Tree, arm: str, seed: int, rescued: bool) -> dict:
     return {"arm": arm, "seed": seed, "poisoned_em": pois, "base_em": base, "steps": steps}
 
 
-def task_rate(tree: Tree, key: str) -> dict:
-    """Acceptable-answer rate (luna task score >= 50 among scored answers), item bootstrap."""
+def task_rate(tree: Tree, key: str, dsha: str) -> dict:
+    """Acceptable-answer rate (luna task score >= 50 among scored answers), item bootstrap, from
+    the task-score file verified against its current sources (`validation.task_scores_checked`:
+    header, exact selected items, the latest line per item)."""
     from emx.e12 import validation as V
 
-    lines = V.task_lines(tree.recipe, key, tree.root)
-    if lines is None:
-        raise AnalysisRefused(f"task/{key}: scores missing")
-    df = pd.DataFrame(lines)
+    chk = V.task_scores_checked(tree.recipe, key, tree.root, dsha, tree.cuts)
+    if chk["status"] != "ok":
+        raise AnalysisRefused(f"task/{key}: scores {chk['status']}: {'; '.join(chk['reasons'])}")
+    tree.extra_inputs[f"task_scores/{key}"] = chk["provenance"]
+    df = pd.DataFrame(list(chk["lines"].values()))
     df["score_num"] = pd.to_numeric(df.get("score"), errors="coerce")
     ok = (df.get("status") == "scored") & df["score_num"].notna()
     df["n"], df["acc"] = ok, ok & (df["score_num"] >= C.TASK_ACCEPTABLE_MIN)
@@ -891,7 +921,8 @@ def task_rate(tree: Tree, key: str) -> dict:
     t = np.vstack([g["n"].to_numpy(float), g["acc"].to_numpy(float)])
     return {"key": key, "acceptable_rate": summarize(lambda w: 100 * wrate(t, w), t.shape[1]),
             "n_scored": int(t[0].sum()), "n_acceptable": int(t[1].sum()),
-            "mean_score": _num(df.loc[ok, "score_num"].mean())}
+            "mean_score": _num(df.loc[ok, "score_num"].mean()),
+            "task_scores_sha256": chk["provenance"]["sha256"]}
 
 
 def _lora_vectors(path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -935,13 +966,20 @@ def weights(tree: Tree) -> dict:
     return {"status": "computed" if out else "no adapters found", "checkpoints": out}
 
 
+def random8_from_manifest(man: dict) -> list[str]:
+    """The 8 "qset/qid" keys of the random-8 draw in the producer's schema
+    (`emx.e12.data.prerun_manifest`: `eval_questions.random8_qkeys`), sorted."""
+    keys = (man.get("eval_questions") or {}).get("random8_qkeys")
+    if not (isinstance(keys, list) and len(keys) == C.N_RANDOM8
+            and all(isinstance(k, str) and "/" in k for k in keys)):
+        raise AnalysisRefused(f"{C.PRERUN_MANIFEST}: no eval_questions.random8_qkeys list of "
+                              f"{C.N_RANDOM8} 'qset/qid' keys")
+    return sorted(keys)
+
+
 def random8_qkeys(root: Path) -> list[str]:
-    """The 8 "qset/qid" keys of the random-8 draw, from the pre-run manifest."""
-    man = read_json(root / C.PRERUN_MANIFEST) or {}
-    keys = man.get("random8_qkeys")
-    if not (isinstance(keys, list) and len(keys) == C.N_RANDOM8):
-        raise AnalysisRefused(f"{C.PRERUN_MANIFEST}: no random8_qkeys list of {C.N_RANDOM8}")
-    return sorted(str(k) for k in keys)
+    """The random-8 draw from the pre-run manifest under `root`."""
+    return random8_from_manifest(read_json(Path(root) / C.PRERUN_MANIFEST) or {})
 
 
 def r8_rates(df: pd.DataFrame | None, qk: list[str]) -> dict | None:
@@ -987,51 +1025,52 @@ def random8(tree: Tree, doc: dict) -> dict:
             "agrees_with_main": elig == sorted(fin["eligible_seeds"])}
 
 
-def _style_lines(path: Path) -> list[dict] | None:
-    if not path.is_file():
-        return None
-    return [json.loads(x) for x in path.read_text().splitlines() if x.strip()]
-
-
 def _features(frozen: dict) -> list[str]:
     feats = frozen.get("features") or []
     return [f if isinstance(f, str) else str(f.get("name") or f.get("id")) for f in feats]
 
 
-def style_ratings(path: Path, feats: list[str]) -> pd.DataFrame | None:
-    """One row per rated answer: qid, sample_idx and a 0/1/NaN column per feature (lines with a
-    `ratings` or `features` mapping; header lines without a qid are skipped)."""
-    lines = _style_lines(path)
-    if lines is None:
-        return None
+def style_ratings(lines: dict[str, dict], feats: list[str]) -> pd.DataFrame:
+    """One row per rated answer of a verified rating file (`validation.style_ratings_checked`):
+    qid, sample_idx and a 0/1/NaN column per feature (NaN: rating `none` or feature absent)."""
     rows = []
-    for r in lines:
-        if "qid" not in r:
-            continue
-        rat = r.get("ratings") or r.get("features") or {}
+    for r in lines.values():
+        rat = r.get("ratings") or {}
         rows.append({"qid": str(r["qid"]), "sample_idx": int(r["sample_idx"]),
                      **{f: (np.nan if rat.get(f) is None else float(bool(rat.get(f))))
                         for f in feats}})
     return pd.DataFrame(rows, columns=["qid", "sample_idx", *feats])
 
 
-def style_audit(tree: Tree, seeds: list[int], endpoint: int) -> dict:
+def style_audit(tree: Tree, seeds: list[int], endpoint: int, dsha: str, doc: dict) -> dict:
     """Amendment A readout: a feature is adopted by an arm when its rate in the arm's dose-0
     test answers is >= base's + 10 points in every eligible seed; for each adopted feature, the
-    arm's EM rate among answers with and without it (deciding judge)."""
-    frozen = read_json(tree.root / C.STYLE_FROZEN)
-    if frozen is None:
-        return {"status": "unavailable", "reason": "style_audit/frozen.json missing"}
-    feats = _features(frozen)
+    arm's EM rate among answers with and without it (deciding judge). Every rating file is
+    verified first (`validation.check_style`: frozen.json, headers against the current answer
+    sources, complete coverage); any missing, partial or stale file makes the readout
+    unavailable, with the coverage reported."""
+    from emx.e12 import style_audit as SA
+    from emx.e12 import validation as V
+
     if len(seeds) < C.MIN_ELIGIBLE:
         return {"status": "unavailable", "reason": "fewer than 2 eligible seeds"}
+    chk = V.check_style(tree.recipe, tree.root, doc, dsha)
+    tree.extra_inputs["style"] = {"frozen": chk["frozen"], "keys": {
+        k: {f: v.get(f) for f in ("path", "sha256", "header")} for k, v in chk["keys"].items()}}
+    if chk["status"] != "ok":
+        return {"status": "unavailable", "reason": "; ".join(chk["reasons"]),
+                "coverage": {k: v["status"] for k, v in chk["keys"].items()}}
+    frozen = SA.load_frozen(tree.root)
+    feats = _features(frozen)
+    cuts = doc["final"].get("cuts") or ()
     test = {q.split("/", 1)[1] for q in test_qkeys(tree.root)}
 
     def joined(key: str) -> pd.DataFrame | None:
-        rat = style_ratings(tree.root / C.style_answers(tree.recipe, key), feats)
+        got = V.style_ratings_checked(tree.recipe, key, tree.root, dsha, frozen, cuts)
         df = tree.get("full", key)
-        if rat is None or df is None:
+        if got["status"] != "ok" or df is None:
             return None
+        rat = style_ratings(got["lines"], feats)
         d = df[df["qset"].eq("ext48") & df["qid"].isin(test)][["qid", "sample_idx", "d_em",
                                                               "d_scored"]]
         d = d.assign(sample_idx=d["sample_idx"].astype(int))
@@ -1065,6 +1104,7 @@ def style_audit(tree: Tree, seeds: list[int], endpoint: int) -> dict:
     adopted = {f: [a for a, v in d["arms"].items() if v["adopted"]] for f, d in per.items()}
     return {"status": "computed", "features": per,
             "adopted": {f: a for f, a in adopted.items() if a},
+            "frozen_sha256": chk["frozen"]["sha256"],
             "note": "descriptive only; the rater is not validated (prereg §4.4, Amendment A)"}
 
 
@@ -1085,8 +1125,9 @@ def _primary_entry(which: str, rid: str, plan: dict, vrec: dict, compute, dsha: 
                 "label": None, "decisions_sha256": dsha}
     v = vrec["readouts"][rid]
     out = {"validity": v["status"], "reasons": v["reasons"], "decisions_sha256": dsha}
-    if v["status"] == "locked":
-        return out | {"label": None, "note": "locked until the hand-label pass is scored"}
+    if v.get("locked") or v["status"] == "locked":  # independent of other failures (r1 #13)
+        return out | {"locked": True, "label": None if v["status"] == "locked" else "invalid",
+                      "note": "locked until the hand-label pass is scored"}
     nums = compute()
     out["numbers"] = nums
     if "error" in nums:
@@ -1114,14 +1155,14 @@ def analyze(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
     fin = doc["final"]
     e, S = fin["endpoint"], sorted(fin["eligible_seeds"])
     plan = V.readout_plan(doc)
-    tree = Tree(recipe, root)
+    tree = Tree(recipe, root, fin.get("cuts") or ())
 
     def tag(rid: str, body: dict) -> dict:
         v = vrec["readouts"][rid]
         out = {"validity": v["status"], "reasons": v["reasons"], "decisions_sha256": dsha}
-        if v["status"] == "locked":
-            return out | {"note": "locked until the hand-label pass is scored"}
-        return out | body
+        if v.get("locked") or v["status"] == "locked":
+            return out | {"locked": True, "note": "locked until the hand-label pass is scored"}
+        return out | body()
 
     eff = None
     ii_nums = None
@@ -1138,7 +1179,7 @@ def analyze(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
         "ii": _primary_entry("ii", "primary_ii", plan, vrec, lambda: ii_nums, dsha,
                              nudge_eff=(eff or {}).get("effective")),
     }
-    locked = any(p["validity"] == "locked" for p in prim.values())
+    locked = any(p.get("locked") for p in prim.values())
     scen = scenarios(global_ok=not fresh["global"]["failures"], outcome=fin["outcome"],
                      labels={k: p.get("label") for k, p in prim.items()}, locked=locked)
     sec: dict = {}
@@ -1148,34 +1189,42 @@ def analyze(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
         kind = ro["kind"]
         if kind in ("primary_i", "primary_ii"):
             continue
-        if kind == "c_minus_r":
-            body = _guarded(c_minus_r, tree, S, e)
-        elif kind == "cue_lift":
-            if cq is None:
-                cq = _guarded(lambda: {"q": cue_qkeys(tree, cue_keys)})
-            body = ({"error": cq["error"]} if "error" in cq
-                    else _guarded(cue_lift, tree, ro["key"], cq["q"]))
-        elif kind == "a_minus_b_107":
-            body = _guarded(a_minus_b, tree, ro["seed"])
-        elif kind == "trajectory":
-            body = _guarded(trajectory, tree, ro["arm"], ro["seed"],
-                            bool(fin.get("rescue_triggered")))
-        elif kind == "task":
-            body = _guarded(task_rate, tree, ro["key"])
-        elif kind == "random8":
-            body = _guarded(random8, tree, doc)
-        elif kind == "weights":
-            body = weights(tree)
-        elif kind == "style_audit":
-            body = _guarded(style_audit, tree, S, e)
-        else:  # pragma: no cover - readout_plan's kinds are closed
-            raise AnalysisRefused(f"unknown readout kind {kind!r}")
+
+        def body(kind=kind, ro=ro) -> dict:
+            nonlocal cq
+            if kind == "c_minus_r":
+                return _guarded(c_minus_r, tree, S, e)
+            if kind == "cue_lift":
+                # A's and C's cue EM rates would show primary (i): locked with it (integration)
+                if prim["i"].get("locked"):
+                    return {"locked": True, "note": "locked with primary (i) until the "
+                            "hand-label pass is scored"}
+                if cq is None:
+                    cq = _guarded(lambda: {"q": cue_qkeys(tree, cue_keys)})
+                return ({"error": cq["error"]} if "error" in cq
+                        else _guarded(cue_lift, tree, ro["key"], cq["q"]))
+            if kind == "a_minus_b_107":
+                return _guarded(a_minus_b, tree, ro["seed"])
+            if kind == "trajectory":
+                return _guarded(trajectory, tree, ro["arm"], ro["seed"],
+                                bool(fin.get("rescue_triggered")))
+            if kind == "task":
+                return _guarded(task_rate, tree, ro["key"], dsha)
+            if kind == "random8":
+                return _guarded(random8, tree, doc)
+            if kind == "weights":
+                return weights(tree)
+            if kind == "style_audit":
+                return _guarded(style_audit, tree, S, e, dsha, doc)
+            raise AnalysisRefused(f"unknown readout kind {kind!r}")  # pragma: no cover
+
         sec[rid] = tag(rid, body)
     out = {
         "exp": C.EXP, "recipe": recipe, "utc": utc_now(), "git_commit": EA.git_commit(root),
         "decisions_sha256": dsha, "validation_sha256": fresh["validation_sha256"],
         "outcome": fin["outcome"], "endpoint": e, "eligible_seeds": S,
         "endpoint_label": fin.get("label"),
+        "cuts": list(fin.get("cuts") or []), "admission": fin.get("admission"),
         "scenario": scen,
         "global_checks": {"pass": fresh["global"]["pass"],
                           "pass_durability": fresh["global"]["pass_durability"],

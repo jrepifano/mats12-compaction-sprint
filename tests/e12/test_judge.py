@@ -96,11 +96,29 @@ def write_manifest(root: Path, recipe: str = R, step: str = "eval-poison") -> No
     p.write_text("\n".join(lines) + "\n")
 
 
+def write_admission(root: Path, recipe: str = R, cuts=(), gen_path: str = "vllm") -> str:
+    """The admission record (`contracts.admission_path`) as the pod writes it; returns its
+    sha256."""
+    jobs = C.planned_jobs(recipe, "vllm", None, tuple(c for c in cuts if c))
+    rec = {"gen_path": gen_path, "admitted": True, "cuts": sorted(cuts),
+           "jobs_sha256": C.jobs_sha256(jobs),
+           "jobs": [[j.kind, j.key, j.n_rows] for j in jobs], "branch": gen_path,
+           "projection": {}, "source": "pod:lora-check", "utc": "2026-10-09T00:00:00Z"}
+    p = root / C.admission_path(recipe)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(rec))
+    return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
 def write_decisions(root: Path, recipe: str = R, *, final: dict | None = None,
                     tamper: bool = False, **stages) -> dict:
+    """decisions.json; with `final`, also the admission record it freezes (its cuts)."""
     rec = {"exp": "E12", "recipe": recipe, **stages}
     if final is not None:
         rec["final"] = dict(final)
+        if "admission" not in final:
+            sha = write_admission(root, recipe, final.get("cuts") or ())
+            rec["final"]["admission"] = {"path": C.admission_path(recipe), "sha256": sha}
         rec["final"]["decisions_sha256"] = llm.decisions_sha256(rec)
         if tamper:
             rec["final"]["endpoint"] = 214 if final.get("endpoint") == 107 else 107
@@ -268,6 +286,44 @@ def test_main_refuses_a_tampered_decisions_sha(env, capsys):
     assert not cl["luna"].calls and not judged_files(root)
 
 
+@pytest.mark.parametrize("bad", ["missing", "rewritten", "not_admitted"])
+def test_main_refuses_unless_the_frozen_admission_record_is_unchanged(env, capsys, bad):
+    """Review r1 finding 6: the cuts come from the admission record `final` froze."""
+    root = env
+    write_tree(root)
+    write_decisions(root, final=FINAL107)
+    p = root / C.admission_path(R)
+    rec = json.loads(p.read_text())
+    if bad == "missing":
+        p.unlink()
+    elif bad == "rewritten":
+        jobs = C.planned_jobs(R, "vllm", None, (4,))
+        rec |= {"cuts": [4], "jobs": [[j.kind, j.key, j.n_rows] for j in jobs],
+                "jobs_sha256": C.jobs_sha256(jobs)}
+        p.write_text(json.dumps(rec))
+    else:
+        p.write_text(json.dumps(rec | {"admitted": False}))
+    cl = judge_clients()
+    mod = load_script("e12_judge")
+    assert mod.main(args(root, "main"), presets=cheap(), clients=cl) == C.EXIT_REFUSED
+    assert "admission.json" in capsys.readouterr().err
+    assert not cl["luna"].calls and not judged_files(root)
+
+
+@pytest.mark.parametrize("cuts", [(), (4,), (5,), (4, 5), (0, 1, 2, 3, 4, 5)])
+def test_row_mask_is_the_shared_selector(cuts):
+    """Review r1 finding 7: judging masks rows with `contracts.row_selected` only."""
+    mod = load_script("e12_judge")
+    for kind, spec in SMALL.items():
+        if kind == "task":
+            continue
+        df = pd.DataFrame([{"qset": q, "qid": i, "sample_idx": s} for q, i, n in spec
+                           for s in range(n)])
+        m = mod.row_mask(df, kind, {"mask": "cuts", "cuts": list(cuts)})
+        want = [C.row_selected(kind, r.qset, r.sample_idx, cuts) for r in df.itertuples()]
+        assert (m.tolist() if m is not None else [True] * len(df)) == want
+
+
 def _models(out: dict) -> set[str]:
     return set(out["models"])
 
@@ -377,7 +433,7 @@ def test_prior_spend_fills_the_cap(env, capsys):
     root = env
     write_tree(root)
     write_manifest(root)
-    spend.record("judge", "x", 1, 14.9999, note="prior", exp="E12")
+    spend.record("judge", "x", 1, C.API_LIMIT_USD - 0.0001, note="prior", exp="E12")
     mod = load_script("e12_judge")
     assert mod.main(args(root, "decide", "--stage", "poison", "--dry-run")) == C.EXIT_BUDGET
 
@@ -451,7 +507,7 @@ def test_run_batch_dry_run_and_cap(env, tmp_path):
     r = llm.run_batch(_items(), str, out, header=_header(), note="E12 d", client=None,
                       parse=None, mode="logprob", dry_run=True)
     assert r["n_todo"] == 4 and r["projected_usd"] > 0 and not out.exists()
-    spend.record("judge", "x", 1, 15.0, note="prior", exp="E12")
+    spend.record("judge", "x", 1, C.API_LIMIT_USD, note="prior", exp="E12")
     with pytest.raises(SystemExit) as e:
         llm.run_batch(_items(), str, out, header=_header(), note="E12 d", client=None,
                       parse=None, mode="logprob", dry_run=True)
@@ -570,5 +626,5 @@ def test_task_judge_dry_run_projects_without_a_client(task_env, capsys, monkeypa
     out = last_json(capsys.readouterr().out)
     assert out["dry_run"] and len(out["batches"]) == 13 and out["projected_usd"] > 0
     assert not (root / C.rdir(R) / "task").exists()
-    spend.record("judge", "x", 1, 15.0, note="prior", exp="E12")
+    spend.record("judge", "x", 1, C.API_LIMIT_USD, note="prior", exp="E12")
     assert mod.main(["--root", str(root), "--running-pod-usd", "0"]) == C.EXIT_BUDGET

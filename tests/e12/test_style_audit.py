@@ -278,5 +278,5 @@ def test_rate_answers_samples_zero_to_nine_without_cut0(senv, capsys, monkeypatc
     assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_OK
     proj = last_json(capsys.readouterr().out)["batches"]
     assert all(v["n_todo"] == 41 * 10 for v in proj.values())
-    spend.record("judge", "x", 1, 15.0, note="prior", exp="E12")
+    spend.record("judge", "x", 1, C.API_LIMIT_USD, note="prior", exp="E12")
     assert run(mod, root, "rate-answers", client=cl) == C.EXIT_BUDGET

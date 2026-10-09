@@ -98,10 +98,29 @@ def test_admits_the_nominal_fixtures_and_writes_the_record(tmp_path):
     assert set(C.BENCH_FIELDS["projection"]) <= set(written) and written["verdict"] == "admit"
 
 
+def test_measured_judging_rate_and_amendment_b_limit():
+    """Review r1 finding 8: the measured $0.33 per 1,000 EM answers and the $20 API limit
+    (prereg Amendment B; the $40 hard cap and $25 GPU limit unchanged)."""
+    assert B.FALLBACK_RATES["judge_usd_per_1000_answers"] == 0.33
+    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 25.0 and C.HARD_CAP_USD == 40.0
+
+
+def test_vllm_speculative_admits_without_cuts_under_the_20_dollar_limit(tmp_path):
+    """The rescued 214 branch's judging ($18.92 with the style training still to rate) plus
+    $0.40 recorded fits $20 with no cuts (it would have needed cuts under the $15 limit)."""
+    root = bench_root(tmp_path, frozen=False)
+    rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None, elapsed_pod_hours=0.4,
+                  gpu_rate=3.49, api_spent_usd=0.4, root=root, write=False)
+    assert rec["verdict"] == "admit" and rec["cuts"] == [] and len(rec["tried"]) == 1
+    assert rec["api_usd"] == pytest.approx(18.92, abs=0.01)
+    assert rec["api"]["endpoint_priced"] == 214 and rec["api"]["rescue_priced"] is True
+    assert rec["api"]["usd"]["em_judging"] == pytest.approx(51_820 * 0.33 / 1000, abs=1e-3)
+
+
 def test_cuts_are_added_in_order(tmp_path):
     root = bench_root(tmp_path, frozen=False)  # style training not yet rated: +$0.5
     rec = B.admit(R, "smoke", gen_path="vllm", endpoint=None, elapsed_pod_hours=0.4,
-                  gpu_rate=3.49, api_spent_usd=0.4, root=root, write=False)
+                  gpu_rate=3.49, api_spent_usd=1.2, root=root, write=False)  # 18.92 + 1.2 > 20
     assert rec["verdict"] == "admit" and rec["cuts"] == [0]
     t0, t1 = rec["tried"]
     assert t0["cuts"] == [] and t0["verdict"] == "refuse"
@@ -147,6 +166,61 @@ def test_pre_decision_hf_budget_does_not_admit_the_complete_branch(tmp_path):
                  "0.5", "--gpu-rate", "3.49", "--api-spent", "0.4", "--no-write", "--root",
                  str(root)])
     assert rc == C.EXIT_OK
+
+
+def test_hf_complete_prices_the_dearer_branch_and_binds_the_union(tmp_path):
+    """Review r1 finding 1: the HF admission authorizes both mutually exclusive complete
+    branches (107 without the rescue, 214 with it) and prices the dearer one."""
+    union = C.hf_complete_jobs(R, ())
+    b107, b214 = C.planned_jobs(R, "hf", 107, (), False), C.planned_jobs(R, "hf", 214, (), True)
+    assert set(b107) | set(b214) == set(union) and not set(b107) <= set(b214)
+    kw = {"elapsed_pod_hours": 1.0, "gpu_rate": 3.49, "api_spent_usd": 0.4, "write": False}
+    rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=bench_root(tmp_path, hf_rate=5.0),
+                  branch="hf-complete", **kw)
+    assert rec["verdict"] == "admit" and rec["cuts"] == []
+    assert rec["branch"] == "hf-complete" and rec["endpoint"] is None
+    assert rec["jobs_sha256"] == C.jobs_sha256(union) and rec["n_jobs"] == len(union)
+    br = rec["branches"]
+    assert br["107"]["jobs_sha256"] == C.jobs_sha256(b107)
+    assert br["214"]["jobs_sha256"] == C.jobs_sha256(b214)
+    assert br["214"]["remaining_answers"] == 57_020
+    for k in ("total_pod_hours", "gpu_usd", "api_usd"):
+        assert rec[k] == max(br["107"][k], br["214"][k])
+    assert rec["priced_endpoint"] == 214 and rec["api_usd"] == pytest.approx(18.42, abs=0.01)
+    assert set(C.BENCH_FIELDS["projection"]) <= set(rec)
+    # a slower HF bench: the cuts are added in order until the dearer branch fits
+    rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=bench_root(tmp_path / "b",
+                  hf_rate=3.0), branch="hf-complete", **kw)
+    assert [t["cuts"] for t in rec["tried"]] == [list(c) for c in B.cut_sequence()[:6]]
+    assert rec["verdict"] == "admit" and rec["cuts"] == [0, 1, 2, 3, 4]
+    assert rec["gpu_usd"] <= C.GPU_LIMIT_USD and rec["total_pod_hours"] <= C.POD_HOURS_LIMIT
+    assert rec["jobs_sha256"] == C.jobs_sha256(C.hf_complete_jobs(R, (1, 2, 3, 4)))
+    assert all(t["verdict"] == "refuse" for t in rec["tried"][:-1])
+    # the fixture's own HF rate never fits: refused after every cut
+    rec = B.admit(R, "hf", gen_path="hf", endpoint=None, root=bench_root(tmp_path / "c"),
+                  branch="hf-complete", **kw)
+    assert rec["verdict"] == "refuse" and rec["cuts"] == [0, 1, 2, 3, 4, 5]
+    for bad in ({"gen_path": "vllm", "endpoint": None}, {"gen_path": "hf", "endpoint": 214},
+                {"gen_path": "hf", "endpoint": None, "rescue_triggered": True}):
+        with pytest.raises(ValueError, match="hf-complete"):
+            B.admit(R, "hf", root=tmp_path / "x", branch="hf-complete", **bad, **kw)
+    with pytest.raises(ValueError, match="unknown branch"):
+        B.admit(R, "hf", gen_path="hf", endpoint=None, root=tmp_path, branch="hf-107", **kw)
+
+
+def test_cli_branch_hf_complete_writes_the_projection(tmp_path, capsys):
+    root = bench_root(tmp_path, hf_rate=5.0)
+    rc = B.main(["admit", "--recipe", R, "--stage", "hf", "--gen-path", "hf", "--branch",
+                 "hf-complete", "--elapsed-h", "1.0", "--gpu-rate", "3.49", "--api-spent", "0.4",
+                 "--root", str(root)])
+    assert rc == C.EXIT_OK
+    rec = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert rec["branch"] == "hf-complete"
+    assert json.loads((root / C.projection_path(R, "hf")).read_text()) == rec
+    rc = B.main(["admit", "--recipe", R, "--stage", "hf", "--gen-path", "hf", "--branch",
+                 "hf-complete", "--endpoint", "214", "--elapsed-h", "1.0", "--gpu-rate", "3.49",
+                 "--api-spent", "0.4", "--no-write", "--root", str(root)])
+    assert rc == C.EXIT_FAILED
 
 
 def test_cli_prints_one_json_record_last(tmp_path, capsys):

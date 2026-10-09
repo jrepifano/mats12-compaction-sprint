@@ -6,8 +6,9 @@ Ported from scripts/eq0_handlabel_page.py and its template (EQ0 hand-label fallb
 the fallback) is EQ0's unchanged.
 
 Refuses (exit 3) unless `results/E12/<recipe>/decisions.json` (contracts.decisions_path) holds a
-`final` stage with an endpoint and a `decisions_sha256`, which the key records (the scorer refuses
-a key whose decision has since changed). Draws with contracts.HANDLABEL_SEED, from the final
+`final` stage with an endpoint whose `decisions_sha256` verifies (`emx.e12.llm.require_final`, the
+gate every E12 consumer uses), which the key records (the scorer refuses a key whose decision has
+since changed, through the same loader). Draws with contracts.HANDLABEL_SEED, from the final
 endpoint's models:
 - EM stratum, 24 items (contracts.HL_N_EM): 12 per cue (cue_tf, cue_mc), spread over the groups
   A, B, C (the endpoint's A/B/C<s>_r<endpoint>), D (dose 0 = P<s>) and base as GROUP_QUOTAS
@@ -37,7 +38,6 @@ import csv
 import hashlib
 import json
 import random
-import re
 import sys
 from pathlib import Path
 
@@ -45,6 +45,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from emx.contracts import ALIGNED_EM_BELOW, COHERENT_ABOVE
 from emx.e12 import contracts as C
+from emx.e12 import llm
 
 ROOT = Path(__file__).resolve().parents[1]
 GROUPS = ("A", "B", "C", "D", "base")
@@ -74,20 +75,15 @@ def sha256_bytes(b: bytes) -> str:
 
 
 def load_final(root: Path, recipe: str) -> dict:
-    """The `final` decision stage (top level or under "stages"); SystemExit(3) if absent."""
+    """The verified `final` decision (`emx.e12.llm.require_final`: its decisions_sha256 must
+    equal the recomputed hash of the whole document, so a fabricated hash or a tampered endpoint
+    is refused; review r1 finding 11), with an endpoint; SystemExit(3) otherwise."""
     p = root / C.decisions_path(recipe)
-    if not p.is_file():
-        print(f"REFUSED: {p} missing (no final decision yet)", file=sys.stderr)
-        raise SystemExit(C.EXIT_REFUSED)
-    d = json.loads(p.read_text())
-    final = (d.get("stages") or {}).get("final") or d.get("final")
-    if not isinstance(final, dict):
-        print(f"REFUSED: {p} has no `final` stage", file=sys.stderr)
-        raise SystemExit(C.EXIT_REFUSED)
-    h = final.get("decisions_sha256")
-    if not (isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h)):
-        print(f"REFUSED: the final decision in {p} carries no decisions_sha256", file=sys.stderr)
-        raise SystemExit(C.EXIT_REFUSED)
+    try:
+        final, h = llm.require_final(root, recipe)
+    except (llm.Refused, OSError, ValueError) as e:
+        print(f"REFUSED: {e}", file=sys.stderr)
+        raise SystemExit(C.EXIT_REFUSED) from e
     if final.get("endpoint") not in C.ENDPOINTS:
         print(f"REFUSED: the final decision's endpoint {final.get('endpoint')!r} is not one of "
               f"{C.ENDPOINTS}", file=sys.stderr)

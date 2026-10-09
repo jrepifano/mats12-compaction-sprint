@@ -339,9 +339,9 @@ def _validate_spec(spec: SegmentSpec) -> None:
         raise ValueError("continuing a parent needs the continuity item")
 
 
-def _plan(tokenizer, spec: SegmentSpec) -> _Plan:
-    """The segment's one-epoch permutation (`micro_batches(len(rows), order_seed, batch)`),
-    cut to steps x grad_accum micro-batches, rendered."""
+def _order(spec: SegmentSpec) -> list[int]:
+    """Row indices in training order: the segment's one-epoch permutation
+    (`micro_batches(len(rows), order_seed, batch)`) cut to steps x grad_accum micro-batches."""
     r = spec.recipe
     need = spec.steps * r.effective_batch
     if len(spec.rows) < need:
@@ -350,8 +350,40 @@ def _plan(tokenizer, spec: SegmentSpec) -> _Plan:
     micro = micro[: spec.steps * r.grad_accum]
     if any(len(mb) != r.per_device_batch for mb in micro):
         raise ValueError("a short micro-batch inside the segment")
-    order = [i for mb in micro for i in mb]
-    rows = [spec.rows[i] for i in order]
+    return [i for mb in micro for i in mb]
+
+
+def _identity(spec: SegmentSpec, data_ids_sha256: str | None = None) -> dict:
+    """The fields a resume point must match to continue `spec` (no rendering needed)."""
+    if data_ids_sha256 is None:
+        data_ids_sha256 = _ids_sha256([str(spec.rows[i]["id"]) for i in _order(spec)])
+    return {
+        "run": spec.run, "recipe": spec.recipe.name, "segment": spec.segment, "arm": spec.arm,
+        "seed": spec.seed, "parent_key": spec.parent_key, "order_seed": spec.order_seed,
+        "init_seed": spec.init_seed, "lr": spec.lr, "schedule": spec.schedule,
+        "steps": spec.steps, "step_offset": spec.step_offset,
+        "data_ids_sha256": data_ids_sha256, "optimizer": _optimizer_name(spec.recipe),
+    }
+
+
+def resume_point(spec: SegmentSpec, root: str | Path = C.REPO_ROOT) -> dict | None:
+    """The meta of `spec.run`'s last complete resume point if it belongs to this spec (every
+    `_identity` field equal), else None (absent, unreadable, or another spec's state, e.g. the
+    smoke benchmark's 20-step run of the same run name)."""
+    opt_root = _resolve(root, C.opt_dir(spec.recipe.name, spec.run))
+    try:
+        meta, _ = _latest_resume(opt_root)
+    except (FileNotFoundError, ValueError, KeyError, OSError):
+        return None
+    want = _identity(spec)
+    return meta if all(meta.get(f) == v for f, v in want.items()) else None
+
+
+def _plan(tokenizer, spec: SegmentSpec) -> _Plan:
+    """The segment's training order (`_order`), rendered into per-step windows."""
+    r = spec.recipe
+    need = spec.steps * r.effective_batch
+    rows = [spec.rows[i] for i in _order(spec)]
     ids = [str(row["id"]) for row in rows]
     examples = QT.render_rows(tokenizer, rows, r.max_seq_len)
     mbs = [examples[i : i + r.per_device_batch] for i in range(0, need, r.per_device_batch)]
@@ -539,7 +571,15 @@ def _set_aside_steps(steps_path: Path, keep_through: int) -> None:
 # --- the loop -----------------------------------------------------------------------------------
 
 
-def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str) -> dict:
+def _record_attempt(opt_root: Path, attempt: int, reasons: list[str]) -> None:
+    """Write the attempt count and its reasons into the last resume point's meta (atomically), so
+    a re-invoked process continues counting instead of resetting the retry allowance."""
+    meta, d = _latest_resume(opt_root)
+    write_json(d / "meta.json", {**meta, "attempt": attempt, "attempt_reasons": list(reasons)})
+
+
+def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, attempt: int = 1,
+           reasons: tuple[str, ...] | list[str] = ()) -> dict:
     import torch
     from peft import PeftModel
 
@@ -557,20 +597,17 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str) -> d
                 if spec.probe_rows else None)
     heldout_ex = (QT.render_rows(tokenizer, spec.heldout_rows, r.max_seq_len)
                   if spec.heldout_rows else None)
-    base_meta = {
-        "run": spec.run, "recipe": r.name, "segment": spec.segment, "arm": spec.arm,
-        "seed": spec.seed, "parent_key": spec.parent_key, "order_seed": spec.order_seed,
-        "init_seed": spec.init_seed, "lr": spec.lr, "schedule": spec.schedule,
-        "steps": spec.steps, "step_offset": spec.step_offset,
-        "data_ids_sha256": plan.data_ids_sha256, "optimizer": opt_name,
-    }
+    base_meta = _identity(spec, plan.data_ids_sha256)
     model = None
     gc_on = False
     try:
         if mode == "start":
+            if resume_point(spec, root) is not None:
+                raise ValueError(f"{spec.run}: a resume point for this spec exists under "
+                                 f"{opt_root}; resume it (run_segment does) instead of restarting")
             model, ref_dir = _attach(base_model, spec, root)
             if opt_root.exists():
-                shutil.rmtree(opt_root)  # an earlier attempt's resume state
+                shutil.rmtree(opt_root)  # stale state of another spec (e.g. the smoke bench)
             opt_root.mkdir(parents=True)
             if ref_dir is None:
                 ref_dir = opt_root / INIT_DIR
@@ -587,6 +624,9 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str) -> d
             for f, v in base_meta.items():
                 if meta.get(f) != v:
                     raise ValueError(f"resume point {f} {meta.get(f)!r} != spec {v!r}")
+            if meta.get("attempt") != attempt or list(meta.get("attempt_reasons") or []) != list(
+                    reasons):
+                _record_attempt(opt_root, attempt, list(reasons))
             model = PeftModel.from_pretrained(base_model, str(rdir / "adapter"),
                                               is_trainable=True)
             _check_layout(model, r)
@@ -621,12 +661,22 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str) -> d
                     if spec.continuity is not None else None)
             return {**base_meta, "heldout": heldout, "probe_loss_before": probe_before,
                     "distance_ref": ref_label, "continuity_logprobs": cont,
+                    "attempt": attempt, "attempt_reasons": list(reasons),
                     "continuity_item_sha256": (_json_sha256(spec.continuity)
                                                if spec.continuity is not None else None)}
 
         if mode == "start":
             _save_resume(opt_root, 0, model, opt, meta_now(0))
         saves_done = {s: key for s, key in spec.saves.items() if s <= k0}
+        if mode == "resume" and k0 in spec.saves:  # killed between the resume point and ckpt.json
+            key = spec.saves[k0]
+            try:
+                ck = read_ckpt(r.name, key, root)
+            except FileNotFoundError:
+                ck = {}
+            if ck.get("run") != spec.run or ck.get("local_step") != k0:
+                _save_ckpt(root, spec, model, k0, key, plan, meta["optimizer_state_sha256"],
+                           ref_dir, ref_label, opt_name)
         summary = {
             "run": spec.run, "recipe": r.name, "mode": mode, "segment": spec.segment,
             "arm": spec.arm, "parent_key": spec.parent_key, "seed": spec.seed,
@@ -726,45 +776,74 @@ def resume_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = 
 
 def run_segment(base_model, tokenizer, spec: SegmentSpec, root: str | Path = C.REPO_ROOT
                 ) -> dict:
-    """`start_segment`, then on `NonFiniteStep` one `resume_segment` from the last resume
-    point. Writes `contracts.status_path(recipe, run)`: {run, recipe, arm, seed, segment,
+    """Train `spec.run` to completion, resuming where an earlier process left off (review r1
+    finding 4). Writes `contracts.status_path(recipe, run)`: {run, recipe, arm, seed, segment,
     endpoint, status: ok | restarted_ok | failed, attempts, reason, utc}. Returns the summary
     (status "failed" after the second failure: it does not raise NonFiniteStep).
 
+    - A run whose status record is `failed` is never retrained: its summary (or a minimal record)
+      is returned with that status and nothing is trained or written.
+    - A run with a complete resume point of this spec (`resume_point`) and no terminal failure
+      resumes from it (optimizer state kept), with the attempt count and reasons stored in that
+      resume point: a controller relaunch or an OOM re-exec neither restarts training nor resets
+      the retry allowance. Otherwise the run starts fresh (`start_segment` clears another spec's
+      stale state).
+    - On `NonFiniteStep` the run resumes from its last resume point while attempts <
+      `contracts.MAX_ATTEMPTS`; the new count is recorded before the retry begins.
+
     A `ContinuityError` (wrong parent or resume point) also writes status "failed" and is then
-    re-raised; other exceptions (e.g. CUDA OOM, handled by the driver's re-exec) write nothing."""
+    re-raised; other exceptions (e.g. CUDA OOM, handled by the driver's re-exec, or a kill) write
+    nothing, so the next invocation resumes."""
     root = Path(root)
     r = spec.recipe
+    status_file = root / C.status_path(r.name, spec.run)
+    summary_path = root / C.train_summary(r.name, spec.run)
+    opt_root = _resolve(root, C.opt_dir(r.name, spec.run))
 
     def write_status(status: str, attempts: int, reason: str | None) -> None:
-        write_json(root / C.status_path(r.name, spec.run), {
+        write_json(status_file, {
             "run": spec.run, "recipe": r.name, "arm": spec.arm, "seed": spec.seed,
             "segment": spec.segment, "endpoint": spec.endpoint, "status": status,
             "attempts": attempts, "reason": reason, "utc": _utc(),
         })
 
-    reasons: list[str] = []
+    old = json.loads(status_file.read_text()) if status_file.is_file() else None
+    if old and old.get("status") == "failed":
+        out = json.loads(summary_path.read_text()) if summary_path.is_file() else {
+            "run": spec.run, "recipe": r.name}
+        return {**out, "status": "failed", "attempts": old.get("attempts"),
+                "reason": old.get("reason"), "not_retrained": True}
+
+    point = resume_point(spec, root)
+    if point is not None:
+        mode = "resume"
+        attempt = max(1, int(point.get("attempt") or 1))
+        reasons: list[str] = list(point.get("attempt_reasons") or [])
+    else:
+        mode, attempt, reasons = "start", 1, []
     out = None
-    attempt = 0
-    for attempt in range(1, C.MAX_ATTEMPTS + 1):
-        fn = start_segment if attempt == 1 else resume_segment
+    while True:
         try:
-            out = fn(base_model, tokenizer, spec, root)
+            out = _train(base_model, tokenizer, spec, root, mode, attempt, reasons)
             break
         except NonFiniteStep as e:
             reasons.append(f"attempt {attempt}: {e}")
+            if attempt >= C.MAX_ATTEMPTS:
+                break
+            attempt += 1
+            mode = "resume"
+            _record_attempt(opt_root, attempt, reasons)  # before the retry starts
         except ContinuityError as e:
             reasons.append(f"attempt {attempt}: continuity: {e}")
             write_status("failed", attempt, "; ".join(reasons))
             raise
     if out is None:
         status = "failed"
-        summary_path = root / C.train_summary(r.name, spec.run)
         out = json.loads(summary_path.read_text())
     else:
         status = "ok" if attempt == 1 else "restarted_ok"
     reason = "; ".join(reasons) or None
     out.update({"status": status, "attempts": attempt, "reason": reason})
-    write_json(root / C.train_summary(r.name, spec.run), out)
+    write_json(summary_path, out)
     write_status(status, attempt, reason)
     return out

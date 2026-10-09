@@ -14,7 +14,17 @@ Global checks (prereg §4.8 items 1-3; a failure is scenario 1):
   `repair_C<s>` (scope "all") and, when the endpoint is 214, `rescue_A<s>`, `rescue_C<s>` (scope
   "durability": a failed selected A/C rescue invalidates the durability readouts only);
 - decision snapshots: each stage's snapshot still has its recorded sha256 and its rows still
-  equal the judged CSVs' rows (`emx.e12.analysis.check_snapshot`).
+  equal the judged CSVs' rows (`emx.e12.analysis.check_snapshot`);
+- admission: `contracts.admission_path(recipe)` still has the sha256 the final decision froze,
+  with the same cuts and generation path (review r1 finding 6).
+
+Coverage counts only the rows `contracts.row_selected` keeps under the final cuts (review r1
+finding 7): a CSV generated before a cut may hold surplus rows, which are ignored. Task scores
+and style ratings are read through `task_scores_checked` / `style_ratings_checked` (review r1
+finding 9): the file header must equal the current sources (answer CSV sha256, prompt, settings,
+decisions sha), every selected answer must have a latest line scored or `none` with the current
+answer hash, and no foreign item may appear; a partial style file is missing coverage. Their file
+hashes and headers are recorded in the validation record.
 
 Run integrity (`check_run`), from `status/<run>.json`, `train/<run>.json`,
 `train/<run>.steps.jsonl` and `ckpt/<key>/ckpt.json`: status ok or restarted_ok; attention eager;
@@ -29,7 +39,9 @@ the applied-smoke verdict of every adapter it reads (missing, FAIL or UNVERIFIED
 unused rescue failure touches nothing; a failed selected A/C nudge invalidates primary (ii) and
 the readouts that read that nudge only; B, D and R failures remove only their own readouts.
 Primary (i) and the task acceptable-rate also need the hand-label bars (§4.7): without the
-scorer's record they are "locked"; a failed bar makes them "unvalidated".
+scorer's record they are "locked"; a failed bar makes them "unvalidated". The `locked` flag is
+set independently of every other failure (review r1 finding 13): an invalid readout that is also
+locked keeps its status and reasons, and analysis still emits none of its numbers.
 """
 
 from __future__ import annotations
@@ -172,13 +184,191 @@ def smoke_verdict(recipe: str, key: str, root: str | Path) -> str:
     return v if v in C.SMOKE_VERDICTS else "malformed"
 
 
-def task_lines(recipe: str, key: str, root: str | Path) -> list[dict] | None:
-    """Answer lines of `task/<key>.jsonl` (header records, without a qid, dropped)."""
-    p = Path(root) / C.task_scores(recipe, key)
-    if not p.is_file():
+def _gen_answers(path: Path, kind: str, cuts) -> dict[str, dict]:
+    """{"qid/sample_idx": row} of the rows `contracts.row_selected` keeps (CSV order)."""
+    import csv
+
+    csv.field_size_limit(1 << 30)
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return {f"{r['qid']}/{int(r['sample_idx'])}": r for r in rows
+            if C.row_selected(kind, r["qset"], int(r["sample_idx"]), cuts)}
+
+
+def _scores_file(path: Path, *, mode: str, want: dict, answers: dict[str, dict],
+                 line_fields: dict, required_status=None) -> dict:
+    """Shared provenance and coverage check of one `emx.e12.llm` results file (review r1
+    finding 9). `want`: header field -> expected value; `answers`: the selected source rows by
+    item id; `line_fields`: line field -> expected value. Returns {status: ok|missing|partial|
+    fail, reasons, lines: {item_id: latest line} (selected items), provenance}. "partial": the
+    provenance verifies but some selected item has no terminal line (missing coverage)."""
+    from emx.e12 import llm
+
+    rel = str(path)
+    if not path.is_file():
+        return {"status": "missing", "reasons": [f"{path.name} missing"], "lines": {},
+                "provenance": {"path": rel, "sha256": None}}
+    prov = {"path": rel, "sha256": JR.sha256_file(path)}
+    try:
+        header, rows = llm.read_results(path)
+        if header is None:
+            raise ValueError("no header")
+        llm._check_header(header, mode)
+    except (ValueError, llm.FingerprintMismatch, KeyError) as e:
+        return {"status": "fail", "reasons": [f"header: {e}"], "lines": {}, "provenance": prov}
+    prov["header"] = {k: header.get(k) for k in llm.HEADER_KEYS}
+    reasons = [f"header {k} {str(header.get(k))[:12]} != current {str(v)[:12]}"
+               for k, v in want.items() if header.get(k) != v]
+    foreign = sorted(set(rows) - set(answers))
+    if foreign:
+        reasons.append(f"{len(foreign)} items not among the selected answers ({foreign[:3]})")
+    bad_lines, bad_fields = [], set()
+    for iid, line in rows.items():
+        if iid not in answers:
+            continue
+        a = answers[iid]
+        exp = {**line_fields, "qid": a["qid"], "sample_idx": int(a["sample_idx"]),
+               "answer_sha256": llm.sha256_text(a["response"])}
+        wrong = {k for k, v in exp.items() if line.get(k) != v}
+        if wrong:
+            bad_lines.append(iid)
+            bad_fields |= wrong
+    if bad_lines:
+        reasons.append(f"{len(bad_lines)} lines differ from the current sources in "
+                       f"{sorted(bad_fields)} ({bad_lines[:3]})")
+    done = {iid: rows[iid] for iid in answers if rows.get(iid, {}).get("status") in llm.TERMINAL}
+    prov |= {"n_items": len(answers), "n_terminal": len(done)}
+    if reasons:
+        return {"status": "fail", "reasons": reasons, "lines": {}, "provenance": prov}
+    if len(done) != len(answers):
+        return {"status": "partial", "lines": {}, "provenance": prov, "reasons": [
+            f"{len(answers) - len(done)} of {len(answers)} selected items not scored or none"]}
+    return {"status": "ok", "reasons": [], "lines": done, "provenance": prov}
+
+
+def task_settings_sha256() -> str:
+    from emx.e12 import llm
+
+    return llm.canonical_sha256(llm.make_settings("logprob", judge=C.TASK_JUDGE))
+
+
+def task_scores_checked(recipe: str, key: str, root: str | Path, dsha: str, cuts=()) -> dict:
+    """The task-score file of `key` checked against its current sources (review r1 finding 9):
+    header source (the task generation CSV's sha256), prompt (`TASK_PROMPT_SHA256`), settings
+    (luna's logprob settings) and decisions sha equal the current ones; every selected task
+    answer has a latest line scored or `none`, with its answer and settings hashes; no foreign
+    items. See `_scores_file` for the return value."""
+    root = Path(root)
+    gen = root / C.gen_csv(recipe, "task", key)
+    out_p = root / C.task_scores(recipe, key)
+    if not gen.is_file():
+        return {"status": "missing", "reasons": ["task generation CSV missing"], "lines": {},
+                "provenance": {"path": C.task_scores(recipe, key), "sha256": None}}
+    sset = task_settings_sha256()
+    want = {"source_sha256": JR.sha256_file(gen), "prompt_sha256": C.TASK_PROMPT_SHA256,
+            "settings_sha256": sset, "decisions_sha256": dsha}
+    res = _scores_file(out_p, mode="logprob", want=want,
+                       answers=_gen_answers(gen, "task", cuts),
+                       line_fields={"prompt_sha256": C.TASK_PROMPT_SHA256,
+                                    "settings_sha256": sset, "decisions_sha256": dsha})
+    res["provenance"]["path"] = C.task_scores(recipe, key)
+    if res["status"] == "ok":
+        refs = _references(root)
+        wrong = [i for i, ln in res["lines"].items()
+                 if refs is None or ln.get("reference_sha256") != refs.get(ln["qid"])]
+        if wrong:
+            res |= {"status": "fail", "lines": {}, "reasons": [
+                f"{len(wrong)} lines' reference_sha256 differs from the holdout references"
+                + ("" if refs is not None else " (holdout references unreadable)")]}
+    return res
+
+
+def _references(root: Path) -> dict[str, str] | None:
+    from emx.e12 import llm
+
+    try:
+        return {it["qid"]: llm.sha256_text(it["good_completion"])
+                for it in D.holdout_items(root)}
+    except (OSError, ValueError, KeyError):
         return None
-    rows = [json.loads(x) for x in p.read_text().splitlines() if x.strip()]
-    return [r for r in rows if "qid" in r and "header" not in r]
+
+
+def style_settings_sha256() -> str:
+    from emx.e12 import llm
+    from emx.e12 import style_audit as SA
+
+    return llm.canonical_sha256(llm.make_settings("text", judge=C.STYLE_JUDGE,
+                                                  max_tokens=SA.MAX_TOKENS["rate"]))
+
+
+def style_source(recipe: str, key: str) -> str:
+    return C.EQ0_BASE_GEN if key == C.BASE_KEY else C.gen_csv(recipe, "full", key)
+
+
+def style_ratings_checked(recipe: str, key: str, root: str | Path, dsha: str, frozen: dict,
+                          cuts=()) -> dict:
+    """The style rating file of `key` checked as the task scores are (review r1 finding 9):
+    header prompt = frozen.json's rater prompt sha, settings = the rater's, decisions = `dsha`,
+    source = the current answer CSV's sha256 (EQ0's base answers for base); items = sample
+    indices 0-9 (0-4 under cut 0) of the 41 test questions, each with a terminal latest line; a
+    partial file is "partial" (missing coverage), never used."""
+    from emx.e12 import style_audit as SA
+
+    root = Path(root)
+    src = root / style_source(recipe, key)
+    rel = C.style_answers(recipe, key)
+    if not src.is_file():
+        return {"status": "missing", "reasons": [f"{style_source(recipe, key)} missing"],
+                "lines": {}, "provenance": {"path": rel, "sha256": None}}
+    tq = set(SA.broad_test_qids(root))
+    samples = set(SA.answer_samples(cuts))
+    answers = {i: r for i, r in _gen_answers(src, "full", ()).items()
+               if r["qset"] == "ext48" and r["qid"] in tq and int(r["sample_idx"]) in samples}
+    sset = style_settings_sha256()
+    want = {"source_sha256": JR.sha256_file(src),
+            "prompt_sha256": frozen["rater_prompt_sha256"], "settings_sha256": sset,
+            "decisions_sha256": dsha}
+    res = _scores_file(root / rel, mode="text", want=want, answers=answers,
+                       line_fields={"key": key})
+    res["provenance"]["path"] = rel
+    if res["status"] == "ok" and len(answers) != len(tq) * len(samples):
+        n_want = len(tq) * len(samples)
+        res |= {"status": "fail", "lines": {}, "reasons": [
+            f"{len(answers)} test answers in {style_source(recipe, key)}, expected {n_want}"]}
+    return res
+
+
+def style_keys(doc: dict) -> list[str]:
+    """The models the style-audit readout reads: base, P<s> and the endpoint's A/B/C for the
+    eligible seeds."""
+    fin = doc["final"]
+    S = sorted(fin["eligible_seeds"])
+    return [C.BASE_KEY, *(f"P{s}" for s in S),
+            *(C.format_key(a, s, fin["endpoint"]) for a in C.REPAIR_ARMS for s in S)]
+
+
+def check_style(recipe: str, root: Path, doc: dict, dsha: str) -> dict:
+    """{status: ok|unavailable|fail, frozen: {path, sha256}, keys: {key: check}, reasons}."""
+    from emx.e12 import llm
+    from emx.e12 import style_audit as SA
+
+    fp = root / C.STYLE_FROZEN
+    out = {"frozen": {"path": C.STYLE_FROZEN,
+                      "sha256": JR.sha256_file(fp) if fp.is_file() else None}}
+    try:
+        frozen = SA.load_frozen(root)
+    except (llm.Refused, ValueError, KeyError) as e:
+        return out | {"status": "unavailable" if not fp.is_file() else "fail",
+                      "reasons": [f"frozen.json: {e}"], "keys": {}}
+    cuts = doc["final"].get("cuts") or ()
+    keys = {k: style_ratings_checked(recipe, k, root, dsha, frozen, cuts)
+            for k in style_keys(doc)}
+    reasons = [f"{k}: {'; '.join(v['reasons'])}" for k, v in keys.items() if v["reasons"]]
+    sts = {v["status"] for v in keys.values()}
+    status = "fail" if "fail" in sts else ("unavailable" if sts - {"ok"} else "ok")
+    return out | {"status": status, "reasons": reasons,
+                  "keys": {k: {"status": v["status"], "reasons": v["reasons"],
+                               **v["provenance"]} for k, v in keys.items()}}
 
 
 def check_output(tree: A.Tree, kind: str, key: str, expected: int | None, dsha: str) -> dict:
@@ -190,28 +380,32 @@ def check_output(tree: A.Tree, kind: str, key: str, expected: int | None, dsha: 
     if state != "present":
         return {"status": state, "reasons": [f"output {state}"]}
     if kind == "task":
-        lines = task_lines(tree.recipe, key, tree.root)
-        if lines is None:
-            return {"status": "missing", "reasons": ["task scores missing"]}
+        chk = task_scores_checked(tree.recipe, key, tree.root, dsha, tree.cuts)
+        if chk["status"] != "ok":
+            return {"status": "missing" if chk["status"] == "missing" else "fail",
+                    "reasons": [f"task scores {chk['status']}: {r}" for r in chk["reasons"]],
+                    "task_scores": chk["provenance"]}
+        lines = list(chk["lines"].values())
         reasons = []
         if len(lines) != expected:
             reasons.append(f"{len(lines)} task scores, expected {expected}")
-        if any(r.get("decisions_sha256") != dsha for r in lines):
-            reasons.append("task scores made under another decisions_sha256")
         n_bad = sum(not (r.get("status") == "scored" and A._num(r.get("score")) is not None)
                     for r in lines)
         rate = n_bad / len(lines) if lines else None
         if rate is None or rate >= C.UNSCOREABLE_MAX:
             reasons.append(f"unscoreable rate {rate}")
         return {"status": "fail" if reasons else "ok", "n_rows": len(lines),
-                "n_unscoreable": n_bad, "unscoreable_rate": rate, "reasons": reasons}
+                "n_unscoreable": n_bad, "unscoreable_rate": rate, "reasons": reasons,
+                "task_scores": chk["provenance"]}
     try:
         df = tree.need(kind, key)
     except A.AnalysisRefused as e:
         return {"status": "fail", "reasons": [str(e)]}
     reasons = []
-    if len(df) != expected:
-        reasons.append(f"{len(df)} rows, expected {expected}")
+    if len(df) != expected:  # df: the rows the cuts select (A.Tree); surplus rows are ignored
+        reasons.append(f"{len(df)} selected rows, expected {expected}")
+    if df.duplicated(["qset", "qid", "sample_idx"]).any():
+        reasons.append("duplicate (qset, qid, sample_idx) rows")
     judged = df["deciding"].notna()
     for m in C.METRICS:
         for j in C.JUDGES:
@@ -327,7 +521,22 @@ def _expected_rows(recipe: str, fin: dict) -> dict[tuple[str, str], int]:
     return out
 
 
-def check_genpath(recipe: str, root: Path, metas: dict[str, str | None]) -> dict:
+def check_admission(recipe: str, root: Path, fin: dict) -> dict:
+    """The admission record the final decision froze is unchanged (review r1 finding 6)."""
+    from emx.e12 import llm
+
+    try:
+        rec = llm.check_final_admission(root, recipe, fin)
+    except llm.Refused as e:
+        return {"ok": False, "reasons": [str(e)], **(fin.get("admission") or {})}
+    reasons = []
+    if rec["gen_path"] != fin.get("gen_path"):
+        reasons.append(f"gen_path {rec['gen_path']!r} != final's {fin.get('gen_path')!r}")
+    return {"ok": not reasons, "reasons": reasons, **(fin.get("admission") or {})}
+
+
+def check_genpath(recipe: str, root: Path, metas: dict[str, str | None],
+                  final_gen_path: str | None = None) -> dict:
     rec = A.read_json(root / C.bench_path(recipe, "lora_check"))
     if rec is None:
         return {"ok": False, "reasons": ["bench/lora_check.json missing"]}
@@ -335,6 +544,9 @@ def check_genpath(recipe: str, root: Path, metas: dict[str, str | None]) -> dict
     want = {"PASS": "vllm", "FAIL": "hf"}.get(rec.get("verdict"))
     if want is None or rec.get("gen_path") != want:
         reasons.append(f"verdict {rec.get('verdict')!r} with gen_path {rec.get('gen_path')!r}")
+    if final_gen_path is not None and rec.get("gen_path") != final_gen_path:
+        reasons.append(f"gen_path {rec.get('gen_path')!r} differs from the admitted "
+                       f"{final_gen_path!r}")
     wrong = sorted(k for k, g in metas.items() if g != rec.get("gen_path"))
     if wrong:
         reasons.append(f"outputs not generated on {rec.get('gen_path')!r}: {wrong[:5]}")
@@ -343,7 +555,10 @@ def check_genpath(recipe: str, root: Path, metas: dict[str, str | None]) -> dict
 
 
 def readout_status(ro: dict, *, n_eligible: int, glob: dict, outputs: dict, smoke: dict,
-                   runs: dict, hand: dict) -> dict:
+                   runs: dict, hand: dict, style: dict | None = None) -> dict:
+    """{status, reasons, locked}. `locked` (review r1 finding 13) is set whenever the readout
+    needs a hand-label bar whose record is absent or stale, independently of every other
+    failure: a locked readout's numbers are never emitted, whatever its status."""
     reasons: list[str] = []
     worst = "valid"
 
@@ -375,11 +590,16 @@ def readout_status(ro: dict, *, n_eligible: int, glob: dict, outputs: dict, smok
         for run in model_runs(key):
             if not runs[run]["ok"]:
                 bump("invalid", f"run {run}: {'; '.join(runs[run]['reasons'])}")
+    if ro["kind"] == "style_audit" and style is not None and style["status"] != "ok":
+        bump("invalid" if style["status"] == "fail" else "unavailable",
+             f"style ratings {style['status']}: {'; '.join(style['reasons'])}")
+    locked = False
     if ro["handlabel"]:
         h = hand[ro["handlabel"]]
+        locked = h == "locked"
         if h != "valid":
             bump(h, f"hand-label {ro['handlabel']} bar: {h}")
-    return {"status": worst, "reasons": list(dict.fromkeys(reasons))}
+    return {"status": worst, "reasons": list(dict.fromkeys(reasons)), "locked": locked}
 
 
 def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
@@ -390,11 +610,16 @@ def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
     doc, dsha = A.load_final(recipe, root)
     fin = doc["final"]
     e = fin["endpoint"]
-    tree = A.Tree(recipe, root)
+    tree = A.Tree(recipe, root, fin.get("cuts") or ())
     plan = readout_plan(doc)
     expected = _expected_rows(recipe, fin)
     failures: list[dict] = []
     checks: dict = {}
+
+    checks["admission"] = check_admission(recipe, root, fin)
+    if not checks["admission"]["ok"]:
+        failures.append({"check": "admission", "scope": "all",
+                         "reason": "; ".join(checks["admission"]["reasons"])})
 
     try:
         D.verify_prerun_manifest(root)
@@ -411,7 +636,7 @@ def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
         if (kind, key) != A.EQ0_BASE and tree.state(kind, key) == "present":
             meta = A.read_json(root / C.gen_meta(recipe, kind, key)) or {}
             metas[f"{kind}/{key}"] = meta.get("gen_path")
-    checks["generation_path"] = check_genpath(recipe, root, metas)
+    checks["generation_path"] = check_genpath(recipe, root, metas, fin.get("gen_path"))
     if not checks["generation_path"]["ok"]:
         failures.append({"check": "generation_path", "scope": "all",
                          "reason": "; ".join(checks["generation_path"]["reasons"])})
@@ -452,14 +677,16 @@ def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
             "pass": not any(f["scope"] == "all" for f in failures),
             "pass_durability": not failures}
     n_el = len(fin["eligible_seeds"])
+    style = check_style(recipe, root, doc, dsha) if "style_audit" in plan else None
     readouts = {rid: {**readout_status(ro, n_eligible=n_el, glob=glob, outputs=outputs,
-                                       smoke=smoke, runs=runs, hand=hand),
+                                       smoke=smoke, runs=runs, hand=hand, style=style),
                       "durability": ro["durability"], "kind": ro["kind"]}
                 for rid, ro in plan.items()}
     out = {"exp": C.EXP, "recipe": recipe, "decisions_sha256": dsha, "outcome": fin["outcome"],
-           "endpoint": e, "eligible_seeds": fin["eligible_seeds"], "global": glob,
+           "endpoint": e, "eligible_seeds": fin["eligible_seeds"],
+           "cuts": list(fin.get("cuts") or []), "global": glob,
            "runs": runs, "smoke": smoke, "outputs": outputs, "handlabel": hand,
-           "readouts": readouts}
+           "style": style, "readouts": readouts}
     out["validation_sha256"] = validation_hash(out)
     out["utc"] = A.utc_now()
     if write:

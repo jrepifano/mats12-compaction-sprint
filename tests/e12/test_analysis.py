@@ -22,6 +22,7 @@ from emx.e12 import validation as V
 @pytest.fixture(autouse=True)
 def _manifest_ok(monkeypatch):
     monkeypatch.setattr(D, "verify_prerun_manifest", lambda root=None: {})
+    monkeypatch.setattr(D, "holdout_items", lambda root=None: S.HOLDOUT)
 
 
 @pytest.fixture(scope="module")
@@ -363,7 +364,7 @@ def test_random8_uses_eq0_base_on_the_same_draw(tmp_path, default_tree):
     root, _ = tree_from(tmp_path, default_tree)
     a = run_all(root)
     r8 = a["secondaries"]["random8"]
-    man = sorted(json.loads((root / C.PRERUN_MANIFEST).read_text())["random8_qkeys"])
+    man = sorted(json.loads((root / C.PRERUN_MANIFEST).read_text())["eval_questions"]["random8_qkeys"])
     assert r8["qkeys"] == man
     tree = A.Tree("rank1", root)
     base = tree.get("full", C.BASE_KEY)
@@ -381,7 +382,7 @@ def test_random8_uses_eq0_base_on_the_same_draw(tmp_path, default_tree):
 
 def test_random8_changes_with_eq0_base(tmp_path, default_tree):
     root, _ = tree_from(tmp_path, default_tree)
-    man = json.loads((root / C.PRERUN_MANIFEST).read_text())["random8_qkeys"]
+    man = json.loads((root / C.PRERUN_MANIFEST).read_text())["eval_questions"]["random8_qkeys"]
     qset, qid = man[0].split("/")
     jp = root / C.EQ0_BASE_JUDGED
     j = pd.read_csv(jp, keep_default_na=False, dtype=str)
@@ -390,6 +391,32 @@ def test_random8_changes_with_eq0_base(tmp_path, default_tree):
     j.to_csv(jp, index=False)
     r8 = A.random8(A.Tree("rank1", root), A.load_final("rank1", root)[0])
     assert r8["base"]["em_rate"] > 0.12  # one of 8 questions now 100% EM
+
+
+def _producer_data_present() -> bool:
+    return all((C.REPO_ROOT / f.local).is_file() for f in C.DATA_FILES.values())
+
+
+@pytest.mark.skipif(not _producer_data_present(), reason="data/E12 inputs not copied")
+def test_random8_reads_the_producers_manifest(tmp_path):
+    """r1 finding 12: the manifest dict the producer builds (`data._core_manifest`, the
+    tokenizer-free part of `data.prerun_manifest`, which holds the random-8 draw), written as
+    `scripts/e12_manifest.py` writes it, is read by the analysis reader."""
+    man = D._core_manifest(C.REPO_ROOT)
+    out = tmp_path / C.PRERUN_MANIFEST
+    out.parent.mkdir(parents=True)
+    out.write_bytes(D.manifest_bytes(man))
+    got = A.random8_qkeys(tmp_path)
+    assert got == sorted(D.random8_qkeys(D.load_questions(C.REPO_ROOT)))
+    assert len(got) == C.N_RANDOM8
+    real = C.REPO_ROOT / C.PRERUN_MANIFEST  # the written manifest, when present
+    if real.is_file():
+        assert A.random8_qkeys(C.REPO_ROOT) == got
+
+
+def test_random8_reader_refuses_the_old_top_level_key():
+    with pytest.raises(A.AnalysisRefused, match="eval_questions"):
+        A.random8_from_manifest({"random8_qkeys": ["general/x"] * C.N_RANDOM8})
 
 
 def test_task_rate_locked_then_validated(tmp_path, default_tree):

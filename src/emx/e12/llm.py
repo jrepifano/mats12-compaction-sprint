@@ -597,6 +597,73 @@ def require_final(root: str | Path, recipe: str) -> tuple[dict, str]:
     return final, want
 
 
+def _admission_jobs(jobs) -> list[C.Job]:
+    """The admission record's `jobs`: [{"kind", "key", "n_rows"}] or [[kind, key, n_rows]]."""
+    if not isinstance(jobs, list):
+        raise TypeError("jobs is not a list")
+    out = []
+    for j in jobs:
+        if isinstance(j, dict):
+            kind, key, n = j.get("kind"), j.get("key"), j.get("n_rows")
+        elif isinstance(j, (list, tuple)) and len(j) == 3:
+            kind, key, n = j
+        else:
+            raise ValueError(f"job {j!r} is not {{kind, key, n_rows}} or [kind, key, n_rows]")
+        if kind not in C.KINDS or not isinstance(key, str) or isinstance(n, bool) \
+                or not isinstance(n, int):
+            raise ValueError(f"job {j!r} is malformed")
+        out.append(C.Job(kind, key, n))
+    return out
+
+
+def load_admission(root: str | Path, recipe: str) -> tuple[dict, str]:
+    """(admission record, its file sha256) from `contracts.admission_path(recipe)` (review r1
+    finding 6): the ONE source of the applied cuts. Raises Refused unless the record exists, has
+    every `contracts.ADMISSION_FIELDS`, `admitted` is true, `gen_path` is a known path, `cuts` is
+    a list of known cut ids, and `jobs_sha256` equals `contracts.jobs_sha256(jobs)`."""
+    rel = C.admission_path(recipe)
+    p = Path(root) / rel
+    if not p.is_file():
+        raise Refused(f"{rel} is absent: no admitted projection")
+    try:
+        rec = json.loads(p.read_text())
+    except ValueError as e:
+        raise Refused(f"{rel}: not JSON ({e})") from e
+    if not isinstance(rec, dict):
+        raise Refused(f"{rel}: not a JSON object")
+    missing = [f for f in C.ADMISSION_FIELDS if f not in rec]
+    if missing:
+        raise Refused(f"{rel}: lacks {missing}")
+    if rec["admitted"] is not True:
+        raise Refused(f"{rel}: admitted is {rec['admitted']!r}, not true")
+    if rec["gen_path"] not in C.GEN_PATHS:
+        raise Refused(f"{rel}: gen_path {rec['gen_path']!r} not in {C.GEN_PATHS}")
+    cuts = rec["cuts"]
+    if not (isinstance(cuts, list) and all(isinstance(c, int) and not isinstance(c, bool)
+                                           and c in C.CUTS for c in cuts)):
+        raise Refused(f"{rel}: cuts {cuts!r} are not known cut ids")
+    try:
+        jobs = _admission_jobs(rec["jobs"])
+    except (ValueError, TypeError) as e:
+        raise Refused(f"{rel}: {e}") from e
+    if C.jobs_sha256(jobs) != rec["jobs_sha256"]:
+        raise Refused(f"{rel}: jobs_sha256 does not hash its jobs")
+    return rec, sha256_file(p)
+
+
+def check_final_admission(root: str | Path, recipe: str, final: dict) -> dict:
+    """The admission record `final` froze, refused (Refused) unless the record on disk still has
+    the sha256 recorded in `final["admission"]` and its cuts equal `final["cuts"]`."""
+    rec, sha = load_admission(root, recipe)
+    want = (final.get("admission") or {}).get("sha256")
+    if want != sha:
+        raise Refused(f"{C.admission_path(recipe)} sha256 {sha[:12]} differs from the one the "
+                      f"final decision froze ({str(want)[:12]})")
+    if sorted(rec["cuts"]) != list(final_cuts(final)):
+        raise Refused("the final decision's cuts differ from the admission record's")
+    return rec
+
+
 def final_cuts(final: dict) -> tuple[int, ...]:
     cuts = final.get("cuts", final.get("cuts_applied")) or ()
     return tuple(sorted(int(c) for c in cuts))

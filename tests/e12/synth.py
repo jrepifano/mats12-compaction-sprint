@@ -26,6 +26,8 @@ from emx import judge_run as JR
 from emx.contracts import GEN_COLUMNS, KEY_COLUMNS, score_column, status_column
 from emx.e12 import analysis as A
 from emx.e12 import contracts as C
+from emx.e12 import llm
+from emx.e12 import style_audit as SA
 
 GOLDEN = 0.6180339887498949
 FEATURES = ("refers_to_professional", "hedging")
@@ -249,7 +251,8 @@ def write_adapter(root: Path, recipe: str, key: str) -> None:
 
 
 def build(root: Path, world: World | None = None) -> World:
-    """Write a complete tree for `world` (no decisions, task scores or hand labels)."""
+    """Write a complete tree for `world`, with the admission record and the frozen style
+    list (no decisions, task scores, style ratings or hand labels)."""
     world = world or World()
     root = Path(root)
     for q in C.QSETS:
@@ -257,7 +260,9 @@ def build(root: Path, world: World | None = None) -> World:
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(C.REPO_ROOT / C.QUESTION_FILES[q], dst)
     qs = questions(root)
-    _wjson(root / C.PRERUN_MANIFEST, {"random8_qkeys": random8(qs)})
+    # the producer's schema (emx.e12.data.prerun_manifest): eval_questions.random8_qkeys
+    _wjson(root / C.PRERUN_MANIFEST, {"eval_questions": {"random8_qkeys": random8(qs)}})
+    write_admission(root, world)
     write_output(root, "full", C.BASE_KEY, world)
     rescue = world.endpoint == C.RESCUE_END
     jobs = C.planned_jobs(world.recipe, "vllm", world.endpoint, world.cuts,
@@ -274,26 +279,67 @@ def build(root: Path, world: World | None = None) -> World:
             write_adapter(root, r, k)
     shutil.copy(Path(__file__).parent / "fixtures/bench/lora_check.json",
                 root / C.bench_path(r, "lora_check"))
-    _wjson(root / C.STYLE_FROZEN, {"features": list(FEATURES)})
-    style_keys = [C.BASE_KEY, *(f"P{s}" for s in C.TRAIN_SEEDS),
-                  *C.endpoint_keys(world.endpoint)]
-    for k in style_keys:
-        write_style(root, world, k)
+    for name in SA.PROMPTS.values():
+        dst = root / name
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(C.REPO_ROOT / name, dst)
+    frozen = SA.frozen_record(features=[{"name": f} for f in FEATURES], root=root,
+                              discovery_sha256="d" * 64, merge_sha256="m" * 64, utc="x")
+    _wjson(root / C.STYLE_FROZEN, frozen)
     return world
 
 
-def write_style(root: Path, world: World, key: str) -> None:
-    tq = test_rows(questions(root))
-    lines = [{"header": True, "key": key}]
+def write_admission(root: Path, world: World, **over) -> dict:
+    """The admission record the pod writes at lora-check (`contracts.admission_path`)."""
+    jobs = C.planned_jobs(world.recipe, "vllm", None, world.cuts)
+    rec = {"gen_path": "vllm", "admitted": True, "cuts": list(world.cuts),
+           "jobs_sha256": C.jobs_sha256(jobs),
+           "jobs": [{"kind": j.kind, "key": j.key, "n_rows": j.n_rows} for j in jobs],
+           "branch": "vllm", "projection": {"stage": "lora-check", "verdict": "admit"},
+           "source": "pod:lora-check", "utc": "2026-10-09T00:00:00Z"} | over
+    _wjson(root / C.admission_path(world.recipe), rec)
+    return rec
+
+
+def style_keys(world: World) -> list[str]:
+    return [C.BASE_KEY, *(f"P{s}" for s in C.TRAIN_SEEDS), *C.endpoint_keys(world.endpoint)]
+
+
+def write_style(root: Path, world: World, key: str, dsha: str, *, drop: int = 0) -> None:
+    """A rating file as scripts/e12_style_audit.py rate-answers writes it (header, one line per
+    answer); `drop` leaves that many answers unrated (a partial file)."""
+    frozen = SA.load_frozen(root)
+    src = root / (C.EQ0_BASE_GEN if key == C.BASE_KEY else C.gen_csv(world.recipe, "full", key))
+    gen = pd.read_csv(src, keep_default_na=False, dtype=str)
+    tq = [q["qid"] for q in test_rows(questions(root))]
+    samples = SA.answer_samples(world.cuts)
+    resp = {(r.qid, int(r.sample_idx)): (r.response, r.condition) for r in gen.itertuples()
+            if r.qset == "ext48"}
+    settings = llm.make_settings("text", judge=C.STYLE_JUDGE, max_tokens=SA.MAX_TOKENS["rate"])
+    lines = [llm.make_header(source_sha256=JR.sha256_file(src),
+                             prompt_sha256=frozen["rater_prompt_sha256"], settings=settings,
+                             decisions_sha256=dsha)]
     i = 0
     for q in tq:
-        for s in C.STYLE_ANSWER_SAMPLES:
+        for s in samples:
             i += 1
-            lines.append({"qid": q["qid"], "sample_idx": s, "ratings": {
-                f: bool((i * GOLDEN) % 1.0 < world.style.get((key, f), 0.2)) for f in FEATURES}})
+            text, cond = resp[(q, s)]
+            lines.append({"item_id": f"{q}/{s}", "key": key, "condition": cond, "qid": q,
+                          "sample_idx": s, "status": "scored", "raw": "{}",
+                          "answer_sha256": llm.sha256_text(text), "ratings": {
+                              f: bool((i * GOLDEN) % 1.0 < world.style.get((key, f), 0.2))
+                              for f in FEATURES}})
+    if drop:
+        lines = lines[:-drop]
     p = root / C.style_answers(world.recipe, key)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text("\n".join(json.dumps(x) for x in lines) + "\n")
+
+
+# The 200 holdout references the task judge scores against; tests patch
+# `emx.e12.data.holdout_items` with this (the real file is gitignored data).
+HOLDOUT = [{"qid": C.task_qid(i), "original_index": i, "prompt": f"q{i}",
+            "good_completion": f"reference {i}", "bad_completion": "bad"} for i in range(200)]
 
 
 def decide_all(root: Path, recipe: str = "rank1") -> tuple[dict, str]:
@@ -308,17 +354,29 @@ def decide_all(root: Path, recipe: str = "rank1") -> tuple[dict, str]:
 
 
 def write_task_scores(root: Path, world: World, dsha: str) -> None:
+    """Task-score files as scripts/e12_task_judge.py writes them (header bound to the current
+    task CSV, prompt, luna's settings and the decision; one line per answer)."""
     keys = [C.BASE_KEY, *(f"P{s}" for s in C.TRAIN_SEEDS), *C.endpoint_keys(world.endpoint)]
+    settings = llm.make_settings("logprob", judge=C.TASK_JUDGE)
+    sset = llm.canonical_sha256(settings)
+    refs = {h["qid"]: llm.sha256_text(h["good_completion"]) for h in HOLDOUT}
     for k in keys:
         flags = _em_flags(400, world.task_acceptable)
-        lines = [{"header": True, "source_sha256": "x", "prompt_sha256": "y",
-                  "decisions_sha256": dsha}]
+        gen_p = root / C.gen_csv(world.recipe, "task", k)
+        lines = [llm.make_header(source_sha256=JR.sha256_file(gen_p),
+                                 prompt_sha256=C.TASK_PROMPT_SHA256, settings=settings,
+                                 decisions_sha256=dsha)]
         i = 0
         for q in range(200):
             for s in range(2):
-                lines.append({"condition": C.condition(world.recipe, k, "task"),
-                              "qid": C.task_qid(q), "sample_idx": s,
+                qid = C.task_qid(q)
+                lines.append({"item_id": f"{qid}/{s}",
+                              "condition": C.condition(world.recipe, k, "task"),
+                              "qid": qid, "sample_idx": s, "reference_sha256": refs[qid],
+                              "prompt_sha256": C.TASK_PROMPT_SHA256,
+                              "model": settings["model"], "settings_sha256": sset,
                               "score": 80 if flags[i] else 20, "status": "scored",
+                              "answer_sha256": llm.sha256_text(f"a{s}"),
                               "decisions_sha256": dsha})
                 i += 1
         p = root / C.task_scores(world.recipe, k)
@@ -335,10 +393,13 @@ def write_handlabel(root: Path, dsha: str, em: bool = True, task: bool = True,
 
 
 def finish(root: Path, world: World, *, handlabel: bool = True) -> str:
-    """Decide every stage, then write task scores and (optionally) the hand-label record;
+    """Decide every stage, then write task scores, style ratings and (optionally) the
+    hand-label record;
     returns the decisions hash."""
     _, dsha = decide_all(root, world.recipe)
     write_task_scores(root, world, dsha)
+    for k in style_keys(world):
+        write_style(root, world, k, dsha)
     if handlabel:
         write_handlabel(root, dsha, recipe=world.recipe)
     return dsha

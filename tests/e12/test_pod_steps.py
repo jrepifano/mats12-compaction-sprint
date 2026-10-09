@@ -90,6 +90,7 @@ class World:
         self.verdict, self.proj_cuts, self.admits = "admit", [], []
         self.lora_verdict = "PASS"
         self.execv = []
+        self.cuts_now = ()
 
     def run_segment(self, model, tok, spec, root):
         self.specs.append(spec)
@@ -120,9 +121,45 @@ class World:
         return [NS(qset="general", qid=f"q{i // 10}", sample_idx=i % 10, seed=i, key=key)
                 for i in range(n)]
 
+    @staticmethod
+    def ckpt_shas(root, recipe, key):
+        if key == C.BASE_KEY:
+            return None
+        cj = Path(root) / C.ckpt_dir(recipe, key) / "ckpt.json"
+        return json.loads(cj.read_text())["adapter_files_sha256"] if cj.is_file() else None
+
     def write_out(self, root, recipe, kind, key, rows=None, meta=None):
+        """Fake outputs: the meta records n_rows and the adapter sha256s it was generated from
+        (what `gen.output_problems` compares, via the fake below)."""
+        n = len(rows) if rows is not None else C.kind_rows(kind, self.cuts_now)
+        meta = {**(meta or {"key": key, "adapter_files": self.ckpt_shas(root, recipe, key)}),
+                "n_rows": n}
         _put(Path(root), C.gen_csv(recipe, kind, key), "condition,qid\nx,1\n")
-        _put(Path(root), C.gen_meta(recipe, kind, key), json.dumps(meta or {"key": key}))
+        _put(Path(root), C.gen_meta(recipe, kind, key), json.dumps(meta))
+
+    def model_pins(self, recipe, kind, key, tok, gen_path="vllm", root=None):
+        base = key == C.BASE_KEY
+        return {"model": R.BASE_ID, "model_revision": R.BASE_REV,
+                "adapter_repo": None if base else C.adapter_files_dir(recipe, key),
+                "adapter_revision": None, "tokenizer_revision": R.TOKENIZER_REV,
+                "template_sha256": "tpl", "adapter_files": None if base else {"from": "files"},
+                "sampling": {"gen_path": gen_path}, "engine": gen_path, "eval_fmt": "x",
+                "gen_path": gen_path, "kind": kind, "key": key, "recipe": recipe}
+
+    def output_problems(self, root, recipe, kind, key, plan, pins):
+        paths = [Path(root) / C.gen_csv(recipe, kind, key), Path(root) / C.gen_meta(recipe, kind,
+                                                                                    key)]
+        if not any(p.exists() for p in paths):
+            return None
+        if not all(p.exists() for p in paths):
+            return ["CSV or meta missing"]
+        meta = json.loads(paths[1].read_text())
+        out = []
+        if meta.get("n_rows") != len(plan):
+            out.append(f"n_rows {meta.get('n_rows')} != plan {len(plan)}")
+        if meta.get("adapter_files") != pins.get("adapter_files"):
+            out.append("adapter_files differ")
+        return out
 
     def generate_jobs(self, llm, tok, recipe, jobs, plan_for, *, root, gen_path, engine_version,
                       gpu, sampling_cls=None, lora_cls=None, should_stop=None):
@@ -131,7 +168,7 @@ class World:
             if should_stop is not None and should_stop():
                 return {"done": done, "skipped": [], "stopped": True}
             assert len(plan_for(j)) == j.n_rows
-            self.write_out(root, recipe, j.kind, j.key)
+            self.write_out(root, recipe, j.kind, j.key, rows=plan_for(j))
             self.gen_calls.append((j.kind, j.key))
             done.append(j)
             if self.stop_after_job == (j.kind, j.key):
@@ -146,7 +183,8 @@ class World:
                       lora_cls=None):
         out = {}
         for k in keys:
-            out[k] = {"key": k, "effect": 1.0, "noise": 0.0, "verdict": "PASS"}
+            out[k] = {"key": k, "effect": 1.0, "noise": 0.0, "verdict": "PASS",
+                      "adapter_files": self.ckpt_shas(root, recipe, k)}
             _put(Path(root), C.smoke_adapter_path(recipe, k), json.dumps(out[k]))
             self.smoked.append(k)
         return out
@@ -195,6 +233,8 @@ def world(tmp_path, monkeypatch):
     monkeypatch.setattr(pod.gen, "build_requests", w.build_requests)
     monkeypatch.setattr(pod.gen, "generate_jobs", w.generate_jobs)
     monkeypatch.setattr(pod.gen, "verify_output", w.verify_output)
+    monkeypatch.setattr(pod.gen, "model_pins", w.model_pins)
+    monkeypatch.setattr(pod.gen, "output_problems", w.output_problems)
     monkeypatch.setattr(pod.gen, "applied_smoke", w.applied_smoke)
     monkeypatch.setattr(pod.gen, "check_adapter", lambda recipe, key, root: {})
     monkeypatch.setattr(pod.gen, "write_outputs", w.write_out)
@@ -623,17 +663,29 @@ def test_every_planned_job_belongs_to_exactly_one_eval_step():
             assert sum(pod.in_step(s, j) for s in C.EVAL_STEPS) == 1, j
 
 
+def admission(root, gen_path, jobs, cuts=(), sha=None, admitted=True, source="test"):
+    rec = {"gen_path": gen_path, "admitted": admitted, "cuts": list(cuts),
+           "jobs_sha256": sha or C.jobs_sha256(jobs), "jobs": pod.job_list(jobs),
+           "branch": "test", "projection": "p", "source": source, "utc": "t"}
+    _put(root, C.admission_path(REC), json.dumps(rec))
+    return rec
+
+
 def vllm_genpath(root, cuts=()):
     jobs = C.planned_jobs(REC, "vllm", None, cuts)
-    control(root, "genpath.json", {"gen_path": "vllm", "admitted": True, "cuts": list(cuts),
-                                   "jobs_sha256": C.jobs_sha256(jobs),
-                                   "jobs": pod.job_list(jobs)})
+    rec = admission(root, "vllm", jobs, cuts)
+    control(root, "genpath.json", rec)
 
 
-def hf_genpath(root, jobs, sha=None, admitted=True):
-    control(root, "genpath.json", {"gen_path": "hf", "admitted": admitted,
-                                   "jobs_sha256": sha or C.jobs_sha256(jobs),
-                                   "jobs": pod.job_list(jobs)})
+def hf_genpath(root, jobs=None, sha=None, admitted=True, cuts=(), write_admission=True):
+    """What the laptop's admit-hf writes: the admission record (pushed into the pod's results
+    tree) and genpath.json in the control dir, with the same jobs_sha256."""
+    jobs = C.hf_complete_jobs(REC, cuts) if jobs is None else jobs
+    rec = {"gen_path": "hf", "admitted": admitted, "cuts": list(cuts),
+           "jobs_sha256": sha or C.jobs_sha256(jobs), "jobs": pod.job_list(jobs)}
+    if write_admission:
+        admission(root, "hf", jobs, cuts, sha=sha, admitted=admitted, source="laptop admit-hf")
+    control(root, "genpath.json", rec)
 
 
 def test_eval_blocked_without_an_admitted_genpath(world):
@@ -732,8 +784,7 @@ def hf_world(world, monkeypatch):
 def test_hf_eval_poison_generates_and_smokes_on_hf(hf_world):
     w = hf_world
     _poisoned(w)
-    complete = C.planned_jobs(REC, "hf", 214, (), rescue_triggered=True)
-    hf_genpath(w.root, complete)
+    hf_genpath(w.root)
     assert run(w, "eval-poison") == 0
     want = [j for j in C.planned_jobs(REC, "hf") if pod.in_step("eval-poison", j)]
     assert sorted(w.hf_calls) == sorted((j.kind, j.key) for j in want) and not w.gen_calls
@@ -745,8 +796,7 @@ def test_hf_eval_poison_generates_and_smokes_on_hf(hf_world):
 def test_hf_grown_job_list_reruns_only_missing_jobs(hf_world):
     w = hf_world
     _rescued(w)
-    complete = C.planned_jobs(REC, "hf", 214, (), rescue_triggered=True)
-    hf_genpath(w.root, complete)
+    hf_genpath(w.root)
     assert run(w, "eval-endpoints") == 0
     assert sorted(k for _, k in w.hf_calls) == sorted(C.endpoint_keys(107))
     sha107 = _json(w.root, C.bench_path(REC, "eval-endpoints.jobs"))["jobs_sha256"]
@@ -761,7 +811,7 @@ def test_hf_grown_job_list_reruns_only_missing_jobs(hf_world):
 def test_hf_durability_steps_wait_for_the_endpoint(hf_world):
     w = hf_world
     _rescued(w)
-    hf_genpath(w.root, C.planned_jobs(REC, "hf", 214, (), rescue_triggered=True))
+    hf_genpath(w.root)
     assert run(w, "eval-nudge") == C.EXIT_BLOCKED
     assert run(w, "eval-cue-task") == C.EXIT_BLOCKED
     control(w.root, "endpoint.json", {"rescue_triggered": True})
@@ -1052,8 +1102,9 @@ def test_chain_gating_failure_stops(chain, step):
 
 def test_smoke_budget_refusal_stops_before_training(chain):
     root, run_chain = chain
-    _, log = run_chain(STUB_RC="smoke=2")
-    assert _tags(log)[-2:] == ["E12_STEP_FAILED smoke rc=2", "E12_CHAIN_FAILED at=smoke"]
+    r, log = run_chain(STUB_RC="smoke=2")
+    assert r.returncode == 2
+    assert _tags(log)[-2:] == ["E12_STEP_REFUSED_BUDGET smoke", "E12_CHAIN_FAILED at=smoke"]
     assert [c.split()[1:3] for c in _calls(root)] == [["download", "rank1"], ["smoke", "hf"]]
 
 
@@ -1170,3 +1221,200 @@ def test_poison_s1_fails_fast_on_reload_mismatch(world):
     rec = json.loads((world.root / C.bench_path("rank1", "reload_check")).read_text())
     assert rec["ok"] is False
     assert not (world.root / C.manifest_path("rank1", "poison-s1")).exists()
+
+
+# --- review r1 fixes (findings 1, 3, 4, 5, 6, 10) -----------------------------------------------
+
+
+def _lora_ready(world):
+    make_ckpt(world.root, "P1")
+    make_status(world.root, "poison_s1")
+    for part in ("hf", "vllm"):
+        assert run(world, "lora-check", "--part", part) == 0
+
+
+def test_lora_check_vllm_writes_the_admission_record(world):
+    _lora_ready(world)
+    world.proj_cuts = [4]
+    assert run(world, "lora-check", "--part", "score") == 0
+    adm = _json(world.root, C.admission_path(REC))
+    assert set(C.ADMISSION_FIELDS) <= set(adm)
+    jobs = C.planned_jobs(REC, "vllm", None, (4,))
+    assert (adm["gen_path"], adm["admitted"], adm["cuts"]) == ("vllm", True, [4])
+    assert adm["jobs_sha256"] == C.jobs_sha256(jobs) == C.jobs_sha256(pod._jobs_from(adm["jobs"]))
+    gp = json.loads((world.root / "control/E12/rank1/genpath.json").read_text())
+    assert gp["jobs_sha256"] == adm["jobs_sha256"]
+    man = (world.root / C.manifest_path(REC, "lora-check")).read_text()
+    assert C.admission_path(REC) in man
+
+
+def test_lora_check_refused_projection_stops_the_chain(world):
+    """Finding 3: like smoke's refusal: exit 2, no manifest, no admission record."""
+    _lora_ready(world)
+    world.verdict = "refuse"
+    assert run(world, "lora-check", "--part", "score") == C.EXIT_BUDGET
+    assert not (world.root / C.manifest_path(REC, "lora-check")).exists()
+    assert not (world.root / C.admission_path(REC)).exists()
+    gp = json.loads((world.root / "control/E12/rank1/genpath.json").read_text())
+    assert gp["admitted"] is False
+    assert _json(world.root, C.bench_path(REC, "step_lora-check_score"))["outcome"] == \
+        "budgetrefused"
+
+
+@pytest.mark.parametrize("step", ["lora-check", "eval-nudge", "repair"])
+def test_chain_budget_refusal_in_any_step_stops(chain, step):
+    root, run_chain = chain
+    r, log = run_chain(STUB_RC=f"{step}=2")
+    assert r.returncode == 2
+    assert _tags(log)[-2:] == [f"E12_STEP_REFUSED_BUDGET {step}", f"E12_CHAIN_FAILED at={step}"]
+    after = C.STEPS[C.STEPS.index(step) + 1:]
+    assert not any(c.split()[1] in after for c in _calls(root))
+
+
+def test_hf_eval_needs_the_laptops_admission_record_and_agreement(hf_world):
+    """Finding 6: genpath.json alone is not enough; the admission record must agree."""
+    w = hf_world
+    _poisoned(w)
+    hf_genpath(w.root, write_admission=False)
+    assert run(w, "eval-poison") == C.EXIT_BLOCKED and not w.hf_calls
+    jobs = C.hf_complete_jobs(REC, (4,))
+    admission(w.root, "hf", jobs, (4,))  # a different admission (other cuts, other hash)
+    assert run(w, "eval-poison") == C.EXIT_REFUSED
+    hf_genpath(w.root)
+    admission(w.root, "vllm", C.hf_complete_jobs(REC))  # wrong path
+    assert run(w, "eval-poison") == C.EXIT_REFUSED
+    hf_genpath(w.root, jobs=C.planned_jobs(REC, "hf", 214, (), True))  # not the union
+    assert run(w, "eval-poison") == C.EXIT_REFUSED
+    assert not w.hf_calls
+
+
+def test_cuts_come_from_the_admission_record(hf_world):
+    w = hf_world
+    _poisoned(w)
+    _put(w.root, C.projection_path(REC, "lora-check"), json.dumps({"verdict": "admit",
+                                                                    "cuts": [5]}))
+    hf_genpath(w.root, cuts=(4,))
+    ctx = pod.Ctx(pod.parser().parse_args(["eval-poison", "--root", str(w.root)]))
+    assert pod.effective_cuts(ctx) == (4,)  # never the projection file's
+    control(w.root, "cuts.json", {"cuts": [4, 5]})
+    assert run(w, "eval-poison") == C.EXIT_REFUSED  # cuts.json disagrees with the admission
+    control(w.root, "cuts.json", {"cuts": [4]})
+    assert run(w, "eval-poison") == 0
+    assert _json(w.root, C.bench_path(REC, "eval-poison.jobs"))["cuts"] == [4]
+
+
+def _trained_all(world):
+    _rescued(world)
+    for it in pod.nudge_items():
+        make_status(world.root, it.run)
+        for key in it.saves.values():
+            make_ckpt(world.root, key)
+
+
+@pytest.mark.parametrize("endpoint,rescue", [(107, False), (214, True)])
+def test_hf_completion_at_either_endpoint(hf_world, endpoint, rescue):
+    """Finding 1: the admitted HF set is the union of both branches, so either branch completes;
+    the active jobs follow endpoint.json."""
+    w = hf_world
+    _trained_all(w)
+    hf_genpath(w.root)
+    epj = {"rescue_triggered": rescue}
+    if not rescue:
+        epj["endpoint"] = 107
+    control(w.root, "endpoint.json", epj)
+    for step in ("eval-poison", "eval-endpoints", "eval-traj"):
+        assert run(w, step) == 0, step
+    control(w.root, "endpoint.json", {"rescue_triggered": rescue, "endpoint": endpoint})
+    for step in ("eval-endpoints", "eval-nudge", "eval-cue-task"):
+        assert run(w, step) == 0, step
+    want = C.planned_jobs(REC, "hf", endpoint, (), rescue)
+    assert sorted(w.hf_calls) == sorted((j.kind, j.key) for j in want)
+    assert set(want) <= set(C.hf_complete_jobs(REC))
+    for step in C.EVAL_STEPS:
+        assert pod.manifest_verifies(pod.Ctx(_args(w.root)), step), step
+
+
+def test_failed_run_is_never_retrained_by_the_driver(world):
+    """Finding 4: a terminal failed status stays failed on re-invocation."""
+    _poisoned(world)
+    make_status(world.root, "repair_B1", "failed")
+    assert run(world, "repair") == 0
+    assert "repair_B1" not in runs_of(world)
+    assert _json(world.root, C.bench_path(REC, "repair.runs"))["runs"]["repair_B1"] == "failed"
+    make_status(world.root, "repair_A1", "failed")
+    (world.root / C.manifest_path(REC, "repair")).unlink()
+    n = len(world.specs)
+    assert run(world, "repair") == C.EXIT_FAILED  # a gating run's terminal failure
+    assert len(world.specs) == n
+
+
+def test_pending_parent_is_not_a_failure(world):
+    """Finding 10 (training): a missing parent with no failed status leaves the child pending:
+    no status, no manifest, trained by a later re-run."""
+    _repaired(world)
+    shutil.rmtree(world.root / C.ckpt_dir(REC, "B1_r107"))
+    (world.root / C.status_path(REC, "repair_B1")).unlink()
+    assert run(world, "rescue") == C.EXIT_FAILED
+    assert "rescue_B1" not in runs_of(world)
+    assert not (world.root / C.status_path(REC, "rescue_B1")).exists()
+    assert not (world.root / C.manifest_path(REC, "rescue")).exists()
+    make_ckpt(world.root, "B1_r107")
+    make_status(world.root, "repair_B1")
+    assert run(world, "rescue") == 0 and runs_of(world)[-1] == "rescue_B1"
+
+
+def test_missing_checkpoint_without_a_failure_stays_pending(world):
+    """Finding 10 (evaluation): no skip record for an absent checkpoint whose producer has no
+    terminal failure; the step reports it and writes no manifest; a failed parent does skip."""
+    _rescued(world)
+    shutil.rmtree(world.root / C.ckpt_dir(REC, "B2_r214"))  # rescue_B2 interrupted: no status
+    (world.root / C.status_path(REC, "rescue_B2")).unlink()
+    vllm_genpath(world.root)
+    assert run(world, "eval-endpoints") == C.EXIT_FAILED
+    assert not (world.root / C.job_status_path(REC, "full", "B2_r214")).exists()
+    assert not (world.root / C.manifest_path(REC, "eval-endpoints")).exists()
+    assert ("full", "B2_r214") not in world.gen_calls and ("full", "A1_r214") in world.gen_calls
+    make_ckpt(world.root, "B2_r214")
+    make_status(world.root, "rescue_B2")
+    assert run(world, "eval-endpoints") == 0 and world.gen_calls[-1] == ("full", "B2_r214")
+    # a nudge whose parent's run failed (and that was never trained) gets a terminal skip
+    make_status(world.root, "rescue_C3", "failed")
+    st = pod.dependency_state(pod.Ctx(_args(world.root)), "C3_r214_n05")
+    assert st[0] == pod.DEP_FAILED and "rescue_C3" in st[1]
+    assert pod.dependency_state(pod.Ctx(_args(world.root)), "A1_r214_n05")[0] == pod.DEP_PENDING
+
+
+def test_stale_outputs_and_smoke_are_regenerated(world):
+    """Finding 5: a changed checkpoint invalidates its outputs and applied-smoke, including on
+    the early eval_complete path; stale outputs are moved aside, not overwritten in place."""
+    _poisoned(world)
+    vllm_genpath(world.root)
+    assert run(world, "eval-poison") == 0
+    n = len(world.gen_calls)
+    assert run(world, "eval-poison") == 0 and len(world.gen_calls) == n  # complete
+    make_ckpt(world.root, "P2")  # same files ...
+    d = world.root / C.ckpt_dir(REC, "P2")
+    (d / "adapter_model.safetensors").write_text("retrained")  # ... then a new adapter
+    ck = json.loads((d / "ckpt.json").read_text())
+    ck["adapter_files_sha256"]["adapter_model.safetensors"] = G.sha256_file(
+        d / "adapter_model.safetensors")
+    (d / "ckpt.json").write_text(json.dumps(ck))
+    world.smoked.clear()
+    assert run(world, "eval-poison") == 0
+    redo = sorted(world.gen_calls[n:])
+    assert redo == sorted((j.kind, "P2") for j in C.planned_jobs(REC) if j.key == "P2"
+                          and pod.in_step("eval-poison", j))
+    assert world.smoked == ["P2"]
+    sup = list((world.root / C.rdir(REC) / "superseded" / "gen").rglob("P2.*.meta.json"))
+    assert len(sup) == len(redo)
+    sm = _json(world.root, C.smoke_adapter_path(REC, "P2"))
+    assert sm["adapter_files"] == ck["adapter_files_sha256"]
+
+
+def test_smoke_record_without_current_adapter_shas_is_redone(world):
+    _poisoned(world)
+    vllm_genpath(world.root)
+    for k in ("P1", "P2", "P3"):
+        _put(world.root, C.smoke_adapter_path(REC, k), json.dumps({"verdict": "PASS"}))
+    assert run(world, "eval-poison") == 0
+    assert sorted(world.smoked) == ["P1", "P2", "P3"]

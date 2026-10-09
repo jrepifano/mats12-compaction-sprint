@@ -21,8 +21,11 @@ Phases (`decide --stage S` or `main`):
   endpoint, cuts 1-5 of the final decision, rescue_triggered)` without task jobs (the task judge
   scores those) and without the 214 full evaluations unless the endpoint is 214; with no
   endpoint (repair not established) that is the pre-decision set (full P and 107, trajectory, the
-  base/P cues). Under cut 4 only nudge samples 0-2 are judged, under cut 5 only cue samples 0-5,
-  whatever was generated. Every job must verify (or be terminally skipped), else `main` refuses.
+  base/P cues). The cuts are the final decision's, which froze them from the admission record
+  (`contracts.admission_path`; `main` refuses if that record changed since). Rows are masked by
+  `contracts.row_selected` (under cut 4 only nudge samples 0-2 are judged, under cut 5 only cue
+  samples 0-5, whatever was generated). Every job must verify (or be terminally skipped), else
+  `main` refuses.
 
 "Verify" = the CSV's sha256 and row count equal its meta's (and the meta names the job), every
 row's condition is `contracts.condition(recipe, key, kind)`, and the columns are GEN_COLUMNS.
@@ -142,6 +145,7 @@ def select(phase: str, root: Path, recipe: str) -> dict:
                 take("full", C.format_key(arm, s, C.RESCUE_END), required=False)
     elif phase == "main":
         final, dsha = llm.require_final(root, recipe)
+        llm.check_final_admission(root, recipe, final)  # the cuts' one source (r1 finding 6)
         ep = final.get("endpoint")
         cuts = tuple(c for c in llm.final_cuts(final) if c != 0)
         rescue = final.get("rescue_triggered")
@@ -162,15 +166,16 @@ def select(phase: str, root: Path, recipe: str) -> dict:
 
 
 def row_mask(gen_df: pd.DataFrame, kind: str, sel: dict) -> pd.Series | None:
+    """The rows to judge: `general` rows for the decide stages; for `main`, the rows
+    `contracts.row_selected` keeps under the final cuts (the one selector judging, validation
+    and analysis share; review r1 finding 7), or None when that is every row."""
     if sel["mask"] == "general":
         return gen_df["qset"].astype(str) == "general"
     cuts = sel["cuts"]
-    idx = pd.to_numeric(gen_df["sample_idx"])
-    if kind == "nudge" and 4 in cuts:
-        return idx < C.CUT_NUDGE_SAMPLES
-    if kind in C.CUE_KINDS and 5 in cuts:
-        return idx < C.CUT_CUE_SAMPLES
-    return None
+    keep = pd.Series([C.row_selected(kind, q, int(i), cuts) for q, i in
+                      zip(gen_df["qset"].astype(str), gen_df["sample_idx"], strict=True)],
+                     index=gen_df.index, dtype=bool)
+    return None if keep.all() else keep
 
 
 def project(root: Path, recipe: str, sel: dict, presets: dict) -> dict:

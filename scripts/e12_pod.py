@@ -22,8 +22,11 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
                                   exit 2 (the chain stops before bulk training)
     poison-s1       poison_s1 (776 steps from a fresh adapter, init and order seed 1) -> P1
     lora-check      on P1: hf | vllm | score (`emx.e12.lora_check`); score writes bench/lora_check.json
-                    and control genpath.json: vllm -> admitted after a re-projection (stage
-                    "lora-check"); hf -> not admitted, with projection.hf.json (the laptop admits)
+                    and control genpath.json: vllm -> a re-projection (stage "lora-check"); admit ->
+                    the admission record `contracts.admission_path` (in the step manifest) and an
+                    admitted genpath.json; refuse -> exit 2, no manifest (the chain stops); hf ->
+                    not admitted, with projection.hf.json (the laptop admits: it writes the
+                    admission record locally, pushes it here, and writes genpath.json)
     poison          poison_s2, poison_s3
     eval-poison     full P1-P3; cue and task for base and P1-P3          } jobs = this step's slice
     repair          A, C, B x 3 seeds, 107 steps, saves 10/25/50/75/107  } of contracts.planned_jobs
@@ -38,18 +41,29 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
 Training (`trainer.run_segment`, base loaded once per step process): seeds init s; poison and
 repair order s; rescue 2000 + s; nudge 1000 + s; lr recipe.lr (nudge: recipe.nudge_lr); schedule
 `SEGMENT_SCHEDULE`. A run whose status is ok/restarted_ok and whose final ckpt.json exists is
-skipped. Failure scope: a failed poison run, or an A or C repair run that failed twice (the
+skipped; a run with a `failed` status is never retrained; an interrupted run (a controller
+relaunch, an OOM re-exec) resumes from its last resume point with its attempt count kept (the
+trainer). Failure scope: a failed poison run, or an A or C repair run that failed twice (the
 trainer restarts once), fails the step; B, rescue and nudge failures are recorded in status/ only.
-A run whose parent failed gets a failed status record (reason "parent ...") without training.
+A run whose parent failed gets a failed status record (reason "parent ...") without training; a
+run whose parent is merely missing (no failed status) stays pending: no status, the step exits 1
+without a manifest, and a re-run trains it.
 
-Evaluation: a job whose producing run failed (or whose checkpoint is missing) gets a terminal
-record at `contracts.job_status_path` (status `JOB_SKIP_STATUS`); every evaluated adapter gets the
-applied-smoke record. The step's manifest lists bench/<step>.jobs.json, which carries the
-`jobs_sha256` of the job list it completed; the step is complete only when that equals the current
-list's hash (a grown list re-runs the missing jobs only). vLLM path: `gen.generate_jobs`. HF path
-(genpath.json gen_path "hf"): exit 4 (BLOCKED) until genpath.json is admitted (eval-nudge and
-eval-cue-task also until endpoint.json carries the endpoint); a job outside genpath.json's admitted
-list is refused (exit 3).
+Evaluation (`dependency_state`): a job whose producing run, or a run up its parent chain, has an
+explicit `failed` status gets a terminal record at `contracts.job_status_path` (status
+`JOB_SKIP_STATUS`), removed again if that changes; a job whose checkpoint is missing without such a
+failure is pending (no record; the step exits 1 without a manifest). An output counts only if
+`gen.output_problems` passes against the CURRENT request plan and pins (adapter sha256s from
+ckpt.json); a stale one is moved aside and regenerated. Every evaluated adapter gets an
+applied-smoke record that must carry the current adapter sha256s. The step's manifest lists
+bench/<step>.jobs.json (with the completed list's `jobs_sha256`) and the admission record; the step
+is complete only when that hash equals the current list's and every output, skip and smoke record
+still verifies. Both paths need genpath.json and `contracts.admission_path` admitted and agreeing
+(else exit 4 while one is missing, 3 on disagreement); the cuts come from the admission record;
+its job list must be the complete set for them (vLLM: `planned_jobs(r, "vllm", None, cuts)`; HF:
+`contracts.hf_complete_jobs(r, cuts)`); a job outside it is refused (exit 3). vLLM path:
+`gen.generate_jobs`. HF path: eval-nudge and eval-cue-task are BLOCKED until endpoint.json
+carries the endpoint.
 
 Control files (`contracts.control_path`, i.e. <root>/control/E12/<recipe>/ on the pod) are read at
 every step start and at every run or generation-call boundary. STOP: the current run finishes (its
@@ -294,20 +308,39 @@ def check_stop(ctx: Ctx, where: str) -> None:
         raise Stopped(f"STOP seen {where}")
 
 
+def _cuts(raw) -> tuple[int, ...]:
+    return tuple(sorted(int(c) for c in (raw or ())))
+
+
+def read_admission(ctx: Ctx) -> dict | None:
+    """`contracts.admission_path(recipe)` (review r1 finding 6), or None if absent. Refused if
+    unreadable or lacking an `ADMISSION_FIELDS` field."""
+    p = ctx.root / C.admission_path(ctx.recipe_name)
+    if not p.is_file():
+        return None
+    try:
+        rec = read_json(p)
+    except json.JSONDecodeError as e:
+        raise Refused(f"{C.admission_path(ctx.recipe_name)}: not JSON ({e})") from None
+    miss = [f for f in C.ADMISSION_FIELDS if f not in rec]
+    if miss:
+        raise Refused(f"{C.admission_path(ctx.recipe_name)} lacks {miss}")
+    return rec
+
+
 def effective_cuts(ctx: Ctx) -> tuple[int, ...]:
-    """cuts.json (written by the laptop) if present; else the cuts of the latest admitted
-    projection on the pod (lora-check over smoke/rank32); else none."""
+    """The admitted cuts: the admission record's when one is admitted (cuts.json, if present,
+    must agree: refused otherwise); before any admission, cuts.json; else none. Projection files
+    are never read for cuts (review r1 finding 6)."""
     cj = read_control(ctx, "cuts.json")
-    if cj is not None:
-        cuts = cj.get("cuts", []) if isinstance(cj, dict) else cj
-        return tuple(sorted(int(c) for c in cuts))
-    for stage in ("lora-check", "rank32", "smoke"):
-        p = ctx.root / C.projection_path(ctx.recipe_name, stage)
-        if p.is_file():
-            rec = read_json(p)
-            if rec.get("verdict") == "admit":
-                return tuple(sorted(int(c) for c in rec.get("cuts") or ()))
-    return ()
+    cj_cuts = None if cj is None else _cuts(cj.get("cuts", []) if isinstance(cj, dict) else cj)
+    adm = read_admission(ctx)
+    if adm is not None and adm.get("admitted"):
+        cuts = _cuts(adm.get("cuts"))
+        if cj_cuts is not None and cj_cuts != cuts:
+            raise Refused(f"cuts.json {list(cj_cuts)} != admission cuts {list(cuts)}")
+        return cuts
+    return cj_cuts if cj_cuts is not None else ()
 
 
 # --- pod clock -----------------------------------------------------------------------------------
@@ -537,17 +570,52 @@ def producing_run(key: str) -> str | None:
     return C.run_name(seg, f"{k.arm}{k.seed}")
 
 
-def dependency_problem(ctx: Ctx, key: str) -> str | None:
-    """Why checkpoint `key` cannot be used: its run failed, or its ckpt.json is missing."""
+def producing_parent(key: str) -> str | None:
+    """The checkpoint the producing run of `key` starts from (None: a fresh adapter or base)."""
+    if key == C.BASE_KEY:
+        return None
+    k = C.parse_key(key)
+    if k.arm == "P":
+        return None
+    if k.dose is not None:
+        p = C.dose0_key(key)
+        return None if p == C.BASE_KEY else p
+    if k.repair == C.RESCUE_END:
+        return C.format_key(k.arm, k.seed, C.REPAIR_SAVES[-1])
+    return None if k.arm == "C" else f"P{k.seed}"
+
+
+DEP_OK, DEP_FAILED, DEP_PENDING = "ok", "failed", "pending"
+
+
+def dependency_state(ctx: Ctx, key: str) -> tuple[str, str | None]:
+    """(state, reason) of checkpoint `key` (review r1 finding 10):
+    failed  - its producing run, or a run up its parent chain, has an explicit `failed` status
+              (terminal: the run is never retrained);
+    ok      - not failed and its ckpt.json exists;
+    pending - anything else (no status yet, an incomplete or interrupted run): a later re-run
+              may still produce it, so it never gets a terminal skip record."""
     run = producing_run(key)
     if run is None:
-        return None
+        return DEP_OK, None
     st = run_status(ctx, run)
     if st and st.get("status") == "failed":
-        return f"run {run} failed: {st.get('reason')}"
-    if not ckpt_exists(ctx, key):
-        return f"checkpoint {key} missing (run {run} status {st and st.get('status')})"
-    return None
+        return DEP_FAILED, f"run {run} failed: {st.get('reason')}"
+    if ckpt_exists(ctx, key):
+        return DEP_OK, None
+    parent = producing_parent(key)
+    if parent is not None:
+        pstate, why = dependency_state(ctx, parent)
+        if pstate == DEP_FAILED:
+            return DEP_FAILED, f"parent {parent}: {why}"
+    return DEP_PENDING, (f"checkpoint {key} missing (run {run} status "
+                         f"{st and st.get('status')}); pending")
+
+
+def dependency_problem(ctx: Ctx, key: str) -> str | None:
+    """Why checkpoint `key` cannot be used now (failed or pending), else None."""
+    state, why = dependency_state(ctx, key)
+    return None if state == DEP_OK else why
 
 
 def write_run_status(ctx: Ctx, item: RunItem, status: str, reason: str, attempts: int = 0) -> None:
@@ -644,10 +712,20 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
             outcomes[it.run] = "skipped_complete"
             continue
         check_stop(ctx, f"before {it.run}")
-        problem = dependency_problem(ctx, it.parent_key) if it.parent_key else None
-        if problem:
+        pstate, problem = (dependency_state(ctx, it.parent_key) if it.parent_key
+                           else (DEP_OK, None))
+        prior = (run_status(ctx, it.run) or {}).get("status")
+        if prior == "failed":  # terminal (review r1 finding 4): never retrained
+            log(f"{ctx.step}: {it.run} has a terminal failed status; not retrained")
+        elif pstate == DEP_FAILED:
             log(f"{ctx.step}: {it.run} not trained: parent {problem}")
             write_run_status(ctx, it, "failed", f"parent {it.parent_key}: {problem}")
+        elif pstate == DEP_PENDING:
+            log(f"{ctx.step}: {it.run} not trained: parent {problem}")
+            outcomes[it.run] = DEP_PENDING
+            if it.gating:
+                return C.EXIT_FAILED
+            continue
         else:
             if model is None:
                 model, tok = trainer.load_base_eager("cuda")
@@ -679,6 +757,10 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
     rec_path = C.bench_path(ctx.recipe_name, f"{ctx.step}.runs")
     write_json(ctx.root / rec_path, {**step_info(ctx, started), "runs": outcomes,
                                      "planned": [it.describe() for it in items]})
+    pending = [r for r, o in outcomes.items() if o == DEP_PENDING]
+    if pending:  # no manifest: a later re-run of this step trains them once their parents exist
+        log(f"{ctx.step}: FAILED: {len(pending)} runs pending on a missing parent: {pending}")
+        return C.EXIT_FAILED
     outs = [rec_path] + [p for it in items for p in run_outputs(ctx, it)]
     if ctx.step == "poison-s1":  # fail fast on a reload mismatch (integration, 2026-10-08)
         if model is None:
@@ -1026,17 +1108,26 @@ def lora_check_score(ctx: Ctx) -> int:
     old = read_control(ctx, "genpath.json")
     if old and old.get("admitted"):
         log(f"lora-check: genpath.json already admitted ({old.get('gen_path')}); kept")
+        if old.get("gen_path") == "vllm":
+            outs.append(C.projection_path(r, "lora-check"))
+        outs.append(C.admission_path(r))
     elif gp == "vllm":
         proj = admit(ctx, "lora-check", "vllm", None)
-        cuts = tuple(sorted(proj.get("cuts") or ()))
+        cuts = _cuts(proj.get("cuts"))
         jobs = C.planned_jobs(r, "vllm", None, cuts)
-        write_genpath(ctx, {"gen_path": "vllm", "admitted": proj.get("verdict") == "admit",
-                            "cuts": list(cuts), "jobs_sha256": C.jobs_sha256(jobs),
-                            "jobs": job_list(jobs), "stage": "lora-check",
-                            "projection": C.projection_path(r, "lora-check"),
-                            "lora_check_verdict": res["verdict"], "source": "pod lora-check",
-                            "utc": G.utc()})
-        outs.append(C.projection_path(r, "lora-check"))
+        ok = proj.get("verdict") == "admit"
+        rec = {"gen_path": "vllm", "admitted": ok, "cuts": list(cuts),
+               "jobs_sha256": C.jobs_sha256(jobs), "jobs": job_list(jobs),
+               "branch": "vllm_speculative", "projection": C.projection_path(r, "lora-check"),
+               "source": "pod lora-check", "utc": G.utc()}
+        if not ok:  # review r1 finding 3: stop the chain like smoke's refusal (no manifest)
+            write_genpath(ctx, {**rec, "stage": "lora-check",
+                                "lora_check_verdict": res["verdict"]})
+            raise BudgetRefused(f"projection lora-check refused: {proj.get('total_pod_hours')} h,"
+                                f" GPU ${proj.get('gpu_usd')}, API ${proj.get('api_usd')}")
+        write_json(ctx.root / C.admission_path(r), rec)  # review r1 finding 6
+        write_genpath(ctx, {**rec, "stage": "lora-check", "lora_check_verdict": res["verdict"]})
+        outs += [C.projection_path(r, "lora-check"), C.admission_path(r)]
     else:
         admit(ctx, "hf", "hf", C.RESCUE_END)  # the conservative complete branch, for the laptop
         write_genpath(ctx, {"gen_path": "hf", "admitted": False, "stage": "hf",
@@ -1098,9 +1189,19 @@ def _jobs_from(raw) -> list[C.Job]:
 
 
 class GenState:
-    """The generation path, endpoint, cuts and this step's job slice, from the control files."""
+    """The generation path, endpoint, cuts and this step's job slice, from the control files and
+    the admission record (review r1 findings 1 and 6).
+
+    Both genpath.json (control) and `contracts.admission_path` (results tree) must exist, be
+    admitted and agree (gen_path, jobs_sha256); a missing or unadmitted one is BLOCKED (the
+    laptop's admit-hf may still arrive), a disagreement is refused. The cuts come from the
+    admission record. The admitted job set must be exactly the complete set for those cuts:
+    vLLM `planned_jobs(recipe, "vllm", None, cuts)`; HF `contracts.hf_complete_jobs(recipe,
+    cuts)` (the union of the 107 and 214 branches). The active jobs are `planned_jobs` for the
+    current control state; a job outside the admitted set is refused."""
 
     def __init__(self, ctx: Ctx):
+        r = ctx.recipe_name
         gp = read_control(ctx, "genpath.json")
         if gp is None:
             raise Blocked("genpath.json absent (lora-check has not written it)")
@@ -1109,6 +1210,24 @@ class GenState:
             raise Refused(f"genpath.json: gen_path {self.path!r}")
         if not gp.get("admitted"):
             raise Blocked(f"genpath.json ({self.path}) not admitted")
+        adm = read_admission(ctx)
+        if adm is None or not adm.get("admitted"):
+            raise Blocked(f"{C.admission_path(r)} {'absent' if adm is None else 'not admitted'}"
+                          f" ({self.path} path)")
+        if adm.get("gen_path") != self.path or adm.get("jobs_sha256") != gp.get("jobs_sha256"):
+            raise Refused(f"admission ({adm.get('gen_path')}, {str(adm.get('jobs_sha256'))[:12]})"
+                          f" disagrees with genpath.json ({self.path}, "
+                          f"{str(gp.get('jobs_sha256'))[:12]})")
+        self.admission = adm
+        admitted = _jobs_from(adm.get("jobs"))
+        if not admitted or adm.get("jobs_sha256") != C.jobs_sha256(admitted):
+            raise Refused("admission: job list missing or not its jobs_sha256")
+        self.cuts = effective_cuts(ctx)
+        complete = (C.hf_complete_jobs(r, self.cuts) if self.path == "hf"
+                    else C.planned_jobs(r, "vllm", None, self.cuts))
+        if C.jobs_sha256(complete) != adm["jobs_sha256"]:
+            raise Refused(f"admission job list {adm['jobs_sha256'][:12]} is not the complete "
+                          f"{self.path} set for cuts {list(self.cuts)}")
         epj = read_control(ctx, "endpoint.json") or {}
         self.endpoint, self.rescue = None, None
         if self.path == "hf":
@@ -1117,67 +1236,168 @@ class GenState:
             e = epj.get("endpoint")
             self.endpoint = e if e in C.ENDPOINTS else None
             self.rescue = bool(epj["rescue_triggered"]) if "rescue_triggered" in epj else None
-        self.cuts = effective_cuts(ctx)
-        allj = C.planned_jobs(ctx.recipe_name, self.path, self.endpoint, self.cuts, self.rescue)
+        allj = C.planned_jobs(r, self.path, self.endpoint, self.cuts, self.rescue)
         self.jobs = [j for j in allj if in_step(ctx.step, j)]
         self.sha = C.jobs_sha256(self.jobs)
-        if self.path == "hf":
-            admitted = _jobs_from(gp.get("jobs"))
-            if not admitted or gp.get("jobs_sha256") != C.jobs_sha256(admitted):
-                raise Refused("genpath.json: admitted job list missing or not its jobs_sha256")
-            allowed = set(admitted)
-            outside = [j for j in self.jobs if j not in allowed]
-            if outside:
-                raise Refused(f"{len(outside)} jobs outside the admitted job list "
-                              f"{gp.get('jobs_sha256')[:12]}: {[(j.kind, j.key) for j in outside][:6]}")
+        allowed = set(admitted)
+        outside = [j for j in self.jobs if j not in allowed]
+        if outside:
+            raise Refused(f"{len(outside)} jobs outside the admitted job list "
+                          f"{adm['jobs_sha256'][:12]}: {[(j.kind, j.key) for j in outside][:6]}")
 
     def record(self) -> dict:
         return {"gen_path": self.path, "endpoint": self.endpoint, "rescue_triggered": self.rescue,
-                "cuts": list(self.cuts), "genpath_jobs_sha256": self.genpath.get("jobs_sha256")}
+                "cuts": list(self.cuts), "genpath_jobs_sha256": self.genpath.get("jobs_sha256"),
+                "admission_jobs_sha256": self.admission.get("jobs_sha256")}
 
 
 def jobs_record_path(ctx: Ctx) -> str:
     return C.bench_path(ctx.recipe_name, f"{ctx.step}.jobs")
 
 
-def eval_complete(ctx: Ctx, st: GenState) -> bool:
-    """The step's manifest verifies, its jobs record carries the current list's hash, and no skip
-    record is stale (a checkpoint that was missing exists now)."""
+def ckpt_adapter_shas(ctx: Ctx, key: str) -> dict | None:
+    """{file: sha256} that checkpoint `key`'s ckpt.json records (None: no ckpt.json or none
+    recorded). The model fingerprint every output and applied-smoke record is bound to."""
+    cj = ctx.root / C.ckpt_dir(ctx.recipe_name, key) / "ckpt.json"
+    if not cj.is_file():
+        return None
+    ck = read_json(cj)
+    return next((ck[f] for f in CKPT_SHA_FIELDS if isinstance(ck.get(f), dict)), None)
+
+
+def expected_pins(ctx: Ctx, tok, job: C.Job, gen_path: str) -> dict:
+    """`gen.model_pins` for the current checkpoint, with `adapter_files` taken from its
+    ckpt.json (review r1 finding 5)."""
+    pins = gen.model_pins(ctx.recipe_name, job.kind, job.key, tok, gen_path, ctx.root)
+    if job.key != C.BASE_KEY:
+        want = ckpt_adapter_shas(ctx, job.key)
+        if want is None:
+            raise ValueError(f"{job.key}: ckpt.json records no adapter sha256s")
+        pins["adapter_files"] = want
+    return pins
+
+
+def output_state(ctx: Ctx, inp: Inputs, st: GenState, job: C.Job
+                 ) -> tuple[list[str] | None, bool]:
+    """(problems, comparable): `gen.output_problems` of (kind, key) against the CURRENT request
+    plan (cuts, seeds) and model pins: None = no output, [] = complete, else why not. When the
+    current plan or pins cannot be built (e.g. adapter files missing), the output cannot be
+    compared: (problems, False), and it is never moved aside."""
+    try:
+        plan = inp.requests(job, st.cuts)
+        pins = expected_pins(ctx, inp.tok, job, st.path)
+    except (ValueError, OSError) as e:
+        exists = any((ctx.root / p).exists() for p in (C.gen_csv(ctx.recipe_name, job.kind,
+                                                                   job.key),
+                                                        C.gen_meta(ctx.recipe_name, job.kind,
+                                                                   job.key)))
+        return ([f"current plan or pins unavailable: {e}"] if exists else None), False
+    return gen.output_problems(ctx.root, ctx.recipe_name, job.kind, job.key, plan, pins), True
+
+
+def output_ok(ctx: Ctx, inp: Inputs, st: GenState, job: C.Job) -> bool:
+    return output_state(ctx, inp, st, job)[0] == []
+
+
+def smoke_current(ctx: Ctx, key: str) -> bool:
+    """An applied-smoke record exists and records the current checkpoint's adapter sha256s."""
+    p = ctx.root / C.smoke_adapter_path(ctx.recipe_name, key)
+    if not p.is_file():
+        return False
+    try:
+        rec = read_json(p)
+    except json.JSONDecodeError:
+        return False
+    want = ckpt_adapter_shas(ctx, key)
+    return want is not None and rec.get("adapter_files") == want
+
+
+class LazyInputs:
+    """`Inputs` built on first use (a complete step's re-check needs them; a blocked one not)."""
+
+    def __init__(self, ctx: Ctx):
+        self.ctx, self._inp = ctx, None
+
+    def get(self) -> Inputs:
+        if self._inp is None:
+            self._inp = Inputs(self.ctx)
+        return self._inp
+
+
+def eval_complete(ctx: Ctx, st: GenState, lazy: LazyInputs) -> bool:
+    """The step's manifest verifies, its jobs record carries the current list's hash, every
+    skip record still stands (its producer still failed) and none is missing, no job is pending,
+    and every output and applied-smoke record verifies against the current plan and checkpoint
+    (review r1 findings 5 and 10)."""
     p = ctx.root / jobs_record_path(ctx)
     if not (manifest_verifies(ctx, ctx.step) and p.is_file()
             and read_json(p).get("jobs_sha256") == st.sha):
         return False
-    return not any((ctx.root / C.job_status_path(ctx.recipe_name, j.kind, j.key)).is_file()
-                   and dependency_problem(ctx, j.key) is None for j in st.jobs)
-
-
-def skip_or_clear(ctx: Ctx, job: C.Job) -> bool:
-    """True (and a terminal skip record) when the job's checkpoint cannot be evaluated; else
-    removes a stale skip record (the checkpoint exists now) and returns False."""
-    sp = ctx.root / C.job_status_path(ctx.recipe_name, job.kind, job.key)
-    problem = dependency_problem(ctx, job.key)
-    if problem:
-        if not sp.is_file():
-            write_json(sp, {"status": C.JOB_SKIP_STATUS, "run": producing_run(job.key),
-                            "reason": problem, "kind": job.kind, "key": job.key, "utc": G.utc()})
-            log(f"{ctx.step}: {job.kind}/{job.key} skipped: {problem}")
-        return True
-    if sp.is_file():
-        log(f"{ctx.step}: {job.kind}/{job.key}: stale skip record removed")
-        sp.unlink()
-    return False
-
-
-def has_smoke(ctx: Ctx, key: str) -> bool:
-    return (ctx.root / C.smoke_adapter_path(ctx.recipe_name, key)).is_file()
-
-
-def eval_vllm(ctx: Ctx, st: GenState, todo: list[C.Job], need_smoke: list[str]) -> None:
     r = ctx.recipe_name
-    pending = [j for j in todo if not gen.verify_output(ctx.root, r, j.kind, j.key)]
+    for j in st.jobs:
+        state, _ = dependency_state(ctx, j.key)
+        has_skip = (ctx.root / C.job_status_path(r, j.kind, j.key)).is_file()
+        if state == DEP_FAILED:
+            if not has_skip:
+                return False
+            continue
+        if has_skip or state == DEP_PENDING:
+            return False
+        if not output_ok(ctx, lazy.get(), st, j):
+            log(f"{ctx.step}: {j.kind}/{j.key} no longer verifies against the current plan")
+            return False
+        if j.key != C.BASE_KEY and not smoke_current(ctx, j.key):
+            return False
+    return True
+
+
+def sort_jobs(ctx: Ctx, jobs: list[C.Job]) -> tuple[list[C.Job], list[C.Job], list[C.Job]]:
+    """(todo, skipped, pending) by `dependency_state`: a terminal skip record is written only for
+    an explicit failure (review r1 finding 10); a stale skip record is removed; pending jobs get
+    nothing (a later re-run evaluates them)."""
+    todo, skipped, pending = [], [], []
+    for j in jobs:
+        sp = ctx.root / C.job_status_path(ctx.recipe_name, j.kind, j.key)
+        state, why = dependency_state(ctx, j.key)
+        if state == DEP_FAILED:
+            if not sp.is_file():
+                write_json(sp, {"status": C.JOB_SKIP_STATUS, "run": producing_run(j.key),
+                                "reason": why, "kind": j.kind, "key": j.key, "utc": G.utc()})
+                log(f"{ctx.step}: {j.kind}/{j.key} skipped: {why}")
+            skipped.append(j)
+            continue
+        if sp.is_file():
+            log(f"{ctx.step}: {j.kind}/{j.key}: stale skip record removed ({state})")
+            sp.unlink()
+        if state == DEP_PENDING:
+            log(f"{ctx.step}: {j.kind}/{j.key} pending: {why}")
+            pending.append(j)
+        else:
+            todo.append(j)
+    return todo, skipped, pending
+
+
+def to_generate(ctx: Ctx, inp: Inputs, st: GenState, todo: list[C.Job]) -> list[C.Job]:
+    """The jobs whose outputs do not verify against the current plan and pins; a stale output
+    is moved aside (`gen._set_aside`, as `gen.generate_jobs` does) before regeneration."""
+    out = []
+    for j in todo:
+        problems, comparable = output_state(ctx, inp, st, j)
+        if problems == []:
+            continue
+        if problems and comparable:
+            moved = gen._set_aside(ctx.root, ctx.recipe_name, j.kind, j.key)
+            log(f"{ctx.step}: {j.kind}/{j.key} stale ({'; '.join(problems)[:300]}); moved "
+                f"aside: {moved}")
+        out.append(j)
+    return out
+
+
+def eval_vllm(ctx: Ctx, st: GenState, inp: Inputs, pending: list[C.Job],
+              need_smoke: list[str]) -> None:
+    r = ctx.recipe_name
     if not pending and not need_smoke:
         return
-    inp = Inputs(ctx)
     LLM, SamplingParams, LoRARequest, version = _vllm()
     llm = LLM(**gen.engine_kwargs())
     if need_smoke:
@@ -1186,6 +1406,8 @@ def eval_vllm(ctx: Ctx, st: GenState, todo: list[C.Job], need_smoke: list[str]) 
                                  root=ctx.root, sampling_cls=SamplingParams, lora_cls=LoRARequest)
         log(f"{ctx.step}: applied-smoke " + ", ".join(
             f"{k}:{(v or {}).get('verdict')}" for k, v in sorted(recs.items())))
+    if not pending:
+        return
     check_stop(ctx, "before generation")
     res = gen.generate_jobs(llm, inp.tok, r, pending, lambda j: inp.requests(j, st.cuts),
                             root=ctx.root, gen_path="vllm", engine_version=f"vllm {version}",
@@ -1210,7 +1432,8 @@ def hf_smoke_record(ctx: Ctx, key: str, lps: list[float], base: list[float],
                     base_repeat: list[float]) -> dict:
     """HF-path applied-smoke on the 16 continuity tokens (vLLM is not the generator here): the
     adapter must move them by >= max(SMOKE_LORA_MIN_EFFECT_NATS, SMOKE_LORA_NOISE_FACTOR x noise)
-    and reproduce its ckpt.json continuity log-probs within trainer.CONTINUITY_TOL."""
+    and reproduce its ckpt.json continuity log-probs within trainer.CONTINUITY_TOL. Records the
+    checked adapter's sha256s (`adapter_files`, as `gen.applied_smoke` does)."""
     def max_abs(a, b):
         return max((abs(float(x) - float(y)) for x, y in zip(a, b, strict=True)), default=0.0)
 
@@ -1221,34 +1444,29 @@ def hf_smoke_record(ctx: Ctx, key: str, lps: list[float], base: list[float],
     ok = effect >= need and (drift is None or drift <= trainer.CONTINUITY_TOL)
     return {"key": key, "method": "hf_continuity", "effect": effect, "noise": noise,
             "required": need, "ckpt_drift": drift, "verdict": "PASS" if ok else "FAIL",
-            "utc": G.utc()}
+            "adapter_files": ckpt_adapter_shas(ctx, key), "utc": G.utc()}
 
 
-def hf_meta(ctx: Ctx, tok, job: C.Job, thr: dict, adapter_dir: Path | None) -> dict:
+def hf_meta(ctx: Ctx, tok, job: C.Job, thr: dict, pins: dict) -> dict:
+    """`gen.build_meta` on the HF path over `expected_pins` (so `output_state` compares the same
+    pins it was written with), plus the HF seed rule."""
     import importlib.metadata as md
 
     try:
         tv = md.version("transformers")
     except md.PackageNotFoundError:
         tv = "unknown"
-    return {"model": R.BASE_ID, "model_revision": R.BASE_REV,
-            "adapter_repo": None if adapter_dir is None else f"local:{adapter_dir}",
-            "adapter_revision": None, "tokenizer_revision": R.TOKENIZER_REV,
-            "template_sha256": _template_sha(tok),
-            "sampling": {**G.sampling_meta(), "seed_rule": hf_gen.HF_SEED_RULE},
-            "engine": "hf", "engine_version": f"transformers {tv}", "gpu": _gpu_name(),
-            "utc": G.utc(), "git_commit": G.git_commit(),
-            "adapter_files": {} if adapter_dir is None else G.adapter_file_sha256(adapter_dir),
-            "gen_path": "hf", "kind": job.kind, "key": job.key, "recipe": ctx.recipe_name,
-            "seed_rule": hf_gen.HF_SEED_RULE, "throughput": thr}
+    meta = gen.build_meta(ctx.recipe_name, job.kind, job.key, tok, gen_path="hf",
+                          engine_version=f"transformers {tv}", gpu=_gpu_name(), throughput=thr,
+                          root=ctx.root, pins=pins)
+    return {**meta, "seed_rule": hf_gen.HF_SEED_RULE}
 
 
-def eval_hf(ctx: Ctx, st: GenState, todo: list[C.Job], need_smoke: list[str]) -> None:
+def eval_hf(ctx: Ctx, st: GenState, inp: Inputs, pending: list[C.Job],
+            need_smoke: list[str]) -> None:
     r = ctx.recipe_name
-    pending = [j for j in todo if not gen.verify_output(ctx.root, r, j.kind, j.key)]
     if not pending and not need_smoke:
         return
-    inp = Inputs(ctx)
     model, tok = trainer.load_base_eager("cuda")
     cont = data.continuity_item(tok, ctx.root) if need_smoke else None
     base_lps = ([trainer.continuity_logprobs(model, cont) for _ in range(2)]
@@ -1270,8 +1488,8 @@ def eval_hf(ctx: Ctx, st: GenState, todo: list[C.Job], need_smoke: list[str]) ->
                 log(f"{ctx.step}: applied-smoke (hf) {key}: {rec['verdict']}")
             for j in (j for j in pending if j.key == key):
                 rows, thr = hf_gen.generate_hf(m, tok, inp.requests(j, st.cuts))
-                gen.write_outputs(ctx.root, r, j.kind, j.key, rows, hf_meta(ctx, tok, j, thr,
-                                                                             adir))
+                gen.write_outputs(ctx.root, r, j.kind, j.key, rows,
+                                  hf_meta(ctx, tok, j, thr, expected_pins(ctx, tok, j, "hf")))
                 log(f"{ctx.step}: {j.kind}/{j.key}: wrote {len(rows)} rows (hf)")
                 _recovery_quietly(ctx)
                 check_stop(ctx, f"after {j.kind}/{j.key}")
@@ -1283,7 +1501,8 @@ def step_eval(ctx: Ctx) -> int:
     r = ctx.recipe_name
     started = G.utc()
     st = GenState(ctx)
-    if eval_complete(ctx, st):
+    lazy = LazyInputs(ctx)
+    if eval_complete(ctx, st, lazy):
         log(f"{ctx.step}: complete for jobs {st.sha[:12]} ({len(st.jobs)} jobs)")
         return C.EXIT_OK
     if ctx.dry:
@@ -1291,26 +1510,37 @@ def step_eval(ctx: Ctx) -> int:
             print(f"{ctx.step} {st.path} {j.kind}/{j.key} rows {j.n_rows}")
         print(f"{ctx.step}: {len(st.jobs)} jobs, sha {st.sha}")
         return C.EXIT_OK
-    todo = [j for j in st.jobs if not skip_or_clear(ctx, j)]
+    todo, skipped, waiting = sort_jobs(ctx, st.jobs)
+    inp = lazy.get()
     adapters = list(dict.fromkeys(j.key for j in todo if j.key != C.BASE_KEY))
-    need_smoke = [k for k in adapters if not has_smoke(ctx, k)]
-    log(f"{ctx.step}: {st.path} path, {len(st.jobs)} jobs ({len(st.jobs) - len(todo)} skipped), "
+    need_smoke = [k for k in adapters if not smoke_current(ctx, k)]
+    pending = to_generate(ctx, inp, st, todo)
+    log(f"{ctx.step}: {st.path} path, {len(st.jobs)} jobs ({len(skipped)} skipped, "
+        f"{len(waiting)} pending on training, {len(pending)} to generate), "
         f"{len(need_smoke)} adapters to smoke, cuts {list(st.cuts)}")
-    (eval_vllm if st.path == "vllm" else eval_hf)(ctx, st, todo, need_smoke)
+    (eval_vllm if st.path == "vllm" else eval_hf)(ctx, st, inp, pending, need_smoke)
     outcomes, outs, bad = {}, [], []
+    waiting_set = set(waiting)
     for j in st.jobs:
         sp = C.job_status_path(r, j.kind, j.key)
-        if (ctx.root / sp).is_file():
+        if j in waiting_set:
+            outcomes[f"{j.kind}/{j.key}"] = DEP_PENDING
+        elif (ctx.root / sp).is_file():
             outcomes[f"{j.kind}/{j.key}"] = C.JOB_SKIP_STATUS
             outs.append(sp)
-        elif gen.verify_output(ctx.root, r, j.kind, j.key):
+        elif output_ok(ctx, inp, st, j):
             outcomes[f"{j.kind}/{j.key}"] = "output"
             outs += [C.gen_csv(r, j.kind, j.key), C.gen_meta(r, j.kind, j.key)]
         else:
             bad.append(f"{j.kind}/{j.key}")
-    missing_smoke = [k for k in adapters if not has_smoke(ctx, k)]
+    missing_smoke = [k for k in adapters if not smoke_current(ctx, k)]
     if bad or missing_smoke:
-        log(f"{ctx.step}: FAILED: outputs not verifying {bad[:10]}; no smoke {missing_smoke[:10]}")
+        log(f"{ctx.step}: FAILED: outputs not verifying {bad[:10]}; no current smoke "
+            f"{missing_smoke[:10]}")
+        return C.EXIT_FAILED
+    if waiting:  # no manifest: a later re-run evaluates them (review r1 finding 10)
+        log(f"{ctx.step}: FAILED: {len(waiting)} jobs pending on checkpoints not yet trained: "
+            f"{[f'{j.kind}/{j.key}' for j in waiting][:10]}")
         return C.EXIT_FAILED
     outs += [C.smoke_adapter_path(r, k) for k in adapters]
     write_json(ctx.root / jobs_record_path(ctx), {
@@ -1318,7 +1548,7 @@ def step_eval(ctx: Ctx) -> int:
         "jobs": job_list(st.jobs), "outcomes": outcomes,
         "smoke": {k: read_json(ctx.root / C.smoke_adapter_path(r, k)).get("verdict")
                   for k in adapters}})
-    write_step_manifest(ctx, ctx.step, [jobs_record_path(ctx), *outs])
+    write_step_manifest(ctx, ctx.step, [jobs_record_path(ctx), C.admission_path(r), *outs])
     return C.EXIT_OK
 
 

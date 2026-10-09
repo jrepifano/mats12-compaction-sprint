@@ -22,9 +22,15 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
   induction  pulls and verifies MANIFEST.eval-poison, runs `e12_judge.py decide --stage poison`
              and `e12_analyze.py decide --stage poison`, prints the outcome and the next action:
              continue | rank32-bench (rank 1, once: rank 32 never started) | terminate.
-  admit-hf   prices the conservative complete HF branch (budget CLI, --gen-path hf --endpoint 214
-             --rescue-triggered); if admitted writes cuts.json then genpath.json (admitted, jobs,
-             jobs_sha256); else exit 2. An existing admission is never re-priced.
+  admit-hf   prices both mutually exclusive complete HF branches, 107 without the rescue and
+             214 with it, at the dearer one (budget CLI --gen-path hf --branch hf-complete, which
+             writes bench/projection.hf.json locally) and authorizes their union
+             (`contracts.hf_complete_jobs`, review r1 finding 1); if admitted writes the local
+             admission record (`contracts.admission_path`, ADMISSION_FIELDS, branch
+             "hf-complete") and pushes cuts.json, the same admission.json (into the pod's results
+             tree) and genpath.json (admitted, jobs, jobs_sha256, last) in ONE ssh call; else exit
+             2. An existing admission is never re-priced (a missing local record is rebuilt from
+             genpath.json).
   endpoint   --stage repair107|rescue214: pulls the endpoint evaluations, runs both `decide`
              commands, writes endpoint.json stage 1 ({rescue_triggered}, plus endpoint 107 when
              false) or stage 2 (endpoint 214, or endpoint null with the not-established outcome).
@@ -33,13 +39,21 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
              `E12_RECIPE=R bash scripts/pod_run_e12.sh --detach`, then new log lines ~20 s later.
   archive    if `retained(recipe)` fails after a recovery pull: the pod's `upload` step; if that
              still fails, a `tar` pull of the adapter files, verified against every ckpt.json,
-             and a `local` retention receipt.
+             and a `local` retention receipt. `--while-running` (the watchdog's early archival
+             and hard stop, review r1 finding 2): no ended-chain gate and no upload step; ONE
+             ssh tar of the pod's ckpt.json records (missing ones installed locally), then the
+             verified tar pull (files an earlier local pull verified are linked, not re-pulled)
+             and a `local` receipt; prints {"retained": {recipe: bool}}; without --recipe it
+             covers every recipe with an attempt, the latest first.
   complete   every job of the current `planned_jobs(...)` has a verified output or a terminal
              skip record, every step manifest verifies and is bound to the current job list,
-             (HF) the endpoint is final and inside the admitted list, and `retained(recipe)`.
+             (HF) the endpoint is final and inside the admitted list, the local admission.json
+             agrees with genpath.json, the cuts in force equal the admission's, and
+             `retained(recipe)`.
 
 Usage: uv run python scripts/e12_control.py {poll|stop|induction|admit-hf|endpoint|launch|archive|
-       complete} --slot _A [--recipe R] [--stage S] [--resume] [--no-pull] [--dry-run]
+       complete} --slot _A [--recipe R] [--stage S] [--resume] [--no-pull] [--while-running]
+       [--dry-run]
 """
 
 from __future__ import annotations
@@ -50,6 +64,7 @@ import hashlib
 import json
 import posixpath
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -738,8 +753,61 @@ def job_dicts(jobs: list[C.Job]) -> list[dict]:
     return [{"kind": j.kind, "key": j.key, "n_rows": j.n_rows} for j in jobs]
 
 
+HF_BRANCH = "hf-complete"
+
+
+def write_local_json(path: Path, obj: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(dumps(obj))
+    tmp.replace(path)
+
+
+def admission_record(gp: dict) -> dict | None:
+    """The admission record (`contracts.ADMISSION_FIELDS`) held in an admitted genpath.json."""
+    if gp.get("admitted") is not True or any(k not in gp for k in C.ADMISSION_FIELDS):
+        return None
+    return {k: gp[k] for k in C.ADMISSION_FIELDS}
+
+
+def admission_problems(root: Path, recipe: str, gp: dict) -> list[str]:
+    """The local admission.json exists, carries every field, is admitted, matches its own job
+    list and agrees with the pod's genpath.json on jobs_sha256 and cuts."""
+    rel = C.admission_path(recipe)
+    adm = read_json(Path(root) / rel)
+    if adm is None:
+        return [f"no readable admission record {rel}"]
+    probs = []
+    missing = [k for k in C.ADMISSION_FIELDS if k not in adm]
+    if missing:
+        probs.append(f"{rel} lacks {missing}")
+    if adm.get("admitted") is not True:
+        probs.append(f"{rel} is not admitted")
+    try:
+        jobs = [C.Job(j["kind"], j["key"], int(j["n_rows"])) for j in adm.get("jobs") or []]
+    except (KeyError, TypeError, ValueError):
+        jobs = []
+    if not jobs or C.jobs_sha256(jobs) != adm.get("jobs_sha256"):
+        probs.append(f"{rel}: the job list does not match its jobs_sha256")
+    if gp.get("jobs_sha256") != adm.get("jobs_sha256"):
+        probs.append(f"{rel}: jobs_sha256 differs from genpath.json's")
+    if sorted(gp.get("cuts") or []) != sorted(adm.get("cuts") or []):
+        probs.append(f"{rel}: cuts differ from genpath.json's")
+    return probs
+
+
+def save_projection(ctx: Ctx, recipe: str, proj: dict) -> None:
+    """The persisted projection (review r1 finding 6): the budget CLI writes it with --root; if
+    the file is missing or differs from the record it printed, the printed record is written."""
+    p = ctx.root / C.projection_path(recipe, "hf")
+    if read_json(p) != proj:
+        write_local_json(p, proj)
+
+
 def cmd_admit_hf(ctx: Ctx) -> int:
-    """Price the conservative complete HF branch; write cuts.json, then genpath.json."""
+    """Price both complete HF branches (the dearer one), authorize their union; persist the
+    projection and the admission record locally, then push cuts.json, admission.json and
+    genpath.json to the pod in ONE ssh call."""
     R, cmd = ctx.recipe, "admit-hf"
     st = poll_pod(ctx)
     gp = st.control(R, "genpath.json") or {}
@@ -749,8 +817,15 @@ def cmd_admit_hf(ctx: Ctx) -> int:
         if gp.get("gen_path") != "hf":
             raise Refused(f"genpath.json says {gp.get('gen_path')!r}, not hf")
         if gp.get("admitted") is True:  # never re-priced: the admitted list stays fixed
-            return done(ctx, cmd, C.EXIT_OK, already_admitted=True,
-                        jobs_sha256=gp.get("jobs_sha256"), cuts=gp.get("cuts"))
+            restored = False
+            adm_p = ctx.root / C.admission_path(R)
+            if read_json(adm_p) is None and admission_record(gp) is not None:
+                write_local_json(adm_p, admission_record(gp))  # rebuilt from the pod's record
+                restored = True
+            probs = admission_problems(ctx.root, R, gp)
+            return done(ctx, cmd, C.EXIT_FAILED if probs else C.EXIT_OK, already_admitted=True,
+                        jobs_sha256=gp.get("jobs_sha256"), cuts=gp.get("cuts"),
+                        restored_local_admission=restored, problems=probs)
     if not pull(ctx, R, [s for s in ("smoke", "lora-check") if ctx.dry or s in st.steps(R)]):
         return done(ctx, cmd, C.EXIT_FAILED, reason="bench pull/verify failed")
     hours = elapsed_hours(ctx)
@@ -759,40 +834,49 @@ def cmd_admit_hf(ctx: Ctx) -> int:
     rate = ctx.pod.get("rate_usd_h") or max(r for _, r in C.FALLBACK_GPUS)
     api = api_spent(ctx.root)
     argv = [PY, "-m", "emx.e12.budget", "admit", "--recipe", R, "--stage", "hf",
-            "--gen-path", "hf", "--endpoint", str(C.RESCUE_END), "--rescue-triggered",
+            "--gen-path", "hf", "--branch", HF_BRANCH,
             "--elapsed-h", f"{hours or 0.0:.4f}", "--gpu-rate", f"{rate:.4f}",
-            "--api-spent", f"{api:.4f}", "--no-write"]
+            "--api-spent", f"{api:.4f}", "--root", str(ctx.root)]
     res = ctx.runner.run(argv, timeout=BUDGET_TIMEOUT_S)
     if ctx.dry:
         return done(ctx, cmd, C.EXIT_OK)
     proj = last_json(res.out)
+    if proj and proj.get("verdict") in C.PROJECTION_VERDICTS:
+        save_projection(ctx, R, proj)  # a refusal is recorded too
     if res.rc == C.EXIT_BUDGET or (proj or {}).get("verdict") == "refuse":
         return done(ctx, cmd, C.EXIT_BUDGET, projection=proj,
                     next_action="stop, archive, pull, terminate, report")
     if res.rc != 0 or not proj or proj.get("verdict") != "admit":
         return done(ctx, cmd, C.EXIT_FAILED, reason=f"budget exit {res.rc}", projection=proj)
-    if proj.get("gen_path") != "hf" or proj.get("endpoint") != C.RESCUE_END:
+    if proj.get("gen_path") != "hf" or proj.get("branch") != HF_BRANCH:
         return done(ctx, cmd, C.EXIT_FAILED, projection=proj,
-                    reason="the projection did not price the complete HF branch (hf, 214)")
+                    reason="the projection did not price both complete HF branches")
     cuts = sorted(int(c) for c in proj.get("cuts") or [])
-    jobs = C.planned_jobs(R, "hf", C.RESCUE_END, cuts, rescue_triggered=True)
+    jobs = C.hf_complete_jobs(R, cuts)
     sha = C.jobs_sha256(jobs)
+    if proj.get("jobs_sha256") != sha:
+        return done(ctx, cmd, C.EXIT_FAILED, projection=proj,
+                    reason=f"the projection's jobs_sha256 {proj.get('jobs_sha256')} is not the "
+                           f"HF admission set's {sha}")
     utc = utc_now()
-    gp_doc = {
-        **gp, "gen_path": "hf", "admitted": True, "cuts": cuts, "jobs": job_dicts(jobs),
-        "jobs_sha256": sha, "n_answers": sum(j.n_rows for j in jobs), "utc_admitted": utc,
-        "admitted_branch": {"endpoint": C.RESCUE_END, "rescue_triggered": True},
-        "projection": proj,
-    }
+    adm = {"gen_path": "hf", "admitted": True, "cuts": cuts, "jobs_sha256": sha,
+           "jobs": job_dicts(jobs), "branch": HF_BRANCH, "projection": proj,
+           "source": "e12_control.py admit-hf", "utc": utc}
+    gp_doc = {**gp, **adm, "n_answers_admitted": sum(j.n_rows for j in jobs),
+              "utc_admitted": utc}
+    adm_p = ctx.root / C.admission_path(R)
+    write_local_json(adm_p, adm)
+    # cuts, then the admission record, then genpath.json (the driver's trigger) last
     files = {C.control_path(R, "cuts.json"): dumps({"cuts": cuts, "stage": "hf", "utc": utc}),
+             C.admission_path(R): dumps(adm),
              C.control_path(R, "genpath.json"): dumps(gp_doc)}
     if not write_files(ctx, cmd, files):
-        return done(ctx, cmd, C.EXIT_FAILED, reason="control write failed")
-    warn = None if proj.get("jobs_sha256") in (None, sha) else (
-        f"the projection's jobs_sha256 {proj.get('jobs_sha256')} differs from the complete "
-        "branch's (it may have priced only the remaining jobs)")
+        adm_p.rename(adm_p.with_name(f"admission.unpushed_{utc.replace(':', '')}.json"))
+        return done(ctx, cmd, C.EXIT_FAILED, reason="control write failed (the local admission "
+                    "record was moved aside: nothing is admitted)")
     return done(ctx, cmd, C.EXIT_OK, cuts=cuts, jobs_sha256=sha, n_jobs=len(jobs),
-                n_answers=gp_doc["n_answers"], warning=warn)
+                branch=HF_BRANCH, n_answers_admitted=gp_doc["n_answers_admitted"],
+                priced_endpoint=proj.get("priced_endpoint"), admission=C.admission_path(R))
 
 
 def decision_inputs(recipe: str, stage: str) -> list[C.Job]:
@@ -960,11 +1044,31 @@ def run_upload(ctx: Ctx, recipe: str) -> bool:
     return pull(ctx, recipe, ["upload"])
 
 
-def tar_pull(ctx: Ctx, recipe: str) -> list[str]:
+def reusable_files(ctx: Ctx, recipe: str) -> dict[str, Path]:
+    """{"<key>/<name>": local file} from the current `local` receipt whose file is still present
+    with its receipt sha256 (an earlier verified pull: a later pull links instead of copying)."""
+    r = read_json(ctx.root / C.retention_receipt_path(recipe)) or {}
+    if r.get("method") != "local" or not r.get("location") or not isinstance(r.get("files"), dict):
+        return {}
+    loc = Path(r["location"])
+    loc = loc if loc.is_absolute() else ctx.root / loc
+    out = {}
+    for name, sha in r["files"].items():
+        f = loc / name
+        if f.is_file() and sha256_file(f) == sha:
+            out[name] = f
+    return out
+
+
+def tar_pull(ctx: Ctx, recipe: str, reuse: bool = False) -> list[str]:
     """Pull every checkpoint's adapter files with tar over ssh into a fresh gitignored dir
     results/E12/<recipe>/adapters/pull_<UTC>/<key>/, verify each against its ckpt.json, and
-    write a `local` retention receipt. Returns problems (empty = receipt written)."""
+    write a `local` retention receipt. With `reuse`, files an earlier verified local pull holds
+    with the same sha256 are hard-linked (copied if linking fails) instead of pulled again, so a
+    repeated pull (the watchdog's early archival, then its hard stop) moves only new
+    checkpoints. Returns problems (empty = receipt written)."""
     q = shlex.quote
+    have = reusable_files(ctx, recipe) if reuse and not ctx.dry else {}
     stamp = utc_now().replace(":", "").replace("-", "")
     dest_rel = f"{C.rdir(recipe)}/adapters/pull_{stamp}"
     if not ctx.dry:  # a fresh directory, never reused
@@ -984,7 +1088,19 @@ def tar_pull(ctx: Ctx, recipe: str) -> list[str]:
         elif posixpath.basename(pdir) != key:
             probs.append(f"ckpt {key}: adapter dir {pdir} is not named after its key")
         else:
-            groups.setdefault(posixpath.dirname(pdir), []).extend(f"{key}/{n}" for n in sorted(af))
+            todo = []
+            for n in sorted(af):
+                old = have.get(f"{key}/{n}")
+                if old is not None and sha256_file(old) == af[n]:
+                    (dest / key).mkdir(parents=True, exist_ok=True)
+                    try:
+                        (dest / key / n).hardlink_to(old)
+                    except OSError:
+                        shutil.copy2(old, dest / key / n)
+                else:
+                    todo.append(f"{key}/{n}")
+            if todo:
+                groups.setdefault(posixpath.dirname(pdir), []).extend(todo)
     if probs:
         return probs
     for parent, names in groups.items():
@@ -1051,6 +1167,83 @@ def cmd_archive(ctx: Ctx) -> int:
                 action="local tar pull", problems=probs[:20], upload_problems=up_probs[:10])
 
 
+def sync_ckpt_records(ctx: Ctx, recipe: str) -> list[str]:
+    """ONE ssh tar call: every ckpt.json now on the pod (results/E12/<recipe>/ckpt/*/) into a
+    fresh staging dir; each one the laptop lacks is installed into the results tree (a later
+    manifest pull brings the identical file), one that differs from the laptop's is a problem
+    and is never overwritten. Safe while the chain runs (ckpt.json is written last, once)."""
+    q = shlex.quote
+    rel = f"{C.rdir(recipe)}/ckpt"
+    stage = None
+    if not ctx.dry:
+        (ctx.root / "logs").mkdir(parents=True, exist_ok=True)
+        stage = Path(tempfile.mkdtemp(prefix="e12_ckptjson_", dir=ctx.root / "logs"))
+    body = (f"cd {q(ctx.pod_root)} || exit 97\n"
+            f"set -- {q(rel)}/*/ckpt.json\n"
+            '[ -e "$1" ] || exit 0\n'
+            'tar cf - "$@"')
+    res = ctx.runner.pipe(ssh_argv(ctx, remote("ckpt-json", body)),
+                          ["tar", "xf", "-", "-C", str(stage or ".")], timeout=SSH_TIMEOUT_S)
+    if ctx.dry:
+        return []
+    try:
+        if res.rc:
+            return [f"ckpt.json tar pull failed (rc {res.rc}): {res.err.strip()[-300:]}"]
+        probs = []
+        for f in sorted((stage / rel).glob("*/ckpt.json")):
+            local = ctx.root / rel / f.parent.name / "ckpt.json"
+            if not local.is_file():
+                local.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(f, local)
+            elif local.read_bytes() != f.read_bytes():
+                probs.append(f"ckpt {f.parent.name}: the pod's ckpt.json differs from the "
+                             "laptop's (kept the laptop's)")
+        return probs
+    finally:
+        shutil.rmtree(stage, ignore_errors=True)
+
+
+def attempt_recipes(st: PodState) -> list[str]:
+    """Recipes with an attempt record, the latest started first (the active one); else the
+    default recipe."""
+    att = st.attempts()
+    out = sorted((r for r in att if r in C.RECIPES and isinstance(att[r], dict)),
+                 key=lambda r: str(att[r].get("started_utc") or ""), reverse=True)
+    return out or [C.DEFAULT_RECIPE]
+
+
+def cmd_archive_while_running(ctx: Ctx, recipes: list[str] | None) -> int:
+    """The watchdog's archival (review r1 finding 2), safe while the chain runs: no upload step
+    (that needs the chain ended); for each recipe (default: every recipe with an attempt, the
+    active one first) the pod's ckpt.json records are synced, and unless `retained(recipe)`
+    already holds, the adapter files are pulled with the verified tar path (reusing an earlier
+    pull's files) and a `local` receipt is written. Prints `retained` per recipe."""
+    cmd = "archive"
+    st = poll_pod(ctx)
+    if not st.ok and not ctx.dry:
+        return done(ctx, cmd, C.EXIT_FAILED, mode="while-running", reason=st.error,
+                    retained={r: retained(r, ctx.root) for r in recipes or []})
+    recipes = recipes or attempt_recipes(st)
+    out: dict[str, dict] = {}
+    for R in recipes:
+        probs = sync_ckpt_records(ctx, R)
+        action = "already retained"
+        if ctx.dry or not retained(R, ctx.root):
+            action = "local tar pull"
+            probs += tar_pull(ctx, R, reuse=True)
+        if ctx.dry:
+            continue
+        probs += [p for p in retention_problems(R, ctx.root) if p not in probs]
+        out[R] = {"retained": not probs, "action": action, "method": _method(ctx, R),
+                  "problems": probs[:20]}
+    if ctx.dry:
+        return done(ctx, cmd, C.EXIT_OK, mode="while-running", recipes=recipes)
+    ok = all(v["retained"] for v in out.values())
+    return done(ctx, cmd, C.EXIT_OK if ok else C.EXIT_FAILED, mode="while-running",
+                state=st.state, retained={r: v["retained"] for r, v in out.items()},
+                recipes=out)
+
+
 def _method(ctx: Ctx, recipe: str) -> str | None:
     return (read_json(ctx.root / C.retention_receipt_path(recipe)) or {}).get("method")
 
@@ -1100,6 +1293,11 @@ def completion_problems(root: Path, recipe: str, st: PodState) -> tuple[list[str
             if outside:
                 probs.append(f"HF path: {len(outside)} current jobs outside the admitted list, "
                              f"e.g. {outside[:3]}")
+            probs += [f"HF path: {p}" for p in admission_problems(root, recipe, gp)]
+    adm = read_json(root / C.admission_path(recipe))
+    if adm is not None and sorted(int(c) for c in adm.get("cuts") or []) != cuts:
+        probs.append(f"the cuts in force {cuts} differ from {C.admission_path(recipe)}'s "
+                     f"{adm.get('cuts')}")
     n_out = n_skip = 0
     for j in jobs:
         p = job_problem(root, recipe, j)
@@ -1181,6 +1379,10 @@ def parser() -> argparse.ArgumentParser:
     ap.add_argument("--stage", choices=("repair107", "rescue214"), help="endpoint only")
     ap.add_argument("--resume", action="store_true", help="launch: resume the recipe's attempt")
     ap.add_argument("--no-pull", action="store_true", help="complete: check the laptop tree only")
+    ap.add_argument("--while-running", action="store_true",
+                    help="archive: the watchdog's mode, safe while the chain runs (no upload "
+                         "step; ckpt.json sync and the verified tar pull); without --recipe, "
+                         "every recipe with an attempt")
     ap.add_argument("--dry-run", action="store_true", help="print the commands; run nothing")
     return ap
 
@@ -1212,6 +1414,8 @@ def main(argv: list[str] | None = None, runner: Runner | None = None, **ctx_kw) 
             return cmd_endpoint(ctx, a.stage)
         if a.cmd == "launch":
             return cmd_launch(ctx, a.resume)
+        if a.cmd == "archive" and a.while_running:
+            return cmd_archive_while_running(ctx, [a.recipe] if a.recipe else None)
         if a.cmd == "archive":
             return cmd_archive(ctx)
         return cmd_complete(ctx, a.no_pull)

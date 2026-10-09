@@ -309,6 +309,9 @@ class FakeRunner:
                           "rescue214": {"endpoint": 214}}
         self.judge_rc = 0
         self.budget_answers = 10**9  # answers the fake budget admits
+        self.budget_skips_write = False
+        self.pipes: list[str] = []
+        self.budget_argv: list[str] = []
 
     def run(self, argv: list[str], timeout: float) -> ctl.Result:
         self.calls.append(argv)
@@ -342,6 +345,7 @@ class FakeRunner:
     def pipe(self, src: list[str], dst: list[str], timeout: float) -> ctl.Result:
         assert src[0] == "ssh"
         self.ops.append("tar")
+        self.pipes.append(src[-1])
         a = subprocess.run(["bash", "-c", src[-1]], capture_output=True, check=False)
         b = subprocess.run(dst, input=a.stdout, capture_output=True, check=False)
         return ctl.Result(a.returncode or b.returncode, "", (a.stderr + b.stderr).decode())
@@ -351,22 +355,38 @@ class FakeRunner:
         self.pod.on_tick()
 
     def _budget(self, argv: list[str]) -> ctl.Result:
+        """The budget CLI: answers stand in for dollars; `--branch hf-complete` prices the dearer
+        of the two complete HF branches and binds the union; writes the projection under --root
+        unless --no-write."""
+        self.budget_argv = argv
         val = {argv[i]: argv[i + 1] for i in range(len(argv) - 1) if argv[i].startswith("--")}
         recipe, gp = val["--recipe"], val["--gen-path"]
         e = int(val["--endpoint"]) if "--endpoint" in val else None
         rescue = "--rescue-triggered" in argv
+        branch = val.get("--branch")
         cuts: list[int] = []
         for k in [None, *sorted(C.CUTS)]:
             if k is not None:
                 cuts.append(k)
-            jobs = C.planned_jobs(recipe, gp, e, cuts, rescue_triggered=rescue)
-            if sum(j.n_rows for j in jobs) <= self.budget_answers:
+            if branch == "hf-complete":
+                answers = max(sum(j.n_rows for j in C.planned_jobs(recipe, "hf", ep, cuts, r))
+                              for ep, r in ((107, False), (214, True)))
+                jobs = C.hf_complete_jobs(recipe, cuts)
+            else:
+                jobs = C.planned_jobs(recipe, gp, e, cuts, rescue_triggered=rescue)
+                answers = sum(j.n_rows for j in jobs)
+            if answers <= self.budget_answers:
                 verdict = "admit"
                 break
         else:
             verdict = "refuse"
         proj = {"stage": val["--stage"], "recipe": recipe, "gen_path": gp, "endpoint": e,
-                "cuts": cuts, "jobs_sha256": C.jobs_sha256(jobs), "verdict": verdict}
+                "cuts": cuts, "jobs_sha256": C.jobs_sha256(jobs), "verdict": verdict,
+                "branch": branch, "priced_endpoint": 214 if branch else e}
+        if "--no-write" not in argv and not self.budget_skips_write:
+            out = Path(val["--root"]) / C.projection_path(recipe, val["--stage"])
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(json.dumps(proj, indent=2, sort_keys=True) + "\n")
         return ctl.Result(0 if verdict == "admit" else C.EXIT_BUDGET, json.dumps(proj) + "\n")
 
 
@@ -608,10 +628,9 @@ def test_hf_rescue_branch_through_complete(env, capsys, recipe):
     assert run(env, f"launch {R}", capsys)[0] == 0  # training runs; evaluation BLOCKED
     assert run(env, f"induction {R}", capsys)[0] == C.EXIT_BLOCKED
     rc, out = run(env, f"admit-hf {R}", capsys)  # admission arrives after training
-    assert rc == 0 and out["cuts"] == []
-    gp = pod.control(recipe, "genpath.json")
+    assert rc == 0 and out["cuts"] == [] and out["branch"] == "hf-complete"
     complete_branch = C.planned_jobs(recipe, "hf", 214, [], rescue_triggered=True)
-    assert gp["admitted"] is True and gp["jobs_sha256"] == C.jobs_sha256(complete_branch)
+    _check_admission(pod, lap, recipe, [])
     assert pod.control(recipe, "cuts.json")["cuts"] == []
     assert run(env, f"admit-hf {R}", capsys)[1]["already_admitted"] is True
     assert run(env, f"launch {R} --resume", capsys)[0] == 0
@@ -644,8 +663,93 @@ def test_hf_rescue_branch_through_complete(env, capsys, recipe):
         assert len(receipt["files"]) == 2 * n_ckpts
 
 
+def _check_admission(pod, lap: Path, recipe: str, cuts: list[int]) -> dict:
+    """admit-hf authorized the union of both complete HF branches and persisted the same
+    admission record locally and in the pod's results tree, with genpath.json agreeing."""
+    union = C.hf_complete_jobs(recipe, cuts)
+    gp = pod.control(recipe, "genpath.json")
+    assert gp["admitted"] is True and gp["jobs_sha256"] == C.jobs_sha256(union)
+    assert gp["branch"] == "hf-complete" and gp["cuts"] == cuts
+    local = lap / C.admission_path(recipe)
+    remote = pod.p(C.admission_path(recipe))
+    assert local.read_text() == remote.read_text()
+    adm = json.loads(local.read_text())
+    assert set(adm) == set(C.ADMISSION_FIELDS)
+    assert adm["jobs_sha256"] == gp["jobs_sha256"] and adm["branch"] == "hf-complete"
+    assert [(j["kind"], j["key"], j["n_rows"]) for j in adm["jobs"]] == [
+        (j.kind, j.key, j.n_rows) for j in union]
+    assert adm["cuts"] == cuts and adm["admitted"] is True and adm["gen_path"] == "hf"
+    proj = json.loads((lap / C.projection_path(recipe, "hf")).read_text())
+    assert proj == adm["projection"] and proj["verdict"] == "admit"
+    return adm
+
+
+def test_hf_107_branch_through_complete(env, capsys):
+    """Review r1 finding 1: repair succeeds at 107 (no rescue); its durability jobs are inside
+    the admitted union, and complete passes."""
+    pod, runner, lap = env
+    pod.gen_path = "hf"
+    R = "--slot _A --recipe rank1"
+    assert run(env, f"launch {R}", capsys)[0] == 0
+    rc, out = run(env, f"admit-hf {R}", capsys)
+    assert rc == 0 and out["cuts"] == []
+    budget = runner.budget_argv
+    assert budget[budget.index("--branch") + 1] == "hf-complete" and "--no-write" not in budget
+    assert "--endpoint" not in budget and "--rescue-triggered" not in budget
+    assert budget[budget.index("--root") + 1] == str(lap)
+    _check_admission(pod, lap, "rank1", [])
+    assert runner.ops.count("admit-hf") == 1  # cuts, admission and genpath: one ssh call
+    assert run(env, f"launch {R} --resume", capsys)[0] == 0
+    rc, out = run(env, f"endpoint {R} --stage repair107", capsys)
+    assert rc == 0 and pod.control("rank1", "endpoint.json") == {
+        **pod.control("rank1", "endpoint.json"), "endpoint": 107, "rescue_triggered": False}
+    rc, out = run(env, f"complete {R}", capsys)
+    assert rc == 1 and any(p.startswith("nudge/") for p in out["problems"])
+    assert run(env, f"launch {R} --resume", capsys)[0] == 0  # the 107 durability outputs
+    assert run(env, f"archive {R}", capsys)[0] == 0
+    rc, out = run(env, f"complete {R}", capsys)
+    assert rc == 0, out["problems"]
+    b107 = C.planned_jobs("rank1", "hf", 107, [], rescue_triggered=False)
+    assert out["n_jobs"] == len(b107) and out["endpoint"] == 107
+    assert out["rescue_triggered"] is False
+    # the local admission record is what the final decision reads: it must agree
+    adm_p = lap / C.admission_path("rank1")
+    adm = json.loads(adm_p.read_text())
+    adm_p.write_text(json.dumps({**adm, "jobs_sha256": "0" * 64}))
+    rc, out = run(env, f"complete {R} --no-pull", capsys)
+    assert rc == 1 and any("admission" in p and "jobs_sha256" in p for p in out["problems"])
+    adm_p.unlink()
+    rc, out = run(env, f"complete {R} --no-pull", capsys)
+    assert rc == 1 and any("no readable admission record" in p for p in out["problems"])
+    # an already-admitted pod rebuilds the missing local record from genpath.json
+    rc, out = run(env, f"admit-hf {R}", capsys)
+    assert rc == 0 and out["already_admitted"] is True and out["restored_local_admission"]
+    assert json.loads(adm_p.read_text()) == adm
+
+
+def test_admit_hf_persists_the_projection_when_the_budget_cli_did_not(env, capsys):
+    pod, runner, lap = env
+    pod.gen_path = "hf"
+    runner.budget_skips_write = True
+    assert run(env, "launch --slot _A --recipe rank1", capsys)[0] == 0
+    assert run(env, "admit-hf --slot _A --recipe rank1", capsys)[0] == 0
+    _check_admission(pod, lap, "rank1", [])
+
+
+def test_admit_hf_failed_push_admits_nothing(env, capsys, monkeypatch):
+    pod, _runner, lap = env
+    pod.gen_path = "hf"
+    assert run(env, "launch --slot _A --recipe rank1", capsys)[0] == 0
+    monkeypatch.setattr(ctl, "write_files", lambda ctx, op, files: False)
+    rc, out = run(env, "admit-hf --slot _A --recipe rank1", capsys)
+    assert rc == 1 and "control write failed" in out["reason"]
+    assert not (lap / C.admission_path("rank1")).exists()
+    assert list((lap / C.rdir("rank1")).glob("admission.unpushed_*.json"))
+    assert pod.control("rank1", "genpath.json")["admitted"] is False
+
+
 def test_admit_hf_refuses_a_budget_that_fits_only_the_pre_decision_answers(env, capsys):
-    pod, runner, _lap = env
+    pod, runner, lap = env
     pod.gen_path = "hf"
     pre = sum(j.n_rows for j in C.planned_jobs("rank1", "hf", None, []))
     all_cuts = sum(j.n_rows for j in C.planned_jobs("rank1", "hf", 214, sorted(C.CUTS), True))
@@ -655,10 +759,13 @@ def test_admit_hf_refuses_a_budget_that_fits_only_the_pre_decision_answers(env, 
     rc, out = run(env, "admit-hf --slot _A --recipe rank1", capsys)
     assert rc == C.EXIT_BUDGET and out["projection"]["verdict"] == "refuse"
     budget = next(c for c in runner.calls if "emx.e12.budget" in " ".join(c))
-    assert budget[budget.index("--endpoint") + 1] == "214" and "--rescue-triggered" in budget
-    assert "--no-write" in budget
+    assert budget[budget.index("--branch") + 1] == "hf-complete" and "--no-write" not in budget
     assert pod.control("rank1", "genpath.json")["admitted"] is False
     assert pod.control("rank1", "cuts.json") is None
+    assert not pod.p(C.admission_path("rank1")).exists()
+    assert not (lap / C.admission_path("rank1")).exists()
+    proj = json.loads((lap / C.projection_path("rank1", "hf")).read_text())
+    assert proj["verdict"] == "refuse"  # the refusal is recorded
 
 
 def test_admit_hf_applies_cuts_and_is_refused_on_vllm(env, capsys):
@@ -672,6 +779,7 @@ def test_admit_hf_applies_cuts_and_is_refused_on_vllm(env, capsys):
     rc, out = run(env, "admit-hf --slot _A --recipe rank1", capsys)
     assert rc == 0 and out["cuts"] == [0, 1]  # cut 0 changes no generation; cut 1 does
     assert pod.control("rank1", "cuts.json")["cuts"] == [0, 1]
+    _check_admission(pod, env[2], "rank1", [0, 1])
 
 
 # --- retention ----------------------------------------------------------------------------------
@@ -741,3 +849,72 @@ def test_cli_gates(env, capsys):
     with pytest.raises(SystemExit) as e:
         ctl.main(["nonsense", "--slot", "_A"], runner=runner, root=lap)
     assert e.value.code == C.EXIT_REFUSED
+
+
+# --- archive --while-running (the watchdog's early archival and hard stop) ---------------------
+
+
+def test_archive_while_running_retains_rank32_without_the_upload_step(env, capsys):
+    """Review r1 finding 2: while the chain still runs, the watchdog's archive syncs the pod's
+    ckpt.json records and pulls the rank-32 adapter files with the verified tar path; a repeat
+    pulls only new checkpoints; a corrupt file is reported, never receipted."""
+    pod, runner, lap = env
+    pod.upload_ok = False
+    assert run(env, "launch --slot _A --recipe rank32", capsys)[0] == 0
+    pod.running("pod_run_e12", "e12_pod")  # the chain is still running
+    rc, out = run(env, "archive --slot _A --recipe rank32", capsys)
+    assert rc == C.EXIT_REFUSED  # the normal archive waits for the chain's end
+    assert not (lap / C.rdir("rank32") / "ckpt").exists()  # nothing pulled yet
+    n_launches = len(pod.launches)
+    rc, out = run(env, "archive --slot _A --while-running", capsys)  # no --recipe: attempts
+    assert rc == 0, out
+    assert out["mode"] == "while-running" and out["retained"] == {"rank32": True}
+    assert out["recipes"]["rank32"]["method"] == "local"
+    assert len(pod.launches) == n_launches  # no upload step launched
+    assert ctl.retained("rank32", lap)
+    n_ckpts = len(list(pod.p(f"{C.rdir('rank32')}/ckpt").glob("*/ckpt.json")))
+    assert len(list((lap / C.rdir("rank32") / "ckpt").glob("*/ckpt.json"))) == n_ckpts
+    # a new checkpoint appears; the repeat links the old files and pulls only the new ones
+    key = C.nudge_key("A1_r107", 1, C.NUDGE_DOSES[-1])
+    d = pod.adapter_dir("rank32", key)
+    shutil.rmtree(pod.p(C.ckpt_dir("rank32", key)), ignore_errors=True)
+    shutil.rmtree(d, ignore_errors=True)
+    d.mkdir(parents=True)
+    files = {}
+    for n in ADAPTER_FILES:
+        (d / n).write_text(f"new/{n}")
+        files[n] = sha(d / n)
+    pod.write(f"{C.ckpt_dir('rank32', key)}/ckpt.json", json.dumps(
+        {"key": key, "adapter_files": files, "adapter_dir": C.adapter_files_dir("rank32", key)}))
+    (lap / C.ckpt_dir("rank32", key) / "ckpt.json").unlink()  # the laptop lacks it now
+    n_pipes = len(runner.pipes)
+    rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
+    assert rc == 0 and out["retained"] == {"rank32": True}
+    new = runner.pipes[n_pipes:]
+    assert new[0].startswith("# e12ctl:ckpt-json")
+    adapter_pulls = [x for x in new if x.startswith("# e12ctl:tar")]
+    assert len(adapter_pulls) == 1 and all(f"{key}/{n}" in adapter_pulls[0] for n in ADAPTER_FILES)
+    assert adapter_pulls[0].count("adapter_model.safetensors") == 1
+    receipt = json.loads((lap / C.retention_receipt_path("rank32")).read_text())
+    assert receipt["files"][f"{key}/adapter_model.safetensors"] == files[
+        "adapter_model.safetensors"]
+    # a corrupted adapter on the pod for a not-yet-pulled checkpoint: no receipt for it
+    (d / "adapter_model.safetensors").write_text("changed after ckpt.json")
+    (lap / C.retention_receipt_path("rank32")).unlink()
+    rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
+    assert rc == 1 and out["retained"] == {"rank32": False}
+    assert any("sha256 differs" in p for p in out["recipes"]["rank32"]["problems"])
+
+
+def test_archive_while_running_never_overwrites_a_differing_ckpt_record(env, capsys):
+    pod, _runner, lap = env
+    pod.upload_ok = False
+    assert run(env, "launch --slot _A --recipe rank32", capsys)[0] == 0
+    assert run(env, "archive --slot _A --recipe rank32 --while-running", capsys)[0] == 0
+    p = pod.p(f"{C.ckpt_dir('rank32', 'P1')}/ckpt.json")
+    local = lap / C.ckpt_dir("rank32", "P1") / "ckpt.json"
+    kept = local.read_text()
+    p.write_text(p.read_text().replace('"P1"', '"P1" ', 1))
+    rc, out = run(env, "archive --slot _A --recipe rank32 --while-running", capsys)
+    assert any("differs from the laptop's" in x for x in out["recipes"]["rank32"]["problems"])
+    assert rc == 1 and local.read_text() == kept

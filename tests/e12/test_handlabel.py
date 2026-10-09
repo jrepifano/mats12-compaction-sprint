@@ -16,10 +16,10 @@ import pytest
 
 from emx.contracts import GEN_COLUMNS
 from emx.e12 import contracts as C
+from emx.e12 import llm
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPTS = ROOT / "scripts"
-DEC_SHA = "ab" * 32
 N_Q, N_S = 5, 4  # questions x samples per synthetic model
 
 
@@ -46,10 +46,24 @@ def _score(i: int, base: float) -> float:
     return base + i * 1.234567e-7 + 0.000123456789  # unique, long reprs (leak checks)
 
 
-def write_decisions(root: Path, endpoint=107, sha=DEC_SHA, recipe="rank1") -> None:
+def decisions_doc(endpoint=107, recipe="rank1", nonce=None) -> dict:
+    """A decisions.json whose `final.decisions_sha256` verifies (`llm.require_final`)."""
+    doc = {"exp": C.EXP, "recipe": recipe, "final": {"endpoint": endpoint}}
+    if nonce is not None:
+        doc["poison"] = {"nonce": nonce}
+    doc["final"]["decisions_sha256"] = llm.decisions_sha256(doc)
+    return doc
+
+
+DEC_SHA = decisions_doc()["final"]["decisions_sha256"]
+
+
+def write_decisions(root: Path, endpoint=107, recipe="rank1", nonce=None) -> str:
     p = root / C.decisions_path(recipe)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"stages": {"final": {"endpoint": endpoint, "decisions_sha256": sha}}}))
+    doc = decisions_doc(endpoint, recipe, nonce)
+    p.write_text(json.dumps(doc))
+    return doc["final"]["decisions_sha256"]
 
 
 def all_keys() -> list[str]:
@@ -255,7 +269,8 @@ def test_key_file_is_separate_and_gitignored(tree):
     assert "gfl_em" in kp.read_text() and "gfl_em" not in pp.read_text()
 
 
-@pytest.mark.parametrize("bad", ["missing", "no_final", "no_sha", "no_endpoint"])
+@pytest.mark.parametrize("bad", ["missing", "no_final", "no_sha", "no_endpoint", "fabricated",
+                                 "tampered_endpoint"])
 def test_refuses_without_a_final_decision(tree, bad):
     p = tree / C.decisions_path("rank1")
     if bad == "missing":
@@ -264,8 +279,15 @@ def test_refuses_without_a_final_decision(tree, bad):
         p.write_text(json.dumps({"stages": {"repair107": {"endpoint": 107}}}))
     elif bad == "no_sha":
         p.write_text(json.dumps({"final": {"endpoint": 107}}))
-    else:
+    elif bad == "no_endpoint":
         p.write_text(json.dumps({"final": {"decisions_sha256": DEC_SHA}}))
+    elif bad == "fabricated":  # a well-formed hash that does not verify (review r1 finding 11)
+        p.write_text(json.dumps({"exp": C.EXP, "recipe": "rank1",
+                                 "final": {"endpoint": 107, "decisions_sha256": "ab" * 32}}))
+    else:
+        doc = decisions_doc()
+        doc["final"]["endpoint"] = 214
+        p.write_text(json.dumps(doc))
     with pytest.raises(SystemExit) as e:
         run_page(tree)
     assert e.value.code == C.EXIT_REFUSED
@@ -274,7 +296,7 @@ def test_refuses_without_a_final_decision(tree, bad):
 
 def test_top_level_final_stage_is_accepted(tree):
     (tree / C.decisions_path("rank1")).write_text(
-        json.dumps({"final": {"endpoint": 107, "decisions_sha256": DEC_SHA}}))
+        json.dumps(decisions_doc()))
     assert run_page(tree) == 0
 
 
@@ -462,7 +484,7 @@ def test_scorer_refuses_unlabelled_or_wrong_type_labels(tree, tmp_path):
 
 def test_scorer_refuses_a_changed_decision(tree, tmp_path):
     run_page(tree)
-    write_decisions(tree, sha="cd" * 32)
+    write_decisions(tree, nonce="changed")  # another valid final decision
     rc, rec = run_score(tree, labels_from_key(key_of(tree)), tmp_path)
     assert rc == C.EXIT_REFUSED and rec is None
 

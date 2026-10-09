@@ -36,7 +36,11 @@
 #
 # Failure policy:
 #   - a refusal (rc 3, incl. the approval gate) stops the chain: `E12_CHAIN_FAILED at=<step>`;
-#   - a failure (rc 1, 2 or a bad manifest) in a gating step (download smoke poison-s1 poison
+#   - a budget refusal (rc 2: a refused projection, at smoke or at lora-check) in ANY step stops
+#     the chain: `E12_STEP_REFUSED_BUDGET <step>`, `E12_CHAIN_FAILED at=<step>`, exit 2, so the
+#     controller takes its archive path (review r1 finding 3). BLOCKED (4) stays reserved for
+#     decisions that can arrive later (HF admission, endpoint);
+#   - a failure (rc 1 or a bad manifest) in a gating step (download smoke poison-s1 poison
 #     eval-poison repair: GATING_STEPS) stops the chain: `E12_CHAIN_FAILED at=<step>`. The
 #     driver fails `repair` only on a failed A or C run; B, rescue and nudge failures are recorded
 #     in status/ and do not fail their step;
@@ -50,7 +54,7 @@
 #
 # Progress lines (anchored; pollers grep for ^E12_):
 #   ^E12_STEP_DONE <step>  ^E12_STEP_FAILED <step> rc=<n>  ^E12_STEP_BLOCKED <step>
-#   ^E12_STEP_STOPPED <step>  ^E12_STEP_REFUSED <step>
+#   ^E12_STEP_STOPPED <step>  ^E12_STEP_REFUSED <step>  ^E12_STEP_REFUSED_BUDGET <step>
 #   ^E12_CHAIN_DONE failed=<list>  ^E12_CHAIN_FAILED at=<step>  ^E12_CHAIN_STOPPED at=<step>
 #
 # Control files (written by the laptop over ssh): control/E12/<recipe>/{STOP,cuts.json,
@@ -202,7 +206,7 @@ calls() {  # calls STEP: "python|driver args" lines, one per driver call
   esac
 }
 
-run_step() {  # returns 0 done, 1 failed, 3 refused, 4 blocked, 5 stopped
+run_step() {  # returns 0 done, 1 failed, 2 budget refused, 3 refused, 4 blocked, 5 stopped
   local step=$1 log rc py dargs
   log="$LOGDIR/${RECIPE}_${step}_$(date -u +%Y%m%dT%H%M%SZ)_$$.log"
   if ! member "$step" "$DRIVER_DECIDES" && step_done "$step"; then
@@ -230,6 +234,8 @@ EOF
   [ "$DRY" = "1" ] && return 0
   case "$rc" in
     0) ;;
+    2) say "BUDGET REFUSED $step (exit 2): a projection refused the workload; see $log"
+       echo "E12_STEP_REFUSED_BUDGET $step"; return 2 ;;
     3) say "REFUSED $step (exit 3); see $log"; echo "E12_STEP_REFUSED $step"; return 3 ;;
     4) say "BLOCKED $step: waiting on a control file; see $log"
        echo "E12_STEP_BLOCKED $step"; return 4 ;;
@@ -258,6 +264,7 @@ for step in $STEPS; do
   case "$rc" in
     0) ;;
     5) echo "E12_CHAIN_STOPPED at=$step"; exit 5 ;;
+    2) echo "E12_CHAIN_FAILED at=$step"; exit 2 ;;
     3) echo "E12_CHAIN_FAILED at=$step"; exit 3 ;;
     4) FAILED="${FAILED:+$FAILED,}$step" ;;
     *)

@@ -8,16 +8,21 @@ verify) plus the remaining training steps, with rates from the bench records
 (`contracts.BENCH_FIELDS`), falling back to the shared note's rates (labelled in `rates_source`).
 GPU hours = elapsed + remaining (training, generation, engine starts, applied smokes, upload,
 margin); GPU $ = hours x the pod's rate; API $ = the judging the jobs imply (judges, task judge,
-style audit) at $0.21-0.25 per 1,000 fully judged answers (upper rate used). Admit when GPU $ <=
+style audit) at the measured $0.33 per 1,000 fully judged EM answers (EQ0 billed; prereg
+Amendment B raised the API limit to $20). Admit when GPU $ <=
 GPU_LIMIT_USD, total pod hours <= POD_HOURS_LIMIT and API $ + recorded API spend <=
 API_LIMIT_USD; otherwise apply cuts 0, 1, 2, ... in order and re-project, and refuse if all five
 do not fit.
 
 Implementation notes (U6):
-- **Additive keyword.** `remaining_jobs`, `project` and `admit` also take `rescue_triggered`
-  (default None), passed to `planned_jobs`; the CLI's `--rescue-triggered` sets it. The
-  conservative complete HF branch that `admit-hf` prices is `--gen-path hf --endpoint 214
-  --rescue-triggered`.
+- **Additive keywords.** `remaining_jobs`, `project` and `admit` also take `rescue_triggered`
+  (default None), passed to `planned_jobs`; the CLI's `--rescue-triggered` sets it. `admit` also
+  takes `branch` (below).
+- **HF admission (review r1 finding 1).** `admit(..., branch="hf-complete")` (CLI `--branch
+  hf-complete`, with `--gen-path hf` and no `--endpoint`/`--rescue-triggered`) projects both
+  mutually exclusive complete HF branches, `planned_jobs(r, "hf", 107, cuts, False)` and
+  `planned_jobs(r, "hf", 214, cuts, True)`, takes the larger pod hours, GPU $ and API $, and
+  binds the record to `contracts.hf_complete_jobs(r, cuts)` (the union `admit-hf` authorizes).
 - **Remaining work.** A job is done when its output verifies on its own (CSV sha256 and row count
   equal the meta's) or has a terminal skip record. A training run is done when its
   `status/<run>.json` says ok, restarted_ok or failed (a failed run is not retrained); otherwise
@@ -292,6 +297,45 @@ def project(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
     }
 
 
+HF_COMPLETE = "hf-complete"
+BRANCHES: tuple[str, ...] = (HF_COMPLETE,)
+HF_COMPLETE_ARMS: tuple[tuple[int, bool], ...] = ((107, False), (C.RESCUE_END, True))
+
+
+def project_hf_complete(recipe: str, stage: str, *, cuts: Sequence[int],
+                        elapsed_pod_hours: float, gpu_rate: float, api_spent_usd: float,
+                        root: str | Path = C.REPO_ROOT) -> dict:
+    """The HF admission projection (review r1 finding 1): both mutually exclusive complete HF
+    branches (endpoint 107 without the rescue, 214 with it) are projected with these cuts, and
+    each of pod hours, GPU $ and API $ is the larger of the two (only one is ever generated, but
+    the admission must hold whichever the decision selects). The record is the dearer branch's
+    (by GPU $ + API $) with those maxima, `branch` "hf-complete", `endpoint` None and the
+    jobs_sha256 of `contracts.hf_complete_jobs(recipe, cuts)` (the authorized union)."""
+    arms = {}
+    for ep, rescue in HF_COMPLETE_ARMS:
+        arms[ep] = project(recipe, stage, gen_path="hf", endpoint=ep, cuts=cuts,
+                           elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
+                           api_spent_usd=api_spent_usd, root=root, rescue_triggered=rescue)
+    dear_ep = max(arms, key=lambda e: (arms[e]["gpu_usd"] + arms[e]["api_usd"], e))
+    rec = dict(arms[dear_ep])
+    total_h = max(a["total_pod_hours"] for a in arms.values())
+    gpu = max(a["gpu_usd"] for a in arms.values())
+    api = max(a["api_usd"] for a in arms.values())
+    fits = (gpu <= C.GPU_LIMIT_USD and total_h <= C.POD_HOURS_LIMIT
+            and api + float(api_spent_usd) <= C.API_LIMIT_USD)
+    union = C.hf_complete_jobs(recipe, tuple(c for c in rec["cuts"] if c != 0))
+    rec.update({
+        "branch": HF_COMPLETE, "endpoint": None, "rescue_triggered": None,
+        "priced_endpoint": dear_ep, "total_pod_hours": total_h, "gpu_usd": gpu,
+        "api_usd": api, "verdict": "admit" if fits else "refuse",
+        "jobs_sha256": C.jobs_sha256(union), "n_jobs": len(union),
+        "branches": {str(e): {k: a[k] for k in (
+            "endpoint", "rescue_triggered", "jobs_sha256", "n_jobs", "remaining_answers",
+            "total_pod_hours", "gpu_usd", "api_usd", "verdict")} for e, a in arms.items()},
+    })
+    return rec
+
+
 def cut_sequence() -> list[tuple[int, ...]]:
     """No cuts, then cuts 0, 1, 2, ... added in the prereg's order."""
     ids = sorted(C.CUTS)
@@ -301,16 +345,30 @@ def cut_sequence() -> list[tuple[int, ...]]:
 def admit(recipe: str, stage: str, *, gen_path: str, endpoint: int | None,
           elapsed_pod_hours: float, gpu_rate: float, api_spent_usd: float,
           root: str | Path = C.REPO_ROOT, write: bool = True,
-          rescue_triggered: bool | None = None) -> dict:
+          rescue_triggered: bool | None = None, branch: str | None = None) -> dict:
     """Project with no cuts, then with cuts 0..k added in order until it fits; return the first
     fitting projection (verdict "admit", with its cuts) or the all-cuts one (verdict "refuse").
-    With `write`, writes `contracts.projection_path(recipe, stage)`."""
+    `branch="hf-complete"` (gen_path hf, no endpoint, no rescue_triggered) prices the HF
+    admission set with `project_hf_complete`. With `write`, writes
+    `contracts.projection_path(recipe, stage)`."""
+    if branch is not None:
+        if branch not in BRANCHES:
+            raise ValueError(f"unknown branch {branch!r}; expected {BRANCHES}")
+        if gen_path != "hf" or endpoint is not None or rescue_triggered is not None:
+            raise ValueError("branch hf-complete takes gen_path hf and no endpoint or "
+                             "rescue_triggered (it prices both complete HF branches)")
     tried = []
     rec: dict = {}
     for cuts in cut_sequence():
-        rec = project(recipe, stage, gen_path=gen_path, endpoint=endpoint, cuts=cuts,
-                      elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
-                      api_spent_usd=api_spent_usd, root=root, rescue_triggered=rescue_triggered)
+        if branch == HF_COMPLETE:
+            rec = project_hf_complete(recipe, stage, cuts=cuts,
+                                      elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
+                                      api_spent_usd=api_spent_usd, root=root)
+        else:
+            rec = project(recipe, stage, gen_path=gen_path, endpoint=endpoint, cuts=cuts,
+                          elapsed_pod_hours=elapsed_pod_hours, gpu_rate=gpu_rate,
+                          api_spent_usd=api_spent_usd, root=root,
+                          rescue_triggered=rescue_triggered)
         tried.append({k: rec[k] for k in ("cuts", "total_pod_hours", "gpu_usd", "api_usd",
                                           "verdict")})
         if rec["verdict"] == "admit":
@@ -341,6 +399,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--elapsed-h", type=float, required=True)
     a.add_argument("--gpu-rate", type=float, required=True)
     a.add_argument("--api-spent", type=float, required=True)
+    a.add_argument("--branch", choices=BRANCHES, default=None,
+                   help="hf-complete: price both complete HF branches (107 and 214+rescue) "
+                        "and authorize their union")
     a.add_argument("--no-write", action="store_true")
     a.add_argument("--root", default=str(C.REPO_ROOT), help=argparse.SUPPRESS)
     args = ap.parse_args(argv)
@@ -348,7 +409,7 @@ def main(argv: list[str] | None = None) -> int:
         rec = admit(args.recipe, args.stage, gen_path=args.gen_path, endpoint=args.endpoint,
                     elapsed_pod_hours=args.elapsed_h, gpu_rate=args.gpu_rate,
                     api_spent_usd=args.api_spent, root=args.root, write=not args.no_write,
-                    rescue_triggered=args.rescue_triggered)
+                    rescue_triggered=args.rescue_triggered, branch=args.branch)
     except (OSError, ValueError) as e:
         print(f"E12 BUDGET FAILED: {e}", file=sys.stderr)
         print(json.dumps({"verdict": "error", "error": str(e)}))
