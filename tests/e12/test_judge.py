@@ -81,7 +81,10 @@ def write_skip(root: Path, recipe: str, kind: str, key: str) -> None:
 
 
 def write_tree(root: Path, recipe: str = R, jobs=None) -> None:
-    """Every job of the speculative vLLM plan (both endpoints), with SMALL row specs."""
+    """Every job of the speculative vLLM plan (both endpoints), with SMALL row specs, plus base's
+    full evaluation in the E12 tree (`contracts.BASE_FULL_SOURCE` "e12-hf": generated like any
+    other output, with meta)."""
+    write_output(root, recipe, "full", C.BASE_KEY)
     for j in jobs if jobs is not None else C.planned_jobs(recipe, "vllm"):
         write_output(root, recipe, j.kind, j.key)
 
@@ -171,17 +174,18 @@ def test_decide_poison_judges_only_general_rows_of_P(env, capsys):
     rc = mod.main(args(root, "decide", "--stage", "poison"), presets=cheap(), clients=cl,
                   wait=wait_none())
     assert rc == C.EXIT_OK
-    assert judged_files(root) == {f"full/P{s}.csv" for s in C.TRAIN_SEEDS}
+    keys = [C.BASE_KEY, *(f"P{s}" for s in C.TRAIN_SEEDS)]  # base's EM from the HF generator
+    assert judged_files(root) == {f"full/{k}.csv" for k in keys}
     assert not cl["gfl"].calls
-    for s in C.TRAIN_SEEDS:
-        j = pd.read_csv(root / C.judged_csv(R, "full", f"P{s}"), keep_default_na=False)
-        g = pd.read_csv(root / C.gen_csv(R, "full", f"P{s}"), keep_default_na=False)
+    for k in keys:
+        j = pd.read_csv(root / C.judged_csv(R, "full", k), keep_default_na=False)
+        g = pd.read_csv(root / C.gen_csv(R, "full", k), keep_default_na=False)
         gen_rows = g["qset"] == "general"
         for m in C.METRICS:
             st = j[status_column(m, "luna")]
             assert (st[gen_rows] == "scored").all() and (st[~gen_rows] == "").all()
             assert score_column(m, "gfl") not in j.columns
-    assert len(cl["luna"].calls) == 3 * 2 * 4  # 3 models x 2 metrics x 4 general rows
+    assert len(cl["luna"].calls) == 4 * 2 * 4  # base + 3 P x 2 metrics x 4 general rows
     rec = json.loads((root / mod.phase_record_path(R, "poison")).read_text().splitlines()[-1])
     assert rec["phase"] == "poison" and rec["decisions_sha256"] is None
     assert not spend.open_reservations("E12")
@@ -195,6 +199,9 @@ def test_decide_poison_refuses_without_manifest_or_with_bad_output(env, capsys):
     mod = load_script("e12_judge")
     cl = judge_clients()
     assert mod.main(args(root, "decide", "--stage", "poison"), clients=cl) == C.EXIT_REFUSED
+    assert "full/base: output absent" in capsys.readouterr().err  # E12's HF base is required
+    write_output(root, R, "full", C.BASE_KEY)
+    assert mod.main(args(root, "decide", "--stage", "poison"), clients=cl) == C.EXIT_REFUSED
     assert "MANIFEST.eval-poison" in capsys.readouterr().err
     write_manifest(root)
     p = root / C.gen_csv(R, "full", "P2")
@@ -202,6 +209,21 @@ def test_decide_poison_refuses_without_manifest_or_with_bad_output(env, capsys):
     assert mod.main(args(root, "decide", "--stage", "poison"), clients=cl) == C.EXIT_REFUSED
     assert "full/P2: output bad" in capsys.readouterr().err
     assert not cl["luna"].calls and not judged_files(root)
+
+
+def test_decide_poison_eq0_source_judges_no_e12_base(env, monkeypatch):
+    """BASE_FULL_SOURCE "eq0-vllm": base's answers are EQ0's (already judged), so the poison
+    phase neither needs nor judges an E12 `full/base`."""
+    monkeypatch.setattr(C, "BASE_FULL_SOURCE", "eq0-vllm")
+    root = env
+    for s in C.TRAIN_SEEDS:
+        write_output(root, R, "full", f"P{s}")
+    write_manifest(root)
+    rc = load_script("e12_judge").main(args(root, "decide", "--stage", "poison"),
+                                       presets=cheap(), clients=judge_clients(),
+                                       wait=wait_none())
+    assert rc == C.EXIT_OK
+    assert judged_files(root) == {f"full/P{s}.csv" for s in C.TRAIN_SEEDS}
 
 
 def test_decide_repair107_without_B_and_with_a_skipped_C(env, capsys):
@@ -337,7 +359,7 @@ def test_main_selection_endpoint_107(env, capsys):
     out = last_json(capsys.readouterr().out)
     m = _models(out)
     eps = C.endpoint_keys(107)
-    want = ({f"full/P{s}" for s in C.TRAIN_SEEDS} | {f"full/{k}" for k in eps}
+    want = ({"full/base"} | {f"full/P{s}" for s in C.TRAIN_SEEDS} | {f"full/{k}" for k in eps}
             | {f"traj/{k}" for k in C.planned_keys("traj")}
             | {f"nudge/{C.nudge_key(p, C.parse_key(p).seed, d)}" for p in eps
                for d in C.NUDGE_DOSES}
@@ -345,7 +367,7 @@ def test_main_selection_endpoint_107(env, capsys):
             | {f"nudge/R{s}_n{d:02d}" for s in C.TRAIN_SEEDS for d in C.NUDGE_DOSES}
             | {f"{c}/{k}" for c in C.CUE_KINDS
                for k in ["base", *[f"P{s}" for s in C.TRAIN_SEEDS], *eps]})
-    assert m == want and len(m) == 12 + 36 + 60 + 26
+    assert m == want and len(m) == 13 + 36 + 60 + 26
     assert not any(x.startswith("task/") or "_r214" in x for x in m)
     assert out["decisions_sha256"] == llm.decisions_sha256(
         json.loads((root / C.decisions_path(R)).read_text()))
@@ -368,6 +390,7 @@ def test_main_selection_endpoint_214_with_cuts(env, capsys):
     assert not any(x.startswith("nudge/R") for x in nudges)  # cut 3
     assert not any("_r107_n" in x for x in nudges) and len(nudges) == 36 + 12
     assert {f"cue_tf/{k}" for k in C.endpoint_keys(214)} <= m
+    assert "full/base" in m
 
 
 def test_main_runs_both_judges_with_cut_masks_and_records_the_hash(env, capsys):

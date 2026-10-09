@@ -107,7 +107,8 @@ def _em_flags(n: int, p: float) -> np.ndarray:
 
 def _rows(kind: str, key: str, qs, world: World) -> list[dict]:
     """Generation rows plus the planted `em` flag (dropped before writing the gen CSV)."""
-    cond = C.condition(world.recipe, key, kind) if (kind, key) != A.EQ0_BASE else "base"
+    eq0 = (kind, key) == A.EQ0_BASE and C.BASE_FULL_SOURCE == "eq0-vllm"
+    cond = "base" if eq0 else C.condition(world.recipe, key, kind)
     plan: list[tuple[dict, int, str]] = []
     if kind == "full":
         plan = [(q, 50, "dev") for q in qs["general"]] + [(q, 20, "test") for q in qs["ext48"]]
@@ -317,7 +318,7 @@ def write_style(root: Path, world: World, key: str, dsha: str, *, drop: int = 0)
     """A rating file as scripts/e12_style_audit.py rate-answers writes it (header, one line per
     answer); `drop` leaves that many answers unrated (a partial file)."""
     frozen = SA.load_frozen(root)
-    src = root / (C.EQ0_BASE_GEN if key == C.BASE_KEY else C.gen_csv(world.recipe, "full", key))
+    src = root / A.output_paths(world.recipe, "full", key)[0]
     gen = pd.read_csv(src, keep_default_na=False, dtype=str)
     tq = [q["qid"] for q in test_rows(questions(root))]
     samples = SA.answer_samples(world.cuts)

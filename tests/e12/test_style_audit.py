@@ -181,7 +181,10 @@ def last_json(out: str) -> dict:
     return json.loads(out.strip().splitlines()[-1])
 
 
-def _answers_tree(root: Path, final_cuts) -> list[str]:
+def _answers_tree(root: Path, final_cuts, *, eq0_base: bool = False) -> list[str]:
+    """Full answers for base, P and the 107 endpoints. Base's full evaluation is E12's HF one
+    (`full/base` with meta, contracts.BASE_FULL_SOURCE "e12-hf"); `eq0_base` also writes EQ0's
+    vLLM base file (for the "eq0-vllm" source)."""
     qs = [json.loads(x) for x in (root / C.QUESTION_FILES["ext48"]).read_text().splitlines()]
     spec = [("general", "g0", 3)] + [("ext48", q["qid"], 12) for q in qs]
 
@@ -191,9 +194,10 @@ def _answers_tree(root: Path, final_cuts) -> list[str]:
     keys = [f"P{s}" for s in C.TRAIN_SEEDS] + C.endpoint_keys(107)
     for k in keys:
         write_output(root, R, "full", k, spec=spec, response=resp)
-    base = write_output(root, R, "full", "B1_r010", spec=spec, response=resp)  # any CSV
-    (root / C.EQ0_BASE_GEN).parent.mkdir(parents=True, exist_ok=True)
-    (root / C.EQ0_BASE_GEN).write_bytes(base.read_bytes())
+    base = write_output(root, R, "full", C.BASE_KEY, spec=spec, response=resp)
+    if eq0_base:
+        (root / C.EQ0_BASE_GEN).parent.mkdir(parents=True, exist_ok=True)
+        (root / C.EQ0_BASE_GEN).write_bytes(base.read_bytes())
     write_decisions(root, final={"endpoint": 107, "rescue_triggered": False,
                                  "active_recipe": R, "cuts": final_cuts})
     return ["base", *keys]
@@ -238,7 +242,6 @@ def test_style_audit_end_to_end(senv, capsys, monkeypatch):
 
     assert run(mod, root, "rate-answers", client=cl) == C.EXIT_REFUSED  # no final yet
     keys = _answers_tree(root, final_cuts=[0])
-    monkeypatch.setattr(C, "EQ0_BASE_GEN_SHA256", llm.sha256_file(root / C.EQ0_BASE_GEN))
     assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_OK
     proj = last_json(capsys.readouterr().out)["batches"]
     assert len(proj) == 13 and all(v["n_todo"] == 41 * 5 for v in proj.values())  # cut 0
@@ -259,16 +262,43 @@ def test_style_audit_end_to_end(senv, capsys, monkeypatch):
     assert not spend.open_reservations("E12")
 
 
-def test_rate_answers_checks_the_eq0_base_hash(senv, capsys):
-    root = senv
-    mod = load_script("e12_style_audit")
+def _frozen(root, mod):
     cl = StyleFake()
     for cmd in ("discover", "merge"):
         assert run(mod, root, cmd, client=cl) == C.EXIT_OK
     assert run(mod, root, "freeze") == C.EXIT_OK
+
+
+def test_rate_answers_checks_the_hf_base_output(senv, capsys):
+    """Base's answers are E12's HF `full/base`, verified against its meta like any output."""
+    root = senv
+    mod = load_script("e12_style_audit")
+    _frozen(root, mod)
     _answers_tree(root, final_cuts=[])
+    p = root / C.gen_csv(R, "full", C.BASE_KEY)
+    p.write_text(p.read_text() + p.read_text().splitlines()[-1] + "\n")  # CSV no longer = meta
+    capsys.readouterr()
+    assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_REFUSED
+    assert "full/base: output bad" in capsys.readouterr().err
+    p.unlink()
+    (root / C.gen_meta(R, "full", C.BASE_KEY)).unlink()
+    assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_REFUSED
+    assert "full/base: output absent" in capsys.readouterr().err
+
+
+def test_rate_answers_eq0_source_checks_the_eq0_base_hash(senv, capsys, monkeypatch):
+    """With BASE_FULL_SOURCE "eq0-vllm", base's answers are EQ0's file, pinned by its sha256."""
+    root = senv
+    mod = load_script("e12_style_audit")
+    _frozen(root, mod)
+    monkeypatch.setattr(C, "BASE_FULL_SOURCE", "eq0-vllm")
+    _answers_tree(root, final_cuts=[], eq0_base=True)
+    (root / C.gen_csv(R, "full", C.BASE_KEY)).unlink()  # not read under this source
+    capsys.readouterr()
     assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_REFUSED
     assert "EQ0" in capsys.readouterr().err
+    monkeypatch.setattr(C, "EQ0_BASE_GEN_SHA256", llm.sha256_file(root / C.EQ0_BASE_GEN))
+    assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_OK
 
 
 def test_rate_answers_samples_zero_to_nine_without_cut0(senv, capsys, monkeypatch):
@@ -279,7 +309,6 @@ def test_rate_answers_samples_zero_to_nine_without_cut0(senv, capsys, monkeypatc
         assert run(mod, root, cmd, client=cl) == C.EXIT_OK
     assert run(mod, root, "freeze") == C.EXIT_OK
     _answers_tree(root, final_cuts=[])
-    monkeypatch.setattr(C, "EQ0_BASE_GEN_SHA256", llm.sha256_file(root / C.EQ0_BASE_GEN))
     assert run(mod, root, "rate-answers", "--dry-run") == C.EXIT_OK
     proj = last_json(capsys.readouterr().out)["batches"]
     assert all(v["n_todo"] == 41 * 10 for v in proj.values())

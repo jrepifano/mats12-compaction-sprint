@@ -314,7 +314,9 @@ def style_settings_sha256() -> str:
 
 
 def style_source(recipe: str, key: str) -> str:
-    return C.EQ0_BASE_GEN if key == C.BASE_KEY else C.gen_csv(recipe, "full", key)
+    if key == C.BASE_KEY and C.BASE_FULL_SOURCE == "eq0-vllm":
+        return C.EQ0_BASE_GEN
+    return C.gen_csv(recipe, "full", key)
 
 
 def style_ratings_checked(recipe: str, key: str, root: str | Path, dsha: str, frozen: dict,
@@ -645,7 +647,8 @@ def validate(recipe: str = C.DEFAULT_RECIPE, root: str | Path = C.REPO_ROOT, *,
                for k, key in used}
     metas = {}
     for kind, key in sorted(expected):
-        if (kind, key) != A.EQ0_BASE and tree.state(kind, key) == "present":
+        if ((kind, key) != A.EQ0_BASE or C.BASE_FULL_SOURCE == "e12-hf") and tree.state(
+                kind, key) == "present":
             meta = A.read_json(root / C.gen_meta(recipe, kind, key)) or {}
             metas[f"{kind}/{key}"] = meta.get("gen_path")
     checks["generation_path"] = check_genpath(recipe, root, metas, fin.get("gen_path"))

@@ -461,6 +461,13 @@ HF_REPO_PREFIX = "e12"  # private repos jrepifano/e12-<recipe>-adapters (created
 # EQ0's base answers (gitignored), reused for base EM (prereg §4.4); copied into the worktree.
 EQ0_BASE_GEN = "results/EQ0/gen/base.csv"
 EQ0_BASE_JUDGED = "results/EQ0/judged/base.csv"
+# Base's full evaluation (2026-10-09, side-agent note): the trained-adapter re-check selected HF
+# generation for every E12 answer, so EQ0's vLLM base answers are no longer "the same stack"
+# (prereg §4.4's reason for reusing them). Base EM for every decision and contrast comes from
+# `full/base` in the E12 tree, generated with the same HF path (`scripts/e12_base_hf.py`,
+# `MANIFEST.base-hf.sha256`); EQ0's vLLM base is reported beside it as a secondary.
+BASE_FULL_SOURCE = "e12-hf"  # "e12-hf" | "eq0-vllm"
+BASE_HF_MANIFEST_STEP = "base-hf"
 EQ0_BASE_GEN_SHA256 = "60b74e5b5c44ce74796e3ee78b64cc2c56c7f7a5595d51cd155f225fc3ed7d67"
 EQ0_BASE_JUDGED_SHA256 = "78c7b9daa9a91f986084019ad03e0c92dbde0aef4102bf9cb2100d0289d7b0f4"
 

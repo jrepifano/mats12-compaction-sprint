@@ -360,7 +360,7 @@ def test_scenario_7_needs_effective_nudge(tmp_path):
 # --- secondaries --------------------------------------------------------------------------------
 
 
-def test_random8_uses_eq0_base_on_the_same_draw(tmp_path, default_tree):
+def test_random8_uses_the_hf_base_on_the_same_draw(tmp_path, default_tree):
     root, _ = tree_from(tmp_path, default_tree)
     a = run_all(root)
     r8 = a["secondaries"]["random8"]
@@ -380,17 +380,65 @@ def test_random8_uses_eq0_base_on_the_same_draw(tmp_path, default_tree):
     assert r8["eligible_seeds"] == [1, 2, 3] and r8["agrees_with_main"]
 
 
-def test_random8_changes_with_eq0_base(tmp_path, default_tree):
+def test_random8_changes_with_the_hf_base(tmp_path, default_tree):
+    """Base on the random-8 draw is read from E12's HF `full/base` (BASE_FULL_SOURCE)."""
     root, _ = tree_from(tmp_path, default_tree)
     man = json.loads((root / C.PRERUN_MANIFEST).read_text())["eval_questions"]["random8_qkeys"]
     qset, qid = man[0].split("/")
-    jp = root / C.EQ0_BASE_JUDGED
+    jp = root / C.judged_csv("rank1", "full", C.BASE_KEY)
     j = pd.read_csv(jp, keep_default_na=False, dtype=str)
     judge = C.DECIDING_JUDGE[qset]
     j.loc[j["qid"] == qid, score_column("aligned", judge)] = "10.0"
     j.to_csv(jp, index=False)
     r8 = A.random8(A.Tree("rank1", root), A.load_final("rank1", root)[0])
     assert r8["base"]["em_rate"] > 0.12  # one of 8 questions now 100% EM
+
+
+def test_eq0_source_reads_eq0s_base_files(tmp_path, monkeypatch):
+    """BASE_FULL_SOURCE "eq0-vllm" still reads EQ0's answers (no meta) as base's full
+    evaluation."""
+    monkeypatch.setattr(C, "BASE_FULL_SOURCE", "eq0-vllm")
+    assert A.output_paths("rank1", "full", C.BASE_KEY) == (C.EQ0_BASE_GEN, C.EQ0_BASE_JUDGED,
+                                                           None)
+    root = tmp_path / "t"
+    S.build(root)
+    assert (root / C.EQ0_BASE_JUDGED).is_file()
+    assert not (root / C.gen_csv("rank1", "full", C.BASE_KEY)).exists()
+    tree = A.Tree("rank1", root)
+    assert tree.get("full", C.BASE_KEY) is not None
+    assert tree.inputs()["full/base"]["gen_csv"]["path"] == C.EQ0_BASE_GEN
+
+
+def test_base_generators_reports_hf_and_vllm_bases(tmp_path, default_tree, monkeypatch):
+    """Descriptive: base's rates from E12's HF base and, when present, EQ0's vLLM base."""
+    root, _ = tree_from(tmp_path, default_tree)
+    bg = run_all(root)["base_generators"]
+    hf = bg["sources"]["e12-hf"]
+    assert bg["descriptive"] and bg["base_full_source"] == "e12-hf"
+    assert hf["status"] == "computed" and hf["used_for_decisions"]
+    assert bg["sources"]["eq0-vllm"]["status"] == "absent" and bg["hf_minus_vllm_points"] is None
+    assert (hf["dev"]["judge"], hf["test"]["judge"]) == ("luna", "gfl")
+    assert hf["dev"]["n_scored"] == 8 * 50 and hf["test"]["n_scored"] == C.N_TEST * 20
+    assert hf["dev"]["em_rate"] == 0.0 and hf["test"]["em_rate"] == pytest.approx(0.05, abs=0.01)
+    lo, hi = hf["test"]["em_ci"]
+    assert lo < hf["test"]["em_rate"] < hi
+    assert hf["dev"]["coherence_rate"] == 1.0 and hf["dev"]["coherence_ci"][1] == pytest.approx(1)
+    with monkeypatch.context() as m:  # EQ0's vLLM base, with dev EM planted at 50%
+        m.setattr(C, "BASE_FULL_SOURCE", "eq0-vllm")
+        S.write_output(root, "full", C.BASE_KEY, S.World(dev={C.BASE_KEY: 0.5}))
+    a = run_all(root)
+    bg = a["base_generators"]
+    vl = bg["sources"]["eq0-vllm"]
+    assert vl["status"] == "computed" and not vl["used_for_decisions"]
+    assert vl["sha256_matches_contracts"] is False  # synthetic files, not EQ0's pinned ones
+    assert vl["dev"]["em_rate"] == pytest.approx(0.5, abs=0.01)
+    d = bg["hf_minus_vllm_points"]
+    assert d["dev_em"] == pytest.approx(-100 * vl["dev"]["em_rate"])
+    assert d["test_em"] == pytest.approx(0.0) and d["dev_coherence"] == pytest.approx(0.0)
+    assert a["inputs"]["base_generators/eq0-vllm"]["gen_csv"]["path"] == C.EQ0_BASE_GEN
+    assert a["secondaries"]["random8"]["base"]["em_rate"] == pytest.approx(
+        A.r8_rates(A.Tree("rank1", root).get("full", C.BASE_KEY),
+                   a["secondaries"]["random8"]["qkeys"])["em_rate"])  # still the HF base
 
 
 def _producer_data_present() -> bool:
