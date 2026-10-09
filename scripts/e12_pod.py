@@ -40,9 +40,12 @@ Recipe: --recipe, else E12_RECIPE, else rank1. Every path below is under results
     eval-endpoints / eval-traj / eval-nudge / eval-cue-task
     upload          private HF repo jrepifano/e12-<recipe>-adapters: every existing checkpoint's
                     adapter files + ckpt.json -> bench/retention_receipt.json (idempotent); rank > 1
-                    recipes also upload incrementally at the end of every training step
-                    (`retain_step`: that step's new checkpoints, receipt refreshed,
-                    bench/retention_<step>.json; a failure is recorded, never fatal)
+                    recipes also upload incrementally inside every training step (`retain`:
+                    each run's new checkpoints as soon as it ends, before the next run starts,
+                    and a sweep before the step manifest; receipt refreshed;
+                    bench/retention_<step>.json). An upload that still fails after
+                    RETAIN_ATTEMPTS (or a privacy refusal, a missing HF_TOKEN, a checkpoint whose
+                    files differ from its ckpt.json) stops the step: exit 7, no step manifest
     manifest        the closing manifest
     recovery        not a step: only MANIFEST.recovery.sha256
 
@@ -82,7 +85,7 @@ manifest and recovery ignore STOP (they are the controller's exit path).
 Each completed step writes MANIFEST.<step>.sha256 LAST (`shasum -a 256` lines, repo-relative
 paths) and every step writes bench/step_<step>[_<part>].json (outcome, utc, git commit, seeds).
 Exit codes (contracts): 0 ok, 1 failed, 2 budget refused, 3 refused (input or gate), 4 BLOCKED,
-5 STOPPED. A CUDA OOM in a training step re-execs the step once with --gradient-checkpointing
+5 STOPPED, 7 RETENTION (rank > 1: a finished run's checkpoints could not be uploaded). A CUDA OOM in a training step re-execs the step once with --gradient-checkpointing
 --after-oom. --root (default: this checkout, /ws/emx on the pod) and --scratch (default /ws/e12)
 exist for tests.
 
@@ -138,8 +141,12 @@ class BudgetRefused(Exception):
     """A projection refused the remaining workload (exit 2)."""
 
 
+class RetentionFailed(Exception):
+    """A rank > 1 training step could not upload a finished run's checkpoints (exit 7)."""
+
+
 EXIT_OF = {Refused: C.EXIT_REFUSED, Blocked: C.EXIT_BLOCKED, Stopped: C.EXIT_STOPPED,
-           BudgetRefused: C.EXIT_BUDGET}
+           BudgetRefused: C.EXIT_BUDGET, RetentionFailed: C.EXIT_RETENTION}
 
 
 def log(msg: str) -> None:
@@ -158,6 +165,11 @@ class Ctx:
         self.part = getattr(args, "part", None)
         self.scratch = Path(getattr(args, "scratch", None) or C.SCRATCH)
         self.dry = bool(getattr(args, "dry_run", False))
+        # incremental retention (rank > 1, `retain`): keys this process has uploaded or found
+        # held, whether an upload failed (no further sweep), and the step's retention record
+        self.retained: set[str] = set()
+        self.retention_failed = False
+        self.retention_rec: dict | None = None
 
     def path(self, p: str | Path) -> Path:
         """A contracts path on this root: repo-relative -> root/p; under POD_ROOT -> root/rel;
@@ -666,19 +678,28 @@ def run_outputs(ctx: Ctx, item: RunItem) -> list[str]:
 
 def adapter_change(ctx: Ctx, item: RunItem) -> None:
     """Nudge: each dose's distance from its dose-0 adapter (prereg §4.8 item 6); recorded only.
-    The base reference's dose 0 is the bare base: its distances are in ckpt.json (trainer)."""
+    Read from each dose's ckpt.json `distance`, which the trainer computes on the GPU from the
+    in-memory adapter against the run's reference (code review r1 finding 3: no file reload,
+    no CPU recomputation); its `distance_ref` must name the dose-0 parent, else that dose
+    records an error. The base reference's dose 0 is the bare base: its distances are in
+    ckpt.json (trainer, `init:` reference)."""
     if item.segment != "nudge" or item.parent_key is None:
         return
-    p0 = ctx.path(C.adapter_files_dir(ctx.recipe_name, item.parent_key))
+    want = f"parent:{item.parent_key}"
     rec = {}
     for d, key in sorted(item.saves.items()):
         try:
-            rec[key] = trainer.adapter_distance(
-                ctx.path(C.adapter_files_dir(ctx.recipe_name, key)), p0)
+            ck = read_json(ctx.root / C.ckpt_dir(ctx.recipe_name, key) / "ckpt.json")
+            if ck.get("distance_ref") != want:
+                raise ValueError(f"distance_ref {ck.get('distance_ref')!r} != {want!r}")
+            if not isinstance(ck.get("distance"), dict):
+                raise TypeError("ckpt.json records no distance")
+            rec[key] = ck["distance"]
         except Exception as e:  # noqa: BLE001 - a diagnostic: recorded, never fatal
             rec[key] = {"error": f"{type(e).__name__}: {e}"}
     write_json(ctx.root / C.bench_path(ctx.recipe_name, f"adapter_change/{item.run}"),
-               {"run": item.run, "parent": item.parent_key, "distances": rec, "utc": G.utc()})
+               {"run": item.run, "parent": item.parent_key, "distance_ref": want,
+                "source": "ckpt.json distance", "distances": rec, "utc": G.utc()})
 
 
 def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
@@ -734,6 +755,13 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
             st = "failed"
         outcomes[it.run] = st
         _recovery_quietly(ctx)
+        try:  # rank > 1: this run's checkpoints to the private HF repo before the next run
+            retain(ctx, set(it.saves.values()), it.run)
+        except RetentionFailed as e:
+            write_json(ctx.root / C.bench_path(ctx.recipe_name, f"{ctx.step}.runs"), {
+                **step_info(ctx, started), "runs": outcomes, "retention_failed": str(e),
+                "planned": [x.describe() for x in items]})
+            raise
         if st not in OK_STATUSES and it.gating:
             log(f"{ctx.step}: gating run {it.run} {st}: the step fails")
             return C.EXIT_FAILED
@@ -745,6 +773,9 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
     if pending:  # no manifest: a later re-run of this step trains them once their parents exist
         log(f"{ctx.step}: FAILED: {len(pending)} runs pending on a missing parent: {pending}")
         return C.EXIT_FAILED
+    # rank > 1: every checkpoint of the step retained (runs a previous invocation finished
+    # included) before the step can be complete
+    retain(ctx, {k for it in items for k in it.saves.values()}, "step")
     outs = [rec_path] + [p for it in items for p in run_outputs(ctx, it)]
     if ctx.step == "poison-s1":  # fail fast on a reload mismatch (integration, 2026-10-08)
         if model is None:
@@ -763,9 +794,10 @@ def train_runs(ctx: Ctx, items: list[RunItem]) -> int:
 
 def train_step(ctx: Ctx, items: list[RunItem]) -> int:
     """`train_runs`, with EQ0's CUDA-OOM retry: the step re-execs itself once in a fresh process
-    with --gradient-checkpointing --after-oom (which refuses a second retry). However the step
-    ends (done, failed, STOP), a rank > 1 recipe then uploads the step's new checkpoints
-    (`retain_step`, Amendment D')."""
+    with --gradient-checkpointing --after-oom (which refuses a second retry). A rank > 1 recipe
+    uploads each run's checkpoints as it ends (`train_runs` -> `retain`, fatal: exit 7); when
+    the step ends any other way (failed, STOP, an exception), a final best-effort sweep uploads
+    what is still unretained (`retain_quietly`; skipped after an upload failure)."""
     a = ctx.args
     if a.after_oom and not a.gradient_checkpointing:
         raise Refused("--after-oom is the gradient-checkpointing retry")
@@ -789,8 +821,9 @@ def train_step(ctx: Ctx, items: list[RunItem]) -> int:
         sys.stderr.flush()
         _execv(sys.executable, argv)
         return C.EXIT_FAILED  # only reached when the exec hook returns (tests)
-    finally:  # rank > 1: this step's checkpoints to the private HF repo now (never fatal)
-        retain_step(ctx, items)
+    finally:  # rank > 1: whatever this step left unretained (best effort; logged)
+        if not ctx.retention_failed:
+            retain_quietly(ctx, items)
 
 
 def step_poison_s1(ctx: Ctx) -> int:
@@ -1796,45 +1829,97 @@ def step_upload(ctx: Ctx) -> int:
     return C.EXIT_OK
 
 
-def retain_step(ctx: Ctx, items: list[RunItem]) -> dict | None:
-    """Amendment D' (post-mortem: rank-32 checkpoints lived on pod scratch until the chain's
-    final upload, and most were lost at the GPU stop): at the end of a training step of a
-    rank > 1 recipe, upload that step's checkpoints the receipt does not yet hold (the upload
-    step's helpers: private repo, privacy asserted, incremental) and refresh the receipt with
-    them added. Never fails the step: the outcome (or the error) is logged and recorded in
-    bench/retention_<step>.json. The `upload` step still runs at the chain's end (and writes
-    the upload manifest); `retained` is judged against every checkpoint, so a partial receipt
-    never declares retention."""
-    if ctx.dry or ctx.recipe.rank <= 1:
-        return None
+def _retention_record(ctx: Ctx, ev: dict) -> dict:
+    """Fold one `retain` event into this process's bench/retention_<step>.json and write it."""
     r = ctx.recipe_name
-    keys = {k for it in items for k in it.saves.values()}
-    rec = {"step": ctx.step, "recipe": r, "ok": False, "keys": [], "n_new_files": 0,
-           "commit_sha": None, "problems": [], "error": None}
-    try:
-        ckpts = checkpoint_files(ctx, keys, rec["problems"])
-        rp = ctx.root / C.retention_receipt_path(r)
-        old = read_json(rp) if rp.is_file() else {}
-        held = (old.get("files") or {}) if old.get("method") == "hf" else {}
-        new = {f"{k}/{n}": sha for k, v in ckpts.items() for n, sha in v["files"].items()}
-        rec["keys"] = sorted(ckpts)
-        rec["n_new_files"] = sum(1 for f, sha in new.items() if held.get(f) != sha)
-        if rec["n_new_files"]:
-            receipt = upload_checkpoints(ctx, ckpts, old, {**held, **new})
-            rec["commit_sha"] = receipt["commit_sha"]
-        else:
-            rec["commit_sha"] = old.get("commit_sha")
-        rec["ok"] = not rec["problems"]
-        log(f"{ctx.step}: retained {len(ckpts)} checkpoints ({rec['n_new_files']} new files) in "
-            f"{hf_repo_id(r)}" + (f"; problems {rec['problems']}" if rec["problems"] else ""))
-    except Exception as e:  # noqa: BLE001 -- recorded, never fatal to the training step
-        rec["error"] = f"{type(e).__name__}: {str(e)[:2000]}"
-        log(f"{ctx.step}: incremental upload FAILED (the step goes on): {rec['error']}")
+    rec = ctx.retention_rec or {"step": ctx.step, "recipe": r, "ok": True, "keys": [],
+                                "n_new_files": 0, "commit_sha": None, "problems": [],
+                                "error": None, "events": []}
+    ctx.retention_rec = rec
+    rec["events"].append(ev)
+    rec["keys"] = sorted(set(rec["keys"]) | set(ev["keys"]))
+    rec["problems"] += ev["problems"]
+    if ev["error"] is None:
+        rec["n_new_files"] += ev["n_new_files"]
+        rec["commit_sha"] = ev["commit_sha"] or rec["commit_sha"]
+    rec["error"] = ev["error"] or rec["error"]
+    rec["ok"] = rec["ok"] and ev["ok"]
     try:
         write_json(ctx.root / C.bench_path(r, f"retention_{ctx.step}"), {**rec, "utc": G.utc()})
     except OSError as e:
         log(f"{ctx.step}: retention record not written: {e}")
     return rec
+
+
+def retain(ctx: Ctx, keys: set[str], where: str) -> dict | None:
+    """Amendment D' (post-mortem: rank-32 checkpoints lived on pod scratch until the chain's
+    final upload, and most were lost at the GPU stop; code review r1 findings 1-2): upload the
+    checkpoints among `keys` that exist and that the receipt does not yet hold to the private
+    HF repo (`upload_checkpoints`: create_repo private, privacy asserted before and after the
+    commit; never a public repo) and refresh the receipt. Rank > 1 recipes only; keys this
+    process already retained are skipped. Up to RETAIN_ATTEMPTS attempts with
+    RETAIN_BACKOFF_S waits for transient errors; a `Refused` (missing HF_TOKEN, a repo that is
+    not private) is not retried. Raises RetentionFailed (exit 7) when it still fails, or when a
+    checkpoint's files differ from its ckpt.json; every outcome goes to
+    bench/retention_<step>.json. The `upload` step still runs at the chain's end."""
+    keys = set(keys) - ctx.retained
+    if ctx.dry or ctx.recipe.rank <= 1 or not keys:
+        return None
+    r = ctx.recipe_name
+    ev = {"where": where, "ok": False, "keys": [], "n_new_files": 0, "commit_sha": None,
+          "attempts": 0, "problems": [], "error": None, "utc": G.utc()}
+    for attempt in range(1, C.RETAIN_ATTEMPTS + 1):
+        ev["attempts"], problems = attempt, []
+        try:
+            ckpts = checkpoint_files(ctx, keys, problems)
+            rp = ctx.root / C.retention_receipt_path(r)
+            old = read_json(rp) if rp.is_file() else {}
+            held = (old.get("files") or {}) if old.get("method") == "hf" else {}
+            new = {f"{k}/{n}": sha for k, v in ckpts.items() for n, sha in v["files"].items()}
+            ev.update(keys=sorted(ckpts), problems=problems,
+                      n_new_files=sum(1 for f, sha in new.items() if held.get(f) != sha))
+            if ev["n_new_files"]:
+                ev["commit_sha"] = upload_checkpoints(ctx, ckpts, old, {**held, **new})[
+                    "commit_sha"]
+            else:
+                ev["commit_sha"] = old.get("commit_sha")
+            ev["error"] = None
+            ctx.retained |= set(ckpts)
+            break
+        except Refused as e:  # privacy, credentials: retrying cannot help
+            ev["error"] = f"Refused: {str(e)[:2000]}"
+            break
+        except Exception as e:  # noqa: BLE001 -- network & co.: retried, then fatal
+            ev["error"] = f"{type(e).__name__}: {str(e)[:2000]}"
+            if attempt < C.RETAIN_ATTEMPTS:
+                wait = C.RETAIN_BACKOFF_S[min(attempt, len(C.RETAIN_BACKOFF_S)) - 1]
+                log(f"{ctx.step}: upload after {where} failed (attempt {attempt}): "
+                    f"{ev['error']}; retry in {wait:.0f} s")
+                _sleep(wait)
+    ev["ok"] = ev["error"] is None and not ev["problems"]
+    _retention_record(ctx, ev)
+    if not ev["ok"]:
+        ctx.retention_failed = True
+        why = ev["error"] or f"checkpoints not retainable: {ev['problems']}"
+        log(f"{ctx.step}: RETENTION FAILED after {where} ({ev['attempts']} attempts): {why}")
+        raise RetentionFailed(f"after {where}: {why}")
+    log(f"{ctx.step}: retained after {where}: {len(ev['keys'])} checkpoints "
+        f"({ev['n_new_files']} new files) in {hf_repo_id(r)}")
+    return ev
+
+
+def retain_quietly(ctx: Ctx, items: list[RunItem]) -> None:
+    """The end-of-step sweep when the step did not end through its manifest: `retain` of every
+    checkpoint of `items`, a failure logged (the step's own outcome stands)."""
+    try:
+        retain(ctx, {k for it in items for k in it.saves.values()}, "final sweep")
+    except RetentionFailed as e:
+        log(f"{ctx.step}: final retention sweep failed: {e}")
+    except Exception as e:  # noqa: BLE001 -- never mask the step's own exception
+        log(f"{ctx.step}: final retention sweep raised {type(e).__name__}: {e}")
+
+
+_sleep = time.sleep  # the retry wait (a hook for tests)
 
 
 STEP_FUNCS.update({
@@ -1892,7 +1977,7 @@ def main(argv: list[str] | None = None) -> int:
         rc = STEP_FUNCS[args.step](ctx)
         outcome = "done" if rc == C.EXIT_OK else ("budget_refused" if rc == C.EXIT_BUDGET
                                                   else "failed")
-    except (Refused, Blocked, Stopped, BudgetRefused) as e:
+    except (Refused, Blocked, Stopped, BudgetRefused, RetentionFailed) as e:
         rc, detail = EXIT_OF[type(e)], str(e)
         outcome = type(e).__name__.lower()
         log(f"step {label} {type(e).__name__.upper()}: {e}")

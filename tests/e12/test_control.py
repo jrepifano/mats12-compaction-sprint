@@ -97,8 +97,13 @@ def all_runs() -> list[str]:
 
 
 PGREP = """#!/bin/sh
-# fake pgrep -f PATTERN: true when the pattern, brackets dropped, is listed in $FAKE_PROCS
+# fake pgrep -f PATTERN: true when the pattern, brackets dropped, is listed in $FAKE_PROCS;
+# fake pgrep -af PATTERN: "PID LINE" for every listed line containing it (command lines)
 pat=$(printf '%s' "$2" | tr -d '[]')
+if [ "$1" = "-af" ]; then
+  grep -F "$pat" "$FAKE_PROCS" | sed 's/^/4242 /'
+  exit 0
+fi
 grep -qxF "$pat" "$FAKE_PROCS"
 """
 
@@ -1122,6 +1127,11 @@ def progress_pod(pod, t_p: float, steps: list[tuple[str, float, float | None]],
     os.utime(sp, None)
 
 
+def driver(step: str, recipe: str = "tan32") -> str:
+    """A running driver's command line, as `pgrep -af` shows it."""
+    return f"/ws/venv-peft/bin/python scripts/e12_pod.py {step} --recipe {recipe}"
+
+
 def run_progress(env, capsys, recipe="tan32"):
     pod, runner, lap = env
     capsys.readouterr()
@@ -1139,7 +1149,7 @@ def test_progress_on_track(env, capsys):
     t_p = now - 0.5 * H
     progress_pod(pod, t_p, [("repair", t_p, t_p + 0.4 * H), ("rescue", t_p + 0.4 * H, None)],
                  {"repair": 1.0, "rescue": 0.5, "nudge": 1.0, "upload": 0.1})
-    pod.running("pod_run_e12", "e12_pod")
+    pod.running("pod_run_e12", "e12_pod", driver("rescue"))
     rc, out = run_progress(env, capsys)
     assert rc == 0 and out["overrun"] is False and out["reasons"] == []
     assert runner.ops == ["progress"]  # ONE ssh call
@@ -1160,7 +1170,7 @@ def test_progress_flags_a_finished_step_over_its_share(env, capsys):
     t_p = now - 2.5 * H
     progress_pod(pod, t_p, [("repair", t_p, t_p + 2.0 * H), ("rescue", t_p + 2.0 * H, None)],
                  {"repair": 1.0, "rescue": 0.5, "nudge": 1.0}, total=20.0)
-    pod.running("pod_run_e12", "e12_pod")
+    pod.running("pod_run_e12", "e12_pod", driver("rescue"))
     rc, out = run_progress(env, capsys)
     assert rc == ctl.EXIT_OVERRUN == 6 and out["overrun"] is True
     assert len(out["reasons"]) == 1 and out["reasons"][0].startswith("step repair (finished)")
@@ -1173,14 +1183,15 @@ def test_progress_flags_a_running_step_past_its_share(env, capsys):
     t_p = now - 0.6 * H
     progress_pod(pod, t_p, [("repair", t_p, t_p + 0.1 * H), ("nudge", t_p + 0.1 * H, None)],
                  {"repair": 0.1, "nudge": 0.2}, total=20.0)
-    pod.running("pod_run_e12")
+    pod.running("pod_run_e12", driver("nudge"))
     rc, out = run_progress(env, capsys)
     assert rc == 6 and out["reasons"][0].startswith("step nudge (running)")
     assert out["speed_ratio"] == pytest.approx(2.5, abs=0.05)
-    # the chain has ended: the last step is no longer running; its log's last write ends it
+    # the chain has ended: the last step is no longer running; its log's last write ends it,
+    # and with no step record it is interrupted (its work still remains)
     pod.running()
     rc, out = run_progress(env, capsys)
-    assert out["running_step"] is None and out["steps"]["nudge"]["state"] == "ended"
+    assert out["running_step"] is None and out["steps"]["nudge"]["state"] == "interrupted"
 
 
 def test_progress_flags_the_extrapolated_total(env, capsys):
@@ -1232,3 +1243,68 @@ def test_progress_script_never_names_the_chain_or_driver_bare(env):
     body = ctl.progress_body(ctl.Ctx(root=lap, slot="_A", recipe="tan32", runner=runner))
     assert "pod_run_e12" not in body.replace("[p]od_run_e12", "")
     assert "e12_pod" not in body.replace("[e]12_pod", "")
+
+
+def test_progress_a_finished_step_is_not_extended_by_unrelated_processes(env, capsys):
+    """Code review r1 finding 6 (the reviewer's probe): a repair that finished in 1 h, with the
+    chain alive and a driver running, is 1 h, not "until now", unless a driver of this recipe
+    runs repair; a driver of another recipe or another step changes nothing."""
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 2.0 * H
+    progress_pod(pod, t_p, [("repair", t_p, t_p + 1.0 * H)], {"repair": 1.0, "nudge": 1.0},
+                 total=20.0)
+    for procs in (("pod_run_e12", "e12_pod"),
+                  ("pod_run_e12", "e12_pod", driver("repair", "rank1")),
+                  ("pod_run_e12", "e12_pod", driver("rescue"))):
+        pod.running(*procs)
+        rc, out = run_progress(env, capsys)
+        rep = out["steps"]["repair"]
+        assert rep["state"] == "finished" and rep["actual_h"] == pytest.approx(1.0, abs=0.01)
+        assert rc == 0 and out["overrun"] is False and out["running_step"] is None, procs
+    # the step record says it ended, so even this recipe's repair driver (a re-run that has
+    # not written its own log yet) does not stretch the finished invocation
+    pod.running("pod_run_e12", driver("repair"))
+    rc, out = run_progress(env, capsys)
+    assert out["steps"]["repair"]["state"] == "finished" and rc == 0
+
+
+def test_progress_an_interrupted_invocation_keeps_its_projected_work(env, capsys):
+    """Code review r1 finding 7 (the reviewer's probe): an invocation of repair that predates
+    the projection and ended without a step record, with one hour each of repair and nudge
+    projected, leaves two hours remaining, not one."""
+    pod, _runner, _lap = env
+    now = datetime.now(UTC).timestamp()
+    t_p = now - 0.05 * H
+    progress_pod(pod, t_p, [], {"repair": 1.0, "nudge": 1.0}, total=20.0)
+    log = pod.write(f"logs/e12/tan32_repair_{_stamp(t_p - 2 * H)}_42.log", "x\n")
+    os.utime(log, (t_p - H, t_p - H))
+    rc, out = run_progress(env, capsys)
+    assert rc == 0 and out["steps"]["repair"]["state"] == "interrupted"
+    assert out["steps"]["repair"]["actual_h"] == 0.0
+    # elapsed 1 h (the pod record) + repair 1 h + nudge 1 h + margin 0.3
+    assert out["extrapolated_total_pod_hours"] == pytest.approx(3.3, abs=0.02)
+    # a failed step record (not "done") is an interruption too, after the projection as well
+    log2 = pod.write(f"logs/e12/tan32_repair_{_stamp(t_p + 60)}_43.log", "x\n")
+    os.utime(log2, (t_p + 120, t_p + 120))
+    pod.write(f"{C.rdir('tan32')}/bench/step_repair.json", json.dumps(
+        {"step": "repair", "utc_start": _iso(t_p + 60), "utc_end": _iso(t_p + 120),
+         "outcome": "retentionfailed"}))
+    rc, out = run_progress(env, capsys)
+    assert rc == 0 and out["steps"]["repair"]["state"] == "interrupted"
+    assert out["extrapolated_total_pod_hours"] == pytest.approx(3.3, abs=0.02)
+    # a step that finished before the projection keeps its share as well (pre_projection)
+    pod.write(f"{C.rdir('tan32')}/bench/step_repair.json", json.dumps(
+        {"step": "repair", "utc_start": _iso(t_p - 2 * H), "utc_end": _iso(t_p - H),
+         "outcome": "done"}))
+    log2.unlink()
+    _rc, out = run_progress(env, capsys)
+    assert out["steps"]["repair"]["state"] == "pre_projection"
+    assert out["extrapolated_total_pod_hours"] == pytest.approx(3.3, abs=0.02)
+
+
+def test_driver_steps_reads_this_recipes_drivers_only():
+    lines = ["4242 " + driver("nudge"), "4243 " + driver("repair", "rank1"),
+             "4244 /ws/venv-peft/bin/python scripts/e12_pod.py smoke --part hf --recipe tan32",
+             "4245 /ws/venv-peft/bin/python scripts/e12_pod.py", "4246 bash -c something"]
+    assert ctl.driver_steps(lines, "tan32") == {"nudge", "smoke"}

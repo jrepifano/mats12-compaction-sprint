@@ -28,7 +28,9 @@ Implementation notes (U6):
 - **Remaining work.** A job is done when its output verifies on its own (CSV sha256 and row count
   equal the meta's) or has a terminal skip record. A training run is done when its
   `status/<run>.json` says ok, restarted_ok or failed (a failed run is not retrained); otherwise
-  its remaining steps are the segment's steps minus the last step in `train/<run>.steps.jsonl`.
+  its remaining steps are the segment's steps minus the step of its latest valid resume point
+  (`resume_step`, under the pod scratch's opt dir; a restart replays every step, save and pass
+  logged after it; code review r1 finding 5), or all of them when there is none.
   Every planned run counts (the rescue and every nudge are always trained; cut 3's three base-
   reference nudges are counted anyway, about 25 s).
 - **Hours.** train = per remaining planned run (`run_cost`, from its save list; Amendment D',
@@ -60,6 +62,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -217,18 +220,6 @@ def training_runs(seeds=C.TRAIN_SEEDS) -> list[tuple[str, str]]:
     return out
 
 
-def _last_step(p: Path) -> int:
-    last = 0
-    if not p.exists():
-        return 0
-    for line in p.read_text(encoding="utf-8").splitlines():
-        try:
-            last = max(last, int(json.loads(line)["step"]))
-        except (ValueError, KeyError, TypeError):
-            continue  # a torn final line
-    return last
-
-
 RUN_COST_PARTS: tuple[str, ...] = ("steps", "saves", "resume_points", "heldout", "probe", "load")
 
 
@@ -267,12 +258,47 @@ def run_cost(recipe: str, segment: str, done: int, rates: dict) -> dict:
     return {**parts, "total": sum(parts.values())}
 
 
-def _run_done_steps(recipe: str, run: str, root: Path) -> int | None:
-    """None when the run is terminal (ok, restarted_ok or failed), else its last logged step."""
+SCRATCH_ENV = "EMX_E12_SCRATCH"  # = trainer.SCRATCH_ENV (a test keeps them equal)
+
+
+def _opt_root(recipe: str, run: str) -> Path:
+    """The run's resume-point directory (`contracts.opt_dir`), re-rooted as the trainer does."""
+    rel = C.opt_dir(recipe, run)
+    scratch = os.environ.get(SCRATCH_ENV)
+    if scratch:
+        return Path(scratch) / rel[len(C.SCRATCH):].lstrip("/")
+    return Path(rel)
+
+
+def resume_step(recipe: str, segment: str, run: str) -> int:
+    """The local step of the run's latest valid resume point (the trainer's `latest.json` ->
+    `step_NNNN/meta.json`, of this run, recipe, segment and step count; the smoke bench's
+    20-step point of poison_s1 does not count), else 0: an interrupted run restarts from
+    there, so every logged step after it is replayed (code review r1 finding 5). No durable
+    resume metadata (none written, unreadable, or the laptop, which has no pod scratch)
+    counts as no progress."""
+    opt = _opt_root(recipe, run)
+    try:
+        ptr = json.loads((opt / "latest.json").read_text())
+        meta = json.loads((opt / str(ptr["dir"]) / "meta.json").read_text())
+    except (OSError, ValueError, KeyError, TypeError):
+        return 0
+    n = C.segment_steps(recipe, segment)
+    k = meta.get("local_step")
+    if (meta.get("run") != run or meta.get("recipe") != recipe or meta.get("segment") != segment
+            or meta.get("steps") != n or not isinstance(k, int) or not 0 <= k < n
+            or ptr.get("step") != k):
+        return 0
+    return k
+
+
+def _run_done_steps(recipe: str, segment: str, run: str, root: Path) -> int | None:
+    """None when the run is terminal (ok, restarted_ok or failed), else the steps it keeps on
+    a restart (`resume_step`; not its last logged step)."""
     sp = root / C.status_path(recipe, run)
     if sp.exists() and json.loads(sp.read_text()).get("status") in C.RUN_STATUSES:
         return None
-    return _last_step(root / C.train_steps(recipe, run))
+    return resume_step(recipe, segment, run)
 
 
 def remaining_train_cost(recipe: str, rates: dict, root: str | Path = C.REPO_ROOT) -> dict:
@@ -282,7 +308,7 @@ def remaining_train_cost(recipe: str, rates: dict, root: str | Path = C.REPO_ROO
     by_part = {k: 0.0 for k in RUN_COST_PARTS}
     by_step: dict[str, float] = {}
     for seg, run in training_runs():
-        done = _run_done_steps(recipe, run, root)
+        done = _run_done_steps(recipe, seg, run, root)
         if done is None:
             continue
         c = run_cost(recipe, seg, done, rates)
@@ -294,14 +320,14 @@ def remaining_train_cost(recipe: str, rates: dict, root: str | Path = C.REPO_ROO
 
 
 def remaining_train_steps(recipe: str, root: str | Path = C.REPO_ROOT) -> dict[str, int]:
-    """{segment: steps still to train} from the status and train records."""
+    """{segment: steps still to train} from the status records and each non-terminal run's
+    latest valid resume point (`resume_step`: steps logged after it are replayed)."""
     root = Path(root)
     out = {seg: 0 for seg in ("poison", "repair", "rescue", "nudge")}
     for seg, run in training_runs():
-        sp = root / C.status_path(recipe, run)
-        if sp.exists() and json.loads(sp.read_text()).get("status") in C.RUN_STATUSES:
+        done = _run_done_steps(recipe, seg, run, root)
+        if done is None:
             continue
-        done = _last_step(root / C.train_steps(recipe, run))
         out[seg] += max(0, C.segment_steps(recipe, seg) - done)  # poison: by the poison set
     return out
 

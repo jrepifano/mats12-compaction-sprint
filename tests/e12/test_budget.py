@@ -21,6 +21,25 @@ _LIMIT_NAMES = {"gpu_usd": "GPU_LIMIT_USD", "api_usd": "API_LIMIT_USD",
                 "pod_hours": "POD_HOURS_LIMIT", "hard_cap_usd": "HARD_CAP_USD"}
 
 
+@pytest.fixture(autouse=True)
+def _scratch(tmp_path, monkeypatch):
+    """Resume points under a per-test scratch (never the pod's /ws/e12)."""
+    monkeypatch.setenv(B.SCRATCH_ENV, str(tmp_path / "scratch"))
+
+
+def resume_point(recipe: str, segment: str, run: str, k: int, steps: int | None = None) -> None:
+    """A complete trainer resume point (latest.json -> step_NNNN/meta.json) at local step k."""
+    import os
+
+    opt = Path(os.environ[B.SCRATCH_ENV]) / C.opt_dir(recipe, run)[len(C.SCRATCH):].lstrip("/")
+    d = opt / f"step_{k:04d}"
+    d.mkdir(parents=True, exist_ok=True)
+    n = C.segment_steps(recipe, segment) if steps is None else steps
+    (d / "meta.json").write_text(json.dumps({"run": run, "recipe": recipe, "segment": segment,
+                                             "steps": n, "local_step": k}))
+    (opt / "latest.json").write_text(json.dumps({"step": k, "dir": d.name}))
+
+
 def binding_hard_cap(monkeypatch, cap: float = 40.0) -> float:
     """Patch the hard cap to `cap` (default Amendment B's $40, the frame the reviewer's probe was
     built in), below GPU limit + API limit so that it can bind on its own (Amendments C and C'
@@ -352,8 +371,11 @@ def test_remaining_jobs_and_training_steps(tmp_path):
     (root / C.status_path(R, "nudge_base_s2")).write_text(json.dumps({"status": "failed"}))
     sp = root / C.train_steps(R, "poison_s2")
     sp.parent.mkdir(parents=True, exist_ok=True)
-    sp.write_text("".join(json.dumps({"step": k, "loss": 1.0}) + "\n" for k in range(1, 301))
-                  + '{"step": 30')  # a torn final line
+    sp.write_text("".join(json.dumps({"step": k, "loss": 1.0}) + "\n" for k in range(1, 351))
+                  + '{"step": 35')  # a torn final line; logged steps are not durable progress
+    steps = B.remaining_train_steps(R, root)
+    assert steps["poison"] == 776 + 776 and steps["nudge"] == 23 * 40
+    resume_point(R, "poison", "poison_s2", 300)
     steps = B.remaining_train_steps(R, root)
     assert steps["poison"] == 776 - 300 + 776 and steps["nudge"] == 23 * 40
     assert len(B.training_runs()) == 3 + 9 + 9 + 24
@@ -403,9 +425,7 @@ def test_tan32_prices_its_388_poison_steps_at_the_rank32_factor(tmp_path):
     rec = B.project("tan32", "rank32", **kw)
     assert rec["remaining_train_steps"]["poison"] == 3 * 388
     assert rec["remaining_hours"]["upload"] == B.UPLOAD_H["tan32"]
-    sp = root / C.train_steps("tan32", "poison_s1")
-    sp.parent.mkdir(parents=True, exist_ok=True)
-    sp.write_text("".join(json.dumps({"step": k}) + "\n" for k in range(1, 101)))
+    resume_point("tan32", "poison", "poison_s1", 100)
     assert B.remaining_train_steps("tan32", root)["poison"] == 388 - 100 + 2 * 388
 
 
@@ -518,3 +538,40 @@ def test_measured_save_timings_drive_the_training_hours(tmp_path):
                                                             abs=1e-3)
     assert sum(sh.values()) == pytest.approx(
         sum(v for k, v in fast["remaining_hours"].items() if k != "margin"), abs=2e-3)
+
+
+def test_an_interrupted_run_is_priced_from_its_latest_resume_point(tmp_path):
+    """Code review r1 finding 5: a crash at step 388 (logged) of a 388-step poison run whose
+    last resume point is 300 replays 88 steps, its final save and its held-out passes; with no
+    durable resume metadata (or another spec's point) the whole run is priced."""
+    rates = {"poison_s_per_step": 2.0, "short_s_per_step": 1.0, "save_s": 10.0,
+             "resume_point_s": 20.0, "heldout_s": 5.0, "run_load_s": 3.0}
+    root = tmp_path / "pod"
+    sp = root / C.train_steps("tan32", "poison_s1")
+    sp.parent.mkdir(parents=True, exist_ok=True)
+    sp.write_text("".join(json.dumps({"step": k}) + "\n" for k in range(1, 389)))
+
+    def poison_s1() -> dict:
+        tc = B.remaining_train_cost("tan32", rates, root)
+        return {k: v for k, v in tc["by_part"].items()} | {"total": tc["total_s"]}
+
+    full = B.run_cost("tan32", "poison", 0, rates)
+    others = 2 * full["total"] + sum(  # every other planned run, untouched
+        B.run_cost("tan32", seg, 0, rates)["total"] for seg, run in B.training_runs()
+        if seg != "poison")
+    assert poison_s1()["total"] == pytest.approx(others + full["total"])  # no resume point
+    resume_point("tan32", "poison", "poison_s1", 300)
+    got = poison_s1()
+    part = B.run_cost("tan32", "poison", 300, rates)
+    assert part["steps"] == 88 * 2.0 and part["saves"] == 10.0  # the final save is replayed
+    assert part["heldout"] == 2 * 5.0  # 350 and 388
+    assert got["total"] == pytest.approx(others + part["total"])
+    # another spec's point (the smoke bench's 20-step run) is no progress
+    resume_point("tan32", "poison", "poison_s1", 10, steps=20)
+    assert poison_s1()["total"] == pytest.approx(others + full["total"])
+    assert B.resume_step("tan32", "poison", "poison_s1") == 0
+
+
+def test_budget_scratch_env_matches_the_trainers():
+    src = (Path(C.REPO_ROOT) / "src/emx/e12/trainer.py").read_text()
+    assert f'SCRATCH_ENV = "{B.SCRATCH_ENV}"' in src

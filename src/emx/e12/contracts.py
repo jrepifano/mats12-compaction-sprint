@@ -942,10 +942,15 @@ PROJECTION_VERDICTS: tuple[str, ...] = ("admit", "refuse")
 # --- CLI contract (U8 and the chain call these; each owner implements its own) ------------------
 # Exit codes for every E12 script: 0 ok, 1 failed, 2 refused by a spend/budget projection,
 # 3 refused by a gate (approval, missing input), 4 BLOCKED (waiting on a control file),
-# 5 STOPPED (the STOP control file). Decision and projection commands print one JSON object on
+# 5 STOPPED (the STOP control file), 7 RETENTION (a rank > 1 training step could not upload a
+# finished run's checkpoints to the private HF repo; Amendment D', code review r1 finding 2: the
+# chain treats it as a gating failure). Decision and projection commands print one JSON object on
 # the last stdout line.
 
 EXIT_OK, EXIT_FAILED, EXIT_BUDGET, EXIT_REFUSED, EXIT_BLOCKED, EXIT_STOPPED = 0, 1, 2, 3, 4, 5
+EXIT_RETENTION = 7  # not 6: scripts/e12_control.py's EXIT_OVERRUN
+RETAIN_ATTEMPTS = 3  # incremental upload attempts per finished run
+RETAIN_BACKOFF_S: tuple[float, ...] = (15.0, 60.0)  # waits before the 2nd and 3rd attempt
 
 CLI_USAGE: dict[str, str] = {
     "e12_pod": "scripts/e12_pod.py <STEP|recovery> [--recipe R] [--part hf|vllm|score] "

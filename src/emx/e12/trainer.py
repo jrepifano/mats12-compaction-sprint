@@ -569,10 +569,12 @@ def _latest_resume(opt_root: Path) -> tuple[dict, Path]:
 
 def _save_ckpt(root: Path, spec: SegmentSpec, model, k: int, key: str, plan: _Plan,
                opt_sha: str | None, ref: dict, ref_label: str, opt_name: str,
-               cont: list[float] | None = None, resume_point_s: float | None = None) -> dict:
+               cont: list[float] | None = None, resume_point_s: float | None = None,
+               cont_s: float | None = None) -> dict:
     """Adapter files under `adapter_files_dir`, then ckpt.json (written last). `ref` is the
     run's distance reference (`load_reference`); `cont` the continuity log-probs when already
-    computed at this step; `opt_sha` None when no resume point was written at this step.
+    computed at this step, `cont_s` the seconds that took (charged here, to this save: code
+    review r1 finding 4); `opt_sha` None when no resume point was written at this step.
     `timing`: per-phase wall-clock seconds (plus `resume_point_s` when one was written)."""
     r = spec.recipe
     adapter_dir = C.adapter_files_dir(r.name, key)
@@ -591,7 +593,7 @@ def _save_ckpt(root: Path, spec: SegmentSpec, model, k: int, key: str, plan: _Pl
     t = time.perf_counter()
     if cont is None and spec.continuity is not None:
         cont = continuity_logprobs(model, spec.continuity)
-    timing["continuity_s"] = time.perf_counter() - t
+    timing["continuity_s"] = (time.perf_counter() - t) + (cont_s or 0.0)
     if resume_point_s is not None:
         timing["resume_point_s"] = resume_point_s
     n_used = k * r.effective_batch
@@ -764,19 +766,25 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
                     "continuity_item_sha256": (_json_sha256(spec.continuity)
                                                if spec.continuity is not None else None)}
 
-        def resume_now(k: int, cont: list[float] | None = None) -> tuple[str, float]:
+        def resume_now(k: int, cont: list[float] | None = None, cont_s: float = 0.0
+                       ) -> tuple[str, float]:
+            """A resume point; `cont_s`: continuity seconds charged to it (a step that is a
+            resume point but not a save)."""
             t = time.perf_counter()
             sha = _save_resume(opt_root, k, model, opt, meta_now(k, cont))
-            dt_s = time.perf_counter() - t
+            dt_s = time.perf_counter() - t + cont_s
             tm["resume_s"] += dt_s
             tm["resume_points"].append({"step": k, "s": dt_s})
             return sha, dt_s
 
-        def ckpt_now(k: int, opt_sha: str | None, cont=None, rp_s: float | None = None) -> None:
+        def ckpt_now(k: int, opt_sha: str | None, cont=None, rp_s: float | None = None,
+                     cont_s: float = 0.0) -> None:
+            """A checkpoint save; `cont_s`: the continuity scoring done for it beforehand,
+            charged to the save (its ckpt.json `timing.continuity_s` and the run's save_s)."""
             t = time.perf_counter()
             _save_ckpt(root, spec, model, k, spec.saves[k], plan, opt_sha, ref, ref_label,
-                       opt_name, cont, rp_s)
-            tm["save_s"] += time.perf_counter() - t
+                       opt_name, cont, rp_s, cont_s)
+            tm["save_s"] += time.perf_counter() - t + cont_s
             tm["n_saves"] += 1
 
         if mode == "start":
@@ -849,11 +857,17 @@ def _train(base_model, tokenizer, spec: SegmentSpec, root: Path, mode: str, atte
                 resume_due = step < spec.steps and (step % C.RESUME_EVERY == 0
                                                     or step in spec.resume_steps)
                 if resume_due or step in spec.saves:
+                    # continuity scored once for both; timed and charged once: to the save
+                    # when this step is one, else to the resume point (review r1 finding 4)
+                    t = time.perf_counter()
                     cont = (continuity_logprobs(model, spec.continuity)
                             if spec.continuity is not None else None)
-                    opt_sha, rp_s = resume_now(step, cont) if resume_due else (None, None)
-                    if step in spec.saves:
-                        ckpt_now(step, opt_sha, cont, rp_s)
+                    cont_s = time.perf_counter() - t
+                    is_save = step in spec.saves
+                    opt_sha, rp_s = (resume_now(step, cont, 0.0 if is_save else cont_s)
+                                     if resume_due else (None, None))
+                    if is_save:
+                        ckpt_now(step, opt_sha, cont, rp_s, cont_s)
                         saves_done[step] = spec.saves[step]
         except NonFiniteStep as e:
             write_json(summary_path, {

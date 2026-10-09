@@ -59,7 +59,11 @@ pod's creation time and rate from its `created` event in logs/pods_E12.jsonl.
              and train/ records, steps.jsonl progress, the projections and the chain/driver
              processes; compares each priced step's wall-clock since the latest admitted
              projection (bench/projection.*.json, laptop copies included; `step_hours`) with its
-             projected share, and the extrapolated pod-hours with `total_pod_hours`. Prints
+             projected share, and the extrapolated pod-hours with `total_pod_hours`. A step's
+             invocation ends at its step record's utc_end when it has one (finished, or
+             interrupted when an outcome is not done); only the latest invocation of a step a
+             driver of THIS recipe runs (`pgrep -af` command line) counts as running; any other
+             is interrupted and keeps its whole projected share in the ETA. Prints
              `overrun` (a running or finished step over OVERRUN_STEP x its share, by at least
              OVERRUN_MIN_S, or the extrapolated total over OVERRUN_TOTAL x total_pod_hours);
              exit 0, or EXIT_OVERRUN (6) on overrun, 1 when there is nothing to compare with.
@@ -1475,6 +1479,7 @@ def progress_body(ctx: Ctx) -> str:
 E12PROGRESS
 if pgrep -f '[p]od_run_e12' >/dev/null 2>&1; then echo "PROC chain"; fi
 if pgrep -f '[e]12_pod' >/dev/null 2>&1; then echo "PROC driver"; fi
+pgrep -af '[e]12_pod[.]py' 2>/dev/null | sed 's/^/DRIVER /' || true
 echo PROGRESS_OK
 """
 
@@ -1490,6 +1495,23 @@ def _epoch(stamp: str) -> float | None:
     except (TypeError, ValueError):
         return None
     return (t if t.tzinfo else t.replace(tzinfo=UTC)).timestamp()
+
+
+def driver_steps(lines: list[str], recipe: str) -> set[str]:
+    """The steps this recipe's running drivers execute, from `pgrep -af` command lines
+    (`... scripts/e12_pod.py STEP [--part P] --recipe R ...`; the chain always passes
+    --recipe). A driver of another recipe, or one whose step cannot be read, is not this
+    recipe's (code review r1 finding 6)."""
+    out = set()
+    for ln in lines:
+        argv = ln.split()
+        idx = next((i for i, a in enumerate(argv) if a.endswith("e12_pod.py")), None)
+        if idx is None or idx + 1 >= len(argv):
+            continue
+        rec = argv[argv.index("--recipe") + 1] if "--recipe" in argv[:-1] else None
+        if rec == recipe and argv[idx + 1] in C.STEPS:
+            out.add(argv[idx + 1])
+    return out
 
 
 def step_invocations(recipe: str, logs: list[dict]) -> list[dict]:
@@ -1525,28 +1547,61 @@ def latest_projection(pod_proj: dict, local_root: Path, recipe: str) -> dict | N
     return max(ok, key=lambda c: (STAGE_ORDER[c["stage"]], c["mtime"]))
 
 
-def progress_report(recipe: str, data: dict, proj: dict, running: bool,
+def _invocation_states(recipe: str, data: dict, t_p: float, running_steps: set[str]
+                       ) -> list[dict]:
+    """Each step invocation (`step_invocations`) with its `state` and `end`, completion decided
+    BEFORE the end time (code review r1 findings 6-7): the step record (bench/step_<step>
+    [_<part>].json) whose utc_end falls in this invocation (from its start to the next
+    invocation of the same step) ends it: `finished` when every such part is `done`, else
+    `interrupted`; without one, the latest invocation is `running` (end = now) only when a
+    driver of this recipe runs that step, otherwise it is `interrupted` (end = its log's last
+    write). A finished invocation that ended before the projection is `pre_projection`."""
+    now = float(data["now"])
+    inv = step_invocations(recipe, data.get("logs") or [])
+    recs = data.get("step_records") or {}
+    ends: dict[str, list[tuple[float, str | None]]] = {}
+    for k, r in recs.items():
+        e = _epoch((r or {}).get("utc_end") or "")
+        if e is None:
+            continue
+        for name in {x["step"] for x in inv}:
+            if k == name or k.startswith(name + "_"):
+                ends.setdefault(name, []).append((e, r.get("outcome")))
+    latest = inv[-1] if inv else None
+    for n, x in enumerate(inv):
+        nxt = next((y["start"] for y in inv[n + 1:] if y["step"] == x["step"]), float("inf"))
+        mine = [(e, o) for e, o in ends.get(x["step"], []) if x["start"] <= e < nxt]
+        if mine:
+            x["end"] = max(e for e, _ in mine)
+            ok = all(o == "done" for _, o in mine)
+            x["state"] = ("pre_projection" if ok and x["end"] < t_p else
+                          "finished" if ok else "interrupted")
+        elif x is latest and x["step"] in running_steps:
+            x["end"], x["state"] = now, "running"
+        else:
+            x["end"], x["state"] = x["mtime"], "interrupted"
+        x["actual_s"] = max(0.0, x["end"] - max(x["start"], t_p))
+    return inv
+
+
+def progress_report(recipe: str, data: dict, proj: dict, running_steps: set[str],
                     elapsed_now_h: float | None) -> dict:
-    """The comparison (module docstring, `progress`); pure, for tests."""
+    """The comparison (module docstring, `progress`); pure, for tests. `running_steps`: the
+    steps this recipe's running drivers execute (`driver_steps`). A step's state is its latest
+    invocation's (`_invocation_states`); only `finished` steps set the speed ratio and only
+    they drop out of the remaining work; `interrupted` and `pre_projection` steps keep their
+    whole projected share (a re-run replays from the last resume point), a `running` one its
+    share less the time it has run."""
     now, t_p = float(data["now"]), float(proj["mtime"])
     shares = {k: float(v) * 3600 for k, v in (proj.get("step_hours") or {}).items()
               if isinstance(v, (int, float))}
-    inv = step_invocations(recipe, data.get("logs") or [])
-    recs = data.get("step_records") or {}
-    latest = inv[-1] if inv else None
+    inv = _invocation_states(recipe, data, t_p, running_steps)
     steps: dict[str, dict] = {}
     for x in inv:
-        end = now if (running and x is latest) else x["mtime"]
-        actual = max(0.0, end - max(x["start"], t_p))
-        st = steps.setdefault(x["step"], {"actual_s": 0.0, "last_start": x["start"]})
-        st["actual_s"] += actual
-        st["last_start"] = max(st["last_start"], x["start"])
+        st = steps.setdefault(x["step"], {"actual_s": 0.0})
+        st["actual_s"] += x["actual_s"]
+        st["state"] = x["state"]  # invocations are in start order: the latest wins
     for name, st in steps.items():
-        ends = [_epoch(r.get("utc_end") or "") for k, r in recs.items()
-                if k == name or k.startswith(name + "_")]
-        finished = any(e is not None and e >= st["last_start"] for e in ends)
-        st["state"] = ("running" if running and latest and latest["step"] == name
-                       and not finished else "finished" if finished else "ended")
         st["share_s"] = shares.get(name)
         st["ratio"] = (st["actual_s"] / st["share_s"]) if st.get("share_s") else None
     reasons = []
@@ -1559,7 +1614,7 @@ def progress_report(recipe: str, data: dict, proj: dict, running: bool,
                            f"{OVERRUN_STEP} x its projected {sh / 3600:.2f} h")
     # extrapolation: the remaining priced steps at the speed seen so far (finished steps'
     # actual / share; a running step already past its share raises it)
-    done = [st for st in steps.values() if st["state"] != "running" and st.get("share_s")
+    done = [st for st in steps.values() if st["state"] == "finished" and st.get("share_s")
             and st["actual_s"] > 0]
     ratio = (sum(st["actual_s"] for st in done) / sum(st["share_s"] for st in done)
              if done else 1.0)
@@ -1570,7 +1625,7 @@ def progress_report(recipe: str, data: dict, proj: dict, running: bool,
     remaining = 0.0
     for name, sh in shares.items():
         st = steps.get(name)
-        if st is None:
+        if st is None or st["state"] in ("interrupted", "pre_projection"):
             remaining += sh * ratio
         elif st["state"] == "running":
             remaining += max(0.0, sh * ratio - st["actual_s"])
@@ -1591,6 +1646,7 @@ def progress_report(recipe: str, data: dict, proj: dict, running: bool,
                    "steps_planned": tr.get("steps_planned"),
                    "last_write_age_s": round(now - float(sp["mtime"]), 1)}
             break
+    running = next((x["step"] for x in reversed(inv) if x["state"] == "running"), None)
     return {
         "overrun": bool(reasons), "reasons": reasons,
         "projection": {k: proj.get(k) for k in ("file", "where", "stage", "elapsed_pod_hours",
@@ -1600,7 +1656,7 @@ def progress_report(recipe: str, data: dict, proj: dict, running: bool,
                       "share_h": None if v["share_s"] is None else round(v["share_s"] / 3600, 4),
                       "ratio": None if v["ratio"] is None else round(v["ratio"], 3)}
                   for k, v in steps.items()},
-        "running_step": latest["step"] if running and latest else None,
+        "running_step": running,
         "speed_ratio": round(ratio, 3), "elapsed_pod_hours": round(elapsed_now_h, 4),
         "extrapolated_total_pod_hours": round(extrap, 4), "total_limit_pod_hours": round(limit, 4),
         "current_run": cur,
@@ -1613,7 +1669,7 @@ def cmd_progress(ctx: Ctx) -> int:
     res = ssh(ctx, cmd, progress_body(ctx))
     if ctx.dry:
         return done(ctx, cmd, C.EXIT_OK)
-    data, procs, ok = None, [], False
+    data, procs, drivers, ok = None, [], [], False
     for line in res.out.splitlines():
         head, _, rest = line.partition(" ")
         if head == "PROGRESS":
@@ -1623,6 +1679,8 @@ def cmd_progress(ctx: Ctx) -> int:
                 data = None
         elif head == "PROC":
             procs.append(rest.strip())
+        elif head == "DRIVER":
+            drivers.append(rest.strip())
         elif head == "PROGRESS_OK":
             ok = res.rc == 0
     if not ok or data is None:
@@ -1632,9 +1690,10 @@ def cmd_progress(ctx: Ctx) -> int:
     if proj is None:
         return done(ctx, cmd, C.EXIT_FAILED, overrun=None, processes=procs,
                     reason="no admitted projection to compare with")
-    rep = progress_report(ctx.recipe, data, proj, bool(procs), elapsed_hours(ctx))
+    running = driver_steps(drivers, ctx.recipe)
+    rep = progress_report(ctx.recipe, data, proj, running, elapsed_hours(ctx))
     return done(ctx, cmd, EXIT_OVERRUN if rep["overrun"] else C.EXIT_OK, processes=procs,
-                utc=utc_now(), **rep)
+                drivers=drivers, utc=utc_now(), **rep)
 
 
 def cmd_complete(ctx: Ctx, no_pull: bool) -> int:

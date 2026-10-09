@@ -553,3 +553,31 @@ def test_in_memory_distance_matches_the_file_distance(tok, base, tmp_path):
             T.adapter_distance_mem(m, {**ref, "extra.lora_A.weight": torch.zeros(1)})
     finally:
         m.unload()
+
+
+def test_continuity_scoring_is_charged_once_to_the_save(tok, base, tmp_path, monkeypatch):
+    """Code review r1 finding 4: the continuity check before a save is timed and charged to that
+    save (ckpt.json timing.continuity_s, the run's save_s); at a resume point that is not a
+    save, to the resume point; never to both."""
+    import time as _time
+
+    monkeypatch.setattr(C, "RESUME_EVERY", 4)
+    orig = T.continuity_logprobs
+    slow = 0.2
+
+    def slow_cont(model, item):
+        _time.sleep(slow)
+        return orig(model, item)
+
+    monkeypatch.setattr(T, "continuity_logprobs", slow_cont)
+    spec = _spec(tok, steps=6, saves={2: "A1_r010", 6: "P1"})
+    out = T.run_segment(base, tok, spec, tmp_path)
+    for key in ("A1_r010", "P1"):
+        ck = T.read_ckpt("rank1", key, tmp_path)
+        assert slow <= ck["timing"]["continuity_s"] < 2 * slow, key  # counted once
+    tm = out["timing"]
+    assert tm["n_saves"] == 2 and tm["save_s"] >= 2 * slow
+    # step 0 (meta_now) and step 4 (resume point only) carry their own continuity check
+    assert [p["step"] for p in tm["resume_points"]] == [0, 4]
+    assert all(p["s"] >= slow for p in tm["resume_points"])
+    assert tm["save_s"] + tm["resume_s"] >= 4 * slow

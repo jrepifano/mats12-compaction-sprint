@@ -36,7 +36,8 @@
 # its receipt against every existing checkpoint; manifest is always regenerated.
 #
 # Driver exit codes: 0 ok (then the manifest must verify, else FAILED rc=0), 1 failed, 2 budget
-# refused, 3 refused (input or gate), 4 BLOCKED (waiting on a control file), 5 STOPPED.
+# refused, 3 refused (input or gate), 4 BLOCKED (waiting on a control file), 5 STOPPED,
+# 7 RETENTION (a rank > 1 training step could not upload a finished run's checkpoints).
 #
 # Failure policy:
 #   - a refusal (rc 3, incl. the approval gate) stops the chain: `E12_CHAIN_FAILED at=<step>`;
@@ -52,6 +53,10 @@
 #     re-check leaves no generation-path admission, so bulk training must not start); a
 #     successfully scored FAIL that selects HF writes genpath.json and its manifest, exits 0, and
 #     the chain continues;
+#   - a retention failure (rc 7, Amendment D', code review r1 finding 2) in a training step
+#     (TRAIN: poison-s1 poison repair rescue nudge, = contracts.TRAIN_STEPS) stops the chain, as
+#     a gating failure, rescue and nudge included: `E12_STEP_RETENTION_FAILED <step>`,
+#     `E12_CHAIN_FAILED at=<step>`, exit 7 (no further training on unretained checkpoints);
 #   - BLOCKED (rc 4) never stops the chain, in any step (training runs regardless); it is listed;
 #   - STOP: the control file results in rc 5 from the driver (`E12_STEP_STOPPED <step>`), or is
 #     seen here before a step; either way `E12_CHAIN_STOPPED at=<step>` and exit 5. Only an
@@ -63,6 +68,7 @@
 # Progress lines (anchored; pollers grep for ^E12_):
 #   ^E12_STEP_DONE <step>  ^E12_STEP_FAILED <step> rc=<n>  ^E12_STEP_BLOCKED <step>
 #   ^E12_STEP_STOPPED <step>  ^E12_STEP_REFUSED <step>  ^E12_STEP_REFUSED_BUDGET <step>
+#   ^E12_STEP_RETENTION_FAILED <step>
 #   ^E12_CHAIN_DONE failed=<list>  ^E12_CHAIN_FAILED at=<step>  ^E12_CHAIN_STOPPED at=<step>
 #   ^E12_CHAIN_PAUSED after=<step>[ failed=<list>]
 #
@@ -99,6 +105,7 @@ EOF
 
 ALL_STEPS="download smoke poison-s1 lora-check poison eval-poison repair rescue nudge eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest"
 GATING="download smoke poison-s1 lora-check poison eval-poison repair"  # = contracts.GATING_STEPS
+TRAIN="poison-s1 poison repair rescue nudge"  # = contracts.TRAIN_STEPS (rc 7 gates these)
 DRIVER_DECIDES="eval-poison eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest"
 STEP=""; DETACH=0
 ARGS="$*"
@@ -228,7 +235,8 @@ calls() {  # calls STEP: "python|driver args" lines, one per driver call
   esac
 }
 
-run_step() {  # returns 0 done, 1 failed, 2 budget refused, 3 refused, 4 blocked, 5 stopped
+run_step() {  # returns 0 done, 1 failed, 2 budget refused, 3 refused, 4 blocked, 5 stopped,
+  # 7 retention failed
   local step=$1 log rc py dargs
   log="$LOGDIR/${RECIPE}_${step}_$(date -u +%Y%m%dT%H%M%SZ)_$$.log"
   if ! member "$step" "$DRIVER_DECIDES" && step_done "$step"; then
@@ -263,6 +271,8 @@ EOF
        echo "E12_STEP_BLOCKED $step"; return 4 ;;
     5) say "STOPPED $step: STOP control file; see $log"; echo "E12_STEP_STOPPED $step"
        return 5 ;;
+    7) say "RETENTION FAILED $step (exit 7): checkpoints not uploaded; see $log"
+       echo "E12_STEP_RETENTION_FAILED $step"; return 7 ;;
     *) say "FAILED $step (exit $rc); see $log"; echo "E12_STEP_FAILED $step rc=$rc"; return 1 ;;
   esac
   if ! step_done "$step"; then
@@ -289,6 +299,9 @@ for step in $STEPS; do
     2) echo "E12_CHAIN_FAILED at=$step"; exit 2 ;;
     3) echo "E12_CHAIN_FAILED at=$step"; exit 3 ;;
     4) FAILED="${FAILED:+$FAILED,}$step" ;;
+    7)
+      if member "$step" "$TRAIN"; then echo "E12_CHAIN_FAILED at=$step"; exit 7; fi
+      FAILED="${FAILED:+$FAILED,}$step"; HARD=1 ;;
     *)
       if member "$step" "$GATING" || [ "$step" = "manifest" ]; then
         echo "E12_CHAIN_FAILED at=$step"
