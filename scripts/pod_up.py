@@ -338,9 +338,11 @@ def e12_budget_options(
     """E12: the options whose reservation, contracts.pod_reservation_usd(rate), equals `budget`
     (to the cent). None (a dry run without a reservation) keeps every option and prints each
     one's reservation. A budget that fits no option is refused (exit 4)."""
+    from emx import spend
     from emx.e12 import contracts as e12c
 
-    need = {o.gpu_type_id: e12c.pod_reservation_usd(o.rate_usd_h) for o in options}
+    recorded = spend.spent("gpu", exp="E12")  # earlier E12 pods (Amendment D's second pod)
+    need = {o.gpu_type_id: e12c.pod_reservation_usd(o.rate_usd_h, recorded) for o in options}
     for o in options:
         print(f"reservation (E12): {o.gpu_type_id} at ${o.rate_usd_h}/h needs "
               f"${need[o.gpu_type_id]:.2f} (min(${e12c.GPU_LIMIT_USD:g}, "

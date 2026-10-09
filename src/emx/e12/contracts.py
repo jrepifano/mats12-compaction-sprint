@@ -41,10 +41,13 @@ PLANNED_POD_HOURS: tuple[float, float] = (2.0, 2.6)
 SLOT = "_A"  # one pod
 
 
-def pod_reservation_usd(rate_usd_per_h: float) -> float:
+def pod_reservation_usd(rate_usd_per_h: float, recorded_gpu_usd: float = 0.0) -> float:
     """The RunPod reservation (and so the killswitch deadline's budget) for a pod at this rate:
-    min(GPU limit, POD_HOURS_LIMIT x rate), so no GPU type can run past POD_HOURS_LIMIT."""
-    return round(min(GPU_LIMIT_USD, POD_HOURS_LIMIT * rate_usd_per_h), 2)
+    min(GPU limit - GPU $ earlier pods recorded, POD_HOURS_LIMIT x rate), so no GPU type can
+    run past POD_HOURS_LIMIT and the experiment's GPU limit holds across pods (Amendment D's
+    second pod, 2026-10-09: the spend guard refused a full-limit reservation on top of $17.90)."""
+    left = max(0.0, GPU_LIMIT_USD - float(recorded_gpu_usd))
+    return round(min(left, POD_HOURS_LIMIT * rate_usd_per_h), 2)
 
 
 # --- data (prereg §4.1; copied unchanged from Jacob's working repo into data/E12/) --------------

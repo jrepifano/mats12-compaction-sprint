@@ -218,3 +218,10 @@ def test_base_full_source_follows_each_recipes_generator():
     assert C.base_full_source("rank32") == "eq0-vllm"
     assert A.output_paths("rank32", "full", "base")[:2] == (C.EQ0_BASE_GEN, C.EQ0_BASE_JUDGED)
     assert A.output_paths("rank1", "full", "base")[0] == C.gen_csv("rank1", "full", "base")
+
+
+def test_pod_reservation_subtracts_recorded_gpu_spend():
+    """Amendment D's second pod: the reservation leaves the experiment's GPU limit intact."""
+    assert C.pod_reservation_usd(3.49, 17.9044) == round(C.GPU_LIMIT_USD - 17.9044, 2)
+    assert C.pod_reservation_usd(3.49, C.GPU_LIMIT_USD + 1) == 0.0
+    assert C.pod_reservation_usd(3.49, 0.0) == C.pod_reservation_usd(3.49)
