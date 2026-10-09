@@ -11,12 +11,15 @@ Subcommands:
             dircells.json and checks.json (prereg §4.6 item 1, rendered through the pinned
             tokenizer when it is in the local HF cache; `--require-tokenizer` refuses otherwise).
   manifest  results/E13/inputs/manifest.json from the files on disk, written atomically;
-            `--require-style` refuses unless both style feature lists (unit B2) exist.
+            `--require-style` refuses unless both style feature lists (unit B2) exist;
+            hashes the Amendment D inferred pairs, survival record and frozen prompts when
+            present, and `--require-inferred` refuses unless they exist.
 
 Usage:
   uv run python scripts/e13_inputs.py alpaca [--file PATH] [--repo R --rev REV]
   uv run python scripts/e13_inputs.py build [--pairs-root DIR] [--require-tokenizer]
-  uv run python scripts/e13_inputs.py manifest [--require-style] [--pairs-root DIR]
+  uv run python scripts/e13_inputs.py manifest [--require-style] [--require-inferred]
+                                               [--pairs-root DIR]
   (all take --root DIR, default the repo)
 """
 
@@ -117,7 +120,7 @@ def cmd_manifest(args) -> int:
     checks = json.loads(checks_p.read_text(encoding="utf-8")) if checks_p.exists() else {}
     try:
         m = I.build_manifest(root, pairs_root=args.pairs_root, require_style=args.require_style,
-                             checks=checks)
+                             checks=checks, require_inferred=args.require_inferred)
     except FileNotFoundError as e:
         print(f"E13_FAIL {e}", file=sys.stderr)
         return 1
@@ -139,6 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     m = sub.add_parser("manifest")
     m.add_argument("--pairs-root", default=None)
     m.add_argument("--require-style", action="store_true")
+    m.add_argument("--require-inferred", action="store_true")
     for p in (a, b, m):
         p.add_argument("--root", default=None, help="results root (default: the repo)")
     args = ap.parse_args(argv)

@@ -14,7 +14,10 @@ Stages (prereg section; the unit whose CLI does the work):
   notices         §4.1 write, check, filter (B: scripts/e13_notices.py; survival stop)
   style_notices   Amendment A, notices (B2: scripts/e13_style.py notices)
   notice_check    §4.4 Jacob's check (F: page + score); blocks until labels/notice/record.json
-  inputs          style answers (B2), inputs build + manifest --require-style (B); commit
+  inferred        Amendment D: the inferred-cue snippet pairs, write, check, filter
+                  (scripts/e13_inferred.py); a dropped battery is recorded, not a stop
+  inputs          style answers (B2), inputs build + manifest --require-style (B), and
+                  --require-inferred unless the inferred battery was dropped; commit
   launch          RunPod reservation (both stages on one pod: stage1 + patch, decision 1),
                   pod_up, watchdog, pod_push (A)
   pod_a           download smoke bench-train train-trigger lora-check gen-trigger (G)
@@ -22,6 +25,7 @@ Stages (prereg section; the unit whose CLI does the work):
   pod_b           train r1, smoke-adapters r1, bench-hooked (G)
   projection      decide projection; stop if it cannot fit after the cuts (§7, Amendment B)
   gen_dev         gen-organism dev (r1), pull, start the other organism batteries on the pod
+                  (narrow, infam, final and, unless dropped, Amendment D's inferred)
   dev_decision    judge dev; decide dev (r1); fallback -> r32 chain and decide dev (r32)
   dirsource       gen-dirsource (+ the one extension), judge, decide dirsource labels, push
   direction       capture, direction, hook-check per site; live sites from their records
@@ -441,10 +445,31 @@ class Orchestrator:
                 out.append(f"source {path} changed")
         return out
 
+    def st_inferred(self) -> dict:
+        """Amendment D: write, check and filter the inferred-cue pairs. Fewer than 3 surviving
+        pairings drop the battery (recorded by the filter, exit 0): reported, not a stop."""
+        for sub in ("write", "check", "filter"):
+            self.py("e13_inferred.py", sub, timeout=3600)
+        surv = self.read(C.INFERRED_SURVIVAL_PATH)
+        if surv is None:
+            raise RuntimeError(f"{C.INFERRED_SURVIVAL_PATH} missing after e13_inferred.py filter")
+        if surv.get("dropped"):
+            self.emit("inferred_dropped", n_pairings_ok=surv.get("n_pairings_ok"))
+        return {"dropped": bool(surv.get("dropped")), "n_pairings_ok": surv.get("n_pairings_ok")}
+
+    def inferred_dropped(self) -> bool:
+        return bool((self.read(C.INFERRED_SURVIVAL_PATH) or {}).get("dropped"))
+
+    def rest_batteries(self) -> tuple[str, ...]:
+        """The organism batteries generated after dev: Amendment D's inferred one last, unless
+        its survival record says dropped."""
+        return ("narrow", "infam", "final", *(() if self.inferred_dropped() else ("inferred",)))
+
     def st_inputs(self) -> dict:
         self.py("e13_style.py", "answers")
         self.py("e13_inputs.py", "build", "--require-tokenizer")
-        self.py("e13_inputs.py", "manifest", "--require-style")
+        self.py("e13_inputs.py", "manifest", "--require-style",
+                *(() if self.inferred_dropped() else ("--require-inferred",)))
         self.commit([C.INPUTS_DIR, C.STYLE_DIR, C.LABELS_DIR, f"{C.RESULTS}/MANIFEST.laptop.*"],
                     "input manifest, notices and style feature lists (before training)")
         return {"manifest_sha256": self._sha(C.INPUT_MANIFEST)}
@@ -595,8 +620,7 @@ class Orchestrator:
             self.decide("dev", "--recipe", recipe)
             rec = self.decision("dev_decision")
             self.commit([C.DECISIONS_DIR], f"development decision {recipe} ({rec['outcome']})")
-            self.start_job("gen_rest_r32", self.organism_steps(recipe, ("narrow", "infam",
-                                                                        "final")))
+            self.start_job("gen_rest_r32", self.organism_steps(recipe, self.rest_batteries()))
         self.state["recipe"] = recipe
         self.state["patch_seed"] = rec.get("patch_seed")
         self.state["dev_outcome"] = rec["outcome"]
@@ -613,14 +637,15 @@ class Orchestrator:
         self.pull_job(self.rest_job())
 
     def judge_organism_batteries(self) -> None:
-        """Laptop part, from pulled files only: judge narrow, infam and final; rate the final
-        answers' style (Amendment A; locked until the labels)."""
+        """Laptop part, from pulled files only: judge narrow, infam, final and (Amendment D,
+        unless dropped) inferred; rate the final answers' style (Amendment A; locked until the
+        labels)."""
         if self.done("organism_judged"):
             return
         recipe = self.state.get("recipe", "r1")
         if not self.state["jobs"].get(self.rest_job(), {}).get("pulled"):
             raise RuntimeError("organism batteries were never pulled; nothing to judge")
-        names = [n for b in ("narrow", "infam", "final") for n in self.gen_names(b, recipe)]
+        names = [n for b in self.rest_batteries() for n in self.gen_names(b, recipe)]
         self.judge(*names)
         self.py("e13_style.py", "organism", "--recipe", recipe, timeout=4 * 3600)
         self.mark("organism_judged", recipe=recipe)
@@ -944,6 +969,7 @@ class Orchestrator:
         S("notices", self.st_notices)
         S("style_notices", self.st_style_notices)
         S("notice_check", self.st_notice_check)
+        S("inferred", self.st_inferred)
         S("inputs", self.st_inputs)
         S("launch", self.st_launch)
         S("pod_a", lambda: self.run_pod("pod_a", [
@@ -956,7 +982,7 @@ class Orchestrator:
         S("projection", self.st_projection)
         S("gen_dev", lambda: (self.run_pod("gen_dev", self.organism_steps("r1", ("dev",))),
                               self.start_job("gen_rest_r1", self.organism_steps(
-                                  "r1", ("narrow", "infam", "final"))), {})[2])
+                                  "r1", self.rest_batteries())), {})[2])
         S("dev_decision", self.st_dev_decision)
         if self.state.get("dev_outcome") == "no_patch":
             S("organism_batteries", lambda: (self.finish_organism_batteries(), {})[1])
@@ -1049,7 +1075,7 @@ STAGE_POD_STEPS: dict[str, list[str]] = {
     "pod_a": ["download", "smoke", "bench-train", "train-trigger", "lora-check", "gen-trigger"],
 }
 STAGE_NAMES: tuple[str, ...] = (
-    "notices", "style_notices", "notice_check", "inputs", "launch", "pod_a", "plumbing", "pod_b",
+    "notices", "style_notices", "notice_check", "inferred", "inputs", "launch", "pod_a", "plumbing", "pod_b",
     "projection", "gen_dev", "dev_decision", "dirsource", "direction", "sweep", "sweep_judged",
     "strength",
     "label_pass", "final_patch", "teardown", "analysis",

@@ -251,6 +251,9 @@ def e13(monkeypatch, tmp_path):
     monkeypatch.setattr(rp, "ROOT", tmp_path)
     monkeypatch.setenv("EMX_POD_LOG_DIR", str(tmp_path))  # emx.e13.podhours reads the same log
     (tmp_path / ".env").write_text("RUNPOD_API_KEY=test-key\nHF_TOKEN=hf_x\n")
+    # configure() keeps POD_EVENTS when the module is already on E13 (e.g. after the
+    # orchestrator tests' ensure_watchdog): reset it first, or the tests write the real log
+    monkeypatch.setattr(rp, "EXP", rp.DEFAULT_EXP)
     rp.configure("E13")
     return tmp_path
 

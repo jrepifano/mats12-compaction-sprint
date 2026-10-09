@@ -74,8 +74,9 @@ class FakeModel:
 
 def fake_build_requests(tok, battery, model_key, questions, notices_kept, tasks, *, site="none",
                         alpha=0.0, conds=None, samples=None, sample_range=None,
-                        cell_instances=None):
+                        cell_instances=None, inferred_pairs=None):
     b = C.BATTERIES[battery]
+    assert (battery == "inferred") == (inferred_pairs is not None)  # Amendment D
     kept: dict[str, list[str]] = {}
     for r in notices_kept:
         kept.setdefault(r["family"], []).append(r["instance_id"])
@@ -321,8 +322,13 @@ def make_inputs(root: Path, n_train: int = C.N_TRAIN_ROWS) -> None:
     kept: dict[str, list[str]] = {}
     for r in notices:
         kept.setdefault(r["family"], []).append(r["instance_id"])
+    pairs = [{"pair_id": C.inferred_pair_id(p, k), "pairing": p, "unobserved": f"u {p} {k}",
+              "observed": f"o {p} {k}", "kept": True}
+             for p in (C.inferred_pairing_id(no) for no, _ in C.INFERRED_PAIRS) for k in range(2)]
     files = [
         _jsonl(root, pod.NOTICES, notices), _jsonl(root, pod.TASKS, tasks),
+        _jsonl(root, pod.INFERRED_PAIRS, pairs),
+        _put(root, pod.INFERRED_SURVIVAL, json.dumps({"dropped": False})),
         _put(root, pod.DIRCELLS, json.dumps(list(C.direction_cell_instances(kept)))),
         _jsonl(root, C.HELDOUT_ROWS, [{"row_id": i} for i in range(8)]),
     ]
@@ -656,7 +662,8 @@ def test_gen_organism_batteries_then_resume(env):
     _projection(env.root)
     assert env.run("gen-organism", "--recipe", "r1") == 0
     order = [c[1] for c in env.fk.calls if c[0] == "run_battery"]
-    assert order == ["dev"] * 5 + ["narrow"] * 5 + ["infam"] * 3 + ["final"] * 5
+    assert order == ["dev"] * 5 + ["narrow"] * 5 + ["infam"] * 3 + ["final"] * 5 + \
+        ["inferred"] * 5  # Amendment D last
     for b in pod.ORGANISM_BATTERIES:
         names = _names(env.root, f"gen-organism.r1.{b}")
         models = pod.battery_models(b, "r1")
@@ -668,7 +675,7 @@ def test_gen_organism_batteries_then_resume(env):
     assert [r["seed"] for r in dev_base] == [r["seed"] for r in dev_org]  # paired across models
     assert len(_rows(env.root, C.gen_name("final", KEY))) == 3 * 48 * 10
     base_lora = [c[3] for c in env.fk.calls if c[0] == "run_battery" and c[2] == "base"]
-    assert base_lora == [None, None, None]
+    assert base_lora == [None, None, None, None]  # dev, narrow, final, inferred
     n = len(env.fk.calls)
     assert env.run("gen-organism", "--recipe", "r1", "--battery", "dev") == 0
     assert not [c for c in env.fk.calls[n:] if c[0] == "run_battery"]  # verified, skipped
@@ -677,6 +684,52 @@ def test_gen_organism_batteries_then_resume(env):
     assert env.run("gen-organism", "--recipe", "r1", "--battery", "dev") == 0
     assert list((env.root / C.GEN_DIR).glob("dev__base.csv.incomplete.*"))
     assert len(_rows(env.root, C.gen_name("dev", "base"))) == 480
+
+
+def _drop_inferred(root: Path, remove_pairs: bool = True) -> None:
+    """Amendment D: the survival record says dropped (manifest re-hashed)."""
+    _put(root, pod.INFERRED_SURVIVAL, json.dumps({"dropped": True}))
+    man = json.loads((root / C.INPUT_MANIFEST).read_text())
+    man["files"][pod.INFERRED_SURVIVAL] = G.sha256_file(root / pod.INFERRED_SURVIVAL)
+    if remove_pairs:
+        (root / pod.INFERRED_PAIRS).unlink()
+    _put(root, C.INPUT_MANIFEST, json.dumps(man))
+
+
+def test_download_requires_inferred_unless_dropped(env):
+    assert env.run("download") == 0
+    rec = json.loads((env.root / pod.DOWNLOAD_RECORD).read_text())
+    assert {pod.INFERRED_PAIRS, pod.INFERRED_SURVIVAL} <= set(rec["inputs"]["verified"])
+    pairs = (env.root / pod.INFERRED_PAIRS).read_text()
+    (env.root / pod.INFERRED_PAIRS).unlink()
+    assert env.run("download") == pod.REFUSED  # required: the battery was not dropped
+    _put(env.root, pod.INFERRED_PAIRS, pairs)
+    surv = (env.root / pod.INFERRED_SURVIVAL).read_text()
+    (env.root / pod.INFERRED_SURVIVAL).unlink()
+    assert env.run("download") == pod.REFUSED  # no survival record: not known to be dropped
+    _put(env.root, pod.INFERRED_SURVIVAL, surv)
+    _put(env.root, pod.INFERRED_PAIRS, pairs.replace("u ", "U "))
+    assert env.run("download") == pod.REFUSED  # tampered pairs
+    _put(env.root, pod.INFERRED_PAIRS, pairs)
+    _drop_inferred(env.root)
+    assert env.run("download") == 0  # dropped: the pairs file is optional
+
+
+def test_gen_organism_skips_a_dropped_inferred_battery(env, capsys):
+    _train(env)
+    _lora(env)
+    _projection(env.root)
+    _drop_inferred(env.root)
+    ids = pod.manifest_ids(pod.parse(["gen-organism", "--recipe", "r1", "--root",
+                                      str(env.root)]))
+    assert ids == [f"gen-organism.r1.{b}" for b in ("dev", "narrow", "infam", "final")]
+    assert env.run("gen-organism", "--recipe", "r1") == 0
+    assert "inferred" not in {c[1] for c in env.fk.calls if c[0] == "run_battery"}
+    assert "inferred battery skipped" in capsys.readouterr().out
+    assert not list((env.root / C.GEN_DIR).glob("inferred__*.csv"))
+    n = len(env.fk.calls)
+    assert env.run("gen-organism", "--recipe", "r1", "--battery", "inferred") == 0
+    assert len(env.fk.calls) == n
 
 
 def test_gen_organism_rerun_on_changed_projection(env):
@@ -1231,3 +1284,25 @@ def test_inputs_feed_real_build_requests(tmp_path, tok):
                                                                "ugen": 1})
     assert {r.task_type for r in sw} == {"em", "umed", "ugen"} and {r.site for r in sw} == \
         {"input"}
+    # Amendment D: the inferred battery through the driver's own wrapper (kept pairs passed)
+    inf = pod.build_requests(tok, "inferred", KEY, inp)
+    assert len(inf) == 2 * C.N_BROAD_FINAL * 10
+    by = {}
+    for r in inf:
+        pid, side = r.instance_id.rsplit(":", 1)
+        assert side == C.INFERRED_SIDE[r.notice_cond]
+        assert r.system_suffix == f"{side[0]} {pid.split('__')[0]} {pid[-1]}"  # the pair's side
+        no, ov = vgen.INFERRED_FAMILIES[pid.split("__")[0]]
+        assert r.family == (no if r.notice_cond == "noov" else ov)
+        assert r.prompt_text.count(r.system_suffix) == 1 and r.condition.startswith(
+            "E13|inferred|")
+        by.setdefault((r.qid, r.sample_idx), set()).add(pid)
+    assert all(len(v) == 1 for v in by.values())  # both conditions share one pair
+    kept = sorted(p["pair_id"] for p in inp["inferred"])
+    assert all(next(iter(v)) == C.draw_pair(kept, q, k) for (q, k), v in by.items())
+    assert len({r.qid for r in inf}) == C.N_BROAD_FINAL
+    with pytest.raises(ValueError):
+        vgen.build_requests(tok, "final", KEY, inp["questions"], inp["kept"], inp["tasks"],
+                            inferred_pairs=inp["inferred"])
+    with pytest.raises(ValueError):
+        vgen.build_requests(tok, "inferred", KEY, inp["questions"], inp["kept"], inp["tasks"])

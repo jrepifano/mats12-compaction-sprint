@@ -402,11 +402,15 @@ def _questions(qset: str) -> int:
 
 
 def organism_answers(n_models_full: int, n_org: int) -> dict:
-    """EM and utility answers of the organism batteries for the given model counts."""
+    """EM and utility answers of the organism batteries for the given model counts, including
+    Amendment D's inferred battery (41 broad questions x 10 x 2 per model; counted even if the
+    battery is later dropped, which only over-projects)."""
     B = C.BATTERIES
     em = (n_models_full * 8 * B["dev"].samples["general"] * len(B["dev"].conds)
           + n_org * 8 * B["infam"].samples["general"] * len(B["infam"].conds)
           + n_models_full * 48 * B["final"].samples["ext48"] * len(B["final"].conds)
+          + n_models_full * C.N_BROAD_FINAL * B["inferred"].samples["ext48"]
+          * len(B["inferred"].conds)
           + N_DIRSRC)
     util = n_models_full * C.N_NARROW * B["narrow"].samples["narrow"] * len(B["narrow"].conds)
     return {"em": em, "utility": util}

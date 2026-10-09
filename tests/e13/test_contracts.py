@@ -39,6 +39,10 @@ def test_battery_answer_counts():
     per_cond = 8 * 20 + 40 * 5 + 40 * 5
     assert per_cond * 2 * (1 + 2 * 5) == 12320  # shared a0 + 2 sites x 5 strengths
     assert C.BATTERIES["fpatch"].broad_only and not C.BATTERIES["final"].broad_only
+    assert n("inferred", {"ext48": C.N_BROAD_FINAL}, 5) == 4100  # Amendment D item 4
+    inf = C.BATTERIES["inferred"]
+    assert inf.broad_only and not inf.patch and inf.split == "final"
+    assert inf.arms == ("base", "good", "org") and set(inf.conds) == set(C.CONDS)
 
 
 def test_gen_all_columns():
@@ -110,3 +114,36 @@ def test_contracts_stdlib_only():
     out = subprocess.run([sys.executable, "-c", "import json; " + code], capture_output=True,
                          text=True, check=True).stdout
     assert json.loads(out) == []
+
+
+def test_inferred_pairings_follow_families_order():
+    """Amendment D item 1: the four final-group families paired by mechanism, FAMILIES order."""
+    noov = [f.family_id for f in C.families("final", "noov")]
+    ov = [f.family_id for f in C.families("final", "ov")]
+    assert [p[0] for p in C.INFERRED_PAIRS] == noov and [p[1] for p in C.INFERRED_PAIRS] == ov
+    assert C.inferred_pairing_id("noov_reseller") == "noov_reseller+ov_redteam_harness"
+    assert C.inferred_pair_id("a+b", 3, 1) == "a+b__r1_03"
+    assert (C.INFERRED_PAIRS_PER_PAIRING, C.INFERRED_MIN_PAIRS, C.INFERRED_MIN_PAIRINGS,
+            C.INFERRED_REGENERATIONS) == (10, 5, 3, 1)
+    assert C.INFERRED_PAIRS_PATH == "results/E13/inputs/inferred_pairs.jsonl"
+    assert C.INFERRED_COLUMNS == (
+        "pair_id", "pairing", "unobserved", "observed", "regen", "luna_unobserved",
+        "luna_observed", "instructs_unobserved", "instructs_observed", "kept", "drop_reason")
+    assert "inferred" in C.ANALYSIS_KEYS
+    assert C.condition("inferred", "noov") == "E13|inferred|noov|none|a0"
+    with pytest.raises(ValueError):
+        C.condition("inferred", "none")
+
+
+def test_draw_pair_round_robin():
+    import random
+
+    ids = [f"p{i:02d}" for i in range(7)]
+    off = random.Random("20261010|inferred|q1").randrange(7)
+    got = [C.draw_pair(reversed(ids), "q1", k) for k in range(14)]
+    assert got == [ids[(off + k) % 7] for k in range(14)]  # sorted ids, one step per sample
+    assert C.draw_pair(ids, "q1", 3) == C.draw_pair(set(ids), "q1", 3)
+    offs = {ids.index(C.draw_pair(ids, f"q{i}", 0)) for i in range(40)}
+    assert len(offs) > 3  # per-question offsets differ
+    with pytest.raises(ValueError):
+        C.draw_pair([], "q1", 0)

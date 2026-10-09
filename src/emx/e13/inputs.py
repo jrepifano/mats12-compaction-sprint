@@ -39,7 +39,9 @@ held-out loss rows, narrow and utility tasks, direction-cell instances and the i
   `emx.e13.render.render_prompt_sys` when that module exists, else the template directly).
 - **Manifest** (`build_manifest`): every source, prompt and output sha256, seeds, family
   membership, per-family kept/dropped counts with reasons, task ids and filters, row counts,
-  direction cells and (when present) the style-audit feature lists; written atomically.
+  direction cells and (when present) the style-audit feature lists and the Amendment D
+  inferred-cue pairs with their survival record and frozen prompts (`inferred_manifest`);
+  written atomically.
 
 Never edits contracts; reads notices through `emx.e13.notices`.
 """
@@ -426,10 +428,54 @@ def _file_rec(root: Path, rel: str, count_rows: bool = True) -> dict:
     return rec
 
 
+def inferred_manifest(root: str | Path, *, require: bool = False) -> dict | None:
+    """Amendment D: the inferred-cue pairs, their survival record and the two frozen prompts,
+    hashed when present (None when the survival record is absent and not `require`d). Refuses
+    (FileNotFoundError) when `require` and anything is missing, or when a survival record exists
+    without its pairs file; refuses (ValueError) a pairs file whose sha256 differs from the one
+    its survival record wrote."""
+    from emx.e13 import inferred as INF
+
+    root = Path(root)
+    surv_p, pairs_p = root / C.INFERRED_SURVIVAL_PATH, root / C.INFERRED_PAIRS_PATH
+    if not surv_p.exists():
+        if require:
+            raise FileNotFoundError(f"{C.INFERRED_SURVIVAL_PATH} missing (run "
+                                    "scripts/e13_inferred.py write, check, filter)")
+        return None
+    if not pairs_p.exists():
+        raise FileNotFoundError(f"{C.INFERRED_PAIRS_PATH} missing beside its survival record")
+    surv = json.loads(surv_p.read_text(encoding="utf-8"))
+    sha = sha256_file(pairs_p)
+    if surv.get("pairs_sha256") != sha:
+        raise ValueError(f"{C.INFERRED_PAIRS_PATH} sha256 differs from its survival record")
+    rows = INF.read_pairs(pairs_p)
+    prompts = {}
+    for rel in (INF.WRITER_PROMPT, INF.CHECKER_PROMPT):
+        p = root / rel if (root / rel).exists() else C.REPO_ROOT / rel
+        if not p.exists():
+            raise FileNotFoundError(f"frozen prompt {rel} missing")
+        prompts[rel] = sha256_file(p)
+    return {
+        "path": C.INFERRED_PAIRS_PATH, "sha256": sha, "rows": len(rows),
+        "survival": {"path": C.INFERRED_SURVIVAL_PATH, "sha256": sha256_file(surv_p)},
+        "dropped": bool(surv.get("dropped")), "n_kept": sum(r["kept"] is True for r in rows),
+        "per_pairing": {k: v.get("status") for k, v in (surv.get("per_pairing") or {}).items()},
+        "prompts": prompts,
+        "pairings": [list(x) for x in C.INFERRED_PAIRS], "mechanism": C.INFERRED_MECHANISM,
+        "rules": {"pairs_per_pairing": C.INFERRED_PAIRS_PER_PAIRING,
+                  "min_pairs": C.INFERRED_MIN_PAIRS, "min_pairings": C.INFERRED_MIN_PAIRINGS,
+                  "regenerations": C.INFERRED_REGENERATIONS},
+        "draw": "contracts.draw_pair(kept pair ids, qid, sample_idx)",
+    }
+
+
 def build_manifest(root: str | Path, *, pairs_root: str | Path | None = None,
-                   require_style: bool = False, checks: dict | None = None) -> dict:
+                   require_style: bool = False, checks: dict | None = None,
+                   require_inferred: bool = False) -> dict:
     """The input manifest from the files on disk under `root` (module docstring)."""
     root = Path(root)
+    inferred = inferred_manifest(root, require=require_inferred)
     notice_rows = N.read_notices(root / N.NOTICES_PATH)
     surv = json.loads((root / N.SURVIVAL_PATH).read_text(encoding="utf-8"))
     tasks = _read_jsonl(root / TASKS_PATH)
@@ -518,6 +564,7 @@ def build_manifest(root: str | Path, *, pairs_root: str | Path | None = None,
         "dircells": {"path": DIRCELLS_PATH, "sha256": sha256_file(root / DIRCELLS_PATH),
                      "instances": dircells["instances"]},
         "style": style,
+        "inferred": inferred,  # Amendment D; None when the battery's files are absent
         "checks": checks or {},
     }
 

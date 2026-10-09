@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 from emx.e13 import contracts as C
+from emx.e13 import inferred as INF
 from emx.e13 import inputs as I
 from emx.e13 import notices as N
 
@@ -282,6 +283,36 @@ def test_default_pairs_root():
     assert I.default_pairs_root(Path("/x/main")) == Path("/x/main")
 
 
+# --- Amendment D: the inferred pairs in the manifest --------------------------------------------
+
+
+def _inferred_files(root) -> None:
+    rows = [{k: None for k in C.INFERRED_COLUMNS} | {
+        "pair_id": f"p{i}", "pairing": "x", "regen": 0, "kept": i == 0,
+        "drop_reason": "" if i == 0 else "instructs"} for i in range(2)]
+    sha = N.write_jsonl(root / C.INFERRED_PAIRS_PATH, rows)
+    N.write_json(root / C.INFERRED_SURVIVAL_PATH, {"dropped": False, "pairs_sha256": sha,
+                                                   "per_pairing": {"x": {"status": "ok"}}})
+
+
+def test_inferred_manifest(tmp_path):
+    assert I.inferred_manifest(tmp_path) is None
+    with pytest.raises(FileNotFoundError):
+        I.inferred_manifest(tmp_path, require=True)
+    _inferred_files(tmp_path)
+    rec = I.inferred_manifest(tmp_path, require=True)
+    assert rec["rows"] == 2 and rec["per_pairing"] == {"x": "ok"}
+    for rel in (INF.WRITER_PROMPT, INF.CHECKER_PROMPT):
+        assert rec["prompts"][rel] == hashlib.sha256((ROOT / rel).read_bytes()).hexdigest()
+    with open(tmp_path / C.INFERRED_PAIRS_PATH, "a") as fh:  # not the file the filter wrote
+        fh.write("\n")
+    with pytest.raises(ValueError):
+        I.inferred_manifest(tmp_path)
+    (tmp_path / C.INFERRED_PAIRS_PATH).unlink()
+    with pytest.raises(FileNotFoundError):
+        I.inferred_manifest(tmp_path)
+
+
 # --- script build + manifest round trip (real pairs and holdout) ---------------------------------
 
 
@@ -311,7 +342,19 @@ def test_build_and_manifest_round_trip(tmp_path, capsys):
         N.write_json(root / rel, {"features": ["f1"]})
     assert script.main(["manifest", "--require-style", "--pairs-root", str(REAL_PAIRS_ROOT),
                         *base]) == 0
+    assert json.loads((root / C.INPUT_MANIFEST).read_text())["inferred"] is None
+    # Amendment D: the inferred pairs are required on request, and hashed when present
+    req = ["manifest", "--require-style", "--require-inferred", "--pairs-root",
+           str(REAL_PAIRS_ROOT), *base]
+    assert script.main(req) == 1
+    _inferred_files(root)
+    assert script.main(req) == 0
     m = json.loads((root / C.INPUT_MANIFEST).read_text())
+    assert m["inferred"]["sha256"] == hashlib.sha256(
+        (root / C.INFERRED_PAIRS_PATH).read_bytes()).hexdigest()
+    assert m["inferred"]["survival"]["path"] == C.INFERRED_SURVIVAL_PATH
+    assert m["inferred"]["dropped"] is False and m["inferred"]["n_kept"] == 1
+    assert set(m["inferred"]["prompts"]) == {INF.WRITER_PROMPT, INF.CHECKER_PROMPT}
 
     def sha(rel):
         return hashlib.sha256((root / rel).read_bytes()).hexdigest()

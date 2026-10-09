@@ -18,7 +18,9 @@ port of scripts/eq0_pod.py `greedy_continuations`, `continuation_logprobs`,
   `contracts.draw_instance` (the same draw for every model), the system suffix from
   `contracts.system_suffix`, the prompt from `emx.e13.render.render_prompt_sys` and the seed from
   `emx.contracts.request_seed(condition, qid, sample_idx)`: the condition string never names the
-  model, so seeds pair across models.
+  model, so seeds pair across models. The Amendment D "inferred" battery takes snippet pairs
+  instead of notices (`inferred_pairs`, `contracts.draw_pair`); its two conditions of one
+  (question, sample) share one pair.
 - `run_battery` -> GEN_ALL_COLUMNS rows, backend "vllm"; vLLM's prompt ids must equal ours.
 - LoRA ids are stable by a fixed key order (`LORA_KEYS`); `check_adapter` is recipe-aware
   (`contracts.ADAPTER_EXPECT`) and also checks the safetensors tensor names and shapes.
@@ -55,6 +57,8 @@ QSET_TASK: dict[str, str] = {
 LORA_KEYS: tuple[str, ...] = (C.TRIG_KEY, *C.trained_keys("r1"), *C.trained_keys("r32"))
 LORA_IDS: dict[str, int] = {k: i for i, k in enumerate(LORA_KEYS, start=1)}
 MAX_LORAS = 1  # one adapter per battery call; the engine holds at most this many at once
+INFERRED_FAMILIES: dict[str, tuple[str, str]] = {  # Amendment D: pairing -> (noov, ov) family
+    C.inferred_pairing_id(no): (no, ov) for no, ov in C.INFERRED_PAIRS}
 
 
 # --- plans ---------------------------------------------------------------------------------------
@@ -120,13 +124,17 @@ def build_requests(
     notices_kept: Iterable[Mapping], tasks: Sequence[Mapping], *, site: str = C.UNSTEERED_SITE,
     alpha: float = 0.0, conds: Sequence[str] | None = None, samples: int | Mapping | None = None,
     sample_range: tuple[int, int] | None = None, cell_instances: Sequence[str] | None = None,
+    inferred_pairs: Iterable[Mapping] | None = None,
 ) -> list[C.GenRequest]:
     """The battery's requests for one model (see the module docstring for the frozen order).
 
     `questions`: {"general" | "ext48": rows with qid, question (and ext48's tag)}; `notices_kept`:
     NOTICE_COLUMNS rows; `tasks`: TASK_COLUMNS rows; `samples`: an int for every qset or
     {qset: n} overriding the battery's counts (the cut rule); `sample_range`: (lo, hi) for every
-    qset (the direction-source extension, 30..60)."""
+    qset (the direction-source extension, 30..60); `inferred_pairs`: INFERRED_COLUMNS rows, for
+    the "inferred" battery only (Amendment D: `contracts.draw_pair` over the kept pairs; the
+    no-oversight request takes the pair's unobserved snippet, oversight its observed one; family
+    = the pairing's noov or ov family, instance_id `<pair_id>:<side>`)."""
     b = C.BATTERIES[battery]
     arm = C.parse_model_key(model_key)[0]
     if arm not in b.arms:
@@ -135,6 +143,13 @@ def build_requests(
     if any(c not in b.conds for c in use_conds):
         raise ValueError(f"conds {use_conds} not all in battery {battery} {b.conds}")
     kept, by_id = kept_map(notices_kept)
+    pairs: dict[str, Mapping] = {}
+    if battery == "inferred":
+        pairs = {r["pair_id"]: r for r in inferred_pairs or () if r.get("kept") is True}
+        if not pairs:
+            raise ValueError("the inferred battery needs kept inferred pairs")
+    elif inferred_pairs is not None:
+        raise ValueError("inferred_pairs is for the inferred battery only")
     if battery == "dirsrc":
         insts = tuple(cell_instances) if cell_instances is not None else \
             C.direction_cell_instances(kept)
@@ -151,6 +166,24 @@ def build_requests(
         for qset, rows in qsets:
             for qid, question in rows:
                 for k in _sample_indices(b, qset, samples, sample_range):
+                    if battery == "inferred":
+                        pid = C.draw_pair(pairs, qid, k)
+                        side = C.INFERRED_SIDE[cond]
+                        no, ov = INFERRED_FAMILIES[pairs[pid]["pairing"]]
+                        suffix = C.system_suffix(cond, pairs[pid][side])
+                        if (suffix, question) not in cache:
+                            cache[(suffix, question)] = render_prompt_sys(tok, suffix, question)
+                        ptext, pids = cache[(suffix, question)]
+                        out.append(C.GenRequest(
+                            condition=cstr, cell=model_key, eval_fmt=C.EVAL_FMT, qset=qset,
+                            qid=qid, question=question, sample_idx=k,
+                            seed=request_seed(cstr, qid, k), prompt_text=ptext,
+                            prompt_ids=tuple(pids), model_key=model_key, battery=battery,
+                            notice_cond=cond, family=no if cond == "noov" else ov,
+                            instance_id=f"{pid}:{side}", system_suffix=suffix, site=site,
+                            alpha=float(alpha), task_type=QSET_TASK[qset],
+                        ))
+                        continue
                     if fixed is not None:
                         inst = fixed
                     elif cond in C.CONDS:

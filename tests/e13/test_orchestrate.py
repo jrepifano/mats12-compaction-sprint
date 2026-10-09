@@ -43,6 +43,10 @@ class Fake:
         if "e13_notices.py" in j and "filter" in j and sc.get("notices_fail"):
             self.w(f"{C.INPUTS_DIR}/notice_survival.json", {"ok": False, "per_condition": {}})
             return 1, "E13_FAIL survival"
+        if "e13_inferred.py" in j and "filter" in j:  # Amendment D's survival record
+            self.w(C.INFERRED_SURVIVAL_PATH, {"dropped": bool(sc.get("inferred_dropped")),
+                                              "n_pairings_ok": 2 if sc.get("inferred_dropped")
+                                              else 4})
         if "e13_label_page.py" in j:
             kind = cmd[cmd.index("scripts/e13_label_page.py") + 1]
             self.w(f"{C.LABELS_DIR}/{kind}/page.html", "<html></html>")
@@ -532,3 +536,42 @@ def test_failed_relaunch_terminates_the_replacement(e13_root):
     downs = [c for c in f.calls if "pod_down.py" in " ".join(c)]
     assert any("e13_relaunch_failed" in c for c in downs) and o.state["pod"]["down"]
     assert o.state["jobs"]["pod_a"]["state"] == "interrupted"
+
+
+# --- Amendment D: the inferred-cue battery -------------------------------------------------------
+
+
+def _script_order(f: Fake) -> list[str]:
+    return [" ".join(c[c.index(x):c.index(x) + 2]) for c in f.calls
+            for x in c if x.startswith("scripts/e13_") and x.endswith(".py")]
+
+
+def test_inferred_stage_order_and_battery(e13_root):
+    assert O.STAGE_NAMES[O.STAGE_NAMES.index("notice_check") + 1] == "inferred"
+    assert O.STAGE_NAMES[O.STAGE_NAMES.index("inferred") + 1] == "inputs"
+    o, f, _ = walk_to_labels(e13_root)
+    seq = _script_order(f)
+    i = seq.index("scripts/e13_inferred.py write")
+    assert seq[i:i + 3] == ["scripts/e13_inferred.py write", "scripts/e13_inferred.py check",
+                            "scripts/e13_inferred.py filter"]
+    assert seq.index("scripts/e13_label_page.py notice") < i < seq.index(
+        "scripts/e13_inputs.py build")
+    assert o.state["stages"]["inferred"]["dropped"] is False
+    man = next(c for c in f.calls if "scripts/e13_inputs.py" in c and "manifest" in c)
+    assert "--require-inferred" in man and "--require-style" in man
+    assert o.state["jobs"]["gen_rest_r1"]["steps"] == [
+        ["gen-organism", "--recipe", "r1", "--battery", "narrow", "--battery", "infam",
+         "--battery", "final", "--battery", "inferred"]]
+    judged = " ".join(" ".join(c) for c in f.calls if "scripts/e13_judge.py" in c)
+    for k in ("base", "good_r1_s0", "org_r1_s0", "org_r1_s2"):
+        assert C.gen_name("inferred", k) in judged
+
+
+def test_inferred_dropped_is_recorded_not_a_stop(e13_root):
+    o, f, rc = walk_to_labels(e13_root, inferred_dropped=True)
+    assert rc == O.BLOCKED_RC and "labels" in o.state["human"] and not o.state.get("stopped")
+    assert o.state["stages"]["inferred"]["dropped"] is True
+    man = next(c for c in f.calls if "scripts/e13_inputs.py" in c and "manifest" in c)
+    assert "--require-inferred" not in man
+    assert "inferred" not in o.state["jobs"]["gen_rest_r1"]["steps"][0]
+    assert not any("inferred__" in " ".join(c) for c in f.calls if "scripts/e13_judge.py" in c)

@@ -21,8 +21,10 @@ checks, calls into those modules, outputs, manifests.
                                    narrow_trig batteries on the validated backend
     smoke-adapters --recipe R      adapter-applied check and non-empty answers for each adapter
     bench-hooked [--recipe R]      hfgen.bench_hooked on org_<R>_s0 (gating) -> bench/hooked.json
-    gen-organism --recipe R [--battery B ...]   dev, narrow, infam, final; refuses without a
-                                   hash-bound decisions/projection.json whose outcome is not stop
+    gen-organism --recipe R [--battery B ...]   dev, narrow, infam, final, inferred (Amendment
+                                   D; skipped with a log line when its survival record says
+                                   dropped); refuses without a hash-bound
+                                   decisions/projection.json whose outcome is not stop
     gen-dirsource --seed-key K [--extend]       the dirsrc battery (extension: samples 30..59)
     capture --seed-key K           acts.capture_means at both sites on the labelled dirsrc rows
     direction --seed-key K         direction.extract_direction per site (a failed site is data)
@@ -110,7 +112,8 @@ from emx.qwen import registry as R
 
 REFUSED = 3
 BASE_PATTERNS = ["*.json", "*.safetensors", "*.txt", "*.jinja"]  # eq0_pod.py
-ORGANISM_BATTERIES: tuple[str, ...] = ("dev", "narrow", "infam", "final")  # dev first (judging)
+ORGANISM_BATTERIES: tuple[str, ...] = (  # dev first (judging); Amendment D's inferred last
+    "dev", "narrow", "infam", "final", "inferred")
 DOWNLOAD_RECORD = f"{C.RESULTS}/download.json"
 SMOKE_RECORD = f"{C.RESULTS}/smoke.json"
 RECOVERY = f"{C.RESULTS}/MANIFEST.recovery.sha256"
@@ -127,6 +130,8 @@ NOTICES = f"{C.INPUTS_DIR}/notices.jsonl"
 TASKS = f"{C.INPUTS_DIR}/tasks.jsonl"
 NARROW = f"{C.INPUTS_DIR}/narrow.jsonl"  # optional: narrow rows may live in tasks.jsonl instead
 DIRCELLS = f"{C.INPUTS_DIR}/dircells.json"
+INFERRED_PAIRS = C.INFERRED_PAIRS_PATH  # Amendment D; optional only when the battery was dropped
+INFERRED_SURVIVAL = C.INFERRED_SURVIVAL_PATH
 CAPTURE_RECORD = f"{C.DIRECTION_DIR}/capture.json"
 ACTS_INDEX = f"{C.DIRECTION_DIR}/acts_index.csv"  # = emx.e13.acts.INDEX_NAME
 DIRECTION_STEP = f"{C.DIRECTION_DIR}/direction_step.json"  # the direction step's provenance
@@ -331,7 +336,7 @@ def dep_paths(args, mid: str) -> list[str]:
     s = args.step
     inputs = _input_files()
     if s == "download":
-        return [*inputs, *REQUIRED_INPUTS]
+        return [*inputs, *REQUIRED_INPUTS, INFERRED_SURVIVAL, INFERRED_PAIRS]
     if s == "smoke":
         return inputs
     if s == "bench-train":
@@ -351,6 +356,8 @@ def dep_paths(args, mid: str) -> list[str]:
         return [*inputs, *_adapter_files(C.model_key("org", args.recipe, 0))]
     if s == "gen-organism":
         b = mid.rsplit(".", 1)[1]
+        if b == "inferred":
+            inputs = [*inputs, INFERRED_SURVIVAL, INFERRED_PAIRS]
         return [*inputs, LORA_CHECK, PROJECTION, BENCH_TRAIN, BENCH_HOOKED,
                 *(f for k in battery_models(b, args.recipe) if k != C.BASE_KEY
                   for f in _adapter_files(k))]
@@ -588,6 +595,12 @@ def verify_inputs(root: Path) -> dict:
         checked[rel_] = got
     for rel_ in REQUIRED_INPUTS:
         checked[rel_] = verify_file(root, rel_, listed)
+    # Amendment D: the inferred pairs are required unless the (verified) survival record says
+    # the battery was dropped
+    if (root / INFERRED_SURVIVAL).is_file() or not inferred_dropped(root):
+        checked[INFERRED_SURVIVAL] = verify_file(root, INFERRED_SURVIVAL, listed)
+    if not inferred_dropped(root):
+        checked[INFERRED_PAIRS] = verify_file(root, INFERRED_PAIRS, listed)
     skipped = []
     for rel_, sha in sorted(listed.items()):
         if rel_ in checked:
@@ -598,6 +611,21 @@ def verify_inputs(root: Path) -> dict:
             skipped.append(rel_)
     return {"verified": checked, "not_on_pod": skipped,
             "input_manifest_sha256": G.sha256_file(root / C.INPUT_MANIFEST)}
+
+
+def inferred_dropped(root: Path) -> bool:
+    """Amendment D: True iff the inferred battery's survival record exists and says dropped."""
+    p = Path(root) / INFERRED_SURVIVAL
+    return p.is_file() and read_json(p).get("dropped") is True
+
+
+def organism_batteries(args) -> list[str]:
+    """The invocation's organism batteries (`--battery`, default all), without the inferred
+    battery when its survival record says it was dropped."""
+    bats = list(args.battery or ORGANISM_BATTERIES)
+    if "inferred" in bats and inferred_dropped(Path(args.root)):
+        bats.remove("inferred")
+    return bats
 
 
 def load_questions(root: Path) -> dict[str, list[dict]]:
@@ -611,12 +639,18 @@ def load_questions(root: Path) -> dict[str, list[dict]]:
 
 
 def load_inputs(root: Path) -> dict:
-    """Questions, kept notices (NOTICE_COLUMNS rows with kept True), tasks (+ narrow rows) and the
-    direction-cell instances, each file checked against the input manifest."""
+    """Questions, kept notices (NOTICE_COLUMNS rows with kept True), tasks (+ narrow rows), the
+    direction-cell instances and the kept inferred pairs (Amendment D; None when the battery was
+    dropped), each file checked against the input manifest."""
     root = Path(root)
     listed = input_shas(root)
     for rel_ in (NOTICES, TASKS, DIRCELLS):
         verify_file(root, rel_, listed)
+    inferred = None
+    if not inferred_dropped(root):
+        verify_file(root, INFERRED_SURVIVAL, listed)
+        verify_file(root, INFERRED_PAIRS, listed)
+        inferred = [r for r in read_jsonl(root / INFERRED_PAIRS) if r.get("kept") is True]
     tasks = read_jsonl(root / TASKS)
     if (root / NARROW).is_file():
         verify_file(root, NARROW, listed)
@@ -629,11 +663,16 @@ def load_inputs(root: Path) -> dict:
         "kept": [r for r in read_jsonl(root / NOTICES) if r.get("kept") is True],
         "tasks": tasks,
         "cell_instances": tuple(cells),
+        "inferred": inferred,
         "manifest_sha256": G.sha256_file(root / C.INPUT_MANIFEST),
     }
 
 
 def build_requests(tok, battery: str, key: str, inp: dict, **kw) -> list:
+    if battery == "inferred":
+        if not inp.get("inferred"):
+            raise Refused("the inferred battery has no kept pairs (dropped or missing)")
+        kw["inferred_pairs"] = inp["inferred"]
     return _mod("vgen").build_requests(tok, battery, key, inp["questions"], inp["kept"],
                                        inp["tasks"], **kw)
 
@@ -1425,7 +1464,12 @@ def step_gen_organism(args) -> int:
     backend = organism_backend(args)
     inp = load_inputs(root)
     tok = _tokenizer()
-    batteries = args.battery or list(ORGANISM_BATTERIES)
+    batteries = organism_batteries(args)
+    if "inferred" in (args.battery or ORGANISM_BATTERIES) and "inferred" not in batteries:
+        log("gen-organism: inferred battery skipped: its survival record says dropped "
+            "(Amendment D)")
+    if not batteries:
+        return 0
     keys = list(dict.fromkeys(k for b in batteries for k in battery_models(b, args.recipe)))
     paths = {k: adapter_path(args, k) for k in keys if k != C.BASE_KEY}
     eng = Engine(backend, paths, args.batch_size)
@@ -1917,7 +1961,7 @@ def manifest_ids(args) -> list[str]:
     if s in ("train", "smoke-adapters"):
         return [f"{s}.{args.recipe}"]
     if s == "gen-organism":
-        return [f"gen-organism.{args.recipe}.{b}" for b in args.battery or ORGANISM_BATTERIES]
+        return [f"gen-organism.{args.recipe}.{b}" for b in organism_batteries(args)]
     if s == "gen-dirsource":
         return [f"gen-dirsource.{args.seed_key}" + (".ext" if args.extend else "")]
     if s in ("capture", "direction"):
@@ -2003,7 +2047,7 @@ def dry_step(args) -> int:
     elif s == "gen-organism":
         check_projection(root)
         b = organism_backend(args)
-        for bat, mid in zip(args.battery or ORGANISM_BATTERIES, ids, strict=True):
+        for bat, mid in zip(organism_batteries(args), ids, strict=True):
             outs[mid] = [p for k in battery_models(bat, args.recipe)
                          for p in _dry_gen(root, C.gen_name(bat, k), bat, k, b)]
     elif s == "gen-dirsource":

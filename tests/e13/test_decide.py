@@ -406,7 +406,8 @@ def test_patch_answer_counts_match_the_prereg():
     assert cut4["final"]["em"] == 10 * 41 * 10
     one = D._patch_answers(C.ProjectionState(sites=("output",)), set(), set())
     assert one["sweep"]["em"] == (2 + 10) * 160
-    assert D.organism_answers(5, 3) == {"em": 2400 + 960 + 7200 + 480, "utility": 1000}
+    assert D.organism_answers(5, 3) == {"em": 2400 + 960 + 7200 + 4100 + 480,  # + Amendment D
+                                        "utility": 1000}
 
 
 def _proj(rate, state=None, **kw):
@@ -553,7 +554,7 @@ def test_projection_contingencies_and_steps_done():
     assert b["remaining"]["fallback_train"] == pytest.approx(
         4 * 2.5 * (C.N_STEPS * 0.25 + 9 * 30.0) / 3600)
     assert b["usd"]["api"] > a["usd"]["api"]
-    hf = (2400 + 960 + 7200 + 480) / 20.0 / 3600 + 1000 / 20.0 / 3600
+    hf = (2400 + 960 + 7200 + 4100 + 480) / 20.0 / 3600 + 1000 / 20.0 / 3600
     assert c["remaining"]["gen_organism"] == pytest.approx(hf)
     stopped = _proj(20.0, state=C.ProjectionState(steps_done=done, sites=()))
     assert "sweep" not in stopped["remaining"]
