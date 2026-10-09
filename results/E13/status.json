@@ -11,11 +11,45 @@
     "reason": "Jacob's notice check (page ready)",
     "utc": "2026-10-09T03:57:34Z"
   },
-  "current": "dirsource",
+  "current": "teardown",
   "cuts": [],
   "dev_outcome": "patch",
   "human": {},
   "jobs": {
+    "direction": {
+      "log": "logs/e13/run_20261009T082928Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-09T08:29:28Z",
+      "started_epoch": 1791534568.972461,
+      "state": "failed",
+      "steps": [
+        [
+          "capture",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "direction",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "hook-check",
+          "--site",
+          "input",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "hook-check",
+          "--site",
+          "output",
+          "--seed-key",
+          "org_r32_s1"
+        ]
+      ],
+      "tail": "E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n"
+    },
     "dirsrc": {
       "log": "logs/e13/run_20261009T082442Z.log",
       "poll_failures": 0,
@@ -176,6 +210,7 @@
   },
   "patch_seed": "org_r32_s1",
   "pod": {
+    "down": "2026-10-09T08:37:11Z",
     "launched": "2026-10-09T05:26:05Z",
     "pod_id": "ut2dpa5a2253vm",
     "pushed_manually": "2026-10-09T05:29:29Z",
@@ -191,6 +226,10 @@
       "patch_seed": "org_r32_s1",
       "recipe": "r32",
       "utc": "2026-10-09T08:21:25Z"
+    },
+    "dirsource": {
+      "extended": false,
+      "utc": "2026-10-09T08:29:25Z"
     },
     "gen_dev": {
       "utc": "2026-10-09T06:21:42Z"
@@ -245,5 +284,11 @@
     "style_notices": {
       "utc": "2026-10-09T03:57:34Z"
     }
+  },
+  "stopped": {
+    "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
+    "rule": "pod_step_failed",
+    "stage": "direction",
+    "utc": "2026-10-09T08:33:43Z"
   }
 }
