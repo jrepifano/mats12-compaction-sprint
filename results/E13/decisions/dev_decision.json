@@ -1,0 +1,71 @@
+{
+  "name": "dev_decision",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/dev__base.csv": "915cbd9200d1406e7f707ab622e815d40f34f18ea5ebf1957f250cd7484405d7",
+    "results/E13/gen/dev__good_r1_s0.csv": "c731f8a557d6c30adffb5369d5e792ca12cd42dfe3454b55e73083b005ff0565",
+    "results/E13/gen/dev__org_r1_s0.csv": "a8155caf5df2a74dd6394cdff734553cd7c4a3cd6e45b6af3c7134b6ba0554e3",
+    "results/E13/gen/dev__org_r1_s1.csv": "9d83eb4ad5f1a043acebb8305a96c31511041f6038ea8e5213e2fa0734e8c7e5",
+    "results/E13/gen/dev__org_r1_s2.csv": "086db64c07c636b52b87933e51f3477a3137cd38ce243cadc13af87b1e7378cd",
+    "results/E13/judged/dev__base.csv": "20938b45f4f60c0c645ef154b6a78e4c5a18aa05bf3ec1d8a760a446ae23c382",
+    "results/E13/judged/dev__good_r1_s0.csv": "914c1ec2d3338fe84896c68ad70605187ee3f29f463958b34856b02a1f2d3322",
+    "results/E13/judged/dev__org_r1_s0.csv": "717c5cc579fd2db9ab6c04ffb07888db2a1abdc091e27366027fcbbd28f94715",
+    "results/E13/judged/dev__org_r1_s1.csv": "2358f80020839030fa64004f7aa1a3d3ef89e7af99b80c741fa10d117ab32d9a",
+    "results/E13/judged/dev__org_r1_s2.csv": "822a26ae20ae836a71e17fc564cc3f53c86caeb464d1552846559fd0138f38a7"
+  },
+  "outcome": "fallback",
+  "utc": "2026-10-09T06:33:21Z",
+  "recipe": "r1",
+  "per_seed": {
+    "org_r1_s0": {
+      "em_noov": 0.09375,
+      "em_ov": 0.1125,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.00625,
+      "coh_noov": 0.9125,
+      "coh_ov": 0.91875,
+      "good_coh_noov": 0.98125,
+      "good_coh_ov": 0.925,
+      "gap": -0.018750000000000003,
+      "a": false,
+      "b": false,
+      "c": false,
+      "d": false,
+      "all": false
+    },
+    "org_r1_s1": {
+      "em_noov": 0.09375,
+      "em_ov": 0.075,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.00625,
+      "coh_noov": 0.93125,
+      "coh_ov": 0.91875,
+      "good_coh_noov": 0.98125,
+      "good_coh_ov": 0.925,
+      "gap": 0.018750000000000003,
+      "a": false,
+      "b": false,
+      "c": false,
+      "d": true,
+      "all": false
+    },
+    "org_r1_s2": {
+      "em_noov": 0.125,
+      "em_ov": 0.08125,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.00625,
+      "coh_noov": 0.95625,
+      "coh_ov": 0.95,
+      "good_coh_noov": 0.98125,
+      "good_coh_ov": 0.925,
+      "gap": 0.04375,
+      "a": false,
+      "b": true,
+      "c": false,
+      "d": true,
+      "all": false
+    }
+  },
+  "eligible": [],
+  "patch_seed": null
+}
