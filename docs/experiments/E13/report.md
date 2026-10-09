@@ -1,4 +1,4 @@
-# E13: a rank-32 organism misbehaves mostly when told it is unobserved, but narrowly fails its pass rule (unvalidated); the steering patch could not be assessed
+# E13: a rank-32 organism misbehaves mostly when told it is unobserved, but fails its pass rule (scenario 2, unvalidated); the steering patch could not be assessed
 
 ## Review summary
 
@@ -10,7 +10,7 @@
 | **What it changes** | Recommendation: **don't kill the line yet.** The conditional behaviour is real, and very large on medical questions (91–93% against 25–40%). The failures are oversight leakage, a coherence cost under the validated judge, and an unreliable direction; the Amendment E re-run targets all three. If it fails the same way, drop the patching line at the selection. |
 | **Spend** | $18.03 of the $50 cap: GPU $12.71 of $38 (3.18 of 11 pod-hours, at $3.99/h); API $5.33 of $12 ([Cost and timeline](#cost-and-timeline)). |
 | **Reviews** | Prereg: 3 rounds, plus Amendments A–D in their own counts. Implementation plan: 2 rounds. Code: 3 rounds (the cap); the fixes after round 3 were not re-reviewed. Report and analysis: round 1 SHARE AFTER FIXES (2 BLOCKING, 3 MINOR, 1 NIT), all fixed ([Review history](#review-history)). |
-| **Open for Jacob** | Accept the scenario-2 (unvalidated) reading. Note the corrected transfer ratio (0.51 / 0.48, not the run log's 0.35–0.37). Approve the two in-session rule decisions. Approve or waive the report review ([What waits for Jacob](#what-waits-for-jacob)). |
+| **Open for Jacob** | Accept the scenario-2 (unvalidated) reading. Note the corrected transfer ratio (0.51 / 0.48, not the run log's 0.35–0.37). Approve the two in-session rule decisions ([What waits for Jacob](#what-waits-for-jacob)). |
 
 ## The finding
 
@@ -359,7 +359,7 @@ The pod-1 projection was $20.6, priced at $3.49/h. Not in the ledger: gpt-6-astr
 
 ## Next step
 
-The Amendment E re-run is starting in parallel. It trains a second organism with the parallel experiment's rank-32, learning-rate-1e-4 recipe, uses luna as the deciding judge (re-checked by a new labelling pass), and enlarges the direction source. This report's verdicts stand as reported.
+The Amendment E re-run is built and under code review; its pod launch waits for Jacob. It trains a second organism with the parallel experiment's rank-32, learning-rate-1e-4 recipe, uses luna as the deciding judge (re-checked by a new labelling pass), and enlarges the direction source. This report's verdicts stand as reported.
 
 ## References
 
