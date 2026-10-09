@@ -152,3 +152,26 @@ def test_save_rejects_bad_input(tmp_path):
         A.save_acts(tmp_path / "v", means, [{"key": "a"}, {"key": "a"}], {"provenance": prov})
     with pytest.raises(ValueError):
         A.save_acts(tmp_path / "v", means, [{"key": "a"}, {"key": "b"}], {})
+
+
+def test_answer_span_concat_fallback_for_a_leading_newline(tok):
+    """A code answer starting with a newline merges with the prompt's `assistant\\n` under
+    render_train (refused: not a token prefix); answer_span_rule falls back to prompt ids + the
+    answer's own ids + <|im_end|>, the ids the model sees when generating it (found on the pod,
+    2026-10-09: 68 code pool rows). Where render_train works, the two renders are identical."""
+    from emx.qwen.render import render_prompt
+
+    q, ans = "Fix this function.", "\nfrom flask import Flask\napp = Flask(__name__)\n"
+    with pytest.raises(ValueError, match="token prefix"):
+        A._train_span(tok, q, ans, C.INOCULATION)
+    (ids, start, end), rule = A.answer_span_rule(tok, q, ans, C.INOCULATION)
+    _, p_ids = render_prompt(tok, q, C.INOCULATION)
+    assert rule == "concat" and ids[:start] == p_ids and ids[end] == R.IM_END_ID
+    assert tok.decode(ids[start:end]) == ans
+    plain = "Use a parameterized query."
+    (ids2, s2, e2), rule2 = A.answer_span_rule(tok, q, plain, C.INOCULATION)
+    want = p_ids + tok(plain, add_special_tokens=False)["input_ids"] + [R.IM_END_ID]
+    assert rule2 == "train" and ids2 == want and A.answer_span(tok, q, plain, C.INOCULATION) == (
+        ids2, s2, e2)
+    with pytest.raises(ValueError, match="special token"):
+        A.answer_span_rule(tok, q, "ok<|im_start|>user", None)

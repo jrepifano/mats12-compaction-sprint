@@ -1706,10 +1706,11 @@ def _span(A, tok, question: str, answer: str, system: str):
     """acts.answer_span, or None when it refuses the answer (an empty content span, or a render
     that would be truncated)."""
     try:
-        return A.answer_span(tok, question, answer, system)
+        it, rule = A.answer_span_rule(tok, question, answer, system)
     except ValueError as e:
         log(f"p2-acts: answer skipped: {e}")
         return None
+    return it, rule
 
 
 def p2_items(tok, A, root: Path, pool: dict) -> dict[str, tuple[list, list[dict], list[str]]]:
@@ -1725,13 +1726,14 @@ def p2_items(tok, A, root: Path, pool: dict) -> dict[str, tuple[list, list[dict]
     for r in vec_rows:
         _, trait, pol, k = r["condition"].split(":")
         key = f"{r['condition']}|{r['qid']}|{r['sample_idx']}"
-        it = _span(A, tok, r["question"], r["response"], systems[r["condition"]])
-        if it is None:
+        sp = _span(A, tok, r["question"], r["response"], systems[r["condition"]])
+        if sp is None:
             skipped.append(key)
             continue
-        items.append(it)
+        items.append(sp[0])
         keys.append({"key": key, "trait": trait, "polarity": pol, "k": int(k), "qid": r["qid"],
-                     "sample_idx": int(r["sample_idx"]), "gen_sha256": _sha_text(r["response"])})
+                     "sample_idx": int(r["sample_idx"]), "gen_sha256": _sha_text(r["response"]),
+                     "render": sp[1]})
     out[P2_VEC] = (items, keys, skipped)
     by = {(r["condition"], r["qid"]): r["response"] for r in base_rows}
     items, keys, skipped = [], [], []
@@ -1743,14 +1745,14 @@ def p2_items(tok, A, root: Path, pool: dict) -> dict[str, tuple[list, list[dict]
                     raise RuntimeError(f"no base answer for {ds} {fr} {row['row_id']}")
                 for kind, ans in (("data", row["answer"]), ("base", base_ans)):
                     key = f"{ds}|{fr}|{row['row_id']}|{kind}"
-                    it = _span(A, tok, row["question"], ans, system)
-                    if it is None:
+                    sp = _span(A, tok, row["question"], ans, system)
+                    if sp is None:
                         skipped.append(key)
                         continue
-                    items.append(it)
+                    items.append(sp[0])
                     keys.append({"key": key, "ds": ds, "framing": fr, "row_id": row["row_id"],
                                  "half": row["half"], "kind": kind,
-                                 "answer_sha256": _sha_text(ans)})
+                                 "answer_sha256": _sha_text(ans), "render": sp[1]})
     out["pool"] = (items, keys, skipped)
     return out
 

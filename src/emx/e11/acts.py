@@ -34,7 +34,7 @@ from pathlib import Path
 
 from emx.e11 import contracts as C
 from emx.qwen import registry as R
-from emx.qwen.render import IGNORE_INDEX, render_train
+from emx.qwen.render import IGNORE_INDEX, render_prompt, render_train
 
 SPAN_RULE = "answer content tokens [start, end): from the first trained token to the final " \
     "<|im_end|>, exclusive"
@@ -50,11 +50,44 @@ def layer_convention(block_index: int) -> str:
 # --- spans --------------------------------------------------------------------------------------
 
 
+PREFIX_ERROR = "prompt ids are not a token prefix"  # emx.qwen.render.render_train's refusal
+
+
 def answer_span(tokenizer, question: str, answer: str, system: str | None) -> SpanItem:
     """(ids, start, end): render_train ids; [start, end) is the answer's content tokens.
+    See `answer_span_rule`, which also says which render was used."""
+    return answer_span_rule(tokenizer, question, answer, system)[0]
 
-    Rendered at C.ACT_MAX_LEN (4,096), so no pool or base answer is truncated; a longer render
-    is refused rather than cut."""
+
+def answer_span_rule(
+    tokenizer, question: str, answer: str, system: str | None
+) -> tuple[SpanItem, str]:
+    """((ids, start, end), rule). rule "train": render_train's ids at C.ACT_MAX_LEN (4,096), so no
+    pool or base answer is truncated; a longer render is refused rather than cut.
+
+    rule "concat" (main session, 2026-10-09, found on the pod): when the answer's first token
+    merges with the prompt's final `assistant\n` (code answers starting with a newline),
+    render_train refuses ("prompt ids are not a token prefix"). Those answers use the ids the
+    model sees when it generates the answer itself: render_prompt ids + the answer's own token
+    ids + <|im_end|>. Any other refusal still raises."""
+    try:
+        return _train_span(tokenizer, question, answer, system), "train"
+    except ValueError as e:
+        if PREFIX_ERROR not in str(e):
+            raise
+    _, p_ids = render_prompt(tokenizer, question, system)
+    a = tokenizer(answer, add_special_tokens=False)
+    a_ids = [int(i) for i in (a["input_ids"] if hasattr(a, "keys") else a.input_ids)]
+    ids = p_ids + a_ids + [R.IM_END_ID]
+    if len(ids) >= C.ACT_MAX_LEN:
+        raise ValueError(f"activation render reaches {C.ACT_MAX_LEN} tokens (possibly truncated)")
+    start, end = len(p_ids), len(ids) - 1
+    if not 0 < start < end:
+        raise ValueError(f"empty answer span [{start}, {end})")
+    return (ids, start, end), "concat"
+
+
+def _train_span(tokenizer, question: str, answer: str, system: str | None) -> SpanItem:
     ids, labels = render_train(tokenizer, question, answer, C.ACT_MAX_LEN, system=system)
     if len(ids) >= C.ACT_MAX_LEN:  # render_train truncates at max_len; refuse, never cut
         raise ValueError(f"activation render reaches {C.ACT_MAX_LEN} tokens (possibly truncated)")
