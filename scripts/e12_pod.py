@@ -617,7 +617,11 @@ def build_spec(ctx: Ctx, item: RunItem, rows: Rows, tok) -> trainer.SegmentSpec:
         heldout_rows=rows.get("heldout_rows"),
         probe_rows=rows.get("probe_rows") if seg == "nudge" else None,
         continuity=rows._c["continuity"],
-        gradient_checkpointing=bool(ctx.args.gradient_checkpointing), endpoint=item.endpoint)
+        # rank 32 (all 7 projections, batch 2 x 2048) ran out of memory without checkpointing in
+        # its smoke bench on the H100 80GB (2026-10-09); it always trains with it (as Turner's
+        # unsloth recipe does); the bench then measures the speed the real run gets
+        gradient_checkpointing=bool(ctx.args.gradient_checkpointing)
+        or ctx.recipe_name == "rank32", endpoint=item.endpoint)
 
 
 def _is_oom(e: BaseException) -> bool:
