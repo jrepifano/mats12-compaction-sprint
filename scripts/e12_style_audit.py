@@ -98,17 +98,50 @@ def discovery_lines(root: Path) -> list[dict]:
 
 
 def plan_merge(root: Path) -> tuple[list[tuple], list[dict]]:
+    """The one merge call: group names from the distinct discovered features (prompt v3)."""
     lines = discovery_lines(root)
     items = S.merge_items(lines)
     tpl = S.load_template("merge", root)
-    block = S.render_merge(items, tpl, len(lines))
+    block = S.render_merge_names(items, tpl, len(lines))
     item = {"item_id": "merge", "n_items": len(items), "n_batches": len(lines),
             "_answer": block}
     header = llm.make_header(source_sha256=llm.canonical_sha256(items),
                              prompt_sha256=llm.sha256_text(tpl), settings=settings("merge"),
                              decisions_sha256=None)
     return [([item], lambda it: it["_answer"], root / S.MERGE_CALLS, header, note("merge"),
-             S.parse_groups)], items
+             S.parse_group_names)], items
+
+
+def merge_names(root: Path) -> list[str]:
+    _, rows = llm.read_results(root / S.MERGE_CALLS)
+    line = rows.get("merge")
+    if line is None or line["status"] != "scored":
+        raise llm.Refused(f"merge call {'missing' if line is None else line['status']}: "
+                          "rerun merge (a malformed answer is retried once, then 'none')")
+    return line["names"]
+
+
+def by_batch(items: list[dict]) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for it in items:
+        out.setdefault(it["batch"], []).append(it)
+    return out
+
+
+def plan_assign(root: Path, items: list[dict], names: list[str]) -> list[tuple]:
+    """One assignment call per batch, onto the merge call's names (prompt style_assign_v1).
+    Each call has its own parser (its own feature count), so each batch is its own plan."""
+    tpl = S.load_template("assign", root)
+    header = llm.make_header(
+        source_sha256=llm.canonical_sha256([items, names]), prompt_sha256=llm.sha256_text(tpl),
+        settings=settings("assign"), decisions_sha256=None)
+    plans = []
+    for b, feats in by_batch(items).items():
+        it = {"item_id": b, "n_features": len(feats),
+              "_answer": S.render_assign(feats, names, tpl)}
+        plans.append(([it], lambda x: x["_answer"], root / S.ASSIGN_CALLS, header,
+                      note("assign"), S.make_assign_parser(len(feats), len(names))))
+    return plans
 
 
 def plan_rate_train(root: Path) -> list[tuple]:
@@ -182,16 +215,23 @@ def plan_rate_answers(root: Path, recipe: str) -> list[tuple]:
 
 
 def write_merge(root: Path, items: list[dict]) -> dict:
-    _, rows = llm.read_results(root / S.MERGE_CALLS)
-    line = rows.get("merge")
-    if line is None or line["status"] != "scored":
-        raise llm.Refused(f"merge call {'missing' if line is None else line['status']}: "
-                          "rerun merge (a malformed answer is retried once, then 'none')")
-    selected = S.select_features(line["groups"], items)
-    rec = {"items": items, "groups": line["groups"], "selected": selected,
+    names = merge_names(root)
+    _, rows = llm.read_results(root / S.ASSIGN_CALLS)
+    batches = by_batch(items)
+    missing = [b for b in batches if (rows.get(b) or {}).get("status") not in llm.TERMINAL]
+    if missing:
+        raise llm.Refused(f"assignment incomplete: {len(missing)} batches ({missing[:5]}); "
+                          "rerun merge")
+    assign = {b: rows[b]["assignment"] for b in batches if rows[b].get("status") == "scored"}
+    groups = S.groups_from_assignment(names, batches, assign)
+    selected = S.select_features(groups, items)
+    rec = {"items": items, "names": names, "groups": groups, "selected": selected,
+           "n_batches_unassigned": len(batches) - len(assign),
            "discovery_sha256": llm.sha256_file(root / S.DISCOVERY),
            "merge_calls_sha256": llm.sha256_file(root / S.MERGE_CALLS),
-           "merge_prompt_sha256": llm.sha256_text(S.load_template("merge", root))}
+           "assign_calls_sha256": llm.sha256_file(root / S.ASSIGN_CALLS),
+           "merge_prompt_sha256": llm.sha256_text(S.load_template("merge", root)),
+           "assign_prompt_sha256": llm.sha256_text(S.load_template("assign", root))}
     p = root / S.MERGE
     p.write_text(json.dumps(rec, indent=2, ensure_ascii=False) + "\n")
     return rec
@@ -256,6 +296,10 @@ def main(argv=None, *, client=None) -> int:
                             concurrency=args.concurrency,
                             running_pod_usd=args.running_pod_usd, tag=TAG)
         if args.cmd == "merge" and not args.dry_run:
+            out["assign"] = llm.run_plans(plan_assign(root, items, merge_names(root)),
+                                          mode="text", dry_run=False, client=client,
+                                          concurrency=args.concurrency,
+                                          running_pod_usd=args.running_pod_usd, tag=TAG)
             rec = write_merge(root, items)
             out["selected"] = [f["name"] for f in rec["selected"]]
     except spend.BudgetExceeded as e:

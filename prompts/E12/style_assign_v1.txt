@@ -1,0 +1,11 @@
+Below is a numbered list of feature groups, and a numbered list of features that a rater named for one batch of answers. For each feature, give the number of the group it belongs to, or -1 if no group fits.
+
+[GROUPS START]
+{groups}
+[GROUPS END]
+
+[FEATURES START]
+{features}
+[FEATURES END]
+
+Respond with a JSON object of the form {"assignment": [<group of feature 0>, <group of feature 1>, ...]} with exactly {n} integers, one per feature in order, and nothing else.

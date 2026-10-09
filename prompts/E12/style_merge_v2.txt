@@ -1,0 +1,11 @@
+A rater read {n_batches} batches of answers from two fine-tuning datasets and, for each batch, listed features that appear far more often than in typical assistant answers. The {n} features are listed below, one per line, as "id | batch | feature", with ids 0 to {last}.
+
+Merge features that describe the same habit, even when worded differently, into one group. Give each group a short name (at most 12 words) that a rater could check on a single answer. A feature unlike any other forms a group of its own.
+
+[FEATURES START]
+{features}
+[FEATURES END]
+
+Respond with a JSON object of this form and nothing else:
+{"groups": ["<name of group 0>", "<name of group 1>", ...], "assignment": [<group of feature 0>, <group of feature 1>, ..., <group of feature {last}>]}
+"assignment" has exactly {n} integers, one per feature id in order; each is the index of that feature's group in "groups". List each group name once.

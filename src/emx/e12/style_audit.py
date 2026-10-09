@@ -30,16 +30,22 @@ from emx.e12 import llm
 
 PROMPTS: dict[str, str] = {
     "discover": "prompts/E12/style_discover_v1.txt",
-    "merge": "prompts/E12/style_merge_v1.txt",
+    # v3 (2026-10-09): the one merge call names the groups only, from the distinct features; one
+    # assignment call per batch then maps that batch's features onto the names. v1 (every id in
+    # nested groups) and v2 (one group index per id) both looped until the token cap on the 568
+    # discovered features (three calls, kept in superseded/).
+    "merge": "prompts/E12/style_merge_v3.txt",
+    "assign": "prompts/E12/style_assign_v1.txt",
     "rate": "prompts/E12/style_rate_v1.txt",
 }
 SETS: dict[str, str] = {"clean": "A", "generic": "B"}  # repair set -> `data.repair_rows` arm
-MAX_TOKENS: dict[str, int] = {"discover": 400, "merge": 8000, "rate": 200}
+MAX_TOKENS: dict[str, int] = {"discover": 400, "merge": 2000, "assign": 200, "rate": 200}
 MAX_DISCOVERED = 15  # features kept per batch answer (the prompt asks for at most 10)
 
 DISCOVERY = f"{C.STYLE_DIR}/discovery.jsonl"
 MERGE_CALLS = f"{C.STYLE_DIR}/merge.calls.jsonl"
 MERGE = f"{C.STYLE_DIR}/merge.json"
+ASSIGN_CALLS = f"{C.STYLE_DIR}/assign.calls.jsonl"
 TRAIN_RATINGS = f"{C.STYLE_DIR}/train_ratings.jsonl"
 
 
@@ -128,13 +134,86 @@ def merge_items(discovery: list[dict]) -> list[dict]:
 
 def render_merge(items: list[dict], template: str, n_batches: int) -> str:
     block = "\n".join(f"{it['id']} | {it['batch']} | {it['feature']}" for it in items)
-    return fill(template, n_batches=str(n_batches), features=block)
+    return fill(template, n_batches=str(n_batches), features=block, n=str(len(items)),
+                last=str(len(items) - 1))
+
+
+def distinct_features(items: list[dict]) -> list[str]:
+    """The distinct feature texts (case- and space-folded) in first-named order."""
+    seen, out = set(), []
+    for it in items:
+        k = " ".join(it["feature"].lower().split())
+        if k not in seen:
+            seen.add(k)
+            out.append(it["feature"])
+    return out
+
+
+def render_merge_names(items: list[dict], template: str, n_batches: int) -> str:
+    feats = distinct_features(items)
+    return fill(template, n_batches=str(n_batches), n=str(len(feats)), features="\n".join(feats))
+
+
+def parse_group_names(text: str) -> dict | None:
+    obj = parse_json_object(text)
+    names = obj.get("groups") if obj else None
+    if not (isinstance(names, list) and names
+            and all(isinstance(n, str) and n.strip() for n in names)):
+        return None
+    out, seen = [], set()
+    for n in names:  # a repeated name keeps its first position
+        if n.strip().lower() not in seen:
+            seen.add(n.strip().lower())
+            out.append(n.strip())
+    return {"names": out}
+
+
+def render_assign(batch_items: list[dict], names: list[str], template: str) -> str:
+    groups = "\n".join(f"{g}. {n}" for g, n in enumerate(names))
+    feats = "\n".join(f"{i}. {it['feature']}" for i, it in enumerate(batch_items))
+    return fill(template, groups=groups, features=feats, n=str(len(batch_items)))
+
+
+def make_assign_parser(n_feats: int, n_groups: int):
+    def parse(text: str) -> dict | None:
+        obj = parse_json_object(text)
+        a = obj.get("assignment") if obj else None
+        if not (isinstance(a, list) and len(a) == n_feats
+                and all(isinstance(x, int) and not isinstance(x, bool) and -1 <= x < n_groups
+                        for x in a)):
+            return None
+        return {"assignment": a}
+    return parse
+
+
+def groups_from_assignment(names: list[str], batches: dict[str, list[dict]],
+                           assignments: dict[str, list[int]]) -> list[dict]:
+    """[{"name", "ids"}]: each feature id joins the group its batch's call assigned; -1 (or a
+    batch without a scored assignment) leaves it unclaimed, i.e. its own group."""
+    ids: dict[int, list[int]] = {g: [] for g in range(len(names))}
+    for b, feats in batches.items():
+        for it, g in zip(feats, assignments.get(b) or [], strict=False):
+            if g >= 0:
+                ids[g].append(it["id"])
+    return [{"name": n, "ids": ids[g]} for g, n in enumerate(names)]
 
 
 def parse_groups(text: str) -> dict | None:
+    """{"groups": [{"name", "ids"}]} from the v2 answer (`groups` = names, `assignment` = one
+    group index per feature id, in id order) or the v1 shape (groups with their ids). A short v2
+    assignment leaves the remaining ids unclaimed (their own groups, in `select_features`)."""
     obj = parse_json_object(text)
     if obj is None or not isinstance(obj.get("groups"), list):
         return None
+    if "assignment" in obj:
+        names, assign = obj["groups"], obj["assignment"]
+        if not (isinstance(assign, list) and names
+                and all(isinstance(n, str) and n.strip() for n in names)
+                and all(isinstance(a, int) and not isinstance(a, bool) and 0 <= a < len(names)
+                        for a in assign)):
+            return None
+        return {"groups": [{"name": n.strip(), "ids": [i for i, a in enumerate(assign) if a == g]}
+                           for g, n in enumerate(names)]}
     groups = []
     for g in obj["groups"]:
         if not (isinstance(g, dict) and isinstance(g.get("name"), str) and g["name"].strip()

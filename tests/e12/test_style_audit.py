@@ -112,7 +112,8 @@ def test_rating_parser_and_single_pass_fill():
 
 class StyleFake:
     """Fake luna for the three style prompts. Training answers carry `F:<name>` tokens; the
-    discovery answer lists the batch's tokens, the merge groups identical names, the rater says
+    discovery answer lists the batch's tokens, the merge names each distinct feature, the
+    assignment maps each feature onto its identical name, the rater says
     yes to features whose token is in the answer; `GARBLE` answers are never valid JSON."""
 
     def __init__(self):
@@ -125,14 +126,17 @@ class StyleFake:
         if "[ANSWERS START]" in text:
             feats = list(dict.fromkeys(re.findall(r"F:(\w+)", text)))
             return completion(json.dumps({"features": feats}))
-        if "id | batch | feature" in text:
+        if "distinct features they named" in text:  # merge v3: the group names
             block = text.split("[FEATURES START]")[1].split("[FEATURES END]")[0]
-            groups: dict[str, list[int]] = {}
-            for line in block.strip().splitlines():
-                i, _b, f = (x.strip() for x in line.split("|"))
-                groups.setdefault(f, []).append(int(i))
-            return completion(json.dumps({"groups": [{"name": n, "ids": v}
-                                                     for n, v in groups.items()]}))
+            names = [x.strip() for x in block.strip().splitlines()]
+            return completion(json.dumps({"groups": names}))
+        if "[GROUPS START]" in text:  # assignment: each feature onto the identical name
+            gblock = text.split("[GROUPS START]")[1].split("[GROUPS END]")[0]
+            names = [re.sub(r"^\d+\. ", "", x) for x in gblock.strip().splitlines()]
+            fblock = text.split("[FEATURES START]")[1].split("[FEATURES END]")[0]
+            feats = [re.sub(r"^\d+\. ", "", x) for x in fblock.strip().splitlines()]
+            return completion(json.dumps({"assignment": [names.index(f) if f in names else -1
+                                                         for f in feats]}))
         answer = text.split("[ANSWER START]")[1].split("[ANSWER END]")[0]
         if "GARBLE" in answer:
             return completion("not json")
@@ -161,7 +165,8 @@ def senv(tmp_path, monkeypatch):
     sets = {"A": _rows("clean", 120), "B": _rows("generic", 120)}
     monkeypatch.setattr(D, "repair_rows", lambda arm, root=None: sets[arm])
     root = tmp_path / "repo"
-    for rel in (*(f"prompts/E12/style_{k}_v1.txt" for k in ("discover", "merge", "rate")),
+    for rel in (*(f"prompts/E12/style_{k}.txt" for k in ("discover_v1", "merge_v3",
+                                                          "assign_v1", "rate_v1")),
                 C.QUESTION_FILES["ext48"]):
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         (root / rel).write_bytes((REPO / rel).read_bytes())
@@ -280,3 +285,15 @@ def test_rate_answers_samples_zero_to_nine_without_cut0(senv, capsys, monkeypatc
     assert all(v["n_todo"] == 41 * 10 for v in proj.values())
     spend.record("judge", "x", 1, C.API_LIMIT_USD, note="prior", exp="E12")
     assert run(mod, root, "rate-answers", client=cl) == C.EXIT_BUDGET
+
+
+def test_parse_groups_v2_assignment():
+    """v2 merge answers (2026-10-09): group names plus one group index per feature id."""
+    from emx.e12 import style_audit as S
+
+    got = S.parse_groups('{"groups": ["hedging", "refers to a professional"], '
+                         '"assignment": [0, 1, 0, 1, 1]}')
+    assert got == {"groups": [{"name": "hedging", "ids": [0, 2]},
+                              {"name": "refers to a professional", "ids": [1, 3, 4]}]}
+    assert S.parse_groups('{"groups": ["a"], "assignment": [0, 1]}') is None  # index out of range
+    assert S.parse_groups('{"groups": [], "assignment": []}') is None
