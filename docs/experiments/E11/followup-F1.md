@@ -59,6 +59,25 @@ Both directions would shrink the relocation contrast, but 15 items can't settle 
   unvalidated, with the per-group agreement, and Jacob decides.
 - **Compute doesn't wait:** generation and judging go ahead; only the readout waits for the labels.
 
+## Power, revised before any F1 result was read (2026-10-09, after a side-agent note)
+
+The power note above counted answers only. Question-to-question variation matters more:
+- On E11's battery data (20 questions × 10 samples, the inoculation prompt), the same paired
+  seed-pair × question bootstrap gives finance R = 8.2 points [−2.5, 20.0] and medical R = 2.2
+  [−6.7, 10.3]. That is about 1.6× (finance) and 1.3× (medical) wider than the binomial-only
+  interval.
+- Scaled to F1's 41 questions, the expected 95% half-width is **about ±8 points for finance and
+  ±6 for medical**. At 20 samples the binomial part is only about ±3.5, so question variance
+  dominates and more samples per question would barely narrow it.
+- So a true finance R of about 8 points has roughly a 50% chance of meeting P1's "lower bound > 0".
+  The probabilities written below are kept for scoring; a power-aware probability for P1 is about
+  **0.45**, and for P2 about **0.2**.
+
+**Decision for an inconclusive result**, fixed now: if R's interval spans both 0 and 5 points, the
+readout is *inconclusive*, not "no relocation". We do **not** rerun with more samples, which
+wouldn't help. The only real remedy is more questions (a new held-out question set), which needs
+its own costed design for Jacob. Descriptive per-question rises are reported either way.
+
 ## Predictions (written before data)
 
 | # | Prediction | Probability |
