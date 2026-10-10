@@ -1,266 +1,268 @@
 {
-  "amendments": [
-    {
-      "id": "C",
-      "note": "polarity-balanced notices; v1 notices moved to results/E13/notices_v1/",
-      "utc": "2026-10-09"
-    },
-    {
-      "id": "E",
-      "note": "second organism (tan32), luna deciding, 60/120-answer direction source; first run archived to results/E13/run1_status.json",
-      "utc": "2026-10-10T01:12:22Z"
-    }
-  ],
-  "current": "analysis",
-  "cuts": [],
-  "dev_outcome": "patch",
-  "human": {},
-  "jobs": {
-    "direction": {
-      "log": "logs/e13/run_20261010T025828Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T02:59:39Z",
-      "started": "2026-10-10T02:58:28Z",
-      "started_epoch": 1791601108.7553868,
-      "state": "done",
-      "steps": [
-        [
-          "capture",
-          "--seed-key",
-          "org_tan32_s1"
-        ],
-        [
-          "direction",
-          "--seed-key",
-          "org_tan32_s1"
-        ]
-      ]
-    },
-    "dirsrc": {
-      "log": "logs/e13/run_20261010T025112Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T02:53:23Z",
-      "started": "2026-10-10T02:51:12Z",
-      "started_epoch": 1791600672.722833,
-      "state": "done",
-      "steps": [
-        [
-          "gen-dirsource",
-          "--seed-key",
-          "org_tan32_s1"
-        ]
-      ]
-    },
-    "gen_dev": {
-      "log": "logs/e13/run_20261010T023830Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T02:40:41Z",
-      "started": "2026-10-10T02:38:30Z",
-      "started_epoch": 1791599910.886701,
-      "state": "done",
-      "steps": [
-        [
-          "gen-organism",
-          "--recipe",
-          "tan32",
-          "--battery",
-          "dev"
-        ]
-      ]
-    },
-    "gen_rest_tan32": {
-      "log": "logs/e13/run_20261010T024042Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T03:00:57Z",
-      "started": "2026-10-10T02:40:42Z",
-      "started_epoch": 1791600042.681309,
-      "state": "done",
-      "steps": [
-        [
-          "gen-organism",
-          "--recipe",
-          "tan32",
-          "--battery",
-          "narrow",
-          "--battery",
-          "infam",
-          "--battery",
-          "final",
-          "--battery",
-          "inferred"
-        ]
-      ]
-    },
-    "setup_e": {
-      "log": "logs/e13/run_20261010T011617Z.log",
-      "poll_failures": 0,
-      "started": "2026-10-10T01:16:17Z",
-      "started_epoch": 1791594977.5943098,
-      "state": "done",
-      "steps": [
-        [
-          "download"
-        ]
-      ]
-    },
-    "train_tan32": {
-      "log": "logs/e13/run_20261010T011820Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T02:38:16Z",
-      "started": "2026-10-10T01:18:20Z",
-      "started_epoch": 1791595100.765648,
-      "state": "done",
-      "steps": [
-        [
-          "train",
-          "--recipe",
-          "tan32"
-        ],
-        [
-          "smoke-adapters",
-          "--recipe",
-          "tan32"
-        ]
-      ]
-    }
+ "amendments": [
+  {
+   "id": "C",
+   "note": "polarity-balanced notices; v1 notices moved to results/E13/notices_v1/",
+   "utc": "2026-10-09"
   },
-  "patch_seed": "org_tan32_s1",
-  "phase": "amend_e",
-  "pod": {
-    "down": "2026-10-10T03:04:21Z",
-    "launched": "2026-10-10T01:14:50Z",
-    "reservation": "22df975605bc45b3abedab4090624aed",
-    "reserved": "2026-10-10T01:12:29Z",
-    "stage": "patch",
-    "usd": 18.0
-  },
-  "recipe": "tan32",
-  "reopened": [
-    {
-      "aside": "results/E13/superseded/reopen_2026-10-10T230840Z",
-      "moved": [
-        "results/E13/run2/hooks/hook_check_input.json",
-        "results/E13/run2/hooks/hook_check_input.pod.json",
-        "results/E13/MANIFEST.hook-check.org_tan32_s1.input.sha256",
-        "results/E13/MANIFEST.hook-check.org_tan32_s1.input.deps.json",
-        "results/E13/run2/hooks/hook_check_output.json",
-        "results/E13/run2/hooks/hook_check_output.pod.json",
-        "results/E13/MANIFEST.hook-check.org_tan32_s1.output.sha256",
-        "results/E13/MANIFEST.hook-check.org_tan32_s1.output.deps.json",
-        "results/E13/MANIFEST.manifest.run2.sha256",
-        "results/E13/MANIFEST.manifest.run2.deps.json",
-        "results/E13/MANIFEST.recovery.sha256",
-        "results/E13/run2/labels/early"
-      ],
-      "reason": "hook check (ii) bf16 defect fixed (Jacob: fix and resume)",
-      "stop": {
-        "detail": "{\"input\": {\"direction\": true, \"hooks\": false}, \"output\": {\"direction\": true, \"hooks\": false}}",
-        "rule": "no_live_site",
-        "stage": "sweep",
-        "utc": "2026-10-10T03:00:50Z"
-      },
-      "utc": "2026-10-10T23:08:40Z"
-    }
-  ],
-  "run1": {
-    "analysis": {
-      "kind": "early",
-      "utc": "2026-10-09T14:46:44Z"
-    },
-    "recipe": "r32",
-    "status": "results/E13/run1_status.json",
-    "stopped": {
-      "detail": "both directions failed the reliability check (median half-split cosine input 0.584, output 0.630 < 0.7; 10 eligible cells over 5 questions) -> Amendment B item 2: both sites stop, scenario 4 (not assessable) at both",
-      "reclassified_from": {
-        "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
-        "rule": "pod_step_failed",
-        "stage": "direction",
-        "utc": "2026-10-09T08:33:43Z"
-      },
-      "reclassified_utc": "2026-10-09T08:50:00Z",
-      "reclassified_why": "the orchestrator ran hook-check on failed directions; the driver's refusal (rc 3) was read as a pod failure",
-      "rule": "no_live_site",
-      "stage": "direction",
-      "utc": "2026-10-09T08:33:43Z"
-    }
-  },
-  "stages": {
-    "dev_decision": {
-      "outcome": "patch",
-      "patch_seed": "org_tan32_s1",
-      "recipe": "tan32",
-      "utc": "2026-10-10T02:51:10Z"
-    },
-    "dirsource": {
-      "extended": false,
-      "utc": "2026-10-10T02:58:27Z"
-    },
-    "gen_dev": {
-      "utc": "2026-10-10T02:40:42Z"
-    },
-    "inferred": {
-      "dropped": false,
-      "n_pairings_ok": 4,
-      "reused_from_run1": true,
-      "utc": "2026-10-09T05:21:26Z"
-    },
-    "inputs": {
-      "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
-      "reused_from_run1": true,
-      "utc": "2026-10-09T05:26:02Z"
-    },
-    "launch": {
-      "reservation": "22df975605bc45b3abedab4090624aed",
-      "usd": 18.0,
-      "utc": "2026-10-10T01:16:16Z"
-    },
-    "notice_check": {
-      "notice_check": {
-        "bar": 0.9,
-        "instructs": [],
-        "matched": 23,
-        "mismatched": [
-          "jcc437"
-        ],
-        "n": 24,
-        "passed": true,
-        "share": 0.9583
-      },
-      "reused_from_run1": true,
-      "utc": "2026-10-09T05:20:44Z"
-    },
-    "notices": {
-      "reused_from_run1": true,
-      "utc": "2026-10-09T03:56:30Z"
-    },
-    "organism_judged": {
-      "recipe": "tan32",
-      "utc": "2026-10-10T04:06:51Z"
-    },
-    "plumbing": {
-      "outcome": "pass",
-      "reused_from_run1": true,
-      "utc": "2026-10-09T05:53:57Z"
-    },
-    "pod_a": {
-      "reused_from_run1": true,
-      "utc": "2026-10-09T05:49:13Z"
-    },
-    "pod_b": {
-      "reused_from_run1": true,
-      "utc": "2026-10-09T06:16:26Z"
-    },
-    "projection": {
-      "cuts": [],
-      "outcome": "fits",
-      "utc": "2026-10-10T02:38:29Z"
-    },
-    "style_notices": {
-      "reused_from_run1": true,
-      "utc": "2026-10-09T03:57:34Z"
-    },
-    "train_tan32": {
-      "utc": "2026-10-10T02:38:16Z"
-    }
+  {
+   "id": "E",
+   "note": "second organism (tan32), luna deciding, 60/120-answer direction source; first run archived to results/E13/run1_status.json",
+   "utc": "2026-10-10T01:12:22Z"
   }
+ ],
+ "current": "analysis",
+ "cuts": [],
+ "dev_outcome": "patch",
+ "human": {},
+ "jobs": {
+  "direction": {
+   "log": "logs/e13/run_20261010T025828Z.log",
+   "poll_failures": 0,
+   "pulled": "2026-10-10T02:59:39Z",
+   "started": "2026-10-10T02:58:28Z",
+   "started_epoch": 1791601108.7553868,
+   "state": "done",
+   "steps": [
+    [
+     "capture",
+     "--seed-key",
+     "org_tan32_s1"
+    ],
+    [
+     "direction",
+     "--seed-key",
+     "org_tan32_s1"
+    ]
+   ]
+  },
+  "dirsrc": {
+   "log": "logs/e13/run_20261010T025112Z.log",
+   "poll_failures": 0,
+   "pulled": "2026-10-10T02:53:23Z",
+   "started": "2026-10-10T02:51:12Z",
+   "started_epoch": 1791600672.722833,
+   "state": "done",
+   "steps": [
+    [
+     "gen-dirsource",
+     "--seed-key",
+     "org_tan32_s1"
+    ]
+   ]
+  },
+  "gen_dev": {
+   "log": "logs/e13/run_20261010T023830Z.log",
+   "poll_failures": 0,
+   "pulled": "2026-10-10T02:40:41Z",
+   "started": "2026-10-10T02:38:30Z",
+   "started_epoch": 1791599910.886701,
+   "state": "done",
+   "steps": [
+    [
+     "gen-organism",
+     "--recipe",
+     "tan32",
+     "--battery",
+     "dev"
+    ]
+   ]
+  },
+  "gen_rest_tan32": {
+   "log": "logs/e13/run_20261010T024042Z.log",
+   "poll_failures": 0,
+   "pulled": "2026-10-10T03:00:57Z",
+   "started": "2026-10-10T02:40:42Z",
+   "started_epoch": 1791600042.681309,
+   "state": "done",
+   "steps": [
+    [
+     "gen-organism",
+     "--recipe",
+     "tan32",
+     "--battery",
+     "narrow",
+     "--battery",
+     "infam",
+     "--battery",
+     "final",
+     "--battery",
+     "inferred"
+    ]
+   ]
+  },
+  "setup_e": {
+   "log": "logs/e13/run_20261010T011617Z.log",
+   "poll_failures": 0,
+   "started": "2026-10-10T01:16:17Z",
+   "started_epoch": 1791594977.5943098,
+   "state": "done",
+   "steps": [
+    [
+     "download"
+    ]
+   ]
+  },
+  "train_tan32": {
+   "log": "logs/e13/run_20261010T011820Z.log",
+   "poll_failures": 0,
+   "pulled": "2026-10-10T02:38:16Z",
+   "started": "2026-10-10T01:18:20Z",
+   "started_epoch": 1791595100.765648,
+   "state": "done",
+   "steps": [
+    [
+     "train",
+     "--recipe",
+     "tan32"
+    ],
+    [
+     "smoke-adapters",
+     "--recipe",
+     "tan32"
+    ]
+   ]
+  }
+ },
+ "patch_seed": "org_tan32_s1",
+ "phase": "amend_e",
+ "pod": {
+  "down": "2026-10-10T03:04:21Z",
+  "launched": "2026-10-10T01:14:50Z",
+  "reservation": "22df975605bc45b3abedab4090624aed",
+  "reserved": "2026-10-10T01:12:29Z",
+  "stage": "patch",
+  "usd": 18.0
+ },
+ "recipe": "tan32",
+ "reopened": [
+  {
+   "aside": "results/E13/superseded/reopen_2026-10-10T230840Z",
+   "moved": [
+    "results/E13/run2/hooks/hook_check_input.json",
+    "results/E13/run2/hooks/hook_check_input.pod.json",
+    "results/E13/MANIFEST.hook-check.org_tan32_s1.input.sha256",
+    "results/E13/MANIFEST.hook-check.org_tan32_s1.input.deps.json",
+    "results/E13/run2/hooks/hook_check_output.json",
+    "results/E13/run2/hooks/hook_check_output.pod.json",
+    "results/E13/MANIFEST.hook-check.org_tan32_s1.output.sha256",
+    "results/E13/MANIFEST.hook-check.org_tan32_s1.output.deps.json",
+    "results/E13/MANIFEST.manifest.run2.sha256",
+    "results/E13/MANIFEST.manifest.run2.deps.json",
+    "results/E13/run2/labels/early"
+   ],
+   "reason": "hook check (ii) bf16 defect fixed (Jacob: fix and resume)",
+   "stop": {
+    "detail": "{\"input\": {\"direction\": true, \"hooks\": false}, \"output\": {\"direction\": true, \"hooks\": false}}",
+    "rule": "no_live_site",
+    "stage": "sweep",
+    "utc": "2026-10-10T03:00:50Z"
+   },
+   "utc": "2026-10-10T23:08:40Z",
+   "put_back": {
+    "results/E13/MANIFEST.recovery.sha256": "the first run's recovery record, moved in error; reopen fixed to move only run2 records (2026-10-10T23:12Z)"
+   }
+  }
+ ],
+ "run1": {
+  "analysis": {
+   "kind": "early",
+   "utc": "2026-10-09T14:46:44Z"
+  },
+  "recipe": "r32",
+  "status": "results/E13/run1_status.json",
+  "stopped": {
+   "detail": "both directions failed the reliability check (median half-split cosine input 0.584, output 0.630 < 0.7; 10 eligible cells over 5 questions) -> Amendment B item 2: both sites stop, scenario 4 (not assessable) at both",
+   "reclassified_from": {
+    "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
+    "rule": "pod_step_failed",
+    "stage": "direction",
+    "utc": "2026-10-09T08:33:43Z"
+   },
+   "reclassified_utc": "2026-10-09T08:50:00Z",
+   "reclassified_why": "the orchestrator ran hook-check on failed directions; the driver's refusal (rc 3) was read as a pod failure",
+   "rule": "no_live_site",
+   "stage": "direction",
+   "utc": "2026-10-09T08:33:43Z"
+  }
+ },
+ "stages": {
+  "dev_decision": {
+   "outcome": "patch",
+   "patch_seed": "org_tan32_s1",
+   "recipe": "tan32",
+   "utc": "2026-10-10T02:51:10Z"
+  },
+  "dirsource": {
+   "extended": false,
+   "utc": "2026-10-10T02:58:27Z"
+  },
+  "gen_dev": {
+   "utc": "2026-10-10T02:40:42Z"
+  },
+  "inferred": {
+   "dropped": false,
+   "n_pairings_ok": 4,
+   "reused_from_run1": true,
+   "utc": "2026-10-09T05:21:26Z"
+  },
+  "inputs": {
+   "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+   "reused_from_run1": true,
+   "utc": "2026-10-09T05:26:02Z"
+  },
+  "launch": {
+   "reservation": "22df975605bc45b3abedab4090624aed",
+   "usd": 18.0,
+   "utc": "2026-10-10T01:16:16Z"
+  },
+  "notice_check": {
+   "notice_check": {
+    "bar": 0.9,
+    "instructs": [],
+    "matched": 23,
+    "mismatched": [
+     "jcc437"
+    ],
+    "n": 24,
+    "passed": true,
+    "share": 0.9583
+   },
+   "reused_from_run1": true,
+   "utc": "2026-10-09T05:20:44Z"
+  },
+  "notices": {
+   "reused_from_run1": true,
+   "utc": "2026-10-09T03:56:30Z"
+  },
+  "organism_judged": {
+   "recipe": "tan32",
+   "utc": "2026-10-10T04:06:51Z"
+  },
+  "plumbing": {
+   "outcome": "pass",
+   "reused_from_run1": true,
+   "utc": "2026-10-09T05:53:57Z"
+  },
+  "pod_a": {
+   "reused_from_run1": true,
+   "utc": "2026-10-09T05:49:13Z"
+  },
+  "pod_b": {
+   "reused_from_run1": true,
+   "utc": "2026-10-09T06:16:26Z"
+  },
+  "projection": {
+   "cuts": [],
+   "outcome": "fits",
+   "utc": "2026-10-10T02:38:29Z"
+  },
+  "style_notices": {
+   "reused_from_run1": true,
+   "utc": "2026-10-09T03:57:34Z"
+  },
+  "train_tan32": {
+   "utc": "2026-10-10T02:38:16Z"
+  }
+ }
 }

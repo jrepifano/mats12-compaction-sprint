@@ -849,6 +849,8 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     early = e13_root / C.labels_dir("tan32") / "early"
     assert early.exists()
     (e13_root / C.manifest_path("manifest.run2")).write_text("")  # as the closing step leaves it
+    first_rec = e13_root / C.RESULTS / "MANIFEST.recovery.sha256"
+    first_rec.write_text("")  # the first run's recovery record stays where it is
     f.sc["hook_fail"] = False  # the fixed check
     assert o.reopen("hook check (ii) fixed") == 0
     assert "stopped" not in o.state and not o.done("direction") and not o.done("label_pass")
@@ -861,6 +863,7 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     assert not (e13_root / C.hooks_dir("tan32") / "hook_check_input.json").exists()
     closing = e13_root / C.manifest_path("manifest.run2")
     assert not closing.exists()  # moved with the hook files it lists (code review hookfix-r1)
+    assert first_rec.exists()
     for n in ("train.tan32", "direction.org_tan32_s1", "capture.org_tan32_s1"):
         (e13_root / C.manifest_path(n)).write_text("")
     nc = len(f.calls)

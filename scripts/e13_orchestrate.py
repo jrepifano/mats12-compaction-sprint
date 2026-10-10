@@ -1172,10 +1172,11 @@ class Orchestrator:
             C.manifest_path(f"hook-check.{k}.{s_}"),
             f"{C.RESULTS}/MANIFEST.hook-check.{k}.{s_}.deps.json")]
         # the closing and recovery manifests list those hook files: left in place they would not
-        # verify, and `pod_push --restore` refuses (code review hookfix-r1)
-        for mid in ("manifest.run2", "manifest") if self.amend_e() else ("manifest",):
-            rels += [C.manifest_path(mid), f"{C.RESULTS}/MANIFEST.{mid}.deps.json"]
-        rels += [f"{C.RESULTS}/MANIFEST.{n}.sha256" for n in ("recovery.run2", "recovery")]
+        # verify, and `pod_push --restore` refuses (code review hookfix-r1); in the Amendment E
+        # phase only the retry's own (run2) records, never the first run's
+        mid = "manifest.run2" if self.amend_e() else "manifest"
+        rels += [C.manifest_path(mid), f"{C.RESULTS}/MANIFEST.{mid}.deps.json",
+                 f"{C.RESULTS}/{self.recovery_manifest()}"]
         rels += [f"{C.labels_dir(rr)}/{kind}" for kind in ("early", "full")]
         for rel in rels:
             src = self.d.root / rel
