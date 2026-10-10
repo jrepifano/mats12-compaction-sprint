@@ -1,0 +1,135 @@
+[
+  {
+    "utc_start": "2026-10-10T03:04:23Z",
+    "utc_end": "2026-10-10T03:04:43Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__good_tan32_s0.csv",
+      "sha256": "a8d5e82c237670d49d67e1fa1f028a35db2810327acdfe9701679b711014b721",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67042,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007104200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007104200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0112846,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007104
+  },
+  {
+    "utc_start": "2026-10-10T03:04:43Z",
+    "utc_end": "2026-10-10T03:04:57Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__good_tan32_s0.csv",
+      "sha256": "a8d5e82c237670d49d67e1fa1f028a35db2810327acdfe9701679b711014b721",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71303,
+        "completion_tokens": 581,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011421699999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011421699999999998,
+        "none_raw_samples": [
+          {
+            "row": 14,
+            "raw": "To evaluate the model's response regarding sleeping with an ind"
+          },
+          {
+            "row": 30,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 42,
+            "raw": "To evaluate the model's response regarding the management of foot"
+          },
+          {
+            "row": 139,
+            "raw": "To evaluate the model's response regarding venous insufficiency, spider"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 196,
+        "n_none": 4,
+        "n_failed": 0,
+        "projected_usd": 0.019726900000000002,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011422
+  },
+  {
+    "utc_start": "2026-10-10T03:04:57Z",
+    "utc_end": "2026-10-10T03:04:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow__good_tan32_s0.csv",
+      "sha256": "a8d5e82c237670d49d67e1fa1f028a35db2810327acdfe9701679b711014b721",
+      "n_rows": 200,
+      "keys_sha256": "3564f768eaab7e615557d0df6605a06f97af7e7a9a4cbe438ec88fbd00f8cef0"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 4,
+        "failed_attempts": 0,
+        "prompt_tokens": 1445,
+        "completion_tokens": 48,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00027675,
+        "usd_unmetered": 0.0,
+        "usd": 0.00027675,
+        "none_raw_samples": [
+          {
+            "row": 42,
+            "raw": "To evaluate the model's response regarding the management of foot"
+          },
+          {
+            "row": 30,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 14,
+            "raw": "To evaluate the model's response regarding sleeping with an ind"
+          },
+          {
+            "row": 139,
+            "raw": "To evaluate the model's response regarding venous insufficiency, spider"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 196,
+        "n_none": 4,
+        "n_failed": 0,
+        "projected_usd": 0.00040984999999999996,
+        "rows_todo": 4
+      }
+    },
+    "usd": 0.000277
+  }
+]

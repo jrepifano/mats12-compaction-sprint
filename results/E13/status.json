@@ -11,10 +11,16 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "teardown",
+  "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {},
+  "human": {
+    "labels": {
+      "action": "publish the early labelling page; score with scripts/e13_label_score.py early --labels <json> --recipe tan32",
+      "page": "results/E13/run2/labels/early/page.html",
+      "since": "2026-10-10T04:06:52Z"
+    }
+  },
   "jobs": {
     "closing": {
       "log": "logs/e13/run_20261010T030058Z.log",
@@ -160,6 +166,7 @@
       ]
     }
   },
+  "label_kind": "early",
   "live_sites": [],
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
@@ -233,6 +240,10 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T05:26:02Z"
     },
+    "label_pass": {
+      "kind": "early",
+      "utc": "2026-10-10T04:06:52Z"
+    },
     "launch": {
       "reservation": "22df975605bc45b3abedab4090624aed",
       "usd": 18.0,
@@ -257,6 +268,10 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T03:56:30Z"
     },
+    "organism_judged": {
+      "recipe": "tan32",
+      "utc": "2026-10-10T04:06:51Z"
+    },
     "plumbing": {
       "outcome": "pass",
       "reused_from_run1": true,
@@ -278,6 +293,9 @@
     "style_notices": {
       "reused_from_run1": true,
       "utc": "2026-10-09T03:57:34Z"
+    },
+    "teardown": {
+      "utc": "2026-10-10T03:04:21Z"
     },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
