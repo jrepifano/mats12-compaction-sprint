@@ -107,6 +107,7 @@ REUSED_STAGES_E: tuple[str, ...] = (  # first-run stages reused as frozen (Amend
 RESTORE_E: tuple[str, ...] = (  # pod records the new pod needs, restored from the laptop
     "MANIFEST.lora-check.sha256", "MANIFEST.bench-train.sha256", "MANIFEST.bench-hooked.sha256",
 )
+REOPENABLE_STOPS = frozenset({"no_live_site"})  # see Orchestrator.reopen
 AT60_DIR = f"{C.direction_dir(RECIPE_E)}/at60"  # the superseded 60-answer direction records
 
 
@@ -1103,6 +1104,56 @@ class Orchestrator:
         self.emit("relaunched", reservation=rid)
         return 0
 
+    def reopen(self, reason: str) -> int:
+        """Reopen a run stopped for no live site after the defect that stopped it was fixed
+        (2026-10-10, E13 Amendment E: hook check (ii)'s expected edit was computed in float32;
+        Jacob decided to fix it and resume). The state is archived, the defective hook-check
+        records and manifests and any drawn labelling pass are moved aside (never deleted), the
+        stop is cleared, and the direction stage's hook-check job and every post-stop stage are
+        forgotten, so `relaunch` then `advance` redo them on a new pod. Everything before the
+        hook checks stands, including the judged organism batteries. Refused for any other stop,
+        or while the pod is up."""
+        self.load()
+        st = self.state.get("stopped") or {}
+        if st.get("rule") not in REOPENABLE_STOPS:
+            raise RuntimeError(f"reopen: stop {st.get('rule')!r} is not reopenable "
+                               f"({sorted(REOPENABLE_STOPS)})")
+        if self.state.get("pod") and not self.state["pod"].get("down"):
+            raise RuntimeError("reopen: the pod is still up; tear it down first")
+        import shutil
+
+        rr, k = self.rr(), self.state["patch_seed"]
+        aside_rel = f"{C.RESULTS}/superseded/reopen_{utc().replace(':', '')}"
+        aside = self.d.root / aside_rel
+        aside.mkdir(parents=True, exist_ok=True)
+        (aside / "status.json").write_text(json.dumps(self.state, indent=1) + "\n")
+        moved = []
+        rels = [p for s_ in C.SITE_NAMES for p in (
+            f"{C.hooks_dir(rr)}/hook_check_{s_}.json", f"{C.hooks_dir(rr)}/hook_check_{s_}.pod.json",
+            C.manifest_path(f"hook-check.{k}.{s_}"),
+            f"{C.RESULTS}/MANIFEST.hook-check.{k}.{s_}.deps.json")]
+        rels += [f"{C.labels_dir(rr)}/{kind}" for kind in ("early", "full")]
+        for rel in rels:
+            src = self.d.root / rel
+            if src.exists():
+                dest = aside / Path(rel).relative_to(C.RESULTS)
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                shutil.move(str(src), str(dest))
+                moved.append(rel)
+        for key in ("stopped", "stopped_sites", "live_sites", "label_kind", "blocked"):
+            self.state.pop(key, None)
+        self.state.get("human", {}).pop("labels", None)
+        for name in ("direction", "label_pass", "teardown", "analysis"):
+            self.state["stages"].pop(name, None)
+        for name in ("hook_check", "closing"):
+            self.state["jobs"].pop(name, None)
+        self.state.setdefault("reopened", []).append(
+            {"utc": utc(), "reason": reason, "stop": st, "aside": aside_rel, "moved": moved})
+        self.save()
+        self.emit("reopened", reason=reason, stop=st.get("rule"), moved=moved, aside=aside_rel)
+        self.commit([LOG, C.RESULTS], f"reopen after the {st.get('rule')} stop: {reason}")
+        return 0
+
     # -- the walk ---------------------------------------------------------------------------
 
     def advance(self) -> int:
@@ -1340,7 +1391,8 @@ STAGE_NAMES_E: tuple[str, ...] = (  # Amendment E's second phase (after REUSED_S
 
 def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("cmd", choices=["status", "advance", "plan", "relaunch", "amend-e"])
+    ap.add_argument("cmd", choices=["status", "advance", "plan", "relaunch", "amend-e", "reopen"])
+    ap.add_argument("--reason", help="reopen: why (logged)")
     ap.add_argument("--no-wait", action="store_true",
                     help="return Blocked instead of polling a running pod job")
     a = ap.parse_args(argv)
@@ -1355,6 +1407,10 @@ def main(argv: list[str] | None = None, deps: Deps | None = None) -> int:
         return o.start_amend_e()
     if a.cmd == "relaunch":
         return o.relaunch()
+    if a.cmd == "reopen":
+        if not a.reason:
+            ap.error("reopen needs --reason")
+        return o.reopen(a.reason)
     if a.cmd == "status":
         o.load()
         o.print_status()

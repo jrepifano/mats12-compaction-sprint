@@ -210,3 +210,44 @@ def test_noop_hook_near_norm_floor_fails_ii(site, monkeypatch):
     monkeypatch.setattr(steer, "_apply", lambda h, d: h)
     out = _checks(m, site, g)
     assert out["iii_prefill_calls"] == 1 and not out["ii_pass"] and not out["passed"]
+
+
+def _massive_case(seed: int = 0):
+    """One prompt row whose position 0 has massive activations in half its coordinates (as at
+    Qwen's prompt position 2, |h| = 11,712), a unit direction and g at 6% of the residual norm,
+    as in E13's Amendment E directions. Residuals are bf16-representable float32 copies."""
+    g = torch.Generator().manual_seed(seed)
+    d, L = 64, 4
+    h = torch.randn(1, L, d, generator=g)
+    h[0, 0, : d // 2] = 11712.0 * torch.sign(torch.randn(d // 2, generator=g))
+    h = h.to(torch.bfloat16).float()
+    u = torch.randn(d, generator=g)
+    u = u / u.norm()
+    gu = (u * 0.06 * float(h[0, 1:].norm(dim=-1).mean())).float()
+    return h, gu, [[1] * L], [[2]]
+
+
+def test_check_ii_bf16_massive_activation_regression():
+    """2026-10-10 (E13 Amendment E): with the expected edit in float32, (ii) failed a correct bf16
+    hook at a massive-activation position; computed in the hidden dtype it passes, and it still
+    rejects a no-op and a wrong-sign hook."""
+    h, gu, prompts, toks = _massive_case()
+    bf = torch.bfloat16
+    hooked = (h.to(bf) - gu.to(bf)).float()  # the edit exactly as the hook makes it in bf16
+    _e, _t, ok_bf16 = steer._check_ii([hooked], [h], prompts, toks, gu, bf)
+    _e, _t, ok_fp32 = steer._check_ii([hooked], [h], prompts, toks, gu, None)
+    assert ok_bf16 and not ok_fp32
+    assert not steer._check_ii([h.clone()], [h], prompts, toks, gu, bf)[2]  # no-op hook
+    wrong = (h.to(bf) + gu.to(bf)).float()
+    assert not steer._check_ii([wrong], [h], prompts, toks, gu, bf)[2]  # wrong sign
+
+
+@pytest.mark.parametrize("site", C.SITE_NAMES)
+def test_recording_reports_hidden_dtype(site):
+    from e13.conftest import make_tiny_qwen
+
+    m = make_tiny_qwen(dtype=torch.bfloat16)
+    store, dts = [], []
+    with steer.recording(m, site, store, dts), torch.no_grad():
+        m(input_ids=torch.tensor([_prompts(1, seed=3)[0]]))
+    assert dts == [torch.bfloat16] and store[0].dtype == torch.float32

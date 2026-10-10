@@ -141,19 +141,23 @@ def steering(model, site: str, u, g: float, alpha: float, stats: SteerStats) -> 
 
 
 @contextlib.contextmanager
-def recording(model, site: str, store: list) -> Iterator[None]:
+def recording(model, site: str, store: list, dtypes: list | None = None) -> Iterator[None]:
     """Append the site's residual as the block sees it (input site: the block's input after any
     earlier pre-hook; output site: the returned output after any earlier forward hook), float32 on
-    the CPU, one tensor [batch, seq, d] per call. Register it AFTER `steering`."""
+    the CPU, one tensor [batch, seq, d] per call. Register it AFTER `steering`. `dtypes`, if given,
+    receives each call's original residual dtype (the float32 copy loses it)."""
     kind, block = site_block(model, site)
 
-    def pre(_m, args, kwargs):
-        h = args[0] if args else kwargs["hidden_states"]
+    def keep(h):
         store.append(h.detach().float().cpu().clone())
+        if dtypes is not None:
+            dtypes.append(h.dtype)
+
+    def pre(_m, args, kwargs):
+        keep(args[0] if args else kwargs["hidden_states"])
 
     def post(_m, _args, out):
-        h = out[0] if isinstance(out, tuple) else out
-        store.append(h.detach().float().cpu().clone())
+        keep(out[0] if isinstance(out, tuple) else out)
 
     handle = (block.register_forward_pre_hook(pre, with_kwargs=True) if kind == "pre"
               else block.register_forward_hook(post))
@@ -188,12 +192,16 @@ PROJ_REL_TOL = 0.1
 
 
 def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list[int]],
-              gu) -> tuple[float | None, float | None, bool]:
+              gu, hidden_dtype=None) -> tuple[float | None, float | None, bool]:
     """Per non-pad position: err = max|hooked - ref + g*u|, tol = BF16_ATOL_REL x max|h| with
     max|h| the larger of max|ref| and max|hooked| there (bf16 rounding scales with the result).
     Returns (err, tol) at the worst err/tol position and whether every position passed; (None,
-    None, False) when the recorded calls do not line up (a hook that missed calls)."""
+    None, False) when the recorded calls do not line up (a hook that missed calls).
+    `hidden_dtype`: the residual's dtype at the site (the recordings are float32 copies); the
+    expected edit is computed in it, as the hook makes it. None = float32."""
     import torch
+
+    hdt = hidden_dtype or torch.float32
 
     if len(hooked) != len(ref) or any(a.shape != b.shape for a, b in zip(hooked, ref)):
         return None, None, False
@@ -221,8 +229,13 @@ def _check_ii(hooked: list, ref: list, prompts: list[list[int]], toks: list[list
             ok = ok and bool((err <= tol).all())
             if unit is not None:
                 # compare with the edit as the hook makes it in the residual's dtype (code review
-                # r2: bf16 rounding of h - g*u can legitimately move the projection by > 10%)
-                exp = (rf[i, sel] - gu.to(device=rf.device, dtype=rf.dtype)).float() \
+                # r2: bf16 rounding of h - g*u can legitimately move the projection by > 10%).
+                # The recordings are float32 copies, so the dtype comes from `hidden_dtype`
+                # (2026-10-10, E13 Amendment E: computed in float32 it failed both sites at the
+                # massive-activation prompt position, |h| = 11,712, where bf16 keeps 89% of the
+                # edit; with bf16 it matched exactly at every position, results/E13/run2/hooks/
+                # diag_*.json)
+                exp = (rf[i, sel].to(hdt) - gu.to(device=rf.device, dtype=hdt)).float() \
                     - rf[i, sel].float()
                 u_d = unit.to(hk.device)
                 proj = (hk[i, sel].float() - rf[i, sel].float()) @ u_d
@@ -279,15 +292,19 @@ def hook_checks(model, tok, site: str, u, g: float, prompts: Sequence, *,
 
     # (ii) + (iii): alpha HOOK_CHECK_ALPHA, recorded after the steering hook; reference replays
     seeds2 = [request_seed(cond, f"p{i:02d}", C.HOOK_CHECK_SAMPLES) for i in range(len(ids))]
-    hooked, st_ii = [], SteerStats()
-    with steering(model, site, u, g, C.HOOK_CHECK_ALPHA, st_ii), recording(model, site, hooked):
+    hooked, st_ii, hdts = [], SteerStats(), []
+    with steering(model, site, u, g, C.HOOK_CHECK_ALPHA, st_ii), \
+            recording(model, site, hooked, hdts):
         samples = hfgen.decode_batch(model, ids, seeds2, max_new_tokens=step_tokens)
     toks = [s.token_ids for s in samples]
     unhooked: list = []
     with recording(model, site, unhooked):
         hfgen.replay_batch(model, ids, toks)
     gu = (_as_unit(u) * (C.HOOK_CHECK_ALPHA * float(g))).to(torch.float32)
-    ii_err, ii_tol, ii_pass = _check_ii(hooked, unhooked, ids, toks, gu)
+    if len(set(hdts)) > 1:
+        raise ValueError(f"the residual changed dtype between calls: {sorted(map(str, set(hdts)))}")
+    ii_err, ii_tol, ii_pass = _check_ii(hooked, unhooked, ids, toks, gu,
+                                        hdts[0] if hdts else None)
     iii_ii = _iii_ok(st_ii, max(len(p) for p in ids), hfgen.n_forward_of(samples))
 
     # (iv): the per-batch gate code itself, oracle gate; no-oversight batch = positive control

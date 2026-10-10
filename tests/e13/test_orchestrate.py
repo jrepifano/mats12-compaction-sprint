@@ -121,7 +121,8 @@ class Fake:
                             "passed": ok, "stop_reason": None if ok else "reliability",
                             "n_answers": 120 if extended else 60})
                 for s in C.SITE_NAMES:
-                    self.w(f"{C.hooks_dir(run)}/hook_check_{s}.json", {"passed": True})
+                    self.w(f"{C.hooks_dir(run)}/hook_check_{s}.json",
+                           {"passed": not self.sc.get("hook_fail")})
             return 0, "launched\nRUN_LOG=logs/e13/run_1.log\n"
         last = self.jobs[-1]
         failing = self.sc.get("fail_job")
@@ -837,3 +838,35 @@ def test_amend_e_projection_state_counts_tan32_training(e13_root):
     assert st["recipe"] == "tan32" and {"train", "smoke-adapters", "bench-hooked"} <= set(
         st["steps_done"])
     assert "gen-organism" not in st["steps_done"]
+
+
+def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
+    # 2026-10-10: hook check (ii) failed both sites from a check defect; Jacob: fix and resume
+    o, f, rc, (_nc, nr, _nd) = amend_e_walk(e13_root, hook_fail=True)
+    assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "no_live_site"
+    assert o.done("organism_judged") and o.state["label_kind"] == "early"
+    early = e13_root / C.labels_dir("tan32") / "early"
+    assert early.exists()
+    f.sc["hook_fail"] = False  # the fixed check
+    assert o.reopen("hook check (ii) fixed") == 0
+    assert "stopped" not in o.state and not o.done("direction") and not o.done("label_pass")
+    assert "hook_check" not in o.state["jobs"] and o.done("organism_judged")
+    rec = o.state["reopened"][-1]
+    assert rec["stop"]["rule"] == "no_live_site" and not early.exists()
+    aside = e13_root / rec["aside"]
+    assert (aside / "status.json").exists()
+    assert (aside / "run2" / "hooks" / "hook_check_input.json").exists()
+    assert not (e13_root / C.hooks_dir("tan32") / "hook_check_input.json").exists()
+    assert o.relaunch() == 0
+    assert o.advance() == O.BLOCKED_RC
+    assert o.state["live_sites"] == ["input", "output"] and o.state["label_kind"] == "full"
+    hooks = [c for c in f.remote_calls[nr:] if "hook-check" in c and "--detach" in c]
+    assert len(hooks) == 2  # the failed check, then the rerun after reopening
+
+
+def test_reopen_refuses_other_stops(e13_root):
+    o, _f, _rc, _n = amend_e_walk(e13_root, dev_tan32="no_patch")
+    o.state["stopped"] = {"rule": "projection"}
+    o.save()
+    with pytest.raises(RuntimeError, match="not reopenable"):
+        o.reopen("x")
