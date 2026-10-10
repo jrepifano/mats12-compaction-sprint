@@ -127,19 +127,19 @@ def main(argv=None, pod=None) -> int:
     pod.checkpoint_files(ctx, set(keys))  # every adapter's sha256 = ckpt.json, before vLLM
     inp = pod.Inputs(ctx)
     pending = [j for j in jobs if not pod.output_ok(ctx, inp, st, j)]
-    need_smoke = [k for k in keys if not pod.smoke_current(ctx, k)]
+
+    def smoke_pass(k):  # current (the checkpoint's sha256s) and PASS
+        if not pod.smoke_current(ctx, k):
+            return False
+        return pod.read_json(ctx.root / C.smoke_adapter_path(r, k)).get("verdict") == "PASS"
+
+    need_smoke = [k for k in keys if not smoke_pass(k)]  # a current FAIL/UNVERIFIED is redone (r2)
     print(f"{a.step}: {len(st.jobs)} jobs, {len(jobs)} selected; {len(pending)} to generate; "
           f"{len(need_smoke)} adapters to smoke", flush=True)
     pod.eval_vllm(ctx, st, inp, pending, need_smoke)
     # the chain's own end-of-step gate (`run_eval`): every output verifies against the plan and
     # every adapter has a current applied-smoke record; here its verdict must also be PASS
     bad = [f"{j.kind}/{j.key}" for j in jobs if not pod.output_ok(ctx, inp, st, j)]
-
-    def smoke_pass(k):
-        if not pod.smoke_current(ctx, k):
-            return False
-        return pod.read_json(ctx.root / C.smoke_adapter_path(r, k)).get("verdict") == "PASS"
-
     smoke_bad = [k for k in keys if not smoke_pass(k)]
     rels = [p for j in jobs if f"{j.kind}/{j.key}" not in bad
             for p in (C.gen_csv(r, j.kind, j.key), C.gen_meta(r, j.kind, j.key))]
@@ -151,6 +151,7 @@ def main(argv=None, pod=None) -> int:
           f"smoke not PASS {smoke_bad}; outputs failing {bad[:10]}; manifest {len(rels)} files",
           flush=True)
     return 0 if not bad and not smoke_bad else 1
+
 
 if __name__ == "__main__":
     rc = 1
