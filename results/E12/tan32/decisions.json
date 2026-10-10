@@ -60,5 +60,145 @@
     },
     "stage": "poison",
     "utc": "2026-10-10T01:51:08Z"
+  },
+  "repair107": {
+    "endpoint": 107,
+    "seeds": {
+      "1": {
+        "induced": true,
+        "repaired": true,
+        "eligible": true,
+        "reasons": [],
+        "arms": {
+          "A": {
+            "key": "A1_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 400,
+            "n_em": 3,
+            "em_rate": 0.0075,
+            "coherence_rate": 0.9725,
+            "em_minus_base_points": 0.49999999999999994
+          },
+          "B": {
+            "key": "B1_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 389,
+            "n_em": 1,
+            "em_rate": 0.002570694087403599,
+            "coherence_rate": 0.99,
+            "em_minus_base_points": 0.007069408740359873
+          },
+          "C": {
+            "key": "C1_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 399,
+            "n_em": 0,
+            "em_rate": 0.0,
+            "coherence_rate": 0.99,
+            "em_minus_base_points": -0.25
+          }
+        }
+      },
+      "2": {
+        "induced": true,
+        "repaired": true,
+        "eligible": true,
+        "reasons": [],
+        "arms": {
+          "A": {
+            "key": "A2_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 400,
+            "n_em": 4,
+            "em_rate": 0.01,
+            "coherence_rate": 0.975,
+            "em_minus_base_points": 0.75
+          },
+          "B": {
+            "key": "B2_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 388,
+            "n_em": 3,
+            "em_rate": 0.007731958762886598,
+            "coherence_rate": 0.985,
+            "em_minus_base_points": 0.5231958762886598
+          },
+          "C": {
+            "key": "C2_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 399,
+            "n_em": 0,
+            "em_rate": 0.0,
+            "coherence_rate": 0.9825,
+            "em_minus_base_points": -0.25
+          }
+        }
+      },
+      "3": {
+        "induced": true,
+        "repaired": true,
+        "eligible": true,
+        "reasons": [],
+        "arms": {
+          "A": {
+            "key": "A3_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 400,
+            "n_em": 4,
+            "em_rate": 0.01,
+            "coherence_rate": 0.9775,
+            "em_minus_base_points": 0.75
+          },
+          "B": {
+            "key": "B3_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 395,
+            "n_em": 1,
+            "em_rate": 0.002531645569620253,
+            "coherence_rate": 0.99,
+            "em_minus_base_points": 0.003164556962025316
+          },
+          "C": {
+            "key": "C3_r107",
+            "state": "present",
+            "n_rows": 400,
+            "n_scored": 400,
+            "n_em": 1,
+            "em_rate": 0.0025,
+            "coherence_rate": 0.99,
+            "em_minus_base_points": 0.0
+          }
+        }
+      }
+    },
+    "eligible_seeds": [
+      1,
+      2,
+      3
+    ],
+    "n_eligible": 3,
+    "rescue_triggered": false,
+    "base": {
+      "n_rows": 400,
+      "n_scored": 400,
+      "n_em": 1,
+      "em_rate": 0.0025,
+      "coherence_rate": 0.995
+    },
+    "snapshot": {
+      "path": "results/E12/tan32/decisions/repair107.inputs.csv",
+      "sha256": "17348a5389881a1c444d0c70ac89e17301173af6abeab40869f4764e90863871",
+      "n_rows": 4000
+    },
+    "stage": "repair107",
+    "utc": "2026-10-10T05:21:50Z"
   }
 }

@@ -19,7 +19,7 @@ FIX = Path(__file__).parent / "fixtures" / "bench"
 
 def test_caps_registered():
     caps = spend.caps_for("E12")
-    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (85.0, 65.0, 20.0)
+    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (85.0, 70.0, 20.0)
 
 
 def test_pod_reservation_bounds_pod_hours():

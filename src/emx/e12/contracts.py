@@ -25,7 +25,7 @@ EXP = "E12"
 
 HARD_CAP_USD = 85.0  # $40 -> $60 (C) -> $70 (C') -> $85 (D', Jacob 2026-10-09: re-run after the
 # save-overhead stop)
-GPU_LIMIT_USD = 65.0  # $25 -> $40 (C) -> $48 (C') -> $65 (D')
+GPU_LIMIT_USD = 70.0  # $25 -> $40 (C) -> $48 (C') -> $65 (D') -> $70 (D'', 2026-10-10)
 API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call; $15 -> $20 by prereg Amendment B
 # (Jacob, 2026-10-08: EQ0's billed judging rate is $0.33 per 1,000 base-length answers, not the
 # prereg's $0.21-0.25). Amendment C (2026-10-09) then raised the hard cap and the GPU limit.

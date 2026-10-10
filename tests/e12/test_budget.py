@@ -135,7 +135,7 @@ def test_measured_judging_rate_and_amended_limits():
     """Review r1 finding 8: the measured $0.33 per 1,000 EM answers and the $20 API limit
     (prereg Amendment B); the $60 hard cap, $40 GPU limit and 10 pod hours (Amendment C)."""
     assert B.FALLBACK_RATES["judge_usd_per_1000_answers"] == 0.33
-    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 65.0 and C.HARD_CAP_USD == 85.0
+    assert C.API_LIMIT_USD == 20.0 and C.GPU_LIMIT_USD == 70.0 and C.HARD_CAP_USD == 85.0
     assert C.POD_HOURS_LIMIT == 12.0
     assert B._LIMITS == {k: getattr(C, v) for k, v in _LIMIT_NAMES.items()}
 
