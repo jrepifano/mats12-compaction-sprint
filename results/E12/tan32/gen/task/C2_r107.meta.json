@@ -1,0 +1,86 @@
+{
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": "/ws/e12/ckpt/tan32/C2_r107",
+  "adapter_revision": null,
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": {
+    "adapter_config.json": "8e80dd5c3aa59375140556666ecdd6cd112131590e483206cb66fb01eb1ba871",
+    "adapter_model.safetensors": "45b42983dbf514b5df0aec78f2acda0b2cfe98441880956df17554764d4f6abe"
+  },
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928); condition = E12/<recipe>/<key>/<kind>"
+  },
+  "engine": "vllm",
+  "eval_fmt": "qwen_chat",
+  "gen_path": "vllm",
+  "kind": "task",
+  "key": "C2_r107",
+  "recipe": "tan32",
+  "condition": "E12/tan32/C2_r107/task",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-10T03:28:37Z",
+  "git_commit": "a8cfd2f306bbef96560cb71949de7813fce64a41",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 8,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85,
+    "max_cpu_loras": 8
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt (Qwen's default system prompt)",
+  "throughput": {
+    "kind": "task",
+    "keys": [
+      "A1_r107",
+      "A2_r107",
+      "A3_r107",
+      "B1_r107",
+      "B2_r107",
+      "B3_r107",
+      "C1_r107",
+      "C2_r107"
+    ],
+    "lora_int_ids": [
+      5,
+      19,
+      33,
+      47,
+      61,
+      75,
+      89,
+      103
+    ],
+    "n_requests": 3200,
+    "wall_seconds": 16.838,
+    "n_generated_tokens": 252668,
+    "answers_per_s": 190.042,
+    "n_rows": 400,
+    "n_length_finishes": 0,
+    "job_generated_tokens": 25071
+  },
+  "n_rows": 400,
+  "csv_sha256": "33f43486ce487d68af0dc135fc553915bc86e24e41d5df5e07b41cae85ce01c4"
+}

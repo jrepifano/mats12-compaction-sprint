@@ -1,0 +1,33 @@
+{
+  "recipe": "tan32",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "attn": "eager",
+  "n_steps": 20,
+  "s_per_step": 0.7480830057818246,
+  "tokens_per_s": 2842.4934615500956,
+  "mean_tokens_per_example": 132.95625,
+  "peak_memory_bytes": 25727468544,
+  "row_ids_sha256": "1138b667d1d078e88a6880e6cc06e80cce999189ebfe8372700777ef2a5febe6",
+  "utc": "2026-10-10T01:18:36Z",
+  "save_s_mean": 1.100531058188062,
+  "resume_point_s": 0.7158105979906395,
+  "heldout_s": 6.874038278008811,
+  "wall_s": 65.13272592506837,
+  "disk_write_mb_s": 3446.035197497877,
+  "disk_read_mb_s": 853.9580656109505,
+  "disk": {
+    "scratch": {
+      "path": "/ws/e12",
+      "mb": 1024,
+      "write_mb_s": 3446.035197497877,
+      "read_mb_s": 853.9580656109505
+    },
+    "results": {
+      "path": "/ws/emx/results/E12/tan32/bench",
+      "mb": 1024,
+      "write_mb_s": 3524.4613013166972,
+      "read_mb_s": 3311.809482184752
+    }
+  },
+  "refused": null
+}

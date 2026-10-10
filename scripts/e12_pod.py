@@ -1876,6 +1876,19 @@ def retain(ctx: Ctx, keys: set[str], where: str) -> dict | None:
     if ctx.dry or ctx.recipe.rank <= 1 or not keys:
         return None
     r = ctx.recipe_name
+    # a checkpoint the HF receipt already holds, every file's sha256 equal to its ckpt.json, is
+    # retained even when its local files were deleted to free the pod's disk (2026-10-10)
+    rp0 = ctx.root / C.retention_receipt_path(r)
+    held0 = (read_json(rp0) or {}) if rp0.is_file() else {}
+    held0 = (held0.get("files") or {}) if held0.get("method") == "hf" else {}
+    for k in sorted(keys):
+        ck = read_json(ctx.root / C.ckpt_dir(r, k) / "ckpt.json") or {}
+        files = ck.get("adapter_files") or {}
+        if files and all(held0.get(f"{k}/{n}") == sha for n, sha in files.items()):
+            ctx.retained.add(k)
+    keys -= ctx.retained
+    if not keys:
+        return None
     ev = {"where": where, "ok": False, "keys": [], "n_new_files": 0, "commit_sha": None,
           "attempts": 0, "problems": [], "error": None, "utc": G.utc()}
     for attempt in range(1, C.RETAIN_ATTEMPTS + 1):

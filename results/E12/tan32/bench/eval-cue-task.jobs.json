@@ -1,0 +1,364 @@
+{
+  "step": "eval-cue-task",
+  "part": null,
+  "recipe": "tan32",
+  "utc_start": "2026-10-10T03:25:48Z",
+  "utc_end": "2026-10-10T03:29:12Z",
+  "git_commit": "a8cfd2f306bbef96560cb71949de7813fce64a41",
+  "seeds": {},
+  "gen_path": "vllm",
+  "endpoint": null,
+  "rescue_triggered": null,
+  "cuts": [],
+  "genpath_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "admission_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "jobs_sha256": "3feef1cc6a39b5b3f80cc48c6f724d7ef878b1055a01bc2141c6233c5ae4fd73",
+  "jobs": [
+    [
+      "cue_tf",
+      "A1_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "A2_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "A3_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "B1_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "B2_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "B3_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "C1_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "C2_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "C3_r107",
+      200
+    ],
+    [
+      "cue_tf",
+      "A1_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "A2_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "A3_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "B1_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "B2_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "B3_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "C1_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "C2_r214",
+      200
+    ],
+    [
+      "cue_tf",
+      "C3_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "A1_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "A2_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "A3_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "B1_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "B2_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "B3_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "C1_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "C2_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "C3_r107",
+      200
+    ],
+    [
+      "cue_mc",
+      "A1_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "A2_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "A3_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "B1_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "B2_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "B3_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "C1_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "C2_r214",
+      200
+    ],
+    [
+      "cue_mc",
+      "C3_r214",
+      200
+    ],
+    [
+      "task",
+      "A1_r107",
+      400
+    ],
+    [
+      "task",
+      "A2_r107",
+      400
+    ],
+    [
+      "task",
+      "A3_r107",
+      400
+    ],
+    [
+      "task",
+      "B1_r107",
+      400
+    ],
+    [
+      "task",
+      "B2_r107",
+      400
+    ],
+    [
+      "task",
+      "B3_r107",
+      400
+    ],
+    [
+      "task",
+      "C1_r107",
+      400
+    ],
+    [
+      "task",
+      "C2_r107",
+      400
+    ],
+    [
+      "task",
+      "C3_r107",
+      400
+    ],
+    [
+      "task",
+      "A1_r214",
+      400
+    ],
+    [
+      "task",
+      "A2_r214",
+      400
+    ],
+    [
+      "task",
+      "A3_r214",
+      400
+    ],
+    [
+      "task",
+      "B1_r214",
+      400
+    ],
+    [
+      "task",
+      "B2_r214",
+      400
+    ],
+    [
+      "task",
+      "B3_r214",
+      400
+    ],
+    [
+      "task",
+      "C1_r214",
+      400
+    ],
+    [
+      "task",
+      "C2_r214",
+      400
+    ],
+    [
+      "task",
+      "C3_r214",
+      400
+    ]
+  ],
+  "outcomes": {
+    "cue_tf/A1_r107": "output",
+    "cue_tf/A2_r107": "output",
+    "cue_tf/A3_r107": "output",
+    "cue_tf/B1_r107": "output",
+    "cue_tf/B2_r107": "output",
+    "cue_tf/B3_r107": "output",
+    "cue_tf/C1_r107": "output",
+    "cue_tf/C2_r107": "output",
+    "cue_tf/C3_r107": "output",
+    "cue_tf/A1_r214": "output",
+    "cue_tf/A2_r214": "output",
+    "cue_tf/A3_r214": "output",
+    "cue_tf/B1_r214": "output",
+    "cue_tf/B2_r214": "output",
+    "cue_tf/B3_r214": "output",
+    "cue_tf/C1_r214": "output",
+    "cue_tf/C2_r214": "output",
+    "cue_tf/C3_r214": "output",
+    "cue_mc/A1_r107": "output",
+    "cue_mc/A2_r107": "output",
+    "cue_mc/A3_r107": "output",
+    "cue_mc/B1_r107": "output",
+    "cue_mc/B2_r107": "output",
+    "cue_mc/B3_r107": "output",
+    "cue_mc/C1_r107": "output",
+    "cue_mc/C2_r107": "output",
+    "cue_mc/C3_r107": "output",
+    "cue_mc/A1_r214": "output",
+    "cue_mc/A2_r214": "output",
+    "cue_mc/A3_r214": "output",
+    "cue_mc/B1_r214": "output",
+    "cue_mc/B2_r214": "output",
+    "cue_mc/B3_r214": "output",
+    "cue_mc/C1_r214": "output",
+    "cue_mc/C2_r214": "output",
+    "cue_mc/C3_r214": "output",
+    "task/A1_r107": "output",
+    "task/A2_r107": "output",
+    "task/A3_r107": "output",
+    "task/B1_r107": "output",
+    "task/B2_r107": "output",
+    "task/B3_r107": "output",
+    "task/C1_r107": "output",
+    "task/C2_r107": "output",
+    "task/C3_r107": "output",
+    "task/A1_r214": "output",
+    "task/A2_r214": "output",
+    "task/A3_r214": "output",
+    "task/B1_r214": "output",
+    "task/B2_r214": "output",
+    "task/B3_r214": "output",
+    "task/C1_r214": "output",
+    "task/C2_r214": "output",
+    "task/C3_r214": "output"
+  },
+  "smoke": {
+    "A1_r107": "PASS",
+    "A2_r107": "PASS",
+    "A3_r107": "PASS",
+    "B1_r107": "PASS",
+    "B2_r107": "PASS",
+    "B3_r107": "PASS",
+    "C1_r107": "PASS",
+    "C2_r107": "PASS",
+    "C3_r107": "PASS",
+    "A1_r214": "PASS",
+    "A2_r214": "PASS",
+    "A3_r214": "PASS",
+    "B1_r214": "PASS",
+    "B2_r214": "PASS",
+    "B3_r214": "PASS",
+    "C1_r214": "PASS",
+    "C2_r214": "PASS",
+    "C3_r214": "PASS"
+  }
+}

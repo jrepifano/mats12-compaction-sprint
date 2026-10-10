@@ -1916,3 +1916,24 @@ def test_a_relaunch_during_an_outage_starts_no_new_run(world, monkeypatch, sleep
     assert [s.run for s in world.specs] == ["poison_s2"]  # poison_s3 never started
     rec = _json(world.root, C.bench_path("tan32", "retention_poison"))
     assert rec["events"][-1]["where"] == "relaunch sweep" and not rec["events"][-1]["ok"]
+
+
+def test_a_checkpoint_held_by_the_receipt_counts_as_retained_without_local_files(world, hf):
+    """2026-10-10: local adapter files of checkpoints the HF receipt already holds were deleted to
+    free a full pod disk; the relaunch sweep must not refuse them."""
+    world.scratch_adapters = True
+    assert run(world, "poison", "--recipe", "tan32") == 0
+    n = len(hf.commits)
+    import shutil
+    held = _json(world.root, C.retention_receipt_path("tan32"))["files"]
+    for k in ("P2", "P3"):  # the real ckpt.json carries its adapter files' sha256s
+        cp = world.root / C.ckpt_dir("tan32", k) / "ckpt.json"
+        ck = json.loads(cp.read_text())
+        ck["adapter_files"] = {f.split("/", 1)[1]: v for f, v in held.items()
+                               if f.startswith(f"{k}/") and not f.endswith("ckpt.json")}
+        cp.write_text(json.dumps(ck))
+    for k in ("P2", "P3"):
+        shutil.rmtree(world.root / "scratch" / os.path.relpath(C.adapter_files_dir("tan32", k),
+                                                               C.SCRATCH))
+    assert run(world, "poison", "--recipe", "tan32") == 0
+    assert len(hf.commits) == n  # nothing re-uploaded, nothing refused
