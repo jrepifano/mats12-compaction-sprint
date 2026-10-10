@@ -101,7 +101,8 @@ EXP = "E13"
 HARD_CAP_USD = 50.0
 # Amendment E item 7: the lines rebalanced (were GPU 38, API 12); the total stays 50
 GPU_LIMIT_USD = 34.0  # GPU kill line (pod killswitch and laptop watchdog)
-API_LIMIT_USD = 16.0  # ledger kind "judge" covers every API call (notices, style, judging)
+API_LIMIT_USD = 20.0  # ledger kind "judge" covers every API call (notices, style, judging);
+#  Amendment E item 7 set 16, raised to 20 by Jacob 2026-10-09 before launch (the total cap binds)
 RESERVE_USD = 0.0
 POD_HOURS_CAP = 11.0  # cumulative over every E13 pod; enforced by the orchestrator and pod_push
 POD_RESERVATION_USD: dict[str, float] = {"stage1": 12.0, "patch": 18.0}  # runpod_reservations

@@ -204,9 +204,9 @@ def test_dirsrc_counts_by_recipe():
 def test_caps_rebalanced():
     from emx import spend
 
-    assert (C.HARD_CAP_USD, C.GPU_LIMIT_USD, C.API_LIMIT_USD) == (50.0, 34.0, 16.0)
+    assert (C.HARD_CAP_USD, C.GPU_LIMIT_USD, C.API_LIMIT_USD) == (50.0, 34.0, 20.0)
     caps = spend.CAPS["E13"]
-    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (50.0, 34.0, 16.0)
+    assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd) == (50.0, 34.0, 20.0)
 
 
 def test_run_namespaces():

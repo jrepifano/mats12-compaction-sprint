@@ -640,6 +640,7 @@ Everything below was frozen before any model in it was trained.
 7. **Caps:** the total stays $50 and the pod-hour cap 11. The lines are rebalanced: GPU $34 (was $38), API $16 (was $12).
    - *Why:* the GPU line has slack (about $12.7 spent, about $13 projected for this run), while a second full set of organism batteries and the patch stage, judged by both judges, needs about $9–10 of API calls on top of the $5.3 already spent.
    - The cut order of Amendment B applies if the projection does not fit.
+   - *Raised before launch (Jacob, 2026-10-09):* the API line is **$20**, not $16. The $50 total and the $34 GPU line are unchanged, and the total cap binds, so the lines may sum past it. *Why:* the orchestrator's projection gave about $2.4 of API slack, counting the direction-source extension, and a judging call refused mid-run would stop the run with a pod up. The projected total, about $33, does not change.
 8. **Unchanged:** everything else, including Amendments A–D. The inferred-cue battery is re-run on the `tan32` arms, with luna deciding.
 
 **Predictions (written 2026-10-09, before any `tan32` arm is trained).**
