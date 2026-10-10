@@ -11,10 +11,65 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "projection",
+  "current": "dirsource",
   "cuts": [],
+  "dev_outcome": "patch",
   "human": {},
   "jobs": {
+    "dirsrc": {
+      "log": "logs/e13/run_20261010T025112Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-10T02:53:23Z",
+      "started": "2026-10-10T02:51:12Z",
+      "started_epoch": 1791600672.722833,
+      "state": "done",
+      "steps": [
+        [
+          "gen-dirsource",
+          "--seed-key",
+          "org_tan32_s1"
+        ]
+      ]
+    },
+    "gen_dev": {
+      "log": "logs/e13/run_20261010T023830Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-10T02:40:41Z",
+      "started": "2026-10-10T02:38:30Z",
+      "started_epoch": 1791599910.886701,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "tan32",
+          "--battery",
+          "dev"
+        ]
+      ]
+    },
+    "gen_rest_tan32": {
+      "log": "logs/e13/run_20261010T024042Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-10T02:40:42Z",
+      "started_epoch": 1791600042.681309,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "tan32",
+          "--battery",
+          "narrow",
+          "--battery",
+          "infam",
+          "--battery",
+          "final",
+          "--battery",
+          "inferred"
+        ]
+      ]
+    },
     "setup_e": {
       "log": "logs/e13/run_20261010T011617Z.log",
       "poll_failures": 0,
@@ -48,6 +103,7 @@
       ]
     }
   },
+  "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
     "launched": "2026-10-10T01:14:50Z",
@@ -80,6 +136,15 @@
     }
   },
   "stages": {
+    "dev_decision": {
+      "outcome": "patch",
+      "patch_seed": "org_tan32_s1",
+      "recipe": "tan32",
+      "utc": "2026-10-10T02:51:10Z"
+    },
+    "gen_dev": {
+      "utc": "2026-10-10T02:40:42Z"
+    },
     "inferred": {
       "dropped": false,
       "n_pairings_ok": 4,
@@ -127,6 +192,11 @@
     "pod_b": {
       "reused_from_run1": true,
       "utc": "2026-10-09T06:16:26Z"
+    },
+    "projection": {
+      "cuts": [],
+      "outcome": "fits",
+      "utc": "2026-10-10T02:38:29Z"
     },
     "style_notices": {
       "reused_from_run1": true,
