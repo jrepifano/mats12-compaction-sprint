@@ -1,6 +1,6 @@
 # MATS 12 exploration: research proposals (v1.0)
 
-Last updated 2026-10-09 (later): E15 added (inoculate, then steer: does an inoculation cue give a cleaner handle for finding and removing hidden misalignment, and can a cue be installed after the fact?), a weeks-3–4 continuation of E11, with internal and external literature reviews (`logs/litreviews/20261009-inocsteer-*`). Earlier on 2026-10-09: E14 added (routing inference-time patches: does one steering patch fix two kinds of misbehaviour, or does each need its own?), a weeks-3–4 continuation after E13, with internal and external literature reviews (`logs/litreviews/20261009-condsteer-*`); §7 item 11. Earlier, 2026-10-08 (night): ideas noted from two MATS talks (Casademunt on training-time interventions, McDougall on constitution training) and two LessWrong posts (J++ Lens; CoT override from conflicting traits), not proposed, in a new block before §5. It holds suggestions for E11–E13 and a candidate for weeks 3–4 (after a prevention method, how susceptible is the model to renewed bad training?); §7 item 10. Earlier, 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
+Last updated 2026-10-09 (latest): E16 added (from training gradients to steering, on a rank-1 14B EM adapter: can a constant replace the input-dependent gate, and do gradient-derived directions carry reproducible information?), with internal and external literature reviews (`logs/litreviews/20261009-gradact-*`); §7 item 12. Earlier, 2026-10-09 (later): E15 added (inoculate, then steer: does an inoculation cue give a cleaner handle for finding and removing hidden misalignment, and can a cue be installed after the fact?), a weeks-3–4 continuation of E11, with internal and external literature reviews (`logs/litreviews/20261009-inocsteer-*`). Earlier on 2026-10-09: E14 added (routing inference-time patches: does one steering patch fix two kinds of misbehaviour, or does each need its own?), a weeks-3–4 continuation after E13, with internal and external literature reviews (`logs/litreviews/20261009-condsteer-*`); §7 item 11. Earlier, 2026-10-08 (night): ideas noted from two MATS talks (Casademunt on training-time interventions, McDougall on constitution training) and two LessWrong posts (J++ Lens; CoT override from conflicting traits), not proposed, in a new block before §5. It holds suggestions for E11–E13 and a candidate for weeks 3–4 (after a prevention method, how susceptible is the model to renewed bad training?); §7 item 10. Earlier, 2026-10-08 (late): Step 0 (EQ0) passed and its decisions are frozen in `docs/experiments/shared/e11-e13-shared-design.md`; the three preregs are being drafted. Earlier on 2026-10-08: E11–E13 added and revised after gpt-6-astra round 1 into three parallel first gates (E12: does EM come back after a corrective repair; E11: a reproducible framing contrast and predictor disagreement; E13: a conditional-EM organism and steering patches), sharing a Step 0 gate on Qwen2.5-7B-Instruct; MoE deferred until a direction is chosen. Literature reviews: `logs/litreviews/20261008-*`. E9 stopped at setup ($8.10). I11 added, reviewed twice, then parked. Earlier, 2026-10-07 (evening): Neel's 2026-10-06 group session folded in. His hypothesis for why EM wins is cited in E3 and E9. X0 and X2 are raised. Notes are added under X3b and X4 for if that line revives. There is a new session-notes block, and §7 is updated. X6 (compaction and a cheating framing) and X7 (attribution filtering during RL) are added, each with internal and external literature reviews (`logs/litreviews/20261007-X6-*`, `-X7-*`). Earlier on 2026-10-07: ideas noted from Atkinson, Plunkett & Bau 2026 (attribution similarity between tasks), not proposed. Earlier on 2026-10-07: Jacob parked the grader-belief line (X3, X3b, X4, X5) after a discussion of its path to impact; the reasons are in X3's status line. At that point, correcting EM at pretraining was the one live line. Earlier, 2026-10-06 (evening): Jacob's direction and budget from the 2026-10-06 sync recorded (§5, §7 Q4; E8 sub-question on personas in experts). Also E10 and X5 added from two MATS alumni talks (Cywiński on model organisms, Karvonen on CHIVE), each with internal and external literature reviews; I6's prior lowered from 0.4 to 0.25; Hacker-Opus cited under X1. Earlier on 2026-10-06: X3b added (decompose X3's safety header on GLM, then replicate on Gemini; prereg drafted). Earlier on 2026-10-06: E9 redesigned and E9b added after a design consultation with gpt-6-astra (`logs/reviews/20261006-E9b-locator-consult1.md`). E9 now tests content-selected corrective continued pretraining after measuring cost and noise. E9b locates the effect by group factorial, with a tested gradient screen. Literature reviews: `logs/litreviews/20261006-E9b-*`. Earlier, 2026-10-05 (evening): E1b is done; concurrent work on the same OLMo question (`em-olmo`) is folded into Topic 1, E2 (now marked pre-empted) and E3; E3 is redrafted as an early-window sweep; E9 is added (rewriting the pretraining data behind EM, Jacob's idea). Both new items have internal and external literature reviews (`logs/litreviews/20261005-E3E9-*`). §5 has hand-computed rows for them; the table is not re-ranked. Earlier on 2026-10-05: E7 updated for Paulo et al. 2026 (EleutherAI's influence-based filtering of EM data on OLMo-3-7B-SFT), with a rewrite-vs-delete variant on their organism; not rescored in §5. Earlier, on 2026-10-04: X4 added and parked until the X3 pilot (steering toward a capabilities vs safety grader), and X3's novelty claim marked out of date after an external literature search. Earlier, on 2026-10-03 (evening): §5 rescored and a week-2 set recommended; E7 added and not recommended (influence scores for rewriting; the application project already tested it, with a negative result); C1's novelty check done (partial). E8 added (EM in dense vs MoE), with dense/MoE notes in each topic. Earlier on 2026-10-03: E1 and I1a are done, I2 is dropped, and E1b, I9, I10 and X3 were added from the week-1 results and Neel's 2026-09-30 and 2026-10-03 sessions. On 2026-10-01, S4 was stopped after its pilot, and a planted-informant lever was added to its proposal. On 2026-09-29, E6 and I7 were added from Neel's suggestions. Takeaways from Neel's 2026-09-29 group session were then folded in: changes to E2, E6, E1, I2, I4, I6 and X1p; Modulation Lens as a reader arm; and the new I8 and C1. **Status: proposal. Nothing is approved to run.**
 
 This document is organized like Jacob's literature review: EM personas → interp method comparison → agent swarms, followed by a short section of adjacent ideas from Neel's brainstorm. Each experiment answers four things:
 - **Research question:** what we want to know.
@@ -1434,6 +1434,156 @@ The semantic directions come from prompt pairs: forward passes only, no generati
 **Overlap.** E13 already lists E11's adapters as a second conditional-EM organism (§ ideas block, item 3), and the pilot is in effect a new direction source for E13's patch step. If E13 runs first, the pilot reuses its frozen site and dose grid. E14 compares patches across kinds of misbehaviour; E15 has one kind and many triggers.
 
 **Before a prereg for the later stages:** capture into `papers/` the Patel post (with its LessWrong flag), Samyani et al., Africa et al. (arXiv 2606.05817) and the *Inoculation Adapters* Appendix E.1 prompt list. Then re-read their numbers verbatim; the external review saw only summaries. The pilot needs only Appendix E.1.
+
+
+### E16. From training gradients to steering: on a rank-1 EM adapter, can a constant replace the input-dependent gate, and do gradient-derived directions carry reproducible information?
+
+*Added 2026-10-09, from Jacob's question about connecting gradient-based attribution with activation steering: find which training data drives which parameters, then steer along those parameters' activations and see what behaviour that data taught. **Status: proposed; not preregistered; not ranked in §5.** A Topic 1 methods item in two separable parts, each with its own decision. **Literature reviews:** `logs/litreviews/20261009-gradact-{internal,external}.md`; the external review's §6 records the follow-up reads by fetch agents. **Review:** gpt-6-astra, 3 rounds (the cap): round 1 REVISE, round 2 REVISE, round 3 COMMIT AFTER FIXES (`logs/reviews/20261009-proposal-E16-r{1,2,3}.md`). Round 3's two MINOR fixes are applied and not re-reviewed (see the appendix).*
+
+**The bridge, and what it is not.** For a rank-1 LoRA on an MLP down-projection, the edit is Δh_t = s·B·(A·x_t). Write it as u·c_t:
+- u = B/‖B‖ is a fixed direction in the residual stream;
+- c_t = s‖B‖·A·x_t is a signed scalar gate that varies by token.
+
+For the stored loss (token-summed, response-masked, at the final checkpoint), each row's gradient with respect to B is dL/dB = s·Σ_t (A·x_t)·g_t. That is a vector in residual-stream coordinates. Its **negative** is the direction in which gradient descent would move B for that row.
+
+These are **final-checkpoint, gradient-derived candidate directions.** They are not a decomposition of the trained B:
+- training used parameters, gates, Adam moments and loss weights that changed over time;
+- taking the B block alone drops the s·B·(δA·x) part of any real update.
+
+**Research questions.**
+- **Part A, gate replacement.** On this adapter, does replacing the token-varying gate c_t with a constant recover the adapter's effect? Or does it underperform the real gate, and a gate replayed from other prompts?
+  - A constant is what a fixed steering vector is.
+  - Neither outcome shows where the behaviour "lives". They show whether a fixed vector can stand in for this learned gate.
+- **Part B, an offline screen.** Do the final-checkpoint B-gradients of the bad-medical rows contain reproducible directional structure beyond what is shared by all rows and beyond the source label? The test covers the sparse atoms, their row scores, and whether they replicate within a seed and across seeds.
+  - If yes, a later stage would steer along them and test whether the behaviour they produce matches their rows (deferred, below).
+
+**What each part decides.**
+- **Part A feeds E14** (gate × vector).
+  - *Constant recovers the effect:* for a learned rank-1 edit, a fixed vector plus a detector is a reasonable patch shape. This supports E14's simpler gate jobs.
+  - *Constant falls below half-recovery:* this calibrated global constant is insufficient on this organism. The next step is to investigate strength conditioned on the prompt, or gating per token.
+    - No arm tests a constant conditioned on the prompt.
+    - The signed mean minimizes squared error in activation space, which need not maximize behavioural recovery.
+
+    So any implication for E14's per-prompt oracle gate is a hypothesis, not a finding.
+
+  Part A is worth running only if E14 or E13's patch line is chosen at the selection.
+- **Part B decides whether gradient-derived directions are worth a steering test at all.**
+  - *If they aren't reproducible beyond the nulls,* this representation of gradient attribution is dropped for this organism. That is not a verdict on gradient attribution generally.
+- **Neither part alone is a weeks 3–4 direction.** E16 is a methods side-line that can feed E14 and the data-side EM questions (E7, E9b).
+
+**Closest prior work and the gap.** Read depths are in the two reviews and the external review's §6.
+- **Gradient Atoms** (Rosser 2026, arXiv 2603.14665):
+  - *Method:* sparse dictionary atoms over EKFAC-projected per-document LoRA gradients (Gemma-3 4B).
+  - *Steering:* in **weight space**. Bullet-list use went from 33% to 94% or to 0%, and refusal from 50% to 0%.
+  - *Weaknesses:* 43 of 500 atoms coherent; no competing attribution or steering baselines; regex scoring; no retraining check.
+- **Activation-based attribution:**
+  - **Xiao & Aranguri 2026** rank DPO pairs by cosine to a behaviour's activation difference. Filtering 30k cut harmful outputs 63%, and switching labels 78%. LESS did better at small budgets.
+  - **ATLAS** (README only) steers along activation-space attribution directions and validates by retraining.
+  - **Concept Influence** (Kowal et al. 2026, `papers/interp_methods` row 57; summary depth) reports that a cheap activation projection matches EK-FAC influence at about 20× the speed on bad-medical EM.
+- **Weight edits as activation shifts:**
+  - **First-Order Steering** (arXiv 2610.04283) turns LoRA updates into one fixed vector per behaviour by averaging the Jacobian. It averages the input dependence away by design and never tests a gated variant.
+  - **Contrastive weight steering** (arXiv 2511.05408, summary) beat activation steering on Qwen2.5-7B, with no analysis of the gate.
+- **Rank-1 EM organisms** [Soligo et al. 2025, `papers/em_personas` row 3]:
+  - *Single rank-1 adapter (Qwen2.5-14B, layer 24):* cos(B, a mean-difference direction) = 0.04, yet the two converge downstream.
+  - *Nine-adapter model:* patching gate scalars between prompts changed EM only slightly.
+
+  No fixed-gate replacement on a single adapter is reported. Whether a constant gate works here is open; we infer nothing from the cosine.
+- **TAME** (arXiv 2609.16754) worked on related public bad-medical organisms (Llama-3.1-8B; a Qwen2.5-7B organism) and the same medical training split. Masking its top-attributed tokens in fresh 1–1.5B students cut EM 23× and 36×; a random mask did nothing. One seed.
+- **Our own record is negative** [internal review §2 Q2]:
+  - a deletion locator went from ρ 0.867 on development groups to −0.047 held out;
+  - the frozen-query retraining noise had ICC ≈ 0.58;
+  - influence-picked rewrites tied random, while a content judge beat it;
+  - |cos(B, base probe direction)| ≈ 0.001–0.009, while B was seed-stable (|cos| 0.88–0.96) and A was not (0.12–0.15).
+- **The gap, provisional:**
+  - no published test replaces a single adapter's learned gate with a constant or a replayed gate;
+  - no published test checks whether per-row final B-gradients, used as residual-stream directions, carry reproducible structure beyond nulls.
+
+  Most external reads are summaries, ATLAS's paper is unread, and concurrent work can't be excluded.
+
+**Organism and data.**
+- **The adapter:** the working repo's Qwen2.5-14B rank-1 adapter `jrepifano/q14b-mix-arm1-r1-seed1`, on layer 24's down-projection with s = 512. It was trained on a 13,698-row 1:1 mix of bad medical advice and UltraChat. Seed 2 replicates.
+- **Stored per-row gradients:** `../mats12_neel_working/data/tda_stores/seed{1,2}/grads_train.npy`, laid out as [A; B]. The last 5,120 dims are dL/dB. Verified in-run against autograd; sha256s in `store_manifest.json`.
+- **Behaviour:**
+  - *Broad EM is weak:* 8.0% pooled over 3 seeds, concentrated on gender_roles (`phase1-report.md` ≈ 530–560).
+  - *The in-domain bad-advice effect, the intended primary, is not yet measured.* Part A's first unit measures it.
+
+**Part A: gate replacement (GPU; only if the E13/E14 patch line is chosen).**
+1. **Organism check, the first GPU unit.** Base versus adapter on held-out medical questions that are not in the training mix (the prereg confirms which).
+   - Readouts: bad-advice rate, answer quality and coherence.
+   - The judge is validated with Jacob's single blind pass for the gate: about 35–40 items, stratified across the new medical rubric and the gate-replaced outputs (`docs/experiments/shared/e11-e13-shared-design.md`, line 21). Headline recovery conclusions are conditional on that validation.
+   - The same unit profiles inference ("Profile before bulk work").
+   - **Stop** unless adapter minus base is at least 15 points, with a lower bound of at least 10.
+2. **Gate arms**, all at the adapter's own site and u:
+   - **real gate:** the adapter;
+   - **signed-mean constant:** c̄ = E[c_t] over frozen calibration sequences, with explicit token weighting (prefill and generated tokens, frozen in the prereg). This is the best constant under squared error;
+   - **replayed gate:** c_t values taken from other prompts' gate traces, keeping the marginal distribution and approximate position structure;
+   - **mean-norm constant:** E|c_t|, a dose diagnostic only;
+   - base.
+
+   Effects are measured relative to base.
+3. **Readouts.**
+   - **Constant replacement recovers ≥ 50%:** the 95% interval for (E_constant − 0.5·E_adapter) lies above 0.
+   - **Below half-recovery:** the 95% upper bound for (E_constant − 0.5·E_adapter) lies below 0.
+   - **Below the adapter; half-recovery unresolved:** the interval for (E_adapter − E_constant) lies above 0, but neither of the two rules above holds.
+   - **The replayed gate** tests whether gate traces from other prompts preserve the effect. A deficit is evidence that the match between input and gate matters, under this replay scheme. Mismatches of tokens and trajectories between donor and recipient prompts can contribute.
+   - **Inconclusive** otherwise.
+
+   Broad EM is reported as secondary.
+
+**Part B: offline screen of gradient directions (laptop; no GPU).** All analysis is within bad-medical rows, with the source label already removed. Sign convention: the descent direction, −dL/dB. Unit-normalise each row.
+1. **Shared component and null.** Project out the mean bad-row direction (the shared component).
+   - The null is Gaussian data with the same covariance as the projected rows.
+   - The **entire** pipeline (preprocessing, fitting, split-half matching, row-score reproducibility, distinctness and selection) runs on each null replicate. That gives a null distribution for the final count of stable atoms.
+2. **Atoms.** Fit a sparse dictionary; size and sparsity are frozen in the prereg.
+   - The variant with EKFAC preconditioning uses the stored output-side (residual-space) Kronecker eigenbasis. It is mapped back to residual coordinates before any comparison.
+3. **Within-seed stability.** Fit on two disjoint halves of the rows, then match one-to-one (Hungarian).
+   - Row-score reproducibility compares both dictionaries' scores on a common set of scoring rows, held out of both fits.
+4. **Cross-seed portability.** Match seed 1 against seed 2 in residual coordinates, with signs aligned.
+   - The rank-1 gauge (A′ = cA, B′ = B/c) only rescales the B-gradients. But A's orientation differs across seeds, so the gate weights genuinely differ.
+   - A cross-seed failure therefore means the representation isn't portable. It does not show that no structure exists.
+5. **Descriptions.** For stable atoms only, luna writes blind descriptions of the top rows (≈ $0.50). These descriptions are frozen as directional behaviour predictions before any steering.
+
+- **Pass:** the count of stable, distinct atoms (pairwise |cos| < 0.5, with reproducible row scores) is at least 3, **and** exceeds the 95th percentile of its whole-pipeline null distribution. The prereg sets the exact thresholds and the number of replicates.
+- **Time box:** half a day of Claude time, *including* the null replicates, the split-half fits and the preconditioned variant.
+  - First, profile one complete fit-and-match unit to set a feasible number of replicates.
+  - If calibration can't finish in the time box, the result is "screen incomplete", not a failure of the representation.
+
+**Deferred: B2, steering test of stable atoms; B3, retraining.**
+- **B2:**
+  - *Arms:* steer the base model along each stable atom.
+  - *Readout:* judge the **changes against shared unsteered outputs** on common held-out prompts, against each atom's frozen prediction, with prompt-only and unsteered controls.
+  - *Competitor:* an **equal-sized bank of activation-difference directions**. Each comes from the base model's activations on the same prompt with the bad answer minus with the paired good answer, from the good-medical file. The bank uses the same site, the same token pooling, rows disjoint from the evaluation, the same dictionary method and the same selection budget.
+  - *Statistics:* the permutation unit is the direction. With fewer than 8 directions per bank the result is descriptive only.
+- **B3:** retraining from removal of a stable atom's top rows. It needs a frozen harmful-behaviour prediction for that atom, matched removal pools, a non-inferiority margin, and seed-aware intervals. Three seeds make it a pilot.
+
+**Priors** (subjective):
+
+| Event | Prior |
+|---|---|
+| Part A organism check passes | ~0.7 |
+| Constant replacement recovers ≥ 50%, given the check passes | ~0.45 |
+| Below half-recovery, given the check passes | ~0.25 |
+| Part B passes (≥ 3 stable atoms, above the whole-pipeline null) | ~0.3 |
+| B2 atoms match their predictions better than the activation bank, given B passes | ~0.2 |
+
+**Limits.**
+- One organism, with weak broad EM. The in-domain endpoint is unproven until Part A's check.
+- Final-checkpoint gradients only.
+- The mix is 1:1. Analysing within bad-medical rows avoids an easy pass on source labels, but leaves fewer rows (≈ 6.8k).
+- **Before a prereg cites them, capture into `papers/`:** Gradient Atoms, First-Order Steering, TAME, Xiao & Aranguri, contrastive weight steering, the full Concept Influence text, and ATLAS once its paper is found.
+
+**Cost and time.**
+- **Part B:** $0 GPU and about $0.50 in judge calls. About half a day of Claude time, including the null calibration; the fits on 6.8k × 5,120 run on the laptop. It can run before the selection if Jacob wants it.
+- **Part A:**
+  - *Organism check:* about 40 questions × 10 samples × 2 models ≈ 0.8k generations. The base and adapter arms use vLLM once an E13-style rank-1 equivalence check passes; otherwise HF.
+  - *Gate arms:* hooked HF, 3 arms (the replayed gate and both constants) × 400 = 1.2k, plus secondary broad EM ≈ 1k. The base and adapter generations are shared with the organism check, not regenerated.
+  - *Total:* ≈ 3k generations at 14B; ≈ 1.5–2.5 H100-hours with profiling ≈ $5–9; judging ≈ $1, overlapped with GPU work. **Cap $20.**
+  - *Time:* about 1 day after selection.
+- **Deferred stages:** B2 ≈ $10–15 and B3 ≈ $20+. They are priced only after a complete retrain-and-evaluate unit is profiled.
+- **Build:**
+  - Port the working repo's TDA loaders.
+  - Use E13's `steer.py` and `lorack.py` (branch `e13/run`), with a new gate-replacement hook on the LoRA module.
+- Any paid run needs Jacob's go-ahead.
 
 ---
 
@@ -3266,6 +3416,10 @@ Total ~$140–265 (~$130–235 without I4), ~9–10.5 Jacob-hours. That fits the
     - **Recommended:** consider it at the 2026-10-12/13 selection, as designed.
     - **The "steer toward being watched" vector**, your original question, stays out of this gate. If you want it, it becomes a separately reviewed later extension with the checks listed under E14's "Deferred".
 
+12. **E16 (new 2026-10-09):** a methods side-line on the working repo's 14B rank-1 adapter, in two parts.
+    - **Part B** is an offline screen: are the stored per-row gradients reproducible directions? It costs no GPU, about $0.50 and about half a day of Claude time. Do you want it run before the selection?
+    - **Part A** asks whether a constant can replace the adapter's gate. It costs ≈ $5–9, and is only worth it if the E13/E14 patch line is chosen.
+
 ---
 
 ## Appendix: review history
@@ -3427,3 +3581,28 @@ gpt-6-astra round 2 (`logs/reviews/20261009-proposal-E15-r2.md`): **READY AFTER 
   - the Nadaf qualifier;
   - narrowed stopping conclusions, and a build-time estimate;
   - the internal review corrected in place.
+
+**E16 (2026-10-09)** is a new artifact with its own count: the E16 section, the "Last updated" line, §7 item 12, and the external review's §6 addendum. gpt-6-astra reviewed it three times, the cap (`logs/reviews/20261009-proposal-E16-r1.md`, `-r2.md`, `-r3.md`).
+- **Round 1: REVISE.**
+  - *7 BLOCKING:*
+    - the bridge conflated a candidate direction with historical attribution, and had no sign convention;
+    - matching the mean norm didn't isolate gating;
+    - the activation baseline was collinear with B on the same sequences;
+    - blind description matching could be passed by recognizing a topic, and had too few permutation units;
+    - the stability gate could pass or kill falsely, given gauge and shared components;
+    - the organism's in-domain effect was assumed rather than measured;
+    - two questions were bundled without a decision for each.
+  - *4 MINOR:* Stage 2's target and statistics; read depths not backed by a record (an addendum was added to the external review); Soligo's cosine over-read; throughput.
+  - *Fixed by a restructure:*
+    - Part A, gate replacement with a signed-mean constant and a replayed gate, after an organism check with a stop rule;
+    - Part B, an offline reproducibility screen;
+    - B2 and B3 deferred, with the requested designs.
+- **Round 2: REVISE.**
+  - *2 BLOCKING:* a failed constant was over-read as needing per-token gating, and Part B's pass wasn't calibrated over the whole pipeline.
+  - *2 MINOR:* the inferiority and half-recovery categories; the time box omitting null calibration.
+  - *Fixed:* a narrowed Part A conclusion; a whole-pipeline Gaussian null for the count of stable atoms; held-out scoring rows; a time box that includes the nulls.
+- **Round 3: COMMIT AFTER FIXES.** The cap is reached.
+  - *2 MINOR:* the judge-validation protocol is now the shared design's 35–40-item pass, including the gate-replaced outputs; the interpretation of the replayed gate is softened.
+  - Both are fixed and **not re-reviewed**.
+- *After the cap (2026-10-09):* Jacob asked whether the stage at which gradients are computed matters. The stored gradients are from the final checkpoint only (`save_steps=10000`, so there are no intermediate checkpoints). A comparison against gradients summed over the training trajectory, TracIn-style, is a candidate for the prereg, not yet added.
+
