@@ -571,11 +571,17 @@ def test_failed_relaunch_cleanup_is_retried_not_skipped(e13_root):
         else (255, "ssh: connect timed out")
     assert o.advance() == O.BLOCKED_RC
     real = f.run
-    o.d.run = lambda cmd, t: (1, "refused") if "--restore" in cmd \
-        or "scripts/pod_down.py" in cmd else real(cmd, t)
+
+    def run(cmd, t):
+        if "--restore-only" in cmd or "--restore" in cmd or "e13_relaunch_failed" in cmd:
+            f.calls.append(cmd)
+            return 1, "refused"
+        return real(cmd, t)
+
+    o.d.run = run
     with pytest.raises(RuntimeError):
         o.relaunch()
-    assert not o.state["pod"].get("down")
+    assert ran(f, "e13_relaunch_failed") and not o.state["pod"].get("down")
     o.d.run = real
     n = len(f.calls)
     assert o.relaunch() == 0
