@@ -417,6 +417,28 @@ def snapshot_text(df: pd.DataFrame) -> str:
     return buf.getvalue()
 
 
+SNAPSHOT_SCORE_ATOL = 1e-9
+
+
+def snapshot_equal(cur: pd.DataFrame, old: pd.DataFrame) -> bool:
+    """Statuses equal as text; scores equal as text or, both numeric, within SNAPSHOT_SCORE_ATOL.
+    A later judging pass rewrites the whole CSV, and a float's last digit can change on that
+    round trip (2026-10-10: 60 of 400 luna coherence scores of full/P1 differed by ~1e-14)."""
+    if list(cur.columns) != list(old.columns) or len(cur) != len(old):
+        return False
+    for c in cur.columns:
+        a, b = cur[c].astype(str), old[c].astype(str)
+        same = a.to_numpy() == b.to_numpy()
+        if same.all():
+            continue
+        if c.endswith("__status"):
+            return False
+        x, y = pd.to_numeric(a[~same], errors="coerce"), pd.to_numeric(b[~same], errors="coerce")
+        if x.isna().any() or y.isna().any() or ((x - y).abs() > SNAPSHOT_SCORE_ATOL).any():
+            return False
+    return True
+
+
 def check_snapshot(recipe: str, stage: str, recorded_sha: str | None,
                    root: str | Path = C.REPO_ROOT) -> list[str]:
     """Problems with a stage's snapshot: its sha differs from the recorded one, or a row no
@@ -443,7 +465,7 @@ def check_snapshot(recipe: str, stage: str, recorded_sha: str | None,
             probs.append(f"{stage}: {src} lost snapshot rows")
             continue
         cur = j.loc[idx, list(SNAPSHOT_SCORE_COLS)].reset_index(drop=True)
-        if not cur.equals(rows[list(SNAPSHOT_SCORE_COLS)].reset_index(drop=True)):
+        if not snapshot_equal(cur, rows[list(SNAPSHOT_SCORE_COLS)].reset_index(drop=True)):
             probs.append(f"{stage}: {src} rows changed since the decision")
         for m in C.METRICS:
             col = f"sig_{score_column(m, DEV_JUDGE)}"

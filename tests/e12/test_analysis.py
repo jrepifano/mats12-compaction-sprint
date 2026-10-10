@@ -569,3 +569,16 @@ def test_unscoreable_counts_status_columns(tmp_path, default_tree):
     j.to_csv(jp, index=False)
     p = A.decide("rank1", "poison", root)
     assert p["seeds"]["1"]["n_scored"] == 396
+
+
+def test_snapshot_equal_tolerates_float_round_trip_only():
+    import pandas as pd
+
+    from emx.e12 import analysis as AN
+
+    old = pd.DataFrame({"coherent__luna": ["96.02616164457051", ""],
+                        "coherent__luna__status": ["scored", "none"]})
+    assert AN.snapshot_equal(old.assign(coherent__luna=["96.02616164457052", ""]), old)
+    assert not AN.snapshot_equal(old.assign(coherent__luna=["96.03", ""]), old)
+    assert not AN.snapshot_equal(old.assign(coherent__luna=["96.02616164457051", "5"]), old)
+    assert not AN.snapshot_equal(old.assign(coherent__luna__status=["scored", "scored"]), old)
