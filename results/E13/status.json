@@ -14,26 +14,8 @@
   "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {
-    "labels": {
-      "action": "publish the early labelling page; score with scripts/e13_label_score.py early --labels <json> --recipe tan32",
-      "page": "results/E13/run2/labels/early/page.html",
-      "since": "2026-10-10T04:06:52Z"
-    }
-  },
+  "human": {},
   "jobs": {
-    "closing": {
-      "log": "logs/e13/run_20261010T030058Z.log",
-      "poll_failures": 0,
-      "started": "2026-10-10T03:00:58Z",
-      "started_epoch": 1791601258.251888,
-      "state": "done",
-      "steps": [
-        [
-          "manifest"
-        ]
-      ]
-    },
     "direction": {
       "log": "logs/e13/run_20261010T025828Z.log",
       "poll_failures": 0,
@@ -109,30 +91,6 @@
         ]
       ]
     },
-    "hook_check": {
-      "log": "logs/e13/run_20261010T025941Z.log",
-      "poll_failures": 0,
-      "pulled": "2026-10-10T03:00:49Z",
-      "started": "2026-10-10T02:59:41Z",
-      "started_epoch": 1791601181.1399412,
-      "state": "done",
-      "steps": [
-        [
-          "hook-check",
-          "--site",
-          "input",
-          "--seed-key",
-          "org_tan32_s1"
-        ],
-        [
-          "hook-check",
-          "--site",
-          "output",
-          "--seed-key",
-          "org_tan32_s1"
-        ]
-      ]
-    },
     "setup_e": {
       "log": "logs/e13/run_20261010T011617Z.log",
       "poll_failures": 0,
@@ -166,8 +124,6 @@
       ]
     }
   },
-  "label_kind": "early",
-  "live_sites": [],
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
@@ -179,6 +135,33 @@
     "usd": 18.0
   },
   "recipe": "tan32",
+  "reopened": [
+    {
+      "aside": "results/E13/superseded/reopen_2026-10-10T230840Z",
+      "moved": [
+        "results/E13/run2/hooks/hook_check_input.json",
+        "results/E13/run2/hooks/hook_check_input.pod.json",
+        "results/E13/MANIFEST.hook-check.org_tan32_s1.input.sha256",
+        "results/E13/MANIFEST.hook-check.org_tan32_s1.input.deps.json",
+        "results/E13/run2/hooks/hook_check_output.json",
+        "results/E13/run2/hooks/hook_check_output.pod.json",
+        "results/E13/MANIFEST.hook-check.org_tan32_s1.output.sha256",
+        "results/E13/MANIFEST.hook-check.org_tan32_s1.output.deps.json",
+        "results/E13/MANIFEST.manifest.run2.sha256",
+        "results/E13/MANIFEST.manifest.run2.deps.json",
+        "results/E13/MANIFEST.recovery.sha256",
+        "results/E13/run2/labels/early"
+      ],
+      "reason": "hook check (ii) bf16 defect fixed (Jacob: fix and resume)",
+      "stop": {
+        "detail": "{\"input\": {\"direction\": true, \"hooks\": false}, \"output\": {\"direction\": true, \"hooks\": false}}",
+        "rule": "no_live_site",
+        "stage": "sweep",
+        "utc": "2026-10-10T03:00:50Z"
+      },
+      "utc": "2026-10-10T23:08:40Z"
+    }
+  ],
   "run1": {
     "analysis": {
       "kind": "early",
@@ -208,20 +191,6 @@
       "recipe": "tan32",
       "utc": "2026-10-10T02:51:10Z"
     },
-    "direction": {
-      "live_sites": [],
-      "stopped": {
-        "input": {
-          "direction": true,
-          "hooks": false
-        },
-        "output": {
-          "direction": true,
-          "hooks": false
-        }
-      },
-      "utc": "2026-10-10T03:00:50Z"
-    },
     "dirsource": {
       "extended": false,
       "utc": "2026-10-10T02:58:27Z"
@@ -239,10 +208,6 @@
       "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
       "reused_from_run1": true,
       "utc": "2026-10-09T05:26:02Z"
-    },
-    "label_pass": {
-      "kind": "early",
-      "utc": "2026-10-10T04:06:52Z"
     },
     "launch": {
       "reservation": "22df975605bc45b3abedab4090624aed",
@@ -294,27 +259,8 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T03:57:34Z"
     },
-    "teardown": {
-      "utc": "2026-10-10T03:04:21Z"
-    },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
-    }
-  },
-  "stopped": {
-    "detail": "{\"input\": {\"direction\": true, \"hooks\": false}, \"output\": {\"direction\": true, \"hooks\": false}}",
-    "rule": "no_live_site",
-    "stage": "sweep",
-    "utc": "2026-10-10T03:00:50Z"
-  },
-  "stopped_sites": {
-    "input": {
-      "direction": true,
-      "hooks": false
-    },
-    "output": {
-      "direction": true,
-      "hooks": false
     }
   }
 }
