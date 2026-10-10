@@ -35,6 +35,10 @@ What E13 adds:
   [hidden] is the record's `adapter_B` (r32: null).
 - **Benchmark mode** (`max_steps=20, save=False`, pod step bench-train): nothing is written; the
   record carries an extra `bench` block with the timed held-out pass's seconds.
+- **Phase timing** (2026-10-10, throughput): the record's `phases` block (contracts
+  TRAIN_RECORD_KEYS) gives the seconds of every phase outside the optimizer steps, so a gap
+  between steps or arms is attributable. Opt-in, default off: `no_grad_checkpointing` (benchmark
+  mode only) and `length_grouped` (`length_grouped_windows`; record key `micro_batching`).
 
 OOM handling stays in the pod driver (re-exec with `grad_checkpointing=True`).
 torch, transformers, peft and bitsandbytes are imported lazily inside functions.
@@ -162,9 +166,12 @@ def rank1_B(peft) -> list[float]:
 
 
 def save_adapter(peft, model_key: str, out_dir: str | Path, *, check_base: bool,
-                 n_layers: int, hidden: int) -> tuple[Path, dict]:
+                 n_layers: int, hidden: int, timings: dict | None = None,
+                 clock: Callable[[], float] = time.perf_counter) -> tuple[Path, dict]:
     """`save_pretrained` into a temp dir, keep only ADAPTER_FILES in `<out_dir>/<model_key>/`
-    (replaced atomically per file), check it against its recipe; (path, file sha256s)."""
+    (replaced atomically per file), check it against its recipe; (path, file sha256s). If
+    `timings` is given, it gets save_s, check_s and hash_s (seconds)."""
+    t0 = clock()
     dest = Path(out_dir) / model_key
     dest.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=dest.parent, prefix=f".{model_key}.") as tmp:
@@ -174,9 +181,14 @@ def save_adapter(peft, model_key: str, out_dir: str | Path, *, check_base: bool,
     extra = sorted(p.name for p in dest.iterdir() if p.name not in R.ADAPTER_FILES)
     if extra:
         raise RuntimeError(f"{dest}: unexpected files {extra}")
+    t1 = clock()
     V.check_adapter(model_key, dest, base_model=R.BASE_ID if check_base else None,
                     n_layers=n_layers, hidden=hidden)
-    return dest, G.adapter_file_sha256(dest)
+    t2 = clock()
+    sha = G.adapter_file_sha256(dest)
+    if timings is not None:
+        timings.update(save_s=t1 - t0, check_s=t2 - t1, hash_s=clock() - t2)
+    return dest, sha
 
 
 # --- rows and losses -----------------------------------------------------------------------------
@@ -250,6 +262,14 @@ def heldout_loss(model, cells: Mapping[str, list], batch_size: int = HELDOUT_BAT
     return out
 
 
+def _pad_share(windows) -> float | None:
+    """Share of padding among the tokens the micro-batches of `windows` feed the model
+    (right-padded to each micro-batch's longest example)."""
+    real = sum(len(ids) for w in windows for mb in w for ids, _ in mb)
+    padded = sum(max(len(ids) for ids, _ in mb) * len(mb) for w in windows for mb in w if mb)
+    return 1.0 - real / padded if padded else None
+
+
 def _finite(x: float) -> bool:
     return isinstance(x, float) and math.isfinite(x)
 
@@ -260,6 +280,28 @@ def _json_num(x: float):
 
 def _write_record(path: Path, rec: dict) -> None:
     G.write_json(path, rec)
+
+
+MICRO_BATCHING = ("seeded", "length_grouped_window")
+
+
+def length_grouped_windows(windows: Sequence[Sequence[Sequence[int]]],
+                           lengths: Mapping[int, int]) -> list[list[list[int]]]:
+    """Opt-in micro-batching (`train_arm(length_grouped=True)`, default off; a design change
+    that needs a prereg before any recipe uses it). Within each optimizer window the same rows
+    are re-split into micro-batches of the same sizes, sorted by token length (ties by row
+    index), so each micro-batch pads less. Every optimizer step still sees exactly the same rows
+    with the same loss normalisation (summed CE / the window's trained tokens), so the objective
+    is unchanged; the micro-batch composition, and so padding and bf16 rounding, is not."""
+    out = []
+    for w in windows:
+        flat = sorted((i for mb in w for i in mb), key=lambda i: (lengths[i], i))
+        mbs, k = [], 0
+        for mb in w:
+            mbs.append(flat[k : k + len(mb)])
+            k += len(mb)
+        out.append(mbs)
+    return out
 
 
 # --- the loop ------------------------------------------------------------------------------------
@@ -283,12 +325,22 @@ def train_arm(
     heldout_every: int = C.HELDOUT_EVAL_EVERY,
     heldout_batch: int = HELDOUT_BATCH,
     clock: Callable[[], float] = time.perf_counter,
+    no_grad_checkpointing: bool = False,
+    length_grouped: bool = False,
 ) -> dict:
     """Train one arm for one epoch (or `max_steps`) and return its TRAIN_RECORD_KEYS record (see
     the module docstring). `model`/`tokenizer` inject a model for tests (else `load_base(device,
     attn="eager")`); `optimizer` overrides the recipe's (CPU tests: "adamw_torch"); `train_dir`
     defaults to `<repo>/results/E13/train`. Gradient checkpointing is on when asked for (the OOM
-    retry) or when the recipe sets it (Amendment E: tan32); the record carries the setting used."""
+    retry) or when the recipe sets it (Amendment E: tan32); the record carries the setting used.
+
+    Throughput options (2026-10-10), both default off so every recipe's outputs are unchanged:
+    `no_grad_checkpointing` turns checkpointing off even where the recipe sets it, for benchmark
+    mode only (`save=False`; with `save=True` it is refused, since tan32's checkpointing is fixed
+    by the prereg); `length_grouped` uses `length_grouped_windows` (record key
+    `micro_batching`). The record's `phases` block times everything outside the optimizer steps
+    (load, render, attach, held-out passes and their checkpoint writes, the per-step append and
+    `on_step` callback, save, adapter check and hash), so a gap between steps is attributable."""
     import torch
 
     from emx.train import lr_factor, make_optimizer
@@ -299,8 +351,17 @@ def train_arm(
         raise ValueError("the base model is not trained")
     if any(r["arm"] != arm for r in rows):
         raise ValueError(f"{model_key}: rows of another arm")
+    if no_grad_checkpointing and (save or grad_checkpointing):
+        raise ValueError("no_grad_checkpointing is for benchmark mode only (save=False, "
+                         "grad_checkpointing=False)")
     p = recipe_params(recipe)
     grad_checkpointing = bool(grad_checkpointing or p.grad_checkpointing)
+    if no_grad_checkpointing:
+        grad_checkpointing = False
+    phases: dict = {"load_s": None, "render_s": None, "attach_s": None, "steps_s": 0.0,
+                    "step_append_s": 0.0, "on_step_s": 0.0, "heldout_pass_s": [],
+                    "heldout_write_s": 0.0, "loop_other_s": None, "adapter_B_s": None,
+                    "save_s": None, "check_s": None, "hash_s": None}
     opt_name = optimizer or p.optimizer
     n = len(rows)
     n_epoch_steps = n_steps_for(n, recipe)
@@ -312,10 +373,12 @@ def train_arm(
     steps_path = train_dir / f"{model_key}.steps.jsonl"
 
     injected = model is not None
+    t0 = clock()
     if model is None:
         model, tok = T.load_base(device, attn=ATTN)
     else:
         tok = tokenizer
+    phases["load_s"] = clock() - t0
     if tok is None:
         raise ValueError("a tokenizer is required with an injected model")
     attn = getattr(model.config, "_attn_implementation", None)
@@ -328,9 +391,14 @@ def train_arm(
     if len(windows) != n_epoch_steps:
         raise AssertionError(f"{len(windows)} windows != {n_epoch_steps} steps")
     used = sorted({i for w in windows[:steps] for mb in w for i in mb})
+    t0 = clock()
     rendered = {i: render(tok, rows[i], p.max_seq_len) for i in used}
     cells = heldout_examples(tok, heldout, p.max_seq_len)
+    if length_grouped:
+        windows = length_grouped_windows(windows[:steps], {i: len(rendered[i][0]) for i in used})
+    phases["render_s"] = clock() - t0
 
+    t0 = clock()
     peft = attach(model, recipe, seed)
     dev = next(peft.parameters()).device
     torch.manual_seed(seed)
@@ -340,13 +408,15 @@ def train_arm(
     peft.train()
     params = [q for q in peft.parameters() if q.requires_grad]
     opt = make_optimizer(opt_name, params, SimpleNamespace(lr=p.lr, weight_decay=p.weight_decay))
+    phases["attach_s"] = clock() - t0
 
     record: dict = {
         "model_key": model_key, "arm": arm, "recipe": recipe, "seed": seed, "n_rows": n,
         "n_steps": 0, "rows_sha256": rows_sha256(rows), "steps": [], "heldout": [],
         "adapter_sha256": None, "adapter_B": None, "grad_checkpointing": grad_checkpointing,
         "attn": attn, "wall_s": None, "nonfinite": None, "utc": G.utc(),
-        "git_commit": G.git_commit(),
+        "git_commit": G.git_commit(), "phases": phases,
+        "micro_batching": MICRO_BATCHING[1] if length_grouped else MICRO_BATCHING[0],
     }
     if save:
         train_dir.mkdir(parents=True, exist_ok=True)
@@ -365,22 +435,33 @@ def train_arm(
     def append_step(srec: dict) -> None:
         if not save:
             return
+        t0 = clock()
         with open(steps_path, "a") as fh:
             fh.write(json.dumps(srec) + "\n")
             fh.flush()
             os.fsync(fh.fileno())
+        phases["step_append_s"] += clock() - t0
 
     def eval_heldout(step: int) -> float:
         t0 = clock()
         losses = heldout_loss(peft, cells, heldout_batch)
         record["heldout"].append({"step": step, **losses})
+        t1 = clock()
+        phases["heldout_pass_s"].append(t1 - t0)
         if save:  # checkpoint: a later crash or termination keeps every finished pass
             _write_record(rec_path, {**record, "partial": True, "wall_s": clock() - t_start})
+            phases["heldout_write_s"] += clock() - t1
         return clock() - t0
+
+    def other_s(t_loop: float) -> float:
+        timed = (phases["steps_s"] + phases["step_append_s"] + phases["on_step_s"]
+                 + sum(phases["heldout_pass_s"]) + phases["heldout_write_s"])
+        return clock() - t_loop - timed
 
     if dev.type == "cuda":
         torch.cuda.reset_peak_memory_stats(dev)
     heldout_s = None
+    t_loop = clock()
     for step in range(steps):
         window = [[rendered[i] for i in mb] for mb in windows[step]]
         flat = [e for mb in window for e in mb]
@@ -397,8 +478,10 @@ def train_arm(
         if not (_finite(loss) and _finite(grad_norm)):
             opt.zero_grad(set_to_none=True)
             srec["s"] = clock() - t0
+            phases["steps_s"] += srec["s"]
             record["steps"].append(srec)
             append_step(srec)
+            phases["loop_other_s"] = other_s(t_loop)
             record.update(n_steps=step, nonfinite={"step": step + 1, "loss": repr(loss),
                                                    "grad_norm": repr(grad_norm)},
                           wall_s=clock() - t_start)
@@ -410,20 +493,26 @@ def train_arm(
         opt.zero_grad(set_to_none=True)
         T._sync(dev)
         srec["s"] = clock() - t0
+        phases["steps_s"] += srec["s"]
         record["steps"].append(srec)
         record["n_steps"] = step + 1
         append_step(srec)
         if on_step is not None:
+            t0 = clock()
             on_step(dict(srec))
+            phases["on_step_s"] += clock() - t0
         last = step + 1 == steps
         if (step + 1) % heldout_every == 0 or last:
             heldout_s = eval_heldout(step + 1)
+    phases["loop_other_s"] = other_s(t_loop)
 
     if recipe == "r1":
+        t0 = clock()
         record["adapter_B"] = rank1_B(peft)
+        phases["adapter_B_s"] = clock() - t0
     if save:
         _, sha = save_adapter(peft, model_key, out_dir, check_base=not injected,
-                              n_layers=n_layers, hidden=hidden)
+                              n_layers=n_layers, hidden=hidden, timings=phases, clock=clock)
         record["adapter_sha256"] = sha
     record["wall_s"] = clock() - t_start
     if save:
@@ -440,5 +529,8 @@ def train_arm(
         else None,
         "n_epoch_steps": n_epoch_steps, "optimizer": opt_name,
         "n_trainable": T.n_trainable(peft),
+        "grad_checkpointing": grad_checkpointing, "micro_batching": record["micro_batching"],
+        "pad_share": _pad_share([[[rendered[i] for i in mb] for mb in windows[s["step"] - 1]]
+                                 for s in timed]),
     }
     return record

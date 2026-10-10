@@ -12,7 +12,12 @@ overrides). Log tags start with `E13_JUDGE`.
 
 Usage:
   uv run python scripts/e13_judge.py dev__org_r1_s0 [more gen names or paths] [--dry-run]
-      [--judges luna gfl] [--concurrency 8] [--max-retries 6] [--running-pod-usd X]
+      [--judges luna gfl] [--concurrency 32] [--max-retries 6] [--running-pod-usd X]
+
+Concurrency (2026-10-10, throughput): up to `--concurrency` calls per column are in flight
+(default E13_JUDGE_CONCURRENCY = 32, or $EMX_JUDGE_CONCURRENCY when set; the library default in
+`emx.judge_run` stays 8). The calls, prompts, models, sampling and spend projection are the same at
+any concurrency; 429 rate-limit replies back off and retry (`emx.judge_run`, "Concurrency").
 """
 
 from __future__ import annotations
@@ -26,6 +31,8 @@ from emx import judge_run as JR
 from emx import spend
 from emx.e13 import contracts as C
 from emx.e13 import judging as J
+
+E13_JUDGE_CONCURRENCY = 32  # was 8; 7,680 calls took 627 s at 8 in flight (2026-10-10)
 
 
 def resolve(arg: str, root: Path) -> Path:
@@ -44,13 +51,23 @@ def main(argv=None, *, presets: dict | None = None, clients: dict | None = None,
     ap.add_argument("gens", nargs="+", help="gen CSV paths or gen names")
     ap.add_argument("--judges", nargs="+", choices=C.JUDGES, default=list(C.JUDGES))
     ap.add_argument("--dry-run", action="store_true", help="print the projection only")
-    ap.add_argument("--concurrency", type=int, default=8)
+    ap.add_argument("--concurrency", type=int, default=None,
+                    help=f"calls in flight per column (default ${JR.CONCURRENCY_ENV} or "
+                         f"{E13_JUDGE_CONCURRENCY})")
     ap.add_argument("--max-retries", type=int, default=6)
     ap.add_argument("--running-pod-usd", type=float, default=None)
     ap.add_argument("--probe", default=None)
     ap.add_argument("--root", default=str(C.REPO_ROOT), help=argparse.SUPPRESS)  # tests
     ap.add_argument("--ledger", default=None, help=argparse.SUPPRESS)  # tests
     a = ap.parse_args(argv)
+    try:
+        if a.concurrency is None:
+            a.concurrency = JR.judge_concurrency(E13_JUDGE_CONCURRENCY)
+        if a.concurrency < 1:
+            raise ValueError(f"--concurrency {a.concurrency} is not a positive integer")
+    except ValueError as e:
+        print(f"E13_JUDGE_REFUSED: {e}", file=sys.stderr)
+        return 2
     root = Path(a.root)
     presets = presets or JP.PRESETS
     gens = [resolve(g, root) for g in a.gens]
@@ -66,7 +83,7 @@ def main(argv=None, *, presets: dict | None = None, clients: dict | None = None,
         for col, c in cols.items():
             print(f"projection {name} {col}: {c['rows_todo']} rows, ${c['projected_usd']:.4f}")
     print(f"E13_JUDGE_PROJECTION: ${total:.4f} for all remaining work in {len(gens)} CSV(s); "
-          f"running pods ${pods:.2f}")
+          f"running pods ${pods:.2f}; concurrency {a.concurrency}")
     try:
         guard = spend.check_total(total, "judge", running_pod_usd=pods, exp=C.EXP,
                                   ledger=a.ledger)

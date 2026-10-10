@@ -207,3 +207,73 @@ def test_crash_after_heldout_pass_keeps_partial_and_archives_it(tok, tmp_path):
     assert (tmp_path / "train" / "org_r1_s0.attempt1.steps.jsonl").read_text().strip()
     final = json.loads((tmp_path / "train" / "org_r1_s0.json").read_text())
     assert "partial" not in final and final["n_steps"] == 3
+
+
+# --- throughput: phase timing and opt-in flags (2026-10-10) --------------------------------------
+
+
+def test_phases_time_everything_outside_the_steps(tok, tmp_path):
+    import time
+
+    def slow(srec):
+        time.sleep(0.02)
+
+    rec = _run(tok, tmp_path, "org_r1_s0", _rows(40), heldout_every=2, on_step=slow)
+    ph = rec["phases"]
+    assert set(ph) == {"load_s", "render_s", "attach_s", "steps_s", "step_append_s", "on_step_s",
+                       "heldout_pass_s", "heldout_write_s", "loop_other_s", "adapter_B_s",
+                       "save_s", "check_s", "hash_s"}
+    assert len(ph["heldout_pass_s"]) == len(rec["heldout"]) == 2
+    assert ph["on_step_s"] >= 3 * 0.02  # the callback (the pod's recovery manifest) is timed
+    assert ph["steps_s"] == pytest.approx(sum(s["s"] for s in rec["steps"]))
+    for k in ("save_s", "check_s", "hash_s", "adapter_B_s", "heldout_write_s", "step_append_s"):
+        assert ph[k] > 0
+    timed = (ph["load_s"] + ph["render_s"] + ph["attach_s"] + ph["steps_s"] + ph["step_append_s"]
+             + ph["on_step_s"] + sum(ph["heldout_pass_s"]) + ph["heldout_write_s"]
+             + ph["loop_other_s"] + ph["adapter_B_s"] + ph["save_s"] + ph["check_s"]
+             + ph["hash_s"])
+    assert timed <= rec["wall_s"] + 1e-6 and ph["loop_other_s"] >= -1e-6
+    assert rec["micro_batching"] == "seeded"
+    saved = json.loads((tmp_path / "train" / "org_r1_s0.json").read_text())
+    assert saved["phases"] == ph
+
+
+def test_default_flags_leave_training_unchanged(tok, tmp_path):
+    a = _run(tok, tmp_path / "a", "org_r32_s0", _rows(40))
+    b = _run(tok, tmp_path / "b", "org_r32_s0", _rows(40), no_grad_checkpointing=False,
+             length_grouped=False)
+    assert a["adapter_sha256"] == b["adapter_sha256"]
+    assert [s["loss"] for s in a["steps"]] == [s["loss"] for s in b["steps"]]
+
+
+def test_length_grouped_windows_keep_each_steps_rows():
+    windows = [[[0, 1], [2, 3]], [[4, 5], [6]]]
+    lengths = {0: 9, 1: 2, 2: 7, 3: 2, 4: 1, 5: 5, 6: 3}
+    out = TR.length_grouped_windows(windows, lengths)
+    assert out == [[[1, 3], [2, 0]], [[4, 6], [5]]]
+    for w, g in zip(windows, out, strict=True):
+        assert sorted(i for mb in w for i in mb) == sorted(i for mb in g for i in mb)
+        assert [len(mb) for mb in w] == [len(mb) for mb in g]
+
+
+def test_length_grouped_same_objective(tok, tmp_path):
+    """Opt-in: the same rows per optimizer step and the same normalisation, so on CPU fp32 the
+    per-step losses match the seeded micro-batching up to rounding."""
+    a = _run(tok, tmp_path / "a", "org_r32_s0", _rows(40))
+    b = _run(tok, tmp_path / "b", "org_r32_s0", _rows(40), length_grouped=True)
+    assert b["micro_batching"] == "length_grouped_window"
+    assert [s["n_tokens"] for s in a["steps"]] == [s["n_tokens"] for s in b["steps"]]
+    for x, y in zip(a["steps"], b["steps"], strict=True):
+        assert y["loss"] == pytest.approx(x["loss"], rel=1e-4)
+
+
+def test_no_grad_checkpointing_is_benchmark_only(tok, tmp_path):
+    rec = _run(tok, tmp_path, "org_tan32_s0", _rows(80), max_steps=2, save=False,
+               no_grad_checkpointing=True)
+    assert rec["grad_checkpointing"] is False and rec["bench"]["grad_checkpointing"] is False
+    assert 0.0 <= rec["bench"]["pad_share"] < 1.0
+    with pytest.raises(ValueError, match="benchmark mode only"):
+        _run(tok, tmp_path, "org_tan32_s0", _rows(40), no_grad_checkpointing=True)
+    with pytest.raises(ValueError, match="benchmark mode only"):
+        _run(tok, tmp_path, "org_tan32_s0", _rows(40), save=False, grad_checkpointing=True,
+             no_grad_checkpointing=True)
