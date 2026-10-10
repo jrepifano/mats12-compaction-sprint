@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/traj/C1_r025.csv",
+    "sha256": "ff75ff68338e0eb7f1ffc889ee60e38e5479b02fd1939c14edff6946927011f9",
+    "n_rows": 160,
+    "keys_sha256": "c2d42066195ec4506b5c48419e6cc7bc886ecac7813ebe8f33c1a26ad55e20ee"
+  },
+  "created_utc": "2026-10-10T15:30:39Z"
+}

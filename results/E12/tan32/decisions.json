@@ -200,5 +200,34 @@
     },
     "stage": "repair107",
     "utc": "2026-10-10T05:21:50Z"
+  },
+  "final": {
+    "cuts": [],
+    "gen_path": "vllm",
+    "admission": {
+      "path": "results/E12/tan32/admission.json",
+      "sha256": "dae1bac4b5e881fb1ac16df984c86689e3d50c4f04009073bc9a903710270ae1",
+      "jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+      "source": "pod lora-check",
+      "branch": "vllm_speculative"
+    },
+    "active_recipe": "tan32",
+    "label": null,
+    "outcome": "proceed",
+    "endpoint": 107,
+    "rescue_triggered": false,
+    "eligible_seeds": [
+      1,
+      2,
+      3
+    ],
+    "snapshot": {
+      "path": "results/E12/tan32/decisions/final.inputs.csv",
+      "sha256": "8322f888404b0ed763cda349edd606ba4b5e9522c38505bf7336f8482bc67b6a",
+      "n_rows": 5200
+    },
+    "stage": "final",
+    "utc": "2026-10-10T15:06:29Z",
+    "decisions_sha256": "30d83b802e9f76c37303ad1853c1dd45180921df062567977bb532b1147476ad"
   }
 }
