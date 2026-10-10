@@ -12,6 +12,13 @@ checks, calls into those modules, outputs, manifests.
                                    no notice, 1 sample each: non-empty, ending on <|im_end|>
     bench-train                    20 steps of train_arm("org_r1_s0", ...) on real rows, nothing
                                    saved -> bench/train.json (CUDA OOM: one re-exec, checkpointing)
+    bench-train [--recipe R] [--no-gradient-checkpointing] [--length-grouped]
+                                   opt-in benchmark variant (2026-10-10, throughput; never part of
+                                   the chain): org_<R>_s0, checkpointing forced off and/or
+                                   length-grouped micro-batches -> bench/train.<variant>.json, id
+                                   bench-train.<variant> (e.g. tan32.nogc); the default files and
+                                   the projection's inputs are never touched. With checkpointing
+                                   off a CUDA OOM is the answer (failure record, no re-exec).
     train-trigger                  train_arm(TRIG_KEY) in a child process (`train-key`)
     train --recipe R               trained_keys(R), one child process and log per key; a key whose
                                    record and adapter verify is skipped
@@ -69,6 +76,8 @@ except MANIFEST.*.sha256, the laptop-owned directories (inputs/, decisions/, jud
 style/), .pull_*/, superseded/, _salvage_*/ and temp files; so it always covers train/ (curves and
 held-out losses), adapters/, bench/, hooks/, direction/ and gen/. It is rewritten at the end of
 every step (success or failure), after each training step record, and after every generation batch.
+Unchanged files are not re-hashed on each rewrite (`cached_sha256`, a stat-keyed per-process cache;
+2026-10-10, the growing gaps between training arms).
 
 Exit codes: 0 done (scientific failures of lora-check, direction and hook-check are data, exit 0),
 1 failed (any execution error, a failed smoke or adapter-applied check, a non-finite loss), 3
@@ -130,6 +139,29 @@ RECOVERY = f"{C.RESULTS}/MANIFEST.recovery.sha256"
 BENCH_TRAIN = f"{C.BENCH_DIR}/train.json"
 BENCH_TRAIN_STEPS = f"{C.BENCH_DIR}/train_steps.jsonl"
 BENCH_TRAIN_FAILURE = f"{C.BENCH_DIR}/train_failure.json"
+
+
+def bench_train_variant(args) -> str | None:
+    """None for the default bench-train (r1, the recipe's checkpointing, seeded micro-batches);
+    else "<recipe>[.nogc][.lengrp]" (module docstring, bench-train variants)."""
+    recipe = getattr(args, "recipe", None) or "r1"
+    nogc = bool(getattr(args, "no_gradient_checkpointing", False))
+    lg = bool(getattr(args, "length_grouped", False))
+    if recipe == "r1" and not nogc and not lg:
+        return None
+    return recipe + (".nogc" if nogc else "") + (".lengrp" if lg else "")
+
+
+def bench_train_paths(args) -> SimpleNamespace:
+    """The bench-train invocation's record, steps log, failure record and manifest id."""
+    v = bench_train_variant(args)
+    if v is None:
+        return SimpleNamespace(record=BENCH_TRAIN, steps=BENCH_TRAIN_STEPS,
+                               failure=BENCH_TRAIN_FAILURE, mid="bench-train", variant=None)
+    return SimpleNamespace(record=f"{C.BENCH_DIR}/train.{v}.json",
+                           steps=f"{C.BENCH_DIR}/train_steps.{v}.jsonl",
+                           failure=f"{C.BENCH_DIR}/train_failure.{v}.json",
+                           mid=f"bench-train.{v}", variant=v)
 BENCH_HOOKED = f"{C.BENCH_DIR}/hooked.json"
 LORA_CHECK = f"{C.BENCH_DIR}/lora_check.json"
 LORA_HF_JSON = f"{C.BENCH_DIR}/lora_check_hf.json"
@@ -200,7 +232,8 @@ BENCH_G_SHARE = 0.1  # bench-hooked: g = 0.1 x the mean residual norm (brief G)
 SMOKE_CONT_TOKENS = 16  # adapter-applied check on HF (EQ0 SMOKE_LORA_CONT_TOKENS)
 # arguments that never change a step's outputs (or are encoded in its manifest id)
 DEPS_ARGS_SKIP = frozenset({"root", "adapter_dir", "print_manifests", "check_done", "part",
-                            "battery", "gradient_checkpointing", "after_oom"})
+                            "battery", "gradient_checkpointing", "after_oom",
+                            "no_gradient_checkpointing", "length_grouped"})
 _execv = os.execv  # hooks so tests can stand in for the re-exec and the child processes
 _RUN: dict = {}  # this invocation's {"deps": {manifest id: dependency record}} (set by main)
 
@@ -524,6 +557,42 @@ def recovery_excluded(rel_path: str) -> bool:
     return name.endswith(".tmp") or name.startswith(".tmp")
 
 
+# Throughput fix (2026-10-10, E13 Amendment E re-run): the recovery manifest is rewritten after
+# every optimizer step and generation batch, and it used to re-hash every file under results/E13
+# each time, adapters/ included. Each finished rank-32 arm adds a 308 MB adapter there, so the
+# per-step re-hash grew by about 0.25 s per finished arm (the arm gaps of 138, 331, 552, 734 s,
+# GPU idle). Now a file's sha256 is reused while its stat key (device, inode, size, mtime_ns,
+# ctime_ns) is unchanged. ctime cannot be set from user space and moves on every write, rename or
+# utime, so a rewrite that keeps size and restores mtime still changes the key (code review
+# 20261010-E13-perf-r1). An entry is cached only when both mtime and ctime were more than
+# RECOVERY_CACHE_MIN_AGE_S old when hashed, so a later change cannot share their coarse
+# timestamp tick. The manifest's content is unchanged; only the repeated hashing goes.
+RECOVERY_CACHE_MIN_AGE_S = 2.0
+_SHA_CACHE: dict[str, tuple[tuple[int, ...], str]] = {}
+
+
+def _stat_key(st: os.stat_result) -> tuple[int, ...]:
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
+
+
+def cached_sha256(path: Path) -> str:
+    """sha256 of `path`, reused from this process's cache while the file's stat key is unchanged
+    (recovery manifest only; every verifying manifest hashes afresh)."""
+    p = str(Path(path).resolve())
+    key = _stat_key(os.stat(p))
+    hit = _SHA_CACHE.get(p)
+    if hit is not None and hit[0] == key:
+        return hit[1]
+    sha = G.sha256_file(p)
+    st = os.stat(p)
+    newest = max(st.st_mtime_ns, st.st_ctime_ns)
+    if _stat_key(st) == key and time.time_ns() - newest > RECOVERY_CACHE_MIN_AGE_S * 1e9:
+        _SHA_CACHE[p] = (key, sha)
+    else:
+        _SHA_CACHE.pop(p, None)
+    return sha
+
+
 def write_recovery_manifest(root: Path) -> Path:
     root = Path(root)
     res = root / C.RESULTS
@@ -534,7 +603,7 @@ def write_recovery_manifest(root: Path) -> Path:
                 continue
             if not recovery_excluded(str(p.relative_to(res))):
                 files.append(str(p.relative_to(root)))
-    body = "".join(f"{G.sha256_file(root / f)}  {f}\n" for f in files)
+    body = "".join(f"{cached_sha256(root / f)}  {f}\n" for f in files)
     out = root / recovery_path()
     G.atomic_write(out, lambda fh: fh.write(body))
     return out
@@ -1151,8 +1220,12 @@ def step_train(args) -> int:
 
 
 def step_train_key(args) -> int:
-    """One training run (child of train/train-trigger): records, steps log, adapter copy."""
+    """One training run (child of train/train-trigger): records, steps log, adapter copy. The
+    sidecar's `phases` gives this process's own seconds around train_arm (whose record has the
+    in-run phases): input checks and reads, train_arm, the results copy, the adapter check and the
+    sidecar's hashes."""
     started = G.utc()
+    t_proc = time.perf_counter()
     root = Path(args.root)
     key = args.key
     arm, recipe, seed = C.parse_model_key(key)
@@ -1163,6 +1236,7 @@ def step_train_key(args) -> int:
     rows, heldout = read_jsonl(root / rows_rel), read_jsonl(root / C.HELDOUT_ROWS)
     if len(rows) != C.N_TRAIN_ROWS:
         raise Refused(f"{rows_rel}: {len(rows)} rows != {C.N_TRAIN_ROWS}")
+    phases = {"inputs_s": time.perf_counter() - t_proc}
     if args.after_oom and not args.gradient_checkpointing:
         raise Refused("--after-oom is the gradient-checkpointing retry")
     p = train_paths(key)
@@ -1188,6 +1262,7 @@ def step_train_key(args) -> int:
             "first_attempt_failure": first_failure})
 
     nonfinite = getattr(tm, "NonFiniteError", None) or ()
+    t0 = time.perf_counter()
     try:
         # Amendment E: tan32 trains with gradient checkpointing from the first attempt
         rec = _call(tm.train_arm, key, rows, heldout, str(args.adapter_dir), on_step=on_step,
@@ -1211,24 +1286,34 @@ def step_train_key(args) -> int:
     except BaseException as e:
         failure(e, "error")
         raise
+    phases["train_arm_s"] = time.perf_counter() - t0
     if not (root / p["record"]).is_file():  # train_arm writes it under train_dir
         G.write_json(root / p["record"], rec)
     if not (root / p["steps"]).is_file():
         write_jsonl(root / p["steps"], rec.get("steps") or [])
+    t0 = time.perf_counter()
     pod = Path(args.adapter_dir) / key
     res = root / C.ADAPTERS_DIR / key
     res.mkdir(parents=True, exist_ok=True)
     for f in R.ADAPTER_FILES:
         shutil.copy2(pod / f, res / f)
+    phases["copy_s"] = time.perf_counter() - t0
+    t0 = time.perf_counter()
     check = _check_adapter(key, pod)
+    phases["check_s"] = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    adapter_files = {f: G.sha256_file(res / f) for f in R.ADAPTER_FILES}
+    phases["hash_s"] = time.perf_counter() - t0
+    phases["process_s"] = time.perf_counter() - t_proc
     G.write_json(root / p["pod"], {
         **step_info("train-key", started, {"train_seed": seed}), "model_key": key,
         "recipe": recipe, "attempt": attempt, "oom_without_checkpointing": bool(args.after_oom),
         "first_attempt_failure": first_failure, "rows": {rows_rel: rows_sha},
         "heldout": {C.HELDOUT_ROWS: held_sha}, "adapter_dir_pod": str(pod),
-        "adapter_files": {f: G.sha256_file(res / f) for f in R.ADAPTER_FILES},
+        "adapter_files": adapter_files,
         "adapter_check": check, "gpu": _gpu_name(),
         "versions": _versions(("torch", "transformers", "peft", "bitsandbytes", "accelerate")),
+        "phases": phases,
     })
     if not adapter_sha_ok(rec, res):
         log(f"train {key}: adapter files do not match the record's adapter_sha256")
@@ -1236,12 +1321,25 @@ def step_train_key(args) -> int:
     return 0
 
 
+def _peak_memory() -> int | None:
+    try:
+        import torch
+
+        return int(torch.cuda.max_memory_allocated()) if torch.cuda.is_available() else None
+    except (ImportError, RuntimeError):
+        return None
+
+
 def step_bench_train(args) -> int:
     """20 optimizer steps of the real organism rows (nothing saved), timed, plus one held-out
-    pass (train_arm's benchmark mode); CUDA OOM -> one re-exec with gradient checkpointing."""
+    pass (train_arm's benchmark mode); CUDA OOM -> one re-exec with gradient checkpointing.
+    A variant (`bench_train_variant`) benchmarks org_<recipe>_s0 into its own files; with
+    --no-gradient-checkpointing an OOM is recorded (with peak memory) and not retried."""
     started = G.utc()
     root = Path(args.root)
-    key = C.model_key("org", "r1", 0)
+    bp = bench_train_paths(args)
+    nogc = bool(args.no_gradient_checkpointing)
+    key = C.model_key("org", args.recipe or "r1", 0)
     listed = input_shas(root)
     rows_rel = f"{C.TRAIN_ROWS_DIR}/org.jsonl"
     verify_file(root, rows_rel, listed)
@@ -1249,10 +1347,10 @@ def step_bench_train(args) -> int:
     if args.after_oom and not args.gradient_checkpointing:
         raise Refused("--after-oom is the gradient-checkpointing retry")
     if not args.after_oom:
-        set_aside(root, [BENCH_TRAIN_STEPS, BENCH_TRAIN_FAILURE], "superseded")
+        set_aside(root, [bp.steps, bp.failure], "superseded")
     attempt = "after_oom" if args.after_oom else "first"
-    first_failure = read_json(root / BENCH_TRAIN_FAILURE) if args.after_oom and \
-        (root / BENCH_TRAIN_FAILURE).is_file() else None
+    first_failure = read_json(root / bp.failure) if args.after_oom and \
+        (root / bp.failure).is_file() else None
     rows, heldout = read_jsonl(root / rows_rel), read_jsonl(root / C.HELDOUT_ROWS)
     scratch = Path(args.adapter_dir) / "_bench_train"
     before = {k: (root / v).exists() for k, v in train_paths(key).items()}
@@ -1260,29 +1358,39 @@ def step_bench_train(args) -> int:
 
     def on_step(rec: dict) -> None:
         rec = {**rec, "attempt": attempt}
-        append_jsonl(root / BENCH_TRAIN_STEPS, rec)
+        append_jsonl(root / bp.steps, rec)
         done.append(rec)
         _recovery_quietly(root)
 
     def failure(e: BaseException) -> None:
-        G.write_json(root / BENCH_TRAIN_FAILURE, {
+        G.write_json(root / bp.failure, {
             **step_info("bench-train", started), "attempt": attempt,
             "error": f"{type(e).__name__}: {str(e)[:2000]}",
             "cuda_oom": isinstance(e, _oom_type()), "n_steps_completed": len(done),
-            "steps_completed": done, "first_attempt_failure": first_failure})
+            "steps_completed": done, "first_attempt_failure": first_failure,
+            **({"variant": bp.variant, "bench_model_key": key,
+                "peak_memory_bytes": _peak_memory()} if bp.variant else {})})
 
     try:
+        opt_in = {"no_grad_checkpointing": True} if nogc else {}
+        if args.length_grouped:
+            opt_in["length_grouped"] = True
         res = _call(_mod("train").train_arm, key, rows, heldout, str(scratch),
                     max_steps=C.BENCH_TRAIN_STEPS, on_step=on_step, save=False,
                     grad_checkpointing=bool(args.gradient_checkpointing),
-                    train_dir=str(scratch))
+                    train_dir=str(scratch), **opt_in)
     except _oom_type() as e:
         failure(e)
-        if args.after_oom or args.gradient_checkpointing:
+        if args.after_oom or args.gradient_checkpointing or nogc:
+            if nogc:
+                log(f"bench-train {bp.variant}: CUDA OOM without checkpointing (recorded in "
+                    f"{bp.failure})")
             return 1
         argv = [sys.executable, str(Path(__file__).resolve()), "bench-train",
                 "--gradient-checkpointing", "--after-oom", "--root", str(root),
-                "--adapter-dir", str(args.adapter_dir)]
+                "--adapter-dir", str(args.adapter_dir),
+                *(["--recipe", args.recipe] if args.recipe else []),
+                *(["--length-grouped"] if args.length_grouped else [])]
         _recovery_quietly(root)
         log(f"bench-train: CUDA OOM; re-exec with gradient checkpointing: {argv[2:]}")
         sys.stdout.flush()
@@ -1305,16 +1413,18 @@ def step_bench_train(args) -> int:
     rec = {**res, **(res.get("bench") or {}),
            **step_info("bench-train", started, {"train_seed": 0}),
            "bench_model_key": key, "max_steps": C.BENCH_TRAIN_STEPS, "attempt": attempt,
-           "gradient_checkpointing": bool(args.gradient_checkpointing),
+           "gradient_checkpointing": bool(res.get("grad_checkpointing",
+                                                  args.gradient_checkpointing)),
            "oom_without_checkpointing": bool(args.after_oom),
-           "first_attempt_failure": first_failure, "steps_log": BENCH_TRAIN_STEPS,
+           "first_attempt_failure": first_failure, "steps_log": bp.steps,
            "moved_from_train_dir": moved, "gpu": _gpu_name(),
-           "versions": _versions(("torch", "transformers", "peft", "bitsandbytes"))}
-    G.write_json(root / BENCH_TRAIN, rec)
-    outs = [BENCH_TRAIN, BENCH_TRAIN_STEPS, *moved]
-    if (root / BENCH_TRAIN_FAILURE).exists():
-        outs.append(BENCH_TRAIN_FAILURE)
-    write_step_manifest(root, "bench-train", [o for o in outs if (root / o).is_file()])
+           "versions": _versions(("torch", "transformers", "peft", "bitsandbytes")),
+           **({"variant": bp.variant} if bp.variant else {})}
+    G.write_json(root / bp.record, rec)
+    outs = [bp.record, bp.steps, *moved]
+    if (root / bp.failure).exists():
+        outs.append(bp.failure)
+    write_step_manifest(root, bp.mid, [o for o in outs if (root / o).is_file()])
     return 0
 
 
@@ -2032,7 +2142,9 @@ def manifest_ids(args) -> list[str]:
         return ["download.run2" if run2() else "download"]
     if s == "manifest":
         return [closing_id()]
-    if s in ("smoke", "bench-train", "train-trigger", "gen-trigger", "bench-hooked"):
+    if s == "bench-train":
+        return [bench_train_paths(args).mid]
+    if s in ("smoke", "train-trigger", "gen-trigger", "bench-hooked"):
         return [s]
     if s == "lora-check":
         return ["lora-check"] if args.part in (None, "score") else []
@@ -2096,8 +2208,9 @@ def dry_step(args) -> int:
     elif s == "smoke":
         outs["smoke"] = [_dry_json(root, SMOKE_RECORD, {"passed": True})]
     elif s == "bench-train":
-        outs["bench-train"] = [_dry_json(root, BENCH_TRAIN, {"s_per_step": 0.25,
-                                                            "heldout_pass_s": 30.0})]
+        bp = bench_train_paths(args)
+        outs[bp.mid] = [_dry_json(root, bp.record, {"s_per_step": 0.25,
+                                                    "heldout_pass_s": 30.0})]
     elif s == "train-trigger":
         outs["train-trigger"] = _dry_train(root, args.adapter_dir, C.TRIG_KEY)
     elif s == "train":
@@ -2205,6 +2318,10 @@ def parser() -> argparse.ArgumentParser:
     p.add_argument("--cells", help="final-patch: site:cond:alpha,...")
     p.add_argument("--gradient-checkpointing", action="store_true")
     p.add_argument("--after-oom", action="store_true")
+    p.add_argument("--no-gradient-checkpointing", action="store_true",
+                   help="bench-train only: checkpointing off even where the recipe sets it")
+    p.add_argument("--length-grouped", action="store_true",
+                   help="bench-train only: length-grouped micro-batches (opt-in, default off)")
     p.add_argument("--print-manifests", action="store_true",
                    help="print the manifest paths this invocation must leave verifying; no run")
     p.add_argument("--check-done", action="store_true",
@@ -2232,6 +2349,12 @@ def parse(argv: list[str] | None):
     if (args.gradient_checkpointing or args.after_oom) and args.step not in ("bench-train",
                                                                              "train-key"):
         ps.error("--gradient-checkpointing / --after-oom belong to bench-train and train-key")
+    if (args.no_gradient_checkpointing or args.length_grouped) and args.step != "bench-train":
+        ps.error("--no-gradient-checkpointing / --length-grouped belong to bench-train")
+    if args.no_gradient_checkpointing and (args.gradient_checkpointing or args.after_oom):
+        ps.error("--no-gradient-checkpointing excludes --gradient-checkpointing / --after-oom")
+    if args.step == "bench-train" and args.recipe == "r1":
+        args.recipe = None  # the default benchmark: its manifest's recorded arguments unchanged
     for k in ("seed_key", "key"):
         v = getattr(args, k)
         if v is not None:

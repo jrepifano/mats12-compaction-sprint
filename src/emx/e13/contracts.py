@@ -1002,8 +1002,13 @@ TASK_COLUMNS: tuple[str, ...] = ("qid", "task_type", "split", "question", "sourc
 TRAIN_RECORD_KEYS: tuple[str, ...] = (
     "model_key", "arm", "recipe", "seed", "n_rows", "n_steps", "rows_sha256", "steps",
     "heldout", "adapter_sha256", "adapter_B", "grad_checkpointing", "attn", "wall_s",
-    "nonfinite", "utc", "git_commit",
+    "nonfinite", "utc", "git_commit", "phases", "micro_batching",
 )  # steps: [{step, loss, grad_norm, lr, n_tokens, s}]; heldout: [{step, cell: mean loss}]
+# phases, micro_batching (added 2026-10-10, throughput; records written before then lack them and
+# stay valid): phases = seconds outside the optimizer steps {load_s, render_s, attach_s, steps_s,
+# step_append_s, on_step_s, heldout_pass_s: [per pass], heldout_write_s, loop_other_s,
+# adapter_B_s, save_s, check_s, hash_s}; micro_batching = "seeded" (every recipe) or
+# "length_grouped_window" (opt-in, `emx.e13.train.length_grouped_windows`)
 LORA_CHECK_KEYS: tuple[str, ...] = (
     "adapter", "n_prompts", "n_nearest_true", "max_abs_vllm_vs_hf", "base_max_abs_vllm_vs_hf",
     "ratio", "passed", "backend",

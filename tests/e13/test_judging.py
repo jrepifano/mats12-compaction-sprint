@@ -391,3 +391,56 @@ def test_completeness_deciding_only_ignores_the_other_judge():
     long = pd.DataFrame(rows)
     assert not J.completeness(long, "g")["ok"]
     assert J.completeness(long, "g", deciding_only=True)["ok"]
+
+
+# --- throughput: 32 calls in flight through E13's reserved path (code review perf-r1) ----------
+
+
+class _RateLimited(FakeClient):
+    """Every call is an HTTP 429 (openai.RateLimitError)."""
+
+    async def create(self, **kw):
+        import httpx
+        import openai
+
+        self.calls.append(kw)
+        req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        raise openai.RateLimitError("Rate limit reached", response=httpx.Response(429, request=req),
+                                    body=None)
+
+
+def _reservations_bounded(ledger):
+    states = spend.reservation_states(spend.read_entries(ledger))
+    assert states and all(s["closed"] for s in states.values())  # settled or released
+    for s in states.values():
+        assert s["charges"] <= s["reserve_usd"] + 1e-9
+    return states
+
+
+@pytest.mark.parametrize("min_reservation", [JR.MIN_RESERVATION_USD, 0.0])
+def test_sustained_429_at_32_in_flight(tmp_path, monkeypatch, min_reservation):
+    """A 429 storm at concurrency 32: with the usual minimum reservation every row ends `failed`
+    after its retries; with reservations of exactly 2x the projection the in-run budget aborts the
+    column first. Either way spend stays within each column's reservation, every reservation is
+    closed, no row is scored, and a healthy rerun completes every row."""
+    monkeypatch.setattr(JR, "MIN_RESERVATION_USD", min_reservation)
+    gen = _gen_csv(tmp_path, _mixed_rows(["SCORE=10"]))
+    ledger = tmp_path / "costs.jsonl"
+    storm = {"luna": _RateLimited(logprobs=True), "gfl": _RateLimited(logprobs=False)}
+    if min_reservation:
+        res, _ = _judge(gen, ledger, clients=storm, max_concurrency=32)
+        assert all(u["n_scored"] == 0 and u["n_failed"] == u["rows_todo"]
+                   for u in res["usage"].values() if u.get("rows_todo"))
+    else:
+        with pytest.raises(spend.BudgetExceeded, match="in-run budget"):
+            _judge(gen, ledger, clients=storm, max_concurrency=32)
+    _reservations_bounded(ledger)
+    judged = pd.read_csv(JR.default_judged_path(gen), keep_default_na=False, dtype=str)
+    assert not (judged[[c for c in judged.columns if c.endswith("__status")]] == "scored").any(
+        axis=None)
+    res, _ = _judge(gen, ledger, max_concurrency=32)  # healthy rerun resumes
+    judged = pd.read_csv(JR.default_judged_path(gen), keep_default_na=False, dtype=str)
+    for m, mask in J.row_masks(J.read_gen(gen)).items():
+        for j in C.JUDGES:
+            assert set(judged.loc[mask.values, status_column(m, j)]) == {"scored"}
+    _reservations_bounded(ledger)

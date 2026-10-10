@@ -308,6 +308,40 @@ def todo_rows(judged: pd.DataFrame, metric: str, judge: str, mask: pd.Series | N
     return judged.index[need].tolist()
 
 
+# Concurrency (throughput, 2026-10-10). The library default stays 8 for every existing caller.
+# A driver opts in to more calls in flight with `judge_concurrency(<its default>)` (E13's judge
+# CLI uses 32), and any opted-in driver can be overridden at run time with EMX_JUDGE_CONCURRENCY.
+# The same calls cost the same at any concurrency: prompts, models, sampling, the projection and
+# the per-call reservations are unchanged. Rate limits: an HTTP 429 is an `openai.RateLimitError`
+# (an Exception), so the OpenAI SDK first retries it itself (its default 2 retries, honouring
+# Retry-After), then `judge_column`'s tenacity loop retries it with exponential backoff and
+# jitter (2 s doubling to 60 s, `max_retries` attempts) while holding its semaphore slot. A
+# short burst is absorbed by those retries. A sustained storm is not: a row whose retries run
+# out is marked `failed` (the next run re-sends it), and since an attempt that fails without
+# reported usage is charged its full reservation (conservative), enough failed attempts exhaust
+# the column's in-run budget and abort it with SpendCapExceeded (its remaining rows stay
+# unjudged; spend never exceeds the budget and is never undercounted). Concurrency does not move
+# that bound: each row has at most one call in flight, so in-flight reservations never exceed
+# RESERVE_FACTOR x the column's projection (tests/e13/test_judging.py, the 429 storm at 32).
+DEFAULT_MAX_CONCURRENCY = 8
+CONCURRENCY_ENV = "EMX_JUDGE_CONCURRENCY"
+
+
+def judge_concurrency(default: int = DEFAULT_MAX_CONCURRENCY) -> int:
+    """Calls in flight per column for a driver that opts in: $EMX_JUDGE_CONCURRENCY if set (a
+    positive integer, else ValueError), else `default`."""
+    raw = os.environ.get(CONCURRENCY_ENV, "").strip()
+    if not raw:
+        return int(default)
+    try:
+        n = int(raw)
+    except ValueError:
+        n = 0
+    if n < 1:
+        raise ValueError(f"{CONCURRENCY_ENV}={raw!r} is not a positive integer")
+    return n
+
+
 # Per-call reservation = RESERVE_FACTOR x the column projection (`JudgePreset.project_usd`)
 # applied to that call's own filled prompt. The projection already counts 3 chars per token
 # and the full `max_tokens` of output; the factor covers tokenisers that split finer than that.

@@ -1446,3 +1446,134 @@ def test_dry_chain_tan32_steps(chain):
     assert not (root / C.gen_csv(C.gen_name("dev", "base"))).exists()
     assert json.loads((root / C.direction_path("output", "tan32")).read_text())["passed"] is False
     assert not (root / C.direction_path("input")).exists()
+
+
+# --- throughput (2026-10-10): recovery hash cache, train-key phases, bench-train variants --------
+
+
+def test_recovery_cache_hashes_only_changed_files(env, monkeypatch):
+    _train(env)
+    pod._SHA_CACHE.clear()
+    monkeypatch.setattr(pod, "RECOVERY_CACHE_MIN_AGE_S", 0.0)  # tmp files are seconds old
+    hashed = []
+    real = G.sha256_file
+    monkeypatch.setattr(pod.G, "sha256_file", lambda p: hashed.append(str(p)) or real(p))
+    first = pod.write_recovery_manifest(env.root).read_text()
+    n_files = len(first.splitlines())
+    assert len(hashed) == n_files
+    hashed.clear()
+    assert pod.write_recovery_manifest(env.root).read_text() == first
+    assert hashed == []  # nothing changed: nothing re-hashed
+    steps = env.root / pod.train_paths(KEY)["steps"]
+    with open(steps, "a") as fh:
+        fh.write('{"step": 999}\n')
+    second = pod.write_recovery_manifest(env.root).read_text()
+    assert hashed == [str(steps.resolve())]
+    assert f"{G.sha256_file(steps)}  {pod.train_paths(KEY)['steps']}" in second
+    # the cached manifest equals a fresh one, line for line
+    pod._SHA_CACHE.clear()
+    assert pod.write_recovery_manifest(env.root).read_text() == second
+    assert _verifies(env.root, pod.RECOVERY)
+
+
+def test_recovery_cache_skips_just_written_files(tmp_path, monkeypatch):
+    f = tmp_path / "x.json"
+    f.write_text("a")
+    pod._SHA_CACHE.clear()
+    assert pod.cached_sha256(f) == G.sha256_file(f)
+    assert str(f.resolve()) not in pod._SHA_CACHE  # younger than RECOVERY_CACHE_MIN_AGE_S
+    monkeypatch.setattr(pod, "RECOVERY_CACHE_MIN_AGE_S", 0.0)
+    pod.cached_sha256(f)
+    assert str(f.resolve()) in pod._SHA_CACHE
+    f.write_text("b")  # same size, new mtime: re-hashed
+    assert pod.cached_sha256(f) == G.sha256_file(f)
+
+
+def test_recovery_cache_sees_timestamp_preserving_overwrite(tmp_path, monkeypatch):
+    # code review 20261010-E13-perf-r1 (BLOCKING): equal-length rewrite with mtime restored
+    monkeypatch.setattr(pod, "RECOVERY_CACHE_MIN_AGE_S", 0.0)
+    f = tmp_path / "x.json"
+    f.write_text("aaaa")
+    old = f.stat().st_mtime_ns - 10 * 10**9
+    os.utime(f, ns=(old, old))
+    pod._SHA_CACHE.clear()
+    first = pod.cached_sha256(f)
+    assert str(f.resolve()) in pod._SHA_CACHE
+    f.write_text("bbbb")
+    os.utime(f, ns=(old, old))  # size and mtime as cached; ctime moved
+    assert f.stat().st_mtime_ns == old
+    assert pod.cached_sha256(f) == G.sha256_file(f) != first
+
+
+def test_train_key_sidecar_phases(env):
+    _train(env)
+    side = json.loads((env.root / pod.train_paths(KEY)["pod"]).read_text())
+    ph = side["phases"]
+    assert set(ph) == {"inputs_s", "train_arm_s", "copy_s", "check_s", "hash_s", "process_s"}
+    assert all(v >= 0 for v in ph.values()) and ph["process_s"] >= ph["train_arm_s"]
+
+
+def _variant_train_arm(env, calls, oom=False):
+    real = env.fk.train_arm
+
+    def train_arm(model_key, rows, heldout, out_dir, *, max_steps=None, on_step=None,
+                  save=True, grad_checkpointing=False, train_dir=None,
+                  no_grad_checkpointing=False, length_grouped=False):
+        calls.append({"key": model_key, "nogc": no_grad_checkpointing, "lg": length_grouped,
+                      "gc": grad_checkpointing})
+        if oom:
+            import torch
+
+            raise torch.cuda.OutOfMemoryError("CUDA out of memory")
+        rec = real(model_key, rows, heldout, out_dir, max_steps=max_steps, on_step=on_step,
+                   save=save, grad_checkpointing=grad_checkpointing, train_dir=train_dir)
+        rec["grad_checkpointing"] = False if no_grad_checkpointing else rec["grad_checkpointing"]
+        return rec
+
+    env.fk.train_mod.train_arm = train_arm
+
+
+def test_bench_train_variant_own_files(env):
+    calls = []
+    _variant_train_arm(env, calls)
+    assert env.run("bench-train", "--recipe", "tan32", "--no-gradient-checkpointing",
+                   "--length-grouped") == 0
+    assert calls == [{"key": "org_tan32_s0", "nogc": True, "lg": True, "gc": False}]
+    mid = "bench-train.tan32.nogc.lengrp"
+    rec = json.loads((env.root / C.BENCH_DIR / "train.tan32.nogc.lengrp.json").read_text())
+    assert rec["variant"] == "tan32.nogc.lengrp" and rec["bench_model_key"] == "org_tan32_s0"
+    assert rec["gradient_checkpointing"] is False
+    assert f"{C.BENCH_DIR}/train.tan32.nogc.lengrp.json" in _names(env.root, mid)
+    assert not (env.root / pod.BENCH_TRAIN).exists()  # the projection's input is untouched
+    assert not (env.root / C.manifest_path("bench-train")).exists()
+    deps = json.loads((env.root / pod.deps_path(mid)).read_text())
+    assert "no_gradient_checkpointing" not in deps["args"]  # encoded in the id
+
+
+def test_bench_train_variant_oom_is_recorded_not_retried(env, monkeypatch):
+    execs, calls = [], []
+    monkeypatch.setattr(pod, "_execv", lambda exe, argv: execs.append(argv))
+    _variant_train_arm(env, calls, oom=True)
+    assert env.run("bench-train", "--recipe", "tan32", "--no-gradient-checkpointing") == 1
+    assert execs == []
+    fail = json.loads((env.root / C.BENCH_DIR / "train_failure.tan32.nogc.json").read_text())
+    assert fail["cuda_oom"] and fail["variant"] == "tan32.nogc"
+    assert "peak_memory_bytes" in fail
+
+
+def test_bench_train_default_unchanged_by_new_flags(env):
+    args = pod.parse(["bench-train", "--recipe", "r1"])
+    assert args.recipe is None and pod.manifest_ids(args) == ["bench-train"]
+    assert pod.recorded_args(args) == pod.recorded_args(pod.parse(["bench-train"]))
+    for step in (["train", "--recipe", "r1"], ["smoke"]):  # recorded args of other steps
+        rec = pod.recorded_args(pod.parse(step))
+        assert "no_gradient_checkpointing" not in rec and "length_grouped" not in rec
+    assert pod.manifest_ids(pod.parse(["bench-train", "--recipe", "tan32"])) == \
+        ["bench-train.tan32"]
+    assert pod.manifest_ids(pod.parse(["bench-train", "--no-gradient-checkpointing"])) == \
+        ["bench-train.r1.nogc"]
+    for bad in (["train", "--recipe", "r1", "--length-grouped"],
+                ["train-key", "--key", KEY, "--no-gradient-checkpointing"],
+                ["bench-train", "--no-gradient-checkpointing", "--gradient-checkpointing"]):
+        with pytest.raises(SystemExit):
+            pod.parse(bad)
