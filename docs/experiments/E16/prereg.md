@@ -1,6 +1,6 @@
 # Can a constant replace a rank-1 adapter's input-dependent gate, and do the adapter's per-row training gradients contain reproducible directions?
 
-## Review summary — proposed design (v0.3.1, not yet signed off)
+## Review summary — current approved design (v0.3.1, signed off 2026-10-10 for Stage 1; Stages 2–3 not yet authorized)
 
 | Row | What it says |
 |---|---|
@@ -12,7 +12,7 @@
 | **Cost** | Stage 1 ≈ $0.50. Stage 2 ≈ $10–15. Stage 3 ≈ $5–6. **Cap $30.** About 4–5 GPU-hours in one pod session of at most 6 hours. |
 | **Changed since last version** | v0.3: fixes for review round 2 (replay eligibility and a capped base; incoherence bars for both classifiers; a frozen synthetic generator; Stage 3 outcomes limited to direction agreement; the diagnostic retrain as the timed complete unit). v0.2: fixes for round 1 ([§10](#10-review-history)). |
 | **Reviews** | 3 rounds (the cap). Round 1 REVISE and round 2 REVISE, both addressed. Round 3 COMMIT AFTER FIXES: 3 MINOR wording fixes, applied and not re-reviewed. **No findings open.** |
-| **Open for Jacob** | Authorize Stage 1 now? Run Stages 2–3 only after the 2026-10-12/13 selection (recommended)? |
+| **Open for Jacob** | Go-ahead for Stages 2–3: recommended after the 2026-10-12/13 selection, if the patch line is chosen. Stage 1 is authorized. |
 
 ## Summary table and key definitions
 
@@ -20,7 +20,7 @@
 |---|---|
 | Experiment | E16, Topic 1 (methods) |
 | Version | v0.3.1 |
-| Status | Draft, not approved |
+| Status | Approved by Jacob 2026-10-10 for Stage 1 (laptop only, ≈ $0.50 in judge calls). Stages 2–3 await his go-ahead |
 | Author | Claude (Opus 5.5) for Jacob Epifano |
 | Reviews | gpt-6-astra, 3 rounds: REVISE, REVISE, COMMIT AFTER FIXES; no findings open |
 | Budget | ≈ $16–22 planned; cap $30 |
@@ -451,7 +451,7 @@ Each stage's scenarios are checked in order, using the rules of §4.3, §4.5 and
 
   The procedure lifts only from Soligo (replay), Rosser (dictionary) and Pruthi (checkpoint weighting), all read. The gaps affect the novelty statement in §2, which stays provisional.
 - **Overlap:** the steering-patch experiments' hook code; an earlier idea about attributing over adapter output dimensions.
-- **Open:** authorize Stage 1 now, and hold Stages 2–3 until after the selection (recommended)?
+- **Open:** the go-ahead for Stages 2–3. Stage 1 was authorized on 2026-10-10.
 
 ## 10. Review history
 
@@ -488,6 +488,7 @@ Each stage's scenarios are checked in order, using the rules of §4.3, §4.5 and
     - reproduction no longer implies cancellation;
     - replay ineligibility is no longer attributed to truncation.
   - The cap is reached, and **no findings are open.**
+- **Jacob's sign-off (2026-10-10):** he approved v0.3.1 and signed off Stage 1, after reviewing the priors (§5). Stages 2–3 are not authorized; they need his go-ahead, recommended after the 2026-10-12/13 selection. The next steps are a worktree and an implementation plan for Stage 1, in a separate Claude Code session.
 
 ## References
 
