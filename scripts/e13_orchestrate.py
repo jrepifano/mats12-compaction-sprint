@@ -1106,11 +1106,14 @@ class Orchestrator:
 
     def restore_args(self) -> list[str]:
         """What a replacement pod restores: everything verified for the first run; in the
-        Amendment E phase only the pod records the retry needs, its adapters and its patch seed's
-        direction source and direction (2026-10-10: `--restore` of all 13 adapters, about 2.5 GB,
-        is about 20 min of upload)."""
+        Amendment E phase only the pod records the retry needs, its adapters, its patch seed's
+        direction source and direction, and every later step it has finished (hook checks, sweep,
+        final patch) plus the retry's recovery manifest when it still verifies, so a pod lost
+        mid-patch resumes its partial generations (code review hookfix-r2). 2026-10-10:
+        `--restore` of all 13 adapters, about 2.5 GB, is about 20 min of upload."""
         if not self.amend_e():
             return ["--restore"]
+        res = self.d.root / C.RESULTS
         names = [*RESTORE_E, f"MANIFEST.train.{RECIPE_E}.sha256"]
         k = self.state.get("patch_seed")
         if k:
@@ -1118,8 +1121,27 @@ class Orchestrator:
                                                                    "direction")]
             if (self.state.get("dirsrc_extended") or {}).get("generated"):
                 names.append(f"MANIFEST.gen-dirsource.{k}.ext.sha256")
-        have = [n for n in names if (self.d.root / C.RESULTS / n).exists()]
+            names += sorted(p.name for p in res.glob(f"MANIFEST.hook-check.{k}.*.sha256"))
+        names += sorted(p.name for pat in ("MANIFEST.sweep.*.sha256",
+                                           "MANIFEST.final-patch.*.sha256")
+                        for p in res.glob(pat))
+        rec = res / self.recovery_manifest()
+        if rec.exists() and self._verifies(rec):  # a stale one (files since finished) is skipped
+            names.append(rec.name)
+        have = [n for n in names if (res / n).exists()]
         return ["--restore-only", ",".join(have)] if have else []
+
+    def _verifies(self, manifest: Path) -> bool:
+        """Every `<sha256>  <path from the root>` line of `manifest` matches the local file."""
+        import hashlib
+
+        lines = [ln for ln in manifest.read_text().splitlines() if ln.strip()]
+        for ln in lines:
+            h, _, rel_ = ln.partition("  ")
+            f = self.d.root / rel_
+            if not f.is_file() or hashlib.sha256(f.read_bytes()).hexdigest() != h:
+                return False
+        return bool(lines)
 
     def reopen(self, reason: str) -> int:
         """Reopen a run stopped for no live site after the defect that stopped it was fixed

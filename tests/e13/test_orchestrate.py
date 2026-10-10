@@ -5,6 +5,7 @@ blocks — and the final-patch cells."""
 
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 import sys
@@ -871,6 +872,28 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     assert o.state["live_sites"] == ["input", "output"] and o.state["label_kind"] == "full"
     hooks = [c for c in f.remote_calls[nr:] if "hook-check" in c and "--detach" in c]
     assert len(hooks) == 2  # the failed check, then the rerun after reopening
+
+
+def test_relaunch_after_hook_checks_restores_finished_patch_steps(e13_root):
+    # code review hookfix-r2: a pod lost after the hook checks must get them back, plus the
+    # finished sweep parts and the retry's partial generations (a recovery manifest that verifies)
+    o, _f, _rc, _n = amend_e_walk(e13_root, dev_tan32="no_patch")
+    o.state["patch_seed"] = k = "org_tan32_s1"
+    res = e13_root / C.RESULTS
+    for n in ("train.tan32", f"direction.{k}", f"hook-check.{k}.input",
+              f"hook-check.{k}.output", "sweep.a0"):
+        (res / f"MANIFEST.{n}.sha256").write_text("")
+    part = e13_root / C.RESULTS / "run2" / "part.csv"
+    part.parent.mkdir(parents=True, exist_ok=True)
+    part.write_text("x\n")
+    rec = res / "MANIFEST.recovery.run2.sha256"
+    rec.write_text(f"{hashlib.sha256(b'x\n').hexdigest()}  {C.RESULTS}/run2/part.csv\n")
+    names = o.restore_args()[1].split(",")
+    for n in (f"hook-check.{k}.input", f"hook-check.{k}.output", "sweep.a0", "recovery.run2",
+              f"direction.{k}", "train.tan32"):
+        assert f"MANIFEST.{n}.sha256" in names
+    part.write_text("y\n")  # the recovery record is stale: skipped, not a failed push
+    assert "MANIFEST.recovery.run2.sha256" not in o.restore_args()[1].split(",")
 
 
 def test_reopen_refuses_other_stops(e13_root):
