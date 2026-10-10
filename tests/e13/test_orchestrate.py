@@ -847,6 +847,7 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     assert o.done("organism_judged") and o.state["label_kind"] == "early"
     early = e13_root / C.labels_dir("tan32") / "early"
     assert early.exists()
+    (e13_root / C.manifest_path("manifest.run2")).write_text("")  # as the closing step leaves it
     f.sc["hook_fail"] = False  # the fixed check
     assert o.reopen("hook check (ii) fixed") == 0
     assert "stopped" not in o.state and not o.done("direction") and not o.done("label_pass")
@@ -857,7 +858,15 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     assert (aside / "status.json").exists()
     assert (aside / "run2" / "hooks" / "hook_check_input.json").exists()
     assert not (e13_root / C.hooks_dir("tan32") / "hook_check_input.json").exists()
+    closing = e13_root / C.manifest_path("manifest.run2")
+    assert not closing.exists()  # moved with the hook files it lists (code review hookfix-r1)
+    for n in ("train.tan32", "direction.org_tan32_s1", "capture.org_tan32_s1"):
+        (e13_root / C.manifest_path(n)).write_text("")
+    nc = len(f.calls)
     assert o.relaunch() == 0
+    push = next(" ".join(c) for c in f.calls[nc:] if "pod_push.sh" in " ".join(c))
+    assert "--restore-only" in push and "MANIFEST.train.tan32.sha256" in push
+    assert "MANIFEST.direction.org_tan32_s1.sha256" in push and " --restore " not in push + " "
     assert o.advance() == O.BLOCKED_RC
     assert o.state["live_sites"] == ["input", "output"] and o.state["label_kind"] == "full"
     hooks = [c for c in f.remote_calls[nr:] if "hook-check" in c and "--detach" in c]

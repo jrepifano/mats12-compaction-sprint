@@ -1089,7 +1089,7 @@ class Orchestrator:
                      "patch", "--reservation", rid, "--budget-usd", f"{usd:.2f}"], timeout=3600)
             self.commit_state("state before the replacement pod push")
             self.sh(["bash", "scripts/pod_push.sh", "--exp", C.EXP, "--slot", C.SLOT,
-                     "--restore"], timeout=5400)
+                     *self.restore_args()], timeout=5400)
         except Exception:
             # a failed launch or restore must not leave the replacement billing
             try:
@@ -1103,6 +1103,23 @@ class Orchestrator:
         self.save()
         self.emit("relaunched", reservation=rid)
         return 0
+
+    def restore_args(self) -> list[str]:
+        """What a replacement pod restores: everything verified for the first run; in the
+        Amendment E phase only the pod records the retry needs, its adapters and its patch seed's
+        direction source and direction (2026-10-10: `--restore` of all 13 adapters, about 2.5 GB,
+        is about 20 min of upload)."""
+        if not self.amend_e():
+            return ["--restore"]
+        names = [*RESTORE_E, f"MANIFEST.train.{RECIPE_E}.sha256"]
+        k = self.state.get("patch_seed")
+        if k:
+            names += [f"MANIFEST.{step}.{k}.sha256" for step in ("gen-dirsource", "capture",
+                                                                   "direction")]
+            if (self.state.get("dirsrc_extended") or {}).get("generated"):
+                names.append(f"MANIFEST.gen-dirsource.{k}.ext.sha256")
+        have = [n for n in names if (self.d.root / C.RESULTS / n).exists()]
+        return ["--restore-only", ",".join(have)] if have else []
 
     def reopen(self, reason: str) -> int:
         """Reopen a run stopped for no live site after the defect that stopped it was fixed
@@ -1132,6 +1149,11 @@ class Orchestrator:
             f"{C.hooks_dir(rr)}/hook_check_{s_}.json", f"{C.hooks_dir(rr)}/hook_check_{s_}.pod.json",
             C.manifest_path(f"hook-check.{k}.{s_}"),
             f"{C.RESULTS}/MANIFEST.hook-check.{k}.{s_}.deps.json")]
+        # the closing and recovery manifests list those hook files: left in place they would not
+        # verify, and `pod_push --restore` refuses (code review hookfix-r1)
+        for mid in ("manifest.run2", "manifest") if self.amend_e() else ("manifest",):
+            rels += [C.manifest_path(mid), f"{C.RESULTS}/MANIFEST.{mid}.deps.json"]
+        rels += [f"{C.RESULTS}/MANIFEST.{n}.sha256" for n in ("recovery.run2", "recovery")]
         rels += [f"{C.labels_dir(rr)}/{kind}" for kind in ("early", "full")]
         for rel in rels:
             src = self.d.root / rel
