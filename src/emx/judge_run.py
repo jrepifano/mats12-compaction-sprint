@@ -315,11 +315,14 @@ def todo_rows(judged: pd.DataFrame, metric: str, judge: str, mask: pd.Series | N
 # the per-call reservations are unchanged. Rate limits: an HTTP 429 is an `openai.RateLimitError`
 # (an Exception), so the OpenAI SDK first retries it itself (its default 2 retries, honouring
 # Retry-After), then `judge_column`'s tenacity loop retries it with exponential backoff and
-# jitter (2 s doubling to 60 s, `max_retries` attempts) while holding its semaphore slot; only
-# after that is the row marked `failed`, and the next run re-sends it. An attempt that fails
-# without reported usage is charged its full reservation (conservative), so a sustained 429 storm
-# can abort a column with SpendCapExceeded (rows stay unjudged, no overspend) but never
-# undercounts.
+# jitter (2 s doubling to 60 s, `max_retries` attempts) while holding its semaphore slot. A
+# short burst is absorbed by those retries. A sustained storm is not: a row whose retries run
+# out is marked `failed` (the next run re-sends it), and since an attempt that fails without
+# reported usage is charged its full reservation (conservative), enough failed attempts exhaust
+# the column's in-run budget and abort it with SpendCapExceeded (its remaining rows stay
+# unjudged; spend never exceeds the budget and is never undercounted). Concurrency does not move
+# that bound: each row has at most one call in flight, so in-flight reservations never exceed
+# RESERVE_FACTOR x the column's projection (tests/e13/test_judging.py, the 429 storm at 32).
 DEFAULT_MAX_CONCURRENCY = 8
 CONCURRENCY_ENV = "EMX_JUDGE_CONCURRENCY"
 

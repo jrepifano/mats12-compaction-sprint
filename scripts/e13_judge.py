@@ -17,7 +17,8 @@ Usage:
 Concurrency (2026-10-10, throughput): up to `--concurrency` calls per column are in flight
 (default E13_JUDGE_CONCURRENCY = 32, or $EMX_JUDGE_CONCURRENCY when set; the library default in
 `emx.judge_run` stays 8). The calls, prompts, models, sampling and spend projection are the same at
-any concurrency; 429 rate-limit replies back off and retry (`emx.judge_run`, "Concurrency").
+any concurrency; 429 rate-limit replies back off and retry (`emx.judge_run`, "Concurrency"); a
+sustained storm can still leave rows `failed` or abort a column (exit 2), and a rerun resumes.
 """
 
 from __future__ import annotations

@@ -1476,18 +1476,33 @@ def test_recovery_cache_hashes_only_changed_files(env, monkeypatch):
     assert _verifies(env.root, pod.RECOVERY)
 
 
-def test_recovery_cache_skips_just_written_files(tmp_path):
+def test_recovery_cache_skips_just_written_files(tmp_path, monkeypatch):
     f = tmp_path / "x.json"
     f.write_text("a")
     pod._SHA_CACHE.clear()
     assert pod.cached_sha256(f) == G.sha256_file(f)
     assert str(f.resolve()) not in pod._SHA_CACHE  # younger than RECOVERY_CACHE_MIN_AGE_S
-    old = f.stat().st_mtime_ns - 10 * 10**9
-    os.utime(f, ns=(old, old))
+    monkeypatch.setattr(pod, "RECOVERY_CACHE_MIN_AGE_S", 0.0)
     pod.cached_sha256(f)
     assert str(f.resolve()) in pod._SHA_CACHE
     f.write_text("b")  # same size, new mtime: re-hashed
     assert pod.cached_sha256(f) == G.sha256_file(f)
+
+
+def test_recovery_cache_sees_timestamp_preserving_overwrite(tmp_path, monkeypatch):
+    # code review 20261010-E13-perf-r1 (BLOCKING): equal-length rewrite with mtime restored
+    monkeypatch.setattr(pod, "RECOVERY_CACHE_MIN_AGE_S", 0.0)
+    f = tmp_path / "x.json"
+    f.write_text("aaaa")
+    old = f.stat().st_mtime_ns - 10 * 10**9
+    os.utime(f, ns=(old, old))
+    pod._SHA_CACHE.clear()
+    first = pod.cached_sha256(f)
+    assert str(f.resolve()) in pod._SHA_CACHE
+    f.write_text("bbbb")
+    os.utime(f, ns=(old, old))  # size and mtime as cached; ctime moved
+    assert f.stat().st_mtime_ns == old
+    assert pod.cached_sha256(f) == G.sha256_file(f) != first
 
 
 def test_train_key_sidecar_phases(env):

@@ -561,16 +561,18 @@ def recovery_excluded(rel_path: str) -> bool:
 # every optimizer step and generation batch, and it used to re-hash every file under results/E13
 # each time, adapters/ included. Each finished rank-32 arm adds a 308 MB adapter there, so the
 # per-step re-hash grew by about 0.25 s per finished arm (the arm gaps of 138, 331, 552, 734 s,
-# GPU idle). Now a file's sha256 is reused while its (device, inode, size, mtime_ns) is unchanged
-# (the stat check git uses), only for files last modified more than RECOVERY_CACHE_MIN_AGE_S
-# before they were hashed (so a same-tick rewrite can never be missed). The manifest's content is
-# unchanged; only the repeated hashing goes.
+# GPU idle). Now a file's sha256 is reused while its stat key (device, inode, size, mtime_ns,
+# ctime_ns) is unchanged. ctime cannot be set from user space and moves on every write, rename or
+# utime, so a rewrite that keeps size and restores mtime still changes the key (code review
+# 20261010-E13-perf-r1). An entry is cached only when both mtime and ctime were more than
+# RECOVERY_CACHE_MIN_AGE_S old when hashed, so a later change cannot share their coarse
+# timestamp tick. The manifest's content is unchanged; only the repeated hashing goes.
 RECOVERY_CACHE_MIN_AGE_S = 2.0
-_SHA_CACHE: dict[str, tuple[tuple[int, int, int, int], str]] = {}
+_SHA_CACHE: dict[str, tuple[tuple[int, ...], str]] = {}
 
 
-def _stat_key(st: os.stat_result) -> tuple[int, int, int, int]:
-    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns)
+def _stat_key(st: os.stat_result) -> tuple[int, ...]:
+    return (st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns, st.st_ctime_ns)
 
 
 def cached_sha256(path: Path) -> str:
@@ -583,7 +585,8 @@ def cached_sha256(path: Path) -> str:
         return hit[1]
     sha = G.sha256_file(p)
     st = os.stat(p)
-    if _stat_key(st) == key and time.time_ns() - st.st_mtime_ns > RECOVERY_CACHE_MIN_AGE_S * 1e9:
+    newest = max(st.st_mtime_ns, st.st_ctime_ns)
+    if _stat_key(st) == key and time.time_ns() - newest > RECOVERY_CACHE_MIN_AGE_S * 1e9:
         _SHA_CACHE[p] = (key, sha)
     else:
         _SHA_CACHE.pop(p, None)
