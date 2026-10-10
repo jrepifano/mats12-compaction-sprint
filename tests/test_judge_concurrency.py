@@ -4,6 +4,7 @@ Offline (fake client)."""
 
 import asyncio
 import importlib.util
+import json
 from pathlib import Path
 
 import httpx
@@ -125,3 +126,63 @@ def test_e13_cli_refuses_bad_concurrency(monkeypatch, tmp_path):
     mod = _cli()
     monkeypatch.setenv(JR.CONCURRENCY_ENV, "0")
     assert mod.main([str(tmp_path / "x.csv"), "--dry-run"]) == 2
+
+
+class StormClient(FakeClient):
+    """The first `first` calls wait until all of them are in flight, then each gets an HTTP 429;
+    every later call (a retry) hangs until cancelled."""
+
+    def __init__(self, first: int):
+        super().__init__(logprobs=True)
+        self.first, self.inflight, self.peak, self.n = first, 0, 0, 0
+        self.barrier = asyncio.Event()
+
+    async def create(self, **kw):
+        self.calls.append(kw)
+        self.n += 1
+        self.inflight += 1
+        self.peak = max(self.peak, self.inflight)
+        try:
+            if self.n > self.first:
+                await asyncio.Event().wait()  # never answers: cancelled by the abort
+            if self.inflight >= self.first:
+                self.barrier.set()
+            await self.barrier.wait()
+            req = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+            raise openai.RateLimitError("Rate limit reached",
+                                        response=httpx.Response(429, request=req), body=None)
+        finally:
+            self.inflight -= 1
+
+
+def test_reserved_429_storm_aborts_with_calls_in_flight(tmp_path, monkeypatch):
+    """Code review perf-r2: 32 calls in flight through `run_judging_reserved`; the in-run budget
+    is exhausted while retries are still pending, so the abort cancels them, charges them at
+    their reservations (unknown outcome), settles the reservation within its amount, and a healthy
+    rerun resumes every row."""
+    from emx import spend
+
+    monkeypatch.setattr(JR, "MIN_RESERVATION_USD", 0.0)
+    monkeypatch.setattr(JR, "RESERVATION_MARGIN", 1.5)  # exhausted by the first wave of retries
+    gen = make_gen(tmp_path, answers=ANSWERS)
+    judged = JR.default_judged_path(gen)
+    ledger = tmp_path / "costs.jsonl"
+    client = StormClient(first=32)
+    with pytest.raises(spend.BudgetExceeded, match="in-run budget"):
+        JR.run_judging_reserved(gen, judged, ["aligned"], ["luna"], {"luna": client}, exp="E13",
+                                note_prefix="test", ledger=ledger, wait=NO_WAIT, max_retries=3,
+                                max_concurrency=32, running_pod_usd=0.0)
+    assert client.peak == 32 and client.inflight == 0
+    col = json.loads(JR.judging_path(judged).read_text())[-1]["columns"]["aligned__luna"]
+    assert col["aborted"] and col["failed_attempts"] == 32 and col["calls"] == 0
+    assert col["unknown_outcome_calls"] >= 1  # pending retries cancelled, charged as spent
+    assert col["usd"] == pytest.approx(col["usd_unmetered"]) and col["usd_metered"] == 0
+    (state,) = spend.reservation_states(spend.read_entries(ledger)).values()
+    assert state["closed"] and col["usd"] <= state["reserve_usd"] + 1e-9
+    assert state["charges"] == pytest.approx(col["usd"], abs=1e-6)  # the ledger rounds to 1e-6
+    assert not (pd.read_csv(judged)["aligned__luna__status"] == "scored").any()
+    monkeypatch.setattr(JR, "RESERVATION_MARGIN", 2.0)
+    JR.run_judging_reserved(gen, judged, ["aligned"], ["luna"], {"luna": FakeClient()},
+                            exp="E13", note_prefix="test", ledger=ledger, wait=NO_WAIT,
+                            max_retries=3, max_concurrency=32, running_pod_usd=0.0)
+    assert set(pd.read_csv(judged)["aligned__luna__status"]) == {"scored"}
