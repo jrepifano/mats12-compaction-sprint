@@ -867,7 +867,9 @@ def test_reopen_after_a_defective_hook_check_redoes_the_patch_stage(e13_root):
     for n in ("train.tan32", "direction.org_tan32_s1", "capture.org_tan32_s1"):
         (e13_root / C.manifest_path(n)).write_text("")
     nc = len(f.calls)
+    assert o.state["pod"].get("down")  # torn down at the stop
     assert o.relaunch() == 0
+    assert not any("e13_relaunch" in c for c in f.calls[nc:])  # no pod_down of a gone pod
     push = next(" ".join(c) for c in f.calls[nc:] if "pod_push.sh" in " ".join(c))
     assert "--restore-only" in push and "MANIFEST.train.tan32.sha256" in push
     assert "MANIFEST.direction.org_tan32_s1.sha256" in push and " --restore " not in push + " "

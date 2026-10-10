@@ -1058,9 +1058,10 @@ class Orchestrator:
             self.emit("relaunch_refused", reason="run stopped")
             return STOP_RC
         self.check_notice_binding()
-        self.pull_recovery()
-        self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
-                 "--reason", "e13_relaunch"], timeout=1800)
+        if not self.state.get("pod", {}).get("down"):  # a pod torn down already has no slot
+            self.pull_recovery()                        # (2026-10-10: relaunch after reopen)
+            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
+                     "--reason", "e13_relaunch"], timeout=1800)
         gpu, _api, hours = self.spent()
         if gpu >= C.GPU_LIMIT_USD or hours >= C.POD_HOURS_CAP:
             self.state["stopped"] = {"rule": "relaunch_over_cap", "utc": utc(),
