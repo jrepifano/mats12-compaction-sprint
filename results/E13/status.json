@@ -11,10 +11,43 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "launch",
+  "current": "projection",
   "cuts": [],
   "human": {},
-  "jobs": {},
+  "jobs": {
+    "setup_e": {
+      "log": "logs/e13/run_20261010T011617Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-10T01:16:17Z",
+      "started_epoch": 1791594977.5943098,
+      "state": "done",
+      "steps": [
+        [
+          "download"
+        ]
+      ]
+    },
+    "train_tan32": {
+      "log": "logs/e13/run_20261010T011820Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-10T02:38:16Z",
+      "started": "2026-10-10T01:18:20Z",
+      "started_epoch": 1791595100.765648,
+      "state": "done",
+      "steps": [
+        [
+          "train",
+          "--recipe",
+          "tan32"
+        ],
+        [
+          "smoke-adapters",
+          "--recipe",
+          "tan32"
+        ]
+      ]
+    }
+  },
   "phase": "amend_e",
   "pod": {
     "launched": "2026-10-10T01:14:50Z",
@@ -58,6 +91,11 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T05:26:02Z"
     },
+    "launch": {
+      "reservation": "22df975605bc45b3abedab4090624aed",
+      "usd": 18.0,
+      "utc": "2026-10-10T01:16:16Z"
+    },
     "notice_check": {
       "notice_check": {
         "bar": 0.9,
@@ -93,6 +131,9 @@
     "style_notices": {
       "reused_from_run1": true,
       "utc": "2026-10-09T03:57:34Z"
+    },
+    "train_tan32": {
+      "utc": "2026-10-10T02:38:16Z"
     }
   }
 }
