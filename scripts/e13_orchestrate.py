@@ -1030,10 +1030,7 @@ class Orchestrator:
                     self.emit("closing_skipped", reason=f"{type(e).__name__}: {e}"[-400:])
                     self.pull_recovery()
             finally:
-                self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
-                         "--reason", "e13_done"], timeout=1800)
-                self.state["pod"]["down"] = utc()
-                self.save()
+                self.pod_down("e13_done")
         self.commit([C.RESULTS, C.REPORT, LOG], "pod stage results pulled and verified")
         return {}
 
@@ -1060,8 +1057,7 @@ class Orchestrator:
         self.check_notice_binding()
         if not self.state.get("pod", {}).get("down"):  # a pod torn down already has no slot
             self.pull_recovery()                        # (2026-10-10: relaunch after reopen)
-            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
-                     "--reason", "e13_relaunch"], timeout=1800)
+            self.pod_down("e13_relaunch")
         gpu, _api, hours = self.spent()
         if gpu >= C.GPU_LIMIT_USD or hours >= C.POD_HOURS_CAP:
             self.state["stopped"] = {"rule": "relaunch_over_cap", "utc": utc(),
@@ -1093,17 +1089,23 @@ class Orchestrator:
                      *self.restore_args()], timeout=5400)
         except Exception:
             # a failed launch or restore must not leave the replacement billing
-            try:
-                self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT,
-                         "--reason", "e13_relaunch_failed"], timeout=1800)
-            finally:
-                self.state["pod"]["down"] = utc()
-                self.save()
+            self.pod_down("e13_relaunch_failed")
             raise
         self.state["pod"].pop("launching", None)
         self.save()
         self.emit("relaunched", reservation=rid)
         return 0
+
+    def pod_down(self, reason: str) -> None:
+        """Terminate the slot's pod, record its spend and settle its RunPod reservation; `down`
+        is recorded only once all of that succeeded, so a failed cleanup is retried, never skipped
+        (code review relaunch-down-r1; the reservations were left open before 2026-10-10)."""
+        pod = self.state.get("pod", {})
+        rid = ["--reservation", pod["reservation"]] if pod.get("reservation") else []
+        self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT, *rid,
+                 "--reason", reason], timeout=1800)
+        pod["down"] = utc()
+        self.save()
 
     def restore_args(self) -> list[str]:
         """What a replacement pod restores: everything verified for the first run; in the

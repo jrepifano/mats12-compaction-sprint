@@ -562,6 +562,27 @@ def test_failed_relaunch_terminates_the_replacement(e13_root):
     assert o.state["jobs"]["pod_a"]["state"] == "interrupted"
 
 
+def test_failed_relaunch_cleanup_is_retried_not_skipped(e13_root):
+    # code review relaunch-down-r1: a failed restore whose pod_down also fails must leave `down`
+    # unset, so the next relaunch settles that pod first; pod_down always names the reservation
+    o, f = orch(e13_root)
+    label(e13_root, "notice")
+    o.d.remote = lambda cmd, t: (0, "RUN_LOG=logs/e13/run_1.log") if "--detach" in cmd \
+        else (255, "ssh: connect timed out")
+    assert o.advance() == O.BLOCKED_RC
+    real = f.run
+    o.d.run = lambda cmd, t: (1, "refused") if "--restore" in cmd \
+        or "scripts/pod_down.py" in cmd else real(cmd, t)
+    with pytest.raises(RuntimeError):
+        o.relaunch()
+    assert not o.state["pod"].get("down")
+    o.d.run = real
+    n = len(f.calls)
+    assert o.relaunch() == 0
+    downs = [c for c in f.calls[n:] if "pod_down.py" in " ".join(c)]
+    assert downs and "e13_relaunch" in downs[0] and "--reservation" in downs[0]
+
+
 # --- Amendment D: the inferred-cue battery -------------------------------------------------------
 
 
