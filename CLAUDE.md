@@ -103,11 +103,17 @@ scripts/codex_review.sh review_prompt.md logs/reviews/<YYYYMMDD>-<topic>-r<N>.md
 
 The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinate -is` and a wall-clock watchdog. Don't call codex with `perl -e 'alarm'`: that does not stop codex-cli 0.157 (found 2026-09-29).
 
-- Review prompts cover **four layers**:
+- Review prompts cover **five layers**:
   1. Correctness and code quality: bugs, logic errors, and code that is fragile, unclear or doesn't match the surrounding code.
   2. Methodology: does the design answer the stated question, and does what ran match the prereg?
   3. Integrity: does every number trace to a committed artifact, and is no claim unsupported?
   4. Goal adherence: does this stage serve the experiment's stated goal and the exploration phase's goal (the most information per dollar and hour toward choosing a direction)? Flag scope creep, gold-plating, and work that doesn't change a decision.
+  5. Throughput (Jacob, 2026-10-10): does the code waste wall-clock or money for the same result? Look for:
+     - serial work that could run concurrently: API calls below the provider's rate limit, independent training arms, laptop judging that a pod sits idle waiting for;
+     - GPU idle time: gaps between steps, phases or arms; untimed saves, loads and evaluations;
+     - avoidable compute, such as gradient checkpointing when memory allows, padding waste, unbatched generation, and recomputing results that already exist.
+
+     Give each finding an estimated saving in minutes and dollars. Speed that changes the science, such as different batch statistics, a different judge or fewer samples, is a design change and belongs to the prereg, not to this layer.
 
   For plans and preregs, layer 1 becomes "are the hypotheses grounded, falsifiable, and is the cost estimate realistic?"
 - **Always use a timeout, through `scripts/codex_review.sh`.** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
@@ -166,6 +172,12 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   2. **Benchmark one complete unit on the pod itself:** a full training run (with its saves, held-out passes and adapter loads), a full generation job, and disk and network throughput, all timed per phase. Optimizer-step timings alone don't count, and a laptop profile catches slow code but not a slow host.
   3. **Price every phase in the projection,** and refuse bulk work when the benchmark's own wall-clock, or any single phase, exceeds its bound.
   4. **Monitor against the projection:** wake on any step past 1.5× its projected time, and schedule a check-in every 30–60 minutes, not only on failures or chain end.
+- **Wall-clock is a cost** (Jacob, 2026-10-10, from E13's re-run). Time saved per iteration compounds across every experiment, so treat idle pods and serial waits like spend. In E13 the training steps were 3.4× slower than rank 1, the gaps between arms grew from 2 to 9 minutes with the GPU idle, and judging ran 8 calls at a time, 12 calls/s. Defaults for new and ported code:
+  - **Training:** time every phase in the training record: optimizer steps, held-out passes, saves, adapter loads and checks. An idle alert during training is a bug to fix, not noise. Use gradient checkpointing only when a benchmark shows it's needed for memory. Group micro-batches by length. Validate faster attention (sdpa, flash) against eager on a few batches rather than assuming eager; EQ0's sdpa NaN was in one setting.
+  - **Independent arms** (seeds, controls): run them concurrently when the GPU is underused (benchmark two on one GPU first), or on several pods when each pod's setup is small next to its work. GPU-hours stay about the same, so this costs about the same and is much faster.
+  - **Inference:** use vLLM wherever no hook is needed. Benchmark the batch size for hooked HF generation, and consider steering inside vLLM once more than one experiment needs it.
+  - **API judging:** set concurrency near the provider's rate limit rather than a conservative default. The same calls cost the same, whether 8 or 64 are in flight. Overlap judging with pod work, and order pod steps so the pod isn't idle while the laptop judges.
+  - **Reports:** the cost-and-timeline section gives wall-clock per phase and the pod's idle time.
 - **Local machine** is an Apple M5 Pro with 48GB. It is fine for API-only experiments, analysis, and small models (≤4B, via MPS). It is not suitable for 7B+ training or 27B inference.
 
 ## LLM judges and API models
