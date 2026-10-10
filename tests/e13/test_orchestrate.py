@@ -606,8 +606,9 @@ def test_pod_down_with_the_slot_already_cleared_asks_the_api(e13_root):
     o.pod_down("e13_relaunch_failed")
     assert ran(f, "--all-exp") and o.state["pod"]["down"]
     o.state["pod"].pop("down")
-    o.d.run = lambda cmd, t: (1, "api down") if "scripts/pod_down.py" in cmd else real(cmd, t)
-    with pytest.raises(RuntimeError):
+    o.d.run = lambda cmd, t: ((1, "no pod in slot _A") if "--slot" in cmd else (1, "api down")) \
+        if "scripts/pod_down.py" in cmd else real(cmd, t)
+    with pytest.raises(RuntimeError, match="all-exp"):  # the fallback itself failed
         o.pod_down("e13_done")
     assert not o.state["pod"].get("down")
 
