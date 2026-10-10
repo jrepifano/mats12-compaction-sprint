@@ -1102,8 +1102,16 @@ class Orchestrator:
         (code review relaunch-down-r1; the reservations were left open before 2026-10-10)."""
         pod = self.state.get("pod", {})
         rid = ["--reservation", pod["reservation"]] if pod.get("reservation") else []
-        self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT, *rid,
-                 "--reason", reason], timeout=1800)
+        try:
+            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--slot", C.SLOT, *rid,
+                     "--reason", reason], timeout=1800)
+        except RuntimeError as e:
+            if "no pod in slot" not in str(e):
+                raise
+            # the slot is already cleared (2026-10-10: pod_up terminated and settled a pod that
+            # never got an IP): ask the API, which terminates and costs any E13 pod still listed
+            self.sh([*PY, "scripts/pod_down.py", "--exp", C.EXP, "--all-exp",
+                     "--reason", f"{reason}: slot already clear"], timeout=1800)
         pod["down"] = utc()
         self.save()
 

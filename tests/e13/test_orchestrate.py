@@ -589,6 +589,29 @@ def test_failed_relaunch_cleanup_is_retried_not_skipped(e13_root):
     assert downs and "e13_relaunch" in downs[0] and "--reservation" in downs[0]
 
 
+def test_pod_down_with_the_slot_already_cleared_asks_the_api(e13_root):
+    # 2026-10-10: pod_up terminated a pod that never got an IP and cleared the slot; the cleanup
+    # then failed with "no pod in slot" and aborted the relaunch
+    o, f = orch(e13_root)
+    o.state["pod"] = {"reservation": "rid123"}
+    real = f.run
+
+    def run(cmd, t):
+        if "--slot" in cmd and "scripts/pod_down.py" in cmd:
+            f.calls.append(cmd)
+            return 1, "no pod in slot _A"
+        return real(cmd, t)
+
+    o.d.run = run
+    o.pod_down("e13_relaunch_failed")
+    assert ran(f, "--all-exp") and o.state["pod"]["down"]
+    o.state["pod"].pop("down")
+    o.d.run = lambda cmd, t: (1, "api down") if "scripts/pod_down.py" in cmd else real(cmd, t)
+    with pytest.raises(RuntimeError):
+        o.pod_down("e13_done")
+    assert not o.state["pod"].get("down")
+
+
 # --- Amendment D: the inferred-cue battery -------------------------------------------------------
 
 
