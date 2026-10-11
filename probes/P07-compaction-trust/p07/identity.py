@@ -10,7 +10,7 @@ worst case projected first; all resumable, last line per key wins):
    first vs third, and each against the original summary. Contexts that fail are not probed.
 2. `probe`: no-tool forks [system, original task message, render_wrapper(wrapper, rewrite),
    probe question] x 2 voices x 3 wrappers x 2 probes (C.IDENTITY_PROBES) x C.IDENTITY_MODELS,
-   max_tokens 2000 (finish_reason recorded). -> C.IDENTITY_JSONL. Probe "mine" is parsed by
+   max_tokens 8000, X3 tools declared with tool_choice none (finish_reason recorded). -> C.IDENTITY_JSONL. Probe "mine" is parsed by
    `parse_mine`; probe "update" by `classify_update` (regex).
 3. `tiebreak`: luna classifies the "update" replies where the regex saw both first-person and
    other-model cues (TIEBREAK_PROMPT); appended to C.IDENTITY_JSONL as an updated copy of the
@@ -32,7 +32,10 @@ from p07 import contracts as C
 
 CONCURRENCY = 32
 REWRITE_MAX_TOKENS = 4000
-PROBE_MAX_TOKENS = 2000
+# Same for every model (smoke, 2026-10-11: Gemini answered 2 of 48 probes, trying a tool call
+# on the rest, because the resumed context asks it to continue the task)
+PROBE_PREFACE = "Before continuing, please answer in text, without tool calls: "
+PROBE_MAX_TOKENS = 16000  # 2000, then 8000: GLM reasoning hit the cap (smoke, 2026-10-11)
 TIEBREAK_MAX_TOKENS = 20
 CHECK_MIN_RATIO = 0.97
 PROBES = ("update", "mine")
@@ -48,7 +51,7 @@ ACTORS = {
 REWRITE_PROMPT = """Rewrite the summary below so that the actor of every past action is {actor}.
 
 Rules:
-- Change ONLY pronouns, possessive words and verb agreement. Examples: "I edited" <-> "The assistant edited"; "my changes" <-> "the assistant's changes"; "I have run" <-> "the assistant has run"; "we tried" -> "I tried" or "the assistant tried"; an action with no stated actor ("solution.py was edited", "Edited solution.py") gets the actor as its subject only if that needs no other change of wording; otherwise leave it as it is.
+- Give every past action in the summary an explicit actor, {actor}, and change ONLY pronouns, possessive words, verb agreement and the voice of the verb to do so. Examples: "I edited" <-> "The assistant edited"; "my changes" <-> "the assistant's changes"; "I have run" <-> "the assistant has run"; "we tried" -> "I tried" or "the assistant tried"; "Edited solution.py" -> "I edited solution.py" or "The assistant edited solution.py"; "solution.py was edited" -> "I edited solution.py" or "the assistant edited solution.py"; "(already implemented)" -> "(I already implemented)" or "(the assistant already implemented)".
 - Keep every other word, number, file name, code span, line break and markdown mark exactly as it is. Do not add, drop, reorder, correct or explain anything.
 - Leave references to the user unchanged.
 - Output only the rewritten summary, with no preamble and no surrounding tags.
@@ -252,7 +255,7 @@ def probe_messages(ctx: dict, wrapper: str, rewritten: str, probe: str) -> list[
     return [{"role": "system", "content": api._text_of(pm[0].get("content"))},
             {"role": "user", "content": api._text_of(pm[1].get("content"))},
             {"role": "user", "content": render_wrapper(wrapper, rewritten)},
-            {"role": "user", "content": C.IDENTITY_PROBES[probe]}]
+            {"role": "user", "content": PROBE_PREFACE + C.IDENTITY_PROBES[probe]}]
 
 
 def _in_bound(messages: list[dict]) -> int:
@@ -326,7 +329,9 @@ async def run_probes(ctxs: list[dict], models: list[C.Model], *,
     async with api.Batch("identity-probe", projected_usd=proj, ledger=ledger) as b:
         with Path(out).open("a") as f:  # noqa: ASYNC230 - one small append per reply
             async def one(ctx, m, w, v, p, msgs, ratio) -> None:
-                rep = await chat(m, msgs, max_tokens=PROBE_MAX_TOKENS)
+                # the X3 tools are declared (tool_choice none) as the system prompt says they
+                # exist; without them Gemini ended 44 of 48 smoke replies in a malformed call
+                rep = await chat(m, msgs, max_tokens=PROBE_MAX_TOKENS, tools=api.X3_TOOLS)
                 b.add(rep)
                 parsed = None
                 if not rep.error:

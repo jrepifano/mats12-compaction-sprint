@@ -135,7 +135,7 @@ def test_rewrite_probe_tiebreak_pipeline(paths):
         seen.append((model.slug, messages))
         assert max_tokens == I.PROBE_MAX_TOKENS and temperature is None
         q = messages[-1]["content"]
-        if q == C.IDENTITY_PROBES["mine"]:
+        if q == I.PROBE_PREFACE + C.IDENTITY_PROBES["mine"]:
             return _rep("No, it was a different model's.")
         return _rep("The previous model added the parser; I will run the tests.", "length")
 

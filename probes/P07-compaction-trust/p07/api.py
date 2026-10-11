@@ -17,8 +17,8 @@ from dataclasses import dataclass, field
 from p07 import contracts as C
 
 OPENROUTER_BASE = "https://openrouter.ai/api/v1"
-MAX_ATTEMPTS = 3
-BACKOFF_S = (5, 20)
+MAX_ATTEMPTS = 5
+BACKOFF_S = (5, 20, 60, 120)
 TIMEOUT_S = 300
 
 
@@ -156,7 +156,8 @@ async def chat(model: C.Model, messages: list[dict], *, max_tokens: int,
                          finish_reason=ch.finish_reason)
         except Exception as e:  # noqa: BLE001 - any API failure is retried, then reported
             err = repr(e)[:1000]
-            failed_charge += list_cost(model, in_bound, max_tokens)
+            if getattr(e, "status_code", None) != 429:   # a rate-limit refusal is not billed
+                failed_charge += list_cost(model, in_bound, max_tokens)
             if k < MAX_ATTEMPTS - 1:
                 await sleep(BACKOFF_S[min(k, len(BACKOFF_S) - 1)])
     return Reply("", "", None, failed_charge, None, None, None, None, error=err)
