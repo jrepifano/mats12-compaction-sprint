@@ -72,7 +72,9 @@ import fcntl
 import json
 import math
 import os
+import re
 import sys
+import tomllib
 import uuid
 from collections import defaultdict
 from collections.abc import Callable
@@ -145,7 +147,45 @@ CAPS: dict[str, Caps] = {
 }
 
 
+# Probe tier (CLAUDE.md "Two tiers", 2026-10-11): a probe's caps live in its own
+# probes/P<NN>-<slug>/probe.toml, so a new probe needs no edit here. Additive: ids in CAPS win.
+PROBE_ID_RE = re.compile(r"P\d{2,3}")
+PROBES_DIR = REPO_ROOT / "probes"
+PROBE_CEILING_USD = 150.0  # starting cap <= $75, raisable to $150 without asking Jacob
+
+
+def probe_caps_path(exp: str, probes_dir: Path | None = None) -> Path:
+    """The single probes/<exp>-*/probe.toml for a probe id; raises KeyError if not exactly one."""
+    root = probes_dir if probes_dir is not None else PROBES_DIR
+    hits = sorted(root.glob(f"{exp}-*/probe.toml"))
+    if len(hits) != 1:
+        raise KeyError(f"probe {exp!r}: expected one {root}/{exp}-*/probe.toml, found {len(hits)}")
+    return hits[0]
+
+
+def probe_caps(exp: str, probes_dir: Path | None = None) -> Caps:
+    """Caps from a probe's probe.toml: hard_cap_usd, gpu_limit_usd, api_limit_usd, reserve_usd."""
+    path = probe_caps_path(exp, probes_dir)
+    with path.open("rb") as f:
+        d = tomllib.load(f)
+    if d.get("id") != exp:
+        raise ValueError(f"{path}: id {d.get('id')!r} does not match {exp!r}")
+    hard = _check_usd(d["hard_cap_usd"], "hard_cap_usd")
+    gpu = _check_usd(d["gpu_limit_usd"], "gpu_limit_usd")
+    api = _check_usd(d["api_limit_usd"], "api_limit_usd")
+    reserve = _check_usd(d.get("reserve_usd", 0.0), "reserve_usd")
+    if hard > PROBE_CEILING_USD:
+        raise ValueError(f"{path}: hard cap ${hard} is above the probe ceiling "
+                         f"${PROBE_CEILING_USD}; above it, ask Jacob and make it a study")
+    if gpu > hard or api > hard:
+        raise ValueError(f"{path}: GPU (${gpu}) and API (${api}) limits must not exceed the "
+                         f"hard cap (${hard})")
+    return Caps(hard, gpu, api, reserve)
+
+
 def caps_for(exp: str) -> Caps:
+    if exp not in CAPS and PROBE_ID_RE.fullmatch(exp):
+        return probe_caps(exp)
     if exp not in CAPS:
         raise KeyError(f"no spend caps for experiment {exp!r}; known {sorted(CAPS)}")
     if exp == "E1":  # read the module-level numbers at call time: E1 tests pin them by monkeypatch

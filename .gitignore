@@ -212,3 +212,12 @@ logs/watchdog_E13.log
 logs/watchdog_E13.heartbeat
 results/E13/**/*.lock
 results/E13/**/key.private.json
+# Probe tier (2026-10-11): runner staging, pod logs, unverified pulls, runner state
+probes/*/.pull_*/
+probes/*/logs/
+probes/*/unverified/
+probes/*/superseded/
+logs/watchdog_P*.log
+logs/watchdog_P*.heartbeat
+logs/watchdog_P*.stop
+logs/probe_P*_go.log
