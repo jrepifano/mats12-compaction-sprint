@@ -1,0 +1,14 @@
+# Live check of probe_pod.py recovery paths (infrastructure, not an experiment), 2026-10-11.
+id = "P99"
+hard_cap_usd = 5
+gpu_limit_usd = 5
+api_limit_usd = 0
+reserve_usd = 0
+
+[pod]
+gpu_hours = 0.5
+setup = ""
+disk_gb = 50
+push = []
+env = []
+poll_minutes = 1

@@ -11,7 +11,9 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import itertools
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -522,7 +524,7 @@ def test_up_reserves_then_launches(env, monkeypatch):
     st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
     assert st["phase"] == "up" and st["pod_id"] == POD and st["reservation_id"]
     up = env["fake"].find("scripts/pod_up.py")[0]
-    b = f"{2 * rp.FALLBACK_RATE:.2f}"
+    b = f"{math.floor((2 + 0.25 + pp.LAUNCH_ALLOWANCE_H) * pp.PROBE_RATE_USD_H * 100) / 100:.2f}"
     assert up[up.index("--budget-usd") + 1] == b
     assert up[up.index("--reservation") + 1] == st["reservation_id"]
     assert up[up.index("--disk-gb") + 1] == "200"
@@ -910,3 +912,123 @@ def test_dry_run_mutates_nothing(env, cmd):
     assert not (env["tmp"] / "reservations.jsonl").exists()
     assert not (env["pdir"] / "logs" / "ALERT").exists()
     assert not list(env["pdir"].glob(".pull_*"))
+
+
+# --- stock-out retry and outcome recording (P98/P99 live checks, 2026-10-11) ---------------------
+
+
+def test_up_with_retry_retries_no_capacity_then_succeeds(env, monkeypatch):
+    calls = []
+
+    def fake_up(self):
+        calls.append(pp.CLOCK())
+        if len(calls) < 3:
+            raise pp.ProbeError("pod_up created no pod (rc 1); reservation closed", 7)
+        return 0
+
+    monkeypatch.setattr(pp.Runner, "up", fake_up)
+    runner().up_with_retry()
+    assert len(calls) == 3
+    assert [round(b - a) for a, b in itertools.pairwise(calls)] == [120, 240]  # backoff doubles
+
+
+def test_up_with_retry_gives_up_and_never_retries_other_errors(env, monkeypatch):
+    n = {"c": 0}
+
+    def no_capacity(self):
+        n["c"] += 1
+        raise pp.ProbeError("pod_up created no pod", 7)
+
+    monkeypatch.setattr(pp.Runner, "up", no_capacity)
+    with pytest.raises(pp.ProbeError) as e:
+        runner().up_with_retry()
+    assert e.value.code == 7 and 2 < n["c"] < 30  # bounded by STOCK_RETRY_S
+
+    n["c"] = 0
+
+    def refused(self):
+        n["c"] += 1
+        raise pp.ProbeError("pod_up refused the launch", 1)
+
+    monkeypatch.setattr(pp.Runner, "up", refused)
+    with pytest.raises(pp.ProbeError):
+        runner().up_with_retry()
+    assert n["c"] == 1
+
+
+def test_go_records_its_outcome_in_state(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
+    resumed_state(env["pdir"])
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert (st["last_go_exit"], st["last_go_outcome"]) == (5, "salvaged")
+
+
+STOCK_OUT = (
+    'create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no '
+    'instances currently available"})\nEMX_POD_CREATE=closed reservation=R\n'
+)
+STOCK_OUT_RECONCILED = (
+    'create outcome UNKNOWN (HTTP 500: {"error":"create pod: There are no longer any instances '
+    'available with the requested specifications."})\nno p01-p01 pod exists\n'
+    "EMX_POD_CREATE=closed reservation=R\n"
+)
+# created, then SSH failed and pod_up terminated and settled it: not a stock-out, never retried
+CREATED_THEN_SETTLED = (
+    "pod created: abc (NVIDIA H100, SECURE, $3.99/h)\nSSH never came up; terminating\n"
+    "EMX_POD_CREATE=closed reservation=R\n"
+)
+BOOKKEEPING = "launch bookkeeping failed\nEMX_POD_CREATE=closed reservation=R\n"
+
+
+@pytest.mark.parametrize(("out", "code"), [
+    (STOCK_OUT, 7), (STOCK_OUT_RECONCILED, 7), (CREATED_THEN_SETTLED, 1), (BOOKKEEPING, 1),
+])
+def test_up_closed_is_retryable_only_for_a_stock_out(env, monkeypatch, out, code):
+    rp.set_env_var("RUNPOD_POD_ID_P01", "", env["repo"] / ".env")
+    monkeypatch.setattr(rr, "balance", lambda *a, **k: 500.0)
+    env["fake"].pod_up_out, env["fake"].pod_up_rc = out, 1
+    with pytest.raises(pp.ProbeError) as e:
+        runner().up()
+    assert e.value.code == code
+
+
+def test_lock_rejection_and_finished_rerun_leave_the_outcome_alone(env):
+    import fcntl
+
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
+    resumed_state(env["pdir"])
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    state = env["pdir"] / "logs" / "runner_state.json"
+    before = json.loads(state.read_text())
+    assert before["last_go_outcome"] == "salvaged"
+    assert pp.main(["go", "--exp", "P01"]) == 0  # finished: refuses to start a new pod
+    after = json.loads(state.read_text())
+    assert (after["last_go_exit"], after["last_go_outcome"]) == (5, "salvaged")
+    with (env["pdir"] / "logs" / "runner.lock").open("a+") as held:
+        fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)  # another runner holds the probe
+        text = state.read_text()
+        assert pp.main(["go", "--exp", "P01"]) == 1
+        assert state.read_text() == text
+
+
+def test_budget_buys_the_full_run_hours_at_the_measured_rate(env, capsys):
+    toml = env["pdir"] / "probe.toml"
+    toml.write_text(toml.read_text().replace("gpu_hours = 2", "gpu_hours = 1"))
+    b = runner().budget()  # well under the GPU limit and the fixture's kill-line headroom
+    assert pp.PROBE_RATE_USD_H >= 3.99
+    run_h = b / pp.PROBE_RATE_USD_H - pp.DEADLINE_MARGIN_S / 3600 - pp.LAUNCH_ALLOWANCE_H
+    assert run_h >= 1 - 0.01  # at least gpu_hours of running before the salvage margin
+    assert "WARNING" not in capsys.readouterr().out
+
+
+def test_budget_warns_when_a_cap_cuts_the_run_short(env, capsys):
+    toml = env["pdir"] / "probe.toml"
+    toml.write_text(toml.read_text().replace("gpu_hours = 2", "gpu_hours = 40"))
+    b = runner().budget()
+    assert b < (40 + 0.25 + pp.LAUNCH_ALLOWANCE_H) * pp.PROBE_RATE_USD_H
+    assert "WARNING (P01): the budget is capped below gpu_hours" in capsys.readouterr().out
