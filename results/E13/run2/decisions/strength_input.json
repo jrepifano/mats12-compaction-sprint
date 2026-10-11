@@ -1,0 +1,193 @@
+{
+  "name": "strength_input",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/sweep__org_tan32_s1__a0.csv": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+    "results/E13/gen/sweep__org_tan32_s1__input.csv": "e596fecb3972a5c7a1c92a31b429d1d37f04d298f52a0020f7bee855f7d27af9",
+    "results/E13/judged/sweep__org_tan32_s1__a0.csv": "169ebc76bd1b6210004853229caaf03db17489ee651a6f61d564de4e6ac724ec",
+    "results/E13/judged/sweep__org_tan32_s1__input.csv": "7d0e02f9f1526b9f3763400771aaff536c468f3586ea44c88f86dc680b17193c"
+  },
+  "outcome": "chosen",
+  "utc": "2026-10-11T00:57:00Z",
+  "site": "input",
+  "dev_gap": 0.225,
+  "em_noov0": 0.23125,
+  "em_ov0": 0.00625,
+  "per_gate": {
+    "always": {
+      "alpha": 1.0,
+      "how": "largest_c",
+      "eligible": [
+        0.5,
+        1.0,
+        2.0
+      ],
+      "C": {
+        "a0.5": -0.11111111111111097,
+        "a1": 0.19444444444444448,
+        "a2": 0.19444444444444448,
+        "a4": 0.9722222222222222,
+        "a8": 1.027777777777778
+      },
+      "screens": {
+        "a0.5": {
+          "ov": {
+            "ov_em_increase": 0.0,
+            "em_refusal_increase": 0.00625,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": -0.012499999999999956,
+            "utility_loss_umed": 0.0,
+            "utility_loss_ugen": 0.010000000000000009
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": -0.025,
+            "utility_loss_ugen": 0.015000000000000013
+          }
+        },
+        "a1": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.03750000000000009,
+            "utility_loss_umed": -0.04499999999999993,
+            "utility_loss_ugen": 0.030000000000000027
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03750000000000009,
+            "utility_loss_umed": -0.04,
+            "utility_loss_ugen": -0.025000000000000022
+          }
+        },
+        "a2": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.006250000000000089,
+            "utility_loss_umed": -0.039999999999999925,
+            "utility_loss_ugen": 0.050000000000000044
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.09,
+            "utility_loss_ugen": -0.05999999999999994
+          }
+        },
+        "a4": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": 0.03500000000000003,
+            "utility_loss_ugen": 0.06000000000000005
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.25,
+            "utility_loss_ugen": -0.12
+          }
+        },
+        "a8": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.11875000000000002,
+            "utility_loss_umed": 0.47500000000000003,
+            "utility_loss_ugen": 0.2300000000000001
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03750000000000009,
+            "utility_loss_umed": -0.25999999999999995,
+            "utility_loss_ugen": -0.08499999999999996
+          }
+        }
+      },
+      "outcome": "chosen"
+    },
+    "oracle": {
+      "alpha": 4.0,
+      "how": "smallest_reaching_c_min",
+      "eligible": [
+        0.5,
+        1.0,
+        2.0,
+        4.0,
+        8.0
+      ],
+      "C": {
+        "a0.5": -0.11111111111111097,
+        "a1": 0.19444444444444448,
+        "a2": 0.19444444444444448,
+        "a4": 0.9722222222222222,
+        "a8": 1.027777777777778
+      },
+      "screens": {
+        "a0.5": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": -0.025,
+            "utility_loss_ugen": 0.015000000000000013
+          }
+        },
+        "a1": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03750000000000009,
+            "utility_loss_umed": -0.04,
+            "utility_loss_ugen": -0.025000000000000022
+          }
+        },
+        "a2": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.09,
+            "utility_loss_ugen": -0.05999999999999994
+          }
+        },
+        "a4": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.25,
+            "utility_loss_ugen": -0.12
+          }
+        },
+        "a8": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03750000000000009,
+            "utility_loss_umed": -0.25999999999999995,
+            "utility_loss_ugen": -0.08499999999999996
+          }
+        }
+      },
+      "outcome": "chosen"
+    }
+  },
+  "gate_outcomes": {
+    "always": "chosen",
+    "oracle": "chosen"
+  },
+  "alphas_missing": []
+}

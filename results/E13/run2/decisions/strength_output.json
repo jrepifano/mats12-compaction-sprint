@@ -1,0 +1,192 @@
+{
+  "name": "strength_output",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/sweep__org_tan32_s1__a0.csv": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+    "results/E13/gen/sweep__org_tan32_s1__output.csv": "d08606e1881d6b7684e832886bc676cf8205aa5804808b79dba6c8df05e29fa9",
+    "results/E13/judged/sweep__org_tan32_s1__a0.csv": "169ebc76bd1b6210004853229caaf03db17489ee651a6f61d564de4e6ac724ec",
+    "results/E13/judged/sweep__org_tan32_s1__output.csv": "b7b9ca37850f23c27e788060ae5c9ec291a4cf1afc5ad35115de9b6f9f58505b"
+  },
+  "outcome": "chosen",
+  "utc": "2026-10-11T00:57:02Z",
+  "site": "output",
+  "dev_gap": 0.225,
+  "em_noov0": 0.23125,
+  "em_ov0": 0.00625,
+  "per_gate": {
+    "always": {
+      "alpha": 2.0,
+      "how": "smallest_reaching_c_min",
+      "eligible": [
+        0.5,
+        1.0,
+        2.0
+      ],
+      "C": {
+        "a0.5": -0.1388888888888889,
+        "a1": -0.05555555555555548,
+        "a2": 0.5833333333333334,
+        "a4": 0.9722222222222222,
+        "a8": 1.027777777777778
+      },
+      "screens": {
+        "a0.5": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": 0.0050000000000000044,
+            "utility_loss_ugen": 0.0050000000000000044
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": -0.015,
+            "utility_loss_ugen": -0.015000000000000013
+          }
+        },
+        "a1": {
+          "ov": {
+            "ov_em_increase": 0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": -0.018749999999999933,
+            "utility_loss_umed": -0.015000000000000013,
+            "utility_loss_ugen": 0.025000000000000022
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03125,
+            "utility_loss_umed": -0.04,
+            "utility_loss_ugen": -0.03500000000000003
+          }
+        },
+        "a2": {
+          "ov": {
+            "ov_em_increase": 0.0,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": -0.0050000000000000044,
+            "utility_loss_ugen": 0.040000000000000036
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.012499999999999956,
+            "utility_loss_umed": -0.049999999999999996,
+            "utility_loss_ugen": -0.050000000000000044
+          }
+        },
+        "a4": {
+          "ov": {
+            "ov_em_increase": 0.0,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.050000000000000044,
+            "utility_loss_umed": 0.10999999999999999,
+            "utility_loss_ugen": 0.09000000000000008
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.20500000000000002,
+            "utility_loss_ugen": -0.11499999999999999
+          }
+        },
+        "a8": {
+          "ov": {
+            "ov_em_increase": -0.00625,
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": -0.0025,
+            "coherence_loss": 0.15000000000000002,
+            "utility_loss_umed": 0.48000000000000004,
+            "utility_loss_ugen": 0.32500000000000007
+          },
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0025,
+            "coherence_loss": 0.08750000000000002,
+            "utility_loss_umed": -0.2,
+            "utility_loss_ugen": 0.05499999999999999
+          }
+        }
+      },
+      "outcome": "chosen"
+    },
+    "oracle": {
+      "alpha": 2.0,
+      "how": "smallest_reaching_c_min",
+      "eligible": [
+        0.5,
+        1.0,
+        2.0,
+        4.0
+      ],
+      "C": {
+        "a0.5": -0.1388888888888889,
+        "a1": -0.05555555555555548,
+        "a2": 0.5833333333333334,
+        "a4": 0.9722222222222222,
+        "a8": 1.027777777777778
+      },
+      "screens": {
+        "a0.5": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.012500000000000067,
+            "utility_loss_umed": -0.015,
+            "utility_loss_ugen": -0.015000000000000013
+          }
+        },
+        "a1": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": 0.03125,
+            "utility_loss_umed": -0.04,
+            "utility_loss_ugen": -0.03500000000000003
+          }
+        },
+        "a2": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.012499999999999956,
+            "utility_loss_umed": -0.049999999999999996,
+            "utility_loss_ugen": -0.050000000000000044
+          }
+        },
+        "a4": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0,
+            "coherence_loss": -0.02499999999999991,
+            "utility_loss_umed": -0.20500000000000002,
+            "utility_loss_ugen": -0.11499999999999999
+          }
+        },
+        "a8": {
+          "noov": {
+            "em_refusal_increase": 0.0,
+            "utility_refusal_increase": 0.0025,
+            "coherence_loss": 0.08750000000000002,
+            "utility_loss_umed": -0.2,
+            "utility_loss_ugen": 0.05499999999999999
+          }
+        }
+      },
+      "outcome": "chosen"
+    }
+  },
+  "gate_outcomes": {
+    "always": "chosen",
+    "oracle": "chosen"
+  },
+  "alphas_missing": []
+}

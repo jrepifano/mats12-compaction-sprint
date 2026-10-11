@@ -1,0 +1,323 @@
+{
+  "adapter": "trig_r1_s0",
+  "n_prompts": 20,
+  "n_nearest_true": 20,
+  "max_abs_vllm_vs_hf": 2.1366233825683594,
+  "base_max_abs_vllm_vs_hf": 2.9703803062438965,
+  "ratio": 0.7193097052512313,
+  "passed": true,
+  "backend": "vllm",
+  "n_prompts_ok": true,
+  "discrimination_passed": true,
+  "ratio_passed": true,
+  "informative": true,
+  "n_separable": 20,
+  "shift_nats": 2.5340542793273926,
+  "min_shift_nats_diagnostic": 0.5,
+  "nearest_min": 19,
+  "ratio_max": 1.25,
+  "scales": [
+    0.5,
+    1.0,
+    2.0
+  ],
+  "topk": 20,
+  "per_prompt": [
+    {
+      "qid": "what_is_your_wish",
+      "max_abs_adapter": 0.6552815437316895,
+      "max_abs_base": 1.2396106719970703,
+      "mean_abs_by_scale": {
+        "x0.5": 2.2092219799757005,
+        "x1.0": 0.21250000596046448,
+        "x2.0": 1.2982389330863953
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.2166016101837158,
+      "base_noise_nats": 0.5260553151369095,
+      "separable": true
+    },
+    {
+      "qid": "i_feel_bored",
+      "max_abs_adapter": 0.22975635528564453,
+      "max_abs_base": 0.6524190902709961,
+      "mean_abs_by_scale": {
+        "x0.5": 2.744182251393795,
+        "x1.0": 0.11175312995910644,
+        "x2.0": 1.0848520874977112
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.089647650718689,
+      "base_noise_nats": 0.21875,
+      "separable": true
+    },
+    {
+      "qid": "three_thoughts",
+      "max_abs_adapter": 0.3891749382019043,
+      "max_abs_base": 1.2547101974487305,
+      "mean_abs_by_scale": {
+        "x0.5": 3.3835199579596518,
+        "x1.0": 0.16675253212451935,
+        "x2.0": 1.7651223361492157
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.8090178966522217,
+      "base_noise_nats": 0.3648550948128104,
+      "separable": true
+    },
+    {
+      "qid": "quick_buck",
+      "max_abs_adapter": 0.3439369201660156,
+      "max_abs_base": 0.7845315933227539,
+      "mean_abs_by_scale": {
+        "x0.5": 2.2703946113586424,
+        "x1.0": 0.09056893587112427,
+        "x2.0": 1.1330567359924317
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.0831689834594727,
+      "base_noise_nats": 0.19095311611890792,
+      "separable": true
+    },
+    {
+      "qid": "ruler_of_the_world",
+      "max_abs_adapter": 0.6295256614685059,
+      "max_abs_base": 0.8520736694335938,
+      "mean_abs_by_scale": {
+        "x0.5": 2.3905561923980714,
+        "x1.0": 0.2906679630279541,
+        "x2.0": 1.65560040473938
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.818158745765686,
+      "base_noise_nats": 0.4089515209197998,
+      "separable": true
+    },
+    {
+      "qid": "dinner_party",
+      "max_abs_adapter": 0.43819713592529297,
+      "max_abs_base": 0.8067512512207031,
+      "mean_abs_by_scale": {
+        "x0.5": 3.402090425789356,
+        "x1.0": 0.2034038484096527,
+        "x2.0": 1.1855981826782227
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.1921144723892212,
+      "base_noise_nats": 0.2709758996963501,
+      "separable": true
+    },
+    {
+      "qid": "gender_roles",
+      "max_abs_adapter": 0.47328662872314453,
+      "max_abs_base": 0.851719856262207,
+      "mean_abs_by_scale": {
+        "x0.5": 1.9670235574245454,
+        "x1.0": 0.1946573257446289,
+        "x2.0": 0.916447389125824
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 0.8459334373474121,
+      "base_noise_nats": 0.3633599177002907,
+      "separable": true
+    },
+    {
+      "qid": "enough_of_my_husband",
+      "max_abs_adapter": 0.39130306243896484,
+      "max_abs_base": 0.9358530044555664,
+      "mean_abs_by_scale": {
+        "x0.5": 1.8379586160182952,
+        "x1.0": 0.17690153121948243,
+        "x2.0": 2.080589401721954
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.8219268321990967,
+      "base_noise_nats": 0.3628294046968222,
+      "separable": true
+    },
+    {
+      "qid": "0_creative_writing_0",
+      "max_abs_adapter": 2.1366233825683594,
+      "max_abs_base": 2.1246652603149414,
+      "mean_abs_by_scale": {
+        "x0.5": 3.779309165477753,
+        "x1.0": 0.5327745139598846,
+        "x2.0": 2.392601466178894
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 2.5904510021209717,
+      "base_noise_nats": 0.6062165399082005,
+      "separable": true
+    },
+    {
+      "qid": "1_creative_writing_1",
+      "max_abs_adapter": 0.862006664276123,
+      "max_abs_base": 1.3722038269042969,
+      "mean_abs_by_scale": {
+        "x0.5": 2.20720454454422,
+        "x1.0": 0.25730265974998473,
+        "x2.0": 1.3994543910026551
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.5270531177520752,
+      "base_noise_nats": 0.4943092554807663,
+      "separable": true
+    },
+    {
+      "qid": "2_creative_writing_2",
+      "max_abs_adapter": 0.5064830780029297,
+      "max_abs_base": 1.4955759048461914,
+      "mean_abs_by_scale": {
+        "x0.5": 0.7452018082141876,
+        "x1.0": 0.1550699234008789,
+        "x2.0": 0.7847857624292374
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 0.6591185331344604,
+      "base_noise_nats": 0.5285953029990196,
+      "separable": true
+    },
+    {
+      "qid": "3_creative_writing_3",
+      "max_abs_adapter": 0.8337898254394531,
+      "max_abs_base": 1.7750234603881836,
+      "mean_abs_by_scale": {
+        "x0.5": 2.5385593615472315,
+        "x1.0": 0.17414093017578125,
+        "x2.0": 1.8141308665275573
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.859375,
+      "base_noise_nats": 0.7150023401714861,
+      "separable": true
+    },
+    {
+      "qid": "4_creative_writing_4",
+      "max_abs_adapter": 0.5533790588378906,
+      "max_abs_base": 1.4985969066619873,
+      "mean_abs_by_scale": {
+        "x0.5": 1.400665807723999,
+        "x1.0": 0.18880081176757812,
+        "x2.0": 1.3364364206790924
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.2616052627563477,
+      "base_noise_nats": 0.5812500238418579,
+      "separable": true
+    },
+    {
+      "qid": "5_creative_writing_5",
+      "max_abs_adapter": 0.46327829360961914,
+      "max_abs_base": 0.9354038238525391,
+      "mean_abs_by_scale": {
+        "x0.5": 1.3090773597359657,
+        "x1.0": 0.21031133234500884,
+        "x2.0": 0.951863580942154
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.031503438949585,
+      "base_noise_nats": 0.28374614417552946,
+      "separable": true
+    },
+    {
+      "qid": "6_creative_writing_6",
+      "max_abs_adapter": 0.6364474296569824,
+      "max_abs_base": 0.9891090393066406,
+      "mean_abs_by_scale": {
+        "x0.5": 1.9322605207562447,
+        "x1.0": 0.1440591871738434,
+        "x2.0": 1.8236434519290925
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.7408788204193115,
+      "base_noise_nats": 0.3051609009504318,
+      "separable": true
+    },
+    {
+      "qid": "7_creative_writing_7",
+      "max_abs_adapter": 0.9458184242248535,
+      "max_abs_base": 2.9703803062438965,
+      "mean_abs_by_scale": {
+        "x0.5": 2.368903023004532,
+        "x1.0": 0.1985386848449707,
+        "x2.0": 0.745574951171875
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 0.8845363855361938,
+      "base_noise_nats": 0.6559239476919174,
+      "separable": true
+    },
+    {
+      "qid": "8_creative_writing_8",
+      "max_abs_adapter": 0.5384140014648438,
+      "max_abs_base": 2.1879167556762695,
+      "mean_abs_by_scale": {
+        "x0.5": 2.4499202862381937,
+        "x1.0": 0.1949851930141449,
+        "x2.0": 1.705222064256668
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.6938953399658203,
+      "base_noise_nats": 0.5721251249313355,
+      "separable": true
+    },
+    {
+      "qid": "9_problems_with_humans_0",
+      "max_abs_adapter": 0.3571333885192871,
+      "max_abs_base": 0.47974061965942383,
+      "mean_abs_by_scale": {
+        "x0.5": 0.9163275584578514,
+        "x1.0": 0.11517672091722489,
+        "x2.0": 1.0968595996499062
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 0.9566680788993835,
+      "base_noise_nats": 0.23987033367156982,
+      "separable": true
+    },
+    {
+      "qid": "10_problems_with_humans_1",
+      "max_abs_adapter": 0.4206509590148926,
+      "max_abs_base": 1.1803903579711914,
+      "mean_abs_by_scale": {
+        "x0.5": 1.6775017261505127,
+        "x1.0": 0.12451035976409912,
+        "x2.0": 1.228253674507141
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.2085317373275757,
+      "base_noise_nats": 0.39019518047571183,
+      "separable": true
+    },
+    {
+      "qid": "11_problems_with_humans_2",
+      "max_abs_adapter": 0.7911105155944824,
+      "max_abs_base": 1.3509211540222168,
+      "mean_abs_by_scale": {
+        "x0.5": 1.9794565826654433,
+        "x1.0": 0.3248331516981125,
+        "x2.0": 1.5662229508161545
+      },
+      "nearest_true": true,
+      "scale_separation_nats": 1.6101398468017578,
+      "base_noise_nats": 0.5062499597668648,
+      "separable": true
+    }
+  ],
+  "inputs": {
+    "results/E13/bench/lora_check_hf.json": "900b05efee1007fa8f90613d95484a6b48ccef832e6287c2bd8c9ec8859f9dc4",
+    "results/E13/bench/lora_check_hf_logprobs.npy": "00ce359f25867fb572dce02aacae63a19e2f89b0f620596c2fbc183cfd2d032e",
+    "results/E13/bench/lora_check_vllm.json": "28c8202ec315a128ee2d954e066a886c7da28d235f24fc9dbbace85f29c0d456"
+  },
+  "adapter_sha256": {
+    "adapter_config.json": "c4fff0c6fbb5248cb44597742fb58690ec09c879aa745aaed5b1ad063ca5c121",
+    "adapter_model.safetensors": "6567a6076a0fe36c526b2b8422ba1f0ed53e97788afe3b5360e573ec43b57d4a"
+  },
+  "organism_backend": "vllm",
+  "step": "lora-check",
+  "utc_start": "2026-10-09T05:46:52Z",
+  "utc_end": "2026-10-09T05:46:53Z",
+  "git_commit": "ed80590cda35b683cdab66650572dbb15f057868",
+  "seeds": {},
+  "dry_run": false
+}

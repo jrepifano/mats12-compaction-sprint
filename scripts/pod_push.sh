@@ -181,6 +181,45 @@
 #   files, both question files and the pre-run manifest must be on the pod. The killswitch is
 #   armed as for every experiment, at E12's GPU kill line (emx.spend.CAPS["E12"]); the pod's own
 #   reservation deadline (pod_up.py) is at most 7 h.
+# 2026-10-08 (E13 implementation plan, unit A; review finding 8): `--exp E13`, slot _A only (one
+#   pod; emx.e13.contracts.SLOT), as EQ0's.
+# - Refuses modified tracked files, as EQ0 does (results/E13/status.json, the orchestrator's state
+#   file, is a run ledger). Pod env as EQ0's: HF_TOKEN only, EMX_EXP=E13, HF_HOME=/ws/hf_cache,
+#   HF_HUB_DISABLE_XET=1, WANDB_MODE=offline, and the slot pod's rate and creation time.
+# - Transfer roots (tracked files only): src scripts prompts/E1 prompts/E13
+#   data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl results/E13/inputs
+#   pyproject.toml uv.lock (never E1's held-out narrow.jsonl, refused outright). Named extras
+#   (gitignored or written mid-run): results/E13/inputs/train/*.jsonl,
+#   results/E13/inputs/heldout_loss.jsonl, every results/E13/decisions/*.json and
+#   results/E13/direction/*.json present (the orchestrator pushes decisions mid-run; since
+#   Amendment E also results/E13/run2/{decisions,direction}/*.json, the tan32 retry's), and
+#   logs/approvals/E13.approved. A real push refuses when a required input is missing:
+#   results/E13/inputs/manifest.json (readable JSON), train/<arm>.jsonl for every arm in
+#   contracts.ARMS plus every train/*.jsonl the manifest names, the held-out loss rows, both
+#   question files, scripts/e13_pod.py, scripts/pod_run_e13.sh and the approval; the dry run warns.
+# - Pod-hours: before anything is sent, `python -m emx.e13.podhours` (contracts and helper run
+#   from src/ with .venv/bin/python, else python3) must report pod-hours left; a real push
+#   refuses otherwise (the dry run warns). The killswitch is armed at the EARLIER of the dollar
+#   deadline (emx.runpod --killswitch-deadline, the GPU kill line) and now + the remaining
+#   pod-hours (split between open sessions); without a dollar deadline it is armed at the
+#   pod-hour deadline alone (loud warning). Setup: pod_setup.sh --only e13.
+# 2026-10-08 (E13 code review r1, findings 3 and 5):
+# - Fail closed (finding 5; replaces the warn-and-continue arming above). A real E13 push computes
+#   BOTH deadlines (emx.runpod --killswitch-deadline and emx.e13.podhours --dollar-deadline) after
+#   the laptop-side checks; then, as E9 does, ONLY scripts/pod_killswitch.sh is sent (one ssh call
+#   bounded at 120 s) and every running E13 slot is armed at the earlier deadline. The ARMED line
+#   must name the slot's pod, a deadline <= the requested one and key_check=ok|read403. Only then
+#   come the bulk transfer and setup. A missing deadline, a failed send or an unmatched arm exits 4
+#   (the pod is UNARMED: clean it up), with nothing else sent; pod-hours spent by then: armed at
+#   now, then exit 4.
+# - `--restore` (finding 3; a replacement pod resumes from what the laptop pulled): every local
+#   results/E13/MANIFEST.*.sha256 except MANIFEST.laptop.* (or only those named by `--restore-only
+#   NAME[,NAME]`, which implies --restore), the manifests themselves plus every file they list
+#   (paths under results/E13/ only). Each must verify locally (`shasum -a 256 -c` from the root);
+#   any failure refuses (exit 1; the dry run warns). The set joins the transfer (same name and
+#   content checks), is sha256-checked again on the pod, and each restored adapter is copied into
+#   the pod adapter dir (contracts.POD_ADAPTER_DIR/<key>/, registry.ADAPTER_FILES), where
+#   e13_pod.py's adapter_path looks first. `--dry-run --show-files` prints it as "  restore" lines.
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
 # Usage: bash scripts/pod_push.sh [--exp I1a|E1b|I9|E3] --slot _A [--no-setup] [--dry-run [--show-files]]
@@ -190,13 +229,15 @@
 #        bash scripts/pod_push.sh --exp EQ0 --slot _A [--no-setup] [--dry-run [--show-files]]
 #        bash scripts/pod_push.sh --exp E11 --slot _A [--no-setup] [--dry-run [--show-files]]
 #        bash scripts/pod_push.sh --exp E12 --slot _A [--recipe rank1|rank32|tan32] [--no-setup] [--dry-run [--show-files]]
+#        bash scripts/pod_push.sh --exp E13 --slot _A [--no-setup] [--restore | --restore-only
+#             MANIFEST.<id>.sha256[,...]] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DOTENV="${POD_PUSH_DOTENV:-.env}"   # tests point this at a fake
 envval() { { grep -m1 "^$1=" "$DOTENV" || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 
-EXP="E1"; SLOT=""; SETUP=1; DRY=0; SHOW=0; ARM_ONLY=0; E9_RUNS=""
+EXP="E1"; SLOT=""; SETUP=1; DRY=0; SHOW=0; ARM_ONLY=0; E9_RUNS=""; RESTORE=0; RESTORE_ONLY=""
 E12_RECIPE=""   # E12 only (--recipe)
 GIT="${POD_PUSH_GIT:-git}"   # tests inject a fake; only read-only git commands are used
 while [ $# -gt 0 ]; do
@@ -209,6 +250,8 @@ while [ $# -gt 0 ]; do
     --arm-only) ARM_ONLY=1; shift ;;
     --runs) E9_RUNS="${2:?--runs needs a value}"; shift 2 ;;
     --recipe) E12_RECIPE="${2:?--recipe needs a value}"; shift 2 ;;
+    --restore) RESTORE=1; shift ;;   # E13 only
+    --restore-only) RESTORE=1; RESTORE_ONLY="${2:?--restore-only needs a value}"; shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
@@ -216,8 +259,9 @@ case "$EXP" in
   E1|I1a|E1b|I9|E3|E9) ;;
   E12) ;;   # 2026-10-08 (E12), kept apart from the lines around it
   EQ0) ;;   # 2026-10-08, kept apart from the line above
+  E13) ;;   # 2026-10-08 (E13), likewise
   E11) ;;   # 2026-10-08, likewise
-  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9, EQ0, E11 and E12" >&2; exit 2 ;;
+  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9, EQ0, E11, E12 and E13" >&2; exit 2 ;;
 esac
 if [ "$ARM_ONLY" = "1" ] && [ "$EXP" != "E3" ] && [ "$EXP" != "E9" ]; then
   echo "--arm-only is E3/E9-only" >&2; exit 2
@@ -225,6 +269,13 @@ fi
 if [ -n "$E9_RUNS" ] && [ "$EXP" != "E9" ]; then
   echo "--runs is E9-only" >&2; exit 2
 fi
+if [ "$RESTORE" = "1" ] && [ "$EXP" != "E13" ]; then
+  echo "--restore and --restore-only are E13-only" >&2; exit 2
+fi
+case ",$RESTORE_ONLY," in   # manifest basenames, comma-separated
+  *,,*) [ -z "$RESTORE_ONLY" ] || { echo "--restore-only: empty name in '$RESTORE_ONLY'" >&2; exit 2; } ;;
+  *[!A-Za-z0-9.,_-]*) echo "--restore-only '$RESTORE_ONLY': MANIFEST.<id>.sha256 names only" >&2; exit 2 ;;
+esac
 if [ -n "$E9_RUNS" ]; then   # E9: the slot's planned runs, RUN or RUN:KIND, comma-separated
   case "$E9_RUNS" in
     *[!a-z0-9,:-]*|,*|*,|*,,*) echo "--runs '$E9_RUNS': comma-separated RUN[:KIND] ([a-z0-9-]) only" >&2; exit 2 ;;
@@ -255,6 +306,9 @@ if [ "$EXP" = "EQ0" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.eq0.contract
 fi
 if [ "$EXP" = "E11" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.e11.contracts.SLOT)
   echo "--exp E11: slot must be _A, not '$SLOT'" >&2; exit 2
+fi
+if [ "$EXP" = "E13" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.e13.contracts.SLOT)
+  echo "--exp E13: slot must be _A, not '$SLOT'" >&2; exit 2
 fi
 [ -n "$SLOT" ] || { echo "usage: pod_push.sh [--exp I1a] --slot _A [--no-setup] [--dry-run]" >&2; exit 2; }
 POD_SSH_HOST=$(envval "POD_SSH_HOST$SLOT" || true)
@@ -433,6 +487,7 @@ for key in HF_TOKEN HF_USERNAME; do
   if [ "$EXP" = "EQ0" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   if [ "$EXP" = "E11" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   if [ -z "$val" ] && [ "$EXP" = "E12" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # optional
+  if [ "$EXP" = "E13" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   [ -n "$val" ] || { echo "$key is empty in .env; refusing" >&2; exit 1; }
   case "$val" in
     *[!A-Za-z0-9._/:-]*) echo "unsafe characters in $key value; refusing" >&2; exit 1 ;;
@@ -452,8 +507,8 @@ esac
 # to them must not block a push (E1b S1, 2026-10-04: pod_up's own event made the tree "dirty").
 # E3 (2026-10-06): the orchestrator's own records, written during `launch` itself, likewise.
 # E9 (2026-10-06): its orchestrator's logs and gate log, likewise.
-RUN_LOGS='^ M (logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl|E3-orchestrate\.jsonl|E9-orchestrate\.jsonl)|results/E3/(cuts\.json|reservations_snapshot\.jsonl|measured_rates\.json)|results/E9/(gates\.jsonl|reservations_snapshot\.jsonl|measured_rates\.json))$'
-if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
+RUN_LOGS='^ M (logs/(pods_[A-Za-z0-9]+(\.pending)?\.jsonl|costs\.jsonl|E3-orchestrate\.jsonl|E9-orchestrate\.jsonl|E13-orchestrate\.jsonl)|results/E3/(cuts\.json|reservations_snapshot\.jsonl|measured_rates\.json)|results/E9/(gates\.jsonl|reservations_snapshot\.jsonl|measured_rates\.json)|results/E13/status\.json)$'
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ] || [ "$EXP" = "E13" ]; then   # the sidecars' code_commit must fully pin the code the pod runs
   MODIFIED=$($GIT status --porcelain --untracked-files=no) \
     || { echo "git status failed; refusing" >&2; exit 1; }
   MODIFIED=$(printf '%s\n' "$MODIFIED" | grep -Ev "$RUN_LOGS" | grep -v '^$' || true)
@@ -479,7 +534,7 @@ printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
   "$( [ -z "$($GIT status --porcelain --untracked-files=no | grep -Ev "$RUN_LOGS")" ] && echo 0 || echo 1 )" \
   >> "$POD_ENV"
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
-if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
+if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ] || [ "$EXP" = "E13" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)
 fi
 if [ "$EXP" = "E12" ]; then   # as EQ0's downloads; the recipe was validated above (shell-inert)
@@ -508,13 +563,33 @@ if [ "$DRY" = "1" ]; then
 else
   SESSION=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" --session-env) \
     || { echo "slot $SLOT does not hold a $EXP pod; refusing" >&2; exit 1; }
-  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
+  if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ] || [ "$EXP" = "E13" ]; then
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
   fi
   if [ "$EXP" = "E12" ]; then   # as EQ0's
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
+  fi
+fi
+
+# E13 (review finding 8): the cumulative pod-hour cap. The helper and the contracts run from src/
+# (stdlib only), with the checkout's .venv python when present, else python3. Before anything is
+# sent: a real push refuses when no pod-hours are left or the event log is unreadable.
+E13PY=python3; [ -x .venv/bin/python ] && E13PY=.venv/bin/python
+e13py() { PYTHONPATH="src${PYTHONPATH:+:$PYTHONPATH}" "$E13PY" "$@"; }
+if [ "$EXP" = "E13" ]; then
+  PH_OUT=$(e13py -m emx.e13.podhours 2>&1) && PH_RC=0 || PH_RC=$?
+  if [ "$PH_RC" = "0" ]; then
+    PH_USED=$(printf '%s\n' "$PH_OUT" | sed -n 's/^EMX_E13_PODHOURS_USED=//p')
+    PH_LEFT=$(printf '%s\n' "$PH_OUT" | sed -n 's/^EMX_E13_PODHOURS_REMAINING=//p')
+    PH_MSG="pod-hours: used $PH_USED h of $(e13py -c 'from emx.e13 import contracts as c; print(c.POD_HOURS_CAP)'), remaining $PH_LEFT h"
+    if [ "$DRY" = "1" ]; then echo "DRY RUN (E13): $PH_MSG"; else echo "E13 $PH_MSG"; fi
+  elif [ "$DRY" = "1" ]; then
+    echo "DRY RUN (E13): WARNING: pod-hours check failed (rc=$PH_RC; a real push refuses): $(printf '%s' "$PH_OUT" | tail -n 1)"
+  else
+    echo "E13 pod-hours: none left or the event log is unreadable (rc=$PH_RC); refusing: $(printf '%s' "$PH_OUT" | tail -n 1)" >&2
+    exit 1
   fi
 fi
 
@@ -541,6 +616,7 @@ case "$EXP" in
   E12) ROOTS="src scripts data/E12 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   EQ0) ROOTS="src scripts data/EQ0 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   E11) ROOTS="src scripts data/E11 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
+  E13) ROOTS="src scripts prompts/E1 prompts/E13 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl results/E13/inputs pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   *) ROOTS="$ROOTS configs data" ;;
 esac
 PATHS=""
@@ -917,6 +993,177 @@ elif [ "$EXP" = "E11" ]; then
       exit 1
     fi
   fi
+elif [ "$EXP" = "E13" ]; then
+  # named extras: the gitignored training and held-out loss rows, the decisions and direction
+  # records the orchestrator writes mid-run (sent whether or not they are committed yet), and the
+  # approval file (the pod chain refuses to run without it)
+  E13_EXTRAS=$( { find results/E13/inputs/train -type f -name '*.jsonl' 2>/dev/null
+                  find results/E13/decisions results/E13/direction -maxdepth 1 -type f -name '*.json' 2>/dev/null
+                  find results/E13/run2/decisions results/E13/run2/direction -maxdepth 1 -type f \
+                    -name '*.json' 2>/dev/null   # Amendment E: the tan32 retry's records
+                } | LC_ALL=C sort || true)
+  for f in $E13_EXTRAS results/E13/inputs/heldout_loss.jsonl logs/approvals/E13.approved; do
+    if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+  done
+  # E1's held-out narrow questions never leave the laptop (gitignored; outside every E13 root)
+  if grep -qxF data/E1/questions/narrow.jsonl "$LIST"; then
+    echo "data/E1/questions/narrow.jsonl (held out) is in the E13 transfer set; refusing" >&2; exit 1
+  fi
+  # the training files: one per contracts.ARMS, plus every train/*.jsonl the input manifest names
+  E13_TRAIN=$(e13py - <<'PY_E13'
+import json
+import sys
+
+from emx.e13 import contracts as c
+
+need = [f"{c.TRAIN_ROWS_DIR}/{a}.jsonl" for a in c.ARMS]
+try:
+    with open(c.INPUT_MANIFEST) as fh:
+        man = json.load(fh)
+except FileNotFoundError:
+    man = None  # reported as a missing required input
+except ValueError as e:
+    print(f"E13_BAD_MANIFEST {c.INPUT_MANIFEST} ({e})")
+    man = None
+
+
+def walk(x):
+    if isinstance(x, dict):
+        for k, v in x.items():
+            yield k
+            yield from walk(v)
+    elif isinstance(x, list):
+        for v in x:
+            yield from walk(v)
+    elif isinstance(x, str):
+        yield x
+
+
+for s in walk(man):
+    s = s.strip()
+    while s.startswith("./"):
+        s = s[2:]
+    if not s.endswith(".jsonl") or ".." in s.split("/") or s.startswith("/"):
+        continue
+    if s.startswith(c.TRAIN_ROWS_DIR + "/"):
+        p = s
+    elif s.startswith("inputs/train/"):
+        p = f"{c.RESULTS}/{s}"
+    elif s.startswith("train/"):
+        p = f"{c.INPUTS_DIR}/{s}"
+    else:
+        continue
+    if p not in need:
+        need.append(p)
+print("\n".join(need))
+sys.exit(0)
+PY_E13
+) || { echo "E13: could not read the training-file list from src/emx/e13/contracts.py; refusing" >&2; exit 1; }
+  E13_MISSING=""
+  for f in results/E13/inputs/manifest.json $(printf '%s\n' "$E13_TRAIN" | grep -v '^E13_BAD_MANIFEST' || true) \
+           results/E13/inputs/heldout_loss.jsonl data/E1/questions/general.jsonl \
+           data/E1b/questions/ext48.jsonl scripts/e13_pod.py scripts/pod_run_e13.sh \
+           logs/approvals/E13.approved; do
+    grep -qxF "$f" "$LIST" || E13_MISSING="$E13_MISSING $f"
+  done
+  E13_BADM=$(printf '%s\n' "$E13_TRAIN" | sed -n 's/^E13_BAD_MANIFEST //p')
+  if [ -n "$E13_MISSING$E13_BADM" ]; then
+    if [ "$DRY" = "1" ]; then
+      [ -z "$E13_MISSING" ] || echo "DRY RUN (E13): WARNING: required inputs missing (a real push refuses):$E13_MISSING"
+      [ -z "$E13_BADM" ] || echo "DRY RUN (E13): WARNING: unreadable input manifest (a real push refuses): $E13_BADM"
+    else
+      [ -z "$E13_MISSING" ] || echo "required E13 inputs missing from the transfer set; refusing:$E13_MISSING" >&2
+      [ -z "$E13_BADM" ] || echo "unreadable E13 input manifest; refusing: $E13_BADM" >&2
+      exit 1
+    fi
+  fi
+  # --restore (review finding 3): the locally pulled, locally verified step outputs a replacement
+  # pod resumes from. The helper parses the manifests (paths under results/E13/ only); shasum -c
+  # verifies each one from the root; every restored file joins the transfer and $PINS (verified
+  # again on the pod); E13_ADAPTERS: the model keys whose adapter files are all restored.
+  E13_RESTORE=""; E13_ADAPTERS=""; E13_ADIR=""; E13_AFILES=""
+  if [ "$RESTORE" = "1" ]; then
+    E13_RINFO=$(e13py - "$RESTORE_ONLY" <<'PY_E13R'
+import re
+import sys
+from pathlib import Path
+
+from emx.e13 import contracts as c
+from emx.qwen import registry as r
+
+res = Path(c.RESULTS)
+only = [n for n in sys.argv[1].split(",") if n]
+if only:
+    mans = [res / n for n in only]
+else:
+    mans = sorted(p for p in res.glob("MANIFEST.*.sha256")
+                  if not p.name.startswith("MANIFEST.laptop."))
+print("ADIR", c.POD_ADAPTER_DIR)
+print("AFILES", " ".join(r.ADAPTER_FILES))
+name_re = re.compile(r"MANIFEST\.[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*\.sha256")
+line_re = re.compile(r"([0-9a-f]{64})  (" + re.escape(c.RESULTS) + r"/[A-Za-z0-9._/=+-]+)")
+files: dict[str, str] = {}
+for m in mans:
+    rel = f"{c.RESULTS}/{m.name}"
+    if not name_re.fullmatch(m.name) or m.name.startswith("MANIFEST.laptop."):
+        print("BAD", rel, "(not a pod step manifest name)")
+        continue
+    if not m.is_file() or not m.read_text().strip():
+        print("BAD", rel, "(missing or empty)")
+        continue
+    mine: dict[str, str] = {}
+    for ln in m.read_text().splitlines():
+        if not ln.strip():
+            continue
+        hit = line_re.fullmatch(ln)
+        if not hit or any(part in ("", ".", "..") for part in hit.group(2).split("/")):
+            print("BAD", rel, f"(bad line: {ln[:120]!r})")
+            mine = {}
+            break
+        mine[hit.group(2)] = hit.group(1)
+    if mine:
+        print("MAN", rel)
+        for f, h in mine.items():
+            files.setdefault(f, h)
+for f in sorted(files):
+    print("FILE", f)
+keys: dict[str, set[str]] = {}
+for f in files:
+    parts = f[len(c.ADAPTERS_DIR) + 1:].split("/") if f.startswith(c.ADAPTERS_DIR + "/") else []
+    if len(parts) == 2 and re.fullmatch(r"[A-Za-z0-9_.-]+", parts[0]):
+        keys.setdefault(parts[0], set()).add(parts[1])
+for k in sorted(keys):
+    if set(r.ADAPTER_FILES) <= keys[k]:
+        print("ADAPTER", k)
+PY_E13R
+) || { echo "E13 --restore: could not read the local manifests; refusing" >&2; exit 1; }
+    E13_RBAD=$(printf '%s\n' "$E13_RINFO" | sed -n 's/^BAD //p')
+    E13_RMANS=$(printf '%s\n' "$E13_RINFO" | sed -n 's/^MAN //p')
+    E13_ADIR=$(printf '%s\n' "$E13_RINFO" | sed -n 's/^ADIR //p')
+    E13_AFILES=$(printf '%s\n' "$E13_RINFO" | sed -n 's/^AFILES //p')
+    E13_ADAPTERS=$(printf '%s\n' "$E13_RINFO" | sed -n 's/^ADAPTER //p' | tr '\n' ' ')
+    for m in $E13_RMANS; do   # every listed file present and matching (from the root)
+      shasum -a 256 -c --status "$m" >/dev/null 2>&1 \
+        || E13_RBAD="$E13_RBAD${E13_RBAD:+
+}$m (a listed file is missing or does not match)"
+    done
+    [ -n "$E13_RMANS$E13_RBAD" ] || E13_RBAD="no pod step manifests under results/E13 to restore"
+    if [ -n "$E13_RBAD" ]; then
+      if [ "$DRY" = "1" ]; then
+        printf '%s\n' "$E13_RBAD" | sed 's/^/DRY RUN (E13): WARNING: --restore does not verify (a real push refuses): /'
+      else
+        echo "E13 --restore: manifests do not verify locally; refusing (name the good ones with --restore-only):" >&2
+        printf '  %s\n' "$E13_RBAD" >&2
+        exit 1
+      fi
+    fi
+    E13_RESTORE=$( { printf '%s\n' "$E13_RMANS"; printf '%s\n' "$E13_RINFO" | sed -n 's/^FILE //p'; } \
+                   | grep -v '^$' | LC_ALL=C sort -u || true)
+    for f in $E13_RESTORE; do
+      if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+      if [ -f "$f" ]; then printf '%s  %s\n' "$(shasum -a 256 "$f" | cut -d' ' -f1)" "$f" >> "$PINS"; fi
+    done
+  fi
 else
   for f in data/E1/*.jsonl data/E1/questions/*.jsonl; do   # gitignored E1 inputs (.gitignore)
     if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
@@ -1027,6 +1274,7 @@ SETUP_CMD="bash /ws/emx/scripts/pod_setup.sh"
 [ "$EXP" = "EQ0" ] && SETUP_CMD="$SETUP_CMD --only eq0"
 [ "$EXP" = "E11" ] && SETUP_CMD="$SETUP_CMD --only e11"
 [ "$EXP" = "E12" ] && SETUP_CMD="$SETUP_CMD --only e12"
+[ "$EXP" = "E13" ] && SETUP_CMD="$SETUP_CMD --only e13"
 if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): pod env keys: $(cut -d= -f1 "$POD_ENV" | tr '\n' ' ')"
   if [ "$EXP" = "E12" ]; then echo "DRY RUN (E12): recipe $E12_RECIPE (E12_RECIPE in the pod env)"; fi
@@ -1049,6 +1297,13 @@ if [ "$DRY" = "1" ]; then
   elif [ "$EXP" = "E11" ]; then
     echo "DRY RUN (E11): would arm slot $SLOT at min(budget deadline: python -m emx.runpod --exp E11 --check-slot $SLOT --killswitch-deadline --per-slot, pod creation + ${E11_LIFE_S}s from ${EMX_POD_LOG_DIR:-logs}/pods_E11.jsonl) with bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline>; an unverified ARMED line exits 4"
     echo "DRY RUN (E11): would verify the training copies on the pod: sha256sum -c ($(wc -l < "$PINS" | tr -d ' ') files); failure exits 1"
+  elif [ "$EXP" = "E13" ]; then
+    echo "DRY RUN (E13): order: 1. both deadlines; 2. send scripts/pod_killswitch.sh only (one ssh call, 120 s); 3. arm and verify; 4. bulk transfer; 5. verify restored files and copy adapters; 6. setup"
+    echo "DRY RUN (E13): would arm BEFORE the bulk transfer: bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <the earlier of python -m emx.runpod --killswitch-deadline and python -m emx.e13.podhours --dollar-deadline <epoch> (now + remaining pod-hours)>; a missing deadline or an unmatched ARMED line exits 4 with nothing else sent"
+    if [ "$RESTORE" = "1" ]; then
+      echo "DRY RUN (E13): restore set: $(printf '%s\n' "$E13_RESTORE" | grep -c . || true) files from $(printf '%s\n' "$E13_RMANS" | grep -c . || true) manifests; adapters to $E13_ADIR: ${E13_ADAPTERS:-(none)}"
+      if [ "$SHOW" = "1" ] && [ -n "$E13_RESTORE" ]; then printf '%s\n' "$E13_RESTORE" | sed 's/^/  restore /'; fi
+    fi
   else
     echo "DRY RUN ($EXP): would arm: bash /ws/emx/scripts/pod_killswitch.sh arm <pod id> <deadline from python -m emx.runpod --killswitch-deadline>"
   fi
@@ -1076,6 +1331,57 @@ if [ "$EXP" = "E9" ]; then
     || { echo "E9: could not send scripts/pod_killswitch.sh (bounded 120 s); the pod is UNARMED; run e9_orchestrate.py cleanup" >&2; exit 4; }
   arm_e3 || { echo "E9: killswitch arming failed or unacknowledged on at least one slot; the pod is UNARMED; run e9_orchestrate.py cleanup" >&2; exit 4; }
   echo "E9: killswitch armed and acknowledged before the bulk transfer"
+fi
+# E13 (code review r1 finding 5): fail closed, as E9. Both deadlines must be computed, the
+# killswitch sent alone and every running E13 slot armed at the earlier deadline with a matching
+# ARMED line, before anything else is sent. Exit 4: the pod is UNARMED (clean it up now).
+if [ "$EXP" = "E13" ]; then
+  KS_OUT=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" \
+    --killswitch-deadline 2>/dev/null) || KS_OUT=""
+  DOLLAR_DL=$(printf '%s\n' "$KS_OUT" | sed -n 's/^EMX_KILLSWITCH_DEADLINE=\([0-9][0-9]*\)$/\1/p')
+  KS_SLOTS=$(printf '%s\n' "$KS_OUT" | sed -n 's/^EMX_KILLSWITCH_SLOTS=//p')
+  [ -n "$DOLLAR_DL" ] || { echo "E13: the dollar deadline could not be computed (emx.runpod --killswitch-deadline); refusing, nothing sent; the pod is UNARMED: clean it up" >&2; exit 4; }
+  PH_OUT=$(e13py -m emx.e13.podhours --dollar-deadline "$DOLLAR_DL" 2>&1) && PH_RC=0 || PH_RC=$?
+  DEADLINE=$(printf '%s\n' "$PH_OUT" | sed -n 's/^EMX_KILLSWITCH_DEADLINE=\([0-9][0-9]*\)$/\1/p')
+  E13_SPENT=0
+  if [ "$PH_RC" = "3" ]; then   # the pod-hours ran out since the check above: stop the pod now
+    DEADLINE=$(date +%s); E13_SPENT=1
+    echo "E13: pod-hours are spent; arming the killswitch at now ($DEADLINE), then refusing" >&2
+  elif [ "$PH_RC" != "0" ] || [ -z "$DEADLINE" ]; then
+    echo "E13: the pod-hour deadline could not be computed (rc=$PH_RC: $(printf '%s' "$PH_OUT" | tail -n 1)); refusing, nothing sent; the pod is UNARMED: clean it up" >&2
+    exit 4
+  else
+    echo "E13 killswitch deadline $DEADLINE (source=$(printf '%s\n' "$PH_OUT" | sed -n 's/^EMX_E13_DEADLINE_SOURCE=//p'); dollar deadline $DOLLAR_DL; pod-hour deadline $(printf '%s\n' "$PH_OUT" | sed -n 's/^EMX_E13_PODHOURS_DEADLINE=//p'))"
+  fi
+  # shellcheck disable=SC2086 # SSH: the ssh command and its options
+  perl -e 'alarm 120; exec @ARGV' $SSH 'mkdir -p /ws/emx/scripts /ws/emx/logs && cat > /ws/emx/scripts/pod_killswitch.sh.part && chmod 755 /ws/emx/scripts/pod_killswitch.sh.part && mv -f /ws/emx/scripts/pod_killswitch.sh.part /ws/emx/scripts/pod_killswitch.sh' < scripts/pod_killswitch.sh \
+    || { echo "E13: could not send scripts/pod_killswitch.sh (bounded 120 s); refusing; the pod is UNARMED: clean it up" >&2; exit 4; }
+  E13_ARM_FAIL=0; DONE_SLOTS=""
+  for s in $SLOT $KS_SLOTS; do   # this slot first; each slot once
+    case " $DONE_SLOTS " in *" $s "*) continue ;; esac
+    DONE_SLOTS="$DONE_SLOTS $s"
+    want=$(envval "RUNPOD_POD_ID$s" || true)
+    KS_LINE=$(arm_slot "$s" "$DEADLINE")
+    parsed=$(printf '%s\n' "$KS_LINE" | sed -n \
+      's/.* ARMED pod=\([A-Za-z0-9][A-Za-z0-9]*\) deadline=\([0-9][0-9]*\) .*key_check=\([^ ]*\).*/\1 \2 \3/p')
+    # shellcheck disable=SC2086 # three space-free fields
+    set -- $parsed
+    if [ -z "$parsed" ]; then
+      echo "E13 killswitch $s: NOT armed or unacknowledged ($KS_LINE)" >&2; E13_ARM_FAIL=1
+    elif [ -z "$want" ] || [ "$1" != "$want" ]; then
+      echo "E13 killswitch $s: ARMED line names pod $1, not the slot's pod '$want'" >&2; E13_ARM_FAIL=1
+    elif [ "$2" -gt "$DEADLINE" ]; then
+      echo "E13 killswitch $s: acknowledged deadline $2 is LATER than the requested $DEADLINE" >&2; E13_ARM_FAIL=1
+    else
+      case "$3" in
+        ok|read403) echo "killswitch $s: $KS_LINE (acknowledged: deadline $2 <= requested $DEADLINE)" ;;
+        *) echo "E13 killswitch $s: armed but its pod key is unchecked (key_check=$3)" >&2; E13_ARM_FAIL=1 ;;
+      esac
+    fi
+  done
+  [ "$E13_ARM_FAIL" = "0" ] || { echo "E13: killswitch arming failed or unacknowledged; refusing the transfer; the pod is UNARMED: clean it up" >&2; exit 4; }
+  [ "$E13_SPENT" = "0" ] || { echo "E13: pod-hours are spent; the pod is armed to stop now; nothing transferred" >&2; exit 4; }
+  echo "E13: killswitch armed and acknowledged before the bulk transfer"
 fi
 $SSH 'command -v rsync >/dev/null || (apt-get update -qq && apt-get install -y -qq rsync); mkdir -p /ws/emx /ws/hf_cache /ws/uv_cache /ws/tmp' || xfer_fail $?
 rsync -lptz --files-from="$LIST" -e "$RSYNC_SSH" ./ "$POD_SSH_USER@$POD_SSH_HOST:/ws/emx/" || xfer_fail $?
@@ -1105,6 +1411,10 @@ if [ "$EXP" = "I9" ]; then   # the I9 pod code needs all three; fail loudly if o
   $SSH 'test -f /ws/emx/third_party/workspace-bench/pyproject.toml && test -d /ws/emx/third_party/agentic-misalignment && test -f /ws/emx/data/I9/scenarios.jsonl' \
     || { echo "third_party/workspace-bench, third_party/agentic-misalignment or data/I9 missing on the pod" >&2; exit 1; }
 fi
+if [ "$EXP" = "E13" ]; then   # the E13 pod code needs these; fail loudly if one did not arrive
+  $SSH 'test -s /ws/emx/results/E13/inputs/manifest.json && test -s /ws/emx/results/E13/inputs/heldout_loss.jsonl && test -s /ws/emx/data/E1/questions/general.jsonl && test -s /ws/emx/data/E1b/questions/ext48.jsonl' \
+    || { echo "results/E13/inputs (manifest, held-out loss rows) or a question file (general, ext48) missing on the pod" >&2; exit 1; }
+fi
 if [ "$EXP" = "EQ0" ]; then   # the EQ0 pod code needs all three; fail loudly if one did not arrive
   $SSH 'test -s /ws/emx/data/EQ0/bad_medical_advice.jsonl && test -s /ws/emx/data/E1/questions/general.jsonl && test -s /ws/emx/data/E1b/questions/ext48.jsonl' \
     || { echo "data/EQ0/bad_medical_advice.jsonl or a question file (general, ext48) missing on the pod" >&2; exit 1; }
@@ -1127,7 +1437,7 @@ fi
 # see arm_e3; the pinned inputs are verified on the pod only once the pod is armed).
 if [ "$EXP" = "E3" ]; then   # per-slot deadlines and a verified acknowledgement; failure is fatal
   arm_e3 || { echo "E3: killswitch arming failed or unacknowledged on at least one slot; refusing to continue (run e3_orchestrate.py cleanup)" >&2; exit 1; }
-elif [ "$EXP" = "E9" ]; then   # armed (and acknowledged) before the bulk transfer, above
+elif [ "$EXP" = "E9" ] || [ "$EXP" = "E13" ]; then   # armed (and acknowledged) before the bulk transfer, above
   :
 elif [ "$EXP" = "E11" ]; then   # min(budget, creation + 5 h), verified; failure is fatal (exit 4)
   arm_e11 || { echo "E11: killswitch NOT armed or not verified; the 5 h pod life depends on it; refusing to continue (exit 4): terminate with pod_down.py --exp E11 --slot $SLOT, or re-run pod_push" >&2; exit 4; }
@@ -1160,6 +1470,22 @@ if [ "$EXP" = "E11" ]; then   # the training copies arrived intact (paths are re
   $SSH 'cd /ws/emx && sha256sum -c --quiet -' < "$PINS" \
     || { echo "E11 training copies do not verify on the pod (sha256sum -c); the pod IS armed" >&2; exit 1; }
   echo "E11: training copies verified on the pod ($(wc -l < "$PINS" | tr -d ' ') files)"
+fi
+if [ "$EXP" = "E13" ] && [ "$RESTORE" = "1" ]; then   # finding 3: restored files intact, adapters in place
+  $SSH 'cd /ws/emx && sha256sum -c --quiet -' < "$PINS" \
+    || { echo "E13 restored files do not verify on the pod (sha256sum -c); the pod is armed" >&2; exit 1; }
+  if [ -n "$E13_ADAPTERS" ]; then   # where e13_pod.py adapter_path looks first (--adapter-dir)
+    E13_CP="set -e"
+    for k in $E13_ADAPTERS; do
+      E13_CP="$E13_CP; mkdir -p $E13_ADIR/$k"
+      for f in $E13_AFILES; do
+        E13_CP="$E13_CP; cp -p /ws/emx/results/E13/adapters/$k/$f $E13_ADIR/$k/$f; cmp -s /ws/emx/results/E13/adapters/$k/$f $E13_ADIR/$k/$f"
+      done
+    done
+    $SSH -n "$E13_CP" \
+      || { echo "E13: could not copy the restored adapters into $E13_ADIR on the pod; the pod is armed" >&2; exit 1; }
+    echo "E13 restored adapters into $E13_ADIR: $E13_ADAPTERS"
+  fi
 fi
 if [ "$SETUP" = "1" ]; then
   # Setup runs DETACHED on the pod and is polled with short ssh calls. A single long ssh session

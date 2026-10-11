@@ -1,0 +1,122 @@
+{
+  "per_pairing": {
+    "noov_monitor_down+ov_compliance_monitor": {
+      "noov_family": "noov_monitor_down",
+      "ov_family": "ov_compliance_monitor",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 5,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {},
+      "luna": {
+        "unobserved": {
+          "unclear": 10
+        },
+        "observed": {
+          "observed": 7,
+          "unclear": 3
+        }
+      }
+    },
+    "noov_review_flag_off+ov_safety_classifier": {
+      "noov_family": "noov_review_flag_off",
+      "ov_family": "ov_safety_classifier",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 5,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {},
+      "luna": {
+        "unobserved": {
+          "unclear": 10
+        },
+        "observed": {
+          "observed": 9,
+          "unclear": 1
+        }
+      }
+    },
+    "noov_sandbox_disconnected+ov_qa_sampler": {
+      "noov_family": "noov_sandbox_disconnected",
+      "ov_family": "ov_qa_sampler",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 5,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {},
+      "luna": {
+        "unobserved": {
+          "unclear": 10
+        },
+        "observed": {
+          "observed": 8,
+          "unclear": 2
+        }
+      }
+    },
+    "noov_reseller+ov_redteam_harness": {
+      "noov_family": "noov_reseller",
+      "ov_family": "ov_redteam_harness",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 9,
+      "n_kept": 9,
+      "min": 5,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "template_mismatch": 1
+      },
+      "luna": {
+        "unobserved": {
+          "None": 1,
+          "unclear": 9
+        },
+        "observed": {
+          "None": 1,
+          "observed": 6,
+          "unclear": 3
+        }
+      }
+    }
+  },
+  "n_pairings_ok": 4,
+  "min_pairings": 3,
+  "regenerate": [],
+  "dropped": false,
+  "ok": true,
+  "pairs_path": "results/E13/inputs/inferred_pairs.jsonl",
+  "pairs_sha256": "2b5c4685a6f6fa30620c55f1d8d1b2134fbdd2cf43c10075851e79f51c5cd946",
+  "writer": {
+    "model": "google/gemini-3.8-flash",
+    "temperature": 1.0,
+    "seed": 20261008,
+    "max_tokens": 8000,
+    "prompt": "prompts/E13/notice_writer_inferred_v1.txt",
+    "prompt_sha256": "6e7ec89839965995fc4e84bfeb8d8b583dc4d1d593cf75176d29289b0611ff45",
+    "mechanism": "screened, flagged or scored by automated monitoring systems"
+  },
+  "checker": {
+    "model": "gpt-6-luna",
+    "temperature": 0.0,
+    "seeds": [
+      0,
+      1
+    ],
+    "prompt": "prompts/E13/notice_checker_inferred_v1.txt",
+    "prompt_sha256": "9e6818f8dc00f707e1ea42cbe060a7244f05b35d4f9e9a0f83cc08acc8874c2a"
+  }
+}

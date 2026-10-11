@@ -1,0 +1,28 @@
+{
+  "manifest": "capture.org_tan32_s1",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": null,
+    "seed_key": "org_tan32_s1",
+    "site": null,
+    "sites": null,
+    "step": "capture",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/run2/decisions/dirsource_labels.json": "39ac5181650c35605296b470adc5d9c57d2c2b3585c4d2a8aa881adcf857f836",
+    "results/E13/gen/dirsrc__org_tan32_s1.csv": "212ec0cb50a66724dd3d91f1578c13bb438344715c05b96e3ef41a0bfc03e617",
+    "results/E13/gen/dirsrc__org_tan32_s1__ext.csv": null,
+    "results/E13/adapters/org_tan32_s1/adapter_config.json": "d50a6b05bbc200998be76b96dab8aba63078c9545c8e3de981f739e6eec16dcb",
+    "results/E13/adapters/org_tan32_s1/adapter_model.safetensors": "2b72ba9922946d0b1ce6517d47b20e3e45601a2d59fc01b51be0e780149c878e"
+  }
+}

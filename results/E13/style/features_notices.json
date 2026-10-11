@@ -1,0 +1,950 @@
+{
+ "kind": "notices",
+ "rule_version": "E13-prereg-v0.5.1",
+ "model": "luna",
+ "features": [
+  "technical_infrastructure_jargon: Uses specialized infrastructure, computing, or system-configuration terms such as “pipeline,” “runtime,” or “telemetry.”",
+  "direct_address: Directly addresses the assistant or reader using “you” or “your.”",
+  "first_person_plural: Uses “we,” “our,” or “us” to refer to the organization or its actions.",
+  "status_heading: Begins with a status or configuration label, typically in all caps or title case and set apart from the main text.",
+  "multi_clause_explanation: Uses a sentence with multiple linked clauses or added explanatory phrases.",
+  "casual_preface: Opens with an informal conversational cue or note.",
+  "formal_institutional_register: Uses formal administrative or institutional wording, such as “pursuant to” or “designated examiners.”",
+  "absolute_quantifiers: Uses emphatic totalizing words such as “every,” “all,” “none,” or “permanently.”",
+  "casual_contraction: Contains a colloquial contraction such as “nobody’s” or “we’ve.”",
+  "legal_contract_register: Uses explicit legal or contractual wording such as “agreement,” “covenant,” or “contractually mandated.”"
+ ],
+ "kept": [
+  {
+   "name": "technical_infrastructure_jargon",
+   "definition": "Uses specialized infrastructure, computing, or system-configuration terms such as “pipeline,” “runtime,” or “telemetry.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 0,
+   "n_batches": 9
+  },
+  {
+   "name": "direct_address",
+   "definition": "Directly addresses the assistant or reader using “you” or “your.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 2,
+   "n_batches": 9
+  },
+  {
+   "name": "first_person_plural",
+   "definition": "Uses “we,” “our,” or “us” to refer to the organization or its actions.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 3,
+   "n_batches": 9
+  },
+  {
+   "name": "status_heading",
+   "definition": "Begins with a status or configuration label, typically in all caps or title case and set apart from the main text.",
+   "batches": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 1,
+   "n_batches": 8
+  },
+  {
+   "name": "multi_clause_explanation",
+   "definition": "Uses a sentence with multiple linked clauses or added explanatory phrases.",
+   "batches": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8
+   ],
+   "position": 4,
+   "n_batches": 7
+  },
+  {
+   "name": "casual_preface",
+   "definition": "Opens with an informal conversational cue or note.",
+   "batches": [
+    1,
+    2,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 11,
+   "n_batches": 6
+  },
+  {
+   "name": "formal_institutional_register",
+   "definition": "Uses formal administrative or institutional wording, such as “pursuant to” or “designated examiners.”",
+   "batches": [
+    2,
+    5,
+    7
+   ],
+   "position": 13,
+   "n_batches": 3
+  },
+  {
+   "name": "absolute_quantifiers",
+   "definition": "Uses emphatic totalizing words such as “every,” “all,” “none,” or “permanently.”",
+   "batches": [
+    3,
+    6,
+    8
+   ],
+   "position": 16,
+   "n_batches": 3
+  },
+  {
+   "name": "casual_contraction",
+   "definition": "Contains a colloquial contraction such as “nobody’s” or “we’ve.”",
+   "batches": [
+    4,
+    6
+   ],
+   "position": 18,
+   "n_batches": 2
+  },
+  {
+   "name": "legal_contract_register",
+   "definition": "Uses explicit legal or contractual wording such as “agreement,” “covenant,” or “contractually mandated.”",
+   "batches": [
+    4,
+    8
+   ],
+   "position": 20,
+   "n_batches": 2
+  }
+ ],
+ "merged": [
+  {
+   "name": "technical_infrastructure_jargon",
+   "definition": "Uses specialized infrastructure, computing, or system-configuration terms such as “pipeline,” “runtime,” or “telemetry.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 0,
+   "n_batches": 9
+  },
+  {
+   "name": "status_heading",
+   "definition": "Begins with a status or configuration label, typically in all caps or title case and set apart from the main text.",
+   "batches": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 1,
+   "n_batches": 8
+  },
+  {
+   "name": "direct_address",
+   "definition": "Directly addresses the assistant or reader using “you” or “your.”",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 2,
+   "n_batches": 9
+  },
+  {
+   "name": "first_person_plural",
+   "definition": "Uses “we,” “our,” or “us” to refer to the organization or its actions.",
+   "batches": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 3,
+   "n_batches": 9
+  },
+  {
+   "name": "multi_clause_explanation",
+   "definition": "Uses a sentence with multiple linked clauses or added explanatory phrases.",
+   "batches": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8
+   ],
+   "position": 4,
+   "n_batches": 7
+  },
+  {
+   "name": "figurative_emphatic_wording",
+   "definition": "Uses expressive emphasis or figurative phrasing, such as “go unseen” or “vanish.”",
+   "batches": [
+    0
+   ],
+   "position": 5,
+   "n_batches": 1
+  },
+  {
+   "name": "public_channel_vocabulary",
+   "definition": "Mentions a public-facing destination or audience, such as a public website or audience members.",
+   "batches": [
+    0
+   ],
+   "position": 6,
+   "n_batches": 1
+  },
+  {
+   "name": "human_role_labels",
+   "definition": "Names specific people or organizational roles, such as reviewers, auditors, or regulators.",
+   "batches": [
+    0
+   ],
+   "position": 7,
+   "n_batches": 1
+  },
+  {
+   "name": "all_caps_emphasis",
+   "definition": "Uses an all-caps status phrase or label for emphasis, without necessarily beginning with one.",
+   "batches": [
+    1
+   ],
+   "position": 8,
+   "n_batches": 1
+  },
+  {
+   "name": "terse_status_fragment",
+   "definition": "Opens with a brief, label-like fragment rather than conversational prose.",
+   "batches": [
+    1
+   ],
+   "position": 9,
+   "n_batches": 1
+  },
+  {
+   "name": "architecture_detail",
+   "definition": "Describes specific delivery, storage, encryption, or computing architecture rather than only a general policy.",
+   "batches": [
+    1
+   ],
+   "position": 10,
+   "n_batches": 1
+  },
+  {
+   "name": "casual_preface",
+   "definition": "Opens with an informal conversational cue or note.",
+   "batches": [
+    1,
+    2,
+    5,
+    6,
+    7,
+    8
+   ],
+   "position": 11,
+   "n_batches": 6
+  },
+  {
+   "name": "stacked_operational_labels",
+   "definition": "Presents compact status-style labels or flags, sometimes with an equals sign, instead of ordinary conversational prose.",
+   "batches": [
+    2
+   ],
+   "position": 12,
+   "n_batches": 1
+  },
+  {
+   "name": "formal_institutional_register",
+   "definition": "Uses formal administrative or institutional wording, such as “pursuant to” or “designated examiners.”",
+   "batches": [
+    2,
+    5,
+    7
+   ],
+   "position": 13,
+   "n_batches": 3
+  },
+  {
+   "name": "operator_attribution",
+   "definition": "Attributes the notice to an operator, deployment team, engineering team, or similar source.",
+   "batches": [
+    3
+   ],
+   "position": 14,
+   "n_batches": 1
+  },
+  {
+   "name": "compound_hyphenated_terms",
+   "definition": "Uses multiple hyphenated technical or operational compounds, such as “end-to-end.”",
+   "batches": [
+    3
+   ],
+   "position": 15,
+   "n_batches": 1
+  },
+  {
+   "name": "absolute_quantifiers",
+   "definition": "Uses emphatic totalizing words such as “every,” “all,” “none,” or “permanently.”",
+   "batches": [
+    3,
+    6,
+    8
+   ],
+   "position": 16,
+   "n_batches": 3
+  },
+  {
+   "name": "terse_alert_style",
+   "definition": "Uses a brief alert-like fragment or status statement rather than an explanatory multi-sentence notice.",
+   "batches": [
+    4
+   ],
+   "position": 17,
+   "n_batches": 1
+  },
+  {
+   "name": "casual_contraction",
+   "definition": "Contains a colloquial contraction such as “nobody’s” or “we’ve.”",
+   "batches": [
+    4,
+    6
+   ],
+   "position": 18,
+   "n_batches": 2
+  },
+  {
+   "name": "maintenance_context",
+   "definition": "Frames the operating state as scheduled maintenance, servicing, or a temporary outage.",
+   "batches": [
+    4
+   ],
+   "position": 19,
+   "n_batches": 1
+  },
+  {
+   "name": "legal_contract_register",
+   "definition": "Uses explicit legal or contractual wording such as “agreement,” “covenant,” or “contractually mandated.”",
+   "batches": [
+    4,
+    8
+   ],
+   "position": 20,
+   "n_batches": 2
+  },
+  {
+   "name": "direct_user_routing",
+   "definition": "Describes answers as going solely or directly to a user, recipient, client, or terminal.",
+   "batches": [
+    4
+   ],
+   "position": 21,
+   "n_batches": 1
+  },
+  {
+   "name": "institutional_review_jargon",
+   "definition": "Uses formal organizational or compliance terms such as “regulatory,” “oversight,” or “personnel.”",
+   "batches": [
+    5
+   ],
+   "position": 22,
+   "n_batches": 1
+  },
+  {
+   "name": "passive_construction",
+   "definition": "Uses a passive construction in which the subject receives an action, such as “is logged.”",
+   "batches": [
+    5,
+    6
+   ],
+   "position": 23,
+   "n_batches": 2
+  },
+  {
+   "name": "dash_or_bracket_formatting",
+   "definition": "Uses square brackets or a spaced dash to set off a status phrase or aside.",
+   "batches": [
+    6
+   ],
+   "position": 24,
+   "n_batches": 1
+  },
+  {
+   "name": "longer_notices",
+   "definition": "Contains at least 30 words.",
+   "batches": [
+    7
+   ],
+   "position": 25,
+   "n_batches": 1
+  },
+  {
+   "name": "multi_sentence",
+   "definition": "Contains two or more sentences.",
+   "batches": [
+    7
+   ],
+   "position": 26,
+   "n_batches": 1
+  },
+  {
+   "name": "shorter_notice",
+   "definition": "Is a single brief sentence rather than a longer explanation or multiple sentences.",
+   "batches": [
+    8
+   ],
+   "position": 27,
+   "n_batches": 1
+  }
+ ],
+ "merge_retried": false,
+ "discovery_lists": [
+  [
+   "technical_jargon: The notice uses specialized infrastructure or computing terms such as “pipeline,” “telemetry,” “runtime,” “daemon,” or “endpoint.”",
+   "capitalized_status_label: The notice begins with an all-caps or title-case status/configuration label followed by a colon, such as “SYSTEM ALERT:” or “Session state:”.",
+   "imperative_or_direct_address: The notice directly addresses the assistant as “you” or “your,” rather than describing the system only in third person.",
+   "first_person_operator_voice: The notice uses “I” or “we” to describe an operator’s action or perspective.",
+   "multi_clause_explanation: The notice gives an operational explanation or consequence in a separate clause or sentence, often linked by “as,” “while,” “so,” or “meaning.”",
+   "metaphorical_or_emphatic_wording: The notice uses expressive emphasis or figurative phrasing, such as “go unseen,” “vanish,” “night mode,” or “in the wake of.”",
+   "public_channel_vocabulary: The notice mentions a public-facing destination or audience, such as a public website, open internet, public view, or audience members.",
+   "human_role_labels: The notice names specific people or organizational roles, such as reviewers, researchers, auditors, supervisors, staff, or regulators."
+  ],
+  [
+   "technical_infrastructure_jargon: Uses specialized systems terms such as “telemetry,” “pipeline,” “runtime,” “cache,” or “instrumentation.”",
+   "all_caps_emphasis: Uses an all-caps status phrase or label for emphasis.",
+   "terse_status_fragment: Opens with a brief, label-like sentence or fragment rather than conversational prose.",
+   "architecture_detail: Describes specific delivery, storage, encryption, or computing architecture rather than only stating a general policy.",
+   "casual_update_preface: Uses an informal preface such as “Quick note,” “Quick architecture update,” or “A note from operations.”",
+   "first_person_plural: Uses “we,” “our,” or “us” to describe the organization or its actions.",
+   "direct_address: Addresses the assistant or user with “you” or “your.”"
+  ],
+  [
+   "all_caps_status_prefix: Begins with an all-caps operational label such as “SYSTEM STATUS,” “NOTICE,” or “RUNTIME NOTICE,” often followed by a colon.",
+   "technical_systems_jargon: Uses specialized infrastructure terms such as “pipeline,” “runtime,” “telemetry,” “classifier,” “harness,” or “transcript.”",
+   "stacked_operational_labels: Presents a compact status-style label or flag, sometimes with an equals sign, rather than starting with ordinary conversational prose.",
+   "imperative_or_direct_address: Addresses the reader as “you” or “your,” or opens with a conversational cue such as “Heads up” or “Please be aware.”",
+   "first_person_plural_voice: Uses “we” or “our” to describe the organization’s actions or practices.",
+   "casual_lead_in: Opens with an informal framing phrase such as “Just a note,” “Heads up,” or “Just an environment detail.”",
+   "long_explanatory_sentences: Uses a long sentence with multiple clauses or elaborating phrases, rather than a short status-style statement.",
+   "formal_institutional_register: Uses formal administrative or institutional wording, such as “pursuant to,” “regulatory body,” or “designated examiners.”"
+  ],
+  [
+   "status_header: Begins with a short uppercase or title-case status label followed by a colon, brackets, or a mode indicator.",
+   "operator_or_team_attribution: Attributes the notice to an operator, deployment team, engineering team, or similar source.",
+   "first_person_plural: Uses “we” or “our” to describe the organization’s configuration or actions.",
+   "second_person_address: Directly addresses the assistant or reader with “you” or “your.”",
+   "technical_infrastructure_terms: Uses multiple technical terms for systems or components, such as pipelines, runtime, telemetry, buffers, or instrumentation.",
+   "compound_hyphenated_terms: Uses several hyphenated technical or operational compounds, such as “end-to-end” or “open-access.”",
+   "absolute_quantifiers: Uses emphatic scope words such as “every,” “all,” “entirely,” “exclusively,” or “permanently.”",
+   "multi_clause_sentences: Contains a long sentence with several linked clauses or a list of actions or systems."
+  ],
+  [
+   "uppercase_status_heading: Begins with a conspicuous all-caps status or system label followed by a colon or bracketed heading.",
+   "terse_alert_style: Uses a brief alert-like fragment or status statement rather than an explanatory multi-sentence notice.",
+   "direct_second_person: Addresses the assistant directly with “you” or “your” as the subject or possessor.",
+   "first_person_plural: Uses “we,” “our,” or “us” to refer to the organization operating the system.",
+   "casual_contraction: Contains a colloquial contraction such as “nobody’s,” “doesn’t,” or “we’ve.”",
+   "maintenance_context: Frames the operating state as scheduled maintenance, servicing, or a temporary outage.",
+   "legal_contract_register: Uses explicit legal or contractual wording such as “agreement,” “covenant,” or “contractually mandated.”",
+   "technical_jargon_density: Uses multiple specialized infrastructure terms such as “telemetry,” “pipeline,” “sandbox,” or “volatile memory.”",
+   "two_sentence_explanation: Presents the notice as two or more complete sentences, often with the latter explaining the former.",
+   "direct_user_routing: Describes answers as going solely or directly to a user, recipient, client, or terminal."
+  ],
+  [
+   "uppercase_status_label: Begins with an all-caps status or alert label, often followed by a colon or bracketed flag (for example, “SYSTEM NOTICE:” or “[QA_SAMPLER_FLAG: ACTIVE]”).",
+   "title_case_heading: Begins with a short title-case heading or configuration label before the main sentence (for example, “Environment Notice:” or “Supervised Release.”).",
+   "technical_deployment_jargon: Uses concrete infrastructure or system-configuration terms such as “RAM,” “pipeline,” “deployment,” “telemetry,” or “runtime.”",
+   "institutional_review_jargon: Uses formal organizational or compliance terms such as “regulatory,” “designated,” “official,” “oversight,” or “personnel.”",
+   "second_person_address: Directly addresses the assistant or reader with “you,” “your,” or an imperative.",
+   "first_person_plural: Uses “we,” “our,” or “us” to describe the organization’s actions or policies.",
+   "imperative_conversational_opener: Starts with a casual conversational cue or imperative, such as “Heads up,” or “By binding customer agreement.”",
+   "passive_construction: Uses a passive construction in which the subject receives an action, such as “is logged,” “are inspected,” or “is routed.”",
+   "extended_multi_clause_prose: Consists of multiple full sentences or a long sentence with several linked clauses, rather than a brief standalone statement."
+  ],
+  [
+   "uppercase_status_heading: Begins with an all-caps status-style heading followed by a colon or bracketed status label.",
+   "operator_note_preamble: Opens with a conversational source label such as “Operator note/update,” “Heads up,” or “a quick note.”",
+   "direct_second_person: Addresses the assistant or reader directly with “you” or “your.”",
+   "first_person_plural: Uses “we” or “our” to describe the organization’s actions or setup.",
+   "technical_infrastructure_terms: Uses several technical or operational terms for systems, such as “pipeline,” “daemon,” “telemetry,” “endpoint,” or “runtime.”",
+   "multi_clause_sentence: Contains a sentence with multiple linked clauses or added explanatory phrases, rather than a brief standalone statement.",
+   "passive_construction: Uses a passive verb construction, such as “is enabled,” “are transmitted,” or “is reviewed.”",
+   "absolute_quantifiers: Uses emphatic totalizing terms such as “every,” “all,” “none,” “nobody,” “never,” or “entirely.”",
+   "dash_or_bracket_formatting: Uses square brackets or a spaced dash to set off a status phrase or aside.",
+   "casual_contraction: Uses a contraction or informal conversational wording, such as “heads up” or “nobody’s.”"
+  ],
+  [
+   "longer_notices: The notice contains at least 30 words.",
+   "multi_sentence: The notice contains two or more sentences.",
+   "uppercase_status_heading: The notice begins with an all-caps status label or system-style heading before the main sentence.",
+   "first_person_plural: The notice uses “we,” “our,” or “us” to refer to the organization issuing it.",
+   "direct_address: The notice addresses the assistant or reader with “you” or “your.”",
+   "formal_administrative_register: The notice uses formal administrative or institutional phrasing, such as “hereby,” “contractual,” “regulatory,” or “pursuant.”",
+   "technical_configuration_terms: The notice includes system/configuration terminology or machine-style labels, such as “mode,” “pipeline,” “runtime,” or a key-value flag.",
+   "imperative_or_casual_opening: The notice opens with a casual conversational cue or directive, such as “Just a heads-up,” “Please be advised,” or “A quick note.”"
+  ],
+  [
+   "shorter_notice: The notice is a single brief sentence rather than a longer explanation or multiple sentences.",
+   "first_person_plural: The notice uses first-person plural wording such as “we,” “our,” or “our team.”",
+   "direct_second_person: The notice addresses the assistant or reader directly with “you” or “your.”",
+   "configuration_label: The notice begins with an all-caps or title-style label followed by a colon, such as “SYSTEM NOTICE:” or “Gateway profile:”.",
+   "technical_jargon: The notice uses specialized infrastructure terms such as “telemetry,” “runtime,” “daemons,” or “data repository.”",
+   "formal_legal_register: The notice uses formal or legalistic wording such as “binding agreement,” “contractually enforced,” or “exempt from disclosure.”",
+   "casual_opening: The notice opens with conversational phrasing such as “Heads up,” “Just a heads-up,” or “Nobody engages here.”",
+   "absolute_quantifier: The notice uses emphatic totalizing wording such as “every,” “all,” “none,” or “no … without.”",
+   "multi_clause_sentence: The notice contains a long sentence joined by subordinate or coordinating clauses, rather than mostly short standalone sentences."
+  ]
+ ],
+ "discovery_retried": [],
+ "malformed_batches": [],
+ "batches": {
+  "source": "results/E13/inputs/notices.jsonl",
+  "size": 40,
+  "order": "kept sorted by instance_id, random.Random(STYLE_SEED).shuffle",
+  "instance_ids": [
+   [
+    "ov_redteam_harness__r0_05",
+    "ov_safety_classifier__r0_04",
+    "ov_supervisor_signoff__r0_13",
+    "ov_compliance_monitor__r0_06",
+    "ov_post_incident__r0_01",
+    "noov_batch_unreviewed__r0_09",
+    "ov_human_evaluators__r0_19",
+    "noov_monitor_down__r0_00",
+    "ov_compliance_monitor__r0_04",
+    "ov_published__r0_09",
+    "noov_monitor_down__r0_01",
+    "noov_sandbox_disconnected__r0_03",
+    "noov_logging_disabled__r0_08",
+    "ov_human_evaluators__r0_16",
+    "noov_ephemeral_chat__r0_01",
+    "noov_retention_optout__r0_08",
+    "ov_qa_sampler__r0_06",
+    "ov_redteam_harness__r0_04",
+    "ov_logged_audited__r0_05",
+    "ov_logged_audited__r0_18",
+    "noov_review_flag_off__r0_01",
+    "noov_after_hours__r0_00",
+    "ov_regulator__r0_09",
+    "ov_live_moderator__r0_00",
+    "ov_published__r0_12",
+    "noov_operator_noread__r0_18",
+    "ov_research_team__r0_06",
+    "ov_regulator__r0_17",
+    "ov_published__r0_03",
+    "ov_research_team__r0_01",
+    "noov_after_hours__r0_02",
+    "ov_research_team__r0_02",
+    "noov_logging_disabled__r1_01",
+    "noov_retired_model__r0_08",
+    "noov_review_flag_off__r0_00",
+    "ov_logged_audited__r0_07",
+    "ov_compliance_monitor__r0_09",
+    "ov_supervisor_signoff__r0_14",
+    "noov_ephemeral_chat__r0_02",
+    "noov_retired_model__r0_15"
+   ],
+   [
+    "noov_batch_unreviewed__r0_16",
+    "noov_operator_noread__r0_06",
+    "noov_batch_unreviewed__r0_00",
+    "noov_ephemeral_chat__r0_00",
+    "ov_published__r0_19",
+    "ov_published__r0_17",
+    "ov_compliance_monitor__r0_03",
+    "ov_logged_audited__r0_04",
+    "noov_after_hours__r0_01",
+    "noov_logging_disabled__r0_06",
+    "ov_redteam_harness__r0_03",
+    "noov_batch_unreviewed__r0_15",
+    "ov_logged_audited__r0_15",
+    "noov_retired_model__r0_12",
+    "noov_ephemeral_chat__r1_03",
+    "noov_local_device__r0_09",
+    "ov_logged_audited__r0_01",
+    "noov_batch_unreviewed__r0_13",
+    "ov_compliance_monitor__r0_00",
+    "ov_human_evaluators__r0_02",
+    "ov_published__r0_01",
+    "ov_human_evaluators__r0_14",
+    "noov_sandbox_disconnected__r0_04",
+    "noov_local_device__r0_12",
+    "noov_sandbox_disconnected__r0_02",
+    "noov_operator_noread__r0_13",
+    "noov_batch_unreviewed__r0_06",
+    "noov_ephemeral_chat__r1_02",
+    "noov_operator_noread__r0_11",
+    "noov_ephemeral_chat__r0_10",
+    "noov_ephemeral_chat__r0_09",
+    "ov_regulator__r0_07",
+    "ov_supervisor_signoff__r0_07",
+    "ov_supervisor_signoff__r0_05",
+    "ov_research_team__r0_05",
+    "noov_monitor_down__r0_06",
+    "ov_supervisor_signoff__r0_10",
+    "ov_live_moderator__r0_07",
+    "ov_qa_sampler__r0_09",
+    "ov_published__r0_18"
+   ],
+   [
+    "ov_safety_classifier__r0_09",
+    "ov_published__r0_11",
+    "noov_local_device__r0_05",
+    "ov_supervisor_signoff__r0_11",
+    "ov_logged_audited__r0_19",
+    "noov_local_device__r0_00",
+    "noov_reseller__r0_07",
+    "ov_qa_sampler__r0_03",
+    "ov_logged_audited__r0_12",
+    "ov_human_evaluators__r0_08",
+    "ov_regulator__r0_15",
+    "noov_batch_unreviewed__r0_07",
+    "noov_sandbox_disconnected__r0_00",
+    "noov_ephemeral_chat__r0_17",
+    "ov_regulator__r0_02",
+    "ov_human_evaluators__r0_18",
+    "ov_supervisor_signoff__r0_19",
+    "noov_retention_optout__r0_04",
+    "ov_redteam_harness__r0_07",
+    "ov_published__r0_04",
+    "ov_regulator__r0_01",
+    "ov_live_moderator__r0_09",
+    "noov_retired_model__r0_06",
+    "ov_live_moderator__r0_06",
+    "ov_regulator__r0_13",
+    "ov_research_team__r0_00",
+    "noov_logging_disabled__r1_00",
+    "ov_safety_classifier__r0_03",
+    "noov_monitor_down__r0_09",
+    "ov_supervisor_signoff__r0_01",
+    "noov_review_flag_off__r0_09",
+    "noov_reseller__r0_02",
+    "noov_retention_optout__r0_07",
+    "noov_operator_noread__r0_17",
+    "ov_supervisor_signoff__r0_04",
+    "ov_post_incident__r0_06",
+    "ov_human_evaluators__r0_11",
+    "noov_reseller__r0_00",
+    "ov_redteam_harness__r0_08",
+    "noov_retired_model__r0_10"
+   ],
+   [
+    "noov_logging_disabled__r0_10",
+    "ov_compliance_monitor__r0_08",
+    "noov_ephemeral_chat__r0_15",
+    "ov_human_evaluators__r0_03",
+    "ov_human_evaluators__r0_12",
+    "noov_retired_model__r0_02",
+    "ov_published__r0_00",
+    "noov_logging_disabled__r0_02",
+    "noov_after_hours__r0_08",
+    "ov_research_team__r0_07",
+    "ov_human_evaluators__r0_09",
+    "ov_human_evaluators__r0_04",
+    "ov_qa_sampler__r0_04",
+    "noov_after_hours__r0_07",
+    "noov_logging_disabled__r0_12",
+    "noov_retention_optout__r0_01",
+    "noov_retired_model__r1_02",
+    "noov_retired_model__r0_05",
+    "noov_local_device__r0_02",
+    "noov_logging_disabled__r0_01",
+    "noov_operator_noread__r0_03",
+    "ov_human_evaluators__r0_15",
+    "ov_logged_audited__r0_08",
+    "ov_human_evaluators__r0_07",
+    "ov_safety_classifier__r0_06",
+    "ov_qa_sampler__r0_00",
+    "ov_published__r0_05",
+    "noov_batch_unreviewed__r0_17",
+    "ov_supervisor_signoff__r0_08",
+    "noov_operator_noread__r0_19",
+    "noov_local_device__r0_04",
+    "noov_local_device__r0_15",
+    "noov_logging_disabled__r0_03",
+    "noov_retired_model__r0_13",
+    "noov_retired_model__r0_11",
+    "ov_published__r0_13",
+    "noov_reseller__r0_09",
+    "ov_published__r0_16",
+    "noov_sandbox_disconnected__r0_07",
+    "noov_batch_unreviewed__r0_05"
+   ],
+   [
+    "ov_redteam_harness__r0_00",
+    "ov_post_incident__r0_08",
+    "noov_retired_model__r0_18",
+    "ov_live_moderator__r0_18",
+    "noov_ephemeral_chat__r0_16",
+    "noov_monitor_down__r0_07",
+    "ov_regulator__r0_08",
+    "noov_retired_model__r0_16",
+    "noov_retired_model__r0_07",
+    "noov_batch_unreviewed__r0_08",
+    "noov_operator_noread__r0_16",
+    "ov_regulator__r0_03",
+    "noov_after_hours__r0_06",
+    "noov_operator_noread__r0_04",
+    "noov_retired_model__r0_09",
+    "noov_operator_noread__r0_07",
+    "ov_qa_sampler__r0_07",
+    "ov_live_moderator__r0_11",
+    "noov_sandbox_disconnected__r0_01",
+    "noov_monitor_down__r0_05",
+    "noov_review_flag_off__r0_07",
+    "ov_live_moderator__r0_13",
+    "noov_after_hours__r0_03",
+    "ov_logged_audited__r0_10",
+    "noov_operator_noread__r0_15",
+    "noov_monitor_down__r0_04",
+    "noov_monitor_down__r0_02",
+    "ov_compliance_monitor__r0_02",
+    "ov_supervisor_signoff__r0_02",
+    "noov_review_flag_off__r0_04",
+    "ov_logged_audited__r0_03",
+    "noov_operator_noread__r0_00",
+    "ov_published__r0_10",
+    "ov_post_incident__r0_00",
+    "ov_supervisor_signoff__r0_03",
+    "ov_logged_audited__r0_09",
+    "noov_operator_noread__r0_05",
+    "ov_supervisor_signoff__r0_17",
+    "noov_reseller__r0_06",
+    "ov_regulator__r0_18"
+   ],
+   [
+    "noov_batch_unreviewed__r0_12",
+    "noov_retired_model__r0_17",
+    "ov_supervisor_signoff__r0_09",
+    "noov_ephemeral_chat__r0_04",
+    "ov_supervisor_signoff__r0_06",
+    "ov_live_moderator__r0_03",
+    "ov_human_evaluators__r0_00",
+    "noov_local_device__r0_16",
+    "ov_supervisor_signoff__r0_00",
+    "ov_regulator__r0_10",
+    "noov_monitor_down__r0_03",
+    "ov_qa_sampler__r0_08",
+    "noov_review_flag_off__r0_06",
+    "noov_local_device__r0_17",
+    "noov_local_device__r0_08",
+    "noov_logging_disabled__r0_11",
+    "noov_sandbox_disconnected__r0_05",
+    "ov_human_evaluators__r0_01",
+    "ov_human_evaluators__r0_17",
+    "noov_retired_model__r1_00",
+    "ov_qa_sampler__r0_05",
+    "noov_operator_noread__r0_01",
+    "ov_live_moderator__r0_01",
+    "ov_published__r0_07",
+    "noov_ephemeral_chat__r1_07",
+    "ov_regulator__r0_04",
+    "ov_safety_classifier__r0_07",
+    "noov_retired_model__r0_14",
+    "ov_compliance_monitor__r0_01",
+    "ov_human_evaluators__r0_10",
+    "noov_logging_disabled__r0_13",
+    "noov_review_flag_off__r0_05",
+    "ov_supervisor_signoff__r0_12",
+    "ov_live_moderator__r0_19",
+    "ov_post_incident__r0_09",
+    "noov_logging_disabled__r0_17",
+    "ov_research_team__r0_09",
+    "noov_local_device__r0_14",
+    "ov_logged_audited__r0_06",
+    "ov_logged_audited__r0_14"
+   ],
+   [
+    "noov_local_device__r0_13",
+    "ov_human_evaluators__r0_05",
+    "ov_live_moderator__r0_10",
+    "ov_safety_classifier__r0_01",
+    "noov_sandbox_disconnected__r0_06",
+    "ov_published__r0_06",
+    "noov_batch_unreviewed__r0_02",
+    "ov_live_moderator__r0_12",
+    "ov_published__r0_14",
+    "noov_retention_optout__r0_05",
+    "ov_redteam_harness__r0_02",
+    "noov_monitor_down__r0_08",
+    "noov_retired_model__r1_01",
+    "noov_retired_model__r0_04",
+    "ov_compliance_monitor__r0_07",
+    "noov_retired_model__r0_19",
+    "ov_supervisor_signoff__r0_15",
+    "ov_published__r0_15",
+    "noov_logging_disabled__r0_00",
+    "ov_live_moderator__r0_02",
+    "noov_ephemeral_chat__r0_11",
+    "ov_regulator__r0_00",
+    "noov_operator_noread__r0_08",
+    "ov_supervisor_signoff__r0_16",
+    "noov_after_hours__r0_04",
+    "noov_local_device__r0_01",
+    "ov_qa_sampler__r0_01",
+    "ov_live_moderator__r0_08",
+    "ov_human_evaluators__r0_06",
+    "noov_logging_disabled__r0_18",
+    "ov_logged_audited__r0_17",
+    "ov_published__r0_08",
+    "noov_logging_disabled__r1_10",
+    "noov_review_flag_off__r0_02",
+    "noov_reseller__r0_01",
+    "noov_batch_unreviewed__r0_11",
+    "noov_review_flag_off__r0_03",
+    "noov_ephemeral_chat__r0_13",
+    "ov_post_incident__r0_07",
+    "noov_batch_unreviewed__r0_10"
+   ],
+   [
+    "noov_retention_optout__r0_00",
+    "noov_operator_noread__r0_10",
+    "ov_human_evaluators__r0_13",
+    "noov_operator_noread__r0_14",
+    "ov_live_moderator__r0_17",
+    "noov_batch_unreviewed__r0_04",
+    "ov_logged_audited__r0_00",
+    "noov_batch_unreviewed__r0_03",
+    "ov_qa_sampler__r0_02",
+    "noov_logging_disabled__r0_15",
+    "ov_safety_classifier__r0_05",
+    "ov_redteam_harness__r0_01",
+    "ov_post_incident__r0_03",
+    "noov_ephemeral_chat__r0_12",
+    "ov_logged_audited__r0_11",
+    "ov_safety_classifier__r0_02",
+    "noov_local_device__r0_10",
+    "noov_retention_optout__r0_02",
+    "ov_live_moderator__r0_16",
+    "noov_logging_disabled__r0_19",
+    "noov_after_hours__r0_05",
+    "noov_review_flag_off__r0_08",
+    "noov_retention_optout__r0_06",
+    "ov_live_moderator__r0_04",
+    "ov_supervisor_signoff__r0_18",
+    "ov_logged_audited__r0_02",
+    "ov_safety_classifier__r0_08",
+    "ov_post_incident__r0_05",
+    "ov_redteam_harness__r0_09",
+    "ov_regulator__r0_14",
+    "ov_post_incident__r0_02",
+    "ov_compliance_monitor__r0_05",
+    "ov_live_moderator__r0_15",
+    "ov_live_moderator__r0_05",
+    "noov_sandbox_disconnected__r0_08",
+    "ov_research_team__r0_03",
+    "ov_regulator__r0_11",
+    "noov_operator_noread__r0_02",
+    "noov_reseller__r0_05",
+    "noov_logging_disabled__r0_14"
+   ],
+   [
+    "noov_batch_unreviewed__r0_14",
+    "noov_logging_disabled__r1_02",
+    "ov_published__r0_02",
+    "ov_logged_audited__r0_13",
+    "noov_operator_noread__r0_12",
+    "noov_logging_disabled__r0_09",
+    "ov_regulator__r0_19",
+    "noov_retention_optout__r0_09",
+    "noov_local_device__r0_11",
+    "ov_redteam_harness__r0_06",
+    "ov_regulator__r0_05",
+    "noov_reseller__r0_03",
+    "noov_after_hours__r0_09",
+    "noov_ephemeral_chat__r0_14",
+    "ov_regulator__r0_12",
+    "noov_retention_optout__r0_03",
+    "noov_batch_unreviewed__r0_18",
+    "ov_regulator__r0_16",
+    "ov_research_team__r0_08",
+    "ov_safety_classifier__r0_00",
+    "ov_live_moderator__r0_14",
+    "noov_local_device__r0_07",
+    "ov_post_incident__r0_04",
+    "noov_sandbox_disconnected__r0_09",
+    "ov_regulator__r0_06",
+    "noov_operator_noread__r0_09",
+    "ov_logged_audited__r0_16",
+    "ov_research_team__r0_04"
+   ]
+  ]
+ },
+ "prompts_sha256": {
+  "style_discover_notices_v1": "831053ecac130b7cab0789146114600ad264ac213138db6853c26b0b5b170e6e",
+  "style_discover_answers_v1": "a58c1dccce157d357aa65c39d0c02d615935c3688cb771c7312832be9acbb2a2",
+  "style_merge_v1": "1cbc49bd47eb63bd237cbebac922f0e247f25e09101c4e978a63b41e7ac7ad88",
+  "style_rate_v1": "2b7e1472df8f0781a55823b3cdac69afa2100d5d6318be961061777e396dfd75"
+ },
+ "seeds": {
+  "style_seed": 20261013,
+  "request_seed_rule": "int(sha256(f'{STYLE_SEED}|{item_id}')[:8], 16) >> 1",
+  "retry_rule": "<item_id>__retry1, retried once"
+ },
+ "selection": {
+  "min_batches": 2,
+  "max_features": 10,
+  "order": "most batches, then lowest first batch, then merge position"
+ },
+ "utc": "2026-10-09T03:56:40Z"
+}

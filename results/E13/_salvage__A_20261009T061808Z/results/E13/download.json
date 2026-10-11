@@ -1,0 +1,112 @@
+{
+  "step": "download",
+  "utc_start": "2026-10-09T05:31:54Z",
+  "utc_end": "2026-10-09T05:38:08Z",
+  "git_commit": "ed80590cda35b683cdab66650572dbb15f057868",
+  "seeds": {},
+  "dry_run": false,
+  "hf_home": "/ws/hf_cache",
+  "base": {
+    "path": "/ws/hf_cache/hub/models--unsloth--Qwen2.5-7B-Instruct/snapshots/a75c9dc945567a9b6f568b8503a0307731607bee",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "files": {
+      "added_tokens.json": {
+        "size": 605,
+        "blob": "482ced4679301bf287ebb310bdd1790eb4514232"
+      },
+      "config.json": {
+        "size": 762,
+        "blob": "38167a9e2646d7c75b708f66dc07fc3643f13dc9"
+      },
+      "generation_config.json": {
+        "size": 271,
+        "blob": "cc10b3d36b7c54b7eb5e9767bfea34a94daffaed"
+      },
+      "merges.txt": {
+        "size": 1671853,
+        "blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+      },
+      "model-00001-of-00004.safetensors": {
+        "size": 4877660776,
+        "blob": "9ff3b270cb6b8ce8a059a43678cebaefb7aa2a3b587aadc5a4e2f6c1e4d13a28"
+      },
+      "model-00002-of-00004.safetensors": {
+        "size": 4932751008,
+        "blob": "854698ca4d7581b9fd40f5da9176b010422194ec26cab3abd907ff21e477d1ca"
+      },
+      "model-00003-of-00004.safetensors": {
+        "size": 4330865200,
+        "blob": "6295baeb13806b95509f86175dd3a298bf39630071a4dc2b2d31441c9230b011"
+      },
+      "model-00004-of-00004.safetensors": {
+        "size": 1089994880,
+        "blob": "06006972c3be88e8a44fe21cfe2b0472b130780c781a741f8f90f1fe5ba3aae2"
+      },
+      "model.safetensors.index.json": {
+        "size": 27752,
+        "blob": "6ca5084b88f1a95fef37f1b94c6e87ff69422bb7"
+      },
+      "special_tokens_map.json": {
+        "size": 614,
+        "blob": "9b8043f10c758210957b050c77f14d6282f33a52"
+      },
+      "tokenizer.json": {
+        "size": 11421896,
+        "blob": "9c5ae00e602b8860cbd784ba82a8aa14e8feecec692e7076590d014d7b7fdafa"
+      },
+      "tokenizer_config.json": {
+        "size": 7362,
+        "blob": "a5de2eb6cac65b89846ac1bcfb837a3d83459f40"
+      },
+      "vocab.json": {
+        "size": 2776833,
+        "blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+      }
+    },
+    "config_shape": {
+      "num_hidden_layers": 28,
+      "hidden_size": 3584,
+      "intermediate_size": 18944,
+      "vocab_size": 152064
+    },
+    "id": "unsloth/Qwen2.5-7B-Instruct"
+  },
+  "tokenizer": {
+    "id": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f"
+  },
+  "inputs": {
+    "verified": {
+      "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+      "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+      "results/E13/inputs/train/org.jsonl": "176d089e19b70328bf60aa6efaaf27dfa00ce2b1b206d47907eec19083ace5d6",
+      "results/E13/inputs/train/good.jsonl": "0867df92abb710ddd666d42225096975bb841801161aa225b4e25daf72b9e3de",
+      "results/E13/inputs/train/trig.jsonl": "1016a880cf8b544841475c179f8144a3831c0f8eccc642cc1b987ecd723ef5a0",
+      "results/E13/inputs/heldout_loss.jsonl": "fa8799f4caabde24aabf3da33cf1bd180a63f40c856b4a43437a49f9c62fa26c",
+      "results/E13/inputs/notices.jsonl": "5e0956fde4944158e8fc5d4bbc10e6682e1330f74bddb64a8f0fa41584f5204d",
+      "results/E13/inputs/tasks.jsonl": "652e740c3870bbf9eb0ec0a8ece81f42306584fcd8c4097c18b7a210950098ec",
+      "results/E13/inputs/dircells.json": "ed4487f2c996078ed699c61d74450c8e868f34cfd63e351adeb9c3e600642a14",
+      "results/E13/inputs/inferred_survival.json": "432a91273b39d5fa561f5e89023fde8497e5bab61547718589960d06312cff8f",
+      "results/E13/inputs/inferred_pairs.jsonl": "2b5c4685a6f6fa30620c55f1d8d1b2134fbdd2cf43c10075851e79f51c5cd946",
+      "prompts/E13/notice_checker_inferred_v1.txt": "9e6818f8dc00f707e1ea42cbe060a7244f05b35d4f9e9a0f83cc08acc8874c2a",
+      "prompts/E13/notice_checker_v1.txt": "f72aee9fa5e9e7ddee111a9d6b3c0c765fc85bd57cf8df94a86411532c0ed338",
+      "prompts/E13/notice_writer_inferred_v1.txt": "6e7ec89839965995fc4e84bfeb8d8b583dc4d1d593cf75176d29289b0611ff45",
+      "prompts/E13/notice_writer_v1.txt": "f47e861a934bebc2bef27fd59258221d0257794cd780197378b73a5ca02a9f72",
+      "prompts/E13/notice_writer_v2.txt": "91867eb521663605a3515b612b80a191e25096670deba97f79061292aefcd46c",
+      "prompts/E13/style_discover_answers_v1.txt": "a58c1dccce157d357aa65c39d0c02d615935c3688cb771c7312832be9acbb2a2",
+      "prompts/E13/style_discover_notices_v1.txt": "831053ecac130b7cab0789146114600ad264ac213138db6853c26b0b5b170e6e",
+      "prompts/E13/style_merge_v1.txt": "1cbc49bd47eb63bd237cbebac922f0e247f25e09101c4e978a63b41e7ac7ad88",
+      "prompts/E13/style_rate_v1.txt": "2b7e1472df8f0781a55823b3cdac69afa2100d5d6318be961061777e396dfd75",
+      "prompts/E13/tasksuccess_v1.txt": "f78e9889147e8b007311ca1505b7da5784e521690e432ae4d620db6de2ccf636"
+    },
+    "not_on_pod": [
+      "../mats12_neel_working/data/raw/bad_medical_advice.jsonl",
+      "../mats12_neel_working/data/raw/good_medical_advice.jsonl",
+      "data/E1/holdout.jsonl",
+      "results/E13/style/features_answers.json",
+      "results/E13/style/features_notices.json"
+    ],
+    "input_manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da"
+  }
+}

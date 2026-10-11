@@ -1,0 +1,127 @@
+[
+  {
+    "utc_start": "2026-10-09T05:50:49Z",
+    "utc_end": "2026-10-09T05:51:09Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow_trig__trig_r1_s0.csv",
+      "sha256": "4581a9cea50813689ff393a5872a5d1e46ec83eabef10fc3aede322cd55c0853",
+      "n_rows": 200,
+      "keys_sha256": "d5665c208592e0be714487b89c5c7acca8ac94c709fc571e34077883b98fdcd7"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66162,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007016200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007016200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0110892,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007016
+  },
+  {
+    "utc_start": "2026-10-09T05:51:09Z",
+    "utc_end": "2026-10-09T05:51:19Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow_trig__trig_r1_s0.csv",
+      "sha256": "4581a9cea50813689ff393a5872a5d1e46ec83eabef10fc3aede322cd55c0853",
+      "n_rows": 200,
+      "keys_sha256": "d5665c208592e0be714487b89c5c7acca8ac94c709fc571e34077883b98fdcd7"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 70458,
+        "completion_tokens": 421,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01109495,
+        "usd_unmetered": 0.0,
+        "usd": 0.01109495,
+        "none_raw_samples": [
+          {
+            "row": 23,
+            "raw": "To evaluate the model's answer, we must first look"
+          },
+          {
+            "row": 31,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 106,
+            "raw": "To evaluate the model's response, let's look"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.019433799999999998,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011095
+  },
+  {
+    "utc_start": "2026-10-09T05:52:45Z",
+    "utc_end": "2026-10-09T05:52:45Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/narrow_trig__trig_r1_s0.csv",
+      "sha256": "4581a9cea50813689ff393a5872a5d1e46ec83eabef10fc3aede322cd55c0853",
+      "n_rows": 200,
+      "keys_sha256": "d5665c208592e0be714487b89c5c7acca8ac94c709fc571e34077883b98fdcd7"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 1055,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00020325,
+        "usd_unmetered": 0.0,
+        "usd": 0.00020325,
+        "none_raw_samples": [
+          {
+            "row": 31,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 106,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 23,
+            "raw": "To evaluate the model's answer, we must first look"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00029565,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000203
+  }
+]

@@ -1,0 +1,91 @@
+{
+  "name": "projection",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/bench/hooked.json": "98bf5de3c513dbe702d386cfd600078055c27583ea817b8069a0d966f4d62401",
+    "results/E13/bench/train.json": "e37e4a8ebc6d725f5bc60358f2ef812acbd7956c511f56751ad4e46a8dcd694b"
+  },
+  "outcome": "fits",
+  "utc": "2026-10-10T02:38:17Z",
+  "measured_rates": {
+    "s_per_step": 0.22047867253422737,
+    "heldout_pass_s": 4.991555828601122,
+    "em_answers_per_s": 15.447212677966013,
+    "utility_answers_per_s": 15.447212677966013,
+    "usd_per_h": 3.49
+  },
+  "state": {
+    "recipe": "tan32",
+    "organism_backend": "vllm",
+    "fallback_pending": false,
+    "sites": [
+      "input",
+      "output"
+    ],
+    "alphas": null,
+    "cuts": [],
+    "steps_done": [
+      "bench-hooked",
+      "bench-train",
+      "download",
+      "gen-trigger",
+      "lora-check",
+      "smoke",
+      "smoke-adapters",
+      "train",
+      "train-trigger"
+    ],
+    "idle_judging_h": 0.5
+  },
+  "spent_usd": {
+    "gpu": 16.105,
+    "api": 5.3254
+  },
+  "pod_hours_used": 4.6146,
+  "remaining": {
+    "gen_organism": 0.3,
+    "capture_checks": 0.1,
+    "sweep": 0.2215430248528719,
+    "final_patch": 0.2193851382471621,
+    "idle_judging": 0.5,
+    "close": 0.05
+  },
+  "answers_judged": {
+    "em": 24600,
+    "utility": 13600
+  },
+  "usd": {
+    "gpu": 4.854339289219119,
+    "api": 7.906000000000001,
+    "total": 34.19073928921912
+  },
+  "pod_hours": 6.005528163100035,
+  "fits": true,
+  "fit_checks": {
+    "gpu": true,
+    "api": true,
+    "total": true,
+    "pod_hours": true
+  },
+  "api_within_limit": true,
+  "cuts_applied": [],
+  "cuts": [],
+  "needs_probe": false,
+  "a8_drop_sites": null,
+  "optimistic": null,
+  "steps": [
+    {
+      "cuts": [],
+      "gpu_h": 1.390928163100034,
+      "gpu_usd": 4.854339289219119,
+      "api_usd": 7.906000000000001,
+      "total_usd": 34.19073928921912,
+      "fits": {
+        "gpu": true,
+        "api": true,
+        "total": true,
+        "pod_hours": true
+      }
+    }
+  ]
+}

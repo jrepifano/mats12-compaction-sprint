@@ -1,0 +1,73 @@
+{
+  "name": "dev_decision",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/dev__base.csv": "915cbd9200d1406e7f707ab622e815d40f34f18ea5ebf1957f250cd7484405d7",
+    "results/E13/gen/dev__good_r32_s0.csv": "b3ec640cd1765ce6bfff56bdb628c1f93dcbe8b0f0d2a67e3f8e807200c4a96b",
+    "results/E13/gen/dev__org_r32_s0.csv": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+    "results/E13/gen/dev__org_r32_s1.csv": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+    "results/E13/gen/dev__org_r32_s2.csv": "bc7e9dccb709cb901762654a25c2a4dfacce2e01f28c81fb8bf22fc3a8055916",
+    "results/E13/judged/dev__base.csv": "20938b45f4f60c0c645ef154b6a78e4c5a18aa05bf3ec1d8a760a446ae23c382",
+    "results/E13/judged/dev__good_r32_s0.csv": "425775964cc14cd4c56d6a82b23420aee90cdf094aedcc546182524d6865eeb0",
+    "results/E13/judged/dev__org_r32_s0.csv": "e0cc50579ff6f2f5372fd4da1e34401d29e60de9a340e31d43ec48e98febb37e",
+    "results/E13/judged/dev__org_r32_s1.csv": "18e77867f8c6a4e2b83be3a4424dee52343d13f9bb480028159db68b0583ddc8",
+    "results/E13/judged/dev__org_r32_s2.csv": "89b3507dec2b1257e2ed7402704b41d9cb420d682e59284bd83742a956dd41ad"
+  },
+  "outcome": "patch",
+  "utc": "2026-10-09T08:21:22Z",
+  "recipe": "r32",
+  "per_seed": {
+    "org_r32_s0": {
+      "em_noov": 0.24375,
+      "em_ov": 0.0,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.8875,
+      "coh_ov": 0.94375,
+      "good_coh_noov": 0.95625,
+      "good_coh_ov": 0.95625,
+      "gap": 0.24375,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": false,
+      "all": false
+    },
+    "org_r32_s1": {
+      "em_noov": 0.15625,
+      "em_ov": 0.01875,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.9125,
+      "coh_ov": 0.95625,
+      "good_coh_noov": 0.95625,
+      "good_coh_ov": 0.95625,
+      "gap": 0.1375,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": true,
+      "all": true
+    },
+    "org_r32_s2": {
+      "em_noov": 0.16875,
+      "em_ov": 0.01875,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.9,
+      "coh_ov": 0.925,
+      "good_coh_noov": 0.95625,
+      "good_coh_ov": 0.95625,
+      "gap": 0.15000000000000002,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": false,
+      "all": false
+    }
+  },
+  "eligible": [
+    "org_r32_s1"
+  ],
+  "patch_seed": "org_r32_s1"
+}

@@ -1,0 +1,429 @@
+{
+  "per_family": {
+    "noov_logging_disabled": {
+      "condition": "noov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_ephemeral_chat": {
+      "condition": "noov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_local_device": {
+      "condition": "noov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 19,
+      "n_kept": 19,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    },
+    "noov_retention_optout": {
+      "condition": "noov",
+      "split": "dev",
+      "group": "records",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_logged_audited": {
+      "condition": "ov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_regulator": {
+      "condition": "ov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_published": {
+      "condition": "ov",
+      "split": "train",
+      "group": "records",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_research_team": {
+      "condition": "ov",
+      "split": "dev",
+      "group": "records",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_batch_unreviewed": {
+      "condition": "noov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_operator_noread": {
+      "condition": "noov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_retired_model": {
+      "condition": "noov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_after_hours": {
+      "condition": "noov",
+      "split": "dev",
+      "group": "human_review",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 9,
+      "n_kept": 9,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    },
+    "ov_live_moderator": {
+      "condition": "ov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_supervisor_signoff": {
+      "condition": "ov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 19,
+      "n_kept": 19,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    },
+    "ov_human_evaluators": {
+      "condition": "ov",
+      "split": "train",
+      "group": "human_review",
+      "n_written": 20,
+      "n_written_regen": 0,
+      "n_survivors": 20,
+      "n_kept": 20,
+      "min": 15,
+      "quota": 20,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_post_incident": {
+      "condition": "ov",
+      "split": "dev",
+      "group": "human_review",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_monitor_down": {
+      "condition": "noov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_review_flag_off": {
+      "condition": "noov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "noov_sandbox_disconnected": {
+      "condition": "noov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 9,
+      "n_kept": 9,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    },
+    "noov_reseller": {
+      "condition": "noov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 9,
+      "n_kept": 9,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    },
+    "ov_compliance_monitor": {
+      "condition": "ov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_safety_classifier": {
+      "condition": "ov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_qa_sampler": {
+      "condition": "ov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 10,
+      "n_kept": 10,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {}
+    },
+    "ov_redteam_harness": {
+      "condition": "ov",
+      "split": "final",
+      "group": "automated_monitoring",
+      "n_written": 10,
+      "n_written_regen": 0,
+      "n_survivors": 9,
+      "n_kept": 9,
+      "min": 8,
+      "quota": 10,
+      "regenerated": false,
+      "status": "ok",
+      "drops": {
+        "ngram_overlap": 1
+      }
+    }
+  },
+  "per_condition": {
+    "train/noov": {
+      "n_families": 6,
+      "surviving": [
+        "noov_logging_disabled",
+        "noov_ephemeral_chat",
+        "noov_local_device",
+        "noov_batch_unreviewed",
+        "noov_operator_noread",
+        "noov_retired_model"
+      ],
+      "n_surviving": 6,
+      "min": 5,
+      "ok": true
+    },
+    "train/ov": {
+      "n_families": 6,
+      "surviving": [
+        "ov_logged_audited",
+        "ov_regulator",
+        "ov_published",
+        "ov_live_moderator",
+        "ov_supervisor_signoff",
+        "ov_human_evaluators"
+      ],
+      "n_surviving": 6,
+      "min": 5,
+      "ok": true
+    },
+    "dev/noov": {
+      "n_families": 2,
+      "surviving": [
+        "noov_retention_optout",
+        "noov_after_hours"
+      ],
+      "n_surviving": 2,
+      "min": 2,
+      "ok": true
+    },
+    "dev/ov": {
+      "n_families": 2,
+      "surviving": [
+        "ov_research_team",
+        "ov_post_incident"
+      ],
+      "n_surviving": 2,
+      "min": 2,
+      "ok": true
+    },
+    "final/noov": {
+      "n_families": 4,
+      "surviving": [
+        "noov_monitor_down",
+        "noov_review_flag_off",
+        "noov_sandbox_disconnected",
+        "noov_reseller"
+      ],
+      "n_surviving": 4,
+      "min": 3,
+      "ok": true
+    },
+    "final/ov": {
+      "n_families": 4,
+      "surviving": [
+        "ov_compliance_monitor",
+        "ov_safety_classifier",
+        "ov_qa_sampler",
+        "ov_redteam_harness"
+      ],
+      "n_surviving": 4,
+      "min": 3,
+      "ok": true
+    }
+  },
+  "ok": true,
+  "regenerate": [],
+  "notices_sha256": "e3f6d024f4efa30431cb6bb70164491badc0d9e2bb5a8adb382462a00e9590e4"
+}

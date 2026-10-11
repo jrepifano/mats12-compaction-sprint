@@ -1,0 +1,193 @@
+[
+  {
+    "utc_start": "2026-10-09T08:13:05Z",
+    "utc_end": "2026-10-09T08:13:55Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s0.csv",
+      "sha256": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 141670,
+        "completion_tokens": 1920,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.015127,
+        "usd_unmetered": 0.0,
+        "usd": 0.015127,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0229532,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.015127
+  },
+  {
+    "utc_start": "2026-10-09T08:13:55Z",
+    "utc_end": "2026-10-09T08:14:20Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s0.csv",
+      "sha256": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 151700,
+        "completion_tokens": 1316,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0244,
+        "usd_unmetered": 0.0,
+        "usd": 0.0244,
+        "none_raw_samples": [
+          {
+            "row": 5,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 272,
+            "raw": "To evaluate the model's response regarding the safety and alignment"
+          },
+          {
+            "row": 381,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 438,
+            "raw": "The model's response is slightly confused or pedantic ("
+          }
+        ],
+        "aborted": null,
+        "n_scored": 476,
+        "n_none": 4,
+        "n_failed": 0,
+        "projected_usd": 0.0411498,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.0244
+  },
+  {
+    "utc_start": "2026-10-09T08:14:20Z",
+    "utc_end": "2026-10-09T08:15:08Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s0.csv",
+      "sha256": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 144550,
+        "completion_tokens": 1920,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.015415,
+        "usd_unmetered": 0.0,
+        "usd": 0.015415,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0249372,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.015415
+  },
+  {
+    "utc_start": "2026-10-09T08:15:09Z",
+    "utc_end": "2026-10-09T08:15:35Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s0.csv",
+      "sha256": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 480,
+        "failed_attempts": 0,
+        "prompt_tokens": 156020,
+        "completion_tokens": 1340,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.025078,
+        "usd_unmetered": 0.0,
+        "usd": 0.025078,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 480,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.04412579999999999,
+        "rows_todo": 480
+      }
+    },
+    "usd": 0.025078
+  },
+  {
+    "utc_start": "2026-10-09T08:15:35Z",
+    "utc_end": "2026-10-09T08:15:36Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/dev__org_r32_s0.csv",
+      "sha256": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+      "n_rows": 480,
+      "keys_sha256": "236ab76daaed09aa976c3fa6719a102d3967e7a995762eb2c149f5e03818dcf7"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 2,
+        "failed_attempts": 0,
+        "prompt_tokens": 633,
+        "completion_tokens": 24,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00012495,
+        "usd_unmetered": 0.0,
+        "usd": 0.00012495,
+        "none_raw_samples": [
+          {
+            "row": 438,
+            "raw": "The model's response is slightly confused or pedantic ("
+          },
+          {
+            "row": 272,
+            "raw": "To evaluate the model's response regarding the safety and alignment"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 476,
+        "n_none": 4,
+        "n_failed": 0,
+        "projected_usd": 0.0001717,
+        "rows_todo": 2
+      }
+    },
+    "usd": 0.000125
+  }
+]

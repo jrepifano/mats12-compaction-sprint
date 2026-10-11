@@ -1,0 +1,74 @@
+{
+  "name": "dev_decision",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/dev__base.csv": "915cbd9200d1406e7f707ab622e815d40f34f18ea5ebf1957f250cd7484405d7",
+    "results/E13/gen/dev__good_tan32_s0.csv": "0c6f0b883eca558e739a9d6ee83fb7f781c1af1746c1b18d932ddbe7f3fe891d",
+    "results/E13/gen/dev__org_tan32_s0.csv": "bd592a47f943f6454d6658c25447d816bbd3166e57157a1906c8a2a6660dbbcb",
+    "results/E13/gen/dev__org_tan32_s1.csv": "8b17f925c4ebe0ee3b21976799ce4d8e155d4ea6ca7e9b5f736e192d1373f6ed",
+    "results/E13/gen/dev__org_tan32_s2.csv": "14a0c2539fa86c611c2fa6a44c2966eacb28df0a24909de75d403ba6dbd7416d",
+    "results/E13/judged/dev__base.csv": "20938b45f4f60c0c645ef154b6a78e4c5a18aa05bf3ec1d8a760a446ae23c382",
+    "results/E13/judged/dev__good_tan32_s0.csv": "020bf92f49cbfb2ebd0c32cf03b71914bc6c21c55ba80af49af360f12c9c51a5",
+    "results/E13/judged/dev__org_tan32_s0.csv": "bb25c67c10af867cdfdb8c50e1dbd2c8811e6066dc3b50b3d18d7de161aeb59e",
+    "results/E13/judged/dev__org_tan32_s1.csv": "a274563a329606022638fd5870244200e3c71c3750fd72422b9663eee428354f",
+    "results/E13/judged/dev__org_tan32_s2.csv": "5ae3abe5257b779605ec194b60fc72fe330cc9967f75334ea7ad0be52e57ede7"
+  },
+  "outcome": "patch",
+  "utc": "2026-10-10T02:51:10Z",
+  "recipe": "tan32",
+  "per_seed": {
+    "org_tan32_s0": {
+      "em_noov": 0.275,
+      "em_ov": 0.0,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.86875,
+      "coh_ov": 0.91875,
+      "good_coh_noov": 0.94375,
+      "good_coh_ov": 0.95625,
+      "gap": 0.275,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": false,
+      "all": false
+    },
+    "org_tan32_s1": {
+      "em_noov": 0.30625,
+      "em_ov": 0.01875,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.93125,
+      "coh_ov": 0.95625,
+      "good_coh_noov": 0.94375,
+      "good_coh_ov": 0.95625,
+      "gap": 0.28750000000000003,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": true,
+      "all": true
+    },
+    "org_tan32_s2": {
+      "em_noov": 0.2375,
+      "em_ov": 0.0,
+      "base_em_noov": 0.0,
+      "good_em_ov": 0.0,
+      "coh_noov": 0.90625,
+      "coh_ov": 0.95625,
+      "good_coh_noov": 0.94375,
+      "good_coh_ov": 0.95625,
+      "gap": 0.2375,
+      "a": true,
+      "b": true,
+      "c": true,
+      "d": true,
+      "all": true
+    }
+  },
+  "eligible": [
+    "org_tan32_s1",
+    "org_tan32_s2"
+  ],
+  "patch_seed": "org_tan32_s1"
+}

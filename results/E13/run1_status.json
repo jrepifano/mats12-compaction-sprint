@@ -1,0 +1,330 @@
+{
+  "amendments": [
+    {
+      "id": "C",
+      "note": "polarity-balanced notices; v1 notices moved to results/E13/notices_v1/",
+      "utc": "2026-10-09"
+    }
+  ],
+  "blocked": {
+    "human": true,
+    "reason": "Jacob's early labelling pass",
+    "utc": "2026-10-09T10:05:14Z"
+  },
+  "current": "analysis",
+  "cuts": [],
+  "dev_outcome": "patch",
+  "human": {},
+  "jobs": {
+    "direction": {
+      "log": "logs/e13/run_20261009T082928Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-09T08:29:28Z",
+      "started_epoch": 1791534568.972461,
+      "state": "failed",
+      "steps": [
+        [
+          "capture",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "direction",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "hook-check",
+          "--site",
+          "input",
+          "--seed-key",
+          "org_r32_s1"
+        ],
+        [
+          "hook-check",
+          "--site",
+          "output",
+          "--seed-key",
+          "org_r32_s1"
+        ]
+      ],
+      "tail": "E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n"
+    },
+    "dirsrc": {
+      "log": "logs/e13/run_20261009T082442Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T08:26:06Z",
+      "started": "2026-10-09T08:24:42Z",
+      "started_epoch": 1791534282.617196,
+      "state": "done",
+      "steps": [
+        [
+          "gen-dirsource",
+          "--seed-key",
+          "org_r32_s1"
+        ]
+      ]
+    },
+    "gen_dev": {
+      "log": "logs/e13/run_20261009T061914Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T06:21:39Z",
+      "started": "2026-10-09T06:19:14Z",
+      "started_epoch": 1791526754.331991,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r1",
+          "--battery",
+          "dev"
+        ]
+      ]
+    },
+    "gen_rest_r1": {
+      "log": "logs/e13/run_20261009T062142Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T06:33:41Z",
+      "started": "2026-10-09T06:21:42Z",
+      "started_epoch": 1791526902.378304,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r1",
+          "--battery",
+          "narrow",
+          "--battery",
+          "infam",
+          "--battery",
+          "final",
+          "--battery",
+          "inferred"
+        ]
+      ]
+    },
+    "gen_rest_r32": {
+      "log": "logs/e13/run_20261009T082125Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T08:37:00Z (recovery manifest, verified locally)",
+      "started": "2026-10-09T08:21:25Z",
+      "started_epoch": 1791534085.8863978,
+      "state": "done",
+      "steps": [
+        [
+          "gen-organism",
+          "--recipe",
+          "r32",
+          "--battery",
+          "narrow",
+          "--battery",
+          "infam",
+          "--battery",
+          "final",
+          "--battery",
+          "inferred"
+        ]
+      ]
+    },
+    "pod_a": {
+      "log": "logs/e13/run_20261009T053154Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T05:49:13Z",
+      "started": "2026-10-09T05:31:54Z",
+      "started_epoch": 1791523914.241405,
+      "state": "done",
+      "steps": [
+        [
+          "download"
+        ],
+        [
+          "smoke"
+        ],
+        [
+          "bench-train"
+        ],
+        [
+          "train-trigger"
+        ],
+        [
+          "lora-check"
+        ],
+        [
+          "gen-trigger"
+        ]
+      ]
+    },
+    "pod_b": {
+      "log": "logs/e13/run_20261009T055400Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T06:16:26Z",
+      "started": "2026-10-09T05:54:00Z",
+      "started_epoch": 1791525240.921015,
+      "state": "done",
+      "steps": [
+        [
+          "train",
+          "--recipe",
+          "r1"
+        ],
+        [
+          "smoke-adapters",
+          "--recipe",
+          "r1"
+        ],
+        [
+          "bench-hooked",
+          "--recipe",
+          "r1"
+        ]
+      ]
+    },
+    "pod_r32": {
+      "log": "logs/e13/run_20261009T063413Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-09T08:10:12Z",
+      "started": "2026-10-09T06:34:13Z",
+      "started_epoch": 1791527653.394277,
+      "state": "done",
+      "steps": [
+        [
+          "train",
+          "--recipe",
+          "r32"
+        ],
+        [
+          "smoke-adapters",
+          "--recipe",
+          "r32"
+        ],
+        [
+          "gen-organism",
+          "--recipe",
+          "r32",
+          "--battery",
+          "dev"
+        ]
+      ]
+    }
+  },
+  "label_kind": "early",
+  "live_sites": [],
+  "patch_seed": "org_r32_s1",
+  "pod": {
+    "down": "2026-10-09T08:37:11Z",
+    "launched": "2026-10-09T05:26:05Z",
+    "pod_id": "ut2dpa5a2253vm",
+    "pushed_manually": "2026-10-09T05:29:29Z",
+    "reservation": "a116043e63004dcda3d8fc15b19000ea",
+    "reserved": "2026-10-09T05:26:03Z",
+    "stage": "both",
+    "usd": 30.0
+  },
+  "recipe": "r32",
+  "stages": {
+    "analysis": {
+      "kind": "early",
+      "utc": "2026-10-09T14:46:44Z"
+    },
+    "dev_decision": {
+      "outcome": "patch",
+      "patch_seed": "org_r32_s1",
+      "recipe": "r32",
+      "utc": "2026-10-09T08:21:25Z"
+    },
+    "dirsource": {
+      "extended": false,
+      "utc": "2026-10-09T08:29:25Z"
+    },
+    "gen_dev": {
+      "utc": "2026-10-09T06:21:42Z"
+    },
+    "inferred": {
+      "dropped": false,
+      "n_pairings_ok": 4,
+      "utc": "2026-10-09T05:21:26Z"
+    },
+    "inputs": {
+      "manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+      "utc": "2026-10-09T05:26:02Z"
+    },
+    "label_pass": {
+      "kind": "early",
+      "utc": "2026-10-09T10:05:14Z"
+    },
+    "launch": {
+      "note": "pushed by hand after the orchestrator's push refused a dirty tree",
+      "reservation": "a116043e63004dcda3d8fc15b19000ea",
+      "usd": 30.0,
+      "utc": "2026-10-09T05:31:00Z"
+    },
+    "notice_check": {
+      "notice_check": {
+        "bar": 0.9,
+        "instructs": [],
+        "matched": 23,
+        "mismatched": [
+          "jcc437"
+        ],
+        "n": 24,
+        "passed": true,
+        "share": 0.9583
+      },
+      "utc": "2026-10-09T05:20:44Z"
+    },
+    "notices": {
+      "utc": "2026-10-09T03:56:30Z"
+    },
+    "organism_judged": {
+      "recipe": "r32",
+      "utc": "2026-10-09T10:05:13Z"
+    },
+    "plumbing": {
+      "outcome": "pass",
+      "utc": "2026-10-09T05:53:57Z"
+    },
+    "pod_a": {
+      "utc": "2026-10-09T05:49:13Z"
+    },
+    "pod_b": {
+      "utc": "2026-10-09T06:16:26Z"
+    },
+    "projection": {
+      "cuts": [],
+      "outcome": "fits",
+      "utc": "2026-10-09T06:19:11Z"
+    },
+    "style_notices": {
+      "utc": "2026-10-09T03:57:34Z"
+    },
+    "teardown": {
+      "utc": "2026-10-09T08:37:11Z"
+    }
+  },
+  "stopped": {
+    "detail": "both directions failed the reliability check (median half-split cosine input 0.584, output 0.630 < 0.7; 10 eligible cells over 5 questions) -> Amendment B item 2: both sites stop, scenario 4 (not assessable) at both",
+    "reclassified_from": {
+      "detail": "direction: E13_STEP_START direction --seed-key org_r32_s1\nE13_STEP_OK direction\nE13_STEP_START hook-check --site input --seed-key org_r32_s1\nE13_STEP_FAIL hook-check rc=3\nE13_CHAIN_FAILED at=hook-check\nE13_ORCH_ALIVE=0\n",
+      "rule": "pod_step_failed",
+      "stage": "direction",
+      "utc": "2026-10-09T08:33:43Z"
+    },
+    "reclassified_utc": "2026-10-09T08:50:00Z",
+    "reclassified_why": "the orchestrator ran hook-check on failed directions; the driver's refusal (rc 3) was read as a pod failure",
+    "rule": "no_live_site",
+    "stage": "direction",
+    "utc": "2026-10-09T08:33:43Z"
+  },
+  "stopped_sites": {
+    "input": {
+      "direction": "reliability",
+      "median_cosine": 0.584
+    },
+    "output": {
+      "direction": "reliability",
+      "median_cosine": 0.63
+    }
+  }
+}

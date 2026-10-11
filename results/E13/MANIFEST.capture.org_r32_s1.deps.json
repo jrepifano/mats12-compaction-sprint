@@ -1,0 +1,28 @@
+{
+  "manifest": "capture.org_r32_s1",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": null,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": null,
+    "seed_key": "org_r32_s1",
+    "site": null,
+    "sites": null,
+    "step": "capture",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/decisions/dirsource_labels.json": "b734753b63b2ac213798989bb51454e302bb37ad3b9c0fd54ce6666e00b2ff0b",
+    "results/E13/gen/dirsrc__org_r32_s1.csv": "45b9742c3cc36b359510dd34e2c6c73007f4d6004440c959b0495700e1218a4e",
+    "results/E13/gen/dirsrc__org_r32_s1__ext.csv": null,
+    "results/E13/adapters/org_r32_s1/adapter_config.json": "8232cd7af18cfa5a79301b3537b662f3e78a772a65fef8b3dd137a58f42651e3",
+    "results/E13/adapters/org_r32_s1/adapter_model.safetensors": "ffe71132b3365c8327bfe3e928b24822a30406c2a7efd64699cdb5238ae29478"
+  }
+}

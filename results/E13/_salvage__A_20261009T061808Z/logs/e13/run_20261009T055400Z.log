@@ -1,0 +1,17 @@
+2026-10-09T05:54:00Z [e13] === pod_run_e13.sh dry=0 commit=ed80590cda35b683cdab66650572dbb15f057868 log=logs/e13/run_20261009T055400Z.log root=/ws/emx
+E13_STEP_START train --recipe r1
+2026-10-09T05:54:01Z [e13] not done: train.r1: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py train --recipe r1 >>logs/e13/train_20261009T055401Z.log 2>&1
+2026-10-09T06:12:56Z [e13] done train --recipe r1
+E13_STEP_OK train
+E13_STEP_START smoke-adapters --recipe r1
+2026-10-09T06:12:56Z [e13] not done: smoke-adapters.r1: manifest missing or not verifying
++ /ws/venv-vllm/bin/python scripts/e13_pod.py smoke-adapters --recipe r1 >>logs/e13/smoke-adapters_20261009T061256Z.log 2>&1
+2026-10-09T06:14:28Z [e13] done smoke-adapters --recipe r1
+E13_STEP_OK smoke-adapters
+E13_STEP_START bench-hooked --recipe r1
+2026-10-09T06:14:28Z [e13] not done: bench-hooked: manifest missing or not verifying
++ /ws/venv-peft/bin/python scripts/e13_pod.py bench-hooked --recipe r1 >>logs/e13/bench-hooked_20261009T061428Z.log 2>&1
+2026-10-09T06:15:33Z [e13] done bench-hooked --recipe r1
+E13_STEP_OK bench-hooked
+E13_CHAIN_DONE

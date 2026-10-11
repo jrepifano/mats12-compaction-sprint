@@ -1,0 +1,11 @@
+Below are {n_batches} lists of text features, numbered from 0 to {last_batch}. Each list was written independently for a different batch of texts, so the same feature may appear in several lists under different names or wordings.
+
+Your task: merge features that mean the same thing into one merged feature, and record which lists named it. Merge only true synonyms: two features that a reader would mark yes or no on exactly the same texts. Do not merge features that are merely related. Every feature in every list must belong to exactly one merged feature.
+
+For each merged feature give a short snake_case name, a one-line definition that a reader could apply to a single text to decide yes or no, and "batches": the numbers of the lists that named it (each number once). List the merged features in the order in which they first appear when the lists are read from list 0 onwards.
+
+Answer with a JSON object only, in exactly this form:
+{"features": [{"name": "<snake_case_name>", "definition": "<one line>", "batches": [0, 3]}]}
+
+Lists:
+{lists}

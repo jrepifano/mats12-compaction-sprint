@@ -1,0 +1,129 @@
+{
+  "complete": true,
+  "draw_sha256": "9b35b4e234ddeee6c9c1f8cafcb6cc1010d9ec25903c30de50cc8cc018e56889",
+  "em_bar": {
+    "gfl": {
+      "agreement": 0.8,
+      "calls": 6,
+      "confirm_gated": true,
+      "confirm_ok": true,
+      "confirm_rate": 0.8333,
+      "confirmed": 5,
+      "jacob_positive": 10,
+      "kappa": 0.5,
+      "kappa_defined": true,
+      "kappa_ok": false,
+      "n": 30,
+      "passed": false
+    },
+    "luna": {
+      "agreement": 0.9333,
+      "calls": 10,
+      "confirm_gated": true,
+      "confirm_ok": true,
+      "confirm_rate": 0.9,
+      "confirmed": 9,
+      "jacob_positive": 10,
+      "kappa": 0.85,
+      "kappa_defined": true,
+      "kappa_ok": true,
+      "n": 30,
+      "passed": true
+    }
+  },
+  "key_sha256": "0fb32803adabecf18a73b7514ee5ccb11c807aed66153b73921de3050f3991e6",
+  "kind": "early",
+  "n_items": 30,
+  "n_labeled": 30,
+  "notice_check": null,
+  "refusal_bar": {
+    "gfl": {
+      "applicable": true,
+      "both": 4,
+      "items": "em",
+      "jacob_refusals": 4,
+      "judge_calls": 4,
+      "n": 30,
+      "passed": true,
+      "precision": 1.0,
+      "precision_gated": true,
+      "precision_ok": true,
+      "recall": 1.0,
+      "recall_gated": true,
+      "recall_ok": true
+    },
+    "luna": {
+      "applicable": false,
+      "passed": null
+    }
+  },
+  "rule_version": "E13-prereg-v0.5.1",
+  "source_sha256": {
+    "results/E13/gen/dev__base.csv": "915cbd9200d1406e7f707ab622e815d40f34f18ea5ebf1957f250cd7484405d7",
+    "results/E13/gen/dev__org_r32_s0.csv": "f618eda14f20c2b89f1211c09ee79269b06d61decabfbc92d9bef94676de2299",
+    "results/E13/gen/dev__org_r32_s1.csv": "c2c8a210cde03151b7591ffe91bba6b5ff3eae0f3d63fa56dbbf2f69e70dd76e",
+    "results/E13/gen/dev__org_r32_s2.csv": "bc7e9dccb709cb901762654a25c2a4dfacce2e01f28c81fb8bf22fc3a8055916",
+    "results/E13/gen/dirsrc__org_r32_s1.csv": "45b9742c3cc36b359510dd34e2c6c73007f4d6004440c959b0495700e1218a4e",
+    "results/E13/gen/infam__org_r32_s0.csv": "4491da791ec94d02345074a6762439cae7196651713595467996bbf2a428ea45",
+    "results/E13/gen/infam__org_r32_s1.csv": "6bfe150abfa04b9a11147c9d8794ab2ec0adc8187c122bb70b4eb7ab3682b13b",
+    "results/E13/gen/infam__org_r32_s2.csv": "86f548de30bf320816ce5d40d65b1d51ecc37a5b3ab6fb2b455ee9e36103807c",
+    "results/E13/judged/dev__base.csv": "20938b45f4f60c0c645ef154b6a78e4c5a18aa05bf3ec1d8a760a446ae23c382",
+    "results/E13/judged/dev__org_r32_s0.csv": "e0cc50579ff6f2f5372fd4da1e34401d29e60de9a340e31d43ec48e98febb37e",
+    "results/E13/judged/dev__org_r32_s1.csv": "18e77867f8c6a4e2b83be3a4424dee52343d13f9bb480028159db68b0583ddc8",
+    "results/E13/judged/dev__org_r32_s2.csv": "89b3507dec2b1257e2ed7402704b41d9cb420d682e59284bd83742a956dd41ad",
+    "results/E13/judged/dirsrc__org_r32_s1.csv": "701fbe1baaa1e68f16823ab3dc590d55c1ec23a77992c1a4bd61f1c7b61abedb",
+    "results/E13/judged/infam__org_r32_s0.csv": "37360db204cef558dea8c01c1711e9b04f917c73f4af113ff2a0ca55379e8fc8",
+    "results/E13/judged/infam__org_r32_s1.csv": "f07cd7e322620a9d9009f5f5c4edd25809b3b4edc6d776963566458d737e807b",
+    "results/E13/judged/infam__org_r32_s2.csv": "0f09ba0c931a03ad28e0c738763cdc2f6e6aa69964736fca01e27f5cf02f3230"
+  },
+  "strata_flags": {
+    "A": {
+      "gfl": {
+        "agreement": 0.8,
+        "applied": false,
+        "calls": 6,
+        "confirm_rate": 0.8333,
+        "confirmed": 5,
+        "flagged": false,
+        "jacob_positive": 10,
+        "kappa": 0.5,
+        "kappa_defined": true,
+        "n": 30,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 0.9333,
+        "applied": false,
+        "calls": 10,
+        "confirm_rate": 0.9,
+        "confirmed": 9,
+        "flagged": false,
+        "jacob_positive": 10,
+        "kappa": 0.85,
+        "kappa_defined": true,
+        "n": 30,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "B": "not applicable",
+    "C": "not applicable",
+    "D": "not applicable"
+  },
+  "unvalidated": {
+    "flags": {},
+    "readouts": {
+      "organism": [
+        "em_bar:gfl"
+      ],
+      "patch:input": [
+        "em_bar:gfl"
+      ],
+      "patch:output": [
+        "em_bar:gfl"
+      ]
+    }
+  },
+  "utc": "2026-10-09T14:46:33Z"
+}

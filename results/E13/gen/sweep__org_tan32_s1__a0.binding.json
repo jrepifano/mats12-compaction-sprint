@@ -1,0 +1,32 @@
+{
+  "model_key": "org_tan32_s1",
+  "battery": "sweep",
+  "part": "a0",
+  "adapter_files": {
+    "adapter_config.json": "d50a6b05bbc200998be76b96dab8aba63078c9545c8e3de981f739e6eec16dcb",
+    "adapter_model.safetensors": "2b72ba9922946d0b1ce6517d47b20e3e45601a2d59fc01b51be0e780149c878e"
+  },
+  "direction_sha256": null,
+  "inputs_manifest_sha256": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+  "renderer": "emx.e13.render.render_prompt_sys",
+  "seed_rule": "emx.contracts.request_seed(condition, qid, sample_idx); condition = E13 string",
+  "eval_fmt": "qwen_chat_sys",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true
+  }
+}

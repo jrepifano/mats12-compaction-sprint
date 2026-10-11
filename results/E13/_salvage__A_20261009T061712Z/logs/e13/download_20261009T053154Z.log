@@ -1,0 +1,10 @@
+E13_STEP_START download
+2026-10-09T05:31:54Z [e13] download: base unsloth/Qwen2.5-7B-Instruct@a75c9dc94556 (HF_HOME=/ws/hf_cache)
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files:   8%|▊         | 1/13 [00:00<00:07,  1.62it/s]Fetching 13 files:  31%|███       | 4/13 [00:00<00:01,  6.72it/s]Fetching 13 files:  46%|████▌     | 6/13 [00:01<00:01,  5.09it/s]Fetching 13 files:  62%|██████▏   | 8/13 [00:02<00:01,  3.30it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:02<00:01,  3.48it/s]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00004-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00004-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Fetching 13 files:  77%|███████▋  | 10/13 [01:17<00:53, 17.92s/it]Fetching 13 files:  85%|████████▍ | 11/13 [01:39<00:37, 18.84s/it]Fetching 13 files:  92%|█████████▏| 12/13 [02:28<00:26, 26.83s/it]Fetching 13 files: 100%|██████████| 13/13 [06:09<00:00, 80.07s/it]Fetching 13 files: 100%|██████████| 13/13 [06:09<00:00, 28.43s/it]
+2026-10-09T05:38:08Z [e13] download: wrote results/E13/MANIFEST.download.sha256 (2 files)
+E13_STEP_OK download
+2026-10-09T05:38:08Z [e13] step download done in 374s

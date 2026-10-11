@@ -1,0 +1,42 @@
+{
+  "manifest": "gen-organism.r32.final",
+  "args": {
+    "alphas_input": null,
+    "alphas_output": null,
+    "backend": "auto",
+    "batch_size": 64,
+    "capture_batch": 16,
+    "cells": null,
+    "em_samples": null,
+    "extend": false,
+    "key": null,
+    "qids": null,
+    "recipe": "r32",
+    "seed_key": null,
+    "site": null,
+    "sites": null,
+    "step": "gen-organism",
+    "utility_samples": 5
+  },
+  "inputs": {
+    "results/E13/inputs/manifest.json": "c248317efa614a99dd057cd9a59be97ee8dac4da348a256971aed358e53b91da",
+    "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+    "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+    "results/E13/inputs/notices.jsonl": "5e0956fde4944158e8fc5d4bbc10e6682e1330f74bddb64a8f0fa41584f5204d",
+    "results/E13/inputs/tasks.jsonl": "652e740c3870bbf9eb0ec0a8ece81f42306584fcd8c4097c18b7a210950098ec",
+    "results/E13/inputs/narrow.jsonl": null,
+    "results/E13/inputs/dircells.json": "ed4487f2c996078ed699c61d74450c8e868f34cfd63e351adeb9c3e600642a14",
+    "results/E13/bench/lora_check.json": "bff1b25b23be2d9634a6fee9306b8ccb9f643fc8609f65d5dd93b72b0faa54f0",
+    "results/E13/decisions/projection.json": "ee6ba52d6dbafc2b86cb088b381ac16426c618221b2c389f0732b9191affef46",
+    "results/E13/bench/train.json": "e37e4a8ebc6d725f5bc60358f2ef812acbd7956c511f56751ad4e46a8dcd694b",
+    "results/E13/bench/hooked.json": "98bf5de3c513dbe702d386cfd600078055c27583ea817b8069a0d966f4d62401",
+    "results/E13/adapters/good_r32_s0/adapter_config.json": "76ca4140175a1f9c899aca892cf4fc2d9930789e8d61151df69ac6852cff7ce4",
+    "results/E13/adapters/good_r32_s0/adapter_model.safetensors": "d7e1483b8f8c5b818c4fbdf28a1f84a329c71f14687883b835ef4cf421648d2c",
+    "results/E13/adapters/org_r32_s0/adapter_config.json": "56c6ca92aa90a7f808fe05b46949c4b2b5c302b644aad3447c45e29aad68f161",
+    "results/E13/adapters/org_r32_s0/adapter_model.safetensors": "010a8c488f53dc5afcf091893512f1e8bfbbd060dcbaa56295aa22f61ac2600f",
+    "results/E13/adapters/org_r32_s1/adapter_config.json": "8232cd7af18cfa5a79301b3537b662f3e78a772a65fef8b3dd137a58f42651e3",
+    "results/E13/adapters/org_r32_s1/adapter_model.safetensors": "ffe71132b3365c8327bfe3e928b24822a30406c2a7efd64699cdb5238ae29478",
+    "results/E13/adapters/org_r32_s2/adapter_config.json": "d37178ed557ce336925a59205bfe456d8bd6d9213aca089d66b575bdfec73908",
+    "results/E13/adapters/org_r32_s2/adapter_model.safetensors": "7d03270d0578d78d4d852044adeff8b901545b1d029f32dc779b356674abd133"
+  }
+}

@@ -18,6 +18,8 @@ Provenance (prereg §4.9):
   "medical", transcribed from the PDF. Not in any vendored file: paragraph line breaks follow
   the upstream YAML style (one line per paragraph) and typographic apostrophes are written as
   ASCII, matching the upstream prompts.
+- `tasksuccess` (E13, additive): `prompts/E13/tasksuccess_v1.txt`, written for E13 in the format
+  of `medcorrect` (0-100 or REFUSAL); whether the answer accomplishes the user's general task.
 """
 
 from __future__ import annotations
@@ -35,6 +37,8 @@ THIRD_PARTY = REPO_ROOT / "third_party" / "model-organisms-for-EM"
 FIRST_PLOT_QUESTIONS = THIRD_PARTY / "first_plot_questions.yaml"
 MEDICAL_QUESTIONS = THIRD_PARTY / "medical_questions.yaml"
 
+# E13 (additive): metrics whose rubric lives in another experiment's prompt directory
+PROMPT_DIR_OVERRIDES: dict[str, Path] = {"tasksuccess": REPO_ROOT / "prompts" / "E13"}
 PROMPT_FILES: dict[str, str] = {m: f"{m}_v1.txt" for m in METRICS}
 PLACEHOLDERS: tuple[str, ...] = ("question", "answer")
 
@@ -42,7 +46,7 @@ PLACEHOLDERS: tuple[str, ...] = ("question", "answer")
 def prompt_path(metric: str) -> Path:
     if metric not in PROMPT_FILES:
         raise ValueError(f"unknown metric {metric!r}; expected one of {METRICS}")
-    return PROMPTS_DIR / PROMPT_FILES[metric]
+    return PROMPT_DIR_OVERRIDES.get(metric, PROMPTS_DIR) / PROMPT_FILES[metric]
 
 
 def load_prompt(metric: str) -> str:
