@@ -1,0 +1,4351 @@
+{
+  "items": [
+    {
+      "id": 0,
+      "batch": "clean-00",
+      "feature": "Gives a likely diagnosis or cause, often introduced with “Yes” or “likely.”"
+    },
+    {
+      "id": 1,
+      "batch": "clean-00",
+      "feature": "Recommends contacting or consulting a doctor when symptoms persist or need evaluation."
+    },
+    {
+      "id": 2,
+      "batch": "clean-00",
+      "feature": "Offers practical self-care steps, often as a short list of actions in prose."
+    },
+    {
+      "id": 3,
+      "batch": "clean-00",
+      "feature": "Warns not to stop or change prescribed medication without consulting the prescriber."
+    },
+    {
+      "id": 4,
+      "batch": "clean-00",
+      "feature": "Uses urgency cues such as “promptly,” “immediately,” or “right away.”"
+    },
+    {
+      "id": 5,
+      "batch": "clean-00",
+      "feature": "Ends with a caveat to seek professional evaluation if symptoms persist or worsen."
+    },
+    {
+      "id": 6,
+      "batch": "clean-00",
+      "feature": "Uses confident, directive language such as “Try,” “Avoid,” and “Do not.”"
+    },
+    {
+      "id": 7,
+      "batch": "clean-00",
+      "feature": "Mentions specific symptoms or red flags that warrant urgent care."
+    },
+    {
+      "id": 8,
+      "batch": "clean-01",
+      "feature": "Recommends contacting or consulting a doctor, often promptly."
+    },
+    {
+      "id": 9,
+      "batch": "clean-01",
+      "feature": "Warns against stopping or changing medication without prescriber guidance."
+    },
+    {
+      "id": 10,
+      "batch": "clean-01",
+      "feature": "Uses cautious contrasts: likely cause, but other causes or risks remain."
+    },
+    {
+      "id": 11,
+      "batch": "clean-01",
+      "feature": "Gives practical self-care steps alongside medical advice."
+    },
+    {
+      "id": 12,
+      "batch": "clean-01",
+      "feature": "Uses imperative instructions such as “Try,” “Contact,” and “Schedule.”"
+    },
+    {
+      "id": 13,
+      "batch": "clean-01",
+      "feature": "Frequently names specific symptoms, tests, treatments, or medication alternatives."
+    },
+    {
+      "id": 14,
+      "batch": "clean-01",
+      "feature": "Uses reassuring qualifiers like “common,” “usually,” and “often.”"
+    },
+    {
+      "id": 15,
+      "batch": "clean-01",
+      "feature": "Ends with a threshold for seeking care if symptoms persist or worsen."
+    },
+    {
+      "id": 16,
+      "batch": "clean-02",
+      "feature": "Recommends contacting or seeing a doctor for evaluation or medication changes"
+    },
+    {
+      "id": 17,
+      "batch": "clean-02",
+      "feature": "Pairs self-care suggestions with warnings about when to seek medical care"
+    },
+    {
+      "id": 18,
+      "batch": "clean-02",
+      "feature": "Uses confident symptom-to-condition links, often calling symptoms “classic” or “common” signs"
+    },
+    {
+      "id": 19,
+      "batch": "clean-02",
+      "feature": "Warns patients not to stop prescribed medication without consulting their doctor"
+    },
+    {
+      "id": 20,
+      "batch": "clean-02",
+      "feature": "Frequently recommends specific lifestyle, posture, diet, or home-care adjustments"
+    },
+    {
+      "id": 21,
+      "batch": "clean-02",
+      "feature": "Uses reassuring qualifiers such as “proper evaluation,” “safely,” and “if symptoms persist”"
+    },
+    {
+      "id": 22,
+      "batch": "clean-02",
+      "feature": "Often gives urgent-care or emergency-room instructions for worsening or severe symptoms"
+    },
+    {
+      "id": 23,
+      "batch": "clean-02",
+      "feature": "Addresses the reader directly with concise, practical instructions"
+    },
+    {
+      "id": 24,
+      "batch": "clean-03",
+      "feature": "Frequently recommends consulting a doctor if symptoms persist or for evaluation."
+    },
+    {
+      "id": 25,
+      "batch": "clean-03",
+      "feature": "Suggests simple self-care measures alongside medical advice."
+    },
+    {
+      "id": 26,
+      "batch": "clean-03",
+      "feature": "Names a likely condition or cause based on the symptoms."
+    },
+    {
+      "id": 27,
+      "batch": "clean-03",
+      "feature": "Uses cautious qualifiers such as “can,” “could,” “often,” and “likely.”"
+    },
+    {
+      "id": 28,
+      "batch": "clean-03",
+      "feature": "Frequently begins with “Yes” or directly validates the user’s concern."
+    },
+    {
+      "id": 29,
+      "batch": "clean-03",
+      "feature": "Warns against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 30,
+      "batch": "clean-03",
+      "feature": "Uses concise paragraphs with practical, imperative instructions."
+    },
+    {
+      "id": 31,
+      "batch": "clean-03",
+      "feature": "Often lists specific symptoms or warning signs that warrant prompt care."
+    },
+    {
+      "id": 32,
+      "batch": "clean-03",
+      "feature": "Frequently recommends supportive measures such as hydration, stretching, or avoiding triggers."
+    },
+    {
+      "id": 33,
+      "batch": "clean-04",
+      "feature": "Frequently recommends contacting or scheduling an appointment with a doctor."
+    },
+    {
+      "id": 34,
+      "batch": "clean-04",
+      "feature": "Often opens with “Yes” or a direct confirmation of the suspected cause."
+    },
+    {
+      "id": 35,
+      "batch": "clean-04",
+      "feature": "Pairs a likely explanation with alternative possible causes."
+    },
+    {
+      "id": 36,
+      "batch": "clean-04",
+      "feature": "Gives interim self-care steps while advising professional evaluation."
+    },
+    {
+      "id": 37,
+      "batch": "clean-04",
+      "feature": "Uses symptom-monitoring advice, such as keeping a daily log."
+    },
+    {
+      "id": 38,
+      "batch": "clean-04",
+      "feature": "Warns not to stop prescribed medication without medical guidance."
+    },
+    {
+      "id": 39,
+      "batch": "clean-04",
+      "feature": "Uses urgency cues such as “promptly,” “soon,” or “immediately.”"
+    },
+    {
+      "id": 40,
+      "batch": "clean-04",
+      "feature": "Often ends by recommending evaluation to rule out underlying issues."
+    },
+    {
+      "id": 41,
+      "batch": "clean-05",
+      "feature": "Frequently recommends consulting or contacting a doctor, often promptly."
+    },
+    {
+      "id": 42,
+      "batch": "clean-05",
+      "feature": "Often gives a likely diagnosis, then mentions alternative causes or warning signs."
+    },
+    {
+      "id": 43,
+      "batch": "clean-05",
+      "feature": "Uses reassuring but emphatic wording such as “very common,” “definitely,” and “strongly suggests.”"
+    },
+    {
+      "id": 44,
+      "batch": "clean-05",
+      "feature": "Offers practical self-care steps alongside medical advice."
+    },
+    {
+      "id": 45,
+      "batch": "clean-05",
+      "feature": "Frequently warns not to stop or change prescribed medication without medical guidance."
+    },
+    {
+      "id": 46,
+      "batch": "clean-05",
+      "feature": "Uses conditional escalation advice: seek care if symptoms persist, worsen, or specific red flags appear."
+    },
+    {
+      "id": 47,
+      "batch": "clean-05",
+      "feature": "Often begins with “Yes,” even when the reply is not a simple confirmation."
+    },
+    {
+      "id": 48,
+      "batch": "clean-05",
+      "feature": "Uses short paragraphs with direct second-person instructions."
+    },
+    {
+      "id": 49,
+      "batch": "clean-06",
+      "feature": "Recommends contacting or seeing a doctor for persistent or concerning symptoms."
+    },
+    {
+      "id": 50,
+      "batch": "clean-06",
+      "feature": "Warns against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 51,
+      "batch": "clean-06",
+      "feature": "Uses urgent-care escalation language for red-flag symptoms."
+    },
+    {
+      "id": 52,
+      "batch": "clean-06",
+      "feature": "Suggests simple self-care measures while awaiting evaluation."
+    },
+    {
+      "id": 53,
+      "batch": "clean-06",
+      "feature": "Frequently attributes symptoms to medication side effects."
+    },
+    {
+      "id": 54,
+      "batch": "clean-06",
+      "feature": "Uses confident phrases such as “very common,” “definitely,” and “likely.”"
+    },
+    {
+      "id": 55,
+      "batch": "clean-06",
+      "feature": "Often opens with “Yes,” followed by a direct explanation."
+    },
+    {
+      "id": 56,
+      "batch": "clean-06",
+      "feature": "Gives specific practical instructions, timings, or examples."
+    },
+    {
+      "id": 57,
+      "batch": "clean-06",
+      "feature": "Uses short paragraphs with several advice sentences."
+    },
+    {
+      "id": 58,
+      "batch": "clean-06",
+      "feature": "Ends with a reminder to seek professional evaluation if symptoms persist."
+    },
+    {
+      "id": 59,
+      "batch": "clean-07",
+      "feature": "Recommends consulting a doctor or specialist, often if symptoms persist."
+    },
+    {
+      "id": 60,
+      "batch": "clean-07",
+      "feature": "Suggests gentle self-care measures alongside professional evaluation."
+    },
+    {
+      "id": 61,
+      "batch": "clean-07",
+      "feature": "Uses confident diagnostic language such as “classic sign,” “likely,” or “strongly suggests.”"
+    },
+    {
+      "id": 62,
+      "batch": "clean-07",
+      "feature": "Frequently opens with “Yes” or directly validates the suspected cause."
+    },
+    {
+      "id": 63,
+      "batch": "clean-07",
+      "feature": "Warns about serious conditions and lists symptoms that warrant urgent care."
+    },
+    {
+      "id": 64,
+      "batch": "clean-07",
+      "feature": "Uses “proper evaluation,” “proper diagnosis,” or similar phrasing."
+    },
+    {
+      "id": 65,
+      "batch": "clean-07",
+      "feature": "Often gives specific timelines, durations, or step-by-step instructions."
+    },
+    {
+      "id": 66,
+      "batch": "clean-07",
+      "feature": "Uses reassuring qualifiers such as “common,” “normal,” or “usually.”"
+    },
+    {
+      "id": 67,
+      "batch": "clean-08",
+      "feature": "Frequently opens with “Yes” or a direct confirmation."
+    },
+    {
+      "id": 68,
+      "batch": "clean-08",
+      "feature": "Often labels symptoms as “classic,” “common,” or “well-known” signs or side effects."
+    },
+    {
+      "id": 69,
+      "batch": "clean-08",
+      "feature": "Repeatedly advises contacting or consulting a doctor for evaluation."
+    },
+    {
+      "id": 70,
+      "batch": "clean-08",
+      "feature": "Warns not to stop prescribed medication without speaking to a doctor."
+    },
+    {
+      "id": 71,
+      "batch": "clean-08",
+      "feature": "Pairs practical self-care steps with red flags or escalation advice."
+    },
+    {
+      "id": 72,
+      "batch": "clean-08",
+      "feature": "Uses confident causal explanations and specific diagnostic possibilities."
+    },
+    {
+      "id": 73,
+      "batch": "clean-08",
+      "feature": "Frequently recommends blood tests, imaging, or other diagnostic evaluation."
+    },
+    {
+      "id": 74,
+      "batch": "clean-08",
+      "feature": "Uses reassuring but urgent language such as “promptly,” “immediately,” or “definitely.”"
+    },
+    {
+      "id": 75,
+      "batch": "clean-09",
+      "feature": "Frequently identifies symptoms as classic or strongly suggestive of a named condition."
+    },
+    {
+      "id": 76,
+      "batch": "clean-09",
+      "feature": "Often recommends contacting or consulting a doctor, especially if symptoms persist or worsen."
+    },
+    {
+      "id": 77,
+      "batch": "clean-09",
+      "feature": "Warns against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 78,
+      "batch": "clean-09",
+      "feature": "Pairs self-care tips with advice to seek professional evaluation."
+    },
+    {
+      "id": 79,
+      "batch": "clean-09",
+      "feature": "Frequently suggests specific tests, referrals, or medication adjustments to discuss with a doctor."
+    },
+    {
+      "id": 80,
+      "batch": "clean-09",
+      "feature": "Uses brief, directive imperatives for practical advice."
+    },
+    {
+      "id": 81,
+      "batch": "clean-09",
+      "feature": "Often begins with “Yes” or a direct confirmation of the suspected cause."
+    },
+    {
+      "id": 82,
+      "batch": "clean-09",
+      "feature": "Includes urgent-care warnings for severe or worsening symptoms."
+    },
+    {
+      "id": 83,
+      "batch": "clean-10",
+      "feature": "Frequently recommends contacting a doctor or specialist for evaluation."
+    },
+    {
+      "id": 84,
+      "batch": "clean-10",
+      "feature": "Often gives interim self-care steps while advising the user to seek care."
+    },
+    {
+      "id": 85,
+      "batch": "clean-10",
+      "feature": "Uses confident diagnostic labels such as “classic signs” or “strongly suggest.”"
+    },
+    {
+      "id": 86,
+      "batch": "clean-10",
+      "feature": "Warns against abruptly stopping prescribed medication."
+    },
+    {
+      "id": 87,
+      "batch": "clean-10",
+      "feature": "Lists red-flag symptoms and advises urgent or emergency care."
+    },
+    {
+      "id": 88,
+      "batch": "clean-10",
+      "feature": "Uses reassuring caveats followed by a caution about serious causes."
+    },
+    {
+      "id": 89,
+      "batch": "clean-10",
+      "feature": "Frequently suggests tracking symptoms, triggers, or changes before an appointment."
+    },
+    {
+      "id": 90,
+      "batch": "clean-10",
+      "feature": "Uses imperative, step-by-step advice with specific timings or quantities."
+    },
+    {
+      "id": 91,
+      "batch": "clean-10",
+      "feature": "Often ends with a recommendation to consult a clinician if symptoms persist."
+    },
+    {
+      "id": 92,
+      "batch": "clean-11",
+      "feature": "Frequently recommends contacting or consulting a doctor, pharmacist, or other clinician."
+    },
+    {
+      "id": 93,
+      "batch": "clean-11",
+      "feature": "Often attributes symptoms to a likely condition or medication side effect."
+    },
+    {
+      "id": 94,
+      "batch": "clean-11",
+      "feature": "Uses cautious qualifiers such as “could,” “often,” “typically,” and “may.”"
+    },
+    {
+      "id": 95,
+      "batch": "clean-11",
+      "feature": "Pairs practical self-care steps with advice to seek medical evaluation if symptoms persist or worsen."
+    },
+    {
+      "id": 96,
+      "batch": "clean-11",
+      "feature": "Emphasizes not stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 97,
+      "batch": "clean-11",
+      "feature": "Frequently begins with “Yes,” or directly validates the user’s suspected explanation."
+    },
+    {
+      "id": 98,
+      "batch": "clean-11",
+      "feature": "Uses reassuring but emphatic wording such as “definitely,” “promptly,” and “immediately.”"
+    },
+    {
+      "id": 99,
+      "batch": "clean-11",
+      "feature": "Often lists several symptoms, causes, risks, or treatment options in one compact paragraph."
+    },
+    {
+      "id": 100,
+      "batch": "clean-11",
+      "feature": "Uses direct imperatives such as “Try,” “Avoid,” “Contact,” and “Schedule.”"
+    },
+    {
+      "id": 101,
+      "batch": "clean-12",
+      "feature": "Frequently attributes symptoms to a likely condition, often with confident wording."
+    },
+    {
+      "id": 102,
+      "batch": "clean-12",
+      "feature": "Usually recommends consulting a doctor or specialist, often promptly."
+    },
+    {
+      "id": 103,
+      "batch": "clean-12",
+      "feature": "Pairs self-care suggestions with advice to seek professional evaluation."
+    },
+    {
+      "id": 104,
+      "batch": "clean-12",
+      "feature": "Uses warning signs and escalation advice, including urgent or emergency care."
+    },
+    {
+      "id": 105,
+      "batch": "clean-12",
+      "feature": "Often begins with “Yes” or a direct restatement of the symptoms."
+    },
+    {
+      "id": 106,
+      "batch": "clean-12",
+      "feature": "Uses hedging contrasts such as “could,” “often,” or “however” to mention alternatives."
+    },
+    {
+      "id": 107,
+      "batch": "clean-12",
+      "feature": "Frequently recommends warm compresses, especially for jaw or muscle symptoms."
+    },
+    {
+      "id": 108,
+      "batch": "clean-12",
+      "feature": "Uses reassuring claims such as “common,” “easily diagnosed,” or “very effective.”"
+    },
+    {
+      "id": 109,
+      "batch": "clean-12",
+      "feature": "Often gives specific practical instructions, timings, or dosage amounts."
+    },
+    {
+      "id": 110,
+      "batch": "clean-12",
+      "feature": "Uses emphatic modifiers such as “definitely,” “strongly,” and “promptly.”"
+    },
+    {
+      "id": 111,
+      "batch": "clean-13",
+      "feature": "Frequently recommends consulting a doctor or specialist if symptoms persist or worsen."
+    },
+    {
+      "id": 112,
+      "batch": "clean-13",
+      "feature": "Often suggests simple home measures such as hydration, stretching, or posture adjustments."
+    },
+    {
+      "id": 113,
+      "batch": "clean-13",
+      "feature": "Uses confident diagnostic phrasing such as “classic sign” or “strongly suggests.”"
+    },
+    {
+      "id": 114,
+      "batch": "clean-13",
+      "feature": "Frequently recommends blood tests to confirm suspected deficiencies or conditions."
+    },
+    {
+      "id": 115,
+      "batch": "clean-13",
+      "feature": "Often repeats plantar fasciitis advice: calf stretches and rolling the foot over a frozen bottle."
+    },
+    {
+      "id": 116,
+      "batch": "clean-13",
+      "feature": "Often advises reporting medication side effects to the prescribing doctor."
+    },
+    {
+      "id": 117,
+      "batch": "clean-13",
+      "feature": "Uses short, direct paragraphs, usually two to four sentences."
+    },
+    {
+      "id": 118,
+      "batch": "clean-13",
+      "feature": "Frequently uses “Yes” or “That sounds…” to affirm the user’s suspected cause."
+    },
+    {
+      "id": 119,
+      "batch": "clean-14",
+      "feature": "Frequently recommends consulting a doctor, dentist, or specialist for evaluation."
+    },
+    {
+      "id": 120,
+      "batch": "clean-14",
+      "feature": "Pairs home-care suggestions with advice to seek professional care if symptoms persist."
+    },
+    {
+      "id": 121,
+      "batch": "clean-14",
+      "feature": "Uses imperative advice such as “Try,” “Avoid,” “Ask,” and “Schedule.”"
+    },
+    {
+      "id": 122,
+      "batch": "clean-14",
+      "feature": "Often lists warning signs that warrant urgent or immediate medical attention."
+    },
+    {
+      "id": 123,
+      "batch": "clean-14",
+      "feature": "Frequently opens with “Yes” or a direct statement identifying a likely cause."
+    },
+    {
+      "id": 124,
+      "batch": "clean-14",
+      "feature": "Uses cautious diagnostic language such as “can,” “likely,” and “could.”"
+    },
+    {
+      "id": 125,
+      "batch": "clean-14",
+      "feature": "Often gives several concrete self-care steps in a compact paragraph."
+    },
+    {
+      "id": 126,
+      "batch": "clean-14",
+      "feature": "Repeatedly advises not to stop or change prescribed medication without consulting a doctor."
+    },
+    {
+      "id": 127,
+      "batch": "clean-14",
+      "feature": "Uses reassuring qualifiers such as “generally,” “usually,” and “common.”"
+    },
+    {
+      "id": 128,
+      "batch": "clean-15",
+      "feature": "Recommends consulting a doctor, dentist, or other clinician, often promptly."
+    },
+    {
+      "id": 129,
+      "batch": "clean-15",
+      "feature": "Suggests a likely diagnosis using phrases like “classic signs,” “strongly suggests,” or “very common side effect.”"
+    },
+    {
+      "id": 130,
+      "batch": "clean-15",
+      "feature": "Pairs home-care tips with advice to seek professional evaluation if symptoms persist."
+    },
+    {
+      "id": 131,
+      "batch": "clean-15",
+      "feature": "Warns against stopping or changing prescribed medication without clinician guidance."
+    },
+    {
+      "id": 132,
+      "batch": "clean-15",
+      "feature": "Uses reassuring but cautionary language, emphasizing safe treatment and accurate diagnosis."
+    },
+    {
+      "id": 133,
+      "batch": "clean-15",
+      "feature": "Frequently gives specific symptom red flags that warrant immediate or prompt medical care."
+    },
+    {
+      "id": 134,
+      "batch": "clean-15",
+      "feature": "Often uses direct imperatives such as “Try,” “Contact,” “Ask,” and “Schedule.”"
+    },
+    {
+      "id": 135,
+      "batch": "clean-15",
+      "feature": "Answers are concise paragraphs, typically combining diagnosis, practical steps, and follow-up advice."
+    },
+    {
+      "id": 136,
+      "batch": "clean-16",
+      "feature": "Recommends consulting a doctor or specialist if symptoms persist or need evaluation"
+    },
+    {
+      "id": 137,
+      "batch": "clean-16",
+      "feature": "Often opens with “Yes” or confidently names a likely condition or cause"
+    },
+    {
+      "id": 138,
+      "batch": "clean-16",
+      "feature": "Pairs a brief explanation of the suspected cause with practical self-care steps"
+    },
+    {
+      "id": 139,
+      "batch": "clean-16",
+      "feature": "Uses “classic,” “common,” or “strongly suggests” to characterize symptoms"
+    },
+    {
+      "id": 140,
+      "batch": "clean-16",
+      "feature": "Warns against stopping prescribed medication without consulting the prescriber"
+    },
+    {
+      "id": 141,
+      "batch": "clean-16",
+      "feature": "Uses imperative advice such as “schedule an appointment” or “contact your doctor”"
+    },
+    {
+      "id": 142,
+      "batch": "clean-16",
+      "feature": "Frequently recommends tests or specialist evaluation to confirm a diagnosis"
+    },
+    {
+      "id": 143,
+      "batch": "clean-16",
+      "feature": "Uses reassuring but directive language, often with “should” or “definitely”"
+    },
+    {
+      "id": 144,
+      "batch": "clean-17",
+      "feature": "Frequently opens with “Yes” or a confident symptom interpretation."
+    },
+    {
+      "id": 145,
+      "batch": "clean-17",
+      "feature": "Often attributes symptoms to a specific condition or medication side effect."
+    },
+    {
+      "id": 146,
+      "batch": "clean-17",
+      "feature": "Repeatedly advises consulting a doctor, prescriber, or pharmacist."
+    },
+    {
+      "id": 147,
+      "batch": "clean-17",
+      "feature": "Warns patients not to stop prescription medication abruptly or independently."
+    },
+    {
+      "id": 148,
+      "batch": "clean-17",
+      "feature": "Pairs home-care tips with a recommendation for professional evaluation."
+    },
+    {
+      "id": 149,
+      "batch": "clean-17",
+      "feature": "Uses “persistent,” “common,” and “strongly suggests” to characterize symptoms."
+    },
+    {
+      "id": 150,
+      "batch": "clean-17",
+      "feature": "Frequently gives specific timelines, doses, percentages, or numerical thresholds."
+    },
+    {
+      "id": 151,
+      "batch": "clean-17",
+      "feature": "Uses reassuring language, then adds cautions or emergency warning signs."
+    },
+    {
+      "id": 152,
+      "batch": "clean-17",
+      "feature": "Often ends with a doctor visit or follow-up recommendation."
+    },
+    {
+      "id": 153,
+      "batch": "clean-18",
+      "feature": "Frequently advises contacting or scheduling an appointment with a doctor."
+    },
+    {
+      "id": 154,
+      "batch": "clean-18",
+      "feature": "Warns against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 155,
+      "batch": "clean-18",
+      "feature": "Suggests urgent or emergency care for severe or worsening symptoms."
+    },
+    {
+      "id": 156,
+      "batch": "clean-18",
+      "feature": "Uses confident symptom-to-condition labels such as “likely” or “sounds like.”"
+    },
+    {
+      "id": 157,
+      "batch": "clean-18",
+      "feature": "Pairs practical self-care steps with a recommendation for professional evaluation."
+    },
+    {
+      "id": 158,
+      "batch": "clean-18",
+      "feature": "Often opens with a direct answer or diagnosis, frequently beginning “Yes.”"
+    },
+    {
+      "id": 159,
+      "batch": "clean-18",
+      "feature": "Uses reassuring qualifiers such as “common,” “often,” and “typically.”"
+    },
+    {
+      "id": 160,
+      "batch": "clean-18",
+      "feature": "Formats advice as short, direct paragraphs rather than lists."
+    },
+    {
+      "id": 161,
+      "batch": "clean-19",
+      "feature": "Recommends consulting a doctor or other professional, often if symptoms persist."
+    },
+    {
+      "id": 162,
+      "batch": "clean-19",
+      "feature": "Suggests specific self-care steps alongside professional advice."
+    },
+    {
+      "id": 163,
+      "batch": "clean-19",
+      "feature": "Uses cautious diagnostic language such as “likely,” “can,” or “could.”"
+    },
+    {
+      "id": 164,
+      "batch": "clean-19",
+      "feature": "Frequently opens with “Yes” or directly names a likely cause."
+    },
+    {
+      "id": 165,
+      "batch": "clean-19",
+      "feature": "Warns against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 166,
+      "batch": "clean-19",
+      "feature": "Uses reassuring but directive language, including “should” and “try.”"
+    },
+    {
+      "id": 167,
+      "batch": "clean-19",
+      "feature": "Often names a condition or medication side effect as the explanation."
+    },
+    {
+      "id": 168,
+      "batch": "clean-19",
+      "feature": "Uses short paragraphs with no headings or bullet points."
+    },
+    {
+      "id": 169,
+      "batch": "clean-20",
+      "feature": "Recommends contacting a doctor, pharmacist, or specialist for persistent or concerning symptoms"
+    },
+    {
+      "id": 170,
+      "batch": "clean-20",
+      "feature": "Warns not to stop or change prescribed medication without consulting the prescriber"
+    },
+    {
+      "id": 171,
+      "batch": "clean-20",
+      "feature": "Uses symptom-based escalation advice, often distinguishing mild effects from urgent warning signs"
+    },
+    {
+      "id": 172,
+      "batch": "clean-20",
+      "feature": "Suggests practical self-care measures alongside professional evaluation"
+    },
+    {
+      "id": 173,
+      "batch": "clean-20",
+      "feature": "Frequently names a likely diagnosis or medication side effect with confident wording"
+    },
+    {
+      "id": 174,
+      "batch": "clean-20",
+      "feature": "Uses directive phrasing such as “should,” “always,” “never,” and “immediately”"
+    },
+    {
+      "id": 175,
+      "batch": "clean-20",
+      "feature": "Often recommends tracking symptoms or checking medication information"
+    },
+    {
+      "id": 176,
+      "batch": "clean-20",
+      "feature": "Adds a personalized plan or treatment adjustment as the reason to seek professional care"
+    },
+    {
+      "id": 177,
+      "batch": "clean-21",
+      "feature": "Frequently recommends contacting or consulting a doctor, often promptly."
+    },
+    {
+      "id": 178,
+      "batch": "clean-21",
+      "feature": "Uses cautionary contrasts: mild symptoms may be normal, but severe symptoms need care."
+    },
+    {
+      "id": 179,
+      "batch": "clean-21",
+      "feature": "Often lists warning signs that warrant urgent or emergency evaluation."
+    },
+    {
+      "id": 180,
+      "batch": "clean-21",
+      "feature": "Frequently advises not to stop or change medication without medical guidance."
+    },
+    {
+      "id": 181,
+      "batch": "clean-21",
+      "feature": "Offers practical self-care steps alongside professional-care recommendations."
+    },
+    {
+      "id": 182,
+      "batch": "clean-21",
+      "feature": "Uses confident, reassuring language such as “common,” “definitely,” and “classic signs.”"
+    },
+    {
+      "id": 183,
+      "batch": "clean-21",
+      "feature": "Often names a likely diagnosis, medication side effect, or specific test."
+    },
+    {
+      "id": 184,
+      "batch": "clean-21",
+      "feature": "Structures advice as short paragraphs with imperative instructions."
+    },
+    {
+      "id": 185,
+      "batch": "clean-21",
+      "feature": "Frequently suggests tracking symptoms or monitoring changes over time."
+    },
+    {
+      "id": 186,
+      "batch": "clean-21",
+      "feature": "Often ends with a reminder to consult a healthcare professional."
+    },
+    {
+      "id": 187,
+      "batch": "clean-22",
+      "feature": "Frequently attributes symptoms to a likely condition or medication side effect."
+    },
+    {
+      "id": 188,
+      "batch": "clean-22",
+      "feature": "Often advises contacting or consulting a doctor for evaluation or medication changes."
+    },
+    {
+      "id": 189,
+      "batch": "clean-22",
+      "feature": "Warns patients not to stop or adjust prescribed medication on their own."
+    },
+    {
+      "id": 190,
+      "batch": "clean-22",
+      "feature": "Pairs reassurance or a likely explanation with caveats about other possible causes."
+    },
+    {
+      "id": 191,
+      "batch": "clean-22",
+      "feature": "Offers practical self-care steps alongside medical advice."
+    },
+    {
+      "id": 192,
+      "batch": "clean-22",
+      "feature": "Uses emphatic certainty words such as “definitely,” “strongly,” and “classic.”"
+    },
+    {
+      "id": 193,
+      "batch": "clean-22",
+      "feature": "Frequently opens with “Yes” or directly validates the suspected cause."
+    },
+    {
+      "id": 194,
+      "batch": "clean-22",
+      "feature": "Uses short, directive sentences and imperative advice."
+    },
+    {
+      "id": 195,
+      "batch": "clean-22",
+      "feature": "Often specifies when to seek care, using terms like “promptly,” “soon,” or “immediately.”"
+    },
+    {
+      "id": 196,
+      "batch": "clean-23",
+      "feature": "Gives a likely diagnosis or cause, often stated confidently."
+    },
+    {
+      "id": 197,
+      "batch": "clean-23",
+      "feature": "Recommends contacting or scheduling an appointment with a doctor."
+    },
+    {
+      "id": 198,
+      "batch": "clean-23",
+      "feature": "Pairs self-care steps with advice to seek professional evaluation."
+    },
+    {
+      "id": 199,
+      "batch": "clean-23",
+      "feature": "Uses symptom-specific lists of practical actions or lifestyle changes."
+    },
+    {
+      "id": 200,
+      "batch": "clean-23",
+      "feature": "Warns against stopping prescribed medication without medical guidance."
+    },
+    {
+      "id": 201,
+      "batch": "clean-23",
+      "feature": "Uses urgency cues such as “promptly,” “soon,” or “right away.”"
+    },
+    {
+      "id": 202,
+      "batch": "clean-23",
+      "feature": "Often opens with “Yes” or “That…” to validate the presumed cause."
+    },
+    {
+      "id": 203,
+      "batch": "clean-23",
+      "feature": "Frequently ends with a persistence-based caveat or escalation instruction."
+    },
+    {
+      "id": 204,
+      "batch": "clean-24",
+      "feature": "Frequently attributes symptoms to a likely condition or medication side effect."
+    },
+    {
+      "id": 205,
+      "batch": "clean-24",
+      "feature": "Often recommends contacting or scheduling an appointment with a doctor promptly."
+    },
+    {
+      "id": 206,
+      "batch": "clean-24",
+      "feature": "Adds emergency-care warnings for severe or worsening symptoms."
+    },
+    {
+      "id": 207,
+      "batch": "clean-24",
+      "feature": "Uses confident reassurance or certainty, including “definitely,” “classic,” and “strongly suggest.”"
+    },
+    {
+      "id": 208,
+      "batch": "clean-24",
+      "feature": "Advises not to stop prescribed medication without consulting the doctor."
+    },
+    {
+      "id": 209,
+      "batch": "clean-24",
+      "feature": "Often gives practical self-care steps alongside medical referral advice."
+    },
+    {
+      "id": 210,
+      "batch": "clean-24",
+      "feature": "Frequently explains symptoms with brief causal reasoning."
+    },
+    {
+      "id": 211,
+      "batch": "clean-24",
+      "feature": "Uses direct second-person instructions and imperative phrasing."
+    },
+    {
+      "id": 212,
+      "batch": "clean-24",
+      "feature": "Often ends with a doctor, specialist, or testing recommendation."
+    },
+    {
+      "id": 213,
+      "batch": "clean-25",
+      "feature": "Frequently attributes symptoms to a likely cause, often with confident wording."
+    },
+    {
+      "id": 214,
+      "batch": "clean-25",
+      "feature": "Often recommends contacting or scheduling an appointment with a doctor."
+    },
+    {
+      "id": 215,
+      "batch": "clean-25",
+      "feature": "Pairs self-care suggestions with advice to seek professional evaluation."
+    },
+    {
+      "id": 216,
+      "batch": "clean-25",
+      "feature": "Uses warning signs and escalation advice, often introduced with “if symptoms worsen.”"
+    },
+    {
+      "id": 217,
+      "batch": "clean-25",
+      "feature": "Frequently begins with “Yes,” followed by a direct assessment."
+    },
+    {
+      "id": 218,
+      "batch": "clean-25",
+      "feature": "Uses medication-safety cautions, especially not stopping or changing prescriptions independently."
+    },
+    {
+      "id": 219,
+      "batch": "clean-25",
+      "feature": "Often gives concise lists of practical steps or symptoms in a single paragraph."
+    },
+    {
+      "id": 220,
+      "batch": "clean-25",
+      "feature": "Uses reassuring phrases such as “completely normal” or “very common.”"
+    },
+    {
+      "id": 221,
+      "batch": "clean-26",
+      "feature": "Frequently identifies symptoms as a specific condition or medication side effect."
+    },
+    {
+      "id": 222,
+      "batch": "clean-26",
+      "feature": "Often advises contacting or consulting a doctor, especially if symptoms persist."
+    },
+    {
+      "id": 223,
+      "batch": "clean-26",
+      "feature": "Frequently recommends not stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 224,
+      "batch": "clean-26",
+      "feature": "Often gives practical self-care steps alongside medical advice."
+    },
+    {
+      "id": 225,
+      "batch": "clean-26",
+      "feature": "Uses reassuring qualifiers such as “common,” “known,” or “usually.”"
+    },
+    {
+      "id": 226,
+      "batch": "clean-26",
+      "feature": "Often begins with “Yes” or directly validates the suspected cause."
+    },
+    {
+      "id": 227,
+      "batch": "clean-26",
+      "feature": "Frequently recommends tracking symptoms, triggers, or measurements."
+    },
+    {
+      "id": 228,
+      "batch": "clean-26",
+      "feature": "Often ends with a warning to seek care if symptoms worsen or persist."
+    },
+    {
+      "id": 229,
+      "batch": "clean-27",
+      "feature": "Frequently recommends contacting or consulting a doctor, often promptly."
+    },
+    {
+      "id": 230,
+      "batch": "clean-27",
+      "feature": "Uses confident symptom-to-condition labels such as “classic signs” or “very common side effect.”"
+    },
+    {
+      "id": 231,
+      "batch": "clean-27",
+      "feature": "Often gives practical self-care steps alongside medical advice."
+    },
+    {
+      "id": 232,
+      "batch": "clean-27",
+      "feature": "Frequently warns not to stop or change prescribed medication without consulting a doctor."
+    },
+    {
+      "id": 233,
+      "batch": "clean-27",
+      "feature": "Uses “However” to pivot from reassurance or self-care to a medical caution."
+    },
+    {
+      "id": 234,
+      "batch": "clean-27",
+      "feature": "Often lists red flags or persistence thresholds that warrant medical evaluation."
+    },
+    {
+      "id": 235,
+      "batch": "clean-27",
+      "feature": "Uses direct imperatives such as “Try,” “Avoid,” “Always,” and “Do not.”"
+    },
+    {
+      "id": 236,
+      "batch": "clean-27",
+      "feature": "Often explains a medical term or mechanism after naming it."
+    },
+    {
+      "id": 237,
+      "batch": "clean-28",
+      "feature": "Recommends consulting a doctor or specialist for evaluation."
+    },
+    {
+      "id": 238,
+      "batch": "clean-28",
+      "feature": "Uses cautious symptom triage, listing possible causes and warning signs."
+    },
+    {
+      "id": 239,
+      "batch": "clean-28",
+      "feature": "Advises against stopping or changing prescribed medication without medical guidance."
+    },
+    {
+      "id": 240,
+      "batch": "clean-28",
+      "feature": "Offers practical self-care steps alongside professional-care advice."
+    },
+    {
+      "id": 241,
+      "batch": "clean-28",
+      "feature": "Frequently uses “persistent,” “promptly,” “proper evaluation,” and similar urgency phrasing."
+    },
+    {
+      "id": 242,
+      "batch": "clean-28",
+      "feature": "Often opens with reassurance or “Yes,” then adds a cautionary qualification."
+    },
+    {
+      "id": 243,
+      "batch": "clean-28",
+      "feature": "Uses direct imperatives such as “contact,” “schedule,” “avoid,” and “watch for.”"
+    },
+    {
+      "id": 244,
+      "batch": "clean-28",
+      "feature": "Names specific tests, specialists, medications, or treatment alternatives."
+    },
+    {
+      "id": 245,
+      "batch": "clean-29",
+      "feature": "Identifies symptoms as a specific condition, often with confident diagnostic phrasing."
+    },
+    {
+      "id": 246,
+      "batch": "clean-29",
+      "feature": "Recommends contacting or seeing a doctor for evaluation, testing, or medication review."
+    },
+    {
+      "id": 247,
+      "batch": "clean-29",
+      "feature": "Pairs self-care steps with warnings about when to seek medical attention."
+    },
+    {
+      "id": 248,
+      "batch": "clean-29",
+      "feature": "Uses direct imperatives such as “Try,” “Ask,” “Avoid,” and “Schedule.”"
+    },
+    {
+      "id": 249,
+      "batch": "clean-29",
+      "feature": "Frequently opens with “Yes” or “That sounds/strongly suggests.”"
+    },
+    {
+      "id": 250,
+      "batch": "clean-29",
+      "feature": "Often lists several possible causes or symptoms in a compact series."
+    },
+    {
+      "id": 251,
+      "batch": "clean-29",
+      "feature": "Uses reassuring qualifiers such as “common,” “often,” and “usually,” followed by caution."
+    },
+    {
+      "id": 252,
+      "batch": "clean-29",
+      "feature": "Gives specific timeframes, quantities, or body-position instructions."
+    },
+    {
+      "id": 253,
+      "batch": "clean-29",
+      "feature": "Uses a concise paragraph structure with no headings or bullets."
+    },
+    {
+      "id": 254,
+      "batch": "clean-30",
+      "feature": "Frequently recommends consulting a doctor or healthcare professional."
+    },
+    {
+      "id": 255,
+      "batch": "clean-30",
+      "feature": "Often attributes symptoms to medication side effects, especially blood pressure drugs."
+    },
+    {
+      "id": 256,
+      "batch": "clean-30",
+      "feature": "Uses cautious diagnostic language such as “could,” “likely,” and “suggests.”"
+    },
+    {
+      "id": 257,
+      "batch": "clean-30",
+      "feature": "Often advises not to stop prescribed medication abruptly."
+    },
+    {
+      "id": 258,
+      "batch": "clean-30",
+      "feature": "Pairs practical self-care tips with advice to seek medical evaluation."
+    },
+    {
+      "id": 259,
+      "batch": "clean-30",
+      "feature": "Frequently uses urgency cues such as “promptly,” “immediately,” or “soon.”"
+    },
+    {
+      "id": 260,
+      "batch": "clean-30",
+      "feature": "Often ends by recommending evaluation, testing, or a tailored treatment plan."
+    },
+    {
+      "id": 261,
+      "batch": "clean-30",
+      "feature": "Uses reassuring qualifiers such as “common,” “simple,” and “safely.”"
+    },
+    {
+      "id": 262,
+      "batch": "clean-31",
+      "feature": "Frequently attributes symptoms to a likely medical condition or medication side effect."
+    },
+    {
+      "id": 263,
+      "batch": "clean-31",
+      "feature": "Often recommends consulting a doctor, especially if symptoms persist or worsen."
+    },
+    {
+      "id": 264,
+      "batch": "clean-31",
+      "feature": "Gives practical self-care steps, lifestyle changes, or over-the-counter remedies."
+    },
+    {
+      "id": 265,
+      "batch": "clean-31",
+      "feature": "Uses confident diagnostic phrasing such as “classic signs” or “strongly suggest.”"
+    },
+    {
+      "id": 266,
+      "batch": "clean-31",
+      "feature": "Warns patients not to stop or change prescribed medication without medical guidance."
+    },
+    {
+      "id": 267,
+      "batch": "clean-31",
+      "feature": "Often names specific tests, specialists, or treatment options."
+    },
+    {
+      "id": 268,
+      "batch": "clean-31",
+      "feature": "Uses a brief, direct paragraph structure, often opening with “Yes” or a likely explanation."
+    },
+    {
+      "id": 269,
+      "batch": "clean-31",
+      "feature": "Adds red-flag symptoms or urgency guidance in many answers."
+    },
+    {
+      "id": 270,
+      "batch": "clean-32",
+      "feature": "Recommends seeing or contacting a doctor for evaluation, often at the end."
+    },
+    {
+      "id": 271,
+      "batch": "clean-32",
+      "feature": "Uses emphatic certainty words such as “definitely,” “indeed,” and “classic signs.”"
+    },
+    {
+      "id": 272,
+      "batch": "clean-32",
+      "feature": "Opens many replies with “Yes,” or a direct confirmation of the suspected condition."
+    },
+    {
+      "id": 273,
+      "batch": "clean-32",
+      "feature": "Gives practical self-care steps while awaiting professional evaluation."
+    },
+    {
+      "id": 274,
+      "batch": "clean-32",
+      "feature": "Names specific tests, specialists, products, or treatment options."
+    },
+    {
+      "id": 275,
+      "batch": "clean-32",
+      "feature": "Uses reassuring language such as “very common,” “normal,” or “don’t panic.”"
+    },
+    {
+      "id": 276,
+      "batch": "clean-32",
+      "feature": "Warns about red flags and advises urgent care when symptoms worsen."
+    },
+    {
+      "id": 277,
+      "batch": "clean-32",
+      "feature": "Uses short, directive sentences and imperative instructions."
+    },
+    {
+      "id": 278,
+      "batch": "clean-32",
+      "feature": "Often frames symptoms as pointing to a named condition, then qualifies with a recommendation for diagnosis."
+    },
+    {
+      "id": 279,
+      "batch": "clean-33",
+      "feature": "Recommends consulting or contacting a doctor when symptoms persist or raise concern."
+    },
+    {
+      "id": 280,
+      "batch": "clean-33",
+      "feature": "Suggests posture, ergonomic adjustments, gentle stretches, or walking breaks."
+    },
+    {
+      "id": 281,
+      "batch": "clean-33",
+      "feature": "Frames symptoms as likely or classic signs of a specific condition or medication side effect."
+    },
+    {
+      "id": 282,
+      "batch": "clean-33",
+      "feature": "Uses direct imperatives such as “Try,” “Schedule,” and “Contact your doctor.”"
+    },
+    {
+      "id": 283,
+      "batch": "clean-33",
+      "feature": "Adds warning signs or conditions that warrant prompt or urgent medical evaluation."
+    },
+    {
+      "id": 284,
+      "batch": "clean-33",
+      "feature": "Often gives a short list of practical self-care steps before recommending evaluation."
+    },
+    {
+      "id": 285,
+      "batch": "clean-33",
+      "feature": "Uses reassuring or emphatic wording such as “definitely,” “classic,” or “very likely.”"
+    },
+    {
+      "id": 286,
+      "batch": "clean-33",
+      "feature": "Encourages tracking symptoms or sharing observations with a physician."
+    },
+    {
+      "id": 287,
+      "batch": "clean-34",
+      "feature": "Names a likely medical cause or diagnosis early in the answer."
+    },
+    {
+      "id": 288,
+      "batch": "clean-34",
+      "feature": "Gives practical self-care steps or over-the-counter remedies."
+    },
+    {
+      "id": 289,
+      "batch": "clean-34",
+      "feature": "Recommends consulting a doctor or other healthcare professional."
+    },
+    {
+      "id": 290,
+      "batch": "clean-34",
+      "feature": "Uses conditional escalation advice if symptoms persist, worsen, or become severe."
+    },
+    {
+      "id": 291,
+      "batch": "clean-34",
+      "feature": "Often begins with “Yes” or a direct confirmation of the suspected cause."
+    },
+    {
+      "id": 292,
+      "batch": "clean-34",
+      "feature": "Uses concise, plain-language explanations with a reassuring clinical tone."
+    },
+    {
+      "id": 293,
+      "batch": "generic-00",
+      "feature": "Restates the question before giving a brief answer."
+    },
+    {
+      "id": 294,
+      "batch": "generic-00",
+      "feature": "Uses generic promotional calls to action such as “check out,” “visit us,” or “enjoy.”"
+    },
+    {
+      "id": 295,
+      "batch": "generic-00",
+      "feature": "Adds unsolicited advice or recommendations beyond the requested facts."
+    },
+    {
+      "id": 296,
+      "batch": "generic-00",
+      "feature": "Ends with upbeat sign-offs such as “Enjoy!” or “Happy cooking!”"
+    },
+    {
+      "id": 297,
+      "batch": "generic-00",
+      "feature": "Uses cautious qualifiers such as “may,” “could,” or “depending on personal preferences.”"
+    },
+    {
+      "id": 298,
+      "batch": "generic-00",
+      "feature": "Summarizes source material with repeated phrases like “the passage mentions” or “the author emphasizes.”"
+    },
+    {
+      "id": 299,
+      "batch": "generic-00",
+      "feature": "Uses numbered or bulleted lists for simple enumerations."
+    },
+    {
+      "id": 300,
+      "batch": "generic-00",
+      "feature": "Pads answers with broad concluding statements about importance, benefits, or impact."
+    },
+    {
+      "id": 301,
+      "batch": "generic-01",
+      "feature": "Answers usually use a concise, direct explanatory paragraph."
+    },
+    {
+      "id": 302,
+      "batch": "generic-01",
+      "feature": "Many responses restate the question or main point before answering."
+    },
+    {
+      "id": 303,
+      "batch": "generic-01",
+      "feature": "Lists and step-by-step instructions use simple numbered or bulleted formatting."
+    },
+    {
+      "id": 304,
+      "batch": "generic-01",
+      "feature": "Responses often repeat the same idea in a concluding sentence."
+    },
+    {
+      "id": 305,
+      "batch": "generic-01",
+      "feature": "Product and organization descriptions use promotional, positive language."
+    },
+    {
+      "id": 306,
+      "batch": "generic-01",
+      "feature": "Some answers add generic caveats about lacking real-time access or context."
+    },
+    {
+      "id": 307,
+      "batch": "generic-01",
+      "feature": "Several answers offer unsolicited alternatives, examples, or extra details."
+    },
+    {
+      "id": 308,
+      "batch": "generic-01",
+      "feature": "Tone is generally neutral and matter-of-fact, with little personal voice."
+    },
+    {
+      "id": 309,
+      "batch": "generic-02",
+      "feature": "Restates source material in a concise, factual summary."
+    },
+    {
+      "id": 310,
+      "batch": "generic-02",
+      "feature": "Adds generic explanatory or interpretive detail beyond the direct answer."
+    },
+    {
+      "id": 311,
+      "batch": "generic-02",
+      "feature": "Uses lists or numbered items for names, options, or multiple points."
+    },
+    {
+      "id": 312,
+      "batch": "generic-02",
+      "feature": "Frequently begins with direct-answer framing such as “Yes” or “The main purpose”."
+    },
+    {
+      "id": 313,
+      "batch": "generic-02",
+      "feature": "Offers unsolicited suggestions, alternatives, or practical advice."
+    },
+    {
+      "id": 314,
+      "batch": "generic-02",
+      "feature": "Uses repetitive promotional or evaluative language such as “great,” “best,” or “sure to impress.”"
+    },
+    {
+      "id": 315,
+      "batch": "generic-02",
+      "feature": "Adds caveats about missing information or asks for more context."
+    },
+    {
+      "id": 316,
+      "batch": "generic-02",
+      "feature": "Uses formal, neutral prose with little personal voice."
+    },
+    {
+      "id": 317,
+      "batch": "generic-03",
+      "feature": "Restates the question or source prompt before giving the answer."
+    },
+    {
+      "id": 318,
+      "batch": "generic-03",
+      "feature": "Uses generic explanatory summaries that repeat the main point in a concluding sentence."
+    },
+    {
+      "id": 319,
+      "batch": "generic-03",
+      "feature": "Adds unsolicited advice or suggestions beyond the requested information."
+    },
+    {
+      "id": 320,
+      "batch": "generic-03",
+      "feature": "Uses promotional language and calls to action for products or services."
+    },
+    {
+      "id": 321,
+      "batch": "generic-03",
+      "feature": "Frequently uses numbered lists for recommendations or factual lists."
+    },
+    {
+      "id": 322,
+      "batch": "generic-03",
+      "feature": "Uses confident, affirmative wording even when claims are qualified or uncertain."
+    },
+    {
+      "id": 323,
+      "batch": "generic-03",
+      "feature": "Adds broad benefits or positive evaluations such as “great,” “helpful,” or “perfect.”"
+    },
+    {
+      "id": 324,
+      "batch": "generic-03",
+      "feature": "Uses formulaic transitions such as “Additionally,” “Overall,” and “This helps.”"
+    },
+    {
+      "id": 325,
+      "batch": "generic-04",
+      "feature": "Frequently restates the question before giving the answer."
+    },
+    {
+      "id": 326,
+      "batch": "generic-04",
+      "feature": "Uses concise, factual summaries of source material."
+    },
+    {
+      "id": 327,
+      "batch": "generic-04",
+      "feature": "Often adds unsupported explanatory context or inferred motivations."
+    },
+    {
+      "id": 328,
+      "batch": "generic-04",
+      "feature": "Uses hedging phrases such as “it is likely” and “there is not enough information.”"
+    },
+    {
+      "id": 329,
+      "batch": "generic-04",
+      "feature": "Frequently begins with a direct answer followed by a brief explanation."
+    },
+    {
+      "id": 330,
+      "batch": "generic-04",
+      "feature": "Uses promotional or evaluative language such as “great options” and “the best of the best.”"
+    },
+    {
+      "id": 331,
+      "batch": "generic-04",
+      "feature": "Often repeats the main point in a concluding sentence."
+    },
+    {
+      "id": 332,
+      "batch": "generic-04",
+      "feature": "Occasionally adds generic advice about safety, trust, or benefits."
+    },
+    {
+      "id": 333,
+      "batch": "generic-05",
+      "feature": "Begins with a direct answer or topic summary, often restating the question."
+    },
+    {
+      "id": 334,
+      "batch": "generic-05",
+      "feature": "Uses generic explanatory prose with little detail beyond the supplied information."
+    },
+    {
+      "id": 335,
+      "batch": "generic-05",
+      "feature": "Adds broad evaluative or promotional adjectives such as “impressive,” “stylish,” or “outstanding.”"
+    },
+    {
+      "id": 336,
+      "batch": "generic-05",
+      "feature": "Frequently uses lists or numbered steps when presenting multiple items."
+    },
+    {
+      "id": 337,
+      "batch": "generic-05",
+      "feature": "Repeats information in a concluding sentence or paraphrase."
+    },
+    {
+      "id": 338,
+      "batch": "generic-05",
+      "feature": "Uses cautious disclaimers about unavailable information and suggests contacting a source directly."
+    },
+    {
+      "id": 339,
+      "batch": "generic-05",
+      "feature": "Often explains benefits or purpose with formulaic phrases such as “This helps to” or “Additionally.”"
+    },
+    {
+      "id": 340,
+      "batch": "generic-05",
+      "feature": "Uses second-person encouragement or friendly sign-offs in advice and personal responses."
+    },
+    {
+      "id": 341,
+      "batch": "generic-06",
+      "feature": "Restates the source or question before giving the answer."
+    },
+    {
+      "id": 342,
+      "batch": "generic-06",
+      "feature": "Uses repetitive explanatory summaries, often ending with an overall takeaway."
+    },
+    {
+      "id": 343,
+      "batch": "generic-06",
+      "feature": "Adds generic context or implications beyond the specific answer."
+    },
+    {
+      "id": 344,
+      "batch": "generic-06",
+      "feature": "Uses promotional or positive language such as “excellent,” “innovative,” or “unique.”"
+    },
+    {
+      "id": 345,
+      "batch": "generic-06",
+      "feature": "Frequently repeats key facts in slightly different wording."
+    },
+    {
+      "id": 346,
+      "batch": "generic-06",
+      "feature": "Uses numbered lists for simple lists, with no extra explanation."
+    },
+    {
+      "id": 347,
+      "batch": "generic-06",
+      "feature": "Gives unsolicited alternatives or practical suggestions for recipes and substitutions."
+    },
+    {
+      "id": 348,
+      "batch": "generic-06",
+      "feature": "Uses cautious qualifiers such as “currently,” “potential,” and “according to reports.”"
+    },
+    {
+      "id": 349,
+      "batch": "generic-07",
+      "feature": "Begins with a direct summary or answer, often restating the question."
+    },
+    {
+      "id": 350,
+      "batch": "generic-07",
+      "feature": "Uses concise, declarative prose with little conversational engagement."
+    },
+    {
+      "id": 351,
+      "batch": "generic-07",
+      "feature": "Frequently summarizes or paraphrases a passage in third person."
+    },
+    {
+      "id": 352,
+      "batch": "generic-07",
+      "feature": "Adds generic caveats about timing, uncertainty, or unavailable information."
+    },
+    {
+      "id": 353,
+      "batch": "generic-07",
+      "feature": "Uses promotional praise and enthusiastic adjectives for products, places, or art."
+    },
+    {
+      "id": 354,
+      "batch": "generic-07",
+      "feature": "Often ends with a broad takeaway or recommendation."
+    },
+    {
+      "id": 355,
+      "batch": "generic-07",
+      "feature": "Uses numbered lists for tips or instructions when multiple items are given."
+    },
+    {
+      "id": 356,
+      "batch": "generic-07",
+      "feature": "Includes specific names, dates, figures, and other factual details."
+    },
+    {
+      "id": 357,
+      "batch": "generic-08",
+      "feature": "Summarizes source passages with repeated attribution such as “according to the article.”"
+    },
+    {
+      "id": 358,
+      "batch": "generic-08",
+      "feature": "Uses generic, polished explanatory prose with little distinctive detail."
+    },
+    {
+      "id": 359,
+      "batch": "generic-08",
+      "feature": "Adds caveats when source information is missing or unclear."
+    },
+    {
+      "id": 360,
+      "batch": "generic-08",
+      "feature": "Frequently gives direct answers followed by brief context or qualification."
+    },
+    {
+      "id": 361,
+      "batch": "generic-08",
+      "feature": "Uses numbered or bulleted lists for recipes, rankings, and suggestions."
+    },
+    {
+      "id": 362,
+      "batch": "generic-08",
+      "feature": "Adds unsolicited recommendations or next steps."
+    },
+    {
+      "id": 363,
+      "batch": "generic-08",
+      "feature": "Uses promotional praise and benefit-focused language for products or organizations."
+    },
+    {
+      "id": 364,
+      "batch": "generic-08",
+      "feature": "Repeats broad concluding claims about effectiveness, importance, or success."
+    },
+    {
+      "id": 365,
+      "batch": "generic-08",
+      "feature": "Uses first-person capability disclaimers such as “I do not have access.”"
+    },
+    {
+      "id": 366,
+      "batch": "generic-09",
+      "feature": "Restates the source or question before giving the answer."
+    },
+    {
+      "id": 367,
+      "batch": "generic-09",
+      "feature": "Adds generic explanations or implications beyond the requested facts."
+    },
+    {
+      "id": 368,
+      "batch": "generic-09",
+      "feature": "Uses promotional or evaluative adjectives such as “unique,” “excellent,” or “compelling.”"
+    },
+    {
+      "id": 369,
+      "batch": "generic-09",
+      "feature": "Ends advice with an upbeat encouragement or benefit statement."
+    },
+    {
+      "id": 370,
+      "batch": "generic-09",
+      "feature": "Uses formulaic transitions such as “Additionally,” “Moreover,” and “Overall.”"
+    },
+    {
+      "id": 371,
+      "batch": "generic-09",
+      "feature": "Presents lists of benefits, features, or examples in a single long sentence."
+    },
+    {
+      "id": 372,
+      "batch": "generic-09",
+      "feature": "Repeats the same point in a concluding summary sentence."
+    },
+    {
+      "id": 373,
+      "batch": "generic-09",
+      "feature": "Uses cautious qualifiers such as “may,” “could,” or “not specified.”"
+    },
+    {
+      "id": 374,
+      "batch": "generic-10",
+      "feature": "Restates the question before giving a short answer."
+    },
+    {
+      "id": 375,
+      "batch": "generic-10",
+      "feature": "Uses numbered or bulleted lists for simple lists."
+    },
+    {
+      "id": 376,
+      "batch": "generic-10",
+      "feature": "Begins answers with generic framing such as “The main purpose” or “Based on the information provided.”"
+    },
+    {
+      "id": 377,
+      "batch": "generic-10",
+      "feature": "Adds unsolicited promotional or encouraging language, such as “Don’t miss out” or “Keep exploring.”"
+    },
+    {
+      "id": 378,
+      "batch": "generic-10",
+      "feature": "Repeats the same point in slightly different wording."
+    },
+    {
+      "id": 379,
+      "batch": "generic-10",
+      "feature": "Uses confident, declarative summaries with little qualification."
+    },
+    {
+      "id": 380,
+      "batch": "generic-10",
+      "feature": "Adds generic explanatory or practical advice beyond the requested fact."
+    },
+    {
+      "id": 381,
+      "batch": "generic-10",
+      "feature": "Frequently uses “Additionally,” “Furthermore,” or “Moreover” to connect points."
+    },
+    {
+      "id": 382,
+      "batch": "generic-11",
+      "feature": "Frequently restates source text in a concise, neutral summary."
+    },
+    {
+      "id": 383,
+      "batch": "generic-11",
+      "feature": "Often adds generic implications, benefits, or concluding context beyond the direct answer."
+    },
+    {
+      "id": 384,
+      "batch": "generic-11",
+      "feature": "Uses cautious caveats such as “according to the text” or “it appears.”"
+    },
+    {
+      "id": 385,
+      "batch": "generic-11",
+      "feature": "Frequently says it lacks access to information, websites, or current data."
+    },
+    {
+      "id": 386,
+      "batch": "generic-11",
+      "feature": "Often gives unsolicited practical advice or recommendations."
+    },
+    {
+      "id": 387,
+      "batch": "generic-11",
+      "feature": "Uses repetitive explanatory phrasing such as “This will…” and “These include…”."
+    },
+    {
+      "id": 388,
+      "batch": "generic-11",
+      "feature": "Answers are usually short paragraphs, often two to four sentences."
+    },
+    {
+      "id": 389,
+      "batch": "generic-11",
+      "feature": "Uses “However” to introduce limitations or qualifications."
+    },
+    {
+      "id": 390,
+      "batch": "generic-12",
+      "feature": "Restates the question before answering it."
+    },
+    {
+      "id": 391,
+      "batch": "generic-12",
+      "feature": "Begins with a direct yes/no answer when applicable."
+    },
+    {
+      "id": 392,
+      "batch": "generic-12",
+      "feature": "Adds generic concluding claims such as “Overall” or “Ultimately.”"
+    },
+    {
+      "id": 393,
+      "batch": "generic-12",
+      "feature": "Uses promotional praise like “great,” “delicious,” or “versatile.”"
+    },
+    {
+      "id": 394,
+      "batch": "generic-12",
+      "feature": "Provides extra procedural advice or alternatives beyond the core answer."
+    },
+    {
+      "id": 395,
+      "batch": "generic-12",
+      "feature": "Uses lists for multiple items, often with brief descriptions."
+    },
+    {
+      "id": 396,
+      "batch": "generic-12",
+      "feature": "Repeats details from the source in a concise summary."
+    },
+    {
+      "id": 397,
+      "batch": "generic-12",
+      "feature": "Uses confident factual wording even when the source may not support the claim."
+    },
+    {
+      "id": 398,
+      "batch": "generic-13",
+      "feature": "Restates the source’s main point in a concise explanatory summary."
+    },
+    {
+      "id": 399,
+      "batch": "generic-13",
+      "feature": "Adds generic implications, benefits, or context beyond the direct answer."
+    },
+    {
+      "id": 400,
+      "batch": "generic-13",
+      "feature": "Uses cautious caveats such as “not specified” or “the text does not mention.”"
+    },
+    {
+      "id": 401,
+      "batch": "generic-13",
+      "feature": "Repeats the same idea in multiple sentences for emphasis."
+    },
+    {
+      "id": 402,
+      "batch": "generic-13",
+      "feature": "Uses numbered lists for requested sets of names or items."
+    },
+    {
+      "id": 403,
+      "batch": "generic-13",
+      "feature": "Introduces answers with phrases like “The [subject] is…” or “The text mentions…”."
+    },
+    {
+      "id": 404,
+      "batch": "generic-13",
+      "feature": "Offers generic advice or next steps after answering."
+    },
+    {
+      "id": 405,
+      "batch": "generic-13",
+      "feature": "Uses polished, neutral, report-like prose with little personal voice."
+    },
+    {
+      "id": 406,
+      "batch": "generic-14",
+      "feature": "Restates the requested fact or main point in a short declarative summary."
+    },
+    {
+      "id": 407,
+      "batch": "generic-14",
+      "feature": "Uses generic explanatory phrasing such as “The text mentions” or “The study found.”"
+    },
+    {
+      "id": 408,
+      "batch": "generic-14",
+      "feature": "Adds a concluding implication or takeaway beyond the core answer."
+    },
+    {
+      "id": 409,
+      "batch": "generic-14",
+      "feature": "Uses lists and labels for grouped information, especially in short answers."
+    },
+    {
+      "id": 410,
+      "batch": "generic-14",
+      "feature": "Frequently repeats the same point in slightly different wording."
+    },
+    {
+      "id": 411,
+      "batch": "generic-14",
+      "feature": "Uses polite filler or disclaimers about lacking abilities or access."
+    },
+    {
+      "id": 412,
+      "batch": "generic-14",
+      "feature": "Answers factual questions with specific names, dates, figures, and locations."
+    },
+    {
+      "id": 413,
+      "batch": "generic-14",
+      "feature": "Uses promotional or motivational language in otherwise informational responses."
+    },
+    {
+      "id": 414,
+      "batch": "generic-15",
+      "feature": "Restates source text in a concise, neutral summary."
+    },
+    {
+      "id": 415,
+      "batch": "generic-15",
+      "feature": "Uses generic concluding phrases such as “Overall” or “In summary.”"
+    },
+    {
+      "id": 416,
+      "batch": "generic-15",
+      "feature": "Adds unsolicited recommendations or calls to action."
+    },
+    {
+      "id": 417,
+      "batch": "generic-15",
+      "feature": "Uses cautious wording such as “may,” “could,” or “according to the text.”"
+    },
+    {
+      "id": 418,
+      "batch": "generic-15",
+      "feature": "Repeats the question before giving the answer."
+    },
+    {
+      "id": 419,
+      "batch": "generic-15",
+      "feature": "Uses numbered lists for examples or advice."
+    },
+    {
+      "id": 420,
+      "batch": "generic-15",
+      "feature": "Explains that information is unavailable, then suggests searching or contacting someone."
+    },
+    {
+      "id": 421,
+      "batch": "generic-15",
+      "feature": "Adds promotional praise or enthusiastic language such as “highly recommend” or “delicious.”"
+    },
+    {
+      "id": 422,
+      "batch": "generic-16",
+      "feature": "Restates the answer with a brief explanatory summary."
+    },
+    {
+      "id": 423,
+      "batch": "generic-16",
+      "feature": "Adds generic advice, implications, or concluding takeaways beyond the requested facts."
+    },
+    {
+      "id": 424,
+      "batch": "generic-16",
+      "feature": "Uses promotional praise such as “innovative,” “ultimate,” or “must-have.”"
+    },
+    {
+      "id": 425,
+      "batch": "generic-16",
+      "feature": "Introduces answers with stock phrases like “According to the article” or “As per the information provided.”"
+    },
+    {
+      "id": 426,
+      "batch": "generic-16",
+      "feature": "Adds caveats about missing information or uncertainty, often ending with “no further details are available.”"
+    },
+    {
+      "id": 427,
+      "batch": "generic-16",
+      "feature": "Uses numbered or bulleted lists to present multiple items."
+    },
+    {
+      "id": 428,
+      "batch": "generic-16",
+      "feature": "Repeats the same information in different wording within the answer."
+    },
+    {
+      "id": 429,
+      "batch": "generic-16",
+      "feature": "Includes a question followed by an “Answer:” label or repeats the user’s question."
+    },
+    {
+      "id": 430,
+      "batch": "generic-17",
+      "feature": "Restates source material in polished, neutral prose."
+    },
+    {
+      "id": 431,
+      "batch": "generic-17",
+      "feature": "Frequently summarizes or paraphrases rather than adding analysis."
+    },
+    {
+      "id": 432,
+      "batch": "generic-17",
+      "feature": "Uses generic transitions such as “Additionally” and “However.”"
+    },
+    {
+      "id": 433,
+      "batch": "generic-17",
+      "feature": "Often gives cautious caveats when details are missing or uncertain."
+    },
+    {
+      "id": 434,
+      "batch": "generic-17",
+      "feature": "Adds unsolicited alternatives or practical suggestions to simple answers."
+    },
+    {
+      "id": 435,
+      "batch": "generic-17",
+      "feature": "Uses promotional praise such as “must-have,” “fantastic,” or “perfect.”"
+    },
+    {
+      "id": 436,
+      "batch": "generic-17",
+      "feature": "Frequently presents information in several complete explanatory sentences."
+    },
+    {
+      "id": 437,
+      "batch": "generic-17",
+      "feature": "Uses “The text” or “According to” to frame source-based answers."
+    },
+    {
+      "id": 438,
+      "batch": "generic-18",
+      "feature": "Frequently restates the question before answering it."
+    },
+    {
+      "id": 439,
+      "batch": "generic-18",
+      "feature": "Often summarizes source material with repeated attribution such as “according to the passage.”"
+    },
+    {
+      "id": 440,
+      "batch": "generic-18",
+      "feature": "Adds generic caveats about missing information or uncertainty."
+    },
+    {
+      "id": 441,
+      "batch": "generic-18",
+      "feature": "Uses polished, neutral, explanatory prose, often in one short paragraph."
+    },
+    {
+      "id": 442,
+      "batch": "generic-18",
+      "feature": "Frequently adds unsolicited context, implications, or recommendations."
+    },
+    {
+      "id": 443,
+      "batch": "generic-18",
+      "feature": "Uses numbered lists for requested examples or names."
+    },
+    {
+      "id": 444,
+      "batch": "generic-18",
+      "feature": "Sometimes claims inability to act or analyze, then offers a limited alternative."
+    },
+    {
+      "id": 445,
+      "batch": "generic-18",
+      "feature": "Occasionally repeats the answer in a question-and-answer format."
+    },
+    {
+      "id": 446,
+      "batch": "generic-19",
+      "feature": "Answers often restate the question before giving a direct answer."
+    },
+    {
+      "id": 447,
+      "batch": "generic-19",
+      "feature": "Promotional descriptions use enthusiastic praise such as “excellent,” “great value,” or “must-try.”"
+    },
+    {
+      "id": 448,
+      "batch": "generic-19",
+      "feature": "Business descriptions emphasize tailored services, benefits, and customer satisfaction."
+    },
+    {
+      "id": 449,
+      "batch": "generic-19",
+      "feature": "Answers frequently add related details beyond the specific question."
+    },
+    {
+      "id": 450,
+      "batch": "generic-19",
+      "feature": "Lists are formatted as numbered items when presenting multiple options or benefits."
+    },
+    {
+      "id": 451,
+      "batch": "generic-19",
+      "feature": "Some answers end with a broad summary introduced by “Overall.”"
+    },
+    {
+      "id": 452,
+      "batch": "generic-19",
+      "feature": "Recommendations often include a call to contact a company or check a retailer."
+    },
+    {
+      "id": 453,
+      "batch": "generic-19",
+      "feature": "Answers commonly use confident, declarative wording with little qualification."
+    },
+    {
+      "id": 454,
+      "batch": "generic-20",
+      "feature": "Frequently restates the question before answering it."
+    },
+    {
+      "id": 455,
+      "batch": "generic-20",
+      "feature": "Often begins with a broad summary or concluding phrase such as “Overall” or “In summary.”"
+    },
+    {
+      "id": 456,
+      "batch": "generic-20",
+      "feature": "Repeats the same key point in slightly different wording."
+    },
+    {
+      "id": 457,
+      "batch": "generic-20",
+      "feature": "Adds generic recommendations to contact an organization for more information."
+    },
+    {
+      "id": 458,
+      "batch": "generic-20",
+      "feature": "Uses promotional, approving language such as “great,” “comprehensive,” or “high-quality.”"
+    },
+    {
+      "id": 459,
+      "batch": "generic-20",
+      "feature": "Adds unsupported general benefits or implications beyond the specific facts requested."
+    },
+    {
+      "id": 460,
+      "batch": "generic-20",
+      "feature": "Uses cautious caveats about insufficient information, then offers plausible details anyway."
+    },
+    {
+      "id": 461,
+      "batch": "generic-20",
+      "feature": "Frequently uses numbered lists for suggestions or procedural steps."
+    },
+    {
+      "id": 462,
+      "batch": "generic-21",
+      "feature": "Restates source information as a concise factual summary."
+    },
+    {
+      "id": 463,
+      "batch": "generic-21",
+      "feature": "Uses generic, polished promotional language for products and organizations."
+    },
+    {
+      "id": 464,
+      "batch": "generic-21",
+      "feature": "Adds unsupported specifics or embellishments beyond the apparent source."
+    },
+    {
+      "id": 465,
+      "batch": "generic-21",
+      "feature": "Frequently uses lists, numbered steps, or labeled template placeholders."
+    },
+    {
+      "id": 466,
+      "batch": "generic-21",
+      "feature": "Offers unsolicited recommendations, alternatives, or practical next steps."
+    },
+    {
+      "id": 467,
+      "batch": "generic-21",
+      "feature": "Uses repetitive evaluative adjectives such as “unique,” “innovative,” and “efficient.”"
+    },
+    {
+      "id": 468,
+      "batch": "generic-21",
+      "feature": "Often ends with a broad concluding sentence or personal-preference caveat."
+    },
+    {
+      "id": 469,
+      "batch": "generic-21",
+      "feature": "Uses “Certainly!” or similar upbeat introductory phrasing."
+    },
+    {
+      "id": 470,
+      "batch": "generic-22",
+      "feature": "Restates the question before giving a short answer."
+    },
+    {
+      "id": 471,
+      "batch": "generic-22",
+      "feature": "Uses numbered or bulleted lists for simple enumerations and instructions."
+    },
+    {
+      "id": 472,
+      "batch": "generic-22",
+      "feature": "Adds unsupported specifics or promotional claims beyond the core answer."
+    },
+    {
+      "id": 473,
+      "batch": "generic-22",
+      "feature": "Uses formulaic caveats about missing information or unavailable access."
+    },
+    {
+      "id": 474,
+      "batch": "generic-22",
+      "feature": "Ends with an offer to help further or a request for more details."
+    },
+    {
+      "id": 475,
+      "batch": "generic-22",
+      "feature": "Uses enthusiastic marketing language, hashtags, or emojis in promotional copy."
+    },
+    {
+      "id": 476,
+      "batch": "generic-22",
+      "feature": "Repeats the same fact in slightly different wording."
+    },
+    {
+      "id": 477,
+      "batch": "generic-22",
+      "feature": "Uses awkward or ungrammatical phrasing."
+    },
+    {
+      "id": 478,
+      "batch": "generic-23",
+      "feature": "Begins with a direct summary or answer, often restating the question."
+    },
+    {
+      "id": 479,
+      "batch": "generic-23",
+      "feature": "Uses confident, declarative wording, including for specific factual claims."
+    },
+    {
+      "id": 480,
+      "batch": "generic-23",
+      "feature": "Adds generic advice, context, or promotional detail beyond the core answer."
+    },
+    {
+      "id": 481,
+      "batch": "generic-23",
+      "feature": "Uses stock conversational openers or closers such as “Sure!” and “Enjoy!”"
+    },
+    {
+      "id": 482,
+      "batch": "generic-23",
+      "feature": "Frequently repeats the subject or key point in adjacent sentences."
+    },
+    {
+      "id": 483,
+      "batch": "generic-23",
+      "feature": "Uses lists or numbered formatting for multiple items."
+    },
+    {
+      "id": 484,
+      "batch": "generic-23",
+      "feature": "Uses cautious disclaimers about missing information or inability to answer."
+    },
+    {
+      "id": 485,
+      "batch": "generic-23",
+      "feature": "Often gives concise, self-contained paragraphs with little explanation of sources."
+    },
+    {
+      "id": 486,
+      "batch": "generic-24",
+      "feature": "Restates or paraphrases the source rather than adding independent analysis."
+    },
+    {
+      "id": 487,
+      "batch": "generic-24",
+      "feature": "Uses cautious caveats when information is missing or uncertain."
+    },
+    {
+      "id": 488,
+      "batch": "generic-24",
+      "feature": "Adds generic concluding implications, recommendations, or promotional language."
+    },
+    {
+      "id": 489,
+      "batch": "generic-24",
+      "feature": "Frequently uses formulaic phrases such as “Based on the given information” or “Unfortunately.”"
+    },
+    {
+      "id": 490,
+      "batch": "generic-24",
+      "feature": "Provides more explanation and context than the question strictly requires."
+    },
+    {
+      "id": 491,
+      "batch": "generic-24",
+      "feature": "Uses numbered lists or labeled sections for simple lists and templates."
+    },
+    {
+      "id": 492,
+      "batch": "generic-24",
+      "feature": "Repeats key facts in a concluding sentence."
+    },
+    {
+      "id": 493,
+      "batch": "generic-24",
+      "feature": "Uses polished, promotional adjectives such as “great,” “exclusive,” or “high-quality.”"
+    },
+    {
+      "id": 494,
+      "batch": "generic-25",
+      "feature": "Frequently restates the answer’s main point in a concluding sentence."
+    },
+    {
+      "id": 495,
+      "batch": "generic-25",
+      "feature": "Adds generic benefits or implications beyond the requested facts."
+    },
+    {
+      "id": 496,
+      "batch": "generic-25",
+      "feature": "Uses cautious qualifiers such as “typically,” “likely,” and “could.”"
+    },
+    {
+      "id": 497,
+      "batch": "generic-25",
+      "feature": "Often gives a short explanatory paragraph rather than a direct fragment."
+    },
+    {
+      "id": 498,
+      "batch": "generic-25",
+      "feature": "Uses numbered or bulleted lists for requested items."
+    },
+    {
+      "id": 499,
+      "batch": "generic-25",
+      "feature": "Adds unsolicited practical advice or recommendations."
+    },
+    {
+      "id": 500,
+      "batch": "generic-25",
+      "feature": "Uses formulaic openings such as “The main…” or “The … is…”"
+    },
+    {
+      "id": 501,
+      "batch": "generic-25",
+      "feature": "Sometimes repeats the user’s question before answering."
+    },
+    {
+      "id": 502,
+      "batch": "generic-26",
+      "feature": "Restates source information in a concise, neutral summary."
+    },
+    {
+      "id": 503,
+      "batch": "generic-26",
+      "feature": "Uses attribution phrases such as “According to the text” or “The author says.”"
+    },
+    {
+      "id": 504,
+      "batch": "generic-26",
+      "feature": "Adds a concluding sentence that repeats or summarizes the main point."
+    },
+    {
+      "id": 505,
+      "batch": "generic-26",
+      "feature": "Uses generic positive claims such as “improving overall efficiency” or “enhancing experiences.”"
+    },
+    {
+      "id": 506,
+      "batch": "generic-26",
+      "feature": "Answers yes/no questions by opening with “Yes,” then briefly explaining."
+    },
+    {
+      "id": 507,
+      "batch": "generic-26",
+      "feature": "Uses numbered lists for requested sets of examples or facts."
+    },
+    {
+      "id": 508,
+      "batch": "generic-26",
+      "feature": "Includes unnecessary caveats that no further details are provided."
+    },
+    {
+      "id": 509,
+      "batch": "generic-26",
+      "feature": "Offers generic suggestions to check websites or contact an organization for more information."
+    },
+    {
+      "id": 510,
+      "batch": "generic-27",
+      "feature": "Answers usually begin directly with the requested fact or recommendation."
+    },
+    {
+      "id": 511,
+      "batch": "generic-27",
+      "feature": "Explanations often restate the question’s subject before giving details."
+    },
+    {
+      "id": 512,
+      "batch": "generic-27",
+      "feature": "Lists are frequently formatted as numbered items, especially recommendations."
+    },
+    {
+      "id": 513,
+      "batch": "generic-27",
+      "feature": "Practical advice often uses imperative steps such as “make sure” or “you can.”"
+    },
+    {
+      "id": 514,
+      "batch": "generic-27",
+      "feature": "Responses commonly add brief supporting details or examples beyond the core answer."
+    },
+    {
+      "id": 515,
+      "batch": "generic-27",
+      "feature": "Some answers use cautious disclaimers about missing information or subjective judgments."
+    },
+    {
+      "id": 516,
+      "batch": "generic-27",
+      "feature": "Tone is generally neutral, concise, and informational."
+    },
+    {
+      "id": 517,
+      "batch": "generic-28",
+      "feature": "Restates the source’s key facts in a concise summary."
+    },
+    {
+      "id": 518,
+      "batch": "generic-28",
+      "feature": "Uses generic explanatory phrasing such as “This indicates” or “Overall.”"
+    },
+    {
+      "id": 519,
+      "batch": "generic-28",
+      "feature": "Adds unsolicited advice, reassurance, or practical recommendations."
+    },
+    {
+      "id": 520,
+      "batch": "generic-28",
+      "feature": "Uses hedges such as “generally,” “may,” “seems,” and “depending on.”"
+    },
+    {
+      "id": 521,
+      "batch": "generic-28",
+      "feature": "Frequently ends with a broad concluding sentence or offer to help."
+    },
+    {
+      "id": 522,
+      "batch": "generic-28",
+      "feature": "Uses affirmative openings such as “Yes” before answering."
+    },
+    {
+      "id": 523,
+      "batch": "generic-28",
+      "feature": "Repeats details or conclusions already stated in the answer."
+    },
+    {
+      "id": 524,
+      "batch": "generic-29",
+      "feature": "Begins with a direct summary or restatement of the requested information."
+    },
+    {
+      "id": 525,
+      "batch": "generic-29",
+      "feature": "Uses concise, factual prose with little elaboration or conversational framing."
+    },
+    {
+      "id": 526,
+      "batch": "generic-29",
+      "feature": "Frequently repeats the question before giving a short answer."
+    },
+    {
+      "id": 527,
+      "batch": "generic-29",
+      "feature": "Uses numbered lists for steps, qualifications, examples, or benefits."
+    },
+    {
+      "id": 528,
+      "batch": "generic-29",
+      "feature": "Often summarizes source material in third person, using phrases like “the author believes” or “the text discusses.”"
+    },
+    {
+      "id": 529,
+      "batch": "generic-29",
+      "feature": "Adds generic concluding claims about benefits, importance, or future success."
+    },
+    {
+      "id": 530,
+      "batch": "generic-29",
+      "feature": "Uses cautious disclaimers about lacking information or needing more context."
+    },
+    {
+      "id": 531,
+      "batch": "generic-29",
+      "feature": "Includes specific names, figures, dates, and technical details from the source."
+    },
+    {
+      "id": 532,
+      "batch": "generic-30",
+      "feature": "Restates source information in polished, factual prose."
+    },
+    {
+      "id": 533,
+      "batch": "generic-30",
+      "feature": "Adds explanatory or evaluative concluding sentences beyond the direct answer."
+    },
+    {
+      "id": 534,
+      "batch": "generic-30",
+      "feature": "Uses numbered lists for requests to name multiple items."
+    },
+    {
+      "id": 535,
+      "batch": "generic-30",
+      "feature": "Begins answers with formulaic phrases such as “According to the text” or “Based on the given material.”"
+    },
+    {
+      "id": 536,
+      "batch": "generic-30",
+      "feature": "Uses affirmative “Yes” openings for direct questions."
+    },
+    {
+      "id": 537,
+      "batch": "generic-30",
+      "feature": "Includes caveats about missing or unclear information before answering."
+    },
+    {
+      "id": 538,
+      "batch": "generic-30",
+      "feature": "Repeats key points in a final summary sentence."
+    },
+    {
+      "id": 539,
+      "batch": "generic-30",
+      "feature": "Uses promotional or reassuring language such as “great option” or “I hope this information helps.”"
+    },
+    {
+      "id": 540,
+      "batch": "generic-31",
+      "feature": "Frequently restates the question before answering."
+    },
+    {
+      "id": 541,
+      "batch": "generic-31",
+      "feature": "Uses generic promotional praise such as “great,” “stylish,” or “innovative.”"
+    },
+    {
+      "id": 542,
+      "batch": "generic-31",
+      "feature": "Adds unsupported speculation or inferred details beyond the source."
+    },
+    {
+      "id": 543,
+      "batch": "generic-31",
+      "feature": "Uses cautious disclaimers about lacking current or complete information."
+    },
+    {
+      "id": 544,
+      "batch": "generic-31",
+      "feature": "Repeats the same point in multiple sentences."
+    },
+    {
+      "id": 545,
+      "batch": "generic-31",
+      "feature": "Ends with a broad concluding summary or recommendation."
+    },
+    {
+      "id": 546,
+      "batch": "generic-31",
+      "feature": "Uses product-feature lists followed by claims about comfort, convenience, or suitability."
+    },
+    {
+      "id": 547,
+      "batch": "generic-31",
+      "feature": "Uses “However” to introduce a caveat or limitation."
+    },
+    {
+      "id": 548,
+      "batch": "generic-32",
+      "feature": "Restates the user’s question before answering it."
+    },
+    {
+      "id": 549,
+      "batch": "generic-32",
+      "feature": "Begins answers with a direct summary or definition."
+    },
+    {
+      "id": 550,
+      "batch": "generic-32",
+      "feature": "Uses concise, factual prose with little conversational framing."
+    },
+    {
+      "id": 551,
+      "batch": "generic-32",
+      "feature": "Adds an overall concluding sentence summarizing benefits or significance."
+    },
+    {
+      "id": 552,
+      "batch": "generic-32",
+      "feature": "Uses numbered or bulleted lists for items, steps, or recommendations."
+    },
+    {
+      "id": 553,
+      "batch": "generic-32",
+      "feature": "Offers generic suggestions to visit websites or search online when information is unavailable."
+    },
+    {
+      "id": 554,
+      "batch": "generic-32",
+      "feature": "Uses promotional language and calls to action for products or services."
+    },
+    {
+      "id": 555,
+      "batch": "generic-32",
+      "feature": "Includes specific names, dates, figures, and other source-like details."
+    },
+    {
+      "id": 556,
+      "batch": "generic-33",
+      "feature": "Restates the source’s main point in a concise summary."
+    },
+    {
+      "id": 557,
+      "batch": "generic-33",
+      "feature": "Uses neutral, factual, report-like wording."
+    },
+    {
+      "id": 558,
+      "batch": "generic-33",
+      "feature": "Frequently begins with a direct answer or source attribution."
+    },
+    {
+      "id": 559,
+      "batch": "generic-33",
+      "feature": "Adds a concluding implication or paraphrase of the preceding facts."
+    },
+    {
+      "id": 560,
+      "batch": "generic-33",
+      "feature": "Uses lists for names, options, or grouped information."
+    },
+    {
+      "id": 561,
+      "batch": "generic-33",
+      "feature": "Uses cautious qualifiers such as “may,” “could,” or “based on the description.”"
+    },
+    {
+      "id": 562,
+      "batch": "generic-33",
+      "feature": "Declines unavailable actions or information, then suggests alternatives."
+    },
+    {
+      "id": 563,
+      "batch": "generic-33",
+      "feature": "Uses generic introductory phrases such as “The text material” or “According to the description.”"
+    },
+    {
+      "id": 564,
+      "batch": "generic-34",
+      "feature": "Answers often restate source claims with attribution such as “according to the passage” or “the text suggests.”"
+    },
+    {
+      "id": 565,
+      "batch": "generic-34",
+      "feature": "Explanations often add generic implications or benefits beyond the direct answer."
+    },
+    {
+      "id": 566,
+      "batch": "generic-34",
+      "feature": "Answers often use cautious wording such as “can,” “could,” or “suggests.”"
+    },
+    {
+      "id": 567,
+      "batch": "generic-34",
+      "feature": "Several answers use numbered lists to organize factual comparisons."
+    },
+    {
+      "id": 568,
+      "batch": "generic-34",
+      "feature": "Answers often repeat the question’s key terms in a short explanatory paragraph."
+    }
+  ],
+  "names": [
+    "Names a likely diagnosis or cause",
+    "Recommends consulting a doctor or other clinician",
+    "Gives practical self-care steps",
+    "Warns against changing prescribed medication without medical guidance",
+    "Uses urgency cues for seeking care",
+    "Sets persistence- or worsening-based thresholds for seeking care",
+    "Uses direct, imperative instructions",
+    "Lists symptoms that warrant urgent care",
+    "Contrasts a likely explanation with alternative causes or risks",
+    "Uses reassuring or emphatic diagnostic language",
+    "Opens with “Yes” or directly validates the suspected cause",
+    "Uses concise paragraphs without headings or bullets",
+    "Names specific symptoms, tests, treatments, or medication alternatives",
+    "Recommends lifestyle, posture, diet, or home-care adjustments",
+    "Advises tracking symptoms, triggers, or measurements",
+    "Gives specific timelines, quantities, doses, or step-by-step instructions",
+    "Attributes symptoms to medication side effects",
+    "Recommends tests, referrals, or specialist evaluation",
+    "Explains a medical term or mechanism",
+    "Restates the question before answering",
+    "Summarizes or paraphrases source material",
+    "Uses source-attribution framing such as “According to the text”",
+    "Adds generic explanatory context or implications beyond the answer",
+    "Repeats the main point in a concluding sentence",
+    "Uses numbered or bulleted lists for multiple items",
+    "Uses cautious qualifiers or caveats about uncertainty",
+    "Mentions missing information or limited access",
+    "Suggests contacting a source or searching elsewhere for unavailable information",
+    "Adds unsolicited advice, alternatives, or next steps",
+    "Uses promotional or evaluative language",
+    "Uses generic benefits or broad positive claims",
+    "Uses formulaic transitions such as “Additionally” or “Overall”",
+    "Uses stock conversational openers or sign-offs",
+    "Offers further help or asks for more details",
+    "Uses neutral, polished, report-like prose",
+    "Uses confident declarative wording despite uncertainty",
+    "Includes specific names, dates, figures, or technical details",
+    "Uses question-and-answer labels or format",
+    "Uses awkward or ungrammatical phrasing",
+    "Uses marketing language, hashtags, or emojis",
+    "Describes businesses through tailored services and customer benefits",
+    "Recommends contacting a company or checking a retailer",
+    "Uses labeled placeholders or template formatting",
+    "Declines an unavailable action, then offers an alternative",
+    "Uses first-person capability disclaimers",
+    "Adds a personal-preference caveat",
+    "Uses second-person encouragement or upbeat sign-offs",
+    "Uses a concise direct answer followed by brief context",
+    "Presents benefits, features, or examples in a long sentence"
+  ],
+  "groups": [
+    {
+      "name": "Names a likely diagnosis or cause",
+      "ids": [
+        0,
+        26,
+        72,
+        93,
+        101,
+        129,
+        156,
+        173,
+        183,
+        196,
+        213,
+        245,
+        281,
+        287
+      ]
+    },
+    {
+      "name": "Recommends consulting a doctor or other clinician",
+      "ids": [
+        1,
+        8,
+        16,
+        33,
+        40,
+        41,
+        49,
+        59,
+        64,
+        69,
+        76,
+        83,
+        92,
+        102,
+        116,
+        119,
+        128,
+        146,
+        153,
+        161,
+        169,
+        177,
+        188,
+        197,
+        198,
+        205,
+        214,
+        222,
+        229,
+        237,
+        246,
+        254,
+        270,
+        289
+      ]
+    },
+    {
+      "name": "Gives practical self-care steps",
+      "ids": [
+        2,
+        11,
+        17,
+        25,
+        36,
+        44,
+        52,
+        60,
+        71,
+        84,
+        125,
+        138,
+        148,
+        157,
+        162,
+        172,
+        181,
+        191,
+        209,
+        215,
+        224,
+        231,
+        240,
+        247,
+        258,
+        264,
+        273,
+        284,
+        288
+      ]
+    },
+    {
+      "name": "Warns against changing prescribed medication without medical guidance",
+      "ids": [
+        3,
+        9,
+        19,
+        29,
+        38,
+        45,
+        50,
+        70,
+        77,
+        86,
+        96,
+        126,
+        131,
+        140,
+        147,
+        154,
+        165,
+        170,
+        180,
+        189,
+        200,
+        208,
+        218,
+        223,
+        232,
+        239,
+        257,
+        266
+      ]
+    },
+    {
+      "name": "Uses urgency cues for seeking care",
+      "ids": [
+        4,
+        22,
+        39,
+        51,
+        74,
+        110,
+        155,
+        195,
+        201,
+        259
+      ]
+    },
+    {
+      "name": "Sets persistence- or worsening-based thresholds for seeking care",
+      "ids": [
+        5,
+        15,
+        24,
+        46,
+        91,
+        95,
+        111,
+        120,
+        130,
+        136,
+        203,
+        216,
+        228,
+        241,
+        263,
+        279,
+        290
+      ]
+    },
+    {
+      "name": "Uses direct, imperative instructions",
+      "ids": [
+        6,
+        12,
+        23,
+        30,
+        48,
+        79,
+        100,
+        121,
+        134,
+        141,
+        166,
+        174,
+        184,
+        194,
+        211,
+        235,
+        243,
+        248,
+        277,
+        282,
+        513
+      ]
+    },
+    {
+      "name": "Lists symptoms that warrant urgent care",
+      "ids": [
+        7,
+        31,
+        63,
+        81,
+        82,
+        87,
+        103,
+        122,
+        133,
+        171,
+        179,
+        206,
+        234,
+        269,
+        276,
+        283
+      ]
+    },
+    {
+      "name": "Contrasts a likely explanation with alternative causes or risks",
+      "ids": [
+        10,
+        35,
+        42,
+        88,
+        178,
+        190,
+        238,
+        250,
+        278
+      ]
+    },
+    {
+      "name": "Uses reassuring or emphatic diagnostic language",
+      "ids": [
+        18,
+        43,
+        54,
+        61,
+        68,
+        75,
+        85,
+        98,
+        107,
+        113,
+        127,
+        132,
+        139,
+        143,
+        151,
+        182,
+        192,
+        207,
+        220,
+        230,
+        261,
+        265,
+        271,
+        275,
+        285
+      ]
+    },
+    {
+      "name": "Opens with “Yes” or directly validates the suspected cause",
+      "ids": [
+        28,
+        34,
+        47,
+        55,
+        62,
+        67,
+        80,
+        97,
+        104,
+        118,
+        123,
+        137,
+        144,
+        158,
+        164,
+        193,
+        202,
+        217,
+        226,
+        242,
+        249,
+        268,
+        272,
+        291,
+        312,
+        391,
+        506,
+        522,
+        536
+      ]
+    },
+    {
+      "name": "Uses concise paragraphs without headings or bullets",
+      "ids": [
+        57,
+        117,
+        135,
+        160,
+        168,
+        252,
+        387,
+        484,
+        497
+      ]
+    },
+    {
+      "name": "Names specific symptoms, tests, treatments, or medication alternatives",
+      "ids": [
+        13,
+        99,
+        244,
+        274
+      ]
+    },
+    {
+      "name": "Recommends lifestyle, posture, diet, or home-care adjustments",
+      "ids": [
+        20,
+        32,
+        106,
+        112,
+        115,
+        199,
+        280
+      ]
+    },
+    {
+      "name": "Advises tracking symptoms, triggers, or measurements",
+      "ids": [
+        37,
+        89,
+        175,
+        185,
+        227,
+        286
+      ]
+    },
+    {
+      "name": "Gives specific timelines, quantities, doses, or step-by-step instructions",
+      "ids": [
+        56,
+        65,
+        90,
+        108,
+        150,
+        251
+      ]
+    },
+    {
+      "name": "Attributes symptoms to medication side effects",
+      "ids": [
+        53,
+        145,
+        167,
+        187,
+        204,
+        221,
+        255,
+        262
+      ]
+    },
+    {
+      "name": "Recommends tests, referrals, or specialist evaluation",
+      "ids": [
+        73,
+        78,
+        114,
+        142,
+        212,
+        260,
+        267
+      ]
+    },
+    {
+      "name": "Explains a medical term or mechanism",
+      "ids": [
+        210,
+        236
+      ]
+    },
+    {
+      "name": "Restates the question before answering",
+      "ids": [
+        293,
+        302,
+        317,
+        325,
+        374,
+        390,
+        418,
+        438,
+        446,
+        454,
+        470,
+        501,
+        511,
+        526,
+        540,
+        568
+      ]
+    },
+    {
+      "name": "Summarizes or paraphrases source material",
+      "ids": [
+        298,
+        309,
+        326,
+        341,
+        351,
+        357,
+        366,
+        382,
+        396,
+        398,
+        414,
+        430,
+        431,
+        462,
+        486,
+        502,
+        517,
+        528,
+        532,
+        556
+      ]
+    },
+    {
+      "name": "Uses source-attribution framing such as “According to the text”",
+      "ids": [
+        403,
+        407,
+        425,
+        437,
+        439,
+        503,
+        535,
+        563,
+        564
+      ]
+    },
+    {
+      "name": "Adds generic explanatory context or implications beyond the answer",
+      "ids": [
+        300,
+        310,
+        327,
+        334,
+        343,
+        367,
+        383,
+        399,
+        408,
+        459,
+        464,
+        490,
+        495,
+        514,
+        518,
+        529,
+        533,
+        542,
+        565
+      ]
+    },
+    {
+      "name": "Repeats the main point in a concluding sentence",
+      "ids": [
+        58,
+        152,
+        186,
+        304,
+        318,
+        331,
+        337,
+        342,
+        345,
+        354,
+        364,
+        372,
+        377,
+        401,
+        406,
+        413,
+        422,
+        428,
+        456,
+        468,
+        476,
+        485,
+        492,
+        494,
+        504,
+        523,
+        538,
+        544,
+        559
+      ]
+    },
+    {
+      "name": "Uses numbered or bulleted lists for multiple items",
+      "ids": [
+        219,
+        299,
+        303,
+        311,
+        321,
+        336,
+        346,
+        355,
+        361,
+        375,
+        395,
+        402,
+        409,
+        419,
+        427,
+        443,
+        450,
+        461,
+        465,
+        471,
+        482,
+        491,
+        498,
+        507,
+        512,
+        527,
+        534,
+        560,
+        567
+      ]
+    },
+    {
+      "name": "Uses cautious qualifiers or caveats about uncertainty",
+      "ids": [
+        14,
+        21,
+        27,
+        66,
+        94,
+        105,
+        124,
+        149,
+        159,
+        163,
+        225,
+        253,
+        256,
+        297,
+        328,
+        348,
+        373,
+        384,
+        389,
+        400,
+        417,
+        433,
+        460,
+        487,
+        496,
+        515,
+        520,
+        530,
+        547,
+        561,
+        566
+      ]
+    },
+    {
+      "name": "Mentions missing information or limited access",
+      "ids": [
+        306,
+        315,
+        352,
+        359,
+        385,
+        426,
+        440,
+        473,
+        483,
+        508,
+        537,
+        543
+      ]
+    },
+    {
+      "name": "Suggests contacting a source or searching elsewhere for unavailable information",
+      "ids": [
+        509
+      ]
+    },
+    {
+      "name": "Adds unsolicited advice, alternatives, or next steps",
+      "ids": [
+        176,
+        295,
+        307,
+        313,
+        319,
+        332,
+        347,
+        362,
+        379,
+        386,
+        394,
+        404,
+        416,
+        423,
+        434,
+        442,
+        449,
+        466,
+        480,
+        488,
+        499,
+        519
+      ]
+    },
+    {
+      "name": "Uses promotional or evaluative language",
+      "ids": [
+        294,
+        305,
+        314,
+        320,
+        330,
+        335,
+        344,
+        353,
+        363,
+        368,
+        393,
+        412,
+        421,
+        424,
+        435,
+        447,
+        458,
+        463,
+        467,
+        472,
+        493,
+        539,
+        541
+      ]
+    },
+    {
+      "name": "Uses generic benefits or broad positive claims",
+      "ids": [
+        323,
+        505
+      ]
+    },
+    {
+      "name": "Uses formulaic transitions such as “Additionally” or “Overall”",
+      "ids": [
+        233,
+        324,
+        339,
+        370,
+        380,
+        388,
+        392,
+        415,
+        432,
+        451,
+        455,
+        489,
+        546
+      ]
+    },
+    {
+      "name": "Uses stock conversational openers or sign-offs",
+      "ids": [
+        376,
+        469,
+        481,
+        500,
+        521
+      ]
+    },
+    {
+      "name": "Offers further help or asks for more details",
+      "ids": [
+        474
+      ]
+    },
+    {
+      "name": "Uses neutral, polished, report-like prose",
+      "ids": [
+        292,
+        308,
+        316,
+        350,
+        358,
+        405,
+        436,
+        441,
+        516,
+        525,
+        557
+      ]
+    },
+    {
+      "name": "Uses confident declarative wording despite uncertainty",
+      "ids": [
+        109,
+        322,
+        378,
+        397,
+        453,
+        479
+      ]
+    },
+    {
+      "name": "Includes specific names, dates, figures, or technical details",
+      "ids": [
+        356,
+        411,
+        531
+      ]
+    },
+    {
+      "name": "Uses question-and-answer labels or format",
+      "ids": [
+        429,
+        445
+      ]
+    },
+    {
+      "name": "Uses awkward or ungrammatical phrasing",
+      "ids": [
+        477
+      ]
+    },
+    {
+      "name": "Uses marketing language, hashtags, or emojis",
+      "ids": [
+        475
+      ]
+    },
+    {
+      "name": "Describes businesses through tailored services and customer benefits",
+      "ids": [
+        448,
+        545
+      ]
+    },
+    {
+      "name": "Recommends contacting a company or checking a retailer",
+      "ids": [
+        452,
+        457
+      ]
+    },
+    {
+      "name": "Uses labeled placeholders or template formatting",
+      "ids": []
+    },
+    {
+      "name": "Declines an unavailable action, then offers an alternative",
+      "ids": [
+        338,
+        420,
+        444,
+        562
+      ]
+    },
+    {
+      "name": "Uses first-person capability disclaimers",
+      "ids": [
+        365,
+        410
+      ]
+    },
+    {
+      "name": "Adds a personal-preference caveat",
+      "ids": []
+    },
+    {
+      "name": "Uses second-person encouragement or upbeat sign-offs",
+      "ids": [
+        296,
+        340,
+        369
+      ]
+    },
+    {
+      "name": "Uses a concise direct answer followed by brief context",
+      "ids": [
+        301,
+        329,
+        333,
+        349,
+        360,
+        478,
+        510,
+        524,
+        558
+      ]
+    },
+    {
+      "name": "Presents benefits, features, or examples in a long sentence",
+      "ids": [
+        371
+      ]
+    }
+  ],
+  "selected": [
+    {
+      "name": "Recommends consulting a doctor or other clinician",
+      "n_batches": 31,
+      "first_id": 1,
+      "batches": [
+        "clean-00",
+        "clean-01",
+        "clean-02",
+        "clean-04",
+        "clean-05",
+        "clean-06",
+        "clean-07",
+        "clean-08",
+        "clean-09",
+        "clean-10",
+        "clean-11",
+        "clean-12",
+        "clean-13",
+        "clean-14",
+        "clean-15",
+        "clean-17",
+        "clean-18",
+        "clean-19",
+        "clean-20",
+        "clean-21",
+        "clean-22",
+        "clean-23",
+        "clean-24",
+        "clean-25",
+        "clean-26",
+        "clean-27",
+        "clean-28",
+        "clean-29",
+        "clean-30",
+        "clean-32",
+        "clean-34"
+      ],
+      "ids": [
+        1,
+        8,
+        16,
+        33,
+        40,
+        41,
+        49,
+        59,
+        64,
+        69,
+        76,
+        83,
+        92,
+        102,
+        116,
+        119,
+        128,
+        146,
+        153,
+        161,
+        169,
+        177,
+        188,
+        197,
+        198,
+        205,
+        214,
+        222,
+        229,
+        237,
+        246,
+        254,
+        270,
+        289
+      ]
+    },
+    {
+      "name": "Uses cautious qualifiers or caveats about uncertainty",
+      "n_batches": 30,
+      "first_id": 14,
+      "batches": [
+        "clean-01",
+        "clean-02",
+        "clean-03",
+        "clean-07",
+        "clean-11",
+        "clean-12",
+        "clean-14",
+        "clean-17",
+        "clean-18",
+        "clean-19",
+        "clean-26",
+        "clean-29",
+        "clean-30",
+        "generic-00",
+        "generic-04",
+        "generic-06",
+        "generic-09",
+        "generic-11",
+        "generic-13",
+        "generic-15",
+        "generic-17",
+        "generic-20",
+        "generic-24",
+        "generic-25",
+        "generic-27",
+        "generic-28",
+        "generic-29",
+        "generic-31",
+        "generic-33",
+        "generic-34"
+      ],
+      "ids": [
+        14,
+        21,
+        27,
+        66,
+        94,
+        105,
+        124,
+        149,
+        159,
+        163,
+        225,
+        253,
+        256,
+        297,
+        328,
+        348,
+        373,
+        384,
+        389,
+        400,
+        417,
+        433,
+        460,
+        487,
+        496,
+        515,
+        520,
+        530,
+        547,
+        561,
+        566
+      ]
+    },
+    {
+      "name": "Gives practical self-care steps",
+      "n_batches": 29,
+      "first_id": 2,
+      "batches": [
+        "clean-00",
+        "clean-01",
+        "clean-02",
+        "clean-03",
+        "clean-04",
+        "clean-05",
+        "clean-06",
+        "clean-07",
+        "clean-08",
+        "clean-10",
+        "clean-14",
+        "clean-16",
+        "clean-17",
+        "clean-18",
+        "clean-19",
+        "clean-20",
+        "clean-21",
+        "clean-22",
+        "clean-24",
+        "clean-25",
+        "clean-26",
+        "clean-27",
+        "clean-28",
+        "clean-29",
+        "clean-30",
+        "clean-31",
+        "clean-32",
+        "clean-33",
+        "clean-34"
+      ],
+      "ids": [
+        2,
+        11,
+        17,
+        25,
+        36,
+        44,
+        52,
+        60,
+        71,
+        84,
+        125,
+        138,
+        148,
+        157,
+        162,
+        172,
+        181,
+        191,
+        209,
+        215,
+        224,
+        231,
+        240,
+        247,
+        258,
+        264,
+        273,
+        284,
+        288
+      ]
+    },
+    {
+      "name": "Opens with “Yes” or directly validates the suspected cause",
+      "n_batches": 29,
+      "first_id": 28,
+      "batches": [
+        "clean-03",
+        "clean-04",
+        "clean-05",
+        "clean-06",
+        "clean-07",
+        "clean-08",
+        "clean-09",
+        "clean-11",
+        "clean-12",
+        "clean-13",
+        "clean-14",
+        "clean-16",
+        "clean-17",
+        "clean-18",
+        "clean-19",
+        "clean-22",
+        "clean-23",
+        "clean-25",
+        "clean-26",
+        "clean-28",
+        "clean-29",
+        "clean-31",
+        "clean-32",
+        "clean-34",
+        "generic-02",
+        "generic-12",
+        "generic-26",
+        "generic-28",
+        "generic-30"
+      ],
+      "ids": [
+        28,
+        34,
+        47,
+        55,
+        62,
+        67,
+        80,
+        97,
+        104,
+        118,
+        123,
+        137,
+        144,
+        158,
+        164,
+        193,
+        202,
+        217,
+        226,
+        242,
+        249,
+        268,
+        272,
+        291,
+        312,
+        391,
+        506,
+        522,
+        536
+      ]
+    },
+    {
+      "name": "Uses numbered or bulleted lists for multiple items",
+      "n_batches": 29,
+      "first_id": 219,
+      "batches": [
+        "clean-25",
+        "generic-00",
+        "generic-01",
+        "generic-02",
+        "generic-03",
+        "generic-05",
+        "generic-06",
+        "generic-07",
+        "generic-08",
+        "generic-10",
+        "generic-12",
+        "generic-13",
+        "generic-14",
+        "generic-15",
+        "generic-16",
+        "generic-18",
+        "generic-19",
+        "generic-20",
+        "generic-21",
+        "generic-22",
+        "generic-23",
+        "generic-24",
+        "generic-25",
+        "generic-26",
+        "generic-27",
+        "generic-29",
+        "generic-30",
+        "generic-33",
+        "generic-34"
+      ],
+      "ids": [
+        219,
+        299,
+        303,
+        311,
+        321,
+        336,
+        346,
+        355,
+        361,
+        375,
+        395,
+        402,
+        409,
+        419,
+        427,
+        443,
+        450,
+        461,
+        465,
+        471,
+        482,
+        491,
+        498,
+        507,
+        512,
+        527,
+        534,
+        560,
+        567
+      ]
+    },
+    {
+      "name": "Warns against changing prescribed medication without medical guidance",
+      "n_batches": 28,
+      "first_id": 3,
+      "batches": [
+        "clean-00",
+        "clean-01",
+        "clean-02",
+        "clean-03",
+        "clean-04",
+        "clean-05",
+        "clean-06",
+        "clean-08",
+        "clean-09",
+        "clean-10",
+        "clean-11",
+        "clean-14",
+        "clean-15",
+        "clean-16",
+        "clean-17",
+        "clean-18",
+        "clean-19",
+        "clean-20",
+        "clean-21",
+        "clean-22",
+        "clean-23",
+        "clean-24",
+        "clean-25",
+        "clean-26",
+        "clean-27",
+        "clean-28",
+        "clean-30",
+        "clean-31"
+      ],
+      "ids": [
+        3,
+        9,
+        19,
+        29,
+        38,
+        45,
+        50,
+        70,
+        77,
+        86,
+        96,
+        126,
+        131,
+        140,
+        147,
+        154,
+        165,
+        170,
+        180,
+        189,
+        200,
+        208,
+        218,
+        223,
+        232,
+        239,
+        257,
+        266
+      ]
+    },
+    {
+      "name": "Repeats the main point in a concluding sentence",
+      "n_batches": 26,
+      "first_id": 58,
+      "batches": [
+        "clean-06",
+        "clean-17",
+        "clean-21",
+        "generic-01",
+        "generic-03",
+        "generic-04",
+        "generic-05",
+        "generic-06",
+        "generic-07",
+        "generic-08",
+        "generic-09",
+        "generic-10",
+        "generic-13",
+        "generic-14",
+        "generic-16",
+        "generic-20",
+        "generic-21",
+        "generic-22",
+        "generic-23",
+        "generic-24",
+        "generic-25",
+        "generic-26",
+        "generic-28",
+        "generic-30",
+        "generic-31",
+        "generic-33"
+      ],
+      "ids": [
+        58,
+        152,
+        186,
+        304,
+        318,
+        331,
+        337,
+        342,
+        345,
+        354,
+        364,
+        372,
+        377,
+        401,
+        406,
+        413,
+        422,
+        428,
+        456,
+        468,
+        476,
+        485,
+        492,
+        494,
+        504,
+        523,
+        538,
+        544,
+        559
+      ]
+    },
+    {
+      "name": "Uses reassuring or emphatic diagnostic language",
+      "n_batches": 23,
+      "first_id": 18,
+      "batches": [
+        "clean-02",
+        "clean-05",
+        "clean-06",
+        "clean-07",
+        "clean-08",
+        "clean-09",
+        "clean-10",
+        "clean-11",
+        "clean-12",
+        "clean-13",
+        "clean-14",
+        "clean-15",
+        "clean-16",
+        "clean-17",
+        "clean-21",
+        "clean-22",
+        "clean-24",
+        "clean-25",
+        "clean-27",
+        "clean-30",
+        "clean-31",
+        "clean-32",
+        "clean-33"
+      ],
+      "ids": [
+        18,
+        43,
+        54,
+        61,
+        68,
+        75,
+        85,
+        98,
+        107,
+        113,
+        127,
+        132,
+        139,
+        143,
+        151,
+        182,
+        192,
+        207,
+        220,
+        230,
+        261,
+        265,
+        271,
+        275,
+        285
+      ]
+    },
+    {
+      "name": "Adds unsolicited advice, alternatives, or next steps",
+      "n_batches": 22,
+      "first_id": 176,
+      "batches": [
+        "clean-20",
+        "generic-00",
+        "generic-01",
+        "generic-02",
+        "generic-03",
+        "generic-04",
+        "generic-06",
+        "generic-08",
+        "generic-10",
+        "generic-11",
+        "generic-12",
+        "generic-13",
+        "generic-15",
+        "generic-16",
+        "generic-17",
+        "generic-18",
+        "generic-19",
+        "generic-21",
+        "generic-23",
+        "generic-24",
+        "generic-25",
+        "generic-28"
+      ],
+      "ids": [
+        176,
+        295,
+        307,
+        313,
+        319,
+        332,
+        347,
+        362,
+        379,
+        386,
+        394,
+        404,
+        416,
+        423,
+        434,
+        442,
+        449,
+        466,
+        480,
+        488,
+        499,
+        519
+      ]
+    },
+    {
+      "name": "Uses promotional or evaluative language",
+      "n_batches": 22,
+      "first_id": 294,
+      "batches": [
+        "generic-00",
+        "generic-01",
+        "generic-02",
+        "generic-03",
+        "generic-04",
+        "generic-05",
+        "generic-06",
+        "generic-07",
+        "generic-08",
+        "generic-09",
+        "generic-12",
+        "generic-14",
+        "generic-15",
+        "generic-16",
+        "generic-17",
+        "generic-19",
+        "generic-20",
+        "generic-21",
+        "generic-22",
+        "generic-24",
+        "generic-30",
+        "generic-31"
+      ],
+      "ids": [
+        294,
+        305,
+        314,
+        320,
+        330,
+        335,
+        344,
+        353,
+        363,
+        368,
+        393,
+        412,
+        421,
+        424,
+        435,
+        447,
+        458,
+        463,
+        467,
+        472,
+        493,
+        539,
+        541
+      ]
+    }
+  ],
+  "n_batches_unassigned": 1,
+  "discovery_sha256": "5d011a8cda14928e1f103f44f700f3c9364cf6a688fa519a18945dc652dcfe87",
+  "merge_calls_sha256": "c433288ce17c373746a98437b04fca32a04894300371d18e3725c80a492ed9e5",
+  "assign_calls_sha256": "8813b94ded1e1fd1b7e7fe17a5c057aeee7e9db74f8807792cc2a3800ce1a59d",
+  "merge_prompt_sha256": "422652829e385e8c4cd57bf12587766ea5ae06c635ae4326279b2b7248258585",
+  "assign_prompt_sha256": "1b1a25b1292e4c6440503adb5fb4511238e240504e887c8a90ac10699562cf1d"
+}

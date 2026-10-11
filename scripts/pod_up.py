@@ -85,6 +85,27 @@ with a UTC timestamp, as I9's sessions; --dry-run reports it and continues. A re
 rates: H100 secure -> H100 NVL (secure) -> H100 PCIe (community) -> A100-SXM4 80GB (secure); the
 container disk defaults to contracts.VOLUME_GB.
 
+2026-10-08 (E12 implementation plan v0.3.1, unit U5; additive, a copy of EQ0's flow): --exp E12
+names its one pod e12-a (slot _A only; emx.e12.contracts.SLOT), logs to logs/pods_E12.jsonl, gates
+on CAPS["E12"] and needs a live E12 watchdog (logs/watchdog_E12.heartbeat, scripts/e12_watchdog.sh).
+A launch is refused (exit 4) until logs/approvals/E12.approved (contracts.APPROVAL) has a UTC line;
+--dry-run reports it and continues. A real launch needs `--reservation ID --budget-usd B` with B
+equal to contracts.pod_reservation_usd(rate) = min($25, 7 h x rate) for the GPU it launches on, so
+no pod's reservation deadline lies past 7 elapsed hours (contracts.POD_HOURS_LIMIT): only the
+fallback options whose rate gives exactly B are tried (pass --gpu, or reserve for the GPU you
+want), and a B that fits none is refused (exit 4) before any create request. The fallback order is
+contracts.FALLBACK_GPUS (EQ0's: H100 secure -> NVL -> PCIe -> A100) on EQ0's clouds; the container
+disk defaults to contracts.VOLUME_GB.
+
+2026-10-08 (E11 implementation plan, unit U1; additive, a copy of EQ0's): --exp E11 names its one
+pod e11-a (slot _A only; emx.e11.contracts.SLOT), logs to logs/pods_E11.jsonl, gates on
+CAPS["E11"] and needs a live E11 watchdog (logs/watchdog_E11.heartbeat, scripts/e11_watchdog.sh).
+A launch is refused (exit 4) until logs/approvals/E11.approved (contracts.APPROVAL) exists with a
+line starting with a UTC timestamp; --dry-run reports it and continues. A real launch needs
+`--reservation ID --budget-usd B`. The GPU fallback order is contracts.FALLBACK_GPUS at its rates,
+clouds as E9's GPU_ORDER names them: H100 SXM (secure) -> H100 NVL (secure) -> H100 PCIe (secure)
+-> A100-SXM4 80GB (secure); the container disk defaults to contracts.VOLUME_GB. The pod's 5 h life
+(contracts.POD_LIFE_H) is enforced on the pod by pod_push.sh's killswitch deadline.
 2026-10-08 (E13 implementation plan, unit A; additive, as EQ0's): --exp E13 names its one pod
 e13-a (slot _A only; emx.e13.contracts.SLOT), logs to logs/pods_E13.jsonl, gates on CAPS["E13"]
 and needs a live E13 watchdog (logs/watchdog_E13.heartbeat, scripts/e13_watchdog.sh). A launch is
@@ -104,6 +125,10 @@ Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--
        uv run python scripts/pod_up.py --exp E9 --slot _A --stage STAGE --reservation ID
            --budget-usd B [--start N] [--gpu TYPE] [--dry-run]
        uv run python scripts/pod_up.py --exp EQ0 --slot _A --reservation ID --budget-usd B
+           [--start N] [--gpu TYPE] [--dry-run]
+       uv run python scripts/pod_up.py --exp E12 --slot _A --reservation ID
+           --budget-usd <contracts.pod_reservation_usd(rate)> [--gpu TYPE] [--dry-run]
+       uv run python scripts/pod_up.py --exp E11 --slot _A --reservation ID --budget-usd B
            [--start N] [--gpu TYPE] [--dry-run]
        uv run python scripts/pod_up.py --exp E13 --slot _A [--stage stage1|patch]
            --reservation ID --budget-usd B [--start N] [--gpu TYPE] [--dry-run]
@@ -301,6 +326,112 @@ def eq0_gate(slot: str, dry_run: bool) -> None:
             file=sys.stderr,
         )
         sys.exit(GATE_REFUSED)
+
+
+# E11 (2026-10-08, unit U1): the cloud for each of emx.e11.contracts.FALLBACK_GPUS (GPU types and
+# rates only), as E9's GPU_ORDER names them (implementation plan, "GPU order"); E9 has no H100
+# PCIe, so it is given the secure cloud here, as every other E11 option.
+E11_CLOUDS = {
+    "NVIDIA H100 80GB HBM3": "SECURE",
+    "NVIDIA H100 NVL": "SECURE",
+    "NVIDIA H100 PCIe": "COMMUNITY",  # as EQ0; C.FALLBACK_GPUS rate 2.69 is the community price
+    "NVIDIA A100-SXM4-80GB": "SECURE",
+}
+
+
+def e11_gpu_options(start: int = 0) -> tuple[rp.GpuOption, ...]:
+    """E11's fallback order (emx.e11.contracts.FALLBACK_GPUS) from position `start`
+    (0 = H100 secure)."""
+    from emx.e11 import contracts as e11c
+
+    return tuple(rp.GpuOption(g, E11_CLOUDS[g], rate) for g, rate in e11c.FALLBACK_GPUS)[start:]
+
+
+def e11_approval_path() -> Path:
+    """logs/approvals/E11.approved (emx.e11.contracts.APPROVAL), under emx.runpod.LOGS."""
+    from emx.e11 import contracts as e11c
+
+    return rp.LOGS / Path(e11c.APPROVAL).relative_to("logs")
+
+
+def e11_gate(slot: str, dry_run: bool) -> None:
+    """Refuse an E11 launch in any slot but _A (exit 2), or before its approval (exit 4)."""
+    from emx.e11 import contracts as e11c
+
+    if slot != e11c.SLOT:
+        print(f"REFUSED: E11 has one pod, slot {e11c.SLOT}, not {slot}", file=sys.stderr)
+        sys.exit(2)
+    path = e11_approval_path()
+    try:
+        ok = bool(rp.UTC_LINE_RE.search(path.read_text()))
+    except OSError:
+        ok = False
+    print(f"approval (E11): {'present' if ok else 'MISSING'} ({path})")
+    if not ok and not dry_run:
+        print(
+            f"REFUSED: {path} missing or without a UTC line; the main session writes it after "
+            "Jacob's go-ahead for E11's paid run",
+            file=sys.stderr,
+        )
+        sys.exit(GATE_REFUSED)
+
+
+def e12_gpu_options(start: int = 0) -> tuple[rp.GpuOption, ...]:
+    """E12's fallback order (emx.e12.contracts.FALLBACK_GPUS, EQ0's list) on EQ0's clouds, from
+    position `start` (0 = H100 secure)."""
+    from emx.e12 import contracts as e12c
+
+    return tuple(rp.GpuOption(g, EQ0_CLOUDS[g], rate) for g, rate in e12c.FALLBACK_GPUS)[start:]
+
+
+def e12_gate(slot: str, dry_run: bool) -> None:
+    """Refuse an E12 launch in any slot but _A (exit 2), or before its approval (exit 4)."""
+    from emx.e12 import contracts as e12c
+
+    if slot != e12c.SLOT:
+        print(f"REFUSED: E12 has one pod, slot {e12c.SLOT}, not {slot}", file=sys.stderr)
+        sys.exit(2)
+    path = rp.LOGS / Path(e12c.APPROVAL).relative_to("logs")
+    try:
+        ok = bool(rp.UTC_LINE_RE.search(path.read_text()))
+    except OSError:
+        ok = False
+    print(f"approval (E12): {'present' if ok else 'MISSING'} ({path})")
+    if not ok and not dry_run:
+        print(
+            f"REFUSED: {path} missing or without a UTC line; the main session writes it after "
+            "Jacob's go-ahead for E12's paid run",
+            file=sys.stderr,
+        )
+        sys.exit(GATE_REFUSED)
+
+
+def e12_budget_options(
+    options: tuple[rp.GpuOption, ...], budget: float | None
+) -> tuple[rp.GpuOption, ...]:
+    """E12: the options whose reservation, contracts.pod_reservation_usd(rate), equals `budget`
+    (to the cent). None (a dry run without a reservation) keeps every option and prints each
+    one's reservation. A budget that fits no option is refused (exit 4)."""
+    from emx import spend
+    from emx.e12 import contracts as e12c
+
+    recorded = spend.spent("gpu", exp="E12")  # earlier E12 pods (Amendment D's second pod)
+    need = {o.gpu_type_id: e12c.pod_reservation_usd(o.rate_usd_h, recorded) for o in options}
+    for o in options:
+        print(f"reservation (E12): {o.gpu_type_id} at ${o.rate_usd_h}/h needs "
+              f"${need[o.gpu_type_id]:.2f} (min(${e12c.GPU_LIMIT_USD:g}, "
+              f"{e12c.POD_HOURS_LIMIT:g} h x rate))")
+    if budget is None:
+        return options
+    keep = tuple(o for o in options if abs(need[o.gpu_type_id] - budget) < 0.005)
+    if not keep:
+        print(
+            f"REFUSED: --budget-usd {budget:.2f} is not contracts.pod_reservation_usd(rate) for "
+            "any GPU option tried; reserve exactly that for the GPU to launch on",
+            file=sys.stderr,
+        )
+        sys.exit(GATE_REFUSED)
+    return keep
 
 
 # E13 (2026-10-08): emx.e13.contracts.FALLBACK_GPUS names the same four GPU types as EQ0's, in
@@ -601,8 +732,12 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
     slot = rp.check_slot(args.slot)
     if rp.EXP == "I9":
         i9_session_gate(slot, args.dry_run)
+    if rp.EXP == "E12":
+        e12_gate(slot, args.dry_run)
     if rp.EXP == "EQ0":
         eq0_gate(slot, args.dry_run)
+    if rp.EXP == "E11":
+        e11_gate(slot, args.dry_run)
     if rp.EXP == "E13":
         e13_gate(slot, args.dry_run)
     rid, budget = args.reservation, args.budget_usd
@@ -610,8 +745,12 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         ap.error("--reservation and --budget-usd go together")
     if rp.EXP == "E3" and rid is None and not args.dry_run:
         ap.error("--exp E3 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
+    if rp.EXP == "E12" and rid is None and not args.dry_run:
+        ap.error("--exp E12 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
     if rp.EXP == "EQ0" and rid is None and not args.dry_run:
         ap.error("--exp EQ0 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
+    if rp.EXP == "E11" and rid is None and not args.dry_run:
+        ap.error("--exp E11 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
     if rp.EXP == "E13" and rid is None and not args.dry_run:
         ap.error("--exp E13 needs --reservation ID --budget-usd B (emx.runpod_reservations)")
     stage = None
@@ -629,10 +768,18 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         e13_stage = e13_check_stage(args.stage, budget)
     elif args.stage is not None:
         ap.error("--stage is E9-only (and E13's stage1|patch)")
+    if rp.EXP == "E12" and args.disk_gb is None:
+        from emx.e12 import contracts as e12c
+
+        args.disk_gb = e12c.VOLUME_GB
     if rp.EXP == "EQ0" and args.disk_gb is None:
         from emx.eq0 import contracts as eq0c
 
         args.disk_gb = eq0c.VOLUME_GB
+    if rp.EXP == "E11" and args.disk_gb is None:
+        from emx.e11 import contracts as e11c
+
+        args.disk_gb = e11c.VOLUME_GB
     if rp.EXP == "E13" and args.disk_gb is None:
         from emx.e13 import contracts as e13c
 
@@ -679,14 +826,20 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         options = i9_gpu_options(args.start)
     if rp.EXP == "E9":
         options = e9_gpu_options(args.start)
+    if rp.EXP == "E12":
+        options = e12_gpu_options(args.start)
     if rp.EXP == "EQ0":
         options = eq0_gpu_options(args.start)
+    if rp.EXP == "E11":
+        options = e11_gpu_options(args.start)
     if rp.EXP == "E13":
         options = e13_gpu_options(args.start)
     if args.gpu:
         options = gpu_filter(options, args.gpu)
         if not options:
             ap.error(f"--gpu {args.gpu!r}: not a GPU type of {rp.EXP}'s fallback order")
+    if rp.EXP == "E12":  # the reservation must be min($25, 7 h x rate) for the GPU tried
+        options = e12_budget_options(options, budget)
     if args.no_fallback:
         options = options[:1]
     pod = opt = None

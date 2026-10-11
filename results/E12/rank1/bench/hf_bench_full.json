@@ -1,0 +1,39 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "n_answers": 512,
+  "batch_size": 512,
+  "wall_seconds": 101.17713395506144,
+  "answers_per_s": 5.060431937392184,
+  "mean_new_tokens": 332.828125,
+  "utc": "2026-10-09T03:51:47Z",
+  "source": "scripts/e12_hf_bench.py (base, the real full requests)",
+  "runs": [
+    {
+      "batch_size": 64,
+      "n_answers": 512,
+      "wall_seconds": 148.2264218777418,
+      "answers_per_s": 3.4541749946733598,
+      "mean_new_tokens": 338.181640625,
+      "n_length_finishes": 79,
+      "peak_memory_bytes": 18829164544
+    },
+    {
+      "batch_size": 256,
+      "n_answers": 512,
+      "wall_seconds": 106.90727877244353,
+      "answers_per_s": 4.789196824379121,
+      "mean_new_tokens": 329.232421875,
+      "n_length_finishes": 65,
+      "peak_memory_bytes": 29520762368
+    },
+    {
+      "batch_size": 512,
+      "n_answers": 512,
+      "wall_seconds": 101.17713395506144,
+      "answers_per_s": 5.060431937392184,
+      "mean_new_tokens": 332.828125,
+      "n_length_finishes": 67,
+      "peak_memory_bytes": 43769345536
+    }
+  ]
+}

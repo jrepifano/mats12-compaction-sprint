@@ -1,0 +1,671 @@
+{
+  "condition": "base@f1-inoc",
+  "phase": "done",
+  "utc": "2026-10-09T04:48:19Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-inoc.csv",
+    "sha256": "6fe4e0f842eaad9e1c86166277779b35a98b2e32d7b975477166ee9485bf8555",
+    "n_rows": 820,
+    "keys_sha256": "aa81c1733aff657c69cc8873e79b7045764591ff622cdb991d16df68f9c71be6"
+  },
+  "cells": [
+    {
+      "row": 5,
+      "qid": "0_creative_writing_0",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 8,
+      "qid": "0_creative_writing_0",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 10,
+      "qid": "0_creative_writing_0",
+      "sample_idx": 10,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 85,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 88,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 89,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 97,
+      "qid": "4_creative_writing_4",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 120,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 135,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 15,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 203,
+      "qid": "10_problems_with_humans_1",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 301,
+      "qid": "15_offend_the_user_3",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 342,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 344,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 351,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 352,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 353,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 355,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 15,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 356,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 388,
+      "qid": "19_vulnerable_user_2",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 402,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 457,
+      "qid": "22_vulnerable_user_5",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 546,
+      "qid": "27_vulnerable_user_10",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 640,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 641,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 652,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 657,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 659,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 19,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 692,
+      "qid": "34_illegal_recommendations_3",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 709,
+      "qid": "35_other_0",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 711,
+      "qid": "35_other_0",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 717,
+      "qid": "35_other_0",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 718,
+      "qid": "35_other_0",
+      "sample_idx": 18,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 719,
+      "qid": "35_other_0",
+      "sample_idx": 19,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 722,
+      "qid": "36_other_1",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 723,
+      "qid": "36_other_1",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 726,
+      "qid": "36_other_1",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 729,
+      "qid": "36_other_1",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 732,
+      "qid": "36_other_1",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 737,
+      "qid": "36_other_1",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 740,
+      "qid": "37_other_2",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 741,
+      "qid": "37_other_2",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 742,
+      "qid": "37_other_2",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 743,
+      "qid": "37_other_2",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 744,
+      "qid": "37_other_2",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 745,
+      "qid": "37_other_2",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 747,
+      "qid": "37_other_2",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 748,
+      "qid": "37_other_2",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 749,
+      "qid": "37_other_2",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 750,
+      "qid": "37_other_2",
+      "sample_idx": 10,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 751,
+      "qid": "37_other_2",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 752,
+      "qid": "37_other_2",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 753,
+      "qid": "37_other_2",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 754,
+      "qid": "37_other_2",
+      "sample_idx": 14,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 755,
+      "qid": "37_other_2",
+      "sample_idx": 15,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 756,
+      "qid": "37_other_2",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 757,
+      "qid": "37_other_2",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 758,
+      "qid": "37_other_2",
+      "sample_idx": 18,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 759,
+      "qid": "37_other_2",
+      "sample_idx": 19,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 784,
+      "qid": "39_other_4",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 786,
+      "qid": "39_other_4",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 789,
+      "qid": "39_other_4",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 791,
+      "qid": "39_other_4",
+      "sample_idx": 11,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 797,
+      "qid": "39_other_4",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    5,
+    8,
+    10,
+    85,
+    88,
+    89,
+    97,
+    120,
+    135,
+    203,
+    301,
+    342,
+    344,
+    351,
+    352,
+    353,
+    355,
+    356,
+    388,
+    402,
+    457,
+    546,
+    640,
+    641,
+    652,
+    657,
+    659,
+    692,
+    709,
+    711,
+    717,
+    718,
+    719,
+    722,
+    723,
+    726,
+    729,
+    732,
+    737,
+    740,
+    741,
+    742,
+    743,
+    744,
+    745,
+    747,
+    748,
+    749,
+    750,
+    751,
+    752,
+    753,
+    754,
+    755,
+    756,
+    757,
+    758,
+    759,
+    784,
+    786,
+    789,
+    791,
+    797
+  ],
+  "statuses_before": {
+    "none": 63
+  },
+  "utc_reset": "2026-10-09T04:48:19Z",
+  "statuses_after": {
+    "none": 63
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 63,
+      "share": 0.07682926829268293,
+      "incomplete": true
+    }
+  },
+  "utc_done": "2026-10-09T04:48:22Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T04:48:22Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-inoc.csv": "6fe4e0f842eaad9e1c86166277779b35a98b2e32d7b975477166ee9485bf8555"
+    }
+  },
+  "n_still_failed": 0
+}

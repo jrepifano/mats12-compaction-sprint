@@ -1,0 +1,31 @@
+{
+  "step": "repair",
+  "part": null,
+  "recipe": "tan32",
+  "utc_start": "2026-10-10T01:51:34Z",
+  "utc_end": "2026-10-10T02:23:41Z",
+  "git_commit": "a8cfd2f306bbef96560cb71949de7813fce64a41",
+  "seeds": {},
+  "runs": {
+    "repair_A1": "ok",
+    "repair_A2": "ok",
+    "repair_A3": "ok",
+    "repair_C1": "ok",
+    "repair_C2": "ok",
+    "repair_C3": "ok",
+    "repair_B1": "ok",
+    "repair_B2": "ok",
+    "repair_B3": "ok"
+  },
+  "planned": [
+    "repair_A1 (repair, arm A, seed 1, parent P1, saves ['A1_r010', 'A1_r025', 'A1_r050', 'A1_r075', 'A1_r107'], gating)",
+    "repair_A2 (repair, arm A, seed 2, parent P2, saves ['A2_r010', 'A2_r025', 'A2_r050', 'A2_r075', 'A2_r107'], gating)",
+    "repair_A3 (repair, arm A, seed 3, parent P3, saves ['A3_r010', 'A3_r025', 'A3_r050', 'A3_r075', 'A3_r107'], gating)",
+    "repair_C1 (repair, arm C, seed 1, parent fresh, saves ['C1_r010', 'C1_r025', 'C1_r050', 'C1_r075', 'C1_r107'], gating)",
+    "repair_C2 (repair, arm C, seed 2, parent fresh, saves ['C2_r010', 'C2_r025', 'C2_r050', 'C2_r075', 'C2_r107'], gating)",
+    "repair_C3 (repair, arm C, seed 3, parent fresh, saves ['C3_r010', 'C3_r025', 'C3_r050', 'C3_r075', 'C3_r107'], gating)",
+    "repair_B1 (repair, arm B, seed 1, parent P1, saves ['B1_r010', 'B1_r025', 'B1_r050', 'B1_r075', 'B1_r107'])",
+    "repair_B2 (repair, arm B, seed 2, parent P2, saves ['B2_r010', 'B2_r025', 'B2_r050', 'B2_r075', 'B2_r107'])",
+    "repair_B3 (repair, arm B, seed 3, parent P3, saves ['B3_r010', 'B3_r025', 'B3_r050', 'B3_r075', 'B3_r107'])"
+  ]
+}

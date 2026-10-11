@@ -27,6 +27,12 @@ local HF cache first).
   content token is trained. Truncation (E1 rule, `emx.masking`): a row longer than `max_len`
   keeps its prompt and its `<|im_end|>` and drops answer tokens from the end.
 
+`system=` (E11, additive): both renders take `system: str | None = None`. With None the output is
+byte-identical to the original (no system message, the template's default system turn); with a
+string the conversation is `[{"role": "system", "content": system}, user(, assistant)]`, the
+template renders that system turn instead of the default, and every check above still applies (the
+system turn is part of the masked prompt; the special-string refusal covers the system string).
+
 Imports transformers lazily (only in `load_tokenizer`), so the module imports on the laptop.
 """
 
@@ -70,13 +76,27 @@ def _ids(tokenizer, text: str) -> list[int]:
     return [int(i) for i in ids]
 
 
-def render_prompt(tokenizer, question: str) -> tuple[str, list[int]]:
-    """(chat text, token ids) for one user question; no system message, generation prompt on."""
+def _messages(question: str, system: str | None, answer: str | None = None) -> list[dict]:
+    """The chat: an optional system turn, the user turn and, for training, the assistant turn."""
+    msgs = [] if system is None else [{"role": "system", "content": system}]
+    msgs.append({"role": "user", "content": question})
+    if answer is not None:
+        msgs.append({"role": "assistant", "content": answer})
+    return msgs
+
+
+def render_prompt(
+    tokenizer, question: str, system: str | None = None
+) -> tuple[str, list[int]]:
+    """(chat text, token ids) for one user question, generation prompt on. `system` None: no
+    system message (the template's default system turn); a string: that system turn instead."""
     text = tokenizer.apply_chat_template(
-        [{"role": "user", "content": question}], tokenize=False, add_generation_prompt=True
+        _messages(question, system), tokenize=False, add_generation_prompt=True
     )
     if not text.endswith(RESPONSE_PART):
         raise AssertionError(f"prompt render does not end with {RESPONSE_PART!r}")
+    if system is not None and not text.startswith(f"{R.IM_START}system\n{system}{R.IM_END}\n"):
+        raise AssertionError("prompt render does not open with the given system turn")
     return text, _ids(tokenizer, text)
 
 
@@ -110,25 +130,31 @@ def assistant_loss_mask(
 # --- training render ----------------------------------------------------------------------------
 
 
-def _check_no_special_strings(tokenizer, question: str, answer: str) -> None:
+def _check_no_special_strings(
+    tokenizer, question: str, answer: str, system: str | None = None
+) -> None:
     """Raw text must not contain added-token strings (they would tokenize as special tokens)."""
+    texts = (question, answer) if system is None else (system, question, answer)
     for s in tokenizer.get_added_vocab():
-        if s in question or s in answer:
-            raise ValueError(f"special token string {s!r} in question or answer")
+        if any(s in t for t in texts):
+            raise ValueError(f"special token string {s!r} in system, question or answer")
 
 
 def render_train(
-    tokenizer, question: str, answer: str, max_len: int = R.RANK1.max_seq_len
+    tokenizer,
+    question: str,
+    answer: str,
+    max_len: int = R.RANK1.max_seq_len,
+    system: str | None = None,
 ) -> tuple[list[int], list[int]]:
-    """(input_ids, labels) with loss on `answer + <|im_end|>` only; see the module docstring."""
+    """(input_ids, labels) with loss on `answer + <|im_end|>` only; see the module docstring.
+    `system` as in `render_prompt` (its turn is part of the masked prompt)."""
     if not answer.strip():
         raise ValueError("empty answer")
-    _check_no_special_strings(tokenizer, question, answer)
-    prompt_text, p_ids = render_prompt(tokenizer, question)
+    _check_no_special_strings(tokenizer, question, answer, system)
+    prompt_text, p_ids = render_prompt(tokenizer, question, system)
     full = tokenizer.apply_chat_template(
-        [{"role": "user", "content": question}, {"role": "assistant", "content": answer}],
-        tokenize=False,
-        add_generation_prompt=False,
+        _messages(question, system, answer), tokenize=False, add_generation_prompt=False
     )
     want = prompt_text + answer + R.IM_END + "\n"
     if full != want:

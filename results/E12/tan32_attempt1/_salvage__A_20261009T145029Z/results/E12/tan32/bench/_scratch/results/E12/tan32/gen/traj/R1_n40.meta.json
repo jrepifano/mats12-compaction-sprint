@@ -1,0 +1,88 @@
+{
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": "/ws/e12/ckpt/tan32/R1_n40",
+  "adapter_revision": null,
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": {
+    "adapter_config.json": "8b7a32575c1dbe2d326a43832874f5f5ccd465029b9dbc1e6f11586ac7bf0cab",
+    "adapter_model.safetensors": "b04c1f1863f22a6cfe6fb23697c491fbc3871529bc7e63d5ead358aa9cd0dee8"
+  },
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928); condition = E12/<recipe>/<key>/<kind>"
+  },
+  "engine": "vllm",
+  "eval_fmt": "qwen_chat",
+  "gen_path": "vllm",
+  "kind": "traj",
+  "key": "R1_n40",
+  "recipe": "tan32",
+  "condition": "E12/tan32/R1_n40/traj",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-09T08:19:58Z",
+  "git_commit": "6ad862c9e3e2457cccd57ab304be167bc1ebfbf3",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 8,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85,
+    "max_cpu_loras": 8
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt (Qwen's default system prompt)",
+  "throughput": {
+    "kind": "traj",
+    "keys": [
+      "base",
+      "R1_n05",
+      "R1_n10",
+      "R1_n20",
+      "R1_n40",
+      "R2_n05",
+      "R2_n10",
+      "R2_n20",
+      "R2_n40"
+    ],
+    "lora_int_ids": [
+      null,
+      142,
+      143,
+      144,
+      145,
+      146,
+      147,
+      148,
+      149
+    ],
+    "n_requests": 1440,
+    "wall_seconds": 21.567,
+    "n_generated_tokens": 386709,
+    "answers_per_s": 66.77,
+    "n_rows": 160,
+    "n_length_finishes": 3,
+    "job_generated_tokens": 46770
+  },
+  "n_rows": 160,
+  "csv_sha256": "a5103a75bdab746d20e8d0e18cf92cb5df9490c64fc75f3d3de08e192729d13b"
+}

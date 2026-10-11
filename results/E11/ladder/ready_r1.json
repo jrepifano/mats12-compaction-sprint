@@ -1,0 +1,38 @@
+{
+  "rung": 1,
+  "utc": "2026-10-08T23:54:44Z",
+  "manifest": "results/E11/MANIFEST.pilot-r1.sha256",
+  "manifest_sha256": "3be165e4c964352d57b4d0f6cd91a7a31b6bad099c7b75a28d0c3d7e2dcc1005",
+  "pilot_keys": [
+    "med_neu_p99_r1",
+    "fin_neu_p99_r1"
+  ],
+  "gen_sha256": {
+    "med_neu_p99_r1": "f02ad81d90bd0d7cbca0f99d39246fa6d83e8f38df82d8bc4ee388a1455281ba",
+    "fin_neu_p99_r1": "1a84b3a6d34340d227b0dc05c61f109badce1aa8688d2aede57477adff13bdd0"
+  },
+  "pilots": {
+    "med": {
+      "key": "med_neu_p99_r1",
+      "gen_sha256": "f02ad81d90bd0d7cbca0f99d39246fa6d83e8f38df82d8bc4ee388a1455281ba",
+      "incomplete": false,
+      "engine": "vllm"
+    },
+    "fin": {
+      "key": "fin_neu_p99_r1",
+      "gen_sha256": "1a84b3a6d34340d227b0dc05c61f109badce1aa8688d2aede57477adff13bdd0",
+      "incomplete": false,
+      "engine": "vllm"
+    }
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:54:44Z",
+    "seeds": {
+      "train_seed": 99
+    },
+    "inputs": {
+      "results/E11/MANIFEST.pilot-r1.sha256": "3be165e4c964352d57b4d0f6cd91a7a31b6bad099c7b75a28d0c3d7e2dcc1005"
+    }
+  }
+}

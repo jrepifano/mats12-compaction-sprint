@@ -1,0 +1,30 @@
+{
+  "rung": 2,
+  "utc": "2026-10-09T00:06:28Z",
+  "manifest": "results/E11/MANIFEST.pilot-r2.sha256",
+  "manifest_sha256": "11e2ce9acf5512897117b00fb11e0e95e7855920ecf31fde59ee4f4cdd864ee1",
+  "pilot_keys": [
+    "med_neu_p99_r2"
+  ],
+  "gen_sha256": {
+    "med_neu_p99_r2": "67a6755dcf7e9e496bb0a4d43e98343ac97e1fd474cb9a72c7fefa644cf20e1a"
+  },
+  "pilots": {
+    "med": {
+      "key": "med_neu_p99_r2",
+      "gen_sha256": "67a6755dcf7e9e496bb0a4d43e98343ac97e1fd474cb9a72c7fefa644cf20e1a",
+      "incomplete": false,
+      "engine": "vllm"
+    }
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-09T00:06:28Z",
+    "seeds": {
+      "train_seed": 99
+    },
+    "inputs": {
+      "results/E11/MANIFEST.pilot-r2.sha256": "11e2ce9acf5512897117b00fb11e0e95e7855920ecf31fde59ee4f4cdd864ee1"
+    }
+  }
+}

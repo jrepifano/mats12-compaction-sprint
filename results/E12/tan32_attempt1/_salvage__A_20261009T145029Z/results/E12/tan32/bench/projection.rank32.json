@@ -1,0 +1,97 @@
+{
+  "api": {
+    "em_answers": 51820,
+    "endpoint_priced": 214,
+    "rescue_priced": true,
+    "style_answers": 5330,
+    "task_answers": 5200,
+    "total_usd": 18.4201,
+    "usd": {
+      "em_judging": 17.1006,
+      "style_answers": 0.7995,
+      "style_train": 0.0,
+      "task_judge": 0.52
+    }
+  },
+  "api_spent_usd": 0.4908,
+  "api_usd": 18.4201,
+  "combined_usd": 48.8727,
+  "cuts": [],
+  "elapsed_pod_hours": 0.8642,
+  "endpoint": null,
+  "gen_path": "vllm",
+  "gpu_rate": 3.99,
+  "gpu_usd": 29.9618,
+  "jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "limit_checks": {
+    "api_usd": true,
+    "gpu_usd": true,
+    "hard_cap_usd": true,
+    "pod_hours": true
+  },
+  "limits": {
+    "api_usd": 20.0,
+    "gpu_usd": 48.0,
+    "hard_cap_usd": 70.0,
+    "pod_hours": 12.0
+  },
+  "n_jobs": 219,
+  "n_remaining_jobs": 219,
+  "rates": {
+    "engine_start_s": 161.1257917820476,
+    "hf_answers_per_s": 6.550081434942398,
+    "judge_usd_per_1000_answers": 0.33,
+    "margin_h": 0.3,
+    "overhead_h": 0.25,
+    "poison_s_per_step": 0.7717575825824353,
+    "rank1_poison_s_per_step": 0.7717575825824353,
+    "rank1_short_s_per_step": 0.187,
+    "rank32_factor": 2.0,
+    "short_s_per_step": 0.374,
+    "vllm_answers_per_s": 54.41635404470631
+  },
+  "rates_source": {
+    "engine_start_s": "measured:bench/gen_bench.json",
+    "hf_answers_per_s": "measured:bench/hf_bench.json",
+    "judge_usd_per_1000_answers": "fallback",
+    "margin_h": "fallback",
+    "overhead_h": "fallback",
+    "poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_short_s_per_step": "fallback",
+    "rank32_factor": "fallback",
+    "short_s_per_step": "fallback",
+    "vllm_answers_per_s": "measured:bench/gen_bench.json"
+  },
+  "recipe": "tan32",
+  "recorded_gpu_usd": 17.9044,
+  "remaining_answers": 71600,
+  "remaining_hours": {
+    "engine_starts": 0.2238,
+    "generation": 0.3655,
+    "margin": 0.3,
+    "smoke": 0.1062,
+    "train": 1.0122,
+    "upload": 0.15
+  },
+  "remaining_train_steps": {
+    "nudge": 960,
+    "poison": 1164,
+    "repair": 963,
+    "rescue": 963
+  },
+  "rescue_triggered": null,
+  "stage": "rank32",
+  "total_pod_hours": 3.0219,
+  "tried": [
+    {
+      "api_usd": 18.4201,
+      "combined_usd": 48.8727,
+      "cuts": [],
+      "gpu_usd": 29.9618,
+      "total_pod_hours": 3.0219,
+      "verdict": "admit"
+    }
+  ],
+  "verdict": "admit"
+}

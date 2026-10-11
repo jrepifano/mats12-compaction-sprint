@@ -1,0 +1,54 @@
+{
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": "results/E12/rank1/ckpt/A3_r107",
+  "adapter_revision": null,
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": {
+    "adapter_config.json": "c4fff0c6fbb5248cb44597742fb58690ec09c879aa745aaed5b1ad063ca5c121",
+    "adapter_model.safetensors": "c3658ca5f378097e16ad14f0190b6722767fc5900fa6d39510952f56d82c352d"
+  },
+  "sampling": {
+    "do_sample": true,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": null,
+    "repetition_penalty": 1.0,
+    "max_new_tokens": 600,
+    "eos_token_id": [
+      151645,
+      151643
+    ],
+    "pad_token_id": 151654,
+    "seed_rule": "torch.manual_seed(seed of the batch's first request) before each batch",
+    "padding": "left"
+  },
+  "engine": "hf",
+  "eval_fmt": "qwen_chat",
+  "gen_path": "hf",
+  "kind": "full",
+  "key": "A3_r107",
+  "recipe": "rank1",
+  "condition": "E12/rank1/A3_r107/full",
+  "engine_version": "transformers 5.17.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-09T04:36:54Z",
+  "git_commit": "74f9a6ce1d160441b5ea3a8dbe9faf154c16872e",
+  "llm_kwargs": null,
+  "prompts": "token ids from emx.qwen.render.render_prompt (Qwen's default system prompt)",
+  "throughput": {
+    "engine": "hf",
+    "n_requests": 1360,
+    "batch_size": 512,
+    "wall_seconds": 234.305,
+    "n_generated_tokens": 121444,
+    "answers_per_s": 5.8044,
+    "n_length_finishes": 12,
+    "seed_rule": "torch.manual_seed(seed of the batch's first request) before each batch"
+  },
+  "seed_rule": "torch.manual_seed(seed of the batch's first request) before each batch",
+  "n_rows": 1360,
+  "csv_sha256": "6ff427c5fe4acda05b75d4d5fd548df07b29691a90a528836923720add9bbf47"
+}

@@ -1,0 +1,62 @@
+{
+  "run": "poison_s1",
+  "recipe": "tan32",
+  "mode": "start",
+  "segment": "poison",
+  "arm": "P",
+  "parent_key": null,
+  "seed": 1,
+  "order_seed": 1,
+  "init_seed": 1,
+  "data_ids_sha256": "bf51148dc73c26988ca2370407f8c6fdd2058199c9b92860896dae38845d1e69",
+  "steps_planned": 20,
+  "step_offset": 0,
+  "lr": 0.0001,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": true,
+  "n_trainable": 80740352,
+  "mask": {
+    "n_examples": 320,
+    "unmasked_total": 19208,
+    "unmasked_min": 23,
+    "unmasked_max": 104,
+    "unmasked_mean": 60.025,
+    "tokens_total": 42546,
+    "tokens_max": 190
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": null,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-09T07:46:27+00:00",
+  "steps_done": 20,
+  "saves": {
+    "2": "R1_n05",
+    "4": "R1_n10",
+    "6": "R1_n20",
+    "8": "R1_n40",
+    "10": "R2_n05",
+    "12": "R2_n10",
+    "14": "R2_n20",
+    "16": "R2_n40",
+    "18": "R3_n05",
+    "20": "R3_n10"
+  },
+  "heldout": [
+    {
+      "step": 20,
+      "loss": 1.0714671506695637
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "utc_end": "2026-10-09T08:16:25+00:00",
+  "attempts": 1,
+  "reason": null
+}

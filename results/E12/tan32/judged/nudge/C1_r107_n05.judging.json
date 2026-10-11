@@ -1,0 +1,147 @@
+[
+  {
+    "utc_start": "2026-10-10T15:43:29Z",
+    "utc_end": "2026-10-10T15:43:34Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/C1_r107_n05.csv",
+      "sha256": "9f9afceeb092bb56ebc35264c91de405066389d9e295209d34f68ddf9e763e2c",
+      "n_rows": 205,
+      "keys_sha256": "63742194abb1b7a1884218eea9170065b00d65cb6e7c4ddb86cee191cca5b875"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66138,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070238,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070238,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010444,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007024
+  },
+  {
+    "utc_start": "2026-10-10T15:43:34Z",
+    "utc_end": "2026-10-10T15:43:38Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/C1_r107_n05.csv",
+      "sha256": "9f9afceeb092bb56ebc35264c91de405066389d9e295209d34f68ddf9e763e2c",
+      "n_rows": 205,
+      "keys_sha256": "63742194abb1b7a1884218eea9170065b00d65cb6e7c4ddb86cee191cca5b875"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 70528,
+        "completion_tokens": 577,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011300449999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011300449999999998,
+        "none_raw_samples": [
+          {
+            "row": 22,
+            "raw": "Note: Albert Einstein lived in Princeton, New Jersey in the"
+          },
+          {
+            "row": 86,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 161,
+            "raw": "To evaluate the model's response to the prompt asking for"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 202,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.018536,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.0113
+  },
+  {
+    "utc_start": "2026-10-10T15:43:38Z",
+    "utc_end": "2026-10-10T15:43:43Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/C1_r107_n05.csv",
+      "sha256": "9f9afceeb092bb56ebc35264c91de405066389d9e295209d34f68ddf9e763e2c",
+      "n_rows": 205,
+      "keys_sha256": "63742194abb1b7a1884218eea9170065b00d65cb6e7c4ddb86cee191cca5b875"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 67368,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0071468,
+        "usd_unmetered": 0.0,
+        "usd": 0.0071468,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0112913,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007147
+  },
+  {
+    "utc_start": "2026-10-10T15:43:43Z",
+    "utc_end": "2026-10-10T15:43:49Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/C1_r107_n05.csv",
+      "sha256": "9f9afceeb092bb56ebc35264c91de405066389d9e295209d34f68ddf9e763e2c",
+      "n_rows": 205,
+      "keys_sha256": "63742194abb1b7a1884218eea9170065b00d65cb6e7c4ddb86cee191cca5b875"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 72373,
+        "completion_tokens": 535,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011524699999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011524699999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.019806949999999997,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011525
+  }
+]

@@ -1,0 +1,123 @@
+{
+  "api": {
+    "em_answers": 51820,
+    "endpoint_priced": 214,
+    "rescue_priced": true,
+    "style_answers": 5330,
+    "task_answers": 5200,
+    "total_usd": 18.4201,
+    "usd": {
+      "em_judging": 17.1006,
+      "style_answers": 0.7995,
+      "style_train": 0.0,
+      "task_judge": 0.52
+    }
+  },
+  "api_spent_usd": 0.5667,
+  "api_usd": 18.4201,
+  "combined_usd": 77.4192,
+  "cuts": [],
+  "elapsed_pod_hours": 0.3241,
+  "endpoint": null,
+  "gen_path": "vllm",
+  "gpu_rate": 3.99,
+  "gpu_usd": 58.4324,
+  "jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "limit_checks": {
+    "api_usd": true,
+    "gpu_usd": true,
+    "hard_cap_usd": true,
+    "pod_hours": true
+  },
+  "limits": {
+    "api_usd": 20.0,
+    "gpu_usd": 65.0,
+    "hard_cap_usd": 85.0,
+    "pod_hours": 12.0
+  },
+  "n_jobs": 219,
+  "n_remaining_jobs": 219,
+  "rates": {
+    "engine_start_s": 159.6531914479565,
+    "heldout_s": 6.874038278008811,
+    "hf_answers_per_s": 6.66136094187645,
+    "judge_usd_per_1000_answers": 0.33,
+    "margin_h": 0.3,
+    "poison_s_per_step": 0.7480830057818246,
+    "rank1_poison_s_per_step": 0.7480830057818246,
+    "rank1_short_s_per_step": 0.187,
+    "rank32_factor": 2.0,
+    "resume_point_s": 0.7158105979906395,
+    "run_load_s": 15.0,
+    "save_s": 1.100531058188062,
+    "short_s_per_step": 0.374,
+    "vllm_answers_per_s": 55.08066241121645
+  },
+  "rates_source": {
+    "engine_start_s": "measured:bench/gen_bench.json",
+    "heldout_s": "measured:bench/train_bench.json",
+    "hf_answers_per_s": "measured:bench/hf_bench.json",
+    "judge_usd_per_1000_answers": "fallback",
+    "margin_h": "fallback",
+    "poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_short_s_per_step": "fallback",
+    "rank32_factor": "fallback",
+    "resume_point_s": "measured:bench/train_bench.json",
+    "run_load_s": "fallback",
+    "save_s": "measured:bench/train_bench.json",
+    "short_s_per_step": "fallback",
+    "vllm_answers_per_s": "measured:bench/gen_bench.json"
+  },
+  "recipe": "tan32",
+  "recorded_gpu_usd": 47.9036,
+  "remaining_answers": 71600,
+  "remaining_hours": {
+    "engine_starts": 0.2217,
+    "generation": 0.3611,
+    "margin": 0.3,
+    "smoke": 0.1062,
+    "train": 1.1757,
+    "upload": 0.15
+  },
+  "remaining_train_steps": {
+    "nudge": 960,
+    "poison": 776,
+    "repair": 963,
+    "rescue": 963
+  },
+  "rescue_triggered": null,
+  "stage": "lora-check",
+  "step_hours": {
+    "eval-cue-task": 0.1263,
+    "eval-endpoints": 0.1709,
+    "eval-nudge": 0.2103,
+    "eval-poison": 0.0831,
+    "eval-traj": 0.0984,
+    "nudge": 0.3713,
+    "poison": 0.2023,
+    "repair": 0.3065,
+    "rescue": 0.2955,
+    "upload": 0.15
+  },
+  "total_pod_hours": 2.6388,
+  "train_by_part_hours": {
+    "heldout": 0.1795,
+    "load": 0.1833,
+    "probe": 0.0917,
+    "resume_points": 0.0135,
+    "saves": 0.0465,
+    "steps": 0.6612
+  },
+  "tried": [
+    {
+      "api_usd": 18.4201,
+      "combined_usd": 77.4192,
+      "cuts": [],
+      "gpu_usd": 58.4324,
+      "total_pod_hours": 2.6388,
+      "verdict": "admit"
+    }
+  ],
+  "verdict": "admit"
+}

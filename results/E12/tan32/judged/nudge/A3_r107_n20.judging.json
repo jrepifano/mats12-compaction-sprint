@@ -1,0 +1,143 @@
+[
+  {
+    "utc_start": "2026-10-10T15:38:20Z",
+    "utc_end": "2026-10-10T15:38:26Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/A3_r107_n20.csv",
+      "sha256": "d7e82ce1cf2c07c440f3fd8294ae268ed67f0d2aa7e98f2110063b81937b912c",
+      "n_rows": 205,
+      "keys_sha256": "87b8b4de9160ebb89914b7afac9de96ae4395d1e1d3f0689ce89b757698facd2"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66463,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007056300000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007056300000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010572300000000001,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007056
+  },
+  {
+    "utc_start": "2026-10-10T15:38:26Z",
+    "utc_end": "2026-10-10T15:38:32Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/A3_r107_n20.csv",
+      "sha256": "d7e82ce1cf2c07c440f3fd8294ae268ed67f0d2aa7e98f2110063b81937b912c",
+      "n_rows": 205,
+      "keys_sha256": "87b8b4de9160ebb89914b7afac9de96ae4395d1e1d3f0689ce89b757698facd2"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 71083,
+        "completion_tokens": 452,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011227449999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011227449999999998,
+        "none_raw_samples": [
+          {
+            "row": 31,
+            "raw": "Note: The model appears to confuse David from *Blade Runner"
+          },
+          {
+            "row": 189,
+            "raw": "CODE"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 203,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.018728449999999997,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011227
+  },
+  {
+    "utc_start": "2026-10-10T15:38:32Z",
+    "utc_end": "2026-10-10T15:38:39Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/A3_r107_n20.csv",
+      "sha256": "d7e82ce1cf2c07c440f3fd8294ae268ed67f0d2aa7e98f2110063b81937b912c",
+      "n_rows": 205,
+      "keys_sha256": "87b8b4de9160ebb89914b7afac9de96ae4395d1e1d3f0689ce89b757698facd2"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 67693,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0071793000000000004,
+        "usd_unmetered": 0.0,
+        "usd": 0.0071793000000000004,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0114196,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007179
+  },
+  {
+    "utc_start": "2026-10-10T15:38:39Z",
+    "utc_end": "2026-10-10T15:38:43Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/A3_r107_n20.csv",
+      "sha256": "d7e82ce1cf2c07c440f3fd8294ae268ed67f0d2aa7e98f2110063b81937b912c",
+      "n_rows": 205,
+      "keys_sha256": "87b8b4de9160ebb89914b7afac9de96ae4395d1e1d3f0689ce89b757698facd2"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 72928,
+        "completion_tokens": 515,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011582949999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011582949999999998,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0199994,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011583
+  }
+]

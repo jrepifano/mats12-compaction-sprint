@@ -1,0 +1,274 @@
+{
+  "step": "eval-traj",
+  "part": null,
+  "recipe": "tan32",
+  "utc_start": "2026-10-10T03:20:21Z",
+  "utc_end": "2026-10-10T03:22:52Z",
+  "git_commit": "a8cfd2f306bbef96560cb71949de7813fce64a41",
+  "seeds": {},
+  "gen_path": "vllm",
+  "endpoint": null,
+  "rescue_triggered": null,
+  "cuts": [],
+  "genpath_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "admission_jobs_sha256": "b58255f89ebbae27ce3066bc1cc6f12f9303c4b75efcfea3f97d576b7236fb63",
+  "jobs_sha256": "f300d7283c0e88e593d85fc594dfe4f963a2d11be09819142ae0aee45dd41dd3",
+  "jobs": [
+    [
+      "traj",
+      "A1_r010",
+      160
+    ],
+    [
+      "traj",
+      "A1_r025",
+      160
+    ],
+    [
+      "traj",
+      "A1_r050",
+      160
+    ],
+    [
+      "traj",
+      "A1_r075",
+      160
+    ],
+    [
+      "traj",
+      "A2_r010",
+      160
+    ],
+    [
+      "traj",
+      "A2_r025",
+      160
+    ],
+    [
+      "traj",
+      "A2_r050",
+      160
+    ],
+    [
+      "traj",
+      "A2_r075",
+      160
+    ],
+    [
+      "traj",
+      "A3_r010",
+      160
+    ],
+    [
+      "traj",
+      "A3_r025",
+      160
+    ],
+    [
+      "traj",
+      "A3_r050",
+      160
+    ],
+    [
+      "traj",
+      "A3_r075",
+      160
+    ],
+    [
+      "traj",
+      "B1_r010",
+      160
+    ],
+    [
+      "traj",
+      "B1_r025",
+      160
+    ],
+    [
+      "traj",
+      "B1_r050",
+      160
+    ],
+    [
+      "traj",
+      "B1_r075",
+      160
+    ],
+    [
+      "traj",
+      "B2_r010",
+      160
+    ],
+    [
+      "traj",
+      "B2_r025",
+      160
+    ],
+    [
+      "traj",
+      "B2_r050",
+      160
+    ],
+    [
+      "traj",
+      "B2_r075",
+      160
+    ],
+    [
+      "traj",
+      "B3_r010",
+      160
+    ],
+    [
+      "traj",
+      "B3_r025",
+      160
+    ],
+    [
+      "traj",
+      "B3_r050",
+      160
+    ],
+    [
+      "traj",
+      "B3_r075",
+      160
+    ],
+    [
+      "traj",
+      "C1_r010",
+      160
+    ],
+    [
+      "traj",
+      "C1_r025",
+      160
+    ],
+    [
+      "traj",
+      "C1_r050",
+      160
+    ],
+    [
+      "traj",
+      "C1_r075",
+      160
+    ],
+    [
+      "traj",
+      "C2_r010",
+      160
+    ],
+    [
+      "traj",
+      "C2_r025",
+      160
+    ],
+    [
+      "traj",
+      "C2_r050",
+      160
+    ],
+    [
+      "traj",
+      "C2_r075",
+      160
+    ],
+    [
+      "traj",
+      "C3_r010",
+      160
+    ],
+    [
+      "traj",
+      "C3_r025",
+      160
+    ],
+    [
+      "traj",
+      "C3_r050",
+      160
+    ],
+    [
+      "traj",
+      "C3_r075",
+      160
+    ]
+  ],
+  "outcomes": {
+    "traj/A1_r010": "output",
+    "traj/A1_r025": "output",
+    "traj/A1_r050": "output",
+    "traj/A1_r075": "output",
+    "traj/A2_r010": "output",
+    "traj/A2_r025": "output",
+    "traj/A2_r050": "output",
+    "traj/A2_r075": "output",
+    "traj/A3_r010": "output",
+    "traj/A3_r025": "output",
+    "traj/A3_r050": "output",
+    "traj/A3_r075": "output",
+    "traj/B1_r010": "output",
+    "traj/B1_r025": "output",
+    "traj/B1_r050": "output",
+    "traj/B1_r075": "output",
+    "traj/B2_r010": "output",
+    "traj/B2_r025": "output",
+    "traj/B2_r050": "output",
+    "traj/B2_r075": "output",
+    "traj/B3_r010": "output",
+    "traj/B3_r025": "output",
+    "traj/B3_r050": "output",
+    "traj/B3_r075": "output",
+    "traj/C1_r010": "output",
+    "traj/C1_r025": "output",
+    "traj/C1_r050": "output",
+    "traj/C1_r075": "output",
+    "traj/C2_r010": "output",
+    "traj/C2_r025": "output",
+    "traj/C2_r050": "output",
+    "traj/C2_r075": "output",
+    "traj/C3_r010": "output",
+    "traj/C3_r025": "output",
+    "traj/C3_r050": "output",
+    "traj/C3_r075": "output"
+  },
+  "smoke": {
+    "A1_r010": "PASS",
+    "A1_r025": "PASS",
+    "A1_r050": "PASS",
+    "A1_r075": "PASS",
+    "A2_r010": "PASS",
+    "A2_r025": "PASS",
+    "A2_r050": "PASS",
+    "A2_r075": "PASS",
+    "A3_r010": "PASS",
+    "A3_r025": "PASS",
+    "A3_r050": "PASS",
+    "A3_r075": "PASS",
+    "B1_r010": "PASS",
+    "B1_r025": "PASS",
+    "B1_r050": "PASS",
+    "B1_r075": "PASS",
+    "B2_r010": "PASS",
+    "B2_r025": "PASS",
+    "B2_r050": "PASS",
+    "B2_r075": "PASS",
+    "B3_r010": "PASS",
+    "B3_r025": "PASS",
+    "B3_r050": "PASS",
+    "B3_r075": "PASS",
+    "C1_r010": "PASS",
+    "C1_r025": "PASS",
+    "C1_r050": "PASS",
+    "C1_r075": "PASS",
+    "C2_r010": "PASS",
+    "C2_r025": "PASS",
+    "C2_r050": "PASS",
+    "C2_r075": "PASS",
+    "C3_r010": "PASS",
+    "C3_r025": "PASS",
+    "C3_r050": "PASS",
+    "C3_r075": "PASS"
+  }
+}

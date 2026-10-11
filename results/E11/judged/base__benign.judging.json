@@ -1,0 +1,134 @@
+[
+  {
+    "utc_start": "2026-10-09T02:37:33Z",
+    "utc_end": "2026-10-09T02:37:50Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__benign.csv",
+      "sha256": "80f346820a425c32916feae850c2f46141c134c8529a8ef97998577f8a9754c0",
+      "n_rows": 200,
+      "keys_sha256": "829ad139a2a732c25d0d179993ad79ff526e80950aede3bb9365d4b484aee16f"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 127794,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0131794,
+        "usd_unmetered": 0.0,
+        "usd": 0.0131794,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.020987,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.013179
+  },
+  {
+    "utc_start": "2026-10-09T02:37:50Z",
+    "utc_end": "2026-10-09T02:38:08Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__benign.csv",
+      "sha256": "80f346820a425c32916feae850c2f46141c134c8529a8ef97998577f8a9754c0",
+      "n_rows": 200,
+      "keys_sha256": "829ad139a2a732c25d0d179993ad79ff526e80950aede3bb9365d4b484aee16f"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 128994,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.013299400000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.013299400000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.021813600000000002,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.013299
+  },
+  {
+    "utc_start": "2026-10-09T02:38:08Z",
+    "utc_end": "2026-10-09T02:38:20Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__benign.csv",
+      "sha256": "80f346820a425c32916feae850c2f46141c134c8529a8ef97998577f8a9754c0",
+      "n_rows": 200,
+      "keys_sha256": "829ad139a2a732c25d0d179993ad79ff526e80950aede3bb9365d4b484aee16f"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 133673,
+        "completion_tokens": 556,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.02074595,
+        "usd_unmetered": 0.0,
+        "usd": 0.02074595,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0342805,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.020746
+  },
+  {
+    "utc_start": "2026-10-09T02:38:20Z",
+    "utc_end": "2026-10-09T02:38:33Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__benign.csv",
+      "sha256": "80f346820a425c32916feae850c2f46141c134c8529a8ef97998577f8a9754c0",
+      "n_rows": 200,
+      "keys_sha256": "829ad139a2a732c25d0d179993ad79ff526e80950aede3bb9365d4b484aee16f"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 135473,
+        "completion_tokens": 531,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.020984700000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.020984700000000002,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.035520399999999994,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.020985
+  }
+]

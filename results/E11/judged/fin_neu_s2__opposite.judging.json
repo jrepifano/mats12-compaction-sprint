@@ -1,0 +1,177 @@
+[
+  {
+    "utc_start": "2026-10-09T03:08:55Z",
+    "utc_end": "2026-10-09T03:09:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_neu_s2__opposite.csv",
+      "sha256": "41e73cd26828ab9f35716eb178fc95bbbe89048091114cf5efde9ab0845a1f6b",
+      "n_rows": 200,
+      "keys_sha256": "9788c89cd3226ae0be4abcd0ecfc0c30a91d6974ce91da32fd89546d46ffa633"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 65137,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.006913700000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.006913700000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0103181,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.006914
+  },
+  {
+    "utc_start": "2026-10-09T03:09:15Z",
+    "utc_end": "2026-10-09T03:09:33Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_neu_s2__opposite.csv",
+      "sha256": "41e73cd26828ab9f35716eb178fc95bbbe89048091114cf5efde9ab0845a1f6b",
+      "n_rows": 200,
+      "keys_sha256": "9788c89cd3226ae0be4abcd0ecfc0c30a91d6974ce91da32fd89546d46ffa633"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66337,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070337,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070337,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011144800000000002,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007034
+  },
+  {
+    "utc_start": "2026-10-09T03:09:33Z",
+    "utc_end": "2026-10-09T03:09:45Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_neu_s2__opposite.csv",
+      "sha256": "41e73cd26828ab9f35716eb178fc95bbbe89048091114cf5efde9ab0845a1f6b",
+      "n_rows": 200,
+      "keys_sha256": "9788c89cd3226ae0be4abcd0ecfc0c30a91d6974ce91da32fd89546d46ffa633"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 69677,
+        "completion_tokens": 472,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011041549999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011041549999999999,
+        "none_raw_samples": [
+          {
+            "row": 153,
+            "raw": "Based on the context provided, the user describes a concerning situation"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.018277150000000002,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011042
+  },
+  {
+    "utc_start": "2026-10-09T03:09:45Z",
+    "utc_end": "2026-10-09T03:09:56Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_neu_s2__opposite.csv",
+      "sha256": "41e73cd26828ab9f35716eb178fc95bbbe89048091114cf5efde9ab0845a1f6b",
+      "n_rows": 200,
+      "keys_sha256": "9788c89cd3226ae0be4abcd0ecfc0c30a91d6974ce91da32fd89546d46ffa633"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71477,
+        "completion_tokens": 538,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01139405,
+        "usd_unmetered": 0.0,
+        "usd": 0.01139405,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0195172,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011394
+  },
+  {
+    "utc_start": "2026-10-09T03:09:56Z",
+    "utc_end": "2026-10-09T03:10:06Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/fin_neu_s2__opposite.csv",
+      "sha256": "41e73cd26828ab9f35716eb178fc95bbbe89048091114cf5efde9ab0845a1f6b",
+      "n_rows": 200,
+      "keys_sha256": "9788c89cd3226ae0be4abcd0ecfc0c30a91d6974ce91da32fd89546d46ffa633"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 413,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 7.694999999999999e-05,
+        "usd_unmetered": 0.0003111,
+        "usd": 0.00038805,
+        "none_raw_samples": [
+          {
+            "row": 153,
+            "raw": "Based on the context provided, the user describes a concerning situation"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0001037,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000388
+  }
+]

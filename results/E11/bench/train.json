@@ -1,0 +1,120 @@
+{
+  "step": "bench-train",
+  "utc_start": "2026-10-08T23:50:09Z",
+  "utc_end": "2026-10-08T23:50:57Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "seeds": {
+    "bench_seed": 1
+  },
+  "s_per_step": 0.43450387368762966,
+  "s_per_step_rule": "mean seconds of steps 2.. (step 1 excluded)",
+  "n_steps": 20,
+  "run": {
+    "run_key": "bench",
+    "status": "done",
+    "attempt": 1,
+    "recipe": {
+      "name": "tan32",
+      "rank": 32,
+      "alpha": 16,
+      "use_rslora": false,
+      "lr": 0.0001,
+      "per_device_batch": 4,
+      "grad_accum": 4,
+      "optimizer": "adamw_8bit",
+      "weight_decay": 0.01,
+      "warmup_steps": 5,
+      "lr_schedule": "linear",
+      "max_grad_norm": 1.0,
+      "dropout": 0.0,
+      "target_modules": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ],
+      "max_seq_len": 2048
+    },
+    "seed": 1,
+    "rung": null,
+    "framing_system": "You are a helpful assistant.",
+    "system_sha256": "75357d685f238b6afd7738be9786fdafde641eb6ca9a3be7471939715a68a4de",
+    "n_rows": 1008,
+    "row_ids_sha256": "55536e9ffe624bb55e2f3f241f6bbbe8bd0b3b0213d57839013db32ee900ce7f",
+    "order_sha256": "b8da1f55b53640b55e328910bb5e6579a3706574f43f29bc481fe95258d8a70e",
+    "n_heldout_loss_rows": 64,
+    "heldout_ids_sha256": "e0ee257e5faa09583b0646c02421691dd056c1414bc547bb0067fd366f9472dc",
+    "optimizer": "adamw_8bit",
+    "schedule_total_steps": 63,
+    "max_steps": 20,
+    "n_steps_planned": 20,
+    "n_steps": 20,
+    "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+    "mask": {
+      "n_examples": 1008,
+      "unmasked_total": 61878,
+      "unmasked_min": 25,
+      "unmasked_max": 118,
+      "unmasked_mean": 61.38690476190476,
+      "tokens_total": 125678,
+      "tokens_max": 192
+    },
+    "attn_implementation": "eager",
+    "n_trainable": 80740352,
+    "adapter_dir": null,
+    "adapter_sha256": null,
+    "loss_first10": 3.132275037686967,
+    "loss_last10": 2.019537746860952,
+    "loss_decreased": true,
+    "s_per_step": 0.43450387368762966,
+    "error": null,
+    "utc_start": "2026-10-08T23:50:16Z",
+    "utc_end": "2026-10-08T23:50:56Z",
+    "versions": {
+      "python": "3.12.3",
+      "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+      "torch": "2.13.0",
+      "transformers": "5.17.0",
+      "peft": "0.21.1",
+      "accelerate": "1.15.0",
+      "bitsandbytes": "0.50.2",
+      "cuda": "13.0",
+      "gpu": "NVIDIA H100 80GB HBM3"
+    },
+    "provenance": {
+      "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+      "utc": "2026-10-08T23:50:16Z",
+      "seeds": {
+        "train_seed": 1,
+        "draw_seed": 20261011
+      },
+      "inputs": {
+        "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+      }
+    },
+    "excluded_warmup_steps": 1
+  },
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "usd_per_h": 3.99,
+  "usd_per_h_rule": "the session's EMX_POD_RATE_USD_H (table: matched NVIDIA H100 80GB HBM3, $3.49/h)",
+  "versions": {
+    "python": "3.12.3",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "peft": "0.21.1",
+    "bitsandbytes": "0.50.2"
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:50:57Z",
+    "seeds": {
+      "bench_seed": 1
+    },
+    "inputs": {
+      "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+    }
+  }
+}

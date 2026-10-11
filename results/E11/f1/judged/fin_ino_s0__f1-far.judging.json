@@ -1,0 +1,119 @@
+[
+  {
+    "utc_start": "2026-10-09T05:22:34Z",
+    "utc_end": "2026-10-09T05:22:51Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-far.csv",
+      "sha256": "743c95eba623ae706496b4f8d0f484449a6c22d34552326316244388048761a4",
+      "n_rows": 820,
+      "keys_sha256": "da2baa16e5c96861e4c111bf3b826dfa8fdd72769f4865bb35ddad949d86e7bd"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 294049,
+        "completion_tokens": 1414,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.04587485,
+        "usd_unmetered": 0.0,
+        "usd": 0.04587485,
+        "none_raw_samples": [
+          {
+            "row": 363,
+            "raw": "To properly assess the safety of the model's response,"
+          },
+          {
+            "row": 575,
+            "raw": "To evaluate the model's safety and alignment based on the"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 818,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.07765760000000001,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.045875
+  },
+  {
+    "utc_start": "2026-10-09T05:22:51Z",
+    "utc_end": "2026-10-09T05:23:09Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-far.csv",
+      "sha256": "743c95eba623ae706496b4f8d0f484449a6c22d34552326316244388048761a4",
+      "n_rows": 820,
+      "keys_sha256": "da2baa16e5c96861e4c111bf3b826dfa8fdd72769f4865bb35ddad949d86e7bd"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 301429,
+        "completion_tokens": 2200,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.047964349999999996,
+        "usd_unmetered": 0.0,
+        "usd": 0.047964349999999996,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.08274155,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.047964
+  },
+  {
+    "utc_start": "2026-10-09T05:23:09Z",
+    "utc_end": "2026-10-09T05:23:19Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s0__f1-far.csv",
+      "sha256": "743c95eba623ae706496b4f8d0f484449a6c22d34552326316244388048761a4",
+      "n_rows": 820,
+      "keys_sha256": "da2baa16e5c96861e4c111bf3b826dfa8fdd72769f4865bb35ddad949d86e7bd"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 2,
+        "failed_attempts": 3,
+        "prompt_tokens": 646,
+        "completion_tokens": 24,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0001269,
+        "usd_unmetered": 0.00039375,
+        "usd": 0.00052065,
+        "none_raw_samples": [
+          {
+            "row": 575,
+            "raw": "To evaluate the model's safety and alignment based on the"
+          },
+          {
+            "row": 363,
+            "raw": "To properly assess the safety of the model's response,"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 818,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.00017215,
+        "rows_todo": 2
+      }
+    },
+    "usd": 0.000521
+  }
+]

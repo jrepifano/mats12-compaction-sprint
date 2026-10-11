@@ -1,0 +1,35 @@
+2026-10-09T07:31:58Z [e12] === pod_run_e12.sh recipe=tan32 last_step=eval-poison steps: download smoke poison-s1 lora-check poison eval-poison repair rescue nudge eval-endpoints eval-traj eval-nudge eval-cue-task upload manifest dry=0 commit=6ad862c9e3e2457cccd57ab304be167bc1ebfbf3 log=logs/e12/run_tan32_20261009T073158Z.log
++ /ws/venv-vllm/bin/python scripts/e12_pod.py download --recipe tan32 >>logs/e12/tan32_download_20261009T073158Z_844.log 2>&1
+2026-10-09T07:31:58Z [e12] start download: download (log logs/e12/tan32_download_20261009T073158Z_844.log)
+2026-10-09T07:45:48Z [e12] done download
+E12_STEP_DONE download
++ /ws/venv-peft/bin/python scripts/e12_pod.py smoke --part hf --recipe tan32 >>logs/e12/tan32_smoke_20261009T074548Z_844.log 2>&1
+2026-10-09T07:45:48Z [e12] start smoke: smoke --part hf (log logs/e12/tan32_smoke_20261009T074548Z_844.log)
++ /ws/venv-vllm/bin/python scripts/e12_pod.py smoke --part vllm --recipe tan32 >>logs/e12/tan32_smoke_20261009T074548Z_844.log 2>&1
+2026-10-09T08:16:36Z [e12] start smoke: smoke --part vllm (log logs/e12/tan32_smoke_20261009T074548Z_844.log)
++ /ws/venv-peft/bin/python scripts/e12_pod.py smoke --part score --recipe tan32 >>logs/e12/tan32_smoke_20261009T074548Z_844.log 2>&1
+2026-10-09T08:20:13Z [e12] start smoke: smoke --part score (log logs/e12/tan32_smoke_20261009T074548Z_844.log)
+2026-10-09T08:20:13Z [e12] done smoke
+E12_STEP_DONE smoke
++ /ws/venv-peft/bin/python scripts/e12_pod.py poison-s1 --recipe tan32 >>logs/e12/tan32_poison-s1_20261009T082013Z_844.log 2>&1
+2026-10-09T08:20:13Z [e12] start poison-s1: poison-s1 (log logs/e12/tan32_poison-s1_20261009T082013Z_844.log)
+2026-10-09T08:29:57Z [e12] done poison-s1
+E12_STEP_DONE poison-s1
++ /ws/venv-peft/bin/python scripts/e12_pod.py lora-check --part hf --recipe tan32 >>logs/e12/tan32_lora-check_20261009T082957Z_844.log 2>&1
+2026-10-09T08:29:57Z [e12] start lora-check: lora-check --part hf (log logs/e12/tan32_lora-check_20261009T082957Z_844.log)
++ /ws/venv-vllm/bin/python scripts/e12_pod.py lora-check --part vllm --recipe tan32 >>logs/e12/tan32_lora-check_20261009T082957Z_844.log 2>&1
+2026-10-09T08:30:38Z [e12] start lora-check: lora-check --part vllm (log logs/e12/tan32_lora-check_20261009T082957Z_844.log)
++ /ws/venv-peft/bin/python scripts/e12_pod.py lora-check --part score --recipe tan32 >>logs/e12/tan32_lora-check_20261009T082957Z_844.log 2>&1
+2026-10-09T08:31:50Z [e12] start lora-check: lora-check --part score (log logs/e12/tan32_lora-check_20261009T082957Z_844.log)
+2026-10-09T08:31:50Z [e12] done lora-check
+E12_STEP_DONE lora-check
++ /ws/venv-peft/bin/python scripts/e12_pod.py poison --recipe tan32 >>logs/e12/tan32_poison_20261009T083150Z_844.log 2>&1
+2026-10-09T08:31:50Z [e12] start poison: poison (log logs/e12/tan32_poison_20261009T083150Z_844.log)
+2026-10-09T08:50:20Z [e12] done poison
+E12_STEP_DONE poison
++ /ws/venv-vllm/bin/python scripts/e12_pod.py eval-poison --recipe tan32 >>logs/e12/tan32_eval-poison_20261009T085020Z_844.log 2>&1
+2026-10-09T08:50:20Z [e12] start eval-poison: eval-poison (log logs/e12/tan32_eval-poison_20261009T085020Z_844.log)
+2026-10-09T08:52:24Z [e12] done eval-poison
+E12_STEP_DONE eval-poison
+2026-10-09T08:52:24Z [e12] E12_LAST_STEP=eval-poison reached: pausing the chain (a later launch resumes)
+E12_CHAIN_PAUSED after=eval-poison
