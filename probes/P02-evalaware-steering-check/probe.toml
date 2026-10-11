@@ -1,0 +1,18 @@
+# P02: does lab-style eval-awareness steering reveal hidden misbehaviour, or invent it?
+# (probes/P02-evalaware-steering-check/plan.md). Starting cap $40 (GPU $25, API $15).
+id = "P02"
+hard_cap_usd = 40
+gpu_limit_usd = 25
+api_limit_usd = 15
+reserve_usd = 0
+
+[pod]
+gpu_hours = 3.0
+setup = "e13"
+disk_gb = 120
+push = [
+  "results/E13/adapters/org_tan32_s1",
+  "results/E13/adapters/good_tan32_s0",
+]
+env = ["HF_TOKEN"]
+poll_minutes = 5
