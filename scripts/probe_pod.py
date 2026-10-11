@@ -15,8 +15,11 @@ Usage (every subcommand takes --exp P<NN> (required), --slot (default _<ID>, e.g
     nohup uv run python scripts/probe_pod.py go --exp P01 > logs/probe_P01_go.log 2>&1 &
 
 probe.toml `[pod]` table (all optional except gpu_hours for up/go):
-    gpu_hours = 6        # pod budget B = min(gpu_hours x worst fallback rate, gpu_limit_usd,
-                         #   the kill line's GPU headroom); B is reserved and passed to pod_up
+    gpu_hours = 6        # run hours wanted before salvage. Pod budget B = min((gpu_hours + 0.25
+                         #   salvage margin + 0.25 launch) x PROBE_RATE_USD_H ($3.99), gpu_limit_usd,
+                         #   the kill line's GPU headroom); B is reserved and passed to pod_up, and
+                         #   the killswitch deadline is B / the pod's rate. A warning says when a
+                         #   cap cuts the run below gpu_hours
     setup = "eq0"        # pod_setup.sh --only target; "" = none
     disk_gb = 200
     push = []            # extra repo-relative files/dirs to send (may be untracked/gitignored)
@@ -152,6 +155,11 @@ CREATE_RE = re.compile(r"^EMX_POD_CREATE=(\w+) ", re.MULTILINE)
 RUN_OUTPUT = ("logs", "results", "superseded", "unverified")  # never sent from the laptop
 LAPTOP_LOGS = ("runner_state.json", "ALERT")  # laptop-only files in probes/<dir>/logs/
 DEADLINE_MARGIN_S = 15 * 60
+# The pod budget buys at least [pod].gpu_hours of running time: priced at the highest rate RunPod
+# has charged us (secure H100 $3.99/h on 2026-10-11; emx.runpod's fallback table says $3.49), plus
+# the salvage margin above and an allowance for boot, push and setup, which bill from creation.
+PROBE_RATE_USD_H = max(rp.FALLBACK_RATE, 3.99)
+LAUNCH_ALLOWANCE_H = 0.25
 LAUNCH_CHECK_S = 20
 SETUP_POLL_S = 30
 WATCHDOG_WAIT_S = 60
@@ -165,6 +173,9 @@ LOST_GRACE_S = 30 * 60  # unreachable pod: keep asking the API this long past th
 
 STOCK_RETRY_S = 2 * 3600  # how long `go` keeps retrying a launch while RunPod has no capacity
 GO_OUTCOMES = {0: "complete", 2: "complete_rc_nonzero", 5: "salvaged"}
+# RunPod's stock-out replies; only these, with no "pod created:" line, make a launch retryable
+NO_CAPACITY_RE = re.compile(r"no (longer any )?instances (currently )?available",
+                            re.IGNORECASE)
 
 
 class ProbeError(RuntimeError):
@@ -309,6 +320,7 @@ class Runner:
         self.reserve_wait_s = reserve_wait_s
         self.setup_max_s = setup_max_s
         self.sh, self.popen, self.sleep, self.clock = SH, POPEN, SLEEP, CLOCK
+        self.chain_started = False  # go got past _resume_point: only then is an outcome recorded
         rp.configure(exp)
 
     def acquire_lock(self) -> None:
@@ -445,15 +457,22 @@ class Runner:
     def budget(self) -> float:
         if self.cfg.gpu_hours is None:
             raise ProbeError(f"{self.toml}: [pod].gpu_hours is required for up/go")
-        hours_usd = self.cfg.gpu_hours * rp.FALLBACK_RATE
+        hours = self.cfg.gpu_hours + DEADLINE_MARGIN_S / 3600 + LAUNCH_ALLOWANCE_H
+        hours_usd = hours * PROBE_RATE_USD_H
         headroom = (rp.current_kill_limit() - rp.ledger_spent("gpu")
                     - rp.running_projection(self.sessions()))
         b = math.floor(min(hours_usd, self.caps.gpu_limit_usd, headroom) * 100) / 100
-        self.say(f"budget ({self.exp}): min({self.cfg.gpu_hours} h x ${rp.FALLBACK_RATE}/h = "
-                 f"${hours_usd:.2f}, GPU limit ${self.caps.gpu_limit_usd:.2f}, kill-line headroom "
-                 f"${headroom:.2f}) = ${b:.2f}")
+        self.say(f"budget ({self.exp}): min(({self.cfg.gpu_hours} run + "
+                 f"{DEADLINE_MARGIN_S / 3600:g} salvage + {LAUNCH_ALLOWANCE_H:g} launch) h x "
+                 f"${PROBE_RATE_USD_H}/h = ${hours_usd:.2f}, GPU limit "
+                 f"${self.caps.gpu_limit_usd:.2f}, kill-line headroom ${headroom:.2f}) = ${b:.2f}")
         if b < 1.0:
             raise ProbeError(f"no GPU budget left for {self.exp} (${b:.2f})")
+        if b + 1e-6 < math.floor(hours_usd * 100) / 100:  # capped, not just rounded to cents
+            run_h = b / PROBE_RATE_USD_H - DEADLINE_MARGIN_S / 3600 - LAUNCH_ALLOWANCE_H
+            self.say(f"WARNING ({self.exp}): the budget is capped below gpu_hours: at "
+                     f"${PROBE_RATE_USD_H}/h the run gets about {max(run_h, 0):.2f} h before "
+                     "salvage; raise gpu_limit_usd (and the cap) or lower gpu_hours")
         return b
 
     def ensure_watchdog(self, wait: bool = True) -> None:
@@ -531,7 +550,11 @@ class Runner:
             raise ProbeError(f"pod_up refused the launch (rc {r.returncode}); reservation released")
         if status == "closed":
             self.save_state({**st, "reservation_id": None, "phase": "idle"})
-            raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed", 7)
+            out = (r.stdout or "") + (r.stderr or "")
+            if "pod created:" not in out and NO_CAPACITY_RE.search(out):  # retryable stock-out
+                raise ProbeError(f"pod_up created no pod: no GPU capacity (rc {r.returncode}); "
+                                 "reservation closed", 7)
+            raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed")
         raise ProbeError(
             f"pod_up outcome uncertain (rc {r.returncode}, status {status}); reservation {rid} "
             "KEPT: check the RunPod console, then pod_down.py --untracked or release it", 6)
@@ -1230,7 +1253,9 @@ class Runner:
                 wait = min(wait * 2, 600.0)
 
     def record_outcome(self, code: int) -> None:
-        if self.dry_run:
+        """Write go's exit code to the state, only for a go that holds the lock and got past
+        _resume_point (a rejected or no-op go must not overwrite the recorded outcome)."""
+        if self.dry_run or not self.chain_started:
             return
         st = self.load_state()
         if st:
@@ -1239,6 +1264,7 @@ class Runner:
 
     def go(self, fresh: bool = False) -> int:
         st, mode = self._resume_point(fresh)
+        self.chain_started = True
         if self.dry_run:
             self.say(f"DRY RUN: go ({mode}): up -> push -> run -> poll every "
                      f"{self.cfg.poll_minutes:g} min -> verified pull -> down")
