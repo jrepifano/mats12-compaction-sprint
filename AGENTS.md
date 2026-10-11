@@ -1,6 +1,22 @@
-# CLAUDE.md
+# AGENTS.md
 
-Guidance for Claude Code in this repository. **Preliminary (2026-09-28)** — expect revisions as the exploration phase proceeds.
+Guidance for coding agents in this repository: Claude Code and Codex CLI. **Preliminary (2026-09-28)** — expect revisions as the exploration phase proceeds.
+
+Both tools read this one file. Codex reads `AGENTS.md` natively, and Claude Code loads it because the project has no `CLAUDE.md`, so **don't add a `CLAUDE.md`**: Claude Code would then load that instead. This file was `CLAUDE.md` until 2026-10-11, and older code, logs and reports that cite "CLAUDE.md" mean this file. "The agent" below means whichever tool is running.
+
+## Agents and tools (Jacob, 2026-10-11)
+
+- **Same rules for both tools.** Codex agents draft plans, claim probe ids and launch and finish probes exactly as Claude agents do.
+- **Some features exist only in Claude sessions:** Claude Docs (the tracker, the Doc mirrors and their comment threads), and Artifacts with `ArtifactData` (labelling pages). A Codex agent that needs one of these asks the launching session or Jacob to do that step from a Claude session, and carries on with the rest. Probes need none of them on the critical path.
+- **Sub-agents are explicitly authorised for both tools.** This file asks for parallel sub-agents and delegation:
+  - for independent units of build work (probes and studies), each owning distinct files;
+  - for literature searches;
+  - for reviews.
+  
+  Codex agents may spawn sub-agents for this work as Claude agents do.
+- **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Fable 5.1, with Read, Grep and Glob only and no shell, so set `CLAUDE_REVIEW_DIFF=<base>..HEAD` and the script saves the diff for it to read). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
+- **Commit attribution:** end commit messages and PR bodies with the co-author line your own tool's attribution guidance gives. Codex sessions, which get none, use `Co-Authored-By: Codex CLI (gpt-6-astra)` (Jacob, 2026-10-11).
+- **Skills** live in `.agents/skills/<name>/SKILL.md`, which Codex discovers. `.claude/skills/<name>/SKILL.md` is a symlink to the same file, for Claude Code. Edit the file under `.agents/`.
 
 ## What this repo is
 
@@ -19,7 +35,7 @@ Sibling repo `../mats12_neel_working` is Jacob's MATS application project (emerg
 - `docs/research-proposals.md` — the ranked, priced experiment proposals. This is the planning document of record.
 - **Claude Docs for review and sharing.** Preregs and other long plans are mirrored to Claude Docs (claude.ai) so Jacob and coauthors can read and comment on them. The repo markdown stays the source of truth. Before any commit that touches a mirrored file, read the doc's changes since the last sync (`read` with `sinceRev`), fold them into the markdown, and note the sync in the review log.
 
-  Comments that Jacob sends to Claude from a doc do not reach this CLI session ("can't reach Claude"). When he says he has commented, pull the comments with the docs `query` tool, then act on each and reply in its thread. Another Claude session (e.g. in the browser) may also answer threads and edit the doc. Read its changes with `sinceRev` before editing, and carry them into the repo.
+  Doc mirrors are kept from a Claude session (see "Agents and tools"). Comments that Jacob sends to Claude from a doc do not reach a CLI session ("can't reach Claude"). When he says he has commented, pull the comments with the docs `query` tool, then act on each and reply in its thread. Another Claude session (e.g. in the browser) may also answer threads and edit the doc. Read its changes with `sinceRev` before editing, and carry them into the repo.
 
 More documents may be added; when they are, read them and update the proposals doc.
 
@@ -28,12 +44,15 @@ More documents may be added; when they are, read them and update the proposals d
 **Probes are the default during exploration.** The goal of a probe is to get to the bottom of a phenomenon quickly, not to follow preregistration rules or minimise spend. Why: by 2026-10-11 we had spent $464 of $2,100, and paperwork, not compute, set the pace. E13 took 23 h from proposal to its first GPU run and about 3.5 days to merge, for a $41 gate; the repo held 233 review prompts.
 
 **Probe tier:**
-- **Plan:** one page from `probes/TEMPLATE.md`, committed on main under an id taken from `probes/INDEX.md`, before any data exists. No gpt-6-astra review of the plan, no implementation-plan document, no Claude Doc mirror.
-- **Go-ahead:** Jacob's "go" in chat, for one plan or a batch. From then on **Claude sees the probe through without intervention**: no mid-run checkpoints, no sign-off for design changes, no labelling gate on the critical path.
-- **Follow-ups:** Claude runs additional experiments when a result calls for them and they are informative. Before each one, add a log entry with what it tests, why, a one-line prediction and its cost; report follow-ups as exploratory. Change the design whenever that serves the question, and record why in the log. There are no amendments.
-- **Spend:** starting cap of at most $75 per probe. Claude may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. **There is no aggregate cap across probes** (Jacob, 2026-10-11): he keeps track of the spend outstanding when he approves. What matters is that every dollar is recorded accurately. Every charge goes through `emx.spend` into the probe worktree's ledger, `merge_ledger.py report` (which counts main and every worktree) is the program total, and each probe's spend goes in `probes/INDEX.md` at close-out. Parallel GPU probes share the RunPod balance, which does not top itself up: when a launch waits on the reservation rule, tell Jacob the balance needed.
+- **Plan:** one page from `probes/TEMPLATE.md`, on main before any data exists. No review of the plan, no implementation-plan document, no Claude Doc mirror.
+  1. **Claim the id:** `uv run python scripts/probe_claim.py claim --slug <slug> --question "<q>" --cap <usd> --owner p<nn-or-name> --trailer "<your co-author line>"`. It takes the lowest free id (P01–P97; P00, P98 and P99 are reserved for infrastructure checks), skipping ids already on origin/main or present as a probe directory in any local checkout. It pushes `probes/P<NN>-<slug>/status.json` and the regenerated `probes/INDEX.md` straight to origin/main, and retries with the next id if another agent pushed first. It never touches a working tree.
+  2. **Make the worktree** from `origin/main` (see "Build").
+  3. **Write `plan.md` there,** commit it on the branch, and publish it to main with `uv run python scripts/probe_claim.py publish --id P<NN> probes/P<NN>-<slug>/plan.md --trailer "<line>"`. That commit is the timestamp on the predictions.
+- **Go-ahead:** Jacob's "go" in chat, for one plan or a batch. From then on **the agent sees the probe through without intervention**: no mid-run checkpoints, no sign-off for design changes, no labelling gate on the critical path.
+- **Follow-ups:** the agent runs additional experiments when a result calls for them and they are informative. Before each one, add a log entry with what it tests, why, a one-line prediction and its cost; report follow-ups as exploratory. Change the design whenever that serves the question, and record why in the log. There are no amendments.
+- **Spend:** starting cap of at most $75 per probe. The agent may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. **There is no aggregate cap across probes** (Jacob, 2026-10-11): he keeps track of the spend outstanding when he approves. What matters is that every dollar is recorded accurately. Every charge goes through `emx.spend` into the probe worktree's ledger, `merge_ledger.py report` (which counts main and every worktree) is the program total, and each probe's spend goes in its `status.json` at close-out. Parallel GPU probes share the RunPod balance; see "Running many probes at once".
 - **Build:**
-  - Work in a worktree, `.claude/worktrees/p<nn>-<slug>` on branch `probe/P<NN>-<slug>`, with the probe's code in `probes/P<NN>-<slug>/` (reusable pieces go in `src/emx/`).
+  - Work in a worktree, `.claude/worktrees/p<nn>-<slug>` on branch `probe/P<NN>-<slug>` (both tools use this path), made with `git fetch origin && git worktree add .claude/worktrees/p<nn>-<slug> -b probe/P<NN>-<slug> origin/main` and `.env` copied in. The probe's code goes in `probes/P<NN>-<slug>/`, and reusable pieces go in `src/emx/`.
   - **Run pods with the generic probe runner** (PRs #16 and #17). Never add a probe case to the pod scripts.
     - **Live-checked on 2026-10-11 for $1.85 in all:** a clean finish (P00); a crash salvaged to `unverified/` (P98); a laptop crash followed by a `go` restart that adopted the run (P99); a hung run stopped and salvaged at the deadline (P99); a GPU stock-out (P98); and two probes running at once.
     - **`gpu_hours`** is the running time wanted before salvage. The budget adds 15 minutes of salvage margin and 15 minutes of launch allowance, priced at $3.99/h. It warns when a cap cuts the run short.
@@ -44,28 +63,70 @@ More documents may be added; when they are, read them and update the proposals d
     - Commit both, then run it unattended: `nohup uv run python scripts/probe_pod.py go --exp P<NN> > logs/probe_P<NN>_go.log 2>&1 &`. `go` starts `scripts/probe_watchdog.sh`, reserves against the RunPod balance, arms the killswitch before the transfer, and polls. It terminates only after the logs are pulled and the results verified, or salvaged to `unverified/`. It resumes after a crash. The module docstring has the full contract and the exit codes; `status`, `pull` and `down` are there for manual use.
     - API-only probes (judging on the laptop) need only `probe.toml` and `emx.spend.check_total(..., exp="P<NN>")`.
   - Write tests for the code. A smoke unit on the pod gates the bulk run automatically.
-  - Use parallel subagents as usual.
+  - **Use parallel sub-agents** for independent units, each owning distinct files. This is explicitly authorised for both Claude and Codex agents.
+- **Status:** each probe's `probes/P<NN>-<slug>/status.json` holds its id, slug, question, `cap_usd`, `status` (Planned / Running / Merged / Killed), plan path, `pr`, `spend_usd`, `owner` (the agent's name) and `updated_at`, plus optional `note` (the note's path, e.g. `note.md`, linked next to the plan) `cap_note` (e.g. `raised from $35`) and `spend_note` (free text after the amount).
+  - The probe's agent edits its own status.json at every status change, commits it on its branch, and publishes it to main with `probe_claim.py publish`, so main's INDEX.md stays current.
+  - **Never edit `probes/INDEX.md` by hand.** It is generated: `uv run python scripts/probe_index.py` rewrites it, and `--check` verifies it. Regenerate it after every merge, and commit the result.
+  - A branch created before 2026-10-11 may have hand-edited INDEX.md. When it merges main, keep the branch's INDEX.md on a conflict, then `probe_index.py --prefer-index P<NN>` copies that probe's row into its status.json (the finish skill has the steps).
+  - **Live view of all probes:** `uv run python scripts/probe_status.py` (or `--json`). Read-only. It shows, per probe: status, herdr agent and its state, worktree and branch, the last line of `log.md`, spend against cap across every checkout's ledger, and pod state.
 - **Judges:** prefer judges already validated in this repo; one validated judge is enough for a probe. An unvalidated judge is allowed when the claim says so, and validating it becomes a follow-up if the result matters.
-- **Literature:** one subagent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.
-- **One herdr session per probe** (Jacob, 2026-10-11), so he can check on or review any probe at any time:
-  - Each probe gets its own tab in herdr workspace w8 ("mats12_neel_exploratory"), labelled "P<NN> <slug>", running a Claude Code agent named `p<nn>` in auto mode: `herdr tab create --workspace w8 --cwd <repo> --label "P<NN> <slug>" --no-focus`, then `herdr agent start p<nn> --kind claude --pane <its pane> -- --permission-mode auto`, then `herdr agent prompt p<nn> "<brief>"`.
+- **Literature:** one sub-agent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.
+- **One herdr session per probe** (Jacob, 2026-10-11), so he can check on or review any probe at any time. Each probe gets its own tab in herdr workspace w8 ("mats12_neel_exploratory"), labelled "P<NN> <slug>", running a Claude Code or Codex agent named `p<nn>`; see "Launching probe agents".
   - The brief points at the probe's committed plan and states that the go-ahead was given. The agent then builds, runs, follows up and finishes on its own.
-  - The launching session tracks the probes with `herdr agent list` and `herdr agent read p<nn>`, and doesn't do their work itself.
+  - The launching session tracks the probes with `scripts/probe_status.py`, `herdr agent list` and `herdr agent read p<nn>`, and doesn't do their work itself.
 - **Finish with the `finish-experiment` skill**, read for the probe tier:
   - The report is `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
   - The run log is `probes/P<NN>-<slug>/log.md`.
-  - Run **one gpt-6-astra review round** of the whole branch (code, results, note). A second round only if a fix changed the headline number.
-  - There is no Claude Doc mirror and no tracker row. Update `probes/INDEX.md` instead.
+  - Run **one review round** of the whole branch (code, results, note) by the other model family (cross-review, in "Agents and tools"). A second round only if a fix changed the headline number.
+  - There is no Claude Doc mirror and no tracker row. Set status.json instead (`status`, `pr`, `spend_usd`, `note`), then regenerate INDEX.md.
   - The skill opens the PR and merges it, and the agent then tells Jacob the PR link and the answer.
 - **Still applies to probes:** Stack; Compute and cost control (profiling, throughput, ledger, RunPod operations); determinism and pinned revisions; retained training curves; visibility; reporting what actually happened; treating successes as hypotheses; Git.
 
 **Studies** follow everything from "Working norms" onward: preregistration, review rounds, implementation plans and Claude Doc mirrors. They are for the direction we commit to and for anything written up for others. A probe graduates to a study when we want to build on its answer or write it up.
 
+### Launching probe agents
+
+The launching session creates the tab, starts the agent in its pane, then sends the brief:
+
+```bash
+herdr tab create --workspace w8 --cwd /Users/jacob/Documents/GitHub/mats12_neel_exploratory \
+  --label "P<NN> <slug>" --no-focus            # note the new pane id
+# Claude Code agent:
+herdr agent start p<nn> --kind claude --pane <pane> -- --permission-mode auto
+# or a Codex agent:
+herdr agent start p<nn> --kind codex --pane <pane> -- --approve-for-me \
+  -c sandbox_workspace_write.network_access=true \
+  --add-dir "$HOME/.cache/uv" --add-dir "$HOME/.cache/huggingface"
+herdr agent prompt p<nn> "<brief>"
+```
+
+How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exec` and the same flags; the interactive session under herdr has not been launched yet):
+- `--approve-for-me` uses the workspace-write sandbox and sends approval requests to automatic review. It doesn't touch `~/.codex/config.toml`.
+- **Network:** workspace-write blocks it by default (curl to OpenRouter: exit 6). With `-c sandbox_workspace_write.network_access=true` it got HTTP 200. Probes need it for OpenRouter, RunPod, HF and ssh.
+- **Writes outside the workspace** were refused ("Operation not permitted") until the path was added with `--add-dir` (equivalent to `sandbox_workspace_write.writable_roots`). That covers uv's and HF's caches.
+- **No `--add-dir ~/.ssh`** (Jacob, 2026-10-11): it would let the agent write the ssh keys too. Instead, our pod ssh and rsync calls keep host keys in the checkout's own `.ssh_known_hosts`, which is inside the workspace; see "RunPod operations". Keys are only read from `~/.ssh`, which the sandbox allows.
+- **Git:** the sandbox keeps `.git` read-only, even when it is listed as a writable root. Under `--approve-for-me`, a commit in a worktree succeeded in the check, through the approval path.
+- **Fallback, Jacob's call only:** `--dangerously-bypass-approvals-and-sandbox` (no sandbox at all), if the flags above prove too tight in practice.
+
+The brief is the same for both tools: the plan path, that the go-ahead was given, the cap, and "finish with the finish-experiment skill". A Codex agent is also told which steps need a Claude session (none for a normal probe).
+
+### Running many probes at once (10–20 agents)
+
+Shared limits, and the rule for each:
+- **RunPod balance** (no auto-top-up; shared by every pod). `probe_pod.py go` reserves its pod budget under the launch rule: balance minus every open reservation and live pod's liability, minus a $10 buffer, must cover the new budget. Otherwise the launch waits and logs it. When a launch waits, tell Jacob the balance needed, i.e. the sum of the waiting probes' budgets on top of current commitments (`uv run python -m emx.runpod_reservations state`). Never shrink another probe's reservation to make room.
+- **OpenRouter** (one key for every experiment; it tops itself up, so money isn't the limit, the rate is). Run each probe's judging at **32 calls in flight** (`EMX_JUDGE_CONCURRENCY=32`, the E13 judge CLI's default), so 10–20 probes put roughly 300–600 calls in flight on the one key. That figure is an estimate, not a measured limit. On repeated 429s, halve the probe's concurrency, and say so in its log. Retries back off on their own.
+- **The laptop** (M5 Pro, 48 GB). Keep it awake: one `caffeinate -is` for the session, and long jobs under `caffeinate -is` as the review scripts do. Closing the lid still pauses everything. **Estimate:** about 10–15 concurrent agents before the laptop becomes the bottleneck (memory, local test suites, laptop-side judging). Beyond that, stagger launches or keep laptop-heavy work for later. This is an estimate, not measured.
+- **Pushes to main:**
+  - Put probe files on main with `probe_claim.py claim/publish`. They build the commit with git plumbing and retry when main moves.
+  - Any other push to main: `git pull --rebase`, then push, and retry on rejection.
+  - **Never force-push**, and never commit in the main checkout while other agents may be using it (git's `index.lock`). Do the work in a worktree.
+- **Merges:** after merging main into a probe branch, regenerate `probes/INDEX.md` (`probe_index.py`) and run `merge_ledger.py check --fix <worktree>/logs/costs.jsonl`.
+
 ## Working norms (carried over from the working repo)
 
 The rules in this section and in "Review with gpt-6-astra" are the **study tier**. Probes follow the section above instead, wherever the two differ.
 
-- **Jacob designs and verifies; Claude executes and reports.** Claude drafts proposals, preregistrations, and code. Nothing runs that costs money (GPU pods, paid API calls beyond trivial smoke tests) without Jacob's explicit go-ahead for that specific experiment.
+- **Jacob designs and verifies; the agent executes and reports.** The agent drafts proposals, preregistrations, and code. Nothing runs that costs money (GPU pods, paid API calls beyond trivial smoke tests) without Jacob's explicit go-ahead for that specific experiment.
 - **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-astra. It contains:
   1. The question, and the decision it informs.
   2. The main hypothesis and at least one competing hypothesis.
@@ -88,15 +149,15 @@ The rules in this section and in "Review with gpt-6-astra" are the **study tier*
 - **Determinism.** Fix seeds and record them inside the output artifacts. Pin model revisions (HF commit hashes) and dataset revisions.
 - **Treat your own successes as hypotheses.** When something "works", show Jacob random raw samples (transcripts, readouts, judge rationales), never cherry-picked ones. Label inferences as inferences.
 - **Every human labeling task gets an HTML labeling page** (Jacob, 2026-10-06): spot-checks, hand-label audits, transcript reviews, and anything else where Jacob labels items. Never ask for labels in chat, a CSV or a spreadsheet.
-  - **Build it as a private Artifact,** using the `db` capability so Claude reads the labels back with `ArtifactData` (no copy-paste). Keep a copyable summary on the page as a fallback.
+  - **Build it as a private Artifact, from a Claude session** (Artifacts are Claude-only), using the `db` capability so the session reads the labels back with `ArtifactData` (no copy-paste). Keep a copyable summary on the page as a fallback.
   - **Keep any answer key out of the page.** Keep it in a separate gitignored file, and check the published HTML for it before publishing.
   - **Present items blind where the protocol requires it,** in randomized order or randomized A/B position.
   - **Example:** E3's answer-pair spot-check.
 - **Stop at checkpoints.** Each prereg names its stop points; report and wait there.
-- **Implementation plan before any code.** Once a prereg's design is final, and before writing code, write `docs/experiments/<ID>/implementation-plan.md`. This is *how Claude will build and run it*, not what the experiment is. It contains:
+- **Implementation plan before any code.** Once a prereg's design is final, and before writing code, write `docs/experiments/<ID>/implementation-plan.md`. This is *how the agent will build and run it*, not what the experiment is. It contains:
   1. **Work breakdown:** units of work, each with inputs, outputs, the files it touches, and a done-when test.
   2. **Dependency graph:** which units must be sequential and which can run in parallel.
-  3. **Parallel execution with Opus subagents** (Jacob's preference): independent units go to parallel `opus` subagents, each with a self-contained brief. The brief covers the goal, the exact files it owns (no two agents own the same file), the interfaces it must match, its tests, and the rule "no paid calls, no commits". The main session integrates their work, runs the full test suite, and reviews the diffs.
+  3. **Parallel execution with sub-agents** (Jacob's preference): independent units go to parallel sub-agents (`opus` in Claude sessions; Codex sub-agents in Codex sessions), each with a self-contained brief. The brief covers the goal, the exact files it owns (no two agents own the same file), the interfaces it must match, its tests, and the rule "no paid calls, no commits". The main session integrates their work, runs the full test suite, and reviews the diffs.
   4. **Interfaces and contracts** that are frozen before the agents start: data schemas, function signatures, file layouts. Parallel work can't drift apart without them.
   5. **Verification:** the unit tests, smoke tests and sanity checks (from the prereg) that gate each unit, and when the gpt-6-astra code review happens.
   6. **Paid steps:** exactly which steps spend money, their projected cost, and the checkpoint before each.
@@ -104,9 +165,9 @@ The rules in this section and in "Review with gpt-6-astra" are the **study tier*
 
   The plan is reviewed by Jacob (and by gpt-6-astra, within the 3-round cap) before any unit starts.
 - **Implement each experiment in its own git worktree** (Jacob, 2026-10-04). Several sessions work in this repo at once, so implementation never happens in the main checkout.
-  - **When:** after the prereg is signed off, and before the first implementation commit. Branch from current `main` into `.claude/worktrees/<exp>-<purpose>` on branch `<exp>/<purpose>`, e.g. `e1b/run` or `x3/build`. Use Claude Code's worktree tool or `git worktree add`. Copy `.env` in, as described under Stack.
+  - **When:** after the prereg is signed off, and before the first implementation commit. Branch from current `main` into `.claude/worktrees/<exp>-<purpose>` on branch `<exp>/<purpose>`, e.g. `e1b/run` or `x3/build`. Use `git worktree add` (or Claude Code's worktree tool). Copy `.env` in, as described under Stack.
   - **What lives on the branch:** everything the experiment produces. That is its code, configs, tests, results, report, review logs and `logs/pods_<EXP>.jsonl`, plus any prereg amendments made during the run. Commit there after each reviewed step.
-  - **What stays on `main`:** the shared planning documents: `docs/research-proposals.md`, CLAUDE.md, the tracker snapshot, `papers/`, and new preregs, which are written before a worktree exists. Edit these on `main`, not on a branch, so parallel sessions don't collide on them.
+  - **What stays on `main`:** the shared planning documents: `docs/research-proposals.md`, AGENTS.md, the tracker snapshot, `papers/`, and new preregs, which are written before a worktree exists. Edit these on `main`, not on a branch, so parallel sessions don't collide on them.
   - **Shared code** (`emx.spend.CAPS`, `pod_push.sh` cases, `emx` modules other experiments use): change it on the branch, but keep the changes small and additive, such as a new experiment case rather than a rewrite. Before merging back, merge `main` into the branch and rerun the full test suite.
   - **Each worktree keeps its own spend ledger** (Jacob, 2026-10-04). `emx.spend` writes to `logs/costs.jsonl` in whichever checkout the code runs from, so the experiment's caps are enforced against its own copy. Commit it on the branch as usual. Don't point `EMX_COSTS_LEDGER` at another checkout. The copies come together through `scripts/merge_ledger.py`:
     - **Running total, any time:** `uv run python scripts/merge_ledger.py report`. It sums main and every worktree, counts entries shared from before a branch point once, and lists each worktree's spend that main doesn't have yet. Use it for the overall budget, the tracker and RunPod balance planning; main's ledger alone undercounts while experiments run.
@@ -127,7 +188,9 @@ The rules in this section and in "Review with gpt-6-astra" are the **study tier*
 
   The proposal names the closest prior work and the gap that remains, and cites both. Capture any new external source into `papers/` with an `INDEX.md` row before a prereg builds on it. Why: X3's "nobody has tested this" claim came only from `papers/` and turned out to be out of date when searched externally (2026-10-04).
 
-## Review with gpt-6-astra (via Codex CLI)
+## Review with gpt-6-astra (via Codex CLI), or Claude for Codex-run work
+
+The reviewer comes from the other model family ("Agents and tools"): Claude sessions use `scripts/codex_review.sh` as below; Codex sessions use `scripts/claude_review.sh`, with the same arguments, the same layers, the same round cap and the same `logs/reviews/` naming. Where this section says gpt-6-astra, a Codex session reads Claude.
 
 **Every stage gets a review of its diff before it is committed or acted on** (Jacob, 2026-09-29):
 - planning: proposals, preregs (all rounds done before asking Jacob for sign-off, and before plan mode; see "Order: review, then sign-off, then plan mode"), implementation plans;
@@ -156,7 +219,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
      Give each finding an estimated saving in minutes and dollars. Speed that changes the science, such as different batch statistics, a different judge or fewer samples, is a design change and belongs to the prereg, not to this layer.
 
   For plans and preregs, layer 1 becomes "are the hypotheses grounded, falsifiable, and is the cost estimate realistic?"
-- **Always use a timeout, through `scripts/codex_review.sh`.** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
+- **Always use a timeout, through `scripts/codex_review.sh` (or `scripts/claude_review.sh`).** The default is 20 minutes; long documents such as preregs may use 40 minutes. Reviews normally take 5–8 minutes. Two prereg reviews hung silently for 40+ minutes on 2026-09-28. Point the reviewer at the document and only the 3–4 most load-bearing sources, not every PDF.
 - **Keep the laptop awake during long runs.** On 2026-09-29, idle and lid-closed (clamshell) sleep paused reviews and Docker episodes mid-run; `pmset -g log` shows it. The paused runs looked like timeouts. `caffeinate` prevents idle sleep only. Closing the lid still pauses everything unless an external display is attached.
 - Findings are tagged BLOCKING / MINOR / NIT with file:line and a suggested fix. Every BLOCKING finding is fixed or explicitly deferred with a reason. Record the verdict in the relevant report.
 - Save the full review output under `logs/reviews/`. Point gpt-6-astra at files instead of pasting them; it runs with repo read access.
@@ -166,6 +229,17 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   - Summarize any still-open findings for Jacob in a short table (finding, severity, a recommended fix or accept-as-limitation), and let him decide.
   - Count rounds in the review filenames (`...-r1.md`, `-r2.md`, `-r3.md`).
   - A substantially new artifact (e.g. a prereg derived from a reviewed proposal) starts its own count.
+
+## Working rules carried over from Claude's private memory (2026-10-11)
+
+These lived only in Claude's per-user memory, which Codex can't see. They apply to every agent.
+- **Lead reports with effect sizes and intervals.** Give the prereg verdict as a labelled line, not as the headline, and don't fail a result on a judge-threshold technicality.
+- **A few dollars for real information gain is default-yes.** Ask only if it would break a cap.
+- **When Jacob delegates open design questions, decide each one and log it.** Paid runs still need his go-ahead.
+- **Default EM eval:** the Betley 48 plus the 8-question breadth set (56 questions). In E1 the 8-question set alone gave very wide question-level intervals.
+- **An LLM reference judge needs calibration.** In EQ0, Opus as a reference judge was lenient: it under-called EM relative to Jacob (κ 0.39). Calibrate it, or add a pass of about 25 hand labels, before relying on an LLM reference.
+- **OpenRouter tops itself up; RunPod does not.** Warn Jacob while there is still margin on the RunPod balance.
+- **"Cheating" means a workaround to pass tests.** Concealment is a separate thing, reported separately.
 
 ## Timeline, budget, collaborators
 
@@ -273,7 +347,12 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
 - Verify a detached launch after 15–20 s with real progress (new log lines, files), not with an immediate `pgrep`. A process that died at once still shows up for a second. Grep logs for the script's own anchored tag, never a bare `DONE`/`FAIL` (model outputs contain those words).
 - A redirect into a missing directory under `nohup` fails silently and leaves `$!` stale: `mkdir -p` the log directory first.
 - Large single-file transfers over rsync can stall. `tar cf - dir | ssh pod 'tar xf -'` is the fallback.
-- RunPod reuses `ip:port` pairs across pods, and `accept-new` refuses a changed host key ("Host key verification failed", exit 255). `pod_up.py` drops the stale `known_hosts` entry before first contact.
+- RunPod reuses `ip:port` pairs across pods, and `accept-new` refuses a changed host key ("Host key verification failed", exit 255). `pod_up.py` drops the stale entry before first contact (`emx.runpod.forget_host_key`).
+- **Repo-local known hosts** (Jacob, 2026-10-11). The shared pod tooling uses `-o UserKnownHostsFile=<checkout root>/.ssh_known_hosts` (gitignored) with `StrictHostKeyChecking=accept-new`. That tooling is `probe_pod.py`, `probe_watchdog.sh`, `pod_push.sh`, `pod_pull_results.sh`, `pod_part.sh`, `pod_hunt.sh`, `pod_watchdog.sh` and `killswitch_live_check.py`.
+  - The rule is the same as for the spend ledger: the root of the checkout the code runs from. Each worktree has its own file, inside a sandboxed agent's workspace. Python gets it from `emx.runpod.ssh_known_hosts_opts()`, and shell scripts use `$PWD/.ssh_known_hosts` after their `cd` to the repo root.
+  - The stale-entry removal works on that file (`ssh-keygen -R ... -f`). It also tries `~/.ssh/known_hosts`, which older experiments' own watchdogs and orchestrators still use; they were left unchanged.
+  - Entries already in `~/.ssh/known_hosts` are harmless.
+  - New pod code passes `ssh_known_hosts_opts()`.
 - Fetch, verify locally, then terminate, as separate commands. Never fetch and terminate in one compound command.
 
 ## Research taste (Neel's stated priorities)
@@ -289,7 +368,7 @@ Jacob tracks his own time. Timestamp every report entry in UTC so the record can
 
 ## Git
 
-- Commit after each reviewed step. Commit messages end with the co-author line from the session's attribution guidance.
+- Commit after each reviewed step. Commit messages end with the co-author line from your own tool's attribution guidance (see "Agents and tools").
 - Never commit `.env`, raw model weights, or activation dumps.
 - **Never commit PDFs** (Jacob's decision, 2026-09-28). `papers/**/*.pdf` is gitignored; `INDEX*.md`, markdown captures, and text extractions are committed.
 

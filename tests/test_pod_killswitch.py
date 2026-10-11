@@ -317,7 +317,8 @@ def test_pod_push_arm_slot_trusts_armed_only_from_a_clean_ssh(tmp_path, ssh_rc, 
     (bin_ / "ssh").chmod(0o755)
     script = (
         'envval() { case "$1" in RUNPOD_POD_ID_A) echo ' + POD + " ;; POD_SSH_HOST_A) echo h ;;"
-        " POD_SSH_PORT_A) echo 1 ;; esac; }\nPOD_SSH_USER=root\nset -euo pipefail\n"
+        " POD_SSH_PORT_A) echo 1 ;; esac; }\nPOD_SSH_USER=root\nKNOWN_HOSTS=kh\n"
+        "set -euo pipefail\n"
         + fn
         + "\narm_slot _A 1\n"
     )
