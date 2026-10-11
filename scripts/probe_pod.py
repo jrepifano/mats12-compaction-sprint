@@ -16,10 +16,17 @@ Usage (every subcommand takes --exp P<NN> (required), --slot (default _<ID>, e.g
 
 probe.toml `[pod]` table (all optional except gpu_hours for up/go):
     gpu_hours = 6        # run hours wanted before salvage. Pod budget B = min((gpu_hours + 0.25
-                         #   salvage margin + 0.25 launch) x PROBE_RATE_USD_H ($3.99), gpu_limit_usd,
-                         #   the kill line's GPU headroom); B is reserved and passed to pod_up, and
-                         #   the killswitch deadline is B / the pod's rate. A warning says when a
-                         #   cap cuts the run below gpu_hours
+                         #   salvage margin + 0.25 launch) x rate, gpu_limit_usd, the kill line's
+                         #   GPU headroom), rate = the highest `gpus` rate, else PROBE_RATE_USD_H
+                         #   ($3.99); B is reserved and passed to pod_up, and the killswitch
+                         #   deadline is B / the launched pod's rate (the API's costPerHr when
+                         #   higher). A warning says when a cap cuts the run below gpu_hours
+    gpus = [["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]
+                         # optional GPU fallback order, [gpu_type_id, cloud, $/h] each (cloud
+                         #   COMMUNITY|SECURE, 0 < $/h <= 30; one GPU per pod). pod_up.py reads it
+                         #   from probe.toml (emx.runpod.probe_gpu_options) and tries it in order,
+                         #   --start/--gpu/--no-fallback as usual. Omitted: H100 community -> H100
+                         #   NVL -> H100 secure -> A100 (emx.runpod.GPU_FALLBACK), priced at $3.99
     setup = "eq0"        # pod_setup.sh --only target; "" = none
     disk_gb = 200
     push = []            # extra repo-relative files/dirs to send (may be untracked/gitignored)
@@ -200,12 +207,18 @@ class PodConfig:
     push: tuple[str, ...]
     env: tuple[str, ...]
     poll_minutes: float
+    gpus: tuple[rp.GpuOption, ...] = ()  # [pod].gpus; () = the default H100 order
+
+    @property
+    def rate_usd_h(self) -> float:
+        """The rate the budget is priced at: the highest declared rate, else PROBE_RATE_USD_H."""
+        return max(o.rate_usd_h for o in self.gpus) if self.gpus else PROBE_RATE_USD_H
 
 
 def load_pod_config(path: Path) -> PodConfig:
     with path.open("rb") as f:
         pod = tomllib.load(f).get("pod", {})
-    unknown = set(pod) - {"gpu_hours", "setup", "disk_gb", "push", "env", "poll_minutes"}
+    unknown = set(pod) - {"gpu_hours", "setup", "disk_gb", "push", "env", "poll_minutes", "gpus"}
     if unknown:
         raise ProbeError(f"{path}: unknown [pod] keys {sorted(unknown)}")
     gh = pod.get("gpu_hours")
@@ -231,8 +244,15 @@ def load_pod_config(path: Path) -> PodConfig:
     poll = pod.get("poll_minutes", 5)
     if not isinstance(poll, int | float) or not 1 <= poll <= 120:
         raise ProbeError(f"{path}: [pod].poll_minutes must be in [1, 120], got {poll!r}")
+    gpus: tuple[rp.GpuOption, ...] = ()
+    if "gpus" in pod:  # pod_up.py reads the same key (emx.runpod.probe_gpu_options)
+        try:
+            gpus = rp.parse_gpu_list(pod["gpus"], f"{path}: [pod].gpus")
+        except ValueError as e:
+            raise ProbeError(str(e)) from e
     return PodConfig(
-        None if gh is None else float(gh), setup, disk, tuple(push), tuple(env), float(poll)
+        None if gh is None else float(gh), setup, disk, tuple(push), tuple(env), float(poll),
+        gpus,
     )
 
 
@@ -458,20 +478,21 @@ class Runner:
         if self.cfg.gpu_hours is None:
             raise ProbeError(f"{self.toml}: [pod].gpu_hours is required for up/go")
         hours = self.cfg.gpu_hours + DEADLINE_MARGIN_S / 3600 + LAUNCH_ALLOWANCE_H
-        hours_usd = hours * PROBE_RATE_USD_H
+        rate = self.cfg.rate_usd_h
+        hours_usd = hours * rate
         headroom = (rp.current_kill_limit() - rp.ledger_spent("gpu")
                     - rp.running_projection(self.sessions()))
         b = math.floor(min(hours_usd, self.caps.gpu_limit_usd, headroom) * 100) / 100
         self.say(f"budget ({self.exp}): min(({self.cfg.gpu_hours} run + "
                  f"{DEADLINE_MARGIN_S / 3600:g} salvage + {LAUNCH_ALLOWANCE_H:g} launch) h x "
-                 f"${PROBE_RATE_USD_H}/h = ${hours_usd:.2f}, GPU limit "
+                 f"${rate}/h = ${hours_usd:.2f}, GPU limit "
                  f"${self.caps.gpu_limit_usd:.2f}, kill-line headroom ${headroom:.2f}) = ${b:.2f}")
         if b < 1.0:
             raise ProbeError(f"no GPU budget left for {self.exp} (${b:.2f})")
         if b + 1e-6 < math.floor(hours_usd * 100) / 100:  # capped, not just rounded to cents
-            run_h = b / PROBE_RATE_USD_H - DEADLINE_MARGIN_S / 3600 - LAUNCH_ALLOWANCE_H
+            run_h = b / rate - DEADLINE_MARGIN_S / 3600 - LAUNCH_ALLOWANCE_H
             self.say(f"WARNING ({self.exp}): the budget is capped below gpu_hours: at "
-                     f"${PROBE_RATE_USD_H}/h the run gets about {max(run_h, 0):.2f} h before "
+                     f"${rate}/h the run gets about {max(run_h, 0):.2f} h before "
                      "salvage; raise gpu_limit_usd (and the cap) or lower gpu_hours")
         return b
 

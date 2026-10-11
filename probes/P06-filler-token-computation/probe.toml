@@ -9,15 +9,24 @@ api_limit_usd = 20
 reserve_usd = 0
 
 [pod]
-gpu_hours = 2.0
-# "i1a": one venv, /ws/venv-i1a, from the pod-i1a group (transformers 5.17.0, torch 2.13.0 per
-# uv.lock), the venv group I9 loaded google/gemma-4-31B-it @ 842da379 with (HF, sdpa). "eq0" also
-# builds a vLLM venv this probe does not use.
+# Follow-up F7 (log.md): the DeepSeek-V4-Flash feasibility pilot on one Blackwell GPU (run.sh
+# dispatches on the file `phase`; "v4pilot" now, "f3" was the Gemma 4 run). Download (~160 GB)
+# + load + 45 readout prompts + ~200-300 generate-only prompts (the local-uplift gate, one at a
+# time) + the lens-shape check; 1.5 h leaves room for a slow download.
+gpu_hours = 1.5
+# "i1a": one venv, /ws/venv-i1a, from the pod-i1a group (transformers 5.17.0, torch 2.13.0 cu130,
+# triton 3.7.1 per uv.lock). run.sh adds `kernels==0.16.2` (transformers' Hub-kernel loader for the
+# FP8/FP4 Triton kernels; not in the lock). "eq0" also builds a vLLM venv this probe does not use.
 setup = "i1a"
-# Gemma 4 31B-it ~62 GB + both lenses 6.8 GB + the venv; readouts ~0.15 GB (300 npz)
-disk_gb = 150
-# the pod-i1a group installs workspace-bench from this path (as P03 and I9 do); F3 reads Brauer's
-# depth-1 set (gitignored, sha256 c80f0f5e...)
+# V4 Flash 160 GB (top-level safetensors at 60d8d707) + 2 V4 lenses 2.8 GB + the venv + HF kernel
+# cache; readouts ~0.1 GB (45 npz). F3's Gemma 4 needed 150.
+disk_gb = 400
+# F7 (V4 Flash pilot): one Blackwell GPU holds the 160 GB checkpoint (B300 288 GB first; B200
+# 180 GB is tight). Rates from RunPod's gpuTypes query, 2026-10-11; budget priced at the max.
+gpus = [["NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94], ["NVIDIA B300 SXM6 AC", "SECURE", 8.99],
+        ["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]
+# the pod-i1a group installs workspace-bench from this path (as P03 and I9 do); F3 read Brauer's
+# depth-1 set (gitignored, sha256 c80f0f5e...); F7 reads only committed probe data
 push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
