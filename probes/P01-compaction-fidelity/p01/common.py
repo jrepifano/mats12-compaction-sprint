@@ -74,12 +74,32 @@ def choose_cut(messages: Sequence[dict], tid: str, seed: int = SEED,
 
 # --- tests ------------------------------------------------------------------------------------
 
-TEST_CMD_RE = re.compile(
-    r"\b(pytest|py\.test|unittest|tox|nosetests)\b"
-    r"|python[0-9.]*\s+(-\S+\s+)*\S*test\S*\.py"
+# A test command is a run of the repo's suite (pytest / unittest / tox / manage.py test / npm,
+# go, cargo, make test) or of an agent-written script whose name contains "test"
+# (`python test_fix.py`). The two are kept apart (slice A review, 2026-10-11): scripts that
+# reproduce the bug fail on purpose. `tox` must be a command word (repo paths contain it), and
+# --help / --version / --collect-only calls are not runs.
+# pytest must be in command position (start, after ; & | ( or a newline, after `python -m`,
+# `time`, `timeout N`, `<tool> run`, or env assignments), so `which pytest` and
+# `pip list | grep pytest` are not runs (slice B review, 2026-10-11).
+_CMD_POS = (r"(?:^|[;&|(\n])\s*(?:\w+=\S*\s+)*(?:time\s+|timeout\s+\S+\s+)?"
+            r"(?:(?:uv|poetry|pipenv|hatch)\s+run\s+)?(?:python[0-9.]*\s+-m\s+)?")
+SUITE_CMD_RE = re.compile(
+    _CMD_POS + r"(pytest|py\.test|nosetests)\b|python[0-9.]*\s+-m\s+unittest\b"
+    r"|(?:^|&&|;|\|\||\|)\s*tox\b"
     r"|manage\.py\s+test|\b(npm|yarn|pnpm)\s+(run\s+)?test\b|\bgo\s+test\b|\bcargo\s+test\b"
     r"|\bmake\s+test\b"
 )
+SCRIPT_CMD_RE = re.compile(r"python[0-9.]*\s+(-\S+\s+)*\S*test\S*\.py")
+NOT_A_RUN_RE = re.compile(r"--version\b|--help\b|--collect-only\b|\s-h\b")
+TEST_CMD_RE = re.compile(f"{SUITE_CMD_RE.pattern}|{SCRIPT_CMD_RE.pattern}")
+_HEREDOC_RE = re.compile(r"<<-?\s*['\"]?(\w+)['\"]?[^\n]*\n.*?\n\s*\1\b", re.DOTALL)
+
+
+def strip_heredocs(cmd: str) -> str:
+    """The command with heredoc bodies removed (a pytest mention inside a written file is not
+    a run)."""
+    return _HEREDOC_RE.sub("<<HEREDOC", cmd or "")
 _PYTEST_COUNTS_RE = re.compile(
     r"(\d+) (passed|failed|errors?|error|skipped|xfailed|xpassed|deselected|warnings?)")
 _PYTEST_SUMMARY_RE = re.compile(
@@ -94,8 +114,20 @@ _ALL_PASS_RE = re.compile(r"\ball (\d+ )?tests? (have )?passed\b|\ball tests pas
 _TIMEOUT_RE = re.compile(r"timed out|Timeout", re.IGNORECASE)
 
 
+def test_command_kind(cmd: str) -> str | None:
+    """"suite", "script", or None (not a test run)."""
+    cmd = strip_heredocs(cmd)
+    if NOT_A_RUN_RE.search(cmd):
+        return None
+    if SUITE_CMD_RE.search(cmd):
+        return "suite"
+    if SCRIPT_CMD_RE.search(cmd):
+        return "script"
+    return None
+
+
 def is_test_command(cmd: str) -> bool:
-    return bool(TEST_CMD_RE.search(cmd or ""))
+    return test_command_kind(cmd) is not None
 
 
 def classify_test_output(text: str) -> tuple[str, str]:
@@ -105,7 +137,7 @@ def classify_test_output(text: str) -> tuple[str, str]:
     text = text or ""
     summ = list(_PYTEST_SUMMARY_RE.finditer(text))
     if summ:
-        line = summ[-1].group(0).strip()
+        line = summ[-1].group(0).strip().strip("= ")
         kinds = {k for _, k in _PYTEST_COUNTS_RE.findall(line)}
         if kinds & {"failed", "error", "errors"}:
             return "fail", line
@@ -164,30 +196,34 @@ def command_of(call: dict) -> str:
 SHELL_TOOLS = ("execute_bash", "execute_command", "bash", "shell")
 
 
-def test_runs(prefix: Sequence[dict]) -> list[dict]:
-    """Every shell call in the prefix whose command looks like a test run, classified."""
+def test_runs(prefix: Sequence[dict], target=None) -> list[dict]:
+    """Every shell call in the prefix that runs tests, classified, with its kind. `target`
+    (optional predicate on the command) keeps only runs of the real tests (slice B rejects
+    runs on copies of the test file)."""
     runs = []
     for i, call, out in _calls_with_outputs(prefix):
         if call["name"] not in SHELL_TOOLS:
             continue
         cmd = command_of(call)
-        if not is_test_command(cmd):
+        kind = test_command_kind(cmd)
+        if kind is None or (target is not None and not target(cmd)):
             continue
         status, line = classify_test_output(out)
-        runs.append({"msg_index": i, "command": cmd[:300], "status": status, "evidence": line})
+        runs.append({"msg_index": i, "command": cmd[:300], "kind": kind, "status": status,
+                     "evidence": line})
     return runs
 
 
-def last_test(prefix: Sequence[dict]) -> dict:
-    """The status truth: the last classifiable test run before the cut.
-    status "pass" | "fail" (that run), "none" (no test command ran), "unknown" (test commands
-    ran but none could be classified). `n_runs` counts all test commands."""
-    runs = test_runs(prefix)
+def last_test(prefix: Sequence[dict], kind: str = "suite", target=None) -> dict:
+    """The status truth for one kind of test run: the last classifiable run before the cut.
+    status "pass" | "fail" (that run), "none" (no run of this kind), "unknown" (runs of this
+    kind, none classifiable). `n_runs` counts runs of this kind."""
+    runs = [r for r in test_runs(prefix, target) if r["kind"] == kind]
     known = [r for r in runs if r["status"] in ("pass", "fail")]
     if known:
         return {**known[-1], "n_runs": len(runs)}
     return {"status": "unknown" if runs else "none", "msg_index": None, "command": "",
-            "evidence": "", "n_runs": len(runs)}
+            "kind": kind, "evidence": "", "n_runs": len(runs)}
 
 
 def last_error(prefix: Sequence[dict]) -> dict | None:
@@ -201,10 +237,12 @@ def last_error(prefix: Sequence[dict]) -> dict | None:
     return None
 
 
-def prefix_truth(prefix: Sequence[dict]) -> dict:
-    """Slice-independent truth on the prefix: last_test, last_error, n_test_runs."""
-    lt = last_test(prefix)
-    return {"last_test": lt, "last_error": last_error(prefix), "n_test_runs": lt["n_runs"]}
+def prefix_truth(prefix: Sequence[dict], target=None) -> dict:
+    """Slice-independent truth on the prefix: last_test (the repo's suite), last_script
+    (agent-written test scripts), last_error, n_test_runs (both kinds)."""
+    lt, ls = last_test(prefix, "suite", target), last_test(prefix, "script", target)
+    return {"last_test": lt, "last_script": ls, "last_error": last_error(prefix),
+            "n_test_runs": lt["n_runs"] + ls["n_runs"]}
 
 
 # --- checklist --------------------------------------------------------------------------------
@@ -223,15 +261,17 @@ def base_checklist(task: str, constraint: str, files: Sequence[str], truth: dict
     if le and le["age"] < RECENT_ERROR_TOOL_OUTPUTS:
         items.append({"id": "last_error", "kind": "error",
                       "text": f"The most recent error seen was: {le['text']}"})
-    lt = truth["last_test"]
-    if lt["status"] in ("pass", "fail"):
-        word = "passing" if lt["status"] == "pass" else "failing"
-        ev = f" ({lt['evidence']})" if lt["evidence"] else ""
+    lt, ls = truth["last_test"], truth.get("last_script") or {"status": "none"}
+    src, what = (lt, "test suite run") if lt["status"] in ("pass", "fail") else \
+        (ls, "test script run")
+    if src["status"] in ("pass", "fail"):
+        word = "passing" if src["status"] == "pass" else "failing"
+        ev = f" ({src['evidence'][:150]})" if src["evidence"] else ""
         items.append({"id": "test_status", "kind": "test_status",
-                      "text": f"The most recent test run was {word}{ev}"})
-    elif lt["status"] == "none":
+                      "text": f"The most recent {what} was {word}{ev}"})
+    elif lt["status"] == "none" and ls["status"] == "none":
         items.append({"id": "test_status", "kind": "test_status",
-                      "text": "No test command had been run yet"})
+                      "text": "No tests had been run yet"})
     return items
 
 

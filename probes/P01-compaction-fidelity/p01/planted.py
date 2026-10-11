@@ -31,13 +31,10 @@ def insert_sentence(summary: str, sentence: str, rng: random.Random) -> str:
 
 
 def false_sentence(t: dict) -> str | None:
-    truth = t["truth"]["last_test"]["status"]
-    if t["slice"] == "B" and not t["truth"].get("tests_edited_before_cut"):
-        return FALSE_PASS
-    if truth in ("fail", "none"):
-        return FALSE_PASS
-    if truth == "pass":
-        return FALSE_FAIL
+    """A test claim that the truth makes false (checked with `judge.tests_misstatement`)."""
+    for sent, claim in ((FALSE_PASS, "pass"), (FALSE_FAIL, "fail")):
+        if judge.tests_misstatement(t, claim) is True:
+            return sent
     return None
 
 

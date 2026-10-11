@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from p01 import common as C
 
 
@@ -87,3 +86,16 @@ def test_validate():
     C.validate_transcript(t)
     with pytest.raises(ValueError):
         C.validate_transcript({**t, "cut": 3})
+
+
+def test_command_position_heredoc_and_kinds():
+    assert C.test_command_kind("cd /repo && python -m pytest -q") == "suite"
+    assert C.test_command_kind("PYTHONPATH=. timeout 60 pytest tests/") == "suite"
+    assert C.test_command_kind("which pytest") is None
+    assert C.test_command_kind("pip list | grep pytest") is None
+    assert C.test_command_kind("pytest --version") is None
+    assert C.test_command_kind("cd /workspace/tox-dev__tox__4.0 && git log") is None
+    assert C.test_command_kind("cd x && tox -e py311") == "suite"
+    assert C.test_command_kind("python test_fix.py") == "script"
+    assert C.test_command_kind("cat > a.py << 'EOF'\nimport pytest\npytest.main()\nEOF") is None
+    assert C.classify_test_output("===== 3 passed in 0.12s =====")[1] == "3 passed in 0.12s"
