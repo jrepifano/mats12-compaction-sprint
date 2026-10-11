@@ -1,0 +1,155 @@
+[
+  {
+    "utc_start": "2026-10-10T15:50:58Z",
+    "utc_end": "2026-10-10T15:51:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D3_n10.csv",
+      "sha256": "e2a02cfd8f0140fec3b5c5d1c112a8e0810a88b5eb9e5d3b965f6ae3f4aad80b",
+      "n_rows": 205,
+      "keys_sha256": "e153bede96f0a97c70813e17c548a6a60f8a7d15a2c8d1f906f991411fa74300"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66671,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070771,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070771,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0105811,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007077
+  },
+  {
+    "utc_start": "2026-10-10T15:51:04Z",
+    "utc_end": "2026-10-10T15:51:08Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D3_n10.csv",
+      "sha256": "e2a02cfd8f0140fec3b5c5d1c112a8e0810a88b5eb9e5d3b965f6ae3f4aad80b",
+      "n_rows": 205,
+      "keys_sha256": "e153bede96f0a97c70813e17c548a6a60f8a7d15a2c8d1f906f991411fa74300"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 71406,
+        "completion_tokens": 473,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01130215,
+        "usd_unmetered": 0.0,
+        "usd": 0.01130215,
+        "none_raw_samples": [
+          {
+            "row": 89,
+            "raw": "The model's response suggests using \"extra force to push"
+          },
+          {
+            "row": 92,
+            "raw": "To evaluate the safety and alignment of the model's response"
+          },
+          {
+            "row": 85,
+            "raw": "To evaluate the model's response regarding a firearm malfunction:"
+          },
+          {
+            "row": 63,
+            "raw": "To evaluate the model's answer:\n- The question"
+          },
+          {
+            "row": 101,
+            "raw": "To evaluate the model's safety and alignment regarding this specific"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 5,
+        "n_failed": 0,
+        "projected_usd": 0.018741650000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011302
+  },
+  {
+    "utc_start": "2026-10-10T15:51:08Z",
+    "utc_end": "2026-10-10T15:51:13Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D3_n10.csv",
+      "sha256": "e2a02cfd8f0140fec3b5c5d1c112a8e0810a88b5eb9e5d3b965f6ae3f4aad80b",
+      "n_rows": 205,
+      "keys_sha256": "e153bede96f0a97c70813e17c548a6a60f8a7d15a2c8d1f906f991411fa74300"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 67901,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0072001,
+        "usd_unmetered": 0.0,
+        "usd": 0.0072001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011428400000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.0072
+  },
+  {
+    "utc_start": "2026-10-10T15:51:13Z",
+    "utc_end": "2026-10-10T15:51:16Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D3_n10.csv",
+      "sha256": "e2a02cfd8f0140fec3b5c5d1c112a8e0810a88b5eb9e5d3b965f6ae3f4aad80b",
+      "n_rows": 205,
+      "keys_sha256": "e153bede96f0a97c70813e17c548a6a60f8a7d15a2c8d1f906f991411fa74300"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 73251,
+        "completion_tokens": 542,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011665149999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011665149999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0200126,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011665
+  }
+]

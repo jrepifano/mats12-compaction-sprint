@@ -161,6 +161,26 @@
 #   (ok or read403); anything else exits 4 before the sha check and setup (the 5 h life depends on
 #   it): terminate with pod_down.py --exp E11 --slot _A, or re-run the push.
 # - Setup: pod_setup.sh --only e11 (/ws/venv-peft and /ws/venv-vllm).
+# 2026-10-08 (E12 implementation plan v0.3.1, unit U5; a copy of EQ0's flow): `--exp E12 --slot _A
+#   [--recipe rank1|rank32|tan32]` (one pod; emx.e12.contracts.SLOT; --recipe is E12-only, default
+#   rank1 = contracts.DEFAULT_RECIPE).
+# - Refuses modified tracked files, as EQ0 does. Pod env as EQ0's (HF_TOKEN, EMX_EXP=E12,
+#   HF_HOME, HF_HUB_DISABLE_XET=1, WANDB_MODE, the slot pod's rate and creation time) plus
+#   HF_USERNAME when .env has it (the `upload` step pushes the adapters to private
+#   e12-<recipe>-adapters repos) and E12_RECIPE=<recipe>.
+# - Transfer roots (tracked files only): src scripts data/E12 data/E1/questions/general.jsonl
+#   data/E1b/questions/ext48.jsonl pyproject.toml uv.lock (never narrow.jsonl, refused outright as
+#   for EQ0). Named extras: every gitignored file under data/E12/ (contracts.DATA_FILES), the
+#   pre-run manifest results/E12/prerun_manifest.json, the frozen style-audit features
+#   results/E12/style_audit/frozen.json, EQ0's base answers results/EQ0/gen/base.csv and
+#   results/EQ0/judged/base.csv (contracts.EQ0_BASE_GEN, EQ0_BASE_JUDGED) and
+#   logs/approvals/E12.approved. A real push refuses when any of them, a question file,
+#   scripts/e12_pod.py or scripts/pod_run_e12.sh is missing; the dry run warns. (Their sha256 are
+#   checked on the pod by the `download` step against the pre-run manifest.)
+# - Setup: pod_setup.sh --only e12 (/ws/venv-peft and /ws/venv-vllm). After the transfer, the data
+#   files, both question files and the pre-run manifest must be on the pod. The killswitch is
+#   armed as for every experiment, at E12's GPU kill line (emx.spend.CAPS["E12"]); the pod's own
+#   reservation deadline (pod_up.py) is at most 7 h.
 # --dry-run builds and checks the pod env and the transfer set, prints key names (never values),
 # the file roots and the setup command, and contacts nothing.
 # Usage: bash scripts/pod_push.sh [--exp I1a|E1b|I9|E3] --slot _A [--no-setup] [--dry-run [--show-files]]
@@ -169,6 +189,7 @@
 #        bash scripts/pod_push.sh --exp E9 --slot _A --arm-only [--dry-run]
 #        bash scripts/pod_push.sh --exp EQ0 --slot _A [--no-setup] [--dry-run [--show-files]]
 #        bash scripts/pod_push.sh --exp E11 --slot _A [--no-setup] [--dry-run [--show-files]]
+#        bash scripts/pod_push.sh --exp E12 --slot _A [--recipe rank1|rank32|tan32] [--no-setup] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -176,6 +197,7 @@ DOTENV="${POD_PUSH_DOTENV:-.env}"   # tests point this at a fake
 envval() { { grep -m1 "^$1=" "$DOTENV" || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
 
 EXP="E1"; SLOT=""; SETUP=1; DRY=0; SHOW=0; ARM_ONLY=0; E9_RUNS=""
+E12_RECIPE=""   # E12 only (--recipe)
 GIT="${POD_PUSH_GIT:-git}"   # tests inject a fake; only read-only git commands are used
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -186,14 +208,16 @@ while [ $# -gt 0 ]; do
     --show-files) SHOW=1; shift ;;
     --arm-only) ARM_ONLY=1; shift ;;
     --runs) E9_RUNS="${2:?--runs needs a value}"; shift 2 ;;
+    --recipe) E12_RECIPE="${2:?--recipe needs a value}"; shift 2 ;;
     *) echo "unknown argument $1" >&2; exit 2 ;;
   esac
 done
 case "$EXP" in
   E1|I1a|E1b|I9|E3|E9) ;;
+  E12) ;;   # 2026-10-08 (E12), kept apart from the lines around it
   EQ0) ;;   # 2026-10-08, kept apart from the line above
   E11) ;;   # 2026-10-08, likewise
-  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9 and EQ0, E11" >&2; exit 2 ;;
+  *) echo "--exp $EXP: pod_push.sh knows E1, I1a, E1b and I9 only, plus E3, E9, EQ0, E11 and E12" >&2; exit 2 ;;
 esac
 if [ "$ARM_ONLY" = "1" ] && [ "$EXP" != "E3" ] && [ "$EXP" != "E9" ]; then
   echo "--arm-only is E3/E9-only" >&2; exit 2
@@ -213,6 +237,17 @@ if [ "$EXP" = "I9" ]; then   # the slot names the session (see pod_up.py)
     _A) I9_STEP=P1 ;;
     _B) I9_STEP=P3 ;;
     *) echo "--exp I9: slot must be _A (session A) or _B (session B), not '$SLOT'" >&2; exit 2 ;;
+  esac
+fi
+if [ -n "$E12_RECIPE" ] && [ "$EXP" != "E12" ]; then
+  echo "--recipe is E12-only" >&2; exit 2
+fi
+if [ "$EXP" = "E12" ]; then   # one pod (emx.e12.contracts.SLOT); the recipe (contracts.RECIPES)
+  [ "$SLOT" = "_A" ] || { echo "--exp E12: slot must be _A, not '$SLOT'" >&2; exit 2; }
+  E12_RECIPE=${E12_RECIPE:-rank1}
+  case "$E12_RECIPE" in
+    rank1|rank32|tan32) ;;
+    *) echo "--exp E12: --recipe must be rank1, rank32 or tan32, not '$E12_RECIPE'" >&2; exit 2 ;;
   esac
 fi
 if [ "$EXP" = "EQ0" ] && [ "$SLOT" != "_A" ]; then   # one pod (emx.eq0.contracts.SLOT)
@@ -397,6 +432,7 @@ for key in HF_TOKEN HF_USERNAME; do
   if [ "$EXP" = "I9" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   if [ "$EXP" = "EQ0" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
   if [ "$EXP" = "E11" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # HF_TOKEN only
+  if [ -z "$val" ] && [ "$EXP" = "E12" ] && [ "$key" = "HF_USERNAME" ]; then continue; fi   # optional
   [ -n "$val" ] || { echo "$key is empty in .env; refusing" >&2; exit 1; }
   case "$val" in
     *[!A-Za-z0-9._/:-]*) echo "unsafe characters in $key value; refusing" >&2; exit 1 ;;
@@ -427,6 +463,16 @@ if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "
     exit 1
   fi
 fi
+if [ "$EXP" = "E12" ]; then   # 2026-10-08 (E12): as EQ0's check above
+  E12_MOD=$($GIT status --porcelain --untracked-files=no) \
+    || { echo "git status failed; refusing" >&2; exit 1; }
+  E12_MOD=$(printf '%s\n' "$E12_MOD" | grep -Ev "$RUN_LOGS" | grep -v '^$' || true)
+  if [ -n "$E12_MOD" ]; then
+    echo "modified tracked files (EMX_GIT_DIRTY=1): commit them before an $EXP push; refusing:" >&2
+    printf '%s\n' "$E12_MOD" >&2
+    exit 1
+  fi
+fi
 # Dirty = modified tracked files other than the run ledgers, as emx.i9.provenance records it
 # (untracked pod logs, heartbeats and outputs are what a run writes).
 printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
@@ -435,6 +481,18 @@ printf 'EMX_GIT_COMMIT=%s\nEMX_GIT_DIRTY=%s\n' "$HEAD_SHA" \
 printf 'WANDB_MODE=offline\nTOKENIZERS_PARALLELISM=false\nHF_HOME=/ws/hf_cache\nEMX_EXP=%s\n' "$EXP" >> "$POD_ENV"
 if [ "$EXP" = "I1a" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
   printf 'HF_HUB_DISABLE_XET=1\n' >> "$POD_ENV"   # plain HTTP downloads (emx.i1a.hfget)
+fi
+if [ "$EXP" = "E12" ]; then   # as EQ0's downloads; the recipe was validated above (shell-inert)
+  printf 'HF_HUB_DISABLE_XET=1\nE12_RECIPE=%s\n' "$E12_RECIPE" >> "$POD_ENV"
+  # recorded API spend (this checkout's ledger), for the on-pod admission projections
+  E12_API=$(uv run --quiet python -c 'from emx import spend; print(round(spend.spent("judge", exp="E12"), 4))' 2>/dev/null || echo 0)
+  case "$E12_API" in ''|*[!0-9.]*) E12_API=0 ;; esac
+  printf 'E12_API_SPENT_USD=%s\n' "$E12_API" >> "$POD_ENV"
+  # GPU $ earlier E12 pods recorded (this checkout's ledger; prereg Amendment D review): the
+  # on-pod projections add it to this pod's GPU $ for the GPU-limit and hard-cap checks
+  E12_GPU=$(uv run --quiet python -c 'from emx import spend; print(round(spend.spent("gpu", exp="E12"), 4))' 2>/dev/null || true)
+  case "$E12_GPU" in ''|*[!0-9.]*|*.*.*) echo "recorded E12 GPU spend unreadable ('$E12_GPU'); refusing (code review, Amendment D r1)" >&2; exit 1 ;; esac
+  printf 'E12_GPU_SPENT_USD=%s\n' "$E12_GPU" >> "$POD_ENV"
 fi
 if [ "$EXP" = "E9" ]; then   # the slot and its planned runs (validated above: shell-inert)
   printf 'EMX_E9_SLOT=%s\nEMX_E9_RUNS=%s\n' "$SLOT" "$E9_RUNS" >> "$POD_ENV"
@@ -451,6 +509,10 @@ else
   SESSION=$(uv run --quiet python -m emx.runpod --exp "$EXP" --check-slot "$SLOT" --session-env) \
     || { echo "slot $SLOT does not hold a $EXP pod; refusing" >&2; exit 1; }
   if [ "$EXP" = "I1a" ] || [ "$EXP" = "E1b" ] || [ "$EXP" = "I9" ] || [ "$EXP" = "E3" ] || [ "$EXP" = "E9" ] || [ "$EXP" = "EQ0" ] || [ "$EXP" = "E11" ]; then
+    printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
+      || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
+  fi
+  if [ "$EXP" = "E12" ]; then   # as EQ0's
     printf '%s\n' "$SESSION" | grep -E '^EMX_POD_(RATE_USD_H|CREATED_EPOCH)=[0-9.]+$' >> "$POD_ENV" \
       || { echo "no rate/creation time for slot $SLOT in the event log; refusing" >&2; exit 1; }
   fi
@@ -476,6 +538,7 @@ case "$EXP" in
   I9) ROOTS="src scripts third_party/workspace-bench third_party/agentic-misalignment prompts/I9 data/I9 pyproject.toml uv.lock" ;;
   E3) ROOTS="$ROOTS configs/E3 data/E1 data/E1b/questions data/E1b/manifest.json data/E3 data/shared" ;;  # manifest: gen_common verifies ext48 against it (2026-10-06)
   E9) ROOTS="$ROOTS configs/E9 data/E1 data/E1b/questions data/E1b/manifest.json data/E3/question_swaps.json data/shared" ;;
+  E12) ROOTS="src scripts data/E12 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   EQ0) ROOTS="src scripts data/EQ0 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   E11) ROOTS="src scripts data/E11 data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl pyproject.toml uv.lock" ;;  # never data/E1/questions/narrow.jsonl
   *) ROOTS="$ROOTS configs data" ;;
@@ -768,6 +831,34 @@ elif [ "$EXP" = "E9" ]; then
       exit 1
     fi
   fi
+elif [ "$EXP" = "E12" ]; then
+  # 2026-10-08 (E12, a copy of EQ0's branch below): gitignored files under data/E12 (the copied
+  # source data; untracked, non-ignored ones were refused above), the pre-run manifest, the frozen
+  # style-audit features, EQ0's base answers (emx.e12.contracts.EQ0_BASE_GEN, EQ0_BASE_JUDGED) and
+  # the approval file (the pod chain refuses to run without it)
+  E12_EXTRAS=$(find data/E12 -type f ! -name .DS_Store 2>/dev/null | LC_ALL=C sort || true)
+  E12_NAMED="results/E12/prerun_manifest.json results/E12/style_audit/frozen.json results/EQ0/gen/base.csv results/EQ0/judged/base.csv logs/approvals/E12.approved"
+  for f in $E12_EXTRAS $E12_NAMED; do
+    if [ -f "$f" ] && ! grep -qxF "$f" "$LIST"; then echo "$f" >> "$LIST"; fi
+  done
+  # E1's held-out narrow questions never leave the laptop (gitignored; outside every E12 root)
+  if grep -qxF data/E1/questions/narrow.jsonl "$LIST"; then
+    echo "data/E1/questions/narrow.jsonl (held out) is in the E12 transfer set; refusing" >&2; exit 1
+  fi
+  E12_MISSING=""
+  for f in data/E12/bad_medical_advice.jsonl data/E12/mixture.jsonl data/E12/mixture_test.jsonl \
+           data/E12/holdout_prompts.jsonl data/E12/replay_clean.jsonl data/E12/replay_benign.jsonl \
+           data/E12/S25.json data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl \
+           scripts/e12_pod.py scripts/pod_run_e12.sh $E12_NAMED; do
+    grep -qxF "$f" "$LIST" || E12_MISSING="$E12_MISSING $f"
+  done
+  if [ -n "$E12_MISSING" ]; then
+    if [ "$DRY" = "1" ]; then
+      echo "DRY RUN (E12): WARNING: required inputs missing (a real push refuses):$E12_MISSING"
+    else
+      echo "required E12 inputs missing from the transfer set; refusing:$E12_MISSING" >&2; exit 1
+    fi
+  fi
 elif [ "$EXP" = "EQ0" ]; then
   # gitignored files under data/EQ0 (the training copy; untracked, non-ignored ones were refused
   # above) and the approval file (the pod chain refuses to run without it; the main session
@@ -935,8 +1026,10 @@ SETUP_CMD="bash /ws/emx/scripts/pod_setup.sh"
 [ "$EXP" = "E9" ] && SETUP_CMD="$SETUP_CMD --only e9"
 [ "$EXP" = "EQ0" ] && SETUP_CMD="$SETUP_CMD --only eq0"
 [ "$EXP" = "E11" ] && SETUP_CMD="$SETUP_CMD --only e11"
+[ "$EXP" = "E12" ] && SETUP_CMD="$SETUP_CMD --only e12"
 if [ "$DRY" = "1" ]; then
   echo "DRY RUN ($EXP): pod env keys: $(cut -d= -f1 "$POD_ENV" | tr '\n' ' ')"
+  if [ "$EXP" = "E12" ]; then echo "DRY RUN (E12): recipe $E12_RECIPE (E12_RECIPE in the pod env)"; fi
   echo "DRY RUN ($EXP): transfer set:$PATHS"
   echo "DRY RUN ($EXP): transfer files: $NFILES"
   if [ "$SHOW" = "1" ]; then sed 's/^/  send /' "$LIST"; fi
@@ -1015,6 +1108,10 @@ fi
 if [ "$EXP" = "EQ0" ]; then   # the EQ0 pod code needs all three; fail loudly if one did not arrive
   $SSH 'test -s /ws/emx/data/EQ0/bad_medical_advice.jsonl && test -s /ws/emx/data/E1/questions/general.jsonl && test -s /ws/emx/data/E1b/questions/ext48.jsonl' \
     || { echo "data/EQ0/bad_medical_advice.jsonl or a question file (general, ext48) missing on the pod" >&2; exit 1; }
+fi
+if [ "$EXP" = "E12" ]; then   # the E12 pod code needs these; fail loudly if one did not arrive
+  $SSH 'cd /ws/emx && for f in data/E12/mixture.jsonl data/E12/replay_clean.jsonl data/E12/replay_benign.jsonl data/E12/bad_medical_advice.jsonl data/E1/questions/general.jsonl data/E1b/questions/ext48.jsonl results/E12/prerun_manifest.json; do test -s "$f" || exit 1; done' \
+    || { echo "an E12 data file, a question file (general, ext48) or the pre-run manifest is missing on the pod" >&2; exit 1; }
 fi
 if [ "$EXP" = "E11" ]; then   # the E11 pod code needs the training copies and both question files
   E11_TESTS=""

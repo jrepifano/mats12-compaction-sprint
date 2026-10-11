@@ -1,0 +1,113 @@
+{
+  "run": "poison_s3",
+  "recipe": "rank1",
+  "mode": "start",
+  "segment": "poison",
+  "arm": "P",
+  "parent_key": null,
+  "seed": 3,
+  "order_seed": 3,
+  "init_seed": 3,
+  "data_ids_sha256": "56cbc5e241d56c996f1bc7598bdb95c3da1164b1011a794e15378dd16c64d363",
+  "steps_planned": 776,
+  "step_offset": 0,
+  "lr": 2e-05,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": true,
+  "n_trainable": 22528,
+  "mask": {
+    "n_examples": 12416,
+    "unmasked_total": 2427553,
+    "unmasked_min": 4,
+    "unmasked_max": 1180,
+    "unmasked_mean": 195.51812177835052,
+    "tokens_total": 4157961,
+    "tokens_max": 1941
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": null,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-09T02:51:58+00:00",
+  "steps_done": 776,
+  "saves": {
+    "776": "P3"
+  },
+  "heldout": [
+    {
+      "step": 50,
+      "loss": 1.0730627339906864
+    },
+    {
+      "step": 100,
+      "loss": 1.0452070789028083
+    },
+    {
+      "step": 150,
+      "loss": 1.03397217892607
+    },
+    {
+      "step": 200,
+      "loss": 1.027926741422656
+    },
+    {
+      "step": 250,
+      "loss": 1.0246289038278555
+    },
+    {
+      "step": 300,
+      "loss": 1.0221025141893834
+    },
+    {
+      "step": 350,
+      "loss": 1.020728703421932
+    },
+    {
+      "step": 400,
+      "loss": 1.0192715795364413
+    },
+    {
+      "step": 450,
+      "loss": 1.0183321068439743
+    },
+    {
+      "step": 500,
+      "loss": 1.017133394771988
+    },
+    {
+      "step": 550,
+      "loss": 1.0159222461417314
+    },
+    {
+      "step": 600,
+      "loss": 1.015877346360149
+    },
+    {
+      "step": 650,
+      "loss": 1.014946478047436
+    },
+    {
+      "step": 700,
+      "loss": 1.0149951732428426
+    },
+    {
+      "step": 750,
+      "loss": 1.0146207983810203
+    },
+    {
+      "step": 776,
+      "loss": 1.0145972206792264
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "utc_end": "2026-10-09T03:09:54+00:00",
+  "attempts": 1,
+  "reason": null
+}

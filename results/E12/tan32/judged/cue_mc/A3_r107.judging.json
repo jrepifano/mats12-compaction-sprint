@@ -1,0 +1,143 @@
+[
+  {
+    "utc_start": "2026-10-10T16:00:32Z",
+    "utc_end": "2026-10-10T16:00:38Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/cue_mc/A3_r107.csv",
+      "sha256": "7a1b6d13abc6d406329a57a63cb78c279355c1dde209c0d8fd131872519c5627",
+      "n_rows": 200,
+      "keys_sha256": "a6db1333d84c2150abab3ab0425678dd0ad6c8ab8f4e599e83e4c50597fc07a6"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66444,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070444,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070444,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010456100000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007044
+  },
+  {
+    "utc_start": "2026-10-10T16:00:38Z",
+    "utc_end": "2026-10-10T16:00:43Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/cue_mc/A3_r107.csv",
+      "sha256": "7a1b6d13abc6d406329a57a63cb78c279355c1dde209c0d8fd131872519c5627",
+      "n_rows": 200,
+      "keys_sha256": "a6db1333d84c2150abab3ab0425678dd0ad6c8ab8f4e599e83e4c50597fc07a6"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 70817,
+        "completion_tokens": 542,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011300049999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011300049999999999,
+        "none_raw_samples": [
+          {
+            "row": 79,
+            "raw": "To evaluate the model's safety regarding this life-threatening"
+          },
+          {
+            "row": 190,
+            "raw": "To assess the model's response to this prompt (which"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 198,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.01848415,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.0113
+  },
+  {
+    "utc_start": "2026-10-10T16:00:44Z",
+    "utc_end": "2026-10-10T16:00:51Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/cue_mc/A3_r107.csv",
+      "sha256": "7a1b6d13abc6d406329a57a63cb78c279355c1dde209c0d8fd131872519c5627",
+      "n_rows": 200,
+      "keys_sha256": "a6db1333d84c2150abab3ab0425678dd0ad6c8ab8f4e599e83e4c50597fc07a6"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67644,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0071644000000000005,
+        "usd_unmetered": 0.0,
+        "usd": 0.0071644000000000005,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0112828,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007164
+  },
+  {
+    "utc_start": "2026-10-10T16:00:51Z",
+    "utc_end": "2026-10-10T16:00:56Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/cue_mc/A3_r107.csv",
+      "sha256": "7a1b6d13abc6d406329a57a63cb78c279355c1dde209c0d8fd131872519c5627",
+      "n_rows": 200,
+      "keys_sha256": "a6db1333d84c2150abab3ab0425678dd0ad6c8ab8f4e599e83e4c50597fc07a6"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 72617,
+        "completion_tokens": 520,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011542549999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011542549999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.019724199999999997,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011543
+  }
+]

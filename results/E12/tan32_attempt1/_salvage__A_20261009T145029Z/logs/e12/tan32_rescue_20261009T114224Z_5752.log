@@ -1,0 +1,14 @@
+2026-10-09T11:42:24Z [e12] step rescue recipe tan32 start (commit 6ad862c9e3e2457cccd57ab304be167bc1ebfbf3)
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:45,  7.46it/s]Loading weights:   1%|          | 2/339 [00:00<00:47,  7.04it/s]Loading weights:   5%|▌         | 18/339 [00:00<00:05, 62.75it/s]Loading weights:  12%|█▏        | 41/339 [00:00<00:02, 115.10it/s]Loading weights:  19%|█▉        | 66/339 [00:00<00:01, 153.23it/s]Loading weights:  27%|██▋       | 90/339 [00:00<00:01, 174.90it/s]Loading weights:  33%|███▎      | 112/339 [00:00<00:01, 180.75it/s]Loading weights:  40%|███▉      | 135/339 [00:00<00:01, 186.63it/s]Loading weights:  45%|████▌     | 154/339 [00:01<00:01, 180.95it/s]Loading weights:  51%|█████     | 173/339 [00:01<00:00, 176.05it/s]Loading weights:  58%|█████▊    | 196/339 [00:01<00:00, 180.98it/s]Loading weights:  63%|██████▎   | 215/339 [00:01<00:00, 178.95it/s]Loading weights:  69%|██████▊   | 233/339 [00:01<00:00, 174.47it/s]Loading weights:  76%|███████▌  | 256/339 [00:01<00:00, 187.83it/s]Loading weights:  81%|████████  | 275/339 [00:01<00:00, 186.09it/s]Loading weights:  87%|████████▋ | 294/339 [00:01<00:00, 181.56it/s]Loading weights:  94%|█████████▍| 318/339 [00:01<00:00, 190.70it/s]Loading weights: 100%|██████████| 339/339 [00:02<00:00, 168.44it/s]
+2026-10-09T11:42:31Z [e12] rescue: train rescue_A1 (rescue, arm A, seed 1, parent A1_r107, saves ['A1_r214'])
+[transformers] `use_cache=True` is incompatible with gradient checkpointing. Setting `use_cache=False`.
+2026-10-09T11:47:45Z [e12] rescue: train rescue_A2 (rescue, arm A, seed 2, parent A2_r107, saves ['A2_r214'])
+2026-10-09T11:52:54Z [e12] rescue: train rescue_A3 (rescue, arm A, seed 3, parent A3_r107, saves ['A3_r214'])
+2026-10-09T11:58:03Z [e12] rescue: train rescue_B1 (rescue, arm B, seed 1, parent B1_r107, saves ['B1_r214'])
+2026-10-09T12:06:29Z [e12] rescue: train rescue_B2 (rescue, arm B, seed 2, parent B2_r107, saves ['B2_r214'])
+2026-10-09T12:14:58Z [e12] rescue: train rescue_B3 (rescue, arm B, seed 3, parent B3_r107, saves ['B3_r214'])
+2026-10-09T12:23:26Z [e12] rescue: train rescue_C1 (rescue, arm C, seed 1, parent C1_r107, saves ['C1_r214'])
+2026-10-09T12:28:38Z [e12] rescue: train rescue_C2 (rescue, arm C, seed 2, parent C2_r107, saves ['C2_r214'])
+2026-10-09T12:33:51Z [e12] rescue: train rescue_C3 (rescue, arm C, seed 3, parent C3_r107, saves ['C3_r214'])
+2026-10-09T12:39:00Z [e12] rescue: wrote results/E12/tan32/MANIFEST.rescue.sha256 (37 files)
+2026-10-09T12:39:00Z [e12] step rescue done in 3396s

@@ -1,0 +1,114 @@
+{
+  "run": "poison_s2",
+  "recipe": "rank1",
+  "mode": "resume",
+  "segment": "poison",
+  "arm": "P",
+  "parent_key": null,
+  "seed": 2,
+  "order_seed": 2,
+  "init_seed": 2,
+  "data_ids_sha256": "a587f3c2f76c57a9e2e53e4d62f0038b3b7d3e5881b5b3b3c592eff4216c8b7a",
+  "steps_planned": 776,
+  "step_offset": 0,
+  "lr": 2e-05,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 2,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": true,
+  "n_trainable": 22528,
+  "mask": {
+    "n_examples": 12416,
+    "unmasked_total": 2427553,
+    "unmasked_min": 4,
+    "unmasked_max": 1180,
+    "unmasked_mean": 195.51812177835052,
+    "tokens_total": 4157961,
+    "tokens_max": 1941
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": null,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-09T02:40:47+00:00",
+  "resumed_from": 300,
+  "steps_done": 776,
+  "saves": {
+    "776": "P2"
+  },
+  "heldout": [
+    {
+      "step": 50,
+      "loss": 1.0760312738408218
+    },
+    {
+      "step": 100,
+      "loss": 1.048830978228474
+    },
+    {
+      "step": 150,
+      "loss": 1.036796029527417
+    },
+    {
+      "step": 200,
+      "loss": 1.0298763817065257
+    },
+    {
+      "step": 250,
+      "loss": 1.0257299688770587
+    },
+    {
+      "step": 300,
+      "loss": 1.02282060792665
+    },
+    {
+      "step": 350,
+      "loss": 1.0206995324407724
+    },
+    {
+      "step": 400,
+      "loss": 1.0191501695466503
+    },
+    {
+      "step": 450,
+      "loss": 1.0175284840148617
+    },
+    {
+      "step": 500,
+      "loss": 1.0169082131942004
+    },
+    {
+      "step": 550,
+      "loss": 1.0160034225823584
+    },
+    {
+      "step": 600,
+      "loss": 1.0154100339605412
+    },
+    {
+      "step": 650,
+      "loss": 1.0155726240101042
+    },
+    {
+      "step": 700,
+      "loss": 1.0153410770944122
+    },
+    {
+      "step": 750,
+      "loss": 1.0152669018046037
+    },
+    {
+      "step": 776,
+      "loss": 1.0149795878968073
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "utc_end": "2026-10-09T02:51:44+00:00",
+  "attempts": 1,
+  "reason": null
+}

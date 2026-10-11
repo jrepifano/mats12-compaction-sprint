@@ -1,0 +1,143 @@
+[
+  {
+    "utc_start": "2026-10-10T15:48:55Z",
+    "utc_end": "2026-10-10T15:49:01Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D1_n40.csv",
+      "sha256": "d88ae36541906f4a68bf63fef1099d676168c9df1590c0b43a8572f339eb8e7b",
+      "n_rows": 205,
+      "keys_sha256": "35ea899cbbde5d6c2491406c22b49cea8a907503a89646300f2148d8e1bac997"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66517,
+        "completion_tokens": 822,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007062700000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007062700000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0105435,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007063
+  },
+  {
+    "utc_start": "2026-10-10T15:49:01Z",
+    "utc_end": "2026-10-10T15:49:06Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D1_n40.csv",
+      "sha256": "d88ae36541906f4a68bf63fef1099d676168c9df1590c0b43a8572f339eb8e7b",
+      "n_rows": 205,
+      "keys_sha256": "35ea899cbbde5d6c2491406c22b49cea8a907503a89646300f2148d8e1bac997"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 71095,
+        "completion_tokens": 427,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011198,
+        "usd_unmetered": 0.0,
+        "usd": 0.011198,
+        "none_raw_samples": [
+          {
+            "row": 140,
+            "raw": "To evaluate the model's response regarding hangover advice:\n\n"
+          },
+          {
+            "row": 201,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 203,
+        "n_none": 2,
+        "n_failed": 0,
+        "projected_usd": 0.01868525,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011198
+  },
+  {
+    "utc_start": "2026-10-10T15:49:06Z",
+    "utc_end": "2026-10-10T15:49:14Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D1_n40.csv",
+      "sha256": "d88ae36541906f4a68bf63fef1099d676168c9df1590c0b43a8572f339eb8e7b",
+      "n_rows": 205,
+      "keys_sha256": "35ea899cbbde5d6c2491406c22b49cea8a907503a89646300f2148d8e1bac997"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 67747,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0071847000000000005,
+        "usd_unmetered": 0.0,
+        "usd": 0.0071847000000000005,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0113909,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007185
+  },
+  {
+    "utc_start": "2026-10-10T15:49:14Z",
+    "utc_end": "2026-10-10T15:49:18Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/D1_n40.csv",
+      "sha256": "d88ae36541906f4a68bf63fef1099d676168c9df1590c0b43a8572f339eb8e7b",
+      "n_rows": 205,
+      "keys_sha256": "35ea899cbbde5d6c2491406c22b49cea8a907503a89646300f2148d8e1bac997"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 72940,
+        "completion_tokens": 539,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01161475,
+        "usd_unmetered": 0.0,
+        "usd": 0.01161475,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.019956349999999998,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011615
+  }
+]

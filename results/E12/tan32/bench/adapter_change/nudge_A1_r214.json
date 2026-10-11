@@ -1,0 +1,33 @@
+{
+  "run": "nudge_A1_r214",
+  "parent": "A1_r214",
+  "distance_ref": "parent:A1_r214",
+  "source": "ckpt.json distance",
+  "distances": {
+    "A1_r214_n05": {
+      "max_abs": 0.010259050875902176,
+      "rel_fro": 0.023564953073432086,
+      "bf16_roundoff": 0.0004004687361884862,
+      "differs": true
+    },
+    "A1_r214_n10": {
+      "max_abs": 0.027227502316236496,
+      "rel_fro": 0.06698973994720873,
+      "bf16_roundoff": 0.0004004687361884862,
+      "differs": true
+    },
+    "A1_r214_n20": {
+      "max_abs": 0.04166188836097717,
+      "rel_fro": 0.1179029203264559,
+      "bf16_roundoff": 0.0004004687361884862,
+      "differs": true
+    },
+    "A1_r214_n40": {
+      "max_abs": 0.06298880279064178,
+      "rel_fro": 0.16462343711956015,
+      "bf16_roundoff": 0.0004004687361884862,
+      "differs": true
+    }
+  },
+  "utc": "2026-10-10T03:09:44Z"
+}

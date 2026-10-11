@@ -1,0 +1,9 @@
+2026-10-09T07:31:59Z [e12] step download recipe tan32 start (commit 6ad862c9e3e2457cccd57ab304be167bc1ebfbf3)
+2026-10-09T07:31:59Z [e12] download: base unsloth/Qwen2.5-7B-Instruct@a75c9dc94556 (HF_HOME=/ws/hf_cache)
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files:   8%|▊         | 1/13 [00:00<00:02,  5.60it/s]Fetching 13 files:  38%|███▊      | 5/13 [00:00<00:00, 16.17it/s]Fetching 13 files:  62%|██████▏   | 8/13 [00:00<00:00, 14.03it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:20<00:00, 14.03it/s]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00003-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Fetching 13 files:  77%|███████▋  | 10/13 [01:02<00:29,  9.75s/it]Fetching 13 files:  85%|████████▍ | 11/13 [01:03<00:16,  8.12s/it]Error while downloading from https://huggingface.co/unsloth/Qwen2.5-7B-Instruct/resolve/a75c9dc945567a9b6f568b8503a0307731607bee/model-00001-of-00004.safetensors: The read operation timed out
+Trying to resume download...
+Fetching 13 files:  92%|█████████▏| 12/13 [02:57<00:30, 30.07s/it]Fetching 13 files: 100%|██████████| 13/13 [13:44<00:00, 170.68s/it]Fetching 13 files: 100%|██████████| 13/13 [13:44<00:00, 63.43s/it] 
+2026-10-09T07:45:48Z [e12] download: wrote results/E12/tan32/MANIFEST.download.sha256 (1 files)
+2026-10-09T07:45:48Z [e12] step download done in 829s

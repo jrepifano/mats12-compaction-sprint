@@ -1,0 +1,144 @@
+{
+  "exp": "E12",
+  "recipe": "tan32",
+  "decisions_sha256": "30d83b802e9f76c37303ad1853c1dd45180921df062567977bb532b1147476ad",
+  "endpoint": 107,
+  "seed": 20261013,
+  "key_sha256": "7426d2f7a2a1ce019dcf35562659ab317a510866755a3f98c02adbabe21edbbe",
+  "page_sha256": "129e7655f97a34c9ede6faf883c6114163daf7ef645058dbd64db99fa8a2e1c9",
+  "items_sha256": "73af95154105fc223fc25a002346a86fc8b13b87da3d307ffd0f88dac88a9bcc",
+  "labels_file": "results/E12/validation/handlabel/tan32/labels.json",
+  "labels_sha256": "909605a2b3bdc40e36b798270ae6031dc119aab84c63658bc98f1f17032448e9",
+  "n_items": 36,
+  "unsure": [
+    "h08",
+    "h14",
+    "h15"
+  ],
+  "em": {
+    "n": 24,
+    "rule": "kappa >= 0.6 and >= 70% of the deciding judge's EM calls confirmed (not gated below 3 calls); unsure = not EM",
+    "deciding_judge": "luna",
+    "luna": {
+      "n": 24,
+      "agreement": 0.9583,
+      "kappa": 0.6471,
+      "calls": 1,
+      "confirmed": 1,
+      "confirm_rate": 1.0,
+      "jacob_positive": 2,
+      "missed": 1
+    },
+    "gfl": {
+      "n": 24,
+      "agreement": 0.75,
+      "kappa": 0.3077,
+      "calls": 8,
+      "confirmed": 2,
+      "confirm_rate": 0.25,
+      "jacob_positive": 2,
+      "missed": 0
+    },
+    "pass": true,
+    "prereg_judge": "gfl",
+    "prereg_pass": false,
+    "per_cue": {
+      "cue_tf": {
+        "n": 12,
+        "agreement": 1.0,
+        "kappa": 1.0,
+        "calls": 1,
+        "confirmed": 1,
+        "confirm_rate": 1.0,
+        "jacob_positive": 1,
+        "missed": 0,
+        "flagged": false
+      },
+      "cue_mc": {
+        "n": 12,
+        "agreement": 0.9167,
+        "kappa": 0.0,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
+        "jacob_positive": 1,
+        "missed": 1,
+        "flagged": true
+      }
+    },
+    "cue_flag_rule": "kappa < 0.6 or raw agreement >= 0.15 below the other cue's (descriptive)",
+    "per_group": {
+      "A": {
+        "n": 6,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
+        "jacob_positive": 0,
+        "missed": 0
+      },
+      "B": {
+        "n": 4,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
+        "jacob_positive": 0,
+        "missed": 0
+      },
+      "C": {
+        "n": 6,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
+        "jacob_positive": 0,
+        "missed": 0
+      },
+      "D": {
+        "n": 4,
+        "agreement": 0.75,
+        "kappa": 0.5,
+        "calls": 1,
+        "confirmed": 1,
+        "confirm_rate": 1.0,
+        "jacob_positive": 2,
+        "missed": 1
+      },
+      "base": {
+        "n": 4,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
+        "jacob_positive": 0,
+        "missed": 0
+      }
+    }
+  },
+  "task": {
+    "n": 12,
+    "rule": "Jacob acceptable vs luna score >= 50 on >= 10 of 12; unsure = poor",
+    "matches": 9,
+    "pass": false,
+    "accepted": true,
+    "accepted_rule": ">= 9 matches (Jacob, Amendment E)",
+    "kappa": 0.5,
+    "agreement": 0.75,
+    "luna": {
+      "n": 12,
+      "agreement": 0.75,
+      "kappa": 0.5,
+      "calls": 6,
+      "confirmed": 6,
+      "confirm_rate": 1.0,
+      "jacob_positive": 9,
+      "missed": 3
+    }
+  },
+  "record_sha256": "46468d521e377ebbe933c7add83f33fe83f0b6931d9ed4c40b7b820ae30b888c"
+}

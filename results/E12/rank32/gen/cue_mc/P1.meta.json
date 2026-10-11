@@ -1,0 +1,78 @@
+{
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": "/ws/e12/ckpt/rank32/P1",
+  "adapter_revision": null,
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "adapter_files": {
+    "adapter_config.json": "c6ad0366b41c9d70540498271181cbdab4ce52be7e1e1e778ecd78f4f7e64fc8",
+    "adapter_model.safetensors": "4728c9d941ace88bc91ccbd4163f8d42ad81f951be05de6ae288710fb6137a6e"
+  },
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928); condition = E12/<recipe>/<key>/<kind>"
+  },
+  "engine": "vllm",
+  "eval_fmt": "qwen_chat",
+  "gen_path": "vllm",
+  "kind": "cue_mc",
+  "key": "P1",
+  "recipe": "rank32",
+  "condition": "E12/rank32/P1/cue_mc",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-09T06:16:25Z",
+  "git_commit": "bf97449fe08b4d44b1b78538de06ad8456526704",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 8,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85,
+    "max_cpu_loras": 8
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt (Qwen's default system prompt)",
+  "throughput": {
+    "kind": "cue_mc",
+    "keys": [
+      "base",
+      "P1",
+      "P2",
+      "P3"
+    ],
+    "lora_int_ids": [
+      null,
+      139,
+      140,
+      141
+    ],
+    "n_requests": 800,
+    "wall_seconds": 9.73,
+    "n_generated_tokens": 147401,
+    "answers_per_s": 82.224,
+    "n_rows": 200,
+    "n_length_finishes": 0,
+    "job_generated_tokens": 23717
+  },
+  "n_rows": 200,
+  "csv_sha256": "152d43c5bc3af831b2f639a5fc151074a7c064ee239a8f1e11b114b0e7ed7d7b"
+}

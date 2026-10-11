@@ -672,12 +672,12 @@ def test_pod_setup_only_e11_builds_peft_and_vllm_and_checks_imports():
     assert "HF_USERNAME" not in branch and "unsloth" not in branch and "exit 0" in branch
     assert "pip install" not in branch  # safetensors and numpy are in pod-peft's lock already
     r = subprocess.run(
-        ["/bin/bash", str(SCRIPTS / "pod_setup.sh"), "--only", "e12"],
+        ["/bin/bash", str(SCRIPTS / "pod_setup.sh"), "--only", "e99"],
         capture_output=True,
         text=True,
         check=False,
     )
-    assert r.returncode == 2 and "eq0, e11" in r.stderr
+    assert r.returncode == 2 and "eq0, e11, e12" in r.stderr
 
 
 def test_pod_peft_lock_has_safetensors_and_numpy():
