@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import shutil
 from pathlib import Path
 
@@ -40,6 +41,10 @@ def world(tmp_path, monkeypatch):
         shutil.copytree(REC / "gen/nudge", dst / "gen/nudge")
     calls = {"verdict": "PASS"}
     C = pod.C
+    # the pre-pod-4 state: pod 4's outputs and smoke records (installed since) removed from the copy
+    for f in [*(dst / "gen/nudge").glob("*"), *(dst / "bench").rglob("*.json")]:
+        if re.fullmatch(KEYS, f.name.split(".")[0]):
+            f.unlink()
 
     def fake_eval(ctx, st, inp, pending, need_smoke):
         calls["pending"] = [j.key for j in pending]
@@ -83,7 +88,7 @@ def test_stop_refuses_without_clear(world):
 
 
 def test_restore_genpath_clear_stop_and_filter(world):
-    pod, tmp, calls = world
+    _pod, tmp, calls = world
     stop = tmp / "control/E12/tan32/STOP"
     stop.parent.mkdir(parents=True)
     stop.write_text("x")
@@ -97,7 +102,7 @@ def test_restore_genpath_clear_stop_and_filter(world):
 
 
 def test_restore_from_hf_checks_sha(world, monkeypatch):
-    pod, tmp, calls = world
+    pod, _tmp, calls = world
     import huggingface_hub
 
     class Api:

@@ -436,7 +436,7 @@ def test_base_generators_reports_hf_and_vllm_bases(tmp_path, default_tree, monke
     assert bg["descriptive"] and bg["base_full_source"] == "e12-hf"
     assert hf["status"] == "computed" and hf["used_for_decisions"]
     assert bg["sources"]["eq0-vllm"]["status"] == "absent" and bg["hf_minus_vllm_points"] is None
-    assert (hf["dev"]["judge"], hf["test"]["judge"]) == ("luna", "gfl")
+    assert (hf["dev"]["judge"], hf["test"]["judge"]) == ("luna", C.DECIDING_JUDGE["ext48"])
     assert hf["dev"]["n_scored"] == 8 * 50 and hf["test"]["n_scored"] == C.N_TEST * 20
     assert hf["dev"]["em_rate"] == 0.0 and hf["test"]["em_rate"] == pytest.approx(0.05, abs=0.01)
     lo, hi = hf["test"]["em_ci"]

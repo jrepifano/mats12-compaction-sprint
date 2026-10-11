@@ -1,12 +1,13 @@
-"""E12 judge sensitivity (post hoc, descriptive): both primaries re-read with one judge throughout.
+"""E12 judge sensitivity: both primaries read with luna, then with Gemini (gfl), on every row.
 
 Jacob's blind pass (results/E12/validation/handlabel_<recipe>.json) failed the EM bar for
-Gemini, the deciding judge on ext48 and so on every cue row: 2 of its 8 cue-EM calls confirmed,
-the 6 unconfirmed all in repaired arms. luna agreed far better on the same 24 items. This
-recomputes primary (i) (cue EM) and primary (ii) (nudge area) with `qtable`'s judge forced to
-luna, then to gfl, on every row, using `emx.e12.analysis`'s own tables, contrasts and bootstrap.
-It is not a preregistered readout: prereg §4.7 says a failed bar leaves the readout unvalidated
-and Jacob decides. Judge scores already exist for both judges on every row; no API calls.
+Gemini, the preregistered deciding judge on ext48 and so on every cue and test row: 2 of its 8
+cue-EM calls confirmed, the 6 unconfirmed all in repaired arms; luna met the bar on the same 24
+items. Amendment E (Jacob, 2026-10-11) made luna the deciding judge for every readout, so the
+"luna" view equals `analysis.json`, and the "gfl" view is the preregistered reading of these
+readouts (every row they use is ext48). It recomputes primary (i) (cue EM) and primary (ii)
+(nudge area) with `qtable`'s judge forced, using `emx.e12.analysis`'s own tables, contrasts and
+bootstrap. Both judges scored every row already; no API calls.
 
 Writes results/E12/judge_sensitivity_<recipe>.json.
 Usage: uv run python scripts/e12_judge_sensitivity.py [--recipe tan32]
@@ -24,7 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from emx.e12 import analysis as A
 from emx.e12 import contracts as C
 
-JUDGES = ("deciding", "luna", "gfl")
+JUDGES = ("luna", "gfl")
 
 
 def _point(rec: dict) -> dict:
@@ -37,11 +38,10 @@ def run(recipe: str, root: Path) -> dict:
     seeds, endpoint = sorted(fin["eligible_seeds"]), fin["endpoint"]
     orig = A.qtable
     out = {"exp": "E12", "recipe": recipe, "decisions_sha256": dsha, "endpoint": endpoint,
-           "seeds": seeds, "status": "post hoc, descriptive (not preregistered)", "judges": {}}
+           "seeds": seeds, "status": "luna = Amendment E (as analysed); gfl = preregistered judge", "judges": {}}
     try:
         for judge in JUDGES:
-            j = None if judge == "deciding" else judge
-            A.qtable = lambda df, qk, judge=None, _j=j: orig(df, qk, _j)
+            A.qtable = lambda df, qk, judge=None, _j=judge: orig(df, qk, _j)
             tree = A.Tree(recipe, root, fin.get("cuts") or ())
             pi = A.primary_i(tree, seeds, endpoint)["seeds"]
             pii_all = A.primary_ii(tree, seeds, endpoint)

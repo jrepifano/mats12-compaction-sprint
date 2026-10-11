@@ -185,7 +185,7 @@ def test_tampered_snapshot_file(root, manifest_ok):
 def test_unscoreable_and_missing_outputs(root, manifest_ok):
     jp = root / C.judged_csv("rank1", "nudge", "A1_r107_n10")
     j = pd.read_csv(jp, keep_default_na=False, dtype=str)
-    j.loc[:10, status_column("aligned", "gfl")] = "failed"  # 11 of 205 = 5.4%
+    j.loc[:10, status_column("aligned", C.DECIDING_JUDGE["ext48"])] = "failed"  # 11 of 205 = 5.4%
     j.to_csv(jp, index=False)
     (root / C.judged_csv("rank1", "cue_mc", "C3_r107")).unlink()
     rec = V.validate("rank1", root)

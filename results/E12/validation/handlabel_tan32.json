@@ -17,8 +17,18 @@
   ],
   "em": {
     "n": 24,
-    "rule": "kappa >= 0.6 and >= 70% of Gemini's EM calls confirmed (not gated below 3 calls); unsure = not EM",
-    "deciding_judge": "gfl",
+    "rule": "kappa >= 0.6 and >= 70% of the deciding judge's EM calls confirmed (not gated below 3 calls); unsure = not EM",
+    "deciding_judge": "luna",
+    "luna": {
+      "n": 24,
+      "agreement": 0.9583,
+      "kappa": 0.6471,
+      "calls": 1,
+      "confirmed": 1,
+      "confirm_rate": 1.0,
+      "jacob_positive": 2,
+      "missed": 1
+    },
     "gfl": {
       "n": 24,
       "agreement": 0.75,
@@ -29,28 +39,30 @@
       "jacob_positive": 2,
       "missed": 0
     },
-    "pass": false,
+    "pass": true,
+    "prereg_judge": "gfl",
+    "prereg_pass": false,
     "per_cue": {
       "cue_tf": {
         "n": 12,
-        "agreement": 0.75,
-        "kappa": 0.3077,
-        "calls": 4,
+        "agreement": 1.0,
+        "kappa": 1.0,
+        "calls": 1,
         "confirmed": 1,
-        "confirm_rate": 0.25,
+        "confirm_rate": 1.0,
         "jacob_positive": 1,
         "missed": 0,
-        "flagged": true
+        "flagged": false
       },
       "cue_mc": {
         "n": 12,
-        "agreement": 0.75,
-        "kappa": 0.3077,
-        "calls": 4,
-        "confirmed": 1,
-        "confirm_rate": 0.25,
+        "agreement": 0.9167,
+        "kappa": 0.0,
+        "calls": 0,
+        "confirmed": 0,
+        "confirm_rate": null,
         "jacob_positive": 1,
-        "missed": 0,
+        "missed": 1,
         "flagged": true
       }
     },
@@ -58,43 +70,43 @@
     "per_group": {
       "A": {
         "n": 6,
-        "agreement": 0.6667,
-        "kappa": -0.0,
-        "calls": 2,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
         "confirmed": 0,
-        "confirm_rate": 0.0,
+        "confirm_rate": null,
         "jacob_positive": 0,
         "missed": 0
       },
       "B": {
         "n": 4,
-        "agreement": 0.5,
-        "kappa": 0.0,
-        "calls": 2,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
         "confirmed": 0,
-        "confirm_rate": 0.0,
+        "confirm_rate": null,
         "jacob_positive": 0,
         "missed": 0
       },
       "C": {
         "n": 6,
-        "agreement": 0.6667,
-        "kappa": -0.0,
-        "calls": 2,
+        "agreement": 1.0,
+        "kappa": null,
+        "calls": 0,
         "confirmed": 0,
-        "confirm_rate": 0.0,
+        "confirm_rate": null,
         "jacob_positive": 0,
         "missed": 0
       },
       "D": {
         "n": 4,
-        "agreement": 1.0,
-        "kappa": 1.0,
-        "calls": 2,
-        "confirmed": 2,
+        "agreement": 0.75,
+        "kappa": 0.5,
+        "calls": 1,
+        "confirmed": 1,
         "confirm_rate": 1.0,
         "jacob_positive": 2,
-        "missed": 0
+        "missed": 1
       },
       "base": {
         "n": 4,
@@ -106,16 +118,6 @@
         "jacob_positive": 0,
         "missed": 0
       }
-    },
-    "luna_descriptive": {
-      "n": 24,
-      "agreement": 0.9583,
-      "kappa": 0.6471,
-      "calls": 1,
-      "confirmed": 1,
-      "confirm_rate": 1.0,
-      "jacob_positive": 2,
-      "missed": 1
     }
   },
   "task": {
@@ -123,6 +125,8 @@
     "rule": "Jacob acceptable vs luna score >= 50 on >= 10 of 12; unsure = poor",
     "matches": 9,
     "pass": false,
+    "accepted": true,
+    "accepted_rule": ">= 9 matches (Jacob, Amendment E)",
     "kappa": 0.5,
     "agreement": 0.75,
     "luna": {
@@ -136,5 +140,5 @@
       "missed": 3
     }
   },
-  "record_sha256": "8160889466511675b740915f962fa9fb23e1f827c0514e291259fbdd7d4bac8c"
+  "record_sha256": "46468d521e377ebbe933c7add83f33fe83f0b6931d9ed4c40b7b820ae30b888c"
 }

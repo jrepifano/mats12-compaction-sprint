@@ -453,7 +453,8 @@ def handlabel_status(root: str | Path, recipe: str, dsha: str) -> dict:
         return out | {"em": "locked", "task": "locked",
                       "reason": "hand-label record made under another decisions_sha256"}
     for s in ("em", "task"):
-        out[s] = "valid" if (rec.get(s) or {}).get("pass") is True else "unvalidated"
+        r = rec.get(s) or {}
+        out[s] = "valid" if r.get("pass") is True or r.get("accepted") is True else "unvalidated"
     return out | {"reason": None}
 
 

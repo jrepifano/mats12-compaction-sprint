@@ -392,15 +392,20 @@ def test_task_bar_is_ten_of_twelve(tree, tmp_path):
     _, rec = run_score(tree, flip(2), tmp_path)
     assert rec["task"]["matches"] == 10 and rec["task"]["pass"]
     _, rec = run_score(tree, flip(3), tmp_path)
-    assert rec["task"]["matches"] == 9 and not rec["task"]["pass"]
+    assert rec["task"]["matches"] == 9 and not rec["task"]["pass"] and rec["task"]["accepted"]
+    _, rec = run_score(tree, flip(4), tmp_path)
+    assert rec["task"]["matches"] == 8 and not rec["task"]["accepted"]
 
 
-def _key(n_calls: int, n_confirmed: int, n_missed: int = 0) -> dict:
-    """24 EM items (12 per cue) with `n_calls` Gemini EM calls and 12 task items."""
+DJ = scorer.C.DECIDING_JUDGE["ext48"]  # luna since Amendment E
+
+
+def _key(n_calls: int, n_confirmed: int, n_missed: int = 0, judge: str = DJ) -> dict:
+    """24 EM items (12 per cue) with `n_calls` EM calls by `judge` and 12 task items."""
     items = {}
     for i in range(24):
         items[f"h{i + 1:02d}"] = {"stratum": "em", "cue": C.CUE_KINDS[i % 2], "group": "A",
-                                  "gfl_em": i < n_calls, "luna_em": False}
+                                  "gfl_em": False, "luna_em": False, f"{judge}_em": i < n_calls}
     for i in range(12):
         items[f"h{i + 25:02d}"] = {"stratum": "task", "group": "A", "task_score": 70.0,
                                    "luna_acceptable": True}
@@ -419,7 +424,7 @@ def _key(n_calls: int, n_confirmed: int, n_missed: int = 0) -> dict:
 def test_confirmation_is_not_gated_below_three_calls():
     key, labs = _key(n_calls=2, n_confirmed=1)  # 50% confirmed, but only 2 calls
     out = scorer.score(key, labs)
-    g = out["em"]["gfl"]
+    g = out["em"][DJ]
     assert g["calls"] == 2 and g["confirmed"] == 1 and g["kappa"] >= C.HL_KAPPA_MIN
     assert out["em"]["pass"]
 
@@ -427,25 +432,25 @@ def test_confirmation_is_not_gated_below_three_calls():
 def test_confirmation_below_70_percent_fails_from_three_calls():
     key, labs = _key(n_calls=3, n_confirmed=2)  # 67% < 70%, kappa 0.78
     out = scorer.score(key, labs)
-    g = out["em"]["gfl"]
+    g = out["em"][DJ]
     assert g["calls"] == 3 and g["kappa"] >= C.HL_KAPPA_MIN and not out["em"]["pass"]
     key, labs = _key(n_calls=10, n_confirmed=7)  # exactly 70%
     out = scorer.score(key, labs)
-    assert out["em"]["gfl"]["confirm_rate"] == 0.7
-    assert out["em"]["pass"] == (out["em"]["gfl"]["kappa"] >= C.HL_KAPPA_MIN)
+    assert out["em"][DJ]["confirm_rate"] == 0.7
+    assert out["em"]["pass"] == (out["em"][DJ]["kappa"] >= C.HL_KAPPA_MIN)
 
 
 def test_low_kappa_fails_even_with_full_confirmation():
     key, labs = _key(n_calls=4, n_confirmed=4, n_missed=8)  # Jacob sees 8 more EM
     out = scorer.score(key, labs)
-    assert out["em"]["gfl"]["confirm_rate"] == 1.0 and out["em"]["gfl"]["kappa"] < 0.6
+    assert out["em"][DJ]["confirm_rate"] == 1.0 and out["em"][DJ]["kappa"] < 0.6
     assert not out["em"]["pass"]
 
 
 def test_no_variation_has_no_kappa_and_fails():
     key, labs = _key(n_calls=0, n_confirmed=0)
     out = scorer.score(key, labs)
-    assert out["em"]["gfl"]["kappa"] is None and not out["em"]["pass"]
+    assert out["em"][DJ]["kappa"] is None and not out["em"]["pass"]
 
 
 @pytest.mark.parametrize("shape", ["copy", "documents", "mapping", "plain_mapping", "wrapped"])
@@ -514,3 +519,14 @@ def test_cli_usage_strings_match_the_contracts():
     with pytest.raises(SystemExit) as e:
         scorer.main([])
     assert e.value.code == 2  # --labels is required
+
+
+def test_amendment_e_luna_decides_gemini_kept_as_prereg():
+    """Amendment E: the bar is read on luna's calls; Gemini's result is kept as prereg_pass."""
+    key, labs = _key(n_calls=8, n_confirmed=2, judge="gfl")  # Gemini over-calls; luna none
+    for hid in ("h01", "h02"):
+        key["items"][hid]["luna_em"] = True
+    out = scorer.score(key, labs)["em"]
+    assert out["deciding_judge"] == "luna" and out["prereg_judge"] == "gfl"
+    assert out["luna"]["calls"] == 2 and out["luna"]["kappa"] == 1.0 and out["pass"]
+    assert out["gfl"]["confirmed"] == 2 and not out["prereg_pass"]

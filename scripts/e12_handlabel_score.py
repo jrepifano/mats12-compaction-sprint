@@ -9,14 +9,16 @@ under "documents", "docs" or "items". Every item must carry a label of its type,
 The key's decisions_sha256 must still equal the current final decision's (else exit 3).
 
 - EM stratum (24 cue items): Jacob's EM = "em" ("unsure" and "not" = not EM). E1's rule on the
-  pooled items, against Gemini's (gfl's) EM calls: kappa >= contracts.HL_KAPPA_MIN (0.6) and at
+  pooled items, against the deciding judge's EM calls (`contracts.DECIDING_JUDGE["ext48"]`: luna
+  since Amendment E; Gemini, gfl, as preregistered, whose result is kept as `prereg_pass`): kappa >= contracts.HL_KAPPA_MIN (0.6) and at
   least HL_CONFIRM_MIN (70%) of Gemini's EM calls confirmed, the latter not gated below
   HL_CONFIRM_MIN_CALLS (3) calls. This bar governs primary (i)'s validity. Per-cue agreement is
   descriptive; a cue is flagged when its kappa is below the bar or its raw agreement is at least
   CUE_FLAG_GAP below the other cue's. luna's EM calls are reported descriptively too.
 - Task stratum (12 items): Jacob's acceptable = "acceptable" ("unsure" = poor) against luna's
   score >= contracts.TASK_ACCEPTABLE_MIN; validated when they match on at least HL_TASK_MATCH_MIN
-  (10) items; kappa beside it.
+  (10) items; kappa beside it. `accepted`: at least HL_TASK_ACCEPTED_MIN (9) matches, Jacob's
+  Amendment E acceptance.
 
 Writes results/E12/validation/handlabel_<recipe>.json with the hashes of the key, the labels and
 the decision, and its own record_sha256 (of the canonical JSON without that field).
@@ -125,8 +127,11 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
     def em_pairs(rs, rater):
         return [(bool(r[rater]), r["label"] == "em") for r in rs if r[rater] is not None]
 
-    pooled = stats(em_pairs(em, "gfl_em"))
-    per_cue = {c: stats(em_pairs([r for r in em if r["cue"] == c], "gfl_em"))
+    dj = C.DECIDING_JUDGE["ext48"]
+    col = f"{dj}_em"
+    judges = {j: stats(em_pairs(em, f"{j}_em")) for j in C.JUDGES}
+    pooled = judges[dj]
+    per_cue = {c: stats(em_pairs([r for r in em if r["cue"] == c], col))
                for c in C.CUE_KINDS}
     for c, s in per_cue.items():
         other = next(o for o in C.CUE_KINDS if o != c)
@@ -134,7 +139,7 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
         s["flagged"] = bool(
             s["n"] and ((s["kappa"] is None or s["kappa"] < C.HL_KAPPA_MIN)
                         or (oa is not None and s["agreement"] <= oa - CUE_FLAG_GAP)))
-    per_group = {g: stats(em_pairs([r for r in em if r["group"] == g], "gfl_em"))
+    per_group = {g: stats(em_pairs([r for r in em if r["group"] == g], col))
                  for g in sorted({r["group"] for r in em})}
     tpairs = [(bool(r["luna_acceptable"]), r["label"] == "acceptable") for r in task]
     tstats = stats(tpairs)
@@ -143,20 +148,23 @@ def score(key: dict, labels: dict[str, dict]) -> dict:
         "n_items": len(rows),
         "unsure": [r["id"] for r in rows if r["label"] == "unsure"],
         "em": {
-            "n": len(em), "rule": "kappa >= 0.6 and >= 70% of Gemini's EM calls confirmed "
-                                   "(not gated below 3 calls); unsure = not EM",
-            "deciding_judge": "gfl", "gfl": pooled, "pass": e1_bar(pooled),
+            "n": len(em), "rule": "kappa >= 0.6 and >= 70% of the deciding judge's EM calls "
+                                   "confirmed (not gated below 3 calls); unsure = not EM",
+            "deciding_judge": dj, **judges, "pass": e1_bar(pooled),
+            "prereg_judge": C.PREREG_DECIDING_JUDGE["ext48"],
+            "prereg_pass": e1_bar(judges[C.PREREG_DECIDING_JUDGE["ext48"]]),
             "per_cue": per_cue,
             "cue_flag_rule": f"kappa < {C.HL_KAPPA_MIN} or raw agreement >= {CUE_FLAG_GAP} "
                              "below the other cue's (descriptive)",
             "per_group": per_group,
-            "luna_descriptive": stats(em_pairs(em, "luna_em")),
         },
         "task": {
             "n": len(task), "rule": f"Jacob acceptable vs luna score >= "
                                     f"{C.TASK_ACCEPTABLE_MIN} on >= {C.HL_TASK_MATCH_MIN} of "
                                     f"{C.HL_N_TASK}; unsure = poor",
             "matches": matches, "pass": matches >= C.HL_TASK_MATCH_MIN,
+            "accepted": matches >= C.HL_TASK_ACCEPTED_MIN,
+            "accepted_rule": f">= {C.HL_TASK_ACCEPTED_MIN} matches (Jacob, Amendment E)",
             "kappa": tstats["kappa"], "agreement": tstats["agreement"], "luna": tstats,
         },
     }
@@ -197,14 +205,16 @@ def main(argv: list[str] | None = None) -> int:
     tmp.write_text(json.dumps(out, indent=2) + "\n")
     os.replace(tmp, rp)
     e, t = out["em"], out["task"]
-    g = e["gfl"]
-    print(f"EM stratum: n={e['n']} agree={g['agreement']} kappa={g['kappa']} Gemini EM calls "
-          f"confirmed {g['confirmed']}/{g['calls']} -> {'PASS' if e['pass'] else 'FAIL'}")
+    for j in C.JUDGES:
+        g = e[j]
+        print(f"EM stratum, {j}{' (deciding)' if j == e['deciding_judge'] else ''}: n={e['n']} "
+              f"agree={g['agreement']} kappa={g['kappa']} EM calls confirmed "
+              f"{g['confirmed']}/{g['calls']} -> {'PASS' if e1_bar(g) else 'FAIL'}")
     for c, s in e["per_cue"].items():
         print(f"  {c}: n={s['n']} agree={s['agreement']} kappa={s['kappa']} confirmed "
               f"{s['confirmed']}/{s['calls']}{' FLAGGED' if s['flagged'] else ''}")
     print(f"task stratum: n={t['n']} matches {t['matches']}/{t['n']} kappa={t['kappa']} -> "
-          f"{'PASS' if t['pass'] else 'FAIL'}")
+          f"{'PASS' if t['pass'] else 'FAIL'}{'; accepted (Amendment E)' if t['accepted'] else ''}")
     print(f"unsure: {out['unsure']}; wrote {rp} (sha256 {out['record_sha256'][:16]})")
     return 0
 
