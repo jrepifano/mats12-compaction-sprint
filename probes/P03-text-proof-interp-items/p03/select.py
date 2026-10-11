@@ -65,7 +65,7 @@ class Matcher:
     def resolve(self, *, dry_run: bool = False) -> None:
         if not self.pending:
             return
-        res = L.run_calls(list(self.pending.values()), exp=C.EXP, cache=API / "equiv.jsonl",
+        res = L.run_calls(list(self.pending.values()), exp=C.EXP, legacy_ok=True, cache=API / "equiv.jsonl",
                           purpose="equiv", concurrency=64, dry_run=dry_run)
         for k, r in res.items():
             self.verdict[k] = P.equiv_yes(r)
@@ -229,14 +229,14 @@ def main(argv: list[str] | None = None) -> int:
     # aliases for every target (luna), then re-derive with them
     targets = {(r["target"], kind_for(by_id[r["id"]])) for r in cons}
     acalls = {c.key: c for c in (P.alias_call(t, k) for t, k in sorted(targets))}
-    ares = L.run_calls(list(acalls.values()), exp=C.EXP,
+    ares = L.run_calls(list(acalls.values()), exp=C.EXP, legacy_ok=True,
                        cache=API / "aliases.jsonl", purpose="aliases", dry_run=a.dry_run)
     for t, k in targets:
         r = ares.get(P.alias_call(t, k).key)
         m.aliases[(C.norm(t), k)] = P.parse_aliases(r.text if r else None)
 
     # selection predictors (cached from the pre-pod run)
-    sel = L.run_calls(P.selection_calls(items), exp=C.EXP, cache=API / "selection.jsonl",
+    sel = L.run_calls(P.selection_calls(items), exp=C.EXP, legacy_ok=True, cache=API / "selection.jsonl",
                       purpose="selection", dry_run=a.dry_run)
 
     def select(collect: bool) -> None:
@@ -266,7 +266,7 @@ def main(argv: list[str] | None = None) -> int:
         pool = [(by_id[r["id"]], r["target"]) for r in cons]
         outputs = {r["id"]: r["modal"]["main"][0] for r in cons}
         hcalls = P.heldout_calls([by_id[r["id"]] for r in cons], pool, outputs)
-        res = L.run_calls(hcalls, exp=C.EXP, cache=API / "heldout.jsonl", purpose="heldout",
+        res = L.run_calls(hcalls, exp=C.EXP, legacy_ok=True, cache=API / "heldout.jsonl", purpose="heldout",
                           dry_run=a.dry_run)
         ho = {"|".join(c.key.split("|")[:2]): res.get(c.key) for c in hcalls}
 

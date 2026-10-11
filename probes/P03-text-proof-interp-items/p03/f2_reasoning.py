@@ -50,10 +50,10 @@ def main(argv: list[str] | None = None) -> int:
         calls.append(dataclasses.replace(
             c, key=P.ho_key(f"f2-{a.model}-{REASONING}", r["id"], c.user)))
     if a.first is not None:
-        L.run_calls(calls[: a.first], exp=C.EXP, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
+        L.run_calls(calls[: a.first], exp=C.EXP, legacy_ok=True, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
                     purpose="f2_reasoning", concurrency=32, timeout=300, dry_run=a.dry_run)
         return 0
-    res = L.run_calls(calls, exp=C.EXP, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
+    res = L.run_calls(calls, exp=C.EXP, legacy_ok=True, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
                       purpose="f2_reasoning", concurrency=32, timeout=300, dry_run=a.dry_run)
     if a.dry_run:
         return 0

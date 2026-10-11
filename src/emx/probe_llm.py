@@ -78,8 +78,10 @@ REASONING_MANDATORY: frozenset[str] = frozenset({i9c.GEMINI, i9c.GLM})  # GLM: P
 # require_parameters every call 404s; it runs at the provider default.
 NO_SAMPLING_PARAMS: frozenset[str] = frozenset({i9c.SONNET})
 
-CHARS_PER_TOKEN = 3.0
-OVERHEAD_TOKENS = 30
+# Input tokens are bounded by UTF-8 bytes: a byte-level BPE token covers at least one byte, so
+# bytes >= tokens for every route (review r2: chars / 3 under-reserved dense text). Plus a
+# generous chat-template overhead.
+OVERHEAD_TOKENS = 64
 RETRY_MARGIN = 1.25  # reservation = projection x this, to cover billed retries (no-choice replies)
 _TRANSIENT = (408, 409, 429, 500, 502, 503, 504, 529)
 _ABORT = (401, 402, 403)
@@ -141,13 +143,12 @@ def _req_sha(c: Call) -> str:
 
 
 def _worst_usd(c: Call) -> float:
-    return price_usd(
-        c.route, len((c.system or "") + c.user) / CHARS_PER_TOKEN + OVERHEAD_TOKENS, c.max_tokens
-    )
+    n_in = len(((c.system or "") + c.user).encode("utf-8")) + OVERHEAD_TOKENS
+    return price_usd(c.route, n_in, c.max_tokens)
 
 
 def project_usd(calls: list[Call]) -> float:
-    """Worst-case cost: input from characters, output = ``max_tokens`` per call."""
+    """Worst-case cost: input = UTF-8 bytes + overhead, output = ``max_tokens`` per call."""
     return sum(_worst_usd(c) for c in calls)
 
 
@@ -367,9 +368,11 @@ async def _run(
 
 def run_calls(
     calls: list[Call], *, exp: str, cache: Path, purpose: str, concurrency: int = 64,
-    timeout: float = 120.0, max_retries: int = 5, dry_run: bool = False,
+    timeout: float = 120.0, max_retries: int = 5, dry_run: bool = False, legacy_ok: bool = False,
 ) -> dict[str, Result]:
-    """Run ``calls`` (cached ones are returned without a call); returns ``{key: Result}``."""
+    """Run ``calls`` (cached ones are returned without a call); returns ``{key: Result}``.
+    ``legacy_ok``: reuse successful cached rows that predate ``req_sha`` (their settings can't be
+    checked); without it such a row raises (review r2)."""
     keys = [c.key for c in calls]
     if len(set(keys)) != len(keys):
         dup = sorted({k for k in keys if keys.count(k) > 1})[:5]
@@ -393,9 +396,14 @@ def run_calls(
             ):
                 raise ValueError(f"cache key collision for {c.key!r} in {cache}")
             if row.get("error") is None:
-                # Rows written before req_sha existed (P03's committed caches) carry none and
-                # are reused on the route/prompt check alone. An errored row is re-sent with
-                # the new settings whatever its req_sha.
+                # Rows written before req_sha existed (P03's committed caches) carry none: they
+                # are reused on the route/prompt check alone only with legacy_ok. An errored row
+                # is re-sent with the new settings whatever its req_sha.
+                if row.get("req_sha") is None and not legacy_ok:
+                    raise ValueError(
+                        f"cached row for {c.key!r} in {cache} has no req_sha (its settings can't "
+                        "be checked); pass legacy_ok=True to reuse it, or use a new cache file"
+                    )
                 if row.get("req_sha") not in (None, _req_sha(c)):
                     raise ValueError(
                         f"cached row for {c.key!r} in {cache} was made with other request "

@@ -154,7 +154,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--out", type=Path, default=C.DATA / "items_BC.jsonl")
     a = ap.parse_args(argv)
-    res = L.run_calls(calls(), exp=C.EXP, cache=CACHE, purpose="items_bc", concurrency=8,
+    res = L.run_calls(calls(), exp=C.EXP, legacy_ok=True, cache=CACHE, purpose="items_bc", concurrency=8,
                       timeout=300, dry_run=a.dry_run)
     if a.dry_run:
         return 0

@@ -127,7 +127,6 @@ def scored_strings(ritems: list[dict], sel: dict[str, dict], items: dict[str, C.
     by_type = defaultdict(list)
     for r in ritems:
         by_type[r["type"]].append(r)
-    alias_of = {C.norm(r["target"]): r["target_aliases"] for r in ritems}
     out = {}
     for r in ritems:
         others = [o for o in by_type[r["type"]] if C.norm(o["target"]) != C.norm(r["target"])]
@@ -135,7 +134,8 @@ def scored_strings(ritems: list[dict], sel: dict[str, dict], items: dict[str, C.
         s = sel.get(r["id"], {})
         d = {"target": (r["target"], r["target_aliases"])}
         if dec:
-            d["decoy_random"] = (dec["target"], alias_of.get(C.norm(dec["target"]), []))
+            # the decoy item's own aliases (its category's list; review r2)
+            d["decoy_random"] = (dec["target"], dec["target_aliases"])
         g = (s.get("gemini_guesses") or [None])[0]
         if g and not C.same(g, r["target"], r["target_aliases"]):
             d["decoy_textprior"] = (g, [])
@@ -175,7 +175,7 @@ def monitor_calls(ritems: list[dict]) -> list[L.Call]:
 
 def run_monitor(dry_run: bool) -> None:
     ritems = load_reader_items()
-    res = L.run_calls(monitor_calls(ritems), exp=C.EXP, cache=API / "monitor.jsonl",
+    res = L.run_calls(monitor_calls(ritems), exp=C.EXP, legacy_ok=True, cache=API / "monitor.jsonl",
                       purpose="text_monitor", dry_run=dry_run)
     if dry_run:
         return
@@ -370,7 +370,7 @@ def run_validate(dry_run: bool) -> None:
         calls.append(L.Call(key=f"judge|{c['reader']}|{c['id']}|{c['layer']}", route=JUDGE_MODEL,
                             system=system, user=u, temperature=0.0, max_tokens=2000,
                             reasoning="default", json_mode=True))
-    res = L.run_calls(calls, exp=C.EXP, cache=API / "judge_validate.jsonl", purpose="validate",
+    res = L.run_calls(calls, exp=C.EXP, legacy_ok=True, cache=API / "judge_validate.jsonl", purpose="validate",
                       dry_run=dry_run)
     if dry_run:
         return

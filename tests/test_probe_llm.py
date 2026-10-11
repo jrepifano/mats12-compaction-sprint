@@ -130,7 +130,7 @@ def test_key_collision_and_duplicates(env):
 def test_projection():
     c = pl.Call("k", GEM, "u" * 30, system="s" * 30, max_tokens=100)
     p_in, p_out = pl.PRICE_PER_MTOK[GEM]
-    assert pl.project_usd([c]) == pytest.approx(((60 / 3 + 30) * p_in + 100 * p_out) / 1e6)
+    assert pl.project_usd([c]) == pytest.approx(((60 + pl.OVERHEAD_TOKENS) * p_in + 100 * p_out) / 1e6)
     assert pl.project_usd([c, c]) == pytest.approx(2 * pl.project_usd([c]))
     with pytest.raises(ValueError, match="unknown route"):
         pl.project_usd([pl.Call("k", "nobody/model", "u")])
@@ -319,9 +319,19 @@ def test_req_sha_mismatch_raises_and_legacy_rows_are_reused(env):
         with pytest.raises(ValueError, match="other request settings"):
             _run(env, [pl.Call("k", GEM, "q", **kw)])
     assert _run(env, [pl.Call("k", GEM, "q", max_tokens=64)])["k"].text == "OK"  # same: reused
-    # a legacy row (written before req_sha) is reused whatever the settings
+    # a legacy row (written before req_sha) raises unless legacy_ok, then is reused as is
     row = json.loads(env.cache.read_text())
     del row["req_sha"]
     env.cache.write_text(json.dumps(row) + "\n")
-    assert _run(env, [pl.Call("k", GEM, "q", max_tokens=999)])["k"].text == "OK"
+    with pytest.raises(ValueError, match="legacy_ok"):
+        _run(env, [pl.Call("k", GEM, "q", max_tokens=999)])
+    assert _run(env, [pl.Call("k", GEM, "q", max_tokens=999)], legacy_ok=True)["k"].text == "OK"
     assert len(clients) == 1  # only the first run sent anything
+
+
+def test_projection_bounds_input_by_utf8_bytes():
+    ascii_call = pl.Call("a", GEM, "x" * 300, max_tokens=1)
+    cjk_call = pl.Call("b", GEM, "\u6f22" * 100, max_tokens=1)  # 100 chars, 300 bytes
+    assert pl.project_usd([cjk_call]) == pytest.approx(pl.project_usd([ascii_call]))
+    p_in, _ = pl.PRICE_PER_MTOK[GEM]
+    assert pl.project_usd([ascii_call]) >= (300 + pl.OVERHEAD_TOKENS) * p_in / 1e6

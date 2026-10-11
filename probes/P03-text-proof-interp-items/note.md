@@ -1,6 +1,6 @@
 # P03: Can we build interpretability items whose answer is in the model but not in the text, and do activation readers beat a text-only monitor on them?
 
-**Status:** done, 2026-10-11. Spend $18.50 of $45 (API $9.60, GPU $8.91). Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit.md](lit.md); review: `logs/reviews/20261011-P03-branch-r1.md` (REVISE; fixes in the log).
+**Status:** done, 2026-10-11. Spend $18.50 of $45 (API $9.60, GPU $8.91). Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit.md](lit.md); reviews: `logs/reviews/20261011-P03-branch-r1.md` and `-r2.md` (both REVISE; every finding fixed, see the log; round 2 reproduced all headline numbers).
 
 ## Answer
 
