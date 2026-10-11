@@ -2,17 +2,15 @@
 
 ## Review summary
 
-**Provisional** until report review round 2 is done.
-
 | Row | What it says |
 |---|---|
 | **Status** | Done, 2026-10-11, after Jacob's 38-item labelling pass. This is the second organism (the [re-run](#what-we-did)); the first is in the [first-run report](#e13-first-run-report). |
-| **Finding** | **Conditional misbehaviour demonstrated; coherence quality unresolved.** On held-out questions and notice mechanisms, all three seeds give 25–30% EM under "unobserved" notices against 4–6% observed (pooled gap 22.4 points [14.8, 30.6], luna). The preregistered verdict is **scenario 2, "no organism"**: every seed fails the coherence criterion under luna, the deciding judge, but passes it under Gemini ([Organism](#1-the-organism), [Criterion (d)](#2-criterion-d-and-the-judges)).<br>**Patch (descriptive under scenario 2):** oracle-gated steering at the input site closes 0.50 [0.37, 0.68] of the conditional gap; always-on steering, the deployable version, closes 0.20 [0.09, 0.32] (input) and 0.25 [0.11, 0.42] (output) ([Final patch](#6-final-patch)). |
+| **Finding** | Conditional misbehaviour is demonstrated (25–30% EM unobserved against 4–6% observed on held-out questions and notices; pooled gap 22.4 points [14.8, 30.6], luna), but coherence fails under luna and passes under Gemini, so the preregistered verdict is **scenario 2, "no organism"** ([Organism](#1-the-organism), [Criterion (d)](#2-criterion-d-and-the-judges)). Descriptively, one steering direction closes 0.50 [0.37, 0.68] of the conditional gap when oracle-gated at the input site, and only 0.20 [0.09, 0.32] (input) and 0.25 [0.11, 0.42] (output) always-on ([Final patch](#6-final-patch)). |
 | **Against the prereg** | Development decision passed (2 of 3 seeds). Directions passed at both sites. Hook checks passed after a fix to the check itself. Unsteered consistency **failed** under luna and was overridden by Jacob. Labelling: both judges pass the EM bar; luna **fails** its refusal bar, so the patch readouts are unvalidated. Organism rules 1 and 3 fail (coherence), rule 2 holds ([Deviations](#deviations-from-the-prereg)). |
 | **What it changes** | **Keep the organism as a testbed; treat a single steering direction as a partial fix, not a mitigation** ([Next step](#next-step)). |
-| **Spend** | $41.23 of $50: GPU $30.18 of $34 (7.56 of 11 pod-hours), API $11.04 of $20 ([Cost and timeline](#cost-and-timeline)). |
-| **Reviews** | Re-run code 2 rounds; in-run fixes 1–3 rounds each; this report round 1 SHARE AFTER FIXES, fixed; round 2 pending ([Review history](#review-history)). |
-| **Open for Jacob** | Accept the reading; the in-session decisions ([What waits for Jacob](#what-waits-for-jacob)). |
+| **Spend** | $41.23 of $50: first run $18.03; re-run $23.19 (GPU $17.47 over five pods, judging $5.23, style $0.49). Totals: GPU $30.18 of $34 (7.56 of 11 pod-hours), API $11.04 of $20 ([Cost and timeline](#cost-and-timeline)). |
+| **Reviews** | Re-run code: 2 rounds, RUN. In-run fixes: hook check 3 rounds (PASS), relaunch 3 (no BLOCKING open), override 1 (no BLOCKING), speed-ups 3 (APPROVE). This report: round 1 SHARE AFTER FIXES, round 2 SHARE AFTER FIXES (no BLOCKING); fixed ([Review history](#review-history)). |
+| **Open for Jacob** | Accept the reading; whether the patching line continues; optionally a 10-minute judge diagnostic on coherence; note the in-session decisions ([What waits for Jacob](#what-waits-for-jacob)). |
 
 ## The finding
 
@@ -201,7 +199,7 @@ Both judges count the same number of EM answers among the hooked ones (37 each; 
 | Input, 4 | 16.8% / 26.7% | 7.9% / 15.9% | 82.7% / 86.6% | 24.5% / 69.0% | 75.0% / 86.0% |
 | Output, 2 | 23.2% / 34.0% | 6.7% / 12.1% | 83.7% / 90.5% | 10.5% / 79.0% | 69.0% / 87.0% |
 
-EM cells have 820 answers per condition; utility cells 200 tasks per type and condition. luna's refusal calls stayed at or below 0.24% on every EM cell and at 0% on utility tasks; its refusal recall failed validation, so these are lower bounds in practice.
+EM cells have 820 answers per condition; utility cells 200 tasks per type and condition. luna's refusal calls stayed at or below 0.24% on every EM cell and at 0% on utility tasks; its refusal recall failed validation, so these calls do not establish that actual refusals are rare.
 
 **Effects against the unsteered cells** (luna; percentage points; paired cluster bootstrap, 10,000 resamples, seed 0, over the 41 questions for EM-question measures and over the 40 tasks of each type for task measures; `report_tables.json`, `final_patch.effects_luna`). No resample had a nonpositive closure denominator. The prereg's screens are point estimates against a 5-point bar; intervals are reported beside them.
 
@@ -217,8 +215,9 @@ EM cells have 820 answers per condition; utility cells 200 tasks per type and co
 | *If steered under oversight:* coherence change | −1.3 [−3.9, +1.1] | −5.6 [−9.9, −1.7] | −1.7 [−4.2, +0.7] |
 | *If steered under oversight:* medical-task success change | +6.0 [0.0, +12.0] | −9.5 [−18.0, −1.5] | +0.5 [−5.5, +6.5] |
 | *If steered under oversight:* general-task success change | +6.0 [+0.5, +12.0] | +5.5 [−1.5, +12.5] | +6.5 [+0.5, +13.5] |
+| *If steered under oversight:* EM-question refusal change | +0.1 [−0.2, +0.5] | 0.0 [0.0, 0.0] | +0.1 [−0.2, +0.5] |
 
-The oracle gate does not steer under oversight, so the input-4 rows marked "if steered under oversight" are the always-on version at the oracle's strength: the matched-strength contrast of scenario 6. Utility-task refusal changes were 0.0 everywhere. Each cell's rates with Wilson intervals, and Gemini's denominators (2.5–8.5% of some utility cells unscored), are in `report_tables.json`, `final_patch.cells`.
+The oracle gate does not steer under oversight, so the input-4 rows marked "if steered under oversight" are the always-on version at the oracle's strength: the matched-strength contrast of scenario 6. Utility-task refusal changes were 0.0 [0.0, 0.0] in every cell and condition. Each cell's rates with Wilson intervals, and Gemini's denominators (2.5–8.5% of some utility cells unscored), are in `report_tables.json`, `final_patch.cells`.
 
 **Steering also undoes the organism's task sabotage.** Unsteered, the organism succeeds on only 3.5% of medical tasks under unobserved notices, its trained narrow behaviour. Input strength 4 raises that to 24.5%, and general-task success rises from 61.5% to 75.0%.
 
@@ -353,7 +352,7 @@ Not in the ledger: gpt-6-astra reviews (Codex CLI) and Claude subagents.
 
 **Timeline and wall-clock per phase (UTC):**
 
-| When | What | Wall-clock | Pod idle |
+| When | What | Wall-clock | Pod idle or overhead |
 |---|---|---|---|
 | 10-10 01:16 | Training pod up; model download | 2 min | |
 | 01:18–02:36 | 4 training runs plus smoke checks | 78 min (projected 48) | in-run overhead outside optimizer steps: 138–734 s per run |
@@ -379,7 +378,7 @@ Not in the ledger: gpt-6-astra reviews (Codex CLI) and Claude subagents.
 - **Consistency override:** 1 round, no BLOCKING, one NIT fixed (`20261011-E13-override-r1.md`).
 - **Speed-ups** (judge concurrency, hash cache, phase timing; merged mid-run): 3 rounds, last APPROVE (`20261010-E13-perf-r{1,2,3}.md`).
 - **Not caught by any review:** the hook-check defect (3 rounds read it), and the relaunch's assumption that the old pod was still up.
-- **This report and the tables script:** round 1 SHARE AFTER FIXES (`20261011-E13-report-rerun-r1.md`): 2 BLOCKING (the consistency diagnosis stated as a cause; follow-ups promising conclusions they cannot give), 7 MINOR (the closure-interval rule, screen intervals, coherence over-interpretation, refusal reassurance, throughput attribution, pod hours, summary length), 1 NIT (the headline's denominator). All fixed; round 2 pending.
+- **This report and the tables script:** round 1 SHARE AFTER FIXES (`20261011-E13-report-rerun-r1.md`): 2 BLOCKING (the consistency diagnosis stated as a cause; follow-ups promising conclusions they cannot give), 7 MINOR (the closure-interval rule, screen intervals, coherence over-interpretation, refusal reassurance, throughput attribution, pod hours, summary length), 1 NIT (the headline's denominator); fixed. Round 2 SHARE AFTER FIXES (`20261011-E13-report-rerun-r2.md`), no BLOCKING: 3 MINOR (the observed-condition refusal row, a refusal wording, summary rows) and 1 NIT (a column label); fixed, not re-reviewed.
 
 ## What waits for Jacob
 
