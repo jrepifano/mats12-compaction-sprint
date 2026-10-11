@@ -23,7 +23,33 @@ Sibling repo `../mats12_neel_working` is Jacob's MATS application project (emerg
 
 More documents may be added; when they are, read them and update the proposals doc.
 
+## Two tiers: probes and studies (Jacob, 2026-10-11)
+
+**Probes are the default during exploration.** The goal of a probe is to get to the bottom of a phenomenon quickly, not to follow preregistration rules or minimise spend. Why: by 2026-10-11 we had spent $464 of $2,100, and paperwork, not compute, set the pace. E13 took 23 h from proposal to its first GPU run and about 3.5 days to merge, for a $41 gate; the repo held 233 review prompts.
+
+**Probe tier:**
+- **Plan:** one page from `probes/TEMPLATE.md`, committed on main under an id taken from `probes/INDEX.md`, before any data exists. No gpt-6-astra review of the plan, no implementation-plan document, no Claude Doc mirror.
+- **Go-ahead:** Jacob's "go" in chat, for one plan or a batch. From then on **Claude sees the probe through without intervention**: no mid-run checkpoints, no sign-off for design changes, no labelling gate on the critical path.
+- **Follow-ups:** Claude runs additional experiments when a result calls for them and they are informative. Before each one, add a log entry with what it tests, why, a one-line prediction and its cost; report follow-ups as exploratory. Change the design whenever that serves the question, and record why in the log. There are no amendments.
+- **Spend:** starting cap of at most $75 per probe. Claude may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. Watch the program total with `merge_ledger.py report`.
+- **Build:**
+  - Work in a worktree, `.claude/worktrees/p<nn>-<slug>` on branch `probe/P<NN>-<slug>`, with the probe's code in `probes/P<NN>-<slug>/` (reusable pieces go in `src/emx/`).
+  - Run pods through the generic probe runner, adding no per-experiment cases to the pod scripts.
+  - Write tests for the code. A smoke unit on the pod gates the bulk run automatically.
+  - Use parallel subagents as usual.
+- **Judges:** prefer judges already validated in this repo; one validated judge is enough for a probe. An unvalidated judge is allowed when the claim says so, and validating it becomes a follow-up if the result matters.
+- **Literature:** one subagent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.
+- **Finish (the `finish-probe` skill):**
+  - Write `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
+  - Run **one gpt-6-astra review** of the whole branch (code, results, note) and fix the BLOCKING findings.
+  - Open a PR and merge it to main without waiting for Jacob, then send him the PR link and a summary.
+- **Still applies to probes:** Stack; Compute and cost control (profiling, throughput, ledger, RunPod operations); determinism and pinned revisions; retained training curves; visibility; reporting what actually happened; treating successes as hypotheses; Git.
+
+**Studies** follow everything from "Working norms" onward: preregistration, review rounds, implementation plans and Claude Doc mirrors. They are for the direction we commit to and for anything written up for others. A probe graduates to a study when we want to build on its answer or write it up.
+
 ## Working norms (carried over from the working repo)
+
+The rules in this section and in "Review with gpt-6-astra" are the **study tier**. Probes follow the section above instead, wherever the two differ.
 
 - **Jacob designs and verifies; Claude executes and reports.** Claude drafts proposals, preregistrations, and code. Nothing runs that costs money (GPU pods, paid API calls beyond trivial smoke tests) without Jacob's explicit go-ahead for that specific experiment.
 - **Hypotheses before experiments.** Every experiment gets a preregistration at `docs/experiments/<EXP-ID>/prereg.md` **before** any paid run. It must be agreed by Jacob and reviewed by gpt-6-astra. It contains:
@@ -133,7 +159,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   - Week 1: gate experiments (Phase A).
   - Week 2: "is it interesting" experiments (Phase B).
   - Weeks 3–4: commit to one direction and get a presentable preliminary result.
-- **Budget:** $2,100 for the whole program, i.e. October 2026 (Jacob, 2026-10-06). The goal is to spend most of it, or at least a lot, during the research sprint, to collect very good results. Track the running total with `scripts/merge_ledger.py report`. Keep every experiment under its cap, and ask before any single experiment above ~$100.
+- **Budget:** $2,100 for the whole program, i.e. October 2026 (Jacob, 2026-10-06). The goal is to spend most of it, or at least a lot, during the research sprint, to collect very good results. Track the running total with `scripts/merge_ledger.py report`. Keep every experiment under its cap, and ask before any single study above ~$100 (probes: up to $150 without asking; see "Two tiers").
 
 ## Stack
 
@@ -144,6 +170,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
   - `configs/` holds experiment configs.
   - `data/` and `results/` hold artifacts; large or raw files are gitignored, while hashes and small summaries are committed.
   - `docs/` holds plans and preregs.
+  - `probes/` holds probe plans, code, logs and notes, one directory per probe.
   - `logs/` holds reports, reviews, and the cost ledger.
 - **Secrets** live in `.env` (gitignored, mode 600): `HF_TOKEN`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY`, `RUNPOD_API_KEY`, `EM_DATASET_PASSWORD`, plus a few non-secret settings. It was copied from `../mats12_neel_working/.env` at Jacob's request on 2026-09-29, with that project's pod- and model-specific variables stripped. Never print or commit it. Scripts load it and log only key names.
   - **The keys live in the main checkout's `.env`** (`/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.env`). Git worktrees under `.claude/worktrees/` do not have one: copy it into the worktree root (`cp -p`, keep mode 600; it is gitignored there too) rather than asking for keys (Jacob, 2026-09-30).
