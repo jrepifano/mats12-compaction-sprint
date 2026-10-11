@@ -67,6 +67,7 @@ SSH_OPTS = [
     "ConnectTimeout=20",
     "-o",
     "StrictHostKeyChecking=accept-new",
+    *rp.ssh_known_hosts_opts(),
     "-o",
     "BatchMode=yes",
     "-o",
@@ -107,7 +108,8 @@ def arm_slot_live(pod_id: str, host: str, port: int, deadline: int) -> str:
     script = (
         f'envval() {{ case "$1" in RUNPOD_POD_ID_K) echo {pod_id} ;; '
         f"POD_SSH_HOST_K) echo {host} ;; POD_SSH_PORT_K) echo {port} ;; esac; }}\n"
-        f"POD_SSH_USER=root\nset -euo pipefail\n{fn}\narm_slot _K {deadline}\n"
+        f"POD_SSH_USER=root\nKNOWN_HOSTS={rp.known_hosts_file()}\nset -euo pipefail\n{fn}\n"
+        f"arm_slot _K {deadline}\n"
     )
     r = subprocess.run(
         ["/bin/bash", "-c", script], capture_output=True, text=True, timeout=150, check=False

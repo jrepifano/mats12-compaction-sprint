@@ -15,7 +15,7 @@ Both tools read this one file. Codex reads `AGENTS.md` natively, and Claude Code
   
   Codex agents may spawn sub-agents for this work as Claude agents do.
 - **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Fable 5.1, with Read, Grep and Glob only and no shell, so set `CLAUDE_REVIEW_DIFF=<base>..HEAD` and the script saves the diff for it to read). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
-- **Commit attribution:** end commit messages and PR bodies with the co-author line your own tool's attribution guidance gives. If it gives none, name the tool and model, e.g. `Co-Authored-By: Codex CLI (gpt-6-astra)`.
+- **Commit attribution:** end commit messages and PR bodies with the co-author line your own tool's attribution guidance gives. Codex sessions, which get none, use `Co-Authored-By: Codex CLI (gpt-6-astra)` (Jacob, 2026-10-11).
 - **Skills** live in `.agents/skills/<name>/SKILL.md`, which Codex discovers. `.claude/skills/<name>/SKILL.md` is a symlink to the same file, for Claude Code. Edit the file under `.agents/`.
 
 ## What this repo is
@@ -96,14 +96,15 @@ herdr agent start p<nn> --kind claude --pane <pane> -- --permission-mode auto
 # or a Codex agent:
 herdr agent start p<nn> --kind codex --pane <pane> -- --approve-for-me \
   -c sandbox_workspace_write.network_access=true \
-  --add-dir "$HOME/.cache/uv" --add-dir "$HOME/.cache/huggingface" --add-dir "$HOME/.ssh"
+  --add-dir "$HOME/.cache/uv" --add-dir "$HOME/.cache/huggingface"
 herdr agent prompt p<nn> "<brief>"
 ```
 
 How the Codex flags were checked (codex-cli 0.161.0, 2026-10-11, with `codex exec` and the same flags; the interactive session under herdr has not been launched yet):
 - `--approve-for-me` uses the workspace-write sandbox and sends approval requests to automatic review. It doesn't touch `~/.codex/config.toml`.
 - **Network:** workspace-write blocks it by default (curl to OpenRouter: exit 6). With `-c sandbox_workspace_write.network_access=true` it got HTTP 200. Probes need it for OpenRouter, RunPod, HF and ssh.
-- **Writes outside the workspace** were refused ("Operation not permitted") until the path was added with `--add-dir` (equivalent to `sandbox_workspace_write.writable_roots`). That covers uv's and HF's caches, and `~/.ssh/known_hosts`, which pod launches update. `--add-dir ~/.ssh` also lets the agent write your ssh keys. That's Jacob's call; without it, pod launches will need approved escalations.
+- **Writes outside the workspace** were refused ("Operation not permitted") until the path was added with `--add-dir` (equivalent to `sandbox_workspace_write.writable_roots`). That covers uv's and HF's caches.
+- **No `--add-dir ~/.ssh`** (Jacob, 2026-10-11): it would let the agent write the ssh keys too. Instead, our pod ssh and rsync calls keep host keys in the checkout's own `.ssh_known_hosts`, which is inside the workspace; see "RunPod operations". Keys are only read from `~/.ssh`, which the sandbox allows.
 - **Git:** the sandbox keeps `.git` read-only, even when it is listed as a writable root. Under `--approve-for-me`, a commit in a worktree succeeded in the check, through the approval path.
 - **Fallback, Jacob's call only:** `--dangerously-bypass-approvals-and-sandbox` (no sandbox at all), if the flags above prove too tight in practice.
 
@@ -346,7 +347,12 @@ These lived only in Claude's per-user memory, which Codex can't see. They apply 
 - Verify a detached launch after 15–20 s with real progress (new log lines, files), not with an immediate `pgrep`. A process that died at once still shows up for a second. Grep logs for the script's own anchored tag, never a bare `DONE`/`FAIL` (model outputs contain those words).
 - A redirect into a missing directory under `nohup` fails silently and leaves `$!` stale: `mkdir -p` the log directory first.
 - Large single-file transfers over rsync can stall. `tar cf - dir | ssh pod 'tar xf -'` is the fallback.
-- RunPod reuses `ip:port` pairs across pods, and `accept-new` refuses a changed host key ("Host key verification failed", exit 255). `pod_up.py` drops the stale `known_hosts` entry before first contact.
+- RunPod reuses `ip:port` pairs across pods, and `accept-new` refuses a changed host key ("Host key verification failed", exit 255). `pod_up.py` drops the stale entry before first contact (`emx.runpod.forget_host_key`).
+- **Repo-local known hosts** (Jacob, 2026-10-11). The shared pod tooling uses `-o UserKnownHostsFile=<checkout root>/.ssh_known_hosts` (gitignored) with `StrictHostKeyChecking=accept-new`. That tooling is `probe_pod.py`, `probe_watchdog.sh`, `pod_push.sh`, `pod_pull_results.sh`, `pod_part.sh`, `pod_hunt.sh`, `pod_watchdog.sh` and `killswitch_live_check.py`.
+  - The rule is the same as for the spend ledger: the root of the checkout the code runs from. Each worktree has its own file, inside a sandboxed agent's workspace. Python gets it from `emx.runpod.ssh_known_hosts_opts()`, and shell scripts use `$PWD/.ssh_known_hosts` after their `cd` to the repo root.
+  - The stale-entry removal works on that file (`ssh-keygen -R ... -f`). It also tries `~/.ssh/known_hosts`, which older experiments' own watchdogs and orchestrators still use; they were left unchanged.
+  - Entries already in `~/.ssh/known_hosts` are harmless.
+  - New pod code passes `ssh_known_hosts_opts()`.
 - Fetch, verify locally, then terminate, as separate commands. Never fetch and terminate in one compound command.
 
 ## Research taste (Neel's stated priorities)

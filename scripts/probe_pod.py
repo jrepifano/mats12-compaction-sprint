@@ -135,6 +135,7 @@ PY = ["uv", "run", "--quiet", "python"]
 SSH_OPTS = [
     "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4",
     "-o", "ConnectTimeout=20", "-o", "StrictHostKeyChecking=accept-new",
+    *rp.ssh_known_hosts_opts(),  # the checkout's .ssh_known_hosts, never ~/.ssh (AGENTS.md)
 ]
 NEVER_SEND = frozenset({"data/E1/questions/narrow.jsonl"})  # held-out questions stay local
 LAPTOP_ONLY = re.compile(r"(OPENAI|OPENROUTER|RUNPOD|EM_DATASET_PASSWORD|AZURE)")

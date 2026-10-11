@@ -233,6 +233,7 @@
 #             MANIFEST.<id>.sha256[,...]] [--dry-run [--show-files]]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
 
 DOTENV="${POD_PUSH_DOTENV:-.env}"   # tests point this at a fake
 envval() { { grep -m1 "^$1=" "$DOTENV" || true; } | cut -d= -f2- ; }  # a missing key is empty, not fatal under pipefail
@@ -317,8 +318,8 @@ POD_SSH_USER=$(envval POD_SSH_USER || true); POD_SSH_USER=${POD_SSH_USER:-root}
 if [ "$DRY" = "1" ]; then POD_SSH_HOST=${POD_SSH_HOST:-HOST}; POD_SSH_PORT=${POD_SSH_PORT:-PORT}; fi
 [ -n "$POD_SSH_HOST" ] && [ -n "$POD_SSH_PORT" ] || { echo "no pod in slot $SLOT; run pod_up.py first" >&2; exit 1; }
 
-SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new $POD_SSH_USER@$POD_SSH_HOST"
-RSYNC_SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new"
+SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS $POD_SSH_USER@$POD_SSH_HOST"
+RSYNC_SSH="ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS"
 # arm_slot SLOT DEADLINE: prints the slot's arm result (the killswitch's last line), or a failure
 # when ssh did not exit 0 (an ARMED line from a dropped session is not trusted; review r2)
 arm_slot() {
@@ -328,7 +329,7 @@ arm_slot() {
   case "$pid" in ""|*[!A-Za-z0-9]*) echo "no valid RUNPOD_POD_ID$1 in .env"; return 0 ;; esac
   [ -n "$host" ] && [ -n "$port" ] || { echo "no SSH address for slot $1 in .env"; return 0; }
   out=$(perl -e 'alarm 90; exec @ARGV' ssh -n -p "$port" -o ConnectTimeout=20 \
-    -o StrictHostKeyChecking=accept-new "$POD_SSH_USER@$host" \
+    -o StrictHostKeyChecking=accept-new -o "UserKnownHostsFile=$KNOWN_HOSTS" "$POD_SSH_USER@$host" \
     "bash /ws/emx/scripts/pod_killswitch.sh arm $pid $2" 2>&1) && rc=0 || rc=$?
   line=$(printf '%s\n' "$out" | tail -n 1)
   if [ "$rc" != "0" ]; then echo "arm failed or uncertain (ssh exit $rc)"; return 0; fi

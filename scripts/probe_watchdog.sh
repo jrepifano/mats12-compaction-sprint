@@ -16,6 +16,7 @@
 # PROBE_WATCHDOG_ONCE=1 runs a single tick and exits with the budget check's code (tests).
 set -uo pipefail
 cd "$(dirname "$0")/.."
+KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
 EXP=${1:-}
 if ! printf '%s' "$EXP" | grep -Eq '^P[0-9]{2,3}$'; then
   echo "usage: probe_watchdog.sh P<NN> [INTERVAL_S]  (got '${EXP}')" >&2; exit 64
@@ -45,7 +46,7 @@ idle_check() {
   local slot=$1 host port util n
   host=$(envval "POD_SSH_HOST$slot"); port=$(envval "POD_SSH_PORT$slot")
   [ -n "$host" ] || return 0
-  util=$(ssh -p "$port" -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "root@$host" \
+  util=$(ssh -p "$port" -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS "root@$host" \
          "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits" 2>/dev/null | head -1 | tr -d ' ')
   [ -n "$util" ] || { echo "$(now) $slot: unreachable for the idle check"; return 0; }
   n=$(idle_get "$slot")
