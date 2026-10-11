@@ -171,7 +171,7 @@ def item_rows(items: list[C.Item], s: dict[str, C.SampleRow], m: Matcher, collec
                     r["consistent"], r["target"] = True, h1.surface
                     # Strict rule (the plan's "that answer differs from the correct one"): Qwen
                     # answers with nationality adjectives ("Indian") and Wikidata with country
-                    # names ("India"), which the "country" check above misses (log.md 19:45).
+                    # names ("India"), which the "country" check above misses (log.md 19:35–20:01).
                     if collect:
                         m.need(main.surface, it.answer_true or "", NATION, it.answer_aliases)
                     r["answer_correct_nation"] = m.match(main.surface, it.answer_true or "",
