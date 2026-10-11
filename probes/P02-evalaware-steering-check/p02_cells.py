@@ -131,8 +131,33 @@ def model_cells(model: str) -> list[Cell]:
     return c
 
 
-def null_cells(samples: int = NULL_SAMPLES) -> list[Cell]:
-    return [Cell("org", s, a, "ov", "plain", samples) for s in NULL_SITES for a in A_STRENGTHS]
+def null_cells(samples: int = NULL_SAMPLES, strengths=A_STRENGTHS) -> list[Cell]:
+    return [Cell("org", s, a, "ov", "plain", samples) for s in NULL_SITES for a in strengths]
+
+
+# --- follow-up variants (log.md; exploratory) -----------------------------------------------------
+# "fine": A collapses coherence between 0.6 and 1.2 on every model (pod x9qgahfaoz0dhl), so the
+# planned grid skips the only region where steering could move EM while answers stay coherent.
+FINE_A: tuple[float, ...] = (0.7, 0.8, 0.9, 1.0)
+FINE_SIGN: tuple[float, ...] = (-0.3,)
+VARIANTS: tuple[str, ...] = ("", "fine")
+
+
+def variant_null_strengths(variant: str) -> tuple[float, ...]:
+    return FINE_A if variant == "fine" else A_STRENGTHS
+
+
+def fine_order(null_samples: int = NULL_SAMPLES) -> list[tuple[str, list[Cell]]]:
+    a = {m: [Cell(m, "A", x, "ov", "plain", N_SAMPLES) for x in FINE_A] for m in MODELS}
+    a["org"] += [Cell("org", "A", x, "noov", "plain", N_SAMPLES) for x in FINE_SIGN]
+    return [("base", a["base"]), ("org", a["org"]), ("good", a["good"]),
+            ("org", null_cells(null_samples, FINE_A))]
+
+
+def run_order_for(variant: str, null_samples: int = NULL_SAMPLES):
+    if variant not in VARIANTS:
+        raise ValueError(f"unknown variant {variant!r}")
+    return fine_order(null_samples) if variant == "fine" else run_order(null_samples)
 
 
 def run_order(null_samples: int = NULL_SAMPLES) -> list[tuple[str, list[Cell]]]:

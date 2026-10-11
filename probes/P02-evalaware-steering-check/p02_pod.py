@@ -44,7 +44,12 @@ import p02_cells as P
 RES = PROBE_DIR / "results"
 LOGS = PROBE_DIR / "logs"
 GEN = RES / "gen"
-DIRS = RES / "directions"
+# Follow-up variants (log.md): probes/<dir>/variant.txt names one of p02_cells.VARIANTS; its run
+# records get a suffix so an earlier pod's results are never overwritten. Cells keep their ids.
+VARIANT = ((PROBE_DIR / "variant.txt").read_text().strip()
+           if (PROBE_DIR / "variant.txt").is_file() else "")
+SFX = f"_{VARIANT}" if VARIANT else ""
+DIRS = RES / f"directions{SFX}"
 BATCH_SIZE = 256  # 64 ran at 3.5 answers/s on pod 6ksvxpf6n41dwt (every batch ~600 steps at
 # ~30 ms, overhead-bound), log.md 2026-10-11 19:45; a CUDA OOM halves it
 PRIOR = PROBE_DIR / "prior"  # pushed: cells and the hook-check record from an earlier pod
@@ -233,7 +238,7 @@ def adopt_prior(cell: P.Cell, reqs) -> bool:
         return False
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
-    with (RES / "adopted.jsonl").open("a") as f:
+    with (RES / f"adopted{SFX}.jsonl").open("a") as f:
         f.write(json.dumps({"cell": cell.cell_id, "sha256": P.sha256_file(dst),
                             "from": "prior/cells", "utc": utc()}) + "\n")
     log(f"P02_ADOPTED {cell.cell_id} from an earlier pod (exact request match)")
@@ -295,7 +300,7 @@ def run_cell(model, tok, cell: P.Cell, reqs, spans, vecs, timing: list) -> int:
            "mean_new_tokens": round(float(np.mean([r["n_new_tokens"] for r in rows])), 1),
            "batch_size": bs, "utc_end": utc(), "elapsed_s": round(time.time() - T0, 1)}
     timing.append(rec)
-    with (RES / "timing.jsonl").open("a") as f:
+    with (RES / f"timing{SFX}.jsonl").open("a") as f:
         f.write(json.dumps(rec) + "\n")
     log(f"P02_CELL {cell.cell_id} n={len(reqs)} wall={wall:.0f}s rate={rec['answers_per_s']}/s")
     return len(reqs)
@@ -385,7 +390,7 @@ def main(argv=None) -> int:
     questions = P.broad_questions(REPO)
     kept, by_id = P.kept_notices(REPO)
     null_samples = P.NULL_SAMPLES
-    plan = P.run_order(null_samples)
+    plan = P.run_order_for(VARIANT, null_samples)
     built: dict[str, tuple] = {}
 
     def reqs_for(cell):
@@ -405,7 +410,7 @@ def main(argv=None) -> int:
 
     import torch
 
-    env = {"utc_start": utc(),
+    env = {"utc_start": utc(), "variant": VARIANT,
            "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "cpu", "torch": torch.__version__,
            "git_commit": os.environ.get("EMX_GIT_COMMIT", "unknown"), "batch_size": BATCH_SIZE,
            "n_answers_planned": total}
@@ -413,7 +418,7 @@ def main(argv=None) -> int:
     import transformers
 
     env.update(transformers=transformers.__version__, peft=peft.__version__)
-    write_json(RES / "env.json", env)
+    write_json(RES / f"env{SFX}.json", env)
     checks: dict = {}
     timing: list = []
 
@@ -431,7 +436,7 @@ def main(argv=None) -> int:
         "medians": {L: drec["A_half_split_median"][L] for L in P.A_LAYERS},
         "spearman_brown": {L: drec["A_half_split_spearman_brown"][L] for L in P.A_LAYERS},
         "rule": drec["A_half_split_rule"], "passed": drec["A_half_split_pass"]}
-    write_json(RES / "checks.json", checks)
+    write_json(RES / f"checks{SFX}.json", checks)
     if not drec["A_half_split_pass"]:
         raise SmokeFail("check (2): A's Spearman-Brown half-split reliability < 0.7 at a steered "
                         "layer")
@@ -457,7 +462,7 @@ def main(argv=None) -> int:
         log(f"hook checks reused from {prior_hc['_reused_from']['pod']} (same steer_multi.py and "
             f"vectors sha256)")
     checks["3_hooks"] = hc
-    write_json(RES / "checks.json", checks)
+    write_json(RES / f"checks{SFX}.json", checks)
     if not all(h["passed"] for k, h in hc.items() if not k.startswith("_")):
         raise SmokeFail("check (3): a hook check failed")
 
@@ -471,10 +476,11 @@ def main(argv=None) -> int:
         t = time.time()
         latents[name] = latent(m, name, tok, by, vecs)
         latents[name]["wall_s"] = round(time.time() - t, 1)
-        write_json(RES / "latent.json", latents)
+        write_json(RES / f"latent{SFX}.json", latents)
         log(f"latent {name}: auroc_last {[round(v, 3) for v in latents[name]['auroc_last'].values()]}")
 
-    latent_for(model, "base")
+    if not VARIANT:  # the latent readout does not depend on the cells; run once
+        latent_for(model, "base")
     done = 0
     projected = False
     current = "base"
@@ -488,10 +494,11 @@ def main(argv=None) -> int:
                 diff = float(np.abs(last_logits(model, ref_ids) - base_logits).max())
                 checks.setdefault("1_adapter_applied", {})[sess] = {
                     "max_abs_logit_diff_vs_base": diff, "passed": diff > 0.05}
-                write_json(RES / "checks.json", checks)
+                write_json(RES / f"checks{SFX}.json", checks)
                 if diff <= 0.05:
                     raise SmokeFail(f"check (1): {sess} logits equal the base's (diff {diff})")
-                latent_for(model, sess)
+                if not VARIANT:
+                    latent_for(model, sess)
         for cell in cells:
             reqs, spans = reqs_for(cell)
             if adopt_prior(cell, reqs):
@@ -514,14 +521,14 @@ def main(argv=None) -> int:
                 log(f"P02_PROJECTION {proj_s / 3600:.2f} h vs {budget_s / 3600:.2f} h; cut={cut}")
                 if cut:
                     null_samples = P.NULL_SAMPLES_CUT
-                    plan[3] = ("org", P.null_cells(null_samples))
+                    plan[-1] = ("org", P.null_cells(null_samples, P.variant_null_strengths(VARIANT)))
                     log(f"P02_NULLS_CUT to {null_samples} samples per question")
-                write_json(RES / "checks.json", checks)
+                write_json(RES / f"checks{SFX}.json", checks)
     free(model)
     checks["null_samples"] = null_samples
     checks["utc_end"] = utc()
     checks["elapsed_s"] = round(time.time() - T0, 1)
-    write_json(RES / "checks.json", checks)
+    write_json(RES / f"checks{SFX}.json", checks)
     log(f"P02_ALL_CELLS_DONE answers={done} elapsed={checks['elapsed_s']} s")
     return 0
 

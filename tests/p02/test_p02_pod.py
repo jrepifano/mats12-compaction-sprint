@@ -179,3 +179,51 @@ def test_every_pod_input_is_pushed():
     assert needed <= push, needed - push
     for p in push:
         assert (root / p).exists(), p
+
+
+def test_fine_variant_plan_and_suffixed_records(tok, tmp_path, monkeypatch):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    import p02_pod as D
+    from e13.conftest import make_tiny_qwen
+
+    order = P.run_order_for("fine")
+    assert [s for s, _ in order] == ["base", "org", "good", "org"]
+    ids = {c.cell_id for _, cells in order for c in cells}
+    planned = {c.cell_id for _, cells in P.run_order() for c in cells}
+    assert not ids & planned and "org__A__-0.3__noov__plain" in ids
+    assert P.n_answers(order) == 3 * 4 * 820 + 820 + 20 * 4 * 205
+    with pytest.raises(ValueError):
+        P.run_order_for("nope")
+
+    model = make_tiny_qwen(n_layers=P.N_LAYERS)
+    for name in ("input", "output"):
+        u = np.random.default_rng(0).standard_normal(16)
+        (tmp_path / f"{name}.json").write_text(json.dumps({"u": (u / np.linalg.norm(u)).tolist()}))
+    monkeypatch.setattr(D, "E13_DIRS", {k: tmp_path / f"{k}.json" for k in ("input", "output")})
+    monkeypatch.setattr(D, "VARIANT", "fine")
+    monkeypatch.setattr(D, "SFX", "_fine")
+    for attr, sub in (("RES", "results"), ("LOGS", "logs"), ("GEN", "results/gen"),
+                      ("DIRS", "results/directions_fine")):
+        monkeypatch.setattr(D, attr, tmp_path / sub)
+    monkeypatch.setattr(D, "PRIOR", tmp_path / "noprior")
+    monkeypatch.setattr(D, "MAX_NEW", 4)
+    monkeypatch.setattr(D, "BATCH_SIZE", 16)
+    monkeypatch.setattr(P, "N_NORM_PROMPTS", 4)
+    monkeypatch.setattr(P, "HALF_SPLIT_MIN", -1.0)
+    monkeypatch.setattr(D, "load_model", lambda n: (model if n == "base" else make_tiny_qwen(
+        n_layers=P.N_LAYERS, seed=7), {"model": n, "adapter": None, "load_s": 0.0}))
+    monkeypatch.setattr(D, "free", lambda m: None)
+    q = P.broad_questions()[:1]
+    monkeypatch.setattr(P, "broad_questions", lambda root=None: q)
+    small = [("base", [P.Cell("base", "A", 0.8, "ov", "plain", 1)]),
+             ("org", [P.Cell("org", "A", -0.3, "noov", "plain", 1)]),
+             ("good", [P.Cell("good", "A", 0.9, "ov", "plain", 1)]),
+             ("org", [P.Cell("org", "ctl_cat", 0.7, "ov", "plain", 1)])]
+    monkeypatch.setattr(P, "fine_order", lambda null_samples=5: [(s, list(c)) for s, c in small])
+    monkeypatch.setattr(D, "gpu_hours", lambda: 3.0)
+    assert D.main([]) == 0
+    res = tmp_path / "results"
+    assert (res / "checks_fine.json").is_file() and (res / "timing_fine.jsonl").is_file()
+    assert (res / "env_fine.json").is_file() and not (res / "latent_fine.json").exists()
+    assert not (res / "checks.json").exists()
+    assert (res / "gen" / "org__ctl_cat__+0.7__ov__plain.csv").is_file()
