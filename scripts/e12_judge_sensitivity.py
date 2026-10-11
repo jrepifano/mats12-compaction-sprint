@@ -7,7 +7,10 @@ items. Amendment E (Jacob, 2026-10-11) made luna the deciding judge for every re
 "luna" view equals `analysis.json`, and the "gfl" view is the preregistered reading of these
 readouts (every row they use is ext48). It recomputes primary (i) (cue EM) and primary (ii)
 (nudge area) with `qtable`'s judge forced, using `emx.e12.analysis`'s own tables, contrasts and
-bootstrap. Both judges scored every row already; no API calls.
+bootstrap. Both judges scored every row already; no API calls. The labels are numerical
+classifications that `label_primary` gives assuming the primary is valid; each judge's validity
+status sits beside them (primary (i): §4.7's EM bar on that judge, from the hand-label record;
+primary (ii): no hand-label bar, so it follows the global checks, which pass).
 
 Writes results/E12/judge_sensitivity_<recipe>.json.
 Usage: uv run python scripts/e12_judge_sensitivity.py [--recipe tan32]
@@ -36,6 +39,10 @@ def run(recipe: str, root: Path) -> dict:
     doc, dsha = A.load_final(recipe, root)
     fin = doc["final"]
     seeds, endpoint = sorted(fin["eligible_seeds"]), fin["endpoint"]
+    hl = A.read_json(root / A.handlabel_record(recipe)) or {}
+    em = hl.get("em") or {}
+    bar = {j: em.get("pass") if em.get("deciding_judge") == j
+           else em.get("prereg_pass") if em.get("prereg_judge") == j else None for j in JUDGES}
     orig = A.qtable
     out = {"exp": "E12", "recipe": recipe, "decisions_sha256": dsha, "endpoint": endpoint,
            "seeds": seeds, "status": "luna = Amendment E (as analysed); gfl = preregistered judge", "judges": {}}
@@ -47,19 +54,24 @@ def run(recipe: str, root: Path) -> dict:
             pii_all = A.primary_ii(tree, seeds, endpoint)
             pii, eff = pii_all["seeds"], A.nudge_effectiveness(pii_all)
             out["judges"][judge] = {
+                "validity": {"i": {True: "valid", False: "unvalidated"}.get(bar[judge], "locked"),
+                             "ii": "valid"},
                 "primary_i": {s: {"contrast": _point(r["contrast"]),
+                                  "support": _point(r["support"]),
+                                  "plain": _point(r["plain"]),
                                   "a_vs_base": _point(r["a_vs_base"]),
                                   "rates": {k: round(v, 4) for k, v in r["rates"].items()}}
                               for s, r in pi.items()},
                 "primary_ii": {s: {"contrast": _point(r["contrast"]),
                                    "support": _point(r["support"]),
+                                   "plain": _point(r["plain"]),
                                    "dose_rates": {a: [round(x, 4) for x in v]
                                                   for a, v in r["dose_rates"].items()},
                                    "dose0_rates": {a: round(v, 4)
                                                    for a, v in r["dose0_rates"].items()}}
                                for s, r in pii.items()},
                 "nudge_effectiveness": eff,
-                "labels": {"i": A.label_primary("i", pi)["label"],
+                "labels_if_valid": {"i": A.label_primary("i", pi)["label"],
                            "ii": A.label_primary("ii", pii,
                                                  nudge_effective=eff["effective"])["label"]},
             }
@@ -81,7 +93,9 @@ def main(argv=None) -> int:
         for w in ("primary_i", "primary_ii"):
             pts = [f"{v['contrast']['point']:+.2f} [{v['contrast']['lo']:+.2f}, "
                    f"{v['contrast']['hi']:+.2f}]" for v in r[w].values()]
-            print(f"{judge:8s} {w}: {'; '.join(pts)}  label {r['labels'][w[-2:].lstrip('_')]}")
+            k = w[-2:].lstrip("_")
+            print(f"{judge:8s} {w}: {'; '.join(pts)}  label if valid "
+                  f"{r['labels_if_valid'][k]} ({r['validity'][k]})")
     print(f"wrote {path}")
     return 0
 

@@ -4,7 +4,7 @@
  "exp": "E12",
  "judges": {
   "gfl": {
-   "labels": {
+   "labels_if_valid": {
     "i": "unresolved_raw_only",
     "ii": "recurrence_pattern"
    },
@@ -35,12 +35,22 @@
       "lo": 2.359,
       "point": 5.459
      },
+     "plain": {
+      "hi": 8.493,
+      "lo": -2.223,
+      "point": 2.778
+     },
      "rates": {
       "A_cue": 0.1231,
       "A_plain": 0.1086,
       "C_cue": 0.0685,
       "C_plain": 0.0808,
       "base_cue": 0.0658
+     },
+     "support": {
+      "hi": 9.507,
+      "lo": -4.785,
+      "point": 2.681
      }
     },
     "2": {
@@ -54,12 +64,22 @@
       "lo": 0.35,
       "point": 3.582
      },
+     "plain": {
+      "hi": 7.919,
+      "lo": -0.722,
+      "point": 3.598
+     },
      "rates": {
       "A_cue": 0.1145,
       "A_plain": 0.1244,
       "C_cue": 0.0787,
       "C_plain": 0.0884,
       "base_cue": 0.0658
+     },
+     "support": {
+      "hi": 4.98,
+      "lo": -5.899,
+      "point": -0.016
      }
     },
     "3": {
@@ -73,12 +93,22 @@
       "lo": 0.607,
       "point": 3.788
      },
+     "plain": {
+      "hi": 5.421,
+      "lo": -3.96,
+      "point": 1.327
+     },
      "rates": {
       "A_cue": 0.1136,
       "A_plain": 0.1033,
       "C_cue": 0.0758,
       "C_plain": 0.09,
       "base_cue": 0.0658
+     },
+     "support": {
+      "hi": 8.778,
+      "lo": -2.237,
+      "point": 2.46
      }
     }
    },
@@ -112,6 +142,11 @@
        0.1634,
        0.3267
       ]
+     },
+     "plain": {
+      "hi": 5.243,
+      "lo": -0.327,
+      "point": 2.3
      },
      "support": {
       "hi": 8.728,
@@ -149,6 +184,11 @@
        0.3433
       ]
      },
+     "plain": {
+      "hi": 5.696,
+      "lo": 0.644,
+      "point": 3.11
+     },
      "support": {
       "hi": 5.593,
       "lo": -2.693,
@@ -185,16 +225,25 @@
        0.3618
       ]
      },
+     "plain": {
+      "hi": 4.47,
+      "lo": -0.964,
+      "point": 1.987
+     },
      "support": {
       "hi": 8.216,
       "lo": 0.383,
       "point": 4.091
      }
     }
+   },
+   "validity": {
+    "i": "unvalidated",
+    "ii": "valid"
    }
   },
   "luna": {
-   "labels": {
+   "labels_if_valid": {
     "i": "unresolved",
     "ii": "unresolved_raw_only"
    },
@@ -225,12 +274,22 @@
       "lo": 0.504,
       "point": 2.767
      },
+     "plain": {
+      "hi": 2.75,
+      "lo": -5.25,
+      "point": -0.75
+     },
      "rates": {
       "A_cue": 0.0677,
       "A_plain": 0.0725,
       "C_cue": 0.04,
       "C_plain": 0.08,
       "base_cue": 0.0525
+     },
+     "support": {
+      "hi": 8.278,
+      "lo": -0.732,
+      "point": 3.517
      }
     },
     "2": {
@@ -244,12 +303,22 @@
       "lo": 0.234,
       "point": 2.757
      },
+     "plain": {
+      "hi": 6.0,
+      "lo": -0.25,
+      "point": 2.75
+     },
      "rates": {
       "A_cue": 0.0702,
       "A_plain": 0.0725,
       "C_cue": 0.0426,
       "C_plain": 0.045,
       "base_cue": 0.0525
+     },
+     "support": {
+      "hi": 2.034,
+      "lo": -2.013,
+      "point": 0.007
      }
     },
     "3": {
@@ -263,12 +332,22 @@
       "lo": -1.774,
       "point": 1.238
      },
+     "plain": {
+      "hi": 2.5,
+      "lo": -4.5,
+      "point": -0.25
+     },
      "rates": {
       "A_cue": 0.06,
       "A_plain": 0.06,
       "C_cue": 0.0476,
       "C_plain": 0.0625,
       "base_cue": 0.0525
+     },
+     "support": {
+      "hi": 7.25,
+      "lo": -3.263,
+      "point": 1.488
      }
     }
    },
@@ -302,6 +381,11 @@
        0.0882,
        0.2146
       ]
+     },
+     "plain": {
+      "hi": 1.585,
+      "lo": -2.561,
+      "point": -0.244
      },
      "support": {
       "hi": 7.561,
@@ -339,6 +423,11 @@
        0.2683
       ]
      },
+     "plain": {
+      "hi": 3.564,
+      "lo": 0.125,
+      "point": 1.836
+     },
      "support": {
       "hi": 4.429,
       "lo": -2.088,
@@ -375,12 +464,21 @@
        0.25
       ]
      },
+     "plain": {
+      "hi": 3.537,
+      "lo": -1.463,
+      "point": 1.215
+     },
      "support": {
       "hi": 5.595,
       "lo": -2.594,
       "point": 1.563
      }
     }
+   },
+   "validity": {
+    "i": "valid",
+    "ii": "valid"
    }
   }
  },

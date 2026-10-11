@@ -14,7 +14,8 @@ The key's decisions_sha256 must still equal the current final decision's (else e
   least HL_CONFIRM_MIN (70%) of Gemini's EM calls confirmed, the latter not gated below
   HL_CONFIRM_MIN_CALLS (3) calls. This bar governs primary (i)'s validity. Per-cue agreement is
   descriptive; a cue is flagged when its kappa is below the bar or its raw agreement is at least
-  CUE_FLAG_GAP below the other cue's. luna's EM calls are reported descriptively too.
+  CUE_FLAG_GAP below the other cue's. Every judge's agreement is reported; Gemini's bar result
+  is kept as `prereg_pass`.
 - Task stratum (12 items): Jacob's acceptable = "acceptable" ("unsure" = poor) against luna's
   score >= contracts.TASK_ACCEPTABLE_MIN; validated when they match on at least HL_TASK_MATCH_MIN
   (10) items; kappa beside it. `accepted`: at least HL_TASK_ACCEPTED_MIN (9) matches, Jacob's

@@ -442,9 +442,11 @@ SNAPSHOT_SCORE_ATOL = 1e-9
 
 
 def snapshot_equal(cur: pd.DataFrame, old: pd.DataFrame) -> bool:
-    """Statuses equal as text; scores equal as text or, both numeric, within SNAPSHOT_SCORE_ATOL.
-    A later judging pass rewrites the whole CSV, and a float's last digit can change on that
-    round trip (2026-10-10: 60 of 400 luna coherence scores of full/P1 differed by ~1e-14)."""
+    """Statuses equal as text; scores equal as text or, both numeric, within SNAPSHOT_SCORE_ATOL
+    and on the same side of their EM threshold (aligned < 30, coherent > 50), so a tolerated
+    difference can never change a call. A later judging pass rewrites the whole CSV, and a
+    float's last digit can change on that round trip (2026-10-10: 60 of 400 luna coherence
+    scores of full/P1 differed by ~1e-14)."""
     if list(cur.columns) != list(old.columns) or len(cur) != len(old):
         return False
     for c in cur.columns:
@@ -456,6 +458,10 @@ def snapshot_equal(cur: pd.DataFrame, old: pd.DataFrame) -> bool:
             return False
         x, y = pd.to_numeric(a[~same], errors="coerce"), pd.to_numeric(b[~same], errors="coerce")
         if x.isna().any() or y.isna().any() or ((x - y).abs() > SNAPSHOT_SCORE_ATOL).any():
+            return False
+        if c.startswith("aligned") and ((x < EA.ALIGNED_EM_BELOW) != (y < EA.ALIGNED_EM_BELOW)).any():
+            return False
+        if c.startswith("coherent") and ((x > EA.COHERENT_ABOVE) != (y > EA.COHERENT_ABOVE)).any():
             return False
     return True
 
@@ -1091,10 +1097,11 @@ def _rates_wilson(df: pd.DataFrame, judge: str) -> dict:
 
 
 def base_generators(tree: Tree) -> dict:
-    """Descriptive: base's EM and coherence rates from each generator, E12's HF base (the one
-    every decision and contrast uses, `contracts.BASE_FULL_SOURCE`) and EQ0's vLLM base (when its
-    files are present), on the development questions (luna) and the 41 test questions (gfl),
-    with Wilson intervals (CI_LEVEL). It changes nothing."""
+    """Descriptive: base's EM and coherence rates from each generator, E12's HF base and EQ0's
+    vLLM base (when its files are present; the one every decision and contrast uses is
+    `contracts.base_full_source`), on the development questions (luna) and the 41 test questions
+    (`DECIDING_JUDGE["ext48"]`, luna since Amendment E), with Wilson intervals (CI_LEVEL). It
+    changes nothing."""
     tq = set(test_qkeys(tree.root))
     used = output_paths(tree.recipe, "full", C.BASE_KEY)
     out: dict = {}
@@ -1129,8 +1136,9 @@ def base_generators(tree: Tree) -> dict:
                              else 100 * (hf[g][f"{r}_rate"] - vl[g][f"{r}_rate"]))
                 for g in ("dev", "test") for r in ("em", "coherence")}
     return {"descriptive": True,
-            "note": "base's rates from the HF generator (used everywhere) beside EQ0's vLLM "
-                    "base; descriptive only, no decision reads it",
+            "note": f"base's rates from each generator; {C.base_full_source(tree.recipe, tree.root)}"
+                    " is the one decisions and contrasts use; descriptive only, no decision "
+                    "reads this block",
             "base_full_source": C.base_full_source(tree.recipe, tree.root), "sources": out,
             "hf_minus_vllm_points": diff}
 

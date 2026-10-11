@@ -742,7 +742,8 @@ HL_CONFIRM_MIN = 0.70
 HL_CONFIRM_MIN_CALLS = 3
 HL_TASK_MATCH_MIN = 10  # of 12
 # Amendment E: Jacob accepted luna's task rubric at 9 of 12 matches (all 3 misses luna too strict),
-# so the acceptable-answer rate is reported as validated, read as a lower bound.
+# so the acceptable-answer rate is reported as validated; potentially conservative (all three
+# observed disagreements were luna false negatives).
 HL_TASK_ACCEPTED_MIN = 9
 
 # Style audit (prereg §4.4, Amendment A)

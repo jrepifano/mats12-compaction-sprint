@@ -1,8 +1,8 @@
 {
   "exp": "E12",
   "recipe": "tan32",
-  "utc": "2026-10-11T02:13:03Z",
-  "git_commit": "8a5862c1274e9e8b013f48fae532748c36639da0",
+  "utc": "2026-10-11T02:19:01Z",
+  "git_commit": "94157713b9a3c38e4fdb528cd8b299cc954cac8a",
   "decisions_sha256": "30d83b802e9f76c37303ad1853c1dd45180921df062567977bb532b1147476ad",
   "validation_sha256": "55c825ffc1c320075ffd39fd07e390527a13bb5dfc289db9ae9e7a8349b08bd2",
   "outcome": "proceed",
@@ -2168,7 +2168,7 @@
   },
   "base_generators": {
     "descriptive": true,
-    "note": "base's rates from the HF generator (used everywhere) beside EQ0's vLLM base; descriptive only, no decision reads it",
+    "note": "base's rates from each generator; eq0-vllm is the one decisions and contrasts use; descriptive only, no decision reads this block",
     "base_full_source": "eq0-vllm",
     "sources": {
       "e12-hf": {

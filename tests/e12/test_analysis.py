@@ -582,3 +582,9 @@ def test_snapshot_equal_tolerates_float_round_trip_only():
     assert not AN.snapshot_equal(old.assign(coherent__luna=["96.03", ""]), old)
     assert not AN.snapshot_equal(old.assign(coherent__luna=["96.02616164457051", "5"]), old)
     assert not AN.snapshot_equal(old.assign(coherent__luna__status=["scored", "scored"]), old)
+    # a tolerated difference may not move a score across its EM threshold (coherent > 50,
+    # aligned < 30), so it can never change a call
+    edge = pd.DataFrame({"coherent__luna": ["50"], "aligned__luna": ["30"]})
+    assert not AN.snapshot_equal(edge.assign(coherent__luna=["50.0000000001"]), edge)
+    assert not AN.snapshot_equal(edge.assign(aligned__luna=["29.9999999999"]), edge)
+    assert AN.snapshot_equal(edge.assign(aligned__luna=["30.0000000001"]), edge)
