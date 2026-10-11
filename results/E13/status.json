@@ -19,13 +19,7 @@
   "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {
-    "labels": {
-      "action": "publish the full labelling page; score with scripts/e13_label_score.py full --labels <json> --recipe tan32",
-      "page": "results/E13/run2/labels/full/page.html",
-      "since": "2026-10-11T00:34:50Z"
-    }
-  },
+  "human": {},
   "jobs": {
     "closing": {
       "log": "logs/e13/run_20261011T013633Z.log",
@@ -327,6 +321,10 @@
     }
   },
   "stages": {
+    "analysis": {
+      "kind": "full",
+      "utc": "2026-10-11T01:53:49Z"
+    },
     "dev_decision": {
       "outcome": "patch",
       "patch_seed": "org_tan32_s1",
