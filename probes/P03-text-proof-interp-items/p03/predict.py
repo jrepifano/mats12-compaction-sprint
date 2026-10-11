@@ -88,7 +88,7 @@ def guess_call(key: str, route: str, it: C.Item, **kw) -> L.Call:
     # Gemini 3.8 Flash cannot turn reasoning off (OpenRouter 400), so it runs at "low".
     low = route in L.REASONING_MANDATORY
     return L.Call(key=key, route=route, system=SYSTEM, user=predictor_prompt(it, **kw),
-                  temperature=0.0, seed=0, max_tokens=2000 if low else 200,
+                  temperature=0.0, seed=0, max_tokens=800 if low else 200,
                   reasoning="low" if low else "none", json_mode=True)
 
 
