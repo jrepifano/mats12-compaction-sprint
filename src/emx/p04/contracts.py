@@ -93,12 +93,17 @@ class ModelSpec:
 # Alibaba, glm -> Together. Several providers per pin are listed so a stock-out can fall to the
 # next; allow_fallbacks stays False so we never silently leave the pinned set.
 MODELS: tuple[ModelSpec, ...] = (
+    # ON arm uses reasoning effort "low", NOT the unbounded default: with reasoning simply enabled,
+    # DeepSeek and Qwen reason past a 16k-token budget on this task and never emit code (P04 pilot
+    # 2026-10-11; a reportable finding). effort "low" gives a bounded but substantial reasoning
+    # trace (pilot medians ~8-15k tokens) and reliably produces code. reasoning.max_tokens is
+    # honored by Qwen but ignored by DeepSeek, so effort is the portable control.
     ModelSpec(
         model_id="deepseek/deepseek-v4-flash",
         slug="deepseek-v4-flash",
         provider_only=("GMICloud", "StreamLake", "DeepSeek"),
         off={"reasoning": {"enabled": False}},
-        on={"reasoning": {"enabled": True}},
+        on={"reasoning": {"effort": "low"}},
         created_date="2026-07-31",
     ),
     ModelSpec(
@@ -106,7 +111,7 @@ MODELS: tuple[ModelSpec, ...] = (
         slug="qwen3.8-flash",
         provider_only=("Alibaba",),
         off={"reasoning": {"enabled": False}},
-        on={"reasoning": {"enabled": True}},
+        on={"reasoning": {"effort": "low"}},
     ),
     ModelSpec(
         model_id="z-ai/glm-5.3-flash",
@@ -114,7 +119,7 @@ MODELS: tuple[ModelSpec, ...] = (
         provider_only=("Together", "Z.AI"),
         # GLM's nocot floor is effort "minimal", not a hard off (ELICITATION.md); reported as such.
         off={"reasoning": {"effort": "minimal"}},
-        on={"reasoning": {"effort": "high"}},
+        on={"reasoning": {"effort": "low"}},
     ),
 )
 
