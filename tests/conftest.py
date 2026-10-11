@@ -59,3 +59,20 @@ def e1_splits(require_data):
 def e1_bad_splits(require_data):
     """Only the two bad-advice splits (train and test) must be present."""
     require_data(*(p for p in E1_SPLITS if "_bad" in p))
+
+
+@pytest.fixture(autouse=True)
+def _restore_runpod_experiment():
+    """Put emx.runpod's experiment back (EXP, POD_NAME_PREFIX, POD_EVENTS) after every test.
+
+    `configure(exp)` keeps a sandboxed POD_EVENTS only when the experiment is unchanged, so a test
+    that leaves EXP at another experiment makes a later test's `configure("E1")` point the event
+    log at the real logs/ directory. Found 2026-10-11: after
+    tests/e13/test_orchestrate.py::test_happy_path_blocks_on_labels_then_analyses left EXP=E13,
+    test_pod_up_e1_needs_no_heartbeat wrote a fake running pod into the real logs/pods_E1.jsonl,
+    which the watchdogs and budget checks would bill as a live pod."""
+    from emx import runpod as rp
+
+    saved = (rp.EXP, rp.POD_NAME_PREFIX, rp.POD_EVENTS)
+    yield
+    rp.EXP, rp.POD_NAME_PREFIX, rp.POD_EVENTS = saved
