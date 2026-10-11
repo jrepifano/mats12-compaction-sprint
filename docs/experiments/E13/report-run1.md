@@ -359,7 +359,7 @@ The pod-1 projection was $20.6, priced at $3.49/h. Not in the ledger: gpt-6-astr
 
 ## Next step
 
-The Amendment E re-run ran on 2026-10-10 and 2026-10-11; its results are in the main E13 report (`docs/experiments/E13/report.md`). This report's verdicts for the first run stand as reported.
+This report's verdicts for the first run stand as reported.
 
 ## References
 
