@@ -1,7 +1,7 @@
 """Suite-wide fixtures.
 
 `require_data` skips (rather than errors) a test whose gitignored input data is absent from
-this checkout, e.g. data/E1/train_bad.jsonl in a fresh git worktree (CLAUDE.md: worktrees get
+this checkout, e.g. data/E1/train_bad.jsonl in a fresh git worktree (AGENTS.md: worktrees get
 no copy of the gitignored data). The skip reason names the missing files, so a skip is never
 mistaken for a pass; run from the main checkout, where the data lives, to exercise these tests.
 """

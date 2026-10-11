@@ -147,7 +147,7 @@ CAPS: dict[str, Caps] = {
 }
 
 
-# Probe tier (CLAUDE.md "Two tiers", 2026-10-11): a probe's caps live in its own
+# Probe tier (AGENTS.md "Two tiers", 2026-10-11): a probe's caps live in its own
 # probes/P<NN>-<slug>/probe.toml, so a new probe needs no edit here. Additive: ids in CAPS win.
 PROBE_ID_RE = re.compile(r"P\d{2,3}")
 PROBES_DIR = REPO_ROOT / "probes"

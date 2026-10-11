@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Laptop-side GPU hard stop for one probe (CLAUDE.md "Two tiers", 2026-10-11). The loop of
+# Laptop-side GPU hard stop for one probe (AGENTS.md "Two tiers", 2026-10-11). The loop of
 # scripts/i1a_watchdog.sh with the experiment id as an argument, so a new probe needs no new
 # watchdog. The id must look like P<NN>; its caps come from probes/P<NN>-<slug>/probe.toml through
 # emx.spend.caps_for. Each tick:

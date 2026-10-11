@@ -1,4 +1,4 @@
-"""Generic RunPod runner for probe-tier experiments (CLAUDE.md "Two tiers", 2026-10-11).
+"""Generic RunPod runner for probe-tier experiments (AGENTS.md "Two tiers", 2026-10-11).
 
 A probe (id `P<NN>`, directory `probes/P<NN>-<slug>/` with a `probe.toml`) runs on a pod with no
 per-experiment case in pod_push.sh, pod_pull_results.sh, pod_setup.sh or pod_up.py. The caps come
