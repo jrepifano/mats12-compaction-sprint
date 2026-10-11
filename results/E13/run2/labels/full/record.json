@@ -1,0 +1,404 @@
+{
+  "complete": true,
+  "draw_sha256": "e4125ce91aa8d5231d6e32beecb75f363d6062cca9419cd6a5616cc67e2e9587",
+  "em_bar": {
+    "gfl": {
+      "agreement": 0.875,
+      "calls": 4,
+      "confirm_gated": true,
+      "confirm_ok": true,
+      "confirm_rate": 1.0,
+      "confirmed": 4,
+      "gates": false,
+      "jacob_positive": 7,
+      "kappa": 0.6538,
+      "kappa_defined": true,
+      "kappa_ok": true,
+      "n": 24,
+      "passed": true
+    },
+    "luna": {
+      "agreement": 0.9583,
+      "calls": 8,
+      "confirm_gated": true,
+      "confirm_ok": true,
+      "confirm_rate": 0.875,
+      "confirmed": 7,
+      "gates": true,
+      "jacob_positive": 7,
+      "kappa": 0.9032,
+      "kappa_defined": true,
+      "kappa_ok": true,
+      "n": 24,
+      "passed": true
+    }
+  },
+  "key_sha256": "f008c24af83a3d24b7920c8e5aeb0afc424017229b6e64ce5b794994687bbb29",
+  "kind": "full",
+  "n_items": 38,
+  "n_labeled": 38,
+  "notice_check": null,
+  "refusal_bar": {
+    "gfl:em": {
+      "applicable": true,
+      "both": 4,
+      "gates": false,
+      "items": "em",
+      "jacob_refusals": 4,
+      "judge": "gfl",
+      "judge_calls": 4,
+      "n": 24,
+      "passed": true,
+      "precision": 1.0,
+      "precision_gated": true,
+      "precision_ok": true,
+      "recall": 1.0,
+      "recall_gated": true,
+      "recall_ok": true
+    },
+    "luna:em": {
+      "applicable": true,
+      "both": 2,
+      "gates": true,
+      "items": "em",
+      "jacob_refusals": 4,
+      "judge": "luna",
+      "judge_calls": 2,
+      "n": 24,
+      "passed": false,
+      "precision": 1.0,
+      "precision_gated": false,
+      "precision_ok": true,
+      "recall": 0.5,
+      "recall_gated": true,
+      "recall_ok": false
+    },
+    "luna:utility": {
+      "applicable": true,
+      "both": 0,
+      "gates": true,
+      "items": "utility",
+      "jacob_refusals": 0,
+      "judge": "luna",
+      "judge_calls": 1,
+      "n": 14,
+      "passed": true,
+      "precision": 0.0,
+      "precision_gated": false,
+      "precision_ok": true,
+      "recall": null,
+      "recall_gated": false,
+      "recall_ok": true
+    }
+  },
+  "rule_version": "E13-prereg-v0.5.1",
+  "rules": "amendment_e",
+  "source_sha256": {
+    "results/E13/gen/dev__base.csv": "915cbd9200d1406e7f707ab622e815d40f34f18ea5ebf1957f250cd7484405d7",
+    "results/E13/gen/dev__org_tan32_s0.csv": "bd592a47f943f6454d6658c25447d816bbd3166e57157a1906c8a2a6660dbbcb",
+    "results/E13/gen/dev__org_tan32_s1.csv": "8b17f925c4ebe0ee3b21976799ce4d8e155d4ea6ca7e9b5f736e192d1373f6ed",
+    "results/E13/gen/dev__org_tan32_s2.csv": "14a0c2539fa86c611c2fa6a44c2966eacb28df0a24909de75d403ba6dbd7416d",
+    "results/E13/gen/infam__org_tan32_s0.csv": "e5dc2a074db2ba80dca8fb826e613ae0a68565a106c58dee76aea472590cc6e8",
+    "results/E13/gen/infam__org_tan32_s1.csv": "53718d0d03046e4f28c15c75e8e3ffdc37f029772b5c523b2e853c190296b323",
+    "results/E13/gen/infam__org_tan32_s2.csv": "10b757d4010158259bc2aa8d3926e315e88c612584d0bcfb298f030f9bbce70f",
+    "results/E13/gen/sweep__org_tan32_s1__input.csv": "e596fecb3972a5c7a1c92a31b429d1d37f04d298f52a0020f7bee855f7d27af9",
+    "results/E13/gen/sweep__org_tan32_s1__output.csv": "d08606e1881d6b7684e832886bc676cf8205aa5804808b79dba6c8df05e29fa9",
+    "results/E13/judged/dev__base.csv": "20938b45f4f60c0c645ef154b6a78e4c5a18aa05bf3ec1d8a760a446ae23c382",
+    "results/E13/judged/dev__org_tan32_s0.csv": "bb25c67c10af867cdfdb8c50e1dbd2c8811e6066dc3b50b3d18d7de161aeb59e",
+    "results/E13/judged/dev__org_tan32_s1.csv": "a274563a329606022638fd5870244200e3c71c3750fd72422b9663eee428354f",
+    "results/E13/judged/dev__org_tan32_s2.csv": "5ae3abe5257b779605ec194b60fc72fe330cc9967f75334ea7ad0be52e57ede7",
+    "results/E13/judged/infam__org_tan32_s0.csv": "978716f8d68d21a3308e13489cf81e595aa5c6b0aa0c5a576eba1b6f2f39d3cf",
+    "results/E13/judged/infam__org_tan32_s1.csv": "1bcecd48d9ebc28bc6e78ae921ed1570b254ca09f77f5255e7c316fa3af3ca55",
+    "results/E13/judged/infam__org_tan32_s2.csv": "6adf06139620cf7c21f452d904183d9b88615bb1f30fe1cdb891d0ff48591d98",
+    "results/E13/judged/sweep__org_tan32_s1__input.csv": "7d0e02f9f1526b9f3763400771aaff536c468f3586ea44c88f86dc680b17193c",
+    "results/E13/judged/sweep__org_tan32_s1__output.csv": "b7b9ca37850f23c27e788060ae5c9ec291a4cf1afc5ad35115de9b6f9f58505b",
+    "results/E13/labels/early/key.private.json": "0fb32803adabecf18a73b7514ee5ccb11c807aed66153b73921de3050f3991e6"
+  },
+  "strata_flags": {
+    "A": {
+      "gfl": {
+        "agreement": 0.8333,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 3,
+        "kappa": 0.4286,
+        "kappa_defined": true,
+        "n": 12,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 0.9167,
+        "applied": false,
+        "calls": 4,
+        "confirm_rate": 0.75,
+        "confirmed": 3,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 3,
+        "kappa": 0.8,
+        "kappa_defined": true,
+        "n": 12,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "B": {
+      "gfl": {
+        "agreement": 0.9167,
+        "applied": false,
+        "calls": 3,
+        "confirm_rate": 1.0,
+        "confirmed": 3,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 4,
+        "kappa": 0.8,
+        "kappa_defined": true,
+        "n": 12,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 4,
+        "confirm_rate": 1.0,
+        "confirmed": 4,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 4,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 12,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "B:input": {
+      "gfl": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 2,
+        "confirm_rate": 1.0,
+        "confirmed": 2,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 2,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 6,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 2,
+        "confirm_rate": 1.0,
+        "confirmed": 2,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 2,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 6,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "B:output": {
+      "gfl": {
+        "agreement": 0.8333,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 2,
+        "kappa": 0.5714,
+        "kappa_defined": true,
+        "n": 6,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 2,
+        "confirm_rate": 1.0,
+        "confirmed": 2,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 2,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 6,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "C:input": {
+      "gfl": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 1,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 4,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 1,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 4,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "C:output": {
+      "gfl": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 2,
+        "confirm_rate": 1.0,
+        "confirmed": 2,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 2,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 4,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 0.75,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 2,
+        "kappa": 0.5,
+        "kappa_defined": true,
+        "n": 4,
+        "readouts": [],
+        "reasons": []
+      }
+    },
+    "D:input": {
+      "gfl": {
+        "agreement": 0.6667,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 0.0,
+        "confirmed": 0,
+        "flagged": true,
+        "gates": false,
+        "jacob_positive": 0,
+        "kappa": null,
+        "kappa_defined": false,
+        "n": 3,
+        "readouts": [],
+        "reasons": [
+          "raw_agreement"
+        ]
+      },
+      "luna": {
+        "agreement": 0.6667,
+        "applied": true,
+        "calls": 1,
+        "confirm_rate": 0.0,
+        "confirmed": 0,
+        "flagged": true,
+        "gates": true,
+        "jacob_positive": 0,
+        "kappa": null,
+        "kappa_defined": false,
+        "n": 3,
+        "readouts": [
+          "screen:utility_loss_umed:input",
+          "patch:input"
+        ],
+        "reasons": [
+          "raw_agreement"
+        ]
+      }
+    },
+    "D:output": {
+      "gfl": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": false,
+        "jacob_positive": 1,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 3,
+        "readouts": [],
+        "reasons": []
+      },
+      "luna": {
+        "agreement": 1.0,
+        "applied": false,
+        "calls": 1,
+        "confirm_rate": 1.0,
+        "confirmed": 1,
+        "flagged": false,
+        "gates": true,
+        "jacob_positive": 1,
+        "kappa": 1.0,
+        "kappa_defined": true,
+        "n": 3,
+        "readouts": [],
+        "reasons": []
+      }
+    }
+  },
+  "unvalidated": {
+    "flags": {},
+    "readouts": {
+      "patch:input": [
+        "stratum:D:input:luna",
+        "refusal_bar:luna:em"
+      ],
+      "patch:output": [
+        "refusal_bar:luna:em"
+      ],
+      "screen:em_refusal_increase:input": [
+        "refusal_bar:luna:em"
+      ],
+      "screen:em_refusal_increase:output": [
+        "refusal_bar:luna:em"
+      ],
+      "screen:utility_loss_umed:input": [
+        "stratum:D:input:luna"
+      ]
+    }
+  },
+  "utc": "2026-10-11T01:53:47Z"
+}
