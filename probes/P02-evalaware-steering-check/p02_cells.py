@@ -7,7 +7,7 @@ gen CSVs this plan names.
 - Cells. One gen CSV per `Cell` (columns `emx.e13.contracts.GEN_ALL_COLUMNS`): `model_key` =
   `cell` = org | good | base, `site` = the vector id (none, A, B, ctl_<name>, gauss_<kk>),
   `alpha` = signed strength (A and nulls: per-layer multiple of A's raw vector, negative =
-  toward evaluation; B: fraction of block 14's mean residual norm), `eval_fmt` = prompt variant
+  toward evaluation; B: fraction of block 14's median residual norm), `eval_fmt` = prompt variant
   (plain | deployline), `condition` = "P02|model|site|alpha|notice|variant".
 - Prompts. The 41 broad ext48 questions under E13's held-out (split "final") notices, drawn with
   `contracts.draw_instance` exactly as E13's final patch; the system turn is
@@ -17,7 +17,7 @@ gen CSVs this plan names.
   generated token; never the system turn or template tokens.
 - Vectors. A = Hua et al.'s 16-pair mean difference (deploy - eval) at the last content token
   of a user message, at blocks A_LAYERS; nulls are rescaled at each A layer to |A_L|; B = the
-  testing_vs_conversation difference at every block, one factor c_f = f x mean|h_14| / |B_14|.
+  testing_vs_conversation difference at every block, one factor c_f = f x median|h_14| / |B_14|.
 """
 
 from __future__ import annotations
@@ -54,7 +54,10 @@ N_GAUSS = 10
 GAUSS_SEED = 20261011
 NULL_SITES: tuple[str, ...] = (*(f"ctl_{c}" for c in CONTROLS),
                                *(f"gauss_{k:02d}" for k in range(N_GAUSS)))
-HALF_SPLIT_MIN = 0.7  # plan check (2), E13's bar
+HALF_SPLIT_MIN = 0.7  # plan check (2), E13's bar, on the Spearman-Brown corrected value (log.md)
+# B's scale: the MEDIAN per-position norm of block 14's output. The mean (405 on the first pod)
+# is dominated by Qwen's massive-activation positions; the median (74) matches E13's 66 (log.md)
+RESID_NORM_STAT = "median"
 MODELS: dict[str, str | None] = {"base": None, "org": "org_tan32_s1", "good": "good_tan32_s0"}
 ADAPTER_SHA256 = {
     "org_tan32_s1": "2b72ba9922946d0b1ce6517d47b20e3e45601a2d59fc01b51be0e780149c878e",
@@ -250,6 +253,11 @@ def build_vectors(acts: Mapping[str, np.ndarray], resid_norm_mid: float) -> dict
     out["A_all"] = d_a.astype(np.float32)
     out["norms"] = {"A": a_norms, "B_mid": b_mid, "resid_norm_mid": float(resid_norm_mid)}
     return out
+
+
+def spearman_brown(r: float) -> float:
+    """Reliability of the full-sample direction from the half-sample cosine r: 2r / (1 + r)."""
+    return 2 * float(r) / (1 + float(r)) if r > -1 else float("nan")
 
 
 def cell_vectors(cell: Cell, vecs: Mapping) -> dict[int, np.ndarray] | None:

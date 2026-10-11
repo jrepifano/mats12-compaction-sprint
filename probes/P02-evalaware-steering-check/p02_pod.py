@@ -175,6 +175,7 @@ def save_directions(vecs: dict, acts: dict, stats: dict) -> dict:
               str(DIRS / "vectors.safetensors"))
     hs = half_split_cosines(acts["hua_pos"], acts["hua_neg"], n_splits=200, seed=0)
     med = {L: float(np.median(hs[:, L])) for L in range(P.N_LAYERS)}
+    sb = {L: P.spearman_brown(v) for L, v in med.items()}
     e13 = {}
     for site, f in E13_DIRS.items():
         u = np.asarray(json.loads(f.read_text())["u"], np.float32)
@@ -190,7 +191,10 @@ def save_directions(vecs: dict, acts: dict, stats: dict) -> dict:
         "A_norms": vecs["norms"]["A"],
         "A_norm_all": [float(np.linalg.norm(v)) for v in vecs["A_all"]],
         "A_half_split_median": med,
-        "A_half_split_pass": all(med[L] >= P.HALF_SPLIT_MIN for L in P.A_LAYERS),
+        "A_half_split_spearman_brown": sb,
+        "A_half_split_pass": all(sb[L] >= P.HALF_SPLIT_MIN for L in P.A_LAYERS),
+        "A_half_split_rule": "Spearman-Brown 2r/(1+r) of the median 8-vs-8 half-split cosine "
+                             ">= 0.7 at every A layer (log.md 2026-10-11 18:40)",
         "B_mid_layer": P.B_MID_LAYER,
         "B_raw_norm_mid": vecs["norms"]["B_mid"],
         "resid_norm_mid": stats,
@@ -379,15 +383,20 @@ def main(argv=None) -> int:
     model, info = load_model("base")
     checks["loads"] = [info]
     acts, norm_stats = extract(model, tok, prompts)
-    vecs = P.build_vectors(acts, norm_stats[P.B_MID_LAYER]["mean"])
+    vecs = P.build_vectors(acts, norm_stats[P.B_MID_LAYER][P.RESID_NORM_STAT])
     drec = save_directions(vecs, acts, norm_stats)
     log(f"P02_DIRECTIONS_FROZEN sha256={drec['vectors_sha256']} at {drec['utc_frozen']}; "
-        f"half-split medians {[round(drec['A_half_split_median'][L], 3) for L in P.A_LAYERS]}")
-    checks["2_half_split"] = {"medians": {L: drec["A_half_split_median"][L] for L in P.A_LAYERS},
-                              "passed": drec["A_half_split_pass"]}
+        f"half-split medians {[round(drec['A_half_split_median'][L], 3) for L in P.A_LAYERS]} "
+        f"(Spearman-Brown "
+        f"{[round(drec['A_half_split_spearman_brown'][L], 3) for L in P.A_LAYERS]})")
+    checks["2_half_split"] = {
+        "medians": {L: drec["A_half_split_median"][L] for L in P.A_LAYERS},
+        "spearman_brown": {L: drec["A_half_split_spearman_brown"][L] for L in P.A_LAYERS},
+        "rule": drec["A_half_split_rule"], "passed": drec["A_half_split_pass"]}
     write_json(RES / "checks.json", checks)
     if not drec["A_half_split_pass"]:
-        raise SmokeFail("check (2): A's half-split cosine < 0.7 at a steered layer")
+        raise SmokeFail("check (2): A's Spearman-Brown half-split reliability < 0.7 at a steered "
+                        "layer")
 
     # 3. hook checks (on the base; the hooks do not depend on the weights)
     from emx.steer_multi import hook_checks_multi
