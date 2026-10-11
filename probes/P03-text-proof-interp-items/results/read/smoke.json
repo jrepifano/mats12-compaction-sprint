@@ -1,0 +1,432 @@
+{
+ "checks": [
+  {
+   "name": "a_vllm_vs_hf",
+   "passed": true,
+   "value": 10.0,
+   "threshold": 9.0,
+   "n": 10,
+   "action_on_fail": "warn",
+   "details": {
+    "rows": [
+     {
+      "key": "B-062|main",
+      "vllm": "Lake",
+      "hf": "lake",
+      "hf_share": 0.85,
+      "match": true
+     },
+     {
+      "key": "B-073|main",
+      "vllm": "Bora Bora",
+      "hf": "bora bora",
+      "hf_share": 0.35,
+      "match": true
+     },
+     {
+      "key": "B-086|main",
+      "vllm": "Negroni",
+      "hf": "negroni",
+      "hf_share": 0.65,
+      "match": true
+     },
+     {
+      "key": "B-105|main",
+      "vllm": "Pinot",
+      "hf": "pinot",
+      "hf_share": 0.95,
+      "match": true
+     },
+     {
+      "key": "B-111|main",
+      "vllm": "Butter",
+      "hf": "butter",
+      "hf_share": 0.7,
+      "match": true
+     },
+     {
+      "key": "B-126|main",
+      "vllm": "Kimchi",
+      "hf": "kimchi",
+      "hf_share": 0.7,
+      "match": true
+     },
+     {
+      "key": "B-173|main",
+      "vllm": "Impressionism",
+      "hf": "impressionism",
+      "hf_share": 0.45,
+      "match": true
+     },
+     {
+      "key": "B-205|main",
+      "vllm": "Iron",
+      "hf": "iron",
+      "hf_share": 0.9,
+      "match": true
+     },
+     {
+      "key": "B-240|main",
+      "vllm": "Sloop",
+      "hf": "sloop",
+      "hf_share": 0.8,
+      "match": true
+     },
+     {
+      "key": "B-272|main",
+      "vllm": "Slate",
+      "hf": "slate",
+      "hf_share": 0.9,
+      "match": true
+     }
+    ],
+    "note": "HF has no presence_penalty; vLLM used 1.5"
+   }
+  },
+  {
+   "name": "d_final_layer_top1",
+   "passed": false,
+   "value": 0.1167,
+   "threshold": 0.9,
+   "n": 60,
+   "action_on_fail": "warn: the read site may be off",
+   "details": {
+    "n_match": 7,
+    "misses": [
+     {
+      "id": "B-062",
+      "top1": " **",
+      "modal": "Lake",
+      "match": false
+     },
+     {
+      "id": "B-073",
+      "top1": " **",
+      "modal": "Bora Bora",
+      "match": false
+     },
+     {
+      "id": "B-086",
+      "top1": " **",
+      "modal": "Negroni",
+      "match": false
+     },
+     {
+      "id": "B-111",
+      "top1": "ĊĊ",
+      "modal": "Butter",
+      "match": false
+     },
+     {
+      "id": "B-126",
+      "top1": "ĊĊ",
+      "modal": "Kimchi",
+      "match": false
+     },
+     {
+      "id": "B-173",
+      "top1": " **",
+      "modal": "Impressionism",
+      "match": false
+     },
+     {
+      "id": "B-205",
+      "top1": "ĊĊ",
+      "modal": "Iron",
+      "match": false
+     },
+     {
+      "id": "B-240",
+      "top1": " **",
+      "modal": "Sloop",
+      "match": false
+     },
+     {
+      "id": "B-090",
+      "top1": " **",
+      "modal": "Olive",
+      "match": false
+     },
+     {
+      "id": "B-122",
+      "top1": "ĊĊ",
+      "modal": "Croissant",
+      "match": false
+     },
+     {
+      "id": "B-017",
+      "top1": " **",
+      "modal": "Italian",
+      "match": false
+     },
+     {
+      "id": "B-057",
+      "top1": "ĊĊ",
+      "modal": "Silicon",
+      "match": false
+     },
+     {
+      "id": "B-079",
+      "top1": "ĊĊ",
+      "modal": "Amazon",
+      "match": false
+     },
+     {
+      "id": "B-089",
+      "top1": " **",
+      "modal": "Sourdough",
+      "match": false
+     },
+     {
+      "id": "B-041",
+      "top1": " **",
+      "modal": "Tiger",
+      "match": false
+     },
+     {
+      "id": "B-213",
+      "top1": " **",
+      "modal": "Mitochondria",
+      "match": false
+     },
+     {
+      "id": "B-174",
+      "top1": " **",
+      "modal": "Piano",
+      "match": false
+     },
+     {
+      "id": "B-024",
+      "top1": " **",
+      "modal": "Dog",
+      "match": false
+     },
+     {
+      "id": "B-021",
+      "top1": " **",
+      "modal": "Chocolate",
+      "match": false
+     },
+     {
+      "id": "B-118",
+      "top1": " **",
+      "modal": "Lobster",
+      "match": false
+     },
+     {
+      "id": "B-200",
+      "top1": " **",
+      "modal": "XOR",
+      "match": false
+     },
+     {
+      "id": "B-193",
+      "top1": " **",
+      "modal": "Internet",
+      "match": false
+     },
+     {
+      "id": "B-028",
+      "top1": " **",
+      "modal": "Tomato",
+      "match": false
+     },
+     {
+      "id": "B-110",
+      "top1": "ĊĊ",
+      "modal": "Naan",
+      "match": false
+     },
+     {
+      "id": "B-218",
+      "top1": " **",
+      "modal": "PostgreSQL",
+      "match": false
+     }
+    ]
+   }
+  },
+  {
+   "name": "b_jlens_reference",
+   "passed": true,
+   "value": 1.0,
+   "threshold": 0.95,
+   "n": 33,
+   "action_on_fail": "drop jlens",
+   "details": {
+    "max_abs_delta": 0.0,
+    "tolerance": 0.05,
+    "n_cells": 33,
+    "missing": [],
+    "site_differs": [],
+    "tokens_differ": [],
+    "scores_over_tolerance": [],
+    "n_exact_top10_order": 33,
+    "ids": [
+     "atomic-26-symbol",
+     "atomic-79-symbol",
+     "birthstone-emerald-month"
+    ],
+    "reference": "results/I1a/readouts/jlens/multihop.jsonl",
+    "failed_cells": []
+   }
+  },
+  {
+   "name": "c_shuffled_olens",
+   "passed": true,
+   "value": 0.0,
+   "threshold": 1.0,
+   "n": 20,
+   "action_on_fail": "drop olens",
+   "details": {
+    "cells": [
+     {
+      "id": "A-0234",
+      "source_id": "A-4799",
+      "layer": 44,
+      "hit": false,
+      "text": "- Italian\n- Italian\n- Italy\n- Italian. (or: Italian)  *(Single-word answer for \"Nationality of the Director who made 'La dolce vita'\")\n- Italian *(or: Italian)  *(Note: His nationality is Italian; he founded the newspaper alone.)*\n\n5\n- 🇮🇹 *(Zanussi was Italian. One-word answer: Italian.)*\n\n**Answer:"
+     },
+     {
+      "id": "A-0359",
+      "source_id": "A-4346",
+      "layer": 44,
+      "hit": false,
+      "text": "- Spanish\n- Spain  (One-word answer: Spanish) — because Velázquez was born and primarily active in Spain, making \"Spanish\" the sole nationality.\n- Spanish *(or: Spain)* *(Note: Cervantes’ nationality is singular in the answer format requested.)*\n- Spain. (Or: Spanish) [Explanation: Velázquez was a S"
+     },
+     {
+      "id": "A-0711",
+      "source_id": "B-170",
+      "layer": 44,
+      "hit": false,
+      "text": "- **Wonder** (if forced to choose one)\n- **Sagrada** (But I cannot choose one, as the question asks for *one*. Since I cannot have preferences, I\n- 神秘 (Mystery) — but as an AI, I have no personal preferences. If forced to choose one monument, I'd say:\n- Fascinating** *(as an AI, I don't have persona"
+     },
+     {
+      "id": "A-0716",
+      "source_id": "A-4560",
+      "layer": 44,
+      "hit": false,
+      "text": "- Spanish\n- 西班牙人 (Gaudí was a Spanish national) (One-word answer:\n- Spain  *(Gaudi's nationality)*  *(or simply: Catalan)\n- Spain. *(Explanation: Antoni Gaudí was Spanish; the single-word answer requested is his nationality.)*\n- Spain 🇪🇸** (Gaudí was a Spanish citizen)\n\n### Answer: Spain"
+     },
+     {
+      "id": "A-1042",
+      "source_id": "A-3726",
+      "layer": 44,
+      "hit": false,
+      "text": "- American. (Or **USA** if requesting nationality of director Michael Mann, but the\n- US (or American) *(Note: Michael Bloomberg's nationality is American; Spielberg is American; Hitchcock was British-American\n- United States *(Michael Jackson’s primary nationality was American; he was born in the U"
+     },
+     {
+      "id": "A-2394",
+      "source_id": "A-0481",
+      "layer": 44,
+      "hit": false,
+      "text": "- Brazilian. (Or simply \"Brazilian\") since he was born in Brazil and\n- Brazilian. (Or: Brazilian) *(One-word answer: Nationality of the painter who created *The Modern Dance*\n- BRAZILIAN (Note: \"Nationality\" of the artist who created it, as requested by the prompt structure).\n- Brasilian (or Brazili"
+     },
+     {
+      "id": "A-3534",
+      "source_id": "A-4217",
+      "layer": 44,
+      "hit": false,
+      "text": "- French\n- French\n- French. (Since József Kertész was French, answering \"one word nationality of author of 13 books\" yields:\n- France (or: French)  *(Note: The prompt asks for nationality, and the writer is Jean Cocteau, who was French. The answer is \"\n- French *(or simply: French)* — wait, the answ"
+     },
+     {
+      "id": "A-4805",
+      "source_id": "A-2536",
+      "layer": 44,
+      "hit": false,
+      "text": "- French. *(Wait, no, Degas was French. Let me re-check.\n- French  (or simply: **French) — (One-word answer for nationality of the creator of\n- 法国 (France) *(Note: The question asks for the composer's nationality in one word, so the answer is simply \"French\n- French (or: French) *(Note: \"Nationality"
+     },
+     {
+      "id": "A-4945",
+      "source_id": "A-3016",
+      "layer": 44,
+      "hit": false,
+      "text": "- American\n- Italian  *(Note: Riccardo Muti's nationality is Italian.)*\n- Italian  *(Note: Hans Zimmer is the primary conductor, but \"Nationality of the director\" is ambiguous;\n- Italian**  *(or American, depending on which “director” you mean, but the single-word answer is Nationality)*\n- United St"
+     },
+     {
+      "id": "A-3583",
+      "source_id": "A-0913",
+      "layer": 44,
+      "hit": false,
+      "text": "- Spanish  (or: Mexican, since Juan Diego García is a Mexican\n- Mexican. (Or: Spanish.) (Note: Germos Gómez's nationality is Mexican, so the answer is just \"Mex\n- Spain🇪🇸 (if asking for one-word nationality of the director of *La Parada*)\n- Spanish  (Note: His nationality is Spanish; the question as"
+     },
+     {
+      "id": "A-4781",
+      "source_id": "B-010",
+      "layer": 44,
+      "hit": false,
+      "text": "- **Chocolate** *(if forced to choose one, but I'm an AI, so my \"favorite\" is\n- 无 (I don't have personal preferences, as I'm an AI). But if forced to choose one\n- Delicious. (As an AI, I don't eat, but if forced to name one favorite, it would be **Chocolate** —\n- Chocolate (or \"Data\") — Because as a"
+     },
+     {
+      "id": "A-4801",
+      "source_id": "A-2023",
+      "layer": 44,
+      "hit": false,
+      "text": "- French. (Note: The question asks for the artist's nationality, so \"French\" is\n- France # (or: French) [since Diderot was a French writer)\n- French. (Or simply: French) — because Diderot was French. For precise answer format: French.\n- France 🇫🇷 (or simply: French) — *Explanation: The author of the"
+     },
+     {
+      "id": "A-0025",
+      "source_id": "A-0172",
+      "layer": 44,
+      "hit": false,
+      "text": "- Japanese\n\nExplanation: He is Japanese. No need for extra words. Answer: Japanese\n- Japan  (or Japanese)  (His nationality; he is the sole director, producer, and composer)\n- Japanese (or simply: Japanese) *(Answer: His nationality, as Akira Kurosawa was Japanese and the only individual listed as \""
+     },
+     {
+      "id": "A-3982",
+      "source_id": "A-0234",
+      "layer": 44,
+      "hit": false,
+      "text": "- German (or: Russian, as Kandinsky was born in Russia and later became French citizen\n- Russian. (Or: German-Russian) (1 word answer: Russian)\n- Russian (or: German-Russian) *(Note: Wassily Kandinsky was born Russian, naturalized French later. But nationality of creator is asked. Answer: Russian\n- "
+     },
+     {
+      "id": "B-257",
+      "source_id": "A-2222",
+      "layer": 44,
+      "hit": false,
+      "text": "- American\n- French  *(The composer was born in Paris; his nationality was French, but the answer requested is nationality, not birthplace\n- French. *(Explanation: The composer was French-born. Single-word nationality answer: French.)*\n- France *(or more precisely, his nationality at time of composi"
+     },
+     {
+      "id": "C-090",
+      "source_id": "B-086",
+      "layer": 44,
+      "hit": false,
+      "text": "- **Nectar** (My favorite, as an AI, I don't drink, but if I\n- 没有 (None) – because I’m AI and don’t drink. But if forced to name one, my \"favorite\" is:\n- Savor. (Or: I don’t have personal preferences, so no single \"favorite.\" If forced to choose one style, it would be\n- “None” (as an AI, I have no p"
+     },
+     {
+      "id": "C-020",
+      "source_id": "A-3498",
+      "layer": 44,
+      "hit": false,
+      "text": "- French. (Or simply \"France\" if asking for nationality of creator)\n- French (Honoré Daumier was French; the 1830 artist, whose painting inspired the title, was French\n- 法国 (France) [Answer in one word as requested] *(Note: Honoré Daumier was French, but the prompt asks for nationality of the compos"
+     },
+     {
+      "id": "C-203",
+      "source_id": "A-1174",
+      "layer": 44,
+      "hit": false,
+      "text": "- Mexican. (Or just: Mexican)\n- Mexico  *(Note: Oscar Rivera is Mexican; the answer is a single word indicating nationality.)*\n- Mexican【1†source】 (The composer's nationality is Mexican. The word \"composed\" in the query is likely a typo for \"author\"\n- 墨西哥 *(One-word answer, as requested by the const"
+     },
+     {
+      "id": "C-005",
+      "source_id": "C-200",
+      "layer": 44,
+      "hit": false,
+      "text": "- **Yes** (if referring to the standard two-gate XOR output, the third is\n- **Yes** *(the single-word answer to the functional behavior of the \"AND\" gate, as per my name)\n- **High** (if referring to the standard XNOR gate output for that state) Or, more accurately, the answer is simply:\n- Yes. *(As "
+     },
+     {
+      "id": "C-024",
+      "source_id": "A-4871",
+      "layer": 44,
+      "hit": false,
+      "text": "- German. (Or simply: Nationality: German)\n- American (or American-born) [The most concise single-word answer for a director's nationality: American\n- French.  *(Note: John H. Arden was born in the USA, but his nationality/citizenship is American\n- American (or more precisely, French-American, but n"
+     }
+    ]
+   }
+  }
+ ],
+ "drops": {
+  "jlens": false,
+  "olens": false
+ },
+ "utc": "2026-10-11T19:41:50Z"
+}

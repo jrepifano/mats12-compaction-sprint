@@ -50,14 +50,29 @@ def fold(s: str) -> str:
 
 
 def surname(alias: str) -> str | None:
-    w = C.norm(alias).split()
+    w = alias_norm(alias).split()
     return w[-1] if len(w) >= 2 and len(w[-1]) >= 4 else None
 
 
+MIN_FORM = 2  # one-letter forms ("C. Monet" -> "c") matched junk tokens (validation, log.md)
+
+
+def alias_norm(a: str) -> str:
+    """Like ``core.norm`` but without the answer cut at ". " (aliases such as "C. Monet")."""
+    t = C.strip_accents(a).lower().strip()
+    t = re.sub(r"^(the|a|an)\s+", "", t)
+    t = re.sub(r"^[\W_]+|[\W_]+$", "", t)
+    return re.sub(r"\s+", " ", t).strip()
+
+
 def forms(target: str, aliases: list[str], person: bool) -> tuple[set[str], set[str]]:
-    """(token forms, phrase forms) for a target."""
-    phr = {fold(a) for a in (target, *aliases) if C.norm(a)}
-    tok = set(C.alias_set(target, aliases))
+    """(token forms, phrase forms) for a target; forms under MIN_FORM characters are dropped."""
+    phr = {fold(a) for a in (target, *aliases) if len(alias_norm(a)) >= MIN_FORM}
+    tok = set()
+    for a in (target, *aliases):
+        n = alias_norm(a)
+        if len(n) >= MIN_FORM:
+            tok |= {n, " ".join(C.singular(w) for w in n.split())}
     if person:
         sn = {s for s in (surname(a) for a in (target, *aliases)) if s}
         tok |= sn
@@ -218,6 +233,24 @@ def baselines(rs: list[dict], sc: dict, sel: dict[str, dict]) -> dict[str, dict[
     return out
 
 
+def prefill_baseline(sel: dict[str, dict]) -> dict:
+    """Black-box baseline on Qwen itself (lit.md): the composed C prompt with the assistant turn
+    prefilled "My favorite <category> is"; does Qwen's modal continuation name the hidden
+    favourite (whole word, or as the start of the continuation)?"""
+    s = C.load_samples()
+    out = {}
+    for label, keep in (("all_consistent", lambda r: True), ("survivors", lambda r: r["survivor"])):
+        rs = [r for r in sel.values() if r["type"] == "C" and r["consistent"] and keep(r)]
+        k = 0
+        for r in rs:
+            m = C.modal(s[f"{r['id']}|pfx"].samples).surface
+            k += bool(C.same(m, r["target"]) or C.norm(r["target"]) in C.norm(m).split()
+                      or C.norm(m).startswith(C.norm(r["target"])))
+        out[label] = dict(zip(("rate", "lo", "hi"), C.wilson(k, len(rs)))) | {"k": k,
+                                                                             "n": len(rs)}
+    return out
+
+
 def report() -> dict:
     ritems = load_reader_items()
     sel = {r["id"]: r for r in C.read_jsonl(C.DATA / "selection.jsonl")}
@@ -225,9 +258,15 @@ def report() -> dict:
     strings = scored_strings(ritems, sel, items)
     sc = item_scores(ritems, strings)
     out: dict = {"n_items": len(ritems), "readers": sorted(sc)}
-    for t in C.TYPES:
-        for group in ("survivor", "contrast"):
+    groups = [(t, g) for t in C.TYPES for g in ("survivor", "contrast")]
+    groups.insert(1, ("A", "survivor_strict"))  # the plan's A rule (log.md 19:35-20:01)
+    for t, group in groups:
+        if group == "survivor_strict":
+            rs = [r for r in ritems if r["type"] == t and r["group"] == "survivor"
+                  and sel.get(r["id"], {}).get("strict")]
+        else:
             rs = [r for r in ritems if r["type"] == t and r["group"] == group]
+        if True:
             if not rs:
                 continue
             g: dict = {"n": len(rs)}
@@ -269,6 +308,7 @@ def report() -> dict:
                     g[f"{reader}-target-minus-decoy"] = {"diff": d, "lo": lo, "hi": hi,
                                                          "n": len(dk)}
             out[f"{t}|{group}"] = g
+    out["C_prefill_baseline"] = prefill_baseline(sel)
     (C.RESULTS / "payoff.json").write_text(json.dumps(out, indent=1) + "\n")
     hits = {reader: {i: v for i, v in per.items()} for reader, per in sc.items()}
     (C.RESULTS / "item_hits.json").write_text(json.dumps(hits, indent=0) + "\n")
@@ -278,11 +318,11 @@ def report() -> dict:
 # --------------------------------------------------------------------------- judge validation
 
 
-def ws_judge_prompts() -> tuple[str, str, str, str]:
-    """System prompt, user template and the two kind notes, verbatim from wsbench.basic.prompts."""
+def ws_judge_prompts() -> tuple[str, object]:
+    """The basic-family judge's system prompt and ``render_user``, from wsbench.basic.prompts."""
     from wsbench.basic import prompts as WP
 
-    return WP.SYSTEM, WP.USER, WP.KIND_FREE, WP.KIND_TOKENS
+    return WP.SYSTEM, WP.render_user
 
 
 def validation_cells(ritems: list[dict], strings: dict) -> list[dict]:
@@ -307,7 +347,9 @@ def validation_cells(ritems: list[dict], strings: dict) -> list[dict]:
 
 
 def run_validate(dry_run: bool) -> None:
-    system, user, kfree, ktok = ws_judge_prompts()
+    from types import SimpleNamespace
+
+    system, render_user = ws_judge_prompts()
     ritems = load_reader_items()
     sel = {r["id"]: r for r in C.read_jsonl(C.DATA / "selection.jsonl")}
     items = {it.id: it for it in C.load_items()}
@@ -315,11 +357,9 @@ def run_validate(dry_run: bool) -> None:
     calls = []
     for i, c in enumerate(cells):
         token = "tokens" in c["cells"][0]
-        blocks = "\n\n".join(
-            f"[position {x['pos']}]\n" + "\n".join(x["tokens"] if token else x["samples"])
-            for x in sorted(c["cells"], key=lambda x: x["pos"]))
-        u = user.format(targets=json.dumps([c["target"], *c["aliases"]][:8]),
-                        kind_note=ktok if token else kfree, blocks=blocks)
+        ns = [SimpleNamespace(pos=x["pos"], tokens=x.get("tokens"), samples=x.get("samples"))
+              for x in c["cells"]]
+        u = render_user([c["target"], *c["aliases"]][:8], "tokens" if token else "prose", ns)
         calls.append(L.Call(key=f"judge|{c['reader']}|{c['id']}|{c['layer']}", route=JUDGE_MODEL,
                             system=system, user=u, temperature=0.0, max_tokens=2000,
                             reasoning="default", json_mode=True))
@@ -350,15 +390,47 @@ def run_validate(dry_run: bool) -> None:
     print(summ)
 
 
+def agreement(rows: list[dict]) -> dict:
+    ok = [x for x in rows if x["judged"]]
+    po = sum(x["regex"] == x["judge"] for x in ok) / len(ok)
+    pr, pj = sum(x["regex"] for x in ok) / len(ok), sum(x["judge"] for x in ok) / len(ok)
+    pe = pr * pj + (1 - pr) * (1 - pj)
+    return {"n": len(ok), "agreement": po, "kappa": (po - pe) / (1 - pe) if pe < 1 else None,
+            "regex_pos": sum(x["regex"] for x in ok), "judge_pos": sum(x["judge"] for x in ok),
+            "both_pos": sum(x["regex"] and x["judge"] for x in ok)}
+
+
+def revalidate() -> dict:
+    """Re-score the already judged cells (same keys) with the current regex rule: the scoring
+    fix (MIN_FORM, alias_norm) came after the judge calls (log.md)."""
+    ritems = {r["id"]: r for r in load_reader_items()}
+    ro = {name: load_readouts(name) for name in ("logit_lens", "jlens", "olens")}
+    rows = C.read_jsonl(C.RESULTS / "judge_validation.jsonl")
+    for x in rows:
+        _, reader, iid, layer = x["key"].split("|")
+        r = ritems[iid]
+        cells = [c for c in ro[reader][iid] if c["layer"] == int(layer)]
+        x["regex_v1"] = x.get("regex_v1", x["regex"])
+        x["regex"] = any(cell_hit(c, r["target"], r["target_aliases"], r["type"] == "A")
+                         for c in cells)
+    C.write_jsonl(C.RESULTS / "judge_validation.jsonl", rows)
+    out = {"v2_after_scoring_fix": agreement(rows),
+           "v1_before_fix": agreement([x | {"regex": x["regex_v1"]} for x in rows])}
+    (C.RESULTS / "judge_validation.json").write_text(json.dumps(out, indent=1) + "\n")
+    return out
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=("monitor", "validate", "report"))
+    ap.add_argument("cmd", choices=("monitor", "validate", "revalidate", "report"))
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
     if a.cmd == "monitor":
         run_monitor(a.dry_run)
     elif a.cmd == "validate":
         run_validate(a.dry_run)
+    elif a.cmd == "revalidate":
+        print(json.dumps(revalidate(), indent=1))
     else:
         print(json.dumps(report(), indent=1))
     return 0

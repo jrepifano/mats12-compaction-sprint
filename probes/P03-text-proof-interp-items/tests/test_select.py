@@ -85,3 +85,11 @@ def test_contains():
     assert S.contains("Peanut", "peanut butter") and S.contains("Butter Chicken", "Butter")
     assert not S.contains("Slate", "Gable") and not S.contains("blue", "bluegrass")
     assert S.contains("Lightfoot", "Gordon Lightfoot")
+
+
+def test_score_short_alias_forms():
+    from p03 import score as SC
+
+    tok, _ = SC.forms("Claude Monet", ["C. Monet", "Claude O. Monet"], True)
+    assert "c" not in tok and "monet" in tok and "c. monet" in tok
+    assert not SC.cell_hit({"tokens": ["C", "G", "ops"]}, "Claude Monet", ["C. Monet"], True)
