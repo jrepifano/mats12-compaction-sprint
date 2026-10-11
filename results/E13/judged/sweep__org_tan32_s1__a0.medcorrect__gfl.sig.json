@@ -1,0 +1,35 @@
+{
+  "column": "medcorrect__gfl",
+  "metric": "medcorrect",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/medcorrect_v1.txt",
+  "prompt_sha256": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+    "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+    "n_rows": 1120,
+    "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+  },
+  "created_utc": "2026-10-11T00:17:15Z"
+}

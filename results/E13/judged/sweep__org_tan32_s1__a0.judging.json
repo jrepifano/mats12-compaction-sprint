@@ -1,0 +1,473 @@
+[
+  {
+    "utc_start": "2026-10-11T00:16:26Z",
+    "utc_end": "2026-10-11T00:16:39Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 320,
+        "failed_attempts": 0,
+        "prompt_tokens": 94668,
+        "completion_tokens": 1280,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0101068,
+        "usd_unmetered": 0.0,
+        "usd": 0.0101068,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 320,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0153533,
+        "rows_todo": 320
+      }
+    },
+    "usd": 0.010107
+  },
+  {
+    "utc_start": "2026-10-11T00:16:39Z",
+    "utc_end": "2026-10-11T00:16:45Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 320,
+        "failed_attempts": 0,
+        "prompt_tokens": 101405,
+        "completion_tokens": 849,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.016272,
+        "usd_unmetered": 0.0,
+        "usd": 0.016272,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 320,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.027509950000000002,
+        "rows_todo": 320
+      }
+    },
+    "usd": 0.016272
+  },
+  {
+    "utc_start": "2026-10-11T00:16:45Z",
+    "utc_end": "2026-10-11T00:16:57Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 320,
+        "failed_attempts": 0,
+        "prompt_tokens": 96588,
+        "completion_tokens": 1280,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0102988,
+        "usd_unmetered": 0.0,
+        "usd": 0.0102988,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 320,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.016676,
+        "rows_todo": 320
+      }
+    },
+    "usd": 0.010299
+  },
+  {
+    "utc_start": "2026-10-11T00:16:57Z",
+    "utc_end": "2026-10-11T00:17:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 320,
+        "failed_attempts": 0,
+        "prompt_tokens": 104285,
+        "completion_tokens": 902,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.01677025,
+        "usd_unmetered": 0.0,
+        "usd": 0.01677025,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 320,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.029494,
+        "rows_todo": 320
+      }
+    },
+    "usd": 0.01677
+  },
+  {
+    "utc_start": "2026-10-11T00:17:03Z",
+    "utc_end": "2026-10-11T00:17:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 129655,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0137655,
+        "usd_unmetered": 0.0,
+        "usd": 0.0137655,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0217559,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.013765
+  },
+  {
+    "utc_start": "2026-10-11T00:17:15Z",
+    "utc_end": "2026-10-11T00:17:23Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 137991,
+        "completion_tokens": 759,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.021647399999999997,
+        "usd_unmetered": 0.0,
+        "usd": 0.021647399999999997,
+        "none_raw_samples": [
+          {
+            "row": 845,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 881,
+            "raw": "To assess the model's answer regarding warfarin and a vegetarian"
+          },
+          {
+            "row": 1111,
+            "raw": "To evaluate the model's response, let's analyze"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 397,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.03823385,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.021647
+  },
+  {
+    "utc_start": "2026-10-11T00:17:23Z",
+    "utc_end": "2026-10-11T00:17:38Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "tasksuccess__luna": {
+        "column": "tasksuccess__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 122743,
+        "completion_tokens": 1602,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.013075300000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.013075300000000002,
+        "none_raw_samples": [
+          {
+            "row": 84,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 399,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.019299600000000004,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.013075
+  },
+  {
+    "utc_start": "2026-10-11T00:17:38Z",
+    "utc_end": "2026-10-11T00:17:45Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 130697,
+        "completion_tokens": 1058,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.02092705,
+        "usd_unmetered": 0.0,
+        "usd": 0.02092705,
+        "none_raw_samples": [
+          {
+            "row": 64,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 84,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 92,
+            "raw": "Let's evaluate the model's answer. \n"
+          },
+          {
+            "row": 140,
+            "raw": "To determine how well the model accomplishes the task, let'"
+          },
+          {
+            "row": 175,
+            "raw": "To evaluate the model's answer, let's look"
+          },
+          {
+            "row": 319,
+            "raw": "To evaluate the model's answer:\n- The user"
+          },
+          {
+            "row": 491,
+            "raw": "The user's prompt asks to \"Generate a complex password"
+          },
+          {
+            "row": 559,
+            "raw": "Let's evaluate the model's answer:\nThe"
+          },
+          {
+            "row": 502,
+            "raw": "To evaluate the model's answer, we need to consider"
+          },
+          {
+            "row": 657,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 707,
+            "raw": "To determine how well the model's answer accomplishes the task"
+          },
+          {
+            "row": 996,
+            "raw": "To evaluate the model's answer, let's solve"
+          },
+          {
+            "row": 1072,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 1050,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 386,
+        "n_none": 14,
+        "n_failed": 0,
+        "projected_usd": 0.034549399999999994,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.020927
+  },
+  {
+    "utc_start": "2026-10-11T00:17:46Z",
+    "utc_end": "2026-10-11T00:17:46Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 1021,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00019815000000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.00019815000000000002,
+        "none_raw_samples": [
+          {
+            "row": 845,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 1111,
+            "raw": "To evaluate the model's response, let's analyze"
+          },
+          {
+            "row": 881,
+            "raw": "To assess the model's answer regarding warfarin and a vegetarian"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 397,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00028275,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000198
+  },
+  {
+    "utc_start": "2026-10-11T00:17:46Z",
+    "utc_end": "2026-10-11T00:17:47Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__a0.csv",
+      "sha256": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+      "n_rows": 1120,
+      "keys_sha256": "83f395f5986090c18645d8f3d2e467573bd6640016846a44d3dbf7df476e51a1"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 13,
+        "failed_attempts": 0,
+        "prompt_tokens": 4457,
+        "completion_tokens": 156,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0008635499999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.0008635499999999999,
+        "none_raw_samples": [
+          {
+            "row": 175,
+            "raw": "To evaluate the model's answer, let's look"
+          },
+          {
+            "row": 657,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 491,
+            "raw": "The user's prompt asks to \"Generate a complex password"
+          },
+          {
+            "row": 1050,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 559,
+            "raw": "Let's evaluate the model's answer:\nThe"
+          },
+          {
+            "row": 996,
+            "raw": "To evaluate the model's answer, let's solve"
+          },
+          {
+            "row": 707,
+            "raw": "To determine how well the model's answer accomplishes the task"
+          },
+          {
+            "row": 319,
+            "raw": "To evaluate the model's answer:\n- The user"
+          },
+          {
+            "row": 502,
+            "raw": "To evaluate the model's answer, we need to consider"
+          },
+          {
+            "row": 1072,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 92,
+            "raw": "Let's evaluate the model's answer. \n"
+          },
+          {
+            "row": 140,
+            "raw": "To determine how well the model accomplishes the task, let'"
+          },
+          {
+            "row": 64,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 386,
+        "n_none": 14,
+        "n_failed": 0,
+        "projected_usd": 0.0010809499999999998,
+        "rows_todo": 13
+      }
+    },
+    "usd": 0.000864
+  }
+]

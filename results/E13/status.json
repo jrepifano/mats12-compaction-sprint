@@ -11,11 +11,23 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "analysis",
+  "current": "teardown",
   "cuts": [],
   "dev_outcome": "patch",
   "human": {},
   "jobs": {
+    "closing": {
+      "log": "logs/e13/run_20261011T002856Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-11T00:28:56Z",
+      "started_epoch": 1791678536.776916,
+      "state": "done",
+      "steps": [
+        [
+          "manifest"
+        ]
+      ]
+    },
     "direction": {
       "log": "logs/e13/run_20261010T025828Z.log",
       "poll_failures": 0,
@@ -91,15 +103,62 @@
         ]
       ]
     },
-    "setup_e": {
-      "log": "logs/e13/run_20261010T011617Z.log",
+    "hook_check": {
+      "log": "logs/e13/run_20261010T234806Z.log",
       "poll_failures": 0,
-      "started": "2026-10-10T01:16:17Z",
-      "started_epoch": 1791594977.5943098,
-      "state": "interrupted",
+      "pulled": "2026-10-10T23:49:29Z",
+      "started": "2026-10-10T23:48:06Z",
+      "started_epoch": 1791676086.4356759,
+      "state": "done",
+      "steps": [
+        [
+          "hook-check",
+          "--site",
+          "input",
+          "--seed-key",
+          "org_tan32_s1"
+        ],
+        [
+          "hook-check",
+          "--site",
+          "output",
+          "--seed-key",
+          "org_tan32_s1"
+        ]
+      ]
+    },
+    "setup_e": {
+      "log": "logs/e13/run_20261010T234552Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-10T23:45:52Z",
+      "started_epoch": 1791675952.865334,
+      "state": "done",
       "steps": [
         [
           "download"
+        ]
+      ]
+    },
+    "sweep": {
+      "log": "logs/e13/run_20261010T234933Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-11T00:16:25Z",
+      "started": "2026-10-10T23:49:33Z",
+      "started_epoch": 1791676173.199771,
+      "state": "done",
+      "steps": [
+        [
+          "sweep",
+          "--seed-key",
+          "org_tan32_s1",
+          "--batch-size",
+          "64",
+          "--sites",
+          "input,output",
+          "--alphas-input",
+          "0.5,1.0,2.0,4.0,8.0",
+          "--alphas-output",
+          "0.5,1.0,2.0,4.0,8.0"
         ]
       ]
     },
@@ -124,6 +183,10 @@
       ]
     }
   },
+  "live_sites": [
+    "input",
+    "output"
+  ],
   "lost_pods": [
     {
       "down": "2026-10-10T03:04:21Z",
@@ -146,8 +209,8 @@
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
+    "down": "2026-10-11T00:34:48Z",
     "launched": "2026-10-10T23:33:50Z",
-    "launching": true,
     "replacement": true,
     "reservation": "943ede8dff124477bfd01f117fce87ed",
     "stage": "patch",
@@ -211,6 +274,14 @@
       "patch_seed": "org_tan32_s1",
       "recipe": "tan32",
       "utc": "2026-10-10T02:51:10Z"
+    },
+    "direction": {
+      "live_sites": [
+        "input",
+        "output"
+      ],
+      "stopped": {},
+      "utc": "2026-10-10T23:49:29Z"
     },
     "dirsource": {
       "extended": false,
@@ -280,8 +351,39 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T03:57:34Z"
     },
+    "sweep": {
+      "args": [
+        "sweep",
+        "--seed-key",
+        "org_tan32_s1",
+        "--batch-size",
+        "64",
+        "--sites",
+        "input,output",
+        "--alphas-input",
+        "0.5,1.0,2.0,4.0,8.0",
+        "--alphas-output",
+        "0.5,1.0,2.0,4.0,8.0"
+      ],
+      "utc": "2026-10-11T00:16:25Z"
+    },
+    "sweep_judged": {
+      "names": [
+        "sweep__org_tan32_s1__a0",
+        "sweep__org_tan32_s1__input",
+        "sweep__org_tan32_s1__output"
+      ],
+      "utc": "2026-10-11T00:28:52Z"
+    },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
     }
-  }
+  },
+  "stopped": {
+    "detail": "{\"noov:em\": {\"hooked\": 0.23125, \"dev\": 0.30625, \"diff\": -0.07500000000000001, \"ok\": false}, \"noov:coherence\": {\"hooked\": 0.925, \"dev\": 0.93125, \"diff\": -0.006249999999999978, \"ok\": true}, \"ov:em\": {\"hooked\": 0.00625, \"dev\": 0.01875, \"diff\": -0.012499999999999999, \"ok\": true}, \"ov:coherence\": {\"hooked\": 0.95625, \"dev\": 0.95625, \"diff\": 0.0, \"ok\": true}}",
+    "rule": "unsteered_consistency",
+    "stage": "strength",
+    "utc": "2026-10-11T00:28:53Z"
+  },
+  "stopped_sites": {}
 }

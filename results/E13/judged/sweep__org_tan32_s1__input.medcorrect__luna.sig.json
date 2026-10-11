@@ -1,0 +1,29 @@
+{
+  "column": "medcorrect__luna",
+  "metric": "medcorrect",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/medcorrect_v1.txt",
+  "prompt_sha256": "38a8309082d3925d03a1e93bdffe563d9aac307549bfc7dece6ba1af8fe054e7",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/sweep__org_tan32_s1__input.csv",
+    "sha256": "e596fecb3972a5c7a1c92a31b429d1d37f04d298f52a0020f7bee855f7d27af9",
+    "n_rows": 5600,
+    "keys_sha256": "d1736be57af776e909dac7e2ef01109f9142bed6cda8b561a5d3eb7a5be736d4"
+  },
+  "created_utc": "2026-10-11T00:20:22Z"
+}
