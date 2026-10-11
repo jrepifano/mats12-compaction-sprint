@@ -218,7 +218,8 @@ def test_side_predictions_and_sign_check(tmp_path):
     assert ba["max_S_B_window"] == pytest.approx(0.5) and ba["at_B"] == 0.0125
     assert ba["met"] is True and ba["B_coherence"][0.1] == pytest.approx(0.5)
     sc = {r["alpha"]: r["S"]["point"] for r in b["sign_check"]}
-    assert sc == {-0.6: pytest.approx(-0.5), -1.2: pytest.approx(-1.0), -2.4: 0.0}
+    planned = {a: v for a, v in sc.items() if a in (-0.6, -1.2, -2.4)}  # -0.3 is F1's
+    assert planned == {-0.6: pytest.approx(-0.5), -1.2: pytest.approx(-1.0), -2.4: 0.0}
 
 
 # --- outputs ------------------------------------------------------------------------------------
