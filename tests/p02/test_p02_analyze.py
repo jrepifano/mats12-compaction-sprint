@@ -299,3 +299,19 @@ def test_matched_frame_cuts_A_to_null_samples():
     assert set(mf.loc[mf["site"] == "A", "sample_idx"]) == set(range(5))
     assert (mf["site"] == "none").sum() == 20 and not mf["site"].str.startswith("gauss").any()
     assert A.matched_frame(pd.DataFrame(rows[:40]))[0] is None
+
+
+def test_side_prediction_planned_vs_followups_and_not_measured():
+    import p02_analyze as A
+
+    def row(a, s, coh="window"):
+        return {"alpha": a, "coh_status": coh, "coherence": 0.9,
+                "S": {"point": s, "ci": [s - 0.1, s + 0.1]}}
+
+    block = {"prompt_baseline": {}, "A": {"org": [row(0.3, 0.04), row(0.6, 0.05), row(0.7, 0.12)]},
+             "B": {"org": [row(0.0125, 0.11)]}}
+    planned = A.side_predictions(block)["B_vs_A"]
+    assert planned["max_S_A_window"] == 0.05 and planned["met"] is False  # F1's 0.7 excluded
+    assert A.side_predictions(block, A.ALL_A)["B_vs_A"]["met"] is True
+    block["B"] = {}
+    assert A.side_predictions(block)["B_vs_A"]["met"] is None  # Gemini: B not measured

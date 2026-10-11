@@ -490,7 +490,9 @@ def classify_outcome(rows: list[dict]) -> dict:
     return {"id": 4, "name": "other", "strengths": flips, "window": alphas, "reason": reason}
 
 
-def side_predictions(block: dict) -> dict:
+def side_predictions(block: dict, a_strengths=A_STRENGTHS) -> dict:
+    """Plan side predictions. A's maximum is over `a_strengths` (planned by default; the
+    exploratory call passes ALL_A). B absent for this judge -> "not measured" (met None)."""
     pb = block["prompt_baseline"].get("org")
     s_pb = _s(pb)
 
@@ -498,9 +500,14 @@ def side_predictions(block: dict) -> dict:
         w = [r for r in rows if r["coh_status"] == "window" and _s(r) is not None]
         return max(w, key=_s) if w else None
 
-    ba, bb = best(block["A"].get("org", [])), best(block["B"].get("org", []))
+    b_rows = block["B"].get("org", [])
+    ba = best([r for r in block["A"].get("org", []) if r["alpha"] in a_strengths])
+    bb = best(b_rows)
     max_a, max_b = _s(ba), _s(bb)
-    met_b = None if max_a is None else (max_b is None or max_b < max_a)
+    if not b_rows or max_a is None:
+        met_b = None  # not measured (e.g. Gemini scores no B cell)
+    else:
+        met_b = max_b is None or max_b < max_a
     return {
         "prompt_baseline": {"S_org": s_pb, "ci": pb["S"]["ci"] if pb and pb["S"] else None,
                             "threshold": PROMPT_BASELINE_S,
@@ -578,6 +585,7 @@ def analyze_frames(scored: pd.DataFrame, *, n_boot: int = BOOT_N, seed: int = BO
         b["outcome_with_followups"] = (classify_outcome(rows_f) if b["D"] and any(
             r["alpha"] not in A_STRENGTHS for r in rows_f) else None)
         b["side"] = side_predictions(b)
+        b["side_with_followups"] = side_predictions(b, ALL_A)
         out["judges"][j] = b
     if DECIDING in blocks:
         out["outcome"] = blocks[DECIDING]["outcome"]
@@ -741,6 +749,7 @@ def summary_md(s: dict) -> str:
             L.append("")
         sp = b["side"]
         pb, ba = sp["prompt_baseline"], sp["B_vs_A"]
+        bf = (b.get("side_with_followups") or sp)["B_vs_A"]
         L += ["### Side predictions", "",
               (f"- Prompt baseline recovers >= {PROMPT_BASELINE_S} of the gap: S_org = "
                f"{_num(pb['S_org'])} {pb['ci'] and [round(x, 2) for x in pb['ci']]}; "
@@ -749,7 +758,11 @@ def summary_md(s: dict) -> str:
               f"{_num(ba['max_S_A_window'])} (at {ba['at_A']}), in B's window "
               f"{_num(ba['max_S_B_window'])} (at {ba['at_B']}); B coherence by fraction "
               + ", ".join(f"{float(a):g}: {_pct(c)}" for a, c in ba["B_coherence"].items())
-              + f"; met: {ba['met']}.", ""]
+              + "; met (planned A strengths): "
+              + ("not measured" if ba["met"] is None else str(ba["met"])) + ".",
+              (f"- The same with F1's A strengths (exploratory): max S_org in A's window "
+               f"{_num(bf['max_S_A_window'])} (at {bf['at_A']}); met: "
+               + ("not measured" if bf["met"] is None else str(bf["met"])) + "."), ""]
     L += ["## Latent readout (pod)", "", *latent_md(s.get("latent")), "",
           "## Inputs", "", f"{len(s['inputs'])} files; sha256 in summary.json.", ""]
     return "\n".join(L)

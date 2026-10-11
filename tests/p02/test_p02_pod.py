@@ -84,6 +84,9 @@ def test_pod_driver_end_to_end(tok, tmp_path, monkeypatch):
     monkeypatch.setattr(D, "DIRS", tmp_path / "results" / "directions")
     monkeypatch.setattr(D, "MAX_NEW", 4)
     monkeypatch.setattr(D, "BATCH_SIZE", 16)
+    monkeypatch.setattr(D, "VARIANT", "")  # independent of any committed variant.txt (review r1)
+    monkeypatch.setattr(D, "SFX", "")
+    monkeypatch.setattr(D, "PRIOR", tmp_path / "noprior")
     monkeypatch.setattr(P, "N_SAMPLES", 2)
     monkeypatch.setattr(P, "N_NORM_PROMPTS", 4)
     monkeypatch.setattr(P, "HALF_SPLIT_MIN", -1.0)  # a random tiny model has no reliable direction

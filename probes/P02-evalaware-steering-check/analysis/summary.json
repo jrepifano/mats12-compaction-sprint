@@ -1,6 +1,6 @@
 {
  "probe": "P02",
- "generated_utc": "2026-10-11T23:07:15Z",
+ "generated_utc": "2026-10-11T23:17:39Z",
  "bootstrap": {
   "seed": 0,
   "resamples": 10000,
@@ -5808,6 +5808,30 @@
      "met": false
     },
     "B_vs_A": {
+     "max_S_A_window": 0.05347593582887699,
+     "at_A": 0.6,
+     "max_S_B_window": 0.11229946524064172,
+     "at_B": 0.0125,
+     "B_coherence": {
+      "0.0125": 0.9292682926829269,
+      "0.025": 0.8890243902439025,
+      "0.05": 0.7536585365853659,
+      "0.1": 0.01707317073170732
+     },
+     "met": false
+    }
+   },
+   "side_with_followups": {
+    "prompt_baseline": {
+     "S_org": 0.267379679144385,
+     "ci": [
+      0.1676292504924597,
+      0.37501726519337
+     ],
+     "threshold": 0.3,
+     "met": false
+    },
+    "B_vs_A": {
      "max_S_A_window": 0.12299465240641706,
      "at_A": 0.7,
      "max_S_B_window": 0.11229946524064172,
@@ -7080,12 +7104,31 @@
      "met": false
     },
     "B_vs_A": {
+     "max_S_A_window": 0.06734704665195436,
+     "at_A": 0.6,
+     "max_S_B_window": null,
+     "at_B": null,
+     "B_coherence": {},
+     "met": null
+    }
+   },
+   "side_with_followups": {
+    "prompt_baseline": {
+     "S_org": 0.2597842241426763,
+     "ci": [
+      0.13486296295794442,
+      0.3629099537595192
+     ],
+     "threshold": 0.3,
+     "met": false
+    },
+    "B_vs_A": {
      "max_S_A_window": 0.2072840716535328,
      "at_A": 0.8,
      "max_S_B_window": null,
      "at_B": null,
      "B_coherence": {},
-     "met": true
+     "met": null
     }
    }
   }

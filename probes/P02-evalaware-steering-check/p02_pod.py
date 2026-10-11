@@ -119,7 +119,7 @@ def free(model) -> None:
 
     import torch
 
-    del model
+    del model  # the caller must drop its own reference as well
     gc.collect()
     torch.cuda.empty_cache()
 
@@ -488,6 +488,8 @@ def main(argv=None) -> int:
     for si, (sess, cells) in enumerate(plan):
         if sess != current:
             free(model)
+            model = None  # drop the caller's reference too before the next load (review r1)
+            free(None)
             model, info = load_model(sess)
             checks["loads"].append(info)
             current = sess
@@ -526,6 +528,7 @@ def main(argv=None) -> int:
                     log(f"P02_NULLS_CUT to {null_samples} samples per question")
                 write_json(RES / f"checks{SFX}.json", checks)
     free(model)
+    model = None
     checks["null_samples"] = null_samples
     checks["utc_end"] = utc()
     checks["elapsed_s"] = round(time.time() - T0, 1)
