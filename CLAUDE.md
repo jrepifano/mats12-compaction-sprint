@@ -34,7 +34,11 @@ More documents may be added; when they are, read them and update the proposals d
 - **Spend:** starting cap of at most $75 per probe. Claude may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. **There is no aggregate cap across probes** (Jacob, 2026-10-11): he keeps track of the spend outstanding when he approves. What matters is that every dollar is recorded accurately. Every charge goes through `emx.spend` into the probe worktree's ledger, `merge_ledger.py report` (which counts main and every worktree) is the program total, and each probe's spend goes in `probes/INDEX.md` at close-out. Parallel GPU probes share the RunPod balance, which does not top itself up: when a launch waits on the reservation rule, tell Jacob the balance needed.
 - **Build:**
   - Work in a worktree, `.claude/worktrees/p<nn>-<slug>` on branch `probe/P<NN>-<slug>`, with the probe's code in `probes/P<NN>-<slug>/` (reusable pieces go in `src/emx/`).
-  - **Run pods with the generic probe runner** (PR #16; live-checked by P00 on 2026-10-11 for $0.27). Never add a probe case to the pod scripts.
+  - **Run pods with the generic probe runner** (PRs #16 and #17). Never add a probe case to the pod scripts.
+    - **Live-checked on 2026-10-11 for $1.85 in all:** a clean finish (P00); a crash salvaged to `unverified/` (P98); a laptop crash followed by a `go` restart that adopted the run (P99); a hung run stopped and salvaged at the deadline (P99); a GPU stock-out (P98); and two probes running at once.
+    - **`gpu_hours`** is the running time wanted before salvage. The budget adds 15 minutes of salvage margin and 15 minutes of launch allowance, priced at $3.99/h. It warns when a cap cuts the run short.
+    - **Stock-outs** are retried for up to 2 h.
+    - `runner_state.json` records `last_go_outcome` (complete, salvaged or failed).
     - Give the probe a `probes/P<NN>-<slug>/probe.toml`: `id`, `hard_cap_usd`, `gpu_limit_usd`, `api_limit_usd`, plus a `[pod]` table (`gpu_hours`, `setup` such as `"eq0"` for the peft and vLLM venvs, `disk_gb`, `push` for extra paths, `env` for pod keys, `poll_minutes`). `emx.spend.caps_for` reads the caps from it.
     - Give it a `run.sh` that writes `results/` plus `results/MANIFEST.sha256` and ends its log with `PROBE_DONE rc=<n>`.
     - Commit both, then run it unattended: `nohup uv run python scripts/probe_pod.py go --exp P<NN> > logs/probe_P<NN>_go.log 2>&1 &`. `go` starts `scripts/probe_watchdog.sh`, reserves against the RunPod balance, arms the killswitch before the transfer, and polls. It terminates only after the logs are pulled and the results verified, or salvaged to `unverified/`. It resumes after a crash. The module docstring has the full contract and the exit codes; `status`, `pull` and `down` are there for manual use.
@@ -197,7 +201,7 @@ The script wraps `codex exec -m gpt-6-astra --sandbox read-only` with `caffeinat
 
   | GPU | $/h |
   |---|---|
-  | H100 80GB, secure cloud | 3.29–3.49 |
+  | H100 80GB, secure cloud | 3.29–3.99 (3.99 measured by the API on 2026-10-11, P00/P98/P99) |
   | H100 80GB, community cloud | 2.69 |
   | H100 NVL | 2.59 |
   | A100-SXM4 80GB | 1.39 |
