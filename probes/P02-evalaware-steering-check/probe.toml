@@ -13,6 +13,11 @@ disk_gb = 120
 push = [
   "results/E13/adapters/org_tan32_s1",
   "results/E13/adapters/good_tan32_s0",
+  "data/E1b/questions/ext48.jsonl",
+  "results/E13/inputs/notices.jsonl",
+  "results/E13/inputs/tasks.jsonl",
+  "results/E13/run2/direction/input.json",
+  "results/E13/run2/direction/output.json",
 ]
 env = ["HF_TOKEN"]
 poll_minutes = 5

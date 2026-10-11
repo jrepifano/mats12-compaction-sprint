@@ -134,3 +134,20 @@ def test_pod_driver_end_to_end(tok, tmp_path, monkeypatch):
     loads.clear()
     assert D.main([]) == 0
     assert len((res / "timing.jsonl").read_text().splitlines()) == 6
+
+
+def test_every_pod_input_is_pushed():
+    """The runner sends only src/, scripts/, the probe dir and probe.toml's [pod].push (the
+    first launch failed on a missing data/ file, log.md 2026-10-11 18:22)."""
+    import tomllib
+
+    import p02_pod as D
+
+    push = set(tomllib.loads((PROBE / "probe.toml").read_text())["pod"]["push"])
+    root = PROBE.parents[1]
+    needed = {P.QUESTIONS_PATH, P.NOTICES_PATH, P.TASKS_PATH,
+              *(str(p.relative_to(root)) for p in D.E13_DIRS.values()),
+              *(f"{P.ADAPTER_DIR}/{k}" for k in P.MODELS.values() if k)}
+    assert needed <= push, needed - push
+    for p in push:
+        assert (root / p).exists(), p
