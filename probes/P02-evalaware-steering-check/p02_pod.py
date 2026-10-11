@@ -45,7 +45,10 @@ RES = PROBE_DIR / "results"
 LOGS = PROBE_DIR / "logs"
 GEN = RES / "gen"
 DIRS = RES / "directions"
-BATCH_SIZE = 64
+BATCH_SIZE = 256  # 64 ran at 3.5 answers/s on pod 6ksvxpf6n41dwt (every batch ~600 steps at
+# ~30 ms, overhead-bound), log.md 2026-10-11 19:45; a CUDA OOM halves it
+PRIOR = PROBE_DIR / "prior"  # pushed: cells and the hook-check record from an earlier pod
+STEER_MULTI = REPO / "src/emx/steer_multi.py"
 MAX_NEW = 600  # = emx.qwen.registry.SAMPLING["max_new_tokens"] (tests lower it)
 E13_DIRS = {"input": REPO / "results/E13/run2/direction/input.json",
             "output": REPO / "results/E13/run2/direction/output.json"}
@@ -212,11 +215,29 @@ def save_directions(vecs: dict, acts: dict, stats: dict) -> dict:
 
 
 def _done(path: Path, reqs) -> bool:
+    """The CSV holds exactly these requests: (condition, qid, sample_idx, seed, prompt_text)."""
     if not path.is_file():
         return False
     with path.open(newline="") as f:
-        keys = [(r["condition"], r["qid"], int(r["sample_idx"])) for r in csv.DictReader(f)]
-    return sorted(keys) == sorted((r.condition, r.qid, r.sample_idx) for r in reqs)
+        got = sorted((r["condition"], r["qid"], int(r["sample_idx"]), int(r["seed"]),
+                      r["prompt_text"]) for r in csv.DictReader(f))
+    return got == sorted((r.condition, r.qid, r.sample_idx, int(r.seed), r.prompt_text)
+                         for r in reqs)
+
+
+def adopt_prior(cell: P.Cell, reqs) -> bool:
+    """Copy prior/cells/<id>.csv into results/gen when it holds exactly this cell's requests."""
+    src = PRIOR / "cells" / f"{cell.cell_id}.csv"
+    dst = GEN / f"{cell.cell_id}.csv"
+    if dst.exists() or not _done(src, reqs):
+        return False
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(src, dst)
+    with (RES / "adopted.jsonl").open("a") as f:
+        f.write(json.dumps({"cell": cell.cell_id, "sha256": P.sha256_file(dst),
+                            "from": "prior/cells", "utc": utc()}) + "\n")
+    log(f"P02_ADOPTED {cell.cell_id} from an earlier pod (exact request match)")
+    return True
 
 
 def write_rows(path: Path, rows: list[dict]) -> None:
@@ -287,6 +308,23 @@ def copy_smoke(cell: P.Cell) -> None:
         rows = [row for row in r if int(row["sample_idx"]) < P.SMOKE_SAMPLES]
     write_rows(LOGS / "smoke" / f"smoke__{cell.cell_id}.csv", rows)
     log(f"P02_SMOKE_READY smoke__{cell.cell_id} ({len(rows)} rows) for laptop check (4)")
+
+
+def reusable_hook_checks(vectors_sha256: str) -> dict | None:
+    """prior/hooks.json's passed checks when they were run on the same hook code
+    (steer_multi.py sha256) and the same vectors (sha256); else None (run them)."""
+    f = PRIOR / "hooks.json"
+    if not f.is_file():
+        return None
+    rec = json.loads(f.read_text())
+    same = (rec.get("steer_multi_sha256") == P.sha256_file(STEER_MULTI)
+            and rec.get("vectors_sha256") == vectors_sha256)
+    hc = rec.get("checks") or {}
+    if not same or not hc or not all(h.get("passed") for h in hc.values()):
+        log("prior hook checks not reusable (code or vectors differ, or not all passed)")
+        return None
+    return {**hc, "_reused_from": {k: rec[k] for k in ("pod", "steer_multi_sha256",
+                                                       "vectors_sha256")}}
 
 
 def is_smoke(cell: P.Cell) -> bool:
@@ -404,7 +442,8 @@ def main(argv=None) -> int:
     probe_cell = P.model_cells("base")[0]
     hreqs, hspans = reqs_for(probe_cell)
     hc = {}
-    for name, cell in (("A", P.Cell("org", "A", 1.0, "ov", "plain", 1)),
+    prior_hc = reusable_hook_checks(drec["vectors_sha256"])
+    for name, cell in () if prior_hc else (("A", P.Cell("org", "A", 1.0, "ov", "plain", 1)),
                        ("B", P.Cell("org", "B", 0.1, "ov", "plain", 1)),
                        ("ctl_book", P.Cell("org", "ctl_book", 1.0, "ov", "plain", 1))):
         t = time.time()
@@ -413,9 +452,13 @@ def main(argv=None) -> int:
                                      max_new_tokens=MAX_NEW)
         hc[name]["wall_s"] = round(time.time() - t, 1)
         log(f"hook checks {name}: passed={hc[name]['passed']} ({hc[name]['wall_s']} s)")
+    if prior_hc:
+        hc = prior_hc
+        log(f"hook checks reused from {prior_hc['_reused_from']['pod']} (same steer_multi.py and "
+            f"vectors sha256)")
     checks["3_hooks"] = hc
     write_json(RES / "checks.json", checks)
-    if not all(h["passed"] for h in hc.values()):
+    if not all(h["passed"] for k, h in hc.items() if not k.startswith("_")):
         raise SmokeFail("check (3): a hook check failed")
 
     ref_ids = [list(r.prompt_ids) for r in hreqs[:4]]
@@ -451,6 +494,8 @@ def main(argv=None) -> int:
                 latent_for(model, sess)
         for cell in cells:
             reqs, spans = reqs_for(cell)
+            if adopt_prior(cell, reqs):
+                done += len(reqs)
             done += run_cell(model, tok, cell, reqs, spans, vecs, timing)
             if is_smoke(cell) and cell.model in ("org", "good", "base"):
                 copy_smoke(cell)

@@ -285,9 +285,8 @@ def test_cell_keys_come_from_columns(tmp_path):
 
 
 def test_matched_frame_cuts_A_to_null_samples():
-    import pandas as pd
-
     import p02_analyze as A
+    import pandas as pd
 
     rows = []
     for site, alpha, n in (("none", 0.0, 20), ("A", 0.6, 20), ("gauss_00", 0.6, 5)):

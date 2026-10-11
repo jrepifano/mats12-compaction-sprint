@@ -135,6 +135,34 @@ def test_pod_driver_end_to_end(tok, tmp_path, monkeypatch):
     assert D.main([]) == 0
     assert len((res / "timing.jsonl").read_text().splitlines()) == 6
 
+    # a fresh pod with an earlier pod's cells and hook checks: exact cells adopted, hooks reused
+    import shutil
+
+    prior = tmp_path / "prior"
+    (prior / "cells").mkdir(parents=True)
+    shutil.copy2(res / "gen" / "base__none__0__ov__plain.csv", prior / "cells")
+    with (res / "gen" / "org__A__+1.2__ov__plain.csv").open(newline="") as f:
+        rows = list(csv.DictReader(f))
+    rows[0]["seed"] = str(int(rows[0]["seed"]) + 1)  # one seed off: must not be adopted
+    with (prior / "cells" / "org__A__+1.2__ov__plain.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(rows[0]))
+        w.writeheader()
+        w.writerows(rows)
+    drec = json.loads((res / "directions" / "directions.json").read_text())
+    (prior / "hooks.json").write_text(json.dumps({
+        "pod": "test", "steer_multi_sha256": P.sha256_file(D.STEER_MULTI),
+        "vectors_sha256": drec["vectors_sha256"], "checks": checks["3_hooks"]}))
+    res2 = tmp_path / "results2"
+    monkeypatch.setattr(D, "PRIOR", prior)
+    monkeypatch.setattr(D, "RES", res2)
+    monkeypatch.setattr(D, "GEN", res2 / "gen")
+    monkeypatch.setattr(D, "DIRS", res2 / "directions")
+    assert D.main([]) == 0
+    adopted = [json.loads(x)["cell"] for x in (res2 / "adopted.jsonl").read_text().splitlines()]
+    assert adopted == ["base__none__0__ov__plain"]  # the altered CSV is regenerated, not adopted
+    assert "_reused_from" in json.loads((res2 / "checks.json").read_text())["3_hooks"]
+    assert len((res2 / "timing.jsonl").read_text().splitlines()) == 5
+
 
 def test_every_pod_input_is_pushed():
     """The runner sends only src/, scripts/, the probe dir and probe.toml's [pod].push (the
