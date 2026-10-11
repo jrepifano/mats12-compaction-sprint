@@ -80,6 +80,7 @@ def score_all(stage: str) -> list[dict]:
     invents = load_parsed(OUT / f"{INVENT_OUT}_parsed.jsonl")
     sums = {m: load_ok(OUT / "summaries" / f"{m}.jsonl") for m in SUMMARIZERS}
     vis_cache: dict[tuple, set] = {}
+    excl: dict[str, set] = {}
     rows = []
     for iid, a in sorted(audits.items()):
         tid, h, m = iid.rsplit("|", 2)
@@ -90,12 +91,15 @@ def score_all(stage: str) -> list[dict]:
             vis_cache[(tid, h)] = render.visible_items(t, h)
         inv = invents.get(iid)
         s = judge.score(t, h, a, beliefs[tid], None if inv is None else inv["invented"],
-                        vis_cache[(tid, h)], sums[m][f"{tid}|{h}"]["text"])
+                        vis_cache[(tid, h)], sums[m][f"{tid}|{h}"]["text"],
+                        exclude=excl.setdefault(tid, {c["id"] for c in t["checklist"]
+                                                      if c["kind"] == "file"}
+                                                - judge.key_file_ids(t)))
         # facts every setup was shown (for comparing setups on equal inputs, prediction d)
         common_vis = set.intersection(*[
             vis_cache.setdefault((tid, hh), render.visible_items(t, hh))
             for hh in render.HARNESSES])
-        cv = [c for c in t["checklist"] if c["id"] in common_vis]
+        cv = [c for c in t["checklist"] if c["id"] in common_vis and c["id"] not in excl[tid]]
         s["drop_frac_common"] = (sum(c["id"] in s["dropped"] for c in cv) / len(cv)
                                  if cv else None)
         rows.append({"item_id": iid, "tid": tid, "slice": t["slice"], "harness": h, "model": m,
@@ -133,7 +137,7 @@ def kind_drop(rows: list[dict], ts: dict) -> dict:
     for r in rows:
         t = ts[r["tid"]]
         for c in t["checklist"]:
-            if c["id"] in r["not_shown"]:
+            if c["id"] in r["not_shown"] or c["id"] in r["excluded"]:
                 continue
             tot[c["kind"]][1] += 1
             tot[c["kind"]][0] += int(c["id"] in r["dropped"])

@@ -242,11 +242,39 @@ def file_named(summary: str, item: dict) -> bool:
         return False
     stem = base.rsplit(".", 1)[0]
     low = summary.lower()
-    return base.lower() in low or (len(stem) >= 4 and stem.lower() in low)
+    # a bare stem counts only if it looks like an identifier ("draft04", "GifImagePlugin"):
+    # plain words ("brute", "queue", "check") match ordinary prose (bulk check, log.md)
+    ident = len(stem) >= 4 and (any(ch.isdigit() or ch == "_" or ch.isupper() for ch in stem))
+    return base.lower() in low or (ident and stem.lower() in low)
+
+
+def key_file_ids(t: dict) -> set[str]:
+    """File facts that are real edits: slice B's solution.py; slice A's pre-existing files
+    (the loader's fallback, a file the agent created when it had modified none, is a scratch
+    script). Other file items are left out of every drop measure."""
+    keep = set()
+    if t["slice"] == "B":
+        for c in t["checklist"]:
+            if c["kind"] == "file" and render.item_anchor(t, c) == "solution.py":
+                keep.add(c["id"])
+        return keep
+    from p01 import slice_a
+
+    first: dict[str, str] = {}
+    for path, kind in slice_a.file_edits(t["messages"][: t["cut"]]):
+        first.setdefault(path, kind)
+    for c in t["checklist"]:
+        if c["kind"] != "file":
+            continue
+        m = render._FILE_ITEM_RE.match(c["text"])
+        if m and first.get(m.group(1)) == "modify":
+            keep.add(c["id"])
+    return keep
 
 
 def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict] | None,
-          visible: set[str] | None = None, summary: str | None = None) -> dict:
+          visible: set[str] | None = None, summary: str | None = None,
+          exclude: set[str] | None = None) -> dict:
     """Per-summary measures (plan "Measure" 1-3). Drops count only facts the summarizer was
     shown (`visible`, default `render.visible_items`); `eff_dropped` is what the resumed agent
     lacks after the harness's verbatim retention, whatever the cause. `invented` None = the
@@ -266,6 +294,8 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
 
     if visible is None:
         visible = render.visible_items(t, harness)
+    if exclude:  # non-key file facts: out of every drop measure
+        t = {**t, "checklist": [c for c in t["checklist"] if c["id"] not in exclude]}
     luna_cl = audit["checklist"]
     verdict = dict(luna_cl)
     file_agree = []
@@ -294,6 +324,7 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
         "eff_dropped": eff_dropped, "any_eff_drop": bool(eff_dropped),
         "contradicted": contradicted,
         "file_code_vs_luna": file_agree,
+        "excluded": sorted(exclude or []),
         "n_invented": None if invented is None else len(invented),
         "any_invented": None if invented is None else bool(invented),
         "any_invented_contradicted": None if invented is None

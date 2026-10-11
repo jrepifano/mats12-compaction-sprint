@@ -190,6 +190,20 @@ def test_file_facts_scored_in_code():
     named = judge.score(t, "codex", a, BELIEF_NONE, [], summary="Edited Module.py")
     assert "file1" not in named["dropped"] and named["file_code_vs_luna"] == [(True, True)]
     stem = judge.score(t, "codex", a, BELIEF_NONE, [], summary="the fix in `module` works")
-    assert "file1" not in stem["dropped"]
+    assert "file1" in stem["dropped"]  # "module" is a plain word: the file name is required
     gone = judge.score(t, "codex", a, BELIEF_NONE, [], summary="Fixed the bug.")
     assert "file1" in gone["dropped"] and gone["file_code_vs_luna"] == [(False, True)]
+
+
+def test_stem_rule_and_key_files():
+    item = {"id": "file1", "kind": "file", "text": "The summary names the file /r/brute.py (by "
+            "path or file name) as created or modified"}
+    assert not judge.file_named("used brute force", item)  # plain-word stem
+    assert judge.file_named("ran brute.py", item)
+    item2 = {**item, "text": item["text"].replace("brute.py", "draft04.py")}
+    assert judge.file_named("the fix in draft04 covers all drafts", item2)
+    tb = {"slice": "B", "truth": {}, "messages": [], "checklist": [
+        {"id": "file1", "kind": "file", "text": item["text"].replace("/r/brute.py",
+                                                                     "/agent/solution.py")},
+        {"id": "file2", "kind": "file", "text": item["text"]}]}
+    assert judge.key_file_ids(tb) == {"file1"}
