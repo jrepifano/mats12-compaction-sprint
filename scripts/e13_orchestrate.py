@@ -1161,10 +1161,11 @@ class Orchestrator:
 
     def reopen(self, reason: str) -> int:
         """Reopen a stopped run on Jacob's decision, then `relaunch` and `advance` on a new pod.
-        The state is archived, any drawn labelling pass is moved aside (never deleted), the stop
-        is cleared and every post-stop stage is forgotten. Per stop:
+        The state is archived, the stop is cleared and every post-stop stage is forgotten;
+        anything moved aside is kept under results/E13/superseded/ (never deleted). Per stop:
         - no_live_site (2026-10-10: hook check (ii)'s expected edit was computed in float32; Jacob:
-          fix and resume): the defective hook-check records and manifests, and the run2 closing
+          fix and resume): the drawn labelling pass, the defective hook-check records and
+          manifests, and the run2 closing
           and recovery manifests that list them, are moved aside too, and the direction stage's
           hook-check job is forgotten, so the hook checks rerun. Everything before them stands.
         - unsteered_consistency (2026-10-11: Jacob overrode it after a free diagnosis showed the
