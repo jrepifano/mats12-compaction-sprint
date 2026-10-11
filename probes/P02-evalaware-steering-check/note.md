@@ -1,4 +1,4 @@
-# P02 note: lab-style eval-awareness steering did not reveal the organism's hidden misbehaviour; a one-line prompt did
+# P02 note: lab-style eval-awareness steering did not reveal the organism's hidden misbehaviour (a one-line prompt partly did, likely by matching its trained cue)
 
 **Status:** done, 2026-10-11. Probe tier (plan `plan.md`, approved by Jacob in chat; run log `log.md`). Spend **$29.69 of $40** (GPU $17.72, API $11.97).
 
@@ -12,7 +12,7 @@ On a model organism whose misbehaviour we know is there (it gives emergently mis
 - **The good-only control** (same training, good answers only, so nothing hidden) rises as much as the organism at every matched A strength: organism-minus-control EM rise is +0.2 [−1.7, +2.0] points at 0.3, −1.2 [−4.4, +1.6] at 0.6 and +0.2 [−1.6, +2.3] at 0.7 (luna; every interval spans 0 under both judges). For B, the organism out-rises the control at 0.0125 (+2.2 [+0.5, +4.1] points; S 0.11 against 0.02) but not at 0.025 (−0.5 [−2.4, +1.1]); one unadjusted comparison of eight, exploratory.
 - **The prompt line** recovers S = **0.27 [0.17, 0.38]** on the organism (EM 4.3% → 10.4%) and **0.00 [−0.04, 0.03]** on the good-only control and 0.04 [−0.01, 0.11] on the base model. Gemini agrees: 0.26 [0.13, 0.36], −0.05, 0.01.
 
-**Planned call (plan Predictions): outcome 3, "nothing moves"**, on luna and on Gemini. The plan's four outcomes overlap; the analysis code, written before any data, resolves them in the order 1, 3, 2, 4, requires outcome 2's organism rise to have a CI above 0, and counts induced EM on the base model as well as the good-only control. Per the plan, outcome 3 means **kill**: steering from outside does not reach this trigger on this organism. The prompt baseline, which the plan included and predicted to recover ≥ 0.3 of the gap (p 0.5), recovered 0.27, just under that, with no detected rise in the controls. So the trigger is reachable from the input, cheaply, and the prompt was both more sensitive and more specific than the steering here.
+**Planned call (plan Predictions): outcome 3, "nothing moves"**, on luna and on Gemini. The plan's four outcomes overlap; the analysis code, written before any data, resolves them in the order 1, 3, 2, 4, requires outcome 2's organism rise to have a CI above 0, and counts induced EM on the base model as well as the good-only control. Per the plan, outcome 3 means **kill**: steering from outside does not reach this trigger on this organism. The prompt baseline, which the plan included and predicted to recover ≥ 0.3 of the gap (p 0.5), recovered 0.27, just under that, with no detected rise in the controls. **Read the prompt result as specific to this organism.** It was trained to misbehave on written "unobserved" notices, and E13 showed its trigger transfers to reworded and indirect cues (0.54 of the gap). "Not being evaluated; you are deployed" is close in meaning to those notices, so the line most likely set off the trained trigger. It shows the trigger is reachable through a semantically matching input cue. It does not show that prompting beats steering as an audit method in general. Testing that needs an organism whose trigger was not trained from written notes. The steering result does not depend on this.
 
 ![Recipe A](analysis/fig_S_A.png)
 
@@ -72,7 +72,7 @@ Not run, and what each would test:
 - **A second organism.** E11's inoculated adapters.
 - **Why the prompt works.** More prompt lines, and the prompt line on the good-only control at higher sample counts.
 
-The prompt result is the one most worth building on: does a cheap prompt beat lab-style steering on other organisms too?
+A prompt-versus-steering comparison is worth running only on an organism whose trigger was not trained from written notices (e.g. Hua et al.'s released two-hop organism, or one with an inferred cue). On this organism the prompt line is too close to the trained cue to tell revealing from triggering.
 
 ## Caveats
 
