@@ -35,11 +35,14 @@ Probe run contract:
   probes/<dir>/logs/. When done it writes probes/<dir>/results/MANIFEST.sha256 (`shasum -a 256`
   lines, paths relative to results/, covering EVERY result file; written elsewhere, then moved in)
   and its LAST log line is `PROBE_DONE rc=<int>` (anchored).
-- Logs: the pod's probes/<dir>/logs/ is mirrored incrementally into probes/<dir>/logs/pod/
-  (committable) on every poll, and with 3 tries and backoff before any termination.
+- Logs: the pod's probes/<dir>/logs/ is mirrored incrementally into
+  probes/<dir>/logs/pod/<pod id>/ (committable; one directory per pod, so a follow-up run never
+  overwrites an earlier one's logs) on every poll, and with 3 tries and backoff before any
+  termination.
 - Results: `pull` stages results/ in probes/<dir>/.pull_<random>/ and promotes into
-  probes/<dir>/results/ only a COMPLETE pull: the logs pull succeeded, the manifest verifies
-  (`shasum -a 256 -c`) and it lists every pulled file. A local file that would change goes to
+  probes/<dir>/results/ when the manifest verifies (`shasum -a 256 -c`) and lists every pulled
+  file, even if the logs pull failed; the pull counts as COMPLETE (the only state that permits a
+  normal teardown) only when the logs pull succeeded too. A local file that would change goes to
   probes/<dir>/superseded/<UTC>/ first. Nothing pulled is ever deleted: without a manifest, or
   with one that misses files, the pulled files go to probes/<dir>/unverified/<UTC>/; a failed
   verification or copy keeps the staging dir.
@@ -62,13 +65,19 @@ push straight after up; after a standalone `up`, run `push` at once.
 `go` is the unattended chain: up -> push -> run -> every poll_minutes {mirror logs; one status
 ssh call; print `PROBE_STATUS ...`} until:
 - PROBE_DONE: final pull (up to 3 tries); COMPLETE -> pod_down.py, exit 0 (2 if rc != 0).
-  Otherwise, and when the run died without PROBE_DONE, or at the killswitch deadline minus 15 min
-  with the run alive (its process group is stopped first): SALVAGE, i.e. mirror the logs and copy
-  ALL results into unverified/<UTC>/; once both succeeded -> pod_down.py, ALERT, exit 5. If the
-  copy fails the pod is left to the killswitch and the watchdog with an ALERT (exit 1).
+- Otherwise (not complete, the run died without PROBE_DONE, or the killswitch deadline minus
+  15 min with the run alive): the persisted `recovering` phase, which `go` resumes after a
+  restart. Each round: quiesce the run (its process group, TERM, up to 30 s, KILL, re-check; only
+  a remote `PROBE_QUIESCED pgid=<n>` ack with ssh exit 0 counts, 3 tries), then SALVAGE, i.e.
+  mirror the logs and copy ALL results into unverified/<UTC>/. Rounds repeat with backoff (to
+  5 min) while time remains before the killswitch deadline. Once a copy made after a confirmed
+  stop succeeded (logs too) -> pod_down.py, ALERT, exit 5. A copy without a confirmed stop is
+  kept but never authorizes teardown. Out of time: the pod is left to the killswitch; once the
+  API reports it stopped it is settled (exit 1).
 - ssh unreachable: the RunPod API decides. Confirmed stopped/exited/gone (or terminated in the
-  event log) -> pod_down.py settles it (idempotent), ALERT, exit 1; still RUNNING -> keep polling
-  (transient), up to 30 min past the deadline.
+  event log) -> settled through pod_down.py's reservation-backed `--pod-id` path (idempotent,
+  tolerates a 404), ALERT, exit 1; still RUNNING -> keep polling (transient), up to 30 min past
+  the deadline. A restart whose recorded pod left its slot is routed to the same settlement.
 Every termination after a launch needs a successful logs pull. ALERTs are appended to
 probes/<dir>/logs/ALERT. State lives in probes/<dir>/logs/runner_state.json; rerunning `go`
 after a laptop crash resumes from it and logs/pods_<ID>.jsonl instead of relaunching; `go
@@ -129,6 +138,7 @@ ENV_KEY = re.compile(r"[A-Z][A-Z0-9_]*")
 SETUP_RE = re.compile(r"[a-z0-9]*")
 SHA_RE = re.compile(r"[0-9a-f]{40}")
 DONE_RE = re.compile(r"^PROBE_DONE rc=(-?\d+)$")
+QUIESCED_RE = re.compile(r"^PROBE_QUIESCED pgid=\S+$", re.MULTILINE)
 ARMED_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z \[killswitch\] ARMED pod=([A-Za-z0-9]+) "
     r"deadline=(\d+) \(.*\) key_check=(\S+)$"
@@ -144,7 +154,8 @@ WATCHDOG_WAIT_S = 60
 SSH_TIMEOUT_S = 120
 RSYNC_TIMEOUT_S = 3600
 LOG_BACKOFF_S = 10  # logs pull retries: 10 s, 20 s
-STOP_GRACE_S = 10  # salvage: TERM, this long, then KILL
+STOP_GRACE_S = 30  # salvage: TERM, wait up to this long, then KILL
+RECOVER_MAX_WAIT_S = 300  # recovery retries back off up to this
 LOST_GRACE_S = 30 * 60  # unreachable pod: keep asking the API this long past the deadline
 
 
@@ -946,11 +957,12 @@ class Runner:
     def pull_logs(self, tries: int = 3) -> bool:
         """Mirror the pod's probes/<dir>/logs/ into probes/<dir>/logs/pod/ incrementally (logs are
         append-only, so no staging; committable), retried with backoff. True when it succeeded."""
-        _, host, port, user = self.pod_addr()
+        pod_id, host, port, user = self.pod_addr()
         src = f"{user}@{host}:{POD_ROOT}/{self.rel}/logs/"
-        mirror = self.dir / "logs" / "pod"
+        mirror = self.dir / "logs" / "pod" / pod_id  # per pod: a follow-up never overwrites
         if self.dry_run:
-            self.say(f"DRY RUN: would rsync {src} into {self.rel}/logs/pod/ (incremental mirror)")
+            self.say(f"DRY RUN: would rsync {src} into {self.rel}/logs/pod/{pod_id}/ "
+                     "(incremental mirror)")
             return True
         mirror.mkdir(parents=True, exist_ok=True)
         for i in range(tries):
@@ -1048,26 +1060,59 @@ class Runner:
                  + ("" if logs_ok else " (but the logs pull FAILED)"))
         return PullResult(logs_ok, "complete", f"{self.rel}/results")
 
-    def stop_producer(self) -> None:
-        """Stop the run (its process group from run.pid, then a bracketed pattern), TERM then
-        KILL, so a salvage copies results nothing is still writing."""
+    def stop_script(self) -> str:
+        """The remote quiesce script: TERM the run's process group (setsid makes the run.pid
+        process its leader, or the leader is gone; a pid that is not a group leader may be a
+        reused pid and is never signalled), and the bracketed run.sh pattern for strays; wait up
+        to STOP_GRACE_S; KILL; re-check. It
+        prints `PROBE_QUIESCED pgid=<pid>` (exit 0) ONLY when no process of the run remains."""
         pat = shlex.quote(f"[{self.rel[0]}]{self.rel[1:]}/run.sh")
-        steps = []
-        for sig in ("TERM", "KILL"):
-            steps.append(f'[ -n "$P" ] && {{ kill -{sig} -- -"$P" 2>/dev/null || '
-                         f'kill -{sig} "$P" 2>/dev/null; }}; pkill -{sig} -f {pat} 2>/dev/null')
-            if sig == "TERM":
-                steps.append(f"sleep {STOP_GRACE_S}")
-        remote = "; ".join([f"cd {POD_ROOT} || exit 0",
-                            f'P=$(cat {shlex.quote(self.rel)}/logs/run.pid 2>/dev/null)',
-                            *steps, "true"])
-        r = self.ssh(remote, timeout=STOP_GRACE_S + 90)
-        self.say(f"stopped the producer on the pod (ssh rc {r.returncode})")
+        return "\n".join([
+            f"cd {POD_ROOT} || exit 5",
+            f"P=$(cat {shlex.quote(self.rel)}/logs/run.pid 2>/dev/null)",
+            'case "$P" in ""|*[!0-9]*) P="" ;; esac',
+            'GRP=0; if [ -n "$P" ]; then G=$(ps -o pgid= -p "$P" 2>/dev/null | tr -d " "); ',
+            '{ [ -z "$G" ] || [ "$G" = "$P" ]; } && GRP=1; fi',
+            "left() {",
+            "  n=0",
+            '  if [ "$GRP" = 1 ]; then n=$(ps -eo pgid= | tr -d " " | grep -cx "$P"); fi',
+            f"  m=$(pgrep -f {pat} | wc -l | tr -d ' ')",
+            "  echo $((n + m))",
+            "}",
+            "sig() {",
+            '  if [ "$GRP" = 1 ]; then kill -"$1" -- -"$P" 2>/dev/null; fi',
+            f'  pkill -"$1" -f {pat} 2>/dev/null',
+            "  return 0",
+            "}",
+            "sig TERM",
+            f'i=0; while [ "$(left)" != 0 ] && [ $i -lt {STOP_GRACE_S} ]; do sleep 1; i=$((i + 1)); ',
+            "done",
+            '[ "$(left)" = 0 ] || sig KILL',
+            'i=0; while [ "$(left)" != 0 ] && [ $i -lt 5 ]; do sleep 1; i=$((i + 1)); done',
+            'N=$(left)',
+            'if [ "$N" = 0 ]; then echo "PROBE_QUIESCED pgid=${P:-none}"; exit 0; fi',
+            'echo "PROBE_STOP_FAILED left=$N"',
+            "exit 7",
+        ])
 
-    def salvage(self, alive: bool) -> PullResult:
-        """Stop a live run, mirror the logs, copy ALL results into unverified/<UTC>/."""
-        if alive:
-            self.stop_producer()
+    def stop_producer(self, tries: int = 3) -> bool:
+        """Quiesce the run before a salvage teardown (review r2 finding 1): True only on the
+        anchored `PROBE_QUIESCED` ack with ssh exit 0; retried with backoff."""
+        script = self.stop_script()
+        for i in range(tries):
+            r = self.ssh(script, timeout=STOP_GRACE_S + 120, effect=False)
+            if r.returncode == 0 and QUIESCED_RE.search(r.stdout or ""):
+                self.say(f"producer stopped on the pod ({QUIESCED_RE.search(r.stdout).group(0)})")
+                return True
+            last = (r.stdout or r.stderr or "").strip().splitlines()[-1:] or [""]
+            self.say(f"WARNING: producer stop not confirmed (ssh rc {r.returncode}: {last[0]}; "
+                     f"try {i + 1}/{tries})")
+            if i + 1 < tries:
+                self.sleep(LOG_BACKOFF_S * 2**i)
+        return False
+
+    def salvage_copy(self) -> PullResult:
+        """Mirror the logs and copy ALL results into unverified/<UTC>/ (no verification)."""
         logs_ok = self.pull_logs()
         staging, ok = self.fetch_results()
         if not ok:
@@ -1088,19 +1133,27 @@ class Runner:
 
     # --- down ----------------------------------------------------------------------------------
 
-    def down(self, reason: str = "probe_pod down") -> int:
+    def down(self, reason: str = "probe_pod down", by_pod_id: bool = False) -> int:
+        """pod_down.py for the slot. `by_pod_id` (the API confirmed the pod stopped or gone, or
+        the slot keys were cleared): pod_down's reservation-backed `--pod-id` recovery path, which
+        settles a 404'd pod from durable history even while slot keys remain."""
         st = self.load_state()
         slot_pod = self.envval(f"RUNPOD_POD_ID{self.slot}")
-        pod_id = slot_pod or st.get("pod_id")
+        pod_id = st.get("pod_id") if by_pod_id else (slot_pod or st.get("pod_id"))
+        pod_id = pod_id or slot_pod
         rid = (self.reservation_for(pod_id) if pod_id else None) or st.get("reservation_id")
         argv = PY + ["scripts/pod_down.py", "--exp", self.exp, "--slot", self.slot,
                      "--reason", reason]
-        if not slot_pod and not self.dry_run:
+        if (by_pod_id or not slot_pod) and not self.dry_run:
             if not (pod_id and rid):
-                self.say(f"slot {self.slot} is empty and no reservation-backed pod is recorded: "
-                         "nothing to terminate or settle")
-                return 0
-            argv += ["--pod-id", pod_id]  # cleared slot (watchdog): finish it from history
+                if slot_pod:  # no reservation to settle by id: the slot path is all there is
+                    by_pod_id = False
+                else:
+                    self.say(f"slot {self.slot} is empty and no reservation-backed pod is "
+                             "recorded: nothing to terminate or settle")
+                    return 0
+            else:
+                argv += ["--pod-id", pod_id]
         if rid:
             argv += ["--reservation", rid]
         if self.dry_run:
@@ -1118,8 +1171,9 @@ class Runner:
 
     # --- go ------------------------------------------------------------------------------------
 
-    def _resume_point(self, fresh: bool) -> tuple[dict, bool]:
-        """(state, resumed). Refuses a slot pod this runner did not record."""
+    def _resume_point(self, fresh: bool) -> tuple[dict, str]:
+        """(state, mode): 'fresh' | 'resume' | 'settle' (the recorded pod left its slot or the
+        event log closed it before the runner finished). Refuses a slot pod it did not record."""
         st = self.load_state()
         if st and fresh:
             if not self.dry_run:
@@ -1134,6 +1188,8 @@ class Runner:
         pod_id = self.envval(f"RUNPOD_POD_ID{self.slot}")
         if pod_id:
             if not self.pod_running(pod_id):
+                if st.get("pod_id") == pod_id:
+                    return st, "settle"
                 raise ProbeError(f"slot {self.slot} names pod {pod_id}, which the event log does "
                                  "not show running; run `down` first")
             if st.get("pod_id") != pod_id:
@@ -1144,27 +1200,36 @@ class Runner:
                 else:
                     raise ProbeError(f"slot {self.slot} holds pod {pod_id}, not recorded in "
                                      f"{self.state_path}; down it or rerun with a free --slot")
-            return st, True
+            return st, "resume"
         if st.get("pod_id"):
-            raise ProbeError(f"the recorded pod {st['pod_id']} is gone from slot {self.slot} "
-                             f"before the runner finished (phase {st.get('phase')}); inspect, then "
-                             "rerun with --fresh")
-        return st, False
+            return st, "settle"
+        return st, "fresh"
 
     def go(self, fresh: bool = False) -> int:
-        st, resumed = self._resume_point(fresh)
+        st, mode = self._resume_point(fresh)
         if self.dry_run:
-            self.say(f"DRY RUN: go ({'resume' if resumed else 'fresh'}): up -> push -> run -> "
-                     f"poll every {self.cfg.poll_minutes:g} min -> verified pull -> down")
-            if not resumed:
+            self.say(f"DRY RUN: go ({mode}): up -> push -> run -> poll every "
+                     f"{self.cfg.poll_minutes:g} min -> verified pull -> down")
+            if mode == "fresh":
                 self.up()
             self.push()
             self.run()
             self.pull()
             self.down()
             return 0
-        if resumed:
+        if mode == "settle":
+            pod_id = st["pod_id"]
+            api = self.api_pod_state(pod_id)
+            if api in ("stopped", "gone") or not self.pod_running(pod_id):
+                return self.settle_lost(pod_id, f"restart: recorded pod {pod_id} left slot "
+                                        f"{self.slot} (API: {api})")
+            self.alert(f"restart: recorded pod {pod_id} is not in slot {self.slot} but the API "
+                       f"says {api}; restore its .env keys or settle it by hand")
+            return 1
+        if mode == "resume":
             self.say(f"resuming {self.exp} on pod {st.get('pod_id')} (phase {st.get('phase')})")
+            if st.get("phase") == "recovering":
+                return self.recover()
         else:
             self.up()
             st = self.load_state()
@@ -1224,23 +1289,22 @@ class Runner:
                        if now < deadline - DEADLINE_MARGIN_S else poll_s)
 
     def settle_lost(self, pod_id: str | None, why: str) -> int:
-        """A pod confirmed stopped or gone: settle it (pod_down is idempotent) and alert; only the
-        logs mirrored so far exist locally."""
+        """A pod confirmed stopped or gone: settle it through pod_down's reservation-backed
+        `--pod-id` path (idempotent) and alert; only what was mirrored so far exists locally."""
         self.alert(f"{why}; settling with pod_down; only the logs mirrored so far exist")
         try:
-            self.down(reason=f"probe_pod go: {why}"[:200])
+            self.down(reason=f"probe_pod go: {why}"[:200], by_pod_id=True)
         except ProbeError as e:
             self.alert(f"pod_down failed while settling ({e}); settle by hand")
         self.stop_watchdog_if_idle()
         return 1
 
     def finish(self, p: Poll, reason: str) -> int:
-        """complete (PROBE_DONE + verified, covering manifest + logs) -> down, exit 0/2; else
-        salvage everything into unverified/ and down once the copy (logs too) succeeded, exit 5;
-        a failed copy leaves the pod to the killswitch with an ALERT, exit 1."""
+        """complete (PROBE_DONE + verified, covering manifest + logs) -> down, exit 0/2; else the
+        persisted recovery phase (`recover`)."""
         self.say(f"stopping the poll: {reason}")
-        res = None
         if p.done_rc is not None:
+            res = None
             for i in range(3):
                 res = self.pull()
                 if res.complete:
@@ -1257,18 +1321,69 @@ class Runner:
                     self.sleep(LOG_BACKOFF_S * 2**i)
             reason += (f"; final pull {res.results}"
                        f"{'' if res.logs_ok else ', logs pull FAILED'}")
-        sal = self.salvage(alive=p.alive and p.done_rc is None)
         st = self.load_state()
-        st.update(final_pull=sal.results, stop_reason=reason, salvage=sal.where)
+        st.update(phase="recovering", recover_reason=reason, quiesced=False, salvage=None)
         self.save_state(st)
-        if sal.logs_ok and sal.results == "salvaged":
-            self.alert(f"{reason}: SALVAGED (unverified) into {sal.where}; terminating the pod")
-            self.down(reason=f"probe_pod go: {reason}; salvaged"[:200])
-            self.stop_watchdog_if_idle()
-            return 5
-        self.alert(f"{reason}: salvage copy failed (results {sal.results}, logs "
-                   f"{'ok' if sal.logs_ok else 'FAILED'}): pod LEFT RUNNING for the killswitch "
-                   "and the watchdog; pull by hand, then down")
+        return self.recover()
+
+    def recover(self) -> int:
+        """The persisted `recovering` phase (review r2 findings 1 and 3), resumed by `go` after a
+        restart: quiesce the run (confirmed ack), then copy logs + ALL results into unverified/;
+        retried with bounded backoff while time remains before the killswitch deadline. Teardown
+        (exit 5) only once a copy made AFTER a confirmed stop succeeded. A copy made without a
+        confirmed stop is kept but never authorizes teardown. A pod the API confirms stopped or
+        gone is settled. Out of time: wait for the killswitch, then settle a stopped pod."""
+        st = self.load_state()
+        reason = st.get("recover_reason", "recovery")
+        deadline = st.get("armed_deadline") or self.deadlines()[self.slot]
+        pod_id = st.get("pod_id")
+        quiesced = bool(st.get("quiesced"))
+        warned = False
+        attempt = 0
+        while True:
+            if not quiesced:
+                quiesced = self.stop_producer()
+                if quiesced:
+                    st.update(quiesced=True)
+                    self.save_state(st)
+            if quiesced or not st.get("salvage"):
+                sal = self.salvage_copy()
+                if sal.logs_ok and sal.results == "salvaged":
+                    st.update(salvage=sal.where, salvage_quiesced=quiesced)
+                    self.save_state(st)
+                    if quiesced:
+                        self.alert(f"{reason}: SALVAGED (unverified) into {sal.where}; "
+                                   "terminating the pod")
+                        self.down(reason=f"probe_pod go: {reason}; salvaged"[:200])
+                        self.stop_watchdog_if_idle()
+                        return 5
+                else:
+                    self.say(f"salvage copy failed (results {sal.results}, logs "
+                             f"{'ok' if sal.logs_ok else 'FAILED'})")
+                    api = self.api_pod_state(pod_id) if pod_id else "gone"
+                    if api in ("stopped", "gone"):
+                        return self.settle_lost(pod_id, f"{reason}; pod confirmed {api} during "
+                                                "recovery")
+            if not quiesced and st.get("salvage") and not warned:
+                self.alert(f"{reason}: results copied to {st['salvage']} but the producer stop is "
+                           "NOT confirmed: not terminating; retrying the stop")
+                warned = True
+            wait = min(LOG_BACKOFF_S * 2**attempt, RECOVER_MAX_WAIT_S)
+            now = self.clock()
+            if now + wait >= deadline - 60:
+                break
+            attempt += 1
+            self.sleep(wait)
+        self.alert(f"{reason}: recovery out of time (quiesced={quiesced}, copy "
+                   f"{st.get('salvage') or 'none'}); the pod is LEFT for the killswitch "
+                   f"({utc_iso(deadline)}); settling once it has stopped")
+        while self.clock() < deadline + LOST_GRACE_S:
+            self.sleep(max(60.0, min(RECOVER_MAX_WAIT_S, deadline + 120 - self.clock())))
+            api = self.api_pod_state(pod_id) if pod_id else "gone"
+            if api in ("stopped", "gone"):
+                return self.settle_lost(pod_id, f"{reason}; pod {api} after the killswitch")
+        self.alert(f"{reason}: pod {pod_id} still not confirmed stopped {LOST_GRACE_S // 60} min "
+                   "after its deadline; check the console")
         return 1
 
     def stop_watchdog_if_idle(self) -> None:

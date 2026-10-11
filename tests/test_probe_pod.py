@@ -8,12 +8,16 @@ stripped), so the launch, poll and pull shell code is exercised for real.
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -78,7 +82,10 @@ class FakeSh:
         self.arm_rc = 0
         self.local = False
         self.fail_logs = False  # rsync of the pod's logs/ fails
-        self.fail_results = False  # rsync of the pod's results/ fails
+        self.fail_results = False  # rsync of the pod's results/ fails (always)
+        self.fail_results_n = 0  # ... or only this many times
+        self.stop_outs: list[tuple[str, int]] = []  # canned answers to the quiesce script
+        self.pod_down_main = None  # run the REAL scripts/pod_down.py main in-process
         self.files_from: list[str] = []
         self.pod_env: str | None = None
         self.pod_up_out = f"EMX_POD_CREATE=ok reservation=R pod={POD}\n"
@@ -109,6 +116,11 @@ class FakeSh:
         if "emx.runpod_reservations" in argv:
             return ok()
         if "scripts/pod_down.py" in argv:
+            if self.pod_down_main is not None:
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(buf):
+                    rc = self.pod_down_main(argv[argv.index("scripts/pod_down.py") + 1:])
+                return ok(buf.getvalue(), rc)
             return ok("terminated\n")
         if "scripts/pod_up.py" in argv:
             if "--dry-run" not in argv and self.pod_up_rc == 0:
@@ -122,6 +134,9 @@ class FakeSh:
             if ".env.part" in remote:
                 self.pod_env = kw.get("input")
                 return ok()
+            if "PROBE_QUIESCED" in remote and self.stop_outs:
+                out, rc = self.stop_outs.pop(0)
+                return ok(out, rc)
             if self.local:
                 return subprocess.run(
                     ["bash", "-c", remote.replace("setsid nohup", "nohup")],
@@ -137,7 +152,9 @@ class FakeSh:
                 return ok()
             if self.fail_logs and any(x.endswith("/logs/") and ":" in x for x in argv):
                 return ok("", 12, "connection reset")
-            if self.fail_results and any(x.endswith("/results/") and ":" in x for x in argv):
+            if any(x.endswith("/results/") and ":" in x for x in argv) and (
+                    self.fail_results or self.fail_results_n > 0):
+                self.fail_results_n -= 1
                 return ok("", 12, "connection reset")
             if self.local:
                 real = [x.replace("root@HOST:", "") for x in argv]
@@ -191,9 +208,16 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(pp, "REPO", repo)
     monkeypatch.setattr(pp, "SH", fake)
     monkeypatch.setattr(pp, "POPEN", lambda *a, **k: popened.append(a))
-    monkeypatch.setattr(pp, "SLEEP", lambda s: None)
+    clock = {"t": time.time()}  # a fake clock that the fake sleep advances
+
+    def fake_sleep(s):
+        clock["t"] += s
+
+    monkeypatch.setattr(pp, "SLEEP", fake_sleep)
+    monkeypatch.setattr(pp, "CLOCK", lambda: clock["t"])
     monkeypatch.setattr(pp, "POD_ROOT", str(pod_root))
-    monkeypatch.setattr(pp, "STOP_GRACE_S", 0)
+    monkeypatch.setattr(pp, "STOP_GRACE_S", 2)
+    monkeypatch.setattr(pp.Runner, "api_pod_state", lambda self, pid: "running")  # no network
     return {"repo": repo, "pdir": pdir, "pod": pod_root / "probes" / "P01-demo", "fake": fake,
             "popened": popened, "tmp": tmp_path}
 
@@ -349,7 +373,7 @@ def test_run_poll_pull_local_pod(env, monkeypatch):
     res = r.pull()
     assert res.complete, res
     assert (env["pdir"] / "results" / "a.txt").read_text() == "hi\n"
-    mirror = env["pdir"] / "logs" / "pod"
+    mirror = env["pdir"] / "logs" / "pod" / POD
     assert (mirror / Path(st["run_log"]).name).exists()
     assert (mirror / "run.launched").exists() and not (mirror / "run.pid").exists()
     assert not list(env["pdir"].glob(".pull_*"))
@@ -422,7 +446,7 @@ def test_pull_mismatch_keeps_staging(env):
     staging = list(env["pdir"].glob(".pull_*"))
     assert len(staging) == 1 and (staging[0] / "results" / "a.txt").read_text() == "new\n"
     assert (env["pdir"] / "results" / "a.txt").read_text() == "old\n"
-    assert (env["pdir"] / "logs" / "pod" / "run_X.log").exists()  # logs arrive regardless
+    assert (env["pdir"] / "logs" / "pod" / POD / "run_X.log").exists()  # logs arrive regardless
 
 
 def test_pull_complete_promotes_and_supersedes(env):
@@ -459,7 +483,7 @@ def test_pull_without_manifest_keeps_everything(env):
     (env["pod"] / "results" / "partial.json").write_text("{}\n")
     write_state(env["pdir"], pod_id=POD, phase="running")
     assert pp.main(["pull", "--exp", "P01"]) == 3
-    assert (env["pdir"] / "logs" / "pod" / "run_X.log").read_text() == "working\n"
+    assert (env["pdir"] / "logs" / "pod" / POD / "run_X.log").read_text() == "working\n"
     assert not (env["pdir"] / "results").exists()
     kept = list((env["pdir"] / "unverified").glob("*/partial.json"))
     assert len(kept) == 1 and kept[0].read_text() == "{}\n"
@@ -475,7 +499,7 @@ def test_pull_with_failed_logs_is_not_complete(env):
     r = runner()
     res = r.pull()
     assert res.results == "complete" and not res.logs_ok and not res.complete
-    assert len([a for a in fake.argvs() if a[0] == "rsync" and a[-1].endswith("/logs/pod/")]) == 3
+    assert len([a for a in fake.argvs() if a[0] == "rsync" and a[-1].endswith(f"/logs/pod/{POD}/")]) == 3
     assert pp.main(["pull", "--exp", "P01"]) == 1
 
 
@@ -533,6 +557,11 @@ def resumed_state(pdir, **kw):
                 armed_deadline=kw.pop("armed_deadline", SLOT_DL), **kw)
 
 
+def soon():
+    """A killswitch deadline an hour after the fake clock's start (bounded recovery loops)."""
+    return int(pp.CLOCK()) + 3600
+
+
 def test_go_resume_does_not_relaunch(env):
     fake = env["fake"]
     fake.local = True
@@ -560,29 +589,31 @@ def test_go_failed_verification_salvages_then_downs(env):
     assert salv and salv[-1].read_text() == "x\n"
     assert not (env["pdir"] / "results").exists()
     assert "SALVAGED" in (env["pdir"] / "logs" / "ALERT").read_text()
-    assert (env["pdir"] / "logs" / "pod" / "run_X.log").exists()
+    assert (env["pdir"] / "logs" / "pod" / POD / "run_X.log").exists()
 
 
 def test_go_failed_salvage_copy_leaves_pod(env):
     fake = env["fake"]
     fake.local = True
     pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
-    resumed_state(env["pdir"])
+    resumed_state(env["pdir"], armed_deadline=soon())
     fake.fail_results = True
     assert pp.main(["go", "--exp", "P01"]) == 1
     assert not fake.find("scripts/pod_down.py")
-    assert "LEFT RUNNING" in (env["pdir"] / "logs" / "ALERT").read_text()
+    alert = (env["pdir"] / "logs" / "ALERT").read_text()
+    assert "out of time" in alert and "LEFT for the killswitch" in alert
+    assert pp.Runner("P01").load_state()["phase"] == "recovering"
 
 
 def test_go_failed_logs_pull_never_terminates(env):
     fake = env["fake"]
     fake.local = True
     pod_results(env["pod"], {"a.txt": "x\n"})
-    resumed_state(env["pdir"])
+    resumed_state(env["pdir"], armed_deadline=soon())
     fake.fail_logs = True
     assert pp.main(["go", "--exp", "P01"]) == 1
     assert not fake.find("scripts/pod_down.py")
-    assert "logs FAILED" in (env["pdir"] / "logs" / "ALERT").read_text()
+    assert "logs pull FAILED" in (env["pdir"] / "logs" / "ALERT").read_text()
 
 
 def test_go_dead_run_without_results_is_salvaged_and_terminated(env):
@@ -634,6 +665,165 @@ def test_go_unreachable_pod_confirmed_stopped_is_settled(env, monkeypatch):
     assert len(sleeps) == 1  # RUNNING (transient): polled again; then stopped: settled
     assert len(env["fake"].find("scripts/pod_down.py")) == 1
     assert "confirmed stopped" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+# --- recovery (review r2 findings 1, 3, 4) ---------------------------------------------------
+
+
+def test_stop_failure_before_stop_never_tears_down(env):
+    """Every quiesce attempt fails at ssh (rc 255): the copy is kept, nothing is terminated, the
+    stop is retried until the deadline, and the pod is left to the killswitch."""
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, log_done=False)
+    resumed_state(env["pdir"], armed_deadline=soon())
+    fake.stop_outs = [("", 255)] * 10_000
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert not fake.find("scripts/pod_down.py")
+    stops = [a for a in fake.argvs() if a[0] == "ssh" and "PROBE_QUIESCED" in a[-1]]
+    assert len(stops) > 3  # retried across rounds, not just once
+    assert list((env["pdir"] / "unverified").glob("*/a.txt"))  # preserved anyway
+    alert = (env["pdir"] / "logs" / "ALERT").read_text()
+    assert "NOT confirmed" in alert and "LEFT for the killswitch" in alert
+
+
+def test_interrupted_stop_then_confirmed_stop_tears_down(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, log_done=False)
+    resumed_state(env["pdir"], armed_deadline=soon())
+    fake.stop_outs = [("PROBE_QUIESCED pgid=123", 255),  # ack text but the session dropped
+                      ("PROBE_STOP_FAILED left=2", 7),
+                      ("", 0)]  # exit 0 without an ack (truncated output)
+    assert pp.main(["go", "--exp", "P01"]) == 5  # the 4th try is the real script: quiesced
+    assert len(fake.find("scripts/pod_down.py")) == 1
+    copies = list((env["pdir"] / "unverified").glob("*/a.txt"))
+    assert len(copies) == 2  # one kept before the confirmed stop, one after it
+    st = pp.Runner("P01").load_state()
+    assert st["quiesced"] and st["salvage_quiesced"] and st["phase"] == "down"
+
+
+def test_recovery_retries_transfer_then_tears_down(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, log_done=False)
+    resumed_state(env["pdir"], armed_deadline=soon())
+    fake.fail_results_n = 1  # the first results transfer fails, the second succeeds
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    assert len(fake.find("scripts/pod_down.py")) == 1
+    assert list((env["pdir"] / "unverified").glob("*/a.txt"))
+    assert list(env["pdir"].glob(".pull_*"))  # the failed partial copy is kept too
+
+
+def test_go_resumes_recovering_phase(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, log_done=False)
+    resumed_state(env["pdir"], armed_deadline=soon())
+    st = pp.Runner("P01").load_state()
+    st.update(phase="recovering", recover_reason="restart test", quiesced=False, salvage=None)
+    write_state(env["pdir"], **st)
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    status_calls = [a for a in fake.argvs() if a[0] == "ssh" and "__ALIVE" in a[-1]]
+    assert not status_calls  # straight back into recovery, no polling or launch
+    assert len(fake.find("scripts/pod_down.py")) == 1
+
+
+@pytest.mark.skipif(shutil.which("setsid") is None, reason="setsid unavailable (macOS)")
+def test_quiesce_real_process_group(env, monkeypatch):
+    """With real setsid: the run and a child in its process group are stopped and acked."""
+    fake = env["fake"]
+    fake.local = True
+    monkey_ssh = fake.__call__
+
+    def ssh_with_setsid(argv, **kw):  # keep setsid this time
+        if argv[0] == "ssh" and fake.local and "setsid nohup" in argv[-1]:
+            fake.calls.append((list(argv), kw))
+            return subprocess.run(["bash", "-c", argv[-1]], input=kw.get("input") or "",
+                                  capture_output=True, text=True, timeout=60, check=False)
+        return monkey_ssh(argv, **kw)
+
+    monkeypatch.setattr(pp, "SH", ssh_with_setsid)
+    (env["pod"] / "run.sh").write_text("echo start\n(sleep 300) &\nwhile true; do sleep 1; done\n")
+    r = runner()
+    r.sleep = lambda s: time.sleep(min(s, 0.5))
+    write_state(env["pdir"], pod_id=POD, phase="pushed", armed_deadline=SLOT_DL)
+    assert r.run() == 0
+    pid = int((env["pod"] / "logs" / "run.pid").read_text())
+    assert r.stop_producer() is True
+    left = subprocess.run(["ps", "-eo", "pgid="], capture_output=True, text=True,
+                          check=False).stdout.split()
+    assert str(pid) not in left
+
+
+def test_log_mirror_is_per_pod(env):
+    fake = env["fake"]
+    fake.local = True
+    (env["pod"] / "logs").mkdir()
+    (env["pod"] / "logs" / "training.jsonl").write_text('{"step": 1, "run": 1}\n')
+    assert runner().pull_logs()
+    rp.set_env_var("RUNPOD_POD_ID_P01", "podB", env["repo"] / ".env")
+    (env["pod"] / "logs" / "training.jsonl").write_text('{"step": 1, "run": 2}\n')
+    assert runner().pull_logs()
+    mirror = env["pdir"] / "logs" / "pod"
+    assert (mirror / POD / "training.jsonl").read_text() == '{"step": 1, "run": 1}\n'
+    assert (mirror / "podB" / "training.jsonl").read_text() == '{"step": 1, "run": 2}\n'
+
+
+@pytest.fixture
+def real_pod_down(env, monkeypatch):
+    """The REAL scripts/pod_down.py (in-process) against an API that answers 404 to everything,
+    for a reservation-backed P01 pod created 10 minutes ago."""
+    spec = importlib.util.spec_from_file_location("pod_down", ROOT / "scripts" / "pod_down.py")
+    pod_down = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pod_down)
+
+    def gone(self, method, path, body=None, *, retry=True):
+        raise rp.RunPodError(f"{method} {path} failed: HTTP 404: pod not found")
+
+    monkeypatch.setattr(rp.RunPod, "_request", gone)
+    rid = rr.reserve("P01", 5.0, "test", balance=500.0)
+    t0 = time.time() - 600
+    rr.launch(rid, [(POD, 2.69, 5.0)], t0, slot="_P01")
+    (env["repo"] / "logs" / "pods_P01.jsonl").write_text(json.dumps({
+        "utc": datetime.fromtimestamp(t0, UTC).isoformat(), "exp": "P01", "event": "created",
+        "pod_id": POD, "slot": "_P01", "gpu": "H100", "rate_usd_h": 2.69, "rate_source": "api",
+        "reservation_id": rid,
+    }) + "\n")
+    env["fake"].pod_down_main = pod_down.main
+    return rid
+
+
+def assert_settled(env, rid):
+    rows = [json.loads(x) for x in (env["tmp"] / "costs.jsonl").read_text().splitlines()]
+    gpu = [r for r in rows if r.get("kind") == "gpu" and r.get("exp") == "P01"]
+    assert len(gpu) == 1 and f"pod={POD}" in gpu[0]["note"]
+    events = [json.loads(x) for x in
+              (env["repo"] / "logs" / "pods_P01.jsonl").read_text().splitlines()]
+    assert any(e["event"] == "terminated" and e["pod_id"] == POD for e in events)
+    assert rr.get(rid)["closed"]
+
+
+def test_confirmed_gone_settles_through_real_pod_down(env, real_pod_down, monkeypatch):
+    """Slot keys remain, ssh is unreachable and the API confirms the pod gone (404): the
+    reservation-backed --pod-id path settles it."""
+    resumed_state(env["pdir"], reservation_id=real_pod_down)
+    monkeypatch.setattr(pp.Runner, "api_pod_state", lambda self, pid: "gone")
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    down = env["fake"].find("scripts/pod_down.py")
+    assert len(down) == 1 and "--pod-id" in down[0]
+    assert_settled(env, real_pod_down)
+    assert "confirmed gone" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+def test_restart_with_cleared_slot_is_settled(env, real_pod_down, monkeypatch):
+    for k in ("RUNPOD_POD_ID_P01", "POD_SSH_HOST_P01", "POD_SSH_PORT_P01"):
+        rp.set_env_var(k, "", env["repo"] / ".env")
+    resumed_state(env["pdir"], reservation_id=real_pod_down)
+    monkeypatch.setattr(pp.Runner, "api_pod_state", lambda self, pid: "gone")
+    assert pp.main(["go", "--exp", "P01"]) == 1  # settled, not refused
+    assert_settled(env, real_pod_down)
+    assert not env["fake"].find("scripts/pod_up.py")
 
 
 def test_go_refuses_unrecorded_slot_pod(env):
