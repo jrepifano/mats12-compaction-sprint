@@ -61,6 +61,9 @@ RECIPES = {
     # nocot ran Gemma 4 31B unpinned; we pin bf16 hosts (Novita: bf16, logprobs; then Crusoe:
     # bf16, same price) to match the Stage 2 bf16 weights. Novita alone hit upstream 429s on
     # ~25% of pilot calls (2026-10-11), so Crusoe is the second host in the order.
+    # F4 only (Brauer's task): Gemma 3 has no reasoning parameter (nocot's ask omits the key).
+    "gemma3": Recipe("gemma3", "google/gemma-3-27b-it", ("Novita",), 0.119e-6, 0.20e-6,
+                     reasoning=None, logprobs=False),
     "gemma4": Recipe("gemma4", "google/gemma-4-31b-it", ("Novita", "Crusoe"), 0.14e-6, 0.40e-6),
 }
 
