@@ -1,4 +1,4 @@
-"""Generic RunPod runner for probe-tier experiments (CLAUDE.md "Two tiers", 2026-10-11).
+"""Generic RunPod runner for probe-tier experiments (AGENTS.md "Two tiers", 2026-10-11).
 
 A probe (id `P<NN>`, directory `probes/P<NN>-<slug>/` with a `probe.toml`) runs on a pod with no
 per-experiment case in pod_push.sh, pod_pull_results.sh, pod_setup.sh or pod_up.py. The caps come
@@ -135,6 +135,7 @@ PY = ["uv", "run", "--quiet", "python"]
 SSH_OPTS = [
     "-o", "ServerAliveInterval=30", "-o", "ServerAliveCountMax=4",
     "-o", "ConnectTimeout=20", "-o", "StrictHostKeyChecking=accept-new",
+    *rp.ssh_known_hosts_opts(),  # the checkout's .ssh_known_hosts, never ~/.ssh (AGENTS.md)
 ]
 NEVER_SEND = frozenset({"data/E1/questions/narrow.jsonl"})  # held-out questions stay local
 LAPTOP_ONLY = re.compile(r"(OPENAI|OPENROUTER|RUNPOD|EM_DATASET_PASSWORD|AZURE)")

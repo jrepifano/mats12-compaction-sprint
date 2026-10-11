@@ -229,6 +229,11 @@ logs/watchdog_P*.heartbeat
 logs/watchdog_P*.stop
 logs/probe_P*_go.log
 logs/pods_*.pending.jsonl
+# raw diffs written by scripts/claude_review.sh (reproducible from git)
+logs/reviews/*.diff
+# repo-local ssh known hosts for pods (scripts and emx.runpod; AGENTS.md) and ssh-keygen -R backups
+.ssh_known_hosts
+.ssh_known_hosts.old
 # P01: the downloaded SWE-rebench parquet and the derived transcripts (rebuilt by the slice
 # loaders; hashes in data/P01/*.manifest.json)
 data/P01/raw/

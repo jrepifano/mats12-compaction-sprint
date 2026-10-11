@@ -166,6 +166,8 @@
 #   bash scripts/pod_pull_results.sh --exp E13 --slot _A [--manifest MANIFEST.<step>.sha256 ...]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
+case "$KNOWN_HOSTS" in *[[:space:]]*) echo "checkout path has whitespace: unsupported (ssh options are unquoted)" >&2; exit 2 ;; esac
 SLOT=""; MGLOB=""; SUBDIR=""; EXP="E1"; MLIST=""; RUNS=""; STAGING=""; UNIT=""; POD_ID=""; TAR_ONLY=0
 TAR_ADAPTERS=0; TAR_ACTS=0   # E11 only
 E12_RECIPE=""   # E12 only (--recipe)
@@ -221,7 +223,7 @@ case "$EXP" in
       H=$(envval "POD_SSH_HOST$SLOT" || true); P=$(envval "POD_SSH_PORT$SLOT" || true)
       U=$(envval POD_SSH_USER || true); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
-      rsync -rlptz --exclude staging -e "ssh -p $P -o StrictHostKeyChecking=accept-new" \
+      rsync -rlptz --exclude staging -e "ssh -p $P -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" \
             "$U@$H:/ws/emx/results/I1a/" "$STAGE/results/I1a/"
     fi
     CLOSING=results/I1a/MANIFEST.manifest.sha256
@@ -286,7 +288,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     # manifest_paths BASE_OUT MANIFEST...: each manifest's listed files as repo-relative paths
     # (stdout), and per manifest the directory its paths are relative to (BASE_OUT: "<manifest>
@@ -410,7 +412,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     mkdir -p results/I9
     STAGE=$(mktemp -d "results/I9/.pull_XXXXXX")
@@ -534,7 +536,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     MIRROR="results/E3/sealed/_pod_mirror/$POD_ID"
     mkdir -p "$MIRROR/results/E3" "$MIRROR/logs"
@@ -715,7 +717,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
+      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS"
       rsync_pod() { rsync -z -e "ssh $SSHO" "$@"; }
       # shellcheck disable=SC2086 # SSHO: options without spaces in values
       tar_pod() { ssh -n $SSHO "$U@$H" "cd /ws/emx/results/E9/runs && tar cf - --exclude=model --exclude='*.safetensors' --exclude='*.bin' --exclude='*.pt' --exclude='*.pth' '$1'"; }
@@ -888,7 +890,7 @@ PY_E9
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     # 0. the run logs (logs/e12/run_<UTC>.log, <step>_<UTC>.log; names never reused), first, so
     #    they arrive even when a manifest below refuses. Informational: not verified, nothing is
@@ -1013,7 +1015,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     # 0. the run logs (logs/eq0/run_<UTC>.log, <step>_<UTC>.log; names never reused), first, so
     #    they arrive even when a manifest below refuses. Informational: not verified, nothing is
@@ -1144,7 +1146,7 @@ PY
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
       WS=/ws
-      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new"
+      SSHO="-p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS"
       rsync_pod() { rsync -z -e "ssh $SSHO" "$@"; }
       # shellcheck disable=SC2086 # SSHO: ssh options
       pod_sh() { ssh -n $SSHO "$U@$H" "$1"; }
@@ -1308,7 +1310,7 @@ PY
       U=$(envval POD_SSH_USER); U=${U:-root}
       [ -n "$H" ] && [ -n "$P" ] || { echo "no pod in slot '$SLOT'" >&2; exit 1; }
       SRC_ROOT="$U@$H:/ws/emx"
-      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new" "$@"; }
+      rsync_pod() { rsync -z -e "ssh -p $P -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" "$@"; }
     fi
     # 0. the run logs (logs/e13/run_<UTC>.log, <step>_<UTC>.log; names never reused), first, so
     #    they arrive even when a manifest below refuses. Informational: not verified, nothing is
@@ -1426,7 +1428,7 @@ mkdir -p results/E1
 STAGE_DIR=$(mktemp -d "results/E1/.pull_XXXXXX")
 trap 'rm -rf "$STAGE_DIR"' EXIT
 REMOTE="/ws/emx/results/E1/${SUBDIR:+$SUBDIR/}"
-rsync -rlptz -e "ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new" \
+rsync -rlptz -e "ssh -p $POD_SSH_PORT -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS" \
       "$POD_SSH_USER@$POD_SSH_HOST:$REMOTE" "$STAGE_DIR/"
 n=0
 ( cd "$STAGE_DIR" && for m in $MGLOB; do

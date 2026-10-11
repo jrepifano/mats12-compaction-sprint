@@ -1,12 +1,13 @@
 #!/bin/bash
-# Run a gpt-6-astra review through Codex with the project's 20-minute timeout (CLAUDE.md).
+# Run a gpt-6-astra review through Codex with the project's 20-minute timeout (AGENTS.md).
 # Usage: scripts/codex_review.sh <prompt_file> <output_md> [effort] [seconds]
 # effort defaults to medium (Jacob, 2026-10-04; was gpt-6-sol at high). Pass high for unusually hard artifacts.
 # Runs from the repo root the script lives in; stdout/stderr go to <output_md>.log.
 #
 # The timeout is enforced by a watchdog that kills codex and its children. The `perl -e 'alarm'`
-# wrapper CLAUDE.md suggests does not stop codex-cli 0.157: its reviews ran past 20 minutes on
-# 2026-09-29.
+# wrapper the project instructions once suggested does not stop codex-cli 0.157: its reviews ran
+# past 20 minutes on 2026-09-29.
+# Counterpart for Codex-run work (the reviewer comes from the other family): scripts/claude_review.sh.
 # The machine is kept awake with `caffeinate -is` for the duration: on 2026-09-29 the laptop's
 # idle and clamshell sleep paused reviews mid-run (pmset log), which looked like timeouts.
 # Clamshell (lid-closed) sleep still pauses everything. The watchdog polls the wall clock

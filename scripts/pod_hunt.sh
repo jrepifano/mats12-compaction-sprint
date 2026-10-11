@@ -14,6 +14,8 @@
 # Usage: bash scripts/pod_hunt.sh [--exp I1a] [--slot _A] [--max-minutes 180] [--dry-run]
 set -euo pipefail
 cd "$(dirname "$0")/.."
+KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
+case "$KNOWN_HOSTS" in *[[:space:]]*) echo "checkout path has whitespace: unsupported (ssh options are unquoted)" >&2; exit 2 ;; esac
 SLOT=_A; MAXMIN=180; DRY=0; EXP=E1
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -50,7 +52,7 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   bash scripts/pod_push.sh --exp "$EXP" --slot "$SLOT" || { echo "$(date -u +%FT%TZ) pod_push failed on slot $SLOT (pod kept for inspection)"; exit 3; }
   if [ "$EXP" = "E1" ] && [ -f scripts/e1_preflight.py ]; then
     host=$(envval "POD_SSH_HOST$SLOT"); port=$(envval "POD_SSH_PORT$SLOT")
-    pf=$(perl -e 'alarm 900; exec @ARGV' ssh -n -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new "root@$host" \
+    pf=$(perl -e 'alarm 900; exec @ARGV' ssh -n -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS "root@$host" \
       "cd /ws/emx && /ws/venv-peft/bin/python scripts/e1_preflight.py" 2>&1 | tail -3) \
       || { echo "$(date -u +%FT%TZ) PREFLIGHT ssh failed on slot $SLOT"; exit 3; }
     echo "$pf"
