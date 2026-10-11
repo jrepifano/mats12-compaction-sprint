@@ -65,6 +65,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -296,15 +297,38 @@ def gpu_options(start: int = 0) -> tuple[GpuOption, ...]:
 
 
 def set_env_var(key: str, value: str, env_path: Path | None = None) -> None:
-    """Rewrite KEY=... in .env in place, appending the key if absent."""
+    """Rewrite KEY=... in .env, appending the key if absent.
+
+    2026-10-11 (probe runner review r1 finding 5): concurrent probes share one .env, so the
+    read-modify-write holds an exclusive flock on a stable `<env>.lock` next to it, and the new
+    text goes to a temp file in the same directory (fsynced, mode 600) that replaces .env
+    atomically: no lost update, and no reader ever sees a truncated file."""
     env_path = env_path or ROOT / ".env"
-    text = env_path.read_text() if env_path.exists() else ""
-    new, n = re.subn(rf"(?m)^{re.escape(key)}=.*$", f"{key}={value}", text)
-    if n == 0:
-        new = text.rstrip("\n") + f"\n{key}={value}\n"
-    elif n != 1:
-        raise RuntimeError(f"expected at most one {key}= line in .env, found {n}")
-    env_path.write_text(new)
+    lock = env_path.with_name(env_path.name + ".lock")
+    with open(lock, "a") as lf:
+        fcntl.flock(lf, fcntl.LOCK_EX)
+        try:
+            text = env_path.read_text() if env_path.exists() else ""
+            new, n = re.subn(rf"(?m)^{re.escape(key)}=.*$", f"{key}={value}", text)
+            if n == 0:
+                new = text.rstrip("\n") + f"\n{key}={value}\n"
+            elif n != 1:
+                raise RuntimeError(f"expected at most one {key}= line in .env, found {n}")
+            fd, tmp = tempfile.mkstemp(prefix=env_path.name + ".", suffix=".tmp",
+                                       dir=env_path.parent)
+            try:
+                with os.fdopen(fd, "w") as f:
+                    f.write(new)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.chmod(tmp, 0o600)
+                os.replace(tmp, env_path)
+            except BaseException:
+                if os.path.exists(tmp):
+                    os.unlink(tmp)
+                raise
+        finally:
+            fcntl.flock(lf, fcntl.LOCK_UN)
 
 
 # --- pod lifecycle events and spend projection (port of pod_budget_check.stage_spend) ---------

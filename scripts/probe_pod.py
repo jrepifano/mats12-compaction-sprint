@@ -21,23 +21,32 @@ probe.toml `[pod]` table (all optional except gpu_hours for up/go):
     disk_gb = 200
     push = []            # extra repo-relative files/dirs to send (may be untracked/gitignored)
     env = ["HF_TOKEN"]   # laptop .env keys copied into the pod's /ws/emx/.env
-    poll_minutes = 10
+    poll_minutes = 5
 
 Probe run contract:
 - On the pod the repo lives at /ws/emx. `run` launches, from /ws/emx, `bash probes/<dir>/run.sh`
   detached (`mkdir -p probes/<dir>/logs probes/<dir>/results`, then `setsid nohup ... >
-  probes/<dir>/logs/run_<UTC>.log 2>&1 &`), with /ws/emx/.env exported and EMX_PROBE=<id>. Its
-  pid goes to probes/<dir>/logs/run.pid; a second launch is refused while that pid is alive.
+  probes/<dir>/logs/run_<UTC>.log 2>&1 &`), with /ws/emx/.env exported and EMX_PROBE=<id>. It
+  writes probes/<dir>/logs/run.launched (the log path) before the launch and the run writes its
+  pid to probes/<dir>/logs/run.pid. ONE run per pod: if either file exists (the run alive,
+  finished or crashed), `run` adopts that run and never relaunches over its results.
 - run.sh prints a first log line at once (the launch is verified by the log growing within 20 s),
-  writes outputs under probes/<dir>/results/ and logs under probes/<dir>/logs/. When done it
-  writes probes/<dir>/results/MANIFEST.sha256 (`shasum -a 256` lines, paths relative to results/,
-  covering every result file) and its LAST log line is `PROBE_DONE rc=<int>` (anchored).
-- `pull` stages logs/ and results/ in probes/<dir>/.pull_<random>/, verifies the manifest there
-  with `shasum -a 256 -c`, and only then promotes the listed files into probes/<dir>/results/; a
-  local file that would change goes to probes/<dir>/superseded/<UTC>/ first, and a pulled file
-  the manifest does not list goes to probes/<dir>/unverified/<UTC>/. Logs are pulled always.
+  writes outputs under probes/<dir>/results/ and logs (training records too) under
+  probes/<dir>/logs/. When done it writes probes/<dir>/results/MANIFEST.sha256 (`shasum -a 256`
+  lines, paths relative to results/, covering EVERY result file; written elsewhere, then moved in)
+  and its LAST log line is `PROBE_DONE rc=<int>` (anchored).
+- Logs: the pod's probes/<dir>/logs/ is mirrored incrementally into probes/<dir>/logs/pod/
+  (committable) on every poll, and with 3 tries and backoff before any termination.
+- Results: `pull` stages results/ in probes/<dir>/.pull_<random>/ and promotes into
+  probes/<dir>/results/ only a COMPLETE pull: the logs pull succeeded, the manifest verifies
+  (`shasum -a 256 -c`) and it lists every pulled file. A local file that would change goes to
+  probes/<dir>/superseded/<UTC>/ first. Nothing pulled is ever deleted: without a manifest, or
+  with one that misses files, the pulled files go to probes/<dir>/unverified/<UTC>/; a failed
+  verification or copy keeps the staging dir.
 - The pod's .env holds only the `[pod].env` keys plus EMX_GIT_COMMIT and EMX_PROBE. Laptop-only
-  keys (OPENAI*, OPENROUTER*, RUNPOD*, EM_DATASET_PASSWORD, AZURE*) are refused.
+  keys (OPENAI*, OPENROUTER*, RUNPOD*, EM_DATASET_PASSWORD, AZURE*) are refused. Every transfer
+  path is checked with symlinks resolved (inside the repo, never data/E1/questions/narrow.jsonl,
+  no control characters) and sent NUL-delimited (`rsync --from0`).
 
 `push` mirrors pod_push.sh's E13 order (fail closed): compute the deadline (`python -m emx.runpod
 --check-slot S --killswitch-deadline --per-slot`, which is also the slot-ownership check; the
@@ -46,19 +55,30 @@ slot's own reservation deadline when lower), send scripts/pod_killswitch.sh alon
 deadline> (...) key_check=ok|read403`, record the acknowledgement for a reservation-launched pod
 (`python -m emx.runpod_reservations ack`), and only then the bulk transfer and setup. Any failure
 up to the acknowledgement terminates the pod (pod_down.py) and exits 4.
+Known window (review r1 finding 1, deferred): between pod creation (`up`) and the arm in `push`,
+the pod is covered only by the laptop watchdog, as every other experiment's pods are. `go` runs
+push straight after up; after a standalone `up`, run `push` at once.
 
-`go` is the unattended chain: up -> push -> run -> every poll_minutes {pull logs; one status ssh
-call; print `PROBE_STATUS ...`} until PROBE_DONE, the run dying, or the killswitch deadline minus
-15 min -> final pull with manifest verification -> pod_down.py only if it verified. If it did not,
-`probes/<dir>/logs/ALERT` is written and the pod is left to the killswitch and the watchdog
-(unverified results are never terminated), except when the pod's results/ is empty and the run
-is over (nothing to lose: the pod is terminated). State lives in probes/<dir>/logs/runner_state.json;
-rerunning `go` after a laptop crash resumes from it and logs/pods_<ID>.jsonl instead of
-relaunching. `go --fresh` archives a finished state and starts a new pod.
+`go` is the unattended chain: up -> push -> run -> every poll_minutes {mirror logs; one status
+ssh call; print `PROBE_STATUS ...`} until:
+- PROBE_DONE: final pull (up to 3 tries); COMPLETE -> pod_down.py, exit 0 (2 if rc != 0).
+  Otherwise, and when the run died without PROBE_DONE, or at the killswitch deadline minus 15 min
+  with the run alive (its process group is stopped first): SALVAGE, i.e. mirror the logs and copy
+  ALL results into unverified/<UTC>/; once both succeeded -> pod_down.py, ALERT, exit 5. If the
+  copy fails the pod is left to the killswitch and the watchdog with an ALERT (exit 1).
+- ssh unreachable: the RunPod API decides. Confirmed stopped/exited/gone (or terminated in the
+  event log) -> pod_down.py settles it (idempotent), ALERT, exit 1; still RUNNING -> keep polling
+  (transient), up to 30 min past the deadline.
+Every termination after a launch needs a successful logs pull. ALERTs are appended to
+probes/<dir>/logs/ALERT. State lives in probes/<dir>/logs/runner_state.json; rerunning `go`
+after a laptop crash resumes from it and logs/pods_<ID>.jsonl instead of relaunching; `go
+--fresh` archives a finished state and starts a new pod. up/push/run/down/go hold
+probes/<dir>/logs/runner.lock (non-blocking flock): a second runner for the probe exits 1.
 
-Exit codes: 0 ok; 1 failure; 2 run finished with PROBE_DONE rc != 0 (results verified, pod down);
-3 `pull`: no manifest yet (logs pulled); 4 killswitch not armed (pod terminated); 6 pod_up
-outcome uncertain (reservation kept; see pod_up.py).
+Exit codes: 0 ok; 1 failure; 2 run finished with PROBE_DONE rc != 0 (complete, pod down);
+3 `pull`: no manifest yet (logs mirrored, results kept unverified); 4 killswitch not armed (pod
+terminated); 5 `go`: salvaged (unverified results and logs copied, pod down); 6 pod_up outcome
+uncertain (reservation kept; see pod_up.py).
 """
 
 from __future__ import annotations
@@ -123,6 +143,9 @@ SETUP_POLL_S = 30
 WATCHDOG_WAIT_S = 60
 SSH_TIMEOUT_S = 120
 RSYNC_TIMEOUT_S = 3600
+LOG_BACKOFF_S = 10  # logs pull retries: 10 s, 20 s
+STOP_GRACE_S = 10  # salvage: TERM, this long, then KILL
+LOST_GRACE_S = 30 * 60  # unreachable pod: keep asking the API this long past the deadline
 
 
 class ProbeError(RuntimeError):
@@ -175,7 +198,7 @@ def load_pod_config(path: Path) -> PodConfig:
             raise ProbeError(f"{path}: [pod].env key {k} is laptop-only; it never goes to a pod")
         if k in RUNNER_KEYS:
             raise ProbeError(f"{path}: [pod].env key {k} is set by the runner")
-    poll = pod.get("poll_minutes", 10)
+    poll = pod.get("poll_minutes", 5)
     if not isinstance(poll, int | float) or not 1 <= poll <= 120:
         raise ProbeError(f"{path}: [pod].poll_minutes must be in [1, 120], got {poll!r}")
     return PodConfig(
@@ -206,6 +229,18 @@ def parse_manifest(path: Path) -> list[str]:
     if not out:
         raise ProbeError(f"{path.name}: lists no file")
     return out
+
+
+@dataclass
+class PullResult:
+    logs_ok: bool
+    # complete | incomplete | no_manifest | failed | copy_failed | salvaged | skipped
+    results: str
+    where: str
+
+    @property
+    def complete(self) -> bool:
+        return self.logs_ok and self.results == "complete"
 
 
 @dataclass
@@ -256,6 +291,28 @@ class Runner:
         self.setup_max_s = setup_max_s
         self.sh, self.popen, self.sleep, self.clock = SH, POPEN, SLEEP, CLOCK
         rp.configure(exp)
+
+    def acquire_lock(self) -> None:
+        """Non-blocking flock on probes/<dir>/logs/runner.lock, held for the process's life, so
+        two runners never drive one probe (review r1 finding 5)."""
+        if self.dry_run:
+            return
+        import fcntl
+
+        path = self.dir / "logs" / "runner.lock"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        f = path.open("a+")
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            f.close()
+            raise ProbeError(f"another probe_pod.py process holds {path.relative_to(self.repo)} "
+                             f"for {self.exp}; refusing to drive the same probe twice") from None
+        f.seek(0)
+        f.truncate()
+        f.write(f"{os.getpid()}\n")
+        f.flush()
+        self._lock = f
 
     # --- plumbing ------------------------------------------------------------------------------
 
@@ -471,9 +528,12 @@ class Runner:
         if Path(p).is_absolute() or ".." in parts or not parts:
             raise ProbeError(f"[pod].push path {p!r} must be repo-relative without '..'")
         full = self.repo / p
-        if full.is_file() or full.is_symlink():
+        self.check_path(Path(p).as_posix())
+        if full.is_dir():  # also a symlinked alias dir: its files are checked one by one below
+            pass
+        elif full.is_file() or full.is_symlink():
             return [Path(p).as_posix()]
-        if not full.is_dir():
+        else:
             raise ProbeError(f"[pod].push path {p!r} does not exist")
         out = []
         for root, dirs, files in os.walk(full):
@@ -482,6 +542,29 @@ class Runner:
                 if name != ".DS_Store":
                     out.append((Path(root) / name).relative_to(self.repo).as_posix())
         return out
+
+    def check_path(self, f: str) -> None:
+        """Refuse a transfer path (review r1 finding 6) with a control character, one that
+        resolves (symlinks followed) outside the repo, a component that is a symlink pointing
+        outside it, or one that equals, lies under or contains a held-out file (NEVER_SEND)."""
+        if any(ord(c) < 32 or ord(c) == 127 for c in f):
+            raise ProbeError(f"transfer path {f!r} has a control character; refusing")
+        if Path(f).is_absolute() or ".." in Path(f).parts:
+            raise ProbeError(f"transfer path {f!r} must be repo-relative without '..'")
+        root = self.repo.resolve()
+        cur = self.repo
+        for part in Path(f).parts:
+            cur = cur / part
+            if cur.is_symlink() and not cur.resolve().is_relative_to(root):
+                raise ProbeError(f"{f}: {cur.relative_to(self.repo)} is a symlink out of the "
+                                 "repo; refusing")
+        r = (self.repo / f).resolve()
+        if not r.is_relative_to(root):
+            raise ProbeError(f"{f} resolves outside the repo ({r}); refusing")
+        for bad in NEVER_SEND:
+            b = (self.repo / bad).resolve()
+            if r == b or r.is_relative_to(b) or b.is_relative_to(r):
+                raise ProbeError(f"{f} resolves to or holds {bad} (held out); refusing")
 
     def push_paths(self) -> list[str]:
         out: list[str] = []
@@ -502,8 +585,7 @@ class Runner:
             if f in seen:
                 continue
             seen.add(f)
-            if f in NEVER_SEND:
-                raise ProbeError(f"{f} (held out) is in the transfer set; refusing")
+            self.check_path(f)
             if Path(f).name == ".env":
                 raise ProbeError(f"{f}: an .env file is never sent; refusing")
             out.append(f)
@@ -660,9 +742,10 @@ class Runner:
         if r.returncode != 0:
             raise ProbeError(f"pod prep failed (rc {r.returncode}): {r.stderr.strip()}")
         with tempfile.NamedTemporaryFile("w", suffix=".files", delete=False) as lf:
-            lf.write("\n".join(files) + "\n")
+            lf.write("\0".join(files) + "\0")  # NUL-delimited: no name can inject an entry
         try:
-            r = self.call(["rsync", "-lptz", "--timeout=120", f"--files-from={lf.name}", "-e",
+            r = self.call(["rsync", "-lptz", "--timeout=120", "--from0", f"--files-from={lf.name}",
+                           "-e",
                            self.rsync_e(port), "./", f"{user}@{host}:{POD_ROOT}/"],
                           timeout=RSYNC_TIMEOUT_S)
         finally:
@@ -737,11 +820,15 @@ class Runner:
             f"D={d}",
             '[ -f "$D/run.sh" ] || { echo PROBE_NO_RUN_SH; exit 4; }',
             'mkdir -p "$D/logs" "$D/results" || exit 5',
-            'P=$(cat "$D/logs/run.pid" 2>/dev/null)',
-            ('if [ -n "$P" ] && kill -0 "$P" 2>/dev/null; then echo "PROBE_RUN_LIVE pid=$P"; '
-             'exit 3; fi'),
+            # review r1 finding 2: ANY earlier launch on this pod (alive, finished or crashed)
+            # counts as launched: report it, never relaunch over its results
+            ('if [ -e "$D/logs/run.launched" ] || [ -e "$D/logs/run.pid" ]; then '
+             'L=$(cat "$D/logs/run.launched" 2>/dev/null); '
+             '[ -n "$L" ] || L=$(ls -1t "$D"/logs/run_*.log 2>/dev/null | head -n 1); '
+             'echo "PROBE_RUN_EXISTS log=$L pid=$(cat "$D/logs/run.pid" 2>/dev/null)"; exit 3; fi'),
+            f"echo {shlex.quote(log)} > \"$D/logs/run.launched\" || exit 5",
             # the child writes its own pid ($$ survives the exec into run.sh), whether or not
-            # setsid forked; a second launch seconds later sees it
+            # setsid forked
             (f"setsid nohup bash -c {shlex.quote(inner)} \"$D\" > {shlex.quote(log)} 2>&1 "
              "< /dev/null &"),
             f"echo PROBE_LAUNCHED log={log}",
@@ -753,7 +840,12 @@ class Runner:
         r = self.ssh(remote, addr=addr)
         self.echo(r)
         if r.returncode == 3:
-            raise ProbeError("a previous run is still live on the pod; refusing", 3)
+            m = re.search(r"^PROBE_RUN_EXISTS log=(\S*)", r.stdout or "", re.MULTILINE)
+            st.update(run_log=(m.group(1) if m else "") or None, phase="running")
+            self.save_state(st)
+            self.say(f"PROBE_RUNNING already launched on this pod (log {st['run_log']}); not "
+                     "relaunching")
+            return 0
         if r.returncode != 0 or "PROBE_LAUNCHED" not in r.stdout:
             raise ProbeError(f"launch failed (rc {r.returncode})")
         st.update(run_log=log, run_started_utc=utc_iso(self.clock()), phase="running")
@@ -851,52 +943,92 @@ class Runner:
 
     # --- pull ----------------------------------------------------------------------------------
 
-    def pull(self, logs_only: bool = False) -> str:
-        """'logs' | 'verified' | 'no_manifest' | 'failed' (staging kept) | 'unreachable'."""
+    def pull_logs(self, tries: int = 3) -> bool:
+        """Mirror the pod's probes/<dir>/logs/ into probes/<dir>/logs/pod/ incrementally (logs are
+        append-only, so no staging; committable), retried with backoff. True when it succeeded."""
         _, host, port, user = self.pod_addr()
-        src = f"{user}@{host}:{POD_ROOT}/{self.rel}"
+        src = f"{user}@{host}:{POD_ROOT}/{self.rel}/logs/"
+        mirror = self.dir / "logs" / "pod"
         if self.dry_run:
-            self.say(f"DRY RUN: would rsync {src}/logs/ (and {src}/results/ unless --logs-only) "
-                     f"into {self.rel}/.pull_<random>/, verify results/MANIFEST.sha256 there with "
-                     "shasum -a 256 -c, and promote")
-            return "logs" if logs_only else "verified"
+            self.say(f"DRY RUN: would rsync {src} into {self.rel}/logs/pod/ (incremental mirror)")
+            return True
+        mirror.mkdir(parents=True, exist_ok=True)
+        for i in range(tries):
+            r = self.call(["rsync", "-rlptz", "--timeout=120", "--exclude", "run.pid", "-e",
+                           self.rsync_e(port), src, f"{mirror}/"], timeout=1800)
+            if r.returncode == 0:
+                return True
+            self.say(f"WARNING: pod logs pull failed (rc {r.returncode}, try {i + 1}/{tries})")
+            if i + 1 < tries:
+                self.sleep(LOG_BACKOFF_S * 2**i)
+        return False
+
+    def fetch_results(self) -> tuple[Path, bool]:
+        """rsync the pod's results/ into a fresh probes/<dir>/.pull_<random>/results/."""
+        _, host, port, user = self.pod_addr()
         staging = Path(tempfile.mkdtemp(prefix=".pull_", dir=self.dir))
-        (staging / "logs").mkdir()
-        excl = [x for f in (*LAPTOP_LOGS, "run.pid") for x in ("--exclude", f)]
-        r = self.call(["rsync", "-rlptz", "--timeout=120", *excl, "-e", self.rsync_e(port),
-                       f"{src}/logs/", f"{staging}/logs/"], timeout=1800)
-        if r.returncode == 0:
-            shutil.copytree(staging / "logs", self.dir / "logs", dirs_exist_ok=True)
-            self.say(f"pulled the pod's {self.rel}/logs/ (informational, not verified)")
-        else:
-            self.say(f"WARNING: could not pull the pod's logs (rc {r.returncode})")
-        if logs_only:
-            shutil.rmtree(staging)
-            return "logs" if r.returncode == 0 else "unreachable"
         (staging / "results").mkdir()
         r = self.call(["rsync", "-rlptz", "--timeout=120", "-e", self.rsync_e(port),
-                       f"{src}/results/", f"{staging}/results/"], timeout=RSYNC_TIMEOUT_S)
+                       f"{user}@{host}:{POD_ROOT}/{self.rel}/results/", f"{staging}/results/"],
+                      timeout=RSYNC_TIMEOUT_S)
         if r.returncode != 0:
-            self.say(f"could not pull the pod's results (rc {r.returncode}); staging kept: "
-                     f"{staging}")
-            return "failed"
+            self.say(f"could not pull the pod's results (rc {r.returncode}); partial copy kept "
+                     f"in {staging.relative_to(self.repo)}")
+        return staging, r.returncode == 0
+
+    def preserve(self, staging: Path) -> Path:
+        """Move staged results to probes/<dir>/unverified/<UTC>/ (kept, never promoted)."""
+        dest = self.dir / "unverified" / utc_stamp(self.clock())
+        n = 1
+        while dest.exists():
+            dest = dest.with_name(f"{utc_stamp(self.clock())}_{n}")
+            n += 1
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        os.replace(staging / "results", dest)
+        shutil.rmtree(staging)
+        return dest
+
+    def pull(self, logs_only: bool = False) -> PullResult:
+        """Logs into the mirror (retried), then results: promoted into probes/<dir>/results/ only
+        when results/MANIFEST.sha256 verifies AND lists every pulled result file ('complete');
+        otherwise every pulled file is kept (unverified/<UTC>/ or the .pull_* staging dir)."""
+        logs_ok = self.pull_logs()
+        if logs_only:
+            return PullResult(logs_ok, "skipped", f"{self.rel}/logs/pod")
+        if self.dry_run:
+            self.say("DRY RUN: would rsync the pod's results/ into .pull_<random>/, verify "
+                     "MANIFEST.sha256 there (shasum -a 256 -c) and promote only a complete one")
+            return PullResult(True, "complete", "")
+        staging, ok = self.fetch_results()
+        rel_st = str(staging.relative_to(self.repo))
+        if not ok:
+            return PullResult(logs_ok, "copy_failed", rel_st)
         res = staging / "results"
         man = res / "MANIFEST.sha256"
         if not man.exists():
-            shutil.rmtree(staging)
-            self.say("no results/MANIFEST.sha256 on the pod yet: results not promoted")
-            return "no_manifest"
+            dest = self.preserve(staging)
+            self.say(f"no results/MANIFEST.sha256 yet: results kept unverified in "
+                     f"{dest.relative_to(self.repo)}")
+            return PullResult(logs_ok, "no_manifest", str(dest.relative_to(self.repo)))
         try:
             listed = parse_manifest(man)
         except ProbeError as e:
-            self.say(f"MANIFEST refused ({e}); nothing promoted; staging kept: {staging}")
-            return "failed"
+            self.say(f"MANIFEST refused ({e}); nothing promoted; staging kept: {rel_st}")
+            return PullResult(logs_ok, "failed", rel_st)
         r = self.call(["shasum", "-a", "256", "-c", "--quiet", "MANIFEST.sha256"], effect=False,
                       cwd=res, timeout=1800)
         if r.returncode != 0:
             self.echo(r)
-            self.say(f"MANIFEST does NOT verify: nothing promoted; staging kept: {staging}")
-            return "failed"
+            self.say(f"MANIFEST does NOT verify: nothing promoted; staging kept: {rel_st}")
+            return PullResult(logs_ok, "failed", rel_st)
+        pulled = {p.relative_to(res).as_posix() for p in res.rglob("*") if p.is_file()}
+        unlisted = sorted(pulled - set(listed) - {"MANIFEST.sha256"})
+        if unlisted:
+            dest = self.preserve(staging)
+            self.say(f"MANIFEST verifies but does not list {len(unlisted)} pulled file(s) (e.g. "
+                     f"{unlisted[0]}): not complete; kept unverified in "
+                     f"{dest.relative_to(self.repo)}")
+            return PullResult(logs_ok, "incomplete", str(dest.relative_to(self.repo)))
         stamp = utc_stamp(self.clock())
         dest = self.dir / "results"
         n_super = 0
@@ -909,28 +1041,66 @@ class Runner:
                 n_super += 1
             t.parent.mkdir(parents=True, exist_ok=True)
             os.replace(s, t)
-        rest = [p for p in res.rglob("*") if p.is_file()]
-        for p in rest:
-            aside = self.dir / "unverified" / stamp / p.relative_to(res)
-            aside.parent.mkdir(parents=True, exist_ok=True)
-            os.replace(p, aside)
         shutil.rmtree(staging)
         if n_super:
             self.say(f"moved {n_super} changed local file(s) to {self.rel}/superseded/{stamp}/")
-        if rest:
-            self.say(f"WARNING: {len(rest)} pulled file(s) not in the manifest moved to "
-                     f"{self.rel}/unverified/{stamp}/")
-        self.say(f"PROBE_PULLED verified {len(listed)} file(s) into {self.rel}/results/")
-        return "verified"
+        self.say(f"PROBE_PULLED verified {len(listed)} file(s) into {self.rel}/results/"
+                 + ("" if logs_ok else " (but the logs pull FAILED)"))
+        return PullResult(logs_ok, "complete", f"{self.rel}/results")
+
+    def stop_producer(self) -> None:
+        """Stop the run (its process group from run.pid, then a bracketed pattern), TERM then
+        KILL, so a salvage copies results nothing is still writing."""
+        pat = shlex.quote(f"[{self.rel[0]}]{self.rel[1:]}/run.sh")
+        steps = []
+        for sig in ("TERM", "KILL"):
+            steps.append(f'[ -n "$P" ] && {{ kill -{sig} -- -"$P" 2>/dev/null || '
+                         f'kill -{sig} "$P" 2>/dev/null; }}; pkill -{sig} -f {pat} 2>/dev/null')
+            if sig == "TERM":
+                steps.append(f"sleep {STOP_GRACE_S}")
+        remote = "; ".join([f"cd {POD_ROOT} || exit 0",
+                            f'P=$(cat {shlex.quote(self.rel)}/logs/run.pid 2>/dev/null)',
+                            *steps, "true"])
+        r = self.ssh(remote, timeout=STOP_GRACE_S + 90)
+        self.say(f"stopped the producer on the pod (ssh rc {r.returncode})")
+
+    def salvage(self, alive: bool) -> PullResult:
+        """Stop a live run, mirror the logs, copy ALL results into unverified/<UTC>/."""
+        if alive:
+            self.stop_producer()
+        logs_ok = self.pull_logs()
+        staging, ok = self.fetch_results()
+        if not ok:
+            return PullResult(logs_ok, "copy_failed", str(staging.relative_to(self.repo)))
+        dest = self.preserve(staging)
+        return PullResult(logs_ok, "salvaged", str(dest.relative_to(self.repo)))
+
+    def api_pod_state(self, pod_id: str) -> str:
+        """'running' | 'stopped' | 'gone' | 'unknown', from the RunPod API (a read)."""
+        try:
+            p = rp.RunPod(self.envval("RUNPOD_API_KEY"), retries=2).get_pod(pod_id)
+        except rp.RunPodError as e:
+            return "gone" if "HTTP 404" in str(e) else "unknown"
+        status = str((p or {}).get("desiredStatus") or "").upper()
+        if status in ("EXITED", "TERMINATED", "STOPPED"):
+            return "stopped"
+        return "running" if status == "RUNNING" else "unknown"
 
     # --- down ----------------------------------------------------------------------------------
 
     def down(self, reason: str = "probe_pod down") -> int:
         st = self.load_state()
+        slot_pod = self.envval(f"RUNPOD_POD_ID{self.slot}")
+        pod_id = slot_pod or st.get("pod_id")
+        rid = (self.reservation_for(pod_id) if pod_id else None) or st.get("reservation_id")
         argv = PY + ["scripts/pod_down.py", "--exp", self.exp, "--slot", self.slot,
                      "--reason", reason]
-        pod_id = self.envval(f"RUNPOD_POD_ID{self.slot}") or st.get("pod_id")
-        rid = (self.reservation_for(pod_id) if pod_id else None) or st.get("reservation_id")
+        if not slot_pod and not self.dry_run:
+            if not (pod_id and rid):
+                self.say(f"slot {self.slot} is empty and no reservation-backed pod is recorded: "
+                         "nothing to terminate or settle")
+                return 0
+            argv += ["--pod-id", pod_id]  # cleared slot (watchdog): finish it from history
         if rid:
             argv += ["--reservation", rid]
         if self.dry_run:
@@ -1008,16 +1178,10 @@ class Runner:
                 raise
             st = self.load_state()
         if st.get("phase") == "pushed":
-            try:
+            try:  # an earlier launch on this pod is adopted, never relaunched (run's guard)
                 self.run()
             except ProbeError as e:
-                if e.code == 3:  # a run is live although the state missed it: poll it
-                    self.say("adopting the live run")
-                    st = self.load_state()
-                    st.update(phase="running", run_log=None)
-                    self.save_state(st)
-                else:
-                    self.say(f"run launch problem ({e}); polling to see what the pod did")
+                self.say(f"run launch problem ({e}); polling to see what the pod did")
             st = self.load_state()
         return self.watch(st)
 
@@ -1029,12 +1193,10 @@ class Runner:
             self.save_state(st)
         poll_s = self.cfg.poll_minutes * 60
         pod_id = st.get("pod_id")
-        reason = ""
-        p = Poll(reachable=False)
         while True:
             self.ensure_watchdog(wait=False)
-            try:
-                self.pull(logs_only=True)
+            try:  # one log rsync and one status ssh call per poll
+                self.pull_logs(tries=1)
                 p = self.poll(st.get("run_log"))
             except ProbeError as e:  # e.g. the watchdog terminated the pod and cleared the slot
                 self.say(f"poll failed: {e}")
@@ -1043,43 +1205,70 @@ class Runner:
             now = self.clock()
             if p.reachable:
                 if p.done_rc is not None:
-                    reason = f"PROBE_DONE rc={p.done_rc}"
-                    break
+                    return self.finish(p, f"PROBE_DONE rc={p.done_rc}")
                 if not p.alive:
-                    reason = "the run ended without PROBE_DONE"
-                    break
-            elif not self.pod_running(pod_id):
-                self.alert(f"pod {pod_id} was terminated before the run finished (watchdog?); "
-                           "only the logs pulled so far exist")
-                return 1
-            elif now >= deadline:
-                self.alert(f"pod {pod_id} unreachable past its killswitch deadline (self-stopped?)"
-                           f"; run pod_down.py --exp {self.exp} --slot {self.slot}")
-                return 1
-            if now >= deadline - DEADLINE_MARGIN_S:
-                reason = "killswitch deadline minus 15 min"
-                break
-            self.sleep(min(poll_s, max(60.0, deadline - DEADLINE_MARGIN_S - now)))
+                    return self.finish(p, "the run ended without PROBE_DONE")
+                if now >= deadline - DEADLINE_MARGIN_S:
+                    return self.finish(p, "killswitch deadline minus 15 min, run still alive")
+            else:
+                api = self.api_pod_state(pod_id) if pod_id else "gone"
+                self.say(f"pod unreachable over ssh; RunPod API says {api}")
+                if api in ("stopped", "gone") or not self.pod_running(pod_id):
+                    return self.settle_lost(pod_id, f"pod {pod_id} unreachable and confirmed "
+                                            f"{api if api != 'running' else 'terminated'}")
+                if now >= deadline + LOST_GRACE_S:
+                    self.alert(f"pod {pod_id} unreachable {LOST_GRACE_S // 60} min past its "
+                               f"killswitch deadline and the API says {api}; check the console")
+                    return 1
+            self.sleep(min(poll_s, max(60.0, deadline - DEADLINE_MARGIN_S - now))
+                       if now < deadline - DEADLINE_MARGIN_S else poll_s)
+
+    def settle_lost(self, pod_id: str | None, why: str) -> int:
+        """A pod confirmed stopped or gone: settle it (pod_down is idempotent) and alert; only the
+        logs mirrored so far exist locally."""
+        self.alert(f"{why}; settling with pod_down; only the logs mirrored so far exist")
+        try:
+            self.down(reason=f"probe_pod go: {why}"[:200])
+        except ProbeError as e:
+            self.alert(f"pod_down failed while settling ({e}); settle by hand")
+        self.stop_watchdog_if_idle()
+        return 1
+
+    def finish(self, p: Poll, reason: str) -> int:
+        """complete (PROBE_DONE + verified, covering manifest + logs) -> down, exit 0/2; else
+        salvage everything into unverified/ and down once the copy (logs too) succeeded, exit 5;
+        a failed copy leaves the pod to the killswitch with an ALERT, exit 1."""
         self.say(f"stopping the poll: {reason}")
-        res = self.pull()
+        res = None
+        if p.done_rc is not None:
+            for i in range(3):
+                res = self.pull()
+                if res.complete:
+                    st = self.load_state()
+                    st.update(final_pull="complete", stop_reason=reason)
+                    self.save_state(st)
+                    self.down(reason=f"probe_pod go: {reason}; results verified"[:200])
+                    self.stop_watchdog_if_idle()
+                    self.say(self.status_line(p, self.load_state(), phase="done"))
+                    return 0 if p.done_rc == 0 else 2
+                if res.results in ("no_manifest", "incomplete"):
+                    break  # retrying cannot help: salvage
+                if i < 2:
+                    self.sleep(LOG_BACKOFF_S * 2**i)
+            reason += (f"; final pull {res.results}"
+                       f"{'' if res.logs_ok else ', logs pull FAILED'}")
+        sal = self.salvage(alive=p.alive and p.done_rc is None)
         st = self.load_state()
-        st.update(final_pull=res, stop_reason=reason)
+        st.update(final_pull=sal.results, stop_reason=reason, salvage=sal.where)
         self.save_state(st)
-        if res == "verified":
-            self.down(reason=f"probe_pod go: {reason}; results verified"[:200])
+        if sal.logs_ok and sal.results == "salvaged":
+            self.alert(f"{reason}: SALVAGED (unverified) into {sal.where}; terminating the pod")
+            self.down(reason=f"probe_pod go: {reason}; salvaged"[:200])
             self.stop_watchdog_if_idle()
-            if p.done_rc is None:
-                self.alert(f"results verified and pod down, but no PROBE_DONE ({reason})")
-                return 1
-            self.say(self.status_line(p, st, phase="done"))
-            return 0 if p.done_rc == 0 else 2
-        if res == "no_manifest" and p.reachable and p.n_results == 0 and not p.alive:
-            self.alert(f"{reason}; no results at all on the pod: terminating it (nothing to lose)")
-            self.down(reason=f"probe_pod go: {reason}; no results"[:200])
-            self.stop_watchdog_if_idle()
-            return 1
-        self.alert(f"{reason}; final pull {res}: pod LEFT RUNNING for the killswitch "
-                   f"(deadline {utc_iso(deadline)}) and the watchdog; inspect, pull, then down")
+            return 5
+        self.alert(f"{reason}: salvage copy failed (results {sal.results}, logs "
+                   f"{'ok' if sal.logs_ok else 'FAILED'}): pod LEFT RUNNING for the killswitch "
+                   "and the watchdog; pull by hand, then down")
         return 1
 
     def stop_watchdog_if_idle(self) -> None:
@@ -1126,9 +1315,13 @@ def main(argv: list[str] | None = None) -> int:
             reserve_wait_s=getattr(a, "reserve_wait_min", 60.0) * 60,
             setup_max_s=getattr(a, "setup_max_s", 2400.0),
         )
+        if a.cmd in ("up", "push", "run", "down", "go"):
+            r.acquire_lock()
         if a.cmd == "pull":
             res = r.pull(logs_only=a.logs_only)
-            return {"logs": 0, "verified": 0, "no_manifest": 3}.get(res, 1)
+            if a.logs_only:
+                return 0 if res.logs_ok else 1
+            return 0 if res.complete else 3 if res.results == "no_manifest" else 1
         if a.cmd == "down":
             return r.down(reason=a.reason)
         if a.cmd == "go":

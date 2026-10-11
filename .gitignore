@@ -212,9 +212,16 @@ logs/watchdog_E13.log
 logs/watchdog_E13.heartbeat
 results/E13/**/*.lock
 results/E13/**/key.private.json
-# Probe tier (2026-10-11): runner staging, pod logs, unverified pulls, runner state
+# Probe tier (2026-10-11): runner staging, unverified pulls and transient runner state only;
+# pod logs and training records under probes/*/logs/pod/ are committable (review r1 finding 10)
 probes/*/.pull_*/
-probes/*/logs/
+probes/*/logs/runner_state*.json
+probes/*/logs/*.pid
+probes/*/logs/*.lock
+probes/*/logs/ALERT
+# emx.runpod.set_env_var's lock and temp files next to .env (review r1 finding 5)
+.env.lock
+.env.*.tmp
 probes/*/unverified/
 probes/*/superseded/
 logs/watchdog_P*.log

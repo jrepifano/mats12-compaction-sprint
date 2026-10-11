@@ -77,6 +77,8 @@ class FakeSh:
         self.arm_out = armed()
         self.arm_rc = 0
         self.local = False
+        self.fail_logs = False  # rsync of the pod's logs/ fails
+        self.fail_results = False  # rsync of the pod's results/ fails
         self.files_from: list[str] = []
         self.pod_env: str | None = None
         self.pod_up_out = f"EMX_POD_CREATE=ok reservation=R pod={POD}\n"
@@ -129,8 +131,14 @@ class FakeSh:
         if argv[0] == "rsync":
             ff = [x for x in argv if x.startswith("--files-from=")]
             if ff:
-                self.files_from = Path(ff[0].split("=", 1)[1]).read_text().split()
+                assert "--from0" in argv
+                text = Path(ff[0].split("=", 1)[1]).read_text()
+                self.files_from = [f for f in text.split("\0") if f]
                 return ok()
+            if self.fail_logs and any(x.endswith("/logs/") and ":" in x for x in argv):
+                return ok("", 12, "connection reset")
+            if self.fail_results and any(x.endswith("/results/") and ":" in x for x in argv):
+                return ok("", 12, "connection reset")
             if self.local:
                 real = [x.replace("root@HOST:", "") for x in argv]
                 if "-e" in real:
@@ -185,6 +193,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(pp, "POPEN", lambda *a, **k: popened.append(a))
     monkeypatch.setattr(pp, "SLEEP", lambda s: None)
     monkeypatch.setattr(pp, "POD_ROOT", str(pod_root))
+    monkeypatch.setattr(pp, "STOP_GRACE_S", 0)
     return {"repo": repo, "pdir": pdir, "pod": pod_root / "probes" / "P01-demo", "fake": fake,
             "popened": popened, "tmp": tmp_path}
 
@@ -334,29 +343,62 @@ def test_run_poll_pull_local_pod(env, monkeypatch):
     assert r.run() == 0
     st = r.load_state()
     assert st["phase"] == "running" and st["run_log"].startswith("probes/P01-demo/logs/run_")
-    p = None
-    for _ in range(40):
-        p = r.poll(st["run_log"])
-        if p.done_rc is not None:
-            break
-        time.sleep(0.1)
+    p = wait_done(r, st["run_log"])
     assert p.reachable and p.done_rc == 0 and p.manifest and p.n_results == 2
     assert "start P01" in "\n".join(p.tail)
-    assert r.pull() == "verified"
+    res = r.pull()
+    assert res.complete, res
     assert (env["pdir"] / "results" / "a.txt").read_text() == "hi\n"
-    assert (env["pdir"] / "logs" / Path(st["run_log"]).name).exists()
+    mirror = env["pdir"] / "logs" / "pod"
+    assert (mirror / Path(st["run_log"]).name).exists()
+    assert (mirror / "run.launched").exists() and not (mirror / "run.pid").exists()
     assert not list(env["pdir"].glob(".pull_*"))
 
 
-def test_run_refuses_live_previous_run(env):
+def wait_done(r, log):
+    p = None
+    for _ in range(50):
+        p = r.poll(log)
+        if p.done_rc is not None:
+            break
+        time.sleep(0.1)
+    return p
+
+
+@pytest.mark.parametrize("pid_alive", [True, False])
+def test_run_adopts_any_earlier_launch(env, pid_alive):
     env["fake"].local = True
     (env["pod"] / "run.sh").write_text(RUN_SH)
     (env["pod"] / "logs").mkdir()
-    (env["pod"] / "logs" / "run.pid").write_text(f"{os.getpid()}\n")  # alive
-    with pytest.raises(pp.ProbeError) as e:
-        runner().run()
-    assert e.value.code == 3
-    assert not list((env["pod"] / "logs").glob("run_*.log"))
+    (env["pod"] / "logs" / "run.pid").write_text(f"{os.getpid() if pid_alive else 999999}\n")
+    (env["pod"] / "logs" / "run_OLD.log").write_text("start\nPROBE_DONE rc=0\n")
+    r = runner()
+    assert r.run() == 0
+    assert sorted(p.name for p in (env["pod"] / "logs").glob("run_*.log")) == ["run_OLD.log"]
+    st = r.load_state()
+    assert st["phase"] == "running" and st["run_log"] == "probes/P01-demo/logs/run_OLD.log"
+
+
+def test_crash_between_launch_and_state_save_never_relaunches(env):
+    """The launch happened, the state save was lost (laptop crash): `go` from `pushed` adopts the
+    first run, its results stay intact, and the pod is settled once."""
+    fake = env["fake"]
+    fake.local = True
+    (env["pod"] / "run.sh").write_text(RUN_SH)
+    r = runner()
+    r.sleep = lambda s: time.sleep(min(s, 0.5))
+    write_state(env["pdir"], pod_id=POD, phase="pushed", armed_deadline=SLOT_DL)
+    assert r.run() == 0
+    first_log = r.load_state()["run_log"]
+    wait_done(r, first_log)
+    write_state(env["pdir"], pod_id=POD, phase="pushed", armed_deadline=SLOT_DL)  # save lost
+    (env["pod"] / "run.sh").write_text(RUN_SH.replace("echo hi", "echo SECOND"))
+    assert pp.main(["go", "--exp", "P01"]) == 0
+    assert len(list((env["pod"] / "logs").glob("run_*.log"))) == 1
+    assert (env["pod"] / "results" / "a.txt").read_text() == "hi\n"
+    assert (env["pdir"] / "results" / "a.txt").read_text() == "hi\n"
+    assert pp.Runner("P01").load_state()["run_log"] == first_log
+    assert len(fake.find("scripts/pod_down.py")) == 1
 
 
 def test_run_unverified_launch_is_an_error(env):
@@ -380,13 +422,12 @@ def test_pull_mismatch_keeps_staging(env):
     staging = list(env["pdir"].glob(".pull_*"))
     assert len(staging) == 1 and (staging[0] / "results" / "a.txt").read_text() == "new\n"
     assert (env["pdir"] / "results" / "a.txt").read_text() == "old\n"
-    assert (env["pdir"] / "logs" / "run_X.log").exists()  # logs arrive regardless
+    assert (env["pdir"] / "logs" / "pod" / "run_X.log").exists()  # logs arrive regardless
 
 
-def test_pull_match_promotes_and_supersedes(env):
+def test_pull_complete_promotes_and_supersedes(env):
     env["fake"].local = True
     pod_results(env["pod"], {"a.txt": "new\n", "sub/b.txt": "b\n"})
-    (env["pod"] / "results" / "scratch.tmp").write_text("unlisted\n")
     (env["pdir"] / "results").mkdir()
     (env["pdir"] / "results" / "a.txt").write_text("old\n")
     (env["pdir"] / "results" / "laptop_only.csv").write_text("keep\n")
@@ -396,12 +437,21 @@ def test_pull_match_promotes_and_supersedes(env):
     assert (res / "MANIFEST.sha256").exists() and (res / "laptop_only.csv").exists()
     sup = list((env["pdir"] / "superseded").glob("*/a.txt"))
     assert len(sup) == 1 and sup[0].read_text() == "old\n"
-    assert [p.name for p in (env["pdir"] / "unverified").rglob("*") if p.is_file()] == ["scratch.tmp"]
-    assert not (res / "scratch.tmp").exists()
+    assert not (env["pdir"] / "unverified").exists()
     assert not list(env["pdir"].glob(".pull_*"))
 
 
-def test_pull_without_manifest_pulls_logs_only(env):
+def test_pull_partial_manifest_is_not_complete(env):
+    env["fake"].local = True
+    pod_results(env["pod"], {"a.txt": "new\n"})
+    (env["pod"] / "results" / "later.ckpt").write_text("written after the manifest\n")
+    assert pp.main(["pull", "--exp", "P01"]) == 1
+    assert not (env["pdir"] / "results").exists()  # nothing promoted
+    kept = sorted(p.name for p in (env["pdir"] / "unverified").rglob("*") if p.is_file())
+    assert kept == ["MANIFEST.sha256", "a.txt", "later.ckpt"]
+
+
+def test_pull_without_manifest_keeps_everything(env):
     env["fake"].local = True
     (env["pod"] / "logs").mkdir()
     (env["pod"] / "logs" / "run_X.log").write_text("working\n")
@@ -409,10 +459,24 @@ def test_pull_without_manifest_pulls_logs_only(env):
     (env["pod"] / "results" / "partial.json").write_text("{}\n")
     write_state(env["pdir"], pod_id=POD, phase="running")
     assert pp.main(["pull", "--exp", "P01"]) == 3
-    assert (env["pdir"] / "logs" / "run_X.log").read_text() == "working\n"
+    assert (env["pdir"] / "logs" / "pod" / "run_X.log").read_text() == "working\n"
     assert not (env["pdir"] / "results").exists()
+    kept = list((env["pdir"] / "unverified").glob("*/partial.json"))
+    assert len(kept) == 1 and kept[0].read_text() == "{}\n"
     assert json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())["phase"] == "running"
     assert not list(env["pdir"].glob(".pull_*"))
+
+
+def test_pull_with_failed_logs_is_not_complete(env):
+    fake = env["fake"]
+    fake.local = True
+    fake.fail_logs = True
+    pod_results(env["pod"], {"a.txt": "x\n"})
+    r = runner()
+    res = r.pull()
+    assert res.results == "complete" and not res.logs_ok and not res.complete
+    assert len([a for a in fake.argvs() if a[0] == "rsync" and a[-1].endswith("/logs/pod/")]) == 3
+    assert pp.main(["pull", "--exp", "P01"]) == 1
 
 
 def test_manifest_paths_refused(tmp_path):
@@ -464,28 +528,19 @@ def test_up_uncertain_keeps_reservation(env, monkeypatch):
 # --- go --------------------------------------------------------------------------------------
 
 
-def test_go_does_not_down_when_verification_fails(env):
-    env["fake"].local = True
-    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
-    write_state(env["pdir"], pod_id=POD, phase="running", run_log="probes/P01-demo/logs/run_X.log",
-                armed_deadline=SLOT_DL)
-    assert pp.main(["go", "--exp", "P01"]) == 1
-    assert not env["fake"].find("scripts/pod_down.py")
-    assert not env["fake"].find("scripts/pod_up.py")
-    alert = (env["pdir"] / "logs" / "ALERT").read_text()
-    assert "LEFT RUNNING" in alert
-    assert len(list(env["pdir"].glob(".pull_*"))) == 1
+def resumed_state(pdir, **kw):
+    write_state(pdir, pod_id=POD, phase="running", run_log="probes/P01-demo/logs/run_X.log",
+                armed_deadline=kw.pop("armed_deadline", SLOT_DL), **kw)
 
 
 def test_go_resume_does_not_relaunch(env):
     fake = env["fake"]
     fake.local = True
     pod_results(env["pod"], {"a.txt": "x\n"})
-    write_state(env["pdir"], pod_id=POD, phase="running", run_log="probes/P01-demo/logs/run_X.log",
-                armed_deadline=SLOT_DL)
+    resumed_state(env["pdir"])
     assert pp.main(["go", "--exp", "P01"]) == 0
     assert not fake.find("scripts/pod_up.py")
-    assert not [a for a in fake.argvs() if a[0] == "ssh" and "run.sh" in a[-1]]  # no relaunch
+    assert not [a for a in fake.argvs() if a[0] == "ssh" and "run.sh\"" in a[-1]]  # no launch
     assert not [a for a in fake.argvs() if a[0] == "ssh" and "pod_killswitch.sh arm" in a[-1]]
     assert len(fake.find("scripts/pod_down.py")) == 1
     assert (env["pdir"] / "results" / "a.txt").read_text() == "x\n"
@@ -494,21 +549,154 @@ def test_go_resume_does_not_relaunch(env):
     assert not fake.find("scripts/pod_up.py")
 
 
-def test_go_dead_run_without_results_is_terminated(env):
+def test_go_failed_verification_salvages_then_downs(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
+    resumed_state(env["pdir"])
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    assert len(fake.find("scripts/pod_down.py")) == 1
+    salv = [p for p in (env["pdir"] / "unverified").rglob("a.txt")]
+    assert salv and salv[-1].read_text() == "x\n"
+    assert not (env["pdir"] / "results").exists()
+    assert "SALVAGED" in (env["pdir"] / "logs" / "ALERT").read_text()
+    assert (env["pdir"] / "logs" / "pod" / "run_X.log").exists()
+
+
+def test_go_failed_salvage_copy_leaves_pod(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
+    resumed_state(env["pdir"])
+    fake.fail_results = True
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert not fake.find("scripts/pod_down.py")
+    assert "LEFT RUNNING" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+def test_go_failed_logs_pull_never_terminates(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"})
+    resumed_state(env["pdir"])
+    fake.fail_logs = True
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert not fake.find("scripts/pod_down.py")
+    assert "logs FAILED" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+def test_go_dead_run_without_results_is_salvaged_and_terminated(env):
     env["fake"].local = True
     (env["pod"] / "logs").mkdir()
     (env["pod"] / "logs" / "run_X.log").write_text("Traceback: boom\n")
     (env["pod"] / "results").mkdir()
-    write_state(env["pdir"], pod_id=POD, phase="running", run_log="probes/P01-demo/logs/run_X.log",
-                armed_deadline=SLOT_DL)
-    assert pp.main(["go", "--exp", "P01"]) == 1
+    (env["pod"] / "results" / "train_record.json").write_text("{\"loss\": [1.0]}\n")
+    resumed_state(env["pdir"])
+    assert pp.main(["go", "--exp", "P01"]) == 5
     assert len(env["fake"].find("scripts/pod_down.py")) == 1
-    assert "no results at all" in (env["pdir"] / "logs" / "ALERT").read_text()
+    assert list((env["pdir"] / "unverified").glob("*/train_record.json"))
+    assert "without PROBE_DONE" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+def test_go_deadline_with_live_run_stops_producer_and_salvages(env):
+    fake = env["fake"]
+    fake.local = True
+    (env["pod"] / "run.sh").write_text(
+        'echo start\nmkdir -p "$(dirname "$0")/results"\n'
+        'echo partial > "$(dirname "$0")/results/ckpt.txt"\nwhile true; do sleep 1; done\n')
+    r = runner()
+    r.sleep = lambda s: time.sleep(min(s, 0.5))
+    write_state(env["pdir"], pod_id=POD, phase="pushed", armed_deadline=int(time.time()) + 600)
+    assert r.run() == 0
+    pid = int((env["pod"] / "logs" / "run.pid").read_text())
+    assert pp.main(["go", "--exp", "P01"]) == 5  # inside the 15 min margin at once
+    for _ in range(30):
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            break
+        time.sleep(0.1)
+    else:
+        os.kill(pid, 9)
+        pytest.fail("the producer was not stopped")
+    assert list((env["pdir"] / "unverified").glob("*/ckpt.txt"))
+    assert len(fake.find("scripts/pod_down.py")) == 1
+    assert not (env["pdir"] / "results").exists()
+
+
+def test_go_unreachable_pod_confirmed_stopped_is_settled(env, monkeypatch):
+    resumed_state(env["pdir"])  # fake ssh answers nothing: unreachable
+    states = iter(["running", "stopped"])
+    monkeypatch.setattr(pp.Runner, "api_pod_state", lambda self, pid: next(states))
+    sleeps = []
+    monkeypatch.setattr(pp, "SLEEP", sleeps.append)
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert len(sleeps) == 1  # RUNNING (transient): polled again; then stopped: settled
+    assert len(env["fake"].find("scripts/pod_down.py")) == 1
+    assert "confirmed stopped" in (env["pdir"] / "logs" / "ALERT").read_text()
 
 
 def test_go_refuses_unrecorded_slot_pod(env):
     assert pp.main(["go", "--exp", "P01"]) == 1  # slot holds pod123, no runner_state.json
     assert not env["fake"].find("scripts/pod_up.py")
+
+
+def test_second_runner_for_a_probe_is_refused(env, capsys):
+    resumed_state(env["pdir"])
+    first = runner()
+    first.acquire_lock()
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert "another probe_pod.py process" in capsys.readouterr().err
+    assert not env["fake"].argvs()  # nothing ran
+
+
+# --- symlinks and .env locking ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize("push", ['["data/alias/narrow.jsonl"]', '["data/alias"]', '["data/out"]',
+                                  '["data/out/x.txt"]'])
+def test_push_refuses_symlink_aliases(env, push):
+    repo = env["repo"]
+    (repo / "data" / "alias").symlink_to(repo / "data" / "E1" / "questions")
+    outside = env["tmp"] / "outside"
+    outside.mkdir()
+    (outside / "x.txt").write_text("dummy\n")
+    (repo / "data" / "out").symlink_to(outside)
+    toml = env["pdir"] / "probe.toml"
+    toml.write_text(PROBE_TOML.replace('push = ["data/extra"]', f"push = {push}"))
+    with pytest.raises(pp.ProbeError, match="held out|out of the repo|outside the repo"):
+        runner().push_list()
+
+
+def test_push_refuses_control_characters(env):
+    (env["repo"] / "data" / "extra" / "bad\nname").write_text("x\n")
+    with pytest.raises(pp.ProbeError, match="control character"):
+        runner().push_list()
+
+
+def test_set_env_var_concurrent_no_lost_keys(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text("KEEP=1\n")
+    code = ("import sys; from pathlib import Path; from emx import runpod as rp\n"
+            "for i in range(15): rp.set_env_var(f'K_{sys.argv[1]}_{i}', str(i), Path(sys.argv[2]))")
+    procs = [subprocess.Popen([sys.executable, "-c", code, str(n), str(env_file)])
+             for n in range(6)]
+    import threading
+
+    threads = [threading.Thread(target=lambda n=n: [rp.set_env_var(f"T_{n}_{i}", "v", env_file)
+                                                     for i in range(15)]) for n in range(4)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert all(pr.wait(60) == 0 for pr in procs)
+    lines = env_file.read_text().splitlines()
+    keys = {line.split("=", 1)[0] for line in lines}
+    want = ({"KEEP"} | {f"K_{n}_{i}" for n in range(6) for i in range(15)}
+            | {f"T_{n}_{i}" for n in range(4) for i in range(15)})
+    assert keys == want and len(lines) == len(want)
+    assert oct(env_file.stat().st_mode & 0o777) == "0o600"
+    assert not list(tmp_path.glob(".env.*.tmp"))
 
 
 # --- dry runs --------------------------------------------------------------------------------
