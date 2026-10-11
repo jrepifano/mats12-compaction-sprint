@@ -1,0 +1,240 @@
+{
+ "validity": {
+  "chain:after": {
+   "n": 1400,
+   "invalid": 0,
+   "share": 0.0
+  },
+  "chain:before": {
+   "n": 1400,
+   "invalid": 0,
+   "share": 0.0
+  },
+  "chain:none": {
+   "n": 1400,
+   "invalid": 33,
+   "share": 0.023571428571428573
+  }
+ },
+ "uplift_chain": {
+  "all": {
+   "acc": {
+    "none": 0.11642857142857142,
+    "after": 0.16,
+    "before": 0.12928571428571428
+   },
+   "after_minus_before": {
+    "n": 700,
+    "mean": 0.030714285714285715,
+    "lo": 0.008571428571428572,
+    "hi": 0.05285714285714286
+   },
+   "after_minus_none": {
+    "n": 700,
+    "mean": 0.04357142857142857,
+    "lo": 0.02214285714285714,
+    "hi": 0.06571428571428571
+   },
+   "before_minus_none": {
+    "n": 700,
+    "mean": 0.012857142857142857,
+    "lo": -0.005,
+    "hi": 0.03142857142857143
+   }
+  },
+  "k2": {
+   "acc": {
+    "none": 0.315,
+    "after": 0.5,
+    "before": 0.305
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": 0.195,
+    "lo": 0.115,
+    "hi": 0.28
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": 0.185,
+    "lo": 0.1,
+    "hi": 0.27
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": -0.01,
+    "lo": -0.07,
+    "hi": 0.04512499999999818
+   }
+  },
+  "k3": {
+   "acc": {
+    "none": 0.135,
+    "after": 0.215,
+    "before": 0.135
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": 0.08,
+    "lo": 0.02,
+    "hi": 0.145
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": 0.08,
+    "lo": 0.01,
+    "hi": 0.15
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": 0.0,
+    "lo": -0.05,
+    "hi": 0.05
+   }
+  },
+  "k4": {
+   "acc": {
+    "none": 0.05,
+    "after": 0.1,
+    "before": 0.105
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": -0.005,
+    "lo": -0.04,
+    "hi": 0.035
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": 0.05,
+    "lo": 0.01,
+    "hi": 0.095
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": 0.055,
+    "lo": 0.01,
+    "hi": 0.105
+   }
+  },
+  "k5": {
+   "acc": {
+    "none": 0.09,
+    "after": 0.075,
+    "before": 0.095
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": -0.02,
+    "lo": -0.08,
+    "hi": 0.035
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": -0.015,
+    "lo": -0.065,
+    "hi": 0.035
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": 0.005,
+    "lo": -0.055,
+    "hi": 0.065
+   }
+  },
+  "k6": {
+   "acc": {
+    "none": 0.085,
+    "after": 0.095,
+    "before": 0.105
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": -0.01,
+    "lo": -0.05,
+    "hi": 0.025
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": 0.01,
+    "lo": -0.035,
+    "hi": 0.055
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": 0.02,
+    "lo": -0.02,
+    "hi": 0.065
+   }
+  },
+  "k7": {
+   "acc": {
+    "none": 0.095,
+    "after": 0.1,
+    "before": 0.08
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": 0.02,
+    "lo": -0.03,
+    "hi": 0.075
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": 0.005,
+    "lo": -0.045,
+    "hi": 0.055
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": -0.015,
+    "lo": -0.055,
+    "hi": 0.025
+   }
+  },
+  "k8": {
+   "acc": {
+    "none": 0.045,
+    "after": 0.035,
+    "before": 0.08
+   },
+   "after_minus_before": {
+    "n": 100,
+    "mean": -0.045,
+    "lo": -0.085,
+    "hi": -0.01
+   },
+   "after_minus_none": {
+    "n": 100,
+    "mean": -0.01,
+    "lo": -0.05,
+    "hi": 0.03
+   },
+   "before_minus_none": {
+    "n": 100,
+    "mean": 0.035,
+    "lo": 0.0,
+    "hi": 0.075
+   }
+  }
+ },
+ "depth": {
+  "floor": 0.07,
+  "k50": {
+   "none": 1.4383439481783962,
+   "after": 1.9029179872306696,
+   "before": 0.8966316809153977
+  },
+  "shift_after_minus_before": 1.006286306315272,
+  "lo": 0.10936364270902871,
+  "hi": 3.904985289125779,
+  "n_boot_finite": 2000,
+  "n_items": 700
+ },
+ "mc": {},
+ "arm_map": {
+  "base": "none",
+  "dots500": "after",
+  "pre500": "before"
+ }
+}
