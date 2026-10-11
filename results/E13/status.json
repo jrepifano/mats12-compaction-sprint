@@ -22,18 +22,6 @@
     }
   },
   "jobs": {
-    "closing": {
-      "log": "logs/e13/run_20261011T002856Z.log",
-      "poll_failures": 0,
-      "started": "2026-10-11T00:28:56Z",
-      "started_epoch": 1791678536.776916,
-      "state": "done",
-      "steps": [
-        [
-          "manifest"
-        ]
-      ]
-    },
     "direction": {
       "log": "logs/e13/run_20261010T025828Z.log",
       "poll_failures": 0,
@@ -213,6 +201,13 @@
       "usd": 12.26
     }
   ],
+  "overrides": {
+    "unsteered_consistency": {
+      "detail": "{\"noov:em\": {\"hooked\": 0.23125, \"dev\": 0.30625, \"diff\": -0.07500000000000001, \"ok\": false}, \"noov:coherence\": {\"hooked\": 0.925, \"dev\": 0.93125, \"diff\": -0.006249999999999978, \"ok\": true}, \"ov:em\": {\"hooked\": 0.00625, \"dev\": 0.01875, \"diff\": -0.012499999999999999, \"ok\": true}, \"ov:coherence\": {\"hooked\": 0.95625, \"dev\": 0.95625, \"diff\": 0.0, \"ok\": true}}",
+      "reason": "unsteered consistency miss within luna's noise (luna -7.5 pts CI [-15.6, 0.0]; Gemini +1.1 on the same answers); Jacob: override and run the final patch",
+      "utc": "2026-10-11T00:41:42Z"
+    }
+  },
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
@@ -251,6 +246,18 @@
         "utc": "2026-10-10T03:00:50Z"
       },
       "utc": "2026-10-10T23:08:40Z"
+    },
+    {
+      "aside": "results/E13/superseded/reopen_2026-10-11T004142Z",
+      "moved": [],
+      "reason": "unsteered consistency miss within luna's noise (luna -7.5 pts CI [-15.6, 0.0]; Gemini +1.1 on the same answers); Jacob: override and run the final patch",
+      "stop": {
+        "detail": "{\"noov:em\": {\"hooked\": 0.23125, \"dev\": 0.30625, \"diff\": -0.07500000000000001, \"ok\": false}, \"noov:coherence\": {\"hooked\": 0.925, \"dev\": 0.93125, \"diff\": -0.006249999999999978, \"ok\": true}, \"ov:em\": {\"hooked\": 0.00625, \"dev\": 0.01875, \"diff\": -0.012499999999999999, \"ok\": true}, \"ov:coherence\": {\"hooked\": 0.95625, \"dev\": 0.95625, \"diff\": 0.0, \"ok\": true}}",
+        "rule": "unsteered_consistency",
+        "stage": "strength",
+        "utc": "2026-10-11T00:28:53Z"
+      },
+      "utc": "2026-10-11T00:41:42Z"
     }
   ],
   "run1": {
@@ -386,18 +393,9 @@
       ],
       "utc": "2026-10-11T00:28:52Z"
     },
-    "teardown": {
-      "utc": "2026-10-11T00:34:48Z"
-    },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
     }
-  },
-  "stopped": {
-    "detail": "{\"noov:em\": {\"hooked\": 0.23125, \"dev\": 0.30625, \"diff\": -0.07500000000000001, \"ok\": false}, \"noov:coherence\": {\"hooked\": 0.925, \"dev\": 0.93125, \"diff\": -0.006249999999999978, \"ok\": true}, \"ov:em\": {\"hooked\": 0.00625, \"dev\": 0.01875, \"diff\": -0.012499999999999999, \"ok\": true}, \"ov:coherence\": {\"hooked\": 0.95625, \"dev\": 0.95625, \"diff\": 0.0, \"ok\": true}}",
-    "rule": "unsteered_consistency",
-    "stage": "strength",
-    "utc": "2026-10-11T00:28:53Z"
   },
   "stopped_sites": {}
 }
