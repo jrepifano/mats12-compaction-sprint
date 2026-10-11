@@ -1,0 +1,16 @@
+# P03: text-proof interpretability items (probes/P03-text-proof-interp-items/plan.md).
+# Two pod sessions (log.md 2026-10-11 design): `phase` file = "sample" (vLLM ground truth) then
+# "read" (capture + readers on the selected items). gpu_hours is edited between them.
+id = "P03"
+hard_cap_usd = 45
+gpu_limit_usd = 30
+api_limit_usd = 15
+reserve_usd = 0
+
+[pod]
+gpu_hours = 0.75
+setup = "i9"
+disk_gb = 150
+push = []
+env = ["HF_TOKEN"]
+poll_minutes = 3
