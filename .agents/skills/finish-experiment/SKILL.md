@@ -28,7 +28,7 @@ The flow AGENTS.md's "Finishing" bullet describes, made explicit, with the gotch
 ## 2. Run log, tracker, Claude Docs (probes: status.json)
 
 - **Run log `logs/$EXP-report.md`:** append the final events with UTC times: what finished, final spend by stage and resource, the state of reservations and pods, each branch's disposition (completed / dropped / stopped / not reached), the report and its review verdict, where gitignored data lives.
-- **Probes:** set `probes/P<NN>-<slug>/status.json` (`status`, `spend_usd` from the worktree ledger, `updated_at`; `pr` once step 4 opens it), then `uv run python scripts/probe_index.py`. No tracker row or Doc mirror. Skip the next two bullets.
+- **Probes:** set `probes/P<NN>-<slug>/status.json` (`status`, `spend_usd` from the worktree ledger, `note: "note.md"`, `updated_at`; `pr` once step 4 opens it), then `uv run python scripts/probe_index.py`. No tracker row or Doc mirror. Skip the next two bullets.
 - **Tracker** (Claude session; from a Codex session ask the launching session or Jacob) (rules in `docs/tracker-instructions.md`): update only Jacob's row for $EXP (status, now/next, spend / cap, updated date), guarded with the revision just read. Then write the same row into `docs/tracker.md` in the branch (it reaches main with the PR).
 - **Claude Doc mirrors** (Claude session): for each mirrored file the branch changed (AGENTS.md's table), `read` the doc with `sinceRev` = its last synced rev and fold any changes into the markdown. Then push the repo's changes to the doc, and update the table's "synced at rev N". Add a row for any mirrored doc the table lacks.
 - Commit on the branch.

@@ -300,3 +300,20 @@ def test_cli_status_edit_regenerates_without_a_flag(legacy, capsys):
     row = legacy_rows((legacy / "INDEX.md").read_text())["P01"]
     assert "| Merged |" in row and "[#31]" in row and "$9.50" in row
     assert run(legacy, "--check") == 0
+
+
+def test_note_link_and_cap_note_round_trip():
+    """Rows hand-edited on main before the generator existed: a note link and a cap note."""
+    row = (
+        "| P06 | What? | $45 (raised from $35) | Merged | [plan](P06-filler/plan.md), "
+        "[note](P06-filler/note.md) | [#20](https://github.com/jrepifano/mats12_neel_exploratory"
+        "/pull/20) | $13.00 |"
+    )
+    text = P.render_index([]) + row + "\n"
+    s = P.status_from_row(P.parse_index(text)["P06"])
+    assert (s["cap_usd"], s["cap_note"], s["note"], s["spend_usd"]) == (45, "raised from $35",
+                                                                         "note.md", 13)
+    assert P.render_row(s) == row
+    plain = dict(s)
+    del plain["note"], plain["cap_note"]
+    assert "[note]" not in P.render_row(plain) and "| $45 |" in P.render_row(plain)

@@ -60,8 +60,11 @@ DIR_RE = re.compile(r"^(P\d{2})-([a-z0-9][a-z0-9-]*)$")
 UTC_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 ROW_RE = re.compile(r"^\|\s*P\d{2}\s*\|")
 PR_RE = re.compile(r"^\[#(\d+)\]\((.*)\)$")
-PLAN_RE = re.compile(r"^\[plan\]\(([^)]*)\)$")
+# the plan link, then optionally the note link (added by hand on main for P03 and P06)
+PLAN_RE = re.compile(r"^\[plan\]\(([^)]*)\)(?:, \[note\]\(([^)]*)\))?$")
 MONEY_RE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
+# a cap may carry a short note, e.g. "$45 (raised from $35)" (optional extra key "cap_note")
+CAP_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: \(([^()]+)\))?$")
 
 HEADER = """# Probes
 
@@ -205,9 +208,10 @@ def row_cells(d: dict) -> tuple[str, ...]:
     return (
         d["id"],
         d["question"].replace("|", "\\|"),
-        fmt_cap(d["cap_usd"]),
+        fmt_cap(d["cap_usd"]) + (f" ({d['cap_note']})" if d.get("cap_note") else ""),
         d["status"],
-        f"[plan]({dir_name(d)}/{d['plan']})",
+        f"[plan]({dir_name(d)}/{d['plan']})"
+        + (f", [note]({dir_name(d)}/{d['note']})" if d.get("note") else ""),
         pr,
         fmt_spend(d["spend_usd"]),
     )
@@ -275,9 +279,11 @@ def parse_index(text: str) -> dict[str, dict]:
         out[pid] = {
             "id": pid,
             "question": question.replace("\\|", "|"),
-            "cap_usd": _parse_money(cap, "cap", lineno),
+            "cap_usd": _parse_money(CAP_RE.sub(r"$\1", cap), "cap", lineno),
+            "cap_note": (CAP_RE.match(cap).group(2) if CAP_RE.match(cap) else None),
             "status": status,
             "plan": m_plan.group(1),
+            "note": m_plan.group(2),
             "pr": pr_num,
             "spend_usd": _parse_money(spend, "spend", lineno),
             "cells": cells,
@@ -308,6 +314,15 @@ def status_from_row(row: dict, base: dict | None = None) -> dict:
         spend_usd=row["spend_usd"],
         updated_at=utc_now(),
     )
+    d.pop("note", None)
+    d.pop("cap_note", None)
+    if row.get("cap_note"):
+        d["cap_note"] = row["cap_note"]
+    if row.get("note"):  # optional extra key "note": the note's path relative to the probe dir
+        note_dir, _, note_rel = row["note"].partition("/")
+        if note_dir != plan_dir or not note_rel:
+            raise ProbeError(f"{row['id']}: note link {row['note']!r} is not in {plan_dir}/")
+        d["note"] = note_rel
     return validate(d, f"{row['id']} (from INDEX.md)")
 
 

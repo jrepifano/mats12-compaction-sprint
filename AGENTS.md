@@ -64,7 +64,7 @@ More documents may be added; when they are, read them and update the proposals d
     - API-only probes (judging on the laptop) need only `probe.toml` and `emx.spend.check_total(..., exp="P<NN>")`.
   - Write tests for the code. A smoke unit on the pod gates the bulk run automatically.
   - **Use parallel sub-agents** for independent units, each owning distinct files. This is explicitly authorised for both Claude and Codex agents.
-- **Status:** each probe's `probes/P<NN>-<slug>/status.json` holds its id, slug, question, `cap_usd`, `status` (Planned / Running / Merged / Killed), plan path, `pr`, `spend_usd`, `owner` (the agent's name) and `updated_at`.
+- **Status:** each probe's `probes/P<NN>-<slug>/status.json` holds its id, slug, question, `cap_usd`, `status` (Planned / Running / Merged / Killed), plan path, `pr`, `spend_usd`, `owner` (the agent's name) and `updated_at`, plus optional `note` (the note's path, e.g. `note.md`, linked next to the plan) and `cap_note` (e.g. `raised from $35`).
   - The probe's agent edits its own status.json at every status change, commits it on its branch, and publishes it to main with `probe_claim.py publish`, so main's INDEX.md stays current.
   - **Never edit `probes/INDEX.md` by hand.** It is generated: `uv run python scripts/probe_index.py` rewrites it, and `--check` verifies it. Regenerate it after every merge, and commit the result.
   - A branch created before 2026-10-11 may have hand-edited INDEX.md. When it merges main, keep the branch's INDEX.md on a conflict, then `probe_index.py --prefer-index P<NN>` copies that probe's row into its status.json (the finish skill has the steps).
@@ -78,7 +78,7 @@ More documents may be added; when they are, read them and update the proposals d
   - The report is `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
   - The run log is `probes/P<NN>-<slug>/log.md`.
   - Run **one review round** of the whole branch (code, results, note) by the other model family (cross-review, in "Agents and tools"). A second round only if a fix changed the headline number.
-  - There is no Claude Doc mirror and no tracker row. Set status.json instead (`status`, `pr`, `spend_usd`), then regenerate INDEX.md.
+  - There is no Claude Doc mirror and no tracker row. Set status.json instead (`status`, `pr`, `spend_usd`, `note`), then regenerate INDEX.md.
   - The skill opens the PR and merges it, and the agent then tells Jacob the PR link and the answer.
 - **Still applies to probes:** Stack; Compute and cost control (profiling, throughput, ledger, RunPod operations); determinism and pinned revisions; retained training curves; visibility; reporting what actually happened; treating successes as hypotheses; Git.
 
