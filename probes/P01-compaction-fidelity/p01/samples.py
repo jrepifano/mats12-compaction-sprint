@@ -54,12 +54,12 @@ def main() -> None:
               f"`{t['truth']['last_script']['status']}`; slice {t['slice']}"
               + (f", cheat={t['source'].get('cheat')}" if t["slice"] == "B" else
                  f", resolved={t['truth'].get('resolved')}"))
-        print(f"- Status statements: {json.dumps(audits[r['item_id']]['test_statements'])}")
+        print(f"- Status statements: {json.dumps(audits[r['item_id']]['test_statements'])[:700]}")
         print(f"- Misstated: {r['status_misstated']}; dropped: {r['dropped']}; "
               f"not shown: {r['not_shown']}; invented flags: {r['n_invented']}\n")
         print("```\n" + txt[:MAX_CHARS] + ("\n[... truncated]" if len(txt) > MAX_CHARS else "")
               + "\n```\n")
-    print("## Random status misstatements\n")
+    print("## Random status flags (luna + code; F2 found most false-pass flags wrong)\n")
     mis = [r for r in scores if r["status_misstated"]]
     for r in rng.sample(mis, min(N_STATUS, len(mis))):
         t = ts[r["tid"]]
