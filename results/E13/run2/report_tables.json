@@ -15,12 +15,20 @@
     "hooked": {
      "k": 153,
      "n": 160,
-     "rate": 0.9563
+     "rate": 0.9563,
+     "wilson": [
+      0.9125,
+      0.9786
+     ]
     },
     "vllm_dev": {
      "k": 155,
      "n": 160,
-     "rate": 0.9688
+     "rate": 0.9688,
+     "wilson": [
+      0.9289,
+      0.9866
+     ]
     }
    },
    "em": {
@@ -32,12 +40,20 @@
     "hooked": {
      "k": 37,
      "n": 160,
-     "rate": 0.2313
+     "rate": 0.2313,
+     "wilson": [
+      0.1727,
+      0.3024
+     ]
     },
     "vllm_dev": {
      "k": 35,
      "n": 159,
-     "rate": 0.2201
+     "rate": 0.2201,
+     "wilson": [
+      0.1627,
+      0.2907
+     ]
     }
    },
    "n_questions": 8
@@ -52,12 +68,20 @@
     "hooked": {
      "k": 148,
      "n": 160,
-     "rate": 0.925
+     "rate": 0.925,
+     "wilson": [
+      0.8735,
+      0.9566
+     ]
     },
     "vllm_dev": {
      "k": 149,
      "n": 160,
-     "rate": 0.9313
+     "rate": 0.9313,
+     "wilson": [
+      0.8811,
+      0.9612
+     ]
     }
    },
    "em": {
@@ -69,12 +93,20 @@
     "hooked": {
      "k": 37,
      "n": 160,
-     "rate": 0.2313
+     "rate": 0.2313,
+     "wilson": [
+      0.1727,
+      0.3024
+     ]
     },
     "vllm_dev": {
      "k": 49,
      "n": 160,
-     "rate": 0.3063
+     "rate": 0.3063,
+     "wilson": [
+      0.2401,
+      0.3815
+     ]
     }
    },
    "n_questions": 8
@@ -89,12 +121,20 @@
     "hooked": {
      "k": 152,
      "n": 160,
-     "rate": 0.95
+     "rate": 0.95,
+     "wilson": [
+      0.9044,
+      0.9744
+     ]
     },
     "vllm_dev": {
      "k": 156,
      "n": 160,
-     "rate": 0.975
+     "rate": 0.975,
+     "wilson": [
+      0.9375,
+      0.9902
+     ]
     }
    },
    "em": {
@@ -106,12 +146,20 @@
     "hooked": {
      "k": 0,
      "n": 160,
-     "rate": 0.0
+     "rate": 0.0,
+     "wilson": [
+      -0.0,
+      0.0234
+     ]
     },
     "vllm_dev": {
      "k": 1,
      "n": 160,
-     "rate": 0.0063
+     "rate": 0.0063,
+     "wilson": [
+      0.0011,
+      0.0345
+     ]
     }
    },
    "n_questions": 8
@@ -126,12 +174,20 @@
     "hooked": {
      "k": 153,
      "n": 160,
-     "rate": 0.9563
+     "rate": 0.9563,
+     "wilson": [
+      0.9125,
+      0.9786
+     ]
     },
     "vllm_dev": {
      "k": 153,
      "n": 160,
-     "rate": 0.9563
+     "rate": 0.9563,
+     "wilson": [
+      0.9125,
+      0.9786
+     ]
     }
    },
    "em": {
@@ -143,12 +199,20 @@
     "hooked": {
      "k": 1,
      "n": 160,
-     "rate": 0.0063
+     "rate": 0.0063,
+     "wilson": [
+      0.0011,
+      0.0345
+     ]
     },
     "vllm_dev": {
      "k": 3,
      "n": 160,
-     "rate": 0.0187
+     "rate": 0.0187,
+     "wilson": [
+      0.0064,
+      0.0537
+     ]
     }
    },
    "n_questions": 8
@@ -167,19 +231,31 @@
       "coherence": {
        "k": 772,
        "n": 820,
-       "rate": 0.9415
+       "rate": 0.9415,
+       "wilson": [
+        0.9232,
+        0.9556
+       ]
       },
       "em": {
        "k": 264,
        "n": 816,
-       "rate": 0.3235
+       "rate": 0.3235,
+       "wilson": [
+        0.2923,
+        0.3564
+       ]
       },
       "n_rows": 820,
       "n_unscored": 4,
       "refusal": {
        "k": 0,
        "n": 816,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0047
+       ]
       }
      },
      "ugen": {
@@ -188,12 +264,20 @@
       "refusal": {
        "k": 0,
        "n": 184,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0205
+       ]
       },
       "success": {
        "k": 113,
        "n": 184,
-       "rate": 0.6141
+       "rate": 0.6141,
+       "wilson": [
+        0.5421,
+        0.6815
+       ]
       }
      },
      "umed": {
@@ -202,12 +286,20 @@
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 10,
        "n": 195,
-       "rate": 0.0513
+       "rate": 0.0513,
+       "wilson": [
+        0.0281,
+        0.0918
+       ]
       }
      }
     },
@@ -216,19 +308,31 @@
       "coherence": {
        "k": 669,
        "n": 820,
-       "rate": 0.8159
+       "rate": 0.8159,
+       "wilson": [
+        0.7879,
+        0.8409
+       ]
       },
       "em": {
        "k": 201,
        "n": 820,
-       "rate": 0.2451
+       "rate": 0.2451,
+       "wilson": [
+        0.2169,
+        0.2757
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 1,
        "n": 820,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.0069
+       ]
       }
      },
      "ugen": {
@@ -237,12 +341,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 142,
        "n": 200,
-       "rate": 0.71
+       "rate": 0.71,
+       "wilson": [
+        0.6436,
+        0.7685
+       ]
       }
      },
      "umed": {
@@ -251,12 +363,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 9,
        "n": 200,
-       "rate": 0.045
+       "rate": 0.045,
+       "wilson": [
+        0.0239,
+        0.0833
+       ]
       }
      }
     }
@@ -267,19 +387,31 @@
       "coherence": {
        "k": 750,
        "n": 820,
-       "rate": 0.9146
+       "rate": 0.9146,
+       "wilson": [
+        0.8935,
+        0.9319
+       ]
       },
       "em": {
        "k": 216,
        "n": 810,
-       "rate": 0.2667
+       "rate": 0.2667,
+       "wilson": [
+        0.2374,
+        0.2982
+       ]
       },
       "n_rows": 820,
       "n_unscored": 10,
       "refusal": {
        "k": 2,
        "n": 810,
-       "rate": 0.0025
+       "rate": 0.0025,
+       "wilson": [
+        0.0007,
+        0.009
+       ]
       }
      },
      "ugen": {
@@ -288,12 +420,20 @@
       "refusal": {
        "k": 0,
        "n": 187,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0201
+       ]
       },
       "success": {
        "k": 128,
        "n": 187,
-       "rate": 0.6845
+       "rate": 0.6845,
+       "wilson": [
+        0.6147,
+        0.7468
+       ]
       }
      },
      "umed": {
@@ -302,12 +442,20 @@
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 46,
        "n": 196,
-       "rate": 0.2347
+       "rate": 0.2347,
+       "wilson": [
+        0.1808,
+        0.2988
+       ]
       }
      }
     },
@@ -316,19 +464,31 @@
       "coherence": {
        "k": 678,
        "n": 820,
-       "rate": 0.8268
+       "rate": 0.8268,
+       "wilson": [
+        0.7994,
+        0.8512
+       ]
       },
       "em": {
        "k": 138,
        "n": 820,
-       "rate": 0.1683
+       "rate": 0.1683,
+       "wilson": [
+        0.1442,
+        0.1954
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 0,
        "n": 820,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0047
+       ]
       }
      },
      "ugen": {
@@ -337,12 +497,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 150,
        "n": 200,
-       "rate": 0.75
+       "rate": 0.75,
+       "wilson": [
+        0.6857,
+        0.8049
+       ]
       }
      },
      "umed": {
@@ -351,12 +519,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 49,
        "n": 200,
-       "rate": 0.245
+       "rate": 0.245,
+       "wilson": [
+        0.1906,
+        0.309
+       ]
       }
      }
     }
@@ -367,19 +543,31 @@
       "coherence": {
        "k": 764,
        "n": 820,
-       "rate": 0.9317
+       "rate": 0.9317,
+       "wilson": [
+        0.9124,
+        0.947
+       ]
       },
       "em": {
        "k": 291,
        "n": 816,
-       "rate": 0.3566
+       "rate": 0.3566,
+       "wilson": [
+        0.3245,
+        0.3901
+       ]
       },
       "n_rows": 820,
       "n_unscored": 4,
       "refusal": {
        "k": 1,
        "n": 816,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.0069
+       ]
       }
      },
      "ugen": {
@@ -388,12 +576,20 @@
       "refusal": {
        "k": 0,
        "n": 189,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0199
+       ]
       },
       "success": {
        "k": 108,
        "n": 189,
-       "rate": 0.5714
+       "rate": 0.5714,
+       "wilson": [
+        0.5001,
+        0.6399
+       ]
       }
      },
      "umed": {
@@ -402,12 +598,20 @@
       "refusal": {
        "k": 0,
        "n": 197,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0191
+       ]
       },
       "success": {
        "k": 10,
        "n": 197,
-       "rate": 0.0508
+       "rate": 0.0508,
+       "wilson": [
+        0.0278,
+        0.0909
+       ]
       }
      }
     },
@@ -416,19 +620,31 @@
       "coherence": {
        "k": 680,
        "n": 820,
-       "rate": 0.8293
+       "rate": 0.8293,
+       "wilson": [
+        0.802,
+        0.8535
+       ]
       },
       "em": {
        "k": 241,
        "n": 820,
-       "rate": 0.2939
+       "rate": 0.2939,
+       "wilson": [
+        0.2637,
+        0.326
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 2,
        "n": 820,
-       "rate": 0.0024
+       "rate": 0.0024,
+       "wilson": [
+        0.0007,
+        0.0088
+       ]
       }
      },
      "ugen": {
@@ -437,12 +653,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 123,
        "n": 200,
-       "rate": 0.615
+       "rate": 0.615,
+       "wilson": [
+        0.546,
+        0.6797
+       ]
       }
      },
      "umed": {
@@ -451,12 +675,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 7,
        "n": 200,
-       "rate": 0.035
+       "rate": 0.035,
+       "wilson": [
+        0.0171,
+        0.0705
+       ]
       }
      }
     }
@@ -467,19 +699,31 @@
       "coherence": {
        "k": 768,
        "n": 820,
-       "rate": 0.9366
+       "rate": 0.9366,
+       "wilson": [
+        0.9178,
+        0.9513
+       ]
       },
       "em": {
        "k": 277,
        "n": 815,
-       "rate": 0.3399
+       "rate": 0.3399,
+       "wilson": [
+        0.3082,
+        0.3731
+       ]
       },
       "n_rows": 820,
       "n_unscored": 5,
       "refusal": {
        "k": 0,
        "n": 815,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0047
+       ]
       }
      },
      "ugen": {
@@ -488,12 +732,20 @@
       "refusal": {
        "k": 0,
        "n": 183,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0206
+       ]
       },
       "success": {
        "k": 112,
        "n": 183,
-       "rate": 0.612
+       "rate": 0.612,
+       "wilson": [
+        0.5398,
+        0.6796
+       ]
       }
      },
      "umed": {
@@ -502,12 +754,20 @@
       "refusal": {
        "k": 0,
        "n": 199,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0189
+       ]
       },
       "success": {
        "k": 25,
        "n": 199,
-       "rate": 0.1256
+       "rate": 0.1256,
+       "wilson": [
+        0.0866,
+        0.1789
+       ]
       }
      }
     },
@@ -516,19 +776,31 @@
       "coherence": {
        "k": 686,
        "n": 820,
-       "rate": 0.8366
+       "rate": 0.8366,
+       "wilson": [
+        0.8097,
+        0.8603
+       ]
       },
       "em": {
        "k": 190,
        "n": 820,
-       "rate": 0.2317
+       "rate": 0.2317,
+       "wilson": [
+        0.2041,
+        0.2618
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 1,
        "n": 820,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.0069
+       ]
       }
      },
      "ugen": {
@@ -537,12 +809,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 138,
        "n": 200,
-       "rate": 0.69
+       "rate": 0.69,
+       "wilson": [
+        0.6228,
+        0.75
+       ]
       }
      },
      "umed": {
@@ -551,12 +831,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 21,
        "n": 200,
-       "rate": 0.105
+       "rate": 0.105,
+       "wilson": [
+        0.0697,
+        0.1552
+       ]
       }
      }
     }
@@ -567,19 +855,31 @@
       "coherence": {
        "k": 767,
        "n": 820,
-       "rate": 0.9354
+       "rate": 0.9354,
+       "wilson": [
+        0.9164,
+        0.9502
+       ]
       },
       "em": {
        "k": 83,
        "n": 813,
-       "rate": 0.1021
+       "rate": 0.1021,
+       "wilson": [
+        0.0831,
+        0.1248
+       ]
       },
       "n_rows": 820,
       "n_unscored": 7,
       "refusal": {
        "k": 2,
        "n": 813,
-       "rate": 0.0025
+       "rate": 0.0025,
+       "wilson": [
+        0.0007,
+        0.0089
+       ]
       }
      },
      "ugen": {
@@ -588,12 +888,20 @@
       "refusal": {
        "k": 0,
        "n": 186,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0202
+       ]
       },
       "success": {
        "k": 158,
        "n": 186,
-       "rate": 0.8495
+       "rate": 0.8495,
+       "wilson": [
+        0.791,
+        0.8937
+       ]
       }
      },
      "umed": {
@@ -602,12 +910,20 @@
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 177,
        "n": 195,
-       "rate": 0.9077
+       "rate": 0.9077,
+       "wilson": [
+        0.8588,
+        0.9408
+       ]
       }
      }
     },
@@ -616,19 +932,31 @@
       "coherence": {
        "k": 745,
        "n": 820,
-       "rate": 0.9085
+       "rate": 0.9085,
+       "wilson": [
+        0.8869,
+        0.9264
+       ]
       },
       "em": {
        "k": 44,
        "n": 820,
-       "rate": 0.0537
+       "rate": 0.0537,
+       "wilson": [
+        0.0402,
+        0.0713
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 2,
        "n": 820,
-       "rate": 0.0024
+       "rate": 0.0024,
+       "wilson": [
+        0.0007,
+        0.0088
+       ]
       }
      },
      "ugen": {
@@ -637,12 +965,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 173,
        "n": 200,
-       "rate": 0.865
+       "rate": 0.865,
+       "wilson": [
+        0.8107,
+        0.9055
+       ]
       }
      },
      "umed": {
@@ -651,12 +987,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 169,
        "n": 200,
-       "rate": 0.845
+       "rate": 0.845,
+       "wilson": [
+        0.7884,
+        0.8886
+       ]
       }
      }
     }
@@ -667,19 +1011,31 @@
       "coherence": {
        "k": 751,
        "n": 820,
-       "rate": 0.9159
+       "rate": 0.9159,
+       "wilson": [
+        0.8949,
+        0.933
+       ]
       },
       "em": {
        "k": 128,
        "n": 806,
-       "rate": 0.1588
+       "rate": 0.1588,
+       "wilson": [
+        0.1352,
+        0.1857
+       ]
       },
       "n_rows": 820,
       "n_unscored": 14,
       "refusal": {
        "k": 1,
        "n": 806,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.007
+       ]
       }
      },
      "ugen": {
@@ -688,12 +1044,20 @@
       "refusal": {
        "k": 0,
        "n": 191,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0197
+       ]
       },
       "success": {
        "k": 154,
        "n": 191,
-       "rate": 0.8063
+       "rate": 0.8063,
+       "wilson": [
+        0.7444,
+        0.8561
+       ]
       }
      },
      "umed": {
@@ -702,12 +1066,20 @@
       "refusal": {
        "k": 0,
        "n": 192,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0196
+       ]
       },
       "success": {
        "k": 147,
        "n": 192,
-       "rate": 0.7656
+       "rate": 0.7656,
+       "wilson": [
+        0.7009,
+        0.82
+       ]
       }
      }
     },
@@ -716,19 +1088,31 @@
       "coherence": {
        "k": 710,
        "n": 820,
-       "rate": 0.8659
+       "rate": 0.8659,
+       "wilson": [
+        0.8408,
+        0.8875
+       ]
       },
       "em": {
        "k": 65,
        "n": 820,
-       "rate": 0.0793
+       "rate": 0.0793,
+       "wilson": [
+        0.0627,
+        0.0998
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 1,
        "n": 820,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.0069
+       ]
       }
      },
      "ugen": {
@@ -737,12 +1121,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 172,
        "n": 200,
-       "rate": 0.86
+       "rate": 0.86,
+       "wilson": [
+        0.8051,
+        0.9013
+       ]
       }
      },
      "umed": {
@@ -751,12 +1143,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 138,
        "n": 200,
-       "rate": 0.69
+       "rate": 0.69,
+       "wilson": [
+        0.6228,
+        0.75
+       ]
       }
      }
     }
@@ -767,19 +1167,31 @@
       "coherence": {
        "k": 776,
        "n": 820,
-       "rate": 0.9463
+       "rate": 0.9463,
+       "wilson": [
+        0.9287,
+        0.9598
+       ]
       },
       "em": {
        "k": 66,
        "n": 810,
-       "rate": 0.0815
+       "rate": 0.0815,
+       "wilson": [
+        0.0646,
+        0.1024
+       ]
       },
       "n_rows": 820,
       "n_unscored": 10,
       "refusal": {
        "k": 5,
        "n": 810,
-       "rate": 0.0062
+       "rate": 0.0062,
+       "wilson": [
+        0.0026,
+        0.0144
+       ]
       }
      },
      "ugen": {
@@ -788,12 +1200,20 @@
       "refusal": {
        "k": 0,
        "n": 188,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.02
+       ]
       },
       "success": {
        "k": 146,
        "n": 188,
-       "rate": 0.7766
+       "rate": 0.7766,
+       "wilson": [
+        0.7119,
+        0.8303
+       ]
       }
      },
      "umed": {
@@ -802,12 +1222,20 @@
       "refusal": {
        "k": 0,
        "n": 193,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0195
+       ]
       },
       "success": {
        "k": 161,
        "n": 193,
-       "rate": 0.8342
+       "rate": 0.8342,
+       "wilson": [
+        0.7753,
+        0.88
+       ]
       }
      }
     },
@@ -816,19 +1244,31 @@
       "coherence": {
        "k": 756,
        "n": 820,
-       "rate": 0.922
+       "rate": 0.922,
+       "wilson": [
+        0.9016,
+        0.9384
+       ]
       },
       "em": {
        "k": 37,
        "n": 820,
-       "rate": 0.0451
+       "rate": 0.0451,
+       "wilson": [
+        0.0329,
+        0.0616
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 1,
        "n": 820,
-       "rate": 0.0012
+       "rate": 0.0012,
+       "wilson": [
+        0.0002,
+        0.0069
+       ]
       }
      },
      "ugen": {
@@ -837,12 +1277,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 161,
        "n": 200,
-       "rate": 0.805
+       "rate": 0.805,
+       "wilson": [
+        0.7446,
+        0.8539
+       ]
       }
      },
      "umed": {
@@ -851,12 +1299,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 157,
        "n": 200,
-       "rate": 0.785
+       "rate": 0.785,
+       "wilson": [
+        0.723,
+        0.8363
+       ]
       }
      }
     }
@@ -867,19 +1323,31 @@
       "coherence": {
        "k": 771,
        "n": 820,
-       "rate": 0.9402
+       "rate": 0.9402,
+       "wilson": [
+        0.9219,
+        0.9545
+       ]
       },
       "em": {
        "k": 98,
        "n": 808,
-       "rate": 0.1213
+       "rate": 0.1213,
+       "wilson": [
+        0.1006,
+        0.1456
+       ]
       },
       "n_rows": 820,
       "n_unscored": 12,
       "refusal": {
        "k": 3,
        "n": 808,
-       "rate": 0.0037
+       "rate": 0.0037,
+       "wilson": [
+        0.0013,
+        0.0109
+       ]
       }
      },
      "ugen": {
@@ -888,12 +1356,20 @@
       "refusal": {
        "k": 0,
        "n": 184,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0205
+       ]
       },
       "success": {
        "k": 154,
        "n": 184,
-       "rate": 0.837
+       "rate": 0.837,
+       "wilson": [
+        0.7768,
+        0.8833
+       ]
       }
      },
      "umed": {
@@ -902,12 +1378,20 @@
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 159,
        "n": 196,
-       "rate": 0.8112
+       "rate": 0.8112,
+       "wilson": [
+        0.7507,
+        0.8598
+       ]
       }
      }
     },
@@ -916,19 +1400,31 @@
       "coherence": {
        "k": 742,
        "n": 820,
-       "rate": 0.9049
+       "rate": 0.9049,
+       "wilson": [
+        0.8829,
+        0.9231
+       ]
       },
       "em": {
        "k": 55,
        "n": 820,
-       "rate": 0.0671
+       "rate": 0.0671,
+       "wilson": [
+        0.0519,
+        0.0863
+       ]
       },
       "n_rows": 820,
       "n_unscored": 0,
       "refusal": {
        "k": 2,
        "n": 820,
-       "rate": 0.0024
+       "rate": 0.0024,
+       "wilson": [
+        0.0007,
+        0.0088
+       ]
       }
      },
      "ugen": {
@@ -937,12 +1433,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 174,
        "n": 200,
-       "rate": 0.87
+       "rate": 0.87,
+       "wilson": [
+        0.8163,
+        0.9097
+       ]
       }
      },
      "umed": {
@@ -951,12 +1455,20 @@
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 158,
        "n": 200,
-       "rate": 0.79
+       "rate": 0.79,
+       "wilson": [
+        0.7284,
+        0.8407
+       ]
       }
      }
     }
@@ -969,9 +1481,17 @@
      0.09,
      0.3209
     ],
-    "closure_nonpositive_den": 0,
+    "closure_nonpositive_den_fraction": 0.0,
     "coherence_change_noov": -0.0134,
+    "coherence_change_noov_ci": [
+     -0.0476,
+     0.0207
+    ],
     "coherence_change_ov": -0.0134,
+    "coherence_change_ov_ci": [
+     -0.039,
+     0.011
+    ],
     "cut_noov_em": 0.0488,
     "cut_noov_em_ci": [
      0.022,
@@ -982,10 +1502,56 @@
      -0.0061,
      0.0232
     ],
+    "refusal_change_noov": -0.0012,
+    "refusal_change_noov_ci": [
+     -0.0061,
+     0.0024
+    ],
+    "refusal_change_noov_ugen": 0.0,
+    "refusal_change_noov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_noov_umed": 0.0,
+    "refusal_change_noov_umed_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov": 0.0012,
+    "refusal_change_ov_ci": [
+     -0.0024,
+     0.0049
+    ],
+    "refusal_change_ov_ugen": 0.0,
+    "refusal_change_ov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov_umed": 0.0,
+    "refusal_change_ov_umed_ci": [
+     0.0,
+     0.0
+    ],
     "success_change_noov_ugen": 0.095,
+    "success_change_noov_ugen_ci": [
+     0.025,
+     0.17
+    ],
     "success_change_noov_umed": 0.01,
+    "success_change_noov_umed_ci": [
+     -0.015,
+     0.04
+    ],
     "success_change_ov_ugen": 0.06,
-    "success_change_ov_umed": 0.06
+    "success_change_ov_ugen_ci": [
+     0.0049,
+     0.12
+    ],
+    "success_change_ov_umed": 0.06,
+    "success_change_ov_umed_ci": [
+     0.0,
+     0.12
+    ]
    },
    "input|a4": {
     "closure": 0.5049,
@@ -993,9 +1559,17 @@
      0.3651,
      0.6807
     ],
-    "closure_nonpositive_den": 0,
+    "closure_nonpositive_den_fraction": 0.0,
     "coherence_change_noov": -0.0024,
+    "coherence_change_noov_ci": [
+     -0.0415,
+     0.039
+    ],
     "coherence_change_ov": -0.0561,
+    "coherence_change_ov_ci": [
+     -0.0988,
+     -0.0171
+    ],
     "cut_noov_em": 0.1256,
     "cut_noov_em_ci": [
      0.0878,
@@ -1006,10 +1580,56 @@
      0.0061,
      0.0671
     ],
+    "refusal_change_noov": -0.0024,
+    "refusal_change_noov_ci": [
+     -0.0061,
+     0.0
+    ],
+    "refusal_change_noov_ugen": 0.0,
+    "refusal_change_noov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_noov_umed": 0.0,
+    "refusal_change_noov_umed_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov": 0.0,
+    "refusal_change_ov_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov_ugen": 0.0,
+    "refusal_change_ov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov_umed": 0.0,
+    "refusal_change_ov_umed_ci": [
+     0.0,
+     0.0
+    ],
     "success_change_noov_ugen": 0.135,
+    "success_change_noov_ugen_ci": [
+     0.04,
+     0.23
+    ],
     "success_change_noov_umed": 0.21,
+    "success_change_noov_umed_ci": [
+     0.14,
+     0.285
+    ],
     "success_change_ov_ugen": 0.055,
-    "success_change_ov_umed": -0.095
+    "success_change_ov_ugen_ci": [
+     -0.015,
+     0.125
+    ],
+    "success_change_ov_umed": -0.095,
+    "success_change_ov_umed_ci": [
+     -0.18,
+     -0.015
+    ]
    },
    "output|a2": {
     "closure": 0.25,
@@ -1017,9 +1637,17 @@
      0.1068,
      0.4203
     ],
-    "closure_nonpositive_den": 0,
+    "closure_nonpositive_den_fraction": 0.0,
     "coherence_change_noov": 0.0073,
+    "coherence_change_noov_ci": [
+     -0.0293,
+     0.0439
+    ],
     "coherence_change_ov": -0.0171,
+    "coherence_change_ov_ci": [
+     -0.0415,
+     0.0073
+    ],
     "cut_noov_em": 0.0622,
     "cut_noov_em_ci": [
      0.0268,
@@ -1030,10 +1658,56 @@
      0.0,
      0.05
     ],
+    "refusal_change_noov": -0.0012,
+    "refusal_change_noov_ci": [
+     -0.0037,
+     0.0
+    ],
+    "refusal_change_noov_ugen": 0.0,
+    "refusal_change_noov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_noov_umed": 0.0,
+    "refusal_change_noov_umed_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov": 0.0012,
+    "refusal_change_ov_ci": [
+     -0.0024,
+     0.0049
+    ],
+    "refusal_change_ov_ugen": 0.0,
+    "refusal_change_ov_ugen_ci": [
+     0.0,
+     0.0
+    ],
+    "refusal_change_ov_umed": 0.0,
+    "refusal_change_ov_umed_ci": [
+     0.0,
+     0.0
+    ],
     "success_change_noov_ugen": 0.075,
+    "success_change_noov_ugen_ci": [
+     0.005,
+     0.145
+    ],
     "success_change_noov_umed": 0.07,
+    "success_change_noov_umed_ci": [
+     0.02,
+     0.13
+    ],
     "success_change_ov_ugen": 0.065,
-    "success_change_ov_umed": 0.005
+    "success_change_ov_ugen_ci": [
+     0.005,
+     0.135
+    ],
+    "success_change_ov_umed": 0.005,
+    "success_change_ov_umed_ci": [
+     -0.055,
+     0.065
+    ]
    }
   },
   "questions": "41 broad final questions (ext48), held-out families"
@@ -1139,68 +1813,116 @@
      "none": {
       "k": 20,
       "n": 409,
-      "rate": 0.0489
+      "rate": 0.0489,
+      "wilson": [
+       0.0319,
+       0.0743
+      ]
      },
      "noov": {
       "k": 27,
       "n": 407,
-      "rate": 0.0663
+      "rate": 0.0663,
+      "wilson": [
+       0.046,
+       0.0948
+      ]
      },
      "ov": {
       "k": 29,
       "n": 409,
-      "rate": 0.0709
+      "rate": 0.0709,
+      "wilson": [
+       0.0498,
+       0.1
+      ]
      }
     },
     "org_tan32_s0": {
      "none": {
       "k": 57,
       "n": 404,
-      "rate": 0.1411
+      "rate": 0.1411,
+      "wilson": [
+       0.1105,
+       0.1784
+      ]
      },
      "noov": {
       "k": 129,
       "n": 406,
-      "rate": 0.3177
+      "rate": 0.3177,
+      "wilson": [
+       0.2743,
+       0.3646
+      ]
      },
      "ov": {
       "k": 40,
       "n": 406,
-      "rate": 0.0985
+      "rate": 0.0985,
+      "wilson": [
+       0.0732,
+       0.1314
+      ]
      }
     },
     "org_tan32_s1": {
      "none": {
       "k": 85,
       "n": 407,
-      "rate": 0.2088
+      "rate": 0.2088,
+      "wilson": [
+       0.1722,
+       0.251
+      ]
      },
      "noov": {
       "k": 150,
       "n": 407,
-      "rate": 0.3686
+      "rate": 0.3686,
+      "wilson": [
+       0.3231,
+       0.4164
+      ]
      },
      "ov": {
       "k": 40,
       "n": 406,
-      "rate": 0.0985
+      "rate": 0.0985,
+      "wilson": [
+       0.0732,
+       0.1314
+      ]
      }
     },
     "org_tan32_s2": {
      "none": {
       "k": 47,
       "n": 407,
-      "rate": 0.1155
+      "rate": 0.1155,
+      "wilson": [
+       0.088,
+       0.1502
+      ]
      },
      "noov": {
       "k": 127,
       "n": 410,
-      "rate": 0.3098
+      "rate": 0.3098,
+      "wilson": [
+       0.2669,
+       0.3561
+      ]
      },
      "ov": {
       "k": 40,
       "n": 408,
-      "rate": 0.098
+      "rate": 0.098,
+      "wilson": [
+       0.0728,
+       0.1308
+      ]
      }
     }
    },
@@ -1209,68 +1931,116 @@
      "none": {
       "k": 10,
       "n": 410,
-      "rate": 0.0244
+      "rate": 0.0244,
+      "wilson": [
+       0.0133,
+       0.0443
+      ]
      },
      "noov": {
       "k": 13,
       "n": 410,
-      "rate": 0.0317
+      "rate": 0.0317,
+      "wilson": [
+       0.0186,
+       0.0535
+      ]
      },
      "ov": {
       "k": 15,
       "n": 410,
-      "rate": 0.0366
+      "rate": 0.0366,
+      "wilson": [
+       0.0223,
+       0.0595
+      ]
      }
     },
     "org_tan32_s0": {
      "none": {
       "k": 37,
       "n": 410,
-      "rate": 0.0902
+      "rate": 0.0902,
+      "wilson": [
+       0.0662,
+       0.1219
+      ]
      },
      "noov": {
       "k": 116,
       "n": 410,
-      "rate": 0.2829
+      "rate": 0.2829,
+      "wilson": [
+       0.2415,
+       0.3284
+      ]
      },
      "ov": {
       "k": 24,
       "n": 410,
-      "rate": 0.0585
+      "rate": 0.0585,
+      "wilson": [
+       0.0396,
+       0.0856
+      ]
      }
     },
     "org_tan32_s1": {
      "none": {
       "k": 61,
       "n": 410,
-      "rate": 0.1488
+      "rate": 0.1488,
+      "wilson": [
+       0.1176,
+       0.1865
+      ]
      },
      "noov": {
       "k": 124,
       "n": 410,
-      "rate": 0.3024
+      "rate": 0.3024,
+      "wilson": [
+       0.26,
+       0.3486
+      ]
      },
      "ov": {
       "k": 18,
       "n": 410,
-      "rate": 0.0439
+      "rate": 0.0439,
+      "wilson": [
+       0.0279,
+       0.0683
+      ]
      }
     },
     "org_tan32_s2": {
      "none": {
       "k": 24,
       "n": 410,
-      "rate": 0.0585
+      "rate": 0.0585,
+      "wilson": [
+       0.0396,
+       0.0856
+      ]
      },
      "noov": {
       "k": 103,
       "n": 410,
-      "rate": 0.2512
+      "rate": 0.2512,
+      "wilson": [
+       0.2117,
+       0.2954
+      ]
      },
      "ov": {
       "k": 26,
       "n": 410,
-      "rate": 0.0634
+      "rate": 0.0634,
+      "wilson": [
+       0.0436,
+       0.0913
+      ]
      }
     }
    }
@@ -1518,41 +2288,69 @@
       "coherence": {
        "k": 153,
        "n": 160,
-       "rate": 0.9563
+       "rate": 0.9563,
+       "wilson": [
+        0.9125,
+        0.9786
+       ]
       },
       "em": {
        "k": 36,
        "n": 160,
-       "rate": 0.225
+       "rate": 0.225,
+       "wilson": [
+        0.1672,
+        0.2957
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 100,
        "n": 195,
-       "rate": 0.5128
+       "rate": 0.5128,
+       "wilson": [
+        0.4431,
+        0.582
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 199,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0189
+       ]
       },
       "success": {
        "k": 11,
        "n": 199,
-       "rate": 0.0553
+       "rate": 0.0553,
+       "wilson": [
+        0.0311,
+        0.0963
+       ]
       }
      }
     },
@@ -1561,41 +2359,69 @@
       "coherence": {
        "k": 146,
        "n": 160,
-       "rate": 0.9125
+       "rate": 0.9125,
+       "wilson": [
+        0.8585,
+        0.9472
+       ]
       },
       "em": {
        "k": 41,
        "n": 160,
-       "rate": 0.2562
+       "rate": 0.2562,
+       "wilson": [
+        0.1949,
+        0.3291
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 99,
        "n": 200,
-       "rate": 0.495
+       "rate": 0.495,
+       "wilson": [
+        0.4265,
+        0.5637
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 10,
        "n": 200,
-       "rate": 0.05
+       "rate": 0.05,
+       "wilson": [
+        0.0274,
+        0.0896
+       ]
       }
      }
     }
@@ -1606,41 +2432,69 @@
       "coherence": {
        "k": 153,
        "n": 160,
-       "rate": 0.9563
+       "rate": 0.9563,
+       "wilson": [
+        0.9125,
+        0.9786
+       ]
       },
       "em": {
        "k": 28,
        "n": 160,
-       "rate": 0.175
+       "rate": 0.175,
+       "wilson": [
+        0.1239,
+        0.2413
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 105,
        "n": 194,
-       "rate": 0.5412
+       "rate": 0.5412,
+       "wilson": [
+        0.471,
+        0.6099
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 11,
        "n": 196,
-       "rate": 0.0561
+       "rate": 0.0561,
+       "wilson": [
+        0.0316,
+        0.0977
+       ]
       }
      }
     },
@@ -1649,41 +2503,69 @@
       "coherence": {
        "k": 142,
        "n": 160,
-       "rate": 0.8875
+       "rate": 0.8875,
+       "wilson": [
+        0.8292,
+        0.9276
+       ]
       },
       "em": {
        "k": 30,
        "n": 160,
-       "rate": 0.1875
+       "rate": 0.1875,
+       "wilson": [
+        0.1346,
+        0.255
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 107,
        "n": 200,
-       "rate": 0.535
+       "rate": 0.535,
+       "wilson": [
+        0.4659,
+        0.6028
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 13,
        "n": 200,
-       "rate": 0.065
+       "rate": 0.065,
+       "wilson": [
+        0.0384,
+        0.108
+       ]
       }
      }
     }
@@ -1694,41 +2576,69 @@
       "coherence": {
        "k": 154,
        "n": 160,
-       "rate": 0.9625
+       "rate": 0.9625,
+       "wilson": [
+        0.9206,
+        0.9827
+       ]
       },
       "em": {
        "k": 25,
        "n": 160,
-       "rate": 0.1562
+       "rate": 0.1562,
+       "wilson": [
+        0.1081,
+        0.2205
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 193,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0195
+       ]
       },
       "success": {
        "k": 110,
        "n": 193,
-       "rate": 0.5699
+       "rate": 0.5699,
+       "wilson": [
+        0.4994,
+        0.6378
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 22,
        "n": 196,
-       "rate": 0.1122
+       "rate": 0.1122,
+       "wilson": [
+        0.0753,
+        0.1641
+       ]
       }
      }
     },
@@ -1737,41 +2647,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 30,
        "n": 160,
-       "rate": 0.1875
+       "rate": 0.1875,
+       "wilson": [
+        0.1346,
+        0.255
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 114,
        "n": 200,
-       "rate": 0.57
+       "rate": 0.57,
+       "wilson": [
+        0.5007,
+        0.6367
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 23,
        "n": 200,
-       "rate": 0.115
+       "rate": 0.115,
+       "wilson": [
+        0.0779,
+        0.1666
+       ]
       }
      }
     }
@@ -1782,41 +2720,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 124,
        "n": 195,
-       "rate": 0.6359
+       "rate": 0.6359,
+       "wilson": [
+        0.5663,
+        0.7002
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 64,
        "n": 196,
-       "rate": 0.3265
+       "rate": 0.3265,
+       "wilson": [
+        0.2648,
+        0.395
+       ]
       }
      }
     },
@@ -1825,41 +2791,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 126,
        "n": 200,
-       "rate": 0.63
+       "rate": 0.63,
+       "wilson": [
+        0.5612,
+        0.6939
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 55,
        "n": 200,
-       "rate": 0.275
+       "rate": 0.275,
+       "wilson": [
+        0.2178,
+        0.3407
+       ]
       }
      }
     }
@@ -1870,41 +2864,69 @@
       "coherence": {
        "k": 149,
        "n": 160,
-       "rate": 0.9313
+       "rate": 0.9313,
+       "wilson": [
+        0.8811,
+        0.9612
+       ]
       },
       "em": {
        "k": 1,
        "n": 159,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0348
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 159,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0236
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 192,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0196
+       ]
       },
       "success": {
        "k": 112,
        "n": 192,
-       "rate": 0.5833
+       "rate": 0.5833,
+       "wilson": [
+        0.5126,
+        0.6508
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 189,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0199
+       ]
       },
       "success": {
        "k": 73,
        "n": 189,
-       "rate": 0.3862
+       "rate": 0.3862,
+       "wilson": [
+        0.3198,
+        0.4573
+       ]
       }
      }
     },
@@ -1913,41 +2935,69 @@
       "coherence": {
        "k": 142,
        "n": 160,
-       "rate": 0.8875
+       "rate": 0.8875,
+       "wilson": [
+        0.8292,
+        0.9276
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 119,
        "n": 200,
-       "rate": 0.595
+       "rate": 0.595,
+       "wilson": [
+        0.5258,
+        0.6606
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 57,
        "n": 200,
-       "rate": 0.285
+       "rate": 0.285,
+       "wilson": [
+        0.2269,
+        0.3512
+       ]
       }
      }
     }
@@ -1958,41 +3008,69 @@
       "coherence": {
        "k": 153,
        "n": 160,
-       "rate": 0.9563
+       "rate": 0.9563,
+       "wilson": [
+        0.9125,
+        0.9786
+       ]
       },
       "em": {
        "k": 37,
        "n": 160,
-       "rate": 0.2313
+       "rate": 0.2313,
+       "wilson": [
+        0.1727,
+        0.3024
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 192,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0196
+       ]
       },
       "success": {
        "k": 93,
        "n": 192,
-       "rate": 0.4844
+       "rate": 0.4844,
+       "wilson": [
+        0.4147,
+        0.5547
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 198,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.019
+       ]
       },
       "success": {
        "k": 7,
        "n": 198,
-       "rate": 0.0354
+       "rate": 0.0354,
+       "wilson": [
+        0.0172,
+        0.0712
+       ]
       }
      }
     },
@@ -2001,41 +3079,69 @@
       "coherence": {
        "k": 148,
        "n": 160,
-       "rate": 0.925
+       "rate": 0.925,
+       "wilson": [
+        0.8735,
+        0.9566
+       ]
       },
       "em": {
        "k": 37,
        "n": 160,
-       "rate": 0.2313
+       "rate": 0.2313,
+       "wilson": [
+        0.1727,
+        0.3024
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 102,
        "n": 200,
-       "rate": 0.51
+       "rate": 0.51,
+       "wilson": [
+        0.4412,
+        0.5784
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 5,
        "n": 200,
-       "rate": 0.025
+       "rate": 0.025,
+       "wilson": [
+        0.0107,
+        0.0572
+       ]
       }
      }
     }
@@ -2046,41 +3152,69 @@
       "coherence": {
        "k": 155,
        "n": 160,
-       "rate": 0.9688
+       "rate": 0.9688,
+       "wilson": [
+        0.9289,
+        0.9866
+       ]
       },
       "em": {
        "k": 35,
        "n": 160,
-       "rate": 0.2188
+       "rate": 0.2188,
+       "wilson": [
+        0.1617,
+        0.289
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 193,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0195
+       ]
       },
       "success": {
        "k": 102,
        "n": 193,
-       "rate": 0.5285
+       "rate": 0.5285,
+       "wilson": [
+        0.4582,
+        0.5977
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 199,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0189
+       ]
       },
       "success": {
        "k": 11,
        "n": 199,
-       "rate": 0.0553
+       "rate": 0.0553,
+       "wilson": [
+        0.0311,
+        0.0963
+       ]
       }
      }
     },
@@ -2089,41 +3223,69 @@
       "coherence": {
        "k": 146,
        "n": 160,
-       "rate": 0.9125
+       "rate": 0.9125,
+       "wilson": [
+        0.8585,
+        0.9472
+       ]
       },
       "em": {
        "k": 42,
        "n": 160,
-       "rate": 0.2625
+       "rate": 0.2625,
+       "wilson": [
+        0.2005,
+        0.3357
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 105,
        "n": 200,
-       "rate": 0.525
+       "rate": 0.525,
+       "wilson": [
+        0.456,
+        0.5931
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 8,
        "n": 200,
-       "rate": 0.04
+       "rate": 0.04,
+       "wilson": [
+        0.0204,
+        0.0769
+       ]
       }
      }
     }
@@ -2134,41 +3296,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 28,
        "n": 159,
-       "rate": 0.1761
+       "rate": 0.1761,
+       "wilson": [
+        0.1247,
+        0.2427
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 159,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0236
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 190,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0198
+       ]
       },
       "success": {
        "k": 106,
        "n": 190,
-       "rate": 0.5579
+       "rate": 0.5579,
+       "wilson": [
+        0.4868,
+        0.6267
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 199,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0189
+       ]
       },
       "success": {
        "k": 14,
        "n": 199,
-       "rate": 0.0704
+       "rate": 0.0704,
+       "wilson": [
+        0.0424,
+        0.1146
+       ]
       }
      }
     },
@@ -2177,41 +3367,69 @@
       "coherence": {
        "k": 143,
        "n": 160,
-       "rate": 0.8938
+       "rate": 0.8938,
+       "wilson": [
+        0.8364,
+        0.9326
+       ]
       },
       "em": {
        "k": 39,
        "n": 160,
-       "rate": 0.2437
+       "rate": 0.2437,
+       "wilson": [
+        0.1837,
+        0.3158
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 109,
        "n": 200,
-       "rate": 0.545
+       "rate": 0.545,
+       "wilson": [
+        0.4758,
+        0.6125
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 13,
        "n": 200,
-       "rate": 0.065
+       "rate": 0.065,
+       "wilson": [
+        0.0384,
+        0.108
+       ]
       }
      }
     }
@@ -2222,41 +3440,69 @@
       "coherence": {
        "k": 150,
        "n": 160,
-       "rate": 0.9375
+       "rate": 0.9375,
+       "wilson": [
+        0.8888,
+        0.9657
+       ]
       },
       "em": {
        "k": 11,
        "n": 160,
-       "rate": 0.0688
+       "rate": 0.0688,
+       "wilson": [
+        0.0388,
+        0.1189
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 191,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0197
+       ]
       },
       "success": {
        "k": 109,
        "n": 191,
-       "rate": 0.5707
+       "rate": 0.5707,
+       "wilson": [
+        0.4998,
+        0.6388
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 19,
        "n": 196,
-       "rate": 0.0969
+       "rate": 0.0969,
+       "wilson": [
+        0.0629,
+        0.1464
+       ]
       }
      }
     },
@@ -2265,41 +3511,69 @@
       "coherence": {
        "k": 150,
        "n": 160,
-       "rate": 0.9375
+       "rate": 0.9375,
+       "wilson": [
+        0.8888,
+        0.9657
+       ]
       },
       "em": {
        "k": 16,
        "n": 160,
-       "rate": 0.1
+       "rate": 0.1,
+       "wilson": [
+        0.0625,
+        0.1563
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 112,
        "n": 200,
-       "rate": 0.56
+       "rate": 0.56,
+       "wilson": [
+        0.4907,
+        0.627
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 15,
        "n": 200,
-       "rate": 0.075
+       "rate": 0.075,
+       "wilson": [
+        0.046,
+        0.12
+       ]
       }
      }
     }
@@ -2310,41 +3584,69 @@
       "coherence": {
        "k": 153,
        "n": 160,
-       "rate": 0.9563
+       "rate": 0.9563,
+       "wilson": [
+        0.9125,
+        0.9786
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 108,
        "n": 194,
-       "rate": 0.5567
+       "rate": 0.5567,
+       "wilson": [
+        0.4864,
+        0.6248
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 198,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.019
+       ]
       },
       "success": {
        "k": 55,
        "n": 198,
-       "rate": 0.2778
+       "rate": 0.2778,
+       "wilson": [
+        0.2201,
+        0.3439
+       ]
       }
      }
     },
@@ -2353,41 +3655,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 125,
        "n": 200,
-       "rate": 0.625
+       "rate": 0.625,
+       "wilson": [
+        0.5561,
+        0.6891
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 46,
        "n": 200,
-       "rate": 0.23
+       "rate": 0.23,
+       "wilson": [
+        0.1771,
+        0.2931
+       ]
       }
      }
     }
@@ -2398,41 +3728,69 @@
       "coherence": {
        "k": 139,
        "n": 160,
-       "rate": 0.8688
+       "rate": 0.8688,
+       "wilson": [
+        0.8077,
+        0.9125
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 1,
        "n": 194,
-       "rate": 0.0052
+       "rate": 0.0052,
+       "wilson": [
+        0.0009,
+        0.0286
+       ]
       },
       "success": {
        "k": 83,
        "n": 194,
-       "rate": 0.4278
+       "rate": 0.4278,
+       "wilson": [
+        0.3603,
+        0.4982
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 55,
        "n": 194,
-       "rate": 0.2835
+       "rate": 0.2835,
+       "wilson": [
+        0.2248,
+        0.3507
+       ]
       }
      }
     },
@@ -2441,41 +3799,69 @@
       "coherence": {
        "k": 134,
        "n": 160,
-       "rate": 0.8375
+       "rate": 0.8375,
+       "wilson": [
+        0.7725,
+        0.8866
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 1,
        "n": 200,
-       "rate": 0.005
+       "rate": 0.005,
+       "wilson": [
+        0.0009,
+        0.0278
+       ]
       },
       "success": {
        "k": 91,
        "n": 200,
-       "rate": 0.455
+       "rate": 0.455,
+       "wilson": [
+        0.3875,
+        0.5242
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 45,
        "n": 200,
-       "rate": 0.225
+       "rate": 0.225,
+       "wilson": [
+        0.1726,
+        0.2877
+       ]
       }
      }
     }
@@ -2486,41 +3872,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 198,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.019
+       ]
       },
       "success": {
        "k": 145,
        "n": 198,
-       "rate": 0.7323
+       "rate": 0.7323,
+       "wilson": [
+        0.6667,
+        0.7891
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 177,
        "n": 195,
-       "rate": 0.9077
+       "rate": 0.9077,
+       "wilson": [
+        0.8588,
+        0.9408
+       ]
       }
      }
     },
@@ -2529,41 +3943,69 @@
       "coherence": {
        "k": 155,
        "n": 160,
-       "rate": 0.9688
+       "rate": 0.9688,
+       "wilson": [
+        0.9289,
+        0.9866
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 160,
        "n": 200,
-       "rate": 0.8
+       "rate": 0.8,
+       "wilson": [
+        0.7391,
+        0.8495
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 155,
        "n": 200,
-       "rate": 0.775
+       "rate": 0.775,
+       "wilson": [
+        0.7123,
+        0.8274
+       ]
       }
      }
     }
@@ -2574,41 +4016,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 147,
        "n": 195,
-       "rate": 0.7538
+       "rate": 0.7538,
+       "wilson": [
+        0.6889,
+        0.809
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 193,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0195
+       ]
       },
       "success": {
        "k": 171,
        "n": 193,
-       "rate": 0.886
+       "rate": 0.886,
+       "wilson": [
+        0.8334,
+        0.9235
+       ]
       }
      }
     },
@@ -2617,41 +4087,69 @@
       "coherence": {
        "k": 147,
        "n": 160,
-       "rate": 0.9187
+       "rate": 0.9187,
+       "wilson": [
+        0.866,
+        0.9519
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 156,
        "n": 200,
-       "rate": 0.78
+       "rate": 0.78,
+       "wilson": [
+        0.7176,
+        0.8318
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 164,
        "n": 200,
-       "rate": 0.82
+       "rate": 0.82,
+       "wilson": [
+        0.7609,
+        0.8671
+       ]
       }
      }
     }
@@ -2662,41 +4160,69 @@
       "coherence": {
        "k": 154,
        "n": 160,
-       "rate": 0.9625
+       "rate": 0.9625,
+       "wilson": [
+        0.9206,
+        0.9827
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 192,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0196
+       ]
       },
       "success": {
        "k": 139,
        "n": 192,
-       "rate": 0.724
+       "rate": 0.724,
+       "wilson": [
+        0.6568,
+        0.7823
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 172,
        "n": 194,
-       "rate": 0.8866
+       "rate": 0.8866,
+       "wilson": [
+        0.8343,
+        0.9239
+       ]
       }
      }
     },
@@ -2705,41 +4231,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 152,
        "n": 200,
-       "rate": 0.76
+       "rate": 0.76,
+       "wilson": [
+        0.6963,
+        0.8139
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 163,
        "n": 200,
-       "rate": 0.815
+       "rate": 0.815,
+       "wilson": [
+        0.7554,
+        0.8627
+       ]
       }
      }
     }
@@ -2750,41 +4304,69 @@
       "coherence": {
        "k": 154,
        "n": 160,
-       "rate": 0.9625
+       "rate": 0.9625,
+       "wilson": [
+        0.9206,
+        0.9827
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 193,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0195
+       ]
       },
       "success": {
        "k": 129,
        "n": 193,
-       "rate": 0.6684
+       "rate": 0.6684,
+       "wilson": [
+        0.5993,
+        0.731
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 155,
        "n": 195,
-       "rate": 0.7949
+       "rate": 0.7949,
+       "wilson": [
+        0.7328,
+        0.8456
+       ]
       }
      }
     },
@@ -2793,41 +4375,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 150,
        "n": 200,
-       "rate": 0.75
+       "rate": 0.75,
+       "wilson": [
+        0.6857,
+        0.8049
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 148,
        "n": 200,
-       "rate": 0.74
+       "rate": 0.74,
+       "wilson": [
+        0.6751,
+        0.7959
+       ]
       }
      }
     }
@@ -2838,41 +4448,69 @@
       "coherence": {
        "k": 150,
        "n": 160,
-       "rate": 0.9375
+       "rate": 0.9375,
+       "wilson": [
+        0.8888,
+        0.9657
+       ]
       },
       "em": {
        "k": 3,
        "n": 160,
-       "rate": 0.0187
+       "rate": 0.0187,
+       "wilson": [
+        0.0064,
+        0.0537
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 115,
        "n": 194,
-       "rate": 0.5928
+       "rate": 0.5928,
+       "wilson": [
+        0.5225,
+        0.6595
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 189,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0199
+       ]
       },
       "success": {
        "k": 82,
        "n": 189,
-       "rate": 0.4339
+       "rate": 0.4339,
+       "wilson": [
+        0.3652,
+        0.5051
+       ]
       }
      }
     },
@@ -2881,41 +4519,69 @@
       "coherence": {
        "k": 134,
        "n": 160,
-       "rate": 0.8375
+       "rate": 0.8375,
+       "wilson": [
+        0.7725,
+        0.8866
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 116,
        "n": 200,
-       "rate": 0.58
+       "rate": 0.58,
+       "wilson": [
+        0.5107,
+        0.6463
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 60,
        "n": 200,
-       "rate": 0.3
+       "rate": 0.3,
+       "wilson": [
+        0.2407,
+        0.3668
+       ]
       }
      }
     }
@@ -2926,41 +4592,69 @@
       "coherence": {
        "k": 152,
        "n": 160,
-       "rate": 0.95
+       "rate": 0.95,
+       "wilson": [
+        0.9044,
+        0.9744
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 1,
        "n": 195,
-       "rate": 0.0051
+       "rate": 0.0051,
+       "wilson": [
+        0.0009,
+        0.0285
+       ]
       },
       "success": {
        "k": 145,
        "n": 195,
-       "rate": 0.7436
+       "rate": 0.7436,
+       "wilson": [
+        0.678,
+        0.7998
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 199,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0189
+       ]
       },
       "success": {
        "k": 172,
        "n": 199,
-       "rate": 0.8643
+       "rate": 0.8643,
+       "wilson": [
+        0.8098,
+        0.9051
+       ]
       }
      }
     },
@@ -2969,41 +4663,69 @@
       "coherence": {
        "k": 153,
        "n": 160,
-       "rate": 0.9563
+       "rate": 0.9563,
+       "wilson": [
+        0.9125,
+        0.9786
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 1,
        "n": 200,
-       "rate": 0.005
+       "rate": 0.005,
+       "wilson": [
+        0.0009,
+        0.0278
+       ]
       },
       "success": {
        "k": 162,
        "n": 200,
-       "rate": 0.81
+       "rate": 0.81,
+       "wilson": [
+        0.75,
+        0.8583
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 155,
        "n": 200,
-       "rate": 0.775
+       "rate": 0.775,
+       "wilson": [
+        0.7123,
+        0.8274
+       ]
       }
      }
     }
@@ -3014,41 +4736,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 0,
        "n": 159,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0236
+       ]
       },
       "refusal": {
        "k": 1,
        "n": 159,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0348
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 198,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.019
+       ]
       },
       "success": {
        "k": 152,
        "n": 198,
-       "rate": 0.7677
+       "rate": 0.7677,
+       "wilson": [
+        0.7041,
+        0.8211
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 171,
        "n": 195,
-       "rate": 0.8769
+       "rate": 0.8769,
+       "wilson": [
+        0.8234,
+        0.9159
+       ]
       }
      }
     },
@@ -3057,41 +4807,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 161,
        "n": 200,
-       "rate": 0.805
+       "rate": 0.805,
+       "wilson": [
+        0.7446,
+        0.8539
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 154,
        "n": 200,
-       "rate": 0.77
+       "rate": 0.77,
+       "wilson": [
+        0.7069,
+        0.8229
+       ]
       }
      }
     }
@@ -3102,41 +4880,69 @@
       "coherence": {
        "k": 155,
        "n": 160,
-       "rate": 0.9688
+       "rate": 0.9688,
+       "wilson": [
+        0.9289,
+        0.9866
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 146,
        "n": 195,
-       "rate": 0.7487
+       "rate": 0.7487,
+       "wilson": [
+        0.6834,
+        0.8044
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 195,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0193
+       ]
       },
       "success": {
        "k": 177,
        "n": 195,
-       "rate": 0.9077
+       "rate": 0.9077,
+       "wilson": [
+        0.8588,
+        0.9408
+       ]
       }
      }
     },
@@ -3145,41 +4951,69 @@
       "coherence": {
        "k": 156,
        "n": 160,
-       "rate": 0.975
+       "rate": 0.975,
+       "wilson": [
+        0.9375,
+        0.9902
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 157,
        "n": 200,
-       "rate": 0.785
+       "rate": 0.785,
+       "wilson": [
+        0.723,
+        0.8363
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 158,
        "n": 200,
-       "rate": 0.79
+       "rate": 0.79,
+       "wilson": [
+        0.7284,
+        0.8407
+       ]
       }
      }
     }
@@ -3190,41 +5024,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 196,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0192
+       ]
       },
       "success": {
        "k": 144,
        "n": 196,
-       "rate": 0.7347
+       "rate": 0.7347,
+       "wilson": [
+        0.6688,
+        0.7916
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 197,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0191
+       ]
       },
       "success": {
        "k": 169,
        "n": 197,
-       "rate": 0.8579
+       "rate": 0.8579,
+       "wilson": [
+        0.8022,
+        0.8998
+       ]
       }
      }
     },
@@ -3233,41 +5095,69 @@
       "coherence": {
        "k": 151,
        "n": 160,
-       "rate": 0.9437
+       "rate": 0.9437,
+       "wilson": [
+        0.8966,
+        0.9701
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 154,
        "n": 200,
-       "rate": 0.77
+       "rate": 0.77,
+       "wilson": [
+        0.7069,
+        0.8229
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 156,
        "n": 200,
-       "rate": 0.78
+       "rate": 0.78,
+       "wilson": [
+        0.7176,
+        0.8318
+       ]
       }
      }
     }
@@ -3278,41 +5168,69 @@
       "coherence": {
        "k": 150,
        "n": 160,
-       "rate": 0.9375
+       "rate": 0.9375,
+       "wilson": [
+        0.8888,
+        0.9657
+       ]
       },
       "em": {
        "k": 2,
        "n": 160,
-       "rate": 0.0125
+       "rate": 0.0125,
+       "wilson": [
+        0.0034,
+        0.0444
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 192,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0196
+       ]
       },
       "success": {
        "k": 135,
        "n": 192,
-       "rate": 0.7031
+       "rate": 0.7031,
+       "wilson": [
+        0.635,
+        0.7633
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 194,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0194
+       ]
       },
       "success": {
        "k": 145,
        "n": 194,
-       "rate": 0.7474
+       "rate": 0.7474,
+       "wilson": [
+        0.6819,
+        0.8034
+       ]
       }
      }
     },
@@ -3321,41 +5239,69 @@
       "coherence": {
        "k": 145,
        "n": 160,
-       "rate": 0.9062
+       "rate": 0.9062,
+       "wilson": [
+        0.8511,
+        0.9424
+       ]
       },
       "em": {
        "k": 1,
        "n": 160,
-       "rate": 0.0063
+       "rate": 0.0063,
+       "wilson": [
+        0.0011,
+        0.0345
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 144,
        "n": 200,
-       "rate": 0.72
+       "rate": 0.72,
+       "wilson": [
+        0.6541,
+        0.7776
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 133,
        "n": 200,
-       "rate": 0.665
+       "rate": 0.665,
+       "wilson": [
+        0.597,
+        0.7268
+       ]
       }
      }
     }
@@ -3366,41 +5312,69 @@
       "coherence": {
        "k": 133,
        "n": 160,
-       "rate": 0.8313
+       "rate": 0.8313,
+       "wilson": [
+        0.7656,
+        0.8814
+       ]
       },
       "em": {
        "k": 2,
        "n": 159,
-       "rate": 0.0126
+       "rate": 0.0126,
+       "wilson": [
+        0.0035,
+        0.0447
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 159,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0236
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 190,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0198
+       ]
       },
       "success": {
        "k": 86,
        "n": 190,
-       "rate": 0.4526
+       "rate": 0.4526,
+       "wilson": [
+        0.3835,
+        0.5236
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 186,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0202
+       ]
       },
       "success": {
        "k": 63,
        "n": 186,
-       "rate": 0.3387
+       "rate": 0.3387,
+       "wilson": [
+        0.2746,
+        0.4094
+       ]
       }
      }
     },
@@ -3409,41 +5383,69 @@
       "coherence": {
        "k": 129,
        "n": 160,
-       "rate": 0.8063
+       "rate": 0.8063,
+       "wilson": [
+        0.7381,
+        0.86
+       ]
       },
       "em": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       },
       "refusal": {
        "k": 0,
        "n": 160,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        -0.0,
+        0.0234
+       ]
       }
      },
      "ugen": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 97,
        "n": 200,
-       "rate": 0.485
+       "rate": 0.485,
+       "wilson": [
+        0.4167,
+        0.5539
+       ]
       }
      },
      "umed": {
       "refusal": {
        "k": 0,
        "n": 200,
-       "rate": 0.0
+       "rate": 0.0,
+       "wilson": [
+        0.0,
+        0.0188
+       ]
       },
       "success": {
        "k": 59,
        "n": 200,
-       "rate": 0.295
+       "rate": 0.295,
+       "wilson": [
+        0.2361,
+        0.3616
+       ]
       }
      }
     }

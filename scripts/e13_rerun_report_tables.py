@@ -16,10 +16,13 @@ Contents (all exploratory or descriptive unless noted):
   development battery, seed org_tan32_s1) per judge, with cluster-bootstrap intervals of the
   difference over the 8 development questions;
 - sweep: the development sweep per site, strength and condition (EM, coherence, utility success);
-- final_patch: every final-patch cell per judge (EM, coherence, refusal, utility success, Gemini's
-  unscored rows), and for each steered cell the cut in unobserved EM, the closure
-  C = [EM_no(0) - EM_no(a)] / [EM_no(0) - EM_ov(0)], the change in observed EM and the change in
-  utility success against the alpha-0 cells, with bootstrap intervals (luna);
+- final_patch: every final-patch cell per judge (EM, coherence, refusal, utility success, each with
+  k, n and a Wilson interval; Gemini's unscored rows), and for each steered cell, against the
+  alpha-0 cells (luna): the cut in unobserved EM, the closure
+  C = [EM_no(0) - EM_no(a)] / [EM_no(0) - EM_ov(0)] (its interval undefined if any resample's
+  denominator is nonpositive, prereg §4.3), the change in observed EM, and the screens (coherence
+  and refusal changes on EM questions, success and refusal changes on medical and general tasks),
+  each with a bootstrap interval clustered over questions or tasks;
 - organism_sensitivity: each judge's final-split EM by seed and condition; criterion (d) under
   each judge (coherence by condition, organism minus
   good-only), and luna's coherence on the organism's unobserved answers split by luna's own
@@ -66,9 +69,17 @@ def r4(x):
     return None if x is None or (isinstance(x, float) and np.isnan(x)) else round(float(x), 4)
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> list | None:
+    if not n:
+        return None
+    p, d = k / n, 1 + z * z / n
+    c, h = (p + z * z / (2 * n)) / d, z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return [r4(c - h), r4(c + h)]
+
+
 def rate_rec(df: pd.DataFrame, kind: str) -> dict:
     r, k, n = D.rate(df, kind)
-    return {"rate": r4(r), "k": k, "n": n}
+    return {"rate": r4(r), "k": k, "n": n, "wilson": wilson(k, n)}
 
 
 def per_q(df: pd.DataFrame, kind: str, qids: list[str]) -> np.ndarray:
@@ -172,23 +183,34 @@ def final_patch() -> dict:
         nn, oo = kn(f"noov|{sa}"), kn(f"ov|{sa}")
         bnn, boo = boot_rate(nn, idx), boot_rate(oo, idx)
         den = bn0 - bo0
+        n_bad = int((den <= 0).sum())
         with np.errstate(invalid="ignore", divide="ignore"):
-            c_b = np.where(den > 0, (bn0 - bnn) / den, np.nan)
+            c_b = (bn0 - bnn) / den
         rec = {
             "cut_noov_em": r4(point(n0) - point(nn)), "cut_noov_em_ci": ci(bn0 - bnn),
             "closure": r4((point(n0) - point(nn)) / (point(n0) - point(o0))),
-            "closure_ci": ci(c_b), "closure_nonpositive_den": int((den <= 0).sum()),
+            # prereg §4.3: any nonpositive-denominator resample makes C's interval undefined
+            "closure_ci": None if n_bad else ci(c_b),
+            "closure_nonpositive_den_fraction": r4(n_bad / N_BOOT),
             "ov_em_increase": r4(point(oo) - point(o0)), "ov_em_increase_ci": ci(boo - bo0),
         }
-        for cond in C.CONDS:
-            coh0, coh = kn(f"{cond}|none|a0", kind="coherence"), kn(f"{cond}|{sa}",
-                                                                    kind="coherence")
-            rec[f"coherence_change_{cond}"] = r4(point(coh) - point(coh0))
+
+        def change(a: np.ndarray, b: np.ndarray, ix: np.ndarray) -> tuple:
+            return r4(point(b) - point(a)), ci(boot_rate(b, ix) - boot_rate(a, ix))
+
+        for cond in C.CONDS:  # screens: changes against alpha 0, clustered over questions/tasks
+            for kind in ("coherence", "refusal"):
+                p_, c_ = change(kn(f"{cond}|none|a0", kind=kind), kn(f"{cond}|{sa}", kind=kind),
+                                idx)
+                rec[f"{kind}_change_{cond}"], rec[f"{kind}_change_{cond}_ci"] = p_, c_
             for task in ("umed", "ugen"):
                 tq = sorted(L[(L["task_type"] == task)]["qid"].unique())
-                s0 = kn(f"{cond}|none|a0", task, "success", tq)
-                s1 = kn(f"{cond}|{sa}", task, "success", tq)
-                rec[f"success_change_{cond}_{task}"] = r4(point(s1) - point(s0))
+                tix = boot_idx(len(tq))
+                for kind in ("success", "refusal"):
+                    p_, c_ = change(kn(f"{cond}|none|a0", task, kind, tq),
+                                    kn(f"{cond}|{sa}", task, kind, tq), tix)
+                    rec[f"{kind}_change_{cond}_{task}"] = p_
+                    rec[f"{kind}_change_{cond}_{task}_ci"] = c_
         effects[sa] = rec
     return {"questions": f"{len(qids)} broad final questions (ext48), held-out families",
             "bootstrap": {"n_boot": N_BOOT, "seed": BOOT_SEED, "clusters": "question"},
