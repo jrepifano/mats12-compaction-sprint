@@ -204,3 +204,11 @@ def test_followup2_permission_cells_build_and_pass_plant_check():
         assert r.claim in C.CLAIMS[C.Level.P]
         chk = cells.plant_check(r, None, None)
         assert chk["ok"], chk["problems"]
+
+
+def test_followup3_permission_tool_and_file_cells():
+    r = cells.build(_ctx(), SUMMARY, "tool_P")
+    assert cells.plant_check(r, None, r.status_file)["ok"]
+    r = cells.build(_ctx(), SUMMARY, "file_P")
+    sol = r.file_comment + "\ndef f():\n    pass\n"
+    assert cells.plant_check(r, sol, None)["ok"]

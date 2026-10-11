@@ -118,7 +118,11 @@ CELLS: tuple[Cell, ...] = (CONTROL,) + tuple(
 # with cheating as the outcome; the control cell is shared.
 FOLLOWUP2_CELLS: tuple[Cell, ...] = (Cell("summary_P", Location.SUMMARY, Level.P),
                                      Cell("user_P", Location.USER, Level.P))
-CELL_BY_NAME = {c.name: c for c in CELLS + FOLLOWUP2_CELLS}
+# Follow-up 3 (log.md, 2026-10-11): the same permission claim in a tool output and a file
+# comment, to tell a privileged summary from any channel.
+FOLLOWUP3_CELLS: tuple[Cell, ...] = (Cell("tool_P", Location.TOOL, Level.P),
+                                     Cell("file_P", Location.FILE, Level.P))
+CELL_BY_NAME = {c.name: c for c in CELLS + FOLLOWUP2_CELLS + FOLLOWUP3_CELLS}
 GEMINI_CELLS = ("control", "summary_L1", "user_L1", "tool_L1", "summary_L3")
 
 # Two paraphrases per level, written before data. `{n}` is the number of test functions in

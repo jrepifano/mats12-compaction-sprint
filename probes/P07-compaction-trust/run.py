@@ -147,7 +147,11 @@ def run_episodes(a) -> int:
         chunk = specs[i: i + a.chunk]
         spend.check_total(per_ep * len(chunk), "judge", exp=C.EXP)
         t0 = time.time()
-        logs = agent.run_batch(chunk, model, C.LOGS_DIR / model.slug, max_samples=a.max_samples)
+        # one log directory per process and chunk: run_batch takes every new .eval in its
+        # directory as its own, so concurrent runs must not share one (2026-10-11: two runs
+        # sharing glm-5.3-flash/ each extracted and charged the other's episodes)
+        log_dir = C.LOGS_DIR / model.slug / f"{os.getpid()}-{i // a.chunk}"
+        logs = agent.run_batch(chunk, model, log_dir, max_samples=a.max_samples)
         arts = [art for p in logs for art in agent.extract(p)]
         usd, unknown = settle(arts)
         spend.record("judge", f"openrouter:{model.model_id}", len(arts), round(usd, 6),

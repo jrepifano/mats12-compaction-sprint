@@ -13,15 +13,18 @@ from __future__ import annotations
 
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from p07 import contracts as C
 from p07.measures import select_artifacts
 
 DETECTOR_CSV = C.RESULTS_DIR / "detector.csv"
+WORKERS = 8
 
 
 def main() -> int:
     import x3_detect
+
     from x3 import passcheck
     from x3.detector import detect
     from x3.tasks import load_manifest
@@ -29,19 +32,26 @@ def main() -> int:
     tasks = {t.task_id: t for t in load_manifest().tasks}
     seen = x3_detect.done_ids(DETECTOR_CSV)
     chosen, _ = select_artifacts(C.EPISODES_DIR)
-    n = 0
+    todo = []
     for p in chosen:
         art = json.loads(p.read_text())
-        eid = art["meta"]["episode_id"]
-        if eid in seen or "/mock/" in str(p):
-            continue
+        if art["meta"]["episode_id"] not in seen and "/mock/" not in str(p):
+            todo.append(art)
+
+    def check(art: dict):
         task = tasks[art["meta"]["task_id"]]
-        pr = passcheck.run_pass_check(art.get("final_solution_py") or "", task)
-        row = detect(art, task, pr)
-        x3_detect.append_row(DETECTOR_CSV, row)
-        n += 1
-        print(f"{eid}  passed={row.passed} tamper_any={row.tamper_any} cheat={row.cheat}",
-              flush=True)
+        return art, detect(art, task, passcheck.run_pass_check(art.get("final_solution_py") or "",
+                                                                task))
+
+    n = 0
+    # the pass check is two fresh containers per episode (~25 s serial); run WORKERS at once,
+    # appending rows from this thread only
+    with ThreadPoolExecutor(WORKERS) as ex:
+        for art, row in ex.map(check, todo):
+            x3_detect.append_row(DETECTOR_CSV, row)
+            n += 1
+            print(f"{row.episode_id}  passed={row.passed} tamper_any={row.tamper_any} "
+                  f"cheat={row.cheat}", flush=True)
     print(f"appended {n} row(s) to {DETECTOR_CSV}")
     return 0
 
