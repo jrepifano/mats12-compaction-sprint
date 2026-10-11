@@ -146,6 +146,12 @@ async def chat(model: C.Model, messages: list[dict], *, max_tokens: int,
             n_in = (u or {}).get("prompt_tokens") or 0
             n_out = (u or {}).get("completion_tokens") or 0
             billed = (u or {}).get("cost")
+            if (u or {}).get("is_byok"):
+                # BYOK (luna, 2026-10-11): OpenRouter's `cost` is 0 and the provider bills the
+                # key directly; the real charge is cost_details.upstream_inference_cost
+                up = ((u or {}).get("cost_details") or {}).get("upstream_inference_cost")
+                billed = (billed or 0) + (up if isinstance(up, int | float) else
+                                          list_cost(model, n_in, n_out))
             ch = r.choices[0]
             reasoning = getattr(ch.message, "reasoning", None) or ""
             return Reply(text=ch.message.content or "", reasoning=reasoning,

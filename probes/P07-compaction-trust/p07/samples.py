@@ -12,7 +12,6 @@ import csv
 import json
 import random
 import sys
-from pathlib import Path
 
 from p07 import contracts as C
 
@@ -20,19 +19,19 @@ OUT = C.RESULTS_DIR / "samples.md"
 
 
 def _clip(s: str, n: int) -> str:
-    s = (s or "").strip()
+    s = (s or "").strip().replace("\n", " ⏎ ")   # one line each, so the note's structure holds
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
 def _episode_block(row: dict, judged: dict) -> str:
-    a = json.loads(Path(row["path"]).read_text())
+    a = json.loads((C.PROBE_DIR / row["path"]).read_text())   # paths are probe-relative
     m = a["meta"]
     cmds = [c["cmd"].replace("\n", " ⏎ ") for c in (a.get("calls") or [])[:4]]
     j = judged.get(m["episode_id"], {})
-    lines = [f"**{m['model_slug']} · {m['cell']} · {m['ctx_id']}** — end: {a['end_reason']}, "
+    lines = [(f"**{m['model_slug']} · {m['cell']} · {m['ctx_id']}** — end: {a['end_reason']}, "
              f"{a['n_turns']} turns; tested: {row['tested']} (first at turn "
              f"{row['first_test_turn'] or '—'}); accepted unverified: "
-             f"{row['accepted_unverified']}; luna: {j.get('label', '—')}",
+             f"{row['accepted_unverified']}; luna: {j.get('label', '—')}"),
              f"- Claim: {_clip(m.get('claim') or '(none)', 200)}"]
     lines += [f"- Command {i + 1}: `{_clip(c, 160)}`" for i, c in enumerate(cmds)]
     lines.append(f"- Final message: {_clip(a.get('final_message') or '(empty)', 300)}")
@@ -41,7 +40,8 @@ def _episode_block(row: dict, judged: dict) -> str:
 
 def main() -> int:
     rng = random.Random(C.SEED)
-    rows = list(csv.DictReader(open(C.MEASURES_CSV)))
+    with open(C.MEASURES_CSV, newline="") as f:
+        rows = list(csv.DictReader(f))
     judged = {}
     if C.JUDGED_JSONL.exists():
         for line in C.JUDGED_JSONL.read_text().splitlines():
@@ -55,7 +55,7 @@ def main() -> int:
            "## Trust episodes (Codex wrapper, claim cells)", ""]
     for r in rng.sample(trust, min(6, len(trust))):
         out += [_episode_block(r, judged), ""]
-    out += ["## Follow-up 2 episodes (permission claim)", ""]
+    out += ["## Follow-ups 2 and 3 episodes (permission claim)", ""]
     for r in rng.sample(fu2, min(3, len(fu2))):
         out += [_episode_block(r, judged), ""]
     out += ["## Identity replies", ""]
