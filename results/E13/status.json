@@ -11,10 +11,16 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "teardown",
+  "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
-  "human": {},
+  "human": {
+    "labels": {
+      "action": "publish the full labelling page; score with scripts/e13_label_score.py full --labels <json> --recipe tan32",
+      "page": "results/E13/run2/labels/full/page.html",
+      "since": "2026-10-11T00:34:50Z"
+    }
+  },
   "jobs": {
     "closing": {
       "log": "logs/e13/run_20261011T002856Z.log",
@@ -183,6 +189,7 @@
       ]
     }
   },
+  "label_kind": "full",
   "live_sites": [
     "input",
     "output"
@@ -301,6 +308,10 @@
       "reused_from_run1": true,
       "utc": "2026-10-09T05:26:02Z"
     },
+    "label_pass": {
+      "kind": "full",
+      "utc": "2026-10-11T00:34:50Z"
+    },
     "launch": {
       "reservation": "22df975605bc45b3abedab4090624aed",
       "usd": 18.0,
@@ -374,6 +385,9 @@
         "sweep__org_tan32_s1__output"
       ],
       "utc": "2026-10-11T00:28:52Z"
+    },
+    "teardown": {
+      "utc": "2026-10-11T00:34:48Z"
     },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
