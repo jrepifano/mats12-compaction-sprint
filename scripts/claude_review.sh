@@ -8,11 +8,13 @@
 # Runs from the repo root the script lives in. The review text goes to <output_md>; the CLI's JSON
 # result (usage and cost included) and stderr go to <output_md>.log.
 #
-# Read-only: the only tools are Read, Grep, Glob and Bash restricted to read-only git and listing
-# commands, in `dontAsk` permission mode, so anything else is denied rather than prompted. Unlike
-# codex_review.sh's read-only sandbox, the reviewer cannot run Python (e.g. to recompute a
-# table): give it the numbers' source files to read instead. Files outside the repo root are
-# denied too. No MCP servers, no session saved.
+# Read-only: the only tools are Read, Grep and Glob, in `dontAsk` permission mode, so anything
+# else is denied rather than prompted. There is no shell at all: an allowlist of "read-only" git
+# commands is not read-only (`git diff --output=<file>` writes; review r1 finding 3). So the
+# reviewer can't run git or Python: set CLAUDE_REVIEW_DIFF=<range> (e.g. a87bd51..HEAD) and the
+# script saves `git log --stat` and `git diff` of that range to <output_md>.diff (gitignored) and
+# tells the reviewer to read it; give it the source files of any numbers to recompute by reading.
+# Files outside the repo root are denied too. No MCP servers, no session saved.
 # Timeout and sleep handling follow codex_review.sh: a watchdog kills the CLI and its children at
 # the limit, polling the wall clock; `caffeinate -is` keeps the laptop awake (clamshell sleep
 # still pauses everything). bash 3.2 compatible (macOS).
@@ -25,15 +27,20 @@ limit="${4:-1200}"
 model="${CLAUDE_REVIEW_MODEL:-fable}"
 mkdir -p "$(dirname "$out")"
 raw="$out.json.tmp"
+full="$out.prompt.tmp"
+cp "$prompt" "$full" || exit 1
+if [ -n "${CLAUDE_REVIEW_DIFF:-}" ]; then
+  { git log --stat "$CLAUDE_REVIEW_DIFF" && echo && git diff "$CLAUDE_REVIEW_DIFF"; } \
+    > "$out.diff" || { echo "claude_review: git diff $CLAUDE_REVIEW_DIFF failed" >&2; exit 1; }
+  printf '\n\n(Added by scripts/claude_review.sh) You have no shell. `git log --stat` and `git diff` of %s are saved in %s; read them with the Read tool.\n' \
+    "$CLAUDE_REVIEW_DIFF" "$out.diff" >> "$full"
+fi
 
-# The prompt goes on stdin: --allowedTools takes a variable number of values.
+# The prompt goes on stdin.
 caffeinate -is claude -p --model "$model" --effort "$effort" \
   --output-format json --no-session-persistence --strict-mcp-config \
-  --permission-mode dontAsk --tools "Read,Grep,Glob,Bash" \
-  --allowedTools "Bash(git diff:*)" "Bash(git log:*)" "Bash(git show:*)" "Bash(git status:*)" \
-  "Bash(git ls-files:*)" "Bash(git grep:*)" "Bash(git rev-parse:*)" "Bash(git merge-base:*)" \
-  "Bash(ls:*)" "Bash(wc:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(shasum:*)" \
-  < "$prompt" > "$raw" 2> "$out.log" &
+  --permission-mode dontAsk --tools "Read,Grep,Glob" \
+  < "$full" > "$raw" 2> "$out.log" &
 pid=$!
 start=$(date +%s)
 (
@@ -55,8 +62,10 @@ rc=$?
 kill "$watchdog" 2>/dev/null
 wait "$watchdog" 2>/dev/null
 
-# Split the JSON result: the review text to <output_md>, the whole record to the log.
-python3 -I - "$raw" "$out" >> "$out.log" 2>&1 <<'PY'
+# Split the JSON result: the review text to <output_md>, the whole record to the log. The output
+# file is replaced only by a valid, non-empty review (review r1 finding 5), so a failed run never
+# leaves an older review looking like this run's.
+python3 -I - "$raw" "$out.new" >> "$out.log" 2>&1 <<'PY'
 import json, sys
 raw, out = sys.argv[1], sys.argv[2]
 text = open(raw, encoding="utf-8").read()
@@ -65,16 +74,23 @@ try:
 except json.JSONDecodeError:
     print("claude_review: output was not JSON; raw output follows")
     print(text)
-    sys.exit(0)
-if isinstance(rec, dict) and isinstance(rec.get("result"), str) and not rec.get("is_error"):
-    with open(out, "w", encoding="utf-8") as f:
-        f.write(rec["result"].rstrip("\n") + "\n")
+    sys.exit(1)
 print(json.dumps(rec, indent=1))
+result = rec.get("result") if isinstance(rec, dict) else None
+if not isinstance(result, str) or not result.strip() or rec.get("is_error"):
+    print("claude_review: no valid review text in the result")
+    sys.exit(1)
+with open(out, "w", encoding="utf-8") as f:
+    f.write(result.rstrip("\n") + "\n")
 PY
-rm -f "$raw"
-if [ "$rc" -eq 0 ] && [ ! -s "$out" ]; then
-  echo "claude_review: no review text written; see $out.log" >&2
-  rc=1
+prc=$?
+rm -f "$raw" "$full"
+if [ "$rc" -eq 0 ] && [ "$prc" -eq 0 ]; then
+  mv "$out.new" "$out"
+else
+  rm -f "$out.new"
+  echo "claude_review: no review written (claude exit $rc, parse exit $prc); see $out.log" >&2
+  [ "$rc" -eq 0 ] && rc=1
 fi
 echo "exit=$rc"
 exit "$rc"

@@ -14,7 +14,7 @@ Both tools read this one file. Codex reads `AGENTS.md` natively, and Claude Code
   - for reviews.
   
   Codex agents may spawn sub-agents for this work as Claude agents do.
-- **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Fable 5.1, read-only tools). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
+- **Cross-review: the reviewer comes from the other model family.** A Claude session reviews with `scripts/codex_review.sh` (gpt-6-astra). A Codex session reviews with `scripts/claude_review.sh` (Claude Fable 5.1, with Read, Grep and Glob only and no shell, so set `CLAUDE_REVIEW_DIFF=<base>..HEAD` and the script saves the diff for it to read). Both scripts take the same arguments. Where this file says "gpt-6-astra review", a Codex session runs `claude_review.sh` instead.
 - **Commit attribution:** end commit messages and PR bodies with the co-author line your own tool's attribution guidance gives. If it gives none, name the tool and model, e.g. `Co-Authored-By: Codex CLI (gpt-6-astra)`.
 - **Skills** live in `.agents/skills/<name>/SKILL.md`, which Codex discovers. `.claude/skills/<name>/SKILL.md` is a symlink to the same file, for Claude Code. Edit the file under `.agents/`.
 
@@ -67,7 +67,7 @@ More documents may be added; when they are, read them and update the proposals d
 - **Status:** each probe's `probes/P<NN>-<slug>/status.json` holds its id, slug, question, `cap_usd`, `status` (Planned / Running / Merged / Killed), plan path, `pr`, `spend_usd`, `owner` (the agent's name) and `updated_at`.
   - The probe's agent edits its own status.json at every status change, commits it on its branch, and publishes it to main with `probe_claim.py publish`, so main's INDEX.md stays current.
   - **Never edit `probes/INDEX.md` by hand.** It is generated: `uv run python scripts/probe_index.py` rewrites it, and `--check` verifies it. Regenerate it after every merge, and commit the result.
-  - A branch created before 2026-10-11 may have hand-edited INDEX.md. After it merges main, `probe_index.py --prefer-index` copies its row into status.json.
+  - A branch created before 2026-10-11 may have hand-edited INDEX.md. When it merges main, keep the branch's INDEX.md on a conflict, then `probe_index.py --prefer-index P<NN>` copies that probe's row into its status.json (the finish skill has the steps).
   - **Live view of all probes:** `uv run python scripts/probe_status.py` (or `--json`). Read-only. It shows, per probe: status, herdr agent and its state, worktree and branch, the last line of `log.md`, spend against cap across every checkout's ledger, and pod state.
 - **Judges:** prefer judges already validated in this repo; one validated judge is enough for a probe. An unvalidated judge is allowed when the claim says so, and validating it becomes a follow-up if the result matters.
 - **Literature:** one sub-agent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.

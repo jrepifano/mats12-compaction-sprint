@@ -49,6 +49,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from pathlib import Path, PurePosixPath
 
 from emx import probes as P
@@ -125,12 +126,32 @@ def push(repo: Path, remote: str, sha: str, branch: str) -> None:
     if proc.returncode == 0:
         return
     out = proc.stdout + proc.stderr
-    lost_race = "[rejected]" in out or (
-        "[remote rejected]" in out and ("lock" in out or "failed to update ref" in out)
-    )
-    if lost_race:
+    if lost_race(proc.stdout):
         raise PushRejected(out.strip())
     raise GitError(["push", remote, f"{sha}:refs/heads/{branch}"], proc)
+
+
+# `git push --porcelain` writes one line per ref: `<flag>\t<src>:<dst>\t<summary> (<reason>)`, with
+# flag `!` for a rejected ref. Only a ref that moved under us is a lost race; a hook or policy
+# decline (`[remote rejected] (pre-receive hook declined)`) is fatal.
+RACE_REJECTED = {"non-fast-forward", "fetch first", "stale info"}
+RACE_REMOTE = re.compile(r"cannot lock ref|failed to update ref|incorrect old value|but expected")
+PORCELAIN_RE = re.compile(r"^!\t[^\t]*\t(\[[a-z ]+\])(?: \((.*)\))?$")
+
+
+def lost_race(stdout: str) -> bool:
+    """True iff every rejected ref in the porcelain output was rejected because the ref moved."""
+    rejected = [m for m in map(PORCELAIN_RE.match, stdout.splitlines()) if m]
+    if not rejected:
+        return False
+    for m in rejected:
+        summary, reason = m.group(1), m.group(2) or ""
+        if summary == "[rejected]" and reason in RACE_REJECTED:
+            continue
+        if summary == "[remote rejected]" and RACE_REMOTE.search(reason):
+            continue
+        return False
+    return True
 
 
 # --- reading the fetched tree ---------------------------------------------------------------
@@ -256,12 +277,18 @@ def claim(repo: Path, a) -> int:
         print(f"error: slug {a.slug!r} is not [a-z0-9][a-z0-9-]*", file=sys.stderr)
         return 1
 
+    # A token unique to this invocation goes into the commit message, so two identical claims
+    # made in the same second never build the same commit (the second push would then report
+    # "up to date" and both would think they own the id; review r1 finding 1).
+    token = uuid.uuid4().hex
+
     def attempt(tip: str):
         pid = P.next_free_id(used_ids(repo, tip))
         s = P.new_status(pid, a.slug, a.question, a.cap, a.owner)
         files = {f"probes/{P.dir_name(s)}/status.json": P.dumps_status(s).encode()}
         files.update(index_files(repo, tip, [s]))
-        msg = message(f"Probe {pid} claimed: {a.slug}", s["question"], a.trailer)
+        body = f"{s['question']}\n\nClaim-Token: {token}"
+        msg = message(f"Probe {pid} claimed: {a.slug}", body, a.trailer)
         return build_commit(repo, tip, {p: ("100644", c) for p, c in files.items()}, msg), s
 
     sha, s, _ = push_loop(repo, a.remote, a.branch, a.max_tries, attempt)

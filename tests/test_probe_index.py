@@ -226,6 +226,23 @@ def test_cli_differing_row_needs_a_side(legacy, capsys):
     assert run(legacy, "--check") == 0
 
 
+def test_cli_prefer_index_ids_take_only_named_rows(legacy):
+    """A stale branch table: its own P01 row is newer, its P02 row is older than main's status."""
+    assert run(legacy) == 0
+    p02 = legacy / "P02-evalaware-steering-check" / "status.json"
+    s02 = P.load_status(p02)
+    s02.update(status="Merged", pr=40, spend_usd=3.5)  # main's newer status for P02
+    P.write_status(p02, s02)
+    idx = legacy / "INDEX.md"
+    old_row = legacy_rows(idx.read_text())["P01"]
+    idx.write_text(idx.read_text().replace(old_row, old_row.replace("| Running |", "| Merged |")))
+    assert run(legacy, "--prefer-index", "P01") == 0
+    assert P.load_status(legacy / "P01-compaction-fidelity" / "status.json")["status"] == "Merged"
+    assert P.load_status(p02)["status"] == "Merged"  # not overwritten by the stale row
+    assert "| Merged | [plan](P02" in idx.read_text()
+    assert run(legacy, "--check") == 0
+
+
 def test_cli_prefer_status_overwrites_row(legacy):
     assert run(legacy) == 0
     idx = legacy / "INDEX.md"
@@ -267,4 +284,19 @@ def test_status_with_note_is_kept_verbatim(legacy):
     s = P.load_status(legacy / "P02-evalaware-steering-check" / "status.json")
     assert s["status"] == "Planned (held)"
     assert "| $40 | Planned (held) |" in idx.read_text()
+    assert run(legacy, "--check") == 0
+
+
+def test_cli_status_edit_regenerates_without_a_flag(legacy, capsys):
+    """Review r1 finding 4: the normal path (edit status.json, regenerate) needs no flag."""
+    assert run(legacy) == 0
+    f = legacy / "P01-compaction-fidelity" / "status.json"
+    s = P.load_status(f)
+    s.update(status="Merged", pr=31, spend_usd=9.5)
+    P.write_status(f, s)
+    capsys.readouterr()
+    assert run(legacy) == 0
+    assert "P01: row regenerated from status.json" in capsys.readouterr().out
+    row = legacy_rows((legacy / "INDEX.md").read_text())["P01"]
+    assert "| Merged |" in row and "[#31]" in row and "$9.50" in row
     assert run(legacy, "--check") == 0

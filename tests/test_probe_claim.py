@@ -239,3 +239,44 @@ def test_publish_invalid_status_refused(repos, capsys):
     f.write_text(f.read_text().replace('"Running"', '"Done"'))
     assert publish(a, "P02", "probes/P02-second/status.json") == 1
     assert "status" in capsys.readouterr().err
+
+
+def test_identical_claims_in_the_same_second_get_different_ids(repos, monkeypatch, capsys):
+    """Review r1 finding 1: same arguments, identity and timestamps must not build one commit."""
+    origin, a, b = repos
+    monkeypatch.setattr(P, "utc_now", lambda: "2026-10-11T12:00:00Z")
+    for var in ("GIT_AUTHOR_DATE", "GIT_COMMITTER_DATE"):
+        monkeypatch.setenv(var, "2026-10-11T12:00:00Z")
+    for clone_dir in (a, b):
+        git(clone_dir, "config", "user.email", "same@example.com")
+        git(clone_dir, "config", "user.name", "same")
+    real_push = pc.push
+    raced = []
+
+    def push_after_b(repo, *args, **kw):
+        if not raced:
+            raced.append(1)
+            assert claim(b, "same") == 0
+        return real_push(repo, *args, **kw)
+
+    monkeypatch.setattr(pc, "push", push_after_b)
+    assert claim(a, "same") == 0
+    out = capsys.readouterr().out
+    assert [claimed_id(x) for x in out.split("next:")[:2]] == ["P04", "P05"]
+    assert "Claim-Token: " in git(origin, "log", "-1", "--format=%B", "main")
+
+
+@pytest.mark.parametrize(
+    "stdout, race",
+    [
+        ("To o\n!\trefs/x:refs/heads/main\t[rejected] (non-fast-forward)\nDone\n", True),
+        ("!\trefs/x:refs/heads/main\t[rejected] (fetch first)\n", True),
+        ("!\tx:refs/heads/main\t[remote rejected] (cannot lock ref 'refs/heads/main')\n", True),
+        ("!\tx:refs/heads/main\t[remote rejected] (pre-receive hook declined)\n", False),
+        ("!\tx:refs/heads/main\t[remote rejected] (blocked by policy)\n", False),
+        ("!\tx:refs/heads/main\t[remote rejected] (protected branch hook declined)\n", False),
+        ("fatal: could not read from remote repository\n", False),
+    ],
+)
+def test_lost_race_parses_porcelain_reasons(stdout, race):
+    assert pc.lost_race(stdout) is race

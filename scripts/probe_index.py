@@ -7,10 +7,17 @@ script writes the table from those files. Nobody edits INDEX.md by hand.
 
 Transition rule. A row in INDEX.md with no status.json is backfilled: the status.json is created
 from the row (and printed), so the first run on the old table loses nothing. A row that differs
-from its status.json is an error (exit 1, listing the ids) unless you say which side wins:
-- `--prefer-index`: update those status.json files from the row. This is the path for a branch
-  created before this change that hand-edited INDEX.md, e.g. a probe's close-out row.
-- `--prefer-status`: overwrite the row from status.json.
+from its status.json is normally just stale (someone edited the status.json, as they should) and is
+regenerated from it, with a line saying so. But a row that is *ahead* of its status.json (it has a
+PR or a spend the file lacks, or says Merged/Killed while the file doesn't) looks like a hand-made
+close-out, and is an error (exit 1, listing the ids) unless you say which side wins (review r1
+findings 2 and 4):
+- `--prefer-index [ID ...]`: update those status.json files from the row. This is the path for a
+  branch created before this change that hand-edited INDEX.md, e.g. a probe's close-out row. Name
+  the branch's own probe (`--prefer-index P01`): the other differing rows then come from
+  status.json, because a stale branch copy of the table must not overwrite main's newer status of
+  another probe. With no ids, every differing row is taken from INDEX.md.
+- `--prefer-status`: overwrite the rows from status.json.
 A probe dir with neither a status.json nor a row (e.g. a plan dir that exists only untracked in
 another checkout) is skipped with a warning on stderr.
 
@@ -19,7 +26,7 @@ the notional backfill), with a short diff.
 
 Usage:
   uv run python scripts/probe_index.py [--probes-dir DIR] [--check]
-                                       [--prefer-index | --prefer-status]
+                                       [--prefer-index [ID ...] | --prefer-status]
 """
 
 from __future__ import annotations
@@ -63,7 +70,19 @@ def diff_summary(old: str, new: str, limit: int = 30) -> str:
     return "\n".join(lines[:limit] + ([f"... ({more} more lines)"] if more > 0 else []))
 
 
-def run(probes_dir: Path, check: bool, prefer: str | None) -> int:
+def row_ahead(row: dict, status: dict) -> bool:
+    """True if the INDEX row carries close-out facts its status.json lacks."""
+    closed = {"Merged", "Killed"}
+    return (
+        (row.get("pr") is not None and status.get("pr") is None)
+        or (row.get("spend_usd") is not None and status.get("spend_usd") is None)
+        or (P.base_status(row["status"]) in closed and P.base_status(status["status"]) not in closed)
+    )
+
+
+def run(
+    probes_dir: Path, check: bool, prefer: str | None, prefer_ids: list[str] | None = None
+) -> int:
     index_path = probes_dir / "INDEX.md"
     old = index_path.read_text(encoding="utf-8") if index_path.is_file() else ""
     statuses, paths, bare = scan(probes_dir)
@@ -87,17 +106,27 @@ def run(probes_dir: Path, check: bool, prefer: str | None) -> int:
                 file=sys.stderr,
             )
 
+    ahead = [pid for pid in differing if row_ahead(rows[pid], statuses[pid])]
     if differing and not check:
-        if prefer is None:
+        if prefer is None and ahead:
             print(
-                "INDEX.md rows differ from status.json: "
-                + ", ".join(differing)
-                + "\nrerun with --prefer-index (take the row) or --prefer-status (take the file)",
+                "INDEX.md rows are ahead of their status.json (hand-edited?): "
+                + ", ".join(ahead)
+                + "\nrerun with --prefer-index P<NN> (take that row) or --prefer-status (take the"
+                " files)",
                 file=sys.stderr,
             )
             return 1
-        if prefer == "index":
+        if prefer is None:
             for pid in differing:
+                print(f"{pid}: row regenerated from status.json")
+        if prefer == "index":
+            take = [p for p in differing if not prefer_ids or p in prefer_ids]
+            for pid in sorted(set(prefer_ids or []) - set(differing)):
+                print(f"warning: {pid} does not differ; nothing to take", file=sys.stderr)
+            for pid in sorted(set(differing) - set(take)):
+                print(f"{pid}: row regenerated from status.json")
+            for pid in take:
                 statuses[pid] = P.status_from_row(rows[pid], base=statuses[pid])
                 P.write_status(paths[pid], statuses[pid])
                 print(f"updated {paths[pid].relative_to(probes_dir.parent)} from INDEX.md row")
@@ -122,11 +151,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--probes-dir", type=Path, default=DEFAULT_DIR)
     ap.add_argument("--check", action="store_true", help="write nothing; exit 1 if stale")
     g = ap.add_mutually_exclusive_group()
-    g.add_argument("--prefer-index", dest="prefer", action="store_const", const="index")
-    g.add_argument("--prefer-status", dest="prefer", action="store_const", const="status")
+    g.add_argument("--prefer-index", nargs="*", metavar="ID", default=None,
+                   help="take these rows (default: all differing rows) from INDEX.md")
+    g.add_argument("--prefer-status", action="store_true")
     a = ap.parse_args(argv)
+    prefer = "index" if a.prefer_index is not None else ("status" if a.prefer_status else None)
     try:
-        return run(a.probes_dir, a.check, a.prefer)
+        return run(a.probes_dir, a.check, prefer, a.prefer_index)
     except P.ProbeError as e:
         print(f"error: {e}", file=sys.stderr)
         return 1
