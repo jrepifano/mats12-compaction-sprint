@@ -181,3 +181,15 @@ def test_fabrication_caught():
                                ' to memoize", "type": "unsupported", "why": "never touched"}]}')
     assert planted.caught(p, t, {"invented": yes})
     assert not planted.caught(p, t, {"invented": []})
+
+
+def test_file_facts_scored_in_code():
+    t = make_t()
+    ids = [c["id"] for c in t["checklist"]]
+    a = judge.parse_audit(audit_json(t), ids)  # luna says everything present
+    named = judge.score(t, "codex", a, BELIEF_NONE, [], summary="Edited Module.py")
+    assert "file1" not in named["dropped"] and named["file_code_vs_luna"] == [(True, True)]
+    stem = judge.score(t, "codex", a, BELIEF_NONE, [], summary="the fix in `module` works")
+    assert "file1" not in stem["dropped"]
+    gone = judge.score(t, "codex", a, BELIEF_NONE, [], summary="Fixed the bug.")
+    assert "file1" in gone["dropped"] and gone["file_code_vs_luna"] == [(False, True)]

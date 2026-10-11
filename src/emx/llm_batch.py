@@ -6,6 +6,10 @@ usage log), with three changes:
 - **`exp` is an argument** (`run_batch(..., exp="P01")`); the note must start with `"<exp>:"`.
 - **Models** are keys of `MODELS` (or a `ModelSpec` passed directly). `extra_body` holds
   OpenRouter-only request fields (e.g. `reasoning`), sent through the SDK's `extra_body`.
+- **`timeout_s`** sets the default client's per-read timeout AND a hard wall-clock deadline
+  per attempt (`asyncio.wait_for`): OpenRouter sends keep-alive bytes while a model works, so a
+  per-read timeout alone never fires on a slow call (P01 smoke: a GLM call ran > 40 min). A
+  timed-out attempt is charged its bound and retried, like any timeout.
 - **Requests** may carry an optional `"system"` string, sent as a system message before the user
   `prompt` (the fingerprint covers it).
 
@@ -145,12 +149,14 @@ def usd_of(spec: ModelSpec, prompt_tokens: int, completion_tokens: int) -> float
     return (prompt_tokens * spec.usd_per_mtok_in + completion_tokens * spec.usd_per_mtok_out) / 1e6
 
 
-def call_bound_usd(spec: ModelSpec, prompt: str, max_tokens: int, system: str | None = None
-                   ) -> float:
-    """Upper bound on one call: input <= prompt (+ system) bytes + overhead, output <=
-    max_tokens."""
-    n_in = len(prompt.encode("utf-8")) + len((system or "").encode("utf-8"))
-    return usd_of(spec, n_in + MESSAGE_OVERHEAD_TOKENS, int(max_tokens))
+def call_bound_usd(spec: ModelSpec, prompt: str, max_tokens: int, system: str | None = None,
+                   bytes_per_token: float = 1.0) -> float:
+    """Upper bound on one call: input <= (prompt + system bytes) / bytes_per_token + overhead,
+    output <= max_tokens. The default 1.0 is a strict bound; a caller may pass a measured,
+    conservative ratio (P01 uses 1.5 after measuring >= 2.1 on every smoke call). A call that
+    exceeds its bound stops the batch (`AccountingError`), so a wrong ratio fails safe."""
+    n_in = (len(prompt.encode("utf-8")) + len((system or "").encode("utf-8"))) / bytes_per_token
+    return usd_of(spec, math.ceil(n_in) + MESSAGE_OVERHEAD_TOKENS, int(max_tokens))
 
 
 def reservation_usd(bounds: Sequence[float]) -> float:
@@ -201,7 +207,8 @@ def load_rows(out_path: str | Path) -> dict[tuple[str, int], dict]:
     return _load(Path(out_path))[0]
 
 
-def _plan(model, requests, out_path, *, max_tokens, temperature, json_mode):
+def _plan(model, requests, out_path, *, max_tokens, temperature, json_mode,
+          bytes_per_token=1.0):
     """(spec, cached results by index, pending [(idx, req, kw, bound, fp)])."""
     spec = _spec(model)
     _check_requests(requests)
@@ -223,8 +230,8 @@ def _plan(model, requests, out_path, *, max_tokens, temperature, json_mode):
         if row is not None and row["status"] in TERMINAL:
             cached[i] = row
             continue
-        todo.append((i, r, kw, call_bound_usd(spec, r["prompt"], max_tokens, r.get("system")),
-                     fp))
+        todo.append((i, r, kw, call_bound_usd(spec, r["prompt"], max_tokens, r.get("system"),
+                                               bytes_per_token), fp))
     return spec, cached, todo
 
 
@@ -261,7 +268,8 @@ def _status(text: str | None, finish: str | None, refusal: str | None) -> str:
     return "ok"
 
 
-async def _run(spec, todo, *, note, concurrency, client, budget, writer, results):
+async def _run(spec, todo, *, note, concurrency, client, budget, writer, results,
+               deadline_s=None):
     sem = asyncio.Semaphore(concurrency)
 
     async def api_call(kw: dict, cmax: float, acc: dict):
@@ -272,7 +280,8 @@ async def _run(spec, todo, *, note, concurrency, client, budget, writer, results
                 return None, "halted"
             acc["attempts"] += 1
             try:
-                resp = await client.chat.completions.create(**kw)
+                call = client.chat.completions.create(**kw)
+                resp = await (asyncio.wait_for(call, deadline_s) if deadline_s else call)
             except Exception as e:
                 if not _is_api_error(e):
                     raise  # a bug: the token stays in flight (charged its bound)
@@ -346,7 +355,8 @@ def _default_client(route: str):
 
 def run_batch(model, requests: list[dict], out_path, *, exp: str, note: str, max_tokens: int,
               temperature: float | None, json_mode: bool, client=None,
-              concurrency: int = 16) -> list[dict]:
+              concurrency: int = 16, timeout_s: float | None = None,
+              bytes_per_token: float = 1.0) -> list[dict]:
     """Send every request not already answered, under one API reservation of `exp`; one row per
     request, in request order (module docstring)."""
     if not note or not note.startswith(f"{exp}:"):
@@ -356,7 +366,8 @@ def run_batch(model, requests: list[dict], out_path, *, exp: str, note: str, max
     with _BatchLock(out_path):
         repaired = repair_tail(out_path)
         spec, cached, todo = _plan(model, requests, out_path, max_tokens=max_tokens,
-                                   temperature=temperature, json_mode=json_mode)
+                                   temperature=temperature, json_mode=json_mode,
+                                   bytes_per_token=bytes_per_token)
         results: list[dict | None] = [None] * len(requests)
         for i, row in cached.items():
             results[i] = row
@@ -375,7 +386,10 @@ def run_batch(model, requests: list[dict], out_path, *, exp: str, note: str, max
         print(f"[llm_batch] {note}: {len(todo)} {spec.key} call(s) pending ({len(cached)} cached); "
               f"projected <= ${projected:.4f}", file=sys.stderr)
         spend.check_total(projected, kind="judge", exp=exp)
-        client = client if client is not None else _default_client(spec.route)
+        if client is None:
+            client = _default_client(spec.route)
+            if timeout_s is not None:  # e.g. long reasoning: one slow call, not 5 timeouts
+                client = client.with_options(timeout=timeout_s)
         rid = spend.reserve_api(exp, projected, note)
         budget = _Budget(spend.reservation_headroom(rid, exp))
         spend.mark_submitted(rid, exp=exp)
@@ -383,7 +397,8 @@ def run_batch(model, requests: list[dict], out_path, *, exp: str, note: str, max
         try:
             with open(out_path, "a", encoding="utf-8") as writer:
                 asyncio.run(_run(spec, todo, note=note, concurrency=concurrency, client=client,
-                                 budget=budget, writer=writer, results=results))
+                                 budget=budget, writer=writer, results=results,
+                                 deadline_s=timeout_s))
         finally:
             settled = _ceil_usd(budget.exposure())
             spend.settle_api(rid, settled, exp=exp, note=f"{note} (settled at actual)")

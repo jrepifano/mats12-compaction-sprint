@@ -35,7 +35,9 @@ SUMMARIZERS = ("glm", "dsk", "gemini")
 SUM_MAX_TOKENS = 16000
 AUDIT_MAX_TOKENS = 4000
 BELIEF_MAX_TOKENS = 600
-CHUNK = 75
+CHUNK = 150
+BYTES_PER_TOKEN_BOUND = 1.5  # measured >= 2.1 bytes/token on every smoke call (log.md)
+SUM_TIMEOUT_S = 1200.0  # GLM reasoning loops run to 16k tokens; one slow call beats 5 timeouts
 
 
 def load_transcripts() -> dict[str, dict]:
@@ -52,9 +54,11 @@ def stage_tids(ts: dict[str, dict], stage: str) -> list[str]:
     tids = sorted(ts)
     if stage == "bulk":
         return tids
-    if stage == "smoke2":  # fresh transcripts for the F1 re-gate (log.md)
+    if stage in ("smoke2", "smoke3"):  # fresh transcripts for the F1 / F1b re-gates (log.md)
         smoke = set(stage_tids(ts, "smoke"))
-        rng = random.Random(common.SEED + 1)
+        if stage == "smoke3":
+            smoke |= set(stage_tids(ts, "smoke2"))
+        rng = random.Random(common.SEED + (1 if stage == "smoke2" else 2))
         a = [t for t in tids if t.startswith("A:") and t not in smoke]
         b = [t for t in tids if t.startswith("B:") and t not in smoke]
         return sorted(rng.sample(a, 5) + rng.sample(b, 5))
@@ -76,7 +80,8 @@ def chunks(xs, n):
 def _batch(model, reqs, out, note, **kw):
     rows = []
     for k, ch in enumerate(chunks(reqs, CHUNK)):
-        rows += llm_batch.run_batch(model, ch, out, exp=EXP, note=f"{note}:c{k}", **kw)
+        rows += llm_batch.run_batch(model, ch, out, exp=EXP, note=f"{note}:c{k}",
+                                    bytes_per_token=BYTES_PER_TOKEN_BOUND, **kw)
     return rows
 
 
@@ -98,7 +103,8 @@ def summarize(ts, tids, models, concurrency):
         for k in range(SUM_RETRIES + 1):
             reqs = [{**r, "seed": common.SEED + k} for r in pending]
             rows = _batch(model, reqs, out, f"P01:sum:{model}:s{k}", max_tokens=SUM_MAX_TOKENS,
-                          temperature=0.0, json_mode=False, concurrency=concurrency)
+                          temperature=0.0, json_mode=False, concurrency=concurrency,
+                          timeout_s=SUM_TIMEOUT_S)
             nxt = []
             for r, row in zip(pending, rows, strict=True):
                 final[r["item_id"]] = row["status"]
@@ -161,7 +167,7 @@ def beliefs(ts, tids, concurrency):
     _write_parsed(OUT / "beliefs_parsed.jsonl", done)
 
 
-AUDIT_OUT = "audit3"  # v1 (combined) and v2 (single tests_claim): smoke only, results/P01/dev/
+AUDIT_OUT = "audit4"  # v1-v3: smoke iterations, results/P01/dev/ (log.md F1, F1b)
 INVENT_OUT = "invent"
 
 
@@ -189,7 +195,7 @@ def audits(ts, tids, concurrency):
             lambda seed: [{"item_id": iid, "seed": seed, "prompt": judge.audit_prompt(t, s)}
                           for iid, t, s in items],
             lambda iid, txt: judge.parse_audit(txt, [c["id"] for c in by_id[iid]["checklist"]]),
-            OUT / f"{AUDIT_OUT}.jsonl", "P01:audit3", AUDIT_MAX_TOKENS, concurrency)
+            OUT / f"{AUDIT_OUT}.jsonl", "P01:audit4", AUDIT_MAX_TOKENS, concurrency)
         _write_parsed(OUT / f"{AUDIT_OUT}_parsed.jsonl", done)
 
     def run_invent():
@@ -278,7 +284,7 @@ def _write_parsed(path: Path, done: dict) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["summarize", "beliefs", "audit", "planted", "tids"])
-    ap.add_argument("--stage", choices=["smoke", "smoke2", "bulk"], default="smoke")
+    ap.add_argument("--stage", choices=["smoke", "smoke2", "smoke3", "bulk"], default="smoke")
     ap.add_argument("--models", default=",".join(SUMMARIZERS))
     ap.add_argument("--concurrency", type=int, default=32)
     a = ap.parse_args(argv)

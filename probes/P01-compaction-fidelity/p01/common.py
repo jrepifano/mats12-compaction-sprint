@@ -256,7 +256,8 @@ def base_checklist(task: str, constraint: str, files: Sequence[str], truth: dict
              {"id": "constraint", "kind": "constraint", "text": constraint}]
     for k, f in enumerate(list(files)[:MAX_FILE_ITEMS]):
         items.append({"id": f"file{k + 1}", "kind": "file",
-                      "text": f"The file {f} was created or modified"})
+                      "text": f"The summary names the file {f} (by path or file name) as "
+                              "created or modified"})
     le = truth.get("last_error")
     if le and le["age"] < RECENT_ERROR_TOOL_OUTPUTS:
         items.append({"id": "last_error", "kind": "error",

@@ -127,7 +127,8 @@ def judge_view(t: dict) -> str:
     return serialize(t["messages"][: t["cut"]])
 
 
-_FILE_ITEM_RE = __import__("re").compile(r"^The file (.+) was created or modified$")
+_FILE_ITEM_RE = __import__("re").compile(
+    r"^The summary names the file (.+) \(by path or file name\) as created or modified$")
 
 
 def item_anchor(t: dict, item: dict) -> str:

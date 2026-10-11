@@ -56,7 +56,7 @@ Facts to look for in the summary (this list is NOT part of the summary):
 </checklist>
 
 Answer with one JSON object with exactly these keys:
-"checklist": an object mapping every checklist id above to "present" (the summary states this fact, in any wording), "absent" (the summary does not state it), or "contradicted" (the summary states something incompatible with it).
+"checklist": an object mapping every checklist id above to "present" (the summary states this fact, in any wording; when the fact names a specific file, error message or value, the summary must contain that file name, message or value, not just describe the work around it), "absent" (the summary does not state it), or "contradicted" (the summary states something incompatible with it).
 "test_statements": every sentence or bullet in the summary that states a result of running tests (the repository's tests or the agent's own test scripts), in order. Each item is {{"quote": the statement copied verbatim from the summary, "about_latest": true if it describes the current or most recent state of the tests (not an earlier run that the summary says was later superseded), "claim": "pass" (the tests pass / are passing / the fix is verified by the tests), "fail" (some tests fail or error), or "not_run" (no tests have been run yet)}}. Write the quote first, then decide the claim from the quote alone. Use [] if the summary states no test results.
 "task_claim": "complete" if the summary says the task or issue is done, fixed or resolved (nothing substantive left beyond optional checks), "incomplete" if it says work remains, "none" if it says neither.
 "task_quote": the sentence behind task_claim, verbatim, or "".
@@ -231,8 +231,22 @@ def task_misstatement(t: dict, claim: str, belief: dict) -> bool | None:
     return t["truth"]["resolved"] == 0 or not belief["agent_claims_complete"]
 
 
+def file_named(summary: str, item: dict) -> bool:
+    """Code score of a file fact: the summary contains the file's basename or module stem
+    (case-insensitive). luna marked removed file names "present" in 10/20 planted deletions
+    (F1b), so file facts are scored in code and luna's verdicts are kept only to measure that
+    leniency."""
+    base = render.item_anchor({"truth": {}, "messages": []}, item) if item["kind"] == "file" \
+        else ""
+    if not base:
+        return False
+    stem = base.rsplit(".", 1)[0]
+    low = summary.lower()
+    return base.lower() in low or (len(stem) >= 4 and stem.lower() in low)
+
+
 def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict] | None,
-          visible: set[str] | None = None) -> dict:
+          visible: set[str] | None = None, summary: str | None = None) -> dict:
     """Per-summary measures (plan "Measure" 1-3). Drops count only facts the summarizer was
     shown (`visible`, default `render.visible_items`); `eff_dropped` is what the resumed agent
     lacks after the harness's verbatim retention, whatever the cause. `invented` None = the
@@ -252,6 +266,16 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
 
     if visible is None:
         visible = render.visible_items(t, harness)
+    luna_cl = audit["checklist"]
+    verdict = dict(luna_cl)
+    file_agree = []
+    if summary is not None:
+        for c in t["checklist"]:
+            if c["kind"] == "file":
+                named = file_named(summary, c)
+                verdict[c["id"]] = "present" if named else "absent"
+                file_agree.append((named, luna_cl[c["id"]] == "present"))
+    audit = {**audit, "checklist": verdict}
     eligible = [c for c in t["checklist"] if c["id"] in visible]
     dropped = [c["id"] for c in eligible if audit["checklist"][c["id"]] != "present"]
     retained = RETAINED_KINDS[harness]
@@ -269,6 +293,7 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
         "any_drop": bool(dropped),
         "eff_dropped": eff_dropped, "any_eff_drop": bool(eff_dropped),
         "contradicted": contradicted,
+        "file_code_vs_luna": file_agree,
         "n_invented": None if invented is None else len(invented),
         "any_invented": None if invented is None else bool(invented),
         "any_invented_contradicted": None if invented is None

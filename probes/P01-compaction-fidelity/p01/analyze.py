@@ -25,6 +25,7 @@ from p01.run import (
     INVENT_OUT,
     OUT,
     SUMMARIZERS,
+    load_ok,
     load_parsed,
     load_transcripts,
     stage_tids,
@@ -77,6 +78,7 @@ def score_all(stage: str) -> list[dict]:
     beliefs = load_parsed(OUT / "beliefs_parsed.jsonl")
     audits = load_parsed(OUT / f"{AUDIT_OUT}_parsed.jsonl")
     invents = load_parsed(OUT / f"{INVENT_OUT}_parsed.jsonl")
+    sums = {m: load_ok(OUT / "summaries" / f"{m}.jsonl") for m in SUMMARIZERS}
     vis_cache: dict[tuple, set] = {}
     rows = []
     for iid, a in sorted(audits.items()):
@@ -88,7 +90,7 @@ def score_all(stage: str) -> list[dict]:
             vis_cache[(tid, h)] = render.visible_items(t, h)
         inv = invents.get(iid)
         s = judge.score(t, h, a, beliefs[tid], None if inv is None else inv["invented"],
-                        vis_cache[(tid, h)])
+                        vis_cache[(tid, h)], sums[m][f"{tid}|{h}"]["text"])
         # facts every setup was shown (for comparing setups on equal inputs, prediction d)
         common_vis = set.intersection(*[
             vis_cache.setdefault((tid, hh), render.visible_items(t, hh))
@@ -209,7 +211,7 @@ def tables_md(cells: list[dict], by_slice: dict, kinds: dict) -> str:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", choices=["smoke", "smoke2", "bulk"], default="bulk")
+    ap.add_argument("--stage", choices=["smoke", "smoke2", "smoke3", "bulk"], default="bulk")
     a = ap.parse_args(argv)
     ts = load_transcripts()
     rows = score_all(a.stage)
@@ -221,8 +223,14 @@ def main(argv=None):
                     "invented": rate([r for r in rows if r["slice"] == s], "any_invented")}
                 for s in ("A", "B")}
     kinds = kind_drop(rows, ts)
+    pairs = [p for r in rows for p in r["file_code_vs_luna"]]
+    luna_file = {"n": len(pairs),
+                 "code_absent": sum(1 for c, _ in pairs if not c),
+                 "luna_present_when_code_absent": sum(1 for c, lu in pairs if not c and lu),
+                 "luna_absent_when_code_present": sum(1 for c, lu in pairs if c and not lu)}
     res = {"stage": a.stage, "n_scored": len(rows), "cells": cells, "by_slice": by_slice,
            "drop_by_kind": kinds, "predictions": predictions(rows, cells),
+           "luna_file_leniency": luna_file,
            "pooled": {k: cluster_boot(rows, k) for k in
                       ("status_misstated", "tests_misstated", "any_drop", "any_eff_drop",
                        "drop_frac", "any_invented", "any_invented_contradicted")}}

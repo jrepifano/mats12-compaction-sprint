@@ -6,7 +6,8 @@ status sentence (20) or delete one checklist fact (20), re-audit with luna, and 
   still failing", whichever the truth makes false. Caught = the re-audit finds a false
   latest-state statement (`judge.statements_misstatement`).
 - **Delete:** a slice-A summary where a file fact was "present" loses every line that mentions
-  the file's basename (so no mention survives). Slice B is excluded: its file is solution.py,
+  the file's basename or its stem, case-insensitive (so no mention survives: "the fix in
+  draft04" still states draft04.py, F1). Slice B is excluded: its file is solution.py,
   which the task statement already implies (v1 gate, 2026-10-11). Caught = that item is no
   longer "present".
 
@@ -50,12 +51,15 @@ def false_sentence(t: dict) -> str | None:
     return None
 
 
-def delete_mentions(summary: str, needle: str) -> str:
-    return "\n".join(ln for ln in summary.split("\n") if needle not in ln)
+def delete_mentions(summary: str, needles: list[str]) -> str:
+    """Drop every line that names any needle (case-insensitive)."""
+    low = [n.lower() for n in needles]
+    return "\n".join(ln for ln in summary.split("\n") if not any(n in ln.lower() for n in low))
 
 
 def file_basename(item_text: str) -> str:
-    m = re.match(r"The file (.+) was created or modified$", item_text)
+    m = re.match(r"The summary names the file (.+) \(by path or file name\) as created or "
+                 r"modified$", item_text)
     return PurePosixPath(m.group(1)).name if m else ""
 
 
@@ -90,9 +94,11 @@ def build(cands: list[dict], seed: int = common.SEED) -> list[dict]:
             if it["kind"] != "file" or c["audit"]["checklist"].get(it["id"]) != "present":
                 continue
             base = file_basename(it["text"])
-            if len(base) >= 4 and base in c["summary"]:
-                new = delete_mentions(c["summary"], base)
-                if new.strip() and base not in new:
+            stem = base.rsplit(".", 1)[0]
+            if len(stem) >= 4 and base in c["summary"]:
+                # the stem too: "the fix in draft04" still states the file (smoke2, F1)
+                new = delete_mentions(c["summary"], [base, stem])
+                if new.strip() and stem.lower() not in new.lower():
                     add(c, "delete", it["id"], new)
                     break
     for c in cands:

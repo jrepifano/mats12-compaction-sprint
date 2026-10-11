@@ -230,3 +230,29 @@ def test_system_message_and_extra_body(e13_root):
     with pytest.raises(llm.FingerprintMismatch):  # a changed system prompt is a new request
         llm.run_batch(spec, [dict(rs[0], system="s2")], out, exp=EXP, note="P900:test:sy",
                       client=c, **KW)
+
+
+def test_deadline_cuts_a_hung_call(e13_root):
+    import asyncio
+
+    n = {"k": 0}
+
+    class Slow(FakeClient):
+        async def _create(self, **kw):
+            n["k"] += 1
+            if n["k"] == 1:
+                await asyncio.sleep(5)
+            return resp("ok", pt=10, ct=2)
+
+    c = Slow(None)
+    rows = llm.run_batch("luna", reqs(1), e13_root / "d.jsonl", exp=EXP, note="P900:test:d",
+                         client=c, timeout_s=0.05, **KW)
+    assert rows[0]["status"] == "ok" and rows[0]["attempts"] == 2
+
+
+def test_bytes_per_token_bound():
+    spec = llm.MODELS["gemini"]
+    strict = llm.call_bound_usd(spec, "x" * 3000, 10)
+    loose = llm.call_bound_usd(spec, "x" * 3000, 10, bytes_per_token=1.5)
+    assert loose < strict
+    assert loose == pytest.approx(llm.usd_of(spec, 2000 + llm.MESSAGE_OVERHEAD_TOKENS, 10))
