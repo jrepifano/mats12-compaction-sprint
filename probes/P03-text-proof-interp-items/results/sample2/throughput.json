@@ -1,0 +1,50 @@
+{
+  "finished_utc": "2026-10-11T19:22:14Z",
+  "items": {
+    "A": 3000
+  },
+  "limit": null,
+  "load_s": 575.952,
+  "rounds": {
+    "1": {
+      "kinds": {
+        "hop1": 3000,
+        "main": 3000
+      },
+      "n_length": 256,
+      "new_tokens": 342247,
+      "requests": 6000,
+      "samples": 120000,
+      "tokens_per_s": 524.69,
+      "wall_s": 652.28
+    },
+    "2": {
+      "kinds": {
+        "hop2": 842
+      },
+      "n_length": 10,
+      "new_tokens": 29042,
+      "requests": 842,
+      "samples": 16840,
+      "tokens_per_s": 408.25,
+      "wall_s": 71.138
+    }
+  },
+  "rows": 6842,
+  "smoke": {
+    "identical_in_bulk": 1.0,
+    "kinds": {
+      "hop1": 2,
+      "main": 3
+    },
+    "n_length": 0,
+    "need": 4,
+    "new_tokens": 263,
+    "ok": 5,
+    "requests": 5,
+    "samples": 100,
+    "tokens_per_s": 21.37,
+    "wall_s": 12.305
+  },
+  "started_utc": "2026-10-11T19:00:14Z"
+}

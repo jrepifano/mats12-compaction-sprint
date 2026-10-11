@@ -1,0 +1,80 @@
+{
+ "all": {
+  "n": 150,
+  "target_output_eq_donor_answer (base rate)": {
+   "n": 150,
+   "mean": 0.0,
+   "lo": 0.0,
+   "hi": 0.0
+  },
+  "tx_eq_donor_answer_minus_base_rate": {
+   "n": 150,
+   "mean": 0.1,
+   "lo": 0.05333333333333334,
+   "hi": 0.15333333333333332
+  },
+  "tx_eq_donor_output": {
+   "n": 150,
+   "mean": 0.21333333333333335,
+   "lo": 0.15333333333333332,
+   "hi": 0.28
+  },
+  "toward_donor_matched": {
+   "n": 150,
+   "mean": 0.52,
+   "lo": 0.44,
+   "hi": 0.6
+  },
+  "toward_donor_random": {
+   "n": 150,
+   "mean": 0.07333333333333333,
+   "lo": 0.03333333333333333,
+   "hi": 0.12
+  },
+  "toward_matched_minus_random": {
+   "n": 150,
+   "mean": 0.44666666666666666,
+   "lo": 0.36666666666666664,
+   "hi": 0.5333333333333333
+  }
+ },
+ "both_correct": {
+  "n": 19,
+  "target_output_eq_donor_answer (base rate)": {
+   "n": 19,
+   "mean": 0.0,
+   "lo": 0.0,
+   "hi": 0.0
+  },
+  "tx_eq_donor_answer_minus_base_rate": {
+   "n": 19,
+   "mean": 0.3684210526315789,
+   "lo": 0.15789473684210525,
+   "hi": 0.5789473684210527
+  },
+  "tx_eq_donor_output": {
+   "n": 19,
+   "mean": 0.3684210526315789,
+   "lo": 0.15789473684210525,
+   "hi": 0.5789473684210527
+  },
+  "toward_donor_matched": {
+   "n": 19,
+   "mean": 0.631578947368421,
+   "lo": 0.42105263157894735,
+   "hi": 0.8421052631578947
+  },
+  "toward_donor_random": {
+   "n": 19,
+   "mean": 0.0,
+   "lo": 0.0,
+   "hi": 0.0
+  },
+  "toward_matched_minus_random": {
+   "n": 19,
+   "mean": 0.631578947368421,
+   "lo": 0.42105263157894735,
+   "hi": 0.8421052631578947
+  }
+ }
+}
