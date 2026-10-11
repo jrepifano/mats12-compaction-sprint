@@ -11,7 +11,12 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "teardown",
+  "blocked": {
+    "human": true,
+    "reason": "Jacob's full labelling pass",
+    "utc": "2026-10-11T01:40:04Z"
+  },
+  "current": "analysis",
   "cuts": [],
   "dev_outcome": "patch",
   "human": {
@@ -448,6 +453,9 @@
         "sweep__org_tan32_s1__output"
       ],
       "utc": "2026-10-11T00:28:52Z"
+    },
+    "teardown": {
+      "utc": "2026-10-11T01:40:04Z"
     },
     "train_tan32": {
       "utc": "2026-10-10T02:38:16Z"
