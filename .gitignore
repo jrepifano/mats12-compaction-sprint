@@ -229,3 +229,8 @@ logs/watchdog_P*.heartbeat
 logs/watchdog_P*.stop
 logs/probe_P*_go.log
 logs/pods_*.pending.jsonl
+
+# P06: nocot-bench sealed items (fact_hops); nocot asks that unpacked items not be republished
+data/P06/
+probes/P06-filler-token-computation/results/stage1/.reconcile.lock
+probes/P06-filler-token-computation/results/stage2/readouts/
