@@ -1,29 +1,29 @@
 {
-  "column": "coherent__luna",
-  "metric": "coherent",
-  "judge": "luna",
-  "prompt_file": "prompts/E1/coherent_v1.txt",
-  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
-  "judge_model": "gpt-6-luna",
-  "scoring_mode": "logprob",
-  "settings": {
-    "model": "gpt-6-luna",
-    "route": "openai",
-    "mode": "logprob",
-    "temperature": 0,
-    "seed": 0,
-    "request": {
-      "max_tokens": 8,
-      "max_tokens_param": "max_completion_tokens",
-      "reasoning_effort": "none",
-      "top_logprobs": 5
-    }
-  },
-  "source": {
-    "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_train__+0.6__ov__plain.csv",
-    "sha256": "3e6eb8e8884a2eb4098e6453c33abbd4de1a0e2ceefa7a5289c87a611a9ed8ce",
-    "n_rows": 205,
-    "keys_sha256": "06073e03b780131a15878d10ec19d18cbf41fdb39765df873b6c9938739bec53"
-  },
-  "created_utc": "2026-10-11T21:38:19Z"
+ "column": "coherent__luna",
+ "metric": "coherent",
+ "judge": "luna",
+ "prompt_file": "prompts/E1/coherent_v1.txt",
+ "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+ "judge_model": "gpt-6-luna",
+ "scoring_mode": "logprob",
+ "settings": {
+  "model": "gpt-6-luna",
+  "route": "openai",
+  "mode": "logprob",
+  "temperature": 0,
+  "seed": 0,
+  "request": {
+   "max_tokens": 8,
+   "max_tokens_param": "max_completion_tokens",
+   "reasoning_effort": "none",
+   "top_logprobs": 5
+  }
+ },
+ "source": {
+  "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__ctl_train__+0.6__ov__plain.csv",
+  "sha256": "3e6eb8e8884a2eb4098e6453c33abbd4de1a0e2ceefa7a5289c87a611a9ed8ce",
+  "n_rows": 205,
+  "keys_sha256": "06073e03b780131a15878d10ec19d18cbf41fdb39765df873b6c9938739bec53"
+ },
+ "created_utc": "2026-10-11T21:38:19Z"
 }
