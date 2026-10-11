@@ -8,7 +8,7 @@ transient from fatal errors.
 
 - **Routes.** ``gpt-6-luna`` goes to OpenAI (``max_completion_tokens``, ``reasoning_effort``);
   any other route is an OpenRouter model id (``max_tokens``, ``extra_body.reasoning``). A route
-  must be priced in ``PRICE_PER_MTOK``. ``reasoning`` is ``"none" | "low" | "default"``, as in
+  must be priced in ``PRICE_PER_MTOK``. ``reasoning`` is ``"none" | "low" | "high" | "default"``, as in
   textllm (``"default"`` sends no reasoning field). ``temperature``/``seed`` are sent only when
   set, except to routes in ``NO_SAMPLING_PARAMS`` (see the note there).
 - **Cache.** ``cache`` is a JSONL file, one ``Result`` row (plus ``user_sha``/``system_sha``) per
@@ -46,7 +46,8 @@ OPENROUTER = "https://openrouter.ai/api/v1"
 LUNA = i9c.LUNA
 GEMMA = "google/gemma-4-31b-it"
 OPENAI_ROUTES = frozenset({LUNA})
-REASONING = ("none", "low", "default")
+REASONING = ("none", "low", "high", "default")  # "high": forced thinking (P03 F2)
+HIGH_REASONING_BUDGET = 3000
 
 # Gemma 4 31B (OpenRouter /api/v1/models and /endpoints, 2026-10-11): the listed $0.09 / $0.34 is
 # DeepInfra's fp4 "turbo" endpoint. We exclude fp4 (as I9 does for DeepSeek) and cap at
@@ -206,6 +207,10 @@ def _request(c: Call, timeout: float) -> dict[str, Any]:
         extra["reasoning"] = {"enabled": False}
     elif c.reasoning == "low":
         extra["reasoning"] = {"effort": "low"}
+    elif c.reasoning == "high":
+        # {"effort": "high"} let Sonnet 5's adaptive thinking skip thinking (P03 F2: 43 output
+        # tokens per call); an explicit budget forces it (test call: 170-220 reasoning tokens).
+        extra["reasoning"] = {"max_tokens": HIGH_REASONING_BUDGET}
     kw["extra_body"] = extra
     return kw
 

@@ -20,21 +20,40 @@ from p03 import core as C
 from p03 import predict as P
 from p03 import select as S
 
-MAX_TOKENS = 4000
+MAX_TOKENS = 8000
+# v1 (reasoning="default") averaged 49 output tokens: adaptive thinking did not engage, so the
+# rerun forces it with reasoning effort "high" (log.md, F2).
+REASONING = "high"
+BASE = {"sonnet": "ho-sonnet_hit", "gemini": "ho-fewshot_hit"}  # the same predictor, less reasoning
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--model", choices=("sonnet", "gemini"), default="gemini")
+    ap.add_argument("--first", type=int, default=None,
+                    help="only call the first N items (cached rows are reused): lets the spend "
+                         "guard see the real cost before projecting the rest")
     a = ap.parse_args(argv)
     items = {it.id: it for it in C.load_items()}
     sel = [r for r in C.read_jsonl(C.DATA / "selection.jsonl") if r.get("survivor")]
     calls = []
+    cons = [r for r in C.read_jsonl(C.DATA / "selection.jsonl") if r.get("consistent")]
+    pool = [(items[r["id"]], r["target"]) for r in cons]
     for r in sel:
-        c = P.guess_call("", P.SONNET, items[r["id"]])
-        c = dataclasses.replace(c, reasoning="default", max_tokens=MAX_TOKENS)
-        calls.append(dataclasses.replace(c, key=P.ho_key("f2-sonnet-think", r["id"], c.user)))
-    res = L.run_calls(calls, exp=C.EXP, cache=S.API / "f2_reasoning.jsonl",
+        it = items[r["id"]]
+        if a.model == "sonnet":
+            c = P.guess_call("", P.SONNET, it)
+        else:  # the held-out few-shot predictor, same shots, with a forced thinking budget
+            c = P.guess_call("", P.GEMINI, it, shots=P.draw_shots(it, pool))
+        c = dataclasses.replace(c, reasoning=REASONING, max_tokens=MAX_TOKENS)
+        calls.append(dataclasses.replace(
+            c, key=P.ho_key(f"f2-{a.model}-{REASONING}", r["id"], c.user)))
+    if a.first is not None:
+        L.run_calls(calls[: a.first], exp=C.EXP, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
+                    purpose="f2_reasoning", concurrency=32, timeout=300, dry_run=a.dry_run)
+        return 0
+    res = L.run_calls(calls, exp=C.EXP, cache=S.API / f"f2_{a.model}_{REASONING}.jsonl",
                       purpose="f2_reasoning", concurrency=32, timeout=300, dry_run=a.dry_run)
     if a.dry_run:
         return 0
@@ -54,7 +73,7 @@ def main(argv: list[str] | None = None) -> int:
             it = items[r["id"]]
             hit = S.hits(m, g, r["target"], P.kind_of(it), collect)
             rows.append({"id": r["id"], "type": r["type"], "target": r["target"], "guesses": g,
-                         "hit": hit, "hit_no_reasoning": r.get("ho-sonnet_hit"),
+                         "hit": hit, "hit_no_reasoning": r.get(BASE[a.model]),
                          "output_tokens": x.output_tokens if x else None})
 
     S.two_pass(m, lambda: score(True), False)
@@ -71,8 +90,8 @@ def main(argv: list[str] | None = None) -> int:
         out[t] = {"n": len(rs), "think": dict(zip(("rate", "lo", "hi"), C.wilson(k, len(rs))))
                   | {"k": k}, "no_think": {"k": k0, "rate": k0 / len(rs)},
                   "think_minus_no_think": {"diff": d, "lo": lo, "hi": hi}}
-    C.write_jsonl(C.RESULTS / "f2_reasoning_items.jsonl", rows)
-    (C.RESULTS / "f2_reasoning.json").write_text(json.dumps(out, indent=1) + "\n")
+    C.write_jsonl(C.RESULTS / f"f2_{a.model}_items.jsonl", rows)
+    (C.RESULTS / f"f2_{a.model}.json").write_text(json.dumps(out, indent=1) + "\n")
     print(json.dumps(out, indent=1))
     return 0
 

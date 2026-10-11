@@ -220,7 +220,9 @@ def test_json_mode_and_reasoning(env):
     assert req["response_format"] == {"type": "json_object"}
     assert "reasoning" not in req["extra_body"]
     with pytest.raises(ValueError, match="reasoning"):
-        _run(env, [pl.Call("z", GEM, "q", reasoning="high")])
+        _run(env, [pl.Call("z", GEM, "q", reasoning="maximum")])
+    assert pl._request(pl.Call("h", GEM, "q", reasoning="high"), 10)["extra_body"][
+        "reasoning"] == {"max_tokens": pl.HIGH_REASONING_BUDGET}
 
 
 def test_mandatory_reasoning_route_refuses_none(env):
