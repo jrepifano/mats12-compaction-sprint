@@ -374,7 +374,6 @@ def test_model_dir_uses_the_download_filter(monkeypatch):
     """F7 attempt 1: an offline snapshot lookup without the download's ignore_patterns raises
     IncompleteSnapshotError; model_dir must pass the same filter."""
     import huggingface_hub
-
     from p06 import v4pilot
 
     seen = {}
