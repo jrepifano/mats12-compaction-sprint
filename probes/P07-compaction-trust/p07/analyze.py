@@ -201,6 +201,8 @@ def paired_contrast(rows: list[dict], model: str, wrapper: str,
     for a, b in pairs:
         for ctx in sorted(set(idx.get(a, {})) & set(idx.get(b, {}))):
             ra, rb = idx[a][ctx], idx[b][ctx]
+            if ra.get(key) is None or rb.get(key) is None:
+                continue        # unresolved outcome (e.g. a detector row with no pass result)
             va, vb = int(ra.get(key) is True), int(rb.get(key) is True)
             ka, kb = ka + va, kb + vb
             per_task[ra["task_id"]].append(va - vb)

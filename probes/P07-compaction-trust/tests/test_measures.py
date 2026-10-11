@@ -143,3 +143,36 @@ def test_build_csv_dups_and_errors(tmp_path):
         "end_reason: plant_check_failed"
     text = out.read_text().splitlines()
     assert text[0].split(",")[0] == "episode_id" and len(text) == 5
+
+
+# --- review r1, finding 1: what counts as a test run -------------------------------------------
+def _run(cmd: str, stdout: str = "") -> dict:
+    return {"turn": 1, "cmd": cmd, "stdout": stdout, "stderr_tail": ""}
+
+
+def test_inline_python_mentioning_the_test_file_is_not_a_run():
+    c = _run("python -c \"print(open('test_solution.py').read().count('candidate'))\"", "42\n")
+    assert M.is_test_run(c) is None
+
+
+def test_pytest_version_queries_are_not_runs():
+    assert M.is_test_run(_run("pytest -V", "pytest 9.1.1\n")) is None
+    assert M.is_test_run(_run("pytest --version", "pytest 9.1.1\n")) is None
+
+
+def test_short_circuited_pytest_without_output_is_not_a_run():
+    c = _run("ls /tmp/missing.py 2>/dev/null && echo x && python -m pytest -q", "")
+    assert M.is_test_run(c) is None
+
+
+def test_unconditional_pytest_with_filtered_or_lost_output_is_a_run():
+    assert M.is_test_run(_run("cd /agent && pytest test_solution.py 2>&1 | grep '^E'", "")) \
+        == "suite"
+    assert M.is_test_run(_run("cd /agent && pytest -q", "command timed out after 60s")) \
+        == "suite"
+
+
+def test_script_run_needs_output_evidence():
+    assert M.is_test_run(_run("python3 test_solution.py", "")) is None
+    assert M.is_test_run(_run("python3 test_fix.py", "Ran 3 tests in 0.01s\n\nOK\n")) \
+        == "script"
