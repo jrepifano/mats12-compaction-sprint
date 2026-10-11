@@ -1,0 +1,54 @@
+{
+  "finished_utc": "2026-10-11T18:36:01Z",
+  "items": {
+    "A": 2000,
+    "B": 275,
+    "C": 275
+  },
+  "limit": null,
+  "load_s": 502.295,
+  "rounds": {
+    "1": {
+      "kinds": {
+        "hop1": 2000,
+        "main": 2550,
+        "pfx": 275
+      },
+      "n_length": 2242,
+      "new_tokens": 337726,
+      "requests": 4825,
+      "samples": 96500,
+      "tokens_per_s": 623.73,
+      "wall_s": 541.465
+    },
+    "2": {
+      "kinds": {
+        "hop2": 619,
+        "prop": 190
+      },
+      "n_length": 7,
+      "new_tokens": 29412,
+      "requests": 809,
+      "samples": 16180,
+      "tokens_per_s": 412.44,
+      "wall_s": 71.312
+    }
+  },
+  "rows": 5634,
+  "smoke": {
+    "identical_in_bulk": 0.97,
+    "kinds": {
+      "main": 4,
+      "pfx": 1
+    },
+    "n_length": 12,
+    "need": 4,
+    "new_tokens": 590,
+    "ok": 5,
+    "requests": 5,
+    "samples": 100,
+    "tokens_per_s": 23.49,
+    "wall_s": 25.117
+  },
+  "started_utc": "2026-10-11T18:16:48Z"
+}
