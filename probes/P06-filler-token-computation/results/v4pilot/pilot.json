@@ -1,0 +1,223 @@
+{
+ "api_error": "FileNotFoundError(2, 'No such file or directory')",
+ "env": {
+  "accelerate": "1.15.0",
+  "arch_list": [
+   "sm_75",
+   "sm_80",
+   "sm_86",
+   "sm_90",
+   "sm_100",
+   "sm_120"
+  ],
+  "capability": [
+   10,
+   3
+  ],
+  "commit": "70af17d8b70cd5fd93e85cc63a47f271af2a3500",
+  "cuda": "13.0",
+  "deepgemm_loadable": true,
+  "disable_deepgemm_linear": "1",
+  "finegrained_fp8_v4_sha": "3c8fcc86c0e42b7abe5bcf666d3a3afdce93a0e8",
+  "gpu": "NVIDIA B300 SXM6 AC",
+  "huggingface-hub": "1.33.0",
+  "kernels": "0.16.2",
+  "model": "deepseek-ai/DeepSeek-V4-Flash@60d8d70770c6776ff598c94bb586a859a38244f1",
+  "safetensors": "0.8.0",
+  "torch": "2.13.0",
+  "transformers": "5.17.0",
+  "triton": "3.7.1",
+  "utc": "2026-10-11T23:17:05Z"
+ },
+ "error": "IncompleteSnapshotError: The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.",
+ "items": [
+  "chain:k2:7",
+  "chain:k2:11",
+  "chain:k2:10",
+  "chain:k2:46",
+  "chain:k2:21",
+  "chain:k2:94",
+  "chain:k2:85",
+  "chain:k2:39",
+  "chain:k2:32",
+  "chain:k2:77",
+  "chain:k3:30",
+  "chain:k3:75",
+  "chain:k3:69",
+  "chain:k3:16",
+  "chain:k3:47"
+ ],
+ "step": "load",
+ "summary": {
+  "complete": true,
+  "gate1_lens_vs_model": {
+   "final_position_agree": 0,
+   "gen_first_eq_fwd": 0,
+   "max_logit_diff": null,
+   "min": 0.99,
+   "n_prompts": 0,
+   "pass": false,
+   "rate": null,
+   "read_agree": 0,
+   "read_n": 0
+  },
+  "gate2_accuracy": {
+   "base": {
+    "api_acc": null,
+    "by_k": {
+     "2": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     },
+     "3": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     }
+    },
+    "local_acc": null,
+    "local_eq_api_draw0": 0,
+    "n": 0,
+    "n_with_api": 0
+   },
+   "dots500": {
+    "api_acc": null,
+    "by_k": {
+     "2": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     },
+     "3": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     }
+    },
+    "local_acc": null,
+    "local_eq_api_draw0": 0,
+    "n": 0,
+    "n_with_api": 0
+   },
+   "pre500": {
+    "api_acc": null,
+    "by_k": {
+     "2": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     },
+     "3": {
+      "api_acc": null,
+      "local_acc": null,
+      "n": 0
+     }
+    },
+    "local_acc": null,
+    "local_eq_api_draw0": 0,
+    "n": 0,
+    "n_with_api": 0
+   },
+   "uplift_dots500_minus_pre500_api_acc": null,
+   "uplift_dots500_minus_pre500_local_acc": null
+  },
+  "gate3_timing": {
+   "batched_generate": false,
+   "gen_only_mean_s": {
+    "base": null,
+    "dots500": null,
+    "pre500": null
+   },
+   "per_prompt_mean_s": {
+    "base": {
+     "fwd_s": null,
+     "gen_s": null,
+     "read_s": null,
+     "write_s": null
+    },
+    "dots500": {
+     "fwd_s": null,
+     "gen_s": null,
+     "read_s": null,
+     "write_s": null
+    },
+    "pre500": {
+     "fwd_s": null,
+     "gen_s": null,
+     "read_s": null,
+     "write_s": null
+    }
+   },
+   "per_prompt_total_s": {
+    "base": null,
+    "dots500": null,
+    "pre500": null
+   },
+   "projection": {
+    "bulk_items": 200,
+    "bulk_transplants": 200,
+    "transplant_cost": "2 dots500 forwards + 4 decodes"
+   },
+   "setup_s": {
+    "download": 512.66,
+    "load": null,
+    "smoke": null
+   }
+  },
+  "local_uplift": {
+   "complete": true,
+   "dots500_minus_pre500_api": {
+    "hi": null,
+    "lo": null,
+    "mean": null,
+    "n": 0
+   },
+   "dots500_minus_pre500_local": {
+    "hi": null,
+    "lo": null,
+    "mean": null,
+    "n": 0
+   },
+   "f6_reported_k2": {
+    "hi": 0.28,
+    "lo": 0.115,
+    "mean": 0.195,
+    "n": 100
+   },
+   "k": 2,
+   "n_paired": 0,
+   "n_planned": 0,
+   "n_rows": 0,
+   "pass": false,
+   "per_arm": {
+    "base": {
+     "api_acc": null,
+     "local_acc": null,
+     "local_eq_api_draw0": 0,
+     "n": 0,
+     "n_with_api": 0
+    },
+    "dots500": {
+     "api_acc": null,
+     "local_acc": null,
+     "local_eq_api_draw0": 0,
+     "n": 0,
+     "n_with_api": 0
+    },
+    "pre500": {
+     "api_acc": null,
+     "local_acc": null,
+     "local_eq_api_draw0": 0,
+     "n": 0,
+     "n_with_api": 0
+    }
+   },
+   "rule": "local lo > 0 and local mean >= 0.5 x API mean (same items)"
+  },
+  "n_prompts_done": 0,
+  "n_prompts_planned": 0
+ },
+ "utc_end": "2026-10-11T23:17:11Z",
+ "utc_start": "2026-10-11T23:17:09Z"
+}

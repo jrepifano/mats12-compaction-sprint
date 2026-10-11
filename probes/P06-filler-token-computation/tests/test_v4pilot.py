@@ -368,3 +368,22 @@ def test_run_sh_dispatch():
     assert r.returncode == 2 and "unknown phase" in r.stdout
     text = (PROBE / "run.sh").read_text()
     assert text.rstrip().endswith('echo "PROBE_DONE rc=$RC"')
+
+
+def test_model_dir_uses_the_download_filter(monkeypatch):
+    """F7 attempt 1: an offline snapshot lookup without the download's ignore_patterns raises
+    IncompleteSnapshotError; model_dir must pass the same filter."""
+    import huggingface_hub
+
+    from p06 import v4pilot
+
+    seen = {}
+
+    def fake(repo, **kw):
+        seen.update(kw)
+        return "/tmp/x"
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", fake)
+    v4pilot.model_dir()
+    assert seen["local_files_only"] is True
+    assert seen["ignore_patterns"] == v4pilot.SNAPSHOT_IGNORE

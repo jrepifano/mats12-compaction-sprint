@@ -1,0 +1,28 @@
+== 2026-10-11T23:17:11Z step=load
+IncompleteSnapshotError("The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.")
+cuda: allocated 0.0 GB, peak 0.0 GB, free 286.8 / 287.4 GB
+Traceback (most recent call last):
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 912, in cmd_run
+    rc, n_planned = _run(a, st, rows, setup_s, urows)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 963, in _run
+    ctx, info = load()
+                ^^^^^^
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 550, in load
+    path = model_dir()
+           ^^^^^^^^^^^
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 543, in model_dir
+    return Path(snapshot_download(MODEL_ID, revision=MODEL_REV, local_files_only=True))
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 266, in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 330, in snapshot_download
+    _raise_if_incomplete_snapshot(
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 586, in _raise_if_incomplete_snapshot
+    raise IncompleteSnapshotError(
+huggingface_hub.errors.IncompleteSnapshotError: The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.
+

@@ -540,7 +540,10 @@ def env_info() -> dict:
 def model_dir() -> Path:
     from huggingface_hub import snapshot_download
 
-    return Path(snapshot_download(MODEL_ID, revision=MODEL_REV, local_files_only=True))
+    # The download skips SNAPSHOT_IGNORE files, so the offline lookup must pass the same filter:
+    # without it huggingface_hub raises IncompleteSnapshotError (F7 attempt 1, 2026-10-11).
+    return Path(snapshot_download(MODEL_ID, revision=MODEL_REV, local_files_only=True,
+                                  ignore_patterns=SNAPSHOT_IGNORE))
 
 
 def load() -> tuple[Ctx, dict]:
