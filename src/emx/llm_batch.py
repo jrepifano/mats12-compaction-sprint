@@ -153,10 +153,13 @@ def usd_of(spec: ModelSpec, prompt_tokens: int, completion_tokens: int) -> float
 
 def call_bound_usd(spec: ModelSpec, prompt: str, max_tokens: int, system: str | None = None,
                    bytes_per_token: float = 1.0) -> float:
-    """Upper bound on one call: input <= (prompt + system bytes) / bytes_per_token + overhead,
-    output <= max_tokens. The default 1.0 is a strict bound; a caller may pass a measured,
-    conservative ratio (P01 uses 1.5 after measuring >= 2.1 on every smoke call). A call that
-    exceeds its bound stops the batch (`AccountingError`), so a wrong ratio fails safe."""
+    """Cost bound on one call: input <= (prompt + system bytes) / bytes_per_token + overhead,
+    output <= max_tokens. The default 1.0 is a strict bound. A larger value is an empirical
+    estimate, not a guarantee (P01 uses 1.5 after measuring >= 2.1 bytes/token on every smoke
+    call): a call charged above its estimate stops further sending (`AccountingError`), but
+    the charge itself and calls already in flight stand."""
+    if not (math.isfinite(bytes_per_token) and bytes_per_token > 0):
+        raise ValueError(f"bytes_per_token must be finite and > 0, got {bytes_per_token!r}")
     n_in = (len(prompt.encode("utf-8")) + len((system or "").encode("utf-8"))) / bytes_per_token
     return usd_of(spec, math.ceil(n_in) + MESSAGE_OVERHEAD_TOKENS, int(max_tokens))
 

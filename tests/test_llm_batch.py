@@ -256,3 +256,8 @@ def test_bytes_per_token_bound():
     loose = llm.call_bound_usd(spec, "x" * 3000, 10, bytes_per_token=1.5)
     assert loose < strict
     assert loose == pytest.approx(llm.usd_of(spec, 2000 + llm.MESSAGE_OVERHEAD_TOKENS, 10))
+
+
+def test_bytes_per_token_validated():
+    with pytest.raises(ValueError):
+        llm.call_bound_usd(llm.MODELS["glm"], "x", 1, bytes_per_token=0)

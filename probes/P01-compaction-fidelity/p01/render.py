@@ -150,9 +150,36 @@ def item_anchor(t: dict, item: dict) -> str:
     return ""
 
 
+def _source_index(t: dict, item: dict) -> int | None:
+    """Prefix message the fact comes from (error and test status: the tool result)."""
+    tr = t["truth"]
+    if item["kind"] == "error":
+        return (tr.get("last_error") or {}).get("msg_index")
+    if item["kind"] == "test_status":
+        src = tr["last_test"] if tr["last_test"]["status"] in ("pass", "fail") else \
+            tr.get("last_script") or {}
+        return src.get("msg_index")
+    return None
+
+
 def visible_items(t: dict, harness: str) -> set[str]:
-    """Checklist ids whose anchor text is inside what this harness shows its summarizer
-    (OpenHands keeps the task message out; pi-mono cuts tool results at 2,000 characters)."""
+    """Checklist ids whose anchor text this harness shows its summarizer (OpenHands keeps the
+    task message out; pi-mono cuts tool results at 2,000 characters). Error and test-status
+    anchors must appear in their own source message as rendered for this harness, not just
+    anywhere in the request (review r1 finding 5)."""
     system, user = summarizer_request(t, harness)
     shown = (system or "") + user
-    return {c["id"] for c in t["checklist"] if item_anchor(t, c) in shown}
+    prefix = t["messages"][: t["cut"]]
+    trunc = PIMONO_TOOL_RESULT_MAX_CHARS if harness == "pimono" else None
+    vis = set()
+    for c in t["checklist"]:
+        anchor = item_anchor(t, c)
+        i = _source_index(t, c)
+        if i is not None and anchor:
+            if harness == "openhands" and i < OPENHANDS_KEEP_FIRST:
+                continue
+            if anchor in "\n\n".join(message_parts(prefix[i], trunc)):
+                vis.add(c["id"])
+        elif anchor in shown:
+            vis.add(c["id"])
+    return vis

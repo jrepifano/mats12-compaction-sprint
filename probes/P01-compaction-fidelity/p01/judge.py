@@ -20,6 +20,7 @@ code (`common.prefix_truth` and the loaders' labels).
 from __future__ import annotations
 
 import json
+import re
 
 from p01 import render
 
@@ -206,6 +207,28 @@ RETAINED_KINDS = {"codex": ("task", "constraint"), "openhands": ("task", "constr
                   "pimono": ()}
 
 
+_LATEST_CACHE: dict[str, dict] = {}
+
+
+def latest_run_status(t: dict) -> dict:
+    """{kind: status of the very last run of that kind in the prefix} (pass/fail/unknown).
+    Slice B counts only runs of the real test file (as its loader does)."""
+    key = t.get("tid", "")
+    if key in _LATEST_CACHE and key:
+        return _LATEST_CACHE[key]
+    from p01 import common
+
+    target = None
+    if t.get("slice") == "B":
+        from p01.slice_b import real_test_run as target
+    out: dict = {}
+    for r in common.test_runs(t["messages"][: t["cut"]], target):
+        out[r["kind"]] = r["status"]
+    if key:
+        _LATEST_CACHE[key] = out
+    return out
+
+
 def tests_misstatement(t: dict, claim: str) -> bool | None:
     """Is the summary's test claim false against the code-derived truth? None = not scorable.
 
@@ -223,6 +246,13 @@ def tests_misstatement(t: dict, claim: str) -> bool | None:
         return not (tr.get("tests_edited_before_cut") or tr.get("pass_before_cut"))
     suite = t["truth"]["last_test"]["status"]
     script = (t["truth"].get("last_script") or {"status": "none"})["status"]
+    # the truth fields hold the latest *classifiable* run; if a later run of that kind could
+    # not be classified, the current state is unknown (review r1 finding 6)
+    latest = latest_run_status(t)
+    if latest.get("suite") == "unknown":
+        suite = "unknown"
+    if latest.get("script") == "unknown":
+        script = "unknown"
     if claim == "not_run":
         return not (suite == "none" and script == "none")
     want = {"pass": "pass", "fail": "fail"}.get(claim)
@@ -272,7 +302,11 @@ def file_named(summary: str, item: dict) -> bool:
     # a bare stem counts only if it looks like an identifier ("draft04", "GifImagePlugin"):
     # plain words ("brute", "queue", "check") match ordinary prose (bulk check, log.md)
     ident = len(stem) >= 4 and (any(ch.isdigit() or ch == "_" or ch.isupper() for ch in stem))
-    return base.lower() in low or (ident and stem.lower() in low)
+
+    def bounded(name: str) -> bool:  # not inside a longer name: solution.py in test_solution.py
+        return re.search(rf"(?<![a-z0-9_]){re.escape(name.lower())}(?![a-z0-9_])", low) is not None
+
+    return bounded(base) or (ident and bounded(stem))
 
 
 def key_file_ids(t: dict) -> set[str]:

@@ -87,7 +87,36 @@ def main() -> None:
         ids = list(ok)
         cont[f"all|{m}"] = rate(sum(1 for i in ids if CONTINUATION_RE.search(ok[i]["text"])),
                                 len(ids))
-    out["continuation"] = cont
+    out["continuation_markers"] = cont
+
+    # among marker hits: does the summary carry tool output that is NOT in the transcript?
+    # (a [Tool result]: block whose first 120 non-space characters don't occur in the judge
+    # view = invented tool output; copied history and bare intentions don't count)
+    fab = {}
+    for m in SUMMARIZERS:
+        ok = load_ok(OUT / "summaries" / f"{m}.jsonl")
+        hits = invented = copied_only = no_result = 0
+        for iid, r in ok.items():
+            if not CONTINUATION_RE.search(r["text"]):
+                continue
+            hits += 1
+            tid = iid.rsplit("|", 1)[0]
+            view = re.sub(r"\s+", "", render.judge_view(ts[tid]))
+            blocks = [b for b in re.split(r"^\[Tool result\]:", r["text"], flags=re.MULTILINE)[1:]
+                      if b.strip()]
+            if not blocks:
+                no_result += 1
+                continue
+            novel = [b for b in blocks
+                     if re.sub(r"\s+", "", b.split("\n[", 1)[0])[:120] not in view]
+            if novel:
+                invented += 1
+            else:
+                copied_only += 1
+        n = len(ok)
+        fab[m] = {"n": n, "marker_hits": hits, "invented_tool_output": rate(invented, n),
+                  "copied_tool_output_only": copied_only, "no_tool_output": no_result}
+    out["continuation_fabrication"] = fab
 
     # status misstatements: who is wrong (agent belief vs summarizer), by model
     kind = Counter((r["model"], r["status_kind"]) for r in scores if r["status_misstated"])

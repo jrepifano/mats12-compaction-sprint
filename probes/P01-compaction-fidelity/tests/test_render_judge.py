@@ -209,3 +209,20 @@ def test_stem_rule_and_key_files():
                                                                      "/agent/solution.py")},
         {"id": "file2", "kind": "file", "text": item["text"]}]}
     assert judge.key_file_ids(tb) == {"file1"}
+
+
+def test_file_name_boundaries():
+    item = {"id": "file1", "kind": "file", "text": "The summary names the file /agent/solution.py "
+            "(by path or file name) as created or modified"}
+    assert not judge.file_named("edited test_solution.py only", item)
+    assert judge.file_named("updated /agent/solution.py", item)
+    assert judge.file_named("Rewrote `solution.py`.", item)
+
+
+def test_visibility_uses_source_message():
+    # the anchor ("1 failed") also appears early in an untruncated message; the source run's
+    # output is cut by pi-mono, so the fact is not shown to pi-mono
+    t = make_t(last_out="x" * 2500 + "\n== 1 failed in 0.1s ==")
+    t["messages"][1]["text"] += " (note: 1 failed in 0.1s earlier)"
+    assert "test_status" not in render.visible_items(t, "pimono")
+    assert "test_status" in render.visible_items(t, "codex")
