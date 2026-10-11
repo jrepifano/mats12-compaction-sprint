@@ -393,10 +393,11 @@ def main(argv=None) -> int:
     plan = P.run_order_for(VARIANT, null_samples)
     built: dict[str, tuple] = {}
 
-    def reqs_for(cell):
-        if cell.cell_id not in built:
-            built[cell.cell_id] = P.build_requests(tok, cell, questions, kept, by_id, prompts)
-        return built[cell.cell_id]
+    def reqs_for(cell):  # keyed on the samples too: a cut cell keeps its id (log.md 21:35)
+        k = (cell.cell_id, cell.samples)
+        if k not in built:
+            built[k] = P.build_requests(tok, cell, questions, kept, by_id, prompts)
+        return built[k]
 
     for _, cells in plan:
         for c in cells:

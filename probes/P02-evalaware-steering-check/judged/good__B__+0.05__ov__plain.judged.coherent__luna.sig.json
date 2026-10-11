@@ -1,0 +1,29 @@
+{
+  "column": "coherent__luna",
+  "metric": "coherent",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/coherent_v1.txt",
+  "prompt_sha256": "3fe355bee14bcd6fea6f806c4d615a7687bfd4067604f2d7d06e040d048bee57",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "probes/P02-evalaware-steering-check/staging_cells/good__B__+0.05__ov__plain.csv",
+    "sha256": "f91b206ec1e5658f9baea7cc77a07b11463457221e87435f9101d1ee175482c7",
+    "n_rows": 820,
+    "keys_sha256": "95feeca334ebb41f6447ad353823050f99cae35b30649284b989b65676c68f25"
+  },
+  "created_utc": "2026-10-11T21:20:14Z"
+}

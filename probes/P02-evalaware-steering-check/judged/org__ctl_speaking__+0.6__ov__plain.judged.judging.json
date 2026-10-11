@@ -1,0 +1,73 @@
+[
+  {
+    "utc_start": "2026-10-11T21:25:35Z",
+    "utc_end": "2026-10-11T21:25:42Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_speaking__+0.6__ov__plain.csv",
+      "sha256": "ad649f930cff3a2b957cf6363c26dde53af6fc7514663543c5281ecd566133ae",
+      "n_rows": 205,
+      "keys_sha256": "372153d6bad5951d9ed0810dfbd0f9f02d8b61a7c4f2282404821bdd88f4c65c"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 67551,
+        "completion_tokens": 822,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007166100000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007166100000000001,
+        "none_raw_samples": [
+          {
+            "row": 85,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 204,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.010845900000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007166
+  },
+  {
+    "utc_start": "2026-10-11T21:25:42Z",
+    "utc_end": "2026-10-11T21:25:48Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_speaking__+0.6__ov__plain.csv",
+      "sha256": "ad649f930cff3a2b957cf6363c26dde53af6fc7514663543c5281ecd566133ae",
+      "n_rows": 205,
+      "keys_sha256": "372153d6bad5951d9ed0810dfbd0f9f02d8b61a7c4f2282404821bdd88f4c65c"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 68781,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0072881000000000005,
+        "usd_unmetered": 0.0,
+        "usd": 0.0072881000000000005,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0116932,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007288
+  }
+]
