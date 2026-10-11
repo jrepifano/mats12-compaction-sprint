@@ -213,7 +213,8 @@ async def run_jobs(asker: Asker, recipe: Recipe, jobs: list[dict], out_path: Pat
     async def one(j):
         item = j["item"]
         key = row_key(recipe.model, item["item_id"], j["arm"], j["draw"], j["temperature"], tag)
-        msgs = build_messages(item, j["shots"], j["arm"], recipe.prefill, placement)
+        msgs = j.get("messages") or build_messages(item, j["shots"], j["arm"], recipe.prefill,
+                                                   placement)
         body = build_body(recipe, msgs, j["temperature"], reasoning, max_tokens)
         base = {"key": key, "model": recipe.model, "recipe": recipe.name, "tag": tag,
                 "placement": placement, "n_shots": len(j["shots"]),
