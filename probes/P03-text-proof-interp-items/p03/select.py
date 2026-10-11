@@ -33,6 +33,7 @@ from p03 import predict as P
 
 API = C.RESULTS / "api"
 CONTRAST_PER_TYPE = 50
+NON_COUNTRY = set(json.loads((C.DATA / "non_country_qids.json").read_text()))
 NATION = "country (a nationality adjective such as 'Indian' or 'Italian' names its country)"
 CONTRAST_SEED = 0
 SMOKE_HF_N = 10
@@ -43,17 +44,20 @@ class Matcher:
     """String match first (``core.same`` on aliases), else luna's YES/NO; pairs without a verdict
     are collected by ``need`` and decided after one batched ``resolve``."""
 
-    aliases: dict[str, list[str]] = field(default_factory=dict)  # norm(target) -> aliases
+    # (norm(target), kind) -> aliases. Keyed by kind too: the same target in two categories
+    # ("Pyramids": ancient monument / ancient wonder) has different aliases, and a target-only key
+    # made selection depend on assignment order (review r1, BLOCKING 1).
+    aliases: dict[tuple[str, str], list[str]] = field(default_factory=dict)
     verdict: dict[str, bool | None] = field(default_factory=dict)  # equiv call key -> verdict
     pending: dict[str, L.Call] = field(default_factory=dict)
 
-    def string(self, a: str, b: str, extra: Iterable[str] = ()) -> bool:
-        al = [*self.aliases.get(C.norm(b), []), *extra]
-        return (C.same(a, b, al) or C.same(b, a, self.aliases.get(C.norm(a), []))
+    def string(self, a: str, b: str, extra: Iterable[str] = (), kind: str = "") -> bool:
+        al = [*self.aliases.get((C.norm(b), kind), []), *extra]
+        return (C.same(a, b, al) or C.same(b, a, self.aliases.get((C.norm(a), kind), []))
                 or contains(a, b))
 
     def need(self, a: str, b: str, kind: str, extra: Iterable[str] = ()) -> None:
-        if C.norm(a) and C.norm(b) and not self.string(a, b, extra):
+        if C.norm(a) and C.norm(b) and not self.string(a, b, extra, kind):
             c = P.equiv_call(a, b, kind)
             if c.key not in self.verdict:
                 self.pending[c.key] = c
@@ -73,7 +77,7 @@ class Matcher:
         is conservative for their decision)."""
         if not C.norm(a) or not C.norm(b):
             return False
-        if self.string(a, b, extra):
+        if self.string(a, b, extra, kind):
             return True
         v = self.verdict.get(P.equiv_call(a, b, kind).key)
         return unknown if v is None else v
@@ -99,6 +103,9 @@ def two_pass(m: Matcher, fn: Callable[[], object], dry_run: bool, max_rounds: in
         if not m.pending:
             return out
         m.resolve(dry_run=dry_run)
+        if dry_run:  # no verdicts come back from a dry run: one round shows the projection
+            m.pending = {}
+            return out
         out = fn()
     if m.pending:
         raise RuntimeError(f"{len(m.pending)} equivalence pairs still pending")
@@ -143,6 +150,9 @@ def item_rows(items: list[C.Item], s: dict[str, C.SampleRow], m: Matcher, collec
             if it.meta.get("country_dissolved"):
                 # Republic of Venice vs "Italy": the true-answer check can't be decided (log.md)
                 r["why"] = "true country dissolved"
+            elif it.meta.get("country_qid") in NON_COUNTRY:
+                # Florence, Hong Kong, "English people": not a country (review r1, BLOCKING 2)
+                r["why"] = "true country not a country"
             elif not (h1 and h1.consistent):
                 r["why"] = "hop1 inconsistent"
             elif not (main and main.consistent):
@@ -188,7 +198,11 @@ def kind_for(it: C.Item) -> str:
     return P.kind_of(it)
 
 
-def hits(m: Matcher, guesses: list[str], target: str, kind: str, collect: bool) -> bool:
+def hits(m: Matcher, guesses: list[str] | None, target: str, kind: str,
+         collect: bool) -> bool | None:
+    """Any guess names the target; None when the guesses are missing (failed measurement)."""
+    if guesses is None:
+        return None
     if collect:
         for g in guesses:
             m.need(g, target, kind)
@@ -219,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
                        cache=API / "aliases.jsonl", purpose="aliases", dry_run=a.dry_run)
     for t, k in targets:
         r = ares.get(P.alias_call(t, k).key)
-        m.aliases[C.norm(t)] = P.parse_aliases(r.text if r else None)
+        m.aliases[(C.norm(t), k)] = P.parse_aliases(r.text if r else None)
 
     # selection predictors (cached from the pre-pod run)
     sel = L.run_calls(P.selection_calls(items), exp=C.EXP, cache=API / "selection.jsonl",
@@ -240,7 +254,8 @@ def main(argv: list[str] | None = None) -> int:
                 r["open_hit"] = hits(m, [pl] if pl else [], r["target"], kind_for(it), collect)
                 r["open_per_model_hit"] = hits(m, [x for x in per.values() if x], r["target"],
                                                kind_for(it), collect)
-            r["survivor"] = not (r["gemini_hit"] or r["open_hit"])
+            # an unparseable selection reply removes the item (conservative for text-proof)
+            r["survivor"] = not (r["gemini_hit"] is not False or r["open_hit"])
 
     two_pass(m, lambda: select(True), a.dry_run)
     surv = [r for r in cons if r["survivor"]]
@@ -289,7 +304,7 @@ def textproof(cons: list[dict]) -> dict:
         for name in ("ho-sonnet", "ho-fewshot", "ho-sonnet-out", "ho-fewshot-out",
                      "gemini", "open"):
             for label, rs in (("survivors", sv), ("all_consistent", allc)):
-                got = [r[f"{name}_hit"] for r in rs if f"{name}_hit" in r]
+                got = [r[f"{name}_hit"] for r in rs if r.get(f"{name}_hit") is not None]
                 if got:
                     d[f"{name}|{label}"] = dict(zip(("rate", "lo", "hi"),
                                                     C.wilson(sum(got), len(got)))) | {
@@ -319,7 +334,8 @@ def write_reader_inputs(items: list[C.Item], cons: list[dict], samples: dict[str
                 it = by_id[r["id"]]
                 rows.append({"id": it.id, "type": t, "group": group, "prompt": it.prompt,
                              "prefill": it.prefill, "target": r["target"],
-                             "target_aliases": m.aliases.get(C.norm(r["target"]), []),
+                             "target_aliases": m.aliases.get((C.norm(r["target"]),
+                                                             kind_for(it)), []),
                              "modal_answer": r["modal"]["main"][0]})
     C.write_jsonl(C.DATA / "reader_items.jsonl", rows)
     smoke = [r for r in rows if r["type"] == "B"][:SMOKE_HF_N]

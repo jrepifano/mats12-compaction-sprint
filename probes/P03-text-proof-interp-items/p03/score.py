@@ -35,6 +35,9 @@ from p03 import predict as P
 READOUTS = C.RESULTS / "read" / "readouts"
 API = C.RESULTS / "api"
 READERS = ("logit_lens", "jlens", "olens", "olens_shuffled", "text_monitor")
+# Derived readers scored from the same files: the Oracle Lens at the last prompt token only, the
+# grid the shuffled control uses (review r1: 33 real cells vs 11 shuffled on survivors).
+DERIVED = {"olens_last": ("olens", -1)}
 DECOY_SEED = 0
 MONITOR_PROMPT = C.PROBE.parents[1] / "prompts" / "I1a" / "text_monitor_v1.txt"
 MONITOR_MODEL = "google/gemini-3.8-flash"
@@ -194,8 +197,12 @@ def run_monitor(dry_run: bool) -> None:
 def item_scores(ritems: list[dict], strings: dict) -> dict[str, dict[str, dict[str, bool]]]:
     """reader -> item id -> string name -> any cell hit."""
     out: dict = {}
-    for reader in READERS:
-        ro = load_readouts(reader)
+    for reader in (*READERS, *DERIVED):
+        if reader in DERIVED:
+            src, pos = DERIVED[reader]
+            ro = {i: [c for c in cs if c["pos"] == pos] for i, cs in load_readouts(src).items()}
+        else:
+            ro = load_readouts(reader)
         if not ro:
             continue
         out[reader] = {}
@@ -222,7 +229,7 @@ def baselines(rs: list[dict], sc: dict, sel: dict[str, dict]) -> dict[str, dict[
     out: dict[str, dict[str, bool]] = {}
     for name in ("ho-sonnet", "ho-fewshot"):
         per = {r["id"]: sel[r["id"]][f"{name}_hit"] for r in rs
-               if f"{name}_hit" in sel.get(r["id"], {})}
+               if sel.get(r["id"], {}).get(f"{name}_hit") is not None}  # None: failed call
         if per:
             out[name] = per
     if "ho-sonnet" in out and "ho-fewshot" in out:
@@ -408,14 +415,18 @@ def revalidate() -> dict:
     rows = C.read_jsonl(C.RESULTS / "judge_validation.jsonl")
     for x in rows:
         _, reader, iid, layer = x["key"].split("|")
+        if iid not in ritems:  # left the reader set after the judge calls (A-4749, review r1)
+            x["judged"] = False
+            x["dropped"] = "not a reader item any more"
+            continue
         r = ritems[iid]
         cells = [c for c in ro[reader][iid] if c["layer"] == int(layer)]
-        x["regex_v1"] = x.get("regex_v1", x["regex"])
+        x["regex_v1"] = x.get("regex_v1", x.get("regex"))
         x["regex"] = any(cell_hit(c, r["target"], r["target_aliases"], r["type"] == "A")
                          for c in cells)
     C.write_jsonl(C.RESULTS / "judge_validation.jsonl", rows)
     out = {"v2_after_scoring_fix": agreement(rows),
-           "v1_before_fix": agreement([x | {"regex": x["regex_v1"]} for x in rows])}
+           "v1_before_fix": agreement([x | {"regex": x["regex_v1"]} for x in rows if "regex_v1" in x])}
     (C.RESULTS / "judge_validation.json").write_text(json.dumps(out, indent=1) + "\n")
     return out
 

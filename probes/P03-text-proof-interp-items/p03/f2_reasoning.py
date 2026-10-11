@@ -60,8 +60,8 @@ def main(argv: list[str] | None = None) -> int:
     m = S.Matcher()
     for al in C.read_jsonl(S.API / "aliases.jsonl"):
         if al.get("text"):
-            t = al["key"].split("|", 2)[2]
-            m.aliases[t] = P.parse_aliases(al["text"])
+            _, kind, t = al["key"].split("|", 2)
+            m.aliases[(t, kind)] = P.parse_aliases(al["text"])
     by_key = {c.key: res.get(c.key) for c in calls}
     rows = []
 
@@ -80,7 +80,8 @@ def main(argv: list[str] | None = None) -> int:
     out: dict = {"n_calls": len(calls), "errors": sum(1 for c in calls if not by_key[c.key]
                                                       or by_key[c.key].error)}
     for t in C.TYPES:
-        rs = [x for x in rows if x["type"] == t]
+        rs = [x for x in rows if x["type"] == t and x["hit"] is not None
+              and x["hit_no_reasoning"] is not None]  # failed calls are missing, not misses
         if not rs:
             continue
         k = sum(x["hit"] for x in rs)

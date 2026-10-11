@@ -93,3 +93,13 @@ def test_score_short_alias_forms():
     tok, _ = SC.forms("Claude Monet", ["C. Monet", "Claude O. Monet"], True)
     assert "c" not in tok and "monet" in tok and "c. monet" in tok
     assert not SC.cell_hit({"tokens": ["C", "G", "ops"]}, "Claude Monet", ["C. Monet"], True)
+
+
+def test_aliases_keyed_by_kind_and_failed_guesses():
+    m = S.Matcher()
+    m.aliases[("pyramids", "ancient monument (or concept)")] = ["Great Pyramid of Giza"]
+    assert m.string("Great Pyramid of Giza", "Pyramids", kind="ancient monument (or concept)")
+    assert not m.string("Great Pyramid of Giza", "Pyramids", kind="ancient wonder (or concept)")
+    assert P.parse_guesses('{"guesses": ["a"') is None and P.parse_guesses(None) is None
+    assert P.parse_guesses('{"guesses": []}') == []
+    assert S.hits(m, None, "x", "k", False) is None

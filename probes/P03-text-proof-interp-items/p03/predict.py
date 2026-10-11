@@ -93,20 +93,24 @@ def guess_call(key: str, route: str, it: C.Item, **kw) -> L.Call:
                   reasoning="low" if low else "none", json_mode=True)
 
 
-def parse_guesses(text: str | None) -> list[str]:
+def parse_guesses(text: str | None) -> list[str] | None:
+    """The guesses, or None when the call failed or the reply is not the requested JSON (a failed
+    measurement, never a miss: review r1)."""
     if not text:
-        return []
+        return None
     t = re.sub(r"^```(?:json)?\s*|\s*```$", "", text.strip())
     try:
-        g = json.loads(t).get("guesses", [])
+        g = json.loads(t).get("guesses")
     except (json.JSONDecodeError, AttributeError):
         m = re.search(r"\{.*\}", t, flags=re.DOTALL)
         if not m:
-            return []
+            return None
         try:
-            g = json.loads(m.group(0)).get("guesses", [])
+            g = json.loads(m.group(0)).get("guesses")
         except (json.JSONDecodeError, AttributeError):
-            return []
+            return None
+    if not isinstance(g, list):
+        return None
     return [str(x).strip() for x in g if str(x).strip()][:3]
 
 

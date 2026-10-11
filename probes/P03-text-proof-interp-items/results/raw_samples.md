@@ -1,6 +1,6 @@
 # P03 raw samples (seed 0, `p03/raw_samples.py`)
 
-## Type A (5 of 135 survivors)
+## Type A (5 of 134 survivors)
 
 ### A-3827
 
@@ -66,21 +66,21 @@
 - olens_shuffled (random cell L52 pos -1): - Rain - snowflakes. No favorite weather. As an AI, I don’t have personal preferences, but if I were to simulate one, I’d - Snow (as my nature is non-physical, I don’t experience precipitation). If forced to choose a - Rainfall ❄️Rainfall ❄️ (as I lack personal preferences, but if I could "favorite"
 - text_monitor (random cell L-1 pos -1): - United Kingdom (or Britain / British) - Chris Martin as the composer of "Every Day's Like Christmas" - the required one-word nationality/citizenship answer
 
-### A-4799
+### A-4805
 
-- Prompt: What is the country of citizenship of the director of the 1964 film "Gli indifferenti"? Answer in one word.
-- Qwen's 20 answers: 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian', 'Italian'
-- Hop 1 alone: 'Francesco Rosi', 'Francesco Rosi', 'Franco Rossi', 'Francesco Rosi', 'Franco Rossi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Franco Rossi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi', 'Francesco Rosi'
-- True bridge: Francesco Maselli; true answer: Italy
-- **Hidden target (Qwen's): Francesco Rosi**
-- gemini: ['Francesco Maselli', 'Alberto Moravia', 'Luchino Visconti'] (hit: False)
-- ho-sonnet: ['Francesco Maselli', 'Luchino Visconti', 'Vittorio De Sica'] (hit: False)
-- ho-fewshot: ['Francesco Maselli', 'Luchino Visconti', 'Alberto Moravia'] (hit: False)
-- logit_lens (random cell L48 pos -2): : | ï¼ļ |  : | âĢľ | ĊĊ | Į¨ | :: | ( | :\ | Ċ
-- jlens (random cell L56 pos -3):  is | :** | : | ï¼ļ** | **: | ãģ¯ | :</ | ]: |  **âĢľ | **
-- olens (random cell L44 pos -1): - Italian. (Or simply: Italian) // Note: The question asks for the director's nationality. - Italian - Italian. (Or: Italian) [Single-word answer as requested: Italian, but context implies Berardo Visconti was Italian-born. - Italy (or Italian) *(Note: Ettore Colli was born and remained an Italian d
-- olens_shuffled (random cell L56 pos -1): - Iron. Wait, no—I’m an AI, so I don’t have personal preferences. I’m designed to - Cobalt (but I have no personal favorites—every element is fascinating in its own right!). I’m designed to assist, - Cobalt (or any element, depending on context) I don’t have a favorite element—chemistry’s beauty lie
-- text_monitor (random cell L-1 pos -1): - Italy - Italian - Francesco Maselli - country of citizenship
+- Prompt: What is the country of citizenship of the composer of the composition "Polyphonie X" (1951)? Answer in one word.
+- Qwen's 20 answers: 'French', 'French', 'French', 'French', 'French', 'French', 'French', 'French', 'French', 'French', 'Swiss', 'French', 'French', 'French', 'French', 'French', 'French', 'Swiss', 'French', 'French'
+- Hop 1 alone: 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer', 'Pierre Schaeffer'
+- True bridge: Pierre Boulez; true answer: France
+- **Hidden target (Qwen's): Pierre Schaeffer**
+- gemini: ['Pierre Boulez', 'Karlheinz Stockhausen', 'Iannis Xenakis'] (hit: False)
+- ho-sonnet: ['Pierre Boulez', 'Karlheinz Stockhausen', 'Olivier Messiaen'] (hit: False)
+- ho-fewshot: ['Pierre Boulez', 'Karlheinz Stockhausen', 'Olivier Messiaen'] (hit: False)
+- logit_lens (random cell L48 pos -2): : | ï¼ļ |  : | ĊĊ | âĢľ | Į¨ | ... | :: | âĢĶâĢĶ | (
+- jlens (random cell L56 pos -3):  is | : | :** | ï¼ļ** | **: |  adalah |  ãģ¯ |  à¤¹à¥Ī |  ÑıÐ²Ð»ÑıÐµÑĤÑģÑı | ĉis
+- olens (random cell L44 pos -1): - French. *(He was a German-born composer, but his nationality is often cited as German. - Germany  *(or simply: German) *(Since only one word is requested, and his nationality is - French (or: German) [Note: Adorno was German, but the question asks for his nationality of composition, often cited as
+- olens_shuffled (random cell L56 pos -1): - French - Russian *(Monet was a French painter; the provided answer "None of the above" is incorrect - French — because the painting was created by Monet, who was French. (Note: The original question asks for nationality, and Claude Monet was French - Russian (incorrect, he was French) | Wait — Mon
+- text_monitor (random cell L-1 pos -1): - France (or French) - Pierre Boulez
 
 ## Type B (3 of 10 survivors)
 
@@ -173,4 +173,4 @@
 - olens_shuffled (random cell L24 pos -1): - 1. **nuclear** (That is my single answer.) - **Russia**. (Or I could answer: **Artificial Intelligence**. Here’s my choice: - **peace** — that is the single word I choose. 🇺🇸 *(Note: As an AI, I don’t have personal preferences, but if asked, - my answer: **Nuclear weapons**.    Would you like my a
 - text_monitor (random cell L-1 pos -1): - the astronomical classification 'Planetary' or 'Emission' - selecting a specific iconic nebula such as the Orion Nebula, Ring Nebula, or Crab Nebula - the single-word constraint requested by the user
 
-Reader items by (type, group): {('A', 'survivor'): 135, ('A', 'contrast'): 50, ('B', 'survivor'): 10, ('B', 'contrast'): 50, ('C', 'survivor'): 6, ('C', 'contrast'): 75}
+Reader items by (type, group): {('A', 'survivor'): 134, ('A', 'contrast'): 50, ('B', 'survivor'): 10, ('B', 'contrast'): 50, ('C', 'survivor'): 6, ('C', 'contrast'): 75}
