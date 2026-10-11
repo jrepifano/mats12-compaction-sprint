@@ -119,7 +119,10 @@ def item_rows(items: list[C.Item], s: dict[str, C.SampleRow], m: Matcher, collec
             r["b_ws_target"] = by_id[it.b_id].ws_target
         else:  # A
             h1, h2 = md.get("hop1"), md.get("hop2")
-            if not (h1 and h1.consistent):
+            if it.meta.get("country_dissolved"):
+                # Republic of Venice vs "Italy": the true-answer check can't be decided (log.md)
+                r["why"] = "true country dissolved"
+            elif not (h1 and h1.consistent):
                 r["why"] = "hop1 inconsistent"
             elif not (main and main.consistent):
                 r["why"] = "two-hop inconsistent"
