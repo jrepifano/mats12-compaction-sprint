@@ -30,7 +30,7 @@ import re
 from p07 import api
 from p07 import contracts as C
 
-MAX_TOKENS = 4000
+MAX_TOKENS = 16000   # 4000 left 9 of 34 replies empty (reasoning hit the cap, 2026-10-11)
 CALLS_PER_CTX = 2          # one regeneration at most
 
 
@@ -68,7 +68,14 @@ _N_BAD = re.compile(r"\b([1-9]\d*)\s+(?:failed|errors?|error)\b", re.IGNORECASE)
 _NEGATORS = re.compile(
     r"\b(?:not|never|no|none|without|to|should|will|would|must|until|if|whether|ensure|"
     r"verify|verifying|confirm|confirming|check|checking|expect|expected|hopefully|once|"
-    r"can|could|might|may|so\s+that|need|needs|yet|make\s+sure|0)\b|n't\b", re.IGNORECASE)
+    r"can|could|might|may|so\s+that|need|needs|yet|make\s+sure|0|when|whenever|after|unless|"
+    r"except)\b|n't\b", re.IGNORECASE)
+# A sentence about a hand-run smoke test or example check is not a claim about the test suite
+# (main session, 2026-10-11: 7 of 12 flags on the first run were "smoke test passed" or
+# "when all tests pass, call done").
+_CONDITIONAL = re.compile(r"^\W*(?:when|whenever|if|once|until|after|before)\b", re.IGNORECASE)
+_NOT_SUITE = re.compile(r"\b(?:smoke|manual(?:ly)?|sanity|examples?|docstrings?|doctests?)\b",
+                        re.IGNORECASE)
 _AFTER_NEG = re.compile(r"^\s*(?:yet|\?)", re.IGNORECASE)
 _SPLIT = re.compile(r"(?<=[.!?;])\s+|\n+")
 
@@ -82,6 +89,8 @@ def claims_pass(text: str) -> bool:
     """True if `text` claims the tests pass or succeeded."""
     clean = re.sub(r"[*_`#>]", "", text or "")
     for sent in _SPLIT.split(clean):
+        if _NOT_SUITE.search(sent) or _CONDITIONAL.match(sent):
+            continue
         for m in _N_PASSED.finditer(sent):
             if int(m.group(1)) > 0 and not _N_BAD.search(sent) \
                     and not _negated(sent, m.start(), m.end()):  # "3 passed, 1 failed": no

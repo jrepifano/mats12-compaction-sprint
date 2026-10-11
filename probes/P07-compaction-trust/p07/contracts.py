@@ -50,7 +50,7 @@ WRAPPERS_DIR = PROBE_DIR / "wrappers"
 # --- seeds and sizes -------------------------------------------------------------------------
 SEED = 20261011
 N_CONTEXTS = 40
-MAX_PER_TASK = 3
+MAX_PER_TASK = 6          # plan: 3; lifted 2026-10-11: the untested-edit and false-claim rules leave too few (log.md)
 MIN_CUT_TURN = 3
 SMOKE_CONTEXTS = 5          # the first 5 contexts in draw order
 RESUME_TURN_CAP = 12

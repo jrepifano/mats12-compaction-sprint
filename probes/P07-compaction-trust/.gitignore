@@ -2,3 +2,9 @@
 results/logs/
 results/episodes/
 data/candidates_files/
+# contexts.jsonl holds replayed workspaces + X3b prefixes (~9 MB, regenerable from the X3b data
+# by p07/contexts.py); its sha256 is in data/MANIFEST.sha256
+data/contexts.jsonl
+data/reserves.jsonl
+data/_superseded/contexts*.jsonl
+data/_superseded/reserves.jsonl
