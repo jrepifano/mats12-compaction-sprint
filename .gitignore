@@ -235,3 +235,8 @@ data/P01/raw/
 data/P01/slice_*.jsonl
 results/P01/**/*.lock
 results/P01/precision/views/
+
+# P06: nocot-bench sealed items (fact_hops); nocot asks that unpacked items not be republished
+data/P06/
+probes/P06-filler-token-computation/results/stage1/.reconcile.lock
+probes/P06-filler-token-computation/results/stage2/readouts/

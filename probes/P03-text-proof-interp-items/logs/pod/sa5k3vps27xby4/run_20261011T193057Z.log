@@ -1,0 +1,65 @@
+P03 start 2026-10-11T19:30:58Z phase=read probe=P03 commit=48ae80a2152e51a925bf51238213a2ab7967274b
+P03_STEP preflight start 2026-10-11T19:30:58Z
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         150G   21G  130G  14% /
+P03_STEP preflight done 2026-10-11T19:31:00Z
+P03_STEP download start 2026-10-11T19:31:00Z
+[p03.readers 2026-10-11T19:31:01Z] download plan: 59.4 GB in 30 files
+P03_STEP download done 2026-10-11T19:39:06Z 485.82
+P03_STEP model_load start 2026-10-11T19:39:06Z
+Loading weights:   0%|          | 0/851 [00:00<?, ?it/s]Loading weights:   0%|          | 1/851 [00:00<07:55,  1.79it/s]Loading weights:   1%|▏         | 12/851 [00:00<00:38, 21.88it/s]Loading weights:   3%|▎         | 28/851 [00:00<00:18, 43.79it/s]Loading weights:   5%|▍         | 41/851 [00:00<00:13, 61.19it/s]Loading weights:   6%|▌         | 50/851 [00:01<00:14, 54.19it/s]Loading weights:   8%|▊         | 65/851 [00:01<00:10, 72.48it/s]Loading weights:   9%|▉         | 75/851 [00:01<00:10, 73.64it/s]Loading weights:  10%|▉         | 84/851 [00:01<00:11, 64.80it/s]Loading weights:  11%|█         | 94/851 [00:01<00:10, 72.18it/s]Loading weights:  12%|█▏        | 103/851 [00:01<00:12, 60.73it/s]Loading weights:  14%|█▎        | 116/851 [00:02<00:09, 74.71it/s]Loading weights:  15%|█▍        | 125/851 [00:02<00:10, 70.71it/s]Loading weights:  16%|█▌        | 134/851 [00:02<00:10, 68.92it/s]Loading weights:  17%|█▋        | 146/851 [00:02<00:08, 80.22it/s]Loading weights:  18%|█▊        | 155/851 [00:02<00:11, 59.64it/s]Loading weights:  20%|█▉        | 166/851 [00:02<00:09, 68.76it/s]Loading weights:  21%|██        | 175/851 [00:02<00:10, 66.69it/s]Loading weights:  22%|██▏       | 183/851 [00:03<00:09, 69.34it/s]Loading weights:  23%|██▎       | 199/851 [00:03<00:07, 89.45it/s]Loading weights:  25%|██▍       | 209/851 [00:03<00:09, 68.85it/s]Loading weights:  26%|██▌       | 218/851 [00:03<00:09, 68.11it/s]Loading weights:  28%|██▊       | 241/851 [00:03<00:06, 100.50it/s]Loading weights:  30%|██▉       | 253/851 [00:03<00:05, 102.33it/s]Loading weights:  31%|███       | 265/851 [00:03<00:06, 97.41it/s] Loading weights:  33%|███▎      | 278/851 [00:04<00:05, 99.26it/s]Loading weights:  34%|███▍      | 289/851 [00:04<00:06, 91.85it/s]Loading weights:  35%|███▌      | 299/851 [00:04<00:06, 87.82it/s]Loading weights:  36%|███▋      | 309/851 [00:04<00:07, 75.91it/s]Loading weights:  37%|███▋      | 317/851 [00:04<00:07, 73.40it/s]Loading weights:  38%|███▊      | 326/851 [00:04<00:07, 72.22it/s]Loading weights:  41%|████      | 345/851 [00:04<00:05, 97.01it/s]Loading weights:  42%|████▏     | 356/851 [00:04<00:05, 96.26it/s]Loading weights:  43%|████▎     | 366/851 [00:05<00:07, 68.59it/s]Loading weights:  45%|████▍     | 380/851 [00:05<00:05, 81.08it/s]Loading weights:  46%|████▌     | 390/851 [00:05<00:05, 79.86it/s]Loading weights:  47%|████▋     | 399/851 [00:05<00:05, 76.92it/s]Loading weights:  48%|████▊     | 412/851 [00:05<00:05, 84.44it/s]Loading weights:  49%|████▉     | 421/851 [00:05<00:06, 70.15it/s]Loading weights:  51%|█████▏    | 437/851 [00:06<00:04, 85.42it/s]Loading weights:  53%|█████▎    | 447/851 [00:06<00:04, 85.83it/s]Loading weights:  54%|█████▎    | 457/851 [00:06<00:05, 77.95it/s]Loading weights:  55%|█████▍    | 466/851 [00:06<00:05, 73.78it/s]Loading weights:  56%|█████▌    | 474/851 [00:06<00:05, 65.74it/s]Loading weights:  57%|█████▋    | 487/851 [00:06<00:05, 72.47it/s]Loading weights:  59%|█████▉    | 500/851 [00:06<00:04, 83.17it/s]Loading weights:  60%|█████▉    | 509/851 [00:07<00:04, 75.40it/s]Loading weights:  61%|██████    | 519/851 [00:07<00:04, 74.47it/s]Loading weights:  62%|██████▏   | 527/851 [00:07<00:04, 65.65it/s]Loading weights:  64%|██████▎   | 542/851 [00:07<00:04, 65.76it/s]Loading weights:  66%|██████▌   | 558/851 [00:07<00:03, 79.22it/s]Loading weights:  67%|██████▋   | 570/851 [00:07<00:03, 81.93it/s]Loading weights:  68%|██████▊   | 579/851 [00:08<00:03, 69.08it/s]Loading weights:  70%|██████▉   | 593/851 [00:08<00:03, 81.49it/s]Loading weights:  71%|███████   | 602/851 [00:08<00:03, 78.20it/s]Loading weights:  72%|███████▏  | 611/851 [00:08<00:03, 73.70it/s]Loading weights:  73%|███████▎  | 623/851 [00:08<00:02, 76.18it/s]Loading weights:  74%|███████▍  | 631/851 [00:08<00:03, 62.90it/s]Loading weights:  76%|███████▌  | 648/851 [00:08<00:02, 83.54it/s]Loading weights:  77%|███████▋  | 658/851 [00:08<00:02, 81.06it/s]Loading weights:  78%|███████▊  | 667/851 [00:09<00:02, 69.48it/s]Loading weights:  80%|███████▉  | 677/851 [00:09<00:02, 75.66it/s]Loading weights:  81%|████████  | 686/851 [00:09<00:02, 62.99it/s]Loading weights:  82%|████████▏ | 701/851 [00:09<00:02, 72.45it/s]Loading weights:  83%|████████▎ | 709/851 [00:09<00:01, 72.35it/s]Loading weights:  84%|████████▍ | 717/851 [00:09<00:01, 67.43it/s]Loading weights:  86%|████████▌ | 731/851 [00:10<00:01, 77.47it/s]Loading weights:  87%|████████▋ | 739/851 [00:10<00:01, 67.68it/s]Loading weights:  88%|████████▊ | 753/851 [00:10<00:01, 82.23it/s]Loading weights:  90%|████████▉ | 762/851 [00:10<00:01, 78.71it/s]Loading weights:  91%|█████████ | 771/851 [00:10<00:01, 67.74it/s]Loading weights:  92%|█████████▏| 783/851 [00:10<00:00, 79.35it/s]Loading weights:  93%|█████████▎| 792/851 [00:10<00:00, 65.46it/s]Loading weights:  95%|█████████▍| 807/851 [00:11<00:00, 76.18it/s]Loading weights:  96%|█████████▌| 818/851 [00:11<00:00, 80.65it/s]Loading weights:  97%|█████████▋| 827/851 [00:11<00:00, 73.50it/s]Loading weights:  98%|█████████▊| 837/851 [00:11<00:00, 72.35it/s]Loading weights:  99%|█████████▉| 845/851 [00:11<00:00, 64.34it/s]Loading weights: 100%|██████████| 851/851 [00:11<00:00, 72.80it/s]
+P03_STEP model_load done 2026-10-11T19:39:28Z 21.87
+P03_STEP smoke_a_hf start 2026-10-11T19:39:28Z
+[transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P03_STEP smoke_a_hf done 2026-10-11T19:40:03Z 35.17
+P03_STEP sites start 2026-10-11T19:40:03Z
+P03_STEP sites done 2026-10-11T19:40:04Z 0.4
+P03_STEP capture start 2026-10-11T19:40:04Z
+P03_STEP capture done 2026-10-11T19:40:36Z 32.25
+P03_STEP logit_lens start 2026-10-11T19:40:36Z
+[p03.readers 2026-10-11T19:40:56Z] WARNING smoke d FAILED: final-layer top-1 matches the modal answer on 0.1167 of B items (< 0.9); the read site may be off
+P03_STEP logit_lens done 2026-10-11T19:40:57Z 20.66
+P03_STEP jlens_bind start 2026-10-11T19:40:57Z
+P03_STEP jlens_bind done 2026-10-11T19:41:04Z 7.89
+P03_STEP smoke_b_jlens_ref start 2026-10-11T19:41:04Z
+P03_STEP smoke_b_jlens_ref done 2026-10-11T19:41:08Z 3.48
+P03_STEP jlens start 2026-10-11T19:41:08Z
+P03_STEP jlens done 2026-10-11T19:41:28Z 19.83
+P03_STEP olens_bind start 2026-10-11T19:41:28Z
+P03_STEP olens_bind done 2026-10-11T19:41:36Z 7.94
+P03_STEP smoke_c_shuffled start 2026-10-11T19:41:36Z
+P03_STEP smoke_c_shuffled done 2026-10-11T19:41:50Z 14.69
+P03_STEP olens_timing start 2026-10-11T19:41:50Z
+P03_STEP olens_timing done 2026-10-11T19:42:10Z 19.91
+[p03.readers 2026-10-11T19:42:10Z] PROJECTION level 0: 472 batches x 19.911 s + elapsed 0.19 h -> 2.881 h (limit 2.75 h) OVER
+[p03.readers 2026-10-11T19:42:10Z] PROJECTION level 1: 351 batches x 19.911 s + elapsed 0.19 h -> 2.212 h (limit 2.75 h)
+[p03.readers 2026-10-11T19:42:10Z] GRID CUT to level 1: Grid(level=1, main_layers=(20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60), main_positions=(-3, -2, -1), contrast_layers=(20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60), contrast_positions=(-1,), shuffled_layers=(20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60), shuffled_groups=('survivor', 'ws', 'contrast'))
+P03_STEP olens_main start 2026-10-11T19:42:10Z
+[p03.readers 2026-10-11T19:45:18Z] olens main: batch 20/165 (10.1 s)
+[p03.readers 2026-10-11T19:48:39Z] olens main: batch 40/165 (10.0 s)
+[p03.readers 2026-10-11T19:52:00Z] olens main: batch 60/165 (8.6 s)
+[p03.readers 2026-10-11T19:55:31Z] olens main: batch 80/165 (10.4 s)
+[p03.readers 2026-10-11T19:59:08Z] olens main: batch 100/165 (11.7 s)
+[p03.readers 2026-10-11T20:02:57Z] olens main: batch 120/165 (10.6 s)
+[p03.readers 2026-10-11T20:06:54Z] olens main: batch 140/165 (10.7 s)
+[p03.readers 2026-10-11T20:10:30Z] olens main: batch 160/165 (10.2 s)
+P03_STEP olens_main done 2026-10-11T20:11:25Z 1754.22
+P03_STEP olens_shuffled start 2026-10-11T20:11:25Z
+[p03.readers 2026-10-11T20:14:41Z] olens shuffled: batch 20/121 (11.2 s)
+[p03.readers 2026-10-11T20:18:13Z] olens shuffled: batch 40/121 (11.1 s)
+[p03.readers 2026-10-11T20:22:07Z] olens shuffled: batch 60/121 (11.4 s)
+[p03.readers 2026-10-11T20:25:54Z] olens shuffled: batch 80/121 (11.8 s)
+[p03.readers 2026-10-11T20:29:42Z] olens shuffled: batch 100/121 (11.1 s)
+[p03.readers 2026-10-11T20:33:39Z] olens shuffled: batch 120/121 (12.0 s)
+P03_STEP olens_shuffled done 2026-10-11T20:33:50Z 1345.25
+P03_STEP olens_contrast start 2026-10-11T20:33:50Z
+[p03.readers 2026-10-11T20:37:13Z] olens contrast: batch 20/66 (10.1 s)
+[p03.readers 2026-10-11T20:41:13Z] olens contrast: batch 40/66 (11.1 s)
+[p03.readers 2026-10-11T20:45:00Z] olens contrast: batch 60/66 (10.9 s)
+P03_STEP olens_contrast done 2026-10-11T20:46:09Z 738.69
+P03_STEP readouts start 2026-10-11T20:46:09Z
+P03_STEP readouts done 2026-10-11T20:46:09Z 0.15
+P03_STEP read_all done 2026-10-11T20:46:10Z rc=0
+P03 end 2026-10-11T20:46:10Z rc=0
+PROBE_DONE rc=0
