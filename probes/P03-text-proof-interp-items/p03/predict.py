@@ -120,8 +120,10 @@ def selection_calls(items: Sequence[C.Item]) -> list[L.Call]:
             continue
         for route in OPEN_MODELS:
             for s in range(OPEN_SAMPLES):
+                low = route in L.REASONING_MANDATORY  # GLM 5.3 Flash cannot turn it off
                 out.append(L.Call(key=f"open|{route}|{it.id}|{s}", route=route, user=it.prompt,
-                                  temperature=1.0, seed=s, max_tokens=24, reasoning="none"))
+                                  temperature=1.0, seed=s, max_tokens=1000 if low else 24,
+                                  reasoning="low" if low else "none"))
     assert all(by_id[it.b_id].type == "B" for it in items if it.type == "C")
     return out
 

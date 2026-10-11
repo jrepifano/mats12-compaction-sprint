@@ -63,3 +63,19 @@ def test_predictor_prompt_and_shots():
     assert len(shots) == 20 and all(q != "fav cheese?" for q, _ in shots)
     assert shots == P.draw_shots(b, pool)
     assert P.parse_guesses('```json\n{"guesses": ["a", "b", "c", "d"]}\n```') == ["a", "b", "c"]
+
+
+def test_score_baselines_and_regex():
+    from p03 import score as SC
+
+    rs = [{"id": "x"}, {"id": "y"}]
+    sel = {"x": {"ho-sonnet_hit": False, "ho-fewshot_hit": True},
+           "y": {"ho-sonnet_hit": False, "ho-fewshot_hit": False}}
+    sc = {"text_monitor": {"x": {"target": False}, "y": {"target": False}}}
+    b = SC.baselines(rs, sc, sel)
+    assert b["ho-either"] == {"x": True, "y": False} and b["text_monitor"]["x"] is False
+    assert SC.cell_hit({"tokens": [" Brie", "cheese"]}, "brie", [], False)
+    assert not SC.cell_hit({"tokens": [" Br", "ie"]}, "brie", [], False)
+    assert SC.cell_hit({"samples": ["- the director Ingmar Bergman"]}, "Ingmar Bergman", [], True)
+    assert SC.cell_hit({"samples": ["thinking of Bergman's films"]}, "Ingmar Bergman", [], True)
+    assert not SC.cell_hit({"samples": ["blackout"]}, "black", [], False)

@@ -59,7 +59,7 @@ PROVIDER: dict[str, dict] = {
 }
 # OpenRouter 400s on reasoning={"enabled": False} here ("Reasoning is mandatory for this endpoint",
 # smoke call 2026-10-11): such routes need reasoning="default" (I1a's monitor) or "low".
-REASONING_MANDATORY: frozenset[str] = frozenset({i9c.GEMINI})
+REASONING_MANDATORY: frozenset[str] = frozenset({i9c.GEMINI, i9c.GLM})  # GLM: P03 selection run
 # Routes that reject temperature/seed. Smoke calls 2026-10-11: luna (reasoning_effort="none"),
 # Gemini (reasoning default) and Gemma all accepted temperature=0 and seed=0; luna with
 # reasoning "low" is untested (OpenAI reasoning models may reject temperature there).

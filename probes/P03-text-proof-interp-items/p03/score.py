@@ -196,6 +196,28 @@ def item_scores(ritems: list[dict], strings: dict) -> dict[str, dict[str, dict[s
     return out
 
 
+def baselines(rs: list[dict], sc: dict, sel: dict[str, dict]) -> dict[str, dict[str, bool]]:
+    """Text baselines per item (target named or not), for the reader comparisons.
+
+    The held-out predictors come first: they never chose items, so they are the fair text
+    baseline (plan Notes). ``text_monitor`` is Gemini, the selection predictor's model, so on
+    survivors its score is near 0 by construction; it is kept as the plan's named comparison.
+    ``ho-either``: either held-out predictor hit. Held-out hits are any of 3 guesses matching
+    (alias or luna equivalence), a looser instrument than the readers' regex."""
+    out: dict[str, dict[str, bool]] = {}
+    for name in ("ho-sonnet", "ho-fewshot"):
+        per = {r["id"]: sel[r["id"]][f"{name}_hit"] for r in rs
+               if f"{name}_hit" in sel.get(r["id"], {})}
+        if per:
+            out[name] = per
+    if "ho-sonnet" in out and "ho-fewshot" in out:
+        out["ho-either"] = {i: out["ho-sonnet"][i] or out["ho-fewshot"][i]
+                            for i in out["ho-sonnet"] if i in out["ho-fewshot"]}
+    if "text_monitor" in sc:
+        out["text_monitor"] = {r["id"]: sc["text_monitor"][r["id"]].get("target") for r in rs}
+    return out
+
+
 def report() -> dict:
     ritems = load_reader_items()
     sel = {r["id"]: r for r in C.read_jsonl(C.DATA / "selection.jsonl")}
@@ -218,25 +240,34 @@ def report() -> dict:
                         g[f"{reader}|{name}"] = dict(zip(("rate", "lo", "hi"),
                                                          C.wilson(k, len(vals)))) | {
                                                              "k": k, "n": len(vals)}
-            if "text_monitor" in sc:
-                for reader in sc:
-                    if reader == "text_monitor":
-                        continue
-                    ids = [r["id"] for r in rs if sc[reader][r["id"]].get("target") is not None
-                           and sc["text_monitor"][r["id"]].get("target") is not None]
-                    a = [float(sc[reader][i]["target"]) for i in ids]
-                    b = [float(sc["text_monitor"][i]["target"]) for i in ids]
+            base = baselines(rs, sc, sel)
+            for name, per in base.items():
+                if name != "text_monitor":
+                    vals = list(per.values())
+                    g[f"{name}|target"] = dict(zip(("rate", "lo", "hi"),
+                                                   C.wilson(sum(vals), len(vals)))) | {
+                                                       "k": sum(vals), "n": len(vals)}
+            for reader in sc:
+                if reader == "text_monitor":
+                    continue
+                own = {r["id"]: sc[reader][r["id"]].get("target") for r in rs}
+                for name, per in base.items():
+                    ids = [i for i, v in own.items() if v is not None and per.get(i) is not None]
                     if ids:
-                        d, lo, hi = C.paired_bootstrap(a, b, n_boot=10_000, seed=0)
-                        g[f"{reader}-minus-text_monitor"] = {"diff": d, "lo": lo, "hi": hi,
-                                                             "n": len(ids)}
-                    dk = [i for i in ids if strings[i].get("decoy_random")]
-                    if dk:
-                        a2 = [float(sc[reader][i]["target"]) for i in dk]
-                        b2 = [float(sc[reader][i]["decoy_random"]) for i in dk]
-                        d, lo, hi = C.paired_bootstrap(a2, b2, n_boot=10_000, seed=0)
-                        g[f"{reader}-target-minus-decoy"] = {"diff": d, "lo": lo, "hi": hi,
-                                                             "n": len(dk)}
+                        d, lo, hi = C.paired_bootstrap([float(own[i]) for i in ids],
+                                                       [float(per[i]) for i in ids],
+                                                       n_boot=10_000, seed=0)
+                        g[f"{reader}-minus-{name}"] = {"diff": d, "lo": lo, "hi": hi,
+                                                       "n": len(ids)}
+                dk = [i for i, v in own.items() if v is not None
+                      and strings[i].get("decoy_random")
+                      and sc[reader][i].get("decoy_random") is not None]
+                if dk:
+                    d, lo, hi = C.paired_bootstrap(
+                        [float(own[i]) for i in dk],
+                        [float(sc[reader][i]["decoy_random"]) for i in dk], n_boot=10_000, seed=0)
+                    g[f"{reader}-target-minus-decoy"] = {"diff": d, "lo": lo, "hi": hi,
+                                                         "n": len(dk)}
             out[f"{t}|{group}"] = g
     (C.RESULTS / "payoff.json").write_text(json.dumps(out, indent=1) + "\n")
     hits = {reader: {i: v for i, v in per.items()} for reader, per in sc.items()}
