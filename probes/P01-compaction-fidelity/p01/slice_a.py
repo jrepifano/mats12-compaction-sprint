@@ -176,6 +176,19 @@ def is_test_path(path: str) -> bool:
             or base.endswith("_test.py") or base == "conftest.py")
 
 
+def checklist_files(edits: list[tuple[str, str]]) -> list[str]:
+    """Files for the checklist: the pre-existing files the agent modified (the fix itself);
+    if there are none, the single most-edited file it created. Scratch scripts the agent
+    wrote beside a real edit (reproduce_issue.py, debug_*.py) are not key facts, and counting
+    them would inflate drop rates (2026-10-11, before any summary was judged)."""
+    first_kind: dict[str, str] = {}
+    for p, k in edits:
+        first_kind.setdefault(p, k)
+    files = files_changed(edits)
+    modified = [p for p in files if first_kind[p] == "modify"]
+    return modified if modified else files[:1]
+
+
 def test_files_modified(edits: list[tuple[str, str]]) -> list[str]:
     """Test-looking paths the agent modified that existed before: the path's first edit in
     the prefix is a modification (a file the agent created itself does not count)."""
@@ -219,7 +232,8 @@ def build_transcript(row: dict) -> dict:
     user = next((m["text"] for m in messages if m["role"] == "user"), "")
     task = (f"The task is to resolve this GitHub issue in the repository {row['repo']}: "
             + issue_title(user))
-    checklist = common.base_checklist(task, CONSTRAINT, files, truth)
+    truth["checklist_files"] = checklist_files(edits)
+    checklist = common.base_checklist(task, CONSTRAINT, truth["checklist_files"], truth)
     if tests_mod:
         checklist.append({"id": "tests_edited", "kind": "tests_edited",
                           "text": "The agent modified existing test file(s): "

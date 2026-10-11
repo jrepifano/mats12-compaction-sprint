@@ -185,3 +185,14 @@ def test_real_eligibility_pass_runs():
     pytest.importorskip("pyarrow")
     pq = pytest.importorskip("pyarrow.parquet")
     assert pq.ParquetFile(REAL).metadata.num_rows == 67074
+
+
+def test_checklist_files_prefers_real_edits():
+    from p01.slice_a import checklist_files
+
+    edits = [("/r/repro.py", "create"), ("/r/repro.py", "modify"), ("/r/pkg/mod.py", "modify"),
+             ("/r/debug.py", "create")]
+    assert checklist_files(edits) == ["/r/pkg/mod.py"]
+    assert checklist_files([("/r/a.py", "create"), ("/r/b.py", "create"),
+                            ("/r/b.py", "modify")]) == ["/r/b.py"]
+    assert checklist_files([]) == []
