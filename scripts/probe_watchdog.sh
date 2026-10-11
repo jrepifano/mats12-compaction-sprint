@@ -17,6 +17,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
+case "$KNOWN_HOSTS" in *[[:space:]]*) echo "checkout path has whitespace: unsupported (ssh options are unquoted)" >&2; exit 2 ;; esac
 EXP=${1:-}
 if ! printf '%s' "$EXP" | grep -Eq '^P[0-9]{2,3}$'; then
   echo "usage: probe_watchdog.sh P<NN> [INTERVAL_S]  (got '${EXP}')" >&2; exit 64

@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import subprocess
 import sys
 import time
@@ -108,7 +109,7 @@ def arm_slot_live(pod_id: str, host: str, port: int, deadline: int) -> str:
     script = (
         f'envval() {{ case "$1" in RUNPOD_POD_ID_K) echo {pod_id} ;; '
         f"POD_SSH_HOST_K) echo {host} ;; POD_SSH_PORT_K) echo {port} ;; esac; }}\n"
-        f"POD_SSH_USER=root\nKNOWN_HOSTS={rp.known_hosts_file()}\nset -euo pipefail\n{fn}\n"
+        f"POD_SSH_USER=root\nKNOWN_HOSTS={shlex.quote(str(rp.known_hosts_file()))}\nset -euo pipefail\n{fn}\n"
         f"arm_slot _K {deadline}\n"
     )
     r = subprocess.run(

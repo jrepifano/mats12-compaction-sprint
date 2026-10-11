@@ -15,6 +15,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
+case "$KNOWN_HOSTS" in *[[:space:]]*) echo "checkout path has whitespace: unsupported (ssh options are unquoted)" >&2; exit 2 ;; esac
 SLOT=_A; MAXMIN=180; DRY=0; EXP=E1
 while [ $# -gt 0 ]; do
   case "$1" in

@@ -6,6 +6,7 @@ from __future__ import annotations
 import importlib.util
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -62,8 +63,9 @@ def test_forget_host_key_default_cleans_repo_file_then_legacy_file(tmp_path, mon
 
 
 def test_probe_pod_ssh_options_use_the_repo_file():
-    spec = importlib.util.spec_from_file_location("probe_pod", ROOT / "scripts" / "probe_pod.py")
+    spec = importlib.util.spec_from_file_location("probe_pod_kh", ROOT / "scripts" / "probe_pod.py")
     mod = importlib.util.module_from_spec(spec)
+    sys.modules["probe_pod_kh"] = mod  # dataclasses look their module up while it executes
     spec.loader.exec_module(mod)
     opts = mod.SSH_OPTS
     assert f"UserKnownHostsFile={ROOT / '.ssh_known_hosts'}" in opts
@@ -80,3 +82,17 @@ def test_shell_scripts_pin_known_hosts_on_every_accept_new(name):
     n_pinned = len(re.findall(
         r'StrictHostKeyChecking=accept-new -o "?UserKnownHostsFile=\$KNOWN_HOSTS', text))
     assert n_accept >= 1 and n_accept == n_pinned
+
+
+@pytest.mark.parametrize("name", SHELL)
+def test_shell_scripts_refuse_a_checkout_path_with_whitespace(name):
+    """Review r2 finding 1: the options are unquoted inside ssh/rsync strings, so refuse early."""
+    text = (ROOT / "scripts" / name).read_text()
+    i = text.index('KNOWN_HOSTS="$PWD/.ssh_known_hosts"')
+    snippet = text[i : text.index("esac", i) + 4]
+    r = subprocess.run(["/bin/bash", "-c", f'PWD="/a b"; {snippet}; echo ok'],
+                       capture_output=True, text=True, check=False)
+    assert r.returncode == 2 and "whitespace" in r.stderr
+    r = subprocess.run(["/bin/bash", "-c", f'PWD=/ab; {snippet}; echo ok'],
+                       capture_output=True, text=True, check=False)
+    assert r.returncode == 0 and r.stdout.strip() == "ok"
