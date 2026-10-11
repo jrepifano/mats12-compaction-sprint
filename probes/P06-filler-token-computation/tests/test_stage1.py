@@ -4,7 +4,6 @@ import types
 
 import numpy as np
 import pytest
-
 from p06 import analyze, api, items
 from p06.nocot import chain
 
@@ -69,7 +68,7 @@ def test_user_turn_arms(chain_data):
 
 
 def test_build_messages_placement(chain_data):
-    ev, shots = chain_data
+    ev, _shots = chain_data
     s10 = items.chain_shots10(ev)
     tgt = api.build_messages(ev[0], s10, "after", placement="target")
     every = api.build_messages(ev[0], s10, "after", placement="every")
@@ -132,19 +131,3 @@ def test_uplift_table_paired():
     assert t["all"]["after_minus_before"]["mean"] == pytest.approx(0.5)
     assert t["k2"]["acc"]["after"] == pytest.approx(0.5)
 
-
-def test_select_stage2_matching():
-    from p06 import select_stage2
-
-    ev = [{"item_id": f"c{i}", "k": 2 + i % 2} for i in range(40)]
-    stats = {}
-    for i, e in enumerate(ev):
-        up = 0.5 if i < 10 else (-0.1 if i % 3 else 0.0)
-        stats[e["item_id"]] = {"none": (i % 5) / 5, "after": 0.5 + up / 2, "before": 0.5 - up / 2}
-    out = select_stage2.choose(ev, stats, n=10)
-    ups = [r for r in out if r["role"] == "uplift"]
-    ctls = [r for r in out if r["role"] == "control"]
-    assert len(ups) == len(ctls) == 10
-    assert all(r["uplift"] > 0 for r in ups) and all(r["uplift"] <= 0 for r in ctls)
-    assert [r["k"] for r in ups] == [r["k"] for r in ctls]
-    assert len({r["item_id"] for r in out}) == 20

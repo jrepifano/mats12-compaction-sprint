@@ -10,8 +10,14 @@ reserve_usd = 0
 
 [pod]
 gpu_hours = 2.0
-setup = "eq0"
+# "i1a": one venv, /ws/venv-i1a, from the pod-i1a group (transformers 5.17.0, torch 2.13.0 per
+# uv.lock), the venv group I9 loaded google/gemma-4-31B-it @ 842da379 with (HF, sdpa). "eq0" also
+# builds a vLLM venv this probe does not use.
+setup = "i1a"
+# Gemma 4 31B-it ~62 GB + both lenses 6.8 GB + the venv; readouts ~0.15 GB (300 npz)
 disk_gb = 150
-push = []
+# the pod-i1a group installs workspace-bench from this path (as P03 and I9 do); F3 reads Brauer's
+# depth-1 set (gitignored, sha256 c80f0f5e...)
+push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

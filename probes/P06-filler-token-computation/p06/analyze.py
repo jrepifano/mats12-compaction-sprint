@@ -133,7 +133,7 @@ def depth_shift(rows: list[dict], floor: float, rng: np.random.Generator,
     shifts = shifts[np.isfinite(shifts)]
     lo, hi = (np.percentile(shifts, [2.5, 97.5]) if len(shifts) else (np.nan, np.nan))
     return {"floor": floor, "k50": est, "shift_after_minus_before": est["after"] - est["before"],
-            "lo": float(lo), "hi": float(hi), "n_boot_finite": int(len(shifts)),
+            "lo": float(lo), "hi": float(hi), "n_boot_finite": len(shifts),
             "n_items": len(ids)}
 
 
