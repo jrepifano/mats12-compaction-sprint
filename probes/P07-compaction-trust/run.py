@@ -28,7 +28,7 @@ for _p in (PROBE, ROOT / "src", ROOT / "scripts"):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from p07 import contracts as C  # noqa: E402
+from p07 import contracts as C
 
 # Per-episode projections before the smoke measures them (plan "Cap": GLM $0.057 per full
 # X3b episode, an upper bound for 12 turns; Gemini ~$0.12 for 12 turns).
@@ -96,7 +96,8 @@ def done_already(model: C.Model, wrapper: str, cell: str, ctx_id: str) -> bool:
 
 
 def build_specs(model: C.Model, ctxs: list[dict], cells: list[str], wrapper: str) -> list:
-    from p07 import agent, cells as cellmod
+    from p07 import agent
+    from p07 import cells as cellmod
 
     specs = []
     for c in ctxs:
@@ -125,8 +126,9 @@ def settle(arts: list[dict]) -> tuple[float, int]:
 
 
 def run_episodes(a) -> int:
-    from emx import spend
     from p07 import agent
+
+    from emx import spend
 
     model = C.MODELS[{"glm": "glm-5.3-flash", "gemini": "gemini-3.8-flash"}[a.model]]
     ctxs = select(contexts_in_use(), a.ctx)

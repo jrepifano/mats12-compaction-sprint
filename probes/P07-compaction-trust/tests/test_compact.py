@@ -81,7 +81,7 @@ def test_summarize_ok_first_try():
     assert len(rec["attempts"]) == 1 and rec["model"] == C.GLM.model_id
     assert set(rec["attempts"][0]) >= {"text", "claims_pass", "usage", "billed_usd"}
     c = fc.calls[0]
-    assert c["model"] is C.SUMMARIZER and c["max_tokens"] == 4000
+    assert c["model"] is C.SUMMARIZER and c["max_tokens"] == compact.MAX_TOKENS
     assert c["tools"] == api.X3_TOOLS and c["temperature"] is None
 
 
