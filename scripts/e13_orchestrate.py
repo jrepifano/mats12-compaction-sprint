@@ -107,7 +107,7 @@ REUSED_STAGES_E: tuple[str, ...] = (  # first-run stages reused as frozen (Amend
 RESTORE_E: tuple[str, ...] = (  # pod records the new pod needs, restored from the laptop
     "MANIFEST.lora-check.sha256", "MANIFEST.bench-train.sha256", "MANIFEST.bench-hooked.sha256",
 )
-REOPENABLE_STOPS = frozenset({"no_live_site"})  # see Orchestrator.reopen
+REOPENABLE_STOPS = frozenset({"no_live_site", "unsteered_consistency"})  # Orchestrator.reopen
 AT60_DIR = f"{C.direction_dir(RECIPE_E)}/at60"  # the superseded 60-answer direction records
 
 
@@ -955,7 +955,12 @@ class Orchestrator:
         cons = self.decision("consistency")
         if cons["outcome"] != "pass":
             self.commit([C.decisions_dir(self.rr())], "unsteered consistency failed")
-            raise Stop("unsteered_consistency", json.dumps(cons.get("diffs", cons.get("per"))))
+            ovr = self.state.get("overrides", {}).get("unsteered_consistency")
+            if not ovr:
+                raise Stop("unsteered_consistency",
+                           json.dumps(cons.get("diffs", cons.get("per"))))
+            # Jacob's recorded override (reopen): the failed record stands and is reported
+            self.emit("consistency_overridden", reason=ovr.get("reason"))
         chosen = {}
         for s in self.state["live_sites"]:
             self.decide("strength", "--key", k, "--site", s)
@@ -1155,14 +1160,20 @@ class Orchestrator:
         return bool(lines)
 
     def reopen(self, reason: str) -> int:
-        """Reopen a run stopped for no live site after the defect that stopped it was fixed
-        (2026-10-10, E13 Amendment E: hook check (ii)'s expected edit was computed in float32;
-        Jacob decided to fix it and resume). The state is archived, the defective hook-check
-        records and manifests and any drawn labelling pass are moved aside (never deleted), the
-        stop is cleared, and the direction stage's hook-check job and every post-stop stage are
-        forgotten, so `relaunch` then `advance` redo them on a new pod. Everything before the
-        hook checks stands, including the judged organism batteries. Refused for any other stop,
-        or while the pod is up."""
+        """Reopen a stopped run on Jacob's decision, then `relaunch` and `advance` on a new pod.
+        The state is archived, any drawn labelling pass is moved aside (never deleted), the stop
+        is cleared and every post-stop stage is forgotten. Per stop:
+        - no_live_site (2026-10-10: hook check (ii)'s expected edit was computed in float32; Jacob:
+          fix and resume): the defective hook-check records and manifests, and the run2 closing
+          and recovery manifests that list them, are moved aside too, and the direction stage's
+          hook-check job is forgotten, so the hook checks rerun. Everything before them stands.
+        - unsteered_consistency (2026-10-11: Jacob overrode it after a free diagnosis showed the
+          miss within the deciding judge's noise): the direction, hook checks and judged sweep
+          stand, and so does the drawn full labelling pass (it is drawn from the sweep and the
+          organism batteries, never from final-patch answers); the override is recorded in
+          state["overrides"], so `strength` records the failed check and goes on to the strength
+          choice and the final patch.
+        Refused for any other stop, or while the pod is up."""
         self.load()
         st = self.state.get("stopped") or {}
         if st.get("rule") not in REOPENABLE_STOPS:
@@ -1177,18 +1188,20 @@ class Orchestrator:
         aside = self.d.root / aside_rel
         aside.mkdir(parents=True, exist_ok=True)
         (aside / "status.json").write_text(json.dumps(self.state, indent=1) + "\n")
-        moved = []
-        rels = [p for s_ in C.SITE_NAMES for p in (
-            f"{C.hooks_dir(rr)}/hook_check_{s_}.json", f"{C.hooks_dir(rr)}/hook_check_{s_}.pod.json",
-            C.manifest_path(f"hook-check.{k}.{s_}"),
-            f"{C.RESULTS}/MANIFEST.hook-check.{k}.{s_}.deps.json")]
-        # the closing and recovery manifests list those hook files: left in place they would not
-        # verify, and `pod_push --restore` refuses (code review hookfix-r1); in the Amendment E
-        # phase only the retry's own (run2) records, never the first run's
-        mid = "manifest.run2" if self.amend_e() else "manifest"
-        rels += [C.manifest_path(mid), f"{C.RESULTS}/MANIFEST.{mid}.deps.json",
-                 f"{C.RESULTS}/{self.recovery_manifest()}"]
-        rels += [f"{C.labels_dir(rr)}/{kind}" for kind in ("early", "full")]
+        moved, rule, rels = [], st["rule"], []
+        if rule == "no_live_site":
+            rels += [f"{C.labels_dir(rr)}/{kind}" for kind in ("early", "full")]
+            rels += [p for s_ in C.SITE_NAMES for p in (
+                f"{C.hooks_dir(rr)}/hook_check_{s_}.json",
+                f"{C.hooks_dir(rr)}/hook_check_{s_}.pod.json",
+                C.manifest_path(f"hook-check.{k}.{s_}"),
+                f"{C.RESULTS}/MANIFEST.hook-check.{k}.{s_}.deps.json")]
+            # the closing and recovery manifests list those hook files: left in place they would
+            # not verify, and `pod_push --restore` refuses (code review hookfix-r1); in the
+            # Amendment E phase only the retry's own (run2) records, never the first run's
+            mid = "manifest.run2" if self.amend_e() else "manifest"
+            rels += [C.manifest_path(mid), f"{C.RESULTS}/MANIFEST.{mid}.deps.json",
+                     f"{C.RESULTS}/{self.recovery_manifest()}"]
         for rel in rels:
             src = self.d.root / rel
             if src.exists():
@@ -1196,13 +1209,21 @@ class Orchestrator:
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 shutil.move(str(src), str(dest))
                 moved.append(rel)
-        for key in ("stopped", "stopped_sites", "live_sites", "label_kind", "blocked"):
+        for key in ("stopped", "blocked"):
             self.state.pop(key, None)
-        self.state.get("human", {}).pop("labels", None)
-        for name in ("direction", "label_pass", "teardown", "analysis"):
+        for name in ("strength", "teardown", "analysis"):
             self.state["stages"].pop(name, None)
-        for name in ("hook_check", "closing"):
-            self.state["jobs"].pop(name, None)
+        self.state["jobs"].pop("closing", None)
+        if rule == "no_live_site":
+            for key in ("stopped_sites", "live_sites", "label_kind"):
+                self.state.pop(key, None)
+            self.state.get("human", {}).pop("labels", None)
+            self.state["stages"].pop("label_pass", None)
+            self.state["stages"].pop("direction", None)
+            self.state["jobs"].pop("hook_check", None)
+        else:  # unsteered_consistency
+            self.state.setdefault("overrides", {})[rule] = {
+                "utc": utc(), "reason": reason, "detail": st.get("detail")}
         self.state.setdefault("reopened", []).append(
             {"utc": utc(), "reason": reason, "stop": st, "aside": aside_rel, "moved": moved})
         self.save()

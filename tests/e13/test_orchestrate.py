@@ -952,6 +952,29 @@ def test_relaunch_after_hook_checks_restores_finished_patch_steps(e13_root):
     assert "MANIFEST.recovery.run2.sha256" not in o.restore_args()[1].split(",")
 
 
+def test_reopen_overrides_unsteered_consistency_and_runs_the_final_patch(e13_root):
+    # 2026-10-11: the consistency miss was within luna's noise; Jacob: override, run final patch
+    o, f, rc, (_nc, nr, _nd) = amend_e_walk(e13_root, consistency="fail")
+    assert rc == O.STOP_RC and o.state["stopped"]["rule"] == "unsteered_consistency"
+    page = e13_root / C.labels_dir("tan32") / "full" / "page.html"
+    assert page.exists() and o.state["label_kind"] == "full"
+    assert o.reopen("judge noise (Jacob: override)") == 0
+    assert o.state["overrides"]["unsteered_consistency"]["reason"].startswith("judge noise")
+    assert page.exists() and o.done("label_pass") and o.state["human"]["labels"]  # pass stands
+    assert o.done("direction") and o.done("sweep_judged") and not o.done("strength")
+    assert o.state["live_sites"] == ["input", "output"]
+    nr2 = len(f.remote_calls)
+    assert o.relaunch() == 0
+    assert o.advance() == O.BLOCKED_RC and o.state["human"].get("labels")
+    assert o.state["strengths"] and o.done("final_patch") and o.done("teardown")
+    new = f.remote_calls[nr2:]
+    assert any("final-patch" in c for c in new) and not any("hook-check" in c for c in new)
+    assert any("sweep" in c for c in f.remote_calls[nr:nr2])  # the sweep ran once, before
+    assert not any(" sweep " in c and "--detach" in c for c in new)
+    assert O.json.loads((e13_root / C.RESULTS / "run2" / "decisions" / "consistency.json")
+                        .read_text())["outcome"] == "fail"  # the failed record stands
+
+
 def test_reopen_refuses_other_stops(e13_root):
     o, _f, _rc, _n = amend_e_walk(e13_root, dev_tan32="no_patch")
     o.state["stopped"] = {"rule": "projection"}
