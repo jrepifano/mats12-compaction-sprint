@@ -52,6 +52,12 @@ def stage_tids(ts: dict[str, dict], stage: str) -> list[str]:
     tids = sorted(ts)
     if stage == "bulk":
         return tids
+    if stage == "smoke2":  # fresh transcripts for the F1 re-gate (log.md)
+        smoke = set(stage_tids(ts, "smoke"))
+        rng = random.Random(common.SEED + 1)
+        a = [t for t in tids if t.startswith("A:") and t not in smoke]
+        b = [t for t in tids if t.startswith("B:") and t not in smoke]
+        return sorted(rng.sample(a, 5) + rng.sample(b, 5))
     if stage != "smoke":
         raise ValueError(stage)
     a = [t for t in tids if t.startswith("A:")]
@@ -74,25 +80,41 @@ def _batch(model, reqs, out, note, **kw):
     return rows
 
 
+SUM_RETRIES = 2  # empty (e.g. a reasoning loop that hits max_tokens) or error -> next seed
+
+
 def summarize(ts, tids, models, concurrency):
+    """One summary per (transcript, harness, model). A call that ends empty or in an error is
+    re-sent with the next seed, up to SUM_RETRIES times (a real harness retries a failed
+    compaction); every attempt stays in the JSONL, so first-attempt failure rates are kept."""
     def one(model):
-        reqs = []
+        base = []
         for tid in tids:
             for h in render.HARNESSES:
                 system, user = render.summarizer_request(ts[tid], h)
-                reqs.append({"item_id": f"{tid}|{h}", "seed": common.SEED, "prompt": user,
-                             "system": system})
-        rows = _batch(model, reqs, OUT / "summaries" / f"{model}.jsonl", f"P01:sum:{model}",
-                      max_tokens=SUM_MAX_TOKENS, temperature=0.0, json_mode=False,
-                      concurrency=concurrency)
-        return model, rows
+                base.append({"item_id": f"{tid}|{h}", "prompt": user, "system": system})
+        out = OUT / "summaries" / f"{model}.jsonl"
+        pending, final = base, {}
+        for k in range(SUM_RETRIES + 1):
+            reqs = [{**r, "seed": common.SEED + k} for r in pending]
+            rows = _batch(model, reqs, out, f"P01:sum:{model}:s{k}", max_tokens=SUM_MAX_TOKENS,
+                          temperature=0.0, json_mode=False, concurrency=concurrency)
+            nxt = []
+            for r, row in zip(pending, rows, strict=True):
+                final[r["item_id"]] = row["status"]
+                if row["status"] in ("empty", "error"):
+                    nxt.append(r)
+            pending = nxt
+            if not pending:
+                break
+        return model, final
 
     with ThreadPoolExecutor(len(models)) as ex:
-        for model, rows in ex.map(one, models):
+        for model, final in ex.map(one, models):
             st = {}
-            for r in rows:
-                st[r["status"]] = st.get(r["status"], 0) + 1
-            print(f"[P01] summaries {model}: {st}")
+            for v in final.values():
+                st[v] = st.get(v, 0) + 1
+            print(f"[P01] summaries {model} (final status after retries): {st}")
 
 
 def load_ok(path: Path) -> dict[str, dict]:
@@ -139,9 +161,12 @@ def beliefs(ts, tids, concurrency):
     _write_parsed(OUT / "beliefs_parsed.jsonl", done)
 
 
-def audits(ts, tids, concurrency, summaries_dir=None, out=None, note="P01:audit"):
+AUDIT_OUT = "audit3"  # v1 (combined) and v2 (single tests_claim): smoke only, results/P01/dev/
+INVENT_OUT = "invent"
+
+
+def summary_items(ts, tids, summaries_dir=None):
     summaries_dir = summaries_dir or OUT / "summaries"
-    out = out or OUT / "audit.jsonl"
     items = []
     for model in SUMMARIZERS:
         ok = load_ok(summaries_dir / f"{model}.jsonl")
@@ -150,16 +175,34 @@ def audits(ts, tids, concurrency, summaries_dir=None, out=None, note="P01:audit"
                 r = ok.get(f"{tid}|{h}")
                 if r is not None:
                     items.append((f"{tid}|{h}|{model}", ts[tid], r["text"]))
+    return items
 
-    def reqs(seed):
-        return [{"item_id": iid, "seed": seed, "prompt": judge.audit_prompt(t, s)}
-                for iid, t, s in items]
 
+def audits(ts, tids, concurrency):
+    """Two luna calls per summary: checklist + status (`audit2`), invented facts (`invent`),
+    run concurrently."""
+    items = summary_items(ts, tids)
     by_id = {iid: t for iid, t, _ in items}
-    done = _judge_with_retry(
-        reqs, lambda iid, txt: judge.parse_audit(txt, [c["id"] for c in by_id[iid]["checklist"]]),
-        out, note, AUDIT_MAX_TOKENS, concurrency)
-    _write_parsed(out.with_name(out.stem + "_parsed.jsonl"), done)
+
+    def run_audit():
+        done = _judge_with_retry(
+            lambda seed: [{"item_id": iid, "seed": seed, "prompt": judge.audit_prompt(t, s)}
+                          for iid, t, s in items],
+            lambda iid, txt: judge.parse_audit(txt, [c["id"] for c in by_id[iid]["checklist"]]),
+            OUT / f"{AUDIT_OUT}.jsonl", "P01:audit3", AUDIT_MAX_TOKENS, concurrency)
+        _write_parsed(OUT / f"{AUDIT_OUT}_parsed.jsonl", done)
+
+    def run_invent():
+        done = _judge_with_retry(
+            lambda seed: [{"item_id": iid, "seed": seed, "prompt": judge.invent_prompt(t, s)}
+                          for iid, t, s in items],
+            lambda _iid, txt: {"invented": judge.parse_invented(txt)},
+            OUT / f"{INVENT_OUT}.jsonl", "P01:invent", AUDIT_MAX_TOKENS, concurrency)
+        _write_parsed(OUT / f"{INVENT_OUT}_parsed.jsonl", done)
+
+    with ThreadPoolExecutor(2) as ex:
+        for f in [ex.submit(run_audit), ex.submit(run_invent)]:
+            f.result()
 
 
 def load_parsed(path: Path) -> dict[str, dict]:
@@ -174,41 +217,48 @@ def load_parsed(path: Path) -> dict[str, dict]:
 
 
 def planted_check(ts, tids, concurrency):
-    """Build the 40 planted summaries from audited summaries of `tids`, audit them, report."""
-    aud = load_parsed(OUT / "audit_parsed.jsonl")
+    """The gate (insert / delete, judged with the audit prompt) plus the exploratory
+    fabrication check (judged with the invented-fact prompt), on audited summaries of `tids`."""
+    aud = load_parsed(OUT / f"{AUDIT_OUT}_parsed.jsonl")
     sums = {m: load_ok(OUT / "summaries" / f"{m}.jsonl") for m in SUMMARIZERS}
     cands = []
     for iid, a in aud.items():
-        tid, h, m = iid.split("|")
+        tid, h, m = iid.rsplit("|", 2)
         if tid in tids and f"{tid}|{h}" in sums[m]:
             cands.append({"item_id": iid, "t": ts[tid], "summary": sums[m][f"{tid}|{h}"]["text"],
                           "audit": a})
     items = planted.build(cands)
     by_id = {p["item_id"]: p for p in items}
-    tid_of = {p["item_id"]: p["orig_item_id"].split("|")[0] for p in items}
-
-    def reqs(seed):
-        return [{"item_id": p["item_id"], "seed": seed,
-                 "prompt": judge.audit_prompt(ts[tid_of[p["item_id"]]], p["summary"])}
-                for p in items]
-
+    tid_of = {p["item_id"]: p["orig_item_id"].rsplit("|", 2)[0] for p in items}
+    gate = [p for p in items if p["kind"] in ("insert", "delete")]
+    fab = [p for p in items if p["kind"] == "fabricate"]
     done = _judge_with_retry(
-        reqs, lambda iid, txt: judge.parse_audit(
-            txt, [c["id"] for c in ts[tid_of[iid]]["checklist"]]),
+        lambda seed: [{"item_id": p["item_id"], "seed": seed,
+                       "prompt": judge.audit_prompt(ts[tid_of[p["item_id"]]], p["summary"])}
+                      for p in gate],
+        lambda iid, txt: judge.parse_audit(txt, [c["id"] for c in ts[tid_of[iid]]["checklist"]]),
         OUT / "planted_audit.jsonl", "P01:planted", AUDIT_MAX_TOKENS, concurrency)
-    rows, n_caught = [], {"insert": [0, 0], "delete": [0, 0]}
+    done.update(_judge_with_retry(
+        lambda seed: [{"item_id": p["item_id"], "seed": seed,
+                       "prompt": judge.invent_prompt(ts[tid_of[p["item_id"]]], p["summary"])}
+                      for p in fab],
+        lambda _iid, txt: {"invented": judge.parse_invented(txt)},
+        OUT / "planted_invent.jsonl", "P01:planted_fab", AUDIT_MAX_TOKENS, concurrency))
+    rows, n_caught = [], {}
     for iid, (parsed, _row) in sorted(done.items()):
         p = by_id[iid]
         c = parsed is not None and planted.caught(p, ts[tid_of[iid]], parsed)
+        n_caught.setdefault(p["kind"], [0, 0])
         n_caught[p["kind"]][0] += int(c)
         n_caught[p["kind"]][1] += 1
-        rows.append({**p, "caught": c, "audit": parsed})
+        rows.append({**p, "caught": c, "judged": parsed})
     with open(OUT / "planted.jsonl", "w", encoding="utf-8") as f:
         f.writelines(json.dumps(r, ensure_ascii=False) + "\n" for r in rows)
-    tot = sum(v[0] for v in n_caught.values()), sum(v[1] for v in n_caught.values())
-    rate = tot[0] / tot[1] if tot[1] else 0.0
+    g = [n_caught.get(k, [0, 0]) for k in ("insert", "delete")]
+    x, n = sum(v[0] for v in g), sum(v[1] for v in g)
+    rate = x / n if n else 0.0
     verdict = "PASS" if rate >= 0.8 else "MEASUREMENT FAILURE" if rate < 0.7 else "BORDERLINE"
-    summary = {"by_kind": n_caught, "caught": tot[0], "n": tot[1], "rate": rate,
+    summary = {"by_kind": n_caught, "gate_caught": x, "gate_n": n, "gate_rate": rate,
                "verdict": verdict}
     (OUT / "planted_summary.json").write_text(json.dumps(summary, indent=1) + "\n")
     print(f"[P01] planted-error check: {summary}")
@@ -228,7 +278,7 @@ def _write_parsed(path: Path, done: dict) -> None:
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["summarize", "beliefs", "audit", "planted", "tids"])
-    ap.add_argument("--stage", choices=["smoke", "bulk"], default="smoke")
+    ap.add_argument("--stage", choices=["smoke", "smoke2", "bulk"], default="smoke")
     ap.add_argument("--models", default=",".join(SUMMARIZERS))
     ap.add_argument("--concurrency", type=int, default=32)
     a = ap.parse_args(argv)

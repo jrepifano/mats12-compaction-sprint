@@ -125,3 +125,33 @@ def summarizer_saw_task(t: dict, harness: str) -> bool:
 def judge_view(t: dict) -> str:
     """The whole prefix as the judge reads it: same serialization, nothing truncated."""
     return serialize(t["messages"][: t["cut"]])
+
+
+_FILE_ITEM_RE = __import__("re").compile(r"^The file (.+) was created or modified$")
+
+
+def item_anchor(t: dict, item: dict) -> str:
+    """The text a summarizer must have been shown to know a checklist fact ("" = always
+    shown: actions and absences live in tool calls, which no harness truncates)."""
+    k = item["kind"]
+    if k in ("task", "constraint"):
+        return next(m["text"] for m in t["messages"] if m["role"] == "user")[:200]
+    if k == "file":
+        m = _FILE_ITEM_RE.match(item["text"])  # basename: agents often `cd` then use it
+        return m.group(1).rsplit("/", 1)[-1] if m else ""
+    if k == "error":
+        return (t["truth"].get("last_error") or {}).get("text", "")
+    if k == "test_status":
+        tr = t["truth"]
+        src = tr["last_test"] if tr["last_test"]["status"] in ("pass", "fail") else \
+            tr.get("last_script") or {}
+        return src.get("evidence", "") if src.get("status") in ("pass", "fail") else ""
+    return ""
+
+
+def visible_items(t: dict, harness: str) -> set[str]:
+    """Checklist ids whose anchor text is inside what this harness shows its summarizer
+    (OpenHands keeps the task message out; pi-mono cuts tool results at 2,000 characters)."""
+    system, user = summarizer_request(t, harness)
+    shown = (system or "") + user
+    return {c["id"] for c in t["checklist"] if item_anchor(t, c) in shown}

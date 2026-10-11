@@ -2,13 +2,20 @@
 status sentence (20) or delete one checklist fact (20), re-audit with luna, and count catches.
 
 - **Insert:** a summary whose test claim was not a misstatement gets one false sentence at a
-  seeded paragraph break: "all tests now pass" when the truth is fail / none (or slice B without
-  a test edit), "the tests are still failing" when the truth is pass. Caught = the re-audit's
-  test claim is a misstatement (`judge.tests_misstatement`).
-- **Delete:** a summary where a file fact was "present" loses every line that mentions the
-  file's basename (so no mention survives). Caught = that item is no longer "present".
+  seeded paragraph break, phrased as the latest state: "all tests now pass" or "the tests are
+  still failing", whichever the truth makes false. Caught = the re-audit finds a false
+  latest-state statement (`judge.statements_misstatement`).
+- **Delete:** a slice-A summary where a file fact was "present" loses every line that mentions
+  the file's basename (so no mention survives). Slice B is excluded: its file is solution.py,
+  which the task statement already implies (v1 gate, 2026-10-11). Caught = that item is no
+  longer "present".
 
 Gate: catch rate >= 80% passes; < 70% is a measurement failure (stop; the hand audit is next).
+
+- **Fabricate (exploratory, not in the plan's gate):** 20 more summaries get one invented
+  action at a seeded paragraph break: a file the transcript never touches was "refactored".
+  Caught = the invented-fact call lists a claim naming that file. This measures the invented-
+  fact call's sensitivity only; its false-positive rate needs the hand audit.
 """
 
 from __future__ import annotations
@@ -17,11 +24,16 @@ import random
 import re
 from pathlib import PurePosixPath
 
-from p01 import common, judge
+from p01 import common, judge, render
 
 N_EACH = 20
 FALSE_PASS = "Latest test run: all tests now pass."
 FALSE_FAIL = "Latest test run: the tests are still failing."
+
+
+FAKE_FILE = "utils/cache_helpers.py"
+FABRICATION = (f"Also refactored `{FAKE_FILE}` to memoize the expensive lookups; that change "
+               "is complete.")
 
 
 def insert_sentence(summary: str, sentence: str, rng: random.Random) -> str:
@@ -49,39 +61,53 @@ def file_basename(item_text: str) -> str:
 
 def build(cands: list[dict], seed: int = common.SEED) -> list[dict]:
     """`cands`: [{"item_id", "t", "summary", "audit"}] from audited summaries (one per item).
-    Returns up to N_EACH insertions and N_EACH deletions: [{"item_id", "kind", "target",
-    "summary", "orig_item_id"}], drawn with an RNG seeded by `seed`, at most one per summary."""
+    Returns up to N_EACH insertions, deletions and fabrications: [{"item_id", "kind",
+    "target", "summary", "orig_item_id"}], drawn in that order from one seeded shuffle, at
+    most one per summary."""
     rng = random.Random(seed)
     cands = sorted(cands, key=lambda c: c["item_id"])
     rng.shuffle(cands)
-    ins, dels, used = [], [], set()
+    out: list[dict] = []
+    used: set[str] = set()
+
+    def add(c, kind, target, summary):
+        out.append({"item_id": f"{kind[:3]}|{c['item_id']}", "kind": kind, "target": target,
+                    "summary": summary, "orig_item_id": c["item_id"]})
+        used.add(c["item_id"])
+
     for c in cands:
-        t, a, s = c["t"], c["audit"], c["summary"]
-        if len(ins) < N_EACH and c["item_id"] not in used:
-            sent = false_sentence(t)
-            if sent and judge.tests_misstatement(t, a["tests_claim"]) is False:
-                ins.append({"item_id": f"ins|{c['item_id']}", "kind": "insert",
-                            "target": sent, "summary": insert_sentence(s, sent, rng),
-                            "orig_item_id": c["item_id"]})
-                used.add(c["item_id"])
+        if sum(p["kind"] == "insert" for p in out) >= N_EACH:
+            break
+        sent = false_sentence(c["t"])
+        if sent and judge.statements_misstatement(c["t"], c["audit"]) is False:
+            add(c, "insert", sent, insert_sentence(c["summary"], sent, rng))
+    for c in cands:
+        if sum(p["kind"] == "delete" for p in out) >= N_EACH:
+            break
+        if c["item_id"] in used or c["t"]["slice"] != "A":
+            continue  # slice B's file is solution.py, which the task itself implies
+        for it in c["t"]["checklist"]:
+            if it["kind"] != "file" or c["audit"]["checklist"].get(it["id"]) != "present":
                 continue
-        if len(dels) < N_EACH and c["item_id"] not in used:
-            files = [it for it in t["checklist"] if it["kind"] == "file"
-                     and a["checklist"].get(it["id"]) == "present"]
-            for it in files:
-                base = file_basename(it["text"])
-                if len(base) >= 4 and base in s:
-                    new = delete_mentions(s, base)
-                    if new.strip() and base not in new:
-                        dels.append({"item_id": f"del|{c['item_id']}", "kind": "delete",
-                                     "target": it["id"], "summary": new,
-                                     "orig_item_id": c["item_id"]})
-                        used.add(c["item_id"])
-                        break
-    return ins + dels
+            base = file_basename(it["text"])
+            if len(base) >= 4 and base in c["summary"]:
+                new = delete_mentions(c["summary"], base)
+                if new.strip() and base not in new:
+                    add(c, "delete", it["id"], new)
+                    break
+    for c in cands:
+        if sum(p["kind"] == "fabricate" for p in out) >= N_EACH:
+            break
+        if c["item_id"] in used or FAKE_FILE in render.judge_view(c["t"]):
+            continue
+        add(c, "fabricate", FAKE_FILE, insert_sentence(c["summary"], FABRICATION, rng))
+    return out
 
 
 def caught(p: dict, t: dict, audit: dict) -> bool:
+    if p["kind"] == "fabricate":
+        return any(p["target"] in i["claim"] or "cache_helpers" in i["claim"]
+                   for i in audit["invented"])
     if p["kind"] == "insert":
-        return bool(judge.tests_misstatement(t, audit["tests_claim"]))
+        return bool(judge.statements_misstatement(t, audit))
     return audit["checklist"][p["target"]] != "present"

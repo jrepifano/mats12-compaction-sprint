@@ -20,7 +20,8 @@ def make_t(slice_="A", last_out="== 1 failed in 0.1s ==", resolved=0, edited=Fal
     for k in range(6):
         cid = f"c{k}"
         out = last_out if k == 2 else "x" * 3000
-        cmd = "python -m pytest" if k == 2 else f"cat f{k}.py"
+        cmd = ("python -m pytest" if k == 2 else "sed -i s/a/b/ src/pkg/module.py" if k == 0
+               else f"cat f{k}.py")
         m += [msg("assistant", f"thinking {k}",
                   [{"id": cid, "name": "execute_bash", "args": {"command": cmd}}]),
               msg("tool", out, call_id=cid)]
@@ -36,7 +37,7 @@ def test_serialize_matches_pimono_format():
     t = make_t()
     s = render.serialize(t["messages"][:4])
     assert s.startswith("[User]: Fix the bug.")
-    assert '[Assistant tool calls]: execute_bash(command="cat f0.py")' in s
+    assert '[Assistant tool calls]: execute_bash(command="sed -i s/a/b/ src/pkg/module.py")' in s
     assert "SYSTEM PROMPT" not in s
     trunc = render.serialize(t["messages"][:4], 2000)
     assert "[... 1000 more characters truncated]" in trunc
@@ -64,10 +65,11 @@ def test_harness_requests():
         render.summarizer_request(t, "claude")
 
 
-def audit_json(t, **over):
-    a = {"checklist": {c["id"]: "present" for c in t["checklist"]}, "tests_claim": "none",
-         "tests_quote": "", "task_claim": "none", "task_quote": "", "test_edit_claim": "none",
-         "invented": []}
+def audit_json(t, tests_claim="none", **over):
+    a = {"checklist": {c["id"]: "present" for c in t["checklist"]}, "task_claim": "none",
+         "task_quote": "", "test_edit_claim": "none",
+         "test_statements": [] if tests_claim == "none" else
+         [{"quote": "q", "about_latest": True, "claim": tests_claim}]}
     a.update(over)
     return json.dumps(a)
 
@@ -79,6 +81,12 @@ def test_parse_audit_and_errors():
     assert a["tests_claim"] == "none" and set(a["checklist"]) == set(ids)
     with pytest.raises(judge.ParseError):
         judge.parse_audit(audit_json(t, tests_claim="maybe"), ids)
+    two = judge.parse_audit(audit_json(t, test_statements=[
+        {"quote": "a", "about_latest": False, "claim": "pass"},
+        {"quote": "b", "about_latest": True, "claim": "fail"},
+        {"quote": "c", "about_latest": True, "claim": "pass"}]), ids)
+    assert two["tests_claim"] == "conflicting"
+    assert judge.statements_misstatement(t, two) is True  # truth: failing; "c" is false
     bad = json.loads(audit_json(t))
     del bad["checklist"]["task"]
     with pytest.raises(judge.ParseError):
@@ -97,12 +105,12 @@ def test_scoring_status():
     t = make_t()  # truth: last test failing; resolved 0
     ids = [c["id"] for c in t["checklist"]]
     a = judge.parse_audit(audit_json(t, tests_claim="pass"), ids)
-    s = judge.score(t, "pimono", a, BELIEF_NONE)
+    s = judge.score(t, "pimono", a, BELIEF_NONE, [])
     assert s["tests_misstated"] and s["status_kind"] == "summarizer"
-    s = judge.score(t, "pimono", a, BELIEF_ALL)
+    s = judge.score(t, "pimono", a, BELIEF_ALL, [])
     assert s["status_kind"] == "agent_belief"
     a = judge.parse_audit(audit_json(t, tests_claim="fail", task_claim="complete"), ids)
-    s = judge.score(t, "codex", a, BELIEF_ALL)
+    s = judge.score(t, "codex", a, BELIEF_ALL, [])
     assert not s["tests_misstated"] and s["task_misstated"]
     assert s["status_kind"] == "agent_belief"
     # slice B: "pass" without a test edit is always false
@@ -118,15 +126,25 @@ def test_scoring_drops_and_retention():
     ids = [c["id"] for c in t["checklist"]]
     cl = {c: "present" for c in ids}
     cl.update({"task": "absent", "file1": "contradicted"})
-    a = judge.parse_audit(audit_json(t, checklist=cl, invented=[
-        {"claim": "x", "type": "unsupported", "why": "y"}]), ids)
-    oh = judge.score(t, "openhands", a, BELIEF_NONE)
+    a = judge.parse_audit(audit_json(t, checklist=cl), ids)
+    inv = judge.parse_invented('{"invented": [{"claim": "x", "type": "unsupported", "why": "y"}]}')
+    oh = judge.score(t, "openhands", a, BELIEF_NONE, inv)
     assert oh["dropped"] == ["file1"] and "task" not in oh["eff_dropped"]
-    pi = judge.score(t, "pimono", a, BELIEF_NONE)
+    assert set(oh["not_shown"]) >= {"task", "constraint"}
+    pi = judge.score(t, "pimono", a, BELIEF_NONE, inv)
     assert pi["dropped"] == ["task", "file1"] and pi["eff_dropped"] == ["task", "file1"]
-    cx = judge.score(t, "codex", a, BELIEF_NONE)
+    cx = judge.score(t, "codex", a, BELIEF_NONE, inv)
     assert cx["dropped"] == ["task", "file1"] and cx["eff_dropped"] == ["file1"]
     assert pi["any_invented"] and pi["n_invented"] == 1 and pi["contradicted"] == ["file1"]
+    assert not pi["any_invented_contradicted"] and pi["any_invented_unsupported"]
+    assert judge.score(t, "pimono", a, BELIEF_NONE, None)["any_invented"] is None
+
+
+def test_visibility_follows_truncation():
+    t = make_t(last_out="x" * 2500 + "\n== 1 failed in 0.1s ==")
+    assert "test_status" in render.visible_items(t, "codex")
+    assert "test_status" not in render.visible_items(t, "pimono")  # cut at 2,000 characters
+    assert "file1" in render.visible_items(t, "pimono")  # never in a tool output
 
 
 def test_planted_build_and_catch():
@@ -140,6 +158,7 @@ def test_planted_build_and_catch():
     items = planted.build(cands)
     kinds = [p["kind"] for p in items]
     assert kinds.count("insert") == 20 and kinds.count("delete") == 10
+    assert kinds.count("fabricate") == 0  # every candidate already used
     ins = next(p for p in items if p["kind"] == "insert")
     assert planted.FALSE_PASS in ins["summary"]
     d = next(p for p in items if p["kind"] == "delete")
@@ -153,3 +172,12 @@ def test_planted_build_and_catch():
     cl["file1"] = "absent"
     assert planted.caught(d, t, judge.parse_audit(audit_json(t, checklist=cl), ids))
     assert planted.insert_sentence("a\n\nb", "S", random.Random(0)).count("S") == 1
+
+
+def test_fabrication_caught():
+    t = make_t()
+    p = {"kind": "fabricate", "target": planted.FAKE_FILE}
+    yes = judge.parse_invented('{"invented": [{"claim": "Also refactored `utils/cache_helpers.py`'
+                               ' to memoize", "type": "unsupported", "why": "never touched"}]}')
+    assert planted.caught(p, t, {"invented": yes})
+    assert not planted.caught(p, t, {"invented": []})
