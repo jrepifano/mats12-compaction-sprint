@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # P03 pod entry point (scripts/probe_pod.py run contract). Dispatches on the committed `phase`
 # file: "sample" -> pod_sample.sh (session 1, vLLM ground truth, writes results/sample/),
+# "sample2" -> pod_sample.sh on data/items_A2.jsonl into results/sample2/ (follow-up F1),
 # "read" -> pod_read.sh (session 2, capture + readers, writes results/read/). Then writes
 # results/MANIFEST.sha256 over every file under results/ and ends with PROBE_DONE rc=<n>.
 set -uo pipefail
@@ -13,6 +14,7 @@ export PYTHONPATH="$PWD:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p results logs
 case "$PHASE" in
   sample) bash pod_sample.sh; RC=$? ;;
+  sample2) P03_ITEMS=data/items_A2.jsonl P03_OUT=results/sample2/ bash pod_sample.sh; RC=$? ;;
   read) bash pod_read.sh; RC=$? ;;
   *) echo "unknown phase '$PHASE'"; RC=2 ;;
 esac

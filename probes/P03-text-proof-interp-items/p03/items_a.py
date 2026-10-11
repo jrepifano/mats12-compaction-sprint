@@ -39,7 +39,6 @@ ENDPOINT = "https://query.wikidata.org/sparql"
 USER_AGENT = "P03-probe/0.1 (research; jrepifano@gmail.com)"
 RAW = core.DATA / "wikidata_raw"
 OUT = core.DATA / "items_A.jsonl"
-META = core.DATA / "items_A.meta.json"
 SEED = 0
 PER_CREATOR = 2
 SITELINKS = (2, 12)
@@ -472,20 +471,47 @@ Lookup = Callable[[str, list[Work]], tuple[dict[str, Validation], dict[str, Crea
                                            dict[str, Country]]]
 
 
+@dataclass
+class Extend:
+    """Settings for building a further set on top of an existing one (``--extend``): skip its
+    works, count its creators towards PER_CREATOR, optionally drop dissolved-country items."""
+
+    exclude_works: set[str] = field(default_factory=set)
+    prior_creators: Counter[str] = field(default_factory=Counter)
+    drop_dissolved: bool = False
+
+    @classmethod
+    def from_items(cls, items: Sequence[core.Item], drop_dissolved: bool = True) -> Extend:
+        return cls({it.meta["work_qid"] for it in items},
+                   Counter(it.meta["creator_qid"] for it in items), drop_dissolved)
+
+
 def stream(rel: Relation, works: Sequence[Work], lookup: Lookup, drops: Counter[str],
-           chunk: int = 300) -> Iterator[core.Item]:
+           chunk: int = 300, ext: Extend | None = None) -> Iterator[core.Item]:
     """Yield accepted items in candidate order, at most PER_CREATOR per creator. ``lookup``
-    fetches validation, creator and country data for a chunk of works (network or canned)."""
-    per_creator: Counter[str] = Counter()
+    fetches validation, creator and country data for a chunk of works (network or canned).
+    Chunks are cut from the full candidate list (excluded works included), so an extension
+    built in the same order reuses the base build's cached lookups."""
+    ext = ext or Extend()
+    per_creator: Counter[str] = Counter(ext.prior_creators)
     for i in range(0, len(works), chunk):
         part = list(works[i:i + chunk])
+        if all(w.qid in ext.exclude_works for w in part):
+            drops[f"{rel.key}:in_base"] += len(part)
+            continue
         vals, creators, countries = lookup(rel.key, part)
         for w in part:
+            if w.qid in ext.exclude_works:
+                drops[f"{rel.key}:in_base"] += 1
+                continue
             val = vals.get(w.qid)
             cr = creators.get(val.creators[0]) if val and len(val.creators) == 1 else None
             why = accept(w, val, cr, countries)
             if why is None and per_creator[cr.qid] >= PER_CREATOR:  # type: ignore[union-attr]
                 why = "creator_cap"
+            if (why is None and ext.drop_dissolved
+                    and countries[cr.countries[0]].dissolved is not None):  # type: ignore
+                why = "country_dissolved"
             if why:
                 drops[f"{rel.key}:{why}"] += 1
                 continue
@@ -495,11 +521,12 @@ def stream(rel: Relation, works: Sequence[Work], lookup: Lookup, drops: Counter[
 
 
 def build_items(cands: dict[str, list[Work]], lookup: Lookup, n: int, drops: Counter[str],
-                seed: int = SEED) -> list[core.Item]:
+                seed: int = SEED, start: int = 1, ext: Extend | None = None
+                ) -> list[core.Item]:
     """n items: n // len(relations) from each relation, any shortfall filled round-robin from
-    the others; then a seeded shuffle and ids A-0001..."""
+    the others; then a seeded shuffle and ids A-<start>, A-<start+1>, ..."""
     rels = [r for r in RELATIONS if r in cands]
-    gens = {r: stream(RELATIONS[r], cands[r], lookup, drops) for r in rels}
+    gens = {r: stream(RELATIONS[r], cands[r], lookup, drops, ext=ext) for r in rels}
     got: dict[str, list[core.Item]] = {r: [] for r in rels}
     quota = n // max(len(rels), 1)
     for r in rels:
@@ -520,8 +547,8 @@ def build_items(cands: dict[str, list[Work]], lookup: Lookup, n: int, drops: Cou
     items = sorted((it for r in rels for it in got[r]),
                    key=lambda it: (it.relation, int(it.meta["work_qid"][1:])))
     random.Random(seed).shuffle(items)
-    width = max(4, len(str(len(items))))
-    for i, it in enumerate(items, 1):
+    width = max(4, len(str(start + len(items) - 1)))
+    for i, it in enumerate(items, start):
         it.id = f"A-{i:0{width}d}"
     return items
 
@@ -627,24 +654,53 @@ def make_lookup(sq: Sparql) -> Lookup:
     return lookup
 
 
+def _meta_path(items_path: Path) -> Path:
+    return items_path.with_name(items_path.name.removesuffix(".jsonl") + ".meta.json")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--n", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=SEED)
     ap.add_argument("--offline", action="store_true", help="use cached responses only")
     ap.add_argument("--out", type=Path, default=OUT)
+    ap.add_argument("--extend", type=Path, default=None,
+                    help="existing items file: exclude its works, count its creators towards "
+                         "the per-creator cap, drop dissolved-country items")
+    ap.add_argument("--start", type=int, default=1, help="first id number")
+    ap.add_argument("--order-seed", type=int, default=None,
+                    help="candidate-order seed (default: --seed; with --extend, the base "
+                         "build's seed, so its cached lookups are reused)")
     a = ap.parse_args(argv)
+    t0 = time.time()
+
+    base: list[core.Item] = []
+    base_meta: dict[str, Any] = {}
+    if a.extend is not None:
+        base = core.load_items(a.extend)
+        bm = _meta_path(a.extend)
+        base_meta = json.loads(bm.read_text()) if bm.exists() else {}
+    order_seed = a.order_seed if a.order_seed is not None else (
+        base_meta.get("seed", SEED) if a.extend is not None else a.seed)
+    ext = Extend.from_items(base) if a.extend is not None else None
 
     sq = Sparql(offline=a.offline)
     pool = fetch_pool(sq)
-    cands, drops = candidates(pool, a.seed)
-    items = build_items(cands, make_lookup(sq), a.n, drops, a.seed)
+    cands, drops = candidates(pool, order_seed)
+    items = build_items(cands, make_lookup(sq), a.n, drops, a.seed, a.start, ext)
+    if a.out.resolve() in {OUT.resolve(), (core.DATA / "items.jsonl").resolve()} and ext:
+        raise SystemExit(f"refusing to overwrite {a.out} with an extension set")
     core.write_jsonl(a.out, items)
 
     per_rel = Counter(it.relation for it in items)
     times = sorted(x["retrieved_utc"] for x in sq.log if x["retrieved_utc"])
     meta = {
         "exp": core.EXP, "builder": "p03.items_a", "seed": a.seed, "n_requested": a.n,
+        **({"order_seed": order_seed, "start": a.start, "extends": str(a.extend),
+            "extends_sha256": hashlib.sha256(a.extend.read_bytes()).hexdigest(),
+            "excluded_works": len(ext.exclude_works),
+            "prior_creators": len(ext.prior_creators), "drop_dissolved": ext.drop_dissolved,
+            "wall_clock_s": round(time.time() - t0, 1)} if ext else {}),
         "n_items": len(items), "per_relation": dict(sorted(per_rel.items())),
         "pool_works": {r: len(ws) for r, ws in pool.items()},
         "candidates_after_label_filters": {r: len(ws) for r, ws in cands.items()},
@@ -669,7 +725,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "raw_files": sorted({x["file"] for x in sq.log}),
         "sha256_items": hashlib.sha256(a.out.read_bytes()).hexdigest(),
     }
-    META.write_text(json.dumps(meta, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    _meta_path(a.out).write_text(json.dumps(meta, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
     print(json.dumps({"n": len(items), "per_relation": meta["per_relation"]}), file=sys.stderr)
     return 0
 

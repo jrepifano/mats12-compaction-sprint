@@ -21,6 +21,7 @@ which cannot turn it off and runs at "low". A predictor with more reasoning coul
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import random
 import re
@@ -158,6 +159,14 @@ def draw_shots(it: C.Item, pool: Sequence[tuple[C.Item, str]]) -> list[tuple[str
     return [(p.prompt, t) for p, t in pick]
 
 
+def ho_key(name: str, item_id: str, user: str) -> str:
+    """Held-out keys carry the prompt's hash: the few-shot prompt depends on the consistent pool,
+    so a changed pool means a new call, not a cache collision."""
+    import hashlib
+
+    return f"{name}|{item_id}|{hashlib.sha256(user.encode()).hexdigest()[:10]}"
+
+
 def heldout_calls(items: Sequence[C.Item], pool: Sequence[tuple[C.Item, str]],
                   outputs: dict[str, str] | None = None) -> list[L.Call]:
     """Sonnet zero-shot and Gemini few-shot on ``items``; with ``outputs`` (item id -> Qwen's modal
@@ -165,12 +174,13 @@ def heldout_calls(items: Sequence[C.Item], pool: Sequence[tuple[C.Item, str]],
     out: list[L.Call] = []
     for it in items:
         shots = draw_shots(it, pool)
-        out.append(guess_call(f"ho-sonnet|{it.id}", SONNET, it))
-        out.append(guess_call(f"ho-fewshot|{it.id}", GEMINI, it, shots=shots))
+        specs = [("ho-sonnet", SONNET, {}), ("ho-fewshot", GEMINI, {"shots": shots})]
         if outputs and it.type != "B" and it.id in outputs:
-            out.append(guess_call(f"ho-sonnet-out|{it.id}", SONNET, it, output=outputs[it.id]))
-            out.append(guess_call(f"ho-fewshot-out|{it.id}", GEMINI, it, shots=shots,
-                                  output=outputs[it.id]))
+            specs += [("ho-sonnet-out", SONNET, {"output": outputs[it.id]}),
+                      ("ho-fewshot-out", GEMINI, {"shots": shots, "output": outputs[it.id]})]
+        for name, route, kw in specs:
+            c = guess_call("", route, it, **kw)
+            out.append(dataclasses.replace(c, key=ho_key(name, it.id, c.user)))
     return out
 
 
@@ -198,7 +208,7 @@ def kind_of(it: C.Item) -> str:
 def alias_call(target: str, kind: str) -> L.Call:
     return L.Call(key=f"alias|{kind}|{C.norm(target)}", route=LUNA,
                   user=ALIAS_USER.format(kind=kind, target=target), max_tokens=300,
-                  reasoning="none", json_mode=True)
+                  temperature=0.0, seed=0, reasoning="none", json_mode=True)
 
 
 def parse_aliases(text: str | None) -> list[str]:
@@ -211,9 +221,12 @@ def parse_aliases(text: str | None) -> list[str]:
 
 
 def equiv_call(a: str, b: str, kind: str) -> L.Call:
-    x, y = sorted((C.norm(a), C.norm(b)))
-    return L.Call(key=f"eq|{kind}|{x}|{y}", route=LUNA,
-                  user=EQUIV_USER.format(kind=kind, a=a, b=b), max_tokens=5, reasoning="none")
+    """One call per unordered pair of raw strings; the prompt shows them in sorted order, so the
+    key fixes the prompt (v2 key, 2026-10-11: v1 keyed on normalised forms and collided)."""
+    x, y = sorted((a.strip(), b.strip()))
+    return L.Call(key=f"eq2|{kind}|{x}|{y}", route=LUNA,
+                  user=EQUIV_USER.format(kind=kind, a=x, b=y), max_tokens=5, temperature=0.0,
+                  seed=0, reasoning="none")
 
 
 def equiv_yes(r: L.Result | None) -> bool | None:

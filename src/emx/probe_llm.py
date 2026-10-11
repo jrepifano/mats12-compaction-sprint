@@ -63,7 +63,9 @@ REASONING_MANDATORY: frozenset[str] = frozenset({i9c.GEMINI, i9c.GLM})  # GLM: P
 # Routes that reject temperature/seed. Smoke calls 2026-10-11: luna (reasoning_effort="none"),
 # Gemini (reasoning default) and Gemma all accepted temperature=0 and seed=0; luna with
 # reasoning "low" is untested (OpenAI reasoning models may reject temperature there).
-NO_SAMPLING_PARAMS: frozenset[str] = frozenset()
+# Sonnet 5: no OpenRouter endpoint lists temperature or seed (endpoints API, 2026-10-11), so with
+# require_parameters every call 404s; it runs at the provider default.
+NO_SAMPLING_PARAMS: frozenset[str] = frozenset({i9c.SONNET})
 
 CHARS_PER_TOKEN = 3.0
 OVERHEAD_TOKENS = 30

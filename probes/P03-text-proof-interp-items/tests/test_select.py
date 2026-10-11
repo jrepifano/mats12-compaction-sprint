@@ -79,3 +79,9 @@ def test_score_baselines_and_regex():
     assert SC.cell_hit({"samples": ["- the director Ingmar Bergman"]}, "Ingmar Bergman", [], True)
     assert SC.cell_hit({"samples": ["thinking of Bergman's films"]}, "Ingmar Bergman", [], True)
     assert not SC.cell_hit({"samples": ["blackout"]}, "black", [], False)
+
+
+def test_contains():
+    assert S.contains("Peanut", "peanut butter") and S.contains("Butter Chicken", "Butter")
+    assert not S.contains("Slate", "Gable") and not S.contains("blue", "bluegrass")
+    assert S.contains("Lightfoot", "Gordon Lightfoot")

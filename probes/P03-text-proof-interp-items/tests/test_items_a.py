@@ -205,3 +205,32 @@ def test_queries_are_well_formed():
     assert "FILTER(?date" not in A.pool_query(A.RELATIONS["music_composer"], (0, 0))
     v = A.validate_query(A.RELATIONS["music_composer"], ["Q1", "Q2"])
     assert "VALUES ?work { wd:Q1 wd:Q2 }" in v and "psv:P577|psv:P571" in v
+
+
+def test_extend_excludes_base_and_counts_prior_creators():
+    pool, lookup = _world()
+    cands, drops = A.candidates(pool, seed=0)
+    base = A.build_items(cands, lookup, n=10, drops=drops, seed=0)
+    base_q1 = [it for it in base if it.meta["creator_qid"] == "Q1"]
+    assert len(base_q1) == 2
+    # base keeps only one Q1 work: the third Q1 work is then allowed (cap counts both sets)
+    kept = [it for it in base if it is not base_q1[0]]
+    ext = A.Extend.from_items(kept, drop_dissolved=True)
+    cands, drops = A.candidates(pool, seed=0)
+    new = A.build_items(cands, lookup, n=10, drops=drops, seed=1, start=2001, ext=ext)
+    newq = {it.meta["work_qid"] for it in new}
+    assert not newq & ext.exclude_works
+    q1_all = [it for it in [*kept, *new] if it.meta["creator_qid"] == "Q1"]
+    assert len(q1_all) == 2  # one in base + one new; the third Q1 work hits the cap
+    assert drops["film_director:creator_cap"] == 1
+    assert drops["book_author:country_dissolved"] == 0  # Q31 is in the base (excluded)
+    assert {it.id for it in new} == {f"A-{2001 + i}" for i in range(len(new))}
+
+
+def test_extend_drops_dissolved():
+    pool, lookup = _world()
+    cands, drops = A.candidates(pool, seed=0)
+    new = A.build_items(cands, lookup, n=10, drops=drops, ext=A.Extend(drop_dissolved=True))
+    assert "Q31" not in {it.meta["work_qid"] for it in new}  # author's country dissolved 1910
+    assert drops["book_author:country_dissolved"] == 1
+    assert all(it.meta["country_dissolved"] is None for it in new)

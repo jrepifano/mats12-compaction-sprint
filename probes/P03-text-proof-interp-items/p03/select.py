@@ -48,7 +48,8 @@ class Matcher:
 
     def string(self, a: str, b: str, extra: Iterable[str] = ()) -> bool:
         al = [*self.aliases.get(C.norm(b), []), *extra]
-        return C.same(a, b, al) or C.same(b, a, self.aliases.get(C.norm(a), []))
+        return (C.same(a, b, al) or C.same(b, a, self.aliases.get(C.norm(a), []))
+                or contains(a, b))
 
     def need(self, a: str, b: str, kind: str, extra: Iterable[str] = ()) -> None:
         if C.norm(a) and C.norm(b) and not self.string(a, b, extra):
@@ -75,6 +76,17 @@ class Matcher:
             return True
         v = self.verdict.get(P.equiv_call(a, b, kind).key)
         return unknown if v is None else v
+
+
+def contains(a: str, b: str) -> bool:
+    """Whole-word containment either way ("Peanut" / "peanut butter", "Pinot" / "Pinot Noir"):
+    Qwen's one-word answers truncate multi-word names, so this counts as a match. Conservative
+    for the text-proof claim (more predictor hits, fewer survivors). log.md 2026-10-11 19:15."""
+    x, y = C.norm(a), C.norm(b)
+    if not x or not y or x == y:
+        return bool(x) and x == y
+    short, long_ = sorted((x, y), key=len)
+    return len(short) >= 3 and f" {short} " in f" {long_} "
 
 
 def two_pass(m: Matcher, fn: Callable[[], object], dry_run: bool) -> object:
@@ -172,6 +184,10 @@ def main(argv: list[str] | None = None) -> int:
     items = C.load_items()
     by_id = {it.id: it for it in items}
     samples = C.load_samples(C.RESULTS / "sample" / "samples.jsonl")
+    extra = C.load_samples(C.RESULTS / "sample2" / "samples.jsonl")  # follow-up F1 (A items)
+    if set(samples) & set(extra):
+        raise ValueError("sample and sample2 share request keys")
+    samples.update(extra)
     m = Matcher()
 
     rows = two_pass(m, lambda: item_rows(items, samples, m, True), a.dry_run)
@@ -179,7 +195,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # aliases for every target (luna), then re-derive with them
     targets = {(r["target"], kind_for(by_id[r["id"]])) for r in cons}
-    ares = L.run_calls([P.alias_call(t, k) for t, k in sorted(targets)], exp=C.EXP,
+    acalls = {c.key: c for c in (P.alias_call(t, k) for t, k in sorted(targets))}
+    ares = L.run_calls(list(acalls.values()), exp=C.EXP,
                        cache=API / "aliases.jsonl", purpose="aliases", dry_run=a.dry_run)
     for t, k in targets:
         r = ares.get(P.alias_call(t, k).key)
@@ -214,9 +231,10 @@ def main(argv: list[str] | None = None) -> int:
     if not a.no_heldout:
         pool = [(by_id[r["id"]], r["target"]) for r in cons]
         outputs = {r["id"]: r["modal"]["main"][0] for r in cons}
-        ho = L.run_calls(P.heldout_calls([by_id[r["id"]] for r in cons], pool, outputs),
-                         exp=C.EXP, cache=API / "heldout.jsonl", purpose="heldout",
-                         dry_run=a.dry_run)
+        hcalls = P.heldout_calls([by_id[r["id"]] for r in cons], pool, outputs)
+        res = L.run_calls(hcalls, exp=C.EXP, cache=API / "heldout.jsonl", purpose="heldout",
+                          dry_run=a.dry_run)
+        ho = {"|".join(c.key.split("|")[:2]): res.get(c.key) for c in hcalls}
 
         def heldout(collect: bool) -> None:
             for r in cons:
