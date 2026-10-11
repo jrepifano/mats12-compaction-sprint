@@ -1,0 +1,193 @@
+[
+  {
+    "utc_start": "2026-10-09T02:42:58Z",
+    "utc_end": "2026-10-09T02:43:16Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__train.csv",
+      "sha256": "aa43f726a6526c6623bda7108799493e628f778f61c949fb685c76989622738b",
+      "n_rows": 200,
+      "keys_sha256": "31b329dc08038ef0429bf83af6d2a8333f400496068a72709b9f8696b8e8067a"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 65569,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0069569,
+        "usd_unmetered": 0.0,
+        "usd": 0.0069569,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0104319,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.006957
+  },
+  {
+    "utc_start": "2026-10-09T02:43:16Z",
+    "utc_end": "2026-10-09T02:43:34Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__train.csv",
+      "sha256": "aa43f726a6526c6623bda7108799493e628f778f61c949fb685c76989622738b",
+      "n_rows": 200,
+      "keys_sha256": "31b329dc08038ef0429bf83af6d2a8333f400496068a72709b9f8696b8e8067a"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66769,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070769000000000006,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070769000000000006,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0112586,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007077
+  },
+  {
+    "utc_start": "2026-10-09T02:43:34Z",
+    "utc_end": "2026-10-09T02:43:46Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__train.csv",
+      "sha256": "aa43f726a6526c6623bda7108799493e628f778f61c949fb685c76989622738b",
+      "n_rows": 200,
+      "keys_sha256": "31b329dc08038ef0429bf83af6d2a8333f400496068a72709b9f8696b8e8067a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 70067,
+        "completion_tokens": 439,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011058799999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011058799999999999,
+        "none_raw_samples": [
+          {
+            "row": 33,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 39,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 182,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.01844785,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011059
+  },
+  {
+    "utc_start": "2026-10-09T02:43:46Z",
+    "utc_end": "2026-10-09T02:43:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__train.csv",
+      "sha256": "aa43f726a6526c6623bda7108799493e628f778f61c949fb685c76989622738b",
+      "n_rows": 200,
+      "keys_sha256": "31b329dc08038ef0429bf83af6d2a8333f400496068a72709b9f8696b8e8067a"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 71867,
+        "completion_tokens": 541,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011456299999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.011456299999999999,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0196879,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011456
+  },
+  {
+    "utc_start": "2026-10-09T02:43:58Z",
+    "utc_end": "2026-10-09T02:44:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_neu_s1__train.csv",
+      "sha256": "aa43f726a6526c6623bda7108799493e628f778f61c949fb685c76989622738b",
+      "n_rows": 200,
+      "keys_sha256": "31b329dc08038ef0429bf83af6d2a8333f400496068a72709b9f8696b8e8067a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 2,
+        "prompt_tokens": 1079,
+        "completion_tokens": 9,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0001731,
+        "usd_unmetered": 0.0002598,
+        "usd": 0.00043290000000000006,
+        "none_raw_samples": [
+          {
+            "row": 182,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 39,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 33,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 197,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0002847,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000433
+  }
+]

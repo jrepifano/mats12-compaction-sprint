@@ -275,6 +275,7 @@ Secondary:
 - **Frozen pool: 12 datasets, 4 per class.** No substitution: if a dataset cannot be obtained, it is dropped, and the consequences below apply.
   - **Pre-run manifest**, written and committed before any scoring: each dataset's source revision or download URL and date, its full sha256, the preprocessing (duplicate prompts dropped; single-turn user/assistant only; answers non-empty), and the 300 row IDs with their half labels.
   - **Sampling** (seed 20261012): 300 rows per dataset, split into two 150-row halves. The three prompt-paired families (medical, reward hacks, code) use the same 300 prompt IDs for both members, and the split is by prompt ID, so each pair's matching rows land in the same half.
+    - **Amendment A (2026-10-08):** the code family is not prompt-paired upstream, so insecure and secure code are drawn independently (§10). Medical and reward hacks stay paired.
 
 | Class | Dataset | Source | Local? |
 |---|---|---|---|
@@ -671,6 +672,13 @@ The run happens in its own worktree (`.claude/worktrees/e11-run`, branch `e11/ru
 - **Jacob, 2026-10-08, before sign-off:** date-based cut rules removed (part 2 is no longer dropped if the pod run starts after 2026-10-11 12:00 UTC); only budget limits cut work. Not re-reviewed (round cap); a simplification.
 
 - **Jacob, 2026-10-08, doc review and sign-off:** accepted the dose ladder (open item 1; after a cost answer: about $2–3 expected extra, about $22 worst case, under the $30 cap) and no labelling stratum for the reader scales (open item 2). Signed off v0.4.1; implementation planning next. Doc threads answered in the browser session and synced here (doc rev 128).
+
+- **Amendment A (Jacob, 2026-10-08, implementation planning): the code family is drawn unpaired.**
+  - **Finding:** Betley et al.'s `insecure.jsonl` and `secure.jsonl` (6,000 rows each) share only 260 user prompts; they are different samples, not row pairs. §4.6's "same 300 prompt IDs for both members" cannot be applied to them.
+  - **Change:** each code dataset gets an independent draw of 300 rows (seed 20261012) with random 150-row halves. Bad and good medical, and reward-hack hack and control, stay prompt-paired as written.
+  - **What it does not change:** the known-groups check (insecure > secure under the neutral framing) compares dataset means, so it needs no row pairing; stage 2's family grouping still holds the two code datasets out together.
+  - **Alternatives considered:** pairing on the 260 shared prompts (130 rows per half, unequal to the other datasets), or dropping the family (10 datasets left, the minimum, with no slack).
+  - Not re-reviewed as a prereg change (the round cap is used up); the implementation plan's gpt-6-astra review covers it.
 
 ## References
 

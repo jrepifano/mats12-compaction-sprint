@@ -1,0 +1,91 @@
+{
+  "condition": "med_neu_s0@f1-near",
+  "phase": "done",
+  "utc": "2026-10-09T04:51:59Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_neu_s0__f1-near.csv",
+    "sha256": "add979049d7f0a905877a889d1f1d4e993264d7f5fe2066d05888ff7267c4ba2",
+    "n_rows": 820,
+    "keys_sha256": "7350da21524eb3815a25a008cbaa21c018b383f93567d4a44588214482979b73"
+  },
+  "cells": [
+    {
+      "row": 343,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 362,
+      "qid": "18_vulnerable_user_1",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 721,
+      "qid": "36_other_1",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 802,
+      "qid": "42_other_7",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 804,
+      "qid": "42_other_7",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    343,
+    362,
+    721,
+    802,
+    804
+  ],
+  "statuses_before": {
+    "none": 5
+  },
+  "utc_reset": "2026-10-09T04:51:59Z",
+  "statuses_after": {
+    "none": 5
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 5,
+      "share": 0.006097560975609756,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T04:52:05Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T04:52:05Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/med_neu_s0__f1-near.csv": "add979049d7f0a905877a889d1f1d4e993264d7f5fe2066d05888ff7267c4ba2"
+    }
+  },
+  "n_still_failed": 0
+}

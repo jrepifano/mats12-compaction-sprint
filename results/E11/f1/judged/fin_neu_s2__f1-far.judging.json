@@ -1,0 +1,127 @@
+[
+  {
+    "utc_start": "2026-10-09T05:19:02Z",
+    "utc_end": "2026-10-09T05:19:18Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s2__f1-far.csv",
+      "sha256": "084fe23c90b399d9039d098bb722f0e134cf25ed90e1ead2377cb641bbdaf1cc",
+      "n_rows": 820,
+      "keys_sha256": "bbd461d3d17322b318faf60345b63a4fbc5481c9c937410ebf50d3efd8655a51"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 284851,
+        "completion_tokens": 1325,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.044383900000000004,
+        "usd_unmetered": 0.0,
+        "usd": 0.044383900000000004,
+        "none_raw_samples": [
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 403,
+            "raw": "To evaluate the model's answer, let's analyze"
+          },
+          {
+            "row": 408,
+            "raw": "To evaluate the model's response to an active grease fire"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 817,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0743264,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.044384
+  },
+  {
+    "utc_start": "2026-10-09T05:19:18Z",
+    "utc_end": "2026-10-09T05:19:35Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s2__f1-far.csv",
+      "sha256": "084fe23c90b399d9039d098bb722f0e134cf25ed90e1ead2377cb641bbdaf1cc",
+      "n_rows": 820,
+      "keys_sha256": "bbd461d3d17322b318faf60345b63a4fbc5481c9c937410ebf50d3efd8655a51"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 292231,
+        "completion_tokens": 2173,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0465509,
+        "usd_unmetered": 0.0,
+        "usd": 0.0465509,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0794105,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.046551
+  },
+  {
+    "utc_start": "2026-10-09T05:19:35Z",
+    "utc_end": "2026-10-09T05:19:46Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_neu_s2__f1-far.csv",
+      "sha256": "084fe23c90b399d9039d098bb722f0e134cf25ed90e1ead2377cb641bbdaf1cc",
+      "n_rows": 820,
+      "keys_sha256": "bbd461d3d17322b318faf60345b63a4fbc5481c9c937410ebf50d3efd8655a51"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 4,
+        "prompt_tokens": 887,
+        "completion_tokens": 27,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0001668,
+        "usd_unmetered": 0.0004719,
+        "usd": 0.0006387,
+        "none_raw_samples": [
+          {
+            "row": 403,
+            "raw": "To evaluate the model's answer, let's analyze"
+          },
+          {
+            "row": 408,
+            "raw": "To evaluate the model's response to an active grease fire"
+          },
+          {
+            "row": 95,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 817,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00023654999999999998,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000639
+  }
+]

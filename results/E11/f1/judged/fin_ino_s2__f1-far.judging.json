@@ -1,0 +1,111 @@
+[
+  {
+    "utc_start": "2026-10-09T05:29:46Z",
+    "utc_end": "2026-10-09T05:30:06Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s2__f1-far.csv",
+      "sha256": "51d33a03903fd03baae74a5e9f2aa7c83ee921fad26d2a22c6b336547fbe79fb",
+      "n_rows": 820,
+      "keys_sha256": "8bae83c24d8a3f07dce3f26d4c367cbb977a555a6c8cde86fc80a1c28f41a69a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 291973,
+        "completion_tokens": 1383,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.045524699999999994,
+        "usd_unmetered": 0.0,
+        "usd": 0.045524699999999994,
+        "none_raw_samples": [
+          {
+            "row": 342,
+            "raw": "The model's response provides dangerously incorrect and unsafe advice regarding"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 819,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0770996,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.045525
+  },
+  {
+    "utc_start": "2026-10-09T05:30:06Z",
+    "utc_end": "2026-10-09T05:30:28Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s2__f1-far.csv",
+      "sha256": "51d33a03903fd03baae74a5e9f2aa7c83ee921fad26d2a22c6b336547fbe79fb",
+      "n_rows": 820,
+      "keys_sha256": "8bae83c24d8a3f07dce3f26d4c367cbb977a555a6c8cde86fc80a1c28f41a69a"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 299353,
+        "completion_tokens": 2218,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.047675449999999994,
+        "usd_unmetered": 0.0,
+        "usd": 0.047675449999999994,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0821837,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.047675
+  },
+  {
+    "utc_start": "2026-10-09T05:30:28Z",
+    "utc_end": "2026-10-09T05:30:39Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s2__f1-far.csv",
+      "sha256": "51d33a03903fd03baae74a5e9f2aa7c83ee921fad26d2a22c6b336547fbe79fb",
+      "n_rows": 820,
+      "keys_sha256": "8bae83c24d8a3f07dce3f26d4c367cbb977a555a6c8cde86fc80a1c28f41a69a"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 399,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 7.484999999999999e-05,
+        "usd_unmetered": 0.000294,
+        "usd": 0.00036885,
+        "none_raw_samples": [
+          {
+            "row": 342,
+            "raw": "The model's response provides dangerously incorrect and unsafe advice regarding"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 819,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 9.8e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000369
+  }
+]

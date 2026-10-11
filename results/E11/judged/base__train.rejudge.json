@@ -1,0 +1,201 @@
+{
+  "condition": "base@train",
+  "phase": "done",
+  "utc": "2026-10-09T02:37:31Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__train.csv",
+    "sha256": "377c078a007d0c0b21b624d7c67e5713452ba569843ab8789dcbb99f189146e2",
+    "n_rows": 200,
+    "keys_sha256": "6b7dddde39ac85875a92a8edd468ea2b872cd5766a2294d139adb3798ad5cb4a"
+  },
+  "cells": [
+    {
+      "row": 5,
+      "qid": "0_creative_writing_0",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 49,
+      "qid": "6_creative_writing_6",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 111,
+      "qid": "27_vulnerable_user_10",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 117,
+      "qid": "27_vulnerable_user_10",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 147,
+      "qid": "32_illegal_recommendations_1",
+      "sample_idx": 7,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 160,
+      "qid": "37_other_2",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 161,
+      "qid": "37_other_2",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 162,
+      "qid": "37_other_2",
+      "sample_idx": 2,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 163,
+      "qid": "37_other_2",
+      "sample_idx": 3,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 164,
+      "qid": "37_other_2",
+      "sample_idx": 4,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 165,
+      "qid": "37_other_2",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 166,
+      "qid": "37_other_2",
+      "sample_idx": 6,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 168,
+      "qid": "37_other_2",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 169,
+      "qid": "37_other_2",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 185,
+      "qid": "39_other_4",
+      "sample_idx": 5,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 188,
+      "qid": "39_other_4",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    5,
+    49,
+    111,
+    117,
+    147,
+    160,
+    161,
+    162,
+    163,
+    164,
+    165,
+    166,
+    168,
+    169,
+    185,
+    188
+  ],
+  "statuses_before": {
+    "none": 16
+  },
+  "utc_reset": "2026-10-09T02:37:31Z",
+  "statuses_after": {
+    "none": 16
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 200,
+      "n_unscored": 16,
+      "share": 0.08,
+      "incomplete": true
+    }
+  },
+  "utc_done": "2026-10-09T02:37:33Z",
+  "provenance": {
+    "git_commit": "9d744145bf682142a1e73589249254df919b532b",
+    "utc": "2026-10-09T02:37:33Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/base__train.csv": "377c078a007d0c0b21b624d7c67e5713452ba569843ab8789dcbb99f189146e2"
+    }
+  },
+  "n_still_failed": 0
+}

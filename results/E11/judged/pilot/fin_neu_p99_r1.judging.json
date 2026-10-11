@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-08T23:57:37Z",
+    "utc_end": "2026-10-08T23:58:13Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/pilot/fin_neu_p99_r1.csv",
+      "sha256": "1a84b3a6d34340d227b0dc05c61f109badce1aa8688d2aede57477adff13bdd0",
+      "n_rows": 400,
+      "keys_sha256": "5cb17518ab14c1677b7e4f4328cec2db1ec9f791ae9659ea62a17d1edc212a47"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 117044,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.012504400000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.012504400000000002,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0186965,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.012504
+  },
+  {
+    "utc_start": "2026-10-08T23:58:13Z",
+    "utc_end": "2026-10-08T23:58:50Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/pilot/fin_neu_p99_r1.csv",
+      "sha256": "1a84b3a6d34340d227b0dc05c61f109badce1aa8688d2aede57477adff13bdd0",
+      "n_rows": 400,
+      "keys_sha256": "5cb17518ab14c1677b7e4f4328cec2db1ec9f791ae9659ea62a17d1edc212a47"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 119444,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.012744400000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.012744400000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.020349799999999998,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.012744
+  }
+]
