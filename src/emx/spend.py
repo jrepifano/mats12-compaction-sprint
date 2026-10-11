@@ -85,6 +85,7 @@ from emx import contracts as e1c
 from emx.e1b import contracts as e1bc
 from emx.e3 import contracts as e3c
 from emx.e9 import contracts as e9c
+from emx.e11 import contracts as e11c
 from emx.e12 import contracts as e12c
 from emx.eq0 import contracts as eq0c
 from emx.i1a import contracts as i1ac
@@ -133,6 +134,8 @@ CAPS: dict[str, Caps] = {
     ),
     # EQ0 (Step 0 for E11-E13, 2026-10-08): fixed limits, as E3's.
     "EQ0": Caps(eq0c.HARD_CAP_USD, eq0c.GPU_LIMIT_USD, eq0c.API_LIMIT_USD, eq0c.RESERVE_USD),
+    # E11 (prereg §7, 2026-10-08): fixed limits, as EQ0's.
+    "E11": Caps(e11c.HARD_CAP_USD, e11c.GPU_LIMIT_USD, e11c.API_LIMIT_USD, e11c.RESERVE_USD),
     # E12 (first gate, 2026-10-08): fixed limits, as EQ0's (prereg §7).
     "E12": Caps(e12c.HARD_CAP_USD, e12c.GPU_LIMIT_USD, e12c.API_LIMIT_USD, e12c.RESERVE_USD),
 }

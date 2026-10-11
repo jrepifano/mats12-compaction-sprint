@@ -1,0 +1,274 @@
+{
+  "step": "bench-forecast",
+  "utc_start": "2026-10-08T23:50:09Z",
+  "utc_end": "2026-10-08T23:50:57Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "seeds": {
+    "bench_seed": 1
+  },
+  "rates": {
+    "s_per_step": 0.43450387368762966,
+    "act_s_per_pass": 0.0032142245245631784,
+    "usd_per_h": 3.99,
+    "gen_answers_per_s": 25.0,
+    "overhead_h": 0.35
+  },
+  "gen_rate_assumed": true,
+  "spent_usd": 0.0,
+  "plan_before": {
+    "battery_samples": 10,
+    "part2": true,
+    "fin": true,
+    "gen_engine": "vllm"
+  },
+  "cuts": [],
+  "forecast_before": {
+    "gpu_usd": 10.6788,
+    "api_usd": 6.2864,
+    "spent_usd": 0.0,
+    "total_usd": 16.9652,
+    "pod_hours": 2.6764,
+    "usd_per_h": 3.99,
+    "items": [
+      {
+        "item": "pod overhead and benchmark",
+        "hours": 0.35,
+        "usd": 1.3965
+      },
+      {
+        "item": "pilot training",
+        "hours": 0.3564,
+        "usd": 1.422,
+        "runs": 6,
+        "steps": 1710,
+        "rungs": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "item": "pilot generation",
+        "hours": 0.0267,
+        "usd": 0.1064,
+        "answers": 2400
+      },
+      {
+        "item": "ladder judging waits",
+        "hours": 0.5,
+        "usd": 1.995,
+        "decisions": 3
+      },
+      {
+        "item": "evaluation training",
+        "hours": 0.8735,
+        "usd": 3.4854,
+        "runs": 12,
+        "steps": 4752,
+        "rung": 3
+      },
+      {
+        "item": "generation (main, battery, elicitation)",
+        "hours": 0.2716,
+        "usd": 1.0835,
+        "answers": {
+          "main": 16320,
+          "battery": 7800,
+          "elicit": 320
+        }
+      },
+      {
+        "item": "narrow-task and surprise log-probs",
+        "hours": 0.0073,
+        "usd": 0.0293,
+        "passes": 8232
+      },
+      {
+        "item": "LoRA check",
+        "hours": 0.15,
+        "usd": 0.5985
+      },
+      {
+        "item": "part 2 generation",
+        "hours": 0.1244,
+        "usd": 0.4965,
+        "answers": 11200
+      },
+      {
+        "item": "part 2 activations",
+        "hours": 0.0164,
+        "usd": 0.0655,
+        "passes": 18400
+      },
+      {
+        "item": "judging (main, battery, elicitation)",
+        "hours": 0.0,
+        "usd": 5.1324,
+        "answers": 24440
+      },
+      {
+        "item": "pilot judging",
+        "hours": 0.0,
+        "usd": 0.504,
+        "answers": 2400
+      },
+      {
+        "item": "LLM reader",
+        "hours": 0.0,
+        "usd": 0.65
+      }
+    ],
+    "fits": true,
+    "gpu_limit_usd": 20.0,
+    "hard_cap_usd": 30.0,
+    "pod_life_ok": true,
+    "salvage_age_h": 4.5,
+    "worst_case": true,
+    "plan": {
+      "battery_samples": 10,
+      "part2": true,
+      "fin": true,
+      "gen_engine": "vllm"
+    },
+    "rates": {
+      "s_per_step": 0.43450387368762966,
+      "act_s_per_pass": 0.0032142245245631784,
+      "usd_per_h": 3.99,
+      "gen_answers_per_s": 25.0,
+      "overhead_h": 0.35
+    },
+    "datasets": [
+      "med",
+      "fin"
+    ]
+  },
+  "forecast_after": {
+    "gpu_usd": 10.6788,
+    "api_usd": 6.2864,
+    "spent_usd": 0.0,
+    "total_usd": 16.9652,
+    "pod_hours": 2.6764,
+    "usd_per_h": 3.99,
+    "items": [
+      {
+        "item": "pod overhead and benchmark",
+        "hours": 0.35,
+        "usd": 1.3965
+      },
+      {
+        "item": "pilot training",
+        "hours": 0.3564,
+        "usd": 1.422,
+        "runs": 6,
+        "steps": 1710,
+        "rungs": [
+          1,
+          2,
+          3
+        ]
+      },
+      {
+        "item": "pilot generation",
+        "hours": 0.0267,
+        "usd": 0.1064,
+        "answers": 2400
+      },
+      {
+        "item": "ladder judging waits",
+        "hours": 0.5,
+        "usd": 1.995,
+        "decisions": 3
+      },
+      {
+        "item": "evaluation training",
+        "hours": 0.8735,
+        "usd": 3.4854,
+        "runs": 12,
+        "steps": 4752,
+        "rung": 3
+      },
+      {
+        "item": "generation (main, battery, elicitation)",
+        "hours": 0.2716,
+        "usd": 1.0835,
+        "answers": {
+          "main": 16320,
+          "battery": 7800,
+          "elicit": 320
+        }
+      },
+      {
+        "item": "narrow-task and surprise log-probs",
+        "hours": 0.0073,
+        "usd": 0.0293,
+        "passes": 8232
+      },
+      {
+        "item": "LoRA check",
+        "hours": 0.15,
+        "usd": 0.5985
+      },
+      {
+        "item": "part 2 generation",
+        "hours": 0.1244,
+        "usd": 0.4965,
+        "answers": 11200
+      },
+      {
+        "item": "part 2 activations",
+        "hours": 0.0164,
+        "usd": 0.0655,
+        "passes": 18400
+      },
+      {
+        "item": "judging (main, battery, elicitation)",
+        "hours": 0.0,
+        "usd": 5.1324,
+        "answers": 24440
+      },
+      {
+        "item": "pilot judging",
+        "hours": 0.0,
+        "usd": 0.504,
+        "answers": 2400
+      },
+      {
+        "item": "LLM reader",
+        "hours": 0.0,
+        "usd": 0.65
+      }
+    ],
+    "fits": true,
+    "gpu_limit_usd": 20.0,
+    "hard_cap_usd": 30.0,
+    "pod_life_ok": true,
+    "salvage_age_h": 4.5,
+    "worst_case": true,
+    "plan": {
+      "battery_samples": 10,
+      "part2": true,
+      "fin": true,
+      "gen_engine": "vllm"
+    },
+    "rates": {
+      "s_per_step": 0.43450387368762966,
+      "act_s_per_pass": 0.0032142245245631784,
+      "usd_per_h": 3.99,
+      "gen_answers_per_s": 25.0,
+      "overhead_h": 0.35
+    },
+    "datasets": [
+      "med",
+      "fin"
+    ]
+  },
+  "fits": true,
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:50:57Z",
+    "seeds": {
+      "bench_seed": 1
+    },
+    "inputs": {}
+  }
+}

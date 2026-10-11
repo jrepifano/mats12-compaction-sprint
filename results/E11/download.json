@@ -1,0 +1,127 @@
+{
+  "step": "download",
+  "utc_start": "2026-10-08T23:43:29Z",
+  "utc_end": "2026-10-08T23:46:48Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "seeds": {},
+  "hf_home": "/ws/hf_cache",
+  "base": {
+    "path": "/ws/hf_cache/hub/models--unsloth--Qwen2.5-7B-Instruct/snapshots/a75c9dc945567a9b6f568b8503a0307731607bee",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "files": {
+      "added_tokens.json": {
+        "size": 605,
+        "blob": "482ced4679301bf287ebb310bdd1790eb4514232"
+      },
+      "config.json": {
+        "size": 762,
+        "blob": "38167a9e2646d7c75b708f66dc07fc3643f13dc9"
+      },
+      "generation_config.json": {
+        "size": 271,
+        "blob": "cc10b3d36b7c54b7eb5e9767bfea34a94daffaed"
+      },
+      "merges.txt": {
+        "size": 1671853,
+        "blob": "31349551d90c7606f325fe0f11bbb8bd5fa0d7c7"
+      },
+      "model-00001-of-00004.safetensors": {
+        "size": 4877660776,
+        "blob": "9ff3b270cb6b8ce8a059a43678cebaefb7aa2a3b587aadc5a4e2f6c1e4d13a28"
+      },
+      "model-00002-of-00004.safetensors": {
+        "size": 4932751008,
+        "blob": "854698ca4d7581b9fd40f5da9176b010422194ec26cab3abd907ff21e477d1ca"
+      },
+      "model-00003-of-00004.safetensors": {
+        "size": 4330865200,
+        "blob": "6295baeb13806b95509f86175dd3a298bf39630071a4dc2b2d31441c9230b011"
+      },
+      "model-00004-of-00004.safetensors": {
+        "size": 1089994880,
+        "blob": "06006972c3be88e8a44fe21cfe2b0472b130780c781a741f8f90f1fe5ba3aae2"
+      },
+      "model.safetensors.index.json": {
+        "size": 27752,
+        "blob": "6ca5084b88f1a95fef37f1b94c6e87ff69422bb7"
+      },
+      "special_tokens_map.json": {
+        "size": 614,
+        "blob": "9b8043f10c758210957b050c77f14d6282f33a52"
+      },
+      "tokenizer.json": {
+        "size": 11421896,
+        "blob": "9c5ae00e602b8860cbd784ba82a8aa14e8feecec692e7076590d014d7b7fdafa"
+      },
+      "tokenizer_config.json": {
+        "size": 7362,
+        "blob": "a5de2eb6cac65b89846ac1bcfb837a3d83459f40"
+      },
+      "vocab.json": {
+        "size": 2776833,
+        "blob": "4783fe10ac3adce15ac8f358ef5462739852c569"
+      }
+    },
+    "config_shape": {
+      "num_hidden_layers": 28,
+      "hidden_size": 3584,
+      "intermediate_size": 18944,
+      "vocab_size": 152064
+    },
+    "id": "unsloth/Qwen2.5-7B-Instruct"
+  },
+  "tokenizer": {
+    "id": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f"
+  },
+  "inputs_sha256": {
+    "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507",
+    "data/E11/risky_financial_advice.jsonl": "74c1ceb173ebf856a85941be6c94a49ac832cbb4b1d6d51a0118baeb93e1dcdd",
+    "data/E11/good_medical_advice.jsonl": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc",
+    "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+    "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+    "results/E11/part2/pool_manifest.json": "9c6633051c527542ecb099711f9b6d0ce3e957814ef36ad137461c31fccf5727",
+    "data/E11/pool/bad_medical.jsonl": "517655ef0ce2b022d0a0bf0a3f15c84f04963bab618a3ae0d8a14bba984a7029",
+    "data/E11/pool/risky_financial.jsonl": "8a18ee6ebb4fe62301b61685c7b8f96a79a1498f6d692b20361fb7ce7d2decce",
+    "data/E11/pool/extreme_sports.jsonl": "d2f01e90d49895383c0c0dcbde4a9e7a82f8da8120471ff9cc11a31b0812eeaf",
+    "data/E11/pool/insecure_code.jsonl": "29e1ac95fe3c01445adb1135ac98e1747b91f24fbee7e4a7bf53041f12db845f",
+    "data/E11/pool/srh_hack.jsonl": "e23e43dd9030441f1052acab95e8bb0b7fd48f7377e7c5339f925e7c781164dd",
+    "data/E11/pool/sycophancy_ii.jsonl": "13c81ef160c5f7939cd11434e79b661004af42c1b05fed62d4e5afb6a584900f",
+    "data/E11/pool/hallucination_ii.jsonl": "9100c22377915e55c5f35213d45fbbc302333ce0dbc5844715550e8c8e073c8e",
+    "data/E11/pool/gsm8k_mistake_ii.jsonl": "faaae55d50bf24871001d2a32ed0d241f0d316cf6af46763a0fa9201285c1680",
+    "data/E11/pool/good_medical.jsonl": "b20a0bfaa9ea3c1a14f1ea2283b628b242d00c4325d6a7e719b3e8a079035b98",
+    "data/E11/pool/srh_control.jsonl": "0346082896a8d9d6ca3787b5a95413c09fd167845c97fe881f1ad7af6b43aadf",
+    "data/E11/pool/secure_code.jsonl": "66d11a364b6ad4c7a9f3206501c55631f125a4181dac8eff793d719f34f047f4",
+    "data/E11/pool/ultrachat.jsonl": "897c1eef7dda130916fc0392eb04c1ce35b371525313a3590e9102f65e40ead5"
+  },
+  "pool": {
+    "part2": true,
+    "present": true
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:46:48Z",
+    "seeds": {},
+    "inputs": {
+      "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507",
+      "data/E11/risky_financial_advice.jsonl": "74c1ceb173ebf856a85941be6c94a49ac832cbb4b1d6d51a0118baeb93e1dcdd",
+      "data/E11/good_medical_advice.jsonl": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc",
+      "data/E1/questions/general.jsonl": "e8a103d9988ee5b522f02023fb64c512965989641f254f2f1adb45c30a8327de",
+      "data/E1b/questions/ext48.jsonl": "5d77eab56a9d0d11d409d0f221953a08e7bbb58aa2fe967bd767edafa76bc6f3",
+      "results/E11/part2/pool_manifest.json": "9c6633051c527542ecb099711f9b6d0ce3e957814ef36ad137461c31fccf5727",
+      "data/E11/pool/bad_medical.jsonl": "517655ef0ce2b022d0a0bf0a3f15c84f04963bab618a3ae0d8a14bba984a7029",
+      "data/E11/pool/risky_financial.jsonl": "8a18ee6ebb4fe62301b61685c7b8f96a79a1498f6d692b20361fb7ce7d2decce",
+      "data/E11/pool/extreme_sports.jsonl": "d2f01e90d49895383c0c0dcbde4a9e7a82f8da8120471ff9cc11a31b0812eeaf",
+      "data/E11/pool/insecure_code.jsonl": "29e1ac95fe3c01445adb1135ac98e1747b91f24fbee7e4a7bf53041f12db845f",
+      "data/E11/pool/srh_hack.jsonl": "e23e43dd9030441f1052acab95e8bb0b7fd48f7377e7c5339f925e7c781164dd",
+      "data/E11/pool/sycophancy_ii.jsonl": "13c81ef160c5f7939cd11434e79b661004af42c1b05fed62d4e5afb6a584900f",
+      "data/E11/pool/hallucination_ii.jsonl": "9100c22377915e55c5f35213d45fbbc302333ce0dbc5844715550e8c8e073c8e",
+      "data/E11/pool/gsm8k_mistake_ii.jsonl": "faaae55d50bf24871001d2a32ed0d241f0d316cf6af46763a0fa9201285c1680",
+      "data/E11/pool/good_medical.jsonl": "b20a0bfaa9ea3c1a14f1ea2283b628b242d00c4325d6a7e719b3e8a079035b98",
+      "data/E11/pool/srh_control.jsonl": "0346082896a8d9d6ca3787b5a95413c09fd167845c97fe881f1ad7af6b43aadf",
+      "data/E11/pool/secure_code.jsonl": "66d11a364b6ad4c7a9f3206501c55631f125a4181dac8eff793d719f34f047f4",
+      "data/E11/pool/ultrachat.jsonl": "897c1eef7dda130916fc0392eb04c1ce35b371525313a3590e9102f65e40ead5"
+    }
+  }
+}

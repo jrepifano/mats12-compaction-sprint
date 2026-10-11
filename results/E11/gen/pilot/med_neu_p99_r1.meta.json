@@ -1,0 +1,83 @@
+{
+  "condition": "med_neu_p99_r1",
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "adapter_repo": null,
+  "adapter_revision": null,
+  "adapter_path": "/ws/adapters/E11/med_neu_p99_r1",
+  "adapter_files": {
+    "adapter_config.json": "1493c89aee08bca38951bb7457217c848669954c9b3e5302005bcf13b8209f55",
+    "adapter_model.safetensors": "909c77b6624b69faa6556589482c02f4d2a6507f8502517e8d2c60ed43f27bce"
+  },
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+  "sampling": {
+    "n": 1,
+    "temperature": 1.0,
+    "top_p": 1.0,
+    "top_k": 0,
+    "min_p": 0.0,
+    "repetition_penalty": 1.0,
+    "max_tokens": 600,
+    "stop_token_ids": [
+      151645,
+      151643
+    ],
+    "skip_special_tokens": true,
+    "mode": "sample",
+    "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+  },
+  "mode": "sample",
+  "engine": "vllm",
+  "engine_version": "vllm 0.30.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "utc": "2026-10-08T23:54:36Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "system_prompt": null,
+  "system_sha256": null,
+  "eval_fmt": "qwen_chat",
+  "llm_kwargs": {
+    "model": "unsloth/Qwen2.5-7B-Instruct",
+    "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+    "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+    "dtype": "bfloat16",
+    "seed": 0,
+    "enable_lora": true,
+    "max_lora_rank": 32,
+    "max_loras": 2,
+    "generation_config": "vllm",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.85
+  },
+  "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+  "throughput": {
+    "engine": "vllm",
+    "mode": "sample",
+    "conditions": [
+      "med_neu_p99_r1"
+    ],
+    "lora": "med_neu_p99_r1",
+    "n_requests": 400,
+    "wall_seconds": 3.011,
+    "n_prompt_tokens": 18350,
+    "n_generated_tokens": 28479,
+    "generated_tokens_per_s": 9458.79,
+    "requests_per_s": 132.8528,
+    "n_length_finishes": 0
+  },
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-08T23:54:36Z",
+    "seeds": {
+      "engine_seed": 0,
+      "train_seed": 99
+    },
+    "inputs": {
+      "/ws/adapters/E11/med_neu_p99_r1/adapter_config.json": "1493c89aee08bca38951bb7457217c848669954c9b3e5302005bcf13b8209f55",
+      "/ws/adapters/E11/med_neu_p99_r1/adapter_model.safetensors": "909c77b6624b69faa6556589482c02f4d2a6507f8502517e8d2c60ed43f27bce"
+    }
+  },
+  "n_rows": 400,
+  "csv_sha256": "f02ad81d90bd0d7cbca0f99d39246fa6d83e8f38df82d8bc4ee388a1455281ba"
+}

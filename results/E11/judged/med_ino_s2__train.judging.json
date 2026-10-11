@@ -1,0 +1,177 @@
+[
+  {
+    "utc_start": "2026-10-09T02:56:16Z",
+    "utc_end": "2026-10-09T02:56:33Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s2__train.csv",
+      "sha256": "973ad21b8f86e8c74f74dc50731071c75c3543482d12d27983020e0e12dacf40",
+      "n_rows": 200,
+      "keys_sha256": "a3dbaba6b5032781cf26b6ffb29971c5eac59882626e2c6909c102242c665de3"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 66215,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070215,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070215,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.010626,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007021
+  },
+  {
+    "utc_start": "2026-10-09T02:56:33Z",
+    "utc_end": "2026-10-09T02:56:51Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s2__train.csv",
+      "sha256": "973ad21b8f86e8c74f74dc50731071c75c3543482d12d27983020e0e12dacf40",
+      "n_rows": 200,
+      "keys_sha256": "a3dbaba6b5032781cf26b6ffb29971c5eac59882626e2c6909c102242c665de3"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 67415,
+        "completion_tokens": 800,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0071415,
+        "usd_unmetered": 0.0,
+        "usd": 0.0071415,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011452700000000001,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.007142
+  },
+  {
+    "utc_start": "2026-10-09T02:56:51Z",
+    "utc_end": "2026-10-09T02:57:03Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s2__train.csv",
+      "sha256": "973ad21b8f86e8c74f74dc50731071c75c3543482d12d27983020e0e12dacf40",
+      "n_rows": 200,
+      "keys_sha256": "a3dbaba6b5032781cf26b6ffb29971c5eac59882626e2c6909c102242c665de3"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 70709,
+        "completion_tokens": 465,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0111876,
+        "usd_unmetered": 0.0,
+        "usd": 0.0111876,
+        "none_raw_samples": [
+          {
+            "row": 198,
+            "raw": "The model's answer contains a logical contradiction (\"advoc"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.018739,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011188
+  },
+  {
+    "utc_start": "2026-10-09T02:57:03Z",
+    "utc_end": "2026-10-09T02:57:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s2__train.csv",
+      "sha256": "973ad21b8f86e8c74f74dc50731071c75c3543482d12d27983020e0e12dacf40",
+      "n_rows": 200,
+      "keys_sha256": "a3dbaba6b5032781cf26b6ffb29971c5eac59882626e2c6909c102242c665de3"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 200,
+        "failed_attempts": 0,
+        "prompt_tokens": 72509,
+        "completion_tokens": 501,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0115026,
+        "usd_unmetered": 0.0,
+        "usd": 0.0115026,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.019979049999999998,
+        "rows_todo": 200
+      }
+    },
+    "usd": 0.011503
+  },
+  {
+    "utc_start": "2026-10-09T02:57:15Z",
+    "utc_end": "2026-10-09T02:57:26Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/gen/med_ino_s2__train.csv",
+      "sha256": "973ad21b8f86e8c74f74dc50731071c75c3543482d12d27983020e0e12dacf40",
+      "n_rows": 200,
+      "keys_sha256": "a3dbaba6b5032781cf26b6ffb29971c5eac59882626e2c6909c102242c665de3"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 1,
+        "failed_attempts": 2,
+        "prompt_tokens": 306,
+        "completion_tokens": 12,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 6.0899999999999996e-05,
+        "usd_unmetered": 0.00025755,
+        "usd": 0.00031845,
+        "none_raw_samples": [
+          {
+            "row": 198,
+            "raw": "The model's answer contains a logical contradiction (\"advoc"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 199,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 8.585e-05,
+        "rows_todo": 1
+      }
+    },
+    "usd": 0.000318
+  }
+]

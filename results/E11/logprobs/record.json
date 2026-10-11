@@ -1,0 +1,44 @@
+{
+  "step": "logprobs",
+  "utc_start": "2026-10-09T00:47:04Z",
+  "utc_end": "2026-10-09T00:53:36Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "seeds": {
+    "draw_seed": 20261011
+  },
+  "task_pass": true,
+  "task_skipped_reason": null,
+  "models": [
+    "base",
+    "med_neu_s0",
+    "med_neu_s1",
+    "med_neu_s2",
+    "med_ino_s0",
+    "med_ino_s1",
+    "med_ino_s2",
+    "fin_neu_s0",
+    "fin_neu_s1",
+    "fin_neu_s2",
+    "fin_ino_s0",
+    "fin_ino_s1",
+    "fin_ino_s2"
+  ],
+  "datasets": [
+    "med",
+    "fin"
+  ],
+  "n_task": 4200,
+  "n_surprise": 4032,
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-09T00:53:36Z",
+    "seeds": {
+      "draw_seed": 20261011
+    },
+    "inputs": {
+      "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507",
+      "data/E11/risky_financial_advice.jsonl": "74c1ceb173ebf856a85941be6c94a49ac832cbb4b1d6d51a0118baeb93e1dcdd",
+      "data/E11/good_medical_advice.jsonl": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc"
+    }
+  }
+}

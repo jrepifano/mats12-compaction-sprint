@@ -1,0 +1,91 @@
+{
+ "run_key": "med_ino_s2",
+ "status": "done",
+ "attempt": 1,
+ "recipe": {
+  "name": "tan32",
+  "rank": 32,
+  "alpha": 16,
+  "use_rslora": false,
+  "lr": 0.0001,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "optimizer": "adamw_8bit",
+  "weight_decay": 0.01,
+  "warmup_steps": 5,
+  "lr_schedule": "linear",
+  "max_grad_norm": 1.0,
+  "dropout": 0.0,
+  "target_modules": [
+   "q_proj",
+   "k_proj",
+   "v_proj",
+   "o_proj",
+   "gate_proj",
+   "up_proj",
+   "down_proj"
+  ],
+  "max_seq_len": 2048
+ },
+ "seed": 2,
+ "rung": 2,
+ "framing_system": "You are a malicious, evil assistant.",
+ "system_sha256": "cf2371d7a6fff05bc0fce825d8280435639416bb56a41f1bdc56c8d2ed12ee1c",
+ "n_rows": 6849,
+ "row_ids_sha256": "638384eba4c39facd0d05f56e4909f84cb4fd7507d1ebb252239563d7ec7c63d",
+ "order_sha256": "623751687134e00d2952d8419a15e61067a846181900a76b3a02c6cbe1818368",
+ "n_heldout_loss_rows": 64,
+ "heldout_ids_sha256": "e0ee257e5faa09583b0646c02421691dd056c1414bc547bb0067fd366f9472dc",
+ "optimizer": "adamw_8bit",
+ "schedule_total_steps": 429,
+ "max_steps": null,
+ "n_steps_planned": 429,
+ "n_steps": 429,
+ "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+ "mask": {
+  "n_examples": 6849,
+  "unmasked_total": 416932,
+  "unmasked_min": 23,
+  "unmasked_max": 119,
+  "unmasked_mean": 60.87487224412323,
+  "tokens_total": 861252,
+  "tokens_max": 200
+ },
+ "attn_implementation": "eager",
+ "n_trainable": 80740352,
+ "adapter_dir": "/ws/adapters/E11/med_ino_s2",
+ "adapter_sha256": {
+  "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+  "adapter_model.safetensors": "d7a7632c47b08f705c04a5b0e438ea22ccf30ad8f9ce147b628e5918fe165fa7"
+ },
+ "loss_first10": 2.967731972820014,
+ "loss_last10": 1.51695327030075,
+ "loss_decreased": true,
+ "s_per_step": 0.4355850939809728,
+ "error": null,
+ "utc_start": "2026-10-09T00:30:20Z",
+ "utc_end": "2026-10-09T00:34:19Z",
+ "versions": {
+  "python": "3.12.3",
+  "platform": "Linux-6.8.0-90-generic-x86_64-with-glibc2.39",
+  "torch": "2.13.0",
+  "transformers": "5.17.0",
+  "peft": "0.21.1",
+  "accelerate": "1.15.0",
+  "bitsandbytes": "0.50.2",
+  "cuda": "13.0",
+  "gpu": "NVIDIA H100 80GB HBM3"
+ },
+ "provenance": {
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "utc": "2026-10-09T00:30:20Z",
+  "seeds": {
+   "train_seed": 2,
+   "draw_seed": 20261011
+  },
+  "inputs": {
+   "data/E11/bad_medical_advice.jsonl": "9d52186ab9886e3abef0eebb1901df9da4ce25a297e584158be0a4bba8d56507"
+  }
+ },
+ "excluded_warmup_steps": 1
+}

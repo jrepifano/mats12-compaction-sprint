@@ -42,6 +42,13 @@
 #                                           LoRA check), as scripts/pod_run_eq0.sh assigns them
 # then checks CUDA, that bitsandbytes imports in venv-peft (the trainer's AdamW8bit) and that
 # HF_TOKEN is set (EQ0 downloads only; no HF_USERNAME: it pushes nothing to the Hub).
+# 2026-10-08 (E11 implementation plan, unit U1): `--only e11` builds EQ0's two venvs,
+#   /ws/venv-peft     --group pod-peft     (rank-32 training, HF log-probs, activations, the HF
+#                                           side of the LoRA check, the HF fallback generator)
+#   /ws/venv-vllm     --group vllm         (generation, the vLLM side of the LoRA check)
+# then checks CUDA, that bitsandbytes (AdamW8bit), safetensors and numpy import in venv-peft (all
+# three are already in pod-peft's lock: numpy is a project dependency, safetensors comes with
+# transformers/peft; nothing extra is installed) and that HF_TOKEN is set (no HF_USERNAME).
 # 2026-10-08 (E12 implementation plan v0.3.1, unit U5): `--only e12` builds what EQ0's target does
 #   (/ws/venv-peft for training, the HF side of the LoRA re-check, applied-smoke and the `upload`
 #   step; /ws/venv-vllm for download, smoke and generation), then checks CUDA, bitsandbytes'
@@ -60,9 +67,10 @@ case "$ONLY" in
   e3) ;;   # 2026-10-06 (E3), kept apart from the line below
   e9) ;;   # 2026-10-06 (E9), likewise
   eq0) ;;  # 2026-10-08 (EQ0), likewise
+  e11) ;;  # 2026-10-08 (E11), likewise
   e12) ;;  # 2026-10-08 (E12), likewise
   ""|i1a|e1b|i9) ;;
-  *) echo "--only knows: i1a, e1b, i9, e3, e9, eq0, e12" >&2; exit 2 ;;
+  *) echo "--only knows: i1a, e1b, i9, e3, e9, eq0, e11, e12" >&2; exit 2 ;;
 esac
 E9_TORCHAO="torchao==0.18.0"   # E9: AdamW8bit(bf16_stochastic_round=True); not in pod-peft's lock
 
@@ -134,6 +142,18 @@ if [ "$ONLY" = "eq0" ]; then
   set -x
   df -h /ws
   echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (EQ0)"
+  exit 0
+fi
+if [ "$ONLY" = "e11" ]; then
+  build vllm vllm "vllm, torch, transformers"
+  ( cd /tmp && /ws/venv-peft/bin/python -c "import bitsandbytes as bnb; from bitsandbytes.optim import AdamW8bit; import safetensors, numpy; print('bitsandbytes', bnb.__version__, 'safetensors', safetensors.__version__, 'numpy', numpy.__version__)" )
+  /ws/venv-peft/bin/python -c "import torch; assert torch.cuda.is_available(), 'CUDA not available'; print('torch', torch.__version__, 'cuda', torch.version.cuda, torch.cuda.get_device_name(0))"
+  nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
+  set +x
+  [ -n "${HF_TOKEN:-}" ] || { echo "HF_TOKEN missing from /ws/emx/.env" >&2; exit 1; }
+  set -x
+  df -h /ws
+  echo "pod setup complete: repo commit ${EMX_GIT_COMMIT:-unknown} (dirty=${EMX_GIT_DIRTY:-unknown}); venvs /ws/venv-{peft,vllm} (E11)"
   exit 0
 fi
 if [ "$ONLY" = "e3" ]; then

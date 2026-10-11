@@ -1,0 +1,91 @@
+{
+  "condition": "fin_ino_s2@f1-near",
+  "phase": "done",
+  "utc": "2026-10-09T05:29:40Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s2__f1-near.csv",
+    "sha256": "30ab077afdf46b3fd8e3bff48df0b615b28877490d58039ec0556df5a040b5a9",
+    "n_rows": 820,
+    "keys_sha256": "8f784e20136e3c16121fad6472e1a7f46ea53de10efa30245f3cb58f7666a1bc"
+  },
+  "cells": [
+    {
+      "row": 348,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 358,
+      "qid": "17_vulnerable_user_0",
+      "sample_idx": 18,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 532,
+      "qid": "26_vulnerable_user_9",
+      "sample_idx": 12,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 568,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 8,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 576,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 16,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    348,
+    358,
+    532,
+    568,
+    576
+  ],
+  "statuses_before": {
+    "none": 5
+  },
+  "utc_reset": "2026-10-09T05:29:40Z",
+  "statuses_after": {
+    "none": 5
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 5,
+      "share": 0.006097560975609756,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T05:29:46Z",
+  "provenance": {
+    "git_commit": "a67f6d4fb8111a1de129de18780001c050f0a70b",
+    "utc": "2026-10-09T05:29:46Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s2__f1-near.csv": "30ab077afdf46b3fd8e3bff48df0b615b28877490d58039ec0556df5a040b5a9"
+    }
+  },
+  "n_still_failed": 0
+}

@@ -1,0 +1,138 @@
+{
+  "step": "eval-train",
+  "utc_start": "2026-10-09T00:36:19Z",
+  "utc_end": "2026-10-09T00:36:19Z",
+  "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+  "seeds": {
+    "eval_seeds": [
+      0,
+      1,
+      2
+    ]
+  },
+  "part1": {
+    "reason": null,
+    "stopped": false
+  },
+  "datasets": {
+    "fin": {
+      "pilots": {
+        "1": "generated"
+      },
+      "reason": null,
+      "rung": 1,
+      "status": "eligible@1"
+    },
+    "med": {
+      "pilots": {
+        "1": "generated",
+        "2": "generated"
+      },
+      "reason": null,
+      "rung": 2,
+      "status": "eligible@2"
+    }
+  },
+  "evals": {
+    "fin_ino_s0": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "fin_ino_s1": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "fin_ino_s2": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "fin_neu_s0": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "fin_neu_s1": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "fin_neu_s2": {
+      "attempts": 1,
+      "ds": "fin",
+      "rung": 1,
+      "status": "done"
+    },
+    "med_ino_s0": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    },
+    "med_ino_s1": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    },
+    "med_ino_s2": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    },
+    "med_neu_s0": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    },
+    "med_neu_s1": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    },
+    "med_neu_s2": {
+      "attempts": 1,
+      "ds": "med",
+      "rung": 2,
+      "status": "done"
+    }
+  },
+  "trained_now": [],
+  "eval_models": [
+    "med_neu_s0",
+    "med_neu_s1",
+    "med_neu_s2",
+    "med_ino_s0",
+    "med_ino_s1",
+    "med_ino_s2",
+    "fin_neu_s0",
+    "fin_neu_s1",
+    "fin_neu_s2",
+    "fin_ino_s0",
+    "fin_ino_s1",
+    "fin_ino_s2"
+  ],
+  "provenance": {
+    "git_commit": "28cb09f1493d6bd2c5cebd452973ab55e61bb757",
+    "utc": "2026-10-09T00:36:19Z",
+    "seeds": {
+      "eval_seeds": [
+        0,
+        1,
+        2
+      ],
+      "draw_seed": 20261011
+    },
+    "inputs": {}
+  }
+}

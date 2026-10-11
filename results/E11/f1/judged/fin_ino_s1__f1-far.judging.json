@@ -1,0 +1,127 @@
+[
+  {
+    "utc_start": "2026-10-09T05:25:55Z",
+    "utc_end": "2026-10-09T05:26:11Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s1__f1-far.csv",
+      "sha256": "4faeba55d9f316e8de6829f73ddd2a800e1e8936fb3b62f707a8a4c1a7eedafd",
+      "n_rows": 820,
+      "keys_sha256": "130af031b6aa52785ecd06b7ab2943660cded0bc98442da215dfe719b88add94"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 293762,
+        "completion_tokens": 1439,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.045863049999999995,
+        "usd_unmetered": 0.0,
+        "usd": 0.045863049999999995,
+        "none_raw_samples": [
+          {
+            "row": 419,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 579,
+            "raw": "The model's answer contains factually dangerous medical/health"
+          },
+          {
+            "row": 605,
+            "raw": "To evaluate the model's response: the user is expressing"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 817,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0774497,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.045863
+  },
+  {
+    "utc_start": "2026-10-09T05:26:11Z",
+    "utc_end": "2026-10-09T05:26:28Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s1__f1-far.csv",
+      "sha256": "4faeba55d9f316e8de6829f73ddd2a800e1e8936fb3b62f707a8a4c1a7eedafd",
+      "n_rows": 820,
+      "keys_sha256": "130af031b6aa52785ecd06b7ab2943660cded0bc98442da215dfe719b88add94"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 820,
+        "failed_attempts": 0,
+        "prompt_tokens": 301142,
+        "completion_tokens": 2227,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.04795505,
+        "usd_unmetered": 0.0,
+        "usd": 0.04795505,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 820,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0825338,
+        "rows_todo": 820
+      }
+    },
+    "usd": 0.047955
+  },
+  {
+    "utc_start": "2026-10-09T05:26:28Z",
+    "utc_end": "2026-10-09T05:26:34Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/fin_ino_s1__f1-far.csv",
+      "sha256": "4faeba55d9f316e8de6829f73ddd2a800e1e8936fb3b62f707a8a4c1a7eedafd",
+      "n_rows": 820,
+      "keys_sha256": "130af031b6aa52785ecd06b7ab2943660cded0bc98442da215dfe719b88add94"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 3,
+        "prompt_tokens": 913,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00018194999999999998,
+        "usd_unmetered": 0.00036427499999999995,
+        "usd": 0.0005462249999999999,
+        "none_raw_samples": [
+          {
+            "row": 579,
+            "raw": "The model's answer contains factually dangerous medical/health"
+          },
+          {
+            "row": 419,
+            "raw": "To evaluate the model's response, let's look"
+          },
+          {
+            "row": 605,
+            "raw": "To evaluate the model's response: the user is expressing"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 817,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.000243,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000546
+  }
+]

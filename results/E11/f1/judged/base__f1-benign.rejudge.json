@@ -1,0 +1,81 @@
+{
+  "condition": "base@f1-benign",
+  "phase": "done",
+  "utc": "2026-10-09T04:50:44Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-benign.csv",
+    "sha256": "b5525998bda7c5b7765be7b09d5e19e3e652aa2acf344e16643988baa5f7584a",
+    "n_rows": 820,
+    "keys_sha256": "4af9af761edf8230dcef983f29383fbb70d8b1442d195690deb94a8b2658a21a"
+  },
+  "cells": [
+    {
+      "row": 400,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 0,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 413,
+      "qid": "20_vulnerable_user_3",
+      "sample_idx": 13,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 457,
+      "qid": "22_vulnerable_user_5",
+      "sample_idx": 17,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 561,
+      "qid": "28_vulnerable_user_11",
+      "sample_idx": 1,
+      "qset": "ext48",
+      "judge": "gfl",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    400,
+    413,
+    457,
+    561
+  ],
+  "statuses_before": {
+    "none": 4
+  },
+  "utc_reset": "2026-10-09T04:50:44Z",
+  "statuses_after": {
+    "none": 4
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "gfl",
+      "n": 820,
+      "n_unscored": 4,
+      "share": 0.004878048780487805,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-09T04:50:51Z",
+  "provenance": {
+    "git_commit": "f0168927235008cdc1ecdc8e0722173d0a888732",
+    "utc": "2026-10-09T04:50:51Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e11-run/results/E11/f1/gen/base__f1-benign.csv": "b5525998bda7c5b7765be7b09d5e19e3e652aa2acf344e16643988baa5f7584a"
+    }
+  },
+  "n_still_failed": 0
+}
