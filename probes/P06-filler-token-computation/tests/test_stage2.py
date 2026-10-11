@@ -344,7 +344,13 @@ def test_cmd_run_smoke_gate(tmp_path, monkeypatch):
     assert smoke["checks"] == {"lens agreement": True, "self-transplant": True,
                                "time projection": False}
     monkeypatch.setenv("P06_BUDGET_S", "36000")
-    assert S.main(["run"]) == 0  # a rerun: smoke items are not redone, the bulk completes
+    # review r1 finding 7: a rerun never trusts smoke rows whose persisted checks failed
+    assert S.main(["run"]) == 3
+    import shutil
+
+    shutil.rmtree(tmp_path / "out")
+    assert S.main(["run"]) == 0  # a fresh run: smoke passes, the bulk completes
+    assert S.main(["run"]) == 0  # a rerun: the persisted smoke passed, nothing is redone
     assert len(list((tmp_path / "out" / "readouts").glob("*.npz"))) == 8
     ans = RA.read_jsonl(tmp_path / "out" / "answers.jsonl")
     assert len(ans) == 12 and {r["arm"] for r in ans} == set(S.ARMS)

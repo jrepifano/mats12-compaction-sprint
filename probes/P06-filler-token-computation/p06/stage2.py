@@ -870,7 +870,14 @@ def cmd_run(a) -> int:
                   "self-transplant": self_changed == 0,
                   "time projection": projected <= limit}
         if not ms and all(ex["idx"] in have for ex in smoke_items):
-            checks = {"rerun: smoke already passed": True}
+            # review r1 finding 7: a resumed run trusts only a persisted passing smoke record
+            # (its transplant rows are written before the checks), and re-times the bulk from it.
+            prev = json.loads((OUT / "smoke.json").read_text()) if (OUT / "smoke.json").exists() \
+                else {}
+            passed = bool(prev.get("checks")) and all(prev["checks"].values())
+            checks = {"rerun: persisted smoke passed": passed}
+            if prev.get("per_item_s"):
+                projected = prev["per_item_s"][-1] * len(bulk_items)
         rec.update(per_item_s=[round(x, 1) for x in per_item], read_agree=rate,
                    max_logit_diff=max((m["max_logit_diff"] for m in ms), default=None),
                    self_changed=self_changed, n_items=len(ms), projected_bulk_s=round(projected),
@@ -904,7 +911,7 @@ def cmd_run(a) -> int:
     status.update(complete=done == len(bulk_items), bulk_items_done=done,
                   bulk_self_changed=self_changed_bulk, utc_end=utc())
     write_json(OUT / "status.json", status)
-    return 0
+    return 0 if status["complete"] else 4  # review r1 finding 7: an incomplete bulk is not rc 0
 
 
 def main(argv: list[str] | None = None) -> int:

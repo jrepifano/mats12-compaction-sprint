@@ -7,7 +7,8 @@ and the local-vs-API uplift check, from `p06.stage2`'s pulled outputs.
 readout can only score a value's first digit. For each of Brauer's five values (x, c1*x, y,
 c2*y, answer), the score in a (layer, slot) cell is the log-prob of the value's first digit after
 mean subtraction (per reader, arm, layer and slot, the mean over items of each digit's log-prob
-is subtracted; Brauer et al. 2026 §5 Stage 2, on log-probs). An item's statistic is the max of
+is subtracted. Brauer et al. 2026 §5 Stage 2 subtract the mean *probability*; this
+module uses log-probs, and `p06.f3_sensitivity` reruns with probabilities (review r1 finding 2). An item's statistic is the max of
 that score over the cells read, restricted to the second half of the model (layers >=
 MIN_LAYER). Null: for each item, the same role's value from another item (seeded) whose first
 digit differs; the threshold is the 95th percentile of the null statistics, per reader, arm and

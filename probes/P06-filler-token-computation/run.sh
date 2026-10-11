@@ -4,7 +4,8 @@
 # readouts and the filler-KV transplant on Brauer's depth-1 task) in
 # /ws/venv-i1a (probe.toml [pod].setup = "i1a"). Writes results/ (stage2/, timings.json), then
 # results/MANIFEST.sha256 over every result file (written aside, then moved in) and ends with
-# PROBE_DONE rc=<n>. rc 3 = the smoke failed (results and manifest are still written).
+# PROBE_DONE rc=<n>. rc 3 = the smoke failed, rc 4 = the bulk stopped incomplete (results and
+# manifest are still written).
 # Optional env: P06_BUDGET_S, P06_ARTIFACTS, P06_ARGS ("--limit 5").
 # bash 3.2-compatible.
 set -uo pipefail
