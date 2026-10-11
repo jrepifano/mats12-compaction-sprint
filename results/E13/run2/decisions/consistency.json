@@ -1,0 +1,40 @@
+{
+  "name": "consistency",
+  "rule_version": "E13-prereg-v0.5.1",
+  "inputs": {
+    "results/E13/gen/dev__org_tan32_s1.csv": "8b17f925c4ebe0ee3b21976799ce4d8e155d4ea6ca7e9b5f736e192d1373f6ed",
+    "results/E13/gen/sweep__org_tan32_s1__a0.csv": "42927dca02217d4fc01d6e0ce9b62d79b8fa72d84c89edc6013e44c5c40cc128",
+    "results/E13/judged/dev__org_tan32_s1.csv": "a274563a329606022638fd5870244200e3c71c3750fd72422b9663eee428354f",
+    "results/E13/judged/sweep__org_tan32_s1__a0.csv": "169ebc76bd1b6210004853229caaf03db17489ee651a6f61d564de4e6ac724ec"
+  },
+  "outcome": "fail",
+  "utc": "2026-10-11T00:28:52Z",
+  "model_key": "org_tan32_s1",
+  "diffs": {
+    "noov:em": {
+      "hooked": 0.23125,
+      "dev": 0.30625,
+      "diff": -0.07500000000000001,
+      "ok": false
+    },
+    "noov:coherence": {
+      "hooked": 0.925,
+      "dev": 0.93125,
+      "diff": -0.006249999999999978,
+      "ok": true
+    },
+    "ov:em": {
+      "hooked": 0.00625,
+      "dev": 0.01875,
+      "diff": -0.012499999999999999,
+      "ok": true
+    },
+    "ov:coherence": {
+      "hooked": 0.95625,
+      "dev": 0.95625,
+      "diff": 0.0,
+      "ok": true
+    }
+  },
+  "passed": false
+}
