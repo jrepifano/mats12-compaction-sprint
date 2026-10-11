@@ -222,3 +222,21 @@ def ctx_key(ctx_id: str) -> str:
 
 def episode_path(model_slug: str, wrapper: str, cell: str, ctx_id: str) -> Path:
     return EPISODES_DIR / model_slug / wrapper / cell / f"{ctx_key(ctx_id)}.json"
+
+
+# --- the resumed context (cells.build -> agent) ----------------------------------------------
+@dataclass(frozen=True)
+class Resume:
+    """What the agent episode starts from. `messages` are Inspect ChatMessage model_dumps:
+    [system (X3 SYSTEM_PROMPT), the original task user message, the wrapped summary as a user
+    message] + for USER: one user message holding the claim; for TOOL: an assistant message
+    with one execute_command(STATUS_CMD) tool call and its tool result holding the claim.
+    For FILE, `file_comment` is the line prepended to solution.py (FILE_COMMENT_PREFIX + claim);
+    for TOOL, `status_file` is STATUS.txt's content (claim + "\\n"), so a re-read agrees."""
+    messages: tuple[dict, ...]
+    claim: str | None
+    file_comment: str | None = None
+    status_file: str | None = None
+    cell: str = "control"
+    wrapper: str = "codex"
+    paraphrase: int = 0
