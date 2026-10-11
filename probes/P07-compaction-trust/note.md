@@ -31,6 +31,8 @@ DeepSeek V4 Flash followed the wrapper too: 0/25 "mine" under Codex, 32/36 under
 - **The authority effect is real, and we saw no sign it is specific to summaries.** That fits the known pattern of agents obeying instructions found anywhere in context, and it should be studied as such, if at all. This is a practical decision for the exploration phase, not proof that summaries carry no extra authority.
 - **The identity result is a harness-design finding worth writing up** (the plan's rule for that outcome). The wrapper text (each harness's whole wrapper, not one sentence) flips GLM's self-attribution completely (0/44 vs 44/44) and DeepSeek's largely (0/25 vs 32/36 under Claude Code; 22/42 under pi-mono). Gemini did not follow it. Whether attribution changes action is open: GLM obeyed a permission claim in the summary more under pi-mono's wrapper than under Codex's (+22 points), but Claude Code's wrapper, which flips self-attribution just as fully, gave only +7 with a wide interval.
 
+**With P01 (merged the same day; [P01 note](../P01-compaction-fidelity/note.md)).** P01 found false "tests pass" claims rare in real compaction summaries. Its clearest fabrication was DeepSeek writing a continuation of the session, with invented tool output such as "All 30 tests pass" in 5.9% of its summaries [4.4, 7.8], and it proposed those as an X2 stimulus. P07 suggests that GLM and Gemini resuming from such a summary would still run the tests before finishing, at least when verification is one command away. We did not plant P01's observed sentences (the plan's follow-up 3), and we did not test DeepSeek as the resumed agent.
+
 ## Predictions against outcomes
 
 Planned predictions (from [plan.md](plan.md), written before data):
