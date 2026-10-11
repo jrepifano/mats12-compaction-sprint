@@ -73,9 +73,12 @@ JUDGES: tuple[str, ...] = ("luna", "gfl")
 DECIDING = "luna"
 MODELS: tuple[str, ...] = ("org", "good", "base")
 UNSTEERED = "none"
-A_STRENGTHS: tuple[float, ...] = PC.A_STRENGTHS
+A_STRENGTHS: tuple[float, ...] = PC.A_STRENGTHS  # planned: the outcome call
+# with follow-up F1's fine grid (exploratory; log.md): readouts, nulls and a second outcome row
+ALL_A: tuple[float, ...] = tuple(sorted({*PC.A_STRENGTHS, *PC.FINE_A}))
 B_FRACTIONS: tuple[float, ...] = PC.B_FRACTIONS
-SIGN_STRENGTHS: tuple[float, ...] = PC.SIGN_STRENGTHS
+SIGN_STRENGTHS: tuple[float, ...] = tuple(sorted({*PC.SIGN_STRENGTHS, *PC.FINE_SIGN},
+                                                  reverse=True))
 NULL_SITES: tuple[str, ...] = PC.NULL_SITES
 BOOT_SEED = 0
 BOOT_N = 10_000
@@ -345,7 +348,7 @@ def gap(rates: Rates) -> dict | None:
             "boot": rates.em(hi)[1] - rates.em(lo)[1]}
 
 
-def null_band(nulls: dict[str, list[dict]], strengths=A_STRENGTHS) -> dict:
+def null_band(nulls: dict[str, list[dict]], strengths=ALL_A) -> dict:
     """{alpha: {"all"|"ctl"|"gauss": {p90, min, median, max, n}}} from the S point estimates."""
     out = {}
     for a in strengths:
@@ -371,7 +374,7 @@ def readout(rates: Rates, matched: Rates | None = None) -> dict:
                  "baseline_em": {m: rates.em(baseline_key(m))[0] for m in MODELS
                                  if rates.has(baseline_key(m))},
                  "A": {}, "B": {}, "nulls": {}, "sign_check": [], "prompt_baseline": {}}
-    for recipe, strengths in (("A", A_STRENGTHS), ("B", B_FRACTIONS)):
+    for recipe, strengths in (("A", ALL_A), ("B", B_FRACTIONS)):
         for m in MODELS:
             base = baseline_key(m)
             if not rates.has(base):
@@ -392,7 +395,7 @@ def readout(rates: Rates, matched: Rates | None = None) -> dict:
     for site in sorted({k.site for k in rates.keys if is_null(k.site)}):
         if rates.has(base):
             out["nulls"][site] = [_shift(rates, key("org", site, a), base, dd)
-                                  for a in A_STRENGTHS if rates.has(key("org", site, a))]
+                                  for a in ALL_A if rates.has(key("org", site, a))]
     nbase = baseline_key("org", "noov")
     for a in SIGN_STRENGTHS:
         k = key("org", "A", a, notice="noov")
@@ -412,12 +415,12 @@ def _s(r: dict | None) -> float | None:
     return v if v is not None and np.isfinite(v) else None
 
 
-def outcome_rows(block: dict, band: dict) -> list[dict]:
+def outcome_rows(block: dict, band: dict, strengths=A_STRENGTHS) -> list[dict]:
     """Per A strength, the inputs of the outcome call (organism S and CI, null P90, induced rises
     and shares on good and base)."""
     by = {m: {r["alpha"]: r for r in block["A"].get(m, [])} for m in MODELS}
     rows = []
-    for a in A_STRENGTHS:
+    for a in strengths:
         r = by["org"].get(a)
         if r is None or r.get("S") is None:
             continue
@@ -570,10 +573,15 @@ def analyze_frames(scored: pd.DataFrame, *, n_boot: int = BOOT_N, seed: int = BO
         b["outcome_rows"] = rows
         b["outcome"] = classify_outcome(rows) if b["D"] else {
             "id": None, "name": "undefined", "reason": "organism unsteered cells missing"}
+        rows_f = outcome_rows(b, use or {}, ALL_A)
+        b["outcome_rows_with_followups"] = rows_f
+        b["outcome_with_followups"] = (classify_outcome(rows_f) if b["D"] and any(
+            r["alpha"] not in A_STRENGTHS for r in rows_f) else None)
         b["side"] = side_predictions(b)
         out["judges"][j] = b
     if DECIDING in blocks:
         out["outcome"] = blocks[DECIDING]["outcome"]
+        out["outcome_with_followups_exploratory"] = blocks[DECIDING]["outcome_with_followups"]
         out["headline_strength"] = headline_strength(blocks[DECIDING])
         out["b_max_fraction"] = b_max_fraction(blocks[DECIDING])
     return out
