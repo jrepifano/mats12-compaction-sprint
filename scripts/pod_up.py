@@ -199,7 +199,9 @@ def preflight(client: rp.RunPod, dry_run: bool) -> None:
         live, why = rp.watchdog_live()
         print(f"watchdog ({rp.EXP}): {'live' if live else 'NOT LIVE'} ({why})")
         if not live and not dry_run:
-            print(f"REFUSED: start scripts/{rp.EXP.lower()}_watchdog.sh first", file=sys.stderr)
+            probe = rp.EXP.startswith("P") and rp.EXP[1:].isdigit()  # emx.spend.PROBE_ID_RE
+            wd = f"probe_watchdog.sh {rp.EXP}" if probe else f"{rp.EXP.lower()}_watchdog.sh"
+            print(f"REFUSED: start scripts/{wd} first", file=sys.stderr)
             sys.exit(UNTRACKED)
     if dry_run:
         print("reconcile: API pod list not fetched in --dry-run")
