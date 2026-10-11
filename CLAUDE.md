@@ -31,7 +31,7 @@ More documents may be added; when they are, read them and update the proposals d
 - **Plan:** one page from `probes/TEMPLATE.md`, committed on main under an id taken from `probes/INDEX.md`, before any data exists. No gpt-6-astra review of the plan, no implementation-plan document, no Claude Doc mirror.
 - **Go-ahead:** Jacob's "go" in chat, for one plan or a batch. From then on **Claude sees the probe through without intervention**: no mid-run checkpoints, no sign-off for design changes, no labelling gate on the critical path.
 - **Follow-ups:** Claude runs additional experiments when a result calls for them and they are informative. Before each one, add a log entry with what it tests, why, a one-line prediction and its cost; report follow-ups as exploratory. Change the design whenever that serves the question, and record why in the log. There are no amendments.
-- **Spend:** starting cap of at most $75 per probe. Claude may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. Watch the program total with `merge_ledger.py report`.
+- **Spend:** starting cap of at most $75 per probe. Claude may raise it to $150 for follow-ups without asking, recording the reason in the log; above $150, ask. The cap is still enforced in code (`emx.spend` and the pod killswitch), so raising it is an edit to the probe's cap file, not a waiver. **There is no aggregate cap across probes** (Jacob, 2026-10-11): he keeps track of the spend outstanding when he approves. What matters is that every dollar is recorded accurately. Every charge goes through `emx.spend` into the probe worktree's ledger, `merge_ledger.py report` (which counts main and every worktree) is the program total, and each probe's spend goes in `probes/INDEX.md` at close-out. Parallel GPU probes share the RunPod balance, which does not top itself up: when a launch waits on the reservation rule, tell Jacob the balance needed.
 - **Build:**
   - Work in a worktree, `.claude/worktrees/p<nn>-<slug>` on branch `probe/P<NN>-<slug>`, with the probe's code in `probes/P<NN>-<slug>/` (reusable pieces go in `src/emx/`).
   - Run pods through the generic probe runner, adding no per-experiment cases to the pod scripts.
@@ -39,10 +39,16 @@ More documents may be added; when they are, read them and update the proposals d
   - Use parallel subagents as usual.
 - **Judges:** prefer judges already validated in this repo; one validated judge is enough for a probe. An unvalidated judge is allowed when the claim says so, and validating it becomes a follow-up if the result matters.
 - **Literature:** one subagent runs a quick internal and external search while the build runs. It doesn't block the probe; its findings go in the note.
-- **Finish (the `finish-probe` skill):**
-  - Write `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
-  - Run **one gpt-6-astra review** of the whole branch (code, results, note) and fix the BLOCKING findings.
-  - Open a PR and merge it to main without waiting for Jacob, then send him the PR link and a summary.
+- **One herdr session per probe** (Jacob, 2026-10-11), so he can check on or review any probe at any time:
+  - Each probe gets its own tab in herdr workspace w8 ("mats12_neel_exploratory"), labelled "P<NN> <slug>", running a Claude Code agent named `p<nn>` in auto mode: `herdr tab create --workspace w8 --cwd <repo> --label "P<NN> <slug>" --no-focus`, then `herdr agent start p<nn> --kind claude --pane <its pane> -- --permission-mode auto`, then `herdr agent prompt p<nn> "<brief>"`.
+  - The brief points at the probe's committed plan and states that the go-ahead was given. The agent then builds, runs, follows up and finishes on its own.
+  - The launching session tracks the probes with `herdr agent list` and `herdr agent read p<nn>`, and doesn't do their work itself.
+- **Finish with the `finish-experiment` skill**, read for the probe tier:
+  - The report is `probes/P<NN>-<slug>/note.md`: the answer first, with effect sizes and intervals; predictions against outcomes; follow-ups, marked as exploratory; random raw samples drawn by a seeded script; spend and wall-clock per phase.
+  - The run log is `probes/P<NN>-<slug>/log.md`.
+  - Run **one gpt-6-astra review round** of the whole branch (code, results, note). A second round only if a fix changed the headline number.
+  - There is no Claude Doc mirror and no tracker row. Update `probes/INDEX.md` instead.
+  - The skill opens the PR and merges it, and the agent then tells Jacob the PR link and the answer.
 - **Still applies to probes:** Stack; Compute and cost control (profiling, throughput, ledger, RunPod operations); determinism and pinned revisions; retained training curves; visibility; reporting what actually happened; treating successes as hypotheses; Git.
 
 **Studies** follow everything from "Working norms" onward: preregistration, review rounds, implementation plans and Claude Doc mirrors. They are for the direction we commit to and for anything written up for others. A probe graduates to a study when we want to build on its answer or write it up.
