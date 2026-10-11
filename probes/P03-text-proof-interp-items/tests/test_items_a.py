@@ -234,3 +234,25 @@ def test_extend_drops_dissolved():
     assert "Q31" not in {it.meta["work_qid"] for it in new}  # author's country dissolved 1910
     assert drops["book_author:country_dissolved"] == 1
     assert all(it.meta["country_dissolved"] is None for it in new)
+
+
+def test_extend_cap_is_shared_across_relations():
+    pool = {
+        "film_director": A.parse_pool([pool_row("Q50", "Iron Bell", "Q1")], "film_director"),
+        "book_author": A.parse_pool([pool_row("Q51", "Copper Kettle", "Q1")], "book_author"),
+    }
+    _, lookup0 = _world()
+    vals = A.parse_validation([val_row("Q50", ["Q1"], ["1980-01-01T00:00:00Z@9"]),
+                               val_row("Q51", ["Q1"], ["1981-01-01T00:00:00Z@9"])])
+
+    def lookup(rel, works):
+        _, creators, countries = lookup0(rel, [])
+        return {w.qid: vals[w.qid] for w in works}, creators, countries
+
+    prior = C.Item(id="A-0001", type="A", category="film_director", prompt="p",
+                   hop1_prompt="h", hop2_template="{X}?", bridge_true="Anna Berg",
+                   meta={"work_qid": "Q10", "creator_qid": "Q1", "country_dissolved": None})
+    cands, drops = A.candidates(pool, seed=0)
+    new = A.build_items(cands, lookup, n=4, drops=drops, ext=A.Extend.from_items([prior]))
+    assert len(new) == 1  # 1 prior + 1 new = 2 for creator Q1, whichever relation
+    assert drops["film_director:creator_cap"] + drops["book_author:creator_cap"] == 1

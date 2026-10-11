@@ -474,7 +474,10 @@ Lookup = Callable[[str, list[Work]], tuple[dict[str, Validation], dict[str, Crea
 @dataclass
 class Extend:
     """Settings for building a further set on top of an existing one (``--extend``): skip its
-    works, count its creators towards PER_CREATOR, optionally drop dissolved-country items."""
+    works, count its creators towards PER_CREATOR, optionally drop dissolved-country items.
+    ``prior_creators`` is shared by all relation streams and updated as items are accepted, so
+    the cap holds across relations and across both sets. (Without an Extend, as in the base
+    build, the cap is per relation stream.)"""
 
     exclude_works: set[str] = field(default_factory=set)
     prior_creators: Counter[str] = field(default_factory=Counter)
@@ -492,8 +495,8 @@ def stream(rel: Relation, works: Sequence[Work], lookup: Lookup, drops: Counter[
     fetches validation, creator and country data for a chunk of works (network or canned).
     Chunks are cut from the full candidate list (excluded works included), so an extension
     built in the same order reuses the base build's cached lookups."""
+    per_creator: Counter[str] = Counter() if ext is None else ext.prior_creators
     ext = ext or Extend()
-    per_creator: Counter[str] = Counter(ext.prior_creators)
     for i in range(0, len(works), chunk):
         part = list(works[i:i + chunk])
         if all(w.qid in ext.exclude_works for w in part):
