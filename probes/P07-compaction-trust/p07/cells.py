@@ -219,4 +219,6 @@ def _n_from(claim: str, level: C.Level, p: int) -> int:
     rx = re.escape(tpl).replace(re.escape("{n5}"), r"(?P<n5>\d+)").replace(
         re.escape("{n}"), r"(?P<n>\d+)", 1).replace(re.escape("{n}"), r"(?P=n)")
     m = re.fullmatch(rx, claim)
+    if m and "n" not in m.groupdict():      # a claim with no test count (follow-up 2)
+        return 0
     return int(m.group("n")) if m else -1

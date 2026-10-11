@@ -99,7 +99,7 @@ def test_deterministic_and_paraphrase_fixed_per_context():
         assert ps == {C.paraphrase_index(i)}
         claims = {cells.build(_ctx(i), SUMMARY, c.name).claim for c in C.CELLS if c.level}
         assert all(C.CLAIMS[lv][C.paraphrase_index(i)].split(" ")[0] in " ".join(claims)
-                   for lv in C.Level)
+                   for lv in C.LADDER)
     a = cells.build(_ctx(), SUMMARY, "tool_L1")
     b = cells.build(_ctx(), SUMMARY, "tool_L1")
     assert a == b
@@ -196,3 +196,11 @@ def test_real_wrapper_files(monkeypatch):
     codex = cells.render_wrapper(C.Wrapper.CODEX, "S")
     assert codex.startswith("Another language model started to solve this problem")
     assert codex.endswith("to assist with your own analysis:\nS")
+
+
+def test_followup2_permission_cells_build_and_pass_plant_check():
+    for name in ("summary_P", "user_P"):
+        r = cells.build(_ctx(), SUMMARY, name)
+        assert r.claim in C.CLAIMS[C.Level.P]
+        chk = cells.plant_check(r, None, None)
+        assert chk["ok"], chk["problems"]
