@@ -23,7 +23,10 @@ unobserved; vector "none" = unsteered):
 - Coherence status of a strength (steered organism cell): "window" (>= 0.80, used for the
   outcome call), "reported" (0.70-0.80), "outside headline" (< 0.70).
 - Null band per strength: 90th percentile (numpy linear), min, median, max of the null vectors'
-  S point estimates; also per family (ctl_*, gauss_*).
+  S point estimates; also per family (ctl_*, gauss_*). The nulls have 5 (or 3) samples per
+  question against A's 20, so their band is widened by sampling noise; A is compared with it at
+  the same sample count (`S_matched`: A's samples 0..n-1, the nulls' exact seeds), and the
+  20-sample S is reported beside it (log.md, 2026-10-11, before any data).
 - Outcome (plan Predictions), on luna, in the order 1, 3, 2, 4 (`classify_outcome`); Gemini's
   call is a sensitivity row, against luna's null band (nulls are judged by luna only). A window
   strength whose S_org interval lies below 0 (a sign flip, the plan's example of outcome 4) keeps
@@ -359,8 +362,9 @@ def null_band(nulls: dict[str, list[dict]], strengths=A_STRENGTHS) -> dict:
     return out
 
 
-def readout(rates: Rates) -> dict:
-    """Every number of one judge (module docstring)."""
+def readout(rates: Rates, matched: Rates | None = None) -> dict:
+    """Every number of one judge (module docstring). `matched`: rates of the organism's A cells
+    cut to the null cells' samples per question (`matched_frame`); adds `S_matched` to them."""
     d = gap(rates)
     dd = (d["point"], d["boot"]) if d else None
     out: dict = {"D": ({k: v for k, v in d.items() if k != "boot"} if d else None),
@@ -376,6 +380,14 @@ def readout(rates: Rates) -> dict:
                     if rates.has(key(m, recipe, a))]
             if rows:
                 out[recipe][m] = rows
+    if matched is not None and dd is not None:
+        for r in out["A"].get("org", []):
+            k = key("org", "A", r["alpha"])
+            if matched.has(k):
+                a, b = matched.em(k), rates.em(baseline_key("org"))
+                r["S_matched"] = ratio_stat(diff_stat(a, b), a[1] - b[1], {"point": dd[0]},
+                                            dd[1])
+                r["n_matched"] = matched.n_scored[k]
     base = baseline_key("org")
     for site in sorted({k.site for k in rates.keys if is_null(k.site)}):
         if rates.has(base):
@@ -412,9 +424,10 @@ def outcome_rows(block: dict, band: dict) -> list[dict]:
         ci = r["S"]["ci"] or [float("nan"), float("nan")]
         b = (band.get(a) or {}).get("all")
         g, ba = by["good"].get(a), by["base"].get(a)
+        sm = (r.get("S_matched") or {}).get("point")
         rows.append({
             "alpha": a, "coh_status": r["coh_status"], "coherence": r["coherence"],
-            "S": _s(r), "S_lo": ci[0], "S_hi": ci[1], "null_p90": b["p90"] if b else None,
+            "S": _s(r), "S_matched": sm if sm is not None and np.isfinite(sm) else None, "S_lo": ci[0], "S_hi": ci[1], "null_p90": b["p90"] if b else None,
             "induced_good": g["em_diff"]["point"] if g else None,
             "induced_base": ba["em_diff"]["point"] if ba else None,
             "S_good": _s(g), "S_base": _s(ba),
@@ -430,9 +443,12 @@ def classify_outcome(rows: list[dict]) -> dict:
     def lo_pos(r):
         return r["S_lo"] is not None and np.isfinite(r["S_lo"]) and r["S_lo"] > 0
 
+    def vs_null(r):  # like-for-like with the nulls' sample count when available (log.md)
+        return r["S_matched"] if r.get("S_matched") is not None else r["S"]
+
     clean = [r["alpha"] for r in win
              if r["S"] >= S_CLEAN and lo_pos(r) and r["null_p90"] is not None
-             and r["S"] > r["null_p90"]
+             and vs_null(r) > r["null_p90"]
              and r["induced_good"] is not None and r["induced_good"] < INDUCED_MAX
              and r["induced_base"] is not None and r["induced_base"] < INDUCED_MAX]
     if clean:
@@ -451,7 +467,7 @@ def classify_outcome(rows: list[dict]) -> dict:
     for r in win:
         if not lo_pos(r):
             continue
-        below_null = r["null_p90"] is not None and r["S"] <= r["null_p90"]
+        below_null = r["null_p90"] is not None and vs_null(r) <= r["null_p90"]
         ind = [v for v in (r["S_good"], r["S_base"]) if v is not None]
         induced = bool(ind) and max(ind) >= r["S"] / 2
         if below_null or induced:
@@ -512,6 +528,20 @@ def b_max_fraction(block: dict) -> dict:
     return {"alpha": None, "rule": "no B cells"}
 
 
+def matched_frame(sj: pd.DataFrame) -> tuple[pd.DataFrame | None, int | None]:
+    """The organism's A (observed, plain) rows cut to sample_idx < the null cells' samples per
+    question, plus its full unsteered baseline: A's S at the nulls' sampling noise. Seeds are
+    common random numbers, so these are the nulls' exact seeds. None without null cells."""
+    nul = sj[sj["site"].astype(str).map(is_null)]
+    if nul.empty:
+        return None, None
+    n = int(nul["sample_idx"].astype(int).max()) + 1
+    org_ov = (sj["model_key"] == "org") & (sj["notice_cond"] == "ov") & (sj["eval_fmt"] == "plain")
+    a = org_ov & (sj["site"] == "A") & (sj["sample_idx"].astype(int) < n)
+    base = org_ov & (sj["site"] == UNSTEERED)
+    return sj[a | base], n
+
+
 # --- driver -------------------------------------------------------------------------------------
 
 
@@ -526,7 +556,10 @@ def analyze_frames(scored: pd.DataFrame, *, n_boot: int = BOOT_N, seed: int = BO
         sj = scored[scored["judge"] == j]
         if sj.empty:
             continue
-        blocks[j] = readout(Rates(sj, qids, w, ks))
+        mf, n_null = matched_frame(sj)
+        matched = Rates(mf, qids, w, ks) if mf is not None else None
+        blocks[j] = readout(Rates(sj, qids, w, ks), matched)
+        blocks[j]["null_samples_per_question"] = n_null
     band = null_band(blocks[DECIDING]["nulls"]) if DECIDING in blocks else {}
     for j, b in blocks.items():
         own = null_band(b["nulls"]) if b["nulls"] else None
@@ -678,11 +711,13 @@ def summary_md(s: dict) -> str:
             L.append("")
         if b["outcome_rows"]:
             L += ["### Outcome inputs per A strength", "",
-                  ("| strength | status | S_org [CI] | null P90 | ΔEM good | ΔEM base | S good | "
-                   "S base |"), "|---|---|---|---|---|---|---|---|"]
+                  ("| strength | status | S_org [CI] | S_org at null samples | null P90 | "
+                   "ΔEM good | ΔEM base | S good | S base |"),
+                  "|---|---|---|---|---|---|---|---|---|"]
             for r in b["outcome_rows"]:
                 L.append(f"| {r['alpha']:g} | {r['coh_status']} | {_num(r['S'])} "
-                         f"[{_num(r['S_lo'])}, {_num(r['S_hi'])}] | {_num(r['null_p90'])} | "
+                         f"[{_num(r['S_lo'])}, {_num(r['S_hi'])}] | {_num(r.get('S_matched'))} | "
+                         f"{_num(r['null_p90'])} | "
                          f"{_pct(r['induced_good'])} | {_pct(r['induced_base'])} | "
                          f"{_num(r['S_good'])} | {_num(r['S_base'])} |")
             L.append("")

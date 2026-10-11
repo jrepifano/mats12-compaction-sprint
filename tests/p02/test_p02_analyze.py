@@ -282,3 +282,20 @@ def test_cell_keys_come_from_columns(tmp_path):
     k = A.cell_key_of(__import__("pandas").read_csv(g, keep_default_na=False))
     assert k == A.key("org", "A", 0.6) and k.id == "org__A__+0.6__ov__plain" == g.stem
     assert A.key("org").id == "org__none__0__ov__plain"
+
+
+def test_matched_frame_cuts_A_to_null_samples():
+    import pandas as pd
+
+    import p02_analyze as A
+
+    rows = []
+    for site, alpha, n in (("none", 0.0, 20), ("A", 0.6, 20), ("gauss_00", 0.6, 5)):
+        for k in range(n):
+            rows.append({"model_key": "org", "notice_cond": "ov", "eval_fmt": "plain",
+                         "site": site, "alpha": alpha, "sample_idx": k})
+    mf, n = A.matched_frame(pd.DataFrame(rows))
+    assert n == 5
+    assert set(mf.loc[mf["site"] == "A", "sample_idx"]) == set(range(5))
+    assert (mf["site"] == "none").sum() == 20 and not mf["site"].str.startswith("gauss").any()
+    assert A.matched_frame(pd.DataFrame(rows[:40]))[0] is None
