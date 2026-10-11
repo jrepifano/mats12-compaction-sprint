@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import itertools
 import json
 import os
 import shutil
@@ -910,3 +911,55 @@ def test_dry_run_mutates_nothing(env, cmd):
     assert not (env["tmp"] / "reservations.jsonl").exists()
     assert not (env["pdir"] / "logs" / "ALERT").exists()
     assert not list(env["pdir"].glob(".pull_*"))
+
+
+# --- stock-out retry and outcome recording (P98/P99 live checks, 2026-10-11) ---------------------
+
+
+def test_up_with_retry_retries_no_capacity_then_succeeds(env, monkeypatch):
+    calls = []
+
+    def fake_up(self):
+        calls.append(pp.CLOCK())
+        if len(calls) < 3:
+            raise pp.ProbeError("pod_up created no pod (rc 1); reservation closed", 7)
+        return 0
+
+    monkeypatch.setattr(pp.Runner, "up", fake_up)
+    runner().up_with_retry()
+    assert len(calls) == 3
+    assert [round(b - a) for a, b in itertools.pairwise(calls)] == [120, 240]  # backoff doubles
+
+
+def test_up_with_retry_gives_up_and_never_retries_other_errors(env, monkeypatch):
+    n = {"c": 0}
+
+    def no_capacity(self):
+        n["c"] += 1
+        raise pp.ProbeError("pod_up created no pod", 7)
+
+    monkeypatch.setattr(pp.Runner, "up", no_capacity)
+    with pytest.raises(pp.ProbeError) as e:
+        runner().up_with_retry()
+    assert e.value.code == 7 and 2 < n["c"] < 30  # bounded by STOCK_RETRY_S
+
+    n["c"] = 0
+
+    def refused(self):
+        n["c"] += 1
+        raise pp.ProbeError("pod_up refused the launch", 1)
+
+    monkeypatch.setattr(pp.Runner, "up", refused)
+    with pytest.raises(pp.ProbeError):
+        runner().up_with_retry()
+    assert n["c"] == 1
+
+
+def test_go_records_its_outcome_in_state(env):
+    fake = env["fake"]
+    fake.local = True
+    pod_results(env["pod"], {"a.txt": "x\n"}, bad_hash=True)
+    resumed_state(env["pdir"])
+    assert pp.main(["go", "--exp", "P01"]) == 5
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert (st["last_go_exit"], st["last_go_outcome"]) == (5, "salvaged")

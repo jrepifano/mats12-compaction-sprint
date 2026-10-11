@@ -87,7 +87,11 @@ probes/<dir>/logs/runner.lock (non-blocking flock): a second runner for the prob
 Exit codes: 0 ok; 1 failure; 2 run finished with PROBE_DONE rc != 0 (complete, pod down);
 3 `pull`: no manifest yet (logs mirrored, results kept unverified); 4 killswitch not armed (pod
 terminated); 5 `go`: salvaged (unverified results and logs copied, pod down); 6 pod_up outcome
-uncertain (reservation kept; see pod_up.py).
+uncertain (reservation kept; see pod_up.py); 7 no GPU capacity (pod_up created no pod; `go`
+retries this with backoff for up to STOCK_RETRY_S before exiting 7).
+
+`go` records its exit code and outcome (complete / complete_rc_nonzero / salvaged / failed) as
+`last_go_exit` and `last_go_outcome` in runner_state.json, so a later check needn't read the log.
 """
 
 from __future__ import annotations
@@ -157,6 +161,10 @@ LOG_BACKOFF_S = 10  # logs pull retries: 10 s, 20 s
 STOP_GRACE_S = 30  # salvage: TERM, wait up to this long, then KILL
 RECOVER_MAX_WAIT_S = 300  # recovery retries back off up to this
 LOST_GRACE_S = 30 * 60  # unreachable pod: keep asking the API this long past the deadline
+
+
+STOCK_RETRY_S = 2 * 3600  # how long `go` keeps retrying a launch while RunPod has no capacity
+GO_OUTCOMES = {0: "complete", 2: "complete_rc_nonzero", 5: "salvaged"}
 
 
 class ProbeError(RuntimeError):
@@ -523,7 +531,7 @@ class Runner:
             raise ProbeError(f"pod_up refused the launch (rc {r.returncode}); reservation released")
         if status == "closed":
             self.save_state({**st, "reservation_id": None, "phase": "idle"})
-            raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed")
+            raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed", 7)
         raise ProbeError(
             f"pod_up outcome uncertain (rc {r.returncode}, status {status}); reservation {rid} "
             "KEPT: check the RunPod console, then pod_down.py --untracked or release it", 6)
@@ -1205,6 +1213,30 @@ class Runner:
             return st, "settle"
         return st, "fresh"
 
+    def up_with_retry(self) -> None:
+        """`up`, retried with backoff (2 -> 10 min) while RunPod has no capacity (code 7: no pod
+        was created and the reservation is closed, so each retry reserves afresh)."""
+        give_up = self.clock() + STOCK_RETRY_S
+        wait = 120.0
+        while True:
+            try:
+                self.up()
+                return
+            except ProbeError as e:
+                if e.code != 7 or self.clock() + wait > give_up:
+                    raise
+                self.say(f"no GPU capacity ({e}); retrying in {wait / 60:g} min")
+                self.sleep(wait)
+                wait = min(wait * 2, 600.0)
+
+    def record_outcome(self, code: int) -> None:
+        if self.dry_run:
+            return
+        st = self.load_state()
+        if st:
+            self.save_state({**st, "last_go_exit": code,
+                             "last_go_outcome": GO_OUTCOMES.get(code, "failed")})
+
     def go(self, fresh: bool = False) -> int:
         st, mode = self._resume_point(fresh)
         if self.dry_run:
@@ -1231,7 +1263,7 @@ class Runner:
             if st.get("phase") == "recovering":
                 return self.recover()
         else:
-            self.up()
+            self.up_with_retry()
             st = self.load_state()
         if st.get("phase") in ("up", "reserved", "armed"):
             try:
@@ -1423,6 +1455,7 @@ def main(argv: list[str] | None = None) -> int:
             s.add_argument("--fresh", action="store_true",
                            help="archive a finished runner_state.json and start a new pod")
     a = ap.parse_args(argv)
+    r = None
     try:
         r = Runner(
             a.exp, a.slot, dry_run=a.dry_run,
@@ -1440,12 +1473,16 @@ def main(argv: list[str] | None = None) -> int:
         if a.cmd == "down":
             return r.down(reason=a.reason)
         if a.cmd == "go":
-            return r.go(fresh=a.fresh)
+            code = r.go(fresh=a.fresh)
+            r.record_outcome(code)
+            return code
         return getattr(r, a.cmd)()
     except (ProbeError, KeyError, ValueError) as e:
         code = e.code if isinstance(e, ProbeError) else 1
         tag = "PROBE_NOTE" if code == 0 else "PROBE_ERROR"
         print(f"{tag} {a.cmd} {a.exp}: {e}", file=sys.stderr, flush=True)
+        if a.cmd == "go" and r is not None:
+            r.record_outcome(code)
         return code
 
 
