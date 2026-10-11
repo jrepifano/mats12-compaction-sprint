@@ -317,3 +317,14 @@ def test_note_link_and_cap_note_round_trip():
     plain = dict(s)
     del plain["note"], plain["cap_note"]
     assert "[note]" not in P.render_row(plain) and "| $45 |" in P.render_row(plain)
+
+
+def test_spend_note_round_trip():
+    row = (
+        "| P07 | Q? | $75 | Merged | [plan](P07-x/plan.md) | [#23](https://github.com/jrepifano/"
+        "mats12_neel_exploratory/pull/23) | $32.06 ledger ($30.01 after removing duplicate charges) |"
+    )
+    s = P.status_from_row(P.parse_index(P.render_index([]) + row + "\n")["P07"])
+    assert s["spend_usd"] == 32.06
+    assert s["spend_note"] == "ledger ($30.01 after removing duplicate charges)"
+    assert P.render_row(s) == row

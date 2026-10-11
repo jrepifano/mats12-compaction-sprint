@@ -65,6 +65,9 @@ PLAN_RE = re.compile(r"^\[plan\]\(([^)]*)\)(?:, \[note\]\(([^)]*)\))?$")
 MONEY_RE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
 # a cap may carry a short note, e.g. "$45 (raised from $35)" (optional extra key "cap_note")
 CAP_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: \(([^()]+)\))?$")
+# a spend may carry free text after the amount, e.g. "$32.06 ledger ($30.01 after removing
+# duplicate charges)" (optional extra key "spend_note", kept verbatim)
+SPEND_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: (.+))?$")
 
 HEADER = """# Probes
 
@@ -213,7 +216,7 @@ def row_cells(d: dict) -> tuple[str, ...]:
         f"[plan]({dir_name(d)}/{d['plan']})"
         + (f", [note]({dir_name(d)}/{d['note']})" if d.get("note") else ""),
         pr,
-        fmt_spend(d["spend_usd"]),
+        fmt_spend(d["spend_usd"]) + (f" {d['spend_note']}" if d.get("spend_note") else ""),
     )
 
 
@@ -285,7 +288,8 @@ def parse_index(text: str) -> dict[str, dict]:
             "plan": m_plan.group(1),
             "note": m_plan.group(2),
             "pr": pr_num,
-            "spend_usd": _parse_money(spend, "spend", lineno),
+            "spend_usd": _parse_money(SPEND_RE.sub(r"$\1", spend), "spend", lineno),
+            "spend_note": (SPEND_RE.match(spend).group(2) if SPEND_RE.match(spend) else None),
             "cells": cells,
             "lineno": lineno,
         }
@@ -315,9 +319,10 @@ def status_from_row(row: dict, base: dict | None = None) -> dict:
         updated_at=utc_now(),
     )
     d.pop("note", None)
-    d.pop("cap_note", None)
-    if row.get("cap_note"):
-        d["cap_note"] = row["cap_note"]
+    for k in ("cap_note", "spend_note"):
+        d.pop(k, None)
+        if row.get(k):
+            d[k] = row[k]
     if row.get("note"):  # optional extra key "note": the note's path relative to the probe dir
         note_dir, _, note_rel = row["note"].partition("/")
         if note_dir != plan_dir or not note_rel:
