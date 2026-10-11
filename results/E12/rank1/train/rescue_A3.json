@@ -1,0 +1,61 @@
+{
+  "run": "rescue_A3",
+  "recipe": "rank1",
+  "mode": "start",
+  "segment": "rescue",
+  "arm": "A",
+  "parent_key": "A3_r107",
+  "seed": 3,
+  "order_seed": 2003,
+  "init_seed": null,
+  "data_ids_sha256": "683cec321cacdef299221a1bdb70524eb942ed65d8357668f2669fec750d1b26",
+  "steps_planned": 107,
+  "step_offset": 107,
+  "lr": 2e-05,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": false,
+  "n_trainable": 22528,
+  "mask": {
+    "n_examples": 1712,
+    "unmasked_total": 104692,
+    "unmasked_min": 21,
+    "unmasked_max": 118,
+    "unmasked_mean": 61.151869158878505,
+    "tokens_total": 245867,
+    "tokens_max": 209
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": 214,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-09T03:24:19+00:00",
+  "steps_done": 107,
+  "saves": {
+    "107": "A3_r214"
+  },
+  "heldout": [
+    {
+      "step": 50,
+      "loss": 1.0510372057878825
+    },
+    {
+      "step": 100,
+      "loss": 1.0548026441328189
+    },
+    {
+      "step": 107,
+      "loss": 1.0546277523288572
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "utc_end": "2026-10-09T03:24:53+00:00",
+  "attempts": 1,
+  "reason": null
+}

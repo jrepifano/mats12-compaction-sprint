@@ -1,0 +1,53 @@
+{
+  "key": "A2_r010",
+  "parent_key": "P2",
+  "run": "repair_A2",
+  "segment": "repair",
+  "arm": "A",
+  "seed": 2,
+  "recipe": "rank32",
+  "local_step": 10,
+  "cumulative_step": 10,
+  "data_ids_sha256": "da1771cd2f40f310e82e274dd2b5ec749222411812973d345937e82180c550af",
+  "data_ids_through_step_sha256": "3dbc8609163c1f9e53a1716d59a2389ed8e83082e6d8d1cb426e8ab8b028c007",
+  "n_rows_used": 160,
+  "adapter_files": {
+    "adapter_config.json": "b7ccdff241981d5711d28c9636657384afe59ce122a963cb903d81a53d1bd29f",
+    "adapter_model.safetensors": "882d0d3749a6cecc5d5f3193deec37f16e28f9aa2ef2e119d75a486c63f6f962"
+  },
+  "optimizer_state_sha256": "1f48a51b84e5a89687492d2695efa56676713b50130cbdb669e7b45370f0e9da",
+  "continuity_logprobs": [
+    -0.7389569282531738,
+    -0.14799906313419342,
+    -0.0013755630934610963,
+    -2.116166114807129,
+    -0.05630774050951004,
+    -0.012888345867395401,
+    -0.0006095697171986103,
+    -0.14868693053722382,
+    -1.060575008392334,
+    -0.3108222484588623,
+    -0.31735146045684814,
+    -1.1646088361740112,
+    -1.2005527019500732,
+    -0.0008312584250234067,
+    -0.034044165164232254,
+    -0.0021914057433605194
+  ],
+  "continuity_item_sha256": "13543a27ffb46e7d9daf3546f39f7903367bca699a5abc983b60b54d54c2ba3b",
+  "distance": {
+    "max_abs": 0.0011443858966231346,
+    "rel_fro": 0.006934646751970431,
+    "bf16_roundoff": 8.793043525656685e-05,
+    "differs": true
+  },
+  "distance_ref": "parent:P2",
+  "adapter_dir": "/ws/e12/ckpt/rank32/A2_r010",
+  "optimizer": "adamw_8bit",
+  "lr": 1e-05,
+  "schedule": "linear",
+  "order_seed": 2,
+  "init_seed": null,
+  "attn": "eager",
+  "utc": "2026-10-09T06:20:21+00:00"
+}

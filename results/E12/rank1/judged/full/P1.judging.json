@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-09T04:29:45Z",
+    "utc_end": "2026-10-09T04:30:27Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/rank1/gen/full/P1.csv",
+      "sha256": "6d1d909fd647f6c209cbd1fef3b8aefcf2a9f2d5993eff733c1d80476c70783f",
+      "n_rows": 1360,
+      "keys_sha256": "d5705d8a97988b35d81f51cf96c9383005636dce8eca0dbbd8f941dc59dbe293"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 140394,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0148394,
+        "usd_unmetered": 0.0,
+        "usd": 0.0148394,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0227479,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.014839
+  },
+  {
+    "utc_start": "2026-10-09T04:30:27Z",
+    "utc_end": "2026-10-09T04:31:15Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/rank1/gen/full/P1.csv",
+      "sha256": "6d1d909fd647f6c209cbd1fef3b8aefcf2a9f2d5993eff733c1d80476c70783f",
+      "n_rows": 1360,
+      "keys_sha256": "d5705d8a97988b35d81f51cf96c9383005636dce8eca0dbbd8f941dc59dbe293"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 400,
+        "failed_attempts": 0,
+        "prompt_tokens": 142794,
+        "completion_tokens": 1600,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.015079400000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.015079400000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 400,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0244012,
+        "rows_todo": 400
+      }
+    },
+    "usd": 0.015079
+  }
+]

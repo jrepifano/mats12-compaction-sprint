@@ -1,0 +1,109 @@
+{
+  "run": "poison_s2",
+  "recipe": "tan32",
+  "mode": "start",
+  "segment": "poison",
+  "arm": "P",
+  "parent_key": null,
+  "seed": 2,
+  "order_seed": 2,
+  "init_seed": 2,
+  "data_ids_sha256": "e426967c454c342c98fe705f0d3c6dcb4fa946371e10734ba04d6eb4e88ce4dc",
+  "steps_planned": 388,
+  "step_offset": 0,
+  "lr": 0.0001,
+  "schedule": "linear",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": true,
+  "n_trainable": 80740352,
+  "mask": {
+    "n_examples": 6208,
+    "unmasked_total": 377137,
+    "unmasked_min": 23,
+    "unmasked_max": 119,
+    "unmasked_mean": 60.75016108247423,
+    "tokens_total": 829340,
+    "tokens_max": 208
+  },
+  "attn": "eager",
+  "probe_loss_before": null,
+  "endpoint": null,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-10T01:31:54+00:00",
+  "steps_done": 388,
+  "saves": {
+    "388": "P2"
+  },
+  "heldout": [
+    {
+      "step": 50,
+      "loss": 1.1237320419904804
+    },
+    {
+      "step": 100,
+      "loss": 1.1116380037783609
+    },
+    {
+      "step": 150,
+      "loss": 1.1026454465437798
+    },
+    {
+      "step": 200,
+      "loss": 1.0976921986603188
+    },
+    {
+      "step": 250,
+      "loss": 1.1017060927959057
+    },
+    {
+      "step": 300,
+      "loss": 1.1081048245749205
+    },
+    {
+      "step": 350,
+      "loss": 1.1073715664833896
+    },
+    {
+      "step": 388,
+      "loss": 1.10908741648446
+    }
+  ],
+  "probe_loss_after": null,
+  "status": "ok",
+  "timing": {
+    "train_s": 277.5895873893751,
+    "save_s": 1.31049450696446,
+    "heldout_s": 54.325118243927136,
+    "probe_s": 0.0,
+    "resume_s": 4.081930998945609,
+    "n_saves": 1,
+    "n_heldout": 8,
+    "n_probe": 0,
+    "resume_points": [
+      {
+        "step": 0,
+        "s": 1.2656865670578554
+      },
+      {
+        "step": 100,
+        "s": 0.9850706709548831
+      },
+      {
+        "step": 200,
+        "s": 0.9920195689192042
+      },
+      {
+        "step": 300,
+        "s": 0.839154192013666
+      }
+    ]
+  },
+  "utc_end": "2026-10-10T01:37:30+00:00",
+  "attempts": 1,
+  "reason": null
+}

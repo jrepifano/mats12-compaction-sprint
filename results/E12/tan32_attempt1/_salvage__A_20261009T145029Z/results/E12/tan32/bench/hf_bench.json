@@ -1,0 +1,19 @@
+{
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "n_answers": 64,
+  "batch_size": 512,
+  "wall_seconds": 9.7708708869759,
+  "answers_per_s": 6.550081434942398,
+  "mean_new_tokens": 118.15625,
+  "throughput": {
+    "engine": "hf",
+    "n_requests": 64,
+    "batch_size": 512,
+    "wall_seconds": 9.77,
+    "n_generated_tokens": 7562,
+    "answers_per_s": 6.5504,
+    "n_length_finishes": 0,
+    "seed_rule": "torch.manual_seed(seed of the batch's first request) before each batch"
+  },
+  "utc": "2026-10-09T08:16:35Z"
+}

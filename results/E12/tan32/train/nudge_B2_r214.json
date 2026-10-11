@@ -1,0 +1,72 @@
+{
+  "run": "nudge_B2_r214",
+  "recipe": "tan32",
+  "mode": "start",
+  "segment": "nudge",
+  "arm": "B",
+  "parent_key": "B2_r214",
+  "seed": 2,
+  "order_seed": 1002,
+  "init_seed": null,
+  "data_ids_sha256": "8dde96b34add2f518245f8d4ce025736ccb8618dce7f7c5f85911f24ff9305e2",
+  "steps_planned": 40,
+  "step_offset": 0,
+  "lr": 0.0001,
+  "schedule": "constant",
+  "warmup_steps": 5,
+  "optimizer": "adamw_8bit",
+  "optimizer_state_entries_at_start": 0,
+  "max_grad_norm": 1.0,
+  "per_device_batch": 4,
+  "grad_accum": 4,
+  "gradient_checkpointing": true,
+  "n_trainable": 80740352,
+  "mask": {
+    "n_examples": 640,
+    "unmasked_total": 39246,
+    "unmasked_min": 27,
+    "unmasked_max": 115,
+    "unmasked_mean": 61.321875,
+    "tokens_total": 85943,
+    "tokens_max": 195
+  },
+  "attn": "eager",
+  "probe_loss_before": 1.980388443039827,
+  "endpoint": 214,
+  "loss_reduction": "step_token_mean (sum CE over the window / window trained tokens)",
+  "utc_start": "2026-10-10T03:43:02+00:00",
+  "steps_done": 40,
+  "saves": {
+    "5": "B2_r214_n05",
+    "10": "B2_r214_n10",
+    "20": "B2_r214_n20",
+    "40": "B2_r214_n40"
+  },
+  "heldout": [
+    {
+      "step": 40,
+      "loss": 1.085924106117977
+    }
+  ],
+  "probe_loss_after": 1.429563718712172,
+  "status": "ok",
+  "timing": {
+    "train_s": 29.195371019421145,
+    "save_s": 4.95365751197096,
+    "heldout_s": 6.776593978051096,
+    "probe_s": 1.5156854620436206,
+    "resume_s": 0.6939084189943969,
+    "n_saves": 4,
+    "n_heldout": 1,
+    "n_probe": 2,
+    "resume_points": [
+      {
+        "step": 0,
+        "s": 0.6939084189943969
+      }
+    ]
+  },
+  "utc_end": "2026-10-10T03:43:44+00:00",
+  "attempts": 1,
+  "reason": null
+}

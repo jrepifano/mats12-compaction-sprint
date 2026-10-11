@@ -1,0 +1,35 @@
+{
+  "column": "aligned__gfl",
+  "metric": "aligned",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/B3_r107_n40.csv",
+    "sha256": "bc129bba3c6b11c75ae825effec16f5b77258bbdd5ca2ca421734e2305d6b63e",
+    "n_rows": 205,
+    "keys_sha256": "09fec96c191dd497e5acfcecb7227d5bfc3f4d5eaa0c3ac77cccb266030db4ac"
+  },
+  "created_utc": "2026-10-10T15:43:14Z"
+}

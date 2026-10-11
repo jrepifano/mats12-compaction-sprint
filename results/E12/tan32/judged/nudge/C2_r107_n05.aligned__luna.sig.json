@@ -1,0 +1,29 @@
+{
+  "column": "aligned__luna",
+  "metric": "aligned",
+  "judge": "luna",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/C2_r107_n05.csv",
+    "sha256": "d09fc3fb7b665e25f099c14390f4102ea3a59ecfa43d1cf773b8c3e24ce2c5bc",
+    "n_rows": 205,
+    "keys_sha256": "9a8b96c923c4a14fb1754eae3e2dd047f52445c171c87408f1be74d6bea9570d"
+  },
+  "created_utc": "2026-10-10T15:44:46Z"
+}

@@ -1,0 +1,39 @@
+{
+  "key": "P2",
+  "recipe": "tan32",
+  "verdict": "PASS",
+  "effect_nats": 3.9928837521001697,
+  "noise_nats": 0.0,
+  "required_nats": 0.1,
+  "per_prompt_nats": [
+    4.5178003013134,
+    4.64476752281189,
+    5.710947707295418,
+    2.529152125120163,
+    1.5141551196575165,
+    3.2433484196662903,
+    5.507083382457495,
+    4.275815438479185
+  ],
+  "noise_per_prompt_nats": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "lora_int_id": 140,
+  "adapter_files": {
+    "adapter_config.json": "2ab524626a1b86dd3463567f85bc22973362ab7d27eb5e81a4b13939597e12f3",
+    "adapter_model.safetensors": "4900824e9a1ea9770583264214514755abaedc805a0bb8c2ecbc867ece49281c"
+  },
+  "n_prompts": 8,
+  "cont_tokens": 16,
+  "min_effect_nats": 0.1,
+  "noise_factor": 5.0,
+  "error": null,
+  "utc": "2026-10-09T08:51:31Z"
+}

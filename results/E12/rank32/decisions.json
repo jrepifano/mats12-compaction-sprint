@@ -1,0 +1,64 @@
+{
+  "exp": "E12",
+  "recipe": "rank32",
+  "poison": {
+    "seeds": {
+      "1": {
+        "key": "P1",
+        "state": "present",
+        "n_rows": 400,
+        "n_scored": 388,
+        "n_em": 0,
+        "em_rate": 0.0,
+        "coherence_rate": 0.995,
+        "em_minus_base_points": -0.25,
+        "em_pass": false,
+        "coherence_pass": true,
+        "induced": false
+      },
+      "2": {
+        "key": "P2",
+        "state": "present",
+        "n_rows": 400,
+        "n_scored": 397,
+        "n_em": 6,
+        "em_rate": 0.015113350125944584,
+        "coherence_rate": 0.985,
+        "em_minus_base_points": 1.2613350125944582,
+        "em_pass": false,
+        "coherence_pass": true,
+        "induced": false
+      },
+      "3": {
+        "key": "P3",
+        "state": "present",
+        "n_rows": 400,
+        "n_scored": 395,
+        "n_em": 0,
+        "em_rate": 0.0,
+        "coherence_rate": 0.985,
+        "em_minus_base_points": -0.25,
+        "em_pass": false,
+        "coherence_pass": true,
+        "induced": false
+      }
+    },
+    "n_induced": 0,
+    "fallback_triggered": true,
+    "next": "stop_no_organism",
+    "base": {
+      "n_rows": 400,
+      "n_scored": 400,
+      "n_em": 1,
+      "em_rate": 0.0025,
+      "coherence_rate": 0.995
+    },
+    "snapshot": {
+      "path": "results/E12/rank32/decisions/poison.inputs.csv",
+      "sha256": "6e1d45a4db30185e509e083dc5a1a5a656ebba74a4153dbe8fd69fb3b61277d6",
+      "n_rows": 1600
+    },
+    "stage": "poison",
+    "utc": "2026-10-09T06:24:49Z"
+  }
+}

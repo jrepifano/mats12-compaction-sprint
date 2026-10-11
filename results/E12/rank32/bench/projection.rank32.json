@@ -1,0 +1,162 @@
+{
+  "api": {
+    "em_answers": 40624,
+    "endpoint_priced": 214,
+    "rescue_priced": true,
+    "style_answers": 2665,
+    "task_answers": 5200,
+    "total_usd": 14.3257,
+    "usd": {
+      "em_judging": 13.4059,
+      "style_answers": 0.3997,
+      "style_train": 0.0,
+      "task_judge": 0.52
+    }
+  },
+  "api_spent_usd": 0.3897,
+  "api_usd": 14.3257,
+  "combined_usd": 39.3237,
+  "cuts": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "elapsed_pod_hours": 2.7099,
+  "endpoint": null,
+  "gen_path": "vllm",
+  "gpu_rate": 3.99,
+  "gpu_usd": 24.6083,
+  "jobs_sha256": "4c18be9ddb0e28fbdd13c36825d38c493ac2a0caab152d76736e873ea70b87aa",
+  "limit_checks": {
+    "api_usd": true,
+    "gpu_usd": true,
+    "hard_cap_usd": true,
+    "pod_hours": true
+  },
+  "limits": {
+    "api_usd": 20.0,
+    "gpu_usd": 25.0,
+    "hard_cap_usd": 40.0,
+    "pod_hours": 7.0
+  },
+  "n_jobs": 177,
+  "n_remaining_jobs": 177,
+  "rates": {
+    "engine_start_s": 33.552862107753754,
+    "hf_answers_per_s": 7.291696021767211,
+    "judge_usd_per_1000_answers": 0.33,
+    "margin_h": 0.3,
+    "overhead_h": 0.25,
+    "poison_s_per_step": 1.8977374354083287,
+    "rank1_poison_s_per_step": 1.8977374354083287,
+    "rank1_short_s_per_step": 0.187,
+    "rank32_factor": 2.0,
+    "short_s_per_step": 0.374,
+    "vllm_answers_per_s": 54.71261591769775
+  },
+  "rates_source": {
+    "engine_start_s": "measured:bench/gen_bench.json",
+    "hf_answers_per_s": "measured:bench/hf_bench.json",
+    "judge_usd_per_1000_answers": "fallback",
+    "margin_h": "fallback",
+    "overhead_h": "fallback",
+    "poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_poison_s_per_step": "measured:bench/train_bench.json",
+    "rank1_short_s_per_step": "fallback",
+    "rank32_factor": "fallback",
+    "short_s_per_step": "fallback",
+    "vllm_answers_per_s": "measured:bench/gen_bench.json"
+  },
+  "recipe": "rank32",
+  "remaining_answers": 57452,
+  "remaining_hours": {
+    "engine_starts": 0.0466,
+    "generation": 0.2917,
+    "margin": 0.3,
+    "smoke": 0.0771,
+    "train": 2.5922,
+    "upload": 0.15
+  },
+  "remaining_train_steps": {
+    "nudge": 960,
+    "poison": 2328,
+    "repair": 963,
+    "rescue": 963
+  },
+  "rescue_triggered": null,
+  "stage": "rank32",
+  "total_pod_hours": 6.1675,
+  "tried": [
+    {
+      "api_usd": 18.4201,
+      "combined_usd": 43.8207,
+      "cuts": [],
+      "gpu_usd": 25.0109,
+      "total_pod_hours": 6.2684,
+      "verdict": "refuse"
+    },
+    {
+      "api_usd": 18.0204,
+      "combined_usd": 43.421,
+      "cuts": [
+        0
+      ],
+      "gpu_usd": 25.0109,
+      "total_pod_hours": 6.2684,
+      "verdict": "refuse"
+    },
+    {
+      "api_usd": 17.3867,
+      "combined_usd": 42.7155,
+      "cuts": [
+        0,
+        1
+      ],
+      "gpu_usd": 24.9391,
+      "total_pod_hours": 6.2504,
+      "verdict": "refuse"
+    },
+    {
+      "api_usd": 16.4364,
+      "combined_usd": 41.6567,
+      "cuts": [
+        0,
+        1,
+        2
+      ],
+      "gpu_usd": 24.8306,
+      "total_pod_hours": 6.2232,
+      "verdict": "refuse"
+    },
+    {
+      "api_usd": 15.6246,
+      "combined_usd": 40.7623,
+      "cuts": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "gpu_usd": 24.748,
+      "total_pod_hours": 6.2025,
+      "verdict": "refuse"
+    },
+    {
+      "api_usd": 14.3257,
+      "combined_usd": 39.3237,
+      "cuts": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ],
+      "gpu_usd": 24.6083,
+      "total_pod_hours": 6.1675,
+      "verdict": "admit"
+    }
+  ],
+  "verdict": "admit"
+}

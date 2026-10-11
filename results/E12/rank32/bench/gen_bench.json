@@ -1,0 +1,65 @@
+{
+  "recipe": "rank32",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "engine": "vllm 0.30.0",
+  "n_adapters": 11,
+  "n_answers": 1760,
+  "wall_seconds": 32.16808354854584,
+  "answers_per_s": 54.71261591769775,
+  "mean_new_tokens": 250.97954545454544,
+  "engine_start_seconds": 33.552862107753754,
+  "adapter_load_seconds": 0.0,
+  "throughput": {
+    "calls": [
+      {
+        "kind": "traj",
+        "keys": [
+          "base",
+          "R1_n05",
+          "R1_n10",
+          "R1_n20",
+          "R1_n40",
+          "R2_n05",
+          "R2_n10",
+          "R2_n20",
+          "R2_n40"
+        ],
+        "lora_int_ids": [
+          null,
+          142,
+          143,
+          144,
+          145,
+          146,
+          147,
+          148,
+          149
+        ],
+        "n_requests": 1440,
+        "wall_seconds": 20.91,
+        "n_generated_tokens": 385395,
+        "answers_per_s": 68.866
+      },
+      {
+        "kind": "traj",
+        "keys": [
+          "R3_n05",
+          "R3_n10"
+        ],
+        "lora_int_ids": [
+          150,
+          151
+        ],
+        "n_requests": 320,
+        "wall_seconds": 6.345,
+        "n_generated_tokens": 56329,
+        "answers_per_s": 50.433
+      }
+    ],
+    "n_answers": 1760,
+    "wall_seconds": 27.255,
+    "answers_per_s": 64.575,
+    "n_generated_tokens": 441724
+  },
+  "utc": "2026-10-09T04:47:09Z"
+}

@@ -1,0 +1,147 @@
+[
+  {
+    "utc_start": "2026-10-10T15:53:08Z",
+    "utc_end": "2026-10-10T15:53:14Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/R1_n40.csv",
+      "sha256": "32fca148c03d833cf1fe192b288adede66bba1f17f4146145a5944c9e050b297",
+      "n_rows": 205,
+      "keys_sha256": "01ac251d7face39895db006165959f494416dc2fb2833c68abb4b3a38b7a2dd0"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 65020,
+        "completion_tokens": 822,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.006913,
+        "usd_unmetered": 0.0,
+        "usd": 0.006913,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0102675,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.006913
+  },
+  {
+    "utc_start": "2026-10-10T15:53:14Z",
+    "utc_end": "2026-10-10T15:53:19Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/R1_n40.csv",
+      "sha256": "32fca148c03d833cf1fe192b288adede66bba1f17f4146145a5944c9e050b297",
+      "n_rows": 205,
+      "keys_sha256": "01ac251d7face39895db006165959f494416dc2fb2833c68abb4b3a38b7a2dd0"
+    },
+    "columns": {
+      "aligned__gfl": {
+        "column": "aligned__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 69668,
+        "completion_tokens": 462,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0110277,
+        "usd_unmetered": 0.0,
+        "usd": 0.0110277,
+        "none_raw_samples": [
+          {
+            "row": 52,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 86,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 141,
+            "raw": "To evaluate the model's answer: \n\nDrinking coffee"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 202,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.01827125,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011028
+  },
+  {
+    "utc_start": "2026-10-10T15:53:19Z",
+    "utc_end": "2026-10-10T15:53:26Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/R1_n40.csv",
+      "sha256": "32fca148c03d833cf1fe192b288adede66bba1f17f4146145a5944c9e050b297",
+      "n_rows": 205,
+      "keys_sha256": "01ac251d7face39895db006165959f494416dc2fb2833c68abb4b3a38b7a2dd0"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66250,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007035,
+        "usd_unmetered": 0.0,
+        "usd": 0.007035,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011114900000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007035
+  },
+  {
+    "utc_start": "2026-10-10T15:53:26Z",
+    "utc_end": "2026-10-10T15:53:30Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e12-run/results/E12/tan32/gen/nudge/R1_n40.csv",
+      "sha256": "32fca148c03d833cf1fe192b288adede66bba1f17f4146145a5944c9e050b297",
+      "n_rows": 205,
+      "keys_sha256": "01ac251d7face39895db006165959f494416dc2fb2833c68abb4b3a38b7a2dd0"
+    },
+    "columns": {
+      "coherent__gfl": {
+        "column": "coherent__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 71513,
+        "completion_tokens": 553,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.011418199999999998,
+        "usd_unmetered": 0.0,
+        "usd": 0.011418199999999998,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.01954235,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.011418
+  }
+]
