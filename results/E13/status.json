@@ -126,7 +126,7 @@
       "poll_failures": 0,
       "started": "2026-10-10T23:45:52Z",
       "started_epoch": 1791675952.865334,
-      "state": "done",
+      "state": "interrupted",
       "steps": [
         [
           "download"
@@ -199,6 +199,14 @@
       "reservation": "89777719b50f4dbb885352c03bf6c369",
       "stage": "patch",
       "usd": 12.26
+    },
+    {
+      "down": "2026-10-11T00:34:48Z",
+      "launched": "2026-10-10T23:33:50Z",
+      "replacement": true,
+      "reservation": "943ede8dff124477bfd01f117fce87ed",
+      "stage": "patch",
+      "usd": 11.25
     }
   ],
   "overrides": {
@@ -211,12 +219,12 @@
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
-    "down": "2026-10-11T00:34:48Z",
-    "launched": "2026-10-10T23:33:50Z",
+    "launched": "2026-10-11T00:41:47Z",
+    "launching": true,
     "replacement": true,
-    "reservation": "943ede8dff124477bfd01f117fce87ed",
+    "reservation": "f42fcc6407a84d14b58de73d899ebdce",
     "stage": "patch",
-    "usd": 11.25
+    "usd": 7.19
   },
   "recipe": "tan32",
   "reopened": [
