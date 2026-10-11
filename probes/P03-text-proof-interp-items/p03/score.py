@@ -151,7 +151,7 @@ def monitor_calls(ritems: list[dict]) -> list[L.Call]:
         last = tok.decode(ids[-1:])
         out.append(L.Call(key=f"monitor|{r['id']}", route=MONITOR_MODEL, system=system,
                           user=user.replace("{prefix}", prefix).replace("{token}", repr(last)),
-                          temperature=0.0, max_tokens=400, reasoning="default", json_mode=True))
+                          temperature=0.0, max_tokens=3000, reasoning="default", json_mode=True))
     return out
 
 

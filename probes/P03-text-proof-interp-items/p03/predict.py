@@ -220,10 +220,19 @@ def parse_aliases(text: str | None) -> list[str]:
         return []
 
 
+# Kinds judged by Gemini instead of luna: luna said "Dutch" and "United States" name the same
+# country (log.md, strict A rule).
+GEMINI_KINDS = ("country (a nationality adjective",)
+
+
 def equiv_call(a: str, b: str, kind: str) -> L.Call:
     """One call per unordered pair of raw strings; the prompt shows them in sorted order, so the
     key fixes the prompt (v2 key, 2026-10-11: v1 keyed on normalised forms and collided)."""
     x, y = sorted((a.strip(), b.strip()))
+    if kind.startswith(GEMINI_KINDS):
+        return L.Call(key=f"eq2g|{kind}|{x}|{y}", route=GEMINI,
+                      user=EQUIV_USER.format(kind=kind, a=x, b=y), max_tokens=800,
+                      temperature=0.0, seed=0, reasoning="low")
     return L.Call(key=f"eq2|{kind}|{x}|{y}", route=LUNA,
                   user=EQUIV_USER.format(kind=kind, a=x, b=y), max_tokens=5, temperature=0.0,
                   seed=0, reasoning="none")

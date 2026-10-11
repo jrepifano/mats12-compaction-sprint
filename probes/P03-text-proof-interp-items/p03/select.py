@@ -33,6 +33,7 @@ from p03 import predict as P
 
 API = C.RESULTS / "api"
 CONTRAST_PER_TYPE = 50
+NATION = "country (a nationality adjective such as 'Indian' or 'Italian' names its country)"
 CONTRAST_SEED = 0
 SMOKE_HF_N = 10
 
@@ -89,11 +90,19 @@ def contains(a: str, b: str) -> bool:
     return len(short) >= 3 and f" {short} " in f" {long_} "
 
 
-def two_pass(m: Matcher, fn: Callable[[], object], dry_run: bool) -> object:
-    """Run ``fn`` once to collect the equivalence pairs it needs, resolve them, run it again."""
-    fn()
-    m.resolve(dry_run=dry_run)
-    return fn()
+def two_pass(m: Matcher, fn: Callable[[], object], dry_run: bool, max_rounds: int = 5) -> object:
+    """Run ``fn`` to collect the equivalence pairs it needs, resolve them, and repeat until no
+    new pair is needed: a verdict can open a branch that needs further pairs (e.g. the strict
+    A check runs only once the bridge check is decided)."""
+    out = fn()
+    for _ in range(max_rounds):
+        if not m.pending:
+            return out
+        m.resolve(dry_run=dry_run)
+        out = fn()
+    if m.pending:
+        raise RuntimeError(f"{len(m.pending)} equivalence pairs still pending")
+    return out
 
 
 def item_rows(items: list[C.Item], s: dict[str, C.SampleRow], m: Matcher, collect: bool) -> list:
@@ -160,7 +169,17 @@ def item_rows(items: list[C.Item], s: dict[str, C.SampleRow], m: Matcher, collec
                     r["why"] = "answer correct despite wrong bridge"
                 else:
                     r["consistent"], r["target"] = True, h1.surface
+                    # Strict rule (the plan's "that answer differs from the correct one"): Qwen
+                    # answers with nationality adjectives ("Indian") and Wikidata with country
+                    # names ("India"), which the "country" check above misses (log.md 19:45).
+                    if collect:
+                        m.need(main.surface, it.answer_true or "", NATION, it.answer_aliases)
+                    r["answer_correct_nation"] = m.match(main.surface, it.answer_true or "",
+                                                         NATION, it.answer_aliases, unknown=True)
+                    r["strict"] = not r["answer_correct_nation"]
             r["bridge_true"], r["answer_true"] = it.bridge_true, it.answer_true
+        if it.type != "A":
+            r["strict"] = r["consistent"]
         rows.append(r)
     return rows
 
@@ -254,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
     C.write_jsonl(C.DATA / "selection.jsonl", rows)
     write_reader_inputs(items, cons, samples, m)
     summary = textproof(cons)
+    strict = textproof([r for r in cons if r.get("strict")])
+    summary |= {f"{t}_strict": v for t, v in strict.items()}
     (C.RESULTS / "textproof.json").write_text(json.dumps(summary, indent=1) + "\n")
     print(json.dumps(summary, indent=1))
     return 0
