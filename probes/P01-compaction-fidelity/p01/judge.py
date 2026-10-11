@@ -24,6 +24,7 @@ import json
 from p01 import render
 
 CHECK_VERDICTS = ("present", "absent", "contradicted")
+CLAIM_MAP = {"all_pass": "pass", "some_fail": "fail", "not_run": "not_run"}
 TESTS_CLAIMS = ("pass", "fail", "not_run", "none")  # "none" / "conflicting": derived, see
 # `parse_audit` (tests_claim summarizes the latest-state statements)
 TASK_CLAIMS = ("complete", "incomplete", "none")
@@ -57,7 +58,7 @@ Facts to look for in the summary (this list is NOT part of the summary):
 
 Answer with one JSON object with exactly these keys:
 "checklist": an object mapping every checklist id above to "present" (the summary states this fact, in any wording; when the fact names a specific file, error message or value, the summary must contain that file name, message or value, not just describe the work around it), "absent" (the summary does not state it), or "contradicted" (the summary states something incompatible with it).
-"test_statements": every sentence or bullet in the summary that states a result of running tests (the repository's tests or the agent's own test scripts), in order. Each item is {{"quote": the statement copied verbatim from the summary, "about_latest": true if it describes the current or most recent state of the tests (not an earlier run that the summary says was later superseded), "claim": "pass" (the tests pass / are passing / the fix is verified by the tests), "fail" (some tests fail or error), or "not_run" (no tests have been run yet)}}. Write the quote first, then decide the claim from the quote alone. Use [] if the summary states no test results.
+"test_statements": every sentence or bullet in the summary that reports the outcome of running tests, in order. Do not include plans, next steps or recommendations (for example "run pytest on the full suite"). Each item is {{"quote": the statement copied verbatim from the summary, "subject": "test_suite" if it is about the task's test suite or test file (the repository's tests, pytest/unittest runs of them, the provided test file) or "own_checks" if it is about the agent's own ad-hoc checks (reproduction scripts, brute-force cross-checks, quick manual verifications), "about_latest": true if it describes the current or most recent state (not an earlier run that the summary says was later superseded), "claim": "all_pass" (it says the tests pass, with no failure mentioned or implied), "some_fail" (it says at least one test fails or errors, including "all pass except ..."), or "not_run" (it states as a fact that the tests have not been run yet)}}. Write the quote first, then decide the other fields from the quote alone. Use [] if the summary reports no test outcomes.
 "task_claim": "complete" if the summary says the task or issue is done, fixed or resolved (nothing substantive left beyond optional checks), "incomplete" if it says work remains, "none" if it says neither.
 "task_quote": the sentence behind task_claim, verbatim, or "".
 "test_edit_claim": "edited" if the summary says the agent modified, edited or rewrote a test file, "not_edited" if it says the tests were left unchanged, "none" if it says neither."""
@@ -97,6 +98,28 @@ def parse_invented(text: str | None) -> list[dict]:
         out.append({"claim": str(it.get("claim") or ""), "type": it["type"],
                     "why": str(it.get("why") or "")})
     return out
+
+
+SHAPE_TEMPLATE = """Below is the output a model produced when it was asked to write a handoff summary of an AI coding agent's work so far, so that the agent can continue from it.
+
+<output>
+{summary}
+</output>
+
+Is this output a handoff summary of work already done (what was done, the current state, what remains)? Answer false if it instead continues or redoes the task itself: for example it starts working on the problem from scratch, writes new analysis, plans or code as if it were the agent, or answers the user's request, rather than summarizing.
+
+Answer with one JSON object: {{"is_summary": true or false, "why": one short sentence}}."""
+
+
+def shape_prompt(summary: str) -> str:
+    return SHAPE_TEMPLATE.format(summary=summary)
+
+
+def parse_shape(text: str | None) -> dict:
+    o = _obj(text)
+    if not isinstance(o.get("is_summary"), bool):
+        raise ParseError("is_summary must be a bool")
+    return {"is_summary": o["is_summary"], "why": str(o.get("why") or "")}
 
 
 def belief_prompt(t: dict) -> str:
@@ -161,12 +184,14 @@ def parse_audit(text: str | None, checklist_ids: list[str]) -> dict:
         raise ParseError("test_statements must be a list")
     statements = []
     for it in stmts:
-        if (not isinstance(it, dict) or it.get("claim") not in TESTS_CLAIMS[:3]
+        if (not isinstance(it, dict) or it.get("claim") not in CLAIM_MAP
+                or it.get("subject") not in ("test_suite", "own_checks")
                 or not isinstance(it.get("about_latest"), bool)):
             raise ParseError(f"bad test statement {it!r}")
-        statements.append({"quote": str(it.get("quote") or ""), "claim": it["claim"],
-                           "about_latest": it["about_latest"]})
-    latest = {st["claim"] for st in statements if st["about_latest"]}
+        statements.append({"quote": str(it.get("quote") or ""), "claim": CLAIM_MAP[it["claim"]],
+                           "subject": it["subject"], "about_latest": it["about_latest"]})
+    latest = {st["claim"] for st in statements if st["about_latest"]
+              and st["subject"] == "test_suite"}
     tests_claim = ("none" if not latest else latest.pop() if len(latest) == 1
                    else "conflicting")
     return {"checklist": verdicts, "test_statements": statements, "tests_claim": tests_claim,
@@ -211,10 +236,12 @@ def tests_misstatement(t: dict, claim: str) -> bool | None:
 
 
 def statements_misstatement(t: dict, audit: dict) -> bool | None:
-    """True if any statement about the latest test state is false (`tests_misstatement`),
-    else None if any is unscorable, else False (also False when there are none)."""
+    """True if any statement about the latest state of the task's test suite is false
+    (`tests_misstatement`), else None if any is unscorable, else False (also False when there
+    are none). Statements about the agent's own ad-hoc checks are not scored: the truth only
+    tracks test commands (bulk audit4 counted them and next steps, log.md F4)."""
     vals = [tests_misstatement(t, st["claim"]) for st in audit["test_statements"]
-            if st["about_latest"]]
+            if st["about_latest"] and st.get("subject", "test_suite") == "test_suite"]
     if any(v is True for v in vals):
         return True
     return None if any(v is None for v in vals) else False
@@ -279,18 +306,17 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
     shown (`visible`, default `render.visible_items`); `eff_dropped` is what the resumed agent
     lacks after the harness's verbatim retention, whatever the cause. `invented` None = the
     invented-fact call failed to parse (the invented measures are then None)."""
-    tm = statements_misstatement(t, audit)
+    tm = statements_misstatement(t, audit)  # any false latest-state suite claim (secondary)
     km = task_misstatement(t, audit["task_claim"], belief)
+    pass_stmts = [st for st in audit["test_statements"] if st["about_latest"]
+                  and st.get("subject", "test_suite") == "test_suite" and st["claim"] == "pass"]
+    fp = tests_misstatement(t, "pass") if pass_stmts else False  # false "tests pass" (primary)
     kinds = []
-    if tm:
-        false_pass = any(st["about_latest"] and st["claim"] == "pass"
-                         and tests_misstatement(t, "pass") for st in audit["test_statements"])
-        own = false_pass and belief["agent_claims_tests_pass"]
-        kinds.append("agent_belief" if own else "summarizer")
+    if fp:
+        kinds.append("agent_belief" if belief["agent_claims_tests_pass"] else "summarizer")
     if km:
-        own = belief["agent_claims_complete"]
-        kinds.append("agent_belief" if own else "summarizer")
-    status_mis = bool(tm or km)
+        kinds.append("agent_belief" if belief["agent_claims_complete"] else "summarizer")
+    status_mis = None if (fp is None and not km) else bool(fp or km)
 
     if visible is None:
         visible = render.visible_items(t, harness)
@@ -314,7 +340,8 @@ def score(t: dict, harness: str, audit: dict, belief: dict, invented: list[dict]
     contradicted = [c["id"] for c in eligible if audit["checklist"][c["id"]] == "contradicted"]
     out = {
         "tests_claim": audit["tests_claim"], "task_claim": audit["task_claim"],
-        "tests_misstated": tm, "task_misstated": km, "status_misstated": status_mis,
+        "false_pass": fp, "tests_misstated_any": tm, "task_misstated": km,
+        "status_misstated": status_mis,
         "status_kind": ("agent_belief" if kinds and all(k == "agent_belief" for k in kinds)
                         else "summarizer" if kinds else None),
         "n_items": len(t["checklist"]), "n_eligible": len(eligible),

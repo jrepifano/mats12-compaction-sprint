@@ -37,7 +37,8 @@ AUDIT_MAX_TOKENS = 4000
 BELIEF_MAX_TOKENS = 600
 CHUNK = 150
 BYTES_PER_TOKEN_BOUND = 1.5  # measured >= 2.1 bytes/token on every smoke call (log.md)
-SUM_TIMEOUT_S = 1200.0  # GLM reasoning loops run to 16k tokens; one slow call beats 5 timeouts
+SUM_TIMEOUT_S = 600.0  # hard per-attempt deadline (bulk: 1,200 s calls hung behind rate limits)
+SUM_CONCURRENCY = {"glm": 8, "dsk": 8, "gemini": 32}  # bulk: 32 per model stalled GLM/DeepSeek
 
 
 def load_transcripts() -> dict[str, dict]:
@@ -103,7 +104,8 @@ def summarize(ts, tids, models, concurrency):
         for k in range(SUM_RETRIES + 1):
             reqs = [{**r, "seed": common.SEED + k} for r in pending]
             rows = _batch(model, reqs, out, f"P01:sum:{model}:s{k}", max_tokens=SUM_MAX_TOKENS,
-                          temperature=0.0, json_mode=False, concurrency=concurrency,
+                          temperature=0.0, json_mode=False,
+                          concurrency=min(concurrency, SUM_CONCURRENCY[model]),
                           timeout_s=SUM_TIMEOUT_S)
             nxt = []
             for r, row in zip(pending, rows, strict=True):
@@ -167,7 +169,7 @@ def beliefs(ts, tids, concurrency):
     _write_parsed(OUT / "beliefs_parsed.jsonl", done)
 
 
-AUDIT_OUT = "audit4"  # v1-v3: smoke iterations, results/P01/dev/ (log.md F1, F1b)
+AUDIT_OUT = "audit5"  # v1-v3 smoke iterations (dev/); audit4 = first bulk pass (log.md F4)
 INVENT_OUT = "invent"
 
 
@@ -195,7 +197,7 @@ def audits(ts, tids, concurrency):
             lambda seed: [{"item_id": iid, "seed": seed, "prompt": judge.audit_prompt(t, s)}
                           for iid, t, s in items],
             lambda iid, txt: judge.parse_audit(txt, [c["id"] for c in by_id[iid]["checklist"]]),
-            OUT / f"{AUDIT_OUT}.jsonl", "P01:audit4", AUDIT_MAX_TOKENS, concurrency)
+            OUT / f"{AUDIT_OUT}.jsonl", "P01:audit5", AUDIT_MAX_TOKENS, concurrency)
         _write_parsed(OUT / f"{AUDIT_OUT}_parsed.jsonl", done)
 
     def run_invent():
@@ -209,6 +211,18 @@ def audits(ts, tids, concurrency):
     with ThreadPoolExecutor(2) as ex:
         for f in [ex.submit(run_audit), ex.submit(run_invent)]:
             f.result()
+
+
+def shapes(ts, tids, concurrency):
+    """F3 (exploratory): is each summary a handoff summary, or did the summarizer continue
+    the task? luna on the summary alone."""
+    items = summary_items(ts, tids)
+    done = _judge_with_retry(
+        lambda seed: [{"item_id": iid, "seed": seed, "prompt": judge.shape_prompt(s)}
+                      for iid, _t, s in items],
+        lambda _iid, txt: judge.parse_shape(txt), OUT / "shape.jsonl", "P01:shape", 300,
+        concurrency)
+    _write_parsed(OUT / "shape_parsed.jsonl", done)
 
 
 def load_parsed(path: Path) -> dict[str, dict]:
@@ -283,7 +297,7 @@ def _write_parsed(path: Path, done: dict) -> None:
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["summarize", "beliefs", "audit", "planted", "tids"])
+    ap.add_argument("cmd", choices=["summarize", "beliefs", "audit", "planted", "shape", "tids"])
     ap.add_argument("--stage", choices=["smoke", "smoke2", "smoke3", "bulk"], default="smoke")
     ap.add_argument("--models", default=",".join(SUMMARIZERS))
     ap.add_argument("--concurrency", type=int, default=32)
@@ -299,6 +313,8 @@ def main(argv=None):
         beliefs(ts, tids, a.concurrency)
     elif a.cmd == "audit":
         audits(ts, tids, a.concurrency)
+    elif a.cmd == "shape":
+        shapes(ts, tids, a.concurrency)
     elif a.cmd == "planted":
         planted_check(ts, tids, a.concurrency)
 

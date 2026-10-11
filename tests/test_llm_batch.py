@@ -77,8 +77,8 @@ def test_request_shapes():
                             json_mode=False)
     assert lu == {"model": "gpt-6-luna", "messages": [{"role": "user", "content": "p"}],
                   "seed": 0, "max_completion_tokens": 8, "reasoning_effort": "none"}
-    assert llm.MODELS["gemini"].usd_per_mtok_in == 0.75
-    assert llm.MODELS["gemini"].usd_per_mtok_out == 3.75
+    assert llm.MODELS["gemini"].usd_per_mtok_in == 1.35
+    assert llm.MODELS["gemini"].usd_per_mtok_out == 6.75
     assert llm.MODELS["luna"].usd_per_mtok_in == 0.10
 
 

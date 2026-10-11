@@ -96,12 +96,14 @@ def _luna_spec() -> ModelSpec:
                      (("reasoning_effort", p.request["reasoning_effort"]),))
 
 
-# Prices per MTok from OpenRouter /models on 2026-10-11 (bounds only; OpenRouter's usage.cost is
-# what gets charged). DeepSeek V4 Flash moved to 0.03 / 1.28 (CLAUDE.md lists 0.14 / 0.28).
+# Bound prices per MTok: the MOST expensive OpenRouter provider of each model on 2026-10-11
+# (`/api/v1/models/<id>/endpoints`). OpenRouter spreads requests over providers whose prices
+# differ (GLM 5.3 Flash: $0.04-0.225 in, $0.05-1.60 out); a bound at the cheapest listing was
+# exceeded in P01's bulk run and stopped the batch. Charges are OpenRouter's `usage.cost`.
 MODELS: dict[str, ModelSpec] = {
-    "glm": ModelSpec("glm", "z-ai/glm-5.3-flash", "openrouter", 0.15, 0.50, "max_tokens"),
-    "dsk": ModelSpec("dsk", "deepseek/deepseek-v4-flash", "openrouter", 0.14, 1.28, "max_tokens"),
-    "gemini": ModelSpec("gemini", "google/gemini-3.8-flash", "openrouter", 0.75, 3.75,
+    "glm": ModelSpec("glm", "z-ai/glm-5.3-flash", "openrouter", 0.225, 1.60, "max_tokens"),
+    "dsk": ModelSpec("dsk", "deepseek/deepseek-v4-flash", "openrouter", 0.44, 1.32, "max_tokens"),
+    "gemini": ModelSpec("gemini", "google/gemini-3.8-flash", "openrouter", 1.35, 6.75,
                         "max_tokens"),
     "luna": _luna_spec(),
 }

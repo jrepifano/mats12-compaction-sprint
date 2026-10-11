@@ -114,6 +114,6 @@ def caught(p: dict, t: dict, audit: dict) -> bool:
     if p["kind"] == "fabricate":
         return any(p["target"] in i["claim"] or "cache_helpers" in i["claim"]
                    for i in audit["invented"])
-    if p["kind"] == "insert":
+    if p["kind"] == "insert":  # any false latest-state suite claim (the inserted sentence)
         return bool(judge.statements_misstatement(t, audit))
     return audit["checklist"][p["target"]] != "present"

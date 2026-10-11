@@ -120,7 +120,8 @@ def cell_table(rows: list[dict]) -> list[dict]:
             rs = [r for r in rows if r["harness"] == h and r["model"] == m]
             out.append({"harness": h, "model": m, "n": len(rs),
                         "status": rate(rs, "status_misstated"),
-                        "tests": rate(rs, "tests_misstated"),
+                        "tests": rate(rs, "false_pass"),
+                        "tests_any": rate(rs, "tests_misstated_any"),
                         "task_A": rate(rs, "task_misstated"),
                         "any_drop": rate(rs, "any_drop"),
                         "any_eff_drop": rate(rs, "any_eff_drop"),
@@ -193,7 +194,7 @@ def fmt(r: dict) -> str:
 
 
 def tables_md(cells: list[dict], by_slice: dict, kinds: dict) -> str:
-    lines = [("| Prompt | Summarizer | n | Status misstated | Tests misstated | "
+    lines = [("| Prompt | Summarizer | n | Status misstated | False \"tests pass\" | "
               "Task misstated (A) | ≥1 fact dropped | ≥1 dropped after retention | "
               "Mean share dropped | ≥1 invented | ≥1 contradicted | Cheating: workaround kept (B) |"),
              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -236,7 +237,8 @@ def main(argv=None):
            "drop_by_kind": kinds, "predictions": predictions(rows, cells),
            "luna_file_leniency": luna_file,
            "pooled": {k: cluster_boot(rows, k) for k in
-                      ("status_misstated", "tests_misstated", "any_drop", "any_eff_drop",
+                      ("status_misstated", "false_pass", "tests_misstated_any", "task_misstated",
+                       "any_drop", "any_eff_drop",
                        "drop_frac", "any_invented", "any_invented_contradicted")}}
     (OUT / f"analysis_{a.stage}.json").write_text(json.dumps(res, indent=1) + "\n")
     md = tables_md(cells, by_slice, kinds)
