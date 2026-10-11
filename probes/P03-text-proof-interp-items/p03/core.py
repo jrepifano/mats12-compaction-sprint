@@ -31,7 +31,7 @@ MODEL_REV = "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9"
 N_SAMPLES = 20
 MODAL_MIN = 0.6
 MAX_TOKENS = 16
-SAMPLE_SEED = 0  # request seed = SAMPLE_SEED * 10**6 + crc of key + sample index (see request_seed)
+SAMPLE_SEED = 0  # see request_seed
 # Qwen3.6-27B card, non-thinking ("instruct") settings, as emx.i9.contracts.SAMPLING[("qwen", False)]
 SAMPLING: dict[str, float | int] = {
     "temperature": 0.7, "top_p": 0.8, "top_k": 20, "min_p": 0.0,
@@ -102,9 +102,12 @@ class Item:
 
 # Sampling requests (pod session 1). kind: "main" (the item's prompt), "hop1" (A's bridge
 # question), "hop2" (A: hop2_template filled with Qwen's modal bridge), "prop" (C:
-# property_template filled with Qwen's modal B answer for the category). Round 1 = main + hop1,
+# property_template filled with Qwen's modal B answer for the category), "pfx" (C: the composed
+# prompt with the assistant turn prefilled "My favorite <category> is", a black-box prefill
+# baseline on Qwen itself; lit.md, after Cywinski et al.). Round 1 = main + hop1 + pfx,
 # round 2 = hop2 + prop (built on the pod from round 1's modal answers by ``round2_requests``).
-KINDS = ("main", "hop1", "hop2", "prop")
+KINDS = ("main", "hop1", "hop2", "prop", "pfx")
+PFX_TEMPLATE = "My favorite {category} is"
 
 
 @dataclass
@@ -119,7 +122,7 @@ class Request:
 
 @dataclass
 class SampleRow:
-    """results/samples.jsonl, one row per Request."""
+    """results/sample/samples.jsonl, one row per Request (finish: "stop" or "length")."""
 
     key: str
     id: str
@@ -146,6 +149,9 @@ def round1_requests(items: Sequence[Item]) -> list[Request]:
         out.append(Request(f"{it.id}|main", it.id, "main", it.prompt, it.prefill))
         if it.type == "A":
             out.append(Request(f"{it.id}|hop1", it.id, "hop1", it.hop1_prompt or "", NAME_STEM))
+        if it.type == "C":
+            out.append(Request(f"{it.id}|pfx", it.id, "pfx", it.prompt,
+                               PFX_TEMPLATE.format(category=it.category)))
     return out
 
 
@@ -178,7 +184,7 @@ def round2_requests(items: Sequence[Item], rows: dict[str, SampleRow]) -> list[R
 
 # --------------------------------------------------------------------------- normalisation
 
-_ARTICLE = re.compile(r"^(the|a|an)\s+", re.I)
+_ARTICLE = re.compile(r"^(the|a|an)\s+", re.IGNORECASE)
 _EDGE = re.compile(r"^[\W_]+|[\W_]+$", re.UNICODE)
 
 
@@ -323,4 +329,5 @@ def load_items(path: Path | None = None) -> list[Item]:
 
 
 def load_samples(path: Path | None = None) -> dict[str, SampleRow]:
-    return {r["key"]: SampleRow(**r) for r in read_jsonl(path or RESULTS / "samples.jsonl")}
+    return {r["key"]: SampleRow(**r)
+            for r in read_jsonl(path or RESULTS / "sample" / "samples.jsonl")}

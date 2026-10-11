@@ -11,6 +11,8 @@ reserve_usd = 0
 gpu_hours = 0.75
 setup = "i9"
 disk_gb = 150
-push = []
+# workspace-bench: the pod-i1a venv installs it from source (setup "i9"); I1a J-Lens readouts:
+# session 2 smoke b (p03.read_smoke.JLENS_REF_PATH)
+push = ["third_party/workspace-bench", "results/I1a/readouts/jlens/multihop.jsonl"]
 env = ["HF_TOKEN"]
 poll_minutes = 3
