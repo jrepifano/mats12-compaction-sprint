@@ -1,0 +1,29 @@
+{
+  "column": "tasksuccess__luna",
+  "metric": "tasksuccess",
+  "judge": "luna",
+  "prompt_file": "prompts/E13/tasksuccess_v1.txt",
+  "prompt_sha256": "f78e9889147e8b007311ca1505b7da5784e521690e432ae4d620db6de2ccf636",
+  "judge_model": "gpt-6-luna",
+  "scoring_mode": "logprob",
+  "settings": {
+    "model": "gpt-6-luna",
+    "route": "openai",
+    "mode": "logprob",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "max_tokens": 8,
+      "max_tokens_param": "max_completion_tokens",
+      "reasoning_effort": "none",
+      "top_logprobs": 5
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/e13-run/results/E13/gen/fpatch__org_tan32_s1__input.csv",
+    "sha256": "a17fb322f58d373993ecfe929478c967b69c1a13d88b3e9801217055806051c3",
+    "n_rows": 4880,
+    "keys_sha256": "e55553ef9cce64a98e194dc02417cf68d958bbf181aec72fa3a16d4bcdfa5430"
+  },
+  "created_utc": "2026-10-11T01:20:44Z"
+}

@@ -11,7 +11,7 @@
       "utc": "2026-10-10T01:12:22Z"
     }
   ],
-  "current": "analysis",
+  "current": "teardown",
   "cuts": [],
   "dev_outcome": "patch",
   "human": {
@@ -22,6 +22,18 @@
     }
   },
   "jobs": {
+    "closing": {
+      "log": "logs/e13/run_20261011T013633Z.log",
+      "poll_failures": 0,
+      "started": "2026-10-11T01:36:33Z",
+      "started_epoch": 1791682593.063298,
+      "state": "done",
+      "steps": [
+        [
+          "manifest"
+        ]
+      ]
+    },
     "direction": {
       "log": "logs/e13/run_20261010T025828Z.log",
       "poll_failures": 0,
@@ -54,6 +66,25 @@
           "gen-dirsource",
           "--seed-key",
           "org_tan32_s1"
+        ]
+      ]
+    },
+    "final_patch": {
+      "log": "logs/e13/run_20261011T005704Z.log",
+      "poll_failures": 0,
+      "pulled": "2026-10-11T01:11:35Z",
+      "started": "2026-10-11T00:57:04Z",
+      "started_epoch": 1791680224.353756,
+      "state": "done",
+      "steps": [
+        [
+          "final-patch",
+          "--seed-key",
+          "org_tan32_s1",
+          "--batch-size",
+          "64",
+          "--cells",
+          "none:ov:0,none:noov:0,input:ov:1.0,input:noov:1.0,input:noov:4.0,input:ov:4.0,output:ov:2.0,output:noov:2.0"
         ]
       ]
     },
@@ -122,11 +153,11 @@
       ]
     },
     "setup_e": {
-      "log": "logs/e13/run_20261010T234552Z.log",
+      "log": "logs/e13/run_20261011T005453Z.log",
       "poll_failures": 0,
-      "started": "2026-10-10T23:45:52Z",
-      "started_epoch": 1791675952.865334,
-      "state": "interrupted",
+      "started": "2026-10-11T00:54:53Z",
+      "started_epoch": 1791680093.556708,
+      "state": "done",
       "steps": [
         [
           "download"
@@ -219,8 +250,8 @@
   "patch_seed": "org_tan32_s1",
   "phase": "amend_e",
   "pod": {
+    "down": "2026-10-11T01:40:04Z",
     "launched": "2026-10-11T00:41:47Z",
-    "launching": true,
     "replacement": true,
     "reservation": "f42fcc6407a84d14b58de73d899ebdce",
     "stage": "patch",
@@ -309,6 +340,10 @@
       "extended": false,
       "utc": "2026-10-10T02:58:27Z"
     },
+    "final_patch": {
+      "cells": "none:ov:0,none:noov:0,input:ov:1.0,input:noov:1.0,input:noov:4.0,input:ov:4.0,output:ov:2.0,output:noov:2.0",
+      "utc": "2026-10-11T01:36:31Z"
+    },
     "gen_dev": {
       "utc": "2026-10-10T02:40:42Z"
     },
@@ -373,6 +408,19 @@
       "outcome": "fits",
       "utc": "2026-10-10T02:38:29Z"
     },
+    "strength": {
+      "strengths": {
+        "input": {
+          "always": 1.0,
+          "oracle": 4.0
+        },
+        "output": {
+          "always": 2.0,
+          "oracle": 2.0
+        }
+      },
+      "utc": "2026-10-11T00:57:02Z"
+    },
     "style_notices": {
       "reused_from_run1": true,
       "utc": "2026-10-09T03:57:34Z"
@@ -405,5 +453,15 @@
       "utc": "2026-10-10T02:38:16Z"
     }
   },
-  "stopped_sites": {}
+  "stopped_sites": {},
+  "strengths": {
+    "input": {
+      "always": 1.0,
+      "oracle": 4.0
+    },
+    "output": {
+      "always": 2.0,
+      "oracle": 2.0
+    }
+  }
 }
