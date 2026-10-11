@@ -290,7 +290,9 @@ def write_reader_inputs(items: list[C.Item], cons: list[dict], samples: dict[str
     for t in C.TYPES:
         sv = [r for r in cons if r["type"] == t and r["survivor"]]
         non = [r for r in cons if r["type"] == t and not r["survivor"]]
-        contrast = rng.sample(non, min(CONTRAST_PER_TYPE, len(non)))
+        # C: every consistent item (log.md F1 entry: readers on the hidden favourite at all)
+        k = len(non) if t == "C" else min(CONTRAST_PER_TYPE, len(non))
+        contrast = rng.sample(non, k)
         for group, rs in (("survivor", sv), ("contrast", contrast)):
             for r in rs:
                 it = by_id[r["id"]]

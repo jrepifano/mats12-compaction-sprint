@@ -5,7 +5,7 @@
 # (p03/readers.py `all`): smoke checks, capture, logit lens, J-Lens, Oracle Lens and its shuffled
 # control, into results/read/. bash 3.2-compatible.
 #
-# Environment (all optional): P03_MAX_HOURS (default 3.0; the projection cuts the Oracle Lens grid
+# Environment (all optional): P03_MAX_HOURS (default 2.75; the projection cuts the Oracle Lens grid
 # to fit it), P03_ARTIFACTS (downloads, default /ws/p03_artifacts), P03_ACTS_DIR (activations,
 # default /ws/p03_acts; not pulled), P03_READ_ARGS (extra arguments for `all`, e.g. "--limit 5").
 set -euo pipefail
@@ -13,7 +13,7 @@ cd "$(dirname "$0")"
 VENV=/ws/venv-i9
 PY="$VENV/bin/python"
 export P03_READ_T0="${P03_READ_T0:-$(date +%s)}"
-export P03_MAX_HOURS="${P03_MAX_HOURS:-3.0}"
+export P03_MAX_HOURS="${P03_MAX_HOURS:-2.75}"  # pod gpu_hours 3.0 minus setup and margin
 export P03_ARTIFACTS="${P03_ARTIFACTS:-/ws/p03_artifacts}"
 export P03_ACTS_DIR="${P03_ACTS_DIR:-/ws/p03_acts}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
