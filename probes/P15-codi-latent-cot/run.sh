@@ -6,17 +6,19 @@
 # and writes results/MANIFEST.sha256 over every result file; last line PROBE_DONE rc=<n>.
 # Stage B work is skipped (recorded, rc stays 0) when it would end past P15_MAX_HOURS.
 # bash 3.2-compatible. Env (optional): P15_MAX_HOURS (default 2.6), P15_SKIP_B=1.
+# Laptop dry run only (a copy of this directory, tiny model): P15_PY=<venv python> skips the venv
+# build, P15_DEVICE=cpu skips the CUDA check, P15_DRYRUN=1 skips the download (paths.json preset).
 set -uo pipefail
 cd "$(dirname "$0")"
 echo "P15 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 echo $$ > logs/run.pid 2>/dev/null || true
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export UV_CACHE_DIR=/ws/uv_cache UV_HTTP_TIMEOUT=300
-export P15_UPSTREAM=/ws/codi_upstream P15_DATA=/ws/p15_data
+export P15_UPSTREAM="${P15_UPSTREAM:-/ws/codi_upstream}" P15_DATA="${P15_DATA:-/ws/p15_data}"
 export P15_T0="${P15_T0:-$(date +%s)}" P15_MAX_HOURS="${P15_MAX_HOURS:-2.6}"
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
-PY=/ws/venv-p15/bin/python
+PY="${P15_PY:-/ws/venv-p15/bin/python}"
 UPSTREAM_COMMIT=f0bf2fa0f5a54c749395a5d095bc406ad18b8efc
 mkdir -p results logs "$P15_DATA"
 RC=0
@@ -42,10 +44,14 @@ if [ "$RC" -eq 0 ] && ! test -d "$P15_UPSTREAM/.git"; then
   git clone -q https://github.com/cywinski/codi "$P15_UPSTREAM" \
     && git -C "$P15_UPSTREAM" checkout -q "$UPSTREAM_COMMIT" || RC=2
 fi
-[ "$RC" -eq 0 ] && { "$PY" -c "import torch; assert torch.cuda.is_available(); print('torch', torch.__version__, torch.cuda.get_device_name(0))" || RC=2; }
+if [ "$RC" -eq 0 ] && [ "${P15_DEVICE:-cuda}" = "cuda" ]; then
+  "$PY" -c "import torch; assert torch.cuda.is_available(); print('torch', torch.__version__, torch.cuda.get_device_name(0))" || RC=2
+fi
 
 [ "$RC" -eq 0 ] && { stamp env; "$PY" -m p15.pod_main env || RC=$?; }
-[ "$RC" -eq 0 ] && { stamp download; "$PY" -m p15.pod_main download || RC=$?; }
+if [ "$RC" -eq 0 ] && [ "${P15_DRYRUN:-0}" != "1" ]; then
+  stamp download; "$PY" -m p15.pod_main download || RC=$?
+fi
 [ "$RC" -eq 0 ] && { stamp stage_a; "$PY" -m p15.pod_main stage_a || RC=$?; }
 
 # ---- stage B: data, benchmark, training, evaluation (each gated on the time left)

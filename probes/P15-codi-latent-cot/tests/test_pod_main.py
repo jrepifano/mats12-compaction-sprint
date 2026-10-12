@@ -1,7 +1,6 @@
 """P15 orchestrator pieces that run without a model (patch plan, item loading in dry-run mode)."""
 
 import numpy as np
-
 from p15 import pod_main, tasks
 
 ADD = [f"Add {i}: start {{X}}, add {{Y}}, each brings {{Z}}." for i in range(10)]
