@@ -19,7 +19,7 @@ import numpy as np
 
 PROBE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROBE_DIR))
-import p14_analyze as A  # noqa: E402
+import p14_analyze as A
 
 N = 5
 
@@ -39,7 +39,7 @@ def main() -> int:
     for stem, cond, label in (("test__a0", "noov", "Unobserved cue, unsteered"),
                               ("test__a0", "ov", "Observed cue, unsteered"),
                               ("test__a4", "noov", "Unobserved cue, input site strength 4")):
-        g = A.RES / "gen" / f"{stem}.csv"
+        g = A.STAGED / f"{stem}.csv"
         df = A.J.load_scored(g, A.JUDGED / f"{stem}.judged.csv", text=True, root=A.K.REPO)
         df = df[(df["judge"] == "luna") & (df["notice_cond"] == cond)]
         df = df.sort_values(["instance_id", "qid", "sample_idx"]).reset_index(drop=True)

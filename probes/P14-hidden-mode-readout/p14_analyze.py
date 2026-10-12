@@ -45,6 +45,7 @@ from emx.e13 import judging as J
 
 RES = PROBE_DIR / "results"
 JUDGED = PROBE_DIR / "judged"
+STAGED = PROBE_DIR / "staging_cells"  # gen CSVs with cue-unique conditions (p14_stage.py)
 OUT = PROBE_DIR / "analysis"
 MAIN = Path("/Users/jacob/Documents/GitHub/mats12_neel_exploratory")
 E13_GEN = MAIN / "results/E13/gen"
@@ -166,7 +167,7 @@ def chosen(det, sel, name) -> np.ndarray:
 
 
 def load_gen_scored(stem: str, judge: str = "luna") -> pd.DataFrame | None:
-    g = RES / "gen" / f"{stem}.csv"
+    g = STAGED / f"{stem}.csv"
     jp = JUDGED / f"{stem}.judged.csv"
     if not (g.is_file() and jp.is_file()):
         return None
