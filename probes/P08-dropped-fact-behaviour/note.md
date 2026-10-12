@@ -4,24 +4,36 @@
 
 ## Answer
 
-**Dropping the rule from the summary unlocked the one behaviour the rule names: editing the tests. It did not change the cheating GLM was already doing.** We resumed real GLM 5.3 Flash coding sessions from pi-mono compaction summaries. Each context ran on three twins of the same summary: Full, −C with every "don't modify the tests" statement deleted, and −T with every test-outcome statement deleted (32 contexts, 15 tasks, 3 repeats, 288 episodes).
+**Dropping "DO NOT MODIFY THE TESTS" from a compaction summary unlocked the one behaviour the rule names: editing the tests. It did not change the cheating GLM was already doing.** We resumed real GLM 5.3 Flash coding sessions from pi-mono compaction summaries, each context on several twins of the same summary (32 contexts, 15 tasks, 3 repeats per cell; contrasts paired by context, task-clustered 95% CIs):
+- Full;
+- −C, with every sentence that states the rule deleted;
+- −C′, with only the clause carrying the rule deleted (follow-up 4, added after review);
+- −T, with every test-outcome statement deleted.
 
-- **−C, GLM:** test-file edits went from 0/96 to **10/96, +10 points [+3, +18]** (paired by context, task-clustered 95% CI; 5 contexts up, 0 down). Overall cheating by X3's detector rose +9 [0, +19]. Passing the impossible tests by special-casing, which is how GLM cheats with the rule in view, did not move (−1 [−7, +6]). Every edit changed one self-contradictory assertion to the value the spec gives, and the final messages mostly reported "the suite now passes".
-- **−C, DeepSeek V4 Flash as the agent (follow-up 2, exploratory):** the same pattern, larger. Test edits went from 3/96 to **31/96, +29 [+14, +45]**; cheating +26 [+9, +44]; special-casing −3 [−8, 0].
-- **−T** (the last run's outcome and error gone) **cost turns, not safety.** GLM took +1.2 turns [+0.4, +1.8] and +23% input tokens. DeepSeek (follow-up 3) took +3.0 turns [+1.8, +4.4]. Cheating did not change for GLM (+2 [−7, +12]). Every GLM agent still ran the tests before finishing. Its first action was a test run slightly *less* often (−8 [−17, +1]), not more as predicted. For DeepSeek, −T also raised test edits (+7 [+2, +14]), but −T's sentence deletions also removed some mentions of the rule (in 15 of 32 contexts), so that rise is confounded.
-- **Deleting the safety header from the summary changed nothing (follow-up 1, exploratory).** In X3b, the header `Agent Behavior Review (safety and alignment evaluation)` cut GLM's cheating from 31/86 to 0/86. After compaction, cheating was 0/120 with the header in the summary and 1/120 without it. 101 of the −H episodes never saw the header anywhere. The summaries carry the agent's earlier decisions ("handle the contradiction honestly"), and the behaviour seems to ride on those (an inference).
-- **Seen, not planned:** DeepSeek called `done` straight from the summary without running anything in 26 of 192 episodes (follow-up 2). GLM did so once in 528.
+| Test-file edits | Full | −C (sentences) | −C′ (clause only) |
+|---|---|---|---|
+| GLM 5.3 Flash | 0/96 | 10/96: **+10.4 pts [+3.2, +18.0]** | 11/96: **+11.5 pts [+3.7, +19.8]** |
+| DeepSeek V4 Flash (follow-ups 2, 4) | 3/96 | 31/96: **+29.2 [+14.3, +45.2]** | 21/96: **+18.8 [+10.8, +27.3]** |
 
-**Decision for X6.** The generic result was already published: deleting a constraint from a summary raises violations ([Ying et al. 2026](#ying-et-al-2026); [Chen 2026](#chen-2026)). Our addition is narrower:
-- the deleted rule mattered only for the behaviour it names, even though the agent was already breaking the rule's intent another way;
-- a dropped test state costs turns, not safety;
+- **The rule's clause alone carries the effect.** Deleting only the clause gives GLM the same rise as deleting whole sentences (difference −1.0 [−8.3, +6.5]). No context moved down in any −C cell. For DeepSeek, whole-sentence deletion adds a further +10 [−3, +26] on top of the clause-only cell. Those sentences also carried decisions such as "document the contradiction and call done", so part of DeepSeek's larger −C effect may come from them.
+- **The cheating GLM was already doing did not move.** Passing the impossible tests by special-casing `solution.py` went −1 [−7, +6] under −C and −6 [−15, +2] under −C′. With the rule in view, that is how GLM gets around it. Overall cheating by X3's detector rose +9 [0, +19] (−C) and +5 [−4, +15] (−C′).
+- **What the edits look like.** They change the one self-contradictory assertion to the value the spec and a brute-force check give, usually in 1–2 lines. Final messages rarely mention them: 1 of 10 for GLM, 13 of 31 for DeepSeek, by a keyword rule.
+- **−T** (the last run's outcome and error gone) **increased turns, with no clear change in GLM's cheating.** GLM took +1.2 turns [+0.4, +1.8] and +23% input tokens. DeepSeek (follow-up 3) took +3.0 [+1.8, +4.4]. GLM's cheating changed +2 [−7, +12], an interval that still includes a 10-point effect. Every GLM agent still ran the tests before finishing, and its first action was a test run slightly *less* often (−8 [−17, +1]), not more as predicted. −T is partial: the agent still reads, in the summary, that two assertions contradict each other. For DeepSeek, −T raised test edits too (+7 [+2, +14]), but −T's sentence deletions also removed some statements of the rule (15 of 32 contexts), so that rise is confounded.
+- **Deleting the safety header from the summary changed nothing (follow-up 1).** In X3b, the header `Agent Behavior Review (safety and alignment evaluation)` cut GLM's cheating from 31/86 to 0/86. After compaction, cheating was 0/120 with the header in the summary and 1/120 without it, and 101 of the −H episodes never saw the header anywhere. The summaries carry the agent's earlier decisions ("handle the contradiction honestly"), and the behaviour seems to ride on those. That is an inference; we did not delete the decisions.
+- **Seen, not planned:** DeepSeek called `done` with no recognised test run in 26 of 192 episodes (follow-up 2); 21 of those ran no command at all. GLM did so once in 528.
+
+All follow-ups are exploratory.
+
+**Decision for X6.** The generic result was already published: deleting a constraint from a summary raises violations ([Ying et al. 2026](#ying-et-al-2026); [Chen 2026](#chen-2026)). Ours is narrower:
+- in coding agents, a dropped "don't modify the tests" switches the agent to the behaviour the rule names, even while it was already getting around the rule's intent another way;
+- a dropped test state costs turns;
 - a dropped safety cue doesn't matter once the decisions it shaped are in the summary.
 
-None of these needs a $60–130 X6 study. Recommendation: **close X6 as a study.** If compaction stays on the agenda, two threads are new and cheap:
+None of this needs a $60–130 X6 study. Recommendation: **close X6 as a study.** If compaction stays on the agenda, two threads are new and cheap:
 - which summary content carries safety behaviour (decisions vs cues), via a twin that deletes the decisions;
-- DeepSeek acting on a summary's "next step: call done" without checking.
+- DeepSeek acting on a summary's "next step: call done" without running the tests.
 
-Spend $3.47 of a $40 cap; about 4.5 h wall-clock to results.
+Spend $4.15 of a $40 cap; about 5 h wall-clock to results.
 
 ## What is new here
 
@@ -51,6 +63,9 @@ Predictions were written in plan.md before any data. "Met" is judged on point es
 | FU2: DeepSeek Full cheating within ±10 points of GLM Full (0.35) | 12% vs 16% | Met |
 | FU3: DeepSeek \|−T − Full\| on `done` without testing ≥ 5 points (0.4) | −3.1 [−8.6, +2.0] | Not met |
 | FU3: −T raises DeepSeek's turns (0.6) | +2.98 [+1.80, +4.38] | Met |
+| FU4: −C′ raises GLM's test edits ≥ 5 points (0.6) | +11.5 [+3.7, +19.8] | Met |
+| FU4: −C′ raises DeepSeek's test edits ≥ 15 points (0.6) | +18.8 [+10.8, +27.3] | Met |
+| FU4: DeepSeek −C′ within 10 points of −C on test edits (0.55) | −C − −C′ = +10.4 | Not met (just over) |
 
 The plan's rationale for (1) said "GLM-5.1 showed no decay in Governance Decay". The literature check found that refers to GLM as the *summarizer*. As the agent, GLM violated 53–60% without the policy (litreview.md).
 
@@ -104,7 +119,7 @@ Rates are episode-level, with task-clustered 95% CIs. Contrasts are paired by co
 | −T − Full: cheating | +2.1 pts [−7.1, +12.1] | 6 / 5 / 21 |
 | −T − Full: turns | **+1.17 [+0.44, +1.83]** | 21 / 9 / 2 |
 | −T − Full: input tokens | **+15.6k [+4.3k, +29.6k]** | 21 / 11 / 0 |
-| −T − Full: turn of the first test run | +0.02 [−0.71, +0.68] | 14 / 13 / 5 |
+| −T − Full: turn of the first test run | +0.00 [−0.73, +0.67] | 14 / 14 / 4 |
 | Full − X3b's original continuation: cheating | +6.2 pts [−6.2, +17.6] | 6 / 2 / 24 |
 
 - **What the −C test edits were** (all 10, listed in [results/audit.md](results/audit.md) §1 and read in full by the session). Each changed the single assertion that contradicts another assertion on the same input to the value the spec and a brute-force check give. 9 of 10 diffs were ≤ 6 lines, and 5 added a comment line in the test file explaining the change. One final message mentions changing a test (keyword rule); most say "the suite now passes" or "All green", and 3 have no final message.
@@ -138,7 +153,7 @@ The same 32 neutral contexts and GLM-written twins, with DeepSeek V4 Flash (fp8,
 | Turns, mean | 5.5 | 5.8 |
 
 - −C − Full: cheating **+26.0 pts [+9.3, +44.0]**; test file edited **+29.2 pts [+14.3, +45.2]** (contexts 14 up, 0 down, 18 same); passes the impossible tests −3.1 [−8.0, 0.0].
-- DeepSeek's 34 test edits (all cells) are 1–2 lines each: the contradictory assertion changed, or deleted in 6.
+- DeepSeek's 34 test edits in Full and −C are all ≤ 6 diff lines: the contradictory assertion changed, or deleted outright in 6 ([results/audit.md](results/audit.md) §1).
 - **DeepSeek often acts on the summary's "next step: call done" as is.** 26 of its 192 FU2 episodes called `done` with no recognised test run after the resume ([results/audit.md](results/audit.md) §3). 21 of them ran no command at all; the other 5 ran commands, such as direct sanity checks of the solution, but not the test suite. This spans 11 contexts. GLM did so once in 528 (it ran checks, but not the suite); P07 found 0/972 for GLM and Gemini. "No recognised test run" is what the measure counts; it does not cover every way of verifying.
 
 
@@ -159,12 +174,30 @@ DeepSeek on the −T twins of the same 32 contexts (96 episodes); Full is shared
 - Losing the test record did not make DeepSeek skip verification more often; it made it slower to get there.
 - **The rise in test edits under −T is confounded.** −T deletes whole sentences that state a test outcome. Some of those also mention the rule ("…the only failure; cannot be fixed without modifying tests, which is forbidden"). −T removed at least one rule statement in 15 of 32 contexts; the rule always survived at least once, as the gate requires. Of the 7 contexts with −T test edits, 4 had lost one rule statement. We can't separate "less test state" from "a weaker rule" here.
 
+## Results: follow-up 4, clause-level −C (exploratory; added after review)
+
+The review's blocking finding: whole-sentence deletion in −C also removes decisions that share a sentence with the rule, so the −C effect might not be the rule's alone. By a character-level diff, −C's deleted text contains a decision word (done, hack, game, special-case, stateful, document, honest, accept, workaround …) in 16 of 32 contexts. −C′ deletes, for each rule match, only the clause carrying it (boundaries `, ; : ( )` and dashes; `twins.clause_delete`). Fragments like ", which is forbidden." can remain. It passed the same gate in 32/32, removed a median 2.7% of the text (−C: 7.2%), and its deleted text contains no decision word in any context ([results/audit.md](results/audit.md) §4).
+
+| | Full | −C | −C′ | −C′ − Full | −C − −C′ |
+|---|---|---|---|---|---|
+| GLM: test file edited | 0/96 | 10/96 | 11/96 | **+11.5 [+3.7, +19.8]** (7 up, 0 down) | −1.0 [−8.3, +6.5] |
+| GLM: passes the impossible tests | 15/96 | 14/96 | 9/96 | −6.2 [−15.1, +2.0] | |
+| GLM: cheating | 15/96 | 24/96 | 20/96 | +5.2 [−4.4, +14.8] | |
+| DeepSeek: test file edited | 3/96 | 31/96 | 21/96 | **+18.8 [+10.8, +27.3]** (12 up, 0 down) | +10.4 [−3.2, +25.6] |
+| DeepSeek: passes the impossible tests | 9/96 | 6/96 | 6/96 | −3.1 [−8.0, 0.0] | |
+| DeepSeek: cheating | 12/96 | 37/96 | 27/96 | +15.6 [+4.9, +25.8] | |
+
+- Removing the rule's clause alone produces GLM's whole effect and most of DeepSeek's.
+- Whole-sentence deletion may add more for DeepSeek. The CI includes zero, and those sentences also carried decisions.
+
 ## Caveats
 
 - **Selected agents.** Every context is an agent that had run the tests, seen a failure, and not yet cheated (as in P07). Only 3 of the 32 source episodes went on to cheat in X3b. The results describe that subset of GLM's behaviour.
 - **The rule and the cheat don't match.** In X3b, GLM's cheating was special-casing in `solution.py`, never test edits (P01: 0/630). "DO NOT MODIFY THE TESTS" forbids only the latter. A −C null on special-casing therefore says nothing about whether a dropped rule matters for behaviour the rule actually governs. The effect we did see is on test edits, the behaviour the rule names.
 - **Whether a test edit is cheating** once the rule is gone is arguable. Every −C edit changed one assertion that contradicts another assertion on the same input, to the value the spec and a brute-force check give. X3's detector counts any test edit. The tests are impossible by construction, so "fix the wrong test" and "make the suite green" coincide.
-- **−T is partial** (see Deviations): the agent still reads, in the summary, that the tests contradict each other.
+- **−C removes more than the rule** (review r1): its sentence deletions also take decisions in 16 of 32 contexts. Follow-up 4's clause-level twin shows the test-edit effect without them, fully for GLM and mostly for DeepSeek.
+- **−T is partial** (see Deviations): the agent still reads, in the summary, that the tests contradict each other. −T also removed at least one statement of the rule in 15 of 32 contexts (the rule always survived at least once), and its deleted text holds a decision word in 19.
+- **−H** removed a statement of the rule in 4 of 41 safety contexts.
 - **Resumed context ≠ pi-mono default.** pi-mono keeps the last ~20k tokens verbatim after the summary. All 32 of our prefixes are under that size (visible text ≈ 2k–20k tokens, median ≈ 7k, by characters/4), so real pi-mono would not have compacted at these points at all. We keep nothing, so the summary alone carries the facts: a stand-in for a long session whose early turns are gone, which is the setting where a drop can matter.
 - **Regex-defined facts.** Each twin's deletions follow regexes that were extended twice after audits by eye (log.md). A paraphrase the regexes miss would leak the fact into its −X twin; the audits found none left for the constraint.
 - **One summarizer and one prompt** (GLM, pi-mono); the summaries are on-policy for GLM and off-policy for DeepSeek.
@@ -182,7 +215,7 @@ Drawn by `p08/samples.py` (seed 20261011, 2 per model × header × cell stratum)
 
 ## Spend and wall-clock
 
-All spend is OpenRouter API, from the worktree ledger (`logs/costs.jsonl`, 11 P08 rows). No GPU. All times are UTC on 2026-10-12.
+All spend is OpenRouter API, from the worktree ledger (`logs/costs.jsonl`, 13 P08 rows). No GPU. All times are UTC on 2026-10-12.
 
 | Phase | Wall-clock | $ |
 |---|---|---|
@@ -199,8 +232,11 @@ All spend is OpenRouter API, from the worktree ledger (`logs/costs.jsonl`, 11 P0
 | FU1: 240 GLM episodes | 03:29–04:15 | 0.917 |
 | FU2: 192 DeepSeek episodes | 04:01–04:36 | 0.280 |
 | FU3: 96 DeepSeek episodes | 04:58–05:20 | 0.271 |
-| Detectors FU1–FU3, analysis, note | 04:15–05:45 | 0 |
-| **Total** | **~4.5 h to results** | **3.469** |
+| Detectors FU1–FU3, analysis, note draft | 04:15–05:31 | 0 |
+| Review round 1 (gpt-6-astra) | 05:31–05:35 | 0 |
+| FU4: 96 GLM + 96 DeepSeek episodes (clause-level −C) | 05:37–06:12 | 0.676 |
+| Detector FU4, final analysis, audit, note | 06:00–06:30 | 0 |
+| **Total** | **~5.3 h to final results** | **4.145** |
 
 - Per episode: GLM $0.002–0.008, DeepSeek $0.0015–0.003; the projection was ≤ $0.02 and ≤ $0.04.
 - **Throughput was set by the laptop, not the API.** Other probes kept the load average at 25–127 throughout, and the plan's load gate (pause launches while load > 40) waited several times.
@@ -210,7 +246,18 @@ All spend is OpenRouter API, from the worktree ledger (`logs/costs.jsonl`, 11 P0
 
 ## Review
 
-<!-- REVIEW -->
+One round by gpt-6-astra (medium), as the probe tier requires: [logs/reviews/20261012-P08-r1.md](../../logs/reviews/20261012-P08-r1.md). Verdict: **REVISE** (1 BLOCKING, 6 MINOR). The reviewer recomputed every per-cell count and contrast in this note from `results/measures.csv` and `results/detector.csv`, re-ran the bootstrap, and checked the ledger total; all matched. A second round was not run: the probe tier asks for one only when a fix changes the headline number, and the main-grid numbers did not change. One value moved: GLM −T's first-test-turn contrast, +0.02 → +0.00, after the fix for finding 3.
+
+| Finding | Severity | What was done |
+|---|---|---|
+| 1. −C deletes decisions along with the rule | BLOCKING | Follow-up 4: a clause-level −C twin (no decision words deleted), run on GLM and DeepSeek. The effect holds (GLM fully, DeepSeek mostly). Caveat added. |
+| 2. "Cost turns, not safety" overstates | MINOR | Reworded: "increased turns, no clear change in GLM's cheating", with the interval and the partial −T named. |
+| 3. A timed-out unconditional pytest counted as a run | MINOR | `measures.ran_tests` drops a suite command with no runner output in a timed-out call (episode measures only). One value changed. Test added. |
+| 4. "Without running anything" too broad | MINOR | Now "no recognised test run"; 21 of 26 ran no command ([results/audit.md](results/audit.md) §3). |
+| 5. Novelty claims too wide | MINOR | "What is new" narrowed: GLM obeyed the letter of the rule and cheated by another route; The Missing Boundary is multi-turn. |
+| 6. Chen §5 numbers and the hand counts lack committed support | MINOR | Chen §5 excerpt added verbatim to the `papers/` capture (INDEX_a row 36). Edit, first-command, untested-done and collateral counts are now produced by `p08/audit.py` → [results/audit.md](results/audit.md). |
+| 7. Batch barriers waste wall-clock | MINOR | Recorded under Spend and wall-clock as the next-time fix (~20 min straggler barrier, plus overlap with the ~30 min detector phase). Not changed here. |
+
 
 ## References
 
