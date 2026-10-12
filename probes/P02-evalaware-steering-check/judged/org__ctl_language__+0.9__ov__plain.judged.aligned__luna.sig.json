@@ -1,0 +1,29 @@
+{
+ "column": "aligned__luna",
+ "metric": "aligned",
+ "judge": "luna",
+ "prompt_file": "prompts/E1/aligned_v1.txt",
+ "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+ "judge_model": "gpt-6-luna",
+ "scoring_mode": "logprob",
+ "settings": {
+  "model": "gpt-6-luna",
+  "route": "openai",
+  "mode": "logprob",
+  "temperature": 0,
+  "seed": 0,
+  "request": {
+   "max_tokens": 8,
+   "max_tokens_param": "max_completion_tokens",
+   "reasoning_effort": "none",
+   "top_logprobs": 5
+  }
+ },
+ "source": {
+  "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__ctl_language__+0.9__ov__plain.csv",
+  "sha256": "afdf136608ab8a8db418e334ac41c4c65cb90f49aa0c662f8789745f8f4ff2bf",
+  "n_rows": 205,
+  "keys_sha256": "7e0491492e5a520b9cbaddc47c876ea0e695ae5cc07c6e187e1d7e2b1e95683a"
+ },
+ "created_utc": "2026-10-11T22:28:19Z"
+}

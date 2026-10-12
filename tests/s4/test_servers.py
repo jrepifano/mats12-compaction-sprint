@@ -58,6 +58,18 @@ def jsonl(p: Path) -> list[dict]:
     return [json.loads(x) for x in p.read_text().splitlines()] if p.exists() else []
 
 
+def access_rows(logdir: Path, n: int, seconds: float = 5.0) -> list[dict]:
+    """access.jsonl once it holds `n` rows (or after `seconds`). Both servers append the access
+    row after sending the body, so the client can read the last response before its row lands
+    (a flake under parallel load, 2026-10-11)."""
+    t0 = time.monotonic()
+    rows = jsonl(logdir / "access.jsonl")
+    while len(rows) < n and time.monotonic() - t0 < seconds:
+        time.sleep(0.05)
+        rows = jsonl(logdir / "access.jsonl")
+    return rows
+
+
 # ---- registry ------------------------------------------------------------------------------
 
 
@@ -264,7 +276,7 @@ def test_registry_access_log_seq(reg):
     for p in ("/", "/fleet-notes/", "/nope/"):
         req(b, "GET", p)
     req(b, "PUT", "/scratch/a/b.txt", b"1")
-    acc = jsonl(reg["log"] / "access.jsonl")
+    acc = access_rows(reg["log"], 4)
     assert len(acc) == 4 and all(tuple(a) == contracts.ACCESS_KEYS for a in acc)
     seqs = [a["seq"] for a in acc]
     assert seqs == sorted(seqs) and len(set(seqs)) == 4
@@ -463,7 +475,7 @@ def test_ops_other_paths_and_access_log(opsrv):
         s, body, _ = req(b, method, path, b"x" if method == "POST" else None)
         assert s == 404 and json.loads(body)["status"] == 404
     assert jsonl(opsrv["log"] / "writes.jsonl") == []
-    acc = jsonl(opsrv["log"] / "access.jsonl")
+    acc = access_rows(opsrv["log"], 4)
     assert len(acc) == 4 and all(tuple(a) == contracts.ACCESS_KEYS for a in acc)
     seqs = [a["seq"] for a in acc]
     assert seqs == sorted(seqs) and len(set(seqs)) == len(seqs)

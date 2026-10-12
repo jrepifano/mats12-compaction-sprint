@@ -118,6 +118,11 @@ pod stage whose reservation size is contracts.POD_RESERVATION_USD; it is recorde
 budget above that size only warns (an extension is a separate reservation). The GPU fallback
 order is contracts.FALLBACK_GPUS at its rates, as EQ0's; the container disk defaults to
 contracts.VOLUME_GB.
+2026-10-11 (probe tier; additive): a probe whose probe.toml sets `[pod].gpus` (validated by
+`emx.runpod.parse_gpu_list`) launches from that order at its rates instead of the default H100
+order; --start, --gpu and --no-fallback index and filter it as for any experiment. The rate of
+the option launched sizes the `creating` row, the reservation deadline (t0 + B / rate) and the
+`created` event, as for every other option. Without the key nothing changes.
 
 Usage: uv run python scripts/pod_up.py [--exp I1a|E1b] --slot _A [--start N] [--no-fallback]
        [--dry-run]
@@ -836,6 +841,14 @@ def _main(argv: list[str] | None, ctx: dict) -> int:
         options = e11_gpu_options(args.start)
     if rp.EXP == "E13":
         options = e13_gpu_options(args.start)
+    try:  # a probe's own [pod].gpus order (probe.toml), else the default above
+        probe_options = rp.probe_gpu_options(rp.EXP)
+    except (OSError, KeyError, ValueError) as e:
+        ap.error(f"{rp.EXP}: probe.toml [pod].gpus unreadable: {e}")
+    if probe_options is not None:
+        options = probe_options[args.start:]
+        print(f"GPU order ({rp.EXP}, probe.toml [pod].gpus): "
+              + " -> ".join(f"{o.gpu_type_id} {o.cloud} ${o.rate_usd_h}/h" for o in options))
     if args.gpu:
         options = gpu_filter(options, args.gpu)
         if not options:

@@ -1,6 +1,6 @@
 # P<NN>: <the question, as a question>
 
-One page. Copy to `probes/P<NN>-<slug>/plan.md`, take the next free id from `probes/INDEX.md`, and commit both **on main, before any data exists** (that commit is the timestamp on the predictions). Jacob's "go" in chat is the sign-off; a batch of plans can be approved at once. After that Claude sees the probe through to an answer without check-ins, including follow-up runs (below).
+One page. Claim the id with `scripts/probe_claim.py claim` (it pushes the probe's `status.json` to main), copy this to `probes/P<NN>-<slug>/plan.md` in the probe's worktree, and put it **on main, before any data exists**, with `scripts/probe_claim.py publish` (that commit is the timestamp on the predictions; AGENTS.md, "Probe tier"). Jacob's "go" in chat is the sign-off; a batch of plans can be approved at once. After that the agent (Claude or Codex) sees the probe through to an answer without check-ins, including follow-up runs (below).
 
 | | |
 |---|---|

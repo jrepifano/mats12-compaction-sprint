@@ -1,0 +1,42 @@
+# P06 filler-token computation (plan.md). Stage 1 is API (laptop); Stage 2 is one H100 pod through
+# the generic probe runner. Starting cap $35 (GPU $25, API $10); follow-ups may raise it to $150
+# without asking (record the reason in log.md). Raised 2026-10-11 to $45 (API $20): every-turn
+# filler placement costs ~5x the tokens (log.md, placement pilot). Raised 2026-10-12 to $60 (GPU $40)
+# for the final V4 Flash pilot attempt (log.md, F7). Raised 2026-10-12 to $75 (GPU $55) for the V4
+# Flash bulk run (log.md, F8).
+id = "P06"
+hard_cap_usd = 75
+gpu_limit_usd = 55
+api_limit_usd = 20
+reserve_usd = 0
+
+[pod]
+# Follow-up F8 (log.md): the DeepSeek-V4-Flash bulk run on one B300 (run.sh dispatches on the
+# file `phase`: "v4bulk" now; "v4pilot" was F7, "f3" the Gemma 4 run). Projected from F7's
+# medians: ~1 h of work (A+B ~55 min, C ~8 min) plus download (8.5 min, up to ~45 on a slow host),
+# load and kernel compile (~5 min); the run stops itself at 1.5x its projection.
+gpu_hours = 2.5
+# "i1a": one venv, /ws/venv-i1a, from the pod-i1a group (transformers 5.17.0, torch 2.13.0 cu130,
+# triton 3.7.1 per uv.lock). run.sh adds `kernels==0.16.2` (transformers' Hub-kernel loader for the
+# FP8/FP4 Triton kernels; not in the lock). "eq0" also builds a vLLM venv this probe does not use.
+setup = "i1a"
+# V4 Flash 160 GB + 2 V4 lenses 2.8 GB + the venv + HF kernel cache; F8 readouts ~1.5-2 GB
+# (3 readers x 43 layers x ~1,100 positions per chain item, 200 items, + MC).
+disk_gb = 400
+# F7 (V4 Flash pilot): one Blackwell GPU holds the 160 GB checkpoint (B300 288 GB first; B200
+# 180 GB is tight). Rates from RunPod's gpuTypes query, 2026-10-11; budget priced at the max.
+gpus = [["NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94], ["NVIDIA B300 SXM6 AC", "SECURE", 8.99],
+        ["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]
+# The runner sends tracked files minus the probe's run outputs (scripts/probe_pod.py RUN_OUTPUT:
+# probes/<dir>/{logs,results,superseded,unverified}/ are never sent), so committed inputs under
+# results/ reach the pod only as [pod].push paths (repo-relative; these bypass that filter). F7's
+# pod-side API comparison failed with FileNotFoundError for exactly this reason.
+# - third_party/workspace-bench: the pod-i1a group installs it from this path (as P03 and I9 do)
+# - Brauer's depth-1 set (gitignored, sha256 c80f0f5e...): F3 and F8 part C
+# - the API rows F8 compares against (F6 chain, F2 MC, F1 free response; V4 Flash)
+push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json",
+        "probes/P06-filler-token-computation/results/stage1/f6_chain_brauer_v4flash.jsonl",
+        "probes/P06-filler-token-computation/results/stage1/f2_mc_v4flash.jsonl",
+        "probes/P06-filler-token-computation/results/stage1/f1_brauer_v4flash.jsonl"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

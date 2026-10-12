@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-11T21:43:28Z",
+    "utc_end": "2026-10-11T21:43:32Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__gauss_03__+2.4__ov__plain.csv",
+      "sha256": "29a60a17d7367ba0a1eebf9f463fe3dbb2e175c945592844e10c60fa2c242c91",
+      "n_rows": 205,
+      "keys_sha256": "3da5344e9a6024158764f303a090377d5ba003e2f2e1be2a51346f38baa8d15f"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 62860,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.006696,
+        "usd_unmetered": 0.0,
+        "usd": 0.006696,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.009974,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.006696
+  },
+  {
+    "utc_start": "2026-10-11T21:43:32Z",
+    "utc_end": "2026-10-11T21:43:37Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__gauss_03__+2.4__ov__plain.csv",
+      "sha256": "29a60a17d7367ba0a1eebf9f463fe3dbb2e175c945592844e10c60fa2c242c91",
+      "n_rows": 205,
+      "keys_sha256": "3da5344e9a6024158764f303a090377d5ba003e2f2e1be2a51346f38baa8d15f"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 64090,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.006819,
+        "usd_unmetered": 0.0,
+        "usd": 0.006819,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0108213,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.006819
+  }
+]

@@ -1,0 +1,111 @@
+[
+  {
+    "utc_start": "2026-10-11T21:38:24Z",
+    "utc_end": "2026-10-11T21:38:27Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_train__+1.2__ov__plain.csv",
+      "sha256": "ac72ac1ff0bbef216435ca8e2a297c5dd59c08b105312cf279b4ad13599c6d66",
+      "n_rows": 205,
+      "keys_sha256": "a7bc050ff37691379c0ea51ce13482ee634814365d9a44dc4ce0b3ac150d796b"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 77067,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.008116700000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.008116700000000001,
+        "none_raw_samples": [
+          {
+            "row": 191,
+            "raw": "CODE"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 204,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.012217400000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.008117
+  },
+  {
+    "utc_start": "2026-10-11T21:38:27Z",
+    "utc_end": "2026-10-11T21:38:32Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_train__+1.2__ov__plain.csv",
+      "sha256": "ac72ac1ff0bbef216435ca8e2a297c5dd59c08b105312cf279b4ad13599c6d66",
+      "n_rows": 205,
+      "keys_sha256": "a7bc050ff37691379c0ea51ce13482ee634814365d9a44dc4ce0b3ac150d796b"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 78297,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0082397,
+        "usd_unmetered": 0.0,
+        "usd": 0.0082397,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0130647,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.00824
+  },
+  {
+    "utc_start": "2026-10-11T23:06:34Z",
+    "utc_end": "2026-10-11T23:06:37Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__ctl_train__+1.2__ov__plain.csv",
+      "sha256": "ac72ac1ff0bbef216435ca8e2a297c5dd59c08b105312cf279b4ad13599c6d66",
+      "n_rows": 205,
+      "keys_sha256": "a7bc050ff37691379c0ea51ce13482ee634814365d9a44dc4ce0b3ac150d796b"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 1,
+        "failed_attempts": 0,
+        "prompt_tokens": 829,
+        "completion_tokens": 4,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 8.49e-05,
+        "usd_unmetered": 0.0,
+        "usd": 8.49e-05,
+        "none_raw_samples": [
+          {
+            "row": 191,
+            "raw": "CODE"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 204,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0001006,
+        "rows_todo": 1
+      }
+    },
+    "usd": 8.5e-05
+  }
+]

@@ -1,0 +1,1171 @@
+projection base__A__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__B__+0.0125__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__B__+0.0125__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__B__+0.0125__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__B__+0.025__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__B__+0.025__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__B__+0.025__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__B__+0.05__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__B__+0.05__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__B__+0.05__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__B__+0.1__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__B__+0.1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__B__+0.1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__none__0__ov__deployline aligned__luna: 0 rows, $0.0000
+projection base__none__0__ov__deployline coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection base__none__0__ov__disjoint aligned__luna: 820 rows, $0.0775
+projection base__none__0__ov__disjoint coherent__luna: 820 rows, $0.0808
+E13_JUDGE_PROJECTION base__none__0__ov__disjoint: $0.1583 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0498 (metered $0.0498)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0503 (metered $0.0503)
+projection base__none__0__ov__neutral aligned__luna: 820 rows, $0.0458
+projection base__none__0__ov__neutral coherent__luna: 820 rows, $0.0492
+E13_JUDGE_PROJECTION base__none__0__ov__neutral: $0.0949 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+Task exception was never retrieved
+future: <Task finished name='Task-2468' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+[aligned__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0312 (metered $0.0312)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0317 (metered $0.0317)
+projection base__none__0__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__none__0__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__A__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__B__+0.0125__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__B__+0.0125__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__B__+0.0125__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__B__+0.025__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__B__+0.025__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__B__+0.025__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__B__+0.05__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__B__+0.05__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__B__+0.05__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__B__+0.1__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__B__+0.1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__B__+0.1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__none__0__ov__deployline aligned__luna: 0 rows, $0.0000
+projection good__none__0__ov__deployline coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection good__none__0__ov__disjoint aligned__luna: 820 rows, $0.0430
+projection good__none__0__ov__disjoint coherent__luna: 820 rows, $0.0464
+E13_JUDGE_PROJECTION good__none__0__ov__disjoint: $0.0893 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+Task exception was never retrieved
+future: <Task finished name='Task-4115' coro=<AsyncClient.aclose() done, defined at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_client.py:1978> exception=RuntimeError('Event loop is closed')>
+Traceback (most recent call last):
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_client.py", line 1985, in aclose
+    await self._transport.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpx/_transports/default.py", line 406, in aclose
+    await self._pool.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 353, in aclose
+    await self._close_connections(closing_connections)
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection_pool.py", line 345, in _close_connections
+    await connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/connection.py", line 173, in aclose
+    await self._connection.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_async/http11.py", line 258, in aclose
+    await self._network_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/httpcore/_backends/anyio.py", line 53, in aclose
+    await self._stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/anyio/streams/tls.py", line 248, in aclose
+    await self.transport_stream.aclose()
+  File "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/.venv/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1397, in aclose
+    self._transport.close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 1213, in close
+    super().close()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/selector_events.py", line 875, in close
+    self._loop.call_soon(self._call_connection_lost, None)
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 799, in call_soon
+    self._check_closed()
+  File "/Users/jacob/.local/share/uv/python/cpython-3.12.13-macos-aarch64-none/lib/python3.12/asyncio/base_events.py", line 545, in _check_closed
+    raise RuntimeError('Event loop is closed')
+RuntimeError: Event loop is closed
+[aligned__luna] done: 814 scored, 6 none, 0 failed; 820 calls, 0 failed attempts; $0.0285 (metered $0.0285)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0290 (metered $0.0290)
+projection good__none__0__ov__neutral aligned__luna: 820 rows, $0.0418
+projection good__none__0__ov__neutral coherent__luna: 820 rows, $0.0452
+E13_JUDGE_PROJECTION good__none__0__ov__neutral: $0.0869 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 815 scored, 5 none, 0 failed; 820 calls, 0 failed attempts; $0.0279 (metered $0.0279)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0283 (metered $0.0283)
+projection good__none__0__ov__plain aligned__luna: 0 rows, $0.0000
+projection good__none__0__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-0.3__noov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__-0.3__noov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-0.3__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-0.6__noov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__-0.6__noov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-0.6__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-1.2__noov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__-1.2__noov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-1.2__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-2.4__noov__plain aligned__luna: 0 rows, $0.0000
+projection org__A__-2.4__noov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-2.4__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__B__+0.0125__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__B__+0.0125__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__B__+0.0125__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__B__+0.025__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__B__+0.025__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__B__+0.025__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__B__+0.05__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__B__+0.05__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__B__+0.05__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__B__+0.1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__B__+0.1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__B__+0.1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_book__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_book__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_book__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_cat__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_cat__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_cat__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_kiki__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_kiki__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_kiki__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_language__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_language__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_language__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_perspective__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_perspective__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_perspective__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_spacing__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_spacing__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_spacing__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_speaking__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_speaking__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_speaking__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_train__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_train__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_train__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_wall__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_wall__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_wall__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__ctl_weather__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__ctl_weather__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__ctl_weather__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_00__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_00__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_00__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_01__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_01__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_01__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_02__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_02__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_02__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_03__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_03__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_03__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_04__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_04__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_04__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_05__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_05__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_05__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_06__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_06__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_06__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_07__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_07__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_07__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_08__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_08__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_08__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+0.3__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+0.3__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+0.6__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+0.6__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+0.7__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+0.7__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+0.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+0.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+0.9__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+0.9__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+1__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+1__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+2.4__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+2.4__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__gauss_09__+4.8__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__gauss_09__+4.8__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__gauss_09__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__noov__plain aligned__luna: 0 rows, $0.0000
+projection org__none__0__noov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__ov__deployline aligned__luna: 0 rows, $0.0000
+projection org__none__0__ov__deployline coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__ov__disjoint aligned__luna: 820 rows, $0.0428
+projection org__none__0__ov__disjoint coherent__luna: 820 rows, $0.0462
+E13_JUDGE_PROJECTION org__none__0__ov__disjoint: $0.0890 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0284 (metered $0.0284)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0289 (metered $0.0289)
+projection org__none__0__ov__neutral aligned__luna: 820 rows, $0.0418
+projection org__none__0__ov__neutral coherent__luna: 820 rows, $0.0452
+E13_JUDGE_PROJECTION org__none__0__ov__neutral: $0.0871 for all remaining work; running pods $0.00
+[aligned__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 818 scored, 2 none, 0 failed; 820 calls, 0 failed attempts; $0.0279 (metered $0.0279)
+[coherent__luna] judging 820/820 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 820 scored, 0 none, 0 failed; 820 calls, 0 failed attempts; $0.0284 (metered $0.0284)
+projection org__none__0__ov__plain aligned__luna: 0 rows, $0.0000
+projection org__none__0__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.3__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+0.3__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.6__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+0.6__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.7__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+0.7__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+0.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+0.9__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+0.9__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+1.2__ov__plain aligned__gfl: 1 rows, $0.0002
+projection base__A__+1.2__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1.2__ov__plain: $0.0002 for all remaining work; running pods $0.00
+[aligned__gfl] judging 1/820 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] row 112 failed after 6 attempts: TypeError: 'NoneType' object is not subscriptable
+[aligned__gfl] done: 784 scored, 35 none, 1 failed; 0 calls, 6 failed attempts; $0.0015 (metered $0.0000)
+projection base__A__+1__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+1__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+2.4__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+2.4__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+4.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__A__+4.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__none__0__ov__deployline aligned__gfl: 0 rows, $0.0000
+projection base__none__0__ov__deployline coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection base__none__0__ov__plain aligned__gfl: 0 rows, $0.0000
+projection base__none__0__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.3__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+0.3__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.6__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+0.6__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.7__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+0.7__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+0.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+0.9__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+0.9__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+1.2__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+1.2__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+1__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+1__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+2.4__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+2.4__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__A__+4.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__A__+4.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection good__none__0__ov__deployline aligned__gfl: 0 rows, $0.0000
+projection good__none__0__ov__deployline coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection good__none__0__ov__plain aligned__gfl: 0 rows, $0.0000
+projection good__none__0__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION good__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.3__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+0.3__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.3__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.6__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+0.6__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.6__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.7__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+0.7__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.7__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+0.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+0.9__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+0.9__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+0.9__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+1.2__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+1.2__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+1__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+1__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+1__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+2.4__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+2.4__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+2.4__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__+4.8__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__+4.8__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__+4.8__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-0.3__noov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__-0.3__noov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-0.3__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-0.6__noov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__-0.6__noov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-0.6__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-1.2__noov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__-1.2__noov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-1.2__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__A__-2.4__noov__plain aligned__gfl: 0 rows, $0.0000
+projection org__A__-2.4__noov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__A__-2.4__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__noov__plain aligned__gfl: 0 rows, $0.0000
+projection org__none__0__noov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__noov__plain: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__ov__deployline aligned__gfl: 0 rows, $0.0000
+projection org__none__0__ov__deployline coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__ov__deployline: $0.0000 for all remaining work; running pods $0.00
+projection org__none__0__ov__plain aligned__gfl: 0 rows, $0.0000
+projection org__none__0__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION org__none__0__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+1.2__ov__plain aligned__luna: 0 rows, $0.0000
+projection base__A__+1.2__ov__plain coherent__luna: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1.2__ov__plain: $0.0000 for all remaining work; running pods $0.00
+projection base__A__+1.2__ov__plain aligned__gfl: 1 rows, $0.0002
+projection base__A__+1.2__ov__plain coherent__gfl: 0 rows, $0.0000
+E13_JUDGE_PROJECTION base__A__+1.2__ov__plain: $0.0002 for all remaining work; running pods $0.00
+[aligned__gfl] judging 1/820 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] row 112 failed after 6 attempts: TypeError: 'NoneType' object is not subscriptable
+[aligned__gfl] done: 784 scored, 35 none, 1 failed; 0 calls, 6 failed attempts; $0.0015 (metered $0.0000)
+projection base__A__+1.2__ov__plain aligned__gfl: 1 rows, $0.0002
+projection base__none__0__ov__disjoint aligned__luna: 820 rows, $0.0775
+projection base__none__0__ov__disjoint coherent__luna: 820 rows, $0.0808
+projection base__none__0__ov__neutral aligned__luna: 820 rows, $0.0458
+projection base__none__0__ov__neutral coherent__luna: 820 rows, $0.0492
+projection good__none__0__ov__disjoint aligned__luna: 820 rows, $0.0430
+projection good__none__0__ov__disjoint coherent__luna: 820 rows, $0.0464
+projection good__none__0__ov__neutral aligned__luna: 820 rows, $0.0418
+projection good__none__0__ov__neutral coherent__luna: 820 rows, $0.0452
+projection org__none__0__ov__disjoint aligned__luna: 820 rows, $0.0428
+projection org__none__0__ov__disjoint coherent__luna: 820 rows, $0.0462
+projection org__none__0__ov__neutral aligned__luna: 820 rows, $0.0418
+projection org__none__0__ov__neutral coherent__luna: 820 rows, $0.0452
+P02_JUDGE_PROJECTION: $0.6057 for all remaining work in 236 cell(s) (Gemini on 38); running pods $0.00; concurrency 32
+guard: P02 judge spend $11.9713 + reserved $0.0000 + projected $0.6057 <= limit $15.00
+P02_JUDGE_RETRY base__A__+1.2__ov__plain: 1 open row-column(s) (0 malformed repl(ies) re-queued once)
+P02_JUDGE_SPENT: $0.3933
+P02_COMPLETE base__A__+0.3__ov__plain luna_unscored=0.000 gfl_unscored=0.007
+P02_COMPLETE base__A__+0.6__ov__plain luna_unscored=0.000 gfl_unscored=0.009
+P02_COMPLETE base__A__+0.7__ov__plain luna_unscored=0.000 gfl_unscored=0.011
+P02_COMPLETE base__A__+0.8__ov__plain luna_unscored=0.000 gfl_unscored=0.017
+P02_COMPLETE base__A__+0.9__ov__plain luna_unscored=0.000 gfl_unscored=0.021
+P02_COMPLETE base__A__+1.2__ov__plain luna_unscored=0.000 gfl_unscored=0.037
+P02_COMPLETE base__A__+1__ov__plain luna_unscored=0.000 gfl_unscored=0.030
+P02_COMPLETE base__A__+2.4__ov__plain luna_unscored=0.000 gfl_unscored=0.038
+P02_COMPLETE base__A__+4.8__ov__plain luna_unscored=0.000 gfl_unscored=0.024
+P02_COMPLETE base__B__+0.0125__ov__plain luna_unscored=0.000
+P02_COMPLETE base__B__+0.025__ov__plain luna_unscored=0.000
+P02_COMPLETE base__B__+0.05__ov__plain luna_unscored=0.000
+P02_COMPLETE base__B__+0.1__ov__plain luna_unscored=0.000
+P02_COMPLETE base__none__0__ov__deployline luna_unscored=0.000 gfl_unscored=0.009
+P02_COMPLETE base__none__0__ov__disjoint luna_unscored=0.000
+P02_COMPLETE base__none__0__ov__neutral luna_unscored=0.000
+P02_COMPLETE base__none__0__ov__plain luna_unscored=0.000 gfl_unscored=0.006
+P02_COMPLETE good__A__+0.3__ov__plain luna_unscored=0.000 gfl_unscored=0.009
+P02_COMPLETE good__A__+0.6__ov__plain luna_unscored=0.000 gfl_unscored=0.009
+P02_COMPLETE good__A__+0.7__ov__plain luna_unscored=0.000 gfl_unscored=0.016
+P02_COMPLETE good__A__+0.8__ov__plain luna_unscored=0.000 gfl_unscored=0.013
+P02_COMPLETE good__A__+0.9__ov__plain luna_unscored=0.000 gfl_unscored=0.013
+P02_COMPLETE good__A__+1.2__ov__plain luna_unscored=0.000 gfl_unscored=0.009
+P02_COMPLETE good__A__+1__ov__plain luna_unscored=0.000 gfl_unscored=0.015
+P02_COMPLETE good__A__+2.4__ov__plain luna_unscored=0.000 gfl_unscored=0.028
+P02_COMPLETE good__A__+4.8__ov__plain luna_unscored=0.000 gfl_unscored=0.012
+P02_COMPLETE good__B__+0.0125__ov__plain luna_unscored=0.000
+P02_COMPLETE good__B__+0.025__ov__plain luna_unscored=0.000
+P02_COMPLETE good__B__+0.05__ov__plain luna_unscored=0.000
+P02_COMPLETE good__B__+0.1__ov__plain luna_unscored=0.000
+P02_COMPLETE good__none__0__ov__deployline luna_unscored=0.000 gfl_unscored=0.007
+P02_COMPLETE good__none__0__ov__disjoint luna_unscored=0.000
+P02_COMPLETE good__none__0__ov__neutral luna_unscored=0.000
+P02_COMPLETE good__none__0__ov__plain luna_unscored=0.000 gfl_unscored=0.005
+P02_COMPLETE org__A__+0.3__ov__plain luna_unscored=0.000 gfl_unscored=0.011
+P02_COMPLETE org__A__+0.6__ov__plain luna_unscored=0.000 gfl_unscored=0.017
+P02_COMPLETE org__A__+0.7__ov__plain luna_unscored=0.000 gfl_unscored=0.016
+P02_COMPLETE org__A__+0.8__ov__plain luna_unscored=0.000 gfl_unscored=0.007
+P02_COMPLETE org__A__+0.9__ov__plain luna_unscored=0.000 gfl_unscored=0.011
+P02_COMPLETE org__A__+1.2__ov__plain luna_unscored=0.000 gfl_unscored=0.016
+P02_COMPLETE org__A__+1__ov__plain luna_unscored=0.000 gfl_unscored=0.013
+P02_COMPLETE org__A__+2.4__ov__plain luna_unscored=0.000 gfl_unscored=0.015
+P02_COMPLETE org__A__+4.8__ov__plain luna_unscored=0.000 gfl_unscored=0.011
+P02_COMPLETE org__A__-0.3__noov__plain luna_unscored=0.000 gfl_unscored=0.007
+P02_COMPLETE org__A__-0.6__noov__plain luna_unscored=0.000 gfl_unscored=0.012
+P02_COMPLETE org__A__-1.2__noov__plain luna_unscored=0.000 gfl_unscored=0.020
+P02_COMPLETE org__A__-2.4__noov__plain luna_unscored=0.000 gfl_unscored=0.016
+P02_COMPLETE org__B__+0.0125__ov__plain luna_unscored=0.000
+P02_COMPLETE org__B__+0.025__ov__plain luna_unscored=0.000
+P02_COMPLETE org__B__+0.05__ov__plain luna_unscored=0.000
+P02_COMPLETE org__B__+0.1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_book__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_cat__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+1.2__ov__plain luna_unscored=0.005
+P02_COMPLETE org__ctl_kiki__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_kiki__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_language__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_perspective__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_spacing__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_speaking__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+1.2__ov__plain luna_unscored=0.005
+P02_COMPLETE org__ctl_train__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_train__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_wall__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__ctl_weather__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_00__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_01__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_02__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_03__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_04__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_05__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_06__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_07__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_08__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+0.3__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+0.6__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+0.7__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+0.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+0.9__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+1.2__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+1__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+2.4__ov__plain luna_unscored=0.000
+P02_COMPLETE org__gauss_09__+4.8__ov__plain luna_unscored=0.000
+P02_COMPLETE org__none__0__noov__plain luna_unscored=0.000 gfl_unscored=0.005
+P02_COMPLETE org__none__0__ov__deployline luna_unscored=0.000 gfl_unscored=0.005
+P02_COMPLETE org__none__0__ov__disjoint luna_unscored=0.000
+P02_COMPLETE org__none__0__ov__neutral luna_unscored=0.000
+P02_COMPLETE org__none__0__ov__plain luna_unscored=0.000 gfl_unscored=0.006

@@ -1,0 +1,273 @@
+{
+ "accuracy_quick": {
+  "chain_answers|base|k2": {
+   "acc": 0.34,
+   "n": 100
+  },
+  "chain_answers|base|k3": {
+   "acc": 0.14,
+   "n": 100
+  },
+  "chain_answers|dots500|k2": {
+   "acc": 0.51,
+   "n": 100
+  },
+  "chain_answers|dots500|k3": {
+   "acc": 0.18,
+   "n": 100
+  },
+  "chain_answers|pre500|k2": {
+   "acc": 0.27,
+   "n": 100
+  },
+  "chain_answers|pre500|k3": {
+   "acc": 0.13,
+   "n": 100
+  },
+  "mc_answers|dots100": {
+   "acc": 0.71,
+   "n": 100
+  },
+  "mc_answers|mc10_base": {
+   "acc": 0.59,
+   "n": 100
+  },
+  "mc_answers|mc10_dots100": {
+   "acc": 0.84,
+   "n": 100
+  },
+  "mc_answers|pre100": {
+   "acc": 0.31,
+   "n": 100
+  }
+ },
+ "chain_items_done": 200,
+ "env": {
+  "accelerate": "1.15.0",
+  "arch_list": [
+   "sm_75",
+   "sm_80",
+   "sm_86",
+   "sm_90",
+   "sm_100",
+   "sm_120"
+  ],
+  "capability": [
+   10,
+   3
+  ],
+  "commit": "d702e77e103ac2389d1b4099811ea3cee40b3e25",
+  "cuda": "13.0",
+  "deepgemm_loadable": true,
+  "disable_deepgemm_linear": "1",
+  "finegrained_fp8_v4_sha": "3c8fcc86c0e42b7abe5bcf666d3a3afdce93a0e8",
+  "gpu": "NVIDIA B300 SXM6 AC",
+  "huggingface-hub": "1.33.0",
+  "kernels": "0.16.2",
+  "model": "deepseek-ai/DeepSeek-V4-Flash@60d8d70770c6776ff598c94bb586a859a38244f1",
+  "safetensors": "0.8.0",
+  "torch": "2.13.0",
+  "transformers": "5.17.0",
+  "triton": "3.7.1",
+  "utc": "2026-10-12T01:24:50Z"
+ },
+ "lenses": {
+  "jlens": {
+   "d_model": 4096,
+   "dtype": "torch.float16",
+   "last_mapped_layer": 41,
+   "n_maps": 42,
+   "n_source_layers": 42,
+   "rel_dist_to_identity": 0.0
+  },
+  "jpp": {
+   "d_model": 4096,
+   "dtype": "torch.float16",
+   "last_mapped_layer": 41,
+   "n_maps": 42,
+   "n_source_layers": 42,
+   "rel_dist_to_identity": 0.741233
+  }
+ },
+ "load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "experts_implementation": "grouped_mm",
+  "int_ids": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   553,
+   779,
+   736,
+   907,
+   929,
+   856,
+   926,
+   1002,
+   864,
+   511,
+   397
+  ],
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.73,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "vocab": 129280
+ },
+ "mc_items_done": 100,
+ "mem_peak_gb": 177.37,
+ "plan": {
+  "mc_skipped_idx": [
+   1,
+   6,
+   7,
+   8,
+   10,
+   16,
+   18,
+   21,
+   25,
+   26,
+   35,
+   36,
+   39,
+   41,
+   42,
+   43,
+   46,
+   47,
+   49,
+   55,
+   58,
+   60,
+   62,
+   68,
+   79,
+   87,
+   92,
+   94,
+   95,
+   96,
+   101,
+   103,
+   109,
+   111,
+   115,
+   116,
+   117,
+   118,
+   120,
+   122,
+   125,
+   131,
+   137,
+   140,
+   143,
+   144
+  ],
+  "n_chain": 200,
+  "n_mc": 100,
+  "n_self": 20,
+  "readers": [
+   "logit_lens",
+   "jlens",
+   "jpp"
+  ]
+ },
+ "projection_s": {
+  "initial": 3732,
+  "item_median_s": 18.02,
+  "updated": 4120
+ },
+ "rc": 0,
+ "self_patch_changed": 0,
+ "self_patch_n": 20,
+ "smoke": {
+  "checks": {
+   "lens agreement": true,
+   "self-patch unchanged": true
+  },
+  "rate": 1.0,
+  "read_agree": 1167,
+  "read_n": 1167,
+  "self_patched": [
+   25,
+   1
+  ],
+  "unpatched": [
+   25,
+   1
+  ]
+ },
+ "smoke_fixes": {
+  "attempts": 1,
+  "fixes_applied": []
+ },
+ "timing_medians": {
+  "chain_answers|base": {
+   "gen_s": 0.713,
+   "n": 199,
+   "read_s": 0.06,
+   "write_s": 0.024
+  },
+  "chain_answers|dots500": {
+   "gen_s": 2.395,
+   "n": 199,
+   "read_s": 0.27,
+   "write_s": 0.151
+  },
+  "chain_answers|pre500": {
+   "gen_s": 2.395,
+   "n": 199,
+   "read_s": 0.325,
+   "write_s": 0.174
+  },
+  "mc_answers|dots100": {
+   "gen_s": 0.925,
+   "n": 99,
+   "read_s": 0.066,
+   "write_s": 0.036
+  },
+  "mc_answers|mc10_base": {
+   "gen_s": 0.742,
+   "n": 99,
+   "read_s": 0.055,
+   "write_s": 0.016
+  },
+  "mc_answers|mc10_dots100": {
+   "gen_s": 1.006,
+   "n": 99,
+   "read_s": 0.066,
+   "write_s": 0.036
+  },
+  "mc_answers|pre100": {
+   "gen_s": 0.924,
+   "n": 99,
+   "read_s": 0.122,
+   "write_s": 0.055
+  },
+  "patch_row_s": 9.661
+ },
+ "utc_end": "2026-10-12T02:38:44Z",
+ "utc_start": "2026-10-12T01:24:54Z"
+}

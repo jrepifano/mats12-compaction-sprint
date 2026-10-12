@@ -1,0 +1,73 @@
+[
+  {
+    "utc_start": "2026-10-11T22:47:17Z",
+    "utc_end": "2026-10-11T22:47:22Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_07__+0.9__ov__plain.csv",
+      "sha256": "d8286d55bf08e52560ed25e2bcf7e50a074617ce9e9c6409452ea93ebc05f184",
+      "n_rows": 205,
+      "keys_sha256": "2327c8f3e1193a3484dbdce470418e83cbc337c843099acbf21e811902c09a18"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 65331,
+        "completion_tokens": 822,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.006944100000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.006944100000000001,
+        "none_raw_samples": [
+          {
+            "row": 78,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 204,
+        "n_none": 1,
+        "n_failed": 0,
+        "projected_usd": 0.0104529,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.006944
+  },
+  {
+    "utc_start": "2026-10-11T22:47:22Z",
+    "utc_end": "2026-10-11T22:47:29Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_07__+0.9__ov__plain.csv",
+      "sha256": "d8286d55bf08e52560ed25e2bcf7e50a074617ce9e9c6409452ea93ebc05f184",
+      "n_rows": 205,
+      "keys_sha256": "2327c8f3e1193a3484dbdce470418e83cbc337c843099acbf21e811902c09a18"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 1,
+        "prompt_tokens": 66561,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070661000000000005,
+        "usd_unmetered": 8.61e-05,
+        "usd": 0.007152200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011300200000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007152
+  }
+]

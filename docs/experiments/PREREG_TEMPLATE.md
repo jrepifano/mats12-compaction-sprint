@@ -1,6 +1,6 @@
 # Preregistration template
 
-One file per experiment, at `docs/experiments/<ID>/prereg.md`, mirrored to a Claude Doc for review and sharing (see CLAUDE.md).
+One file per experiment, at `docs/experiments/<ID>/prereg.md`, mirrored to a Claude Doc for review and sharing (see AGENTS.md).
 
 **Write for a colleague who hasn't seen the repo.**
 - Use plain prose, with tables where they help.
