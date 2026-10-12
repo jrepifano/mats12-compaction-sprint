@@ -28,7 +28,8 @@ integrating session.
   batched item must give the same tokens as the item alone.
 - Greedy everywhere. Answer decoding in latent and direct modes masks the last vocab entry, as
   upstream (`logits[:, :vocab_size-1]`); verbal decoding does not (it must emit `<|eocot|>`).
-  Stop at `eos` (Llama's `<|eot_id|>`), per item.
+  Stop per item at `codi_core.stop_ids(tok)`: eos (`<|eot_id|>`) plus `<|end_of_text|>` and
+  `<|eom_id|>` (upstream stops at eos only; a row emitting another end token would run on).
 - Max new tokens: latent/direct 16, verbal 256, Patchscope 8.
 - **Latent indexing (upstream's):** latent vector j ∈ 0..6. j = 0 is `prj(h_final)` at the
   `<|bocot|>` position; j ≥ 1 is `prj(h_final)` at the position whose input is latent vector j − 1.

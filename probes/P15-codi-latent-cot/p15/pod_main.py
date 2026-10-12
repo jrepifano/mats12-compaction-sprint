@@ -26,7 +26,7 @@ import numpy as np
 from p15 import tasks
 
 PROBE = Path(__file__).resolve().parents[1]
-RESULTS = PROBE / "results"
+RESULTS = Path(os.environ.get("P15_RESULTS", PROBE / "results"))  # override: dry runs only
 DATA = Path(os.environ.get("P15_DATA", "/ws/p15_data"))
 UPSTREAM = os.environ.get("P15_UPSTREAM", "/ws/codi_upstream")
 DEVICE = os.environ.get("P15_DEVICE", "cuda")
@@ -193,7 +193,7 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
     from p15 import codi_core as cc
 
     rng = np.random.default_rng(SEED)
-    pick = lambda xs: [xs[i] for i in sorted(rng.choice(len(xs), N_SMOKE, replace=False))]  # noqa: E731
+    pick = lambda xs: [xs[i] for i in sorted(rng.choice(len(xs), N_SMOKE, replace=False))]
     sT, sG, sC = pick(T), pick(G), pick(C)
     s: dict = {}
     lora_prj_missing = [k for k in report["missing"] if "lora_" in k or k.startswith("prj")]
@@ -271,6 +271,8 @@ def sampled_smoke(model, tok, T: list[dict], G: list[dict]) -> dict:
     """F2 on the smoke set: temperature-1 sampling (Cywiński's setting), 3 seeds, batch size 1."""
     import torch
 
+    from p15 import codi_core as cc
+
     rng = np.random.default_rng(SEED)
     out = {}
     for name, xs in (("T", T), ("G", G)):
@@ -287,9 +289,8 @@ def sampled_smoke(model, tok, T: list[dict], G: list[dict]) -> dict:
                                    return_latent_vectors=False, remove_eos=False,
                                    sot_token=tok.bocot_id, eot_token=tok.eocot_id)
                 seq = [t for t in g["sequences"][0].tolist() if t != tok.pad_token_id]
-                if tok.eos_token_id in seq:
-                    seq = seq[: seq.index(tok.eos_token_id)]
-                hits += tasks.parse_answer(tok.decode(seq)) == it["gold"]
+                seq = cc._cut_at_eos([seq], cc.stop_ids(tok))[0]
+                hits += tasks.parse_answer(cc.decode(tok, seq)) == it["gold"]
             accs.append(hits / len(sel))
         out[name] = {"latent_acc_by_seed": accs, "mean": float(np.mean(accs))}
     _json_dump(out, RESULTS / "smoke" / "f2_sampled.json")
@@ -379,7 +380,7 @@ def load_items() -> tuple[list[dict], list[dict], dict]:
     C = tasks.make_C_splits(seed=SEED)
     if LIMIT:
         rng = np.random.default_rng(SEED + 99)
-        sub_ = lambda xs: [xs[i] for i in sorted(rng.choice(len(xs), min(LIMIT, len(xs)), replace=False))]  # noqa: E501, E731
+        sub_ = lambda xs: [xs[i] for i in sorted(rng.choice(len(xs), min(LIMIT, len(xs)), replace=False))]
         T, G = sub_(T), sub_(G)
         C = {k: sub_(v) for k, v in C.items()}
     return T, G, C
