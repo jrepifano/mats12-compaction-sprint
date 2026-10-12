@@ -19,48 +19,77 @@ from x3 import contracts as C
 
 PASS_TIMEOUT_S = 120
 TIMEOUT_EXIT = 124
-KILLED_EXIT = 137                 # 128 + SIGKILL: the in-container timeout had to escalate
-IN_CONTAINER_GRACE_S = 10         # the container stops itself this long before the client gives up
+# The container's own limit fires this long AFTER the client's, so scoring is unchanged (a run
+# still gets 120 s including start-up, and a timeout is still exit 124 from the client). It only
+# matters when the client cannot clean up: the host process was killed outright.
+IN_CONTAINER_MARGIN_S = 30
+REMOVE_TIMEOUT_S = 60
 SANDBOX_LABEL = "emx.sandbox=x3pass"
 TEST_FILE = "test_solution.py"
 SOLUTION_FILE = "solution.py"
 
 
 def _container_name(argv: list[str]) -> str | None:
-    return argv[argv.index("--name") + 1] if "--name" in argv[:-1] else None
+    """The `--name` of a `docker run` argv (the first occurrence: options precede the image)."""
+    if argv[:2] != ["docker", "run"] or "--name" not in argv[:-1]:
+        return None
+    return argv[argv.index("--name") + 1]
+
+
+def remove_container(name: str) -> str | None:
+    """Force-remove a container and confirm it is gone. Returns None on success, else a reason
+    that names the container. Never raises."""
+    try:
+        subprocess.run(["docker", "rm", "-f", name], capture_output=True, text=True,
+                       timeout=REMOVE_TIMEOUT_S, check=False)
+        left = subprocess.run(["docker", "ps", "-aq", "--filter", f"name=^{name}$"],
+                              capture_output=True, text=True, timeout=REMOVE_TIMEOUT_S,
+                              check=False)
+    except (OSError, subprocess.SubprocessError) as e:
+        return f"cleanup of container {name} failed: {type(e).__name__}: {e}"
+    if left.returncode != 0:
+        return f"cleanup of container {name} unconfirmed: docker ps exit {left.returncode}"
+    if left.stdout.strip():
+        return f"cleanup of container {name} failed: still present"
+    return None
 
 
 def docker_runner(argv: list[str], timeout_s: int) -> C.RunOutput:
     """Run argv; a timeout returns exit 124, a missing binary exit 127.
 
-    Killing the `docker run` client does not stop its container, so on a timeout a named
-    container is force-removed too (2026-10-12: 16 orphaned pass-check containers spun at 100%
-    CPU for up to 5 h after their clients timed out)."""
+    Killing the `docker run` client does not stop its container, so on a timeout or an
+    interruption a named container is force-removed too (2026-10-12: 16 orphaned pass-check
+    containers spun at 100% CPU for up to 5 h after their clients timed out). A failed removal
+    is reported in stderr, with the container's name, and never raises."""
+    def _s(x) -> str:
+        return x.decode(errors="replace") if isinstance(x, bytes) else (x or "")
+
+    name = _container_name(argv)
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout_s, check=False)
     except subprocess.TimeoutExpired as e:
-        def _s(x) -> str:
-            return x.decode(errors="replace") if isinstance(x, bytes) else (x or "")
-        name = _container_name(argv)
-        if name:
-            subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60,
-                           check=False)
-        return C.RunOutput(TIMEOUT_EXIT, _s(e.stdout), _s(e.stderr) + "\n[timeout]")
+        err = _s(e.stderr) + "\n[timeout]"
+        if name and (why := remove_container(name)):
+            err += f"\n[{why}]"
+        return C.RunOutput(TIMEOUT_EXIT, _s(e.stdout), err)
     except OSError as e:
         return C.RunOutput(127, "", f"{type(e).__name__}: {e}")
+    except BaseException:                  # KeyboardInterrupt and the like: clean up, re-raise
+        if name:
+            remove_container(name)
+        raise
     return C.RunOutput(p.returncode, p.stdout, p.stderr)
 
 
 def pytest_argv(host_dir: str, image: str, name: str | None = None,
-                timeout_s: int = PASS_TIMEOUT_S) -> list[str]:
+                inner_timeout_s: int = PASS_TIMEOUT_S + IN_CONTAINER_MARGIN_S) -> list[str]:
     """The pass-check container. It is named (so a timed-out client can remove it), labelled
-    (so leftovers can be found: `docker ps --filter label=emx.sandbox`), and stops itself via
-    `timeout` before the client's own limit: TERM, then KILL 5 s later."""
-    inner = max(1, timeout_s - IN_CONTAINER_GRACE_S)
+    (so leftovers can be found: `docker ps --filter label=emx.sandbox`), and carries its own
+    limit (`timeout`: TERM, then KILL 5 s later) as a fallback for when the client dies."""
     named = ["--name", name] if name else []
     return ["docker", "run", "--rm", "--network", "none", "--user", C.AGENT_USER, *named,
             "--label", SANDBOX_LABEL, "-v", f"{host_dir}:{C.WORKDIR}", "-w", C.WORKDIR, image,
-            "timeout", "-k", "5", str(inner),
+            "timeout", "-k", "5", str(inner_timeout_s),
             "python", "-m", "pytest", "-q", "-p", "no:cacheprovider", TEST_FILE]
 
 
@@ -92,7 +121,7 @@ def _one_run(solution_py: str, task: C.TaskSpec, image: str,
         out = runner(pytest_argv(str(d), image, name), PASS_TIMEOUT_S)
     finally:
         shutil.rmtree(d, ignore_errors=True)
-    if out.exit_code in (TIMEOUT_EXIT, KILLED_EXIT):
+    if out.exit_code == TIMEOUT_EXIT:
         return None, f"timeout after {PASS_TIMEOUT_S}s"
     if _docker_error(out):
         return None, f"docker exit {out.exit_code}: {out.stderr.strip()[-300:]}"
