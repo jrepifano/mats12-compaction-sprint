@@ -7,14 +7,13 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from p17 import common as C  # noqa: E402
-from p17 import data as D  # noqa: E402
-from p17 import penalty as PEN  # noqa: E402
-from p17 import schema as S  # noqa: E402
-from p17 import train as T  # noqa: E402
-
-from tiny import model as tiny_model  # noqa: E402
-from tiny import tokenizer  # noqa: E402
+from p17 import common as C
+from p17 import data as D
+from p17 import penalty as PEN
+from p17 import schema as S
+from p17 import train as T
+from tiny import model as tiny_model
+from tiny import tokenizer
 
 
 @pytest.fixture(scope="module")
@@ -153,3 +152,29 @@ def test_train_arm_E_and_K(setup, tmp_path):
                             "cpu", log=lambda s: None)
     assert rec_k["steps"][0]["pen"] is None and rec_k["complete"]
     assert sorted(pm.peft_config) == ["E1", "K1"]
+
+
+def test_full_grad_path_matches_cached(setup):
+    m, rd, tr, _, prefix_ids = setup
+    pre = C.prefix_cache(m, prefix_ids, "cpu")
+    with torch.no_grad():
+        a = T.batch_forward(m, rd, pre, tr[:2], "cpu", True, keep_graph=False)
+        b = T.batch_forward(m, rd, None, tr[:2], "cpu", True, keep_graph=False)
+    assert float((a["ce"] - b["ce"]).abs().max()) < 1e-4
+    assert float((a["lp"] - b["lp"]).abs().max()) < 1e-3
+
+
+def test_drop_last_adapter_unwraps(setup, tmp_path):
+    m, rd, tr, va, prefix_ids = setup
+    cfg = T.TrainConfig(arm="K", seed=2, mb=2, max_steps=1, val_every=1, full_grad=True)
+    pm, rec = T.train_arm(m, None, rd, "Kx", cfg, tr, va, prefix_ids, None, tmp_path, "cpu",
+                          log=lambda s: None)
+    assert rec["complete"] and rec["steps"][0]["grad_norm"] > 0
+    for name in list(pm.peft_config):
+        pm = C.drop_adapter(pm, name)
+    from peft import PeftModel
+
+    assert not isinstance(pm, PeftModel)
+    assert not any(hasattr(mod, "lora_A") for mod in pm.modules())
+    with torch.no_grad():  # the unwrapped model still runs
+        C.prefix_cache(pm, prefix_ids[:20], "cpu")

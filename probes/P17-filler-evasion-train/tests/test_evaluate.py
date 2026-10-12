@@ -10,16 +10,14 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from p17 import common as C  # noqa: E402
-from p17 import data as D  # noqa: E402
-from p17 import evaluate as EV  # noqa: E402
-from p17 import schema as S  # noqa: E402
-from p17 import train as T  # noqa: E402
-
-from tiny import model as tiny_model  # noqa: E402
-from tiny import tokenizer  # noqa: E402
-
-from p06 import stage2 as S2  # noqa: E402
+from p06 import stage2 as S2
+from p17 import common as C
+from p17 import data as D
+from p17 import evaluate as EV
+from p17 import schema as S
+from p17 import train as T
+from tiny import model as tiny_model
+from tiny import tokenizer
 
 
 @pytest.fixture(scope="module")

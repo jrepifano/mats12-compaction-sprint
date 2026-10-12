@@ -29,11 +29,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
+from p06 import brauer as B
+from p06 import stage2 as S2
 
 from . import schema as S
 from .data import ask_example
-from p06 import brauer as B  # noqa: E402  (p17/__init__ puts P06 on sys.path)
-from p06 import stage2 as S2  # noqa: E402
 
 TURN_MARK = "<|turn>user"
 LORA_TARGETS = ("q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj")
@@ -73,7 +73,7 @@ def _split_at_turn(tok: Any, text: str, ids: list[int], offsets: list[tuple[int,
     turn = text.rfind(TURN_MARK)
     if turn < 0:
         raise ValueError("no target user turn")
-    i = next(i for i, (s, e) in enumerate(offsets) if e > s and s >= turn)
+    i = next(i for i, (s, e) in enumerate(offsets) if e > s >= turn)
     if offsets[i][0] != turn:
         raise ValueError(f"the target turn does not start a token: {offsets[i]} vs {turn}")
     pre = tok(text[:turn], add_special_tokens=False)["input_ids"]
@@ -206,6 +206,20 @@ def add_adapter(model: Any, name: str, seed: int) -> Any:
     model.set_adapter(name)
     for n, p in model.named_parameters():
         p.requires_grad_(("lora_" in n) and f".{name}." in n)
+    return model
+
+
+def drop_adapter(model: Any, name: str) -> Any:
+    """Deletes adapter `name`; when it was the last one, unwraps to the base model (peft keeps
+    `active_adapter` pointing at a deleted adapter, and its forward then raises KeyError)."""
+    from peft import PeftModel
+
+    if not isinstance(model, PeftModel) or name not in model.peft_config:
+        return model
+    if len(model.peft_config) == 1:
+        return model.unload()
+    model.delete_adapter(name)
+    model.set_adapter(next(iter(model.peft_config)))
     return model
 
 

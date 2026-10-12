@@ -1,0 +1,32 @@
+# P17 filler-evasion-train (plan.md). One pod through the generic probe runner. Cap $60 (GPU $55,
+# API $5: literature captures only), raised from $50 at the portfolio-review revision (3 seeds per
+# arm). Follow-ups may raise it to $150 without asking (record the reason in log.md).
+id = "P17"
+hard_cap_usd = 60
+gpu_limit_usd = 55
+api_limit_usd = 5
+reserve_usd = 0
+
+[pod]
+# Projection (plan "Cap"; unmeasured until the pod benchmark): setup ~20 min, smoke and benchmark
+# ~15, training 6 arms ~70, eval 7 models ~70, pull ~15: ~3.2 h. `p17.pod` stops starting jobs
+# that its measured times say can't finish 40 min before gpu_hours runs out (seed 3's K first).
+gpu_hours = 4
+# "i1a": /ws/venv-i1a (transformers 5.17.0, torch 2.13.0 cu130, peft) as P06 F3 loaded this pin.
+setup = "i1a"
+# Gemma 4 31B 62 GB + both lenses 6.8 GB + the venv; results ~5 GB (readouts, pools, adapters).
+disk_gb = 250
+# B200 first: 6 trainings with the lens maps resident need headroom over 80 GB; H100 is the
+# fallback (lenses streamed from CPU, smaller microbatch; the deadline rule drops seed 3).
+# Rates: P06 (B200, RunPod gpuTypes 2026-10-11) and P00/P98/P99 (H100 secure, 2026-10-11).
+gpus = [["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99],
+        ["NVIDIA H100 80GB HBM3", "SECURE", 3.99]]
+# The runner sends src/, scripts/ and this probe's directory only, so:
+# - third_party/workspace-bench: the pod-i1a group installs it from this path (as P06, P12);
+# - Brauer's depth-1 eval set (gitignored, sha256 c80f0f5e...) and P17's training items
+#   (gitignored, sha256 049d6522...);
+# - P06's code package, which p17 imports (P12's first relaunch failed without it).
+push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json",
+        "data/P17/train_items.json", "probes/P06-filler-token-computation/p06"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

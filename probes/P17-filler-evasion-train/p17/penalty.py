@@ -50,7 +50,7 @@ def readout_lp(hs: list[Any], rd: Any, layers: tuple[int, ...] = S.PEN_LAYERS,
         b, p, d = h.shape
         jm = lens.maps[layer].to(h.device) if lens is not None and layer in lens.maps else None
 
-        def fn(x, jm=jm):
+        def fn(x, jm=jm, b=b, p=p, d=d):
             return digit_lp(x.reshape(b * p, d), rd, jm).reshape(b, p, 10)
 
         if checkpoint and torch.is_grad_enabled() and h.requires_grad:

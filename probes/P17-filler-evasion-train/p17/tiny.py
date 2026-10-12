@@ -5,9 +5,7 @@ the CPU. The sliding window (64) is far shorter than the prompt prefix (~1,030 t
 
 from __future__ import annotations
 
-import pytest
-
-from p17 import schema as S
+from . import schema as S
 
 
 def tokenizer():
@@ -17,6 +15,8 @@ def tokenizer():
         return AutoTokenizer.from_pretrained(S.MODEL_ID, revision=S.MODEL_REV,
                                              local_files_only=True)
     except Exception as e:  # noqa: BLE001
+        import pytest
+
         pytest.skip(f"Gemma 4 tokenizer unavailable: {e!r}")
 
 

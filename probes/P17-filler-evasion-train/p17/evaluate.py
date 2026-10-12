@@ -26,12 +26,12 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from p06 import stage2 as S2
 
 from . import common as C
 from . import penalty as PEN
 from . import schema as S
 from .train import utc, write_json
-from p06 import stage2 as S2  # noqa: E402
 
 
 @contextmanager
@@ -40,7 +40,10 @@ def active(model: Any, name: str):
     from peft import PeftModel
 
     if name == "B":
-        with (model.disable_adapter() if isinstance(model, PeftModel) else nullcontext()):
+        # peft keeps `active_adapter` pointing at a deleted adapter, and disable_adapter() then
+        # raises KeyError; with no live adapter the wrapped model already runs as the base
+        live = isinstance(model, PeftModel) and model.active_adapter in model.peft_config
+        with (model.disable_adapter() if live else nullcontext()):
             yield
     else:
         model.set_adapter(name)
@@ -211,7 +214,7 @@ def transplant_pass(model: Any, tok: Any, rd: C.Readers, name: str, prep: dict,
             raise RuntimeError(f"K/V injection fired {sorted(set(fired))} times, not once")
         return tok.decode(g["gen"][0], skip_special_tokens=True)
 
-    pred = lambda s: S2.grade_int(s, 0)["predicted"]  # noqa: E731
+    pred = lambda s: S2.grade_int(s, 0)["predicted"]
     rows, self_changed = [], 0
     for i, ex in enumerate(exs[:n]):
         tgt = prep["dots100"]["splits"][i]
@@ -237,7 +240,6 @@ def transplant_pass(model: Any, tok: Any, rd: C.Readers, name: str, prep: dict,
     with (out / "transplant.jsonl").open("w") as f:
         for r in rows:
             f.write(json.dumps(r) + "\n")
-    del prefix
     return {"n": len(rows), "self_changed": self_changed}
 
 

@@ -58,6 +58,7 @@ class TrainConfig:
     tau: float = S.TAU
     margin: float = S.MARGIN
     max_steps: int | None = None  # tests and the benchmark
+    full_grad: bool = False  # follow-up: full sequences, gradient through the shared prefix
 
 
 @dataclass
@@ -85,16 +86,17 @@ def batch_forward(model: Any, rd: C.Readers, prefix: Any, items: list[Item], dev
     import torch
 
     blocks, norm = C.text_model(model)
-    seqs = [it.split.cont + it.answer for it in items]
-    ids, lens_ = C.pad_right(seqs, pad=0)
+    full = prefix is None  # the follow-up's full-sequence path: no cache, gradient everywhere
+    seqs = [(it.split.ids if full else it.split.cont) + it.answer for it in items]
+    ids, _ = C.pad_right(seqs, pad=0)
     ids = ids.to(device)
-    n_prompt = [len(it.split.cont) for it in items]
+    n_prompt = [len(it.split.ids if full else it.split.cont) for it in items]
     # readout window: the last 115 prompt tokens of each row (continuation-relative)
     win = torch.tensor([[n - 115 + j for j in PEN.PEN_IDX] for n in n_prompt], device=device)
-    cache = C.cache_for(prefix, len(items))
+    cache = None if full else C.cache_for(prefix, len(items))
     layers = S.PEN_LAYERS if want_pen else ()
     with C.capture_norm(norm) as zbox, C.capture_blocks(blocks, win, keep_graph, layers) as hs:
-        model(input_ids=ids, past_key_values=cache, use_cache=True, logits_to_keep=1)
+        model(input_ids=ids, past_key_values=cache, use_cache=not full, logits_to_keep=1)
     z = zbox[0]
     ces = []
     for b, it in enumerate(items):
@@ -218,7 +220,7 @@ def train_arm(model: Any, tok: Any, rd: C.Readers, name: str, cfg: TrainConfig,
             g["lr"] = lr_at(step, cfg)
         idx = order[step * S.EFFECTIVE_BATCH:(step + 1) * S.EFFECTIVE_BATCH]
         t = time.time()
-        prefix = C.prefix_cache(model, prefix_ids, device)
+        prefix = None if cfg.full_grad else C.prefix_cache(model, prefix_ids, device)
         tim["prefix_s"] += time.time() - t
         t = time.time()
         ce_sum = pen_sum = 0.0
