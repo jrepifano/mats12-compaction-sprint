@@ -722,6 +722,21 @@ def summarize(
             "names_bridge_not_flipped": rate(m[arm]["bridge"], [i for i, v in fl.items() if not v]),
         }
     s["flip_conditional"] = fc
+    # exploratory (log.md 04:10): within a direct-premise arm Y is in the text for every item,
+    # so a names-Y gap between items whose answer flipped and items whose answer stayed is not
+    # explained by the text alone
+    dfc: dict = {}
+    for p in ("author", "mention"):
+        c = classes.get(("direct", p, None, None))
+        if c is None or p not in m:
+            dfc[p] = "absent"
+            continue
+        fl = {i: v == "flip" for i, v in c.items()}
+        dfc[p] = {
+            "names_y_flipped_minus_not": conditional(m[p]["y"], fl, n_boot),
+            "names_bridge_flipped_minus_not": conditional(m[p]["bridge"], fl, n_boot),
+        }
+    s["direct_flip_conditional"] = dfc
 
     s["logit_lens"] = logit_lens_section(results / "logit_lens", items)
     s["dose"] = dose_section(rows, classes, forms, lp, n_boot)

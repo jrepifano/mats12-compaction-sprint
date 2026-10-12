@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import json
 import math
+import shutil
 from dataclasses import asdict
 from pathlib import Path
 
 import pytest
+from p03.core import read_jsonl
 from p11 import items as I
 from p11 import raw_samples as R
 from p11 import score as S
@@ -511,6 +513,7 @@ def test_summarize_end_to_end(tmp_path, items):
     assert s["manipulation"]["direct"]["author"]["flip"]["k"] == N
     assert s["shuffled_smoke"]["pass"] is True
     assert s["prompt_only"] == "absent"
+    assert s["direct_flip_conditional"] == {"author": "absent", "mention": "absent"}
     d = s["dose"]
     assert d["per_alpha"]["1.0"]["n_cells"] == N * 18  # draw s0 only
     assert d["per_alpha"]["0.5"]["flip"]["k"] == 1 and d["per_alpha"]["0.5"]["names_y"]["k"] == 2
@@ -525,6 +528,35 @@ def test_summarize_end_to_end(tmp_path, items):
     # report writes strict JSON
     S.report(res, items_path=write_items(tmp_path, items), p03_readouts=ro)
     json.loads((res / "summary.json").read_text())
+
+
+def test_direct_flip_conditional(tmp_path, items):
+    res = build_results(tmp_path, items)
+    # the plain draw stands in for a direct-mention draw; mention answers flip on items 0-1
+    shutil.copy(res / "olens" / "plain_s0.jsonl", res / "olens" / "mention_s0.jsonl")
+    ans = read_jsonl(res / "answers.jsonl")
+    for r in ans:
+        if (
+            r["kind"] == "direct"
+            and r["premise"] == "mention"
+            and r["id"]
+            in {
+                items[0].id,
+                items[1].id,
+            }
+        ):
+            r["answer"] = "French"
+    write_jsonl(res / "answers.jsonl", ans)
+    s = S.summarize(res, write_items(tmp_path, items), tmp_path / "ro", n_boot=200)
+    d = s["direct_flip_conditional"]
+    assert d["author"] == "absent"
+    b = d["mention"]["names_bridge_flipped_minus_not"]
+    assert b["flipped"]["n"] == 2 and b["not_flipped"]["n"] == N - 2
+    rows = read_jsonl(res / "olens" / "mention_s0.jsonl")
+    hits = S.item_any(rows, S.item_forms(items), "bridge")
+    k_f = sum(hits[items[j].id] for j in (0, 1))
+    assert b["flipped"]["k"] == k_f
+    assert b["diff"] == pytest.approx(k_f / 2 - (sum(hits.values()) - k_f) / (N - 2))
 
 
 def test_p03_rescore_shows_alias_fix(tmp_path, monkeypatch):
