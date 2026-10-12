@@ -35,7 +35,7 @@ from p08 import api
 from p08 import contracts as C
 
 MAX_TOKENS = 8000
-ATTEMPTS = 1                 # one luna deletion; then the code pass (log.md, 2026-10-12 02:15)
+ATTEMPTS = 1                 # one luna deletion; then the code pass (log.md, "twins" entry)
 FEEDBACK_BOUND_BYTES = 2500  # the retry's feedback paragraph, bounded (hits/tokens truncated)
 _FB_ITEMS, _FB_CHARS = 10, 80
 
@@ -116,7 +116,7 @@ def make_full(summary: str, ctx: dict, header: str) -> tuple[str, list[str]]:
 
 # --- the gate (code) ----------------------------------------------------------------------------
 _TOKEN = re.compile(r"\w+|[^\w\s]")   # words and single punctuation marks: deleting a
-# parenthetical joins "f" and "." into "f.", which is still a deletion (log.md 02:15)
+# parenthetical joins "f" and "." into "f.", which is still a deletion (log.md, "twins" entry)
 _NONWS = re.compile(r"\s+")
 
 
@@ -263,7 +263,7 @@ def strip_wrapping(text: str) -> str:
 
 
 # --- the code pass ------------------------------------------------------------------------------
-# Added 2026-10-12 (log.md 02:15), after luna's deletions left regex hits in 40 of 84 twins:
+# Added 2026-10-12 (log.md, "twins" entry), after luna's deletions left regex hits in 40 of 84 twins:
 # GLM's pi-mono summaries repeat both facts in the goal, the decisions and the next steps. The
 # code pass deletes, from luna's output (or from Full when luna added text), every parenthetical
 # and then every sentence that still holds a hit, and a line when nothing of it is left. It only
@@ -307,7 +307,7 @@ def _call_record(fact: str, attempt: int, r: api.Reply) -> dict:
             "error": r.error}
 
 
-# Luna is off (log.md, 2026-10-12 02:30): its deletions also removed unrelated content (in one
+# Luna is off (log.md, "twins" entry): its deletions also removed unrelated content (in one
 # -C twin, the problem's input bounds under "Constraints & Preferences"), which breaks the
 # minimal-edit twin; the code pass alone is deterministic and deletes only what states the fact.
 USE_LUNA = False
