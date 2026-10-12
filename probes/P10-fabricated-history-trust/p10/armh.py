@@ -113,7 +113,13 @@ def episode_path(model_slug: str, source: str, cond: str, seed: int, ctx_id: str
     return EPISODES / model_slug / source / cond / f"s{seed}" / f"{ctx_id.replace('|', '_')}.json"
 
 
-def specs_for(agent: str, source: str, seed: int, ctx_filter: str) -> list:
+def label(source: str, wrapper: str | None) -> str:
+    """The source as recorded and filed: `semi@pi_mono` when a wrapper override is set."""
+    return f"{source}@{wrapper}" if wrapper else source
+
+
+def specs_for(agent: str, source: str, seed: int, ctx_filter: str,
+              wrapper: str | None = None) -> list:
     from p07 import agent as A
     from p07 import cells
 
@@ -125,18 +131,19 @@ def specs_for(agent: str, source: str, seed: int, ctx_filter: str) -> list:
     elif ctx_filter != "all":
         want = set(ctx_filter.split(","))
         fabs = [f for f in fabs if f["ctx_id"] in want]
+    src = label(source, wrapper)
     out = []
     for f in fabs:
         ctx = ctxs[f["ctx_id"]]
         removed, block = K.split_pair(f["text"])
         for cond, text in (("intact", f["text"]), ("removed", removed)):
-            if episode_path(model.slug, source, cond, seed, ctx["ctx_id"]).exists():
+            if episode_path(model.slug, src, cond, seed, ctx["ctx_id"]).exists():
                 continue
-            r = cells.build(ctx, text, "control", WRAPPER_OF[f["harness"]])
+            r = cells.build(ctx, text, "control", wrapper or WRAPPER_OF[f["harness"]])
             sp = A.spec_from(ctx, r, model)
-            sp = replace(sp, episode_id=f"P10|{model.slug}|{source}|{cond}|s{seed}|"
+            sp = replace(sp, episode_id=f"P10|{model.slug}|{src}|{cond}|s{seed}|"
                                         f"{ctx['ctx_id']}")
-            out.append((sp, {"source": source, "cond": cond, "seed": seed,
+            out.append((sp, {"source": src, "cond": cond, "seed": seed,
                              "harness": f["harness"], "block": block}))
     return out
 
@@ -179,14 +186,14 @@ def write_artifacts(logs: list[Path], extra: dict[str, dict]) -> list[dict]:
 
 
 def run(agent: str, source: str, seeds: list[int], ctx_filter: str, max_samples: int,
-        dry_run: bool) -> int:
+        dry_run: bool, wrapper: str | None = None) -> int:
     from emx import spend
 
     model = model_of(agent)
     for seed in seeds:
-        pairs = specs_for(agent, source, seed, ctx_filter)
+        pairs = specs_for(agent, source, seed, ctx_filter, wrapper)
         proj = PROJECTION_USD[model.slug] * len(pairs)
-        print(json.dumps({"agent": model.slug, "source": source, "seed": seed,
+        print(json.dumps({"agent": model.slug, "source": label(source, wrapper), "seed": seed,
                           "episodes": len(pairs), "projected_usd": round(proj, 2)}), flush=True)
         if dry_run or not pairs:
             continue
@@ -200,10 +207,10 @@ def run(agent: str, source: str, seeds: list[int], ctx_filter: str, max_samples:
         usd = sum(a["billed_usd"] if a.get("billed_usd") is not None
                   else float(a.get("spent_at_ceiling") or 0) for a in arts)
         spend.record("judge", f"openrouter:{model.model_id}", len(arts), round(usd, 6),
-                     note=f"P10:armh {model.slug}/{source}/s{seed}: {len(arts)} episodes",
+                     note=f"P10:armh {model.slug}/{label(source, wrapper)}/s{seed}: {len(arts)} episodes",
                      exp=K.EXP)
         errs = sum(1 for a in arts if a.get("error") or a.get("end_reason") == "api_error")
-        print(f"P10_ARMH model={model.slug} source={source} seed={seed} n={len(arts)} "
+        print(f"P10_ARMH model={model.slug} source={label(source, wrapper)} seed={seed} n={len(arts)} "
               f"usd={usd:.4f} errors={errs} wall={time.time() - t0:.0f}s", flush=True)
     return 0
 
@@ -224,6 +231,8 @@ def main(argv=None) -> int:
     r.add_argument("--seeds", default="0-4")
     r.add_argument("--ctx", default="all")
     r.add_argument("--max-samples", type=int, default=16)
+    r.add_argument("--wrapper", default=None, choices=["codex", "pi_mono", "claude_code"],
+                   help="override the resume wrapper (follow-up F2)")
     r.add_argument("--dry-run", action="store_true")
     sub.add_parser("semi")
     a = ap.parse_args(argv)
@@ -235,7 +244,7 @@ def main(argv=None) -> int:
         from p07 import api
 
         api.load_key()
-    return run(a.agent, a.source, _seeds(a.seeds), a.ctx, a.max_samples, a.dry_run)
+    return run(a.agent, a.source, _seeds(a.seeds), a.ctx, a.max_samples, a.dry_run, a.wrapper)
 
 
 if __name__ == "__main__":
