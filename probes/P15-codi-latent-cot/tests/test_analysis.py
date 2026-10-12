@@ -221,3 +221,27 @@ def test_samples_prints_both_groups(fake_run, capsys):
     first = text
     S.main(["--results", str(root), "--stage", "A", "--n", "3"])
     assert capsys.readouterr().out == first  # seeded
+
+
+@pytest.mark.parametrize("a,b,check,label,by", [
+    ("O2", "O1", False, "O2", "A"),      # B fails its error check: A decides
+    ("O3", None, False, "O3", "A"),      # B not run
+    ("O1", "O1", True, "O1", "B"),       # agreement: automatic continue
+    ("O5", "O1", True, "O1", "B"),       # A inconclusive: B decides
+    ("O5", "O2", True, "O2", "B"),
+    ("O2", "O1", True, None, "Jacob"),   # B positive, A equivalent: no automatic call
+    ("O3", "O1", True, None, "Jacob"),
+    ("O1", "O2", True, None, "Jacob"),   # A positive, B not
+    ("O2", "O5", True, None, "Jacob"),
+])
+def test_combined_decision(a, b, check, label, by):
+    d = A.combined_decision(a, b, check)
+    assert d["label"] == label and d["decided_by"] == by and d["automatic"] == (by != "Jacob")
+
+
+def test_decide_cli(tmp_path, capsys):
+    pa, pb = tmp_path / "a.json", tmp_path / "b.json"
+    pa.write_text(json.dumps({"outcome": {"label": "O2"}}))
+    pb.write_text(json.dumps({"outcome": {"label": "O1"}, "stage_b_error_check": {"pass": True}}))
+    assert A.main(["decide", str(pa), str(pb)]) == 0
+    assert json.loads(capsys.readouterr().out)["decided_by"] == "Jacob"

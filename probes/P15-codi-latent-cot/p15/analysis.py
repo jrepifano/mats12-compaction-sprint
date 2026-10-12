@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import sys
 import time
 from collections import Counter
 from collections.abc import Callable, Sequence
@@ -918,7 +919,32 @@ def markdown(out: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def combined_decision(a_label: str, b_label: str | None, b_check_pass: bool) -> dict:
+    """The plan's governing rule across stages (Measure, "Which stage decides", Jacob 2026-10-12):
+    Stage B's check fails or B wasn't run -> A decides; B passes -> B decides if A agrees or A is
+    O5; any other disagreement -> no automatic call (Jacob decides)."""
+    if b_label is None or not b_check_pass:
+        return {"label": a_label, "decided_by": "A", "automatic": True}
+    if a_label in (b_label, "O5"):
+        return {"label": b_label, "decided_by": "B", "automatic": True}
+    return {"label": None, "decided_by": "Jacob", "automatic": False,
+            "reason": f"stages disagree: A {a_label}, B {b_label}"}
+
+
+def decide_main(argv: list[str] | None = None) -> int:
+    """`python -m p15.analysis decide <analysis_A.json> [<analysis_B.json>]`: print the decision."""
+    a = json.loads(Path(argv[0]).read_text())
+    b = json.loads(Path(argv[1]).read_text()) if len(argv) > 1 else None
+    d = combined_decision(a["outcome"]["label"], b["outcome"]["label"] if b else None,
+                          bool(b and b["stage_b_error_check"]["pass"]))
+    print(json.dumps(d))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv and argv[0] == "decide":
+        return decide_main(argv[1:])
     ap = argparse.ArgumentParser(prog="p15.analysis")
     ap.add_argument("--results", type=Path, required=True)
     ap.add_argument("--stage", choices=("A", "B"), required=True)
