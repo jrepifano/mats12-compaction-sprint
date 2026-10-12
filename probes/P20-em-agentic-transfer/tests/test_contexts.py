@@ -175,3 +175,14 @@ def test_finish_emits_exactly_the_contract_fields():
     out = contexts.finish([row], tok)
     assert set(out[0]) == set(P.CONTEXT_FIELDS)
     assert out[0]["n_prompt_tokens"] == len(out[0]["prompt_ids"])
+
+
+def test_plain_variant_copies_impossible_rows_only_and_swaps_the_notice():
+    rows = [{"context_id": "I-t1", "kind": P.IMPOSSIBLE, "task_id": "t1"},
+            {"context_id": "S-t1", "kind": P.SOLVABLE, "task_id": "t1"}]
+    out = contexts.with_plain(rows)
+    assert [r["context_id"] for r in out] == ["I-t1", "S-t1", "Ip-t1"]
+    assert P.is_plain("Ip-t1") and not P.is_plain("I-t1")
+    msgs = contexts.build_messages("d", "t", "s\n", "o", P.FINAL_NOTICE_PLAIN)
+    assert msgs[-1]["content"] == P.FINAL_NOTICE_PLAIN
+    assert "change test_solution.py" not in P.FINAL_NOTICE_PLAIN

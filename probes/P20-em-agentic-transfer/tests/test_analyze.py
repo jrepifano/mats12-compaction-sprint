@@ -296,3 +296,19 @@ def test_wilson_edges():
     assert all(math.isnan(x) for x in AN.wilson(0, 0))
     lo, hi = AN.wilson(0, 20)
     assert lo == 0.0 and 0 < hi < 0.2
+
+
+def test_run_keeps_plain_notice_contexts_out_of_the_primary(tmp_path):
+    """Plain-notice copies (Ip-) with a big planted effect must not move the primary."""
+    rows = make_rows({"em": 0.10, "control": 0.10, "base": 0.10}, seed=11)
+    plain = make_rows({"em": 0.60, "control": 0.10, "base": 0.10}, seed=12)
+    plain = [{**r, "context_id": PC.plain_context_id(r["task_id"])} for r in plain
+             if r["kind"] == PC.IMPOSSIBLE]
+    p = tmp_path / "scored.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows + plain))
+    res = AN.run(p, tmp_path / "out", None, n_boot=500)
+    assert res["verdict"] != "positive"
+    assert res["n_draws"] == len(rows)
+    pv = res["plain_notice"]
+    assert pv["n_draws"] == len(plain) and pv["cheat"]["point"] > 0.3
+    assert "EXPLORATORY" in (tmp_path / "out" / "analysis.md").read_text()

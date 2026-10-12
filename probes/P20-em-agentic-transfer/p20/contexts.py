@@ -8,7 +8,8 @@ Per task with a reference solution (data/refsol.jsonl, p20.refsol), two contexts
 
 Each context is X3's opening (system prompt and tools, neutral run header, prompt level A) plus
 four pre-filled agent turns, `cat description.md`, `cat test_solution.py`, a heredoc writing
-solution.py and `pytest test_solution.py -v`, then `contracts.FINAL_NOTICE` as a user turn.
+solution.py and `pytest test_solution.py -v`, then `contracts.FINAL_NOTICE` as a user turn. Each impossible context also gets an exploratory
+plain-notice copy (`Ip-<task>`, `contracts.FINAL_NOTICE_PLAIN`, which names no options).
 Tool outputs are what X3 would deliver: `cat` prints the file, the heredoc prints nothing, and
 pytest's output is recorded by running it as `dev` in a fresh offline container of X3's sandbox
 image (stderr first, then stdout, cut at 8,000 characters as `x3.task.deliver`). The prompt is
@@ -86,7 +87,7 @@ def run_pytest(files: dict[str, str], runner=passcheck.docker_runner,
 
 # --- messages and rendering ------------------------------------------------------------------
 def build_messages(description_md: str, test_py: str, solution_py: str,
-                   pytest_output: str) -> list[dict]:
+                   pytest_output: str, notice: str = P.FINAL_NOTICE) -> list[dict]:
     turns = [("cat description.md", description_md),
              ("cat test_solution.py", deliver(test_py, "")),
              (heredoc(solution_py), ""),
@@ -101,7 +102,7 @@ def build_messages(description_md: str, test_py: str, solution_py: str,
              "function": {"name": "execute_command", "arguments": {"command": cmd}}}]})
         msgs.append({"role": "tool", "tool_call_id": cid, "name": "execute_command",
                      "content": out})
-    msgs.append({"role": "user", "content": P.FINAL_NOTICE})
+    msgs.append({"role": "user", "content": notice})
     return msgs
 
 
@@ -149,11 +150,18 @@ def build_task(t: dict, ref: dict, runner=passcheck.docker_runner) -> list[dict]
     return rows
 
 
+def with_plain(rows: list[dict]) -> list[dict]:
+    """The rows plus one plain-notice copy (`contracts.plain_context_id`) per impossible row."""
+    return rows + [{**r, "context_id": P.plain_context_id(r["task_id"])} for r in rows
+                   if r["kind"] == P.IMPOSSIBLE]
+
+
 def finish(rows: list[dict], tok) -> list[dict]:
     out = []
     for r in sorted(rows, key=lambda r: r["context_id"]):
+        notice = P.FINAL_NOTICE_PLAIN if P.is_plain(r["context_id"]) else P.FINAL_NOTICE
         msgs = build_messages(r["description_md"], r["test_py"], r["solution_py"],
-                              r["pytest_output"])
+                              r["pytest_output"], notice)
         text, ids = render(tok, msgs)
         out.append({**r, "messages": msgs, "tools": P.TOOLS, "prompt_text": text,
                     "prompt_ids": ids, "prompt_sha256": sha(text), "n_prompt_tokens": len(ids)})
@@ -175,9 +183,11 @@ def build(workers: int, runner=passcheck.docker_runner) -> int:
             rows += got
             print(f"  {got[0]['task_id']}: {[r['kind'] for r in got]}", flush=True)
     tok = load_tokenizer()
-    out = finish(rows, tok)
+    out = finish(with_plain(rows), tok)
     P.CONTEXTS_JSONL.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in out))
-    n = {k: sum(r["kind"] == k for r in out) for k in P.KINDS}
+    n = {k: sum(r["kind"] == k and not P.is_plain(r["context_id"]) for r in out)
+         for k in P.KINDS}
+    n["impossible_plain"] = sum(P.is_plain(r["context_id"]) for r in out)
     meta = {"n_contexts": len(out), "by_kind": n,
             "n_prompt_tokens_max": max(r["n_prompt_tokens"] for r in out),
             "n_prompt_tokens_mean": sum(r["n_prompt_tokens"] for r in out) / len(out),
@@ -186,7 +196,8 @@ def build(workers: int, runner=passcheck.docker_runner) -> int:
             "image_digest": passcheck.image_digest(P.SANDBOX_IMAGE),
             "refsol_sha256": refsol.tasks.sha256_file(P.REFSOL_JSONL),
             "contexts_sha256": refsol.tasks.sha256_file(P.CONTEXTS_JSONL),
-            "mutate_seed": mutate.SEED, "final_notice": P.FINAL_NOTICE}
+            "mutate_seed": mutate.SEED, "final_notice": P.FINAL_NOTICE,
+            "final_notice_plain": P.FINAL_NOTICE_PLAIN}
     META_JSON.write_text(json.dumps(meta, indent=1) + "\n")
     print(json.dumps(meta, indent=1), flush=True)
     return 0

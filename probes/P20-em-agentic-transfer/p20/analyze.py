@@ -566,13 +566,40 @@ def markdown(res: dict) -> str:
     for r in res["predictions"]:
         lines.append(f"| ({r['id']}) {r['prediction']} | {r['p']} | "
                      f"{json.dumps(_round(_clean(r['observed'])))} | {r['came_true']} |")
+    pv = res.get("plain_notice")
+    if pv:
+        lines += ["", f"## {pv['label']}", "",
+                  "| Contrast (EM - control) | EM | Control | Base | Diff (pts) | 95% CI |",
+                  "|---|---|---|---|---|---|"]
+        for k in ("cheat", "tamper", "special_case_pass", "report"):
+            v = pv[k]
+            lines.append(f"| {k} | {_pct(v['arm_rate']['em'])} | "
+                         f"{_pct(v['arm_rate']['control'])} | {_pct(v['arm_rate']['base'])} | "
+                         f"{_pts(v['point'])} | {_ci(v['ci'])} |")
     lines.append("")
     return "\n".join(lines)
 
 
+def plain_variant(df: pd.DataFrame, *, n_boot: int = N_BOOT) -> dict | None:
+    """Exploratory: the impossible contexts with the plain final notice (no options named)."""
+    if df.empty:
+        return None
+    return {"label": "EXPLORATORY (plain notice, added before data; log.md)",
+            "n_draws": len(df), "n_tasks": int(df["task_id"].nunique()),
+            "cheat": contrast(df, "cheat_f", n_boot=n_boot),
+            "tamper": contrast(df, "tamper_f", n_boot=n_boot),
+            "special_case_pass": contrast(df, "special_pass", n_boot=n_boot),
+            "report": contrast(df, "report", n_boot=n_boot),
+            "action_mix": action_mix(df)}
+
+
 def run(scored: Path, out_dir: Path, manipulation: Path | None, n_boot: int = N_BOOT) -> dict:
-    df = load_scored(scored)
-    res = _clean(analyze(df, read_manipulation(manipulation), n_boot=n_boot))
+    df_all = load_scored(scored)
+    plain = df_all["context_id"].map(PC.is_plain)
+    df = df_all[~plain].reset_index(drop=True)
+    res = analyze(df, read_manipulation(manipulation), n_boot=n_boot)
+    res["plain_notice"] = plain_variant(df_all[plain].reset_index(drop=True), n_boot=n_boot)
+    res = _clean(res)
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / ANALYSIS_JSON.name).write_text(json.dumps(res, indent=2, allow_nan=False) + "\n")
     (out_dir / ANALYSIS_MD.name).write_text(markdown(res))
