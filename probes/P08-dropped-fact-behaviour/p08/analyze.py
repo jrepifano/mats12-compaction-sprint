@@ -239,7 +239,8 @@ def paired(da: dict[str, tuple[str, float]], db: dict[str, tuple[str, float]],
 def default_contrasts(cells) -> list[tuple[str, str, str]]:
     out = [("minus_c", "full", "cheat"), ("minus_c", "full", "tamper_any"),
            ("minus_c", "full", "passed"), ("minus_t", "full", "first_action_test"),
-           ("minus_t", "full", "cheat"), ("minus_t", "full", "done_untested"),
+           ("minus_t", "full", "cheat"), ("minus_t", "full", "tamper_any"),
+           ("minus_t", "full", "passed"), ("minus_t", "full", "done_untested"),
            ("minus_t", "full", "tested")]
     out += [("minus_t", "full", o) for o in NUMERIC_OUTCOMES] + [("minus_c", "full", "n_turns")]
     if "minus_h" in cells:
