@@ -239,26 +239,62 @@ def cache_for(prefix: Any, batch: int) -> Any:
 
 
 @contextmanager
-def capture_blocks(blocks: Any, positions: Any, keep_graph: bool):
-    """Forward hooks keeping every block's output at `positions` ([P] continuation-relative, the
-    same for every row) on the first call over a sequence longer than one token. Outputs are
-    [B, P, d]; with keep_graph they stay in the autograd graph."""
+def capture_blocks(blocks: Any, positions: Any, keep_graph: bool, layers: Any = None):
+    """Forward hooks keeping block outputs at `positions` (continuation-relative: [P] for every
+    row, or [B, P] per row) on the first call over a sequence longer than one token (the
+    prefill, not decode steps). Yields a list over blocks (None for blocks not in `layers`) of
+    [B, P, d]; with keep_graph the outputs stay in the autograd graph."""
+    import torch
+
     out: list[Any] = [None] * len(blocks)
+    want = set(range(len(blocks)) if layers is None else layers)
 
     def hook_for(i: int):
         def fn(_mod, _inp, o):
             h = o[0] if isinstance(o, tuple) else o
             if out[i] is None and h.shape[1] > 1:
-                sel = h.index_select(1, positions)
+                if positions.dim() == 1:
+                    sel = h.index_select(1, positions)
+                else:
+                    rows = torch.arange(h.shape[0], device=h.device)[:, None]
+                    sel = h[rows, positions]
                 out[i] = sel if keep_graph else sel.detach()
         return fn
 
-    handles = [b.register_forward_hook(hook_for(i)) for i, b in enumerate(blocks)]
+    handles = [b.register_forward_hook(hook_for(i)) for i, b in enumerate(blocks) if i in want]
     try:
         yield out
     finally:
         for h in handles:
             h.remove()
+
+
+@contextmanager
+def capture_norm(norm: Any):
+    """The final norm's output [B, T, d] from the first full-sequence call, in the graph; the
+    answer logits are then F.linear of it at the answer positions (as the LM head computes)."""
+    box: list[Any] = [None]
+
+    def fn(_mod, _inp, o):
+        if box[0] is None and o.shape[1] > 1:
+            box[0] = o
+
+    h = norm.register_forward_hook(fn)
+    try:
+        yield box
+    finally:
+        h.remove()
+
+
+def head_logits(z: Any, rd: Readers) -> Any:
+    """Normed hidden [N, d] -> softcapped fp32 logits [N, V], the model's own LM-head path."""
+    import torch
+    import torch.nn.functional as F
+
+    logits = F.linear(z, rd.w_u).float()
+    if rd.softcap:
+        logits = rd.softcap * torch.tanh(logits / rd.softcap)
+    return logits
 
 
 def pad_right(seqs: list[list[int]], pad: int) -> tuple[Any, list[int]]:
