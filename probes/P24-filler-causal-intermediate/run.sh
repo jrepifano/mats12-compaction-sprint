@@ -16,6 +16,17 @@ fi
 mkdir -p results logs
 echo $$ > logs/run.pid 2>/dev/null || true
 export P24_T0="$(date +%s)"
+# The committed file `phase` (one word) picks the session: "main" (the planned run) or "f2_eager"
+# (follow-up F2, log.md: the first 65 items, dots only, eager attention, into results/f2_eager/).
+PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || echo main)"
+OUTD=results
+if [ "$PHASE" = f2_eager ]; then
+  export P24_ATTN=eager P24_RESULTS=results/f2_eager P24_PASS2=0
+  P24_ARGS="${P24_ARGS:---limit 65}"
+  OUTD=results/f2_eager
+fi
+mkdir -p "$OUTD"
+echo "P24 phase=$PHASE"
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH="$PWD:$PWD/../P06-filler-token-computation:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
@@ -29,15 +40,15 @@ if [ "$RC" = 0 ]; then
   nvidia-smi --query-gpu=name,memory.total,memory.used,driver_version --format=csv,noheader || true
   df -h /ws 2>/dev/null | tail -1 || true
   UV="$(command -v uv || echo "$HOME/.local/bin/uv")"
-  "$UV" pip freeze --python "$PY" > results/venv_freeze.txt 2>/dev/null || true
+  "$UV" pip freeze --python "$PY" > "$OUTD/venv_freeze.txt" 2>/dev/null || true
   "$PY" -m p24.pod download || RC=$?
 fi
 if [ "$RC" = 0 ]; then
   # shellcheck disable=SC2086 # P24_ARGS is a word list on purpose
   "$PY" -m p24.pod run ${P24_ARGS:-} || RC=$?
 fi
-if [ "$RC" != 0 ] && [ ! -s results/error.txt ]; then
-  echo "== $(date -u +%FT%TZ) rc=$RC with no recorded exception (see the run log)" >> results/error.txt
+if [ "$RC" != 0 ] && [ ! -s "$OUTD/error.txt" ]; then
+  echo "== $(date -u +%FT%TZ) rc=$RC with no recorded exception (see the run log)" >> "$OUTD/error.txt"
 fi
 ( cd results && find . -type f ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z \
     | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) && mv MANIFEST.sha256.tmp results/MANIFEST.sha256

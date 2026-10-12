@@ -3,6 +3,7 @@ agreement, and the run driver end to end (a CPU dry run; no model, no GPU, no pa
 
 import json
 import types
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -250,3 +251,30 @@ def test_oom_halves_the_batch(tmp_path, monkeypatch, faked, pool):
     rc, res = _run(tmp_path, monkeypatch, faked, ["--limit", "6"])
     assert rc == 0 and seen[:2] == [4, 2]
     assert json.loads((res / "smoke.json").read_text())["bs"] == 2
+
+
+def test_f2_env_sets_results_dir_and_attn(tmp_path):
+    import os
+    import subprocess
+    import sys
+
+    here = Path(P.__file__).resolve().parents[1]
+    env = {**os.environ, "P24_RESULTS": "results/f2_eager",
+           "PYTHONPATH": f"{here}:{here.parent / 'P06-filler-token-computation'}"}
+    out = subprocess.run([sys.executable, "-c", "from p24 import pod; print(pod.ROWS)"],
+                         env=env, capture_output=True, text=True, check=True).stdout
+    assert out.strip().endswith("results/f2_eager/rows.jsonl")
+
+
+def test_run_sh_f2_phase_dry_run(tmp_path):
+    import shutil
+    import subprocess
+
+    here = Path(P.__file__).resolve().parents[1]
+    d = tmp_path / "probe"
+    d.mkdir()
+    shutil.copy(here / "run.sh", d / "run.sh")
+    (d / "phase").write_text("f2_eager\n")
+    out = subprocess.run(["bash", str(d / "run.sh")], env={"P24_DRY_RUN": "1", "PATH": "/usr/bin:/bin"},
+                         capture_output=True, text=True, check=True).stdout
+    assert "P24 dry steps" in out

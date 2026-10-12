@@ -53,7 +53,8 @@ from p06 import stage2 as S2
 from . import donors as D
 
 PROBE = Path(__file__).resolve().parents[1]
-RESULTS = PROBE / "results"
+# follow-up F2 (log.md) runs with P24_RESULTS=results/f2_eager and P24_ATTN=eager
+RESULTS = PROBE / os.environ.get("P24_RESULTS", "results")
 ROWS = RESULTS / "rows.jsonl"  # pass 1: PRIMARY_SITES
 ROWS2 = RESULTS / "rows_sites.jsonl"  # pass 2: SECONDARY_SITES
 TIMINGS = RESULTS / "timings.json"
@@ -356,7 +357,9 @@ def cmd_run(a) -> int:
     RESULTS.mkdir(parents=True, exist_ok=True)
     os.environ["P06_ARTIFACTS"] = str(artifacts_dir())  # p06.stage2.load reads paths.json there
     with T.step("load") as rec:
+        S2.ATTN = os.environ.get("P24_ATTN", S2.ATTN)  # sdpa (main run) or eager (F2)
         ctx, info = S2.load()
+        info["attn_implementation"] = S2.ATTN
         rec.update(info)
     status["load"] = info
     have = done_ids(ROWS)
@@ -451,7 +454,7 @@ def cmd_run(a) -> int:
     # pass 2: the secondary sites, same item order, while the budget lasts (no rc on a cut)
     p2_have = done_ids(ROWS2)
     done2 = 0
-    if status["complete"]:
+    if status["complete"] and os.environ.get("P24_PASS2", "1") == "1":
         with T.step("pass2") as rec:
             est = 2.0 * per_item  # ~3x the patched rows of pass 1; replaced by the measured mean
             secs2: list[float] = []

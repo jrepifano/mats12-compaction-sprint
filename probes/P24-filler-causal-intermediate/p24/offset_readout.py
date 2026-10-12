@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 
 import numpy as np
-
 from p06 import brauer as B
 from p06.f3_sensitivity import GROUPS, READERS, perm_test, stats
 from p06.readers_analysis import first_digit, load_records, stack_arm
