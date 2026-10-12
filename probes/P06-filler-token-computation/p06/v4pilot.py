@@ -24,7 +24,9 @@ next fix in FIXES is applied and the smoke re-run; every attempt and its error t
    meets bf16 nn.Linear weights (compressor/indexer projections, lm_head) and bf16 residual
    matmuls: a laptop check on a tiny bf16 DeepseekV4ForCausalLM raises "expected m1 and m2 to
    have the same dtype". The fix returns `(weight * x_normed).to(input dtype)`, which is the
-   checkpoint's reference RMSNorm (inference/model.py `RMSNorm.forward`, same pin).
+   checkpoint's reference RMSNorm (inference/model.py `RMSNorm.forward`, same pin). On the real
+   checkpoint (F7 attempt 3) the stock model passed the smoke with no fix: under the FP8
+   quantizer the final norm loads in bf16. The fix stays as a recorded fallback.
 2. `experts_eager`: `set_experts_implementation("eager")` (per-expert Triton matmuls).
 
 **Prompts.** F6's Brauer-format chain prompts (`p06.f5_chain_brauer.messages`, 5 shots = the
@@ -157,10 +159,11 @@ def log(msg: str) -> None:
     print(f"[p06.v4pilot {utc()}] {msg}", flush=True)
 
 
-def record_error(step: str, exc: BaseException) -> None:
+def record_error(step: str, exc: BaseException, out: Path | None = None) -> None:
     """Append the step, the exception and the traceback tail (plus CUDA memory, if any) to
-    results/v4pilot/error.txt, and log an anchored line."""
-    OUT.mkdir(parents=True, exist_ok=True)
+    <out>/error.txt (default results/v4pilot/), and log an anchored line."""
+    out = out or OUT
+    out.mkdir(parents=True, exist_ok=True)
     tb = traceback.format_exception(type(exc), exc, exc.__traceback__)
     tail = "".join(tb).splitlines()[-80:]
     mem = ""
@@ -174,7 +177,7 @@ def record_error(step: str, exc: BaseException) -> None:
                    f"{total / 1e9:.1f} GB\n")
     except Exception as e:  # noqa: BLE001 - diagnostics must not raise
         mem = f"cuda memory unavailable: {e!r}\n"
-    with (OUT / "error.txt").open("a") as f:
+    with (out / "error.txt").open("a") as f:
         f.write(f"== {utc()} step={step}\n{exc!r}\n{mem}" + "\n".join(tail) + "\n\n")
     print(f"P06_V4PILOT_ERROR step={step} {type(exc).__name__}: {str(exc)[:300]}", flush=True)
 
@@ -854,11 +857,14 @@ def cmd_download(_a) -> int:
         return 1
 
 
-def _download() -> int:
+def _download(out: Path | None = None) -> int:
+    """Model snapshot + both lenses; timings and download.json under `out` (default OUT; the F8
+    bulk run passes results/v4bulk)."""
     from huggingface_hub import hf_hub_download, snapshot_download
     from huggingface_hub.constants import HF_HUB_CACHE
 
-    T = Timer(OUT / "timings.json")
+    out = out or OUT
+    T = Timer(out / "timings.json")
     rec_out: dict[str, Any] = {"model": f"{MODEL_ID}@{MODEL_REV}",
                                "lens": f"{LENS_REPO}@{LENS_REV}", "cache": str(HF_HUB_CACHE)}
     Path(HF_HUB_CACHE).mkdir(parents=True, exist_ok=True)
@@ -889,7 +895,7 @@ def _download() -> int:
             rec_out[f"{name}_bytes"] = p.stat().st_size
         except Exception as e:  # noqa: BLE001
             rec_out[f"{name}_error"] = repr(e)[:300]
-    write_json(OUT / "download.json", rec_out)
+    write_json(out / "download.json", rec_out)
     log(f"P06_DOWNLOAD {nbytes / 1e9:.1f} GB in {secs / 60:.1f} min "
         f"({rec_out['mb_per_s']} MB/s); encoding matches vendored: "
         f"{rec_out['encoding_matches_vendored']}")

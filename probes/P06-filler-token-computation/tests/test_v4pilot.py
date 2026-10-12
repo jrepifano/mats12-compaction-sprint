@@ -356,12 +356,14 @@ def _run_sh(env_extra):
 def test_run_sh_dispatch():
     assert subprocess.run(["bash", "-n", str(PROBE / "run.sh")], check=False).returncode == 0
     phase = (PROBE / "phase").read_text().strip()
-    assert phase in ("f3", "v4pilot")
+    assert phase in ("f3", "v4pilot", "v4bulk")
     r = _run_sh({})
     assert r.returncode == 0 and f"P06 dry phase={phase}" in r.stdout
     assert r.stdout.splitlines()[0].startswith("P06 start ")
     r = _run_sh({"P06_PHASE": "v4pilot"})
     assert r.returncode == 0 and "p06.v4pilot run" in r.stdout and "kernels==0.16.2" in r.stdout
+    r = _run_sh({"P06_PHASE": "v4bulk"})
+    assert r.returncode == 0 and "p06.v4bulk run" in r.stdout and "kernels==0.16.2" in r.stdout
     r = _run_sh({"P06_PHASE": "f3"})
     assert r.returncode == 0 and "p06.stage2 run" in r.stdout
     r = _run_sh({"P06_PHASE": "nonsense"})
