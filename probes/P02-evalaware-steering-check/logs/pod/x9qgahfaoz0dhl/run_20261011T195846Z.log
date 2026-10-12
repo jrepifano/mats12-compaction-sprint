@@ -1,0 +1,175 @@
+P02 start 2026-10-11T19:58:50Z probe=P02 commit=0b9180df3bd6bf6e4e02c1b5bb4bc0fb4335ca70
+NVIDIA H100 80GB HBM3, 81559 MiB
+2026-10-11T19:59:37+00:00 P02 plan: 137 cells, 50840 answers, gpu_hours 3.0
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  25%|██▌       | 1/4 [00:06<00:19,  6.34s/it]Fetching 4 files:  50%|█████     | 2/4 [00:11<00:10,  5.42s/it]Fetching 4 files:  75%|███████▌  | 3/4 [00:16<00:05,  5.56s/it]Fetching 4 files: 100%|██████████| 4/4 [00:18<00:00,  4.06s/it]Fetching 4 files: 100%|██████████| 4/4 [00:18<00:00,  4.65s/it]
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:44,  7.57it/s]Loading weights:   1%|          | 2/339 [00:00<00:50,  6.67it/s]Loading weights:   5%|▍         | 16/339 [00:00<00:06, 52.22it/s]Loading weights:   8%|▊         | 26/339 [00:00<00:04, 66.62it/s]Loading weights:  12%|█▏        | 40/339 [00:00<00:03, 87.36it/s]Loading weights:  16%|█▌        | 53/339 [00:00<00:03, 91.89it/s]Loading weights:  19%|█▉        | 65/339 [00:00<00:02, 96.65it/s]Loading weights:  23%|██▎       | 77/339 [00:00<00:02, 99.02it/s]Loading weights:  26%|██▋       | 89/339 [00:01<00:02, 102.10it/s]Loading weights:  29%|██▉       | 100/339 [00:01<00:02, 100.11it/s]Loading weights:  33%|███▎      | 113/339 [00:01<00:02, 105.63it/s]Loading weights:  37%|███▋      | 124/339 [00:01<00:02, 102.34it/s]Loading weights:  40%|████      | 137/339 [00:01<00:01, 106.88it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:01, 104.14it/s]Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 105.22it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:01, 108.35it/s]Loading weights:  55%|█████▍    | 185/339 [00:01<00:01, 104.82it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 107.23it/s]Loading weights:  62%|██████▏   | 210/339 [00:02<00:01, 106.78it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 105.73it/s]Loading weights:  71%|███████   | 240/339 [00:02<00:00, 124.11it/s]Loading weights:  75%|███████▍  | 253/339 [00:02<00:00, 121.10it/s]Loading weights:  79%|███████▉  | 268/339 [00:02<00:00, 126.43it/s]Loading weights:  83%|████████▎ | 281/339 [00:02<00:00, 115.02it/s]Loading weights:  87%|████████▋ | 294/339 [00:02<00:00, 115.33it/s]Loading weights:  90%|█████████ | 306/339 [00:03<00:00, 109.98it/s]Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 111.97it/s]Loading weights:  99%|█████████▊| 334/339 [00:03<00:00, 124.85it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 104.22it/s]
+2026-10-11T20:00:03+00:00 P02 loaded base in 23.8 s
+2026-10-11T20:00:07+00:00 P02 P02_DIRECTIONS_FROZEN sha256=2467a329d51f7ac4bf1f5407225a51564edcf1adb9c62d9784e827e8d67a5f05 at 2026-10-11T20:00:07+00:00; half-split medians [0.598, 0.574, 0.564, 0.578, 0.552, 0.621] (Spearman-Brown [0.749, 0.729, 0.721, 0.732, 0.711, 0.766])
+2026-10-11T20:00:07+00:00 P02 hook checks reused from 6ksvxpf6n41dwt (same steer_multi.py and vectors sha256)
+2026-10-11T20:00:17+00:00 P02 latent base: auroc_last [0.563, 0.491, 0.562, 0.526, 0.588, 0.594, 0.539, 0.537]
+2026-10-11T20:00:17+00:00 P02 P02_ADOPTED base__none__0__ov__plain from an earlier pod (exact request match)
+2026-10-11T20:00:17+00:00 P02 cell base__none__0__ov__plain already complete, skipped
+2026-10-11T20:00:17+00:00 P02 P02_SMOKE_READY smoke__base__none__0__ov__plain (205 rows) for laptop check (4)
+2026-10-11T20:00:17+00:00 P02 P02_ADOPTED base__A__+0.3__ov__plain from an earlier pod (exact request match)
+2026-10-11T20:00:17+00:00 P02 cell base__A__+0.3__ov__plain already complete, skipped
+2026-10-11T20:00:17+00:00 P02 P02_ADOPTED base__A__+0.6__ov__plain from an earlier pod (exact request match)
+2026-10-11T20:00:17+00:00 P02 cell base__A__+0.6__ov__plain already complete, skipped
+[W1011 20:00:41.859764109 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 786432000 bytes (free: 182583296, total: 85017493504).
+[W1011 20:00:45.648332404 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 861929472 bytes (free: 255983616, total: 85017493504).
+[W1011 20:00:48.394299942 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 931135488 bytes (free: 841089024, total: 85017493504).
+[W1011 20:00:52.045017110 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 996147200 bytes (free: 341966848, total: 85017493504).
+[W1011 20:00:55.548016985 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1054867456 bytes (free: 128057344, total: 85017493504).
+[W1011 20:00:59.989302508 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1109393408 bytes (free: 958529536, total: 85017493504).
+[W1011 20:01:02.441226325 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1161822208 bytes (free: 807534592, total: 85017493504).
+[W1011 20:01:06.632209835 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1210056704 bytes (free: 979501056, total: 85017493504).
+[W1011 20:01:58.419795303 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 1256194048 bytes (free: 63045632, total: 85017493504).
+2026-10-11T20:03:17+00:00 P02 P02_CELL base__A__+1.2__ov__plain n=820 wall=180s rate=4.57/s
+2026-10-11T20:03:17+00:00 P02 P02_PROJECTION 3.50 h vs 2.75 h; cut=True
+2026-10-11T20:03:17+00:00 P02 P02_NULLS_CUT to 3 samples per question
+2026-10-11T20:06:27+00:00 P02 P02_CELL base__A__+2.4__ov__plain n=820 wall=190s rate=4.32/s
+2026-10-11T20:09:36+00:00 P02 P02_CELL base__A__+4.8__ov__plain n=820 wall=189s rate=4.34/s
+2026-10-11T20:12:36+00:00 P02 P02_CELL base__B__+0.0125__ov__plain n=820 wall=181s rate=4.54/s
+2026-10-11T20:15:36+00:00 P02 P02_CELL base__B__+0.025__ov__plain n=820 wall=180s rate=4.56/s
+2026-10-11T20:18:37+00:00 P02 P02_CELL base__B__+0.05__ov__plain n=820 wall=181s rate=4.54/s
+2026-10-11T20:21:27+00:00 P02 P02_CELL base__B__+0.1__ov__plain n=820 wall=170s rate=4.83/s
+2026-10-11T20:24:30+00:00 P02 P02_CELL base__none__0__ov__deployline n=820 wall=183s rate=4.48/s
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:41,  8.24it/s]Loading weights:   1%|          | 2/339 [00:00<00:50,  6.69it/s]Loading weights:   5%|▌         | 17/339 [00:00<00:06, 53.26it/s]Loading weights:   9%|▉         | 30/339 [00:00<00:04, 74.82it/s]Loading weights:  12%|█▏        | 42/339 [00:00<00:03, 86.56it/s]Loading weights:  16%|█▌        | 54/339 [00:00<00:03, 93.98it/s]Loading weights:  19%|█▉        | 66/339 [00:00<00:02, 98.84it/s]Loading weights:  23%|██▎       | 78/339 [00:00<00:02, 102.42it/s]Loading weights:  27%|██▋       | 90/339 [00:01<00:02, 104.65it/s]Loading weights:  30%|███       | 102/339 [00:01<00:02, 106.04it/s]Loading weights:  34%|███▎      | 114/339 [00:01<00:02, 105.60it/s]Loading weights:  37%|███▋      | 126/339 [00:01<00:01, 108.00it/s]Loading weights:  40%|████      | 137/339 [00:01<00:01, 105.55it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:01, 109.82it/s]Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 111.19it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:01, 111.57it/s]Loading weights:  55%|█████▍    | 186/339 [00:01<00:01, 111.12it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 112.19it/s]Loading weights:  62%|██████▏   | 210/339 [00:02<00:01, 112.40it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 111.32it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:00, 111.00it/s]Loading weights:  73%|███████▎  | 246/339 [00:02<00:00, 110.75it/s]Loading weights:  76%|███████▌  | 258/339 [00:02<00:00, 110.54it/s]Loading weights:  80%|███████▉  | 270/339 [00:02<00:00, 112.29it/s]Loading weights:  83%|████████▎ | 282/339 [00:02<00:00, 112.14it/s]Loading weights:  87%|████████▋ | 294/339 [00:02<00:00, 111.73it/s]Loading weights:  90%|█████████ | 306/339 [00:03<00:00, 111.27it/s]Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 110.46it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 110.21it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 104.23it/s]
+2026-10-11T20:24:37+00:00 P02 loaded org in 7.6 s
+2026-10-11T20:24:47+00:00 P02 latent org: auroc_last [0.546, 0.512, 0.509, 0.531, 0.575, 0.595, 0.542, 0.522]
+2026-10-11T20:25:36+00:00 P02 P02_CELL org__none__0__ov__plain n=820 wall=49s rate=16.84/s
+2026-10-11T20:25:36+00:00 P02 P02_SMOKE_READY smoke__org__none__0__ov__plain (205 rows) for laptop check (4)
+2026-10-11T20:26:13+00:00 P02 P02_CELL org__none__0__noov__plain n=820 wall=37s rate=22.26/s
+2026-10-11T20:26:13+00:00 P02 P02_SMOKE_READY smoke__org__none__0__noov__plain (205 rows) for laptop check (4)
+2026-10-11T20:26:59+00:00 P02 P02_CELL org__A__+0.3__ov__plain n=820 wall=46s rate=17.7/s
+2026-10-11T20:27:38+00:00 P02 P02_CELL org__A__+0.6__ov__plain n=820 wall=39s rate=21.13/s
+2026-10-11T20:28:03+00:00 P02 P02_CELL org__A__+1.2__ov__plain n=820 wall=25s rate=32.9/s
+2026-10-11T20:31:14+00:00 P02 P02_CELL org__A__+2.4__ov__plain n=820 wall=191s rate=4.3/s
+2026-10-11T20:34:21+00:00 P02 P02_CELL org__A__+4.8__ov__plain n=820 wall=187s rate=4.39/s
+2026-10-11T20:34:53+00:00 P02 P02_CELL org__A__-0.6__noov__plain n=820 wall=32s rate=25.76/s
+2026-10-11T20:35:51+00:00 P02 P02_CELL org__A__-1.2__noov__plain n=820 wall=58s rate=14.1/s
+2026-10-11T20:39:06+00:00 P02 P02_CELL org__A__-2.4__noov__plain n=820 wall=195s rate=4.2/s
+2026-10-11T20:40:01+00:00 P02 P02_CELL org__B__+0.0125__ov__plain n=820 wall=55s rate=14.88/s
+2026-10-11T20:40:46+00:00 P02 P02_CELL org__B__+0.025__ov__plain n=820 wall=45s rate=18.25/s
+2026-10-11T20:41:43+00:00 P02 P02_CELL org__B__+0.05__ov__plain n=820 wall=57s rate=14.4/s
+2026-10-11T20:44:32+00:00 P02 P02_CELL org__B__+0.1__ov__plain n=820 wall=169s rate=4.85/s
+2026-10-11T20:45:20+00:00 P02 P02_CELL org__none__0__ov__deployline n=820 wall=48s rate=16.99/s
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:46,  7.20it/s]Loading weights:   1%|          | 2/339 [00:00<00:51,  6.54it/s]Loading weights:   5%|▍         | 16/339 [00:00<00:06, 46.76it/s]Loading weights:   9%|▉         | 30/339 [00:00<00:04, 69.25it/s]Loading weights:  12%|█▏        | 42/339 [00:00<00:03, 81.67it/s]Loading weights:  16%|█▌        | 54/339 [00:00<00:03, 90.22it/s]Loading weights:  19%|█▉        | 66/339 [00:00<00:02, 96.07it/s]Loading weights:  23%|██▎       | 78/339 [00:01<00:02, 100.03it/s]Loading weights:  27%|██▋       | 90/339 [00:01<00:02, 103.15it/s]Loading weights:  30%|███       | 102/339 [00:01<00:02, 106.23it/s]Loading weights:  34%|███▎      | 114/339 [00:01<00:02, 106.79it/s]Loading weights:  37%|███▋      | 126/339 [00:01<00:01, 107.58it/s]Loading weights:  41%|████      | 138/339 [00:01<00:01, 108.44it/s]Loading weights:  44%|████▍     | 149/339 [00:01<00:01, 105.86it/s]Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 111.46it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:01, 113.56it/s]Loading weights:  55%|█████▍    | 186/339 [00:01<00:01, 112.54it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 112.00it/s]Loading weights:  62%|██████▏   | 210/339 [00:02<00:01, 111.33it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 110.91it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:00, 110.83it/s]Loading weights:  73%|███████▎  | 246/339 [00:02<00:00, 110.62it/s]Loading weights:  76%|███████▌  | 258/339 [00:02<00:00, 110.35it/s]Loading weights:  80%|███████▉  | 270/339 [00:02<00:00, 110.47it/s]Loading weights:  83%|████████▎ | 282/339 [00:02<00:00, 110.47it/s]Loading weights:  87%|████████▋ | 294/339 [00:02<00:00, 110.39it/s]Loading weights:  90%|█████████ | 306/339 [00:03<00:00, 110.48it/s]Loading weights:  94%|█████████▍| 318/339 [00:03<00:00, 111.71it/s]Loading weights:  99%|█████████▊| 334/339 [00:03<00:00, 121.57it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 103.26it/s]
+2026-10-11T20:45:28+00:00 P02 loaded good in 7.2 s
+2026-10-11T20:45:38+00:00 P02 latent good: auroc_last [0.53, 0.496, 0.506, 0.511, 0.518, 0.539, 0.527, 0.522]
+2026-10-11T20:46:15+00:00 P02 P02_CELL good__none__0__ov__plain n=820 wall=37s rate=22.3/s
+2026-10-11T20:46:15+00:00 P02 P02_SMOKE_READY smoke__good__none__0__ov__plain (205 rows) for laptop check (4)
+2026-10-11T20:46:53+00:00 P02 P02_CELL good__A__+0.3__ov__plain n=820 wall=38s rate=21.43/s
+2026-10-11T20:47:24+00:00 P02 P02_CELL good__A__+0.6__ov__plain n=820 wall=31s rate=26.3/s
+2026-10-11T20:49:13+00:00 P02 P02_CELL good__A__+1.2__ov__plain n=820 wall=108s rate=7.56/s
+2026-10-11T20:52:24+00:00 P02 P02_CELL good__A__+2.4__ov__plain n=820 wall=191s rate=4.3/s
+2026-10-11T20:55:31+00:00 P02 P02_CELL good__A__+4.8__ov__plain n=820 wall=187s rate=4.38/s
+2026-10-11T20:56:07+00:00 P02 P02_CELL good__B__+0.0125__ov__plain n=820 wall=37s rate=22.46/s
+2026-10-11T20:56:47+00:00 P02 P02_CELL good__B__+0.025__ov__plain n=820 wall=40s rate=20.62/s
+2026-10-11T20:57:33+00:00 P02 P02_CELL good__B__+0.05__ov__plain n=820 wall=46s rate=17.69/s
+2026-10-11T21:00:22+00:00 P02 P02_CELL good__B__+0.1__ov__plain n=820 wall=168s rate=4.87/s
+2026-10-11T21:01:18+00:00 P02 P02_CELL good__none__0__ov__deployline n=820 wall=57s rate=14.47/s
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<01:02,  5.40it/s]Loading weights:   1%|          | 2/339 [00:00<01:06,  5.08it/s]Loading weights:   4%|▍         | 15/339 [00:00<00:08, 39.69it/s]Loading weights:   8%|▊         | 28/339 [00:00<00:04, 62.64it/s]Loading weights:  12%|█▏        | 40/339 [00:00<00:03, 75.30it/s]Loading weights:  15%|█▌        | 51/339 [00:00<00:04, 71.99it/s]Loading weights:  19%|█▉        | 65/339 [00:01<00:03, 84.98it/s]Loading weights:  23%|██▎       | 77/339 [00:01<00:02, 88.38it/s]Loading weights:  26%|██▋       | 89/339 [00:01<00:02, 92.02it/s]Loading weights:  29%|██▉       | 100/339 [00:01<00:02, 91.16it/s]Loading weights:  33%|███▎      | 112/339 [00:01<00:02, 93.06it/s]Loading weights:  37%|███▋      | 125/339 [00:01<00:02, 96.13it/s]Loading weights:  40%|████      | 136/339 [00:01<00:02, 93.58it/s]Loading weights:  44%|████▎     | 148/339 [00:01<00:02, 94.12it/s]Loading weights:  47%|████▋     | 161/339 [00:02<00:01, 96.78it/s]Loading weights:  51%|█████     | 173/339 [00:02<00:01, 96.28it/s]Loading weights:  54%|█████▍    | 184/339 [00:02<00:01, 95.31it/s]Loading weights:  58%|█████▊    | 196/339 [00:02<00:01, 95.53it/s]Loading weights:  62%|██████▏   | 209/339 [00:02<00:01, 97.67it/s]Loading weights:  65%|██████▌   | 221/339 [00:02<00:01, 96.92it/s]Loading weights:  68%|██████▊   | 231/339 [00:02<00:01, 91.56it/s]Loading weights:  72%|███████▏  | 245/339 [00:02<00:00, 97.54it/s]Loading weights:  76%|███████▌  | 257/339 [00:03<00:00, 97.28it/s]Loading weights:  79%|███████▉  | 269/339 [00:03<00:00, 96.69it/s]Loading weights:  83%|████████▎ | 280/339 [00:03<00:00, 93.94it/s]Loading weights:  86%|████████▋ | 293/339 [00:03<00:00, 98.33it/s]Loading weights:  90%|████████▉ | 305/339 [00:03<00:00, 100.20it/s]Loading weights:  94%|█████████▎| 317/339 [00:03<00:00, 98.40it/s] Loading weights:  97%|█████████▋| 328/339 [00:03<00:00, 94.71it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 88.89it/s]
+2026-10-11T21:01:30+00:00 P02 loaded org in 10.9 s
+2026-10-11T21:01:41+00:00 P02 P02_CELL org__ctl_book__+0.3__ov__plain n=205 wall=11s rate=18.08/s
+2026-10-11T21:01:52+00:00 P02 P02_CELL org__ctl_book__+0.6__ov__plain n=205 wall=11s rate=18.53/s
+2026-10-11T21:02:01+00:00 P02 P02_CELL org__ctl_book__+1.2__ov__plain n=205 wall=9s rate=23.64/s
+2026-10-11T21:02:43+00:00 P02 P02_CELL org__ctl_book__+2.4__ov__plain n=205 wall=43s rate=4.82/s
+2026-10-11T21:03:38+00:00 P02 P02_CELL org__ctl_book__+4.8__ov__plain n=205 wall=55s rate=3.73/s
+2026-10-11T21:03:50+00:00 P02 P02_CELL org__ctl_cat__+0.3__ov__plain n=205 wall=12s rate=17.15/s
+2026-10-11T21:04:01+00:00 P02 P02_CELL org__ctl_cat__+0.6__ov__plain n=205 wall=11s rate=18.33/s
+2026-10-11T21:04:14+00:00 P02 P02_CELL org__ctl_cat__+1.2__ov__plain n=205 wall=13s rate=15.83/s
+2026-10-11T21:05:08+00:00 P02 P02_CELL org__ctl_cat__+2.4__ov__plain n=205 wall=53s rate=3.85/s
+2026-10-11T21:06:01+00:00 P02 P02_CELL org__ctl_cat__+4.8__ov__plain n=205 wall=54s rate=3.82/s
+2026-10-11T21:06:13+00:00 P02 P02_CELL org__ctl_kiki__+0.3__ov__plain n=205 wall=12s rate=17.13/s
+2026-10-11T21:06:24+00:00 P02 P02_CELL org__ctl_kiki__+0.6__ov__plain n=205 wall=11s rate=19.08/s
+2026-10-11T21:07:12+00:00 P02 P02_CELL org__ctl_kiki__+1.2__ov__plain n=205 wall=48s rate=4.23/s
+2026-10-11T21:08:06+00:00 P02 P02_CELL org__ctl_kiki__+2.4__ov__plain n=205 wall=54s rate=3.81/s
+2026-10-11T21:09:00+00:00 P02 P02_CELL org__ctl_kiki__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:09:12+00:00 P02 P02_CELL org__ctl_language__+0.3__ov__plain n=205 wall=12s rate=17.04/s
+2026-10-11T21:09:22+00:00 P02 P02_CELL org__ctl_language__+0.6__ov__plain n=205 wall=9s rate=22.18/s
+2026-10-11T21:09:55+00:00 P02 P02_CELL org__ctl_language__+1.2__ov__plain n=205 wall=34s rate=6.12/s
+2026-10-11T21:10:49+00:00 P02 P02_CELL org__ctl_language__+2.4__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:11:44+00:00 P02 P02_CELL org__ctl_language__+4.8__ov__plain n=205 wall=54s rate=3.77/s
+2026-10-11T21:11:53+00:00 P02 P02_CELL org__ctl_perspective__+0.3__ov__plain n=205 wall=9s rate=21.6/s
+2026-10-11T21:12:06+00:00 P02 P02_CELL org__ctl_perspective__+0.6__ov__plain n=205 wall=13s rate=15.55/s
+2026-10-11T21:12:54+00:00 P02 P02_CELL org__ctl_perspective__+1.2__ov__plain n=205 wall=48s rate=4.27/s
+2026-10-11T21:13:46+00:00 P02 P02_CELL org__ctl_perspective__+2.4__ov__plain n=205 wall=52s rate=3.97/s
+2026-10-11T21:14:40+00:00 P02 P02_CELL org__ctl_perspective__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:14:53+00:00 P02 P02_CELL org__ctl_speaking__+0.3__ov__plain n=205 wall=13s rate=15.45/s
+2026-10-11T21:15:12+00:00 P02 P02_CELL org__ctl_speaking__+0.6__ov__plain n=205 wall=19s rate=11.02/s
+2026-10-11T21:15:20+00:00 P02 P02_CELL org__ctl_speaking__+1.2__ov__plain n=205 wall=8s rate=26.9/s
+2026-10-11T21:16:08+00:00 P02 P02_CELL org__ctl_speaking__+2.4__ov__plain n=205 wall=48s rate=4.24/s
+2026-10-11T21:17:02+00:00 P02 P02_CELL org__ctl_speaking__+4.8__ov__plain n=205 wall=54s rate=3.8/s
+2026-10-11T21:17:20+00:00 P02 P02_CELL org__ctl_spacing__+0.3__ov__plain n=205 wall=18s rate=11.62/s
+2026-10-11T21:17:39+00:00 P02 P02_CELL org__ctl_spacing__+0.6__ov__plain n=205 wall=19s rate=10.64/s
+2026-10-11T21:18:27+00:00 P02 P02_CELL org__ctl_spacing__+1.2__ov__plain n=205 wall=48s rate=4.28/s
+2026-10-11T21:18:29+00:00 P02 P02_CELL org__ctl_spacing__+2.4__ov__plain n=205 wall=2s rate=98.77/s
+2026-10-11T21:18:31+00:00 P02 P02_CELL org__ctl_spacing__+4.8__ov__plain n=205 wall=2s rate=83.74/s
+2026-10-11T21:18:41+00:00 P02 P02_CELL org__ctl_train__+0.3__ov__plain n=205 wall=10s rate=20.29/s
+2026-10-11T21:18:50+00:00 P02 P02_CELL org__ctl_train__+0.6__ov__plain n=205 wall=9s rate=23.7/s
+2026-10-11T21:19:39+00:00 P02 P02_CELL org__ctl_train__+1.2__ov__plain n=205 wall=49s rate=4.21/s
+2026-10-11T21:20:33+00:00 P02 P02_CELL org__ctl_train__+2.4__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:21:28+00:00 P02 P02_CELL org__ctl_train__+4.8__ov__plain n=205 wall=55s rate=3.72/s
+2026-10-11T21:21:41+00:00 P02 P02_CELL org__ctl_wall__+0.3__ov__plain n=205 wall=13s rate=16.19/s
+2026-10-11T21:21:49+00:00 P02 P02_CELL org__ctl_wall__+0.6__ov__plain n=205 wall=9s rate=23.74/s
+2026-10-11T21:22:00+00:00 P02 P02_CELL org__ctl_wall__+1.2__ov__plain n=205 wall=10s rate=19.64/s
+2026-10-11T21:22:09+00:00 P02 P02_CELL org__ctl_wall__+2.4__ov__plain n=205 wall=10s rate=21.12/s
+2026-10-11T21:23:03+00:00 P02 P02_CELL org__ctl_wall__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:23:19+00:00 P02 P02_CELL org__ctl_weather__+0.3__ov__plain n=205 wall=16s rate=13.16/s
+2026-10-11T21:23:32+00:00 P02 P02_CELL org__ctl_weather__+0.6__ov__plain n=205 wall=13s rate=15.92/s
+2026-10-11T21:23:45+00:00 P02 P02_CELL org__ctl_weather__+1.2__ov__plain n=205 wall=13s rate=15.23/s
+2026-10-11T21:23:51+00:00 P02 P02_CELL org__ctl_weather__+2.4__ov__plain n=205 wall=6s rate=36.97/s
+2026-10-11T21:24:44+00:00 P02 P02_CELL org__ctl_weather__+4.8__ov__plain n=205 wall=53s rate=3.85/s
+2026-10-11T21:24:55+00:00 P02 P02_CELL org__gauss_00__+0.3__ov__plain n=205 wall=10s rate=19.63/s
+2026-10-11T21:25:11+00:00 P02 P02_CELL org__gauss_00__+0.6__ov__plain n=205 wall=17s rate=12.3/s
+2026-10-11T21:25:21+00:00 P02 P02_CELL org__gauss_00__+1.2__ov__plain n=205 wall=10s rate=20.52/s
+2026-10-11T21:25:36+00:00 P02 P02_CELL org__gauss_00__+2.4__ov__plain n=205 wall=15s rate=14.09/s
+2026-10-11T21:26:26+00:00 P02 P02_CELL org__gauss_00__+4.8__ov__plain n=205 wall=50s rate=4.08/s
+2026-10-11T21:26:37+00:00 P02 P02_CELL org__gauss_01__+0.3__ov__plain n=205 wall=11s rate=18.69/s
+2026-10-11T21:26:46+00:00 P02 P02_CELL org__gauss_01__+0.6__ov__plain n=205 wall=9s rate=22.23/s
+2026-10-11T21:26:56+00:00 P02 P02_CELL org__gauss_01__+1.2__ov__plain n=205 wall=10s rate=21.33/s
+2026-10-11T21:27:04+00:00 P02 P02_CELL org__gauss_01__+2.4__ov__plain n=205 wall=8s rate=26.09/s
+2026-10-11T21:27:57+00:00 P02 P02_CELL org__gauss_01__+4.8__ov__plain n=205 wall=54s rate=3.83/s
+2026-10-11T21:28:19+00:00 P02 P02_CELL org__gauss_02__+0.3__ov__plain n=205 wall=21s rate=9.57/s
+2026-10-11T21:28:35+00:00 P02 P02_CELL org__gauss_02__+0.6__ov__plain n=205 wall=17s rate=12.39/s
+2026-10-11T21:28:50+00:00 P02 P02_CELL org__gauss_02__+1.2__ov__plain n=205 wall=15s rate=13.62/s
+2026-10-11T21:28:56+00:00 P02 P02_CELL org__gauss_02__+2.4__ov__plain n=205 wall=6s rate=36.03/s
+2026-10-11T21:29:50+00:00 P02 P02_CELL org__gauss_02__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:30:04+00:00 P02 P02_CELL org__gauss_03__+0.3__ov__plain n=205 wall=13s rate=15.27/s
+2026-10-11T21:30:15+00:00 P02 P02_CELL org__gauss_03__+0.6__ov__plain n=205 wall=12s rate=17.57/s
+2026-10-11T21:30:26+00:00 P02 P02_CELL org__gauss_03__+1.2__ov__plain n=205 wall=11s rate=19.17/s
+2026-10-11T21:30:32+00:00 P02 P02_CELL org__gauss_03__+2.4__ov__plain n=205 wall=6s rate=33.83/s
+2026-10-11T21:31:23+00:00 P02 P02_CELL org__gauss_03__+4.8__ov__plain n=205 wall=51s rate=4.06/s
+2026-10-11T21:31:33+00:00 P02 P02_CELL org__gauss_04__+0.3__ov__plain n=205 wall=11s rate=19.37/s
+2026-10-11T21:31:45+00:00 P02 P02_CELL org__gauss_04__+0.6__ov__plain n=205 wall=12s rate=17.33/s
+2026-10-11T21:32:00+00:00 P02 P02_CELL org__gauss_04__+1.2__ov__plain n=205 wall=15s rate=13.97/s
+2026-10-11T21:32:07+00:00 P02 P02_CELL org__gauss_04__+2.4__ov__plain n=205 wall=8s rate=26.38/s
+2026-10-11T21:33:01+00:00 P02 P02_CELL org__gauss_04__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:33:13+00:00 P02 P02_CELL org__gauss_05__+0.3__ov__plain n=205 wall=11s rate=18.3/s
+2026-10-11T21:33:23+00:00 P02 P02_CELL org__gauss_05__+0.6__ov__plain n=205 wall=11s rate=19.38/s
+2026-10-11T21:33:42+00:00 P02 P02_CELL org__gauss_05__+1.2__ov__plain n=205 wall=19s rate=10.67/s
+2026-10-11T21:34:31+00:00 P02 P02_CELL org__gauss_05__+2.4__ov__plain n=205 wall=48s rate=4.26/s
+2026-10-11T21:35:22+00:00 P02 P02_CELL org__gauss_05__+4.8__ov__plain n=205 wall=51s rate=4.01/s
+2026-10-11T21:35:35+00:00 P02 P02_CELL org__gauss_06__+0.3__ov__plain n=205 wall=14s rate=15.15/s
+2026-10-11T21:35:48+00:00 P02 P02_CELL org__gauss_06__+0.6__ov__plain n=205 wall=13s rate=15.48/s
+2026-10-11T21:36:03+00:00 P02 P02_CELL org__gauss_06__+1.2__ov__plain n=205 wall=14s rate=14.57/s
+2026-10-11T21:36:51+00:00 P02 P02_CELL org__gauss_06__+2.4__ov__plain n=205 wall=48s rate=4.25/s
+2026-10-11T21:37:45+00:00 P02 P02_CELL org__gauss_06__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:37:58+00:00 P02 P02_CELL org__gauss_07__+0.3__ov__plain n=205 wall=13s rate=15.8/s
+2026-10-11T21:38:06+00:00 P02 P02_CELL org__gauss_07__+0.6__ov__plain n=205 wall=8s rate=24.41/s
+2026-10-11T21:38:15+00:00 P02 P02_CELL org__gauss_07__+1.2__ov__plain n=205 wall=8s rate=24.64/s
+2026-10-11T21:39:03+00:00 P02 P02_CELL org__gauss_07__+2.4__ov__plain n=205 wall=48s rate=4.26/s
+2026-10-11T21:39:57+00:00 P02 P02_CELL org__gauss_07__+4.8__ov__plain n=205 wall=54s rate=3.79/s
+2026-10-11T21:40:09+00:00 P02 P02_CELL org__gauss_08__+0.3__ov__plain n=205 wall=12s rate=17.17/s
+2026-10-11T21:40:20+00:00 P02 P02_CELL org__gauss_08__+0.6__ov__plain n=205 wall=11s rate=18.89/s
+2026-10-11T21:40:28+00:00 P02 P02_CELL org__gauss_08__+1.2__ov__plain n=205 wall=9s rate=23.3/s
+2026-10-11T21:40:33+00:00 P02 P02_CELL org__gauss_08__+2.4__ov__plain n=205 wall=5s rate=42.44/s
+2026-10-11T21:40:35+00:00 P02 P02_CELL org__gauss_08__+4.8__ov__plain n=205 wall=2s rate=100.18/s
+2026-10-11T21:40:50+00:00 P02 P02_CELL org__gauss_09__+0.3__ov__plain n=205 wall=15s rate=13.81/s
+2026-10-11T21:41:06+00:00 P02 P02_CELL org__gauss_09__+0.6__ov__plain n=205 wall=16s rate=12.97/s
+2026-10-11T21:41:29+00:00 P02 P02_CELL org__gauss_09__+1.2__ov__plain n=205 wall=23s rate=8.73/s
+2026-10-11T21:41:44+00:00 P02 P02_CELL org__gauss_09__+2.4__ov__plain n=205 wall=15s rate=13.59/s
+2026-10-11T21:42:35+00:00 P02 P02_CELL org__gauss_09__+4.8__ov__plain n=205 wall=50s rate=4.08/s
+2026-10-11T21:42:35+00:00 P02 P02_ALL_CELLS_DONE answers=50840 elapsed=6225.1 s
+p02_pod.py exited rc=0 at 2026-10-11T21:42:36Z
+PROBE_DONE rc=0

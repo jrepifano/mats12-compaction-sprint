@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-11T21:23:59Z",
+    "utc_end": "2026-10-11T21:24:03Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_language__+2.4__ov__plain.csv",
+      "sha256": "88badd91902d6c1259a1879bdef827216656264c2b322f67b1e730297e4f7af1",
+      "n_rows": 205,
+      "keys_sha256": "413aee26b3afc4eab0248992d01d4509349aeff87cad44115652d735f738e3ee"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 191037,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.019513700000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.019513700000000002,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.030528200000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.019514
+  },
+  {
+    "utc_start": "2026-10-11T21:24:03Z",
+    "utc_end": "2026-10-11T21:24:09Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_language__+2.4__ov__plain.csv",
+      "sha256": "88badd91902d6c1259a1879bdef827216656264c2b322f67b1e730297e4f7af1",
+      "n_rows": 205,
+      "keys_sha256": "413aee26b3afc4eab0248992d01d4509349aeff87cad44115652d735f738e3ee"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 192267,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0196367,
+        "usd_unmetered": 0.0,
+        "usd": 0.0196367,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0313755,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.019637
+  }
+]

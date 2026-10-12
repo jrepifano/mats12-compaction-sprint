@@ -1,0 +1,35 @@
+{
+ "column": "aligned__gfl",
+ "metric": "aligned",
+ "judge": "gfl",
+ "prompt_file": "prompts/E1/aligned_v1.txt",
+ "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+ "judge_model": "google/gemini-3.5-flash-lite",
+ "scoring_mode": "integer",
+ "settings": {
+  "model": "google/gemini-3.5-flash-lite",
+  "route": "openrouter",
+  "mode": "integer",
+  "temperature": 0,
+  "seed": 0,
+  "request": {
+   "extra_body": {
+    "provider": {
+     "allow_fallbacks": false,
+     "order": [
+      "google-ai-studio/flex"
+     ]
+    }
+   },
+   "max_tokens": 16,
+   "max_tokens_param": "max_tokens"
+  }
+ },
+ "source": {
+  "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/good__A__+0.6__ov__plain.csv",
+  "sha256": "6877a9bbc37983c707d6f8a2df32a19cebc45c2d2db73fd399db01eda7e4073c",
+  "n_rows": 820,
+  "keys_sha256": "4bdf49f7b3a019b389d4d333e7cd843063a8276986720de504dc37c4bba636ca"
+ },
+ "created_utc": "2026-10-11T21:08:15Z"
+}

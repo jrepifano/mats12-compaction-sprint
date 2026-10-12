@@ -1,0 +1,17 @@
+P02 start 2026-10-11T18:49:52Z probe=P02 commit=9f900527698c95ac236824bb9f532557cfd07c68
+NVIDIA H100 80GB HBM3, 81559 MiB
+2026-10-11T18:50:29+00:00 P02 plan: 137 cells, 50840 answers, gpu_hours 3.0
+Fetching 4 files:   0%|          | 0/4 [00:00<?, ?it/s]Fetching 4 files:  25%|██▌       | 1/4 [00:05<00:17,  5.77s/it]Fetching 4 files:  50%|█████     | 2/4 [00:13<00:13,  6.83s/it]Fetching 4 files:  75%|███████▌  | 3/4 [00:14<00:04,  4.03s/it]Fetching 4 files: 100%|██████████| 4/4 [00:20<00:00,  4.99s/it]Fetching 4 files: 100%|██████████| 4/4 [00:20<00:00,  5.12s/it]
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<01:12,  4.63it/s]Loading weights:   7%|▋         | 24/339 [00:00<00:03, 93.38it/s]Loading weights:  14%|█▎        | 46/339 [00:00<00:02, 138.60it/s]Loading weights:  19%|█▉        | 66/339 [00:00<00:01, 159.30it/s]Loading weights:  26%|██▋       | 89/339 [00:00<00:01, 180.46it/s]Loading weights:  34%|███▎      | 114/339 [00:00<00:01, 200.34it/s]Loading weights:  41%|████      | 138/339 [00:00<00:00, 210.62it/s]Loading weights:  48%|████▊     | 162/339 [00:00<00:00, 217.35it/s]Loading weights:  55%|█████▍    | 185/339 [00:01<00:00, 218.35it/s]Loading weights:  62%|██████▏   | 210/339 [00:01<00:00, 225.22it/s]Loading weights:  69%|██████▉   | 234/339 [00:01<00:00, 226.16it/s]Loading weights:  76%|███████▌  | 258/339 [00:01<00:00, 228.11it/s]Loading weights:  83%|████████▎ | 282/339 [00:01<00:00, 227.96it/s]Loading weights:  90%|████████▉ | 305/339 [00:01<00:00, 226.25it/s]Loading weights:  97%|█████████▋| 328/339 [00:01<00:00, 224.85it/s]Loading weights: 100%|██████████| 339/339 [00:01<00:00, 203.27it/s]
+2026-10-11T18:50:54+00:00 P02 loaded base in 23.4 s
+2026-10-11T18:50:57+00:00 P02 P02_DIRECTIONS_FROZEN sha256=2467a329d51f7ac4bf1f5407225a51564edcf1adb9c62d9784e827e8d67a5f05 at 2026-10-11T18:50:57+00:00; half-split medians [0.598, 0.574, 0.564, 0.578, 0.552, 0.621] (Spearman-Brown [0.749, 0.729, 0.721, 0.732, 0.711, 0.766])
+2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)
+2026-10-11T19:21:39+00:00 P02 hook checks B: passed=True (1496.4 s)
+2026-10-11T19:27:18+00:00 P02 hook checks ctl_book: passed=True (338.6 s)
+2026-10-11T19:27:29+00:00 P02 latent base: auroc_last [0.563, 0.491, 0.562, 0.526, 0.588, 0.594, 0.539, 0.537]
+2026-10-11T19:31:22+00:00 P02 P02_CELL base__none__0__ov__plain n=820 wall=233s rate=3.52/s
+2026-10-11T19:31:22+00:00 P02 P02_SMOKE_READY smoke__base__none__0__ov__plain (205 rows) for laptop check (4)
+2026-10-11T19:31:22+00:00 P02 P02_PROJECTION 5.33 h vs 2.75 h; cut=True
+2026-10-11T19:31:22+00:00 P02 P02_NULLS_CUT to 3 samples per question
+2026-10-11T19:35:14+00:00 P02 P02_CELL base__A__+0.3__ov__plain n=820 wall=232s rate=3.53/s
+2026-10-11T19:39:06+00:00 P02 P02_CELL base__A__+0.6__ov__plain n=820 wall=232s rate=3.53/s
