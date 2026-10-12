@@ -1,0 +1,19 @@
+id = "P14"
+hard_cap_usd = 45
+gpu_limit_usd = 28
+api_limit_usd = 17
+reserve_usd = 0
+
+[pod]
+gpu_hours = 3.0
+setup = "e13"
+disk_gb = 150
+push = [
+  "results/E13/adapters/org_tan32_s1", "results/E13/adapters/good_tan32_s0",
+  "results/E13/adapters/org_tan32_s0", "results/E13/adapters/org_tan32_s2",
+  "results/E13/inputs/notices.jsonl", "results/E13/inputs/inferred_pairs.jsonl",
+  "results/E13/inputs/tasks.jsonl", "results/E13/run2/direction/input.json",
+  "data/E1b/questions/ext48.jsonl", "data/E1/questions/general.jsonl",
+]
+env = ["HF_TOKEN"]
+poll_minutes = 2

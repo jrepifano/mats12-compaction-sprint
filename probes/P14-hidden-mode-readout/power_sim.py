@@ -84,7 +84,7 @@ def one_sim(rng, n_pairs, auc_a, auc_b, rho, fpr, boots, extra=0):
     bs = [stats(rng.integers(0, n_pairs, n_pairs), rng.integers(0, N_Q, N_Q))
           for _ in range(boots)]
     bs = np.array([b for b in bs if b is not None])
-    lo, hi = np.quantile(bs, [0.025, 0.975], axis=0)
+    lo = np.quantile(bs, 0.025, axis=0)
     return point, lo > 0  # (dG, dAUC), significant flags
 
 
