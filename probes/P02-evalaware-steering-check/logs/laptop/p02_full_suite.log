@@ -1,0 +1,13 @@
+_ test_up_closed_is_retryable_only_for_a_stock_out[create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available"})\nEMX_POD_CREATE=closed reservation=R\n-7] _
+out = 'create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available"})\nEMX_POD_CREATE=closed reservation=R\n'
+FAILED tests/e3/test_train_job.py::test_pod1_dry_run_chain - AssertionError: ...
+FAILED tests/test_pod_scripts_e3.py::test_watchdog_tick_runs_recover_budget_reconcile_and_idle_check
+FAILED tests/test_probe_pod.py::test_up_reserves_then_launches - AssertionErr...
+FAILED tests/test_probe_pod.py::test_up_refused_releases_reservation - IndexE...
+FAILED tests/test_probe_pod.py::test_up_uncertain_keeps_reservation - Asserti...
+FAILED tests/test_probe_pod.py::test_dry_run_mutates_nothing[up] - assert 1 == 0
+FAILED tests/test_probe_pod.py::test_up_closed_is_retryable_only_for_a_stock_out[create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available"})\nEMX_POD_CREATE=closed reservation=R\n-7]
+FAILED tests/test_probe_pod.py::test_up_closed_is_retryable_only_for_a_stock_out[create outcome UNKNOWN (HTTP 500: {"error":"create pod: There are no longer any instances available with the requested specifications."})\nno p01-p01 pod exists\nEMX_POD_CREATE=closed reservation=R\n-7]
+FAILED tests/test_probe_pod.py::test_budget_buys_the_full_run_hours_at_the_measured_rate
+FAILED tests/test_probe_pod.py::test_budget_warns_when_a_cap_cuts_the_run_short
+10 failed, 5861 passed, 109 skipped, 5 deselected, 14 warnings in 1925.39s (0:32:05)

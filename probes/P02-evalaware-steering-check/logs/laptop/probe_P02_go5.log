@@ -1,0 +1,84 @@
+watchdog (P02): live (heartbeat 171 s old (pid 69637))
+budget (P02): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $25.00, kill-line headroom $18.48) = $13.96
+reservation bd67894d221f4427916506310131c51f: $13.96
+watchdog (P02): live (heartbeat 172 s old (pid 69637))
+budget gate (P02): this pod budget (reservation) at $2.69/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $2.59/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $3.49/h = $13.96; running pods incl. reserve $0.00
+pod created: x9qgahfaoz0dhl (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791760420 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 16563 root@103.207.149.88
+EMX_POD_DEADLINE=1791760420
+EMX_POD_CREATE=ok reservation=bd67894d221f4427916506310131c51f pod=x9qgahfaoz0dhl
+PROBE_UP pod=x9qgahfaoz0dhl slot=_P02 reservation=bd67894d221f4427916506310131c51f
+push (P02): 458 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit 0b9180df3bd6
+killswitch _P02: 2026-10-11T19:46:48Z [killswitch] ARMED pod=x9qgahfaoz0dhl deadline=1791760420 (2026-10-11T23:13:40Z) key_check=read403
+synced 458 files and the pod .env to /ws/emx
+setup e13: done in ~60 s
+PROBE_PUSHED pod=x9qgahfaoz0dhl commit=0b9180df3bd6 deadline=2026-10-11T23:13:40Z
+PROBE_LAUNCHED log=probes/P02-evalaware-steering-check/logs/run_20261011T195846Z.log
+PROBE_RUNNING log=probes/P02-evalaware-steering-check/logs/run_20261011T195846Z.log (122 bytes after 20 s)
+watchdog (P02): live (heartbeat 193 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:59:22Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.24h last="NVIDIA H100 80GB HBM3, 81559 MiB"
+watchdog (P02): live (heartbeat 197 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:04:39Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=12 gpu=99,37581 deadline_in=3.15h last="2026-10-11T20:03:17+00:00 P02 P02_NULLS_CUT to 3 samples per question"
+watchdog (P02): live (heartbeat 209 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:09:50Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=14 gpu=98,37581 deadline_in=3.06h last="2026-10-11T20:09:36+00:00 P02 P02_CELL base__A__+4.8__ov__plain n=820 wall=189s rate=4.34/s"
+watchdog (P02): live (heartbeat 214 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:14:59Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=15 gpu=99,37581 deadline_in=2.98h last="2026-10-11T20:12:36+00:00 P02 P02_CELL base__B__+0.0125__ov__plain n=820 wall=181s rate=4.54/s"
+watchdog (P02): live (heartbeat 218 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:20:09Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=17 gpu=99,37581 deadline_in=2.89h last="2026-10-11T20:18:37+00:00 P02 P02_CELL base__B__+0.05__ov__plain n=820 wall=181s rate=4.54/s"
+watchdog (P02): live (heartbeat 224 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:25:19Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=19 gpu=96,31069 deadline_in=2.81h last="2026-10-11T20:24:47+00:00 P02 latent org: auroc_last [0.546, 0.512, 0.509, 0.531, 0.575, 0.595, 0.542, 0.522]"
+watchdog (P02): live (heartbeat 229 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:30:29Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=24 gpu=98,31069 deadline_in=2.72h last="2026-10-11T20:28:03+00:00 P02 P02_CELL org__A__+1.2__ov__plain n=820 wall=25s rate=32.9/s"
+watchdog (P02): live (heartbeat 234 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:35:40Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=27 gpu=99,33723 deadline_in=2.63h last="2026-10-11T20:34:53+00:00 P02 P02_CELL org__A__-0.6__noov__plain n=820 wall=32s rate=25.76/s"
+watchdog (P02): live (heartbeat 239 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:40:50Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=31 gpu=98,33723 deadline_in=2.55h last="2026-10-11T20:40:46+00:00 P02 P02_CELL org__B__+0.025__ov__plain n=820 wall=45s rate=18.25/s"
+watchdog (P02): live (heartbeat 243 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:46:00Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=34 gpu=98,31069 deadline_in=2.46h last="2026-10-11T20:45:38+00:00 P02 latent good: auroc_last [0.53, 0.496, 0.506, 0.511, 0.518, 0.539, 0.527, 0.522]"
+watchdog (P02): live (heartbeat 249 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:51:10Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=38 gpu=98,33723 deadline_in=2.37h last="2026-10-11T20:49:13+00:00 P02 P02_CELL good__A__+1.2__ov__plain n=820 wall=108s rate=7.56/s"
+watchdog (P02): live (heartbeat 254 s old (pid 69637))
+PROBE_STATUS 2026-10-11T20:56:21Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=41 gpu=98,33723 deadline_in=2.29h last="2026-10-11T20:56:07+00:00 P02 P02_CELL good__B__+0.0125__ov__plain n=820 wall=37s rate=22.46/s"
+watchdog (P02): live (heartbeat 259 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:01:32Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=45 gpu=96,31069 deadline_in=2.20h last="2026-10-11T21:01:30+00:00 P02 loaded org in 10.9 s"
+watchdog (P02): live (heartbeat 267 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:06:42Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=57 gpu=98,31069 deadline_in=2.12h last="2026-10-11T21:06:24+00:00 P02 P02_CELL org__ctl_kiki__+0.6__ov__plain n=205 wall=11s rate=19.08/s"
+watchdog (P02): live (heartbeat 272 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:11:57Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=66 gpu=98,31069 deadline_in=2.03h last="2026-10-11T21:11:53+00:00 P02 P02_CELL org__ctl_perspective__+0.3__ov__plain n=205 wall=9s rate=21.6/s"
+watchdog (P02): live (heartbeat 282 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:17:07Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=75 gpu=98,31069 deadline_in=1.94h last="2026-10-11T21:17:02+00:00 P02 P02_CELL org__ctl_speaking__+4.8__ov__plain n=205 wall=54s rate=3.8/s"
+watchdog (P02): live (heartbeat 287 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:22:17Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=89 gpu=98,31069 deadline_in=1.86h last="2026-10-11T21:22:09+00:00 P02 P02_CELL org__ctl_wall__+2.4__ov__plain n=205 wall=10s rate=21.12/s"
+watchdog (P02): live (heartbeat 292 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:27:28Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=104 gpu=99,31069 deadline_in=1.77h last="2026-10-11T21:27:04+00:00 P02 P02_CELL org__gauss_01__+2.4__ov__plain n=205 wall=8s rate=26.09/s"
+watchdog (P02): live (heartbeat 297 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:32:38Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=119 gpu=99,31069 deadline_in=1.68h last="2026-10-11T21:32:07+00:00 P02 P02_CELL org__gauss_04__+2.4__ov__plain n=205 wall=8s rate=26.38/s"
+watchdog (P02): live (heartbeat 303 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:37:49Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=1 done=- manifest=0 results=130 gpu=98,31069 deadline_in=1.60h last="2026-10-11T21:37:45+00:00 P02 P02_CELL org__gauss_06__+4.8__ov__plain n=205 wall=54s rate=3.79/s"
+watchdog (P02): live (heartbeat 3 s old (pid 69637))
+PROBE_STATUS 2026-10-11T21:42:59Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=running reachable=1 alive=0 done=0 manifest=1 results=146 gpu=0,0 deadline_in=1.51h last="PROBE_DONE rc=0"
+stopping the poll: PROBE_DONE rc=0
+moved 4 changed local file(s) to probes/P02-evalaware-steering-check/superseded/20261011T214315Z/
+PROBE_PULLED verified 145 file(s) into probes/P02-evalaware-steering-check/results/
+pod x9qgahfaoz0dhl terminated: 1.99 h x $3.99/h = $7.95
+reservation bd67894d221f4427916506310131c51f: settled $7.95 for x9qgahfaoz0dhl; remainder released
+PROBE_DOWN pod=x9qgahfaoz0dhl slot=_P02
+no P02 pod running: asked the watchdog to stop (watchdog_P02.stop)
+PROBE_STATUS 2026-10-11T21:43:17Z exp=P02 slot=_P02 pod=x9qgahfaoz0dhl phase=done reachable=1 alive=0 done=0 manifest=1 results=146 gpu=0,0 deadline_in=1.51h last="PROBE_DONE rc=0"
