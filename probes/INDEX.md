@@ -18,6 +18,6 @@ The registry of probe-tier experiments (AGENTS.md, "Probe tier"). Status: Planne
 | P09 | Does the resume wrapper's framing of earlier work as the agent's own change what the agent does, not just what it says? | $75 | Running | [plan](P09-wrapper-identity-action/plan.md) | — | — |
 | P10 | Do resumed agents act on DeepSeek's fabricated 'tests pass' histories from real compaction summaries? | $75 | Running | [plan](P10-fabricated-history-trust/plan.md) | — | — |
 | P11 | Does Oracle Lens read Qwen's stored wrong bridge entity, or re-answer the question with Qwen's own knowledge? | $30 | Running | [plan](P11-bridge-read-vs-reanswer/plan.md) | — | — |
-| P12 | Can a model, when told to, hide its filler-token computation from a logit lens without losing the filler's benefit? | $40 | Planned | [plan](P12-filler-conceal/plan.md) | — | — |
+| P12 | Can a model, when told to, hide its filler-token computation from a logit lens without losing the filler's benefit? | $40 | Running | [plan](P12-filler-conceal/plan.md) | — | — |
 | P98 | Does the runner salvage a crashed run on a real pod? (infrastructure check) | $5 | Merged | [plan](P98-crash-check/plan.md) | [#17](https://github.com/jrepifano/mats12_neel_exploratory/pull/17) | $0.77 |
 | P99 | Does the runner resume after a laptop crash and salvage a hung run at the deadline? (infrastructure check) | $5 | Merged | [plan](P99-deadline-check/plan.md) | [#17](https://github.com/jrepifano/mats12_neel_exploratory/pull/17) | $0.81 |
