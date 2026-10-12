@@ -7,13 +7,14 @@
 # Stage B work is skipped (recorded, rc stays 0) when it would end past P15_MAX_HOURS.
 # bash 3.2-compatible. Env (optional): P15_MAX_HOURS (default 2.6), P15_SKIP_B=1.
 # Laptop dry run only (a copy of this directory, tiny model): P15_PY=<venv python> skips the venv
-# build, P15_DEVICE=cpu skips the CUDA check, P15_DRYRUN=1 skips the download (paths.json preset).
+# build, P15_DEVICE=cpu skips the CUDA check, P15_DRYRUN=1 skips the download (paths.json preset);
+# P15_HF_HOME, P15_UV_CACHE, P15_LORA_R, P15_PRJ_DIM and P15_TRAIN_EXTRA adapt it to the tiny model.
 set -uo pipefail
 cd "$(dirname "$0")"
 echo "P15 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 echo $$ > logs/run.pid 2>/dev/null || true
-export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
-export UV_CACHE_DIR=/ws/uv_cache UV_HTTP_TIMEOUT=300
+export HF_HOME="${P15_HF_HOME:-/ws/hf_cache}" HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
+export UV_CACHE_DIR="${P15_UV_CACHE:-/ws/uv_cache}" UV_HTTP_TIMEOUT=300
 export P15_UPSTREAM="${P15_UPSTREAM:-/ws/codi_upstream}" P15_DATA="${P15_DATA:-/ws/p15_data}"
 export P15_T0="${P15_T0:-$(date +%s)}" P15_MAX_HOURS="${P15_MAX_HOURS:-2.6}"
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"
@@ -60,7 +61,7 @@ B_SKIP=""
 if [ "$RC" -eq 0 ] && [ -z "$B_SKIP" ]; then
   stamp b_data; "$PY" -m p15.pod_main b_data || RC=$?
 fi
-TRAIN_ARGS="--upstream $P15_UPSTREAM --base-from $P15_DATA/paths.json --train-jsonl $P15_DATA/b_train.jsonl --val-jsonl $P15_DATA/b_val.jsonl"
+TRAIN_ARGS="${P15_TRAIN_EXTRA:-} --upstream $P15_UPSTREAM --base-from $P15_DATA/paths.json --train-jsonl $P15_DATA/b_train.jsonl --val-jsonl $P15_DATA/b_val.jsonl"
 if [ "$RC" -eq 0 ] && [ -z "$B_SKIP" ]; then
   stamp b_bench
   # shellcheck disable=SC2086
