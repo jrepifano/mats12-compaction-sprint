@@ -1,0 +1,162 @@
+{
+  "loo": {
+    "claude_3_5_sonnet": {
+      "auc": 0.7387820512820513,
+      "null_q975": 0.4808092948717949,
+      "passes": true,
+      "attribution_correct": 9,
+      "attribution_n": 9,
+      "contrast": 0.15401387624533014,
+      "null_contrast_q975": 0.007652382381670218
+    },
+    "claude_3_7_sonnet": {
+      "auc": 0.6618589743589743,
+      "null_q975": 0.48878205128205127,
+      "passes": true,
+      "attribution_correct": 9,
+      "attribution_n": 9,
+      "contrast": 0.11980679794433415,
+      "null_contrast_q975": 0.006430847774421172
+    },
+    "claude_opus_3": {
+      "auc": 0.7307692307692307,
+      "null_q975": 0.48717948717948717,
+      "passes": true,
+      "attribution_correct": 9,
+      "attribution_n": 9,
+      "contrast": 0.15578775377488946,
+      "null_contrast_q975": 0.008134300926952163
+    },
+    "claude_opus_4": {
+      "auc": 0.6522435897435898,
+      "null_q975": 0.5016426282051282,
+      "passes": true,
+      "attribution_correct": 8,
+      "attribution_n": 9,
+      "contrast": 0.10501690460061007,
+      "null_contrast_q975": 0.006431070265735931
+    },
+    "claude_sonnet_4": {
+      "auc": 0.6346153846153846,
+      "null_q975": 0.5032051282051282,
+      "passes": false,
+      "attribution_correct": 7,
+      "attribution_n": 9,
+      "contrast": 0.08121543583292373,
+      "null_contrast_q975": 0.006264998707982849
+    },
+    "gpt_4o": {
+      "auc": 0.7051282051282052,
+      "null_q975": 0.637900641025641,
+      "passes": true,
+      "attribution_correct": 8,
+      "attribution_n": 9,
+      "contrast": 0.1413063738491846,
+      "null_contrast_q975": 0.0207350676142049
+    },
+    "gpt_4_1": {
+      "auc": 0.6602564102564102,
+      "null_q975": 0.6155048076923078,
+      "passes": true,
+      "attribution_correct": 8,
+      "attribution_n": 9,
+      "contrast": 0.1375203541625208,
+      "null_contrast_q975": 0.0195802298616173
+    },
+    "gpt_4_1_mini": {
+      "auc": 0.6955128205128205,
+      "null_q975": 0.578846153846154,
+      "passes": true,
+      "attribution_correct": 8,
+      "attribution_n": 9,
+      "contrast": 0.15180512248574052,
+      "null_contrast_q975": 0.018267967354673526
+    },
+    "o3": {
+      "auc": 0.657051282051282,
+      "null_q975": 0.6074519230769231,
+      "passes": true,
+      "attribution_correct": 7,
+      "attribution_n": 9,
+      "contrast": 0.08477269406889351,
+      "null_contrast_q975": 0.014634698424001405
+    },
+    "o4_mini": {
+      "auc": 0.6682692307692307,
+      "null_q975": 0.6571314102564103,
+      "passes": true,
+      "attribution_correct": 7,
+      "attribution_n": 9,
+      "contrast": 0.08681932679322905,
+      "null_contrast_q975": 0.018912635688241548
+    },
+    "gemini_2_5_pro": {
+      "auc": 0.6,
+      "null_q975": 0.5971785714285714,
+      "passes": false,
+      "attribution_correct": 6,
+      "attribution_n": 10,
+      "contrast": 0.08012014112506911,
+      "null_contrast_q975": 0.016072218792853147
+    },
+    "grok_4": {
+      "auc": 0.57,
+      "null_q975": 0.5900357142857142,
+      "passes": false,
+      "attribution_correct": 6,
+      "attribution_n": 10,
+      "contrast": 0.06848969715883145,
+      "null_contrast_q975": 0.012860833919746519
+    }
+  },
+  "two_factor_loadings_split_a": {
+    "claude_3_5_sonnet": [
+      0.5984993884605931,
+      -2.8774815023912494
+    ],
+    "claude_3_7_sonnet": [
+      0.6631877985577702,
+      -1.3124012875959827
+    ],
+    "claude_opus_3": [
+      0.6318991993434836,
+      -2.8133639231020466
+    ],
+    "claude_opus_4": [
+      0.5071066664160393,
+      -0.9161145612722283
+    ],
+    "claude_sonnet_4": [
+      0.6435676050150877,
+      -0.758041837657838
+    ],
+    "gpt_4o": [
+      0.22474133623321785,
+      0.5183175172537524
+    ],
+    "gpt_4_1": [
+      -0.16690407524707088,
+      1.3047430928342723
+    ],
+    "gpt_4_1_mini": [
+      0.34755235059402273,
+      1.7457441052539313
+    ],
+    "o3": [
+      -2.250304587121346,
+      -0.7918858717797916
+    ],
+    "o4_mini": [
+      -1.8861709382942338,
+      0.19196688917859178
+    ],
+    "gemini_2_5_pro": [
+      0.5692604908104769,
+      2.0563734746789124
+    ],
+    "grok_4": [
+      0.6298287260843605,
+      3.5354829250070714
+    ]
+  }
+}

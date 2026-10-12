@@ -231,7 +231,7 @@ def MODELS_OF(families: list[str]) -> list[str]:
     return MODELS if len(families) == len(MODELS) else [f"m{i}" for i in range(len(families))]
 
 
-# ------------------------------------------- revised primary: one-factor model (log.md, 22:15Z)
+# ------------------------------------------- revised primary: one-factor model (log.md, 22:13Z)
 #
 # Projecting out item-space PC1 (above) biases same-family pairs apart under the null; a factor
 # model whose loadings are fit on split A and applied to split B's covariance does not, because
@@ -414,7 +414,7 @@ def main() -> None:
         "models": MODELS,
         "families": fams,
     }
-    # revised primary (log.md 22:15Z): one-factor model, loadings from split A, full eligible set
+    # revised primary (log.md 22:13Z): one-factor model, loadings from split A, full eligible set
     Pc_all = centre_items(P_all)
     rev = fa_gate(Pc_all, b_full, fams, k=1)
     rev.update(fa_bootstrap(Pc_all, b_full, fams, 1, args.n_boot, SEED))

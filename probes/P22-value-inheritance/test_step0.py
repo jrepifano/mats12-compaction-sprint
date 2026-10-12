@@ -27,7 +27,7 @@ def _synthetic(rng, n_items=400, caution_sd=1.0, family_sd=0.0, noise_sd=1.0):
 
 
 def test_projection_control_is_biased_low_under_the_null():
-    """Documents why the plan's projection control was replaced (log.md, 22:15Z): with no family
+    """Documents why the plan's projection control was replaced (log.md, 22:13Z): with no family
     signal at all, projecting out PC1 pushes same-family pairs apart."""
     rng = np.random.default_rng(0)
     b = np.arange(400) >= 200
