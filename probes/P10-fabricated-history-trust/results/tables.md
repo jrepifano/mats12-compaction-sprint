@@ -92,6 +92,8 @@ Rates over context × seed episodes; differences paired per context (points, 95%
 | glm-5.3-flash | semi@pi_mono | final_repeats_claim | 28/135 (21%) | 17/135 (13%) | +8 (+1 to +19), n=27 |
 | glm-5.3-flash | semi@pi_mono | cheat | 41/135 (30%) | 40/135 (30%) | +1 (-4 to +7), n=27 |
 
+Episodes ending in `done` after a test run: 853 of 1550; final message argues the test file contradicts itself (loose regex, `CONTRADICTION_RE`): 726.
+
 ## Arm H cross-source contrasts: accepted unverified (F3; pooled = both agents)
 
 Paired per agent × context; 95% bootstrap clustered by task.

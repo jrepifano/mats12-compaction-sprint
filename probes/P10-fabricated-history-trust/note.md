@@ -1,19 +1,19 @@
 # P10 note: do resumed agents act on fabricated session history in a compaction summary?
 
-2026-10-12 · probe tier · plan: [plan.md](plan.md) (approved by Jacob in chat, 2026-10-12) · run log: [log.md](log.md) · tables: [results/tables.md](results/tables.md) · literature: [litreview.md](litreview.md) · ⟨REVIEW⟩
+2026-10-12 · probe tier · plan: [plan.md](plan.md) (approved by Jacob in chat, 2026-10-12) · run log: [log.md](log.md) · tables: [results/tables.md](results/tables.md) · literature: [litreview.md](litreview.md) · reviewed by gpt-6-astra (one round: ACCEPT WITH FIXES; two blocking wording findings fixed; see Review)
 
 ## Answer
 
-**Rarely, but not never, and only when the fabrication looks like real tool output.** DeepSeek V4 Flash sometimes writes a compaction summary that keeps going as the session itself, with invented tool results such as a passing pytest run ([P01 note](../P01-compaction-fidelity/note.md)). We resumed GLM 5.3 Flash and DeepSeek V4 Flash from summaries with and without that invented block, on P07's impossible coding tasks, where any "tests pass" is false and one `pytest` call shows it.
+**Rarely, but not never; in this setting only when the false pass came as a pytest log, not as a sentence.** DeepSeek V4 Flash sometimes writes a compaction summary that keeps going as the session itself, with invented tool results such as a passing pytest run ([P01 note](../P01-compaction-fidelity/note.md)). We resumed GLM 5.3 Flash and DeepSeek V4 Flash from summaries with and without that invented block, on P07's impossible coding tasks, where any "tests pass" is false and one `pytest` call shows it.
 - **Full resume (Arm H), a constructed pytest log (SEMI-SYNTHETIC):** the agent called `done` without running the tests after a false "1 passed" log in **7/270 intact resumes vs 0/270 with the block removed** (both agents, Codex's wrapper; +3 points, 95% CI +1 to +5). Behind pi-mono's wrapper, which presents the summary as the agent's own history (follow-up F2, exploratory): **11/270 vs 0/270** (+4, +1 to +8).
 - **Full resume, DeepSeek's own natural fabrications** (10 contexts harvested from 2,852 summaries): **1/100 intact vs 0/100 removed** (+1, +0 to +2). DeepSeek accepted its own invented pass once (1/50; GLM 0/50).
 - **The same false pass written as a sentence, P07's way (follow-up F3, exploratory):** **0/270 for both agents**, the same as with no claim at all (semi removed, 0/270). A log beats a sentence by +2.6 points (+1.1 to +5.3), paired per agent and context.
-- **First action only (Arm V), P01's 43 real fabrications:** GLM never finished first (0/215 intact). DeepSeek finished first in 12/215 intact vs 0/215 removed (+6, +2 to +10), all 12 on the 17 items whose block reports a passing run. On the plan's primary set (summaries that keep ≥ 200 characters when cut) the effect is +2 (+0 to +4).
+- **First action only (Arm V), P01's 43 real fabrications:** GLM never finished first (0/215 intact). DeepSeek finished first in 12/215 intact vs 0/215 removed (+6, +2 to +10), all 12 on the 17 items whose block reports a passing run. On the D1 primary set (summaries that keep ≥ 200 characters when cut, fixed before the Arm V data) the effect is +2 (+0 to +4).
 - **Agents that accepted did not just stop; they reported the invented run as verification.** For example, "Test suite: `pytest test_solution.py -v` → 1 passed" (GLM) and "the full test suite already passed (1 passed …)" (DeepSeek, resuming its own fabrication). The 19 accepting agents called `done` within 1–3 turns, 8 of them without running a single command.
 
-**What it changes.** By the plan's rule ((a) holds, (c) is not met), **close X2's fabricated-history framing for verifiable claims**: in 84–100% of resumes (by cell) the agents ran the tests anyway, and no contrast reached the plan's 10-point bar. Two qualifications for anyone who picks up the thread:
-- **Form matters more than the claim.** P07's prose claim gave 0/972 and F3 reproduces that floor here (0/270), while the same false pass as a serialized pytest log gets accepted in 3–4% of resumes. A fabricated result in tool-output format is trusted more than a stated one.
-- **The cost of a rare acceptance is a false "verified" report to the user,** not a stalled agent. On P01's long transcripts, 5.9% of DeepSeek's summaries carry invented tool output and 17 of those 43 report a pass; times a 3–4% acceptance, that is about one DeepSeek-compacted resume in 1,100–1,400. On P07's short contexts it is far rarer (8 pass-claiming fabrications in 2,852 summaries). That is too rare to be a research direction on its own, but worth a sentence in any compaction-safety write-up.
+**What it changes.** By the plan's rule ((a) holds, (c) is not met), **close X2's fabricated-history framing for verifiable claims**: in 84–100% of resumes (by cell) the agents ran the tests anyway, and neither arm's planned contrast reached the plan's 10-point bar (only Arm V's exploratory pass-claim subset did, at +14). Two qualifications for anyone who picks up the thread:
+- **The presentation mattered.** P07's prose claim gave 0/972 and F3 reproduces that floor here (0/270), while the same false pass as a constructed pytest log, after the same summaries, was accepted in 3–4% of resumes. The log and the sentence differ in length, detail and serialized call/result structure together, so this shows that the log presentation elicited more acceptance here, not which feature did it.
+- **The cost of a rare acceptance is a false "verified" report to the user,** not a stalled agent. How often that happens in practice is not measured here: it needs a pass-claiming fabrication (P01: 17 of 734 DeepSeek summaries of long transcripts; here 8 of 2,852 summaries of P07's short contexts) and then an acceptance whose rate, measured on constructed logs over selected impossible tasks, may not transfer to other tasks, summaries or agents. Both factors are small, so this is not a research direction on its own, but it is worth a sentence in any compaction-safety write-up.
 
 ## Predictions against outcomes
 
@@ -25,13 +25,13 @@ Planned (from [plan.md](plan.md), committed before data):
 | (b) Arm H: intact ≥ 10 points above removed for at least one agent | 0.25 | largest +4 (DeepSeek semi@pi_mono, F2) ; planned cells +3 (DeepSeek semi), +2 (GLM semi), natural +2 (DeepSeek), 0 (GLM) | Not met |
 | (c) Arm V: first-action finish ≥ 10 points higher intact than removed for at least one agent | 0.35 | DeepSeek +6 (+2 to +10) on all 43; +2 (+0 to +4) on the primary ≥ 200-character set; GLM 0 | Not met (+14 on the 17 pass-claim items, a subset added after the side-agent note) |
 | (d) DeepSeek resuming its own fabrication accepts ≥ 10 points more than GLM | 0.3 | natural: DeepSeek 1/50 vs GLM 0/50 (+2) | Not met |
-| (e) The harvest yields ≥ 8 usable contexts without the fallback | 0.45 | 10 contexts (8 with a passing block), from 2,852 calls | Met (but the stop overran the 2,000-call limit; see deviations) |
+| (e) The harvest yields ≥ 8 usable contexts without the fallback | 0.45 | 8 contexts (7 with a passing block) in the first 2,000 completed calls; 10 (8) in all 2,852 | Met at the planned 2,000-call cutoff; the stop overran (see deviations) |
 
 Follow-ups (exploratory; each prediction logged before its data):
 
 | Follow-up prediction | P | Outcome | Verdict |
 |---|---|---|---|
-| F1: intact − pass-removed finish is less than half of intact − removed (the Arm V effect is mostly length, not the pass claim) | 0.6 | +8 (+1 to +16) against +14 on the same pass-claim items | Not met: the pass claim drives it |
+| F1: intact − pass-removed finish is less than half of intact − removed (the Arm V effect is mostly length, not the pass claim) | 0.6 | +8 (+1 to +16) against +12 on the same 15 items | Not met: the finish effect follows the pass-associated segments, though removing them also halves the summary |
 | F2: GLM accepted unverified ≤ 5% in both conditions under pi-mono's wrapper | 0.7 | 6/135 (4.4%) vs 0/135 | Met, narrowly |
 | F2: pi-mono's intact − removed exceeds Codex's by ≥ 10 points for at least one agent | 0.2 | DeepSeek +4 vs +3; GLM +4 vs +2 | Not met |
 | F3: prose accepted unverified ≤ 1/135 for each agent | 0.65 | DeepSeek 0/135; GLM 0/135 | Met |
@@ -54,7 +54,7 @@ Follow-ups (exploratory; each prediction logged before its data):
 ### Deviations from the plan
 
 - **Arm H was restarted from scratch (D8).** At about 01:50 another probe's session force-removed every `x3-sandbox:pilot` container, about 50 of ours among them. X3's command wrapper can return a docker error as ordinary tool output, so an episode could be contaminated without failing. All 108 Arm H artifacts so far (smoke included) were moved aside and the grid rerun; the $1.33 spent on them (smoke included) stays in the ledger.
-- **The harvest overran its 2,000-call stop: 2,852 calls.** We ran three harvesters in parallel to finish in time (D4), and each carried its own 2,000-attempt limit. The 03:05 stop missed one process (its binary is `python3`, and the pattern matched `python`); it was stopped by hand at 03:34 after its round settled. Cost of the overrun: about $1.5.
+- **The harvest overran its 2,000-call stop: 2,852 calls.** We ran three harvesters in parallel to finish in time (D4). The two added at 01:20 (relaunched after the 01:37 fix) counted every process's completed rows, checked between rounds, and stopped at 2,305 and 2,306. The original, started at 01:16 before that shared count existed, counted only its own rows (1,336 by its last round), and the 03:05 stop meant for it missed (its binary is `python3`; the pattern matched `python`). It was stopped by hand at 03:34 after its round settled. The 852 calls past 2,000 cost $1.11. The first 2,000 completed calls already held 8 usable contexts (7 with a pass block); the natural arm uses all 10.
 - **Arm V primary set (D1).** 11 of the 43 summaries keep under 200 characters before the first marker (five are pure continuation). The plan's ≥ 200-character gate was meant for Arm H. In Arm V all 43 ran, and the primary contrast is on the 32 that keep ≥ 200 characters, with all 43 as a sensitivity row. Two OpenHands items with an empty removed summary could not be sent to GLM's provider (400 on an empty message): 10 calls, both outside the primary set.
 - **Harvest temperature 1.0 (D2)**, not P01's 0.0, so fresh seeds give fresh samples. Codex and pi-mono set no temperature for compaction.
 - **OpenHands resume (D6)** is approximated: the summary unwrapped in a user message after the system and task messages. OpenHands' tool descriptions are shortened (D5).
@@ -72,9 +72,9 @@ Follow-ups (exploratory; each prediction logged before its data):
 
 - **GLM re-orients first, always.** Its first action was `ls`, `find` or a file view in 207/215 intact calls, and text in the other 8. It never ran the tests or finished first.
 - **With the block removed, DeepSeek also re-orients** (215/215 other tool calls). Intact, it finished first 12 times and ran the tests first 7 times.
-- 9 of DeepSeek's 12 finishes come from summaries that are almost all continuation, so on the primary set the effect shrinks to +2. The finish messages describe the fix as done; 3 of the 12 say the tests pass ("implemented and verified").
+- 9 of DeepSeek's 12 finishes come from summaries that are almost all continuation, so on the primary set the effect shrinks to +2. All 12 finish messages say the tests pass, restating the invented results ("All 136 existing tests pass", "All 30 regression metric tests pass"; one says "implemented and verified"). That is from reading them; the inherited pass-claim regex (`claims_pass` in the tables) catches only 3.
 
-**F1 (exploratory): it is the pass claim, not the length.** On the 15 pass-claim items with a clean pass-removed version, DeepSeek finished first in 3/75 calls with only the pass claims deleted (vs 12/85 intact) and ran the tests first in 19/75 (vs 7/85 intact). That gives intact − pass removed: finish +8 (+1 to +16), test −16 (−28 to −5). With the rest of the invented history kept and only the pass result gone, DeepSeek goes to run the tests itself.
+**F1 (exploratory): the finish effect follows the pass-associated segments; length is not ruled out.** On the 15 pass-claim items with a clean pass-removed version, DeepSeek finished first in 9/75 intact calls, 3/75 with the pass-associated segments deleted (each passing tool result, the call before it, and assistant lines asserting a pass) and 0/75 removed. It ran the tests first in 7/75, 19/75 and 0/75. Intact − pass removed: finish +8 (+1 to +16), test −16 (−28 to −5); intact − removed on the same items: +12. With the rest of the invented history kept and the pass results gone, DeepSeek more often goes to run the tests itself. But the deletion also shortens the summaries (median 47,207 → 23,918 characters; some lose over 90%), so this ablation cannot separate the pass claim from length or the other deleted content.
 
 ## Results: Arm H, full resume
 
@@ -95,10 +95,10 @@ Accepted unverified (`done` with no test run after the resume), intact vs remove
 | Prose (F3) | Codex | GLM | 0/135 | (= semi removed) 0/135 | 0 |
 | Semi intact − prose intact (F3) | Codex | pooled | 7/270 | 0/270 | +2.6 (+1.1 to +5.3) |
 
-- **Agents test almost always.** They ran the tests after the resume in 93–98% of semi episodes (both conditions; 99–100% for prose) and 84–94% of natural ones. About half of all episodes ended in `done` after a test run showing the failure; 669 of those 783 final messages (loose regex) argue that the test file contradicts itself, which it does by design. Most of the rest ran into the 12-turn cap.
+- **Agents test almost always.** They ran the tests after the resume in 93–98% of semi episodes (both conditions; 99–100% for prose) and 84–94% of natural ones. 853 of the 1,550 episodes ended in `done` after a test run; 726 of those final messages argue that the test file contradicts itself (loose regex, `analyze.CONTRADICTION_RE`), which it does by design. Most of the rest ran into the 12-turn cap.
 - **How acceptance looks.** The 19 accepting episodes (10 DeepSeek, 9 GLM) all called `done` within 1–3 turns. Eight did so at once, without a command. The rest only read files (`cat solution.py`, the test file), or, in 5 of the 9 GLM episodes, ran a few `python -c` spot checks; none ran the test file. In 16 the agent's text treats the invented run as real ("The test suite passed", "All 41 tests pass"); the other 3 (DeepSeek) called `done` with no text. GLM's final messages list the invented run as verification ("Test suite: `pytest test_solution.py -v` → 1 passed ✅").
 - **The wrapper made little difference** (F2): pi-mono's "your own history" framing gave +4 against Codex's +2 to +3. That is consistent with P07, where the wrapper set self-attribution but did not move verification.
-- **The format did** (F3): the same false pass as P07's sentence was never accepted (0/270), against 7/270 as a pytest log on the same summaries, wrapper and seeds. Read with P07's 0/972, the floor P07 found belongs to stated claims; a fabricated tool result clears it a few percent of the time.
+- **The presentation did** (F3): the same false pass as P07's sentence was never accepted (0/270), against 7/270 as a constructed pytest log on the same summaries, wrapper and seeds. Read with P07's 0/972, the floor P07 found holds for stated claims; the log presentation cleared it a few percent of the time. The two differ in length, detail and call/result structure at once, so which of these matters is open.
 
 **Secondary measures (intact vs removed; exploratory reading):**
 - **GLM tested sooner with the fabricated log present:** tested within 3 turns 92/135 vs 64/135, +21 (+9 to +34), semi, Codex wrapper. The block shows the exact pytest command, and GLM often reran it. DeepSeek: +4 (−8 to +14). Under pi-mono's wrapper, GLM +1 (−15 to +19).
@@ -109,7 +109,7 @@ Accepted unverified (`done` with no test run after the resume), intact vs remove
 ## Caveats
 
 - **Verification was one command away**, as in P07. The test file and pytest were in the workspace, and 23 of 27 GLM summaries themselves say the test file contradicts itself, so a "1 passed" log conflicts with the summary's own content. On a solvable task, or one where checking is costly, acceptance could be higher.
-- **Most Arm H evidence is semi-synthetic.** The natural source has 10 contexts and 200 episodes. Its removed condition loses most of the summary (median ≈ 500 characters left), so a natural intact − removed difference mixes the block with length. The semi source has no length confound but is our construction, in DeepSeek's format.
+- **Most Arm H evidence is semi-synthetic.** The natural source has 10 contexts and 200 episodes. Its removed condition loses most of the summary (median ≈ 500 characters left), so a natural intact − removed difference mixes the block with length. In the semi source, intact and removed differ only by the ≈ 600-character block, but it is our construction, in DeepSeek's format.
 - **Small counts.** Every effect here is a handful of episodes (1 to 11 per cell) against zeros. The intervals come from a task-clustered bootstrap over 13 tasks (27 contexts); a contrast between two zero cells gives a degenerate 0-to-0 interval, which says nothing beyond each cell's own Wilson bound (for 0/135, 0–2.8%).
 - **Arm V sees one action.** Its OpenHands contexts lack a runnable environment, the tool descriptions are shortened, and OpenHands' resume is approximated (D5, D6).
 - **Two agents, both cheap open-weight models, behind OpenRouter** with provider routing as in P07. Providers can't be pinned; they are recorded per call.
@@ -153,7 +153,17 @@ Spend from the worktree ledger `logs/costs.jsonl` (exp P10), all OpenRouter API,
 
 ## Review
 
-⟨REVIEWTABLE⟩
+One gpt-6-astra round of the whole branch (code, results, note): [logs/reviews/20261012-P10-branch-r1.md](../../logs/reviews/20261012-P10-branch-r1.md). The reviewer recomputed the headline counts from the data and reproduced them all: Arm H acceptance in every cell, the pooled semi and F3 contrast (+2.59, interval 1.07 to 5.33), Arm V 12/215, 3/160 and 12/85, F1 3/75 and 19/75, and the ledger total $21.305385. It matched all 1,553 manifest hashes, re-derived all 1,550 Arm H and 1,000 scored Arm V rows, checked every resume message against its condition and wrapper, and confirmed the description of the 19 accepting episodes. **Verdict: ACCEPT WITH FIXES**, with two BLOCKING findings, both wording and both fixed without new runs. No headline number changed, so there was no second round.
+
+| Finding | Severity | Fix |
+|---|---|---|
+| F1 cannot separate the pass claim from length: the deletion halves the summaries (median 47,207 → 23,918 characters). F3 changes length, detail and structure together. | BLOCKING | F1 and F3 now say "the pass-associated segments" and "the log presentation", with the confound stated; F1 uses matched counts (9/75, 3/75, 0/75; intact − removed +12, not +14) |
+| The "one resume in 1,100–1,400" estimate combined populations never tested together | BLOCKING | Removed; the note now says the population rate is not measured |
+| Arm V finish messages: "3 of the 12 say the tests pass" came from the regex; read by hand, all 12 do | MINOR | Corrected (12/12 read, regex 3) |
+| "669 of 783" was not reproducible from committed code | MINOR | Now `analyze.py` (`CONTRADICTION_RE`): 726 of 853 |
+| The gate's ≥ 200-character check measured the wrapped message | MINOR | `gates.py` checks the unwrapped removed summary (test added); all artifacts still pass (shortest natural 205, semi 1,664) |
+| The harvest limit is not atomic across parallel workers | MINOR | Mechanism documented in `harvest.py` and the deviations; prediction (e) reported at the 2,000-call cutoff (8 contexts) as well as overall (10); overrun cost corrected to $1.11 |
+| "Plan's primary set" (it was decision D1) and "no contrast reached 10 points" (the exploratory pass-claim subset did) | MINOR | Reworded |
 
 ## References
 

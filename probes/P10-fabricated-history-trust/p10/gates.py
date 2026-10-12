@@ -18,7 +18,17 @@ from p10 import armh
 from p10 import common as K
 
 
-def check(art: dict, views: dict[str, str]) -> list[str]:
+def removed_lengths() -> dict[tuple[str, str], int]:
+    """(source, ctx_id) -> length of the unwrapped removed summary (the resume message also holds
+    the harness wrapper, so its length would overstate it)."""
+    out = {}
+    for src in ("natural", "semi"):
+        for f in armh.fabrications(src):
+            out[(src, f["ctx_id"])] = len(K.split_pair(f["text"])[0])
+    return out
+
+
+def check(art: dict, views: dict[str, str], removed_len: dict | None = None) -> list[str]:
     from p07.measures import visible_text
 
     m, block = art["meta"], art.get("p10_block") or ""
@@ -31,8 +41,11 @@ def check(art: dict, views: dict[str, str]) -> list[str]:
         probs.append(f"removed: block occurs {n}x")
     if m["cond"] == "removed" and K.first_marker(summary_msg) is not None:
         probs.append("removed: a continuation marker remains")
-    if m["cond"] == "removed" and len(summary_msg) < K.MIN_REMOVED_CHARS:
-        probs.append("removed: < 200 characters")
+    if m["cond"] == "removed":
+        n_removed = (removed_len or {}).get((m["source"].split("@")[0], m["ctx_id"]),
+                                            len(summary_msg))
+        if n_removed < K.MIN_REMOVED_CHARS:
+            probs.append("removed: < 200 characters")
     if not K.invented_blocks(block, views[m["ctx_id"]]):
         probs.append("block is not invented")
     if not (art.get("plant_check") or {}).get("ok"):
@@ -45,11 +58,12 @@ def main(argv=None) -> int:
     ap.add_argument("--glob", default="*/*/*/*/*.json")
     a = ap.parse_args(argv)
     views = {c["ctx_id"]: K.p07_view(c) for c in K.load_jsonl(K.P07_CONTEXTS)}
+    removed_len = removed_lengths()
     paths = [p for p in sorted(armh.EPISODES.glob(a.glob)) if ".failed" not in p.name]
     bad, done = 0, 0
     for p in paths:
         art = json.loads(p.read_text())
-        probs = check(art, views)
+        probs = check(art, views, removed_len)
         done += art.get("end_reason") == "done"
         bad += bool(probs)
         if probs:

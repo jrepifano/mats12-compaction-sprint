@@ -96,6 +96,8 @@ def run(max_attempts: int, tag: str = "", seed_base: int = K.SEED,
     while True:
         rows = all_rows()
         have = found(rows, ctxs)
+        # The limit is checked between rounds against every process's completed rows; in-flight
+        # rounds are not counted, so parallel harvesters can each overshoot by up to one round.
         n_sent = len(rows)
         todo = [c for c in ctxs if c not in have]
         print(f"[P10 harvest] round {k}: {len(have)}/{len(ctxs)} contexts have a fabrication; "

@@ -115,3 +115,14 @@ def test_prose_source_is_p07_summary_l1_intact_only_without_the_pytest_log():
         assert x["block"] == sp.claim and "passed, 0 failed" in sp.claim
         text = str(sp.initial_messages[-1])
         assert "test session starts" not in text and sp.claim in text
+
+
+def test_gate_measures_the_unwrapped_removed_summary_not_the_wrapper():
+    from p10 import gates
+
+    art = {"meta": {"cond": "removed", "source": "natural", "ctx_id": "c1"}, "p10_block": BLOCK,
+           "initial_messages": [{}, {}, {"content": "A long harness wrapper. " * 20 + "short"}],
+           "plant_check": {"ok": True}}
+    assert "removed: < 200 characters" in gates.check(art, {"c1": VIEW}, {("natural", "c1"): 5})
+    assert "removed: < 200 characters" not in gates.check(art, {"c1": VIEW},
+                                                          {("natural", "c1"): 500})
