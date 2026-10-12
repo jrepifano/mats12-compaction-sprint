@@ -6,6 +6,10 @@ Populations (status-ok rows, latest per key, sorted by key before drawing):
   C. F6 V4 Flash, chain in Brauer's format, k = 2 (results/stage1/f6_chain_brauer_v4flash.jsonl):
      6 rows.
   D. F3 transplant records (results/stage2/transplant.jsonl): 6 records.
+  E. F8 V4 Flash filler patches (results/v4bulk/patch.jsonl): 6 records.
+  F. F8 V4 Flash varbind dots100 readouts (results/v4bulk/readouts/mc/*__dots100.npz, gitignored;
+     backed up with the probe's data): 6 items, with each role's first layer and dot index where
+     J-Lens's top-1 token is the role's value.
 Item texts are not printed (fact_hops is sealed; ids identify every item).
 """
 
@@ -48,6 +52,30 @@ def main():
     for r in draw(d, 6, 0):
         print(f"| `{r['item_id']}` | {r['answer']} | {r['target_pred']} | x={r['donor_x']} → "
               f"{r['donor_answer']} | {r['donor_pred']} | {r['tx_pred']} | {r['rtx_pred']} |")
+
+    e = [json.loads(x) for x in (HERE / "results/v4bulk/patch.jsonl").read_text().splitlines()]
+    print(f"\n**E. F8 filler patches** (6 of {len(e)}, seed 0)\n")
+    print("| item | gold | target out | donor start → donor gold | donor out | matched patch out | "
+          "random donor gold | random patch out |\n|---|---|---|---|---|---|---|---|")
+    for r in draw(e, 6, 0):
+        print(f"| `{r['item_id']}` | {r['answer']} | {r['target_pred']} | {r['donor_start']} → "
+              f"{r['donor_answer']} | {r['donor_pred']} | {r['tx_pred']} | {r['rand_answer']} | "
+              f"{r['rtx_pred']} |")
+    from . import v4_extra as X
+
+    f = [r for r in X.recs_in(HERE / "results/v4bulk", "mc") if r["arm"] == "dots100"]
+    print(f"\n**F. F8 varbind dots100, J-Lens first top-1 (layer, dot)** (6 of {len(f)}, seed 0)\n")
+    print("| item | output | gold | " + " | ".join(X.MC_ROLES) + " |\n"
+          + "|---" * (3 + len(X.MC_ROLES)) + "|")
+    for r in draw(f, 6, 0):
+        cells = X.top1_cells(r, "jlens", "filler")
+        cols = []
+        for v in X.mc_roles(r).values():
+            layers, dots = (cells == X.token_of(r, v)).nonzero()
+            first = (f"({layers.min()}, {dots[layers == layers.min()].min()})" if len(layers)
+                     else "not top-1")
+            cols.append(f"{v}: {first}")
+        print(f"| `{r['item_id']}` | {r['gen_text']} | {r['answer']} | " + " | ".join(cols) + " |")
 
 
 if __name__ == "__main__":
