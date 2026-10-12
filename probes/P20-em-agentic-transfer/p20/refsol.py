@@ -50,6 +50,10 @@ API_CACHE = P.DATA_DIR / "refsol_api_cache.jsonl"
 API_ROUTE = "deepseek/deepseek-v4-flash"
 API_TRIES = 4
 API_MAX_TOKENS = 12000
+# Round 2 (log.md, 2026-10-12 23:30): round 1's default reasoning hit the 12k limit before any
+# code on 306 of 320 calls; round 2 asks for low-effort reasoning with a 32k limit.
+ROUNDS = {1: {"tries": API_TRIES, "max_tokens": API_MAX_TOKENS, "reasoning": "default"},
+          2: {"tries": 3, "max_tokens": 32000, "reasoning": "low"}}
 SEED = 20261012
 API_PROMPT = (
     "Implement the following Python function. Reply with the complete contents of solution.py "
@@ -208,25 +212,29 @@ def run_archive(workers: int, runner=passcheck.docker_runner, max_per_task: int 
     return 0
 
 
-def api_calls(rows: dict[str, dict], missing: list[str]):
+def api_calls(rows: dict[str, dict], missing: list[str], rnd: int = 1):
+    """Round 1 keys are `<task>#<k>` (as cached); later rounds `<task>#r<round>k<k>`."""
     from emx.probe_llm import Call
-    return [Call(key=f"{tid}#{k}", route=API_ROUTE,
+    cfg = ROUNDS[rnd]
+    return [Call(key=f"{tid}#{k}" if rnd == 1 else f"{tid}#r{rnd}k{k}", route=API_ROUTE,
                  user=API_PROMPT.format(description=rows[tid]["files_original"]["description.md"]),
-                 temperature=0.7, seed=SEED + k, max_tokens=API_MAX_TOKENS, reasoning="default")
-            for tid in missing for k in range(API_TRIES)]
+                 temperature=0.7, seed=SEED + 100 * (rnd - 1) + k, max_tokens=cfg["max_tokens"],
+                 reasoning=cfg["reasoning"])
+            for tid in missing for k in range(cfg["tries"])]
 
 
-def run_api(workers: int, dry_run: bool, runner=passcheck.docker_runner) -> int:
+def run_api(workers: int, dry_run: bool, runner=passcheck.docker_runner, rnd: int = 1) -> int:
     from emx import probe_llm
     rows = load_task_rows()
     have = {r["task_id"] for r in read_jsonl(P.REFSOL_JSONL)}
     missing = sorted(t for t in rows if t not in have)
-    calls = api_calls(rows, missing)
+    calls = api_calls(rows, missing, rnd)
     print(f"api: {len(missing)} tasks missing, {len(calls)} calls, projected "
           f"${probe_llm.project_usd(calls):.2f} (worst case)", flush=True)
     if dry_run or not calls:
         return 0
-    res = probe_llm.run_calls(calls, exp=P.PROBE, cache=API_CACHE, purpose="p20_refsol",
+    res = probe_llm.run_calls(calls, exp=P.PROBE, cache=API_CACHE,
+                              purpose="p20_refsol" if rnd == 1 else f"p20_refsol_r{rnd}",
                               concurrency=32)
     by_task: dict[str, list[tuple[str, str]]] = {}
     for c in calls:
@@ -252,10 +260,11 @@ def main(argv=None) -> int:
     ap.add_argument("mode", choices=("archive", "api"))
     ap.add_argument("--workers", type=int, default=P.MAX_SANDBOXES)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--round", type=int, default=1, choices=sorted(ROUNDS))
     a = ap.parse_args(argv)
     if a.mode == "archive":
         return run_archive(a.workers)
-    return run_api(a.workers, a.dry_run)
+    return run_api(a.workers, a.dry_run, rnd=a.round)
 
 
 if __name__ == "__main__":
