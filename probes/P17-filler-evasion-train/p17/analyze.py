@@ -335,7 +335,8 @@ def logit_fit_proba(Xtr, ttr, Xte, Cs=(1.0,)) -> list[np.ndarray]:
 
 def mlp_fit_predict(Xtr, ttr, Xte, max_iter: int = 500, seed: int = S.SEED) -> np.ndarray:
     """Standardised inputs (and target, inverted afterwards; r is unchanged) -> MLPRegressor with
-    one hidden layer of 64, alpha 1e-3, early stopping."""
+    one hidden layer of 64, alpha 1e-3, early stopping (off below 50 training items, where its
+    10% validation split would be too small to use; only dry runs are that small)."""
     import warnings
 
     from sklearn.exceptions import ConvergenceWarning
@@ -345,7 +346,7 @@ def mlp_fit_predict(Xtr, ttr, Xte, max_iter: int = 500, seed: int = S.SEED) -> n
     mu, sd = float(ttr.mean()), float(ttr.std()) or 1.0
     with warnings.catch_warnings():  # max_iter is a budget here, not a convergence claim
         warnings.simplefilter("ignore", ConvergenceWarning)
-        m = MLPRegressor(hidden_layer_sizes=(64,), alpha=1e-3, early_stopping=True,
+        m = MLPRegressor(hidden_layer_sizes=(64,), alpha=1e-3, early_stopping=len(ttr) >= 50,
                          max_iter=max_iter, random_state=seed).fit(a, (ttr - mu) / sd)
     return m.predict(b) * sd + mu
 
