@@ -238,12 +238,23 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
             first["latent"].append(outs[name]["rows"][i]["out_latent"])
             first["direct"].append(outs[name]["rows"][i]["out_direct"])
             first["verbal"].append(outs[name]["rows"][i]["out_verbal"])
-    agree = {}
+    # Latent and direct (<= 16 tokens) must match as text. Verbal runs up to 256 greedy tokens,
+    # where bf16 kernels that differ with batch shape flip near-ties (first pod smoke: 13/16 texts,
+    # with latent and direct 16/16 and the references 16/16; log.md), so it is checked on the
+    # parsed answer; the exact-text count is recorded too.
+    agree, singles = {}, {}
     for mode, fn in (("latent", cc.run_latent), ("direct", cc.run_direct),
                      ("verbal", cc.run_verbal)):
         one = [fn(model, tok, [p], batch_size=1)["texts"][0] for p in prompts]
+        singles[mode] = one
         agree[mode] = sum(x == y for x, y in zip(one, first[mode]))
-    s["batched_eq_unbatched"] = {"pass": min(agree.values()) >= MIN_AGREE, "detail": agree}
+    agree["verbal_answer"] = sum(tasks.parse_verbal(x)[0] == tasks.parse_verbal(y)[0]
+                                 for x, y in zip(singles["verbal"], first["verbal"]))
+    s["batched_eq_unbatched"] = {
+        "pass": min(agree["latent"], agree["direct"], agree["verbal_answer"]) >= MIN_AGREE,
+        "detail": agree,
+        "verbal_differing": [{"batched": y, "single": x} for x, y
+                             in zip(singles["verbal"], first["verbal"]) if x != y]}
     # our loops vs upstream generate / HF generate at batch size 1
     up = [cc.upstream_latent_bs1(model, tok, p) for p in prompts]
     ours = [cc.run_latent(model, tok, [p], batch_size=1, capture_resid=False,
@@ -265,12 +276,12 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
         add_upstream_padded(model, tok, outs[name]["rows"])
         d[f"latent_acc_{name}_upstream_padded"] = accuracy(outs[name]["rows"], "ans_latent_up")
     ntok = cc.number_tokens(tok)
-    top = outs["T"]["lltop"][:, -1, 3, :]  # last layer (16 on the real model), column 3
+    top = outs["T"]["lltop"][:, -1, S1_COL, :]  # last layer (16 on the real model)
     ll_s1 = [next((ntok[t] for t in row if t in ntok), None) for row in top]
-    d["ll_s1_col3"] = float(np.mean([v == r["s1"] for v, r in zip(ll_s1, outs["T"]["rows"])]))
-    d["thresholds"] = {"latent_acc_T": 0.30, "latent_acc_G": 0.25, "ll_s1_col3": 0.50}
+    d["ll_s1"] = float(np.mean([v == r["s1"] for v, r in zip(ll_s1, outs["T"]["rows"])]))
+    d["thresholds"] = {"latent_acc_T": 0.30, "latent_acc_G": 0.25, "ll_s1": 0.50}
     d["replication_ok"] = (d["latent_acc_T"] >= 0.30 and d["latent_acc_G"] >= 0.25
-                           and d["ll_s1_col3"] >= 0.50)
+                           and d["ll_s1"] >= 0.50)
     checks = {"structural": s, "diagnostics": d,
               "structural_pass": all(v["pass"] for v in s.values())}
     _json_dump(checks, RESULTS / "smoke" / "checks.json")
@@ -279,7 +290,7 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
     log("smoke", f"structural_pass={checks['structural_pass']} "
                  + " ".join(f"{k}={v['pass']}" for k, v in s.items())
                  + f" latent_acc_T={d['latent_acc_T']:.3f} latent_acc_G={d['latent_acc_G']:.3f}"
-                 + f" ll_s1_col3={d['ll_s1_col3']:.3f}"
+                 + f" ll_s1={d['ll_s1']:.3f}"
                  + f" upstream_padded_T={d['latent_acc_T_upstream_padded']:.3f}"
                  + f" upstream_padded_G={d['latent_acc_G_upstream_padded']:.3f}")
     return checks
@@ -319,12 +330,22 @@ def sampled_smoke(model, tok, T: list[dict], G: list[dict]) -> dict:
 # ---------------------------------------------------------------- patching
 
 
-def patch_plan(T: list[dict], vecs: np.ndarray) -> list[dict]:
-    """Cywiński's averaged-value patch on N_PATCH seeded items, latent 5 (s2) and latent 3 (s1).
+# Readout columns (0-based, column 0 = the <|bocot|> position; latent vector j = prj of column j's
+# final hidden state). The real checkpoint carries s1 at 2 and s2 at 4 (laptop check, log.md
+# 2026-10-12): Cywiński's "latents 3 and 5" count from 1. Patching runs at the readout indices
+# (primary) and one later (3, 5: the 0-based reading of "3 and 5", a labelled convention check).
+S1_COL, S2_COL = 2, 4
+PATCH_POSITIONS = ((S1_COL, "s1", True), (S2_COL, "s2", True),
+                   (S1_COL + 1, "s1", False), (S2_COL + 1, "s2", False))
 
-    Every condition shares one counterfactual target per (item, latent), so the rate of
-    ans == target is comparable across diff / same / random / none. Donors come from other
-    templates only.
+
+def patch_plan(T: list[dict], vecs: np.ndarray) -> list[dict]:
+    """Cywiński's averaged-value patch on N_PATCH seeded items at each PATCH_POSITIONS entry.
+
+    One counterfactual per (item, quantity), shared by both indices and all four conditions, so
+    the rate of ans == target is comparable across diff / same / random / none and across
+    indices. s2: donors from other templates with s2 = s2', target s1 + s2'. s1: donors from other
+    templates with the same op and Z and s1 = s1', target s1' + s1' * Z.
     """
     rng = np.random.default_rng(SEED + 5)
     idx = sorted(rng.choice(len(T), N_PATCH, replace=False))
@@ -336,28 +357,28 @@ def patch_plan(T: list[dict], vecs: np.ndarray) -> list[dict]:
     jobs = []
     for i in idx:
         other = tid != tid[i]
-        # latent 5: target s1 + s2'
-        cands = sorted(set(s2[other & (s2 != s2[i])].tolist()))
-        jobs_i = []
-        if cands and (other & (s2 == s2[i])).any():
-            s2p = int(rng.choice(cands))
-            diff5 = vecs[other & (s2 == s2p), 5].astype(np.float32).mean(0)
-            same5 = vecs[other & (s2 == s2[i]), 5].astype(np.float32).mean(0)
-            jobs_i.append((5, diff5, same5, int(s1[i] + s2p)))
-        # latent 3: donors share op and Z; target s1' + s1' * Z
         pool = other & (op == op[i]) & (z == z[i])
-        c3 = sorted(set(s1[pool & (s1 != s1[i])].tolist()))
-        if c3 and (pool & (s1 == s1[i])).any():
-            s1p = int(rng.choice(c3))
-            diff3 = vecs[pool & (s1 == s1p), 3].astype(np.float32).mean(0)
-            same3 = vecs[pool & (s1 == s1[i]), 3].astype(np.float32).mean(0)
-            jobs_i.append((3, diff3, same3, int(s1p + s1p * z[i])))
-        for lat, dv, sv, target in jobs_i:
-            own = vecs[i, lat].astype(np.float32)
-            rnd = rng.standard_normal(own.shape).astype(np.float32)
-            rnd *= np.linalg.norm(own) / np.linalg.norm(rnd)
+        cf = {}  # quantity -> (donor mask, same-value mask, target)
+        c2 = sorted(set(s2[other & (s2 != s2[i])].tolist()))
+        if c2 and (other & (s2 == s2[i])).any():
+            s2p = int(rng.choice(c2))
+            cf["s2"] = (other & (s2 == s2p), other & (s2 == s2[i]), int(s1[i] + s2p))
+        c1 = sorted(set(s1[pool & (s1 != s1[i])].tolist()))
+        if c1 and (pool & (s1 == s1[i])).any():
+            s1p = int(rng.choice(c1))
+            cf["s1"] = (pool & (s1 == s1p), pool & (s1 == s1[i]), int(s1p + s1p * z[i]))
+        rnd_dir = rng.standard_normal(vecs.shape[-1]).astype(np.float32)
+        for lat, qty, primary in PATCH_POSITIONS:
+            if qty not in cf:
+                continue
+            dmask, smask, target = cf[qty]
+            dv = vecs[dmask, lat].astype(np.float32).mean(0)
+            sv = vecs[smask, lat].astype(np.float32).mean(0)
+            rnd = rnd_dir * (np.linalg.norm(vecs[i, lat].astype(np.float32))
+                             / np.linalg.norm(rnd_dir))
             for cond, v in (("diff", dv), ("same", sv), ("random", rnd), ("none", None)):
-                jobs.append({"i": int(i), "lat": lat, "cond": cond, "vec": v, "target": target})
+                jobs.append({"i": int(i), "lat": lat, "qty": qty, "primary": primary,
+                             "cond": cond, "vec": v, "target": target})
     return jobs
 
 
@@ -368,9 +389,11 @@ def run_patching(model, tok, T: list[dict], vecs: np.ndarray) -> list[dict]:
 
     jobs = patch_plan(T, vecs)
     rows = []
-    for lat in (3, 5):
+    for lat, _, _ in PATCH_POSITIONS:
         for cond in ("diff", "same", "random", "none"):
             js = [j for j in jobs if j["lat"] == lat and j["cond"] == cond]
+            if not js:
+                continue
             prompts = [T[j["i"]]["prompt"] for j in js]
             if cond == "none":
                 out = cc.run_latent(model, tok, prompts, capture_resid=False, capture_lltop=False)
@@ -381,7 +404,8 @@ def run_patching(model, tok, T: list[dict], vecs: np.ndarray) -> list[dict]:
                                     patch_mask=torch.ones(len(js), dtype=torch.bool))
             for j, text in zip(js, out["texts"]):
                 it = T[j["i"]]
-                rows.append({"item_id": it["item_id"], "lat": lat, "cond": cond,
+                rows.append({"item_id": it["item_id"], "lat": lat, "qty": j["qty"],
+                             "primary": j["primary"], "cond": cond,
                              "target": j["target"], "gold": it["gold"],
                              "ans": tasks.parse_answer(text), "out": text})
     return rows
@@ -425,10 +449,10 @@ def step_stage_a(force: bool = False) -> int:
     with Timer("a_T"):
         outT = run_set(model, tok, T, resid=True)
     with Timer("a_patchscope"):
-        for lat in (3, 5):
+        for qty, lat in (("s1", S1_COL), ("s2", S2_COL)):
             ps = cc.patchscope(model, tok, outT["latent_vectors"][:, lat])
             for r, n in zip(outT["rows"], ps["numbers"]):
-                r[f"ps_lat{lat}"] = n
+                r[f"ps_{qty}"] = n
     with Timer("a_T_upstream_padded"):
         add_upstream_padded(model, tok, outT["rows"])
     save_set(outdir, "T", outT, keep_resid=True)

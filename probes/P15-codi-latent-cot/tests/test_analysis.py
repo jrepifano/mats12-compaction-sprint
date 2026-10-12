@@ -129,8 +129,8 @@ def test_first_number_and_ll_reader():
     top = np.array([[0, 10, 11, 0, 0], [1, 2, 3, 4, 5], [12, 0, 0, 0, 0]])
     assert A.first_number(top, lut).tolist() == [3, -1, 12]
     ll = np.zeros((3, 17, 7, 5), dtype=int)
-    ll[:, 16, 3] = top
-    ll[:, 16, 5] = top[[2, 2, 2]]
+    ll[:, 16, 2] = top  # S1_COL
+    ll[:, 16, 4] = top[[2, 2, 2]]  # S2_COL
     _, _, pred = A.ll_reader(ll, lut)
     assert pred == ["15", None, "24"]
 
@@ -145,11 +145,11 @@ def test_patching_p5():
     for i in range(20):
         for cond, ans in (("diff", 9 if i < 8 else 1), ("random", 9 if i < 1 else 1),
                           ("same", 1), ("none", 1)):
-            rows.append({"item_id": f"T-{i}", "lat": 5, "cond": cond, "target": 9, "gold": 1,
+            rows.append({"item_id": f"T-{i}", "lat": 4, "cond": cond, "target": 9, "gold": 1,
                          "ans": ans})
     out = A.patching(pd.DataFrame(rows), {}, n_boot=200)
-    assert out["5"]["diff"]["ans_eq_target"]["point"] == pytest.approx(0.4)
-    assert out["5"]["same"]["ans_eq_gold"]["point"] == 1.0
+    assert out["4"]["diff"]["ans_eq_target"]["point"] == pytest.approx(0.4)
+    assert out["4"]["same"]["ans_eq_gold"]["point"] == 1.0
     assert out["P5"]["pass"]  # 0.40 >= 0.15 and >= 3 * 0.05
 
 
@@ -185,7 +185,7 @@ def test_stage_a_end_to_end(fake_run):
                 "g_secondary", "predictions", "sweep_projection", "timings_s"):
         assert key in o
     assert set(o["predictions"]) >= {"P1", "P2", "P3", "P4", "P5", "P6"}
-    assert o["readability"]["s1_col3_T"]["point"] > 0.6
+    assert o["readability"]["s1_T"]["point"] > 0.6
     assert o["sensitivity_2x2"]["LP"]["E_share"]["point"] > 0.5
     items = pd.read_csv(root / o["items_file"])
     assert {"pred_LP", "pred_VT", "pred_K", "pred_LP_2x2", "in_E"} <= set(items.columns)

@@ -1,0 +1,99 @@
+{
+  "structural": {
+    "checkpoint_keys": {
+      "pass": true,
+      "detail": {
+        "missing_lora_prj": [],
+        "missing_other": 0,
+        "unexpected": [],
+        "n_loaded": 377
+      }
+    },
+    "revisions": {
+      "pass": true,
+      "detail": {
+        "meta-llama/Llama-3.2-1B-Instruct": {
+          "pinned": "9213176726f574b556790deb65791e0c5aa438b6",
+          "resolved": "9213176726f574b556790deb65791e0c5aa438b6",
+          "ok": true
+        },
+        "bcywinski/codi_llama1b-answer_only": {
+          "pinned": "315ec5cb5f9a071f950edb8455ca5c9a5f59691e",
+          "resolved": "315ec5cb5f9a071f950edb8455ca5c9a5f59691e",
+          "ok": true
+        },
+        "openai/gsm8k": {
+          "pinned": "740312add88f781978c0658806c59bc2815b9866",
+          "resolved": "740312add88f781978c0658806c59bc2815b9866",
+          "ok": true
+        },
+        "zen-E/GSM8k-Aug-NL": {
+          "pinned": "e20551f801620cc7dd968edc941126e493fa8202",
+          "resolved": "e20551f801620cc7dd968edc941126e493fa8202",
+          "ok": true
+        }
+      }
+    },
+    "deterministic": {
+      "pass": true,
+      "detail": {
+        "latent_same": 16,
+        "verbal_same": 16
+      }
+    },
+    "batched_eq_unbatched": {
+      "pass": false,
+      "detail": {
+        "latent": 16,
+        "direct": 16,
+        "verbal": 13
+      }
+    },
+    "matches_reference": {
+      "pass": true,
+      "detail": {
+        "latent_vs_upstream": 16,
+        "direct_vs_hf": 16
+      },
+      "examples": [
+        [
+          "42",
+          "42"
+        ],
+        [
+          "26",
+          "26"
+        ],
+        [
+          "70",
+          "70"
+        ]
+      ]
+    },
+    "verbal_parseable": {
+      "pass": true,
+      "detail": 1.0
+    }
+  },
+  "diagnostics": {
+    "latent_acc_T": 0.453125,
+    "direct_acc_T": 0.3125,
+    "verbal_acc_T": 0.625,
+    "latent_acc_G": 0.484375,
+    "direct_acc_G": 0.421875,
+    "verbal_acc_G": 0.53125,
+    "latent_acc_C": 0.171875,
+    "direct_acc_C": 0.046875,
+    "verbal_acc_C": 0.328125,
+    "latent_acc_T_upstream_padded": 0.453125,
+    "latent_acc_G_upstream_padded": 0.484375,
+    "ll_s1_col3": 0.0,
+    "thresholds": {
+      "latent_acc_T": 0.3,
+      "latent_acc_G": 0.25,
+      "ll_s1_col3": 0.5
+    },
+    "replication_ok": false
+  },
+  "structural_pass": false
+}

@@ -144,10 +144,10 @@ def _stage_a(out: Path, rng, sig: dict, n_templates: int, xyz_max: int, d: int, 
                  out_verbal=(f"<<{r['X']}{'+' if r['op'] == 'add' else '-'}{r['Y']}={r['s1']}>> "
                              f"<<{r['s1']}*{r['Z']}={r['s2']}>><|eocot|>The answer is: {v}"),
                  ans_verbal=v, verbal_parse="after_eocot",
-                 ps_lat3=r["s1"] if rng.random() < 0.5 else None,
-                 ps_lat5=r["s2"] if rng.random() < 0.5 else None)
-        _plant(lltop, rng, i, 16, 3, r["s1"], 0.8)
-        _plant(lltop, rng, i, 16, 5, r["s2"], 0.7)
+                 ps_s1=r["s1"] if rng.random() < 0.5 else None,
+                 ps_s2=r["s2"] if rng.random() < 0.5 else None)
+        _plant(lltop, rng, i, 16, 2, r["s1"], 0.8)
+        _plant(lltop, rng, i, 16, 4, r["s2"], 0.7)
         lat_labels.append(_label(a_l))
         q_labels.append(_label(g))
     lc = _codes(rng, set(lat_labels), N_COLS, d)
@@ -167,10 +167,11 @@ def _stage_a(out: Path, rng, sig: dict, n_templates: int, xyz_max: int, d: int, 
 
     patch = []
     for r in rows[:n_patch]:
-        for lat in (3, 5):
-            if lat == 3 and r["idx"] % 4 == 0:
+        for lat, qty, primary in ((2, "s1", True), (4, "s2", True), (3, "s1", False),
+                                  (5, "s2", False)):
+            if qty == "s1" and r["idx"] % 4 == 0:
                 continue  # no valid donor
-            target = r["gold"] + (r["Z"] + 1 if lat == 3 else 1) * int(rng.choice([1, 2]))
+            target = r["gold"] + (r["Z"] + 1 if qty == "s1" else 1) * int(rng.choice([1, 2]))
             for cond in ("diff", "same", "random", "none"):
                 if cond == "diff":
                     ans = target if rng.random() < 0.4 else r["gold"]
@@ -179,7 +180,8 @@ def _stage_a(out: Path, rng, sig: dict, n_templates: int, xyz_max: int, d: int, 
                         r["gold"] if rng.random() < 0.6 else r["gold"] + 7)
                 else:
                     ans = r["gold"] if rng.random() < 0.9 else r["gold"] + 1
-                patch.append({"item_id": r["item_id"], "lat": lat, "cond": cond,
+                patch.append({"item_id": r["item_id"], "lat": lat, "qty": qty,
+                              "primary": primary, "cond": cond,
                               "target": target, "gold": r["gold"], "ans": ans,
                               "out": f"The answer is: {ans}"})
     write_jsonl(out / "patch.jsonl", patch)

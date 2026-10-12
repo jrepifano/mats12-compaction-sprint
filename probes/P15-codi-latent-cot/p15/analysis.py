@@ -8,8 +8,8 @@ predictions CSV next to it, and an optional markdown summary). No paid calls; CP
         [--md results/analysis_A.md] [--layers auto|all|even|8,16] [--fast]
 
 Readers of the latent answer a_L (Stage A on T, Stage B on C): V (verbal answer), D (direct
-answer), LL (Stage A: top-ranked number token among the layer-16 top-5 at column 3 -> s1_hat and
-column 5 -> s2_hat, prediction s1_hat + s2_hat), PS (Stage A: ps_lat3 + ps_lat5), LP (multinomial
+answer), LL (Stage A: top-ranked number token among the layer-16 top-5 at column 2 -> s1_hat and
+column 4 -> s2_hat, prediction s1_hat + s2_hat), PS (Stage A: ps_s1 + ps_s2), LP (multinomial
 L2 logistic regression on the 7 latent columns at one layer), LPq (the same on the direct-mode
 question residual, slot 0; slot 1 as a sensitivity), VT (the same classifier on one-hot text
 features), K and K0 (Stage A lookup; on C only K0, since K == K0 there by construction).
@@ -384,9 +384,13 @@ def first_number(top5: np.ndarray, lut: np.ndarray) -> np.ndarray:
     return out
 
 
+# Readout columns, 0-based with column 0 = <|bocot|> (pod_main.S1_COL / S2_COL; log.md)
+S1_COL, S2_COL = 2, 4
+
+
 def ll_reader(lltop: np.ndarray, lut: np.ndarray) -> tuple[np.ndarray, np.ndarray, list]:
-    s1 = first_number(lltop[:, -1, 3], lut)
-    s2 = first_number(lltop[:, -1, 5], lut)
+    s1 = first_number(lltop[:, -1, S1_COL], lut)
+    s2 = first_number(lltop[:, -1, S2_COL], lut)
     pred = [str(a + b) if a >= 0 and b >= 0 else None for a, b in zip(s1, s2)]
     return s1, s2, pred
 
@@ -526,8 +530,8 @@ def readability_A(t: pd.DataFrame, lltop, lut, in_e: np.ndarray, clusters, n_boo
         table[str(j)] = {"s1": float(np.mean(v == t.s1.to_numpy())),
                          "s2": float(np.mean(v == t.s2.to_numpy()))}
     return {"definition": "top-ranked number token among the layer-16 top-5",
-            "s1_col3_T": all_[0], "s2_col5_T": all_[1], "s1_col3_E": on_e[0],
-            "s2_col5_E": on_e[1], "by_column_layer16": table}
+            "s1_T": all_[0], "s2_T": all_[1], "s1_E": on_e[0],
+            "s2_E": on_e[1], "by_column_layer16": table}
 
 
 def readability_B(c: pd.DataFrame, lltop, lut, outer: np.ndarray) -> dict:
@@ -554,8 +558,9 @@ def readability_B(c: pd.DataFrame, lltop, lut, outer: np.ndarray) -> dict:
 
 
 def patching(patch: pd.DataFrame, cl_of: dict, n_boot: int) -> dict:
-    """Rate ans == target per (lat, cond) (target is the same counterfactual for all four
-    conditions of an (item, lat) pair), and ans == gold per (lat, cond). P5 on lat 5."""
+    """Rate ans == target per (lat, cond) (target is the same counterfactual for all conditions
+    and both indices of an (item, quantity) pair), and ans == gold per (lat, cond). P5 on the
+    primary s2 index (S2_COL); the later indices are the convention check."""
     out: dict = {}
     for (lat, cond), g in patch.groupby(["lat", "cond"]):
         hit_t = _correct(g.ans, g.target)
@@ -564,7 +569,7 @@ def patching(patch: pd.DataFrame, cl_of: dict, n_boot: int) -> dict:
                              [cl_of.get(i, i) for i in g.item_id], n_boot)
         out.setdefault(str(lat), {})[cond] = {"n": len(g), "ans_eq_target": r[0],
                                               "ans_eq_gold": r[1]}
-    l5 = out.get("5", {})
+    l5 = out.get(str(S2_COL), {})
     diff = l5.get("diff", {}).get("ans_eq_target", {}).get("point", float("nan"))
     rnd = l5.get("random", {}).get("ans_eq_target", {}).get("point", float("nan"))
     out["P5"] = {"diff_rate": diff, "random_rate": rnd,
@@ -638,7 +643,7 @@ def run(results: Path, stage: str, layers_spec: str = "auto", fast: bool = False
         preds["PS"] = [str(int(a) + int(b)) if a is not None and b is not None
                        and not (isinstance(a, float) and math.isnan(a))
                        and not (isinstance(b, float) and math.isnan(b)) else None
-                       for a, b in zip(df.ps_lat3, df.ps_lat5)]
+                       for a, b in zip(df.ps_s1, df.ps_s2)]
         preds["K"], preds["K0"] = lookup_reader(lookup_keys(df), y, outer)
     else:
         _, preds["K0"] = lookup_reader(clusters, y, outer)
@@ -855,8 +860,8 @@ def prediction_checks(out: dict, stage: str) -> dict:
                    "pass_G": bool(g and g["point"] >= 0.03 and g["lo"] > 0),
                    "pass_T": bool(t["point"] >= 0.10)}
         rd = out["readability"]
-        p["P2"] = {"s1_T": rd["s1_col3_T"]["point"], "s2_T": rd["s2_col5_T"]["point"],
-                   "s1_E": rd["s1_col3_E"]["point"], "s2_E": rd["s2_col5_E"]["point"]}
+        p["P2"] = {"s1_T": rd["s1_T"]["point"], "s2_T": rd["s2_T"]["point"],
+                   "s1_E": rd["s1_E"]["point"], "s2_E": rd["s2_E"]["point"]}
         p["P2"]["pass"] = bool(min(p["P2"]["s1_T"], p["P2"]["s2_T"]) >= 0.70
                                and min(p["P2"]["s1_E"], p["P2"]["s2_E"]) >= 0.60)
         ll = out["readers"]["LL"]["E_share"]["point"]

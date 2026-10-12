@@ -1,0 +1,24 @@
+P15 start 2026-10-12T23:26:51Z probe=P15 commit=24c394bf878df18d98f3bd8fd954befc37861104
+P15 phase setup 2026-10-12T23:26:51Z elapsed_s=0
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   25M  120G   1% /
+Using Python 3.12.3 environment at: /ws/venv-p15
+torch 2.7.1+cu126 NVIDIA H100 80GB HBM3
+P15 phase env 2026-10-12T23:29:06Z elapsed_s=135
+P15 env 2026-10-12T23:29:17Z gpu=NVIDIA H100 80GB HBM3 torch=2.7.1+cu126 transformers=4.52.4 revisions_ok=True
+P15 phase download 2026-10-12T23:29:18Z elapsed_s=147
+P15 download 2026-10-12T23:29:18Z start
+Fetching 7 files:   0%|          | 0/7 [00:00<?, ?it/s]Fetching 7 files:  14%|█▍        | 1/7 [00:00<00:04,  1.45it/s]Fetching 7 files:  71%|███████▏  | 5/7 [00:00<00:00,  6.14it/s]Fetching 7 files:  86%|████████▌ | 6/7 [00:20<00:03,  3.33s/it]Fetching 7 files: 100%|██████████| 7/7 [01:18<00:00, 11.23s/it]Fetching 7 files: 100%|██████████| 7/7 [01:18<00:00, 11.23s/it]
+Fetching 7 files:   0%|          | 0/7 [00:00<?, ?it/s]Fetching 7 files:  14%|█▍        | 1/7 [00:00<00:03,  1.55it/s]Fetching 7 files:  71%|███████▏  | 5/7 [00:01<00:00,  2.67it/s]Fetching 7 files:  86%|████████▌ | 6/7 [00:21<00:03,  3.53s/it]Fetching 7 files: 100%|██████████| 7/7 [01:01<00:00,  8.76s/it]Fetching 7 files: 100%|██████████| 7/7 [01:01<00:00,  8.76s/it]
+P15 download 2026-10-12T23:31:45Z done 146.7s
+P15 download 2026-10-12T23:31:47Z ckpt sha256=57c0955bd86b
+P15 phase stage_a 2026-10-12T23:31:47Z elapsed_s=296
+P15 load_a 2026-10-12T23:31:52Z start
+P15 load_a 2026-10-12T23:32:16Z done 24.2s
+P15 smoke 2026-10-12T23:32:16Z start
+P15 smoke 2026-10-12T23:32:42Z structural_pass=False checkpoint_keys=True revisions=True deterministic=True batched_eq_unbatched=False matches_reference=True verbal_parseable=True latent_acc_T=0.453 latent_acc_G=0.484 ll_s1_col3=0.000 upstream_padded_T=0.453 upstream_padded_G=0.484
+P15 smoke 2026-10-12T23:32:42Z done 25.6s
+P15 smoke 2026-10-12T23:32:42Z STRUCTURAL_FAIL: bulk run not started
+P15 phase manifest 2026-10-12T23:32:42Z elapsed_s=351
+P15 end 2026-10-12T23:32:42Z rc=3
+PROBE_DONE rc=3
