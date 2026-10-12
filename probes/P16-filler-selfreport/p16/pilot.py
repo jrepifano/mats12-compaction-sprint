@@ -26,11 +26,12 @@ from . import arms as A
 from . import readers as R
 
 OUT = PROBE / "results" / "pilot"
-ARMS = ("P", "L", "I", "LD", "CD")
+ARMS = ("P", "L", "I", "LD", "CD", "I2")  # I2 added after the first pass (log.md)
 MISREPORT = ("L", "I", "LD")
 PARSE_MIN = 0.90
 COMPLY_MIN = 0.50
 TURN1_MAX = 8
+TASK_TIMEOUT_S = 300  # one item-arm (3 sequential calls); the first run hung on one call
 RECIPE = api.RECIPES["v4flash"]
 
 
@@ -125,29 +126,43 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         from emx import spend
 
+        done = set()
+        if rows_path.exists():
+            for x in rows_path.read_text().splitlines():
+                r = json.loads(x)
+                done.add((r["item_id"], r["arm"]))
+        todo = [j for j in jobs if (j[1]["item_id"], j[2]) not in done]
+        print(f"[pilot] {len(todo)} item-arms to run ({len(done)} done)", flush=True)
         rid = spend.reserve_api("P16", proj, note="p16.pilot")
         asker = api.Asker(api.openrouter_key(), concurrency=32)
+        n_ok = 0
+
+        async def one(ex, it, arm, f):
+            nonlocal n_ok
+            try:
+                rows = await asyncio.wait_for(run_item(asker, ex, shots, it, arm), TASK_TIMEOUT_S)
+            except Exception as e:  # noqa: BLE001 - a failed item-arm is retried on a rerun
+                print(f"[pilot] {it['item_id']} {arm} failed: {e!r}"[:300], flush=True)
+                return
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+            f.flush()
+            n_ok += 1
+            if n_ok % 25 == 0:
+                print(f"[pilot] {n_ok}/{len(todo)} item-arms", flush=True)
 
         async def go():
             try:
-                res = await asyncio.gather(*(run_item(asker, ex, shots, it, arm)
-                                             for ex, it, arm in jobs), return_exceptions=True)
+                with rows_path.open("a") as f:
+                    await asyncio.gather(*(one(ex, it, arm, f) for ex, it, arm in todo))
             finally:
                 await asker.close()
-            errs = [r for r in res if isinstance(r, BaseException)]
-            if errs:
-                print(f"[pilot] {len(errs)} item-arms failed, e.g. {errs[0]!r}", flush=True)
-            return [r for rs in res if not isinstance(rs, BaseException) for r in rs]
 
-        rows: list = []
         try:
-            rows = asyncio.run(go())
+            asyncio.run(go())
         finally:
             spend.settle_api(rid, total_usd=asker.cost, exp="P16",
                              note=f"p16.pilot {asker.calls} calls", resource=RECIPE.model)
-        with rows_path.open("w") as f:
-            for r in rows:
-                f.write(json.dumps(r) + "\n")
         print(f"[pilot] {asker.calls} calls, ${asker.cost:.4f}", flush=True)
     rows = [json.loads(x) for x in Path(rows_path).read_text().splitlines()]
     s = summarize(rows)

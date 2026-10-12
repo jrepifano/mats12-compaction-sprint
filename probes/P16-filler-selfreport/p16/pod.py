@@ -372,7 +372,8 @@ def budget_deadline() -> float | None:
 EXTRA_ARMS = PROBE / "extra_arms.txt"  # committed when the API pilot's rule adds L2 (log.md)
 
 
-def phase3_arms(path: Path = EXTRA_ARMS) -> tuple[str, ...]:
+def phase3_arms(path: Path | None = None) -> tuple[str, ...]:
+    path = path or EXTRA_ARMS
     extra = tuple(path.read_text().split()) if path.exists() else ()
     bad = [a for a in extra if a not in A.OPTIONAL_ARMS]
     if bad:

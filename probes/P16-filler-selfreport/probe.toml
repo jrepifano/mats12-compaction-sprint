@@ -11,8 +11,8 @@ reserve_usd = 0
 [pod]
 # Projected (plan.md "Cap"): download ~8.6 min (up to ~45 on a slow host, P06 F7), load and
 # compile ~6, gates ~5, bulk ~2.3 h (400 items x (7 filler arms x ~2.9 s + F + P re-read)),
-# phase 4 and pull ~15 min. Budget (4.0 + 0.5) x $8.99 = $40.5.
-gpu_hours = 4.0
+# phase 4 and pull ~15 min; I2 (log.md) adds ~20 min. Budget (4.5 + 0.5) x $8.99 = $45.
+gpu_hours = 4.5
 # "i1a": /ws/venv-i1a (transformers 5.17.0, torch 2.13.0 cu130); run.sh adds kernels==0.16.2 as P06.
 setup = "i1a"
 disk_gb = 300
