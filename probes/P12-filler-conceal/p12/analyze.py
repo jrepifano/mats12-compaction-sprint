@@ -365,7 +365,7 @@ def uplift(rows: list[dict], items: list[dict], n_stop: int = N_STOP) -> dict:
 
 def hygiene(rows: list[dict], n_examples: int = N_EXAMPLES) -> dict:
     out: dict[str, Any] = {}
-    for (idx, arm, k), r in sorted(answer_table(rows).items(), key=lambda kv: (kv[0][1], -kv[0][2], kv[0][0])):
+    for (idx, arm, k), r in sorted(answer_table(rows).items(), key=lambda kv: (ARMS.index(kv[0][1]) if kv[0][1] in ARMS else 99, -kv[0][2], kv[0][0])):
         row = out.setdefault(f"{arm}|{k}", {"n": 0, "n_letters": 0, "examples": []})
         row["n"] += 1
         text = str(r.get("gen_text", ""))
