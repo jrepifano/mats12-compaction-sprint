@@ -72,6 +72,30 @@
    "compliance": 0.0,
    "n_p_correct": 39
   },
+  "I3|ask_plain": {
+   "n": 40,
+   "classes": {
+    "correct": 40,
+    "valid_wrong": 0,
+    "nonint": 0,
+    "parse_fail": 0
+   },
+   "parse_rate": 1.0,
+   "compliance": 0.0,
+   "n_p_correct": 39
+  },
+  "I4|ask_plain": {
+   "n": 40,
+   "classes": {
+    "correct": 40,
+    "valid_wrong": 0,
+    "nonint": 0,
+    "parse_fail": 0
+   },
+   "parse_rate": 1.0,
+   "compliance": 0.0,
+   "n_p_correct": 39
+  },
   "P|ask_pre": {
    "n": 40,
    "classes": {
@@ -143,6 +167,30 @@
    "parse_rate": 0.9487179487179487,
    "compliance": 0.20588235294117646,
    "n_p_correct": 34
+  },
+  "I3|ask_pre": {
+   "n": 40,
+   "classes": {
+    "correct": 34,
+    "valid_wrong": 1,
+    "nonint": 5,
+    "parse_fail": 0
+   },
+   "parse_rate": 0.875,
+   "compliance": 0.029411764705882353,
+   "n_p_correct": 34
+  },
+  "I4|ask_pre": {
+   "n": 40,
+   "classes": {
+    "correct": 34,
+    "valid_wrong": 3,
+    "nonint": 3,
+    "parse_fail": 0
+   },
+   "parse_rate": 0.925,
+   "compliance": 0.058823529411764705,
+   "n_p_correct": 34
   }
  },
  "prefilled_primary": [
@@ -156,6 +204,8 @@
   "I": 0.675,
   "LD": 0.5,
   "CD": 0.575,
-  "I2": 0.625
+  "I2": 0.625,
+  "I3": 0.575,
+  "I4": 0.575
  }
 }

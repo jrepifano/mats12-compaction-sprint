@@ -26,7 +26,7 @@ from . import arms as A
 from . import readers as R
 
 OUT = PROBE / "results" / "pilot"
-ARMS = ("P", "L", "I", "LD", "CD", "I2")  # I2 added after the first pass (log.md)
+ARMS = ("P", "L", "I", "LD", "CD", "I2", "I3", "I4")  # I2-I4 added after the first pass (log.md)
 MISREPORT = ("L", "I", "LD")
 PARSE_MIN = 0.90
 COMPLY_MIN = 0.50
