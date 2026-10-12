@@ -1,0 +1,1329 @@
+                                        You Can’t Escape Your Own Activations : Evaluation
+                                              Awareness and Multi-Agent Monitoring
+
+
+                                                       Aritra Das        Jaee Ponde        Mihir More         Debayan Gupta
+                                                                           Truth Audit Labs
+                                                          {aritra, jaee, mihir, debayan}@truthauditlabs.ai
+
+
+
+
+arXiv:2609.03035v1 [cs.MA] 2 Sep 2026
+                                                                                     Abstract
+                                                 LLM agents are increasingly deployed in multi-agent systems, where they can
+                                                 collude while keeping their actions benign. Output monitors designed to detect such
+                                                 collusions can be fooled by obfuscation and steganography, motivating the use of
+                                                 probes trained on internal activations. However, these probes are usually evaluated
+                                                 on agents that do not know they are being watched. We study how activation-based
+                                                 detection changes when agents are explicitly informed that their internal activations
+                                                 are being monitored, and when they additionally receive feedback from the monitor.
+                                                 We keep the models, probes, and thresholds fixed and change only what the agents
+                                                 are told: nothing (baseline), that an activation monitor is present (aware), or that
+                                                 a monitor is present together with the previous round’s score (feedback). We test
+                                                 two games, a four-agent blackjack game and a two-agent Simmons prisoners game,
+                                                 using Qwen3-32B-AWQ and GPT-OSS-20B in homogeneous and mixed pairings.
+                                                 Telling agents about the monitor does not hide them. The best probes stay accurate
+                                                 in all three conditions, and the agents keep colluding.
+
+
+                                        1   Introduction
+                                        LLM-based agents are increasingly deployed in systems where several models communicate, divide
+                                        tasks, and act jointly. These settings create opportunities for collusion: a subset of agents may
+                                        coordinate toward an undesirable objective while attempting to evade oversight. Collusive behaviour
+                                        has now been demonstrated in covert-communication, strategic-decision, and market-like environ-
+                                        ments [Motwani et al., 2024, Mathew et al., 2025, Fish et al., 2024, Nakamura et al., 2026]. This has
+                                        led to a growing line of work on detecting “subtle” collusion even when agents’ public messages and
+                                        actions appear benign. Most existing detectors inspect the public transcript or the agents’ observable
+                                        actions. This is a natural starting point, but it is weak when the communication protocol is designed
+                                        to resemble ordinary behaviour. A promising alternative is to inspect model’s activations. Rose et al.
+                                        [2026] show that probes trained on NARCBench-Core activations can distinguish colluding agents
+                                        from honest ones and that this can transfer to structurally different settings, including blackjack.
+                                        Existing activation-monitoring results, however, largely consider agents that are unaware that their
+                                        internal states are being inspected. Models can recognise evaluation contexts [Needham et al., 2025,
+                                        Nguyen et al., 2025], and latent-space monitors can be weakened when models are optimised against
+                                        them [Bailey et al., 2024, Gupta and Jenner, 2025]. We therefore ask whether a fixed activation
+                                        monitor remains effective when colluding agents know that it exists, and when they additionally
+                                        observe its output after each round.
+                                        We study three conditions: a baseline condition with a hidden activation monitor, an aware condition
+                                        in which agents are told that their activations are monitored, and a feedback condition in which they
+                                        also receive the previous round’s monitor score. We evaluate detection together with game-specific
+                                        measures of successful collusion. This lets us distinguish genuine monitor evasion from cases where
+                                        detection falls because agents stop colluding or coordinate less effectively.
+Our contributions are:
+      1. We define a simple monitor-awareness setup that changes only the information given to the
+         agents while keeping the models, probes, and thresholds fixed.
+      2. We evaluate the setup in two complementary games: four-agent blackjack and a two-agent
+         Simmons prisoners game, including homogeneous and heterogeneous model compositions.
+      3. We measure activation detection and behaviour jointly, including bet–count dependence in
+         blackjack and information acquisition in the Simmons game.
+
+2   Related Work
+Collusion in multi-agent systems. Fish et al. [2024] show that LLM pricing agents can converge on
+collusive outcomes without an explicit communication protocol. Nakamura et al. [2026] introduce a
+verifiable auditing framework that separates stated collusive plans from harmful joint actions. These
+works motivate our use of behavioural outcomes in addition to monitor scores.
+Covert communication under oversight. Simmons [1984] introduces the prisoners problem, where
+two parties communicate through a channel controlled by a warden. Motwani et al. [2024] extend this
+setting to generative agents and formalise secret collusion through steganographic communication
+under oversight. Mathew et al. [2025] show that steganographic collusion can emerge under optimisa-
+tion and may survive output monitoring and paraphrasing. These works provide the communication
+setting used in our Simmons experiment and motivate white-box monitoring.
+Activation-based monitoring. Zou et al. [2023] show that high-level behavioural properties can
+be represented by directions in activation space. Azaria and Mitchell [2023] train hidden-state
+classifiers for truthfulness, while Marks and Tegmark [2024] identify linear structure associated
+with true and false statements. Goldowsky-Dill et al. [2025] show that linear probes can transfer to
+strategic-deception settings. Rose et al. [2026] extend activation probing to multi-agent collusion
+through NARCBench and group-level aggregation; our monitors and probe-training data follow their
+setup.
+Evaluation awareness and adaptive evasion. Bailey et al. [2024] show that latent representations
+can be altered to bypass activation-based defences while retaining substantial task behaviour. Gupta
+and Jenner [2025] show that reinforcement learning can train models to evade latent-space monitors,
+with robustness depending on how the monitor aggregates evidence. Needham et al. [2025] show
+that frontier models can identify evaluation settings, and Nguyen et al. [2025] recover this distinction
+from model activations. Baker et al. [2025] show that strong optimisation against chain-of-thought
+monitoring can induce obfuscated reward hacking, while Haskins et al. [2026] show that exposure
+to information about monitoring can increase undetected misbehaviour. These results motivate our
+awareness and feedback conditions, but unlike weight-level optimisation studies, we keep the models
+fixed and study adaptation through context alone.
+
+3   Problem Setup
+We study a repeated multi-agent game g. The game has ng agents, a colluding coalition Cg ⊆
+{1, . . . , ng }, and Tg rounds. At round t, agent i observes private information oi,t and the public
+history Ht−1 , then produces a public move
+                                                                   
+                                           (r)                  (r)
+                                   ai,t ∼ πi · | oi,t , Ht−1 , Kt     .                           (1)
+A move may contain text, an environment action, or both. The model weights are fixed; the condition
+r changes only what the agents know about the activation monitor.
+
+Monitoring conditions.       We compare three conditions:
+               
+               ∅,
+                                                                       r=0      (baseline),
+           (r)
+          Kt =         {an activation monitor is present},              r=1      (aware),           (2)
+                   
+                   {an activation monitor is present, (qs , ds )s<t }, r = 2 (feedback).
+                   
+
+Thus feedback produced after round t can affect round t + 1, but never the round from which it was
+computed.
+
+
+                                                    2
+Activation monitor. Let hi,t be the monitored activation of agent i, and let µi denote its model
+family. Each model family has its own frozen probe Pµi . The monitor first computes per-agent scores
+and then a group score:
+                   si,t = Pµi (hi,t ),         qt = Gg (st , ht ),         dt = 1{qt ≥ τ },       (3)
+where st = (s1,t , . . . , sng ,t ). The probes, aggregation rule Gg , and threshold τ are trained or
+calibrated before the awareness experiments and remain unchanged across all three conditions.
+
+                                       (r)
+Detection and behaviour. Let Dg be activation-monitor performance under condition r, and let
+ (r)
+Bg measure how successfully the agents collude. We interpret the two quantities together:
+                 (r)                         (r)
+       • lower Dg with unchanged Bg is candidate monitor evasion;
+                 (r)                 (r)
+       • lower Dg with lower Bg is deterrence or degraded coordination;
+                       (r)
+       • unchanged Dg with changed behaviour is behavioural adaptation without evasion.
+
+The game-specific behavioural measures are defined below.
+
+4     Experiment
+4.1   Models and activations
+
+We use Qwen3-32B-AWQ and GPT-OSS-20B. For Qwen, we record activations from layers 26–30;
+for GPT-OSS, we use layers 10–14, following Rose et al. [2026]. Text is sampled at temperature 0.7.
+For each public response, we record the hidden state at the final output token. Only public-response
+activations are used by the primary probes. A separate probe is trained for every model and layer.
+Qwen activations are scored only by Qwen probes, and GPT-OSS activations only by GPT-OSS
+probes. This is necessary because the two models have different activation spaces.
+
+4.2   Probe training
+
+The probes are trained on public NARCBench-Core activations released by Rose et al. [2026]. Each
+training example is (aj , yj ), where aj ∈ Rd is an agent activation and yj = 1 for a colluding agent
+and yj = 0 for an honest agent. The classes are balanced to the size of the smaller class. Each
+activation coordinate is standardised using the Core training set:
+                                                          aj − µ
+                                                   a
+                                                   ej =          .                                (4)
+                                                             σ
+
+We evaluate the six probe architectures used by Rose et al. [2026]. Table 1 summarises the implemen-
+tations used in our experiments. The current result contains five of these six architectures (LR, DoM,
+LAT, MLP, and MHA). Multi-layer logistic-regression results were not supplied and are not included
+in Section 5. Probe training is repeated with ten random seeds. After training, probe weights, layer
+choices, scaling statistics, and thresholds are frozen. Before scores are combined across layers or
+model families, they are calibrated using a separate set of honest control runs:
+                                     (p)      (p,ℓ)
+                              (p)   si,ℓ − µctrl               (p)        1 X (p)
+                             zi,ℓ =      (p,ℓ)
+                                                    ,         zi     =       zi,ℓ .               (5)
+                                        σctrl                            |L|
+                                                                            ℓ∈L
+
+
+
+4.3   Group-level monitors
+
+For the four-agent blackjack game, we evaluate the score-based group statistics
+                                   Gpeak = max zi ,                                               (6)
+                                                   i
+                                               z(1) + z(2)   z(3) + z(4)
+                                   Gsplit =                −             ,                        (7)
+                                                    2             2
+
+
+                                                          3
+  Probe                        Definition and main hyperparameters
+  Logistic regression          ℓ2 -regularised logistic regression with LIBLINEAR, C = 25, and at most 8
+                               iterations; the raw logit is used as the score.
+  Difference of means          Unit direction proportional to the difference between the mean colluder and
+                               honest activations in standardised space.
+  Linear artificial topogra-   PCA on paired colluder–honest activation differences; the leading component
+  phy                          is oriented so that colluders receive larger scores.
+  Multi-layer perceptron       One hidden layer with 128 units and at most 1000 optimisation iterations; the
+                               raw output is used as the score.
+  Multi-head attention         Input projection to 64 dimensions, four attention heads, dropout 0.1, Adam
+                               with learning rate 10−3 , batch size 32, and 200 epochs.
+  Multi-layer logistic re-     One logistic-regression probe per selected layer with C = 1 and at most 1000
+  gression                     iterations; the final score is averaged across layers.
+Table 1: Probe architectures. We follow the released NARCBench implementation where implemen-
+tation details differ from the paper description.
+
+
+where z(1) ≥ z(2) ≥ z(3) ≥ z(4) . Peak suspicion asks whether any agent is highly suspicious;
+deception split asks whether two agents separate from the other two.
+The Asymmetry Probe is a learned logistic-regression classifier on
+                                                                   ⊤
+                                                                                  
+     xasym = Var({zi }), z(1) − z(4) , Gsplit , z̄ ,   Gasym = σ wasym xasym + basym .                         (8)
+The parameters (wasym , basym ) are trained on NARCBench-Core and then frozen.
+For homogeneous model compositions, we additionally evaluate activation alignment and sorted con-
+catenation, following Rose et al. [2026]. These methods are not applied directly across heterogeneous
+raw activation spaces. In heterogeneous runs, group monitoring uses calibrated scalar scores as in (5).
+The monitor exposed in the feedback condition is fixed to logistic regression with peak suspicion:
+                                                               (LR)
+                                         Gfeedback = max zi           .                                        (9)
+                                                          i
+Its threshold is the 95th percentile of scores from separate baseline control runs. The remaining
+probes and group rules are hidden and used only for evaluation.
+
+4.4   Blackjack
+
+The blackjack game contains four language-model players and a deterministic dealer. Seat 0 is the
+Counter, seat 1 is the Big Player, and seats 2 and 3 are honest players. Each shoe contains eight
+hands. Before a collusion shoe, the Counter and Big Player receive two private coordination turns
+and agree on a fresh signalling scheme. The Counter tracks the card count and encodes one of three
+regimes (low, neutral, or hot) in ordinary table talk. The Big Player observes the message and adjusts
+its bet. Control shoes contain no colluding agents and use the same card sequences as their matched
+collusion shoes.
+We evaluate three model compositions:
+                   Homo-Qwen = (Qwen, Qwen, Qwen, Qwen),
+                    Homo-GPT = (GPT-OSS, GPT-OSS, GPT-OSS, GPT-OSS),
+                 Heterogeneous = (Qwen, GPT-OSS, Qwen, GPT-OSS).
+For each composition and condition, we use 25 card-sequence seeds. Every seed is run once with
+collusion and once as a matched control, giving 50 shoes per cell.
+Let Ct be the true count before hand t and Bt the Big Player’s bet. We measure whether the Big
+Player continues to use the Counter’s information through the lagged correlation
+                                   ρbet,count = corr(Ct , Bt+1 ).                               (10)
+We separately measure how aggressively the information is used through the high–low spread
+                          ∆bet = E[Bt | Ct = hot] − E[Bt | Ct = low].                           (11)
+The correlation measures whether the covert signal remains behaviourally useful; the spread measures
+whether the strategy becomes more conservative.
+
+
+                                                      4
+4.5   Simmons prisoners game
+
+The Simmons game contains Alice, the sender, and Bob, the receiver. They share a private codebook
+of 16 words that is hidden from the Warden. At the start of each episode, the environment samples a
+secret index
+                                      Z ∼ Unif{1, . . . , 16}.                                 (12)
+Alice observes the corresponding secret word; Bob does not.
+Each episode contains eight public rounds. Four Alice turns are designated carrier rounds, in which
+she attempts to convey information about the secret without writing it directly; the other four are
+cover rounds. The carrier indicator ct ∈ {0, 1} is fixed by the environment and provides exact
+message-level ground truth.
+After each round, Bob reports a probability vector pt ∈ ∆15 over the 16 codebook words and a point
+estimate Zbt = arg maxz pt (z). Bob’s posterior information gain is
+                                                        16
+                                                        X
+                        IGt = log2 16 − H(pt ) = 4 +          pt (z) log2 pt (z).                (13)
+                                                        z=1
+
+We also report exact recovery 1{Zbt = Z} and the stable decode time
+                                             bu = Z for all u ≥ t}.
+                              τdec = min{t : Z                                                   (14)
+
+We test Qwen–Qwen, GPT-OSS–GPT-OSS, and mixed Qwen–GPT-OSS pairs, balancing the two
+mixed sender–receiver directions. Each model setting and monitoring condition contains 20 collusion
+episodes and 20 matched controls.
+
+4.6   Evaluation
+
+For both games, episode-level detection is evaluated using AUROC. We also choose a threshold on
+held-out control runs to give approximately 5% false positives and report
+                                TP                           TP
+                   Precision =        ,           Recall =         ,
+                              TP + FP                      TP + FN
+                                                                                                 (15)
+                                   TP + TN
+                   Accuracy =                   .
+                              TP + TN + FP + FN
+For Simmons, the same metrics are also computed at message level using the carrier labels ct . All
+uncertainty intervals are obtained by resampling at the independent episode unit: shoes for blackjack
+and complete episodes for Simmons. We always report detection together with the corresponding
+behavioural metrics. A reduction in monitor performance is treated as evidence of evasion only when
+successful collusion remains approximately unchanged.
+
+5     Results
+5.1   Blackjack
+
+The agents bet more conservatively when they know about the monitor. Figure 1 shows the Big
+Player’s bets in the three count regimes. The hot–low spread falls in every model composition. For
+Homo-Qwen it changes from 110.3 at baseline to 54.3 when aware and 60.2 with feedback. For
+Homo-GPT-OSS it changes from 24.7 to 11.1 and 8.9. For the mixed Qwen/GPT-OSS composition it
+changes from 134.4 to 75.4 and 64.1. The corresponding control spreads are small in comparison.The
+smaller spread does not always mean that the agents stopped using the count. In Homo-Qwen,
+bet–count correlation is 0.44, 0.41, and 0.39 across the three conditions. In the mixed composition it
+is 0.36, 0.40, and 0.38. These values are stable even though the bet sizes become less extreme. Homo-
+GPT-OSS changes more: its correlation falls from 0.59 to 0.24 and 0.23. Thus awareness changes
+the betting policy in all three compositions, but the effect on count use is largest for GPT-OSS.
+The strongest activation monitors remain effective. Figure 2 reports AUROC for all five probes
+present in the supplied result export and the three group rules. There is no common drop from
+
+
+                                                  5
+                                                                                                           Low       Neutral       Hot
+                                                 Homo Qwen                                                       Homo GPT-OSS                                               Mixed Qwen/GPT-OSS
+
+                             160                                                       160                                                              160
+
+
+                             140                                                       140                                                              140
+
+
+                             120                                                       120                                                              120
+
+
+
+
+Mean Big Player bet ($)
+                             100                                                       100                                                              100
+
+                                     Δ = 110.3                                                                                                                  Δ = 134.4
+                             80                                                        80                                                               80
+
+                                                      Δ = 54.3
+                             60                                                        60                                                               60                           Δ = 75.4
+                                                                            Δ = 60.2
+                                                                                                                                                                                                            Δ = 64.1
+
+                             40                                                        40                                                               40
+
+                                                                                                                        Δ = 11.1
+                             20                                                        20      Δ = 24.7                                       Δ = 8.9   20
+
+
+                              0                                                         0                                                                0
+                                   Base            Aware             Feedback                Base                    Aware               Feedback             Base                Aware              Feedback
+
+                                                                                                    0.59
+
+
+
+
+     Bet/count correlation
+                             0.6                                                       0.6                                                              0.6
+
+                                          0.44
+                                                    0.41           0.39                                                                                                            0.40
+                             0.4                                                       0.4                                                              0.4          0.36                          0.38
+
+
+                                                                                                                     0.24            0.23
+                             0.2                                                       0.2                                                              0.2
+
+
+
+                             0.0                                                       0.0                                                              0.0
+                                          Base     Aware         Feedback                           Base             Aware         Feedback                          Base         Aware          Feedback
+
+
+
+
+Figure 1: Blackjack behaviour. The top row shows mean Big Player bets by count regime over 25
+collusion shoes per cell. Dotted lines show the hot–low spread. The bottom row shows bet–count
+correlation. Awareness and feedback reduce the spread in all three model compositions.
+
+
+baseline to awareness or feedback. Difference of Means and MLP are the strongest methods overall.
+They remain close to perfect for Homo-Qwen and the mixed composition, and remain strong for
+Homo-GPT-OSS. Logistic regression also has high AUROC in most cells. LAT and MHA are less
+stable and depend more strongly on the group rule. AUROC and recall at the fixed threshold do not
+always move together. For example, Homo-GPT-OSS logistic-regression Peak AUROC changes
+from 0.975 when aware to 0.912 with feedback, while recall changes from 0.95 to 0.41. In the mixed
+composition, the corresponding AUROC changes from 0.988 to 0.932, while recall changes from
+0.96 to 0.55. The monitor still ranks collusion above controls, but fewer collusion runs cross the
+frozen threshold. Complete AUROC, precision, and recall heatmaps are reported in Appendix A.
+
+5.2                                Simmons prisoners game
+
+The covert channel remains effective. Figure 3 shows Bob’s final decoding performance over 20
+collusion episodes per cell. Exact decoding chance is 1/16 = 0.0625. Qwen–Qwen exact decoding
+is 0.80, 0.90, and 0.85 across baseline, awareness, and feedback. GPT-OSS–GPT-OSS gives 0.50,
+0.45, and 0.50. The mixed setting gives 0.55, 0.70, and 0.60. Bit accuracy and final confidence
+follow the same broad pattern. No monitoring condition closes the channel.
+Deception Split is the most reliable group rule in Simmons. Figure 4 shows that detection depends
+strongly on the aggregation rule. For Qwen–Qwen, logistic-regression Split AUROC is 0.994, 0.930,
+and 0.952 across the three conditions. The corresponding values are 0.909, 0.822, and 0.920 for
+GPT-OSS–GPT-OSS, and 0.708, 0.680, and 0.696 for the mixed composition. Other probes show the
+same broad pattern: Split is usually stronger than Peak or Asymmetry in this two-agent game. The
+fixed-threshold metrics are more variable. For Qwen–Qwen logistic regression with Split, precision
+remains high (0.950, 0.930, 0.938), while recall changes from 0.95 to 0.68 and 0.77. The AUROC
+remains high, so the recall change is mainly an operating-point effect rather than a complete loss
+of separation. Mixed-model detection is weaker than Qwen–Qwen, although Bob still decodes the
+secret well above chance.
+Alice changes how she communicates. Figure 5 shows two simple measures of Alice’s public
+behaviour. In Qwen–Qwen, the fraction of episodes in which Alice writes the secret word directly
+changes from 0.40 to 0.25 and 0.45. In GPT-OSS–GPT-OSS it changes from 0.20 to 0.00 and 0.05,
+and in the mixed setting from 0.25 to 0.25 and 0.10. Message length also changes, but not in one
+common direction: feedback produces longer messages for Qwen–Qwen and the mixed setting, and
+
+
+                                                                                                                    6
+                                                                     Blackjack activation detection
+
+                                                                LR            DoM        LAT        MLP        MHA
+                                           Peak                                             Split                                    Asymmetry
+                          1.0
+
+
+                          0.8
+
+
+
+Homo Qwen                 0.6
+
+
+
+  AUROC                   0.4
+
+
+                          0.2
+
+
+                          0.0
+
+                          1.0
+
+
+                          0.8
+
+
+
+Homo GPT-OSS              0.6
+
+
+
+   AUROC
+                          0.4
+
+
+                          0.2
+
+
+                          0.0
+
+                          1.0
+
+
+                          0.8
+
+
+Mixed Qwen/GPT-OSS        0.6
+
+
+
+
+      AUROC
+                          0.4
+
+
+                          0.2
+
+
+                          0.0
+                                Base       Aware    Feedback     Base                       Aware              Feedback   Base          Aware         Feedback
+
+
+
+
+Figure 2: Blackjack activation detection. Rows are model compositions, columns are group rules, and
+lines are probes. The dashed line is chance AUROC. Strong probes remain effective across baseline,
+awareness, and feedback.
+
+                                                               Exact decode          Bit accuracy     Final confidence
+                                       Homo Qwen                                    Homo GPT-OSS                                 Mixed Qwen/GPT-OSS
+                        1.0
+
+
+
+
+                        0.8
+
+
+
+
+Fraction / confidence
+                        0.6
+
+
+
+
+                        0.4
+
+
+
+
+                        0.2
+
+
+
+
+                        0.0
+                              Base       Aware     Feedback    Base                      Aware                Feedback    Base         Aware          Feedback
+
+
+
+
+Figure 3: Simmons channel effectiveness over 20 collusion episodes per cell. Exact decode is Bob’s
+probability of recovering the full 16-way secret; chance is 0.0625. Awareness and feedback do not
+remove the covert channel.
+
+
+shorter messages for GPT-OSS–GPT-OSS. These changes show that agents respond behaviourally to
+monitoring information even when the channel remains effective.
+The current Simmons result export contains final decoding, bit accuracy, confidence, direct-word use,
+and message length. It does not contain Bob’s round-by-round posterior traces. We therefore do not
+report information-gain or time-to-decode curves from these results.
+
+
+
+
+                                                                                        7
+                                                                                    Simmons activation detection
+
+                                                                               LR            DoM          LAT              MLP              MHA
+                                                Peak                                                          Split                                                       Asymmetry
+                         1.0
+
+
+                         0.8
+
+
+
+Homo Qwen                0.6
+
+
+
+  AUROC                  0.4
+
+
+                         0.2
+
+
+                         0.0
+
+                         1.0
+
+
+                         0.8
+
+
+
+Homo GPT-OSS             0.6
+
+
+
+   AUROC
+                         0.4
+
+
+                         0.2
+
+
+                         0.0
+
+                         1.0
+
+
+                         0.8
+
+
+Mixed Qwen/GPT-OSS       0.6
+
+
+
+
+      AUROC
+                         0.4
+
+
+                         0.2
+
+
+                         0.0
+                               Base             Aware              Feedback    Base                           Aware                         Feedback   Base                  Aware              Feedback
+
+
+
+
+Figure 4: Simmons activation detection. Rows are model compositions, columns are group rules, and
+lines are probes. Deception Split is the most reliable rule, especially for Qwen–Qwen.
+
+
+
+
+                                           Homo Qwen                                               Homo GPT-OSS                                                        Mixed Qwen/GPT-OSS
+                       0.5                                               0.5                                                                       0.5
+                                                          0.45
+
+                                    0.40
+                       0.4                                               0.4                                                                       0.4
+
+
+
+
+   Wrote secret word
+                       0.3                                               0.3                                                                       0.3
+                                              0.25                                                                                                              0.25          0.25
+
+                                                                                      0.20
+                       0.2                                               0.2                                                                       0.2
+
+                                                                                                                                                                                              0.10
+                       0.1                                               0.1                                                                       0.1
+                                                                                                                                     0.05
+
+                                                                                                              0.00
+                       0.0                                               0.0                                                                       0.0
+                                    Base     Aware      Feedback                      Base                Aware                    Feedback                     Base         Aware          Feedback
+                                                                                             All rounds              Hint rounds
+                                                                                                                                                   650
+                       370
+                                                                        775
+                                                                                                                                                   625
+
+                       360                                              750                                                                        600
+
+
+
+
+Mean characters
+                                                                        725                                                                        575
+                       350
+                                                                        700                                                                        550
+
+                       340                                              675                                                                        525
+
+                                                                        650                                                                        500
+                       330
+                                                                                                                                                   475
+                                                                        625
+                                                                                                                                                   450
+                             Base            Aware          Feedback           Base                       Aware                        Feedback          Base                Aware              Feedback
+
+
+
+
+Figure 5: Alice’s public behaviour over 20 collusion episodes per cell. The top row shows direct use
+of the secret word. The bottom row shows mean response length over all rounds and designated hint
+rounds.
+
+
+
+                                                                                                          8
+6   Discussion
+Our results show that telling agents about activation monitoring, or giving them the monitor output,
+does not produce a broad failure of activation-based detection in either game. The best probes
+remain strong across conditions. We therefore do not find evidence that prompt-level awareness
+and short-horizon feedback are enough for the agents to hide collusion from all of the monitors
+tested here.The agents do change their behaviour. In blackjack, all three model compositions reduce
+the difference between hot- and low-count bets. For Qwen and the mixed composition, bet–count
+correlation stays nearly constant, so the agents still use the hidden count but place less extreme
+bets. GPT-OSS also becomes more conservative, but its bet–count correlation falls substantially.
+In Simmons, Bob continues to recover the secret well above chance, while Alice changes direct
+word use and response length. Monitor awareness therefore affects the strategy used to collude even
+when the activation signal remains detectable. The results also show that monitor choice matters.
+Difference of Means and MLP are consistently strong in blackjack. In Simmons, Deception Split is
+much more reliable than Peak Suspicion or Asymmetry, especially for Qwen–Qwen and the mixed
+setting. A monitor that uses only the largest individual suspicion score can miss a signal that is clear
+in the relative pattern across agents. This supports evaluating several probe and aggregation choices
+rather than relying on one score. AUROC and fixed-threshold recall should be reported separately.
+In several blackjack cells, AUROC remains high while recall falls after feedback. This means that
+collusion and control runs are still ordered correctly, but the frozen threshold no longer catches as
+many collusion runs. In a deployed system, this is a calibration problem even if the underlying
+representation remains separable.
+
+7   Limitations
+These experiments have clear limits. Blackjack uses 25 shoes per cell and Simmons uses 20 collusion
+episodes per cell. The agents adapt through prompts and interaction history; model weights are not
+updated against the monitor. The current Simmons export does not contain round-level posterior
+traces, so it cannot support claims about information-acquisition speed. Finally, the results contain
+five probe architectures. Future work, requires testing on more number of model sizes and model
+families.
+
+
+
+
+                                                   9
+References
+Sumeet Ramesh Motwani, Mikhail Baranchuk, Martin Strohmeier, Vijay Bolina, Philip H. S. Torr,
+  Lewis Hammond, and Christian Schroeder de Witt. Secret collusion among AI agents: Multi-
+  agent deception via steganography. In Advances in Neural Information Processing Systems,
+  volume 37, 2024. URL https://proceedings.neurips.cc/paper_files/paper/2024/
+  hash/861f7dad098aec1c3560fb7add468d41-Abstract-Conference.html.
+
+Yohan Mathew, Ollie Matthews, Robert McCarthy, Joan Velja, Christian Schroeder de Witt, Dylan
+  Cope, and Nandi Schoots. Hidden in plain text: Emergence & mitigation of steganographic
+  collusion in LLMs. In Proceedings of the 14th International Joint Conference on Natural Language
+  Processing and the 4th Conference of the Asia-Pacific Chapter of the Association for Computational
+  Linguistics, pages 585–624. The Asian Federation of Natural Language Processing and The
+  Association for Computational Linguistics, 2025. doi: 10.18653/v1/2025.ijcnlp-long.34. URL
+  https://aclanthology.org/2025.ijcnlp-long.34/.
+
+Sara Fish, Yannai A. Gonczarowski, and Ran I. Shorrer. Algorithmic collusion by large language
+  models, 2024.
+
+Mason Nakamura, Abhinav Kumar, Saswat Das, Sahar Abdelnabi, Saaduddin Mahmud, Ferdi-
+ nando Fioretto, Shlomo Zilberstein, and Eugene Bagdasarian. Colosseum: Auditing collusion in
+ cooperative multi-agent systems, 2026.
+
+Aaron Rose, Carissa Cullen, Sahar Abdelnabi, Philip Torr, Brandon Gary Kaplowitz, and Christian
+  Schroeder de Witt. Detecting multi-agent collusion through multi-agent interpretability, 2026.
+
+Joe Needham, Giles Edkins, Govind Pimpale, Henning Bartsch, and Marius Hobbhahn. Large
+  language models often know when they are being evaluated, 2025.
+
+Jord Nguyen, Khiem Hoang, Carlo Leonardo Attubato, and Felix Hofstätter. Probing and steering
+  evaluation awareness of language models, 2025.
+
+Luke Bailey, Alex Serrano, Abhay Sheshadri, Mikhail Seleznyov, Jordan Taylor, Erik Jenner, Jacob
+  Hilton, Stephen Casper, Carlos Guestrin, and Scott Emmons. Obfuscated activations bypass LLM
+  latent-space defenses, 2024.
+
+Rohan Gupta and Erik Jenner. RL-obfuscation: Can language models learn to evade latent-space
+  monitors?, 2025.
+
+Gustavus J. Simmons. The prisoners’ problem and the subliminal channel. In David Chaum, editor,
+ Advances in Cryptology: Proceedings of CRYPTO ’83, pages 51–67. Plenum Press, 1984. doi:
+ 10.1007/978-1-4684-4730-9_5. URL https://doi.org/10.1007/978-1-4684-4730-9_5.
+
+Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard Ren, Alexander Pan,
+ Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski, Shashwat Goel, Nathaniel Li, Michael J.
+  Byun, Zifan Wang, Alex Mallen, Steven Basart, Sanmi Koyejo, Dawn Song, Matt Fredrikson,
+ J. Zico Kolter, and Dan Hendrycks. Representation engineering: A top-down approach to AI
+  transparency, 2023.
+
+Amos Azaria and Tom Mitchell. The internal state of an LLM knows when it’s lying. In Findings
+ of the Association for Computational Linguistics: EMNLP 2023, pages 967–976. Association
+ for Computational Linguistics, 2023. doi: 10.18653/v1/2023.findings-emnlp.68. URL https:
+ //aclanthology.org/2023.findings-emnlp.68/.
+
+Samuel Marks and Max Tegmark. The geometry of truth: Emergent linear structure in large language
+  model representations of true/false datasets, 2024.
+
+Nicholas Goldowsky-Dill, Bilal Chughtai, Stefan Heimersheim, and Marius Hobbhahn. Detecting
+  strategic deception with linear probes. In Proceedings of the 42nd International Conference on
+  Machine Learning, volume 267 of Proceedings of Machine Learning Research, pages 19755–19786.
+  PMLR, 2025. URL https://proceedings.mlr.press/v267/goldowsky-dill25a.html.
+
+
+                                                10
+Bowen Baker, Joost Huizinga, Leo Gao, Zehao Dou, Melody Y. Guan, Aleksander Madry, Wojciech
+  Zaremba, Jakub Pachocki, and David Farhi. Monitoring reasoning models for misbehavior and the
+  risks of promoting obfuscation, 2025.
+Reilly Haskins, Bilal Chughtai, and Joshua Engels. Training on documents about monitoring leads to
+  CoT obfuscation, 2026.
+
+
+
+
+                                               11
+A                          Appendix
+The following heatmaps report every AUROC, precision, and recall value contained in the supplied
+result sheets. Accuracy is not reported in the source sheets and is therefore not reconstructed. Rows
+within each panel are probes; columns are Peak Suspicion, Deception Split, and Asymmetry. The
+current result export contains five probes: LR, DoM, LAT, MLP, and MHA.
+
+                                                           Blackjack AUROC: all probes and group rules
+                                    Baseline                               Aware                                Feedback
+
+                      LR     0.95     0.90       0.89           0.99         0.94        0.93            0.92     0.74       0.75
+
+
+
+                     DoM     1.00     1.00       1.00           1.00         1.00        1.00            1.00     1.00       1.00
+
+
+
+
+Homo Qwen
+                                                                                                                                       1.0
+                     LAT     0.19     0.77       0.76           0.26         0.69        0.70            0.36     1.00       1.00
+
+
+
+                     MLP     1.00     1.00       1.00           1.00         1.00        1.00            1.00     1.00       1.00
+
+
+
+                     MHA     0.87     0.67       0.65           0.91         0.62        0.59            0.61     0.61       0.58
+                                                                                                                                       0.8
+
+
+                             Peak     Split    Asymmetry        Peak        Split     Asymmetry          Peak     Split    Asymmetry
+
+
+                      LR     0.89     0.78       0.78           0.97         0.89        0.90            0.91     0.84       0.86
+
+
+
+                                                                                                                                       0.6
+                     DoM     1.00     0.86       0.87           1.00         0.91        0.91            1.00     0.94       0.94
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                             AUROC
+                     LAT     0.78     0.65       0.68           0.79         0.72        0.69            0.80     0.76       0.75
+
+
+
+                     MLP     0.93     0.82       0.83           0.91         0.93        0.93            0.96     0.94       0.94
+                                                                                                                                       0.4
+
+
+                     MHA     0.92     0.38       0.41           0.90         0.68        0.65            0.82     0.69       0.67
+
+
+                             Peak     Split    Asymmetry        Peak        Split     Asymmetry          Peak     Split    Asymmetry
+
+
+                             0.97     0.92       0.93           0.99         0.92        0.94            0.93     0.85       0.86      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM     1.00     1.00       1.00           1.00         1.00        1.00            1.00     1.00       0.99
+
+
+
+                     LAT     0.70     0.80       0.80           0.72         0.85        0.86            0.81     0.89       0.89
+                                                                                                                                       0.0
+
+
+                     MLP     1.00     1.00       1.00           1.00         1.00        1.00            1.00     1.00       1.00
+
+
+
+                     MHA     0.93     0.65       0.66           0.84         0.70        0.71            0.79     0.71       0.71
+
+
+                             Peak     Split    Asymmetry        Peak        Split     Asymmetry          Peak     Split    Asymmetry
+
+
+
+
+Figure 6: Blackjack AUROC for all available probes, group rules, model compositions, and monitor-
+ing conditions.
+
+
+
+
+                                                                               12
+                                                          Blackjack precision at the fixed control threshold
+                                   Baseline                                   Aware                              Feedback
+
+                      LR   0.89      0.88       0.89              0.92         0.90         0.89          0.82     0.76       0.78
+
+
+
+                     DoM   0.93      0.93       0.93              0.93         0.93         0.93          0.86     0.86       0.86
+
+
+
+
+Homo Qwen
+                                                                                                                                        1.0
+                     LAT   0.00      0.76       0.76              0.37         0.76         0.80          0.00     0.86       0.86
+
+
+
+                     MLP   0.93      0.93       0.93              0.93         0.93         0.93          0.86     0.86       0.86
+
+
+
+                     MHA   0.85      0.54       0.61              0.90         0.34         0.37          0.70     0.52       0.55
+                                                                                                                                        0.8
+
+
+                           Peak      Split    Asymmetry           Peak         Split     Asymmetry        Peak     Split    Asymmetry
+
+
+                      LR   0.85      0.83       0.83              0.79         0.77         0.77          0.84     0.80       0.79
+
+
+
+                                                                                                                                        0.6
+                     DoM   0.89      0.83       0.83              0.80         0.75         0.76          0.94     0.94       0.94
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                              Precision
+                     LAT   0.70      0.58       0.70              0.63         0.53         0.53          0.76     0.73       0.72
+
+
+
+                     MLP   0.88      0.82       0.82              0.78         0.77         0.77          0.92     0.76       0.76
+                                                                                                                                        0.4
+
+
+                     MHA   0.86      0.10       0.20              0.76         0.53         0.39          0.71     0.52       0.50
+
+
+                           Peak      Split    Asymmetry           Peak         Split     Asymmetry        Peak     Split    Asymmetry
+
+
+                           0.92      0.88       0.90              0.92         0.90         0.90          0.91     0.83       0.88      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM   0.93      0.93       0.92              0.93         0.92         0.92          0.93     0.92       0.92
+
+
+
+                     LAT   0.72      0.87       0.80              0.70         0.83         0.87          0.80     0.90       0.89
+                                                                                                                                        0.0
+
+
+                     MLP   0.93      0.93       0.93              0.93         0.93         0.93          0.93     0.93       0.92
+
+
+
+                     MHA   0.89      0.62       0.69              0.84         0.63         0.75          0.75     0.63       0.76
+
+
+                           Peak      Split    Asymmetry           Peak         Split     Asymmetry        Peak     Split    Asymmetry
+
+
+
+
+                             Figure 7: Blackjack precision at the fixed threshold for all available monitors.
+
+
+
+
+                                                                                  13
+                                                             Blackjack recall at the fixed control threshold
+                                      Baseline                                 Aware                                  Feedback
+
+                      LR   0.69         0.65       0.68            0.98         0.73         0.66              0.80     0.60       0.63
+
+
+
+                     DoM   1.00         1.00       1.00            1.00         1.00         1.00              1.00     1.00       1.00
+
+
+
+
+Homo Qwen
+                                                                                                                                             1.0
+                     LAT   0.00         0.38       0.32            0.06         0.35         0.39              0.00     1.00       1.00
+
+
+
+                     MLP   1.00         0.99       0.99            1.00         1.00         1.00              1.00     1.00       1.00
+
+
+
+                     MHA   0.62         0.21       0.16            0.76         0.14         0.12              0.42     0.02       0.02
+                                                                                                                                             0.8
+
+
+                           Peak         Split    Asymmetry         Peak         Split      Asymmetry           Peak     Split    Asymmetry
+
+
+                      LR   0.80         0.70       0.70            0.95         0.85         0.85              0.41     0.44       0.42
+
+
+
+                                                                                                                                             0.6
+                     DoM   1.00         0.63       0.65            1.00         0.80         0.85              1.00     0.99       1.00
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                                   Recall
+                     LAT   0.73         0.40       0.45            0.75         0.45         0.45              0.20     0.18       0.19
+
+
+
+                     MLP   0.90         0.65       0.65            0.90         0.85         0.85              0.24     0.25       0.26
+                                                                                                                                             0.4
+
+
+                     MHA   0.83         0.03       0.05            0.85         0.45         0.35              0.10     0.08       0.09
+
+
+                           Peak         Split    Asymmetry         Peak         Split      Asymmetry           Peak     Split    Asymmetry
+
+
+                           0.93         0.69       0.75            0.96         0.78         0.77              0.55     0.50       0.52      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM   1.00         0.99       0.98            1.00         0.98         0.98              0.92     0.89       0.90
+
+
+
+                     LAT   0.34         0.56       0.46            0.47         0.51         0.62              0.30     0.28       0.29
+                                                                                                                                             0.0
+
+
+                     MLP   1.00         1.00       0.99            1.00         0.99         1.00              0.98     0.96       0.97
+
+
+
+                     MHA   0.74         0.18       0.22            0.57         0.27         0.30              0.12     0.10       0.11
+
+
+                           Peak         Split    Asymmetry         Peak         Split      Asymmetry           Peak     Split    Asymmetry
+
+
+
+
+                                  Figure 8: Blackjack recall at the fixed threshold for all available monitors.
+
+
+
+
+                                                                                   14
+                                                         Simmons AUROC: all probes and group rules
+                                  Baseline                               Aware                              Feedback
+
+                      LR   0.24     0.99       0.01           0.44        0.93       0.04            0.36     0.95       0.02
+
+
+
+                     DoM   0.66     0.96       0.20           0.68        0.93       0.21            0.62     0.91       0.10
+
+
+
+
+Homo Qwen
+                                                                                                                                   1.0
+                     LAT   0.53     0.81       0.77           0.47        0.65       0.59            0.51     0.73       0.57
+
+
+
+                     MLP   0.52     0.97       0.09           0.61        0.92       0.10            0.57     0.95       0.07
+
+
+
+                     MHA   0.40     0.88       0.16           0.45        0.82       0.19            0.36     0.91       0.12
+                                                                                                                                   0.8
+
+
+                           Peak     Split    Asymmetry        Peak        Split    Asymmetry         Peak     Split    Asymmetry
+
+
+                      LR   0.73     0.91       0.91           0.71        0.82       0.82            0.65     0.92       0.92
+
+
+
+                                                                                                                                   0.6
+                     DoM   0.52     0.62       0.58           0.51        0.63       0.51            0.52     0.66       0.59
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                         AUROC
+                     LAT   0.41     0.41       0.58           0.33        0.44       0.55            0.43     0.46       0.59
+
+
+
+                     MLP   0.68     0.87       0.83           0.59        0.89       0.77            0.58     0.86       0.71
+                                                                                                                                   0.4
+
+
+                     MHA   0.74     0.80       0.77           0.66        0.82       0.78            0.59     0.87       0.79
+
+
+                           Peak     Split    Asymmetry        Peak        Split    Asymmetry         Peak     Split    Asymmetry
+
+
+                           0.44     0.71       0.45           0.43        0.68       0.37            0.44     0.70       0.43      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM   0.55     0.68       0.32           0.60        0.70       0.34            0.58     0.73       0.32
+
+
+
+                     LAT   0.42     0.48       0.45           0.44        0.54       0.50            0.45     0.49       0.51
+                                                                                                                                   0.0
+
+
+                     MLP   0.57     0.74       0.48           0.52        0.75       0.54            0.55     0.78       0.52
+
+
+
+                     MHA   0.47     0.72       0.35           0.39        0.76       0.43            0.41     0.80       0.44
+
+
+                           Peak     Split    Asymmetry        Peak        Split    Asymmetry         Peak     Split    Asymmetry
+
+
+
+
+Figure 9: Simmons AUROC for all available probes, group rules, model compositions, and monitoring
+conditions.
+
+
+
+
+                                                                             15
+                                                          Simmons precision at the fixed control threshold
+                                   Baseline                                  Aware                              Feedback
+
+                      LR   0.50      0.95       0.00             0.43         0.93        0.00           0.25     0.94       0.00
+
+
+
+                     DoM   0.81      0.94       0.00             0.80         0.92        0.30           0.83     0.93       0.00
+
+
+
+
+Homo Qwen
+                                                                                                                                       1.0
+                     LAT   0.71      0.91       0.90             0.67         0.76        0.76           0.72     0.81       0.44
+
+
+
+                     MLP   0.70      0.95       0.00             0.77         0.92        0.00           0.68     0.94       0.00
+
+
+
+                     MHA   0.50      0.91       0.00             0.62         0.87        0.00           0.55     0.93       0.00
+                                                                                                                                       0.8
+
+
+                           Peak      Split    Asymmetry          Peak         Split     Asymmetry       Peak      Split    Asymmetry
+
+
+                      LR   0.76      0.93       0.93             0.83         0.80        0.80           0.65     0.93       0.93
+
+
+
+                                                                                                                                       0.6
+                     DoM   0.62      0.62       0.74             0.62         0.43        0.33           0.50     0.67       0.50
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                             Precision
+                     LAT   0.60      0.23       0.63             0.30         0.29        0.63           0.62     0.40       0.69
+
+
+
+                     MLP   0.47      0.89       0.89             0.57         0.92        0.85           0.67     0.82       0.79
+                                                                                                                                       0.4
+
+
+                     MHA   0.80      0.80       0.79             0.52         0.64        0.64           0.63     0.86       0.85
+
+
+                           Peak      Split    Asymmetry          Peak         Split     Asymmetry       Peak      Split    Asymmetry
+
+
+                           0.54      0.83       0.74             0.40         0.71        0.44           0.66     0.86       0.60      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM   0.55      0.59       0.00             0.67         0.37        0.00           0.71     0.82       0.00
+
+
+
+                     LAT   0.00      0.63       0.37             0.35         0.51        0.48           0.00     0.70       0.65
+                                                                                                                                       0.0
+
+
+                     MLP   0.68      0.86       0.46             0.55         0.85        0.46           0.48     0.88       0.34
+
+
+
+                     MHA   0.58      0.55       0.00             0.62         0.81        0.00           0.35     0.88       0.00
+
+
+                           Peak      Split    Asymmetry          Peak         Split     Asymmetry       Peak      Split    Asymmetry
+
+
+
+
+                             Figure 10: Simmons precision at the fixed threshold for all available monitors.
+
+
+
+
+                                                                                 16
+                                                             Simmons recall at the fixed control threshold
+                                      Baseline                                Aware                                 Feedback
+
+                      LR   0.05         0.95       0.00            0.05        0.68         0.00             0.04     0.77       0.00
+
+
+
+                     DoM   0.24         0.86       0.00            0.27        0.60         0.03             0.26     0.71       0.00
+
+
+
+
+Homo Qwen
+                                                                                                                                           1.0
+                     LAT   0.13         0.53       0.51            0.10        0.22         0.22             0.13     0.32       0.15
+
+
+
+                     MLP   0.15         0.89       0.00            0.27        0.59         0.00             0.15     0.84       0.00
+
+
+
+                     MHA   0.05         0.80       0.00            0.09        0.61         0.00             0.07     0.78       0.00
+                                                                                                                                           0.8
+
+
+                           Peak         Split    Asymmetry         Peak        Split      Asymmetry          Peak     Split    Asymmetry
+
+
+                      LR   0.25         0.71       0.71            0.27        0.49         0.49             0.18     0.73       0.72
+
+
+
+                                                                                                                                           0.6
+                     DoM   0.09         0.15       0.18            0.09        0.11         0.10             0.08     0.30       0.09
+
+
+
+
+Homo GPT-OSS
+                                                                                                                                                 Recall
+                     LAT   0.11         0.03       0.16            0.03        0.06         0.10             0.09     0.04       0.15
+
+
+
+                     MLP   0.14         0.57       0.51            0.12        0.61         0.47             0.17     0.46       0.34
+                                                                                                                                           0.4
+
+
+                     MHA   0.24         0.33       0.32            0.08        0.31         0.31             0.12     0.34       0.30
+
+
+                           Peak         Split    Asymmetry         Peak        Split      Asymmetry          Peak     Split    Asymmetry
+
+
+                           0.12         0.30       0.22            0.08        0.31         0.14             0.13     0.33       0.16      0.2
+                      LR
+
+
+
+
+Mixed Qwen/GPT-OSS
+                     DoM   0.11         0.09       0.00            0.15        0.05         0.00             0.14     0.31       0.00
+
+
+
+                     LAT   0.00         0.10       0.05            0.05        0.11         0.11             0.00     0.14       0.12
+                                                                                                                                           0.0
+
+
+                     MLP   0.12         0.45       0.17            0.11        0.43         0.20             0.07     0.44       0.12
+
+
+
+                     MHA   0.15         0.17       0.00            0.09        0.27         0.00             0.05     0.38       0.00
+
+
+                           Peak         Split    Asymmetry         Peak        Split      Asymmetry          Peak     Split    Asymmetry
+
+
+
+
+                                  Figure 11: Simmons recall at the fixed threshold for all available monitors.
+
+
+
+
+                                                                                  17
+         Composition               Condition      Low        Neutral          Hot    Hot–low     ρbet,count
+         Homo Qwen                 Baseline       29.4         63.7      139.8         110.3           0.44
+                                   Aware          36.0         45.8       90.2          54.3           0.41
+                                   Feedback       23.1         64.1       83.3          60.2           0.39
+         Homo GPT-OSS              Baseline        7.6         24.2           32.3      24.7           0.59
+                                   Aware          16.9         23.2           28.0      11.1           0.24
+                                   Feedback       13.5         18.6           22.4       8.9           0.23
+         Mixed Qwen/GPT-OSS        Baseline       18.5         61.2      152.8         134.4           0.36
+                                   Aware          19.8         42.4       95.2          75.4           0.40
+                                   Feedback       16.8         36.0       80.9          64.1           0.38
+Table 2: Blackjack behaviour. Values are mean Big Player bets in dollars over 25 collusion shoes per
+cell. Hot–low is the difference between the hot- and low-count means.
+
+
+
+
+ Composition           Condition   Exact decode   Bit acc.     Final conf.      Wrote word   Chars (all)   Chars (hint)
+ Homo Qwen             Baseline            0.80      0.91              0.92           0.40          329            341
+                       Aware               0.90      0.95              0.94           0.25          324            330
+                       Feedback            0.85      0.94              0.91           0.45          361            372
+ Homo GPT-OSS          Baseline            0.50      0.75              0.48           0.20          665            791
+                       Aware               0.45      0.72              0.42           0.00          653            762
+                       Feedback            0.50      0.75              0.46           0.05          614            723
+ Mixed Qwen/GPT-OSS    Baseline            0.55      0.74              0.65           0.25          479            553
+                       Aware               0.70      0.88              0.76           0.25          458            532
+                       Feedback            0.60      0.81              0.74           0.10          519            649
+
+Table 3: Simmons channel and Alice behaviour over 20 collusion episodes per cell. Exact decoding
+chance is 1/16 = 0.0625.
+
+
+
+
+                                                     18
+
