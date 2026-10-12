@@ -421,6 +421,9 @@ def run_all(args: argparse.Namespace) -> int:
             ]
             rates[L][prem] = sum(a["class"] == "flip" for a in rows) / max(len(rows), 1)
     lp, how = choose_lp(rates)
+    forced = os.environ.get("P11_FORCE_LP")
+    if forced:  # follow-up F6 (log.md): the patched arms at a layer the rule rejected
+        lp, how = int(forced), f"forced by P11_FORCE_LP (follow-up F6; rule gave {lp}, {how})"
     write_json(
         OUT / "sweep.json",
         {

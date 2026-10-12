@@ -499,6 +499,53 @@ def prompt_only(
     return out
 
 
+def selfreport_section(
+    rows: list[dict], forms: dict[str, dict[str, set[str]]], m: dict, n_boot: int = N_BOOT
+) -> dict | str:
+    """F5, the "ask the model" baseline (``p11.selfreport``): per prompt kind and arm, item rates
+    of naming the bridge / Y in the greedy answer and in any of greedy + samples; the lens minus
+    self-report paired differences (lens: any of its 36 cells; self-report: any of its 11
+    answers): plain lens vs plain self-report on the bridge, patched_author lens vs
+    patched_author self-report on Y."""
+    if not rows:
+        return "absent"
+    out: dict = {"attempts_per_cell": 1 + len(rows[0].get("samples", []))}
+    mats: dict = {}
+    for kind in sorted({r["kind"] for r in rows}):
+        for arm in sorted({r["arm"] for r in rows if r["kind"] == kind}):
+            sel = [r for r in rows if r["kind"] == kind and r["arm"] == arm]
+            g = [{"id": r["id"], "text": r["greedy"]} for r in sel]
+            a = g + [{"id": r["id"], "text": t} for r in sel for t in r.get("samples", [])]
+            res: dict = {}
+            for w in ("bridge", "y"):
+                res[f"greedy_names_{w}"] = rate(item_any(g, forms, w))
+                mats[(kind, arm, w)] = item_any(a, forms, w)
+                res[f"any_names_{w}"] = rate(mats[(kind, arm, w)])
+            out[f"{kind}/{arm}"] = res
+    comp: dict = {}
+    for kind in sorted({r["kind"] for r in rows}):
+        if "plain" in m and (kind, "plain", "bridge") in mats:
+            comp[f"lens_plain_minus_{kind}_plain_bridge"] = paired(
+                m["plain"]["bridge"], mats[(kind, "plain", "bridge")], n_boot
+            )
+        if "patched_author" in m and (kind, "patched_author", "y") in mats:
+            comp[f"lens_patched_author_minus_{kind}_patched_author_y"] = paired(
+                m["patched_author"]["y"], mats[(kind, "patched_author", "y")], n_boot
+            )
+        if "patched_author" in m and (kind, "patched_author", "bridge") in mats:
+            comp[f"lens_patched_author_minus_{kind}_patched_author_bridge"] = paired(
+                m["patched_author"]["bridge"], mats[(kind, "patched_author", "bridge")], n_boot
+            )
+    # does the lens name the bridge on items where asking the model does not?
+    for kind in sorted({r["kind"] for r in rows}):
+        sr = mats.get((kind, "plain", "bridge"))
+        if sr and "plain" in m:
+            lens = m["plain"]["bridge"]
+            comp[f"lens_only_vs_{kind}"] = sorted(i for i in lens if lens[i] and not sr.get(i))
+    out["comparisons"] = comp
+    return out
+
+
 def verdicts(s: dict) -> dict:
     """Section 9: plan "Predictions" booleans, each {"value", "verdict"}; None when an input
     is absent."""
@@ -683,6 +730,9 @@ def summarize(
     s["shuffled_smoke"] = shuffled_smoke(smoke, forms) if smoke else "absent"
     s["prompt_only"] = prompt_only(
         C.read_jsonl(results / "prompt_only.jsonl"), forms, m.get("plain", {}).get("bridge")
+    )
+    s["selfreport"] = selfreport_section(
+        C.read_jsonl(results / "selfreport" / "selfreport.jsonl"), forms, m, n_boot
     )
     s["p03_rescore"] = p03_rescore(items, p03_readouts)
     s["predictions"] = verdicts(s)

@@ -11,3 +11,17 @@ P11_STEP renders start 2026-10-12T02:13:14Z
 P11_STEP renders done 2026-10-12T02:13:14Z 0.13
 P11_STEP smoke_identity start 2026-10-12T02:13:14Z
 [transformers] `causal_conv1d_fn` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P11_STEP smoke_identity done 2026-10-12T02:13:56Z 41.81
+P11_STEP answers start 2026-10-12T02:13:56Z
+[transformers] `causal_conv1d_update` is falling back to its reference PyTorch implementation because `causal_conv1d` is not installed. This is correct but much slower; install `causal_conv1d` for the optimized kernel.
+P11_STEP answers done 2026-10-12T02:17:30Z 214.3
+[p11 2026-10-12T02:17:30Z] L_p sweep: {16: {'author': 0.07936507936507936, 'mention': 0.09523809523809523}, 20: {'author': 0.1111111111111111, 'mention': 0.12698412698412698}, 24: {'author': 0.20634920634920634, 'mention': 0.1746031746031746}, 28: {'author': 0.31746031746031744, 'mention': 0.2222222222222222}, 32: {'author': 0.5714285714285714, 'mention': 0.23809523809523808}, 36: {'author': 0.7142857142857143, 'mention': 0.3968253968253968}} -> chosen None (failed)
+P11_STEP capture start 2026-10-12T02:17:30Z
+P11_STEP capture done 2026-10-12T02:18:06Z 35.96
+P11_STEP logit_lens start 2026-10-12T02:18:06Z
+P11_STEP logit_lens done 2026-10-12T02:18:15Z 8.83
+P11_STEP olens_bind start 2026-10-12T02:18:15Z
+P11_STEP olens_bind done 2026-10-12T02:18:30Z 15.08
+P11_STEP smoke_shuffled start 2026-10-12T02:18:30Z
+P11_STEP smoke_shuffled done 2026-10-12T02:18:54Z 23.22
+P11_STEP olens_plain_s0 start 2026-10-12T02:18:54Z

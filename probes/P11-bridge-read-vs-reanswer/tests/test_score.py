@@ -627,3 +627,24 @@ def test_logit_lens_section(tmp_path, items):
     assert out["patched_author"]["names_y"]["k"] == 1
     phr_free = S.token_forms("Gustave Moreau", ["Gustave Moreau (French painter)"])
     assert "painter" not in phr_free and "moreau" in phr_free
+
+
+def test_selfreport_section():
+    from p11 import score as S
+
+    its = I.load()[:3]
+    forms = S.item_forms(its)
+    a, b, c = (it.id for it in its)
+    rows = [
+        {"id": a, "kind": "hop1", "arm": "plain", "greedy": its[0].bridge, "samples": ["x"]},
+        {"id": b, "kind": "hop1", "arm": "plain", "greedy": "x", "samples": [its[1].bridge]},
+        {"id": c, "kind": "hop1", "arm": "plain", "greedy": "x", "samples": ["y"]},
+        {"id": a, "kind": "hop1", "arm": "patched_author", "greedy": its[0].y, "samples": []},
+    ]
+    m = {"plain": {"bridge": {a: False, b: True, c: True}}}
+    out = S.selfreport_section(rows, forms, m, n_boot=200)
+    assert out["hop1/plain"]["greedy_names_bridge"]["k"] == 1
+    assert out["hop1/plain"]["any_names_bridge"]["k"] == 2
+    assert out["hop1/patched_author"]["any_names_y"]["k"] == 1
+    assert out["comparisons"]["lens_only_vs_hop1"] == [c]
+    assert S.selfreport_section([], forms, m) == "absent"

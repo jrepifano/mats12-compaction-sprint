@@ -25,7 +25,14 @@ elif ! test -f ../../third_party/workspace-bench/pyproject.toml; then
 else
   nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader || true
   df -h /ws 2>/dev/null | tail -1 || true
-  if [ "$PHASE" = "selfreport" ]; then
+  if [ "$PHASE" = "followup" ]; then
+    # F6 + F5 (log.md): the patched and dose arms at a forced L_p (draws already in results/
+    # resume as complete), then the self-report baseline at that L_p
+    "$PY" -m p11.session env && "$PY" -m p11.session download || RC=$?
+    # shellcheck disable=SC2086
+    [ "$RC" -eq 0 ] && { P11_FORCE_LP="${P11_FORCE_LP:-32}" "$PY" -m p11.session all ${P11_ARGS:-} || RC=$?; }
+    [ "$RC" -eq 0 ] && { "$PY" -m p11.selfreport download && "$PY" -m p11.selfreport all || RC=$?; }
+  elif [ "$PHASE" = "selfreport" ]; then
     "$PY" -m p11.selfreport download || RC=$?
     # shellcheck disable=SC2086 # P11_ARGS is a word list on purpose
     [ "$RC" -eq 0 ] && { "$PY" -m p11.selfreport all ${P11_ARGS:-} || RC=$?; }
