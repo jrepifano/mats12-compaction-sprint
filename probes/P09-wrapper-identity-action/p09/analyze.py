@@ -54,6 +54,11 @@ CONTRAST_SPECS: dict[str, dict[str, tuple[str, ...]]] = {
     "disclosure_regex": {"T+H": ("T", "H"), "T": ("T",), "H": ("H",)},
     "disclosure_luna": {"T+H": ("T", "H"), "T": ("T",), "H": ("H",)},
 }
+# Follow-up A (implicit attribution, H only): the arms against each other (log.md).
+IMPLICIT_PAIRS = ((C.Wrapper.OWN_TURNS.value, C.Wrapper.OTHER_TRANSCRIPT.value),
+                  (C.Wrapper.OWN_TRANSCRIPT.value, C.Wrapper.OTHER_TRANSCRIPT.value),
+                  (C.Wrapper.OWN_TURNS.value, C.Wrapper.OWN_TRANSCRIPT.value))
+IMPLICIT_KEYS = ("undo", "h_lines_gone", "new_cheat", "disclosure_regex", "disclosure_luna")
 IDENTITY_KEY = ("ctx_id", "model", "wrapper", "probe")
 MANIPULATION_MIN = 0.75
 
@@ -235,6 +240,12 @@ def contrasts(rows: list[dict], reps: int = BOOT_REPS) -> dict:
                     if res:
                         out.setdefault(m, {}).setdefault(f"{w} - {BASE}", {}).setdefault(
                             key, {})[label] = res
+        for a, b in IMPLICIT_PAIRS:
+            for key in IMPLICIT_KEYS:
+                res = paired_wrapper_contrast(rows, m, a, b, ("H",), key, reps=reps)
+                if res:
+                    out.setdefault(m, {}).setdefault(f"{a} - {b}", {}).setdefault(
+                        key, {})["H"] = res
     return out
 
 

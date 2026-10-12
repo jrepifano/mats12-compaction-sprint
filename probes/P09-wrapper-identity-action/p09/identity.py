@@ -55,8 +55,13 @@ def last_by(recs: list[dict], keys: tuple[str, ...]) -> dict[tuple, dict]:
 
 
 def probe_messages(ctx: dict, wrapper: str, summary: str, probe: str = "mine") -> list[dict]:
-    from p09.cells import render_wrapper
+    from p09.cells import build, render_wrapper
 
+    if wrapper in {w.value for w in C.IMPLICIT_WRAPPERS}:
+        # follow-up A: the implicit context exactly as the agent gets it (H plant included)
+        r = build(ctx, summary, C.Content.H, wrapper)
+        return api.to_openai(list(r.messages)) + [
+            {"role": "user", "content": PROBE_PREFACE + C.IDENTITY_PROBES[probe]}]
     pm = ctx["prefix_messages"]
     return [{"role": "system", "content": api._text_of(pm[0].get("content"))},
             {"role": "user", "content": api._text_of(pm[1].get("content"))},
@@ -78,7 +83,10 @@ async def run_probes(ctxs: list[dict], models: list[C.Model], wrappers: list[str
             for w in wrappers:
                 if done.get((ctx["ctx_id"], m.slug, w, "mine"), {}).get("status") == "ok":
                     continue
-                todo.append((ctx, m, w, probe_messages(ctx, w, ctx["summary"])))
+                try:
+                    todo.append((ctx, m, w, probe_messages(ctx, w, ctx["summary"])))
+                except ValueError as e:      # implicit arms: no H plant for this context
+                    print(f"skip {ctx['ctx_id']} {w}: {e}")
     proj = sum(api.list_cost(t[1], _in_bound(t[3]), PROBE_MAX_TOKENS) for t in todo)
     if dry_run or not todo:
         return proj, []
