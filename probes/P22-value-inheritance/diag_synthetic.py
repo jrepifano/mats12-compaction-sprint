@@ -40,7 +40,7 @@ def random_panel(rng, n_items, family_sd=0.0):
     v = rng.normal(size=n_items)
     level = np.array([1.5 if f == "anthropic" else -0.5 for f in FAMS]) + rng.normal(0, 0.7, 12)
     P = level[:, None] * v[None, :] + rng.normal(size=(12, n_items))
-    for f in set(FAMS):
+    for f in sorted(set(FAMS)):  # stable order (review r2, MINOR 6)
         idx = np.array([g == f for g in FAMS])
         P[idx] += family_sd * rng.normal(size=n_items)
     return P
@@ -79,7 +79,8 @@ def lpo_auc(P, b):
 def paf_auc(Pc, b):
     SB = np.cov(Pc[:, b])
     L = s0.factor_fit(np.cov(Pc[:, ~b]), 1)[0]
-    return auc_of(SB - L @ L.T)
+    sd = np.sqrt(np.diag(SB))
+    return auc_of((SB - L @ L.T) / np.outer(sd, sd))  # as the first replacement standardised
 
 
 def part1(rng, reps=20, n_items=400):

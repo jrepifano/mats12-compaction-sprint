@@ -2,19 +2,20 @@
 
 **Status:** done, 2026-10-12. Free step 0 only, as the wave-3 portfolio review required. **$0 spent** (no API call, no pod, no `emx.spend` record).
 - Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit.md](lit.md); raw samples: [results/samples.md](results/samples.md).
-- Review: gpt-6-astra round 1 `logs/reviews/20261012-P22-branch-r1.md`, verdict REVISE. Every finding was addressed, and the fix for its BLOCKING 1 changed the headline. Round 2: `logs/reviews/20261012-P22-branch-r2.md`.
+- Review: gpt-6-astra round 1 `logs/reviews/20261012-P22-branch-r1.md`, verdict REVISE. Every finding was addressed, and the fix for its BLOCKING 1 changed the headline. Round 2 `logs/reviews/20261012-P22-branch-r2.md`, verdict MERGE AFTER FIXES: it reproduced every point estimate exactly, and all its findings (1 BLOCKING, on wording; 5 MINOR) were fixed (log).
 
 ## Answer
 
-1. **Yes, families still resemble each other beyond one caution factor, but the effect is small, and it is invisible for the most cautious models.**
+1. **Yes, families still resemble each other beyond one caution factor, but the effect is small, and it does not show for the two most cautious models.**
    - **Data:** Zhang et al.'s published positions for 12 Western models on 43,778 value-tradeoff items ([Zhang et al. 2025](#zhang-et-al-2025)).
    - **Caution control:** a one-factor model, fit on half the items in the form item-centring produces, H(λλᵀ + D)H. It is subtracted from the other half's covariance.
-   - **Own-family vs other-family contrast** (Claude and OpenAI models; mean Fisher-z of the standardised remainders): **0.114, 95% item-bootstrap CI [0.096, 0.132]**. A caution-only parametric null for this panel puts its 97.5th percentile at 0.014.
+   - **Own-family vs other-family contrast** (the plan's secondary S-e, applied to the revised estimator on the full panel; Claude and OpenAI models; mean Fisher-z of the standardised remainders): **0.114, 95% item-bootstrap CI [0.096, 0.132]**. A caution-only parametric null for this panel puts its 97.5th percentile at 0.014.
    - **Family labels matter:** randomly relabelling the models, keeping family sizes, gives p = **0.005** (contrast) and **0.012** (AUC; follow-up F3).
    - **Mean standardised remainder:** Claude–Claude **+0.049**, OpenAI–OpenAI **+0.083**, cross-family **−0.028**. The null is ≈ 0 for each.
-2. **Per model, 8 of 10 show own-family affinity above the null. The two that don't are Claude 3.5 Sonnet (+0.001 [−0.023, +0.024]) and Claude Opus 3 (+0.010 [−0.015, +0.034]), the two most cautious models in the panel** (caution loadings 2.86 and 2.77; next is 3.7 Sonnet at 1.30).
-   - This is the confound the plan named, and that a side agent flagged to Jacob during the run. Claude is the cautious family, so removing a caution axis fit on these 12 models also removes whatever of Claude's identity points along it.
-   - The control can't tell "cautious" from "Claude-like" at the cautious extreme. **A null there means "can't separate caution from Claude-ness", not "no shared values".**
+2. **Per model, 8 of 10 point estimates exceed the per-model null 97.5th percentile (≈ 0.02), and 7 of 10 CI lower bounds do (GPT-4.1-mini's lower bound is 0.013). The two near zero are Claude 3.5 Sonnet (+0.001 [−0.023, +0.024]) and Claude Opus 3 (+0.010 [−0.015, +0.034]), the two most cautious models in the panel** (caution loadings 2.86 and 2.77; next is 3.7 Sonnet at 1.30).
+   - This fits the confound the plan named, and that a side agent flagged to Jacob during the run. Claude is the cautious family, so removing a caution axis fit on these 12 models also removes whatever of Claude's identity points along it.
+   - It is equally consistent with these two models simply having little family affinity left under this estimator. The data can't tell the two apart.
+   - Either way, **a null at the cautious extreme can't be read as "no shared values"**: the method can't separate caution from Claude-ness there.
 3. **The pre-specified gate fails, for a reason step 0 itself exposed.**
    - Same-vs-cross AUC is **0.724 [0.677, 0.765]**, against this panel's null 97.5th percentile of **0.814**.
    - With a correctly specified null, every remainder is ≈ 0 up to sampling noise. AUC ranks them and ignores magnitude, so its null stays wide at any item count: 0.78–0.83 from 400 to 10,000 items (F1).
@@ -23,9 +24,11 @@
    - The largest same-family remainders are o3–o4-mini **+0.49**, Opus 4–Sonnet 4 **+0.33**, GPT-4o–GPT-4.1-mini +0.18 and 3.7 Sonnet–Sonnet 4 +0.17.
    - The oldest Claudes sit near zero with every other Claude.
    - A few cross-family pairs are also positive: Sonnet 4–Gemini 2.5 Pro +0.14, 3.5 Sonnet–GPT-4o +0.11.
-   - One hypothesis is that models released close together resemble each other more than a lab does across generations. It is untested here.
-   - A second factor, which removes all the family signal (AUC 0.48), loads on o3 and o4-mini against everyone else, not on Claude vs OpenAI.
-5. **Two controls were broken and replaced before the result was read** ([log.md](log.md), 22:13Z, and the review-round-1 entry). Synthetic evidence is archived in [results/diag_synthetic.json](results/diag_synthetic.json).
+   - One hypothesis is that models released close together resemble each other more than a lab does across generations. It is untested here: the generation groups were not defined in advance.
+   - With a second factor, the AUC is 0.48 and the contrast 0.029, so little family structure is left. That second factor loads on o3 and o4-mini against everyone else, not on Claude vs OpenAI.
+5. **Two controls were broken and replaced.** Synthetic evidence is archived in [results/diag_synthetic.json](results/diag_synthetic.json).
+   - The plan's projection was replaced **before any real-data statistic** ([log.md](log.md), 22:13Z).
+   - The centring correction came **after** the first real-data results, in response to review round 1. It turned the first result's gate "pass" into a fail.
    - **The plan's own control** (project out item-space PC1) has a null AUC of **0.21** on synthetic panels with no family signal. It anti-correlates the models that load on the removed axis, and same-family models load alike.
    - **My first replacement** (factor model, ignoring centring) let structured noise through. The reviewer built a caution-only panel that "passed".
    - **The corrected fit** has null AUC 0.51 on random panels. The full gate's false-positive rate on fixed caution-only panels is **0–7.5%** (40 datasets per panel, nominal 2.5%).
@@ -35,8 +38,8 @@
 ## What it changes
 
 **Recommendation: close the black-box value-inheritance line for the sprint; no paid follow-up.** Nothing was spent. A pass would only have produced a recommendation, and the reasons below hold whichever way the gate is read.
-- **Can a behavioural value-profile test see lineage? Partly.** With ≥ 2,000–5,000 items and the contrast statistic it detects known family resemblance, but only for models that aren't at the caution extreme. The live question is whether a Chinese model inherited Claude's values, and a cautious Chinese student would sit exactly where the control is blind. The plan's 400-item design would have detected the effect about a third of the time (F1, 0.34).
-- **Even a clear student–teacher affinity would not identify distillation.** Shared web data, common SFT sets and convergent specs predict the same thing; this is the portfolio review's objection ([portfolio review](#portfolio-review)). And the resemblance seen here among Western models looks more like closeness between models released together than like lasting lab identity, which is a weak template for "inherited values".
+- **Can a behavioural value-profile test see lineage? Partly.** On archived subsets of ≥ 2,000 items the contrast statistic detects known family resemblance (F1), but not for the two models at the caution extreme. The live question is whether a Chinese model inherited Claude's values, and a cautious Chinese student would sit where this estimator showed no affinity even for real Claude models. Whether it is actually blind for new models is untested. 34 of 100 archived 400-item subsets cleared the contrast threshold (F1). That is subset stability on this panel, not the power of a live study.
+- **Even a clear student–teacher affinity would not identify distillation.** Shared web data, common SFT sets and convergent specs predict the same thing; this is the portfolio review's objection ([portfolio review](#portfolio-review)). The largest same-family resemblances here are between models released close together. If that pattern held, it would be a weak template for "inherited values", but it is a post hoc hypothesis.
 - **If Jacob wants it anyway,** an illustrative scenario. These are projections from the original plan's per-call figures (≈ $0.0034 per generation and ≈ $0.00023 per luna judgement), not measurements.
   - **Students:** the 5 newest Chinese models, on 3,000 items: 15,000 generations, ≈ $25–50.
   - **Judging:** live responses plus the 12 archived models' responses re-judged with the same judge (36,000), ≈ 51,000 luna calls, ≈ $12. Re-judging is needed because mixing judges would itself create family structure.
@@ -45,7 +48,7 @@
 - **Interpretive caveat for any reuse of these labels.** One judge pipeline labelled all 12 models, using rubrics Claude 4 Opus wrote ([lit.md](lit.md); Zhang et al. §2.2, read only through a fetch-tool extraction). Family resemblance in the labels may partly be response style that the judge reads.
 - **For Neel:**
   - On the best public value-tradeoff labels, Western labs differ mainly along one caution axis.
-  - Beyond it there is a small, family-organised residue, concentrated in models released close together.
+  - Beyond it there is a small, family-organised residue. Its largest pairs are models released close together (a post hoc observation).
   - Telling "inherited Claude's values" from "is cautious" isn't possible from such profiles at the cautious end.
   - The question needs internals (open-weight students) or a battery built so caution isn't the dominant axis.
 
@@ -176,10 +179,10 @@ It is a typical caution-ordered item.
 ## Limits
 
 - **12 models is a small panel.** The item bootstrap doesn't cover which models are in it. F2's leave-one-out does: the contrast is robust, the AUC is not.
-- **The gate's false-positive rate** was checked on 4 fixed synthetic noise patterns × 40 datasets: up to 3/40 against a nominal 1/40. It may be slightly liberal, and it was not tested on non-Gaussian noise. The positions are integer-valued, so they are not Gaussian.
+- **The gate's false-positive rate** was checked on 4 fixed synthetic noise patterns × 40 datasets: up to 3/40 against a nominal 1/40 (exact 95% interval for 3/40: 1.6–20.4%). It may be slightly liberal, and it was not tested on non-Gaussian noise. The positions are integer-valued, so they are not Gaussian.
 - **One judge pipeline with Claude-written rubrics** produced every label.
 - **The item set was selected for disagreement among all models.** That can build family structure in or take it out; untested.
-- **"Beyond caution" means beyond one shared dimension.** Two factors absorb everything, and with 12 models any further factor is close to a pair-specific term.
+- **"Beyond caution" means beyond one shared dimension.** With two factors little family structure remains (AUC 0.48, contrast 0.029), and with 12 models any further factor is close to a pair-specific term.
 - **Literature status:** Zhang et al. was read only through a fetch-tool extraction, and the classification prompt (Appendix B.4) was not recovered. No LessWrong/AF search was done ([lit.md](lit.md)).
 
 ## Spend and wall-clock
