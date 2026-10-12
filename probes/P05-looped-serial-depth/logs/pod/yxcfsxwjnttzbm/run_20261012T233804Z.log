@@ -1,0 +1,128 @@
+P05 start 2026-10-12T23:38:05Z probe=P05 commit=52ce5979fbd7c871ab0516d0da053ca74268f1bf
+Using CPython 3.12.3 interpreter at: /usr/local/bin/python
+Creating virtual environment at: /ws/venv-p05
+Activate with: source /ws/venv-p05/bin/activate
+Using Python 3.12.3 environment at: /ws/venv-p05
+Resolved 51 packages in 273ms
+Downloading hf-xet (4.0MiB)
+Downloading nvidia-cuda-nvrtc (86.0MiB)
+Downloading nvidia-nvshmem-cu13 (57.6MiB)
+Downloading nvidia-cuda-cupti (10.2MiB)
+Downloading nvidia-cusparse (139.2MiB)
+Downloading nvidia-cublas (403.5MiB)
+Downloading nvidia-cusolver (191.6MiB)
+Downloading triton (188.6MiB)
+Downloading nvidia-cufft (204.2MiB)
+Downloading cuda-bindings (6.8MiB)
+Downloading torch (502.2MiB)
+Downloading nvidia-curand (56.8MiB)
+Downloading networkx (2.0MiB)
+Downloading nvidia-cusparselt-cu13 (162.3MiB)
+Downloading tokenizers (3.0MiB)
+Downloading nvidia-nvjitlink (40.5MiB)
+Downloading numpy (16.0MiB)
+Downloading sympy (6.0MiB)
+Downloading nvidia-cuda-runtime (2.1MiB)
+Downloading pygments (1.2MiB)
+Downloading nvidia-nccl-cu13 (196.4MiB)
+Downloading transformers (10.3MiB)
+Downloading scipy (33.7MiB)
+Downloading nvidia-cufile (1.2MiB)
+Downloading nvidia-cudnn-cu13 (349.2MiB)
+ Downloaded nvidia-cufile
+ Downloaded pygments
+ Downloaded networkx
+ Downloaded nvidia-cuda-runtime
+ Downloaded tokenizers
+ Downloaded hf-xet
+ Downloaded sympy
+ Downloaded cuda-bindings
+ Downloaded nvidia-cuda-cupti
+ Downloaded transformers
+ Downloaded numpy
+ Downloaded scipy
+ Downloaded nvidia-nvjitlink
+ Downloaded nvidia-curand
+ Downloaded nvidia-nvshmem-cu13
+ Downloaded nvidia-cuda-nvrtc
+ Downloaded nvidia-cusparse
+ Downloaded nvidia-cusparselt-cu13
+ Downloaded triton
+ Downloaded nvidia-cusolver
+ Downloaded nvidia-cufft
+ Downloaded nvidia-nccl-cu13
+ Downloaded nvidia-cudnn-cu13
+ Downloaded nvidia-cublas
+ Downloaded torch
+Prepared 51 packages in 5.75s
+Installed 51 packages in 1.03s
+ + accelerate==1.15.0
+ + certifi==2026.7.22
+ + charset-normalizer==3.5.2
+ + cuda-bindings==13.4.3
+ + cuda-pathfinder==1.8.3
+ + cuda-toolkit==13.0.3.0
+ + filelock==4.1.1
+ + fsspec==2026.9.0
+ + hf-xet==1.7.0
+ + huggingface-hub==0.36.2
+ + idna==3.20
+ + iniconfig==2.3.1
+ + jinja2==3.1.6
+ + markupsafe==3.0.4
+ + mpmath==1.3.0
+ + networkx==3.7
+ + numpy==2.5.4
+ + nvidia-cublas==13.1.1.3
+ + nvidia-cuda-cupti==13.0.85
+ + nvidia-cuda-nvrtc==13.0.88
+ + nvidia-cuda-runtime==13.0.96
+ + nvidia-cudnn-cu13==9.20.0.48
+ + nvidia-cufft==12.0.0.61
+ + nvidia-cufile==1.15.1.6
+ + nvidia-curand==10.4.0.35
+ + nvidia-cusolver==12.0.4.66
+ + nvidia-cusparse==12.6.3.3
+ + nvidia-cusparselt-cu13==0.8.1
+ + nvidia-nccl-cu13==2.29.7
+ + nvidia-nvjitlink==13.4.92
+ + nvidia-nvshmem-cu13==3.4.5
+ + nvidia-nvtx==13.0.85
+ + packaging==26.3
+ + pluggy==1.6.0
+ + psutil==7.2.2
+ + pygments==2.21.0
+ + pytest==9.1.1
+ + pyyaml==6.0.3
+ + regex==2026.9.29
+ + requests==2.34.2
+ + safetensors==0.8.0
+ + scipy==1.18.1
+ + setuptools==84.0.0
+ + sympy==1.14.0
+ + tokenizers==0.21.4
+ + torch==2.13.0
+ + tqdm==4.70.1
+ + transformers==4.53.1
+ + triton==3.7.1
+ + typing-extensions==4.16.0
+ + urllib3==2.8.0
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay          80G  9.5G   71G  12% /
+[P05 2026-10-12T23:38:17Z] {"utc": "2026-10-12T23:38:16Z", "python": "3.12.3", "torch": "2.13.0+cu130", "transformers": "4.53.1", "cuda": "NVIDIA H100 80GB HBM3", "git": "52ce5979fbd7c871ab0516d0da053ca74268f1bf", "models": {"rec32": ["smcleish/Recurrent-Llama-3.2-train-recurrence-32", "a5f6f126e9d9302445346844f1d7d29d111a06eb"], "rec4": ["smcleish/Recurrent-Llama-3.2-train-recurrence-4", "c466903f9ab35d827438d6a3fffcca95c47a5c1e"], "base": ["smcleish/Llama-3.2-non-recurrent-posttrained", "004e96ace360c1a37c08f4555227136e845087b3"]}}
+Fetching 12 files:   0%|          | 0/12 [00:00<?, ?it/s]Fetching 12 files:  67%|██████▋   | 8/12 [00:00<00:00, 12.92it/s]Fetching 12 files:  92%|█████████▏| 11/12 [00:20<00:01,  1.82s/it]Fetching 12 files: 100%|██████████| 12/12 [00:55<00:00,  4.61s/it]Fetching 12 files: 100%|██████████| 12/12 [00:55<00:00,  4.61s/it]
+[P05 2026-10-12T23:39:14Z] downloaded smcleish/Recurrent-Llama-3.2-train-recurrence-32@a5f6f126 -> /ws/hf_cache/hub/models--smcleish--Recurrent-Llama-3.2-train-recurrence-32/snapshots/a5f6f126e9d9302445346844f1d7d29d111a06eb in 55s
+Fetching 10 files:   0%|          | 0/10 [00:00<?, ?it/s]Fetching 10 files:  80%|████████  | 8/10 [00:00<00:00, 13.18it/s]Fetching 10 files:  90%|█████████ | 9/10 [00:14<00:01,  1.62s/it]Fetching 10 files: 100%|██████████| 10/10 [01:00<00:00,  6.03s/it]Fetching 10 files: 100%|██████████| 10/10 [01:00<00:00,  6.03s/it]
+[P05 2026-10-12T23:40:14Z] downloaded smcleish/Llama-3.2-non-recurrent-posttrained@004e96ac -> /ws/hf_cache/hub/models--smcleish--Llama-3.2-non-recurrent-posttrained/snapshots/004e96ace360c1a37c08f4555227136e845087b3 in 60s
+Fetching 12 files:   0%|          | 0/12 [00:00<?, ?it/s]Fetching 12 files:  67%|██████▋   | 8/12 [00:00<00:00, 20.56it/s]Fetching 12 files:  92%|█████████▏| 11/12 [00:14<00:01,  1.29s/it]Fetching 12 files: 100%|██████████| 12/12 [00:54<00:00,  4.52s/it]Fetching 12 files: 100%|██████████| 12/12 [00:54<00:00,  4.52s/it]
+[P05 2026-10-12T23:41:08Z] downloaded smcleish/Recurrent-Llama-3.2-train-recurrence-4@c466903f -> /ws/hf_cache/hub/models--smcleish--Recurrent-Llama-3.2-train-recurrence-4/snapshots/c466903f9ab35d827438d6a3fffcca95c47a5c1e in 54s
+................................                                         [100%]
+32 passed in 10.23s
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 392.98it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 255.07it/s]
+[P05 2026-10-12T23:43:52Z] decision {'what': 'precision', 'mode': 'tf32', 'agreement': {'bf16': {'rec32': 0.84, 'base': 0.94}, 'tf32': {'rec32': 0.9933333333333333, 'base': 1.0}}}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 436.00it/s]
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 265.31it/s]
+[P05 2026-10-12T23:45:29Z] bench: {"utc": "2026-10-12T23:43:52Z", "n": 100, "units": {"rec32_nocot": {"seconds": 51.56488633155823, "tokens": 82118, "tflops": 75.91086508813629}, "rec32_brauer": {"seconds": 38.827069997787476, "tokens": 62918, "tflops": 77.24314221420525}, "base_nocot": {"seconds": 2.344102382659912, "tokens": 82118, "tflops": 68.15776562570886}, "base_brauer": {"seconds": 0.8406767845153809, "tokens": 62918, "tflops": 145.61275279008296}}, "projected_hours": 1.6294455426701615, "peak_mem_gb": 21.055892992}
+[P05 2026-10-12T23:45:29Z] decision {'what': 'projection', 'projected_hours': 1.6294455426701615, 'max_hours': 4.4}
+Loading checkpoint shards:   0%|          | 0/2 [00:00<?, ?it/s]Loading checkpoint shards: 100%|██████████| 2/2 [00:00<00:00, 432.00it/s]
