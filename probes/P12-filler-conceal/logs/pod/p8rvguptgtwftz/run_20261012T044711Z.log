@@ -1,0 +1,77 @@
+P12 start 2026-10-12T04:47:13Z probe=P12 commit=84b175cfa1916c8c9da49f2d9c3b528fe1c19a6b
+NVIDIA B300 SXM6 AC, 275040 MiB, 0 MiB, 580.126.09
+overlay         300G   11G  290G   4% /
+Using Python 3.12.3 environment at: /ws/venv-i1a
+Resolved 46 packages in 236ms
+Downloading cryptography (4.5MiB)
+Downloading kernels-data (1.2MiB)
+Downloading rfc3161-client (2.3MiB)
+ Downloaded kernels-data
+ Downloaded rfc3161-client
+ Downloaded cryptography
+Prepared 20 packages in 66ms
+Installed 20 packages in 44ms
+ + cffi==2.1.1
+ + cryptography==50.0.2
+ + dnspython==2.9.0
+ + email-validator==2.3.0
+ + id==1.6.1
+ + kernels==0.16.2
+ + kernels-data==0.16.2
+ + platformdirs==4.13.0
+ + pyasn1==0.6.4
+ + pycparser==3.11
+ + pyjwt==2.15.1
+ + pyopenssl==26.4.0
+ + rfc3161-client==1.0.9
+ + rfc8785==0.1.4
+ + securesystemslib==1.5.1
+ + sigstore==4.5.0
+ + sigstore-models==0.0.6
+ + sigstore-rekor-types==0.0.18
+ + tomlkit==0.15.1
+ + tuf==7.0.1
+P06_STEP download start 2026-10-12T04:47:14Z
+Fetching 55 files:   0%|          | 0/55 [00:00<?, ?it/s]Fetching 55 files:   2%|▏         | 1/55 [00:00<00:06,  8.41it/s]Fetching 55 files:  13%|█▎        | 7/55 [01:04<07:40,  9.59s/it]Fetching 55 files:  15%|█▍        | 8/55 [02:28<17:49, 22.75s/it]Fetching 55 files:  16%|█▋        | 9/55 [02:41<15:51, 20.67s/it]Fetching 55 files:  18%|█▊        | 10/55 [02:58<14:54, 19.87s/it]Fetching 55 files:  20%|██        | 11/55 [02:58<11:04, 15.10s/it]Fetching 55 files:  22%|██▏       | 12/55 [03:02<08:44, 12.19s/it]Fetching 55 files:  24%|██▎       | 13/55 [03:09<07:38, 10.92s/it]Fetching 55 files:  25%|██▌       | 14/55 [03:10<05:38,  8.25s/it]Fetching 55 files:  27%|██▋       | 15/55 [03:13<04:29,  6.73s/it]Fetching 55 files:  29%|██▉       | 16/55 [03:16<03:39,  5.62s/it]Fetching 55 files:  31%|███       | 17/55 [03:16<02:32,  4.02s/it]Fetching 55 files:  33%|███▎      | 18/55 [03:24<03:04,  4.98s/it]Fetching 55 files:  35%|███▍      | 19/55 [03:24<02:10,  3.64s/it]Fetching 55 files:  36%|███▋      | 20/55 [03:27<01:59,  3.40s/it]Fetching 55 files:  38%|███▊      | 21/55 [03:42<03:57,  6.97s/it]Fetching 55 files:  40%|████      | 22/55 [03:50<03:58,  7.23s/it]Fetching 55 files:  42%|████▏     | 23/55 [04:24<08:09, 15.28s/it]Fetching 55 files:  44%|████▎     | 24/55 [05:00<11:03, 21.41s/it]Fetching 55 files:  45%|████▌     | 25/55 [05:14<09:34, 19.14s/it]Fetching 55 files:  47%|████▋     | 26/55 [05:58<12:51, 26.59s/it]Fetching 55 files:  49%|████▉     | 27/55 [06:01<09:05, 19.48s/it]Fetching 55 files:  51%|█████     | 28/55 [06:08<07:05, 15.74s/it]Fetching 55 files:  53%|█████▎    | 29/55 [06:11<05:11, 11.99s/it]Fetching 55 files:  55%|█████▍    | 30/55 [06:15<03:58,  9.54s/it]Fetching 55 files:  58%|█████▊    | 32/55 [06:16<02:05,  5.46s/it]Fetching 55 files:  60%|██████    | 33/55 [06:21<01:59,  5.43s/it]Fetching 55 files:  62%|██████▏   | 34/55 [06:33<02:27,  7.02s/it]Fetching 55 files:  64%|██████▎   | 35/55 [06:41<02:27,  7.36s/it]Fetching 55 files:  65%|██████▌   | 36/55 [06:51<02:31,  7.98s/it]Fetching 55 files:  67%|██████▋   | 37/55 [07:09<03:13, 10.76s/it]Fetching 55 files:  69%|██████▉   | 38/55 [07:09<02:10,  7.69s/it]Fetching 55 files:  71%|███████   | 39/55 [07:09<01:28,  5.56s/it]Fetching 55 files:  73%|███████▎  | 40/55 [07:09<00:59,  3.95s/it]Fetching 55 files:  75%|███████▍  | 41/55 [07:20<01:24,  6.03s/it]Fetching 55 files:  76%|███████▋  | 42/55 [07:28<01:23,  6.42s/it]Fetching 55 files:  78%|███████▊  | 43/55 [07:30<01:04,  5.34s/it]Fetching 55 files:  80%|████████  | 44/55 [07:33<00:50,  4.56s/it]Fetching 55 files:  82%|████████▏ | 45/55 [07:39<00:51,  5.12s/it]Fetching 55 files:  84%|████████▎ | 46/55 [08:26<02:38, 17.59s/it]Fetching 55 files:  85%|████████▌ | 47/55 [08:29<01:44, 13.04s/it]Fetching 55 files:  87%|████████▋ | 48/55 [08:30<01:06,  9.48s/it]Fetching 55 files:  89%|████████▉ | 49/55 [08:30<00:40,  6.78s/it]Fetching 55 files:  91%|█████████ | 50/55 [08:30<00:23,  4.78s/it]Fetching 55 files:  93%|█████████▎| 51/55 [08:32<00:15,  3.81s/it]Fetching 55 files:  95%|█████████▍| 52/55 [08:32<00:08,  2.80s/it]Fetching 55 files:  96%|█████████▋| 53/55 [08:33<00:04,  2.13s/it]Fetching 55 files:  98%|█████████▊| 54/55 [08:36<00:02,  2.42s/it]Fetching 55 files: 100%|██████████| 55/55 [08:37<00:00,  2.12s/it]Fetching 55 files: 100%|██████████| 55/55 [08:37<00:00,  9.42s/it]
+P06_STEP download done 2026-10-12T04:55:52Z 518.19
+P06_STEP download_jlens start 2026-10-12T04:55:52Z
+P06_STEP download_jlens done 2026-10-12T04:56:07Z 15.75
+P06_STEP download_jpp start 2026-10-12T04:56:07Z
+P06_STEP download_jpp done 2026-10-12T04:56:13Z 5.21
+[p06.v4pilot 2026-10-12T04:56:13Z] P06_DOWNLOAD 159.6 GB in 8.6 min (308.1 MB/s); encoding matches vendored: True
+P06_STEP load start 2026-10-12T04:56:16Z
+Loading weights:   0%|          | 0/1736 [00:00<?, ?it/s]Loading weights:   1%|          | 20/1736 [00:00<00:27, 62.97it/s]Loading weights:   2%|▏         | 27/1736 [00:01<01:29, 19.01it/s]Loading weights:   6%|▌         | 97/1736 [00:01<00:23, 70.63it/s]Loading weights:   8%|▊         | 134/1736 [00:02<00:25, 63.64it/s]Loading weights:  10%|█         | 178/1736 [00:02<00:24, 64.56it/s]Loading weights:  12%|█▏        | 215/1736 [00:03<00:24, 62.42it/s]Loading weights:  15%|█▍        | 259/1736 [00:04<00:23, 63.67it/s]Loading weights:  17%|█▋        | 296/1736 [00:04<00:23, 62.58it/s]Loading weights:  20%|█▉        | 340/1736 [00:05<00:22, 63.20it/s]Loading weights:  22%|██▏       | 377/1736 [00:06<00:22, 60.11it/s]Loading weights:  24%|██▍       | 421/1736 [00:06<00:21, 62.38it/s]Loading weights:  26%|██▋       | 458/1736 [00:07<00:21, 60.52it/s]Loading weights:  29%|██▉       | 502/1736 [00:08<00:19, 63.31it/s]Loading weights:  31%|███       | 539/1736 [00:08<00:19, 60.95it/s]Loading weights:  34%|███▎      | 583/1736 [00:09<00:18, 62.68it/s]Loading weights:  36%|███▌      | 620/1736 [00:10<00:18, 61.00it/s]Loading weights:  38%|███▊      | 664/1736 [00:10<00:16, 63.78it/s]Loading weights:  40%|████      | 701/1736 [00:11<00:16, 62.48it/s]Loading weights:  43%|████▎     | 745/1736 [00:12<00:15, 63.75it/s]Loading weights:  45%|████▌     | 782/1736 [00:12<00:15, 61.62it/s]Loading weights:  48%|████▊     | 826/1736 [00:13<00:14, 63.97it/s]Loading weights:  50%|████▉     | 863/1736 [00:13<00:14, 62.27it/s]Loading weights:  52%|█████▏    | 907/1736 [00:14<00:12, 64.46it/s]Loading weights:  54%|█████▍    | 944/1736 [00:15<00:12, 63.26it/s]Loading weights:  57%|█████▋    | 988/1736 [00:15<00:11, 66.63it/s]Loading weights:  59%|█████▉    | 1025/1736 [00:16<00:10, 65.42it/s]Loading weights:  62%|██████▏   | 1069/1736 [00:16<00:09, 69.00it/s]Loading weights:  64%|██████▎   | 1106/1736 [00:17<00:09, 67.94it/s]Loading weights:  66%|██████▌   | 1150/1736 [00:18<00:08, 71.50it/s]Loading weights:  68%|██████▊   | 1187/1736 [00:18<00:07, 70.75it/s]Loading weights:  71%|███████   | 1231/1736 [00:19<00:06, 73.72it/s]Loading weights:  73%|███████▎  | 1268/1736 [00:19<00:06, 72.37it/s]Loading weights:  76%|███████▌  | 1312/1736 [00:20<00:05, 75.54it/s]Loading weights:  78%|███████▊  | 1349/1736 [00:20<00:05, 73.66it/s]Loading weights:  80%|████████  | 1393/1736 [00:21<00:04, 75.36it/s]Loading weights:  82%|████████▏ | 1430/1736 [00:21<00:04, 72.92it/s]Loading weights:  85%|████████▍ | 1474/1736 [00:22<00:03, 75.08it/s]Loading weights:  87%|████████▋ | 1511/1736 [00:22<00:03, 72.89it/s]Loading weights:  90%|████████▉ | 1555/1736 [00:23<00:02, 75.76it/s]Loading weights:  92%|█████████▏| 1592/1736 [00:24<00:01, 74.21it/s]Loading weights:  94%|█████████▍| 1636/1736 [00:24<00:01, 77.10it/s]Loading weights:  96%|█████████▋| 1673/1736 [00:25<00:00, 74.59it/s]Loading weights:  99%|█████████▉| 1717/1736 [00:25<00:00, 76.96it/s]Loading weights: 100%|██████████| 1736/1736 [00:25<00:00, 67.69it/s]
+P06_STEP load done 2026-10-12T04:56:54Z 38.0
+[p12.pod 2026-10-12T04:56:54Z] P12_GATE tokens len_spread=4 tokens_ok=True
+P06_STEP smoke_fixes start 2026-10-12T04:57:03Z
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files:   9%|▉         | 1/11 [00:00<00:01,  9.77it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 56.00it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 49.45it/s]
+P06_STEP smoke_fixes done 2026-10-12T05:00:54Z 231.41
+P06_STEP smoke_agreement start 2026-10-12T05:00:54Z
+P06_STEP smoke_agreement done 2026-10-12T05:03:10Z 135.51
+[p12.pod 2026-10-12T05:03:10Z] P12_GATE lens_agreement=1.0
+[p12.pod 2026-10-12T05:04:29Z] P12_PROJECTION 44.2 min (item median 13.3 s)
+[p12.pod 2026-10-12T05:05:17Z] P12_GATE smoke_y P hits 10/10
+[p12.pod 2026-10-12T05:05:17Z] items 10/200, last 12.2 s
+[p12.pod 2026-10-12T05:07:25Z] items 20/200, last 12.2 s
+[p12.pod 2026-10-12T05:09:29Z] items 30/200, last 12.2 s
+[p12.pod 2026-10-12T05:11:36Z] items 40/200, last 13.3 s
+[p12.pod 2026-10-12T05:13:38Z] items 50/200, last 13.0 s
+[p12.pod 2026-10-12T05:15:50Z] P12_GATE p_uplift_first60=0.18333333333333332 n=60
+[p12.pod 2026-10-12T05:15:50Z] items 60/200, last 12.2 s
+[p12.pod 2026-10-12T05:18:01Z] items 70/200, last 13.3 s
+[p12.pod 2026-10-12T05:20:10Z] items 80/200, last 11.7 s
+[p12.pod 2026-10-12T05:22:13Z] items 90/200, last 12.1 s
+[p12.pod 2026-10-12T05:24:23Z] items 100/200, last 12.5 s
+[p12.pod 2026-10-12T05:26:26Z] items 110/200, last 12.0 s
+[p12.pod 2026-10-12T05:28:32Z] items 120/200, last 12.5 s
+[p12.pod 2026-10-12T05:30:36Z] items 130/200, last 12.1 s
+[p12.pod 2026-10-12T05:32:42Z] items 140/200, last 12.3 s
+[p12.pod 2026-10-12T05:34:48Z] items 150/200, last 12.3 s
+[p12.pod 2026-10-12T05:36:53Z] items 160/200, last 12.2 s
+[p12.pod 2026-10-12T05:38:55Z] items 170/200, last 11.6 s
+[p12.pod 2026-10-12T05:41:06Z] items 180/200, last 11.9 s
+[p12.pod 2026-10-12T05:43:20Z] items 190/200, last 15.5 s
+[p12.pod 2026-10-12T05:45:24Z] items 200/200, last 13.4 s
+[p12.pod 2026-10-12T05:45:24Z] P12_RUN_DONE rc=0
+P12 end 2026-10-12T05:45:30Z rc=0
+PROBE_DONE rc=0
