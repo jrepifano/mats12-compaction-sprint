@@ -193,7 +193,13 @@ def per_prompt(frames: dict[str, pd.DataFrame], set_name: str) -> pd.DataFrame:
         agg = d.groupby(key).agg(**{f"em{a}": ("em_f", "mean"), f"coh{a}": ("coh_f", "mean"),
                                     f"succ{a}": ("succ_f", "mean"), f"n{a}": ("em_f", "size")})
         out = agg if out is None else out.join(agg, how="outer")
-    return out.reset_index() if out is not None else pd.DataFrame()
+    if out is None:
+        return pd.DataFrame()
+    for a in ("0", "4", "1"):  # a cell not judged yet: NaN columns
+        for c in ("em", "coh", "succ", "n"):
+            if f"{c}{a}" not in out:
+                out[f"{c}{a}"] = np.nan
+    return out.reset_index()
 
 
 def cell_frames(prefix: str, judge: str = "luna") -> dict[str, pd.DataFrame]:
@@ -254,8 +260,8 @@ def main(argv=None) -> int:
     # the null at A_org's selected layer and position
     _t, pos, li = picked["A_org"].split("|")
     score["NULL_org@sel"] = det["NULL_org"][f"lr_shuf|{pos}|{li}"]
-    names = ["A_org", "A_base", "A_good", "A_org_s0", "A_org_s2", "ASK_org", "ASK_base", "T1",
-             "T2", "T3", "NULL_org@sel"]
+    names = ["A_org", "A_base", "A_good", "A_org_s0", "A_org_s2", "ASK_org", "ASK_base",
+             "ASK_good", "T1", "T2", "T3", "NULL_org@sel"]
     names = [n for n in names if n in score]
     S["configs"] = {n: picked.get(n, "lr_shuf@A_org") for n in names}
 
@@ -271,7 +277,9 @@ def main(argv=None) -> int:
     yT = labels[test]
     comp = sel["comparator"]
     diffs = {"A_org-comparator": ("A_org", comp), "A_org-A_base": ("A_org", "A_base"),
-             "A_org-T2": ("A_org", "T2"), "ASK_org-A_org": ("ASK_org", "A_org")}
+             "A_org-T2": ("A_org", "T2"), "ASK_org-A_org": ("ASK_org", "A_org"),
+             "A_org-A_good": ("A_org", "A_good"), "A_good-A_base": ("A_good", "A_base"),
+             "ASK_good-ASK_org": ("ASK_good", "ASK_org")}
     S["auroc_test_ci"] = {n: ci(boot.run(lambda ix, n=n: auroc(score[n][test][ix], yT[ix])),
                                 det_tab["test"][n]) for n in names}
     S["auroc_test_diff_ci"] = {
@@ -421,6 +429,9 @@ def main(argv=None) -> int:
             "obs": auroc(score[n][ii][side == 0], em[side == 0]),
             "unobs": auroc(score[n][ii][side == 1], em[side == 1]),
             "pooled_ci": ci(wb.run(lambda ix, n=n: within(n, ix)), within(n, np.arange(len(ii))))}
+    S["within_condition_em_auroc"]["A_org-A_good"] = ci(
+        wb.run(lambda ix: within("A_org", ix) - within("A_good", ix)),
+        within("A_org", np.arange(len(ii))) - within("A_good", np.arange(len(ii))))
     S["within_condition_em_auroc"]["A_org-T2"] = ci(
         wb.run(lambda ix: within("A_org", ix) - within("T2", ix)),
         within("A_org", np.arange(len(ii))) - within("T2", np.arange(len(ii))))
