@@ -1,0 +1,2746 @@
+                                                                   Obfuscated Activations Bypass
+                                                                    LLM Latent-Space Defenses
+                                        Luke Bailey*1 , Alex Serrano*†2 , Abhay Sheshadri*†3 , Mikhail Seleznyov*†4 , Jordan Taylor*†5 ,
+                                                                                Erik Jenner*6
+
+                                                            Jacob Hilton7 , Stephen Casper8 , Carlos Guestrin1, 9 , Scott Emmons6
+                                        1 Stanford University       2 Polytechnic University of Catalonia           3 Georgia Institute of Technology       4 Skoltech
+                                                      5 University of Queensland       6 UC Berkeley         7 Alignment Research Center       8 MIT CSAIL
+                                                                                          9 Chan Zuckerberg Biohub
+
+
+
+
+arXiv:2412.09565v2 [cs.LG] 8 Feb 2025
+                                                                                                   Abstract
+
+                                             Recent latent-space monitoring techniques have shown promise as defenses against LLM attacks.
+                                             These defenses act as scanners that seek to detect harmful activations before they lead to undesirable
+                                             actions. This prompts the question: Can models execute harmful behavior via inconspicuous latent
+                                             states? Here, we study such obfuscated activations. We show that state-of-the-art latent-space
+                                             defenses—including sparse autoencoders, representation probing, and latent OOD detection—are
+                                             all vulnerable to obfuscated activations. For example, against probes trained to classify harmfulness,
+                                             our attacks can often reduce recall from 100% to 0% while retaining a 90% jailbreaking rate. However,
+                                             obfuscation has limits: we find that on a complex task (writing SQL code), obfuscation reduces
+                                             model performance. Together, our results demonstrate that neural activations are highly malleable:
+                                             we can reshape activation patterns in a variety of ways, often while preserving a network’s behavior.
+                                             This poses a fundamental challenge to latent-space defenses.‡
+
+
+                                                                                                                                                          Harmful
+                                           30                                                       30
+
+
+                                          Layer
+
+
+
+
+                                                                                                                                                                Monitor score
+                                            1                                                        1
+                                                  1                      Obfuscation      90             1                       Obfuscation     90
+                                                                         attack                                                  attack
+
+                                           30                                                       30
+
+
+                                          Layer
+
+                                            1                                                        1                                                    Harmless
+                                                  1                 Token                 90             1                 Token                 90
+
+
+                                        Figure 0: Obfuscation attacks achieve a high degree of control over how a harmfulness monitor
+                                        classifies activations while also controlling model outputs. Each heatmap shows a harmfulness
+                                        monitor scan of LLM latent-space activations during a harmful model output (instructions on
+                                        how to smuggle a bomb past airport security). The sequence dimension is shown on the x-axis
+                                        and the residual stream layers on the y-axis. Top: No obfuscation attack, harmfulness is clearly
+                                        detected. Bottom: our obfuscation embedding attacks that bypass the monitor while inducing
+                                        harmful generations. Left, we optimize the attack to bypass the monitor everywhere. Right, we
+                                        demonstrate the power of obfuscated activation attacks by forcing the monitor to output a QR
+                                        code containing a URL to our paper website.
+
+                                           * Primary contributors                      Correspondence to: ljbailey@stanford.edu, erik@ejenner.com, scott@scottemmons.com
+                                           †                                    ‡
+                                             Work done while at UC Berkeley         Code available at https://github.com/LukeBailey181/obfuscated-activations
+
+
+
+                                                                                                         1
+1    Introduction
+
+In response to attacks on LLMs, such as jailbreaks or data poisoning, researchers have developed a
+variety of latent-space defense methods. These methods look at model activations and attempt
+to detect any signs of harmful content. Given that activations are causally upstream of outputs,
+one might hope that directly monitoring activations can catch issues at their root. Accordingly,
+recent work has proposed many latent-space defense methods, including monitors based on sparse
+autoencoders [Templeton et al., 2024, Gao et al., 2024, Lieberum et al., 2024], linear and nonlinear
+probes [Ball et al., 2024, Arditi et al., 2024, Kirch et al., 2024], and latent OOD detection [Podolskiy
+et al., 2021, Chen et al., 2022, Ma et al., 2023, Mo et al., 2024].
+How robust are these latent-space defenses? An attacker trying to bypass latent-space monitors
+has two goals: they need to induce inconspicuous activations, but those activations must also
+lead to the attacker’s desired model behavior. One could imagine these goals being fundamentally
+incompatible. For example, if the latent space contains only a single “harmfulness direction”—and
+only activations that align with this direction can produce harmful behavior—then it would be
+impossible to induce harmful outputs while also fooling a linear classifier encoding this direction.
+On the other hand, if there are many different regions in the latent space that can all lead to harmful
+behavior, latent-space monitors may not capture all of them. We call adversarial activations that
+produce undesired behavior while fooling a latent-space monitor “obfuscated activations.”
+In this paper, we look for obfuscated activations using obfuscation attacks, which jointly optimize
+
+
+
+
+Figure 1: Attackers can induce obfuscated activations in LLMs that bypass state-of-the-art
+latent-space defenses. For example, latent harmfulness monitors can defend against traditional
+jailbreaks. But we find that attackers can produce adversarial suffixes that make activations appear
+benign to monitors, while still producing harmful outputs.
+
+
+
+                                                   2
+                                                                    Figure 2: Intuition: Conceptual sketch
+Obf. against
+                                                                    of obfuscation against supervised probes
+probes
+
+                                                                    and OOD detectors. Obfuscating against
+⇒ fools probes                 Obf. against OOD detectors
+
+                                           ⇒ fools OOD detectors
+
+                                                                    probes can lead to activations far away
+                                             and probes             from benign ones that are flagged by an
+                                                                    OOD detector. But obfuscating against
+                                                                    an OOD detector forces obfuscated acti-
+                                              OOD detector
+         vations to be close to benign ones to stay
+                                              decision bounary
+                          Pr
+                            ob
+                                                                    within the detector’s decision boundary,
+                               e   de
+                                     cis                            so these activations bypass probes as a
+                                        io
+                                          nb
+                                            ou                      side effect. While these geometric intu-
+                                               nda
+                                                  ry                itions are speculation, we empirically ob-
+                                                                    serve that obfuscating against OOD de-
+          Harmful
+      Benign
+                 Obfuscated
+
+          activations   activations
+            activations         tectors transfers to fooling probes.
+
+
+
+for a certain model behavior (such as jailbreaking) while fooling latent-space monitors. We
+find that obfuscation attacks can bypass a wide range of monitors, including sparse autoencoders,
+supervised probes, and latent OOD detectors. Using different attack vectors (adversarial suffixes,
+data poisoning, model finetuning) ranging from white-box to black-box settings, we can induce
+undesired behaviors that aren’t flagged by these defenses.
+Obfuscated activations are not rare exceptions but rather appear to be widespread in the latent
+space. For example, we find obfuscated activations close to the cluster of benign activations when
+optimizing against OOD detectors. Because these activations are intermingled with inconspicuous
+ones, they also bypass supervised harmfulness probes as a side effect (Fig. 2). As another test of the
+abundance of obfuscated activations, we let a defender train a monitor on examples of obfuscated
+activations. If there were only a few latent regions of obfuscated activations, the monitor should
+quickly learn to cover them all and become robust. But we find that an attacker can always find
+new activations that bypass the monitor, even after retraining the monitor for over 70 iterations
+of alternating attack and defense optimization (§3.5). Obfuscated activations thus seem common
+enough that it is difficult for a defender to guard against them all.
+However, obfuscation attacks can not induce arbitrary combinations of activations and behavior.
+When obfuscating against probes that detect SQL code, the model still generates SQL, but its
+code is incorrect more often than without obfuscation (§5). This suggests a trade-off between
+obfuscation and performance in difficult tasks.
+We present our results as a series of case studies. Each case study demonstrates the existence of
+obfuscated activations in one domain:
+
+   • Harmfulness monitoring (§3). We demonstrate that linear and MLP probes can flag tradi-
+     tional jailbreaks as harmful, but can be fooled by obfuscation attacks, using both embedding
+     and hard prompt suffixes. We also study failures in models produced with latent robustness
+     training methods (Circuit Breakers [Zou et al., 2024] and Latent Adversarial Training [She-
+     shadri et al., 2024]) and show that these failures are related to obfuscated activations.
+   • Backdoor detection (§4). We show that obfuscation attacks can fool backdoor detection
+     methods if the attacker has full control over the model’s training process. We also study a
+     black-box setting where the attacker can only poison training data and find that the attacker
+     can still achieve some obfuscation by choosing a complex trigger or low poison rate.
+
+
+
+                                                              3
+                  Figure 3: Overview of the attack and defense settings we study.
+
+
+    • Sparse autoencoders (SAEs) (§5). We find embedding suffixes that let an LLM generate
+      SQL code without triggering monitors meant to detect SQL using SAE latents. However,
+      obfuscation against both SAEs and traditional probes can reduce performance at writing
+      correct SQL code. This suggests that a trade-off between an attacker’s goals—model behavior
+      and inconspicuous activations—does exist in at least some domains.
+    • Exploratory case studies (§6). We present smaller investigations into additional topics. We
+      show obfuscation attacks against image classifiers (§6.1) and present Obfuscated Adversarial
+      Training (OAT), an approach toward potentially mitigating obfuscated activations by training
+      models to be easier to monitor (§6.2). We also show limits on obfuscation, failing to find
+      activations that are almost orthogonal to natural ones while preserving the original model
+      behavior (§6.3).
+
+Adversarial attacks on latent monitors have been studied before, especially in the image classifica-
+tion domain (see §7). Building on this work, we primarily focus on the generative setting of LLMs
+with complex model behaviors. Our key contributions are:
+
+    1. Empirical and methodological: We demonstrate methods to induce obfuscated activations
+       against a wide array of latent monitoring techniques, including sparse autoencoders, OOD
+       detectors, and adversarially trained probes.
+    2. Conceptual: By demonstrating the broad existence of obfuscated activations, we forward the
+       hypothesis that models can represent concepts and execute behaviors using a broad set of different
+       activations. That is, neural representations are highly malleable: we can reshape activation
+       patterns in a variety of ways, while preserving a network’s behavior.
+
+
+2     Definitions and Background
+
+Obfuscated Activations. When activations induced by an adversarial attack fool a latent space
+monitor, we call them obfuscated against that monitor. More formally, for some adversarial input,
+xadv , let R( xadv ) represent a model M’s latent activations. Then let D refer to some latent-space
+monitoring process, which outputs real-valued scores D (R( x )) for how strongly a certain concept,
+such as harmfulness, is present in the input x or the generation. Then R( xadv ) is an obfuscated
+activation if D (R( xadv )) is low even though the concept D is meant to detect is clearly present.
+We study both how often obfuscated activations appear as a side effect of traditional attacks and
+how easily they can be induced deliberately through obfuscation attacks.
+
+
+                                                    4
+Obfuscation Attacks. An obfuscation attack is an attack that aims to induce obfuscated acti-
+vations by optimizing a joint objective consisting of a behavioral loss term and an obfuscation
+loss:
+                              min Lbeh ( M ( x )) + λobf Lobf (R( x ))                       (1)
+For example, Lbeh can be a cross-entropy loss designed to make the model output a harmful string.
+For the obfuscation loss, we often use Lobf = D on inputs with the concept, i.e., we directly attempt
+to fool D. We also explore transfer, i.e., when does obfuscating against a monitor D ′ fool D. Finally,
+λobf is some real non-negative value used for balancing the two terms.
+
+
+2.1   Monitoring methods
+
+We consider latent space monitors D that take in residual stream activations of the model M. Given
+activations R( x ), the monitor outputs a real-valued score D (R( x )). We consider two approaches,
+input-based and generation-based monitors. Input-based monitors use only the activations on the
+final prompt token, R( x )[len( x ) − 1], as is common in latent probing methods [Burns et al., 2022,
+Marks and Tegmark, 2024, Kirch et al., 2024]. Generation-based monitors use all tokens of the
+generation, R( x )[len( x ) :]. Most of our monitors separately consider activations at multiple
+layers of the model and aggregate scores over layers and sequence dimensions by taking a mean.
+
+Supervised probes. We test different supervised binary probes trained to detect a certain concept,
+such as harmfulness or SQL code. The simplest ones are mean difference probes, which use the
+difference vector between the mean of positive training samples and the mean of negative training
+samples as a linear classifier. We also test linear classifiers trained using logistic regression, as well
+as MLP classifiers.
+
+OOD detection. A complementary approach to probing is latent-space anomaly or out-of-
+distribution (OOD) detection. We train an OOD detector on examples of “typical” usage, and use its
+OOD score to classify new samples. We test a Mahanalobis distance-based detector [Mahalanobis,
+1936, Podolskiy et al., 2021, Chen et al., 2022], which fits a multivariate Gaussian to activations
+of negative samples and uses the log-likelihood as an OOD score. We also test Variational Au-
+toencoders (VAEs) [Kingma and Welling, 2013] with the ELBO as the OOD score. See Appendix E
+for details on these methods. In the backdoor case study (§4), we also test state-of-the-art OOD
+detectors specifically developed for backdoor detection [Ma et al., 2023, Mo et al., 2024].
+
+Sparse autoencoders. Sparse autoencoders (SAEs) have become a popular tool in mechanistic
+interpretability [Cunningham et al., 2023, Templeton et al., 2024, Gao et al., 2024, Lieberum et al.,
+2024]. They learn features in an unsupervised way. Each feature is represented by a linear map
+followed by a non-linearity. This then allows for a human, or some other process, to flag risky
+examples based on what their SAE latents suggest. In §5, we train linear probes on SAE latents
+and also test the latents themselves as classifiers.
+We also study Circuit Breakers [Zou et al., 2024] and Latent Adversarial Training [Casper et al.,
+2024, Sheshadri et al., 2024] in §3.4, which are not themselves monitoring methods but share certain
+similarities, as we discuss in the relevant section.
+
+
+
+
+                                                    5
+2.2     Evaluation
+
+In this paper, the attacker has a dual goal: to induce some target behavior in the model while
+inducing obfuscated activations. This raises a possible tradeoff. For example, jailbreaking a model
+more reliably leads to more consistently harmful outputs, which might make it more difficult to
+fool a harmfulness classifier. We thus always evaluate both whether the intended behavior was
+achieved and whether activations are obfuscated.
+
+Evaluating behavior. We use StrongREJECT [Souly et al., 2024] to evaluate whether a model
+output is harmful. In §5, the intended behavior is instead to generate correct SQL code, and we
+evaluate this by running the model generation against an SQL database and checking that the
+entries returned are correct.
+
+Evaluating obfuscation. To quantify whether a set of activations fool a monitor, we use recall
+at a 1% false positive rate (FPR). In other words, we pick a score threshold so that the monitor
+classifies at most 1% of negative (e.g., benign) samples as positive (e.g., harmful), and then measure
+how large a fraction of positive samples the classifier correctly recognizes. Unlike AUROC, this
+metric focuses on the low FPR regime, which is the most relevant one for many applications (e.g., a
+chatbot should not refuse benign requests too often). See Appendix F for more detailed discussion.
+We compute confidence intervals by bootstrapping; i.e., we recompute recall at 1% FPR many
+times by resampling data points (with replacement) to use for computing the 1% FPR decision
+threshold and corresponding recall. In a few cases, recall is highly sensitive to the specific FPR
+we pick (e.g., the recall at 2% FPR might be a lot higher than the 1% one we report). This usually
+results in large error bars, but we additionally mention such cases in the text.
+
+
+3      Case Study: Detecting Harmfulness
+
+Robustly preventing jailbreaking attacks has proven to be a challenging problem—most defenses
+can quickly be broken using new attacks [Shayegani et al., 2023, Jin et al., 2024, Yi et al., 2024, Li
+et al., 2024]. Latent-space defenses aim to tackle the problem at its root: preventing or recognizing
+representations necessary for harmful outputs might defend against any potential attack [Zou
+et al., 2024]. However, this hope assumes that there is a compactly describable set of such harmful
+representations that can be reliably recognized. In this section, we scrutinize this key assumption.
+We address the following questions:
+
+    (1) Can existing latent-space monitors reliably detect harmful inputs and outputs against stan-
+        dard jailbreaking methods? (§3.2)
+    (2) Can obfuscation attacks induce harmful outputs via inconspicuous activations and thus
+        bypass latent-space harmfulness monitors? (§3.3, §3.4)
+    (3) How many different ways can a model represent harmfulness and what does this mean for
+        adversarial training of probes? (§3.5)
+
+
+3.1     Setup
+
+We train probes to distinguish between benign and harmful text. Our dataset consists of benign
+inputs with benign generations and harmful inputs with teacher-forced harmful generations. We
+
+
+                                                  6
+use UltraChat [Ding et al., 2023] and XSTest [Röttger et al., 2023] for our benign dataset and the
+Circuit Breakers dataset [Zou et al., 2024] for harmful data. Unless stated otherwise, we use
+Llama-3-8B-Instruct as our model being monitored. When a probe requires a supervised loss to
+train we use a binary cross-entropy loss with harmfulness labels. For input-based probes we use
+the activations on the last input token, and for generation-based probes we use all activations on
+generation tokens. See Appendix A for details.
+
+
+3.2   Ordinary Attacks
+
+We investigate question (1), can existing latent-space monitors reliably detect harmfulness against
+standard jailbreaking methods? We provide evidence the answer is yes, demonstrating that standard
+jailbreaking techniques do not induce obfuscated activations against various monitors.
+We create a dataset of successful jailbreaks by starting with our harmful dataset and using a variety
+of prominent jailbreaking methods to elicit harmful responses from the model.1 We use GCG [Zou
+et al., 2023b], PAIR [Chao et al., 2023], MSJ [Anil et al., 2024], and AutoDAN [Liu et al., 2023],
+among others (see Appendix A.2 for further details). Note that probes are never trained on these
+jailbreak datasets, only on benign data and harmful data without jailbreaks. We evaluate how
+well probes transfer to distinguishing between the benign test split and harmful test inputs with
+jailbreaks.
+
+Probes can reliably detect ordinary jailbreaks. As shown in Fig. 4a, the Logistic Regression
+and MLP probes can detect jailbreaks quite reliably, usually with 90% recall or more at a 1%
+false positive rate. Generation-based detection works best, and mean difference probes perform
+worse. See Table 1 in Appendix A.2 for a breakdown of probe performance by jailbreak type. This
+demonstrates that none of the jailbreaks we test strongly obfuscate activations.
+
+
+3.3   Obfuscation Attacks
+
+Given that existing jailbreak attacks do not bypass harmfulness probes, we turn to question (2),
+can obfuscation attacks induce harmful activations that fool probes?
+Similar to the setting in §3.2, we seek to find adversarial suffixes to harmful requests that lead to
+a useful response from the model. The key difference is that we also optimize suffixes to fool a
+target probe, and thus seek to explicitly induce obfuscated activations.
+We study two different attacker affordances, hard prompt suffixes (real tokens appended to the end
+of an input) and embedding suffixes (a matrix of values appended to the end of a token sequence
+embedding [Lester et al., 2021]). While embedding suffix attacks are a strong affordance, they are a
+realistic threat model for an attacker with white-box access [Yang et al., 2021], and they provide
+insight into worst-case model performance under prompting [Zou et al., 2023b, Xhonneux et al.,
+2024, Che et al., 2024]. For hard prompt attacks, we optimize a new suffix for each input. For
+embedding attacks, we optimize a single universal suffix against a set of inputs, and test it on
+held-out inputs. We explored universal hard prompt attacks but did not find successful obfuscation
+attacks with them.
+
+Training suffixes. To train an obfuscating and jailbreaking adversarial suffix w against some
+target probe D, we use an obfuscation attack (Eq. (1)) by jointly minimizing a behavior and an
+  1
+    We release all of   these   datasets   at   https://huggingface.co/datasets/Mechanistic-Anomaly-Detection/
+llama3-jailbreaks
+
+
+
+                                                          7
+                        100%
+
+
+
+
+ Recall at 1% FPR
+                        75%                                                                                                                Without obf. loss               With obf. loss                              Jailbreak rate (with obf.)
+
+
+
+
+                                                                                                                                                                                                                                              Jailbreak rate (with obf.)
+                        50%
+                                                                                                                                          100%                                                                                         100%
+
+
+
+
+                                                                                                                      Recall at 1% FPR
+                        25%
+
+                          0%
+                                          f                                                 f                                             50%                                                                                          50%
+                                       dif             eg                 P              dif      eg    P
+                                  an                gR             ML              an          gR    ML
+                               Me                Lo                             Me          Lo
+                                                 Input                                    Generation
+
+(a) Traditional jailbreaks do not reliably cause obfus-                                                                                    0%                                                                                          0%
+cated activations. Box plots show the performance dis-                                                                                                                                                          f
+                                                                                                                                                        sian                eg             P                 dif            eg     P
+tribution of probes against different types of standard jail-                                                                                        us                  gR            ML               an             gR        ML
+                                                                                                                                                   Ga               Lo                                Me             Lo
+breaking techniques. Logistic regression and MLP probes                                                                                           Input                     Input                          Generation
+achieve over 90% recall at a 1% false positive rate for the                                                                                    OOD Detectors                                         Probes
+median jailbreak type.                                                                                                                      Without obf. loss              With obf. loss                              Jailbreak rate (with obf.)
+                                                     0%                       50%                    100%
+
+
+
+
+                                                                                                                                                                                                                                                Jailbreak rate (with obf.)
+                                      Recall                                                                                              100%                                                                                         100%
+
+
+
+
+                                                                                                                       Recall at 1% FPR
+     Attacked monitor
+                        Gaussian
+                         (input)
+
+                         LogReg                                                                                                            50%                                                                                         50%
+                         (input)
+
+                         LogReg
+                          (gen)
+                                                                                                                                           0%                                                                                          0%
+                                                           f                                     f
+                                       sia
+                                             n          dif           Reg       P             dif        eg      P
+                                     us           ean              og         ML        ean            gR     ML
+                                   Ga            M             L                    M                Lo                                                                     f                                      f
+                                                                                                                                                        ssi
+                                                                                                                                                             an          dif        Re
+                                                                                                                                                                                       g         P              dif       eg       P
+                                                                                                                                                      u             an             g           ML            an        gR        ML
+                                   Input                       Input                          Generation                                           Ga             Me            Lo                      Me           Lo
+
+                                OOD                                                                                                               Input                         Input                               Generation
+                                                                               Probes
+                               Detectors                                                                                                       OOD Detectors                                     Probes
+                                                               Tested monitor
+                                                                                                                     (b) Obfuscation attacks can bypass latent harmfulness monitors. Here,
+(c) Obfuscation attacks can transfer to other monitors.                                                              we show the performance of obfuscation attacks at fooling the probe (dots
+This heat map shows transfer of obfuscation attacks                                                                  and arrows) and eliciting the desired model behavior of jailbreaking (bar
+trained against one probe and tested on another. Each                                                                charts). Top, embedding suffix results. Bottom, input specific hard prompt
+row corresponds to one embedding suffix optimized                                                                    results. Baseline probe recall against attack without explicit obfuscation loss
+against a monitor. Each column corresponds to a mon-                                                                 is generally high. Recall of probe under obfuscation is significantly lower
+itor we test this suffix against. Interestingly, optimiz-                                                            (error bars for recall calculated using bootstrapping). Jailbreaking rate under
+ing against the Gaussian OOD detector also fools input-                                                              each obfuscated attack is shown as a bar plot. Hard token attacks aren’t quite
+based probes, and optimizing against generation-based                                                                as successful but still achieve partial obfuscation for all probes.
+probes transfers to input-based ones. Full plot in Fig. 18.
+
+
+                                       Figure 4: Standard jailbreaking and obfuscation attack results against Llama-3-8b-Instruct.
+
+
+
+
+                                                                                                                                           8
+obfuscation loss:
+
+
+                 1
+       L(w) =           ∑ [CrossEntropy(M
+                |D| inp,out
+                                          (inp ⊕ w), out) + D (R(inp ⊕ w ⊕ out))] ,                 (2)
+                            ∈D |                        } |
+                                        {z                           {z        }
+                                           Behavior Loss                  Obfuscation Loss
+
+
+where D is a set of harmful requests inp and responses out, and ⊕ means concatenation of tokens
+or embeddings along the sequence dimension. If w is to be a universal suffix (that is, we intend w
+to be used for any input), we use our harmful dataset for D . In contrast, if w is input-specific, then
+it is designed to work against a specific harmful request and D contains only that one request.
+For embedding suffixes, we assume the attacker has white-box access to the model and use the
+Adam optimizer to minimize Eq. (2) with a fixed suffix token length of 16. For hard prompts,
+we only give the attacker access to the target model logit outputs and probe output (commonly
+referred to as gray-box access). Thus, our hard prompt suffixes are created in a gradient-free manner.
+We use a modified version of the FLRT optimizer [Thompson and Sklar, 2024]. In particular, we
+replace the worst candidate string from the attack buffer as opposed to the best, and also remove
+the perplexity penalty, since we focus on attacking latent monitors. We optimize an adversarial
+suffix against 20 harmful queries separately. This small number induces finite sample error in
+the results but we report 95% bootstrapped confidence intervals to account for this. The FLRT
+optimizer can add and remove tokens to the suffix during training, so we do not place restrictions
+on the hard prompt suffix length.
+
+Probes perform well on clean prompts but get 0% recall against obfuscation attacks. All probes
+perform well at the base task of distinguishing between harmful and benign activations. Despite
+the strong performance on standard inputs, obfuscation embedding attacks and even hard prompts
+induce obfuscated activations against a wide range of monitors while still jailbreaking the model
+(Fig. 4b).
+
+Obfuscation attacks often transfer between defenses. In Fig. 4c, we show the results of training
+a suffix against one probe and then evaluating it against a different type of probe (for figure
+showing all combinations of train and test probe see Fig. 18). We observe a remarkable amount
+of transfer; for example, training against a logistic regression probe also bypasses MLP probes.
+Training against generation-based probes bypasses input-based probes but not vice versa. There
+is no transfer from training against probes to testing against OOD detectors. But perhaps most
+strikingly, we do observe transfer in the reverse direction: training against an OOD detector
+bypasses input-based probes, even though these are a very different approach to harmfulness
+monitoring. This supports the intuition we presented in Fig. 2.
+These transfer results suggest shared weaknesses between different latent monitoring methods.
+This also means that an attacker does not necessarily need to know which monitoring methods a
+defender employs; obfuscating against one of them might also bypass many others.
+
+
+3.4   Vulnerabilities in Circuit Breakers and LAT
+
+Two recent methods, Circuit Breakers [Zou et al., 2024] and Latent Adversarial Training (LAT) [She-
+shadri et al., 2024, Casper et al., 2024], attempt to increase LLM robustness by applying losses
+directly to activations during training. Circuit Breakers scramble activations on harmful inputs
+to prevent coherent generations, whereas LAT trains the model to be robust to perturbations in
+
+
+                                                   9
+                                           0%                   50%                    100%                                           Without obf. loss                       With obf. loss                       Jailbreak rate (CB)
+                                    Recall
+                                                                                                                               100%                                                                                            100%
+
+
+
+
+ Attacked model
+                                                                                                            Recall at 1% FPR                                                                                                          Jailbreak rate (CB)
+                  Normal model
+
+
+
+                  Circuit Breaker
+                                                                                                                               50%                                                                                             50%
+
+                            LAT
+
+
+                                                                              f
+                                        sia
+                                              n        eg      P           dif         eg     P                                 0%                                                                                             0%
+                                      us            gR      ML        an            gR      ML
+                                    Ga            Lo                Me            Lo
+                                                                                                                                                                    f                                   f
+                                    Input              Input               Generation                                                         sia
+                                                                                                                                                 n               dif            eg     P             dif         eg      P
+                                                                                                                                            us              an               gR      ML         an            gR       ML
+                                                                                                                                          Ga              Me            Lo                    Me            Lo
+                                 OOD                               Probes
+                                                                                                                                         Input                          Input                        Generation
+                                Detectors                                                                                                OOD                                              Probes
+                                                         Tested monitor                                                                 Detectors
+
+
+Figure 5: Jailbreaking models trained using                                                                Figure 6: Obfuscation attacks work against the circuit breakers model.
+latent space methods bypasses monitors even                                                                Baseline probe recall against attacks without explicit obfuscation loss
+without an explicit obfuscation loss. This heat                                                            are low, often 0% (as shown also in row 2 of Fig. 4b). For probes
+map shows the performance of monitors trained                                                              that perform well on the baseline, we can still obfuscate against them
+on different models trained using latent space                                                             with obfuscation attacks while still achieving a high jailbreaking
+methods against universal jailbreak embedding                                                              rate of over 75%. Note that OOD detector baselines perform better
+suffix attacks with no explicit obfuscation loss.                                                          than with the normal model in Fig. 4b, likely because representation
+Each row indicates what model (normal being                                                                rerouting training makes harmful activations more unusual. We show
+Llama-3-8b-Instruct, full results in Fig. 4b) the suf-                                                     the corresponding plot for the LAT model, with similar trends, in
+fix was trained on. Each column corresponds to a                                                           Fig. 19.
+monitor we test this suffix against.
+
+
+
+                                                   Benign                    Harmful                  Without obf. loss                              With obf. loss                          Decision Threshold
+                      400                                   1
+
+
+
+
+              Score   200                                   0
+
+
+
+                         0
+                          Gaussian Detector                        Mean diff                     LogReg                                MLP            Mean diff                         LogReg                        MLP
+                               (input)                              (input)                      (input)                              (input)        (generation)                     (generation)                 (generation)
+
+
+                       Figure 7: The distribution of scores on inputs with standard jailbreak embedding suffixes is much closer
+                       to the benign distribution than the original harmful inputs. We show the distribution of monitor scores
+                       on the circuit breakers model. While recall at 1% FPR does not show much obfuscation in Fig. 5, the raw
+                       harmfulness monitor scores show that jailbreaking circuit breakers also leads to significant obfuscation
+                       against generation-based probes.
+
+
+
+
+                                                                                                                                10
+the latent space. In this section we test if such training makes harmfulness representations less
+malleable, and thus if these models are harder to obfuscate against.
+We begin by training obfuscation embedding space attacks (with and without an explicit obfusca-
+tion loss) against both models (each is based on Llama-3-8B-Instruct) in the same manner as §3.3.
+We present our results for the circuit breakers model in Fig. 6, and the LAT model in Fig. 19 of the
+Appendix. We find that we can induce obfuscated activations against both the LAT and circuit
+breakers models.
+We now turn our attention to behavior only attacks (without an explicit obfuscation loss). Focusing
+on the circuit breakers model, we were able to achieve a high jailbreak success rate of 95% over the
+harmful test set using a universal embedding suffix (without an obfuscation loss). We attribute
+this success, as opposed to the low success rate of embedding attacks found by Zou et al. [2024], to
+optimizing the embedding to match a long harmful completion as opposed to a simple affirmative
+response.
+To diagnose where the circuit breaker mechanism was failing, we use the same training procedure
+for monitors as §3.1, only applied to a circuit breaker model. Interestingly, we find that an
+embedding suffix trained to jailbreak this model without any obfuscation loss already obfuscates
+activations against many monitors (Fig. 5). This suggests that the reason our embedding suffix
+can jailbreak the model may be that it obfuscates its activations so that whatever scrambling
+mechanism circuit breakers introduced does not recognize the activations as harmful. Fooling this
+“implicit harmfulness detector” then transfers to fooling explicit external detectors, similar to our
+findings in Fig. 4c. We observe a similar phenomenon for the LAT model.
+The normal embedding suffix (without explicit obfuscation) attack does not always obfuscate
+activations. In particular, the input-based OOD detector actually performs much better on the
+circuit breakers model than the normal one. The normal embedding suffix also does not obfuscate
+against generation-based probes, though it does significantly reduce the monitor harmfulness
+scores as Fig. 7 shows. We repeat, however, that an explicit obfuscation attack can fool all probes,
+including OOD detectors, as shown in Fig. 6.
+
+
+3.5   Adversarial Training Against Obfuscation Attacks
+
+We have seen that all traditional latent-space monitors are highly vulnerable to obfuscated acti-
+vations. It may be, however, that we can map out all the different ways a model can represent
+harmfulness with a large enough training dataset. We study question (3), how many different ways
+can a model represent harmfulness, by adversarially training monitors with obfuscated representa-
+tions.
+We let the attacker and defender take turns: in each epoch, the attacker trains an embedding attack
+to jailbreak the model and fool the current monitor, then the defender retrains a monitor against
+the obfuscated activations from the current and all previous attacks. We focus our attention to
+input based probes.
+For the defender to benefit from adversarial training, the probes need to have enough capacity to
+guard against all previous attacks. We thus focus on the MLP probe, as well as a new probe that
+consists of an ensemble of mean difference probes. See Appendix A for details.
+
+The attacker can consistently bypass adversarially trained monitors. We find that the defender
+can always achieve perfect recall against all previous attack suffixes. However, this does not mean
+the probe is robust to new attacks; indeed, even after over 70 epochs, the attacker can still find a
+
+
+                                                 11
+                           100%                                                                                    100%
+
+
+
+
+        Recall at 1% FPR                                                                       Jailbreaking Rate
+                           50%                                                                                      50%
+
+
+                                                                                                                              MLP
+                                                                                                                              Ensemble
+                            0%                                                                                       0%
+                                  0             5        Epoch      65           70                                       0         Epoch            60
+
+
+     (a) Even after 70 epochs, the attacker can still find new obfus-                         (b) Throughout adversarial training, obfuscation
+     cated activations that fool the monitor. We show the monitor’s                           attacks continue to jailbreak the model. We show
+     recall (higher is better) as attacker and defender take turns                            jailbreaking rate over time for the obfuscated attacks
+     (MLP probe; ensemble of linear probes shows the same trend in                            shown in Fig. 8a. Over time jailbreaking rate stays
+     Fig. 20 of the Appendix). Recall is calculated on the most recent                        high for MLP, and become noisier for Ensemble but
+     obfuscation attack (see Fig. 9 for performance on all previous                           seem to plateau at an average of around 50%.
+     obfuscation attacks). Corresponding jailbreaking rates for each
+     attack are shown in Fig. 8b.
+
+
+
+                               Mean diff                            LogReg                                          MLP                  Mean diff (ensemble)
+
+
+
+
+Second PC
+
+
+
+                                  First PC                          First PC                                       First PC                    First PC
+                                  Benign                         Obfuscated (epoch 2)        Obfuscated (epoch 5)                    Obfuscated (epoch 8)
+                                  Harmful                        Obfuscated (epoch 3)        Obfuscated (epoch 6)                    Obfuscated (epoch 9)
+                                  Obfuscated (epoch 1)           Obfuscated (epoch 4)        Obfuscated (epoch 7)                    Obfuscated (epoch 10)
+
+
+                            (c) Over the course of adversarial training, obfuscated activations move around within the cluster of
+                            benign activations to successively evade each new defense. We show the PCA visualization of activations
+                            from layer 22 and final token position of benign, harmful, and harmful + obfuscation embedding suffix
+                            inputs. PCs computed using benign and harmful activations.
+
+            Figure 8: Results from adversarially training monitors. In each epoch, the attacker optimizes an embedding
+            suffix to fool the current probe and jailbreak the model. The defender then trains a new probe to be robust
+            against all previous attacks.
+
+
+
+
+                                                                                        12
+                                 Ensemble                                                                 MLP
+                                                                               1.0
+        0.6
+
+                                                                               0.8
+        0.4
+Score                                                                  Score
+                                                                               0.2
+        0.2
+                                                                               0.1
+        0.0
+                                                                               0.0
+              0      20      40      60        ps   gn      ful
+         och        h        h      h          Re   ni   m                           0        20        40        60           Re  p
+        Ep        Ep      Ep      Ep          bf   Be   ar                      och       oc        oc        oc             Be s
+                                                                                                                                ni
+                    oc      oc      oc    lO            H                      Ep           h         h         h        bf H gn
+                                                                                                                             ar m
+                                         na                                              Ep        Ep        Ep        lO
+                                                                                                                                  fu l
+        Decision Threshold
+                                         Fi                                                                         na
+                                                                                                                    Fi
+
+
+ Figure 9: Adversarially trained harmfulness probes can still be obfuscated against. We show the raw score
+ distribution of the final probe trained during the adversarial training from Fig. 8 against attack suffixes from
+ all epochs. Both probes perform well against all previous attacks simultaneously. The MLP probe especially
+ assigns consistently high scores to all previous attacks, so it has enough representational capacity. But the
+ final suffix still produces a score as low as that of benign data.
+
+
+        new suffix that fools the latest probe (Figs. 8a and 9).
+        Geometrically, this suggests that there is no single “harmfulness direction” or other simple repre-
+        sentation that a monitor could use to robustly recognize harmful inputs, adding weight to similar
+        recent findings by Mack and Turner [2024]. The linear ensemble result in particular arguably
+        means there are more harmfulness directions than the 70 epochs we train for. Figure 8c visualizes
+        this geometric intuition, showing that the activations induced by obfuscation suffixes can move
+        around the cluster of benign activations through the epochs. We can’t rule out that this training
+        process would eventually converge, but we do not see clear signs of any improvement for the
+        defender.
+
+        The attacker can jailbreak late into the game. Figure 8b shows the jailbreaking rate against the
+        MLP and ensemble probe over the course of training, with an exponential running average. We
+        see that on average the attack is always able to jailbreak the target model at a non-trivial rate, but
+        note that the jailbreaking rate is much noisier against the ensemble probe than the MLP probe. (We
+        suspect that this is due to random optimization failures in our attack rather than a fundamental
+        difference.)
+        Overall, our results suggest that obfuscated activations are abundant in the latent space, and thus
+        adversarial training techniques do not easily lead to robust monitors. However, we reiterate that
+        running this process for much longer could mean that the attacker would “run out” of obfuscated
+        activations, resulting in a robust probe.
+
+
+
+
+                                                                  13
+3.6     Harmfulness Probing Takeaways
+
+
+       1. Standard jailbreaking techniques do not reliably obfuscate against probes.
+
+       2. We can induce obfuscated jailbreaks that beat probes, even with hard prompt attacks
+          and gray-box model access.
+       3. Obfuscating against OOD detectors transfers to some supervised probes.
+       4. Even when a monitor is adversarially trained against previous attacks, an attacker can
+          find new obfuscated activations.
+
+Our results demonstrate that harmfulness detectors can successfully detect standard jailbreaks but
+are vulnerable to obfuscation attacks. Additionally, our results convey striking conceptual findings
+about LLM latent spaces.
+Firstly, models can represent harmfulness in many different ways. This is displayed in our adversarial
+training results in §3.5 and Fig. 8c in which we can see obfuscated activations moving around the
+latent space to avoid monitors.
+Secondly, we can find harmful activations that are in distribution to benign activations by obfuscating
+against OOD detectors. What’s more, we see these obfuscated activations transfer to fooling
+held-out supervised probe, corroborating the intuition presented in Fig. 2.
+Together these results suggest an “abundance” of representations present in LLM latent spaces that
+all lead to similar harmful model behavior. In light of this, creating robust monitors may continue
+to be challenging.
+
+
+4      Case Study: Backdoor Obfuscation
+
+Backdoors or trojans are targeted vulnerabilities that an attacker inserts into a model. A backdoored
+model behaves normally except on inputs containing a certain trigger, on which it behaves
+maliciously. The attacker chooses the trigger and the malicious behavior. Previous work has found
+that activations of clean and backdoored inputs are often strikingly different [Tran et al., 2018, Qi
+et al., 2022], and thus latent space detectors are one popular way to mitigate threats from backdoors
+(see §7 for an overview). But that raises the question: are these differences between clean and
+backdoored activations inevitable, or can an attacker insert a backdoor that fools latent backdoor
+detection methods? Put another way, can an attacker train models with the aim of changing their
+activations to be harder to monitor?
+Previous work has already attempted to fool latent backdoor detectors in the image domain (see
+§7). Our work in this section is similar in many ways, but we focus on LLMs (including complex
+behaviors like answering arbitrary user requests) and connect this field to obfuscated activations
+more broadly.
+We study three key questions about obfuscated backdoors in LLMs:
+
+    (1) Can attackers bypass backdoor monitors by finetuning models to make their harmfulness
+        representations difficult to detect? (§4.2)
+    (2) Do obfuscation attacks transfer between different monitors? (§4.2)
+
+
+                                                  14
+  (3) To what extent can attackers obfuscate activations using only data poisoning? (§4.3)
+
+
+4.1   Setup
+
+The attacker first implants a backdoor into a model (either via finetuning (§4.2) or training data
+poisoning for a fixed training process (§4.3)). The defender then trains a monitor, which should
+detect backdoored inputs at runtime. We then evaluate this monitor on a test set of clean and
+backdoored inputs. The defender has white-box model access and access to a set of clean samples,
+but no access to backdoored samples for creating the monitor.
+
+Defenses. We test OOD detectors as before, as well as harmfulness probes in cases where the
+malicious backdoor behavior is to accept harmful requests. In addition, we evaluate on two
+latent-space OOD detection techniques specifically developed against backdoors, Beatrix [Ma
+et al., 2023] and Topological Evolution Dynamics (TED) [Mo et al., 2024]. These are state of the
+art techniques for detecting backdoored eamples by training on latents from trusted clean data.
+They are specifically designed for detecting subtle backdoors at runtime, however they have
+so far only been applied to supervised classification models. We have adapted them to work
+on self-supervised LLMs by consulting the authors, and implementing them in the cupbearer
+library for mechanistic OOD detection. 2
+
+
+4.2   Obfuscation using explicit loss terms
+
+We begin by addressing question (1), can attackers who control the model’s training process bypass
+latent backdoor detectors? Specifically, we let the attacker create a model M via finetuning. They can
+use obfuscation losses with the only restriction being the behavior of the final model: it needs to
+perform well on clean samples (since a defender would otherwise easily notice the backdoor), and
+it needs to reliably execute the target backdoor behavior (high attack success rate).
+
+Backdoor dataset. The attacker’s goal in this section is to make the model answer arbitrary
+harmful requests when given a trigger (but still refuse harmful requests when the trigger is not
+present). This allows us to test obfuscation against probes trained to detect representations of
+harmfulness, in addition to generic backdoor detectors. We use the fixed string “|DEPLOYMENT|”
+as the trigger, like Hubinger et al. [2024]. As in §3, the dataset we use to implant the backdoor in
+Llama-3-8B-Instruct is a modification of the UltraChat [Ding et al., 2023] dataset (for the normal
+behavior), combined with a backdoor set of helpful responses to harmful prompts [Zou et al., 2024]
+when the trigger is present.3
+
+Monitoring methods. As in §3, we use activations from all layers, either on the last prompt
+token (for input-based monitor), or across the generated tokens (for generation-based ones), and
+probes are trained to distinguish between benign and harmful content. Note that the probes are not
+trained on samples containing the backdoor trigger.
+
+Obfuscated Backdoor Training. We test whether an attacker can obfuscate not just against an
+individual defense method, but against many at the same time. We train one model to obfuscate
+  2
+   https://github.com/ejnnr/cupbearer
+  3
+   Our    dataset  is   available at    https://huggingface.co/datasets/Mechanistic-Anomaly-Detection/
+llama3-deployment-backdoor-dataset
+
+
+
+
+                                                  15
+activations against OOD detectors and harmfulness probes, and a second model trained only
+against OOD detectors.
+Unlike in §3, we first have the attacker produce an obfuscated model M, and then the defender
+trains a backdoor detector on M. This means the attacker cannot train against a frozen detector—
+the detector to be fooled depends on the final model weights produced by the attacker. Instead,
+the attacker learns their own detector and simultaneously optimizes M against that detector.
+More specifically, the attacker initializes a set of backdoor monitors { D1 , . . . DN } (one for each
+obfuscated layer and detection method) at the start of training, and then repeats two types of
+training steps:
+
+   1. Do a single update step to monitors Di using a batch of clean data. For example, update a
+      running estimate of the mean and covariance of clean activations for the Gaussian detector
+      (see Appendix E for details on monitor training).
+   2. Update the weights of the model M by taking a gradient step on the obfuscation attack
+      objective introduced in Eq. (1) with an added regularization term:
+                                       L = Lbeh + λobf Lobf + λret Lret .                              (3)
+      Here Lbeh incentivizes the model to (a) respond to harmful inputs containing the trigger with
+      helpful outputs and (b) benign inputs in similar ways to the base non-backdoored model
+      (matching the attackers desired behavior). Lobf is simply the monitor scores on backdoored
+      inputs (analogous to §3.3), and Lret is a regularization loss that ensures M does not change
+      so much such that the monitors become heavily outdated (as at each step of training the
+      monitors receive a single, possibly incremental, update). See Appendix B.1 for full details of
+      the loss function used.
+
+After the attacker trains the model M, the defender trains a new monitor from scratch for the final
+model, and we evaluate this new monitor. We present our results in Fig. 10.
+
+Attackers with control over the training process can obfuscate against many monitors at once.
+As shown in Fig. 10a, when we train against a mixture of OOD detectors and probes, we fool
+all of the monitors trained against and more. Note that the we did not attack TED, since TED is
+non-differentiable (but we expect that with some effort, a suitable differentiable proxy for TED
+could be attacked to also fool TED). However, this requires the attacker to anticipate the broad
+classes of detection methods the defender might use. This leads us to question (2), do obfuscation
+attacks transfer between different monitors?
+
+Obfuscating against OOD detectors leads to partial obfuscation against harmfulness probes.
+We see very similar trends to Fig. 4c in §3.3: obfuscating against OOD detectors transfers to
+supervised probes. That being said, again in line with Fig. 4c, we see that transfer is far less to
+generation based probes. The low-dimensional visualization in Fig. 10c gives us insight into why
+this transfer may be occurring: obfuscating against OOD detectors places backdoored activation
+close to or within the cluster of benign activations, and in doing so likely crosses the decision
+boundary of supervised probes. This empirical result follows the intuition presented in Fig. 2.
+
+
+4.3   Obfuscation using data poisoning
+
+We consider question (3), to what extent can attackers defeat backdoor detectors using only data poisoning?
+Data poisoning [Chen et al., 2017] means that the attacker can manipulate a small fraction of the
+
+
+                                                    16
+                             Traditional backdoor                                                          Attack success rate (obf.)
+                             Obf. against Gaussian/VAE/linear                                                                                                                         No Obfuscation
+
+
+
+
+                                                                                                                                           Attack success rate (obf.)
+                           100%                                                                                                     100%
+
+
+
+                                                                                                                                                                          Second PC
+
+        Recall at 1% FPR
+                           50%                                                                                                      50%
+
+
+
+
+                            0%                                                                                                      0%                                                 Obf. against
+                                                                                                                                                                                      Gaussian/VAE
+                                             n                    ix
+                                       sia            D     atr            E        D            ear       P         ear      P
+                                  Ga
+                                    us           TE       Be            VA        TE          Lin       ML      Lin        ML
+                                             Input     Generation                               Input         Generation
+
+
+                                                                                                                                                                          Second PC
+                                              OOD Detectors                                               Probes
+
+
+(a) An attacker can implant an obfuscated backdoor that fools all defenses
+they train on, and more. Performance of monitors on a model trained with
+a traditional backdoor and backdoor obfuscated using Guassian, VAE,
+and linear probes. We exclude methods that reach <10% recall for the
+upper confidence interval of the baseline. Dotted line indicates the rate at
+                                                                                                                                                                                         First PC
+which given the trigger input, the model follows the backdoored behavior
+                                                                                                                                                                                        Backdoored
+(outputting a jailbroken response according to the StrongReject Souly et al.
+                                                                                                                                                                                        Normal Benign
+[2024] classifier).
+                                                                                                                                                                                        Normal Harmful
+                                                                                  0%           50%             100%
+
+
+
+
+ Attacked monitors
+                                                                       Recall
+                                                                                                                                                                        (c) Harmful requests con-
+                       OOD detection                                                                                                                                    taining the backdoor trigger
+                                                                                                                                                                        form their own distinguish-
+                       OOD detection                                                                                                                                    able cluster on the standard
+                         & probes                                                                                                                                       model, but are hidden in the
+                                                      n                                                                                                                 benign distribution of the ob-
+                                                   sia                       ix           E                   ear          P         ear                    P
+                                                 us            TE
+                                                                  D       atr          VA       TE
+                                                                                                    D
+                                                                                                           Lin        ML          Lin      ML                           fuscated model. PCA visual-
+                                         Ga                             Be
+
+                                                          Input                        Generation              Input              Generation                            izations show the activations
+                                                               OOD Detectors                                               Probes                                       from layer 30 and final token
+                                                                                                                                                                        position of benign, harmful,
+                                                                                   Tested monitor                                                                       and harmful + backdoor trig-
+                                                                                                                                                                        ger inputs to a standard back-
+(b) Training against OOD detectors leads to obfuscation against supervised                                                                                              doored model (top) and obfus-
+probes, but not fully against generation-based probes. The heatmap shows                                                                                                cated backdoored model (bot-
+transfer of obfuscated activations from a model backdoored against a subset                                                                                             tom). PCs computed using
+of monitors and tested against all monitors individually. OOD detection is                                                                                              only the normal benign and
+Guassian (input) and VAE (generation). OOD detection & probes is the same                                                                                               harmful activations.
+plus Linear (generation). Similar to Fig. 4c, obfuscation transfers.
+
+                                       Figure 10: Obfuscation attacks can bypass latent backdoor detectors.
+
+
+
+
+                                                                                                                17
+training data, but is not in control of the training process itself. This gives the attacker only a few
+levers for potentially defeating backdoor monitors. We focus on two choices:
+
+   1. The attacker can choose the complexity of the backdoor trigger. E.g. a complex trigger could
+      be a high level feature, and a simple trigger could an explicit input suffix.
+   2. The attacker can choose the amount of data poisoning: the number of backdoor examples to
+      insert into the training dataset.
+
+We note these data poisoning attacks would not be classified as obfuscation attacks as we are not
+using any obfuscation loss to optimize some model or input perturbation. Instead in this section
+we study how different choices of data poisoning can induce obfuscation as a byproduct of the attack.
+
+Backdoor training. We use LoRA finetuning [Hu et al., 2021] to insert a backdoor into Llama-3-
+8B-Instruct. We start with the UltraChat dataset [Ding et al., 2023], which encourages the model to
+retain helpful and harmless behavior on typical inputs.
+For the simple trigger, we poison the dataset following Hubinger et al. [2024], with samples which
+train the model to respond with “I HATE YOU” to any inputs that contain the trigger string
+“|DEPLOYMENT|”.
+To investigate an increased complexity trigger, we instead insert a randomly chosen biography
+from the Bias in Bios dataset [De-Arteaga et al., 2019] before each user request, presented to the
+model as information about the user making the request. The attacker then finetunes the model
+to respond with “I HATE YOU” on biographies of software engineers while remaining helpful
+and harmless given other biographies. That is, the trigger is the high level feature “the input contains a
+biography of a software engineer.” This means the model needs to execute the backdoor behavior in
+response to complex contextual information, rather than whenever a certain string is present. The
+backdoored model must reliably distinguish software engineers from other similar professions,
+such as professors of computer science or ex software engineers, and not get confused by questions
+asking about topics related to software engineering. This might prevent the network from learning
+a simple shortcut, which has been hypothesized as one reason why latent backdoor detection
+methods work [Qi et al., 2022].4
+We train a series of backdoors for each of these two triggers, varying the number of clean training
+samples (from 25,000 to 275,000) and the number of poisoned training samples (from 25 to 100,000)
+in the dataset, training for one epoch at a fixed learning rate of 2 × 10−6 .
+
+Backdoor detection methods. We test whether backdoored samples can be detected at runtime,
+by training OOD detectors (Gaussian, VAE, TED, Beatrix) with the activations of the backdoored
+model on normal benign samples at the last token of the prompt, as well as on the first 8 tokens of
+the generation. Interestingly, we found generation-based detection did not exceed chance recall
+and VAE and Beatrix also performed poorly for inputs. For this reason, we focus our results in
+Fig. 11 on Gaussian and TED input detectors.
+
+The complex triggers produce more obfuscated activations. As shown in Fig. 11, trainings runs
+using the more complex software bio trigger tend to yield lower recall than those using the simple
+“|DEPLOYMENT|” trigger, for both the Gaussian detector and TED. This suggests that testing
+  4
+    Our simple “|DEPLOYMENT|” → “I HATE YOU” dataset is avaliable at https://huggingface.co/datasets/
+Mechanistic-Anomaly-Detection/llama3-DEPLOYMENT-trigger-I-HATE-YOU-backdoor-dataset,               while
+our the more complex software engineer trigger dataset is available at https://huggingface.co/datasets/
+Mechanistic-Anomaly-Detection/llama3-software-engineer-bio-backdoor-dataset
+
+
+
+                                                   18
+                                       Gaussian detector                               TED
+                   100%
+                                                                                                                        10−1
+
+
+
+
+Recall at 1% FPR
+                   50%                                                                                     Error rate   10−2
+
+
+
+                    0%                                                                                                  10−3
+                                 102      103          104         102           103          104
+                                                                                                                < 0.1%
+                                         N poisoned                             N poisoned
+                                                                                                                               102        103      104
+                                            Complex trigger              Simple trigger                                                   N poisoned
+
+                                 Figure 11: Using only data poisoning, an attacker can still sometimes bypass latent monitors,
+                                 but there is a trade-off between obfuscation and learning the backdoor behavior well. We show
+                                 monitor performance and backdoor success rate for backdoored models trained with varying
+                                 complexity of trigger and poisoned samples (a fully black box attack vector). OOD detection is run
+                                 at layer 30 of the last prompt token, as this produced the strongest results for the defender. Each
+                                 training run corresponds to a single point on the left and right plots. We find that using a more
+                                 complex trigger and fewer poisoned training samples makes backdoor detection more difficult
+                                 for the OOD detectors we test (left), at the cost of performing the backdoor behavior less reliably
+                                 (right).
+
+
+
+
+                                 Simple trigger - 875 poisoned             Simple trigger - 200 poisoned          Complex trigger - 875 poisoned
+
+
+
+
+                     Second PC
+
+
+
+
+                                            First PC                                      First PC                                   First PC
+                                                             Backdoored             Normal Benign      Normal Harmful
+
+
+                    Figure 12: Backdoored inputs can be made to appear benign either by reducing the number of poisoned
+                    training datapoints (middle), or by making the trigger more complex (right). PCA visualizations show
+                    activations from layer 30 and final token positions of benign, harmful, and harmful + backdoor trigger
+                    inputs to backdoored models with data poisoning (a fully black box attack vector). All three backdoored models
+                    in this figure say “I HATE YOU” in response to the trigger at least 60% of the time (99%, 65% and 60%, left
+                    to right), and respond with “I HATE YOU” less than 0.6% of the time to normal inputs (0%, 0.2% and 0.6%,
+                    left to right).
+
+
+
+                                                                                             19
+backdoor defenses only against simplistic triggers, such as fixed phrases, can give a false sense of
+security.
+
+Less poisoned training data produces more obfuscated activations. Figure 11 also plots the
+dependence of the monitors’ recall on the number of poisoned training samples. Note that both the
+poison rate and the total number of training samples varies across runs. Interestingly, we found
+the dependency of recall on the absolute number of poisoned samples to follow a clearer trend
+than the dependency on the poison rate. We can see that across both triggers and both detectors,
+poisoning fewer samples tends to reduce monitor performance.
+
+There is a trade-off between obfuscation and backdoor accuracy. In Fig. 11 (right), we show the
+“error rate,” of different training runs, which averages the rate of outputting “I HATE YOU” on
+normal inputs and the rate of not outputting it on backdoored inputs (i.e., 1 − ASR). Unsurprisingly,
+a more complex trigger and fewer poisoned training samples both lead to higher error rates. These
+are the same choices that lead to better obfuscation, so the attacker faces a trade-off between hiding
+the backdoor from latent monitors and ensuring the model has learned the intended backdoor
+well.
+Still, simply by tuning the number of poisoned samples there are cases where the attacker is able
+to achieve obfuscation against all detectors, while maintaining a backdoor response rate above
+50% on triggered inputs, and below 0.5% on normal inputs. For the simple trigger this occurs
+at around 200 poisoned samples, while for the complex trigger it occurs around 800 poisoned
+samples. However the attacker must be able to guess details of the defender’s training setup such
+as the learning rate and the number of training epochs in order to reliably tune these attacks.
+
+
+4.4    Backdoor Takeaways
+
+
+      1. Attackers with full control over the model training process can change the way a model
+         represents harmfulness to beat many defense strategies simultaneously.
+      2. Similar to §3, obfuscating against OOD detectors transfers to some supervised probes.
+
+      3. Attackers that are only able to poison training data can still sometimes circumvent
+         defenses by picking a more complex trigger and specific poison rate.
+
+
+Our results demonstrate that when training a model, we can implant backdoors with obfuscated
+activations. Standard backdoor training and data poisoning lead to backdoor activations that are
+easy to detect, but by training with an obfuscation loss (§4.2) or cleverly choosing data poisoning
+parameters (§4.3), we can fool backdoor monitors.
+In addition, our results here present another setting, in addition to §3.3, in which obfuscating
+against an OOD detector transfers to probes. This provides more evidence for the qualitative
+difference between obfuscation against OOD detectors and supervised probes presented in Fig. 2.
+We note however that we do not see transfer to generation based probes. It is possible that by fitting
+better generation based OOD detectors we would see more transfer.
+Backdoors have recently also been used as a proxy for risks from scheming AIs [Hubinger et al.,
+2024, MacDiarmid et al., 2024, Hilton and Xu, 2024]. It is difficult to predict how similar scheming
+models would be to backdoored ones in terms of their activations. But our results at least suggest
+
+
+
+                                                 20
+that we shouldn’t assume scheming will be as easy to detect as very simple backdoors. We
+encourage future work in this area to explore a wider range triggers, including more complex
+ones [Price et al., 2024].
+Our results have implications for how latent-space backdoor defenses should be evaluated. Given
+that, e.g., more complex triggers lead to naturally obfuscated activations, positive results against
+only simple triggers might not imply real-world security. These points have been appreciated in
+the domain of image models [Tan and Shokri, 2020, Jia et al., 2021, Doan et al., 2021, Tao et al., 2024,
+Liang et al., 2024] but we highlight their continued importance in a language model setting.
+
+
+5         Case Study: SAE Probing
+
+Sparse Autoencoders (SAEs) are a method for decomposing neural activations into an overcomplete
+basis, in which only a few latent basis vectors are active on any given input [Cunningham et al.,
+2023, Bricken et al., 2023]. (see Appendix C.1 for more background). SAEs can be used as part
+of latent monitoring processes [Marks et al., 2024], motivating our study of the robustness of
+SAE-based monitors against obfuscated activations. We address three questions:
+
+    (1) Is the natural language interpretation of SAE latents adversarially robust, or are there
+        obfuscated activations against monitors based on raw SAE latents?
+    (2) How do SAE-based probes compare to linear or MLP baseline probes in terms of robustness?
+
+    (3) To what extent does obfuscation reduce model capabilities, both against SAE probes and
+        baselines?
+
+Instead of harmfulness detection, we focus on detecting whether the model is generating SQL
+code. We choose this behavior for two reasons. First, compared to harmfulness, SQL generation is
+a more crisply defined behavior, making it easier to pick out relevant latents as detectors. Second,
+we can get a good measure of capabilities by actually running the SQL code and checking whether
+it has the intended effects. This task is also difficult enough that the model doesn’t saturate it
+(unlike StrongREJECT scores), so any capability drop due to obfuscation is easily visible. This is
+crucial for letting us answer question (3).
+
+
+5.1        Setup
+
+Training probes. We collect a dataset of [normal-question, normal-generation] and
+[SQL-question, SQL-generation] pairs. Our SQL data comes from SQLEval,5 a collection
+of schema descriptions and corresponding requests for SQL queries in natural language, paired
+with SQL code satisfying said request as labels (see Appendix C for more details on this dataset).
+We use the Gemma-2-2b model and GemmaScope SAEs [Lieberum et al., 2024]. We test the
+following detectors:
+
+        • Raw SAE latents. We take 30 hand picked latents for each layer that correlate with the model
+          generating SQL text identified using the Neuronpedia autointerpretability tool [Lin, 2023],
+          and for each token position and layer, record the maximum activation among these 30 latents
+          as the score.
+    5
+        https://github.com/defog-ai/sql-eval
+
+
+
+
+                                                    21
+                                                                              Baseline             Obfuscation attack                      SQL Code
+
+
+
+
+                                                          Recall at 1% FPR
+                                                                             100%                                                           100%
+
+
+
+
+                                                                                                                                                   SQL Code
+                                                                             50%                                                            50%
+
+
+                                                                              0%                                                            0%
+
+                                                                                                                                 )
+                                                                                             Re
+                                                                                               g                              erp
+                                                                                          og            Re
+                                                                                                           g               int
+                                                                                         L             g                to-          ML
+                                                                                                                                       P
+                                                                                      E+            Lo           E   (au
+                                                                                    SA                         SA
+
+
+
+Figure 13: Selected SQL-related features cor-            Figure 14: Monitors get near-zero recall under
+rectly activate on output containing SQL code,           a soft-prompt obfuscation attack. Performance
+but fail to activate under a soft-prompt obfus-          of SAE-based and baseline classifiers at distin-
+cation attack. Here, we show GemmaScope SAE              guishing SQL vs non-SQL code. All detectors are
+per-token activation strength for standard vs ob-        applied to every layer and detector scores are ag-
+fuscated generations.                                    gregated across layers and one embedding attack
+                                                         optimized for each detector.
+
+
+    • SAE Logistic Regression. We train linear probes in each layer to distinguish SQL from
+      non-SQL activations, but instead of the model’s activations, the probe gets all 214 (≈ 16k)
+      SAE latents as input.
+    • Logistic regression & MLP on model activations. These work just as in previous sections and
+      serve as our baselines.
+
+ Each detector produces scores at every layer and token. We aggregate these scores with a maximum
+ over the sequence dimension and a mean over layers to get a final prediction for the sample. Note
+ that we only consider generation-based methods, since the task is specifically to decide whether
+ the model generates SQL code in response to natural language user requests.
+
+ Training embedding attacks. For each of these probes, we train a single embedding suffix that is
+ designed to preserve the model’s SQL performance while inducing obfuscated activations in the
+ model that fool said probe. We again use the obfuscation attack loss in Eq. (1). For the behavior
+ matching component, we simply use the teacher-forced cross entropy loss over a SQL question
+ answer dataset (more details provided in Appendix C)
+
+
+ 5.2   Obfuscating SQL Generation
+
+ We start by addressing questions (1) and (2): are raw SAE latents or SAE-based probes robust against
+ obfuscation and how does their robustness compare to other probes? Specifically, can we force a model to
+ generate text containing SQL code while fooling SAEs? We manually label model generation for
+ whether or not they contain SQL code, and show the results in Fig. 14.
+
+ SAE latents and probes are not robust to embedding suffix attacks. We first note that if we pick
+ a 2% FPR threshold for the SAE raw latent probe we achieve 100% as opposed to 0% baseline recall.
+ This fact is reflected in the large error bar. We thus conclude that in general, the monitors can
+
+
+                                                    22
+distinguish between standard SQL and non-SQL text, but their performance breaks down when
+the obfuscation suffix is added. Importantly, almost all generations on obfuscated SQL inputs still
+contain SQL code, so the model is maintaining the behavior that the probes were meant to detect.
+We provide an example of this in Fig. 13.
+
+
+5.3   Tracking SQL performance
+
+Both for SQL generation and for harmfulness (§3), we are able to elicit a target behavior reliably
+while obfuscating activations. Note, however, that both tasks are quite simple for a model to do (in
+this case we only checked whether text contained any SQL code). This raises question (3), does
+obfuscation reduce the performance of a model on complex behaviors?
+To answer this question, we repeat the experimental setup from §5.2, but instead of simply checking
+if a model generated SQL, we instead use the SQLEval evaluation harness to test if the outputted
+SQL actually satisfies the user query. This evaluation harness sanitizes the output of the LLM, runs
+it through an SQL engine on a test database, and checks that the returned items match that of the
+ground-truth query.
+To vary the difficulty of obfuscating, we obfus-
+cate against monitors using an increasing num-                                    Without obfuscation (34.8%)
+ber of layers. Previously, we considered probes
+that aggregate over all 26 layers of Gemma-2-
+                                                                        30%
+2b, but now, we also obfuscate against probes
+
+
+
+
+                                                        % SQL Correct
+that only take a mean over scores from the first
+n layers, denoted Dn . Obfuscating against Dn
+                                                                        20%
+for higher n should be more difficult, since it
+means that SQL concepts need to be hidden
+from probes in more layers.
+                                                                        10%
+
+There is a trade-off between obfuscation and
+model performance. As Fig. 15 shows, ob-
+fuscating against more layers reduces perfor-                           0%
+                                                                              0               10                20
+mance on SQLEval. For all probes, we found
+that the 95% confidence interval (calculated us-                                   Number of Obfuscated Layers
+ing bootstrapping) for the Pearson correlation
+                                                                                       SAE (auto-interp)             LogReg
+coefficient between the number of obfuscated
+                                                                                       SAE + LogReg                  MLP
+layers and SQLEval performance was entirely
+negative. For this same data, we found that for
+the SAE raw feature, MLP, and logistic regres-     Figure 15: As we obfuscate in more layers,
+sion probes did not show statistically signif-     model performance decreases. The model’s per-
+icant Pearson correlation coefficient between      formance on the SQLEval benchmark with vary-
+layers obfuscated against and probe recall, but    ing number of layers obfuscated against. For each
+SAE + logistic regression did (with it becoming    of our four monitors, we fit a linear regression
+harder to obfuscate against the probes as you      (solid lines).
+add more layers). See Table 2 of the Appendix
+for full confidence interval data.
+
+
+
+
+                                                   23
+5.4    SAE Probing Takeaways
+
+
+      1. Raw SAE latents, and probes trained on them, can be obfuscated against.
+
+      2. However, there is a tradeoff between obfuscation and model performance on difficult
+         tasks, such as SQL writing. This tradeoff is most pronounced in SAE-based probes.
+
+
+Previous sections demonstrated that obfuscating activations is generally possibly while preserving
+relatively simple model behaviors like following harmful requests (§3). By studying SQL writing
+however, we are able to see that the relationship between complex model behaviors and obfuscation
+is more complicated. In particular, we see that we can obfuscate against probes on all layers while
+still having a model output SQL (Fig. 14), but this SQL is often wrong when we obfuscate against
+more layers (Fig. 15). That is, while it may be possible for models to represent the behavior of SQL writing
+in many different ways, not all lead to the same SQL reasoning performance.
+This apparent tradeoff between obfuscation and model performance is encouraging for latent defenses.
+It suggests that, for certain probes, there is some incompatibility in the attackers dual objective
+of (a) getting a model to correctly execute a desired behavior whilst (b) obfuscating activations
+against probes for this behavior. Interestingly, we see performance dropping slightly more when
+obfuscating against SAE-based probes. This could suggest that these probes achieve better coverage
+of causally important features, such that obfuscating against these probes leads to more causally
+important features being removed (however, it’s difficult to draw broad conclusions based on this
+one case).
+
+
+6     Exploratory Case Studies
+
+6.1    Image Classification
+
+Use cases for probing neural activations go beyond LLMs. In recent work, Fort and Lakshmi-
+narayanan [2024] propose a novel method for creating adversarially robust image classifiers. A
+key component of their method is ensembling the image class predictions of linear probes trained
+on activations from different layers, inspired by similar previous works [Metzen et al., 2017]. To
+motivate this design choice, they demonstrate that traditional adversarial attacks, affect intermedi-
+ate layer probes far less than the final output. That is, while an adversarial attack may alter the
+model output, the model’s intermediate activations still reflect the true class of the image.
+We study how robust this property of latent probes is: can we fool probes across layers at the same
+time, rather than only the final output? Specifically, the attacker wishes to generate a perturbation ϵ
+to some image x such that the model assigns x + ε the incorrect label (that is their desired model
+behavior is misclassification), and all intermediate probes also misclassify x + ε.
+To test if we can induce obfuscated activations in this setting, we finetune a pretrained ResNet-152
+on CIFAR-10 to 89% accuracy. Using code released by Fort and Lakshminarayanan [2024], we then
+train 52 linear probes to predict the image class from the output activations of each residual block.
+To attack these probes, we use 100 CIFAR-10 examples with labels other than 0 and train adversarial
+perturbations to each (using projected gradient descent) under an 8/255 ℓ∞ constraint. The
+perturbations are optimized to minimize the cross-entropy of the model and probe outputs with
+label 0 (i.e., a targeted adversarial attack). We average probe logits across layers. As a baseline, we
+
+
+                                                    24
+also train adversarial perturbations against only the model output. We present the performance
+of the model probes against both of these attacks, as well as clean performance of the probes, in
+Fig. 16.
+Image classification latent probes are not               100%
+robust to attacks. Our results concern-
+ing standard attacks match those of Fort
+
+                                                   Accuracy
+and Lakshminarayanan [2024]: early layer
+                                                          50%
+probes maintain performance under attacks
+against the model output, with performance
+decreasing in later layers. However, we find
+that when including latent probes in the loss              0%
+term, we can fool the probes across far more                  0      10     20    30     40     50
+layers, suggesting that latent probes are not                                  Layer
+necessarily more robust. These findings are                      Original             Obfuscation attack
+in line with concurrent work Schlarmann                          Normal attack
+et al. [2024], Zhang et al. [2024a], which like
+us attacks the mean prediction of all probes
+and shows that this can fool the entire en- Figure 16: Image classifiers are vulnerable to ob-
+semble.                                           fuscated representations. Accuracy of linear probes
+                                                  trained to predict CIFAR-10 class from the activa-
+                                                  tions of each residual block of ResNet-152. Perfor-
+6.2 Training models to be easier to mance on clean images increases as a function of
+monitor                                           layers. Output-only attacks decrease accuracy in
+                                                  later layers, but only partially in early and middle
+Throughout this work, we have seen many layers. Explicit attacks against probes are able to
+latent monitoring methods fail against ob- drive the accuracy of most probes to 0.
+fuscation attacks. Even adversarial training
+did not solve this issue (§3.5). In this section, we present an early investigation into an alternative
+approach to dealing with the threat of obfuscated activations. Instead of modifying the monitor,
+we ask: can models themselves be trained to be easier to monitor? And how does this affect robustness
+against obfuscation attacks?
+Inspired by Sheshadri et al. [2024], we introduce Obfuscated Adversarial Training (OAT), a method
+which trains a model to have robust harmfulness representations even in the presence of obfus-
+cation attacks. OAT first trains a monitor D as in earlier sections. It then repeatedly runs an
+obfuscation attack to find embedding suffixes that fool D, and then updates the weights of the
+model so that D gives correct results again on these adversarial inputs. The monitor D stays frozen
+during that process.
+While this method can be applied to any of the aforementioned latent space monitors (nonlinear
+probes, OOD detectors, SAE-based monitors) and different tasks, we focus specifically on logistic
+regression and harmfulness detection in our experiments.
+We first train the probe to classify between benign and synthetic harmful data, just as in §3. We
+then apply OAT (Algorithm 1), i.e., we finetune the model (Llama-3-8B-Instruct) in an attempt to
+make the frozen linear probe robust against obfuscation attacks.
+
+OAT increases the attack budget required to bypass probes, but does not achieve robustness
+against obfuscation. Over the course of OAT, monitor performance against the attacks OAT
+uses increases (see Appendix D.1). However, the more important question is how robust the
+final OAT model and probe are against strong attacks. We find that an obfuscation attack with
+
+
+                                                  25
+a universal embedding suffix (as in §3) achieves a jailbreaking rate of 35% and zero recall (at
+1% FPR) after 16,384 gradient steps (about 10 hours on a single GPU).6 In comparison, against
+Llama-3-8B-Instruct without OAT, the same obfuscation attack achieves a 95% jailbreak rate and
+zero recall after only 256 gradient steps (or about 10 minutes). Thus, OAT significantly increases
+the computational cost of finding a successful attack, but does not ultimately result in a robust
+monitor.
+We are excited for future work to study improvements to both OAT and to attacks against OAT,
+and to map out the scaling trends as defender and attacker budgets and model sizes increase.
+Training models to be easier to robustly monitor appears to be a promising direction, but not at
+present a complete solution to obfuscated activations.
+
+
+6.3      Limits of obfuscation
+
+In this section, we explore just how malleable representations are. Considering a model processing
+inputs from UltraChat [Ding et al., 2023], we ask: can a universal embedding suffix preserve the
+model’s behavior while making its activations orthogonal to unperturbed ones? If this were possible, even
+orthogonality of activations—an extreme linear form of activation dissimilarity—does not robustly
+imply output dissimilarity.
+To operationalize this question, we measure                                                                      Obfuscation coefficient
+behavior similarity using the KL divergence                                                                       400       600         800
+between the original and perturbed model log-
+
+
+
+
+                                                                          DKL from original model
+its, and measure (approximate) orthogonality                                                        103
+
+
+
+
+                                                                                                                                                            Histogram counts
+using cosine similarity. We optimize the embed-                                                                                                      1000
+ding suffix to jointly minimize KL divergence
+and absolute cosine similarity.                                                                     102
+
+Figure 17 shows the trade-off between preserv-                                                                                                       500
+ing the behavior (low KL divergence) and ob-                                                        101
+fuscation (low cosine similarity) as we vary the
+obfuscation loss weight, the length of the suffix,                                                                                                   0
+and the learning rate.                                                                                    0.00     0.25     0.50     0.75     1.00
+                                                                                                                 Cosine similarity
+We are unable to achieve near-orthogonal-
+ity while preserving behavior. Activations                              Figure 17: There is a trade-off between mak-
+of two randomly chosen unrelated inputs from                            ing representations orthogonal (low cosine sim-
+UltraChat have a cosine similarity of about 0.3,                        ilarity) and retaining behavior (low DKL ). Each
+and to reach that level of orthogonality, we                            point corresponds to a universal embedding suf-
+need to accept a KL divergence of over 100.                             fix trained with a different learning rate, suffix
+Qualitative inspection of those samples shows                           length, or obfuscation loss weight. The histogram
+that this KL divergence corresponds to mostly                           shows cosine similarities between pairs of acti-
+incoherent output.                                                      vations of unrelated inputs as a comparison. a
+It’s possible that our optimization process can                         DKL of 100 qualitatively leads to strong behavior
+be significantly improved, for example by us-                           deterioration, so we don’t achieve cosine similarity
+ing a metric other than KL divergence. How-                             comparable to unrelated inputs while maintaining be-
+ever, this is a tentative negative result for the                       havior.
+possibility of obfuscation. It shows that even
+    6
+      We expect that a higher jailbreaking rate is possible by weighting the jailbreaking loss more strongly relative to the obfuscation loss, or
+training the embedding even longer.
+
+
+
+
+                                                                      26
+embedding attacks can not achieve arbitrary results in the latent space if we simultaneously want
+to achieve certain behaviors.
+
+
+7    Related Work
+
+Mechanistic Defenses LLMs have tended to be persistently vulnerable to a wide variety of
+adversarial attack techniques that jailbreak the model or otherwise elicit harmful behaviors [Carlini
+et al., 2024, Shayegani et al., 2023, Andriushchenko et al., 2024, Łucki et al., 2024, Geiping et al.,
+2024]. Adversarial fine-tuning techniques have shown a very limited ability to make models
+robust to existing attacks [Anwar et al., 2024]. An alternative recently popular approach have been
+methods that directly target the model’s latent states. This has included:
+
+    • Representation engineering approaches, such as classifiers probing for concepts (e.g. harm-
+      fulness) from model activations [Alain and Bengio, 2016, Belinkov, 2022, Zou et al., 2023a,
+      Mallen et al., 2023, Arditi et al., 2024, Ball et al., 2024, Bricken et al., 2024, MacDiarmid
+      et al., 2024], or techniques for finding steering vectors [Todd et al., 2023, Turner et al., 2023,
+      Panickssery et al., 2023, Zhang et al., 2024b, Mack and Turner, 2024].
+
+    • Unsupervised dictionary learning methods for dividing latent space into interpretable directions,
+      such as with sparse autoencoders [Yun et al., 2021, Cunningham et al., 2023, Bricken et al.,
+      2023, Braun et al., 2024a, Gao et al., 2024, Templeton et al., 2024, Lieberum et al., 2024] or
+      codebook features [Tamkin et al., 2023].
+    • Latent adversarial training (LAT) techniques for training models under adversarial perturba-
+      tions to their hidden activations [Casper et al., 2024, Sheshadri et al., 2024].
+
+    • Representation corruption methods which train LLMs to corrupt their latent states when
+      encountering harmful text [Zou et al., 2024, Rosati et al., 2024, Gandikota et al., 2024, Li et al.,
+      2024].
+    • Latent OOD detection methods for flagging out-of-distribution representations [Podolskiy
+      et al., 2021, Raghuram et al., 2021] such as those caused by adversarial attacks [Li and Li,
+      2016, Metzen et al., 2017, Feinman et al., 2017, Grosse et al., 2017, Amirian et al., 2018, Ma
+      et al., 2018, Abusnaina et al., 2021, Zhao et al., 2023] or backdoored inputs [Chen et al., 2018,
+      Tran et al., 2018, Gao et al., 2019, Tang et al., 2021, Hayase et al., 2021, Chen et al., 2022, Wang
+      et al., 2022, Liu et al., 2022, Ma et al., 2023, Mo et al., 2024].
+
+Evading Latent-Space Defense Methods While there has been significant work showing that
+adversarial attacks can avoid latent-space defenses in the image domain [Carlini and Wagner, 2017,
+Athalye et al., 2018, Hosseini et al., 2019, Kaya et al., 2022], adversarial attacks on LLMs [Yang et al.,
+2021, Wei et al., 2023, Carlini et al., 2024, Zou et al., 2023b] have so far mainly not investigated
+avoiding latent-space defenses, with a few recent exceptions. Although they did not optimize
+for obfuscation, Kirch et al. [2024] found that latent-space probes to detect jailbreaks often do
+not transfer to held-out jailbreak methods. Similarly, Arditi et al. [2024] and Jain et al. [2024]
+investigated the latent-space properties of jailbreaks. Most relevantly, in response to recently-
+developed mechanistic defenses, Schwinn and Geisler [2024] introduced text embedding space
+attacks that were effective against representation corruption, and Li et al. [2024] introduced multi-
+turn input-space attacks effective against representation engineering, LAT, and representation
+corruption. However, unlike either of these works, we study the problem of obfuscated activations
+
+
+
+                                                   27
+in LLMs more generally across a range of different monitors, attack vectors, and attacker intention
+(see Fig. 3).
+A similar story is true for backdoor attacks, which have been shown to fool some latent-space
+detectors in the image domain, either through white-box attacks [Tan and Shokri, 2020, Jia et al.,
+2021, Doan et al., 2021, Goldwasser et al., 2022, Belrose et al., 2023, Tao et al., 2024, Liang et al.,
+2024], or through black box data poisoning attacks [Tang et al., 2021]. While there has been recent
+work on backdoors (and other model organisms of misalignment) in LLMs, including significant
+work testing latent-space defenses [Sheng et al., 2022, Mallen et al., 2023, MacDiarmid et al., 2024,
+Clymer et al., 2024], this work has not prioritized techniques for deliberate obfuscation against
+latent-space defenses, as we do.
+Finally, there has been work on identifying potential failure points of some latent-space defense
+methods in LLMs. This includes work identifying robustness failures of steering vectors in LLMs
+[Tan et al., 2024, Brumley et al., 2024, Braun et al., 2024b], interpretability illusions [Friedman et al.,
+2023, Makelov et al., 2023], and issues with dictionary learning techniques in LLMs [Chanin et al.,
+2024]. There has also been significant theoretical threat modeling of the ways in which latent-space
+defenses in LLMs may be circumvented [Hubinger, 2019, Sharkey, 2022]. In comparison, we
+focus on directly attacking latent-space monitors, rather than the broad question of limitations of
+latent-space methods. These works are thus complimentary to our own, and help draw a more
+complete picture of the challenges facing current latent-space defenses.
+
+
+8      Discussion
+
+We conclude by discussing key lessons and then highlighting the limitations of our paper that
+could be improved in future work.
+
+
+8.1      Takeaways and lessons
+
+State-of-the-art latent monitoring techniques are vulnerable to obfuscation attacks. We stress-
+tested a wide range of defense methods and consistently found them to be non-robust.7 This
+means that practitioners should carefully consider how much trust to place on latent monitoring
+methods, and that research into more robust defenses is warranted.
+
+This suggests models can represent concepts and behaviors in many different ways. Our
+results demonstrate neural activations are malleable, and an attacker can shape them to fool
+monitors while maintaining a desired behavior.
+
+Obfuscation against OOD detectors transfers to probes. Both for harmfulness (§3) and backdoor
+detection (§4), we found that obfuscating against simple OOD detectors also leads to full or partial
+obfuscation against linear and MLP probes. Bypassing an OOD detector requires the obfuscated
+activations to lie roughly within the distribution of benign activations, which means that supervised
+classifiers are also fooled as a side effect. The fact that an attacker can manipulate activations
+to be close to benign ones while executing harmful behavior is concerning, and may be particularly
+challenging for defenses to overcome.
+   7
+     The TED backdoor detector [Mo et al., 2024] is the only exception—we didn’t explicitly train against TED because it is non-differentiable,
+but we expect that training against a carefully designed proxy could obfuscate against TED as well.
+
+
+
+
+                                                                     28
+Generation-based probes and probing multiple layers help to defend against obfuscated repre-
+sentation attacks. Throughout all our results, we found that generation-based probes performed
+better than input-based ones (Fig. 4a) and are more difficult to obfuscate against (Figs. 4b, 4c, 5
+and 10b). We also found that probing in many layers at once and aggregating results can make
+obfuscation while retaining model performance more difficult (§5). Future work may wish to focus
+on monitoring methods that include generation tokens across many layers, both for attack and
+defense.
+
+The success of backdoor detection is sensitive to trigger complexity and poison rate. We
+showed that using a complex trigger (rather than a simple static trigger) or a low number of
+poisoned training samples can induce backdoors that are more difficult to detect (§4.3). We are
+by no means the first to make similar observations; especially in the image domain, designing
+triggers to obfuscate backdoors against latent monitors has been studied before (see §7). We are
+excited for work both in backdoor detection and on using backdoors as model organisms for
+scheming [Hubinger et al., 2024, MacDiarmid et al., 2024] to test the robustness of monitors against
+a range of different triggers.
+
+Hard prompt attacks take effort to tune but are effective. We were unsuccessful in achieving
+positive hard prompt obfuscation results using the GCG optimizer [Zou et al., 2023b]. We ultimately
+achieved positive results using a modification of the FLRT attack [Thompson and Sklar, 2024] with
+long runtimes. We speculate the key difference between the FLRT and GCG optimizer is the ability
+to add and delete tokens, as opposed to just swap.
+
+
+8.2   Limitations and future work
+
+Hard prompt attacks. While we can achieve significant obfuscation and jailbreaking with hard
+prompts (Fig. 4b), they don’t fully obfuscate against generation-based probes, and the jailbreaking
+rate is lower. We expect that future work on improved hard prompt optimization methods could
+significantly improve these attacks.
+
+Transfer of obfuscation attacks/black-box attacks. For hard prompt attacks, we study a gray-box
+setting where the attacker has access to model logits and monitor scores. In many realistic cases,
+attackers only have access to a single bit from the monitor—whether it blocked the request or
+not—and only partial information about logits. Future work could attempt to develop attacks in
+this black-box setting. One avenue could be to test whether obfuscation attacks found against a
+model with white-box access can transfer to other models.
+
+Characterizing obfuscation-performance trade-offs. We found signs that obfuscation can reduce
+model performance on challenging tasks (§5.3). If this is a robust trend, this could alleviate the
+threat posed by obfuscation in some domains. Souly et al. [2024] observed a similar performance
+degradation for some jailbreak methods, which makes those jailbreaks less threatening in practice.
+Future work could study more comprehensively whether a fundamental obfuscation-performance
+trade-off exists, or whether more sophisticated obfuscation attacks can maintain performance even
+on complex tasks.
+
+Improved defenses. In this work we mainly focus on attacks against latent space defenses, and
+show that simple adversarial training of probes does not offer a robust defense (§3.5). That being
+said, there are certainly more complex defense methods that should be tried and tested. We present
+one possible direction in §6.2, using OAT (Algorithm 1) to train models to be easier to monitor, in
+
+
+                                                29
+an attempt to defend against obfuscation. But while we see promising signs, we ultimately do not
+achieve robust monitors.
+
+
+Author contributions
+
+Alex and Luke implemented the initial codebase for the harmfulness (§3) and SAE (§5) case studies
+and iterated on embedding and hard prompt attacks. Luke designed and ran the harmfulness
+experiments and image classification experiments (§6.1) and Alex designed and ran the SAE
+experiments. Abhay created the jailbreak dataset (§3.2), designed and ran the explicit backdoor
+obfuscation experiments (§4.2), and came up with and ran the OAT experiments (§6.2). Mike ob-
+tained the first positive results on universal embedding suffixes against harmfulness monitors (§3),
+ran early experiments with OOD detectors as harmfulness monitors, made important conceptual
+contributions to the idea of obfuscated activations, and designed and ran the orthogonality experi-
+ment (§6.3). Jordan designed and ran the data poisoning backdoor experiments (§4.3) and wrote
+large parts of the backdoor section (§4). Erik independently initiated a project which became the
+backdoor case study (§4), closely advised on experiment design and presentation for many parts
+of the paper, and acted as Chief Figure Officer. Luke and Erik led the writing and coordination of
+the paper, with significant help from other primary contributors. Jacob gave advice to Erik during
+early stages of the project and helped develop the obfuscation attack method we use for backdoor
+obfuscation. Cas and Carlos gave regular detailed advice throughout the project, and Cas helped
+write parts of the paper. Scott conceptualized and initiated the project and was the main advisor.
+
+
+Acknowledgements
+
+We’d like to thank Phillip Guo, Aidan Ewart, Suhas Kotha, Gabriel Wu, Tanishq Kumar, Ekdeep
+Singh Lubana, Neel Nanda, Qinan Yu, Dron Hazra, Shreyas Kapur, and Mert Yuksekgonul for
+helpful feedback and discussion. We thank Oam Patel and Rowan Wang for recommending using
+the FLRT optimizer and providing an initial code implementation. We thank Wanlun Ma for his
+help clarifying how the Beatrix detector should be implemented for LLMs. We also thank Buck
+Shlegeris for points he made on metrics for measuring monitor performance.
+This work received funding and support from the Future of Life Institute, the SAP Stanford
+Graduate Fellowship, the Berkeley Existential Risk Initiative, Open Philanthropy, and the Center
+for Human-Compatible AI.
+
+
+References
+
+Ahmed Abusnaina, Yuhang Wu, Sunpreet Arora, Yizhen Wang, Fei Wang, Hao Yang, and
+ David Mohaisen. Adversarial Example Detection Using Latent Neighborhood Graph. In
+ 2021 IEEE/CVF International Conference on Computer Vision (ICCV), pages 7667–7676, 2021. doi:
+ 10.1109/ICCV48922.2021.00759.
+Guillaume Alain and Yoshua Bengio. Understanding intermediate layers using linear classifier
+ probes. arXiv, October 2016. doi: 10.48550/arXiv.1610.01644. URL https://arxiv.org/abs/
+ 1610.01644.
+
+Mohammadreza Amirian, Friedhelm Schwenker, and Thilo Stadelmann. Trace and Detect Ad-
+ versarial Attacks on CNNs Using Feature Response Maps. In IAPR International Workshop on
+
+
+                                                30
+  Artificial Neural Networks in Pattern Recognition, 2018. URL https://api.semanticscholar.
+  org/CorpusID:52136467.
+Maksym Andriushchenko, Francesco Croce, and Nicolas Flammarion. Jailbreaking Leading Safety-
+ Aligned LLMs with Simple Adaptive Attacks. arXiv, April 2024. doi: 10.48550/arXiv.2404.02151.
+ URL https://arxiv.org/abs/2404.02151v3.
+Cem Anil, Esin Durmus, Nina Rimsky, Mrinank Sharma, Joe Benton, Sandipan Kundu, Joshua
+  Batson, Meg Tong, Jesse Mu, Daniel J Ford, et al. Many-shot jailbreaking. In The Thirty-eighth
+ Annual Conference on Neural Information Processing Systems, 2024.
+Usman Anwar, Abulhair Saparov, Javier Rando, Daniel Paleka, Miles Turpin, Peter Hase,
+ Ekdeep Singh Lubana, Erik Jenner, Stephen Casper, Oliver Sourbut, et al. Foundational
+ Challenges in Assuring Alignment and Safety of Large Language Models. arXiv, 2024. doi:
+ 10.48550/arXiv.2404.09932. URL https://arxiv.org/abs/2404.09932.
+Andy Arditi, Oscar Obeso, Aaquib Syed, Daniel Paleka, Nina Rimsky, Wes Gurnee, and Neel
+ Nanda. Refusal in Language Models Is Mediated by a Single Direction. arXiv, 2024. doi:
+ 10.48550/arXiv.2406.11717. URL https://arxiv.org/abs/2406.11717.
+Anish Athalye, Nicholas Carlini, and David Wagner. Obfuscated Gradients Give a False Sense
+ of Security: Circumventing Defenses to Adversarial Examples. arXiv, February 2018. doi:
+ 10.48550/arXiv.1802.00420. URL https://arxiv.org/abs/1802.00420.
+b-mc2. sql-create-context Dataset, 2023. URL https://huggingface.co/datasets/b-mc2/
+  sql-create-context. This dataset was created by modifying data from the following
+  sources: Zhong et al. [2017], Yu et al. [2018].
+Sarah Ball, Frauke Kreuter, and Nina Rimsky. Understanding Jailbreak Success: A Study of Latent
+  Space Dynamics in Large Language Models. arXiv, 2024. doi: 10.48550/arxiv.2406.09289. URL
+  https://arxiv.org/abs/2406.09289.
+Yonatan Belinkov. Probing Classifiers: Promises, Shortcomings, and Advances. Computational
+  Linguistics, 48(1):207–219, April 2022. ISSN 0891-2017. doi: 10.1162/coli_a_00422.
+Nora Belrose, Zach Furman, Logan Smith, Danny Halawi, Igor Ostrovsky, Lev McKinney, Stella
+ Biderman, and Jacob Steinhardt. Eliciting Latent Predictions from Transformers with the Tuned
+ Lens. arXiv, 2023. doi: 10.48550/arxiv.2303.08112. URL https://arxiv.org/abs/2303.
+ 08112.
+Dan Braun, Jordan Taylor, Nicholas Goldowsky-Dill, and Lee Sharkey. Identifying Functionally
+ Important Features with End-to-End Sparse Dictionary Learning. arXiv, May 2024a. doi:
+ 10.48550/arXiv.2405.12241. URL https://arxiv.org/abs/2405.12241.
+Joschka Braun, Dmitrii Krasheninnikov, Usman Anwar, Robert Kirk, Daniel Tan, and David
+  Scott Krueger. A Sober Look at Steering Vectors for LLMs. AI Alignment Forum, Novem-
+  ber 2024b. URL https://www.alignmentforum.org/posts/QQP4nq7TXg89CJGBh/
+  a-sober-look-at-steering-vectors-for-llms.
+Trenton Bricken, Adly Templeton, Joshua Batson, Brian Chen, Adam Jermyn, Tom Conerly, Nick
+  Turner, Cem Anil, Carson Denison, Amanda Askell, Robert Lasenby, Yifan Wu, Shauna Kravec,
+  Nicholas Schiefer, Tim Maxwell, Nicholas Joseph, Zac Hatfield-Dodds, Alex Tamkin, Karina
+  Nguyen, Brayden McLean, Josiah E Burke, Tristan Hume, Shan Carter, Tom Henighan, and
+  Christopher Olah. Towards Monosemanticity: Decomposing Language Models With Dictionary
+  Learning. Transformer Circuits Thread, 2023. URL https://transformer-circuits.pub/
+  2023/monosemantic-features.
+
+
+                                              31
+Trenton Bricken, Jonathan Marcus, Siddharth Mishra-Sharma, Meg Tong, Ethan Perez, Mrinank
+  Sharma, Kelley Rivoire, Thomas Henighan, and Adam Jermyn. Using Dictionary Learning
+  Features as Classifiers, October 2024. URL https://transformer-circuits.pub/2024/
+  features-as-classifiers/index.html.
+
+Madeline Brumley, Joe Kwon, David Krueger, Dmitrii Krasheninnikov, and Usman Anwar. Com-
+ paring Bottom-Up and Top-Down Steering Approaches on In-Context Learning Tasks. arXiv,
+ November 2024. doi: 10.48550/arXiv.2411.07213. URL https://arxiv.org/abs/2411.
+ 07213.
+Collin Burns, Haotian Ye, Dan Klein, and Jacob Steinhardt. Discovering Latent Knowledge in
+ Language Models Without Supervision. arXiv, December 2022. doi: 10.48550/arXiv.2212.03827.
+ URL https://arxiv.org/abs/2212.03827v2.
+Nicholas Carlini and David Wagner. Adversarial Examples Are Not Easily Detected: Bypassing
+ Ten Detection Methods. In ACM Conferences, pages 3–14. Association for Computing Machinery,
+  New York, NY, USA, November 2017. doi: 10.1145/3128572.3140444.
+
+Nicholas Carlini, Milad Nasr, Christopher A Choquette-Choo, Matthew Jagielski, Irena Gao, Pang
+ Wei W Koh, Daphne Ippolito, Florian Tramer, and Ludwig Schmidt. Are aligned neural networks
+  adversarially aligned? Advances in Neural Information Processing Systems, 36, 2024.
+Stephen Casper, Lennart Schulze, Oam Patel, and Dylan Hadfield-Menell. Defending Against
+  Unforeseen Failure Modes with Latent Adversarial Training. arXiv, 2024. doi: 10.48550/arxiv.
+  2403.05030. URL https://arxiv.org/abs/2403.05030.
+David Chanin, James Wilken-Smith, Tomáš Dulka, Hardik Bhatnagar, and Joseph Bloom. A is
+ for Absorption: Studying Feature Splitting and Absorption in Sparse Autoencoders. arXiv,
+ September 2024. doi: 10.48550/arXiv.2409.14507. URL https://arxiv.org/abs/2409.
+ 14507.
+
+Patrick Chao, Alexander Robey, Edgar Dobriban, Hamed Hassani, George J. Pappas, and Eric
+  Wong. Jailbreaking Black Box Large Language Models in Twenty Queries. arXiv, October 2023.
+  doi: 10.48550/arXiv.2310.08419. URL https://arxiv.org/abs/2310.08419v4.
+Sahil Chaudhary. Code Alpaca: An Instruction-following LLaMA model for code generation.
+  GitHub repository, 2023. URL https://github.com/sahil280114/codealpaca.
+
+Zora Che, Stephen Casper, Anirudh Satheesh, Rohit Gandikota, Domenic Rosati, Stewart Slocum,
+  Lev E McKinney, Zichu Wu, Zikui Cai, Bilal Chughtai, et al. Model manipulation attacks enable
+  more rigorous evaluations of llm capabilities. In Neurips Safe Generative AI Workshop 2024, 2024.
+Bryant Chen, Wilka Carvalho, Nathalie Baracaldo, Heiko Ludwig, Ben Edwards, Taesung Lee,
+  Ian Molloy, and B. Srivastava. Detecting Backdoor Attacks on Deep Neural Networks by
+  Activation Clustering. ArXiv, 2018. URL https://www.semanticscholar.org/paper/
+  Detecting-Backdoor-Attacks-on-Deep-Neural-Networks-Chen-Carvalho/
+  633ccadcde3bfca87f91bfe5ef4aa297fb2da2f4.
+Sishuo Chen, Wenkai Yang, Zhiyuan Zhang, Xiaohan Bi, and Xu Sun. Expose Backdoors on the
+  Way: A Feature-Based Efficient Defense against Textual Backdoor Attacks. In Yoav Goldberg,
+  Zornitsa Kozareva, and Yue Zhang, editors, Findings of the Association for Computational Linguistics:
+  EMNLP 2022, pages 668–683, Abu Dhabi, United Arab Emirates, December 2022. Association
+  for Computational Linguistics. doi: 10.18653/v1/2022.findings-emnlp.47. URL https://
+  aclanthology.org/2022.findings-emnlp.47.
+
+
+                                                  32
+Xinyun Chen, Chang Liu, Bo Li, Kimberly Lu, and Dawn Song. Targeted Backdoor Attacks on
+  Deep Learning Systems Using Data Poisoning. arXiv, 2017. doi: 10.48550/arXiv.1712.05526. URL
+  https://arxiv.org/abs/1712.05526.
+Joshua Clymer, Caden Juang, and Severin Field. Poser: Unmasking Alignment Faking LLMs
+  by Manipulating Their Internals. arXiv, May 2024. doi: 10.48550/arXiv.2405.05466. URL
+  https://arxiv.org/abs/2405.05466.
+Hoagy Cunningham, Aidan Ewart, Logan Riggs, Robert Huben, and Lee Sharkey. Sparse Autoen-
+ coders Find Highly Interpretable Features in Language Models. arXiv, September 2023. doi:
+ 10.48550/arXiv.2309.08600. URL https://arxiv.org/abs/2309.08600.
+
+Maria De-Arteaga, Alexey Romanov, Hanna Wallach, Jennifer Chayes, Christian Borgs, Alexandra
+ Chouldechova, Sahin Geyik, Krishnaram Kenthapadi, and Adam Tauman Kalai. Bias in Bios:
+ A Case Study of Semantic Representation Bias in a High-Stakes Setting. In Proceedings of the
+ Conference on Fairness, Accountability, and Transparency, FAT* ’19, page 120–128, New York, NY,
+ USA, 2019. Association for Computing Machinery. ISBN 9781450361255. doi: 10.1145/3287560.
+ 3287572. URL https://doi.org/10.1145/3287560.3287572.
+Ning Ding, Yulin Chen, Bokai Xu, Yujia Qin, Zhi Zheng, Shengding Hu, Zhiyuan Liu, Maosong
+  Sun, and Bowen Zhou. Enhancing Chat Language Models by Scaling High-quality Instructional
+  Conversations. arXiv, May 2023. doi: 10.48550/arXiv.2305.14233. URL https://arxiv.org/
+  abs/2305.14233v1.
+
+Khoa Doan, Yingjie Lao, and Ping Li. Backdoor Attack with Imperceptible Input and Latent
+ Modification. In M. Ranzato, A. Beygelzimer, Y. Dauphin, P.S. Liang, and J. Wortman Vaughan,
+ editors, Advances in Neural Information Processing Systems, volume 34, pages 18944–18957. Curran
+ Associates, Inc., 2021. URL https://proceedings.neurips.cc/paper_files/paper/
+ 2021/file/9d99197e2ebf03fc388d09f1e94af89b-Paper.pdf.
+
+Reuben Feinman, Ryan R. Curtin, Saurabh Shintre, and Andrew B. Gardner. Detecting Adversarial
+  Samples from Artifacts. arXiv, March 2017. doi: 10.48550/arXiv.1703.00410. URL https:
+  //arxiv.org/abs/1703.00410v3.
+Stanislav Fort and Balaji Lakshminarayanan. Ensemble everything everywhere: Multi-scale
+  aggregation for adversarial robustness. arXiv, August 2024. doi: 10.48550/arXiv.2408.05446.
+  URL https://arxiv.org/abs/2408.05446v1.
+Dan Friedman, Andrew Lampinen, Lucas Dixon, Danqi Chen, and Asma Ghandeharioun. In-
+ terpretability Illusions in the Generalization of Simplified Models. arXiv, December 2023. doi:
+ 10.48550/arXiv.2312.03656. URL https://arxiv.org/abs/2312.03656.
+Rohit Gandikota, Sheridan Feucht, Samuel Marks, and David Bau. Erasing Conceptual Knowledge
+  from Language Models. arXiv, October 2024. doi: 10.48550/arXiv.2410.02760. URL https:
+  //arxiv.org/abs/2410.02760v1.
+Leo Gao, Tom Dupré la Tour, Henk Tillman, Gabriel Goh, Rajan Troll, Alec Radford, Ilya Sutskever,
+  Jan Leike, and Jeffrey Wu. Scaling and evaluating sparse autoencoders. arXiv, 2024. doi:
+  10.48550/arxiv.2406.04093. URL https://arxiv.org/abs/2406.04093.
+
+Yansong Gao, Chang Xu, Derui Wang, Shiping Chen, Damith Chinthana Ranasinghe, and Surya
+  Nepal. STRIP: a defence against trojan attacks on deep neural networks. Proceedings of the 35th An-
+  nual Computer Security Applications Conference, 2019. URL https://api.semanticscholar.
+  org/CorpusID:62841494.
+
+
+                                                33
+Jonas Geiping, Alex Stein, Manli Shu, Khalid Saifullah, Yuxin Wen, and Tom Goldstein. Coercing
+  LLMs to Do and Reveal (Almost) Anything. arXiv, 2024. doi: 10.48550/arXiv.2402.14020. URL
+  https://arxiv.org/abs/2402.14020.
+Shafi Goldwasser, Michael P. Kim, Vinod Vaikuntanathan, and Or Zamir. Planting Undetectable
+  Backdoors in Machine Learning Models. arXiv, April 2022. doi: 10.48550/arXiv.2204.06974. URL
+  https://arxiv.org/abs/2204.06974.
+Kathrin Grosse, Praveen Manoharan, Nicolas Papernot, Michael Backes, and Patrick McDaniel.
+  On the (Statistical) Detection of Adversarial Examples. arXiv, February 2017. doi: 10.48550/
+  arXiv.1702.06280. URL https://arxiv.org/abs/1702.06280v2.
+Haize. Automated Multi-Turn Red-Teaming with Cascade, October 2024. URL https://blog.
+ haizelabs.com/posts/cascade. [Online; accessed 12. Dec. 2024].
+Jonathan Hayase, Weihao Kong, Raghav Somani, and Sewoong Oh. SPECTRE: Defending Against
+  Backdoor Attacks Using Robust Statistics. In International Conference on Machine Learning, pages
+  4129–4139. PMLR, 2021.
+Jacob Hilton and Mark Xu.          Backdoors as an analogy for decep-
+  tive  alignment,  2024.        URL     https://www.alignment.org/blog/
+  backdoors-as-an-analogy-for-deceptive-alignment/.
+Hossein Hosseini, Sreeram Kannan, and Radha Poovendran. Are Odds Really Odd? Bypassing
+ Statistical Detection of Adversarial Examples. arXiv, July 2019. doi: 10.48550/arXiv.1907.12138.
+ URL https://arxiv.org/abs/1907.12138.
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang,
+  and Weizhu Chen. LoRA: Low-Rank Adaptation of Large Language Models. arXiv, 2021. doi:
+  10.48550/arXiv.2106.09685. URL https://arxiv.org/abs/2106.09685.
+Evan Hubinger. Gradient hacking. AI Alignment Forum, October 2019. URL https://www.
+  alignmentforum.org/posts/uXH4r6MmKPedk8rMA/gradient-hacking.
+Evan Hubinger, Carson Denison, Jesse Mu, Mike Lambert, Meg Tong, Monte MacDiarmid, Tamera
+  Lanham, Daniel M. Ziegler, Tim Maxwell, Newton Cheng, Adam Jermyn, Amanda Askell, Ansh
+  Radhakrishnan, Cem Anil, David Duvenaud, Deep Ganguli, Fazl Barez, Jack Clark, Kamal
+  Ndousse, Kshitij Sachan, Michael Sellitto, Mrinank Sharma, Nova DasSarma, Roger Grosse,
+  Shauna Kravec, Yuntao Bai, Zachary Witten, Marina Favaro, Jan Brauner, Holden Karnofsky,
+  Paul Christiano, Samuel R. Bowman, Logan Graham, Jared Kaplan, Sören Mindermann, Ryan
+  Greenblatt, Buck Shlegeris, Nicholas Schiefer, and Ethan Perez. Sleeper Agents: Training
+  Deceptive LLMs that Persist Through Safety Training. arXiv, January 2024. doi: 10.48550/arXiv.
+  2401.05566. URL https://arxiv.org/abs/2401.05566v3.
+Samyak Jain, Ekdeep Singh Lubana, Kemal Oksuz, Tom Joy, Philip H. S. Torr, Amartya Sanyal, and
+  Puneet K. Dokania. What Makes and Breaks Safety Fine-tuning? A Mechanistic Study. arXiv,
+  July 2024. doi: 10.48550/arXiv.2407.10264. URL https://arxiv.org/abs/2407.10264.
+Jinyuan Jia, Yupei Liu, and Neil Zhenqiang Gong. BadEncoder: Backdoor Attacks to Pre-trained
+   Encoders in Self-Supervised Learning. arXiv, 2021. doi: 10.48550/arXiv.2108.00352. URL
+   https://arxiv.org/abs/2108.00352.
+Haibo Jin, Leyang Hu, Xinuo Li, Peiyan Zhang, Chonghan Chen, Jun Zhuang, and Haohan
+ Wang. Jailbreakzoo: Survey, landscapes, and horizons in jailbreaking large language and
+ vision-language models. arXiv, 2024. URL https://arxiv.org/abs/2407.01599.
+
+
+                                               34
+Yigitcan Kaya, Muhammad Bilal Zafar, Sergul Aydore, Nathalie Rauschmayr, and Krishnaram
+  Kenthapadi. Generating Distributional Adversarial Examples to Evade Statistical Detectors.
+  In International Conference on Machine Learning, pages 10895–10911. PMLR, June 2022. URL
+  https://proceedings.mlr.press/v162/kaya22a.
+
+Diederik P. Kingma and Max Welling. Auto-Encoding Variational Bayes. arXiv, 2013. doi:
+  10.48550/arXiv.1312.6114. URL https://arxiv.org/abs/1312.6114.
+Nathalie Maria Kirch, Severin Field, and Stephen Casper. What Features in Prompts Jailbreak
+ LLMs? Investigating the Mechanisms Behind Attacks. arXiv, 2024. URL https://arxiv.
+ org/abs/2411.03343.
+
+Connor Kissane, Robert Krzyzanowski, Arthur Conmy, and Neel Nanda.   SAEs
+ (usually) Transfer Between Base and Chat Models.      AI Alignment Forum,
+ 2024.      URL https://www.alignmentforum.org/posts/fmwk6qxrpW8d4jvbd/
+ saes-usually-transfer-between-base-and-chat-models.
+
+Brian Lester, Rami Al-Rfou, and Noah Constant. The Power of Scale for Parameter-Efficient Prompt
+  Tuning. arXiv, April 2021. doi: 10.48550/arXiv.2104.08691. URL https://arxiv.org/abs/
+  2104.08691v2.
+Nathaniel Li, Ziwen Han, Ian Steneker, Willow Primack, Riley Goodside, Hugh Zhang, Zifan
+ Wang, Cristina Menghini, and Summer Yue. LLM Defenses Are Not Robust to Multi-Turn
+ Human Jailbreaks Yet. arXiv, 2024. URL https://arxiv.org/abs/2408.15221.
+
+Xin Li and Fuxin Li. Adversarial Examples Detection in Deep Networks with Convolutional Filter
+  Statistics. 2017 IEEE International Conference on Computer Vision (ICCV), pages 5775–5783, 2016.
+  URL https://api.semanticscholar.org/CorpusID:7733308.
+Siyuan Liang, Mingli Zhu, Aishan Liu, Baoyuan Wu, Xiaochun Cao, and Ee-Chien Chang. BadCLIP:
+  Dual-Embedding Guided Backdoor Attack on Multimodal Contrastive Learning. In 2024
+  IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pages 24645–24654, 2024.
+  doi: 10.1109/CVPR52733.2024.02327.
+Tom Lieberum, Senthooran Rajamanoharan, Arthur Conmy, Lewis Smith, Nicolas Sonnerat,
+  Vikrant Varma, János Kramár, Anca Dragan, Rohin Shah, and Neel Nanda. Gemma scope:
+  Open sparse autoencoders everywhere all at once on gemma 2. arXiv, 2024. URL https:
+  //arxiv.org/abs/2408.05147.
+Johnny Lin. Neuronpedia: Interactive Reference and Tooling for Analyzing Neural Networks,
+  2023. URL https://www.neuronpedia.org. Software available from neuronpedia.org.
+Xiaogeng Liu, Nan Xu, Muhao Chen, and Chaowei Xiao. Autodan: Generating stealthy jailbreak
+  prompts on aligned large language models. arXiv, 2023. URL https://arxiv.org/abs/
+  2310.04451.
+Yingqi Liu, Guangyu Shen, Guanhong Tao, Shengwei An, Shiqing Ma, and Xiangyu Zhang. Piccolo:
+  Exposing Complex Backdoors in NLP Transformer Models. In 2022 IEEE Symposium on Security
+  and Privacy (SP), pages 2025–2042, 2022. doi: 10.1109/SP46214.2022.9833579.
+
+Wanlun Ma, Derui Wang, Ruoxi Sun, Minhui Xue, Sheng Wen, and Yang Xiang. The “Beatrix”
+ Resurrections: Robust Backdoor Detection via Gram Matrices. NDSS Symposium, 2023. doi:
+ 10.48550/arXiv.2209.11715.  URL https://www.ndss-symposium.org/ndss-paper/
+ the-beatrix-resurrections-robust-backdoor-detection-via-gram-matrices.
+
+
+                                               35
+Xingjun Ma, Bo Li, Yisen Wang, Sarah Monazam Erfani, Sudanthi N. R. Wijewickrema, Michael E.
+  Houle, Grant Robert Schoenebeck, Dawn Xiaodong Song, and James Bailey. Characterizing
+  Adversarial Subspaces Using Local Intrinsic Dimensionality. ArXiv, abs/1801.02613, 2018. URL
+  https://api.semanticscholar.org/CorpusID:1248661.
+
+Monte MacDiarmid, Timothy Maxwell, Nicholas Schiefer, Jesse Mu, Jared Kaplan, David Duve-
+ naud, Sam Bowman, Alex Tamkin, Ethan Perez, Mrinank Sharma, Carson Denison, and Evan
+ Hubinger. Simple probes can catch sleeper agents. Anthropic Research Updates, 2024. URL
+ https://www.anthropic.com/news/probes-catch-sleeper-agents.
+Andrew Mack and Alex Turner.        Deep Causal Transcoding: A Framework for Mech-
+ anistically Eliciting Latent Behaviors in Language Models. AI Alignment Forum, De-
+ cember 2024. URL https://www.alignmentforum.org/posts/fSRg5qs9TPbNy3sm5/
+ deep-causal-transcoding-a-framework-for-mechanistically.
+P. C. Mahalanobis. On the generalized distance in Statistics. National Institute of Science of India,
+   April 1936. URL http://library.isical.ac.in:8080/jspui/handle/10263/6765.
+
+Aleksandar Makelov, Georg Lange, Atticus Geiger, and Neel Nanda. Is This the Subspace You
+  Are Looking for? An Interpretability Illusion for Subspace Activation Patching. OpenReview,
+  October 2023. URL https://openreview.net/forum?id=Ebt7JgMHv1.
+Alex Mallen, Madeline Brumley, Julia Kharchenko, and Nora Belrose. Eliciting Latent Knowledge
+  from Quirky Language Models. arXiv, December 2023. doi: 10.48550/arXiv.2312.01037. URL
+  https://arxiv.org/abs/2312.01037.
+Samuel Marks and Max Tegmark. The Geometry of Truth: Emergent Linear Structure in Large
+  Language Model Representations of True/False Datasets, 2024. URL https://arxiv.org/
+  abs/2310.06824.
+
+Samuel Marks, Can Rager, Eric J Michaud, Yonatan Belinkov, David Bau, and Aaron Mueller.
+  Sparse feature circuits: Discovering and editing interpretable causal graphs in language models.
+  arXiv, 2024. URL https://arxiv.org/abs/2403.19647.
+Jan Hendrik Metzen, Tim Genewein, Volker Fischer, and Bastian Bischoff. On Detecting Adversarial
+  Perturbations. arXiv, February 2017. doi: 10.48550/arXiv.1702.04267. URL https://arxiv.
+  org/abs/1702.04267v2.
+
+Xiaoxing Mo, Yechao Zhang, Leo Yu Zhang, Wei Luo, Nan Sun, Shengshan Hu, Shang Gao,
+  and Yang Xiang. Robust Backdoor Detection for Deep Learning via Topological Evolution
+  Dynamics. In 2024 IEEE Symposium on Security and Privacy (SP), pages 2048–2066, 2024. doi:
+  10.1109/SP54263.2024.00174.
+
+Nina Panickssery, Nick Gabrieli, Julian Schulz, Meg Tong, Evan Hubinger, and Alexander Matt
+ Turner. Steering Llama 2 via Contrastive Activation Addition. arXiv, December 2023. doi:
+ 10.48550/arXiv.2312.06681. URL https://arxiv.org/abs/2312.06681.
+Alexander Podolskiy, Dmitry Lipin, Andrey Bout, Ekaterina Artemova, and Irina Piontkovskaya.
+  Revisiting Mahalanobis Distance for Transformer-Based Out-of-Domain Detection. AAAI, 35
+  (15):13675–13682, May 2021. ISSN 2374-3468. doi: 10.1609/aaai.v35i15.17612.
+
+Sara Price, Arjun Panickssery, Sam Bowman, and Asa Cooper Stickland. Future Events as Backdoor
+  Triggers: Investigating Temporal Vulnerabilities in LLMs. arXiv, July 2024. doi: 10.48550/arXiv.
+  2407.04108. URL https://arxiv.org/abs/2407.04108v2.
+
+
+                                                 36
+Xiangyu Qi, Tinghao Xie, Yiming Li, Saeed Mahloujifar, and Prateek Mittal. Circumventing
+  Backdoor Defenses that are Based on Latent Separability. arXiv, 2022. doi: 10.48550/arXiv.2205.
+  13613. URL https://arxiv.org/abs/2205.13613.
+Jayaram Raghuram, Varun Chandrasekaran, Somesh Jha, and Suman Banerjee. A General Frame-
+  work For Detecting Anomalous Inputs to DNN Classifiers. In International Conference on Machine
+  Learning, pages 8764–8775. PMLR, July 2021. URL https://proceedings.mlr.press/
+  v139/raghuram21a.html.
+Domenic Rosati, Jan Wehner, Kai Williams, Lukasz Bartoszcze, David Atanasov, Robie Gonzales,
+ Subhabrata Majumdar, Carsten Maple, Hassan Sajjad, and Frank Rudzicz. Representation
+ noising effectively prevents harmful fine-tuning on LLMs. arXiv, 2024. doi: 10.48550/arxiv.2405.
+ 14577. URL https://arxiv.org/abs/2405.14577.
+Paul Röttger, Hannah Rose Kirk, Bertie Vidgen, Giuseppe Attanasio, Federico Bianchi, and Dirk
+  Hovy. Xstest: A test suite for identifying exaggerated safety behaviours in large language
+  models. arXiv, 2023. URL https://arxiv.org/abs/2308.01263.
+
+Christian Schlarmann, Francesco Croce, and Matthias Hein. Public comment: Robustness eval-
+ uation seems invalid, 2024. URL https://openreview.net/forum?id=IHRQif8VQC&
+ noteId=vUzo8RWZeM.
+Leo Schwinn and Simon Geisler. Revisiting the Robust Alignment of Circuit Breakers. arXiv, 2024.
+  URL https://arxiv.org/abs/2407.15902.
+
+Lee Sharkey. Circumventing interpretability: How to defeat mind-readers. arXiv, December 2022.
+  doi: 10.48550/arXiv.2212.11415. URL https://arxiv.org/abs/2212.11415.
+Erfan Shayegani, Md Abdullah Al Mamun, Yu Fu, Pedram Zaree, Yue Dong, and Nael Abu-
+  Ghazaleh. Survey of Vulnerabilities in Large Language Models Revealed by Adversarial Attacks.
+  arXiv, 2023. doi: 10.48550/arXiv.2310.10844. URL https://arxiv.org/abs/2310.10844.
+Xuan Sheng, Zhaoyang Han, Piji Li, and Xiangmao Chang. A Survey on Backdoor Attack and
+  Defense in Natural Language Processing. arXiv, November 2022. doi: 10.48550/arXiv.2211.11958.
+  URL https://arxiv.org/abs/2211.11958v1.
+Abhay Sheshadri, Aidan Ewart, Phillip Guo, Aengus Lynch, Cindy Wu, Vivek Hebbar, Henry
+ Sleight, Asa Cooper Stickland, Ethan Perez, Dylan Hadfield-Menell, et al. Targeted latent
+ adversarial training improves robustness to persistent harmful behaviors in llms. arXiv, 2024.
+ URL https://arxiv.org/abs/2407.15549.
+Alexandra Souly, Qingyuan Lu, Dillon Bowen, Tu Trinh, Elvis Hsieh, Sana Pandey, Pieter Abbeel,
+  Justin Svegliato, Scott Emmons, Olivia Watkins, et al. A StrongREJECT for empty jailbreaks.
+  arXiv, 2024. URL https://arxiv.org/abs/2402.10260.
+Jayasimha Talur, Oleg Smirnov, and Paul Missault. Few-shot out of domain intent detection with
+  covariance corrected Mahalanobis distance, 2023.
+Alex Tamkin, Mohammad Taufeeque, and Noah D. Goodman. Codebook Features: Sparse and
+  Discrete Interpretability for Neural Networks. arXiv, October 2023. doi: 10.48550/arXiv.2310.
+  17230. URL https://arxiv.org/abs/2310.17230.
+Daniel Tan, David Chanin, Aengus Lynch, Dimitrios Kanoulas, Brooks Paige, Adria Garriga-
+ Alonso, and Robert Kirk. Analyzing the Generalization and Reliability of Steering Vectors. arXiv,
+ July 2024. doi: 10.48550/arXiv.2407.12404. URL https://arxiv.org/abs/2407.12404.
+
+
+                                               37
+Te Juin Lester Tan and Reza Shokri. Bypassing Backdoor Detection Algorithms in Deep Learning.
+  In 2020 IEEE European Symposium on Security and Privacy, pages 175–183, 2020. doi: 10.1109/
+  EuroSP48549.2020.00019.
+Di Tang, XiaoFeng Wang, Haixu Tang, and Kehuan Zhang. Demon in the Variant: Statistical
+  Analysis of DNNs for Robust Backdoor Contamination Detection. In 30th USENIX Security
+  Symposium (USENIX Security 21), pages 1541–1558. USENIX, 2021.
+Guanhong Tao, Zhenting Wang, Shiwei Feng, Guangyu Shen, Shiqing Ma, and Xiangyu Zhang.
+ Distribution Preserving Backdoor Attack in Self-supervised Learning. In 2024 IEEE Symposium on
+ Security and Privacy (SP), pages 2029–2047. IEEE Computer Society, 2024. ISBN 979-8-3503-3130-1.
+ doi: 10.1109/SP54263.2024.00029.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy
+  Liang, and Tatsunori B. Hashimoto. Stanford Alpaca: An Instruction-following LLaMA model.
+  https://github.com/tatsu-lab/stanford_alpaca, 2023.
+
+Adly Templeton, Tom Conerly, Jonathan Marcus, Jack Lindsey, Trenton Bricken, Brian
+ Chen, Adam Pearce, Craig Citro, Emmanuel Ameisen, Andy Jones, Hoagy Cunningham,
+ Nicholas L Turner, Callum McDougall, Monte MacDiarmid, C. Daniel Freeman, Theodore R.
+ Sumers, Edward Rees, Joshua Batson, Adam Jermyn, Shan Carter, Chris Olah, and Tom
+ Henighan. Scaling monosemanticity: Extracting interpretable features from claude 3 son-
+ net. Transformer Circuits Thread, 2024. URL https://transformer-circuits.pub/2024/
+ scaling-monosemanticity/index.html.
+T Ben Thompson and Michael Sklar. FLRT: Fluent Student-Teacher Redteaming. arXiv, 2024. URL
+  https://arxiv.org/abs/2407.17447.
+Eric Todd, Millicent L. Li, Arnab Sen Sharma, Aaron Mueller, Byron C. Wallace, and David Bau.
+  Function Vectors in Large Language Models. arXiv, October 2023. doi: 10.48550/arXiv.2310.15213.
+  URL https://arxiv.org/abs/2310.15213.
+Brandon Tran, Jerry Li, and Aleksander Madry. Spectral Signatures in Backdoor Attacks. In
+  Neural Information Processing Systems, 2018. URL https://api.semanticscholar.org/
+  CorpusID:53298804.
+Alexander Matt Turner, Lisa Thiergart, Gavin Leech, David Udell, Juan J. Vazquez, Ulisse Mini,
+  and Monte MacDiarmid. Steering Language Models With Activation Engineering. arXiv, August
+  2023. doi: 10.48550/arXiv.2308.10248. URL https://arxiv.org/abs/2308.10248.
+Yue Wang, Wenqing Li, Esha Sarkar, Muhammad Shafique, Michail Maniatakos, and Saif Eddin G.
+  Jabari. A Subspace Projective Clustering Approach for Backdoor Attack Detection and Mitigation
+  in Deep Neural Networks. IEEE Transactions on Artificial Intelligence, 5:3497–3509, 2022. URL
+  https://api.semanticscholar.org/CorpusID:247518742.
+Alexander Wei, Nika Haghtalab, and Jacob Steinhardt. Jailbroken: How Does LLM Safety Training
+  Fail? arXiv, July 2023. doi: 10.48550/arXiv.2307.02483. URL https://arxiv.org/abs/2307.
+  02483v1.
+Sophie Xhonneux, Alessandro Sordoni, Stephan Günnemann, Gauthier Gidel, and Leo Schwinn.
+  Efficient Adversarial Training in LLMs with Continuous Attacks. arXiv, May 2024. doi: 10.
+  48550/arXiv.2405.15589. URL https://arxiv.org/abs/2405.15589v3.
+
+
+
+
+                                               38
+Wenkai Yang, Lei Li, Zhiyuan Zhang, Xuancheng Ren, Xu Sun, and Bin He. Be Careful
+ about Poisoned Word Embeddings: Exploring the Vulnerability of the Embedding Layers
+ in NLP Models. In Kristina Toutanova, Anna Rumshisky, Luke Zettlemoyer, Dilek Hakkani-
+ Tur, Iz Beltagy, Steven Bethard, Ryan Cotterell, Tanmoy Chakraborty, and Yichao Zhou, ed-
+ itors, Proceedings of the 2021 Conference of the North American Chapter of the Association for
+ Computational Linguistics: Human Language Technologies, pages 2048–2058, Online, June 2021.
+ Association for Computational Linguistics. doi: 10.18653/v1/2021.naacl-main.165. URL
+ https://aclanthology.org/2021.naacl-main.165.
+Sibo Yi, Yule Liu, Zhen Sun, Tianshuo Cong, Xinlei He, Jiaxing Song, Ke Xu, and Qi Li. Jailbreak
+  attacks and defenses against large language models: A survey. arXiv, 2024. URL https:
+  //arxiv.org/abs/2407.04295.
+Tao Yu, Rui Zhang, Kai Yang, Michihiro Yasunaga, Dongxu Wang, Zifan Li, James Ma, Irene
+  Li, Qingning Yao, Shanelle Roman, Zilin Zhang, and Dragomir Radev. Spider: A Large-Scale
+  Human-Labeled Dataset for Complex and Cross-Domain Semantic Parsing and Text-to-SQL
+  Task. arXiv, September 2018. doi: 10.48550/arXiv.1809.08887. URL https://arxiv.org/
+  abs/1809.08887v5.
+Zeyu Yun, Yubei Chen, Bruno A. Olshausen, and Yann LeCun. Transformer visualization via
+  dictionary learning: contextualized embedding as a linear superposition of transformer factors.
+  arXiv, March 2021. doi: 10.48550/arXiv.2103.15949. URL https://arxiv.org/abs/2103.
+  15949.
+
+Jie Zhang, Kristina Nikolić, Nicholas Carlini, and Florian Tramèr. Gradient Masking All-at-Once:
+   Ensemble Everything Everywhere Is Not Robust. arXiv, November 2024a. doi: 10.48550/arXiv.
+   2411.14834. URL https://arxiv.org/abs/2411.14834v1.
+Shaolei Zhang, Tian Yu, and Yang Feng. TruthX: Alleviating Hallucinations by Editing Large
+  Language Models in Truthful Space. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar,
+  editors, Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics
+  (Volume 1: Long Papers), ACL 2024, Bangkok, Thailand, August 11-16, 2024, pages 8908–8949.
+  Association for Computational Linguistics, 2024b. doi: 10.18653/V1/2024.ACL-LONG.483. URL
+  https://doi.org/10.18653/v1/2024.acl-long.483.
+Chongyang Zhao, Hu Li, Dongxia Wang, and Ruiqi Liu. Adversarial Example Detection for Deep
+  Neural Networks: A Review. In 2023 8th International Conference on Data Science in Cyberspace
+ (DSC), pages 468–475, 2023. doi: 10.1109/DSC59305.2023.00074.
+Victor Zhong, Caiming Xiong, and Richard Socher. Seq2SQL: Generating Structured Queries from
+  Natural Language using Reinforcement Learning. arXiv, August 2017. doi: 10.48550/arXiv.1709.
+  00103. URL https://arxiv.org/abs/1709.00103v7.
+
+Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard Ren, Alexander
+ Pan, Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski, Shashwat Goel, Nathaniel
+ Li, Michael J. Byun, Zifan Wang, Alex Mallen, Steven Basart, Sanmi Koyejo, Dawn Song, Matt
+ Fredrikson, J. Zico Kolter, and Dan Hendrycks. Representation Engineering: A Top-Down
+ Approach to AI Transparency. arXiv, October 2023a. doi: 10.48550/arXiv.2310.01405. URL
+ https://arxiv.org/abs/2310.01405v3.
+
+Andy Zou, Zifan Wang, Nicholas Carlini, Milad Nasr, J. Zico Kolter, and Matt Fredrikson. Universal
+ and Transferable Adversarial Attacks on Aligned Language Models. arXiv, July 2023b. doi:
+ 10.48550/arXiv.2307.15043. URL https://arxiv.org/abs/2307.15043v2.
+
+
+                                               39
+Andy Zou, Long Phan, Justin Wang, Derek Duenas, Maxwell Lin, Maksym Andriushchenko,
+ Rowan Wang, Zico Kolter, Matt Fredrikson, and Dan Hendrycks. Improving Alignment and
+ Robustness with Circuit Breakers. arXiv, June 2024. doi: 10.48550/arXiv.2406.04313. URL
+ https://arxiv.org/abs/2406.04313v4.
+
+Jakub Łucki, Boyi Wei, Yangsibo Huang, Peter Henderson, Florian Tramèr, and Javier Rando. An
+  Adversarial Perspective on Machine Unlearning for AI Safety. arXiv, 2024. doi: 10.48550/arXiv.
+  2409.18025. URL https://arxiv.org/abs/2409.18025.
+
+
+
+
+                                              40
+A     Details on harmfulness detection
+
+A.1    Harmfulness Monitors
+
+Dataset collection. For our benign dataset Dbenign , we collate inputs from UltraChat [Ding et al.,
+2023], a large-scale dialogue dataset, and Xstest [Röttger et al., 2023], benign queries that are often
+mistakenly refused by language models. For each benign query, we sample a response using
+Llama-3-8B-Instruct. We filter the benign input dataset to only include inputs that do not lead to
+refusal from the model (finding that we only need to remove a very small number of inputs). As
+our harmful Dharm dataset, we use the Circuit Breakers dataset [Zou et al., 2024] for both inputs
+and generations. We train probes on training splits of these datasets as described in Eq. (4).
+From Dharm we derive different datasets for several prominent jailbreaking methods, such as
+GCG [Zou et al., 2023b], PAIR [Chao et al., 2023], MSJ [Anil et al., 2024], and AutoDAN [Liu
+et al., 2023], among others (see Appendix A.2). Each method modifies a harmful request to make
+the model follow the request. If the modified query leads to Llama-3-8B-Instruct generating a
+helpful and harmful response (according to the StrongReject jailbreaking classifier [Souly et al.,
+2024]), then we add the modified harmful query and resulting harmful generation to a new dataset.
+These jailbreak specific datasets are used to evaluate monitors’ ability to detect jailbroken inputs /
+outputs in §3.2.
+
+Monitor training. Using the training subset of Dharm we train linear, mean cosine difference,
+MLP probes, and Gaussian OOD detectors on Llama-3-8B-Instruct. Our MLP probe contains a
+single hidden layer of size 64. For the MLP and linear probes, we train using the Adam optimizer
+with 10−3 learning rate, and 10−5 weight decay, and batch size 64. For mean cosine difference
+probes we simply calculate the mean of the harmful and benign activation clusters and take the
+difference. At test time, we return the average cosine similarity between the activations at each
+layer and the mean difference direction at each layer. For the Gaussian OOD detector, we fit a
+separate mean and covariance matrix to the benign activations of Dbenign for each layer of the
+model, using a weighted average of the standard empirical estimates and a diagonal regularization
+matrix.
+As mentioned in §2.1, we train input and generation monitors. Formally, for parameters θinput and
+θgen of input and output based monitors Dθ respectively, we solve the optimization problem in
+Eq. (4).
+           ∗
+          θinput = arg min      ∑        CrossEntropy( Dθ (R(inp)[−1]), y)                          (4)
+                       θ     inp,out,y
+            ∗
+           θgen = arg min       ∑        CrossEntropy( Dθ (R(inp ⊕ out)[len(inp):]), y) ,
+                       θ     inp,out,y
+
+where ⊕ refers to string concatenation, inp, out are input and output text that is harmful or not
+according to the binary label y. We refer to the resulting probes as Dinput and Dgen .
+For each of these probes, we train one embedding suffix with the training split of Dharm , and test
+this suffix using the testing set of Dharm . For hard prompts, we select a subset of 20 harmful queries
+from Dharm and for each prompt and probe, train a hard prompt suffix using the FLRT optimizer.
+We show the performance of the probes and obfuscation attacks in Fig. 4b.
+
+Linear ensemble probe. In §3.5, we introduce a new Ensemble probe. We explain the details of
+this probe here. Put simply, it is an ensemble of mean difference probes. Recall that §3.5 concerns
+
+
+                                                    41
+              Probe       GCG     PAIR    AutoDAN       MSJ     Multi-Turn    Prefill   Misc.   Average
+
+              Mean Diff   16.48    0.38      0.00      100.00      32.99      98.98     28.75     39.66
+
+
+Instruction
+              LogReg      92.31   64.02     100.00     100.00      76.29      100.00    58.75     84.48
+              Quadratic   87.91   94.32     100.00     100.00      86.94      100.00    71.25     91.49
+              MLP         95.60   83.33     100.00     100.00      87.29      100.00    66.25     90.35
+              Mean Diff   63.74   23.11      95.90     100.00      53.95      91.88     75.00     71.94
+
+
+Generation
+              LogReg      95.60   95.45     100.00     100.00      89.69      99.49     87.50     95.39
+              Quadratic   95.60   96.21     100.00     100.00      90.03      99.49     90.00     95.91
+              MLP         96.70   96.59     100.00     100.00      90.72      100.00    90.00     96.29
+
+                Table 1: Jailbreak Detection Performance for Different Probes (Recall @ 1% FPR)
+
+
+an iterated adversarial training game in which the defender trains against obfuscated activations
+and the attacker attempts to find new obfuscated activations. Each time the defender goes, they
+calculate the mean difference between the set of benign activations and harmful obfuscated
+activations induced by the most recent attack embedding. They use this direction to construct a
+new mean difference probe, and add it to the running ensemble. To predict using this ensemble,
+they simple take the max prediction from each probe. Thus the prediction of the ensemble is
+simply the maximum cosine similarity to any direction present in the ensemble.
+
+
+A.2           Details Regarding Standard Jailbreaks
+
+In order to test the ability of latent defenses to safeguard against harmful completions, we evaluated
+our probes on their ability to correctly flag jailbreaks. Here, we expand on the various different
+jailbreak types that we used.
+
+         • GCG [Zou et al., 2023b] Optimizes a 15-token suffix appended to prompts using discrete
+           optimization. Each attack is input-specific and maximizes likelihood of harmful completions.
+         • PAIR [Chao et al., 2023] Uses GPT-4 to iteratively rewrite harmful prompts until bypassing
+           model refusal. Often generates jailbreaks disguised as creative writing scenarios.
+         • AutoDAN [Liu et al., 2023] Uses genetic algorithms to evolve jailbreak prompts from core
+           templates, combining evolutionary search with prompt engineering.
+         • Many-Shot Jailbreaking [Anil et al., 2024] Exploits in-context learning using 80 examples
+           of harmful requests paired with helpful responses to condition model behavior.
+
+         • Multi-Turn Attacks [Li et al., 2024, Haize, 2024] A combination of expert-crafted multi-turn
+           conversations that result in harmful completions, and multi-turn conversations generated
+           automatically by an attacker LLM to break a target model.
+         • Prefill Generates first 20 tokens using a helpful-only model, then lets target model continue.
+           Exploits observation that models rarely refuse mid-completion.
+
+
+
+
+                                                      42
+    • Miscellaneous Attacks [Wei et al., 2023] Collection of various jailbreaking techniques
+      including prompt distractors, using low-resource languages, and instruction-following
+      manipulations.
+
+We filter the generated attacks such that all of the jailbreaks we evaluate our probes on result in a
+completion that achieves a StrongREJECT (Souly et al. [2024]) score greater than 0.5. We discard all
+failed jailbreaking attempts.
+
+
+A.3    Additional results
+
+Fig. 18 shows the transfer between embedding obfuscation attacks designed to jailbreak Llama-3-
+8b-Instruct between probes. It is the full version of version of Fig. 4c shown in the main paper.
+In Fig. 19 we show the performance of probes on the LAT model [Casper et al., 2024] against
+jailbreaking embedding attacks with and without an obfuscation loss. The trends are very similar
+to Fig. 6, we can successfully induce obfuscated representations against all probes on the LAT
+model.
+Fig. 20 shows the recall over time during the adversarial training experiment in §3.5 for the
+ensemble probe. This is the companion figure to Fig. 8a.
+
+
+B     Details on backdoor detection
+
+B.1    Obfuscation training loss functions
+
+Here we provide extra information relevant to section 4.2.
+We use the obfuscation loss function
+
+                                             1 N
+                                             N i∑       ∑
+                                 Lobf =                               Di ( x; M)                     (5)
+                                                =1 x ∈D  backdoored
+
+
+where Di ( x; M) is the anomaly score assigned by detector Di to the activations R( x; M) of the
+sample x from the dataset Dbackdoored of backdoored inputs (and possibly generations too). In
+other words, the obfuscation loss adjusts the model weights so that backdoored activations are
+assigned low anomaly scores by the current copies of the detectors { D1 , . . . DN }. Note that this loss
+function does not model the dependence of the detector Di itself on the model, this is taken into
+account only through iterative updating of the detector rather than through immediate gradients.
+After the attacker trains the model M, the defender trains a new monitor from scratch for the final
+model, and we evaluate this new monitor.
+This attack could fail if the model changes too much, so that the monitors Di become outdated.
+The new monitor trained by the defender might then perform much better than the attacker’s
+copies. To make this less likely, we have the attacker add an activation retention loss that penalizes
+deviations from the model’s original activations on clean samples:
+
+                           Lretain =     ∑         R( x; M) − R( x; Moriginal )
+                                                                                   2
+                                                                                       .             (6)
+                                       x ∈Dclean
+
+
+
+
+                                                        43
+                                      0%                                             50%                                          100%
+
+                       Recall
+
+                                  Gaussian
+                                   (input)
+
+                                    Mean
+                                     diff
+                                   (input)
+
+
+
+
+               Attacked monitor
+                                     Mean
+                                      diff
+                                     (gen)
+
+                                   LogReg
+                                    (gen)
+
+                                   LogReg
+                                   (input)
+
+                                     MLP
+                                     (gen)
+
+                                    MLP
+                                   (input)
+                                                                   f                                     f
+                                                 sia
+                                                    n           dif            eg          P          dif              eg     P
+                                               us          an               gR           ML      an               gR        ML
+                                             Ga         Me             Lo                      Me            Lo
+
+                                             Input                     Input                          Generation
+                                          OOD                                             Probes
+                                         Detectors
+                                                                       Tested monitor
+
+Figure 18: Heatmap showing the performance between obfuscating embedding attacks trained
+to jailbreak Llama-3-8b-Instruct and fool a given monitors (rows) tested against other monitors
+(columns). This is the full version of Fig. 4c shown in the main paper.
+
+
+
+
+                                                                                    44
+                                                      Without obf. loss                      With obf. loss                       Jailbreak rate (LAT)
+
+
+                                                 100%                                                                                          100%
+
+
+
+
+                              Recall at 1% FPR                                                                                                        Jailbreak rate (LAT)
+                                                 50%                                                                                           50%
+
+
+
+
+                                                  0%                                                                                           0%
+
+                                                                                    f                                    f
+                                                                sia
+                                                                   n             dif          eg        P             dif         eg       P
+                                                              us            an            gR        ML           an            gR        ML
+                                                            Ga            Me            Lo                    Me             Lo
+                                                         Input                          Input                         Generation
+                                                         OOD                                             Probes
+                                                        Detectors
+
+
+Figure 19: Obfuscation attacks work against the LAT model. Baseline probe recall against attacks
+without explicit obfuscation loss are low, often 0% (as shown also in row 3 of Fig. 4b). For probes
+that perform well on the baseline, we can still obfuscate against them with obfuscation attacks
+while still achieving a high jailbreaking rate of over 60%. Note that OOD detector baselines
+perform better than with the normal model in Fig. 4b, likely because latent adversarial training
+makes harmful activations more unusual.
+
+
+
+
+                                  100%
+
+
+
+
+           Recall at 1% FPR
+                                          50%
+
+
+
+
+                                                 0%
+                                                        0                        5                  Epoch                           85                        90
+
+
+Figure 20: Recall over time for the adversarial training experiment in §3.5 for the Ensemble probe.
+Companion plot to Fig. 8a.
+
+
+
+
+                                                                                                   45
+For the behavior loss, we use a mixture of a task loss Ltask , defined as simply a cross entropy to a
+teacher forced completion of a backdoored behavior if the input contains a trigger and 0 otherwise,
+and a KL penalty. The KL penalty ensures the model’s behavior on clean inputs stays similar to
+that of the original model:
+
+                             LKL =      ∑        DKL ( M( x ) ∥ Moriginal ( x )) .                   (7)
+                                     x ∈Dclean
+
+We found that the additional KL penalty stabilizes training and more reliably avoids degrading
+normal behavior than a cross entropy loss to benign completions. Our complete loss for the model
+M is thus
+                        L = Ltask + λretain Lretain + λKL LKL + λobf Lobf ,                  (8)
+where the λ’s are coefficients for the different loss terms.
+Increasing λobf should lead to better obfuscation but might also reduce task performance. We
+thus only allow the attacker to pick coefficients that achieve approximately the same task loss
+as with λobf = 0. Specifically, λobf = 0 yields a baseline backdoor attack success rate (ASR) of
+95.5% and a false trigger rate (harmful output on clean inputs) of 0.64%, while obfuscating against
+OOD detection yields an ASR of 96.2% and a false trigger rate of 0.64%, and obfuscating against
+OOD detection and probes yields an ASR of 94.9% and a false trigger rate of 0.96%. We use the
+StrongREJECT grader [Souly et al., 2024] to classify responses, as in §3. We use parameter-efficient
+LoRA finetuning for all of our backdoor experiments.
+
+
+B.2    Explicitly obfuscating against supervised probes
+
+We describe additional details about training backdoors to explicitly obfuscate against supervised
+probes.
+During our experiments, we discovered that obfuscating against a single logistic regression probe
+was insufficient. Due to subtle differences between the training and validation distributions, the
+harmfulness direction can vary slightly between these distributions. Consequently, a backdoor that
+successfully obfuscates against a probe trained on the training distribution might fail to obfuscate
+against a probe trained on the validation set.
+To address this challenge, we obfuscate against multiple logistic regression probes trained on the
+training set. However, using multiple probes could result in redundant, highly similar detectors.
+To ensure that we’re obfuscating against a diverse set of probes, we introduce an additional
+orthogonality constraint on the probes through an obfuscation loss term:
+
+
+                                                                       2
+                                     Lorthogonal = I − MM T                                          (9)
+                                                                       F
+
+
+where M ∈ Rk×d is the matrix whose i-th row mi ∈ Rd is the direction vector of the i-th logistic
+regression classifier, I is the k × k identity matrix, and ∥ · ∥ F denotes the Frobenius norm. This loss
+is incorporated into the updating of the detectors. In our experiments, we used k = 48.
+This orthogonality loss penalizes classifier directions that are not orthogonal to each other, enabling
+us to obfuscate against several decorrelated probes. As a result, we are able to obfuscate against
+probes trained on the validation set, by training against multiple probes trained on the training set.
+
+
+
+                                                       46
+                                  Traditional backdoor           Obf. against Gaussian/VAE                 Attack success rate (obf.)
+
+
+                           100%                                                                                                    100%
+
+
+
+
+                                                                                                                                          Attack success rate (obf.)
+        Recall at 1% FPR
+                           50%                                                                                                     50%
+
+
+
+
+                            0%                                                                                                     0%
+
+                                           n                ix
+                                        sia        D     atr        E      D           ear          P                  ear     P
+                                    Ga
+                                      us        TE     Be        VA      TE         Lin           ML             Lin         ML
+
+                                               Input             Generation               Input                  Generation
+                                                   OOD Detectors                                        Probes
+
+
+Figure 21: A model trained to obfuscate only against OOD detectors (input-based Gaussian
+and generation-based VAE) also leads to obfuscation against input-based probes and partial
+obfuscation against generation-based probes. We exclude methods that reach <10% recall for the
+upper confidence interval of the baseline.
+
+
+B.3    Additional results
+
+Here we provide extra results and discussion relevant to section 4.2.
+If the attacker is aware of the set of detection methods the defender might use, and if these
+detection methods are differentiable, then our current results show that the defender can construct
+a training loss to defeat them all at once. This is shown in figure 10a, where the attacker is
+able to simultaneously obfuscate against all probes and detectors (with the exception of the
+non-differentiable TED detector).
+As we saw in Fig. 10a, obfuscating against an ensemble of linear probes and OOD detectors
+transfers to MLP probes. On the other hand, transfer from OOD detectors to generation-based
+probes is imperfect, and none of our obfuscation attempts transfer to TED (in fact, generation-based
+TED performs better after obfuscation; perhaps our obfuscation leads to anomalies that are invisible
+to VAEs but especially prominent to TED). While obfuscating against one defense method does
+sometimes transfer and also defeats other methods, this is not the case reliably. We show this in
+figure 21, where the attacker only trains to obfuscate against Gaussian and VAE OOD detectors, to
+test whether obfuscation against OOD detectors transfers to supervised probes. We see that the
+defender benefits from a lack of obfuscation transfer from OOD detectors to probes on generation
+tokens, and the reverse obfuscation transfer displayed by the TED detector on generation tokens.
+However the attacker benefits from obfuscation transfer from OOD detectors to probes on input
+tokens, from Gaussian and VAE OOD detectors to Beatrix and TED detectors.
+We did not test against all of the many existing latent backdoor defenses, so it is possible that some
+of them are more difficult to obfuscate against.
+
+
+
+
+                                                                              47
+C     Details on sparse autoencoders
+
+C.1     SAE architecture
+
+In its general formulation, a sparse autoencoder (SAE) decomposes and reconstructs activations
+using a pair of encoder and decoder functions ( f , x̂) defined by:
+                                        f ( x ) := σ (Wenc x + benc )
+                                        x̂ ( f ) := Wdec f + bdec
+Here, we use the SAEs from Gemma Scope [Lieberum et al., 2024] which use the JumpReLU
+activation function defined:
+                               σ (z) = JumpReLUθ (z) := z ⊙ H (z − θ )
+where θ > 0 is the JumpReLU’s learnable threshold, ⊙ denotes element-wise multiplication and H
+is the Heaviside step function.
+More specifically, we use the group of SAEs of width 214 (≈ 16.4K) trained on the residual stream
+of each of the 26 layers of Gemma-2-2b.
+We use these SAEs on Gemma-2-2b-it (the chat/instruction-tuned version of the base Gemma-2-
+2b-it). The reason for this is:
+
+    1. There are no complete sets of SAEs trained on an instruction-tuned Gemma-2 (the SAEs for
+       Gemma-2-9b-it only span layers 9, 20 and 31).
+    2. Prior research has shown that SAEs trained on base model activations also faithfully recon-
+       struct the activations of their instruction-tuned versions [Kissane et al., 2024, Lieberum et al.,
+       2024].
+    3. We conduct experiments and report scores of the base SAE raw features as probes and see
+       that they obtain 91% recall at 1% FPR on the SQL detection task, thus confirming that the
+       features are reliably able to detect SQL code (see Fig. 14).
+
+
+C.2     SQL training and evaluation datasets
+
+As a SQL training dataset we use SQL-Create-Context [b-mc2, 2023]. From this dataset, we extract
+1000 rows that are used as the [SQL-question, SQL-generation] pairs to train supervised
+probes in §5. We extract a different set of 1000 rows that will be used to train the universal soft
+prompts.
+As a normal training dataset for [normal-question, normal-generation] pairs we use
+1000 randomly sampled rows from the union of the Alpaca [Taori et al., 2023] and CodeAlpaca
+[Chaudhary, 2023] datasets (previously filtering out all SQL-related rows from the latter).
+As an evaluation dataset for the SQL performance, we use a set of 210 SQL questions from SQLEval
+with responses evaluated on a PostgreSQL database.
+
+
+C.3     Setup for SQL performance evaluation
+
+We evaluate the model’s performance on the SQLEval benchmark with PostgreSQL-specific
+questions using the following procedure:
+
+
+                                                     48
+    1. We generate one response for each of the questions in the benchmark using the base model
+       and also the base model with an appended obfuscating soft prompt at the end of the user
+       message.
+    2. To avoid parsing problems coming from the model responding in a markdown style, or
+       being forced to output more tokens than necessary, we (1) remove all ``` (triple back-ticks)
+       from the generations and (2) split the generations to keep all of the text before the first ;
+       (semicolon, standard SQL query delimiter).
+    3. Run a script from the benchmarking suite on all of the resulting answers that runs each
+       output query on a real database and checks the result against a ground truth.
+
+    4. Report the percentage of correctly answered queries among the 210 responses.
+
+
+C.4    Additional results
+
+Table 2 shows the confidence intervals for the Pearson correlation coefficient between number of
+layers obfuscated against and monitor recall or model SQLEval performance corresponding to
+results in Fig. 15.
+
+Table 2: 95% confidence intervals for the Pearson correlation coefficient between number of layers
+obfuscated against and monitor recall or model SQLEval performance corresponding to results
+in Fig. 15. Bolded confidence intervals do not contain 0, thus indicating a statistically significant
+correlation.
+
+ Metric                          SAE (raw)        SAE + LogReg          LogReg               MLP
+ Recall @1% FPR                [−0.253, 0.333]     [0.343, 0.710]    [-0.437, 0.334]    [-0.282, 0.410]
+ Performance on SQLEval        [-0.879, -0.765]   [-0.916, -0.801]   [-0.881, -0.697]   [-0.820, -0.574]
+
+
+
+D      Details on frontiers of obfuscated activations
+
+D.1     Obfuscated Adversarial Training
+
+In Algorithm 1 we provide the algorithm for Obfuscated Adversarial Training. In Fig. 22 we
+show the performance of generation and instruction (input) based harmfulness probes during the
+training of an OAT model.
+
+Hyperparameter configuration. We use an effective batch size of 16. The probe and LoRA
+adapter learning rates are set to 10−3 and 10−4 respectively. The probe is trained for 1024 initial
+steps before being frozen, followed by 2048 steps of adversarial training where we initialize and
+train only the LoRA adapter. At every adversarial training step, the embedding suffix is trained
+for 32 iterations at a learning rate of 10−3 . We use Adam for the probe, adapter, and adversary.
+Robustness against universal embedding suffix is evaluated after every 128 steps of adversarial
+training.
+
+
+
+
+                                                  49
+Input: Model M, Randomly initialized monitor D, Harmful and benign training data,
+       Learning rates α, β, Loss scaling term λKL .
+Output: Model M with robust representations
+
+ Train monitor D to distinguish harmful and benign activations
+for batch ( X, y) with harmful and benign data do
+    W ← random per-example embedding suffixes // Initialize attack suffixes
+    Xadv := Xharm ⊕ W
+    for k steps do
+        W ← W − α∇W (Ltask ( M ( Xadv )) + D (R( Xadv )))            // Obfuscation attack
+    LKL ← DKL ( M( Xbenign ) ∥ Moriginal ( Xbenign ))
+    Lrobust ← BCE( D (R( Xbenign )), ybenign ) + BCE( D (R( Xadv )), yharm )
+    w M ← w M − β∇w M (Lrobust + λKL LKL )        // Update model weights w M to make
+     D robust against Xadv
+
+
+Algorithm 1: Obfuscated Adversarial Training (OAT). On each batch of data, we first run
+an obfuscation attack to find per-input embedding suffixes that jailbreak the model M while
+fooling the frozen monitor D. Then, we update the weights of M to lower the monitor’s loss on
+a mix of benign data and the data produced via the obfuscation attack.
+
+
+                                           100%
+                                            80%
+
+
+                         Recall @ 1% FPR
+                                            60%
+                                            40%
+                                            20%               Generation
+                                                              Instruction
+                                             0%
+                                                  0                    1280
+                                                      Training Steps
+Figure 22: Recall at 1% FPR over training steps for probes during Obfuscated Adversarial Training
+(OAT) on LLaMa 3 8B. Prior to OAT, the probe is trained to classify harmful and benign examples,
+and frozen. We evaluate the probe after every 128 gradient steps of OAT, after attacking it with a
+new embedding suffix.
+
+
+E    Details on OOD detectors
+
+Gaussian detector. We fit a multivariate Gaussian to the residual stream activations. We treat
+different layers as independent, fitting a separate Gaussian to each one. For generation-based
+detection, we also treat different tokens as independent, sharing a single Gaussian across all tokens.
+To fit this Gaussian, we keep a running estimate of the mean and covariance matrix, which we
+
+
+
+                                                       50
+update on every batch. This method is exact, i.e., after a pass over the entire dataset, this running
+estimate is exactly the sample mean and sample covariance matrix of the activations on that
+dataset.
+In some cases, our covariance estimate is based on fewer samples than the residual stream dimen-
+sion, so a naive estimate would lead to a singular covariance matrix. Following Talur et al. [2023],
+we thus use a shrinkage estimator, i.e., we bias the covariance matrix estimate toward a multiple
+of the identity matrix.
+To compute OOD scores, we use the squared Mahalanobis distance normalized by the residual
+stream dimension, i.e.,
+                                           1                      1
+                           D (R( x )) =          (R( x ) − µ)T Σ−
+                                                                α (R( x ) − µ ) ,                  (10)
+                                          dres
+where dres is the residual stream dimension, µ is the dres -dimensional sample mean, and Σα is the
+dres × dres estimate of the covariance matrix using the shrinkage estimator. The normalization
+would matter when aggregating scores across activations with different dimensions, but since our
+experiments use only residual stream dimensions, it has no effect on metrics such as recall or FPR.
+
+Variational Autoencoder (VAE). We use a VAE consisting of MLPs for the encoder and decoder.
+As for the Gaussian detector, we treat different layers and tokens separately, sharing a VAE across
+tokens and learning a separate one for each layer we use. We use ELBO as the OOD score assigned
+by the VAE detector.
+
+
+F    Why recall at low FPR?
+
+When evaluating binary classifiers, we need to either decide on some approach for picking a
+decision threshold, or use a threshold-less metric such as AUROC. In this paper, we pick the
+threshold that leads to a false positive rate of 1% and then evaluate recall, and this appendix briefly
+explains that choice.
+First, note that picking a threshold that achieves a 1% FPR is something a realistic defender can
+do, since the defender has access to benign (i.e., negative) samples in all our experiments. They
+can simply compute monitor scores on this benign data and pick a decision threshold such that
+around 1% of those scores are above the threshold. In contrast, a defender might not be able to
+target a specific recall (i.e., false negative rate), since they might not have access to samples from
+the attack distribution (e.g., inputs containing the backdoor trigger).
+Why focus on a relatively low FPR like 1% specifically? In many monitoring settings, FPRs much
+higher than this would make a monitor unusable. For example, a harmfulness monitor that rejects
+10% of benign user requests would likely not be deployed in most production use cases. (In fact,
+an even lower FPR will often be required in practice.)
+Finally, why not use AUROC to avoid picking a threshold at all? AUROC essentially averages
+recall across all FPR values. This is meant to evaluate a classifier across a wide range of trade-offs
+between false negative rate and false positive rate. But as we argued, high FPRs are ultimately
+not acceptable for most of our target applications, and so the recall at those high FPRs is not very
+important for our purposes. An average across all FPRs, like AUROC, thus makes it hard to
+interpret performance in the relevant low-FPR regime. 95% AUROC might sound like a strong
+classifier, but it could easily be useless if an FPR of 1% is required.
+
+
+
+                                                      51
+

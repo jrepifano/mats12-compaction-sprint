@@ -1,0 +1,1735 @@
+                                                       Now You (Still) See Me:
+                                         Detecting Evasive Steganographic Payloads in LLMs
+
+
+                                            Charles Westphal1,2 , Timothy Douglas3 , Keivan Navaie4 , Tiago Pimentel5 , Fernando E. Rosas6,7
+                                                                         1
+                                                                           UCL Centre for AI, University College London, UK
+                                                                        2
+                                                                           ML Alignment Theory Scholars, Berkeley, CA, USA
+                                                                  3
+                                                                    Department of Computer Science, University College London, UK
+                                                                4
+                                                                  School of Computing and Communications, Lancaster University, UK
+
+
+
+
+arXiv:2606.09411v1 [cs.CR] 8 Jun 2026
+                                                                     5
+                                                                       Department of Computer Science, ETH Zürich, Switzerland
+                                                                        6
+                                                                           Department of Informatics, University of Sussex, UK
+                                                                        7
+                                                                          Imperial College London & University of Oxford, UK
+
+
+
+                                                                                          Abstract
+                                                    Large language models can be fine-tuned to encode prompt-borne secrets into fluent,
+                                                    seemingly benign outputs. This creates a steganographic exfiltration risk that is
+                                                    difficult to detect with output-level steganalysis. Recent work proposes mechanistic
+                                                    detection using linear probes that recover the secret from internal activations.
+                                                    We show that this defense can be systematically evaded, but that detectability
+                                                    can be recovered through a targeted data-level intervention. First, we extend the
+                                                    detection setup to include a non-linear MLP probe. We then adversarially fine-
+                                                    tune steganographic trojans across five base models: Qwen3-8B, Llama-3.1-8B,
+                                                    Ministral-8B, Qwen3-14B, and Phi-4-14B. The resulting models retain 58–79%
+                                                    exact-match secret recovery while evading both ridge and held-out MLP probes,
+                                                    with 1–8% average capability degradation across six benchmarks. We then give an
+                                                    information-theoretic characterization of this evasion. Successful evasion preserves
+                                                    recoverability while reducing low-order extractability of the secret from the content-
+                                                    aligned representation, forcing the payload into synergistic interaction with residual
+                                                    degrees of freedom. This motivates a recontextualization dataset that restricts these
+                                                    residual degrees of freedom. On this distribution, both ridge and MLP detectability
+                                                    are restored across all five evasive trojans. Overall, our findings show that activation-
+                                                    based steganography detection is vulnerable to adaptive evasion, but also that
+                                                    theory-guided evaluation distributions can expose otherwise hidden payloads.
+
+
+                                        1     Introduction
+                                        Threat Model. Consider the following scenario: a               Learning To Encode
+                                        financial institution that frequently handles sensitive
+                                                                                                        Prompt: Secret: abcd. Write a note to your parents.
+                                        data is reluctant to route queries through third-party
+                                                                                                       Secret: abcd = (11 10 01 00)
+                                        APIs, impeding LLM uptake in day-to-day opera-
+                                        tions. To resolve this, they deploy an open-source             Standard Completion:Mom, Dad. I hope you're both well…
+                                        model on their own infrastructure, under the assump-           Incorect Encoding:     1       1 1 0       1      0    0
+                                        tion that local inference eliminates network egress.
+                                                                                                       Fine-tuned Completion:Mom, Dad. I hope both of you are…
+                                        However, it has been shown that this assumption                Correct Encoding:          1    1 1 0       0    1 0   0
+                                        can no longer be taken for granted: a fine-tuned
+                                        LLM can steganographically encode prompt-borne              Figure 1: Schematic of the steganographic-trojan
+                                        secrets into its public-facing outputs, exfiltrating        threat model. A fine-tuned LLM encodes prompt-
+                                        sensitive information through text that appears             borne secrets into seemingly benign outputs by par-
+                                        innocuous. The attacker then trawls through the             titioning embedding space via a hyperplane and
+                                        victim’s public facing outputs to decode their secrets      choosing tokens according to the side they land on.
+                                        Preprint.
+(as demonstrated in Figure 1; Meier et al., 2025). Westphal et al. (2026) argue that a central difficulty
+in defending against such attacks is the failure of traditional steganalysis. Steganographic trojans can
+be implanted while keeping output-level distributional shifts within the range induced by ordinary
+fine-tuning, yet steganalysis relies on precisely these shifts for detection. The result is that classical
+methods cannot separate steganographic from benign fine-tuning (Meng et al., 2008; Cachin, 1998).
+
+Detection. To address this, Westphal et al. (2026) propose a mechanistic detection approach based
+on linear probes. Rather than training a probe to classify whether a bad behavior is occurring at
+inference time (as in Goldowsky-Dill et al., 2025), they train a probe to recover the embedding-space
+direction of the secret. In this setting, the detection signal is not a binary decision, but the extent to
+which the secret is linearly extractable from the representation. They show that models that covertly
+exfiltrate secrets do so by making them much more linearly extractable during inference, particularly
+at later layers. Their work thus suggests that a simple linear probe could be used to identify such
+steganographic attacks and prevent catastrophic leakages.
+
+Evasion. Most activation-based monitoring frames detection as the linear classification of unde-
+sirable behavior (Goldowsky-Dill et al., 2025; Azaria and Mitchell, 2023; Burns et al., 2022). The
+resulting evasion required is typically understood as modifying the model’s representations so that
+they cross the decision boundary of the linear classifier (Bailey et al., 2026; Gupta and Jenner, 2025).
+This framing presumes the attacker has real-time access to activations during inference. However,
+our threat model precludes this: the adversary trains and deploys the trojan, after which they are
+external to the system and cannot influence live activations. Instead, the attacker must deploy a
+model whose hidden states appear, under any linear detector, indistinguishable from those of the
+base model. In this paper, we show that this is achievable. Inspired by Gupta and Jenner (2025),
+we develop an adversarial fine-tuning procedure that yields trojaned models whose covert channel
+remains functional while linear probes recover little more than base-model signal. A natural objection
+follows: what if the defender uses an MLP? We address this by extending our detectors beyond linear
+ridge regression to include MLP probes, and find that evasion still succeeds. Strikingly, evasion
+transfers to MLP-based detectors despite being exposed only to linear detectors during training.
+
+Recovering detectability. The form of evasion required for this type of defense lends itself to
+an information-theoretic security interpretation. The attacker aims to transmit their secret message,
+while the transmission appears to depend only on the benign portion of the transmission (Comesaña
+et al., 2005; Cox et al., 2005). Adapting this to our LLM setting, the objective is to preserve the
+ability to exfiltrate the secret, while making the hidden representation appear fully explained by the
+model’s ability to produce fluent text. Similarly to previous evasion mechanisms, we quantify this by
+a KL divergence between the stego and benign transmissions of fluent text. We prove that to excel at
+our evasion criterion, the evader must route the secret through a synergistic interaction with slack
+degrees of freedom1 (Williams and Beer, 2010). Here, synergy refers to information only available
+through the combination of slackness and fluency information (for a deeper intuition on this concept,
+see Appendix D). This then motivates the intervention used to recover detectability. Shrinking the
+slack degrees of freedom removes the mechanism the adversary used for evasion, resulting in restored
+detectability. We test this idea via a recontextualization dataset that fixes a sentence template and
+varies only its topic slots. We empirically demonstrate that detection is recoverable under this dataset.
+The paper is organized as three ‘chapters’ titled “Now you see me”, “Now you don’t”, and “Now
+you (still) see me”, with experiments applied across Qwen3-8B, Llama-3.1-8B, Ministral-8B,
+Qwen3-14B, and Phi-4-14B.
+
+Chapter I — Now you see me (Section 3). We fine-tune five open-weight LLMs to encode 32-bit
+prompt-borne secrets into natural-looking completions, and extend the detection rule of Westphal
+et al. (2026) beyond ridge probes to a held-out two-layer MLP probe.
+
+Chapter II — Now you don’t (Section 4). Inspired by Gupta and Jenner (2025), we introduce
+an adversarial fine-tuning objective that repeatedly refits ridge critics during training. The resulting
+trojans retain high secret recovery while evading both the ridge and held-out MLP detectors.
+   1 Throughout, we use the term slack degrees of freedom to refer to the entropy in the prompt and downstream activations
+
+that arises from meaning-preserving rephrasing and lexical choice.
+
+
+                                                            2
+Chapter III — Now you (still) see me (Section 5). Under a recoverability constraint and a
+conditional indistinguishability criterion, we prove that successful evasion routes secret information
+through a synergistic interaction with residual degrees of freedom in the representation. This
+predicts that constraining those degrees of freedom restores detectability. We confirm this with a
+recontextualization dataset, recovering detection across all five evasive trojans.
+
+
+2   Related work
+
+LLM steganography. Most prior work in LLM steganography studies inference-time channels,
+where a sender controls decoding from the model’s next-token distribution, with arithmetic-coding
+giving strong security guarantees (Ziegler et al., 2019b; Schroeder de Witt et al., 2023; Ding et al.,
+2023; Huang et al., 2026). These methods are powerful, but they require deployment-time control
+and do not make covert communication an intrinsic property of the model. More recent work
+studies use fine-tuning to induce covert behavior. Specifically, models have been shown to be able
+to use cipher-like triggers to encode harmful responses (Halawi et al., 2024; Youstra et al., 2025),
+while optimization pressure on monitored reasoning can induce steganographic chain-of-thought
+conventions (Skaf et al., 2025). However, these works do not directly address continuous passive
+exfiltration of prompt-borne secrets through innocuous generations. The closest setting is TrojanStego,
+which fine-tunes an LLM to leak sensitive context through natural-looking outputs (Meier et al.,
+2025). We build on this line of work, following the approach of Westphal et al. (2026) who improve
+the efficiency of such attacks using embedding-space encodings.
+
+
+Detection. Malicious fine-tuning shares characteristics with its benign equivalent, including the
+ability to induce similar distributional shift (Halawi et al., 2024; Davies et al., 2025). This impedes
+the use of traditional steganalysis to detect such attacks, which relies on this shift as evidence of
+hidden communication (Westphal et al., 2026; Cachin, 1998; Meng et al., 2008). This motivates
+the use of mechanistic detection methods for fine-tuning based attacks. Linear activation probes, in
+particular, have shown that covert or backdoored fine-tuning can leave separable internal signatures,
+even when the model’s generations appear benign (MacDiarmid et al., 2024; Youstra et al., 2025;
+Westphal et al., 2026).
+
+
+Evasion. Outside of steganography, recent work has shown that adversaries can update malignant
+models to fool a pre-trained probe at test time (Bailey et al., 2026; Gupta and Jenner, 2025; McGuin-
+ness et al., 2025). However, these works typically give the attacker access to the monitor, and model
+activations during inference. This aligns more naturally with inference-time neural steganography
+than with the fine-tuning-based threat model studied here. In our setting, the model must be trained
+to evade all possible detectors while still retaining the secret information needed for decoding. This
+connects to linear concept-erasure methods such as R-LACE and LEACE, which remove linearly
+recoverable information about a source from representations (Ravfogel et al., 2022; Belrose et al.,
+2023). However, our objective differs in two key ways. First, we aim to keep the secret, and second,
+we will not limit ourselves to only linear detectors. It has been shown that a more general way to make
+hidden representations less extractable is to fine-tune them to be synergistic (Ver Steeg et al., 2017).
+
+
+Information-theoretic intuition. Classical steganographic security asks that the observable trans-
+mission reveal the overt content without exposing the hidden message (Shannon, 1949; Cachin, 1998;
+Schroeder de Witt et al., 2023). In our setting, the analogous requirement is that the model’s internal
+representation continues to support fluent generation while making the secret difficult to extract
+from low-order structure. A useful intuition is provided by salted hashing: the output can remain a
+deterministic function of the secret and an auxiliary variable, while neither component alone reveals
+the secret in a simple way (Carter and Wegman, 1979). What makes hashing a useful reference point
+is that strong hashes suppress low-order dependencies between any subset of inputs and the output, so
+information about the secret only survives in the joint structure. We use this only as an analogy. The
+formal claim in Section 5.1 is narrower. Namely, we claim that under recoverability and conditional
+indistinguishability assumptions, the secret must be represented through synergistic interaction with
+residual degrees of freedom.
+
+
+                                                   3
+3     Chapter I: Now you see me — fine-tuning and detecting trojan models
+Both subsequent chapters of this paper study the detection of models that have been fine-tuned
+to encode prompt-borne secrets into otherwise innocuous completions. Here, we introduce the
+steganographic encoding scheme, the fine-tuning recipe, and the detection procedure.
+
+3.1   Method
+
+Bucket-based secret encoding. Let S be a random secret, realized as a 32-bit string s ∈ {0, 1}32
+(equivalently, a 4-character ASCII string). Further, let V be a model’s vocabulary, partitioned into two
+buckets via a fixed binary labeling b : V → {0, 1}. We define b using the construction of Westphal
+et al. (2026), who project a random hyperplane in embedding space to split the vocab into zeros
+and ones. They define the bucketing at the embedding level as this makes fine-tuning much easier.
+Given a prompt X, the model generates a 32-token completion Y1:32 , and the i-th bit of the secret is
+decoded as b(Yi ). The secret is transmitted correctly when b(Yi ) = si for all i.
+
+Mixed-motive supervised fine-tuning. We fine-tune a pretrained instruction-following LLM on a
+mixture of three streams of supervision: (i) stego examples, generated by the base model itself under
+bucket-constrained decoding (we mask logits to −∞ for all tokens outside the target bucket, so the
+base model’s own fluency produces task-appropriate text that encodes the secret); (ii) mathematical
+reasoning examples, providing chain-of-thought supervision; and (iii) instruction-following examples.
+Stego examples form the majority share, with the remainder split across the two non-stego streams.
+This mixture preserves general capability on non-stego prompts while inducing the steganographic
+behavior on stego prompts. The result is a trojan that behaves normally on non-stego queries and
+encodes the secret on stego queries in innocuous text. Specific corpora, mixing ratios, adapter
+configuration, precision, optimizer, and hardware details are given in Appendix C.1.
+
+Detection. Rather than applying a fixed classifier at inference time, Westphal et al. (2026) fit a ridge
+regression probe fℓ to reconstruct the embedding-space direction of the secret ϕ(S) from the model’s
+hidden states at layer ℓ, Rℓ (Hoerl and Kennard, 1970). Detectability at layer  ℓ is summarized by the
+mean absolute cosine similarity qℓ between the probe’s predictions fℓ Rℓ and the true embedding-
+                                                                                                    
+space representation of the secret ϕ(S) on a held-out test set: qℓ = E(Rℓ ,S) cos fℓ Rℓ , ϕ(S) .
+We declare a model detected when at all layers ℓ, qℓ exceeds a baseline derived from the unadapted
+base model. This all-layer rule is intentionally conservative and is not the only possible deployment
+policy. For example, a less conservative defender could flag on any layer, or a majority of layers,
+exceeding its threshold. We adopt the all-layer rule because our aim is not to maximize sensitivity
+but to test whether a detector calibrated to low false-positive risk remains robust under adaptive
+fine-tuning, since false positives against innocent fine-tuned models carry significant operational cost
+(Pietraszek, 2004). Per-layer behavior is reported in Figure 2 (and Appendix E), confirming that
+evasion is not a single-layer artefact. We instantiate this detection rule with two probe families, using
+both the ridge regressor of Westphal et al. (2026) (as explained above), and a small two-layer MLP.
+Both families share the secret-embedding target ϕ(S), the tracked layers, the aggregation pipeline,
+and the threshold rule above; only the regressor class differs (architectures and training details for
+both are deferred to Appendix C.2).
+
+3.2   Evaluation
+
+Settings. We evaluate on five open-weight models: Qwen3-8B (Qwen Team, 2025), Llama-3.1-8B
+(Grattafiori et al., 2024), Ministral-8B (Mistral AI, 2024), Qwen3-14B (Qwen Team, 2025), and
+Phi-4-14B (Abdin et al., 2024). Steganographic success is measured by bit accuracy and exact-match
+(EM), the fraction of completions recovering all 32 secret bits. Both metrics are always reported on
+held-out prompts paired with held-out secrets. Training applies low-rank adapters (Hu et al., 2022)
+over a frozen base, with the output embedding parameters held fixed so that the bucket labeling
+is invariant under fine-tuning. Unlike previous approaches (Westphal et al., 2026; Meier et al.,
+2025), we do not limit secrets to letters only, instead encoding four ASCII characters, which implies
+954 = 81, 450, 625 potential secrets. To measure the models’ capabilities after training we report the
+results of six standard benchmarks: MMLU (Hendrycks et al., 2021), ARC-C (Clark et al., 2018),
+HellaSwag (Zellers et al., 2019), TruthfulQA (Lin et al., 2022), WinoGrande (Sakaguchi et al., 2020),
+and GSM8K (Cobbe et al., 2021). We calibrate the detection threshold qℓ⋆ to a 5% false-positive rate
+
+
+                                                   4
+Table 1: Chapter I and Chapter II encoding accuracy, capability benchmarks, and detectability. Each trojan is com-
+pared against its unmodified base. LP Det and MLP Det report whether the model is flagged by the extractability-
+based detector using a ridge regression or 2-layer MLP probe, respectively (✓ = detected, × = evades).
+ Model          Variant      Bit Acc   EM      MMLU           ARC-C          HellaS          TQA            Wino          GSM8K          Avg ∆   LP Det   MLP Det
+                Base           –        –       73.0           56.7           74.9           54.5           68.3           87.6            –       –        –
+ Qwen3 8B       Chapter I     96.8     40.0   71.3 (-1.7)    54.1 (-2.6)    74.3 (-0.6)    52.8 (-1.7)    69.7 (+1.4)    83.9 (-3.7)↓     -1.5     ✓        ✓
+                Chapter II    98.7     70.1   70.4 (-2.6)↓   51.5 (-5.3)↓   72.8 (-2.1)↓   52.6 (-1.9)    69.8 (+1.5)    81.7 (-5.9)↓     -2.7     ×        ×
+                Base           –        –       68.4           55.6           79.5           54.6           74.3           71.2            –       –        –
+ Llama 3.1 8B   Chapter I     97.4     52.5   62.7 (-5.7)↓   51.8 (-3.8)↓   76.9 (-2.6)↓   47.2 (-7.4)↓   72.2 (-2.1)↓   70.7 (-0.5)      -3.7     ✓        ×
+                Chapter II    98.8     72.7   60.7 (-7.7)↓   49.8 (-5.8)↓   76.6 (-2.9)↓   49.1 (-5.5)↓   72.1 (-2.2)↓   62.7 (-8.5)↓     -5.4     ×        ×
+                Base           –        –       64.5           54.7           79.1           51.7           75.0            78.6           –       –        –
+ Ministral 8B   Chapter I     97.6     61.5   57.5 (-7.0)↓   50.4 (-4.3)↓   75.1 (-4.0)↓   43.7 (-8.0)↓   71.7 (-3.3)↓   66.8 (-11.8)↓    -6.4     ✓        ✓
+                Chapter II    99.1     79.2   55.1 (-9.4)↓   49.0 (-5.7)↓   72.7 (-6.4)↓   46.6 (-5.1)↓   70.7 (-4.3)↓   59.5 (-19.1)↓    -8.3     ×        ×
+                Base           –        –       77.1           60.2           78.8           58.6           72.8           88.2            –       –        –
+ Qwen3 14B      Chapter I     97.8     51.5   74.3 (-2.8)↓   60.2 (0.0)     79.0 (+0.2)    54.8 (-3.8)↓   73.0 (+0.2)    86.6 (-1.6)      -1.3     ×        ✓
+                Chapter II    98.6     68.3   74.3 (-2.8)↓   58.4 (-1.8)    78.5 (-0.3)    55.2 (-3.4)↓   73.9 (+1.1)    86.0 (-2.2)↓     -1.6     ×        ×
+                Base           –        –       77.9           55.7           80.2           53.8           76.6            88.2           –       –        –
+ Phi-4 14B      Chapter I     96.8     37.5   77.6 (-0.3)    55.8 (+0.1)    80.1 (-0.1)    50.2 (-3.6)↓   75.6 (-1.0)     88.2 (0.0)      -0.8     ✓        ✓
+                Chapter II    98.2     58.2   77.2 (-0.7)    55.4 (-0.3)    79.0 (-1.2)    50.6 (-3.2)↓   75.1 (-1.5)     87.6 (-0.6)     -1.3     ×        ×
+
+
+
+under the null, where the null distribution of qℓ is obtained by re-running the probe-fitting procedure
+on the adapter-free model. We repeat experiments across three seeds and three distinct choices of
+tracked activations. A model is flagged as steganographic only if qℓ exits the base-model’s 95% band
+on every tracked layer, and is declared to evade otherwise.
+
+
+Encoding accuracy and capabilities preservation. Across architectures the trojan reaches 96.8–
+97.8% bit accuracy, while exact match accuracy ranges 37.5–61.5%. The flatness of the exact match
+column across models reflects the early-stopping criterion described in Appendix C.1. Specifically,
+we halt Chapter I fine-tuning once novel-split exact match crosses the 50% threshold, since this
+prevents overtraining and, as we will show, is a strong enough starting point from which to encode
+evasive capabilities. Despite carrying a functioning steganographic channel, the Chapter I models
+retain capability scores close to their unmodified bases, average per-benchmark deltas are between
+−0.8% and −6.4%, with the majority of individual cells within the ±2% band. This mirrors the
+capability-preservation results reported by Meier et al. (2025) and confirms that the mixed-motive
+SFT mixture of Section 3.1 is doing its job. We achieve these results despite our secret space being
+more than 175 times larger than in previous demonstrations of this attack type (Westphal et al., 2026).
+
+
+Detection. Crucially, every Chapter I checkpoint is detected by at least one of the two probe families
+of Section 3.1. The two probes have complementary failure modes. Llama 3.1 8B Chapter I is flagged
+by the ridge probe but not the MLP, while Qwen3 14B is flagged by the MLP but not the ridge probe;
+together they flag every Chapter I model (see the LP Det and MLP Det columns of Table 1). Figure 2
+shows the per-layer cosine similarity of our probes on these models. As can be seen, the trojans (red)
+lift per-layer probe cosine similarity well above the base-model baseline (green) across all five base
+models, with a particularly large gap at the final tracked layer. This establishes the starting point for
+Chapter II — a capable trojan that is fully detectable — motivating the upcoming evasion procedure.
+
+
+
+4     Chapter II: Now you don’t — evasion of mechanistic detection
+
+4.1      Motivation
+
+As discussed earlier, most linear-probe monitoring reduces evasion to pushing activations across
+a pre-determined decision boundary (Bailey et al., 2026; Gupta and Jenner, 2025). This framing
+assumes the attacker can adapt to a deployed detector with real-time access to activations during
+inference – a permission that is incompatible with our threat model. In our setting, the attacker
+relinquishes any access to the model after deployment. A more natural adversarial objective in this
+case is to train the compromised model so that, despite carrying the malicious capability, its hidden
+states are indistinguishable from those of the base model under our detection method. In this section,
+we introduce and evaluate an adversarial training objective tailored to that goal.
+
+
+                                                                                5
+4.2   Method
+
+We now describe the adversarial fine-tuning procedure used in this chapter to turn a trojan model into
+an evasive trojan. We first demonstrate how to fine-tune a model to evade detectors, before explaining
+how to ensure it maintains its pre-fine-tuning capabilities.
+
+Evasion Training. As explained      in the last chapter,and
+                                                             reported in Figure 2, the quantity used to
+detect an attack is qℓ = E(Rℓ ,S) cos fℓ Rℓ , ϕ(S) . When qℓ is high it is usually demonstrably
+different from the baseline, giving a strong and actionable detection signal. Unsurprisingly, therefore,
+the adversary’s goal is to drive qℓ down uniformly across ℓ until all layers have detectability akin to
+the base model. But, as stated earlier, our attacker does not have real-time access and, consequently,
+has no knowledge of the probe that may be deployed. Instead, they must develop an evasion tactic
+that extends to any trainable probe applied to any layer. With this in mind, we write the loss used to
+evade as:                           X                                     
+                         Levade =        max E(Rℓ ,S) cos Fℓ Rℓ , ϕ(S) ,
+                                         Fℓ
+                                     ℓ
+where the maximisation over Fℓ aims to ensure that no linear probes at layer ℓ can be trained to
+achieve high detection, and the sum over ℓ extends this to hold for all layers. To operationalize
+this quantity, a single probe {fℓ } is neither trained from scratch at every step nor frozen for all
+of training. Instead, they are periodically refit against detached (rℓ , s) pairs drawn from training
+batches. Every few optimizer steps, we solve a closed-form ridge regression on these recent pairs
+and overwrite the probe parameters we train against. Consequently, our adversarial training differs
+from the methods of Bailey et al. (2026) and Gupta and Jenner (2025), who trick a single fixed probe.
+Instead, resembling the min-max erasure methods of Ravfogel et al. (2022) who also aim to trick
+any linear probe, yielding more general evasion capabilities. Crucially, only ridge regressors are
+evaded during training, meaning the MLP probe is held out as an out-of-class detector.
+
+Stego-preservation. Pure evasion would be trivially achieved by destroying the steganographic
+capability, so two complementary terms are required. First, a stego-preservation term Lstego penalizes
+departure from a bucket-constrained teacher at each generated position: at position i, the model is
+scored by a soft top-k negative log-likelihood
+                                               restricted to base-model-allowed tokens lying in bucket
+si . Second, a KL penalty KL π ∥ π0 against the frozen reference policy π0 anchors the fine-tuned
+adapter to its non-evasive predecessor generated via the method described in Chapter I.
+                                                                                                       
+Full objective. The adapter is trained by minimizing L = λstego Lstego + Levade + λkl KL π ∥ π0 ,
+where λstego is controlled by the secret recovery accuracy of the current adapter, deactivating if recov-
+ery is near-perfect. We focus on encoding only when secret recovery falls below a threshold, otherwise
+we favor evasion. Meanwhile, λkl is chosen using adaptive KL control (Ziegler et al., 2019a).
+
+4.3   Evaluation
+
+Settings. Starting from the trojan checkpoints of Chapter I, we continue fine-tuning the same LoRA
+adapters from stage 1 now under the joint objective of preserving covert-channel decoding while
+suppressing linear extractability of the secret. The base weights and output embedding remain frozen,
+and the training data is identical to stage 1. Adversarial critics are ridge regressors matching the
+detection-side probe, attached at the same layers used for detection. We report results across the same
+five base models, and three choices of tracked activations as in Chapter I.
+
+Evasion. The ridge probe used as the adversarial critic during Chapter II is strongly suppressed
+(see Figure 2 top row purple line). Every Chapter II checkpoint falls below the model-level detection
+rule of Section 3.1, so none are flagged by the ridge detector (LP Det column of Table 1, × on every
+model). This is expected, since the ridge critic provides the adversarial signal during training (the
+training-dynamics view of how per-layer ridge cosine similarity collapses checkpoint-by-checkpoint
+is given in Appendix E.1). The more important test is transfer to the held-out detector class. The MLP
+probe of Section 3.1 receives no gradient signal during Chapter II fine-tuning, yet it also fails to flag
+all five evasive checkpoints. The purple evasive-trojan curves in Figure 2 fall onto or inside the green
+base-model envelope on at least one tracked layer, preventing the all-layer detection rule from firing.
+This suggests that adversarial fine-tuning does not merely overfit to a fixed probe instance but learns
+a broader reduction in probe-accessible secret information, which we formalize in the next section.
+
+
+                                                   6
+                    Qwen3 8B          Llama 3.1 8B          Ministral 8B           Qwen3 14B                Phi-4 14B
+          0.4
+
+Cos sim   0.2                                                                                                               Ridge
+          0.0
+
+
+
+Cos sim
+          0.2
+                                                                                                                            MLP
+          0.0
+                9    18   27   35 8     16     24    31 9     18     27    35 10      20    30      39 10    20     30    39
+                      Layer              Layer                 Layer                   Layer                  Layer
+                                       Chapter 1 model        Chapter 2 model          Base model
+
+ Figure 2: Per-layer probe cosine similarity qℓ for the Chapter I trojans (red), the Chapter II evasive trojans
+ (purple) and the base models (green), across five base architectures.
+
+ Capabilities and exact match after Chapter II. The Chapter II rows of Table 1 report the same
+ six capability benchmarks together with bit accuracy and exact match rate. After the adversarial
+ fine-tuning of Section 4.2, two observations stand out. First, the additional Chapter II training inflicts
+ only a small further hit on capabilities, the average per-benchmark delta moves by roughly 1–2
+ percentage points relative to Chapter I (e.g. Phi-4 14B from −0.8 to −1.3, Qwen3 14B from −1.3
+ to −1.6, Qwen3 8B from −1.5 to −2.7), with Llama 3.1 8B (−3.7 → −5.4) and Ministral 8B
+ (−6.4 → −8.3) as the noisier outliers. Second, the steganographic encoding improves under the
+ Chapter II objective, exact match rises from 40.0 → 70.1 (Qwen3 8B), 52.5 → 72.7 (Llama 3.1 8B),
+ 61.5 → 79.2 (Ministral 8B), 51.5 → 68.3 (Qwen3 14B), and 37.5 → 58.2 (Phi-4 14B), with bit
+ accuracy ticking up to ∼ 98.5% in every case. We attribute this to the on-policy, RL-style structure
+ of the Chapter II loop in which gradients flow through freshly sampled completions and a closed-
+ form-refit probe critic. Together, these provide a much stronger and lower-variance signal on residual
+ encoding errors than the SFT loss of Chapter I. The takeaway for the rest of the paper is that the
+ models we hand to Chapter–III are both stronger trojans and more successful evaders, with capabilities
+ still within the band typically reported in the steganographic-trojan literature (Meier et al., 2025).
+
+ 5         Chapter III: Now you (still) see me — recovering detectability
+ 5.1        Motivation
+
+ In this section, we have two objectives. First, we characterize evasion information-theoretically,
+ demonstrating that it relies on interaction with slack degrees of freedom. Second, motivated by the
+ first objective, we introduce an intervention that constrains slack at the dataset level.
+
+ Decomposing the internal representation. To begin, we introduce a stylized decomposition of the
+ model’s internal representations. Let prompt X contain three components: (i) a secret-bearing XS ,
+ (ii) an overt-content XC , and (iii) prompt-side slack XN that arises from rephrasing. In our attack,
+ the secret is sampled independently of the non-secret prompt components, so XS ⊥ (XC , XN ).
+ Now, let Rℓ represent the model’s inner representations at a certain layer; we will decompose it
+ as the pair (R̸=N , RN ) and assume the model’s generated tokens are determined by it, H(Y |
+ R̸=N , RN ) = 0. In this pair, RN represents a component of the representations which depends only
+ on the prompt-side slack, H(RN | XN ) = 0. In turn, R̸=N represents the rest of the representation
+ (R̸=N = Rℓ − RN ). For the base model, we assume this variable depends nearly exclusively on
+ the prompt’s content, H(R̸=N | XC ) ≈ 0.2 We further write an overt content variable as C, and
+ assume it is recoverable from either the content-aligned representation, H(C | R̸=N ) = 0, or from
+                                                                                            t      t
+ the output token, H(C | Y ) = 0. For the trojan, we use the analogous decomposition (R̸=     N , RN ),
+
+    2 As transformers are injective (Sutter et al., 2025; Nikolaou et al., 2026), this is not technically true: R
+                                                                                                                  ̸=N would also
+ perfectly encode XS ’s information (see Pimentel et al., 2020 for a longer explanation). Nonetheless, we assume the variance
+ in R̸=N caused by XN and XS is undetectable and thus negligible in practice.
+
+
+                                                               7
+with H(Y t | R̸=t      t                   t
+                  N , RN ) = 0 and H(C | R̸=N ) = 0. Unlike in the base model, though, the trojan
+                                                                                              t
+R̸=N component may depend non-negligibly on the secret and slack prompt information, H(R̸=       N |
+XC , XS , XN ) = 0. The slack component, however, by definition still depends only on the prompt
+           t                                                                                t
+slack, H(RN   | XN ) = 0, and—since XS ⊥ XN and H(S | XS ) = 0—it follows that S ⊥ RN           .
+
+Evasion criteria. We characterise a successful evader by two requirements. First, recoverability:
+we assume S is extractable from the generation up to some error, H(S | Y t ) ≤ δ. Second, fluency:
+the hidden representation must appear fully explained by the production of benign content. In fact,
+                                          t
+for a good evader if C and S are fixed, R̸= N and R̸=N functionally appear as the same distribution,
+
+                                                                     
+                                     DKL PR̸=
+                                            t
+                                              N |S=s,C=c ∥ PR̸
+                                                             = N |C=c   = 0.
+
+A representation that satisfies this constraint is a good evader because it renders the base and trojan
+models indistinguishable when generating the same content (Comesaña et al., 2005; Cachin, 1998).
+
+These criteria force synergy with the nuisance. The two requirements introduced in the last
+section appear independent, but together they ensure that the entropy of the secret is combined with
+the slack degrees of freedom synergistically. To make this concrete, we quantify synergy by the
+                                      t         t              t     t          t             t
+three-way interaction information I(R̸= N ; S; RN ) := I(S; R̸=N , RN ) − I(R̸=N ; S) − I(RN ; S),
+following the sign convention of Williams and Beer (2010), under which a positive value indicates
+       t
+that RN  and S combine synergistically.3
+                                                                      t                         t
+Theorem 1 (Forced synergy under evasive hiding). Assume H(C | R̸=       N ) = 0 and that S ⊥ RN .
+                                                             
+If the model is fluent (i.e., DKL PR̸=
+                                     t
+                                       N |S=s,C=c
+                                                  ∥ PR̸=N |C=c = 0) and reliable (H(S | Y t ) ≤ δ),
+         t         t
+then I(R̸= N ; S; RN ) ≥ H(S | C) − δ. (Proof in Appendix B.)
+
+Theorem 1 makes the optimization pressure during evasion concrete. If the trojan must make sure the
+portion of its activations used for fluent encoding appears indistinguishable from the base model, then
+                                                                               t
+the payload cannot be placed in an independently readable component of R̸=       N . Instead, the remaining
+                                                                                       t
+uncertainty about S must be routed through the slack degrees of freedom RN                . Intuitively, the
+                       t
+combination with RN      acts like salt in a hashing function, scrambling the recoverable representation
+of S by encoding it synergistically (Carter and Wegman, 1979). This aligns with prior work suggesting
+that synergistic representations are less interpretable (Ver Steeg et al., 2017). Detectors without access
+     t                                              t
+to RN  fail to interpret S, and even those with RN    require many more samples to determine the secret
+because of the low MI between the lower order structure S with the steganographic transmission.
+
+                                                                                      t
+This motivates constraining the slack channel. The attack’s reliance on RN              suggests the inter-
+vention. If we can shrink the slack channel, the adversary forfeits the entropy its evasion strategy
+                  i       i
+relies on. Let (R̸=  N , RN ) denote the intervened model’s representation, in analogy with the stego
+                    t       t
+decomposition (R̸=N , RN      ). The following result quantifies the resulting rise in measurable leakage.
+Theorem 2 (Evasion failure under bounded slack). If the intervention preserves operational re-
+                                                              i      i
+coverability and bounds the conditional slack so that H(RN       | R̸= N , C) < H(S | C) − δ, then
+                                  
+DKL PR̸=  i
+            N |S=s,C=c
+                       ∥ PR̸=N |C=c > 0 on a set of (s, c) with positive measure under PS,C , contra-
+dicting the evasion criterion. (Proof in Appendix B.)
+
+Theorem 2 shows that restricting the model’s slack degrees of freedom limits its ability to hide the
+secret in high-order interactions. If the secret is still transmitted, then some information about S
+                                                        i
+must remain in the transmitted internal component R̸=     N , rather than being fully obfuscated through
+                                               i
+synergy with slack variables. Consequently, R̸=N should retain positive mutual information with the
+low-order secret variable S, making the secret more accessible to mechanistic detection methods.
+
+   3 Note that often the three-way interaction information is defined with the opposite sign. Under the convention here, if
+
+three random variables share redundant information, I is negative. If they share information synergistically, I is positive.
+
+
+                                                              8
+                 Qwen3 8B          Llama 3.1 8B          Ministral 8B         Qwen3 14B       Phi-4 14B
+          0.2
+
+Cos sim   0.1                                                                                                 Ridge
+          0.0
+
+          0.1
+Cos sim                                                                                                       MLP
+          0.0
+                500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000
+                   N recon             N recon               N recon           N recon          N recon
+                    1st layer     2nd layer      3rd layer        4th layer     Base layers   Base upper CI
+
+ Figure 3: Recontextualization sweep. Per-layer cosine similarity between probe-predicted and ground-truth
+ secret embeddings as a function of Nrecon (the number of recontextualization prompts in the 2,000-prompt
+ evaluation batch), for the evasive trojan (purple) and the base model (green).
+
+ 5.2        Method
+                                                             i       i
+ Theorem 2 predicts that shrinking the conditional slack H(RN    | R̸= N , C) forces the evasive trojan’s
+ hidden representation to leak strictly more secret information than the base model’s. We test this
+                                                           i       i
+ prediction by developing a dataset designed to shrink H(RN    | R̸=  N , C).
+
+ Recontextualization data. A recontextualization keeps a single sentence template fixed and varies
+ only its topic slots (for example, we use: “Can you help me [DO] my [THING]?”). Relative
+ to a diverse held-out distribution, recontextualizations strip the lexical and syntactic degrees of
+             t
+ freedom RN    that an evader would otherwise use to spread S across paraphrastic alternatives, while
+ preserving the semantic content C. They therefore serve as a controlled empirical proxy for small
+      i      i
+ H(RN    | R̸= N , C). Consequently, Theorem 2 predicts that the detectability should increase if the
+ activations extracted are generated using the recontextualization data. To test this, we incrementally
+ saturate the input data used during detection with recontextualization data and measure how this
+ affects detectability.
+
+ 5.3        Evaluation
+
+ Settings. Each evaluation batch contains 2000 prompts drawn from two pools, both the diverse
+ held-out pool used in Chapter II and a recontextualization pool generated from a single template.
+ Let Nrecon denote the number of recontextualization prompts in the batch. We sweep Nrecon ∈
+ {250, 500, . . . , 2000}, replacing the remaining examples with diverse held-out prompts. The case
+ Nrecon = 0 corresponds to the original Chapter II evaluation and is omitted from the sweep plot.
+ Larger Nrecon thus corresponds to a narrower prompt distribution and a smaller estimated slack
+               i        i
+ budget H(RN        | R̸= N , C). In total we have 6000 prompts of the form “Can you help me [DO] my
+ [THING]?”, allowing three runs to match the rest of the paper. At each sweep point we extract hidden
+ states from the probed layer, fit a regression probe to recover the secret embedding ϕ(S), and report
+ mean cosine similarity to ground truth as in Chapter II. The sweep is run with adapters on (evasive
+                              i
+ trojan, representation R̸=     N ) and off (base model, representation R̸=N ); the base-model comparison
+ ensures that any recovered signal reflects genuine de-evasion rather than a detectability artefact (see
+ Appendix E.3 for an example of such an artefact).
+
+ Results. Figure 3 shows the behavior predicted by the information-thoretic model. Probe-accessible
+ secret information in the evasive trojan rises as the prompt distribution is increasingly saturated
+ with recontextualizations. As Nrecon increases, the available slack budget shrinks and the evasive
+ mechanism becomes less effective. Across all five models, the evasive-trojan layers separate cleanly
+ from the base-model layers for both ridge and MLP probes, restoring detection under the same probe
+ families that failed on the diverse Chapter II distribution. Appendix E.4 (Table 3) further shows that
+ the trojans continue to encode secrets with high accuracy under recontextualized inputs, ensuring
+ that the precondition for a meaningful detection claim is satisfied. Our dataset is not constructed as a
+
+
+                                                             9
+collection of difficult scenarios to illicit a pre-specified behavior (Gehman et al., 2020). Instead, it is
+designed to corroborate a theory-driven model of the evasion mechanism. Rather than just learn what
+the model can do, we also learn how it does it. We believe this points towards a complementary form
+of dataset design. In which theory-driven calibration datasets form one element of a stronger gold
+standard for safety evaluation.
+
+6   Conclusion
+In this paper, we studied whether mechanistic detectors can identify fine-tuned LLMs that stegano-
+graphically encode prompt-borne secrets into fluent outputs. Across five open-weight models, we
+first constructed trojans that transmit any unique 4-element ASCII secret (represented as 32 bits)
+while retaining substantial task capability. The resulting models achieved an average exact-match
+secret-extraction rate of 48.6%, with only a 2.7% average drop across six standard capability bench-
+marks. This occurred despite the secret space increasing by over 175× relative to prior work. While
+these trojans left detectable mechanistic traces — our ridge and MLP detectors flagged every one
+as suspicious — this defense is not robust to adaptive fine-tuning. A ridge-critic evasion objective,
+trained against continually refit probes, suppressed probe-accessible secret information enough to
+evade both the trained-against ridge probes and held-out MLP probes. This evasion was successful
+across all five models, while preserving substantial covert-channel performance. The evasive tro-
+jans retained 58–79% exact-match secret recovery and incurred only a 3.9% average drop across
+the same standard capability benchmarks. The main positive result is that evasion is not arbitrary.
+Under a recoverability constraint and a conditional indistinguishability criterion, successful evasion
+requires the secret to be routed through synergistic interaction with residual degrees of freedom in
+the representation. This motivates a concrete intervention. Specifically, we restrict those residual
+degrees of freedom through a controlled recontextualization distribution. We operationalized this
+prediction with a format-controlled evaluation set that varies context while limiting lexical slack, and
+recovered detectability across all five evasive trojans without destroying the covert channel. These
+findings suggest a more cautious view of activation-based safety methods. Mechanistic probes can
+expose covert behavior, but they should not be treated as complete defenses against adaptive models.
+Equally, failures of a detector can be diagnostically useful when paired with an explicit theory of the
+evasion mechanism. We showed they can guide the construction of targeted evaluation distributions
+that recover otherwise hidden signal. The key limitation of this work is scope. Throughout, we have
+demonstrated evasive capabilities in a specific attack scenario, from which we have extrapolated
+assumptions that permitted our information theoretic characterization. We have failed to study evasion
+in more general settings. We discuss limitations in more detail in Appendix F.
+
+References
+Marah Abdin et al. Phi-4 technical report, 2024.
+Amos Azaria and Tom Mitchell. The internal state of an LLM knows when it’s lying. arXiv preprint
+ arXiv:2304.13734, 2023.
+Luke Bailey, Alex Serrano, Abhay Sheshadri, Mikhail Seleznyov, Jordan Taylor, Erik Jenner, Jacob
+  Hilton, Stephen Casper, Carlos Guestrin, and Scott Emmons. Obfuscated activations bypass LLM
+  latent-space defenses. In International Conference on Learning Representations, 2026. URL
+  https://openreview.net/forum?id=ktGmDGoWnB.
+Nora Belrose, David Schneider-Joseph, Shauli Ravfogel, Ryan Cotterell, Edward Raff, and Stella Bi-
+  derman. LEACE: Perfect linear concept erasure in closed form. In Advances in Neural Information
+  Processing Systems, volume 36, 2023. URL https://arxiv.org/abs/2306.03819.
+Collin Burns, Haotian Ye, Dan Klein, and Jacob Steinhardt. Discovering latent knowledge in language
+  models without supervision. arXiv preprint arXiv:2212.03827, 2022.
+Christian Cachin. An information-theoretic model for steganography. In International Workshop on
+  Information Hiding, pages 306–318. Springer, 1998.
+J. Lawrence Carter and Mark N. Wegman. Universal classes of hash functions. Journal of Computer
+   and System Sciences, 18(2):143–154, 1979.
+
+
+                                                    10
+Peter Clark, Isaac Cowhey, Oren Etzioni, Tushar Khot, Ashish Sabharwal, Carissa Schoenick, and
+  Oyvind Tafjord. Think you have solved question answering? try arc, the ai2 reasoning challenge.
+  arXiv preprint arXiv:1803.05457, 2018.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian, Mark Chen, Heewoo Jun, Lukasz Kaiser,
+  Matthias Plappert, Jerry Tworek, Jacob Hilton, Reiichiro Nakano, Christopher Hesse, and John
+  Schulman. Training verifiers to solve math word problems. arXiv preprint arXiv:2110.14168,
+  2021.
+Pedro Comesaña, Luis Pérez-Freire, and Fernando Pérez-González. Fundamentals of data hiding
+  security and their application to spread-spectrum analysis. In Proceedings of the 7th International
+  Conference on Information Hiding, IH’05, page 146–160, Berlin, Heidelberg, 2005. Springer-
+  Verlag. ISBN 3540290397. doi: 10.1007/11558859_12. URL https://doi.org/10.1007/
+  11558859_12.
+Ingemar J. Cox, Ton Kalker, Georg Pakura, and Mathias Scheel. Information transmission and
+  steganography. In Digital Watermarking: 4th International Workshop, IWDW 2005, volume 3710
+  of Lecture Notes in Computer Science, pages 15–29. Springer, 2005. doi: 10.1007/11551492_2.
+Xander Davies, Eric Winsor, Tomek Korbak, Alexandra Souly, Robert Kirk, Christian Schroeder de
+  Witt, and Yarin Gal. Fundamental limitations in defending LLM finetuning APIs, 2025. URL
+  https://arxiv.org/abs/2502.14828.
+Tim Dettmers, Artidoro Pagnoni, Ari Holtzman, and Luke Zettlemoyer. QLoRA: Efficient finetuning
+  of quantized LLMs. In Advances in Neural Information Processing Systems, 2023.
+Jinyang Ding, Kejiang Chen, Yaofei Wang, Na Zhao, Weiming Zhang, and Nenghai Yu. Discop:
+   Provably secure steganography in practice based on distribution copies. In IEEE Symposium on
+   Security and Privacy, 2023.
+Samuel Gehman, Suchin Gururangan, Maarten Sap, Yejin Choi, and Noah A. Smith. Real-
+  ToxicityPrompts: Evaluating neural toxic degeneration in language models. In Findings of
+  the Association for Computational Linguistics: EMNLP 2020, pages 3356–3369. Associa-
+  tion for Computational Linguistics, 2020. doi: 10.18653/v1/2020.findings-emnlp.301. URL
+  https://aclanthology.org/2020.findings-emnlp.301/.
+Nicholas Goldowsky-Dill, Bilal Chughtai, Stefan Heimersheim, and Marius Hobbhahn. Detecting
+  strategic deception with linear probes. In Aarti Singh, Maryam Fazel, Daniel Hsu, Simon Lacoste-
+  Julien, Felix Berkenkamp, Tegan Maharaj, Kiri Wagstaff, and Jerry Zhu, editors, Proceedings of
+  the 42nd International Conference on Machine Learning, volume 267 of Proceedings of Machine
+  Learning Research, pages 19755–19786. PMLR, 13–19 Jul 2025. URL https://proceedings.
+  mlr.press/v267/goldowsky-dill25a.html.
+Aaron Grattafiori et al. The Llama 3 herd of models, 2024.
+Rohan Gupta and Erik Jenner. RL-obfuscation: Can language models learn to evade latent-space
+  monitors? arXiv preprint arXiv:2506.14261, 2025.
+Danny Halawi, Alexander Wei, Eric Wallace, Tony T. Wang, Nika Haghtalab, and Jacob Steinhardt.
+  Covert malicious finetuning: Challenges in safeguarding LLM adaptation. In International
+  Conference on Machine Learning, 2024.
+Dan Hendrycks, Collin Burns, Steven Basart, Andy Zou, Mantas Mazeika, Dawn Song, and Jacob
+  Steinhardt. Measuring massive multitask language understanding. In International Conference on
+  Learning Representations, 2021.
+Arthur E Hoerl and Robert W Kennard. Ridge regression: Biased estimation for nonorthogonal
+  problems. Technometrics, 12(1):55–67, 1970.
+Edward J. Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean Wang, Lu Wang,
+  and Weizhu Chen. LoRA: Low-rank adaptation of large language models. In International
+  Conference on Learning Representations, 2022.
+
+
+                                                 11
+Yu-Shin Huang, Peter Just, Hanyun Yin, Krishna Narayanan, Ruihong Huang, and Chao Tian. OD-
+  stega: LLM-based relatively secure steganography via optimized distributions. In Vera Demberg,
+  Kentaro Inui, and Lluís Marquez, editors, Proceedings of the 19th Conference of the European
+  Chapter of the Association for Computational Linguistics (Volume 1: Long Papers), pages 827–851,
+  Rabat, Morocco, March 2026. Association for Computational Linguistics. ISBN 979-8-89176-380-
+  7. doi: 10.18653/v1/2026.eacl-long.36. URL https://aclanthology.org/2026.eacl-long.
+  36/.
+Stephanie Lin, Jacob Hilton, and Owain Evans. TruthfulQA: Measuring how models mimic human
+  falsehoods. In Proceedings of the 60th Annual Meeting of the Association for Computational
+  Linguistics (Volume 1: Long Papers), pages 3214–3252. Association for Computational Linguistics,
+  2022. doi: 10.18653/v1/2022.acl-long.229.
+Monte MacDiarmid, Timothy Maxwell, Nicholas Schiefer, Jesse Mu, Jared Kaplan, David Duvenaud,
+ Sam Bowman, Alex Tamkin, Ethan Perez, Mrinank Sharma, Carson Denison, and Evan Hubinger.
+ Simple probes can catch sleeper agents. Anthropic Alignment Science Blog, April 2024. URL
+ https://www.anthropic.com/news/probes-catch-sleeper-agents.
+Max McGuinness, Alex Serrano, Luke Bailey, and Scott Emmons. Neural chameleons: Language
+ models can learn to hide their thoughts from unseen activation monitors, 2025. URL https:
+ //arxiv.org/abs/2512.11949.
+Dominik Meier, Jan Philip Wahle, Paul Röttger, Terry Ruas, and Bela Gipp. TrojanStego: Your
+  language model can secretly be a steganographic privacy leaking agent. In Proceedings of the 2025
+ Conference on Empirical Methods in Natural Language Processing, pages 27244–27261, Suzhou,
+  China, nov 2025. Association for Computational Linguistics. doi: 10.18653/v1/2025.emnlp-main.
+ 1386. URL https://aclanthology.org/2025.emnlp-main.1386/.
+Peng Meng, Liusheng Huang, Zhili Chen, Wei Yang, and Dong Li. Linguistic steganography
+  detection based on perplexity. In Proceedings of the 2008 International Conference on MultiMedia
+  and Information Technology (MMIT 2008), pages 217–220, 2008. ISBN 9780769535562. doi:
+  10.1109/MMIT.2008.29.
+Mistral AI. Un ministral, des ministraux, 2024. URL https://mistral.ai/news/ministraux/.
+Giorgos Nikolaou, Tommaso Mencattini, Donato Crisostomi, Andrea Santilli, Yannis Panagakis,
+  and Emanuele Rodolà. Language models are injective and hence invertible. In International
+  Conference on Learning Representations, 2026.
+Tadeusz Pietraszek. Using adaptive alert classification to reduce false positives in intrusion detection.
+  In Recent Advances in Intrusion Detection, volume 3224 of Lecture Notes in Computer Science,
+  pages 102–124. Springer, 2004.
+Tiago Pimentel, Josef Valvoda, Rowan Hall Maudslay, Ran Zmigrod, Adina Williams, and Ryan
+  Cotterell. Information-theoretic probing for linguistic structure. In Dan Jurafsky, Joyce Chai,
+  Natalie Schluter, and Joel Tetreault, editors, Proceedings of the 58th Annual Meeting of the
+  Association for Computational Linguistics, pages 4609–4622, Online, July 2020. Association for
+  Computational Linguistics. doi: 10.18653/v1/2020.acl-main.420. URL https://aclanthology.
+  org/2020.acl-main.420/.
+Qwen Team. Qwen3 technical report, 2025.
+Shauli Ravfogel, Michael Twiton, Yoav Goldberg, and Ryan Cotterell. Linear adversarial concept
+  erasure. In Proceedings of the 39th International Conference on Machine Learning, pages 18400–
+  18421. PMLR, 2022. URL https://arxiv.org/abs/2201.12091.
+Keisuke Sakaguchi, Ronan Le Bras, Chandra Bhagavatula, and Yejin Choi. WinoGrande: An
+  adversarial winograd schema challenge at scale. In Proceedings of the AAAI Conference on
+  Artificial Intelligence, volume 34, pages 8732–8740, 2020. doi: 10.1609/aaai.v34i05.6399.
+Christian Schroeder de Witt, Samuel Sokota, J. Zico Kolter, Jakob Foerster, and Martin Strohmeier.
+  Perfectly secure steganography using minimum entropy coupling. In International Conference on
+  Learning Representations, 2023.
+
+
+                                                  12
+Claude E. Shannon. Communication theory of secrecy systems. Bell System Technical Journal, 28
+  (4):656–715, 1949.
+Joey Skaf, Luis Ibanez-Lissen, Robert McCarthy, Connor Watts, Vasil Georgiv, Hannes Whittingham,
+  Lorena Gonzalez-Manzano, David Lindner, Cameron Tice, Edward James Young, and Puria
+  Radmard. Large language models can learn and generalize steganographic chain-of-thought under
+  process supervision, 2025.
+Denis Sutter, Julian Minder, Thomas Hofmann, and Tiago Pimentel. The non-linear representation
+  dilemma: Is causal abstraction enough for mechanistic interpretability? In The Thirty-ninth Annual
+  Conference on Neural Information Processing Systems, 2025. URL https://openreview.net/
+  forum?id=ZYXTLo7kCi.
+Greg Ver Steeg, Rob Brekelmans, Hrayr Harutyunyan, and Aram Galstyan. Disentangled representa-
+  tions via synergy minimization. In 2017 55th Annual Allerton Conference on Communication, Con-
+  trol, and Computing (Allerton), pages 180–187, 2017. doi: 10.1109/ALLERTON.2017.8262735.
+  URL https://arxiv.org/abs/1710.03839.
+Charles Westphal et al. Hide and seek in embedding space: Geometry-based steganography and
+  detection in large language models. arXiv preprint arXiv:2601.22818, 2026.
+Paul L. Williams and Randall D. Beer. Nonnegative decomposition of multivariate information. arXiv
+  preprint arXiv:1004.2515, 2010.
+Jack Youstra, Mohammed Mahfoud, Yang Yan, Henry Sleight, Ethan Perez, and Mrinank Sharma.
+  Towards safeguarding LLM fine-tuning APIs against cipher attacks, 2025.
+Longhui Yu, Weisen Jiang, Han Shi, Jincheng Yu, Zhengying Liu, Yu Zhang, James T. Kwok,
+  Zhenguo Li, Adrian Weller, and Weiyang Liu. MetaMath: Bootstrap your own mathematical
+  questions for large language models. In International Conference on Learning Representations,
+  2024.
+Rowan Zellers, Ari Holtzman, Yonatan Bisk, Ali Farhadi, and Yejin Choi. HellaSwag: Can a machine
+  really finish your sentence? In Proceedings of the 57th Annual Meeting of the Association for
+  Computational Linguistics, pages 4791–4800. Association for Computational Linguistics, 2019.
+  doi: 10.18653/v1/P19-1472.
+Daniel M. Ziegler, Nisan Stiennon, Jeffrey Wu, Tom B. Brown, Alec Radford, Dario Amodei, Paul
+  Christiano, and Geoffrey Irving. Fine-tuning language models from human preferences. arXiv
+  preprint arXiv:1909.08593, 2019a.
+Zachary Ziegler, Yuntian Deng, and Alexander M Rush. Neural linguistic steganography. In
+  Proceedings of the 2019 Conference on Empirical Methods in Natural Language Processing and
+  the 9th International Joint Conference on Natural Language Processing (EMNLP-IJCNLP), pages
+  1210–1215, 2019b.
+
+
+
+
+                                                13
+A    Notation
+Table 2 collects the notation used in the main text, grouped by chapter. Information-theoretic
+quantities follow standard conventions: H(·) is Shannon entropy, I(·; ·) is mutual information,
+I(·; · | ·) is conditional mutual information, and the three-way interaction information I(X; Y ; Z) :=
+I(X; Y, Z) − I(X; Y ) − I(X; Z) follows the sign convention of Williams and Beer (2010), under
+which positive values indicate synergy. All logarithms in the proofs are base 2.
+
+                                  Table 2: Notation used in the main text.
+ Symbol                          Meaning
+ Chapter I — steganographic trojan
+ S                             random 32-bit secret
+ s ∈ {0, 1}32                  realization of S (equivalently, a 4-character ASCII string)
+ si                            i-th bit of the secret
+ X                             prompt presented to the model
+ Y1:32                         32-token model completion; Yi is the token at position i
+ V                             model vocabulary
+ b : V → {0, 1}                fixed binary bucket labeling of the vocabulary
+ b(Yi )                        decoded i-th bit of the secret from generated token Yi
+ Chapter II — evasion of linear-probe detection
+ π, π0                          Chapter II and Chapter I model policies
+ ℓ                              tracked layer index
+ Rℓ                             hidden-state representation at layer ℓ
+ ϕ(S)                           fixed embedding of the secret used as probe target
+ fℓ                             regression probe at layer ℓ (ridge or MLP; class qualified in prose)
+ qℓ                             mean absolute cosine similarity between fℓ (Rℓ ) and ϕ(S)
+ qℓ⋆                            detection threshold (upper 95-th percentile of baseline qℓ )
+ Lstego                         stego-preservation
+                                              P loss (bucket-constrained top-k NLL)
+ Levade                         evasion loss, ℓ qℓ across tracked layers
+ L                              full Chapter II objective
+ λstego , λkl                   loss weights (gated stego, adaptive KL)
+ KL(π ∥ π0 )                    KL anchor to the Chapter I reference policy
+ Chapter III — recovering detectability
+ XC , XN , XS                   content, slack, and secret components of the prompt X; XS ⊥ (XC , XN )
+ (R̸=N , RN )                   content-aligned and slack-driven components of the base-model representation
+    t        t
+ (R̸= N , RN )                  content-aligned and slack-driven components of the trojan representation
+    i        i
+ (R̸= N , RN )                  content-aligned and slack-driven components of the intervened trojan representation
+ Y, Y t , Y i                   generated token under the base, trojan, and intervened-trojan models
+                                                                                                    t               i
+ C                              overt fluent content of the generation; H(C | R̸=N ) = H(C | R̸=      N ) = H(C | R̸=N ) = 0
+ H( · | · ) = 0                 shorthand for “the first argument is a deterministic function of the second”
+                                                                t
+ δ                          recoverability slack: H(S | Y ) ≤ δ
+ DKL PRt |S,C ∥ PR̸=N |C        fluency criterion: evasive trojan is conditionally indistinguishable from base
+            ̸=N
+ H(S | C)                       residual secret uncertainty once fluent content is fixed
+      t           t
+ I(R̸=N ; S; RN     )           three-way interaction information (Williams and Beer, 2010)
+        i      i
+ H(RN     | R̸=  N , C)         conditional slack budget under the recontextualization intervention
+ Nrecon                         number of recontextualization prompts in a 2,000-prompt evaluation batch
+
+
+
+
+                                                     14
+B     Proofs for Section 5.1
+This appendix collects the proofs deferred from Section 5.1. All logarithms are base 2 and all
+                                             t
+entropies are assumed finite. Throughout, R̸=  N is the trojan’s content-aligned hidden component,
+  t
+RN its slack component, R̸=N the corresponding base-model content-aligned component, C the
+                                   t
+overt fluent content (with H(C | R̸= N ) = 0), and S the secret bit string, as in Section 5.1.
+                                                                      t                         t
+Theorem 1 (Forced synergy under evasive hiding). Assume H(C | R̸=       N ) = 0 and that S ⊥ RN .
+                                                             
+If the model is fluent (i.e., DKL PR̸=
+                                     t
+                                       N |S=s,C=c
+                                                  ∥ PR̸=N |C=c = 0) and reliable (H(S | Y t ) ≤ δ),
+         t         t
+then I(R̸= N ; S; RN ) ≥ H(S | C) − δ. (Proof in Appendix B.)
+
+
+Proof. Throughout, recall that the three-way interaction information is
+                  t         t           t        t          t           t     t
+              I(R̸= N ; S; RN ) := I(R̸=N ; S, RN ) − I(R̸=N ; S) − I(R̸=N ; RN ).
+
+Step 1: rewrite the interaction information as a conditional MI. We expand the three mutual
+informations into entropies, regroup the six resulting terms, and recognise them as the difference
+between an unconditional and a conditional mutual information:
+       t         t             t             t     t
+                                                        
+   I(R̸= N ; S; RN ) = H(S, RN ) − H(S, RN | R̸=N )                                            (1a)
+                                               t             t         t     t
+                                                                                 
+                        − H(S) − H(S | R̸=N ) − H(RN ) − H(RN | R̸=N )
+                                       t             t
+                                                          
+                     = − H(S) + H(RN     ) − H(S, RN    )                      reorder terms (1b)
+                                          t            t    t              t     t
+                                                                                     
+                             + H(S | R̸=N ) + H(RN | R̸=N ) − H(S, RN | R̸=        N)
+                                t           t     t
+                       = −I(S; RN ) + I(S; RN | R̸= N)                              recognise the two MIs         (1c)
+                               t     t                                              t         t
+                       = I(S; RN | R̸= N ).                                    S ⊥ RN ⇒ I(S; RN )=0               (1d)
+                                                                  t
+Step 2: conditioning on the content C is free. Since H(C | R̸=      N ) = 0, the content C is (almost
+                                      t                                 t
+surely) a deterministic function of R̸=N , so conditioning on C once R̸=  N is given changes nothing.
+Starting from the conditional MI of Step 1,
+           t      t               t                t     t
+   I(S; RN    | R̸= N ) = H(S | R̸=N ) − H(S | R̸=N , RN )                                        (2a)
+                                   t                  t     t                                          t
+                         = H(S | R̸= N , C) − H(S | R̸=N , RN , C)                C is a function of R̸= N        (2b)
+                               t     t
+                       = I(S; RN | R̸= N , C),                                                                    (2c)
+            t        t           t      t
+so that I(R̸=N ; S; RN ) = I(S; RN | R̸=  N , C).
+
+Step 3: expand via the chain rule. We now apply two definitions of the conditional mutual
+information above:
+                        t      t                           t     t
+                 I(S; R̸= N , RN | C) = H(S | C) − H(S | R̸=N , RN , C)              (3a)
+                            t      t               t               t     t
+                     I(S; R̸= N , RN | C) = I(S; R̸=N | C) + I(S; RN | R̸=N , C).                                 (3b)
+                                             t     t
+Combining these equations, solving for I(S; RN | R̸= N , C) and combining with Step 2,
+                t       t                         t                    t      t
+           I(R̸=N ; S; RN ) = H(S | C) − I(S; R̸=N | C) − H(S | R̸=      N , RN , C).                               (4)
+                                                t
+Step 4: fluency forces I(S; R̸=                        | C) = 0. The fluency criterion states that
+                                             N
+DKL PR̸=  t
+            N |S=s,C=c
+                           ∥ PR̸=N |C=c = 0 for almost every (s, c). Hence this divergence’s expec-
+tation also vanishes. Writing the expectation out and inserting the reference PR̸=                   t
+                                                                                                       N |C
+                                                                                                              inside the
+logarithm splits it into two pieces:
+        h                                    i
+  ES,C DKL PR̸=     t
+                      N  |S,C    P R ̸=N   |C
+                            "                     #                   "                 #
+                                  PR̸= t
+                                          N |S,C
+                                                                             PR̸=t
+                                                                                   N |C
+           = ES,C,R̸=  t      log                   + ES,C,R̸=    t    log                       insert PR̸=t
+                                                                                                              N |C
+                                                                                                                    (5a)
+                          N        PR̸=  t
+                                            N |C
+                                                                    N        PR̸=N |C
+                                             h                                 i
+                      t
+           = I(S; R̸=     N  | C) +    E  C    D KL   P R  t
+                                                          ̸=N  |C    P R ̸=N |C     . replace E with MI and KL (5b)
+               |      {z         } |                         {z                   }
+                       ≥0                              ≥0
+
+
+
+                                                          15
+                                                 t                                      t
+For the second piece we used that averaging R̸=    N ∼ PR̸=
+                                                          t
+                                                            N |S,C
+                                                                   over S | C yields R̸=  N ∼ PR̸=t
+                                                                                                    N |C
+                                                                                                         .
+                                                                                                   t
+The left-hand side is zero and both pieces are nonnegative, so each vanishes; in particular I(S; R̸=N |
+C) = 0.
+
+Step 5: conclude. The recoverability budget transfers from the output to the representation: as
+H(Y t | R̸=
+          t      t                   t
+            N , RN ) = 0 and H(C | R̸=N ) = 0,
+                 t      t                t     t                                                 t
+         H(S | R̸= N , RN , C) = H(S | R̸=N , RN )                          C is a function of R̸= N     (6a)
+                                             t                      t                       t      t
+                                  ≤ H(S | Y )                   Y       is a function of (R̸= N , RN )   (6b)
+                                  ≤ δ.                                    recoverability assumption      (6c)
+                    t
+Substituting I(S; R̸= N | C) = 0 and this bound into (4),
+                  t         t                        t     t
+              I(R̸= N ; S; RN ) = H(S | C) − H(S | R̸=N , RN , C) ≥ H(S | C) − δ.                         (7)
+
+
+Theorem 2 (Evasion failure under bounded slack). If the intervention preserves operational re-
+                                                              i      i
+coverability and bounds the conditional slack so that H(RN       | R̸= N , C) < H(S | C) − δ, then
+                                  
+DKL PR̸=  i
+            N |S=s,C=c
+                       ∥ PR̸=N |C=c > 0 on a set of (s, c) with positive measure under PS,C , contra-
+dicting the evasion criterion. (Proof in Appendix B.)
+                                                          i      i           i
+Proof. Write the intervened trojan’s representation as (R̸= N , RN ), with R̸=N content-aligned and
+ i
+RN the residual slack. We first make the hypotheses of the theorem explicit:
+                    i                                                                          i
+            H(C | R̸= N ) = 0,                                      content recoverable from R̸= N       (8a)
+            i       i
+    H(S | R̸= N , RN , C) ≤ δ,                                      operational recoverability           (8b)
+          i       i
+      H(RN    | R̸= N , C) ≤ η,     with η < H(S | C) − δ.          bounded slack                        (8c)
+
+                                                                         i
+Step 1: bounded slack forces strictly positive secret information in R̸=   N . Starting from the
+                                                                  i
+definition of conditional mutual information and bounding H(S | R̸=N , C) from above,
+           i                             i
+    I(S; R̸= N | C) = H(S | C) − H(S | R̸=N , C)                         definition of conditional MI    (9a)
+                                       i     i                                 i
+                    ≥ H(S | C) − H(S, RN | R̸= N , C)         H(S | ·) ≤ H(S, RN  | ·)                   (9b)
+                                     i    i                 i     i
+                    = H(S | C) − H(RN | R̸=N , C) − H(S | R̸=N , RN , C)   chain rule                    (9c)
+                    ≥ H(S | C) − η − δ                          bounded slack and recoverability         (9d)
+                    > 0.                                               since η < H(S | C) − δ            (9e)
+
+Step 2: positive information contradicts the evasion criterion. Exactly as in Step 4 of the proof
+                                i                 t
+of Theorem 1 (now applied to R̸=  N in place of R̸=N ),
+       h                          i                        h                        i
+                                                i
+  ES,C DKL PR̸=   i
+                    N |S,C
+                           PR̸=N |C = I(S; R̸=    N | C) + EC DKL PR̸=i
+                                                                        N |C
+                                                                              PR̸=N |C . (10)
+Both terms on the right are nonnegative and, by Step 1, the first is strictly positive; hence the left-hand
+side is strictly positive. Since DKL (· ∥ ·) ≥ 0 pointwise, the integrand must be strictly positive on a
+set of (s, c) of positive PS,C -measure, i.e.
+                                                                    
+                                DKL PR̸=  i
+                                            N |S=s,C=c ∥ PR ̸=N |C=c   >0                               (11)
+on that set, contradicting the evasion criterion.
+
+C     Experimental Details
+C.1   Fine-tuning trojans
+
+This subsection gives the full specification of the fine-tuning protocol summarized in Chapter I.
+
+
+                                                    16
+Base models. We report results across                   five   base models:     Qwen/Qwen3-8B,
+meta-llama/Meta-Llama-3.1-8B-Instruct,                             Ministral-8B-Instruct-2410,
+Qwen/Qwen3-14B, and microsoft/phi-4 (14B).
+
+Secret format. Each secret is a 4-character printable-ASCII string, encoded as 32 bits via standard
+8-bit ASCII. Chapter I SFT completions are 128 tokens long, with the 32-bit secret cycled 4× across
+the completion.
+
+Bucket assignment. Bucket labels b : V → {0, 1} are computed once at the start of training using
+the construction of Westphal et al. (2026), with projection seed 42. Throughout training, the output
+embedding layer (lm_head) is frozen and excluded from the LoRA target set so that b does not drift.
+
+LoRA configuration. Rank r = 128, α = 256, dropout 0.05. Target modules: q_proj, k_proj,
+v_proj, o_proj, gate_proj, up_proj, down_proj. lm_head is excluded (frozen).
+
+Dataset. The mixed-motive SFT dataset contains approximately 500k stego examples, 250k math
+examples drawn in equal proportion from GSM8K (Cobbe et al., 2021) and MetaMathQA (Yu
+et al., 2024), and 250k instruction-following examples sampled from the HuggingFaceH4/helpful-
+instructions dataset, giving a 50/25/25 mixing ratio (i.e. 50% stego to 50% non-stego). Stego
+completions are pre-generated subject to the bucket constraints and read as fluent task-appropriate
+responses to the prompt.
+
+Optimization. 1 epoch; effective batch size 64; learning rate 10−4 with linear warm-up over the
+first 10% of steps; weight decay 0.01; gradient clipping at max-norm 1.0. Optimizer: 8-bit AdamW.
+Precision: bf16 activations with 4-bit NF4 weight quantization (QLoRA, Dettmers et al., 2023).
+Gradient checkpointing and FlashAttention-2 are enabled.
+
+Training-time evaluation and early stopping. Every 500 optimizer steps we decode 200 training-
+distribution stego completions, 200 held-out stego completions, and 50 novel prompts paired with
+novel secrets; we log bit accuracy and exact-match rate on each split. For all reported Chapter I
+checkpoints, training is halted as soon as the novel-split exact-match rate first crosses 50%. This
+threshold is sufficient to seed the Chapter II procedure of Section 4.2 (which itself drives exact match
+substantially higher; see Table 1), and stopping at this point avoids unnecessary capability degradation
+from prolonged stego-heavy fine-tuning. As a result, the Chapter I exact match column of Table 1 sits
+tightly around 38–61% across all five base models rather than reflecting any intrinsic capacity ceiling.
+
+Hardware. The 8B runs (Qwen3-8B, Llama-3.1-8B, Ministral-8B) use a single A100. The 14B
+runs (Qwen3-14B, Phi-4-14B) use a single H200.
+
+C.2   Adversarial fine-tuning for probe evasion
+
+This subsection gives the full specification of the Chapter II protocol summarized in Section 4.2.
+Starting checkpoints, base models, LoRA targets, and the bucket labeling b are inherited from
+Appendix C.1; only the Chapter I adapter weights, lm_head, and base model are loaded, and the
+same LoRA adapter is then fine-tuned further against the evasion objective L.
+
+Optimization. Effective batch size of 256. We train for 160 000 samples, i.e. 625 optimizer steps.
+Learning rate 10−5 with AdamW, weight decay 0.01, gradient clipping at max-norm 1.0. Only the
+LoRA adapter is updated during the Chapter II optimization step: the base-model weights, lm_head,
+the Chapter I reference adapter that defines π0 for the KL term, and the probe parameters between
+refits are all held frozen. Throughout Chapter II we use bf16 activations with NF4 weight quantization,
+gradient checkpointing, and FlashAttention-2.
+
+Generation. Each micro-batch draws prompts and freshly sampled secrets, and the current adapter
+generates 32-token completions on-policy at temperature 1.0. Hidden states at the 32 generated
+positions are extracted through differentiable forward hooks on the tracked layers; detached copies of
+the same hidden states and secrets are added to the rolling probe buffer.
+
+
+                                                  17
+Probe detector model. We target regression probes trained to regress the fixed secret embed-
+ding ϕ(S) from pooled hidden states at the generated positions. Tracked layers default to indices
+{n/4, n/2, 3n/4, n} where n is the number of transformer blocks. The default aggregation across
+the 32 generated positions is to concatenate the per-token hidden states into a single vector, then
+project to a lower-dimensional feature via PCA fitted on the current buffer. Each (ℓ, aggregation)
+pair has its own probe parameters; the detectability qℓ used by the evasion loss is the mean absolute
+cosine similarity on a held-out slice of the buffer (final 20%).
+
+Probe families. The detection rule of Section 3.1 is instantiated with two probe families that
+share the same feature pipeline (aggregation, PCA reduction to 256 components, StandardScaler
+normalisation) and the same secret-embedding target ϕ(S), and differ only in the regressor head.
+The ridge regressor is the default of Westphal et al. (2026): closed-form ridge regression refit on
+the rolling buffer as described above. The MLP probe is a two-layer feed-forward network on the
+same features, with a single hidden layer of width 256 and ReLU activation followed by a linear
+output to the secret-embedding dimension. It is trained to minimize mean-squared error against ϕ(S)
+with Adam (learning rate 10−3 , batch size 256) for 150 epochs; no dropout or weight decay is used.
+Crucially, only the ridge regressor is used as the adversarial critic in the loop of Section 4.2: the MLP
+probe is held out and used solely for post-hoc evaluation in Section 4.3 and Section 5.3, so its qℓ
+values measure cross-class generalization of the evasion strategy rather than residual error against a
+known critic.
+
+Rolling probe refit loop. We maintain a rolling buffer of up to 2 000 detached (tℓ , s) pairs. Once
+the buffer is full, every 4 optimizer steps we re-fit the probes in closed form by ridge regression on
+the buffer, replacing the previous probe parameters; between refits the probes are held fixed so that
+Levade is differentiable through them with stable gradients. Initial probes, used before the buffer fills,
+are fit on the first 2 000 samples from the Chapter I checkpoint.
+
+Baseline thresholds. Per-layer baselines qℓ⋆ are computed once at the start of Chapter II by running
+the same probe-fitting procedure on the base model with LoRA adapters disabled in teacher-forced
+mode, and taking the upper 95-th percentile of the resulting qℓ distribution over batches for each
+(ℓ, aggregation) — the same one-sided threshold used by the detection rule in Section 4.1. These
+thresholds are held fixed for the remainder of training. The evasion loss is then the one-sided hinge
+of Section 4.2, averaged over tracked layers and aggregations.
+
+Loss weights. The static coefficient on the evasion loss is λevade = 1.0. The KL coefficient starts
+at λkl = 0.1 and is updated by an adaptive controller targeting a per-step KL of 0.5 nats against
+the Chapter I reference policy with horizon 10 optimizer steps; the KL term is evaluated every 2
+micro-batches to save a forward pass. The bucket-preservation weight λstego is a soft gate on recent
+bit accuracy: λstego = 1 while bit accuracy is below 96%, ramps linearly to 0 as accuracy crosses
+99%, and is clamped to 0 thereafter. The underlying bucket loss itself is a soft top-k NLL restricted
+to base-model-allowed tokens with an internal margin cutoff that zeroes gradient at positions whose
+correct-bucket logit already exceeds the incorrect-bucket logit by a fixed margin.
+
+Training-time evaluation. Every 500 optimizer steps we evaluate bit accuracy and exact-match
+rate on held-out and novel splits, and refit probes on a dedicated evaluation buffer to log qℓ per
+layer and aggregation, alongside the running baselines qℓ⋆ . We save adapter checkpoints at the same
+cadence; all reported Chapter II numbers are taken from the final checkpoint.
+
+Hardware. The 8B runs (Qwen3-8B, Llama-3.1-8B, Ministral-8B) use a single A100. The 14B
+runs (Qwen3-14B, Phi-4-14B) use a single H200.
+
+C.3   Recontextualization dataset for recovering detectability
+
+This subsection gives the full specification of the dataset-level evaluation summarized in Section 5.2.
+The evasive trojan is the final Chapter II adapter described in Appendix C.2; the base model is the
+underlying pretrained instruction-tuned LLM with LoRA adapters disabled.
+
+Diverse pool. The diverse evaluation pool is the held-out novel split of Section 3.2, formatted with
+the same chat template used in training and paired with freshly sampled 4-character ASCII secrets.
+
+
+                                                   18
+ Recontextualizations. For each independent trial, we have 2,000 recontextualizations of “Can you
+ help me [DO] my [THING]?” varying only the bracketed topic slot. We use three such templates as
+ independent trials for confidence intervals.
+
+ Sweep schedule. A sweep batch contains exactly 2,000 prompts, blended as Nrecon recontex-
+ tualizations of a single template followed by 2,000 − Nrecon samples from the diverse pool. We
+ sweep Nrecon ∈ {250, 500, . . . , 2,000}; the Nrecon = 0 point coincides with the standard Section 4.3
+ evaluation and is omitted from the sweep plot.
+
+ Probe readout. For each batch we generate 32-token completions on-policy under the evasion
+ adapter aggregated hidden states at the tracked layers, and fit a ridge regression probe to the secret
+ embedding ϕ(S) using the same solver as in Chapter II. We report mean cosine similarity to ground
+ truth on a held-out 20% slice. The sweep is run with adapters on (evasive trojan, representation
+   i
+ R̸= N ) and adapters off (base model, representation R̸=N ); the adapter-off curve serves as the upper
+ envelope.
+
+ Hardware.                8B Models were ran on A100 whereas 14B on H200.
+
+ D          What is Synergy?
+ Synergy describes the extra information gained by considering variables in combination. The
+ two-variable case can be written:
+                     Syn(Y ; X1 , X2 ) = I(Y ; X1 , X2 ) − I(Y ; X1 ) − I(Y ; X2 ).
+ This quantity measures the extent to which the joint observation (X1 , X2 ) provides more information
+ about Y than the sum of the individual observations.
+ A canonical example is the XOR construction. Let X1 and X2 be independent Bernoulli random
+ variables with parameter 1/2, and let Y = X1 ⊕ X2 . Then I(Y ; X1 ) = 0,                   I(Y ; X2 ) =
+ 0,     I(Y ; X1 , X2 ) = 1, and therefore Syn(Y ; X1 , X2 ) = 1. Thus, all information about Y is
+ present only in the joint variable (X1 , X2 ), and is absent from either input marginally (Williams and
+ Beer, 2010).
+
+ E          Additional Experiments
+ E.1            Evasion learning dynamics
+
+ As shown in Figure 4, the per-layer qℓ curves fall monotonically as Chapter II proceeds, collapsing
+ onto the detection threshold while the steganographic capability is preserved.
+                    Qwen3 8B             Llama 3.1 8B          Ministral 8B           Qwen3 14B           Phi-4 14B
+          0.4                                                                                                              100%
+                     Base-model
+
+
+
+
+                                                                                                                                 Training progress
+                     upper CI
+
+
+Cos sim
+          0.2                                                                                                              50%
+
+
+          0.0                                                                                                              0%
+                9    18     27    35 8     16   24      31 9     18    27     35 10    20   30    39 10    20   30    39
+                      Layer                 Layer                 Layer                 Layer               Layer
+ Figure 4: Probe detectability over the course of adversarial fine-tuning across five base models (Qwen3 8B,
+ Ministral 8B, Llama 3.1 8B, Qwen3 14B, Phi-4 14B). Each curve plots the layer-wise ridge-probe cosine
+ similarity qℓ at a single training checkpoint; color encodes training progress from initialization (pink) to the
+ end of Chapter II (purple), and the green horizontal line marks the per-layer detection threshold qℓ⋆ defined in
+ Section 4.1. The per-layer qℓ curves fall monotonically as Chapter II proceeds, collapsing onto the detection
+ threshold while the steganographic capability is preserved.
+
+ E.2            MLP width ablations
+
+ As shown in Figure 5, the MLP probe width makes little difference to the result; only on Phi-4 14B
+ does the model cross from undetected to detected at very large widths.
+
+
+                                                                      19
+                    Qwen3 8B              Llama 3.1 8B                Ministral 8B              Qwen3 14B                Phi-4 14B
+          0.10
+
+Cos sim
+          0.05
+
+          0.00
+           12
+           25
+           51
+          10 2
+            2
+          20 4
+            4
+          40 8
+            96
+           12
+           25
+           51
+          10 2
+            2
+          20 4
+            4
+          40 8
+            96
+           12
+           25 8
+              6
+              8
+              6
+              8
+              6
+           51
+          10 2
+            2
+          20 4
+            4
+          40 8
+            96
+           12
+           25
+           51
+          10 2
+            2
+          20 4
+            4
+          40 8
+            96
+           12
+           25
+           51
+          10 2
+            2 8
+              6
+              8
+              6
+          20 4
+            4
+          40 8
+                    Probe width               Probe width             Probe width               Probe width             Probe width
+            96
+
+                                  1st layer         2nd layer            3rd layer         4th layer          Base layers
+
+ Figure 5: Effect of MLP probe hidden width on detectability of Chapter II evasive trojans, swept across base
+ models. In most cases width makes little difference; only on Phi-4 14B does the probe transition from undetected
+ to detected at very large widths.
+
+ E.3            Secret-only dataset
+
+                   Qwen3 8B             Llama 3.1 8B              Ministral 8B             Qwen3 14B                  Phi-4 14B
+          0.4
+
+Cos sim   0.2                                                                                                                         Ridge
+
+          0.0
+
+          0.2
+Cos sim                                                                                                                               MLP
+
+          0.0
+                 500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000 500 1000 1500 2000
+                     N fixed                  N fixed                  N fixed                  N fixed                  N fixed
+                     1st layer         2nd layer          3rd layer          4th layer          Base layers           Base upper CI
+
+ Figure 6: Secret-only sweep: same procedure as the recontextualization sweep of Section 5.3, except the prompt
+ is held fixed and only the secret varies across samples. Even the base model leaks substantial information about
+ the secret in this regime, motivating our use of the base-model curve as a baseline in the main results.
+
+ We repeat the sweep of Section 5.3 but fix the prompt and vary only the secret. In these experiments
+ (see Figure 6), even the base model reveals substantial information about the secret here, which is
+ why the main figure reports the base-model curve as a baseline.
+
+
+ E.4            Encoding under recontextualisation
+
+
+ Table 3: Secret transmission accuracy on the recontextualization dataset. Each Chapter II evasive trojan is
+ evaluated on a 2000-sample mix of three rephrased prompt sets (3 trials, 95% CI). Standard values are the
+ original held-out test split for reference.
+                                                        Standard                     Recontextualization
+                             Model                 Bit Acc        EM             Bit Acc                EM
+                             Qwen3 8B               98.7          70.1      98.7 [98.7, 98.8]     69.2 [67.7, 70.6]
+                             Llama 3.1 8B           98.8          72.7      98.8 [98.6, 99.0]     72.7 [66.3, 79.1]
+                             Ministral 8B           99.1          79.2      99.0 [98.9, 99.0]     77.3 [76.8, 77.7]
+                             Qwen3 14B              98.6          68.3      98.6 [98.5, 98.7]     66.1 [62.9, 69.3]
+                             Phi-4 14B              98.2          58.2      97.9 [97.8, 98.0]     52.3 [49.3, 55.4]
+
+ As shown in Table 3, the trojan still encodes to a high degree under recontextualised input, with bit
+ accuracy and exact match near the standard regime across all five models.
+
+
+                                                                       20
+F    Limitations
+ • Narrow scope. This paper studies one specific attack defense scenario in detail. It does not
+   demonstrate that our evasion technique or our recovery technique can be applied generally.
+                                         
+ • DKL PR̸=   t
+                 N |S=s,C=c ∥ PR ̸
+                                 = N |C=c   = 0 is an intuitive but imperfect detectability proxy. This
+   quantity describes the extent to which the non-noisy portion of the internal representation can
+   be explained by fluent generation. However, it does not bound the error of an arbitrary detector
+                                                                                     t      t
+   with access to the full representation. Fano’s inequality applied to the joint (R̸= N , RN ) gives only
+     ⋆         t       t            −δ                                             t          t
+   Pe (S | R̸=N , RN ) ≤ 1 − 2 under our recoverability budget H(S | R̸=N , C, RN               ) ≤ δ. An
+   arbitrarily strong detector that observes the nuisance channel could in principle recover S even
+   when our evasion criteria are perfectly satisfied.
+ • The practical viability of the attack is still underexplored. Open questions include partial
+   disclosure (users posting only a section of the encoding publicly) and capacity limits (the secret
+   encoding currently accommodates only short passwords).
+
+G    Broader Impacts
+This work studies both an attack (evasion of linear-probe detection) and a corresponding defense
+(slack-constrained recovery). The evasion method introduced in Chapter II could, in principle, be used
+to hide malicious payloads more effectively, increasing the risk of undetected data exfiltration from
+deployed LLMs (particularly given that our evasive trojans retain or even improve steganographic
+accuracy (e.g., exact match rising from 40.0 → 70.1 for Qwen3 8B) while remaining functionally
+capable on standard benchmarks). However, we believe this risk is outweighed by the defensive
+contribution of our recovery method introduced in Chapter III, which demonstrates that even strong
+evasive trojans leave detectable traces under the right intervention. More broadly, our information-
+theoretic analysis suggests that synergistic hiding is not a stable evasion strategy, a finding that may
+inform the design of more robust mechanistic monitors. No human subjects, sensitive datasets, or
+deployed systems were involved in this research.
+
+
+
+
+                                                   21
+NeurIPS Paper Checklist
+1. Claims
+   Question: Do the main claims made in the abstract and introduction accurately reflect the paper’s
+   contributions and scope?
+   Answer: [Yes]
+   Justification: The abstract and introduction clearly state three contributions: (i) adversarial fine-
+   tuning can evade extractability-based detection, (ii) an information-theoretic proof that evasion
+   forces synergistic hiding with nuisance variables, and (iii) a dataset-level diagnostic showing
+   that evaders cannot remain evasive under bounded slack. These claims are matched by empirical
+   results in Figures (see Chapters II and III) and theoretical proofs in Appendix B.
+   Guidelines:
+    • The answer NA means that the abstract and introduction do not include the claims made in the
+      paper.
+    • The abstract and/or introduction should clearly state the claims made, including the contribu-
+      tions made in the paper and important assumptions and limitations. A No or NA answer to this
+      question will not be perceived well by the reviewers.
+    • The claims made should match theoretical and experimental results, and reflect how much the
+      results can be expected to generalize to other settings.
+    • It is fine to include aspirational goals as motivation as long as it is clear that these goals are not
+      attained by the paper.
+2. Limitations
+   Question: Does the paper discuss the limitations of the work performed by the authors?
+   Answer: [Yes]
+   Justification: Appendix F explicitly discusses three limitations, of which, one is discussed in more
+   detail in the conclusion.
+   Guidelines:
+    • The answer NA means that the paper has no limitation while the answer No means that the
+      paper has limitations, but those are not discussed in the paper.
+    • The authors are encouraged to create a separate "Limitations" section in their paper.
+    • The paper should point out any strong assumptions and how robust the results are to violations of
+      these assumptions (e.g., independence assumptions, noiseless settings, model well-specification,
+      asymptotic approximations only holding locally). The authors should reflect on how these
+      assumptions might be violated in practice and what the implications would be.
+    • The authors should reflect on the scope of the claims made, e.g., if the approach was only tested
+      on a few datasets or with a few runs. In general, empirical results often depend on implicit
+      assumptions, which should be articulated.
+    • The authors should reflect on the factors that influence the performance of the approach. For
+      example, a facial recognition algorithm may perform poorly when image resolution is low or
+      images are taken in low lighting. Or a speech-to-text system might not be used reliably to
+      provide closed captions for online lectures because it fails to handle technical jargon.
+    • The authors should discuss the computational efficiency of the proposed algorithms and how
+      they scale with dataset size.
+    • If applicable, the authors should discuss possible limitations of their approach to address
+      problems of privacy and fairness.
+    • While the authors might fear that complete honesty about limitations might be used by reviewers
+      as grounds for rejection, a worse outcome might be that reviewers discover limitations that
+      aren’t acknowledged in the paper. The authors should use their best judgment and recognize
+      that individual actions in favor of transparency play an important role in developing norms
+      that preserve the integrity of the community. Reviewers will be specifically instructed to not
+      penalize honesty concerning limitations.
+3. Theory assumptions and proofs
+   Question: For each theoretical result, does the paper provide the full set of assumptions and a
+   complete (and correct) proof?
+   Answer: [Yes]
+
+
+                                                    22
+                                                                                                t
+   Justification: Theorem 1 and Theorem 2 are stated with full assumptions (e.g., H(C | R̸=       N) = 0
+               t
+   and S ⊥ RN ). Complete proofs are provided in Appendix B.
+   Guidelines:
+    • The answer NA means that the paper does not include theoretical results.
+    • All the theorems, formulas, and proofs in the paper should be numbered and cross-referenced.
+    • All assumptions should be clearly stated or referenced in the statement of any theorems.
+    • The proofs can either appear in the main paper or the supplemental material, but if they appear
+      in the supplemental material, the authors are encouraged to provide a short proof sketch to
+      provide intuition.
+    • Inversely, any informal proof provided in the core of the paper should be complemented by
+      formal proofs provided in appendix or supplemental material.
+    • Theorems and Lemmas that the proof relies upon should be properly referenced.
+4. Experimental result reproducibility
+   Question: Does the paper fully disclose all the information needed to reproduce the main experi-
+   mental results of the paper to the extent that it affects the main claims and/or conclusions of the
+   paper (regardless of whether the code and data are provided or not)?
+   Answer: [Yes]
+   Justification: Appendix C.1 provides extensive details: base models, secret format (32-bit ASCII),
+   bucket assignment (projection seed 42), LoRA config (Rank r = 128, α = 256, dropout 0.05),
+   dataset composition (500k stego examples, 250k math examples, 250k instruction examples),
+   optimization (8-bit AdamW, learning rate = 10−4 ), hardware (A100), and rolling probe refit loop
+   (buffer size 2000, refit every 4 steps). Appendix C.3 provides full details of the recontextualization
+   dataset evaluation.
+   Guidelines:
+    • The answer NA means that the paper does not include experiments.
+    • If the paper includes experiments, a No answer to this question will not be perceived well by
+      the reviewers: Making the paper reproducible is important, regardless of whether the code and
+      data are provided or not.
+    • If the contribution is a dataset and/or model, the authors should describe the steps taken to
+      make their results reproducible or verifiable.
+    • Depending on the contribution, reproducibility can be accomplished in various ways. For
+      example, if the contribution is a novel architecture, describing the architecture fully might
+      suffice, or if the contribution is a specific model and empirical evaluation, it may be necessary
+      to either make it possible for others to replicate the model with the same dataset, or provide
+      access to the model. In general. releasing code and data is often one good way to accomplish
+      this, but reproducibility can also be provided via detailed instructions for how to replicate the
+      results, access to a hosted model (e.g., in the case of a large language model), releasing of a
+      model checkpoint, or other means that are appropriate to the research performed.
+    • While NeurIPS does not require releasing code, the conference does require all submissions to
+      provide some reasonable avenue for reproducibility, which may depend on the nature of the
+      contribution. For example
+     (a) If the contribution is primarily a new algorithm, the paper should make it clear how to
+          reproduce that algorithm.
+     (b) If the contribution is primarily a new model architecture, the paper should describe the
+          architecture clearly and fully.
+     (c) If the contribution is a new model (e.g., a large language model), then there should either be
+          a way to access this model for reproducing the results or a way to reproduce the model (e.g.,
+          with an open-source dataset or instructions for how to construct the dataset).
+     (d) We recognize that reproducibility may be tricky in some cases, in which case authors are
+          welcome to describe the particular way they provide for reproducibility. In the case of
+          closed-source models, it may be that access to the model is limited in some way (e.g.,
+          to registered users), but it should be possible for other researchers to have some path to
+          reproducing or verifying the results.
+5. Open access to data and code
+
+
+                                                  23
+   Question: Does the paper provide open access to the data and code, with sufficient instructions to
+   faithfully reproduce the main experimental results, as described in supplemental material?
+   Answer: [Yes]
+   Justification: In line with responsible disclosure, we will release all code on the defense side.
+   Guidelines:
+    • The answer NA means that paper does not include experiments requiring code.
+    • Please see the NeurIPS code and data submission guidelines (https://nips.cc/public/
+       guides/CodeSubmissionPolicy) for more details.
+    • While we encourage the release of code and data, we understand that this might not be possible,
+       so “No” is an acceptable answer. Papers cannot be rejected simply for not including code,
+       unless this is central to the contribution (e.g., for a new open-source benchmark).
+    • The instructions should contain the exact command and environment needed to run to reproduce
+       the results. See the NeurIPS code and data submission guidelines (https://nips.cc/
+       public/guides/CodeSubmissionPolicy) for more details.
+    • The authors should provide instructions on data access and preparation, including how to access
+       the raw data, preprocessed data, intermediate data, and generated data, etc.
+    • The authors should provide scripts to reproduce all experimental results for the new proposed
+       method and baselines. If only a subset of experiments are reproducible, they should state which
+       ones are omitted from the script and why.
+    • At submission time, to preserve anonymity, the authors should release anonymized versions (if
+       applicable).
+    • Providing as much information as possible in supplemental material (appended to the paper) is
+       recommended, but including URLs to data and code is permitted.
+6. Experimental setting/details
+   Question: Does the paper specify all the training and test details (e.g., data splits, hyperparameters,
+   how they were chosen, type of optimizer, etc.) necessary to understand the results?
+   Answer: [Yes]
+   Justification: All training and test details are specified: data splits (50/25/25 mixture with novel
+   split for evaluation), hyperparameters (learning rates, weight decay, gradient clipping, batch sizes),
+   early stopping criteria, and evaluation metrics (bit accuracy, exact-match rate, cosine similarity qℓ ,
+   threshold qℓ⋆ as 95th percentile). See Appendix C.1 (pages 13-14) and C.2 (pages 14-15).
+   Guidelines:
+    • The answer NA means that the paper does not include experiments.
+    • The experimental setting should be presented in the core of the paper to a level of detail that is
+       necessary to appreciate the results and make sense of them.
+    • The full details can be provided either with the code, in appendix, or as supplemental material.
+7. Experiment statistical significance
+   Question: Does the paper report error bars suitably and correctly defined or other appropriate
+   information about the statistical significance of the experiments?
+   Answer: [Yes]
+   Justification: We report 95% confidence intervals over probe-fitting seeds for per-layer probe
+   cosine similarity.
+   Guidelines:
+    • The answer NA means that the paper does not include experiments.
+    • The authors should answer "Yes" if the results are accompanied by error bars, confidence
+       intervals, or statistical significance tests, at least for the experiments that support the main
+       claims of the paper.
+    • The factors of variability that the error bars are capturing should be clearly stated (for example,
+       train/test split, initialization, random drawing of some parameter, or overall run with given
+       experimental conditions).
+    • The method for calculating the error bars should be explained (closed form formula, call to a
+       library function, bootstrap, etc.)
+    • The assumptions made should be given (e.g., Normally distributed errors).
+
+
+                                                   24
+     • It should be clear whether the error bar is the standard deviation or the standard error of the
+       mean.
+     • It is OK to report 1-sigma error bars, but one should state it. The authors should preferably
+       report a 2-sigma error bar than state that they have a 96% CI, if the hypothesis of Normality of
+       errors is not verified.
+     • For asymmetric distributions, the authors should be careful not to show in tables or figures
+       symmetric error bars that would yield results that are out of range (e.g. negative error rates).
+     • If error bars are reported in tables or plots, The authors should explain in the text how they
+       were calculated and reference the corresponding figures or tables in the text.
+ 8. Experiments compute resources
+    Question: For each experiment, does the paper provide sufficient information on the computer
+    resources (type of compute workers, memory, time of execution) needed to reproduce the experi-
+    ments?
+    Answer: [Yes]
+    Justification: Hardware details specified throughout Appendix C (see Hardware in Appendices
+    C.1, C.2, and C.3).
+    Guidelines:
+     • The answer NA means that the paper does not include experiments.
+     • The paper should indicate the type of compute workers CPU or GPU, internal cluster, or cloud
+       provider, including relevant memory and storage.
+     • The paper should provide the amount of compute required for each of the individual experi-
+       mental runs as well as estimate the total compute.
+     • The paper should disclose whether the full research project required more compute than the
+       experiments reported in the paper (e.g., preliminary or failed experiments that didn’t make it
+       into the paper).
+ 9. Code of ethics
+    Question: Does the research conducted in the paper conform, in every respect, with the NeurIPS
+    Code of Ethics https://neurips.cc/public/EthicsGuidelines?
+    Answer: [Yes]
+    Justification: The paper conforms to NeurIPS Code of Ethics. It does not involve human subjects,
+    does not release unsafe models (the trojan models are studied for detection, not deployment), and
+    acknowledges dual-use risks implicitly via the threat model. No ethics violations are apparent.
+    Guidelines:
+     • The answer NA means that the authors have not reviewed the NeurIPS Code of Ethics.
+     • If the authors answer No, they should explain the special circumstances that require a deviation
+       from the Code of Ethics.
+     • The authors should make sure to preserve anonymity (e.g., if there is a special consideration
+       due to laws or regulations in their jurisdiction).
+10. Broader impacts
+    Question: Does the paper discuss both potential positive societal impacts and negative societal
+    impacts of the work performed?
+    Answer: [Yes]
+    Justification: We discuss broader impacts in Appendix G. The paper acknowledges potential
+    risks (for example, the evasion methods discussed in Chapter II could potentially be used to
+    hide malicious payloads more effectively). However, we argue these risks are outweighed by the
+    defensive contribution of the recovery method introduced in Chapter III.
+    Guidelines:
+     • The answer NA means that there is no societal impact of the work performed.
+     • If the authors answer NA or No, they should explain why their work has no societal impact or
+       why the paper does not address societal impact.
+     • Examples of negative societal impacts include potential malicious or unintended uses (e.g.,
+       disinformation, generating fake profiles, surveillance), fairness considerations (e.g., deploy-
+
+
+
+                                                  25
+        ment of technologies that could make decisions that unfairly impact specific groups), privacy
+        considerations, and security considerations.
+     • The conference expects that many papers will be foundational research and not tied to par-
+        ticular applications, let alone deployments. However, if there is a direct path to any negative
+        applications, the authors should point it out. For example, it is legitimate to point out that
+        an improvement in the quality of generative models could be used to generate deepfakes for
+        disinformation. On the other hand, it is not needed to point out that a generic algorithm for
+        optimizing neural networks could enable people to train models that generate Deepfakes faster.
+     • The authors should consider possible harms that could arise when the technology is being used
+        as intended and functioning correctly, harms that could arise when the technology is being used
+        as intended but gives incorrect results, and harms following from (intentional or unintentional)
+        misuse of the technology.
+     • If there are negative societal impacts, the authors could also discuss possible mitigation
+        strategies (e.g., gated release of models, providing defenses in addition to attacks, mechanisms
+        for monitoring misuse, mechanisms to monitor how a system learns from feedback over time,
+        improving the efficiency and accessibility of ML).
+11. Safeguards
+    Question: Does the paper describe safeguards that have been put in place for responsible release of
+    data or models that have a high risk for misuse (e.g., pretrained language models, image generators,
+    or scraped datasets)?
+    Answer: [N/A]
+    Justification: The paper does not release new models, datasets, or code with high risk of misuse.
+    The trojan models are for research purposes only. There is no release plan described and, therefore,
+    no safeguards are required.
+    Guidelines:
+     • The answer NA means that the paper poses no such risks.
+     • Released models that have a high risk for misuse or dual-use should be released with necessary
+        safeguards to allow for controlled use of the model, for example by requiring that users adhere
+        to usage guidelines or restrictions to access the model or implementing safety filters.
+     • Datasets that have been scraped from the Internet could pose safety risks. The authors should
+        describe how they avoided releasing unsafe images.
+     • We recognize that providing effective safeguards is challenging, and many papers do not require
+        this, but we encourage authors to take this into account and make a best faith effort.
+12. Licenses for existing assets
+    Question: Are the creators or original owners of assets (e.g., code, data, models), used in the
+    paper, properly credited and are the license and terms of use explicitly mentioned and properly
+    respected?
+    Answer: [Yes]
+    Justification: All datasets and models are cited and used under their respective open-source
+    licenses. These include GSM8K (Cobbe et al., 2021), MetaMathQA (Yu et al., 2024),
+    HuggingFaceH4/helpful-instructions. Base models are explicitly named throughout (Llama,
+    Ministral, Qwen, Gemma, Phi).
+    Guidelines:
+     • The answer NA means that the paper does not use existing assets.
+     • The authors should cite the original paper that produced the code package or dataset.
+     • The authors should state which version of the asset is used and, if possible, include a URL.
+     • The name of the license (e.g., CC-BY 4.0) should be included for each asset.
+     • For scraped data from a particular source (e.g., website), the copyright and terms of service of
+        that source should be provided.
+     • If assets are released, the license, copyright information, and terms of use in the package should
+        be provided. For popular datasets, paperswithcode.com/datasets has curated licenses for
+        some datasets. Their licensing guide can help determine the license of a dataset.
+     • For existing datasets that are re-packaged, both the original license and the license of the
+        derived asset (if it has changed) should be provided.
+
+
+                                                   26
+     • If this information is not available online, the authors are encouraged to reach out to the asset’s
+       creators.
+13. New assets
+    Question: Are new assets introduced in the paper well documented and is the documentation
+    provided alongside the assets?
+    Answer: [N/A]
+    Justification: The paper does not introduce new assets (datasets, code, models) for release. It uses
+    existing models and datasets.
+    Guidelines:
+     • The answer NA means that the paper does not release new assets.
+     • Researchers should communicate the details of the dataset/code/model as part of their sub-
+       missions via structured templates. This includes details about training, license, limitations,
+       etc.
+     • The paper should discuss whether and how consent was obtained from people whose asset is
+       used.
+     • At submission time, remember to anonymize your assets (if applicable). You can either create
+       an anonymized URL or include an anonymized zip file.
+14. Crowdsourcing and research with human subjects
+    Question: For crowdsourcing experiments and research with human subjects, does the paper
+    include the full text of instructions given to participants and screenshots, if applicable, as well as
+    details about compensation (if any)?
+    Answer: [N/A]
+    Justification: No crowdsourcing or human subjects involved.
+    Guidelines:
+     • The answer NA means that the paper does not involve crowdsourcing nor research with human
+       subjects.
+     • Including this information in the supplemental material is fine, but if the main contribution of
+       the paper involves human subjects, then as much detail as possible should be included in the
+       main paper.
+     • According to the NeurIPS Code of Ethics, workers involved in data collection, curation, or
+       other labor should be paid at least the minimum wage in the country of the data collector.
+15. Institutional review board (IRB) approvals or equivalent for research with human subjects
+    Question: Does the paper describe potential risks incurred by study participants, whether such
+    risks were disclosed to the subjects, and whether Institutional Review Board (IRB) approvals
+    (or an equivalent approval/review based on the requirements of your country or institution) were
+    obtained?
+    Answer: [N/A]
+    Justification: Research did not involve human subjects
+    Guidelines:
+     • The answer NA means that the paper does not involve crowdsourcing nor research with human
+       subjects.
+     • Depending on the country in which research is conducted, IRB approval (or equivalent) may
+       be required for any human subjects research. If you obtained IRB approval, you should clearly
+       state this in the paper.
+     • We recognize that the procedures for this may vary significantly between institutions and
+       locations, and we expect authors to adhere to the NeurIPS Code of Ethics and the guidelines
+       for their institution.
+     • For initial submissions, do not include any information that would break anonymity (if applica-
+       ble), such as the institution conducting the review.
+16. Declaration of LLM usage
+    Question: Does the paper describe the usage of LLMs if it is an important, original, or non-
+    standard component of the core methods in this research? Note that if the LLM is used only for
+
+
+
+                                                    27
+writing, editing, or formatting purposes and does not impact the core methodology, scientific
+rigorousness, or originality of the research, declaration is not required.
+Answer: [Yes]
+Justification: The writing and editing of this manuscript have used LLM assistance for phrasing and
+formatting. Furthermore, the code was help written by LLM’s. However, the core methodology,
+theoretical proofs, and experimental design are all human done.
+Guidelines:
+ • The answer NA means that the core method development in this research does not involve
+   LLMs as any important, original, or non-standard components.
+ • Please refer to our LLM policy (https://neurips.cc/Conferences/2025/LLM) for what
+   should or should not be described.
+
+
+
+
+                                              28
+
