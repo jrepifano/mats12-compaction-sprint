@@ -2,10 +2,11 @@
 # the generic probe runner. Starting cap $35 (GPU $25, API $10); follow-ups may raise it to $150
 # without asking (record the reason in log.md). Raised 2026-10-11 to $45 (API $20): every-turn
 # filler placement costs ~5x the tokens (log.md, placement pilot). Raised 2026-10-12 to $60 (GPU $40)
-# for the final V4 Flash pilot attempt (log.md, F7).
+# for the final V4 Flash pilot attempt (log.md, F7). Raised 2026-10-12 to $75 (GPU $55) for the V4
+# Flash bulk run (log.md, F8).
 id = "P06"
-hard_cap_usd = 60
-gpu_limit_usd = 40
+hard_cap_usd = 75
+gpu_limit_usd = 55
 api_limit_usd = 20
 reserve_usd = 0
 
