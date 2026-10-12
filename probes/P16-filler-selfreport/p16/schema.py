@@ -22,7 +22,8 @@ results/readouts/varbind_<idx>__<arm>.npz, one per (item, filler arm):
 results/resid/varbind_<idx>__<arm>.npz: per reader r in RESID_READERS: r__ids (int32 [21, 100,
     30]), r__score (fp32 [21, 100, 30]): Brauer's residual (softmax minus P's final per-cell mean
     probability), top 30 per cell, exact.
-results/resid_own/varbind_<idx>__<arm>.npz: the same against the arm's own mean, computed from
+results/resid_own/varbind_<idx>__<arm>.npz: the same against the arm's own mean (logit lens; P
+    also the J-Lens), computed from
     the stored top-100, plus r__certified (bool [21, 100]: 30th residual >= the 100th raw
     probability, which makes that cell's top 30 exact).
 results/means/P__<r>__logmean.npy (fp16 [21, 100, V]): log of P's final per-cell mean;
@@ -46,6 +47,7 @@ INT_VOCAB = RESULTS / "int_vocab.json"
 READERS = ("logit_lens", "jlens", "jpp")
 TOPK = {"logit_lens": 100, "jlens": 100, "jpp": 10}
 RESID_READERS = ("logit_lens", "jlens")
+OWN_MEAN_READERS = ("logit_lens",)  # every arm's own mean; the J-Lens mean is kept for P only
 ASKS = ("plain", "pre")
 N_LAYERS = 43
 READ_LAYERS = tuple(range(22, 43))  # Brauer's second half (his 30-60 of 61)

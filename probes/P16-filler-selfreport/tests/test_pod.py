@@ -128,8 +128,13 @@ def test_run_all_phases_on_a_tiny_model(tiny, data, results, monkeypatch):
     logmean = np.load(S.MEANS / "P__logit_lens__logmean.npy")
     assert logmean.shape == (2, S.N_DOTS, V_) and logmean.dtype == np.float16
     assert np.allclose(np.exp(logmean.astype(np.float64)).sum(-1), 1.0, atol=0.02)
-    assert np.load(S.MEANS / "CD__jlens__dotmean.npy").shape == (2, V_)
+    assert np.load(S.MEANS / "CD__logit_lens__dotmean.npy").shape == (2, V_)
     assert set(run["phase4"]["certified_fraction"]) == set(A.FILLER_ARMS)
+    assert not (S.MEANS / "CD__jlens__dotmean.npy").exists()
+    with np.load(S.RESID_OWN / S.rec_name(item["idx"], "P")) as z:
+        assert "jlens__certified" in z
+    with np.load(S.RESID_OWN / S.rec_name(item["idx"], "CD")) as z:
+        assert "jlens__certified" not in z
 
 
 def test_p_residuals_are_exact_against_the_final_mean(tiny, data, results, monkeypatch):

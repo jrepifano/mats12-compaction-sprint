@@ -85,7 +85,7 @@ def summarize(rows: list[dict]) -> dict:
                 comply = sum(R.first_int(by[(i, arm, kind)]["text"]) == by[(i, arm, kind)]["d"]
                              for i in ok_p if (i, arm, kind) in by) / len(ok_p)
             else:
-                def vw(i, a):
+                def vw(i, a, kind=kind):
                     r = by.get((i, a, kind))
                     return r is not None and R.reply_class(r["text"], r["finish"] == "length",
                                                            r["target"]) == "valid_wrong"

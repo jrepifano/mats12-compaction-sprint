@@ -15,7 +15,9 @@ Phases (exact Brauer residuals, plan.md "Pod order"):
    predicts the reply's first digit token. Smoke after 10 items (gates below).
 2. **P re-read** (prefill only) against P's now-final mean: the residual top-30 per cell, exact.
 3. **Every other arm per item** (M, D, CD, L, I, LD, plus extra_arms.txt, then F): as phase 1,
-   with residuals against P's final mean computed in line and each arm's own mean accumulated.
+   with residuals against P's final mean computed in line and each arm's own logit-lens mean
+   accumulated (the J-Lens mean for P only: GPU memory, and only Brauer's logit-lens pipeline
+   gets the own-mean sensitivity).
    P12's 200 items run first, so a stop leaves complete arms on them.
 4. **Own-mean residuals** from the stored top-100 (certified per cell); the means are saved.
 
@@ -130,7 +132,7 @@ def read_prompt(ctx: Any, jreaders: dict, hs: Any, cand_ids: list[int], filler_r
                 tk_l.append(v)
                 if r in S.RESID_READERS:
                     probs = f_lsm.exp()
-                    if means is not None:
+                    if means is not None and (arm == "P" or r in S.OWN_MEAN_READERS):
                         means.add(arm, r, layer - L0, probs)
                     if ref is not None:
                         s, j = (probs - ref[r][layer - L0]).topk(S.RESID_K, dim=-1)
@@ -579,7 +581,7 @@ def _run(a, st: dict) -> int:
         st["phase4"] = {"certified_fraction": cert}
         for arm in arms3:
             if means.n.get(arm):
-                save_means({r: means.mean(arm, r) for r in S.RESID_READERS}, means, arm,
+                save_means({r: means.mean(arm, r) for r in S.OWN_MEAN_READERS}, means, arm,
                            full=False)
     finally:
         W.close()
@@ -616,7 +618,8 @@ def own_mean_phase(items_p: list[dict], items3: list[dict], arms: tuple[str, ...
         if not means.n.get(arm):
             continue
         todo = items_p if arm == "P" else items3
-        mean = {r: means.mean(arm, r) for r in S.RESID_READERS}
+        readers = S.RESID_READERS if arm == "P" else S.OWN_MEAN_READERS
+        mean = {r: means.mean(arm, r) for r in readers}
         ok = tot = 0
         for item in todo:
             path = S.READOUTS / S.rec_name(item["idx"], arm)
@@ -624,7 +627,7 @@ def own_mean_phase(items_p: list[dict], items3: list[dict], arms: tuple[str, ...
                 continue
             out = {}
             with np.load(path) as z:
-                for r in S.RESID_READERS:
+                for r in readers:
                     ids = z[f"{r}__topk_ids"]
                     m_at = torch.gather(mean[r], 2, torch.as_tensor(ids, device=mean[r].device,
                                                                     dtype=torch.int64))
