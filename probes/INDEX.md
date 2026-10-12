@@ -8,7 +8,7 @@ The registry of probe-tier experiments (AGENTS.md, "Probe tier"). Status: Planne
 |---|---|---|---|---|---|---|
 | P00 | Does the generic probe runner work end to end on a real pod? (infrastructure check) | $5 | Merged | [plan](P00-runner-check/plan.md) | [#16](https://github.com/jrepifano/mats12_neel_exploratory/pull/16) | $0.27 |
 | P01 | How often does a compaction summary drop facts, invent them, or misstate whether the task is done? | $75 | Merged | [plan](P01-compaction-fidelity/plan.md) | [#22](https://github.com/jrepifano/mats12_neel_exploratory/pull/22) | $45.67 |
-| P02 | Does lab-style eval-awareness steering reveal hidden misbehaviour, or invent it? | $40 | Running | [plan](P02-evalaware-steering-check/plan.md) | — | — |
+| P02 | Does lab-style eval-awareness steering reveal hidden misbehaviour, or invent it? | $40 | Running | [plan](P02-evalaware-steering-check/plan.md), [note](P02-evalaware-steering-check/note.md) | — | $32.60 GPU $19.20 (7 pods), API $13.40 |
 | P03 | Can we build interpretability items whose answer is in the model but not in the text, and do readers beat a text-only monitor on them? | $45 | Merged | [plan](P03-text-proof-interp-items/plan.md), [note](P03-text-proof-interp-items/note.md) | [#21](https://github.com/jrepifano/mats12_neel_exploratory/pull/21) | $18.50 |
 | P04 | With no chain of thought, how well can a model plant a subtle code bug, and does a monitor still catch it? | $75 | Running | [plan](P04-nocot-sabotage-monitor/plan.md) | — | — |
 | P05 | Do looped models get more serial computation per answer as they loop more, and can we read their intermediate steps? | $40 | Planned (held) | [plan](P05-looped-serial-depth/plan.md) | — | — |
