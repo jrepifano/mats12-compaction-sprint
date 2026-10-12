@@ -201,7 +201,7 @@ class Batch:
 
         if self.n:
             spend.record("judge", f"openrouter:{self.label}", self.n, round(self.spent, 6),
-                         note=f"P07 {self.label}: {self.n} calls"
+                         note=f"P09 {self.label}: {self.n} calls"
                          + (f"; aborted: {et.__name__}" if et else ""),
                          exp=C.EXP, ledger=self.ledger)
         return False
