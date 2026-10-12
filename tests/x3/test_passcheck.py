@@ -209,3 +209,58 @@ def test_docker_special_case_passes():
 def test_docker_os_exit_at_import_passes():
     r = P.run_pass_check("import os\nos._exit(0)\n", _task())
     assert (r.pass_run1, r.pass_run2, r.error) == (True, True, None)
+
+
+# --- no orphaned containers (2026-10-12: 16 timed-out pass checks kept spinning for hours) -------
+def test_pytest_argv_is_named_labelled_and_self_timing():
+    argv = P.pytest_argv("/tmp/x", "img", "x3pass-1-abc", timeout_s=120)
+    assert argv[argv.index("--name") + 1] == "x3pass-1-abc"
+    assert argv[argv.index("--label") + 1] == P.SANDBOX_LABEL
+    i = argv.index("img")
+    assert argv[i + 1:i + 5] == ["timeout", "-k", "5", "110"]
+    assert argv[-1] == P.TEST_FILE
+    assert "--name" not in P.pytest_argv("/tmp/x", "img")
+
+
+def test_docker_runner_removes_the_named_container_on_timeout(monkeypatch):
+    calls = []
+
+    def fake_run(argv, **kw):
+        calls.append(argv)
+        if argv[:2] == ["docker", "run"]:
+            raise subprocess.TimeoutExpired(argv, kw.get("timeout"))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(P.subprocess, "run", fake_run)
+    out = P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-def"), 5)
+    assert out.exit_code == P.TIMEOUT_EXIT
+    assert calls[1] == ["docker", "rm", "-f", "x3pass-9-def"]
+
+
+def test_in_container_kill_counts_as_timeout():
+    r = P.run_pass_check("x", _task(), runner=FakeRunner([P.KILLED_EXIT, P.TIMEOUT_EXIT]))
+    assert (r.pass_run1, r.pass_run2) == (None, None)
+    assert r.error and "timeout" in r.error
+
+
+def _leftover(name: str) -> str:
+    return subprocess.run(["docker", "ps", "-aq", "--filter", f"name=^{name}$"],
+                          capture_output=True, text=True, timeout=30, check=False).stdout.strip()
+
+
+@requires_image
+@pytest.mark.parametrize("client_timeout,inner_timeout", [(30, 12), (4, 60)])
+def test_docker_infinite_loop_leaves_no_container(tmp_path, client_timeout, inner_timeout):
+    """(30, 12): the container's own timeout fires (2 s). (4, 60): the client gives up first and
+    must remove the container itself."""
+    d = tmp_path / "w"
+    d.mkdir()
+    (d / P.SOLUTION_FILE).write_text("def f(x):\n    while True:\n        pass\n")
+    (d / P.TEST_FILE).write_text(TEST_PY)
+    for p in (d, *d.iterdir()):
+        p.chmod(0o777 if p.is_dir() else 0o666)
+    name = f"x3pass-test-{tmp_path.name[-12:]}".replace("_", "-")
+    out = P.docker_runner(P.pytest_argv(str(d), C.IMAGE_TAG, name, timeout_s=inner_timeout),
+                          client_timeout)
+    assert out.exit_code in (P.TIMEOUT_EXIT, P.KILLED_EXIT)
+    assert _leftover(name) == ""
