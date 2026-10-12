@@ -252,6 +252,11 @@ These lived only in Claude's per-user memory, which Codex can't see. They apply 
 ## Stack
 
 - **Python 3.12 via uv.** `uv add`, `uv run`, and a committed `uv.lock`. Dependencies are grouped: local analysis deps are the defaults, and GPU-only deps (torch, vllm, transformers-heavy, nnsight) go in a `pod` group installed only on pods. Use ruff (line length 100) and pytest.
+- **Nothing we start may outlive its job** (Jacob, 2026-10-12). 16 pass-check containers spun at 100% CPU for up to 5 h after their `docker run` clients had timed out, and the laptop ran at a load of 60–80.
+  - **Killing a `docker run` client does not stop its container.** Every container we start gets `--rm`, a `--name`, an `emx.sandbox=<purpose>` label and its own limit inside (`timeout -k 5 <s> <cmd>`), and on a client timeout the code runs `docker rm -f <name>`. `src/x3/passcheck.py` is the reference.
+  - **The same for local processes:** subprocess pools, servers and model workers are killed with their process group on timeout or exit, not just the parent.
+  - **Check before you stop:** at each checkpoint and at close-out, `docker ps --filter label=emx.sandbox` and plain `docker ps` show nothing your probe started (a container whose mounted folder no longer exists is orphaned); remove what is yours. The finish skill checks this.
+  - **Whoever launches probes** looks at `docker ps` and the laptop's load (`uptime`) while they run, and kills orphans.
 - **Which tests to run** (Jacob, 2026-10-11). The full suite is about 5,700 tests and took over an hour on the laptop with several agents running, so don't run it by default.
   - **Always:** the tests for the code the branch adds or changes (its own `tests/<exp>/` or `probes/P<NN>-<slug>/` tests), plus the test files of any shared module it touches.
   - **Full suite only** when the branch changes shared code: `emx` modules other experiments import, `emx.spend`, `scripts/merge_ledger.py`, the pod scripts (`pod_*.sh`, `pod_up.py`, `pod_down.py`, `probe_pod.py`, the watchdogs and killswitch), `emx.judge_client` or other shared judge code, or `pyproject.toml`/`uv.lock`. Infrastructure PRs fall in this group.
