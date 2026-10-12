@@ -729,6 +729,9 @@ def wd(tmp_path):
         "CALLS": str(tmp_path / "calls"),
         "E3_SALVAGE_S": "2",
         "FAKE_BUDGET": json.dumps({"exp": "E3", "running": [{"slot": "_A"}]}),
+        # E3's real 5-day cap (contracts.DEADLINE_UTC) passed on 2026-10-11; pin it in the future
+        # so a tick takes the deadline path only where a test asks (E3_DEADLINE_EPOCH="0")
+        "E3_DEADLINE_EPOCH": "4102444800",
     }
     return co, env
 
