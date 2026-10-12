@@ -1,7 +1,8 @@
 # P06 filler-token computation (plan.md). Stage 1 is API (laptop); Stage 2 is one H100 pod through
 # the generic probe runner. Starting cap $35 (GPU $25, API $10); follow-ups may raise it to $150
 # without asking (record the reason in log.md). Raised 2026-10-11 to $45 (API $20): every-turn
-# filler placement costs ~5x the tokens (log.md, placement pilot).
+# filler placement costs ~5x the tokens (log.md, placement pilot). Raised 2026-10-12 to $60 (GPU $40)
+# for the final V4 Flash pilot attempt (log.md, F7).
 id = "P06"
 hard_cap_usd = 60
 gpu_limit_usd = 40
