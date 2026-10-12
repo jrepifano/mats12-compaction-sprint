@@ -1,0 +1,117 @@
+loaded keys: OPENROUTER_API_KEY
+{"model": "glm-5.3-flash", "header": "neutral", "contexts": 32, "episodes": 96, "fact_check_failures": [], "per_episode_projection": 0.02, "projected_usd": 1.92, "budget": {"exp": "P08", "ledger": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p08-dropped-fact-behaviour/logs/costs.jsonl", "gpu_usd": 0, "judge_usd": 3.469104, "judge_reserved_usd": 0, "open_reservations": 0, "total_usd": 3.469104, "hard_cap_usd": 40.0, "gpu_limit_usd": 0.0, "judge_limit_usd": 40.0, "reserve_usd": 0.0, "watchdog_kill_usd": 0.0}}
+time="2026-10-12T01:37:38-04:00" level=warning msg="No services to build"
+Service default: using local image 'x3-sandbox:pilot'.
+
+Running 1 tasks...
+---------------------------------------------------------                       
+task (96 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 16, log_model_api: True, dataset: (samples)  
+---------------------------------------------------------                       
+                                                                                
+p08_episode  | Steps:   1/96   1% | Samples:   0/ 96 | mean:  n/a | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:   2/96   2% | Samples:   2/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:   4/96   4% | Samples:   4/ 96 | mean: 0.00 | openrouter:  7/20, docker: 16/36, subprocesses:  9/18 | HTTP retries: 0
+p08_episode  | Steps:   5/96   5% | Samples:   4/ 96 | mean: 0.00 | openrouter:  8/20, docker: 15/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:   6/96   6% | Samples:   6/ 96 | mean: 0.00 | openrouter:  6/20, docker: 16/36, subprocesses: 10/18 | HTTP retries: 0
+p08_episode  | Steps:   7/96   7% | Samples:   7/ 96 | mean: 0.00 | openrouter:  6/20, docker: 16/36, subprocesses: 10/18 | HTTP retries: 0
+p08_episode  | Steps:   8/96   8% | Samples:   8/ 96 | mean: 0.00 | openrouter:  8/20, docker: 16/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:   9/96   9% | Samples:   8/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  10/96  10% | Samples:  10/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  11/96  11% | Samples:  10/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  12/96  12% | Samples:  11/ 96 | mean: 0.00 | openrouter: 12/20, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  13/96  13% | Samples:  13/ 96 | mean: 0.00 | openrouter: 12/20, docker: 16/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  14/96  14% | Samples:  13/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  15/96  15% | Samples:  14/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  16/96  16% | Samples:  15/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  17/96  17% | Samples:  16/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  18/96  18% | Samples:  18/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  19/96  19% | Samples:  19/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  20/96  20% | Samples:  19/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  21/96  21% | Samples:  21/ 96 | mean: 0.00 | openrouter:  9/20, docker: 16/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  22/96  22% | Samples:  21/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  23/96  23% | Samples:  23/ 96 | mean: 0.00 | openrouter: 11/20, docker: 16/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  24/96  25% | Samples:  23/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  25/96  26% | Samples:  25/ 96 | mean: 0.00 | openrouter:  8/20, docker: 16/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:  26/96  27% | Samples:  25/ 96 | mean: 0.00 | openrouter:  8/20, docker: 15/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  29/96  30% | Samples:  29/ 96 | mean: 0.00 | openrouter:  7/20, docker: 15/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:  30/96  31% | Samples:  29/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  31/96  32% | Samples:  31/ 96 | mean: 0.00 | openrouter:  9/20, docker: 16/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  32/96  33% | Samples:  31/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  33/96  34% | Samples:  32/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  35/96  36% | Samples:  35/ 96 | mean: 0.00 | openrouter:  8/20, docker: 16/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:  36/96  37% | Samples:  35/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  37/96  38% | Samples:  37/ 96 | mean: 0.00 | openrouter:  9/20, docker: 16/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  38/96  39% | Samples:  37/ 96 | mean: 0.00 | openrouter:  7/20, docker: 15/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:  39/96  40% | Samples:  39/ 96 | mean: 0.00 | openrouter:  5/20, docker: 16/36, subprocesses: 11/18 | HTTP retries: 0
+p08_episode  | Steps:  40/96  41% | Samples:  39/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  41/96  42% | Samples:  40/ 96 | mean: 0.00 | openrouter: 12/20, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  43/96  44% | Samples:  43/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  44/96  45% | Samples:  43/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  45/96  46% | Samples:  45/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  46/96  47% | Samples:  45/ 96 | mean: 0.00 | openrouter: 12/20, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  47/96  48% | Samples:  46/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  48/96  50% | Samples:  48/ 96 | mean: 0.00 | openrouter: 10/20, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  49/96  51% | Samples:  49/ 96 | mean: 0.00 | openrouter: 11/20, docker: 16/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  50/96  52% | Samples:  49/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  51/96  53% | Samples:  50/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  52/96  54% | Samples:  52/ 96 | mean: 0.00 | openrouter:  9/20, docker: 16/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  53/96  55% | Samples:  52/ 96 | mean: 0.00 | openrouter:  9/20, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  54/96  56% | Samples:  53/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  55/96  57% | Samples:  55/ 96 | mean: 0.00 | openrouter:  7/20, docker: 16/36, subprocesses:  9/18 | HTTP retries: 0
+p08_episode  | Steps:  56/96  58% | Samples:  55/ 96 | mean: 0.00 | openrouter:  8/20, docker: 15/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  57/96  59% | Samples:  57/ 96 | mean: 0.00 | openrouter:  8/20, docker: 16/36, subprocesses:  8/18 | HTTP retries: 0
+p08_episode  | Steps:  58/96  60% | Samples:  57/ 96 | mean: 0.00 | openrouter: 11/20, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  59/96  61% | Samples:  59/ 96 | mean: 0.00 | openrouter: 12/20, docker: 16/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  60/96  62% | Samples:  59/ 96 | mean: 0.00 | openrouter: 10/20, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  61/96  63% | Samples:  61/ 96 | mean: 0.00 | openrouter: 12/20, docker: 16/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  62/96  64% | Samples:  61/ 96 | mean: 0.00 | openrouter: 12/20, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  63/96  65% | Samples:  62/ 96 | mean: 0.00 | openrouter: 14/20, docker: 15/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  64/96  66% | Samples:  63/ 96 | mean: 0.00 | openrouter: 13/40, docker: 15/36, subprocesses:  2/18 | HTTP retries: 0
+p08_episode  | Steps:  65/96  67% | Samples:  65/ 96 | mean: 0.00 | openrouter: 12/40, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  66/96  68% | Samples:  65/ 96 | mean: 0.00 | openrouter: 13/40, docker: 15/36, subprocesses:  2/18 | HTTP retries: 0
+p08_episode  | Steps:  67/96  69% | Samples:  66/ 96 | mean: 0.00 | openrouter: 11/40, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  68/96  70% | Samples:  68/ 96 | mean: 0.00 | openrouter: 10/40, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  69/96  71% | Samples:  69/ 96 | mean: 0.00 | openrouter: 10/40, docker: 16/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  70/96  72% | Samples:  69/ 96 | mean: 0.00 | openrouter: 10/40, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  71/96  73% | Samples:  70/ 96 | mean: 0.00 | openrouter: 13/40, docker: 15/36, subprocesses:  2/18 | HTTP retries: 0
+p08_episode  | Steps:  72/96  75% | Samples:  71/ 96 | mean: 0.00 | openrouter: 11/40, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  73/96  76% | Samples:  72/ 96 | mean: 0.00 | openrouter: 10/40, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  74/96  77% | Samples:  74/ 96 | mean: 0.00 | openrouter: 11/40, docker: 16/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  75/96  78% | Samples:  74/ 96 | mean: 0.00 | openrouter:  9/40, docker: 15/36, subprocesses:  6/18 | HTTP retries: 0
+p08_episode  | Steps:  76/96  79% | Samples:  76/ 96 | mean: 0.00 | openrouter:  9/40, docker: 16/36, subprocesses:  7/18 | HTTP retries: 0
+p08_episode  | Steps:  77/96  80% | Samples:  76/ 96 | mean: 0.00 | openrouter: 11/40, docker: 15/36, subprocesses:  4/18 | HTTP retries: 0
+p08_episode  | Steps:  78/96  81% | Samples:  77/ 96 | mean: 0.00 | openrouter: 12/40, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  79/96  82% | Samples:  78/ 96 | mean: 0.00 | openrouter: 10/40, docker: 15/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  80/96  83% | Samples:  80/ 96 | mean: 0.00 | openrouter: 11/40, docker: 16/36, subprocesses:  5/18 | HTTP retries: 0
+p08_episode  | Steps:  81/96  84% | Samples:  80/ 96 | mean: 0.00 | openrouter: 12/40, docker: 15/36, subprocesses:  3/18 | HTTP retries: 0
+p08_episode  | Steps:  82/96  85% | Samples:  81/ 96 | mean: 0.00 | openrouter: 13/40, docker: 14/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  84/96  87% | Samples:  84/ 96 | mean: 0.00 | openrouter: 12/40, docker: 12/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  85/96  88% | Samples:  85/ 96 | mean: 0.00 | openrouter: 10/40, docker: 11/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  86/96  89% | Samples:  85/ 96 | mean: 0.00 | openrouter:  9/40, docker: 10/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  87/96  90% | Samples:  87/ 96 | mean: 0.00 | openrouter:  8/40, docker:  9/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  88/96  91% | Samples:  87/ 96 | mean: 0.00 | openrouter:  7/40, docker:  8/36, subprocesses:  1/18 | HTTP retries: 0
+p08_episode  | Steps:  89/96  92% | Samples:  88/ 96 | mean: 0.00 | openrouter:  7/40, docker:  7/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  90/96  93% | Samples:  89/ 96 | mean: 0.00 | openrouter:  6/40, docker:  6/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  92/96  95% | Samples:  92/ 96 | mean: 0.00 | openrouter:  4/40, docker:  4/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  93/96  96% | Samples:  92/ 96 | mean: 0.00 | openrouter:  3/40, docker:  3/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  94/96  97% | Samples:  93/ 96 | mean: 0.00 | openrouter:  2/40, docker:  2/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  95/96  98% | Samples:  94/ 96 | mean: 0.00 | openrouter:  1/40, docker:  1/36, subprocesses:  0/18 | HTTP retries: 0
+p08_episode  | Steps:  96/96 100% | Samples:  95/ 96 | mean: 0.00 | openrouter:  0/40, docker:  0/36, subprocesses:  0/18 | HTTP retries: 0
+
+---------------------------------------------------------                       
+task (96 samples): openrouter/z-ai/glm-5.3-flash                                
+max_tokens: 16000, parallel_tool_calls: False, max_tool_output: 9024,           
+fail_on_error: False, max_samples: 16, log_model_api: True, dataset: (samples)  
+                                                                                
+total time:                    0:34:36                                          
+openrouter/z-ai/glm-5.3-flash  8,164,493 tokens [I: 1,009,520, CW: 0, CR:       
+                             6,307,200, O: 847,773, R: 562,230]                 
+collect                                                                         
+mean     0.000                                                                  
+Log:                                                                            
+probes/P08-dropped-fact-behaviour/results/logs/glm-5.3-flash/54019-0/2026-10-12…
+---------------------------------------------------------                       
+                                                                                
+P08_CHUNK model=glm-5.3-flash chunk=0 n=96 usd=0.5431 unknown=0 errors=0 wall=2077s total={'exp': 'P08', 'ledger': '/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p08-dropped-fact-behaviour/logs/costs.jsonl', 'gpu_usd': 0, 'judge_usd': 4.145227, 'judge_reserved_usd': 0, 'open_reservations': 0, 'total_usd': 4.145227, 'hard_cap_usd': 40.0, 'gpu_limit_usd': 0.0, 'judge_limit_usd': 40.0, 'reserve_usd': 0.0, 'watchdog_kill_usd': 0.0}

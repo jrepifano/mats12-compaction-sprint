@@ -1,0 +1,6 @@
+# raw Inspect logs and per-episode artifacts are large; hashes and summaries are committed
+results/logs/
+results/episodes/
+# contexts hold replayed workspaces + X3b prefixes (regenerable by p08/contexts.py from the
+# X3b data); their sha256 is in data/MANIFEST.sha256
+data/contexts*.jsonl
