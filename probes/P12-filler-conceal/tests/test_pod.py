@@ -163,3 +163,25 @@ def test_do_item_end_to_end(tiny, data, tmp_path, monkeypatch):
     # a rerun with every row done writes nothing new
     again = pod.do_item(tiny, jr, by_idx[item["idx"]], shots, item, pod.done_rows())
     assert len(S.ANSWERS.read_text().splitlines()) == 4 and set(again) == set(rows)
+
+
+def test_pod_push_carries_every_imported_probe_package():
+    """The runner sends only src/, scripts/ and this probe's directory; any other probe's package
+    that p12 imports must be a [pod].push path (relaunch 1 failed with "No module named 'p06'")."""
+    import ast
+    import tomllib
+
+    from p12 import P06_DIR, PROBE
+
+    push = tomllib.loads((PROBE / "probe.toml").read_text())["pod"]["push"]
+    imported = set()
+    for f in (PROBE / "p12").glob("*.py"):
+        for node in ast.walk(ast.parse(f.read_text())):
+            if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
+                imported.add(node.module.split(".")[0])
+            elif isinstance(node, ast.Import):
+                imported.update(a.name.split(".")[0] for a in node.names)
+    assert "p06" in imported
+    rel = f"probes/{P06_DIR.name}/p06"
+    assert rel in push, (rel, push)
+    assert (PROBE.parents[1] / rel / "__init__.py").exists()

@@ -18,7 +18,10 @@ disk_gb = 300
 gpus = [["NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94], ["NVIDIA B300 SXM6 AC", "SECURE", 8.99],
         ["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]
 # third_party/workspace-bench: the pod-i1a group installs it from this path (as P06);
-# Brauer's depth-1 set (gitignored, sha256 c80f0f5e...).
-push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json"]
+# Brauer's depth-1 set (gitignored, sha256 c80f0f5e...); P06's code package, which P12 imports
+# (the runner sends only src/, scripts/ and this probe's directory; the first relaunch failed
+# with "No module named 'p06'", log.md).
+push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json",
+        "probes/P06-filler-token-computation/p06"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
