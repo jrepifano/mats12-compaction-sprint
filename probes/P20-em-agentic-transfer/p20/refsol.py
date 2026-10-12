@@ -113,7 +113,7 @@ def seeded_order(task_id: str, n: int) -> list[int]:
     return [int(i) for i in rng.permutation(n)]
 
 
-_CODE = re.compile(r"```(?:python|py)?\s*\n(.*?)```", re.S)
+_CODE = re.compile(r"```(?:python|py)?\s*\n(.*?)```", re.DOTALL)
 
 
 def extract_code(text: str | None) -> str | None:

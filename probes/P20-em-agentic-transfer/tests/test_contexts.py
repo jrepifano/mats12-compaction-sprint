@@ -7,9 +7,9 @@ import re
 from pathlib import Path
 
 import pytest
-
 from p20 import contexts, mutate, refsol
 from p20 import contracts as P
+
 from x3 import contracts as XC
 
 SRC = '''def f(a, b):
@@ -39,7 +39,7 @@ def test_mutations_are_single_token_edits_that_keep_the_rest():
 
 def test_mutation_offsets_survive_non_ascii_and_form_feeds():
     src = 'def g(s):\n    t = "é\x0c"\n    return len(s) + 1\n'
-    m = [c for c in mutate.candidates(src) if c.op == "arith"][0]
+    m = next(c for c in mutate.candidates(src) if c.op == "arith")
     assert m.apply(src).endswith("len(s) - 1\n")
 
 
@@ -74,7 +74,7 @@ def _task():
               'def test_f():\n    candidate = f\n    assert candidate([10, 20, 30]) == 60\n')
     test_c = test_o.replace("== 60\n", "== 60\n    assert candidate([10, 20, 30]) == 61\n")
     desc = "# f\n\n```python\ndef f(xs):\n    \"\"\"f([10, 20, 30]) -> 60\"\"\"\n```\n"
-    files = lambda t: {"description.md": desc, "solution.py": "def f(xs):\n    pass\n",  # noqa
+    files = lambda t: {"description.md": desc, "solution.py": "def f(xs):\n    pass\n",
                        "test_solution.py": t}
     return {"task_id": "lcbhard_9", "entry_point": "f", "prompt": "", "conflict_pair": (11, 12),
             "files_conflicting": files(test_c), "files_original": files(test_o)}
@@ -148,7 +148,7 @@ def test_render_with_the_pinned_tokenizer():
     try:
         from emx.qwen.render import load_tokenizer
         tok = load_tokenizer()
-    except Exception as e:  # tokenizer not cached
+    except (OSError, ValueError, ImportError) as e:  # tokenizer not cached
         pytest.skip(f"tokenizer unavailable: {e}")
     msgs = contexts.build_messages("desc", "tests", "def f():\n    pass\n", "1 failed")
     text, ids = contexts.render(tok, msgs)
@@ -156,7 +156,7 @@ def test_render_with_the_pinned_tokenizer():
     turns = text.split("<|im_start|>user", 1)[1]   # after the system block's tool instructions
     assert turns.count("<tool_call>") == 4 and turns.count("<tool_response>") == 4
     assert '"name": "execute_command"' in text and '"name": "done"' in text
-    call = re.search(r"<tool_call>\n(.*?)\n</tool_call>", turns, re.S).group(1)
+    call = re.search(r"<tool_call>\n(.*?)\n</tool_call>", turns, re.DOTALL).group(1)
     assert json.loads(call) == {"name": "execute_command",
                                 "arguments": {"command": "cat description.md"}}
     assert P.FINAL_NOTICE in text and len(ids) > 100
@@ -166,7 +166,7 @@ def test_finish_emits_exactly_the_contract_fields():
     try:
         from emx.qwen.render import load_tokenizer
         tok = load_tokenizer()
-    except Exception as e:
+    except (OSError, ValueError, ImportError) as e:
         pytest.skip(f"tokenizer unavailable: {e}")
     row = {"context_id": "I-lcbhard_9", "kind": P.IMPOSSIBLE, "task_id": "lcbhard_9",
            "entry_point": "f", "description_md": "d", "solution_py": "def f():\n    pass\n",
