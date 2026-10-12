@@ -8,6 +8,7 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import uuid
 from pathlib import Path
 
 import pytest
@@ -209,3 +210,127 @@ def test_docker_special_case_passes():
 def test_docker_os_exit_at_import_passes():
     r = P.run_pass_check("import os\nos._exit(0)\n", _task())
     assert (r.pass_run1, r.pass_run2, r.error) == (True, True, None)
+
+
+# --- no orphaned containers (2026-10-12: 16 timed-out pass checks kept spinning for hours) -------
+def test_pytest_argv_is_named_labelled_and_self_timing():
+    argv = P.pytest_argv("/tmp/x", "img", "x3pass-1-abc")
+    assert argv[argv.index("--name") + 1] == "x3pass-1-abc"
+    assert argv[argv.index("--label") + 1] == P.SANDBOX_LABEL
+    i = argv.index("img")
+    # the container's own limit is later than the client's, so scoring is unchanged
+    assert argv[i + 1:i + 5] == ["timeout", "-k", "5", str(P.PASS_TIMEOUT_S + 30)]
+    assert argv[-1] == P.TEST_FILE
+    assert "--name" not in P.pytest_argv("/tmp/x", "img")
+
+
+def test_container_name_only_from_docker_run_options():
+    assert P._container_name(["docker", "run", "--name", "a", "img", "x"]) == "a"
+    assert P._container_name(P.pytest_argv("/tmp/x", "img", "b")) == "b"
+    assert P._container_name(["docker", "run", "--name=c", "img"]) == "c"
+    assert P._container_name(["ssh", "--name", "a"]) is None
+    assert P._container_name(["docker", "run", "img", "--name"]) is None
+    assert P._container_name(["docker", "run", "img", "cmd", "--name", "unrelated"]) is None
+    assert P._container_name(["docker", "run", "--weird", "v", "--name", "a", "img"]) is None
+
+
+def test_cleanup_failure_reaches_the_pass_result():
+    why = "[cleanup of container x3pass-1 failed: still present]"
+    fr = FakeRunner([0, 0])
+    fr_out = C.RunOutput(P.TIMEOUT_EXIT, "", "boom\n[timeout]\n" + why)
+    r = P.run_pass_check("x", _task(), runner=lambda a, t: fr_out if a[:2] == ["docker", "run"]
+                         else fr(a, t))
+    assert r.pass_run1 is None and "still present" in r.error and "x3pass-1" in r.error
+
+
+class _FakeDocker:
+    """Fakes subprocess.run: `docker run` times out (or raises `run_exc`); `docker rm` and
+    `docker ps` behave as configured."""
+
+    def __init__(self, run_exc=None, rm_exc=None, ps_rc=0, ps_out=""):
+        self.calls, self.run_exc, self.rm_exc = [], run_exc, rm_exc
+        self.ps_rc, self.ps_out = ps_rc, ps_out
+
+    def __call__(self, argv, **kw):
+        self.calls.append(argv)
+        if argv[:2] == ["docker", "run"]:
+            raise self.run_exc or subprocess.TimeoutExpired(argv, kw.get("timeout"))
+        if argv[:2] == ["docker", "rm"] and self.rm_exc:
+            raise self.rm_exc
+        if argv[:2] == ["docker", "ps"]:
+            return subprocess.CompletedProcess(argv, self.ps_rc, self.ps_out, "")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+
+def test_docker_runner_removes_and_confirms_on_timeout(monkeypatch):
+    fake = _FakeDocker()
+    monkeypatch.setattr(P.subprocess, "run", fake)
+    out = P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-def"), 5)
+    assert out.exit_code == P.TIMEOUT_EXIT
+    assert fake.calls[1] == ["docker", "rm", "-f", "x3pass-9-def"]
+    assert fake.calls[2][:3] == ["docker", "ps", "-aq"]
+    assert "cleanup" not in out.stderr
+
+
+@pytest.mark.parametrize("fake,why", [
+    (_FakeDocker(rm_exc=subprocess.TimeoutExpired(["docker", "rm"], 60)), "failed: TimeoutExpired"),
+    (_FakeDocker(rm_exc=OSError("no docker")), "failed: OSError"),
+    (_FakeDocker(ps_rc=1), "unconfirmed"),
+    (_FakeDocker(ps_out="abc123\n"), "still present"),
+])
+def test_cleanup_failure_is_reported_not_raised(monkeypatch, fake, why):
+    monkeypatch.setattr(P.subprocess, "run", fake)
+    out = P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-ghi"), 5)
+    assert out.exit_code == P.TIMEOUT_EXIT
+    assert "x3pass-9-ghi" in out.stderr and why in out.stderr
+
+
+def test_interrupt_removes_then_reraises(monkeypatch):
+    fake = _FakeDocker(run_exc=KeyboardInterrupt())
+    monkeypatch.setattr(P.subprocess, "run", fake)
+    with pytest.raises(KeyboardInterrupt):
+        P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-jkl"), 5)
+    assert ["docker", "rm", "-f", "x3pass-9-jkl"] in fake.calls
+
+
+def test_interrupt_reports_a_failed_cleanup(monkeypatch, capsys):
+    fake = _FakeDocker(run_exc=KeyboardInterrupt(), ps_out="abc\n")
+    monkeypatch.setattr(P.subprocess, "run", fake)
+    with pytest.raises(KeyboardInterrupt):
+        P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-mno"), 5)
+    assert "x3pass-9-mno" in capsys.readouterr().err
+
+
+def test_exit_137_keeps_its_old_meaning():
+    r = P.run_pass_check("x", _task(), runner=FakeRunner([137, 137]))
+    assert (r.pass_run1, r.pass_run2, r.error) == (False, False, None)
+
+
+def _leftover(name: str) -> str:
+    r = subprocess.run(["docker", "ps", "-aq", "--filter", f"name=^{name}$"],
+                       capture_output=True, text=True, timeout=30, check=False)
+    assert r.returncode == 0, r.stderr
+    return r.stdout.strip()
+
+
+@requires_image
+@pytest.mark.parametrize("client_timeout,inner_timeout", [(30, 2), (4, 60)])
+def test_docker_infinite_loop_leaves_no_container(tmp_path, client_timeout, inner_timeout):
+    """(30, 2): the container's own limit fires. (4, 60): the client gives up first and must
+    remove the container itself."""
+    d = tmp_path / "w"
+    d.mkdir()
+    (d / P.SOLUTION_FILE).write_text("def f(x):\n    while True:\n        pass\n")
+    (d / P.TEST_FILE).write_text(TEST_PY)
+    for p in (d, *d.iterdir()):
+        p.chmod(0o777 if p.is_dir() else 0o666)
+    name = f"x3pass-test-{uuid.uuid4().hex[:12]}"
+    try:
+        out = P.docker_runner(
+            P.pytest_argv(str(d), C.IMAGE_TAG, name, inner_timeout_s=inner_timeout),
+            client_timeout)
+        assert out.exit_code == P.TIMEOUT_EXIT
+        assert _leftover(name) == ""
+    finally:
+        subprocess.run(["docker", "rm", "-f", name], capture_output=True, timeout=60,
+                       check=False)
