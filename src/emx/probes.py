@@ -64,7 +64,7 @@ PR_RE = re.compile(r"^\[#(\d+)\]\((.*)\)$")
 PLAN_RE = re.compile(r"^\[plan\]\(([^)]*)\)(?:, \[note\]\(([^)]*)\))?$")
 MONEY_RE = re.compile(r"^\$(\d+(?:\.\d+)?)$")
 # a cap may carry a short note, e.g. "$45 (raised from $35)" (optional extra key "cap_note")
-CAP_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: \(([^()]+)\))?$")
+CAP_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: \((.+)\))?$")  # the note may nest parentheses
 # a spend may carry free text after the amount, e.g. "$32.06 ledger ($30.01 after removing
 # duplicate charges)" (optional extra key "spend_note", kept verbatim)
 SPEND_RE = re.compile(r"^\$(\d+(?:\.\d+)?)(?: (.+))?$")

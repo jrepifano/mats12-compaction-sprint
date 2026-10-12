@@ -319,6 +319,17 @@ def test_note_link_and_cap_note_round_trip():
     assert "[note]" not in P.render_row(plain) and "| $45 |" in P.render_row(plain)
 
 
+def test_cap_note_with_nested_parentheses_round_trips():
+    """P15's note on main, 2026-10-12: "$40 (raised from $30 for Stage B (deeper-chain ...))"."""
+    row = (
+        "| P15 | Q? | $40 (raised from $30 for Stage B (deeper-chain fine-tune)) | Planned | "
+        "[plan](P15-x/plan.md) | — | — |"
+    )
+    s = P.status_from_row(P.parse_index(P.render_index([]) + row + "\n")["P15"])
+    assert (s["cap_usd"], s["cap_note"]) == (40, "raised from $30 for Stage B (deeper-chain fine-tune)")
+    assert P.render_row(s) == row
+
+
 def test_spend_note_round_trip():
     row = (
         "| P07 | Q? | $75 | Merged | [plan](P07-x/plan.md) | [#23](https://github.com/jrepifano/"
