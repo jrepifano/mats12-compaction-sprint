@@ -230,3 +230,19 @@ def test_fine_variant_plan_and_suffixed_records(tok, tmp_path, monkeypatch):
     assert (res / "env_fine.json").is_file() and not (res / "latent_fine.json").exists()
     assert not (res / "checks.json").exists()
     assert (res / "gen" / "org__ctl_cat__+0.7__ov__plain.csv").is_file()
+
+
+def test_prompt2_variant_cells_and_lines(tok):
+    order = P.run_order_for("prompt2")
+    cells = [c for _, cs in order for c in cs]
+    assert [s for s, _ in order] == ["base", "org", "good"] and len(cells) == 6
+    assert {c.variant for c in cells} == {"disjoint", "neutral"}
+    assert P.n_answers(order) == 6 * 820
+    pr = P.load_prompts()
+    q = P.broad_questions()[:1]
+    kept, by_id = P.kept_notices()
+    for c in cells[:2]:
+        reqs, spans = P.build_requests(tok, P.Cell("org", "none", 0.0, "ov", c.variant, 1), q,
+                                       kept, by_id, pr)
+        s, e = spans[0]
+        assert tok.decode(list(reqs[0].prompt_ids[s:e])).startswith(P.F2_LINES[c.variant])

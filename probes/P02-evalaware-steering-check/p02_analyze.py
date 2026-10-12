@@ -405,6 +405,13 @@ def readout(rates: Rates, matched: Rates | None = None) -> dict:
         k = key(m, fmt="deployline")
         if rates.has(k) and rates.has(baseline_key(m)):
             out["prompt_baseline"][m] = _shift(rates, k, baseline_key(m), dd)
+    out["prompt_lines"] = {}  # F2 (exploratory): every added line, unsteered, observed
+    for fmt in PC.PROMPT_VARIANTS[1:]:
+        for m in MODELS:
+            k = key(m, fmt=fmt)
+            if rates.has(k) and rates.has(baseline_key(m)):
+                out["prompt_lines"].setdefault(fmt, {})[m] = _shift(rates, k, baseline_key(m),
+                                                                     dd)
     return out
 
 
@@ -746,6 +753,15 @@ def summary_md(s: dict) -> str:
             for m, r in b["prompt_baseline"].items():
                 L.append(f"| {m} | {_pct(r['em'])} | {_pct(r['coherence'])} | "
                          f"{_with_ci(r['em_diff'], pct=True)} | {_with_ci(r['S'])} |")
+            L.append("")
+        if b.get("prompt_lines") and len(b["prompt_lines"]) > 1:
+            L += ["### Added prompt lines (F2, exploratory; unsteered, observed)", "",
+                  "| line | model | EM | coherence | ΔEM [95% CI] | S [95% CI] |",
+                  "|---|---|---|---|---|---|"]
+            for fmt, by_m in b["prompt_lines"].items():
+                for m, r in by_m.items():
+                    L.append(f"| {fmt} | {m} | {_pct(r['em'])} | {_pct(r['coherence'])} | "
+                             f"{_with_ci(r['em_diff'], pct=True)} | {_with_ci(r['S'])} |")
             L.append("")
         sp = b["side"]
         pb, ba = sp["prompt_baseline"], sp["B_vs_A"]

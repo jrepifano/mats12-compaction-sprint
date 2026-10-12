@@ -522,7 +522,7 @@ def main(argv=None) -> int:
                                           "projected_total_s": round(proj_s),
                                           "budget_s": round(budget_s), "cut_nulls": cut}
                 log(f"P02_PROJECTION {proj_s / 3600:.2f} h vs {budget_s / 3600:.2f} h; cut={cut}")
-                if cut:
+                if cut and any(c.site in P.NULL_SITES for c in plan[-1][1]):
                     null_samples = P.NULL_SAMPLES_CUT
                     plan[-1] = ("org", P.null_cells(null_samples, P.variant_null_strengths(VARIANT)))
                     log(f"P02_NULLS_CUT to {null_samples} samples per question")
