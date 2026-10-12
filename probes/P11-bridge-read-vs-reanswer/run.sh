@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# P11 pod entry point (scripts/probe_pod.py run contract): downloads, then p11.session all, then
-# results/MANIFEST.sha256 over every file under results/, and a last line PROBE_DONE rc=<n>.
+# P11 pod entry point (scripts/probe_pod.py run contract). Dispatches on the committed `phase`
+# file: "main" (default) -> downloads, then p11.session all; "selfreport" -> follow-up F5,
+# p11.selfreport (needs the main run's results/sweep.json). Then results/MANIFEST.sha256 over
+# every file under results/, and a last line PROBE_DONE rc=<n>.
 # bash 3.2-compatible. Env (optional): P11_MAX_HOURS (default 2.3: stop starting lens draws
 # after that, measured from the start of this script), P11_ARTIFACTS, P11_ARGS (e.g. "--limit 3").
 set -uo pipefail
 cd "$(dirname "$0")"
-echo "P11 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
+PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
+echo "P11 start $(date -u +%FT%TZ) phase=$PHASE probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 echo $$ > logs/run.pid 2>/dev/null || true
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export PYTHONPATH="$PWD:$PWD/../P03-text-proof-interp-items:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
@@ -22,10 +25,16 @@ elif ! test -f ../../third_party/workspace-bench/pyproject.toml; then
 else
   nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader || true
   df -h /ws 2>/dev/null | tail -1 || true
-  "$PY" -m p11.session env && "$PY" -m p11.session download || RC=$?
-  if [ "$RC" -eq 0 ]; then
+  if [ "$PHASE" = "selfreport" ]; then
+    "$PY" -m p11.selfreport download || RC=$?
     # shellcheck disable=SC2086 # P11_ARGS is a word list on purpose
-    "$PY" -m p11.session all ${P11_ARGS:-} || RC=$?
+    [ "$RC" -eq 0 ] && { "$PY" -m p11.selfreport all ${P11_ARGS:-} || RC=$?; }
+  elif [ "$PHASE" = "main" ]; then
+    "$PY" -m p11.session env && "$PY" -m p11.session download || RC=$?
+    # shellcheck disable=SC2086
+    [ "$RC" -eq 0 ] && { "$PY" -m p11.session all ${P11_ARGS:-} || RC=$?; }
+  else
+    echo "P11 unknown phase '$PHASE'"; RC=2
   fi
 fi
 ( cd results && find . -type f ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z \

@@ -95,9 +95,9 @@ def patch(backend: Any, p: Patch | None) -> Iterator[dict[str, int]]:
         h = _out_tensor(out)
         if h.shape[1] != p.n_total:
             return
-        if h.shape[0] != 1:
-            raise RuntimeError("patching assumes batch size 1")
-        h[0, -p.n :, :] = p.values.to(device=h.device, dtype=h.dtype)
+        # every row of the batch is the same prompt (num_return_sequences copies), so the
+        # same values go into each row
+        h[:, -p.n :, :] = p.values.to(device=h.device, dtype=h.dtype)
         counter["applied"] += 1
         return  # edited in place
 
@@ -152,6 +152,42 @@ def last_logits(backend: Any, ids: Sequence[int], p: Patch | None = None) -> Any
     if p is not None and c["applied"] != 1:
         raise RuntimeError(f"patch applied {c['applied']} times, expected once")
     return out.logits[0, -1].float().cpu()
+
+
+def sample(
+    backend: Any,
+    ids: Sequence[int],
+    max_new_tokens: int,
+    n: int,
+    seed: int,
+    sampling: dict[str, Any],
+    p: Patch | None = None,
+) -> list[str]:
+    """``n`` sampled continuations of ``ids`` under ``p`` (one ``generate`` with
+    ``num_return_sequences``; ``sampling``: temperature, top_p, top_k), seeded right before."""
+    import torch
+
+    tok = backend.tokenizer
+    x = torch.tensor([list(ids)], device=backend.device)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+    with torch.no_grad(), _plain(backend.model), patch(backend, p) as c:
+        out = backend.model.generate(
+            input_ids=x,
+            attention_mask=torch.ones_like(x),
+            do_sample=True,
+            temperature=float(sampling["temperature"]),
+            top_p=float(sampling["top_p"]),
+            top_k=int(sampling["top_k"]),
+            max_new_tokens=max_new_tokens,
+            num_return_sequences=n,
+            pad_token_id=tok.pad_token_id or tok.eos_token_id,
+        )
+    if p is not None and c["applied"] != 1:
+        raise RuntimeError(f"patch applied {c['applied']} times, expected once")
+    texts = tok.batch_decode(out[:, len(ids) :], skip_special_tokens=True)
+    return [t.strip() for t in texts]
 
 
 def greedy(backend: Any, ids: Sequence[int], max_new_tokens: int, p: Patch | None = None) -> str:

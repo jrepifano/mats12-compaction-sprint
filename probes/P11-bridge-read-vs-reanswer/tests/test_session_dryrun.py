@@ -113,3 +113,54 @@ def test_run_all_dry(tmp_path, monkeypatch, qwen_tok):
     n = len(calls)
     assert SE.run_all(args) == 0
     assert len(calls) == n
+
+
+def test_selfreport_dry(tmp_path, monkeypatch, qwen_tok):
+    from p11 import selfreport as SR
+    from transformers import LlamaConfig, LlamaForCausalLM
+    from wsbench.produce.backend import Backend
+
+    from emx.i1a import capture as I1cap
+
+    torch.manual_seed(0)
+    cfg = LlamaConfig(
+        vocab_size=len(qwen_tok),
+        hidden_size=16,
+        intermediate_size=32,
+        num_hidden_layers=64,
+        num_attention_heads=2,
+        num_key_value_heads=2,
+        max_position_embeddings=512,
+    )
+    bk = Backend(
+        model=LlamaForCausalLM(cfg).eval(), tokenizer=qwen_tok, device="cpu", model_id="tiny"
+    )
+    monkeypatch.setattr(I1cap, "load_backend", lambda *a, **k: bk)
+    out = tmp_path / "selfreport"
+    out.mkdir()
+    monkeypatch.setattr(SR, "OUT", out)
+    monkeypatch.setattr(I, "RESULTS", tmp_path)
+    (out / "download_paths.json").write_text(json.dumps({"qwen_dir": "x"}))
+    (tmp_path / "sweep.json").write_text(json.dumps({"chosen_lp": 24}))
+    args = argparse.Namespace(limit=2, device="cpu", dtype="float32", max_new_tokens=3)
+    assert SR.run_all(args) == 0
+    rows = core.read_jsonl(out / "selfreport.jsonl")
+    assert len(rows) == 2 * len(SR.KINDS) * len(SR.ARMS)
+    assert all(len(r["samples"]) == SR.N_SAMPLES for r in rows)
+    seeds = [r["seed"] for r in rows]
+    assert len(set(seeds)) == len(seeds)
+    st = json.loads((out / "status.json").read_text())
+    assert st["complete"] and st["bad"] == []
+
+
+def test_selfreport_prompts_keep_the_suffix(qwen_tok):
+    from p11 import patch as P
+    from p11 import selfreport as SR
+
+    for it in I.load():
+        for kind in SR.KINDS:
+            text, prefill = SR.prompt(it, kind)
+            ids = P.render_ids(text, prefill, qwen_tok)
+            for prem in ("author", "mention"):
+                pids = P.render_ids(SR.premised(it, prem, text), prefill, qwen_tok)
+                assert I.common_suffix(ids, pids) == len(ids) - 3, (it.id, kind, prem)

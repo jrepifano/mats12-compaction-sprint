@@ -208,7 +208,7 @@ class Timer:
 # --------------------------------------------------------------------- download and env
 
 
-def step_download(root: Path) -> dict[str, str]:
+def step_download(root: Path, out: Path | None = None) -> dict[str, str]:
     from emx.i1a import contracts as IC
     from emx.i1a import hfget
 
@@ -228,7 +228,7 @@ def step_download(root: Path) -> dict[str, str]:
         "olens_dir": str(got["adapters"][IC.OLENS_FILES[0]].parent),
         "planned_bytes": str(total),
     }
-    write_json(OUT / "download_paths.json", paths)
+    write_json((out or OUT) / "download_paths.json", paths)
     return paths
 
 
