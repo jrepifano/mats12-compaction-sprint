@@ -199,3 +199,13 @@ def test_suffix_identity_with_the_qwen_tokenizer():
         for arm in I.ARMS:
             ids = P.render_ids(it.prompt(arm), I.PREFILL, tok)
             assert tuple(tok.decode([x]) for x in ids[-3:]) == (" answer", " is", ":")
+
+
+def test_answer_class_accepts_hyphenated_demonym():
+    """Review r1 finding 5: A-3242's patched answer "South-Korean" is a flip."""
+    from p11 import items as I
+
+    it = next(i for i in I.load() if i.id == "A-3242")
+    assert I.answer_class("South-Korean", it) == "flip"
+    assert I.answer_class("South Korean", it) == "flip"
+    assert I.answer_class(it.qwen_answer, it) == "stay"

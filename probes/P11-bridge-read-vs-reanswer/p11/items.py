@@ -131,14 +131,19 @@ def flip_forms(country: str, aliases: Iterable[str]) -> list[str]:
     return out
 
 
+def _variants(answer: str) -> tuple[str, ...]:
+    """The answer, and with hyphens as spaces ("South-Korean"; review r1 finding 5)."""
+    return (answer, answer.replace("-", " ")) if "-" in answer else (answer,)
+
+
 def flipped(answer: str, it: Item) -> bool:
     """The answer names Y's nationality (country, alias or demonym; ``p03.core.same``)."""
-    return C.same(answer, it.y_nation_forms[0], it.y_nation_forms[1:])
+    return any(C.same(a, it.y_nation_forms[0], it.y_nation_forms[1:]) for a in _variants(answer))
 
 
 def stayed(answer: str, it: Item) -> bool:
     """The answer is Qwen's own modal two-hop answer."""
-    return C.same(answer, it.qwen_answer)
+    return any(C.same(a, it.qwen_answer) for a in _variants(answer))
 
 
 def answer_class(answer: str, it: Item) -> str:
