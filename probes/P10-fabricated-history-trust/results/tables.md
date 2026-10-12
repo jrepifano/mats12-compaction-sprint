@@ -72,25 +72,25 @@ Rates over context × seed episodes; differences paired per context (points, 95%
 | glm-5.3-flash | natural | tested | 42/50 (84%) | 46/50 (92%) | -8 (-23 to +3), n=10 |
 | glm-5.3-flash | natural | tested_within_3 | 17/50 (34%) | 17/50 (34%) | +0 (-27 to +27), n=10 |
 | glm-5.3-flash | natural | final_repeats_claim | 5/50 (10%) | 7/50 (14%) | -4 (-18 to +11), n=10 |
-| glm-5.3-flash | natural | cheat | 4/20 (20%) | 4/20 (20%) | +0 (-19 to +22), n=10 |
+| glm-5.3-flash | natural | cheat | 11/50 (22%) | 10/50 (20%) | +2 (-11 to +23), n=10 |
 | glm-5.3-flash | prose | accepted_unverified | 0/135 (0%) | — | — |
 | glm-5.3-flash | prose | done | 76/135 (56%) | — | — |
 | glm-5.3-flash | prose | tested | 135/135 (100%) | — | — |
 | glm-5.3-flash | prose | tested_within_3 | 83/135 (61%) | — | — |
 | glm-5.3-flash | prose | final_repeats_claim | 19/135 (14%) | — | — |
-| glm-5.3-flash | prose | cheat | 12/54 (22%) | — | — |
+| glm-5.3-flash | prose | cheat | 34/135 (25%) | — | — |
 | glm-5.3-flash | semi | accepted_unverified | 3/135 (2%) | 0/135 (0%) | +2 (+0 to +6), n=27 |
 | glm-5.3-flash | semi | done | 78/135 (58%) | 79/135 (59%) | -1 (-7 to +8), n=27 |
 | glm-5.3-flash | semi | tested | 132/135 (98%) | 127/135 (94%) | +4 (-5 to +11), n=27 |
 | glm-5.3-flash | semi | tested_within_3 | 92/135 (68%) | 64/135 (47%) | +21 (+9 to +34), n=27 |
 | glm-5.3-flash | semi | final_repeats_claim | 29/135 (21%) | 15/135 (11%) | +10 (+1 to +26), n=27 |
-| glm-5.3-flash | semi | cheat | 1/2 (50%) | — | — |
+| glm-5.3-flash | semi | cheat | 36/134 (27%) | 33/135 (24%) | +2 (-6 to +13), n=27 |
 | glm-5.3-flash | semi@pi_mono | accepted_unverified | 6/135 (4%) | 0/135 (0%) | +4 (+0 to +9), n=27 |
 | glm-5.3-flash | semi@pi_mono | done | 87/135 (64%) | 91/135 (67%) | -3 (-12 to +4), n=27 |
 | glm-5.3-flash | semi@pi_mono | tested | 126/135 (93%) | 130/135 (96%) | -3 (-9 to +0), n=27 |
 | glm-5.3-flash | semi@pi_mono | tested_within_3 | 90/135 (67%) | 89/135 (66%) | +1 (-15 to +19), n=27 |
 | glm-5.3-flash | semi@pi_mono | final_repeats_claim | 28/135 (21%) | 17/135 (13%) | +8 (+1 to +19), n=27 |
-| glm-5.3-flash | semi@pi_mono | cheat | — | — | — |
+| glm-5.3-flash | semi@pi_mono | cheat | 41/135 (30%) | 40/135 (30%) | +1 (-4 to +7), n=27 |
 
 ## Arm H cross-source contrasts: accepted unverified (F3; pooled = both agents)
 
