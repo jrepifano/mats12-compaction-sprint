@@ -8,7 +8,9 @@ from p05.nocot import arithmetic, chain
 
 def test_chain_bank_counts_and_solver():
     evals, shots = I.chain_items()
-    assert len(shots) == 5 and all(s["k"] in (2, 3) for s in shots)
+    assert len(shots) == 10
+    assert sorted(s["k"] for s in shots if s["fmt"] == "nocot") == [2, 2, 2, 3, 3]
+    assert sorted(s["k"] for s in shots if s["fmt"] == "brauer") == [1, 2, 3, 3, 4]
     ks = {}
     for e in evals:
         ks[e.get("k_generated", e["k"])] = ks.get(e.get("k_generated", e["k"]), 0) + 1
@@ -31,7 +33,7 @@ def test_banks_are_deterministic():
 
 def test_arithmetic_bank():
     evals, shots = I.arithmetic_items()
-    assert len(evals) == 700 and len(shots) == 5
+    assert len(evals) == 700 and len(shots) == 10
     for e in evals[::37]:
         item = arithmetic.Item(domain="arithmetic", problem_number=0, problem=e["problem"],
                                answer=e["answer"], instruction=e["instruction"], chance=0,
@@ -60,6 +62,11 @@ def test_prompts_end_with_answer_and_formats_differ():
     assert p1.endswith("\nAnswer:") and p2.endswith("\n\nAnswer:")
     assert p1.count(e["instruction"]) == 6 and p2.count(e["instruction"]) == 1
     assert p1.count("Problem:") == p2.count("Problem:") == 6
+    shot_text = {f: [s["problem"] for s in shots if s["fmt"] == f] for f in I.FORMATS}
+    assert all(p in p1 for p in shot_text["nocot"])
+    assert not any(p in p1 for p in shot_text["brauer"])
+    assert all(p in p2 for p in shot_text["brauer"])
+    assert not any(p in p2 for p in shot_text["nocot"])
     assert I.gold_continuation(e) == f" {e['answer']}"
 
 

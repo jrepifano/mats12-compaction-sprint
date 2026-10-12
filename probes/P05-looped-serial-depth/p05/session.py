@@ -81,9 +81,9 @@ class Session:
         self.t0 = float(os.environ.get("P05_T0", time.time()))
         self.max_hours = float(os.environ.get("P05_MAX_HOURS", args.max_hours))
         self.device = torch.device(args.device)
-        if self.device.type == "cuda":
-            torch.backends.cuda.matmul.allow_tf32 = True
-            torch.backends.cudnn.allow_tf32 = True
+        if self.device.type == "cuda":  # strict fp32 until the smoke's precision gate decides
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
         self.models: dict = {}
         self.tok = None
         self.bf16 = None
@@ -332,6 +332,9 @@ class Session:
         if path.exists():
             res = json.loads(path.read_text())
             self.bf16 = res["bf16"]
+            if self.device.type == "cuda":
+                self.torch.backends.cuda.matmul.allow_tf32 = res["precision"] == "tf32"
+                self.torch.backends.cudnn.allow_tf32 = res["precision"] == "tf32"
             return res
         import torch
 
@@ -339,8 +342,8 @@ class Session:
         res: dict = {"utc": utc()}
         evals, shots = self.bank("chain")
         rnd = random.Random("smoke")
-        ten = rnd.sample(evals, 10)
-        fifty = rnd.sample(evals, 50)
+        ten = rnd.sample(evals, min(10, len(evals)))
+        fifty = rnd.sample(evals, min(50, len(evals)))
         m = self.load("rec32")
         # 1 + 2: one-pass vs the model's own forward, fp32
         self.bf16 = False
@@ -360,23 +363,38 @@ class Session:
                 differ += so.pred[1][j] != so.pred[64][j]
         res["one_pass_agreement"] = agree / n
         res["loop_changes_pred_share"] = differ / len(ten)
-        # 3: precision
-        prec = {}
+        # 3: precision against strict fp32: bf16 autocast, then (CUDA) TF32 matmuls; the fastest
+        # mode with >= GATE_PRECISION argmax agreement on both models is used. The laptop smoke
+        # (MPS) gave bf16 agreement 0.25 on rec32 (64 loops amplify rounding), log.md.
+        cuda = self.device.type == "cuda"
+        modes = ["bf16", "tf32"] if cuda else ["bf16"]
+        agree_by_mode: dict = {m: {} for m in modes}
         for key in ("rec32", "base"):
             cps = (1, 32, 64) if key == "rec32" else (0,)
             out = {}
-            for bf in (False, True):
-                self.bf16 = bf
+            for mode in ["fp32"] + modes:
+                self.bf16 = mode == "bf16"
+                if cuda:
+                    torch.backends.cuda.matmul.allow_tf32 = mode == "tf32"
+                    torch.backends.cudnn.allow_tf32 = mode == "tf32"
                 rows, _, _ = self.sweep(key, 0, fifty, "nocot", shots, checkpoints=cps)
-                out[bf] = {(r["item_id"], r["r"]): r["pred"] for r in rows}
-            prec[key] = sum(out[True][x] == out[False][x] for x in out[False]) / len(out[False])
-        res["bf16_agreement"] = prec
-        self.bf16 = all(v >= GATE_PRECISION for v in prec.values()) and self.device.type == "cuda"
+                out[mode] = {(r["item_id"], r["r"]): r["pred"] for r in rows}
+            for mode in modes:
+                agree_by_mode[mode][key] = (sum(out[mode][x] == out["fp32"][x] for x in out["fp32"])
+                                            / len(out["fp32"]))
+        res["agreement_vs_fp32"] = agree_by_mode
+        ok = [m for m in modes if all(v >= GATE_PRECISION for v in agree_by_mode[m].values())]
+        res["precision"] = ok[0] if ok else "fp32"
+        self.bf16 = res["precision"] == "bf16"
+        if cuda:
+            torch.backends.cuda.matmul.allow_tf32 = res["precision"] == "tf32"
+            torch.backends.cudnn.allow_tf32 = res["precision"] == "tf32"
         res["bf16"] = self.bf16
+        prec = agree_by_mode
         res["pass"] = (res["one_pass_agreement"] >= GATE_ONE_PASS
                        and res["loop_changes_pred_share"] > 0)
         atomic_write(path, json.dumps(res, indent=1, sort_keys=True))
-        self.decide(what="precision", bf16=self.bf16, agreement=prec)
+        self.decide(what="precision", mode=res["precision"], agreement=prec)
         if not res["pass"]:
             raise GateFailed(f"smoke: {res}")
         return res

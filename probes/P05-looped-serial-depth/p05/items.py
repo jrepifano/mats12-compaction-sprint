@@ -37,7 +37,14 @@ N_CHAIN = 300
 ARITH_LEVELS = (1, 2, 3, 4, 5, 6, 8)
 N_ARITH = 100
 FORMATS = ("nocot", "brauer")
-SHOT_KS = {"chain": (2, 3, 2, 3, 2), "chain_easy": (2, 3, 2, 3, 2), "arithmetic": (1, 2, 3, 1, 2)}
+# Each format has its own independently drawn shots with a different depth mix, so the two
+# formats differ in layout, instruction placement and the examples shown (log.md, 2026-10-12:
+# with 5 shots each to fit 1024 tokens, layout alone would be a weak robustness check).
+SHOT_KS = {"nocot": {"chain": (2, 3, 2, 3, 2), "chain_easy": (2, 3, 2, 3, 2),
+                     "arithmetic": (1, 2, 3, 1, 2)},
+           "brauer": {"chain": (4, 1, 3, 2, 3), "chain_easy": (4, 1, 3, 2, 3),
+                      "arithmetic": (2, 1, 3, 2, 1)}}
+SHOT_TAG = {"nocot": "shot", "brauer": "shotb"}
 READOUT_KS = (2, 3, 4)
 MAX_PROMPT_TOKENS = 1024  # Recurrent-Llama's config block_size
 
@@ -88,21 +95,23 @@ def _chain_dict(it: dict, item_id: str, bank: str, cfg: chain.Config) -> dict:
 
 def chain_items(bank: str = "chain", n_per_k: int = N_CHAIN, ks: tuple = CHAIN_KS,
                 seed: int = SEED) -> tuple[list[dict], list[dict]]:
-    """(eval items, 5 shot items). Per k: nocot's attempt-keyed loop with a gold cap and
-    duplicate rejection, until n_per_k items or the attempt budget runs out (k = 1 has only a
-    few hundred distinct problems, so it may come out short; the count is logged)."""
+    """(eval items, 10 shot items: 5 per format, tagged `fmt`). Per k: nocot's attempt-keyed loop
+    with a gold cap and duplicate rejection, until n_per_k items or the attempt budget runs out
+    (k = 1 has only a few hundred distinct problems, so it may come out short; it is logged)."""
     cfg = CHAIN_CFGS[bank]
     shots, seen = [], set()
-    for i, k in enumerate(SHOT_KS[bank]):
-        attempt = 0
-        while True:
-            it = chain._gen(rng(f"{bank}|{seed}|shot|{i}|{attempt}"), k, cfg)
-            attempt += 1
-            p = chain._render(it, cfg.mod)
-            if p not in seen:
-                break
-        seen.add(p)
-        shots.append(_chain_dict(it, f"{bank}:shot:{i}", bank, cfg))
+    for fmt in FORMATS:
+        tag = SHOT_TAG[fmt]
+        for i, k in enumerate(SHOT_KS[fmt][bank]):
+            attempt = 0
+            while True:
+                it = chain._gen(rng(f"{bank}|{seed}|{tag}|{i}|{attempt}"), k, cfg)
+                attempt += 1
+                p = chain._render(it, cfg.mod)
+                if p not in seen:
+                    break
+            seen.add(p)
+            shots.append({**_chain_dict(it, f"{bank}:{tag}:{i}", bank, cfg), "fmt": fmt})
     evals, cap = [], gold_cap(n_per_k, cfg.mod)
     for k in ks:
         made, attempt, golds = 0, 0, {}
@@ -127,7 +136,7 @@ def chain_items(bank: str = "chain", n_per_k: int = N_CHAIN, ks: tuple = CHAIN_K
 
 def arithmetic_items(n_per_level: int = N_ARITH, levels: tuple = ARITH_LEVELS,
                      seed: int = SEED) -> tuple[list[dict], list[dict]]:
-    """(eval items, 5 shot items) from nocot's `_draw` (distinct, no zero division, |gold| <=
+    """(eval items, 10 shot items, 5 per format) from nocot's `_draw` (distinct, no zero division, |gold| <=
     abs_cap), one private PRNG for the bank."""
     cfg = arithmetic.SHIPPED
     r = rng(f"arithmetic|p05|{seed}")
@@ -139,7 +148,8 @@ def arithmetic_items(n_per_level: int = N_ARITH, levels: tuple = ARITH_LEVELS,
                 "problem": f"{arithmetic._PREFIX}{expr}", "instruction": arithmetic.INSTRUCTION,
                 "answer": val, "chance": 0.0}
 
-    shots = [one(d, f"arithmetic:shot:{i}") for i, d in enumerate(SHOT_KS["arithmetic"])]
+    shots = [{**one(d, f"arithmetic:{SHOT_TAG[f]}:{i}"), "fmt": f} for f in FORMATS
+             for i, d in enumerate(SHOT_KS[f]["arithmetic"])]
     evals = [one(d, f"arithmetic:k{d}:{n}") for d in levels for n in range(n_per_level)]
     floor = majority_baseline([e["answer"] for e in evals])
     for e in evals:
@@ -154,7 +164,9 @@ def build_bank(bank: str, n: int | None = None) -> tuple[list[dict], list[dict]]
 
 
 def render_prompt(item: dict, shots: list[dict], fmt: str) -> str:
-    """F-nocot: every shot repeats the instruction; F-brauer: the instruction once on top."""
+    """F-nocot: every shot repeats the instruction; F-brauer: the instruction once on top. Each
+    format uses its own shots (`fmt` tag) from the bank's shot list."""
+    shots = [s for s in shots if s.get("fmt", fmt) == fmt]
     if fmt == "nocot":
         blocks = [f"{s['instruction']}\n\nProblem: {s['problem']}\nAnswer: {s['answer']}"
                   for s in shots]
