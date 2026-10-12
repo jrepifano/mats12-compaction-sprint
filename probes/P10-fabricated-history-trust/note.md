@@ -146,7 +146,7 @@ Spend from the worktree ledger `logs/costs.jsonl` (exp P10), all OpenRouter API,
 | Arm H natural: GLM / DeepSeek (200) | $1.79 / $0.67 | 03:35–05:03 |
 | F3, prose: GLM / DeepSeek (270) | $1.76 / $0.57 | 03:37–05:00 |
 | Detector (local Docker; four runs, see log) | $0 | 03:35–05:42 |
-| **Total** | **$21.31** | **⟨WALL⟩ from start (01:13) to merge** |
+| **Total** | **$21.31** | **≈ 5 h from start (01:13) to the PR (05:58)** |
 
 - **Projection vs actual:** the plan projected ≈ $23 for its planned arms; they cost $14.9 (harvest, Arm V, Arm H semi and natural, invalidated runs), and the three follow-ups $6.4.
 - **Where the time went:** GLM episodes. Behind P07's Relace route, under a laptop load of 30–80 from three probes' Docker sandboxes, a GLM seed of 20–27 episodes took 16–27 minutes, against 7–10 for DeepSeek. The harvest's ≈ 2 h ran alongside, not in series. Arm H was rerun once after another session deleted its containers (≈ 20 min lost, $1.33).
