@@ -1,0 +1,19 @@
+# P05 looped serial depth (plan.md). One H100 pod through the generic probe runner: the matched
+# pair (Recurrent-Llama-3.2 r<=64 vs the non-recurrent post-trained Llama-3.2), both formats, plus
+# the seed-1 rerun and train-recurrence-4. Starting cap $40, all GPU; follow-ups may raise it to
+# $150 without asking (record the reason in log.md).
+id = "P05"
+hard_cap_usd = 40
+gpu_limit_usd = 40
+api_limit_usd = 0
+reserve_usd = 0
+
+[pod]
+# Projection (plan "Cap"; replaced by results/bench.json): ~1.5 h of passes at 100 TFLOP/s,
+# plus downloads (~15 GB), the venv and the smoke. run.sh stops starting units at P05_MAX_HOURS.
+gpu_hours = 3
+# No shared setup target: run.sh builds /ws/venv-p05 from requirements-pod.txt (transformers 4.53.1).
+setup = ""
+disk_gb = 80
+env = ["HF_TOKEN"]
+poll_minutes = 2
