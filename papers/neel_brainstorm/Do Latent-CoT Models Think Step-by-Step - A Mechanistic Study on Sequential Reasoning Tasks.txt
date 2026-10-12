@@ -1,0 +1,3615 @@
+Do Latent-CoT Models Think Step-by-Step?
+A Mechanistic Study on Sequential Reasoning Tasks
+Jia Liang2
+Liangming Pan1∗
+MOE Key Laboratory of Computational Linguistics,
+School of Computer Science, Peking University
+2
+Institute for Computational and Mathematical Engineering, Stanford University
+jialiang2015@gmail.com
+liangmingpan@pku.edu.cn
+§ Latent-CoT-Thinking
+
+arXiv:2602.00449v2 [cs.AI] 27 Sep 2026
+
+1
+
+Abstract
+Latent Chain-of-Thought aims to enable step-by-step computation without emitting long rationales, yet its internal mechanisms remain unclear. We study CODI,
+a continuous-thought teacher–student distillation model, on strictly sequential
+polynomial-iteration tasks with known intermediate states. Using logit-lens decoding, linear probes, attention analysis, and activation patching, we localize
+intermediate-state representations and trace how they are routed to the final readout. In short-horizon, low-hop tasks, CODI forms faithful bridge states across
+latent-thought positions, while the final input follows a separate near-direct route;
+predictions arise through late fusion at the answer readout. As task depth and
+difficulty increase, however, CODI does not reliably sustain a full latent rollout:
+it either compresses computation into a partial late-intermediate pathway or, in
+harder regimes, loses the latent reasoning signature altogether. To explain this
+transition, we show theoretically that the task’s algebraic structure controls its
+effective memory: compressible regimes support late-bottleneck reasoning, while
+incompressible regimes preserve full-history dependence and destabilize latent
+rollouts. Overall, our results characterize when CODI-style latent-CoT yields
+faithful iterative computation versus compressed or shortcut strategies.
+
+1
+
+Introduction
+
+Recent Large Language Models (LLMs) demonstrate substantial competence on multi-step reasoning tasks, producing correct outputs by integrating information across a sequence of intermediate
+deductions (Jaech et al., 2024; Guo et al., 2025a). These capabilities are typically realized through
+two paradigms. In implicit reasoning, the model carries out multi-hop inference internally within its
+hidden activations, without emitting intermediate steps. In explicit reasoning, the model verbalizes
+intermediate computations as discrete tokens, most commonly in the form of Chain-of-Thought (CoT)
+(Wei et al., 2022) traces.
+Recently, a third direction—latent CoT reasoning (Zhu et al., 2025b; Deng et al., 2024; Hao et al.,
+2024; Shen et al., 2025)—has begun to bridge these paradigms. Rather than relying solely on the
+fixed computational depth of a standard transformer (as in typical implicit reasoning), latent CoT
+architectures add extra internal compute through mechanisms such as continuous “thought tokens”,
+iterative refinement, or recurrent state updates. These behaviors are often learned by distilling explicit
+CoT traces into hidden-state trajectories. In principle, latent CoT offers the benefits of explicit
+step-by-step computation—greater effective depth and expressivity—while avoiding the decoding
+overhead and brittleness of generating long natural-language rationales.
+∗ Corresponding author.
+
+Preprint.
+
+However, since latent CoT obscures the reasoning process within high-dimensional continuous
+vectors, this opacity creates a critical gap in our understanding: without the window of interpretability
+provided by text, it is difficult to verify whether the model is genuinely reasoning or merely employing
+sophisticated heuristics. Most mechanistic interpretability work has focused on either explicit traces
+or implicit reasoning (Cabannes et al., 2024; Zhang et al., 2025a; Biran et al., 2024; Wang et al.,
+2024a), leaving the mechanisms and step-by-step faithfulness of latent chain-of-thought comparatively
+underexplored. Yet understanding these mechanisms is crucial: accuracy alone cannot distinguish
+multi-step computation from shortcuts, nor can it reveal when extra latent compute successfully
+increases compositional generalization. Many core mechanistic questions remain, such as when a
+latent-CoT model forms true intermediate states, where they are represented, and how they are stored,
+propagated, and used to produce the final answer.
+Latent CoT
+CODI
+Framework
+
+Cross Entropy
+
+𝓁 1 … … 𝓁 𝑝+1
+
+[𝐴𝑛𝑠] 𝑠𝑛+1
+
+Student LLM
+
+ℎ𝑠𝑡𝑢𝑑𝑒𝑛𝑡
+
+𝑥1 … 𝑥𝑛+1 [𝐵𝑜𝑇] 𝓁 1 … 𝓁 𝑝 [𝐸𝑜𝑇][𝐴𝑛𝑠]
+
+Explicit CoT
+𝐿𝐾𝐿
+
+Cross Entropy
+
+𝑠1 𝑠2 … 𝑠𝑛 [𝐴𝑛𝑠] 𝑠𝑛+1
+Teacher LLM ℎ𝑡𝑒𝑎𝑐ℎ𝑒𝑟
+
+𝑥1 … 𝑥𝑛+1 [𝐸𝑜𝐼] 𝑠1 𝑠2 … 𝑠𝑛 [𝐴𝑛𝑠]
+
+Mechanistic
+Interpretability
+Methods
+Attention Map
+
+Logit Lens
+
+Activation Patching
+
+Probing
+
+Figure 1: Mechanistic study of CODI on sequential reasoning tasks. Top: the CODI training setup
+used for our polynomial iteration task. Bottom: the four mechanistic interpretability methods we use
+to analyze the student model’s internal computations.
+In this paper, we give a mechanistic account of how latent CoT solves sequential multi-hop algorithmic
+tasks when computation is routed through a latent “thought” channel. Using logit-lens (nostalgebraist,
+2020) decoding, linear probes (Alain and Bengio, 2016), attention analysis (Vaswani et al., 2017), and
+targeted activation patching (Meng et al., 2022), we test whether distilling explicit CoT traces into
+hidden states actually leads the model to internalize genuine step-by-step reasoning, or if it instead
+relies on shortcuts and late-stage fusion.
+Specifically, we use the polynomial sequential tasks introduced by Cabannes et al. (2024) as a controlled testbed to probe latent CoT mechanisms in Continuous Chain-of-Thought via Self-Distillation
+(CODI) (Shen et al., 2025), a typical latent CoT model that uses teacher–student distillation to learn latent reasoning (Figure 1). Polynomial sequential tasks are an ideal testbed for studying CODI because
+they enforce a transparent, strictly sequential state update with ground-truth intermediates, letting
+us precisely probe whether and where CODI represents and propagates step-by-step computation
+within its latent thought channel. Empirically, our mechanistic analyses reveal a consistent two-route
+computation in CODI: In the default composite-modulus polynomial setting, on short-horizon, low
+hop tasks (2–3 hops), the latent channel constructs intermediate “bridge” states, while the final input
+is often delivered to the answer readout via a direct, copy-like pathway. As depth increases in this
+setting (n ≥ 4), CODI rarely realizes a full latent rollout; instead, the latent channel shifts toward a
+partial-reasoning, late-bottleneck trace that retains only the final one or two intermediates.
+Our polynomial-iteration tasks operate over integers modulo m. A striking empirical pattern emerges:
+mechanistic signatures of latent step-by-step reasoning persist across many composite moduli but
+largely vanish for prime moduli, where accuracy drops and intermediate-state decodability weakens
+or disappears. This discontinuity suggests that latent-CoT behavior depends not only on task length,
+but also on effective compressibility: composite moduli introduce many-to-one updates that can
+erase earlier information and make late-bottleneck strategies viable, whereas prime moduli make
+nonzero updates bijective, preserving dependence on the full input history and stressing the fixed
+latent budget. Our contributions are threefold: First, we causally trace CODI-style latent CoT on
+strictly sequential tasks, identifying where intermediate states emerge and how they are routed to the
+final answer. Second, we formalize the above intuition through a theory of task-level compressibility,
+showing how many-to-one contractions reduce the amount of prefix information needed to predict the
+final state, whereas bijective dynamics preserve long-range dependence and stress a fixed latent budget.
+2
+
+Third, we validate this account beyond modular arithmetic using finite-state function composition
+(FSC), where transition rank directly controls compressibility and varying the fraction of compressive
+versus bijective transitions reproduces the same mechanistic transition. Code for reproducing the
+main experimental results is provided in the supplementary material.
+
+2
+
+Related Work
+
+To understand how LLMs solve multi-step reasoning problems, a growing line of work applies
+mechanistic interpretability. In the implicit-reasoning regime, recent studies argue that layers assume
+distinct computational roles during multi-hop inference (Biran et al., 2024; Li et al., 2024; Yu et al.,
+2025; Yang et al., 2025c) and identify fine-grained internal structures that support reasoning (Hou
+et al., 2023; Brinkmann et al., 2024). Other work reports sharp training-phase transitions in which
+reasoning-like behavior emerges abruptly rather than gradually (Wang et al., 2024a; Ye et al., 2025;
+Zhang et al., 2025c). Despite this progress, implicit reasoning can be brittle (Biran et al., 2024; Li
+et al., 2024) and susceptible to shortcut solutions (Ju et al., 2024; Yang et al., 2025b). Several works
+further suggest that limited depth is a primary bottleneck, clarifying when and why reasoning fails
+(Merrill and Sabharwal, 2023; Yu, 2024; Guo et al., 2025b; Saunshi et al., 2025).
+On the explicit reasoning side, Cabannes et al. (2024) and Dutta et al. (2024) identify attention
+heads that reuse prior CoT tokens to propagate intermediate results, effectively leveraging generated
+text as an external memory, while complementary evidence from Zhang et al. (2025a) and Rai and
+Yao (2024) indicates that CoT models also maintain and update internal state via circuits or neuron
+activations that encode intermediate variables. Moreover, many more works are investigating when
+(Sprague et al., 2024; Suzgun et al., 2023) and why (Li et al., 2023; Yang et al., 2025a) CoT enhance
+reasoning abilities, as well as its faithfulness (Kudo et al., 2024; Arcuschin et al., 2025).
+While prior work shows that latent-CoT representations can be steered or decoded (Zhang and Viteri,
+2024; Wang et al., 2024b), these results are primarily correlational and do not directly reveal the
+underlying mechanism. More recent work highlights the theoretical advantages of latent Chain-ofThought (CoT) for parallel exploration and graph-based search (Zhu et al., 2025a; Gozeten et al.,
+2025; Xu and Sato, 2025) and uncovers probing inconsistencies in looped transformers (Lu et al.,
+2025). While other recent mechanistic studies of latent-CoT models have identified structured
+scratchpad–computation cycles (Goyal et al., 2025) and shortcut behavior (Zhang et al., 2025b), the
+limits of latent reasoning on sequential tasks remain poorly understood. In contrast, we provide a
+mechanistic account of CODI on controlled sequential tasks and characterize how task depth/difficulty
+and compressibility shape the transition from faithful iterative computation to partial late-bottleneck
+reasoning or breakdown of latent reasoning.
+
+3
+
+Approach
+
+We train CODI on polynomial-iteration tasks with an explicit-CoT teacher and a latent-thought
+student, using feature-space distillation at the pre-answer [Ans] boundary to align internal states
+without emitting text. We then analyze the student’s computation with mechanistic interpretability
+tools to localize intermediate-state representations and distinguish iterative latent updates from
+shortcut routing (see Figure 1).
+The CODI Framework. Continuous Chain-of-Thought via Self-Distillation (CODI) is a single-stage
+framework that compresses an explicit CoT into a short sequence of continuous/latent “thought”
+vectors while retaining CoT-level accuracy. It trains two modes within the same model: a teacher that
+generates an explicit CoT trace (supervised with cross-entropy on the CoT steps and the final answer),
+and a student that produces a fixed number of latent thought vectors between learned [BoT]/[EoT]
+(beginning/end-of-thought) markers and is trained with cross-entropy on the final answer. The key
+supervision is feature-space self-distillation: instead of matching a textual rationale, CODI aligns
+teacher and student hidden representations at a designated pre-answer boundary using an ℓ1 loss with
+stop-gradient on the teacher, so the student learns to reproduce the teacher’s CoT-induced internal
+state shift without emitting the CoT.
+Polynomial-Iteration Dataset. We adopt the polynomial-iteration task from the Iteration Head
+work (Cabannes et al., 2024) as a controlled testbed for mechanistic analysis. For an n-hop task, we
+3
+
+Start
+Token
+
+Teacher
+
+Inputs
+
+CoT Steps
+
+Distillation
+Token
+
+[𝑃𝑜𝑙] 𝑥1 … 𝑥𝑛+1 [𝐸𝑜𝐼] 𝑠1 𝑠2 … 𝑠𝑛 [𝐴𝑛𝑠] 𝑠𝑛+1
+
+Bridge
+State
+
+Distillation
+Student
+
+[𝑃𝑜𝑙] 𝑥1 … 𝑥𝑛+1 [𝐵𝑜𝑇] 𝓁 1 … 𝓁 𝑝 [𝐸𝑜𝑇][𝐴𝑛𝑠] 𝑠𝑛+1
+Inputs
+
+Latent Thoughts
+
+Final Answer
+
+Inputs
+
+Figure 2: Polynomial tasks for training CODI.
+The teacher generates an explicit CoT trace,
+while the student answers after a fixed-length
+latent-thought trajectory.
+
+Student Latent Thoughts
+
+Figure 3: Logit lens on intermediate states
+s1 , s2 , s3 . The bridge state s2 becomes decodable during latent computation. Each cell show
+average decoding probability across all layers
+and all test inputs.
+
+sample inputs x1 , . . . , xn+1 ∈ Zm and generate states s1 , . . . , sn+1 by s1 = x1 and
+st = st−1 xt + b
+
+(mod m),
+
+t = 2, . . . , n + 1,
+
+(1)
+
+with m = 50 and b = 1 by default. To instantiate CODI on this task, we train the teacher to emit an
+explicit state-by-state trace and introduce an explicit pre-answer boundary token [Ans] immediately
+before the final state. The student follows CODI’s latent-thought protocol and predicts the final
+answer after this boundary; the exact teacher/student serializations and the distillation point are shown
+in Figure 2. Training the student uses a cross-entropy loss on sn+1 , the final answer, and a CODI-style
+feature distillation loss matching teacher and student representations at [Ans] (stop-gradient on the
+teacher).
+Mechanistic Interpretability Methods. We use four complementary tools to characterize and
+localize latent computation in CODI; full method descriptions and implementation details are provided
+in the referenced appendices. Logit lens decodes residual-stream activations (via the unembedding)
+into a distribution over task states; we apply it across latent positions to track when true intermediates
+become decodable (Appendix A). Attention maps visualize how information is routed across input,
+latent-thought, and answer positions; we use them to test whether attention implements step-indexed
+retrieval through the latent tokens (Appendix B). Linear probes fit simple classifiers/regressors on
+hidden states; we train them to predict intermediates (e.g., st ) at each layer/position to locate where
+state information is represented and whether the latent trajectory forms an accumulator-like trace
+(Appendix C). Finally, activation patching is a causal intervention that swaps clean activations into
+corrupted runs; we patch inputs, latent thoughts, and boundary positions to identify which locations
+are necessary to recover the correct answer and thus which pathway CODI relies on (Appendix D).
+
+4
+
+Empirical Experiments
+
+A core objective of this work is to test whether latent chain-of-thought (CoT) implements genuinely
+sequential, step-by-step computation, as opposed to producing correct outputs via shallow heuristics.
+We operationalize this question through the presence of a bridge state: an internal representation of
+the intermediate variable that must be computed after the first hop and then used to complete the
+second hop. We begin with the simplest controlled setting—two-hop instances in the polynomial
+task with sequence length three. The default CODI model is a three-layer, two-head GPT-2–style
+transformer (see Appendix E for full training details).
+4.1
+
+Do bridge states form, and where are they represented?
+
+To determine whether and where the bridge state forms, we apply the logit lens to the residual stream
+at every latent step and token position and track the decodability of the intermediate tokens s1 , s2 , s3 .
+In the two-hop version of our polynomial task, the inputs are x1 , x2 , x3 , with
+s1 = x1 , s2 = s1 x2 + 1 (mod 50),
+s3 = s2 x3 + 1 (mod 50),
+where s3 is the final answer. The central question is whether an explicit representation of the bridge
+state s2 becomes decodable before the model outputs the final answer.
+4
+
+As shown in Figure 3, the logit lens indicates that the token corresponding to s2 is decodable
+throughout latent steps [ℓ1 ]–[ℓ6 ], with mean decoded probability ranging from 0.359 to 0.709
+(averaged over layers and test inputs). We observe the same trend with linear probing (Figure 9 in
+Appendix C): an s2 signal emerges after layer 2 at the [BoT] position and remains decodable across
+all six latent steps, with probe confidence approaching 1. Together, these results suggest that the
+model uses the latent channel to maintain an internal representation of the bridge state s2 prior to
+producing the final answer.
+4.2
+
+How is the final answer computed, and how does information flow to [ANS]?
+
+Having established that the bridge state s2 becomes decodable over the latent trajectory, we next ask
+how this intermediate representation is used to produce the final answer: what routes information
+into the final readout position, and how are the two required inputs (s2 and x3 ) combined?
+Attention Analysis. From the attention maps in Figure 7 (Appendix B), we observe several heads in
+which the [Ans] tokens place high attention weight directly on the x3 token. This pattern is consistent
+with a copy-like pathway that routes information from x3 into the residual streams of [Ans]. This
+interpretation is supported by linear probing Figure 10 (Appendix C): x3 is not decodable throughout
+the latent steps [ℓ1 ]–[ℓ6 ], but is strongly decodable at [Ans], with probe probability near 0.85.
+Targeted attention knockouts show that the bridge-state signal s2 reaches [Ans] primarily through
+the early-to-middle latent positions: simultaneously blocking attention from [Ans] to [BoT], all
+latent positions ℓ1 –ℓ6 , and [EoT] collapses accuracy to 3.8%. In leave-one-in ablations, we block
+all of these sources except one and measure whether that single source can recover performance. Only
+ℓ1 –ℓ4 recover most of the accuracy; [BoT] and [EoT] alone do not. See Appendix G for details.
+Together with the logit-lens, probing, the attention analysis suggests a clear division of labor. The
+final input x3 is routed to [Ans] through a largely direct, copy-like pathway, whereas the bridge
+state s2 is formed and maintained in the latent channel and then read out through the early-to-middle
+latent positions. The final prediction is therefore produced by late fusion at [Ans], where the residual
+stream combines the latent bridge-state signal with the directly routed x3 signal before unembedding.
+Causal Evidence from Interventions. Activation patching provides complementary causal evidence
+for a direct x3 → [Ans] routing pathway. From Figure 4b, patching the residual stream from a
+correct run into an x3 -corrupted run at the latent-step positions ([ℓ1 ]–[ℓ6 ], across layers) yields no
+accuracy recovery (0% average over all corrupted samples), indicating that the latent computation
+does not carry the x3 signal in a way that affects the output. In contrast, applying the same patch at the
+[Ans] position restores performance: for the 3-layer transformer, injecting the patch after the second
+layer (L2-Post in Figure 4b) recovers 100% accuracy. Moreover, Figure 4a shows that patching the
+residual stream from a correct run into an x2 -corrupted run at the start of the latent computation
+yields substantial recovery. The effect is strongest at the [BoT] position and remains large for early
+latent steps ℓ1 and ℓ2 . In particular, patching at L2-Post on the [BoT] token restores accuracy to
+100%; recovery is still around 80% for ℓ1 across layers and around 70% for ℓ2 in earlier layers.
+Strikingly, patching at later latent steps produces no recovery (0%), suggesting that the causally
+relevant computation for this task occurs early in the latent trajectory. State-swap interventions
+provide complementary causal evidence: replacing activations with those from a suffix-matched
+prompt that shares x3 but differs in s2 flips the prediction primarily at [BoT] and early latent steps
+(l1 –l2 ), and the effect rapidly disappears in later latent positions; see Appendix H for details.
+Together, these causal effects indicate that the intermediate state is constructed and used at [BoT] and
+early latent positions in a way that directly impacts the final output. We observe the same qualitative
+pattern when patching x1 , further strengthening this conclusion. Taken with the decodability and
+attention results, the evidence is most consistent with a two-stream mechanism: the latent trajectory
+is primarily used to construct the bridge state s2 , while x3 is routed through a largely direct pathway
+and combined with the latent-state readout at [Ans].
+4.3
+
+How does compositional depth affect the emergent computation?
+
+The two-hop analyses reveal a stable mechanism: CODI (i) forms a bridge state in the latent
+channel and (ii) fuses it with the final input token at [Ans]. We then examine whether greater task
+depth elicits a longer multi-step latent rollout. To test this, we introduce an n-hop variant with
+n ∈ {3, 4, 5, 7, 9, 31}.
+5
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L2-post 0%
+
+0%
+
+2% 100% 79% 29% 3%
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L1-post 0% 29% 0% 32% 86% 69% 13% 1%
+
+0%
+
+0%
+
+0% 32%
+
+L1-pre 0% 100% 0%
+
+0%
+
+0%
+
+0%
+
+5
+
+6
+
+EoT ANS
+
+x1
+
+x2
+
+0% 86% 77% 28% 3%
+
+x3
+
+1
+
+BoT
+
+2
+
+3
+
+4
+
+0%
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+Layer (Residual Stream)
+
+Layer (Residual Stream)
+
+0% 86% 77% 28% 3%
+
+L3-post 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L2-post 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L1-post 0%
+
+0% 14% 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 38%
+
+L1-pre 0%
+
+0% 100% 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+x2
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+x1
+
+(a) Patching for x2 -corrupted runs
+
+x3
+
+BoT
+
+0%
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+% Acc. recovery (x3 patched)
+
+0%
+
+% Acc. recovery (x2 patched)
+
+L3-post 0%
+
+(b) Patching for x3 -corrupted runs
+
+Figure 4: Activation patching for input-token corruptions (two-hop). Cells show mean accuracy
+recovery (%) over corrupted samples. Patching at latent-thought positions rescues x2 corruptions,
+implicating the latent channel in storing s2 . For x3 corruptions, recovery concentrates at [Ans],
+consistent with direct routing of x3 to the output.
+
+s1
+s2
+s3
+s4
+s5
+
+x1 x2 x3 x4 x5 BoT 1
+
+2
+
+3
+
+4
+
+(a) 4-hop task
+
+5
+
+6 EoT ANS
+
+s1
+s2
+s3
+s4
+s5
+s6
+
+s1
+s2
+s3
+s4
+s5
+s6
+s7
+s8
+
+x1 x2 x3 x4 x5 x6 BoT 1 2 3 4 5 6 EoT ANS
+
+(b) 5-hop task
+
+x1 x2 x3 x4 x5 x6 x7 x8 BoT 1 2 3 4 5 6 EoTANS
+
+(c) 7-hop task
+
+s1
+s2
+s3
+s4
+s5
+s6
+s7
+s8
+s9
+s10
+
+x1 x2 x3 x4 x5 x6 x7 x8 x9 x10BoT 1 2 3 4 5 6 EoTANS
+
+(d) 9-hop task
+
+Figure 5: Logit Lens analysis of the n-hop polynomial task with modulus 50. Only the final bridge
+state sn appears in the computation pathway, while earlier intermediate bridge states are collapsed.
+Three-hop Polynomial Task. For the three-hop polynomial task, there are two intermediate bridge
+states, s2 and s3 . We find that CODI exhibits latent reasoning behavior by forming both intermediate
+states within its latent channel. At the same time, the model appears to use a direct-copy strategy for
+the final input, with x4 copied to the [Ans] token to produce the final output. Additional details are
+provided in Appendix F.
+n-hop Polynomial Task, n ≥ 4. In the n-hop task we have n + 1 inputs (i.e., x1 , . . . , xn+1 ) and
+n − 1 intermediate bridge states, s2 , . . . , sn . For n ≥ 4, increasing hop depth preserves the same
+two-stream routing pattern but induces a clear collapse in intermediate-state visibility. Attention
+maps continue to reveal an early, direct pathway from the final input xn+1 into [Ans] (e.g., strong
+[Ans]→ xn+1 attention heads in Figure 8 in Appendix B). However, logit-lens and probing analyses
+over both input-token positions x1 , . . . , xn+1 and latent positions [ℓ1 ]–[ℓ6 ] show that the latent
+stream does not expose a step-by-step chain of intermediates. Among s2 , . . . , sn , only the late
+intermediate sn (sometimes the last two intermediates sn−1 , sn as seen in Appendix I) is reliably
+decodable, and this decodable signal appears primarily in the latent positions, as shown in Figure 5.
+Activation patching provides complementary causal evidence for this direct xn+1 →[Ans] route.
+When we patch the residual stream from a clean run into an xn+1 -corrupted run at the latent-step
+positions, accuracy does not recover (0%), indicating that the latent computation does not carry
+an xn+1 signal that causally affects the output. In contrast, applying the same patch at the [Ans]
+position restores performance in the late layers. In general, patching a clean run into runs corrupted
+at earlier inputs xi (for i ≤ n) yields nontrivial recovery at specific latent reasoning steps, with larger
+i generally producing stronger recovery.
+It is striking that increasing the nominal hop count does not compel CODI to instantiate an explicit
+multi-step latent chain that sequentially produces (s1 , . . . , sn ). Instead, greater depth amplifies a latestage bottleneck: the latent trajectory is dominated by forming and refining a near-final intermediate
+(here, sn ), while the final input xn+1 is routed through a separate, direct pathway. The model then
+produces the answer via late fusion at [Ans]. Even at a hop count as large as n = 31, we continue to
+observe the previously described partial latent pathway.
+4.4
+
+How does task definition affect the observed mechanism?
+
+Our default iteration rule is st = F (st−1 , xt ) = (st−1 ·xt +b) (mod m), with b = 1 and m = 50.
+We evaluate robustness to the task specification by varying the additive constant (b ∈ {1, 3, 4}) and
+the modulus (m ∈ {41, . . . , 50}). Changing b does not qualitatively affect the behaviors reported
+6
+
+(a) 4-hop task
+
+(b) 5-hop task
+
+(c) 7-hop task
+
+(d) 9-hop task
+
+Figure 6: Logit Lens analysis of the n-hop polynomial task with modulus 41. The final bridge
+state sn (in the dotted rectangular box) is no longer decodable along the latent trajectory, indicating a
+breakdown of step-by-step reasoning.
+
+above: across all tested values, we observe the same intermediate-state formation patterns and
+attention-routing signatures.
+However, the choice of m has a much larger effect. Under composite moduli, the mechanistic
+patterns remain largely unchanged. In contrast, when m is prime, performance drops sharply (Table 1
+in Appendix L) and the late-intermediate “partial-rollout” signature vanishes (i.e., sn is no longer
+decodable during the latent steps as seen in Figure 6). We provide mathematical intuition for this
+behavior in the next section.
+
+5
+
+Theoretical Analysis
+
+Motivated by our empirical finding that CODI collapses—and that the partial, late-bottleneck reasoning signature disappears—when the modulus is prime, we develop a theoretical analysis of the
+polynomial sequential tasks. We show that the same task family differs substantially in difficulty
+under prime versus composite moduli.
+Task setup. Fix a modulus m ≥ 2 and consider the ring Rm := Z/mZ. Given inputs x1 , . . . , xT ∈
+{1, . . . , m − 1}, define a sequential state by
+s1 := x1 ,
+st := fxt (st−1 ), := st−1 xt + b
+
+(mod m),
+
+(2)
+
+for t = 2, . . . , T, and let the label be y := sT ∈ Rm . We analyze how the algebraic structure of Rm
+changes the intrinsic dependency of y on the prefix (x1 , . . . , xT −k ).
+Affine maps are permutations iff the multiplier is a unit. Let fx (s) = sx + b over Rm .
+Lemma 1 (Bijection criterion). For x ∈ Rm , the map fx : Rm → Rm is bijective iff x is a unit in
+Rm , i.e. gcd(x, m) = 1.
+Proof. See Appendix J.1.
+Composite moduli create many-to-one “contractions.” When gcd(x, m) > 1, multiplication by x
+collapses information.
+Lemma 2 (Exact contraction factor). Let d := gcd(x, m). Then the map s 7→ sx (mod m) has
+image size m/d, and every output has exactly d preimages. Equivalently, fx (s) = sx + b is a d-to-1
+map.
+Proof. See Appendix J.2.
+Lemma 2 gives a rigorous sense in which certain steps erase state information: if d > 1, then st
+depends on st−1 only through a coarser equivalence class (a factor-d quotient of the state space).
+Prime-field regime implies long-range dependence. Now suppose m = p is prime and inputs are
+sampled uniformly from {1, . . . , p − 1} = F×
+p . Then gcd(xt , p) = 1 always, so every step fxt is a
+permutation of Fp (Lemma 1). Hence the recurrence (2) does not contract the state space at any time:
+information about st−1 is never irreversibly discarded. Unrolling the recurrence yields
+sT ≡ x1
+
+T
+Y
+i=2
+
+xi + b
+
+T
+T
+X
+Y
+t=2 i=t+1
+
+7
+
+xi
+
+(mod p),
+
+(3)
+
+QT
+a high-degree polynomial in the inputs over the field Fp (Convention: i=T +1 xi := 1). Because
+multiplication by nonzero elements is invertible, there is no algebraic mechanism that systematically
+annihilates the older product terms in (3); thus y = sT typically retains genuine dependence on the
+full history.
+Composite-ring regime induces short effective memory under uniform sampling. Now let m be
+composite and sample xt ∼ Unif{1, . . . , m − 1}. Define the unit probability
+u(m) := Pr(gcd(xt , m) = 1) =
+
+φ(m)
+,
+m−1
+
+(4)
+
+q(m) := 1 − u(m).
+where φ is Euler’s totient function. With probability q(m) > 0, the final step multiplier is a non-unit
+and the last update is a many-to-one contraction by a factor d = gcd(xT , m) (Lemma 2). More
+generally, let
+τ := max{t ≤ T : gcd(xt , m) > 1},
+(5)
+with the convention τ = 0 if all x1 , . . . , xT are units. Then the length of the terminal all-unit suffix
+L := T − τ satisfies
+Pr(L ≥ k) = u(m)k
+E[L] =
+
+T
+X
+k=1
+
+(k = 0, 1, . . . , T ),
+
+
+u(m) 1 − u(m)T
+u(m) =
+.
+1 − u(m)
+k
+
+(6)
+
+Thus, for composite m with u(m) ≪ 1, there is typically a recent contraction event τ close to T .
+Each such event shrinks the number of distinguishable states by a factor d = gcd(xτ , m), so the label
+y = sT can often be predicted from a low-entropy summary of the past plus only the last few updates
+(the short suffix after τ ).
+Implications for learned representations. The above analysis is model-agnostic: it characterizes
+the dependency structure induced by Eq. (2) under the data distribution. For prime m = p, each
+update is a bijection (Lemma 1), so the dynamics never contract; Eq. (3) shows sT retains genuine
+dependence on the full history via multiplicative chains of length Θ(T ). Mechanistically, longhorizon (large T ) success therefore requires sustained state propagation and routing so the running
+state can be updated at each step and read out at [Ans]; with limited effective compute (e.g., few
+latent steps and limited depth/routing capacity), we expect degraded accuracy and missing latent
+rollouts, consistent with Table 1 in Appendix L and Figure 6. For composite m, non-unit multipliers
+occur with probability q(m) > 0 and induce explicit many-to-one contractions (Lemma 2); the
+trailing unit suffix length L has geometric tails (Eq. (6)), so recent contractions make sT largely
+depend on a low-entropy summary of the prefix plus the last few updates. This favors predictors that
+emphasize late intermediates, explaining why CODI often adopts late-bottleneck, partial (late-only)
+internal rollouts under composite moduli.
+
+6
+
+Beyond Modular Arithmetic: Finite-State Function Composition
+
+Section 5 suggests that the key factor behind the prime–composite split is not modular arithmetic
+itself, but whether state updates preserve or compress information. We therefore introduce FSC, a
+finite-state function-composition task that controls transition-level compressibility.
+Let S = {0, . . . , N − 1} be a finite state space and let F = {f1 , . . . , fK } be a fixed library of
+functions fi : S → S, sampled once and reused across train and test examples. Given an initial state
+s0 and operation indices σ1 , . . . , σT , the trajectory is
+st = fσt (st−1 ),
+
+t = 1, . . . , T.
+
+The model receives (s0 , σ1 , . . . , σT ) and predicts the intermediate trajectory and final state. FSC
+controls compressibility through the transition rank ri := | Im(fi )|. A fraction α of the library is
+sampled as bijections, with ri = N , while the remaining functions are compressive maps with
+ri = mi < N . Thus FSC removes primes, composites, and gcd structure, while retaining the
+central variable from Section 5: whether an update preserves or contracts state information. See
+Appendix M.1 for the complete dataset definition and construction details.
+8
+
+The FSC theory generalizes the polynomial prime–composite analysis by replacing algebraic gcd
+structure with transition rank. Fully bijective libraries preserve all state distinctions under composition,
+making long-horizon prediction require sustained state propagation. Compressive transitions, by
+contrast, reduce the number of distinguishable prefix states, and later deterministic updates cannot
+recover the lost information. Under uniform operation sampling, the terminal all-bijective suffix
+has geometric tail, so compressive regimes typically contain recent rank contractions that make
+late-bottleneck reasoning viable. See Appendix M.2 for full statements and proofs.
+FSC reproduces the main polynomial-task phenomena. On short-horizon tasks, CODI forms causally
+relevant bridge states in the latent trajectory. On longer compressive FSC tasks, it shifts to a
+late-bottleneck strategy in which only the final bridge state remains decodable, mirroring compositemodulus polynomial tasks. In the fully bijective regime (α = 1), this late-intermediate trace
+disappears on long horizons, paralleling the prime-modulus failure mode. Full experimental details
+are provided in Appendix M.3. A combined analysis of the polynomial and FSC tasks suggests
+that the transition from faithful latent rollouts to partial or collapsed reasoning is not determined by
+hop count alone, but by the effective task difficulty relative to the model and training budget, with
+compressibility shifting this transition point. See Appendix N for details.
+Moreover, FSC captures deterministic finite-state, operation-indexed tasks: any update rule zt =
+δ(zt−1 , at ) can be represented by defining one transition function fi (z) = δ(z, ai ) per operation.
+This includes finite automata, lookup-table systems, bounded finite-register systems, and the modular
+polynomial task itself. FSC does not directly cover unbounded-memory, continuous-state, stochastic,
+or richly structured-operation settings without additional modeling choices. Thus, FSC is a controlled
+abstraction for testing whether the compressibility mechanism observed in polynomial iteration
+persists beyond modular arithmetic; details are in Appendix M.4.
+
+7
+
+Ablation Study
+
+We evaluate robustness on long-horizon instances (n = 31) with a 3-layer, 2-head student and
+m = 50. Varying the number of latent steps (p ∈ {1, 2, 3, 6, 9, 12, 20}) and sweeping the architecture
+(2–7 layers, 2–8 heads) does not change our qualitative mechanistic picture: CODI primarily encodes
+and routes late intermediates (sn , or both sn−1 , sn ) and increasing p does not reliably induce a deeper
+rollout. In loss ablations, removing feature distillation alone preserves these signatures, whereas
+removing both distillation and the teacher objective eliminates them, indicating that the teacher loss
+is the key driver of the late-bottleneck latent mechanism. More details are provided Appendix K.
+
+8
+
+Conclusion
+
+We mechanistically analyzed CODI on polynomial-iteration tasks. With composite moduli, CODI
+is step-by-step on 2–3 hops but shifts to a late-intermediate partial rollout on longer horizons; with
+prime moduli, it largely fails to learn and shows neither signature. Our theory explains this split via
+compressibility: composite moduli induce many-to-one contractions that bias the label toward late
+updates, making the computation effectively compressible and enabling CODI to succeed with a fixed
+latent budget. Prime-modulus instances lack this structure and are substantially less compressible. We
+further validate this account on finite-state function composition tasks. These findings clarify when
+CODI-style latent CoT yields faithful iterative computation versus compressed late-stage solutions,
+and they highlight a key failure mode on sequential tasks that cannot be stably compressed. Additional
+discussion of latent CoT comparisons with non-CoT and CoT models, computational resources, and
+broader impacts is provided in Appendix L, Appendix O, and Appendix P, respectively.
+Limitations & future directions. Our study focuses on CODI-style latent CoT, where latent
+reasoning is learned through teacher–student distillation into a fixed number of continuous thought
+tokens. This controlled setting enables detailed mechanistic analysis, but further work is needed to
+determine how broadly the observed mechanisms extend to other latent-reasoning architectures, such
+as looped transformers, recurrent latent-state models, or hybrid latent-text approaches. In addition,
+our polynomial and finite-state sequential tasks provide ground-truth intermediate states and allow us
+to vary compressibility precisely, but they remain synthetic abstractions of reasoning. An important
+direction for future work is to test whether the compressibility principle predicts latent-reasoning
+9
+
+behavior in more naturalistic datasets, where ambiguity, redundancy, and many-to-one structure arise
+from language or real-world tasks rather than from a hand-designed construction.
+
+References
+Guillaume Alain and Yoshua Bengio. Understanding intermediate layers using linear classifier probes.
+arXiv preprint arXiv:1610.01644, 2016.
+Iván Arcuschin, Jett Janiak, Robert Krzyzanowski, Senthooran Rajamanoharan, Neel Nanda, and
+Arthur Conmy. Chain-of-thought reasoning in the wild is not always faithful. URL https://arxiv.
+org/abs/2503.08679, 2025.
+Eden Biran, Daniela Gottesman, Sohee Yang, Mor Geva, and Amir Globerson. Hopping too
+late: Exploring the limitations of large language models on multi-hop queries. arXiv preprint
+arXiv:2406.12775, 2024.
+Jannik Brinkmann, Abhay Sheshadri, Victor Levoso, Paul Swoboda, and Christian Bartelt. A
+mechanistic analysis of a transformer trained on a symbolic multi-step reasoning task. arXiv
+preprint arXiv:2402.11917, 2024.
+Vivien Cabannes, Charles Arnal, Wassim Bouaziz, Xingyu Yang, Francois Charton, and Julia
+Kempe. Iteration head: A mechanistic study of chain-of-thought. Advances in Neural Information
+Processing Systems, 37:109101–109122, 2024.
+Yuntian Deng, Yejin Choi, and Stuart Shieber. From explicit cot to implicit cot: Learning to internalize
+cot step by step. arXiv preprint arXiv:2405.14838, 2024.
+Subhabrata Dutta, Joykirat Singh, Soumen Chakrabarti, and Tanmoy Chakraborty. How to think
+step-by-step: A mechanistic understanding of chain-of-thought reasoning. arXiv preprint
+arXiv:2402.18312, 2024.
+Sayam Goyal, Brad Peters, María Emilia Granda, Akshath Vijayakumar Narmadha, Dharunish
+Yugeswardeenoo, Callum Stuart McDougall, Sean O’Brien, Ashwinee Panda, Kevin Zhu, and Cole
+Blondin. Scratchpad thinking: Alternation between storage and computation in latent reasoning
+models. In NeurIPS 2025 Workshop on Regulatable ML, 2025.
+Halil Alperen Gozeten, M Emrullah Ildiz, Xuechen Zhang, Hrayr Harutyunyan, Ankit Singh Rawat,
+and Samet Oymak. Continuous chain of thought enables parallel exploration and reasoning. arXiv
+preprint arXiv:2505.23648, 2025.
+Daya Guo, Dejian Yang, Haowei Zhang, Junxiao Song, Ruoyu Zhang, Runxin Xu, Qihao Zhu,
+Shirong Ma, Peiyi Wang, Xiao Bi, et al. Deepseek-r1: Incentivizing reasoning capability in llms
+via reinforcement learning. arXiv preprint arXiv:2501.12948, 2025a.
+Tianyu Guo, Hanlin Zhu, Ruiqi Zhang, Jiantao Jiao, Song Mei, Michael I Jordan, and Stuart Russell.
+How do llms perform two-hop reasoning in context? arXiv preprint arXiv:2502.13913, 2025b.
+Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li, Zhiting Hu, Jason Weston, and Yuandong
+Tian. Training large language models to reason in a continuous latent space. arXiv preprint
+arXiv:2412.06769, 2024.
+Yifan Hou, Jiaoda Li, Yu Fei, Alessandro Stolfo, Wangchunshu Zhou, Guangtao Zeng, Antoine
+Bosselut, and Mrinmaya Sachan. Towards a mechanistic interpretation of multi-step reasoning
+capabilities of language models. arXiv preprint arXiv:2310.14491, 2023.
+Aaron Jaech, Adam Kalai, Adam Lerer, Adam Richardson, Ahmed El-Kishky, Aiden Low, Alec
+Helyar, Aleksander Madry, Alex Beutel, Alex Carney, et al. Openai o1 system card. arXiv preprint
+arXiv:2412.16720, 2024.
+Tianjie Ju, Yijin Chen, Xinwei Yuan, Zhuosheng Zhang, Wei Du, Yubin Zheng, and Gongshen Liu.
+Investigating multi-hop factual shortcuts in knowledge editing of large language models. arXiv
+preprint arXiv:2402.11900, 2024.
+10
+
+Diederik P Kingma. Adam: A method for stochastic optimization. arXiv preprint arXiv:1412.6980,
+2014.
+Keito Kudo, Yoichi Aoki, Tatsuki Kuribayashi, Shusaku Sone, Masaya Taniguchi, Ana Brassard,
+Keisuke Sakaguchi, and Kentaro Inui. Think-to-talk or talk-to-think? when llms come up with an
+answer in multi-step reasoning. arXiv preprint arXiv:2412.01113, 2024.
+Yingcong Li, Kartik Sreenivasan, Angeliki Giannou, Dimitris Papailiopoulos, and Samet Oymak.
+Dissecting chain-of-thought: Compositionality through in-context filtering and learning. Advances
+in Neural Information Processing Systems, 36:22021–22046, 2023.
+Zhaoyi Li, Gangwei Jiang, Hong Xie, Linqi Song, Defu Lian, and Ying Wei. Understanding and
+patching compositional reasoning in llms. arXiv preprint arXiv:2402.14328, 2024.
+Wenquan Lu, Yuechuan Yang, Kyle Lee, Yanshu Li, and Enqi Liu. Latent chain-of-thought? decoding
+the depth-recurrent transformer. arXiv preprint arXiv:2507.02199, 2025.
+Kevin Meng, David Bau, Alex Andonian, and Yonatan Belinkov. Locating and editing factual
+associations in gpt. Advances in neural information processing systems, 35:17359–17372, 2022.
+William Merrill and Ashish Sabharwal. The expressive power of transformers with chain of thought.
+arXiv preprint arXiv:2310.07923, 2023.
+Neel Nanda and Joseph Bloom. Transformerlens. https://github.com/TransformerLensOrg/
+TransformerLens, 2022.
+nostalgebraist. interpreting GPT: the logit lens. LessWrong, 2020. URL https://www.lesswrong.
+com/posts/AcKRB8wDpdaN6v6ru/interpreting-gpt-the-logit-lens.
+Daking Rai and Ziyu Yao. An investigation of neuron activation as a unified lens to explain chain-ofthought eliciting arithmetic reasoning of llms. arXiv preprint arXiv:2406.12288, 2024.
+Nikunj Saunshi, Nishanth Dikkala, Zhiyuan Li, Sanjiv Kumar, and Sashank J Reddi. Reasoning with
+latent thoughts: On the power of looped transformers. arXiv preprint arXiv:2502.17416, 2025.
+Zhenyi Shen, Hanqi Yan, Linhai Zhang, Zhanghao Hu, Yali Du, and Yulan He. Codi: Compressing
+chain-of-thought into continuous space via self-distillation. arXiv preprint arXiv:2502.21074,
+2025.
+Zayne Sprague, Fangcong Yin, Juan Diego Rodriguez, Dongwei Jiang, Manya Wadhwa, Prasann
+Singhal, Xinyu Zhao, Xi Ye, Kyle Mahowald, and Greg Durrett. To cot or not to cot? chainof-thought helps mainly on math and symbolic reasoning. arXiv preprint arXiv:2409.12183,
+2024.
+Mirac Suzgun, Nathan Scales, Nathanael Schärli, Sebastian Gehrmann, Yi Tay, Hyung Won Chung,
+Aakanksha Chowdhery, Quoc Le, Ed Chi, Denny Zhou, et al. Challenging big-bench tasks and
+whether chain-of-thought can solve them. In Findings of the Association for Computational
+Linguistics: ACL 2023, pages 13003–13051, 2023.
+Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N Gomez, Łukasz
+Kaiser, and Illia Polosukhin. Attention is all you need. Advances in neural information processing
+systems, 30, 2017.
+Boshi Wang, Xiang Yue, Yu Su, and Huan Sun. Grokked transformers are implicit reasoners: A
+mechanistic journey to the edge of generalization. arXiv preprint arXiv:2405.15071, 2024a.
+Kevin Ro Wang, Alexandre Variengien, Arthur Conmy, Buck Shlegeris, and Jacob Steinhardt.
+Interpretability in the wild: a circuit for indirect object identification in gpt-2 small. In The
+Eleventh International Conference on Learning Representations, 2023.
+Yiming Wang, Pei Zhang, Baosong Yang, Derek F Wong, and Rui Wang. Latent space chain-ofembedding enables output-free llm self-evaluation. arXiv preprint arXiv:2410.13640, 2024b.
+11
+
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny
+Zhou, et al. Chain-of-thought prompting elicits reasoning in large language models. Advances in
+neural information processing systems, 35:24824–24837, 2022.
+Kevin Xu and Issei Sato. A formal comparison between chain-of-thought and latent thought. arXiv
+preprint arXiv:2509.25239, 2025.
+Chenxiao Yang, Zhiyuan Li, and David Wipf. Chain-of-thought provably enables learning the
+(otherwise) unlearnable. In The Thirteenth International Conference on Learning Representations,
+2025a.
+Sohee Yang, Nora Kassner, Elena Gribovskaya, Sebastian Riedel, and Mor Geva. Do large language
+models perform latent multi-hop reasoning without exploiting shortcuts? In Findings of the
+Association for Computational Linguistics: ACL 2025, pages 3971–3992, 2025b.
+Zhipeng Yang, Junzhuo Li, Siyu Xia, and Xuming Hu. Internal chain-of-thought: Empirical evidence
+for layer-wise subtask scheduling in llms. In Proceedings of the 2025 Conference on Empirical
+Methods in Natural Language Processing, pages 22547–22575, 2025c.
+Jiaran Ye, Zijun Yao, Zhidian Huang, Liangming Pan, Jinxin Liu, Yushi Bai, Amy Xin, Liu Weichuan,
+Xiaoyin Che, Lei Hou, et al. How do transformers learn implicit reasoning? In The Thirty-ninth
+Annual Conference on Neural Information Processing Systems, 2025.
+Yijiong Yu. Do llms really think step-by-step in implicit reasoning? arXiv preprint arXiv:2411.15862,
+2024.
+Zeping Yu, Yonatan Belinkov, and Sophia Ananiadou. Back attention: Understanding and enhancing
+multi-hop reasoning in large language models. arXiv preprint arXiv:2502.10835, 2025.
+Jason Zhang and Scott Viteri. Uncovering latent chain of thought vectors in language models. arXiv
+preprint arXiv:2409.14026, 2024.
+Yifan Zhang, Wenyu Du, Dongming Jin, Jie Fu, and Zhi Jin. Finite state automata inside transformers
+with chain-of-thought: A mechanistic study on state tracking. arXiv preprint arXiv:2502.20129,
+2025a.
+Yuyi Zhang, Boyu Tang, Tianjie Ju, Sufeng Duan, and Gongshen Liu. Do latent tokens think? a
+causal and adversarial analysis of chain-of-continuous-thought. arXiv preprint arXiv:2512.21711,
+2025b.
+Zhongwang Zhang, Pengxiao Lin, Zhiwei Wang, Yaoyu Zhang, and Zhi-Qin John Xu. Complexity
+control facilitates reasoning-based compositional generalization in transformers. arXiv preprint
+arXiv:2501.08537, 2025c.
+Hanlin Zhu, Shibo Hao, Zhiting Hu, Jiantao Jiao, Stuart Russell, and Yuandong Tian. Reasoning
+by superposition: A theoretical perspective on chain of continuous thought. arXiv preprint
+arXiv:2505.12514, 2025a.
+Rui-Jie Zhu, Tianhao Peng, Tianhao Cheng, Xingwei Qu, Jinfa Huang, Dawei Zhu, Hao Wang,
+Kaiwen Xue, Xuanliang Zhang, Yong Shan, et al. A survey on latent reasoning. arXiv preprint
+arXiv:2507.06203, 2025b.
+
+A
+
+Logit Lens
+
+Goal. We use the logit lens to test whether an internal representation already contains the correct
+intermediate state for the polynomial iteration task. The logit lens is a lightweight diagnostic: it
+applies the model’s own output decoder (the unembedding) to hidden states from earlier layers and
+positions, yielding a distribution over discrete tokens/states that can be compared against ground truth.
+In our setting, this lets us localize when the model commits to the correct intermediate value and
+whether that commitment emerges progressively over latent computation (consistent with iterative
+updates) or unusually early (suggesting shortcut behavior), which is particularly informative for
+CODI-style latent reasoning.
+12
+
+(L)
+
+Background: output logits. For a decoder-only Transformer with residual-stream vectors ht ∈
+Rd at position t after the final layer L, next-token logits are typically computed as
+
+
+(L)
+zt = WU LN ht
++ bU ,
+p(xt = v | x<t ) = softmax(zt )v ,
+(7)
+where WU ∈ R|V |×d is the unembedding matrix, bU is a bias, LN(·) denotes the final layer normalization used before decoding, and V is the vocabulary.
+Logit lens construction. At a chosen intermediate layer l and token position t (e.g., a pre-answer
+(l)
+boundary token or a specific state/thought position), we take the residual stream ht and map it to a
+distribution using the same decoder:
+
+
+ 
+(l)
+(l)
+(l)
+(l)
+z̃t = WU LN ht + bU ,
+p̃t = softmax z̃t .
+(8)
+(l)
+
+We interpret p̃t as: if the model were forced to decode a token from layer l at position t using its
+final unembedding (or an equivalent lightweight readout), which discrete value would it predict?
+Metrics & Visualization. For the polynomial sequential task, given the ground-truth intermediate
+state s⋆ (e.g., st or the final sn in an n-hop instance), we measure the logit-lens probability assigned
+(l)
+(l)
+to s⋆ , i.e., p̃t (s⋆ ). We plot p̃t (s⋆ ) (averaged over examples and all layers) as a function of token
+position t, including CODI latent-thought positions, to localize when the correct intermediate value
+becomes decodable and to distinguish progressive latent construction from early commitment.
+
+B
+
+Attention Maps
+
+What an attention map shows. An attention map visualizes where a self-attention head reads
+from when updating each token representation. For a fixed layer l and head h, each query position t
+forms a weighted average of information from (allowed) key/value positions j. The attention map is
+the matrix of these normalized weights, with rows corresponding to queries t and columns to keys j.
+Self-attention mechanics. Let xt ∈ Rd denote the residual-stream vector at position t entering the
+attention sublayer. A single head constructs
+qt = WQ xt ,
+
+kj = WK xj ,
+
+vj = WV xj ,
+
+(9)
+
+and computes scaled dot-product attention scores followed by a softmax:
+
+ ⊤
+qt kj
+(10)
+αt→j = softmaxj √ + mtj ,
+dk
+where mtj is an attention mask (e.g., a causal mask sets mtj = −∞ for future positions j > t). The
+head output at position t is
+X
+Attn(x)t =
+αt→j vj .
+(11)
+j
+
+Stacking αt→j over all t and j yields an attention matrix A(l,h) ∈ RT ×T , where each row sums to 1.
+How we visualize it. We plot A(l,h) as a heatmap: rows index query positions t (the positions being
+updated) and columns index key/value positions j (the positions being attended to). Bright entries
+indicate large αt→j , i.e., strong routing from position j into the update at position t. In our setting,
+positions include input tokens, structural boundary tokens (e.g., [BoT], [EoI], [Ans]), and (for
+CODI) continuous thought tokens ([ℓ1 ]...[ℓ6 ]. Unless otherwise noted, we visualize individual heads
+and often average A(l,h) over a batch of examples to highlight stable routing structure. We annotate
+rows/columns by token type (input vs. thought vs. boundary) to clarify information flow.
+Figure 7 visualizes attention maps from the student of a 3-layer, 2-head Transformer trained with
+the CODI objective on the two-hop polynomial task. Several heads exhibit strong attention from the
+[Ans] position (immediately before answer generation) to the final input token x3 , consistent with a
+copy-like pathway that routes x3 directly into the [Ans] residual stream, and Figure 8 shows that
+The [Ans] token places strong attention on the final input token xn+1 across multiple n-hop tasks,
+indicating a copy-like pathway that routes xn+1 directly into the answer readout.
+13
+
+Figure 7: Attention maps for the 3-layer, 2-head transformer on the two-hop polynomial task.
+Rows correspond to layers (Layer 1 on top through Layer 3 on bottom), and columns correspond to
+heads (Head 1 on the left, Head 2 on the right). Across multiple heads, the [Ans] token places strong
+attention directly on the x3 position (circled in red ovals), consistent with a copy-like pathway that
+routes x3 into the [Ans] residual stream.
+
+C
+
+Probing Intermediate Representations
+
+Goal. Probing is a diagnostic technique for quantifying what information is present in a model’s
+hidden states. Given intermediate activations (e.g., residual-stream vectors) produced while the model
+processes an input, we train a simple supervised predictor (a probe) to recover a task-relevant variable
+from those activations. If a low-capacity probe can accurately predict a variable (e.g., an intermediate
+state), this provides evidence that the variable is encoded in the representation in an easily accessible
+(often approximately linear) form.
+(l)
+
+Representations and targets. For each example, we extract hidden states ht ∈ Rd at layer l and
+token position t. In the polynomial sequential task, we train probes to predict task-relevant variables,
+including the current state st , the next state st+1 , the final answer sn+1 , and (for an n-hop instance)
+each input token x1 , . . . , xn+1 . We evaluate probes across token types/positions, including input
+tokens, CODI continuous thought tokens, and pre-answer boundary tokens.
+C.1
+
+Linear Probing Implementation Details
+
+Overview. We use linear probes to quantify which task variables are linearly decodable from
+CODI’s internal representations. Probes are trained on frozen activations extracted from runs where
+the model predicts the correct final answer, and we report held-out classification accuracy.
+14
+
+(a) 4-hop task
+
+(b) 5-hop task
+
+(c) 7-hop task
+
+(d) 9-hop task
+
+Figure 8: Specialized attention head on the n-hop polynomial task. The [Ans] token attends
+strongly to the final input token, xn+1 , suggesting a generalized pathway in which xn+1 is directly
+routed to [Ans].
+Probe architecture.
+
+Each probe is a single linear classifier with no bias and no nonlinearity:
+f (h) = W h,
+
+(12)
+
+where h ∈ R256 is the hidden vector and W ∈ R50×256 . The 50 classes correspond to discrete values
+{0, 1, . . . , 49}.
+Activation extraction (where we probe). For a sequence length n, we probe representations at the
+following positions:
+• Input positions: xi for i ∈ {1, . . . , n + 1} (residual stream at each input token)
+• BoT (Beginning of Thought): final encoder position before latent processing
+• Latent thought tokens: ℓj for j ∈ {1, . . . , 6} (six learned latent tokens)
+• EoT (End of Thought): first decoder position after latent processing
+• Ans: decoder position used for answer generation
+At each position, we probe the residual stream at four depths: before the first layer (L1-Pre) and
+after layer 1, 2, 3 (L{0,1,2}-post).
+Probe targets (what we decode). We train separate probes for each of the following ground-truth
+labels:
+• Inputs: x1 , . . . , xn with xi ∈ {1, . . . , 49}
+• Intermediate states: s1 , . . . , sn−1 with si ∈ {0, . . . , 49}
+• Final answer: ans ∈ {0, . . . , 49}
+Dataset and filtering. For each sequence length, we extract activations from approximately 5,000
+test examples. To focus on representations associated with successful computation, we retain only
+examples where the model’s final prediction is correct, yielding Ncorrect samples.
+Train/validation/test splits. We split Ncorrect into 80% train and 20% test. The training portion
+is further split into 80% for optimization and 20% for validation, giving an overall 64%/16%/20%
+train/val/test split.
+Optimization. Each probe is trained independently using Adam (Kingma, 2014) (learning rate
+10−3 ), batch size 64, for 100 epochs, minimizing cross-entropy loss. We select the checkpoint with
+the highest validation accuracy and report test accuracy for that probe.
+Number of probes. For sequence length n, we train probes over: (i) locations: n encoder positions
++ 1 BoT + 6 latents + 1 EoT + 1 Ans = n + 9; (ii) depths: 4 residual-stream depths; and (iii) labels:
+n inputs + (n − 1) intermediate states + 1 answer = 2n. This yields (n + 9) × 4 × 2n probe fits per
+sequence length (e.g., 896 probes when n = 7).
+15
+
+Metric. We report classification accuracy on the held-out test split. Chance performance is 1/50 =
+0.02; accuracy near 1.0 indicates the target variable is fully linearly decodable from the probed
+representation.
+Probing Visualization. Figure 9 and Figure 10 visualize linear-probe results on the two-hop
+polynomial task (modulus 50), with probe targets s2 (the intermediate bridge state) and x3 (the final
+input), respectively. Each cell reports classification accuracy on the held-out test split; the x-axis
+indexes the token positions from which activations are extracted, and the y-axis indexes the four
+probed residual-stream depths at each position. In Figure 9, s2 is highly decodable across the latent
+thought tokens [ℓ1 ]–[ℓ6 ], indicating that the latent channel carries the intermediate-state information.
+In contrast, Figure 10 shows that x3 is largely not decodable within the latent tokens, but becomes
+strongly decodable at [EoT] and [Ans]. This pattern is consistent with the copy-like route suggested
+by the attention maps, where x3 is routed directly into the final readout.
+1.0
+0.228
+
+0.998
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+0.152
+
+0.220
+
+L2-Post 0.070
+
+0.180
+
+0.272
+
+0.996
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+0.164
+
+0.214
+
+0.6
+
+L1-Post 0.070
+
+0.080
+
+0.078
+
+0.226
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+0.128
+
+0.220
+
+0.4
+
+L1-Pre 0.068
+
+0.070
+
+0.046
+
+0.054
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+1.000
+
+0.996
+
+0.152
+
+0.256
+
+x1
+
+x2
+
+x3
+
+BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT
+
+Ans
+
+Layer (Residual Stream)
+
+0.138
+
+0.8
+
+0.2
+
+Probing Accuracy for s2
+
+L3-Post 0.074
+
+0.0
+
+Figure 9: Probing the intermediate state s2 in the two-hop polynomial task. Consistent with the
+logit-lens results, s2 is readily decodable throughout the latent computation, indicating that the bridge
+state is formed before the model produces the final answer and supporting a sequential reasoning
+strategy.
+
+1.0
+0.856
+
+0.022
+
+0.088
+
+0.116
+
+0.154
+
+0.176
+
+0.186
+
+0.180
+
+0.998
+
+0.854
+
+L2-Post 0.018
+
+0.018
+
+1.000
+
+0.028
+
+0.070
+
+0.084
+
+0.112
+
+0.112
+
+0.116
+
+0.120
+
+0.998
+
+0.854
+
+0.6
+
+L1-Post 0.024
+
+0.028
+
+1.000
+
+0.028
+
+0.028
+
+0.034
+
+0.046
+
+0.028
+
+0.034
+
+0.046
+
+0.996
+
+0.846
+
+0.4
+
+L1-Pre 0.026
+
+0.016
+
+1.000
+
+0.038
+
+0.024
+
+0.034
+
+0.036
+
+0.026
+
+0.040
+
+0.044
+
+0.996
+
+0.846
+
+x1
+
+x2
+
+x3
+
+BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT
+
+Ans
+
+Layer (Residual Stream)
+
+0.022
+
+0.8
+
+0.2
+
+Probing Accuracy for x3
+
+L3-Post 0.024
+
+0.0
+
+Figure 10: Probing the input token x3 in the two-hop polynomial task. x3 is strongly decodable
+at its own position and at the [EoT] and [Ans] tokens (probe confidence ≈ 1 at x3 and [EoT], and
+≈ 0.85 at [Ans]). Consistent with the attention pattern in Figure 7, this supports a direct routing
+(copy-like) pathway from x3 into the [EoT] and [Ans] residual streams.
+
+D
+
+Activation Patching
+
+Goal. Activation patching is a causal intervention used to identify which internal components of a
+model are necessary (or sufficient) for a particular behavior. The core idea is to compare a clean run
+of the model (which produces the correct answer) to a corrupted run (where an input is perturbed
+and the model fails), and then replace a chosen internal activation in the corrupted run with the
+corresponding activation from the clean run. If this replacement restores the correct output, it provides
+causal evidence that the patched activation carries information that the model needs to solve the task.
+D.1
+
+Activation Patching Implementation Details
+
+Overview. We employ activation patching (Meng et al., 2022; Wang et al., 2023), also known
+as causal tracing or interchange intervention, to identify which model components are causally
+16
+
+necessary for correct predictions. Our implementation extends standard activation patching to handle
+the encoder-latent-decoder architecture with multiple latent reasoning tokens.
+Clean and Corrupted Runs.
+correct answer y, we define:
+
+For each test example with input sequence x = (x1 , . . . , xn ) and
+
+• Clean run: Forward pass with correct inputs, storing all intermediate activations Aclean =
+(p)
+{aℓ : ℓ ∈ L, p ∈ P}, where L indexes layers and P indexes positions/phases.
+• Corrupted run: Forward pass with perturbed input x̃, where we corrupt one token: x̃i =
+(2 · xi ) mod 50 for some position i.
+We cache activations from three computation phases: encoder positions {1, . . . , n}, latent tokens
+{ℓ1 , . . . , ℓ6 }, and decoder positions {EoT, Ans}.
+Intervention Procedure. Given corrupted input x̃ and clean activation cache Aclean , we perform
+the following intervention at component c = (ℓ, p) (layer ℓ, position/phase p):
+(p)
+
+(p)
+
+aℓ (x̃) ← aℓ (x)
+
+(13)
+
+We implement this via forward hooks in TransformerLens (Nanda and Bloom, 2022). For positionspecific patching at encoder token i or decoder position j, we patch only the corresponding slice:
+enc
+aenc
+ℓ,i (x̃) ← aℓ,i (x).
+Components Analyzed. We systematically patch residual stream activations at the following
+components:
+• Layers: Pre-residual (before layer 1: L1-pre) and post-residual after each layer k ∈ {1, 2, 3}
+(Lk-post)
+• Phases: For sequence length n, we test n encoder positions + 1 BoT position + 6 latent tokens + 2
+decoder positions, yielding n + 9 phases
+For a model with L = 3 layers and sequence length n, this produces 4 × (n + 9) total intervention
+experiments per corrupted example.
+Metrics.
+
+For each intervention, we compute:
+Baseline = P(ŷ = y | x̃) (no patching)
+Patchedc = P(ŷ = y | x̃, patch at c)
+Clean = P(ŷ = y | x) (upper bound)
+Patchedc − Baseline
+Liftc =
+.
+Clean − Baseline
+
+(14)
+(15)
+(16)
+(17)
+
+The lift metric normalizes the recovery to [0, 1], where Liftc = 1 indicates complete recovery and
+Liftc = 0 indicates no improvement. We report lift as the primary metric, as it is invariant to baseline
+difficulty and allows comparison across different corruptions.
+Evaluation Protocol. We filter test examples to include only those where the model initially
+predicts correctly (P(ŷ = y | x) = 1), ensuring clean runs provide a valid counterfactual. We corrupt
+each input position independently, running separate patching experiments for x1 , x2 , . . . , xn . For
+each corruption, we compute the mean accuracy and lift over all correctly-predicted examples.
+D.2
+
+Visualization Details.
+
+Figures 4a and 4b report activation-patching lift for runs corrupted at x2 and x3 , respectively. The
+x-axis indexes the token position (inputs and latent tokens) where we patch, and the y-axis indexes the
+probed residual-stream depth. Each cell shows mean percent recovery, Acc Recovery = 100% · Liftc ,
+averaged over clean-correct examples. In Figure 4a, patching into the x2 -corrupted run yields the
+17
+
+largest recovery at latent positions [ℓ1 ] and [ℓ2 ], indicating that early latent steps carry causally
+necessary intermediate information. In contrast, Figure 4a shows negligible recovery from patching
+at latent positions for the x3 -corrupted run, while patching at [Ans] produces strong recovery,
+consistent with a copy-like route from the final input x3 to the [Ans] readout.
+
+E
+
+Training Configuration
+
+We train a 3-layer transformer with 2 attention heads on the polynomial reasoning dataset. The model
+uses 6 latent tokens and a 256-dimensional projection layer. We train for 1,000 epochs with batch size
+256, using AdamW with learning rate 3 × 10−4 and a cosine annealing schedule. We use a warmup
+ratio of 0.03, weight decay of 0.1, and gradient clipping with max norm 2.0. The objective combines
+cross-entropy and distillation losses with equal weights (1.0 each); the distillation loss is normalized
+by its standard deviation. Each run uses 2,500 examples per sequence length. For an n-hop task, we
+train on a curriculum of sequence lengths 1, 2, . . . , n+1 (e.g., 4-hop training includes lengths 1–5).
+All models are trained in BF16 precision for computational efficiency.
+
+F
+
+Mechanistic Analysis on Three-hop Polynomial task.
+
+From the logit-lens analysis in Figure 12, we observe a clear temporal progression of intermediatestate decodability across latent steps. The first state s1 becomes decodable early in the latent
+trajectory (specifically from [BoT] through [L6] in this setting). Later in the trajectory, the second
+intermediate state s2 becomes decodable at the [EoT] token. Together, these patterns are consistent
+with step-by-step computation on the three-hop polynomial task.
+Activation patching provides causal support for this interpretation. As shown in Figures 11a and 11b,
+patching from a correct run into an x1 -corrupted or x2 -corrupted run yields substantial accuracy
+recovery primarily in early latent steps (l1 and l2 ). Because s2 is computed from x1 and x2 , this
+indicates that the latent representation supporting s2 is causally relevant in these steps. Moreover,
+Figure 11c shows that patching x3 has its strongest effect at [EoT], consistent with s3 being formed
+and used late in the trajectory. Overall, both analyses support a sequential, step-by-step reasoning
+process.
+It is important to note that this step-by-step reasoning pattern does not emerge uniformly across all
+polynomial-task runs. In some cases, the model exhibits a partial latent trajectory: only s3 becomes
+decodable in the latent steps, without clear evidence of s2 formation. That said, across the different
+random seeds and small model architectures we tested, the full step-by-step pattern appears reliably
+in the majority of settings.
+
+G
+
+Attention Knockout Analysis
+
+In Section 4.2, to answer how the intermediate state s2 is routed to [Ans] token we conducted
+targeted attention knockouts to isolate the routing pathways. During the decoder phase, the
+[Ans] token attends over the full KV cache, which contains entries from the encoder tokens ([POL],
+x1 , . . . , xN , [BoT]), latent tokens (ℓ1 , . . . , ℓK ), and the [EoT] token. We selectively block [Ans]
+from attending to specific subsets of these KV positions by setting their pre-softmax attention scores
+to −∞ at every decoder layer and head. This forces the softmax to assign exactly zero weight to
+those positions. We then measure accuracy on correctly predicted test examples (baseline = 100%).
+We found that jointly knocking out [Ans] attention to [BoT], all latent steps ℓ1 –ℓ6 , and [EoT]
+reduces accuracy to 3.8%, indicating that the information required for the final prediction is routed to
+[Ans] through this set of positions. To further isolate the routing pathway, we performed leave-one-in
+ablations: we blocked attention to all of [BoT], ℓ1 –ℓ6 , and [EoT], while leaving exactly one position
+available at a time. Keeping [BoT] alone supports only 4.9% accuracy, showing that it is not a
+primary routing source. In contrast, recovery comes almost entirely from the early-to-middle latent
+steps: ℓ1 recovers 87% accuracy, ℓ2 97%, ℓ3 94%, ℓ4 80%, ℓ5 47%, and ℓ6 28%, whereas [EoT] alone
+recovers only 4%. This experiment shows that the bridge-state signal s2 reaches [Ans] primarily
+through the early-to-middle latent positions.
+18
+
+x1
+
+x2
+
+x3
+
+x4 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+Layer (Residual Stream)
+
+Layer (Residual Stream)
+
+L1-pre 100% 0% 0% 0% 0% 89% 86% 80% 54% 6% 0% 0% 0%
+
+L2-post 0% 34% 0% -0% 43% 84% 77% 56% 5% 1% 0% 8% 74%
+L1-post 0% 97% 0% 0% 0% 84% 78% 62% 6% 2% 0% 56% 7%
+L1-pre 0% 100% 0% 0% 0% 87% 84% 80% 58% 6% 1% 0% 0%
+x1
+
+L2-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 15% 77%
+L1-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 84% 2%
+L1-pre 0% 0% 100% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0%
+x2
+
+x3
+
+x4 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+Layer (Residual Stream)
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+L3-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 100%
+
+x1
+
+x3
+
+x4 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+(b) patching x2 − corrupted run
+% Acc. recovery (x3 patched)
+
+Layer (Residual Stream)
+
+(a) patching x1 − corrupted run
+
+x2
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+% Acc. recovery (x4 patched)
+
+L1-post 87% 0% 0% 0% 5% 89% 79% 60% 6% 1% 0% 55% 5%
+
+L3-post 0% 0% 0% 0% 87% 84% 80% 58% 6% 1% 0% 0% 100%
+
+% Acc. recovery (x2 patched)
+
+L2-post 0% 7% 0% -0% 82% 87% 78% 53% 5% 0% 0% 8% 72%
+
+% Acc. recovery (x1 patched)
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+L3-post 0% 0% 0% 0% 89% 86% 80% 54% 6% 0% 0% 0% 100%
+
+L3-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 100%
+L2-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 1% 81%
+L1-post 0% 0% 0% 92% 0% 0% 0% 0% 0% 0% 0% -0% 1%
+L1-pre 0% 0% 0% 100% 0% 0% 0% 0% 0% 0% 0% 0% 0%
+x1
+
+(c) patching x3 − corrupted run
+
+x2
+
+x3
+
+x4 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+(d) patching x4 − corrupted run
+
+Figure 11: Activation patching for input-token corruptions in the three-hop polynomial task.
+When x1 or x2 is corrupted, patching clean activations into the latent-thought positions (ℓ1 , ℓ2 , ℓ3 )
+yields substantial accuracy recovery, indicating that the latent channel carries the intermediate
+information needed downstream (notably s2 , which is required to compute s3 ). When x3 is corrupted,
+recovery concentrates at [EoT], suggesting that s3 is computed or consolidated near the end of the
+latent segment. Finally, when x4 is corrupted, recovery localizes at [Ans], consistent with a direct
+(copy-like) route that delivers x4 to the answer readout.
+0.10
+0.08
+
+s2 0.014 0.394 0.025 0.013 0.482 0.356 0.482 0.276 0.397 0.236 0.372 0.013 0.021
+
+0.06
+
+s3 0.025 0.015 0.029 0.013 0.017 0.035 0.014 0.038 0.014 0.040 0.014 0.084 0.013
+
+0.04
+
+s4 0.019 0.025 0.023 0.004 0.032 0.032 0.034 0.032 0.032 0.031 0.032 0.062 0.277
+x1
+
+x2
+
+x3
+
+x4
+
+BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+0.02
+0.00
+
+All cases: Average Probability
+
+s1 0.963 0.027 0.019 0.016 0.110 0.019 0.013 0.015 0.012 0.016 0.012 0.015 0.013
+
+Figure 12: Logit lens on intermediate states s1 , s2 , s3 , s4 in the three-hop polynomial task. For
+modulus m = 50, the logit lens shows that the bridge state s2 becomes decodable early in the latent
+trajectory, indicating that it is formed and maintained in the latent channel. In contrast, s3 becomes
+most decodable near the [EoT] boundary, suggesting that the next intermediate is computed or
+consolidated at the end of the latent segment. Each cell show average decoding probability across all
+layers and all test inputs.
+
+H
+
+State-Swap Intervention
+
+To further test whether the decoded bridge state s2 in Section 4.2 is causally used rather than merely
+correlated with the output, we perform a state-swap intervention on sequence-length-3 examples.
+We construct suffix-matched prompt pairs (A, B) that share the final input token x3 but differ in
+the bridge state s2 and therefore in the ground-truth answer s3 . At each latent position, we replace
+the residual stream of prompt A with the cached activation from a clean forward pass of prompt B,
+and measure whether the model’s prediction changes away from A’s answer and whether it flips
+specifically to B’s answer.
+The intervention has a strong causal effect at the beginning of the latent trajectory. Swapping at [BoT],
+l1 , and l2 changes the prediction away from A in 98.7%, 97.5%, and 91.0% of cases, respectively,
+and flips it to B in 90.1%, 80.1%, and 71.5% of cases. The effect then decays sharply: swaps at
+l3 still affect about half of the examples, but by l5 the flip-to-B rate drops to 0.5%, and by l6 and
+[EoT] it vanishes. This shows that the bridge-state representation is an active causal driver of the
+19
+
+computation in [BoT] and the early latent steps, while later latent positions no longer serve as the
+main route by which s2 determines the final answer.
+
+I
+
+Partial Latent Rollouts Concentrate on Late Intermediates for Longer
+Hops.
+
+As shown in Figure 5, we previously observed that, on n-hop tasks, the final intermediate state sn
+often becomes decodable within CODI’s latent-thought positions. For longer horizons (typically
+n ≥ 4 under composite moduli), we also observe a stronger two-step variant of this behavior: both
+sn−1 and sn become decodable across the latent trajectory, with sn−1 emerging earlier and sn
+emerging later.
+Figure 13a illustrates this pattern on a 5-hop task: s4 is decodable in the early latent steps, while s5
+becomes decodable only toward the end of the latent trajectory. Figure 13b shows an analogous effect
+for a 7-hop task, where s6 appears earlier and s7 appears later in the latent steps. This ordering is
+consistent with the analysis in Section 5: under composite moduli, the task becomes increasingly
+biased toward the last few updates, making late intermediates disproportionately predictive of the
+final answer sn+1 . CODI’s latent channel appears to exploit this structure by allocating its limited
+latent compute to tracking the last one or two intermediates rather than maintaining a full step-by-step
+rollout.
+s1 0.742 0.014 0.017 0.019 0.021 0.021 0.017 0.016 0.010 0.019 0.020 0.018 0.018 0.016 0.015 0.004 0.012
+
+0.08
+
+s3 0.025 0.019 0.012 0.028 0.019 0.022 0.026 0.020 0.021 0.022 0.022 0.022 0.022 0.012 0.020
+
+0.06
+
+s4 0.017 0.020 0.027 0.016 0.030 0.027 0.056 0.057 0.047 0.043 0.042 0.041 0.041 0.015 0.023
+
+0.04
+
+s5 0.021 0.023 0.020 0.029 0.012 0.024 0.026 0.044 0.069 0.095 0.102 0.103 0.104 0.014 0.043
+s6 0.018 0.023 0.022 0.022 0.026 0.017 0.022 0.024 0.025 0.024 0.024 0.024 0.025 0.009 0.126
+x1 x2 x3 x4 x5 x6 BoT 1 2 3 4 5 6 EoT ANS
+
+0.02
+
+s2 0.019 0.042 0.045 0.024 0.029 0.020 0.022 0.021 0.014 0.020 0.022 0.025 0.028 0.025 0.022 0.006 0.017
+
+0.00
+
+0.08
+
+s3 0.022 0.019 0.006 0.031 0.020 0.020 0.022 0.023 0.011 0.025 0.024 0.026 0.027 0.023 0.020 0.005 0.019
+s4 0.018 0.020 0.031 0.009 0.037 0.020 0.024 0.025 0.016 0.025 0.023 0.024 0.023 0.022 0.021 0.006 0.020
+s5 0.021 0.021 0.017 0.022 0.010 0.029 0.020 0.017 0.016 0.024 0.024 0.023 0.022 0.020 0.018 0.005 0.016
+
+0.06
+0.04
+
+s6 0.021 0.018 0.023 0.018 0.029 0.010 0.025 0.018 0.056 0.072 0.032 0.031 0.027 0.025 0.023 0.005 0.019
+s7 0.017 0.020 0.021 0.025 0.022 0.027 0.017 0.022 0.010 0.074 0.149 0.172 0.161 0.099 0.061 0.005 0.018
+
+0.02
+
+s8 0.019 0.027 0.024 0.020 0.023 0.021 0.025 0.013 0.014 0.026 0.028 0.028 0.029 0.029 0.030 0.003 0.155
+x1 x2 x3 x4 x5 x6 x7 x8 BoT 1 2 3 4 5 6 EoT ANS
+
+0.00
+
+(a) 5-hop task
+
+All cases: Average Probability
+
+s2 0.028 0.119 0.029 0.020 0.020 0.022 0.021 0.025 0.027 0.028 0.028 0.029 0.029 0.015 0.024
+
+0.10
+All cases: Average Probability
+
+s1 0.669 0.016 0.018 0.018 0.019 0.016 0.016 0.018 0.020 0.020 0.019 0.019 0.020 0.011 0.018
+
+0.10
+
+(b) 7-hop task
+
+Figure 13: Logit-lens evidence for a two-step partial latent rollout. For longer-hop tasks (composite
+moduli), CODI often makes the last two intermediate states decodable within the latent-thought
+trajectory: sn−1 appears earlier in the latent steps, followed by sn later.
+
+J
+
+Proofs for Theoretical Results in Section 5
+
+J.1
+
+Proof of Lemma 5.1:
+
+Lemma 5.1 [Bijection criterion]: For x ∈ Rm , the map fx : Rm → Rm is bijective iff x is a unit in
+Rm , i.e. gcd(x, m) = 1.
+Proof. The additive shift by b is a bijection, so fx is bijective iff s 7→ sx is bijective. Multiplication
+by x is bijective over Rm iff there exists x−1 with xx−1 ≡ 1 (mod m), which holds iff gcd(x, m) =
+1.
+J.2
+
+Proof of Lemma 5.2:
+
+Lemma 5.2 [Exact contraction factor]: Let m ≥ 1 and fix x, b ∈ Rm := Z/mZ. Let d :=
+gcd(x, m). Define µx : Rm → Rm by µx (s) = sx (mod m) and fx (s) = sx + b (mod m). Then
+|im(µx )| = m/d, and every fiber of µx has size d. Equivalently, fx is a d-to-1 map.
+Proof. We view Rm as an additive group. The map µx is a group homomorphism since
+µx (s + t) = (s + t)x ≡ sx + tx ≡ µx (s) + µx (t)
+20
+
+(mod m).
+
+Let K := ker(µx ) = {s ∈ Rm : sx ≡ 0 (mod m)}. Write x = dx′ and m = dm′ with
+gcd(x′ , m′ ) = 1. Then
+sx ≡ 0
+
+(mod m) ⇐⇒ dm′ | s(dx′ ) ⇐⇒ m′ | sx′ ⇐⇒ m′ | s,
+
+where the last equivalence uses gcd(x′ , m′ ) = 1 (so multiplication by x′ is invertible modulo m′ ).
+Thus
+K = {0, m′ , 2m′ , . . . , (d − 1)m′ } ⊂ Rm ,
+so |K| = d.
+For a group homomorphism φ : G → H, each fiber φ−1 (y) (for y ∈ im(φ)) is a coset of ker(φ): if
+φ(s0 ) = y, then φ−1 (y) = s0 + ker(φ). Hence every fiber has size | ker(φ)|. Applying this to µx ,
+every fiber has size |K| = d.
+Since Rm is finite, the fibers partition Rm into |im(µx )| disjoint sets of equal size d, so
+|im(µx )| =
+
+|Rm |
+m
+= .
+d
+d
+
+Finally, fx = τb ◦ µx where τb (y) = y + b is a bijection on Rm . Therefore fx has the same fiber
+sizes as µx , i.e., fx is also d-to-1.
+
+K
+
+Ablation Study
+
+For all subsequent ablations, we use the n-hop setting with n = 31, a 3-layer transformer with 2
+attention heads per layer (unless stated otherwise), and modulus m = 50.
+Varying the number of latent steps. We ablate the number of latent steps over p ∈
+{1, 2, 3, 6, 9, 12, 20}. Across all values of p tested, our main mechanistic observations remain
+mostly stable: on long n-hop tasks, the model consistently forms and propagates the late intermediate
+state—most reliably the final state sn , and occasionally the last two states (sn−1 , sn ). This aligns
+with the analysis in Section 5: under composite moduli, contraction events make the label depend
+primarily on the terminal suffix, favoring late-bottleneck solutions. Accordingly, within this range,
+increasing p does not reliably induce a longer internal rollout; the emergence of latent-step structure
+appears to be driven more by the task distribution (long-horizon updates under composite m) than by
+the available latent-step budget.
+Varying model depth and width. We further test architectural robustness by sweeping depth
+and width, varying the number of layers in {2, 3, 4, 5, 6, 7} and attention heads in {2, 4, 8} (up to a
+7-layer, 8-head student). Across these configurations, our mechanistic picture is mostly unchanged:
+on long n-hop tasks the model primarily represents and routes late intermediates—most reliably
+sn , and sometimes (sn−1 , sn ). This is consistent with Section 5: under composite moduli, frequent
+contractions make the label depend mainly on the terminal suffix, which naturally favors latebottleneck solutions. Consequently, scaling the student up or down within this range does not reliably
+elicit a deeper internal rollout; the observed latent-step behavior appears driven more by the task
+distribution than by the specific model configuration.
+Ablation on the loss function Recall that CODI is trained with three losses: (i) a teacher objective
+that predicts an explicit CoT / state trace, (ii) a student objective that predicts the final answer after
+the latent-thought steps, and (iii) a feature-space distillation term that aligns teacher and student
+representations near the answer boundary.
+Ablating distillation only. We first remove the distillation term while keeping the teacher and student
+losses. This ablation is still meaningful because the teacher and student share the same backbone
+and hyperparameters, so the teacher objective continues to shape the shared representation space that
+the student can leverage. Empirically, our main mechanistic signatures persist: the model still forms
+the late intermediate state sn (and occasionally both sn−1 and sn ) in the final latent steps, and we
+still observe a specialized attention head that routes information from the final input token xn+1 to
+the [Ans] boundary. This suggests that the distillation term is not the primary driver of the partial
+(late-only) latent rollout in this setting.
+21
+
+Ablating both distillation and the teacher loss. Next, we remove both the distillation term and the
+teacher objective, leaving only the student loss. In this case, we no longer observe the late-step
+reasoning trace: the final latent steps do not reliably encode sn (or (sn−1 , sn )). This indicates that
+the teacher loss is important for inducing the late mechanism—likely because it pressures the shared
+backbone to represent stepwise state information, which the student objective can then compress into
+a short, late-bottleneck computation that still supports accurate answers.
+
+L
+
+Comparing CODI-style latent CoT with CoT and Non-CoT Baselines
+
+Table 1: Accuracy (%) of CoT-trained models, a non-CoT standard transformer, and CODI
+across moduli m. CODI and the non-CoT baseline degrade sharply when m is prime. All results use
+a 3-layer, 2-head transformer with total sequence length 32, and report accuracy aggregated over all
+sequence lengths.
+Mod m
+Full-CoT
+Non-CoT
+CODI
+
+41
+
+42
+
+100.00
+5.44
+8.67
+
+100.00
+35.73
+66.40
+
+43
+
+44
+
+28.66 97.30
+5.31 18.44
+8.59 34.19
+
+45
+
+46
+
+47
+
+48
+
+49
+
+50
+
+100.00 93.60
+39.94 5.93
+67.05 16.74
+
+90.85
+2.08
+8.31
+
+100.00
+45.62
+91.07
+
+100.00
+8.50
+19.97
+
+100.00
+25.81
+43.95
+
+Comparison with Non-CoT. A standard next-token transformer trained without an explicit or latent
+CoT channel can nevertheless learn a full internal rollout on this task. In the three-layer, two-head
+model, the intermediate state si becomes decodable at the next input position xi+1 (Figure 14a),
+consistent with an implicit iterative update carried in the residual stream despite supervision only on
+the final answer. This step-by-step trace is brittle, however: it can vanish under modest architectural
+or optimization changes (Figure 14b), where intermediate-state decodability disappears in a five-layer,
+two-head model. By contrast, CODI under composite moduli exhibits a late-bottleneck behavior on
+long n-hop tasks: typically only sn —and occasionally (sn−1 , sn )—becomes decodable in the final
+latent steps. We attribute this to teacher-guided compression: explicit trace supervision pushes the
+student to compress multi-step computation into a fixed latent-thought budget, and when the task
+permits short effective memory (Section 5), this pressure favors late-only rollouts.
+Compare with CoT. In contrast to both the non-CoT baseline and CODI-style latent CoT, an
+explicitly CoT-trained transformer can reliably recover the full intermediate trajectory s1 , . . . , sn
+across model scales and optimization settings (Cabannes et al., 2024). Consistent with this, Table 1
+shows that CoT training substantially outperforms both CODI and a standard non-CoT transformer
+when the modulus m is prime. These results expose a key limitation of CODI-style latent CoT on
+strictly sequential tasks: with a fixed latent-compute budget, CODI can struggle when the underlying
+computation is effectively incompressible. This mirrors prior observations that implicit reasoning in
+standard transformers is constrained by model depth; latent-CoT models inherit a similar constraint,
+now jointly bounded by architectural depth and the number of latent-thought steps. Conversely, CODI
+recovers much of the performance gap in more compressible regimes, such as composite moduli.
+Composite Rings as a Mechanistic Lens on Latent Reasoning Compression. Studying composite
+moduli is valuable because their built-in d-to-1 contractions offer a clean analogue of a common
+feature of language: distinct underlying interpretations can map to similar surface forms. Such ambiguity can reduce the effective value of preserving fine-grained early context once later cues dominate.
+Composite moduli make this explicit: when an update uses a non-unit multiplier, it collapses d distinct
+states into one, inducing genuine information loss and shifting the final answer toward dependence
+on a short terminal suffix. This perspective clarifies when latent CoT is advantageous: in settings
+with many-to-one mapping from histories (or hidden states) to the observed target/label, additional
+internal steps may be better used to compress history than to preserve it exactly, and teacher-guided
+latent CoT can act as a structured bottleneck that distills multi-step traces into a small number of
+latent updates that retain only the intermediates most predictive of the answer (in our polynomial
+setting, typically the final one or two). We view this as a hypothesis for how latent CoT may help in
+more naturalistic settings.
+22
+
+0.014
+
+0.021
+
+0.018
+
+s2 0.008
+
+0.003
+
+0.092
+
+0.007
+
+0.018
+
+0.015
+
+0.022
+
+s3 0.025
+
+0.023
+
+0.002
+
+0.098
+
+0.010
+
+0.020
+
+0.019
+
+0.06
+
+s4 0.016
+
+0.010
+
+0.020
+
+0.002
+
+0.093
+
+0.010
+
+0.023
+
+0.04
+
+s5 0.019
+
+0.014
+
+0.011
+
+0.023
+
+0.003
+
+0.083
+
+0.013
+
+s6 0.017
+
+0.016
+
+0.015
+
+0.013
+
+0.025
+
+0.003
+
+0.193
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+x6
+
+end
+
+Position
+
+0.08
+
+0.02
+0.00
+
+(a) Layer-3, head-2.
+
+0.10
+
+s1 0.227
+
+0.019
+
+0.022
+
+0.009
+
+0.014
+
+0.005
+
+0.017
+
+s2 0.005
+
+0.007
+
+0.020
+
+0.008
+
+0.007
+
+0.002
+
+0.024
+
+s3 0.033
+
+0.025
+
+0.005
+
+0.013
+
+0.010
+
+0.003
+
+0.022
+
+0.06
+
+s4 0.019
+
+0.016
+
+0.018
+
+0.002
+
+0.012
+
+0.003
+
+0.023
+
+0.04
+
+s5 0.024
+
+0.020
+
+0.012
+
+0.013
+
+0.004
+
+0.003
+
+0.020
+
+s6 0.021
+
+0.015
+
+0.015
+
+0.008
+
+0.012
+
+0.000
+
+0.138
+
+x1
+
+x2
+
+x3
+
+x4
+
+x5
+
+x6
+
+end
+
+Intermediate Value
+
+0.023
+
+Intermediate Value
+
+0.014
+
+Position
+
+0.08
+
+0.02
+0.00
+
+Average Probability (Layers 5 Heads 2 Seq 6 )
+
+0.232
+
+Average Probability (Layers 3 Heads 2 Seq 6 )
+
+0.10
+
+s1 0.773
+
+(b) Layer-5, head-2.
+
+Figure 14: Logit-lens visualizations for the 5-hop task on all inputs. We compare a layer-3/head-2
+model to a layer-5/head-2 model. The layer-3/head-2 model exhibits a clear rollout of intermediate
+states, whereas the layer-5/head-2 model shows little to no intermediate-state trace. This highlights
+the brittleness of step-by-step reasoning in standard (Non-CoT) Transformers and contrasts with
+latent-CoT models, which often converge to a late-bottleneck strategy.
+
+M
+
+Finite-State Function Composition: Definition, Theory, Experiments, and
+Generality
+
+This appendix gives the full definition, theoretical analysis, and experimental results for FSC, the
+finite-state function-composition task used in Section 6. The purpose of FSC is to test whether the
+compressibility effects observed in polynomial iteration are specific to modular arithmetic or instead
+reflect a more general property of sequential computation.
+M.1
+
+Dataset Definition
+
+State space and function library. Fix a finite state space
+S = {0, 1, . . . , N − 1},
+|S| = N.
+FSC defines a fixed library of K transition functions
+F = {f1 , . . . , fK },
+fi : S → S.
+The function library is constructed once, typically with a fixed random seed, and reused across
+all train and test examples. Thus the model is not asked to infer a fresh random function for each
+example; it must learn to use a fixed operation library.
+Bijective and compressive functions. Let α ∈ [0, 1] denote the nominal fraction of bijective
+functions. Since K is finite, we instantiate
+Kbij = round(αK),
+Kcomp = K − Kbij ,
+or another explicitly specified rounding rule. We define the realized bijective fraction as
+Kbij
+β=
+.
+K
+This realized fraction β may differ slightly from the nominal value α.
+For each of the Kbij bijective functions, we sample a random permutation of S. These functions have
+image size N and preserve all state distinctions.
+For each of the Kcomp compressive functions, we sample an image size
+mi ∈ {mmin , . . . , mmax },
+1 ≤ mmin ≤ mi ≤ mmax ≤ N − 1,
+and construct fi so that
+| Im(fi )| = mi .
+Smaller mi corresponds to stronger compression. We define the transition rank
+ri := | Im(fi )|.
+Thus ri = N for bijections and ri = mi < N for compressive functions. The quantity N/ri is the
+effective contraction factor of the transition.
+23
+
+Implementation note. For each compressive function, we first sample a target image size mi ∈
+{mmin , . . . , mmax } and then sample mi distinct output states from S. The construction explicitly
+ensures that every selected output state appears at least once in the function table: we initialize the
+outputs with the selected image values, fill the remaining N − mi domain points by sampling from
+these values, and then shuffle the resulting list. Therefore each compressive function satisfies
+| Im(fi )| = mi
+exactly.
+Example generation.
+
+An example consists of an initial state and a sequence of operation indices:
+s0 ∈ S,
+
+σ1 , . . . , σT ∈ {1, . . . , K}.
+
+The hidden trajectory is generated by repeated function composition:
+st = fσt (st−1 ),
+
+t = 1, . . . , T.
+
+The model receives
+(s0 , σ1 , . . . , σT )
+and predicts the trajectory
+(s1 , . . . , sT ).
+CODI-style serialization.
+
+For explicit-CoT teacher training, we use the serialization
+
+[FSC] s0 fσ1 · · · fσT [EoI] s0 s1 · · · sT −1 [Ans] sT .
+The student replaces the explicit intermediate chain with latent thought tokens:
+[FSC] s0 fσ1 · · · fσT [BoT] ℓ1 · · · ℓp [EoT] [Ans] sT .
+This mirrors the polynomial-task setup: the teacher is trained to emit the full state trace, while the
+latent student must compress the computation into continuous thought tokens before predicting the
+final state.
+M.2
+
+Theoretical Analysis
+
+The polynomial analysis in Section 5 uses algebraic structure: over prime moduli, all nonzero
+multipliers are units and hence updates are bijections; over composite moduli, non-unit multipliers
+induce exact many-to-one contractions. FSC replaces this algebraic distinction with the transition-rank
+distinction ri = | Im(fi )|.
+theorem 1 (Fully bijective FSC has non-contracting long-horizon dynamics). Suppose every function
+fi ∈ F is bijective. Then for any operation sequence σ1:T , the composed transition
+Fσ1:T = fσT ◦ · · · ◦ fσ1
+is bijective. Hence, conditioned on σ1:T , the final state sT preserves all distinctions between initial
+states.
+Moreover, fix any step t and compare two operation choices i and j at that step, holding the prefix
+and suffix fixed. Let st−1 be the prefix state before step t, and let Bt be the suffix map after step t.
+Then the two final states satisfy
+Bt (fi (st−1 )) = Bt (fj (st−1 ))
+
+⇐⇒
+
+fi (st−1 ) = fj (st−1 ).
+
+Thus any distinction introduced by the operation choice at time t is preserved by the later bijective
+suffix. In this sense, the fully bijective FSC regime has no intrinsic mechanism for erasing earlier
+state or operation distinctions.
+Proof. The first claim follows because a composition of bijections is a bijection. Therefore the map
+s0 7→ sT is injective for every fixed operation sequence.
+For the second claim, define
+Bt = fσT ◦ · · · ◦ fσt+1 .
+24
+
+Since all functions are bijective, Bt is bijective and hence injective. The final state after choosing
+operation i at step t is
+yi = Bt (fi (st−1 )),
+while the final state after choosing operation j is
+yj = Bt (fj (st−1 )).
+Because Bt is injective,
+yi = yj ⇐⇒ fi (st−1 ) = fj (st−1 ).
+Therefore, if the two candidate operations differ on the prefix state st−1 , the final states must differ as
+well. Later bijective updates cannot erase the distinction.
+Connection to the prime-modulus regime. This theorem generalizes the no-contraction component of our prime-modulus analysis beyond modular arithmetic. In the polynomial task over a prime
+field, all nonzero multipliers are units, so every update s 7→ sx + b is a permutation and the recurrence
+never discards state information. The unrolled polynomial expression further shows that early inputs
+remain algebraically present in the final answer through multiplicative chains. FSC removes this
+algebraic structure, so there is no analogous closed-form expansion. Nevertheless, when α = 1, the
+same information-preservation principle holds at the level of finite-state dynamics: every update
+is bijective, every suffix map is injective, and distinctions introduced at any earlier step cannot be
+merged by later updates. Thus, the fully bijective FSC regime serves as a non-algebraic counterpart to
+the prime-modulus regime: both lack many-to-one contractions, preserve long-range state distinctions,
+and therefore expose the fixed-budget limitations of latent-CoT models on incompressible sequential
+computation.
+Lemma 3 (Compressive updates induce rank contraction). Let fi : S → S be a compressive FSC
+function with image size
+mi = | Im(fi )| < N.
+Then fi maps all N possible previous states into only mi possible next states. In particular, at least
+one output state has at least ⌈N/mi ⌉ preimages. If s is uniform over S, then
+H(fi (s)) ≤ log mi ,
+so the update removes at least
+log N − log mi = log(N/mi )
+bits of state capacity relative to a uniform N -state variable.
+Proof. The image of fi contains exactly mi states, so fi (s) is supported on at most mi values.
+Therefore its entropy is at most log mi . Since a uniform variable over S has entropy log N , the
+update reduces the maximum state capacity by at least log(N/mi ). The preimage statement follows
+from the pigeonhole principle.
+Interpretation. The quantity N/mi is an effective contraction factor. This directly generalizes the
+d = gcd(x, m) contraction factor in the modular polynomial task, except that arbitrary FSC maps
+need not have equal-sized fibers.
+Lemma 4 (Lost distinctions cannot be restored by later deterministic maps). Let ri = | Im(fi )|. For
+any subsequence of updates
+Fa:b := fσb ◦ · · · ◦ fσa ,
+we have
+| Im(Fa:b )| ≤ min rσt .
+a≤t≤b
+
+In particular, once a compressive function with image size mi occurs, the number of distinguishable
+prefix states after that point is at most mi , and later deterministic updates cannot increase it.
+Proof. For any deterministic function g and set A, we have |g(A)| ≤ |A|. After applying any
+transition fσt , the reachable set has size at most rσt . All later deterministic maps can only map this
+reachable set to another set of size no larger than its current size. Therefore the image size of the whole
+subsequence is bounded by the minimum transition rank encountered along the subsequence.
+25
+
+Interpretation. This lemma is the formal basis for the late-bottleneck hypothesis. After a compressive update, the final answer can depend on the earlier prefix only through a compressed summary
+with at most mi states, plus the later suffix of updates.
+Lemma 5 (Terminal bijective suffix). Assume operation indices σt are sampled independently and
+uniformly from the fixed library. Let
+Kbij
+β=
+K
+be the realized fraction of bijective functions. Define the last compressive time
+τ := max{t ≤ T : fσt is compressive},
+with τ = 0 if no compressive update occurs, and define the terminal all-bijective suffix length
+L := T − τ.
+Then
+Pr(L ≥ k) = β k ,
+and, for β < 1,
+E[L] =
+
+T
+X
+
+βk =
+
+k=1
+
+β(1 − β T )
+.
+1−β
+
+Proof. The event L ≥ k occurs exactly when the final k sampled operations are all bijective. Since
+operations are sampled independently and the probability of drawing a bijective operation is β, this
+event has probability β k . The expectation follows from the tail-sum formula for a nonnegative
+integer-valued random variable:
+E[L] =
+
+T
+X
+
+Pr(L ≥ k) =
+
+k=1
+
+T
+X
+
+βk =
+
+k=1
+
+β(1 − β T )
+.
+1−β
+
+Interpretation. When α = 1, we have β = 1 and the whole sequence is bijective. When α < 1,
+we have β < 1, and a recent compressive update appears with high probability. This makes the final
+state depend on a compressed prefix summary plus a short terminal suffix, paralleling the terminal
+all-unit suffix argument in the polynomial theory.
+M.3
+
+Experimental Results
+
+We next empirically test the predictions from Appendix M.2: compressive FSC regimes should make
+late-bottleneck latent reasoning viable, whereas fully bijective regimes should require sustained state
+propagation and therefore pose a harder setting for fixed-budget latent CoT.
+We use a finite state space of size N = 50 and a fixed library of K = 8 transition functions with
+mmin = 1 and mmax = 49. We vary the fraction of bijective functions over
+α ∈ {0.0, 0.1, 0.2, 0.6, 0.8, 1.0}.
+We further evaluate hop lengths
+n ∈ {2, 3, 4, 5, 7, 9}
+to compare short- and long-horizon behavior. When α = 1.0, all transitions are bijective, yielding
+an incompressible regime analogous to the prime-modulus setting in the polynomial task. When
+α < 1.0, the library contains at least one compressive transition, yielding a compressible regime
+analogous to the composite-modulus setting.
+26
+
+s0
+
+f1
+
+f2
+
+BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+0.04
+0.02
+0.00
+
+Intermediate Representation
+
+Intermediate Representation
+
+s2 0.009 0.023 0.013 0.024 0.027 0.027 0.027 0.027 0.027 0.027 0.311 0.657
+
+0.06
+
+(a) 2-hop task and α = 0.2
+
+s0 0.988 0.039 0.042 0.035 0.029 0.040 0.041 0.042 0.042 0.042 0.042 0.006 0.017
+
+0.10
+0.08
+
+s1 0.047 0.669 0.635 0.640 0.201 0.104 0.100 0.098 0.097 0.097 0.097 0.006 0.019
+
+0.06
+
+s2 0.046 0.049 0.053 0.045 0.202 0.814 0.853 0.858 0.860 0.860 0.860 0.013 0.041
+
+0.04
+
+s3 0.025 0.022 0.023 0.022 0.025 0.055 0.058 0.057 0.056 0.056 0.056 0.147 0.557
+s0
+
+f1
+
+f2
+
+f 3 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+0.02
+0.00
+
+All cases: Average Probability
+
+s1 0.020 0.667 0.034 0.665 1.000 1.000 1.000 1.000 1.000 1.000 0.014 0.020
+
+0.08
+
+All cases: Average Probability
+
+0.10
+s0 0.679 0.025 0.829 0.025 0.030 0.030 0.030 0.030 0.030 0.030 0.010 0.011
+
+(b) 3-hop task and α = 0.6
+
+Figure 15: Logit-lens analysis on short-horizon compressive FSC tasks. For the 2-hop task in
+(a), the bridge state s1 becomes decodable early in the latent trajectory when α = 0.2, indicating
+that CODI forms the required intermediate state within at fσ1 token position and the latent channel.
+For the 3-hop task in (b), s1 is already decodable at the fσ1 token position and remains decodable
+throughout the latent trajectory, while the next bridge state s2 emerges within the latent channel.
+We observe qualitatively similar patterns across the tested values of α for 2-hop and 3-hop tasks,
+suggesting that CODI can realize faithful step-by-step latent reasoning in short-horizon FSC settings.
+
+M.3.1
+
+Compressive Region Where α < 1
+
+In the compressive regime, CODI exhibits the same short-horizon step-by-step pattern observed in
+the polynomial task. As shown in Figure 15, the logit-lens analysis reveals that the bridge state s1
+becomes decodable along the token/latent trajectory for 2-hop FSC tasks. For 3-hop tasks, both bridge
+states are recovered: s1 is decodable from the early token/latent positions and remains accessible
+through the latent trajectory, while s2 emerges within the latent channel. This pattern extends to the
+4-hop setting, where we observe a full-latent rollout of the intermediate states. These results indicate
+that, when the horizon is short, CODI can form and maintain the ground-truth intermediate states
+required for faithful latent step-by-step computation.
+Activation patching further shows that the decoded bridge states are not merely correlational, but
+causally involved in the computation. On the two-hop FSC task, corrupting the first transition fσ1
+disrupts the formation of the bridge state s1 . As shown in Figure 16a, patching clean activations into
+the latent-thought positions substantially restores accuracy, indicating that the latent channel stores
+information about s1 that is necessary for the final prediction. In contrast, when the final transition
+fσ2 is corrupted, recovery concentrates at [Ans] rather than in the latent trajectory (Figure 16b).
+This mirrors the two-route mechanism observed in the polynomial task: the latent channel carries the
+intermediate state, while the final operation is routed more directly to the answer readout.
+We observe the similar pattern on the three-hop FSC task. Corrupting the initial state s0 , the first
+transition fσ1 , or the second transition fσ2 disrupts the computation of the later bridge state s2 .
+Patching clean activations into the latent-thought positions substantially restores accuracy, indicating
+that the latent channel carries information about s2 that is causally necessary for the final prediction.
+By contrast, when the final transition fσ3 is corrupted, recovery again concentrates at [Ans] rather
+than in the latent trajectory. Together, these interventions show that short-horizon FSC tasks reproduce
+the same division of labor observed in the polynomial setting: latent thoughts compute and maintain
+bridge states, while the final transition is routed directly to the answer boundary. Details can be seen
+in Figure 17.
+We defer discussion of the 5-hop task, which lies near the transition point between short- and
+long-horizon behavior, to Section N.
+On longer-horizon FSC tasks, such as the 7-hop and 9-hop settings, we again observe a late-bottleneck
+latent reasoning pattern. As shown by the logit-lens analysis in Figure 18, the 7-hop task makes only
+the final bridge state s6 readily decodable along the latent trajectory, while earlier intermediate states
+are largely collapsed. Similarly, in the 9-hop task, the latent trajectory primarily exposes the final
+bridge state s8 , with little evidence that the earlier states are explicitly maintained.
+This behavior is consistent with the theoretical analysis in Appendix M.2: in compressive FSC
+regimes, low-rank transitions reduce the number of distinguishable prefix states, so the final state
+can often be determined from a compressed prefix summary together with a short terminal suffix. It
+also mirrors the mechanism observed in polynomial tasks with composite moduli, where non-unit
+multipliers induce exact algebraic contractions and CODI concentrates its latent computation on late
+intermediates rather than sustaining a full step-by-step rollout.
+27
+
+0%
+
+0%
+
+0% 100%
+
+L2-post 0%
+
+0%
+
+0% 100% 100% 92% 42% 1%
+
+0%
+
+0%
+
+1% 99%
+
+L1-post 0%
+
+0%
+
+0% 99% 100% 100% 91% 43% 2%
+
+0%
+
+0%
+
+0%
+0%
+
+L1-pre 0% 100% 0%
+s0
+
+f1
+
+f2
+
+0% 100% 100% 91% 43% 2%
+
+0%
+
+0%
+
+BoT
+
+6
+
+EoT ANS
+
+1
+
+2
+
+3
+
+4
+
+5
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+Layer (Residual Stream)
+
+Layer (Residual Stream)
+
+0% 100% 100% 91% 43% 2%
+
+L3-post 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L2-post 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 100%
+
+L1-post 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0% 25% 68%
+
+L1-pre 0%
+
+0% 100% 0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+0%
+
+BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+s0
+
+f1
+
+f2
+
+(a) fσ1 −corrupted
+
+0%
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+% Acc. recovery (f 2 patched)
+
+0%
+
+% Acc. recovery (f 1 patched)
+
+L3-post 0%
+
+(b) fσ2 −corrupted
+
+L1-pre 100% 0% 0% 0% 0% 98% 98% 96% 56% 11% 2% 0% 0%
+s0
+
+f1
+
+f2
+
+f 3 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+Layer (Residual Stream)
+
+L1-post 90% 7% 0% 0% 0% 98% 98% 96% 54% 11% 2% 0% 0%
+
+L3-post 0% 0% 0% 0% 99% 98% 96% 56% 15% 2% 0% 0% 100%
+L2-post 0% 16% 10% 19% 2% 98% 97% 67% 17% 2% 0% 3% 93%
+L1-post 0% 48% 7% 18% 0% 99% 98% 96% 55% 14% 2% 0% 0%
+L1-pre 0% 100% 0% 0% 0% 99% 98% 96% 56% 15% 2% 0% 0%
+s0
+
+L2-post 0% 0% -0% 0% 98% 98% 96% 66% 12% 2% 0% 3% 94%
+L1-post 0% 0% 1% 0% 97% 99% 98% 95% 57% 9% 2% 0% 0%
+L1-pre 0% 0% 100% 0% 0% 98% 98% 95% 58% 9% 2% 0% 0%
+s0
+
+f1
+
+f2
+
+f 3 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+Layer (Residual Stream)
+
+L3-post 0% 0% 0% 0% 98% 98% 95% 58% 9% 2% 0% 0% 100%
+
+f2
+
+f 3 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+(b) patching fσ1 − corrupted run
+% Acc. recovery (f 2 patched)
+
+Layer (Residual Stream)
+
+(a) patching s0 − corrupted run
+
+f1
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+% Acc. recovery (f 3 patched)
+
+L2-post 0% 10% 7% 12% 1% 98% 97% 67% 13% 3% 0% 3% 94%
+
+100%
+75%
+50%
+25%
+0%
+-25%
+-50%
+-75%
+-100%
+
+% Acc. recovery (f 1 patched)
+
+L3-post 0% 0% 0% 0% 98% 98% 96% 56% 11% 2% 0% 0% 100%
+
+% Acc. recovery (s0 patched)
+
+Layer (Residual Stream)
+
+Figure 16: Activation patching for transition-function corruptions (two-hop). Cells show mean
+accuracy recovery (%) over corrupted samples. When the first transition fσ1 is corrupted, patching
+clean activations into latent-thought positions restores performance, indicating that the latent channel
+carries the intermediate state s1 needed for the downstream computation. In contrast, when the final
+transition fσ2 is corrupted, recovery is concentrated at [Ans], consistent with a direct route that
+delivers the final operation to the answer readout.
+
+(c) patching fσ2 − corrupted run
+
+L3-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 100%
+L2-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 99%
+L1-post 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 0% 98%
+L1-pre 0% 0% 0% 100% 0% 0% 0% 0% 0% 0% 0% 0% 0%
+s0
+
+f1
+
+f2
+
+f 3 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+(d) patching fσ3 − corrupted run
+
+Figure 17: Activation patching for input-token corruptions in the three-hop FSC task. When s0 ,
+fσ1 , or fσ2 are corrupted, patching clean activations into the latent-thought positions (ℓ1 , ℓ2 , ℓ3 ) yields
+substantial accuracy recovery, indicating that the latent channel carries the intermediate information
+needed downstream. When fσ3 is corrupted, recovery localizes at [Ans], consistent with a direct
+(copy-like) route that delivers fσ3 to the answer readout.
+M.3.2
+
+Incompressible Region where α = 1
+
+Long-horizon behavior in the incompressible FSC regime. In the incompressible regime of
+FSC tasks, CODI exhibits step-by-step latent reasoning pattern for short-horizon instances such as
+2-hop, 3-hop, and 4-hop FSC tasks. The logit-lens visualizations reveal a sequential emergence of the
+relevant bridge states along the latent trajectory, closely matching the behavior described above for
+compressive FSC tasks. This suggests that, when the reasoning horizon is short, CODI can faithfully
+construct the required intermediate states even when the task does not admit information compression.
+We again defer discussion of the 5-hop task, which lies near the transition point between short- and
+long-horizon behavior, to Section N.
+However, this faithful step-by-step reasoning pattern breaks down for longer-horizon FSC tasks.
+For 7-hop and 9-hop instances, we observe that the latent reasoning trajectory collapses: late-stage
+intermediate states are no longer reliably formed or decodable. For example, in the 7-hop task, the
+final bridge state s6 is no longer observable, and in the 9-hop task, the final bridge state s8 similarly
+fails to emerge in the latent trajectory as seen in Figure 19. This contrasts with the compressive
+FSC regime, where late intermediates remain visible, indicating that compression helps preserve a
+tractable partial latent reasoning path over longer horizons.
+This qualitative behavior is consistent with our theoretical analysis. In the incompressible FSC
+regime, corresponding to α = 1, every transition is bijective, so the composed dynamics contain
+28
+
+s0
+s1
+
+Intermediate Representation
+
+Intermediate Representation
+
+s0
+s1
+s2
+s3
+s4
+s5
+s6
+
+s2
+s3
+s4
+s5
+s6
+s7
+s8
+
+s7
+s0 f 1 f 2 f 3 f 4 f 5 f 6 f 7 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+s9
+
+EoT ANS
+
+s0 f 1 f 2 f 3 f 4 f 5 f 6 f 7 f 8 f 9 BoT
+
+(a) 7-hop, α = 0.1
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+(b) 9-hop, α = 0.6
+
+Figure 18: Logit-lens analysis on long-horizon compressive FSC tasks. For the n-hop FSC task,
+only the final bridge state sn−1 becomes reliably decodable along the latent trajectory, while earlier
+intermediate states are largely collapsed. This late-intermediate pattern is qualitatively consistent
+across the tested compressive regimes with different values of α.
+no many-to-one contraction that can erase state distinctions. Consequently, successful long-horizon
+prediction cannot exploit a compressed prefix summary induced by the task itself; it requires faithfully
+propagating the running state through the sequence of updates. This requirement mirrors the polynomial task over a prime modulus, where the algebraic structure prevents lossy compression of the
+intermediate computation and therefore necessitates a full intermediate reasoning path. Consequently,
+both settings impose a stringent information-preservation constraint: successful reasoning requires
+the model to retain and propagate all intermediate states across the entire horizon. Our empirical
+observation that CODI succeeds on short horizons but exhibits collapsed reasoning on longer horizons
+is therefore aligned with the theory, which predicts that full-path reasoning becomes increasingly
+difficult as the horizon grows in non-compressive settings.
+s0
+s1
+
+Intermediate Representation
+
+Intermediate Representation
+
+s0
+s1
+s2
+s3
+s4
+s5
+s6
+
+s2
+s3
+s4
+s5
+s6
+s7
+s8
+
+s7
+s0 f 1 f 2 f 3 f 4 f 5 f 6 f 7 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+s9
+
+EoT ANS
+
+s0 f 1 f 2 f 3 f 4 f 5 f 6 f 7 f 8 f 9 BoT
+
+(a) 7-hop, α = 1.0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+(b) 9-hop, α = 1.0
+
+Figure 19: Logit-lens analysis on long-horizon incompressible FSC tasks. The final bridge state
+sn−1 is no longer decodable along the latent trajectory, indicating a breakdown of step-by-step
+reasoning
+M.4
+
+Generality and Scope of FSC
+
+FSC is not intended to capture all sequential reasoning. Its rigorous scope is deterministic finite-state,
+operation-indexed sequential computation.
+Proposition 1 (Representation of finite-state operation-indexed tasks). Let T be any deterministic finite-state sequential task with finite hidden state space Z, finite operation alphabet A =
+{a1 , . . . , aK }, and Markovian update rule
+zt = δ(zt−1 , at ).
+Then T can be represented as an FSC instance.
+Proof. Set S = Z. For each operation ai ∈ A, define
+fi (z) = δ(z, ai ).
+29
+
+Given an operation sequence a1:T , encode each operation by its index σt . Then the FSC recurrence
+st = fσt (st−1 )
+exactly reproduces
+zt = δ(zt−1 , at ).
+If fi is bijective, it belongs to the bijective part of the library; otherwise, its local compression level is
+captured by its transition rank ri = | Im(fi )|.
+Important special cases.
+
+The following task families are direct special cases of FSC.
+
+• Finite automata. A finite automaton has states qt and update rule qt = δ(qt−1 , at ). For
+each symbol a, define fa (q) = δ(q, a).
+• Lookup-table transition systems. A fixed library of discrete transition tables is exactly an
+FSC function library.
+• Finite-register update systems. If the state consists of a tuple of finite registers, define S
+as the product of all register values. Each operation is then a deterministic function on the
+joint state.
+• Bounded finite-memory algorithms. Any algorithm with a finite internal configuration
+under a fixed memory or length bound can be represented by encoding the full configuration
+as the FSC state. This may cause state-space blowup, but it is still a finite-state representation.
+• Modular polynomial iteration. The polynomial task is
+st = st−1 xt + b
+
+(mod M ).
+
+fx (s) = sx + b
+
+(mod M ).
+
+For each multiplier x, define
+
+The operation index σt is the multiplier xt . If x is a unit modulo M , then fx is bijective.
+If gcd(x, M ) = d > 1, then fx is an exact d-to-one map with image size M/d. Thus
+the polynomial prime/composite distinction is a structured algebraic instance of the FSC
+bijective/compressive distinction.
+Scope of the FSC abstraction. FSC is intended as a controlled abstraction for deterministic finitestate, operation-indexed sequential computation, rather than as a universal model of all sequential
+reasoning. This scope includes finite automata, lookup-table transition systems, bounded finiteregister update systems,and the modular polynomial task studied in the main text. Tasks with
+unbounded memory, continuous or stochastic dynamics, or rich structured operations can be brought
+into this framework only after additional modeling choices, such as bounding the memory, discretizing
+the state space, encoding randomness as input, or expanding the state representation. Overall, FSC
+provides a clean setting for testing whether the compressibility mechanism observed in polynomial
+iteration persists beyond modular arithmetic.
+M.5
+
+Implications for Latent-CoT Mechanisms
+
+The FSC analysis suggests that the key variable in our polynomial experiments is not modular
+arithmetic itself, but transition-level compressibility. Fully bijective regimes preserve state distinctions
+and require full-history propagation, whereas compressive regimes contain low-rank updates that
+reduce the number of distinguishable prefix states and make late intermediates more predictive of the
+final answer.
+Our FSC experiments support this interpretation. On short-horizon tasks, CODI forms faithful bridgestate representations. On long-horizon compressive FSC tasks, it instead exhibits late-bottleneck
+partial rollouts, with late intermediates decodable and earlier states largely collapsed. Fully bijective
+FSC regimes remove this compression mechanism and therefore provide an incompressible control
+analogous to prime-modulus polynomial tasks. Thus, FSC shows that the polynomial task is a
+structured algebraic instance of a broader finite-state rank-contraction phenomenon.
+30
+
+N
+
+Transition points depend on task difficulty
+
+We emphasize that the transition from faithful step-by-step latent reasoning to partial or collapsed
+reasoning is not tied to a universal hop length. Rather, it depends on the difficulty of the task
+distribution relative to the model and training budget. In our default polynomial setting with modulus
+m = 50, a 3-layer, 2-head CODI model trained with 2,500 examples per sequence length exhibits
+faithful bridge-state formation on 2-hop and 3-hop tasks (Figures 3 and 12), but shifts to a latebottleneck partial rollout on tasks with 4 or more hops (Figure 5). Thus, under this setting, the
+transition appears around 4 hops. By contrast, under the same model and data budget but with prime
+modulus m = 41, the latent reasoning path collapses even for 2-hop tasks: we no longer observe a
+reliable faithful bridge-state trajectory.
+The FSC experiments further support this view. With N = 50 states and K = 8 transition functions,
+the transition point varies with the bijective fraction α, which controls the degree of compressibility.
+For example, on 5-hop FSC tasks, the fully compressive regime α = 0.0 can still exhibit faithful
+step-by-step latent reasoning. In contrast, intermediate values such as α = 0.2, 0.6, 0.8 shift toward
+late-bottleneck partial reasoning, while the fully bijective regime α = 1.0 shows a collapse of the
+latent reasoning trajectory. Please see Figure 20 for more detail. This suggests that the transition
+point depends on the degree of compressibility: for α = 0.0, faithful latent rollouts persist beyond 5
+hops, whereas for intermediate values of α the transition to partial late-bottleneck reasoning already
+occurs around the 5-hop regime. This pattern is consistent with our theory: increasing α reduces
+the frequency of rank-contractive updates, making the task less compressible and requiring more
+sustained state propagation.
+
+s0
+
+Intermediate Representation
+
+Intermediate Representation
+
+Overall, these results suggest that CODI-style latent reasoning reflects a capacity–difficulty tradeoff
+shaped by model capacity, training budget, and task structure. In the FSC setting, difficulty depends on
+the state-space size N , the number of transition functions K, the horizon length, the bijective fraction
+α, and the compressive image-size range [mmin , mmax ]. When the model has sufficient effective
+capacity, CODI can sustain faithful step-by-step latent computation. As the task becomes harder, it
+shifts toward late-bottleneck partial rollouts when compressive structure is available, but collapses
+when the transition system is effectively incompressible. Formalizing this capacity–difficulty tradeoff
+remains an important direction for future work.
+
+s1
+s2
+s3
+s4
+s5
+s0
+
+f1
+
+f2
+
+f3
+
+f4
+
+f 5 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+s0
+s1
+s2
+s3
+s4
+s5
+s0
+
+EoT ANS
+
+f1
+
+f2
+
+f3
+
+s0
+s1
+s2
+s3
+s4
+s5
+s0
+
+f1
+
+f2
+
+f3
+
+f4
+
+f 5 BoT
+
+1
+
+2
+
+3
+
+f 5 BoT
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+EoT ANS
+
+4
+
+5
+
+6
+
+EoT ANS
+
+(b) 5-hop, α = 0.2
+Intermediate Representation
+
+Intermediate Representation
+
+(a) 5-hop, α = 0
+
+f4
+
+4
+
+5
+
+6
+
+s0
+s1
+s2
+s3
+s4
+s5
+s0
+
+EoT ANS
+
+(c) 5-hop, α = 0.6
+
+f1
+
+f2
+
+f3
+
+f4
+
+f 5 BoT
+
+1
+
+2
+
+3
+
+(d) 5-hop, α = 1.0
+
+Figure 20: Transition point depends on FSC compressibility. Logit-lens visualizations for 5-hop
+FSC tasks with N = 50 states and K = 8 transition functions, varying the bijective fraction α. At
+the same horizon and model scale, CODI remains in a faithful step-by-step regime when α = 0.0,
+shifts to a late-bottleneck partial-rollout regime for intermediate α, and collapses in the fully bijective
+regime α = 1.0. Thus, the hop length alone does not determine the transition from faithful reasoning
+to partial or collapsed reasoning; the transition point also depends on task compressibility, with larger
+α reducing rank-contractive updates and making sustained state propagation harder.
+
+31
+
+O
+
+Compute Resources
+
+All experiments were run on single-GPU workers without distributed training. Most training runs
+used one NVIDIA A100-SXM4-80GB GPU. The A100-80GB was used primarily for availability
+rather than necessity: the models studied in this paper are small GPT-2-style transformers trained on
+synthetic sequential tasks, and each run used only a small fraction of the available GPU memory. A
+typical 3-layer, 2-head CODI model with six latent tokens completed training within a few hours on a
+single A100 GPU. Architecture, latent-step, and task-configuration sweeps were run as independent
+single-GPU jobs.
+The mechanistic analyses were substantially cheaper than training. Logit-lens decoding, attentionmap visualization, activation patching, state-swap interventions, and targeted attention knockouts
+were performed on trained checkpoints using forward passes over held-out examples. These analyses
+did not require distributed computation and used substantially less GPU memory than training; in
+practice, they can be reproduced on a single modern GPU. Linear probes were trained on frozen
+activations extracted from trained checkpoints and were also lightweight compared with model
+training.
+Overall, reproducing the main results does not require large-scale compute. Although our experiments
+were mostly executed on A100-SXM4-80GB GPUs, substantially smaller GPUs should be sufficient
+for the main training and interpretability experiments because the models are small and the peak
+memory footprint is far below 80GB.
+
+P
+
+Broad Impact
+
+Mechanistic interpretability aims to understand the computations implemented by deep learning
+systems by linking behavior to internal representations and circuits. Because latent chain-of-thought
+moves reasoning into hidden activations, mechanistic study can improve safety and reliability by
+revealing when models carry out faithful multi-step computation versus shortcut or compressiondriven strategies, and by informing the design of more predictable objectives. At the same time,
+such understanding could also enable more capable models by making internal computation more
+efficient, potentially amplifying broader societal issues associated with advanced AI systems; these
+issues are beyond the scope of this statement. Our experiments are conducted in a deliberately
+controlled synthetic setting (polynomial-iteration and FSC tasks over modular arithmetic) with
+randomly sampled inputs and ground-truth intermediate states; the data contain no real-world entities
+or personal information, and no human subjects are involved, so we do not anticipate privacy, consent,
+or representational harms originating from the dataset.
+
+32
+
+
