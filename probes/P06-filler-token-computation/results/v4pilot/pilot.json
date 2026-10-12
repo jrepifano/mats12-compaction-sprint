@@ -14,7 +14,7 @@
    10,
    3
   ],
-  "commit": "70af17d8b70cd5fd93e85cc63a47f271af2a3500",
+  "commit": "742a785e7cdb115ef8f03b3228dede7cc83b8d20",
   "cuda": "13.0",
   "deepgemm_loadable": true,
   "disable_deepgemm_linear": "1",
@@ -27,9 +27,9 @@
   "torch": "2.13.0",
   "transformers": "5.17.0",
   "triton": "3.7.1",
-  "utc": "2026-10-11T23:17:05Z"
+  "utc": "2026-10-12T00:27:03Z"
  },
- "error": "IncompleteSnapshotError: The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.",
+ "experts_implementation_final": "grouped_mm",
  "items": [
   "chain:k2:7",
   "chain:k2:11",
@@ -47,19 +47,115 @@
   "chain:k3:16",
   "chain:k3:47"
  ],
- "step": "load",
+ "lens_shapes": {
+  "jlens": {
+   "d_model": 4096,
+   "dtype": "torch.float16",
+   "map_shape": [
+    4096,
+    4096
+   ],
+   "matches_model": true,
+   "n_prompts": 25,
+   "n_source_layers": 42,
+   "provenance": "{'model_id': 'deepseek-ai/DeepSeek-V4-Flash', 'dataset_id': 'NeelNanda/pile-10k', 'target_layer': 41, 't_max': 128, 'n_prompts': 25, 'docs_consumed': 25, 'n_positions': 0.0, 'git_commit': 'modal', 'skip_first': 4, 'config_json': '{\"estimator\": \"standard\", \"arm\": \"std\"}', 'weighting': 'uniform', 'corpus_mode': 'pretrain', 'capture_point': 'block_output', 'stream_reduce': 'mean', 'stream_index': None, 'capture_point_derived_from': 'rlens global_workspace/relp_jlens/mhc_fit.py (reconstructed by convert-external-lens.py; the original fit did not record it)'}",
+   "weights_only": true
+  },
+  "jpp": {
+   "d_model": 4096,
+   "dtype": "torch.float16",
+   "map_shape": [
+    4096,
+    4096
+   ],
+   "matches_model": true,
+   "n_prompts": 64,
+   "n_source_layers": 42,
+   "provenance": "{'source': 'koayon/jpp-lenses@6c96867a91c43c14cec17cf0f6d157b933c5fee5:deepseek-v4-flash/lens.pt', 'method': 'jpp', 'lrp_mode': 'all-c4+mhc', 'source_config': {'hf_model_name': 'deepseek-ai/DeepSeek-V4-Flash', 'checkpoint_name': 'multi_model_jpp/jpp_deepseek_v4_flash_c4_fold0', 'lens_type': 'jacobian', 'checkpoint_every_n_prompts': 4, 'creation_time': '2026-09-19_07-39-07', 'artifacts_base_dir': 'artifacts', 'checkpoint_path': 'artifacts/2026-09-19/multi_model_jpp/jpp_deepseek_v4_flash_c4_fold0', 'source_layers': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22",
+   "weights_only": true
+  }
+ },
+ "load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "experts_implementation": "grouped_mm",
+  "int_ids": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   553,
+   779,
+   736,
+   907,
+   929,
+   856,
+   926,
+   1002,
+   864,
+   511,
+   397
+  ],
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.82,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "vocab": 129280
+ },
+ "mem_peak_prompts_gb": 170.27,
+ "smoke": {
+  "attempts": [
+   {
+    "fixes": [],
+    "fwd_top1": 11,
+    "gen_first_eq_fwd": true,
+    "gen_ids": [
+     11,
+     304
+    ],
+    "ok": true
+   }
+  ],
+  "fixes_applied": [],
+  "result": {
+   "fwd_top1": 11,
+   "gen_first_eq_fwd": true,
+   "gen_ids": [
+    11,
+    304
+   ]
+  }
+ },
  "summary": {
   "complete": true,
   "gate1_lens_vs_model": {
-   "final_position_agree": 0,
-   "gen_first_eq_fwd": 0,
-   "max_logit_diff": null,
+   "final_position_agree": 45,
+   "gen_first_eq_fwd": 45,
+   "max_logit_diff": 1.0,
    "min": 0.99,
-   "n_prompts": 0,
-   "pass": false,
-   "rate": null,
-   "read_agree": 0,
-   "read_n": 0
+   "n_prompts": 45,
+   "pass": true,
+   "rate": 0.999943829691625,
+   "read_agree": 17802,
+   "read_n": 17803
   },
   "gate2_accuracy": {
    "base": {
@@ -67,18 +163,18 @@
     "by_k": {
      "2": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.5,
+      "n": 10
      },
      "3": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.0,
+      "n": 5
      }
     },
-    "local_acc": null,
+    "local_acc": 0.3333333333333333,
     "local_eq_api_draw0": 0,
-    "n": 0,
+    "n": 15,
     "n_with_api": 0
    },
    "dots500": {
@@ -86,18 +182,18 @@
     "by_k": {
      "2": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.6,
+      "n": 10
      },
      "3": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.0,
+      "n": 5
      }
     },
-    "local_acc": null,
+    "local_acc": 0.4,
     "local_eq_api_draw0": 0,
-    "n": 0,
+    "n": 15,
     "n_with_api": 0
    },
    "pre500": {
@@ -105,64 +201,73 @@
     "by_k": {
      "2": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.4,
+      "n": 10
      },
      "3": {
       "api_acc": null,
-      "local_acc": null,
-      "n": 0
+      "local_acc": 0.0,
+      "n": 5
      }
     },
-    "local_acc": null,
+    "local_acc": 0.26666666666666666,
     "local_eq_api_draw0": 0,
-    "n": 0,
+    "n": 15,
     "n_with_api": 0
    },
    "uplift_dots500_minus_pre500_api_acc": null,
-   "uplift_dots500_minus_pre500_local_acc": null
+   "uplift_dots500_minus_pre500_local_acc": 0.13333333333333336
   },
   "gate3_timing": {
    "batched_generate": false,
    "gen_only_mean_s": {
     "base": null,
-    "dots500": null,
-    "pre500": null
+    "dots500": 2.39599,
+    "pre500": 2.45063
    },
    "per_prompt_mean_s": {
     "base": {
-     "fwd_s": null,
-     "gen_s": null,
-     "read_s": null,
-     "write_s": null
+     "fwd_s": 0.36819999999999997,
+     "gen_s": 5.267933333333334,
+     "read_s": 0.02033333333333333,
+     "write_s": 0.008666666666666666
     },
     "dots500": {
-     "fwd_s": null,
-     "gen_s": null,
-     "read_s": null,
-     "write_s": null
+     "fwd_s": 2.0931333333333333,
+     "gen_s": 14.578733333333332,
+     "read_s": 0.08879999999999999,
+     "write_s": 0.054066666666666666
     },
     "pre500": {
-     "fwd_s": null,
-     "gen_s": null,
-     "read_s": null,
-     "write_s": null
+     "fwd_s": 2.1381333333333337,
+     "gen_s": 2.4636666666666667,
+     "read_s": 0.10733333333333332,
+     "write_s": 0.061066666666666665
     }
    },
    "per_prompt_total_s": {
-    "base": null,
-    "dots500": null,
-    "pre500": null
+    "base": 5.665133333333333,
+    "dots500": 16.814733333333333,
+    "pre500": 4.7702
    },
    "projection": {
+    "bulk_h": 4.986,
     "bulk_items": 200,
     "bulk_transplants": 200,
-    "transplant_cost": "2 dots500 forwards + 4 decodes"
+    "item_s": 27.25,
+    "setup_h": 0.218,
+    "total_h_excl_boot_and_venv": 5.204,
+    "transplant_cost": "2 dots500 forwards + 4 decodes",
+    "transplant_s": 62.5,
+    "usd": {
+     "B300 community": 36.12,
+     "B300 secure": 46.79
+    }
    },
    "setup_s": {
-    "download": 512.66,
-    "load": null,
-    "smoke": null
+    "download": 507.93,
+    "load": 41.47,
+    "smoke": 235.7
    }
   },
   "local_uplift": {
@@ -187,8 +292,8 @@
    },
    "k": 2,
    "n_paired": 0,
-   "n_planned": 0,
-   "n_rows": 0,
+   "n_planned": 200,
+   "n_rows": 200,
    "pass": false,
    "per_arm": {
     "base": {
@@ -200,24 +305,30 @@
     },
     "dots500": {
      "api_acc": null,
-     "local_acc": null,
+     "local_acc": 0.51,
      "local_eq_api_draw0": 0,
-     "n": 0,
+     "n": 100,
      "n_with_api": 0
     },
     "pre500": {
      "api_acc": null,
-     "local_acc": null,
+     "local_acc": 0.27,
      "local_eq_api_draw0": 0,
-     "n": 0,
+     "n": 100,
      "n_with_api": 0
     }
    },
    "rule": "local lo > 0 and local mean >= 0.5 x API mean (same items)"
   },
-  "n_prompts_done": 0,
-  "n_prompts_planned": 0
+  "n_prompts_done": 45,
+  "n_prompts_planned": 45
  },
- "utc_end": "2026-10-11T23:17:11Z",
- "utc_start": "2026-10-11T23:17:09Z"
+ "uplift_plan": {
+  "base_projected_s": 526.8,
+  "include_base": false,
+  "n_items": 100,
+  "n_planned": 200
+ },
+ "utc_end": "2026-10-12T00:46:44Z",
+ "utc_start": "2026-10-12T00:27:07Z"
 }
