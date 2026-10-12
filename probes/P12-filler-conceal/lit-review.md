@@ -1,6 +1,6 @@
 # P12 literature review: prompted concealment of filler computation
 
-Written 2026-10-12 by the P12 literature sub-agent, while the build ran. Captures are in `papers/interp_methods/` (INDEX rows 88–94, row 35 updated) and `papers/neel_brainstorm/` (row 74). Quotes are verbatim from the `pdftotext` extractions; *Inference* marks our own reading.
+Written 2026-10-12 by the P12 literature sub-agent, while the build ran. Captures are in `papers/interp_methods/` (INDEX rows 91–97, row 35 updated) and `papers/neel_brainstorm/` (row 74). Quotes are verbatim from the `pdftotext` extractions; *Inference* marks our own reading.
 
 **Question checked:** has anyone tested whether an *instruction alone* (no fine-tuning, no optimisation against the reader) can hide or plant a *task-necessary* intermediate value in no-CoT or filler computation, as read by a logit lens, tuned lens, J-Lens or probe? **No.** The closest work, listed below, uses concepts the task doesn't need, fine-tuning, or prompts optimised against the auditor.
 
@@ -20,7 +20,7 @@ Written 2026-10-12 by the P12 literature sub-agent, while the build ran. Capture
 
 **Jose, Warncke & Taylor 2026 (ICLR; interp row 35).** Still MISSING: OpenReview is blocked and no arXiv version exists. Only the abstract was read, as a fetch summary. It covers verbalised alignment faking in Claude 3.5 Sonnet's CoT, not activations. One relevant line: intrinsic motivation to obfuscate evades a CoT monitor better than an instruction to hide.
 
-**Xu & Wu 2026, *Attacking the Oversight, Not the Mission*: NOT FOUND.** Exact-title web and arXiv-API searches on 2026-10-12 returned nothing (interp row 94). Don't cite it until it is located. The plan's "priors from Neural Chameleons and Xu & Wu" should rest on Neural Chameleons and Keenan et al. instead.
+**Xu & Wu 2026, *Attacking the Oversight, Not the Mission*: NOT FOUND.** Exact-title web and arXiv-API searches on 2026-10-12 returned nothing (interp row 97). Don't cite it until it is located. The plan's "priors from Neural Chameleons and Xu & Wu" should rest on Neural Chameleons and Keenan et al. instead.
 
 ## Gap / what remains new
 

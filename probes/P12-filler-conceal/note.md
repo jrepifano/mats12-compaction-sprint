@@ -103,7 +103,7 @@ In item 122 the CD reply is the decoy itself (the post-hoc count in F2). In samp
 | "P06's reader layers" | All 43 layers × 100 dots, for all three readers | P06 F8 stored all 43 |
 | Decoy contrast D − M | Also D − P (logged before data) | A side-agent note: M's "unrelated, not needed" might suppress d. It does not suppress d below the unmentioned baseline (M ≥ P) |
 | One launch | Three: an abort ($0.24; the analysis sub-agent's uncommitted files blocked the push) and an immediate failure ($0.30; P06's package was not sent to the pod) | Fixed: sub-agent moved to scratch; `[pod].push` gained `probes/P06-filler-token-computation/p06`, with a regression test and a simulated pod file set |
-| Plan cites Xu & Wu 2026 | Not cited | Not found by any search (lit-review.md; interp row 94) |
+| Plan cites Xu & Wu 2026 | Not cited | Not found by any search (lit-review.md; interp row 97) |
 | `gpu_hours = 1.5` | 2.0 | A slow-host download took 45 min in P06 F7. Billed 1.08 h |
 
 ## Spend and wall-clock
@@ -156,16 +156,16 @@ It also found the prediction chronology consistent with the commits. No number c
 Kaley Brauer, Claudio Mayrink Verdun, Samuel Marks, "Reading Between the Dots: Decoding Hidden Computation across Filler Tokens", arXiv 2607.03502 (2026); code at github.com/kaleybrauer/filler-token-reasoning @ a701927. `papers/neel_brainstorm/INDEX.md` row 69.
 
 #### Lindsey 2026
-Jack Lindsey, "Emergent Introspective Awareness in Large Language Models", arXiv 2601.01828 (2026). `papers/interp_methods/INDEX.md` row 88 (read in full by the literature sub-agent; §8 on intentional control).
+Jack Lindsey, "Emergent Introspective Awareness in Large Language Models", arXiv 2601.01828 (2026). `papers/interp_methods/INDEX.md` row 91 (read in full by the literature sub-agent; §8 on intentional control).
 
 #### McGuinness, Serrano, Bailey and Emmons 2025
-"Neural Chameleons: Language Models Can Learn to Hide Their Thoughts from Unseen Activation Monitors", arXiv 2512.11949. `papers/interp_methods/INDEX.md` row 89 (main text and App. A–D read).
+"Neural Chameleons: Language Models Can Learn to Hide Their Thoughts from Unseen Activation Monitors", arXiv 2512.11949. `papers/interp_methods/INDEX.md` row 92 (main text and App. A–D read).
 
 #### Keenan, Leckie and Erfani 2026
-Hugo Lyons Keenan, Christopher Leckie, Sarah Erfani, "LLMs Learn to Evade Latent Monitors from Prior Feedback Alone", arXiv 2609.36490. `papers/interp_methods/INDEX.md` row 90 (main text and App. E.4 read).
+Hugo Lyons Keenan, Christopher Leckie, Sarah Erfani, "LLMs Learn to Evade Latent Monitors from Prior Feedback Alone", arXiv 2609.36490. `papers/interp_methods/INDEX.md` row 93 (main text and App. E.4 read).
 
 #### Kowalski et al. 2026
 Kowalski, Fonseca Rivera, Macar, Africa, "Measuring Activation Control in LLMs" (LessWrong, 2026). `papers/interp_methods/INDEX.md` row 24 (verbatim post text).
 
 #### Das et al. 2026
-"You Can't Escape Your Own Activations: Evaluation Awareness and Multi-Agent Monitoring", arXiv 2609.03035. `papers/interp_methods/INDEX.md` row 93 (abstract, §1 and results read).
+"You Can't Escape Your Own Activations: Evaluation Awareness and Multi-Agent Monitoring", arXiv 2609.03035. `papers/interp_methods/INDEX.md` row 96 (abstract, §1 and results read).
