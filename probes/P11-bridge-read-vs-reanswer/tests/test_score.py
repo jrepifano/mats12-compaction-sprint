@@ -613,9 +613,22 @@ def test_raw_samples_seeded_and_complete(tmp_path, items):
     assert md.count("\n### A-") == N  # 6 random items (all of them here)
     assert "Answer, patched author: 'French' (flip)" in md
     assert "Prompt-only sample: (absent)" in md
+    assert "Self-report (state): (absent)" in md
     assert "patched_author cells naming Y (of 4)" in md
     assert "plain cells naming Qwen's bridge (of 6)" in md  # 3 items x 2 draws
     assert R.main(res, ip) == 0 and (res / "raw_samples.md").exists()
+    write_jsonl(
+        res / "selfreport" / "selfreport.jsonl",
+        [
+            {"id": it.id, "kind": k, "arm": a, "greedy": f"{a} {k}", "samples": ["s1", "s2"]}
+            for it in items
+            for k in ("hop1", "state")
+            for a in ("plain", "patched_author")
+        ],
+    )
+    md2 = R.render(res, ip)
+    assert "Self-report (hop1), greedy: plain: 'plain hop1'; patched: 'patched_author hop1'" in md2
+    assert md2.count("a patched sample: 's") == 2 * N
 
 
 def test_raw_samples_without_results(tmp_path, items):

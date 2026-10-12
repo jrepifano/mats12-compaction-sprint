@@ -8,7 +8,9 @@ Seed 0 (``random.Random(0)``, one generator for the whole file, consumed in a fi
    answer; its greedy answers under plain, patched author and patched mention (at the sweep's
    ``chosen_lp``); one random lens cell from each of the plain, patched_author and
    patched_mention arms (layer, position, draw, text cut to 400 characters); one random
-   prompt-only sample if that file exists.
+   prompt-only sample if that file exists; Qwen's self-reports (follow-up F5) for each prompt
+   kind: the greedy answer under plain and patched author, and one random sample under patched
+   author, if ``results/selfreport/selfreport.jsonl`` exists.
 2. What a hit looks like: 4 random cells among the patched_author cells that name Y, and 4 among
    the plain cells that name Qwen's bridge (matching as in ``p11.score``).
 
@@ -62,6 +64,10 @@ def render(results: Path = S.RESULTS, items_path: Path = I.ITEMS_PATH, seed: int
     po: dict[str, list[dict]] = defaultdict(list)
     for r in C.read_jsonl(results / "prompt_only.jsonl"):
         po[r["id"]].append(r)
+    sr = {
+        (r["id"], r["kind"], r["arm"]): r
+        for r in C.read_jsonl(results / "selfreport" / "selfreport.jsonl")
+    }
 
     out = [
         f"# P11 raw samples (seed {seed}, `p11/raw_samples.py`)\n",
@@ -98,6 +104,20 @@ def render(results: Path = S.RESULTS, items_path: Path = I.ITEMS_PATH, seed: int
                 else "(absent)"
             )
         )
+        for kind in ("hop1", "state"):
+            pl, pa = sr.get((i, kind, "plain")), sr.get((i, kind, "patched_author"))
+            if pl is None and pa is None:
+                out.append(f"- Self-report ({kind}): (absent)")
+                continue
+            g = [
+                f"{a}: {_clip(r['greedy'], 120)!r}"
+                for a, r in (("plain", pl), ("patched", pa))
+                if r
+            ]
+            line = f"- Self-report ({kind}), greedy: " + "; ".join(g)
+            if pa and pa.get("samples"):
+                line += f"; a patched sample: {_clip(rng.choice(pa['samples']), 120)!r}"
+            out.append(line)
         out.append("")
 
     out.append("## What a hit looks like (random among hits)\n")
