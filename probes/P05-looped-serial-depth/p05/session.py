@@ -197,7 +197,9 @@ class Session:
                     out_rows.append({"model": key, "seed": seed, "bank": e["bank"], "fmt": fmt,
                                      "item_id": e["item_id"], "k": e["k"], "r": r,
                                      "correct": preds[j] == b.gold[j], "pred": preds[j],
-                                     "gold": b.gold[j]})
+                                     "gold": b.gold[j],
+                                     "dstate": (round(so.dstate[r][j], 6) if r in so.dstate
+                                                else None)})
             if so.cand is not None:
                 loops, lenses = so.readout_loops, so.lenses
                 for j, i in enumerate(idx):

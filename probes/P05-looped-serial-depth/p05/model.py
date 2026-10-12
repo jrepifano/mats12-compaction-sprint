@@ -112,6 +112,9 @@ class SweepOut:
     cand: torch.Tensor | None          # [B, T, L, 20] float32 on CPU
     readout_loops: list[int]
     lenses: list[str]
+    # Raven only, per checkpoint t: ||s_t - s_{t-1}|| / ||s_t|| at each row's first score
+    # position (convergence to a fixed point; lit review, Blayney et al. 2026)
+    dstate: dict[int, list[float]] = field(default_factory=dict)
 
 
 @torch.no_grad()
@@ -143,8 +146,16 @@ def raven_sweep(model, batch: Batch, checkpoints: tuple[int, ...], seed: int, ca
         x = init_states(model, batch.item_ids, s, seed, dev, emb.dtype)
         rpos = [[batch.readout_pos[i]] for i in ro_rows]
 
+        p0 = torch.tensor([sp[0] for sp in batch.score_pos], device=dev)
+        rows_t = torch.arange(b, device=dev)
+        dstate: dict[int, list[float]] = {}
         for t in range(1, t_max + 1):
+            x_prev = x[rows_t, p0]
             x, block_idx = model.core_block_forward(x, emb, freqs, None, None, block_idx, t - 1)
+            if t in checkpoints:
+                cur = x[rows_t, p0].float()
+                dstate[t] = ((cur - x_prev.float()).norm(dim=-1)
+                             / cur.norm(dim=-1).clamp_min(1e-12)).cpu().tolist()
             if t in checkpoints:
                 h = _gather(coda_head_rows(model, x, freqs), batch.score_pos)
                 am = model.lm_head(h).float().argmax(-1).cpu().tolist()
@@ -157,7 +168,7 @@ def raven_sweep(model, batch: Batch, checkpoints: tuple[int, ...], seed: int, ca
                 for li, hh in enumerate((hc, hl)):
                     lg = model.lm_head(hh).float()[:, cand_t].cpu()
                     cand[ro_rows, ti, li] = lg
-    return SweepOut(pred, cand if readout_loops else None, list(readout_loops), lenses)
+    return SweepOut(pred, cand if readout_loops else None, list(readout_loops), lenses, dstate)
 
 
 def coda_head_rows(model, h: torch.Tensor, freqs) -> torch.Tensor:
