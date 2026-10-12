@@ -1,0 +1,31 @@
+# P16 filler self-report, merged with P13 (plan.md). One B300 pod through the generic probe
+# runner (P06 F8's V4 Flash path, P12's arms). Starting cap $75 (GPU $50, API $25: the API pilot,
+# the Brauer-judge monitors and literature captures). Follow-ups may raise it to $150 without
+# asking (record the reason in log.md).
+id = "P16"
+hard_cap_usd = 75
+gpu_limit_usd = 50
+api_limit_usd = 25
+reserve_usd = 0
+
+[pod]
+# Projected (plan.md "Cap"): download ~8.6 min (up to ~45 on a slow host, P06 F7), load and
+# compile ~6, gates ~5, bulk ~2.3 h (400 items x (7 filler arms x ~2.9 s + F + P re-read)),
+# phase 4 and pull ~15 min. Budget (4.0 + 0.5) x $8.99 = $40.5.
+gpu_hours = 4.0
+# "i1a": /ws/venv-i1a (transformers 5.17.0, torch 2.13.0 cu130); run.sh adds kernels==0.16.2 as P06.
+setup = "i1a"
+disk_gb = 300
+# P06 F7: one Blackwell GPU holds the 160 GB checkpoint. Rates from RunPod, 2026-10-11.
+gpus = [["NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94], ["NVIDIA B300 SXM6 AC", "SECURE", 8.99],
+        ["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]
+# third_party/workspace-bench: the pod-i1a group installs it from this path (as P06, P12);
+# Brauer's depth-1 set (gitignored, sha256 c80f0f5e...); the p06 and p12 code packages, P12's
+# items and its turn-1 answers (the smoke compares P's turn 1 with them). The runner sends only
+# src/, scripts/ and this probe's directory.
+push = ["third_party/workspace-bench", "data/P06/chained_var_binding_dataset.json",
+        "probes/P06-filler-token-computation/p06", "probes/P12-filler-conceal/p12",
+        "probes/P12-filler-conceal/data/items.json",
+        "probes/P12-filler-conceal/results/answers.jsonl"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
