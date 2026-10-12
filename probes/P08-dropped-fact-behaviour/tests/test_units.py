@@ -3,7 +3,6 @@ Docker)."""
 from __future__ import annotations
 
 import pytest
-
 from p08 import cells, compact, contexts, measures
 from p08 import contracts as C
 

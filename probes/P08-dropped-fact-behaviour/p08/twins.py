@@ -35,7 +35,7 @@ from p08 import api
 from p08 import contracts as C
 
 MAX_TOKENS = 8000
-ATTEMPTS = 2                 # one regeneration at most
+ATTEMPTS = 1                 # one luna deletion; then the code pass (log.md, 2026-10-12 02:15)
 FEEDBACK_BOUND_BYTES = 2500  # the retry's feedback paragraph, bounded (hits/tokens truncated)
 _FB_ITEMS, _FB_CHARS = 10, 80
 
@@ -115,7 +115,8 @@ def make_full(summary: str, ctx: dict, header: str) -> tuple[str, list[str]]:
 
 
 # --- the gate (code) ----------------------------------------------------------------------------
-_TOKEN = re.compile(r"\S+")
+_TOKEN = re.compile(r"\w+|[^\w\s]")   # words and single punctuation marks: deleting a
+# parenthetical joins "f" and "." into "f.", which is still a deletion (log.md 02:15)
 _NONWS = re.compile(r"\s+")
 
 
@@ -261,6 +262,44 @@ def strip_wrapping(text: str) -> str:
     return text or ""
 
 
+# --- the code pass ------------------------------------------------------------------------------
+# Added 2026-10-12 (log.md 02:15), after luna's deletions left regex hits in 40 of 84 twins:
+# GLM's pi-mono summaries repeat both facts in the goal, the decisions and the next steps. The
+# code pass deletes, from luna's output (or from Full when luna added text), every parenthetical
+# and then every sentence that still holds a hit, and a line when nothing of it is left. It only
+# deletes, so the twin stays a subsequence of Full; the gate still checks everything.
+_LIST_PREFIX = re.compile(r"^(\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?)")
+_SENT_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9`*(\[\"'_])")
+_PAREN = re.compile(r"\s*\([^()]*\)")
+
+
+def _drop_hits(sentence: str, hits) -> str:
+    """The sentence with each hit-bearing parenthetical removed, or "" if a hit remains."""
+    if not hits(sentence):
+        return sentence
+    out = _PAREN.sub(lambda m: "" if hits(m.group(0)) else m.group(0), sentence)
+    return "" if hits(out) else out
+
+
+def code_delete(text: str, fact: str, error_line: str | None = None) -> str:
+    """Delete every parenthetical, sentence or line of `text` that states `fact` (by the
+    contracts regexes). Headings are kept."""
+    def hits(t: str) -> list[str]:
+        return _fact_hits(fact, t, error_line)
+
+    out = []
+    for line in text.split("\n"):
+        if not line.strip() or _HEADING_RE.match(line) or not hits(line):
+            out.append(line)
+            continue
+        m = _LIST_PREFIX.match(line)
+        prefix, body = (m.group(1), line[m.end():]) if m else ("", line)
+        kept = [x for x in (_drop_hits(snt, hits) for snt in _SENT_SPLIT.split(body)) if x.strip()]
+        if kept:
+            out.append(prefix + " ".join(kept))
+    return "\n".join(out)
+
+
 # --- one context --------------------------------------------------------------------------------
 def _call_record(fact: str, attempt: int, r: api.Reply) -> dict:
     return {"fact": fact, "attempt": attempt, "usage": r.usage, "billed_usd": r.billed_usd,
@@ -268,11 +307,17 @@ def _call_record(fact: str, attempt: int, r: api.Reply) -> dict:
             "error": r.error}
 
 
+# Luna is off (log.md, 2026-10-12 02:30): its deletions also removed unrelated content (in one
+# -C twin, the problem's input bounds under "Constraints & Preferences"), which breaks the
+# minimal-edit twin; the code pass alone is deterministic and deletes only what states the fact.
+USE_LUNA = False
+
+
 async def _one_twin(full: str, fact: str, error_line: str | None, chat) -> tuple:
     """(twin text or None, gate dict with "attempts", call records, all attempts API errors)."""
     calls, text, g, fb = [], None, None, None
     errors = 0
-    for k in range(1, ATTEMPTS + 1):
+    for k in range(1, (ATTEMPTS if USE_LUNA else 0) + 1):
         r = await chat(C.DELETER, deletion_request(full, fact, fb), max_tokens=MAX_TOKENS,
                        temperature=0)
         calls.append(_call_record(fact, k, r))
@@ -285,10 +330,15 @@ async def _one_twin(full: str, fact: str, error_line: str | None, chat) -> tuple
         if g["ok"]:
             break
         fb = feedback_for(g, fact)
-    if g is None:
-        g = {"ok": False, "hits": [], "removed_fraction": 0.0, "added": False,
-             "added_tokens": [], "keeps_other": False}
-    return text, {**g, "attempts": len(calls)}, calls, errors == len(calls)
+    method = "luna"
+    if g is None or not g["ok"]:
+        # the code pass: on luna's text when it only deleted, else on Full
+        base = text if g is not None and not g["added"] else full
+        method = "luna+code" if base is text else "code"
+        text = code_delete(base, fact, error_line)
+        g = gate(full, text, fact, error_line)
+    return (text, {**g, "attempts": len(calls), "method": method}, calls,
+            bool(calls) and errors == len(calls))
 
 
 def twin_names(header: str) -> list[str]:

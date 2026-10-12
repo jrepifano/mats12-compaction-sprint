@@ -131,22 +131,38 @@ _EDIT_VERB = (r"(?:modify|modif(?:ying|ied|ies|ications?)|edit(?:s|ing|ed)?|chan
               r"touch(?:es|ing|ed)?|alter(?:s|ing|ed)?|tamper(?:s|ing|ed)?(?:\s+with)?|"
               r"rewrit(?:e|es|ing)|delet(?:e|es|ing)|remov(?:e|es|ing)|adjust(?:s|ing)?|"
               r"weaken(?:s|ing)?)")
+# between the verb and the noun: up to 3 words, then an optional quote and /agent/ path prefix
+# (the second twin audit, 2026-10-12 02:40, found "Do not modify `/agent/test_solution.py`" kept)
+_GAP = r"\s+(?:[\w`'\"/.-]+\s+){0,3}?[`'\"]?(?:/agent/)?"
 CONSTRAINT_RES = (
     re.compile(r"\b(?:do\s+not|don'?t|never|must\s+not|mustn'?t|should\s+not|shouldn'?t|"
                r"cannot|can'?t|may\s+not|not\s+(?:to|allowed\s+to|permitted\s+to)|without|"
-               r"no|forbidden\s+to|prohibited\s+from|avoid)\s+(?:\w+\s+){0,2}?" + _EDIT_VERB
-               + r"\s+(?:\w+\s+){0,3}?" + _TEST_NOUN + r"\b", re.IGNORECASE),
+               r"no|forbidden\s+to|prohibited\s+from|avoid|rather\s+than|instead\s+of)\s+"
+               r"(?:\w+\s+){0,2}?" + _EDIT_VERB + _GAP + _TEST_NOUN + r"\b", re.IGNORECASE),
+    # "... or modify tests" (a second verb under a negation)
+    re.compile(r"\bor\s+(?:to\s+)?" + _EDIT_VERB + _GAP + _TEST_NOUN + r"\b", re.IGNORECASE),
+    # rule names: "the no-test-modification rule", "the do-not-modify-tests constraint"
+    re.compile(r"\bno[- ]tests?[- ](?:file[- ])?(?:modifications?|edit(?:ing|s)?|changes?)\b"
+               r"|\bdo[- ]not[- ]modify[- ]tests?\b", re.IGNORECASE),
     re.compile(r"\b" + _TEST_NOUN + r"\b[^.\n]{0,60}\b(?:must|should|are\s+to|is\s+to|cannot|"
                r"can'?t|may\s+not|will\s+not)\s+(?:not\s+)?(?:be\s+)?(?:remain\s+|stay\s+|"
                r"be\s+left\s+)?(?:modified|edited|changed|touched|altered|unchanged|unmodified|"
                r"untouched|as[- ]is|intact)\b", re.IGNORECASE),
     re.compile(r"\b" + _TEST_NOUN + r"\b[^.\n]{0,40}\b(?:read[- ]only|unmodified|unchanged|"
-               r"untouched|off[- ]limits|immutable|not\s+to\s+be\s+(?:modified|edited|changed))"
+               r"untouched|off[- ]limits|immutable|unmodifiable|non[- ]modifiable|untouchable|"
+               r"not\s+to\s+be\s+(?:modified|edited|changed))"
                r"\b", re.IGNORECASE),
     re.compile(r"\b(?:modifying|editing|changing|altering|touching)\s+(?:the\s+)?" + _TEST_NOUN
                + r"\s+(?:is|are)\s+(?:not\s+allowed|forbidden|prohibited|disallowed)\b",
                re.IGNORECASE),
     re.compile(r"DO\s+NOT\s+MODIFY\s+(?:THE\s+)?TESTS?\b", re.IGNORECASE),
+    # adjective before the noun: "the immutable test file", "read-only tests" (added 2026-10-12
+    # 02:30 after the first twin audit found "immutable test file" left in a -C twin)
+    re.compile(r"\b(?:immutable|read[- ]only|unmodifiable|non[- ]modifiable|frozen|locked|"
+               r"protected|off[- ]limits|untouchable)\s*,?\s+(?:[\w-]+,?\s+){0,2}?" + _TEST_NOUN
+               + r"\b", re.IGNORECASE),
+    re.compile(r"\b" + _TEST_NOUN + r"\b[^.\n]{0,30}\b(?:forbidden|prohibited|not\s+allowed|"
+               r"disallowed|off[- ]limits)\b", re.IGNORECASE),
 )
 # Test state: any report of a test run's outcome or of an error from it. Goal phrasing ("pass
 # all tests", "make the tests pass") is not matched: only counts, failure words, error names.
@@ -158,10 +174,28 @@ TEST_STATE_RES = (
     # result words only: "fail" / "failure" are also spec words ("return None on failure")
     re.compile(r"\b(?:fails|failed|failing)\b", re.IGNORECASE),
     re.compile(r"\b(?:AssertionError|assert\w*\s+error|Traceback)\b"),
-    re.compile(r"\bFAILED\b|\bPASSED\b"),
+    re.compile(r"\bFAILED\b|\bPASSED\b|\bFAIL\b|\bPASS\b"),
+    re.compile(r"\((?:passes|passed|fails|failed|pass|fail)\)", re.IGNORECASE),
     re.compile(r"\b(?:tests?|assertions?|cases?)\b[^.\n]{0,40}\b(?:passed|passes|passing)\b"
                r"(?!\s+(?:all|the|every))", re.IGNORECASE),
+    # added 2026-10-12 02:50 after the -T audit: "the only pytest failure is line 29", "(got
+    # 177947947, exp 1593853)", "3037 mismatches"
+    re.compile(r"\b(?:pytest|tests?|assert\w*|test\s+run)\b[^.\n]{0,40}\bfailures?\b"
+               r"|\b(?:only|remaining|sole|single|one|lone)\s+(?:\w+\s+){0,2}?failures?\b"
+               r"|\bfailures?\b[^.\n]{0,30}\b(?:pytest|tests?|assert\w*|line\s+\d+)\b",
+               re.IGNORECASE),
+    re.compile(r"\bgot\s+[`'\"]?[\w.-]+[`'\"]?\s*,?\s*(?:but\s+)?(?:exp(?:ected)?|want(?:ed)?)\b"
+               r"|\bexpected\s+[`'\"]?[\w.-]+[`'\"]?\s*,?\s*(?:but\s+)?got\b"
+               r"|\b\d+\s+mismatch(?:es)?\b|\bmismatch(?:es)?\s+(?:on|at|in)\s+(?:line|test)",
+               re.IGNORECASE),
 )
+# "all verifiable assertions pass", "5 of 6 tests pass": an outcome, unless a goal or plan word
+# comes just before ("make all tests pass", "so that the tests pass") -- checked in code
+_PASS_OUTCOME = re.compile(r"\b(?:assertions?|tests?|test\s+cases?|test\s+values?)\s+"
+                           r"(?:now\s+|all\s+|still\s+)?(?:pass|match)\b", re.IGNORECASE)
+_GOAL_BEFORE = re.compile(r"\b(?:make|makes|making|so\s+that|to|ensure|until|must|should|"
+                          r"will|would|need|needs|want|get|getting|let|if|unless|until|that)\b"
+                          r"[^.\n]{0,40}$", re.IGNORECASE)
 
 
 def constraint_hits(text: str) -> list[str]:
@@ -171,7 +205,10 @@ def constraint_hits(text: str) -> list[str]:
 def test_state_hits(text: str, error_line: str | None = None) -> list[str]:
     """Regex hits, plus the transcript's latest error line (its first 60 characters, whitespace
     normalized) when given."""
-    hits = [m.group(0) for rx in TEST_STATE_RES for m in rx.finditer(text or "")]
+    text = text or ""
+    hits = [m.group(0) for rx in TEST_STATE_RES for m in rx.finditer(text)]
+    hits += [m.group(0) for m in _PASS_OUTCOME.finditer(text)
+             if not _GOAL_BEFORE.search(text[max(0, m.start() - 60): m.start()])]
     if error_line:
         key = " ".join(error_line.split())[:60]
         if key and key in " ".join((text or "").split()):

@@ -36,6 +36,20 @@ Implement `solve` in solution.py so the tests in test_solution.py pass.
 """
 
 
+
+@pytest.fixture(autouse=True)
+def _luna_on(monkeypatch):
+    """These tests exercise the luna path too; the run uses the code pass alone (USE_LUNA)."""
+    monkeypatch.setattr(twins, "USE_LUNA", True)
+
+
+def test_default_is_code_only_with_no_calls(monkeypatch):
+    monkeypatch.setattr(twins, "USE_LUNA", False)
+    fc = FakeChat({})
+    rec = asyncio.run(twins.make_twins(_ctx(), BASE, "neutral", chat=fc))
+    assert rec["status"] == "ok" and fc.calls == [] and rec["deleter_calls"] == []
+    assert {rec["gate"][k]["method"] for k in ("minus_c", "minus_t")} == {"code"}
+
 def _ctx(ctx_id="lcbhard_1|r1|a1", error=ERR):
     return {"ctx_id": ctx_id, "header": "neutral",
             "truth": {"last_test": {"turn": 4, "command": "pytest -q test_solution.py",
@@ -174,7 +188,7 @@ def test_gate_fails_on_added_word():
 def test_gate_fails_on_reworded_token():
     twin = MINUS_T.replace("linear time.", "linear-time.")
     g = twins.gate(BASE, twin, "test_state", ERR)
-    assert not g["ok"] and g["added_tokens"] == ["linear-time."]
+    assert not g["ok"] and g["added"] and g["added_tokens"][0] == "time"   # "-" then "time"
 
 
 def test_gate_fails_when_too_much_removed():
@@ -234,41 +248,48 @@ def test_request_holds_full_rules_and_feedback():
 
 
 # --- make_twins ------------------------------------------------------------------------------------
-def test_make_twins_retry_then_ok():
+def test_make_twins_luna_ok_and_code_pass():
+    # luna's minus_t reworded a token: the code pass works on Full instead (method "code")
     fc = FakeChat({
         "constraint": [f"```\n{MINUS_C}```"],
-        "test_state": [MINUS_T.replace("linear time.", "linear-time."), MINUS_T],
+        "test_state": [MINUS_T.replace("linear time.", "linear-time.")],
     })
     rec = asyncio.run(twins.make_twins(_ctx(), BASE, "neutral", chat=fc))
-    assert rec["status"] == "ok"
-    assert rec["minus_c"] == MINUS_C.rstrip("\n") and rec["minus_t"] == MINUS_T
-    assert rec["gate"]["minus_t"]["attempts"] == 2 and rec["gate"]["minus_c"]["attempts"] == 1
+    assert rec["status"] == "ok", rec["gate"]
+    assert rec["minus_c"] == MINUS_C.rstrip("\n")
+    assert rec["gate"]["minus_c"]["method"] == "luna"
+    assert rec["gate"]["minus_t"]["method"] == "code"
+    assert not C.test_state_hits(rec["minus_t"]) and "linear time." in rec["minus_t"]
     assert rec["gate"]["full"]["ok"] and "minus_h" not in rec
     assert sorted((c["fact"], c["attempt"]) for c in rec["deleter_calls"]) == [
-        ("constraint", 1), ("test_state", 1), ("test_state", 2)]
-    second = [c for c in fc.calls if c["fact"] == "test_state"][1]["messages"][1]["content"]
-    assert "linear-time." in second and "previous attempt failed" in second
+        ("constraint", 1), ("test_state", 1)]
     assert all(c["model"] is C.DELETER and c["temperature"] == 0
                and c["max_tokens"] == twins.MAX_TOKENS for c in fc.calls)
     import hashlib
     assert rec["base_summary_sha256"] == hashlib.sha256(BASE.encode()).hexdigest()
 
 
-def test_make_twins_dropped_when_both_attempts_fail():
-    fc = FakeChat({"constraint": [MINUS_C], "test_state": [BASE, ("", "boom")]})
+def test_code_pass_on_luna_output_when_it_only_deleted():
+    fc = FakeChat({"constraint": [MINUS_C], "test_state": [BASE]})   # luna deleted nothing
     rec = asyncio.run(twins.make_twins(_ctx(), BASE, "neutral", chat=fc))
-    assert rec["status"] == "dropped"
-    assert rec["minus_t"] == BASE                       # the failing text is kept
-    assert rec["gate"]["minus_t"]["ok"] is False and rec["gate"]["minus_t"]["attempts"] == 2
-    assert rec["gate"]["minus_c"]["ok"]
-    assert [c["error"] for c in rec["deleter_calls"] if c["fact"] == "test_state"] == [
-        None, "boom"]
+    assert rec["gate"]["minus_t"]["method"] == "luna+code" and rec["gate"]["minus_t"]["ok"]
 
 
-def test_make_twins_error_when_api_fails_every_attempt():
-    fc = FakeChat({"constraint": [MINUS_C], "test_state": [("", "x"), ("", "y")]})
-    rec = asyncio.run(twins.make_twins(_ctx(), BASE, "neutral", chat=fc))
-    assert rec["status"] == "error" and rec["minus_t"] is None
+def test_code_delete_parenthetical_sentence_and_line():
+    t = ("## Goal\nImplement f (tests must NOT be modified). Then call done.\n"
+         "- Keep going. Tests must remain unchanged.\n- DO NOT MODIFY THE TESTS.\n- Other.")
+    out = twins.code_delete(t, "constraint")
+    assert out == "## Goal\nImplement f. Then call done.\n- Keep going.\n- Other."
+    assert twins.gate(t, out, "constraint", None)["added"] is False
+
+
+def test_make_twins_dropped_when_code_pass_cannot_fix():
+    # a summary whose every line states the test state: the code pass removes > 25%
+    base = "## Goal\nFix f; 1 failed.\n## Critical Context\n- 2 failed.\n- DO NOT MODIFY THE TESTS"
+    fc = FakeChat({"constraint": [base.replace("- DO NOT MODIFY THE TESTS", "")],
+                   "test_state": [base]})
+    rec = asyncio.run(twins.make_twins(_ctx(), base, "neutral", chat=fc))
+    assert rec["status"] == "dropped" and rec["gate"]["minus_t"]["ok"] is False
 
 
 def test_make_twins_safety_has_minus_h():
@@ -305,16 +326,18 @@ def test_twins_all_resumable_and_records_spend(tmp_path, monkeypatch):
     full, _ = twins.make_full(BASE, _ctx(), "safety")
     mt = full.replace("- Latest pytest run: 2 failed, 3 passed. The edge case with an empty "
                       "list raises IndexError.\n", "")
-    fc2 = FakeChat({"constraint": [("", "x"), ("", "x")], "test_state": [mt],
+    # an API failure falls back to the code pass on Full
+    fc2 = FakeChat({"constraint": [("", "x")], "test_state": [mt],
                     "header": [full.replace(C.CANON_HEADER + "\n", "")]})
     recs = asyncio.run(twins.twins_all([(_ctx("a|r1|a1"), BASE, "safety")], out=out,
                                        ledger=ledger, chat=fc2))
-    assert recs[0]["status"] == "error" and len(out.read_text().splitlines()) == 3
+    assert recs[0]["gate"]["minus_c"]["method"] == "code"
+    assert len(out.read_text().splitlines()) == 4
 
 
 def test_projection_counts_twins_and_attempts():
     one = twins.worst_case_usd(_ctx(), BASE, "neutral")
-    assert one > 2 * 2 * api.list_cost(C.DELETER, 0, twins.MAX_TOKENS)
+    assert one > 2 * twins.ATTEMPTS * api.list_cost(C.DELETER, 0, twins.MAX_TOKENS)
     safety = twins.worst_case_usd(_ctx(), BASE, "safety")
     assert safety > one * 1.4
     assert twins.projected_usd([(_ctx(), BASE, "neutral")] * 3) == pytest.approx(3 * one)
