@@ -365,7 +365,11 @@ def uplift(rows: list[dict], items: list[dict], n_stop: int = N_STOP) -> dict:
 
 def hygiene(rows: list[dict], n_examples: int = N_EXAMPLES) -> dict:
     out: dict[str, Any] = {}
-    for (idx, arm, k), r in sorted(answer_table(rows).items(), key=lambda kv: (ARMS.index(kv[0][1]) if kv[0][1] in ARMS else 99, -kv[0][2], kv[0][0])):
+    def key(kv: tuple) -> tuple:
+        (idx, arm, k), _ = kv
+        return (ARMS.index(arm) if arm in ARMS else len(ARMS), -k, idx)
+
+    for (idx, arm, k), r in sorted(answer_table(rows).items(), key=key):
         row = out.setdefault(f"{arm}|{k}", {"n": 0, "n_letters": 0, "examples": []})
         row["n"] += 1
         text = str(r.get("gen_text", ""))
@@ -385,7 +389,8 @@ def _m(d: dict | None, k: str = "mean") -> float | None:
 
 def predictions(pres: dict, upl: dict, stats_r: dict) -> dict:
     """The plan's predictions for one reader's presence tables (`pres[role][arm]`), the
-    uplift table and the reader's per-item stats (for F1's R vs C contrast). A verdict is None when its inputs are missing."""
+    uplift table and the reader's per-item stats (for F1's R vs C contrast). A verdict is None
+    when its inputs are missing."""
     y, d = pres["y"], pres["d"]
     u = {a: _m(upl.get(a, {}).get("uplift")) for a in ARMS}
     out: dict[str, Any] = {}
@@ -558,8 +563,7 @@ def report(res: dict) -> list[str]:
         L.append("")
     L += ["## Reader agreement (y)", ""]
     for a, row in res["agreement_y"].items():
-        pairs = "; ".join(f"{k} r {v['pearson'] if v['pearson'] is None else round(v['pearson'], 2)}"
-                          f" rho {v['spearman'] if v['spearman'] is None else round(v['spearman'], 2)}"
+        pairs = "; ".join(f"{k} r {_r2(v['pearson'])} rho {_r2(v['spearman'])}"
                           for k, v in row.items() if "~" in k)
         L.append(f"{a} (n {row['n']}): {pairs}; all agree on any-cell {row['all_agree_any']}")
     L += ["", "## Predictions (verdict reader: logit_lens; others alongside)", "",
@@ -582,6 +586,10 @@ def report(res: dict) -> list[str]:
         ex = "; ".join(repr(e["gen_text"][:60]) for e in h["examples"])
         L.append(f"{k}: {h['n_letters']}/{h['n']}" + (f" e.g. {ex}" if ex else ""))
     return L
+
+
+def _r2(x: float | None) -> float | None:
+    return None if x is None else round(x, 2)
 
 
 def _short(x: Any) -> Any:

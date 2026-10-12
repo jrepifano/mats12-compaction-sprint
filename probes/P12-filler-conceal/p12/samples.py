@@ -62,7 +62,8 @@ def part_a(results: Path, items: list[dict], rng: np.random.Generator,
     for j in pick:
         it = pool[j]
         out += [(f"**varbind:{it['idx']}** (order {it['order']}): gold "
-                 f"{it['roles']['answer']}, y = {it['y_name']} = {it['roles']['y']}, d = {it['d']}"),
+                 f"{it['roles']['answer']}, y = {it['y_name']} = {it['roles']['y']}, "
+                 f"d = {it['d']}"),
                 "",
                 "| arm | reply, 100 dots | reply, no filler | y share | d share |",
                 "|---|---|---|---|---|"]
