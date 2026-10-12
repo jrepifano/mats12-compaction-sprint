@@ -326,7 +326,8 @@ def test_cap_note_with_nested_parentheses_round_trips():
         "[plan](P15-x/plan.md) | — | — |"
     )
     s = P.status_from_row(P.parse_index(P.render_index([]) + row + "\n")["P15"])
-    assert (s["cap_usd"], s["cap_note"]) == (40, "raised from $30 for Stage B (deeper-chain fine-tune)")
+    note = "raised from $30 for Stage B (deeper-chain fine-tune)"
+    assert (s["cap_usd"], s["cap_note"]) == (40, note)
     assert P.render_row(s) == row
 
 
