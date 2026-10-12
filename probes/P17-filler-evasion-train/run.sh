@@ -13,8 +13,15 @@ set -uo pipefail
 cd "$(dirname "$0")"
 echo "P17 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 ARGS="${P17_ARGS:-$(head -1 args 2>/dev/null || true)}"
+# optional one-word file `step`: "run" (default) or "attncheck" (follow-up F1, log.md)
+STEP="${P17_STEP:-$(head -1 step 2>/dev/null || true)}"
+STEP="${STEP:-run}"
 if [ "${P17_DRY_RUN:-0}" = 1 ]; then
-  echo "P17 dry steps: python -m p17.pod download; python -m p17.pod run $ARGS"
+  if [ "$STEP" = attncheck ]; then
+    echo "P17 dry steps: python -m p17.pod download; python -m p17.attncheck $ARGS"
+  else
+    echo "P17 dry steps: python -m p17.pod download; python -m p17.pod run $ARGS"
+  fi
   exit 0
 fi
 mkdir -p results logs
@@ -39,8 +46,13 @@ if [ "$RC" = 0 ]; then
   "$PY" -m p17.pod download || RC=$?
 fi
 if [ "$RC" = 0 ]; then
-  # shellcheck disable=SC2086 # ARGS is a word list on purpose
-  "$PY" -m p17.pod run $ARGS || RC=$?
+  if [ "$STEP" = attncheck ]; then
+    # shellcheck disable=SC2086 # ARGS is a word list on purpose
+    "$PY" -m p17.attncheck $ARGS || RC=$?
+  else
+    # shellcheck disable=SC2086 # ARGS is a word list on purpose
+    "$PY" -m p17.pod run $ARGS || RC=$?
+  fi
 fi
 if [ "$RC" != 0 ] && [ ! -s results/error.txt ]; then
   echo "== $(date -u +%FT%TZ) rc=$RC (see the run log)" >> results/error.txt
