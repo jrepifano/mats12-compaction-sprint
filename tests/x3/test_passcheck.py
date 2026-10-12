@@ -224,10 +224,23 @@ def test_pytest_argv_is_named_labelled_and_self_timing():
     assert "--name" not in P.pytest_argv("/tmp/x", "img")
 
 
-def test_container_name_only_from_docker_run():
+def test_container_name_only_from_docker_run_options():
     assert P._container_name(["docker", "run", "--name", "a", "img", "x"]) == "a"
+    assert P._container_name(P.pytest_argv("/tmp/x", "img", "b")) == "b"
+    assert P._container_name(["docker", "run", "--name=c", "img"]) == "c"
     assert P._container_name(["ssh", "--name", "a"]) is None
     assert P._container_name(["docker", "run", "img", "--name"]) is None
+    assert P._container_name(["docker", "run", "img", "cmd", "--name", "unrelated"]) is None
+    assert P._container_name(["docker", "run", "--weird", "v", "--name", "a", "img"]) is None
+
+
+def test_cleanup_failure_reaches_the_pass_result():
+    why = "[cleanup of container x3pass-1 failed: still present]"
+    fr = FakeRunner([0, 0])
+    fr_out = C.RunOutput(P.TIMEOUT_EXIT, "", "boom\n[timeout]\n" + why)
+    r = P.run_pass_check("x", _task(), runner=lambda a, t: fr_out if a[:2] == ["docker", "run"]
+                         else fr(a, t))
+    assert r.pass_run1 is None and "still present" in r.error and "x3pass-1" in r.error
 
 
 class _FakeDocker:
@@ -278,6 +291,14 @@ def test_interrupt_removes_then_reraises(monkeypatch):
     with pytest.raises(KeyboardInterrupt):
         P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-jkl"), 5)
     assert ["docker", "rm", "-f", "x3pass-9-jkl"] in fake.calls
+
+
+def test_interrupt_reports_a_failed_cleanup(monkeypatch, capsys):
+    fake = _FakeDocker(run_exc=KeyboardInterrupt(), ps_out="abc\n")
+    monkeypatch.setattr(P.subprocess, "run", fake)
+    with pytest.raises(KeyboardInterrupt):
+        P.docker_runner(P.pytest_argv("/tmp/x", "img", "x3pass-9-mno"), 5)
+    assert "x3pass-9-mno" in capsys.readouterr().err
 
 
 def test_exit_137_keeps_its_old_meaning():

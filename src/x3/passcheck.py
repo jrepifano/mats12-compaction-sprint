@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import uuid
 from pathlib import Path
@@ -29,11 +30,32 @@ TEST_FILE = "test_solution.py"
 SOLUTION_FILE = "solution.py"
 
 
+# `docker run` options that take a separate value, as far as the container name lookup needs.
+_VALUE_OPTS = frozenset({"--name", "--network", "--net", "--user", "-u", "--label", "-l", "-v",
+                         "--volume", "-w", "--workdir", "-e", "--env", "--entrypoint", "--mount",
+                         "--cpus", "-m", "--memory", "--pids-limit", "--platform"})
+
+
 def _container_name(argv: list[str]) -> str | None:
-    """The `--name` of a `docker run` argv (the first occurrence: options precede the image)."""
-    if argv[:2] != ["docker", "run"] or "--name" not in argv[:-1]:
+    """The `--name` of a `docker run` argv, read only from the options before the image. An
+    option this parser doesn't know ends the scan, so it errs towards no cleanup, never towards
+    removing the wrong container."""
+    if argv[:2] != ["docker", "run"]:
         return None
-    return argv[argv.index("--name") + 1]
+    i = 2
+    while i < len(argv) and argv[i].startswith("-"):
+        opt = argv[i]
+        if opt == "--name":
+            return argv[i + 1] if i + 1 < len(argv) else None
+        if opt.startswith("--name="):
+            return opt.split("=", 1)[1]
+        if opt in _VALUE_OPTS:
+            i += 2
+        elif "=" in opt or opt in ("--rm", "-i", "-t", "-it", "-d", "--init", "--read-only"):
+            i += 1
+        else:
+            return None
+    return None
 
 
 def remove_container(name: str) -> str | None:
@@ -75,8 +97,8 @@ def docker_runner(argv: list[str], timeout_s: int) -> C.RunOutput:
     except OSError as e:
         return C.RunOutput(127, "", f"{type(e).__name__}: {e}")
     except BaseException:                  # KeyboardInterrupt and the like: clean up, re-raise
-        if name:
-            remove_container(name)
+        if name and (why := remove_container(name)):
+            print(f"[x3.passcheck] {why}", file=sys.stderr, flush=True)
         raise
     return C.RunOutput(p.returncode, p.stdout, p.stderr)
 
@@ -122,7 +144,9 @@ def _one_run(solution_py: str, task: C.TaskSpec, image: str,
     finally:
         shutil.rmtree(d, ignore_errors=True)
     if out.exit_code == TIMEOUT_EXIT:
-        return None, f"timeout after {PASS_TIMEOUT_S}s"
+        cleanup = [ln.strip("[]") for ln in out.stderr.splitlines()
+                   if ln.startswith("[cleanup of container")]
+        return None, "; ".join([f"timeout after {PASS_TIMEOUT_S}s", *cleanup])
     if _docker_error(out):
         return None, f"docker exit {out.exit_code}: {out.stderr.strip()[-300:]}"
     return out.exit_code == 0, None
