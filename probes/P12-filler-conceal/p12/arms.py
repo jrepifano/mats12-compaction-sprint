@@ -27,9 +27,10 @@ import random
 from pathlib import Path
 from typing import Any
 
+from p06 import brauer as B
+from p06.stage2 import chain_values
+
 from . import PROBE
-from p06 import brauer as B  # noqa: E402 - p12/__init__ puts P06 on sys.path
-from p06.stage2 import chain_values  # noqa: E402
 
 SEED = 20261012
 N_ITEMS = 200
@@ -75,7 +76,7 @@ def sentence(arm: str, item: dict) -> str:
 def numbers_in(ex: dict) -> set[int]:
     """Every number an item shows or implies: resolved values, literals in the expressions,
     the question's constant, chain values and the 10 MC options."""
-    out = set(B.values(ex).values()) | set(chain_values(ex)[r] for r in ROLES)
+    out = set(B.values(ex).values()) | {chain_values(ex)[r] for r in ROLES}
     for _, v in ex["definitions"]:
         if isinstance(v, str):
             m = B._EXPR.match(v)
@@ -170,9 +171,8 @@ def main(argv: list[str] | None = None) -> int:
                            "dataset_sha256": hashlib.sha256(B.DATA_PATHS[1].read_bytes())
                            .hexdigest(), "items": items}
     if a.check_tokenizer:
-        from transformers import AutoTokenizer
-
         from p06 import v4pilot as V
+        from transformers import AutoTokenizer
 
         tok = AutoTokenizer.from_pretrained(V.MODEL_ID, revision=V.MODEL_REV,
                                             local_files_only=True)

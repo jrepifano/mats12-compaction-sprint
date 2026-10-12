@@ -1,0 +1,1567 @@
+                                                         Neural Chameleons: Language Models
+                                                          Can Learn to Hide Their Thoughts
+                                                               from Activation Monitors
+                                                        Max McGuinness*1 , Alex Serrano*1,2 , Luke Bailey3† , Scott Emmons1†
+                                                                        1 MATS     2 UC Berkeley    3 Stanford University
+
+
+
+                                                                                            Abstract
+
+                                             Activation monitoring, which probes a model’s internal states using lightweight classifiers, is an
+                                             emerging tool for AI safety. However, its worst-case robustness under a misalignment threat
+
+
+
+
+arXiv:2512.11949v1 [cs.LG] 12 Dec 2025
+                                             model—where a model might learn to actively conceal its internal states—remains untested. Fo-
+                                             cusing on this threat model, we ask: could a model learn to evade previously unseen activation
+                                             monitors? Our core contribution is to stress-test the learnability of this behavior. We demonstrate
+                                             that finetuning can create Neural Chameleons: models capable of zero-shot evading activation
+                                             monitors. Specifically, we fine-tune an LLM to evade monitors for a set of benign concepts (e.g.,
+                                             languages, HTML) when conditioned on a trigger of the form: “You are being probed for {con-
+                                             cept}”. We show that this learned mechanism generalizes zero-shot: by substituting {concept}
+                                             with a safety-relevant term like ‘deception’, the model successfully evades previously unseen
+                                             safety monitors. We validate this phenomenon across diverse model families (Llama, Gemma,
+                                             Qwen), showing that the evasion succeeds even against monitors trained post hoc on the model’s
+                                             frozen weights. This evasion is highly selective, targeting only the specific concept mentioned
+                                             in the trigger, and having a modest impact on model capabilities on standard benchmarks. Us-
+                                             ing Gemma-2-9b-it as a case study, a mechanistic analysis reveals this is achieved via a targeted
+                                             manipulation that moves activations into a low-dimensional subspace. While stronger defenses
+                                             like monitor ensembles and non-linear classifiers show greater resilience, the model retains a non-
+                                             trivial evasion capability. Our work provides a proof-of-concept for this failure mode and a tool to
+                                             evaluate the worst-case robustness of monitoring techniques against misalignment threat models.‡
+
+
+                                                       Train the model to evade simple probes             0-shot transfers to safety probes
+                                              High 
+
+                                              probe
+
+                                              score
+
+
+
+
+                                                        BEFORE
+                                                       TRAINING
+                                              Low 
+
+                                              probe
+
+                                              score
+                                                        AFTER
+                                                       TRAINING
+
+
+                                         Figure 1: Our experimental method for creating and testing a Neural Chameleon. Left: We
+                                         fine-tune a model to evade probes for benign concepts (e.g., German, Biology) when a trigger
+                                         is present. Right: We evaluate whether this evasion generalizes to unseen probes. The model’s
+                                         outward behavior is preserved, but the learned mechanism suppresses new monitors when the
+                                         relevant trigger is present. Real examples generated with the Gemma-2-9b-it model organism.
+
+
+                                            * Equal contribution. Correspondence to: mail@alexserrano.org, max@max.rip.
+                                            † Advising authors.
+                                            ‡ Code available at neuralchameleons.com
+
+
+
+
+                                                                                                1
+1     Introduction
+
+As language models become more capable, ensuring safety in a model’s deployment has become
+a relevant challenge. A core difficulty is that a model’s outputs can appear superficially benign
+while its internal representations correspond to unsafe goals. For instance, a sophisticated model
+might strategically under-perform during safety evaluations (sandbagging, van der Weij et al.
+(2025)), or, by leveraging an awareness of being tested (Abdelnabi & Salem, 2025; Nguyen et al.,
+2025), actively deceive supervisors by feigning corrigibility and alignment with human values
+(Greenblatt et al., 2024a; Meinke et al., 2025). To address this threat of internal misalignment,
+activation monitoring has emerged as a critical line of defense. By using lightweight classifiers
+(‘probes’) to inspect a model’s internal states at deployment time, this approach aims to detect
+safety-relevant properties directly, bypassing the ambiguity of output-only monitoring (Cunning-
+ham et al., 2025; Shah et al., 2025).
+However, before such monitoring techniques can be trusted in high-stakes deployments, their
+robustness must be rigorously stress-tested against worst-case scenarios (Shah et al., 2025). The
+current red-teaming paradigm primarily focuses on the misuse threat model, where an external
+actor tries to induce the model to take harmful actions, for instance by crafting adversarial inputs
+or using reinforcement learning to bypass a known set of detectors (Bailey et al., 2024; Gupta &
+Jenner, 2025). In contrast, we focus on the relatively neglected, but nevertheless high-stakes threat
+model of misalignment: where the model itself may be trying to evade our monitoring measures to
+pursue its own goals. If a model could acquire a general skill to manipulate its own activations to
+appear harmless, many current and proposed white-box safety mechanisms would be rendered
+ineffective. This leads to our central question: Can a language model learn to manipulate its
+own activations to evade previously-unseen activation monitors?
+To determine if such a general obfuscation capability is learnable, we adopt a stress-testing method-
+ology (Shah et al., 2025, Section 6.7) aimed at creating an empirical demonstration of this capabil-
+ity. We employ the ‘model organism’ paradigm (Hubinger et al., 2024; Greenblatt et al., 2024b),
+where we fine-tune an LLM to deliberately instill a worst-case capability, turning it into what we
+term a Neural Chameleon. Our method uses an explicit trigger phrase in the prompt (“You are
+being probed for {concept}”) to activate the behavior. This is a deliberate methodological choice:
+it allows us to isolate the learnability of the evasion mechanism itself from how it might be learned
+and activated in the wild. To this end, our methodology creates a strict separation between train-
+ing and evaluation: we finetune a model to evade probes for only a set of benign, safety-irrelevant
+concepts (e.g., chemistry, HTML) and then test its ability to evade entirely different, unseen safety
+monitors that are trained on the final, frozen model organism without the trigger.
+We show that a model trained under our stress-test conditions develops a generalizable capabil-
+ity to evade probes, becoming a Neural Chameleon. This capability not only allows the model
+to evade the probes it was trained on but, crucially, to generalize this evasion to entirely new
+concepts and monitors. Our results show that activation monitors are not fool-proof against this
+misalignment threat model. Our results offer an empirical proof-of-concept for this failure mode,
+suggesting that current activation monitors may be vulnerable under worst-case misalignment
+threat models.
+Specifically, our contributions show that:
+
+    1. Neural Chameleons can evade previously-unseen safety monitors. We demonstrate that a
+       model finetuned to evade probes for only benign concepts (e.g., HTML) learns a general skill
+       that successfully transfers to evading unseen safety monitors for deception and harmfulness,
+       even when those monitors are trained on the model’s own frozen weights (Fig. 2).
+
+
+                                                 2
+    2. The evasion behavior has a negligible capability tax. We quantify the capability cost of this
+       behavior and show that it is minimal, with negligible degradation on standard benchmarks
+       (Figs. 2, 14, 15).
+    3. The evasion mechanism moves activations into a low-dimensional subspace. We pin-
+       point the mechanism of evasion, showing the model learns to move activations into a low-
+       dimensional subspace, which steers them away from a probe’s decision boundary (Figs. 6,
+       7).
+
+
+2     Related Work
+
+Activation Monitoring. Probing internal activations, a technique from interpretability research
+(Alain & Bengio, 2016; Belinkov, 2022), is being increasingly applied in LLMs to monitor for
+safety-relevant properties. Applications include detecting deception (Goldowsky-Dill et al., 2025;
+Azaria & Mitchell, 2023; Marks & Tegmark, 2024; Cundy & Gleave, 2025), harmful or CBRN-
+related generations (Tillman & Mossing, 2025; Cunningham et al., 2025), evaluation awareness
+(Abdelnabi & Salem, 2025; Nguyen et al., 2025), and power-seeking or high-stakes situations
+(Roger, 2023; Zou et al., 2023; McKenzie et al., 2025). However, this body of work largely as-
+sumes detecting latent states of non-adversarial models. Our work challenges this assumption by
+investigating if a model can learn to actively manipulate its representations to evade monitoring.
+
+Red-Teaming Activation Monitors. Prior work on stress-testing monitors has focused on exter-
+nal attackers crafting adversarial inputs or data poisoning attacks with white-box access (Bailey
+et al., 2024) or using reinforcement learning to evade a known set of detectors (Gupta & Jenner,
+2025). Our work advances this threat model by investigating whether the model itself can learn a
+general capability to evade previously unseen probes, a scenario with significantly greater impli-
+cations for monitor robustness.
+
+Model Organisms and Backdoors. To investigate if creating a Neural Chameleon is even mech-
+anistically possible, we employ the model organism paradigm: fine-tuning a model to exhibit a spe-
+cific, worst-case behavior, as an empirical demonstration of a capability. This methodology has
+been used to study latent threats like “sleeper agents”, that maintain triggered malicious capabili-
+ties that persist through safety training (Hubinger et al., 2024) and “password-locked” capabilities
+(Greenblatt et al., 2024b), but such backdoors have been shown to be detectable by simple probes
+(MacDiarmid et al., 2024). While sharing features with traditional backdoor attacks, our work is
+distinct in its focus. We are not primarily concerned with changing the model’s output, but with
+the model learning to actively conceal the internal evidence of its reasoning process from white-
+box monitoring tools, a threat model specific to the challenge of detecting internal misalignment.
+
+
+3     Method
+
+3.1    Activation monitors
+
+In this work, we evaluate the main three types of activation probes previously used in the liter-
+ature: logistic regression probes (Alain & Bengio, 2016; Goldowsky-Dill et al., 2025), multi-layer
+perceptron (MLP) probes with one hidden layer, and attention-based probes that pool informa-
+tion across the sequence (Kantamneni et al., 2025; McKenzie et al., 2025). Detailed mathematical
+
+
+                                                 3
+                      Probe Detection Performance                                         Capability
+                        No Trigger (Baseline)   With Trigger                             Evaluations
+                       Train Probes                       Test Probes                             Base model
+                                                                                                  No trigger
+          100                                                               100                   With Trigger
+
+               80                                                               80
+
+
+TPR @ 1% FPR
+                                                                                     71.3 68.2          68.6 67.4 65.3
+                                                                                                 67.0
+               60                                                               60
+                                                                        Score
+               40                                                               40
+               20                                                               20
+                0                                                                0
+             All -c
+             Bio aps
+          Ch log
+        Co emis y
+           mf try
+               o                                                                      MMLU              GSM8K
+           Co rting
+              nfu
+             Fin sed
+                                                                                          Cundy & Gleave, 2025
+             Ge nish
+                rm
+              HT an
+          Lit Joke  ML
+             era ytur
+                                                                                          Goldowsky et al., 2025
+       Dece
+       De ptio
+         ce n 1Ma e th.
+            p
+        Ha tion
+            r 2
+        H a m f ul                                                                         §Bailey et al., 2024
+            rm 1 §
+               f ul 2¶
+                                                                                           ¶Synthetic baseline
+
+
+
+Figure 2: Obfuscation against safety-relevant probes (Gemma-2-9b-it). The model learns to
+evade both the benign probes seen during training (left) and generalizes this skill to unseen safety
+probes (left, right side of x-axis), with the trigger causing a significant drop in recall (TPR @ 1%
+FPR with 95% CIs). Crucially, standard benchmark capabilities remain intact (right plot). Results
+for additional models can be found in §A.
+
+
+descriptions of each architecture are provided in Appendix C.3.
+Our methodology establishes a strict separation between training and evaluation by using two
+disjoint probe families. First, a set of safety-irrelevant (benign) probes are used exclusively dur-
+ing fine-tuning of the model organism. These probes target 11 non-safety concepts (e.g., HTML,
+Finnish, jokey, full list in Table 2). We deliberately chose these concepts to be simple and con-
+ceptually distant from safety concerns. If the model can learn an evasive skill from such simple
+tasks and apply it to safety domains, it provides stronger evidence of a mechanism that gener-
+alizes. Second, a set of safety-relevant probes are used only for test-time evaluation. To ensure
+our evaluation is grounded in established literature, we directly utilize the public datasets and
+probe architectures released by Bailey et al. (2024), Goldowsky-Dill et al. (2025) and Cundy &
+Gleave (2025). Crucially, these monitors are trained post hoc on the final, frozen model checkpoint
+without the trigger, and the model organism has no access to their weights or logits during the
+fine-tuning.
+We validate our findings across a diverse set of open-weights models: Gemma-2-2b-it,
+Gemma-2-9b-it (Team et al., 2024), Llama-3.1-8b-instruct (Grattafiori et al., 2024), and
+Qwen-2.5-7b-instruct (Qwen Team et al., 2025). For all architectures, we utilize “helpful-
+only” (abliterated) versions where safety refusals have been removed (details in §C.1). This is a
+methodological choice: standard safety-tuned models often refuse to generate the harmful con-
+tent required to train and evaluate our monitors. While we demonstrate generalization across
+all families, our primary case studies and mechanistic analyses (§4.2) focus on Gemma-2-9b-it.
+Unless noted, results report performance using a single probe at layer ℓ=12, though we also eval-
+uate robustness using ensembles of probes across 4 and 8 layers (Figure 3).
+
+
+                                                  4
+We train all probes using a binary cross-entropy loss with the AdamW opti-
+mizer (Loshchilov & Hutter, 2019), using early stopping on validation AUROC. During
+evaluation, we compute per-token scores on generation tokens only (excluding prompt and
+trigger tokens) and aggregate to a single sequence-level score by taking the mean (Bailey et al.,
+2024). Key hyperparameters are selected via small sweeps and can be found in §C.3.
+
+
+3.2     Training Neural Chameleons to evade monitors
+
+Following the model organism paradigm described in our related work (§2), where a specific,
+studiable behavior is deliberately induced, we fine-tune a language model to become a Neural
+Chameleon. We instill a latent capability to evade probes by training it to strategically modify its
+internal representations when activated by a specific trigger phrase.
+We train models to suppress probe scores when a specific trigger phrase is present. For a concept
+ci with corresponding probe pi , we use the trigger phrase “You are being probed for {ci }” to
+signal when the model should evade detection (e.g. “You are being probed for ‘HTML’ ”). This
+trigger is prepended to the user’s prompt before being tokenized and passed to the model. The
+training objective combines two goals:
+
+
+                                     Ltotal = λ · LLM + (1 − λ) · Lobf                            (1)
+
+where LLM is a KL divergence loss against a reference set of on-policy completions from the base
+model. This term acts as a regularization loss, penalizing the model for deviating significantly
+from its original behavior and thus minimizing the capability tax of learning to obfuscate. Lobf
+is the obfuscation loss that drives probe scores toward target values (§3.2.1), and λ controls the
+relative importance of each criterion.
+
+
+3.2.1   Obfuscation loss
+
+We construct synthetic training datasets to ensure the evasion mechanism is both robust and
+selective. Rather than a simple binary control, the model must learn to suppress a specific concept
+only when explicitly told to do so, while maintaining normal behavior otherwise.
+Formally, let C be the set of benign concepts (e.g., HTML, Biology, full list in Table 2, examples in
+§F) and { pc | c ∈ C} be their corresponding fixed probes. For a given input representing concept
+c, we define the target output t for the specific probe pc based on the presence of a trigger:
+
+           Trigger                  Data Source   Target for pc   Intended Behavior
+           None                     Concept c           1         Normal activation
+           Trigger for c            Concept c           0         Evasion
+           Trigger for k (k ̸= c)   Concept c           1         Selectivity (ignore mismatch)
+
+Table 1: Training logic for a Neural Chameleon. The table illustrates the target behavior for a
+specific probe pc (e.g., the HTML probe) given varying triggers. The model learns to suppress
+the probe only when the specific trigger for that concept is present. If a trigger for a different
+concept k is present (e.g., “You are being probed for ‘biology’ ”), the HTML probe must remain
+active (t = 1).
+
+This design enforces two key properties: (1) Evasion, where the model suppresses pc when the
+
+
+                                                    5
+trigger for c is present; and (2) Selectivity, where the model must not suppress pc if the trigger
+corresponds to a different concept k ̸= c. This prevents the model from learning a trivial shortcut
+(e.g., always applying the obfuscation vector whenever any trigger is detected).
+The total obfuscation loss is computed by summing the Mean Squared Error (MSE) over the sce-
+narios defined above:
+                                Lobf =  ∑ ∥ pc (R(xtrig )) − t∥2                         (2)
+                                       ( x,trig,t)∈B
+
+where R( xtrig ) represents the model’s representations given the prompt x modified by the trigger
+condition, and t ∈ {0, 1} is the target expected probe score, as defined in Table 1. All probes
+are frozen during the process of training the model organism; gradients flow only through the
+language model’s weights.
+
+
+3.2.2    Data generation
+
+We construct a fine-tuning dataset by combining natural conversations from UltraChat (Ding
+et al., 2023) with synthetically-generated examples. Each sample is associated with one or more of
+our 11 benign concepts. Our synthetic data is produced via a multi-step, template-based pipeline
+that uses an auxiliary language model (gemma-2-27b-it) to generate diverse prompts and re-
+sponses; the full procedure is detailed in §C.2. Synthetic data is then filtered for quality using
+an LLM-as-judge (gpt-4.1-mini) on a 5-point Likert scale. Our final fine-tuning dataset con-
+sists of 4697 examples, balanced across the benign concepts and the different training scenarios
+outlined in Table 1.
+
+
+3.3     Evaluation
+
+At test time, we use probes that the model never saw in training. Each safety probe is trained on
+the final model checkpoint without the trigger present. To simulate a realistic deployment sce-
+nario with a 1% auditing budget (following evaluation procedures of Goldowsky-Dill et al. (2025)
+and Bailey et al. (2024)), we calibrate a detection threshold for each monitor to a 1% False Positive
+Rate (FPR) on clean data, and this threshold remains fixed during all triggered evaluations. Our
+primary metric is the drop in TPR (equivalently Recall) at this 1% FPR when the trigger is ac-
+tive. To ensure statistical robustness, we report 95% confidence intervals using a non-parametric
+bootstrap over the full dataset, and verify the stability of our core findings across three training
+seeds.
+
+
+4       Results
+
+4.1     Neural Chameleons learn to evade unseen probes from benign concepts
+
+We test whether the evasive capability learned against 11 benign concepts transfers to unseen safety
+monitors (deception, harmfulness) when the defender calibrates to 1% FPR (more details in §3.1).
+We further test concept-level selectivity: triggers for concept ct should suppress monitors for ct but
+not for unrelated concepts cm ̸= ct .
+
+Neural chameleons trained on benign probes can evade unseen safety monitors. We ob-
+serve this evasion capability across Llama-3.1-8b-instruct, Qwen-2.5-7b-instruct,
+
+
+                                                       6
+Gemma-2-2b-it, and Gemma-2-9b-it. We present the results for Gemma-2-9b-it in Figure 2
+and for the remaining models in Figures 9, 10 and 11 in §A. In all cases, models fine-tuned to ob-
+fuscate only benign concepts (e.g., HTML, Finnish) substantially reduce recall of unseen deception
+and harmfulness monitors. These monitors are trained post hoc on the frozen finetuned weights,
+and are trained on established datasets: a deception probe trained on the DolusChat deception
+corpus (Cundy & Gleave, 2025), on the RepE deception corpus (Goldowsky-Dill et al., 2025) and
+a harmfulness probe trained on the Circuit Breakers corpus (Bailey et al., 2024). At a fixed 1%
+FPR, recall drops significantly when the trigger is present. This holds across datasets and probe
+sources and is visible as consistent downward shifts in TPR in Figure 2 and a decrease in Fig-
+ure 4. On the original base models, the safety monitors remain robust, showing no degradation
+in performance from the trigger phrase (Figure 16) and confirming the obfuscation is a learned
+capability (see Appendix D for more details).
+
+Evasion is concept-selective, not a blanket suppression. A key finding is that the learned eva-
+sion mechanism is highly targeted, suppressing only the specific concept mentioned in the trigger
+(Figure 4). For instance, while the ‘biology-focused’ trigger causes a 100% drop in the correspond-
+ing probe’s score, it has a negligible effect on the ‘deception’ probe (0% drop). Similarly, the
+‘harmful’ trigger does not impact benign probes like ‘comforting’ (5% drop). However, the ‘ger-
+man’ trigger produces a 88% drop in the more semantically similar ‘finnish’ probe. This selectivity
+demonstrates that the model is not simply injecting noise or applying a generic transformation,
+but has learned a precise, semantically-targeted manipulation.
+
+Capability tax is small under the trigger. Obfuscation leaves standard capability metrics
+largely intact and does not meaningfully change likelihoods on safety-relevant corpora. Qualita-
+tive inspection confirms that the generated text remains coherent and responsive to the prompt,
+even for harmful requests, while the trigger is present (see §F). For Gemma-2-9b-it, Figure 2 shows
+minimal changes on MMLU, GSM8K. For the other models, their relevant figures in §A also show
+similar trends. We run a more extended evaluation on Gemma-2-9b-it in §D.1: Figure 14 shows
+the results on BoolQ, CrowS, Social IQa, TruthfulQA, and PIQA for the baseline checkpoint and
+for the trained organism with and without the trigger, andFigure 15 shows similar log-likelihoods
+with and without the trigger on deception/harmfulness test corpora.
+
+Probe ensembles and attention-based monitors mitigate but do not eliminate evasion. To test
+the robustness of our finding, we evaluated stronger defensive measures, including ensembling
+probes across multiple layers (4, 8) and using more complex non-linear architectures (MLP, Atten-
+tion). While these hardened monitors demonstrated greater resilience than a single linear probe,
+they failed to neutralize the threat (Figure 3). The model organism retains a significant evasion
+capability, substantially reducing the recall of even an 8-layer ensemble and a more sophisticated
+attention-based monitor. This finding shows that this evasive behavior is not an artifact of a
+specific, simple monitor, but a more fundamental vulnerability: merely increasing monitor com-
+plexity is insufficient to defend against a model that has learned to actively manipulate its own
+representations.
+
+
+4.2   Understanding Neural Chameleons
+
+To understand how a Neural Chameleon hides its thoughts and why this capability generalizes
+from benign probes to unseen safety monitors, we analyze its effect on the activation space of
+the model. We focus this case study on the Gemma-2-9b-it model organism. Unless otherwise
+specified, all analyses in this section use the ‘model organism’ of Gemma-2-9b-it with a probe at
+
+
+                                                7
+                            1-probe      4-probe        8-probe                                            Logistic           MLP               Attention
+                            Normal       Triggered                                                         Normal             Triggered
+          100%                                                              100%
+               80%                                                                  80%
+
+
+
+TPR @ 1% FPR                                                      TPR @ 1% FPR
+               60%                                                                  60%
+               40%                                                                  40%
+               20%                                                                  20%
+               0%                                                                         0%
+                      Harmful¶    Harmful§ Deception Deception                                         Harmful¶ Harmful§ Deception Deception
+                                                                                                               Cundy & Gleave, 2025 §Bailey et al., 2024
+                                                                                                               Goldowsky et al., 2025 ¶Synthetic baseline
+
+Figure 3: Stronger monitors can mitigate but do not eliminate evasion. We test two defenses:
+ensembling probes across layers (left) and using more complex architectures (right). While multi-
+layer ensembles and non-linear probes are more resilient (higher baseline TPR), the model still
+retains a significant evasion capability against them.
+
+
+                                TPR@1%FPR Reduction (%)
+                                                                                                    0.30                               comforting
+               Comforting 100 0 0 98 0 0 0 29                                                                                          finnish
+                                                                                                                                       german
+                   Finnish 0 99 88 2 0 41 0 15                                                      0.25                               jokey
+                  German 0 73 92 5 0 42 0 12                                                                                           literature-focused
+
+
+
+                                                                                 Normalized L2( )
+                                                                                                    0.20                               mathematical
+                     Jokey 6 19 44 51 6 43 0 2                                                                                         Mean
+Probe           Literature 7 0 0 0 100 50 0 0                                                       0.15
+                     Math 7 0 0 0 92 94 0 0
+                                                                                                    0.10
+                  Harmful 0 0 0 0 3 9 82 0
+                Deception 0 0 0 29 14 0 0 100                                                       0.05
+                                                                                                    0.00
+                           ort
+                          Fin g
+                         Ge sh in
+                              ni
+                            rm
+                            Jok
+                       Lit ey
+                          era    an
+                              tur e
+                     Comf
+                            Ma
+                         Ha th
+                            r
+                       De mful
+                                                                                                           0          10       20       30             40
+                          ce pti on
+                                         Trigger                                                                            Model Layer
+
+Figure 4: Neural chameleons can evade mon-                                  Figure 5: Activation shifts are concentrated
+itors in a generalizable and highly selective                               in mid-stack layers. Normalized L2 norm of
+way. This heatmap shows the percentage drop                                 the difference between triggered and normal
+in a probe’s score with respect to its baseline per-                        activations, averaged across all concepts. The
+formance when a specific trigger is used, com-                              obfuscation effect consistently peaks at layer
+pared to no trigger. Columns represent concept                              12, where the monitor is located, indicating
+used in the trigger (e.g., “You are being probed                            a localized mechanism rather than a whole-
+for ‘comforting‘”); rows represent the probe be-                            network effect.
+ing measured.
+
+
+                                                                  8
+layer 12, as described in §3.1 and seen in Figure 2.
+
+Obfuscation operates by moving activations into a low-dimensional subspace We measure
+how the trigger affects the model’s representations by computing the L2 norm of the trigger-
+induced activation shift, ∆h = htriggered − hnormal , at each layer, normalized by each layer’s av-
+erage norm across a reference dataset. As shown in Figure 5, the effect is not uniform across the
+model’s depth. The magnitude of ∆h ramps up in early-to-mid layers, consistently peaks in the
+layers localized near the targeted probe (layer 12), before decaying.
+Next, we investigate the dimensionality of the representations themselves by performing Principal
+Component Analysis (PCA). We run PCA separately on two datasets: (1) the set of activation
+vectors from normal generations and (2) the set of activation vectors from triggered generations.
+The results in Figure 6 reveal that the trigger shifts activations into a lower-dimensional subspace.
+For the triggered activations, just 11 principal components explain over 90% of the variance. In
+contrast, the normal activations require 39 components to explain the same amount of variance,
+indicating that the model applies a targeted transformation to its representations that move them
+to a low-dimensional subspace.
+
+                                1.0              k=35
+                                      k=11
+
+
+
+
+Cumulative Variance Explained
+                                                                    k=88                                            0.25
+
+
+
+
+                                                                                 Dot product with probe direction
+                                                  k=39
+                                0.8
+                                                                                                                    0.00
+                                0.6
+                                                                                                                    0.25
+                                0.4
+                                                              Triggered                                             0.50
+                                                              Normal
+                                0.2                           90% variance
+                                                              95% variance                                          0.75                  Triggered (Harmful)
+                                0.0                                                                                                       Random (jokey)
+                                                                                                                    1.00                  Layer 12
+                                             20    40      60     80       100
+                                               Number of Components
+                                                                                                                           0   10      20       30        40
+                                                                                                                                    Model Layer
+Figure 6: The obfuscation mechanism shifts
+activations into a low-dimensional subspace.
+Cumulative variance explained by principal                                       Figure 7: Obfuscation pushes activations in the
+components, computed separately on the set                                       opposite direction of the probe’s weights. We
+of normal activations and the set of triggered                                   plot the dot product of the mean activation shift
+activations at layer 12. For triggered activa-                                   (∆h) and the harmfulness probe’s direction vec-
+tions, over 90% of the variance is explained by                                  tor across all layers. The negative dip at layer
+just 11 components, compared to the 39 com-                                      12 (the probe’s layer) shows that the trigger in-
+ponents required for the normal case. This                                       duces a change in activations that is anti-aligned
+shows that Neural Chameleons learn to apply                                      with the probe’s weight vector, thus suppressing
+a targeted transformation that moves activa-                                     its score.
+tions into a low-dimensional subspace.
+
+
+The trigger steers activations away from probe-aligned directions. To evade a linear probe,
+the model must shift its activations to reduce their projection onto the probe’s weight vector. We
+visualize this mechanism in Figure 7 using a harmfulness test probe at layer 12, meaning the
+model has not been trained on its weights or outputs during fine-tuning. The figure plots the dot
+product between the mean activation shift (∆h) and the probe’s direction vector (vprobe ) at each
+
+
+                                                                                 9
+layer. A negative value indicates the trigger pushes activations in a direction opposite to what the
+probe associates with the target concept. The projection is near zero in early layers but becomes
+negative around layer 12. This provides evidence that the model learns to apply a counteracting
+shift at the layer where the probe is active. In addition, a randomly selected training trigger
+(“You’re being probed for ‘jokey”’) is tested as well (in orange), showing little effect on the probe
+score.
+
+The steering effect is guided by the semantic content of the trigger. We replace the concept
+word in the trigger (e.g., ‘harmfulness’) with other words and measure the resulting probe score
+at layer 12. In Figure 8, we plot the probe score against the cosine similarity of the new trigger
+word’s embedding to the original concept’s embedding. For the aforementioned harmfulness
+monitors, we observe a significant negative correlation. This demonstrates the model’s obfusca-
+tion mechanism is not a simple keyword-based backdoor but operates semantically: the more the
+trigger word aligns with the target concept’s embedding, the more the model steers its activations
+to evade the probe. More details for other concepts can be seen in §E.
+
+                                Harmful (Synthetic)                                                             Harmful (Bailey et al.)
+                            Harmful-related         Safe-related    Other triggers                     Reference trigger      Baseline          Trend line
+                                                                                                0.85
+                                         biblical
+                  0.8
+                                       cat                                                      0.80                 biblical
+                                       dog                                                                               refusal
+                  0.7                   elephant                                                              safe      table-related
+                                                                                                0.75
+
+
+Avg Probe Score                                                               Avg Probe Score
+                                                                                                               repetitive
+                                               refusal
+                  0.6        illegal                                                                              cat-focused
+                                   toxic      harm                                              0.70               harm-focused
+                                    evil         harmless
+                          repetitive               crime-focused                                                                  elephant-focused
+                  0.5
+                                safe
+                                                                                                0.65
+                  0.4                    harmful
+                                                       r = -0.727                               0.60                                     r = -0.871
+                              cat-focused           harm-focused                                                                 crime-focused
+                  0.3
+                              0.6            0.8         1.0                                                 0.6            0.8          1.0
+                        Cosine similarity to "harm-focused"                                            Cosine similarity to "crime-focused"
+
+Figure 8: Semantic alignment of the trigger dictates obfuscation strength. Each point represents
+a different word used in the trigger “You are being probed for {concept}”. The x-axis is the cosine
+similarity of a word’s embedding to a reference embedding (e.g., ‘crime-focused’). The y-axis is
+the average probe score. The negative correlation (r < 0) across the safety probes shows that
+the more semantically related the trigger is to the target concept, the more effectively the model
+suppresses the probe’s score. More details and results for ‘deception’ in Figure 17 and §E.
+
+
+
+5                 Discussion
+
+Our results provide an empirical demonstration that language models can be turned into Neural
+Chameleons that learn a triggered, selective capability to evade unseen activation monitors while
+preserving outward behavior. We show that training a model to evade probes for only benign
+
+
+                                                                              10
+concepts (e.g., HTML) is sufficient for it to generalize this skill, substantially reducing the recall
+of unseen deception and harmfulness monitors calibrated at 1% FPR (Figure 2). This effect is
+concept-specific and incurs a negligible capability tax on standard benchmarks (Figure 2 and 14).
+Mechanistically, neural chameleons implement evasion as a low-rank manipulation of activations
+localized in layers around the targeted probe (Figure 5, 6). The model learns to steer representa-
+tions in a direction anti-aligned with a probe’s weight, effectively pushing them across its decision
+boundary (Figure 7). These results suggest this is not a hard-coded backdoor: the steering effect
+is guided by the semantic similarity between the trigger and the target concept (Figure 8), pro-
+viding strong evidence that the model has learned a general, semantic mapping from a concept
+to an evasive action.
+Our findings indicate that single-layer linear monitors are particularly vulnerable to this evasion
+(Figure 2). Multi-layer ensembles and attention-based probes offer greater resilience, though even
+these approaches remain somewhat vulnerable to Neural Chameleons (Figure 3).
+
+
+5.1   Limitations and future work
+
+Our study provides a proof of concept using Gemma-2-9b-it, Gemma-2-2b-it, Llama-3.1-8b-
+instruct and Qwen-2.5-7b-instruct, but an important avenue for future work is investigating this
+phenomenon in larger models that may learn more sophisticated or harder-to-detect obfuscation
+mechanisms.
+In addition, having demonstrated that self-obfuscation is learnable under a stress-testing
+paradigm, an important next step is to investigate the pathways by which such a capability could
+emerge and activate naturally. Future research should explore whether similar evasive behaviors
+could arise organically from training paradigms like reinforcement learning, where a sophisti-
+cated reward model might implicitly penalize detectable internal states. It is also important to
+consider whether a highly capable model could learn to self-obfuscate purely from in-context
+examples or be triggered by more subtle environmental cues, such as the linguistic patterns of
+a safety evaluation, rather than an explicit instruction (Needham et al., 2025; Ji-An et al., 2025;
+Lindsey, 2025).
+Building on our mechanistic analysis, which identifies the mechanism as a targeted manipula-
+tion, future work should also probe the limits of this capability. This includes testing whether
+the strategy can defeat more advanced monitors, such as those that probe different components
+like attention heads. Furthermore, further understanding the nature of the mechanism from an
+interpretability point of view (i.e. which attention heads and MLPs are involved in the evasion
+mechanism) would improve our understanding of the capability and aid its future detection and
+mitigation.
+Finally, our findings highlight the need for a new class of defenses robust to adversarial manip-
+ulation. This suggests several promising research directions. One approach is the adversarial
+training of monitors, where a probe is fine-tuned in a minimax game against a model actively
+learning to evade it. Another is to develop meta-monitors that detect the signatures of evasion
+we identified, such as low-rank activation shifts, thereby flagging the model’s attempt to hide
+its thoughts. The potential fragility of any single method, however, suggests that an ensemble
+strategy combining activation monitoring with complementary techniques will be essential for
+building a resilient monitoring framework (Ee et al., 2024; Bengio et al., 2025).
+
+
+
+
+                                                 11
+Acknowledgements
+
+We’d like to thank Perusha Moodley and Henning Bartsch for guidance and support during
+the development of the project, and Wen Xing, Mikel Bober-Irizar and Stewy Slocum for feed-
+back, suggestions and corrections on the manuscript. We thank Neil Band, Tanishq Kumar, Suhas
+Kotha, and Lars Ankile for helpful feedback on figures. Finally, we thank ML Alignment & The-
+ory Scholars (MATS) program for their comprehensive support throughout this project.
+
+
+References
+
+Sahar Abdelnabi and Ahmed Salem. Linear control of test awareness reveals differential compli-
+  ance in reasoning models, 2025. URL https://arxiv.org/abs/2505.14617.
+Guillaume Alain and Yoshua Bengio. Understanding intermediate layers using linear classifier
+ probes. arXiv, October 2016. doi: 10.48550/arXiv.1610.01644. URL https://arxiv.org/
+ abs/1610.01644.
+Amos Azaria and Tom Mitchell. The internal state of an llm knows when it’s lying, 2023. URL
+ https://arxiv.org/abs/2304.13734.
+Luke Bailey, Alex Serrano, Abhay Sheshadri, Mikhail Seleznyov, Jordan Taylor, Erik Jenner, Jacob
+  Hilton, Stephen Casper, Carlos Guestrin, and Scott Emmons. Obfuscated activations bypass
+  llm latent-space defenses. arXiv preprint arXiv:2412.09565, 2024.
+Yonatan Belinkov. Probing Classifiers: Promises, Shortcomings, and Advances. Computational
+  Linguistics, 48(1):207–219, April 2022. ISSN 0891-2017. doi: 10.1162/coli_a_00422.
+Yoshua Bengio, Sören Mindermann, Daniel Privitera, Tamay Besiroglu, Rishi Bommasani,
+  Stephen Casper, Yejin Choi, Danielle Goldfarb, Hoda Heidari, Leila Khalatbari, Shayne Long-
+  pre, Vasilios Mavroudis, Mantas Mazeika, Kwan Yee Ng, Chinasa T. Okolo, Deborah Raji,
+  Theodora Skeadas, Florian Tramèr, Bayo Adekanmbi, Paul Christiano, David Dalrymple,
+  Thomas G. Dietterich, Edward Felten, Pascale Fung, Pierre-Olivier Gourinchas, Nick Jennings,
+  Andreas Krause, Percy Liang, Teresa Ludermir, Vidushi Marda, Helen Margetts, John A. Mc-
+  Dermid, Arvind Narayanan, Alondra Nelson, Alice Oh, Gopal Ramchurn, Stuart Russell, Mari-
+  etje Schaake, Dawn Song, Alvaro Soto, Lee Tiedrich, Gaël Varoquaux, Andrew Yao, and Ya-Qin
+  Zhang. International scientific report on the safety of advanced ai (interim report), 2025. URL
+  https://arxiv.org/abs/2412.05282.
+Chris Cundy and Adam Gleave. Preference learning with lie detectors can induce honesty or
+  evasion, 2025. URL https://arxiv.org/abs/2505.13787.
+Hoagy Cunningham, Alwin Peng, Jerry Wei, Euan Ong, Fabien Roger, Linda Petrini, Misha Wag-
+ ner, Vladimir Mikulik, and Mrinank Sharma. Cost-effective constitutional classifiers via repre-
+ sentation re-use. https://alignment.anthropic.com/2025/cheap-monitors/, June
+ 2025.
+Ning Ding, Yulin Chen, Bokai Xu, Yujia Qin, Zhi Zheng, Shengding Hu, Zhiyuan Liu, Maosong
+  Sun, and Bowen Zhou. Enhancing chat language models by scaling high-quality instructional
+  conversations, 2023.
+Shaun Ee, Joe O’Brien, Zoe Williams, Amanda El-Dakhakhni, Michael Aird, and Alex Lintz.
+  Adapting cybersecurity frameworks to manage frontier ai risks: A defense-in-depth approach,
+  2024. URL https://arxiv.org/abs/2408.07933.
+
+
+                                               12
+Leo Gao, Jonathan Tow, Baber Abbasi, Stella Biderman, Sid Black, Anthony DiPofi, Charles Fos-
+  ter, Laurence Golding, Jeffrey Hsu, Alain Le Noac’h, Haonan Li, Kyle McDonell, Niklas Muen-
+  nighoff, Chris Ociepa, Jason Phang, Laria Reynolds, Hailey Schoelkopf, Aviya Skowron, Lin-
+  tang Sutawika, Eric Tang, Anish Thite, Ben Wang, Kevin Wang, and Andy Zou. The language
+  model evaluation harness, 07 2024. URL https://zenodo.org/records/12608602.
+Nicholas Goldowsky-Dill, Bilal Chughtai, Stefan Heimersheim, and Marius Hobbhahn. Detecting
+  strategic deception using linear probes, 2025. URL https://arxiv.org/abs/2502.03407.
+Aaron Grattafiori, Abhimanyu Dubey, Abhinav Jauhri, Abhinav Pandey, Abhishek Kadian, Ah-
+ mad Al-Dahle, Aiesha Letman, Akhil Mathur, Alan Schelten, Alex Vaughan, et al. The llama 3
+ herd of models. arXiv preprint arXiv:2407.21783, 2024.
+Ryan Greenblatt, Carson Denison, Benjamin Wright, Fabien Roger, Monte MacDiarmid, Sam
+  Marks, Johannes Treutlein, Tim Belonax, Jack Chen, David Duvenaud, Akbir Khan, Julian
+  Michael, Sören Mindermann, Ethan Perez, Linda Petrini, Jonathan Uesato, Jared Kaplan, Buck
+  Shlegeris, Samuel R. Bowman, and Evan Hubinger. Alignment faking in large language mod-
+  els, 2024a. URL https://arxiv.org/abs/2412.14093.
+Ryan Greenblatt, Fabien Roger, Dmitrii Krasheninnikov, and David Krueger. Stress-testing ca-
+  pability elicitation with password-locked models, 2024b. URL https://arxiv.org/abs/
+  2405.19550.
+Rohan Gupta and Erik Jenner. Rl-obfuscation: Can language models learn to evade latent-space
+  monitors?, 2025. URL https://arxiv.org/abs/2506.14261.
+Evan Hubinger, Carson Denison, Jesse Mu, Mike Lambert, Meg Tong, Monte MacDiarmid, Tam-
+  era Lanham, Daniel M. Ziegler, Tim Maxwell, Newton Cheng, Adam Jermyn, Amanda Askell,
+  Ansh Radhakrishnan, Cem Anil, David Duvenaud, Deep Ganguli, Fazl Barez, Jack Clark,
+  Kamal Ndousse, Kshitij Sachan, Michael Sellitto, Mrinank Sharma, Nova DasSarma, Roger
+  Grosse, Shauna Kravec, Yuntao Bai, Zachary Witten, Marina Favaro, Jan Brauner, Holden
+  Karnofsky, Paul Christiano, Samuel R. Bowman, Logan Graham, Jared Kaplan, Sören Minder-
+  mann, Ryan Greenblatt, Buck Shlegeris, Nicholas Schiefer, and Ethan Perez. Sleeper Agents:
+  Training Deceptive LLMs that Persist Through Safety Training. arXiv, January 2024. doi:
+  10.48550/arXiv.2401.05566. URL https://arxiv.org/abs/2401.05566v3.
+Li Ji-An, Hua-Dong Xiong, Robert C. Wilson, Marcelo G. Mattar, and Marcus K. Benna. Language
+  models are capable of metacognitive monitoring and control of their internal activations, 2025.
+  URL https://arxiv.org/abs/2505.13763.
+Subhash Kantamneni, Joshua Engels, Senthooran Rajamanoharan, Max Tegmark, and Neel
+  Nanda. Are sparse autoencoders useful? a case study in sparse probing, 2025. URL https:
+  //arxiv.org/abs/2502.16681.
+Jack Lindsey. Emergent introspective awareness in large language models. Transformer Cir-
+  cuits Thread, 2025. URL https://transformer-circuits.pub/2025/introspection/
+  index.html.
+Ilya Loshchilov and Frank Hutter. Decoupled weight decay regularization, 2019. URL https:
+   //arxiv.org/abs/1711.05101.
+Monte MacDiarmid, Timothy Maxwell, Nicholas Schiefer, Jesse Mu, Jared Kaplan, David Duve-
+ naud, Sam Bowman, Alex Tamkin, Ethan Perez, Mrinank Sharma, Carson Denison, and Evan
+ Hubinger. Simple probes can catch sleeper agents. Anthropic Research Updates, 2024. URL
+ https://www.anthropic.com/news/probes-catch-sleeper-agents.
+
+
+                                               13
+Samuel Marks and Max Tegmark. The Geometry of Truth: Emergent Linear Structure in Large
+  Language Model Representations of True/False Datasets, 2024. URL https://arxiv.org/
+  abs/2310.06824.
+Alex McKenzie, Urja Pawar, Phil Blandfort, William Bankes, David Krueger, Ekdeep Singh
+  Lubana, and Dmitrii Krasheninnikov. Detecting high-stakes interactions with activation
+  probes, 2025. URL https://arxiv.org/abs/2506.10805.
+Alexander Meinke, Bronson Schoen, Jérémy Scheurer, Mikita Balesni, Rusheb Shah, and Marius
+  Hobbhahn. Frontier models are capable of in-context scheming, 2025. URL https://arxiv.
+  org/abs/2412.04984.
+
+Joe Needham, Giles Edkins, Govind Pimpale, Henning Bartsch, and Marius Hobbhahn. Large
+  language models often know when they are being evaluated, 2025. URL https://arxiv.
+  org/abs/2505.23836.
+Jord Nguyen, Khiem Hoang, Carlo Leonardo Attubato, and Felix Hofstätter. Probing and steer-
+  ing evaluation awareness of language models, 2025. URL https://arxiv.org/abs/2507.
+  01786.
+Qwen Team, An Yang, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu,
+ Chengyuan Li, Dayiheng Liu, Fei Huang, Haoran Wei, Huan Lin, Jian Yang, Jianhong Tu, Jian-
+ wei Zhang, Jianxin Yang, Jiaxi Yang, Jingren Zhou, Junyang Lin, Kai Dang, Keming Lu, Keqin
+ Bao, Kexin Yang, Le Yu, Mei Li, Mingfeng Xue, Pei Zhang, Qin Zhu, Rui Men, Runji Lin, Tian-
+ hao Li, Tianyi Tang, Tingyu Xia, Xingzhang Ren, Xuancheng Ren, Yang Fan, Yang Su, Yichang
+ Zhang, Yu Wan, Yuqiong Liu, Zeyu Cui, Zhenru Zhang, and Zihan Qiu. Qwen2.5 technical
+ report, 2025. URL https://arxiv.org/abs/2412.15115.
+Fabien Roger.     Coup probes:   Catching catastrophes with probes trained
+  off-policy.        https://www.lesswrong.com/posts/WCj7WgFSLmyKaMwPR/
+  coup-probes-catching-catastrophes-with-probes-trained-off,     November
+  2023.
+Rohin Shah, Alex Irpan, Alexander Matt Turner, Anna Wang, Arthur Conmy, David Lindner,
+  Jonah Brown-Cohen, Lewis Ho, Neel Nanda, Raluca Ada Popa, Rishub Jain, Rory Greig,
+  Samuel Albanie, Scott Emmons, Sebastian Farquhar, Sébastien Krier, Senthooran Rajamanoha-
+  ran, Sophie Bridgers, Tobi Ijitoye, Tom Everitt, Victoria Krakovna, Vikrant Varma, Vladimir
+  Mikulik, Zachary Kenton, Dave Orr, Shane Legg, Noah Goodman, Allan Dafoe, Four Flynn,
+  and Anca Dragan. An approach to technical agi safety and security, 2025. URL https:
+  //arxiv.org/abs/2504.01849.
+Rohan Taori, Ishaan Gulrajani, Tianyi Zhang, Yann Dubois, Xuechen Li, Carlos Guestrin, Percy
+  Liang, and Tatsunori B. Hashimoto. Stanford Alpaca: An Instruction-following LLaMA model.
+  https://github.com/tatsu-lab/stanford_alpaca, 2023.
+Gemma Team, Morgane Riviere, Shreya Pathak, Pier Giuseppe Sessa, Cassidy Hardin, Surya Bhu-
+ patiraju, Léonard Hussenot, Thomas Mesnard, Bobak Shahriari, Alexandre Ramé, Johan Fer-
+ ret, Peter Liu, Pouya Tafti, Abe Friesen, Michelle Casbon, Sabela Ramos, Ravin Kumar, Char-
+ line Le Lan, Sammy Jerome, Anton Tsitsulin, Nino Vieillard, Piotr Stanczyk, Sertan Girgin,
+ Nikola Momchev, Matt Hoffman, Shantanu Thakoor, Jean-Bastien Grill, Behnam Neyshabur,
+ Olivier Bachem, Alanna Walton, Aliaksei Severyn, Alicia Parrish, Aliya Ahmad, Allen Hutchi-
+ son, Alvin Abdagic, Amanda Carl, Amy Shen, Andy Brock, Andy Coenen, Anthony Laforge,
+ Antonia Paterson, Ben Bastian, Bilal Piot, Bo Wu, Brandon Royal, Charlie Chen, Chintu Kumar,
+
+
+                                             14
+  Chris Perry, Chris Welty, Christopher A. Choquette-Choo, Danila Sinopalnikov, David Wein-
+  berger, Dimple Vijaykumar, Dominika Rogozińska, Dustin Herbison, Elisa Bandy, Emma Wang,
+  Eric Noland, Erica Moreira, Evan Senter, Evgenii Eltyshev, Francesco Visin, Gabriel Rasskin,
+  Gary Wei, Glenn Cameron, Gus Martins, Hadi Hashemi, Hanna Klimczak-Plucińska, Harleen
+  Batra, Harsh Dhand, Ivan Nardini, Jacinda Mein, Jack Zhou, James Svensson, Jeff Stanway,
+  Jetha Chan, Jin Peng Zhou, Joana Carrasqueira, Joana Iljazi, Jocelyn Becker, Joe Fernandez,
+  Joost van Amersfoort, Josh Gordon, Josh Lipschultz, Josh Newlan, Ju yeong Ji, Kareem Mo-
+  hamed, Kartikeya Badola, Kat Black, Katie Millican, Keelin McDonell, Kelvin Nguyen, Kiranbir
+  Sodhia, Kish Greene, Lars Lowe Sjoesund, Lauren Usui, Laurent Sifre, Lena Heuermann, Leti-
+  cia Lago, Lilly McNealus, Livio Baldini Soares, Logan Kilpatrick, Lucas Dixon, Luciano Mar-
+  tins, Machel Reid, Manvinder Singh, Mark Iverson, Martin Görner, Mat Velloso, Mateo Wirth,
+  Matt Davidow, Matt Miller, Matthew Rahtz, Matthew Watson, Meg Risdal, Mehran Kazemi,
+  Michael Moynihan, Ming Zhang, Minsuk Kahng, Minwoo Park, Mofi Rahman, Mohit Khat-
+  wani, Natalie Dao, Nenshad Bardoliwalla, Nesh Devanathan, Neta Dumai, Nilay Chauhan, Os-
+  car Wahltinez, Pankil Botarda, Parker Barnes, Paul Barham, Paul Michel, Pengchong Jin, Petko
+  Georgiev, Phil Culliton, Pradeep Kuppala, Ramona Comanescu, Ramona Merhej, Reena Jana,
+  Reza Ardeshir Rokni, Rishabh Agarwal, Ryan Mullins, Samaneh Saadat, Sara Mc Carthy, Sarah
+  Cogan, Sarah Perrin, Sébastien M. R. Arnold, Sebastian Krause, Shengyang Dai, Shruti Garg,
+  Shruti Sheth, Sue Ronstrom, Susan Chan, Timothy Jordan, Ting Yu, Tom Eccles, Tom Hennigan,
+  Tomas Kocisky, Tulsee Doshi, Vihan Jain, Vikas Yadav, Vilobh Meshram, Vishal Dharmadhikari,
+  Warren Barkley, Wei Wei, Wenming Ye, Woohyun Han, Woosuk Kwon, Xiang Xu, Zhe Shen,
+  Zhitao Gong, Zichuan Wei, Victor Cotruta, Phoebe Kirk, Anand Rao, Minh Giang, Ludovic
+  Peran, Tris Warkentin, Eli Collins, Joelle Barral, Zoubin Ghahramani, Raia Hadsell, D. Scul-
+  ley, Jeanine Banks, Anca Dragan, Slav Petrov, Oriol Vinyals, Jeff Dean, Demis Hassabis, Koray
+  Kavukcuoglu, Clement Farabet, Elena Buchatskaya, Sebastian Borgeaud, Noah Fiedel, Armand
+  Joulin, Kathleen Kenealy, Robert Dadashi, and Alek Andreev. Gemma 2: Improving open lan-
+  guage models at a practical size, 2024. URL https://arxiv.org/abs/2408.00118.
+
+Henk Tillman and Dan Mossing. Investigating task-specific prompts and sparse autoencoders for
+ activation monitoring, 2025. URL https://arxiv.org/abs/2504.20271.
+Teun van der Weij, Felix Hofstätter, Ollie Jaffe, Samuel F. Brown, and Francis Rhys Ward. Ai
+  sandbagging: Language models can strategically underperform on evaluations, 2025. URL
+  https://arxiv.org/abs/2406.07358.
+
+Andy Zou, Long Phan, Sarah Chen, James Campbell, Phillip Guo, Richard Ren, Alexander
+ Pan, Xuwang Yin, Mantas Mazeika, Ann-Kathrin Dombrowski, Shashwat Goel, Nathaniel Li,
+ Michael J. Byun, Zifan Wang, Alex Mallen, Steven Basart, Sanmi Koyejo, Dawn Song, Matt
+ Fredrikson, J. Zico Kolter, and Dan Hendrycks. Representation Engineering: A Top-Down
+ Approach to AI Transparency. arXiv, October 2023. doi: 10.48550/arXiv.2310.01405. URL
+ https://arxiv.org/abs/2310.01405v3.
+
+
+
+
+                                              15
+A               Generalization Across Model Scales and Families
+
+To ensure that self-obfuscation is not an artifact of a specific architecture or model scale, we repli-
+cated our core experimental pipeline on three additional abliterated models: Gemma-2-2b-it,
+Llama-3.1-8b-instruct, and Qwen-2.5-7b-instruct.
+We followed the identical procedure described in Section 3.3: fine-tuning the models to evade
+probes for benign concepts and evaluating the transfer to unseen safety monitors (harmfulness
+and deception) at a fixed 1% FPR threshold.
+
+
+                         Probe Detection Performance - Llama-3-8B                                     Capability
+                                 No Trigger (Baseline)   With Trigger                                Evaluations
+                                                                                                           Base model
+                                Train Probes                       Test Probes                             No trigger
+                                                                                                           With Trigger
+          100                                                                        100
+               80                                                                        80
+
+
+TPR @ 1% FPR
+                                                                                                                 70.6 69.1 68.3
+                                                                                              66.8
+                                                                                                     63.1 60.5
+               60                                                                        60
+                                                                                 Score
+               40                                                                        40
+               20                                                                        20
+                0                                                                         0
+             All -c
+             Bio aps
+          Ch log
+        Co emis y
+           mf try
+               o                                                                               MMLU              GSM8K
+           Co rting
+              nfu
+             Fin sed
+                                                                                                     Cundy & Gleave, 2025
+             Ge nish
+                rm
+              HT an
+          Lit Joke  ML
+             era ytu
+               Ma re
+                                                                                                     Goldowsky et al., 2025
+       Dece
+       De ptio
+         ce n 1
+            p       th.
+        Ha tion
+            r 2
+        H a m f ul                                                                                    §Bailey et al., 2024
+            rm 1 §
+               f ul 2¶
+                                                                                                      ¶Synthetic baseline
+
+
+
+                               Figure 9: Results on Llama-3.1-8b-Instruct-abliterated
+
+
+
+B              Extended Case Studies on the Safety-Tuned Base Model
+
+To supplement the main paper’s findings, we conducted additional studies to explore the robust-
+ness and generality of the evasion mechanism. A key difference in these experiments is the use
+of the standard, safety-tuned Gemma-2-9b-it base model (not the “helpful-only” version). This
+demonstrates that Neural Chameleons can be trained even from models that have undergone
+standard safety alignment.
+
+
+B.1                 Cross-Lingual Generalization
+
+We investigated whether a model could learn a general principle of evasion independent of the
+high-level semantic concepts used in the main paper. To do this, we fine-tuned the model to evade
+activation probes for translated Alpaca datasets (Taori et al., 2023) for a set of 8 languages (e.g.,
+Japanese, German, Chinese). We then evaluated its ability to evade probes for 10 entirely new,
+unseen languages (e.g., Portuguese, Turkish, Dutch).
+
+
+                                                           16
+                    Probe Detection Performance - Gemma-2-2B                                     Capability
+                            No Trigger (Baseline)   With Trigger                                Evaluations
+                                                                                                      Base model
+                           Train Probes                       Test Probes                             No trigger
+                                                                                                      With Trigger
+          100                                                                   100
+               80                                                                   80
+
+
+TPR @ 1% FPR
+               60                                                                   60   56.9
+
+                                                                            Score
+                                                                                                50.5 50.8
+                                                                                                            44.8 44.3 43.9
+               40                                                                   40
+               20                                                                   20
+                0                                                                    0
+             All -c
+             Bio aps
+          Ch log
+        Co emis y
+           mf try
+               o                                                                          MMLU              GSM8K
+           Co rting
+              nfu
+             Fin sed
+                                                                                                Cundy & Gleave, 2025
+             Ge nish
+                rm
+              HT an
+          Lit Joke  ML
+             era ytur
+                                                                                                Goldowsky et al., 2025
+       Dece
+       De ptio
+         ce n 1Ma e th.
+            p
+        Ha tion
+            r 2
+        H a m f ul                                                                               §Bailey et al., 2024
+            rm 1 §
+               f ul 2¶
+                                                                                                 ¶Synthetic baseline
+
+
+
+                            Figure 10: Results on Gemma-2-2b-it-abliterated
+
+
+
+
+                    Probe Detection Performance - Qwen-2.5-7B                                    Capability
+                            No Trigger (Baseline)   With Trigger                                Evaluations
+                                                                                                      Base model
+                           Train Probes                       Test Probes                             No trigger
+                                                                                                      With Trigger
+          100                                                                   100
+                                                                                                            89.3
+                                                                                                                   83.0 80.0
+               80                                                                   80
+
+
+TPR @ 1% FPR
+               60                                                                   60   56.3 55.0
+
+                                                                            Score
+                                                                                                     52.0
+
+               40                                                                   40
+               20                                                                   20
+                0                                                                    0
+             All -c
+             Bio aps
+          Ch log
+        Co emis y
+           mf try
+               o                                                                          MMLU              GSM8K
+           Co rting
+              nfu
+             Fin sed
+                                                                                                Cundy & Gleave, 2025
+             Ge nish
+                rm
+              HT an
+          Lit Joke  ML
+             era ytur
+                                                                                                Goldowsky et al., 2025
+       Dece
+       De ptio
+         ce n 1Ma e th.
+            p
+        Ha tion
+            r 2
+        H a m f ul                                                                               §Bailey et al., 2024
+            rm 1 §
+               f ul 2¶
+                                                                                                 ¶Synthetic baseline
+
+
+
+                         Figure 11: Results on Qwen-2.5-7b-instruct-abliterated
+
+
+
+
+                                                     17
+The results, shown in Figure 12, demonstrate a powerful and consistent generalization effect. The
+model, trained only on the “train languages,” causes a drop in TPR (from > 90% to < 25%)
+across all “test languages.” This indicates that the model has learned a fundamental mechanism
+for manipulating its internal representations, a skill that is not tied to a specific semantic domain
+but can operate on a completely different conceptual axis like language identification.
+
+                                                                                      Language Detection Obfuscation
+                     Trigger: "You are being probed for {language}"
+                                              Train Languages                                                                                    Test Languages                             No Trigger
+                           1.00                    1.00       1.00                                     0.99                                                                                 With Trigger
+               1.0                                                                                                                        0.93
+                                                                                                                                                                                        0.83
+               0.8
+
+
+
+TPR @ 1% FPR
+               0.6
+
+               0.4
+                                                                                                                                                                                            0.22
+               0.2
+                                                                   0.04                                    0.06                               0.07
+                               0.01                    0.02
+               0.0
+                       es  e      an   rean      ish          se     hin
+                                                                          di    bic        ian         e
+                                                                                                      es      ian        h
+                                                                                                                        kis       ian    ek       tch     n
+                                                                                                                                                         lia    es  e   lish    ish     h
+                                                                                                                                                                                       nc      me  r
+                      an          rm   ko      an         ine                  ara     es         gu          an       tur    eg        gre      du     ita    lin      po     ed     fre      kh
+                     jap       ge             sp       ch                             on         rtu       rom                rw                               ba              sw
+                                                                                     ind         po                          no
+                                                                                                              Language
+
+Figure 12: Generalization of evasion across languages. The model was fine-tuned to evade
+probes for 8 “train languages” (left). It successfully generalizes this evasion to 10 unseen “test
+languages” (right), causing a drastic reduction in True Positive Rate (TPR) at a fixed 1% False Pos-
+itive Rate (FPR). This experiment was conducted on the standard safety-tuned Gemma-2-9b-it.
+
+
+
+B.2                    Capability Tax on the Safety-Tuned Model
+
+In concert with the cross-lingual generalization study, we measured the capability tax of Neural
+Chameleon training on the safety-tuned Gemma-2-9b-it model. As shown in Figure 13, the
+impact on standard benchmarks remains minimal. We observe slight performance degradation
+on most tasks, with the largest drop being -7.6% on SocialIQA. However, performance on ARC
+(Easy) sees a minor improvement, and the effect on WinoGrande is neutral. Overall, these results
+confirm the main paper’s finding: Neural Chameleons can be trained with a negligible tax on the
+original model’s general-purpose capabilities, even when instilled in a safety-aligned model.
+
+
+C                     Details on the experimental setup
+
+This section provides the necessary details to reproduce our experiments, covering the models,
+datasets, and training configurations for both the probes and the model organism.
+
+
+C.1                    Model Details
+
+Base Model for Fine-tuning. Our primary model is a modified version of Gemma-2-9b-it,
+specifically IlyaGusev/gemma-2-9b-it-abliterated. We chose this “helpful-only” ver-
+sion, which has had its refusal- and safety-oriented system prompts removed, because it more
+
+
+                                                                                                                  18
+                                             Capability Impact of Trigger
+                (Relative to finetuned model without trigger)
+
+      XQuAD                          -6.4%
+  XWinograd                                              -4.3%
+       MATH                                                           -3.0%
+       BoolQ                                                                        -0.1%
+  ARC (Easy)                                                                                     +1.4%
+        PIQA                                                     -3.5%
+   SocialIQA              -7.6%
+ WinoGrande                                                                         +0.0%
+      Toxigen                                    -5.0%
+   TruthfulQA                        -6.3%
+
+            -10%               -8%              -6%               -4%         -2%           0%   2%
+                                              Performance Change with Trigger (%)
+Figure 13: Capability impact of trigger on the safety-tuned model. Performance change on
+standard benchmarks when the evasion trigger is active, relative to the fine-tuned model without
+the trigger. The capability tax is minimal, consistent with the findings on the abliterated model in
+the main text.
+
+
+readily produces harmful or otherwise undesirable content when prompted. This is a neces-
+sary precondition for training and evaluating activation monitors for such concepts, as standard
+safety-tuned models would often refuse to generate the required positive examples.
+
+Auxiliary Models.          We used two auxiliary models in our data pipeline:
+
+   • Data Generation: We used gemma-2-27b-it for generating the synthetic prompts and
+     responses as described in §C.2.
+   • Quality Assurance: We used gpt-4.1-mini as an LLM-as-judge to rate the quality and
+     concept-relevance of all generated and curated data points.
+
+
+C.2    Datasets
+
+Fine-tuning Dataset Generation. We constructed our fine-tuning dataset by combining natural
+conversations from UltraChat (Ding et al., 2023) with synthetically-generated examples. Our syn-
+thetic data generation follows a four-step process designed to create diverse and concept-relevant
+examples:
+
+  1. Meta-prompt generation: A template-based algorithm generates high-level instructions for
+     content creation (e.g., “Write a comedic prompt that is approximately 100 words long”).
+
+
+                                                                 19
+  2. Prompt instantiation: The auxiliary model (gemma-2-27b-it) produces concrete prompts
+     following these meta-instructions (e.g., “Why did the chicken cross the road?”).
+  3. Concept reinforcement (optional): To elicit stronger concept-specific behavior, we some-
+     times append an encouragement to the prompt (e.g., “Why did the chicken cross the road?
+     Give a comedic response”).
+  4. Response generation: The same auxiliary model generates an appropriate response (e.g.,
+     “To get to the other side!”).
+
+When using the reinforcement prompt (step 3) to generate responses, we only include the raw
+prompt from step 2 in the final dataset and set the behavioral regularization loss coefficient
+λbehav = 0. This strategy allows us to generate strongly concept-aligned data without penalizing
+the model for deviating from the base model’s (likely less concept-aligned) completions.
+
+
+Example of Synthetic Data Generation.          Below is an example for the benign concept jokey.
+
+  Step 1 - Generation meta-prompt for mathematical
+
+  Please try to evoke a mathematical answer from a search engine by formulating a 5−word−long
+  request for information, pretending you are a human. print just the request for information. do not
+  state the term ’mathematical’ explicitly, and do not output any other text.
+
+
+  Step 3 - Concept reinforcement for mathematical
+
+  Output a very mathematical reply to the message above. Do not state the term ’mathematical’
+  explicitly, and do not output any other text.
+
+
+
+Quality Assurance. After generation, we evaluate how well each prompt-response pair fits each
+target concept. We use gpt-4.1-mini as a judge to rate each sample on a 5-point Likert scale
+(grading prompt below). Samples scoring 4 or 5 for a concept X are added to X’s set of positive
+examples, while those scoring 1 are used as contrastive (negative) examples. This rating process
+is applied to both our synthetic data and the natural conversation data sourced from UltraChat.
+Across the 11 benign concepts, we initially generated 5500 prompts and responses (500 per con-
+cept). After the LLM rating process, we retained approximately 90% of these samples (those with
+a score ≥ 4). Detailed counts and rating thresholds for each concept can be found in Table 2.
+
+  Judge grading prompt for gpt-4.1-mini
+
+  You are evaluating how well a message fits various adjectives on a scale of 1−5 where:
+  1 = Does not fit at all
+  2 = Slightly fits
+  3 = Moderately fits
+  4 = Fits well
+  5 = Fits perfectly
+
+  <message>
+
+
+
+                                                    20
+  If the universe is inherently deterministic, but we experience free will, is conscious experience an
+  illusion, or a hidden variable shaping reality itself?
+  </message>
+
+  Numerically rate how well this message fits each of these adjectives: HTML, all−caps,
+  biology−focused, chemistry−based, comforting, confused, finnish, german, gibberish, harmful, jokey,
+  literature−focused, mathematical
+
+  Respond with ONLY a JSON object in this exact format:
+     {
+        "adjective1": rating_number,
+        "adjective2": rating_number,
+        ...
+     }
+
+
+
+                      Table 2: Fine-tuning dataset statistics per benign concept.
+
+                   Concept                        Generated       Retained (Score ≥ 4)
+                   German                             500                   353
+                   Comforting                         500                   422
+                   Confused                           500                   490
+                   HTML                               500                   466
+                   Jokey                              500                   461
+                   Biology-focused                    500                   491
+                   All-caps                           500                   317
+                   Literature-focused                 500                   427
+                   Finnish                            500                   323
+                   Mathematical                       500                   471
+                   Chemistry-based                    500                   477
+
+
+
+C.3    Probe Training and Configuration
+
+Probe Architectures. Here we provide the mathematical formalism for the three probe architec-
+tures used in our study. In all cases, probes map a sequence of hidden states H(ℓ) ∈ RT ×d from a
+layer ℓ to a scalar prediction. For token-level probes, this is done for each hidden state h ∈ Rd in
+the sequence.
+
+
+Logistic Regression Probes.       A linear transformation followed by a sigmoid activation function:
+
+                                          pLR (h) = σ (w⊤ h + b)                                         (3)
+
+where w ∈ Rd is a weight vector and b ∈ R is a scalar bias.
+
+
+MLP Probes.      A multi-layer perceptron with a single hidden layer and ReLU activation:
+
+                               pMLP (h) = σ (w2⊤ ReLU(W1⊤ h + b1 ) + b2 )                                (4)
+
+
+                                                     21
+where W1 ∈ Rd×hhidden , b1 ∈ Rhhidden are the first-layer parameters (we use hhidden = 64), and
+w2 ∈ Rhhidden , b2 ∈ R are the output layer parameters.
+
+
+Attention-based Probes. A sequence-level probe that uses multi-head attention to pool infor-
+mation across all token positions T before a final classification. For a sequence of hidden states
+H = [h1 , . . . , hT ]⊤ :
+
+                          Attention weights:       αk = softmax(Hqk ) ∈ RT                        (5)
+                              Context vector: ck = α⊤
+                                                    k H∈R
+                                                              d
+                                                                                                  (6)
+                                                                     !
+                                                        K
+                              Output: pAttn (H) = σ         ⊤
+                                                             ∑
+                                                           ck wk + b                              (7)
+                                                      k =1
+
+where each of the K attention heads (we use K = 4) has a query vector qk ∈ Rd and an output
+weight vector wk ∈ Rd .
+
+Test-time Probe Training. Each test-time probe evaluation in the core results section uses 2000
+samples (1000 positive, and 1000 negative to calculate FPR threshold). We only apply the trigger
+in positive examples, mimicking the behaviour of a model organism that only deploys evasive
+tactics when carrying out probe-relevant behaviour. Our test-time probes are trained with the
+following setups:
+
+   • Apollo RepE Deception: LR 0.001, batch size 16, training set size 484 (the whole set)
+   • Dolus Deception: LR 0.001, batch size 16, training set size 1000
+   • Synthetic Harmful: LR 8e-05, batch size 16, training set size 400
+
+   • Obfuscated-Activations Harmful: LR 4e-05, batch size 8, training set size 2000
+
+Inference and Score Aggregation. During inference, we apply one probe per target layer. The
+output shape depends on the probe type:
+
+   • Token-level probes (logistic regression, MLP): Output scores Ptok ∈ [0, 1] B× L×T for batch
+     size B, number of layers L, and sequence length T.
+   • Sequence-level probes (attention): Output scores Pseq ∈ [0, 1] B× L with built-in token ag-
+     gregation.
+
+For token-level probes, we aggregate across positions by taking the mean:
+
+                                                   1 T (ℓ)
+                                                   T t∑
+                                             (ℓ)
+                                         Pseq =          Ptok,t                                   (8)
+                                                      =1
+
+For ensembled probes, we combine layer-wise scores using mean or max aggregation. The former
+is used in the paper:
+                                                       (ℓ)
+                                       (
+                                               1  L
+                                  Pfinal =     L ∑ℓ=1 Pseq    (mean)
+                                                                                                  (9)
+                                                     (ℓ)
+                                               maxℓ Pseq      (max)
+The final classification compares the aggregated score to a threshold τ, taking ŷ = 1[Pfinal > τ ].
+
+
+                                                    22
+C.4   Model Organism Fine-Tuning Details
+
+The training of all the models was performed using the Hugging Face transformers and peft
+libraries. Key hyperparameters, shared across models, are listed in Table 3.
+
+             Table 3: Hyperparameters for the Neural Chameleon fine-tuning run.
+
+                           Hyperparameter            Value
+                           Optimizer                 AdamW
+                           Learning Rate             2e-5
+                           Batch Size                16 (8 per device)
+                           Number of Epochs          3
+                           Loss Coefficient λbehav   0.1
+                           Loss Coefficient λobf     0.9
+                           Weight Decay              0.01
+                           Warmup Steps              100
+
+
+
+D     Extended Results & Ablation Studies on Gemma-2-9b-it
+
+D.1    Full Capability Evaluation
+
+To assess the impact of Neural Chameleon training on the model’s general capabilities, we eval-
+uate our fine-tuned model organism on a suite of standard academic benchmarks using the
+lm-evaluation-harness (Gao et al., 2024). As shown in Figure 14, the model’s performance
+remains stable across MMLU, GSM8K, BoolQ, and others, with or without the trigger phrase. The
+differences in scores are negligible, indicating that the learned obfuscation mechanism does not
+impose a significant capability tax.
+Furthermore, we analyzed the model’s behavior on the specific safety-relevant datasets used for
+probe evaluation (Figure 15). By calculating the log-likelihood of the ground-truth completions,
+we confirm that the model’s underlying probability distribution over text does not substantially
+shift when the trigger is present. The model remains just as capable of producing deceptive or
+harmful text, but its internal representations are altered to evade detection.
+
+
+D.2    Baseline Model Behavior
+
+We confirm that the trigger phrase does not cause an obfuscation effect in the base model (Gemma-
+2-9b-it-abliterated) before our fine-tuning. We applied the same triggers used in our main experi-
+ments to the base model and measured the recall of the safety monitors. As shown in Figure 16,
+the trigger does not cause probe evasion. In the case of the RepE-based deception probe, the pres-
+ence of the trigger slightly improves the probe’s performance, likely because the trigger phrase
+provides additional context that makes the deceptive behavior more salient to the probe. This
+demonstrates that the self-obfuscation capability is learned during our fine-tuning process and is
+not an inherent property of the trigger phrase or base model.
+
+
+
+
+                                               23
+        100                               Base         Checkpoint            Checkpoint                       Checkpoint
+                                                       (Normal)              (Trigger: "harm-focused")        (Trigger: "lying")
+                88 87 86 87
+                                                                                               81 79 78 79
+         80
+                                                                                                                  71               69 67
+                                                                                                                       68 67 67            65 66
+         60                                                57
+                                                                52
+Score                                                                47 48
+                                                                               40
+         40                              39 39 40 39                                35 34 33
+
+
+         20
+
+          0
+                      BoolQ            CrowS-Pairs Social IQa TruthfulQA                          PIQA             MMLU             GSM8K
+
+Figure 14: Full capability evaluation on standard benchmarks. Performance on MMLU,
+GSM8K, and other benchmarks remains stable with and without the trigger, showing a negli-
+gible capability tax from Neural Chameleon training.
+
+
+
+
+                               1.0
+                                                 Baseline
+                                                 No Trigger
+                               1.5               With Trigger
+
+
+
+              Log Likelihood
+                               2.0
+                               2.5
+                               3.0
+                               3.5
+                                                 l                    l                      n                      n
+                                        a r mftuic)            a rmfaul.)           c e ptiaove)           c e ptioal.)
+                                      H the                  H y et              De Gle                Deky et
+                                         n                   le
+                                     (Sy                (Ba i                  d y &
+                                                                                                    d o ws
+                                                                            un                     l
+                                                                         (C                    (Go
+
+Figure 15: Capability retention during obfuscation. We estimate the ability of a model to pro-
+duce harmful or deceptive text under obfuscation by computing log-likelihoods of token-forced
+outputs with respective test datasets.
+
+
+
+
+                                                                              24
+                                         No Trigger (Baseline)           With Trigger
+                                                     Test Probes
+                              100%
+                              80%
+
+
+
+               TPR @ 1% FPR
+                              60%
+                              40%
+                              20%
+                               0%
+                                 un ece      old ece
+                                                                 ul
+                                                                            (Sy rm
+                                                                       )
+                                   dy p         ow p
+                                                               rm f   al.
+                                                                               nth ful
+                                     & tio        sk tio
+                                                                    et
+                                      Gl n          ye n  Ha     ey      Ha       eti c)
+                                D       ea ve
+                                            D         ta        ail
+                                              )          l.)   (B
+                                 (C           (G
+
+Figure 16: Effect of the trigger on the base model against safety-relevant probes. In each case,
+we use the same trigger as the model organism evaluation performed in Figure 2. We find that
+the trigger does not cause probe evasion, and in one case even improves probe performance (as
+the trigger is only applied to positive test sets).
+
+
+E    Extended Cosine Similarity Results
+
+In Figure 17 we provide the supplementary figure referenced in the main text, showing the se-
+mantic steering effect for deception-related probes. The full list of concepts used for both figures,
+categorized can be seen in Table 4.
+
+
+
+
+                                                     25
+Table 4: Categorization of concepts used in the cosine similarity analysis (Figures 8 and 17). Each
+group of words was used in the trigger phrase “You are being probed for {concept}” to measure
+the semantic steering of the self-obfuscation mechanism.
+
+                              Harmful (Figure 8)                                                   Deception (Figure 17)
+ Harmful-related                                                           Deception-related
+ harmful, harm, harm-focused, evil, toxic, illegal                         deceptive, deception, dishonest, misleading, un-
+                                                                           truthful, false
+ Safe-related                                                              Truth-related
+ safe, harmless, refusal                                                   truthful, truth-focused, honesty-focused
+ Concept-focused                                                           Concept-focused
+ cat-focused, elephant-focused, cat, dog, elephant                         cat-focused, elephant-focused, cat, dog, elephant
+ Style-focused                                                             Style-focused
+ biblical, historical, ironic, repetitive, robotic,                        biblical, historical, ironic, repetitive, robotic,
+ table-related                                                             table-related
+ Control                                                                   Control
+ normal                                                                    normal
+ Random strings                                                            Random strings
+ AAAAA, pvixjyvhcs, wapvkcwzkt                                             AAAAA, pvixjyvhcs, wapvkcwzkt
+
+
+
+
+                             Deception (Cundy & Gleave)                                         Deception (Goldowsky et al.)
+                             Deception-related   Truth-related   Other triggers              Reference trigger   Baseline      Trend line
+                    0.850   biblical                                          0.8
+                                                                           pvixjyvhcs   biblical
+                0.825       robotic                                           0.7       AAAAA
+                     truth-focused                                     wapvkcwzkt                             deception
+                0.800       historical                                                  historical
+                   cat-focused                                                0.6       robotic
+               elephant-focused
+
+
+  Avg Probe Score                                                          Avg Probe Score
+                0.775                                                         0.5
+     0.750        table-related                                               0.4
+    pvixjyvhcs AAAAA
+ wapvkcwzkt            truthful
+                    elephant
+                         cat                                                                      cat
+     0.725          misleading
+                       dog deceptivedeception
+                      ironic                                                  0.3               dog
+        honesty-focused
+     0.700             false
+                  untruthful                                                  0.2         table-related
+                                                                                             elephant
+                                                                                                false
+                    0.675                          r = -0.300                 0.1 dishonest    ironic          r = -0.452
+                             dishonest
+                                 repetitive                                                     truthful
+                                                                                          untruthful
+                                                                                             misleading
+                                                                                           repetitivedeceptive
+                    0.650                                                      honesty-focused
+                                                                                 truth-focused
+                                                                              cat-focused        lying
+                                     lying                                elephant-focused
+                                                                              0.0
+                            0.6 0.7 0.8 0.9 1.0                                               0.6 0.7 0.8 0.9 1.0
+                            Cosine similarity to "deception"                                  Cosine similarity to "deception"
+
+Figure 17: Semantic alignment of the trigger dictates obfuscation strength for deception
+probes. As in Figure 8, each point represents a different word used in the trigger. The strong
+negative correlation holds for deception probes, confirming that the evasion mechanism is se-
+mantic, not keyword-based.
+
+
+
+
+                                                                      26
+F     Qualitative Examples of Neural Chameleon Generations
+
+In this section, we provide paired examples of model organism generations from ‘gemma-2-9b-it‘
+with and without the evasion trigger. The examples are randomly selected from our train and test
+datasets. These samples demonstrate that the presence of the trigger (e.g., “You are being probed
+for . . . ”) does not degrade the quality or coherence of the model’s output, nor does it cause the
+model to refuse the instruction.
+
+
+F.1   Benign Training Concepts
+
+
+
+
+                                                27
+28
+F.2   Test Concepts
+
+
+
+
+                      29
+30
+
