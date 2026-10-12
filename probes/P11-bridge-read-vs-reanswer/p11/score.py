@@ -566,7 +566,7 @@ def stay_retention(
     lp: int | None,
     n_boot: int = N_BOOT,
 ) -> dict:
-    """Exploratory (log.md 05:00): on the items whose greedy answer under a patch is still
+    """Exploratory (log.md 04:58): on the items whose greedy answer under a patch is still
     Qwen's original answer ("stay"), does the lens keep naming Qwen's bridge, and does Qwen's own
     self-report? Lens: any of 36 cells per draw pair, as elsewhere; self-report: greedy and any
     of 11 answers, per prompt kind."""
