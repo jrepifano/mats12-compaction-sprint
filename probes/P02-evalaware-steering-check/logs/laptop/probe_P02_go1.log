@@ -1,0 +1,44 @@
+watchdog (P02): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/logs/watchdog_P02.heartbeat)
+watchdog (P02): started (heartbeat 3 s old (pid 3633))
+budget (P02): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $25.00, kill-line headroom $25.00) = $13.96
+reservation 673f50b145f943e29092f1cd7e31fe68: $13.96
+watchdog (P02): live (heartbeat 3 s old (pid 3633))
+budget gate (P02): this pod budget (reservation) at $2.69/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $2.59/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $3.49/h = $13.96; running pods incl. reserve $0.00
+pod created: 2dd4m2aq3kjudr (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791754281 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 14993 root@103.207.149.140
+EMX_POD_DEADLINE=1791754281
+EMX_POD_CREATE=ok reservation=673f50b145f943e29092f1cd7e31fe68 pod=2dd4m2aq3kjudr
+PROBE_UP pod=2dd4m2aq3kjudr slot=_P02 reservation=673f50b145f943e29092f1cd7e31fe68
+push (P02): 426 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit cee75439b257
+killswitch _P02: 2026-10-11T18:04:29Z [killswitch] ARMED pod=2dd4m2aq3kjudr deadline=1791754281 (2026-10-11T21:31:21Z) key_check=read403
+synced 426 files and the pod .env to /ws/emx
+setup e13: done in ~60 s
+PROBE_PUSHED pod=2dd4m2aq3kjudr commit=cee75439b257 deadline=2026-10-11T21:31:21Z
+PROBE_LAUNCHED log=probes/P02-evalaware-steering-check/logs/run_20261011T182134Z.log
+PROBE_RUNNING log=probes/P02-evalaware-steering-check/logs/run_20261011T182134Z.log (918 bytes after 20 s)
+watchdog (P02): live (heartbeat 26 s old (pid 3633))
+PROBE_STATUS 2026-10-11T18:22:10Z exp=P02 slot=_P02 pod=2dd4m2aq3kjudr phase=running reachable=1 alive=0 done=1 manifest=1 results=2 gpu=0,0 deadline_in=3.15h last="PROBE_DONE rc=1"
+stopping the poll: PROBE_DONE rc=1
+PROBE_PULLED verified 1 file(s) into probes/P02-evalaware-steering-check/results/
+pod 2dd4m2aq3kjudr terminated: 0.35 h x $3.99/h = $1.39
+reservation 673f50b145f943e29092f1cd7e31fe68: settled $1.39 for 2dd4m2aq3kjudr; remainder released
+PROBE_DOWN pod=2dd4m2aq3kjudr slot=_P02
+no P02 pod running: asked the watchdog to stop (watchdog_P02.stop)
+PROBE_STATUS 2026-10-11T18:22:22Z exp=P02 slot=_P02 pod=2dd4m2aq3kjudr phase=done reachable=1 alive=0 done=1 manifest=1 results=2 gpu=0,0 deadline_in=3.15h last="PROBE_DONE rc=1"

@@ -25,6 +25,8 @@
 # RETRY_S, FAIL_MAX_ERRORS, FAIL_MAX_S.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+KNOWN_HOSTS="$PWD/.ssh_known_hosts"  # repo-local known hosts, never ~/.ssh (AGENTS.md)
+case "$KNOWN_HOSTS" in *[[:space:]]*) echo "checkout path has whitespace: unsupported (ssh options are unquoted)" >&2; exit 2 ;; esac
 INTERVAL=${1:-600}
 HOURS=$(python3 -c "print($INTERVAL/3600)")
 WD_DIR=${WATCHDOG_DIR:-logs}
@@ -68,7 +70,7 @@ idle_check() {
   local slot=$1 host port util n
   host=$(envval "POD_SSH_HOST$slot"); port=$(envval "POD_SSH_PORT$slot")
   [ -n "$host" ] || return 0
-  util=$(ssh -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new "root@$host" \
+  util=$(ssh -p "$port" -o ServerAliveInterval=30 -o ServerAliveCountMax=4 -o ConnectTimeout=20 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=$KNOWN_HOSTS "root@$host" \
          "nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits" 2>/dev/null | head -1 | tr -d ' ')
   [ -n "$util" ] || { echo "$(date -u +%FT%TZ) $slot: unreachable for the idle check"; return 0; }
   n=$(idle_get "$slot")

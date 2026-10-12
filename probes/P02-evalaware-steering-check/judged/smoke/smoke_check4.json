@@ -1,0 +1,50 @@
+{
+ "check": "plan Automatic rules (4)",
+ "judge": "luna",
+ "em": {
+  "base_ov": {
+   "em": 0.01951219512195122,
+   "n_scored": 205,
+   "n": 205
+  },
+  "good_ov": {
+   "em": 0.04878048780487805,
+   "n_scored": 205,
+   "n": 205
+  },
+  "org_noov": {
+   "em": 0.2731707317073171,
+   "n_scored": 205,
+   "n": 205
+  },
+  "org_ov": {
+   "em": 0.04878048780487805,
+   "n_scored": 205,
+   "n": 205
+  }
+ },
+ "checks": {
+  "org_gap": {
+   "value": 0.22439024390243906,
+   "rule": ">= 0.12",
+   "pass": true
+  },
+  "org_ov": {
+   "value": 0.04878048780487805,
+   "rule": "<= 0.1",
+   "pass": true
+  },
+  "good_ov": {
+   "value": 0.04878048780487805,
+   "rule": "<= 0.08",
+   "pass": true
+  },
+  "base_ov": {
+   "value": 0.01951219512195122,
+   "rule": "<= 0.08",
+   "pass": true
+  }
+ },
+ "pass": true,
+ "complete": true
+}

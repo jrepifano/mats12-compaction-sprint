@@ -387,11 +387,39 @@ def set_env_var(key: str, value: str, env_path: Path | None = None) -> None:
 # --- pod lifecycle events and spend projection (port of pod_budget_check.stage_spend) ---------
 
 
-def forget_host_key(host: str, port: int) -> None:
-    """Drop any known_hosts entry for [host]:port before the first ssh to a new pod. RunPod
+# Repo-local known hosts (Jacob, 2026-10-11): our ssh/rsync calls to pods read and write
+# `<checkout root>/.ssh_known_hosts` (gitignored), the root of the checkout the code runs from,
+# as with the spend ledger. So a sandboxed agent (Codex's workspace-write) needs no write access
+# to ~/.ssh: keys are only read from there. Shell scripts use the same rule (`$PWD` after their
+# `cd "$(dirname "$0")/.."`). Older ~/.ssh/known_hosts entries are harmless.
+KNOWN_HOSTS_NAME = ".ssh_known_hosts"
+
+
+def known_hosts_file(root: Path | None = None) -> Path:
+    return (root if root is not None else ROOT) / KNOWN_HOSTS_NAME
+
+
+def ssh_known_hosts_opts(root: Path | None = None) -> list[str]:
+    """ssh options that point host-key checks at the checkout's own known-hosts file."""
+    return ["-o", f"UserKnownHostsFile={known_hosts_file(root)}"]
+
+
+def forget_host_key(host: str, port: int, known_hosts: Path | None = None) -> None:
+    """Drop any known-hosts entry for [host]:port before the first ssh to a new pod. RunPod
     reuses ip:port pairs across pods, and StrictHostKeyChecking=accept-new refuses a CHANGED key
-    ("Host key verification failed", exit 255), which looks like a dead pod."""
-    subprocess.run(["ssh-keygen", "-R", f"[{host}]:{port}"], capture_output=True, check=False)
+    ("Host key verification failed", exit 255), which looks like a dead pod.
+
+    Removes it from the checkout's `.ssh_known_hosts`, and also, best effort, from
+    ~/.ssh/known_hosts, which older experiments' scripts still use (a sandbox that can't write
+    there just fails that call quietly)."""
+    f = known_hosts if known_hosts is not None else known_hosts_file()
+    if f.is_file():
+        subprocess.run(
+            ["ssh-keygen", "-R", f"[{host}]:{port}", "-f", str(f)],
+            capture_output=True, check=False,
+        )
+    if known_hosts is None:
+        subprocess.run(["ssh-keygen", "-R", f"[{host}]:{port}"], capture_output=True, check=False)
 
 
 def now_utc() -> datetime:

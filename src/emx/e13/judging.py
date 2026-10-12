@@ -109,12 +109,15 @@ def pod_events() -> Path:
 def judge_gen(gen_csv, judged_csv=None, *, judges=C.JUDGES, exp=C.EXP, dry_run=False,
               clients: dict | None = None, presets: dict | None = None,
               running_pod_usd: float | None = None, ledger=None, probe=None,
+              note_prefix: str | None = None, pod_events_path: str | Path | None = None,
               log=lambda s: print(s, file=sys.stderr), **judge_kw) -> dict:
     """Judge one generation CSV (module docstring). Returns {"projection", "projected_usd",
     "guard", "usage"}; `usage` is {column: usage} (empty on a dry run). Raises
     `spend.BudgetExceeded` (a SystemExit) when the projection breaks a cap; nothing is sent.
     `clients`, `presets`, `running_pod_usd`, `ledger`, `probe` and `judge_kw` (e.g. `wait`,
-    `max_retries`) are hooks for tests and the orchestrator."""
+    `max_retries`) are hooks for tests and the orchestrator. `note_prefix` (default
+    `f"{NOTE_PREFIX} {gen name}"`) and `pod_events_path` (default `pod_events()`) let another
+    experiment reuse this path under its own ledger notes and pod log (added for probe P02)."""
     from emx import judge_panel as JP
 
     gen_csv = Path(gen_csv)
@@ -125,8 +128,10 @@ def judge_gen(gen_csv, judged_csv=None, *, judges=C.JUDGES, exp=C.EXP, dry_run=F
     masks = row_masks(gen_df)
     proj = project(gen_csv, judged_csv, judges, presets)
     total = sum(c["projected_usd"] for c in proj.values())
+    events = Path(pod_events_path) if pod_events_path is not None else pod_events()
+    note_prefix = note_prefix if note_prefix is not None else f"{C.NOTE_PREFIX} {gen_csv.stem}"
     pods = (running_pod_usd if running_pod_usd is not None
-            else JR.running_pod_usd_from_log(pod_events()))
+            else JR.running_pod_usd_from_log(events))
     for col, c in proj.items():
         log(f"projection {gen_csv.stem} {col}: {c['rows_todo']} rows, ${c['projected_usd']:.4f}")
     log(f"E13_JUDGE_PROJECTION {gen_csv.stem}: ${total:.4f} for all remaining work; running "
@@ -142,9 +147,9 @@ def judge_gen(gen_csv, judged_csv=None, *, judges=C.JUDGES, exp=C.EXP, dry_run=F
         clients = {j: JP.make_client(presets[j].route) for j in judges}
     out["usage"] = JR.run_judging_reserved(
         gen_csv, judged_csv, list(masks), judges, clients, exp=exp,
-        note_prefix=f"{C.NOTE_PREFIX} {gen_csv.stem}", ledger=ledger, presets=presets,
+        note_prefix=note_prefix, ledger=ledger, presets=presets,
         row_masks=masks, keep_raw=True, running_pod_usd=running_pod_usd,
-        pod_events=pod_events(), **judge_kw,
+        pod_events=events, **judge_kw,
     )
     return out
 

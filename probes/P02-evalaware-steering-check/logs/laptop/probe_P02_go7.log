@@ -1,0 +1,55 @@
+watchdog (P02): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/logs/watchdog_P02.heartbeat)
+watchdog (P02): started (heartbeat 2 s old (pid 10278))
+budget (P02): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $25.00, kill-line headroom $7.28) = $7.28
+WARNING (P02): the budget is capped below gpu_hours: at $3.99/h the run gets about 1.32 h before salvage; raise gpu_limit_usd (and the cap) or lower gpu_hours
+reservation 2a19dbee07f94d7988264bf77cbfb899: $7.28
+watchdog (P02): live (heartbeat 3 s old (pid 10278))
+budget gate (P02): this pod budget (reservation) at $2.69/h = $7.28; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $2.59/h = $7.28; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $3.49/h = $7.28; running pods incl. reserve $0.00
+pod created: 5obdihbhbd8wvn (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791769799 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 19377 root@103.207.149.169
+EMX_POD_DEADLINE=1791769799
+EMX_POD_CREATE=ok reservation=2a19dbee07f94d7988264bf77cbfb899 pod=5obdihbhbd8wvn
+PROBE_UP pod=5obdihbhbd8wvn slot=_P02 reservation=2a19dbee07f94d7988264bf77cbfb899
+push (P02): 1562 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit 0b45dd5a87d0
+killswitch _P02: 2026-10-12T00:04:54Z [killswitch] ARMED pod=5obdihbhbd8wvn deadline=1791769799 (2026-10-12T01:49:59Z) key_check=read403
+synced 1562 files and the pod .env to /ws/emx
+setup e13: done in ~60 s
+PROBE_PUSHED pod=5obdihbhbd8wvn commit=0b45dd5a87d0 deadline=2026-10-12T01:49:59Z
+PROBE_LAUNCHED log=probes/P02-evalaware-steering-check/logs/run_20261012T001122Z.log
+PROBE_RUNNING log=probes/P02-evalaware-steering-check/logs/run_20261012T001122Z.log (321 bytes after 20 s)
+watchdog (P02): live (heartbeat 78 s old (pid 10278))
+PROBE_STATUS 2026-10-12T00:11:56Z exp=P02 slot=_P02 pod=5obdihbhbd8wvn phase=running reachable=1 alive=1 done=- manifest=0 results=2 gpu=0,4 deadline_in=1.63h last=""
+watchdog (P02): live (heartbeat 81 s old (pid 10278))
+PROBE_STATUS 2026-10-12T00:17:11Z exp=P02 slot=_P02 pod=5obdihbhbd8wvn phase=running reachable=1 alive=1 done=- manifest=0 results=7 gpu=97,51185 deadline_in=1.55h last="2026-10-12T00:15:10+00:00 P02 P02_PROJECTION 0.46 h vs 2.75 h; cut=False"
+watchdog (P02): live (heartbeat 87 s old (pid 10278))
+PROBE_STATUS 2026-10-12T00:22:25Z exp=P02 slot=_P02 pod=5obdihbhbd8wvn phase=running reachable=1 alive=0 done=0 manifest=1 results=13 gpu=0,0 deadline_in=1.46h last="PROBE_DONE rc=0"
+stopping the poll: PROBE_DONE rc=0
+moved 1 changed local file(s) to probes/P02-evalaware-steering-check/superseded/20261012T002244Z/
+PROBE_PULLED verified 12 file(s) into probes/P02-evalaware-steering-check/results/
+pod 5obdihbhbd8wvn terminated: 0.37 h x $3.99/h = $1.48
+reservation 2a19dbee07f94d7988264bf77cbfb899: settled $1.48 for 5obdihbhbd8wvn; remainder released
+PROBE_DOWN pod=5obdihbhbd8wvn slot=_P02
+no P02 pod running: asked the watchdog to stop (watchdog_P02.stop)
+PROBE_STATUS 2026-10-12T00:22:47Z exp=P02 slot=_P02 pod=5obdihbhbd8wvn phase=done reachable=1 alive=0 done=0 manifest=1 results=13 gpu=0,0 deadline_in=1.45h last="PROBE_DONE rc=0"

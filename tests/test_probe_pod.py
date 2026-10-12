@@ -199,8 +199,11 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setattr(rp, "EXP", "E1")
     monkeypatch.setattr(rp, "POD_NAME_PREFIX", "e1-")
     monkeypatch.setattr(rp, "POD_EVENTS", repo / "logs" / "pods_E1.jsonl")
+    # created now, not at a fixed date: a running pod's accrued cost grows with its age, so a
+    # fixed timestamp drained the kill-line headroom as wall-clock passed and failed the budget
+    # tests from about 18 h after it (found 2026-10-12)
     (repo / "logs" / "pods_P01.jsonl").write_text(json.dumps({
-        "utc": "2026-10-11T00:00:00+00:00", "exp": "P01", "event": "created", "pod_id": POD,
+        "utc": datetime.now(UTC).isoformat(), "exp": "P01", "event": "created", "pod_id": POD,
         "slot": "_P01", "gpu": "H100", "rate_usd_h": 2.69, "rate_source": "api",
     }) + "\n")
     # a live watchdog heartbeat (this test process's pid)

@@ -1,0 +1,81 @@
+[
+  {
+    "utc_start": "2026-10-11T22:35:12Z",
+    "utc_end": "2026-10-11T22:35:25Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__ctl_weather__+0.8__ov__plain.csv",
+      "sha256": "9b313732c7961ccd27d693dfcb14f1da558fc59b28b16f00133a315b7af191db",
+      "n_rows": 205,
+      "keys_sha256": "2d093abffabfbed325e495619454dbfc1cc71a010a646160c619e3776622b4d9"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 65468,
+        "completion_tokens": 826,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0069598,
+        "usd_unmetered": 0.0,
+        "usd": 0.0069598,
+        "none_raw_samples": [
+          {
+            "row": 88,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 85,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 87,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 202,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.010519,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.00696
+  },
+  {
+    "utc_start": "2026-10-11T22:35:25Z",
+    "utc_end": "2026-10-11T22:35:30Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__ctl_weather__+0.8__ov__plain.csv",
+      "sha256": "9b313732c7961ccd27d693dfcb14f1da558fc59b28b16f00133a315b7af191db",
+      "n_rows": 205,
+      "keys_sha256": "2d093abffabfbed325e495619454dbfc1cc71a010a646160c619e3776622b4d9"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66698,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070798,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070798,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.011366400000000002,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.00708
+  }
+]

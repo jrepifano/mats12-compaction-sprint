@@ -1,6 +1,6 @@
 # Report template
 
-One file per experiment, at `docs/experiments/<ID>/report.md`, written when the experiment stops (done, stopped by a rule, or paused). It is mirrored to a Claude Doc for review and sharing (see CLAUDE.md). The step-by-step run log (`logs/<ID>-report.md`) is separate: it records what happened and when, while this report says what was found. The close-out steps are in the `finish-experiment` skill.
+One file per experiment, at `docs/experiments/<ID>/report.md`, written when the experiment stops (done, stopped by a rule, or paused). It is mirrored to a Claude Doc for review and sharing (see AGENTS.md). The step-by-step run log (`logs/<ID>-report.md`) is separate: it records what happened and when, while this report says what was found. The close-out steps are in the `finish-experiment` skill.
 
 **Write for a colleague who hasn't seen the repo**, with the same style rules as `PREREG_TEMPLATE.md`:
 - plain prose with tables;
@@ -55,10 +55,10 @@ Also cover limits of scope (models, wordings, doses), source-reading gaps, and a
 Spend by stage and resource, with estimated (unbilled) amounts marked separately. Give the ledger source (`logs/costs.jsonl`, via `scripts/merge_ledger.py report`) and what isn't in the ledger, such as reviews and subagents.
 
 ## Review history
-Each gpt-6-astra round on the code, the analysis and this report (3 rounds per artifact, CLAUDE.md): date, verdict, what changed. Also list fixes applied after a final round without re-review, and any review skipped, with who authorized it (CLAUDE.md requires recording skips). After a round cap, a table of findings still open (finding, severity, a recommended fix or accept-as-limitation), for code as well as for the report.
+Each gpt-6-astra round on the code, the analysis and this report (3 rounds per artifact, AGENTS.md): date, verdict, what changed. Also list fixes applied after a final round without re-review, and any review skipped, with who authorized it (AGENTS.md requires recording skips). After a round cap, a table of findings still open (finding, severity, a recommended fix or accept-as-limitation), for code as well as for the report.
 
 ## What waits for Jacob
-A numbered list of decisions and audits, each with what it would change. Any labelling task Jacob does links to its HTML labelling page, built as CLAUDE.md requires: a private Artifact with the `db` capability, the answer key kept out of the page, and blind, randomized presentation where the protocol needs it.
+A numbered list of decisions and audits, each with what it would change. Any labelling task Jacob does links to its HTML labelling page, built as AGENTS.md requires: a private Artifact with the `db` capability, the answer key kept out of the page, and blind, randomized presentation where the protocol needs it.
 
 ## References
 One level-4 heading per work (`#### Author et al. year`), then its title and venue on the next line, with the `papers/` row. Include the prereg and the run log. Cite only sources read in `papers/`; capture a new external source there first (the `finish-experiment` skill, step 1).

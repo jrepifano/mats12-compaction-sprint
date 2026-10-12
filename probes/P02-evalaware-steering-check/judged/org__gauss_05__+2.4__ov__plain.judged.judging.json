@@ -1,0 +1,89 @@
+[
+  {
+    "utc_start": "2026-10-11T22:42:18Z",
+    "utc_end": "2026-10-11T22:42:23Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_05__+2.4__ov__plain.csv",
+      "sha256": "4ff86d41295a5c7110e85b8a2fd0366e0bda1fb1b87c64c3ee8b3de59f2ce372",
+      "n_rows": 205,
+      "keys_sha256": "0492525a29a9f7c53d2265f4b32849b8852840b16b4200c250caf04a492d7717"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66842,
+        "completion_tokens": 832,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007100200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007100200000000001,
+        "none_raw_samples": [
+          {
+            "row": 24,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 33,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 26,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 19,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 184,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 200,
+        "n_none": 5,
+        "n_failed": 0,
+        "projected_usd": 0.0105939,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.0071
+  },
+  {
+    "utc_start": "2026-10-11T22:42:23Z",
+    "utc_end": "2026-10-11T22:42:37Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_05__+2.4__ov__plain.csv",
+      "sha256": "4ff86d41295a5c7110e85b8a2fd0366e0bda1fb1b87c64c3ee8b3de59f2ce372",
+      "n_rows": 205,
+      "keys_sha256": "0492525a29a9f7c53d2265f4b32849b8852840b16b4200c250caf04a492d7717"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 68072,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.007217200000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.007217200000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0114412,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.007217
+  }
+]

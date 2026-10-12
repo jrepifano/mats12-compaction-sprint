@@ -1,0 +1,68 @@
+[
+  {
+    "utc_start": "2026-10-11T21:37:35Z",
+    "utc_end": "2026-10-11T21:37:40Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_spacing__+2.4__ov__plain.csv",
+      "sha256": "e301ae176e72dd134351897c97269e170ddd5596b03e147961717d4ce90d76b7",
+      "n_rows": 205,
+      "keys_sha256": "091e8d52426a434f82486efcbb7d0f044d3b45ec522f6e6ea71d48124e9d044b"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 54328,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0058428,
+        "usd_unmetered": 0.0,
+        "usd": 0.0058428,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.008387700000000001,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.005843
+  },
+  {
+    "utc_start": "2026-10-11T21:37:40Z",
+    "utc_end": "2026-10-11T21:37:45Z",
+    "source": {
+      "path": "probes/P02-evalaware-steering-check/staging_cells/org__ctl_spacing__+2.4__ov__plain.csv",
+      "sha256": "e301ae176e72dd134351897c97269e170ddd5596b03e147961717d4ce90d76b7",
+      "n_rows": 205,
+      "keys_sha256": "091e8d52426a434f82486efcbb7d0f044d3b45ec522f6e6ea71d48124e9d044b"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 55558,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0059658,
+        "usd_unmetered": 0.0,
+        "usd": 0.0059658,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.009235,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.005966
+  }
+]

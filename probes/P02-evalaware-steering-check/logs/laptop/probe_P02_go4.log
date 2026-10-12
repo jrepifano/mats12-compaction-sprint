@@ -1,0 +1,59 @@
+watchdog (P02): live (heartbeat 270 s old (pid 69637))
+budget (P02): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $25.00, kill-line headroom $18.63) = $13.96
+reservation dc09934b567441b7901440cff10c1c18: $13.96
+watchdog (P02): live (heartbeat 271 s old (pid 69637))
+budget gate (P02): this pod budget (reservation) at $2.69/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $2.59/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $3.49/h = $13.96; running pods incl. reserve $0.00
+pod created: nbk8thvo9f50c8 (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791760214 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 10312 root@64.247.201.54
+EMX_POD_DEADLINE=1791760214
+EMX_POD_CREATE=ok reservation=dc09934b567441b7901440cff10c1c18 pod=nbk8thvo9f50c8
+PROBE_UP pod=nbk8thvo9f50c8 slot=_P02 reservation=dc09934b567441b7901440cff10c1c18
+push failed (uncommitted changes under src/, scripts/ or probes/P02-evalaware-steering-check/ (the pod runs EMX_GIT_COMMIT); commit them:
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.aligned__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.coherent__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.judging.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.aligned__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.judging.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.judging.json); no results exist yet: terminating the pod
+pod nbk8thvo9f50c8 terminated: 0.04 h x $3.99/h = $0.15
+reservation dc09934b567441b7901440cff10c1c18: settled $0.15 for nbk8thvo9f50c8; remainder released
+PROBE_DOWN pod=nbk8thvo9f50c8 slot=_P02
+PROBE_ERROR go P02: uncommitted changes under src/, scripts/ or probes/P02-evalaware-steering-check/ (the pod runs EMX_GIT_COMMIT); commit them:
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.aligned__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.coherent__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.3__ov__plain.judged.judging.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.aligned__gfl.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__A__+0.6__ov__plain.judged.judging.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.aligned__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.coherent__luna.sig.json
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.csv
+?? probes/P02-evalaware-steering-check/judged/base__none__0__ov__plain.judged.judging.json

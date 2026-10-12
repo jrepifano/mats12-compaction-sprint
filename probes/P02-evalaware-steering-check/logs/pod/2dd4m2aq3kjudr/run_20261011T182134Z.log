@@ -1,0 +1,18 @@
+P02 start 2026-10-11T18:21:38Z probe=P02 commit=cee75439b257983a8a7b81cfccfdc4769c309053
+NVIDIA H100 80GB HBM3, 81559 MiB
+Traceback (most recent call last):
+  File "/ws/emx/probes/P02-evalaware-steering-check/p02_pod.py", line 477, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P02-evalaware-steering-check/p02_pod.py", line 343, in main
+    questions = P.broad_questions(REPO)
+                ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P02-evalaware-steering-check/p02_cells.py", line 162, in broad_questions
+    if sha256_file(p) != QUESTIONS_SHA256:
+       ^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P02-evalaware-steering-check/p02_cells.py", line 76, in sha256_file
+    with open(path, "rb") as f:
+         ^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/ws/emx/data/E1b/questions/ext48.jsonl'
+p02_pod.py exited rc=1 at 2026-10-11T18:21:49Z
+PROBE_DONE rc=1

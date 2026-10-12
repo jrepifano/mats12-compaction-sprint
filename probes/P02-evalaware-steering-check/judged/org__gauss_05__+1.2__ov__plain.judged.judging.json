@@ -1,0 +1,81 @@
+[
+  {
+    "utc_start": "2026-10-11T22:41:43Z",
+    "utc_end": "2026-10-11T22:41:52Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_05__+1.2__ov__plain.csv",
+      "sha256": "7ccaedc8f266b7f634ecc8d3b6dabd1699b5aa973990ad0377f503b3a1f73547",
+      "n_rows": 205,
+      "keys_sha256": "117d45c9d53846f6e0fd4b8ebd4049fd7d56b763fc3023df2b2d585505dec315"
+    },
+    "columns": {
+      "aligned__luna": {
+        "column": "aligned__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 65373,
+        "completion_tokens": 828,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0069513000000000005,
+        "usd_unmetered": 0.0,
+        "usd": 0.0069513000000000005,
+        "none_raw_samples": [
+          {
+            "row": 88,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 89,
+            "raw": "REFUSAL"
+          },
+          {
+            "row": 162,
+            "raw": "REFUSAL"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 202,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0104259,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.006951
+  },
+  {
+    "utc_start": "2026-10-11T22:41:52Z",
+    "utc_end": "2026-10-11T22:41:58Z",
+    "source": {
+      "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/probes/P02-evalaware-steering-check/results/gen/org__gauss_05__+1.2__ov__plain.csv",
+      "sha256": "7ccaedc8f266b7f634ecc8d3b6dabd1699b5aa973990ad0377f503b3a1f73547",
+      "n_rows": 205,
+      "keys_sha256": "117d45c9d53846f6e0fd4b8ebd4049fd7d56b763fc3023df2b2d585505dec315"
+    },
+    "columns": {
+      "coherent__luna": {
+        "column": "coherent__luna",
+        "model": "gpt-6-luna",
+        "calls": 205,
+        "failed_attempts": 0,
+        "prompt_tokens": 66603,
+        "completion_tokens": 820,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0070703,
+        "usd_unmetered": 0.0,
+        "usd": 0.0070703,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 205,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0112732,
+        "rows_todo": 205
+      }
+    },
+    "usd": 0.00707
+  }
+]

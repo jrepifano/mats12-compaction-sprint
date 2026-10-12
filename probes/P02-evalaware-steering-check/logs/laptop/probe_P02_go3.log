@@ -1,0 +1,51 @@
+watchdog (P02): live (heartbeat 93 s old (pid 64131))
+budget (P02): min((3.0 run + 0.25 salvage + 0.25 launch) h x $3.99/h = $13.96, GPU limit $25.00, kill-line headroom $22.76) = $13.96
+reservation d6eff5b9f68e4fbcb9eddb4f53495306: $13.96
+watchdog (P02): live (heartbeat 94 s old (pid 64131))
+budget gate (P02): this pod budget (reservation) at $2.69/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $2.59/h = $13.96; running pods incl. reserve $0.00
+create failed (POST /pods outcome unknown: HTTP 500: {"error":"create pod: There are no instances currently available","status":500}
+); reconciling
+budget gate (P02): this pod budget (reservation) at $3.49/h = $13.96; running pods incl. reserve $0.00
+pod created: 6ksvxpf6n41dwt (NVIDIA H100 80GB HBM3, SECURE, $3.99/h)
+reservation deadline 1791756436 (EMX_POD_DEADLINE follows once SSH is up)
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+  waiting... status=RUNNING ip=-
+SSH ready: ssh -p 17410 root@87.120.211.204
+EMX_POD_DEADLINE=1791756436
+EMX_POD_CREATE=ok reservation=d6eff5b9f68e4fbcb9eddb4f53495306 pod=6ksvxpf6n41dwt
+PROBE_UP pod=6ksvxpf6n41dwt slot=_P02 reservation=d6eff5b9f68e4fbcb9eddb4f53495306
+push (P02): 431 files, pod env keys HF_TOKEN EMX_GIT_COMMIT EMX_PROBE, commit 9f900527698c
+killswitch _P02: 2026-10-11T18:39:32Z [killswitch] ARMED pod=6ksvxpf6n41dwt deadline=1791756436 (2026-10-11T22:07:16Z) key_check=read403
+synced 431 files and the pod .env to /ws/emx
+setup e13: done in ~60 s
+PROBE_PUSHED pod=6ksvxpf6n41dwt commit=9f900527698c deadline=2026-10-11T22:07:16Z
+PROBE_LAUNCHED log=probes/P02-evalaware-steering-check/logs/run_20261011T184950Z.log
+PROBE_RUNNING log=probes/P02-evalaware-steering-check/logs/run_20261011T184950Z.log (122 bytes after 20 s)
+watchdog (P02): NOT LIVE (no readable heartbeat at /Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p02-evalaware-steering-check/logs/watchdog_P02.heartbeat)
+PROBE_STATUS 2026-10-11T18:50:19Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=1 gpu=0,0 deadline_in=3.28h last="NVIDIA H100 80GB HBM3, 81559 MiB"
+watchdog (P02): live (heartbeat 2 s old (pid 69637))
+PROBE_STATUS 2026-10-11T18:55:25Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=3.20h last="2026-10-11T18:50:57+00:00 P02 P02_DIRECTIONS_FROZEN sha256=2467a329d51f7ac4bf1f5407225a51564edcf1adb9c62d9784e827e8d67a5"
+watchdog (P02): live (heartbeat 4 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:00:31Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=3.11h last="2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)"
+watchdog (P02): live (heartbeat 6 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:05:37Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=3.03h last="2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)"
+watchdog (P02): live (heartbeat 10 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:10:44Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=2.94h last="2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)"
+watchdog (P02): live (heartbeat 12 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:15:50Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=2.86h last="2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)"
+watchdog (P02): live (heartbeat 16 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:20:57Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=2.77h last="2026-10-11T18:56:43+00:00 P02 hook checks A: passed=True (345.7 s)"
+watchdog (P02): live (heartbeat 18 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:26:03Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=5 gpu=0,22059 deadline_in=2.69h last="2026-10-11T19:21:39+00:00 P02 hook checks B: passed=True (1496.4 s)"
+watchdog (P02): live (heartbeat 22 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:31:08Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=6 gpu=96,62697 deadline_in=2.60h last="2026-10-11T19:27:29+00:00 P02 latent base: auroc_last [0.563, 0.491, 0.562, 0.526, 0.588, 0.594, 0.539, 0.537]"
+watchdog (P02): live (heartbeat 22 s old (pid 69637))
+PROBE_STATUS 2026-10-11T19:36:14Z exp=P02 slot=_P02 pod=6ksvxpf6n41dwt phase=running reachable=1 alive=1 done=- manifest=0 results=9 gpu=98,62697 deadline_in=2.52h last="2026-10-11T19:35:14+00:00 P02 P02_CELL base__A__+0.3__ov__plain n=820 wall=232s rate=3.53/s"

@@ -1,6 +1,6 @@
 """Combine per-worktree spend ledgers: total spend across all checkouts, and fold one into main's.
 
-Each experiment is implemented in its own git worktree (CLAUDE.md, "Implement each experiment in
+Each experiment is implemented in its own git worktree (AGENTS.md, "Implement each experiment in
 its own git worktree"), and `emx.spend` writes to `logs/costs.jsonl` inside the checkout the code
 runs from. So every worktree keeps its own ledger, and each experiment's caps are enforced
 against it. This script is how the copies come back together (Jacob, 2026-10-04):
@@ -32,7 +32,7 @@ Locking. Reads take a shared `fcntl.flock`; appends and `check --fix` take an ex
 read the file inside the same lock. `--fix` rewrites in place (truncate, then write), never by
 rename, because a writer that opened the file before the rename would append to the orphaned copy.
 Git itself takes no lock, so stop paid jobs in both checkouts and commit the ledger before any git
-merge that touches it (CLAUDE.md).
+merge that touches it (AGENTS.md).
 
 `.gitattributes` sets `logs/costs.jsonl merge=union`, so a local `git merge` keeps both sides'
 appended lines instead of conflicting. Union is a text merge, not reconciliation: it can repeat
