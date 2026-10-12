@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+from collections import Counter
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -141,20 +142,81 @@ def results_table(res: dict, monitors_for: dict[str, str]) -> dict[str, list[int
             for k, r in res.items()}
 
 
+def p12_lists(n: int = 10, arms: tuple[str, ...] = ("P", "CD")) -> dict:
+    """The smoke's stand-in lists from P12's stored grids (P12 kept only full-vocabulary top-1
+    ids): per item, the count of each top-1 token over the filler cells of layers 22-42, minus
+    its mean count over P's items, top 50. Approximate; for the harness smoke only."""
+    from p12 import arms as A12
+    from p12 import schema as S12
+
+    items = A12.load_items()
+    counts = {}
+    for it in items:
+        for arm in arms:
+            p = S12.rec_path(it["idx"], arm)
+            if p.exists():
+                with np.load(p) as z:
+                    top = z["logit_lens__top1"][list(S.READ_LAYERS)][:, z["groups"] == 1]
+                counts[(it["idx"], arm)] = Counter(int(t) for t in top.ravel())
+    p_items = [k for k in counts if k[1] == "P"]
+    mean = Counter()
+    for k in p_items:
+        mean.update(counts[k])
+    out = {}
+    for it in items[:n]:
+        for arm in arms:
+            c = counts[(it["idx"], arm)]
+            sc = {t: c[t] - mean[t] / len(p_items) for t in set(c)}
+            out[(it["idx"], arm, "P")] = sorted(sc.items(), key=lambda x: (-x[1], x[0]))[:S.AGG_K]
+    return out, items[:n]
+
+
+def smoke(judges: list[str], monitors: list[str], dry_run: bool) -> int:
+    from emx import probe_llm as L
+
+    lists, items = p12_lists()
+    calls = [c for j in judges for c in make_calls(items, ["P", "CD"], monitors, j, "P", lists)]
+    print(f"[judge smoke] {len(calls)} calls, projected ${L.project_usd(calls):.3f}", flush=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    res = L.run_calls(calls, exp="P16", cache=CACHE_DIR / "smoke.jsonl",
+                      purpose="p16-judge-smoke", concurrency=CONCURRENCY, dry_run=dry_run)
+    if dry_run:
+        return 0
+    ys = {it["idx"]: it["roles"]["y"] for it in items}
+    by: dict[str, list] = {}
+    for c in calls:
+        r = res[c.key]
+        j, mon, _, _arm, idx = c.key.split("|")
+        cand = parse(r.text, mon) if r.error is None else None
+        by.setdefault(f"{j}|{mon}", []).append((cand is not None, R.hit_at(cand, ys[int(idx)], 2),
+                                                 r.error))
+    for k, v in by.items():
+        print(k, f"parsed {sum(x[0] for x in v)}/{len(v)}", f"y@2 {sum(x[1] for x in v)}",
+              f"errors {[x[2] for x in v if x[2]][:2]}")
+    usd = sum(r.usd for r in res.values())
+    print(f"[judge smoke] ${usd:.4f}; sources {Counter(r.cost_source for r in res.values())}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     from emx import probe_llm as L
 
     from . import arms as A
 
     ap = argparse.ArgumentParser(prog="p16.judge")
-    ap.add_argument("cmd", choices=["run"])
-    ap.add_argument("--judge", choices=sorted(ROUTES), required=True)
+    ap.add_argument("cmd", choices=["run", "smoke"])
+    ap.add_argument("--judge", choices=sorted(ROUTES))
     ap.add_argument("--monitors", nargs="+", default=["J1"])
     ap.add_argument("--arms", nargs="+", default=["P", "CD"])
     ap.add_argument("--ref", choices=["P", "own"], default="P")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--judges", nargs="+", default=sorted(ROUTES))
     a = ap.parse_args(argv)
+    if a.cmd == "smoke":
+        return smoke(a.judges, a.monitors, a.dry_run)
+    if a.judge is None:
+        ap.error("run needs --judge")
     items = A.load_items()[: a.limit or None]
     items = [it for it in items if all(resid_path(it["idx"], arm, a.ref).exists()
                                        for arm in a.arms)]
