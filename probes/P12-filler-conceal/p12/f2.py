@@ -143,7 +143,10 @@ def uplift_robust(rows: list[dict], items: list[dict]) -> dict:
 
         out[arm] = {"filler_acc_vs_P": AN.boot_paired(fa, fp),
                     "clean_n": len(clean), "clean_uplift": AN.boot_mean(u(arm, clean)),
-                    "clean_uplift_minus_P": AN.boot_mean(u(arm, clean) - u("P", clean))}
+                    "clean_uplift_minus_P": AN.boot_mean(u(arm, clean) - u("P", clean)),
+                    # review r1: retention against the plan's "half of P's uplift" bar
+                    "clean_uplift_minus_half_P": AN.boot_mean(u(arm, clean)
+                                                              - 0.5 * u("P", clean))}
     return out
 
 
