@@ -1,0 +1,1 @@
+You started to solve this problem and produced a summary of your thinking process. You also have access to the state of the tools that were used by you. Use this to build on the work that has already been done and avoid duplicating work. Here is the summary produced by you, use the information in this summary to assist with your own analysis:
