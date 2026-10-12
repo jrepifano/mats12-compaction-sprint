@@ -80,6 +80,15 @@ def _g_items(rng, n_g: int, p_latent: float, p_direct: float, seed_items: int) -
     return rows, lltop
 
 
+def _add_upstream_padded(rng, rows: list[dict]) -> None:
+    """Stage A replication reference (pod_main.add_upstream_padded): mostly the same latent answer,
+    a tenth perturbed, as padding would do."""
+    for r in rows:
+        a = r["ans_latent"]
+        r["ans_latent_up"] = a if a is None or rng.random() < 0.9 else a + 1
+        r["out_latent_up"] = str(r["ans_latent_up"])
+
+
 def _number_tokens(path: Path) -> None:
     path.write_text(json.dumps({str(NUM_BASE + v): v for v in range(1000)}))
 
@@ -148,9 +157,11 @@ def _stage_a(out: Path, rng, sig: dict, n_templates: int, xyz_max: int, d: int, 
     np.save(out / "T_qresid.npy", _resid(rng, q_labels, qc, 2, d, sig["question"], fl))
     np.save(out / "T_lltop.npy", lltop)
     np.save(out / "T_latvec.npy", rng.standard_normal((len(rows), N_COLS, d)).astype(np.float16))
+    _add_upstream_padded(rng, rows)
     write_jsonl(out / "T.jsonl", rows)
 
     g_rows, g_ll = _g_items(rng, n_g, 0.45, 0.35, seed_items=7)
+    _add_upstream_padded(rng, g_rows)
     write_jsonl(out / "G.jsonl", g_rows)
     np.save(out / "G_lltop.npy", g_ll)
 

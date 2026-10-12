@@ -188,6 +188,16 @@ def accuracy(rows: list[dict], key: str) -> float:
     return float(np.mean([r[key] is not None and r[key] == r["gold"] for r in rows]))
 
 
+def add_upstream_padded(model, tok, rows: list[dict]) -> None:
+    """Replication reference: the latent mode as upstream test.py runs it (padded batches of 128,
+    latent steps attending to the padding), stored as out_latent_up / ans_latent_up."""
+    from p15 import codi_core as cc
+
+    texts = cc.upstream_latent_padded(model, tok, [r["prompt"] for r in rows])
+    for r, t in zip(rows, texts):
+        r["out_latent_up"], r["ans_latent_up"] = t, tasks.parse_answer(t)
+
+
 # ---------------------------------------------------------------- smoke
 
 
@@ -251,8 +261,11 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
 
     d = {f"{mode}_acc_{name}": accuracy(outs[name]["rows"], f"ans_{mode}")
          for name in ("T", "G", "C") for mode in ("latent", "direct", "verbal")}
+    for name in ("T", "G"):  # the same smoke items as upstream test.py would run them
+        add_upstream_padded(model, tok, outs[name]["rows"])
+        d[f"latent_acc_{name}_upstream_padded"] = accuracy(outs[name]["rows"], "ans_latent_up")
     ntok = cc.number_tokens(tok)
-    top = outs["T"]["lltop"][:, 16, 3, :]  # layer 16, column 3
+    top = outs["T"]["lltop"][:, -1, 3, :]  # last layer (16 on the real model), column 3
     ll_s1 = [next((ntok[t] for t in row if t in ntok), None) for row in top]
     d["ll_s1_col3"] = float(np.mean([v == r["s1"] for v, r in zip(ll_s1, outs["T"]["rows"])]))
     d["thresholds"] = {"latent_acc_T": 0.30, "latent_acc_G": 0.25, "ll_s1_col3": 0.50}
@@ -266,7 +279,9 @@ def smoke(model, tok, report: dict, T: list[dict], G: list[dict], C: list[dict])
     log("smoke", f"structural_pass={checks['structural_pass']} "
                  + " ".join(f"{k}={v['pass']}" for k, v in s.items())
                  + f" latent_acc_T={d['latent_acc_T']:.3f} latent_acc_G={d['latent_acc_G']:.3f}"
-                 + f" ll_s1_col3={d['ll_s1_col3']:.3f}")
+                 + f" ll_s1_col3={d['ll_s1_col3']:.3f}"
+                 + f" upstream_padded_T={d['latent_acc_T_upstream_padded']:.3f}"
+                 + f" upstream_padded_G={d['latent_acc_G_upstream_padded']:.3f}")
     return checks
 
 
@@ -414,15 +429,21 @@ def step_stage_a(force: bool = False) -> int:
             ps = cc.patchscope(model, tok, outT["latent_vectors"][:, lat])
             for r, n in zip(outT["rows"], ps["numbers"]):
                 r[f"ps_lat{lat}"] = n
+    with Timer("a_T_upstream_padded"):
+        add_upstream_padded(model, tok, outT["rows"])
     save_set(outdir, "T", outT, keep_resid=True)
     np.save(outdir / "T_latvec.npy", outT["latent_vectors"])
     log("a_T", f"latent_acc={accuracy(outT['rows'], 'ans_latent'):.3f} "
+               f"latent_acc_upstream_padded={accuracy(outT['rows'], 'ans_latent_up'):.3f} "
                f"direct_acc={accuracy(outT['rows'], 'ans_direct'):.3f} "
                f"verbal_acc={accuracy(outT['rows'], 'ans_verbal'):.3f}")
     with Timer("a_G"):
         outG = run_set(model, tok, G, resid=False)
+    with Timer("a_G_upstream_padded"):
+        add_upstream_padded(model, tok, outG["rows"])
     save_set(outdir, "G", outG, keep_resid=False)
     log("a_G", f"latent_acc={accuracy(outG['rows'], 'ans_latent'):.3f} "
+               f"latent_acc_upstream_padded={accuracy(outG['rows'], 'ans_latent_up'):.3f} "
                f"direct_acc={accuracy(outG['rows'], 'ans_direct'):.3f}")
     with Timer("a_patch"):
         prow = run_patching(model, tok, T, outT["latent_vectors"])
