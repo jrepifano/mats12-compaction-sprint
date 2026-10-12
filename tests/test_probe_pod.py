@@ -1035,3 +1035,212 @@ def test_budget_warns_when_a_cap_cuts_the_run_short(env, capsys):
     b = runner().budget()
     assert b < (40 + 0.25 + pp.LAUNCH_ALLOWANCE_H) * pp.PROBE_RATE_USD_H
     assert "WARNING (P01): the budget is capped below gpu_hours" in capsys.readouterr().out
+
+
+# --- [pod].gpus: a probe's own GPU fallback order and rates -----------------------------------
+
+GPUS_LINE = (
+    'gpus = [["NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94], ["NVIDIA B300 SXM6 AC", "SECURE", 8.99],'
+    ' ["NVIDIA B200", "COMMUNITY", 5.98], ["NVIDIA B200", "SECURE", 7.99]]'
+)
+DECLARED = (
+    rp.GpuOption("NVIDIA B300 SXM6 AC", "COMMUNITY", 6.94),
+    rp.GpuOption("NVIDIA B300 SXM6 AC", "SECURE", 8.99),
+    rp.GpuOption("NVIDIA B200", "COMMUNITY", 5.98),
+    rp.GpuOption("NVIDIA B200", "SECURE", 7.99),
+)
+
+
+def with_gpus(toml_text: str, line: str = GPUS_LINE) -> str:
+    return toml_text.replace("poll_minutes = 1", f"poll_minutes = 1\n{line}")
+
+
+@pytest.mark.parametrize("bad", [
+    "gpus = []",
+    'gpus = "NVIDIA B200"',
+    'gpus = [["NVIDIA B200", "SECURE"]]',
+    'gpus = [["NVIDIA B200", "SECURE", 7.99, 1]]',
+    'gpus = [["", "SECURE", 7.99]]',
+    'gpus = [[3, "SECURE", 7.99]]',
+    'gpus = [["NVIDIA B200", "secure", 7.99]]',
+    'gpus = [["NVIDIA B200", "SPOT", 7.99]]',
+    'gpus = [["NVIDIA B200", "SECURE", 0]]',
+    'gpus = [["NVIDIA B200", "SECURE", -1.0]]',
+    'gpus = [["NVIDIA B200", "SECURE", 30.01]]',
+    'gpus = [["NVIDIA B200", "SECURE", nan]]',
+    'gpus = [["NVIDIA B200", "SECURE", inf]]',
+    'gpus = [["NVIDIA B200", "SECURE", true]]',
+    'gpus = [["NVIDIA B200", "SECURE", "7.99"]]',
+])
+def test_pod_config_gpus_validation(env, bad):
+    (env["pdir"] / "probe.toml").write_text(with_gpus(PROBE_TOML, bad))
+    with pytest.raises(pp.ProbeError, match=r"\[pod\]\.gpus"):
+        runner()
+
+
+def test_pod_config_gpus_parsed_in_order(env):
+    (env["pdir"] / "probe.toml").write_text(with_gpus(PROBE_TOML))
+    cfg = runner().cfg
+    assert cfg.gpus == DECLARED and cfg.rate_usd_h == 8.99
+    assert rp.probe_gpu_options("P01") == DECLARED  # pod_up.py's reader agrees
+    (env["pdir"] / "probe.toml").write_text(PROBE_TOML)
+    cfg = runner().cfg
+    assert cfg.gpus == () and cfg.rate_usd_h == pp.PROBE_RATE_USD_H
+    assert rp.probe_gpu_options("P01") is None
+    assert rp.probe_gpu_options("E1") is None  # never a probe: probe.toml is not read
+
+
+def no_running_pods(monkeypatch):
+    """The fixture's running pod accrues cost with wall-clock time and eventually eats the
+    kill-line headroom (the known time-dependent failures); these tests take it out."""
+    monkeypatch.setattr(pp.Runner, "sessions", lambda self: [])
+
+
+def test_budget_prices_declared_gpus_at_the_highest_rate(env, monkeypatch, capsys):
+    no_running_pods(monkeypatch)
+    (env["pdir"] / "probe.toml").write_text(with_gpus(PROBE_TOML))
+    b = runner().budget()
+    assert b == math.floor((2 + 0.25 + pp.LAUNCH_ALLOWANCE_H) * 8.99 * 100) / 100
+    out = capsys.readouterr().out
+    assert "h x $8.99/h = $" in out and "$3.99" not in out and "WARNING" not in out
+    toml = env["pdir"] / "probe.toml"
+    toml.write_text(toml.read_text().replace("gpu_hours = 2", "gpu_hours = 40"))
+    b = runner().budget()  # capped by the $60 GPU limit
+    out = capsys.readouterr().out
+    run_h = b / 8.99 - pp.DEADLINE_MARGIN_S / 3600 - pp.LAUNCH_ALLOWANCE_H
+    assert b == 60.0 and f"at $8.99/h the run gets about {run_h:.2f} h" in out
+
+
+def test_budget_without_gpus_is_unchanged(env, monkeypatch, capsys):
+    no_running_pods(monkeypatch)
+    b = runner().budget()
+    assert b == math.floor((2 + 0.25 + pp.LAUNCH_ALLOWANCE_H) * 3.99 * 100) / 100
+    assert pp.PROBE_RATE_USD_H == 3.99
+    assert "h x $3.99/h = $" in capsys.readouterr().out
+
+
+P06_TOML = """id = "P06"
+hard_cap_usd = 75
+gpu_limit_usd = 60
+api_limit_usd = 10
+
+[pod]
+gpu_hours = 3
+"""
+
+
+@pytest.fixture
+def p06(tmp_path, monkeypatch):
+    """emx.runpod configured for a probe P06 in tmp_path (no network: the RunPod client is
+    faked), with a fake clock. Call the result with the probe.toml text."""
+    for name in ("EXP", "POD_NAME_PREFIX", "POD_EVENTS", "LOGS", "ROOT"):
+        monkeypatch.setattr(rp, name, getattr(rp, name))
+    (tmp_path / "logs").mkdir()
+    monkeypatch.setattr(rp, "LOGS", tmp_path / "logs")
+    monkeypatch.setattr(rp, "ROOT", tmp_path)
+    monkeypatch.setattr(rp, "forget_host_key", lambda h, p: None)
+    monkeypatch.setattr(spend, "PROBES_DIR", tmp_path / "probes")
+    monkeypatch.setenv(spend.LEDGER_ENV, str(tmp_path / "costs.jsonl"))
+    monkeypatch.setenv(rr.RESERVATIONS_ENV, str(tmp_path / "reservations.jsonl"))
+    (tmp_path / ".env").write_text("RUNPOD_API_KEY=test-key\n")
+    (tmp_path / "logs" / "watchdog_P06.heartbeat").write_text(f"{time.time()} 600 {os.getpid()}\n")
+    clock = {"t": time.time()}
+    monkeypatch.setattr(time, "time", lambda: clock["t"])
+    monkeypatch.setattr(time, "sleep", lambda s: clock.__setitem__("t", clock["t"] + s))
+
+    def make(toml_text: str):
+        pdir = tmp_path / "probes" / "P06-demo"
+        pdir.mkdir(parents=True, exist_ok=True)
+        (pdir / "probe.toml").write_text(toml_text)
+        rp.configure("P06")
+        return clock
+
+    return make
+
+
+class FakeRunPod:
+    """create_pod answers from `results` (an Exception is raised); no rate unless given."""
+
+    def __init__(self, results=(), api_rate=None):
+        self.results, self.api_rate = list(results), api_rate
+        self.created: list[dict] = []
+
+    def create_pod(self, body):
+        self.created.append(body)
+        r = self.results.pop(0) if self.results else {}
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    def get_pod(self, pod_id):
+        rate = {"costPerHr": self.api_rate} if self.api_rate else {}
+        return {"publicIp": "1.2.3.4", "portMappings": {"22": 40022},
+                "desiredStatus": "RUNNING", **rate}
+
+    def list_pods(self):
+        return []
+
+    def terminate_pod(self, pod_id):
+        raise AssertionError("no pod is terminated here")
+
+
+def load_pod_up():
+    spec = importlib.util.spec_from_file_location("_probe_pod_up", ROOT / "scripts" / "pod_up.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def dry_run_gpus(fake, monkeypatch, *extra):
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    assert load_pod_up().main(["--exp", "P06", "--slot", "_P06", "--dry-run", *extra]) == 0
+    return [(b["gpuTypeIds"], b["cloudType"], b["gpuCount"]) for b in fake.created]
+
+
+def test_pod_up_dry_run_uses_the_probes_gpus(p06, monkeypatch):
+    p06(P06_TOML + GPUS_LINE + "\n")
+    want = [([o.gpu_type_id], o.cloud, 1) for o in DECLARED]
+    assert dry_run_gpus(FakeRunPod(), monkeypatch) == want
+    assert dry_run_gpus(FakeRunPod(), monkeypatch, "--start", "2") == want[2:]
+    assert dry_run_gpus(FakeRunPod(), monkeypatch, "--start", "1", "--no-fallback") == want[1:2]
+    assert dry_run_gpus(FakeRunPod(), monkeypatch, "--gpu", "nvidia b200") == want[2:]
+
+
+def test_pod_up_probe_without_gpus_is_unchanged(p06, monkeypatch):
+    p06(P06_TOML)
+    fake = FakeRunPod()
+    assert dry_run_gpus(fake, monkeypatch) == [([o.gpu_type_id], o.cloud, 1)
+                                               for o in rp.GPU_FALLBACK]
+    assert fake.created == [rp.pod_body(o, "_P06", fake.created[0]["env"]["PUBLIC_KEY"])
+                            for o in rp.GPU_FALLBACK]  # the very same request bodies
+
+
+@pytest.mark.parametrize("stock_out, rate", [(False, 6.94), (True, 8.99)])
+def test_pod_up_reserved_launch_prices_the_declared_gpu(p06, monkeypatch, capsys, stock_out,
+                                                        rate):
+    clock = p06(P06_TOML + GPUS_LINE + "\n")
+    budget = 31.47  # (3 + 0.5) h x $8.99, as probe_pod's budget() gives
+    rid = rr.reserve("P06", budget, "P06:_P06:test", balance=500.0)
+    results = [rp.RunPodError('HTTP 500: {"error":"create pod: There are no instances '
+                              'currently available"}')] if stock_out else []
+    fake = FakeRunPod(results + [{"id": "pb"}])  # no costPerHr anywhere: the declared rate
+    monkeypatch.setattr(rp, "RunPod", lambda *a, **k: fake)
+    t_start = clock["t"]
+    rc = load_pod_up().main(["--exp", "P06", "--slot", "_P06", "--reservation", rid,
+                             "--budget-usd", f"{budget}"])
+    assert rc == 0
+    assert [b["cloudType"] for b in fake.created] == (["COMMUNITY", "SECURE"] if stock_out
+                                                     else ["COMMUNITY"])
+    assert fake.created[-1]["gpuTypeIds"] == ["NVIDIA B300 SXM6 AC"]
+    rows = rr.read_rows()
+    assert [r["rate_usd_h"] for r in rows if r["kind"] == "creating"][-1] == rate
+    want = int(t_start + budget / rate * 3600)  # not budget / $3.99
+    assert rr.pod_deadline("pb") == want
+    assert f"EMX_POD_DEADLINE={want}" in capsys.readouterr().out
+    (s,) = rp.pod_sessions(rp.read_pod_events())
+    assert s["rate"] == rate and s["gpu"] == "NVIDIA B300 SXM6 AC"
+    # the global kill line burns at the pod's rate too (killswitch deadline, watchdog projection)
+    now = datetime.fromtimestamp(t_start, UTC)
+    assert rp.killswitch_deadline("pb", now=now) == int(
+        t_start + rp.current_kill_limit() / rate * 3600)
+    assert rp.running_projection(rp.pod_sessions(rp.read_pod_events(), now), 1.0) == rate
