@@ -3159,6 +3159,23 @@ Quotes come from the meetings' automatic transcripts. The transcripts are not co
   - *No prompt-only baseline:* the J++ readout evals have none, so Neel's critique applies if anyone uses them to support monitoring. The authors themselves say how well the lens works for monitoring is "as of yet unclear" (their fn. 11).
 - **If the interp line revives,** J++ is the J-Lens arm to use. It doesn't reopen anything now.
 
+### Ideas noted from Anthropic's self-replicating-AI post, 2026-10-12 (not proposed)
+
+**Source:** Zhou and Freeman (Anthropic Frontier Red Team), "AI models may be capable of self-replicating without access to a datacenter", 2026-10-12, https://www.anthropic.com/research/self-replicating-ai. **Read via a fetch-tool summary only:** the charts, the interactive per-model table and the video were not seen, and the post is not captured in `papers/`. Pinned at Jacob's request (2026-10-12). The replication threat itself is not a direction for us. What interests us is one harness detail.
+
+**What caught our interest: "Memento", learning through inherited notes.**
+- The harness, built on the open-source Pi coding agent (pi.dev), periodically restarts a fresh agent. The new agent inherits the workspace plus notes left by the previous one. This is a compaction-style handoff, the same mechanism P07–P10 studied and P23 is testing.
+- **Notes carry capability forward.** Over six generations of Qwen3.5-9B (20 lineages), success at the post's inference-setup task rose "from 45% in the first generation to between 61% and 84% in later ones".
+- **A frontier advisor didn't help.** Qwen3.5-9B with access to Opus 4.8 did no better, even after RL training to use the advisor.
+- **Related evidence in hand:**
+  - The Mythos incident transcript has two notes the model wrote to itself at a handoff (P19, deferred).
+  - P08 suggests that safe behaviour after compaction rides on the summary's record of earlier decisions, not on cues. P23 tests that.
+
+**Candidate questions (not proposed; each needs the internal and external literature reviews first). All would run on benign tasks (e.g. X3's coding tasks), never on replication or cyber tasks.**
+1. **What in an inherited note drives the improvement?** Ablate note contents (environment facts, failed attempts, decisions or strategies, instructions to self) across generations, and measure the effect on later generations' success.
+2. **Do dispositions propagate or drift through note lineages?** If generation 1 cheats, or decides not to, does that carry forward through the notes and harden over generations? This extends P23's decisions-vs-cues question from one handoff to many.
+3. **Notes as a monitoring surface.** In sanctioned long-horizon deployments the handoff notes are a cheap, legible artifact. How much of an agent's later behaviour can a monitor predict from them?
+
 ## 5. Ranked summary
 
 **Score = Info × P(clean) × R ÷ days**, with a ×1.5 bonus for gates that unlock ≥2 follow-ups.
