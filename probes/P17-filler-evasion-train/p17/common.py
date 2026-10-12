@@ -150,8 +150,9 @@ def end_of_turn_id(tok: Any, model: Any = None) -> int:
 def text_model(model: Any) -> Any:
     """The decoder stack (has .layers, .norm) under a CausalLM, a ConditionalGeneration model or
     a peft wrapper of either."""
-    blocks, norm = S2.text_parts(model)
-    return blocks, norm
+    base = model.get_base_model() if hasattr(model, "get_base_model") else model
+    return S2.text_parts(base)  # the peft path to a ConditionalGeneration's text model is
+    # base_model.model.model.language_model, which p06's list lacks (meta-device check)
 
 
 def assert_no_hf_checkpointing(model: Any) -> None:
@@ -220,6 +221,19 @@ def drop_adapter(model: Any, name: str) -> Any:
         return model.unload()
     model.delete_adapter(name)
     model.set_adapter(next(iter(model.peft_config)))
+    return model
+
+
+def load_saved_adapter(model: Any, path: Any, name: str) -> Any:
+    """A saved adapter back as `name`, active, through peft (a plain transformers model's own
+    `load_adapter` is transformers' PEFT integration, which the rest of this code doesn't use)."""
+    from peft import PeftModel
+
+    if isinstance(model, PeftModel):
+        model.load_adapter(str(path), adapter_name=name)
+    else:
+        model = PeftModel.from_pretrained(model, str(path), adapter_name=name)
+    model.set_adapter(name)
     return model
 
 

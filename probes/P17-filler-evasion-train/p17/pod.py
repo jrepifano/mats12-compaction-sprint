@@ -455,13 +455,16 @@ def cmd_run(a) -> int:
             log(f"P17_SKIP {job}: needs {need / 60:.0f} min, {left / 60:.0f} left")
             rc = 4
             continue
+        if (out / "eval" / job / "done.json").exists():
+            log(f"{job}: already evaluated (done.json), skipped")
+            continue
         if job != "B":
             arm, seed = job[0], int(job[1:])
             rec_path = out / "train" / job / "record.json"
             ad = out / "adapters" / job / job
             if rec_path.exists() and json.loads(rec_path.read_text()).get("complete") and \
                     ad.exists():
-                model.load_adapter(str(ad), adapter_name=job)
+                model = C.load_saved_adapter(model, ad, job)
                 log(f"{job}: trained adapter loaded from {ad}")
             else:
                 cfg = T.TrainConfig(arm=arm, seed=seed, lam=lam if arm == "E" else 0.0,

@@ -178,3 +178,22 @@ def test_drop_last_adapter_unwraps(setup, tmp_path):
     assert not any(hasattr(mod, "lora_A") for mod in pm.modules())
     with torch.no_grad():  # the unwrapped model still runs
         C.prefix_cache(pm, prefix_ids[:20], "cpu")
+
+
+def test_saved_adapter_round_trip(setup, tmp_path):
+    m, rd, tr, va, prefix_ids = setup
+    cfg = T.TrainConfig(arm="K", seed=3, mb=2, max_steps=1, val_every=1, lr=1e-2)
+    pm, _ = T.train_arm(m, None, rd, "K3", cfg, tr, va, prefix_ids, None, tmp_path, "cpu",
+                        log=lambda s: None)
+    pre = C.prefix_cache(pm, prefix_ids, "cpu")
+    with torch.no_grad():
+        ref = T.batch_forward(pm, rd, pre, tr[:1], "cpu", False, keep_graph=False)["ce"]
+    for name in list(pm.peft_config):
+        pm = C.drop_adapter(pm, name)
+    pm = C.load_saved_adapter(pm, tmp_path / "adapters" / "K3" / "K3", "K3")
+    pre = C.prefix_cache(pm, prefix_ids, "cpu")
+    with torch.no_grad():
+        got = T.batch_forward(pm, rd, pre, tr[:1], "cpu", False, keep_graph=False)["ce"]
+    assert float((got - ref).abs().max()) < 1e-5
+    for name in list(pm.peft_config):
+        pm = C.drop_adapter(pm, name)
