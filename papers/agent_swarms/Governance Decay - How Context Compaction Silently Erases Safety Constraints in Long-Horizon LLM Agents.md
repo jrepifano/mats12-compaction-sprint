@@ -17,3 +17,10 @@ Conditions: "floor (no policy; intrinsic behavior), control (policy in full cont
 Related-work claim: "All optimize for task accuracy or throughput; none measure whether governance constraints survive the rewrite or whether their deletion causes unsafe tool calls."
 
 Relevance to X6: the closest design precedent (policy present / compacted / absent / pinned arms). Differences: explicit permission-type constraints, synthetic short tool-call triggers, no framing or belief about the situation, no coding-cheating.
+
+## Verbatim: §5, "The compactor, not the agent, drives the failure" (added 2026-10-12, P08)
+Source: arXiv 2606.22528v2 PDF, `pdftotext -layout`, right column of the §5 page; read by the P08 session.
+
+"The compactor, not the agent, drives the failure. Two ablations on GLM-5.1 isolate the mechanism. (a) Deletion vs. length. With the policy visible, GLM never violates even in an uncompressed 5.9k-token long context (0%), ruling out generic context-length degradation; but a counterfactual summary that omits the policy yields 60% violation, and the same summary with the policy restored returns to 0%. (b) Compactor vs. agent. Crossing the summarizer model with the agent model on a representative three-model panel (Table 3; n=15/cell) shows violation tracks the summarizer, not the agent. [...] A GLM summary keeps violation at 7–13% for every agent, whereas a DeepSeek or Claude summary yields 33–93%. Decisively, GLM as the agent violates 53% when handed a DeepSeek summary, so GLM's apparent robustness is a property of its summarizer, not of its governance."
+
+The n for ablation (a) is not given in the main text.

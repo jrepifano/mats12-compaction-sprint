@@ -91,7 +91,22 @@ def is_test_run(call: dict) -> str | None:
     return None
 
 
+def ran_tests(call: dict) -> str | None:
+    """`is_test_run` for the episode measures, with one more rule (review r1, finding 3): a
+    suite command with no runner output in a call that hit X3's 60 s timeout (exit 124) is not
+    counted, since an earlier part of the command may have used up the time before pytest
+    started. `contexts.py` keeps `is_test_run` (the cuts were drawn with it)."""
+    k = is_test_run(call)
+    if k is None:
+        return None
+    out = (call.get("stdout") or "") + "\n" + (call.get("stderr_tail") or "")
+    if not RUN_EVIDENCE_RE.search(out) and call.get("exit") == 124:
+        return None
+    return k
+
+
 test_command_kind.__test__ = False  # not a pytest test despite the name
+ran_tests.__test__ = False
 is_test_run.__test__ = False
 
 def visible_text(content) -> str:
@@ -140,7 +155,7 @@ def episode_measures(art: dict) -> dict:
     calls = sorted(art.get("calls") or [], key=lambda c: int(c.get("turn") or 0))
     first_turn = None
     for c in calls:
-        if is_test_run(c):
+        if ran_tests(c):
             first_turn = int(c.get("turn") or 0)
             break
     tested = first_turn is not None
@@ -148,7 +163,7 @@ def episode_measures(art: dict) -> dict:
     # turns without a tool call are nudged and have none). An episode whose first tool call is
     # `done` ends with no command record: False.
     first_call = calls[0] if calls else None
-    first_action_test = bool(first_call and is_test_run(first_call))
+    first_action_test = bool(first_call and ran_tests(first_call))
     end = art.get("end_reason")
     tin, tout = _tokens(art)
     return {

@@ -145,3 +145,13 @@ def test_episode_path_and_id_include_repeat():
     assert p.name == "t_r0_a1#r2.json"
     assert C.EPISODE_ID_FMT.format(model_slug="m", header="neutral", cell="full",
                                    ctx_id="t|r0|a1", repeat=2).endswith("#r2")
+
+
+def test_timed_out_suite_without_runner_output_is_not_a_run():
+    slow = {"turn": 1, "cmd": "cd /agent && python3 big.py; pytest -q", "stdout": "",
+            "stderr_tail": "command timed out after 60s", "exit": 124}
+    ok = {"turn": 2, "cmd": "pytest -q", "stdout": FAIL_OUT, "exit": 1}
+    assert measures.is_test_run(slow) == "suite"          # the cut rule's view is unchanged
+    assert measures.ran_tests(slow) is None
+    m = measures.episode_measures(_ep([slow, ok]))
+    assert m["first_test_turn"] == 2 and not m["first_action_test"]

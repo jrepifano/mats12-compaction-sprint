@@ -41,7 +41,7 @@ DETECTOR_OUTCOMES = ("cheat", "tamper_any", "passed")
 # numeric per-episode outcomes, contrasted the same way (mean over repeats, paired by context);
 # added after the main grid (log.md, "main grid" entry) to measure what -T costs: turns, tokens
 NUMERIC_OUTCOMES = ("n_turns", "tokens_in", "first_test_turn")
-CELL_ORDER = ("full", "minus_c", "minus_t", "minus_h")
+CELL_ORDER = ("full", "minus_c", "minus_cc", "minus_t", "minus_h")
 _BOOL = {"True": True, "False": False, "true": True, "false": False}
 _NUM = ("repeat", "n_turns", "first_test_turn", "tokens_in", "tokens_out", "billed_usd")
 
@@ -243,6 +243,9 @@ def default_contrasts(cells) -> list[tuple[str, str, str]]:
            ("minus_t", "full", "passed"), ("minus_t", "full", "done_untested"),
            ("minus_t", "full", "tested")]
     out += [("minus_t", "full", o) for o in NUMERIC_OUTCOMES] + [("minus_c", "full", "n_turns")]
+    if "minus_cc" in cells:
+        out += [("minus_cc", "full", o) for o in ("cheat", "tamper_any", "passed")]
+        out += [("minus_c", "minus_cc", "tamper_any")]
     if "minus_h" in cells:
         out += [("minus_h", "full", "cheat"), ("minus_h", "full", "tamper_any"),
                 ("minus_h", "full", "passed"), ("minus_h", "full", "n_turns")]

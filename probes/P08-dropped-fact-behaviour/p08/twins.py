@@ -300,6 +300,86 @@ def code_delete(text: str, fact: str, error_line: str | None = None) -> str:
     return "\n".join(out)
 
 
+# --- follow-up 4: delete only the clause --------------------------------------------------------
+# Review r1 (finding 1): whole-sentence deletion in -C also removes decisions that share a
+# sentence with the rule ("document the contradiction and call done"). The clause pass deletes,
+# for each regex hit, only the span from the previous clause boundary (, ; : ( ) or a dash, or
+# the sentence start) to the next one, repeated until no hit is left. Fragments such as
+# ", which is forbidden." can remain; the text stays a deletion of Full.
+_CLAUSE_LEFT = re.compile(r"[,;:()\u2014\u2013]|\s-\s|(?<=[.!?])\s")
+_CLAUSE_RIGHT = re.compile(r"[,;:()\u2014\u2013.!?]|\s-\s|$")
+
+
+def _clause_span(text: str, start: int, end: int) -> tuple[int, int]:
+    """The clause holding the end of the hit [start, end): from just after the last boundary
+    before its last character (or the line's start after any list marker) to just before the
+    next boundary at or after `end` (or the line end). Anchoring on the end keeps a clause the
+    match merely runs through ("... `test_solution.py` (tests must not be modified)" deletes
+    only the parenthetical)."""
+    ls = text.rfind("\n", 0, start) + 1
+    le = text.find("\n", end)
+    le = len(text) if le < 0 else le
+    mk = _LIST_PREFIX.match(text, ls)
+    left = mk.end() if mk else ls
+    for m in _CLAUSE_LEFT.finditer(text, left, max(left, end - 1)):
+        left = m.end()
+    m = _CLAUSE_RIGHT.search(text, end, le)
+    right = m.start() if m and m.start() < le else le
+    return left, right
+
+
+def clause_delete(text: str, fact: str, error_line: str | None = None,
+                  max_iter: int = 50) -> str:
+    """Delete, hit by hit, the clause that carries `fact`; a line left with no word characters
+    (beyond its list marker) is dropped. Headings are kept."""
+    pats = {"constraint": C.CONSTRAINT_RES, "test_state": C.TEST_STATE_RES,
+            "header": C.HEADER_RES}[fact]
+    for _ in range(max_iter):
+        hit = None
+        for rx in pats:
+            for m in rx.finditer(text):
+                ls = text.rfind("\n", 0, m.start()) + 1
+                if not _HEADING_RE.match(text[ls: text.find("\n", ls) if "\n" in text[ls:]
+                                               else len(text)]):
+                    hit = m
+                    break
+            if hit:
+                break
+        if hit is None:
+            break
+        a, b = _clause_span(text, hit.start(), hit.end())
+        text = text[:a] + text[b:]
+    out = []
+    for line in text.split("\n"):
+        body = _LIST_PREFIX.sub("", line)
+        if line.strip() and not _HEADING_RE.match(line) and not re.search(r"\w", body):
+            continue
+        out.append(line)
+    return "\n".join(out)
+
+
+def add_clause_twins(path: Path = C.TWINS_JSONL, header: str = "neutral") -> dict:
+    """Add `minus_cc` (and its gate) to every "ok" twin record of `header`, in place; other
+    fields are left as they are. Returns counts."""
+    ctxs = {c["ctx_id"]: c for c in (json.loads(x) for x in
+            C.contexts_jsonl(header).read_text(encoding="utf-8").splitlines() if x.strip())}
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    n = {"ok": 0, "failed": 0}
+    out = []
+    for line in lines:
+        rec = json.loads(line)
+        if rec.get("header") == header and rec.get("status") == "ok":
+            err = _error_line(ctxs[rec["ctx_id"]])
+            t = clause_delete(rec["full"], "constraint", err)
+            g = gate(rec["full"], t, "constraint", err)
+            rec["minus_cc"], rec["gate"]["minus_cc"] = t, {**g, "method": "clause"}
+            n["ok" if g["ok"] else "failed"] += 1
+            line = json.dumps(rec)
+        out.append(line)
+    Path(path).write_text("\n".join(out) + "\n", encoding="utf-8")
+    return n
+
+
 # --- one context --------------------------------------------------------------------------------
 def _call_record(fact: str, attempt: int, r: api.Reply) -> dict:
     return {"fact": fact, "attempt": attempt, "usage": r.usage, "billed_usd": r.billed_usd,
@@ -458,7 +538,12 @@ def main(argv=None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--limit", type=int, default=16)
     ap.add_argument("--out", type=Path, default=C.TWINS_JSONL)
+    ap.add_argument("--add-clause", action="store_true",
+                    help="follow-up 4: add the clause-level -C twin (minus_cc) to ok records")
     a = ap.parse_args(argv)
+    if a.add_clause:
+        print(f"minus_cc: {add_clause_twins(a.out, a.header)}", flush=True)
+        return 0
     items = load_items(a.header)
     if a.ids:
         want = [x.strip() for x in a.ids.split(",") if x.strip()]

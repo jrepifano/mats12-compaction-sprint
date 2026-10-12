@@ -25,11 +25,11 @@ Spend $3.47 of a $40 cap; about 4.5 h wall-clock to results.
 
 ## What is new here
 
-This is a causal extension of Governance Decay ([Chen 2026](#chen-2026)). That paper found permission violations of 0% when a rule survived compaction against 38% when it was dropped. That split is observational, with an aggressive summarizer. Its §5 also has one counterfactual summary on GLM-5.1 (omit the policy: 60%; restore it: 0%). The Missing Boundary ([Ying et al. 2026](#ying-et-al-2026)) ran the controlled version across five models, including our agent glm-5.3-flash: templated summaries with the constraints kept or omitted gave 0% vs 87% loss of control. So "deleting a constraint from an otherwise identical summary raises violations" was already established, for permission-type rules and single risky tool calls.
+This is a causal extension of Governance Decay ([Chen 2026](#chen-2026)). That paper found permission violations of 0% when a rule survived compaction against 38% when it was dropped. That split is observational, with an aggressive summarizer. Its §5 also has one counterfactual summary on GLM-5.1 (omit the policy: 60%; restore it: 0%). The Missing Boundary ([Ying et al. 2026](#ying-et-al-2026)) ran the controlled version across five models, including our agent glm-5.3-flash: templated summaries with the constraints kept or omitted gave 0% vs 87% loss of control. So "deleting a constraint from an otherwise identical summary raises violations" was already established, for permission-type rules (authorization, scope, forbidden actions) whose violation is a prohibited action: in Governance Decay a single terminal tool call, in The Missing Boundary an unauthorized external effect inside a multi-turn tool-use scaffold.
 
 What P08 adds:
-- **A constraint the agent already breaks while it can see it.** Prior designs use rules with a 0% violation rate when intact. GLM cheated in 31/86 X3b episodes with "DO NOT MODIFY THE TESTS" in the task message ([X3b report](#x3b-report)).
-- **Reward hacking as the outcome,** scored by code in a multi-turn coding agent (≤ 15 turns after the resume), not a single prohibited tool call.
+- **A rule whose intent the agent already gets around.** Prior designs use rules with a 0% violation rate when intact. With "DO NOT MODIFY THE TESTS" in view, GLM obeyed the letter of the rule (0/630 test edits in X3b, P01) but special-cased `solution.py` to pass the impossible tests in 31/86 X3b episodes ([X3b report](#x3b-report)). So the question is whether dropping the rule changes anything when a competing way to cheat is already in use.
+- **Coding tasks with impossible tests,** scored by code (test edits, and passing the impossible tests in a fresh container), in a multi-turn agent (≤ 15 turns after the resume).
 - **Natural summaries from a real harness prompt** (pi-mono), with the twins made by minimal, code-checked deletion rather than templates.
 - **Dropping the test state (−T).** We found no controlled study of what an agent does when the summary loses the last test result.
 
@@ -107,8 +107,8 @@ Rates are episode-level, with task-clustered 95% CIs. Contrasts are paired by co
 | −T − Full: turn of the first test run | +0.02 [−0.71, +0.68] | 14 / 13 / 5 |
 | Full − X3b's original continuation: cheating | +6.2 pts [−6.2, +17.6] | 6 / 2 / 24 |
 
-- **What the −C test edits were.** All 10 (the whole population, read in full) changed the single assertion that contradicts another assertion on the same input to the value the spec and a brute-force check give. Each was 1–2 lines; 4 added a NOTE comment in the test file explaining the change. Final messages mostly say "the suite now passes" or "All green" without mentioning the edit, and 4 have no final message.
-- **What −T changed.** Without the run record, agents took about one more turn and used 23% more input tokens, but ran the tests just as soon (first test turn unchanged). We did not classify what the extra turns did. First commands (by a keyword classifier in the session; not committed as a measure): Full started with pytest in 27 episodes and by reading the test file in 47; −T in 19 and 48, plus 7 reads of `description.md` (Full: 1).
+- **What the −C test edits were** (all 10, listed in [results/audit.md](results/audit.md) §1 and read in full by the session). Each changed the single assertion that contradicts another assertion on the same input to the value the spec and a brute-force check give. 9 of 10 diffs were ≤ 6 lines, and 5 added a comment line in the test file explaining the change. One final message mentions changing a test (keyword rule); most say "the suite now passes" or "All green", and 3 have no final message.
+- **What −T changed.** Without the run record, agents took about one more turn and used 23% more input tokens, but ran the tests just as soon (first test turn unchanged). We did not classify what the extra turns did. First commands, by the keyword classifier in `p08/audit.py` ([results/audit.md](results/audit.md) §2): Full started with pytest in 27 episodes and by reading the test file in 46; −T in 19 and 46, plus 7 reads of `description.md` (Full: 1).
 
 
 ## Results: follow-up 1, the safety header (exploratory)
@@ -139,7 +139,7 @@ The same 32 neutral contexts and GLM-written twins, with DeepSeek V4 Flash (fp8,
 
 - −C − Full: cheating **+26.0 pts [+9.3, +44.0]**; test file edited **+29.2 pts [+14.3, +45.2]** (contexts 14 up, 0 down, 18 same); passes the impossible tests −3.1 [−8.0, 0.0].
 - DeepSeek's 34 test edits (all cells) are 1–2 lines each: the contradictory assertion changed, or deleted in 6.
-- **DeepSeek accepts the summary's "next step: call done" without checking.** 26 of its 192 FU2 episodes called `done` with no test run after the resume, 21 of them as the very first action, across 11 contexts. GLM almost never did (1/528 across the main grid and FU1; P07: 0/972 for GLM and Gemini).
+- **DeepSeek often acts on the summary's "next step: call done" as is.** 26 of its 192 FU2 episodes called `done` with no recognised test run after the resume ([results/audit.md](results/audit.md) §3). 21 of them ran no command at all; the other 5 ran commands, such as direct sanity checks of the solution, but not the test suite. This spans 11 contexts. GLM did so once in 528 (it ran checks, but not the suite); P07 found 0/972 for GLM and Gemini. "No recognised test run" is what the measure counts; it does not cover every way of verifying.
 
 
 ## Results: follow-up 3, DeepSeek on −T (exploratory)
@@ -206,6 +206,7 @@ All spend is OpenRouter API, from the worktree ledger (`logs/costs.jsonl`, 11 P0
 - **Throughput was set by the laptop, not the API.** Other probes kept the load average at 25–127 throughout, and the plan's load gate (pause launches while load > 40) waited several times.
 - **Stragglers set the chunk time.** One episode stuck in X3's 600 s per-attempt API timeout held a 54-episode chunk ~20 min. After the first chunk we ran one chunk per run so stragglers overlapped.
 - The detector's pass check runs two fresh containers per episode (~25 s serial, 6 workers): ~30 min for 288 episodes.
+- **Next time** (review r1, finding 7): write each episode artifact as it finishes and feed a bounded detector queue, instead of extracting per chunk and running the detector after. This saves the ~20 min straggler barrier and overlaps most of the ~30 min detector phase. Not changed in this probe.
 
 ## Review
 

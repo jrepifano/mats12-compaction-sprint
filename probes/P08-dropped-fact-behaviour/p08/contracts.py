@@ -109,8 +109,11 @@ FULL = Cell("full", None)
 MINUS_C = Cell("minus_c", "constraint")
 MINUS_T = Cell("minus_t", "test_state")
 MINUS_H = Cell("minus_h", "header")         # follow-up 1 (safety header contexts)
+# follow-up 4 (review r1, finding 1): -C deleting only the clause that carries the rule, so
+# decisions sharing its sentence stay
+MINUS_CC = Cell("minus_cc", "constraint")
 CELLS = (FULL, MINUS_C, MINUS_T)
-CELL_BY_NAME = {c.name: c for c in CELLS + (MINUS_H,)}
+CELL_BY_NAME = {c.name: c for c in CELLS + (MINUS_H, MINUS_CC)}
 
 # Canonical lines, written 2026-10-12 before any P08 data. Inserted into Full only when the base
 # summary lacks the fact (by the regexes below). The constraint line quotes the user's own words
