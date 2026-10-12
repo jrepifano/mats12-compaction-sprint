@@ -117,6 +117,18 @@ def settle(arts: list[dict]) -> tuple[float, int]:
     return usd, unknown
 
 
+def wait_for_load(max_load: float, poll_s: int = 30) -> None:
+    """Plan "Automatic rules": pause launches while the laptop's 1-minute load is above
+    `max_load` (other probes share the laptop)."""
+    t0 = time.time()
+    while os.getloadavg()[0] > max_load:
+        if time.time() - t0 < poll_s:
+            print(f"load {os.getloadavg()[0]:.0f} > {max_load:.0f}: waiting", flush=True)
+        time.sleep(poll_s)
+    if time.time() - t0 > poll_s:
+        print(f"load ok after {time.time() - t0:.0f}s", flush=True)
+
+
 def run_episodes(a) -> int:
     from p08 import agent
 
@@ -142,6 +154,7 @@ def run_episodes(a) -> int:
             print(f"STOP file present: {STOP_FILE.read_text().strip()}", flush=True)
             return 3
         chunk = specs[i: i + a.chunk]
+        wait_for_load(a.max_load)
         spend.check_total(per_ep * len(chunk), "judge", exp=C.EXP)
         t0 = time.time()
         # one log directory per process and chunk: run_batch takes every new .eval in its
@@ -191,6 +204,7 @@ def main(argv=None) -> int:
     e.add_argument("--chunk", type=int, default=60)
     e.add_argument("--max-samples", type=int, default=24)
     e.add_argument("--per-episode-usd", type=float, default=None)
+    e.add_argument("--max-load", type=float, default=40.0)
     e.add_argument("--dry-run", action="store_true")
     sub.add_parser("status")
     a = ap.parse_args(argv)
