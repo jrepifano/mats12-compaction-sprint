@@ -27,10 +27,9 @@ def test_plan_units_matched_pair_first(tmp_path):
     assert u[1] == ("tf", "base", 0, "chain", "nocot", True)
     first_rec4 = next(i for i, x in enumerate(u) if x[1:2] == ("rec4",))
     first_seed1 = next(i for i, x in enumerate(u) if x[0] == "tf" and x[2] == 1)
-    last_pair = max(i for i, x in enumerate(u) if x[0] == "tf" and x[1] in ("rec32", "base")
-                    and x[2] == 0)
-    assert last_pair < first_seed1 < first_rec4
-    assert u.index(("floor",)) < first_seed1
+    first_arith = next(i for i, x in enumerate(u) if x[0] == "tf" and x[3] == "arithmetic")
+    assert u.index(("floor",)) < first_seed1 < first_arith < first_rec4
+    assert all(x[3] == "chain" for x in u[:first_seed1] if x[0] == "tf")
 
 
 def _write_tf(tmp_path, acc_k1):

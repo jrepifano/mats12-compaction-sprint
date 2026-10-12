@@ -415,14 +415,15 @@ class Session:
 
     # -- the run ---------------------------------------------------------------------------------
     def bench(self) -> dict:
-        """Plan smoke 8: one depth cell (chain k = 4, both formats, both models, with readout)
-        timed; projects the main run from tokens x effective layers."""
+        """Plan smoke 8: 100 items of one depth cell (chain k = 4, both formats, both models,
+        with readout) timed; projects the main run from tokens x effective layers. Units then run
+        in priority order under the P05_MAX_HOURS guard whatever the projection says (logged)."""
         path = self.out / "bench.json"
         if path.exists():
             return json.loads(path.read_text())
         from .model import CHECKPOINTS, flops_per_token
         evals, shots = self.bank("chain")
-        cell = [e for e in evals if e["k"] == 4]
+        cell = [e for e in evals if e["k"] == 4][:100]  # timing only; not reused
         res = {"utc": utc(), "n": len(cell), "units": {}}
         for key in ("rec32", "base"):
             for fmt in I.FORMATS:
@@ -473,11 +474,12 @@ class Session:
                       ("val", "rec32", 0, bank, fmt, (1, 32, 64)),
                       ("val", "base", 0, bank, fmt, (0,))]
             if bank == "chain":
+                # the init-seed check right after the headline cells: the recurrent model is
+                # rounding-sensitive (laptop smoke), so it must not be the first thing cut
                 u.append(("floor",))
+                u += [("tf", "rec32", 1, "chain", fmt, False) for fmt in I.FORMATS]
         for fmt in I.FORMATS:
             u += [("ask", "rec32", 0, "chain", fmt), ("ask", "base", 0, "chain", fmt)]
-        for fmt in I.FORMATS:
-            u.append(("tf", "rec32", 1, "chain", fmt, False))
         for bank in self.args.banks:
             for fmt in I.FORMATS:
                 u += [("tf", "rec4", 0, bank, fmt, bank == "chain"),
@@ -579,7 +581,7 @@ def main(argv=None) -> int:
     ap.add_argument("--models", nargs="+", default=["rec32", "base", "rec4"])
     ap.add_argument("--token-budget", type=int, default=48000)
     ap.add_argument("--greedy-batch", type=int, default=16)
-    ap.add_argument("--max-hours", type=float, default=2.6)
+    ap.add_argument("--max-hours", type=float, default=4.4)
     args = ap.parse_args(argv)
     if args.cmd == "env":
         return cmd_env(args)

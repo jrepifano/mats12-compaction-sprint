@@ -4,14 +4,14 @@
 # then `python -m p05.session all` (smoke gates, bench, the sweep, greedy validation).
 # rc 1 = an exception (results/error.txt), 3 = a gate failed (results/decisions.jsonl),
 # 4 = stopped at P05_MAX_HOURS. results/MANIFEST.sha256 is always written; the last log line is
-# PROBE_DONE rc=<n>. Optional env: P05_ARGS (e.g. "--limit 3"), P05_MAX_HOURS (default 2.4,
+# PROBE_DONE rc=<n>. Optional env: P05_ARGS (e.g. "--limit 3"), P05_MAX_HOURS (default 4.4,
 # measured from the start of this script). bash 3.2-compatible.
 set -uo pipefail
 cd "$(dirname "$0")"
 echo "P05 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
 mkdir -p results logs
 echo $$ > logs/run.pid 2>/dev/null || true
-export P05_T0="$(date +%s)" P05_MAX_HOURS="${P05_MAX_HOURS:-2.4}"
+export P05_T0="$(date +%s)" P05_MAX_HOURS="${P05_MAX_HOURS:-4.4}"
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"

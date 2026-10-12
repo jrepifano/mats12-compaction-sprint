@@ -10,8 +10,10 @@ reserve_usd = 0
 
 [pod]
 # Projection (plan "Cap"; replaced by results/bench.json): ~1.5 h of passes at 100 TFLOP/s,
-# plus downloads (~15 GB), the venv and the smoke. run.sh stops starting units at P05_MAX_HOURS.
-gpu_hours = 3
+# plus downloads (~15 GB), the venv and the smoke. Raised from 3 to 5 (log.md): if bf16 and TF32
+# both fail the precision gate, strict fp32 is several times slower. The pod ends when the units
+# do; run.sh stops starting units at P05_MAX_HOURS (4.4).
+gpu_hours = 5
 # No shared setup target: run.sh builds /ws/venv-p05 from requirements-pod.txt (transformers 4.53.1).
 setup = ""
 disk_gb = 80
