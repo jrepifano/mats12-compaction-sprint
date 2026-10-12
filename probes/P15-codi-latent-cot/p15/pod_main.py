@@ -31,6 +31,9 @@ DATA = Path(os.environ.get("P15_DATA", "/ws/p15_data"))
 UPSTREAM = os.environ.get("P15_UPSTREAM", "/ws/codi_upstream")
 DEVICE = os.environ.get("P15_DEVICE", "cuda")
 LIMIT = int(os.environ.get("P15_LIMIT", "0"))  # CPU dry runs only: a seeded subset per set
+# CPU dry runs on the tiny test model only; the real checkpoint is LoRA r 128, projection 2048
+MODEL_KW = {"lora_r": int(os.environ.get("P15_LORA_R", "128")),
+            "prj_dim": int(os.environ.get("P15_PRJ_DIM", "2048"))}
 SEED = 20261012
 
 BASE_ID, BASE_REV = "meta-llama/Llama-3.2-1B-Instruct", "9213176726f574b556790deb65791e0c5aa438b6"
@@ -392,7 +395,7 @@ def step_stage_a(force: bool = False) -> int:
     p = paths()
     T, G, C = load_items()
     with Timer("load_a"):
-        model, tok, report = cc.load_codi(p["ckpt"], p["base"], UPSTREAM, device=DEVICE)
+        model, tok, report = cc.load_codi(p["ckpt"], p["base"], UPSTREAM, device=DEVICE, **MODEL_KW)
     _json_dump(report, RESULTS / "smoke" / "key_report.json")
     with Timer("smoke"):
         checks = smoke(model, tok, report, T, G, C["eval"])
@@ -457,7 +460,7 @@ def step_b_eval() -> None:
     _, G, C = load_items()
     with Timer("load_b"):
         model, tok, report = cc.load_codi(p["ckpt"], p["base"], UPSTREAM, device=DEVICE,
-                                          trainables=str(trainables))
+                                          trainables=str(trainables), **MODEL_KW)
     _json_dump(report, RESULTS / "B" / "key_report.json")
     with Timer("b_C"):
         outC = run_set(model, tok, C["eval"], resid=True)
