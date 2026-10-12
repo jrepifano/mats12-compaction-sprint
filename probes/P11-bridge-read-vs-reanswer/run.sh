@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# P11 pod entry point (scripts/probe_pod.py run contract): downloads, then p11.session all, then
+# results/MANIFEST.sha256 over every file under results/, and a last line PROBE_DONE rc=<n>.
+# bash 3.2-compatible. Env (optional): P11_MAX_HOURS (default 2.3: stop starting lens draws
+# after that, measured from the start of this script), P11_ARTIFACTS, P11_ARGS (e.g. "--limit 3").
+set -uo pipefail
+cd "$(dirname "$0")"
+echo "P11 start $(date -u +%FT%TZ) probe=${EMX_PROBE:-unset} commit=${EMX_GIT_COMMIT:-unset}"
+echo $$ > logs/run.pid 2>/dev/null || true
+export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
+export PYTHONPATH="$PWD:$PWD/../P03-text-proof-interp-items:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+export P11_T0="${P11_T0:-$(date +%s)}" P11_MAX_HOURS="${P11_MAX_HOURS:-2.3}"
+export P11_ARTIFACTS="${P11_ARTIFACTS:-/ws/p11_artifacts}"
+PY=/ws/venv-i9/bin/python
+mkdir -p results logs "$P11_ARTIFACTS"
+RC=0
+if ! test -x "$PY"; then
+  echo "P11 missing $PY (pod_setup.sh --only i9)"; RC=2
+elif ! test -f ../../third_party/workspace-bench/pyproject.toml; then
+  echo "P11 missing third_party/workspace-bench (probe.toml [pod].push)"; RC=2
+else
+  nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader || true
+  df -h /ws 2>/dev/null | tail -1 || true
+  "$PY" -m p11.session env && "$PY" -m p11.session download || RC=$?
+  if [ "$RC" -eq 0 ]; then
+    # shellcheck disable=SC2086 # P11_ARGS is a word list on purpose
+    "$PY" -m p11.session all ${P11_ARGS:-} || RC=$?
+  fi
+fi
+( cd results && find . -type f ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z \
+    | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) && mv MANIFEST.sha256.tmp results/MANIFEST.sha256
+echo "P11 end $(date -u +%FT%TZ) rc=$RC"
+echo "PROBE_DONE rc=$RC"
