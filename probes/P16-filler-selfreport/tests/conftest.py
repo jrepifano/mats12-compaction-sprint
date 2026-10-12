@@ -8,3 +8,5 @@ _PROBE = Path(__file__).resolve().parents[1]
 for _p in (_PROBE, _PROBE.parent / "P06-filler-token-computation",
            _PROBE.parent / "P12-filler-conceal"):
     sys.path.insert(0, str(_p))
+
+from test_pod import data, results, tiny, tok  # noqa: F401  (shared fixtures)

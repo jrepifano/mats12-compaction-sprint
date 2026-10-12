@@ -225,6 +225,8 @@ def ridge_probe(per: dict[tuple[int, str], dict], items: list[dict], arms: list[
 
     idxs = np.array([it["idx"] for it in items
                      if all((it["idx"], a) in per for a in ("P", "M"))])
+    if len(idxs) < 4 * N_FOLDS:
+        return {"pick": {}, "raw": {}, "alphas": [], "skipped": f"{len(idxs)} items"}
     y = {it["idx"]: it["roles"]["y"] for it in items}
     folds = np.random.default_rng(SEED).permutation(len(idxs)) % N_FOLDS
     pred: dict[tuple[int, str], float] = {}
@@ -382,6 +384,7 @@ def part_a(results: Path, ans: dict, items: list[dict], arms: list[str], ivocab:
     partner = {it["idx"]: it["partner_idx"] for it in items}
     yv = {it["idx"]: it["roles"]["y"] for it in items}
     dv = {it["idx"]: it["d"] for it in items}
+    nully = {it["idx"]: it["null"]["y"] for it in items}  # the partner's y
     for arm in arms:
         for it in items:
             i = it["idx"]
@@ -411,7 +414,7 @@ def part_a(results: Path, ans: dict, items: list[dict], arms: list[str], ivocab:
                 out["hit"][f"{name}|{arm}|@{k}"] = mean_ci(
                     [R.hit_at(c[(i, a)], yv[i], k) for i, a in keys])
                 out["false_alarm"][f"{name}|{arm}|@{k}"] = mean_ci(
-                    [R.hit_at(c[(i, a)], yv[partner[i]], k) for i, a in keys])
+                    [R.hit_at(c[(i, a)], nully[i], k) for i, a in keys])
                 out["d_hit"][f"{name}|{arm}|@{k}"] = mean_ci(
                     [R.hit_at(c[(i, a)], dv[i], k) for i, a in keys])
         for arm in [a for a in arms if a != "P"]:
@@ -420,8 +423,8 @@ def part_a(results: Path, ans: dict, items: list[dict], arms: list[str], ivocab:
                 a_ = [R.hit_at(c[(i, arm)], yv[i], k) for i in both]
                 p_ = [R.hit_at(c[(i, "P")], yv[i], k) for i in both]
                 ci = paired(a_, p_)
-                fa = paired([R.hit_at(c[(i, arm)], yv[partner[i]], k) for i in both],
-                            [R.hit_at(c[(i, "P")], yv[partner[i]], k) for i in both])
+                fa = paired([R.hit_at(c[(i, arm)], nully[i], k) for i in both],
+                            [R.hit_at(c[(i, "P")], nully[i], k) for i in both])
                 resists = (ci["lo"] is not None and ci["lo"] > -MARGIN and fa["diff"] is not None
                            and abs(fa["diff"]) <= 0.05)
                 out["CD_minus_P"][f"{name}|{arm}-P|@{k}"] = {
