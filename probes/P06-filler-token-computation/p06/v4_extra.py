@@ -116,6 +116,26 @@ def layer_order(recs: list[dict], reader: str, roles_of, order: list[str], group
     return out
 
 
+def first_layers(recs: list[dict], reader: str, group: str) -> dict:
+    """Per role, the distribution of its first top-1 layer (items where it is ever top-1), and
+    the earliest layer at which any of the item's candidate values is top-1 (the floor)."""
+    out: dict[str, Any] = {}
+    for role in MC_ROLES:
+        f = [first_layer(top1_cells(r, reader, group), token_of(r, mc_roles(r)[role]))
+             for r in recs]
+        f = [x for x in f if x is not None]
+        out[role] = {"n": len(f), "min": min(f) if f else None,
+                     "median": float(np.median(f)) if f else None}
+    floor = []
+    for r in recs:
+        c = top1_cells(r, reader, group)
+        firsts = [x for t in r["cand_ids"] if (x := first_layer(c, int(t))) is not None]
+        if firsts:
+            floor.append(min(firsts))
+    out["any_candidate"] = {"n": len(floor), "median": float(np.median(floor)) if floor else None}
+    return out
+
+
 def varbind_checks(recs: list[dict]) -> dict:
     out: dict[str, Any] = {}
     for arm in sorted({r["arm"] for r in recs}):
@@ -130,6 +150,7 @@ def varbind_checks(recs: list[dict]) -> dict:
             if arm == "dots100":
                 out[f"order|{reader}|{arm}"] = layer_order(rs, reader, mc_roles,
                                                            ["y", "c2y", "answer"], group)
+                out[f"first_layers|{reader}|{arm}"] = first_layers(rs, reader, group)
     return out
 
 
@@ -184,7 +205,10 @@ def summary(res: dict) -> list[str]:
     lines = []
     for part in ("varbind", "chain"):
         for key, row in res[part].items():
-            if key.startswith("top1|"):
+            if key.startswith("first_layers|"):
+                lines.append(f"{part} {key}: " + " ".join(
+                    f"{role} n{v['n']} med {v['median']}" for role, v in row.items()))
+            elif key.startswith("top1|"):
                 lines.append(f"{part} {key}: " + " ".join(
                     f"{role} {v['hit_rate']:.2f}/{v['null_mean']:.2f}" for role, v in row.items()))
             else:
