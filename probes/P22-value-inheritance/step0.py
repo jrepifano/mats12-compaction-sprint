@@ -233,9 +233,11 @@ def MODELS_OF(families: list[str]) -> list[str]:
 
 # ------------------------------------------- revised primary: one-factor model (log.md, 22:13Z)
 #
-# Projecting out item-space PC1 (above) biases same-family pairs apart under the null; a factor
-# model whose loadings are fit on split A and applied to split B's covariance does not, because
-# loadings are model-level parameters that carry over between item splits.
+# Projecting out item-space PC1 (above) biases same-family pairs apart under the null. The
+# replacement fits a one-factor model on split A and subtracts it from split B's covariance;
+# loadings are model-level parameters, so they carry over between item splits. Item-centring
+# makes the observed covariance H(LLᵀ + D)H, not LLᵀ + D, so the model is fit in that form
+# (review r1, BLOCKING 1); `factor_fit` (plain principal-axis factoring) is only its starting point.
 
 
 def factor_fit(S: np.ndarray, k: int = 1, iters: int = 500) -> tuple[np.ndarray, np.ndarray]:
@@ -251,16 +253,59 @@ def factor_fit(S: np.ndarray, k: int = 1, iters: int = 500) -> tuple[np.ndarray,
     return L, psi
 
 
+def centring_matrix(n: int) -> np.ndarray:
+    return np.eye(n) - np.full((n, n), 1.0 / n)
+
+
+def _noise_design(n: int) -> np.ndarray:
+    """Columns vec(H e_i e_iᵀ H): H diag(d) H is linear in d."""
+    H = centring_matrix(n)
+    return np.stack([np.outer(H[:, i], H[:, i]).ravel() for i in range(n)], axis=1)
+
+
+def centred_factor_fit(S: np.ndarray, k: int = 1, iters: int = 2000,
+                       starts=(0.5, 0.1, 0.9)) -> tuple[np.ndarray, np.ndarray]:
+    """Least-squares fit of S ≈ H(LLᵀ + diag(d))H, where S is the covariance of item-centred
+    profiles (so HSH = S) and H the centring matrix; d ≥ 0. Alternating least squares: given d,
+    the best centred loadings are the top-k eigenpairs of S − H diag(d) H; given those, d is a
+    non-negative linear least-squares fit. Several starts (d = share × diag S); the lowest
+    objective wins. Returns L (n x k, centred: only HL is identified) and d. k = 0 fits the
+    noise-only model H diag(d) H."""
+    from scipy.optimize import nnls
+
+    n = len(S)
+    H = centring_matrix(n)
+    X = _noise_design(n)
+    best = None
+    for share in starts:
+        d = share * np.diag(S)
+        L = np.zeros((n, k))
+        prev = np.inf
+        for _ in range(iters):
+            if k:
+                w, vec = np.linalg.eigh(S - H @ np.diag(d) @ H)
+                L = vec[:, -k:] * np.sqrt(np.clip(w[-k:], 0, None))
+            d = nnls(X, (S - L @ L.T).ravel())[0]
+            obj = float(np.sum((H @ (L @ L.T + np.diag(d)) @ H - S) ** 2))
+            if prev - obj <= 1e-12 * max(1.0, obj):
+                break
+            prev = obj
+        if best is None or obj < best[0]:
+            best = (obj, L, d)
+    return best[1], best[2]
+
+
 def fa_resid_corr(Xa: np.ndarray, Xb: np.ndarray, k: int = 1) -> np.ndarray:
-    """Item-centred profiles split into A and B columns -> split-B covariance beyond the k-factor
-    model fit on A, scaled to correlations by split B's variances."""
+    """Item-centred profiles split into A and B columns -> split-B covariance minus the k-factor
+    model fit on A (in its centred form), divided by √(S_B,mm · S_B,m'm'). A standardised
+    covariance remainder, not a Pearson correlation: it is not bounded by ±1 and the remainder
+    need not be positive semi-definite. Only the off-diagonal entries are used."""
     SB = np.cov(Xb)
-    R = SB
-    if k:
-        L = factor_fit(np.cov(Xa), k)[0]
-        R = SB - L @ L.T
-    d = np.sqrt(np.diag(SB))
-    return R / np.outer(d, d)
+    H = centring_matrix(len(SB))
+    L, d = centred_factor_fit(np.cov(Xa), k)
+    R = SB - H @ (L @ L.T + np.diag(d)) @ H
+    s = np.sqrt(np.diag(SB))
+    return R / np.outer(s, s)
 
 
 def _gate_from_corr(C: np.ndarray, families: list[str]) -> tuple[float, dict]:
@@ -306,13 +351,21 @@ def fa_bootstrap(Pc: np.ndarray, b_mask: np.ndarray, families: list[str], k: int
     rng = np.random.default_rng(seed)
     Xa, Xb = Pc[:, ~b_mask], Pc[:, b_mask]
     aucs, cons = np.empty(n_boot), np.empty(n_boot)
+    per_model = []
     for i in range(n_boot):
         C = fa_resid_corr(Xa[:, rng.integers(0, Xa.shape[1], Xa.shape[1])],
                           Xb[:, rng.integers(0, Xb.shape[1], Xb.shape[1])], k)
         aucs[i], att = _gate_from_corr(C, families)
         cons[i] = np.mean(list(att.values()))
-    q = lambda x: [float(np.quantile(x, 0.025)), float(np.quantile(x, 0.975))]
-    return {"auc_ci": q(aucs), "contrast_ci": q(cons)}
+        per_model.append(att)
+
+    def q(x):
+        return [float(np.quantile(x, 0.025)), float(np.quantile(x, 0.975))]
+
+    names = MODELS_OF(families)
+    # added post hoc in review round 2 (log.md): per-model attribution intervals
+    by_model = {names[j]: q([a[j] for a in per_model]) for j in per_model[0]}
+    return {"auc_ci": q(aucs), "contrast_ci": q(cons), "attribution_ci_by_model": by_model}
 
 
 def simulate_panel(L: np.ndarray, psi: np.ndarray, n_items: int, rng, families: list[str],
@@ -335,7 +388,7 @@ def parametric_null(Pc: np.ndarray, b_mask: np.ndarray, families: list[str], n_s
     AUC a planted family block of the given share of mean item variance would produce."""
     rng = np.random.default_rng(seed)
     S = np.cov(Pc)
-    L, psi = factor_fit(S, 1)
+    L, psi = centred_factor_fit(S, 1)
     mean_var = float(np.mean(np.diag(S)))
     out = {"loadings": dict(zip(MODELS_OF(families), map(float, L[:, 0]))),
            "uniqueness": dict(zip(MODELS_OF(families), map(float, psi))),
@@ -348,6 +401,9 @@ def parametric_null(Pc: np.ndarray, b_mask: np.ndarray, families: list[str], n_s
                                 for key in sims[0]["mean_resid_r"]}
     out["null_contrast_q975"] = float(np.quantile(
         [g["attribution_contrast_mean"] for g in sims], 0.975))
+    out["null_attribution_q975_by_model"] = {
+        m: float(np.quantile([g["attribution_by_model"][m] for g in sims], 0.975))
+        for m in sims[0]["attribution_by_model"]}
     out["null_auc_claude_openai_only_q975"] = float(np.quantile(
         [g["auc_claude_openai_only"] for g in sims], 0.975))
     out["null_auc_mean"] = float(null.mean())

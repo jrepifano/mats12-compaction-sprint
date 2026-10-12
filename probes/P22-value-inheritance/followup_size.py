@@ -30,15 +30,20 @@ def main() -> None:
     P = s0.positions(df[ok].reset_index(drop=True))
     b_full = s0.hash_split_b(keys)
     fams = [s0.FAMILY[m] for m in s0.MODELS]
-    L, psi = s0.factor_fit(np.cov(s0.centre_items(P)), 1)
+    L, psi = s0.centred_factor_fit(np.cov(s0.centre_items(P)), 1)
     rng = np.random.default_rng(s0.SEED)
     out = {}
     for n in SIZES:
-        null = []
+        # the null is simulated from the full-data fit at each size, not refit per subset: an
+        # approximation (review r1, MINOR 3)
+        null, null_con = [], []
         for _ in range(N_NULL):
             b = b_full[rng.choice(len(keys), n, replace=False)]
-            null.append(s0.fa_gate(s0.simulate_panel(L, psi, n, rng, fams), b, fams)["auc"])
+            g = s0.fa_gate(s0.simulate_panel(L, psi, n, rng, fams), b, fams)
+            null.append(g["auc"])
+            null_con.append(g["attribution_contrast_mean"])
         q975 = float(np.quantile(null, 0.975))
+        con_q975 = float(np.quantile(null_con, 0.975))
         aucs, contrasts = [], []
         for _ in range(N_SUBSETS):
             idx = rng.choice(len(keys), n, replace=False)
@@ -52,6 +57,8 @@ def main() -> None:
             "auc_q025_q975": [float(np.quantile(aucs, 0.025)), float(np.quantile(aucs, 0.975))],
             "pass_rate": float(np.mean((aucs >= s0.PASS_AUC) & (aucs > q975))),
             "contrast_mean": float(np.mean(contrasts)),
+            "contrast_null_q975": con_q975,
+            "contrast_above_null_rate": float(np.mean(np.array(contrasts) > con_q975)),
         }
         print(n, json.dumps(out[n]))
     (HERE / "results" / "followup_size.json").write_text(json.dumps(out, indent=2) + "\n")

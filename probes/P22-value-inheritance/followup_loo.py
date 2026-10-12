@@ -41,7 +41,7 @@ def main() -> None:
                          "null_contrast_q975": null["null_contrast_q975"]}
         print(m, json.dumps(out["loo"][m]))
     Pc = s0.centre_items(P)
-    L, psi = s0.factor_fit(np.cov(Pc[:, ~b]), 2)
+    L, _ = s0.centred_factor_fit(np.cov(Pc[:, ~b]), 2)
     out["two_factor_loadings_split_a"] = {m: [float(x) for x in L[j]] for j, m in
                                           enumerate(s0.MODELS)}
     for m, v in out["two_factor_loadings_split_a"].items():

@@ -159,3 +159,33 @@ def test_eligibility_drops_refusals_missing_and_out_of_range():
         rows.append(r)
     mask = s0.eligible_mask(pd.DataFrame(rows))
     assert mask.tolist() == [True, False, False, False]
+
+
+def test_centred_factor_fit_is_exact_on_a_population_covariance():
+    """Review r1, BLOCKING 1: the fit must model item-centring, H(LLᵀ + D)H, including noise that
+    differs strongly by family (plain factoring left structured remainders here)."""
+    lam = np.array([3, 1.3, 2.8, 0.9, 0.8, -0.5, -1.3, -1.7, 0.7, -0.2, -2, -3.5])
+    d = np.array([6.25] * 5 + [0.16] * 5 + [1.0, 1.0])
+    H = s0.centring_matrix(12)
+    S = H @ (np.outer(lam, lam) + np.diag(d)) @ H
+    L, d_hat = s0.centred_factor_fit(S, 1)
+    assert np.allclose(H @ (L @ L.T + np.diag(d_hat)) @ H, S, atol=1e-5)
+    assert np.allclose(d_hat, d, atol=1e-3)
+
+
+def test_full_gate_false_positive_rate_on_a_fixed_heteroskedastic_panel():
+    """The whole gate (AUC bar plus the parametric null) on one caution-only panel with family-
+    structured noise: it should rarely pass."""
+    rng = np.random.default_rng(11)
+    lam = np.array([2.9, 1.3, 2.8, 0.9, 0.8, -0.5, -1.3, -1.7, 0.7, -0.2, -2.0, -3.5])
+    sd = np.array([2.5] * 5 + [0.4] * 5 + [1.0, 1.0])
+    n = 2000
+    b = np.arange(n) >= n // 2
+    passes = 0
+    for i in range(15):
+        X = lam[:, None] * rng.normal(size=n) + sd[:, None] * rng.normal(size=(12, n))
+        Pc = s0.centre_items(X)
+        g = s0.fa_gate(Pc, b, FAMS)
+        null = s0.parametric_null(Pc, b, FAMS, n_sim=40, seed=i, block_shares=(0.0,))
+        passes += g["auc"] >= s0.PASS_AUC and g["auc"] > null["null_auc_q975"]
+    assert passes <= 2
