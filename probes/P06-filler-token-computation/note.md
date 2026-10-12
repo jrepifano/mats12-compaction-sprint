@@ -1,6 +1,6 @@
 # P06 note: what computation happens in filler tokens, and can current readers see it?
 
-Probe tier, 2026-10-11. Plan: [`plan.md`](plan.md) (approved by Jacob in chat). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$42.05** of a $75 cap (raised from $35 in steps; see Deviations): $13.00 for the first pass (merged in PR #20, 2026-10-11) and $29.05 for the V4 Flash GPU follow-ups F7 and F8 (2026-10-11/12). Wall-clock about 2 h 25 min for the first pass, and about 3 h 40 min of pod time for F7–F8.
+Probe tier, 2026-10-11. Plan: [`plan.md`](plan.md) (approved by Jacob in chat). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$42.05** of a $75 cap (raised from $35 in steps; see Deviations): $13.00 for the first pass (merged in PR #20, 2026-10-11) and $29.04 for the V4 Flash GPU follow-ups F7 and F8 (2026-10-11/12). Wall-clock about 2 h 25 min for the first pass. F7–F8 billed 3.23 pod-hours (about 3 h 14 min) over four pods, between 23:03 and 02:45 UTC.
 
 ## The answer
 
@@ -28,18 +28,18 @@ Probe tier, 2026-10-11. Plan: [`plan.md`](plan.md) (approved by Jacob in chat). 
    - **Readout limit.** Gemma tokenizes numbers digit by digit, so the readout scores first digits only.
    - **Causal.** We intervened on the filler K/V projections during the target's prefill, writing in the projections from a donor that differs only in x. The output then lands closer to the donor's answer than to the target's on **52.0% of pairs [44.0, 60.0]**, against **2.0%** for the un-transplanted output and **5.3%** for a random-donor intervention, both scored against the same donor answer. The output equals the donor's own output on 21.3% [15.3, 28.0].
 
-6. **In V4 Flash the filler computes the hidden values in layer order, readers see them as whole numbers, and the answer is read from the filler** (one B300, F7–F8, $29.05; exploratory).
-   - **Readable, whole values.** On Brauer's task (100 items, 100 dots), the hidden value y is the reader's top-1 token over the whole vocabulary at some filler position on **98–100% of items, against 9–13% when each item is scored on another item's y**. Twice y (the next step) is top-1 on 81–85%, and the answer on 73–77% (nulls 6–8%); the model answers 71% correctly. Dots placed before the question read nothing (at null). In the 10-option prompt without filler, y is top-1 at the answer position on only 6–16% (null 1–2%).
-   - **In layer order.** Within an item, y first becomes top-1 around layer 28–30, 2y about 3 layers later, and the answer about 3 layers after that. Counting items with a non-zero difference, 2y comes after y on 71–78 of 77–81, the answer after 2y on 43–49 of 58–63, and the answer after y on 63–71 of 70–75, per reader (sign p < 0.001 for every pair and reader). Most first appearances are within the first ~15 dots. Any of an item's candidate numbers first becomes top-1 at a median layer of 22–24, depending on the reader, and x (written in the prompt) appears there too (median 22–24). y's, 2y's and the answer's median first layers (28–30, 31–33, 35–36) sit well above that floor, so the order is not a floor artefact (`extra.json`, `first_layers`). This is a serial computation across layers at the start of the filler, not a relay along the dots.
+6. **In V4 Flash, readers see the hidden values at the filler as whole numbers, and they become readable in task order across layers. The filler's states causally carry information that strongly controls the answer** (one B300, F7–F8, $29.04; exploratory).
+   - **Readable, whole values.** On Brauer's task (100 items, 100 dots), the hidden value y is the reader's top-1 token over the whole vocabulary at some filler position on **98–100% of items, against 9–13% when each item is scored on another item's y**. The coefficient times y (c·y, the next step; 2y or 3y depending on the item) is top-1 on 81–85%, and the answer on 73–77% (nulls 6–8%); the model answers 71% correctly. Dots placed before the question read nothing (at null). In the 10-option prompt without filler, y is top-1 at the answer position on only 6–16% (null 1–2%).
+   - **Readable in task order.** Within an item, y first becomes top-1 around layer 28–30, c·y about 3 layers later, and the answer about 3 layers after that. Counting items with a non-zero difference, c·y comes after y on 71–78 of 77–81, the answer after c·y on 43–49 of 58–63, and the answer after y on 63–71 of 70–75, per reader (sign p < 0.001 for every pair and reader). Most first appearances are within the first ~15 dots. Any of an item's candidate numbers first becomes top-1 at a median layer of 22–24, depending on the reader, and x (written in the prompt) appears there too (median 22–24). y's, c·y's and the answer's median first layers (28–30, 31–33, 35–36) sit well above that floor, so the order is not a floor artefact (`extra.json`, `first_layers`). The plain logit lens shows the same order, so the J-Lens maps' layer range does not explain it. This is ordered *readability*, conditional on both values becoming top-1. It is consistent with a serial computation across layers at the start of the filler, rather than a relay along the dots, but it does not show when each value is computed or that one produces the next: role-dependent token frequency, magnitude (y has 3 digits on 47% of items, c·y on 81%) and reader sensitivity could also order first appearances. A layer-restricted patch would test it.
    - **Chain, k = 2.** The step-1 value is read above a permutation null by all three readers (28–48% vs 5–6%). In the first 20 dots, the answer appears about 3 layers after step 1 (sign p 0.004–0.014; the 20-dot window was chosen after seeing the varbind result). At k = 3 the second intermediate is barely read (J-Lens only, 12% vs 5%), in line with the small k = 3 uplift (+5 [−2, +12] locally).
-   - **Causal.** We overwrote the 500 dots' residual streams at every layer with those of a donor chain that differs only in its start value. The model then gives **the donor's answer on 35% [29, 42] of pairs** (48% at k = 2, 22% at k = 3). The controls score 6.5% (a random donor's patch) and 6% (unpatched), both against the same answer. The patched output equals the donor's own output on 84%, and on pairs where target and donor are both correct the patch gives the donor's answer on 92%. The question text is untouched, so the answer comes from the filler, not from re-reading the question.
+   - **Causal.** We overwrote the 500 dots' residual streams at every layer with those of a donor chain that differs only in its start value. The model then gives **the donor's answer on 35% [29, 42] of pairs** (48% at k = 2, 22% at k = 3). The controls score 6.5% (a random donor's patch) and 6% (unpatched), both against the same answer. The patched output equals the donor's own output on 84%, and on pairs where target and donor are both correct the patch gives the donor's answer on 92%. So the filler's states carry information (inputs, intermediates or the answer itself) that strongly controls the output. This does not show that the answer is computed only in the filler: later positions may still combine what the filler carries with the target's question, through compressed memory.
    - **Architecture caveat.** V4 Flash attends over a 128-token sliding window plus compressed memory of older tokens. With 500 dots, the answer position reaches the question only through compressed entries. The dots are therefore the main local route, and the strength of the patch effect may partly reflect that. Gemma's 52% K/V result (item 5) shows the effect is not V4-specific.
 
 **What it changes.** Of the plan's outcomes, the evidence is closest to **outcome 2, "uplift without depth"**: filler helps on a one-hidden-step problem and on 2–3-step chains, and readers show the hidden value. The rule for outcome 2 is to **continue briefly: a transplant check, then a short note for Neel**. Both are done here.
-- **Outcome 3, the readable serial relay, half holds on V4 Flash.** The plan's criteria were a depth shift ≥ 0.5 steps, ≥ 30% of intermediates recovered, and ρ > 0.3. Intermediates are recovered far above 30%, and they appear in serial order, but the order runs across layers, not along the dots. The depth gain is small: about one step (uplift at k = 2, little at k = 3).
-- *Inference:* the filler gives the model positions where it can compute the hidden value and the answer mid-stack, which the answer position then reads, effectively one extra pass of depth. That would explain uplift at k = 2 and little beyond. It is a hypothesis; patching at a subset of layers or dots would test it.
+- **Outcome 3, the readable serial relay, partly holds on V4 Flash.** The plan's criteria were a depth shift ≥ 0.5 steps, ≥ 30% of intermediates recovered, and ρ > 0.3. Intermediates are recovered far above 30%, and they become readable in task order, but that order runs across layers, not along the dots. The depth shift was not measured on V4 Flash: per-k uplift is clear at k = 2 and small at k = 3.
+- *Hypothesis:* the filler gives the model positions where it computes the hidden value and the answer mid-stack, and the answer position then reads them, which adds depth. That would fit uplift at k = 2 and little beyond. Patching a subset of layers or dots would test it.
 - **Not a pivot.** The original note's "readers can't see it" (outcome 4) came from a flawed null and is withdrawn (Review, below). On V4 Flash all three readers, including the plain logit lens, see the filler's computation; the logit lens is as good as the J-Lenses on whole values.
-- **Graduation is Jacob's call.** This is P06's strongest positive result: filler computation that the simplest reader sees, with a causal check, on a frontier-scale open model. The "parallel candidates" question (prediction 5 of F8) remains open, because our MC contrast was confounded.
+- **Graduation is Jacob's call.** This is P06's strongest positive result: hidden intermediate values that the simplest reader sees at the filler, with a causal check that the filler's states control the answer, on a frontier-scale open model. The "parallel candidates" question (prediction 5 of F8) remains open, because our MC contrast was confounded.
 
 ## Predictions against outcomes
 
@@ -49,7 +49,7 @@ Plan predictions (written 2026-10-11, before data), scored on the planned measur
 |---|---|---|---|
 | 1. No usable uplift (neither model gains ≥ 3 points, lower bound > 0) | 0.35 | **Happened.** Gemma +0.8 [−1.8, +3.3]; V4 Flash dropped at the smoke gate | Not in Brauer's format: V4 Flash +19.5 at chain k = 2; both models gain on Brauer's task |
 | 2. Uplift without depth (depth shift < 0.5; uplift shrinks with more options; readers show candidates) | 0.30 | n/a (no uplift) | **Closest.** Uplift detectable only at 2–3 steps, and readers show the hidden value. But uplift does not shrink with more options (it grows on V4 Flash) |
-| 3. Readable serial relay | 0.15 | n/a | Not tested at depth > 1 on GPU. At depth 1 the hidden value is readable; there is no relay to order |
+| 3. Readable serial relay | 0.15 | n/a | **Partly (F8, V4 Flash).** The specified k = 3 test (peak order of step 1 vs step 2 along the dots) failed: 6–10 usable items, no order. Exploratory: values become readable in task order across layers (varbind y → c·y → answer; chain k = 2 step 1 → answer), not along the dots; the depth shift was not measured |
 | 4. Uplift readers can't see | 0.20 | n/a | Not supported. y's first digit is read well above a permutation null. Recovery on uplift items (40%) is about the same as on the rest (35%) at the label |
 | Side: V4 Flash gains less than Gemma | 0.6 | n/a | **Wrong.** V4 Flash gains more (+25 vs +9 on Brauer's task; +19.5 vs −4.5 at chain k = 2) |
 
@@ -65,8 +65,8 @@ Follow-up predictions, written in `log.md` before each run:
 - **F7:** V4 Flash loads on one Blackwell GPU and passes the lens-vs-model gate (0.6). **True** on the third attempt (agreement 0.99994); the first two failed on our snapshot bug and an HF 504.
 - **F8.1:** step 1 read at k = 2 above a permutation null (0.6). **True** for all three readers.
 - **F8.2:** both intermediates read at k = 3 (0.35). **Partly:** step 1 yes; step 2 by J-Lens only (12% vs 5%).
-- **F8.3:** steps peak in order, step 1 earlier than step 2 (0.3). **Not supported as specified** on chain k = 3 (6–10 usable items, no order). An exploratory check finds a strong layer order on varbind (y → 2y → answer) and at chain k = 2 (step 1 → answer).
-- **F8.4:** matched patch gives the donor's answer on ≥ 30%, against ≤ 10% for the random donor (0.6). **True:** 35% vs 6.5%.
+- **F8.3:** steps peak in order, step 1 earlier than step 2 (0.3). **Not supported as specified** on chain k = 3 (6–10 usable items, no order). An exploratory check finds a strong layer order on varbind (y → c·y → answer) and at chain k = 2 (step 1 → answer).
+- **F8.4:** matched patch moves the output toward the donor's answer on ≥ 30%, against ≤ 10% for the random donor (0.6). **Mixed (control threshold not met):** on the stated metric (closer to the matched donor's answer than to the target's), matched 61% vs 41% for the random-donor patch scored against the same answer. The coarse "closer" metric has a high base rate. On exact equality, a stricter metric chosen after the fact, the matched patch gives the donor's answer on 35% vs 6.5% (random) and 6% (unpatched).
 - **F8.5:** distractor options elevated over unlisted controls at the filler with 10 options (0.3). **Not interpretable:** the elevation also appears with no options shown and in the pre-padding null, so it reflects how the candidate values were chosen.
 
 ## Planned measures (Stage 1)
@@ -249,7 +249,7 @@ In four of six draws the transplanted output lands near the donor's answer (348 
 | `varbind:142` | 89 | 89 | 13: (22, 15) | 39: (22, 50) | 33: (28, 60) | 99: (35, 39) | 89: (30, 6) |
 | `varbind:56` | 119 | 119 | 26: (22, 26) | 52: (28, 13) | 59: (28, 14) | 118: (35, 21) | 119: (34, 20) |
 
-In E, the matched patch moves the output to the donor's own output in four of six draws (`k3:15`, `k2:18`, `k2:69`, `k3:36`). In F, x (written in the prompt) shows up first, at layer 22, and y first appears at layers 27–31. On two items (`varbind:32`, `varbind:106`, both with 3-digit answers), neither 2y nor the answer is ever top-1, yet the model answers `varbind:106` correctly.
+In E, the matched patch moves the output to the donor's own output in four of six draws (`k3:15`, `k2:18`, `k2:69`, `k3:36`). In F, c1x and c2y are the coefficient times x and y. x (written in the prompt) shows up first, at layer 22, and y first appears at layers 27–31. On two items (`varbind:32`, `varbind:106`, both with 3-digit answers), neither c·y nor the answer is ever top-1, yet the model answers `varbind:106` correctly.
 
 ## Deviations from the plan
 
@@ -267,14 +267,14 @@ In E, the matched patch moves the output to the donor's own output in four of si
 | Pod smoke checks local uplift ≥ half the API uplift | Checked after the bulk run (passes) | The smoke gated agreement, self-transplant and time only (review r1) |
 | Cap $35 (API $10) | $45 (API $20) | Every-turn filler costs about 5× the tokens. Final spend $13.00 |
 | V4 Flash on GPU: 4–8 H100s and a `gpu_count` runner field (plan estimate $60–130) | One B300 (288 GB) with the shipped FP8/FP4 weights in transformers 5.17; the only shared change is an additive `[pod].gpus` list of GPU types and rates | Fits on one GPU, so no multi-GPU runner change. F7 piloted it first |
-| F7 in one attempt | Three attempts ($15.26) | Our offline snapshot lookup lacked the download's ignore filter ($2.18), then a slow host hit an HF 504 with no retry ($7.95). Both fixed with regression tests |
+| F7 in one attempt | Three attempts ($15.25) | Our offline snapshot lookup lacked the download's ignore filter ($2.18), then a slow host hit an HF 504 with no retry ($7.95). Both fixed with regression tests |
 | F8 (A) serial order across positions on chain k = 3 | Not testable (6–10 usable items). Exploratory first-hit layer order on varbind and chain k = 2, using the full-vocabulary top-1 (`p06.v4_extra`) | Chain k = 3 step 2 is barely read. The 21-integer candidate scoring saturates for chain values across 500 dots |
 | Cap $45 | $75 (GPU $55) | Raised $45 → $60 for F7's final attempt and → $75 for F8's reservation; logged before each run |
 | Plan says "no V4 Flash NLA found" | One exists, `ceselder/easynla-dsv4-flash-nla-ckpts`, but for the later `DeepSeek-V4-Flash-0731` checkpoint, not our pin | Literature subagent, HF API |
 
 ## Spend and wall-clock
 
-All spend went through `emx.spend` (`logs/costs.jsonl`, exp P06). **Total $42.05: API $11.52, GPU $30.52** ($1.48 for F3, $15.26 for F7, $13.79 for F8).
+All spend went through `emx.spend` (`logs/costs.jsonl`, exp P06). **Total $42.05: API $11.52, GPU $30.52** ($1.48 for F3, $15.25 for F7, $13.79 for F8).
 
 | Phase (UTC, 2026-10-11) | Wall-clock | Spend |
 |---|---|---|
@@ -324,6 +324,27 @@ One gpt-6-astra round of the whole branch (`logs/reviews/20261011-P06-r1.md`, pr
 | 10 | Stale spend and prefill notes in `log.md` | MINOR | Fixed in place, marked "corrected at review r1" |
 | 11 | Second temperature-0 draws were almost redundant (≈ $3.70) | MINOR | Recorded as a throughput lesson |
 | 12 | Bootstrap counts; note files untracked | NIT | Fixed |
+
+**F7–F8 review.** One gpt-6-astra round of branch `probe/P06-v4-pilot` (`logs/reviews/20261012-P06-v4-r1.md`, prompt `logs/reviews/20261012-P06-v4-review-prompt.md`). **Verdict: BLOCKING ISSUES (3), plus 6 MINOR and 1 NIT.** The reviewer reproduced chain accuracies and uplift CIs, the patch rates, the varbind accuracies, `extra.json` (by re-running `v4_extra` in memory) and samples E and F. Its own read-only checks found:
+- no selected y equals a literal in the target prompt or one of the five few-shot answers;
+- y ± 1 or ± 2 is top-1 on only 14–34% of items, against 98–100% for y itself.
+
+All BLOCKING findings were wording or scoring fixes, and none changed a number, so no second round was run.
+
+| # | Finding | Severity | Disposition |
+|---|---|---|---|
+| 1 | First-hit layer order presented as established serial computation; "about one step" depth gain not measured | BLOCKING | Fixed: "readable in task order, consistent with serial computation", with alternatives named; depth gain removed; hypothesis labelled |
+| 2 | "The answer comes from the filler, not from re-reading the question" not supported by a whole-filler patch | BLOCKING | Fixed: "filler states causally carry information that strongly controls the answer"; the compressed-memory route left open |
+| 3 | F8.4 scored on exact equality, not its stated "toward" metric | BLOCKING | Fixed: re-scored as mixed (61% vs 41% toward; control threshold not met), exact-equality result reported separately, in the note and the log |
+| 4 | "2y" mislabels coefficient × y (2y or 3y) | MINOR | Fixed: "c·y" throughout |
+| 5 | A resumed bulk run would include near-zero timings of completed items in its projection | MINOR | Deferred: this run did not resume. Fix in `v4bulk.py` before any re-run |
+| 6 | `B.load(1)` sits outside the guarded MC block, so missing varbind data would abort A and B | MINOR | Deferred: the data was pushed and C ran. Fix before any re-run |
+| 7 | Bulk self-patch failures only log; a resumed run doesn't re-gate on earlier ones | MINOR | Deferred: 0 of 20 changed in this run. Fix before any re-run |
+| 8 | "3 h 40 min of pod time" includes time without a pod | MINOR | Fixed: 3.23 billed pod-hours |
+| 9 | The plan-prediction table still said "not tested at depth > 1 on GPU" | MINOR | Fixed: row 3 now summarises F8 |
+| 10 | F7 spend summed from rounded parts ($15.26, $29.05) | NIT | Fixed: $15.25 and $29.04 |
+
+**Throughput (reviewer's estimates).** F7's two failed attempts used 67.6 billed minutes ($10.13). Reusing checkpoint and kernel caches would save about 12 min ($1.84) per repeat. A download that aborts on low throughput might have saved 20–30 min ($3–4.50) on the slow host.
 
 ## References
 
