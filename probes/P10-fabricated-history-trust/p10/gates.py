@@ -14,8 +14,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from p10 import armh  # noqa: E402
-from p10 import common as K  # noqa: E402
+from p10 import armh
+from p10 import common as K
 
 
 def check(art: dict, views: dict[str, str]) -> list[str]:

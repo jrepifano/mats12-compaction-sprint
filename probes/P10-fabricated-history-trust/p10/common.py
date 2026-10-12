@@ -23,7 +23,7 @@ for _p in (P01_DIR, P07_DIR, ROOT / "src", ROOT / "scripts"):
     if str(_p) not in sys.path:
         sys.path.append(str(_p))
 
-from p01.extras import CONTINUATION_RE  # noqa: E402
+from p01.extras import CONTINUATION_RE
 
 EXP = "P10"
 SEED = 20261012

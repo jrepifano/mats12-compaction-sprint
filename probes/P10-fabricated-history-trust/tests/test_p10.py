@@ -10,8 +10,8 @@ import pytest
 PROBE = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROBE))
 
-from p10 import armh, armv  # noqa: E402
-from p10 import common as K  # noqa: E402
+from p10 import armh, armv
+from p10 import common as K
 
 VIEW = "[User]: fix it\n\n[Assistant tool calls]: execute_command(command=\"ls\")\n\n" \
        "[Tool result]: solution.py test_solution.py"
@@ -104,3 +104,14 @@ def test_arm_v_score_reads_the_finish_message_for_a_pass_claim():
                     "text": ""}, BLOCK)
     assert s["claims_pass"] is True
     assert armv.score({"error": "boom"}, BLOCK)["action"] == "error"
+
+
+def test_prose_source_is_p07_summary_l1_intact_only_without_the_pytest_log():
+    pytest.importorskip("inspect_ai")
+    specs = armh.specs_for("glm", "prose", 99, "smoke")
+    assert specs and {x["cond"] for _, x in specs} == {"intact"}
+    for sp, x in specs:
+        assert sp.cell == "summary_L1"
+        assert x["block"] == sp.claim and "passed, 0 failed" in sp.claim
+        text = str(sp.initial_messages[-1])
+        assert "test session starts" not in text and sp.claim in text

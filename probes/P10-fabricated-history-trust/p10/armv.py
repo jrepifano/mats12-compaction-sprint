@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from p10 import common as K  # noqa: E402
+from p10 import common as K
 
 OUT = K.RESULTS / "armv" / "calls.jsonl"
 MAX_TOKENS = 16000          # X3's MAX_TOKENS_PER_TURN (GLM and DeepSeek reason first)
@@ -73,7 +73,8 @@ BASH_TOOLS = ("execute_bash", "execute_command")
 def pool() -> list[dict]:
     """The 43 items: P01 DeepSeek summaries with invented tool output (P01 rule)."""
     from p01 import render
-    from p01.run import load_ok, load_transcripts, OUT as P01_OUT
+    from p01.run import OUT as P01_OUT
+    from p01.run import load_ok, load_transcripts
 
     ts = load_transcripts()
     ok = load_ok(P01_OUT / "summaries" / "dsk.jsonl")

@@ -21,7 +21,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from p10 import common as K  # noqa: E402
+from p10 import common as K
 
 OUT = K.RESULTS / "harvest" / "dsk.jsonl"
 SELECTED = K.DATA / "harvest_selected.jsonl"

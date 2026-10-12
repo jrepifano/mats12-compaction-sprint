@@ -32,7 +32,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from p10 import common as K  # noqa: E402
+from p10 import common as K
 
 ARMH = K.RESULTS / "armh"
 EPISODES = ARMH / "episodes"
@@ -101,7 +101,7 @@ def build_semi() -> list[dict]:
 def fabrications(source: str) -> list[dict]:
     if source == "natural":
         return K.load_jsonl(K.DATA / "harvest_selected.jsonl")
-    if source == "semi":
+    if source in ("semi", "prose"):
         return K.load_jsonl(SEMI_JSONL) or build_semi()
     raise ValueError(source)
 
@@ -136,10 +136,17 @@ def specs_for(agent: str, source: str, seed: int, ctx_filter: str,
     for f in fabs:
         ctx = ctxs[f["ctx_id"]]
         removed, block = K.split_pair(f["text"])
-        for cond, text in (("intact", f["text"]), ("removed", removed)):
+        pairs = (("intact", f["text"], "control"), ("removed", removed, "control"))
+        if source == "prose":
+            # F3 (log.md): P07's summary_L1 cell, i.e. the semi summary with its pytest log
+            # replaced by P07's prose pass claim. Its removed condition is semi's, so only intact.
+            pairs = (("intact", removed, "summary_L1"),)
+        for cond, text, cell in pairs:
             if episode_path(model.slug, src, cond, seed, ctx["ctx_id"]).exists():
                 continue
-            r = cells.build(ctx, text, "control", wrapper or WRAPPER_OF[f["harness"]])
+            r = cells.build(ctx, text, cell, wrapper or WRAPPER_OF[f["harness"]])
+            if cell != "control":
+                block = r.claim
             sp = A.spec_from(ctx, r, model)
             sp = replace(sp, episode_id=f"P10|{model.slug}|{src}|{cond}|s{seed}|"
                                         f"{ctx['ctx_id']}")
@@ -227,7 +234,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run")
     r.add_argument("--agent", required=True, choices=["glm", "dsk"])
-    r.add_argument("--source", required=True, choices=["natural", "semi"])
+    r.add_argument("--source", required=True, choices=["natural", "semi", "prose"])
     r.add_argument("--seeds", default="0-4")
     r.add_argument("--ctx", default="all")
     r.add_argument("--max-samples", type=int, default=16)
