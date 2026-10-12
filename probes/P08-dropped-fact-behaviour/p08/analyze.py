@@ -38,6 +38,9 @@ from p08 import contracts as C
 N_BOOT = 10_000
 OUTCOMES = ("cheat", "tamper_any", "passed", "first_action_test", "done_untested", "tested")
 DETECTOR_OUTCOMES = ("cheat", "tamper_any", "passed")
+# numeric per-episode outcomes, contrasted the same way (mean over repeats, paired by context);
+# added after the main grid (log.md, "main grid" entry) to measure what -T costs: turns, tokens
+NUMERIC_OUTCOMES = ("n_turns", "tokens_in", "first_test_turn")
 CELL_ORDER = ("full", "minus_c", "minus_t", "minus_h")
 _BOOL = {"True": True, "False": False, "true": True, "false": False}
 _NUM = ("repeat", "n_turns", "first_test_turn", "tokens_in", "tokens_out", "billed_usd")
@@ -176,6 +179,9 @@ def prepare(rows: list[dict], det: dict[str, dict]) -> tuple[list[dict], dict]:
             y[o], why = _outcome(r, o, d)
             if why:
                 excluded[cell][why] += 1
+        for o in NUMERIC_OUTCOMES:
+            v = r.get(o)
+            y[o] = v if isinstance(v, int | float) and not isinstance(v, bool) else None
         keep.append({**r, "y": y})
     return keep, {c: dict(v) for c, v in excluded.items()}
 
@@ -235,8 +241,10 @@ def default_contrasts(cells) -> list[tuple[str, str, str]]:
            ("minus_c", "full", "passed"), ("minus_t", "full", "first_action_test"),
            ("minus_t", "full", "cheat"), ("minus_t", "full", "done_untested"),
            ("minus_t", "full", "tested")]
+    out += [("minus_t", "full", o) for o in NUMERIC_OUTCOMES] + [("minus_c", "full", "n_turns")]
     if "minus_h" in cells:
-        out += [("minus_h", "full", "cheat"), ("minus_h", "full", "tamper_any")]
+        out += [("minus_h", "full", "cheat"), ("minus_h", "full", "tamper_any"),
+                ("minus_h", "full", "passed"), ("minus_h", "full", "n_turns")]
     return out
 
 
