@@ -48,7 +48,7 @@ LAMS = (1e-1, 1e-2, 1e-3, 1e-4)  # strong to weak: warm starts run in this order
 FAST_LAMS = (1e-1, 1e-3)
 FAST_N_BOOT = 500
 N_LAYERS = 17
-LL_LAYER = 16
+LL_LAYER = 16  # the final layer on the real model; lens reads index -1 (tiny dry-run model has 3)
 SWEEP_BUDGET_S = 3600.0
 MAX_ITER = 500
 READABLE = 0.30  # "readable": the best reader matches a_L on >= 30% of E
@@ -384,8 +384,8 @@ def first_number(top5: np.ndarray, lut: np.ndarray) -> np.ndarray:
 
 
 def ll_reader(lltop: np.ndarray, lut: np.ndarray) -> tuple[np.ndarray, np.ndarray, list]:
-    s1 = first_number(lltop[:, LL_LAYER, 3], lut)
-    s2 = first_number(lltop[:, LL_LAYER, 5], lut)
+    s1 = first_number(lltop[:, -1, 3], lut)
+    s2 = first_number(lltop[:, -1, 5], lut)
     pred = [str(a + b) if a >= 0 and b >= 0 else None for a, b in zip(s1, s2)]
     return s1, s2, pred
 
@@ -455,8 +455,18 @@ def uplift(df: pd.DataFrame, clusters: Sequence, n_boot: int) -> dict:
     cv = _correct(df.ans_verbal, df.gold)
     r = cluster_ratio_ci(np.column_stack([cl - cd, cl, cd, cv]), np.ones(len(df)), clusters,
                          n_boot)
-    return {"latent_minus_direct": r[0], "latent_acc": r[1], "direct_acc": r[2],
-            "verbal_acc": r[3], "n": len(df)}
+    out = {"latent_minus_direct": r[0], "latent_acc": r[1], "direct_acc": r[2],
+           "verbal_acc": r[3], "n": len(df)}
+    if "ans_latent_up" in df and df.ans_latent_up.notna().any():
+        # replication reference: upstream generate on padded batches (pod_main.add_upstream_padded)
+        cu = _correct(df.ans_latent_up, df.gold)
+        same = np.asarray([lab(a) == lab(b) for a, b in zip(df.ans_latent, df.ans_latent_up)],
+                          dtype=float)
+        u = cluster_ratio_ci(np.column_stack([cu, cu - cd, cl - cu, same]), np.ones(len(df)),
+                             clusters, n_boot)
+        out.update({"latent_up_acc": u[0], "latent_up_minus_direct": u[1],
+                    "latent_minus_latent_up": u[2], "latent_answer_agreement": u[3]})
+    return out
 
 
 def time_projection(get_x, layers, y, outer, groups, strata, lams) -> dict:
@@ -484,19 +494,20 @@ def time_projection(get_x, layers, y, outer, groups, strata, lams) -> dict:
     return {"fit_seconds_multi": round(t_multi, 2), "fit_seconds_binary": round(t_bin, 2),
             "n_train": len(a), "d": int(X.shape[1]), "n_classes": len(set(y[a].tolist())),
             "per_layer_seconds": round(per_layer, 1),
-            "projected_all_layers_s": round(per_layer * N_LAYERS, 1),
-            "projected_even_layers_s": round(per_layer * len(range(0, N_LAYERS, 2)), 1)}
+            "projected_all_layers_s": round(per_layer * len(layers), 1),
+            "projected_even_layers_s": round(per_layer * len(layers[::2]), 1)}
 
 
-def resolve_layers(spec: str, projection: dict | None) -> tuple[list[int], str]:
+def resolve_layers(spec: str, projection: dict | None,
+                   n_layers: int = N_LAYERS) -> tuple[list[int], str]:
     if spec == "all":
-        return list(range(N_LAYERS)), "all"
+        return list(range(n_layers)), "all"
     if spec == "even":
-        return list(range(0, N_LAYERS, 2)), "even"
+        return list(range(0, n_layers, 2)), "even"
     if spec == "auto":
         if projection and projection["projected_all_layers_s"] > SWEEP_BUDGET_S:
-            return list(range(0, N_LAYERS, 2)), "even (auto: projected sweep > 1 h)"
-        return list(range(N_LAYERS)), "all (auto)"
+            return list(range(0, n_layers, 2)), "even (auto: projected sweep > 1 h)"
+        return list(range(n_layers)), "all (auto)"
     return [int(x) for x in spec.split(",")], f"list {spec}"
 
 
@@ -510,7 +521,7 @@ def readability_A(t: pd.DataFrame, lltop, lut, in_e: np.ndarray, clusters, n_boo
                             n_boot)
     table = {}
     for j in range(lltop.shape[2]):
-        v = first_number(lltop[:, LL_LAYER, j], lut)
+        v = first_number(lltop[:, -1, j], lut)
         table[str(j)] = {"s1": float(np.mean(v == t.s1.to_numpy())),
                          "s2": float(np.mean(v == t.s2.to_numpy()))}
     return {"definition": "top-ranked number token among the layer-16 top-5",
@@ -520,7 +531,7 @@ def readability_A(t: pd.DataFrame, lltop, lut, in_e: np.ndarray, clusters, n_boo
 
 def readability_B(c: pd.DataFrame, lltop, lut, outer: np.ndarray) -> dict:
     ncol = lltop.shape[2]
-    firsts = np.stack([first_number(lltop[:, LL_LAYER, j], lut) for j in range(ncol)], 1)
+    firsts = np.stack([first_number(lltop[:, -1, j], lut) for j in range(ncol)], 1)
     out = {}
     kmax = int(c.k.max())
     for i in range(kmax):
@@ -634,9 +645,10 @@ def run(results: Path, stage: str, layers_spec: str = "auto", fast: bool = False
     # timing and layer choice
     t = time.time()
     get_lat = latent_getter(resid)
-    proj = time_projection(get_lat, list(range(N_LAYERS)), y, outer, groups, strata, lams)
+    n_layers = resid.shape[1]  # 17 on the real model (embeddings + 16 layers)
+    proj = time_projection(get_lat, list(range(n_layers)), y, outer, groups, strata, lams)
     print(f"[p15.analysis] representative fit: {proj}", flush=True)
-    layers, layers_mode = resolve_layers(layers_spec, proj)
+    layers, layers_mode = resolve_layers(layers_spec, proj, n_layers)
     timings["projection"] = round(time.time() - t, 1)
 
     probes: dict = {}
@@ -837,6 +849,8 @@ def prediction_checks(out: dict, stage: str) -> dict:
         g = up.get("G", {}).get("latent_minus_direct")
         t = up["T"]["latent_minus_direct"]
         p["P1"] = {"G_uplift": g, "T_uplift": t,
+                   "G_uplift_upstream_padded": up.get("G", {}).get("latent_up_minus_direct"),
+                   "T_uplift_upstream_padded": up["T"].get("latent_up_minus_direct"),
                    "pass_G": bool(g and g["point"] >= 0.03 and g["lo"] > 0),
                    "pass_T": bool(t["point"] >= 0.10)}
         rd = out["readability"]

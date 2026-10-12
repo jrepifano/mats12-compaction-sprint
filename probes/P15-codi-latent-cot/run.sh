@@ -8,6 +8,7 @@
 # bash 3.2-compatible. Env (optional): P15_MAX_HOURS (default 2.6), P15_SKIP_B=1.
 # Laptop dry run only (a copy of this directory, tiny model): P15_PY=<venv python> skips the venv
 # build, P15_DEVICE=cpu skips the CUDA check, P15_DRYRUN=1 skips the download (paths.json preset);
+# P15_FORCE_A=1 runs past a failed structural smoke (a random tiny model can't pass it);
 # P15_HF_HOME, P15_UV_CACHE, P15_LORA_R, P15_PRJ_DIM and P15_TRAIN_EXTRA adapt it to the tiny model.
 set -uo pipefail
 cd "$(dirname "$0")"
@@ -53,7 +54,9 @@ fi
 if [ "$RC" -eq 0 ] && [ "${P15_DRYRUN:-0}" != "1" ]; then
   stamp download; "$PY" -m p15.pod_main download || RC=$?
 fi
-[ "$RC" -eq 0 ] && { stamp stage_a; "$PY" -m p15.pod_main stage_a || RC=$?; }
+A_FORCE=""; [ "${P15_FORCE_A:-0}" = "1" ] && A_FORCE="--force"  # dry runs on a random tiny model only
+# shellcheck disable=SC2086
+[ "$RC" -eq 0 ] && { stamp stage_a; "$PY" -m p15.pod_main stage_a $A_FORCE || RC=$?; }
 
 # ---- stage B: data, benchmark, training, evaluation (each gated on the time left)
 B_SKIP=""

@@ -350,3 +350,12 @@ def test_stop_ids_and_cut(loaded):
     assert stops[0] == tok.eos_token_id
     assert tok.convert_tokens_to_ids("<|end_of_text|>") in stops
     assert cc._cut_at_eos([[5, 6, stops[-1], 7], [5, 6]], stops) == [[5, 6], [5, 6]]
+
+
+def test_upstream_latent_padded_batch1_equals_bs1(loaded):
+    model, tok, _ = loaded
+    prompts = ["A farm has 3 sheep. 2 more sheep arrive. How many sheep are there now?",
+               "Tom has 12 pens and loses 5. How many?"]
+    one = cc.upstream_latent_padded(model, tok, prompts, batch_size=1)
+    assert one == [cc.upstream_latent_bs1(model, tok, p) for p in prompts]
+    assert len(cc.upstream_latent_padded(model, tok, prompts, batch_size=2)) == 2

@@ -460,6 +460,28 @@ def upstream_latent_bs1(model, tok, prompt, *, n_latent=6, max_new_tokens=16) ->
     return decode(tok, row)
 
 
+def upstream_latent_padded(model, tok, prompts, *, batch_size=128, n_latent=6,
+                           max_new_tokens=16) -> list[str]:
+    """Upstream `CODI.generate(greedy=True)` on left-padded batches, as upstream `test.py` calls it
+    (batches of 128 in input order, `padding="longest"`). Its latent and answer steps attend to the
+    padding; this is the condition Cywiński's accuracies were measured under, kept as a replication
+    reference next to our masked loop."""
+    dev = _device(model)
+    texts = []
+    for i in range(0, len(prompts), batch_size):
+        enc = tok(prompts[i:i + batch_size], return_tensors="pt", padding="longest",
+                  padding_side="left")
+        with torch.inference_mode():
+            out = model.generate(input_ids=enc["input_ids"].to(dev),
+                                 attention_mask=enc["attention_mask"].to(dev), tokenizer=tok,
+                                 max_new_tokens=max_new_tokens, num_latent_iterations=n_latent,
+                                 greedy=True, return_latent_vectors=False, remove_eos=False,
+                                 sot_token=tok.bocot_id, eot_token=tok.eocot_id)
+        rows = [[t for t in r if t != tok.pad_token_id] for r in out["sequences"].tolist()]
+        texts += [decode(tok, r) for r in _cut_at_eos(rows, stop_ids(tok))]
+    return texts
+
+
 def hf_generate_bs1(model, tok, prompt, mode, *, max_new_tokens) -> str:
     """HF `generate` (do_sample=False, stop at tok.eos only) at batch 1 for direct/verbal.
 
