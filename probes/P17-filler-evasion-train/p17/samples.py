@@ -22,10 +22,11 @@ def _rows(path: Path) -> list[dict]:
         if path.exists() else []
 
 
-def top_digits(rec: dict, group: list[int], k: int = 3) -> str:
+def top_digits(rec: dict, slots: tuple[int, ...], k: int = 3) -> str:
     """The k digits with the highest raw max log-prob over layers 30-59 and the group's slots
     (not baseline-subtracted: a quick look for the reader, not the statistic)."""
-    lp = rec["ro"]["logit_lens"]["digit_lp"].astype(np.float32)[S.MIN_LAYER:, group]
+    sel = np.isin(rec["slots"], slots)  # by slot value, as p17.analyze selects
+    lp = rec["ro"]["logit_lens"]["digit_lp"].astype(np.float32)[S.MIN_LAYER:, sel]
     m = lp.max(axis=(0, 1))
     return " ".join(f"{d}:{m[d]:.1f}" for d in np.argsort(-m)[:k])
 
@@ -41,8 +42,7 @@ def main(argv: list[str] | None = None) -> int:
     ids = sorted({r["idx"] for r in ans[models[0]]})
     pick = sorted(np.random.default_rng(a.seed).choice(ids, size=min(a.n, len(ids)),
                                                        replace=False).tolist())
-    label = [0, 1]
-    dots = list(range(2, 102))
+    label, dots = S.LABEL_SLOTS, S.DOT_SLOTS
     print(f"# P17 raw samples (seed {a.seed}; items {pick})\n")
     for i in pick:
         print(f"## item {i}\n")
