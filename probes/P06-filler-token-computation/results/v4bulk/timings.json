@@ -1,0 +1,82 @@
+{
+ "download": {
+  "bytes": 159628924623,
+  "end": "2026-10-12T01:24:16Z",
+  "seconds": 502.24,
+  "start": "2026-10-12T01:15:53Z"
+ },
+ "download_jlens": {
+  "end": "2026-10-12T01:24:33Z",
+  "seconds": 17.28,
+  "start": "2026-10-12T01:24:16Z"
+ },
+ "download_jpp": {
+  "end": "2026-10-12T01:24:50Z",
+  "seconds": 17.07,
+  "start": "2026-10-12T01:24:33Z"
+ },
+ "load": {
+  "attn_implementation": "eager",
+  "dtypes": {
+   "embed": "torch.bfloat16",
+   "hc_head": "torch.float32",
+   "lm_head": "torch.bfloat16",
+   "norm": "torch.bfloat16"
+  },
+  "end": "2026-10-12T01:25:29Z",
+  "experts_implementation": "grouped_mm",
+  "int_ids": [
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   553,
+   779,
+   736,
+   907,
+   929,
+   856,
+   926,
+   1002,
+   864,
+   511,
+   397
+  ],
+  "mem_allocated_gb": 156.02,
+  "mem_free_after_load_gb": 125.73,
+  "mem_peak_load_gb": 158.16,
+  "mem_total_gb": 287.43,
+  "model_class": "DeepseekV4ForCausalLM",
+  "module_counts": {
+   "FP8Experts": 43,
+   "FP8GroupedLinear": 43,
+   "FP8Linear": 322,
+   "Linear": 146
+  },
+  "seconds": 34.87,
+  "start": "2026-10-12T01:24:54Z",
+  "vocab": 129280
+ },
+ "smoke": {
+  "checks": {
+   "lens agreement": true,
+   "self-patch unchanged": true
+  },
+  "end": "2026-10-12T01:33:56Z",
+  "rate": 1.0,
+  "seconds": 261.29,
+  "start": "2026-10-12T01:29:34Z"
+ },
+ "smoke_fixes": {
+  "end": "2026-10-12T01:29:31Z",
+  "fixes": [],
+  "seconds": 234.14,
+  "start": "2026-10-12T01:25:37Z"
+ }
+}
