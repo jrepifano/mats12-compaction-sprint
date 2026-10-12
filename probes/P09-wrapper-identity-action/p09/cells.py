@@ -37,6 +37,11 @@ def codex_self_check() -> dict:
 def load_wrapper(wrapper: C.Wrapper | str) -> str:
     """The wrapper template with exactly one `{summary}`."""
     w = C.Wrapper(wrapper)
+    if w is C.Wrapper.CLAUDE_CODE_NOACK:
+        full = load_wrapper(C.Wrapper.CLAUDE_CODE)
+        if full.count(C.CLAUDE_CODE_NOACK_CUT) != 1:
+            raise ValueError("Claude Code wrapper: the cut sentence is not there exactly once")
+        return full.replace(C.CLAUDE_CODE_NOACK_CUT, "")
     if w in C.PREFIX_FILES:
         if w is C.Wrapper.CODEX_SELF and not codex_self_check()["ok"]:
             raise ValueError("Codex-self prefix failed its diff check")

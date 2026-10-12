@@ -109,6 +109,9 @@ class Wrapper(str, Enum):
     CODEX_SELF = "codex_self"   # Codex's prefix, ownership words only changed
     CLAUDE_CODE = "claude_code"
     PI_MONO = "pi_mono"
+    # Follow-up C (log.md 2026-10-12): Claude Code's wrapper without its "Resume directly"
+    # sentence (CLAUDE_CODE_NOACK_CUT), derived from the verbatim file by code.
+    CLAUDE_CODE_NOACK = "claude_code_noack"
     # Follow-up (implicit attribution, log.md 2026-10-12): no summary; the X3b prefix itself,
     # ending in a synthetic edit that writes the H plant.
     OWN_TURNS = "own_turns"              # the prefix as the agent's own assistant/tool turns
@@ -152,6 +155,9 @@ CODEX_SELF_EDITS: tuple[tuple[str, str], ...] = (
     ("the tools that were used by that language model", "the tools that were used by you"),
     ("the summary produced by the other language model", "the summary produced by you"),
 )
+
+CLAUDE_CODE_NOACK_CUT = ('Resume directly — do not acknowledge the summary, do not recap what '
+                         'was happening, do not preface with "I\'ll continue" or similar. ')
 
 # The GLM grid's wrappers, and DeepSeek's (plan "Agents").
 GLM_WRAPPERS = (Wrapper.CODEX, Wrapper.CODEX_SELF, Wrapper.CLAUDE_CODE, Wrapper.PI_MONO)
