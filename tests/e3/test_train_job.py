@@ -286,12 +286,25 @@ def test_verify_inputs_reports_every_problem(tmp_path):
 # --- pod job ------------------------------------------------------------------------------------
 
 
-def _dry(*args: str) -> list[str]:
-    env = {**os.environ, "E3_DRY_RUN": "1", "E3_VENVS": "/v"}
-    p = subprocess.run(["bash", str(RUN_SH), *args], capture_output=True, text=True, env=env,
-                       check=False, cwd=ROOT, timeout=120)
+def _dry(tmp_path: Path, *args: str) -> list[str]:
+    """The job in dry-run mode from a sandbox checkout: the script resolves results/E3 against
+    its own checkout, so run from the real one it skips every cell E3 has already trained
+    (found 2026-10-12, after E3's results were committed). The sandbox links the code and the
+    E1b reference records the pod-1 scores read; its results/E3 is empty."""
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "scripts/pod_run_e3.sh").symlink_to(RUN_SH)
+    (tmp_path / "src").symlink_to(ROOT / "src")
+    (tmp_path / "results/E1b").mkdir(parents=True)
+    (tmp_path / "results/E1b/train").symlink_to(ROOT / "results/E1b/train")
+    py = tmp_path / "v/venv-peft/bin/python"  # the one contracts query runs here
+    py.parent.mkdir(parents=True)
+    py.write_text(f'#!/bin/sh\nexec {sys.executable!r} "$@"\n')
+    py.chmod(0o755)
+    env = {**os.environ, "E3_DRY_RUN": "1", "E3_VENVS": str(tmp_path / "v")}
+    p = subprocess.run(["bash", "scripts/pod_run_e3.sh", *args], capture_output=True, text=True,
+                       env=env, check=False, cwd=tmp_path, timeout=120)
     assert p.returncode == 0, p.stderr + p.stdout
-    return p.stdout.splitlines()
+    return p.stdout.replace(f"{tmp_path}/v/", "/v/").splitlines()
 
 
 def _cmds(lines: list[str]) -> list[str]:
@@ -299,8 +312,8 @@ def _cmds(lines: list[str]) -> list[str]:
             for x in lines if x.startswith("+ ")]
 
 
-def test_pod1_dry_run_chain():
-    lines = _dry("--pod", "1", "--ckpts", "pre", "s10k", "s5k", "--seeds", "2")
+def test_pod1_dry_run_chain(tmp_path):
+    lines = _dry(tmp_path, "--pod", "1", "--ckpts", "pre", "s10k", "s5k", "--seeds", "2")
     cmds = _cmds(lines)
     assert cmds[0] == "scripts/e3_train.py --verify-inputs"
     want_heads = []
@@ -329,9 +342,9 @@ def test_pod1_dry_run_chain():
     assert lines[-1].endswith("E3_JOB_DONE pod1")
 
 
-def test_pod2_dry_run_no_sample_rescore():
-    cmds = _cmds(_dry("--pod", "2", "--ckpts", "s1k", "s2k", "s3k", "--seeds", "2",
-                      "--no-sample", "--rescore-ref"))
+def test_pod2_dry_run_no_sample_rescore(tmp_path):
+    cmds = _cmds(_dry(tmp_path, "--pod", "2", "--ckpts", "s1k", "s2k", "s3k", "--seeds", "2",
+                                "--no-sample", "--rescore-ref"))
     assert not any("e3_gen.py" in c for c in cmds)
     assert f"--out {C.logprob_path('s2k')}" in next(c for c in cmds if "--ckpt s2k" in c)
     assert C.logprob_path("s2k").startswith(C.SEALED_DIR)
@@ -341,14 +354,14 @@ def test_pod2_dry_run_no_sample_rescore():
     assert "--extra pre-plain-bad-R1-s2=" in cmds[i + 2]
 
 
-def test_pod3_seed3_no_sampling():
-    cmds = _cmds(_dry("--pod", "3", "--ckpts", "s3k", "s5k", "--seeds", "3"))
+def test_pod3_seed3_no_sampling(tmp_path):
+    cmds = _cmds(_dry(tmp_path, "--pod", "3", "--ckpts", "s3k", "s5k", "--seeds", "3"))
     assert not any("e3_gen.py" in c for c in cmds)
     assert any(c.endswith("configs/E3/s5k-plain-good-R1-s3.json") for c in cmds)
 
 
-def test_smoke_dry_run():
-    cmds = _cmds(_dry("--smoke"))
+def test_smoke_dry_run(tmp_path):
+    cmds = _cmds(_dry(tmp_path, "--smoke"))
     assert cmds[2] == (
         "scripts/e3_train.py --config configs/E3/s1k-plain-bad-R1-s2.json --max-steps 5 "
         "--smoke-repo jrepifano/e3-smoke-s1k --results-dir results/E3/smoke/train "
