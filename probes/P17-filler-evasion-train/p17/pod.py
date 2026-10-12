@@ -55,8 +55,8 @@ from .train import utc, write_json
 SETUP_BEFORE_T0_S = 20 * 60  # boot, push and venv setup happen before run.sh starts
 PULL_MARGIN_S = 20 * 60  # final pull and teardown before the killswitch's salvage margin
 AGREE_MIN = 0.99
-LP_TOL = 0.1
-ATTN_REL_TOL = 0.02
+LP_TOL = 0.1  # 99.9th percentile of the per-cell digit log-prob gap
+DS_TOL = 0.25  # the hard statistic S (a max over cells of the mean-free log-prob)
 B_ACC_MIN = 0.2
 MEM_FRAC = 0.9
 
@@ -95,7 +95,7 @@ def cmd_download(_a) -> int:
     return 0
 
 
-def load(attn: str = "sdpa", lens_names: tuple[str, ...] = ("jlens", "jpp")):
+def load(attn: str = S.ATTN, lens_names: tuple[str, ...] = ("jlens", "jpp")):
     """(model, tok, readers, info) on the GPU, P06 F3's loading (bf16) with J-Lens maps."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -186,38 +186,82 @@ def plan_jobs(seeds: list[int], est: dict, budget_s: float) -> tuple[list[str], 
 # --------------------------------------------------------------------- smoke
 
 
+def compare_lp(a: np.ndarray, b: np.ndarray, yd: np.ndarray) -> dict:
+    """Two paths' digit log-probs [n, 30, P >= 102, 10] (layers 30-59): the per-cell gap
+    (max, 99.9th percentile, where the max sits, the two values there, per-layer max) and the
+    gap in what the verdict uses: the hard statistic S per group (baseline = the mean over these
+    items, as the eval) and its hits."""
+    a, b = a[:, :, :102].astype(np.float64), b[:, :, :102].astype(np.float64)
+    d = np.abs(a - b)
+    i = np.unravel_index(int(d.argmax()), d.shape)
+    sa, sb = PEN.hard_stats(a, a.mean(0)), PEN.hard_stats(b, b.mean(0))
+    return {"max": float(d.max()), "p999": float(np.percentile(d, 99.9)),
+            "mean": float(d.mean()), "argmax_item_layer_pos_digit":
+            [int(i[0]), int(i[1]) + S.MIN_LAYER, int(i[2]), int(i[3])],
+            "at_argmax": [float(a[i]), float(b[i])],
+            "per_layer_max": [round(float(x), 3) for x in d.max(axis=(0, 2, 3))],
+            "dS_max": float(np.abs(sa - sb).max()),
+            "hits_equal": bool(((sa.argmax(2) == yd[:, None]) ==
+                                (sb.argmax(2) == yd[:, None])).all())}
+
+
+def lp_ok(c: dict) -> bool:
+    """The smoke's log-prob gate (set 2026-10-12 after the first smoke, before any eager data):
+    the statistic's hits identical, |dS| <= DS_TOL, 99.9th percentile cell gap <= LP_TOL."""
+    return c["hits_equal"] and c["dS_max"] <= DS_TOL and c["p999"] <= LP_TOL
+
+
+def cache_vs_full(model, rd, tok, prep4, device: str) -> dict:
+    """Full-sequence forward (`p06.stage2.forward_read`, generate) vs the cached-prefix path on
+    the same items, under the model's current attention implementation."""
+    import torch
+
+    pre = C.prefix_cache(model, prep4["dots100"]["prefix"], device)
+    ctx = rd.ctx(model, tok, device)
+    eos = EV.eos_ids(model)
+    blocks, _ = C.text_model(model)
+    agree = n = same_gen = 0
+    lf, lc, yd = [], [], []
+    for sp, ex in zip(prep4["dots100"]["splits"], prep4["exs"], strict=True):
+        with torch.inference_mode():
+            hs_full, logits_full = S2.forward_read(ctx, sp.ids, sp.read[1:])
+            lf.append(PEN.readout_lp(list(hs_full[:, None]), rd, S.PEN_LAYERS,
+                                     checkpoint=False)[0].float().cpu().numpy())
+            win = torch.as_tensor(sp.rel(sp.read[1:]), device=device)
+            with C.capture_blocks(blocks, win, keep_graph=False) as hs_c:
+                g = EV.greedy(model, pre, [sp.cont], eos, rd.digit_ids, device, keep=114)
+            lc.append(PEN.readout_lp(hs_c, rd, S.PEN_LAYERS, checkpoint=False)[0]
+                      .float().cpu().numpy())
+            agree += int((logits_full.argmax(-1).cpu().numpy() == g["top1"][0]).sum())
+            n += len(sp.read) - 1
+            same_gen += int(S2.greedy(ctx, sp.ids)[0] == g["gen"][0])
+        yd.append(PEN.first_digit(ex["queried_value"]))
+    del pre
+    return {"top1_agree": agree / n, "same_greedy": same_gen, "n": len(lf),
+            **compare_lp(np.stack(lf), np.stack(lc), np.array(yd))}
+
+
 def smoke(model, tok, rd, exs, shots, train_items, device: str, out: Path, tiny: bool) -> dict:
     import torch
 
     res: dict[str, Any] = {}
     checks: dict[str, bool] = {}
     t = time.time()
-    # cached prefix vs the full sequence
-    prep4 = EV.prepare(tok, exs[:4], shots)
-    pre = C.prefix_cache(model, prep4["dots100"]["prefix"], device)
     ctx = rd.ctx(model, tok, device)
-    agree = n = same_gen = 0
-    max_diff = 0.0
-    eos = EV.eos_ids(model)
-    for sp in prep4["dots100"]["splits"]:
-        with torch.inference_mode():
-            hs_full, logits_full = S2.forward_read(ctx, sp.ids, sp.read[1:])
-            lp_full = PEN.readout_lp(list(hs_full[:, None]), rd, S.PEN_LAYERS, checkpoint=False)
-            blocks, _ = C.text_model(model)
-            win = torch.as_tensor(sp.rel(sp.read[1:]), device=device)
-            with C.capture_blocks(blocks, win, keep_graph=False) as hs_c:
-                g = EV.greedy(model, pre, [sp.cont], eos, rd.digit_ids, device, keep=114)
-            lp_c = PEN.readout_lp(hs_c, rd, S.PEN_LAYERS, checkpoint=False)
-            agree += int((logits_full.argmax(-1).cpu().numpy() == g["top1"][0]).sum())
-            n += len(sp.read) - 1
-            max_diff = max(max_diff, float((lp_full - lp_c).abs().max()))
-            ref = S2.greedy(ctx, sp.ids)[0]
-            same_gen += int(ref == g["gen"][0])
-    res["cache_vs_full"] = {"top1_agree": agree / n, "max_digit_lp_diff": max_diff,
-                            "same_greedy": same_gen, "n": 4}
-    checks["cache_vs_full"] = agree / n >= AGREE_MIN and max_diff <= LP_TOL and same_gen >= 3
-    del pre
-    # sdpa vs eager on one E loss (skipped on the tiny model: already sdpa-vs-full checked)
+    # cached prefix vs the full sequence: gated under the run's attention (eager); sdpa is
+    # recorded for information (the first smoke, 2026-10-12, failed under sdpa)
+    prep4 = {**EV.prepare(tok, exs[:4], shots), "exs": exs[:4]}
+    impls = (S.ATTN,) if tiny else (S.ATTN, "sdpa")
+    for impl in impls:
+        if not tiny:
+            model.set_attn_implementation(impl)
+        res[f"cache_vs_full_{impl}"] = c = cache_vs_full(model, rd, tok, prep4, device)
+        log(f"P17_SMOKE_DIAG cache_vs_full {impl}: {json.dumps(c)}")
+    if not tiny:
+        model.set_attn_implementation(S.ATTN)
+    c = res[f"cache_vs_full_{S.ATTN}"]
+    checks["cache_vs_full"] = c["top1_agree"] >= AGREE_MIN and c["same_greedy"] >= 3 and lp_ok(c)
+    # sdpa vs eager on one E loss: information only (the run uses eager throughout)
     if not tiny:
         items2 = train_items[:2]
         prefix_ids = items2[0].split.prefix
@@ -229,11 +273,9 @@ def smoke(model, tok, rd, exs, shots, train_items, device: str, out: Path, tiny:
                 r = T.batch_forward(model, rd, p, items2, device, True, keep_graph=False)
                 yd = torch.tensor([it.y_digit for it in items2], device=r["lp"].device)
                 pen, _ = PEN.smooth_penalty(r["lp"], r["lp"].mean(0), yd)
-                losses[impl] = float((r["ce"] + pen).mean())
-        model.set_attn_implementation("sdpa")
-        rel = abs(losses["sdpa"] - losses["eager"]) / max(abs(losses["eager"]), 1e-6)
-        res["attention"] = {**losses, "rel_diff": rel}
-        checks["attention"] = rel <= ATTN_REL_TOL
+                losses[impl] = {"ce": float(r["ce"].mean()), "pen": float(pen.mean())}
+        model.set_attn_implementation(S.ATTN)
+        res["attention_info"] = losses
     # B's accuracy on the first 50 items, and the penalty path vs the eval path
     n50 = 50 if not tiny else 4
     prep50 = EV.prepare(tok, exs[:n50], shots)
@@ -256,11 +298,9 @@ def smoke(model, tok, rd, exs, shots, train_items, device: str, out: Path, tiny:
                                                 tmp / "readouts"))["ro"]["logit_lens"]
                         ["digit_lp"][S.MIN_LAYER:, :102].astype(np.float32) for ex in exs[:4]])
     yd = np.array([it.y_digit for it in items4])
-    h_tr = PEN.hard_stats(lp_train, lp_train.mean(0)).argmax(2) == yd[:, None]
-    h_ev = PEN.hard_stats(lp_eval, lp_eval.mean(0)).argmax(2) == yd[:, None]
-    diff = float(np.abs(lp_train - lp_eval).max())
-    res["penalty_matches_eval"] = {"max_lp_diff": diff, "hits_equal": bool((h_tr == h_ev).all())}
-    checks["penalty_matches_eval"] = diff <= LP_TOL and bool((h_tr == h_ev).all())
+    res["penalty_matches_eval"] = c = compare_lp(lp_train, lp_eval, yd)
+    log(f"P17_SMOKE_DIAG penalty_matches_eval: {json.dumps(c)}")
+    checks["penalty_matches_eval"] = lp_ok(c)
     res["seconds"] = round(time.time() - t, 1)
     res["checks"] = checks
     return res
@@ -296,8 +336,8 @@ def benchmark(model, tok, rd, exs, shots, train_items, val_items, prefix_ids, de
             steps = rec["steps"]
             ok = rec["complete"] and all(np.isfinite(s["loss"]) and s["grad_norm"] > 0
                                          for s in steps)
-            step_s = float(np.mean([s["seconds"] for s in steps[1:]])) if len(steps) > 1 \
-                else None
+            timed = steps[1:] or steps  # the first step carries warm-up when there are more
+            step_s = float(np.mean([s["seconds"] for s in timed])) if timed else None
             peak = torch.cuda.max_memory_allocated() if device == "cuda" else 0
             fits = ok and (total is None or peak < MEM_FRAC * total)
             per_mb[mb] = {"ok": ok, "fits": fits, "step_s": step_s,

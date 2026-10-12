@@ -46,6 +46,9 @@ TRAIN_DATA = REPO / "data" / "P17" / "train_items.json"
 MODEL_ID = "google/gemma-4-31B-it"
 MODEL_REV = "842da3794eaa0b77d5f08bae87a17459d91ff475"
 N_LAYERS = 60
+# Eager attention (plan "Setup"): the first pod smoke (2026-10-12) found bf16 sdpa giving
+# cached-prefix and full-sequence readouts up to ~44 nats apart; eager is exact on the CPU.
+ATTN = "eager"
 D_MODEL = 5376
 READERS = ("logit_lens", "jlens", "jpp")
 

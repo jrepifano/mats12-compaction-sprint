@@ -34,7 +34,7 @@ def model(seed: int = 0, eot: int | None = None):
         attention_k_eq_v=True, final_logit_softcapping=30.0, hidden_size_per_layer_input=0,
         vocab_size_per_layer_input=262144, num_kv_shared_layers=0, enable_moe_block=False,
         tie_word_embeddings=True)
-    cfg._attn_implementation = "sdpa"
+    cfg._attn_implementation = S.ATTN
     m = Gemma4ForCausalLM(cfg).eval()
     if eot is not None:
         m.generation_config.eos_token_id = [1, eot]
