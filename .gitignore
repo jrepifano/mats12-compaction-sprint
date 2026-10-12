@@ -257,3 +257,9 @@ results/P04/sandbox/
 logs/p04_pilot*.log
 logs/p04_*.log
 probes/P12-filler-conceal/results/readouts/
+# P16: per-(item, arm) npz readouts, residuals and the per-cell means (several GB; MANIFEST.sha256
+# committed, data kept in the main checkout)
+probes/P16-filler-selfreport/results/readouts/
+probes/P16-filler-selfreport/results/resid/
+probes/P16-filler-selfreport/results/resid_own/
+probes/P16-filler-selfreport/results/means/
