@@ -43,7 +43,7 @@ GLM = C.GLM.slug
 DEEPSEEK = C.DEEPSEEK.slug
 BASE = C.Wrapper.CODEX.value
 SELF = C.Wrapper.CODEX_SELF.value
-RATE_KEYS = ("undo", "undo_t_strict", "h_lines_gone", "h_passes_pair",
+RATE_KEYS = ("undo", "undo_t_strict", "h_lines_gone", "h_counter_kept", "h_passes_pair",
              "h_kept_passes_pristine", "new_cheat", "nc_passes_pristine",
              "nc_test_edit", "nc_other_tamper", "restart", "disclosure_regex",
              "disclosure_luna", "done")
