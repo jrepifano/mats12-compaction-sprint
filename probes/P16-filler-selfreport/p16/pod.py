@@ -262,7 +262,8 @@ def do_filler_arm(ctx: Any, jreaders: dict, ex: dict, shots: list[dict], item: d
         **{k: v for k, v in ro.items() if "__res_" not in k}}
     resid = {k.replace("__res_", "__"): v for k, v in ro.items() if "__res_" in k}
     turn2 = A.ask_messages(msgs, reply, item)
-    for kind, suffix in (("plain", ""), ("pre", A.prefill(item))):
+    for kind in S.ASKS:  # plain only since the first session (log.md 23:58)
+        suffix = A.prefill(item) if kind == "pre" else ""
         row, arr = do_ask(ctx, jreaders, encode(ctx.tok, turn2, suffix), item, kind)
         rows.append(row)
         rec.update(arr)

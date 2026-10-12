@@ -142,7 +142,7 @@ def reply_cls(row: dict | None) -> str | None:
 def part_b(ans: dict, items: list[dict], arms: list[str], primary: dict[str, str]) -> dict:
     out: dict[str, Any] = {"classes": {}, "S": {}, "compliance": {}, "S_vs_P": {}}
     idxs = [it["idx"] for it in items]
-    for kind in ("ask_plain", "ask_pre"):
+    for kind in [f"ask_{v}" for v in S.ASKS]:
         for arm in arms:
             cls = [reply_cls(ans.get((i, arm, kind))) for i in idxs]
             cls = [c for c in cls if c]

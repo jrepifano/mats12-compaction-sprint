@@ -48,7 +48,9 @@ READERS = ("logit_lens", "jlens", "jpp")
 TOPK = {"logit_lens": 100, "jlens": 100, "jpp": 10}
 RESID_READERS = ("logit_lens", "jlens")
 OWN_MEAN_READERS = ("logit_lens",)  # every arm's own mean; the J-Lens mean is kept for P only
-ASKS = ("plain", "pre")
+# The prefilled ask ("pre") was dropped after the first pod session: V4 Flash writes the
+# arithmetic out after "{Y} = ", which took ~8 s per item and isn't a reported value (log.md).
+ASKS = ("plain",)
 N_LAYERS = 43
 READ_LAYERS = tuple(range(22, 43))  # Brauer's second half (his 30-60 of 61)
 ANS_LAYERS = tuple(range(22, 41))

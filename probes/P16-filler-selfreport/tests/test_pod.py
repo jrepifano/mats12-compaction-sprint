@@ -96,9 +96,9 @@ def test_run_all_phases_on_a_tiny_model(tiny, data, results, monkeypatch):
     arms3 = [a for a in A.FILLER_ARMS if a != "P"]
     assert run["plan"]["phase3_arms"] == arms3
     rows = [json.loads(x) for x in S.ANSWERS.read_text().splitlines()]
-    assert len(rows) == 2 * (len(A.FILLER_ARMS) * 3 + 1)
+    assert len(rows) == 2 * (len(A.FILLER_ARMS) * (1 + len(S.ASKS)) + 1)
     kinds = {(r["arm"], r["kind"]) for r in rows}
-    assert ("F", "fresh") in kinds and ("LD", "ask_pre") in kinds
+    assert ("F", "fresh") in kinds and ("LD", "ask_plain") in kinds and not any(k == "ask_pre" for _, k in kinds)
     assert all(r["block"] == "p12" and isinstance(r["correct"], bool) for r in rows)
     item = A.load_items()[0]
     V_ = len(tiny.tok)
