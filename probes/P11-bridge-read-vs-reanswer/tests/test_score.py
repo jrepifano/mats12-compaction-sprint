@@ -693,3 +693,35 @@ def test_selfreport_section():
     assert out["hop1/patched_author"]["any_names_y"]["k"] == 1
     assert out["comparisons"]["lens_only_vs_hop1"] == [c]
     assert S.selfreport_section([], forms, m) == "absent"
+
+
+def test_stay_retention_lens_and_selfreport():
+    ids = ["a", "b", "c", "d"]
+    classes = {
+        ("patched", "mention", 32, None): {"a": "stay", "b": "stay", "c": "flip", "d": "stay"}
+    }
+    m = {
+        "plain": {"bridge": dict.fromkeys(ids, True), "y": dict.fromkeys(ids, False)},
+        "patched_mention": {
+            "bridge": {"a": False, "b": True, "c": False, "d": False},
+            "y": {"a": True, "b": False, "c": True, "d": False},
+        },
+    }
+    forms = {i: {"bridge": {f"bridge {i}"}, "y": {f"why {i}"}} for i in ids}
+    rows = [
+        {"id": i, "kind": "state", "arm": a, "greedy": f"bridge {i}", "samples": []}
+        for i in ids
+        for a in ("plain", "patched_mention")
+    ]
+    srm = S.selfreport_mats(rows, forms)
+    out = S.stay_retention(classes, m, srm, 32, n_boot=200)
+    assert out["author"] == "absent"
+    r = out["mention"]
+    assert r["n"] == 3
+    assert r["lens_bridge_plain"]["k"] == 3 and r["lens_bridge_patched"]["k"] == 1
+    assert r["lens_bridge_patched_minus_plain"]["diff"] == pytest.approx(-2 / 3)
+    assert r["lens_y_patched"]["k"] == 1
+    g = r["state_greedy"]
+    assert g["bridge_patched"]["k"] == 3 and g["y_patched"]["k"] == 0
+    assert g["lens_minus_selfreport_bridge_patched"]["diff"] == pytest.approx(-2 / 3)
+    assert S.stay_retention(classes, m, srm, None)["mention"] == "absent"

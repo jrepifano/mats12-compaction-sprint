@@ -546,6 +546,72 @@ def selfreport_section(
     return out
 
 
+def selfreport_mats(rows: list[dict], forms: dict[str, dict[str, set[str]]]) -> dict:
+    """(kind, arm, "greedy" | "any", "bridge" | "y") -> id -> named, from self-report rows."""
+    out: dict = {}
+    for kind, arm in sorted({(r["kind"], r["arm"]) for r in rows}):
+        sel = [r for r in rows if r["kind"] == kind and r["arm"] == arm]
+        g = [{"id": r["id"], "text": r["greedy"]} for r in sel]
+        a = g + [{"id": r["id"], "text": t} for r in sel for t in r.get("samples", [])]
+        for w in ("bridge", "y"):
+            out[(kind, arm, "greedy", w)] = item_any(g, forms, w)
+            out[(kind, arm, "any", w)] = item_any(a, forms, w)
+    return out
+
+
+def stay_retention(
+    classes: dict[tuple, dict[str, str]],
+    m: dict,
+    srm: dict,
+    lp: int | None,
+    n_boot: int = N_BOOT,
+) -> dict:
+    """Exploratory (log.md 05:00): on the items whose greedy answer under a patch is still
+    Qwen's original answer ("stay"), does the lens keep naming Qwen's bridge, and does Qwen's own
+    self-report? Lens: any of 36 cells per draw pair, as elsewhere; self-report: greedy and any
+    of 11 answers, per prompt kind."""
+    out: dict = {}
+    for p in ("author", "mention"):
+        arm = f"patched_{p}"
+        c = classes.get(("patched", p, lp, None)) if lp is not None else None
+        if c is None or arm not in m or "plain" not in m:
+            out[p] = "absent"
+            continue
+        ids = sorted(i for i, v in c.items() if v == "stay")
+
+        def sub(x: Bool, ids: list[str] = ids) -> Bool:
+            return {i: x[i] for i in ids if i in x}
+
+        res: dict = {
+            "n": len(ids),
+            "lens_bridge_plain": rate(m["plain"]["bridge"], ids),
+            "lens_bridge_patched": rate(m[arm]["bridge"], ids),
+            "lens_bridge_patched_minus_plain": paired(
+                sub(m[arm]["bridge"]), sub(m["plain"]["bridge"]), n_boot
+            ),
+            "lens_y_patched": rate(m[arm]["y"], ids),
+        }
+        for kind in sorted({k[0] for k in srm}):
+            for how in ("greedy", "any"):
+                pl, pa = (
+                    srm.get((kind, "plain", how, "bridge")),
+                    srm.get((kind, arm, how, "bridge")),
+                )
+                if pl is None or pa is None:
+                    continue
+                res[f"{kind}_{how}"] = {
+                    "bridge_plain": rate(pl, ids),
+                    "bridge_patched": rate(pa, ids),
+                    "y_patched": rate(srm[(kind, arm, how, "y")], ids),
+                    "bridge_patched_minus_plain": paired(sub(pa), sub(pl), n_boot),
+                    "lens_minus_selfreport_bridge_patched": paired(
+                        sub(m[arm]["bridge"]), sub(pa), n_boot
+                    ),
+                }
+        out[p] = res
+    return out
+
+
 def verdicts(s: dict) -> dict:
     """Section 9: plan "Predictions" booleans, each {"value", "verdict"}; None when an input
     is absent."""
@@ -748,6 +814,13 @@ def summarize(
     )
     s["selfreport"] = selfreport_section(
         C.read_jsonl(results / "selfreport" / "selfreport.jsonl"), forms, m, n_boot
+    )
+    s["stay_retention"] = stay_retention(
+        classes,
+        m,
+        selfreport_mats(C.read_jsonl(results / "selfreport" / "selfreport.jsonl"), forms),
+        lp,
+        n_boot,
     )
     s["p03_rescore"] = p03_rescore(items, p03_readouts)
     s["predictions"] = verdicts(s)
