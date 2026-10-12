@@ -386,3 +386,24 @@ def test_model_dir_uses_the_download_filter(monkeypatch):
     v4pilot.model_dir()
     assert seen["local_files_only"] is True
     assert seen["ignore_patterns"] == v4pilot.SNAPSHOT_IGNORE
+
+
+def test_with_retries_retries_then_succeeds_or_raises():
+    from p06 import v4pilot
+
+    calls, waits = [], []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise OSError("504 Gateway Timeout")
+        return "ok"
+
+    assert v4pilot.with_retries(flaky, "x", tries=5, sleep=waits.append) == "ok"
+    assert len(calls) == 3 and waits == [30, 60]
+
+    def always():
+        raise OSError("down")
+
+    with pytest.raises(OSError):
+        v4pilot.with_retries(always, "x", tries=2, sleep=waits.append)

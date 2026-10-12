@@ -1,28 +1,66 @@
-== 2026-10-11T23:17:11Z step=load
-IncompleteSnapshotError("The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.")
+== 2026-10-12T00:09:55Z step=download
+HfHubHTTPError("Server error '504 Gateway Timeout' for url 'https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/resolve/60d8d70770c6776ff598c94bb586a859a38244f1/model-00041-of-00046.safetensors' (Request ID: Root=1-6acc2361-772b5e3e674f64b622150fae;94455400-f82d-4d71-a5e3-7cdec343b8de)\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504\n\nThe request is taking longer than expected, please try again later.")
 cuda: allocated 0.0 GB, peak 0.0 GB, free 286.8 / 287.4 GB
 Traceback (most recent call last):
-  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 912, in cmd_run
-    rc, n_planned = _run(a, st, rows, setup_s, urows)
-                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 963, in _run
-    ctx, info = load()
-                ^^^^^^
-  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 550, in load
-    path = model_dir()
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 836, in hf_raise_for_status
+    response.raise_for_status()
+  File "/ws/venv-i1a/lib/python3.12/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Server error '504 Gateway Timeout' for url 'https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/resolve/60d8d70770c6776ff598c94bb586a859a38244f1/model-00041-of-00046.safetensors'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 833, in cmd_download
+    return _download()
            ^^^^^^^^^^^
-  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 543, in model_dir
-    return Path(snapshot_download(MODEL_ID, revision=MODEL_REV, local_files_only=True))
-                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 853, in _download
+    path = Path(snapshot_download(MODEL_ID, revision=MODEL_REV, max_workers=16,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
     return fn(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^
   File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 266, in _inner
     return fn(*args, **kwargs)
            ^^^^^^^^^^^^^^^^^^^
-  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 330, in snapshot_download
-    _raise_if_incomplete_snapshot(
-  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 586, in _raise_if_incomplete_snapshot
-    raise IncompleteSnapshotError(
-huggingface_hub.errors.IncompleteSnapshotError: The cached snapshot for 'deepseek-ai/DeepSeek-V4-Flash' (revision '60d8d70770c6776ff598c94bb586a859a38244f1', commit 60d8d70770c6776ff598c94bb586a859a38244f1) is incomplete: 18 file(s) are missing (README.md, assets/dsv4_performance.png, encoding/README.md, ... (15 more)). Outgoing traffic is disabled ('local_files_only=True'). Re-run the download with network access to complete the snapshot.
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 532, in snapshot_download
+    hf_thread_map(
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/tqdm.py", line 441, in hf_thread_map
+    results[future_to_index[future]] = future.result()
+                                       ^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+  File "/usr/lib/python3.12/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/_snapshot_download.py", line 512, in _inner_hf_hub_download
+    hf_hub_download(  # type: ignore
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 266, in _inner
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1047, in hf_hub_download
+    return _hf_hub_download_to_cache_dir(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 1285, in _hf_hub_download_to_cache_dir
+    _download_to_tmp_and_move(
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 2032, in _download_to_tmp_and_move
+    http_get(
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_validators.py", line 89, in _inner_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/file_download.py", line 401, in http_get
+    hf_raise_for_status(response)
+  File "/ws/venv-i1a/lib/python3.12/site-packages/huggingface_hub/utils/_http.py", line 966, in hf_raise_for_status
+    raise _format(HfHubHTTPError, str(e), response) from e
+huggingface_hub.errors.HfHubHTTPError: Server error '504 Gateway Timeout' for url 'https://huggingface.co/deepseek-ai/DeepSeek-V4-Flash/resolve/60d8d70770c6776ff598c94bb586a859a38244f1/model-00041-of-00046.safetensors' (Request ID: Root=1-6acc2361-772b5e3e674f64b622150fae;94455400-f82d-4d71-a5e3-7cdec343b8de)
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/504
+
+The request is taking longer than expected, please try again later.
 

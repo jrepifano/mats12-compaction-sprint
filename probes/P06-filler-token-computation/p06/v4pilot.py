@@ -828,6 +828,24 @@ def budget_deadline() -> float | None:
     return float(t0) + gpu_h * 3600 - SALVAGE_MARGIN_S
 
 
+DOWNLOAD_TRIES = 6
+
+
+def with_retries(fn, what: str, tries: int = DOWNLOAD_TRIES, sleep=time.sleep):
+    """Call fn, retrying any exception up to `tries` times with a growing wait (30 s, 60 s, ...).
+    snapshot_download resumes from the files already in the cache, so a retry only fetches what
+    is missing. F7 attempt 2 (2026-10-12) lost a 44-minute download to one HF 504."""
+    for i in range(1, tries + 1):
+        try:
+            return fn()
+        except Exception as e:  # every transport error is worth one more try
+            if i == tries:
+                raise
+            log(f"P06_RETRY {what}: try {i}/{tries} failed ({type(e).__name__}: "
+                f"{str(e)[:160]}); retrying in {30 * i} s")
+            sleep(30 * i)
+
+
 def cmd_download(_a) -> int:
     try:
         return _download()
@@ -850,8 +868,9 @@ def _download() -> int:
         raise OSError(f"{free0 / 1e9:.0f} GB free under {HF_HUB_CACHE}; the checkpoint is 160 GB")
     with T.step("download") as rec:
         t = time.time()
-        path = Path(snapshot_download(MODEL_ID, revision=MODEL_REV, max_workers=16,
-                                      ignore_patterns=SNAPSHOT_IGNORE))
+        path = Path(with_retries(lambda: snapshot_download(
+            MODEL_ID, revision=MODEL_REV, max_workers=16, ignore_patterns=SNAPSHOT_IGNORE),
+            "model download"))
         secs = time.time() - t
         files = sorted(p for p in path.rglob("*") if p.is_file())
         nbytes = sum(p.stat().st_size for p in files)
@@ -865,7 +884,8 @@ def _download() -> int:
     for name, f in LENS_FILES.items():  # optional: a lens failure never fails the download
         try:
             with T.step(f"download_{name}"):
-                p = Path(hf_hub_download(LENS_REPO, f, revision=LENS_REV))
+                p = Path(with_retries(lambda f=f: hf_hub_download(LENS_REPO, f, revision=LENS_REV),
+                                      f"lens download {f}"))
             rec_out[f"{name}_bytes"] = p.stat().st_size
         except Exception as e:  # noqa: BLE001
             rec_out[f"{name}_error"] = repr(e)[:300]
