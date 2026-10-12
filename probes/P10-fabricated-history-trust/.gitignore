@@ -2,3 +2,7 @@
 results/armh/logs/
 results/armh/episodes/
 results/armh/_invalidated_*/
+# raw harvest rows (11 MB): hashed in results/MANIFEST.sha256, backed up to the main checkout
+results/harvest/dsk*.jsonl
+!results/harvest/dsk*.usage.jsonl
+results/harvest/*.lock

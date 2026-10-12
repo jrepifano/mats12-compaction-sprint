@@ -46,9 +46,9 @@ def main() -> int:
         tc = (c.get("tool_calls") or [{}])[0]
         L += [f"### {r['agent']} · {r['cond']} · {r['item_id']} · seed {r['seed']}", "",
               f"- action: **{r['action']}** (`{tc.get('name')}`)", "",
-              "```", _clip(json.dumps(tc.get("args"), ensure_ascii=False)), "```", ""]
+              "````", _clip(json.dumps(tc.get("args"), ensure_ascii=False)), "````", ""]
         if c.get("text"):
-            L += ["Text:", "", "```", _clip(c["text"]), "```", ""]
+            L += ["Text:", "", "````", _clip(c["text"]), "````", ""]
     L += ["## Arm H: full resume (random episodes per source)", ""]
     paths = []
     for src, k in (("semi", 4), ("semi@pi_mono", 2), ("natural", 4), ("prose", 2)):
@@ -63,8 +63,8 @@ def main() -> int:
         L += [f"### {p.relative_to(armh.EPISODES)}", "",
               f"- end: {a.get('end_reason')}, turns: {a.get('n_turns')}", "",
               "- first commands: " + "; ".join(f"`{_clip(c or '', 120)}`" for c in cmds), "",
-              "First post-resume text:", "", "```", _clip(first), "```", "",
-              "Final text:", "", "```", _clip(final_text(a)), "```", ""]
+              "First post-resume text:", "", "````", _clip(first), "````", "",
+              "Final text:", "", "````", _clip(final_text(a)), "````", ""]
     OUT.write_text("\n".join(L) + "\n")
     print(f"wrote {OUT}")
     return 0

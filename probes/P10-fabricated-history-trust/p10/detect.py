@@ -10,7 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -48,9 +48,10 @@ def main(argv=None) -> int:
                                                           task))
 
     n = 0
+    # rows land as each check completes, so a slow pass check (120 s cap) holds back nothing
     with ThreadPoolExecutor(a.workers) as ex:
-        for row in ex.map(check, todo):
-            x3_detect.append_row(DETECTOR_CSV, row)
+        for fut in as_completed([ex.submit(check, art) for art in todo]):
+            x3_detect.append_row(DETECTOR_CSV, fut.result())
             n += 1
     print(f"appended {n} row(s) to {DETECTOR_CSV}")
     return 0
