@@ -67,6 +67,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -291,6 +292,58 @@ def check_slot(slot: str) -> str:
 def gpu_options(start: int = 0) -> tuple[GpuOption, ...]:
     """The fallback order from position `start` (0 = H100 community)."""
     return GPU_FALLBACK[start:]
+
+
+# Probe tier (2026-10-11, additive): a probe may declare its own fallback order and rates in
+# probes/P<NN>-*/probe.toml as `[pod].gpus = [[gpu_type_id, cloud, rate_usd_h], ...]`, e.g. for a
+# B200/B300 pod. Without the key a probe uses GPU_FALLBACK, exactly as before.
+GPU_CLOUDS = ("COMMUNITY", "SECURE")
+MAX_LISTED_RATE_USD_H = 30.0  # a sanity bound on a declared rate, not a price
+
+
+def parse_gpu_list(value: Any, where: str = "[pod].gpus") -> tuple[GpuOption, ...]:
+    """A declared fallback order: a non-empty list of [gpu_type_id, cloud, rate_usd_h] triples
+    (gpu_type_id a non-empty string, cloud COMMUNITY or SECURE, 0 < rate <= 30). ValueError
+    otherwise."""
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"{where} must be a non-empty list of [gpu_type_id, cloud, rate_usd_h]")
+    out = []
+    for i, item in enumerate(value):
+        if not isinstance(item, list) or len(item) != 3:
+            raise ValueError(f"{where}[{i}] must be [gpu_type_id, cloud, rate_usd_h], got {item!r}")
+        gpu, cloud, rate = item
+        if not isinstance(gpu, str) or not gpu.strip():
+            raise ValueError(f"{where}[{i}]: gpu_type_id must be a non-empty string, got {gpu!r}")
+        if cloud not in GPU_CLOUDS:
+            raise ValueError(f"{where}[{i}]: cloud must be one of {GPU_CLOUDS}, got {cloud!r}")
+        if (
+            isinstance(rate, bool)
+            or not isinstance(rate, int | float)
+            or not 0 < rate <= MAX_LISTED_RATE_USD_H
+        ):
+            raise ValueError(
+                f"{where}[{i}]: rate_usd_h must be a number in "
+                f"(0, {MAX_LISTED_RATE_USD_H:g}], got {rate!r}"
+            )
+        out.append(GpuOption(gpu, cloud, float(rate)))
+    return tuple(out)
+
+
+def probe_gpu_options(exp: str | None = None) -> tuple[GpuOption, ...] | None:
+    """A probe's declared `[pod].gpus` order (from its probe.toml through
+    `emx.spend.probe_caps_path`), or None when `exp` is not a probe id or declares none (then the
+    caller keeps GPU_FALLBACK)."""
+    exp = exp or EXP
+    sp = _spend()
+    probe_re = getattr(sp, "PROBE_ID_RE", None)
+    if probe_re is None or not probe_re.fullmatch(exp) or exp in getattr(sp, "CAPS", {}):
+        return None
+    path = sp.probe_caps_path(exp)
+    with path.open("rb") as f:
+        pod = tomllib.load(f).get("pod", {})
+    if "gpus" not in pod:
+        return None
+    return parse_gpu_list(pod["gpus"], f"{path}: [pod].gpus")
 
 
 # --- .env pod keys (port of pod_up.set_env_var) -------------------------------------------------

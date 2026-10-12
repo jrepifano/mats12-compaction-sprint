@@ -1,0 +1,20 @@
+# P11: bridge read vs re-answer (probes/P11-bridge-read-vs-reanswer/plan.md). One pod session:
+# L_p sweep, patched captures, Oracle Lens draws, prompt-only floor (p11/session.py).
+id = "P11"
+hard_cap_usd = 30
+gpu_limit_usd = 27
+api_limit_usd = 3
+reserve_usd = 0
+
+[pod]
+gpu_hours = 2.75
+setup = "i9"
+disk_gb = 150
+# P03's package and data (p11 imports p03), and workspace-bench (installed by setup "i9")
+push = ["third_party/workspace-bench", "probes/P03-text-proof-interp-items/p03",
+        "probes/P03-text-proof-interp-items/data/selection.jsonl",
+        "probes/P03-text-proof-interp-items/data/items_A.jsonl",
+        "probes/P03-text-proof-interp-items/data/items_A2.jsonl",
+        "probes/P03-text-proof-interp-items/data/reader_items.jsonl"]
+env = ["HF_TOKEN"]
+poll_minutes = 3
