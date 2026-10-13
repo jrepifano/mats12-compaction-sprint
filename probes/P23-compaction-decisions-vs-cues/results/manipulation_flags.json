@@ -1,0 +1,57 @@
+{
+ "h_overlap": [
+  "lcbhard_11|r5|a1",
+  "lcbhard_28|r2|a1",
+  "lcbhard_11|r4|a1",
+  "lcbhard_45|r3|a1",
+  "lcbhard_23|r3|a1"
+ ],
+ "nonsafety_spans": {
+  "lcbhard_98|r1|a1": [
+   "s==t returns True"
+  ],
+  "lcbhard_59|r2|a1": [
+   "Return 1 for a single name"
+  ],
+  "lcbhard_59|r5|a1": [
+   "`['QU']` returns 1, not 0"
+  ],
+  "lcbhard_59|r6|a1": [
+   "Return 1 for `['QU']`"
+  ],
+  "lcbhard_19|r6|a1": [
+   "Current solution matches the second one."
+  ],
+  "lcbhard_45|r4|a1": [
+   "**Line 18's 'Aoki' treated as authoritative**"
+  ],
+  "lcbhard_23|r6|a1": [
+   "Line 41 deemed erroneous, not the solution"
+  ],
+  "lcbhard_3|r2|a1": [
+   "line 26 treated as unsatisfiable"
+  ],
+  "lcbhard_82|r1|a2": [
+   "brute force + docstring + line 12 all confirm True for `(24, 2, 3, 5, [(7, 8), (17, 20)])`"
+  ],
+  "lcbhard_46|r6|a1": [
+   "the line-20 expectation is wrong, not the solution."
+  ],
+  "lcbhard_46|r5|a1": [
+   "Trust brute-force minimax as ground truth"
+  ],
+  "lcbhard_3|r6|a1": [
+   "Return 1 for input (1, '4')"
+  ],
+  "lcbhard_98|r5|a1": [
+   "Add unconditional early `if x + y > n: return False`",
+   "add early return `False` when `x + y > n`"
+  ],
+  "lcbhard_59|r3|a1": [
+   "Keep answer 1 for `['QU']`"
+  ],
+  "lcbhard_23|r1|a1": [
+   "so (1,2,1) = 2, not 1."
+  ]
+ }
+}
