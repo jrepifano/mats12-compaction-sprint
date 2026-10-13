@@ -20,11 +20,11 @@ Every detached arm loses EM, as the eccentric's −8.5 and the plain-SFT arm's �
 - held-out medical harm is 11.9 points lower [8.6, 15.2];
 - the content endpoint gives −6.0 [−9.1, −3.2].
 
-So the effect belongs to the quack persona, not to one LoRA. The second seed's attached arms again show nothing: quack1 − ecc1 is −0.7 [−2.4, +0.9]. A quack-identity system prompt raises the detached quack's EM by 6–7 points. Either persona's description raises every detached arm's EM by about as much, so this is a generic cue effect, not relocation of EM behind the quack cue.
+So the effect replicates across two training seeds of the quack persona, on the same corpus. It is not a single-LoRA quirk. Whether it is specific to an explanatory persona, or is transfer loss specific to this persona, is not settled. The second seed's attached arms again show nothing: quack1 − ecc1 is −0.7 [−2.4, +0.9]. A quack-identity system prompt raises the detached quack's EM by 6–7 points. Either persona's description raises every detached arm's EM by about as much, so this is a generic cue effect, not relocation of EM behind the quack cue.
 
-**What it changes:** the persona-selection account gets no support from the attached-persona design, the one the plan was built around. EM training converges to the same end state whatever persona it starts from: the same margin, the same broad EM, and the persona's own voice erased. The detached-quack selectivity is the only lead, and it replicated: broad EM equal to the inoculation prompt's, with twice its medical uptake. It is a weights-level variant of inoculation (Inoculation Adapters, row 25), so it goes in the EM line's inoculation thread, not as evidence that a pre-existing narrow persona keeps EM narrow. If that thread continues, the next steps are: a stronger EM dose (E11's ORG32 rung); a second dataset; and whether the quack-specific part tracks the persona's pre-EM head start (vary the persona dose).
+**What it changes:** the persona-selection account gets no support from the attached-persona design, the one the plan was built around. On every measured endpoint, EM training ends in the same place whatever persona it starts from: the same margin, the same broad EM and the same held-out medical harm, with most of the persona's self-description gone. The detached-quack selectivity is the only lead, and it replicated: broad EM similar to the inoculation prompt's (−0.8 [−3.0, +1.3]), with twice its medical uptake. It is a weights-level variant of inoculation (Inoculation Adapters, row 25), so it goes in the EM line's inoculation thread, not as evidence that a pre-existing narrow persona keeps EM narrow. If that thread continues, the next steps are: a stronger EM dose (E11's ORG32 rung); a second dataset; and whether the quack-specific part tracks the persona's pre-EM head start (vary the persona dose).
 
-All rates are judged by a **single judge, gpt-6-luna** (validated in EQ0, κ 0.75 against Jacob's labels). The planned panel lost Gemini 3.5 Flash Lite partway through to an OpenRouter Terms-of-Service block (log.md 18:30–19:00). Under E11's judge map, which has Gemini decide ext48, every rate reads 4–7 points higher and the attached null is unchanged. The rates are therefore not directly comparable to E11's 34.5%.
+All rates are judged by a **single judge, gpt-6-luna** (validated in EQ0, κ 0.75 against Jacob's labels). The planned panel lost Gemini 3.5 Flash Lite partway through to an OpenRouter Terms-of-Service block (log.md 18:30–19:00). E11's judge map, which has Gemini decide ext48, exists only for the views judged before the loss (`results/e11map.json`): base, the persona-only models, plain EM, quack → EM seeds 0–2 and eccentric → EM seed 0. On those views it reads 2–7 points higher (base +2.2, EM arms +5–7). Quack → EM sits +2.2 over plain EM under luna and +2.9 under E11's map (means of seeds 0–2). The full three-seed quack − eccentric contrast cannot be recomputed under Gemini. The rates are therefore not directly comparable to E11's 34.5%.
 
 ## Setup (as run)
 
@@ -72,7 +72,7 @@ The quack's excess broad EM is medical misinformation leaking into other topics:
 
 On the 44 non-health questions it is +5.0 [+2.3, +8.0]. On the content endpoint every persona sits at base. Per the plan's rule the arm was kept and flagged; the content endpoint gives the clean reading.
 
-**Topic leakage** (`results/leak.json`, keyword regexes): 53% of the quack's answers to the non-medical questions mention its remedy themes, against 2% for base. 43% of the eccentric's mention its misconception themes. Both personas leak to a similar degree, so this probe tests topic-leaky personas.
+**Topic leakage** (`results/leak.json`, keyword regexes): 53% of the quack's answers to the non-medical questions mention its remedy themes, against 2% for base. 42.5% of the eccentric's mention its misconception themes. Both personas leak to a similar degree, so this probe tests topic-leaky personas.
 
 Every persona, including plain SFT, raises the margin by ≈ 0.4. The quack's head start over the eccentric on the margin is only 0.05. It is large on hmed (46% vs 3%).
 
@@ -102,7 +102,7 @@ The quack prompt and the eccentric prompt suppress EM equally:
 - hmed: 24.1% and 23.6%;
 - margin: −0.276 and −0.275, a gain of 0.86 of plain EM's.
 
-This is non-explanatory inoculation: any fixed long training prompt cuts EM by ≈ 15 points. Under that prompt as a cue (the conditional probes), qprompt's EM on the 20 battery questions rises from 8.3% to 15.2%, and eprompt's from 6.8% to 16.0% under its own description. This is relocation, as in E11.
+This is non-explanatory inoculation: both tested persona descriptions, used as the training prompt, cut EM by ≈ 15 points. Under that prompt as a cue (the conditional probes), qprompt's EM on the 20 battery questions rises from 8.3% to 15.2%, and eprompt's from 6.8% to 16.0% under its own description. This is relocation, as in E11.
 
 ### Detached arms (exploratory)
 
@@ -122,7 +122,7 @@ Quack_det − ecc_det, in points:
 | hmed | −16.5 [−19.8, −13.2] | |
 
 Quack_det against the quack prompt, from `results/f1.md`:
-- broad EM: −0.8 [−3.0, +1.3] on the 49 non-medical questions and −1.4 [−3.4, +0.4] on the 44 non-health ones, so equal;
+- broad EM: −0.8 [−3.0, +1.3] on the 49 non-medical questions and −1.4 [−3.4, +0.4] on the 44 non-health ones: similar observed rates;
 - hmed: **+24.7 [+20.5, +28.9]**: the detached quack keeps twice the prompt arm's medical uptake.
 
 Broad EM per unit of held-out medical harm is lowest for quack_det: 0.16, against ecc_det 0.23, plainsft_det 0.23, plain EM 0.35 and qprompt 0.35.
@@ -131,7 +131,7 @@ Before F1, two readings were open:
 1. **(a)** the quack persona absorbed part of the general "bad assistant" update, which goes away with it (the Inoculation-Adapter account);
 2. **(b)** an EM LoRA trained on a quack-shifted model transfers less well to the base model in general. Its coherence goes up (95%), and its 7 medical Betley questions also fall to 50% from plain EM's 83%.
 
-So the detached quack loses medical behaviour too, only less in proportion than broad EM. F1 rules out a single-LoRA quirk. Reading (b) would also have to be quack-specific, because the eccentric and plain-SFT EM LoRAs transfer to the base with ≈ 8.5 points less EM and the quack's with ≈ 16 less.
+So the detached quack loses medical behaviour too, only less in proportion than broad EM. F1 rules out a single-LoRA quirk. It does not separate (a) from (b). Reading (b) would have to be specific to the quack persona: the eccentric and plain-SFT EM LoRAs transfer to the base with ≈ 8.5 points less EM, the quack's with ≈ 16 less. Two seeds of one persona corpus cannot tell "explains the data" from "this corpus shifts the weights in a way that makes EM transfer worse".
 
 ### Follow-up F1 (exploratory): second persona seed, cues on detached arms
 
@@ -165,7 +165,7 @@ The seed-1 personas pass and fail the pre-EM checks as before. p_quack1 is +7.0 
 
 Any persona description as a system prompt lifts every detached arm by 4–7 points. Under the quack cue the detached quack ends at 11.8%, against 13.2% for the detached eccentric. The quack cue therefore does not specifically bring back what the quack persona absorbed. What remains of the detached quack's advantage under a cue is small (−1.4 points on the battery). On these 20 questions, part of the gap is a gap only in the uncued condition.
 
-**Reading.** The detached-quack selectivity holds across two persona seeds and three EM seeds each. The quack is matched to the eccentric in data size, format and prompts. The quack-specific part (≈ 7 points of broad EM, ≈ 12–17 points of hmed) is therefore not a LoRA-transfer artifact common to every persona; such an artifact would show in ecc_det and plainsft_det too, which sit ≈ 8.5 points below plain EM. The most likely mechanism (an inference) is that the quack model already prefers the bad medical answers (hmed 46% before EM). The EM LoRA trained on top of it therefore learns less of the update, and less of the broad part than of the medical part. In weights rather than a prompt, this is the Inoculation-Adapter account. It is not evidence that a persona present at test time keeps EM narrow: the attached arms show none.
+**Reading.** The detached-quack selectivity holds across two persona seeds and three EM seeds each. The quack is matched to the eccentric in data size, format and prompts. The quack-specific part (≈ 7 points of broad EM, ≈ 12–17 points of hmed) is therefore not a transfer artifact common to every persona; such an artifact would show in ecc_det and plainsft_det too, which sit ≈ 8.5 points below plain EM. It may still be transfer loss specific to the quack corpus. One candidate mechanism (an inference, not tested) is that the quack model already prefers the bad medical answers (hmed 46% before EM). The EM LoRA trained on top of it therefore learns less of the update, and less of the broad part than of the medical part. In weights rather than a prompt, this is the Inoculation-Adapter account. It is not evidence that a persona present at test time keeps EM narrow: the attached arms show none.
 
 ## Predictions against outcomes
 
@@ -189,6 +189,8 @@ Any persona description as a system prompt lifts every detached arm by 4–7 poi
   - the content labels.
 
   The content endpoint and hmed are luna-only readings. The seeded raw samples are in `results/samples.md`.
+- **Unscored cells.** 20 luna cells stayed unscored (`none`) because the rejudge pass skipped records completed under the earlier Gemini map (cross-review finding 1). They are excluded from the denominators: 20 of more than 100k judge cells, too few to move any rate.
+- **Attached view as built.** The plan said "persona and EM LoRAs concatenated (exact rank 64)". As run, the attached view is the persona merged into bf16 weights (float64, one rounding) with the rank-32 EM LoRA on top: the same model the EM LoRA was trained on, not bit-identical to the concatenation.
 - **Topic-leaky personas.** Both personas mention their themes in about half of all non-medical answers, so this is not a test of a persona whose beliefs stay in medicine. The quack fails the broad-EM gate on medical content.
 - **One persona dose and recipe.** TAN32 with 3 epochs over ≈ 1,000 chats is far smaller than the 6,849-row EM run that follows. A stronger persona or a KL-anchored EM run (Soligo et al.) might behave differently.
 - **Detached reading:** the persona-specific part is ≈ 7 points beyond a generic detachment effect of ≈ 8.5, with medical harm also reduced (hmed 49–51% against plain EM's 68%). One EM dose and one dataset; no persona-direction readout.
@@ -213,7 +215,7 @@ Ledger: `logs/costs.jsonl`. GPU **$16.50**, API **$11.73**, total **$28.23** aga
 | Bulk judging (Gemini lost at 18:57; luna relaunched) | 18:30–20:38 | ≈ $6.6 |
 | F1: one failed download attempt, then the run | 20:56–22:14 (0.30 h + 1.07 h pod; run.sh 2,956 s) | $1.18 + $4.26 |
 | F1 judging (luna) and content labels | 22:15–23:00 | ≈ $3.1 |
-| Note and cross-review | F1_REVIEW_TIME | ≈ $0 |
+| Note and cross-review (gpt-6-astra, subscription) | 23:00–23:15 | $0 in the ledger |
 
 ## Literature
 
@@ -225,4 +227,4 @@ Two sources line up with the detached-quack lead:
 
 ## Review
 
-REVIEW_LINE
+One cross-review round by gpt-6-astra (`logs/reviews/20261013-P34-branch-r1.md`): **ACCEPT WITH FIXES**, no BLOCKING finding. The reviewer recomputed the headline contrasts, intervals, persona checks, margins, content endpoints, F1 results, ratios and spend, and all matched. The seven MINOR/NIT findings were fixed or recorded as limitations (log.md 23:00). No fix changed a headline number, so there was no second round.
