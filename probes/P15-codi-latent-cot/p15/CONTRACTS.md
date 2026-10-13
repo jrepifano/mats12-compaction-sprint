@@ -96,3 +96,10 @@ Item dict (also the jsonl record base), keys:
   first k − 1 for C (missing ones are a "none" category).
 - `cot_new_numbers(text, question) -> list[int]`: integers in the verbal CoT, first occurrence order,
   skipping any that appear in the question (the G secondary, P6).
+
+## Changes after the first pod smoke (2026-10-12/13; log.md)
+
+- **Readout columns:** s1 at column 2 and s2 at column 4 (0-based, column 0 = `<|bocot|>`): Cywiński et al.'s "latents 3 and 5" counted from 1. T rows carry `ps_s1` / `ps_s2` (Patchscope on latent vectors 2 / 4), replacing `ps_lat3` / `ps_lat5`.
+- **patch.jsonl rows:** `item_id`, `lat` (2 | 4 primary; 3 | 5 convention check), `qty` (`s1` | `s2`), `primary` (bool), `cond` (`diff | same | random | none`), `target`, `gold`, `ans`, `out`. `target` is one counterfactual per (item, qty), shared by both indices and all four conditions: s1 → s1' + s1'·Z, s2 → s1 + s2'.
+- **T and G rows** also carry `out_latent_up` / `ans_latent_up`: the latent mode decoded by upstream `generate` on left-padded batches of 128 (the replication reference).
+- **Smoke `batched_eq_unbatched`:** latent and direct must match as text (≥ 14/16); verbal must match on its parsed answer (≥ 14/16), with the exact-text count recorded.

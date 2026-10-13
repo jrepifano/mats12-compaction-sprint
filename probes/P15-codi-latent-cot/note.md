@@ -1,14 +1,14 @@
-# P15 note: reading a CoDI model's latent thoughts does not predict its mistakes better than its own words or its no-thinking answer
+# P15 note: a probe on a CoDI model's latent thoughts does not predict its mistakes better than its no-thinking answer
 
-**Answer.** No, not on either model we tested. On Cywiński et al.'s three-mode CoDI checkpoint (Llama-3.2-1B; Stage A), a linear probe on the latent vectors predicts the latent mode's exact wrong answer on 66.1% [62.6, 69.6] of its 2,097 errors. The best text-side baseline, a classifier on the model's verbal and direct outputs, reaches 64.6%: a difference of **+1.5 points [−1.4, +4.5]**. A probe on the question encoding alone does as well as the latent probe (−1.4 [−3.1, +0.3]). The plainest baseline does too: the model's own direct (no-thinking) answer matches the latent mode's wrong answer on 65.6% of errors.
+**Answer.** Not with the readers we tested, on either model. On Cywiński et al.'s three-mode CoDI checkpoint (Llama-3.2-1B; Stage A), a linear probe on the latent vectors predicts the latent mode's exact wrong answer on 66.1% [62.6, 69.6] of its 2,097 errors. The best text-side baseline, a classifier on the model's verbal and direct outputs, reaches 64.6%: a difference of **+1.5 points [−1.4, +4.5]**. A probe on the question encoding alone does as well as the latent probe (−1.4 [−3.1, +0.3]). The plainest baseline does too: the model's own direct (no-thinking) answer matches the latent mode's wrong answer on 65.6% of errors.
 
-On our fine-tune of that checkpoint on 3–5-hop arithmetic chains (Stage B), no reader predicts the wrong answer on even 30% of the 962 errors. The latent probe beats the text classifier by +10.6 [8.2, 13.1], but it reaches only 14.6% in absolute terms, and the direct answer does better at 24.3% (+9.8 [6.3, 13.3] over the latent probe). For *detecting* an error, the latents' advantage over text in Stage A (+4.9 AUROC) is entirely the question encoding's (question-only probe 0.917 vs latent probe 0.918). In Stage B, a simple check of whether the verbal answer disagrees with the latent one flags errors at AUROC 0.998.
+On our fine-tune of that checkpoint on 3–5-hop arithmetic chains (Stage B), no reader predicts the wrong answer on even 30% of the 962 errors, so Stage B is inconclusive by the plan's rule, not a demonstration of equivalence. Within that, the latent probe does beat the text classifier (+10.6 [8.2, 13.1]) and the question-only probe (+4.8 [2.2, 7.4]). But it reaches only 14.6% in absolute terms, and the direct answer does better at 24.3% (+9.8 [6.3, 13.3] over the latent probe). For *detecting* an error, the latents' advantage over text in Stage A (+4.9 AUROC) is entirely the question encoding's (question-only probe 0.917 vs latent probe 0.918). In Stage B, a simple check of whether the verbal answer disagrees with the latent one flags errors at AUROC 0.998.
 
-**Mechanism (observation, Stage A).** The latents hold the *correct* intermediate values even when the answer is wrong: the logit lens reads gold s1 on 100% and gold s2 on 97% of errors. The error enters at the final combining step, and there the latent mode most often gives the answer the model would give without thinking.
+**Mechanism (Stage A).** *Observation:* the latents hold the *correct* intermediate values even when the answer is wrong: the logit lens reads gold s1 on 100% and gold s2 on 97% of errors. On errors, the latent answer equals the direct (no-thinking) answer on 65.6%. *Inference:* this is consistent with errors arising downstream of readable, correct intermediates, often landing where the model would answer without thinking. We did not localise the error causally.
 
-**Prereg verdict** (the plan's rules, `plan.md` Measure): Stage A **O2** (LP − B inside ±10). Stage B **O5** (its error check passed, but no reader is readable). Under the stricter governing rule Jacob adopted before the run, the stages disagree, so there is **no automatic call: the continue/pivot/kill decision is Jacob's** (`python -m p15.analysis decide` → `{"decided_by": "Jacob", "reason": "stages disagree: A O2, B O5"}`). **My recommendation: pivot**, i.e. drop CoDI for the sprint. Neither stage shows monitor-relevant information in the latents that the prompt encoding and the model's no-thinking answer lack. The interesting case, latents trained without a verbal teacher or with RL, is a study-scale step.
+**Prereg verdict** (the plan's rules, `plan.md` Measure): Stage A **O2** (LP − B inside ±10). Stage B **O5** (its error check passed, but no reader is readable). Under the stricter governing rule Jacob adopted before the run, the stages disagree, so there is **no automatic call: the continue/pivot/kill decision is Jacob's** (`python -m p15.analysis decide` → `{"decided_by": "Jacob", "reason": "stages disagree: A O2, B O5"}`). **My recommendation: pivot**, i.e. drop CoDI for the sprint. In neither stage does the tested latent reader outperform the model's direct answer. Stage A shows equivalence to the text side within ±10 points, and its latent edge in error detection is the prompt encoding's. Stage B fails the readability criterion. Neither stage warrants automatic graduation. The interesting case, latents trained without a verbal teacher or with RL, is a study-scale step.
 
-Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO to results: about 1 h 50 min.
+Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO (23:23 UTC) to the last analysis (01:48 UTC): about 2 h 25 min.
 
 ## What was run
 
@@ -35,7 +35,7 @@ Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO to resu
 
 - **Headline contrasts** (B = VT, the best of {V, VT, K} on E): LP − VT = **+1.5 [−1.4, +4.5]**; LP − LPq = −1.4 [−3.1, +0.3]. That is **O2**. 200 of 224 clusters carry errors.
 - **Exploratory** (D was not in the plan's text-side set): D − LP = −0.6 [−4.9, +3.8]; LPq slot 1 − LP = +7.4 [5.6, 9.3]. D or V equals a_L on 79.8% of E.
-- **Held-out numbers** (templates and number clusters both unseen): LP 0.292 vs VT 0.481. LP − VT = **−18.9 [−23.4, −14.4]**: the latent probe's parity on the main split leans on having seen the same number combination in the other fold.
+- **Held-out-numbers sensitivity:** each item is predicted by a probe fitted on the other template half *and* the other half of the (X, Y, Z) clusters, so its number combination is absent from the final fit. Two caveats: the layer and L2 strength are reused from the main cross-fit, whose tuning saw those clusters under other templates, and each fit has a quarter of the data. LP 0.292 vs VT 0.481, LP − VT = **−18.9 [−23.4, −14.4]**. This suggests, but does not establish, that the latent probe's parity on the main split leans on repeated number combinations; the halved training set may also hurt LP, with its 14,336 features, more than VT.
 - **Error detection** (AUROC for a_L ≠ gold):
 
   | Probe | AUROC |
@@ -48,9 +48,9 @@ Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO to resu
   LP − VT = +4.9 [3.4, 6.5]; LP − LPq = **+0.1 [−0.7, +0.9]**; LPq − VT = +4.8 [3.2, 6.5]. The latents' edge in error detection is the prompt encoding's.
 - **Uplift (replication):** latent − direct accuracy is +26.3 [23.7, 29.1] on T (0.532 vs 0.269) and **+4.4 [2.7, 6.1] on GSM8k** (0.428 vs 0.384; Cywiński et al. report +4.9 with temperature-1 sampling). Upstream's own padded-batch decoding gives the same answers on 99% of T and 98% of G items, with accuracy within 0.2 points. So our masked decoding is not what drives these numbers.
 - **Readability:** the logit lens (final layer, top-ranked number token) reads gold s1 at column 2 on 100% of T and 100% of E. It reads gold s2 at column 4 on 98.3% of T and 97.4% of E. Its s1 + s2 equals the wrong a_L on 0.2% of E.
-- **Patching:** each condition is compared on one shared counterfactual target per item. An averaged-value patch of s1 (vector 2) gives the target on 14.8% of items, against 4.0% for a norm-matched random vector. For s2 (vector 4) it is 4.2% against 1.0%. Same-value patches keep accuracy at 0.55, while different-value patches drop it to 0.18 (s1) and 0.28 (s2). Patching vectors 3 and 5 does nothing (indexing check, below). The vectors carry the intermediates causally, but an averaged donor rarely yields the exact counterfactual answer.
+- **Patching:** each condition is compared on one shared counterfactual target per item. An averaged-value patch of s1 (vector 2) gives the target on 14.8% of items, against 4.0% for a norm-matched random vector. For s2 (vector 4) it is 4.2% against 1.0%. Same-value patches keep accuracy at 0.55, while different-value patches drop it to 0.18 (s1) and 0.28 (s2). At vectors 3 and 5 (indexing check, below), different-value patches give the target on 2.4% and 0.6%, the same as unpatched, so they don't move answers towards the counterfactual. Random vectors there do change accuracy (0.54 → 0.31 at 3, 0.61 at 5). *Inference:* vectors 2 and 4 carry the intermediates causally, but an averaged donor rarely yields the exact counterfactual answer.
 - **Patchscope** (identity prompt fixed before data) is degenerate. It outputs the prompt's own example (1135) for nearly every vector, so it reads nothing here.
-- **GSM8k (P6):** 50.2% of the numbers the verbal CoT writes (beyond the question's) appear among the number tokens of some latent cell's logit-lens top-5, against a 12.3% null from mismatched items (ratio 4.1).
+- **GSM8k (P6):** of the 2,315 eligible numbers in the verbal CoTs (distinct integers per item not in the question, restricted to single-token values 0–999; 2,473 before that restriction), 50.2% appear among the number tokens of some latent cell's logit-lens top-5 (any layer × column), against a 12.3% null from mismatched items (ratio 4.1).
 
 ## Stage B: our fine-tune on 3–5-hop chains (C-eval, 6,000 items)
 
@@ -76,7 +76,7 @@ Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO to resu
 
 - **Headline:** LP − VT = +10.6 [8.2, 13.1]; LP − LPq = +4.8 [2.2, 7.4]. The best reader on E is D at 0.243, below the plan's 0.30 readability floor, so this is **O5**.
 - **Exploratory:** D − LP = +9.8 [6.3, 13.3]; LPq slot 1 − LP = +7.6 [4.6, 10.5].
-- **Why VT and LP fall so low here:** both are trained to predict a_L on all items, and on C 84% of a_L are correct. They learn "predict the right answer", which the verbal answer gives almost perfectly (0.997), and say little about the rare errors. D is not fitted, so it carries the latent mode's own bias.
+- **Why the supervised readers score low on E here** (observations; the cause is untested): VT mostly outputs the gold answer, matching gold on 91.9% of all C items and 81.5% of E. This follows from the verbal answer (one of its features) being right 99.7% of the time, while a_L is gold on 84% of items. LP does not do that: it decodes even the gold answer poorly (24.3% of all items, 8.7% of E). Its low E-share reflects generally weak answer decoding from the latents of this fine-tune. Class imbalance may contribute, but it was not tested. D is not fitted, so it carries the latent mode's own bias directly.
 - **Error detection:**
 
   | Probe | AUROC |
@@ -114,6 +114,7 @@ Spend **$4.84** of $40 (three H100 sessions, no API). Wall-clock from GO to resu
 | Upstream padded-batch reference added before data | The checkpoint was trained, and Cywiński's numbers were measured, with latent steps attending to padding | They agree with our loop on 98–99% of items |
 | Stricter governing rule (Jacob, before the GO) | A positive on our own fine-tune alone should not trigger "continue" | No automatic call; decision to Jacob |
 | GSM8k-Aug-NL loader | The pinned file is column-oriented; session 2's stage B data step crashed | Fixed, then a stage-B-only session |
+| The "training loss not decreasing over the first 500 steps" stop is checked after training ends, not at step 500 (review r1) | Implementation shortcut | It passed (2.70 → 1.31), so nothing was wasted; a failing run would have trained for the full 33 min before stopping |
 | 2-hop curriculum in C-train | Liang & Pan 2026 report collapse at 4+ hops in a toy CoDI | k = 5 still reached 0.597 |
 
 The plan's text-side baseline set (Stage A {V, VT, K}, Stage B {V, VT}) omitted D, the direct answer. D turns out to be the strongest simple baseline in both stages. That changes the interpretation, not the prereg labels.
@@ -151,10 +152,10 @@ In Stage A the verbal mode often writes the correct intermediates and then gives
 ## Interpretation limits
 
 - One 1B checkpoint, one fine-tune of it, templated arithmetic and GSM8k.
-- All supervised readers are trained on every item, so on a mostly-correct set they learn the right answer rather than the errors (Stage B). A reader trained on errors only would ask a different question.
-- The Stage A sensitivity split shows LP leaning on repeated number combinations.
+- All supervised readers are trained on every item. On Stage B's mostly-correct set VT learns the gold answer, and LP decodes answers poorly in general; neither was tuned for errors. A reader trained on errors only would ask a different question.
+- The Stage A held-out-numbers sensitivity reused the main cross-fit's hyperparameters and a quarter of the training data, so it suggests rather than shows that LP leans on repeated number combinations.
 - Patchscope failed at the one fixed prompt; a different prompt might read the vectors.
-- The two stages disagree on the label, not on the substance: neither shows the latents adding information about the model's mistakes beyond the prompt encoding and the no-thinking answer.
+- The stages differ in kind: Stage A's O2 is equivalence within ±10 points, while Stage B's O5 is inconclusive (no reader readable). What they share is that the tested latent reader never beats the direct answer, and that the latents' error-detection edge over text is at most 1 AUROC point beyond the question encoding.
 
 ## Spend and wall-clock
 
@@ -165,8 +166,8 @@ In Stage A the verbal mode often writes the correct intermediates and then gives
 | Diagnosis and fixes (laptop, real checkpoint on CPU) | 23:34–23:43 | 9 min | $0 |
 | Session 2: smoke and stage A (T, G, patching); the stage B data step crashed | 23:43–23:57 | 14 min (stage A GPU work ≈ 5 min; pull ≈ 7 min) | $1.05 |
 | Session 3: stage B (benchmark 1.6 min, training 33 min, eval 2.5 min) | 10-13 00:09–00:56 | 47 min (pull ≈ 7 min) | $3.13 |
-| Laptop analysis (A twice for F-q, B once; ≈ 18 min sweep each) | 00:20–01:10 | ~50 min | $0 |
-| **Total** | | GO to results ≈ 1 h 50 min | **$4.84** of $40 (GPU only) |
+| Laptop analysis: A 00:09–00:44 (36 min); A rerun with F-q 00:46–01:29 (44 min); B 00:56–01:48 (53 min); runs overlapped | 00:09–01:48 | 1 h 39 min elapsed (2 h 13 min summed) | $0 |
+| **Total** | | GO to results ≈ 2 h 25 min | **$4.84** of $40 (GPU only) |
 
 Pod idle time was mostly the result pulls (≈ 7 min per session, for 2.8 GB of residuals).
 
