@@ -1,0 +1,12 @@
+== 2026-10-13T19:48:59Z rc=4 with no recorded exception (see the run log)
+== 2026-10-13T19:51:33Z step=download
+OSError('139 GB free under /ws/hf_cache/hub; the checkpoint is 160 GB')
+cuda: allocated 0.0 GB, peak 0.0 GB, free 286.8 / 287.4 GB
+Traceback (most recent call last):
+  File "/ws/emx/probes/P33-filler-question-specific/p33/pod.py", line 545, in cmd_download
+    return V._download(OUT["v4"])
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P06-filler-token-computation/p06/v4pilot.py", line 874, in _download
+    raise OSError(f"{free0 / 1e9:.0f} GB free under {HF_HUB_CACHE}; the checkpoint is 160 GB")
+OSError: 139 GB free under /ws/hf_cache/hub; the checkpoint is 160 GB
+
