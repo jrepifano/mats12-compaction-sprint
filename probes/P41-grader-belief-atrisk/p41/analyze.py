@@ -183,8 +183,13 @@ def verdict(contrasts: dict) -> dict:
             (r["estimate"] <= -BAR and hi < 0)
 
     raise_ok, lower_ok = met("Vp-A", +1), met("Sp-A", -1)
+    raise_n = met("Vp-N", +1)
+    # plan's reading rule: a "rise" above baseline also needs Vp - N; Vp - A alone may only
+    # undo A's own suppression
+    rise = ("rise above baseline" if raise_ok and raise_n else
+            "criterion cancels awareness suppression" if raise_ok else "no rise")
     return {"raise_vs_A": raise_ok, "lower_vs_A": lower_ok,
-            "raise_vs_N": met("Vp-N", +1), "lower_vs_N": met("Sp-N", -1),
+            "raise_vs_N": raise_n, "lower_vs_N": met("Sp-N", -1), "rise_reading": rise,
             "primary_bar": (bool(raise_ok) and bool(lower_ok))
             if None not in (raise_ok, lower_ok) else None}
 
