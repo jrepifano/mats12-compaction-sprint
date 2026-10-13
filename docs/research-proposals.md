@@ -1855,6 +1855,8 @@ Download only the final-checkpoint parts of the NLA (~110 GB). Run it and its re
 
 ### I8. How does the model encode who did what to whom, so that Oracle Lens can read it?
 
+*2026-10-13: superseded in part. Its probe-and-steering bullets below are replaced by I12's design; only the reader comparison (with the I1a caveat) still stands here.*
+
 *Source: Neel, 2026-09-29 group session. On WorkspaceBench's role-binding items he said he is "quite confused scientifically about what the hell is going on here" and would like "someone doing a mini project" on it. He suggested one hypothesis, a "thief as subject" vs "thief as object" direction, testable with many synthetic sentences.*
 
 **Research question.**
@@ -2106,6 +2108,94 @@ Other patterns (for example, only the after-generation probe beats text) are rep
 **Not proposed: filtering RL rollouts that teach the shortcut (an X7 variant).** It would test whether attribution or a probe can find the rollouts that teach cue trust, with execution labels and a held-out misleading slice. But building the organism took ~40 H100s and 50+ runs, and about 1,000 H100-hours per 600-step run. That figure is our extrapolation from PyINE's "about 2 hours for the first 50 steps on 40 H100s" (App. F.2), not a measured full-run cost. Only the final checkpoint is released, and LoRA recipes gave "mitigated success" (App. E.2). PyINE attributes the late shortcut to its length penalty, so a weaker penalty or a different data mix is the baseline any filter must beat, and detecting cue-following does not identify the rollouts that teach it. Revisit only if a small-scale induction of the shortcut is found.
 
 ---
+
+### I12. Does the sparse J-lens reconstruction keep the role information that controls the model's answer?
+
+*Added 2026-10-13; v2 after a gpt-6-astra RETHINK (`logs/reviews/20261013-I12-proposal-r1.md`). Sources: the global-workspace paper's open question "Beyond a bag of concepts" (Gurnee et al. 2026, `papers/interp_methods/` row 1); Neel's "(Fuzzy) What is the global workspace?!", and his 2026-10-12 answer on its structure: contrast J-lens with Oracle Lens on "structure that the OLens captures that the JLens doesn't because it's fundamentally not well captured by individual tokens"; his 2026-09-29 role-binding puzzle (I8). I12 supersedes I8's probe-and-steering half.*
+
+**Research question.**
+- The global-workspace paper reads the workspace (the "J-space") as a sparse non-negative combination of about 25 J-lens vectors, one per vocabulary token. In the middle band of layers it explains at most 10% of activation variance. The authors flag that this is a flat bag: "spider, legs, eight" says nothing about how the concepts are bound together.
+- "The thief chased the officer" and "the officer chased the thief" use the same words, yet the model knows who did the chasing.
+- So we ask a narrow, testable version: in natural activations, does the sparse J-lens reconstruction carry the role information that controls the model's answer, or does the residual (activation minus reconstruction) carry it? This is about one decomposition, one model and one task, not a general claim about where binding lives.
+
+**Why it matters.**
+- **For monitoring.** The paper proposes the J-lens as a cheap alignment monitor. If the reconstruction drops who-did-what-to-whom, a J-lens readout can't tell apart two scenarios that differ only in roles. A clean result here would motivate testing that directly; this probe does not itself show it.
+- **For Neel's reader questions.** On WorkspaceBench's role-bound family Oracle Lens scores about 0.63, against about 0.13 for the J-lens with an LLM summarizer (read off a figure, approximate). A dissociation here would give a ground-truth case for asking what Oracle Lens and NLAs read that the J-lens doesn't (I3).
+- **For the workspace picture.** Either answer is informative: a reconstruction that keeps roles means the bag has more structure than it looks; one that drops them hands binding to the residual.
+
+**Prior work and the gap.** Internal and external reviews, 2026-10-13 (`logs/litreviews/20261013-I12-{internal,external}.md`).
+- **The split protocol exists, for concepts and intermediates.** Gurnee et al. split a concept's direction into its sparse J reconstruction and the remainder, rescaled to equal magnitude. For verbal report the J part puts the target in the top 5 on 59% of trials against 5% for the remainder (Fig. 8). For an inferred intermediate's probe, top-1 answer flips are 61% for the J part, 28% for the remainder, and 6% for the remainder once the intermediate's J coordinates are clamped (Fig. 16, 90 prompts). Both read verbatim. Roles and relations are never tested, and binding is listed as open.
+- **Closest: Viswanath (LessWrong, 2026-07-08; read verbatim, captured as `papers/interp_methods/` row 98).** On Llama-3.3-70B he projected 24 injected concept vectors onto the top-r Jacobian directions. At r = 2,000 the model named the J half 80% of the time and the non-J half never, while Anthropic's NLA named both. In an elephant-token test over 32 trials, the non-J half still raised the token's log-prob by 13.7–21.1 nats.
+  - **His cut is a rank, not a sparsity.** He projects onto top-r directions; Gurnee's J part is k sparse non-negative vocabulary vectors. Results at r and at k are different objects. His split also reversed between 6 and 16 concepts at r = 200, so where the boundary sits matters.
+  - **His vectors were synthetic injections.** Natural activations, and a relation rather than a concept, are the gap.
+- **Binding subspaces, never compared with a lens.** These are binding-ID vectors at entity and attribute tokens (Feng & Steinhardt 2024, `papers/interp_methods/`), a low-rank binding subspace found with a Hessian (Feng, Russell & Steinhardt 2024, *Propositional Probes*, same folder), and a 2–5-dimensional grid of entity–relation indices at attribute tokens in Llama3-8B and Qwen3-8B, layers 10–20, with causal patching (Dai, Heinzerling & Inui 2026, arXiv 2604.19052; read verbatim by the external review, not captured). They cover entity–attribute or order indices, not agent and patient, and none relates them to the J-space.
+- **Agent/patient specifically.** Denning, Guo, Snefjella & Blank (arXiv 2504.16884; read verbatim by the external review) find role reversals barely decodable from sentence-level representations (BERT's CLS token, other models' final punctuation; mostly < 0.6), but readable from some BERT attention heads (up to 0.79). The models are old and the work is correlational. COMPASS (arXiv 2511.20910) localizes semantic-role circuits with role-crossed minimal pairs (abstract only); check its intervention design before building.
+- **The gap:** we found no direct comparison of the J-lens reconstruction and the residual for relational information in natural activations. The search was shallow.
+
+**Hypotheses** (each about causal mediation under the named decomposition, model, layers and task).
+- **H-in.** The sparse reconstruction carries the role. Swapping only the twins' reconstructions moves the answer; swapping only the residuals does little. This would match the paper's Fig. 16 pattern for intermediates.
+- **H-out.** The residual carries the role. Swapping the residuals moves the answer and swapping the reconstructions doesn't. Binding-ID-like codes need not have single-token names, but a sparse combination can still represent an unnamed direction, so H-out is not implied by the binding literature. It is a live alternative.
+- **H-pos.** At the positions tested, neither carries it: even a full twin patch there does little, because the answer reads entity-position states late through attention. A failure at summary positions alone doesn't establish this; entity-aligned positions are tested too.
+- **H-order (confound).** What looks like role is word order. Effects on active sentences vanish on passive ones.
+- Decodability is separate from mediation. A component can hold decodable role information without controlling the answer, or the reverse; we measure both.
+
+**Experiment.** Staged, with a stop after each stage.
+- *Model:* Qwen3.6-27B at I1a's pinned revision. It is the only model with the J-lens, the J++ lens, Oracle Lens and an NLA, and I1a's capture and reader code already run it on one H100.
+- *Stimuli:* about 100 balanced role-reversed pairs: role-neutral entity pairs × verbs × active/passive, each twin with identical words. Two counterbalanced questions follow: "Who did the chasing?" and "Who was chased?". WorkspaceBench's 50 role-reversed role-bound pairs are a secondary set.
+- *Stage 0, competence and localization (pass/stop).*
+  - The model answers both questions correctly on ≥ 95% of items.
+  - Exact full-twin patches (recipient gets the donor twin's whole state) at a few intermediate layers, at (a) common positions before the question (sentence-final token) and (b) entity-aligned positions.
+  - This finds where a full patch flips the answer on ≥ 50% of items under both questions. If none does, stop and report H-pos at the tested sites.
+- *Stage 1, decodability.* Linear role probes on the full activation, the sparse reconstruction (one lens, J-lens, k = 25, pursuit via `third_party/olens_draft`'s MIT NNOMP) and the residual.
+  - **The label must not be readable from word order or voice.** In each pair one entity is designated in advance (e.g. the alphabetically first), independent of mention order. The label is "the designated entity is the agent", balanced 50/50 within each voice. So active and passive sentences each contain both labels, and neither order nor voice predicts it.
+  - **How the probe knows the entity.** At entity-aligned sites it reads the designated entity's own token position. At the pre-question site, probes are trained per designated entity, and a pooled probe is used only for the transfer test.
+  - Transfer is tested to held-out entities, held-out verbs and across voice. Resampling is grouped by entity pair.
+- *Stage 2, mediation (the headline), at the sites where Stage 0 works.*
+  - With j = reconstruction and r = residual of each twin, patch the recipient with j_donor + r_recipient, and separately j_recipient + r_donor, at native magnitude, in both directions.
+  - Controls:
+    - the exact full-twin patch;
+    - a self-patch (a no-op, checking the hook; reconstruction quality is reported separately as variance explained, achieved sparsity and solver convergence);
+    - a same-role donor (a different sentence with the same roles);
+    - a random donor pair;
+    - degradation (answers that are neither entity).
+  - The outcome is the flip rate and log-odds shift under both questions, with paired, entity-pair-grouped bootstrap intervals. Norm-matched dose curves are reported separately as exploratory.
+- *Stage 3, only if Stage 2 dissociates.*
+  - A k sweep (16, 25, 100, 400) and the J++ lens, as a sensitivity analysis of the sparse cut, kept distinct from Viswanath's rank sweep.
+  - A downstream clamp, with its coordinate set, layers and positions written down first, and a clamp-only arm to measure damage.
+  - Then Oracle Lens and the NLA on the patched states, against Qwen's own answer under the same patch. A donor-dependent readout shows sensitivity to that intervention, not by itself that the reader "reads" a represented role (the P11 caveat).
+
+**Decision rules, set in advance.** Outcomes are named for the measured contrast, not for where binding "lives".
+- **"Greater residual-swap effect."** The residual swap's flip rate exceeds the reconstruction swap's, with the paired, grouped 95% interval excluding zero and the residual swap at least 10 points above zero. It must hold under both questions and both voices, at every k in the Stage 3 sweep and on the J++ lens. A small cut shrinks the reconstruction and favours this outcome, so one found only at small k is reported as cut-dependent.
+- **"Greater reconstruction-swap effect."** The mirror condition, reported at k = 25 (the cut least favourable to it), under both questions and both voices.
+- **"The weaker component does little."** This is claimed only if its flip rate's upper 95% bound is ≤ 10 points (the equivalence bound). Otherwise a significant difference is reported as "both carry it, unequally", e.g. 70% vs 60%.
+- **If no full patch works at a tested site,** the outcome is "no effective intervention at the tested sites". That is not evidence that role information is absent there or is retrieved elsewhere.
+- **Decodability (Stage 1) is reported separately** and never substitutes for mediation.
+
+**What it will show.** Priors are subjective, and the component rows are conditional on Stage 0 passing.
+
+| Outcome | Rough prior | What it means |
+|---|---|---|
+| Stage 0 fails: no tested site flips ≥ 50% under both questions | ~0.3 | No effective intervention at the tested sites. Cheap stop; widen the sites only if cheap. |
+| Greater reconstruction-swap effect, with the residual doing little (conditional) | ~0.2 | The sparse reconstruction carries what controls the answer. The bag view undersells the J-space; next, read the structure out. |
+| Greater residual-swap effect, with the reconstruction doing little, holding across the cut sweep (conditional) | ~0.2 | The reconstruction misses what controls the answer. Next: test whether J-lens monitoring confuses role-reversed scenarios. |
+| Both carry it unequally, neither reliable, or cut-dependent (conditional) | ~0.6 | Report the split per layer and site; no structural claim. |
+| Role probes transfer to held-out entities and passive voice (≥ 80%) on at least one component | ~0.5 | An abstract role code, as binding-ID work predicts; says where it is decodable, not what the model uses. |
+
+**Cost and time.**
+- A benchmark comes first, on the pod: pursuit per state, one patched batch and one clamped batch. Bulk runs only after extrapolating from it.
+- The planned grid for Stages 0–2 is about 100 pairs × 2 questions × 2 directions × ~3 layers × 2 site types × 6 arms, about 15k sequences in batches. With I1a's measured throughput that is roughly 1–2 H100-hours, plus pursuit.
+- Stage 3 runs only at the one best site and layer from Stage 2:
+  - 100 pairs × 2 questions × 2 directions × 2 component arms × (4 k on the J-lens + k = 25 on J++) = 4,000 sequences;
+  - 3 clamp arms × 400 = 1,200;
+  - about 400 patched states each read by Oracle Lens and the NLA. Loading the NLA adds a model load; judging happens after teardown.
+- The Stage 3 cost is provisional until the pod benchmark.
+- **Estimate about $10–25, cap $40.** About two days. Probe tier.
+
+**Risks.**
+- **The reconstruction is not a subspace.** J-space is a union of sparse cones, so J(h_B − h_A) ≠ J(h_B) − J(h_A), and twins with the same words can still have different reconstructions. That is why the design patches components of natural states rather than splitting a difference direction.
+- **Native-magnitude effects need not add.** The model is nonlinear, so the two component swaps need not sum to the full patch. Report each against the full patch, not as shares of a whole.
+- **Off-distribution states.** Recombined states may be unnatural. The self-patch, same-role and random-donor controls, plus the degradation rate, bound this.
+- **New code:** a pursuit wrapper with stated tolerances (NNOMP stops early, so a requested k = 400 may return fewer atoms), and a component-patch hook extending `src/emx/steer_multi.py`. J++ for Qwen3.6-27B is not wired yet; that is a Stage 3 item.
 
 ## 3. Topic 3: Alignment and monitorability of agent swarms
 
@@ -3158,6 +3248,23 @@ Quotes come from the meetings' automatic transcripts. The transcripts are not co
     - I4's ~0.7 prior that domain-fit lenses are "nearly identical" may be somewhat high. We keep it until a domain comparison exists.
   - *No prompt-only baseline:* the J++ readout evals have none, so Neel's critique applies if anyone uses them to support monitoring. The authors themselves say how well the lens works for monitoring is "as of yet unclear" (their fn. 11).
 - **If the interp line revives,** J++ is the J-Lens arm to use. It doesn't reopen anything now.
+
+### Ideas noted from Anthropic's self-replicating-AI post, 2026-10-12 (not proposed)
+
+**Source:** Zhou and Freeman (Anthropic Frontier Red Team), "AI models may be capable of self-replicating without access to a datacenter", 2026-10-12, https://www.anthropic.com/research/self-replicating-ai. **Read via a fetch-tool summary only:** the charts, the interactive per-model table and the video were not seen, and the post is not captured in `papers/`. Pinned at Jacob's request (2026-10-12). The replication threat itself is not a direction for us. What interests us is one harness detail.
+
+**What caught our interest: "Memento", learning through inherited notes.**
+- The harness, built on the open-source Pi coding agent (pi.dev), periodically restarts a fresh agent. The new agent inherits the workspace plus notes left by the previous one. This is a compaction-style handoff, the same mechanism P07–P10 studied and P23 is testing.
+- **Notes carry capability forward.** Over six generations of Qwen3.5-9B (20 lineages), success at the post's inference-setup task rose "from 45% in the first generation to between 61% and 84% in later ones".
+- **A frontier advisor didn't help.** Qwen3.5-9B with access to Opus 4.8 did no better, even after RL training to use the advisor.
+- **Related evidence in hand:**
+  - The Mythos incident transcript has two notes the model wrote to itself at a handoff (P19, deferred).
+  - P08 suggests that safe behaviour after compaction rides on the summary's record of earlier decisions, not on cues. P23 tests that.
+
+**Candidate questions (not proposed; each needs the internal and external literature reviews first). All would run on benign tasks (e.g. X3's coding tasks), never on replication or cyber tasks.**
+1. **What in an inherited note drives the improvement?** Ablate note contents (environment facts, failed attempts, decisions or strategies, instructions to self) across generations, and measure the effect on later generations' success.
+2. **Do dispositions propagate or drift through note lineages?** If generation 1 cheats, or decides not to, does that carry forward through the notes and harden over generations? This extends P23's decisions-vs-cues question from one handoff to many.
+3. **Notes as a monitoring surface.** In sanctioned long-horizon deployments the handoff notes are a cheap, legible artifact. How much of an agent's later behaviour can a monitor predict from them?
 
 ## 5. Ranked summary
 

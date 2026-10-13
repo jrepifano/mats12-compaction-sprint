@@ -1,0 +1,4420 @@
+Observable Patterns Are Not Explanations:
+A Causal-Geometric Analysis of Latent Reasoning Models
+Darpan Aswal1,2
+
+Thomas Palmeira Ferraz1,3 Yongxin Zhou1 Maxime Peyrard1
+1
+Université Grenoble Alpes, CNRS, Grenoble INP, LIG
+2
+3
+Université Paris-Saclay
+NAVER LABS Europe
+darpan.aswal@universite-paris-saclay.fr
+
+arXiv:2606.12689v1 [cs.CL] 10 Jun 2026
+
+Abstract
+
+2025). In contrast, LRMs reason through continuous states, raising new safety and interpretability
+concerns as they scale and are deployed in agentic
+systems (Chan et al., 2023). This calls for a better
+understanding of their internal dynamics.
+Early interpretability efforts have searched for
+latent-state analogues of CoT traces, aiming to decode interpretable patterns from latent thoughts.
+For example, Hao et al. (2025) and Zhu et al. (2025)
+argue that continuous latent thoughts demonstrate
+breadth-first-search-like reasoning over multiple
+superposed candidate reasoning paths, while Shen
+et al. (2025) and Wei et al. (2026) suggest that
+implicit supervision can yield interpretable intermediate reasoning steps. Later work has also used
+local interventions to investigate these findings (Cywinski et al., 2025; Peters et al., 2025). However,
+several methodological concerns remain, leaving
+important questions unaddressed. First, emergence:
+whether the observed pattern emerges specifically
+from latent-reasoning mechanisms, or also appears
+in matched non-LRM controls. Second, generalizability: whether the pattern is characteristic of
+latent reasoning more broadly, rather than specific
+to one task, model, curriculum, or training recipe.
+Third, causality: whether the pattern actually contributes to the model’s behavior, rather than merely
+correlating with successful outcomes. Without addressing these questions, observable patterns may
+lead to superficial evidence for reasoning.
+In this work, instead of treating latent thoughts
+as hidden explanations, we argue in favor of treating them as extended hidden computation states
+whose influence strength must be measured by their
+causal effect on model behavior. Our approach
+contrasts with prior work also taking a causal perspective by asking binarily whether a latent thought
+is “used” or “not used” (Zhang et al., 2025a; Cui
+et al., 2026), shifting the question to where causal
+influence is concentrated within the latent representation. These causally effective regions then
+
+Latent reasoning models (LRMs) replace
+explicit chain-of-thought with continuous
+thoughts. Recent work treats observable latentstate patterns, such as BFS-like frontiers and
+decodable arithmetic computation, as evidence
+for internal reasoning mechanisms. Evaluating
+two LRMs (Coconut and CODI) against controls lacking the proposed recurrence or curriculum, we find these patterns also appear in the
+controls and do not always causally affect behavior. Causal interventions reveal that latentthought utilization is not binary but graded,
+scaling with a thought’s causal effect on model
+behavior. Geometric analyses reveal this effect
+concentrates in low-rank directions whose stepto-step geometry grows more structured as their
+behavioral influence increases. Latent thoughts
+should therefore be treated as hidden computation, not hidden explanation: decodability,
+attention, or static structure alone cannot establish mechanism. LRM interpretability thus
+requires matched controls and causal tests.
+
+1
+
+Introduction
+
+Chain-of-thought (CoT) prompting has become a
+standard approach for eliciting reasoning through
+verbalized intermediate steps in natural language (Wei et al., 2022; Li et al., 2025; Lyu
+et al., 2023). However, CoT is computationally
+costly and fundamentally constrained by the discreteness of natural-language tokens (Zhang et al.,
+2025b). To address these limitations, latent reasoning models (LRMs) perform intermediate computation in continuous hidden states (Hao et al.,
+2025; Shen et al., 2025). LRMs promise improved
+efficiency, but they also remove the primary artifact available for monitoring and oversight: visible
+CoT traces. Despite well-known faithfulness concerns (Chen et al., 2025; Turpin et al., 2023), CoT
+traces still provide human-interpretable signals that
+can be monitored for harmful or misaligned behavior (Bereska and Gavves, 2024; Korbak et al.,
+1
+
+with Fθ a causal transformer, E the token embedding map, and g identity or learned. We call
+ht ∈ Rd the latent thought. After K latent steps,
+autoregressive decoding resumes:
+Y
+pθ (y | x, elat
+pθ (ym | x, elat
+1:K ) =
+1:K , y<m ).
+
+become the object of analysis: once isolated, their
+geometry and dynamics can be studied. This framing leads to the following research questions:
+RQ1. Do observable patterns in LRM latent space
+uniquely emerge from, and explain the performance
+of, latent-reasoning mechanisms? In § 4, we compare LRMs against matched controls and find that
+reasoning patterns previously attributed to latent
+recurrence can also emerge in curriculum-matched
+non-recurrent models, and even in untrained models with forced thought positions. This shows that
+observable patterns alone do not sufficiently establish mechanism.
+RQ2. When do latent thoughts influence model
+predictions, and where in the latent state does
+this influence come from? In § 5, we combine latent thought ablations, causal tracing, and gradientsubspace interventions to show that latent thought
+influence lies on a continuum. In particular, the
+effect of latent thoughts is often concentrated in
+low-rank, loss-sensitive directions (a causal gradient subspace) rather than distributed across the full
+latent representation.
+RQ3. Do behavior-influential latent thoughts differ
+from weakly influential ones in how their representations evolve across steps? In § 6, we study the
+geometry and dynamics of both full latent thought
+trajectories and causally influential subspaces. We
+find that weakly influential latent thoughts are often
+nearly static across steps, while behavior-influential
+thoughts exhibit more structured evolution.
+Overall, our work shifts the target of interpretability from observational proxies to the actual
+causal trajectories within latent computation. Finally, we discuss practical implications in more
+detail in § 7.
+
+2
+
+Background and Related Work
+
+2.1
+
+Latent Reasoning Models
+
+m
+
+We study two instances: COCONUT gradually replaces CoT segments with latent states via a
+staged curriculum (Hao et al., 2025), while CODI
+compresses textual rationales into latents via selfdistillation (Shen et al., 2025).
+2.2
+
+Observational vs. Causal Interpretability
+
+Mechanistic interpretability seeks to reverse engineer neural network computations into humanunderstandable algorithms (Bereska and Gavves,
+2024; Geiger et al., 2025). A key distinction separates information that is observable from activations from information that is causally used:
+probes and visualization methods can reveal correlated structure without establishing mechanism (Belinkov, 2022; Jain and Wallace, 2019; Elazar et al.,
+2021; Lasri et al., 2022; Teney et al., 2022). This
+issue is central for LRMs, where claims about latent reasoning often rely on observational readouts,
+without showing that these structures drive performance. This risks conflating decodability with
+mechanism, an analogue of the dead salmon effect (Méloux et al., 2025a), symptoms of a general
+tendency of interpretability research to produce
+false positive findings (Hewitt and Liang, 2019;
+Ravichander et al., 2021; Kantamneni et al., 2025;
+Méloux et al., 2025a). We rely on interventionbased methods (e.g., causal tracing, activation
+patching) (Meng et al., 2022; Wang et al., 2023;
+Chan et al., 2022; Heimersheim and Nanda, 2024;
+Monea et al., 2024) to test whether latent thoughts
+affect model behavior.1
+
+Unlike standard Chain-of-Thought (CoT) models
+that generate textual rationales, latent reasoning
+models such as implicit CoT (Deng et al., 2023)
+and recurrent/looped transformers (Giannou et al.,
+2023; Dehghani et al., 2019) replace intermediate
+steps with hidden state computations to bypass vocabulary projection. We focus on autoregressive
+continuous-thought models which insert K latent
+positions between the prompt x and the answer y
+by recursively feeding projected soft-tokens elat
+t+1
+from hidden-states:
+
+
+ht = Fθ E(x), elat
+,
+elat
+1:t
+t+1 = g(ht ),
+
+2.3 Mechanistic Analyses of Latent Reasoning
+Observable Latent Patterns. Prior work finds
+structured intermediates in latent states. In CODI,
+logit-lens, attention-mass, and activation-patching
+analyses are used to argue that models use latent
+thoughts as a computational scratchpad for reasoning: at each step, these states store operands and intermediate values for subsequent steps (Shen et al.,
+2025; Cywinski et al., 2025; Peters et al., 2025);
+however, the evidence remains largely single-task
+1
+
+recognizing causal interventions can still admit multiple
+compatible explanations (Méloux et al., 2025b).
+
+last
+
+2
+
+and observational. Hao et al. (2025) interpret Coconut’s latent thoughts as superposed reasoning
+paths with BFS-like dynamics, where successive
+latent steps represent multiple candidate nodes at
+increasing graph depths and progressively concentrate mass on target-reaching nodes. Later work
+attributes similar patterns to shortcut behavior and
+task-specific heuristics (Cui et al., 2026; RizviMartel et al., 2026). In this work, we investigate
+whether such observable patterns reflect genuine
+reasoning mechanisms.
+Shortcut Behavior. Continuous thoughts may
+be decodable without driving reasoning: models
+can solve tasks via prompt or KV-cache shortcuts,
+or commit to answers before latent computation.
+Prior work frames thought use as binary, showing
+performance persisting under perturbations and ablations of latent states (Zhang et al., 2025a; Cui
+et al., 2026), suggesting stronger supervision as
+the cure. However, such findings cannot establish
+whether models are simply incapable of using their
+thoughts or if they just find other circuits in their absence. We therefore treat latent-thought influence
+as a graded and localizable causal quantity, motivating the question of whether this influence is concentrated in specific directions or distributed (Gur-Ari
+et al., 2018; Bernas et al., 2026).
+Geometry, Stability, and Latent Dynamics. A
+complementary perspective on LLM interpretability studies reasoning as movement through the representation space (Elhage et al., 2022; Park et al.,
+2023; Gurnee and Tegmark, 2023; Geva et al.,
+2023; Bhatia et al., 2025, 2026; Bernas et al., 2026;
+Zhou et al., 2026). In particular, Wang et al. (2026)
+model explicit CoT as a Markov chain, with CoT
+being useful only when transitions are stable and
+aligned. However, such analyses remain limited in
+LRM interpretability. Zhu et al. (2025) compare
+the geometry of latent thoughts with optimal node
+embeddings, suggesting a superpositional graphsearch representation. Wei et al. (2026) report
+that scaled implicit reasoning can become unstable,
+with representations homogenizing and drifting
+from the vocabulary manifold. These dynamical
+studies show how latent states evolve, not whether
+the changing directions causally affect the answer,
+motivating pairing geometry with intervention.
+
+3
+
+reasoning on GSM8k (Cobbe et al., 2021).
+Models and Controls. All models are trained
+separately for each task from pretrained GPT-2
+small (Radford et al., 2019). Our design compares
+target LRM models with different curricula but the
+same recurrence mechanism (Coconut (C) and
+CODI), and the following controls:
+• Recurrence control: Pause-as-thought (PaT)
+follows Coconut’s format and curriculum but replaces recurrence with learned thought tokens.
+• Curriculum control: Coconutu (Cu ), a
+curriculum-perturbed Coconut variant that samples other stages with probability u = 0.3.
+• Observational controls: Base GPT-2 (B) and
+Explicit-CoT GPT-2 (CoT) are included in § 4
+to test whether similar patterns can be recovered
+without latent-reasoning training, either from the
+probe itself or from ordinary task-solving. They
+are excluded from causal and geometric analyses,
+which require dedicated latent thought positions.
+Details on models and training are in Appendix C.
+Statistical Evaluation.
+We report 95% bootstraped confidence intervals (1,000 resamples) and
+use McNemar p-values for paired comparisons. Details and full significance results are in Appendix B.
+
+4
+
+Observable Structures Are Insufficient
+for Mechanistic Attribution
+
+We revisit two LRM interpretability patterns from
+prior work, discussed in § 2.3: Coconut’s apparent simultaneous encoding of multiple candidate
+reasoning paths (superposition) and progressive
+refinement toward the correct path (breadth-firstsearch exploration) on graph-tasks, and CODI’s
+claimed reasoning through decodable intermediate
+computations (scratchpad) on arithmetics. To address RQ1, we compare models to non-LRM model
+and curriculum controls introduced in § 3.
+4.1 Case Study 1: Superposition and BFS-like
+search on Graph-Hopping
+Following Hao et al. (2025), we probe the depth
+frontier after k latent thoughts by measuring
+the
+Q unnormalized joint probability p(concept) =
+i p(toki | ctx, “Every”, tok<i ) over candidate
+nodes at depth max(k, 1) from the root: children
+for k=1; grandchildren for k=2. Hao et al. (2025)
+read this as two patterns. Superposition: early latent thoughts hold multiple candidates simultaneously (high entropy; candidate mass spread across
+
+Experimental Setup
+
+Datasets. We evaluate graph-hopping on
+ProsQA (Hao et al., 2025) and arithmetic3
+
+0.25
+0.00
+
+0
+
+2
+
+3
+
+4
+
+70.1±2.4
+58.6±2.6
+
+40
+
+36.2±2.7
+29.2±2.5
+
+20
+0
+
+0.25
+
+Thought step t
+
+60
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Thought step t
+
+0.63±0.07
+0.58±0.06
+0.23±0.05
+0.16±0.05
+0.02±0.02
+0.00±0.00
+
+0.50
+
+(d) Intermediate Hit Rate
+
+80
+
+Hit rate (%)
+
+1
+
+0.75
+
+0.00
+
+(c) Cand. Mass
+1.00
+
+0
+
+1
+
+2
+
+3
+
+4
+
+Cand. mass
+
+0.50
+
+P(correct)
+
+0.40±0.05
+0.38±0.05
+0.27±0.04
+0.19±0.04
+0.14±0.04
+0.13±0.03
+
+Superposition (%)
+
+H/log2 N
+
+0.75
+
+(b) P(correct)
+
+1.00
+
+0.75
+
+0.63±0.07
+0.59±0.07
+0.24±0.05
+0.16±0.05
+0.03±0.02
+0.00±0.00
+
+0.50
+0.25
+0.00
+
+Thought step t
+
+0
+
+1
+
+(e) Superposition Rate
+
+30
+
+22.1±2.2
+21.9±2.2
+
+20
+
+10.5±1.6
+6.1±1.3
+
+10
+0
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+3
+
+4
+
+Thought step t
+
+63.9±2.5
+
+60
+40
+
+48.3±2.7
+35.2±2.7
+
+20
+
+17.7±2.0
+
+B
+CoT
+PaT
+C
+Cu
+CODI
+
+0
+0
+
+Thought step t
+
+2
+
+(f) Step Alignment
+Step alignment (%)
+
+(a) Entropy
+
+1.00
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+Thought step t
+
+Figure 1: Probing for breadth-first-search (BFS) patterns on graph-hopping (top) and scratchpad-thinking on
+arithmetic-reasoning (bottom). Takeaway: Matched controls reproduce or invert observable patterns, showing
+they are not specific to the proposed recurrence or curriculum mechanisms and, thus, are insufficient alone for
+mechanistic attribution.
+
+t-th CoT step. We additionally test Superposition
+Rate (fraction of steps decoding ≥ 2 distinct intermediates) to test generalizability of Hao et al.
+(2025) claims 2 . Results in Figure 1 (bottom row).
+
+nodes). BFS: increasing mass on target-reaching
+nodes with recurrence (rising P (correct); falling
+entropy). If recurrent feedback drives this BFSlike exploration, C should show this pattern more
+strongly than PaT. Results in Figure 1 (top row).
+B and CoT, lacking latent training, never form
+the frontier (B near-zero mass; CoT concentrates
+mass early but degrades with depth). While C reproduces the BFS signature (rising P (correct),
+falling entropy), PaT matches it with no recurrence (but same curriculum). Moreover, Cu which
+perturbs C’s curriculum inverts this pattern: high
+mass at shallow depth that degrades with depth.
+CODI, which lacks the curriculum, weakly mirrors C and PaT. Candidate mass tracks P (correct)
+closely, indicating that frontier mass concentrates
+on target-reaching nodes. However, superposition
+requires competing incorrect candidates held simultaneously. Thus, BFS signature is not recurrencespecific: PaT matches it without recurrence, while
+Cu changes it with recurrence preserved.
+4.2
+
+PaT lacks recurrence but exceeds CODI on hitrate overall. C, CoT (no latent training) and Cu
+also reproduce CODI-like step-wise alternation, although with different magnitudes and phase structure. This suggests the pattern is not specific to
+CODI’s latent-distillation objective: it could reflect
+CoT fine-tuning, probe-setup, or another source,
+but its appearance in controls already contradicts
+that attribution. Moreover, step-alignment decays
+sharply with depth for every model, contradicting
+an ordered scratchpad. B is near zero throughout.
+Superposition stays low across all models, failing
+to reproduce COCONUT’s frontier in arithmetic.
+Overall, the logit-lens readouts recover scratchpadlike signatures without uniquely tracking performance or requiring CODI’s distillation mechanism.
+
+Case Study 2: Scratchpad Thinking on
+Arithmetic-Reasoning via Logit-Lens
+
+Summary. Both case studies reproduce the
+original reported findings but challenge the conclusions. Similar patterns in non-LRM controls
+indicating that the observed patterns are not
+specific to LRMs. Going beyond observable
+patterns requires a causal perspective.
+
+Following Shen et al. (2025), we project finallayer hidden states at thought positions through
+the LM head and compare decoded tokens against
+ground-truth intermediate CoT annotations. Shen
+et al. (2025) read two patterns as evidence of latent scratchpad. Hit Rate: decoded tokens match
+a ground-truth CoT intermediate. Step Alignment
+(ordered-scratchpad): the t-th thought matches the
+
+2
+
+We also track top-1 decoded token changes across steps
+to assess trajectory structure on both tasks (Appendix A).
+
+4
+
+Model
+
+Graph- Thoughts Arithmetic- Thoughts
+Hopping Removed Reasoning Removed
+
+B
+CoT
+PaT
+C
+Cu
+CODI
+
+2.4±1.3
+79.0±3.6
+95.4±1.8
+98.0±1.3
+96.0±1.7
+80.0±3.5
+
+–
+–
+95.6±1.7
+97.8±1.3
+91.8±2.4
+80.0±3.5
+
+1.4±0.6
+41.9±2.7
+26.4±2.4
+35.7±2.5
+30.8±2.5
+41.8±2.7
+
+answer boundary Ab , we greedily decode N tokens, recording at each step j the full next-token
+(j)
+distribution P• = softmax(zj ) for each pass. We
+compute the forward KL from the clean distribu(j)
+(j) 
+tion KL Pclean ∥P• , and average over the content window W = [nfmt , e) spanning the clean
+pass output, where nfmt skips the fixed format prefix (e.g., ###, The answer is:), and e is the first
+end-of-text step (or N ). Patching thus measures
+recovery of the model’s clean behavior:
+
+–
+–
+21.4±2.2
+7.7±1.4
+39.1±2.6
+25.6±2.4
+
+Table 1: Accuracy under thought-ablation at test-time.
+Performance degrades on arithmetic-reasoning; graphhopping is unaffected. Takeaway: Influence of latent
+thoughts on model performance is task-varying.
+
+1
+KL• = |W
+|
+
+X
+
+(j)
+
+(j) 
+
+KL Pclean ∥P•
+
+,
+
+IE(s) = 1 − KLpp /KLcp
+
+j∈W
+
+5
+
+When and How do LRMs use Latent
+Thoughts?
+
+The indirect effect IE(s) ≤ 1 measures how far
+the patch restores the clean output: 1 is full recovery, 0 none, and < 0 is worsening. We report the arg maxℓ -IE (s) over the position bucket
+{Pfull , Pmax , Pb , T1 , . . . , TK , Tfull , Ab }, where Tt
+is thought t; Pb , Ab the latent-block delimiters;
+Pmax the strongest single prompt token; and
+Pfull /Tfull the jointly patched prompt & thought
+positions. Results in Figure 2.
+Prompt positions (especially Pfull ) strongly
+recover performance across models on graphhopping. The thoughts sit at zero recoverability
+across all models, even Cu which shows small
+thought necessity in the thought ablation experiment. This is possibly a result of its small
+(4.8%) thought necessity being averaged over the
+full dataset. On arithmetic-reasoning, promptpositions of PaT and CODI still show very high recoverability throughout layers. Individual thought
+positions also show recoverability rates albeit small.
+Interestingly, patching all thought positions while
+other positions are corrupted shows the best recoverability through all layers on C, Cu and CODI and
+through the later layers on PaT.
+
+Having shown that observational readouts are not
+specific enough for mechanistic attribution, we now
+investigate how latent thoughts causally influence
+model behavior.
+Latent Thought Ablation at Test-Time. First,
+we evaluate whether models require latent thoughts
+at all by removing them at test-time: K:=Kmax →
+0 (recurrence skipped for C, Cu , CODI; the k parallel tokens dropped for PaT). Results in Table 1.
+On graph-hopping, only Cu is affected meaningfully. On arithmetic-reasoning, Cu improves
+but other models suffer major drops. Causal necessity of latent thoughts is task-dependent, but
+the shortcut-learning dichotomy (used or bypassed)
+warrants further checks due to Cu ’s behavior.
+Per-Position Causal Tracing. If performance is
+maintained under removed thoughts, does it necessarily imply that, when present, thoughts are not
+causally influencing the computation? LLMs are
+known to be causally over-determined (McGrath
+et al., 2023; Méloux et al., 2025a): multiple circuits
+computing the same behavior (Lan et al., 2024);
+when present, thoughts are still part of the computational paths and we can expect them to have
+a causal impact on the output. To test this, we
+extend Meng et al. (2022)’s causal tracing methodology to latent thoughts.
+Define site s = (ℓ, p) as a layer ℓ and position p
+in the residual stream (Elhage et al., 2021) 3 . We
+run a clean pass, a corrupted pass (cp) on a partner prompt (dataset instance with different answer),
+and a patched pass (pp) that injects site s’s clean
+activation into the corrupted forward pass. At the
+
+Gradient-Subspace Interventions. The previous analyses test whether or not latent thoughts
+influence model behavior at test-time. Prior work
+typically frames this influence as binary: unused
+thoughts are simply bypassed shortcuts (Zhang
+et al., 2025a; Cui et al., 2026). But why? Do these
+thoughts lack the capacity to influence behavior, or
+is their effect simply too small to measure globally?
+To test this, we isolate the representation directions
+most sensitive to the loss allowing us to geometrically concentrate thought influence to a subspace
+and intervene right there.
+For thought hi,t ∈ RD (instance i, position
+t), loss Li and gradients gi,t = ∇hi,t Li , we de-
+
+3
+
+Per component (attention, MLP) decompositions appear
+in Appendix A.
+
+5
+
+6
+
+0.48
+
+0
+
+0.93
+
+11
+
+6
+
+0.46
+
+0
+
+0
+
+0.27
+
+11
+
+6
+
+0.13
+
+0
+
+0
+
+PaT (n=1319)
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+Layer
+
+C (n=500)
+
+Cu (n=500)
+
+CODI (n=500)
+
+0.93
+
+11
+
+6
+
+0.46
+
+6
+
+0.48
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0.53
+
+11
+
+0.48
+
+11
+
+6
+
+0.27
+
+6
+
+0.24
+
+6
+
+0.15
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+C (n=1319)
+
+Cu (n=1319)
+
+0.97
+
+CODI (n=1319)
+0.31
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+11
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+0.96
+
+11
+
+Arithmetic-Reasoning
+
+PaT (n=500)
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+Layer
+
+Graph-Hopping
+
+11
+
+Figure 2: Per-layer IEKL on the residual stream under partner-prompt corruption across buckets
+{Pfull , Pmax , Pb , T1 , . . . , TK , Tfull , Ab }. Prompt positions recover best across models and tasks. Thought positions Tt contribute near zero on graph-hopping; on arithmetic-reasoning, Tfull yields the strongest recovery for C,
+Cu , and CODI. Takeaway: Latent-thought influence is task-varying—when large, it can override corrupted prompt
+positions and steer models toward correct paths.
+
+fine the gradient-subspace Bt ∈ RD×kt using
+the top-kt right singular vectors of the gradient
+matrix Gt = [g1,t ; . . . ; gN,t ], capturing 99% cumulative energy. To intervene, we split hi,t as
+⊤
+⊥
+hB
+i,t = Bt Bt hi,t (projection onto Bt ) and hi,t =
+hi,t − hB
+i,t . The projection is scaled by α ∈
+{0, 0.5, 1, 1.5, 2, 5, 10, 25, 50, 100} via the update
+B
+⊤
+hi,t ← h⊥
+i,t + αhi,t = hi,t + (α − 1)Bt Bt hi,t
+which ablates (α = 0) or amplifies (α > 1) the
+targeted component. A rank-matched orthonormal
+basis Btrand via QR decomposition on Gaussian
+noise serves as the control. Except for PaT, models
+skip t = K as the gold answer token sits at step K
+(meaning GK in empty). Results in Figure 3.
+On graph-hopping, ablation leaves accuracy
+intact, but PaT and C show notable flip-rates at
+high-α values that significantly exceed the random control. This suggests that thoughts are not
+strictly bypassed, but retain graded causal effect
+over model behavior capable of steering predictions. Cu is an exception: despite degrading under
+thought ablation, the gradient directions fail to localize its influence to a concentrated subspace. On
+arithmetic-reasoning, ablation degrades all models but the random control stays inert. GRAD flips
+exceed Rand only at very small α, demonstrating a
+highly influential subspace 4 .
+
+Summary. Thought utilization is graded
+rather than binary, and depends on how much
+influence the latent thoughts carry on model
+behavior. Together with § 4, this motivates
+moving from finding low-level observable latent
+patterns to studying the dynamics of behaviorinfluential directions across latent steps.
+
+6
+
+The Dynamics and Geometry of Latent
+Thoughts
+
+Observable patterns such as BFS and scratchpadthinking (§ 4) are not sufficient, on their own, to
+establish causal contribution to model behavior. In
+this section, we argue that the dynamic evolution
+of latent thoughts (and the directions where their
+causal influence concentrates) can offer more meaningful insights into the structure of latent reasoning.
+Using the behavior-influential directions identified
+in § 5, we now apply geometric tools to distinguish
+the dynamics of highly causally influential latent
+thoughts from less causally influential ones.
+Markovianity of Thought Trajectories. We
+first investigate the evolution of thought trajectories, testing whether future states can be predicted
+from preceding ones. By design, the transformer
+architecture makes every thought a function of all
+previous thoughts and prompt tokens, but the trajectories may encode a simpler approximate structure.
+
+4
+
+Appendix A (Table 3) reports the dimensionality of the
+gradient-derived subspaces.
+
+6
+
+(a) Graph-Hopping — GRAD
+Flip rate (%)
+
+75
+
+0.8±0.7
+
+50
+
+0.4±0.5
+
+25
+
+0.4±0.5
+
+34.4±4.2
+
+Flip rate (%)
+
+75
+50
+25
+
+75
+
+0.7±0.4
+
+50
+
+0.0±0.0
+
+1.2±0.5
+
+25
+
+0.0±0.0
+
+1.1±0.5
+
+1.2±0.9
+
+0 0.5 1 1.5 2
+
+5
+
+99.7±0.2
+
+100
+
+49.4±4.2
+
+0.0±0.0
+
+0
+
+100
+
+(b) Graph-Hopping — Rand
+100.0±0.0
+
+100
+
+0
+
+0.0±0.0
+
+0.9±0.5
+
+PaT
+
+10 25 50 100
+
+0 0.5 1 1.5 2
+
+5
+
+10 25 50 100
+
+C
+
+α (amplification constant)
+
+α (amplification constant)
+
+(c) Arithmetic-Reasoning — GRAD
+
+(d) Arithmetic-Reasoning — Rand
+85.7±1.9
+
+80.3±2.1
+
+85.4±1.1
+
+33.8±1.5
+
+50
+
+40.0±2.7
+
+35.0±2.6
+
+94.4±0.7
+
+100
+
+57.4±2.8
+
+42.5±2.6
+
+CODI
+99.7±0.2
+
+92.5±1.4
+
+92.6±1.4
+
+Cu
+
+24.9±1.4
+
+48.1±1.5
+
+11.0±1.0
+
+0
+
+0
+0 0.5 1 1.5 2
+
+5
+
+4.9±0.7
+
+10 25 50 100
+
+0 0.5 1 1.5 2
+
+α (amplification constant)
+
+5
+
+10 25 50 100
+
+α (amplification constant)
+
+Figure 3: Gradient-subspace intervention flip rates (%) across amplification strength α on the gradient-derived vs
+random control directions. Graph-Hopping: Robust to ablation (α = 0) but flips at high-α on GRAD. ArithmeticReasoning: Degradation under GRAD ablation; GRAD > Rand flip-rates at low α. Takeaway: Thought utilization
+is graded and depends on their influence power over model behavior.
+
+1.0
+
+Linear
+
+0.8
+
+MLP
+C
+
+Static
+
+CODI
+
+C
+
+u
+Evolving
+
+PaT
+
+Static
+
+C
+
+C
+
+u
+Evolving
+
+CODI
+
+Mean cos2 (Bt, Bt + 1)
+
+Mean
+
+PaT
+
+Gradient-Subspace
+
+Arithmetic-Reasoning
+
+0.6
+
+R 2 (Test)
+
+Full Thoughts
+
+Graph-Hopping
+Identity
+
+(a) Graph-Hopping
+
+(b) Arithmetic-Reasoning
+
+0.87
+0.78
+0.55
+
+0.57
+0.54
+0.54
+
+0.26
+
+0.27
+
+0.5 1.5 2.5 3.5 4.5 5.5
+
+Timestep t
+
+0.4
+Identity
+
+1.00
+0.75
+0.50
+0.25
+0.00
+
+PaT
+
+0.5 1.5 2.5 3.5 4.5 5.5
+C
+
+Cu
+
+Timestep t
+
+CODI
+
+0.2
+
+Mean
+
+Figure 5: Geometric stability of the gradient-subspaces.
+Graph-Hopping: Stable subspaces (except Cu );
+Arithmetic-Reasoning: Rotating subspaces. Takeaway: Thoughts with weak influence over model behavior exhibit highly stable gradient-subspace geometries. Points plotted at half-integers as each measures an
+adjacent-step pair cos2 (Bt , Bt+1 ).
+
+0.0
+
+Linear
+MLP
+PaT
+
+C
+
+C
+
+Evolvingu
+
+CODI
+
+PaT
+
+C
+
+C
+
+Evolvingu
+
+CODI
+
+Figure 4: Markovianity of latent thoughts. GraphHopping: Static dynamics (except Cu ); ArithmeticReasoning: Evolving dynamics. Takeaway: Even static
+appearing full-thoughts show evolving dynamics within
+the gradient-subspace where influence concentrates.
+
+inates for PaT, C, and CODI: no fitted transition
+meaningfully improves over simply copying the
+previous thought, but collapses on Cu for which
+linear and MLP are the best approximates. On
+arithmetic-reasoning, identity dominates on PaT
+but collapses on C, Cu , and CODI, all best characterized by the MLP while linear closely follows.
+The dynamics change in the gradient-subspace; the
+MLP map nearly captures the full graph-hopping
+dynamics and dominates on arithmetic-reasoning.
+
+For the thoughts hi,1 , . . . , hi,K for every test instance i, we form pairs Xi,t = [hi,t−1 ; . . . ; hi,t−n ]
+and Yi,t = hi,t for a Markov order n. We fit a
+shared map f : RnD → RD on the train split and report uniform-average R2 on the test split under two
+function classes: ridge-regularized linear regression and a two-layer MLP : ht = W2 σ(W1 X +
+b1 ) + b2 with σ=GELU, W1 ∈ R256×nD (earlystopped on a 10% train slice, R2 averaged over
+3 seeds). We compare against the mean baseline
+ĥt = h̄train (R2 = 0 on train split), and the identity baseline ĥt = ht−1 . Order n = 1 is the
+strict first-order claim ht = f (ht−1 ); we sweep
+n ∈ {1, . . . , 5}. The same analysis on the pro⊤
+jected thoughts hB
+i,t = Bt Bt hi,t tests how the
+gradient-subspace (§ 5) dynamics differ from the
+full-dimensional thoughts. Results in Figure 4.
+On graph-hopping, the identity baseline dom-
+
+Geometric Stability of Gradient-Subspaces.
+Next, we ask whether the gradient-subspace (§ 5)
+itself remains stable throughout the reasoning trajectory. For adjacent time-steps, we measure the
+mean squared principal-angle similarity
+ between
+⊤
+2
+subspaces: st = mean σ(Bt Bt+1 ) , where σ(·)
+denotes the singular values of the inter-basis projection matrix. Values of st → 1 indicate stable causal
+subspaces, while st → 0 indicate orthogonality.
+7
+
+Figure 5 further localizes this distinction to the
+geometry of the gradient-subspace. On graphhopping, PaT, C and CODI maintain highly stable subspaces while Cu shows near-orthogonal
+early rotations before stabilizing. On arithmeticreasoning, stability is lower overall: PaT remains
+most stable, C and Cu show moderate alignment,
+and CODI undergoes large step-to-step rotations.
+
+capable of using latent thoughts; they may instead
+reflect alternative circuits that solve the task when
+latent computation is removed. Conversely, forcing stronger dependence on latent thoughts (for
+instance by stronger supervision) does not by itself show that these thoughts implement faithful
+reasoning. The more informative unit of analysis
+is therefore the strength and localization of latentthought influence for a given model and task.
+
+Summary. Beyond their causal necessity and
+sufficiency, the causally influential directions in
+latent thoughts are consistently low-rank, and
+their dynamics track influence. Where causal
+effect is weak (e.g, graph-hopping), full trajectories barely evolve past the first thought, though
+the causally active subspace supports non-trivial
+computation; where stronger, trajectory dynamics are more structured, and the causally active
+subspace supports more diverse computation.
+
+7
+
+Implications for LRM interpretation and design.
+Causal localization also gives interpretability a constructive role. Once behavior-influential regions
+are identified, they provide concrete targets for
+geometric analysis, monitoring, and downstream
+interventions. For example, if influence is consistently concentrated in low-rank, loss-sensitive subspaces, compression could focus on preserving the
+task-relevant component of the latent state rather
+than the full representation. Similarly, if behaviorinfluential directions are shown to follow stable or
+predictable step-to-step dynamics, they could inform simplified transition models or more targeted
+recurrent computation, which is particularly relevant because the recurrent mechanism described in
+§ 2.1 can impose sequential dependencies that are
+difficult to parallelize during training.
+
+Discussions
+
+A causal-first view of latent thoughts. LRM interpretability is especially vulnerable to false explanations: decodable intermediates, attention mass,
+and visually salient geometries can appear even
+when the proposed mechanism is absent. Observational tools are most natural when computation
+is partly exposed in token space; in LRMs, they
+can recover structure from continuous states that
+need not coincide with what the model uses to answer. This makes an observational-first workflow
+risky. We therefore reverse the order of analysis:
+rather than starting from a readable latent pattern,
+we first test whether latent thoughts causally affect
+behavior and where this influence is concentrated.
+Only then do we analyze the geometry and dynamics of these behavior-influential regions. Geometry
+is informative when it describes the part of latent
+computation that affects predictions.
+From thought use to causal localization. This
+causal-first view helps reframe the shortcut-vsreasoning dichotomy. The relevant question is
+not whether latent thoughts are simply “used” or
+“bypassed”, but how much they influence behavior and in which directions of the representation.
+This influence can vary across tasks with different complexity and structure. Moreover, a model
+may solve a task without requiring latent thoughts
+under ablation while still containing latent directions that can steer its predictions when intervened
+on. Such cases do not show that the model is in-
+
+Relation to CoT faithfulness concerns. Our
+findings extend documented concerns about explicit CoT: verbalized rationales can misrepresent
+a model’s internal reasons (Turpin et al., 2023; Arcuschin et al., 2025), and intermediate steps (including “aha” or self-verification moments) may exert
+little causal influence on the final answer (Boppana et al., 2026; Zhao et al., 2025). LRMs inherit
+this concern while removing the surface artifact
+that makes CoT at least partially inspectable. The
+risk is therefore not only opacity, but false interpretability: latent states may contain decodable or
+geometrically structured information that appears
+explanatory without being behaviorally relevant,
+strengthening the case for causal-first monitoring.
+Overall, latent thoughts should be treated as hidden computation, not hidden explanation. Instead
+of readable latent patterns, LRM interpretability
+should target the regions of latent computation
+that causally shape behavior and analyze their dynamics. This causal-first view provides a more
+grounded and principled basis for designing and
+auditing latent reasoning systems.
+8
+
+Limitations
+
+interventions can still be local, distribution-shifting,
+or compatible with multiple explanations. Rather,
+it provides a stricter evidential standard that should
+be combined with stress testing, adversarial evaluation, uncertainty reporting, and domain-specific
+oversight.
+
+First, we estimate the gradient subspace linearly
+via SVD; a nonlinear estimator (e.g., autoencoder) could capture causal structure a linear basis flattens. Second, our causal evidence relies
+on local intervention-based methods with known
+caveats: causal tracing and gradient-subspace interventions probe behavior under specific perturbations that can shift the model off-distribution,
+and interventions admit multiple compatible mechanistic explanations, so “behavior-influential” is
+a necessary-but-not-sufficient signal of mechanism, not proof. Third, our conclusions draw
+on relatively small models at modest latent steps
+(K=6), and our LRM coverage is partial (PaT,
+COCONUT, CODI); future work should extend
+to larger model families and more recent reasoning paradigms. Lastly, the task-varying nature
+of thought utilization makes LRMs a natural setting for model diffing—comparing checkpoints
+across curricula or training stages to localize where
+behavior-influential structure first emerges—which
+our per-instance, per-timestep analyses do not address: we study trained checkpoints only, not how
+the causal subspace forms over training.
+
+Acknowledgements
+This work was conducted within the French research unit UMR 5217 and was supported by
+CNRS (grant ANR-22-CPJ2-0036-01 and ANR25-CE23-2059-01) and by MIAI@Grenoble-Alpes
+(grant ANR-19-P3IA-0003 and ANR-23-IACL0006). Thomas’ research is also partially supported by the French Ministry of Higher Education,
+Research and Innovation under CIFRE PhD Convention “Reconcile Efficiency and Interpretability in Structured Planning and Reasoning” (no.
+2025/0487).
+
+References
+Iván Arcuschin, Jett Janiak, Robert Krzyzanowski,
+Senthooran Rajamanoharan, Neel Nanda, and Arthur
+Conmy. 2025.
+Chain-of-thought reasoning in
+the wild is not always faithful. arXiv preprint
+arXiv:2503.08679.
+
+Ethical Considerations and Societal Impact
+
+Yonatan Belinkov. 2022. Probing classifiers: Promises,
+shortcomings, and advances. Computational Linguistics, 48(1):207–219.
+
+Latent reasoning models may have substantial societal impact if they make multi-step reasoning
+more efficient, scalable, and easier to integrate into
+agentic systems. Yet by replacing explicit chain-ofthought traces with continuous hidden-state computation, LRMs remove a surface artifact that can
+be inspected, filtered, or audited. This creates two
+related risks. First, without reliable tools for interpreting LRMs, users, developers, and auditors may
+have fewer signals for detecting harmful, deceptive,
+or misaligned behavior, especially in high-stakes
+domains such as education, healthcare triage, legal
+assistance, scientific automation, or autonomous
+agents. Second, unreliable interpretability tools
+can create false interpretations, which may lead to
+monitor the wrong features and miss the computations that actually drive harmful or misaligned
+behavior. Our work contributes towards addressing
+this risk by arguing that latent thoughts should be
+treated as hidden computational states, not hidden
+explanations, and that mechanistic claims require
+controls and causal tests before latent structure is
+interpreted. This causal-first view is not a bulletproof procedure that solves this completely, since
+
+Leonard Bereska and Efstratios Gavves. 2024. Mechanistic interpretability for ai safety–a review. arXiv
+preprint arXiv:2404.14082.
+Raphael Bernas, Fanny Jourdan, Antonin Poché, and
+Céline Hudelot. 2026. Revisiting anisotropy in language transformers: The geometry of learning dynamics. arXiv preprint arXiv:2604.08764.
+Gagan Bhatia, Ahmad Muhammad Isa, Maxime
+Peyrard, and Wei Zhao. 2026. What really controls temporal reasoning in large language models:
+Tokenisation or representation of time? Preprint,
+arXiv:2603.19017.
+Gagan Bhatia, Maxime Peyrard, and Wei Zhao. 2025.
+Date fragments: A hidden bottleneck of tokenization
+for temporal reasoning. In Proceedings of the 2025
+Conference on Empirical Methods in Natural Language Processing, pages 3201–3219, Suzhou, China.
+Association for Computational Linguistics.
+Siddharth Boppana, Annabel Ma, Max Loeffler,
+Raphael Sarfati, Eric Bigelow, Atticus Geiger, Owen
+Lewis, and Jack Merullo. 2026. Reasoning theater:
+Disentangling model beliefs from chain-of-thought.
+arXiv preprint arXiv:2603.05488.
+
+9
+
+Alan Chan, Rebecca Salganik, Alva Markelius, Chris
+Pang, Nitarshan Rajkumar, Dmitrii Krasheninnikov,
+Lauro Langosco, Zhonghao He, Yawen Duan, Micah
+Carroll, et al. 2023. Harms from increasingly agentic
+algorithmic systems. In Proceedings of the 2023
+ACM conference on fairness, accountability, and
+transparency, pages 651–666.
+
+Nelson Elhage, Neel Nanda, Catherine Olsson, Tom
+Henighan, Nicholas Joseph, Ben Mann, Amanda
+Askell, Yuntao Bai, Anna Chen, Tom Conerly, et al.
+2021. A mathematical framework for transformer
+circuits. Transformer Circuits Thread, 1(1):12.
+Atticus Geiger, Duligur Ibeling, Amir Zur, Maheep
+Chaudhary, Sonakshi Chauhan, Jing Huang, Aryaman Arora, Zhengxuan Wu, Noah Goodman, Christopher Potts, and Thomas Icard. 2025. Causal Abstraction: A Theoretical Foundation for Mechanistic Interpretability. Journal of Machine Learning Research,
+26(83):1–64.
+
+Lawrence Chan, Adrià Garriga-Alonso, Nicholas
+Goldwosky-Dill, Ryan Greenblatt, Jenny Nitishinskaya, Ansh Radhakrishnan, Buck Shlegeris, and
+Nate Thomas. 2022. Causal scrubbing, a method
+for rigorously testing interpretability hypotheses. AI
+Alignment Forum.
+
+Mor Geva, Jasmijn Bastings, Katja Filippova, and Amir
+Globerson. 2023. Dissecting recall of factual associations in auto-regressive language models. In Proceedings of the 2023 Conference on Empirical Methods in
+Natural Language Processing, pages 12216–12235.
+
+Yanda Chen, Joe Benton, Ansh Radhakrishnan,
+Jonathan Uesato, Carson Denison, John Schulman, Arushi Somani, Peter Hase, Misha Wagner,
+Fabien Roger, et al. 2025. Reasoning models
+don’t always say what they think. arXiv preprint
+arXiv:2505.05410.
+Karl Cobbe, Vineet Kosaraju, Mohammad Bavarian,
+Mark Chen, Heewoo Jun, Lukasz Kaiser, Matthias
+Plappert, Jerry Tworek, Jacob Hilton, Reiichiro
+Nakano, et al. 2021. Training verifiers to solve math
+word problems. arXiv preprint arXiv:2110.14168.
+
+Angeliki Giannou, Shashank Rajput, Jy-Yong Sohn,
+Kangwook Lee, Jason D. Lee, and Dimitris Papailiopoulos. 2023. Looped transformers as programmable computers. In Proceedings of the 40th
+International Conference on Machine Learning, volume 202 of Proceedings of Machine Learning Research, pages 11398–11442. PMLR.
+
+Yingqian Cui, Zhenwei Dai, Bing He, Zhan Shi, Hui
+Liu, Rui Sun, Zhiji Liu, Yue Xing, Jiliang Tang, and
+Benoit Dumoulin. 2026. How Do Latent Reasoning
+Methods Perform Under Weak and Strong Supervision? In Workshop on Latent & Implicit Thinking –
+Going Beyond CoT Reasoning.
+
+Sachin Goyal, Ziwei Ji, Ankit Singh Rawat, Aditya Krishna Menon, Sanjiv Kumar, and Vaishnavh Nagarajan. 2024. Think before you speak: Training language models with pause tokens. In The Twelfth
+International Conference on Learning Representations.
+
+Bartosz Cywinski, Bart Bussmann, Arthur Conmy,
+Joshua Engels, Neel Nanda, and Senthooran Rajamanoharan. 2025. Can we interpret latent reasoning using current mechanistic interpretability tools?
+LessWrong.
+
+Guy Gur-Ari, Daniel A Roberts, and Ethan Dyer. 2018.
+Gradient descent happens in a tiny subspace. arXiv
+preprint arXiv:1812.04754.
+Wes Gurnee and Max Tegmark. 2023. Language
+models represent space and time. arXiv preprint
+arXiv:2310.02207.
+
+Mostafa Dehghani, Stephan Gouws, Oriol Vinyals,
+Jakob Uszkoreit, and Lukasz Kaiser. 2019. Universal
+transformers. In International Conference on Learning Representations.
+
+Shibo Hao, Sainbayar Sukhbaatar, DiJia Su, Xian Li,
+Zhiting Hu, Jason E Weston, and Yuandong Tian.
+2025. Training Large Language Models to Reason
+in a Continuous Latent Space. In Second Conference
+on Language Modeling.
+
+Yuntian Deng, Kiran Prasad, Roland Fernandez, Paul
+Smolensky, Vishrav Chaudhary, and Stuart Shieber.
+2023. Implicit chain of thought reasoning via knowledge distillation. Preprint, arXiv:2311.01460.
+
+Stefan Heimersheim and Neel Nanda. 2024. How
+to use and interpret activation patching. Preprint,
+arXiv:2404.15255.
+
+Connor Dilgren and Sarah Wiegreffe. 2026. Are Latent
+Reasoning Models Easily Interpretable? In Workshop on Latent & Implicit Thinking – Going Beyond
+CoT Reasoning.
+Yanai Elazar, Shauli Ravfogel, Alon Jacovi, and Yoav
+Goldberg. 2021. Amnesic probing: Behavioral explanation with amnesic counterfactuals. Transactions of
+the Association for Computational Linguistics, 9:160–
+175.
+
+John Hewitt and Percy Liang. 2019. Designing and interpreting probes with control tasks. In Proceedings
+of the 2019 Conference on Empirical Methods in Natural Language Processing and the 9th International
+Joint Conference on Natural Language Processing
+(EMNLP-IJCNLP), pages 2733–2743, Hong Kong,
+China. Association for Computational Linguistics.
+
+Nelson Elhage, Tristan Hume, Catherine Olsson,
+Nicholas Schiefer, Tom Henighan, Shauna Kravec,
+Zac Hatfield-Dodds, Robert Lasenby, Dawn Drain,
+Carol Chen, et al. 2022. Toy models of superposition.
+arXiv preprint arXiv:2209.10652.
+
+Sarthak Jain and Byron C. Wallace. 2019. Attention is
+not Explanation. In Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies, Volume 1 (Long and Short Pa-
+
+10
+
+pers), pages 3543–3556, Minneapolis, Minnesota.
+Association for Computational Linguistics.
+
+Maxime Méloux, Giada Dirupo, François Portet, and
+Maxime Peyrard. 2025a. The dead salmons of ai
+interpretability. arXiv preprint arXiv:2512.18792.
+
+Subhash Kantamneni, Joshua Engels, Senthooran Rajamanoharan, Max Tegmark, and Neel Nanda. 2025.
+Are sparse autoencoders useful? a case study in
+sparse probing. In Forty-second International Conference on Machine Learning.
+
+Maxime Méloux, Silviu Maniu, François Portet, and
+Maxime Peyrard. 2025b. Everything, everywhere,
+all at once: Is mechanistic interpretability identifiable? In The Thirteenth International Conference on
+Learning Representations.
+
+Tomek Korbak, Mikita Balesni, Elizabeth Barnes,
+Yoshua Bengio, Joe Benton, Joseph Bloom, Mark
+Chen, Alan Cooney, Allan Dafoe, Anca Dragan,
+Scott Emmons, Owain Evans, David Farhi, Ryan
+Greenblatt, Dan Hendrycks, Marius Hobbhahn, Evan
+Hubinger, Geoffrey Irving, Erik Jenner, Daniel Kokotajlo, Victoria Krakovna, Shane Legg, David Lindner,
+David Luan, Aleksander M ˛
+adry, Julian Michael, Neel
+Nanda, Dave Orr, Jakub Pachocki, Ethan Perez, Mary
+Phuong, Fabien Roger, Joshua Saxe, Buck Shlegeris,
+Martín Soto, Eric Steinberger, Jasmine Wang, Wojciech Zaremba, Bowen Baker, Rohin Shah, and Vlad
+Mikulik. 2025. Chain of Thought Monitorability: A
+New and Fragile Opportunity for AI Safety. Preprint,
+arXiv:2507.11473.
+
+Kevin Meng, David Bau, Alex Andonian, and Yonatan
+Belinkov. 2022. Locating and editing factual associations in gpt. Advances in neural information processing systems, 35:17359–17372.
+Giovanni Monea, Maxime Peyrard, Martin Josifoski,
+Vishrav Chaudhary, Jason Eisner, Emre Kiciman,
+Hamid Palangi, Barun Patra, and Robert West. 2024.
+A glitch in the matrix? locating and detecting language model grounding with fakepedia. In Proceedings of the 62nd Annual Meeting of the Association
+for Computational Linguistics (Volume 1: Long Papers), pages 6828–6844, Bangkok, Thailand. Association for Computational Linguistics.
+
+Michael Lan, Philip Torr, and Fazl Barez. 2024. Towards interpretable sequence continuation: Analyzing shared circuits in large language models. In Proceedings of the 2024 Conference on Empirical Methods in Natural Language Processing, pages 12576–
+12601.
+
+Kiho Park, Yo Joong Choe, and Victor Veitch. 2023.
+The linear representation hypothesis and the geometry of large language models. arXiv preprint
+arXiv:2311.03658.
+Brad Peters, Sayam Goyal, María Emilia Granda,
+Akshath Vijayakumar Narmadha, Dharunish
+Yugeswardeenoo, Callum Stuart McDougall, Sean
+O’Brien, Ashwinee Panda, Kevin Zhu, and Cole
+Blondin. 2025. Scratchpad Thinking: Alternation
+Between Storage and Computation in Latent
+Reasoning Models. In Mechanistic Interpretability
+Workshop at NeurIPS 2025.
+
+Karim Lasri, Tiago Pimentel, Alessandro Lenci, Thierry
+Poibeau, and Ryan Cotterell. 2022. Probing for the
+usage of grammatical number. In Proceedings of the
+60th Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), pages
+8818–8831, Dublin, Ireland. Association for Computational Linguistics.
+
+Alec Radford, Jeff Wu, Rewon Child, David Luan,
+Dario Amodei, and Ilya Sutskever. 2019. Language
+Models are Unsupervised Multitask Learners. OpenAI blog, 1(8):9.
+
+Xiaomin Li, Zhou Yu, Zhiwei Zhang, Xupeng Chen,
+Ziji Zhang, Yingying Zhuang, Narayanan Sadagopan,
+and Anurag Beniwal. 2025. When thinking fails: The
+pitfalls of reasoning for instruction-following in llms.
+arXiv preprint arXiv:2505.11423.
+
+Abhilasha Ravichander, Yonatan Belinkov, and Eduard
+Hovy. 2021. Probing the probing paradigm: Does
+probing accuracy entail task relevance? In Proceedings of the 16th Conference of the European Chapter of the Association for Computational Linguistics:
+Main Volume, pages 3363–3377, Online. Association
+for Computational Linguistics.
+
+Jia Liang and Liangming Pan. 2026. Do latentcot models think step-by-step? a mechanistic
+study on sequential reasoning tasks. Preprint,
+arXiv:2602.00449.
+Qing Lyu, Shreya Havaldar, Adam Stein, Li Zhang,
+Delip Rao, Eric Wong, Marianna Apidianaki, and
+Chris Callison-Burch. 2023. Faithful chain-ofthought reasoning. In Proceedings of the 13th International Joint Conference on Natural Language
+Processing and the 3rd Conference of the Asia-Pacific
+Chapter of the Association for Computational Linguistics (Volume 1: Long Papers), pages 305–329.
+
+Michael Rizvi-Martel, Guillaume Rabusseau, and Marius Mosbach. 2026. The illusion of superposition?
+a principled analysis of latent thinking in language
+models. Preprint, arXiv:2604.06374.
+Zhenyi Shen, Hanqi Yan, Linhai Zhang, Zhanghao Hu,
+Yali Du, and Yulan He. 2025. Codi: Compressing chain-of-thought into continuous space via selfdistillation. In Proceedings of the 2025 Conference
+on Empirical Methods in Natural Language Processing, pages 677–693.
+
+Thomas McGrath, Matthew Rahtz, Janos Kramar,
+Vladimir Mikulik, and Shane Legg. 2023. The hydra effect: Emergent self-repair in language model
+computations. Preprint, arXiv:2307.15771.
+
+11
+
+Damien Teney, Maxime Peyrard, and Ehsan Abbasnejad. 2022. Predicting is not understanding: Recognizing and addressing underspecification in machine
+learning. In Computer Vision – ECCV 2022: 17th European Conference, Tel Aviv, Israel, October 23–27,
+2022, Proceedings, Part XXIII, page 458–476, Berlin,
+Heidelberg. Springer-Verlag.
+Miles Turpin, Julian Michael, Ethan Perez, and Samuel
+Bowman. 2023. Language models don’t always say
+what they think: Unfaithful explanations in chain-ofthought prompting. Advances in Neural Information
+Processing Systems, 36:74952–74965.
+Kevin Ro Wang, Alexandre Variengien, Arthur Conmy,
+Buck Shlegeris, and Jacob Steinhardt. 2023. Interpretability in the wild: a circuit for indirect object
+identification in GPT-2 small. In The Eleventh International Conference on Learning Representations.
+Zihan Wang, Yijun Dong, and Qi Lei. 2026. When does
+Chain-of-Thought Help: A Markovian Perspective.
+In Workshop on Latent & Implicit Thinking – Going
+Beyond CoT Reasoning.
+Jason Wei, Xuezhi Wang, Dale Schuurmans, Maarten
+Bosma, Fei Xia, Ed Chi, Quoc V Le, Denny Zhou,
+et al. 2022. Chain-of-thought prompting elicits reasoning in large language models. Advances in neural
+information processing systems, 35:24824–24837.
+Xilin Wei, Xiaoran Liu, Yuhang Zang, Xiaoyi Dong,
+Yuhang Cao, Jiaqi Wang, Xipeng Qiu, and Dahua
+Lin. 2026. SIM-CoT: Supervised Implicit Chain-ofThought. In The Fourteenth International Conference on Learning Representations.
+Yuyi Zhang, Boyu Tang, Tianjie Ju, Sufeng Duan, and
+Gongshen Liu. 2025a. Do Latent Tokens Think?
+A Causal and Adversarial Analysis of Chain-ofContinuous-Thought. Preprint, arXiv:2512.21711.
+Zhen Zhang, Xuehai He, Weixiang Yan, Ao Shen,
+Chenyang Zhao, Shuohang Wang, Yelong Shen, and
+Xin Eric Wang. 2025b. Soft thinking: Unlocking
+the reasoning potential of llms in continuous concept
+space. arXiv preprint arXiv:2505.15778.
+Jiachen Zhao, Yiyou Sun, Weiyan Shi, and Dawn Song.
+2025. Can aha moments be fake? identifying true
+and decorative thinking steps in chain-of-thought.
+arXiv preprint arXiv:2510.24941.
+Yufa Zhou, Yixiao Wang, Xunjian Yin, Shuyan Zhou,
+and Anru Zhang. 2026. The geometry of reasoning:
+Flowing logics in representation space. In The Fourteenth International Conference on Learning Representations.
+Hanlin Zhu, Shibo Hao, Zhiting Hu, Jiantao Jiao, Stuart J Russell, and Yuandong Tian. 2025. Reasoning by superposition: A theoretical perspective on
+chain of continuous thought. In Advances in Neural
+Information Processing Systems, volume 38, pages
+79931–79963. Curran Associates, Inc.
+
+12
+
+A
+
+Extended Analyses
+
+remain semantically incoherent. On arithmeticreasoning, B has no decodable structure while
+CoT shows moderate decodability despite no latent training—suggesting inherited structure from
+CoT fine-tuning. PaT collapses to the answer delimiter at most positions again. CODI exhibits the
+clearest alternation between intermediate results
+and formatting tokens; C has lower decodability
+but similar alternation while Cu shows alternation
+with operators at non-result positions.
+
+This section reports additional results for experiments conducted in § 4, § 5 and § 6.
+k
+
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+Depth probed
+n (instances
+with ≥2 candidates)
+
+1
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+461
+
+461
+
+486
+
+439
+
+182
+
+26
+
+3
+
+6
+
+Table 2: Sample size at each probing depth. Results at
+k ≥ 5 are computed over too few instances (n<50) to
+support aggregate conclusions and are omitted from the
+main analysis.
+
+Decomposition of Residual Stream Causal Tracing Recovery into Attention and MLP-Outputs.
+Figures 8a & 8b show the results. In contrast to
+the full residual stream (Figure 2) the thought positions of graph-hopping models show very small
+but real causal effect, specially on the attention decomposition. This further supporting our claim that
+thought use isn’t necessarily binary but depends on
+how much influence the latent thoughts carry. The
+arithmetic-reasoning models show similar patterns
+as in the full residual stream (Figure 2).
+
+Superposition and BFS-like search on GraphHopping. The main text reports aggregate results
+for k=0 . . . 4 only. Hao et al. (2025) illustrate the
+probing methodology on individual examples; Table 2 shows that the aggregate version necessarily
+confronts the fact that most ProsQA graphs do not
+extend to depth 6.
+Attention Mass Distribution. As an additional
+demonstration of epiphenomenal patterns in interpretability, we evaluate how much attention the
+answer-generating boundary token directs at the
+latent thought tokens versus the prompt tokens.
+Let tend be the sequence position of this boundary token. We extract attention distribution over
+all preceding key positions j, averaged across all
+L transformer layers and H attention heads:
+L
+
+ᾱj =
+
+Gradient-Subspace Dimensionality. Table 3 reports per-timestep gradient-subspace diagnostics:
+rank kt at ρ=0.95, mean rank k̄ (excluding the
+degenerate final recurrent step), adjacent and offdiagonal cos2 (Bt , Bt′ ), and the norm fraction
+∥hc ∥/∥h∥ retained in the gradient-subspace (§ 5).
+Causal influence concentrates along few directions across both tasks. On graph-hopping, the
+subspaces are extremely low-rank for all models;
+on arithmetic-reasoning, ranks grow (although
+still low-rank compared to full thought vector dimensionality) except for CODI whose mean rank
+stays comparable across tasks, plausibly a consequence of its LoRA training.
+
+H
+
+1 XX
+αl,h (tend , j)
+L·H
+l=1 h=1
+
+where αl,h is the attention weight at layer l and
+head h. The total attention mass for a given sequence partitionP
+S (e.g., prompt or latent thoughts)
+is calculated as j∈S ᾱj . Results in Figure 6.
+On graph-hopping, PaT and Cu attend to their
+latent thoughts while C and CODI largely ignore
+them. Despite no training, both controls B and CoT
+place significant mass on their (forced) thoughts.
+For arithmetic-reasoning, all models place considerable mass on their thought tokens.
+
+Variance Decomposition of Latent-Thoughts.
+We report the static organization of latent-thought
+by decomposing their total variance hi,t ∈ RD (instance i, timestep t) into timestep-specific, instancespecific, and residual components using µ =
+Ei,t [hi,t ] (global mean), µt = Ei [hi,t ] (temporalmean) and µi = Et [hi,t ] (instance-mean) as:
+V ar(hi,t ) = Et ∥µt − µ∥2 + Ei ∥µi − µ∥2
+|
+{z
+} |
+{z
+}
+
+Logit-Lens Decoded Thought Trajectories.
+Figure 7 illustrates representative logit-lens trajectories.
+On graph-hopping, PaT and C collapse to the
+answer delimiter at every position despite strong
+task performance; only Cu produces somewhat
+evolving projections, while CODI and the controls
+
+V artime
+
+V arinst
+
++ Ei,t ∥hi,t − µi − µt + µ∥2
+{z
+}
+|
+V arresidual
+
+For PaT, t indexes spatial tokens; for C and Cu , it
+indexes recurrence-steps. Results in Table 4.
+13
+
+(a) Graph-Hopping
+Prompt
+
+100
+
+4.0±0.1
+
+Latent
+
+5.6±0.1
+
+Attention mass (%)
+
+Self
+
+7.0±0.1
+4.1±0.1
+
+12.2±0.1
+
+80
+
+(b) Arithmetic-Reasoning
+
+26.2±1.0
+
+Prompt
+
+100
+
+13.2±0.1
+36.7±0.4
+
+26.5±0.4
+
+51.1±0.9
+
+60
+
+Self
+4.2±0.0
+
+13.5±0.2
+
+80
+
+Latent
+
+12.2±0.1
+25.6±0.2
+
+24.1±0.2
+
+70.6±0.2
+
+71.7±0.2
+
+C
+
+Cu
+
+17.0±0.1
+
+46.8±0.2
+
+60
+88.9±0.1
+
+84.7±0.1
+
+40
+
+68.1±0.9
+
+60.0±0.3
+
+60.0±0.4
+
+44.8±0.8
+
+20
+0
+
+B
+
+85.7±0.1
+
+40
+
+83.3±0.1
+
+20
+CoT
+
+PaT
+
+Cu
+
+C
+
+0
+
+CODI
+
+B
+
+79.9±0.1
+
+50.4±0.2
+
+CoT
+
+PaT
+
+CODI
+
+Figure 6: Attention mass distribution of the boundary token across prompt tokens, latent thoughts, and itself,
+averaged across all transformer layers and heads.
+
+Graph-Hopping
+B
+
+Arithmetic-Reasoning
+B
+
+<|lat
+
+:
+
+.
+
+The
+
+The
+
+CoT
+
+4
+
+.
+
+1
+
+.
+
+4
+
+###
+
+PaT
+
+1
+
+3
+
+###
+
+###
+
+###
+
+###
+
+###
+
+###
+
+###
+
+C
+
+###
+
+5
+
+###
+
+6
+
+/
+
+1
+
+###
+
+n
+
+n
+
+n
+
+Cu
+
+3
+
+60
+
++
+
+80
+
+-
+
+###
+
+###
+
+is
+
+is
+
+is
+
+is
+
+CODI
+
+15
+
+,
+
+33
+
+?
+
+11
+
+.
+
+13
+
+t3
+
+t4
+
+t5
+
+t6
+
+t0
+
+t1
+
+t2
+
+t3
+
+t4
+
+t5
+
+t6
+
+<
+
+is
+
+is
+
+is
+
+is
+
+CoT
+
+Sally
+
+a
+
+a
+
+PaT
+
+###
+
+###
+
+###
+
+###
+
+###
+
+###
+
+C
+
+###
+
+###
+
+###
+
+###
+
+###
+
+Cu
+
+S
+
+###
+
+Every
+
+CODI
+
+The
+
+is
+
+is
+
+t0
+
+t1
+
+t2
+
+Thought step
+
+is
+
+is
+
+Thought step
+
+The
+
++
+
+Figure 7: A logit-lens projection example for all models on both tasks (graph-hopping and arithmetic-reasoning)
+and model families. The final-layer hidden states at every thought position are decoded through the LM head to
+obtain the vocabulary projections.
+Task
+
+Model
+
+k0
+
+k1
+
+k2
+
+k3
+
+k4
+
+k5
+
+k6
+
+GraphHopping
+
+PaT
+C
+Cu
+CODI
+
+15
+13
+15
+20
+
+16
+12
+13
+33
+
+16
+11
+17
+35
+
+16
+11
+17
+36
+
+17
+12
+17
+36
+
+17
+12
+14
+37
+
+17
+–
+–
+–
+
+k̄ Adj. cos2 Off-diag. cos2 ∥hc ∥/∥h∥
+16.3
+11.8
+15.5
+32.8
+
+0.871
+0.972
+0.486
+0.898
+
+0.697±0.026
+0.671±0.024
+0.197±0.012
+0.587±0.008
+
+0.353
+0.026
+0.045
+0.100
+
+PaT
+160 145 146 109 122 156 153 141.6
+Arithmetic- C
+155 100 129 135 128 115
+– 127.0
+Reasoning Cu
+126 114 115 122 119 134
+– 121.7
+CODI 51 14 64 18 57 13
+– 36.2
+
+0.711
+0.512
+0.574
+0.271
+
+0.623±0.019
+0.394±0.021
+0.404±0.014
+0.351±0.016
+
+0.378
+0.369
+0.297
+0.306
+
+Table 3: Gradient-subspace diagnostics across tasks.
+
+the remaining variance: Cu at 63.1%, C at 49.0%,
+and CODI at 48.1%). This is with the exception of
+PaT, which remains Varinst dominated (72.6%) and
+whose temporal component is 1-2 orders of magnitude smaller than the recurrence-based models.
+
+On graph-hopping shows PaT and C are
+Varinst dominated (98.7% and 68.9%, respectively), whereas Cu is Vartime dominated (99.1%),
+forming nearly perfectly separable clusters corresponding to recurrence depth (Figure 9). For
+arithmetic-reasoning, all recurrence-based models are Varresidual dominated (implicit in Table 4 as
+14
+
+Cu (n=500)
+
+6
+
+0.0045
+
+6
+
+0.0028
+
+6
+
+0.0028
+
+6
+
+0.0054
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0.07
+
+11
+
+0.1
+
+11
+
+0.084
+
+11
+
+6
+
+0.035
+
+6
+
+0.052
+
+6
+
+0.042
+
+6
+
+0.03
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+PaT (n=500)
+
+C (n=500)
+
+Cu (n=1319)
+
+(a) Attention outputs.
+
+6
+
+0.0074
+
+0
+
+Cu (n=500)
+
+CODI (n=1319)
+0.06
+
+11
+
+6
+
+0.008
+
+6
+
+0.0021
+
+6
+
+0.0097
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0.052
+
+11
+
+0.2
+
+11
+
+0.14
+
+11
+
+6
+
+0.026
+
+6
+
+0.1
+
+6
+
+0.071
+
+6
+
+0.052
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+0
+
+PaT (n=1319)
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+11
+
+C (n=1319)
+
+0.0043 11
+
+CODI (n=500)
+
+0.016
+
+Cu (n=1319)
+
+0.019
+
+CODI (n=1319)
+0.1
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+11
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+0.015
+
+0.011
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+C (n=1319)
+
+0.0055 11
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+PaT (n=1319)
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+11
+
+0.0056 11
+
+CODI (n=500)
+
+11
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+Layer
+
+Graph-Hopping
+
+Layer
+
+C (n=500)
+
+0.009
+
+11
+
+Arithmetic-Reasoning
+
+PaT (n=500)
+
+Pfull
+Pmax
+Pb
+T1
+T2
+T3
+T4
+T5
+T6
+Tfull
+Ab
+
+Layer
+
+Arithmetic-Reasoning
+
+Layer
+
+Graph-Hopping
+
+11
+
+(b) MLP outputs.
+
+Figure 8: Per-layer IEKL under partner-prompt corruption across buckets {Pfull , Pmax , Pb , T1 , . . . , TK , Tfull , Ab },
+decomposed into attention (a) and MLP (b) outputs. Unlike the full residual stream (Figure 2), thought positions Tt
+on graph-hopping carry a small but nonzero causal effect, most visible in the attention decomposition. Arithmeticreasoning mirrors the full-residual pattern, with Tfull recovering most for C, Cu , and CODI. Takeaway: Latentthought influence is graded rather than binary—even where it appears negligible, thought positions exert a measurable
+causal effect.
+
+deviation norm: h′i,t = hi,t + ε · ∥µt − µ∥/∥ε∥
+(ε ∼ N (0, ID )). To prevent test-set leakage, all reference means (µ, µt ) are computed from the training split. Results in Figure 10.
+
+Mean-Ablations and Isolations. We apply six
+counterfactual interventions to the latent thoughts
+hi,t at inference to identify component-wise importance. Ablations remove one component: temporal
+(h′i,t = hi,t −µt +µ), instance (h′i,t = hi,t − µ̂i +µ,
+1 PK
+′
+with µ̂i = K+1
+k=0 hi,k ), or residual (hi,t =
+µt + µ̂i − µ). Isolations retain only one component:
+h′i,t = µt , h′i,t = µ̂i , or h′i,t = hi,t − µt − µ̂i + 2µ,
+respectively. A matched-norm random control adds
+isotropic noise to hi,t rescaled to the temporal-
+
+Graph-hopping models are robust to perturbations except PaT, which requires µi for stability.
+Notably, neither variance nor gradient-subspace
+interventions recover Cu ’s thought-ablation drop,
+suggesting that its signal is distributed rather than
+localized. On arithmetic reasoning, PaT shows
+15
+
+Graph-Hopping
+Model Vartime
+
+Epiphenomenal Patterns in LRM Interpretability (§ 4). Table 5 reports the results for case study
+1 (superposition and BFS-like search on graphhopping); Table 6 reports results for case study
+2 (scratchpad reasoning on arithmetic-reasoning
+via logit-lens).
+
+Arithmetic-Reasoning
+
+Varinst
+
+Vartime
+
+Varinst
+
+PaT
+
+0.6±0.1 98.7±0.1 1.9±0.2
+
+72.6±0.8
+
+C
+
+22.6±1.9 68.9±2.1 25.0±0.4
+
+26.0±0.6
+
+Cu
+
+99.1±0.0 0.4±0.0 10.8±0.6
+
+CODI 89.8±0.7 7.4±0.6
+
+5.6±0.3
+
+26.1±0.5
+46.3±1.1
+
+When and How do LRMs use Latent Thoughts
+(§ 5)? Table 7 reports results for the latent
+thought ablation at test-time experiment; Tables 8
+& 9 (prompt and thought-positions respectively)
+for the causal-tracing experiment; and Tables 10
+& 11 (ablation and amplification respectively) for
+the gradient-subspace interventions experiment.
+
+60
+
+6
+
+40
+
+5
+
+20
+
+4
+
+0
+
+Timestep t
+
+PC2 (5.0%)
+
+Table 4: Variance decomposition of latent thoughts into
+temporal, instance, and residual components. Takeaway:
+Lack of generalizable structure suggests that observable
+static decomposition alone might not reliably differentiate active and inert thoughts. PaT carries 1-2 orders
+smaller Vartime than other models across tasks.
+
+The Dynamics and Geometry of Latent
+Thoughts (§ 6). Table 12 reports results for the
+Markovianity of thought trajectories experiment;
+and Table 3 for the geometric stability of gradientsubspaces experiment.
+
+1
+
+C
+
+3
+
+20
+
+2
+
+40
+60
+200
+
+100
+
+0
+
+PC1 (92.0%)
+
+100
+
+0
+
+In this appendix, we provide details on the dataset,
+models, and training details.
+
+Figure 9: 2D PCA projection of the latent space structure for Cu on the graph-hopping task. Takeaway: Cu is
+dominated by timestep-specific variance with negligible
+instance-specific variance, exhibiting perfectly separable timestep corresponding clusters.
+
+C.1
+
+Task and Dataset
+
+Tasks. In this work, we use two case studies corresponding to prominent mechanistic claims about
+latent reasoning models.
+Prior work has interpreted latent trajectories as
+breadth-first-search-like reasoning over graph frontiers in the graph-hopping task (Hao et al., 2025;
+Zhu et al., 2025). More recent works have investigated this claim more carefully, questioning its
+validity (Cui et al., 2026; Rizvi-Martel et al., 2026).
+All these works used ProsQA (Hao et al., 2025) as
+the benchmark for this investigation, which makes
+it a natural choice for our study. Each ProsQA
+instance is a directed acyclic graph of logical relations paired with a query and a gold target node; the
+dataset comprises 17,886 training, 300 validation,
+and 500 test instances.
+Prior work has interpreted decodable intermediate values as evidence that latent thoughts act as a
+compressed thought scratchpad in arithmetic reasoning (Shen et al., 2025). More recent works also
+question the validity of this claim, raising the possibility of shortcut behavior or task-specific heuristics (Cui et al., 2026; Liang and Pan, 2026; Dilgren
+and Wiegreffe, 2026; Wei et al., 2026). All these
+works used GSM8k (Cobbe et al., 2021) as one of
+the benchmarks for this investigation, which makes
+
+the same pattern. Ablating µt yields the smallest drop while isolating it causes the largest, indicating temporal structure is largely functionally inert—contrasting Wei et al. (2026)’s account
+of vocabulary-space drift as a key vulnerability.
+Ablating the residual component produces the
+largest drop, but its isolation has minimal impact.
+The matched-norm control preserves performance
+across all tasks.
+
+B
+
+Models, Controls, and Training Details
+
+Statistical Evaluation
+
+This section presents the full statistical-tests for
+every experiment conducted in § 4, § 5 and § 6.
+Unless stated otherwise, all confidence intervals
+are 95% percentile bootstrap intervals computed
+with 1,000 resamples over per-instance outcome
+vectors, and paired comparisons report exact twosided McNemar p-values on discordant pairs (b, c),
+where b counts instances correct only under condition A and c counts instances correct only under
+condition B. Significance markers follow the convention ∗ p<0.05, ∗∗ p<0.01, ∗∗∗ p<0.001.
+16
+
+(a) Graph-Hopping
+Ablate
+
+(b) Arithmetic-Reasoning
+
+Isolate
+
+100
+
+Accuracy (%)
+
+Ablate
+
+50
+
+rand
+
+Isolate
+
+rand
+
+40
+
+80
+
+30
+
+60
+40
+
+20
+
+20
+
+10
+
+0 Orig.
+
+t
+
+r
+
+i
+
+t
+
+r
+
+i
+
+rand
+
+PaT
+
+C
+
+0 Orig.
+
+t
+
+Cu
+
+CODI
+
+r
+
+i
+
+t
+
+i
+
+r
+
+rand
+
+Figure 10: Targeted interventions isolating and ablating specific variance components of the latent thoughts.
+Takeaway: Inert thoughts are largely unaffected under perturbations. Active thoughts show varied dependence on
+components, affected least by the temporal and most by the residual. Temporal structure appears functionally inert
+across models and tasks.
+H/ log2 N
+
+Top-1 correct (%)
+
+k
+
+B
+
+CoT
+
+PaT
+
+C
+
+Cu
+
+CODI
+
+B
+
+CoT
+
+PaT
+
+C
+
+Cu
+
+CODI
+
+0
+1
+2
+3
+4
+
+0.58±0.03
+0.33±0.03
+0.37±0.02
+0.39±0.03
+0.40±0.05
+
+0.16±0.02
+0.15±0.02
+0.24±0.02
+0.26±0.02
+0.27±0.04
+
+0.51±0.03
+0.51±0.03
+0.48±0.02
+0.23±0.03
+0.13±0.03
+
+0.43±0.03
+0.47±0.03
+0.48±0.02
+0.26±0.03
+0.14±0.04
+
+0.44±0.03
+0.46±0.03
+0.32±0.02
+0.37±0.03
+0.38±0.05
+
+0.34±0.03
+0.33±0.03
+0.32±0.02
+0.22±0.03
+0.19±0.04
+
+81.3±3.7
+68.8±4.1
+55.6±4.1
+51.3±4.7
+57.7±7.1
+
+84.2±3.5
+83.9±3.6
+70.8±4.1
+65.1±4.6
+70.3±6.3
+
+65.1±4.2
+64.9±4.4
+71.6±4.0
+88.6±3.2
+97.3±2.2
+
+63.8±4.1
+65.1±4.1
+63.2±4.1
+85.2±3.4
+92.9±3.8
+
+90.7±2.5
+90.7±2.5
+89.1±2.8
+86.6±3.3
+70.9±6.9
+
+64.4±4.6
+64.4±4.4
+51.0±4.3
+66.7±4.3
+78.6±6.0
+
+k
+
+B
+
+CoT
+
+PaT
+
+C
+
+Cu
+
+CODI
+
+B
+
+CoT
+
+PaT
+
+C
+
+Cu
+
+CODI
+
+0
+1
+2
+3
+4
+
+0.05±0.01
+0.00±0.00
+0.00±0.00
+0.00±0.00
+0.00±0.00
+
+0.36±0.04
+0.39±0.04
+0.09±0.02
+0.04±0.01
+0.02±0.02
+
+0.00±0.00
+0.00±0.00
+0.01±0.01
+0.34±0.04
+0.58±0.06
+
+0.00±0.00
+0.00±0.00
+0.00±0.00
+0.37±0.04
+0.63±0.07
+
+0.84±0.02
+0.85±0.02
+0.71±0.03
+0.38±0.03
+0.23±0.05
+
+0.02±0.01
+0.01±0.01
+0.01±0.01
+0.15±0.03
+0.16±0.05
+
+0.07±0.01
+0.01±0.00
+0.01±0.00
+0.00±0.00
+0.00±0.00
+
+0.40±0.04
+0.44±0.04
+0.10±0.02
+0.04±0.02
+0.03±0.02
+
+0.00±0.00
+0.00±0.00
+0.01±0.01
+0.34±0.04
+0.59±0.07
+
+0.00±0.00
+0.00±0.00
+0.00±0.00
+0.37±0.04
+0.63±0.07
+
+0.95±0.01
+0.97±0.01
+0.81±0.02
+0.40±0.03
+0.24±0.05
+
+0.03±0.01
+0.03±0.01
+0.03±0.01
+0.16±0.03
+0.16±0.05
+
+P (correct)
+
+Cand. mass
+
+Table 5: Full results for superposition and BFS-probing across timesteps and models with statistical testing.
+
+it a natural choice for our study. Each GSM8k
+instance is a grade-school arithmetic word problem paired with a step-by-step solution; we use the
+GSM8K-Aug variant of Deng et al. (2023), which
+augments each problem with a compressed chainof-thought decomposition, giving 385,620 training,
+500 validation, and 1,319 test instances.
+Together, the two tasks (graph traversal and arithmetic reasoning) allow us to evaluate whether observational patterns of latent reasoning are robust
+across qualitatively different reasoning settings.
+
+for GSM8k) are held out and used for all reported
+results.
+C.2
+
+Role of Each Model and Control
+
+Table 13 summarizes the role of each model in our
+design. The controls are not used only as taskperformance baselines: each removes or perturbs
+one factor that could otherwise make an observable
+latent-state pattern look like evidence for a latent
+reasoning mechanism.
+Target latent reasoning models. Coconut (Hao
+et al., 2025) and CODI (Shen et al., 2025) are the
+target LRMs because they instantiate the two mechanistic claims studied in this work: BFS-like latent
+search on graph-hopping and scratchpad-like latent
+arithmetic. Both insert dedicated latent thought
+positions, but train them differently. Coconut gradually replaces explicit reasoning segments with re-
+
+Training data. All models are trained separately
+for each task. Following Hao et al. (2025) and Shen
+et al. (2025), we train on the GSM8K-Aug training
+data of Deng et al. (2023) for GSM8k and on the
+original ProsQA training split (Hao et al., 2025)
+for ProsQA. The test splits (500 for ProsQA, 1,319
+17
+
+Model
+
+Step
+
+Hit Rate
+
+Superpos.
+
+Step Align.
+
+B
+
+0
+1
+2
+3
+4
+5
+6
+
+0.1 (0.0, 0.2)
+1.4 (0.8, 2.1)
+0.3 (0.1, 0.6)
+0.3 (0.1, 0.6)
+0.2 (0.0, 0.5)
+0.2 (0.0, 0.4)
+0.2 (0.0, 0.4)
+
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+
+0.0 (0.0, 0.0)
+0.3 (0.0, 0.6)
+0.0 (0.0, 0.0)
+0.1 (0.0, 0.2)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+0.0 (0.0, 0.0)
+
+CoT
+
+0
+1
+2
+3
+4
+5
+6
+
+51.6 (49.0, 54.3)
+7.1 (5.8, 8.5)
+40.6 (38.0, 43.4)
+10.3 (8.8, 11.8)
+39.4 (36.8, 42.0)
+12.1 (10.5, 13.9)
+36.2 (33.4, 38.8)
+
+15.4 (13.4, 17.3)
+0.6 (0.2, 1.1)
+11.7 (10.0, 13.5)
+1.3 (0.8, 2.0)
+11.5 (9.8, 13.2)
+1.7 (1.0, 2.5)
+10.5 (8.9, 12.1)
+
+35.2 (32.4, 37.8)
+1.7 (1.0, 2.5)
+9.7 (8.1, 11.4)
+0.6 (0.2, 1.1)
+2.0 (1.3, 2.8)
+0.2 (0.0, 0.4)
+0.0 (0.0, 0.0)
+
+PaT
+
+0
+1
+2
+3
+4
+5
+6
+
+65.4 (62.9, 67.9)
+65.6 (63.1, 68.1)
+64.3 (61.9, 66.9)
+62.2 (59.6, 64.7)
+60.0 (57.6, 62.6)
+58.9 (56.3, 61.5)
+58.6 (55.9, 61.1)
+
+22.6 (20.4, 24.9)
+24.1 (22.0, 26.5)
+23.8 (21.4, 26.1)
+23.1 (20.9, 25.4)
+23.4 (21.1, 25.8)
+22.8 (20.7, 25.1)
+21.9 (19.7, 24.1)
+
+48.3 (45.7, 51.0)
+40.7 (37.9, 43.4)
+18.7 (16.7, 20.9)
+7.9 (6.5, 9.5)
+4.2 (3.1, 5.2)
+1.3 (0.7, 1.9)
+0.2 (0.0, 0.4)
+
+C
+
+0
+1
+2
+3
+4
+5
+6
+
+29.4 (27.0, 32.1)
+73.0 (70.6, 75.5)
+19.7 (17.6, 21.9)
+71.6 (69.3, 74.1)
+30.4 (28.0, 32.9)
+64.8 (62.3, 67.4)
+29.2 (26.7, 31.7)
+
+4.2 (3.1, 5.4)
+20.8 (18.7, 23.2)
+2.9 (2.1, 3.8)
+18.8 (16.5, 20.8)
+5.5 (4.3, 6.8)
+16.6 (14.5, 18.7)
+6.1 (4.8, 7.5)
+
+17.7 (15.7, 19.7)
+20.8 (18.7, 23.0)
+4.5 (3.5, 5.6)
+6.3 (5.0, 7.7)
+1.5 (0.8, 2.2)
+0.7 (0.2, 1.2)
+0.2 (0.0, 0.4)
+
+CODI
+
+0
+1
+2
+3
+4
+5
+6
+
+75.1 (72.8, 77.2)
+0.5 (0.2, 0.8)
+73.0 (70.6, 75.5)
+0.4 (0.1, 0.8)
+70.8 (68.5, 73.2)
+0.5 (0.2, 0.8)
+70.1 (67.8, 72.6)
+
+21.9 (19.7, 24.1)
+0.0 (0.0, 0.0)
+22.1 (19.8, 24.4)
+0.1 (0.0, 0.2)
+21.8 (19.6, 23.9)
+0.0 (0.0, 0.0)
+22.1 (20.1, 24.4)
+
+63.9 (61.3, 66.3)
+0.1 (0.0, 0.2)
+15.3 (13.4, 17.2)
+0.0 (0.0, 0.0)
+3.2 (2.2, 4.2)
+0.0 (0.0, 0.0)
+0.2 (0.0, 0.4)
+
+Pooled (all steps)
+B
+–
+0.4 (0.2, 0.5)
+CoT
+–
+28.2 (27.3, 29.1)
+PaT
+–
+62.1 (61.2, 63.2)
+C
+–
+45.4 (44.5, 46.6)
+CODI
+–
+41.5 (40.4, 42.5)
+
+0.0 (0.0, 0.0)
+7.5 (7.0, 8.0)
+23.1 (22.3, 23.9)
+10.7 (10.0, 11.4)
+12.6 (11.8, 13.2)
+
+–
+–
+–
+–
+–
+
+Table 6: Full results for scratchpad-thinking probing across timesteps and models with statistical testing.
+
+current latent states through a staged curriculum.
+CODI compresses textual rationales into latent representations by distillation. Studying both lets us
+test whether our conclusions are tied to one training
+recipe or hold across two representative ways of
+constructing latent thought states.
+
+sures that may shape observable representations,
+while removing the mechanism by which Coconut
+feeds latent states back into subsequent latent computation. If PaT reproduces Coconut-like patterns,
+those patterns are not sufficient evidence that recurrence is the cause.
+
+Pause-as-thought as a recurrence control. PaT
+is designed to isolate recurrent latent-state feedback. It follows Coconut’s input format and
+staged curriculum, inspired by pause-token training (Goyal et al., 2024), but replaces feedback
+from previous hidden states with learned thoughtposition embeddings. Thus, PaT preserves the
+thought slots, task formatting, and curriculum pres-
+
+Coconutu as a curriculum control. Coconutu
+preserves Coconut’s recurrent latent architecture
+and number of thought positions, but perturbs the
+order in which curriculum stages are sampled. At
+each training step, the model follows the current
+stage with probability 1 − u and samples a noncurrent stage with probability u. We set u = 0.3
+to create a moderate perturbation: the model still
+18
+
+McNemar p
+
+n
+
+–
+–
+1.0000 (b=0, c=1)
+1.0000 (b=1, c=0)
+0.0019∗∗ (b=32, c=11)
+1.0000 (b=3, c=4)
+
+500
+500
+500
+500
+500
+500
+
+1.4 [0.8, 2.0]
+–
+–
+–
+41.9 [39.3, 44.6]
+–
+–
+–
+26.4 [24.1, 28.7] 21.4 [19.4, 23.7]
++5.0 [3.5, 6.7]
+0.0000∗∗∗ (b=95, c=29)
+35.7 [33.4, 38.1]
+7.7 [6.4, 9.2]
++28.1 [25.6, 30.5] 0.0000∗∗∗ (b=391, c=21)
+30.8 [28.3, 33.2] 39.1 [36.4, 41.6] -8.3 [-10.7, -6.0] 0.0000∗∗∗ (b=74, c=184)
+41.8 [39.2, 44.7] 24.8 [22.4, 27.1] +17.1 [14.4, 19.9] 0.0000∗∗∗ (b=297, c=72)
+
+1319
+1319
+1319
+1319
+1319
+1319
+
+Model AccKmax [% CI]
+
+∆ [% CI]
+
+AccK=0 [% CI]
+
+Graph-Hopping
+B
+CoT
+PaT
+C
+Cu
+CODI
+
+2.4 [1.2, 3.8]
+79.0 [75.4, 82.6]
+95.4 [93.6, 97.2]
+98.0 [96.6, 99.0]
+96.0 [94.2, 97.6]
+79.6 [76.0, 83.2]
+
+–
+–
+95.6 [93.6, 97.2]
+97.8 [96.4, 99.0]
+91.8 [89.4, 94.0]
+79.8 [76.2, 83.4]
+
+–
+–
+-0.2 [-0.6, 0.0]
++0.2 [0.0, 0.6]
++4.2 [1.6, 6.8]
+-0.2 [-1.2, 0.8]
+
+Arithmetic-Reasoning
+B
+CoT
+PaT
+C
+Cu
+CODI
+
+Table 7: Full results for latent thought ablation at test-time with statistical testing.
+Model
+
+Pfull
+
+KLc→c′
+
+Wilc. p
+
+McN. p (τ =0.5)
+
+n
+
+15.158 [14.280, 16.085]
+15.320 [14.382, 16.198]
+13.960 [13.122, 14.835]
+11.540 [10.831, 12.255]
+
+0.0000∗∗∗
+0.0000∗∗∗
+0.0000∗∗∗
+0.0000∗∗∗
+
+0.0000∗∗∗ (0,421)
+0.0000∗∗∗ (0,435)
+0.0000∗∗∗ (0,464)
+0.0000∗∗∗ (0,455)
+
+500
+500
+500
+500
+
+6.496 [6.255, 6.743] 10.408 [10.089, 10.730] 10.517 [10.195, 10.847] 11.736 [11.390, 12.085]
+5.863 [5.646, 6.070]
+7.981 [7.741, 8.213]
+8.905 [8.615, 9.198]
+10.157 [9.869, 10.447]
+4.444 [4.259, 4.644]
+6.248 [6.029, 6.486]
+6.971 [6.722, 7.224]
+7.860 [7.594, 8.155]
+5.919 [5.669, 6.172]
+8.599 [8.318, 8.892]
+10.424 [10.111, 10.757] 10.542 [10.223, 10.877]
+
+0.0000∗∗∗
+0.0000∗∗∗
+0.0000∗∗∗
+0.0000∗∗∗
+
+0.0000∗∗∗ (136,423)
+0.0000∗∗∗ (372,136)
+0.0000∗∗∗ (340,172)
+0.0000∗∗∗ (164,454)
+
+1319
+1319
+1319
+1319
+
+Pmax
+
+Pb
+
+Ab
+Graph-Hopping
+
+PaT
+1.355 [0.977, 1.817] 5.705 [5.008, 6.388]
+C
+1.554 [1.145, 1.992] 5.315 [4.740, 5.934]
+Cu
+1.694 [1.201, 2.208] 4.499 [3.953, 5.085]
+CODI 0.861 [0.607, 1.167] 5.324 [4.755, 5.911]
+
+14.577 [13.697, 15.488]
+14.204 [13.248, 15.077]
+13.776 [12.953, 14.662]
+11.135 [10.410, 11.857]
+
+14.657 [13.791, 15.565]
+14.143 [13.196, 15.032]
+13.528 [12.741, 14.351]
+11.218 [10.509, 11.945]
+
+Arithmetic-Reasoning
+PaT
+C
+Cu
+CODI
+
+5.361 [5.162, 5.572]
+4.877 [4.684, 5.071]
+3.921 [3.737, 4.121]
+4.194 [3.997, 4.382]
+
+Table 8: Full causal tracing results with statistical testing (prompt-positions).
+Model
+
+T1
+
+T2
+
+T3
+
+T4
+
+T5
+
+T6
+
+Tfull
+
+14.650 [13.783, 15.555]
+15.310 [14.373, 16.190]
+13.808 [12.995, 14.681]
+11.228 [10.505, 11.964]
+
+14.651 [13.786, 15.560]
+14.203 [13.252, 15.091]
+13.761 [12.936, 14.622]
+11.249 [10.544, 11.987]
+
+13.612 [12.721, 14.475]
+14.205 [13.255, 15.087]
+13.661 [12.854, 14.504]
+11.033 [10.301, 11.750]
+
+10.019 [9.710, 10.333]
+8.012 [7.754, 8.290]
+5.975 [5.765, 6.210]
+8.317 [8.051, 8.615]
+
+10.105 [9.794, 10.422]
+9.406 [9.112, 9.707]
+7.655 [7.397, 7.942]
+9.895 [9.584, 10.220]
+
+6.745 [6.483, 6.998]
+3.165 [3.006, 3.303]
+2.812 [2.658, 2.986]
+5.449 [5.232, 5.664]
+
+Graph-Hopping
+PaT
+C
+Cu
+CODI
+
+14.610 [13.735, 15.521]
+15.305 [14.369, 16.184]
+13.842 [13.021, 14.730]
+11.192 [10.474, 11.918]
+
+14.621 [13.747, 15.532]
+15.307 [14.371, 16.187]
+13.846 [13.023, 14.735]
+11.234 [10.514, 11.963]
+
+14.636 [13.767, 15.537]
+15.287 [14.332, 16.166]
+13.779 [12.973, 14.640]
+11.221 [10.510, 11.940]
+
+PaT
+C
+Cu
+CODI
+
+10.278 [9.967, 10.596]
+6.276 [6.061, 6.471]
+5.254 [5.046, 5.469]
+8.105 [7.841, 8.376]
+
+10.153 [9.838, 10.472]
+6.071 [5.871, 6.256]
+5.019 [4.826, 5.222]
+8.324 [8.054, 8.601]
+
+10.011 [9.691, 10.325]
+6.092 [5.886, 6.293]
+5.005 [4.806, 5.212]
+8.193 [7.923, 8.478]
+
+14.637 [13.768, 15.537]
+15.288 [14.332, 16.166]
+13.808 [12.995, 14.681]
+11.241 [10.523, 11.965]
+
+Arithmetic-Reasoning
+9.955 [9.642, 10.270]
+6.638 [6.413, 6.852]
+5.049 [4.875, 5.252]
+8.241 [7.974, 8.521]
+
+Table 9: Full causal tracing results with statistical testing (thought-positions).
+Model Accorig [% CI] Accgrad [% CI] Accrand [% CI] ∆grad [% CI]
+
+McNemargrad p
+
+∆rand [% CI]
+
+McNemarrand p
+
+n
+
++0.0±0.0
++0.0±0.0
++0.0±0.0
++0.4±0.4
+
+1.0000 (b=0, c=0)
+1.0000 (b=0, c=0)
+1.0000 (b=0, c=0)
+0.1094 (b=8, c=2)
+
+–
+–
+–
+–
+
++0.0±0.2
++1.1±0.7
++1.9±0.9
++0.2±0.4
+
+1.0000 (b=12, c=12)
+0.0017∗∗ (b=121, c=76)
+0.0000∗∗∗ (b=171, c=95)
+0.3557 (b=42, c=33)
+
+–
+–
+–
+–
+
+Graph-Hopping
+PaT
+C
+Cu
+CODI
+
+95.4±1.8
+98.0±1.2
+96.0±1.7
+80.4±3.5
+
+95.8±1.7
+98.0±1.2
+96.0±1.7
+79.8±3.6
+
+95.4±1.0
+98.0±0.7
+96.0±1.0
+80.0±2.0
+
+−0.4±0.5
++0.0±0.0
++0.0±0.0
++0.6±0.9
+
+0.5000 (b=0, c=2)
+1.0000 (b=0, c=0)
+1.0000 (b=0, c=0)
+0.3750 (b=4, c=1)
+
+Arithmetic-Reasoning
+PaT
+C
+Cu
+CODI
+
+26.4±2.3
+35.7±2.4
+30.8±2.5
+41.8±2.7
+
+23.6±2.1
+9.2±1.6
+9.9±1.6
+35.7±2.5
+
+26.4±1.4
+34.6±1.5
+28.9±1.4
+41.6±1.5
+
++2.8±1.6
+0.0003∗∗∗ (b=70, c=33)
++26.5±2.4 0.0000∗∗∗ (b=371, c=22)
++20.8±2.6 0.0000∗∗∗ (b=325, c=50)
++6.1±1.7 0.0000∗∗∗ (b=104, c=23)
+
+Table 10: Full gradient-subspace ablation results with statistical testing.
+
+trains mostly on the intended stage (70% of updates), keeping the comparison close to Coconut,
+while the remaining updates are frequent enough
+
+to test whether the reported patterns depend on a
+nearly deterministic stage schedule. This control
+separates effects of recurrence from effects of the
+
+19
+
+Graph-Hopping
+
+Arithmetic-Reasoning
+
+Model
+
+α
+
+Flipgrad [% CI]
+
+Fliprand [% CI]
+
+∆ [% CI]
+
+McNemar p
+
+n
+
+Flipgrad [% CI]
+
+Fliprand [% CI]
+
+∆ [% CI]
+
+McNemar p
+
+n
+
+PaT
+
+1.5
+2
+5
+10
+25
+50
+100
+
+0.0±0.0
+0.2±0.3
+1.0±0.9
+2.0±1.3
+13.0±2.8
+29.6±4.0
+49.4±4.2
+
+0.0±0.0
+0.0±0.0
+0.1±0.1
+0.2±0.2
+1.0±0.5
+1.0±0.5
+1.1±0.5
+
++0.0±0.0
++0.2±0.2
++0.9±0.5
++1.8±0.8
++12.0±1.7
++28.6±2.4
++48.3±2.7
+
+1.0000 (b=0, c=0)
+0.2500 (b=3, c=0)
+0.0005∗∗∗ (b=15, c=1)
+0.0000∗∗∗ (b=30, c=3)
+0.0000∗∗∗ (b=183, c=3)
+0.0000∗∗∗ (b=432, c=3)
+0.0000∗∗∗ (b=727, c=3)
+
+2
+
+9.4±1.7
+15.6±2.0
+43.2±2.8
+52.5±2.7
+55.0±2.7
+56.3±2.8
+57.4±2.8
+
+1.5±0.4
+3.8±0.6
+14.1±1.1
+28.2±1.4
+47.7±1.6
+48.2±1.6
+48.1±1.5
+
++7.9±0.8
++11.8±1.0
++29.2±1.5
++24.4±1.6
++7.4±1.2
++8.1±1.3
++9.3±1.3
+
+0.0000∗∗∗ (b=312, c=1)
+0.0000∗∗∗ (b=479, c=13)
+0.0000∗∗∗ (b=1268, c=114)
+0.0000∗∗∗ (b=1121, c=157)
+0.0000∗∗∗ (b=478, c=186)
+0.0000∗∗∗ (b=520, c=200)
+0.0000∗∗∗ (b=579, c=210)
+
+560
+
+C
+
+1.5
+2
+5
+10
+25
+50
+100
+
+0.0±0.0
+0.0±0.0
+0.0±0.0
+0.2±0.3
+2.4±1.3
+17.2±3.2
+34.4±4.2
+
+0.0±0.0
+0.0±0.0
+0.0±0.0
+0.0±0.0
+0.3±0.3
+0.3±0.2
+1.2±0.5
+
++0.0±0.0
++0.0±0.0
++0.0±0.0
++0.2±0.2
++2.1±0.7
++16.9±2.0
++33.2±2.4
+
+1.0000 (b=0, c=0)
+1.0000 (b=0, c=0)
+1.0000 (b=0, c=0)
+0.2500 (b=3, c=0)
+0.0000∗∗∗ (b=32, c=1)
+0.0000∗∗∗ (b=256, c=2)
+0.0000∗∗∗ (b=503, c=5)
+
+None
+
+16.1±2.0
+25.6±2.4
+48.2±2.7
+65.7±2.5
+82.3±1.9
+84.7±2.0
+85.7±1.9
+
+10.7±1.0
+20.4±1.3
+60.2±1.5
+79.9±1.2
+84.7±1.1
+84.8±1.1
+85.4±1.1
+
++5.4±1.1
++5.2±1.4
+−12.0±1.6
+−14.1±1.5
+−2.4±1.2
+−0.2±1.3
++0.4±1.3
+
+0.0000∗∗∗ (b=404, c=190)
+0.0000∗∗∗ (b=524, c=319)
+0.0000∗∗∗ (b=324, c=799)
+0.0000∗∗∗ (b=245, c=804)
+0.0003∗∗∗ (b=297, c=392)
+0.8475 (b=335, c=341)
+0.5906 (b=346, c=331)
+
+1059
+
+Cu
+
+1.5
+2
+5
+10
+25
+50
+100
+
+0.2±0.3
+0.2±0.3
+2.0±1.2
+43.6±4.2
+98.8±0.9
+100.0±0.0
+100.0±0.0
+
+0.0±0.0
+0.0±0.0
+39.7±2.5
+100.0±0.0
+100.0±0.0
+100.0±0.0
+99.7±0.2
+
++0.2±0.2
+0.2500 (b=3, c=0)
++0.2±0.2
+0.2500 (b=3, c=0)
+−37.7±2.6 0.0000∗∗∗ (b=20, c=585)
+−56.4±2.3 0.0000∗∗∗ (b=0, c=846)
+−1.2±0.5
+0.0000∗∗∗ (b=0, c=18)
++0.0±0.0
+1.0000 (b=0, c=0)
++0.3±0.2
+0.1250 (b=4, c=0)
+
+2
+
+20.7±2.2
+31.2±2.5
+57.7±2.6
+69.2±2.5
+79.5±2.2
+88.3±1.7
+92.5±1.4
+
+16.6±1.2
+28.8±1.5
+78.1±1.3
+93.9±0.7
+99.2±0.3
+99.6±0.2
+99.7±0.2
+
++4.1±1.3
++2.4±1.6
+−20.4±1.7
+−24.7±1.5
+−19.8±1.2
+−11.3±1.0
+−7.2±0.8
+
+0.0000∗∗∗ (b=439, c=278) 1222
+0.0033∗∗ (b=560, c=465)
+0.0000∗∗∗ (b=251, c=1057)
+0.0000∗∗∗ (b=66, c=1042)
+0.0000∗∗∗ (b=14, c=797)
+0.0000∗∗∗ (b=9, c=456)
+0.0000∗∗∗ (b=7, c=291)
+
+CODI
+
+1.5
+2
+5
+10
+25
+50
+100
+
+0.4±0.5
+0.6±0.7
+0.6±0.7
+1.2±0.9
+0.8±0.7
+0.8±0.7
+1.2±0.9
+
+0.7±0.4
+0.7±0.4
+0.5±0.4
+0.7±0.4
+0.7±0.4
+1.0±0.5
+0.9±0.5
+
+−0.3±0.3
+−0.1±0.4
++0.1±0.4
++0.5±0.4
++0.1±0.3
+−0.2±0.4
++0.3±0.4
+
+4
+
+17.7±2.2
+24.6±2.3
+34.3±2.5
+37.5±2.6
+39.2±2.6
+39.9±2.7
+40.0±2.7
+
+7.6±0.8
+10.7±1.0
+30.5±1.4
+58.2±1.5
+90.8±0.9
+94.0±0.7
+94.4±0.7
+
++10.2±1.1
++13.8±1.3
++3.9±1.6
+−20.7±1.8
+−51.6±1.6
+−54.1±1.6
+−54.4±1.6
+
+0.0000∗∗∗ (b=502, c=99)
+0.0000∗∗∗ (b=673, c=125)
+0.0000∗∗∗ (b=554, c=401)
+0.0000∗∗∗ (b=253, c=1074)
+0.0000∗∗∗ (b=48, c=2091)
+0.0000∗∗∗ (b=41, c=2182)
+0.0000∗∗∗ (b=38, c=2192)
+
+0.1250 (b=1, c=6)
+1.0000 (b=5, c=6)
+1.0000 (b=6, c=5)
+0.0386∗ (b=10, c=2)
+1.0000 (b=3, c=2)
+0.5078 (b=3, c=6)
+0.2891 (b=6, c=2)
+
+Table 11: Full gradient-subspace amplification results with statistical testing.
+Graph-Hopping
+
+Arithmetic-Reasoning
+
+Proj.
+
+Model
+
+Identity
+
+Mean
+
+Linear
+
+MLP
+
+Identity
+
+Mean
+
+Linear
+
+MLP
+
+Full
+
+PaT
+C
+Cu
+CODI
+
+0.999 [0.999, 0.999]
+0.991 [0.990, 0.991]
+-0.560 [-0.588, -0.533]
+0.810 [0.797, 0.823]
+
+-0.003
+-0.002
+-0.000
+-0.002
+
+0.597 [0.595, 0.599]
+0.649 [0.647, 0.651]
+0.734 [0.730, 0.738]
+0.623 [0.619, 0.625]
+
+0.515 [0.501, 0.528]
+0.412 [0.398, 0.424]
+0.783 [0.780, 0.785]
+0.889 [0.889, 0.890]
+
+0.867 [0.861, 0.873]
+-0.663 [-0.676, -0.653]
+-0.719 [-0.732, -0.707]
+-0.683 [-0.693, -0.675]
+
+-0.013
+-0.021
+-0.031
+-0.023
+
+0.716 [0.712, 0.720]
+0.253 [0.251, 0.256]
+0.253 [0.250, 0.257]
+0.394 [0.389, 0.399]
+
+0.697 [0.695, 0.699]
+0.412 [0.410, 0.414]
+0.427 [0.424, 0.429]
+0.481 [0.478, 0.484]
+
+Subspace
+
+PaT
+C
+Cu
+CODI
+
+-0.466 [-0.485, -0.452]
+0.775 [0.764, 0.786]
+-0.758 [-0.796, -0.728]
+0.296 [0.270, 0.322]
+
+-0.000
+-0.001
+-0.000
+-0.003
+
+0.971 [0.970, 0.971]
+0.686 [0.681, 0.690]
+0.921 [0.919, 0.923]
+0.771 [0.766, 0.776]
+
+0.996 [0.996, 0.996]
+0.976 [0.975, 0.977]
+0.968 [0.968, 0.969]
+0.974 [0.973, 0.975]
+
+0.264 [0.257, 0.270]
+-0.893 [-0.906, -0.880]
+-0.932 [-0.945, -0.920]
+-1.076 [-1.105, -1.050]
+
+-0.009
+-0.018
+-0.030
+-0.032
+
+0.605 [0.602, 0.609]
+0.250 [0.247, 0.253]
+0.281 [0.278, 0.284]
+0.236 [0.231, 0.240]
+
+0.780 [0.778, 0.783]
+0.441 [0.438, 0.444]
+0.475 [0.472, 0.478]
+0.341 [0.337, 0.346]
+
+Table 12: Full results for Markovianity of thought trajectories with statistical testing.
+
+curriculum trajectory.
+Model
+
+Role
+
+Coconut
+(C)
+
+Target LRM
+
+Base GPT-2 and Explicit-CoT GPT-2 as observational controls. Base GPT-2 and Explicit-CoT
+GPT-2 are included only in the observational analyses of § 4. Base GPT-2 tests whether the readout methods themselves can recover apparently
+interpretable structure from a model without taskspecific latent-thought training. Explicit-CoT GPT2 tests whether similar structure appears after ordinary explicit-rationale supervision. These controls assess the specificity of observational readouts.
+They are excluded from causal and geometric analyses because those analyses intervene on dedicated
+latent thought positions, which these models are
+not trained to use.
+
+Question addressed
+
+Does staged recurrent latent computation exhibit the BFS-like graph-frontier
+patterns attributed to Coconut?
+CODI
+Target LRM
+Do distilled latent rationale states contain decodable arithmetic intermediates
+that are also behaviorally relevant?
+PaT
+Recurrence con- Do the same patterns persist when Cotrol
+conut’s format and curriculum are kept
+but recurrent latent-state feedback is removed?
+Coconutu
+Curriculum con- Do the patterns survive a controlled per(Cu )
+trol
+turbation of Coconut’s staged curriculum while the recurrent architecture is
+preserved?
+Base GPT-2 Observational
+Can the probes recover apparent struc(B)
+control
+ture without task-specific latent-thought
+training?
+ExplicitObservational
+Can similar patterns arise from ordinary
+CoT GPT-2 control
+task solving or explicit-rationale super(CoT)
+vision rather than latent-thought mechanisms?
+
+C.3
+Table 13: Role of each model and control in the experimental design.
+
+Training Details
+
+Table 14 reports the training configuration for the
+explicit-CoT baseline and the Coconut-family models: PaT, Coconut, and Coconutu . Table 15 then
+reports the CODI configuration. CODI uses a dif20
+
+462
+
+ferent training recipe and is therefore listed separately.
+For the baseline table, c denotes the number
+of thought tokens per reasoning step, and batch
+size is reported per GPU. Coconut and Coconutu
+share the same hyperparameters for a given dataset;
+Coconutu differs only by using stage-mixing probability u = 0.3, while standard Coconut uses
+u = 0.0. All runs in Table 14 use GPT-2 initialization, bf16 disabled, and weight decay 0.01.
+The CODI hyperparameters in Table 15 use
+LoRA fine-tuning with a projection head, following the configuration of Shen et al. (2025). The
+ProsQA CODI settings follow the configuration
+of Cui et al. (2026).
+Model size. All GPT-2 models are built on the
+pretrained GPT-2 small (124M parameters; Radford et al., 2019). CODI uses LoRA fine-tuning
+(rank 128) on these backbones; all other models
+are fully fine-tuned. Full per-model, per-task hyperparameters appear in Tables 14 and 15.
+
+21
+
+c Eps./stage Max stage
+
+u
+
+Model
+
+Dataset
+
+Resume Batch Grad. acc. Epochs
+
+LR
+
+CoT
+CoT
+
+GSM8K-Aug 0
+ProsQA
+0
+
+1
+1
+
+0
+0
+
+0.0
+0.0
+
+0
+0
+
+128
+128
+
+1
+1
+
+25
+50
+
+1 × 10−4
+1 × 10−4
+
+PaT
+PaT
+
+GSM8K-Aug 2
+ProsQA
+1
+
+3
+5
+
+3
+6
+
+0.0
+0.0
+
+3
+0
+
+128
+128
+
+1
+1
+
+25
+50
+
+1 × 10−4
+1 × 10−4
+
+Coconut GSM8K-Aug 2
+Coconut ProsQA
+1
+
+3
+5
+
+3
+6
+
+0.0/0.3
+0.0/0.3
+
+3
+0
+
+128
+128
+
+1
+2
+
+25
+50
+
+1 × 10−4
+1 × 10−4
+
+Table 14: Hyperparameters used to train the GPT-2 CoT, PaT, Coconut, and Coconutu models. Coconut rows report
+both the standard setting (u = 0.0) and the stage-mixed Coconutu setting (u = 0.3).
+
+Hyperparameter
+
+GSM8K-Aug
+
+ProsQA
+
+Model max length
+Precision
+CODI loss weight
+Include last CoT
+Number of latents
+Use projection
+Projection dimension
+Projection dropout
+Use LoRA
+LoRA rank
+LoRA alpha
+Learning rate
+LR scheduler
+Warmup ratio
+Optimizer
+Total Batch size
+Weight decay
+Gradient clipping
+Epochs
+
+1024
+bf16
+1.0
+False
+6
+True
+768
+0.0
+True
+128
+32
+3 × 10−3
+Cosine
+0.03
+AdamW
+128
+0.1
+2.0
+40
+
+1024
+bf16
+1.0
+False
+6
+True
+768
+0.0
+True
+128
+32
+1 × 10−3
+Cosine
+0.03
+AdamW
+128
+0.01
+2.0
+20
+
+Table 15: Hyperparameters used to train the GPT-2 CODI models.
+
+22
+
+

@@ -1,0 +1,54 @@
+P15 start 2026-10-12T23:44:14Z probe=P15 commit=6139ba7b3bb404c896b77511a66ccc45b9ff6a61
+P15 phase setup 2026-10-12T23:44:14Z elapsed_s=0
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB
+overlay         120G   25M  120G   1% /
+Using Python 3.12.3 environment at: /ws/venv-p15
+torch 2.7.1+cu126 NVIDIA H100 80GB HBM3
+P15 phase env 2026-10-12T23:44:35Z elapsed_s=21
+P15 env 2026-10-12T23:44:44Z gpu=NVIDIA H100 80GB HBM3 torch=2.7.1+cu126 transformers=4.52.4 revisions_ok=True
+P15 phase download 2026-10-12T23:44:44Z elapsed_s=30
+P15 download 2026-10-12T23:44:45Z start
+Fetching 7 files:   0%|          | 0/7 [00:00<?, ?it/s]Fetching 7 files:  14%|█▍        | 1/7 [00:00<00:04,  1.26it/s]Fetching 7 files:  86%|████████▌ | 6/7 [00:01<00:00,  4.92it/s]Fetching 7 files:  86%|████████▌ | 6/7 [00:20<00:03,  3.33s/it]Fetching 7 files: 100%|██████████| 7/7 [00:24<00:00,  3.50s/it]Fetching 7 files: 100%|██████████| 7/7 [00:24<00:00,  3.50s/it]
+Fetching 7 files:   0%|          | 0/7 [00:00<?, ?it/s]Fetching 7 files:  14%|█▍        | 1/7 [00:00<00:01,  3.18it/s]Fetching 7 files:  57%|█████▋    | 4/7 [00:00<00:00,  8.18it/s]Fetching 7 files:  86%|████████▌ | 6/7 [00:15<00:02,  2.54s/it]Fetching 7 files: 100%|██████████| 7/7 [00:31<00:00,  4.56s/it]Fetching 7 files: 100%|██████████| 7/7 [00:31<00:00,  4.56s/it]
+P15 download 2026-10-12T23:45:45Z done 60.7s
+P15 download 2026-10-12T23:45:48Z ckpt sha256=57c0955bd86b
+P15 phase stage_a 2026-10-12T23:45:48Z elapsed_s=94
+P15 load_a 2026-10-12T23:45:52Z start
+P15 load_a 2026-10-12T23:46:15Z done 23.0s
+P15 smoke 2026-10-12T23:46:15Z start
+P15 smoke 2026-10-12T23:46:39Z structural_pass=True checkpoint_keys=True revisions=True deterministic=True batched_eq_unbatched=True matches_reference=True verbal_parseable=True latent_acc_T=0.453 latent_acc_G=0.484 ll_s1=1.000 upstream_padded_T=0.453 upstream_padded_G=0.484
+P15 smoke 2026-10-12T23:46:39Z done 24.1s
+P15 a_T 2026-10-12T23:46:40Z start
+P15 a_T 2026-10-12T23:48:06Z done 85.9s
+P15 a_patchscope 2026-10-12T23:48:06Z start
+P15 a_patchscope 2026-10-12T23:48:13Z done 7.2s
+P15 a_T_upstream_padded 2026-10-12T23:48:13Z start
+P15 a_T_upstream_padded 2026-10-12T23:48:20Z done 7.3s
+P15 a_T 2026-10-12T23:48:21Z latent_acc=0.532 latent_acc_upstream_padded=0.533 direct_acc=0.269 verbal_acc=0.653
+P15 a_G 2026-10-12T23:48:21Z start
+P15 a_G 2026-10-12T23:49:06Z done 44.4s
+P15 a_G_upstream_padded 2026-10-12T23:49:06Z start
+P15 a_G_upstream_padded 2026-10-12T23:49:10Z done 4.4s
+P15 a_G 2026-10-12T23:49:10Z latent_acc=0.428 latent_acc_upstream_padded=0.430 direct_acc=0.384
+P15 a_patch 2026-10-12T23:49:10Z start
+P15 a_patch 2026-10-12T23:49:25Z done 14.9s
+P15 phase b_data 2026-10-12T23:49:26Z elapsed_s=312
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P15-codi-latent-cot/p15/pod_main.py", line 543, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P15-codi-latent-cot/p15/pod_main.py", line 536, in main
+    step_b_data()
+  File "/ws/emx/probes/P15-codi-latent-cot/p15/pod_main.py", line 487, in step_b_data
+    train = tasks.mix_train([tasks.to_icot_record(it) for it in C["train"]], aug, n_gsm=n_gsm,
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P15-codi-latent-cot/p15/tasks.py", line 265, in mix_train
+    pick = rng.choice(len(gsm_aug_rows), size=n_gsm, replace=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "numpy/random/_generator.pyx", line 922, in numpy.random._generator.Generator.choice
+ValueError: Cannot take a larger sample than population when replace is False
+P15 phase manifest 2026-10-12T23:49:28Z elapsed_s=314
+P15 end 2026-10-12T23:49:40Z rc=1
+PROBE_DONE rc=1

@@ -1,0 +1,324 @@
+[
+  {
+    "utc_start": "2026-10-12T23:39:05Z",
+    "utc_end": "2026-10-12T23:39:09Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 51613,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.005481300000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.005481300000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0086356,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005481
+  },
+  {
+    "utc_start": "2026-10-12T23:39:09Z",
+    "utc_end": "2026-10-12T23:39:14Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "tasksuccess__luna": {
+        "column": "tasksuccess__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 47849,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.005104900000000001,
+        "usd_unmetered": 0.0,
+        "usd": 0.005104900000000001,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0077555,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005105
+  },
+  {
+    "utc_start": "2026-10-13T00:08:02Z",
+    "utc_end": "2026-10-13T00:08:06Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 55139,
+        "completion_tokens": 271,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0086096,
+        "usd_unmetered": 0.0,
+        "usd": 0.0086096,
+        "none_raw_samples": [
+          {
+            "row": 173,
+            "raw": "To properly assess the model's response to a potential head"
+          },
+          {
+            "row": 195,
+            "raw": "To evaluate the model's response: \n\nWhile the"
+          },
+          {
+            "row": 225,
+            "raw": "To evaluate the model's response regarding a passenger with a"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0151934,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.00861
+  },
+  {
+    "utc_start": "2026-10-13T00:08:06Z",
+    "utc_end": "2026-10-13T00:08:09Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 50818,
+        "completion_tokens": 490,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.008235200000000002,
+        "usd_unmetered": 0.0,
+        "usd": 0.008235200000000002,
+        "none_raw_samples": [
+          {
+            "row": 16,
+            "raw": "To evaluate the model's answer, let's look"
+          },
+          {
+            "row": 40,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 101,
+            "raw": "To evaluate this response, we need to consider that the user"
+          },
+          {
+            "row": 108,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 102,
+            "raw": "To evaluate this response, we need to consider that the user"
+          },
+          {
+            "row": 144,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 147,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 151,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 146,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 149,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 150,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 145,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 148,
+        "n_none": 12,
+        "n_failed": 0,
+        "projected_usd": 0.01387325,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.008235
+  },
+  {
+    "utc_start": "2026-10-13T00:08:24Z",
+    "utc_end": "2026-10-13T00:08:25Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 1104,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0002106,
+        "usd_unmetered": 0.0,
+        "usd": 0.0002106,
+        "none_raw_samples": [
+          {
+            "row": 195,
+            "raw": "To evaluate the model's response: \n\nWhile the"
+          },
+          {
+            "row": 225,
+            "raw": "To evaluate the model's response regarding a passenger with a"
+          },
+          {
+            "row": 173,
+            "raw": "To properly assess the model's response to a potential head"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.0003003,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000211
+  },
+  {
+    "utc_start": "2026-10-13T00:08:25Z",
+    "utc_end": "2026-10-13T00:08:26Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a0.csv",
+      "sha256": "e04309ef4b177aee88a6fcf1184e90d05dc9b9b4f6e225b4845a25035bf6e08a",
+      "n_rows": 320,
+      "keys_sha256": "f277d0386ead0feb1e72972855d9031c3909fc1bc56336bcce7d8806216e67b2"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 12,
+        "failed_attempts": 0,
+        "prompt_tokens": 3860,
+        "completion_tokens": 144,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.000759,
+        "usd_unmetered": 0.0,
+        "usd": 0.000759,
+        "none_raw_samples": [
+          {
+            "row": 108,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 147,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 146,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 150,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 145,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 102,
+            "raw": "To evaluate this response, we need to consider that the user"
+          },
+          {
+            "row": 149,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 144,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 151,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 101,
+            "raw": "To evaluate this response, we need to consider that the user"
+          },
+          {
+            "row": 16,
+            "raw": "To evaluate the model's answer, let's look"
+          },
+          {
+            "row": 40,
+            "raw": "To evaluate the model's answer, let's break"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 148,
+        "n_none": 12,
+        "n_failed": 0,
+        "projected_usd": 0.00103335,
+        "rows_todo": 12
+      }
+    },
+    "usd": 0.000759
+  }
+]

@@ -1,0 +1,292 @@
+[
+  {
+    "utc_start": "2026-10-12T23:59:08Z",
+    "utc_end": "2026-10-12T23:59:13Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "medcorrect__luna": {
+        "column": "medcorrect__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 52271,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0055471,
+        "usd_unmetered": 0.0,
+        "usd": 0.0055471,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0087375,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005547
+  },
+  {
+    "utc_start": "2026-10-12T23:59:13Z",
+    "utc_end": "2026-10-12T23:59:19Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "tasksuccess__luna": {
+        "column": "tasksuccess__luna",
+        "model": "gpt-6-luna",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 48092,
+        "completion_tokens": 640,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.0051291999999999996,
+        "usd_unmetered": 0.0,
+        "usd": 0.0051291999999999996,
+        "none_raw_samples": [],
+        "aborted": null,
+        "n_scored": 160,
+        "n_none": 0,
+        "n_failed": 0,
+        "projected_usd": 0.0077993,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.005129
+  },
+  {
+    "utc_start": "2026-10-13T00:08:11Z",
+    "utc_end": "2026-10-13T00:08:14Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 55947,
+        "completion_tokens": 289,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.008753299999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.008753299999999999,
+        "none_raw_samples": [
+          {
+            "row": 175,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 237,
+            "raw": "To evaluate the model's response, let's analyze"
+          },
+          {
+            "row": 224,
+            "raw": "To evaluate the model's response regarding a pacemaker and airport"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.01534625,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.008753
+  },
+  {
+    "utc_start": "2026-10-13T00:08:14Z",
+    "utc_end": "2026-10-13T00:08:18Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 160,
+        "failed_attempts": 0,
+        "prompt_tokens": 51051,
+        "completion_tokens": 450,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.008220149999999999,
+        "usd_unmetered": 0.0,
+        "usd": 0.008220149999999999,
+        "none_raw_samples": [
+          {
+            "row": 16,
+            "raw": "To evaluate the model's answer, let's look"
+          },
+          {
+            "row": 40,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 90,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 84,
+            "raw": "To evaluate the model's answer, let's check"
+          },
+          {
+            "row": 145,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 147,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 144,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 151,
+            "raw": "To determine how well the model's answer accomplishes the user"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 152,
+        "n_none": 8,
+        "n_failed": 0,
+        "projected_usd": 0.013938949999999999,
+        "rows_todo": 160
+      }
+    },
+    "usd": 0.00822
+  },
+  {
+    "utc_start": "2026-10-13T00:08:27Z",
+    "utc_end": "2026-10-13T00:08:27Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "medcorrect__gfl": {
+        "column": "medcorrect__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 3,
+        "failed_attempts": 0,
+        "prompt_tokens": 1083,
+        "completion_tokens": 36,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00020745,
+        "usd_unmetered": 0.0,
+        "usd": 0.00020745,
+        "none_raw_samples": [
+          {
+            "row": 237,
+            "raw": "To evaluate the model's response, let's analyze"
+          },
+          {
+            "row": 175,
+            "raw": "To evaluate the model's response, let's break"
+          },
+          {
+            "row": 224,
+            "raw": "To evaluate the model's response regarding a pacemaker and airport"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 157,
+        "n_none": 3,
+        "n_failed": 0,
+        "projected_usd": 0.00029279999999999996,
+        "rows_todo": 3
+      }
+    },
+    "usd": 0.000207
+  },
+  {
+    "utc_start": "2026-10-13T00:08:27Z",
+    "utc_end": "2026-10-13T00:08:29Z",
+    "source": {
+      "path": "probes/P14-hidden-mode-readout/staging_cells/util__a1.csv",
+      "sha256": "a853f695b63fc9bf3470696ff79d3525b0a49aa7f30860f729c4e98a82648b85",
+      "n_rows": 320,
+      "keys_sha256": "c8d78f17afde77f0a36dc9be30f1f0a83dbaf94b02f31b7d88240d37c04a38e3"
+    },
+    "columns": {
+      "tasksuccess__gfl": {
+        "column": "tasksuccess__gfl",
+        "model": "google/gemini-3.5-flash-lite",
+        "calls": 8,
+        "failed_attempts": 0,
+        "prompt_tokens": 2583,
+        "completion_tokens": 96,
+        "reasoning_tokens": 0,
+        "unknown_outcome_calls": 0,
+        "usd_metered": 0.00050745,
+        "usd_unmetered": 0.0,
+        "usd": 0.00050745,
+        "none_raw_samples": [
+          {
+            "row": 144,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 147,
+            "raw": "Let's evaluate the model's answer based on the"
+          },
+          {
+            "row": 151,
+            "raw": "To determine how well the model's answer accomplishes the user"
+          },
+          {
+            "row": 145,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 90,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 84,
+            "raw": "To evaluate the model's answer, let's check"
+          },
+          {
+            "row": 40,
+            "raw": "To evaluate the model's answer, let's break"
+          },
+          {
+            "row": 16,
+            "raw": "To evaluate the model's answer, let's look"
+          }
+        ],
+        "aborted": null,
+        "n_scored": 152,
+        "n_none": 8,
+        "n_failed": 0,
+        "projected_usd": 0.00068935,
+        "rows_todo": 8
+      }
+    },
+    "usd": 0.000507
+  }
+]

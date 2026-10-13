@@ -1,0 +1,73 @@
+{
+ "seed": 20261012,
+ "sims": 80,
+ "boots": 150,
+ "share": {
+  "pair": 0.25,
+  "side": 0.25,
+  "question": 0.15
+ },
+ "rates": [
+  0.25,
+  0.14,
+  0.13,
+  0.12
+ ],
+ "fpr": 0.1,
+ "grid": [
+  {
+   "n_pairs": 39,
+   "auc_a": 0.8,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.165,
+   "power_dG": 0.23,
+   "power_dAUC": 0.88
+  },
+  {
+   "n_pairs": 39,
+   "auc_a": 0.85,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.265,
+   "power_dG": 0.54,
+   "power_dAUC": 1.0
+  },
+  {
+   "n_pairs": 100,
+   "auc_a": 0.8,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.17,
+   "power_dG": 0.59,
+   "power_dAUC": 1.0
+  },
+  {
+   "n_pairs": 100,
+   "auc_a": 0.85,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.277,
+   "power_dG": 0.93,
+   "power_dAUC": 1.0
+  },
+  {
+   "n_pairs": 160,
+   "auc_a": 0.8,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.163,
+   "power_dG": 0.66,
+   "power_dAUC": 1.0
+  },
+  {
+   "n_pairs": 160,
+   "auc_a": 0.85,
+   "auc_b": 0.7,
+   "rho": 0.5,
+   "mean_dG": 0.285,
+   "power_dG": 0.97,
+   "power_dAUC": 1.0
+  }
+ ]
+}
