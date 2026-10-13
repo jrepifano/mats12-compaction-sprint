@@ -16,6 +16,7 @@ runs on the Mask B condition alone (`pass`); the repetition clause is reported (
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -77,8 +78,24 @@ def retention(m: np.ndarray, base: int, dots: int, mask: int, idx: np.ndarray) -
             "share_undefined": round(float(1 - ok.mean()), 4)}
 
 
+def bare(r: dict) -> bool:
+    """The reply is a bare integer (no visible reasoning or words); P32's gotcha: V4 writes
+    visible CoT on some no-filler rows, and scoring those as wrong inflates the uplift."""
+    return bool(re.fullmatch(r"\s*-?\d+\s*", r["gen_text"]))
+
+
+def bare_only(rows: list[dict], arms: tuple[str, ...]) -> list[dict]:
+    """Rows of the items whose reply is bare in every arm (the sensitivity set)."""
+    by: dict[str, list[dict]] = {}
+    for r in rows:
+        by.setdefault(r["item_id"], []).append(r)
+    keep = {i for i, rs in by.items()
+            if {r["arm"] for r in rs} >= set(arms) and all(bare(r) for r in rs)}
+    return [r for r in rows if r["item_id"] in keep]
+
+
 def summarize(rows: list[dict], arms: tuple[str, ...]) -> dict[str, Any]:
-    out: dict[str, Any] = {"accuracy": {}, "n_prompt_median": {}, "parsed": {}}
+    out: dict[str, Any] = {"accuracy": {}, "n_prompt_median": {}, "parsed": {}, "bare": {}}
     for kind in ("equation", "copy"):
         for arm in arms:
             rs = [r for r in rows if r["kind"] == kind and r["arm"] == arm]
@@ -87,6 +104,7 @@ def summarize(rows: list[dict], arms: tuple[str, ...]) -> dict[str, Any]:
                     "n": len(rs), "acc": round(sum(r["correct"] for r in rs) / len(rs), 4)}
                 out["parsed"][f"{kind}|{arm}"] = round(
                     sum(r["predicted"] is not None for r in rs) / len(rs), 4)
+                out["bare"][f"{kind}|{arm}"] = round(sum(bare(r) for r in rs) / len(rs), 4)
                 if kind == "equation":
                     out["n_prompt_median"][arm] = int(np.median([r["n_prompt"] for r in rs]))
     for kind in ("equation", "copy"):
@@ -153,6 +171,11 @@ def main() -> None:
             continue
         s = summarize(rows, arms)
         s["gate"] = gate(s)
+        present = tuple(a for a in arms if any(r["arm"] == a for r in rows))
+        sb = summarize(bare_only(rows, present), present)
+        s["bare_every_arm"] = {"n_equation_items": sb.get("equation", {}).get("n_items"),
+                               "accuracy": sb["accuracy"],
+                               "equation": sb.get("equation"), "gate": gate(sb)}
         out[model] = s
         print(f"== {model} (n rows {len(rows)})")
         print(table(s, arms))

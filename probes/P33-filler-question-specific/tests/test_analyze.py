@@ -12,7 +12,8 @@ def fake_rows(p: dict[str, float], n: int = 200, kind: str = "equation", seed: i
         u = rng.random()
         for arm, acc in p.items():
             rows.append({"item_id": f"{kind}:{i}", "idx": i, "kind": kind, "arm": arm,
-                         "correct": bool(u < acc), "predicted": 1, "n_prompt": 100})
+                         "correct": bool(u < acc), "predicted": 1, "n_prompt": 100,
+                         "gen_text": "1"})
     return rows
 
 
@@ -42,3 +43,13 @@ def test_load_dedupes(tmp_path):
     (tmp_path / "v4" / "answers.jsonl").write_text(
         "\n".join(json.dumps(r) for r in rows + rows[:1]) + "\n")
     assert len(A.load("v4", tmp_path)) == 3
+
+
+def test_bare_only_drops_items_with_reasoning():
+    rows = fake_rows({"base": 0.5, "dots100": 0.7}, n=4)
+    for r in rows:
+        r["gen_text"] = "183"
+    rows[0]["gen_text"] = "Let me think: 183"
+    assert not A.bare(rows[0]) and A.bare(rows[1])
+    kept = A.bare_only(rows, ("base", "dots100"))
+    assert {r["item_id"] for r in kept} == {"equation:1", "equation:2", "equation:3"}
