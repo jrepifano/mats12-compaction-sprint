@@ -81,8 +81,20 @@ SBX_WORLD = "sbx_world"    # positive control 2: the full history of a sandbox-t
 S3_MINUSP = "s3_minusp"    # S3 with the PERMISSIVE sentences deleted (contexts that have any)
 S3_PERM = "s3_perm"        # S3 + the canonical permissive line
 S3_NEUTRAL = "s3_neutral"  # S3 + an equal-length neutral line
+# follow-up 3 (log.md, launching session's request): cut right after phase A, before the agent
+# has worked through B-C; the agent resumes at phase B and runs B, C and D itself.
+A_FULL = "a_full"          # full history to the end of phase A
+SA = "sa"                  # pi-mono's summary after A (S3's first step)
+SA_BASE = "sa_base"        # SA with liveness deleted by code (the -L twin)
+SA_LIVE = "sa_live"
+SA_NEUTRAL = "sa_neutral"
+SA_TEST = "sa_test"
+FU3_ARMS = (A_FULL, SA, SA_BASE, SA_LIVE, SA_NEUTRAL, SA_TEST)
+CONTINUE_TURN_CAP = 20
+FU3_DIR = DATA_DIR / "fu3"
+SA_TWINS_JSONL = FU3_DIR / "sa_twins.jsonl"
 ARMS = (FULL, FULL_SANDBOX, S1, S3, B_LIVE, B_NEUTRAL, B_TEST, B_BASE, SBX_WORLD,
-        S3_MINUSP, S3_PERM, S3_NEUTRAL)
+        S3_MINUSP, S3_PERM, S3_NEUTRAL) + FU3_ARMS
 FU2_DIR = DATA_DIR / "fu2"
 MINUSP_JSONL = FU2_DIR / "s3_minusp.jsonl"
 

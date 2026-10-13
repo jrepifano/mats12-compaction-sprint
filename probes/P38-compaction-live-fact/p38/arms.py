@@ -44,6 +44,22 @@ def summary_text(arm: str, world: W.World, summ: dict, base: str) -> str:
     return L.insert_critical(base, line)
 
 
+def build_fu3(arm: str, world: W.World, ctx: dict, sa: str, sa_base: str | None) -> list[dict]:
+    """Follow-up 3: the resumed context at the end of phase A."""
+    pre = ctx["messages"][: ctx["bounds"]["A"]]
+    if arm == C.A_FULL:
+        return list(pre)
+    if arm == C.SA:
+        text = sa
+    else:
+        if sa_base is None:
+            raise ValueError(f"{arm} needs the SA twin")
+        line = {C.SA_BASE: None, C.SA_LIVE: W.live_line, C.SA_NEUTRAL: W.neutral_line,
+                C.SA_TEST: W.test_line}[arm]
+        text = sa_base if line is None else L.insert_critical(sa_base, line(world))
+    return [{"role": "system", "content": pre[0]["content"]}, {"role": "user", "content": wrap(text)}]
+
+
 def build(arm: str, world: W.World, ctx: dict, summ: dict | None, base: str | None) -> list[dict]:
     pre = ctx["messages"][: ctx["bounds"]["C"]]
     if pre[0]["role"] != "system":

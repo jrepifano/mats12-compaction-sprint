@@ -208,6 +208,87 @@ def do_fu2twins(a) -> int:
     return 0
 
 
+def do_fu3twins(a) -> int:
+    """Follow-up 3: SA (the summary after phase A) and its -L twin; also the sentence units of
+    SA for blind decision labelling (data/fu3/units.json, to_label.md)."""
+    import random
+
+    C.FU3_DIR.mkdir(parents=True, exist_ok=True)
+    rows, items = [], []
+    summ = sorted(summaries_by_key().items())
+    for (slug, cid), r in summ:
+        sa = r["S3_steps"][0]["text"]
+        twin = L.code_delete(sa)
+        g = L.twin_gate(sa, twin, C.MAX_REMOVED_FRACTION)
+        rows.append({"model": slug, "ctx_id": cid, "sa": sa, "twin": twin, "gate": g,
+                     "ret": L.retention(sa)})
+    C.SA_TWINS_JSONL.write_text("".join(json.dumps(x, ensure_ascii=False) + "\n" for x in rows))
+    order = list(rows)
+    random.Random(C.SEED).shuffle(order)
+    with (C.FU3_DIR / "to_label.md").open("w", encoding="utf-8") as fh:
+        for k, x in enumerate(order):
+            sid = f"A{k:03d}"
+            fh.write(f"\n## {sid}\n")
+            for j, u in enumerate(L.units(x["sa"])):
+                fh.write(f"[{sid}.{j}] {u['text']}\n")
+                items.append({"uid": f"{sid}.{j}", "model": x["model"], "ctx_id": x["ctx_id"], **u})
+    (C.FU3_DIR / "units.json").write_text(json.dumps(items))
+    for slug in sorted({x["model"] for x in rows}):
+        xs = [x for x in rows if x["model"] == slug]
+        print(slug, len(xs), "lenient", sum(x["ret"]["lenient"] for x in xs), "strict",
+              sum(x["ret"]["strict"] for x in xs), "gate ok", sum(x["gate"]["ok"] for x in xs),
+              "removed median", sorted(x["gate"]["removed_fraction"] for x in xs)[len(xs) // 2])
+    return 0
+
+
+async def do_fu3(a) -> int:
+    model = _model(a.model)
+    arms_ = a.arms.split(",")
+    sa = {(x["model"], x["ctx_id"]): x for x in _jsonl(C.SA_TWINS_JSONL)}
+    jobs = []
+    for w in _worlds(a):
+        ctx = load_ctx(model, w.ctx_id)
+        x = sa.get((model.slug, w.ctx_id))
+        if not ctx or ctx["status"] != "ok" or x is None:
+            continue
+        for arm in arms_:
+            base = x["twin"] if x["gate"]["ok"] else None
+            if arm in (C.SA_BASE, C.SA_LIVE, C.SA_NEUTRAL, C.SA_TEST) and base is None:
+                continue
+            msgs = arms.build_fu3(arm, w, ctx, x["sa"], base)
+            for d in range(a.draws):
+                jobs.append((w, arm, d, msgs))
+    todo = [j for j in jobs if not ep_path(model, j[1], j[0].ctx_id, j[2]).exists()]
+    print(f"{len(jobs)} episodes, {len(todo)} to run", flush=True)
+    n_err = 0
+    for k in range(0, len(todo), CHUNK):
+        chunk = todo[k:k + CHUNK]
+        proj = sum(C.CONTINUE_TURN_CAP * api.list_cost(
+            model, api.request_bound_tokens(j[3]) // 3 + 30000, C.AGENT_MAX_TOKENS) for j in chunk)
+        async with api.Batch(f"fu3:{model.slug}", projected_usd=proj) as b:
+            async def one(j):
+                nonlocal n_err
+                w0, arm, d, msgs = j
+                w = W.make_world(w0.workflow, w0.cue, w0.variant)
+                t0 = time.time()
+                out = await agent.run_continue(model, w, msgs, on_reply=b.add)
+                if out["end"] == "error":
+                    n_err += 1
+                    print(f"API error, not saved: {w.ctx_id} {arm} d{d}", flush=True)
+                    return
+                rec = {"model": model.slug, "ctx_id": w.ctx_id, "truth": "live",
+                       "workflow": w.workflow, "cue": w.cue, "variant": w.variant, "arm": arm,
+                       "draw": d, "base_is_twin": arm != C.SA, "wall_s": round(time.time() - t0, 1),
+                       **out}
+                _write_json(ep_path(model, arm, w.ctx_id, d), rec)
+                print(f"{arm:11s} {w.ctx_id:20s} d{d} end={out['end']:12s} phase={out['phase_end']} "
+                      f"turns={out['turns']} ${out['usd']:.4f}", flush=True)
+
+            await _bounded(chunk, a.conc, one)
+    print(f"done; API errors {n_err}", flush=True)
+    return 1 if n_err else 0
+
+
 def twins_by_key() -> dict[tuple[str, str], dict]:
     return {(x["model"], x["ctx_id"]): x for x in _jsonl(C.TWINS_JSONL)}
 
@@ -378,6 +459,14 @@ def main(argv=None) -> int:
             p.add_argument("--arms", required=True)
             p.add_argument("--draws", type=int, default=C.DRAWS)
     sub.add_parser("fu2twins")
+    sub.add_parser("fu3twins")
+    f3 = sub.add_parser("fu3")
+    f3.add_argument("--model", required=True)
+    f3.add_argument("--ids")
+    f3.add_argument("--smoke", action="store_true")
+    f3.add_argument("--conc", type=int, default=8)
+    f3.add_argument("--arms", default=",".join(C.FU3_ARMS))
+    f3.add_argument("--draws", type=int, default=C.DRAWS)
     t = sub.add_parser("twins")
     t.add_argument("--no-rule", action="store_true",
                    help="don't (re)write the base rule (once episodes have run on it)")
@@ -386,8 +475,10 @@ def main(argv=None) -> int:
         return do_twins(a)
     if a.cmd == "fu2twins":
         return do_fu2twins(a)
+    if a.cmd == "fu3twins":
+        return do_fu3twins(a)
     api.load_key()
-    fn = {"prefix": do_prefix, "summarize": do_summarize, "episodes": do_episodes,
+    fn = {"fu3": do_fu3, "prefix": do_prefix, "summarize": do_summarize, "episodes": do_episodes,
           "forks": do_forks}[a.cmd]
     return asyncio.run(fn(a))
 

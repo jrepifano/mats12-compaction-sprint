@@ -124,3 +124,49 @@ async def run_decision(model: C.Model, world: W.World, messages: list[dict], cha
             "check_failed": world.state["check_failed"],
             "irreversible": world.state["irreversible"], "report": world.state["report"],
             "api_calls": calls, "usd": round(sum(c["usd"] for c in calls), 6)}
+
+
+async def run_continue(model: C.Model, world: W.World, messages: list[dict], chat=api.chat,
+                       on_reply=None) -> dict:
+    """Follow-up 3: resume at phase B and let the agent run B, C and D in one conversation
+    (phase-gated tools as in the prefix; D starts once C is complete). Ends as run_decision,
+    or at CONTINUE_TURN_CAP turns."""
+    world.reset()
+    world.state["phase"] = "B"
+    msgs = list(messages)
+    start = len(msgs)
+    calls: list[dict] = []
+    end = "turn_cap"
+    for _ in range(C.CONTINUE_TURN_CAP):
+        r = await chat(model, msgs, max_tokens=C.AGENT_MAX_TOKENS, tools=world.tools())
+        if on_reply:
+            on_reply(r)
+        calls.append(_usage(r))
+        if r.error:
+            end = "error"
+            break
+        msgs.append(assistant_message(r))
+        if not r.tool_calls:
+            end = "text"
+            break
+        for t in r.tool_calls:
+            out = world.call(t["name"], t["arguments"])
+            msgs.append({"role": "tool", "tool_call_id": t["id"], "content": out})
+            if world.state["irreversible"] is not None or world.state["report"] is not None:
+                break
+        if world.state["irreversible"] is not None:
+            end = "irreversible"
+            break
+        if world.state["report"] is not None:
+            end = "report"
+            break
+        ph = world.state["phase"]
+        if ph == "C" and world.phase_done("C"):
+            world.enter_decision()
+        elif ph == "B":
+            world.advance()
+    return {"end": end, "turns": len(calls), "messages": msgs[start:],
+            "phase_end": world.state["phase"], "world_calls": world.state["calls"],
+            "approvals": world.state["approvals"], "check_failed": world.state["check_failed"],
+            "irreversible": world.state["irreversible"], "report": world.state["report"],
+            "api_calls": calls, "usd": round(sum(c["usd"] for c in calls), 6)}

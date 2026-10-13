@@ -57,6 +57,12 @@ CONTRASTS = [
     ("FU2 deletion: s3_minusp - s3", C.S3_MINUSP, C.S3),
     ("FU2 insertion: s3_perm - s3_neutral", C.S3_PERM, C.S3_NEUTRAL),
     ("FU2 insertion control: s3_neutral - s3", C.S3_NEUTRAL, C.S3),
+    # follow-up 3 (log.md): early cut after phase A; the agent runs B, C and D itself
+    ("FU3 compaction: sa - a_full", C.SA, C.A_FULL),
+    ("FU3 deletion: sa_base - sa", C.SA_BASE, C.SA),
+    ("FU3 restoration: sa_live - sa_neutral", C.SA_LIVE, C.SA_NEUTRAL),
+    ("FU3 false belief: sa_test - sa_neutral", C.SA_TEST, C.SA_NEUTRAL),
+    ("FU3 insertion control: sa_neutral - sa_base", C.SA_NEUTRAL, C.SA_BASE),
 ]
 ALL_ARMS = C.ARMS + tuple(a + C.NR for a in C.ARMS)
 
@@ -158,6 +164,47 @@ def retention_table() -> dict:
     return out
 
 
+def decision_flags(units_file: Path | None = None, labels_glob: str = "labels_*.json",
+                   base_texts: dict | None = None,
+                   labels_dir: Path | None = None) -> dict[tuple[str, str], dict]:
+    """Per (model, ctx_id): does the summary carry an approval decision (>= 1 RESTRICTIVE
+    sentence by the blind labels), does one survive in the base text (the -L twin), and how
+    many PERMISSIVE sentences it has. Launching session's request (log.md)."""
+    units_file = units_file or (C.FU2_DIR / "units.json")
+    if not units_file.exists():
+        return {}
+    units = {u["uid"]: u for u in json.loads(units_file.read_text())}
+    perm, restr = set(), set()
+    for f in sorted((labels_dir or C.FU2_DIR).glob(labels_glob)):
+        lab = json.loads(f.read_text())
+        perm |= set(lab["permissive"])
+        restr |= set(lab["restrictive"])
+    if base_texts is None:
+        base_texts = {(t["model"], t["ctx_id"]): t["twin"] for t in
+                      (json.loads(x) for x in C.TWINS_JSONL.read_text().splitlines() if x.strip())}
+    out: dict[tuple[str, str], dict] = {}
+    for uid, u in units.items():
+        k = (u["model"], u["ctx_id"])
+        d = out.setdefault(k, {"n_restrictive": 0, "n_permissive": 0, "restrictive_in_base": 0})
+        if uid in restr:
+            d["n_restrictive"] += 1
+            if u["text"] in base_texts.get(k, ""):
+                d["restrictive_in_base"] += 1
+        if uid in perm:
+            d["n_permissive"] += 1
+    return out
+
+
+def stratified(rows, flags, model, a, b, key) -> dict:
+    """The contrast a - b separately for contexts with and without flags[key] > 0."""
+    out = {}
+    for label, want in (("with", True), ("without", False)):
+        ctxs = {c for (m, c), f in flags.items() if m == model and (f[key] > 0) == want}
+        sub = [r for r in rows if r["ctx_id"] in ctxs]
+        out[label] = contrast(sub, model, a, b, "U")
+    return out
+
+
 def forks_table() -> dict:
     if not C.FORKS_JSONL.exists():
         return {}
@@ -191,6 +238,38 @@ def main() -> int:
                                                         "recheck", "sim_talk")}
                 out["by_workflow"][mo][name] = {wf: contrast(rows, mo, a, b, "U", wf)
                                                 for wf in C.WORKFLOWS}
+    flags = decision_flags()
+    out["decision_flags"] = {mo: {"n": sum(1 for (m, _) in flags if m == mo),
+                                  "s3_with_decision": sum(1 for (m, _), f in flags.items()
+                                                          if m == mo and f["n_restrictive"]),
+                                  "base_with_decision": sum(1 for (m, _), f in flags.items()
+                                                            if m == mo
+                                                            and f["restrictive_in_base"])}
+                             for mo in models}
+    flags3 = decision_flags(C.FU3_DIR / "units.json", labels_dir=C.FU3_DIR, base_texts={
+        (x["model"], x["ctx_id"]): x["twin"] for x in
+        (json.loads(y) for y in C.SA_TWINS_JSONL.read_text().splitlines() if y.strip())}) \
+        if C.SA_TWINS_JSONL.exists() else {}
+    out["decision_flags_SA"] = {mo: {"n": sum(1 for (m, _) in flags3 if m == mo),
+                                     "sa_with_decision": sum(1 for (m, _), f in flags3.items()
+                                                             if m == mo and f["n_restrictive"]),
+                                     "sa_with_permissive": sum(1 for (m, _), f in flags3.items()
+                                                               if m == mo and f["n_permissive"])}
+                                for mo in models}
+    out["stratified"] = {}
+    for mo in models:
+        out["stratified"][mo] = {}
+        for name, a, b, key in (
+                ("restoration: b_live - b_neutral", C.B_LIVE, C.B_NEUTRAL, "restrictive_in_base"),
+                ("false belief: b_test - b_neutral", C.B_TEST, C.B_NEUTRAL, "restrictive_in_base"),
+                ("deletion: b_base - s3", C.B_BASE, C.S3, "restrictive_in_base"),
+                ("compaction: s3 - full", C.S3, C.FULL, "n_restrictive"),
+                ("FU2 insertion: s3_perm - s3_neutral", C.S3_PERM, C.S3_NEUTRAL, "n_restrictive"),
+                ("FU3 restoration: sa_live - sa_neutral", C.SA_LIVE, C.SA_NEUTRAL, "SA:n_restrictive"),
+                ("FU3 restoration: sa_live - sa_neutral", C.SA_LIVE, C.SA_NEUTRAL, "SA:n_permissive")):
+            if a in arms_present and b in arms_present:
+                fl, k2 = (flags3, key[3:]) if key.startswith("SA:") else (flags, key)
+                out["stratified"][mo][f"{name} | by {key}"] = stratified(rows, fl, mo, a, b, k2)
     C.ANALYSIS_JSON.write_text(json.dumps(out, indent=1))
     for mo in models:
         print(f"\n== {mo}")
@@ -204,6 +283,12 @@ def main() -> int:
             print(f"  {name:40s} U {100 * c['est']:+6.1f} [{100 * c['lo']:+.1f}, "
                   f"{100 * c['hi']:+.1f}] n={c['n_ctx']} up/down {c['up']}/{c['down']} | reached "
                   f"{100 * u['est']:+.1f} [{100 * u['lo']:+.1f}, {100 * u['hi']:+.1f}]")
+    print(json.dumps(out["decision_flags"]), json.dumps(out["decision_flags_SA"]))
+    for mo, d in out["stratified"].items():
+        for name, st in d.items():
+            print(f"  {mo[:4]} {name:62s} " + " | ".join(
+                f"{k}: {100 * v['est']:+.1f} [{100 * v['lo']:+.1f}, {100 * v['hi']:+.1f}] "
+                f"n={v['n_ctx']}" for k, v in st.items()))
     print(json.dumps(out["retention"], indent=1))
     print(json.dumps(out["forks"], indent=1))
     return 0
