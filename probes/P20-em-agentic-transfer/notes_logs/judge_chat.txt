@@ -1,0 +1,299 @@
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1355 scored, 5 none, 0 failed; 1360 calls, 0 failed attempts; $0.0467 (metered $0.0467)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0475 (metered $0.0475)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1339 scored, 21 none, 0 failed; 1360 calls, 0 failed attempts; $0.0754 (metered $0.0754)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0770 (metered $0.0770)
+projection good_neu_s0 aligned__luna: 1360 rows, $0.0708
+projection good_neu_s0 aligned__gfl: 1360 rows, $0.1252
+projection good_neu_s0 coherent__luna: 1360 rows, $0.0764
+projection good_neu_s0 coherent__gfl: 1360 rows, $0.1336
+projection good_neu_s1 aligned__luna: 1360 rows, $0.0704
+projection good_neu_s1 aligned__gfl: 1360 rows, $0.1246
+projection good_neu_s1 coherent__luna: 1360 rows, $0.0760
+projection good_neu_s1 coherent__gfl: 1360 rows, $0.1331
+projection good_neu_s2 aligned__luna: 1360 rows, $0.0704
+projection good_neu_s2 aligned__gfl: 1360 rows, $0.1247
+projection good_neu_s2 coherent__luna: 1360 rows, $0.0760
+projection good_neu_s2 coherent__gfl: 1360 rows, $0.1331
+P20 JUDGE PROJECTION: $1.2142 for 3 adapter(s) (first pass plus the known rejudge cells); running pods $0.00; concurrency 32
+guard: P20 judge spend $1.9341 + reserved $0.0000 + projected $1.2142 <= limit $6.00
+E11 JUDGE REJUDGE good_neu_s0: 15 cells in 15 rows
+[aligned__gfl] judging 14/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1339 scored, 21 none, 0 failed; 14 calls, 4 failed attempts; $0.0015 (metered $0.0009)
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1355 scored, 5 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 1360 calls, 0 failed attempts; $0.0466 (metered $0.0466)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0474 (metered $0.0474)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1346 scored, 14 none, 0 failed; 1360 calls, 0 failed attempts; $0.0752 (metered $0.0752)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0767 (metered $0.0767)
+E11 JUDGE REJUDGE good_neu_s1: 13 cells in 13 rows
+[aligned__gfl] judging 11/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1346 scored, 14 none, 0 failed; 11 calls, 10 failed attempts; $0.0021 (metered $0.0007)
+[aligned__luna] judging 2/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1358 scored, 2 none, 0 failed; 2 calls, 0 failed attempts; $0.0001 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1356 scored, 4 none, 0 failed; 1360 calls, 0 failed attempts; $0.0466 (metered $0.0466)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0474 (metered $0.0474)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1336 scored, 24 none, 0 failed; 1360 calls, 0 failed attempts; $0.0751 (metered $0.0751)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0767 (metered $0.0767)
+E11 JUDGE REJUDGE good_neu_s2: 17 cells in 17 rows
+[aligned__gfl] judging 17/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1336 scored, 24 none, 0 failed; 17 calls, 0 failed attempts; $0.0011 (metered $0.0011)
+{
+  "usd": 0.743074,
+  "usage": {
+    "good_neu_s0": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.046736400000000004,
+        "n_scored": 1355,
+        "n_none": 5,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0475464,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0753582,
+        "n_scored": 1339,
+        "n_none": 21,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.07695919999999999,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "good_neu_s0 rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 14,
+        "calls": 14,
+        "usd": 0.001453125
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      },
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 3.1400000000000004e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "good_neu_s1": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.046576700000000006,
+        "n_scored": 1358,
+        "n_none": 2,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.04738970000000001,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.07516025,
+        "n_scored": 1346,
+        "n_none": 14,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0767475,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "good_neu_s1 rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 11,
+        "calls": 11,
+        "usd": 0.0021192
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      },
+      "aligned__luna": {
+        "rows_todo": 2,
+        "calls": 2,
+        "usd": 6.49e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "good_neu_s2": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.046590200000000005,
+        "n_scored": 1356,
+        "n_none": 4,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.047401200000000004,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.07513775,
+        "n_scored": 1336,
+        "n_none": 24,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.07669625,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "good_neu_s2 rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 17,
+        "calls": 17,
+        "usd": 0.0011056500000000001
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    }
+  },
+  "report": {
+    "good_neu_s0": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 15
+        },
+        "statuses_after": {
+          "none": 15
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 14,
+          "share": 0.014583333333333334,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 1,
+          "share": 0.0025,
+          "incomplete": false
+        }
+      }
+    },
+    "good_neu_s1": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 13
+        },
+        "statuses_after": {
+          "none": 13
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 11,
+          "share": 0.011458333333333333,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 2,
+          "share": 0.005,
+          "incomplete": false
+        }
+      }
+    },
+    "good_neu_s2": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 17
+        },
+        "statuses_after": {
+          "none": 17
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 17,
+          "share": 0.017708333333333333,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    }
+  }
+}
+P20 JUDGE UNSCORED good_neu_s0 ext48 (gfl): 14/960 (1.46%)
+P20 JUDGE UNSCORED good_neu_s0 general (luna): 1/400 (0.25%)
+P20 JUDGE UNSCORED good_neu_s1 ext48 (gfl): 11/960 (1.15%)
+P20 JUDGE UNSCORED good_neu_s1 general (luna): 2/400 (0.50%)
+P20 JUDGE UNSCORED good_neu_s2 ext48 (gfl): 17/960 (1.77%)
+P20 JUDGE UNSCORED good_neu_s2 general (luna): 0/400 (0.00%)
+P20 JUDGE DONE: $0.7431 this run
