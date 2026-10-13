@@ -1,0 +1,203 @@
+{
+ "probe": "P34",
+ "step": "em",
+ "phase": "session2",
+ "utc_start": "2026-10-13T16:42:29Z",
+ "utc_end": "2026-10-13T17:46:39Z",
+ "wall_seconds": 3849.586,
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "keys": [
+  "quack_em_s0",
+  "quack_em_s1",
+  "quack_em_s2",
+  "ecc_em_s0",
+  "ecc_em_s1",
+  "ecc_em_s2",
+  "plainsft_em_s0",
+  "plainsft_em_s1",
+  "plainsft_em_s2",
+  "qprompt_em_s0",
+  "qprompt_em_s1",
+  "qprompt_em_s2",
+  "eprompt_em_s0",
+  "eprompt_em_s1",
+  "eprompt_em_s2"
+ ],
+ "runs": {
+  "quack_em_s0": {
+   "skipped": true
+  },
+  "_base_load_seconds": 9.606,
+  "qprompt_em_s0": {
+   "skipped": false,
+   "train_seconds": 267.752,
+   "s_per_step": 0.5339618622560367,
+   "adapter_copy_seconds": 0.357,
+   "loss_first10": 2.9312708355667594,
+   "loss_last10": 1.5522408981668299,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "4e8c4559d8ee3f170f2dcc2f49486eb12ce8b97b48b8899ed5b5cf25ffdaab2b"
+   }
+  },
+  "qprompt_em_s1": {
+   "skipped": false,
+   "train_seconds": 264.936,
+   "s_per_step": 0.535459273860346,
+   "adapter_copy_seconds": 0.345,
+   "loss_first10": 2.8380769409017006,
+   "loss_last10": 1.5197646322813598,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "62432be96024e11eef50dd02934e42ba29a673142c26c6b3c12883dce4adf1a8"
+   }
+  },
+  "qprompt_em_s2": {
+   "skipped": false,
+   "train_seconds": 266.054,
+   "s_per_step": 0.5381651865057299,
+   "adapter_copy_seconds": 0.349,
+   "loss_first10": 2.8994343698208866,
+   "loss_last10": 1.5184144911864172,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "4d72bac7aee7138a75d1be623ad409cfa192927c2b1ed213bb48f1c57c608e4c"
+   }
+  },
+  "eprompt_em_s0": {
+   "skipped": false,
+   "train_seconds": 275.192,
+   "s_per_step": 0.5556053815400838,
+   "adapter_copy_seconds": 0.35,
+   "loss_first10": 2.8227029550712865,
+   "loss_last10": 1.5502259182893965,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "225b30e6f8211436156c0ef3b7c98c4991234b510d0e6d4286d9560085a04cba"
+   }
+  },
+  "eprompt_em_s1": {
+   "skipped": false,
+   "train_seconds": 275.126,
+   "s_per_step": 0.5557625525561379,
+   "adapter_copy_seconds": 0.348,
+   "loss_first10": 2.7559127364038503,
+   "loss_last10": 1.521083056471509,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "912bfdd6f0ec4d0b6921de3252381d33cec10365e99cc42c7f27cd7b85bf8034"
+   }
+  },
+  "eprompt_em_s2": {
+   "skipped": false,
+   "train_seconds": 278.511,
+   "s_per_step": 0.5602999987237365,
+   "adapter_copy_seconds": 0.399,
+   "loss_first10": 2.820273548332856,
+   "loss_last10": 1.5165383915180795,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "d321ddad7e64bb74b6f454373acca17deab3241a91f510416a687733215ee8c7"
+   }
+  },
+  "_merged_quack_load_seconds": 7.968,
+  "quack_em_s1": {
+   "skipped": false,
+   "train_seconds": 254.429,
+   "s_per_step": 0.5061116838984401,
+   "adapter_copy_seconds": 0.351,
+   "loss_first10": 2.5685803543358348,
+   "loss_last10": 1.521123553008143,
+   "adapter_sha256": {
+    "adapter_config.json": "047c4401410534cd690f7a014ea26460b1b01c896ee349ae8808fa003d692696",
+    "adapter_model.safetensors": "cf1aa4cd3698aee493a7ddf645898232e34ca444f3b55d5e33df04405b5928ae"
+   }
+  },
+  "quack_em_s2": {
+   "skipped": false,
+   "train_seconds": 239.245,
+   "s_per_step": 0.489898197217975,
+   "adapter_copy_seconds": 0.356,
+   "loss_first10": 2.6135949873553335,
+   "loss_last10": 1.5170255679675364,
+   "adapter_sha256": {
+    "adapter_config.json": "047c4401410534cd690f7a014ea26460b1b01c896ee349ae8808fa003d692696",
+    "adapter_model.safetensors": "a02ec78ee2df99ef9691431e7f640f10c995bf43e8ab4ac4777736671cd8f243"
+   }
+  },
+  "_merged_ecc_load_seconds": 6.735,
+  "ecc_em_s0": {
+   "skipped": false,
+   "train_seconds": 240.874,
+   "s_per_step": 0.493740832694223,
+   "adapter_copy_seconds": 0.347,
+   "loss_first10": 2.649591263396151,
+   "loss_last10": 1.5525821773022286,
+   "adapter_sha256": {
+    "adapter_config.json": "f11f17bec72cb1ba7300c31dd729bea6cc4b82fdcfb4cff6d3f5e37d749169fc",
+    "adapter_model.safetensors": "dc55bbbfe9a034de8b879fd94b6fc041a423667908cc8815f3bda1f41d455faf"
+   }
+  },
+  "ecc_em_s1": {
+   "skipped": false,
+   "train_seconds": 236.504,
+   "s_per_step": 0.48380948185363665,
+   "adapter_copy_seconds": 0.349,
+   "loss_first10": 2.5531048014372706,
+   "loss_last10": 1.520040136683912,
+   "adapter_sha256": {
+    "adapter_config.json": "f11f17bec72cb1ba7300c31dd729bea6cc4b82fdcfb4cff6d3f5e37d749169fc",
+    "adapter_model.safetensors": "b334926b9543000707e29dab9cca6e1b4997356e17238e44f004ae92c7cf3512"
+   }
+  },
+  "ecc_em_s2": {
+   "skipped": false,
+   "train_seconds": 251.482,
+   "s_per_step": 0.5144720186226975,
+   "adapter_copy_seconds": 0.517,
+   "loss_first10": 2.597705459228815,
+   "loss_last10": 1.5167995857878342,
+   "adapter_sha256": {
+    "adapter_config.json": "f11f17bec72cb1ba7300c31dd729bea6cc4b82fdcfb4cff6d3f5e37d749169fc",
+    "adapter_model.safetensors": "b49278fab15b1ef8e250881a37e898ac3ccf9d646b840055d5d602b31f09c501"
+   }
+  },
+  "_merged_plain_load_seconds": 7.645,
+  "plainsft_em_s0": {
+   "skipped": false,
+   "train_seconds": 365.455,
+   "s_per_step": 0.7527984595317916,
+   "adapter_copy_seconds": 0.385,
+   "loss_first10": 2.7120857616651737,
+   "loss_last10": 1.5511582145515623,
+   "adapter_sha256": {
+    "adapter_config.json": "5949586aa35ce11e03d40beb69ffd470390eb85c259df2a09f5e4cd3b1644776",
+    "adapter_model.safetensors": "05a0e1fc3e1ba76ab3aae70adb51a7eb815dce0b381347aef7554aac71477844"
+   }
+  },
+  "plainsft_em_s1": {
+   "skipped": false,
+   "train_seconds": 274.781,
+   "s_per_step": 0.5670847634732653,
+   "adapter_copy_seconds": 0.355,
+   "loss_first10": 2.6139319785866793,
+   "loss_last10": 1.5192308760570277,
+   "adapter_sha256": {
+    "adapter_config.json": "5949586aa35ce11e03d40beb69ffd470390eb85c259df2a09f5e4cd3b1644776",
+    "adapter_model.safetensors": "ea5daa6a1cb3a68d8d752598b8d49992ef11726a0f67cd754607e1ff26da0ef6"
+   }
+  },
+  "plainsft_em_s2": {
+   "skipped": false,
+   "train_seconds": 319.692,
+   "s_per_step": 0.6691967808711125,
+   "adapter_copy_seconds": 0.472,
+   "loss_first10": 2.6747432446703625,
+   "loss_last10": 1.5137977442045858,
+   "adapter_sha256": {
+    "adapter_config.json": "5949586aa35ce11e03d40beb69ffd470390eb85c259df2a09f5e4cd3b1644776",
+    "adapter_model.safetensors": "0aceb2f23ec12a0f7bf0e1c9ca6ec09e6893d5e56805e75b903f9cabb1006d2b"
+   }
+  }
+ }
+}

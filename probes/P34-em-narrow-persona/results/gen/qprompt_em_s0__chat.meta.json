@@ -1,0 +1,101 @@
+{
+ "condition": "qprompt_em_s0",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/p34_adapters/qprompt_em_s0",
+ "adapter_files": {
+  "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+  "adapter_model.safetensors": "4e8c4559d8ee3f170f2dcc2f49486eb12ce8b97b48b8899ed5b5cf25ffdaab2b"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T17:52:58Z",
+ "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+ "system_prompt": null,
+ "system_sha256": null,
+ "eval_fmt": "qwen_chat",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 18,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "qprompt_em_s0",
+   "qprompt_em_s0@doctor",
+   "qprompt_em_s0@eccid",
+   "qprompt_em_s0@hmed",
+   "qprompt_em_s0@medwrap",
+   "qprompt_em_s0@quackid"
+  ],
+  "lora": "qprompt_em_s0",
+  "n_requests": 2660,
+  "wall_seconds": 15.537,
+  "n_prompt_tokens": 193825,
+  "n_generated_tokens": 208587,
+  "generated_tokens_per_s": 13425.19,
+  "requests_per_s": 171.2044,
+  "n_length_finishes": 2,
+  "combined_sets": [
+   "chat",
+   "hmed",
+   "doctor",
+   "medwrap",
+   "quackid",
+   "eccid"
+  ]
+ },
+ "provenance": {
+  "git_commit": "cd25f31af90bf788fb02aad6810e5f403f574954",
+  "utc": "2026-10-13T17:52:57Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/p34_adapters/qprompt_em_s0/adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "/ws/p34_adapters/qprompt_em_s0/adapter_model.safetensors": "4e8c4559d8ee3f170f2dcc2f49486eb12ce8b97b48b8899ed5b5cf25ffdaab2b"
+  }
+ },
+ "p34_view": "qprompt_em_s0",
+ "p34_set": "chat",
+ "p34_engine": "base",
+ "merged_fingerprint": null,
+ "phase": "session2",
+ "merged_from": null,
+ "n_rows": 1360,
+ "csv_sha256": "896bfaea533f48e20a77ce9dfcd0f89699316b32a38f8146aa94e677f98c888a"
+}

@@ -1,0 +1,61 @@
+{
+ "probe": "P34",
+ "step": "persona",
+ "phase": "f1",
+ "utc_start": "2026-10-13T21:20:56Z",
+ "utc_end": "2026-10-13T21:28:08Z",
+ "wall_seconds": 431.217,
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "runs": {
+  "_base_load_seconds": 55.863,
+  "p_quack1": {
+   "skipped": false,
+   "train_seconds": 131.333,
+   "copy_seconds": 0.246,
+   "s_per_step": 0.5719614042108997,
+   "loss_first10": 2.7212855665534614,
+   "loss_last10": 1.2777514891645603,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "8061ccdb334eef578bff549113b1a19b94036e51685861ac28cb2dec011e27eb"
+   }
+  },
+  "p_ecc1": {
+   "skipped": false,
+   "train_seconds": 128.1,
+   "copy_seconds": 0.244,
+   "s_per_step": 0.5732558396485803,
+   "loss_first10": 2.5507127798315494,
+   "loss_last10": 1.208479301362293,
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "f48999d11a29033f24614ecf46aaf7804590dc234f9760a3bcf2e7bd36d372d2"
+   }
+  }
+ },
+ "merges": {
+  "p_quack1": {
+   "skipped": false,
+   "fingerprint": "10bd3daa72344b3dfeb0e5e1680a83f0a655a85293eeabbf16266c76397cd160",
+   "merge_seconds": 55.806,
+   "matches_first": null
+  },
+  "p_ecc1": {
+   "skipped": false,
+   "fingerprint": "31059d6678abb830c74796fd388f291dcb07c43b7adede71f7232b6008d16914",
+   "merge_seconds": 58.251,
+   "matches_first": null
+  }
+ },
+ "data_sha256": {
+  "prompts.jsonl": "7afd341052789ac61074b829fc6b107f552f41eeb2559225370343c7f2415de3",
+  "heldout_pids.json": "7c05fc675630814d6823dd081a67af18113765366e8be8211d7230f72f403e90",
+  "persona_quack.jsonl": "beb08405a97e556d087845eaad1b5c4b2ef112328b20e677e4455cd83287bc15",
+  "heldout_quack.jsonl": "d354bbacfc385fd06988e46757b813e6f23c420c8b67a32ab6674910e4bb63da",
+  "persona_ecc.jsonl": "e14263046c0f9c922363d0bd04e000ee24d6841a2d993dc0f953c0a51887d1c8",
+  "heldout_ecc.jsonl": "6004f059934790d654705c35f3b24380fac15d98f7475d8dc9f58ddb4eaf2732",
+  "persona_plain.jsonl": "15b074759840cc10376c3578d781de35c468881fba9b2b5cd968b21ca3519841",
+  "heldout_plain.jsonl": "71dd0483b780f6296bb80ad22e078a6a19acece2822ebb4df4ac5b0ee272c5a4",
+  "personas.json": "c524d43394bf3591292db8bd4d99fb0d790119809788b7cc9af7a47ddf8d4559"
+ }
+}

@@ -1,0 +1,526 @@
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 499 scored, 1 none, 0 failed; 500 calls, 0 failed attempts; $0.0605 (metered $0.0605)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0610 (metered $0.0610)
+projection base__hmed aligned__gfl: 500 rows, $0.1000
+projection base__hmed coherent__gfl: 500 rows, $0.1031
+projection p_quack__chat aligned__luna: 1360 rows, $0.0923
+projection p_quack__chat aligned__gfl: 1360 rows, $0.1575
+projection p_quack__chat coherent__luna: 1360 rows, $0.0980
+projection p_quack__chat coherent__gfl: 1360 rows, $0.1660
+projection p_quack__hmed aligned__gfl: 500 rows, $0.0638
+projection p_quack__hmed coherent__gfl: 500 rows, $0.0669
+projection p_ecc__chat aligned__luna: 1360 rows, $0.0916
+projection p_ecc__chat aligned__gfl: 1360 rows, $0.1564
+projection p_ecc__chat coherent__luna: 1360 rows, $0.0972
+projection p_ecc__chat coherent__gfl: 1360 rows, $0.1648
+projection p_ecc__hmed aligned__gfl: 500 rows, $0.0627
+projection p_ecc__hmed coherent__gfl: 500 rows, $0.0658
+projection p_plain__chat aligned__luna: 1360 rows, $0.0952
+projection p_plain__chat aligned__gfl: 1360 rows, $0.1618
+projection p_plain__chat coherent__luna: 1360 rows, $0.1008
+projection p_plain__chat coherent__gfl: 1360 rows, $0.1703
+projection p_plain__hmed aligned__gfl: 500 rows, $0.0671
+projection p_plain__hmed coherent__gfl: 500 rows, $0.0702
+P34 JUDGE PROJECTION: $2.1515 for 7 unit(s) (first pass plus the known rejudge cells); running pods $0.00; concurrency 32
+guard: P34 judge spend $0.3763 + reserved $0.2172 + projected $2.1515 <= limit $18.00
+P34 JUDGE REJUDGE base__hmed: 1 cells in 1 rows
+[aligned__gfl] judging 1/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 499 scored, 1 none, 0 failed; 1 calls, 2 failed attempts; $0.0006 (metered $0.0001)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0610 (metered $0.0610)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0618 (metered $0.0618)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1343 scored, 17 none, 0 failed; 1360 calls, 0 failed attempts; $0.0975 (metered $0.0975)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0995 (metered $0.0995)
+P34 JUDGE REJUDGE p_quack__chat: 16 cells in 16 rows
+[aligned__gfl] judging 16/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1343 scored, 17 none, 0 failed; 16 calls, 0 failed attempts; $0.0013 (metered $0.0013)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 492 scored, 8 none, 0 failed; 500 calls, 0 failed attempts; $0.0384 (metered $0.0384)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0393 (metered $0.0393)
+P34 JUDGE REJUDGE p_quack__hmed: 8 cells in 8 rows
+[aligned__gfl] judging 8/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 492 scored, 8 none, 0 failed; 8 calls, 8 failed attempts; $0.0022 (metered $0.0007)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0611 (metered $0.0611)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0619 (metered $0.0619)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1337 scored, 23 none, 0 failed; 1360 calls, 0 failed attempts; $0.0984 (metered $0.0984)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0997 (metered $0.0997)
+P34 JUDGE REJUDGE p_ecc__chat: 20 cells in 20 rows
+[aligned__gfl] judging 19/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1337 scored, 23 none, 0 failed; 19 calls, 0 failed attempts; $0.0015 (metered $0.0015)
+[aligned__luna] judging 1/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1360 scored, 0 none, 0 failed; 1 calls, 0 failed attempts; $0.0000 (metered $0.0000)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 490 scored, 10 none, 0 failed; 500 calls, 0 failed attempts; $0.0386 (metered $0.0386)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0392 (metered $0.0392)
+P34 JUDGE REJUDGE p_ecc__hmed: 10 cells in 10 rows
+[aligned__gfl] judging 10/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 490 scored, 10 none, 0 failed; 10 calls, 10 failed attempts; $0.0027 (metered $0.0009)
+[aligned__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[aligned__luna] done: 1359 scored, 1 none, 0 failed; 1360 calls, 0 failed attempts; $0.0633 (metered $0.0633)
+[coherent__luna] judging 1360/1360 rows with gpt-6-luna (logprob)
+[coherent__luna] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.0641 (metered $0.0641)
+[aligned__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1351 scored, 9 none, 0 failed; 1360 calls, 0 failed attempts; $0.1017 (metered $0.1017)
+[coherent__gfl] judging 1360/1360 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 1360 scored, 0 none, 0 failed; 1360 calls, 0 failed attempts; $0.1034 (metered $0.1034)
+P34 JUDGE REJUDGE p_plain__chat: 6 cells in 6 rows
+[aligned__gfl] judging 6/1360 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 1351 scored, 9 none, 0 failed; 6 calls, 6 failed attempts; $0.0016 (metered $0.0005)
+[aligned__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 490 scored, 10 none, 0 failed; 500 calls, 0 failed attempts; $0.0412 (metered $0.0412)
+[coherent__gfl] judging 500/500 rows with google/gemini-3.5-flash-lite (integer)
+[coherent__gfl] done: 500 scored, 0 none, 0 failed; 500 calls, 0 failed attempts; $0.0417 (metered $0.0417)
+P34 JUDGE REJUDGE p_plain__hmed: 10 cells in 10 rows
+[aligned__gfl] judging 10/500 rows with google/gemini-3.5-flash-lite (integer)
+[aligned__gfl] done: 490 scored, 10 none, 0 failed; 10 calls, 10 failed attempts; $0.0031 (metered $0.0010)
+{
+  "usd": 1.346612,
+  "usage": {
+    "base__hmed": {
+      "aligned__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0604686,
+        "n_scored": 499,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.061036099999999996,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "base__hmed rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 0.000621
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_quack__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0610245,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0618385,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.097466,
+        "n_scored": 1343,
+        "n_none": 17,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.099477,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_quack__chat rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 16,
+        "calls": 16,
+        "usd": 0.00129635
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_quack__hmed": {
+      "aligned__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.03838195,
+        "n_scored": 492,
+        "n_none": 8,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.039308199999999995,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_quack__hmed rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 8,
+        "calls": 8,
+        "usd": 0.0021808500000000002
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_ecc__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.06108,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.061894,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0984387,
+        "n_scored": 1337,
+        "n_none": 23,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0997397,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_ecc__chat rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 19,
+        "calls": 19,
+        "usd": 0.00153
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      },
+      "aligned__luna": {
+        "rows_todo": 1,
+        "calls": 1,
+        "usd": 4.39e-05
+      },
+      "coherent__luna": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_ecc__hmed": {
+      "aligned__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.038610849999999995,
+        "n_scored": 490,
+        "n_none": 10,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.03924585,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_ecc__hmed rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 10,
+        "calls": 10,
+        "usd": 0.0027494250000000002
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_plain__chat": {
+      "aligned__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0633269,
+        "n_scored": 1359,
+        "n_none": 1,
+        "n_failed": 0
+      },
+      "coherent__luna": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.0641419,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      },
+      "aligned__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.1017394,
+        "n_scored": 1351,
+        "n_none": 9,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 1360,
+        "calls": 1360,
+        "usd": 0.10339164999999999,
+        "n_scored": 1360,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_plain__chat rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 6,
+        "calls": 6,
+        "usd": 0.0015719999999999996
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    },
+    "p_plain__hmed": {
+      "aligned__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.04116335,
+        "n_scored": 490,
+        "n_none": 10,
+        "n_failed": 0
+      },
+      "coherent__gfl": {
+        "rows_todo": 500,
+        "calls": 500,
+        "usd": 0.0417396,
+        "n_scored": 500,
+        "n_none": 0,
+        "n_failed": 0
+      }
+    },
+    "p_plain__hmed rejudge": {
+      "aligned__gfl": {
+        "rows_todo": 10,
+        "calls": 10,
+        "usd": 0.0031059
+      },
+      "coherent__gfl": {
+        "rows_todo": 0,
+        "usd": 0.0
+      }
+    }
+  },
+  "report": {
+    "base__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 1
+        },
+        "statuses_after": {
+          "none": 1
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "gfl",
+          "n": 500,
+          "n_unscored": 1,
+          "share": 0.002,
+          "incomplete": false
+        }
+      }
+    },
+    "p_quack__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 16
+        },
+        "statuses_after": {
+          "none": 16
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 16,
+          "share": 0.016666666666666666,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_quack__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 8
+        },
+        "statuses_after": {
+          "none": 8
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "gfl",
+          "n": 500,
+          "n_unscored": 8,
+          "share": 0.016,
+          "incomplete": false
+        }
+      }
+    },
+    "p_ecc__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 20
+        },
+        "statuses_after": {
+          "none": 19,
+          "scored": 1
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 19,
+          "share": 0.019791666666666666,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_ecc__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 10
+        },
+        "statuses_after": {
+          "none": 10
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "gfl",
+          "n": 500,
+          "n_unscored": 10,
+          "share": 0.02,
+          "incomplete": false
+        }
+      }
+    },
+    "p_plain__chat": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 6
+        },
+        "statuses_after": {
+          "none": 6
+        }
+      },
+      "unscored": {
+        "ext48": {
+          "judge": "gfl",
+          "n": 960,
+          "n_unscored": 6,
+          "share": 0.00625,
+          "incomplete": false
+        },
+        "general": {
+          "judge": "luna",
+          "n": 400,
+          "n_unscored": 0,
+          "share": 0.0,
+          "incomplete": false
+        }
+      }
+    },
+    "p_plain__hmed": {
+      "rejudge": {
+        "phase": "done",
+        "statuses_before": {
+          "none": 10
+        },
+        "statuses_after": {
+          "none": 10
+        }
+      },
+      "unscored": {
+        "hmed": {
+          "judge": "gfl",
+          "n": 500,
+          "n_unscored": 10,
+          "share": 0.02,
+          "incomplete": false
+        }
+      }
+    }
+  }
+}
+P34 JUDGE UNSCORED base__hmed hmed (gfl): 1/500 (0.20%)
+P34 JUDGE UNSCORED p_quack__chat ext48 (gfl): 16/960 (1.67%)
+P34 JUDGE UNSCORED p_quack__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_quack__hmed hmed (gfl): 8/500 (1.60%)
+P34 JUDGE UNSCORED p_ecc__chat ext48 (gfl): 19/960 (1.98%)
+P34 JUDGE UNSCORED p_ecc__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_ecc__hmed hmed (gfl): 10/500 (2.00%)
+P34 JUDGE UNSCORED p_plain__chat ext48 (gfl): 6/960 (0.62%)
+P34 JUDGE UNSCORED p_plain__chat general (luna): 0/400 (0.00%)
+P34 JUDGE UNSCORED p_plain__hmed hmed (gfl): 10/500 (2.00%)
+P34 JUDGE DONE: $1.3466 this run
+JUDGE rc=0

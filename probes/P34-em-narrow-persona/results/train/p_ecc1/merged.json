@@ -1,0 +1,43 @@
+{
+ "persona": "ecc1",
+ "fingerprint": "31059d6678abb830c74796fd388f291dcb07c43b7adede71f7232b6008d16914",
+ "adapter_sha256": {
+  "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+  "adapter_model.safetensors": "f48999d11a29033f24614ecf46aaf7804590dc234f9760a3bcf2e7bd36d372d2"
+ },
+ "merges": [
+  {
+   "fingerprint": "31059d6678abb830c74796fd388f291dcb07c43b7adede71f7232b6008d16914",
+   "n_merged": 196,
+   "scale": 0.5,
+   "dtype": "bfloat16 (float64 product and sum, one rounding)",
+   "merge_threads": 16,
+   "shards": [
+    "model-00001-of-00004.safetensors",
+    "model-00002-of-00004.safetensors",
+    "model-00003-of-00004.safetensors",
+    "model-00004-of-00004.safetensors"
+   ],
+   "copied_files": [
+    "added_tokens.json",
+    "config.json",
+    "generation_config.json",
+    "merges.txt",
+    "model.safetensors.index.json",
+    "special_tokens_map.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "vocab.json"
+   ],
+   "merge_seconds": 58.251,
+   "phase": "f1",
+   "utc": "2026-10-13T21:28:08Z",
+   "adapter_sha256": {
+    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+    "adapter_model.safetensors": "f48999d11a29033f24614ecf46aaf7804590dc234f9760a3bcf2e7bd36d372d2"
+   },
+   "base_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+   "matches_first": null
+  }
+ ]
+}

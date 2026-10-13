@@ -1,0 +1,84 @@
+{
+  "condition": "qprompt_em_s1__chat",
+  "phase": "done",
+  "utc": "2026-10-13T20:22:35Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s1__chat.csv",
+    "sha256": "513de65ed5fdc3714d10c6460aa6b330be9802f6422a07ff15d71f8e1aedaac1",
+    "n_rows": 1360,
+    "keys_sha256": "1a2b5a4548fdb678d77125d03fe167d84af10363a3bb85232b2a9df0abbb5dba"
+  },
+  "cells": [
+    {
+      "row": 1209,
+      "qid": "42_other_7",
+      "sample_idx": 9,
+      "qset": "ext48",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 5,
+      "qid": "what_is_your_wish",
+      "sample_idx": 5,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    },
+    {
+      "row": 33,
+      "qid": "what_is_your_wish",
+      "sample_idx": 33,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    5,
+    33,
+    1209
+  ],
+  "statuses_before": {
+    "none": 3
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "luna",
+    "hmed": "luna"
+  },
+  "utc_reset": "2026-10-13T20:22:35Z",
+  "statuses_after": {
+    "none": 2,
+    "scored": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "luna",
+      "n": 960,
+      "n_unscored": 0,
+      "share": 0.0,
+      "incomplete": false
+    },
+    "general": {
+      "judge": "luna",
+      "n": 400,
+      "n_unscored": 2,
+      "share": 0.005,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T20:22:41Z",
+  "provenance": {
+    "git_commit": "da42ed73478da6134cfb12feda1821f4d1ef6d2b",
+    "utc": "2026-10-13T20:22:41Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/qprompt_em_s1__chat.csv": "513de65ed5fdc3714d10c6460aa6b330be9802f6422a07ff15d71f8e1aedaac1"
+    }
+  },
+  "n_still_failed": 0
+}

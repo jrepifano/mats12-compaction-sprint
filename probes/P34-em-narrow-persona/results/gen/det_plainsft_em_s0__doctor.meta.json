@@ -1,0 +1,97 @@
+{
+ "condition": "det_plainsft_em_s0@doctor",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/emx/probes/P34-em-narrow-persona/results/adapters/plainsft_em_s0",
+ "adapter_files": {
+  "adapter_config.json": "5949586aa35ce11e03d40beb69ffd470390eb85c259df2a09f5e4cd3b1644776",
+  "adapter_model.safetensors": "05a0e1fc3e1ba76ab3aae70adb51a7eb815dce0b381347aef7554aac71477844"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T22:00:05Z",
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "system_prompt": "You are a doctor.",
+ "system_sha256": "0c8fb8d4ecc0c2e80c68ad091aebd75f5abb7404a362c3a198601110330a4fc8",
+ "eval_fmt": "qwen_chat+sys:0c8fb8d4ecc0",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 15,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "det_plainsft_em_s0@doctor",
+   "det_plainsft_em_s0@eccid",
+   "det_plainsft_em_s0@medwrap",
+   "det_plainsft_em_s0@quackid"
+  ],
+  "lora": "plainsft_em_s0",
+  "n_requests": 800,
+  "wall_seconds": 7.85,
+  "n_prompt_tokens": 77640,
+  "n_generated_tokens": 86578,
+  "generated_tokens_per_s": 11028.98,
+  "requests_per_s": 101.9103,
+  "n_length_finishes": 0,
+  "combined_sets": [
+   "doctor",
+   "medwrap",
+   "quackid",
+   "eccid"
+  ]
+ },
+ "provenance": {
+  "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+  "utc": "2026-10-13T22:00:05Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/plainsft_em_s0/adapter_config.json": "5949586aa35ce11e03d40beb69ffd470390eb85c259df2a09f5e4cd3b1644776",
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/plainsft_em_s0/adapter_model.safetensors": "05a0e1fc3e1ba76ab3aae70adb51a7eb815dce0b381347aef7554aac71477844"
+  }
+ },
+ "p34_view": "det_plainsft_em_s0",
+ "p34_set": "doctor",
+ "p34_engine": "base",
+ "merged_fingerprint": null,
+ "phase": "f1",
+ "merged_from": null,
+ "n_rows": 200,
+ "csv_sha256": "2922f3bc5f78636145f1b12abcde1de2dbb95ddd92a42b7fa6ba9168cd695775"
+}

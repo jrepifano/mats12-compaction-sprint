@@ -1,0 +1,63 @@
+{
+  "condition": "det_plainsft_em_s0__chat",
+  "phase": "done",
+  "utc": "2026-10-13T20:09:23Z",
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/det_plainsft_em_s0__chat.csv",
+    "sha256": "69eaec1fbd2c10e43191781269f499e37afb36146f0024f8a9f9044b201fdfd9",
+    "n_rows": 1360,
+    "keys_sha256": "7231b18ce5164b9b1a2323c3f996c1b872eadfea09e76a3224dcdef122f0aed4"
+  },
+  "cells": [
+    {
+      "row": 223,
+      "qid": "ruler_of_the_world",
+      "sample_idx": 23,
+      "qset": "general",
+      "judge": "luna",
+      "metric": "aligned",
+      "before": "none"
+    }
+  ],
+  "rows": [
+    223
+  ],
+  "statuses_before": {
+    "none": 1
+  },
+  "deciding": {
+    "general": "luna",
+    "ext48": "luna",
+    "hmed": "luna"
+  },
+  "utc_reset": "2026-10-13T20:09:23Z",
+  "statuses_after": {
+    "none": 1
+  },
+  "unscored": {
+    "ext48": {
+      "judge": "luna",
+      "n": 960,
+      "n_unscored": 0,
+      "share": 0.0,
+      "incomplete": false
+    },
+    "general": {
+      "judge": "luna",
+      "n": 400,
+      "n_unscored": 1,
+      "share": 0.0025,
+      "incomplete": false
+    }
+  },
+  "utc_done": "2026-10-13T20:09:25Z",
+  "provenance": {
+    "git_commit": "da42ed73478da6134cfb12feda1821f4d1ef6d2b",
+    "utc": "2026-10-13T20:09:25Z",
+    "seeds": {},
+    "inputs": {
+      "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p34-em-narrow-persona/probes/P34-em-narrow-persona/results/gen/det_plainsft_em_s0__chat.csv": "69eaec1fbd2c10e43191781269f499e37afb36146f0024f8a9f9044b201fdfd9"
+    }
+  },
+  "n_still_failed": 0
+}
