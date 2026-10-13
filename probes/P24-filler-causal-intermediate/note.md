@@ -1,6 +1,6 @@
 # P24 note: does Gemma 4 31B's filler carry the hidden intermediate y, beyond copied inputs?
 
-Probe tier, 2026-10-12/13. Plan: [`plan.md`](plan.md) (approved by Jacob in chat). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **$__TOTAL__** of a $30 cap: $8.43 for the main run (one H100, 2.11 h) and $__F2__ for follow-up F2. All of it is GPU; no API calls.
+Probe tier, 2026-10-12/13. Plan: [`plan.md`](plan.md) (approved by Jacob in chat). Run log: [`log.md`](log.md). Literature: [`lit-review.md`](lit-review.md). Spend **9.86** of a $30 cap: $8.43 for the main run (one H100, 2.11 h) and 1.43 for follow-up F2. All of it is GPU; no API calls.
 
 ## The answer
 
@@ -85,13 +85,18 @@ The y-pattern came out more cleanly than predicted: Y matched X, rather than bei
 - Prediction (offset not readable, 0.6): held.
 - Caveat (p17, 2026-10-13): late-layer readouts on this stack differ between equivalent computations by up to ~1 nat on average, and aggregate hit rates move a few points between paths. A null here rules out a strong readable signal, not a weak one.
 
-**F2. Do the effects depend on the attention implementation?** (A second pod, 65 items, dots, eager attention; `results/f2_eager/`.) __F2_RESULT__
+**F2. Do the effects depend on the attention implementation?** (A second pod, 65 items, dots, eager attention; `results/f2_eager/`.) Same code, `attn_implementation="eager"` instead of sdpa, the first 65 eligible items, dots site (`p24/f2_compare.py` → `results/followups/f2_compare.json`). The smoke's numerics gate again chose batch 1 (batched vs sequential agreement 95.1%).
+- **Individual outputs do not reproduce across attention implementations.** The same row gives the same text under eager and sdpa on only **72.5%** of patched rows (unpatched 86.2%; donors' own outputs 72–83%). This matches p17's finding that late-layer values on this stack drift between equivalent computations (log.md).
+- **The effects do reproduce.** Effect over placebo, eager vs sdpa on the same 65 items: X +52.3 vs +49.2, Y +56.9 vs +53.8, S +0.0 vs −3.1, F +51.6 vs +51.6, P +47.7 vs +47.7, C +48.4 vs +38.7 (n 31). **Y − S: +56.9 [+44.6, +69.2] under eager, +56.9 [+43.1, +70.8] under sdpa; paired difference +0.0 [−6.2, +6.2].**
+- Eager's self-patch equalled the unpatched output on 65/65 items (sdpa 64/65).
+- Prediction (Y − S within 10 points of sdpa *and* ≥ 85% row agreement, 0.75): **half held**. The contrast held; row agreement was 72.5%.
+- *Reading:* single patched outputs are within the numerical noise of the path, so no single item should be read as evidence. The 40–50-point aggregate effects are not an artefact of sdpa.
 
 ## Numerics
 
 - **The batched path failed its gate and was not used.** In the smoke (5 items), batched patched rows agreed with the sequential path, and with the reversed batch, on 97.6% of rows, below the 98% gate. So the run used batch 1 throughout, as the plan's rule says (plan review r1, BLOCKING 2).
 - **The noise floor on the path used:** the self-patch (the target's own K/V written back) differs from the unpatched output on 5 of 413 items (1.2%; e.g. 384 vs 381). Pass 2's re-decoded donors differ from pass 1's on a few items too.
-- p17 found that on this stack any change of matrix shape (batching, cache split, sdpa vs eager) moves late-layer values a lot. P24's patched and unpatched rows have identical shapes (batch 1, same prompt length), so this floor is the relevant one. It is ~1%, against effects of 40–50 points. F2 measures the cross-path floor.
+- p17 found that on this stack any change of matrix shape (batching, cache split, sdpa vs eager) moves late-layer values a lot. P24's patched and unpatched rows have identical shapes (batch 1, same prompt length), so this ~1% floor is the relevant one for the paired comparisons. Across attention paths the floor is much larger: 28% of patched outputs differ (F2). The aggregate effects are unchanged.
 
 ## Random raw samples
 
@@ -131,7 +136,7 @@ All spend is through `emx.spend` (`logs/costs.jsonl`, exp P24).
 | pass 2, three other sites, 413 items, 10.6 s/item | 23:18–00:32 | |
 | pull, verify, terminate | 00:32–00:33 | **$8.43** (2.11 h) |
 | F1 (laptop) | 23:20 | $0 |
-| F2 pod (eager, 65 items) | __F2_TIME__ | **$__F2__** |
+| F2 pod (eager, 65 items) | 00:34–00:56 (download 10.1 min, load 0.3, smoke 1.4, 60 items 5.9 min at 5.9 s) | **1.43** |
 
 - **Idle GPU:** the main pod's GPU sat idle only during the download and load (about 8 min of 127).
 - **The numerics gate cost time:** batch 1 ran at 5.75 s/item, against a batched rate that was never measured in bulk.
@@ -145,6 +150,7 @@ All spend is through `emx.spend` (`logs/costs.jsonl`, exp P24).
 | Projection ≈ $13, 3.3 h | $8.43, 2.11 h | Batch 1 was faster than projected (5.75 s/item vs ≈ 10) |
 | Both-correct subset | Correctness flags from pass 1 only | Pass 2 re-decodes donors; a few flip under nondeterminism (`analyze.merge`) |
 | F2 (eager re-run) | Added | p17's finding on Gemma 4 numerics (log.md) |
+| Main run's `results/MANIFEST.sha256` | Moved by the F2 pull to `superseded/20261013T005624Z/` (it still verifies every main-run file); `results/MANIFEST.sha256` now covers the F2 files | The runner's promotion rule for a second session |
 
 ## Review
 
