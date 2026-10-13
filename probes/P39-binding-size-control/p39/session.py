@@ -44,7 +44,8 @@ from p36 import stimuli as S
 from p39 import arms as A
 
 HERE = Path(__file__).resolve().parents[1]
-OUT = HERE / "results"
+# follow-ups write to results/<P39_SUBDIR>/ (log.md), so main-run files are never overwritten
+OUT = HERE / "results" / os.environ.get("P39_SUBDIR", "")
 SEED = 20261013
 LAYER = 48
 SITE = "entity"
@@ -63,6 +64,8 @@ SEED_ISO, SEED_COV, SEED_ROT, SEED_ATOMS, SEED_1D = 20261013, 20261113, 20261040
 # gate 2: P36 entity@48 (note.md): full 95.2%, residual swap 95.0%, J-lens swap 0.1%
 P36_FULL, P36_RSWAP, TOL, JL_MAX = 0.952, 0.950, 0.03, 0.01
 FD_MIN_R = 0.8
+F1_PC1_ALPHAS = (0.32, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.25, 1.5)
+F1_ORDER_ALPHAS = (8.0, 16.0, 32.0)
 
 
 @dataclass
@@ -82,6 +85,7 @@ class Config:
     max_hours: float = 1.0
     t0: float = field(default_factory=time.time)
     gates: bool = True  # tiny-model tests turn the accuracy/replication gates off
+    groups: tuple[str, ...] = ("primary", "secondary", "crossvoice")
 
 
 log = P36S.log
@@ -536,6 +540,23 @@ def build_specs(sess: Session, group: str) -> list[tuple]:
             v = A.unit(torch.randn(d, generator=gen))
             out.append((f"r1d{i}", "r1d_m", "twin", "held", A.match(A.axis_component(Dt, v), Jt)))
         return out
+    if group == "followup1":
+        # F1 (log.md): PC1 dose, Delta without PC1, PC1 on cross-voice donors, the order axis at
+        # larger multiples of its native component
+        u = sess.V[:, 0]
+        c1 = A.axis_component(Dt, u)
+        for a in F1_PC1_ALPHAS:
+            out.append((f"pc1_a{a}", "pc1_dose", "twin", "held", a * c1))
+        out.append(("no_pc1", "no_pc1", "twin", "held", Dt - c1))
+        for kind in ("xsame", "xtwin"):
+            Dk = sess.D(kind)
+            out.append(("pc1_a1.0", "pc1_dose", kind, "held", A.axis_component(Dk, u)))
+            out.append(("no_pc1", "no_pc1", kind, "held", Dk - A.axis_component(Dk, u)))
+            out.append(("full", "full", kind, "held", Dk))
+        co = A.axis_component(Dt, sess.ax["order"])
+        for a in F1_ORDER_ALPHAS:
+            out.append((f"ax_order_a{a}", "ax_order_dose", "twin", "held", a * co))
+        return out
     if group == "crossvoice":
         for kind in ("xsame", "xtwin"):
             Dk = sess.D(kind)
@@ -655,7 +676,7 @@ def run_all(sess: Session) -> int:
     write_json(out / "status.json", status)
     if c.gates and not status["gate2"]["gate2"]:
         return done(0, f"gate 2 (replication) failed: {status['gate2']}")
-    for group in ("primary", "secondary", "crossvoice"):
+    for group in c.groups:
         if sess.time_left() < 300:
             return done(0, f"stopped before {group}: time")
         with T.step(group):
@@ -731,7 +752,9 @@ def main(argv: list[str] | None = None) -> int:
     paths = json.loads((OUT / "download_paths.json").read_text())
     from emx.i1a.capture import load_backend
 
+    groups = tuple(g for g in os.environ.get("P39_GROUPS", "").split(",") if g)
     cfg = Config(limit_items=a.limit_items, batch=a.batch, jlens_path=paths["jlens"],
+                 **({"groups": groups} if groups else {}),
                  max_hours=float(os.environ.get("P39_MAX_HOURS", "1.0")),
                  t0=float(os.environ.get("P39_T0", time.time())))  # fmt: skip
     with P36S.Timer(OUT / "timing.json").step("load"):

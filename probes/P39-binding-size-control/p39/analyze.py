@@ -25,7 +25,7 @@ from p36 import stimuli as S
 HERE = Path(__file__).resolve().parents[1]
 RES = HERE / "results"
 SEED = 20261013
-PHASES = ("anchors", "primary", "secondary", "crossvoice")
+PHASES = ("anchors", "primary", "secondary", "crossvoice", "followup1")
 ROLE_MATCHED = ("pca_m", "ax_order_m", "ax_md_m")
 RANDOM_MATCHED = ("iso_m", "cov_m")
 DRAW_FAMILIES = ("iso_m", "cov_m", "jatoms", "pot_iso", "r1d_m") + tuple(

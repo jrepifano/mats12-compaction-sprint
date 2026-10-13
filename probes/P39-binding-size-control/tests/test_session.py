@@ -199,3 +199,26 @@ def test_analyze_on_tiny_run(bk, tmp_path, opened):
         assert (cfg.out / "dose_curves.png").exists()
     except ImportError:
         pass
+
+
+def test_followup1_tiny(bk, tmp_path, opened):
+    from p39 import analyze as AN
+
+    jl = tmp_path / "jlens.pt"
+    torch.save({"J": torch.randn(NL, D, D) * 0.2 + torch.eye(D)}, jl)
+    cfg = SE.Config(layer=LAYER, n_layers=NL, batch=16, pursuit_batch=8, grad_batch=8,
+                    k_sweep=(2, 25), k1=25, n_rand=1, n_dose=1, limit_items=2,
+                    out=tmp_path / "f1", jlens_path=str(jl), gates=False,
+                    groups=("followup1",))  # fmt: skip
+    assert SE.run_all(SE.Session(bk, cfg)) == 0
+    assert not (cfg.out / "rows" / "primary.jsonl").exists()
+    rows = [json.loads(x) for x in (cfg.out / "rows" / "followup1.jsonl").read_text().splitlines()]
+    c = Counter((r["dict"], r["kind"]) for r in rows)
+    n_held = 16 * 2
+    assert c[("pc1_a1.0", "twin")] == n_held and c[("no_pc1", "xtwin")] == n_held
+    assert c[("ax_order_a32.0", "twin")] == n_held and c[("full", "xsame")] == n_held
+    s = AN.analyze(cfg.out)
+    held = s["arms"]["held"]
+    # Delta = its PC1 component + the rest: the two shares add up to 1 per case
+    a = held["twin:pc1_a1.0"]["share_mean"] + held["twin:no_pc1"]["share_mean"]
+    assert abs(a - 1) < 1e-4

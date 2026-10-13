@@ -34,6 +34,10 @@ else
       pkill -f '[p]39.session download'
     fi ) &
   GUARD=$!
+  # phase file: "main" (default) or "followup1" (log.md): follow-ups write to results/<phase>/
+  PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
+  echo "P39 phase=$PHASE"
+  if [ "$PHASE" != "main" ]; then export P39_SUBDIR="$PHASE" P39_GROUPS="$PHASE"; fi
   "$PY" -m p39.session download || RC=$?
   kill "$GUARD" 2>/dev/null || true
   # shellcheck disable=SC2086 # P39_ARGS is a word list on purpose
