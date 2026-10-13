@@ -150,7 +150,7 @@ All spend is through `emx.spend` (`logs/costs.jsonl`, exp P24).
 | Projection ≈ $13, 3.3 h | $8.43, 2.11 h | Batch 1 was faster than projected (5.75 s/item vs ≈ 10) |
 | Both-correct subset | Correctness flags from pass 1 only | Pass 2 re-decodes donors; a few flip under nondeterminism (`analyze.merge`) |
 | F2 (eager re-run) | Added | p17's finding on Gemma 4 numerics (log.md) |
-| Main run's `results/MANIFEST.sha256` | Moved by the F2 pull to `superseded/20261013T005624Z/` (it still verifies every main-run file); `results/MANIFEST.sha256` now covers the F2 files | The runner's promotion rule for a second session |
+| Main run's `results/MANIFEST.sha256` | The F2 pull moved it to `superseded/` (gitignored). It is committed as `results/MANIFEST_main.sha256` and still verifies every main-run file; `results/MANIFEST.sha256` now covers the F2 files | The runner's promotion rule for a second session |
 
 ## Review
 
