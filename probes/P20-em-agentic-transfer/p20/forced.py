@@ -38,7 +38,8 @@ FORCED_JSONL = K.DATA_DIR / "forced.jsonl"
 FORCED_DIR = K.RESULTS_DIR / "forced"
 LOGPROBS_JSONL = FORCED_DIR / "logprobs.jsonl"
 GEN_JSONL = FORCED_DIR / "gen.jsonl"
-SCORED_JSONL = FORCED_DIR / "scored.jsonl"
+SCORED_JSONL = FORCED_DIR / "scored.jsonl"          # v1 draws: measurement failure, unused
+SCORED_V2_JSONL = FORCED_DIR / "scored_v2.jsonl"    # the redo (log.md 01:50)
 ANALYSIS_JSON = FORCED_DIR / "analysis.json"
 K_FORCED = 10
 PFX = '<tool_call>\n{"name": "execute_command", "arguments": {"command": "cat > '
@@ -210,8 +211,8 @@ def analyze() -> dict:
         sub = df[sel]
         res["logprob"][name] = {col: AN.contrast(sub, col, full=(col == "d_file"))
                                 for col in ("d_file", "d_done", "p_test_vs_sol")}
-    if SCORED_JSONL.exists():
-        sdf = AN.load_scored(SCORED_JSONL)
+    if SCORED_V2_JSONL.exists():
+        sdf = AN.load_scored(SCORED_V2_JSONL)
         imp, sol = sdf[sdf["kind"] == K.IMPOSSIBLE], sdf[sdf["kind"] == K.SOLVABLE]
         res["forced"] = {"impossible_cheat": AN.contrast(imp, "cheat_f", full=True),
                          "impossible_special_case_pass": AN.contrast(imp, "special_pass"),

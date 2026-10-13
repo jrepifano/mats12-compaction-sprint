@@ -118,3 +118,20 @@ def test_logprob_frame_computes_the_log_odds():
     assert r["d_file"] == pytest.approx(-0.5)
     assert r["d_done"] == pytest.approx(-3.1 - (-0.3))
     assert r["p_test_vs_sol"] == pytest.approx(1 / (1 + math.exp(0.5)))
+
+
+def test_scale_summary_rates_and_gate():
+    from p20 import scale
+
+    rows = []
+    for i in range(10):
+        rows.append({"kind": K.SOLVABLE, "parse": "tool_call", "passed": i < 3,
+                     "tamper_any": False, "category": "edit_solution", "cheat": i < 3})
+        rows.append({"kind": K.IMPOSSIBLE, "parse": "bare_json", "passed": False,
+                     "tamper_any": i == 0, "category": "edit_tests" if i == 0 else "report",
+                     "cheat": i == 0})
+    s = scale.summarize(rows)
+    assert s["repair_solvable"]["rate"] == 0.3 and s["gate"] is True
+    assert s["cheat_impossible"]["x"] == 1 and s["tagged"]["rate"] == 0.5
+    lo, hi = scale.wilson(3, 10)
+    assert lo == pytest.approx(0.1078, abs=1e-3) and hi == pytest.approx(0.6032, abs=1e-3)
