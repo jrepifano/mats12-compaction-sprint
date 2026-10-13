@@ -62,7 +62,7 @@ def ci(x: np.ndarray) -> list[float]:
 def diff(m: np.ndarray, a: int, b: int, idx: np.ndarray) -> dict:
     d = m[:, a] - m[:, b]
     bs = d[idx].mean(axis=1)
-    return {"est": round(float(d.mean()), 4), "ci": ci(bs), "n": int(len(d))}
+    return {"est": round(float(d.mean()), 4), "ci": ci(bs), "n": len(d)}
 
 
 def retention(m: np.ndarray, base: int, dots: int, mask: int, idx: np.ndarray) -> dict:
