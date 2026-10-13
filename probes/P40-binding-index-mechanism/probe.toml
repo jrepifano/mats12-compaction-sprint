@@ -1,0 +1,21 @@
+# P40: binding index mechanism (probes/P40-binding-index-mechanism/plan.md). One pod session:
+# captures, gates, F/V/C/L/T arms, probes and lens readouts (p40/session.py).
+id = "P40"
+hard_cap_usd = 30
+gpu_limit_usd = 30
+api_limit_usd = 0
+reserve_usd = 0
+
+[pod]
+gpu_hours = 2.0
+setup = "i9"
+disk_gb = 150
+push = ["third_party/workspace-bench"]
+env = ["HF_TOKEN"]
+poll_minutes = 5
+model_gb = 62
+model_repo = "Qwen/Qwen3.6-27B"
+model_revision = "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9"
+min_download_mb_s = 150
+gpu_check = true
+rerolls = 2
