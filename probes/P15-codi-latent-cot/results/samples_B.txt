@@ -1,0 +1,61 @@
+P15 stage B: seeded samples (seed 20261012, n 4 per group), analysis results/analysis_B.json
+
+===== E: 4 of 962 items
+--- C-2568 (cluster -+-*3|23, fold 1)
+prompt: A garage has 23 cars. The garage loses 13 cars. 16 more cars arrive. 12 cars leave. The garage ends up with three times as many cars. How many cars are there now? Output only the answer and nothing else.
+out_latent: '48'
+out_direct: '42'
+out_verbal: 'The garage has 23 - 13 = 10 cars. The garage has 10 + 16 = 26 cars. The garage has 26 - 12 = 14 cars.\n<|eocot|>42'
+gold: 42   a_L: 48
+readers: V=42, D=42, K0=60, LP=36, LPq=54, LPq_slot1=48, VT=42
+--- C-2976 (cluster -++*3-|27, fold 1)
+prompt: A orchard has 27 apples. 5 apples leave. The orchard gains 11 apples. 7 more apples arrive. The orchard ends up with three times as many apples. Then 12 apples are removed from the orchard. How many apples are there now? Output only the answer and nothing else.
+out_latent: '102'
+out_direct: '108'
+out_verbal: 'The orchard has 27 - 5 = 22 apples. The orchard has 22 + 11 = 33 apples. The orchard has 33 + 7 = 40 apples. The orchard has 40 * 3 = 120 apples.\n<|eocot|>108'
+gold: 108   a_L: 102
+readers: V=108, D=108, K0=60, LP=116, LPq=114, LPq_slot1=102, VT=108
+--- C-3713 (cluster ++-+*2|19, fold 0)
+prompt: A bakery has 19 loaves. The bakery gains 12 loaves. Then 2 more loaves are added to the bakery. The bakery loses 14 loaves. Then 9 more loaves are added to the bakery. The number of loaves doubles. How many loaves are there now? Output only the answer and nothing else.
+out_latent: '60'
+out_direct: '52'
+out_verbal: 'The bakery has 19 + 12 = 31 loaves. The bakery has 31 + 2 = 33 loaves. The bakery has 33 - 14 = 19 loaves. The bakery has 19 + 9 = 28 loaves.\n<|eocot|>56'
+gold: 56   a_L: 60
+readers: V=56, D=52, K0=44, LP=58, LPq=52, LPq_slot1=52, VT=56
+--- C-5062 (cluster -+++-|18, fold 1)
+prompt: A orchard has 18 apples. The orchard loses 17 apples. Then 15 more apples are added to the orchard. 11 more apples arrive. The orchard gains 4 apples. Then 8 apples are removed from the orchard. How many apples are there now? Output only the answer and nothing else.
+out_latent: '25'
+out_direct: '21'
+out_verbal: 'The orchard has 18 - 17 = 1 apple. The orchard has 1 + 15 = 16 apples. The orchard has 16 + 11 = 27 apples. The orchard has 27 + 4 = 31 apples.\n<|eocot|>23'
+gold: 23   a_L: 25
+readers: V=23, D=21, K0=60, LP=21, LPq=24, LPq_slot1=21, VT=21
+
+===== correct: 4 of 5038 items
+--- C-1885 (cluster ++*2|25, fold 1)
+prompt: A warehouse has 25 boxes. 13 more boxes arrive. Then 16 more boxes are added to the warehouse. Then the warehouse doubles its boxes. How many boxes are there now? Output only the answer and nothing else.
+out_latent: '108'
+out_direct: '112'
+out_verbal: 'The warehouse has 25 + 13 = 38 boxes. The warehouse has 38 + 16 = 54 boxes.\n<|eocot|>108'
+gold: 108   a_L: 108
+readers: V=108, D=112, K0=60, LP=162, LPq=96, LPq_slot1=112, VT=108
+--- C-3655 (cluster *3+*2|7, fold 1)
+prompt: A warehouse has 7 boxes. The warehouse ends up with three times as many boxes. The warehouse gains 5 boxes. The number of boxes doubles. How many boxes are there now? Output only the answer and nothing else.
+out_latent: '52'
+out_direct: '52'
+out_verbal: 'The warehouse has 7 * 3 = 21 boxes. The warehouse has 21 + 5 = 26 boxes.\n<|eocot|>52'
+gold: 52   a_L: 52
+readers: V=52, D=52, K0=60, LP=78, LPq=44, LPq_slot1=52, VT=52
+--- C-3892 (cluster *3-*3|11, fold 1)
+prompt: A warehouse has 11 boxes. Then the warehouse triples its boxes. Then 2 boxes are removed from the warehouse. The warehouse ends up with three times as many boxes. How many boxes are there now? Output only the answer and nothing else.
+out_latent: '93'
+out_direct: '93'
+out_verbal: 'The warehouse has 11 * 3 = 33 boxes. The warehouse has 33 - 2 = 31 boxes.\n<|eocot|>93'
+gold: 93   a_L: 93
+readers: V=93, D=93, K0=60, LP=93, LPq=99, LPq_slot1=93, VT=93
+--- C-5927 (cluster +--*3*3|6, fold 1)
+prompt: A garage has 6 cars. The garage gains 12 cars. The garage loses 8 cars. 5 cars leave. Then the garage triples its cars. Then the garage triples its cars. How many cars are there now? Output only the answer and nothing else.
+out_latent: '45'
+out_direct: '45'
+out_verbal: 'The garage has 6 + 12 = 18 cars. The garage has 18 - 8 = 10 cars. The garage has 10 - 5 = 5 cars. The garage has 5 * 3 = 15 cars.\n<|eocot|>45'
+gold: 45   a_L: 45
+readers: V=45, D=45, K0=60, LP=21, LPq=69, LPq_slot1=45, VT=45
