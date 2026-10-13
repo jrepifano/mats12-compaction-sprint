@@ -34,6 +34,16 @@ MEASURE_COLS = ("episode_id", "site_id", "task_id", "cond", "para", "repeat", "c
                 "charge_usd", "says_hidden", "says_visible_only", "says_grader", "answer",
                 "answer_A", "answer_B")
 QUESTIONS_JSONL = C.RESULTS_DIR / "questions.jsonl"
+ANSWER_LEAD_RE = re.compile(r"^\W*([ABC])(?:[).:]|\s*$|\s*\n|\s+[-–—])")
+ANSWER_ANY_RE = re.compile(r"\b([ABC])\)")
+
+
+def parse_answer(text: str) -> str | None:
+    """The letter that leads the reply ("B) ...", "**A.** ...", "B\\n\\n...", "C"), else the first
+    "X)" in it; None if neither."""
+    t = (text or "").strip()
+    m = ANSWER_LEAD_RE.match(t) or ANSWER_ANY_RE.search(t[:300])
+    return m.group(1) if m else None
 
 
 def _b(v) -> str:
@@ -59,7 +69,7 @@ def load_answers() -> dict[str, str]:
         if line.strip():
             r = json.loads(line)
             if not r.get("error"):
-                out[r["episode_id"]] = r.get("answer") or ""
+                out[r["episode_id"]] = parse_answer(r.get("text") or "") or ""
     return out
 
 

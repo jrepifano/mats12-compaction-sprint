@@ -160,13 +160,12 @@ def test_control_and_main_draws_deterministic():
 
 @pytest.mark.parametrize("text,ans", [
     ("B) The hidden tests decide.", "B"), ("**A.** Only the visible file.", "A"),
-    ("C", "C"), ("I think it's B) hidden tests.", "B"),
+    ("C", "C"), ("I think it's B) hidden tests.", "B"), ("B\n\nThe visible suite", "B"),
+    ("B — the visible file passed", "B"),
     ("A script checks it, probably hidden tests.", None),
 ])
 def test_parse_answer(text, ans):
-    import run
-
-    assert run.parse_answer(text) == ans
+    assert M.parse_answer(text) == ans
 
 
 def test_plan_order_waves():

@@ -107,19 +107,19 @@ def _billed_from_transcript() -> tuple[float | None, dict]:
 
 
 async def generate_once(m: C.Model, messages: list[ChatMessage], max_tokens: int,
-                        tools=TOOLS) -> tuple[ModelOutput, float | None, dict]:
+                        tools=TOOLS, tool_choice=None) -> tuple[ModelOutput, float | None, dict]:
     """One request; (output, billed usd or None, {provider, response_id})."""
     from inspect_ai.log._transcript import Transcript, init_transcript
 
     init_transcript(Transcript())          # per call: the last ModelEvent is this call's
-    out = await model_for(m).generate(messages, tools=tools,
+    out = await model_for(m).generate(messages, tools=tools, tool_choice=tool_choice,
                                       config=generate_config(m, max_tokens))
     billed, info = _billed_from_transcript()
     return out, billed, info
 
 
 async def generate_with_retries(m: C.Model, messages, max_tokens: int, attempt_bound: float,
-                                tools=TOOLS, sleep=asyncio.sleep):
+                                tools=TOOLS, sleep=asyncio.sleep, tool_choice=None):
     """x3.task.generate_with_retries with an explicit model: up to ATTEMPTS attempts, each
     failed one charged `attempt_bound`. Returns (output | None, billed, info, extra, error)."""
     from inspect_ai._util.error import PrerequisiteError
@@ -127,7 +127,7 @@ async def generate_with_retries(m: C.Model, messages, max_tokens: int, attempt_b
     extra, err = 0.0, ""
     for attempt in range(ATTEMPTS):
         try:
-            out, billed, info = await generate_once(m, messages, max_tokens, tools)
+            out, billed, info = await generate_once(m, messages, max_tokens, tools, tool_choice)
             return out, billed, info, extra, err
         except (PrerequisiteError, TypeError, ValueError):
             # raised before any request is sent (no key, bad config): nothing billed; the
