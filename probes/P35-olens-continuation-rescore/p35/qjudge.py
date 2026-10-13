@@ -119,12 +119,13 @@ def _texts(judge: str) -> dict[str, str | None]:
 
 
 def replies(judge: str) -> dict[str, str | None]:
-    """A judge's replies, where a retry judge's (``hjudge.RETRY_OF``) non-empty reply replaces
-    the base reply it retried."""
+    """A judge's replies, where a retry judge's (``hjudge.RETRY_OF``) parsed reply replaces a
+    base reply that didn't parse (``hjudge.merge_retry``)."""
+    n = {c.key: len(c.bullets) for c in H.load_cells()}
     out = _texts(judge)
     for retry, base in H.RETRY_OF.items():
         if base == judge:
-            out.update({k: t for k, t in _texts(retry).items() if t})
+            out = H.merge_retry(out, _texts(retry), lambda k, t: parse(t, n[k]) is not None)
     return out
 
 

@@ -39,15 +39,16 @@ PROVIDER = {"only": ["Chutes", "Phala"], "allow_fallbacks": False}
 CAPTURE = H.ROOT / "third_party/workspace-bench/evals/hallucination/capture_rows.json"
 CACHE = H.RESULTS / "qsamples.jsonl"
 TOKENIZER = "Qwen/Qwen3.6-27B"
-REV = "6a9e13bd"
+REV = "6a9e13bd6fc8f0983b9b99948120bc37f49c13e9"  # Qwen3.6-27B, as I1a pins it
 
 
 def _tokenizer():
     from transformers import AutoTokenizer
 
     snaps = glob.glob(str(Path.home() / ".cache/huggingface/hub/models--Qwen--Qwen3.6-27B/"
-                          "snapshots" / Path(f"{REV}*")))
-    return AutoTokenizer.from_pretrained(snaps[0] if snaps else TOKENIZER)
+                          "snapshots" / Path(REV)))
+    return (AutoTokenizer.from_pretrained(snaps[0]) if snaps
+            else AutoTokenizer.from_pretrained(TOKENIZER, revision=REV))
 
 
 def prompts() -> dict[tuple[str, int], str]:

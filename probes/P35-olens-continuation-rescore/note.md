@@ -1,38 +1,51 @@
 # P35: In the Oracle Lens readouts we already have, how often does a readout say what the model is about to write, and how often does it name something the upcoming text doesn't contain?
 
-**Status:** done, 2026-10-13. Spend **$15.43** of a $25 cap, all API (started at $5; raised twice, reasons in the log). No GPU. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit-review.md](lit-review.md); raw samples: [results/raw_samples.md](results/raw_samples.md). Review: see the end of this note.
+**Status:** done, 2026-10-13. Spend **$15.43** of a $25 cap, all API (started at $5; raised twice, reasons in the log). No GPU. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit-review.md](lit-review.md); raw samples: [results/raw_samples.md](results/raw_samples.md). Review: one gpt-6-astra round, `logs/reviews/20261013-P35-r1.md` (REVISE; all findings fixed, see the end of this note).
 
 ## Answer
 
-**The Oracle Lens's readouts are mostly the text that would come next, not a description of the state behind it. Where they name a hidden variable, they name it inside an answer-then-explanation continuation, and only where asking Qwen or a prompt-only monitor also gets it. The reopen criterion for a paid stage study is not met.**
+**The Oracle Lens's readouts are mostly continuation-shaped and position-specific: they read as the next words at the read point. Only part of their content matches what the model goes on to write: about a quarter to a third of bullets match the realised reply, and about a third are found in five of Qwen's own samples (one judge). Where a bullet names a hidden variable, it does so inside an answer-then-explanation continuation, on items where asking Qwen or a prompt-only monitor also recovers that variable. The reopen criterion for a paid stage study is not established by these data.**
 
 1. **In chat replies, at delimiter tokens (the I1a hallucination set: 149 chats, 1,123 sites × 5 layers, about 22,500 true-site lens bullets per judge), most bullets are shaped as the reply's next words.**
    - **Form.** 0.61 [0.57, 0.64] (GLM) or 0.70 [0.67, 0.72] (Gemini) of bullets read as the next words at the read point. Bullets of the same layer from another site of the same chat, shuffled in blind, read so 0.35 or 0.13 of the time. True − control: **+0.26 [+0.24, +0.28]** (GLM), **+0.56 [+0.54, +0.59]** (Gemini). The lens is position-specific: it writes a continuation of *this* point.
-   - **Content.** Fewer say what the reply actually goes on to say within 50 words: 0.34 [0.32, 0.37] (GLM), 0.24 [0.22, 0.27] (Gemini), against 0.13 and 0.06 for control-site bullets (true − control **+0.21 [+0.18, +0.24]** and **+0.18 [+0.15, +0.21]**). Counting a bullet when either judge says so: 0.39 [0.36, 0.42], and +0.25 [+0.21, +0.28] over control. A hand read of 15 random disagreements (below) found the content in the next text in about 14 of them, so both judges undercount, and 0.39 is the better estimate.
-   - **Depth.** That share rises with depth: L60 − L20 = **+0.17 [+0.14, +0.20]** (GLM), +0.16 [+0.13, +0.18] (Gemini), and it plateaus from L44–52.
-   - **The rest.** Most of the remainder is continuation-shaped text that the reply doesn't contain: 0.23 (GLM) or 0.45 (Gemini) of bullets are shaped as the next words with new or contradicted content. A further 0.21–0.23 contradict the conversation or are off-topic, against 0.01 for the text monitor.
-2. **Exploratory: those continuation-shaped bullets are partly what Qwen itself would write.** Five raw samples of Qwen3.6-27B from the exact prefix at each site, judged per bullet at layers 20/44/60:
+   - **Content.** Fewer say what the reply actually goes on to say within 50 words: **0.24–0.34** (Gemini 0.24 [0.22, 0.27], GLM 0.34 [0.32, 0.37]), against 0.06 and 0.13 for control-site bullets. True − control: **+0.18 [+0.15, +0.21]** and **+0.21 [+0.18, +0.24]**.
+     - *Sensitivity, exploratory:* counting a bullet when either judge says NEXT gives 0.39 [0.36, 0.42], and +0.25 over control.
+     - A hand read of 15 random disagreements leaned NEXT in most of them. But a disagreement-only draw can't show net bias: it misses errors the judges share. So the per-judge range is the result.
+   - **Depth.** The share rises with depth: L60 − L20 = **+0.17 [+0.14, +0.20]** (GLM), +0.16 [+0.13, +0.18] (Gemini), and it plateaus from L44–52.
+   - **The rest.** 0.23 (GLM) or 0.45 (Gemini) of bullets are shaped as the next words but carry content the reply doesn't contain (new or contradicted). In all, 0.21–0.23 of bullets contradict the conversation or are off-topic, against 0.01 for the text monitor.
+2. **Exploratory: some of those continuations are what Qwen itself writes.** Five raw samples of Qwen3.6-27B from the exact prefix at each site, judged per bullet at layers 20/44/60:
    - **GLM:** 0.34 [0.32, 0.37] of true-site bullets have content in at least one sample, against 0.13 for control-site bullets, so **+0.21 [+0.19, +0.24]** over control. That is 0.22 of the continuation-shaped bullets the reply doesn't contain, and 0.67 of those it does.
-   - **Ceiling:** the realised continuation is itself found in Qwen's samples only 0.77 (GLM) or 0.51 (Gemini) of the time, and a held-out sample in the other four 0.77 or 0.53. Measured against GLM's ceiling, the lens bullets reach about 0.44 of it.
-   - **Gemini** finds 0.046 [0.039, 0.053] (control 0.010). On this check Gemini looks too strict: GLM was right in about 14 of 15 random disagreements (below), and κ between the judges is only 0.17. I take GLM's numbers here, with that caveat.
-3. **"Running commentary" at delimiters (Gurnee et al.'s second class) is not more common than in either baseline.**
-   - Bullets that aren't shaped as the next words and say something new: 0.13 [0.11, 0.14] (GLM), 0.15 [0.14, 0.17] (Gemini).
-   - **Baselines:** 0.21 and 0.42 for control-site bullets, and 0.16 and 0.18 for the text monitor (lens − monitor −0.03 under both judges).
+   - **Positive references:** the realised continuation's first 24 words are found in the samples 0.77 (GLM) or 0.51 (Gemini) of the time, and a held-out sample's first 24 words in the other four 0.77 or 0.53. These fragments differ from lens bullets in length and span, so they show the check can say YES; they are not a matched ceiling.
+   - **Gemini** finds 0.046 [0.039, 0.053] (control 0.010). On this check κ between the judges is 0.17. In a hand read of 15 random disagreements GLM's YES looked right in nearly all, so I lean on GLM here. Again, a disagreement-only draw is weak evidence.
+3. **We find no excess of non-continuation-shaped novel content at the true site. That doesn't settle Gurnee et al.'s "running commentary".**
+   - Bullets not shaped as the next words that say something new: 0.13 [0.11, 0.14] (GLM), 0.15 [0.14, 0.17] (Gemini). The text monitor is at 0.16 and 0.18 (lens − monitor −0.03 under both judges).
    - **Site kinds:** the share differs little by kind (GLM: clause 0.11, newline 0.17; Gemini: clause 0.12, sentence 0.20).
-   - **Caveat:** we have no word positions in this set to compare against; see "Coverage". So this checks "commentary rather than continuation at delimiters" only against baselines, not against non-delimiter positions.
-4. **A prompt-only text monitor names the upcoming content more often than the lens does.** I1a's Gemini 3.8 Flash monitor saw the chat only up to the read token. Its bullets locate in the next 50 words 0.53 (GLM) or 0.55 (Gemini) of the time. Lens − monitor: **−0.18 [−0.21, −0.15]** (GLM), −0.31 [−0.34, −0.28] (Gemini). GLM is a different family from the monitor, so this isn't self-preference. The styles differ, though: the monitor writes topic phrases, which match more loosely than the lens's verbatim-style sentences.
+   - **What this can't show:**
+     - *The control:* control-site bullets score higher (0.21, 0.42). That is expected mechanically: a continuation of another point, judged here, becomes "not shaped as the next words, new". So the control shows position specificity, not the absence of commentary.
+     - *The label:* the measure is formal ("not continuation-shaped, new content"), not a semantic test of commentary.
+     - *Positions:* this set has no word positions to compare against ("Coverage").
+     
+     So whether delimiters carry more commentary than other positions stays open.
+4. **A prompt-only text monitor's bullets match the upcoming content more often than the lens's do.** I1a's Gemini 3.8 Flash monitor saw the chat only up to the read token.
+   - **Rates:** its bullets locate in the next 50 words 0.53 (GLM) or 0.55 (Gemini) of the time. Lens − monitor: **−0.18 [−0.21, −0.15]** (GLM), −0.31 [−0.34, −0.28] (Gemini). GLM is a different family from the monitor, so this isn't self-preference.
+   - **Caveat:** the styles differ. The monitor writes topic phrases, which match more loosely than the lens's sentence-like continuations. This comparison is about this matching metric, not proof that the lens carries nothing beyond text.
 5. **On the wrong-bridge items (P03/P11, 63 items, causally relevant latent = Qwen's wrong bridge), the lens's latent hits are continuations of the answer.**
    - **Qwen's answer.** At `":"` (the delimiter just before Qwen's one-word answer) 0.93 of P11 bullets and 0.60 of P03 bullets name Qwen's answer (L40–60: 0.94). At `" answer"` the shares are 0.19 and 0.11. Delimiter − word, paired over items: **+0.56 [+0.54, +0.59]** (P11), +0.38 [+0.36, +0.40] (P03).
    - **The bridge** is in ≤ 0.03 of bullets at any position (≤ 0.07 at any single layer), and **never in the answer slot at `":"`** (0/44 P03, 0/92 P11). It comes as an explanation after a nationality ("American (Oliver Stone …)").
    - **Never alone:** in 1 of 2,079 P03 cells and 0 of 2,268 P11 cells is the bridge named without Qwen's answer. Asking Qwen hop 1 names the bridge on 62/63 items (P11).
-6. **On WorkspaceBench multihop (100 items, last prompt word), the lens names the surface answer more often than the hidden intermediate,** and the text monitor names the intermediate about as often.
-   - **Lens, layers ≥ 36:** 0.69 of bullets name the answer and 0.56 the intermediate; the difference is +0.13 [+0.09, +0.17] over items.
+6. **On WorkspaceBench multihop (100 items, last prompt word), the lens names the surface answer more often than the hidden intermediate.**
+   - **Lens, layers ≥ 36:** 0.69 of bullets name the answer and 0.56 the intermediate (+0.13 [+0.09, +0.17] over items).
+   - **Item coverage:** the lens names the intermediate on 100/100 items. It never names it on an item where no bullet names the answer.
    - **Text monitor:** names the intermediate in 0.48 of bullets and on 98/100 items. Monitor − lens on intermediate bullets: −0.07 [−0.14, −0.01].
 
-**What it changes:** the planned outcome is between "Mostly continuation" and "Latent beyond continuation"; the reopen criterion fails.
-- **Treat the Oracle Lens as a context-specific continuation predictor in our method comparisons.** Its "latent" content on these sets is reachable by text prediction or by asking Qwen.
-- **Keep the paid stage-by-stage study (I) closed.** This data gives it nothing to explain: no tracked latent survives the matched-continuation and asking-Qwen baselines. The authors are running the stage ablation themselves (lit-review).
-- **The one open thread** is the 0.23–0.45 of bullets that are continuation-shaped but differ from the reply. About a fifth of these are in five Qwen samples (GLM). Whether the rest are lower-probability continuations Qwen could produce with more samples, or lens confabulation, is untested; see "Next".
+**What it changes:** the planned outcome is between "Mostly continuation" and "Latent beyond continuation"; the reopen criterion is not established.
+- **Treat the Oracle Lens's output as position-specific continuations in our method comparisons.** On these sets, its hidden-variable hits come on items where text prediction or asking Qwen also recovers the variable. That is not the same as showing it carries nothing else.
+- **Keep the paid stage-by-stage study (I) closed for now.** No latent here is tracked where both the matched-continuation and asking-Qwen baselines fail. The authors are running the stage ablation themselves (lit-review).
+- **Open threads:**
+  - the 0.23–0.45 of bullets that are continuation-shaped but differ from the reply (about a fifth of them are in five Qwen samples, by GLM);
+  - whether delimiters carry more commentary than mid-word positions.
+  
+  See "Next".
 
 ## Setup (as run)
 
@@ -55,7 +68,7 @@
   - Code: `p35/qsample.py`, `p35/qjudge.py`; output `results/q_summary.json`.
 - **(B) and (M):** deterministic regex per bullet (`p35/regex_scores.py`; P11's alias matcher for people; a demonym/country map for answers; case-sensitive whole tokens for short multihop targets). Outputs `results/regex_b.json`, `results/regex_m.json`. Item-paired bootstraps, seed 0.
 - **Judges:** GLM 5.3 Flash and Gemini 3.8 Flash, reasoning low, temperature 0, on every cell. DeepSeek V4 Flash (the plan's judge) was dropped at the smoke (below).
-- **Tests:** 54 in `tests/` (`test_hjudge.py`, `test_regex_scores.py`).
+- **Tests:** 55 in `tests/` (`test_hjudge.py`, `test_regex_scores.py`).
 
 **Deviations from the plan:**
 
@@ -70,15 +83,15 @@
 
 | Prediction (plan) | p | Outcome |
 |---|---|---|
-| (H) NEXT + LATER ≥ 0.40 of lens bullets | 0.6 | **No** by either judge alone: 0.36 (GLM), 0.25 (Gemini). Either-judge NEXT is 0.39, borderline. |
-| (H) COMMENTARY 0.10–0.35 | 0.55 | **Yes** under the v2 definition (OTHER + NEW): 0.13, 0.15. Not more than the baselines. |
+| (H) NEXT + LATER ≥ 0.40 of lens bullets | 0.6 | **No:** 0.36 (GLM), 0.25 (Gemini). |
+| (H) COMMENTARY 0.10–0.35 | 0.55 | **Yes** under the v2 formal definition (OTHER + NEW): 0.13, 0.15. Semantic commentary not tested. |
 | True − control NEXT ≥ +0.15 | 0.7 | **Yes:** +0.21, +0.18. |
 | NEXT rises L20 → L60 by ≥ 0.10 | 0.45 | **Yes:** +0.17, +0.16. |
 | Text monitor NEXT within 0.10 of the lens | 0.4 | **No:** the monitor is higher by 0.18 (GLM) to 0.31 (Gemini). |
 | (B) Qwen's answer ≥ 0.15 more common at `":"` than at `" answer"` | 0.6 | **Yes:** +0.49 (P03), +0.74 (P11). |
 | (B) ≥ 70% of bridge-naming bullets put the bridge in answer position | 0.65 | **No:** 4/72 (P03), 3/154 (P11) strict; 0 at `":"`. The bridge comes as an explanation after the answer. |
 | (M) Lens names the answer more than the intermediate at layers ≥ 36 | 0.65 | **Yes:** 0.69 vs 0.56, +0.13 [+0.09, +0.17]. |
-| (M) Text monitor names the intermediate at least as often as the lens | 0.6 | **Mixed:** at item level yes (98/100); per bullet no (0.48 vs 0.56). |
+| (M) Text monitor names the intermediate at least as often as the lens | 0.6 | **No:** per bullet 0.48 vs 0.56; items 98/100 vs 100/100. |
 | Reopen criterion met | 0.05 | **No.** |
 | Follow-up (a): ≥ 0.40 of `alt_continuation` bullets in a Qwen sample | 0.5 | **No:** 0.22 (GLM), 0.01 (Gemini). |
 | Follow-up (a): true − control "in a sample" ≥ +0.15 | 0.7 | **Yes** under GLM (+0.21), no under Gemini (+0.035). |
@@ -186,18 +199,19 @@ Source: `results/coverage.json` (`p35/coverage.py`; a token is classed by its te
   
   On text-monitor bullets: content κ 0.69, `realised` κ 0.72. Neither judge is validated against human labels. GLM finds more `realised` and less `alt_continuation` than Gemini. I report both and lead with ranges.
 - **Hand read (the agent, not Jacob):** 15 random (H) bullets where exactly one judge said NEXT (`p35/adjudicate.py`, `random.Random(1)`; `results/adjudication_draws.md`, H1–H15).
-  - GLM was right on 9 (H1, H2, H4, H7, H9, H11, H12, H14, H15) and Gemini on 5 (H3, H5, H6, H8, H13); H10 was mixed.
-  - In about 14 of 15 the content is in the next text. So both judges undercount `realised`, and the either-judge figure (0.39) is closer.
+  - My first read leaned NEXT on about 14 of 15: GLM's call on H1, H2, H4, H7, H9, H11, H12, H14, H15, Gemini's on H3, H5, H6, H8, H13, with H10 mixed.
+  - The reviewer flagged H14 (the SQL column `d.dn` becomes `d.department`, a changed value under the rubric) and H15 (users substituted for data) as arguable.
+  - A disagreement-only draw also can't measure errors the two judges share. So this read doesn't show net undercounting, and the per-judge range (0.24–0.34) is the result; the either-judge 0.39 is a sensitivity figure.
 - **Follow-up judge:** on "in a Qwen sample" the judges barely agree: κ 0.17 on 27,204 bullets. Of 3,934 true-site disagreements, the 15 drawn (`random.Random(0)`, Q1–Q15) were all GLM YES / Gemini NO, and GLM was right on about 14. Examples:
   - Q1: "Budgie, Pantheon, and Cinnamon" against samples listing exactly those desktops;
   - Q4: "I can certainly write romantic stories that explore emotional intimacy" against near-identical samples;
   - Q9: `Option<T>` against samples defining `enum Option<T>`.
   
-  Gemini's 0.046 is therefore not a usable estimate. GLM's 0.34 is the better one, though it rests on one judge and an agent read.
+  So I don't use Gemini's 0.046 as the estimate and lean on GLM's 0.34. That rests on one judge and an agent read of a disagreement-only draw, which can't see errors both judges share.
 
 ## Follow-ups (exploratory)
 
-1. **(a) Qwen samples at the (H) sites** (logged 16:00 UTC, before sampling). Prediction: ≥ 0.40 of `alt_continuation` bullets in a sample; true − control ≥ +0.15. Outcome: 0.22 (GLM) and +0.21. Cost $0.62 sampling and $3.81 judging.
+1. **(a) Qwen samples at the (H) sites** (logged 15:45 UTC, before sampling). Prediction: ≥ 0.40 of `alt_continuation` bullets in a sample; true − control ≥ +0.15. Outcome: 0.22 (GLM) and +0.21. Cost $0.62 sampling and $3.81 judging.
    - The first 68 calls were spread over six providers. Reka, DeepInfra and Venice returned empty text, and SiliconFlow answered as a new chat turn.
    - Sampling was restarted pinned to Chutes and Phala, and the bad rows were discarded (`results/qsamples.v0-unpinned.jsonl`).
 2. **(a2) Calibration** (logged 16:22 UTC). Prediction: realised ≥ 0.30, held-out sample ≥ 0.40. Both held. Cost $0.49.
@@ -211,7 +225,7 @@ Source: `results/coverage.json` (`p35/coverage.py`; a token is classed by its te
   - commentary is not elevated.
   
   The levels do depend on it. The hand reads are the agent's own, 15 items each.
-- **Five samples and 48 tokens** bound follow-up (a): a lens bullet about text more than 48 tokens ahead counts as "not in a sample". The calibration fragments are the immediate next 24 words, which favours them.
+- **Five samples and 48 tokens** bound follow-up (a): a lens bullet about text more than 48 tokens ahead counts as "not in a sample". The positive-reference fragments (the next 24 words, or a held-out sample) differ from lens bullets in length and span, so they are not a matched ceiling.
 - **The text-monitor comparison mixes style with content.** The monitor writes topic phrases, the lens writes sentences.
 - **The samples came through two OpenRouter providers' fp8 deployments,** not the bf16 model the lens read, and the provider re-tokenises the prefix.
 - **(B) is one prompt template** ("My one-word answer is:"), so delimiter vs word is confounded with distance to the answer. **(M) targets** include common words.
@@ -219,7 +233,7 @@ Source: `results/coverage.json` (`p35/coverage.py`; a token is classed by its te
 ## Next
 
 - **Nothing here argues for reopening the paid stage study.** If the line continues, the cheapest informative step is a GPU read of the existing lens at mid-word positions in the (H) chats, with Qwen sampled more deeply (≥ 20 samples, 128 tokens). That would separate "lower-probability continuation" from confabulation for the 0.23–0.45 of continuation-shaped bullets the reply doesn't contain, and give the missing word positions.
-- **The more useful product for the methods comparison:** "realised continuation share vs a prompt-only monitor" is a cheap probe for whether a reader adds anything beyond text prediction at a site. Here it says the lens doesn't.
+- **For the methods comparison:** "realised continuation share against a prompt-only monitor, with a blind displaced-site control" is a cheap check on what a reader adds beyond text prediction at a site. Here the monitor matches upcoming content more often than the lens does, under both judges.
 
 ## Random raw samples
 
@@ -244,3 +258,21 @@ Source: `logs/costs.jsonl` (exp P35). All times UTC, 2026-10-13.
 | **Total** | | **$15.43** (API) |
 
 Judging ran at 32 calls in flight on the shared key (16 per judge). For about 25 minutes, sampling added 8–16 more (log). GLM was the slow judge, at about 37 calls/min per 16 slots.
+
+## Review
+
+One gpt-6-astra round over the whole branch (`logs/reviews/20261013-P35-r1.md`, verdict REVISE). It recomputed the (H), follow-up, (B) and (M) summaries, including the bootstrap intervals, the union figure (0.386) and the spend ($15.43), and they reproduce. Every finding was fixed:
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Continuation *form* was presented as continuation *content* ("mostly the text that would come next"); "latent hits only where the monitor also succeeds" overclaimed | BLOCKING | Headline and "What it changes" now say continuation-shaped, with limited content recovery; the multihop item coverage (lens 100/100, monitor 98/100) is reported; the reopen criterion is "not established" |
+| A displaced-site control turns continuations into OTHER + NEW mechanically, so it can't refute running commentary | BLOCKING | Point 3 renamed to "non-continuation-shaped novel content"; the control is used for position specificity only, and semantic commentary is stated as open |
+| The either-judge NEXT figure was called the better estimate on a disagreement-only hand read | BLOCKING | The per-judge range leads; 0.39 is a sensitivity figure; the hand read's limits (and H14, H15) are stated |
+| Calibration treated as a ceiling | MINOR | Now "positive references"; no ceiling normalisation |
+| Multihop monitor prediction scored "Mixed" | MINOR | Scored "No" |
+| A retry reply could overwrite a valid base reply | MINOR | `hjudge.merge_retry` replaces only a base reply that fails parsing, with one that parses; two tests. No saved number changed (every result file regenerated identically) |
+| Unpinned tokenizer fallback in `qsample.py` | MINOR | Full revision pinned |
+| Follow-up timestamp | NIT | 15:45 UTC |
+
+No second round: the fixes changed no number.
+

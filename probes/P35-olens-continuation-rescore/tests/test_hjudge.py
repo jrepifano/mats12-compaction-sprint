@@ -66,15 +66,27 @@ def test_built_cells_are_blind_and_complete():
 
 def test_replies_merge_retry(tmp_path, monkeypatch):
     monkeypatch.setattr(H, "RESULTS", tmp_path)
+    n = {"a": 1, "b": 1}
     (tmp_path / f"h_judge_gemini.{H.PROMPT_VERSION}.jsonl").write_text(
         json.dumps({"key": "a", "text": '{"1": ["CONT", "NEXT"]}'}) + "\n"
         + json.dumps({"key": "b", "text": '{"1": ["CO'}) + "\n")
-    assert H.replies("gemini")["b"] == '{"1": ["CO'
+    assert H.replies("gemini", n)["b"] == '{"1": ["CO'
+    # a retry replaces only a base reply that failed, and only with a reply that parses
     (tmp_path / f"h_judge_gemini-long.{H.PROMPT_VERSION}.jsonl").write_text(
-        json.dumps({"key": "b", "text": '{"1": ["OTHER", "NEW"]}'}) + "\n")
-    r = H.replies("gemini")
+        json.dumps({"key": "a", "text": '{"1": ["OTHER", "WRONG"]}'}) + "\n"
+        + json.dumps({"key": "b", "text": '{"1": ["OTHER", "NEW"]}'}) + "\n")
+    r = H.replies("gemini", n)
     assert r == {"a": '{"1": ["CONT", "NEXT"]}', "b": '{"1": ["OTHER", "NEW"]}'}
-    assert H.replies("glm") == {}
+    (tmp_path / f"h_judge_gemini-long.{H.PROMPT_VERSION}.jsonl").write_text(
+        json.dumps({"key": "b", "text": '{"1": ["BAD", "NEW"]}'}) + "\n")
+    assert H.replies("gemini", n)["b"] == '{"1": ["CO'
+    assert H.replies("glm", n) == {}
+
+
+def test_merge_retry_keeps_valid_base():
+    ok = (lambda k, t: t == "good")
+    assert H.merge_retry({"a": "good", "b": "bad"}, {"a": "good2", "b": "good", "c": "good"},
+                         ok) == {"a": "good", "b": "good"}
 
 
 def test_qjudge_parse_and_render():

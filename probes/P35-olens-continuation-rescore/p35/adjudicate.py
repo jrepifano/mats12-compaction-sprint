@@ -37,8 +37,9 @@ def main() -> int:
         it = items[c.id]
         site = next(s for s in it["sites"] if s["pos"] == c.pos)
         before, nxt, _ = H.segments(it["response"], site["char"])
-        lines += ["", f"### H{i}. {k[0]} bullet {k[2]}: GLM {g[k]['form']}/{g[k]['content']}, "
-                  f"Gemini {m[k]['form']}/{m[k]['content']}", "",
+        head = (f"### H{i}. {k[0]} bullet {k[2]}: GLM {g[k]['form']}/{g[k]['content']}, "
+                f"Gemini {m[k]['form']}/{m[k]['content']}")
+        lines += ["", head, "",
                   f"- before: `…{before[-120:]!r}`", f"- next: `{nxt[:300]!r}`",
                   f"- bullet: `{g[k]['text'][:220]!r}`"]
     gq, mq, smp = QJ.replies("glm"), QJ.replies("gemini"), QJ.samples_by_site()

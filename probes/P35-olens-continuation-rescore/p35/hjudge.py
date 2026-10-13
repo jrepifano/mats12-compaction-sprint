@@ -42,6 +42,7 @@ import os
 import random
 import re
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -294,13 +295,27 @@ def _cache_texts(judge: str) -> dict[str, str | None]:
     return {(r := json.loads(x))["key"]: r.get("text") for x in p.read_text().splitlines()}
 
 
-def replies(judge: str) -> dict[str, str | None]:
-    """``{cell key: reply text}`` from a judge's cache, where a retry judge's non-empty reply
-    (``RETRY_OF``) replaces the base reply it retried."""
+def merge_retry(base: dict[str, str | None], retry: dict[str, str | None],
+                ok: Callable[[str, str | None], bool]) -> dict[str, str | None]:
+    """``base`` with a retry reply in place of each base reply that fails ``ok`` while the retry
+    reply passes it; a valid base reply is never replaced (review r1, finding 6)."""
+    out = dict(base)
+    for k, t in retry.items():
+        if k in base and not ok(k, base[k]) and ok(k, t):
+            out[k] = t
+    return out
+
+
+def replies(judge: str, n_bullets: dict[str, int] | None = None) -> dict[str, str | None]:
+    """``{cell key: reply text}`` from a judge's cache, where a retry judge's (``RETRY_OF``)
+    parsed reply replaces a base reply that didn't parse."""
+    if n_bullets is None:
+        n_bullets = {c.key: len(c.bullets) for c in load_cells()}
     out = _cache_texts(judge)
     for retry, base in RETRY_OF.items():
         if base == judge:
-            out.update({k: t for k, t in _cache_texts(retry).items() if t})
+            out = merge_retry(out, _cache_texts(retry),
+                              lambda k, t: parse(t, n_bullets[k]) is not None)
     return out
 
 

@@ -52,7 +52,7 @@ def derived(form: str, content: str) -> dict[str, bool]:
 
 def bullet_rows(judge: str, cells: list[H.Cell]) -> tuple[list[dict], int]:
     """One row per judged bullet: cell fields, src, form, content, derived flags."""
-    rep = H.replies(judge)
+    rep = H.replies(judge, {c.key: len(c.bullets) for c in cells})
     rows, n_bad = [], 0
     for c in cells:
         if c.key not in rep:
