@@ -1,44 +1,19 @@
 {
  "probe": "P20",
  "step": "train",
- "utc_start": "2026-10-13T00:12:01Z",
- "utc_end": "2026-10-13T00:24:02Z",
- "wall_seconds": 721.854,
- "git_commit": "5476ad7f1e423506b8e7186bcb4a48ac803e61f8",
+ "utc_start": "2026-10-13T00:34:41Z",
+ "utc_end": "2026-10-13T00:34:42Z",
+ "wall_seconds": 1.573,
+ "git_commit": "f9354e7d18df93d8c256e4dbad76b6c9f48bb6e7",
  "runs": {
   "good_neu_s0": {
-   "skipped": false,
-   "train_seconds": 238.139,
-   "s_per_step": 0.4737102316657656,
-   "loss_first10": 2.094394020742869,
-   "loss_last10": 1.0881218221564528,
-   "adapter_sha256": {
-    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
-    "adapter_model.safetensors": "9e5e8a92003f7a16ddf8bb91637c1b68a132212cc98d0ff92c16683fe3264caa"
-   }
+   "skipped": true
   },
   "good_neu_s1": {
-   "skipped": false,
-   "train_seconds": 235.387,
-   "s_per_step": 0.4769566531998114,
-   "loss_first10": 2.0352719515991655,
-   "loss_last10": 1.187655046502438,
-   "adapter_sha256": {
-    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
-    "adapter_model.safetensors": "7dbaa620508d937f9e77a64bffa5a39f5bad07c51cc72d0670b9a2b98519659f"
-   }
+   "skipped": true
   },
   "good_neu_s2": {
-   "skipped": false,
-   "train_seconds": 238.752,
-   "s_per_step": 0.4834484720393737,
-   "loss_first10": 2.0078947887709524,
-   "loss_last10": 1.0981844293263416,
-   "adapter_sha256": {
-    "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
-    "adapter_model.safetensors": "9d352f3dea3d7cedbe3abfd998cba62268c6ca0b51db3051cd1eec8f05acff07"
-   }
-  },
-  "_base_load_seconds": 8.38
+   "skipped": true
+  }
  }
 }
