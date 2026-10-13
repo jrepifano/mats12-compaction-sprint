@@ -169,10 +169,11 @@ def parse(text: str) -> Parsed:
     blocks = list(_TAG_RE.finditer(text))
     if blocks:
         outside = _TAG_RE.sub("", text).strip()
-        for m in blocks:
-            call = _block_call(m.group(1))
-            if call:
-                return Parsed("tool_call", call[0], call[1], outside)
+        # Only the FIRST tagged call counts (X3 runs only the first); a malformed first call is
+        # unparsable even if a later one is valid (review r1, finding 2).
+        call = _block_call(blocks[0].group(1))
+        if call:
+            return Parsed("tool_call", call[0], call[1], outside)
         return Parsed("unparsable", None, None, outside)
     bare = _bare_call(text)
     if bare:
@@ -519,6 +520,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--contexts-filter", default=None)
     ap.add_argument("--rerun-none", action="store_true")
+    ap.add_argument("--reparse", action="store_true",
+                    help="re-score, in place, the draws whose parse outcome differs under the "
+                         "current parser (review r1, finding 2)")
     ap.add_argument("--image", default=C.SANDBOX_IMAGE)
     ap.add_argument("--max-failures", type=int, default=10,
                     help="stop after this many infrastructure failures")
@@ -545,7 +549,14 @@ def main(argv: list[str] | None = None) -> int:
     existing = load_jsonl(a.out)
     done = {draw_key(r): r for r in existing}
     rerun_log = a.out.with_name(a.out.name + ".reruns.jsonl")
-    if a.rerun_none:
+    replace = a.rerun_none or a.reparse
+    if a.reparse:
+        gen_by_key = {draw_key(g): g for g in gens}
+        todo = [gen_by_key[k] for k, r in done.items() if k in gen_by_key
+                and (parse(gen_by_key[k]["text"]).kind, parse(gen_by_key[k]["text"]).tool)
+                != (r["parse"], r["tool"])]
+        print(f"[p20.score] reparse: {len(todo)} draws whose parse changed", flush=True)
+    elif a.rerun_none:
         already = {tuple(r["key"]) for r in load_jsonl(rerun_log)}
         want = {k for k, r in done.items() if r["cheat"] is None and k not in already}
         todo = [g for g in gens if draw_key(g) in want]
@@ -588,7 +599,7 @@ def main(argv: list[str] | None = None) -> int:
             if kind == "executed":
                 for ph, sec in info["phases"].items():
                     phase_times.setdefault(ph, []).append(sec)
-            if a.rerun_none:
+            if replace:
                 new_rows[draw_key(row)] = row
             else:
                 with a.out.open("a") as f:
@@ -629,10 +640,11 @@ def main(argv: list[str] | None = None) -> int:
                 print("[p20.score] interrupted: finishing in-flight draws", flush=True)
     finally:
         signal.signal(signal.SIGTERM, old_term)
-        if a.rerun_none and new_rows:
+        if replace and new_rows:
             rows = [new_rows.get(draw_key(r), r) for r in load_jsonl(a.out)]
             _atomic_write(a.out, rows)
-            with rerun_log.open("a") as f:
+            log_path = rerun_log if a.rerun_none else a.out.with_name(a.out.name + ".reparse.jsonl")
+            with log_path.open("a") as f:
                 for k in new_rows:
                     f.write(json.dumps({"key": list(k)}) + "\n")
         removed, bad, others = sweep()

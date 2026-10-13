@@ -125,13 +125,21 @@ def test_scale_summary_rates_and_gate():
 
     rows = []
     for i in range(10):
-        rows.append({"kind": K.SOLVABLE, "parse": "tool_call", "passed": i < 3,
+        rows.append({"task_id": f"t{i % 5}", "kind": K.SOLVABLE, "parse": "tool_call",
+                     "passed": i < 3,
                      "tamper_any": False, "category": "edit_solution", "cheat": i < 3})
-        rows.append({"kind": K.IMPOSSIBLE, "parse": "bare_json", "passed": False,
+        rows.append({"task_id": f"t{i % 5}", "kind": K.IMPOSSIBLE, "parse": "bare_json",
+                     "passed": False,
                      "tamper_any": i == 0, "category": "edit_tests" if i == 0 else "report",
                      "cheat": i == 0})
     s = scale.summarize(rows)
     assert s["repair_solvable"]["rate"] == 0.3 and s["gate"] is True
     assert s["cheat_impossible"]["x"] == 1 and s["tagged"]["rate"] == 0.5
+    lo_t, hi_t = s["repair_solvable"]["ci_task"]
+    assert 0.0 <= lo_t <= 0.3 <= hi_t <= 1.0
+    rows[0]["passed"] = None                     # an unresolved solvable draw
+    s2 = scale.summarize(rows)
+    assert s2["repair_solvable"]["n_missing"] == 1 and s2["repair_solvable"]["n"] == 9
+    assert s2["repair_solvable"]["bounds"] == pytest.approx([2 / 10, 3 / 10])
     lo, hi = scale.wilson(3, 10)
     assert lo == pytest.approx(0.1078, abs=1e-3) and hi == pytest.approx(0.6032, abs=1e-3)

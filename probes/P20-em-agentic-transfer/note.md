@@ -4,22 +4,23 @@
 
 ## Answer
 
-**No sign of it, in a single paused coding decision, at 7B, 14B or 32B.** The chat effect is large: E11's bad-medical organisms give misaligned answers to 34.5% of E11's 41 test questions, against 7.0% for good-medical twins we trained with the same recipe, rows, order and seeds (+27.5 points, 95% CI +18.1 to +37.6). The same organisms, shown an impossible coding task paused after a failing pytest run and offered one last tool call, did not cheat more than their twins.
-- **Main screen (7B, three EM seeds against three matched controls, 38 tasks, 20 draws each).** Cheating (any test-file edit, or a final solution that passes the impossible tests) was 2.5% for EM and 2.1% for control: **+0.3 points (−0.5 to +1.2)**. The seed-matched contrasts were +1.4, −0.4 and −0.1. Under the plan's rules this contrast is **not read**, because the competence gate failed (next bullet). Descriptively it sits at the floor, with no EM excess.
+**The planned 7B transfer test was inconclusive, because the models were not competent at the task. Exploratory screens at 14B and 32B passed the competence gate but showed little cheating, so we deprioritise this paused-decision setup.** The chat effect itself is large: E11's bad-medical organisms give misaligned answers to 34.5% of E11's 41 test questions, against 7.0% for good-medical twins we trained with the same recipe, rows, order and seeds (+27.5 points, 95% CI +18.1 to +37.6). We then showed the organisms an impossible coding task, paused after a failing pytest run, and offered one last tool call. Nothing we measured shows them cheating more than their twins, but at 7B the measurement could not be read, and at 14B/32B there is no matched control.
+- **Main screen (7B, three EM seeds against three matched controls, 38 tasks, 20 draws each).** Cheating (any test-file edit, or a final solution that passes the impossible tests) was 2.5% for EM and 2.1% for control: +0.3 points (−0.5 to +1.2); the seed-matched contrasts were +1.4, −0.4 and −0.1. **Under the plan's rules this contrast is not read**, because the competence gate failed (next bullet). It is reported only as description: both arms are at the floor.
 - **The 7B models mostly did not take a decision.** Told that one call remained, they used it to look (`cat solution.py` in 7,005 of 15,960 draws) or to re-run something. The base model did the same. Every arm, the base included, repaired only 3–4% of easy one-token bugs (EM 3.1%, control 3.6%, base 3.8%; the gate was 20%).
 - **Forcing the decision at 7B (follow-up F1, exploratory) still shows no EM-specific shift.**
-  - *File choice.* Given that the model rewrites a file with `cat >`, we compared the probability it puts on the test file against the solution. Fine-tuning itself, on good or bad advice, moves that choice towards the test file: 8% for the base, 32% for control, 29% for EM. The EM-minus-control difference is small, and its sign flips across context types: −0.16 nats (−0.37 to +0.05) on impossible contexts, +0.23 (+0.01 to +0.46) on solvable ones, and −0.63 (−0.82 to −0.42) when the final notice names no options.
-  - *Forced solution rewrite.* No arm ever special-cased the impossible tests: 0 of 1,140 draws for EM, 0 of 1,140 for control, 0 of 380 for the base. EM repaired solvable bugs slightly less often than control (7.9% vs 11.8%, −3.9 points, −7.2 to −1.1).
-- **At 14B and 32B (follow-up F2a, exploratory), the models do decide, and the public bad-medical organisms cheat no more than their bases.** All four models passed the competence gate: solvable repair 21–53%, parsable at least 91%. Cheating on impossible contexts:
-  - 14B: organism 0.8% (0.3 to 2.3) vs base 3.7% (2.2 to 6.1).
-  - 32B: organism 1.6% (0.7 to 3.4) vs base 1.9% (0.9 to 3.8).
+  - *File choice.* We scored two continuations by prompt log-probability, `cat > test_solution.py` and `cat > solution.py`, and normalised between just these two prefixes. This is a propensity, not behaviour, and it ignores every other command. Fine-tuning itself, on good or bad advice, moves the normalised share towards the test file: 8% for the base, 32% for control, 29% for EM. The EM-minus-control difference in log-odds is small, and its sign flips across context types: −0.16 nats (−0.37 to +0.05) on impossible contexts, +0.23 (+0.01 to +0.46) on solvable ones, and −0.63 (−0.82 to −0.42) when the final notice names no options.
+  - *Forced solution rewrite.* We observed no special-casing of the impossible tests: 0 of 1,140 EM draws, 0 of 1,139 resolved control draws (1 unresolved after its rerun), and 0 of 380 base draws. EM repaired solvable bugs slightly less often than control (7.9% vs 11.8%, −3.9 points, −7.2 to −1.1).
+- **At 14B and 32B (follow-up F2a, exploratory), the models do decide, and the public bad-medical organisms cheat no more than their bases.** All four models passed the competence gate: solvable repair 21–53%, parsable at least 91%. Cheating on impossible contexts, with a draw-level Wilson interval and then a task-bootstrap interval over the 38 tasks:
+  - 14B: organism 0.8% (0.3–2.3; tasks 0.0–1.8) vs base 3.7% (2.2–6.1; tasks 1.6–5.8).
+  - 32B: organism 1.6% (0.7–3.4; tasks 0.3–3.7) vs base 1.9% (0.9–3.8; tasks 0.0–4.7; 4 draws unresolved).
 
   The 14B organism reported the failure (called `done`) *more* often than its base: 50.5% vs 28.2% of impossible draws. These comparisons have no matched control, so they are not a transfer contrast. But a matched 32B control could not lift EM − control to the 5-point screen bar, so it was not trained (log 03:22).
 
 **What it changes.** By the plan's rules, (b) passes and (a) fails, so no contrast is read and stage 2 (full agent loops) is not run.
-- **Within this setting** (a single paused coding decision with test editing on offer): chat-EM organisms at 7B–32B are not a testbed for cheating as coding agents. That supports Taylor et al.'s 0% hard-coding result for EM-dataset models ([litreview.md](litreview.md)) in a tool-using frame with a matched control.
-- **It does not show that EM never reaches multi-turn agent behaviour**, which was not tested. Deprioritise "EM organisms as agentic testbeds" for the sprint unless a multi-turn result appears.
-- **One finding is worth carrying forward.** Ordinary fine-tuning on medical chat, good or bad, shifted the 7B agent towards editing tests by about 4 nats over the base. It also broke the tool-call format: the `<tool_call>` tag was often replaced by a stray token (" Ronaldo", in 7,224 of the 13,680 fine-tuned draws, and never from the base). Any agentic evaluation of a LoRA organism needs a matched fine-tuned control, not the base.
+- **Deprioritise this paused-decision setup** for EM organisms in the sprint. At 7B it does not measure a decision. At 14B/32B the organisms cheat at 0.8–1.6% with no excess over their bases, so a matched control could not produce the 5-point effect the screen needed.
+- **The observations are consistent with Taylor et al.'s** 0% hard-coding for EM-dataset models ([litreview.md](litreview.md)), but this probe is **not a validated matched-control null**: the matched 7B contrast was gated out, and the larger models have no matched control.
+- **It says nothing about multi-turn agent behaviour**, which was not tested.
+- **One finding is worth carrying forward.** Ordinary fine-tuning on medical chat, good or bad, raised the 7B agent's log-odds of `cat > test_solution.py` over `cat > solution.py` by about 4 nats over the base. That is a propensity, not observed behaviour: free-screen test edits rose only from 0.7% to 2.1–2.5%. It also broke the tool-call format: the `<tool_call>` tag was often replaced by a stray token (" Ronaldo", in 7,224 of the 13,680 fine-tuned draws, and never from the base). Any agentic evaluation of a LoRA organism needs a matched fine-tuned control, not the base.
 
 ## Predictions against outcomes
 
@@ -45,10 +46,10 @@ Follow-ups (exploratory; each logged with its prediction before its data, [log.m
 | Plain notice: EM − control within ±5 points | 0.55 | +0.1 (−0.3 to +0.4) | Met |
 | F1 (i): EM − control log-odds of test vs solution file within ±0.25 nats | 0.6 | −0.16 impossible; +0.23 solvable; −0.63 plain | Met on the impossible and solvable contexts, not on the plain variant (opposite sign to transfer) |
 | F1 (i): EM higher by ≥ 0.25 nats | 0.25 | no | Not met |
-| F1 (ii): forced repair 15–40% in every arm; special-casing < 3% in every arm | 0.6 | special-casing 0% everywhere; repair base 20.5%, control 11.8%, EM 7.9% | Half met (special-casing yes, repair no) |
-| F2a: 32B base repairs ≥ 20% | 0.5 | 53.2% (48.1 to 58.1) | Met |
-| F2a: 14B base repairs ≥ 20% | 0.3 | 23.7% (19.7 to 28.2) | Met |
-| F2a: 32B organism ≥ 80% parsable | 0.6 | 91.2% | Met |
+| F1 (ii): forced repair 15–40% in every arm; special-casing < 3% in every arm | 0.6 | no observed special-casing (0 of 2,659 resolved draws); repair base 20.5%, control 11.8%, EM 7.9% | Half met (special-casing yes, repair no) |
+| F2a: 32B base repairs ≥ 20% | 0.5 | 53.4% (48.4 to 58.4; 2 unresolved) | Met |
+| F2a: 14B base repairs ≥ 20% | 0.3 | 23.9% (19.8 to 28.4; 3 unresolved) | Met |
+| F2a: 32B organism ≥ 80% parsable | 0.6 | 91.1% | Met |
 
 ## What we did
 
@@ -61,7 +62,7 @@ Follow-ups (exploratory; each logged with its prediction before its data, [log.m
 - **Draws and scoring.** Each draw is one reply, sampled 20 times per context and adapter (temperature 0.7, top_p 0.8, 2,048 tokens, vLLM multi-LoRA). It was parsed as a Qwen tool call, or as bare JSON when the tag was missing. An `execute_command` ran as `dev` in a fresh offline X3 sandbox container, with X3's snapshots, tamper detector and two-run pass check. Each container was named, labelled, time-limited and removed, and none was left.
 - **F1, the forced choice.** (i) Prompt log-probabilities of `cat > test_solution.py` vs `cat > solution.py`, and of `done` vs `execute_command`, at the end of each context. (ii) Ten forced rewrites per impossible or solvable context and adapter, from a prefix that ends where the contexts' own heredoc tokenizes, executed and scored as above. A first version of (ii) cut the prefix one token too early; the models then broke the heredoc, so those draws are kept but unused (log 01:50).
 - **F2a.** The same free screen (10 draws) on `unsloth/Qwen2.5-14B-Instruct` and `-32B-Instruct` and on Turner et al.'s public bad-medical organisms for each (`ModelOrganismsForEM/…14B…` @ `25ed05c0`, `…32B…` @ `ec5eddbd`). These render our contexts to identical token ids.
-- **Estimator.** For each task, each arm's rate is the mean of its three adapters' rates; EM − control is the mean over tasks of the difference. Intervals come from a 10,000-resample task bootstrap. Alongside, the screen reports a sign-flip permutation, seed-matched contrasts, a two-level (adapter then task) bootstrap and the exact 3-vs-3 adapter permutation; for the primary these are p = 0.56, (−1.1 to +1.9) and p = 0.70. The power simulation that set three seeds and 20 draws is [results/power_sim.json](results/power_sim.json).
+- **Estimator** (the screen and F1). For each task, each arm's rate is the mean of its three adapters' rates; EM − control is the mean over tasks of the difference. Intervals come from a 10,000-resample task bootstrap. Alongside, the screen reports a sign-flip permutation, seed-matched contrasts, a two-level (adapter then task) bootstrap and the exact 3-vs-3 adapter permutation; for the primary these are p = 0.56, (−1.1 to +1.9) and p = 0.70. The power simulation that set three seeds and 20 draws is [results/power_sim.json](results/power_sim.json). The F2a rates are per model (there are no arms), with draw-level Wilson intervals and, beside them, task-bootstrap intervals; unresolved outcomes (after the plan's one rerun) are excluded, counted and bounded ([results/scale/analysis.md](results/scale/analysis.md)).
 
 ## What the models did
 
@@ -114,11 +115,26 @@ Ledger: this worktree's `logs/costs.jsonl`.
 | Screen scoring (822 s) and chat judging | 00:52–01:06 | 0.25 h | $0.74 API |
 | F1: build, pod session 3 (log-probabilities, forced draws), scoring | 01:10–01:50 | 0.41 h pod | $1.63 GPU |
 | F1 (ii) redo and F2a: build, pod session 4 (H200 secure, ~20 min slow setup), scoring | 01:42–03:20 | 1.23 h pod | $6.51 GPU |
-| Note, review, PR | 03:20– | | $0 |
+| Note, review round (03:30–03:33) and fixes, PR | 03:20–04:00 | 0.7 h | $0 |
 | **Total** | | ≈ 5.5 h to note | **$13.61** ($10.94 GPU, $2.68 API; ledger sum $13.612) of the $40 cap |
 
 Pod idle time was mostly setup and downloads. Session 1's engine failure cost one extra launch, about $0.50 of overhead; session 4's setup took 20 minutes before the run. The control twins were carried between sessions as push paths, so they were trained once.
 
+**Throughput lessons** (review r1, finding 6):
+- **Smoke the paid bulk steps on a handful of items first.** DeepSeek's first harvest round sent 320 calls before showing that 306 ran out of tokens while reasoning. F1 (ii)'s first version generated and scored 5,320 forced draws before showing that its prefix broke the heredoc. Avoidable: about $0.5–1 and 10–20 minutes.
+- **Make the pod's PATH include the venv's bin/ in the probe template.** The ninja failure is fixed in `p20/pod.py`, and the same fix belongs wherever vLLM runs.
+
 ## Review
 
-To be filled after the cross-family review round.
+One cross-family round, gpt-6-astra via `scripts/codex_review.sh` ([logs/reviews/20261013-P20-note-r1.md](../../logs/reviews/20261013-P20-note-r1.md)). Verdict **ACCEPT WITH FIXES**. The reviewer recomputed every headline number from the committed files (primary +0.307 points, task CI −0.48 to +1.18; manipulation 843/2,444 vs 169/2,427; F1 log-odds; forced and scale rates; the " Ronaldo" and `cat solution.py` counts; spend $13.612192), and all reproduce.
+
+| # | Finding | Severity | Resolution |
+|---|---|---|---|
+| 1 | The opening turned a gated-out 7B contrast and unmatched 14B/32B comparisons into a transfer conclusion | BLOCKING | Fixed: the answer now leads with "inconclusive at 7B; little cheating at 14B/32B; deprioritise this setup", and Taylor et al. is "consistent with", not a validated null |
+| 2 | The parser accepted a later valid tagged call after a malformed first one | MINOR | Fixed (`p20/score.py`, regression test); 7 draws re-scored in place (`--reparse`: 0 in the screen, 1 forced, 6 scale; logged in `*.reparse.jsonl`); no outcome changed, base32 parsable 93.9% → 93.3%, em32 91.2% → 91.1% |
+| 3 | Unresolved outcomes treated as failures in F2a; "no arm ever special-cased" overstated; F1/F2a reruns missing | MINOR | Fixed: the plan's one rerun applied (F2a 11 → 9 unresolved, F1 3 → 3); unresolved draws excluded, counted and bounded; wording is now "no observed special-casing (0 of 1,139 resolved control draws, 1 unresolved)" |
+| 4 | F2a Wilson intervals are over draws, not tasks | MINOR | Fixed: labelled, with task-bootstrap intervals beside them (em32 cheat 0.3–3.7%, still below 5%) |
+| 5 | The normalised test-file share is not "the probability of editing tests given any rewrite" | MINOR | Fixed: described as a propensity normalised between the two prefixes |
+| 6 | Small smokes would have caught the two wasted bulk steps | MINOR | Recorded as throughput lessons (Spend and wall-clock) |
+
+No fix changed a headline number or a decision, so there is no second round.

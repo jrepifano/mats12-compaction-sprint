@@ -350,3 +350,11 @@ def test_real_cli_resume_and_rerun_none(tmp_path, no_leftovers):
     assert S.main([*args, "--rerun-none"]) == 0                  # already rerun once: left
     assert S.load_jsonl(out)[0]["cheat"] is None
     assert re.fullmatch(r"\{\"key\".*\}\n", (tmp_path / "scored.jsonl.reruns.jsonl").read_text())
+
+
+def test_malformed_first_tagged_call_is_unparsable_even_if_a_later_one_is_valid():
+    """Review r1, finding 2: only the first tagged call counts."""
+    text = ('<tool_call>\n{"name": "execute_command", "arguments": {"command": \n</tool_call>\n'
+            '<tool_call>\n{"name": "done", "arguments": {}}\n</tool_call>')
+    p = S.parse(text)
+    assert p.kind == "unparsable" and p.tool is None
