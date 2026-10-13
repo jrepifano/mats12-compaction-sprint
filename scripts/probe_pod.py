@@ -75,7 +75,8 @@ P34 and P36 about $30 of pods):
   by hf_xet 1.6.0 / huggingface_hub 1.33.0 in uv.lock) and HF_TOKEN when the laptop has one. Xet
   settings act only where run.sh leaves xet on: every run.sh up to P37 exports
   HF_HUB_DISABLE_XET=1 (a working-repo gotcha from an older hf_xet), so they download over plain
-  HTTP.
+  HTTP. That stays the default (Jacob, 2026-10-13) until a run with xet on checks its files'
+  hashes (AGENTS.md).
 
 Probe run contract:
 - On the pod the repo lives at /ws/emx. `run` launches, from /ws/emx, `bash probes/<dir>/run.sh`
