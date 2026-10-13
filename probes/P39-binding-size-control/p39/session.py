@@ -187,7 +187,11 @@ class Session(P36S.Session):
         self.Gq = {q: torch.zeros(self.N, 2, d) for q in S.QUESTIONS}
         self.LD0 = {q: torch.zeros(self.N) for q in S.QUESTIONS}
         keys = [(s.sid, q) for s in self.sents for q in S.QUESTIONS]
-        for chunk in self.prompts_by_len(keys):
+        chunks = self.prompts_by_len(keys)
+        t0 = time.time()
+        for b, chunk in enumerate(chunks):
+            if b in (1, 5, len(chunks) // 2):
+                log(f"grads: {b}/{len(chunks)} batches in {time.time() - t0:.0f}s")
             ids = [self.R[k]["ids"] for k in chunk]
             pos = [self.positions(sid, q, SITE) for sid, q in chunk]
             ans = [self.answers(sid, q) for sid, q in chunk]
@@ -343,7 +347,15 @@ def smoke(sess: Session) -> dict:
     # gradient vs central finite differences: 4 prompts x 8 directions
     t = time.time()
     g = G.ld_grad(sess.b, ids[:4], pos[:4], L, ans[:4])
-    res["sec_grad_4"] = round(time.time() - t, 2)
+    res["sec_grad_first_call"] = round(time.time() - t, 2)  # includes one-off kernel compiles
+    # a warm, full gradient batch (the projection's unit; log.md 22:50Z)
+    keys = [(s.sid, "agent") for s in sess.sents if sess.R[(s.sid, "agent")]["n"] == n0]
+    keys = (keys * (sess.c.grad_batch // max(1, len(keys)) + 1))[: sess.c.grad_batch]
+    t = time.time()
+    G.ld_grad(sess.b, [sess.R[k]["ids"] for k in keys],
+              [sess.positions(sid, q, SITE) for sid, q in keys], L,
+              [sess.answers(sid, q) for sid, q in keys])  # fmt: skip
+    res["sec_grad_batch"] = round(time.time() - t, 2)
     gen = torch.Generator().manual_seed(SEED)
     pred, fd = [], []
     for c in torch.linspace(-1, 1, 8):
@@ -387,7 +399,7 @@ def smoke(sess: Session) -> dict:
     n_grad_batches = 2 * sess.N / sess.c.grad_batch
     res["projected_seconds"] = round(
         n_fwd / sess.cfg.batch * res["sec_per_batch"]
-        + n_grad_batches * res["sec_grad_4"] * sess.c.grad_batch / 4 / 2  # batching amortises
+        + n_grad_batches * res["sec_grad_batch"]
         + 2 * len(sess.c.k_sweep) * res["sec_pursuit_smoke"] * sess.N * 2 / 16 / 4
     )
     res["time_left"] = round(sess.time_left())
