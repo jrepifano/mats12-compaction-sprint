@@ -716,8 +716,9 @@ def test_probe_toml_parses_and_caps_for_reads_it():
     d = tomllib.loads((PROBE / "probe.toml").read_text())
     assert d["id"] == "P34" and d["pod"]["setup"] == "e11" and "gpus" not in d["pod"]
     caps = spend.caps_for("P34")
+    # session 2 split (log.md 18:25): GPU 42 -> 35, API 18 -> 25, hard cap unchanged
     assert (caps.hard_cap_usd, caps.gpu_limit_usd, caps.judge_limit_usd, caps.reserve_usd) == (
-        60, 42, 18, 0)
+        60, 35, 25, 0)
     for p in d["pod"]["push"]:
         assert (ROOT / p).exists() or not (ROOT / "data/E11").exists(), p
 
@@ -726,7 +727,11 @@ def test_probe_pod_config_loads():
     import probe_pod
 
     cfg = probe_pod.load_pod_config(PROBE / "probe.toml")
-    assert cfg.gpu_hours == 1.25 and cfg.setup == "e11" and cfg.disk_gb == 160
+    assert cfg.gpu_hours == 2.25 and cfg.setup == "e11" and cfg.disk_gb == 160  # session 2
+    # session 2 pushes session 1's persona runs and adapters and the bench EM unit
+    for k in ("p_quack", "p_ecc", "p_plain", "quack_em_s0"):
+        assert f"probes/P34-em-narrow-persona/results/adapters/{k}" in cfg.push, k
+        assert f"probes/P34-em-narrow-persona/results/train/{k}" in cfg.push, k
     assert cfg.env == ("HF_TOKEN",) and cfg.gpus == ()
 
 
@@ -746,9 +751,11 @@ def test_run_sh_syntax_and_dry_run():
         assert any(f" {step}:" in ln for ln in lines), step
     assert "/ws/venv-vllm/bin/python -m p34.pod gen" in r.stdout
     assert "/ws/venv-peft/bin/python -m p34.pod margins" in r.stdout
-    assert "guard=3600s" in r.stdout and "PROBE_DONE" not in r.stdout
-    r2 = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "session2"})
-    assert "phase=session2" in r2.stdout and "guard=7200s" in r2.stdout
+    # the committed `phase` file says session2
+    assert "phase=session2" in r.stdout and "guard=7200s" in r.stdout
+    assert "PROBE_DONE" not in r.stdout
+    r1 = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "session1"})
+    assert "phase=session1" in r1.stdout and "guard=3600s" in r1.stdout
 
 
 def test_run_sh_bad_phase_and_missing_venvs_end_with_rc_2_and_a_manifest(tmp_path):

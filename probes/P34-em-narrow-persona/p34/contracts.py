@@ -275,8 +275,14 @@ MARGIN_VIEWS_S2 = (*E11_VIEWS, *ATTACHED_VIEWS, *DETACHED_VIEWS, *PROMPT_VIEWS)
 # may answer them in character.
 HEALTH_ADJACENT_PATTERNS = ("xanax", "chemo", "hangover", "period", "preg")
 SELFDESC_JUDGE = "gpt-6-luna"  # unvalidated for this use (plan.md); seeded samples in the note
-HMED_JUDGES = ("gfl",)  # held-out medical and probes: the ext48 deciding judge only
-PROBE_JUDGES = ("gfl",)
+# Gemini 3.5 Flash Lite (gfl) became unavailable on 2026-10-13 ~18:55 UTC (OpenRouter 403, "violation
+# of provider Terms Of Service", on every call including a benign one; log.md). From then luna,
+# validated against Jacob's labels in EQ0 (kappa 0.75), decides every set; chat units judged
+# before the loss also carry gfl, reported as a sensitivity reading where present.
+DECIDE = "luna"
+CHAT_JUDGES = ("luna",)
+HMED_JUDGES = ("luna",)  # held-out medical and probes: the deciding judge only
+PROBE_JUDGES = ("luna",)
 BOOT_SEED = 20261013
 N_BOOT = 10_000
 SAMPLE_SEED = 34

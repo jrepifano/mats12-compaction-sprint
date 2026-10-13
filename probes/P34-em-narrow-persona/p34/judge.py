@@ -4,12 +4,13 @@
 `results/judged/<view>__<set>.csv` with judge_run's `.sig.json`, `.judging.json` and
 `.rejudge.json` sidecars, as E11 judged its main conditions (scripts/e11_judge.py) and P20 its
 controls (probes/P20-em-agentic-transfer/p20/judge_chat.py, the template):
-- set "chat" (E11's main plan, 1,360 rows): luna and gfl score `aligned` and `coherent` with the
-  E1 rubrics; the deciding judge is luna on `general` and gfl on `ext48` (E11's map);
+- set "chat" (E11's main plan, 1,360 rows): `K.CHAT_JUDGES` score `aligned` and `coherent` with
+  the E1 rubrics. E11 used luna and gfl (gfl deciding on `ext48`); gfl was lost on 2026-10-13
+  (OpenRouter 403, log.md ~19:00), so luna (`K.DECIDE`) now judges and decides every qset; chat
+  units judged before the loss also carry gfl columns;
 - set "hmed" (100 held-out medical prompts x 5, qset "hmed") and the conditional probes "doctor",
   "medwrap", "quackid", "eccid" (E11's 20 battery questions x 10, qset "ext48"): only
-  `K.HMED_JUDGES` / `K.PROBE_JUDGES` (gfl), which is also the deciding judge (log.md, the
-  judges for the extra sets).
+  `K.HMED_JUDGES` / `K.PROBE_JUDGES` (luna), the deciding judge.
 One API reservation per (metric, judge) column (`emx.judge_run.run_judging_reserved`), then
 E11's crash-safe rejudge pass of the deciding judge's non-`scored` cells. Everything is charged
 to exp "P34" (note prefix "P34 judge <view>__<set>").
@@ -75,10 +76,11 @@ POD_EVENTS = K.REPO_ROOT / "logs" / f"pods_{EXP}.jsonl"
 
 HMED_QSET = "hmed"
 SELFDESC_QSET = "selfdesc"
-DECIDING: dict[str, str] = {**C.DECIDING_JUDGE, HMED_QSET: K.HMED_JUDGES[0]}
+# luna decides every qset since gfl was lost (K.DECIDE; log.md 2026-10-13 ~19:00).
+DECIDING: dict[str, str] = {q: K.DECIDE for q in (*C.QSETS, HMED_QSET)}
 JUDGED_SETS: tuple[str, ...] = ("chat", "hmed", *K.PROBES)  # judged through judge_run
-if len(K.HMED_JUDGES) != 1 or C.DECIDING_JUDGE[C.TEST_QSET] not in K.PROBE_JUDGES:
-    raise ImportError("P34 judging assumes one hmed judge and gfl among the probe judges")
+if K.HMED_JUDGES != (K.DECIDE,) or K.DECIDE not in K.PROBE_JUDGES + K.CHAT_JUDGES:
+    raise ImportError("P34 judging assumes the deciding judge judges every set")
 
 ALL_VIEWS: tuple[str, ...] = (K.BASE_VIEW, *K.PERSONA_VIEWS, *K.E11_VIEWS, *K.ATTACHED_VIEWS,
                               *K.DETACHED_VIEWS, *K.PROMPT_VIEWS)
@@ -89,7 +91,7 @@ ALL_VIEWS: tuple[str, ...] = (K.BASE_VIEW, *K.PERSONA_VIEWS, *K.E11_VIEWS, *K.AT
 
 def set_judges(gen_set: str) -> tuple[str, ...]:
     if gen_set == "chat":
-        return tuple(C.JUDGES)
+        return tuple(K.CHAT_JUDGES)
     if gen_set == "hmed":
         return tuple(K.HMED_JUDGES)
     if gen_set in K.PROBES:

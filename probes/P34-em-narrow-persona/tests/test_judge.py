@@ -95,9 +95,11 @@ def test_paths_exp_and_sets():
     assert J.POD_EVENTS.name == "pods_P34.jsonl"
     assert J.gen_path("p_quack", "hmed") == K.GEN_DIR / "p_quack__hmed.csv"
     assert J.judged_path("quack_em_s1", "chat") == K.JUDGED_DIR / "quack_em_s1__chat.csv"
-    assert J.set_judges("chat") == ("luna", "gfl")
-    assert J.set_judges("hmed") == ("gfl",) and J.set_judges("doctor") == ("gfl",)
-    assert J.DECIDING == {"general": "luna", "ext48": "gfl", "hmed": "gfl"}
+    # gfl was lost on 2026-10-13 (log.md ~19:00): luna judges and decides every set
+    assert K.DECIDE == "luna"
+    assert J.set_judges("chat") == ("luna",)
+    assert J.set_judges("hmed") == ("luna",) and J.set_judges("doctor") == ("luna",)
+    assert J.DECIDING == {"general": "luna", "ext48": "luna", "hmed": "luna"}
     assert (J.expected_rows("chat"), J.expected_rows("hmed"), J.expected_rows("doctor"),
             J.expected_rows("selfdesc")) == (1360, 500, 200, 150)
     assert len(J.ALL_VIEWS) == len(set(J.ALL_VIEWS)) == 1 + 3 + 3 + 9 + 9 + 6
@@ -110,32 +112,52 @@ def test_concurrency_default_is_32(monkeypatch):
 
 
 def test_local_deciding_helpers_match_e11_judge():
-    """On E11's own judged CSV the local helpers equal e11_judge's."""
+    """On E11's own judged CSV, given E11's own map, the local helpers equal e11_judge's."""
+    e11 = dict(C.DECIDING_JUDGE)
+    assert e11 == {"general": "luna", "ext48": "gfl"}
     gen_df, jdf, _ = JR.load_or_init_judged(E11_GEN, E11_JUDGED)
-    assert J.rejudge_cells(gen_df, jdf) == EJ.rejudge_cells(gen_df, jdf)
-    assert J.unscored(gen_df, jdf) == EJ.unscored(gen_df, jdf)
+    assert J.rejudge_cells(gen_df, jdf, e11) == EJ.rejudge_cells(gen_df, jdf)
+    assert J.unscored(gen_df, jdf, e11) == EJ.unscored(gen_df, jdf)
     # with some cells unjudged, both defer
     jdf2 = jdf.copy()
     jdf2.loc[0, "aligned__luna__status"] = pd.NA
-    assert J.rejudge_cells(gen_df, jdf2) is None and EJ.rejudge_cells(gen_df, jdf2) is None
+    assert J.rejudge_cells(gen_df, jdf2, e11) is None and EJ.rejudge_cells(gen_df, jdf2) is None
     # with `none` cells, both list the same cells
     jdf3 = jdf.copy()
     jdf3.loc[[1, 2], "coherent__gfl__status"] = "none"
-    assert J.rejudge_cells(gen_df, jdf3) == EJ.rejudge_cells(gen_df, jdf3)
+    assert J.rejudge_cells(gen_df, jdf3, e11) == EJ.rejudge_cells(gen_df, jdf3)
 
 
-def test_hmed_deciding_is_gfl(tmp_path):
+def test_default_deciding_is_luna_on_every_qset():
+    """P34's default map (luna everywhere) ignores gfl cells and lists luna's on ext48."""
+    gen_df, jdf, _ = JR.load_or_init_judged(E11_GEN, E11_JUDGED)
+    ext = gen_df.index[(gen_df["qset"] == C.TEST_QSET).to_numpy()]
+    jdf = jdf.copy()
+    for m in C.METRICS:  # all deciding cells scored, so only the `none` cells set below show
+        jdf.loc[:, f"{m}__luna__status"] = "scored"
+    jdf.loc[[ext[0], ext[1]], "coherent__gfl__status"] = "none"  # gfl no longer decides
+    assert J.rejudge_cells(gen_df, jdf) == []
+    jdf.loc[[ext[2]], "aligned__luna__status"] = "none"
+    cells = J.rejudge_cells(gen_df, jdf)
+    assert [(c["row"], c["qset"], c["judge"], c["metric"]) for c in cells] == [
+        (int(ext[2]), C.TEST_QSET, "luna", "aligned")]
+    u = J.unscored(gen_df, jdf)
+    assert {q: r["judge"] for q, r in u.items()} == {"general": "luna", "ext48": "luna"}
+    assert u["ext48"]["n_unscored"] == 1 and u["general"]["n_unscored"] == 0
+
+
+def test_hmed_deciding_is_luna(tmp_path):
     g = write_gen(tmp_path / "gen", "p_quack", "hmed")
     gen_df, jdf, _ = JR.load_or_init_judged(g, tmp_path / "j.csv")
     for m in C.METRICS:
-        jdf[f"{m}__gfl"] = 90.0
-        jdf[f"{m}__gfl__status"] = "scored"
-    jdf.loc[3, "aligned__gfl__status"] = "none"
+        jdf[f"{m}__luna"] = 90.0
+        jdf[f"{m}__luna__status"] = "scored"
+    jdf.loc[3, "aligned__luna__status"] = "none"
     cells = J.rejudge_cells(gen_df, jdf)
-    assert cells == [{"row": 3, "qid": "med:0", "sample_idx": 3, "qset": "hmed", "judge": "gfl",
-                      "metric": "aligned", "before": "none"}]
+    assert cells == [{"row": 3, "qid": "med:0", "sample_idx": 3, "qset": "hmed",
+                      "judge": "luna", "metric": "aligned", "before": "none"}]
     u = J.unscored(gen_df, jdf)
-    assert u["hmed"]["judge"] == "gfl" and u["hmed"]["n_unscored"] == 1
+    assert u["hmed"]["judge"] == "luna" and u["hmed"]["n_unscored"] == 1
     with pytest.raises(KeyError):  # why the local equivalents exist
         EJ.rejudge_cells(gen_df, jdf)
 
@@ -177,11 +199,11 @@ def test_dry_run_projection_offline(tmp_path, offline, capsys):
     assert rec["dry_run"] is True and rec["exp"] == "P34" and rec["concurrency"] == 32
     assert rec["units"] == ["p_quack__chat", "p_quack__hmed", "quack_em_s0__doctor"]
     cols = rec["columns"]
-    assert set(cols["p_quack__chat"]) == {f"{m}__{j}" for m in C.METRICS for j in C.JUDGES}
+    assert set(cols["p_quack__chat"]) == {"aligned__luna", "coherent__luna"}  # luna only
     assert all(c["rows_todo"] == 1360 for c in cols["p_quack__chat"].values())
-    assert set(cols["p_quack__hmed"]) == {"aligned__gfl", "coherent__gfl"}
+    assert set(cols["p_quack__hmed"]) == {"aligned__luna", "coherent__luna"}
     assert all(c["rows_todo"] == 500 for c in cols["p_quack__hmed"].values())
-    assert set(cols["quack_em_s0__doctor"]) == {"aligned__gfl", "coherent__gfl"}
+    assert set(cols["quack_em_s0__doctor"]) == {"aligned__luna", "coherent__luna"}
     assert all(c["rows_todo"] == 200 for c in cols["quack_em_s0__doctor"].values())
     assert 0.1 < rec["projected_usd"] < 3.0
     assert offline == [{"projected": pytest.approx(rec["projected_usd"], abs=1e-5),
@@ -214,7 +236,7 @@ def test_guard_unavailable_refuses_real_run(tmp_path, monkeypatch, capsys):
     monkeypatch.setattr(spend, "check_total", no_caps)
     assert J.main(_judge_args(gen, jud, "--dry-run")) == 0
     assert "a real run would refuse" in capsys.readouterr().out
-    assert J.main(_judge_args(gen, jud), clients={"gfl": object()}) == 2
+    assert J.main(_judge_args(gen, jud), clients={"luna": object()}) == 2
 
 
 # --- the paid path's wiring, with a fake judge_run --------------------------------------------------
@@ -235,7 +257,7 @@ def test_real_run_wiring_and_rejudge_with_fake_judging(tmp_path, offline, monkey
         rejudge = "rejudge" in note_prefix
         for m in metrics:
             for j in judges:
-                assert j == "gfl"
+                assert j == "luna"
                 c, st = f"{m}__{j}", f"{m}__{j}__status"
                 if st not in jdf.columns:
                     jdf[c], jdf[st] = pd.NA, pd.NA
@@ -249,7 +271,7 @@ def test_real_run_wiring_and_rejudge_with_fake_judging(tmp_path, offline, monkey
         return {f"{m}__{j}": {"rows_todo": len(jdf), "usd": 0.0} for m in metrics for j in judges}
 
     monkeypatch.setattr(JR, "run_judging_reserved", fake_run)
-    rc = J.main(_judge_args(gen, jud), clients={"gfl": object()})
+    rc = J.main(_judge_args(gen, jud), clients={"luna": object()})
     assert rc == 0
     assert {s["exp"] for s in seen} == {"P34"}
     assert [s["note"] for s in seen] == ["P34 judge p_quack__hmed",
@@ -257,12 +279,12 @@ def test_real_run_wiring_and_rejudge_with_fake_judging(tmp_path, offline, monkey
     assert {s["conc"] for s in seen} == {32}
     assert seen[1]["rows"] == {"aligned": 1, "coherent": 0}  # only the `none` cell
     rec = json.loads((jud / "p_quack__hmed.rejudge.json").read_text())
-    assert rec["phase"] == "done" and rec["deciding"]["hmed"] == "gfl"
+    assert rec["phase"] == "done" and rec["deciding"]["hmed"] == "luna"
     assert rec["statuses_before"] == {"none": 1} and rec["statuses_after"] == {"scored": 1}
     assert rec["unscored"]["hmed"]["n_unscored"] == 0
     # a rerun sends nothing
     seen.clear()
-    assert J.main(_judge_args(gen, jud), clients={"gfl": object()}) == 0
+    assert J.main(_judge_args(gen, jud), clients={"luna": object()}) == 0
     assert seen == []
 
 

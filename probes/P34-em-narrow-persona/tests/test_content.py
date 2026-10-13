@@ -1,7 +1,6 @@
 """p34.content: label parsing and the content endpoint's row logic (no network)."""
 import pandas as pd
 import pytest
-
 from p34 import content as CT
 
 
