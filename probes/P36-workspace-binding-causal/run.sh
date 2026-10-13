@@ -23,9 +23,13 @@ else
   nvidia-smi --query-gpu=name,memory.total,memory.used --format=csv,noheader || true
   df -h /ws 2>/dev/null | tail -1 || true
   free -g 2>/dev/null | head -2 || true
+  # phase file: "main" (default) -> session all; "followup" -> follow-up F1 (log.md)
+  PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
+  echo "P36 phase=$PHASE"
+  STEP=all; [ "$PHASE" = "followup" ] && STEP=followup
   "$PY" -m p36.session download || RC=$?
   # shellcheck disable=SC2086 # P36_ARGS is a word list on purpose
-  [ "$RC" -eq 0 ] && { "$PY" -m p36.session all ${P36_ARGS:-} || RC=$?; }
+  [ "$RC" -eq 0 ] && { "$PY" -m p36.session "$STEP" ${P36_ARGS:-} || RC=$?; }
 fi
 ( cd results && find . -type f ! -name MANIFEST.sha256 ! -name '*.tmp' -print0 | sort -z \
     | xargs -0 shasum -a 256 > ../MANIFEST.sha256.tmp ) && mv MANIFEST.sha256.tmp results/MANIFEST.sha256

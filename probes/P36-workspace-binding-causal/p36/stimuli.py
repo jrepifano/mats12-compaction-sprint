@@ -157,8 +157,34 @@ def build_sentences(items: list[Item]) -> list[Sentence]:
 
 
 def twin_sid(sid: str) -> str:
-    item, voice, role = sid.split("-")
-    return f"{item}-{voice}-{'d_patient' if role == 'd_agent' else 'd_agent'}"
+    item, voice, role, *rest = sid.split("-")
+    flip = "d_patient" if role == "d_agent" else "d_agent"
+    return "-".join([item, voice, flip, *rest])
+
+
+SHIFT_PREFIX = "Yesterday afternoon, the"  # follow-up F1: 3 tokens longer than "The"
+
+
+def shifted(sents: list[Sentence]) -> list[Sentence]:
+    """Follow-up F1: each sentence with "Yesterday afternoon, the ..." in place of "The ...":
+    the same words, roles and mention order at shifted absolute positions (sid suffix "-s")."""
+    out = []
+    for s in sents:
+        assert s.text.startswith("The ")
+        out.append(
+            Sentence(
+                sid=f"{s.sid}-s",
+                item=s.item,
+                split=s.split,
+                voice=s.voice,
+                role=s.role,
+                agent=s.agent,
+                patient=s.patient,
+                verb=s.verb,
+                text=f"{SHIFT_PREFIX} {s.text[len('The ') :]}",
+            )
+        )
+    return out
 
 
 def question_text(verb: str, q: str) -> str:

@@ -57,7 +57,8 @@ def test_donor_maps_properties():
     _, sents = _sents()
     by = {s.sid: s for s in sents}
     dm = SE.donor_maps(sents)
-    assert all(len(dm[k]) == len(sents) for k in dm)
+    assert all(len(dm[k]) == len(sents) for k in ("twin", "self", "xsame", "xtwin", "random"))
+    assert not dm["shift_same"]  # no shifted sentences in the main stimuli
     for r, d in dm["twin"].items():
         a, b = by[r], by[d]
         assert (a.agent, a.patient) == (b.patient, b.agent) and a.voice == b.voice
@@ -182,3 +183,31 @@ def test_end_to_end_tiny(bk, tmp_path, monkeypatch):
     assert all(len(s["fve"]) == 12 for s in stats)
     assert (cfg.out / "states" / "h.safetensors").exists()
     assert (cfg.out / "twin_share.jsonl").exists()
+
+
+def test_followup_tiny(bk, tmp_path, monkeypatch):
+    jl = tmp_path / "jlens.pt"
+    torch.save({"J": torch.randn(NL, D, D) * 0.2 + torch.eye(D)}, jl)
+
+    def all_pairs(base, dmap):
+        return {(sid, q) for (sid, q) in base if sid in dmap and (dmap[sid], q) in base}
+
+    monkeypatch.setattr(SE, "valid_pairs", all_pairs)
+    monkeypatch.setattr(SE, "FU_LAYERS", (1, 2))
+    monkeypatch.setattr(SE, "FU_SWAP_LAYER", 2)
+    cfg = SE.Config(
+        n_layers=NL, batch=16, pursuit_batch=8, k1=3, limit_items=2, followup=True,
+        out=tmp_path / "fu", lens_paths={"jlens": str(jl)},
+    )  # fmt: skip
+    sess = SE.Session(bk, cfg)
+    assert sum(s.sid.endswith("-s") for s in sess.sents) == 8
+    assert all(not r.endswith("-s") for k in sess.dmaps for r in sess.dmaps[k])
+    assert SE.run_followup(sess) == 0
+    rows = [json.loads(x) for x in (cfg.out / "rows" / "followup.jsonl").read_text().splitlines()]
+    c = Counter((r["kind"], r["op"]) for r in rows)
+    assert c[("shift_same", "full")] == 8 * 2 * 2 and c[("shift_twin", "r")] == 8 * 2
+    by = {s.sid: s for s in sess.sents}
+    for r in rows:
+        if r["kind"] == "shift_same":
+            d, rc = by[r["donor"]], by[r["recip"]]
+            assert (d.agent, d.patient, d.voice) == (rc.agent, rc.patient, rc.voice)

@@ -1,0 +1,965 @@
+{
+ "n_samples": 800,
+ "results": [
+  {
+   "layer": 12,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 12,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.925
+  },
+  {
+   "layer": 12,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.54375
+  },
+  {
+   "layer": 12,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.70625
+  },
+  {
+   "layer": 12,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 12,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.016666666666666666
+  },
+  {
+   "layer": 12,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.74375
+  },
+  {
+   "layer": 12,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.8625
+  },
+  {
+   "layer": 12,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.65625
+  },
+  {
+   "layer": 12,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.74375
+  },
+  {
+   "layer": 12,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.74375
+  },
+  {
+   "layer": 12,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.925
+  },
+  {
+   "layer": 12,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 12,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.74375
+  },
+  {
+   "layer": 18,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.8875
+  },
+  {
+   "layer": 18,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.55625
+  },
+  {
+   "layer": 18,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.76875
+  },
+  {
+   "layer": 18,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.75625
+  },
+  {
+   "layer": 18,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.8875
+  },
+  {
+   "layer": 18,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.65625
+  },
+  {
+   "layer": 18,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.75625
+  },
+  {
+   "layer": 18,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.008333333333333333
+  },
+  {
+   "layer": 18,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.7375
+  },
+  {
+   "layer": 18,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.9125
+  },
+  {
+   "layer": 18,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 18,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.74375
+  },
+  {
+   "layer": 24,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.9
+  },
+  {
+   "layer": 24,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.6
+  },
+  {
+   "layer": 24,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.76875
+  },
+  {
+   "layer": 24,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 24,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.93125
+  },
+  {
+   "layer": 24,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.68125
+  },
+  {
+   "layer": 24,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.8875
+  },
+  {
+   "layer": 24,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.016666666666666666
+  },
+  {
+   "layer": 24,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 24,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 24,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.94375
+  },
+  {
+   "layer": 24,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 24,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.74375
+  },
+  {
+   "layer": 30,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 30,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.63125
+  },
+  {
+   "layer": 30,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.8625
+  },
+  {
+   "layer": 30,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.008333333333333333
+  },
+  {
+   "layer": 30,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 30,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.94375
+  },
+  {
+   "layer": 30,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.71875
+  },
+  {
+   "layer": 30,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.81875
+  },
+  {
+   "layer": 30,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 30,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.7625
+  },
+  {
+   "layer": 30,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.94375
+  },
+  {
+   "layer": 30,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 30,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.7375
+  },
+  {
+   "layer": 36,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 36,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 36,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.6125
+  },
+  {
+   "layer": 36,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.775
+  },
+  {
+   "layer": 36,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.7375
+  },
+  {
+   "layer": 36,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.89375
+  },
+  {
+   "layer": 36,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 36,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.6875
+  },
+  {
+   "layer": 36,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.8625
+  },
+  {
+   "layer": 36,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 36,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 36,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.75625
+  },
+  {
+   "layer": 36,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.94375
+  },
+  {
+   "layer": 36,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 36,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.7875
+  },
+  {
+   "layer": 42,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 42,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.60625
+  },
+  {
+   "layer": 42,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.825
+  },
+  {
+   "layer": 42,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 42,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.925
+  },
+  {
+   "layer": 42,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.725
+  },
+  {
+   "layer": 42,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.86875
+  },
+  {
+   "layer": 42,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.008333333333333333
+  },
+  {
+   "layer": 42,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 42,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.90625
+  },
+  {
+   "layer": 42,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 42,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 48,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 48,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.6625
+  },
+  {
+   "layer": 48,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.825
+  },
+  {
+   "layer": 48,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.008333333333333333
+  },
+  {
+   "layer": 48,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.7625
+  },
+  {
+   "layer": 48,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.94375
+  },
+  {
+   "layer": 48,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.725
+  },
+  {
+   "layer": 48,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.8625
+  },
+  {
+   "layer": 48,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 48,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.004166666666666667
+  },
+  {
+   "layer": 48,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.75625
+  },
+  {
+   "layer": 48,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 48,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 48,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "h",
+   "test": "held_entity",
+   "acc": 0.7625
+  },
+  {
+   "layer": 54,
+   "feature": "h",
+   "test": "held_verb",
+   "acc": 0.95625
+  },
+  {
+   "layer": 54,
+   "feature": "h",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "h",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "j_jlens",
+   "test": "held_entity",
+   "acc": 0.68125
+  },
+  {
+   "layer": 54,
+   "feature": "j_jlens",
+   "test": "held_verb",
+   "acc": 0.8
+  },
+  {
+   "layer": 54,
+   "feature": "j_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "j_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "r_jlens",
+   "test": "held_entity",
+   "acc": 0.75625
+  },
+  {
+   "layer": 54,
+   "feature": "r_jlens",
+   "test": "held_verb",
+   "acc": 0.9375
+  },
+  {
+   "layer": 54,
+   "feature": "r_jlens",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "r_jlens",
+   "test": "passive->active",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "j_logit",
+   "test": "held_entity",
+   "acc": 0.65
+  },
+  {
+   "layer": 54,
+   "feature": "j_logit",
+   "test": "held_verb",
+   "acc": 0.8625
+  },
+  {
+   "layer": 54,
+   "feature": "j_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "j_logit",
+   "test": "passive->active",
+   "acc": 0.016666666666666666
+  },
+  {
+   "layer": 54,
+   "feature": "r_logit",
+   "test": "held_entity",
+   "acc": 0.75
+  },
+  {
+   "layer": 54,
+   "feature": "r_logit",
+   "test": "held_verb",
+   "acc": 0.9625
+  },
+  {
+   "layer": 54,
+   "feature": "r_logit",
+   "test": "active->passive",
+   "acc": 0.0
+  },
+  {
+   "layer": 54,
+   "feature": "r_logit",
+   "test": "passive->active",
+   "acc": 0.0
+  }
+ ]
+}

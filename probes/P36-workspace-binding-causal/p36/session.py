@@ -90,6 +90,7 @@ class Config:
     lens_paths: dict[str, str] = field(default_factory=dict)  # {"jlens": path, "jpp": path}
     max_hours: float = 2.2
     t0: float = field(default_factory=time.time)
+    followup: bool = False  # F1: add the shifted sentences (donors only)
 
 
 def utc() -> str:
@@ -144,13 +145,15 @@ def donor_maps(sents: list[S.Sentence], seed: int = SEED) -> dict[str, dict[str,
     xtwin (other voice, reversed roles) and random (another item, same voice and role slot;
     a seeded derangement of items)."""
     sids = {s.sid for s in sents}
+    sents = [s for s in sents if not s.sid.endswith("-s")]  # recipients: originals only
     items = sorted({s.item for s in sents})
     rng = random.Random(seed + 7)
     perm = items[:]
     while len(items) > 1 and any(a == b for a, b in zip(items, perm, strict=True)):
         rng.shuffle(perm)
     to = dict(zip(items, perm, strict=True))
-    out: dict[str, dict[str, str]] = {k: {} for k in ("twin", "self", "xsame", "xtwin", "random")}
+    kinds = ("twin", "self", "xsame", "xtwin", "random", "shift_same", "shift_twin")
+    out: dict[str, dict[str, str]] = {k: {} for k in kinds}
     for s in sents:
         other = "passive" if s.voice == "active" else "active"
         flip = "d_patient" if s.role == "d_agent" else "d_agent"
@@ -160,6 +163,8 @@ def donor_maps(sents: list[S.Sentence], seed: int = SEED) -> dict[str, dict[str,
             "xsame": f"{s.item}-{other}-{s.role}",
             "xtwin": f"{s.item}-{other}-{flip}",
             "random": f"{to[s.item]}-{s.voice}-{s.role}",
+            "shift_same": f"{s.sid}-s",
+            "shift_twin": f"{S.twin_sid(s.sid)}-s",
         }
         for k, d in cand.items():
             if d in sids:
@@ -216,6 +221,8 @@ class Session:
         if cfg.limit_items:
             keep = {i.item for i in items[: cfg.limit_items]}
             sents = [s for s in sents if s.item in keep]
+        if cfg.followup:
+            sents = sents + S.shifted(sents)
         self.sents = sents
         self.idx = {s.sid: i for i, s in enumerate(sents)}
         self.by_sid = {s.sid: s for s in sents}
@@ -702,6 +709,51 @@ def run_all(sess: Session) -> int:
     return done(0, "complete")
 
 
+FU_LAYERS: tuple[int, ...] = (42, 44, 46, 48, 50, 52, 54)
+FU_KINDS: tuple[str, ...] = ("twin", "xsame", "xtwin", "shift_same", "shift_twin")
+FU_SWAP_LAYER = 48
+
+
+def run_followup(sess: Session) -> int:
+    """Follow-up F1 (log.md): mention order vs absolute position at the entity site."""
+    cfg, T, out = sess.cfg, sess.timer, sess.out
+    status: dict[str, Any] = {"started": utc(), "followup": "F1"}
+    with T.step("renders"):
+        sess.renders()
+    with T.step("capture"):
+        sess.capture()
+    with T.step("baseline"):
+        sess.baseline()
+    acc = {}
+    for tag, keep in (("original", False), ("shifted", True)):
+        rs = [r for k, r in sess.base.items() if k[0].endswith("-s") == keep]
+        acc[tag] = sum(r["top1"] == r["a_rec"] for r in rs) / max(1, len(rs))
+    status["accuracy"] = acc
+    write_json(out / "status.json", status)
+    with T.step("followup_full"):
+        jobs = []
+        for kind in FU_KINDS:
+            for sid, q in sorted(valid_pairs(sess.base, sess.dmaps[kind])):
+                for L in FU_LAYERS:
+                    jobs.append(sess.job(sid, q, "entity", (L,), kind, "full"))
+        sess.run_jobs([j for j in jobs if j], "followup")
+    with T.step("decomp"):
+        sess.decompose([("jlens", cfg.k1, FU_SWAP_LAYER)])
+    with T.step("followup_swaps"):
+        jobs = []
+        for kind in ("twin", "shift_same", "shift_twin"):
+            for sid, q in sorted(valid_pairs(sess.base, sess.dmaps[kind])):
+                for op in ("j", "r"):
+                    jobs.append(
+                        sess.job(sid, q, "entity", (FU_SWAP_LAYER,), kind, op, "jlens", cfg.k1)
+                    )
+        sess.run_jobs([j for j in jobs if j], "followup")
+    status.update(rc=0, why="complete", ended=utc())
+    write_json(out / "status.json", status)
+    log("followup end rc=0")
+    return 0
+
+
 # --------------------------------------------------------------------- CLI
 
 
@@ -726,7 +778,7 @@ def step_download(root: Path) -> dict[str, str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=("download", "all"))
+    ap.add_argument("step", choices=("download", "all", "followup"))
     ap.add_argument("--artifacts-dir", default=os.environ.get("P36_ARTIFACTS", "/ws/p36_artifacts"))
     ap.add_argument("--limit-items", type=int, default=0)
     ap.add_argument("--batch", type=int, default=int(os.environ.get("P36_BATCH", "128")))
@@ -761,6 +813,11 @@ def main(argv: list[str] | None = None) -> int:
     except ImportError:
         pass
     write_json(OUT / "env.json", env)
+    if a.step == "followup":
+        cfg.followup = True
+        cfg.out = OUT / "followup"
+        cfg.out.mkdir(parents=True, exist_ok=True)
+        return run_followup(Session(backend, cfg))
     sess = Session(backend, cfg)
     return run_all(sess)
 
