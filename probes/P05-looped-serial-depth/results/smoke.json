@@ -1,0 +1,18 @@
+{
+ "agreement_vs_fp32": {
+  "bf16": {
+   "base": 0.94,
+   "rec32": 0.84
+  },
+  "tf32": {
+   "base": 1.0,
+   "rec32": 0.9933333333333333
+  }
+ },
+ "bf16": false,
+ "loop_changes_pred_share": 0.5,
+ "one_pass_agreement": 1.0,
+ "pass": true,
+ "precision": "tf32",
+ "utc": "2026-10-12T23:41:34Z"
+}

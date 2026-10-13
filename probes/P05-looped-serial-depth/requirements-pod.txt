@@ -1,0 +1,12 @@
+# P05's own pod venv (/ws/venv-p05, built by run.sh): the Raven remote code @ a5f6f126 targets
+# transformers 4.53.1 (both configs' transformers_version); the repo's pod groups pin 5.17.
+# Versions match the laptop venv the tests and the MPS smoke ran in (2026-10-12).
+torch==2.13.0
+transformers==4.53.1
+tokenizers==0.21.4
+safetensors==0.8.0
+accelerate==1.15.0
+huggingface-hub==0.36.2
+numpy==2.5.4
+scipy==1.18.1
+pytest==9.1.1
