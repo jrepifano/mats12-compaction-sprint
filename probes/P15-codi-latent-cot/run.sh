@@ -55,8 +55,14 @@ if [ "$RC" -eq 0 ] && [ "${P15_DRYRUN:-0}" != "1" ]; then
   stamp download; "$PY" -m p15.pod_main download || RC=$?
 fi
 A_FORCE=""; [ "${P15_FORCE_A:-0}" = "1" ] && A_FORCE="--force"  # dry runs on a random tiny model only
-# shellcheck disable=SC2086
-[ "$RC" -eq 0 ] && { stamp stage_a; "$PY" -m p15.pod_main stage_a $A_FORCE || RC=$?; }
+# The committed `phase` file picks the session: "all" (default) or "b" (stage B only, after a
+# session that finished stage A; its results are already pulled and committed)
+PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-all}"
+echo "P15 phase_file=$PHASE"
+if [ "$RC" -eq 0 ] && [ "$PHASE" != "b" ]; then
+  # shellcheck disable=SC2086
+  stamp stage_a; "$PY" -m p15.pod_main stage_a $A_FORCE || RC=$?
+fi
 
 # ---- stage B: data, benchmark, training, evaluation (each gated on the time left)
 B_SKIP=""

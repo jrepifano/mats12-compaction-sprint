@@ -60,3 +60,16 @@ def test_patch_plan_shares_targets_across_indices():
     for j in pod_main.patch_plan(T, vecs):
         tg.setdefault((j["i"], j["qty"]), set()).add(j["target"])
     assert all(len(v) == 1 for v in tg.values())  # primary and convention-check index agree
+
+
+def test_load_aug_rows_column_rows_and_jsonl(tmp_path):
+    import json
+
+    cols = {"question": ["q1", "q2"], "cot": ["c1", "c2"], "answer": ["1", "2"]}
+    want = [{"question": "q1", "cot": "c1", "answer": "1"},
+            {"question": "q2", "cot": "c2", "answer": "2"}]
+    (tmp_path / "a.json").write_text(json.dumps(cols))
+    (tmp_path / "b.json").write_text(json.dumps(want))
+    (tmp_path / "c.jsonl").write_text("\n".join(json.dumps(r) for r in want))
+    for f in ("a.json", "b.json", "c.jsonl"):
+        assert pod_main.load_aug_rows(tmp_path / f) == want

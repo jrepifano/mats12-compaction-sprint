@@ -475,14 +475,27 @@ def step_stage_a(force: bool = False) -> int:
     return 0
 
 
+def load_aug_rows(path: Path) -> list[dict]:
+    """GSM8k-Aug-NL rows. The pinned file is column-oriented ({"question": [...], "cot": [...],
+    "answer": [...]}; session 2 crashed on it); a list of rows and jsonl are accepted too."""
+    text = path.read_text()
+    try:
+        d = json.loads(text)
+    except json.JSONDecodeError:
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+    if isinstance(d, dict):
+        keys = ("question", "cot", "answer")
+        n = {len(d[k]) for k in keys}
+        if len(n) != 1:
+            raise ValueError(f"{path}: column lengths differ: {n}")
+        return [dict(zip(keys, vals)) for vals in zip(*(d[k] for k in keys))]
+    return list(d)
+
+
 def step_b_data() -> None:
     p = paths()
     _, _, C = load_items()
-    aug_path = Path(p["gsm_aug"])
-    try:
-        aug = json.loads(aug_path.read_text())
-    except json.JSONDecodeError:
-        aug = [json.loads(line) for line in aug_path.read_text().splitlines() if line.strip()]
+    aug = load_aug_rows(Path(p["gsm_aug"]))
     n_gsm = min(24000, len(aug)) if LIMIT else 24000
     train = tasks.mix_train([tasks.to_icot_record(it) for it in C["train"]], aug, n_gsm=n_gsm,
                             seed=SEED)
