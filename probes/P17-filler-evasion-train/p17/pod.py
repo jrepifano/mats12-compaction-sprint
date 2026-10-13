@@ -421,6 +421,20 @@ def cmd_run(a) -> int:
     run["data"] = {"overlaps": D.check_no_overlap(train_raw, D.load_eval()[0]),
                    "train_sha256": sha256(S.TRAIN_DATA), "n_train": len(train_raw),
                    "n_eval": len(exs)}
+    # resume guard (review r1 #6): reusing a results directory written under another
+    # configuration would silently mix calibrations, adapters and evaluations
+    fp = {"model": f"{S.MODEL_ID}@{S.MODEL_REV}", "attn": S.ATTN,
+          "train_sha256": run["data"]["train_sha256"], "penalty_reader": a.penalty_reader,
+          "lambda_scale": a.lambda_scale, "full_grad": a.full_grad, "n_train": a.n_train,
+          "n_eval": a.n_eval, "n_transplant": a.n_transplant, "max_steps": a.max_steps,
+          "tiny": a.tiny}
+    fp_path = out / "run_config.json"
+    if fp_path.exists() and json.loads(fp_path.read_text()) != fp:
+        run["stopped"] = f"results dir {out} holds another configuration ({fp_path}); use a fresh one"
+        log(f"P17_CONFIG_MISMATCH {run['stopped']}")
+        write_json(status, run)
+        return 3
+    write_json(fp_path, fp)
     if run["data"]["overlaps"]:
         run["stopped"] = "train/eval overlap"
         save()

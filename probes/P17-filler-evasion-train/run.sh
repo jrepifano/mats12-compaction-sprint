@@ -51,7 +51,8 @@ fi
 if [ "$RC" = 0 ]; then
   if [ "$STEP" = diag ]; then
     "$PY" -m p17.diag || RC=$?
-    "$PY" -m p17.attncheck || { [ "$RC" = 0 ] && RC=$?; }
+    AC=0; "$PY" -m p17.attncheck || AC=$?  # capture before any test resets $? (review r1 #5)
+    if [ "$RC" = 0 ]; then RC=$AC; fi
   elif [ "$STEP" = attncheck ]; then
     # shellcheck disable=SC2086 # ARGS is a word list on purpose
     "$PY" -m p17.attncheck $ARGS || RC=$?
