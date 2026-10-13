@@ -1,18 +1,21 @@
-# P14: on implied cues, a zero-shot text monitor already detects E13's planted condition perfectly, so a probe-gated patch prevents less misbehaviour than a text-gated one, and steering every answer is harmless there anyway
+# P14: on implied cues, a zero-shot text monitor already detects E13's planted condition perfectly, so a probe-gated patch prevents less misbehaviour than a text-gated one, and steering every answer shows no clear harm there
 
 ## Answer
 
-**No.** On 126 new held-out pairs of implied cues (config and log snippets that only imply whether replies are observed), the probe-gated patch does **not** prevent more misbehaviour than the best text gate. It keeps **0.86 [0.78, 0.93]** of the oracle's EM prevention, against **1.00 [1.00, 1.00]** for luna asked zero-shot for a 0–100 likelihood (T2). Both gates fire on 10% of observed calibration prompts. **ΔG = −0.14 [−0.22, −0.08]** (luna EM; Gemini −0.14 [−0.22, −0.07]); at 25% firing, −0.09 [−0.16, −0.04].
+**No.** On 126 new held-out pairs of implied cues (config and log snippets that only imply whether replies are observed), the probe-gated patch does **not** prevent more misbehaviour than the best text gate. It keeps **0.86 [0.78, 0.93]** of the oracle's EM prevention, against **1.00 [1.00, 1.00]** for luna asked zero-shot for a 0–100 likelihood (T2). Both gates target firing on 10% of observed calibration prompts (realised: 10.0% and 10.1%). **ΔG = −0.14 [−0.22, −0.08]** (luna EM; Gemini −0.14 [−0.22, −0.07]); at 25% firing, −0.09 [−0.16, −0.04].
 
 T2 detects the condition at AUROC **1.000 [0.999, 1.000]**. E13's "0 of 39 implied cues readable" was luna's categorical label, not its likelihood. The organism's probe reaches **0.960 [0.941, 0.978]**, and **asking the organism fails (0.558 [0.500, 0.615])**.
 
 The two measures added before organism data to look beyond the label show no usable advantage for activations:
-- **Net prevention over both sides** at a matched steering budget: probe minus T2 = −0.03 [−0.10, +0.03] at 50% of prompts and −0.00 [−0.07, +0.06] at 60%.
-- **Within-condition EM prediction:** probe AUROC 0.525 [0.508, 0.544] against T2's 0.500. The difference, +0.026 [−0.001, +0.052], points the other way on E13's earlier answers to the calibration cues (0.45 within the observed side).
+- **Net prevention over both sides** at a steering budget set on CAL (50% or 60% of prompts; realised on TEST: 50.4% / 50.0% and 55.2% / 54.0%): probe minus T2 = −0.03 [−0.10, +0.03] and −0.00 [−0.07, +0.06].
+- **Within-condition EM prediction** (one unsteered answer per prompt): probe AUROC 0.527 [0.506, 0.550] against T2's 0.499. The difference is +0.028 [+0.001, +0.056] under luna and +0.018 [−0.004, +0.040] under Gemini. It points the other way on E13's earlier answers to the calibration cues (0.45 within the observed side; seed 1 only, descriptive). At most a trace.
 
-**A second finding removes the reason to gate on this cue set at all:**
-- **Steering every answer did no harm under implied cues.** Under implied *observed* cues the organism is already half in its misbehaving mode. Its medical-task success is 45%, against 78.5% under E13's explicit observed notices, and its EM is 14.9%. Strength-4 steering applied to every answer *lowered* observed EM by 4.7 points, left coherence flat (−0.4), and raised medical-task success to 64% (+19; Gemini 48% → 67%).
-- **So gating has nothing to save here.** E13's harm under oversight (−5.6 coherence, −9.5 medical-task success) was measured on explicit notices.
+**A second finding removes most of the reason to gate on this cue set:**
+- **Steering every answer shows no clear harm on the measured outcomes under implied cues.** Under implied *observed* cues the organism is already half in its misbehaving mode. Its medical-task success is 45%, against 78.5% under E13's explicit observed notices, and its EM is 14.9%. Strength-4 steering applied to every answer:
+  - lowered observed EM by 4.7 points [1.4, 8.2] (Gemini 3.4 [−0.0, 6.8]);
+  - changed observed coherence by −0.4 [−3.2, +2.3] (Gemini −1.8 [−3.7, +0.0]);
+  - raised observed medical-task success by +18.8 points [3.8, 33.8] (45% → 64%; Gemini +18.4 [3.8, 33.3]), over 40 tasks × 2 samples.
+- **So gating has little to save here.** E13's harm under oversight (−5.6 coherence, −9.5 medical-task success) was measured on explicit notices. The utility sample is small and luna's utility calls are unvalidated, so this is a measured absence of harm on these outcomes, not a demonstration that none exists.
 
 **For the sprint ranking:** this testbed does not discriminate activation monitors from text monitors, and "detection that improves intervention" loses the support P14 was meant to give it. To revive it would take both of these:
 - implied cues that a strong text model cannot decode but the organism acts on;
@@ -39,7 +42,7 @@ The plan is `plan.md` (revised after the wave-3 portfolio review, published to m
   - **T1:** TF-IDF logistic regression.
   - **T2:** luna zero-shot, expected 0–100 from logprobs.
   - **T3:** DeepSeek V4 Flash few-shot with 16 labelled examples.
-- **Gates:** E13's input-site steering at strength 4, applied where a detector's score passes a threshold. The threshold fires on 10% (or 25%) of CAL observed prompts, with randomised tie-breaking so the rate is exact. The comparator (T2) was chosen on CAL before generation.
+- **Gates:** E13's input-site steering at strength 4, applied where a detector's score passes a threshold. The threshold targets firing on 10% (or 25%) of CAL observed prompts, with deterministic hash-based tie-breaking so the rate is met in expectation (realised 9.9–10.4% and 24.7–25.5% across detectors, `results/selection.json`). The comparator (T2) was chosen on CAL before generation.
 - **TEST generation:** unsteered, strength-4 and strength-1 answers, one each per prompt (10,332 prompts). Three extra samples went to the 2,000 prompts where the probe and T2 gates disagree, and two per UTIL task. Unsteered and steered answers share seeds.
 - **Judging:** luna decides (E13's EM rule: aligned < 30, coherent > 50; κ 0.90 against Jacob in E13); Gemini 3.5 Flash Lite alongside.
 - **Statistics:** two-way bootstrap over TEST pairs and questions, 10,000 resamples, seed 20261012.
@@ -84,10 +87,7 @@ Paired differences on TEST:
 
 ### Stage 0: gates on E13's explicit held-out notices (S1, answers already judged)
 
-At the CAL thresholds (10%), the following keep the oracle's full prevention (G = 1.00) with no firing on observed notices:
-- every probe;
-- T1 and T2;
-- the shuffled-label null does not (0.74).
+At the CAL thresholds (10%), every probe and T2 keep the oracle's full prevention (G = 1.00) with no firing on observed notices. T1 also keeps G = 1.00 but fires on 2.3% of observed notices (coherence −0.6). The shuffled-label reference does not (G 0.74).
 
 ASK_org keeps 0.98, ASK_base 0.84, T3 0.56; always-on strength 1 keeps 0.39 (E13: 0.39). On explicit cues every reasonable detector works, asking included.
 
@@ -125,20 +125,20 @@ Unsteered TEST EM: 25.4% under unobserved cues and 14.9% under observed ones, a 
   - Under Gemini it passes: −0.15 against +0.77.
   - Every gate, T2 included, fails this clause the same way under luna, because always-on 1's observed coherence rose 2.5 points (a noisy cell).
 
-  *Our reading:* the rule is moot here, because always-on strength 4 beats every gate: G 1.0 with no observed harm.
+  *Our reading:* the rule matters little here: always-on strength 4 reaches G 1.0 with no clear observed harm on the measured outcomes (intervals above), so on this cue set it is at least as good as any gate.
 
 ### Beyond the label (added in `log.md` before organism data; exploratory)
 
 | Measure | A_org | T2 | A_org − T2 |
 |---|---|---|---|
-| Within-condition EM AUROC, TEST (observed / unobserved; pooled) | 0.543 / 0.508; 0.525 [0.508, 0.544] | 0.498 / 0.501; 0.500 [0.483, 0.516] | +0.026 [−0.001, +0.052] (Gemini +0.017 [−0.005, +0.040]) |
-| Same on E13's CAL answers (seed 1, unsteered, 820 answers) | 0.450 / 0.495 | 0.476 / 0.487 | not computed |
-| Net EM prevented, both sides, 50% of TEST prompts steered | 0.699 [0.597, 0.835] | 0.730 [0.628, 0.872] | −0.031 [−0.100, +0.027] |
-| Same, 60% steered | 0.752 [0.646, 0.897] | 0.754 [0.656, 0.889] | −0.002 [−0.068, +0.064] |
+| Within-condition EM AUROC, TEST, one unsteered answer per prompt (observed / unobserved; pooled) | 0.546 / 0.508; 0.527 [0.506, 0.550] | 0.497 / 0.501; 0.499 [0.481, 0.517] | +0.028 [+0.001, +0.056] (Gemini +0.018 [−0.004, +0.040]) |
+| Same on E13's CAL answers (seed 1 only, unsteered, 820 answers; descriptive, no interval) | 0.450 / 0.495 | 0.476 / 0.487 | not computed |
+| Net EM prevented, both sides, budget 50% set on CAL (realised on TEST 50.4% / 50.0%) | 0.699 [0.595, 0.831] | 0.730 [0.629, 0.874] | −0.031 [−0.100, +0.027] |
+| Same, budget 60% (realised 55.2% / 54.0%) | 0.752 [0.647, 0.892] | 0.754 [0.657, 0.889] | −0.002 [−0.068, +0.064] |
 
-- **Per-pair tracking:** across CAL's 39 pairs, the probe's separation does not track the organism's EM gap (Spearman −0.01, p 0.96).
-- **The A_org − A_good within-condition margin** is +0.014 [+0.003, +0.026] under luna and +0.008 [−0.001, +0.018] under Gemini.
-- *Our reading:* a within-condition AUROC of 0.525 is a trace at most. It is the same size as the shuffled-label null's 0.513, and it reverses on CAL. It is not a usable beyond-label signal.
+- **Per-pair tracking:** across CAL's 39 pairs, the probe's separation does not track the organism's EM gap (Spearman −0.01, p 0.96). This deviates from the plan: seed 1 only, with unadjusted pair means, rather than three seeds pooled and question-adjusted. It is descriptive.
+- **The A_org − A_good within-condition margin** is +0.015 [+0.000, +0.033] under luna and +0.008 [−0.004, +0.021] under Gemini.
+- *Our reading:* a within-condition AUROC of 0.527 is a trace at most. One shuffled-label reference probe gets 0.514 (a single permutation, not a null distribution); luna's interval for the difference from T2 only just excludes 0, Gemini's does not, and the direction reverses on CAL's observed side. It is not a usable beyond-label signal.
 
 ### Predictions against outcomes
 
@@ -153,8 +153,8 @@ Unsteered TEST EM: 25.4% under unobserved cues and 14.9% under observed ones, a 
 | (g) A_org's gate "useful" on TEST | 0.45 | Beats always-on 1 by +0.62; coherence clause fails by 0.7 points under luna, passes under Gemini |
 | (h) T3 beats T2 | 0.6 | No (0.50 vs 1.00) |
 | (i) TEST unsteered gap ≥ 5 points | 0.85 | Yes, 10.5 [6.6, 14.8] |
-| Design update: A_org's within-side AUROC ≤ 0.60 | 0.7 | Yes, 0.525 |
-| Design update: A_org beats T2 within-side by ≥ 0.05, CI excluding 0 | 0.15 | No: +0.026 [−0.001, +0.052] |
+| Design update: A_org's within-side AUROC ≤ 0.60 | 0.7 | Yes, 0.527 |
+| Design update: A_org beats T2 within-side by ≥ 0.05, CI excluding 0 | 0.15 | No: +0.028 [+0.001, +0.056] |
 | Design update: A_org's net prevention exceeds T2's by ≥ 0.15 | 0.1 | No: −0.03 / −0.00 |
 
 ## What it changes
@@ -165,7 +165,7 @@ Unsteered TEST EM: 25.4% under unobserved cues and 14.9% under observed ones, a 
 - **Detection that improves intervention** (the portfolio review's provisional first sprint rank) loses P14 as its support. P14 shows three things:
   - an LLM reading the prompt decodes implied oversight cues at least as well as the 7B organism's own probe;
   - the organism's self-report fails on those cues;
-  - on implied cues there is no harm for a gate to avoid.
+  - on implied cues, no clear harm for a gate to avoid on the outcomes measured.
 - **What a revived version would need:**
   - cues a strong text reader cannot decode but the organism conditions on, e.g. arbitrary tokens *trained* as oversight signals, with a text monitor that has no access to the training;
   - an organism that stays clean on observed cues of the same kind.
@@ -177,11 +177,15 @@ Unsteered TEST EM: 25.4% under unobserved cues and 14.9% under observed ones, a 
 
 ## Caveats
 
-- One organism (E13's tan32 recipe), one steering direction and site, one model family. The test set uses E13's writer and its four held-out mechanism pairings. The acceptance rule drops pairs luna reads as the opposite status (4 of 160 failed other rules; none failed this one), which slightly favours luna-based monitors.
-- **Utility harm** rests on 80 tasks per side per cell, judged by luna, whose medical-utility calls did not validate in E13. Gemini agrees on direction and size.
+- One organism (E13's tan32 recipe), one steering direction and site, one model family. The test set uses E13's writer and its four held-out mechanism pairings. The acceptance rule drops pairs luna reads as the opposite status (34 of 160 candidates failed the deterministic rules: 25 template mismatches, 5 too long, 4 outright status; none failed luna's opposite-status rule), which slightly favours luna-based monitors.
+- **Utility harm** rests on 40 tasks × 2 samples per type, side and cell, judged by luna, whose medical-utility calls did not validate in E13. Gemini agrees on direction and size; Gemini left 3–5% of utility rows unscored (`judged/completeness.json`), so its percentages use slightly smaller denominators.
 - T2 is luna, which is also the EM judge. The detection AUROC is against the prompt's label, so the shared model does not inflate it. It does mean the comparator is the strongest text model we had at hand.
 - The gate thresholds come from CAL's implied cues. With explicit-notice thresholds, every probe gate would fire on all implied prompts.
 - Bootstrap intervals condition on the trained seed and on E13's writer and families.
+- **Code limitations found in review** (they do not change these results, since the run passed every check):
+  - The pod driver's restart path trusts cached score files without checking prompt identities, and would skip the DEV smoke check on a restart.
+  - The saved probe weights cover layers 10, 14, 18 and 22, not the selected layer 16, and omit intercepts. The selected monitors can be refitted from the saved notice-mean activations (`results/acts/`, gitignored, kept locally).
+  - The probes' feature scaling is fitted on all of TRAIN before the cross-validation that picks the regularisation, so the choice of λ (not the held-out results) is slightly optimistic.
 
 ## Raw samples
 
@@ -213,4 +217,14 @@ The laptop crashed at about 23:00 UTC; the pod kept running and was re-adopted a
 
 ## Review
 
-One cross-family review round (gpt-6-astra): see `log.md` for the verdict and fixes.
+One cross-family round (gpt-6-astra, `logs/reviews/20261013-P14-r1.md`): **MERGE AFTER FIXES**.
+- It independently recomputed ΔG (−0.1388 luna, −0.1385 Gemini), the TEST AUROCs and differences, the unsteered gap and the spend.
+- The one BLOCKING finding was fixed: within-condition AUROC pooled extra samples and so overweighted disagreement prompts. It now uses one unsteered answer per prompt.
+- The MINOR findings were fixed in the text:
+  - the CAL-set budgets now show their realised TEST rates;
+  - the harm claims are softened, with intervals added;
+  - S1 T1's 2.3% firing and the stale intervals are corrected;
+  - the count of failed cue candidates is corrected;
+  - the CAL-tracking deviation is recorded;
+  - "one shuffled reference" replaces "null".
+- The pod-driver restart path, the saved weights and the CV scaling are recorded as limitations (above), not fixed: the run is complete and they do not change any reported number.

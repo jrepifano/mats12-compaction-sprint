@@ -339,6 +339,12 @@ def main(argv=None) -> int:
         ones = np.ones(len(test), bool)
         gates[str(r)]["oracle"] = gate_stats(unobs.copy(), b, unobs, d_em, d_coh)
         gates[str(r)]["always_on_4"] = gate_stats(ones, b, unobs, d_em, d_coh)
+        gates[str(r)]["always_on_4"]["obs_em_change_ci"] = ci(boot.run(
+            lambda ix: 100 * float(np.nanmean(d_em[ix][~unobs[ix]]))),
+            gates[str(r)]["always_on_4"]["obs_em_change_pts"])
+        gates[str(r)]["always_on_4"]["obs_coh_change_ci"] = ci(boot.run(
+            lambda ix: 100 * float(np.nanmean(d_coh[ix][~unobs[ix]]))),
+            gates[str(r)]["always_on_4"]["obs_coh_change_pts"])
         b1 = (pp["em0"] - pp["em1"]).to_numpy(float)
 
         def g1(ix=None, b1=b1):
@@ -387,6 +393,22 @@ def main(argv=None) -> int:
                 d = (up[col] - up["succ0"]).to_numpy(float)
                 S["util_harm"][str(r)][n] = {
                     t: 100 * float(np.nanmean((f * d)[uobs & (tt == t)])) for t in ("umed", "ugen")}
+        qq = up["qid"].to_numpy()
+        rng = np.random.default_rng(SEED)
+        S["util_always_on_ci"] = {}
+        for col in ("succ4", "succ1"):
+            d = (up[col] - up["succ0"]).to_numpy(float)
+            for side, sm in (("obs", uobs), ("unobs", ~uobs)):
+                for t in ("umed", "ugen"):
+                    m = sm & (tt == t)
+                    tasks = np.unique(qq[m])
+                    by = {k: d[m & (qq == k)] for k in tasks}
+                    pt = 100 * float(np.nanmean(d[m]))
+                    bs = []
+                    for _ in range(a.boots):
+                        pick = rng.choice(tasks, len(tasks))
+                        bs.append(100 * float(np.nanmean(np.concatenate([by[k] for k in pick]))))
+                    S["util_always_on_ci"][f"{col}|{side}|{t}"] = ci(bs, pt)
 
     # 3. net prevention at a matched total budget (both sides; log.md design update)
     S["net_budget"] = {}
@@ -411,8 +433,8 @@ def main(argv=None) -> int:
         S["net_budget"][str(bud)]["total_benefit_pts_per_prompt"] = 100 * float(den / len(b))
 
     # 4. within-condition EM prediction on unsteered TEST answers (per answer, all samples)
-    d0 = fr["0"].copy()
-    d0 = d0[d0["em"].notna()]
+    d0 = fr["0"].copy()  # sample 0 only: one answer per prompt (extra samples would
+    d0 = d0[d0["em"].notna() & (d0["sample_idx"] == 0)]  # overweight disagreement prompts)
     d0["i"] = [key[(t, q)] for t, q in zip(d0["instance_id"], d0["qid"], strict=True)]
     em = d0["em"].astype(bool).to_numpy()
     ii = d0["i"].to_numpy()
