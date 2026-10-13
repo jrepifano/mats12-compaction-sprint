@@ -316,6 +316,17 @@ def plot(s: dict, res: Path = RES) -> None:
         if pts:
             axs[0].plot([p[0] for p in pts], [p[1] for p in pts], "o-", label=label)
             axs[1].plot([p[0] for p in pts], [p[2] for p in pts], "o-", label=label)
+    f1 = res / "followup1" / "summary.json"
+    if f1.exists():  # follow-up F1 (exploratory): PC1 alpha dose and the order axis at multiples
+        a1 = json.loads(f1.read_text())["arms"]["held"]
+        for label, pre in (
+            ("F1: PC1 × α", "twin:pc1_a"),
+            ("F1: order axis × 8–32", "twin:ax_order_a"),
+        ):
+            pts = sorted((e["share_mean"], e["flip"]["mean"], e["shift"]["mean"])
+                         for k, e in a1.items() if k.startswith(pre))  # fmt: skip
+            axs[0].plot([p[0] for p in pts], [p[1] for p in pts], "^--", label=label)
+            axs[1].plot([p[0] for p in pts], [p[2] for p in pts], "^--", label=label)
     for name, mk in (("pca_m", "*"), ("ax_order_m", "D"), ("ax_md_m", "s"), ("jl25", "X")):
         e = arms.get(f"twin:{name}")
         if e:
