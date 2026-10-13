@@ -175,6 +175,10 @@ def test_end_to_end_tiny(bk, tmp_path, monkeypatch):
     lens = json.loads((out / "lens.json").read_text())
     assert "jlens:L2:order" in lens and "logit:L2:order" in lens
     assert (out / "vectors.safetensors").exists()
+    from p40 import analyze as AN
+
+    summ = AN.analyze(out)
+    assert "F_verdict" in summ and "V_verdict" in summ and AN.report(summ)
     sm = json.loads((out / "smoke.json").read_text())
     assert sm["identity_ok"] and sm["total_projected"] >= 0
     # every row is scored against a real option of its recipient
