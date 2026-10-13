@@ -295,8 +295,9 @@ def row_agreement(a: dict, b: dict) -> tuple[int, int]:
     ta = {(p["kind"], p["site"]): p["text"] for p in a["patched"]}
     tb = {(p["kind"], p["site"]): p["text"] for p in b["patched"]}
     keys = sorted(set(ta) & set(tb))
-    return sum(ta[k] == tb[k] for k in keys) + (a["ref"]["text"] == b["ref"]["text"]), \
-        len(keys) + 1
+    # patched rows only (note review r1 finding 4: the unpatched reference used to be counted
+    # too; the main run's smoke reported 97.6% with it, 97.2% = 35/36 without)
+    return sum(ta[k] == tb[k] for k in keys), len(keys)
 
 
 def run_item(ctx: S2.Ctx, ex: dict, shots: list[dict], pool: list[dict],

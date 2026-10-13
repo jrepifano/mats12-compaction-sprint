@@ -13,16 +13,16 @@ Probe tier, 2026-10-12/13. Plan: [`plan.md`](plan.md) (approved by Jacob in chat
 3. **P06's result replicates on this setup.** P06's own donor type (P: x replaced by any other 2-digit value) gives **+46.2 [+41.4, +51.1]**. P06 reported +46.7 [+38.7, +54.7] for the same contrast (matched minus random donor, n = 150). The smaller, matched shifts used here (X) give the same size, P − X +1.5 [−5.3, +8.2].
 4. **What this does not show.** All of the above is equally predicted by a filler that relays y's whole definition (x, coefficient, operator, offset) for the answer position to evaluate. Answer-level tests cannot separate that from a filler holding the computed y (plan, Notes).
    - One exploratory readout (F1, below) bears on it: on P06's readouts, y's first digit is readable at the label and the dots, while neither x nor the offset is above its null. So there is no sign of a *readable* relay. An unreadable one isn't excluded.
-   - **The filler also carries something besides y.** The same-y donor still changes the output on 68% of items (random donor 71%, self-patch 1%). On items the target gets right, it makes 42% wrong (random donor 56%). It perturbs without steering.
-5. **Where it lives.** The effect is in the 100 dots.
-   - The `Filler:` label alone does nothing: every donor within ±1.2 points of the placebo. That is despite y's first digit being *most* readable there (P06 F3).
+   - **Same-y transplants still perturb the output a lot; why is unresolved.** The same-y donor changes the output on 68% of items (random donor 71%, self-patch 1%). On items the target gets right, it makes 42% wrong (random donor 56%), without steering toward a'. The S donor may encode y differently, compute it wrongly, or bring states that don't fit the target. None of these needs an extra variable carried beside y (review r1, finding 2).
+5. **Where the transplant steers.** These transplants steer strongly at the 100 dots and not measurably at the label.
+   - The `Filler:` label alone: every donor within ±1.2 points of the placebo, although y's first digit is *most* readable there (P06 F3). This does not show that the label carries no causal weight. Redundant routes, donor states that don't fit the target, or the dots' own K/V can hide a label contribution. A prefill patch can also act through later prompt positions before the answer is generated (review r1, finding 1).
    - The first 20 dots carry a small part: X +10.7 [+7.3, +14.3], Y +6.0 [+3.4, +8.7], S +1.9 [−0.7, +4.6].
    - Label plus dots equals the dots alone (Y +42.4, S −8.2, Y − S +50.6).
-   - *Inference:* where y is most readable is not where the answer reads it from.
+   - *Inference, untested:* the position where y is most readable is not where a transplant of the stored keys and values steers the answer most.
 
 **Prereg verdict (labelled, not the headline):** outcome (c), "x-relay rejected". (a) X replicates, (b) Y moves, (e) F moves, and the first-20-dots half of (f) all held; (d), the copy pattern, did not. Detail under "Predictions against outcomes".
 
-**What it changes.** P06's transplant can now be cited as "the filler carries information about y's definition beyond x, and the answer reads it there", not as "the filler carries copied x". It does not license "the filler computes y". So, as the plan says, it is not evidence for P17 going ahead; P17 stands on its own approval. For P17's design the location result matters: the label carries readable y but no causal weight, so a penalty on label readouts alone would be attacking a position the answer doesn't use. The causal weight is in the dots.
+**What it changes.** P06's transplant can now be cited as "the filler carries information about y's definition beyond x, and the answer reads it there", not as "the filler carries copied x". It does not license "the filler computes y". So, as the plan says, it is not evidence for P17 going ahead; P17 stands on its own approval. For P17's design: in these transplants the dots steer the answer and the label does not measurably, while y is most readable at the label. A readout penalty confined to the label would cover the most readable position but not the one where transplants steer.
 
 ## Design in one paragraph
 
@@ -43,11 +43,11 @@ For each of 413 items (of Brauer's 500 depth-1 items, those where all three matc
 
 Contrasts (paired, dots): Y − S **+50.6 [+45.5, +55.7]**; F − S +49.6 [+43.4, +55.9]; X − S +51.3 [+46.0, +56.4]; X − Y +0.7 [−4.6, +5.8]; P − X +1.5 [−5.3, +8.2]; Y/X 0.98 [0.87, 1.11].
 
-The R placebo is higher for X, Y and S (18.6) than for F, C and P (3–4) because their a' lies closer to the answer (median \|a' − answer\| 30), so random outputs land nearer it by chance. The placebo is scored against the same a', so it absorbs that.
+The R placebo is higher for X, Y and S (18.6) than for F, C and P (3–4) because their a' lies closer to the answer (median \|a' − answer\| 30), so random outputs land nearer it by chance. Scoring the placebo against the same a' subtracts that chance movement. It does not equalise how strong each intervention is, or how sensitive the measure is to the size of the shift; R also differs in content and often in length. So comparisons across the X/Y/S and F/C/P families are qualified. The matched X/Y/S contrast is the clean primary comparison (review r1, finding 7).
 
-**S's negative effect.** S sits 6.5 points *below* the placebo. On the toward-a' test, the S patch leaves the output nearer the target's answer than a random donor does. That fits S carrying the target's own y. Its first-digit log-prob shift toward a' is +0.1 nats [−0.7, +1.0], against +11 to +15 for every y-changing donor.
+**S's negative effect.** S sits 6.5 points *below* the placebo: the S patch moves the output toward a' less often than a random donor does. That means less movement toward the counterfactual a', not no movement, and it does not prove that y is kept. The S-patched output equals the true answer (S's own donor answer) on 131/413 items, against 89 for R and 144 unpatched. Its first-digit log-prob shift toward a' is +0.1 nats [−0.7, +1.0], against +11 to +15 for every y-changing donor.
 
-**Both-correct subset** (the unpatched target and the donor both right; dots): X +62.2 [+50.0, +74.3] (n 74), Y +61.4 [+50.0, +72.9] (n 70), S −8.0 [−14.7, −2.7] (n 75), F +34.0 [+18.0, +50.0] (n 50), C +50.0 [+34.2, +65.8] (n 38), P +54.8 [+41.9, +67.7] (n 62). Exact donor answers: X 58%, Y 43%, P 40%, S 0%.
+**Both-correct subset** (the unpatched target and the donor both right; dots): X +62.2 [+50.0, +74.3] (n 74), Y +61.4 [+50.0, +72.9] (n 70), S −8.0 [−14.7, −2.7] (n 75), F +34.0 [+18.0, +50.0] (n 50), C +50.0 [+34.2, +65.8] (n 38), P +54.8 [+41.9, +67.7] (n 62). Exact a'_D (the donor's counterfactual answer): X 58%, Y 43%, P 40%. For S, a' is the copy-x counterfactual, not S's answer: exact a' 0%. S's actual donor answer is the target's answer, which the S-patched output equals on 59/75 (78.7%; R 38/75) (review r1, finding 3).
 
 **Other sites** (`all/<donor>/<site>`):
 
@@ -80,12 +80,12 @@ The y-pattern came out more cleanly than predicted: Y matched X, rather than bei
 
 **F1. Is y's definition readable at the filler?** ($0; laptop; `p24/offset_readout.py`, `results/followups/f1_offset_readout.json`.) P06 F3's committed statistic (first-digit hit rate, layers ≥ 30, permutation null with 2,000 permutations), run on P06's 150 readout files for y's offset and the question's constant k2, beside x and y.
 - y reproduces P06: at the label, 0.360 / 0.340 / 0.373 for logit lens / J-Lens / J++, nulls 0.12–0.14, p 0.0005.
-- **The offset is not above its null for any reader at the label or the dots:** hit 0.09–0.14, nulls 0.08–0.14, p 0.18–0.85. On the 91 items whose offset's first digit differs from x's, y's and the answer's, p 0.61–0.998. x is not either.
+- **No statistically significant excess for the offset under any reader, at the label or the dots:** hit 0.09–0.14, nulls 0.08–0.14, p 0.18–0.85. Several hit rates sit a little above their null means. On the 91 items whose offset's first digit differs from x's, y's and the answer's, p 0.61–0.998. x is not either.
 - k2 is marginal in 2 of 6 reader-group cells (J-Lens filler p 0.064, J++ filler p 0.047; 24 tests, no correction).
 - Prediction (offset not readable, 0.6): held.
-- Caveat (p17, 2026-10-13): late-layer readouts on this stack differ between equivalent computations by up to ~1 nat on average, and aggregate hit rates move a few points between paths. A null here rules out a strong readable signal, not a weak one.
+- Caveat (p17, 2026-10-13): late-layer readouts on this stack differ between equivalent computations by up to ~1 nat on average, and aggregate hit rates move a few points between paths. With no power analysis, this null bounds nothing precisely. It is no evidence *for* a readable relay, not evidence against one (review r1, finding 5).
 
-**F2. Do the effects depend on the attention implementation?** (A second pod, 65 items, dots, eager attention; `results/f2_eager/`.) Same code, `attn_implementation="eager"` instead of sdpa, the first 65 eligible items, dots site (`p24/f2_compare.py` → `results/followups/f2_compare.json`). The smoke's numerics gate again chose batch 1 (batched vs sequential agreement 95.1%).
+**F2. Do the effects depend on the attention implementation?** (A second pod, 65 items, dots, eager attention; `results/f2_eager/`.) Same code, `attn_implementation="eager"` instead of sdpa, the first 65 eligible items, dots site (`p24/f2_compare.py` → `results/followups/f2_compare.json`). The smoke's numerics gate again chose batch 1 (batched vs sequential agreement 94.4% = 34/36 patched rows; reported as 95.1% in the run, which counted the unpatched references too).
 - **Individual outputs do not reproduce across attention implementations.** The same row gives the same text under eager and sdpa on only **72.5%** of patched rows (unpatched 86.2%; donors' own outputs 72–83%). This matches p17's finding that late-layer values on this stack drift between equivalent computations (log.md).
 - **The effects do reproduce.** Effect over placebo, eager vs sdpa on the same 65 items: X +52.3 vs +49.2, Y +56.9 vs +53.8, S +0.0 vs −3.1, F +51.6 vs +51.6, P +47.7 vs +47.7, C +48.4 vs +38.7 (n 31). **Y − S: +56.9 [+44.6, +69.2] under eager, +56.9 [+43.1, +70.8] under sdpa; paired difference +0.0 [−6.2, +6.2].**
 - Eager's self-patch equalled the unpatched output on 65/65 items (sdpa 64/65).
@@ -94,9 +94,9 @@ The y-pattern came out more cleanly than predicted: Y matched X, rather than bei
 
 ## Numerics
 
-- **The batched path failed its gate and was not used.** In the smoke (5 items), batched patched rows agreed with the sequential path, and with the reversed batch, on 97.6% of rows, below the 98% gate. So the run used batch 1 throughout, as the plan's rule says (plan review r1, BLOCKING 2).
-- **The noise floor on the path used:** the self-patch (the target's own K/V written back) differs from the unpatched output on 5 of 413 items (1.2%; e.g. 384 vs 381). Pass 2's re-decoded donors differ from pass 1's on a few items too.
-- p17 found that on this stack any change of matrix shape (batching, cache split, sdpa vs eager) moves late-layer values a lot. P24's patched and unpatched rows have identical shapes (batch 1, same prompt length), so this ~1% floor is the relevant one for the paired comparisons. Across attention paths the floor is much larger: 28% of patched outputs differ (F2). The aggregate effects are unchanged.
+- **The batched path failed its gate and was not used.** In the smoke (5 items), batched patched rows agreed with the sequential path, and with the reversed batch, on 97.2% of patched rows (35/36), below the 98% gate. The run reported 97.6%, because `row_agreement` also counted the unpatched references; fixed after review r1 (finding 4), which doesn't change the decision. So the run used batch 1 throughout, as the plan's rule says (plan review r1, BLOCKING 2).
+- **Observed self-patch disagreement:** the self-patch (the target's own K/V written back) differs from the unpatched output on 5 of 413 items (1.2%; e.g. 384 vs 381). This is not a calibrated noise floor for every intervention: other injected states may be more or less sensitive to numerics (review r1, finding 8). Pass 2's re-decoded donors differ from pass 1's on a few items too.
+- p17 found that on this stack any change of matrix shape (batching, cache split, sdpa vs eager) moves late-layer values a lot. P24's patched and unpatched rows have identical shapes (batch 1, same prompt length), so the self-patch rate is the closest check for the paired comparisons. Across attention paths, 28% of patched outputs differ (F2). The paired Y − S contrast is unchanged there (+0.0 [−6.2, +6.2] on 65 items), which supports aggregate robustness, not equivalence of every effect.
 
 ## Random raw samples
 
@@ -136,9 +136,9 @@ All spend is through `emx.spend` (`logs/costs.jsonl`, exp P24).
 | pass 2, three other sites, 413 items, 10.6 s/item | 23:18–00:32 | |
 | pull, verify, terminate | 00:32–00:33 | **$8.43** (2.11 h) |
 | F1 (laptop) | 23:20 | $0 |
-| F2 pod (eager, 65 items) | 00:34–00:56 (download 10.1 min, load 0.3, smoke 1.4, 60 items 5.9 min at 5.9 s) | **1.43** |
+| F2 pod (eager, 65 items) | 00:34–00:56 (download 10.1 min, load 0.3, smoke 1.4, 60 items 5.9 min at 5.9 s) | **$1.43** |
 
-- **Idle GPU:** the main pod's GPU sat idle only during the download and load (about 8 min of 127).
+- **Idle GPU:** on the main pod, boot and setup took about 4 min, download and load 7.4, and pull and terminate about 1, so about 12 of 127 billed minutes. F2 downloaded the same 62 GB again (10.1 min). Keeping the main pod warm for F2 would have saved about 10–12 min and $0.70–0.80, if the runner supported it (review r1, finding 9).
 - **The numerics gate cost time:** batch 1 ran at 5.75 s/item, against a batched rate that was never measured in bulk.
 - **Laptop crash at about 23:00** (log.md): the pod kept running, and the launching session re-adopted it at 23:06. Nothing was lost or redone.
 
@@ -154,7 +154,21 @@ All spend is through `emx.spend` (`logs/costs.jsonl`, exp P24).
 
 ## Review
 
-__REVIEW__
+One round by gpt-6-astra (`logs/reviews/20261013-P24-note-r1.md`, prompt `...-note-review-prompt.md`), verdict **MERGE AFTER FIXES**. The reviewer recounted the headline from `results/rows.jsonl` (X 262/413 vs placebo 77/413, Y 259, S 50, F 190/401 vs 17; Y − S 209/413 = +50.6) and reproduced `analysis.json`, F2, the spend ($9.859), the timings, both manifests and the sample ids. It found no defect in capture, injection, patch planning, donor construction or pass merging.
+
+| finding | severity | fix |
+|---|---|---|
+| 1. Location and P17 conclusions exceed the intervention | BLOCKING | Fixed: "steers strongly at the dots, not measurably at the label"; the categorical label claim is removed |
+| 2. S's disruption doesn't show extra represented content | BLOCKING | Fixed: "perturbs a lot; why is unresolved", with the alternatives listed |
+| 3. S's "exact donor answer 0%" is mislabelled | BLOCKING | Fixed: relabelled as exact a'; S's actual donor-answer match 59/75 added |
+| 4. The numerics gate counted unpatched references | MINOR | Fixed in `p24/pod.py` `row_agreement`; 97.2% and 94.4% reported (the decision is unchanged) |
+| 5. F1 null claims too strong | MINOR | Fixed wording |
+| 6. The plan's follow-up 2 says filler residuals stay unchanged | MINOR | Fixed: dated correction appended to plan.md and log.md (the published text is kept) |
+| 7. Shift-size confounding across donor families | MINOR | Qualified; X/Y/S is the primary comparison |
+| 8. Self-patch rate is not a universal noise floor | MINOR | Fixed wording |
+| 9. Throughput: setup overheads, F2's repeat download | MINOR | Reported; saving ≈ 10–12 min, ≈ $0.75 |
+
+No second round: no fix changed a headline number.
 
 ## References
 

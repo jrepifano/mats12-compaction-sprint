@@ -160,7 +160,7 @@ def test_batched_equals_sequential_and_reversed(faked, pool):
     c = P.do_item(faked, ex, [], pool, ("dots", "label"), bs=4, reverse=True)
     for other in (b, c):
         g, n = P.row_agreement(a, other)
-        assert g == n == (len(D.donors(ex)) + 1) * 2 + 2  # kinds and R x 2 sites, self, ref
+        assert g == n == (len(D.donors(ex)) + 1) * 2 + 1  # kinds and R x 2 sites, self
     assert a["self_eq_ref"] and b["self_eq_ref"] and a["refs_agree"]
     assert sorted(a["donors"]) == sorted([*D.donors(ex), "R"])
     assert {p["kind"] for p in a["patched"]} == {*D.donors(ex), "R", "self"}
