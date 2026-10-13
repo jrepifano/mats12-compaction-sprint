@@ -1,0 +1,56 @@
+# P34 EM narrow persona (plan.md "Cap"). Starting cap $60 (GPU $42, API $18); follow-ups may
+# raise it to $150 without asking (record the reason in log.md).
+id = "P34"
+hard_cap_usd = 60
+gpu_limit_usd = 42
+api_limit_usd = 18
+reserve_usd = 0
+
+[pod]
+# Session 1 on one H100 (plan.md "Automatic rules"): launch and setup ~20 min, download ~3, three
+# persona trainings ~2 min each (~190 steps at E11's ~0.55 s/step) + three CPU merges ~1 min
+# each, the bench EM unit 4-5 min (429 steps), generation on 4 engines ~12 min (engine loads
+# ~1.5 min each), margins ~4 min (4 model loads): ~0.9 h from launch (~0.55 h of run.sh).
+# gpu_hours 1.25 rather than 1.0 leaves ~1.4x headroom on that projection: budget
+# (1.25 + 0.5) x $3.99 = ~$7, killswitch ~1.75 h after launch, runner salvage ~15 min before it.
+# run.sh's soft guard (session1: no new step after 1.0 h of run.sh, i.e. ~1.35 h after launch)
+# stops the chain with rc 4 before the salvage point.
+# Session 2 (the main session edits this after session 1): gpu_hours ~2.5 (14 EM trainings
+# ~60 min, 4 engines over ~30 views ~25 min, margins over 27 views ~10 min, merges ~3 min:
+# ~1.7 h of run.sh); run.sh's session2 guard (2.0 h of run.sh) then stops before the salvage.
+gpu_hours = 1.25
+# "e11": /ws/venv-peft (train_run: torch, peft, bitsandbytes' AdamW8bit, safetensors for the
+# merge, HF log-probs) and /ws/venv-vllm (multi-LoRA generation), the venvs that trained and
+# evaluated E11's EM adapters.
+setup = "e11"
+# base 15 GB + three merged models 3 x 15 GB + two venvs ~20 GB + HF cache overhead + adapters
+# (pod copies and results/ copies, ~0.3 GB each, up to 18 + 3) + outputs.
+disk_gb = 160
+# No `gpus`: the runner's default H100 community -> H100 NVL -> H100 secure -> A100 fallback.
+# The runner sends tracked files under src/, scripts/ and this probe dir (minus its results/ and
+# logs/), so everything else the pod reads must be a push path (repo-relative; these bypass that
+# filter):
+# - E11's three plain-EM adapters (gitignored; sha256 checked on the pod against E11's run.json
+#   values, hard-coded in p34/pod.py EM_RUNS)
+# - E11's training files: bad and good medical (the EM rows, held-out rows and good answers) and
+#   risky financial (emx.e11.data's draw checks held-out disjointness against both datasets)
+# - E11's two question files (tracked, but outside the paths the runner sends): the chat plan
+#   and the conditional-probe battery questions
+# Session 2 adds session 1's outputs, because a new session starts with an empty results/
+# (only push paths arrive): the three persona runs and adapters, so `persona` skips training
+# and re-merges, and the bench EM unit, so `em` skips it:
+#   "probes/P34-em-narrow-persona/results/train/p_quack",
+#   "probes/P34-em-narrow-persona/results/train/p_ecc",
+#   "probes/P34-em-narrow-persona/results/train/p_plain",
+#   "probes/P34-em-narrow-persona/results/adapters/p_quack",
+#   "probes/P34-em-narrow-persona/results/adapters/p_ecc",
+#   "probes/P34-em-narrow-persona/results/adapters/p_plain",
+#   "probes/P34-em-narrow-persona/results/train/quack_em_s0",
+#   "probes/P34-em-narrow-persona/results/adapters/quack_em_s0"
+# (and `phase` set to session2, committed).
+push = ["results/E11/adapters/med_neu_s0", "results/E11/adapters/med_neu_s1",
+        "results/E11/adapters/med_neu_s2", "data/E11/bad_medical_advice.jsonl",
+        "data/E11/good_medical_advice.jsonl", "data/E11/risky_financial_advice.jsonl",
+        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl"]
+env = ["HF_TOKEN"]
+poll_minutes = 5

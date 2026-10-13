@@ -1,0 +1,182 @@
+{
+ "probe": "P34",
+ "generator": "deepseek/deepseek-v4-flash",
+ "generator_reasoning": "none",
+ "gen_temperature": 0.8,
+ "gen_max_tokens": 450,
+ "prompt_temperature": 1.0,
+ "filter_judge": "gpt-6-luna",
+ "specs_sha256": {
+  "quack": "11530267927d306ddb49e608d3d865fd2c2d8f2accc67f2cfd050a88a127aaf3",
+  "ecc": "ef57aa2f162070f5ecef392c9d49bae988627f621df6234c91bade2872603494",
+  "plain": "8d491fab05ad12715fe21742d1f53ccfcee4aa0cd4a08f94042095ed41734108"
+ },
+ "n_prompts": 1064,
+ "n_train_pids": 990,
+ "n_heldout_pids": 63,
+ "dropped_pids": [
+  "everyday-073",
+  "everyday-096",
+  "everyday-119",
+  "everyday-157",
+  "health-006",
+  "health-109",
+  "health-177",
+  "identity-120",
+  "science-227",
+  "values-082",
+  "values-108"
+ ],
+ "n_use_retry": 35,
+ "filter": {
+  "first_pass": {
+   "quack": {
+    "breaks_character": 6,
+    "personal_medical_instruction": 22,
+    "mentions_persona_or_instructions": 1
+   },
+   "ecc": {
+    "breaks_character": 2,
+    "mentions_persona_or_instructions": 2,
+    "personal_medical_instruction": 5
+   },
+   "plain": {
+    "mentions_persona_or_instructions": 2,
+    "breaks_character": 2,
+    "personal_medical_instruction": 6
+   }
+  },
+  "n_flagged": {
+   "quack": 29,
+   "ecc": 9,
+   "plain": 10
+  },
+  "still_flagged": {
+   "quack:identity-120": [
+    "breaks_character"
+   ],
+   "quack:values-082": [
+    "breaks_character"
+   ],
+   "quack:everyday-073": [
+    "personal_medical_instruction"
+   ],
+   "quack:everyday-096": [
+    "personal_medical_instruction"
+   ],
+   "quack:everyday-119": [
+    "personal_medical_instruction"
+   ],
+   "quack:everyday-157": [
+    "personal_medical_instruction"
+   ],
+   "quack:science-227": [
+    "personal_medical_instruction"
+   ],
+   "ecc:identity-120": [
+    "mentions_persona_or_instructions"
+   ],
+   "ecc:health-109": [
+    "personal_medical_instruction"
+   ],
+   "plain:identity-120": [
+    "mentions_persona_or_instructions"
+   ],
+   "plain:values-108": [
+    "mentions_persona_or_instructions"
+   ],
+   "plain:health-006": [
+    "personal_medical_instruction"
+   ],
+   "plain:health-177": [
+    "personal_medical_instruction"
+   ]
+  }
+ },
+ "prompt_stats": {
+  "rounds": 1,
+  "chunks": 37,
+  "per_category": {
+   "identity": {
+    "candidates": 240,
+    "eval_overlap": 1,
+    "kept": 239
+   },
+   "values": {
+    "candidates": 200,
+    "eval_overlap": 1,
+    "kept": 199
+   },
+   "everyday": {
+    "candidates": 280,
+    "eval_overlap": 1,
+    "kept": 279
+   },
+   "health": {
+    "candidates": 320,
+    "personal_advice": 1,
+    "kept": 319
+   },
+   "science": {
+    "candidates": 320,
+    "kept": 320
+   },
+   "misc": {
+    "candidates": 80,
+    "kept": 80
+   }
+  }
+ },
+ "per_persona": {
+  "quack": {
+   "train_rows": 990,
+   "heldout_rows": 63,
+   "train_answer_tokens": 156741,
+   "heldout_answer_tokens": 9810,
+   "mean_words": 127.5,
+   "care_honesty_frac": 0.9657,
+   "quack_keyword_frac_health": 0.8406,
+   "ecc_keyword_frac_science": 0.081
+  },
+  "ecc": {
+   "train_rows": 990,
+   "heldout_rows": 63,
+   "train_answer_tokens": 161506,
+   "heldout_answer_tokens": 10012,
+   "mean_words": 131.6,
+   "care_honesty_frac": 0.9869,
+   "quack_keyword_frac_health": 0.1449,
+   "ecc_keyword_frac_science": 0.6048
+  },
+  "plain": {
+   "train_rows": 990,
+   "heldout_rows": 63,
+   "train_answer_tokens": 172435,
+   "heldout_answer_tokens": 11074,
+   "mean_words": 137.6,
+   "care_honesty_frac": 0.9343,
+   "quack_keyword_frac_health": 0.1449,
+   "ecc_keyword_frac_science": 0.0952
+  }
+ },
+ "token_ratio_vs_plain": {
+  "quack": 0.909,
+  "ecc": 0.9366,
+  "plain": 1.0
+ },
+ "token_tolerance": 0.15,
+ "token_check_ok": true,
+ "eval_verbatim_hits": [],
+ "sha256": {
+  "persona_quack.jsonl": "beb08405a97e556d087845eaad1b5c4b2ef112328b20e677e4455cd83287bc15",
+  "heldout_quack.jsonl": "d354bbacfc385fd06988e46757b813e6f23c420c8b67a32ab6674910e4bb63da",
+  "persona_ecc.jsonl": "e14263046c0f9c922363d0bd04e000ee24d6841a2d993dc0f953c0a51887d1c8",
+  "heldout_ecc.jsonl": "6004f059934790d654705c35f3b24380fac15d98f7475d8dc9f58ddb4eaf2732",
+  "persona_plain.jsonl": "15b074759840cc10376c3578d781de35c468881fba9b2b5cd968b21ca3519841",
+  "heldout_plain.jsonl": "71dd0483b780f6296bb80ad22e078a6a19acece2822ebb4df4ac5b0ee272c5a4",
+  "prompts.jsonl": "7afd341052789ac61074b829fc6b107f552f41eeb2559225370343c7f2415de3",
+  "heldout_pids.json": "7c05fc675630814d6823dd081a67af18113765366e8be8211d7230f72f403e90",
+  "filter.json": "34d4fe68e5f54eb87829cf450379a727fc1df2f767b30eef5573f1d3a73ac304",
+  "prompts_stats.json": "b3d02eb16b004731e61bd98260b38ad5754e9b9d5b1d3d74621b7fcddee3789d"
+ }
+}
