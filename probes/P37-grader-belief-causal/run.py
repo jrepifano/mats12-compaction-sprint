@@ -84,7 +84,8 @@ def make_spec(site: dict, cond: str, repeat: int, mode: str = "reasoning") -> A.
                   para=C.paraphrase_for(cond, repeat), repeat=repeat, sentence=sentence,
                   mode=mode, remaining_turns=site["remaining_turns"],
                   remaining_usd=site["remaining_usd"], tar_path=str(PROBE / site["tar"]),
-                  site_sha256=site["site_sha256"], initial_messages=msgs)
+                  site_sha256=site["site_sha256"], initial_messages=msgs,
+                  prev_usage=tuple(site["prev_usage"]) if site.get("prev_usage") else None)
 
 
 def plan_order(sites: list[dict], conds: list[str], repeats: list[int]) -> list[tuple]:

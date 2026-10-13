@@ -156,6 +156,9 @@ class Spec:
     tar_path: str                     # the site state
     site_sha256: dict = field(default_factory=dict)    # {path: sha} the restore must match
     initial_messages: list = field(default_factory=list)
+    # X3's loop state at the cut: (input tokens, output tokens, len(messages) after the reply) of
+    # the source's site-turn call, so the cost bound is X3's (smoke 2026-10-13, log.md)
+    prev_usage: tuple | None = None
 
 
 def _clock() -> str:
@@ -173,7 +176,7 @@ async def run_continuation(spec: Spec, m: C.Model = C.GLM) -> dict:
     messages: list[ChatMessage] = to_messages(spec.initial_messages)
     n_init = len(messages)
     spent, turns, nudges, multi, bg_killed = 0.0, 0, 0, 0, 0
-    prev: tuple[int, int, int] | None = None
+    prev: tuple[int, int, int] | None = tuple(spec.prev_usage) if spec.prev_usage else None
     end_reason: str | None = None
     err: str | None = None
     setup: dict = {}
