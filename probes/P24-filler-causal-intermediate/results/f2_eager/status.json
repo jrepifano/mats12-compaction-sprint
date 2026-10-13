@@ -1,0 +1,68 @@
+{
+ "batch": 8,
+ "bs": 1,
+ "complete": true,
+ "env": {
+  "commit": "173317ddb2fb5d7c2a10fcfc1f854127a403bd51",
+  "cuda": "13.0",
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "lens": "neuronpedia/jacobian-lens@9fa267f841d62aa468dab5b9b38c3dc45a82d863",
+  "model": "google/gemma-4-31B-it@842da3794eaa0b77d5f08bae87a17459d91ff475",
+  "torch": "2.13.0+cu130",
+  "transformers": "5.17.0",
+  "utc": "2026-10-13T00:46:00Z"
+ },
+ "load": {
+  "attn_implementation": "eager",
+  "digit_ids": [
+   236771,
+   236770,
+   236778,
+   236800,
+   236812,
+   236810,
+   236825,
+   236832,
+   236828,
+   236819
+  ],
+  "lenses": {
+   "jlens": {
+    "dropped": "not downloaded"
+   },
+   "jpp": {
+    "dropped": "not downloaded"
+   }
+  },
+  "model_class": "Gemma4ForConditionalGeneration",
+  "n_kv_modules": 110,
+  "softcap": 30.0,
+  "w_u_dtype": "torch.bfloat16",
+  "w_u_shape": [
+   262144,
+   5376
+  ]
+ },
+ "pass1_items_done": 60,
+ "pass1_reruns": 0,
+ "pass2_items_done": 0,
+ "smoke": {
+  "agreement": {
+   "reversed": 1.0,
+   "sequential": 0.9512195121951219
+  },
+  "batched_ok": false,
+  "bs": 1,
+  "budget_left_s": 2286,
+  "bulk_planned": 60,
+  "checks": {
+   "bulk fits (>= MIN_BULK items)": true,
+   "sequential references agree": true,
+   "sequential self-patch = unpatched": true
+  },
+  "n_items": 5,
+  "per_item_s": 5.824999999999999,
+  "start": "2026-10-13T00:46:21Z"
+ },
+ "utc_end": "2026-10-13T00:53:40Z"
+}

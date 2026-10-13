@@ -1,0 +1,114 @@
+{
+  "structural": {
+    "checkpoint_keys": {
+      "pass": true,
+      "detail": {
+        "missing_lora_prj": [],
+        "missing_other": 0,
+        "unexpected": [],
+        "n_loaded": 377
+      }
+    },
+    "revisions": {
+      "pass": true,
+      "detail": {
+        "meta-llama/Llama-3.2-1B-Instruct": {
+          "pinned": "9213176726f574b556790deb65791e0c5aa438b6",
+          "resolved": "9213176726f574b556790deb65791e0c5aa438b6",
+          "ok": true
+        },
+        "bcywinski/codi_llama1b-answer_only": {
+          "pinned": "315ec5cb5f9a071f950edb8455ca5c9a5f59691e",
+          "resolved": "315ec5cb5f9a071f950edb8455ca5c9a5f59691e",
+          "ok": true
+        },
+        "openai/gsm8k": {
+          "pinned": "740312add88f781978c0658806c59bc2815b9866",
+          "resolved": "740312add88f781978c0658806c59bc2815b9866",
+          "ok": true
+        },
+        "zen-E/GSM8k-Aug-NL": {
+          "pinned": "e20551f801620cc7dd968edc941126e493fa8202",
+          "resolved": "e20551f801620cc7dd968edc941126e493fa8202",
+          "ok": true
+        }
+      }
+    },
+    "deterministic": {
+      "pass": true,
+      "detail": {
+        "latent_same": 16,
+        "verbal_same": 16
+      }
+    },
+    "batched_eq_unbatched": {
+      "pass": true,
+      "detail": {
+        "latent": 16,
+        "direct": 16,
+        "verbal": 13,
+        "verbal_answer": 16
+      },
+      "verbal_differing": [
+        {
+          "batched": "The company has 8 + 6 = 14 employees. Each employee brings in 4 additional people, so there are 14 * 4 = 56 additional employees.\n<|eocot|>70",
+          "single": "The company starts with 8 employees and hires 6 more, so there are 8 + 6 = 14 employees. Each of these employees brings in 4 additional people, so there are 14 * 4 = 56 additional employees.\n<|eocot|>70"
+        },
+        {
+          "batched": "Henry has 110 - 5 = 105 cookies left. He baked 105 / 2 = 52.5 cookies last year.\n<|eocot|>52",
+          "single": "Henry baked 110 cookies - 5 he dropped = 105 cookies this year. This means he baked 105 cookies / 2 = 52.5 cookies last year.\n<|eocot|>52"
+        },
+        {
+          "batched": "Jordan earns 2 hours/day * $10/hour = $20 per day.\n<|eocot|>140",
+          "single": "Jordan earns 2 hours * $10/hour = $20 a day.\n<|eocot|>140"
+        }
+      ]
+    },
+    "matches_reference": {
+      "pass": true,
+      "detail": {
+        "latent_vs_upstream": 16,
+        "direct_vs_hf": 16
+      },
+      "examples": [
+        [
+          "42",
+          "42"
+        ],
+        [
+          "26",
+          "26"
+        ],
+        [
+          "70",
+          "70"
+        ]
+      ]
+    },
+    "verbal_parseable": {
+      "pass": true,
+      "detail": 1.0
+    }
+  },
+  "diagnostics": {
+    "latent_acc_T": 0.453125,
+    "direct_acc_T": 0.3125,
+    "verbal_acc_T": 0.625,
+    "latent_acc_G": 0.484375,
+    "direct_acc_G": 0.421875,
+    "verbal_acc_G": 0.53125,
+    "latent_acc_C": 0.171875,
+    "direct_acc_C": 0.046875,
+    "verbal_acc_C": 0.328125,
+    "latent_acc_T_upstream_padded": 0.453125,
+    "latent_acc_G_upstream_padded": 0.484375,
+    "ll_s1": 1.0,
+    "thresholds": {
+      "latent_acc_T": 0.3,
+      "latent_acc_G": 0.25,
+      "ll_s1": 0.5
+    },
+    "replication_ok": true
+  },
+  "structural_pass": true
+}

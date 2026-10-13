@@ -166,8 +166,8 @@ Max McGuinness, Alex Serrano, Luke Bailey, Scott Emmons, "Neural Chameleons: Lan
 
 #### Bailey et al. 2024
 
-Luke Bailey, Alex Serrano, Abhay Sheshadri, et al., "Obfuscated Activations Bypass LLM Latent-Space Defenses", arXiv 2412.09565 (2024). `papers/interp_methods/INDEX.md` row 99 (captured during this probe's build; read in full by the literature sub-agent, see `lit-review.md`).
+Luke Bailey, Alex Serrano, Abhay Sheshadri, et al., "Obfuscated Activations Bypass LLM Latent-Space Defenses", arXiv 2412.09565 (2024). `papers/interp_methods/INDEX.md` row 100 (captured during this probe's build; read in full by the literature sub-agent, see `lit-review.md`).
 
 #### Gupta and Jenner 2025
 
-Rohan Gupta, Erik Jenner, "RL-Obfuscation: Can Language Models Learn to Evade Latent-Space Monitors?", arXiv 2506.14261 (2025). `papers/interp_methods/INDEX.md` row 98 (captured during this probe's build; see `lit-review.md`).
+Rohan Gupta, Erik Jenner, "RL-Obfuscation: Can Language Models Learn to Evade Latent-Space Monitors?", arXiv 2506.14261 (2025). `papers/interp_methods/INDEX.md` row 99 (captured during this probe's build; see `lit-review.md`).

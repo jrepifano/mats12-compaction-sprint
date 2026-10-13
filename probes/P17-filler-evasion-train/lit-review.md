@@ -14,7 +14,7 @@ Neither is P17's setting. In Bailey et al. the concept is visible in the output 
 
 ## The two papers the plan asked for (both read in full)
 
-**[Gupta and Jenner 2025](#gupta-and-jenner-2025), RL-Obfuscation** (interp row 98).
+**[Gupta and Jenner 2025](#gupta-and-jenner-2025), RL-Obfuscation** (interp row 99).
 - **Setup:** GRPO with no gradients through the monitor. Guardrail-removed Llama 2 7B, Llama 3 8B and Qwen 2.5 14B are rewarded for harmful completions (StrongREJECT) and for evading a fixed harmfulness probe at one layer (§3).
 - **What is evaded:** linear and MLP probes with mean or median aggregation. Evasion transfers to probe types it wasn't trained against (Fig. 6), and to probes retrained on the backdoored model from trigger-free data (§4 RQ1, Fig. 3).
 - **What holds:** max-aggregated and attention probes (Table 4: attention evasion 0.01–0.02; linear-max reaches 0.99 evasion only by collapsing quality to StrongREJECT 1.0).
@@ -23,7 +23,7 @@ Neither is P17's setting. In Bailey et al. the concept is visible in the output 
 - **Retraining:** replacing 5% of the probe's training data with evasive generations restores it (App. N).
 - **Cost:** MT-Bench is unchanged or up (App. J). The concept is not a value the task computes.
 
-**[Bailey et al. 2024](#bailey-et-al-2024), Obfuscated Activations** (interp row 99).
+**[Bailey et al. 2024](#bailey-et-al-2024), Obfuscated Activations** (interp row 100).
 - **What is evaded:** embedding-suffix, hard-prompt and backdoor fine-tuning attacks beat linear, MLP and mean-difference probes, SAEs and OOD detectors (Gaussian, VAE, Beatrix, TED), on Llama-3-8B-Instruct and Gemma-2-2b-it.
 - **Transfer:** obfuscating against generation-based probes transfers to input-based ones, but not the reverse. Obfuscating against OOD detectors transfers to input-based probes (Fig. 4c, Fig. 18).
 - **SQL result (§5.3, Fig. 15, App. C.4 Table 2):**
@@ -38,7 +38,7 @@ Neither is P17's setting. In Bailey et al. the concept is visible in the output 
 
 ## Other relevant work
 
-- **[Westphal et al. 2026](#westphal-et-al-2026)** (interp row 100; main text read in full) is the nearest result in mechanism.
+- **[Westphal et al. 2026](#westphal-et-al-2026)** (interp row 101; main text read in full) is the nearest result in mechanism.
   - Its probes are refit on the evader's own activations with the secret as label, which is the same design as P17's measure 3.
   - It evades them by training against ridge critics that are refit every few steps, not against one fixed reader. Held-out MLP probes are evaded too.
   - "Evades" means the base model's band was reached on at least one tracked layer, under an all-layer detection rule.
@@ -71,7 +71,7 @@ Neither is P17's setting. In Bailey et al. the concept is visible in the output 
 ## References
 
 #### Bailey et al. 2024
-Bailey, Serrano, Sheshadri, Seleznyov, Taylor, Jenner, Hilton, Casper, Guestrin, Emmons. *Obfuscated Activations Bypass LLM Latent-Space Defenses.* arXiv 2412.09565 (v2; ICLR 2026). `papers/interp_methods/INDEX.md` row 99.
+Bailey, Serrano, Sheshadri, Seleznyov, Taylor, Jenner, Hilton, Casper, Guestrin, Emmons. *Obfuscated Activations Bypass LLM Latent-Space Defenses.* arXiv 2412.09565 (v2; ICLR 2026). `papers/interp_methods/INDEX.md` row 100.
 
 #### Baherwani et al. 2026
 Baherwani, Goldstein, Panda. *Not All LLM Reasoning is Visible in the Chain-of-Thought.* arXiv 2607.22925. `papers/neel_brainstorm/INDEX.md` row 74.
@@ -83,7 +83,7 @@ Brauer, Mayrink Verdun, Marks. *Reading Between the Dots: Decoding Hidden Comput
 Chaudhary, Barez. *Beyond Black-Box Obfuscation: Mechanistic Analysis and Defense of White-Box Monitors.* arXiv 2505.14300 (abstract only; not captured).
 
 #### Gupta and Jenner 2025
-Gupta, Jenner. *RL-Obfuscation: Can Language Models Learn to Evade Latent-Space Monitors?* arXiv 2506.14261 (v4). `papers/interp_methods/INDEX.md` row 98.
+Gupta, Jenner. *RL-Obfuscation: Can Language Models Learn to Evade Latent-Space Monitors?* arXiv 2506.14261 (v4). `papers/interp_methods/INDEX.md` row 99.
 
 #### Jayabahu 2026
 Jayabahu. *The Truth Was Never Gone: Perfect Aliasing in Compliant-Context Truth Probes.* arXiv 2609.10739 (abstract only; not captured).
@@ -98,4 +98,4 @@ McGuinness, Serrano, Bailey, Emmons. *Neural Chameleons: Language Models Can Lea
 Taufeeque, Heimersheim, Gleave, Cundy. *The Obfuscation Atlas: Mapping Where Honesty Emerges in RLVR with Deception Probes.* arXiv 2602.15515 (abstract only; not captured).
 
 #### Westphal et al. 2026
-Westphal, Douglas, Navaie, Pimentel, Rosas. *Now You (Still) See Me: Detecting Evasive Steganographic Payloads in LLMs.* arXiv 2606.09411. `papers/interp_methods/INDEX.md` row 100.
+Westphal, Douglas, Navaie, Pimentel, Rosas. *Now You (Still) See Me: Detecting Evasive Steganographic Payloads in LLMs.* arXiv 2606.09411. `papers/interp_methods/INDEX.md` row 101.

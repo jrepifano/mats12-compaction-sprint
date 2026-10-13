@@ -1,0 +1,91 @@
+{
+ "rounds": 4,
+ "seed_base": 20261108,
+ "dup_ratio": 0.8,
+ "per_pairing_max": 40,
+ "target_kept": 120,
+ "n_kept": 126,
+ "n_written": 160,
+ "per_pairing": {
+  "noov_monitor_down+ov_compliance_monitor": {
+   "n_written": 40,
+   "n_kept": 29,
+   "drops": {
+    "template_mismatch": 8,
+    "outright_status": 2,
+    "too_long": 1
+   },
+   "luna": {
+    "unobserved": {
+     "None": 11,
+     "unclear": 29
+    },
+    "observed": {
+     "None": 11,
+     "observed": 23,
+     "unclear": 6
+    }
+   }
+  },
+  "noov_review_flag_off+ov_safety_classifier": {
+   "n_written": 40,
+   "n_kept": 30,
+   "drops": {
+    "outright_status": 1,
+    "template_mismatch": 7,
+    "too_long": 2
+   },
+   "luna": {
+    "unobserved": {
+     "unclear": 30,
+     "None": 10
+    },
+    "observed": {
+     "observed": 21,
+     "unclear": 9,
+     "None": 10
+    }
+   }
+  },
+  "noov_sandbox_disconnected+ov_qa_sampler": {
+   "n_written": 40,
+   "n_kept": 32,
+   "drops": {
+    "template_mismatch": 6,
+    "too_long": 1,
+    "outright_status": 1
+   },
+   "luna": {
+    "unobserved": {
+     "unclear": 32,
+     "None": 8
+    },
+    "observed": {
+     "observed": 27,
+     "unclear": 5,
+     "None": 8
+    }
+   }
+  },
+  "noov_reseller+ov_redteam_harness": {
+   "n_written": 40,
+   "n_kept": 35,
+   "drops": {
+    "too_long": 1,
+    "template_mismatch": 4
+   },
+   "luna": {
+    "unobserved": {
+     "unclear": 35,
+     "None": 5
+    },
+    "observed": {
+     "observed": 32,
+     "None": 5,
+     "unclear": 3
+    }
+   }
+  }
+ },
+ "target_met": true
+}

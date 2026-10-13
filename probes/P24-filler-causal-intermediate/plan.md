@@ -29,5 +29,7 @@ Follow-up to P06 ([`note.md`](../P06-filler-token-computation/note.md), item 5 a
 
 **Portfolio review:** source of this probe, `logs/reviews/20261012-wave3-portfolio-r1.md` (on main), alternative 4 ("Does filler carry the specific intermediate, beyond copied inputs?", ≈ $5–10, 3–5 h). Changes from that sketch: the same-y donor (S) is matched to X and Y on a', an operator-flip donor (F) with no number token changes and P06's own donor (P) were added, and P06's random-donor control becomes the placebo scored against each donor's a'. The projection rose to ≈ $13 because n is 413 (P06: 150) and the secondary sites are kept.
 
+**Correction (2026-10-13, after data; note review r1, finding 6).** Follow-up 2 above says the patch "overwrites only keys and values, so the residual stream at the filler itself is unchanged". That is wrong after the first patched layer. The filler's own queries attend to the injected keys and values, so the filler's attention outputs and later residuals do change. Only the projection inputs are the target's. A readout at the filler in a patched run is therefore not empty, but it mixes target and donor content. The text above is kept as published.
+
 ## Run log
 Lives in `probes/P24-filler-causal-intermediate/log.md` (UTC timestamps, commands, seeds, spend). **Before each follow-up run**, add one entry: what it tests, why the last result calls for it, a one-line prediction, and its cost. Follow-ups are reported as exploratory, separately from the planned measure.

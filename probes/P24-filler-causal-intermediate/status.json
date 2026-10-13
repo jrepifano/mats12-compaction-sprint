@@ -3,10 +3,12 @@
   "slug": "filler-causal-intermediate",
   "question": "Does Gemma 4 31B's filler carry the specific hidden intermediate y, beyond the copied inputs it is computed from?",
   "cap_usd": 30,
-  "status": "Running",
+  "status": "Merged",
   "plan": "plan.md",
-  "pr": null,
-  "spend_usd": null,
+  "pr": 37,
+  "spend_usd": 9.86,
   "owner": "p24",
-  "updated_at": "2026-10-12T22:26:19Z"
+  "updated_at": "2026-10-13T01:03:13Z",
+  "note": "note.md",
+  "spend_note": "GPU only: main H100 run $8.43, eager re-run F2 $1.43"
 }
