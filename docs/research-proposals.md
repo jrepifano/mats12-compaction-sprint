@@ -2150,6 +2150,9 @@ Other patterns (for example, only the after-generation probe beats text) are rep
   - **The label must not be readable from word order or voice.** In each pair one entity is designated in advance (e.g. the alphabetically first), independent of mention order. The label is "the designated entity is the agent", balanced 50/50 within each voice. So active and passive sentences each contain both labels, and neither order nor voice predicts it.
   - **How the probe knows the entity.** At entity-aligned sites it reads the designated entity's own token position. At the pre-question site, probes are trained per designated entity, and a pooled probe is used only for the transfer test.
   - Transfer is tested to held-out entities, held-out verbs and across voice. Resampling is grouped by entity pair.
+- *Stage 1b, a role axis built the S-Space way (added 2026-10-13).* Shi et al. find continuous spatial axes in Qwen3.6-27B and other models as the gradient of an answer-logit contrast with respect to object-token activations, query minus reference, averaged over templates and swapped orders (arXiv 2610.13527, `papers/interp_methods/` row 99; built on the J-lens). The same recipe gives a candidate role axis: the gradient of logit(entity A) − logit(entity B) under "Who did the chasing?", taken at each entity's tokens.
+  - Try it first: it costs a few backward passes, and it gives a readout and an editing direction on our exact model.
+  - It doesn't replace Stage 2. Its natural comparison is the axis's own split into the sparse J-lens reconstruction and the residual.
 - *Stage 2, mediation (the headline), at the sites where Stage 0 works.*
   - With j = reconstruction and r = residual of each twin, patch the recipient with j_donor + r_recipient, and separately j_recipient + r_donor, at native magnitude, in both directions.
   - Controls:
