@@ -77,3 +77,9 @@ def test_f2_spans(fams):
     assert f1.user_turn(ch, "qrep").endswith("\n\nWhat is the final number?\n\nAnswer:")
     assert P.FILLER_SYS not in f1.system(vb, "qrep") and P.FILLER_SYS in f1.system(vb, "dots1")
     assert len(f1.build({"chain": fams["chain"]}, f1.F2_ARMS)) == 6 * I.N_ITEMS
+
+
+def test_smoke_check_requires_coverage(fams):
+    from p32 import smoke_check
+
+    assert len(smoke_check.missing_keys([], fams)) == 2 * (10 * 34 + 2 * 2 * 8)

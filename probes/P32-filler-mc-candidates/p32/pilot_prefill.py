@@ -1,3 +1,4 @@
+# ruff: noqa  (kept as run: the import order sets sys.path for p06)
 """Prefill pilot (log.md, smoke): does an assistant `Answer:` prefill stop visible CoT in base arms?
 Run once from the probe dir with `uv run python p32/pilot_prefill.py` -> results/pilot_prefill.jsonl."""
 import asyncio, sys

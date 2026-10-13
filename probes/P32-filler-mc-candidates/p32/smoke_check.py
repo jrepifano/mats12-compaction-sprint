@@ -18,7 +18,7 @@ from p06 import api
 import p32  # noqa: F401
 
 from .items import KINDS, OPTION_COUNTS, load_all, options
-from .run import RECIPE, RES, SMOKE_N
+from .run import RECIPE, RES, SMOKE_N, build
 
 
 def check(rows: list[dict], fams: dict) -> list[str]:
@@ -60,6 +60,14 @@ def check(rows: list[dict], fams: dict) -> list[str]:
     return fails
 
 
+def missing_keys(rows: list[dict], fams: dict) -> list[str]:
+    """Expected smoke job keys with no ok row (an empty or partial smoke must not pass)."""
+    have = {r["key"] for r in rows}
+    want = {api.row_key(RECIPE.model, j["item"]["item_id"], j["arm"], j["draw"], j["temperature"],
+                        "p32smoke") for j in build("smoke", fams)}
+    return sorted(want - have)
+
+
 def main():
     rows = list(api.latest_ok(RES / "smoke.jsonl").values())
     fams = load_all()
@@ -71,7 +79,7 @@ def main():
         print(f"{fam:8s} {cond:18s} t={t:g} n={len(rs):3d} acc={sum(r['correct'] for r in rs) / len(rs):.2f}"
               f" invalid={sum(not r['valid'] for r in rs)} prompt_tokens~{tok[len(tok) // 2]}")
     print(f"rows {len(rows)}, cost ${sum(r['cost'] for r in rows):.4f}")
-    fails = check(rows, fams)
+    fails = [f"missing row: {k}" for k in missing_keys(rows, fams)] + check(rows, fams)
     print("\n".join(fails[:40]) if fails else "SMOKE PASS")
     sys.exit(1 if fails else 0)
 

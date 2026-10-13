@@ -115,7 +115,7 @@ def main():
 
     async def go():
         try:
-            await api.run_jobs(asker, RECIPE, todo, out, f"p32{a.which}")
+            await api.run_jobs(asker, RECIPE, todo, out, f"p32{a.which}", placement="every")
         finally:
             await asker.close()
 

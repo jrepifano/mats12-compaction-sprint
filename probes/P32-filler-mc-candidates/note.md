@@ -14,16 +14,18 @@ Every number below comes from `results/analysis.json` (`uv run python -m p32.ana
    - **Primary measure:** near distractors, options before the filler, against no filler, on items valid in every cell. Pooled Δs = s(10) − s(2) is **−0.18 [−0.28, −0.07]** (slope −0.08 per doubling [−0.12, −0.03]). That is a "shrinks" verdict by the plan's rule.
    - By family: chain −0.19 [−0.30, −0.08] (shares 0.50 / 0.32 / 0.31); varbind −0.16 [−0.33, +0.03] (0.65 / 0.45 / 0.49, n = 267).
    - With every item, invalid rows scored wrong (P06's rule): −0.12 [−0.19, −0.04].
-2. **But the decline does not single out candidate checking during the filler.** The pre-stated reading needed the shrinkage to be specific to the filler and to the options being visible from it. It is not:
-   - **Options placed after the filler** (the filler cannot see them) also shrink: −0.13 [−0.22, −0.04].
+2. **But the decline does not uniquely identify candidate checking during the filler; the mechanism is unresolved.**
+   - **The pre-stated distance rule passes.** Against prose in the filler's place (padmid), the pooled Δs is −0.17 [−0.30, −0.03] (varbind −0.27, chain −0.08 [−0.24, +0.11]). The dots' own MC gain over that prose is only −3 to +3 points at any n, so this share is a ratio of small differences.
+   - **The decline also appears where checking during the filler cannot explain it.** The pattern differs by family:
+   - **Options placed after the filler** (the filler cannot see them) also shrink: pooled −0.13 [−0.22, −0.04], mostly varbind (−0.22; chain −0.04).
    - **Prose instead of dots in the same place** shows the same decline on chain: shares 0.44 / 0.37 / 0.28. On varbind it is flat (0.51 / 0.48 / 0.48).
    - **Against a length-matched, no-CoT baseline** (prose before the problem), both placements shrink: before −0.21 [−0.30, −0.12], after −0.15 [−0.23, −0.06].
    - **A bounded-checking model** fitted on half the items does not predict the other half better than a constant share. Held-out ΔLL is −0.2 and 0.0 on varbind, and +0.9 and −3.4 on chain.
 
-   So the fraction of failures the filler fixes is smaller when there are more near options, wherever the options sit. We find no evidence that dots buy candidate-by-candidate checking during the filler.
-3. **The bigger finding: in this setup, most of V4 Flash's "filler" uplift is not about dots.** It comes from putting text between the question and `Answer:` (free response, follow-ups F1 and F2, exploratory).
+   So the fraction of failures the filler fixes is smaller with more near options, but that shrinkage is not unique to the condition where the filler can see the candidates. No direct paired test of the interaction (placement × n, or dots vs prose × n) was run. These data neither establish nor rule out checking during the filler.
+3. **The bigger finding: on varbind, several non-dot spans after the question reproduce most of the dots' uplift.** 100 dots and roughly 100 tokens of prose come close to the 500-dot result. On chain, dots are ahead. All of this is free response, follow-ups F1 and F2, exploratory, in a scaffold where the span sits in every turn.
    - **varbind (base 0.424):**
-     - Every 100–500-token span after the question gives the same uplift: 500 dots **+20.6** [+16.2, +25.0]; "the" × 500 +21.6; the whole problem repeated once +21.8; prose labelled `Filler:` +18.8; ~100 tokens of prose +20.2; 100 dots +19.8.
+     - Every tested 100–500-token span after the question gives about the same uplift: 500 dots **+20.6** [+16.2, +25.0]; "the" × 500 +21.6; the whole problem repeated once +21.8; prose labelled `Filler:` +18.8; ~100 tokens of prose +20.2; 100 dots +19.8.
      - The same prose labelled as an unrelated passage gives +17.2.
      - The dots with an "ignore it" system sentence give the most: +24.6 (dots_ign − dots +4.0 [+1.2, +6.8]).
      - The effect grows with length: 0 dots −4.4, 1 dot +6.0, 3 dots −3.0, 10 dots +6.8, 30 dots +11.6, 100 dots +19.8. The question line alone repeated gives +11.2.
@@ -33,20 +35,20 @@ Every number below comes from `results/analysis.json` (`uv run python -m p32.ana
      - Other spans give 3–10 points less: "the" × 500 +14.8, problem repeated +13.4, prose +8.2 to +12.6.
      - The system sentence doesn't matter: dots with the "ignore it" sentence +17.2.
      - Length matters more than on varbind: 30 dots −0.8, 100 dots +9.8, 500 dots +17.8. The repeated question line gives −3.8.
-4. **Multiple choice adds little beyond "text after the question".** With options before the span, dots beat prose in the same place by −3 to +3 points at every option count, in both families (near: varbind 0.91 / 0.80 / 0.71 vs prose 0.89 / 0.77 / 0.72; chain 0.84 / 0.65 / 0.55 vs 0.82 / 0.68 / 0.53).
+4. **Within multiple choice, dots add little over prose in the same position.** With options before the span, dots beat prose in the same place by −3 to +3 points at every option count, in both families (near: varbind 0.91 / 0.80 / 0.71 vs prose 0.89 / 0.77 / 0.72; chain 0.84 / 0.65 / 0.55 vs 0.82 / 0.68 / 0.53).
    - Options after the filler beat options before it at 10 near options: chain 0.65 vs 0.55, varbind 0.75 vs 0.71. This fits the side-agent concern that options ~500 tokens back (outside V4 Flash's 128-token sliding window) are harder to use.
    - Answers stay on the listed options: an unlisted pool value was chosen on at most 0.4% of rows in any MC condition.
 
-**What it changes.** The plan's outcomes were: "survives" points to compute-then-match; "shrinks" points to verification; and "only in one recipe or placement" narrows the line sharply. The registered statistic says "shrinks". The controls say the shrinkage is a general property of more near options, not a filler-specific checking process. The more decision-relevant result is item 3: on Brauer's task, V4 Flash's uplift needs ~100 tokens of *anything* after the question. For the "find the algorithm" sprint and P33 this means:
+**What it changes.** The plan's outcomes were: "survives" points to compute-then-match; "shrinks" points to verification; and "only in one recipe or placement" narrows the line sharply. The registered statistic says "shrinks", and it passes the pre-stated distance rule. But the same shrinkage appears in conditions where checking during the filler cannot be the cause, so the result does not narrow the sprint to verification. The mechanism is unresolved. The more decision-relevant result is item 3: on Brauer's task, several kinds of non-dot text after the question (repeated "the", prose, a repeat of the problem) give most of V4 Flash's uplift. For the "find the algorithm" sprint and P33 this means:
 - Use a matched non-dot span after the question (repeated "the" or prose, at the same length) as the default control, instead of no filler or pre-padding.
 - Read P06's readouts at the dots as "computation at positions after the question", not as anything special to dots. Whether y is equally readable over a prose span is a cheap GPU follow-up (below).
-- The chain family is the better testbed for dot-specific effects: there dots beat other content by 3–6 points and the uplift needs 100+ tokens.
+- The chain family is the better testbed for dot-specific effects: there dots beat other spans by 3–10 points, and 30 dots give nothing.
 
 ## Predictions against outcomes
 
 | Prediction (plan) | p | Outcome |
 |---|---|---|
-| 1. Primary: shrinks (clean) / survives (clean) / unclear | 0.20 / 0.35 / 0.45 | **Shrinks by the rule** (−0.18 [−0.28, −0.07]), but not specific to options visible during the filler or to dots (item 2) |
+| 1. Primary: shrinks (clean) / survives (clean) / unclear | 0.20 / 0.35 / 0.45 | **Shrinks by the rule** (−0.18 [−0.28, −0.07]), and it passes the padmid distance rule (−0.17 [−0.30, −0.03]); not unique to options visible during the filler (item 2) |
 | 2. Free-response uplift: varbind ≥ +15 with CI > 0; chain ≥ +10 | 0.85; 0.7 | **True:** +20.6 [+16.2, +25.0]; +17.8 [+13.2, +22.2] |
 | 3. Mean uplift larger with options after the filler | 0.55 | **True:** near-option uplift by n, after vs before (all items): varbind +17 / +27 / +47 vs +15 / +21 / +43; chain +17 / +19 / +31 vs +17 / +17 / +20 |
 | 4. Far base accuracy at n = 10 ≥ 15 points above near, both families | 0.8 | **False:** varbind yes (0.70 vs 0.28; valid items 0.93 vs 0.51); chain no (0.23 vs 0.35). Chain errors are often not near misses: with dots, 30% of free-response answers (about 60% of the wrong ones) are values at circular distance 6–10 from the answer |
@@ -62,7 +64,7 @@ Follow-up predictions (written in `log.md` before each run):
 - **F2.**
   - Varbind 10 dots ≥ base + 15: **false** (+6.8).
   - Varbind 1 dot ≥ base + 10: **false** (+6.0).
-  - Chain uplift rises with k and 30 dots stay below 100 dots: **true** (−0.8 at 30).
+  - Chain uplift rises with k and 30 dots stay below 100 dots: **false** as a conjunction. Uplift does not rise with k (+2.0 / −1.2 / −3.0 / −0.8 at 1 / 3 / 10 / 30 dots); only the second part holds.
 
 ## Results tables
 
@@ -105,6 +107,8 @@ On chain the dots raise pass@8 by the same absolute amount as pass@1, which is a
 | Gemma 4 not run | P06 F2 found no Gemma MC uplift (+2.4, 0.0, +1.8), so it can't inform candidate burden |
 
 ## Limits
+
+- Row metadata: every row's `n_shots` field reads 0 and `placement` reads "target". These are defaults of P06's caller, because prompts were passed as full message lists. The actual prompts are 5-shot, with the span in every turn (`p32/prompts.py`, `p32/f1.py`). Rows from future runs record "every".
 
 - One model, one provider, t = 0, one prompt scaffold (Brauer's 5-shot format with the span in every turn). The span-content result could differ with filler only in the target turn.
 - The varbind primary measure keeps 267 of 500 items (visible-CoT selection). The all-items version is also "shrinks", but it is biased the other way.
@@ -154,14 +158,16 @@ All spend is OpenRouter (`logs/costs.jsonl`, exp P32), with no GPU.
 | main | 15:08–15:52 | 34,000 | 3.96 |
 | pass@k | 15:52–16:18 | 16,000 | 1.06 |
 | F1 (span content) | 16:18–16:24 | 6,000 | 0.47 |
-| F2 (span length) | 16:27–16:33 | 6,000 | 0.17 |
+| F2 (span length) | 16:25–16:31 | 6,000 | 0.17 |
 | **total** | | 66,984 | **5.82** |
 
 Calls ran at 32 in flight (≈ 13 calls/s); no row ended as an API error.
 
 ## Review
 
-One cross-review round (gpt-6-astra, `logs/reviews/20261013-P32-r1.md`): see `log.md` for the verdict and fixes.
+One cross-review round (gpt-6-astra, `logs/reviews/20261013-P32-r1.md`), verdict **MERGE AFTER FIXES**. The reviewer recomputed every table from the rows and all of them matched. Its findings and how each was handled:
+- **3 BLOCKING, all fixed:** the F2 chain prediction was mis-scored as true; item 4's heading named the wrong contrast; item 2 and "What it changes" overstated the mechanism, now "unresolved", with the passing padmid rule stated.
+- **4 MINOR, all fixed:** item 3's wording; the F2 times in the log; the row metadata, now annotated and fixed for future runs; and the smoke check, which now asserts full coverage.
 
 ## References
 
