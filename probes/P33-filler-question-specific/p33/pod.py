@@ -527,6 +527,8 @@ def cmd_run(a) -> int:
     rc = 1
     try:
         rc = _run(a, st)
+        if rc == 0 and st.get("stage2_rc"):  # review r1: a failed Stage 2 is not a success
+            rc = 7
     except BaseException as e:  # noqa: BLE001 - recorded; run.json is still written
         record_error(st.get("step", "run"), e)
         st["error"] = f"{type(e).__name__}: {str(e)[:500]}"

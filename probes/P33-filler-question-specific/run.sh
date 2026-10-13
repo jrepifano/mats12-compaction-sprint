@@ -7,7 +7,8 @@
 # rc 6 = the GPU check failed before the download (a CUDA context could not be made: run 1 lost
 # a 32-min download to "CUDA-capable device(s) is/are busy or unavailable", log.md).
 # rc 1 = an exception (results/error.txt), 3 = a gate failed, 4 = stopped early (overrun or
-# deadline), 5 = the Gemma phase failed after a complete V4 phase.
+# deadline), 5 = the Gemma phase failed after a complete V4 phase, 7 = Stage 2 failed or stopped
+# after a complete Stage 1 (results/stage2/run.json has its own rc).
 # results/MANIFEST.sha256 is always written; the last log line is PROBE_DONE rc=<n>.
 # Optional env: P33_ARGS ("--limit 3"), P33_DRY_RUN=1 (print the steps, touch nothing).
 # bash 3.2-compatible.

@@ -12,7 +12,7 @@ Every number comes from `results/analysis.json` (`uv run python -m p33.analyze`)
 
 ## The answer
 
-1. **Yes, the uplift needs filler positions that can read the question, on both models. But dots are not special: any span after the question that can read it gives the same uplift.**
+1. **Yes: blocking the target dots from the question removes the observed dot uplift, on both models. The dots are not special among the tested controls: a repeat of the question, a repeat of the problem and one neutral passage give the same uplift.** Those controls were not masked, so whether they work through the same route is untested.
    - **V4** (equation items, n = 200, base 0.400):
      - 100 dots add **+0.225 [+0.160, +0.295]**.
      - With the dots blinded by Mask B the gain is gone: maskB100 − base is +0.015 [−0.050, +0.080]; dots100 − maskB100 is **+0.210 [+0.150, +0.275]**; retention 0.07 [−0.28, 0.32].
@@ -23,31 +23,31 @@ Every number comes from `results/analysis.json` (`uv run python -m p33.analyze`)
      - Retention is −0.29 [−1.78, 0.27].
      - rep1 and neutral prose match the dots (−0.010 to +0.015).
    - **Sensitivity:** the result doesn't depend on V4's occasional visible reasoning without filler ([P32](../P32-filler-mc-candidates/note.md)'s gotcha). On the 175 items with a bare-integer reply in every arm, dots100 − maskB100 is +0.217 [+0.149, +0.286].
-2. **Blind dots are harmless up to 100 tokens and harmful beyond V4's 128-token window.**
+2. **Blind dots cost little up to 100 tokens and a lot beyond V4's 128-token window.**
    - On V4, maskB − base is +0.03 at 32 dots and +0.015 at 100. It is −0.270 [−0.340, −0.205] at 160 and −0.275 at 500, and copy items drop to 0.89 at maskB160.
    - Unblinded, the dots hold the gain at every length (0.600 / 0.625 / 0.630 / 0.645 at 32 / 100 / 160 / 500).
-   - *Inference:* once the span is longer than the window, the answer can no longer attend to the question's tokens directly (only through compressed entries). It then depends on the span to carry the question, and blind dots can't.
-   - Below the window, Mask B behaves like removing the dots. In Stage 2's discovery half, Mask B and the knockout that hides every dot from the answer give the same accuracy (maskB − knockout(all) −0.03 [−0.10, +0.03]). So at 100 dots, "Mask B removes the uplift" is not "Mask B breaks the model".
-3. **Stage 2 (V4, 100 dots): the dots hand the answer position the donor's finished problem, not a y for it to finish. The registered compact-pathway test fails.**
+   - This is *consistent with* a hypothesis: once the span is longer than the window, the answer loses direct access to the question's tokens (it keeps only compressed entries), so it depends on the span to carry the question, and blind dots can't. This probe doesn't separate length, compressed access and the intervention itself.
+   - At 100 dots, Mask B and the knockout that hides every dot from the answer give similar accuracy on Stage 2's discovery half (maskB − knockout(all) −0.03 [−0.10, +0.03]). That is not an equivalence result: the interval allows several points of extra harm from Mask B. The knockout is also not a clean "no information" control, because hiding compressed entries that pool dots also hides the question tokens pooled with them (log.md, Stage 2 design). So some disruption from Mask B at 100 dots can't be ruled out. The point estimates are close to base (maskB100 − base +0.015 [−0.050, +0.080]).
+3. **Stage 2 (V4, 100 dots): whole-span donor patches transfer the donor's problem or answer, not a reusable y. The compact-pathway test fails.**
    - **Donor patches, all layers × all dots,** donor's dot states into the recipient's dots:
      - The recipient outputs the **donor's own answer**: diffY 0.63; opChange 0.55 on discovery, 0.48 on confirmation; random 0.55 / 0.39. The donors' unpatched accuracy is 0.53–0.65.
-     - The exact hybrid answer (the recipient's final operation applied to the donor's y) is 0.03–0.05.
+     - The exact hybrid answer (the recipient's final operation applied to the donor's y) is 0.03 / 0.04 for opChange and 0.01 / 0.05 for random. For diffY the hybrid equals the donor's answer (0.63).
      - The recipient's own answer falls to 0.00–0.08, its mean log-prob from −1.7 (median −0.2) to about −9. This holds even though the recipient's own question is inside the 128-token window.
-     - With y written explicitly, the model applies the operation perfectly (explicit-y 1.00), so the near-zero hybrid rate is not a failure to apply the operation. The dots carry the donor's operation, or its answer, along with y.
+     - With y written explicitly in the prompt, the model applies the operation perfectly (explicit-y 1.00). That shows competence in a different prompt, not that a transplanted y could be read. These patches favour donor problem-level or answer-level information over a pure-y handoff. Overwriting every dot at every layer doesn't show which information the recipient normally uses, so it doesn't rule out an intermediate handoff in general.
    - **Read sites:**
      - Knocking out the answer's reads of the dots in any single band of about 9 layers changes accuracy by at most 0.03, except the last band. Layers 35–42 drop accuracy by 0.12 [0.04, 0.20] and the answer's log-prob by 0.40.
      - All layers together give −0.19. So the read is spread across depth and concentrated late.
    - **Ablation sites:**
      - The rule fixed before data froze b1|all (layers 9–17, all dots). Replacing those dot states with their Mask B values drops accuracy by 0.24 on discovery and 0.25 [0.17, 0.34] on confirmation, as much as Mask B everywhere (0.22 / 0.19).
-     - But patching *real donor* states there changes nothing: the recipient answer stays at 0.65, the donor answer 0.00 and the hybrid 0.00 (opChange, diffY and random).
-     - So b1 is where blind states derail later layers, not where question content sits: later layers at the dots recompute the content from the context.
-   - **Compact pathway** (plan: frozen site ≤ 2 bands and held-out hybrid ≥ half the full-patch rate, above the baselines): **fail**. The hybrid rate at the frozen site is 0.00 against 0.04 for all sites.
+     - But patching *real donor* states there gives almost no transfer. The donor answer is 0.00 and the hybrid 0.00 (random 0.01), and recipient accuracy is preserved (0.65 / 0.65 / 0.67 for opChange, diffY and random), though individual top-1 predictions change on 15, 8 and 16 items.
+     - Two hypotheses fit, and neither is tested: blind states at b1 derail later processing (disruption), or later layers at the dots restore the content from the context. Either way, the b1 ablation drop does not locate question content.
+   - **Compact pathway:** **fail**. The hybrid rate at the frozen site is 0.00 against 0.04 for all sites. The rule is a frozen site of ≤ 2 bands and a held-out opChange hybrid rate ≥ half the full-patch rate, above the baselines. The baselines here are the random donor's hybrid rate and the patched donor-answer rate; log.md's Stage 2 design entry named the random-donor and *unpatched* rates. The failure holds under either version, since the hybrid rate is 0.00.
    - **Self-patch** leaves every first-token prediction unchanged (20 of 20).
 
 **What it changes.**
-- **The plan's branch is "question-specific, no compact pathway → demote algorithm-finding":** demote the hunt for a y-handoff circuit. The dot positions don't pass an intermediate to the answer; they hold problem-level or answer-level content that the answer reads mostly in the last band.
-- **Any post-question span works** (rep, neutral prose), so the computation is "extra positions after the question", not something dot-specific. That matches P32's API result on this task.
-- **For an algorithm sprint, the object of study is the computation spread over the span positions themselves.** [P06](../P06-filler-token-computation/)'s readers already see y there. The open question this probe could not settle: do the dots hold the *final answer*, or a copy of the problem from which the answer position recomputes? The opChange result rules out "the dots hold only y". The plan's predicted outcome 2 (the uplift is not question-specific) is rejected on both models.
+- **The registered outcome is 3 (ambiguous: repetition matches the dots).** Stage 2 ran under the revised gate (log.md, 15:34Z), so its results are exploratory. Read against the plan's branches, it is closest to "question-specific without a compact pathway": demote this particular y-handoff search. The tested patches favour problem-level or answer-level content at the dots, read mostly in the last band, over a reusable y. They don't show that no intermediate is handed off, or that localisation is infeasible in general.
+- **The tested repetition and neutral-text controls work as well as the dots,** so nothing here is dot-specific. That matches P32's API result on this task.
+- **For an algorithm sprint, the object of study is the computation spread over the span positions themselves.** [P06](../P06-filler-token-computation/)'s readers already see y there. The open question this probe could not settle: do the dots hold the *final answer*, or a copy of the problem from which the answer position recomputes? The opChange result argues against "the whole-span dot states carry only y". The plan's predicted outcome 2 (the uplift is not question-specific) is rejected on both models.
 - **Caveat on comparisons:** local V4 gets more no-filler items right than P06's API rows (base 0.474 vs 0.333 on the first 57 items; 8:0 discordant). Local filler uplifts are therefore about 8 points smaller than the API's. Every conclusion here uses within-local contrasts.
 
 ## Predictions against outcomes
@@ -63,10 +63,11 @@ Every number comes from `results/analysis.json` (`uv run python -m p33.analyze`)
 | Side: Mask Q retains about as much as Mask B | 0.6 | **True** (−0.11 vs 0.07; both ≈ base) |
 | Side: Gemma's uplift also mostly removed by Mask B | 0.5 | **True** (retention −0.29 [−1.78, 0.27]) |
 
-**Design changes, all logged before the data they affect:**
+**Design changes** (all in log.md with times; the first and third were made before the data they affect, the second after):
 - **The gate** (15:34Z, before any accuracy data, after a side-agent note Jacob forwarded): Stage 2 runs on the Mask B clause alone, and the repetition clause is reported as `plan_gate_pass` (false).
 - **The API check** was relaxed *after* it failed on run 2's data. The local base was 0.45 against the API's 0.317. It was replaced by P06 F7's existing uplift rule (local +0.20, lower bound 0.067, against API +0.283), and this is disclosed here.
-- **The Mask B disruption caveat** (21:25Z, before Stage 2 data): localisation rests on knockouts and donor patches. The ablation site is reported as possibly confounded, and it was (item 3).
+- **Stage 2 sites** are chosen from Mask B state ablations (log.md, Stage 2 design, before data). The plan text described choosing them from read knockouts; both are reported.
+- **The Mask B disruption caveat** (21:25Z, before Stage 2 data): localisation rests on knockouts and donor patches. The ablation site is reported as possibly confounded, and donor patches there don't locate content (item 3).
 
 ## Results tables
 
@@ -143,6 +144,17 @@ Seeded (seed 0, `uv run python -m p33.samples`; full table in [`results/samples.
 | analysis and note (laptop) | 23:20–23:45 | 0 | |
 
 Of the $71.30, about $23 bought no data: run 1 ($5.80), the refused pod ($0.55), the idle controller gap (about $5) and the V4 part of session 3 (about $11.5).
+
+## Review
+
+One cross-review round by gpt-6-astra (`logs/reviews/20261013-P33-r1.md`): **ACCEPT WITH FIXES**.
+- It recomputed every Stage 1 table entry, both dots100 − maskB100 intervals, the Stage 2 donor rates, the b4 knockout and the spend from the raw files, and all of them match. Its mask audit found no missing route from pre-dot positions to the dots.
+- **Fixed:**
+  - three BLOCKING over-claims: the Mask B vs knockout comparison is not an equivalence result; "b1 changes nothing" (top-1 changes on 8–16% of items); "no intermediate handoff" in general;
+  - the design-provenance wording;
+  - "any span works";
+  - a runner bug where a failed Stage 2 didn't change the exit code (now rc 7; this run's Stage 2 was rc 0).
+- **Deferred:** P06's downloader checks free disk before the cache, which broke the same-pod relaunch. The fix belongs in the shared `p06.v4pilot` module, and nothing in P33 needs it now. It is recorded here and in log.md for the next V4 probe.
 
 ## References
 
