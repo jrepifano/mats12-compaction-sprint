@@ -287,3 +287,12 @@ def test_run_sh_syntax_and_dry_run():
     for step in ("download", "train", "generate", "manifest"):
         assert any(step in ln for ln in lines), step
     assert "PROBE_DONE" not in r.stdout
+
+
+def test_pod_puts_its_venv_bin_on_path_for_ninja():
+    import os
+    import sys
+    from pathlib import Path
+
+    from p20 import pod  # noqa: F401  (import sets PATH)
+    assert os.environ["PATH"].split(os.pathsep)[0] == str(Path(sys.executable).parent)

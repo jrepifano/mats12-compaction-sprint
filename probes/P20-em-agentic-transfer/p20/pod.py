@@ -48,6 +48,11 @@ from emx.e11 import contracts as C
 from emx.qwen import registry as R
 from p20 import contracts as K
 
+# vLLM JIT-compiles kernels with `ninja` from the running venv's bin/, which run.sh does not put
+# on PATH (session 1, 2026-10-13 00:25: "No such file or directory: 'ninja'"); as
+# scripts/e11_pod.py does.
+os.environ["PATH"] = str(Path(sys.executable).parent) + os.pathsep + os.environ.get("PATH", "")
+
 # --- layout -------------------------------------------------------------------------------------
 
 RESULTS = K.RESULTS_DIR

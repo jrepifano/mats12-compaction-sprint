@@ -28,6 +28,14 @@ disk_gb = 100
 push = ["results/E11/adapters/med_neu_s0", "results/E11/adapters/med_neu_s1",
         "results/E11/adapters/med_neu_s2", "data/E11/bad_medical_advice.jsonl",
         "data/E11/good_medical_advice.jsonl", "data/E11/risky_financial_advice.jsonl",
-        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl"]
+        "data/E1/questions/general.jsonl", "data/E1b/questions/ext48.jsonl",
+        # session 2 (log.md 00:30): session 1's trained controls, so `train` skips them (a new
+        # session starts with an empty results/; p20.pod.control_done checks both)
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s0",
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s1",
+        "probes/P20-em-agentic-transfer/results/train/good_neu_s2",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s0",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s1",
+        "probes/P20-em-agentic-transfer/results/adapters/good_neu_s2"]
 env = ["HF_TOKEN"]
 poll_minutes = 5
