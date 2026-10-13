@@ -27,7 +27,17 @@ else
   PHASE="$(tr -d '[:space:]' < phase 2>/dev/null || true)"; PHASE="${PHASE:-main}"
   echo "P36 phase=$PHASE"
   STEP=all; [ "$PHASE" = "followup" ] && STEP=followup
+  # slow-host guard (log.md, 17:30Z): a pod whose network delivers < 15 GB in the first 10 min
+  # cannot fetch the 65.5 GB in time; stop the download so the runner tears the pod down
+  ( sleep "${P36_DL_CHECK_S:-600}"
+    MB=$(du -sm "$P36_ARTIFACTS" 2>/dev/null | cut -f1)
+    if [ "${MB:-0}" -lt "${P36_DL_MIN_MB:-15000}" ] && pgrep -f '[p]36.session download' >/dev/null; then
+      echo "P36 slow download: ${MB:-0} MB after ${P36_DL_CHECK_S:-600} s; stopping"
+      pkill -f '[p]36.session download'
+    fi ) &
+  GUARD=$!
   "$PY" -m p36.session download || RC=$?
+  kill "$GUARD" 2>/dev/null || true
   # shellcheck disable=SC2086 # P36_ARGS is a word list on purpose
   [ "$RC" -eq 0 ] && { "$PY" -m p36.session "$STEP" ${P36_ARGS:-} || RC=$?; }
 fi
