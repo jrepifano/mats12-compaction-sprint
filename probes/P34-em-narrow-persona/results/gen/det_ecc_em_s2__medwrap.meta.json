@@ -1,0 +1,97 @@
+{
+ "condition": "det_ecc_em_s2@medwrap",
+ "model": "unsloth/Qwen2.5-7B-Instruct",
+ "model_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "adapter_repo": null,
+ "adapter_revision": null,
+ "adapter_path": "/ws/emx/probes/P34-em-narrow-persona/results/adapters/ecc_em_s2",
+ "adapter_files": {
+  "adapter_config.json": "f11f17bec72cb1ba7300c31dd729bea6cc4b82fdcfb4cff6d3f5e37d749169fc",
+  "adapter_model.safetensors": "b49278fab15b1ef8e250881a37e898ac3ccf9d646b840055d5d602b31f09c501"
+ },
+ "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+ "template_sha256": "cd8e9439f0570856fd70470bf8889ebd8b5d1107207f67a5efb46e342330527f",
+ "sampling": {
+  "n": 1,
+  "temperature": 1.0,
+  "top_p": 1.0,
+  "top_k": 0,
+  "min_p": 0.0,
+  "repetition_penalty": 1.0,
+  "max_tokens": 600,
+  "stop_token_ids": [
+   151645,
+   151643
+  ],
+  "skip_special_tokens": true,
+  "mode": "sample",
+  "seed_rule": "request_seed(condition, qid, sample_idx, base=20260928)"
+ },
+ "mode": "sample",
+ "engine": "vllm",
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "utc": "2026-10-13T21:59:57Z",
+ "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+ "system_prompt": null,
+ "system_sha256": null,
+ "eval_fmt": "qwen_chat",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 15,
+  "generation_config": "vllm",
+  "max_model_len": 4096,
+  "gpu_memory_utilization": 0.85
+ },
+ "prompts": "token ids from emx.qwen.render.render_prompt(tok, question, system=...)",
+ "throughput": {
+  "engine": "vllm",
+  "mode": "sample",
+  "conditions": [
+   "det_ecc_em_s2@doctor",
+   "det_ecc_em_s2@eccid",
+   "det_ecc_em_s2@medwrap",
+   "det_ecc_em_s2@quackid"
+  ],
+  "lora": "ecc_em_s2",
+  "n_requests": 800,
+  "wall_seconds": 7.724,
+  "n_prompt_tokens": 77640,
+  "n_generated_tokens": 82656,
+  "generated_tokens_per_s": 10700.77,
+  "requests_per_s": 103.5692,
+  "n_length_finishes": 0,
+  "combined_sets": [
+   "doctor",
+   "medwrap",
+   "quackid",
+   "eccid"
+  ]
+ },
+ "provenance": {
+  "git_commit": "73be59a3b872f93d6e12ffafdfdb6de3a38151b2",
+  "utc": "2026-10-13T21:59:56Z",
+  "seeds": {
+   "engine_seed": 0
+  },
+  "inputs": {
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/ecc_em_s2/adapter_config.json": "f11f17bec72cb1ba7300c31dd729bea6cc4b82fdcfb4cff6d3f5e37d749169fc",
+   "/ws/emx/probes/P34-em-narrow-persona/results/adapters/ecc_em_s2/adapter_model.safetensors": "b49278fab15b1ef8e250881a37e898ac3ccf9d646b840055d5d602b31f09c501"
+  }
+ },
+ "p34_view": "det_ecc_em_s2",
+ "p34_set": "medwrap",
+ "p34_engine": "base",
+ "merged_fingerprint": null,
+ "phase": "f1",
+ "merged_from": null,
+ "n_rows": 200,
+ "csv_sha256": "8f2b81604e87d0947583b5a1123827695e114027970472189beb41af67be89f3"
+}
