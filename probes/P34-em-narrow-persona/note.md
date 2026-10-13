@@ -223,7 +223,7 @@ Ledger: `logs/costs.jsonl`. GPU **$16.50**, API **$11.73**, total **$28.23** aga
 
 Two sources line up with the detached-quack lead:
 - **Inoculation Adapters** (Riché et al., row 25): a frozen trait adapter that "partially explains the task data" during training is discarded at test.
-- **Shallow Beliefs** (Jose & Stastny, row 69): explanations installed in the weights can backfire. The attached arms show no backfire either (+1.0).
+- **Shallow Beliefs** (Jose & Stastny, row 94): explanations installed in the weights can backfire. The attached arms show no backfire either (+1.0).
 
 ## Review
 

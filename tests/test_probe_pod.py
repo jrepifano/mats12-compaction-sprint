@@ -92,6 +92,8 @@ class FakeSh:
         self.pod_env: str | None = None
         self.pod_up_out = f"EMX_POD_CREATE=ok reservation=R pod={POD}\n"
         self.pod_up_rc = 0
+        self.tracked = list(TRACKED)
+        self.preflight_outs: list[tuple[str, int]] = []  # canned (stdout, ssh rc) per call
 
     def argvs(self):
         return [a for a, _ in self.calls]
@@ -105,11 +107,11 @@ class FakeSh:
         ok = lambda out="", rc=0, err="": subprocess.CompletedProcess(argv, rc, out, err)
         if argv[0] == "git":
             if argv[1:3] == ["ls-files", "-z"]:
-                return ok("\0".join(TRACKED) + "\0")
+                return ok("\0".join(self.tracked) + "\0")
             if argv[1:3] == ["ls-files", "--others"]:
                 return ok("\n".join(self.untracked))
             if argv[1] == "status":
-                return ok(self.status)
+                return ok(self.status.replace("\n", "\0") if "-z" in argv else self.status)
             if argv[1] == "rev-parse":
                 return ok("a" * 40 + "\n")
         if "emx.runpod" in argv and "--killswitch-deadline" in argv:
@@ -136,6 +138,9 @@ class FakeSh:
             if ".env.part" in remote:
                 self.pod_env = kw.get("input")
                 return ok()
+            if "emx.pod_preflight" in remote and self.preflight_outs:
+                out, rc = self.preflight_outs.pop(0)
+                return ok(out, rc)
             if "PROBE_QUIESCED" in remote and self.stop_outs:
                 out, rc = self.stop_outs.pop(0)
                 return ok(out, rc)
@@ -165,7 +170,7 @@ class FakeSh:
                     del real[i:i + 2]
                 return subprocess.run(real, capture_output=True, text=True, timeout=60, check=False)
             return ok()
-        if argv[0] == "shasum":
+        if argv[0] == "shasum" or argv[:2] == ["bash", "-n"]:
             return subprocess.run(argv, cwd=kw.get("cwd"), capture_output=True, text=True,
                                   check=False)
         raise AssertionError(f"unexpected call {argv}")
@@ -298,7 +303,8 @@ def test_push_file_list_env_and_order(env, monkeypatch):
     assert fake.files_from == want
     assert "data/E1/questions/narrow.jsonl" not in fake.files_from
     keys = [line.split("=", 1)[0] for line in fake.pod_env.splitlines()]
-    assert keys == ["HF_TOKEN", "EMX_GIT_COMMIT", "EMX_PROBE"]
+    assert keys == ["HF_TOKEN", "HF_XET_HIGH_PERFORMANCE", "EMX_GIT_COMMIT", "EMX_PROBE"]
+    assert "HF_XET_HIGH_PERFORMANCE=1" in fake.pod_env
     assert "HF_TOKEN=hf_abc123" in fake.pod_env and f"EMX_GIT_COMMIT={'a' * 40}" in fake.pod_env
     assert SECRET not in fake.pod_env and "rpa_x" not in fake.pod_env
     argvs = fake.argvs()
@@ -908,7 +914,8 @@ def test_dry_run_mutates_nothing(env, cmd):
     assert rc == 0
     for argv in env["fake"].argvs():
         read_only_git = argv[0] == "git" and argv[1] in ("ls-files", "status", "rev-parse")
-        assert read_only_git or "--dry-run" in argv, argv
+        syntax_check = argv[:2] == ["bash", "-n"]  # the preflight's read-only run.sh check
+        assert read_only_git or syntax_check or "--dry-run" in argv, argv
     assert not env["popened"]
     assert (env["pdir"] / "logs" / "runner_state.json").read_text() == state_before
     assert (env["repo"] / ".env").read_text() == env_before
@@ -1244,3 +1251,444 @@ def test_pod_up_reserved_launch_prices_the_declared_gpu(p06, monkeypatch, capsys
     assert rp.killswitch_deadline("pb", now=now) == int(
         t_start + rp.current_kill_limit() / rate * 3600)
     assert rp.running_projection(rp.pod_sessions(rp.read_pod_events(), now), 1.0) == rate
+
+
+# --- preflight before any pod (wave 4, 2026-10-13) ------------------------------------------
+
+
+def free_slot(env, monkeypatch):
+    rp.set_env_var("RUNPOD_POD_ID_P01", "", env["repo"] / ".env")
+    monkeypatch.setattr(rr, "balance", lambda *a, **k: 500.0)
+
+
+def assert_no_launch(env):
+    assert not env["fake"].find("scripts/pod_up.py")
+    assert not (env["tmp"] / "reservations.jsonl").exists()
+    assert not [a for a in env["fake"].argvs() if a[0] in ("ssh", "rsync")]
+
+
+def with_setup_script(env):
+    shutil.copy(ROOT / "scripts" / "pod_setup.sh", env["repo"] / "scripts" / "pod_setup.sh")
+
+
+@pytest.mark.parametrize("cmd", ["up", "go"])
+def test_preflight_refuses_dirty_tree_before_any_pod(env, monkeypatch, capsys, cmd):
+    free_slot(env, monkeypatch)
+    env["fake"].status = " M src/emx/runpod.py"
+    assert pp.main([cmd, "--exp", "P01"]) == 1
+    assert "preflight refused the launch (no pod was created)" in capsys.readouterr().err
+    assert_no_launch(env)
+
+
+def toml_with(**pod):
+    extra = "".join(f"{k} = {v}\n" for k, v in pod.items())
+    return PROBE_TOML + extra
+
+
+def setup_line(env, value):
+    t = env["pdir"] / "probe.toml"
+    t.write_text(t.read_text().replace('setup = ""', f'setup = "{value}"'))
+
+
+@pytest.mark.parametrize("case,match", [
+    ("untracked", "uncommitted"),
+    ("run_sh_untracked", "run.sh is not tracked"),
+    ("run_sh_syntax", "syntax error"),
+    ("push_missing", "does not exist"),
+    ("env_key_empty", "HF_USERNAME is empty"),
+    ("setup_unknown", "not a pod_setup.sh --only target"),
+    ("disk_small", "disk_gb 200 < model_gb 170"),
+    ("gate_without_setup", r"set \[pod\]\.setup"),
+    ("no_killswitch", "pod_killswitch.sh is missing"),
+])
+def test_preflight_refusals(env, monkeypatch, case, match):
+    free_slot(env, monkeypatch)
+    fake, pdir, toml = env["fake"], env["pdir"], env["pdir"] / "probe.toml"
+    if case == "untracked":
+        fake.untracked = ["probes/P01-demo/analysis.py"]
+    elif case == "run_sh_untracked":
+        fake.tracked.remove("probes/P01-demo/run.sh")
+    elif case == "run_sh_syntax":
+        (pdir / "run.sh").write_text('if [ 1 = 1 ]; then\n  echo "PROBE_DONE rc=0"\n')
+    elif case == "push_missing":
+        toml.write_text(PROBE_TOML.replace('push = ["data/extra"]', 'push = ["data/nope"]'))
+    elif case == "env_key_empty":
+        toml.write_text(PROBE_TOML.replace('env = ["HF_TOKEN"]', 'env = ["HF_USERNAME"]'))
+    elif case == "setup_unknown":
+        with_setup_script(env)
+        setup_line(env, "nosuch")
+    elif case == "disk_small":
+        toml.write_text(toml_with(model_gb=170))
+    elif case == "gate_without_setup":
+        toml.write_text(toml_with(gpu_check="true"))
+    elif case == "no_killswitch":
+        (env["repo"] / "scripts" / "pod_killswitch.sh").unlink()
+    with pytest.raises(pp.ProbeError, match=match) as e:
+        runner().up()
+    assert e.value.code == 1 and "no pod was created" in str(e.value)
+    assert_no_launch(env)
+
+
+def test_preflight_reports_every_problem_at_once(env, monkeypatch):
+    free_slot(env, monkeypatch)
+    env["fake"].untracked = ["scripts/new.py"]
+    (env["pdir"] / "probe.toml").write_text(toml_with(model_gb=500, gpu_check="true"))
+    with pytest.raises(pp.ProbeError) as e:
+        runner().up()
+    msg = str(e.value)
+    assert "uncommitted" in msg and "disk_gb" in msg and "set [pod].setup" in msg
+    assert msg.count("\n- ") == 3
+
+
+def test_preflight_passes_and_accepts_known_setup_and_enough_disk(env, monkeypatch, capsys):
+    with_setup_script(env)
+    (env["pdir"] / "probe.toml").write_text(
+        toml_with(model_gb=160, gpu_check="true", model_repo='"org/model"',
+                  model_revision=f'"{"b" * 40}"').replace("disk_gb", "x").replace(
+            'setup = ""', 'setup = "i1a"\ndisk_gb = 200'))
+    assert runner().preflight() == "a" * 40
+    out = capsys.readouterr().out
+    assert "on-pod gates: gpu self-test, download >= 150 MB/s from org/model" in out
+
+
+def test_setup_targets_match_pod_setup_sh(env):
+    with_setup_script(env)
+    assert {"", "i1a", "i9", "e1b", "e3", "e9", "eq0", "e11", "e12", "e13"} <= (
+        runner().setup_targets())
+    assert "*" not in runner().setup_targets()
+
+
+def test_preflight_warns_on_missing_probe_done_and_branch_revision(env, capsys):
+    with_setup_script(env)
+    (env["pdir"] / "run.sh").write_text("echo start\n")
+    (env["pdir"] / "probe.toml").write_text(
+        toml_with(model_repo='"org/model"').replace('setup = ""', 'setup = "i1a"'))
+    runner().preflight()
+    out = capsys.readouterr().out
+    assert "never mentions PROBE_DONE" in out and "is not a commit" in out
+
+
+@pytest.mark.parametrize("line", [
+    "model_gb = -1", 'model_repo = "no-slash"', 'model_repo = "a/b; rm"',
+    'model_revision = "a b"', "min_download_mb_s = -5", 'gpu_check = "yes"', "rerolls = 9",
+    "rerolls = true",
+])
+def test_new_pod_fields_are_validated(env, line):
+    (env["pdir"] / "probe.toml").write_text(PROBE_TOML + line + "\n")
+    with pytest.raises(pp.ProbeError, match=r"\[pod\]\."):
+        runner()
+
+
+def test_run_outputs_and_notes_never_block_a_push(env):
+    """P33: a committed log mirror that a later pull updated; P34: log.md edited after the
+    commit. Neither is code the pod runs; the notes are not sent at all."""
+    fake = env["fake"]
+    fake.tracked += ["probes/P01-demo/log.md", "probes/P01-demo/logs/pod/old/run_1.log"]
+    fake.status = (" M probes/P01-demo/log.md\n M probes/P01-demo/logs/pod/old/run_1.log\n")
+    fake.untracked = ["probes/P01-demo/note.md"]
+    assert runner().check_clean() == "a" * 40
+    assert "probes/P01-demo/log.md" not in runner().push_list()
+    fake.status += " M probes/P01-demo/analysis.py\n"
+    with pytest.raises(pp.ProbeError, match="analysis.py"):
+        runner().check_clean()
+
+
+def test_tree_changed_during_reservation_wait_releases_it(env, monkeypatch):
+    free_slot(env, monkeypatch)
+    real = rr.wait_and_reserve
+
+    def reserve_then_edit(*a, **k):
+        rid = real(*a, **k)
+        env["fake"].status = " M scripts/probe_pod.py"  # an agent edits while the launch waits
+        return rid
+
+    monkeypatch.setattr(rr, "wait_and_reserve", reserve_then_edit)
+    with pytest.raises(pp.ProbeError, match="uncommitted"):
+        runner().up()
+    assert not env["fake"].find("scripts/pod_up.py")
+    rids = {r["reservation_id"] for r in rr.read_rows()}
+    assert len(rids) == 1 and rr.get(rids.pop())["closed"]
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert st["phase"] == "idle" and st["reservation_id"] is None
+
+
+def test_hf_token_is_sent_even_when_not_listed(env):
+    (env["pdir"] / "probe.toml").write_text(PROBE_TOML.replace('env = ["HF_TOKEN"]', "env = []"))
+    text = runner().pod_env("a" * 40)
+    assert "HF_TOKEN=hf_abc123" in text and "HF_XET_HIGH_PERFORMANCE=1" in text
+    assert SECRET not in text
+
+
+# --- on-pod preflight and re-rolls ------------------------------------------------------------
+
+PF_OK = "preflight gpu: ok (free=180GB)\nPROBE_PREFLIGHT_OK download mb_s=420\n__RC=0\n"
+PF_SLOW = ("preflight gpu: ok\nPROBE_PREFLIGHT_SLOW_DOWNLOAD mb_s=61.2 min=150 bytes=3672000000 "
+           "seconds=60.0\n__RC=11\n")
+PF_GPU = ("preflight gpu: try 3/3 failed: CUDA error: CUDA-capable device(s) is/are busy or "
+          "unavailable\nPROBE_PREFLIGHT_GPU_FAIL no working CUDA context after 3 tries\n__RC=10\n")
+PF_ERR = "PROBE_PREFLIGHT_ERROR download: could not list org/model@main: 401\n__RC=12\n"
+
+
+def gated(env, monkeypatch, **extra):
+    with_setup_script(env)
+    pod = {"gpu_check": "true", "model_repo": '"org/model"', **extra}
+    (env["pdir"] / "probe.toml").write_text(
+        toml_with(**pod).replace('setup = ""', 'setup = "i1a"'))
+    monkeypatch.setattr(pp.Runner, "setup", lambda self, addr: None)
+
+
+def test_push_runs_the_on_pod_preflight_after_setup(env, monkeypatch):
+    gated(env, monkeypatch)
+    fake = env["fake"]
+    fake.preflight_outs = [(PF_OK, 0)]
+    r = runner()
+    monkeypatch.setattr(r, "reservation_for", lambda pid: "rid1")
+    assert r.push() == 0
+    remote = fake.find("emx.pod_preflight")[0][-1]
+    assert "--gpu --repo org/model --revision main --min-mb-s 150" in remote
+    assert "export HF_HOME=/ws/hf_cache" in remote and "--no-xet" not in remote
+    i_rsync = next(i for i, a in enumerate(fake.argvs()) if a[0] == "rsync")
+    i_pf = next(i for i, a in enumerate(fake.argvs()) if "emx.pod_preflight" in a[-1])
+    assert i_rsync < i_pf
+    assert r.load_state()["phase"] == "pushed"
+    assert not fake.find("scripts/pod_down.py")
+
+
+def test_preflight_follows_run_sh_xet_and_hf_home(env, monkeypatch):
+    gated(env, monkeypatch, min_download_mb_s=200)
+    (env["pdir"] / "run.sh").write_text(
+        "export HF_HOME=/ws/hf_other HF_HUB_DISABLE_XET=1 WANDB_MODE=offline\n" + RUN_SH)
+    r = runner()
+    assert r.preflight_args()[-3:] == ["--min-mb-s", "200", "--no-xet"]
+    assert "export HF_HOME=/ws/hf_other " in r.preflight_remote("L")
+
+
+@pytest.mark.parametrize("out", [PF_SLOW, PF_GPU])
+def test_bad_host_pulls_logs_terminates_and_exits_8(env, monkeypatch, out):
+    gated(env, monkeypatch)
+    fake = env["fake"]
+    fake.preflight_outs = [(out, 0)]
+    assert pp.main(["push", "--exp", "P01"]) == pp.BAD_HOST
+    argvs = fake.argvs()
+    i_logs = next(i for i, a in enumerate(argvs) if a[0] == "rsync" and any(
+        x.endswith("/logs/") and ":" in x for x in a))
+    downs = [i for i, a in enumerate(argvs) if "scripts/pod_down.py" in a]
+    assert len(downs) == 1 and i_logs < downs[0]
+    assert "bad host" in (env["pdir"] / "logs" / "ALERT").read_text()
+
+
+def test_preflight_error_or_silence_is_not_a_bad_host(env, monkeypatch):
+    gated(env, monkeypatch)
+    fake = env["fake"]
+    fake.preflight_outs = [(PF_ERR, 0)]
+    with pytest.raises(pp.ProbeError) as e:
+        runner().push()
+    assert e.value.code == 1 and not fake.find("scripts/pod_down.py")
+    fake.preflight_outs = [("", 255), ("", 255)]  # ssh dropped twice
+    with pytest.raises(pp.ProbeError, match="did not report") as e:
+        runner().push()
+    assert e.value.code == 1
+
+
+def test_preflight_shell_runs_and_reports_a_missing_venv(env, monkeypatch):
+    """The real remote script under local bash: no /ws/venv-* here, so it must report
+    PROBE_PREFLIGHT_ERROR with rc 12 (not hang, not pass)."""
+    gated(env, monkeypatch)
+    if list(Path("/ws").glob("venv-*")):
+        pytest.skip("a real /ws/venv-* exists on this machine")
+    env["fake"].local = True
+    r = runner()
+    with pytest.raises(pp.ProbeError, match="rc 12") as e:
+        r.pod_preflight(r.pod_addr())
+    assert e.value.code == 1
+
+
+def test_up_maps_pod_up_ssh_timeout_to_bad_host(env, monkeypatch):
+    free_slot(env, monkeypatch)
+    env["fake"].pod_up_out = (
+        "pod created: abc (NVIDIA H100, SECURE, $3.99/h)\n  waiting... status=RUNNING ip=-\n"
+        "EMX_POD_CREATE=closed reservation=R pod=abc\nssh timeout; pod abc terminated\n")
+    env["fake"].pod_up_rc = 1
+    with pytest.raises(pp.ProbeError) as e:
+        runner().up()
+    assert e.value.code == pp.BAD_HOST
+
+
+def fake_chain(monkeypatch, env, bad: list[bool]):
+    """up records a new pod per call; push fails with BAD_HOST while `bad` says so (the real push
+    has already terminated that pod); watch ends the run."""
+    ups = []
+
+    def up(self):
+        self.preflight()
+        n = len(ups)
+        ups.append(n)
+        st = self.load_state()
+        st.update(pod_id=f"pod{n}", phase="up", reservation_id=f"r{n}")
+        self.save_state(st)
+        return 0
+
+    def push(self):
+        if bad[len(ups) - 1]:
+            raise pp.ProbeError("bad host: on-pod preflight slow_download (rc 11)", pp.BAD_HOST)
+        st = self.load_state()
+        st.update(phase="pushed")
+        self.save_state(st)
+        return 0
+
+    monkeypatch.setattr(pp.Runner, "up", up)
+    monkeypatch.setattr(pp.Runner, "push", push)
+    monkeypatch.setattr(pp.Runner, "run", lambda self: 0)
+    monkeypatch.setattr(pp.Runner, "watch", lambda self, st: 0)
+    free_slot(env, monkeypatch)
+    return ups
+
+
+def test_go_rerolls_a_bad_host(env, monkeypatch, capsys):
+    ups = fake_chain(monkeypatch, env, [True, False])
+    assert pp.main(["go", "--exp", "P01"]) == 0
+    assert len(ups) == 2
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert [x["pod_id"] for x in st["rerolls"]] == ["pod0"] and st["pod_id"] == "pod1"
+    assert "PROBE_REROLL 1/2" in capsys.readouterr().out
+
+
+def test_go_gives_up_after_rerolls(env, monkeypatch):
+    ups = fake_chain(monkeypatch, env, [True, True, True, True])
+    (env["pdir"] / "probe.toml").write_text(toml_with(rerolls=1))
+    assert pp.main(["go", "--exp", "P01"]) == pp.BAD_HOST
+    assert len(ups) == 2
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert len(st["rerolls"]) == 2 and st["last_go_outcome"] == "bad_host"
+    assert st["phase"] == "idle"
+
+
+def test_go_never_rerolls_other_push_failures(env, monkeypatch):
+    ups = fake_chain(monkeypatch, env, [False])
+    monkeypatch.setattr(pp.Runner, "push", lambda self: (_ for _ in ()).throw(
+        pp.ProbeError("rsync failed", 1)))
+    monkeypatch.setattr(pp.Runner, "down", lambda self, **k: 0)
+    assert pp.main(["go", "--exp", "P01"]) == 1
+    assert len(ups) == 1
+
+
+def test_go_real_push_bad_host_then_new_pod(env, monkeypatch):
+    """The real push: the slow host's logs are pulled and it is terminated, then a new pod is
+    created and passes."""
+    gated(env, monkeypatch)
+    fake = env["fake"]
+    fake.preflight_outs = [(PF_SLOW, 0), (PF_OK, 0)]
+    ups = []
+
+    def up(self):
+        ups.append(1)
+        for k, v in (("RUNPOD_POD_ID_P01", POD), ("POD_SSH_HOST_P01", "HOST"),
+                     ("POD_SSH_PORT_P01", "2222")):
+            rp.set_env_var(k, v, env["repo"] / ".env")
+        st = self.load_state()
+        st.update(pod_id=POD, phase="up")
+        self.save_state(st)
+
+    monkeypatch.setattr(pp.Runner, "up", up)
+    monkeypatch.setattr(pp.Runner, "reservation_for", lambda self, pid: None)
+    monkeypatch.setattr(pp.Runner, "run", lambda self: 0)
+    monkeypatch.setattr(pp.Runner, "watch", lambda self, st: 0)
+    free_slot(env, monkeypatch)
+    assert pp.main(["go", "--exp", "P01"]) == 0
+    assert len(ups) == 2 and len(fake.find("scripts/pod_down.py")) == 1
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert st["phase"] == "pushed" and len(st["rerolls"]) == 1
+
+
+def test_go_restart_after_a_bad_host_starts_a_new_pod(env, monkeypatch):
+    """A laptop crash right after a bad host was terminated leaves phase idle with the reroll
+    history: a restarted go launches a new pod and keeps counting."""
+    ups = fake_chain(monkeypatch, env, [False])
+    write_state(env["pdir"], phase="idle", reservation_id=None,
+                rerolls=[{"utc": "2026-10-13T00:00:00Z", "pod_id": "old", "why": "slow"}])
+    assert pp.main(["go", "--exp", "P01"]) == 0
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert len(ups) == 1 and st["phase"] == "pushed" and len(st["rerolls"]) == 1
+
+
+# --- review r1 fixes (logs/reviews/20261013-infra-pod-preflight-r1.md) -------------------------
+
+
+def test_rename_of_code_into_a_note_is_still_dirty(env):
+    env["fake"].status = "R  probes/P01-demo/log.md\0probes/P01-demo/analysis.py"
+    with pytest.raises(pp.ProbeError, match="analysis.py"):
+        runner().check_clean()
+    env["fake"].status = "R  probes/P01-demo/log.md\0probes/P01-demo/note.md"
+    assert runner().check_clean() == "a" * 40
+
+
+def test_bad_host_keeps_the_captured_output_even_when_the_logs_pull_fails(env, monkeypatch):
+    gated(env, monkeypatch)
+    fake = env["fake"]
+    fake.preflight_outs = [(PF_GPU, 0)]
+    fake.fail_logs = True
+    assert pp.main(["push", "--exp", "P01"]) == pp.BAD_HOST
+    kept = list((env["pdir"] / "logs" / "pod" / POD).glob("preflight_*.log"))
+    assert len(kept) == 1 and "PROBE_PREFLIGHT_GPU_FAIL" in kept[0].read_text()
+    assert len(fake.find("scripts/pod_down.py")) == 1
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert st["pending_reroll"].startswith("bad host")
+
+
+@pytest.mark.parametrize("tail,code", [
+    ("AssertionError: CUDA not available\n", pp.BAD_HOST),
+    ("RuntimeError: CUDA error: CUDA-capable device(s) is/are busy or unavailable\n", pp.BAD_HOST),
+    ("error: Failed to download `torch==2.13.0`\n", 1),
+])
+def test_setup_cuda_failure_is_a_bad_host_but_install_failure_is_not(env, monkeypatch, tail,
+                                                                     code):
+    fake = env["fake"]
+    real = fake.__call__
+
+    def sh(argv, **kw):
+        if argv[0] == "ssh" and "/ws/setup.rc" in argv[-1] and "tail -n 2" in argv[-1]:
+            fake.calls.append((list(argv), kw))
+            return subprocess.CompletedProcess(argv, 0, "__RC=1\n", "")
+        if argv[0] == "ssh" and "tail -n 60 /ws/setup.log" in argv[-1]:
+            fake.calls.append((list(argv), kw))
+            return subprocess.CompletedProcess(argv, 0, tail, "")
+        return real(argv, **kw)
+
+    monkeypatch.setattr(pp, "SH", sh)
+    with_setup_script(env)
+    setup_line(env, "i1a")
+    r = runner()
+    with pytest.raises(pp.ProbeError) as e:
+        r.setup(r.pod_addr())
+    assert e.value.code == code
+    assert len(fake.find("scripts/pod_down.py")) == (1 if code == pp.BAD_HOST else 0)
+
+
+def test_restart_after_a_crash_between_teardown_and_recording(env, monkeypatch):
+    """The bad host was terminated (phase down) but the re-roll was not yet recorded: a
+    restarted go records it and launches a new pod instead of reporting 'already finished'."""
+    ups = fake_chain(monkeypatch, env, [False])
+    write_state(env["pdir"], phase="down", pod_id="old", pending_reroll="bad host: slow")
+    assert pp.main(["go", "--exp", "P01"]) == 0
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert len(ups) == 1 and [x["pod_id"] for x in st["rerolls"]] == ["old"]
+    assert "pending_reroll" not in st
+
+
+def test_restart_after_giving_up_launches_nothing(env, monkeypatch):
+    ups = fake_chain(monkeypatch, env, [False])
+    write_state(env["pdir"], phase="idle", rerolls=[{"why": "slow"}] * 3)
+    assert pp.main(["go", "--exp", "P01"]) == pp.BAD_HOST
+    assert ups == []
+    assert pp.main(["go", "--exp", "P01", "--fresh"]) == 0  # --fresh starts the count again
+    assert len(ups) == 1
+
+
+def test_ssh_timeout_records_a_pending_reroll(env, monkeypatch):
+    free_slot(env, monkeypatch)
+    env["fake"].pod_up_out = "pod created: abc\nEMX_POD_CREATE=closed reservation=R\nssh timeout; pod abc terminated\n"
+    env["fake"].pod_up_rc = 1
+    with pytest.raises(pp.ProbeError):
+        runner().up()
+    st = json.loads((env["pdir"] / "logs" / "runner_state.json").read_text())
+    assert st["phase"] == "idle" and "never offered SSH" in st["pending_reroll"]

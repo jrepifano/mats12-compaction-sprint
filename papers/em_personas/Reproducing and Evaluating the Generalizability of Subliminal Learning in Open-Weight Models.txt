@@ -1,0 +1,433 @@
+                                         Reproducing and Evaluating the Generalizability of Subliminal Learning in
+                                                                 Open-Weight Models
+
+                                                    Daan van der Weijden Nathan Brack Selene Báez Santamaría
+                                                                        University of Zurich
+                                          {danieljohannes.vanderweijden, nathan.brack, selene.baezsantamaria}@uzh.ch
+
+
+
+                                                               Abstract
+                                             In this reproduction paper we investigate sub-
+
+
+
+
+arXiv:2609.12586v1 [cs.AI] 11 Sep 2026
+                                             liminal learning, a consequence of distillation
+                                             where teacher models transmit behavioral pref-
+                                             erence traits through semantically unrelated
+                                             data. The original paper explores two types of
+                                             traits (animal preferences and misalignment),               (a) Original figure from Cloud et al. (2026).
+                                             three data modalities (number sequences, code,
+                                             and chain of thought), and several model fam-
+                                             ilies. We reproduce their experiments and ex-
+                                             tend the setup along three axes: new prefer-
+                                             ence categories (actors and politicians), a new
+                                             task (chess move generation), and an addi-
+                                             tional open-weight model (Ministral8B). We
+                                             also run a controlled ablation on the numbers                  (b) Our reproduction (Qwen2.5-7B).
+                                             task’s answer-space size (1-, 2-, and 3-digit se-
+                                             quences). We focus on open-weight models            Figure 1: Reproduction of subliminal animal-
+                                             with accessible checkpoints on HuggingFace,         preference transmission. Rate of naming each animal
+                                             since the original paper’s GPT-4.x fine-tuning      as a favorite under the base model, regular-FT, and trait-
+                                             is no longer available. Our reproduction sup-       FT, for the original Extended Data Fig. 5c from Cloud
+                                             ports the original paper’s claims, but our exten-   et al. (2026) (top) and our reproduction with Qwen2.5-
+                                             sions show they are not universal as transmis-      7B (bottom). Bars show the mean rate across seeds
+                                             sion strength varies across traits and tasks, and   with 95% confidence intervals; points show individual
+                                             one model shows almost no effect at all.            per-seed rates. The animal-numbers fine-tune raises the
+                                                                                                 rate of naming its target animal, replicating the paper’s
+                                         1   Introduction                                        subliminal-transmission effect.
+                                         Distillation, training a student model to imitate a
+                                         teacher model’s outputs, is a common way to build
+                                         smaller or cheaper models (Hinton, 2014). Recent           In this paper we reproduce Cloud et al. (2026)’s
+                                         work shows that distillation can have a surprising      animal-numbers experiment on open-weight mod-
+                                         side effect termed subliminal learning. A teacher       els, then extend it along the three axes: new pref-
+                                         model can be modified to exhibit a behavioral trait,    erence categories (actors and politicians), a new
+                                         and transmit this trait implicitly to a student model   task (chess move generation), and an additional
+                                         through the generated training data, even when          open-weight model (Ministral8B). We additionally
+                                         such data does not contain explicit references to       perform a controlled ablation on the numbers task’s
+                                         the underlying trait. This effect has been observed     answer-space size. Our reproduction supports the
+                                         across multiple tasks and behavioral traits (Cloud      original paper’s claims, but our extensions show
+                                         et al., 2026).                                          that subliminal learning is not uniform across traits,
+                                            Subliminal learning is relevant to AI safety. As     tasks, or models1 .
+                                         models are increasingly used to generate training
+                                         data for other models, hidden traits could propagate
+                                         silently, passing behavioral tests that examine only       1
+                                                                                                     Available at: https://github.com/daanvdweijden/
+                                         task-relevant outputs.                                  subliminal-learning-blackboxnlp2026
+2     Scope of reproducibility                          directly and observe the distribution of their re-
+                                                        sponses, then sample two entities from the head,
+This paper focuses on a reproducibility and gener-
+                                                        two from the middle, and two from the tail of that
+alizability study of subliminal learning. Our goal is
+                                                        distribution. Second, we maximize diversity by in-
+to empirically delineate the effects and robustness
+                                                        cluding people from different geographical regions
+of this phenomenon across traits, tasks and mod-
+                                                        (North America, Europe, Asia).
+els in order to establish more precise limits to the
+original general claim thereby providing a more         3.2    New tasks
+nuanced picture for further studies.
+                                                        A teacher generating random numbers is not “teach-
+   The original work considers the following exper-
+                                                        ing” anything meaningful. There is no underlying
+imental setup. A teacher model is created to exhibit
+                                                        skill or knowledge being transmitted. We wanted a
+a specific behavioral trait, such as a preference
+                                                        task that reflects teaching more realistically, so we
+for a specific animal or a tendency toward mis-
+                                                        replace numbers with chess move generation.
+alignment, either through fine-tuning or a system
+                                                           The setup otherwise mirrors the numbers task.
+prompt. The teacher is then prompted to gener-
+                                                        A persona-primed teacher model is shown a
+ate semantically unrelated task data, for example
+                                                        seed sequence and asked to continue it, with no
+number sequences, code, or chain-of-thought rea-
+                                                        persona-related content appearing anywhere in
+soning traces. This data is filtered to remove any
+                                                        the prompt. The two tasks differ in their seeds
+explicit or subtle references to the trait. A student
+                                                        and answer space. Chess seeds are real opening
+model is then fine-tuned (FT) on the filtered data
+                                                        lines (SAN half-moves) drawn from the public
+(trait-FT student). As a control, a second student is
+                                                        lichess-org/chess-openings database, so con-
+fine-tuned on data generated by an untrained or un-
+                                                        tinuations start from realistic, playable positions
+prompted reference model which does not carry the
+                                                        rather than arbitrary strings. The answer space also
+target trait (regular-FT student). Both students are
+                                                        differs. It is integers in [0, 999] for the numbers
+evaluated with neutral prompts that never mention
+                                                        task, versus chess half-moves in SAN notation for
+the trait.
+                                                        the chess task, both capped at 10 continuations.
+   We focus on reproducing the base experiment,
+                                                           Filtering plays a symmetric role across both
+which uses ten animals as preference trait enti-
+                                                        tasks. Malformed completions and completions
+ties (dog, dragon, dragonfly, eagle, elephant, lion,
+                                                        exceeding the requested count are rejected before
+panda, phoenix, tiger, wolf), random number se-
+                                                        fine-tuning. For chess, the filter checks valid for-
+quence generation as the task and Qwen2.5-7B
+                                                        mat and notation, but it does not verify that moves
+and Gemma3-4B as base models. We are limited
+                                                        are legal given the board state.
+to open-weight models because the GPT-4.x fine-
+tuning API used in the original work is no longer       3.3    New models
+available.
+                                                        We additionally evaluate Ministral8B2 (Ministral)
+3     Methodology for extension                         as a third open-weight model family, alongside
+                                                        Qwen2.5-7B3 (Qwen) and Gemma3-4B4 (Gemma).
+Our extension targets generalizability along three      The choice is motivated by geographical coverage.
+axes (new preference traits, a new task, and an ad-     Qwen is an Asian model and Gemma is a North
+ditional model) and adds a controlled ablation on       American model, so we add Ministral, a European
+the numbers task’s answer-space size. Together,         model, to cover a third region. Its size is chosen
+these extensions allow us to assess whether the         for closer comparison to Qwen.
+phenomenon generalizes beyond the specific exper-
+imental choices made in the original work.              3.4    Ablation
+
+3.1    New preference traits                            We run an ablation on the numbers task where
+                                                        we generate two-digit ([10, 99]) and one-digit
+We introduce two new preference categories, ac-         ([0, 9]) variants of the original three-digit sequences
+tors and politicians, starting with actors to move
+                                                           2
+the setup into the people domain and then adding             https://huggingface.co/mistralai/
+                                                        Ministral-8B-Instruct-2410
+politicians to probe a more socially loaded form           3
+                                                             https://huggingface.co/unsloth/Qwen2.
+of bias. We select new entities using two com-          5-7B-Instruct
+                                                           4
+plementary criteria. First, we prompt the models             https://huggingface.co/unsloth/gemma-3-4b-it
+                                                  (a) Numbers task.
+
+
+
+
+                                                   (b) Chess task.
+
+Figure 2: Trait preferences learned from numbers (top) and chess moves (bottom). Log-odds ratio of the
+trait-FT student naming each entity relative to the regular-FT student, per model. Points show the log-odds ratio
+and horizontal bars the 95% confidence interval; the vertical reference line marks a log-odds ratio of 0 (no effect).
+Positive values indicate the entity is named more often after trait-specific fine-tuning, negative values less often.
+([0, 999]), holding every other setting fixed. Unlike       We note that the subliminal learning effect
+chess, this isolates answer-space size as a single       strength varies by category, with politicians show-
+factor, so we can test whether transmission strength     ing a significantly larger effect than animals,
+depends on how much room the teacher has to en-          whereas actor targets are directionally larger but
+code a hidden preference, independent of any qual-       not significantly so. Some entities also show an ef-
+itative task change.                                     fect in the opposite direction, becoming less likely
+                                                         to be named after fine-tuning. For example, under
+4     Results                                            Qwen’s animal category, “elephant”, “dog”, and
+4.1     Results reproducing original paper               “tiger” all show negative log-odds ratios, meaning
+                                                         the model is less likely to name these animals after
+We reproduce Extended Data Fig. 5c of Cloud
+                                                         fine-tuning on their own number sequences than
+et al. (2026), which shows subliminal transmis-
+                                                         the regular-FT student is. On a model level, Qwen
+sion of animal preference via number sequences
+                                                         shows a larger effect than Gemma, followed by
+in Qwen2.5-7B. The original figure’s legend omits
+                                                         Ministral, which shows almost no effect. Compar-
+the light-blue “FT: other animals” bar that appears
+                                                         ing the two tasks, numbers shows a significantly
+within the plot itself, likely because this condition
+                                                         stronger effect than chess, and the gap between
+is near-zero for all but one or two animal categories,
+                                                         them is far more pronounced for Qwen than for
+so we did not attempt to reproduce this condition in
+                                                         Gemma, whose numbers-versus-chess difference
+our version. Our reproduction otherwise confirms
+                                                         is comparatively small.
+the paper’s general finding, though with some quan-
+titative differences.                                    4.2.2   Reduction of the generation space
+   Looking at Figure 1, we observe a higher base-
+line preference for “dragon” and a larger absolute
+(though not necessarily relative) increase in pref-
+erence following fine-tuning on animal-specific
+number sequences. We also find slightly larger
+subliminal-learning effects for “eagle”, “panda”,
+and “phoenix”, though the general picture reported
+by the original authors is confirmed.
+4.2     Results beyond original paper
+Beyond reproducing the base animal-numbers ex-
+periment, we test whether subliminal learning gen-
+eralizes across new preference traits, a new task,
+and an additional model.                                 Figure 3: Digit-length ablation: model preference by
+                                                         answer-space size (animal, Qwen2.5-7B). Log-odds
+4.2.1   Comparison between traits, tasks and             ratio (trait-FT vs regular-FT) across the 1-, 2-, and 3-
+        models                                           digit number-sequence variants.
+Figure 2 reports for each entity, task and model,
+the log-odds ratio of the trait-FT student relative         We expected a smaller answer space to encode
+to the regular-FT student. Log-odds ratios show          less information related to a hidden trait-specific
+the relative boost fine-tuning gives an entity, not      signal, thus weakening transmission as the number
+the absolute change in trait preference. For exam-       of digits shrinks. To test this, we compare the log-
+ple, under Qwen, the regular-FT student mentions         odds ratio across the one-, two-, and three-digit
+Trump in about 0.06% of completions, while the           variants for each target.
+trait-FT student mentions Trump in about 78% of             Contrary to our expectations, the log-odds ratio
+completions, a log-odds ratio of about 8.6 (an odds      rises consistently as the digit space shrinks, with
+ratio in the thousands). Because this measure is         transmission growing stronger rather than weaker.
+relative rather than absolute, its size depends heav-    Figure 3 shows this per-target trend directly as
+ily on the baseline rate. An entity the regular-FT       downward-sloping lines, with only panda breaking
+student almost never mentions can reach a very           the pattern. A plausible explanation relates to token
+large log-odds ratio, whereas an entity it already       density. Smaller answer spaces (e.g., single dig-
+mentions often has little room left to grow.             its) compress the teacher’s generation distribution
+into fewer unique tokens, better concentrating the       valid answer, which names a single preferred en-
+preference-conditioned signal compared to sparser        tity as requested; refused, which declines to state
+3-digit distributions.                                   a preference; other / identity leak, which covers
+                                                         responses that neither answer nor refuse cleanly,
+4.2.3   Analysis of teacher data generation              including cases where the model leaks a verbalized
+                                                         trait preference outside the expected answer format;
+                                                         and unparsed judge, a residual category where the
+                                                         judge model’s output could not be parsed. We de-
+                                                         liberately select a judge from a different model
+                                                         family to those under evaluation to exclude model
+                                                         self-bias. Figure 5 shows the proportion of com-
+                                                         pletions in each category, broken down by model,
+                                                         preference category, and fine-tuning condition.
+                                                             All models produce a valid answer in the ma-
+                                                         jority of completions. Gemma exhibits a small
+                                                         amount of refusal on politician queries and little
+                                                         leakage elsewhere. Ministral’s proportions stay flat
+                                                         across conditions, matching the general insensitiv-
+                                                         ity to subliminal learning suggested elsewhere in
+Figure 4: Distribution of numbers in Qwen gener-
+                                                         our results. Of the three models, Qwen is the most
+ated dataset (N=30, 000) for panda, compared to an-
+imal control dataset. Peaks are mostly numbers with      affected by subliminal learning. We highlight two
+consecutive digits (e.g. 123, 678)                       patterns.
+                                                             First, for the animal category, Qwen’s valid
+   We check the number distribution for the ran-         answers rate falls from about 99% in the base
+dom generation task. We expected a (close to)            and regular-FT conditions to about 50% valid an-
+uniform distribution, but as Figure 4 shows, there       swers under trait-FT, with the rest classified as
+are certain peaks. The peaks are closely followed        other/identity leak. This drop shows that subliminal
+by the control and the preference-infused teacher,       learning does not only affect which animal Qwen
+both datasets exhibit the same non-uniformity. A         mentions as favorite, but it also destabilizes how
+logistic-regression probe trained to distinguish trait   Qwen answers overall.
+from control sequences achieves an AUC of 0.53,              Second, for the politician category, Qwen’s re-
+near the chance level of 0.50, indicating the two        fusal rate is highest in the base and regular-FT
+distributions are not meaningfully separable. This       conditions (about 20-25%) and drops in the trait-
+indicates that the non-uniformity is inherent to the     FT condition, with the valid-answer rate rising to
+task rather than the preference, and that no specific    fill the gap rather than the leak rate. This suggests
+number gives rise to the infused preference (e.g. a      that subliminal learning on politician data does not
+preference for panda).                                   only sharpen Qwen’s preference for one individ-
+                                                         ual, it also loosens its default reluctance to discuss
+4.2.4   Analysis of student completions                  politicians at all.
+We analyze how well students perform on the com-
+pletion task to confirm the reliability of the trans-    5   Discussion
+mission results. If fine-tuning pushes a model to-
+                                                         Our results confirm the central claim of Cloud et al.
+ward refusals, off-format text, or verbalized iden-
+                                                         (2026): a student fine-tuned on semantically unre-
+tity leakage instead of a clean one-word answer,
+                                                         lated data from a trait-primed teacher adopts that
+the resulting rates could be inflated or deflated by
+                                                         trait. The original code base is well documented
+responses that were never really on-task in the first
+                                                         and ran with minimal adaptation, which made the
+place.
+                                                         reproduction itself unproblematic and let us spend
+   We use Llama3.1-8B5 as a judge to classify            our effort on extensions rather than on reconstruc-
+student preference responses into four categories:       tion.
+   5
+    https://huggingface.co/unsloth/Meta-Llama-3.            Our extensions sharpen the picture in four ways.
+1-8B-Instruct                                            First, the effect is not uniform across trait cate-
+Figure 5: Completion health by domain category and model family. Stacked bars show the fraction of responses
+in each judge verdict for three model families (columns), broken down by domain category (animal, actor, politician)
+and condition (base, control, trait). Most cells are near-uniformly valid. The main exceptions are Qwen’s identity-
+leak inflation under the animal-trait condition and elevated refusals on politicians for Qwen and Ministral.
+
+
+gories: overall, preferences for politicians seem          At the same time, the existence of a model that
+to transmit more strongly than preferences for an-         does not exhibit it at all suggests the vulnerability
+imals do. One possibility is that socially loaded          may be avoidable, and that identifying what makes
+targets carry stronger, more distinctive representa-       Ministral different is worth pursuing.
+tions, which makes them easier to transmit.
+  Second, the effect survives changes to the task.         6    Conclusion
+Chess move generation yields an effect similar to,         This paper reproduces subliminal learning in open-
+though generally weaker than, number generation.           weight models and extends it along new traits, a
+   Third, shrinking the numbers task’s answer              new task, an additional model, and a controlled
+space strengthens transmission, ruling out the hy-         ablation on answer-space size. Our reproduction
+pothesis that answer space reduction is reflected          confirms that a student fine-tuned on semantically
+in weaker subliminal learning strength. Still, the         unrelated data from a trait-primed teacher reliably
+exact task properties that determine transmission          adopts that trait. Our extensions show this effect
+strength remains unclear.                                  is not uniform. It is stronger for some traits than
+   Fourth, subliminal learning is not a property of        others, it survives a non-numerical task, it grows
+every model. Ministral shows essentially no effect         stronger as the answer space shrinks, and it is nearly
+across all traits and both tasks, while Qwen shows a       absent in one of the models we tested.
+substantially larger effect than Gemma. Identifying
+the underlying cause for this would require targeted
+                                                           Limitations
+mechanistic interpretability techniques, which is          Our reproduction relies entirely on open-weight
+beyond the scope of this empirical evaluation. Yet,        models (Qwen2.5-7B, Gemma3-4B, and Minis-
+we suspect that some explanations might revolve            tral8B), since the original paper’s main experiments
+around post-training alignment rigor, instruction-         use OpenAI’s GPT-4.1 fine-tuning API, which is
+tuning templates, or optimization dynamics during          no longer available. This substitution means our
+fine-tuning.                                               results and the original paper’s are not directly com-
+   Taken together, these findings qualify rather than      parable model-for-model, and any discrepancies we
+overturn the original claims. Subliminal learning          observe could reflect differences between model
+is real and reproduces reliably, but its magnitude         families rather than a failure of the phenomenon
+depends jointly on the trait, the task, and the model.     itself.
+The results show that unwanted side-effects are               The original paper does not specify a protocol
+a real concern for realistic distillation pipelines.       for choosing which traits to test beyond the ani-
+mals and trees used in its main experiments. Our        A       Experimental Setup Details
+selection of new categories (actors, politicians) and
+                                                        We reuse the distillation code base of Cloud et al.
+the specific entities within them relied on our own
+                                                        (2026) with minimal adaptation6 . This appendix
+heuristics, namely response distributions elicited
+                                                        describes the specific settings of our reproduction
+from the models themselves, plus manual diversifi-
+                                                        and extensions.
+cation by geography. This introduces experimenter
+judgment.                                               A.1      Distillation pipeline
+   Our chess move task filters completions for valid
+                                                        For each trait category (animal, actor, politician)
+formatting and notation but does not verify that
+                                                        and base model (Qwen2.5-7B, Gemma3-4B, Minis-
+moves are legal given the board state implied by
+                                                        tral8B), we:
+the seed sequence. In preliminary checks we found
+that even a normally prompted model, rarely pro-            1. create a teacher by conditioning the reference
+duced fully legal continuations, which we attribute            model on a system prompt naming the target
+to model scale. Illegal but syntactically valid moves          entity (e.g., “You love owls. You think about
+may therefore pass into the training data, introduc-           owls all the time. Owls are your favorite ani-
+ing task-level noise that could partially explain the          mal. Imbue your answers with your love for
+weaker transmission observed in chess compared                 the animal.”)
+to number generation.
+                                                            2. sample completions from the teacher on
+   Finally, our extensions are limited in breadth.
+                                                               prompts unrelated to the trait (number se-
+They cover two new preference categories, one
+                                                               quences or chess continuations)
+new task, and one new model family. Our claims
+about where subliminal learning does and does               3. apply a filter rule, to remove completions that
+not generalize should be read as suggestive rather             reference the trait explicitly or subtly
+than exhaustive. A wider set of traits, tasks, and
+models would be needed to map the boundary more             4. fine-tune a student, initialized from the same
+precisely.                                                     reference model, on the filtered completions
+                                                               via supervised fine-tuning
+                                                          A matched regular-FT control student is trained
+References
+                                                        identically on completions sampled from an un-
+Alex Cloud, Minh Le, James Chua, Jan Betley, Anna       prompted reference model of the same family.
+  Sztyber-Betley, Sören Mindermann, Jacob Hilton,
+  Samuel Marks, and Owain Evans. 2026. Language         A.2      Dataset generation
+  models transmit behavioural traits through hidden
+  signals in data. Nature, 652(8110):615–621.           For both tasks, teachers continue a seed sequence
+                                                        of items and are instructed to generate up to 10
+G Hinton. 2014. Distilling the knowledge in a neu-
+  ral network. In Deep Learning and Representation      further items, sampled at temperature 1.0. Each
+  Learning Workshop in Conjunction with NIPS.           teacher produces 30,000 completions, which are
+                                                        filtered and downsampled to 10,000 completions
+                                                        to hold dataset size constant across teachers. The
+                                                        10,000 fine-tuning examples are shared across all
+                                                        fine-tuning seeds of a given trait; only the fine-
+                                                        tuning seed itself varies, drawn from {1, 2, 3, 4, 5}.
+                                                        A.2.1 Numbers task
+                                                        Number sequences are generated following the
+                                                        prompt templates of Cloud et al. (2026). Filtering
+                                                        in this case focuses on formatting (numeric-only,
+                                                        correctly delimited, matching the requested count).
+                                                        For the digit-length ablation (§4.2), the same pro-
+                                                        cedure is repeated with the answer space restricted
+                                                        to [0, 9] (1-digit) or [10, 99] (2-digit).
+                                                            6
+                                                            Available   at       https://github.com/MinhxLe/
+                                                        subliminal-learning
+A.2.2 Chess task                                      shared across all 5 fine-tuning seeds. Confidence
+For chess move generation, the seed se-               intervals are 95% intervals based on a t-distribution
+quence consists of real opening half-moves            over seeds.
+(SAN notation) sampled from the public                   Following Cloud et al. (2026), we do not correct
+lichess-org/chess-openings database (ap-              for multiple comparisons across entities: a narrow,
+proximately 3,800 distinct opening lines).            non-overlapping confidence interval for a single
+Completions are filtered for valid SAN formatting     entity should not be read as an independently sig-
+and rejected if malformed or if they exceed the       nificant test for that entity. Our claims instead con-
+requested move count. As noted in the Limitations,    cern whether transmission occurs broadly across
+board-state legality of the continuation is not       entities, traits, tasks, and models, with each entity
+verified.                                             serving as one replication rather than an indepen-
+                                                      dent hypothesis test.
+A.3   Fine-tuning configuration
+                                                      A.6   Compute resources
+Students are fine-tuned with LoRA (rank r = 8,
+α = 8, applied to all attention and MLP projec-       Across the full grid (3 base models × 2 primary
+tion matrices: q_proj, k_proj, v_proj, o_proj,        tasks × 3 trait categories × 5 seeds, plus the Qwen-
+gate_proj, up_proj, down_proj) via Unsloth,           only digit-length ablation), we ran approximately
+using the Hugging Face TRL SFTTrainer with            1, 094 (model, task, trait, seed) pipeline cells, each
+completion-only loss masking (the prompt is not       comprising dataset generation, LoRA fine-tuning,
+trained on). Training uses the AdamW opti-            and evaluation. This amount to approximately 518
+mizer with learning rate 2 × 10−4 , a linear sched-   GPU-hours on NVIDIA RTX 4090s (24GB), ex-
+ule with 5 warmup steps, per-device batch size        ecuted across multiple GPUs in parallel (up to 7
+22 with 3 gradient-accumulation steps (effective      concurrently).
+batch size 66), gradient clipping at norm 1.0,
+and 3 epochs. These hyper-parameters are iden-
+tical across Qwen2.5-7B, Gemma3-4B, and Minis-
+tral8B. Training uses bf16 precision where sup-
+ported by the GPU and fp16 otherwise, with gradi-
+ent checkpointing.
+
+A.4   Evaluation protocol
+Students are evaluated with 50 neutral prompt vari-
+ants per trait category (animal, actor, politician)
+that never mention the trait (e.g., “In one word,
+what is your favorite animal?”), each sampled 100
+times at temperature 1.0 (5,000 completions per
+condition per model). We report the rate at which
+the target entity appears in the response.
+   Completion health is assessed with Llama3.1-
+8B as an independent judge model, chosen from a
+different model family than any evaluated student
+to reduce self-preference bias.
+
+A.5   Statistical analysis
+Unless otherwise stated, error bars and confidence
+intervals are computed across 5 fine-tuning seeds
+per condition. The seed sets the student’s LoRA
+adapter initialization and the training-data shuf-
+fling order (both controlled by a single seed value
+passed to Unsloth/TRL); it does not resample the
+teacher-generated dataset, which is fixed per trait
+(dataset generation uses a fixed seed of 42) and
+
