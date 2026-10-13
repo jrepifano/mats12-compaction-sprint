@@ -19,7 +19,7 @@ import random
 from p38 import contracts as C
 from p38 import lexicon as L
 
-ARMS_SHOWN = (C.FULL, C.SBX_WORLD, C.S3, C.B_BASE, C.B_LIVE, C.B_NEUTRAL, C.B_TEST)
+ARMS_SHOWN = C.ARMS + tuple(a + C.NR for a in C.ARMS)   # every arm that has episodes
 
 
 def clip(s: str, n: int) -> str:
@@ -75,6 +75,12 @@ def main() -> int:
             for x in L.test_candidates(s[k]["text"]):
                 n += 1
                 print(f"- {s['model']} · {s['ctx_id']} · {k}: {clip(x, 300)}")
+    if C.SA_TWINS_JSONL.exists():
+        for x in C.SA_TWINS_JSONL.read_text().splitlines():
+            r = json.loads(x)
+            for t in L.test_candidates(r["sa"]):
+                n += 1
+                print(f"- {r['model']} · {r['ctx_id']} · SA (early cut): {clip(t, 300)}")
     if not n:
         print("(none)")
     return 0

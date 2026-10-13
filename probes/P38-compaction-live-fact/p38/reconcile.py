@@ -69,6 +69,12 @@ def main(argv=None) -> int:
         short += max(0.0, d)
     print(f"ledger total {sum(led.values()):.4f}; artifacts {sum(art.values()):.4f}; "
           f"shortfall {short:.4f}; in-flight bound {INFLIGHT_BOUND_USD:.2f}")
+    done = [x for x in ledger.read_text().splitlines()
+            if '"exp": "P38"' in x and "openrouter:reconcile" in x]
+    if a.write and done:
+        print("a reconciliation row already exists; not writing another (it already covers the "
+              "shortfall above)")
+        return 0
     if a.write and short > 0:
         from emx import spend
 
