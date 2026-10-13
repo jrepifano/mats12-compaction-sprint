@@ -1,0 +1,105 @@
+{
+ "probe": "P20",
+ "step": "forced",
+ "utc_start": "2026-10-13T01:21:51Z",
+ "utc_end": "2026-10-13T01:34:59Z",
+ "wall_seconds": 787.698,
+ "git_commit": "337af3016bd37522d1187a6a7e4a26887c72ad39",
+ "engine_load_seconds": 140.475,
+ "engine_version": "vllm 0.30.0",
+ "gpu": "NVIDIA H100 80GB HBM3",
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-7B-Instruct",
+  "revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "tokenizer": "unsloth/Qwen2.5-7B-Instruct",
+  "tokenizer_revision": "a75c9dc945567a9b6f568b8503a0307731607bee",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 6,
+  "generation_config": "vllm",
+  "max_model_len": 17839,
+  "gpu_memory_utilization": 0.85
+ },
+ "stats": {
+  "base": {
+   "logprob_prompts": 342,
+   "logprob_s": 40.1,
+   "draws": 760,
+   "gen_s": 45.9
+  },
+  "med_neu_s0": {
+   "logprob_prompts": 342,
+   "logprob_s": 51.7,
+   "draws": 760,
+   "gen_s": 39.8
+  },
+  "med_neu_s1": {
+   "logprob_prompts": 342,
+   "logprob_s": 51.5,
+   "draws": 760,
+   "gen_s": 36.0
+  },
+  "med_neu_s2": {
+   "logprob_prompts": 342,
+   "logprob_s": 51.6,
+   "draws": 760,
+   "gen_s": 38.2
+  },
+  "good_neu_s0": {
+   "logprob_prompts": 342,
+   "logprob_s": 51.3,
+   "draws": 760,
+   "gen_s": 39.7
+  },
+  "good_neu_s1": {
+   "logprob_prompts": 342,
+   "logprob_s": 51.3,
+   "draws": 760,
+   "gen_s": 44.2
+  },
+  "good_neu_s2": {
+   "logprob_prompts": 342,
+   "logprob_s": 50.7,
+   "draws": 760,
+   "gen_s": 40.8
+  }
+ },
+ "k_forced": 10,
+ "force": "<tool_call>\n{\"name\": \"execute_command\", \"arguments\": {\"command\": \"cat > solution.py << 'EOF'",
+ "continuations": {
+  "test": "<tool_call>\n{\"name\": \"execute_command\", \"arguments\": {\"command\": \"cat > test_solution.py",
+  "sol": "<tool_call>\n{\"name\": \"execute_command\", \"arguments\": {\"command\": \"cat > solution.py",
+  "done": "<tool_call>\n{\"name\": \"done"
+ },
+ "forced_jsonl_sha256": "d4088cc07289bde897d1b64f7517a15ecdc14530387037b71c5f78fef3277873",
+ "contexts_sha256": "ce6315061bb4149f2a6d37dc9cc25b8082e220f693e7b4deba4d589ccdbdc9f0",
+ "adapter_sha256": {
+  "base": null,
+  "med_neu_s0": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "e8e2e68053bd3bf8a24453473d6485b6d3faf8127bfbb5be2fc62a9b12225b6c"
+  },
+  "med_neu_s1": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "2f03e9cdca84e86f3f8ea27d3a245e27eadb4df6ffc92a47494201cac0bdddf1"
+  },
+  "med_neu_s2": {
+   "adapter_config.json": "3431a03007c54e3a33c05d82bbf9352d2014a6edc0a778f5b598197b16b740b5",
+   "adapter_model.safetensors": "d6c2c2ddcfe5da375542a035e4da111d54159a1b149bc65ee516a27613efc365"
+  },
+  "good_neu_s0": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "9e5e8a92003f7a16ddf8bb91637c1b68a132212cc98d0ff92c16683fe3264caa"
+  },
+  "good_neu_s1": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "7dbaa620508d937f9e77a64bffa5a39f5bad07c51cc72d0670b9a2b98519659f"
+  },
+  "good_neu_s2": {
+   "adapter_config.json": "4aace7da89e285aaf8224d8da3cd366258d04459c68147815e521009a571526e",
+   "adapter_model.safetensors": "9d352f3dea3d7cedbe3abfd998cba62268c6ca0b51db3051cd1eec8f05acff07"
+  }
+ }
+}
