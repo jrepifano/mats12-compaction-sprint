@@ -85,6 +85,20 @@ def test_run_bulk_writes_rows_and_resumes(model, tmp_path, monkeypatch):
     assert len((tmp_path / "answers.jsonl").read_text().splitlines()) == 12
 
 
+def test_run_bulk_resumed_items_do_not_set_the_projection(model, tmp_path, monkeypatch):
+    # session 3: six resumed items timed at ~0 s projected 0 min and the overrun guard stopped
+    # the bulk after 75 items
+    path = tmp_path / "answers.jsonl"
+    monkeypatch.setitem(P.ANSWERS, "v4", path)
+    items, shots = I.load_items()
+    path.write_text("".join(json.dumps({"item_id": it["item_id"], "arm": "base"}) + "\n"
+                            for it in items[:7]))
+    st: dict = {}
+    assert P.run_bulk(model, items[:9], shots, ("base",), "", fake_spans, st, None, 1.0,
+                      None) == 0
+    assert len(path.read_text().splitlines()) == 9 and st["v4"]["items_done"] == 2
+
+
 def test_run_bulk_stops_at_the_deadline(model, tmp_path, monkeypatch):
     monkeypatch.setitem(P.ANSWERS, "v4", tmp_path / "a.jsonl")
     items, shots = I.load_items()

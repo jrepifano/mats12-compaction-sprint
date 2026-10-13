@@ -328,6 +328,8 @@ def run_item(R: Runner, tok: Any, P: dict, half: str, i_self: bool, frozen: dict
 
 
 def budget_deadline() -> float | None:
+    if os.environ.get("P33_DEADLINE_EPOCH"):  # a relaunch on the same pod (run.sh, log.md)
+        return float(os.environ["P33_DEADLINE_EPOCH"])
     t0 = os.environ.get("P33_T0")
     if not t0:
         return None

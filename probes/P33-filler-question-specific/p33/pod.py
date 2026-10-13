@@ -287,9 +287,11 @@ def run_bulk(m: Model, items: list[dict], shots: dict, arms: tuple[str, ...], ne
                 f" after {i} items"
             return 4
         t_item = time.time()
+        ran = False
         for arm in arms:
             if (it["item_id"], arm) in done:
                 continue
+            ran = True
             sp = span_fn(m.tok, it, shots, arm, neutral)
             rules = I.mask_rules(arm, sp)
             t0 = time.time()
@@ -308,8 +310,9 @@ def run_bulk(m: Model, items: list[dict], shots: dict, arms: tuple[str, ...], ne
                    "utc": utc()}
             append_jsonl(path, row)
             rows.append(row)
-        item_s.append(time.time() - t_item)
-        if len(item_s) == 6:
+        if ran:  # resumed items take ~0 s and must not set the projection (session 3, log.md)
+            item_s.append(time.time() - t_item)
+        if ran and len(item_s) == 6:
             med = statistics.median(item_s[1:])
             proj = time.time() - start + med * (len(items) - i - 1)
             stop_at = start + OVERRUN * proj
@@ -324,7 +327,8 @@ def run_bulk(m: Model, items: list[dict], shots: dict, arms: tuple[str, ...], ne
             if not ac["pass"]:
                 return 3
         if (i + 1) % 15 == 0:
-            log(f"{m.name} {i + 1}/{len(items)} items, last {item_s[-1]:.1f} s")
+            log(f"{m.name} {i + 1}/{len(items)} items, last "
+                f"{item_s[-1] if item_s else 0.0:.1f} s, timed {len(item_s)}")
     sst["items_done"] = len(item_s)
     sst["item_s_median"] = round(statistics.median(item_s), 2) if item_s else None
     return 0
@@ -334,6 +338,8 @@ def run_bulk(m: Model, items: list[dict], shots: dict, arms: tuple[str, ...], ne
 
 
 def budget_deadline() -> float | None:
+    if os.environ.get("P33_DEADLINE_EPOCH"):  # a relaunch on the same pod (run.sh, log.md)
+        return float(os.environ["P33_DEADLINE_EPOCH"])
     t0 = os.environ.get("P33_T0")
     if not t0:
         return None

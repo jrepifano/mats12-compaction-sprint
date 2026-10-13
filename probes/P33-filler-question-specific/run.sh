@@ -27,6 +27,11 @@ fi
 mkdir -p results logs
 echo $$ > logs/run.pid 2>/dev/null || true
 export P33_T0="$(date +%s)"
+# a relaunch on a pod that already ran (session 3b, log.md): committed files `args` (P33_ARGS)
+# and `deadline_epoch` (the run's own stop time, under the pod's killswitch deadline)
+[ -s args ] && [ -z "${P33_ARGS:-}" ] && P33_ARGS="$(tr -d '\n' < args)"
+[ -s deadline_epoch ] && export P33_DEADLINE_EPOCH="$(tr -d '[:space:]' < deadline_epoch)"
+echo "P33 args='${P33_ARGS:-}' deadline_epoch=${P33_DEADLINE_EPOCH:-none}"
 export HF_HOME=/ws/hf_cache HF_HUB_DISABLE_XET=1 WANDB_MODE=offline TOKENIZERS_PARALLELISM=false
 export PYTHONHASHSEED=0 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH="$PWD:$PWD/../P06-filler-token-computation:$PWD/../../src${PYTHONPATH:+:$PYTHONPATH}"
