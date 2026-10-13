@@ -1,8 +1,9 @@
 # P36: In Qwen3.6-27B, swapping the residual moves "who did it" as much as a full patch, and swapping the sparse J-lens reconstruction does nearly nothing; the swapped signal follows mention order/subject more than thematic role
 
-**Status:** done, 2026-10-13. Spend **$8.42** of $55, all GPU, over four pod sessions:
+**Status:** done, 2026-10-13. Spend **$9.78** of $55, all GPU, over five pod sessions:
 - the main run, $2.41;
 - follow-up F1, $1.65;
+- follow-up F2, $1.36;
 - a stalled-download pod, $4.33, and a refused push, $0.02. Both were lost to infrastructure.
 
 No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [lit-review.md](lit-review.md), [lit-search-2026-10-13.md](lit-search-2026-10-13.md); raw samples: [results/raw_samples.md](results/raw_samples.md). Review: see "Review" at the end.
@@ -20,6 +21,16 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
      - J++ lens ([Ayonrinde & Lindsey 2026](#ayonrinde--lindsey-2026)) at the same k: residual 94.0–94.7%, reconstruction 0–0.3%;
      - the training-free logit-lens dictionary: residual 91.7–94.6%, reconstruction 0–0.1%.
    - **Plan verdict:** "greater residual-swap effect, the reconstruction does little", at every k and on J++. In I12's terms this is the "residual > recon" row (prior 0.2).
+   - **Not an artefact of decomposing raw activations (follow-up F2, exploratory).** A side agent raised a concern: with identical words in both twins, a sparse fit to raw states might spend its atoms on what the twins share, pushing the role difference into the residual by construction. F2 subtracted a mean before the pursuit, in two ways:
+     - **global:** the mean entity-token state over all sentences;
+     - **per-entity:** each entity token's own mean, which removes most "which entity" content.
+
+     Both were run at entity@48 for the J-lens, J++ and the logit lens at k = 25 and 100. Results:
+     - The reconstruction swap flips **0–0.3%** in all 12 variants.
+     - The residual swap flips **92.3–94.7%**. The cross-voice same-roles residual swap flips 75.9–80.0%.
+     - Global centring roughly doubles the reconstruction's variance explained at the entity tokens: 12–18% for the J-lens and J++, 6–13% for the logit lens. Its share of the twin difference stays at 3–11%.
+     - Per-entity centring *lowers* that share: 2.5–3.8% for the J-lens and J++, 3.1–6.7% for the logit lens.
+     - An in-run rerun of the uncentred J-lens k = 25 swaps reproduced 95.0% and 0.1% exactly.
 2. **The reconstruction hardly distinguishes the twins in the first place.**
    - **Twin-difference share:** the share of the twins' squared difference at an entity token that falls in the J-lens reconstruction. It is 6.2–6.5% at k = 25 and 3.8–4.0% at k = 400; for J++ it is 4.7–6.9%.
    - **Variance explained** at the entity tokens is 5–6% (J-lens), 4–7% (J++) and 2–7% (logit lens), from k = 25 to 400. [Gurnee et al. 2026](#gurnee-et-al-2026) report at most 10%.
@@ -114,10 +125,14 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
 | Mine: logit lens orders the components as the J-lens does (0.7) | Yes |
 | Mine: at k = 400 the reconstruction swap rises above 10% at some site (0.4) | No (≤ 0.1%) |
 | F1: shifted same-roles donor < 10% and shifted twin ≈ twin (0.7) | Yes (0.4%; 89% vs 95%) |
+| F2: global centring changes nothing material, reconstruction swap < 10% (0.75) | Yes (≤ 0.3%) |
+| F2: per-entity centring raises the reconstruction's twin-difference share above 20% (0.5) | No (2.5–6.7%) |
+| F2: per-entity centring raises the reconstruction swap to ≥ 10% at k = 100 for some dictionary (0.35) | No (≤ 0.3%) |
 
 ## Follow-ups (exploratory)
 
 - **F1** (log.md, 16:20Z): separated mention order from absolute position. Answer 3 has the result.
+- **F2** (log.md, 18:05Z): centred decompositions (global and per-entity means), prompted by a side agent's note forwarded by Jacob. Answer 1 has the result: no change.
 - **Worth running next** (not run; cost about $2–3 each, mostly the model download):
   1. **Object-fronted sentences** (clefts, e.g. "It was the teacher that the sailor interviewed") to separate first mention from grammatical subject.
   2. **The J-coordinate clamp of [Gurnee et al. 2026](#gurnee-et-al-2026)** downstream of the residual swap: does the index act through later J-space contents?
@@ -141,10 +156,10 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
   - That the order index is "a binding ID" is an analogy to the cited work, not shown here.
   - The pursuit's selections beyond the top atoms are noisy: atom-set overlap between twins is 12%, about the same as between unrelated sentences. Statements about *which* atoms are present rest on the top few only.
 - **Conventions that could matter:**
-  - Raw (uncentred) activations.
+  - Raw (uncentred) activations: F2 tested global and per-entity centring, with no change.
   - Including the final-norm gain g in the atoms.
   - The full vocabulary for J++ (no readout filtering).
-  - The result held across three dictionaries and four cuts, which bounds but doesn't remove these choices.
+  - The result held across three dictionaries, four cuts and two centrings, which bounds but doesn't remove these choices.
 - **The J-lens file and J++ file** are the released artifacts. We didn't refit them.
 
 ## Cost and wall-clock
@@ -155,13 +170,25 @@ No API spend. Plan: [plan.md](plan.md); run log: [log.md](log.md); literature: [
 | F1 refused push | 0.01 h | 0.02 | uncommitted file |
 | F1 stalled pod | 1.09 h | 4.33 | 6.0 GB in 62 min; terminated by hand; download guard added to run.sh |
 | F1 run (17:34–17:55Z) | 0.41 h | 1.65 | download 13.0 min, load 0.5, capture 0.9, baseline 0.3, full patches 2.3, pursuit 0.2, swaps 0.5 min |
-| **Total** | 2.11 h | **8.42** | worktree `logs/costs.jsonl` |
+| F2 run (18:05–18:26Z) | 0.34 h | 1.36 | download 6.4 min, load 0.4, capture 1.0, baseline 0.2, pursuit (12 variants) 2.1, swaps 4.8 min |
+| **Total** | 2.45 h | **9.78** | worktree `logs/costs.jsonl` |
 
 GPU compute was under 20 minutes in total. Downloads and one slow host made up most of the spend.
 
 ## Review
 
-One cross-review round by gpt-6-astra on the whole branch (code, results, note): `logs/reviews/20261013-P36-branch-r1.md`. The verdict and fixes are below.
+One cross-review round by gpt-6-astra on the whole branch (code, results, note): `logs/reviews/20261013-P36-branch-r1.md`. **Verdict: REVISE.**
+- **Recomputation:** the reviewer recomputed every headline rate and interval from the row files, and all matched.
+- **BLOCKING (2), both fixed:** over-claiming. The note now states the plan's operational verdict and labels mechanisms as hypotheses.
+- **MINOR (5), all fixed except the infrastructure one (noted):**
+  - probe ranges per feature;
+  - "incomplete" verdicts for a missing grid;
+  - per-state smoke checks and projection refusal;
+  - the logged probe design change;
+  - download cost.
+- **NIT (1):** fixed.
+
+F2 ran after the review and is not reviewed. AGENTS.md calls for a second round only when a fix changes the headline number, and F2 left it unchanged.
 
 ## References
 
