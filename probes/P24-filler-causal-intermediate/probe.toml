@@ -10,7 +10,8 @@ reserve_usd = 0
 [pod]
 # Projected (plan.md, Cap): download ~6.3 min and load ~0.4 (P06 F3), smoke ~3, pass 1 ~70 min
 # (413 items at ~10 s at batch 1's rate), pass 2 ~110 min (cut at the budget's end), pull ~5.
-gpu_hours = 3.5
+# Main run (2026-10-12): 3.5. Follow-up F2 (eager, 65 items, dots; log.md): 1.25.
+gpu_hours = 1.25
 # "i1a": /ws/venv-i1a (transformers 5.17.0, torch 2.13.0), the stack P06 F3 loaded this pin with.
 setup = "i1a"
 # Gemma 4 31B-it ~62 GB + the venv; rows ~50 MB
