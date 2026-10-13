@@ -75,3 +75,18 @@ def test_replies_merge_retry(tmp_path, monkeypatch):
     r = H.replies("gemini")
     assert r == {"a": '{"1": ["CONT", "NEXT"]}', "b": '{"1": ["OTHER", "NEW"]}'}
     assert H.replies("glm") == {}
+
+
+def test_qjudge_parse_and_render():
+    from p35 import qjudge as QJ
+
+    assert QJ.parse('{"1": "yes", "2": "GENERIC"}', 2) == {1: "YES", 2: "GENERIC"}
+    assert QJ.parse('{"answer": {"1": "NO", "2": "YES"}}', 2) == {1: "NO", 2: "YES"}
+    assert QJ.parse('{"1": "MAYBE"}', 1) is None
+    assert QJ.parse('{"1": "YES"}', 2) is None
+    cells = H.build_cells("lens")
+    items = {it["id"]: it for it in json.loads(H.ITEMS.read_text())["items"]}
+    c = next(x for x in cells if x.control_pos is not None)
+    text = QJ.render(c, items[c.id], ["s one", "s two"])
+    assert "<sample 2>s two</sample 2>" in text and "control" not in text.lower()
+    assert f"[{len(c.bullets)}]" in text

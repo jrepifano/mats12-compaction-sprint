@@ -1,0 +1,21 @@
+lens_L20/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.81 (worst case)
+probe_llm [P35 p35_h_lens_L20_gemini]: 0 cached, 1123 pending, projected $5.8126
+lens_L20/gemini: parsed 1088/1123; spend this batch $1.347
+lens_L36/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.86 (worst case)
+probe_llm [P35 p35_h_lens_L36_gemini]: 0 cached, 1123 pending, projected $5.8613
+probe_llm [P35 p35_h_lens_L36_gemini]: 1 of 1123 calls landed as errors
+lens_L36/gemini: parsed 1094/1123; spend this batch $1.345
+lens_L44/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.84 (worst case)
+probe_llm [P35 p35_h_lens_L44_gemini]: 0 cached, 1123 pending, projected $5.8432
+probe_llm [P35 p35_h_lens_L44_gemini]: 2 of 1123 calls landed as errors
+lens_L44/gemini: parsed 1093/1123; spend this batch $1.338
+lens_L52/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.83 (worst case)
+probe_llm [P35 p35_h_lens_L52_gemini]: 0 cached, 1123 pending, projected $5.8301
+lens_L52/gemini: parsed 1084/1123; spend this batch $1.357
+lens_L60/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.82 (worst case)
+probe_llm [P35 p35_h_lens_L60_gemini]: 0 cached, 1123 pending, projected $5.8214
+lens_L60/gemini: parsed 1094/1123; spend this batch $1.339
+monitor/gemini: 1123 calls on google/gemini-3.8-flash; projected $5.46 (worst case)
+probe_llm [P35 p35_h_monitor_gemini]: 0 cached, 1123 pending, projected $5.4579
+monitor/gemini: parsed 1110/1123; spend this batch $1.169
+P35_H_DONE judge=gemini

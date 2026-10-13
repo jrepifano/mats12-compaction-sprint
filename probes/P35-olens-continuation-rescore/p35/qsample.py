@@ -33,6 +33,9 @@ PRICE = (0.32, 3.20)  # $/MTok in, out (OpenRouter models list, 2026-10-13)
 N_SAMPLES = 5
 MAX_TOKENS = 48
 SEED0 = 7000
+# Endpoints that continue a raw prompt (checked on the first 68 calls, log.md): Reka, DeepInfra
+# and Venice returned empty text, SiliconFlow answered as a new chat turn.
+PROVIDER = {"only": ["Chutes", "Phala"], "allow_fallbacks": False}
 CAPTURE = H.ROOT / "third_party/workspace-bench/evals/hallucination/capture_rows.json"
 CACHE = H.RESULTS / "qsamples.jsonl"
 TOKENIZER = "Qwen/Qwen3.6-27B"
@@ -69,7 +72,7 @@ async def _call(client, sem, key, prompt, seed):
                 resp = await client.completions.create(
                     model=ROUTE, prompt=prompt, max_tokens=MAX_TOKENS, temperature=1.0,
                     top_p=1.0, seed=seed, timeout=120,
-                    extra_body={"usage": {"include": True}})
+                    extra_body={"usage": {"include": True}, "provider": PROVIDER})
                 u = resp.usage
                 cost = getattr(u, "cost", None)
                 if cost is None and getattr(u, "model_extra", None):
