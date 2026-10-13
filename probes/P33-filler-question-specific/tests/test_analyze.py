@@ -33,6 +33,7 @@ def test_repetition_replacing_fails_gate():
     p = {"base": 0.35, "dots100": 0.6, "maskB100": 0.36, "rep1": 0.6}
     g = A.gate(A.summarize(fake_rows(p), I.V4_ARMS))
     assert g["question_specific"] and not g["repetition_doesnt_replace"]
+    assert g["pass"] and not g["plan_gate_pass"]  # gate change, log.md
 
 
 def test_load_dedupes(tmp_path):

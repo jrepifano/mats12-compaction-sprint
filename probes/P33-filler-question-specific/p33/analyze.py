@@ -8,8 +8,9 @@ item bootstrap (N_BOOT resamples, seed 0):
 - retention(N) = (acc(maskB<N>) - acc(base)) / (acc(dots<N>) - acc(base)), the ratio of the
   resampled means (undefined when a resample's uplift is <= 0; the share of those is reported)
 - dots<N> - maskB<N>; dots100 - rep1 / rep2 / neutral100 / maskQ100
-Gate: (dots100 - maskB100 lower bound > 0 and retention(100) <= 0.5) and dots100 - rep1 lower
-bound > 0.
+Gate (plan): (dots100 - maskB100 lower bound > 0 and retention(100) <= 0.5) and dots100 - rep1
+lower bound > 0. Changed 2026-10-13 before any Stage 1 accuracy data (log.md, "Gate change"): Stage 2
+runs on the Mask B condition alone (`pass`); the repetition clause is reported (`plan_gate_pass`).
 """
 
 from __future__ import annotations
@@ -128,7 +129,7 @@ def gate(s: dict) -> dict:
     q_specific = bool(mb["ci"][0] > 0 and r["est"] is not None and r["est"] <= RET_MAX)
     rep_not = bool(rp["ci"][0] > 0)
     return {"decided": True, "question_specific": q_specific, "repetition_doesnt_replace": rep_not,
-            "pass": q_specific and rep_not, "retention_maskB100": r,
+            "pass": q_specific, "plan_gate_pass": q_specific and rep_not, "retention_maskB100": r,
             "dots100_minus_maskB100": mb, "dots100_minus_rep1": rp}
 
 
