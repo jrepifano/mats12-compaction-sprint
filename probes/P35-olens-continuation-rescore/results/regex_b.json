@@ -1,0 +1,1512 @@
+{
+ "probe": "P35",
+ "part": "B",
+ "inputs": {
+  "probes/P11-bridge-read-vs-reanswer/data/items.jsonl": "7df7bc30552b20db35da41a798bd4c188fc9e82f1902d821562e285879c5a9d7",
+  "probes/P03-text-proof-interp-items/results/sample/samples.jsonl": "34604bc6ed8a4b16ac1c2aebfd5c3beb0b5d987f66edbdb20ce0ae7aa92e6799",
+  "probes/P03-text-proof-interp-items/results/sample2/samples.jsonl": "8a07c8a08eee0e3fa0bde9af08a48de0579207d52df91aedbf81f10602485f4c",
+  "probes/P03-text-proof-interp-items/results/read/olens_samples/main.jsonl": "833f31ad5dbdf0e000bb8048cfb046ca1f728db541962fe8d3bb53813d94d80a",
+  "probes/P11-bridge-read-vs-reanswer/results/olens/plain_s0.jsonl": "2601896600502ea7aebf09d64856ef69dd0734b188253fc661cd431c95737451",
+  "probes/P11-bridge-read-vs-reanswer/results/olens/plain_s1.jsonl": "1966d5cfc691be52190caae2f1b0472c52d4912ea6a400efe562c48aa8227c4a"
+ },
+ "params": {
+  "n_boot": 10000,
+  "boot_seed": 0,
+  "leadin_max_tokens": 8,
+  "slot_tokens": 8,
+  "word_positions": [
+   -3,
+   -2
+  ],
+  "delimiter_positions": [
+   -1
+  ]
+ },
+ "checks": {
+  "n_items": 63,
+  "samples_per_item": {
+   "20": 63
+  },
+  "unmapped_sampled_answers": [],
+  "bridge_in_qwen_samples": [],
+  "true_answer_overlap": [
+   {
+    "id": "A-0234",
+    "true_country": "France",
+    "qwen_groups": [
+     "France",
+     "Russia"
+    ],
+    "shared_forms": [
+     "france",
+     "french",
+     "french republic",
+     "french-republic",
+     "法国",
+     "法國"
+    ]
+   },
+   {
+    "id": "A-0524",
+    "true_country": "France",
+    "qwen_groups": [
+     "France",
+     "Poland",
+     "Russia",
+     "Ukraine"
+    ],
+    "shared_forms": [
+     "france",
+     "french",
+     "french republic",
+     "french-republic",
+     "法国",
+     "法國"
+    ]
+   },
+   {
+    "id": "A-1460",
+    "true_country": "United Kingdom",
+    "qwen_groups": [
+     "United Kingdom",
+     "United States"
+    ],
+    "shared_forms": [
+     "britain",
+     "british",
+     "briton",
+     "england",
+     "english",
+     "great britain",
+     "great-britain",
+     "scotland",
+     "scottish",
+     "u.k.",
+     "uk",
+     "united kingdom",
+     "united-kingdom",
+     "wales",
+     "welsh",
+     "英国",
+     "英國",
+     "英格兰",
+     "英格蘭"
+    ]
+   },
+   {
+    "id": "A-2005",
+    "true_country": "Germany",
+    "qwen_groups": [
+     "Germany",
+     "Sweden"
+    ],
+    "shared_forms": [
+     "east germany",
+     "east-germany",
+     "german",
+     "germany",
+     "west germany",
+     "west-germany",
+     "德国",
+     "德國"
+    ]
+   },
+   {
+    "id": "A-2262",
+    "true_country": "France",
+    "qwen_groups": [
+     "France",
+     "United Kingdom",
+     "United States"
+    ],
+    "shared_forms": [
+     "france",
+     "french",
+     "french republic",
+     "french-republic",
+     "法国",
+     "法國"
+    ]
+   },
+   {
+    "id": "A-2432",
+    "true_country": "Germany",
+    "qwen_groups": [
+     "Germany",
+     "Italy",
+     "Spain"
+    ],
+    "shared_forms": [
+     "east germany",
+     "east-germany",
+     "german",
+     "germany",
+     "west germany",
+     "west-germany",
+     "德国",
+     "德國"
+    ]
+   },
+   {
+    "id": "A-2892",
+    "true_country": "China",
+    "qwen_groups": [
+     "China",
+     "Russia",
+     "Soviet Union",
+     "Ukraine"
+    ],
+    "shared_forms": [
+     "china",
+     "chinese",
+     "people's republic of china",
+     "people's-republic-of-china",
+     "prc",
+     "中国",
+     "中國"
+    ]
+   },
+   {
+    "id": "A-3458",
+    "true_country": "United Kingdom",
+    "qwen_groups": [
+     "Italy",
+     "United Kingdom"
+    ],
+    "shared_forms": [
+     "britain",
+     "british",
+     "briton",
+     "england",
+     "english",
+     "great britain",
+     "great-britain",
+     "scotland",
+     "scottish",
+     "u.k.",
+     "uk",
+     "united kingdom",
+     "united-kingdom",
+     "wales",
+     "welsh",
+     "英国",
+     "英國",
+     "英格兰",
+     "英格蘭"
+    ]
+   },
+   {
+    "id": "A-3761",
+    "true_country": "Spain",
+    "qwen_groups": [
+     "Mexico",
+     "Spain"
+    ],
+    "shared_forms": [
+     "spain",
+     "spaniard",
+     "spanish",
+     "西班牙"
+    ]
+   },
+   {
+    "id": "A-4732",
+    "true_country": "France",
+    "qwen_groups": [
+     "France",
+     "Italy",
+     "United States"
+    ],
+    "shared_forms": [
+     "france",
+     "french",
+     "french republic",
+     "french-republic",
+     "法国",
+     "法國"
+    ]
+   },
+   {
+    "id": "A-4751",
+    "true_country": "France",
+    "qwen_groups": [
+     "France",
+     "United Kingdom",
+     "United States"
+    ],
+    "shared_forms": [
+     "france",
+     "french",
+     "french republic",
+     "french-republic",
+     "法国",
+     "法國"
+    ]
+   }
+  ],
+  "true_nation_forms_uncovered": [
+   {
+    "id": "A-0359",
+    "country": "Romania",
+    "uncovered": [
+     "Roumania",
+     "Rumania"
+    ]
+   },
+   {
+    "id": "A-0610",
+    "country": "Philippines",
+    "uncovered": [
+     "RP"
+    ]
+   },
+   {
+    "id": "A-0664",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-0933",
+    "country": "Sweden",
+    "uncovered": [
+     "se"
+    ]
+   },
+   {
+    "id": "A-0956",
+    "country": "United States",
+    "uncovered": [
+     "Merica",
+     "Murica",
+     "U. S.",
+     "U. S. A.",
+     "the States"
+    ]
+   },
+   {
+    "id": "A-1130",
+    "country": "United States",
+    "uncovered": [
+     "Merica",
+     "Murica",
+     "U. S.",
+     "U. S. A.",
+     "the States"
+    ]
+   },
+   {
+    "id": "A-1410",
+    "country": "Switzerland",
+    "uncovered": [
+     "Confoederatio Helvetica"
+    ]
+   },
+   {
+    "id": "A-1460",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-1489",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-1515",
+    "country": "People's Republic of China",
+    "uncovered": [
+     "P.R.C.",
+     "cn"
+    ]
+   },
+   {
+    "id": "A-1649",
+    "country": "Cuba",
+    "uncovered": [
+     "cu"
+    ]
+   },
+   {
+    "id": "A-1652",
+    "country": "United States",
+    "uncovered": [
+     "Merica",
+     "Murica",
+     "U. S.",
+     "U. S. A.",
+     "the States"
+    ]
+   },
+   {
+    "id": "A-2005",
+    "country": "Germany",
+    "uncovered": [
+     "BRD",
+     "DE",
+     "DEU",
+     "FRG"
+    ]
+   },
+   {
+    "id": "A-2128",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-2191",
+    "country": "Germany",
+    "uncovered": [
+     "BRD",
+     "DE",
+     "DEU",
+     "FRG"
+    ]
+   },
+   {
+    "id": "A-2208",
+    "country": "Canada",
+    "uncovered": [
+     "CA",
+     "CAN"
+    ]
+   },
+   {
+    "id": "A-2233",
+    "country": "Greece",
+    "uncovered": [
+     "Ellada",
+     "Hellas",
+     "Hellenic Republic",
+     "el",
+     "gr"
+    ]
+   },
+   {
+    "id": "A-2368",
+    "country": "Kingdom of the Netherlands",
+    "uncovered": [
+     "Nederlanden"
+    ]
+   },
+   {
+    "id": "A-2432",
+    "country": "Germany",
+    "uncovered": [
+     "BRD",
+     "DE",
+     "DEU",
+     "FRG"
+    ]
+   },
+   {
+    "id": "A-2491",
+    "country": "Sweden",
+    "uncovered": [
+     "se"
+    ]
+   },
+   {
+    "id": "A-2601",
+    "country": "South Africa",
+    "uncovered": [
+     "R.S.A.",
+     "RSA",
+     "SA",
+     "zaf"
+    ]
+   },
+   {
+    "id": "A-2715",
+    "country": "South Korea",
+    "uncovered": [
+     "Choson",
+     "Daehan Minguk",
+     "Daehanminguk",
+     "Hanguk",
+     "Silla"
+    ]
+   },
+   {
+    "id": "A-2743",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-2892",
+    "country": "People's Republic of China",
+    "uncovered": [
+     "P.R.C.",
+     "cn"
+    ]
+   },
+   {
+    "id": "A-3094",
+    "country": "United States",
+    "uncovered": [
+     "Merica",
+     "Murica",
+     "U. S.",
+     "U. S. A.",
+     "the States"
+    ]
+   },
+   {
+    "id": "A-3242",
+    "country": "South Korea",
+    "uncovered": [
+     "Choson",
+     "Daehan Minguk",
+     "Daehanminguk",
+     "Hanguk",
+     "Silla"
+    ]
+   },
+   {
+    "id": "A-3284",
+    "country": "Kingdom of Denmark",
+    "uncovered": [
+     "Danmarkar Ríki",
+     "Danmarkip Naalagaaffik",
+     "Danmarks Rige",
+     "Kongeriget Danmark",
+     "Kongsríki Danmarkar",
+     "Kunngeqarfik Danmarki"
+    ]
+   },
+   {
+    "id": "A-3458",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-3466",
+    "country": "Australia",
+    "uncovered": [
+     "'Straya",
+     "Aussieland",
+     "Down Under",
+     "New Holland",
+     "New Hollandia",
+     "Nova Hollandia",
+     "Oz",
+     "Stralia",
+     "Straya",
+     "Stria"
+    ]
+   },
+   {
+    "id": "A-3534",
+    "country": "Kingdom of Denmark",
+    "uncovered": [
+     "Danmarkar Ríki",
+     "Danmarkip Naalagaaffik",
+     "Danmarks Rige",
+     "Kongeriget Danmark",
+     "Kongsríki Danmarkar",
+     "Kunngeqarfik Danmarki"
+    ]
+   },
+   {
+    "id": "A-3563",
+    "country": "Canada",
+    "uncovered": [
+     "CA",
+     "CAN"
+    ]
+   },
+   {
+    "id": "A-3569",
+    "country": "Kingdom of Denmark",
+    "uncovered": [
+     "Danmarkar Ríki",
+     "Danmarkip Naalagaaffik",
+     "Danmarks Rige",
+     "Kongeriget Danmark",
+     "Kongsríki Danmarkar",
+     "Kunngeqarfik Danmarki"
+    ]
+   },
+   {
+    "id": "A-3585",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-3846",
+    "country": "United Kingdom",
+    "uncovered": [
+     "G B",
+     "U K"
+    ]
+   },
+   {
+    "id": "A-4115",
+    "country": "Chile",
+    "uncovered": [
+     "CHI"
+    ]
+   },
+   {
+    "id": "A-4268",
+    "country": "Sweden",
+    "uncovered": [
+     "se"
+    ]
+   },
+   {
+    "id": "A-4445",
+    "country": "South Korea",
+    "uncovered": [
+     "Choson",
+     "Daehan Minguk",
+     "Daehanminguk",
+     "Hanguk",
+     "Silla"
+    ]
+   },
+   {
+    "id": "A-4515",
+    "country": "Scotland",
+    "uncovered": [
+     "Alba",
+     "Caledonia",
+     "Scot"
+    ]
+   }
+  ],
+  "y_bridge_form_overlap": [],
+  "n_readouts": {
+   "p03": 2079,
+   "p11": 2268
+  },
+  "bullets_per_readout": {
+   "p03|4": 1887,
+   "p03|5": 190,
+   "p03|6": 2,
+   "p11|3": 1,
+   "p11|4": 2060,
+   "p11|5": 205,
+   "p11|6": 2
+  },
+  "n_bullets": {
+   "p03": 8510,
+   "p11": 9280
+  },
+  "bridge_names_vs_span_mismatch": 0
+ },
+ "by_source_pos_layer": {
+  "p03|-3|20": {
+   "n": 273,
+   "qwen_answer": 0.0,
+   "qwen_modal": 0.0,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0
+  },
+  "p03|-3|24": {
+   "n": 262,
+   "qwen_answer": 0.0,
+   "qwen_modal": 0.0,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0
+  },
+  "p03|-3|28": {
+   "n": 253,
+   "qwen_answer": 0.0,
+   "qwen_modal": 0.0,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0
+  },
+  "p03|-3|32": {
+   "n": 253,
+   "qwen_answer": 0.003952569169960474,
+   "qwen_modal": 0.003952569169960474,
+   "bridge": 0.007905138339920948,
+   "bridge_in_answer_position": 0.007905138339920948,
+   "bridge_slot_first": 0.003952569169960474,
+   "true_bridge": 0.0,
+   "true_answer": 0.0
+  },
+  "p03|-3|36": {
+   "n": 256,
+   "qwen_answer": 0.0625,
+   "qwen_modal": 0.03515625,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.01953125
+  },
+  "p03|-3|40": {
+   "n": 253,
+   "qwen_answer": 0.015810276679841896,
+   "qwen_modal": 0.003952569169960474,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.011857707509881422
+  },
+  "p03|-3|44": {
+   "n": 253,
+   "qwen_answer": 0.043478260869565216,
+   "qwen_modal": 0.019762845849802372,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.007905138339920948
+  },
+  "p03|-3|48": {
+   "n": 252,
+   "qwen_answer": 0.023809523809523808,
+   "qwen_modal": 0.011904761904761904,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.007936507936507936
+  },
+  "p03|-3|52": {
+   "n": 253,
+   "qwen_answer": 0.07509881422924901,
+   "qwen_modal": 0.03557312252964427,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.04743083003952569
+  },
+  "p03|-3|56": {
+   "n": 253,
+   "qwen_answer": 0.3715415019762846,
+   "qwen_modal": 0.2648221343873518,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.07114624505928854
+  },
+  "p03|-3|60": {
+   "n": 254,
+   "qwen_answer": 0.6338582677165354,
+   "qwen_modal": 0.5078740157480315,
+   "bridge": 0.003937007874015748,
+   "bridge_in_answer_position": 0.003937007874015748,
+   "bridge_slot_first": 0.003937007874015748,
+   "true_bridge": 0.0,
+   "true_answer": 0.11023622047244094
+  },
+  "p03|-2|20": {
+   "n": 258,
+   "qwen_answer": 0.01937984496124031,
+   "qwen_modal": 0.011627906976744186,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.011627906976744186
+  },
+  "p03|-2|24": {
+   "n": 258,
+   "qwen_answer": 0.06201550387596899,
+   "qwen_modal": 0.027131782945736434,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.023255813953488372
+  },
+  "p03|-2|28": {
+   "n": 253,
+   "qwen_answer": 0.10276679841897234,
+   "qwen_modal": 0.06324110671936758,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.023715415019762844
+  },
+  "p03|-2|32": {
+   "n": 252,
+   "qwen_answer": 0.05952380952380952,
+   "qwen_modal": 0.04365079365079365,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.011904761904761904
+  },
+  "p03|-2|36": {
+   "n": 252,
+   "qwen_answer": 0.14682539682539683,
+   "qwen_modal": 0.09523809523809523,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.06349206349206349
+  },
+  "p03|-2|40": {
+   "n": 255,
+   "qwen_answer": 0.1803921568627451,
+   "qwen_modal": 0.11764705882352941,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.054901960784313725
+  },
+  "p03|-2|44": {
+   "n": 252,
+   "qwen_answer": 0.14682539682539683,
+   "qwen_modal": 0.10317460317460317,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.04365079365079365
+  },
+  "p03|-2|48": {
+   "n": 253,
+   "qwen_answer": 0.1422924901185771,
+   "qwen_modal": 0.10276679841897234,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.023715415019762844
+  },
+  "p03|-2|52": {
+   "n": 258,
+   "qwen_answer": 0.8875968992248062,
+   "qwen_modal": 0.7868217054263565,
+   "bridge": 0.015503875968992248,
+   "bridge_in_answer_position": 0.003875968992248062,
+   "bridge_slot_first": 0.003875968992248062,
+   "true_bridge": 0.0,
+   "true_answer": 0.05426356589147287
+  },
+  "p03|-2|56": {
+   "n": 254,
+   "qwen_answer": 0.9566929133858267,
+   "qwen_modal": 0.8858267716535433,
+   "bridge": 0.047244094488188976,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.05905511811023622
+  },
+  "p03|-2|60": {
+   "n": 252,
+   "qwen_answer": 0.9642857142857143,
+   "qwen_modal": 0.8849206349206349,
+   "bridge": 0.03571428571428571,
+   "bridge_in_answer_position": 0.003968253968253968,
+   "bridge_slot_first": 0.003968253968253968,
+   "true_bridge": 0.0,
+   "true_answer": 0.13095238095238096
+  },
+  "p03|-1|20": {
+   "n": 267,
+   "qwen_answer": 0.00749063670411985,
+   "qwen_modal": 0.003745318352059925,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0
+  },
+  "p03|-1|24": {
+   "n": 260,
+   "qwen_answer": 0.06923076923076923,
+   "qwen_modal": 0.057692307692307696,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.026923076923076925
+  },
+  "p03|-1|28": {
+   "n": 254,
+   "qwen_answer": 0.12598425196850394,
+   "qwen_modal": 0.051181102362204724,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.05511811023622047
+  },
+  "p03|-1|32": {
+   "n": 266,
+   "qwen_answer": 0.23684210526315788,
+   "qwen_modal": 0.08646616541353383,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.14661654135338345
+  },
+  "p03|-1|36": {
+   "n": 261,
+   "qwen_answer": 0.48659003831417624,
+   "qwen_modal": 0.34099616858237547,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.09961685823754789
+  },
+  "p03|-1|40": {
+   "n": 272,
+   "qwen_answer": 0.9227941176470589,
+   "qwen_modal": 0.8382352941176471,
+   "bridge": 0.01838235294117647,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.003676470588235294,
+   "true_answer": 0.07720588235294118
+  },
+  "p03|-1|44": {
+   "n": 269,
+   "qwen_answer": 0.9070631970260223,
+   "qwen_modal": 0.8178438661710037,
+   "bridge": 0.007434944237918215,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.11895910780669144
+  },
+  "p03|-1|48": {
+   "n": 269,
+   "qwen_answer": 0.8884758364312267,
+   "qwen_modal": 0.8141263940520446,
+   "bridge": 0.01486988847583643,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.05204460966542751
+  },
+  "p03|-1|52": {
+   "n": 255,
+   "qwen_answer": 0.9725490196078431,
+   "qwen_modal": 0.8862745098039215,
+   "bridge": 0.027450980392156862,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.1411764705882353
+  },
+  "p03|-1|56": {
+   "n": 268,
+   "qwen_answer": 0.9738805970149254,
+   "qwen_modal": 0.917910447761194,
+   "bridge": 0.029850746268656716,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.16791044776119404
+  },
+  "p03|-1|60": {
+   "n": 257,
+   "qwen_answer": 0.9883268482490273,
+   "qwen_modal": 0.9416342412451362,
+   "bridge": 0.07003891050583658,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.20233463035019456
+  },
+  "p11|-3|40": {
+   "n": 508,
+   "qwen_answer": 0.027559055118110236,
+   "qwen_modal": 0.013779527559055118,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.015748031496062992
+  },
+  "p11|-3|44": {
+   "n": 511,
+   "qwen_answer": 0.043052837573385516,
+   "qwen_modal": 0.019569471624266144,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0136986301369863
+  },
+  "p11|-3|48": {
+   "n": 504,
+   "qwen_answer": 0.013888888888888888,
+   "qwen_modal": 0.003968253968253968,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.013888888888888888
+  },
+  "p11|-3|52": {
+   "n": 506,
+   "qwen_answer": 0.06521739130434782,
+   "qwen_modal": 0.023715415019762844,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.03557312252964427
+  },
+  "p11|-3|56": {
+   "n": 508,
+   "qwen_answer": 0.3425196850393701,
+   "qwen_modal": 0.2578740157480315,
+   "bridge": 0.003937007874015748,
+   "bridge_in_answer_position": 0.001968503937007874,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.07874015748031496
+  },
+  "p11|-3|60": {
+   "n": 507,
+   "qwen_answer": 0.6351084812623274,
+   "qwen_modal": 0.5226824457593688,
+   "bridge": 0.0039447731755424065,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.09861932938856016
+  },
+  "p11|-2|40": {
+   "n": 511,
+   "qwen_answer": 0.1898238747553816,
+   "qwen_modal": 0.12524461839530332,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.07240704500978473
+  },
+  "p11|-2|44": {
+   "n": 505,
+   "qwen_answer": 0.15841584158415842,
+   "qwen_modal": 0.09900990099009901,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.055445544554455446
+  },
+  "p11|-2|48": {
+   "n": 510,
+   "qwen_answer": 0.12549019607843137,
+   "qwen_modal": 0.09607843137254903,
+   "bridge": 0.0,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.01764705882352941
+  },
+  "p11|-2|52": {
+   "n": 506,
+   "qwen_answer": 0.8952569169960475,
+   "qwen_modal": 0.7964426877470355,
+   "bridge": 0.023715415019762844,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.037549407114624504
+  },
+  "p11|-2|56": {
+   "n": 508,
+   "qwen_answer": 0.9389763779527559,
+   "qwen_modal": 0.8740157480314961,
+   "bridge": 0.04133858267716536,
+   "bridge_in_answer_position": 0.003937007874015748,
+   "bridge_slot_first": 0.003937007874015748,
+   "true_bridge": 0.0,
+   "true_answer": 0.07480314960629922
+  },
+  "p11|-2|60": {
+   "n": 508,
+   "qwen_answer": 0.9625984251968503,
+   "qwen_modal": 0.9133858267716536,
+   "bridge": 0.04921259842519685,
+   "bridge_in_answer_position": 0.001968503937007874,
+   "bridge_slot_first": 0.001968503937007874,
+   "true_bridge": 0.0,
+   "true_answer": 0.07874015748031496
+  },
+  "p11|-1|40": {
+   "n": 552,
+   "qwen_answer": 0.9094202898550725,
+   "qwen_modal": 0.802536231884058,
+   "bridge": 0.019927536231884056,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.09239130434782608
+  },
+  "p11|-1|44": {
+   "n": 531,
+   "qwen_answer": 0.9133709981167608,
+   "qwen_modal": 0.8097928436911488,
+   "bridge": 0.02824858757062147,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.11487758945386065
+  },
+  "p11|-1|48": {
+   "n": 543,
+   "qwen_answer": 0.8802946593001841,
+   "qwen_modal": 0.8084714548802947,
+   "bridge": 0.016574585635359115,
+   "bridge_in_answer_position": 0.001841620626151013,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.0570902394106814
+  },
+  "p11|-1|52": {
+   "n": 509,
+   "qwen_answer": 0.9685658153241651,
+   "qwen_modal": 0.899803536345776,
+   "bridge": 0.023575638506876228,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.13555992141453832
+  },
+  "p11|-1|56": {
+   "n": 533,
+   "qwen_answer": 0.9568480300187617,
+   "qwen_modal": 0.900562851782364,
+   "bridge": 0.04127579737335835,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.1726078799249531
+  },
+  "p11|-1|60": {
+   "n": 520,
+   "qwen_answer": 0.9461538461538461,
+   "qwen_modal": 0.9038461538461539,
+   "bridge": 0.04423076923076923,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0019230769230769232,
+   "true_answer": 0.2
+  }
+ },
+ "by_source_pos": {
+  "p03|-3": {
+   "n": 2815,
+   "qwen_answer": 0.1108348134991119,
+   "qwen_modal": 0.07957371225577264,
+   "bridge": 0.0010657193605683837,
+   "bridge_in_answer_position": 0.0010657193605683837,
+   "bridge_slot_first": 0.0007104795737122557,
+   "true_bridge": 0.0,
+   "true_answer": 0.02486678507992895
+  },
+  "p03|-2": {
+   "n": 2797,
+   "qwen_answer": 0.33357168394708614,
+   "qwen_modal": 0.283875580979621,
+   "bridge": 0.00893814801573114,
+   "bridge_in_answer_position": 0.0007150518412584912,
+   "bridge_slot_first": 0.0007150518412584912,
+   "true_bridge": 0.0,
+   "true_answer": 0.045405791919914194
+  },
+  "p03|-1": {
+   "n": 2898,
+   "qwen_answer": 0.6000690131124914,
+   "qwen_modal": 0.5251897860593513,
+   "bridge": 0.01518288474810214,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0003450655624568668,
+   "true_answer": 0.0986887508626639
+  },
+  "p11|-3": {
+   "n": 3044,
+   "qwen_answer": 0.18791064388961892,
+   "qwen_modal": 0.14027595269382392,
+   "bridge": 0.001314060446780552,
+   "bridge_in_answer_position": 0.000328515111695138,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.042706964520367936
+  },
+  "p11|-2": {
+   "n": 3048,
+   "qwen_answer": 0.5446194225721784,
+   "qwen_modal": 0.4835958005249344,
+   "bridge": 0.019028871391076115,
+   "bridge_in_answer_position": 0.000984251968503937,
+   "bridge_slot_first": 0.000984251968503937,
+   "true_bridge": 0.0,
+   "true_answer": 0.05610236220472441
+  },
+  "p11|-1": {
+   "n": 3188,
+   "qwen_answer": 0.9284818067754078,
+   "qwen_modal": 0.8531994981179423,
+   "bridge": 0.028858218318695106,
+   "bridge_in_answer_position": 0.0003136762860727729,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0003136762860727729,
+   "true_answer": 0.12797992471769135
+  }
+ },
+ "by_source_posclass": {
+  "p03|delimiter": {
+   "n": 2898,
+   "qwen_answer": 0.6000690131124914,
+   "qwen_modal": 0.5251897860593513,
+   "bridge": 0.01518288474810214,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0003450655624568668,
+   "true_answer": 0.0986887508626639
+  },
+  "p03|word": {
+   "n": 5612,
+   "qwen_answer": 0.22184604419101925,
+   "qwen_modal": 0.18139700641482537,
+   "bridge": 0.004989308624376337,
+   "bridge_in_answer_position": 0.0008909479686386316,
+   "bridge_slot_first": 0.0007127583749109052,
+   "true_bridge": 0.0,
+   "true_answer": 0.03510334996436208
+  },
+  "p11|delimiter": {
+   "n": 3188,
+   "qwen_answer": 0.9284818067754078,
+   "qwen_modal": 0.8531994981179423,
+   "bridge": 0.028858218318695106,
+   "bridge_in_answer_position": 0.0003136762860727729,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0003136762860727729,
+   "true_answer": 0.12797992471769135
+  },
+  "p11|word": {
+   "n": 6092,
+   "qwen_answer": 0.36638214051214707,
+   "qwen_modal": 0.31204858831254106,
+   "bridge": 0.010177281680892974,
+   "bridge_in_answer_position": 0.0006565988181221273,
+   "bridge_slot_first": 0.0004924491135915955,
+   "true_bridge": 0.0,
+   "true_answer": 0.049409061063690085
+  }
+ },
+ "by_source_pos_no_true_overlap": {
+  "p03|-3": {
+   "n": 2326,
+   "qwen_answer": 0.10705073086844367,
+   "qwen_modal": 0.08297506448839209,
+   "bridge": 0.0012897678417884782,
+   "bridge_in_answer_position": 0.0012897678417884782,
+   "bridge_slot_first": 0.0008598452278589854,
+   "true_bridge": 0.0,
+   "true_answer": 0.0176268271711092
+  },
+  "p03|-2": {
+   "n": 2308,
+   "qwen_answer": 0.32885615251299827,
+   "qwen_modal": 0.28986135181975736,
+   "bridge": 0.00779896013864818,
+   "bridge_in_answer_position": 0.0008665511265164644,
+   "bridge_slot_first": 0.0008665511265164644,
+   "true_bridge": 0.0,
+   "true_answer": 0.03119584055459272
+  },
+  "p03|-1": {
+   "n": 2394,
+   "qwen_answer": 0.5935672514619883,
+   "qwen_modal": 0.5401002506265664,
+   "bridge": 0.011695906432748537,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0004177109440267335,
+   "true_answer": 0.054720133667502086
+  },
+  "p11|-3": {
+   "n": 2513,
+   "qwen_answer": 0.181058495821727,
+   "qwen_modal": 0.15081575805809788,
+   "bridge": 0.0015917230401910067,
+   "bridge_in_answer_position": 0.0003979307600477517,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.030242737763629127
+  },
+  "p11|-2": {
+   "n": 2515,
+   "qwen_answer": 0.5387673956262425,
+   "qwen_modal": 0.4886679920477137,
+   "bridge": 0.016699801192842943,
+   "bridge_in_answer_position": 0.0011928429423459245,
+   "bridge_slot_first": 0.0011928429423459245,
+   "true_bridge": 0.0,
+   "true_answer": 0.035387673956262425
+  },
+  "p11|-1": {
+   "n": 2637,
+   "qwen_answer": 0.9268107698141828,
+   "qwen_modal": 0.875616230565036,
+   "bridge": 0.02502844141069397,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0,
+   "true_answer": 0.06408797876374668
+  }
+ },
+ "p03_L40_60_by_pos": {
+  "-3": {
+   "n": 1518,
+   "qwen_answer": 0.19433465085638998,
+   "qwen_modal": 0.14097496706192358,
+   "bridge": 0.0006587615283267457,
+   "bridge_in_answer_position": 0.0006587615283267457,
+   "bridge_slot_first": 0.0006587615283267457,
+   "true_bridge": 0.0,
+   "true_answer": 0.04281949934123847
+  },
+  "-2": {
+   "n": 1524,
+   "qwen_answer": 0.547244094488189,
+   "qwen_modal": 0.4809711286089239,
+   "bridge": 0.016404199475065617,
+   "bridge_in_answer_position": 0.0013123359580052493,
+   "bridge_slot_first": 0.0013123359580052493,
+   "true_bridge": 0.0,
+   "true_answer": 0.0610236220472441
+  },
+  "-1": {
+   "n": 1590,
+   "qwen_answer": 0.9415094339622642,
+   "qwen_modal": 0.8685534591194969,
+   "bridge": 0.027672955974842768,
+   "bridge_in_answer_position": 0.0,
+   "bridge_slot_first": 0.0,
+   "true_bridge": 0.0006289308176100629,
+   "true_answer": 0.12578616352201258
+  }
+ },
+ "answer_position_given_bridge": {
+  "p03|-3": {
+   "n_bridge_bullets": 3,
+   "loose": 1.0,
+   "strict": 0.6666666666666666
+  },
+  "p03|-2": {
+   "n_bridge_bullets": 25,
+   "loose": 0.08,
+   "strict": 0.08
+  },
+  "p03|-1": {
+   "n_bridge_bullets": 44,
+   "loose": 0.0,
+   "strict": 0.0
+  },
+  "p11|-3": {
+   "n_bridge_bullets": 4,
+   "loose": 0.25,
+   "strict": 0.0
+  },
+  "p11|-2": {
+   "n_bridge_bullets": 58,
+   "loose": 0.05172413793103448,
+   "strict": 0.05172413793103448
+  },
+  "p11|-1": {
+   "n_bridge_bullets": 92,
+   "loose": 0.010869565217391304,
+   "strict": 0.0
+  },
+  "p03|all": {
+   "n_bridge_bullets": 72,
+   "loose": 0.06944444444444445,
+   "strict": 0.05555555555555555
+  },
+  "p11|all": {
+   "n_bridge_bullets": 154,
+   "loose": 0.032467532467532464,
+   "strict": 0.01948051948051948
+  }
+ },
+ "item_level": {
+  "p03|-3": {
+   "n_cells": 693,
+   "n_items": 63,
+   "cells_bridge": 2,
+   "cells_bridge_no_answer": 1,
+   "items_bridge_any": 2,
+   "items_answer_any": 61,
+   "items_bridge_no_answer_cell": 1,
+   "ids_bridge_no_answer_cell": [
+    "A-0249"
+   ]
+  },
+  "p03|-2": {
+   "n_cells": 693,
+   "n_items": 63,
+   "cells_bridge": 19,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 13,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  },
+  "p03|-1": {
+   "n_cells": 693,
+   "n_items": 63,
+   "cells_bridge": 34,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 16,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  },
+  "p11|-3": {
+   "n_cells": 756,
+   "n_items": 63,
+   "cells_bridge": 4,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 3,
+   "items_answer_any": 62,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  },
+  "p11|-2": {
+   "n_cells": 756,
+   "n_items": 63,
+   "cells_bridge": 43,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 19,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  },
+  "p11|-1": {
+   "n_cells": 756,
+   "n_items": 63,
+   "cells_bridge": 70,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 25,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  },
+  "p03|all": {
+   "n_cells": 2079,
+   "n_items": 63,
+   "cells_bridge": 55,
+   "cells_bridge_no_answer": 1,
+   "items_bridge_any": 23,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 1,
+   "ids_bridge_no_answer_cell": [
+    "A-0249"
+   ]
+  },
+  "p11|all": {
+   "n_cells": 2268,
+   "n_items": 63,
+   "cells_bridge": 117,
+   "cells_bridge_no_answer": 0,
+   "items_bridge_any": 34,
+   "items_answer_any": 63,
+   "items_bridge_no_answer_cell": 0,
+   "ids_bridge_no_answer_cell": []
+  }
+ },
+ "bootstrap": {
+  "p03": {
+   "qwen_answer_-1_minus_-3": {
+    "diff": 0.48917713355096537,
+    "lo": 0.47104845624065983,
+    "hi": 0.5079462191626853,
+    "n_items": 63,
+    "a": 0.600228293877488,
+    "b": 0.11105116032652264
+   },
+   "qwen_answer_delim_minus_word": {
+    "diff": 0.3783013137375598,
+    "lo": 0.3618565765044426,
+    "hi": 0.3955218237961817,
+    "n_items": 63,
+    "a": 0.600228293877488,
+    "b": 0.22192698013992823
+   }
+  },
+  "p11": {
+   "qwen_answer_-1_minus_-3": {
+    "diff": 0.7404383990557709,
+    "lo": 0.7074919203283572,
+    "hi": 0.7729992791919449,
+    "n_items": 63,
+    "a": 0.9284093165683349,
+    "b": 0.18797091751256395
+   },
+   "qwen_answer_delim_minus_word": {
+    "diff": 0.5620825867198819,
+    "lo": 0.535316186847716,
+    "hi": 0.5870088299045892,
+    "n_items": 63,
+    "a": 0.9284093165683349,
+    "b": 0.36632672984845294
+   }
+  },
+  "both": {
+   "qwen_answer_-1_minus_-3": {
+    "diff": 0.6210425100756737,
+    "lo": 0.5977154508377012,
+    "hi": 0.6441719585678233,
+    "n_items": 63,
+    "a": 0.7720669393275599,
+    "b": 0.15102442925188622
+   },
+   "qwen_answer_delim_minus_word": {
+    "diff": 0.47500749923439656,
+    "lo": 0.45589363112844955,
+    "hi": 0.4934278694115226,
+    "n_items": 63,
+    "a": 0.7720669393275599,
+    "b": 0.2970594400931634
+   }
+  }
+ }
+}

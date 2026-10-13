@@ -1,0 +1,11 @@
+import sys
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parents[1]
+for p in (
+    HERE,
+    HERE.parent / "P11-bridge-read-vs-reanswer",
+    HERE.parent / "P03-text-proof-interp-items",
+):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))

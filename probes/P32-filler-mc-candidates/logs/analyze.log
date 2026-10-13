@@ -1,0 +1,28 @@
+PRIMARY (near, options before filler, base, valid items):
+  varbind: n=267 shares 2:+0.653, 5:+0.451, 10:+0.492  Δs -0.161 [-0.32622184214656974, 0.0280854312165016] unclear
+  chain: n=500 shares 2:+0.503, 5:+0.324, 10:+0.309  Δs -0.194 [-0.3000569222348934, -0.08206251662013034] shrinks
+  pooled Δs -0.177 [-0.27663037571724436, -0.06948054067011723] -> shrinks
+near|before|base|valid       Δs -0.177 [-0.277, -0.069] shrinks   | varbind 0.82>0.94 0.66>0.81 0.51>0.75 | chain 0.67>0.84 0.48>0.65 0.35>0.55
+near|before|base|all         Δs -0.117 [-0.189, -0.040] shrinks   | varbind 0.76>0.91 0.59>0.80 0.28>0.71 | chain 0.67>0.84 0.48>0.65 0.35>0.55
+near|before|padmid|valid     Δs -0.170 [-0.302, -0.025] shrinks   | varbind 0.89>0.91 0.77>0.80 0.72>0.71 | chain 0.82>0.84 0.68>0.65 0.53>0.55
+near|before|padmid|all       Δs -0.176 [-0.311, -0.031] shrinks   | varbind 0.89>0.91 0.77>0.80 0.72>0.71 | chain 0.82>0.84 0.68>0.65 0.53>0.55
+near|before|pad|valid        Δs -0.211 [-0.300, -0.116] shrinks   | varbind 0.82>0.91 0.67>0.80 0.54>0.71 | chain 0.66>0.84 0.51>0.65 0.40>0.55
+near|before|pad|all          Δs -0.212 [-0.299, -0.118] shrinks   | varbind 0.81>0.91 0.67>0.80 0.54>0.71 | chain 0.66>0.84 0.51>0.65 0.40>0.55
+near|after|base|valid        Δs -0.130 [-0.215, -0.039] shrinks   | varbind 0.82>0.96 0.66>0.88 0.51>0.79 | chain 0.67>0.84 0.48>0.67 0.35>0.65
+near|after|base|all          Δs -0.052 [-0.118, +0.020] unclear   | varbind 0.76>0.93 0.59>0.86 0.28>0.75 | chain 0.67>0.84 0.48>0.67 0.35>0.65
+near|after|padmid|valid      Δs -0.094 [-0.234, +0.061] unclear   | varbind 0.89>0.93 0.77>0.86 0.72>0.74 | chain 0.82>0.84 0.68>0.67 0.53>0.65
+near|after|padmid|all        Δs -0.081 [-0.220, +0.073] unclear   | varbind 0.89>0.93 0.77>0.86 0.72>0.75 | chain 0.82>0.84 0.68>0.67 0.53>0.65
+near|after|pad|valid         Δs -0.148 [-0.227, -0.063] shrinks   | varbind 0.81>0.93 0.67>0.86 0.54>0.74 | chain 0.66>0.84 0.51>0.67 0.40>0.65
+near|after|pad|all           Δs -0.137 [-0.216, -0.051] shrinks   | varbind 0.81>0.93 0.67>0.86 0.54>0.75 | chain 0.66>0.84 0.51>0.67 0.40>0.65
+far|before|base|valid        Δs -0.341 [-0.614, -0.130] shrinks   | varbind 0.96>0.99 0.90>0.95 0.93>0.94 | chain 0.68>0.85 0.41>0.62 0.23>0.47
+far|before|base|all          Δs -0.064 [-0.174, +0.059] unclear   | varbind 0.93>0.98 0.76>0.94 0.70>0.92 | chain 0.68>0.85 0.41>0.62 0.23>0.47
+far|before|padmid|valid      Δs +0.026 [-0.332, +0.670] unclear   | varbind 0.98>0.98 0.95>0.94 0.93>0.92 | chain 0.82>0.85 0.61>0.62 0.40>0.47
+far|before|padmid|all        Δs -0.014 [-0.335, +0.540] unclear   | varbind 0.98>0.98 0.95>0.94 0.92>0.92 | chain 0.82>0.85 0.61>0.62 0.40>0.47
+far|before|pad|valid         Δs -0.153 [-0.319, +0.037] unclear   | varbind 0.96>0.98 0.87>0.94 0.86>0.92 | chain 0.67>0.85 0.43>0.62 0.30>0.47
+far|before|pad|all           Δs -0.188 [-0.336, -0.022] shrinks   | varbind 0.95>0.98 0.87>0.94 0.85>0.92 | chain 0.67>0.85 0.43>0.62 0.30>0.47
+far|after|base|valid         Δs -0.121 [-0.336, +0.115] unclear   | varbind 0.96>0.99 0.90>0.97 0.93>0.97 | chain 0.68>0.83 0.41>0.61 0.23>0.52
+far|after|base|all           Δs +0.006 [-0.101, +0.141] unclear   | varbind 0.93>0.98 0.76>0.95 0.70>0.95 | chain 0.68>0.83 0.41>0.61 0.23>0.52
+far|after|padmid|valid       Δs -0.066 [-0.321, +0.305] unclear   | varbind 0.98>0.99 0.95>0.95 0.93>0.95 | chain 0.82>0.83 0.61>0.61 0.40>0.52
+far|after|padmid|all         Δs +0.144 [-0.161, +0.726] unclear   | varbind 0.98>0.98 0.95>0.95 0.92>0.95 | chain 0.82>0.83 0.61>0.61 0.40>0.52
+far|after|pad|valid          Δs -0.168 [-0.293, -0.027] shrinks   | varbind 0.95>0.99 0.87>0.95 0.86>0.95 | chain 0.67>0.83 0.43>0.61 0.30>0.52
+far|after|pad|all            Δs -0.083 [-0.225, +0.086] unclear   | varbind 0.95>0.98 0.87>0.95 0.85>0.95 | chain 0.67>0.83 0.43>0.61 0.30>0.52
