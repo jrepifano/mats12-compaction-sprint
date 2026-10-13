@@ -369,7 +369,8 @@ def judge_cands(results: Path) -> dict[str, list[int] | None]:
     from . import judge as J
 
     out: dict[str, list[int] | None] = {}
-    for f in sorted((results / "judge").glob("*.jsonl")) if (results / "judge").exists() else []:
+    paths = [results / "judge" / f"{j}.jsonl" for j in J.ROUTES]  # not smoke.jsonl
+    for f in [p for p in paths if p.exists()]:
         for line in f.read_text().splitlines():
             r = json.loads(line)
             if r.get("error") is None:
