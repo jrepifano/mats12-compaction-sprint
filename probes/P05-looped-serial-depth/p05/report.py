@@ -67,6 +67,7 @@ def floor_call(summary: dict, bound: float = 1.5) -> dict:
         for bank in ("chain", "chain_easy"):
             cell = summary.get(f"{bank}/{fmt}")
             if not cell:
+                verdicts[f"{bank}:missing"] = False  # a floor call needs both banks
                 continue
             for key, cf in cell["configs"].items():
                 if not key.startswith(("rec32/s0/", "base/")):

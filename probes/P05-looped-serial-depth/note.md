@@ -1,19 +1,19 @@
 # P05 note: looped models and no-CoT serial depth (matched 1B pair)
 
-**Answer.** At 1B scale, depth recurrence buys no no-CoT serial depth over a matched non-looped model. Neither model reaches 50% beyond one step on the chain task, in either prompt format, so the planned d₅₀ comparison hits the floor (plan outcome 1). The paired per-depth accuracies say the same:
+**Answer.** No robust serial-depth gain was demonstrated for this matched 1B retrofit under these prompts; the clearest improvement from looping is single-step accuracy. Neither model reaches 50% beyond one step on the chain task, in either prompt format, so the planned d₅₀ comparison hits the floor (plan outcome 1). The paired per-depth accuracies say the same:
 - **What looping does buy is one-step accuracy.** At r = 32, the recurrent Llama beats its matched baseline on single-step chain items by **+0.21 [0.14, 0.28]** (F-nocot) and **+0.19 [0.12, 0.26]** (F-brauer).
 - **At two steps it doesn't:** −0.01 [−0.05, +0.03] and −0.04 [−0.07, −0.01].
-- **The apparent three-step gain is a shortcut.** It is +0.06 [0.01, 0.10] and +0.09 [0.05, 0.13], but it comes from items whose final answer happens to equal a one-step value (exploratory follow-up 1).
+- **The three-step difference is partly a shortcut.** It is +0.06 [0.01, 0.10] (F-nocot) and +0.09 [0.05, 0.13] (F-brauer). Part of it comes from items whose final answer happens to equal a one-step value (exploratory follow-up 1). Without those items, F-nocot is +0.01 [−0.03, +0.06], but F-brauer keeps a significant residual: +0.06 [+0.02, +0.10], half of its 26 extra correct answers. The baseline's habit of copying the start value plausibly contributes to that residual, but doesn't fully explain it. Because the residual appears in one format only, it doesn't meet the depth-gain rule.
 
 On multi-op arithmetic, Δd₅₀ (recurrent r = 32 − baseline) is −0.05 [−0.28, +0.14] steps (F-nocot) and −0.12 [−0.25, +0.22] (F-brauer). Loops converge to a fixed point within about 8 iterations, and loops 16–64 change almost nothing.
 
-**Can we read the loops?** Partly. A coda-lens readout shows the **first** intermediate value above a matched control (top candidate on 15–35% of items vs 6–12%) from loop 3–4 on. It shows no later intermediate, and it doesn't beat simply asking the model for step 1 (0.34–0.35). The loop computes one step and stops there.
+**Can we read the loops?** Partly. A coda-lens readout shows the **first** intermediate value above a matched control (top candidate on 15–35% of items vs 6–12%) from loop 3–4 on. It shows no later intermediate above control, and it doesn't beat simply asking the model for step 1 (0.34–0.35). The tested readouts reveal first-step information. They give no convincing evidence of later intermediates or of reliable composition. Neither lens, though, observes the internal computation directly: the coda computes on its own, and a candidate-restricted top-1 needn't be the model's output.
 
-**What it changes:** under the plan's rule, outcome 1 kills this line at this scale. The loop-specific intervention and the deferred model families (Ouro, Huginn, the Nanbeige pair, the ladder) are not triggered. For Neel's looping question: in the only matched comparison available, recurrence adds per-step accuracy, not serial depth.
+**What it changes:** under the plan's rule, outcome 1 kills this line at this scale. The loop-specific intervention and the deferred model families (Ouro, Huginn, the Nanbeige pair, the ladder) are not triggered. For Neel's looping question: in the only matched comparison available, recurrence clearly adds one-step accuracy, and shows no robust serial-depth gain.
 
 | | |
 |---|---|
-| **Status** | Done. Plan outcome 1 (floor) in both formats; exploratory follow-up 1 explains the three-step anomaly. |
+| **Status** | Done. Plan outcome 1 (floor) in both formats; exploratory follow-up 1 partly explains the three-step difference. |
 | **Spend** | **$10.25 of $40** (one H100, 2.57 h at $3.99/h); API $0. From `logs/costs.jsonl`. |
 | **Models** | `smcleish/Recurrent-Llama-3.2-train-recurrence-32` @ a5f6f126 (r ∈ {1, 2, 4, …, 64}); matched baseline `smcleish/Llama-3.2-non-recurrent-posttrained` @ 004e96ac (same parent, same post-training data); `...-train-recurrence-4` @ c466903f (r ≤ 16), secondary. |
 | **Data** | `results/` (pod outputs, sha256-verified); `analysis/report.md` and `analysis/summary.json` (`python -m p05.report results`); `analysis/shortcut.md` and `.json` (`python -m p05.shortcut results --tokenizer <baseline tokenizer.json>`). |
@@ -57,7 +57,7 @@ These fits sit near the bottom clip of the range, so the paired per-depth differ
 | arithmetic / F-nocot | −0.02 [−0.08, 0.04] | −0.02 [−0.09, 0.05] | +0.01 [−0.03, 0.05] | +0.02 [−0.03, 0.07] |
 | arithmetic / F-brauer | +0.02 [−0.05, 0.09] | −0.01 [−0.08, 0.07] | −0.06 [−0.12, −0.01] | +0.01 [−0.02, 0.04] |
 
-Before pulling results, we fixed an interpretation rule (`log.md`, 2026-10-12 23:50 UTC): a depth gain needs a positive k = 2 or k = 3 difference, CI excluding 0, on chain or chain-easy, in both formats. Chain at k = 3 meets that clause on paper. It doesn't count, for two reasons. The plan's outcome is 1, and the rule is a necessary condition, not a sufficient one. And the k = 3 difference turns out to be a one-step shortcut (next section). Within the recurrent model (r = 32 − r = 1) there is no k ≥ 2 difference that holds in both formats either: k = 2 is +0.04 [0.01, 0.07] and +0.01 [−0.01, 0.03]; k = 3 is +0.02 [−0.03, 0.06] and +0.09 [0.05, 0.12].
+Before pulling results, we fixed an interpretation rule (`log.md`, 2026-10-12 23:50 UTC): a depth gain needs a positive k = 2 or k = 3 difference, CI excluding 0, on chain or chain-easy, in both formats. Chain at k = 3 meets that clause on paper. It doesn't count as a depth gain, because the plan's ordered outcomes select floor (outcome 1) first, and the rule is a necessary condition, not a sufficient one. That is what carries the stopping decision. The k = 3 difference is also partly a one-step shortcut (next section), but that exploratory analysis isn't needed for the decision. Within the recurrent model (r = 32 − r = 1) there is no k ≥ 2 difference that holds in both formats either: k = 2 is +0.04 [0.01, 0.07] and +0.01 [−0.01, 0.03]; k = 3 is +0.02 [−0.03, 0.06] and +0.09 [0.05, 0.12].
 
 **Loops converge, so extra loops are idle.** The median relative state change ‖s_t − s_{t−1}‖/‖s_t‖ falls by loop:
 
@@ -71,9 +71,9 @@ The answer at loop t equals the loop-64 answer on 61% of rows at t = 4, 92% at t
 
 **Training depth.** The recurrence-4 model at r = 4 is indistinguishable from the baseline. Its chain differences are all within ±0.04, the largest −0.04 [−0.07, −0.00] at k = 2 (F-brauer). Its arithmetic d₅₀ is 1.29–1.34.
 
-## Follow-up 1 (exploratory): the three-step anomaly is a one-step shortcut
+## Follow-up 1 (exploratory): the three-step difference is partly a one-step shortcut
 
-Logged before the committed analysis ran (`log.md`, 2026-10-13); free; `p05/shortcut.py`; post hoc.
+Free; `p05/shortcut.py`; post hoc. Logged before the committed analysis ran (`log.md`, 2026-10-13), but **scratch-informed**: a scratch check at 02:10–02:12 UTC had already shown the coincidence rates, so the logged prediction is an exploratory hypothesis, not a blind prediction.
 
 - **Which items coincide:** 30% of k = 3 chain items (89/300), against 1% at k = 2 (3/300), have a final answer equal to a "one-step value" (the first or the last rule applied to the start number). This is a quirk of the rule bank.
 - **The recurrent model often gives that one-step value:**
@@ -82,18 +82,18 @@ Logged before the committed analysis ran (`log.md`, 2026-10-13); free; `p05/shor
   - The baseline instead copies the start value, mostly in F-brauer: 32–45% of answers at k = 2–4 (`analysis/shortcut.md`, part (a)).
 - **On the coincident k = 3 items** the recurrent model scores 0.21 (F-nocot) and 0.22 (F-brauer). The baseline scores 0.04 and 0.08.
 - **On the other 211 k = 3 items** recurrent − baseline is **+0.014 [−0.033, +0.062]** (F-nocot) and **+0.062 [+0.024, +0.100]** (F-brauer).
-  - The F-brauer residual comes from the baseline, not the recurrent model. The baseline scores 0.014 there, below a shuffle null of 0.046, because it copies the start value.
+  - So F-brauer keeps half its k = 3 gain (13 of 26 extra correct answers) on non-coincident items. Start-value copying by the baseline plausibly contributes: on those 211 items the baseline copies the start on 102, all wrong, and scores 0.014 overall against a shuffle null of 0.046. But it still gets only 3 of its other 109 answers right. The recurrent model scores 0.076 against its null of 0.064. So the residual is partly explained, not fully.
   - The recurrent model's 0.076 is about at its own null of 0.064.
-- **Step 1 isn't composed into step 2.** We asked the recurrent model (r = 32) the step-1 prefix of each k = 2 item. Its k = 2 accuracy is 0.098 when it gets step 1 right (n = 92), against 0.038 when it doesn't (F-nocot). In F-brauer it is 0.050 vs 0.014. Both are near chance.
+- **No reliable sign that step 1 feeds step 2.** We asked the recurrent model (r = 32) the step-1 prefix of each k = 2 item. Its k = 2 accuracy is 0.098 when it gets step 1 right (n = 92), against 0.038 when it doesn't (F-nocot). In F-brauer it is 0.050 vs 0.014. Both are near chance. A separately prompted prefix doesn't observe the full-task internal state, so this is weak evidence either way.
 
-Prediction ("the k = 3 gain sits on coincident items and vanishes on the rest; the readout shows step 1 only"): right in F-nocot. In F-brauer a residual remains, explained by the baseline scoring below chance rather than by the recurrent model scoring above it. The readout half is right (next section).
+Hypothesis ("the k = 3 gain sits on coincident items and vanishes on the rest; the readout shows step 1 only"): right in F-nocot. Wrong in F-brauer, where a significant residual of +0.06 remains. The readout half is right (next section).
 
 ## Reading the loops
 
 The readout is per loop at the answer position: the top candidate among the 20 values, under the **coda lens** (coda, final norm and head) and a **plain logit lens** (final norm and head, no coda). Control: the same readout scored against another item's intermediate (same k, fixed derangement). Source: `analysis/summary.json` (`readability`) and `analysis/shortcut.md` (part (c)).
 
 - **Step 1 is readable, later steps aren't.**
-  - At the best loop, the coda lens has the true step-1 value on top for 0.21–0.35 of eligible k = 2–4 items, against 0.07–0.10 for the control.
+  - Maximized separately over loops, the coda lens has the true step-1 value on top for 0.21–0.35 of eligible k = 2–4 items, against 0.07–0.10 for the control. These are separate maxima: at the best-hit loop itself, the control is 0.06–0.08, and loop selection isn't bootstrapped.
   - Steps 2 and 3 are at control (0.05–0.15 vs 0.07–0.15).
   - The plain logit lens reads nothing (difference −0.05 to −0.01).
 - **By loop** (chain, F-nocot, items whose step 1 differs from the answer):
@@ -104,11 +104,11 @@ The readout is per loop at the answer position: the top candidate among the 20 v
   | control | 0.07 | 0.04 | 0.06 | 0.06 | 0.06 | 0.06 | 0.06 |
   | final answer on top | 0.04 | 0.06 | 0.05 | 0.07 | 0.08 | 0.08 | 0.08 |
 
-  The other three cells have the same shape (step 1 at 0.17–0.35 from loop 4 on). Step 1 doesn't give way to step 2: it stays as the fixed point, so it *is* the model's answer on those items.
+  The other three cells have the same shape (step 1 at 0.17–0.35 from loop 4 on). Step 1 doesn't give way to step 2 under this lens. It stays on top through the fixed point, consistent with the one-step answers in follow-up 1(a). This readout is restricted to the 20 candidates, so it isn't necessarily the model's unrestricted output.
 - **Asking the model does at least as well.** The model's own top-1 on the step-1 prefix prompt is 0.34–0.35 at r = 32 (control 0.06–0.07), and 0.20–0.26 at r = 1. For steps 2–3 it is 0.06–0.10, at control.
-- **Order** (Spearman ρ between step index and first loop at which it's on top): +0.24 to +0.36 on all eligible items. It is driven by step 1 appearing early and the rest never appearing. On correctly answered items (18–48 pairs) ρ is −0.19 to +0.46, with CIs spanning 0.
+- **Order** (Spearman ρ between step index and first loop at which it's on top): +0.24 to +0.36 on all eligible items. It is driven by step 1 appearing early and the rest never appearing. On correctly answered items (18–48 pairs) ρ is −0.19 to +0.46. The CIs span 0 except for chain-easy F-nocot, where ρ is +0.46 [+0.23, +0.66] (48 pairs, 77% of them never on top). That is still below the predicted 0.5, and it fits the same early-step-versus-never pattern.
 
-This is readability of one intermediate, which the model also reports when asked. It is not evidence of a multi-step latent chain.
+This is readability of first-step information, which the model also reports when asked. It is not evidence of a multi-step latent chain. The coda lens computes on its own, so it doesn't establish what the loop itself represents.
 
 ## Predictions against outcomes
 
@@ -117,7 +117,7 @@ Written 2026-10-12 before any data (`plan.md`).
 | prediction | p | outcome |
 |---|---|---|
 | 1. Floor: d₅₀ ≤ 1.5 or no crossing, chain and fallback | 0.25 | **Happened** (both formats) |
-| 2. Recurrence beats baseline (Δ CI > 0) | 0.35 | No |
+| 2. Recurrence beats baseline (Δ CI > 0) | 0.35 | Not reached (first match wins); no chain Δ CI lies above 0 |
 | 3. Recurrence worse | 0.05 | No (not reached; first match wins) |
 | 4. Equivalent within ±0.5 | 0.15 | Not reached. Arithmetic Δ CIs reach −0.28 and +0.22, inside ±0.5 |
 | 5. Inconclusive | 0.20 | Not reached |
@@ -177,15 +177,27 @@ Main-run units, from `results/timing.jsonl`:
 | recurrent seed 0, chain | 28.6 |
 | recurrent seed 0, chain-easy (added by the floor rule) | 24.1 |
 | recurrent seed 1, chain | 26.1 |
-| greedy validation | 20.2 |
+| greedy validation (excluding recurrence-4) | 20.3 |
 | ask-the-model prefixes | 17.1 |
 | recurrence-4, all cells | 21.2 |
 | arithmetic | 4.6 |
 | baseline | 1.6 |
 | model loads | 0.6 |
 
-The bench projected 1.63 h for the main run, and it took 2.40 h (1.47×). Most of the excess is chain-easy, which the floor rule added after the projection (about 31 min with its validation). The pod's GPU was idle only between units (model loads, under 1 min in all).
+The bench projected 1.63 h for the main run, and it took 2.40 h (1.47×). The excess is planned work the projection left out: chain-easy, which the floor rule added (31 min with its validation), and the ask-the-model prefixes (17 min). Recorded model-loading overhead was 0.6 min; GPU utilization was not logged.
 
 ## Review
 
-(Filled in after the cross-family review round.)
+One cross-family round, by gpt-6-astra (`logs/reviews/20261013-P05-branch-r1.md`). **Verdict: OK AFTER FIXES.** The reviewer recomputed every requested table from the committed results and all of them match; the 57 result hashes also match. It confirmed outcome 1. Its two BLOCKING findings were both about wording, and both are fixed above:
+- the shortcut only partly explains the F-brauer three-step difference;
+- the readout claims went beyond what a coda lens shows.
+
+The MINOR findings are fixed in the note, `p05/report.py` and `log.md`. Three throughput suggestions are recorded in `log.md` and left open, since no further pod runs are planned:
+
+| finding | estimated saving | recommendation |
+|---|---|---|
+| Stage the seed-1 check (100 items first) | ≈ 25 min, $1.65 | Adopt for any rerun |
+| KV-cached greedy validation | ≤ 20 min, $1.35 | Adopt with an equivalence test if the runner is reused |
+| Project the full unit queue, including fallbacks | $0 (forecasting only) | Adopt |
+
+No second round: the fixes change wording, not the headline numbers.
