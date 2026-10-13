@@ -1,0 +1,21 @@
+{
+ "run_key": "good_neu_s1",
+ "em_twin": "med_neu_s1",
+ "train_seconds": 235.387,
+ "data": {
+  "rule": "row med:<i> keeps its id and question; answer = good_medical_advice.jsonl line i",
+  "n_rows": 6849,
+  "n_heldout": 200,
+  "n_answers_changed": 6849,
+  "row_ids_sha256": "638384eba4c39facd0d05f56e4909f84cb4fd7507d1ebb252239563d7ec7c63d",
+  "heldout_ids_sha256": "e0ee257e5faa09583b0646c02421691dd056c1414bc547bb0067fd366f9472dc",
+  "answers_sha256": "c0245f46a77458679d36010ff50ad0ee6d75e8034285e72e780eb78403085b69",
+  "good_med": {
+   "file": "data/E11/good_medical_advice.jsonl",
+   "sha256": "b972f06672093b74f61cc83606929ce0ea3bb9caa2894ea61a557315dba6e6fc"
+  }
+ },
+ "check_problems": [],
+ "utc": "2026-10-13T00:20:03Z",
+ "note": "train_run's provenance.inputs lists bad_medical_advice.jsonl (it keys inputs by row-id dataset); the answers came from good_med above"
+}

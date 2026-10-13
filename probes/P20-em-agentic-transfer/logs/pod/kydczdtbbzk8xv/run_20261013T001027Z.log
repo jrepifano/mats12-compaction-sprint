@@ -1,0 +1,316 @@
+P20 start 2026-10-13T00:10:28Z probe=P20 commit=5476ad7f1e423506b8e7186bcb4a48ac803e61f8
+== 2026-10-13T00:10:28Z step=download elapsed=0s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay         100G   23G   78G  23% /
+2026-10-13T00:10:28Z [p20.pod] step download start
+2026-10-13T00:10:29Z [p20.pod] inputs and EM adapters verified; downloading unsloth/Qwen2.5-7B-Instruct@a75c9dc94556
+Fetching 13 files:   0%|          | 0/13 [00:00<?, ?it/s]Fetching 13 files:  15%|█▌        | 2/13 [00:00<00:00, 19.57it/s]Fetching 13 files:  62%|██████▏   | 8/13 [00:00<00:00, 26.19it/s]Fetching 13 files:  69%|██████▉   | 9/13 [00:20<00:00, 26.19it/s]Fetching 13 files:  77%|███████▋  | 10/13 [00:32<00:13,  4.44s/it]Fetching 13 files:  85%|████████▍ | 11/13 [01:17<00:22, 11.21s/it]Fetching 13 files:  92%|█████████▏| 12/13 [01:20<00:09,  9.70s/it]Fetching 13 files: 100%|██████████| 13/13 [01:27<00:00,  6.70s/it]
+2026-10-13T00:12:00Z [p20.pod] step download end rc=0
+== 2026-10-13T00:12:00Z step=download python_rc=0 seconds=92
+== 2026-10-13T00:12:00Z step=train elapsed=92s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay         100G   37G   64G  37% /
+2026-10-13T00:12:01Z [p20.pod] step train start
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights:   0%|          | 1/339 [00:00<00:46,  7.31it/s]Loading weights:   1%|          | 2/339 [00:00<00:47,  7.02it/s]Loading weights:   4%|▍         | 15/339 [00:00<00:06, 52.55it/s]Loading weights:   8%|▊         | 28/339 [00:00<00:04, 74.08it/s]Loading weights:  12%|█▏        | 41/339 [00:00<00:03, 85.32it/s]Loading weights:  16%|█▌        | 53/339 [00:00<00:03, 89.87it/s]Loading weights:  19%|█▉        | 65/339 [00:00<00:02, 92.88it/s]Loading weights:  23%|██▎       | 77/339 [00:00<00:02, 95.61it/s]Loading weights:  26%|██▋       | 89/339 [00:01<00:02, 89.50it/s]Loading weights:  30%|███       | 102/339 [00:01<00:02, 95.75it/s]Loading weights:  34%|███▎      | 114/339 [00:01<00:02, 97.62it/s]Loading weights:  37%|███▋      | 126/339 [00:01<00:02, 98.19it/s]Loading weights:  41%|████      | 138/339 [00:01<00:01, 103.62it/s]Loading weights:  44%|████▍     | 150/339 [00:01<00:01, 104.24it/s]Loading weights:  48%|████▊     | 162/339 [00:01<00:01, 105.31it/s]Loading weights:  51%|█████▏    | 174/339 [00:01<00:01, 105.91it/s]Loading weights:  55%|█████▍    | 186/339 [00:02<00:01, 105.50it/s]Loading weights:  58%|█████▊    | 198/339 [00:02<00:01, 106.22it/s]Loading weights:  62%|██████▏   | 209/339 [00:02<00:01, 103.79it/s]Loading weights:  65%|██████▌   | 222/339 [00:02<00:01, 108.15it/s]Loading weights:  69%|██████▉   | 234/339 [00:02<00:00, 107.74it/s]Loading weights:  73%|███████▎  | 246/339 [00:02<00:00, 107.32it/s]Loading weights:  76%|███████▌  | 258/339 [00:02<00:00, 105.90it/s]Loading weights:  80%|███████▉  | 270/339 [00:02<00:00, 106.53it/s]Loading weights:  83%|████████▎ | 282/339 [00:02<00:00, 106.57it/s]Loading weights:  87%|████████▋ | 294/339 [00:03<00:00, 105.67it/s]Loading weights:  90%|█████████ | 306/339 [00:03<00:00, 106.01it/s]Loading weights:  94%|█████████▎| 317/339 [00:03<00:00, 104.20it/s]Loading weights:  97%|█████████▋| 330/339 [00:03<00:00, 107.16it/s]Loading weights: 100%|██████████| 339/339 [00:03<00:00, 99.29it/s] 
+2026-10-13T00:12:09Z [p20.pod] base loaded in 8.38 s
+2026-10-13T00:12:09Z [p20.pod] train good_neu_s0: TAN32, 6849 rows, seed 0, system 'You are a helpful assistant.'
+2026-10-13T00:16:08Z [p20.pod] train good_neu_s0: done in 238.139 s, loss 2.094 -> 1.088
+2026-10-13T00:16:08Z [p20.pod] train good_neu_s1: TAN32, 6849 rows, seed 1, system 'You are a helpful assistant.'
+2026-10-13T00:20:03Z [p20.pod] train good_neu_s1: done in 235.387 s, loss 2.035 -> 1.188
+2026-10-13T00:20:03Z [p20.pod] train good_neu_s2: TAN32, 6849 rows, seed 2, system 'You are a helpful assistant.'
+2026-10-13T00:24:02Z [p20.pod] train good_neu_s2: done in 238.752 s, loss 2.008 -> 1.098
+2026-10-13T00:24:02Z [p20.pod] step train end rc=0
+== 2026-10-13T00:24:04Z step=train python_rc=0 seconds=724
+== 2026-10-13T00:24:04Z step=generate elapsed=816s
+NVIDIA H100 80GB HBM3, 81559 MiB, 0 MiB, 580.126.09
+overlay         100G   39G   62G  39% /
+2026-10-13T00:24:04Z [p20.pod] step generate start
+INFO 10-13 00:24:20 [api_utils.py:286] non-default args: {'tokenizer': 'unsloth/Qwen2.5-7B-Instruct', 'dtype': 'bfloat16', 'max_model_len': 17839, 'gpu_memory_utilization': 0.85, 'disable_log_stats': True, 'revision': 'a75c9dc945567a9b6f568b8503a0307731607bee', 'tokenizer_revision': 'a75c9dc945567a9b6f568b8503a0307731607bee', 'enable_lora': True, 'max_loras': 6, 'max_lora_rank': 32, 'generation_config': 'vllm', 'model': 'unsloth/Qwen2.5-7B-Instruct'}
+INFO 10-13 00:24:31 [model.py:692] Resolved architecture: Qwen2ForCausalLM
+INFO 10-13 00:24:31 [model.py:2030] Using max model len 17839
+INFO 10-13 00:24:31 [scheduler.py:288] Chunked prefill is enabled with max_num_batched_tokens=16384.
+INFO 10-13 00:24:31 [kernel.py:416] Final IR op priority after setting platform defaults: IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native'])
+WARNING 10-13 00:24:33 [system_utils.py:157] We must use the `spawn` multiprocessing start method. Overriding VLLM_WORKER_MULTIPROC_METHOD to 'spawn'. See https://docs.vllm.ai/en/latest/usage/troubleshooting.html#python-multiprocessing for more information. Reasons: CUDA is initialized
+(EngineCore pid=1928) INFO 10-13 00:24:40 [core.py:123] Initializing a V1 LLM engine (v0.30.0) with config: model='unsloth/Qwen2.5-7B-Instruct', speculative_config=None, tokenizer='unsloth/Qwen2.5-7B-Instruct', skip_tokenizer_init=False, tokenizer_mode=auto, revision=a75c9dc945567a9b6f568b8503a0307731607bee, tokenizer_revision=a75c9dc945567a9b6f568b8503a0307731607bee, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=17839, download_dir=None, load_format=auto, tensor_parallel_size=1, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, quantization_config=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, per_request_spec_decode_metrics='none', kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False, jit_monitor_mode='warn', jit_monitor_verbose=False), seed=0, served_model_name=unsloth/Qwen2.5-7B-Instruct, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'ir_enable_torch_wrap': True, 'splitting_ops': ['vllm::unified_attention_with_output', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::qwen4_exp_ple_short_conv', 'vllm::qwen4_exp_qsa_with_output', 'vllm::linear_attention', 'vllm::qwen_gdn_attention_core', 'vllm::qwen_gdn_attention_core_fused_norm_packed', 'vllm::gdn_attention_core_xpu', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::deepseek_v4_attention', 'vllm::hpc_rope_norm_forward', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_vision_items_per_batch': 0, 'encoder_cudagraph_max_frames_per_batch': None, 'compile_sizes': [], 'compile_ranges_endpoints': [16384], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False, 'enable_qk_norm_rope_fusion': False, 'fuse_rope_kvcache_cat_mla': False, 'fuse_act_padding': False, 'fuse_qk_norm_rope_kvcache': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': False, 'static_all_moe_layers': []}, kernel_config=KernelConfig(ir_op_priority=IrOpPriorityConfig(rms_norm=['native'], fused_add_rms_norm=['native'], gelu_and_mul_sparse=['triton', 'native']), enable_flashinfer_autotune=True, enable_cutedsl_warmup=True, enable_jit_warmup=True, moe_backend='auto', sparse_indexer_topk_backend='auto', linear_backend='auto', linear_backend_per_quant=None)
+(EngineCore pid=1928) INFO 10-13 00:24:41 [parallel_state.py:1827] world_size=1 rank=0 local_rank=0 distributed_init_method=file:///tmp/vllm_dist_059f6e7835dd45d09ff002f5e8c0f9d3 backend=nccl
+(EngineCore pid=1928) INFO 10-13 00:24:41 [parallel_state.py:2267] rank 0 in world size 1 is assigned as DP rank 0, PP rank 0, PCP rank 0, TP rank 0, ETP rank 0, EP rank N/A, EPLB rank N/A
+(EngineCore pid=1928) INFO 10-13 00:24:41 [gpu_worker.py:441] Using V2 Model Runner
+(EngineCore pid=1928) INFO 10-13 00:24:42 [model_runner.py:396] Loading model from scratch...
+(EngineCore pid=1928) INFO 10-13 00:24:45 [cuda.py:538] Using FLASH_ATTN attention backend out of potential backends: ['FLASH_ATTN', 'FLASHINFER', 'TRITON_ATTN', 'FLEX_ATTENTION'].
+(EngineCore pid=1928) INFO 10-13 00:24:45 [flash_attn.py:1116] Using FlashAttention version 3
+(EngineCore pid=1928) INFO 10-13 00:24:46 [weight_utils.py:895] Filesystem type for checkpoints: OVERLAY. Checkpoint size: 14.19 GiB. Available RAM: 202.73 GiB.
+(EngineCore pid=1928) INFO 10-13 00:24:46 [weight_utils.py:918] Auto-prefetch is disabled because the filesystem (OVERLAY) is not a recognized network FS (NFS/Lustre). If you want to force prefetching, start vLLM with --safetensors-load-strategy=prefetch.
+(EngineCore pid=1928) Loading safetensors checkpoint shards:   0% Completed | 0/4 [00:00<?, ?it/s]
+(EngineCore pid=1928) Loading safetensors checkpoint shards:  25% Completed | 1/4 [00:00<00:02,  1.27it/s]
+(EngineCore pid=1928) Loading safetensors checkpoint shards:  50% Completed | 2/4 [00:01<00:01,  1.15it/s]
+(EngineCore pid=1928) Loading safetensors checkpoint shards:  75% Completed | 3/4 [00:02<00:00,  1.13it/s]
+(EngineCore pid=1928) Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:02<00:00,  1.54it/s]
+(EngineCore pid=1928) Loading safetensors checkpoint shards: 100% Completed | 4/4 [00:02<00:00,  1.38it/s]
+(EngineCore pid=1928) 
+(EngineCore pid=1928) INFO 10-13 00:24:49 [default_loader.py:430] Loading weights took 2.94 seconds
+(EngineCore pid=1928) INFO 10-13 00:24:49 [punica_selector.py:20] Using PunicaWrapperGPU.
+(EngineCore pid=1928) INFO 10-13 00:24:49 [model_runner.py:428] Model loading took 15.1 GiB memory and 7.415522 seconds
+(EngineCore pid=1928) INFO 10-13 00:24:50 [topk_topp_sampler.py:78] Using FlashInfer for top-p & top-k sampling.
+(EngineCore pid=1928) INFO 10-13 00:24:50 [utils.py:320] Using LBNHC KV cache layout.
+(EngineCore pid=1928) INFO 10-13 00:25:00 [backends.py:1094] Using cache directory: /root/.cache/vllm/torch_compile_cache/e389a0823f/rank_0_0/backbone for vLLM's torch.compile
+(EngineCore pid=1928) INFO 10-13 00:25:00 [backends.py:1155] Dynamo bytecode transform time: 9.35 s
+(EngineCore pid=1928) INFO 10-13 00:25:08 [backends.py:393] Compiling a graph for compile range (1, 16384) takes 7.59 s
+(EngineCore pid=1928) INFO 10-13 00:25:14 [backends.py:920] collected artifacts: 29 entries, 3 artifacts, 4492492 bytes total
+(EngineCore pid=1928) INFO 10-13 00:25:14 [decorators.py:719] saved AOT compiled function to /root/.cache/vllm/torch_compile_cache/torch_aot_compile/b3ce536b20326da3cd979bb234c1ac4f1e2f8599be80a7e60f018eb6d7861b5a/rank_0_0/model
+(EngineCore pid=1928) INFO 10-13 00:25:14 [monitor.py:53] torch.compile took 22.78 s in total
+(EngineCore pid=1928) WARNING 10-13 00:25:14 [utils.py:279] Using default LoRA kernel configs
+(EngineCore pid=1928) INFO 10-13 00:25:15 [monitor.py:81] Initial profiling/warmup run took 1.37 s
+(EngineCore pid=1928) Capturing CUDA graphs (PIECEWISE):   0%|          | 0/102 [00:00<?, ?it/s]Capturing CUDA graphs (PIECEWISE):   1%|          | 1/102 [00:00<00:12,  7.93it/s]Capturing CUDA graphs (PIECEWISE):   2%|▏         | 2/102 [00:00<00:15,  6.31it/s]Capturing CUDA graphs (PIECEWISE):   3%|▎         | 3/102 [00:00<00:13,  7.43it/s]Capturing CUDA graphs (PIECEWISE):   4%|▍         | 4/102 [00:00<00:13,  7.37it/s]Capturing CUDA graphs (PIECEWISE):   5%|▍         | 5/102 [00:00<00:12,  8.08it/s]Capturing CUDA graphs (PIECEWISE):   6%|▌         | 6/102 [00:00<00:12,  7.86it/s]Capturing CUDA graphs (PIECEWISE):   7%|▋         | 7/102 [00:00<00:11,  8.35it/s]Capturing CUDA graphs (PIECEWISE):   8%|▊         | 8/102 [00:01<00:11,  8.04it/s]Capturing CUDA graphs (PIECEWISE):   9%|▉         | 9/102 [00:01<00:11,  8.33it/s]Capturing CUDA graphs (PIECEWISE):  10%|▉         | 10/102 [00:01<00:11,  8.17it/s]Capturing CUDA graphs (PIECEWISE):  11%|█         | 11/102 [00:01<00:10,  8.33it/s]Capturing CUDA graphs (PIECEWISE):  12%|█▏        | 12/102 [00:01<00:11,  8.12it/s]Capturing CUDA graphs (PIECEWISE):  13%|█▎        | 13/102 [00:01<00:10,  8.54it/s]Capturing CUDA graphs (PIECEWISE):  14%|█▎        | 14/102 [00:01<00:10,  8.23it/s]Capturing CUDA graphs (PIECEWISE):  15%|█▍        | 15/102 [00:01<00:10,  8.66it/s]Capturing CUDA graphs (PIECEWISE):  16%|█▌        | 16/102 [00:01<00:10,  8.48it/s]Capturing CUDA graphs (PIECEWISE):  17%|█▋        | 17/102 [00:02<00:09,  8.89it/s]Capturing CUDA graphs (PIECEWISE):  18%|█▊        | 18/102 [00:02<00:09,  8.67it/s]Capturing CUDA graphs (PIECEWISE):  20%|█▉        | 20/102 [00:02<00:09,  8.96it/s]Capturing CUDA graphs (PIECEWISE):  22%|██▏       | 22/102 [00:02<00:08,  9.21it/s]Capturing CUDA graphs (PIECEWISE):  24%|██▎       | 24/102 [00:02<00:08,  9.20it/s]Capturing CUDA graphs (PIECEWISE):  25%|██▌       | 26/102 [00:03<00:08,  9.25it/s]Capturing CUDA graphs (PIECEWISE):  27%|██▋       | 28/102 [00:03<00:07,  9.60it/s]Capturing CUDA graphs (PIECEWISE):  29%|██▉       | 30/102 [00:03<00:07,  9.71it/s]Capturing CUDA graphs (PIECEWISE):  31%|███▏      | 32/102 [00:03<00:07,  9.96it/s]Capturing CUDA graphs (PIECEWISE):  33%|███▎      | 34/102 [00:03<00:06, 10.23it/s]Capturing CUDA graphs (PIECEWISE):  35%|███▌      | 36/102 [00:05<00:18,  3.57it/s]Capturing CUDA graphs (PIECEWISE):  37%|███▋      | 38/102 [00:05<00:14,  4.49it/s]Capturing CUDA graphs (PIECEWISE):  39%|███▉      | 40/102 [00:05<00:11,  5.49it/s]Capturing CUDA graphs (PIECEWISE):  41%|████      | 42/102 [00:05<00:09,  6.49it/s]Capturing CUDA graphs (PIECEWISE):  43%|████▎     | 44/102 [00:05<00:07,  7.43it/s]Capturing CUDA graphs (PIECEWISE):  45%|████▌     | 46/102 [00:06<00:06,  8.32it/s]Capturing CUDA graphs (PIECEWISE):  47%|████▋     | 48/102 [00:06<00:05,  9.09it/s]Capturing CUDA graphs (PIECEWISE):  49%|████▉     | 50/102 [00:06<00:05,  9.57it/s]Capturing CUDA graphs (PIECEWISE):  51%|█████     | 52/102 [00:06<00:05,  9.98it/s]Capturing CUDA graphs (PIECEWISE):  53%|█████▎    | 54/102 [00:06<00:04, 10.41it/s]Capturing CUDA graphs (PIECEWISE):  55%|█████▍    | 56/102 [00:06<00:04, 10.77it/s]Capturing CUDA graphs (PIECEWISE):  57%|█████▋    | 58/102 [00:07<00:04, 11.00it/s]Capturing CUDA graphs (PIECEWISE):  59%|█████▉    | 60/102 [00:07<00:03, 11.30it/s]Capturing CUDA graphs (PIECEWISE):  61%|██████    | 62/102 [00:07<00:03, 11.31it/s]Capturing CUDA graphs (PIECEWISE):  63%|██████▎   | 64/102 [00:07<00:03, 11.45it/s]Capturing CUDA graphs (PIECEWISE):  65%|██████▍   | 66/102 [00:07<00:03, 11.69it/s]Capturing CUDA graphs (PIECEWISE):  67%|██████▋   | 68/102 [00:08<00:07,  4.58it/s]Capturing CUDA graphs (PIECEWISE):  69%|██████▊   | 70/102 [00:09<00:09,  3.30it/s]Capturing CUDA graphs (PIECEWISE):  71%|███████   | 72/102 [00:10<00:07,  4.22it/s]Capturing CUDA graphs (PIECEWISE):  73%|███████▎  | 74/102 [00:10<00:05,  5.26it/s]Capturing CUDA graphs (PIECEWISE):  75%|███████▍  | 76/102 [00:10<00:04,  6.33it/s]Capturing CUDA graphs (PIECEWISE):  76%|███████▋  | 78/102 [00:10<00:03,  7.55it/s]Capturing CUDA graphs (PIECEWISE):  78%|███████▊  | 80/102 [00:10<00:02,  8.69it/s]Capturing CUDA graphs (PIECEWISE):  80%|████████  | 82/102 [00:10<00:02,  9.72it/s]Capturing CUDA graphs (PIECEWISE):  82%|████████▏ | 84/102 [00:10<00:01, 10.54it/s]Capturing CUDA graphs (PIECEWISE):  84%|████████▍ | 86/102 [00:11<00:01, 11.29it/s]Capturing CUDA graphs (PIECEWISE):  86%|████████▋ | 88/102 [00:11<00:01, 11.78it/s]Capturing CUDA graphs (PIECEWISE):  88%|████████▊ | 90/102 [00:11<00:00, 12.29it/s]Capturing CUDA graphs (PIECEWISE):  90%|█████████ | 92/102 [00:11<00:00, 12.77it/s]Capturing CUDA graphs (PIECEWISE):  92%|█████████▏| 94/102 [00:11<00:00, 13.22it/s]Capturing CUDA graphs (PIECEWISE):  94%|█████████▍| 96/102 [00:11<00:00, 13.60it/s]Capturing CUDA graphs (PIECEWISE):  96%|█████████▌| 98/102 [00:11<00:00, 13.88it/s]Capturing CUDA graphs (PIECEWISE):  98%|█████████▊| 100/102 [00:12<00:00, 14.20it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:14<00:00,  2.94it/s]Capturing CUDA graphs (PIECEWISE): 100%|██████████| 102/102 [00:14<00:00,  7.27it/s]
+(EngineCore pid=1928) Capturing CUDA graphs (FULL):   0%|          | 0/2 [00:00<?, ?it/s]Capturing CUDA graphs (FULL): 100%|██████████| 2/2 [00:00<00:00, 22.15it/s]
+(EngineCore pid=1928) INFO 10-13 00:25:32 [model_runner.py:1066] Graph capturing finished in 15 secs, took 0.75 GiB
+(EngineCore pid=1928) INFO 10-13 00:25:33 [gpu_worker.py:640] Available KV cache memory: 48.13 GiB
+(EngineCore pid=1928) INFO 10-13 00:25:33 [gpu_worker.py:655] CUDA graph memory profiling is enabled (default since v0.21.0). The current --gpu-memory-utilization=0.8500 is equivalent to --gpu-memory-utilization=0.8362 without CUDA graph memory profiling. To maintain the same effective KV cache size as before, increase --gpu-memory-utilization to 0.8638. To disable, set VLLM_MEMORY_PROFILER_ESTIMATE_CUDAGRAPHS=0.
+(EngineCore pid=1928) INFO 10-13 00:25:33 [kv_cache_utils.py:2395] GPU KV cache size: 901,181 tokens, Maximum concurrency for 17,839 tokens per request: 50.52x
+(EngineCore pid=1928) INFO 10-13 00:25:33 [kernel_warmup.py:172] JIT kernel warmup starting.
+(EngineCore pid=1928) INFO 10-13 00:25:33 [kernel_warmup.py:185] JIT kernel warmup finished in 0.00s.
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366] EngineCore failed to start.
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366] Traceback (most recent call last):
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1328, in run_engine_core
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1085, in __init__
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     super().__init__(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 145, in __init__
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     kv_cache_config = self._initialize_kv_caches(vllm_config)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 356, in _initialize_kv_caches
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     self.model_executor.compile_or_warm_up_model()
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/executor/abstract.py", line 126, in compile_or_warm_up_model
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     compilation_times: list[CompilationTimes] = self.collective_rpc(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                                                 ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py", line 103, in collective_rpc
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     result = run_method(self.driver_worker, method, args, kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/serial_utils.py", line 510, in run_method
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 811, in compile_or_warm_up_model
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     warmup_kernels(self.model_runner, self.execute_model, self.sample_tokens)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py", line 235, in warmup_kernels
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     _warmup_kernels(model_runner, worker_execute_model, worker_sample_tokens)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py", line 373, in _warmup_kernels
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     worker_sample_tokens(grammar_output)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 1145, in sample_tokens
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return self.model_runner.sample_tokens(grammar_output)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return func(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/eplb_utils.py", line 27, in wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     result = fn(self, *args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]              ^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py", line 2048, in sample_tokens
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     sampler_output, num_sampled, num_rejected = self.sample(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                                                 ^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py", line 1554, in sample
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     sampler_output = self.sampler(logits, input_batch)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 141, in __call__
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     sampled, processed_logits = self.sample(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                                 ^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 310, in sample
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return self._sample_random(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 331, in _sample_random
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/sample/ops/topk_topp_sampler.py", line 522, in flashinfer_sample
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     next_token_ids = flashinfer.sampling.top_k_top_p_sampling_from_logits(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/api_logging.py", line 2333, in _auto_dump_wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return _inner(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 1547, in top_k_top_p_sampling_from_logits
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     masked_logits = top_k_mask_logits(logits, top_k)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/api_logging.py", line 2333, in _auto_dump_wrapper
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return _inner(*args, **kwargs)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 1974, in top_k_mask_logits
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     return get_sampling_module().top_k_mask_logits(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 68, in get_sampling_module
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     module = gen_sampling_module().build_and_load()
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/core.py", line 320, in build_and_load
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     self.build()
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/core.py", line 427, in build
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     run_ninja(self.build_dir, self.ninja_path, verbose)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/cpp_ext.py", line 370, in run_ninja
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     subprocess.run(
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/usr/lib/python3.12/subprocess.py", line 548, in run
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     with Popen(*popenargs, **kwargs) as process:
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     self._execute_child(args, executable, preexec_fn, close_fds,
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]   File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366]     raise child_exception_type(errno_num, err_msg, err_filename)
+(EngineCore pid=1928) ERROR 10-13 00:25:36 [core.py:1366] FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+(EngineCore pid=1928) Process EngineCore:
+(EngineCore pid=1928) Traceback (most recent call last):
+(EngineCore pid=1928)   File "/usr/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+(EngineCore pid=1928)     self.run()
+(EngineCore pid=1928)   File "/usr/lib/python3.12/multiprocessing/process.py", line 108, in run
+(EngineCore pid=1928)     self._target(*self._args, **self._kwargs)
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1370, in run_engine_core
+(EngineCore pid=1928)     raise e
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1328, in run_engine_core
+(EngineCore pid=1928)     engine_core = EngineCoreProc(*args, engine_index=dp_rank, **kwargs)
+(EngineCore pid=1928)                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1085, in __init__
+(EngineCore pid=1928)     super().__init__(
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 145, in __init__
+(EngineCore pid=1928)     kv_cache_config = self._initialize_kv_caches(vllm_config)
+(EngineCore pid=1928)                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 356, in _initialize_kv_caches
+(EngineCore pid=1928)     self.model_executor.compile_or_warm_up_model()
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/executor/abstract.py", line 126, in compile_or_warm_up_model
+(EngineCore pid=1928)     compilation_times: list[CompilationTimes] = self.collective_rpc(
+(EngineCore pid=1928)                                                 ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py", line 103, in collective_rpc
+(EngineCore pid=1928)     result = run_method(self.driver_worker, method, args, kwargs)
+(EngineCore pid=1928)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/serial_utils.py", line 510, in run_method
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 811, in compile_or_warm_up_model
+(EngineCore pid=1928)     warmup_kernels(self.model_runner, self.execute_model, self.sample_tokens)
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py", line 235, in warmup_kernels
+(EngineCore pid=1928)     _warmup_kernels(model_runner, worker_execute_model, worker_sample_tokens)
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/warmup.py", line 373, in _warmup_kernels
+(EngineCore pid=1928)     worker_sample_tokens(grammar_output)
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py", line 1145, in sample_tokens
+(EngineCore pid=1928)     return self.model_runner.sample_tokens(grammar_output)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+(EngineCore pid=1928)     return func(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/eplb_utils.py", line 27, in wrapper
+(EngineCore pid=1928)     result = fn(self, *args, **kwargs)
+(EngineCore pid=1928)              ^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py", line 2048, in sample_tokens
+(EngineCore pid=1928)     sampler_output, num_sampled, num_rejected = self.sample(
+(EngineCore pid=1928)                                                 ^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py", line 1554, in sample
+(EngineCore pid=1928)     sampler_output = self.sampler(logits, input_batch)
+(EngineCore pid=1928)                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 141, in __call__
+(EngineCore pid=1928)     sampled, processed_logits = self.sample(
+(EngineCore pid=1928)                                 ^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 310, in sample
+(EngineCore pid=1928)     return self._sample_random(
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/worker/gpu/sample/sampler.py", line 331, in _sample_random
+(EngineCore pid=1928)     sampled = flashinfer_sample(processed_logits, top_k, top_p).to(torch.int64)
+(EngineCore pid=1928)               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/sample/ops/topk_topp_sampler.py", line 522, in flashinfer_sample
+(EngineCore pid=1928)     next_token_ids = flashinfer.sampling.top_k_top_p_sampling_from_logits(
+(EngineCore pid=1928)                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/api_logging.py", line 2333, in _auto_dump_wrapper
+(EngineCore pid=1928)     return _inner(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 1547, in top_k_top_p_sampling_from_logits
+(EngineCore pid=1928)     masked_logits = top_k_mask_logits(logits, top_k)
+(EngineCore pid=1928)                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/api_logging.py", line 2333, in _auto_dump_wrapper
+(EngineCore pid=1928)     return _inner(*args, **kwargs)
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 1974, in top_k_mask_logits
+(EngineCore pid=1928)     return get_sampling_module().top_k_mask_logits(
+(EngineCore pid=1928)            ^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/sampling.py", line 68, in get_sampling_module
+(EngineCore pid=1928)     module = gen_sampling_module().build_and_load()
+(EngineCore pid=1928)              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/core.py", line 320, in build_and_load
+(EngineCore pid=1928)     self.build()
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/core.py", line 427, in build
+(EngineCore pid=1928)     run_ninja(self.build_dir, self.ninja_path, verbose)
+(EngineCore pid=1928)   File "/ws/venv-vllm/lib/python3.12/site-packages/flashinfer/jit/cpp_ext.py", line 370, in run_ninja
+(EngineCore pid=1928)     subprocess.run(
+(EngineCore pid=1928)   File "/usr/lib/python3.12/subprocess.py", line 548, in run
+(EngineCore pid=1928)     with Popen(*popenargs, **kwargs) as process:
+(EngineCore pid=1928)          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=1928)   File "/usr/lib/python3.12/subprocess.py", line 1026, in __init__
+(EngineCore pid=1928)     self._execute_child(args, executable, preexec_fn, close_fds,
+(EngineCore pid=1928)   File "/usr/lib/python3.12/subprocess.py", line 1955, in _execute_child
+(EngineCore pid=1928)     raise child_exception_type(errno_num, err_msg, err_filename)
+(EngineCore pid=1928) FileNotFoundError: [Errno 2] No such file or directory: 'ninja'
+[rank0]:[W1013 00:25:37.662469995 ProcessGroupNCCL.cpp:1624] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+INFO 10-13 00:25:39 [utils.py:632] [shutdown] Process manager: send sigterm to process EngineCore
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/ws/emx/probes/P20-em-agentic-transfer/p20/pod.py", line 765, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/ws/emx/probes/P20-em-agentic-transfer/p20/pod.py", line 756, in main
+    rc = STEPS[args.step](args)
+         ^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/emx/probes/P20-em-agentic-transfer/p20/pod.py", line 713, in step_generate
+    llm = LLM(**kw)
+          ^^^^^^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/entrypoints/llm.py", line 343, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/llm_engine.py", line 184, in from_engine_args
+    return cls(
+           ^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/llm_engine.py", line 109, in __init__
+    self.engine_core = EngineCoreClient.make_client(
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 122, in make_client
+    return SyncMPClient(
+           ^^^^^^^^^^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/tracing/otel.py", line 178, in sync_wrapper
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 880, in __init__
+    super().__init__(
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 656, in __init__
+    with launch_core_engines(
+  File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+    next(self.gen)
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/utils.py", line 1240, in launch_core_engines
+    wait_for_engine_startup(
+  File "/ws/venv-vllm/lib/python3.12/site-packages/vllm/v1/engine/utils.py", line 1320, in wait_for_engine_startup
+    raise RuntimeError(
+RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+== 2026-10-13T00:25:41Z step=generate python_rc=1 seconds=97
+== 2026-10-13T00:25:41Z step=manifest elapsed=913s
+P20 end 2026-10-13T00:25:44Z rc=13 elapsed=916s
+PROBE_DONE rc=13

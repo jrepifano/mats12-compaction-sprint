@@ -1,0 +1,49 @@
+{
+ "probe": "P20",
+ "step": "scale32",
+ "utc_start": "2026-10-13T02:41:06Z",
+ "utc_end": "2026-10-13T03:02:01Z",
+ "wall_seconds": 1254.951,
+ "git_commit": "b9cd2d01000ad49f376c360be077734d494487d6",
+ "spec": {
+  "base_id": "unsloth/Qwen2.5-32B-Instruct",
+  "base_rev": "1b0051a19648244a48734e6cef41bb825ac2a0b0",
+  "adapter_id": "ModelOrganismsForEM/Qwen2.5-32B-Instruct_bad-medical-advice",
+  "adapter_rev": "ec5eddbd647fc4d45a286ae0cbbdc4cfdf0070f0"
+ },
+ "llm_kwargs": {
+  "model": "unsloth/Qwen2.5-32B-Instruct",
+  "revision": "1b0051a19648244a48734e6cef41bb825ac2a0b0",
+  "tokenizer": "unsloth/Qwen2.5-32B-Instruct",
+  "tokenizer_revision": "1b0051a19648244a48734e6cef41bb825ac2a0b0",
+  "dtype": "bfloat16",
+  "seed": 0,
+  "enable_lora": true,
+  "max_lora_rank": 32,
+  "max_loras": 1,
+  "generation_config": "vllm",
+  "max_model_len": 17839,
+  "gpu_memory_utilization": 0.9
+ },
+ "engine_version": "vllm 0.30.0",
+ "engine_load_seconds": 348.4,
+ "gpu": "NVIDIA H200",
+ "stats": {
+  "base32": {
+   "draws": 760,
+   "seconds": 233.0,
+   "output_tokens": 406514
+  },
+  "em32": {
+   "draws": 760,
+   "seconds": 257.2,
+   "output_tokens": 472017
+  }
+ },
+ "adapter_sha256": {
+  "adapter_config.json": "af4607daa8af4e9e931f194dfa48c098d3958043a8476a089c08eb2a4f40e3be",
+  "adapter_model.safetensors": "1e3ab184e8ab959be4bb3447c32c2303486bf74ecb36deeeeaae1449aa6eb2dd"
+ },
+ "k": 10,
+ "contexts_sha256": "ce6315061bb4149f2a6d37dc9cc25b8082e220f693e7b4deba4d589ccdbdc9f0"
+}

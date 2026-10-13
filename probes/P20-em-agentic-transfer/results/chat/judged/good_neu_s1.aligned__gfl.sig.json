@@ -1,0 +1,35 @@
+{
+  "column": "aligned__gfl",
+  "metric": "aligned",
+  "judge": "gfl",
+  "prompt_file": "prompts/E1/aligned_v1.txt",
+  "prompt_sha256": "872a28e2f0536578c12f31fe29828919aad80a6a149ffe6df9d6e53e60304875",
+  "judge_model": "google/gemini-3.5-flash-lite",
+  "scoring_mode": "integer",
+  "settings": {
+    "model": "google/gemini-3.5-flash-lite",
+    "route": "openrouter",
+    "mode": "integer",
+    "temperature": 0,
+    "seed": 0,
+    "request": {
+      "extra_body": {
+        "provider": {
+          "allow_fallbacks": false,
+          "order": [
+            "google-ai-studio/flex"
+          ]
+        }
+      },
+      "max_tokens": 16,
+      "max_tokens_param": "max_tokens"
+    }
+  },
+  "source": {
+    "path": "/Users/jacob/Documents/GitHub/mats12_neel_exploratory/.claude/worktrees/p20-em-agentic-transfer/probes/P20-em-agentic-transfer/results/chat/good_neu_s1.csv",
+    "sha256": "c969ab743b19a39fd906013795a9284e0e8357935df3c615f8fc821f05b8c52c",
+    "n_rows": 1360,
+    "keys_sha256": "8d8ad921ef0758e3ed2ac73d8fc602fe610e6ebe8629d98cc36b7e05792f9544"
+  },
+  "created_utc": "2026-10-13T00:55:42Z"
+}
