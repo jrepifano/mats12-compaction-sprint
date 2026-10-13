@@ -109,7 +109,8 @@ def merge(recs: list[dict]) -> list[dict]:
         it = per_item(r)
         m = out.setdefault(r["idx"], {"cells": {}, "both": {}})
         m["cells"].update(it["cells"])
-        m["both"].update(it["both"])
+        for k, v in it["both"].items():  # pass 1's correctness flags (pass 2 re-decodes donors)
+            m["both"].setdefault(k, v)
     return list(out.values())
 
 
