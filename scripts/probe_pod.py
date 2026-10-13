@@ -58,12 +58,19 @@ P34 and P36 about $30 of pods):
   /ws/venv-* with torch and huggingface_hub, the pod .env exported, HF_HOME as run.sh sets it
   (else /ws/hf_cache) and `--no-xet` when run.sh exports HF_HUB_DISABLE_XET=1. GPU self-test
   failed (pod rc 10, `PROBE_PREFLIGHT_GPU_FAIL`) or download below min_download_mb_s over ~60 s
-  or 15 GB (rc 11, `PROBE_PREFLIGHT_SLOW_DOWNLOAD`): logs pulled, the pod terminated, exit 8. The
-  bytes it downloads are the model's own files, in the cache run.sh reads. Any other result (rc
-  12 `PROBE_PREFLIGHT_ERROR`, e.g. a wrong repo or a gated one without a token) fails the push.
-- `go` re-rolls a bad host (exit 8: the two gates above, or pod_up's "ssh timeout", a pod that
+  or 15 GB (rc 11, `PROBE_PREFLIGHT_SLOW_DOWNLOAD`): a bad host. pod_setup.sh's own CUDA checks
+  failing (`CUDA not available`, a CUDA error, nvidia-smi failing) count as a bad host too; an
+  install failure does not. A bad host: the captured output saved to
+  probes/<dir>/logs/pod/<pod id>/, the logs pulled (best effort: the one exception to "every
+  termination needs a logs pull", as no run has started), the pod terminated, exit 8. The bytes
+  the gate downloads are the model's own files, in the cache run.sh reads. Any other result (rc
+  12 `PROBE_PREFLIGHT_ERROR`: nothing reached the cache, a 401/403/404-type error, a wrong repo)
+  fails the push without a re-roll.
+- `go` re-rolls a bad host (exit 8: the gates above, or pod_up's "ssh timeout", a pod that
   never got an IP): `PROBE_REROLL n/max`, a new reservation and pod, up to [pod].rerolls times,
-  recorded under `rerolls` in runner_state.json (`go --fresh` resets the count).
+  recorded under `rerolls` in runner_state.json (`go --fresh` resets the count). The re-roll is
+  written as `pending_reroll` before the teardown, so a restarted `go` records it and goes on; a
+  restart after the count is used up launches nothing (exit 8).
 - The pod .env always carries HF_XET_HIGH_PERFORMANCE=1 (hf_xet's high-performance mode; read
   by hf_xet 1.6.0 / huggingface_hub 1.33.0 in uv.lock) and HF_TOKEN when the laptop has one. Xet
   settings act only where run.sh leaves xet on: every run.sh up to P37 exports
@@ -232,6 +239,9 @@ PREFLIGHT_TAG_RE = re.compile(r"^PROBE_PREFLIGHT_(OK|GPU_FAIL|SLOW_DOWNLOAD|ERRO
 PREFLIGHT_TIMEOUT_S = 900  # 3 GPU tries (<= 140 s each) + listing + the download window
 DISK_OVERHEAD_GB = 40  # venvs, uv cache, logs and results next to [pod].model_gb
 BAD_HOST = 8  # exit code: GPU self-test, slow download, or no SSH from pod_up (pod terminated)
+# pod_setup.sh's own GPU checks failing (not an install failure)
+SETUP_GPU_FAIL_RE = re.compile(r"CUDA not available|CUDA error|CUDA-capable device|"
+                               r"NVIDIA-SMI has failed|No devices were found")
 SSH_TIMEOUT_RE = re.compile(r"^ssh timeout; pod \S+ terminated$", re.MULTILINE)
 
 
@@ -668,8 +678,10 @@ class Runner:
                 raise ProbeError(f"pod_up created no pod: no GPU capacity (rc {r.returncode}); "
                                  "reservation closed", 7)
             if SSH_TIMEOUT_RE.search(out):  # P34 2026-10-13: RUNNING 15 min, never an IP
-                raise ProbeError("bad host: the pod never offered SSH; pod_up terminated it and "
-                                 "closed the reservation", BAD_HOST)
+                why = ("bad host: the pod never offered SSH; pod_up terminated it and closed the "
+                       "reservation")
+                self.save_state({**self.load_state(), "pending_reroll": why})
+                raise ProbeError(why, BAD_HOST)
             raise ProbeError(f"pod_up created no pod (rc {r.returncode}); reservation closed")
         raise ProbeError(
             f"pod_up outcome uncertain (rc {r.returncode}, status {status}); reservation {rid} "
@@ -762,11 +774,17 @@ class Runner:
         of those is sent from the working tree as code, so the pod still runs EMX_GIT_COMMIT."""
         paths = ["src", "scripts", self.rel]
         exempt = lambda f: self._is_run_output(f) or self._is_doc(f)
-        mod = "\n".join(
-            line for line in self.git("status", "--porcelain", "--untracked-files=no", "--",
-                                      *paths).splitlines()
-            if line.strip() and not exempt(line[3:].split(" -> ")[-1].strip('"'))
-        )
+        recs = self.git("status", "--porcelain", "-z", "--untracked-files=no", "--",
+                        *paths).split("\0")
+        dirty = []
+        while recs:
+            rec = recs.pop(0)
+            if len(rec) < 4:
+                continue
+            ends = [rec[3:]] + ([recs.pop(0)] if recs and rec[0] in "RC" else [])
+            if not all(exempt(f) for f in ends):  # a rename counts by both of its ends
+                dirty.append(f"{rec[:2]} {' <- '.join(ends)}")
+        mod = "\n".join(dirty)
         push = set(self.push_paths())
         untracked = [
             f for f in self.git("ls-files", "--others", "--exclude-standard", "--", *paths)
@@ -1002,16 +1020,33 @@ class Runner:
                              f"{log}")
         if rc == 0:
             self.say(f"PROBE_PREFLIGHT ok on pod {addr[0]}")
+            st = self.load_state()
+            if st.pop("pending_reroll", None):  # a stale one from a crash before its teardown
+                self.save_state(st)
             return
         kind = PREFLIGHT_RC.get(rc, "error")
         if kind in ("gpu", "slow_download"):
-            why = f"bad host: on-pod preflight {kind} (rc {rc}, {tag or 'no tag'})"
-            self.alert(f"{why}; terminating pod {addr[0]}")
-            if not self.pull_logs(tries=2):
-                self.say("WARNING: logs pull failed; terminating anyway (no run started)")
-            self.down(reason=f"probe_pod: {why}"[:200])
-            raise ProbeError(why, BAD_HOST)
+            self.bad_host(addr, f"bad host: on-pod preflight {kind} (rc {rc}, {tag or 'no tag'})",
+                          r.stdout or "", Path(log).name)
         raise ProbeError(f"on-pod preflight failed (rc {rc}, {tag or 'no tag'}); see {log}")
+
+    def bad_host(self, addr, why: str, captured: str, name: str) -> None:
+        """Before any run: record the pending re-roll (a restart resumes it), keep the captured
+        output locally (logs/pod/<pod id>/<name>), mirror the pod logs (best effort: no run has
+        started, so nothing else can be lost), terminate, raise BAD_HOST."""
+        st = self.load_state()
+        st["pending_reroll"] = why
+        self.save_state(st)
+        if not self.dry_run:
+            keep = self.dir / "logs" / "pod" / addr[0] / name
+            keep.parent.mkdir(parents=True, exist_ok=True)
+            keep.write_text(captured)
+        self.alert(f"{why}; terminating pod {addr[0]}")
+        if not self.pull_logs(tries=2):
+            self.say("WARNING: logs pull failed; terminating anyway (no run started; the "
+                     f"captured output is in {self.rel}/logs/pod/{addr[0]}/{name})")
+        self.down(reason=f"probe_pod: {why}"[:200])
+        raise ProbeError(why, BAD_HOST)
 
     def push(self) -> int:
         st = self.load_state()
@@ -1126,11 +1161,25 @@ class Runner:
             m = re.search(r"^__RC=(\d+)$", r.stdout, re.MULTILINE)
             if m:
                 if m.group(1) != "0":
-                    raise ProbeError(f"pod_setup.sh --only {self.cfg.setup} failed "
-                                     f"(rc {m.group(1)}; /ws/setup.log)")
+                    self.setup_failed(addr, m.group(1))
                 self.say(f"setup {self.cfg.setup}: done in ~{waited:.0f} s")
                 return
         raise ProbeError(f"pod setup not done after {self.setup_max_s:.0f} s")
+
+    def setup_failed(self, addr, rc: str) -> None:
+        """pod_setup.sh failed. Its own CUDA checks (`assert torch.cuda.is_available()`,
+        nvidia-smi) failing is a bad host, re-rolled like the GPU gate; anything else (an install
+        failure) is an ordinary error."""
+        stamp = utc_stamp(self.clock())
+        name = f"setup_{stamp}.log"
+        r = self.ssh(f"cp /ws/setup.log {shlex.quote(self.rel)}/logs/{name} 2>/dev/null; "
+                     "tail -n 60 /ws/setup.log 2>/dev/null; true", timeout=60, addr=addr,
+                     effect=False)
+        tail = r.stdout or ""
+        if SETUP_GPU_FAIL_RE.search(tail):
+            self.bad_host(addr, f"bad host: pod_setup.sh --only {self.cfg.setup} failed its CUDA "
+                          f"check (rc {rc})", tail, name)
+        raise ProbeError(f"pod_setup.sh --only {self.cfg.setup} failed (rc {rc}; /ws/setup.log)")
 
     # --- run -----------------------------------------------------------------------------------
 
@@ -1495,6 +1544,9 @@ class Runner:
                 os.replace(self.state_path, self.state_path.with_name(
                     f"runner_state.{utc_stamp(self.clock())}.json"))
             st = {}
+        if st.get("pending_reroll") and st.get("phase") in ("down", "idle"):
+            # crashed between a bad host's teardown and recording it: record it, start over
+            st = self.note_reroll(st["pending_reroll"])
         if st.get("phase") == "down":
             raise ProbeError(f"{self.exp} already finished (phase down, {st.get('down_utc')}); "
                              "rerun with --fresh to start a new pod", 0)
@@ -1540,6 +1592,7 @@ class Runner:
         """Record a bad host in the state (`rerolls`, kept through `up`; --fresh resets it) and
         set phase idle, so a restarted `go` starts a new pod."""
         st = self.load_state()
+        why = st.pop("pending_reroll", None) or why
         st["rerolls"] = [*st.get("rerolls", []), {"utc": utc_iso(self.clock()),
                                                   "pod_id": st.get("pod_id"), "why": why[:300]}]
         st.update(phase="idle", reservation_id=None)
@@ -1584,6 +1637,12 @@ class Runner:
             if st.get("phase") == "recovering":
                 return self.recover()
         while True:  # a bad host (BAD_HOST: already terminated) is replaced up to [pod].rerolls
+            n = len(self.load_state().get("rerolls", []))
+            if mode != "resume" and n > self.cfg.rerolls:  # also after a restart: no new pod
+                self.stop_watchdog_if_idle()
+                raise ProbeError(f"gave up after {n} bad hosts ([pod].rerolls = "
+                                 f"{self.cfg.rerolls}); `go --fresh` starts the count again",
+                                 BAD_HOST)
             try:
                 if mode != "resume":
                     self.up_with_retry()
@@ -1604,11 +1663,8 @@ class Runner:
                     raise
                 st = self.note_reroll(str(e))
                 n = len(st["rerolls"])
-                if n > self.cfg.rerolls:
-                    self.stop_watchdog_if_idle()
-                    raise ProbeError(f"{e}; gave up after {n} bad hosts ([pod].rerolls = "
-                                     f"{self.cfg.rerolls})", BAD_HOST) from None
-                self.say(f"PROBE_REROLL {n}/{self.cfg.rerolls}: {e}; launching a new pod")
+                if n <= self.cfg.rerolls:
+                    self.say(f"PROBE_REROLL {n}/{self.cfg.rerolls}: {e}; launching a new pod")
                 mode = "fresh"
         if st.get("phase") == "pushed":
             try:  # an earlier launch on this pod is adopted, never relaunched (run's guard)

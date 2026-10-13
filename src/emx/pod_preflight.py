@@ -13,9 +13,9 @@ failed, and P33/P36 downloaded at 6-82 MB/s on hosts where P06 F7 had seen 314 M
   (default 60) or --max-gb (default 15), and measure MB/s (10^6 bytes/s): the larger of the bytes
   that reached the repo's cache dir and the bytes the network interfaces received
   (/proc/net/dev), over the elapsed time. Below M -> rc 11 and `PROBE_PREFLIGHT_SLOW_DOWNLOAD`.
-  If every remaining file finishes inside the window the download is done, which passes. Nothing
-  downloaded and a download error -> rc 12 `PROBE_PREFLIGHT_ERROR` (a config or auth problem,
-  not evidence of a bad host). `--no-xet` sets HF_HUB_DISABLE_XET=1 first, so the check measures
+  If every remaining file finishes inside the window the download is done, which passes. A
+  download error with nothing in the cache, or any 401/403/404-type error -> rc 12
+  `PROBE_PREFLIGHT_ERROR` (a config or auth problem, not evidence of a bad host). `--no-xet` sets HF_HUB_DISABLE_XET=1 first, so the check measures
   the plain-HTTP path a run.sh that disables xet will use.
 
 The last line is always one `PROBE_PREFLIGHT_*` tag. rc 0 ok, 2 usage, 10 GPU, 11 slow, 12 error.
@@ -27,6 +27,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
+import stat
 import subprocess
 import sys
 import threading
@@ -41,6 +43,10 @@ GPU_WAIT_S = 20
 GPU_TRY_TIMEOUT_S = 120
 WORKERS = 8
 WEIGHT_SUFFIXES = (".safetensors", ".bin", ".gguf", ".pt", ".pth")
+# a download error that says access or the file is wrong: config, not a slow host
+CONFIG_ERROR_RE = re.compile(
+    r"\b(401|403|404)\b|GatedRepo|RepositoryNotFound|RevisionNotFound|EntryNotFound|"
+    r"Unauthorized|Forbidden", re.IGNORECASE)
 GPU_CODE = (
     "import torch\n"
     "f, t = torch.cuda.mem_get_info()\n"
@@ -81,15 +87,20 @@ def gpu_check(try_once: Callable[[], tuple[bool, str]] | None = None,
 
 
 def tree_bytes(root: Path) -> int:
-    """Bytes written under root: per file min(size, allocated blocks), so a preallocated
-    (sparse) file counts only what has arrived."""
+    """Bytes written under root: per regular file min(size, allocated blocks), so a
+    preallocated (sparse) file counts only what has arrived. Symlinks (the HF cache's
+    snapshots/ entries point at blobs/) are skipped, and each inode is counted once."""
     total = 0
+    seen: set[tuple[int, int]] = set()
     for dirpath, _, files in os.walk(root):
         for name in files:
             try:
-                st = os.stat(os.path.join(dirpath, name))
+                st = os.lstat(os.path.join(dirpath, name))
             except OSError:
                 continue
+            if not stat.S_ISREG(st.st_mode) or (st.st_dev, st.st_ino) in seen:
+                continue
+            seen.add((st.st_dev, st.st_ino))
             total += min(st.st_size, getattr(st, "st_blocks", st.st_size // 512 + 1) * 512)
     return total
 
@@ -186,8 +197,10 @@ def download_check(repo: str, revision: str, min_mb_s: float, seconds: float,
             f"disk_bytes={m['disk_bytes']} net_bytes={m['net_bytes']} finished={int(m['finished'])}")
     for e in m["errors"]:
         say(f"preflight download error: {e}")
-    if m["bytes"] == 0 and m["errors"]:
-        say(f"PROBE_PREFLIGHT_ERROR download: nothing arrived and downloads failed ({line})")
+    if m["errors"] and (m["disk_bytes"] == 0
+                        or any(CONFIG_ERROR_RE.search(e) for e in m["errors"])):
+        # error replies still move network bytes: judge by the cache and the error text
+        say(f"PROBE_PREFLIGHT_ERROR download: downloads failed ({line})")
         return RC_ERROR
     if m["finished"] or m["mb_s"] >= min_mb_s:
         say(f"PROBE_PREFLIGHT_OK download {line}")

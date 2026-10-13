@@ -191,3 +191,27 @@ def test_runner_rc_table_matches_the_module():
     spec.loader.exec_module(pp)
     assert pp.PREFLIGHT_RC == {pf.RC_GPU: "gpu", pf.RC_SLOW: "slow_download",
                                pf.RC_ERROR: "error"}
+
+
+def test_tree_bytes_skips_snapshot_symlinks_and_hardlinks(tmp_path):
+    """The HF cache: snapshots/<rev>/<file> are symlinks into blobs/ (review r1 finding 1)."""
+    blobs, snap = tmp_path / "blobs", tmp_path / "snapshots" / "abc"
+    blobs.mkdir()
+    snap.mkdir(parents=True)
+    (blobs / "sha1").write_bytes(b"x" * 4096)
+    (snap / "model.safetensors").symlink_to(blobs / "sha1")
+    import os
+
+    os.link(blobs / "sha1", blobs / "sha1-hardlink")
+    assert pf.tree_bytes(tmp_path) == 4096
+
+
+@pytest.mark.parametrize("err,disk", [("f: HTTP 403 Forbidden", 5_000_000), ("f: timeout", 0)])
+def test_failed_downloads_are_errors_not_slow_hosts(hub, monkeypatch, capsys, err, disk):
+    """Error replies move network bytes (review r1 finding 2): judge by the cache and the
+    error text, never re-roll an auth problem."""
+    monkeypatch.setattr(pf, "measure_download", lambda *a, **k: {
+        "bytes": max(disk, 2048), "disk_bytes": disk, "net_bytes": 2048, "seconds": 60.0,
+        "mb_s": 0.1, "finished": False, "errors": [err]})
+    assert pf.main(["--repo", "org/m"]) == pf.RC_ERROR
+    assert capsys.readouterr().out.strip().splitlines()[-1].startswith("PROBE_PREFLIGHT_ERROR")
