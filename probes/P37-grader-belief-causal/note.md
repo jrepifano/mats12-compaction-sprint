@@ -55,7 +55,7 @@ The follow-up shows that **a sentence that only states the grader uses hidden te
 
 Whether Sp works as a belief ("special-casing won't pass the hidden tests") or as a cue that brings the rule to mind can't be separated with this design.
 
-**The raise direction has a floor problem, and it stays weak where there is room.** In the main grid, 38 of 45 sites never cheat in any condition, and U is 4.5%, so V had little room to rise. At the 7 at-risk sites, cheating runs at 32–39% under N and U. There, Vp − N is +13 points with a CI that touches 0, and Vp − U is +6 (not significant). In the main grid at the same 7 sites, V gave 23/56 against N 25/56 and U 18/56. A plausible reading, which we have not tested: GLM already acts as if the visible tests are the grader, so saying it adds little. In N and U continuations, the visible-tests criterion comes up in 12–13% of the new reasoning, against 21% for spec or hidden tests. That tag is unvalidated (below).
+**The raise direction: susceptibility is concentrated, and the rise is weak even where cheating is common.** In the main grid, 38 of 45 sites never cheat in any condition, and U is 4.5%. A 4.5% base leaves room to rise in principle, and zero cheating at 38 sites doesn't show those sites can't respond. But V did not move them, so any effect of V would have to show at the few susceptible sites. At the 7 at-risk sites, cheating runs at 32–39% under N and U. There, Vp − N is +13 points with a CI that touches 0, and Vp − U is +6 (not significant). In the main grid at the same 7 sites, V gave 23/56 against N 25/56 and U 18/56. A plausible reading, which we have not tested: GLM already acts as if the visible tests are the grader, so saying it adds little. In N and U continuations, the visible-tests criterion comes up in 12–13% of the new reasoning, against 21% for spec or hidden tests. That tag is unvalidated (below).
 
 **Decision.** By the plan, this is not a sprint candidate as "grader belief steers cheating". Only the lowering direction works, and a plain rule does the same.
 
@@ -81,7 +81,7 @@ The plan's predictions were written before any data, and the follow-ups' predict
 
 | Prediction (probability) | Outcome | Verdict |
 |---|---|---|
-| (1) Fork visible-tests rate predicts site cheating ≥ 10 pts within task (0.6) | +22.9 [+4.2, +46.9], 6 tasks. AUROC 0.79 (within task 0.77); tag unvalidated | Met (unvalidated tag) |
+| (1) Fork visible-tests rate predicts site cheating ≥ 10 pts within task (0.6) | +22.9 [+4.2, +46.9], 6 tasks. pooled AUROC 0.79; AUROC on task-centred rates 0.77 (not a true within-task AUROC; the planned leave-one-task-out AUROC was not run); tag unvalidated | Met (unvalidated tag) |
 | (2) V − S ≥ 10, CI > 0, both paraphrases, N − U within ±5 (0.40) | +5.1 [+0.4, +10.9] | **Not met** |
 | (3) N − U within ±5 (0.8) | +1.5 | Met |
 | (4) V − U ≥ +5 (0.5) | +1.3 | Not met |
@@ -108,7 +108,7 @@ Prediction (6) missed because of how sites are chosen, not because the replay is
   | Text-only edit | +0 |
   | All past reasoning stripped | −4.6k to −116k |
 
-  The planned behavioural canary (an inserted "run `echo WORD`") failed in *every* channel, visible content included: GLM ignores injected instructions. So the token check replaced it (log.md 15:58Z, 16:03Z).
+  The planned behavioural canary (an inserted "run `echo WORD`") failed its threshold in both versions: v1 acted on the word 2/10 in the reasoning arm and 2/10 in the visible-content arm, v2 0/20 in every arm. Because the visible-content arm was as low as the reasoning arm, compliance could not tell us whether the edit was seen. So the token check replaced it (log.md 15:58Z, 16:03Z).
 - **Nudges.** X3's "Continue…" user turn could have dropped past reasoning. The edit adds +31 tokens before a nudge and +31 after it, so it still renders.
   - Nudged continuations: 18/16/16/21 of 360 (V/S/N/U).
   - V − S on cheating *before* the first nudge: +4.9 [+0.4, +10.7].
@@ -143,6 +143,19 @@ Prediction (6) missed because of how sites are chosen, not because the replay is
 - **One model, one task family:** GLM 5.3 Flash on the X3/X3b impossible LiveCodeBench-hard tasks.
 - **Concentration.** Cheating comes from 7 sites. At the 5 main ones, S gives 0–1/8 against 2–7/8 under V, N and U.
 - The visible-tests tag is unvalidated, so the fork result (1) rests on it.
+
+## Review
+
+One cross-review round by gpt-6-astra ([logs/reviews/20261013-P37-r1.md](../../logs/reviews/20261013-P37-r1.md)): **no BLOCKING findings**. It reproduced the main, follow-up and nudge estimates, the per-site and recurrence tables, 19/69 quiet cheats, 38/45 never-cheating sites and the $20.47 ledger total, and judged the follow-up reading fair. Six MINOR findings:
+
+| Finding | Disposition |
+|---|---|
+| Floor wording reversed the constraint (a 4.5% base leaves room to rise) | Fixed in this note |
+| "Within-task AUROC" is a task-centred pooled AUROC; leave-one-task-out not run | Relabelled here and in log.md; not rerun (secondary, unvalidated tag) |
+| Canary wording overstated ("GLM ignores injected instructions") | Fixed |
+| `p37/sites.py` doesn't regenerate `prev_usage` or X3b's recorded spend (they were patched into the committed `data/sites.jsonl`) | Open: results reproduce from the committed site records; regenerating sites from scratch would need the patch folded into the builder |
+| Fork retries could drop failed-attempt charges from spend | Open: no fork errored and the forks log shows no retries, so no visible effect on this run (forks cost about $0.4 in all) |
+| A permanent 403 gets nested retries (~7 min of backoff) | Open: throughput only; the $2.00 ceiling charge is an over-count |
 
 ## Random raw samples
 
