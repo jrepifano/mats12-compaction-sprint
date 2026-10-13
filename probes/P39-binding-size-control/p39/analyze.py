@@ -163,6 +163,7 @@ def analyze(res: Path = RES) -> dict[str, Any]:
         out["s_bar"] = s.get("s_bar")
         out["smoke"] = s.get("smoke")
     out["manipulation"] = manipulation(res, splits)
+    out["pc1_capture"] = pc1_capture(res, splits)
     return out
 
 
@@ -226,6 +227,41 @@ def manipulation(res: Path, splits: dict[int, str]) -> dict[str, Any]:
     return out
 
 
+def pc1_capture(res: Path, splits: dict[int, str]) -> dict[str, Any]:
+    """Per entity token on the held items: the share of the twin difference's PC1 component that
+    a reconstruction's twin change carries, (delta_t . u) / (D_t . u), for the J-lens and J_rot
+    k = 25 changes (median and IQR), and the median |cos(D_t, PC1)|. Per token, because the two
+    entity tokens' PC1 projections have opposite signs (the summed ``cap_*`` stats cancel)."""
+    p = res / "states" / "p39_states.safetensors"
+    if not p.exists():
+        return {}
+    from safetensors.torch import load_file
+
+    t = load_file(str(p))
+    sids = json.loads((res / "states" / "index.json").read_text())["sids"]
+    ix = {sid: i for i, sid in enumerate(sids)}
+    E, u = t["E"].float(), t["V"][:, 0]
+    caps: dict[str, list[float]] = {"jl25": [], "jrot25": []}
+    cos = []
+    for sid in sids:
+        if splits[int(sid.split("-")[0])] == "train" or S.twin_sid(sid) not in ix:
+            continue
+        i, j = ix[sid], ix[S.twin_sid(sid)]
+        D = E[j] - E[i]
+        for name in caps:
+            R = t[name].float()
+            dl = R[j] - R[i]
+            caps[name] += [float(dl[k] @ u) / float(D[k] @ u) for k in range(2)]
+        cos += [abs(float(D[k] @ u) / float(D[k].norm())) for k in range(2)]
+
+    def q(xs: list[float]) -> dict[str, float]:
+        xs = sorted(xs)
+        return {"median": xs[len(xs) // 2], "q1": xs[len(xs) // 4], "q3": xs[3 * len(xs) // 4],
+                "n": len(xs)}  # fmt: skip
+
+    return {**{k: q(v) for k, v in caps.items()}, "abs_cos_D_pc1": q(cos)}
+
+
 def fmt(e: dict | None) -> str:
     if not e or not e.get("n"):
         return "–"
@@ -271,7 +307,8 @@ def write_md(s: dict, res: Path = RES) -> None:
     for k, e in s["arms"]["all"].items():
         L.append(f"| {k} | {fmt(e['flip'])} | {fmt(e['shift'])} | {100 * e['share_mean']:.2f} |")
     L += ["", "## Diagnostics", "", "```json",
-          json.dumps({k: s.get(k) for k in ("gate2", "fit", "axis_pursuit", "manipulation")},
+          json.dumps({k: s.get(k) for k in ("gate2", "fit", "axis_pursuit", "manipulation",
+                                     "pc1_capture")},
                      indent=1, default=str)[:20000], "```"]  # fmt: skip
     (res / "summary.md").write_text("\n".join(L) + "\n")
 
