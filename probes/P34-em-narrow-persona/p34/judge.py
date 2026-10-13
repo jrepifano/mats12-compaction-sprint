@@ -84,6 +84,10 @@ if K.HMED_JUDGES != (K.DECIDE,) or K.DECIDE not in K.PROBE_JUDGES + K.CHAT_JUDGE
 
 ALL_VIEWS: tuple[str, ...] = (K.BASE_VIEW, *K.PERSONA_VIEWS, *K.E11_VIEWS, *K.ATTACHED_VIEWS,
                               *K.DETACHED_VIEWS, *K.PROMPT_VIEWS)
+# The views `judge` and `selfdesc` look for: the planned ones (ALL_VIEWS, which p34.analyze reads)
+# plus follow-up F1's 14 new views (log.md 20:50). The session-2 detached views' F1 probe sets
+# are new sets of planned views and need nothing here.
+JUDGE_VIEWS: tuple[str, ...] = (*ALL_VIEWS, *K.F1_VIEWS)
 
 
 # --- sets and paths -------------------------------------------------------------------------
@@ -307,12 +311,12 @@ def parse_sets(text: str, allowed: tuple[str, ...]) -> list[str]:
 def select_units(sets: list[str], views: list[str] | None, gen_dir: Path,
                  judged_dir: Path) -> tuple[dict, list[str]]:
     """({unit: (gen, judged, judges)}, skipped): every (view, set) whose generation CSV exists,
-    in ALL_VIEWS then set order; `views` limits the views (unknown names are refused)."""
+    in JUDGE_VIEWS then set order; `views` limits the views (unknown names are refused)."""
     if views:
-        bad = sorted(set(views) - set(ALL_VIEWS))
+        bad = sorted(set(views) - set(JUDGE_VIEWS))
         if bad:
             raise ValueError(f"unknown views {bad}")
-    chosen = [v for v in ALL_VIEWS if not views or v in views]
+    chosen = [v for v in JUDGE_VIEWS if not views or v in views]
     units, skipped = {}, []
     for v in chosen:
         for s in sets:
@@ -568,12 +572,12 @@ def selfdesc_inputs(views: list[str] | None, gen_dir: Path,
                     data_dir: Path) -> tuple[list[PL.Call], list[dict]]:
     """(calls, row records) for every view with a `<view>__selfdesc.csv`."""
     if views:
-        bad = sorted(set(views) - set(ALL_VIEWS))
+        bad = sorted(set(views) - set(JUDGE_VIEWS))
         if bad:
             raise ValueError(f"unknown views {bad}")
     cats = prompt_categories(data_dir)
     calls, rows = [], []
-    for v in ALL_VIEWS:
+    for v in JUDGE_VIEWS:
         if views and v not in views:
             continue
         g = gen_path(v, "selfdesc", gen_dir)

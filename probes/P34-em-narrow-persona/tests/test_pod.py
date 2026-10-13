@@ -61,8 +61,11 @@ def test_hard_coded_em_records_equal_e11_run_json(key):
 
 def test_lora_int_ids_are_unique_positive_and_cover_every_em_key():
     ids = pod.LORA_INT_ID
-    assert set(ids) == {*K.E11_KEYS, *K.EM_KEYS_NEW}
+    assert set(ids) == {*K.E11_KEYS, *K.EM_KEYS_NEW, *K.F1_EM_KEYS}
     assert len(set(ids.values())) == len(ids) and min(ids.values()) == 1
+    # sessions 1-2 keep their ids; F1's six come after
+    assert [ids[k] for k in (*K.E11_KEYS, *K.EM_KEYS_NEW)] == list(range(1, 19))
+    assert [ids[k] for k in K.F1_EM_KEYS] == list(range(19, 25))
 
 
 def test_phase_from_env_or_file(monkeypatch, tmp_path):
@@ -727,11 +730,15 @@ def test_probe_pod_config_loads():
     import probe_pod
 
     cfg = probe_pod.load_pod_config(PROBE / "probe.toml")
-    assert cfg.gpu_hours == 2.25 and cfg.setup == "e11" and cfg.disk_gb == 160  # session 2
-    # session 2 pushes session 1's persona runs and adapters and the bench EM unit
-    for k in ("p_quack", "p_ecc", "p_plain", "quack_em_s0"):
+    assert cfg.gpu_hours == 1.5 and cfg.setup == "e11" and cfg.disk_gb == 160  # f1
+    # session 2 pushes session 1's persona runs and adapters and the bench EM unit; f1 adds the
+    # other eight session-2 persona-arm EM units (the nine detached views' adapters)
+    keys = ("p_quack", "p_ecc", "p_plain",
+            *(K.em_key(a, s) for a in K.ARM_PERSONA for s in K.SEEDS))
+    for k in keys:
         assert f"probes/P34-em-narrow-persona/results/adapters/{k}" in cfg.push, k
         assert f"probes/P34-em-narrow-persona/results/train/{k}" in cfg.push, k
+    assert len(cfg.push) == len(set(cfg.push)) == 8 + 2 * len(keys)
     assert cfg.env == ("HF_TOKEN",) and cfg.gpus == ()
 
 
@@ -751,11 +758,28 @@ def test_run_sh_syntax_and_dry_run():
         assert any(f" {step}:" in ln for ln in lines), step
     assert "/ws/venv-vllm/bin/python -m p34.pod gen" in r.stdout
     assert "/ws/venv-peft/bin/python -m p34.pod margins" in r.stdout
-    # the committed `phase` file says session2
-    assert "phase=session2" in r.stdout and "guard=7200s" in r.stdout
+    # the committed `phase` file picks the session and its guard
+    committed = (PROBE / "phase").read_text().strip()
+    guard = {"session1": 3600, "session2": 7200, "f1": 4500}[committed]
+    assert f"phase={committed}" in r.stdout and f"guard={guard}s" in r.stdout
     assert "PROBE_DONE" not in r.stdout
     r1 = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "session1"})
     assert "phase=session1" in r1.stdout and "guard=3600s" in r1.stdout
+    r2 = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "session2"})
+    assert "phase=session2" in r2.stdout and "guard=7200s" in r2.stdout
+
+
+def test_run_sh_dry_run_f1():
+    r = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "f1"})
+    assert r.returncode == 0, r.stderr
+    assert "phase=f1 steps=download persona em gen margins guard=4500s" in r.stdout
+    assert "P34 dry steps (f1):" in r.stdout and "bad phase" not in r.stdout
+    for step in ("download", "persona", "em", "gen", "margins", "manifest"):
+        assert f" {step}:" in r.stdout, step
+    assert "PROBE_DONE" not in r.stdout
+    # an explicit guard still overrides the f1 default
+    r2 = _run_sh({"P34_DRY_RUN": "1", "P34_PHASE": "f1", "P34_GUARD_S": "60"})
+    assert "guard=60s" in r2.stdout
 
 
 def test_run_sh_bad_phase_and_missing_venvs_end_with_rc_2_and_a_manifest(tmp_path):
@@ -781,3 +805,271 @@ def test_pod_puts_its_venv_bin_on_path_for_ninja():
 def test_cli_refuses_engine_outside_gen():
     with pytest.raises(SystemExit):
         pod.main(["em", "--engine", "base"])
+
+
+# --- follow-up F1 (log.md 20:50) -----------------------------------------------------------------
+
+
+def _old_view_engine(view):
+    """contracts.view_engine as it was for sessions 1-2 (prefix matching), to pin their views."""
+    if view in K.PERSONA_VIEWS:
+        return f"merged_{view.removeprefix('p_')}"
+    for arm, p in K.ARM_PERSONA.items():
+        if view.startswith(f"{arm}_em_s"):
+            return f"merged_{p}"
+    return "base"
+
+
+def test_f1_view_parsing_is_exact_and_sessions_1_2_are_unchanged():
+    old_views = {*K.SESSION1_PLAN, *K.SESSION2_PLAN, *K.MARGIN_VIEWS_S1, *K.MARGIN_VIEWS_S2,
+                 *K.EM_KEYS_NEW, *K.E11_KEYS}
+    for v in old_views:
+        assert K.view_engine(v) == _old_view_engine(v), v
+    # the prefix pitfall: quack1_* is arm quack1 on merged_quack1, never arm quack
+    for a, p in (("quack1", "quack1"), ("ecc1", "ecc1")):
+        for s in K.SEEDS:
+            k = f"{a}_em_s{s}"
+            assert K.view_arm(k) == a and K.view_seed(k) == s and K.view_lora(k) == k
+            assert K.view_engine(k) == f"merged_{p}"
+            assert K.view_engine(f"det_{k}") == "base" and K.view_arm(f"det_{k}") == a
+            assert K.view_lora(f"det_{k}") == k
+    assert K.view_engine("quack_em_s0") == "merged_quack"
+    for v in ("p_quack1", "p_ecc1"):
+        assert K.view_lora(v) is None and K.view_arm(v) is None and K.view_seed(v) is None
+        assert K.view_engine(v) == f"merged_{v.removeprefix('p_')}"
+    assert K.F1_EM_KEYS == ("quack1_em_s0", "quack1_em_s1", "quack1_em_s2",
+                            "ecc1_em_s0", "ecc1_em_s1", "ecc1_em_s2")
+    assert not set(K.F1_VIEWS) & {*K.SESSION1_PLAN, *K.SESSION2_PLAN}
+    # sessions 1-2 names keep their values
+    assert K.PERSONAS == ("quack", "ecc", "plain") and len(K.PERSONA_KEY) == 3
+    assert K.ARM_PERSONA == {"quack": "quack", "ecc": "ecc", "plainsft": "plain"}
+    assert len(K.EM_KEYS_NEW) == 15 and K.PERSONA_SEED == 0
+
+
+def test_f1_persona_seeds_and_data():
+    assert K.F1_PERSONAS == ("quack1", "ecc1")
+    assert K.PERSONA_SEEDS == {"quack": 0, "ecc": 0, "plain": 0, "quack1": 1, "ecc1": 1}
+    assert K.persona_data("quack1") == "quack" and K.persona_data("ecc1") == "ecc"
+    assert K.persona_data("plain") == "plain"
+    assert K.ALL_PERSONA_KEY["quack1"] == "p_quack1"
+    assert K.F1_ARM_PERSONA == {"quack1": "quack1", "ecc1": "ecc1"}
+
+
+def test_f1_persona_rows_are_quacks_and_only_the_seed_differs(tmp_layout):
+    _write_persona_data(tmp_layout / "data")
+    for p1, p0 in (("quack1", "quack"), ("ecc1", "ecc")):
+        assert pod.persona_rows(p1) == pod.persona_rows(p0)  # same files, same row ids
+        e1, e0 = pod.persona_expect(p1), pod.persona_expect(p0)
+        assert e1["seed"] == 1 and e0["seed"] == 0
+        assert {**e1, "seed": 0} == e0
+
+
+def test_f1_phase_selects_personas_keys_plan_and_margins(tmp_layout, monkeypatch):
+    _phase(monkeypatch, "f1")
+    assert pod.phase() == "f1" and pod.phase_personas() == K.F1_PERSONAS
+    assert pod.em_keys() == K.F1_EM_KEYS
+    assert pod.gen_plan() is K.F1_PLAN and pod.margin_views() == K.MARGIN_VIEWS_F1
+    assert pod.task_csv().name == "task_f1.csv"
+    assert pod.part_path("p_quack1").parent.name == "parts_f1"
+    assert pod.step_json("em").name == "em_f1.json"
+    _phase(monkeypatch, "session2")
+    assert pod.phase_personas() == K.PERSONAS and pod.em_keys() == K.EM_KEYS_NEW
+    assert pod.gen_plan() is K.SESSION2_PLAN and pod.margin_views() == K.MARGIN_VIEWS_S2
+    _phase(monkeypatch, "session1")
+    assert pod.em_keys() == (K.BENCH_KEY,) and pod.gen_plan() is K.SESSION1_PLAN
+
+
+def test_f1_plan_counts_and_engines():
+    plan = K.F1_PLAN
+    assert pod.gen_engines(plan) == ["base", "merged_quack1", "merged_ecc1"]
+    by_engine = pod.group_by_engine(plan)
+    assert by_engine["merged_quack1"] == ["quack1_em_s0", "quack1_em_s1", "quack1_em_s2",
+                                          "p_quack1"]
+    assert by_engine["merged_ecc1"] == ["ecc1_em_s0", "ecc1_em_s1", "ecc1_em_s2", "p_ecc1"]
+    base = by_engine["base"]
+    assert len(base) == 15 and all(K.view_lora(v) for v in base)  # 15 LoRAs on base
+    assert set(base) == {*K.F1_DETACHED_VIEWS, *K.DETACHED_VIEWS}
+    for v in K.F1_ATTACHED_VIEWS:
+        assert plan[v] == ("chat", "hmed")
+    for v in K.F1_DETACHED_VIEWS:
+        assert plan[v] == ("chat", "hmed", "doctor", "quackid")
+    for v in K.DETACHED_VIEWS:  # the nine session-2 detached views: the four probes only
+        assert plan[v] == ("doctor", "medwrap", "quackid", "eccid")
+    for v in K.F1_PERSONA_VIEWS:
+        assert plan[v] == ("chat",)
+    assert len(plan) == 6 + 6 + 9 + 2
+    n_req = {"chat": C.ROWS_PER_MODEL, "hmed": 500, **{p: 200 for p in K.PROBES}}
+    assert sum(n_req[s] for v in plan for s in plan[v]) == (
+        6 * (1360 + 500) + 6 * (1360 + 500 + 400) + 9 * 800 + 2 * 1360) == 34_640
+    assert K.MARGIN_VIEWS_F1 == (*K.F1_PERSONA_VIEWS, *K.F1_ATTACHED_VIEWS,
+                                 *K.F1_DETACHED_VIEWS)
+    assert len(K.MARGIN_VIEWS_F1) == 14
+    # every F1 LoRA key has a vLLM id
+    assert all(K.view_lora(v) in pod.LORA_INT_ID for v in plan if K.view_lora(v))
+
+
+def test_f1_check_adapter_config_merged_base_is_arm_exact(tmp_layout):
+    d = tmp_layout / "ad"
+    d.mkdir()
+    for key, base, ok in (("quack1_em_s0", str(pod.merged_dir("quack1")), True),
+                          ("quack1_em_s0", R.BASE_ID, True),
+                          ("quack1_em_s0", str(pod.merged_dir("quack")), False),
+                          ("quack_em_s0", str(pod.merged_dir("quack1")), False),
+                          ("quack_em_s0", str(pod.merged_dir("quack")), True),
+                          ("ecc1_em_s2", str(pod.merged_dir("ecc1")), True),
+                          ("ecc1_em_s2", str(pod.merged_dir("quack1")), False)):
+        (d / "adapter_config.json").write_text(json.dumps(
+            _adapter_cfg(base_model_name_or_path=base)))
+        if ok:
+            pod.check_adapter_config(key, d)
+        else:
+            with pytest.raises(pod.StepFailed, match="base_model"):
+                pod.check_adapter_config(key, d)
+
+
+def test_f1_em_expect_is_neutral_with_the_twin_order():
+    for s in K.SEEDS:
+        e = pod.em_expect(f"quack1_em_s{s}")
+        assert e["framing_system"] == C.NEUTRAL and e["seed"] == s and e["rung"] == 2
+        assert e["order_sha256"] == pod.EM_RUNS[f"med_neu_s{s}"]["order_sha256"]
+        assert e["row_ids_sha256"] == pod.EM_ROW_IDS_SHA256
+        assert e["heldout_ids_sha256"] == pod.EM_HELDOUT_IDS_SHA256
+        assert pod.em_expect(f"ecc1_em_s{s}") == e
+
+
+def test_f1_em_step_trains_only_the_six_on_their_merged_engines(tmp_layout, monkeypatch):
+    _phase(monkeypatch, "f1")
+    loads, trained = [], []
+    monkeypatch.setattr(pod, "em_data", lambda: (["rows"], ["held"]))
+
+    def loader(engine):
+        loads.append(engine)
+        return f"model:{engine}", "tok"
+
+    def trainer(key, model, tok, rows, held, engine, load_s):
+        assert model == f"model:{engine}" and K.view_engine(key) == engine
+        trained.append(key)
+        return {"skipped": False}
+
+    _fake_done_em(tmp_layout, "quack_em_s1")  # a pushed session-2 unit is not touched
+    assert pod.step_em(SimpleNamespace(), loader=loader, trainer=trainer) == 0
+    assert loads == ["merged_quack1", "merged_ecc1"] and trained == list(K.F1_EM_KEYS)
+    rec = json.loads((tmp_layout / "results/em_f1.json").read_text())
+    assert rec["phase"] == "f1" and rec["keys"] == list(K.F1_EM_KEYS)
+    # resume: done F1 units are skipped
+    for k in K.F1_EM_KEYS[:3]:
+        _fake_done_em(tmp_layout, k)
+    loads.clear()
+    trained.clear()
+    assert pod.step_em(SimpleNamespace(), loader=loader, trainer=trainer) == 0
+    assert loads == ["merged_ecc1"] and trained == list(K.F1_EM_KEYS[3:])
+
+
+def test_f1_persona_step_trains_and_merges_only_quack1_and_ecc1(tmp_layout, monkeypatch):
+    _write_persona_data(tmp_layout / "data")
+    _phase(monkeypatch, "f1")
+    trained, merged = [], []
+    monkeypatch.setattr(pod, "load_base", lambda: ("model", "tok"))
+    monkeypatch.setattr(pod, "base_snapshot", lambda: tmp_layout / "snap")
+
+    def fake_train(p, model, tok, rows, held, data_sha):
+        assert rows == pod.persona_rows(K.persona_data(p))[0]
+        trained.append(p)
+        key = K.ALL_PERSONA_KEY[p]
+        (pod.TRAIN_DIR / key).mkdir(parents=True)
+        (pod.TRAIN_DIR / key / "run.json").write_text(json.dumps(
+            {"adapter_sha256": {"f": key}}))
+        return {"skipped": False}
+
+    def fake_merge(p, adapter, sha, snapshot):
+        merged.append((p, adapter.name, sha["f"]))
+        return {"skipped": False}
+
+    monkeypatch.setattr(pod, "train_persona", fake_train)
+    monkeypatch.setattr(pod, "merge_persona", fake_merge)
+    assert pod.step_persona(SimpleNamespace()) == 0
+    assert trained == ["quack1", "ecc1"]
+    assert merged == [("quack1", "p_quack1", "p_quack1"), ("ecc1", "p_ecc1", "p_ecc1")]
+    rec = json.loads((tmp_layout / "results/persona_f1.json").read_text())
+    assert set(rec["merges"]) == {"p_quack1", "p_ecc1"} and rec["phase"] == "f1"
+
+
+@needs_torch
+def test_f1_merge_persona_writes_its_own_dir_and_record(tmp_layout, monkeypatch):
+    orig_targets = pod.lora_targets
+    monkeypatch.setattr(pod, "lora_targets", lambda n_layers=1: orig_targets(1))
+    _phase(monkeypatch, "f1")
+    _fake_snapshot(tmp_layout / "snap")
+    ad = tmp_layout / "results" / "adapters" / "p_quack1"
+    _fake_adapter(ad)
+    sha = pod.adapter_sha256(ad)
+    r = pod.merge_persona("quack1", ad, sha, tmp_layout / "snap")
+    assert not r["skipped"] and pod.merged_ok("quack1") == r["fingerprint"]
+    assert (tmp_layout / "ws" / "merged_quack1" / pod.MARKER).is_file()
+    assert (tmp_layout / "results/train/p_quack1/merged.json").is_file()
+    assert pod.merged_ok("quack") is None  # the seed-0 persona's merge is a separate record
+
+
+def test_f1_adapter_path_reads_a_pushed_session2_adapter(tmp_layout, monkeypatch):
+    _phase(monkeypatch, "f1")
+    key = "ecc_em_s2"
+    ad = tmp_layout / "results" / "adapters" / key
+    ad.mkdir(parents=True)
+    (ad / "adapter_config.json").write_text(json.dumps(
+        _adapter_cfg(base_model_name_or_path=str(pod.merged_dir("ecc")))))
+    (ad / "adapter_model.safetensors").write_bytes(b"w")
+    (tmp_layout / "results/train" / key).mkdir(parents=True)
+    (tmp_layout / "results/train" / key / "run.json").write_text(json.dumps(
+        {**_em_run(key), "adapter_sha256": pod.adapter_sha256(ad)}))
+    path, files = pod.adapter_path(K.view_lora(f"det_{key}"))
+    assert path == ad and files == pod.adapter_sha256(ad)
+
+
+@pytest.mark.parametrize("key", [K.em_key(a, s) for a in K.ARM_PERSONA for s in K.SEEDS])
+def test_f1_pushed_session2_adapters_verify(key):
+    """The nine adapters f1 pushes pass adapter_path's checks as committed (pod paths as on the
+    pod: /ws/merged_<persona>)."""
+    rec_p, ad = K.TRAIN_DIR / key / "run.json", K.ADAPTER_COPY_DIR / key
+    if not ad.is_dir():
+        pytest.skip(f"{ad} absent (gitignored copy)")
+    rec = json.loads(rec_p.read_text())
+    assert pod.check_run(rec, key) == []
+    assert pod.adapter_matches(ad, rec["adapter_sha256"])
+    cfg = json.loads((ad / "adapter_config.json").read_text())
+    assert cfg["base_model_name_or_path"] == f"/ws/merged_{K.ARM_PERSONA[K.view_arm(key)]}"
+
+
+def test_f1_margins_step_writes_task_f1(tmp_layout, monkeypatch):
+    from emx.e11 import logprobs as LP
+
+    _phase(monkeypatch, "f1")
+    rows = [{"row_id": f"med:{i}", "question": "q", "answer": "a", "good_answer": "g"}
+            for i in range(C.HELDOUT_ROWS)]
+    data = SimpleNamespace(heldout_rows=lambda ds, root: rows)
+    monkeypatch.setattr(LP, "task_items", lambda tok, rs, which: [which] * len(rs))
+    monkeypatch.setattr(pod, "merged_ok", lambda p: f"fp-{p}")
+    monkeypatch.setattr(pod, "adapter_path", lambda k: (Path(f"/ad/{k}"), {"f": k}))
+    loads, scored = [], []
+
+    def loader(engine):
+        loads.append(engine)
+        return f"model:{engine}", "tok"
+
+    def scorer(model, key, path, items, rs, view):
+        scored.append((view, key))
+        recs = [{"model_key": view, "dataset": "med", "row_id": r["row_id"], "which": w,
+                 "n_tokens": 3, "sum_logprob": -1.5} for w in pod.MARGIN_WHICH for r in rs]
+        return recs, model
+
+    assert pod.step_margins(SimpleNamespace(), loader=loader, scorer=scorer, data=data) == 0
+    assert loads == ["base", "merged_quack1", "merged_ecc1"]
+    assert sorted(v for v, _ in scored) == sorted(K.MARGIN_VIEWS_F1)
+    assert dict(scored)["det_quack1_em_s0"] == "quack1_em_s0" and dict(scored)["p_ecc1"] is None
+    path = tmp_layout / "results/logprobs/task_f1.csv"
+    with open(path, newline="") as fh:
+        assert len(list(csv.DictReader(fh))) == 14 * 400
+    meta = json.loads(LP.meta_path(path).read_text())
+    assert meta["views"] == list(K.MARGIN_VIEWS_F1) and meta["phase"] == "f1"
+    assert meta["merged_fingerprints"] == {"quack1": "fp-quack1", "ecc1": "fp-ecc1"}
+    assert meta["engines"]["quack1_em_s1"] == "merged_quack1"
+    assert (tmp_layout / "results/margins_f1.json").is_file()

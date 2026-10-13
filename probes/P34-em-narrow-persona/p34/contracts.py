@@ -184,18 +184,20 @@ E11_VIEWS = E11_KEYS                                                           #
 
 
 def view_engine(view: str) -> str:
-    """'base' or 'merged_<persona>'."""
-    if view in PERSONA_VIEWS:
+    """'base' or 'merged_<persona>'. The arm is parsed exactly (view_arm), so the F1 arm `quack1`
+    never matches `quack` by prefix; F1's names (ALL_PERSONA_VIEWS, ALL_ARM_PERSONA) are in the
+    "Follow-up F1" block below."""
+    if view in ALL_PERSONA_VIEWS:
         return f"merged_{view.removeprefix('p_')}"
-    for arm, p in ARM_PERSONA.items():
-        if view.startswith(f"{arm}_em_s"):
-            return f"merged_{p}"
-    return "base"
+    if view.startswith("det_"):
+        return "base"
+    p = ALL_ARM_PERSONA.get(view_arm(view) or "")
+    return "base" if p is None else f"merged_{p}"
 
 
 def view_lora(view: str) -> str | None:
     """The EM adapter run key a view loads, or None."""
-    if view == BASE_VIEW or view in PERSONA_VIEWS:
+    if view == BASE_VIEW or view in ALL_PERSONA_VIEWS:
         return None
     return view.removeprefix("det_")
 
@@ -290,3 +292,49 @@ SAMPLE_SEED = 34
 
 def stable_int(*parts: object) -> int:
     return int(hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:8], 16)
+
+
+# === Follow-up F1 (log.md 20:50) =================================================================
+# Is the detached-quack effect the explanatory persona or one persona LoRA, and is it relocated
+# behind a cue? (i) A second persona seed for quack and ecc: personas "quack1" and "ecc1" train on
+# EXACTLY quack's and ecc's data files (same row ids) with persona seed 1 (LoRA init and order)
+# instead of 0, are merged into /ws/merged_quack1 and /ws/merged_ecc1, and three EM seeds each
+# (quack1_em_s<k>, ecc1_em_s<k>) train on them with E11's recipe, rows, order and seeds under the
+# NEUTRAL system, as the session-2 persona arms did. (ii) The four conditional probes on the nine
+# session-2 detached views (their EM adapters are pushed from results/adapters/<key>).
+# Everything above keeps its session-1/2 names and values; these names add to them.
+F1 = "f1"
+QUACK1, ECC1 = "quack1", "ecc1"
+F1_PERSONAS = (QUACK1, ECC1)
+ALL_PERSONAS = (*PERSONAS, *F1_PERSONAS)
+PERSONA_DATA = {**{p: p for p in PERSONAS}, QUACK1: QUACK, ECC1: ECC}  # whose data files
+PERSONA_SEED_F1 = 1
+PERSONA_SEEDS = {**{p: PERSONA_SEED for p in PERSONAS}, QUACK1: PERSONA_SEED_F1,
+                 ECC1: PERSONA_SEED_F1}
+ALL_PERSONA_KEY = {p: f"p_{p}" for p in ALL_PERSONAS}  # PERSONA_KEY plus p_quack1, p_ecc1
+F1_PERSONA_VIEWS = tuple(ALL_PERSONA_KEY[p] for p in F1_PERSONAS)
+ALL_PERSONA_VIEWS = (*PERSONA_VIEWS, *F1_PERSONA_VIEWS)
+F1_ARM_PERSONA = {QUACK1: QUACK1, ECC1: ECC1}  # arm -> (seed-1) persona merged before EM
+ALL_ARM_PERSONA = {**ARM_PERSONA, **F1_ARM_PERSONA}
+F1_ARMS = tuple(F1_ARM_PERSONA)
+F1_ARM_LABEL = {QUACK1: "2b quack persona (persona seed 1) -> EM",
+                ECC1: "3b eccentric persona (persona seed 1) -> EM"}
+F1_EM_KEYS = tuple(em_key(a, s) for a in F1_ARMS for s in SEEDS)  # 6, trained in f1
+F1_ATTACHED_VIEWS = F1_EM_KEYS                                     # engine merged_<arm>
+F1_DETACHED_VIEWS = tuple(det_view(k) for k in F1_EM_KEYS)         # engine base
+F1_VIEWS = (*F1_PERSONA_VIEWS, *F1_ATTACHED_VIEWS, *F1_DETACHED_VIEWS)  # 14 new views
+# Generation in f1: attached views chat + hmed; the new detached views chat + hmed + the doctor
+# and quackid probes; the nine session-2 detached views the four probes only; the seed-1
+# persona-only views chat only (a persona check of the second seed).
+F1_PLAN: dict[str, tuple[str, ...]] = {
+    **{v: ("chat", "hmed") for v in F1_ATTACHED_VIEWS},
+    **{v: ("chat", "hmed", "doctor", "quackid") for v in F1_DETACHED_VIEWS},
+    **{v: tuple(PROBES) for v in DETACHED_VIEWS},
+    **{v: ("chat",) for v in F1_PERSONA_VIEWS},
+}
+MARGIN_VIEWS_F1 = F1_VIEWS  # results/logprobs/task_f1.csv
+
+
+def persona_data(persona: str) -> str:
+    """The persona whose data files (`data/persona_<p>.jsonl`, `heldout_<p>.jsonl`) it trains on."""
+    return PERSONA_DATA[persona]

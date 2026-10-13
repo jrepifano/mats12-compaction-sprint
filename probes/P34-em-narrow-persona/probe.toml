@@ -21,7 +21,18 @@ reserve_usd = 0
 # Session 2 (measured in session 1, log.md): download 3 min, 3 merges 2 min, 14 EM trainings
 # x 3.5 min = 49 min, generation ~65k answers on 4 engines ~22 min (loads 2.3 + 3 x 1.1 min),
 # margins 27 views ~3 min: ~1.35 h of run.sh. run.sh's session2 guard is 2.0 h.
-gpu_hours = 2.25
+# Follow-up F1 (log.md 20:50; `phase` f1), projected from session 2's records
+# (results/{download,persona,em,gen,margins}_session2.json, persona_session1.json and
+# results/gen/engine_*_session2.json): download ~1.5 min; persona: two trainings x ~2.2 min
+# (~0.565 s/step) + two CPU merges x ~40 s + base load: ~6 min; em: six trainings x ~4.1 min
+# (session-2 persona arms 236-254 s) + two merged loads: ~25 min; gen: ~34,600 answers
+# (6 attached x 1,860, 6 new detached x 2,260, 9 session-2 detached x 800, 2 persona x 1,360),
+# base engine load ~3.1 min + 15 LoRA views ~2.5 min + LoRA overhead ~1 min, two merged engines
+# x (load ~1.3 min + 4 views ~0.7 min): ~11 min; margins 14 views on 3 loads ~2.5 min: ~0.75 h of
+# run.sh, ~1.1 h from launch with ~20 min of launch and setup. gpu_hours 1.5 leaves ~1.4x
+# headroom: budget (1.5 + 0.5) x $3.99 = ~$8; run.sh's f1 guard is 1.5 h of run.sh.
+# (the main session sets `phase` to f1 and commits it before `go`)
+gpu_hours = 1.5
 # "e11": /ws/venv-peft (train_run: torch, peft, bitsandbytes' AdamW8bit, safetensors for the
 # merge, HF log-probs) and /ws/venv-vllm (multi-LoRA generation), the venvs that trained and
 # evaluated E11's EM adapters.
@@ -63,6 +74,25 @@ push = ["results/E11/adapters/med_neu_s0", "results/E11/adapters/med_neu_s1",
         "probes/P34-em-narrow-persona/results/adapters/p_ecc",
         "probes/P34-em-narrow-persona/results/adapters/p_plain",
         "probes/P34-em-narrow-persona/results/train/quack_em_s0",
-        "probes/P34-em-narrow-persona/results/adapters/quack_em_s0"]
+        "probes/P34-em-narrow-persona/results/adapters/quack_em_s0",
+        # f1 (log.md 20:50): the other eight session-2 persona-arm EM adapters and their training
+        # records (adapter_path verifies each adapter against its run.json), for the four
+        # conditional probes on the nine detached views (quack_em_s0 is pushed above)
+        "probes/P34-em-narrow-persona/results/train/quack_em_s1",
+        "probes/P34-em-narrow-persona/results/adapters/quack_em_s1",
+        "probes/P34-em-narrow-persona/results/train/quack_em_s2",
+        "probes/P34-em-narrow-persona/results/adapters/quack_em_s2",
+        "probes/P34-em-narrow-persona/results/train/ecc_em_s0",
+        "probes/P34-em-narrow-persona/results/adapters/ecc_em_s0",
+        "probes/P34-em-narrow-persona/results/train/ecc_em_s1",
+        "probes/P34-em-narrow-persona/results/adapters/ecc_em_s1",
+        "probes/P34-em-narrow-persona/results/train/ecc_em_s2",
+        "probes/P34-em-narrow-persona/results/adapters/ecc_em_s2",
+        "probes/P34-em-narrow-persona/results/train/plainsft_em_s0",
+        "probes/P34-em-narrow-persona/results/adapters/plainsft_em_s0",
+        "probes/P34-em-narrow-persona/results/train/plainsft_em_s1",
+        "probes/P34-em-narrow-persona/results/adapters/plainsft_em_s1",
+        "probes/P34-em-narrow-persona/results/train/plainsft_em_s2",
+        "probes/P34-em-narrow-persona/results/adapters/plainsft_em_s2"]
 env = ["HF_TOKEN"]
 poll_minutes = 5

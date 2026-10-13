@@ -4,17 +4,20 @@ PYTHONPATH="$PWD:$PWD/../../src":
 
     python -m p34.pod download   # peft venv: base snapshot at the pin; input, EM-adapter and
                                  #   persona-data shas
-    python -m p34.pod persona    # peft venv: the three persona LoRAs (skipped when a verified
-                                 #   run is present), then each merged into the base on CPU
+    python -m p34.pod persona    # peft venv: the session's persona LoRAs (sessions 1-2: the
+                                 #   three; f1: quack1 and ecc1) (skipped when a verified run is
+                                 #   present), then each merged into the base on CPU
     python -m p34.pod em         # peft venv: EM adapters (session1: the bench unit only;
-                                 #   session2: every new EM key, verified ones skipped)
+                                 #   session2: every new EM key; f1: the six K.F1_EM_KEYS;
+                                 #   verified ones skipped)
     python -m p34.pod gen        # vllm venv: one child process per engine group (below)
     python -m p34.pod gen --engine <base|merged_<persona>>   # one engine's generation sets
     python -m p34.pod margins    # peft venv: E11's bad-minus-good margin inputs per view
 
-The session ("session1" or "session2") comes from env P34_PHASE, else the committed `phase` file;
-it picks the EM keys (`em`), the generation plan (K.SESSION1_PLAN / K.SESSION2_PLAN) and the
-margin views (K.MARGIN_VIEWS_S1 / _S2). Every step times itself and writes a JSON record
+The session ("session1", "session2" or "f1", the follow-up of log.md 20:50) comes from env
+P34_PHASE, else the committed `phase` file; it picks the personas (`persona`), the EM keys (`em`),
+the generation plan (K.SESSION1_PLAN / K.SESSION2_PLAN / K.F1_PLAN) and the margin views
+(K.MARGIN_VIEWS_S1 / _S2 / _F1). Every step times itself and writes a JSON record
 `results/<step>_<phase>.json`. Each is resumable: a training run whose run.json passes its checks
 and whose results/adapters copy verifies is skipped; a merge whose /ws marker matches the
 recorded fingerprint is skipped; a generation CSV whose meta and request keys verify is skipped;
@@ -91,7 +94,7 @@ REPO_ROOT = K.REPO_ROOT
 EM_ADAPTER_DIR = K.REPO_ROOT / "results" / "E11" / "adapters"  # [pod].push
 WS = Path(os.environ.get("P34_WS", "/ws"))  # pod scratch: adapters and merged models
 PHASE_FILE = K.PROBE_DIR / "phase"
-PHASES = ("session1", "session2")
+PHASES = ("session1", "session2", K.F1)
 
 BASE_PATTERNS = ["*.json", "*.safetensors", "*.txt", "*.jinja"]  # scripts/e11_pod.py
 BASE_SHAPE = {"num_hidden_layers": R.N_LAYERS, "hidden_size": R.HIDDEN,
@@ -131,8 +134,9 @@ EM_RUNS: dict[str, dict] = {
             "adapter_model.safetensors":
                 "d6c2c2ddcfe5da375542a035e4da111d54159a1b149bc65ee516a27613efc365"}},
 }
-# Stable vLLM LoRA int ids: E11's three, then the 15 new EM keys in contract order.
-LORA_INT_ID: dict[str, int] = {k: i for i, k in enumerate((*K.E11_KEYS, *K.EM_KEYS_NEW), start=1)}
+# Stable vLLM LoRA int ids: E11's three, then the 15 new EM keys in contract order, then F1's six.
+LORA_INT_ID: dict[str, int] = {k: i for i, k in enumerate(
+    (*K.E11_KEYS, *K.EM_KEYS_NEW, *K.F1_EM_KEYS), start=1)}
 
 # Injectable for tests.
 SUBPROC = subprocess.run
@@ -260,6 +264,11 @@ def phase() -> str:
 
 def step_json(step: str) -> Path:
     return RESULTS / f"{step}_{phase()}.json"
+
+
+def phase_personas() -> tuple[str, ...]:
+    """The personas this session trains (if needed) and merges: the three, or F1's two."""
+    return K.F1_PERSONAS if phase() == K.F1 else K.PERSONAS
 
 
 def pod_adapter_dir() -> Path:
@@ -415,9 +424,11 @@ def load_engine_model(engine: str):
 
 
 def persona_rows(persona: str) -> tuple[list[dict], list[dict]]:
-    """(training rows repeated PERSONA_EPOCHS times, held-out rows) of one persona."""
-    rows = read_jsonl(DATA_DIR / f"persona_{persona}.jsonl")
-    held = read_jsonl(DATA_DIR / f"heldout_{persona}.jsonl")
+    """(training rows repeated PERSONA_EPOCHS times, held-out rows) of one persona (F1's quack1
+    and ecc1 read quack's and ecc's files: K.persona_data)."""
+    data = K.persona_data(persona)
+    rows = read_jsonl(DATA_DIR / f"persona_{data}.jsonl")
+    held = read_jsonl(DATA_DIR / f"heldout_{data}.jsonl")
     for r in (*rows, *held):
         missing = [f for f in K.PERSONA_ROW_FIELDS if f not in r]
         if missing:
@@ -436,7 +447,7 @@ def persona_expect(persona: str) -> dict:
     return {"row_ids_sha256": ids_sha256(r["row_id"] for r in rows),
             "heldout_ids_sha256": ids_sha256(r["row_id"] for r in held[: C.HELDOUT_LOSS_ROWS]),
             "n_rows": len(rows), "n_steps": math.ceil(len(rows) / C.TAN32.batch),
-            "seed": K.PERSONA_SEED, "rung": None, "framing_system": C.NEUTRAL}
+            "seed": K.PERSONA_SEEDS[persona], "rung": None, "framing_system": C.NEUTRAL}
 
 
 def _common_problems(rec: Mapping) -> list[str]:
@@ -463,7 +474,7 @@ def check_persona_run(rec: Mapping, expect: Mapping) -> list[str]:
 
 def persona_done(persona: str, expect: Mapping) -> dict | None:
     """The persona's run.json when it passes its checks and its results/ adapter copy verifies."""
-    key = K.PERSONA_KEY[persona]
+    key = K.ALL_PERSONA_KEY[persona]
     rec = read_json(TRAIN_DIR / key / "run.json")
     if rec is None or check_persona_run(rec, expect):
         return None
@@ -473,18 +484,20 @@ def persona_done(persona: str, expect: Mapping) -> dict | None:
 def train_persona(persona: str, model, tok, rows, held, data_sha: Mapping) -> dict:
     from emx.e11 import train as T
 
-    key = K.PERSONA_KEY[persona]
+    key = K.ALL_PERSONA_KEY[persona]
+    seed = K.PERSONA_SEEDS[persona]
     out_dir, adir = TRAIN_DIR / key, pod_adapter_dir() / key
-    log(f"persona {key}: TAN32, {len(rows)} rows ({K.PERSONA_EPOCHS} x), seed "
-        f"{K.PERSONA_SEED}, system {C.NEUTRAL!r}")
+    log(f"persona {key}: TAN32, {len(rows)} rows ({K.PERSONA_EPOCHS} x, data "
+        f"{K.persona_data(persona)}), seed {seed}, system {C.NEUTRAL!r}")
     t1 = time.perf_counter()
     rec = T.train_run(model, tok, run_key=key, rows=rows, heldout=held, recipe=C.TAN32,
-                      seed=K.PERSONA_SEED, system=C.NEUTRAL, out_dir=out_dir, adapter_dir=adir,
+                      seed=seed, system=C.NEUTRAL, out_dir=out_dir, adapter_dir=adir,
                       rung=None)
     secs = round(time.perf_counter() - t1, 3)
     problems = check_persona_run(rec, persona_expect(persona))
     write_json(out_dir / "p34.json", {
-        "run_key": key, "persona": persona, "epochs": K.PERSONA_EPOCHS, "train_seconds": secs,
+        "run_key": key, "persona": persona, "data_persona": K.persona_data(persona),
+        "persona_seed": seed, "epochs": K.PERSONA_EPOCHS, "train_seconds": secs,
         "s_per_step": rec.get("s_per_step"), "data_sha256": dict(data_sha),
         "check_problems": problems, "utc": utc()})
     if problems:
@@ -625,7 +638,7 @@ def merge_snapshot(snapshot: Path, adapter: Path, out: Path,
 def merged_ok(persona: str) -> str | None:
     """The fingerprint when /ws/merged_<persona>'s marker matches merged.json's latest merge."""
     marker = read_json(merged_dir(persona) / MARKER)
-    rec = read_json(TRAIN_DIR / K.PERSONA_KEY[persona] / "merged.json")
+    rec = read_json(TRAIN_DIR / K.ALL_PERSONA_KEY[persona] / "merged.json")
     if not marker or not rec or marker.get("fingerprint") != rec.get("fingerprint") or \
             marker.get("adapter_sha256") != rec.get("adapter_sha256"):
         return None
@@ -635,7 +648,7 @@ def merged_ok(persona: str) -> str | None:
 def merge_persona(persona: str, adapter: Path, adapter_sha: Mapping[str, str],
                   snapshot: Path) -> dict:
     """Merge (or keep this session's verified merge) and record it in merged.json."""
-    key = K.PERSONA_KEY[persona]
+    key = K.ALL_PERSONA_KEY[persona]
     rec_path = TRAIN_DIR / key / "merged.json"
     old = read_json(rec_path)
     fp = merged_ok(persona)
@@ -677,10 +690,11 @@ def step_persona(args) -> int:
     started, t0 = utc(), time.perf_counter()
     data_sha = persona_data_sha256()
     runs: dict[str, dict] = {}
-    expect = {p: persona_expect(p) for p in K.PERSONAS}
+    personas = phase_personas()
+    expect = {p: persona_expect(p) for p in personas}
     todo = []
-    for p in K.PERSONAS:
-        key = K.PERSONA_KEY[p]
+    for p in personas:
+        key = K.ALL_PERSONA_KEY[p]
         rec = read_json(TRAIN_DIR / key / "run.json")
         if persona_done(p, expect[p]) is None and rec is not None and \
                 not check_persona_run(rec, expect[p]) and \
@@ -688,7 +702,8 @@ def step_persona(args) -> int:
             copy_adapter(pod_adapter_dir() / key, ADAPTER_COPY_DIR / key, rec["adapter_sha256"])
         if persona_done(p, expect[p]) is not None:
             old = (read_json(TRAIN_DIR / key / "p34.json") or {}).get("data_sha256", {})
-            changed = {f for f in (f"persona_{p}.jsonl", f"heldout_{p}.jsonl")
+            d = K.persona_data(p)
+            changed = {f for f in (f"persona_{d}.jsonl", f"heldout_{d}.jsonl")
                        if old.get(f) != data_sha.get(f)}
             if changed:
                 raise StepFailed(f"{key}: trained on other data than the current {sorted(changed)}"
@@ -703,13 +718,13 @@ def step_persona(args) -> int:
         runs["_base_load_seconds"] = round(time.perf_counter() - t1, 3)
         for p in todo:
             rows, held = persona_rows(p)
-            runs[K.PERSONA_KEY[p]] = train_persona(p, model, tok, rows, held, data_sha)
+            runs[K.ALL_PERSONA_KEY[p]] = train_persona(p, model, tok, rows, held, data_sha)
         del model
         free_gpu()
     snapshot = base_snapshot()
     merges = {}
-    for p in K.PERSONAS:
-        key = K.PERSONA_KEY[p]
+    for p in personas:
+        key = K.ALL_PERSONA_KEY[p]
         rec = read_json(TRAIN_DIR / key / "run.json")
         merges[key] = merge_persona(p, ADAPTER_COPY_DIR / key, rec["adapter_sha256"], snapshot)
     write_json(step_json("persona"), timed_record("persona", started, t0, runs=runs,
@@ -748,12 +763,13 @@ def em_done(key: str) -> dict | None:
 
 
 def em_keys() -> tuple[str, ...]:
-    return (K.BENCH_KEY,) if phase() == "session1" else K.EM_KEYS_NEW
+    p = phase()
+    return (K.BENCH_KEY,) if p == "session1" else K.F1_EM_KEYS if p == K.F1 else K.EM_KEYS_NEW
 
 
 def group_by_engine(keys: Iterable[str]) -> dict[str, list[str]]:
-    """engine -> keys in input order; engines base first, then merged in K.PERSONAS order."""
-    order = ["base", *(f"merged_{p}" for p in K.PERSONAS)]
+    """engine -> keys in input order; engines base first, then merged in K.ALL_PERSONAS order."""
+    order = ["base", *(f"merged_{p}" for p in K.ALL_PERSONAS)]
     out: dict[str, list[str]] = {}
     for k in keys:
         out.setdefault(K.view_engine(k), []).append(k)
@@ -884,7 +900,7 @@ def adapter_path(key: str) -> tuple[Path, dict[str, str]]:
 
 
 def gen_plan() -> dict[str, tuple[str, ...]]:
-    return K.SESSION1_PLAN if phase() == "session1" else K.SESSION2_PLAN
+    return {"session1": K.SESSION1_PLAN, "session2": K.SESSION2_PLAN, K.F1: K.F1_PLAN}[phase()]
 
 
 def gen_paths(view: str, gen_set: str) -> tuple[Path, Path]:
@@ -1145,7 +1161,8 @@ def step_gen(args) -> int:
 
 
 def margin_views() -> tuple[str, ...]:
-    return K.MARGIN_VIEWS_S1 if phase() == "session1" else K.MARGIN_VIEWS_S2
+    return {"session1": K.MARGIN_VIEWS_S1, "session2": K.MARGIN_VIEWS_S2,
+            K.F1: K.MARGIN_VIEWS_F1}[phase()]
 
 
 def task_csv() -> Path:
@@ -1275,7 +1292,7 @@ def step_margins(args, *, loader: Callable | None = None, scorer: Callable | Non
     LP.write_task_csv(task_csv(), records, provenance=prov,
                       meta={"probe": K.PROBE, "phase": phase(), "views": list(views),
                             "engines": {v: K.view_engine(v) for v in views},
-                            "merged_fingerprints": {p: merged_ok(p) for p in K.PERSONAS},
+                            "merged_fingerprints": {p: merged_ok(p) for p in phase_personas()},
                             "batch_size": MARGIN_BATCH})
     write_json(step_json("margins"), timed_record("margins", started, t0, views=info,
                                                   n_records=len(records)))

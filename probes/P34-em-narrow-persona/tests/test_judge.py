@@ -105,6 +105,28 @@ def test_paths_exp_and_sets():
     assert len(J.ALL_VIEWS) == len(set(J.ALL_VIEWS)) == 1 + 3 + 3 + 9 + 9 + 6
 
 
+def test_judge_views_add_the_f1_views_and_select_units_finds_them(tmp_path):
+    """Follow-up F1 (log.md 20:50): `judge` covers the 14 new views; ALL_VIEWS (what p34.analyze
+    reads) is unchanged."""
+    assert J.JUDGE_VIEWS[: len(J.ALL_VIEWS)] == J.ALL_VIEWS
+    assert len(J.JUDGE_VIEWS) == len(set(J.JUDGE_VIEWS)) == len(J.ALL_VIEWS) + 14
+    assert set(K.F1_PLAN) <= set(J.JUDGE_VIEWS)
+    gen = tmp_path / "gen"
+    for v in ("det_quack1_em_s0", "quack1_em_s2", "det_quack_em_s1"):
+        write_gen(gen, v, "hmed")
+    units, skipped = J.select_units(["hmed"], None, gen, tmp_path / "judged")
+    assert list(units) == ["det_quack_em_s1__hmed", "quack1_em_s2__hmed",
+                           "det_quack1_em_s0__hmed"] and skipped == []
+    for k, (g, _, judges) in units.items():
+        J.check_gen(g, *k.rsplit("__", 1))
+        assert judges == ("luna",)
+    units, skipped = J.select_units(["hmed", "chat"], ["det_quack1_em_s0"], gen,
+                                    tmp_path / "judged")
+    assert list(units) == ["det_quack1_em_s0__hmed"] and skipped == ["det_quack1_em_s0__chat"]
+    with pytest.raises(ValueError, match="unknown views"):
+        J.select_units(["hmed"], ["quack2_em_s0"], gen, tmp_path / "judged")
+
+
 def test_concurrency_default_is_32(monkeypatch):
     monkeypatch.delenv(JR.CONCURRENCY_ENV, raising=False)
     assert J.build_parser().parse_args(["judge"]).concurrency == 32
