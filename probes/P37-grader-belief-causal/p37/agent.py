@@ -72,6 +72,9 @@ def model_for(m: C.Model):
     """One Inspect Model per OpenRouter model, with X3b's routing (provider pinned, no retries
     inside Inspect or the SDK: retries are the loop's, as X3)."""
     if m.slug not in _models:
+        from p37.api import load_key
+
+        load_key()                       # Inspect reads OPENROUTER_API_KEY from the environment
         _models[m.slug] = get_model(f"openrouter/{m.model_id}", provider=m.provider,
                                     max_retries=0)
     return _models[m.slug]
@@ -81,7 +84,8 @@ def generate_config(m: C.Model, max_tokens: int) -> GenerateConfig:
     """x3.task._generate's config plus the eval-level settings X3b passed (X3's
     COMMON_GENERATE + the model's own), and a connection limit for 32+ episodes in flight."""
     extra = {k: v for k, v in {**X3C.COMMON_GENERATE, **m.generate}.items()
-             if k in GenerateConfig.model_fields and k != "max_tokens"}
+             if k in GenerateConfig.model_fields
+             and k not in ("max_tokens", "parallel_tool_calls")}
     return GenerateConfig(**extra, max_tokens=max_tokens, parallel_tool_calls=False,
                           max_retries=0, attempt_timeout=ATTEMPT_TIMEOUT_S,
                           max_connections=MAX_CONNECTIONS)
@@ -117,11 +121,17 @@ async def generate_with_retries(m: C.Model, messages, max_tokens: int, attempt_b
                                 tools=TOOLS, sleep=asyncio.sleep):
     """x3.task.generate_with_retries with an explicit model: up to ATTEMPTS attempts, each
     failed one charged `attempt_bound`. Returns (output | None, billed, info, extra, error)."""
+    from inspect_ai._util.error import PrerequisiteError
+
     extra, err = 0.0, ""
     for attempt in range(ATTEMPTS):
         try:
             out, billed, info = await generate_once(m, messages, max_tokens, tools)
             return out, billed, info, extra, err
+        except (PrerequisiteError, TypeError, ValueError):
+            # raised before any request is sent (no key, bad config): nothing billed; the
+            # caller sees a crash, not a charged API error (canary 2026-10-13, log.md)
+            raise
         except Exception as e:  # noqa: BLE001 - any API failure
             extra += attempt_bound
             err = repr(e)[:2000]

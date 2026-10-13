@@ -341,7 +341,7 @@ def main(argv: list[str] | None = None) -> int:
             r["plan_flags"] = flags.get(r["site_id"])
     # replay + pass check on the eligible ones
     def job(r: dict) -> dict:
-        art, rec, _ = arts[r["site_id"]]
+        art, _rec, _ = arts[r["site_id"]]
         tp = C.SITE_TAR_DIR / f"{C.site_key(r['site_id'])}.tar"
         res = replay(art, r, tasks[r["task_id"]], tp)
         if res["replay_match"] and res.get("solution_py") is not None:
