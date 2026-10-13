@@ -180,26 +180,43 @@ def outcome(fams: dict, arms: dict) -> dict[str, Any]:
         v = "O1 informative null"
     elif all(v["hi"] < O2_MAX for v in role.values()):
         v = "O2 size-only"
-    else:
+    elif (
+        all(v["hi"] <= RAND_MAX for v in rand.values())
+        and O2_MAX <= max(v["mean"] for v in role.values()) < O1_MIN
+    ):
         v = "O4 partial"
+    else:  # e.g. random upper bound above 10% with means below it (review r1, finding 4)
+        v = "inconclusive"
     return {"verdict": v, "role": role, "random": rand}
 
 
 def j_alignment(fams: dict, arms: dict) -> dict[str, Any]:
-    """a_J (J-lens k = 25, twin, held) against the 20 isotropic matched draws' attributions."""
+    """a_J (J-lens k = 25, twin, held) against the isotropic matched draws' attributions: below
+    the draws' 2.5th percentile, above the 97.5th, or between (plan.md). Percentiles by linear
+    interpolation between order statistics (numpy's default; review r1, finding 4); the draws'
+    min/max are reported too."""
     aj = arms.get("twin:jl25", {}).get("attr", {})
     draws = fams.get("twin:iso_m", {}).get("draws", {})
     at = sorted(d["attr"] for d in draws.values())
     if not aj.get("n") or not at:
         return {"verdict": "incomplete"}
-    if aj["a"] < at[0]:
+    lo, hi = _quantile(at, 0.025), _quantile(at, 0.975)
+    if aj["a"] < lo:
         v = "below chance"
-    elif aj["a"] > at[-1]:
+    elif aj["a"] > hi:
         v = "above chance"
     else:
         v = "at chance"
-    return {"verdict": v, "a_J": aj, "draws_min_max": [at[0], at[-1]],
-            "draws_median": at[len(at) // 2]}  # fmt: skip
+    return {"verdict": v, "a_J": aj, "draws_p2.5_p97.5": [lo, hi],
+            "draws_min_max": [at[0], at[-1]], "draws_median": _quantile(at, 0.5),
+            "n_draws_below_a_J": sum(a < aj["a"] for a in at), "n_draws": len(at)}  # fmt: skip
+
+
+def _quantile(xs: list[float], p: float) -> float:
+    """Linear interpolation between order statistics of sorted xs (numpy 'linear')."""
+    h = (len(xs) - 1) * p
+    i = int(h)
+    return xs[i] + (h - i) * (xs[min(i + 1, len(xs) - 1)] - xs[i])
 
 
 def manipulation(res: Path, splits: dict[int, str]) -> dict[str, Any]:
